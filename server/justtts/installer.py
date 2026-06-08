@@ -24,9 +24,8 @@ import requests
 
 from .app_state import AppState
 from .engines.catalog import known_engines
-from .engines.external_openai import ExternalOpenAiTtsBackend
+from .engines.factory import construct as construct_backend
 from .engines.kokoro import KokoroBackend
-from .engines.model_catalog import models_for
 from .models import JobStatus, ModelVariant
 
 log = logging.getLogger(__name__)
@@ -189,10 +188,12 @@ def _register_engine_after_install(
         log.info("kokoro registered post-install from %s", model_dir)
         return
 
-    # Sidecar engines: skip live registration. They get registered when
-    # the user clicks Load (the Python adapter's from_pretrained handles
-    # the HF cache on first load).
-    log.info("sidecar engine %s marker installed; will load on demand", engine_id)
+    backend = construct_backend(engine_id, model_dir)
+    if backend is None:
+        log.warning("no backend factory for engine %s — skipping registration", engine_id)
+        return
+    state.engines.register(backend)
+    log.info("sidecar engine %s registered post-install (model_dir=%s)", engine_id, model_dir)
 
 
 def uninstall_engine(state: AppState, engine_id: str, model_dir: Path) -> bool:

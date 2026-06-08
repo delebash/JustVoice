@@ -37,7 +37,9 @@ from .api import (
 )
 from .app_state import AppState, set_state
 from .auth import BearerAuthMiddleware
+from .engines.catalog import known_engines
 from .engines.external_openai import ExternalOpenAiTtsBackend
+from .engines.factory import construct as construct_backend
 from .engines.kokoro import KokoroBackend
 from .errors import ApiError, api_exception_handler, http_exception_handler
 from .paths import default_data_dir, models_root
@@ -114,12 +116,17 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 def _register_existing_engines(state: AppState, data_dir: Path) -> None:
     """Walk installed model dirs + register the real engine for each.
 
-    Mirrors the Rust ``register_existing_engines`` function.
+    Kokoro: register when its files exist on disk (or the override path
+    resolves). Sidecar engines: register when the `.installed` marker is
+    present — the actual model files live in the HF cache and are pulled
+    on first load.
     """
     settings = state.settings.get()
-    # Kokoro: check the override path first, then the default
+    models_dir = models_root(data_dir)
+
+    # Kokoro — real files on disk
     override = settings.engines.kokoro.model_dir_override
-    default_dir = models_root(data_dir) / "kokoro"
+    default_dir = models_dir / "kokoro"
     kokoro_dir = Path(override) if override else default_dir
     kokoro = KokoroBackend(kokoro_dir)
     if kokoro.model_files_present():
@@ -130,6 +137,20 @@ def _register_existing_engines(state: AppState, data_dir: Path) -> None:
             "Kokoro model files not found under %s — install via /v1/engines/kokoro/install or set engines.kokoro.model_dir_override",
             kokoro_dir,
         )
+
+    # Sidecar engines — marker file is enough
+    for entry in known_engines():
+        if entry.id == "kokoro":
+            continue
+        marker = models_dir / entry.id / ".installed"
+        if not marker.is_file():
+            continue
+        backend = construct_backend(entry.id, models_dir / entry.id)
+        if backend is None:
+            log.warning("no backend factory for %s — skipping", entry.id)
+            continue
+        state.engines.register(backend)
+        log.info("%s registered from marker at %s", entry.id, marker)
 
 
 def _register_external_engines(state: AppState) -> None:
