@@ -32,12 +32,18 @@ Confirm only for genuinely destructive ops (`git reset --hard`, force-push to ma
 
 ## REQUIRED reading order, every session
 
-1. This file
-2. `MORNING_RECAP.md` in this repo — current state, what shipped recently, where to pick up
-3. `~/.claude/projects/E--Dev-Web-justtts/memory/MEMORY.md` — scan all linked memories, especially `project_state`, `project_gotchas`, `project_architecture_pivot`
+You MUST read all of these in order, in full, before writing any code or answering any architectural question:
+
+1. **This file** (`CLAUDE.md`)
+2. **`MORNING_RECAP.md`** in this repo — current state, what shipped recently, where to pick up
+3. **Every memory file listed in MORNING_RECAP's "Memory index" section** — ten files under `C:\Users\danel\.claude\projects\E--Dev-Web-justtts\memory\`. Don't just scan titles. Don't read only the ones whose names sound relevant to the current task. Read all ten in full. They're short.
 4. `~/.claude/projects/E--Dev-Web-justwrite-app/memory/project_tts_picks.md` — TTS architecture canon (still applies post-pivot)
 
-**If you skip step 3 you will**: re-propose abandoned approaches (Rust core, Docker, forking voicebox), break the dev loop with the spawn-loop bug, miss the JustWrite-component-reuse directive, hallucinate file paths.
+**Why this is non-negotiable**: past sessions have repeatedly skipped memory reads and then proposed already-rejected approaches (reintroducing Rust, forking voicebox), violated the no-permission-asking rule, used native dialogs, hallucinated file paths, or re-investigated decisions already made. The fix is to read all the memory files every time — it costs ~30 seconds and prevents hours of wasted effort.
+
+**Verification ritual** (do this before your first non-trivial response in a fresh session): say one sentence confirming you've read MORNING_RECAP + all ten memory files. Not as a question, just as an acknowledgement. If you can't honestly say it, you haven't read them yet — go read them.
+
+**If you skip step 3 you will**: re-propose abandoned approaches (Rust core, Docker, forking voicebox), break the dev loop with the spawn-loop bug, miss the JustWrite-component-reuse directive, hallucinate file paths, ask permission instead of executing.
 
 ## Architecture
 
