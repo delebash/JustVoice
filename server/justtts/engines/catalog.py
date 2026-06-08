@@ -10,7 +10,7 @@ Mirrors the Rust ``engines::catalog`` module. 8 engines:
 
 from __future__ import annotations
 
-from ..models import EngineInfo, Feature, Prerequisites
+from ..models import EngineInfo, Prerequisites
 
 
 def known_engines() -> list[EngineInfo]:
@@ -36,7 +36,7 @@ def kokoro() -> EngineInfo:
             "~700 MB model download. CUDA / Metal (CoreML) / DirectML / CPU."
         ),
         backend="sherpa-onnx",
-        capabilities=[Feature.preset_voices := "preset_voices", "gpu_accel", "phoneme_override"],  # type: ignore
+        capabilities=["preset_voices", "gpu_accel", "phoneme_override"],
         prerequisites=Prerequisites(
             rust_native=True,
             sidecar=False,
