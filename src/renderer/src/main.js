@@ -1,7 +1,7 @@
 import { createApp } from "vue";
 import { createPinia } from "pinia";
 import App from "./App.vue";
-import { installTooltip } from "./services/tooltip.js";
+import { tooltipDirective } from "./services/tooltip.js";
 import { bootStorage } from "./services/storage.js";
 import "./styles.css";
 
@@ -12,7 +12,7 @@ async function boot() {
 
   const app = createApp(App);
   app.use(createPinia());
-  installTooltip(app);
+  app.directive("tooltip", tooltipDirective);
   app.mount("#app");
 }
 

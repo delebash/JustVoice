@@ -19,13 +19,18 @@ from fastapi.staticfiles import StaticFiles
 
 from .api import (
     analyzer_api,
+    cache_api,
     engines_api,
+    engines_models_api,
     external_api,
     generate_api,
     health,
     lexicons_api,
+    master_api,
     models_api,
     personas_api,
+    phase5_api,
+    render_chapter_api,
     settings_api,
     system_api,
     voices_api,
@@ -85,9 +90,14 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(lexicons_api.router)
     app.include_router(engines_api.router)
     app.include_router(models_api.router)
+    app.include_router(engines_models_api.router)
     app.include_router(generate_api.router)
+    app.include_router(render_chapter_api.router)
     app.include_router(analyzer_api.router)
     app.include_router(external_api.router)
+    app.include_router(cache_api.router)
+    app.include_router(master_api.router)
+    app.include_router(phase5_api.router)
 
     # GUI — single-file Vue SPA at gui/index.html
     gui_dir = Path("gui")

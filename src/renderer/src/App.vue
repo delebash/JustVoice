@@ -7,14 +7,22 @@ import Toast from "./components/Toast.vue";
 import TaskStrip from "./components/TaskStrip.vue";
 import AppDialog from "./components/AppDialog.vue";
 
+import OverviewView from "./views/OverviewView.vue";
+import GenerateView from "./views/GenerateView.vue";
+import ChapterView from "./views/ChapterView.vue";
+import VoicesView from "./views/VoicesView.vue";
+import CompareView from "./views/CompareView.vue";
+import EnginesView from "./views/EnginesView.vue";
+import SettingsView from "./views/SettingsView.vue";
+
 const VIEWS = [
-  { id: "overview", label: "Overview", lede: "Current state of the server, catalogue, and cache held on disk." },
-  { id: "generate", label: "Generate", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it." },
-  { id: "chapter", label: "Chapter", lede: "Multi-line script in, mastered chapter out. The audiobook-production endpoint." },
-  { id: "voices", label: "Voices", lede: "The full voice catalogue. Clone, design, import, or blend new voices." },
-  { id: "compare", label: "Compare", lede: "Two WAVs in, side-by-side report out. Format, loudness, sample-level diff." },
-  { id: "engines", label: "Engines", lede: "Install, switch, and manage TTS engines. Auto-recommended for your hardware." },
-  { id: "settings", label: "Settings", lede: "Operator knobs that take effect at runtime; some require a restart." },
+  { id: "overview", label: "Overview", lede: "Current state of the server, catalogue, and cache held on disk.", component: OverviewView },
+  { id: "generate", label: "Generate", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it.", component: GenerateView },
+  { id: "chapter", label: "Chapter", lede: "Multi-line script in, mastered chapter out. The audiobook-production endpoint.", component: ChapterView },
+  { id: "voices", label: "Voices", lede: "The full voice catalogue. Clone, design, import, or blend new voices.", component: VoicesView },
+  { id: "compare", label: "Compare", lede: "Two WAVs in, side-by-side report out. Format, loudness, sample-level diff.", component: CompareView },
+  { id: "engines", label: "Engines", lede: "Install, switch, and manage TTS engines. Auto-recommended for your hardware.", component: EnginesView },
+  { id: "settings", label: "Settings", lede: "Operator knobs that take effect at runtime; some require a restart.", component: SettingsView },
 ];
 
 const view = ref("overview");
@@ -66,21 +74,7 @@ onMounted(refresh);
 
       <TaskStrip v-for="task in tasks.running" :key="task.id" :task="task" />
 
-      <section v-if="view === 'overview'" class="block">
-        <h3>Welcome</h3>
-        <p>
-          JustTTS is a TTS server built for audiobook production. Install an engine from the
-          <strong>Engines</strong> tab, then render lines from <strong>Generate</strong> or full
-          chapters from <strong>Chapter</strong>.
-        </p>
-        <p v-if="health">
-          Connected to {{ api.serverUrl }} — {{ health.engines.length }} engine(s) registered.
-        </p>
-      </section>
-
-      <section v-else class="block">
-        <p class="endnote">This view is wired in subsequent commits.</p>
-      </section>
+      <component :is="currentView?.component" />
     </main>
 
     <footer class="colophon">

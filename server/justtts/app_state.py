@@ -10,7 +10,9 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from .cache import RenderCache
 from .engines import EngineRegistry
+from .paths import cache_root
 from .storage import LexiconStore, PersonaStore, SettingsStore, TrainingRegistry, VoiceStore
 
 log = logging.getLogger(__name__)
@@ -23,6 +25,10 @@ class AppState:
         self.settings = SettingsStore(data_dir)
         self.voices = VoiceStore(data_dir)
         self.personas = PersonaStore(data_dir)
+        self._render_cache = RenderCache(
+            cache_root(data_dir),
+            max_memory_entries=self.settings.get().cache.max_memory_entries,
+        )
         self.lexicons = LexiconStore(data_dir)
         self.training = TrainingRegistry(data_dir)
         self.engines = EngineRegistry()

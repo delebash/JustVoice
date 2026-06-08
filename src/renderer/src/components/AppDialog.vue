@@ -9,7 +9,6 @@
 // dialog promise resolves to the cancellation sentinel.
 
 import { computed, nextTick, ref, watch } from "vue";
-import { useI18n } from "vue-i18n";
 import { dialogState, _resolveDialog } from "../services/dialog.js";
 import {
   DialogRoot,
@@ -20,11 +19,17 @@ import {
   DialogClose,
 } from "reka-ui";
 import Icon from "./Icon.vue";
-import JwButton from "@renderer/components/ui/JwButton.vue";
-import JwInput from "@renderer/components/ui/JwInput.vue";
-import JwSelect from "@renderer/components/ui/JwSelect.vue";
+import JwButton from "./ui/JwButton.vue";
+import JwInput from "./ui/JwInput.vue";
+import JwSelect from "./ui/JwSelect.vue";
 
-const { t } = useI18n();
+const t = (k) => ({
+  "dialog.defaultTitle": "Confirm",
+  "dialog.confirmLabel": "Confirm",
+  "dialog.cancelLabel": "Cancel",
+  "dialog.okLabel": "OK",
+  "dialog.closeLabel": "Close",
+}[k] || k);
 
 // Normalize the active dialog into a uniform shape the template can read.
 // Single-field prompts become a one-element `fields` list internally so
@@ -166,7 +171,7 @@ function onEnter(e, isLastField) {
               <div v-if="dialog?.title" class="modal-title">{{ dialog.title }}</div>
             </div>
           </DialogTitle>
-          <DialogClose class="app-modal-close" :aria-label="$t('dialog.closeLabel')">
+          <DialogClose class="app-modal-close" aria-label="Close">
             <Icon name="Close" :size="14" />
           </DialogClose>
         </header>
@@ -206,9 +211,9 @@ function onEnter(e, isLastField) {
         </div>
 
         <footer class="app-modal-footer">
-          <JwButton :label="dialog?.cancelLabel || $t('dialog.cancelLabel')" intent="ghost" @click="cancel" />
+          <JwButton :label="dialog?.cancelLabel || 'Cancel'" intent="ghost" @click="cancel" />
           <JwButton
-            :label="dialog?.confirmLabel || $t('dialog.okLabel')"
+            :label="dialog?.confirmLabel || 'OK'"
             :intent="dialog?.danger ? 'danger' : 'primary'"
             :disabled="!canSubmit"
             @click="submit"
