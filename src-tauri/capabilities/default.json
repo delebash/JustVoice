@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default permissions for JustTTS desktop windows",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "http:default",
+    "dialog:default",
+    "fs:default",
+    "shell:default",
+    "process:default"
+  ]
+}

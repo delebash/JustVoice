@@ -1,0 +1,30 @@
+[package]
+name = "justtts"
+version = "0.1.0"
+description = "An open-source TTS server built for audiobook production, useful for any TTS workload."
+authors = ["JustTTS contributors"]
+edition = "2021"
+license = "Apache-2.0"
+rust-version = "1.85"
+
+[lib]
+name = "justtts_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-http = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-process = "2"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

@@ -1,0 +1,38 @@
+# Node / Vite
+node_modules
+dist
+dist-ssr
+*.local
+.vite
+
+# Python
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Tauri
+src-tauri/target
+src-tauri/gen
+
+# Editor
+.idea
+.vscode
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local data
+.env
+.env.local
+*.log
+
+# Build artifacts
+build/
+dist-electron/

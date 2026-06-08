@@ -1,0 +1,54 @@
+"""Application-wide state container, FastAPI-injected via Depends.
+
+Holds long-lived singletons: the engine registry, the four stores
+(settings/voices/personas/lexicons), the training registry, the
+render cache, and the data dir.
+"""
+
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+
+from .engines import EngineRegistry
+from .storage import LexiconStore, PersonaStore, SettingsStore, TrainingRegistry, VoiceStore
+
+log = logging.getLogger(__name__)
+
+
+class AppState:
+    def __init__(self, data_dir: Path):
+        self.data_dir = data_dir
+        data_dir.mkdir(parents=True, exist_ok=True)
+        self.settings = SettingsStore(data_dir)
+        self.voices = VoiceStore(data_dir)
+        self.personas = PersonaStore(data_dir)
+        self.lexicons = LexiconStore(data_dir)
+        self.training = TrainingRegistry(data_dir)
+        self.engines = EngineRegistry()
+        self._jobs: dict[str, dict] = {}  # install jobs, in-memory
+
+    def job_get(self, job_id: str) -> dict | None:
+        return self._jobs.get(job_id)
+
+    def job_set(self, job_id: str, status: dict) -> None:
+        self._jobs[job_id] = status
+
+    def job_update(self, job_id: str, **patch) -> None:
+        if job_id in self._jobs:
+            self._jobs[job_id].update(patch)
+
+
+# Singleton — set in main.py during boot, retrieved via Depends.
+_STATE: AppState | None = None
+
+
+def set_state(state: AppState) -> None:
+    global _STATE
+    _STATE = state
+
+
+def get_state() -> AppState:
+    if _STATE is None:
+        raise RuntimeError("AppState not initialized — call set_state() during boot")
+    return _STATE
