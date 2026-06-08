@@ -2,26 +2,23 @@
 
 > The in-repo session-pickup doc. Reflects current code state, not history.
 > If you're starting a fresh session, read this immediately after `CLAUDE.md`.
->
-> **Read this file in full, then read every memory file listed in the "Memory index" section below.** Reading only this recap and skipping the memory index has caused information loss in past sessions.
 
-## Memory index — READ ALL OF THESE
+## Memory pointers (load on demand, don't bulk-read)
 
-All under `C:\Users\danel\.claude\projects\E--Dev-Web-justtts\memory\`:
+The memory index (`~/.claude/projects/E--Dev-Web-justtts/memory/MEMORY.md`) auto-loads with one-liners for each file. Load the full file only when a task or question touches its topic.
 
-| File | Why you must read it |
+| When the situation is… | …load this memory |
 |---|---|
-| `MEMORY.md` | Index pointing to every memory below — Claude Code auto-loads this on session start, but read it as a sanity check |
-| `project_state.md` | Active repo path, current HEAD, what's done vs pending. Cross-checks this recap. |
-| `project_architecture_pivot.md` | **Critical** — why we abandoned Rust+Python hybrid for Tauri+Vue+Python on 2026-06-07. Decisions NOT to re-debate. If you propose Rust anywhere, you skipped this. |
-| `project_gotchas.md` | Every landmine hit during the rebuild: Tauri spawn-loop, vue-i18n strip, icon files, plugin versions, Kokoro multi-lang config, engine signature reshape. Read before debugging weird boot failures. |
-| `project_next_steps.md` | Priority-ordered pickup list with concrete recipes. |
-| `project_phase5_engine_flips.md` | Adapter shape for blend/train support; which engines to flip first; end-to-end curl test. |
-| `reference_repo_layout.md` | Complete file tree of the new repo — saves grep/glob sweeps. |
-| `reference_justwrite_components.md` | Inventory of cribbed UI primitives + services. Check here BEFORE building new primitives — the user explicitly directed reuse. |
-| `reference_legacy_repo.md` | Where the legacy Rust+Python code lives (`E:\Dev\Web\justtts\`); don't modify it; old→new crosswalk. |
-| `reference_settings_training.md` | Every operator-tunable Phase 5 value. Don't propose hardcoding any of these. |
-| `feedback_user_preferences.md` | **Critical** — NEVER ASK PERMISSION (rule #0, said 5+ times), no native dialogs, terse reports, JustWrite reuse, don't claim things work without testing. If you ask permission or use a native dialog, you skipped this. |
+| Touching architecture; tempted to propose Rust / Docker / voicebox / FFI | `project_architecture_pivot.md` |
+| Debugging boot failure, spawn weirdness, vite errors, Tauri build errors | `project_gotchas.md` |
+| Asked "where do I pick up?" or "what's next?" | `project_next_steps.md` |
+| Touching `/v1/voices/blend` or `/v1/train` or an engine adapter's blend/train methods | `project_phase5_engine_flips.md` |
+| About to grep / glob for a file path | `reference_repo_layout.md` |
+| About to build a new UI primitive | `reference_justwrite_components.md` |
+| Anything that references the legacy Rust repo | `reference_legacy_repo.md` |
+| Adding any operator-tunable value related to training | `reference_settings_training.md` |
+| About to write a question, native dialog, or non-terse closer | `feedback_user_preferences.md` |
+| Need the canonical project pickup snapshot | `project_state.md` |
 
 If a memory file conflicts with this recap, the memory file wins — recaps go stale, memories get edited as state changes.
 

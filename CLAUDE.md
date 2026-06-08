@@ -30,20 +30,20 @@ Confirm only for genuinely destructive ops (`git reset --hard`, force-push to ma
 
 **Correct turn-ending shape**: one-sentence factual report ("Phase X done, files: ...") immediately followed by the next tool call. NO question at the end. If work is genuinely complete or blocked, a flat statement of that fact.
 
-## REQUIRED reading order, every session
+## Session-start reading
 
-You MUST read all of these in order, in full, before writing any code or answering any architectural question:
+On a fresh session you'll already have:
+- This file (`CLAUDE.md`) auto-loaded
+- The memory index (`~/.claude/projects/E--Dev-Web-justtts/memory/MEMORY.md`) auto-loaded — every memory file has a one-line description there
 
-1. **This file** (`CLAUDE.md`)
-2. **`MORNING_RECAP.md`** in this repo — current state, what shipped recently, where to pick up
-3. **Every memory file listed in MORNING_RECAP's "Memory index" section** — ten files under `C:\Users\danel\.claude\projects\E--Dev-Web-justtts\memory\`. Don't just scan titles. Don't read only the ones whose names sound relevant to the current task. Read all ten in full. They're short.
-4. `~/.claude/projects/E--Dev-Web-justwrite-app/memory/project_tts_picks.md` — TTS architecture canon (still applies post-pivot)
+What to do at session start:
+1. Read `MORNING_RECAP.md` in this repo — single file, gets you to the current state of code, what shipped, what's pending
+2. Look at the memory-index one-liners — note which exist; don't read them yet
+3. When a question or task touches a topic an index entry covers, **then** read that specific memory file before answering
 
-**Why this is non-negotiable**: past sessions have repeatedly skipped memory reads and then proposed already-rejected approaches (reintroducing Rust, forking voicebox), violated the no-permission-asking rule, used native dialogs, hallucinated file paths, or re-investigated decisions already made. The fix is to read all the memory files every time — it costs ~30 seconds and prevents hours of wasted effort.
+Read-on-demand, not bulk-read. Specifically: read `project_architecture_pivot` before any architecture proposal; read `project_gotchas` before debugging a boot failure; read `feedback_user_preferences` if uncertain about tone or permission norms; read `reference_repo_layout` instead of grepping for file paths; read `project_phase5_engine_flips` when touching blend or train; read `reference_justwrite_components` before building a new UI primitive; read `reference_legacy_repo` if asked about the old code. The other index entries follow the same pattern — the one-liner tells you when to load the full file.
 
-**Verification ritual** (do this before your first non-trivial response in a fresh session): say one sentence confirming you've read MORNING_RECAP + all ten memory files. Not as a question, just as an acknowledgement. If you can't honestly say it, you haven't read them yet — go read them.
-
-**If you skip step 3 you will**: re-propose abandoned approaches (Rust core, Docker, forking voicebox), break the dev loop with the spawn-loop bug, miss the JustWrite-component-reuse directive, hallucinate file paths, ask permission instead of executing.
+**Failure modes from prior sessions** (signals you missed the relevant memory): proposing Rust anywhere, forking voicebox, Docker, asking permission, using native dialogs, hallucinating file paths, re-investigating decisions already made. If you catch yourself about to do any of these, that's the cue to load the matching memory file.
 
 ## Architecture
 
