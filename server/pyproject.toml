@@ -50,7 +50,12 @@ training = [
 dev = ["pytest>=8", "pytest-asyncio>=0.24", "playwright>=1.48", "ruff>=0.7"]
 
 [project.scripts]
-justtts = "justtts.cli:app"
+# Named `justtts-server` (not `justtts`) so it doesn't collide with the
+# Tauri desktop binary, which is `justtts.exe`. The Rust shell spawns
+# this command in dev mode; on Windows, CreateProcessW resolves command
+# names relative to the parent binary's directory first — using the same
+# name would cause the shell to spawn itself, opening windows forever.
+justtts-server = "justtts.cli:app"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]

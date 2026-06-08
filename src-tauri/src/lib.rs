@@ -31,10 +31,22 @@ fn spawn_sidecar() -> std::io::Result<Option<Child>> {
     // bundled justtts package live alongside the binary. PyInstaller-
     // built sidecar at <resources>/justtts-server. For dev, use the
     // installed `justtts` console script.
+    // IMPORTANT: never spawn an unqualified `justtts` — the Tauri binary
+    // is also `justtts.exe`, and Windows CreateProcessW searches the
+    // running binary's directory first, so that name resolves to OUR
+    // binary, spawning a new desktop window in an infinite loop.
     let cmd = if cfg!(debug_assertions) {
-        Command::new("justtts").arg("serve").spawn()?
+        // Dev: assume the Python package is installed (`pip install -e
+        // server/`) and its console script `justtts-server` is on PATH.
+        // Fall back to `python -m justtts.cli` if the script isn't found.
+        match Command::new("justtts-server").arg("serve").spawn() {
+            Ok(child) => child,
+            Err(_) => Command::new("python")
+                .args(["-m", "justtts.cli", "serve"])
+                .spawn()?,
+        }
     } else {
-        // Look for a bundled `justtts-server` next to the exe.
+        // Look for the PyInstaller-bundled `justtts-server` next to the exe.
         let exe = std::env::current_exe()?;
         let dir = exe.parent().unwrap_or_else(|| std::path::Path::new("."));
         let bin = if cfg!(windows) {
