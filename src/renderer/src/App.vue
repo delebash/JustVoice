@@ -18,7 +18,7 @@ import SettingsView from "./views/SettingsView.vue";
 const VIEWS = [
   { id: "overview", label: "Overview", lede: "Current state of the server, catalogue, and cache held on disk.", component: OverviewView },
   { id: "generate", label: "Generate", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it.", component: GenerateView },
-  { id: "chapter", label: "Chapter", lede: "Multi-line script in, mastered chapter out. The audiobook-production endpoint.", component: ChapterView },
+  { id: "chapter", label: "Chapter", lede: "Multi-line script in, mastered output out. Works for audiobook chapters, podcast episodes, game dialogue batches, or any multi-line script.", component: ChapterView },
   { id: "voices", label: "Voices", lede: "The full voice catalogue. Clone, design, import, or blend new voices.", component: VoicesView },
   { id: "compare", label: "Compare", lede: "Two WAVs in, side-by-side report out. Format, loudness, sample-level diff.", component: CompareView },
   { id: "engines", label: "Engines", lede: "Install, switch, and manage TTS engines. Auto-recommended for your hardware.", component: EnginesView },

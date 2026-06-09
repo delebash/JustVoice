@@ -59,14 +59,14 @@ function fmtDb(n) {
   <section class="block">
     <h3>Two WAVs in, side-by-side report out</h3>
     <p class="endnote">
-      Drop two 16-bit PCM WAV files. JustTTS reports format match, peak/RMS loudness diff, sample-level RMSE,
+      Drop two 16-bit PCM WAV files. JustVoice reports format match, peak/RMS loudness diff, sample-level RMSE,
       and a coarse verdict.
     </p>
     <div class="grid">
       <div>
         <label>
           <span>A (baseline) — label (optional)</span>
-          <input type="text" v-model="labelA" placeholder="e.g. JustTTS Kokoro" />
+          <input type="text" v-model="labelA" placeholder="e.g. Kokoro baseline" />
         </label>
         <div style="margin-top: 8px">
           <label>

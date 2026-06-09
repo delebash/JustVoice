@@ -1,8 +1,10 @@
 <div align="center">
 
-# 🎙️ JustTTS
+# 🎙️ JustVoice
 
-**A cross-platform open-source TTS server built for audiobook production. Tauri + Vue + Python.**
+**A cross-platform open-source voice production studio for audiobook producers, game developers, podcasters, dictation users, and accessibility users. Built on Tauri 2 + Vue 3 + Python FastAPI.**
+
+JustWrite-compatible imports are one of several supported workflows — see `docs/import-formats.md`.
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![Python](https://img.shields.io/badge/server-Python_3.10+-3776AB?logo=python&logoColor=white)](./server)
@@ -12,7 +14,7 @@
 
 Real GPU acceleration on **NVIDIA** (CUDA), **AMD** (ROCm / DirectML), **Apple Silicon** (Metal / MLX), **Intel** (DirectML / OpenVINO), with CPU fallback that always works. Bundled engine roster of 8 (Kokoro, Qwen3-TTS, Chatterbox with three variants, LuxTTS, TADA, Dia, MOSS-TTS, Higgs Audio v3) plus a documented engine-adapter protocol so any TTS model can be added — JustTTS-built or third-party.
 
-**Built for audiobook production. Useful for any TTS workload.**
+**Five audiences share one engine pool, voice catalogue, lexicon, and persona layer — differentiation lives in import/export pipelines and per-use-case UI surfaces.**
 
 </div>
 

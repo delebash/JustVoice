@@ -9,7 +9,7 @@ const tasks = useRenderTasks();
 
 const voices = ref([]);
 const voice = ref("");
-const text = ref("Hello. This is a test render through JustTTS.");
+const text = ref("Hello. This is a test render through JustVoice.");
 const audio = ref(null);
 const busy = ref(false);
 
