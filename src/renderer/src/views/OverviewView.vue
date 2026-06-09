@@ -132,6 +132,46 @@ onMounted(refresh);
 
 <template>
   <div class="overview-view">
+    <!-- ── First-run / server-offline help banner. ─────────────────────────
+         Shows when /v1/health failed at boot. Walks the user through the
+         exact commands to get the Python server running. Most common cause
+         of "no engines listed" / "panels show —" complaints. -->
+    <div v-if="!health" class="server-help-banner">
+      <div class="server-help-banner__head">
+        <span class="server-help-banner__dot" />
+        <strong>Server not reachable at {{ api.serverUrl }}</strong>
+      </div>
+      <p>
+        The Python sidecar isn't responding, so engines / voices / projects can't be listed.
+        If you launched via the Tauri desktop app, the sidecar should auto-start — if it didn't, the
+        most likely cause is the <code class="jv-mono">justtts-server</code> command isn't installed yet.
+      </p>
+      <details class="server-help-banner__details">
+        <summary>First-time setup — install the Python sidecar</summary>
+        <ol class="server-help-banner__steps">
+          <li>
+            Open a terminal in the project root and run:
+            <pre class="jv-code-block">cd server
+pip install -e .[kokoro]</pre>
+          </li>
+          <li>
+            Then restart JustVoice. The Tauri shell will spawn the sidecar automatically next launch.
+          </li>
+          <li>
+            Or run the server manually in a separate terminal:
+            <pre class="jv-code-block">npm run server</pre>
+            and leave it running while you use the app.
+          </li>
+        </ol>
+        <p class="jv-muted" style="font-size: 11.5px; margin-top: 10px">
+          Already installed? Check the server URL in
+          <a href="#settings">Settings → Connection</a> (default
+          <code class="jv-mono">http://127.0.0.1:17494</code>) and try
+          <a href="#" @click.prevent="refresh">Retry</a>.
+        </p>
+      </details>
+    </div>
+
     <p class="note">
       <span class="tag-info">info</span>
       <strong>Headless mode also available.</strong>

@@ -426,6 +426,59 @@ input[type="radio"] { accent-color: var(--accent); }
   50% { opacity: 1; }
 }
 
+/* ============================================================
+   Server-help banner (Overview first-run guidance when /v1/health
+   fails). Surfaces the install / start commands so the most common
+   "no engines listed" failure mode has a clear recovery path.
+   ============================================================ */
+
+.server-help-banner {
+  margin-bottom: 18px;
+  padding: 14px 18px;
+  border: 1px solid var(--warn-line, hsl(38 90% 50% / 0.4));
+  background: var(--warn-bg, hsl(38 100% 96%));
+  border-radius: 8px;
+  color: var(--ink);
+}
+.server-help-banner__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.server-help-banner__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: hsl(38 90% 50%);
+  box-shadow: 0 0 4px hsl(38 90% 50% / 0.4);
+}
+.server-help-banner > p { font-size: 12.5px; line-height: 1.55; margin: 0 0 8px; }
+.server-help-banner__details > summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 4px;
+  padding: 4px 0;
+}
+.server-help-banner__steps {
+  margin: 8px 0 0 22px;
+  padding: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.server-help-banner__steps li { margin-bottom: 8px; }
+.server-help-banner__steps pre {
+  margin: 6px 0 0;
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  white-space: pre-wrap;
+}
+
 input[type="range"] {
   -webkit-appearance: none; appearance: none;
   width: 100%;
