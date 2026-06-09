@@ -224,6 +224,30 @@ class ModelsSettings(BaseModel):
     url_overrides: dict[str, str] = {}
 
 
+UseCase = Literal[
+    "audiobook",
+    "game",
+    "podcast",
+    "dictation",
+    "accessibility",
+    "multiple",
+    "unset",
+]
+
+
+class AppSettings(BaseModel):
+    """First-run onboarding + cross-cutting UI preferences.
+
+    These live alongside the operator/runtime settings but drive
+    terminology, default tab, and featured docs across the renderer
+    rather than server behaviour.
+    """
+
+    primary_use_case: UseCase = "unset"
+    secondary_use_cases: list[UseCase] = []
+    onboarding_shown: bool = False
+
+
 class Settings(BaseModel):
     server: ServerSettings = ServerSettings()
     logging: LoggingSettings = LoggingSettings()
@@ -236,6 +260,7 @@ class Settings(BaseModel):
     models: ModelsSettings = ModelsSettings()
     engines: EnginesSettings = EnginesSettings()
     generation: GenerationSettings = GenerationSettings()
+    app: AppSettings = AppSettings()
 
 
 class SettingsPatch(BaseModel):
@@ -252,6 +277,7 @@ class SettingsPatch(BaseModel):
     models: ModelsSettings | None = None
     engines: EnginesSettings | None = None
     generation: GenerationSettings | None = None
+    app: AppSettings | None = None
 
 
 class SettingsPatchResponse(BaseModel):

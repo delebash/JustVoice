@@ -1,13 +1,15 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 import { useApi } from "./stores/api.js";
 import { useRenderTasks } from "./stores/renderTasks.js";
+import { useOnboarding } from "./stores/onboarding.js";
 import { pushToast } from "./services/toastBridge.js";
 import Toast from "./components/Toast.vue";
 import TaskStrip from "./components/TaskStrip.vue";
 import AppDialog from "./components/AppDialog.vue";
 import AudioKeepAlive from "./components/AudioKeepAlive.vue";
+import WelcomeOnboarding from "./components/WelcomeOnboarding.vue";
 
 import OverviewView from "./views/OverviewView.vue";
 import GenerateView from "./views/GenerateView.vue";
@@ -49,12 +51,48 @@ const VIEWS = [
   { id: "settings",  label: "Settings",  icon: "⚙️", lede: "Operator knobs that take effect at runtime; some require a restart.", component: SettingsView },
 ];
 
+// Map the onboarding primary use case → starting tab on launch. Audiobook
+// and podcast both land on Chapter because that's where the multi-line
+// script-in / mastered-audio-out workflow lives today. Game devs need
+// the voice catalogue first. Dictation users hit the single-line
+// Generate panel. Accessibility users start in Settings to dial in
+// playback. "multiple" + "unset" fall back to Overview so first-time
+// producers see the catalogue, engines, and cache state at a glance.
+const DEFAULT_TAB_BY_USE_CASE = {
+  audiobook:     "chapter",
+  game:          "voices",
+  podcast:       "chapter",
+  dictation:     "generate",
+  accessibility: "settings",
+  multiple:      "overview",
+  unset:         "overview",
+};
+
 const view = ref("overview");
 const health = ref(null);
 const api = useApi();
 const tasks = useRenderTasks();
+const onboarding = useOnboarding();
+let initialTabResolved = false;
 
 const currentView = computed(() => VIEWS.find((v) => v.id === view.value));
+const showWelcome = computed(() => onboarding.hydrated && !onboarding.shown);
+
+function resolveInitialTab() {
+  if (initialTabResolved) return;
+  // Don't override an explicit hash route — power users land where they
+  // bookmarked. `#voices` / `#chapter` etc. all win over the default.
+  const hash = (typeof window !== "undefined" && window.location.hash) || "";
+  const hashId = hash.replace(/^#/, "");
+  if (hashId && VIEWS.some((v) => v.id === hashId)) {
+    view.value = hashId;
+    initialTabResolved = true;
+    return;
+  }
+  const tab = DEFAULT_TAB_BY_USE_CASE[onboarding.primaryUseCase] || "overview";
+  view.value = tab;
+  initialTabResolved = true;
+}
 
 async function refresh() {
   try {
@@ -64,7 +102,24 @@ async function refresh() {
   }
 }
 
-onMounted(refresh);
+// Once the primary-use-case selection lands (either from hydrate() or
+// the welcome modal), settle on the initial tab.
+watch(
+  () => [onboarding.hydrated, onboarding.primaryUseCase],
+  ([hydrated]) => { if (hydrated && !initialTabResolved) resolveInitialTab(); },
+  { immediate: true },
+);
+
+function onWelcomeClosed() {
+  // The store has already flipped shown=true and persisted; re-route
+  // the default tab now that we know the producer's intent.
+  if (!initialTabResolved) resolveInitialTab();
+}
+
+onMounted(async () => {
+  await onboarding.hydrate();
+  await refresh();
+});
 </script>
 
 <template>
@@ -111,5 +166,6 @@ onMounted(refresh);
 
     <Toast />
     <AppDialog />
+    <WelcomeOnboarding v-if="showWelcome" @close="onWelcomeClosed" />
   </div>
 </template>
