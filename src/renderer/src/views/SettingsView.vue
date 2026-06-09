@@ -433,6 +433,43 @@ try {
   if (raw) Object.assign(capture.value, JSON.parse(raw));
 } catch {}
 
+// ── Mastering settings (voicebox parity — preview Mastering sub-tab) ─────
+// Six knobs per preset (LUFS / peak / noise floor / head silence / tail
+// silence / apply-effects-pre-master) + 5 named presets. Active preset
+// drives the chapter render pipeline + the Audio Tools "Apply preset" flow.
+const MASTER_PRESETS = [
+  { id: "acx",     label: "ACX (audiobook)",     lufs: -20.0, peak: -3.5, noise: -60, head: 0.75, tail: 3.00 },
+  { id: "inaudio", label: "iAudio",              lufs: -19.0, peak: -1.0, noise: -60, head: 0.50, tail: 2.00 },
+  { id: "podcast", label: "Podcast",             lufs: -16.0, peak: -1.0, noise: -55, head: 0.25, tail: 1.00 },
+  { id: "youtube", label: "YouTube",             lufs: -14.0, peak: -1.0, noise: -50, head: 0.10, tail: 0.50 },
+  { id: "custom",  label: "Custom",              lufs: -20.0, peak: -3.5, noise: -60, head: 0.75, tail: 3.00 },
+];
+const mastering = ref({
+  active: "acx",
+  lufs: -20.0,
+  peakDbfs: -3.5,
+  noiseFloor: -60,
+  headSilence: 0.75,
+  tailSilence: 3.00,
+  applyEffectsPreMaster: true,
+});
+function setMasterPreset(id) {
+  const p = MASTER_PRESETS.find((x) => x.id === id);
+  if (!p) return;
+  mastering.value.active = id;
+  if (id !== "custom") {
+    mastering.value.lufs = p.lufs;
+    mastering.value.peakDbfs = p.peak;
+    mastering.value.noiseFloor = p.noise;
+    mastering.value.headSilence = p.head;
+    mastering.value.tailSilence = p.tail;
+  }
+  saveDebounced();
+}
+const masterPresetLabel = computed(
+  () => MASTER_PRESETS.find((p) => p.id === mastering.value.active)?.label || "Custom"
+);
+
 // ── MCP server settings + bindings (voicebox parity — preview MCP sub-tab) ──
 const mcp = ref({
   enabled: true,
@@ -1088,10 +1125,62 @@ onMounted(() => {
     </div>
 
     <!-- ─── Mastering · placeholder until #88 lands. ─── -->
+    <!-- ─── Mastering (voicebox parity, preview lines 1599-1632) ─── -->
     <div v-show="activeSub === 'mastering'" class="jv-section">
       <div class="jv-card">
-        <div class="jv-card__header"><h3 class="jv-card__title">Mastering</h3></div>
-        <p class="jv-muted">Per-preset mastering knobs (ACX -20 LUFS / -3.5 dB peak / -60 dB noise floor, iAudio, Podcast, YouTube, Custom) land with task <code>#88</code>. The active preset still applies on every render — see <code>POST /v1/settings/mastering</code>.</p>
+        <div class="jv-card__header" style="display: flex; align-items: center; gap: 10px">
+          <h3 class="jv-card__title" style="margin: 0">Active preset</h3>
+          <span class="jv-spacer" />
+          <span class="jv-pill jv-pill--green">{{ masterPresetLabel }}</span>
+        </div>
+        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 14px">
+          The active mastering preset applies to every chapter render + standalone Audio Tools
+          master. Switch presets by clicking a chip. Custom lets you override individual knobs
+          below.
+        </p>
+
+        <!-- Preset chips -->
+        <div class="jv-chips">
+          <button
+            v-for="p in MASTER_PRESETS"
+            :key="p.id"
+            class="jv-chip"
+            :class="{ 'jv-chip--active': mastering.active === p.id }"
+            @click="setMasterPreset(p.id)"
+          >{{ p.label }}</button>
+        </div>
+
+        <div class="settings-grid" style="margin-top: 16px">
+          <JvField label="Loudness target (LUFS)" layout="block">
+            <JvInput v-model.number="mastering.lufs" type="number" step="0.5" />
+          </JvField>
+          <JvField label="True peak ceiling (dBFS)" layout="block">
+            <JvInput v-model.number="mastering.peakDbfs" type="number" step="0.1" />
+          </JvField>
+          <JvField label="Noise floor (dBFS)" layout="block">
+            <JvInput v-model.number="mastering.noiseFloor" type="number" step="1" />
+          </JvField>
+          <JvField label="Head silence (s)" layout="block">
+            <JvInput v-model.number="mastering.headSilence" type="number" step="0.05" />
+          </JvField>
+          <JvField label="Tail silence (s)" layout="block">
+            <JvInput v-model.number="mastering.tailSilence" type="number" step="0.25" />
+          </JvField>
+        </div>
+
+        <div class="setting-row" style="margin-top: 14px">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Apply effects pre-master</div>
+              <div class="setting-row__desc">
+                Apply the profile's effects chain (reverb, EQ, compressor) BEFORE the mastering
+                pass. Recommended ON — mastering then normalizes the effects-shaped signal.
+                OFF skips effects entirely for this render.
+              </div>
+            </div>
+            <JvToggle v-model="mastering.applyEffectsPreMaster" aria-label="Apply effects pre-master" />
+          </div>
+        </div>
       </div>
     </div>
 

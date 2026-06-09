@@ -440,6 +440,41 @@ input[type="radio"] { accent-color: var(--accent); }
 }
 
 /* ============================================================
+   .jv-chips — pill-button group for preset selection (Settings
+   → Mastering active preset). One chip can be --active.
+   ============================================================ */
+
+.jv-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.jv-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.jv-chip:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+.jv-chip--active,
+.jv-chip--active:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* ============================================================
    Connection status pill — voicebox-parity ConnectionStatus
    (online/offline/connecting). Lives in the Connection card
    header in Settings → General.
