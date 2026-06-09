@@ -332,6 +332,100 @@ input[type="range"],
 input[type="checkbox"],
 input[type="radio"] { accent-color: var(--accent); }
 
+/* ============================================================
+   Setting row — voicebox-parity SettingRow pattern. One row per
+   tunable: title + description on the left, value/toggle/slider
+   on the right, optional control underneath the head.
+   ============================================================ */
+
+.setting-row {
+  padding: 14px 0;
+  border-top: 1px solid var(--border-soft, var(--border));
+}
+.setting-row:first-of-type { border-top: 0; padding-top: 0; }
+.setting-row:last-of-type  { padding-bottom: 0; }
+
+.setting-row__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  justify-content: space-between;
+}
+.setting-row__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+.setting-row__desc {
+  font-size: 12px;
+  color: var(--ink-3);
+  line-height: 1.5;
+  max-width: 540px;
+}
+.setting-row__value {
+  font-size: 12.5px;
+  font-family: var(--font-mono);
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  padding-top: 2px;
+}
+.setting-row__slider {
+  width: 100%;
+  margin-top: 10px;
+  cursor: pointer;
+}
+
+/* ============================================================
+   Connection status pill — voicebox-parity ConnectionStatus
+   (online/offline/connecting). Lives in the Connection card
+   header in Settings → General.
+   ============================================================ */
+
+.connection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  font-weight: 600;
+  background: var(--surface);
+}
+.connection-status__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-3);
+}
+.connection-status--online {
+  border-color: hsl(var(--accent-hue, 158) 55% 36% / 0.4);
+  color: hsl(var(--accent-hue, 158) 55% 30%);
+}
+.connection-status--online .connection-status__dot {
+  background: var(--accent);
+  box-shadow: 0 0 5px 1px hsl(var(--accent-hue, 158) 55% 36% / 0.5);
+}
+.connection-status--offline {
+  border-color: var(--danger-line, hsl(0 70% 50% / 0.4));
+  color: var(--danger, hsl(0 65% 45%));
+}
+.connection-status--offline .connection-status__dot {
+  background: var(--danger, hsl(0 65% 50%));
+}
+.connection-status--connecting .connection-status__dot {
+  background: var(--ink-3);
+  animation: jv-connection-pulse 1.2s ease-in-out infinite;
+}
+@keyframes jv-connection-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
 input[type="range"] {
   -webkit-appearance: none; appearance: none;
   width: 100%;

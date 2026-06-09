@@ -26,7 +26,7 @@ const settings = ref({
   models:    {},
   engines:   { kokoro: { model_dir_override: "" } },
   app:       { primary_use_case: "unset", secondary_use_cases: [], onboarding_shown: false },
-  generation:{ max_chunk_chars: 800, crossfade_ms: 50 },
+  generation:{ max_chunk_chars: 800, crossfade_ms: 50, normalize_audio: true, autoplay_on_generate: true },
 });
 const serverReachable = ref(false);
 
@@ -204,6 +204,76 @@ async function save() {
     pushToast({ message: `Save failed: ${e.message || e}`, kind: "error" });
   }
 }
+
+// ─── Debounced auto-save for slider / toggle changes ───────────────────
+// Sliders fire onChange on every commit; toggles fire on flip. We batch
+// the saves so dragging a slider doesn't issue 50 PATCH requests.
+let _saveTimer = null;
+function saveDebounced() {
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(async () => {
+    try {
+      await api.request("/v1/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings.value),
+      });
+    } catch {}
+  }, 350);
+}
+
+// ─── Keep-server-running + Network access (voicebox parity, Tauri commands) ──
+const keepServerRunning = ref(true);
+const allowNetworkAccess = ref(false);
+const KEEP_RUNNING_KEY = "justvoice:keep_server_running";
+const NETWORK_ACCESS_KEY = "justvoice:allow_network_access";
+try {
+  const k = localStorage.getItem(KEEP_RUNNING_KEY);
+  if (k !== null) keepServerRunning.value = k === "true";
+  const n = localStorage.getItem(NETWORK_ACCESS_KEY);
+  if (n !== null) allowNetworkAccess.value = n === "true";
+} catch {}
+
+async function onKeepServerRunningChange() {
+  try { localStorage.setItem(KEEP_RUNNING_KEY, String(keepServerRunning.value)); } catch {}
+  const tauri = typeof window !== "undefined" ? window.__TAURI__ : null;
+  if (tauri?.core?.invoke) {
+    try {
+      await tauri.core.invoke("set_keep_server_running", { enabled: keepServerRunning.value });
+      pushToast({
+        message: keepServerRunning.value
+          ? "Server will stay running when the window closes."
+          : "Server will quit when the window closes.",
+        duration: 4000,
+      });
+    } catch (e) {
+      pushToast({ message: `Couldn't sync setting to Tauri: ${e?.message || e}`, kind: "error" });
+    }
+  }
+}
+
+async function onNetworkAccessChange() {
+  try { localStorage.setItem(NETWORK_ACCESS_KEY, String(allowNetworkAccess.value)); } catch {}
+  // Flip the bind host immediately; restart required.
+  if (settings.value?.server) {
+    settings.value.server.host = allowNetworkAccess.value ? "0.0.0.0" : "127.0.0.1";
+  }
+  saveDebounced();
+  pushToast({
+    message: allowNetworkAccess.value
+      ? "Network access ON — bind switched to 0.0.0.0. Restart the server for it to take effect."
+      : "Network access OFF — bind switched to 127.0.0.1. Restart the server for it to take effect.",
+    duration: 5500,
+    kind: "warning",
+  });
+}
+
+// ─── Inline connection status pill ─────────────────────────────────────
+const connectionStatus = computed(() => {
+  if (!serverReachable.value) return { kind: "offline", label: "Offline" };
+  if (!settings.value?.server) return { kind: "connecting", label: "Connecting…" };
+  return { kind: "online", label: "Online" };
+});
 
 onMounted(refresh);
 
@@ -410,8 +480,17 @@ onMounted(() => {
 
     <div v-show="activeSub === 'general'" class="jv-section">
       <div class="jv-card">
-        <div class="jv-card__header">
-          <h3 class="jv-card__title">Connection</h3>
+        <div class="jv-card__header" style="display: flex; align-items: center; gap: 10px">
+          <h3 class="jv-card__title" style="margin: 0">Connection</h3>
+          <span class="jv-spacer" />
+          <span
+            class="connection-status"
+            :class="`connection-status--${connectionStatus.kind}`"
+            :title="`Server URL: ${api.serverUrl}`"
+          >
+            <span class="connection-status__dot" />
+            {{ connectionStatus.label }}
+          </span>
         </div>
         <p class="jv-muted" style="font-size: 12px; margin-bottom: 14px;">Where this UI sends API requests. Persists in localStorage; not part of server settings.</p>
         <div class="settings-grid">
@@ -429,22 +508,72 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── General · Server ─── -->
+    <!-- ─── General · Desktop lifecycle (voicebox parity) ─── -->
     <div v-show="activeSub === 'general'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header">
-          <h3 class="jv-card__title">Server</h3>
+          <h3 class="jv-card__title">Desktop app</h3>
         </div>
+
+        <!-- Keep server running on close — closes window to tray but keeps -->
+        <!-- the Python sidecar alive so MCP agents, JustWrite, or external -->
+        <!-- callers can keep hitting the API. -->
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Keep server running when window closes</div>
+              <div class="setting-row__desc">
+                Closing the window minimizes JustVoice to the system tray and keeps the Python
+                server running in the background. MCP agents, JustWrite, and external scripts
+                stay connected. Toggle off if you'd rather a true quit on close.
+              </div>
+            </div>
+            <JvCheckbox v-model="keepServerRunning" @change="onKeepServerRunningChange" />
+          </div>
+        </div>
+
+        <!-- Allow network access — switches the bind host between loopback and 0.0.0.0. -->
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Allow network access</div>
+              <div class="setting-row__desc">
+                Bind the server to <code class="jv-mono">0.0.0.0</code> instead of
+                <code class="jv-mono">127.0.0.1</code> so other devices on your LAN can reach the
+                API (e.g. a phone hitting the MCP server, a desktop controlling a headless render
+                box). Bearer auth is recommended when enabled. Restart required.
+              </div>
+            </div>
+            <JvCheckbox v-model="allowNetworkAccess" @change="onNetworkAccessChange" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── General · Server bind (voicebox parity) ─── -->
+    <div v-show="activeSub === 'general'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header">
+          <h3 class="jv-card__title">Server bind</h3>
+        </div>
+        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 14px">
+          Low-level network settings. Most users don't need to touch these — the defaults
+          (127.0.0.1:17494, docs enabled) work for local single-machine use. Restart required
+          after changing.
+        </p>
         <div class="settings-grid">
-          <JvField label="Host (restart required)" layout="block">
+          <JvField label="Host" layout="block">
             <JvInput v-model="settings.server.host" />
           </JvField>
-          <JvField label="Port (restart required)" layout="block">
+          <JvField label="Port" layout="block">
             <JvInput v-model.number="settings.server.port" type="number" />
           </JvField>
         </div>
         <div style="margin-top: 14px;">
-          <JvCheckbox v-model="settings.server.docs_enabled" label="Docs enabled (Swagger + Redoc)" />
+          <JvCheckbox
+            v-model="settings.server.docs_enabled"
+            label="Enable interactive API docs at /docs and /redoc"
+          />
         </div>
       </div>
     </div>
@@ -506,6 +635,93 @@ onMounted(() => {
           />
         </JvField>
         <p class="jv-muted" style="font-size: 12px; margin-top: 8px;">Restart required after changing.</p>
+      </div>
+    </div>
+
+    <!-- ─── Generation · Pipeline knobs (voicebox parity) ─── -->
+    <div v-show="activeSub === 'generation'" class="jv-section" v-if="settings.generation">
+      <div class="jv-card">
+        <div class="jv-card__header">
+          <h3 class="jv-card__title">Generation pipeline</h3>
+        </div>
+        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 18px">
+          How the chunked TTS pipeline handles long text. Short text (≤ chunk limit) takes the
+          single-shot fast path with zero overhead — the chunker only kicks in when needed.
+        </p>
+
+        <!-- Max chunk chars slider -->
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Chunk limit</div>
+              <div class="setting-row__desc">
+                Maximum characters per generation chunk. Long text gets split at sentence
+                boundaries; each chunk is rendered separately and stitched together. Smaller chunks
+                = more model calls but lower per-chunk latency. Larger chunks risk truncation /
+                hallucinated trailing noise on some engines.
+              </div>
+            </div>
+            <span class="setting-row__value">{{ settings.generation.max_chunk_chars }} chars</span>
+          </div>
+          <input
+            type="range"
+            v-model.number="settings.generation.max_chunk_chars"
+            min="100" max="5000" step="50"
+            class="setting-row__slider"
+            @change="saveDebounced"
+          />
+        </div>
+
+        <!-- Crossfade ms slider -->
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Crossfade between chunks</div>
+              <div class="setting-row__desc">
+                Smooths the seam where two chunks join. 0 = hard cut (faster but audible clicks on
+                some engines). 50 ms is the sweet spot for most engines. Higher values blur word
+                boundaries.
+              </div>
+            </div>
+            <span class="setting-row__value">{{ settings.generation.crossfade_ms === 0 ? "hard cut" : `${settings.generation.crossfade_ms} ms` }}</span>
+          </div>
+          <input
+            type="range"
+            v-model.number="settings.generation.crossfade_ms"
+            min="0" max="200" step="10"
+            class="setting-row__slider"
+            @change="saveDebounced"
+          />
+        </div>
+
+        <!-- Normalize audio -->
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Normalize per-chunk audio</div>
+              <div class="setting-row__desc">
+                Equalizes loudness across chunks before crossfade. Helps when an engine produces
+                varying loudness per chunk on long renders. Disable if you'd rather control
+                loudness purely via the Mastering target.
+              </div>
+            </div>
+            <JvCheckbox v-model="settings.generation.normalize_audio" @change="saveDebounced" />
+          </div>
+        </div>
+
+        <!-- Autoplay -->
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Autoplay on generate</div>
+              <div class="setting-row__desc">
+                Auto-play the result in the Generate tab as soon as a render completes. Disable
+                if you'd rather queue renders silently and listen later.
+              </div>
+            </div>
+            <JvCheckbox v-model="settings.generation.autoplay_on_generate" @change="saveDebounced" />
+          </div>
+        </div>
       </div>
     </div>
 
