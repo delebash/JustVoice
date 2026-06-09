@@ -495,7 +495,19 @@ onMounted(() => {
   <!-- ─── Engine catalog ─── -->
   <section class="block">
     <h3>{{ engines.length }} engine{{ engines.length === 1 ? "" : "s" }}</h3>
-    <table class="jv-table">
+
+    <!-- Server-offline empty state. When engines.length === 0 the most
+         likely cause is that the Python server isn't running (manifests
+         load fine server-side; the only way to get 0 engines is a fetch
+         failure or a brand-new build). Surface this so users don't sit
+         on an empty table wondering. -->
+    <p v-if="!engines.length" class="jv-banner jv-banner--warn">
+      No engines listed — the Python server may not be running. Check the
+      <a href="#settings">Settings → Connection</a> tab for the server URL,
+      or run <code class="jv-mono">justtts-server serve</code> from a terminal.
+    </p>
+
+    <table v-if="engines.length" class="jv-table">
       <thead>
         <tr>
           <th>Name</th>

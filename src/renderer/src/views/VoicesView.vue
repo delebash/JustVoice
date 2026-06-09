@@ -350,7 +350,7 @@ function voiceTypeVariant(source) {
 
   <!-- Hint when clone-gate is closed (#99). -->
   <p v-if="!chatterboxLoaded" class="jv-banner jv-banner--warn">
-    Voice cloning is Chatterbox-only. <strong>Load Chatterbox</strong> in the Engines tab to enable the "+ Clone new voice" button.
+    Voice cloning is Chatterbox-only. <a href="#engines"><strong>Load Chatterbox in the Engines tab</strong></a> to enable the "+ Clone new voice" button.
   </p>
 
   <!-- Add additional creation paths (Design / Blend) — less common, behind a details toggle -->

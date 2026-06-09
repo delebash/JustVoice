@@ -49,16 +49,17 @@ const availableVoices = computed(() => {
   return voices.value.filter((v) => v.engine === currentEngine.value.id);
 });
 
+// Returns an object so the template can render real <a> hash-links into
+// the banner rather than a flat string. `kind` lets the template pick
+// which CTA to show; `null` means "no banner needed".
 const emptyVoiceReason = computed(() => {
-  if (!currentEngine.value) return "No engine loaded. Go to Engines → Load.";
+  if (!currentEngine.value) return { kind: "no-engine" };
   const caps = currentEngine.value.capabilities || [];
   const isCloneOnly = caps.includes("voice_cloning") && !caps.includes("preset_voices");
   if (availableVoices.value.length === 0) {
-    return isCloneOnly
-      ? `${currentEngine.value.name} is clone-only — clone a reference WAV in Voices first.`
-      : `${currentEngine.value.name} has no voices in the catalog.`;
+    return isCloneOnly ? { kind: "clone-only", engine: currentEngine.value.name } : { kind: "empty-catalog", engine: currentEngine.value.name };
   }
-  return "";
+  return null;
 });
 
 const speed = ref(1.0);
@@ -492,7 +493,17 @@ onMounted(refreshVoices);
       />
     </div>
 
-    <p v-if="emptyVoiceReason" class="jv-banner jv-banner--warn">{{ emptyVoiceReason }}</p>
+    <p v-if="emptyVoiceReason" class="jv-banner jv-banner--warn">
+      <template v-if="emptyVoiceReason.kind === 'no-engine'">
+        No engine loaded. <a href="#engines">Go to Engines → Load</a>.
+      </template>
+      <template v-else-if="emptyVoiceReason.kind === 'clone-only'">
+        {{ emptyVoiceReason.engine }} is clone-only — <a href="#voices">clone a reference WAV in Voices</a> first.
+      </template>
+      <template v-else-if="emptyVoiceReason.kind === 'empty-catalog'">
+        {{ emptyVoiceReason.engine }} has no voices in the catalog. <a href="#voices">Visit Voices</a> to add one.
+      </template>
+    </p>
 
     <audio
       v-if="audio"
@@ -630,7 +641,7 @@ onMounted(refreshVoices);
         <div class="generate-view__lexicon-row">
           <span class="jv-muted">Lexicon preview applies before TTS:</span>
           <span class="jv-pill jv-pill--ghost">no lexicon attached</span>
-          <span class="jv-muted">— attach via Personas tab or pass <code class="jv-mono">lexicons: ["lex_id"]</code> in the API.</span>
+          <span class="jv-muted">— attach via <a href="#personas">Personas</a> or pass <code class="jv-mono">lexicons: ["lex_id"]</code> in the API.</span>
         </div>
       </div>
     </div>

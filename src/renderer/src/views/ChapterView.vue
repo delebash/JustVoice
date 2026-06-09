@@ -337,7 +337,7 @@ function compareDropdownOptions(blockId) {
 
     <!-- ── No project banner ───────────────────────────────────────────── -->
     <div v-if="!selectedProjectId" class="jv-banner">
-      No project selected. Go to <strong>Projects</strong> → import one (JustWrite / CSV / SRT / Audacity labels / JustVoice JSON) or create a blank one.
+      No project selected. <a href="#books"><strong>Go to Projects</strong></a> → import one (JustWrite / CSV / SRT / Audacity labels / JustVoice JSON) or create a blank one.
     </div>
 
     <!-- ── No blocks yet ──────────────────────────────────────────────── -->
