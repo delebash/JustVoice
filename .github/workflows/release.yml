@@ -1,0 +1,319 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# No concurrency group — release builds must never cancel each other.
+
+jobs:
+  # ── PyInstaller — bundle the Python server as a sidecar binary ───────────
+  # Must run first (before Tauri builds) so its artifacts can be downloaded.
+  bundle-python:
+    name: Bundle Python server (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: justtts-server-linux
+            sidecar_triple: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            artifact_name: justtts-server-windows
+            sidecar_triple: x86_64-pc-windows-msvc
+          - os: macos-latest
+            artifact_name: justtts-server-macos
+            sidecar_triple: universal-apple-darwin
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Install server without heavy ML extras to keep the sidecar small;
+      # sherpa-onnx native wheels are resolved at runtime via lazy loading.
+      - name: Install server + pyinstaller
+        run: pip install -e "./server[dev]" pyinstaller
+
+      # macOS: build a universal2 (arm64 + x86_64) binary via two passes.
+      - name: Build PyInstaller sidecar (macOS universal)
+        if: runner.os == 'macOS'
+        run: |
+          # x86_64 slice
+          arch -x86_64 python -m PyInstaller \
+            --onefile server/justtts/__main__.py \
+            --name justtts-server \
+            --distpath dist-x86 \
+            --workpath build-x86
+
+          # arm64 slice
+          arch -arm64 python -m PyInstaller \
+            --onefile server/justtts/__main__.py \
+            --name justtts-server \
+            --distpath dist-arm64 \
+            --workpath build-arm64
+
+          # Fuse into a fat binary
+          mkdir -p dist
+          lipo -create -output dist/justtts-server \
+            dist-x86/justtts-server \
+            dist-arm64/justtts-server
+
+      - name: Build PyInstaller sidecar (non-macOS)
+        if: runner.os != 'macOS'
+        # No spec file exists — use inline command
+        run: |
+          pyinstaller --onefile server/justtts/__main__.py \
+            --name justtts-server \
+            --distpath dist
+
+      # Tauri expects sidecars named <binary>-<target-triple>[.exe]
+      - name: Rename sidecar for Tauri triple (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cp dist/justtts-server \
+            "dist/justtts-server-${{ matrix.sidecar_triple }}"
+
+      - name: Rename sidecar for Tauri triple (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Copy-Item dist\justtts-server.exe `
+            "dist\justtts-server-${{ matrix.sidecar_triple }}.exe"
+
+      - name: Upload sidecar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: |
+            dist/justtts-server-${{ matrix.sidecar_triple }}
+            dist/justtts-server-${{ matrix.sidecar_triple }}.exe
+          if-no-files-found: error
+          retention-days: 1
+
+  # ── Tauri builds ─────────────────────────────────────────────────────────
+  build-tauri:
+    name: Tauri build (${{ matrix.platform }})
+    needs: bundle-python
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write   # needed for tauri-action to create/update the release
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows — produces .msi + NSIS .exe
+          - platform: windows
+            runner: windows-latest
+            tauri_targets: msi,nsis
+            artifact_name: justtts-server-windows
+            sidecar_triple: x86_64-pc-windows-msvc
+            sidecar_ext: .exe
+            rust_target: x86_64-pc-windows-msvc
+
+          # macOS universal — produces .dmg + .app
+          - platform: macos
+            runner: macos-latest
+            tauri_targets: dmg,app
+            artifact_name: justtts-server-macos
+            sidecar_triple: universal-apple-darwin
+            sidecar_ext: ""
+            rust_target: universal-apple-darwin
+
+          # Linux — produces .AppImage + .deb
+          - platform: linux
+            runner: ubuntu-latest
+            tauri_targets: appimage,deb
+            artifact_name: justtts-server-linux
+            sidecar_triple: x86_64-unknown-linux-gnu
+            sidecar_ext: ""
+            rust_target: x86_64-unknown-linux-gnu
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Python sidecar ──────────────────────────────────────────────────
+      - name: Download Python sidecar
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: sidecar-bin
+
+      - name: Place sidecar into Tauri binaries dir (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p src-tauri/binaries
+          cp "sidecar-bin/justtts-server-${{ matrix.sidecar_triple }}" \
+            "src-tauri/binaries/justtts-server-${{ matrix.sidecar_triple }}"
+          chmod +x "src-tauri/binaries/justtts-server-${{ matrix.sidecar_triple }}"
+
+      - name: Place sidecar into Tauri binaries dir (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force src-tauri\binaries | Out-Null
+          Copy-Item `
+            "sidecar-bin\justtts-server-${{ matrix.sidecar_triple }}.exe" `
+            "src-tauri\binaries\justtts-server-${{ matrix.sidecar_triple }}.exe"
+
+      # ── Toolchains ──────────────────────────────────────────────────────
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Set up Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: cargo-release-${{ matrix.platform }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: cargo-release-${{ matrix.platform }}-
+
+      # ── Platform-specific system deps ───────────────────────────────────
+      - name: Install Linux system deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libglib2.0-dev \
+            pkg-config \
+            fuse            # required by AppImage runtime
+
+      # ── macOS signing / notarization ─────────────────────────────────────
+      # Import the signing certificate if secrets are present; otherwise build
+      # unsigned and emit a warning.
+      - name: Import Apple signing certificate
+        if: >
+          runner.os == 'macOS' &&
+          secrets.APPLE_CERTIFICATE != '' &&
+          secrets.APPLE_CERTIFICATE_PASSWORD != ''
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          echo "$APPLE_CERTIFICATE" | base64 --decode > /tmp/cert.p12
+          security import /tmp/cert.p12 \
+            -k "$KEYCHAIN_PATH" \
+            -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list \
+            -S apple-tool:,apple: \
+            -s -k "$KEYCHAIN_PASSWORD" \
+            "$KEYCHAIN_PATH"
+          rm /tmp/cert.p12
+
+      - name: Warn — macOS unsigned build
+        if: >
+          runner.os == 'macOS' &&
+          (secrets.APPLE_CERTIFICATE == '' ||
+           secrets.APPLE_CERTIFICATE_PASSWORD == '')
+        run: |
+          echo "::warning::APPLE_CERTIFICATE / APPLE_CERTIFICATE_PASSWORD not set — building unsigned macOS bundle."
+
+      # ── Windows code-signing setup ───────────────────────────────────────
+      - name: Decode Windows EV cert
+        if: >
+          runner.os == 'Windows' &&
+          secrets.WINDOWS_CERT_PFX != '' &&
+          secrets.WINDOWS_CERT_PASSWORD != ''
+        shell: pwsh
+        env:
+          WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
+        run: |
+          $certPath = "$env:RUNNER_TEMP\ev_cert.pfx"
+          [System.Convert]::FromBase64String($env:WINDOWS_CERT_PFX) |
+            Set-Content -Path $certPath -AsByteStream
+          echo "WINDOWS_CERTIFICATE_FILE=$certPath" >> $env:GITHUB_ENV
+
+      - name: Warn — Windows unsigned build
+        if: >
+          runner.os == 'Windows' &&
+          (secrets.WINDOWS_CERT_PFX == '' ||
+           secrets.WINDOWS_CERT_PASSWORD == '')
+        shell: pwsh
+        run: |
+          Write-Host "::warning::WINDOWS_CERT_PFX / WINDOWS_CERT_PASSWORD not set — building unsigned Windows installer."
+
+      # ── npm install ──────────────────────────────────────────────────────
+      - name: Install npm dependencies
+        run: npm install
+
+      # ── Tauri build + GitHub Release ─────────────────────────────────────
+      - name: Build Tauri + publish release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS signing + notarization (no-ops when secrets are empty)
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows signing (no-ops when secrets are empty)
+          TAURI_SIGNING_PRIVATE_KEY: ""
+          # Windows certificate path set in previous step (empty string if unsigned)
+          WINDOWS_CERTIFICATE_FILE: ${{ env.WINDOWS_CERTIFICATE_FILE }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "JustVoice ${{ github.ref_name }}"
+          releaseBody: |
+            See CHANGELOG or commit history for details.
+          releaseDraft: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          args: --target ${{ matrix.rust_target }} --bundles ${{ matrix.tauri_targets }}
+
+      # ── Linux AppImage optional signing ─────────────────────────────────
+      # If APPIMAGE_SIGNING_KEY is present, sign the produced AppImage.
+      - name: Sign AppImage (optional)
+        if: >
+          runner.os == 'Linux' &&
+          secrets.APPIMAGE_SIGNING_KEY != ''
+        env:
+          APPIMAGE_SIGNING_KEY: ${{ secrets.APPIMAGE_SIGNING_KEY }}
+        run: |
+          # Locate the AppImage produced by tauri-action
+          APPIMAGE=$(find src-tauri/target -name "*.AppImage" | head -n 1)
+          if [ -z "$APPIMAGE" ]; then
+            echo "::warning::No AppImage found to sign."
+            exit 0
+          fi
+          # Import key and sign
+          echo "$APPIMAGE_SIGNING_KEY" | gpg --batch --import
+          gpg --batch --yes --detach-sign --armor "$APPIMAGE"
+          echo "Signed: $APPIMAGE"
+
+      - name: Warn — AppImage unsigned
+        if: >
+          runner.os == 'Linux' &&
+          secrets.APPIMAGE_SIGNING_KEY == ''
+        run: |
+          echo "::warning::APPIMAGE_SIGNING_KEY not set — AppImage will be unsigned."

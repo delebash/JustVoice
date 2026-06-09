@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: CodeQL
+
+on:
+  schedule:
+    # Every Monday at 03:17 UTC
+    - cron: "17 3 * * 1"
+  # Allow manual trigger for ad-hoc scans
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: CodeQL — ${{ matrix.language }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language:
+          - javascript
+          - python
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # For JavaScript: install deps so CodeQL can resolve imports
+      - name: Set up Node 20 (javascript scan)
+        if: matrix.language == 'javascript'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install npm deps (javascript scan)
+        if: matrix.language == 'javascript'
+        run: npm install
+
+      # For Python: install the package so CodeQL can resolve imports
+      - name: Set up Python 3.11 (python scan)
+        if: matrix.language == 'python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install server (python scan)
+        if: matrix.language == 'python'
+        run: pip install -e "./server[dev]"
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          # Exclude vendored / generated paths
+          config: |
+            paths-ignore:
+              - "legacy-gui/**"
+              - "dist/**"
+              - "src-tauri/target/**"
+              - "**/*.min.js"
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"

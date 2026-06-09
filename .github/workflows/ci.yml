@@ -1,0 +1,124 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Renderer (Vue + Vite) ─────────────────────────────────────────────────
+  lint-renderer:
+    name: Renderer — Vite build
+    runs-on: ubuntu-latest
+    # Don't run on fork PRs (no secrets, but keeps the pattern consistent)
+    if: >
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm install
+
+      # package.json has no "lint" script — skip that step
+      - name: Build renderer (npx vite build)
+        run: npx vite build
+
+  # ── Python server ─────────────────────────────────────────────────────────
+  lint-server:
+    name: Server — ruff + pytest
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # Install dev extras (pytest, ruff) alongside the server core.
+      # Kokoro needs sherpa-onnx which can be slow to build on CI; install
+      # without the kokoro extra so lint + unit tests don't require native libs.
+      - name: Install server (core + dev extras)
+        run: pip install -e "./server[dev]"
+
+      - name: ruff check
+        run: ruff check server/justtts/
+
+      - name: pytest
+        run: python -m pytest server/tests/ -x
+
+  # ── Tauri / Rust ──────────────────────────────────────────────────────────
+  lint-tauri:
+    name: Tauri — cargo fmt + clippy (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    if: >
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Rust toolchain — pin to stable (respects rust-version = "1.85" in
+      # Cargo.toml via the workspace; the channel "stable" always resolves to
+      # >= that version on GitHub runners).
+      - name: Set up Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo registry + build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: cargo-${{ matrix.os }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: cargo-${{ matrix.os }}-
+
+      # Linux: Tauri v2 GTK/WebKit build deps
+      - name: Install Linux system deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libglib2.0-dev \
+            pkg-config
+
+      - name: cargo fmt --check
+        working-directory: src-tauri
+        run: cargo fmt --check
+
+      - name: cargo clippy
+        working-directory: src-tauri
+        run: cargo clippy -- -D warnings
+
+      - name: cargo check
+        working-directory: src-tauri
+        run: cargo check
