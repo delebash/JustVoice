@@ -136,9 +136,16 @@ onMounted(refresh);
             @click="playing = !playing"
           />
           <JvButton variant="secondary" label="⏹ Stop" @click="playing = false; playheadMs = 0" />
+          <span class="jv-pill jv-pill--ghost jv-mono stories__playhead">{{ fmtTime(playheadMs) }} / {{ fmtTime(totalDurationMs) }}</span>
+          <span class="jv-muted" style="font-size: 11px">spacebar play/pause · arrow keys scrub</span>
           <div class="jv-spacer" />
-          <span class="jv-mono jv-muted stories__playhead">{{ fmtTime(playheadMs) }} / {{ fmtTime(totalDurationMs) }}</span>
+          <span class="jv-pill jv-pill--ghost">Zoom: 60s</span>
+          <JvButton variant="secondary" size="sm" label="+ Add track" />
         </div>
+
+        <p class="jv-muted stories__dnd-hint">
+          Drag-drop WAV / MP3 / FLAC / OGG / M4A / AAC / WebM onto a track to import. Per-clip controls (trim handles · split-at-playhead with S · volume 0–200% · version-pin) land via task <code>#95</code>.
+        </p>
 
         <!-- Multi-track timeline — custom layout, keep scoped CSS -->
         <div class="timeline">
@@ -149,6 +156,7 @@ onMounted(refresh);
                 v-for="item in (selectedStory.items || []).filter((i) => (i.track ?? 0) === t - 1)"
                 :key="item.id"
                 class="timeline__clip"
+                :class="`timeline__clip--track${(t - 1) % 4}`"
                 :style="{ left: clipLeftPct(item) + '%', width: clipWidthPct(item) + '%' }"
               >
                 {{ item.text?.slice(0, 30) || item.generation_id?.slice(0, 6) }}
@@ -232,10 +240,19 @@ onMounted(refresh);
   border-radius: 3px;
   padding: 0 6px;
   font-size: 11px;
-  color: var(--on-accent);
+  color: #fff;
   line-height: 24px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  opacity: 0.85;
+  cursor: pointer;
 }
+.timeline__clip:hover { opacity: 1; }
+.timeline__clip--track0 { background: var(--accent); }       /* forest green */
+.timeline__clip--track1 { background: var(--warn); }          /* warm gold */
+.timeline__clip--track2 { background: #2f74b5; }              /* voicebox blue */
+.timeline__clip--track3 { background: var(--danger); }        /* oxblood */
+.stories__dnd-hint { font-size: 11.5px; margin: 8px 0 4px; }
+.stories__playhead { font-size: 11px; }
 </style>
