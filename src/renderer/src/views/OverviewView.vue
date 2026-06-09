@@ -142,12 +142,12 @@ onMounted(refresh);
         <strong>Server not reachable at {{ api.serverUrl }}</strong>
       </div>
       <p>
-        The Python sidecar isn't responding, so engines / voices / projects can't be listed.
-        If you launched via the Tauri desktop app, the sidecar should auto-start — if it didn't, the
-        most likely cause is the <code class="jv-mono">justtts-server</code> command isn't installed yet.
+        The JustVoice server isn't responding, so engines / voices / projects can't be listed.
+        If you launched via the Tauri desktop app, the server should auto-start — if it didn't, the
+        most likely cause is the JustVoice CLI hasn't been installed yet.
       </p>
       <details class="server-help-banner__details">
-        <summary>First-time setup — install the Python sidecar</summary>
+        <summary>First-time setup — install the JustVoice server</summary>
         <ol class="server-help-banner__steps">
           <li>
             Open a terminal in the project root and run:
@@ -155,7 +155,7 @@ onMounted(refresh);
 pip install -e .[kokoro]</pre>
           </li>
           <li>
-            Then restart JustVoice. The Tauri shell will spawn the sidecar automatically next launch.
+            Then restart JustVoice. The Tauri shell will spawn the server automatically next launch.
           </li>
           <li>
             Or run the server manually in a separate terminal:
@@ -175,7 +175,7 @@ pip install -e .[kokoro]</pre>
     <p class="note">
       <span class="tag-info">info</span>
       <strong>Headless mode also available.</strong>
-      Launch the Python sidecar via <code>justtts-server serve --port 17494</code>. The same UI is served at
+      Launch the JustVoice server standalone with <code>justtts-server serve --port 17494</code>. The same UI is served at
       <code>http://localhost:17494/ui/</code> so you can run JustVoice on a remote box and hit it from any browser.
     </p>
 
