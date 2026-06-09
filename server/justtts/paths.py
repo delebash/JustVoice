@@ -65,6 +65,10 @@ def lexicons_root(data_dir: Path) -> Path:
     return data_dir / "lexicons"
 
 
+def projects_root(data_dir: Path) -> Path:
+    return data_dir / "projects"
+
+
 def training_root(data_dir: Path) -> Path:
     return storage_root(data_dir) / "training"
 

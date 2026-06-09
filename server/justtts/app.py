@@ -30,6 +30,7 @@ from .api import (
     models_api,
     personas_api,
     phase5_api,
+    projects_api,
     render_chapter_api,
     settings_api,
     system_api,
@@ -100,6 +101,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(cache_api.router)
     app.include_router(master_api.router)
     app.include_router(phase5_api.router)
+    app.include_router(projects_api.router)
 
     # GUI — single-file Vue SPA at gui/index.html
     gui_dir = Path("gui")

@@ -21,6 +21,7 @@ dependencies = [
     "typer>=0.12",
     "rich>=13",
     "requests>=2.32",  # for download streaming with progress
+    "python-multipart>=0.0.9",  # multipart form parsing for /v1/projects/import
 ]
 
 [project.optional-dependencies]

@@ -14,9 +14,11 @@ import VoicesView from "./views/VoicesView.vue";
 import CompareView from "./views/CompareView.vue";
 import EnginesView from "./views/EnginesView.vue";
 import SettingsView from "./views/SettingsView.vue";
+import BooksView from "./views/BooksView.vue";
 
 const VIEWS = [
   { id: "overview", label: "Overview", lede: "Current state of the server, catalogue, and cache held on disk.", component: OverviewView },
+  { id: "books", label: "Projects", lede: "Audiobooks, game voicelines, podcasts, and custom imports. Bring source files in through the multi-adapter pipeline.", component: BooksView },
   { id: "generate", label: "Generate", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it.", component: GenerateView },
   { id: "chapter", label: "Chapter", lede: "Multi-line script in, mastered chapter out. The audiobook-production endpoint.", component: ChapterView },
   { id: "voices", label: "Voices", lede: "The full voice catalogue. Clone, design, import, or blend new voices.", component: VoicesView },
