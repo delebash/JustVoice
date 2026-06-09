@@ -10,6 +10,8 @@ import TaskStrip from "./components/TaskStrip.vue";
 import AppDialog from "./components/AppDialog.vue";
 import AudioKeepAlive from "./components/AudioKeepAlive.vue";
 import WelcomeOnboarding from "./components/WelcomeOnboarding.vue";
+import JvHelpDrawer from "./components/JvHelpDrawer.vue";
+import HelpTrigger from "./components/HelpTrigger.vue";
 
 import OverviewView from "./views/OverviewView.vue";
 import GenerateView from "./views/GenerateView.vue";
@@ -51,6 +53,29 @@ const VIEWS = [
   { id: "settings",  label: "Settings",  icon: "⚙️", lede: "Operator knobs that take effect at runtime; some require a restart.", component: SettingsView },
 ];
 
+// Map each view id → docs/<slug>.md for the topbar HelpTrigger.
+// Views without a dedicated doc fall back to getting-started.
+const HELP_SLUG_BY_VIEW = {
+  overview: "getting-started",
+  generate: "generate",
+  books:    "core-concepts",
+  stories:  "stories",
+  chapter:  "take-versioning",
+  voices:   "voices",
+  personas: "personas",
+  lexicons: "lexicons",
+  captures: "dictation",
+  effects:  "effects",
+  engines:  "engines",
+  train:    "engines",
+  compare:  "mastering",
+  cache:    "core-concepts",
+  audio:    "mastering",
+  channels: "channels",
+  webhooks: "webhooks",
+  settings: "getting-started",
+};
+
 // Map the onboarding primary use case → starting tab on launch. Audiobook
 // and podcast both land on Chapter because that's where the multi-line
 // script-in / mastered-audio-out workflow lives today. Game devs need
@@ -76,6 +101,7 @@ const onboarding = useOnboarding();
 let initialTabResolved = false;
 
 const currentView = computed(() => VIEWS.find((v) => v.id === view.value));
+const currentHelpSlug = computed(() => HELP_SLUG_BY_VIEW[view.value] || "getting-started");
 const showWelcome = computed(() => onboarding.hydrated && !onboarding.shown);
 
 function resolveInitialTab() {
@@ -149,6 +175,7 @@ onMounted(async () => {
       <header class="jv-topbar">
         <h2 class="jv-topbar__title">
           {{ currentView?.label }}<span class="jv-topbar__period">.</span>
+          <HelpTrigger :slug="currentHelpSlug" :label="currentView?.label || 'JustVoice'" />
         </h2>
         <span class="jv-topbar__status" :class="{ 'jv-topbar__status--warn': !health || health.status !== 'ok' }">
           <span class="jv-topbar__dot"></span>
@@ -167,5 +194,6 @@ onMounted(async () => {
     <Toast />
     <AppDialog />
     <WelcomeOnboarding v-if="showWelcome" @close="onWelcomeClosed" />
+    <JvHelpDrawer />
   </div>
 </template>

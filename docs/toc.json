@@ -1,0 +1,58 @@
+[
+  {
+    "group": "Getting started",
+    "items": [
+      { "slug": "getting-started",    "title": "Getting started" },
+      { "slug": "core-concepts",      "title": "Core concepts" },
+      { "slug": "use-cases",          "title": "Use cases" }
+    ]
+  },
+  {
+    "group": "Voices & characters",
+    "items": [
+      { "slug": "voices",             "title": "Voices" },
+      { "slug": "personas",           "title": "Personas" },
+      { "slug": "lexicons",           "title": "Lexicons" }
+    ]
+  },
+  {
+    "group": "Producing audio",
+    "items": [
+      { "slug": "generate",           "title": "Generate" },
+      { "slug": "chapter",            "title": "Chapter editor" },
+      { "slug": "take-versioning",    "title": "Take versioning" },
+      { "slug": "stories",            "title": "Stories timeline" },
+      { "slug": "effects",            "title": "Effects chain" },
+      { "slug": "mastering",          "title": "Mastering (ACX et al.)" }
+    ]
+  },
+  {
+    "group": "Engines & hardware",
+    "items": [
+      { "slug": "engines",            "title": "Engines" },
+      { "slug": "gpu",                "title": "GPU / CUDA" }
+    ]
+  },
+  {
+    "group": "Capture & dictation",
+    "items": [
+      { "slug": "dictation",          "title": "Dictation + capture" }
+    ]
+  },
+  {
+    "group": "Import & export",
+    "items": [
+      { "slug": "import-formats",     "title": "Import formats" },
+      { "slug": "export",             "title": "Export (WAV / M4B / ZIP)" }
+    ]
+  },
+  {
+    "group": "Integrations",
+    "items": [
+      { "slug": "mcp-server",         "title": "MCP server (Claude / agents)" },
+      { "slug": "webhooks",           "title": "Webhooks" },
+      { "slug": "system-tray",        "title": "System tray" },
+      { "slug": "channels",           "title": "Audio output channels" }
+    ]
+  }
+]
