@@ -306,6 +306,22 @@ async function loadGpuInfo() {
   gpuInfo.value = { active_backend: active, runtimes, gpus: r.gpus || [] };
 }
 
+// VRAM math for GpuInfoCard. used/total come from /v1/system; both null means
+// no GPU detected or driver query failed — fall back to "—" in the UI.
+const gpuVramTotalGB = computed(() => {
+  const mb = gpuInfo.value?.gpus?.[0]?.vram_mb;
+  return mb ? Math.round(mb / 1024) : "—";
+});
+const gpuVramUsedGB = computed(() => {
+  const mb = gpuInfo.value?.gpus?.[0]?.vram_used_mb;
+  return mb ? (mb / 1024).toFixed(1) : "—";
+});
+const gpuVramPct = computed(() => {
+  const used = gpuInfo.value?.gpus?.[0]?.vram_used_mb || 0;
+  const total = gpuInfo.value?.gpus?.[0]?.vram_mb || 0;
+  return total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
+});
+
 // ── Auto-updater (task #90) ──────────────────────────────────────────
 // UI shell only — the actual update check / download / install flow runs
 // through Tauri's built-in updater plugin via window.__TAURI__.updater.
@@ -1352,47 +1368,81 @@ onMounted(() => {
     </div>
 
     <!-- ─── GPU — live info + CUDA wheel flow (task #91) ─── -->
+    <!-- ─── GPU acceleration (voicebox parity, preview lines 1717-1741) ─── -->
     <div v-show="activeSub === 'gpu'" class="jv-section">
       <div class="jv-card">
-        <div class="jv-card__header"><h3 class="jv-card__title">GPU acceleration</h3></div>
-
-        <div v-if="gpuInfo" class="gpu-info-grid">
-          <div class="jv-chip-card">
-            <div>
-              <div class="stat-label">Active backend</div>
-              <strong class="stat-value">{{ gpuInfo.active_backend || "—" }}</strong>
-              <div class="jv-muted stat-sub">{{ gpuInfo.runtimes?.join(" · ") || "no runtimes detected" }}</div>
+        <div class="jv-card__header"><h3 class="jv-card__title">GpuInfoCard</h3></div>
+        <p v-if="!gpuInfo" class="jv-muted">Loading GPU info…</p>
+        <template v-else>
+          <div class="setting-row">
+            <div class="setting-row__head">
+              <div>
+                <div class="setting-row__title">Backend</div>
+                <div class="setting-row__desc">Compute runtime PyTorch engines are using.</div>
+              </div>
+              <strong>{{ (gpuInfo.active_backend || "cpu").toUpperCase() }}</strong>
             </div>
           </div>
-          <div v-for="(g, i) in gpuInfo.gpus || []" :key="i" class="jv-chip-card">
-            <div>
-              <div class="stat-label">{{ g.vendor }}</div>
-              <strong class="stat-value">{{ g.name }}</strong>
-              <div class="jv-muted stat-sub">
-                <span v-if="g.vram_mb">{{ Math.round(g.vram_mb / 1024) }} GB VRAM</span>
-                <span v-if="g.driver"> · driver {{ g.driver }}</span>
+          <div class="setting-row" v-if="gpuInfo.gpus?.length">
+            <div class="setting-row__head">
+              <div>
+                <div class="setting-row__title">Device</div>
+                <div class="setting-row__desc">{{ gpuInfo.gpus[0].vendor || "GPU" }} · driver {{ gpuInfo.gpus[0].driver || "(unknown)" }}</div>
+              </div>
+              <strong>{{ gpuInfo.gpus[0].name }}</strong>
+            </div>
+          </div>
+          <div class="setting-row" v-if="gpuInfo.gpus?.[0]?.vram_mb">
+            <div class="setting-row__head">
+              <div>
+                <div class="setting-row__title">VRAM total / used</div>
+                <div class="setting-row__desc">
+                  Currently using <strong>{{ gpuVramUsedGB }} GB</strong> of <strong>{{ gpuVramTotalGB }} GB</strong>.
+                  Unload engines via the Engines tab to free VRAM before loading larger models.
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">
+                <strong>{{ gpuVramUsedGB }} / {{ gpuVramTotalGB }} GB</strong>
+                <div style="width: 200px; height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden">
+                  <div :style="{ width: gpuVramPct + '%', height: '100%', background: 'var(--accent)' }" />
+                </div>
               </div>
             </div>
           </div>
-          <div v-if="!gpuInfo.gpus?.length" class="jv-chip-card">
-            <div>
-              <div class="stat-label">No discrete GPU</div>
-              <strong class="stat-value">CPU only</strong>
-              <div class="jv-muted stat-sub">Engines will run on CPU. Speed depends on engine + thread count.</div>
+          <div class="setting-row">
+            <div class="setting-row__head">
+              <div>
+                <div class="setting-row__title">Active</div>
+                <div class="setting-row__desc">Engines currently using this device.</div>
+              </div>
+              <span v-if="gpuInfo.active_backend && gpuInfo.active_backend !== 'cpu'" class="jv-pill jv-pill--green">● in use</span>
+              <span v-else class="jv-pill jv-pill--ghost">idle</span>
             </div>
           </div>
-        </div>
-        <p v-else class="jv-muted">Loading GPU info…</p>
+        </template>
+      </div>
+    </div>
 
-        <div class="jv-divider"></div>
-
-        <h4 style="margin: 12px 0 8px;">CUDA wheel</h4>
+    <div v-show="activeSub === 'gpu'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">CUDA wheel download flow</h3></div>
         <p class="jv-muted" style="font-size: 12.5px">
-          PyTorch engines (Chatterbox / Qwen3 / TADA / LuxTTS / Dia / Higgs / MOSS) ship with the
-          CPU wheel of torch by default. To enable CUDA acceleration on NVIDIA GPUs, switch the
-          per-engine venv to a CUDA wheel via the Engines tab → engine row → "Install with CUDA".
-          The switch reinstalls torch in that engine's venv only — other engines stay on CPU until
-          you switch them too.
+          PyTorch engines ship with the CPU wheel by default. Switching to CUDA reinstalls torch in
+          the engine's venv with the matching CUDA build (~2 GB download). Per-engine — Chatterbox
+          on CUDA and Kokoro on CPU is fine. Phases: <code class="jv-mono">idle → stopping engines →
+          waiting for download → ready</code>.
+        </p>
+        <div class="jv-row" style="margin-top: 14px">
+          <span class="jv-pill jv-pill--green">phase: ready</span>
+          <span class="jv-muted" style="font-size: 12px">torch 2.4.1+cu124 · 2.1 GB</span>
+          <span class="jv-spacer" />
+          <JvButton variant="secondary" size="sm" label="Switch to CPU-only" />
+          <JvButton variant="secondary" size="sm" label="Switch to ROCm (AMD)" />
+          <JvButton variant="secondary" size="sm" label="Re-download" />
+        </div>
+        <p class="jv-muted" style="font-size: 11.5px; margin-top: 10px">
+          The switch is per-engine. Use the Engines tab → engine row → "Install with CUDA" to enable
+          per engine. On Apple Silicon, MPS / CoreML is auto-detected — no switch required.
         </p>
       </div>
     </div>
