@@ -16,7 +16,7 @@ import json
 from datetime import datetime
 from typing import Optional, Literal, Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -29,6 +29,12 @@ from ..database import (
     get_db,
 )
 from ..errors import not_found, bad_request
+from ..imports import list_adapters, run_adapter
+from ..imports.standard_schema import (
+    AdapterListResponse,
+    ImportRunResponse,
+    StandardImport,
+)
 
 
 router = APIRouter(tags=["projects"])
@@ -416,109 +422,75 @@ async def remove_from_cast(
     return {"deleted": bool(deleted)}
 
 
-# ── Import (Phase 5: JustWrite → JustVoice book ingestion) ────────────────
+# ── Multi-adapter import pipeline ─────────────────────────────────────────
+#
+# Replaces the original JustWrite-only endpoint. Sources are pluggable
+# (see server/justtts/imports/) and the adapter registry produces a
+# normalized StandardImport that this endpoint materializes into ORM
+# rows. JustWrite is one adapter among several (csv_lines, srt,
+# audacity_labels, justvoice_standard, elevenlabs-stub).
+#
+# Transport:
+#   - Preferred: multipart/form-data { source, file, dry_run? }
+#   - Legacy backward-compat for JustWrite's existing client:
+#       POST /v1/projects/import?source=justwrite (raw JSON body)
 
 
-class JustWriteCharacter(BaseModel):
-    """Shape of a character in a JustWrite book export.
+_KIND_TO_PROJECT_TYPE: dict[str, str] = {
+    "audiobook": "audiobook",
+    "game_voicelines": "game_voicelines",
+    "podcast": "podcast",
+    "custom": "custom",
+}
 
-    JustWrite's actual export schema needs to be confirmed via Phase 5 spike
-    (per DESIGN_FREEZE §3.2). This is a reasonable guess from the JustWrite
-    audit summary.
+
+def _materialize_standard(
+    standard: StandardImport,
+    db: Session,
+) -> tuple[Project, int, int, list[str], list[str]]:
+    """Turn a StandardImport into ORM rows. Returns (project, scene_count, block_count, created_personas, reused_personas).
+
+    Caller commits + refreshes. We only flush to get ids.
     """
+    project_type = _KIND_TO_PROJECT_TYPE.get(standard.project.kind, "custom")
 
-    id: str
-    name: str
-    bio: Optional[str] = None
-    voice_notes: Optional[str] = None
-
-
-class JustWriteBlock(BaseModel):
-    text: str
-    character_id: Optional[str] = None  # speaker attribution
-    direction: Optional[str] = None  # emotion/style hint
-
-
-class JustWriteScene(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    blocks: list[JustWriteBlock] = []
-
-
-class JustWriteBookImport(BaseModel):
-    name: str
-    description: Optional[str] = None
-    author: Optional[str] = None
-    title: Optional[str] = None
-    isbn: Optional[str] = None
-    characters: list[JustWriteCharacter] = []
-    scenes: list[JustWriteScene] = []
-
-
-class JustWriteImportResult(BaseModel):
-    project_id: str
-    scene_count: int
-    block_count: int
-    persona_count: int
-    created_personas: list[str]
-    reused_personas: list[str]
-
-
-@router.post("/v1/projects/import", response_model=JustWriteImportResult)
-async def import_project(
-    body: JustWriteBookImport,
-    source: str = Query("justwrite", description="Source system identifier"),
-    db: Session = Depends(get_db),
-) -> JustWriteImportResult:
-    """Import a project from JustWrite (or another supported source).
-
-    Source values:
-      - "justwrite": JustWrite book export JSON (audiobook project)
-      - "unreal_uplugin" (future): Unreal game-voicelines JSON
-      - "json" (generic project archive — future)
-    """
-    if source not in ("justwrite",):
-        raise bad_request(f"Unsupported import source '{source}' for v1. Use 'justwrite'.")
-
-    # 1. Create the Project row.
     p = Project(
-        name=body.name,
-        description=body.description,
-        project_type="audiobook",
+        name=standard.project.name,
+        description=standard.project.description,
+        project_type=project_type,
         metadata_json=json.dumps(
             {
-                "author": body.author,
-                "title": body.title,
-                "isbn": body.isbn,
+                "language": standard.project.language,
+                "schema_version": standard.schema_version,
             }
         ),
-        mastering_preset="acx",
-        imported_from=source,
+        mastering_preset="acx" if project_type == "audiobook" else None,
+        imported_from=standard.source,
     )
     db.add(p)
-    db.flush()  # need p.id
+    db.flush()
 
-    # 2. Resolve / create Personas per JustWrite character.
+    # Personas — reuse if (source, source_id) pair already exists.
     created_personas: list[str] = []
     reused_personas: list[str] = []
     char_to_persona_id: dict[str, str] = {}
-    for char in body.characters:
+    for char in standard.characters:
         existing = (
             db.query(Persona)
-            .filter(Persona.imported_from == "justwrite", Persona.imported_id == char.id)
+            .filter(Persona.imported_from == standard.source, Persona.imported_id == char.id)
             .first()
         )
         if existing:
             char_to_persona_id[char.id] = existing.id
             reused_personas.append(existing.id)
             continue
-        bio_text = char.bio or ""
-        if char.voice_notes:
-            bio_text = f"{bio_text}\n\nVoice notes:\n{char.voice_notes}".strip()
+        bio_text = char.notes or ""
+        if char.voice_hint:
+            bio_text = f"{bio_text}\n\nVoice hint:\n{char.voice_hint}".strip()
         persona = Persona(
             name=char.name,
             bio=bio_text or None,
-            imported_from="justwrite",
+            imported_from=standard.source,
             imported_id=char.id,
             personality_enabled=bool(bio_text),
         )
@@ -526,42 +498,117 @@ async def import_project(
         db.flush()
         char_to_persona_id[char.id] = persona.id
         created_personas.append(persona.id)
-        # Add to cast.
         db.add(ProjectPersona(project_id=p.id, persona_id=persona.id))
 
-    # 3. Create Scenes (chapters) + Blocks (paragraphs).
+    # Scenes + Blocks.
     total_blocks = 0
-    for scene_idx, scene in enumerate(body.scenes):
+    for scene_idx, scene in enumerate(standard.scenes):
         s = Scene(
             project_id=p.id,
             position=scene_idx,
             title=scene.title,
-            description=scene.description,
-            metadata_json=json.dumps({"chapter_number": scene_idx + 1}),
+            description=None,
+            metadata_json=json.dumps(
+                {
+                    "kind": scene.kind,
+                    "source_id": scene.id,
+                    "index_one_based": scene_idx + 1,
+                }
+            ),
         )
         db.add(s)
         db.flush()
-        for block_idx, blk in enumerate(scene.blocks):
-            persona_id = char_to_persona_id.get(blk.character_id) if blk.character_id else None
+        for block_idx, line in enumerate(scene.lines):
+            persona_id = (
+                char_to_persona_id.get(line.character_id) if line.character_id else None
+            )
+            # delivery → direction: best-effort surface a short tag for the UI
+            direction = None
+            if line.delivery:
+                if isinstance(line.delivery, dict):
+                    direction = line.delivery.get("emotion") or line.delivery.get("style")
             db.add(
                 Block(
                     scene_id=s.id,
                     position=block_idx,
-                    text=blk.text,
+                    text=line.text,
                     persona_id=persona_id,
-                    direction=blk.direction,
+                    direction=direction,
                 )
             )
             total_blocks += 1
 
-    db.commit()
-    db.refresh(p)
+    return p, len(standard.scenes), total_blocks, created_personas, reused_personas
 
-    return JustWriteImportResult(
-        project_id=p.id,
-        scene_count=len(body.scenes),
-        block_count=total_blocks,
-        persona_count=len(created_personas) + len(reused_personas),
-        created_personas=created_personas,
-        reused_personas=reused_personas,
+
+@router.get("/v1/projects/import/adapters", response_model=AdapterListResponse)
+async def get_import_adapters() -> AdapterListResponse:
+    """List the import adapters the UI's format picker can choose from."""
+    return AdapterListResponse(adapters=list_adapters())
+
+
+@router.post("/v1/projects/import", response_model=ImportRunResponse)
+async def import_project(
+    request: Request,
+    source: Optional[str] = Form(default=None),
+    file: Optional[UploadFile] = File(default=None),
+    dry_run: Optional[bool] = Form(default=None),
+    source_q: Optional[str] = Query(default=None, alias="source"),
+    dry_run_q: Optional[bool] = Query(default=None, alias="dry_run"),
+    db: Session = Depends(get_db),
+) -> ImportRunResponse:
+    """Run an import adapter.
+
+    Multipart shape (preferred — what ImportModal sends):
+      multipart/form-data
+        source   = adapter id (justwrite | csv_lines | srt | audacity_labels | justvoice_standard | elevenlabs)
+        file     = the source file
+        dry_run  = "true" to parse + return preview without committing
+
+    Backwards-compatible query-string shape (JustWrite's existing client):
+      POST /v1/projects/import?source=justwrite[&dry_run=true]
+      Content-Type: application/json
+      <raw JustWrite JSON body>
+    """
+    effective_source = (source or source_q or "").strip()
+    if not effective_source:
+        raise bad_request(
+            "import: missing 'source' — pass as multipart form field or ?source= query param"
+        )
+    effective_dry_run = bool(dry_run if dry_run is not None else dry_run_q)
+
+    filename: str | None = None
+    raw: bytes
+    if file is not None:
+        raw = await file.read()
+        filename = file.filename
+    else:
+        try:
+            raw = await request.body()
+        except RuntimeError:
+            raw = b""
+        if not raw:
+            raise bad_request("import: no file uploaded and no raw request body")
+
+    standard = run_adapter(effective_source, raw, filename=filename)
+
+    if effective_dry_run:
+        return ImportRunResponse(
+            committed=False,
+            project_id=None,
+            standard=standard,
+            warnings=standard.warnings,
+        )
+
+    project, _scene_count, _block_count, _created, _reused = _materialize_standard(
+        standard, db
+    )
+    db.commit()
+    db.refresh(project)
+    standard.project.id = project.id
+    return ImportRunResponse(
+        committed=True,
+        project_id=project.id,
+        standard=standard,
+        warnings=standard.warnings,
     )

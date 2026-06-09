@@ -10,6 +10,7 @@ import { computed, onMounted, ref } from "vue";
 import ListPane from "../components/ListPane.vue";
 import JvButton from "../components/jv/JvButton.vue";
 import JvTag from "../components/jv/JvTag.vue";
+import ImportModal from "./ImportModal.vue";
 import { projectsService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
 
@@ -18,7 +19,7 @@ const selectedId = ref(null);
 const search = ref("");
 const projectTypeFilter = ref("all");
 const loading = ref(false);
-const importing = ref(false);
+const showImport = ref(false);
 
 const filtered = computed(() => {
   let list = projects.value;
@@ -66,32 +67,11 @@ async function refresh() {
   }
 }
 
-async function importJustWriteFromFile() {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = "application/json,.json";
-  input.onchange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    importing.value = true;
-    try {
-      const text = await file.text();
-      const book = JSON.parse(text);
-      const result = await projectsService.importJustWrite(book);
-      pushToast({
-        kind: "success",
-        title: "JustWrite book imported",
-        description: `${result.scene_count} scenes, ${result.block_count} blocks, ${result.persona_count} personas`,
-      });
-      await refresh();
-      selectedId.value = result.project_id;
-    } catch (e) {
-      pushToast({ kind: "error", title: "Import failed", description: String(e?.message ?? e) });
-    } finally {
-      importing.value = false;
-    }
-  };
-  input.click();
+async function onImportCreated({ project_id }) {
+  pushToast({ kind: "success", title: "Project imported" });
+  await refresh();
+  if (project_id) selectedId.value = project_id;
+  showImport.value = false;
 }
 
 async function exportProject(projectId) {
@@ -147,7 +127,7 @@ onMounted(refresh);
       <div v-if="loading" class="books__empty jv-muted">Loading…</div>
       <div v-else-if="filtered.length === 0" class="books__empty">
         <p class="jv-muted">No projects yet.</p>
-        <JvButton variant="secondary" size="sm" :loading="importing" :label="importing ? 'Importing…' : 'Import from JustWrite'" @click="importJustWriteFromFile" style="margin-top: 12px" />
+        <JvButton variant="secondary" size="sm" label="+ Import…" @click="showImport = true" style="margin-top: 12px" />
       </div>
 
       <div
@@ -167,9 +147,9 @@ onMounted(refresh);
 
     <div class="books__detail">
       <div v-if="!selectedProject" class="books__detail-empty jv-card">
-        <p class="jv-muted">Select a project on the left, or import a JustWrite book to get started.</p>
+        <p class="jv-muted">Select a project on the left, or import one from JustWrite / a CSV / an SRT / Audacity labels / a JustVoice standard JSON to get started.</p>
         <div class="jv-btn-group" style="margin-top: 16px; justify-content: center;">
-          <JvButton variant="secondary" :loading="importing" :label="importing ? 'Importing…' : 'Import JustWrite book'" @click="importJustWriteFromFile" />
+          <JvButton variant="primary" label="+ Import…" @click="showImport = true" />
           <JvButton variant="secondary" label="+ New blank project" @click="createBlank" />
         </div>
       </div>
@@ -212,6 +192,9 @@ onMounted(refresh);
         </div>
       </template>
     </div>
+
+    <!-- Multi-adapter import modal (justwrite / csv_lines / srt / audacity_labels / justvoice_standard / elevenlabs-stub). -->
+    <ImportModal v-if="showImport" @close="showImport = false" @created="onImportCreated" />
   </div>
 </template>
 

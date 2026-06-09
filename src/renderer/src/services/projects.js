@@ -27,8 +27,26 @@ export const projectsService = {
   remove(id) {
     return withApi().request("DELETE", `/v1/projects/${id}`);
   },
+  /** Legacy JustWrite-shaped import — JSON body to ?source=justwrite. Kept
+   *  so JustWrite's existing client doesn't break. New code uses runImport(). */
   importJustWrite(book) {
     return withApi().post(`/v1/projects/import?source=justwrite`, book);
+  },
+
+  /** Multi-adapter import. {source, file, dryRun?} -> ImportRunResponse. */
+  async runImport({ source, file, dryRun = false } = {}) {
+    if (!source) throw new Error("runImport: source is required");
+    if (!file) throw new Error("runImport: file is required");
+    const form = new FormData();
+    form.append("source", source);
+    form.append("file", file);
+    if (dryRun) form.append("dry_run", "true");
+    return withApi().postForm(`/v1/projects/import`, form);
+  },
+
+  /** Lists available import adapters for the format picker. */
+  listImportAdapters() {
+    return withApi().get(`/v1/projects/import/adapters`);
   },
   listScenes(projectId) {
     return withApi().get(`/v1/projects/${projectId}/scenes`);
