@@ -23,7 +23,7 @@ import {
   DialogClose,
 } from "reka-ui";
 import Icon from "./Icon.vue";
-import JwButton from "./ui/JwButton.vue";
+import JvButton from "./jv/JvButton.vue";
 import { useOnboarding } from "../stores/onboarding.js";
 
 const emit = defineEmits(["close"]);
@@ -151,9 +151,9 @@ function onOutside(e) {
 
         <footer class="app-modal-footer welcome-footer">
           <span class="welcome-footnote">Skip and JustVoice keeps neutral terminology.</span>
-          <JwButton
+          <JvButton
             label="Choose later"
-            intent="ghost"
+            variant="ghost"
             :disabled="submitting"
             @click="chooseLater"
           />

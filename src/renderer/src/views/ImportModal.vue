@@ -28,8 +28,8 @@
 // links to docs/import-formats.md#<anchor>.
 
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import JwButton from "../components/ui/JwButton.vue";
-import JwSelect from "../components/ui/JwSelect.vue";
+import JvButton from "../components/jv/JvButton.vue";
+import JvSelect from "../components/jv/JvSelect.vue";
 import { projectsService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
 
@@ -183,7 +183,7 @@ const summary = computed(() => {
         <div class="import-grid">
       <label class="field">
         <span class="lbl">Source format</span>
-        <JwSelect
+        <JvSelect
           v-model="selectedSource"
           :options="adapterOptions"
           placeholder="Pick a format…"
@@ -246,19 +246,19 @@ const summary = computed(() => {
         </div>
       </div>
       <footer class="im-footer">
-        <JwButton intent="ghost" @click="emit('close')">Cancel</JwButton>
-        <JwButton
-          intent="secondary"
+        <JvButton variant="ghost" @click="emit('close')">Cancel</JvButton>
+        <JvButton
+          variant="secondary"
           :loading="previewing"
           :disabled="!canPreview"
           @click="doPreview"
-        >Dry run</JwButton>
-        <JwButton
-          intent="primary"
+        >Dry run</JvButton>
+        <JvButton
+          variant="primary"
           :loading="committing"
           :disabled="!canCommit"
           @click="doCommit"
-        >Import</JwButton>
+        >Import</JvButton>
       </footer>
     </div>
   </div>
