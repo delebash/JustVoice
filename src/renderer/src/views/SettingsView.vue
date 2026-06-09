@@ -8,6 +8,7 @@ import JvButton from "../components/jv/JvButton.vue";
 import JvInput from "../components/jv/JvInput.vue";
 import JvSelect from "../components/jv/JvSelect.vue";
 import JvCheckbox from "../components/jv/JvCheckbox.vue";
+import JvToggle from "../components/jv/JvToggle.vue";
 import JvField from "../components/jv/JvField.vue";
 
 const api = useApi();
@@ -395,6 +396,7 @@ const appearance = ref({
   theme: "auto",
   density: "default",
   accentHue: 158, // matches preview's green accent — hsl(158, 55%, 36%)
+  locale: "en",
 });
 function loadAppearance() {
   try {
@@ -528,7 +530,7 @@ onMounted(() => {
                 stay connected. Toggle off if you'd rather a true quit on close.
               </div>
             </div>
-            <JvCheckbox v-model="keepServerRunning" @change="onKeepServerRunningChange" />
+            <JvToggle v-model="keepServerRunning" @change="onKeepServerRunningChange" aria-label="Keep server running" />
           </div>
         </div>
 
@@ -544,7 +546,7 @@ onMounted(() => {
                 box). Bearer auth is recommended when enabled. Restart required.
               </div>
             </div>
-            <JvCheckbox v-model="allowNetworkAccess" @change="onNetworkAccessChange" />
+            <JvToggle v-model="allowNetworkAccess" @change="onNetworkAccessChange" aria-label="Allow network access" />
           </div>
         </div>
       </div>
@@ -569,11 +571,184 @@ onMounted(() => {
             <JvInput v-model.number="settings.server.port" type="number" />
           </JvField>
         </div>
-        <div style="margin-top: 14px;">
-          <JvCheckbox
-            v-model="settings.server.docs_enabled"
-            label="Enable interactive API docs at /docs and /redoc"
+        <div class="setting-row" style="margin-top: 14px">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Interactive API docs</div>
+              <div class="setting-row__desc">
+                Enable Swagger UI at <code class="jv-mono">/docs</code> and ReDoc at
+                <code class="jv-mono">/redoc</code>. Useful for development and external
+                integrations. Disable in production deployments behind public networks.
+              </div>
+            </div>
+            <JvToggle v-model="settings.server.docs_enabled" aria-label="Enable API docs" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── General · Appearance (theme + locale) ─── -->
+    <div v-show="activeSub === 'general'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header">
+          <h3 class="jv-card__title">Appearance</h3>
+        </div>
+        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 6px">
+          Visual and locale preferences. Persisted in browser localStorage; no server round-trip.
+        </p>
+
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Theme</div>
+              <div class="setting-row__desc">
+                Light, Dark, or Follow system. Applied immediately via CSS custom properties.
+              </div>
+            </div>
+            <JvSelect
+              v-model="appearance.theme"
+              :options="[
+                { label: 'Follow system', value: 'auto' },
+                { label: 'Light', value: 'light' },
+                { label: 'Dark', value: 'dark' },
+              ]"
+              @change="applyAppearance"
+            />
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Density</div>
+              <div class="setting-row__desc">
+                Compact reduces row spacing for power users. Spacious adds breathing room.
+              </div>
+            </div>
+            <JvSelect
+              v-model="appearance.density"
+              :options="[
+                { label: 'Default', value: 'default' },
+                { label: 'Compact', value: 'compact' },
+                { label: 'Spacious', value: 'spacious' },
+              ]"
+              @change="applyAppearance"
+            />
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Accent hue · {{ appearance.accentHue }}°</div>
+              <div class="setting-row__desc">
+                Drag to pick a new accent color across the whole app. Default 158° = forest green.
+              </div>
+            </div>
+            <span class="setting-row__value">
+              <span class="accent-preview" :style="{ background: `hsl(${appearance.accentHue} 55% 36%)` }" />
+            </span>
+          </div>
+          <input
+            type="range"
+            v-model.number="appearance.accentHue"
+            min="0" max="360" step="1"
+            class="setting-row__slider"
+            @input="applyAppearance"
           />
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Language</div>
+              <div class="setting-row__desc">
+                UI language. Engine output language is configured per-voice in the Profile.
+                Full i18next wiring lands with task <code>#97</code> — the picker persists your
+                preference now and the locale will apply once translations ship.
+              </div>
+            </div>
+            <JvSelect
+              v-model="appearance.locale"
+              :options="[
+                { label: 'English (en)', value: 'en' },
+                { label: 'Spanish (es)', value: 'es' },
+                { label: 'French (fr)', value: 'fr' },
+                { label: 'German (de)', value: 'de' },
+                { label: 'Italian (it)', value: 'it' },
+                { label: 'Portuguese (pt)', value: 'pt' },
+                { label: 'Russian (ru)', value: 'ru' },
+                { label: 'Japanese (ja)', value: 'ja' },
+                { label: 'Korean (ko)', value: 'ko' },
+                { label: 'Chinese (zh)', value: 'zh' },
+              ]"
+              @change="applyAppearance"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── General · Updates ─── -->
+    <div v-show="activeSub === 'general'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header" style="display: flex; align-items: center; gap: 8px">
+          <h3 class="jv-card__title" style="margin: 0">Updates</h3>
+          <span class="jv-spacer" />
+          <span class="jv-muted" style="font-size: 11.5px">Current: v{{ updater.currentVersion }}</span>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Check for updates</div>
+              <div class="setting-row__desc">
+                <span v-if="updater.status === 'idle'">Last checked: {{ updater.lastChecked || 'never' }}</span>
+                <span v-else-if="updater.status === 'checking'">Checking…</span>
+                <span v-else-if="updater.status === 'available'">
+                  <strong>v{{ updater.availableVersion }} available.</strong> {{ updater.notes || '' }}
+                </span>
+                <span v-else-if="updater.status === 'downloading'">Downloading… {{ updater.progressPct }}%</span>
+                <span v-else-if="updater.status === 'ready'">Ready to install — restart to apply.</span>
+                <span v-else-if="updater.status === 'error'" style="color: var(--danger)">{{ updater.error }}</span>
+                <span v-else-if="updater.status === 'uptodate'">You're on the latest version.</span>
+              </div>
+            </div>
+            <div class="jv-row" style="gap: 8px">
+              <JvSelect
+                v-model="updater.channel"
+                :options="[
+                  { label: 'Stable', value: 'stable' },
+                  { label: 'Beta', value: 'beta' },
+                  { label: 'Nightly', value: 'nightly' },
+                ]"
+                @change="persistUpdaterChannel"
+              />
+              <JvButton
+                v-if="updater.status === 'idle' || updater.status === 'uptodate' || updater.status === 'error'"
+                variant="secondary"
+                size="sm"
+                :disabled="updater.busy"
+                label="Check now"
+                @click="checkForUpdates"
+              />
+              <JvButton
+                v-if="updater.status === 'available'"
+                variant="primary"
+                size="sm"
+                :disabled="updater.busy"
+                label="Download"
+                @click="downloadUpdate"
+              />
+              <JvButton
+                v-if="updater.status === 'ready'"
+                variant="primary"
+                size="sm"
+                label="Restart and install"
+                @click="restartAndInstall"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -705,7 +880,7 @@ onMounted(() => {
                 loudness purely via the Mastering target.
               </div>
             </div>
-            <JvCheckbox v-model="settings.generation.normalize_audio" @change="saveDebounced" />
+            <JvToggle v-model="settings.generation.normalize_audio" @change="saveDebounced" aria-label="Normalize audio" />
           </div>
         </div>
 
@@ -719,7 +894,7 @@ onMounted(() => {
                 if you'd rather queue renders silently and listen later.
               </div>
             </div>
-            <JvCheckbox v-model="settings.generation.autoplay_on_generate" @change="saveDebounced" />
+            <JvToggle v-model="settings.generation.autoplay_on_generate" @change="saveDebounced" aria-label="Autoplay on generate" />
           </div>
         </div>
       </div>

@@ -377,6 +377,15 @@ input[type="radio"] { accent-color: var(--accent); }
   cursor: pointer;
 }
 
+.accent-preview {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  vertical-align: middle;
+}
+
 /* ============================================================
    Connection status pill — voicebox-parity ConnectionStatus
    (online/offline/connecting). Lives in the Connection card
