@@ -10,7 +10,9 @@ import { useApi } from "../stores/api.js";
 import { captureReadinessService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
 import CapturePill from "../components/CapturePill.vue";
-import ListPane from "../components/ListPane.vue";
+import JvButton from "../components/jv/JvButton.vue";
+import JvTag from "../components/jv/JvTag.vue";
+import JvInput from "../components/jv/JvInput.vue";
 
 const api = useApi();
 
@@ -56,9 +58,6 @@ async function refreshReadiness() {
 }
 
 function startRecording() {
-  // The full record-transcribe-refine cycle is owned by useCaptureRecordingSession
-  // (a Phase 4c follow-on). For v1 this surfaces the state machine via the pill;
-  // the Tauri shell dictate window does the actual audio capture.
   isRecording.value = true;
   pillState.value = "recording";
   elapsedMs.value = 0;
@@ -97,94 +96,130 @@ onMounted(() => {
 
 <template>
   <div class="captures">
-    <ListPane v-model:search-value="search" title="Captures" search-placeholder="Search transcripts…">
-      <template #actions>
-        <button class="btn btn--primary" @click="isRecording ? stopRecording() : startRecording()">
-          {{ isRecording ? "Stop" : "Record" }}
-        </button>
-      </template>
+    <!-- ── List pane ────────────────────────────────────────────────── -->
+    <div class="captures__list jv-card jv-card--flat">
+      <div class="captures__list-header">
+        <span class="jv-section__title" style="margin:0;">Captures</span>
+        <JvButton
+          :variant="isRecording ? 'danger' : 'primary'"
+          size="sm"
+          :label="isRecording ? 'Stop' : 'Record'"
+          @click="isRecording ? stopRecording() : startRecording()"
+        />
+      </div>
+      <div class="captures__search">
+        <JvInput v-model="search" placeholder="Search transcripts…" size="sm" />
+      </div>
 
-      <div v-if="!allReady && readiness" class="captures__readiness">
-        <h4>Dictation readiness</h4>
-        <div class="checklist">
-          <div class="check-row" :class="{ ready: readiness.stt.ready }">
-            <span class="check-row__icon">{{ readiness.stt.ready ? "✓" : "○" }}</span>
+      <!-- Readiness banner -->
+      <div v-if="!allReady && readiness" class="jv-banner jv-banner--warn" style="margin:8px;">
+        <strong>Dictation readiness</strong>
+        <div class="captures__checklist">
+          <div class="captures__check-row" :class="{ 'captures__check-row--ok': readiness.stt.ready }">
+            <JvTag :variant="readiness.stt.ready ? 'success' : 'default'" :label="readiness.stt.ready ? '✓' : '○'" />
             <span>{{ readiness.stt.display_name }} {{ readiness.stt.ready ? "loaded" : "not loaded" }}</span>
           </div>
-          <div class="check-row" :class="{ ready: readiness.llm.ready }">
-            <span class="check-row__icon">{{ readiness.llm.ready ? "✓" : "○" }}</span>
+          <div class="captures__check-row" :class="{ 'captures__check-row--ok': readiness.llm.ready }">
+            <JvTag :variant="readiness.llm.ready ? 'success' : 'default'" :label="readiness.llm.ready ? '✓' : '○'" />
             <span>{{ readiness.llm.display_name }} {{ readiness.llm.ready ? "loaded" : "not loaded" }}</span>
           </div>
         </div>
       </div>
 
-      <div v-if="filtered.length === 0" class="captures__empty">
-        <p>No captures yet. Hit "Record" or press your dictation hotkey.</p>
-      </div>
+      <p v-if="filtered.length === 0" class="captures__empty jv-muted">
+        No captures yet. Hit "Record" or press your dictation hotkey.
+      </p>
+
       <div
         v-for="c in filtered"
         :key="c.id"
-        class="captures__item"
-        :class="{ 'captures__item--active': c.id === selectedId }"
+        class="jv-pane-list__item"
+        :class="{ 'jv-pane-list__item--active': c.id === selectedId }"
         @click="selectedId = c.id"
       >
         <div class="captures__item-row">
           <span class="captures__source">{{ c.source }}</span>
-          <span class="captures__date">{{ new Date(c.created_at).toLocaleString() }}</span>
+          <span class="jv-pane-list__meta" style="margin-left:auto;">{{ new Date(c.created_at).toLocaleString() }}</span>
         </div>
-        <div class="captures__transcript">{{ c.transcript || "(no transcript)" }}</div>
+        <div class="jv-ellipsis captures__transcript">{{ c.transcript || "(no transcript)" }}</div>
       </div>
-    </ListPane>
+    </div>
 
-    <div class="captures__detail">
+    <!-- ── Detail pane ──────────────────────────────────────────────── -->
+    <div class="captures__detail jv-card">
       <div class="captures__pill-row">
         <CapturePill :state="pillState" :elapsed-ms="elapsedMs" @stop="stopRecording" />
       </div>
-      <div v-if="!selectedCapture" class="captures__detail-empty">
+      <div v-if="!selectedCapture" class="captures__detail-empty jv-muted">
         <p>Select a capture to inspect, or press the dictation hotkey to record.</p>
       </div>
       <template v-else>
-        <h2>Capture {{ selectedCapture.id.slice(0, 8) }}</h2>
-        <dl class="captures__meta">
-          <div><dt>Source</dt><dd>{{ selectedCapture.source }}</dd></div>
-          <div><dt>Language</dt><dd>{{ selectedCapture.language ?? "auto" }}</dd></div>
-          <div><dt>Duration</dt><dd>{{ fmtDuration(selectedCapture.duration_ms) }}</dd></div>
-          <div><dt>Created</dt><dd>{{ new Date(selectedCapture.created_at).toLocaleString() }}</dd></div>
-        </dl>
-        <h3>Refined transcript</h3>
+        <h2>Capture <span class="jv-mono">{{ selectedCapture.id.slice(0, 8) }}</span></h2>
+
+        <table class="jv-table captures__meta-table">
+          <tbody>
+            <tr>
+              <td><span class="jv-muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Source</span></td>
+              <td>{{ selectedCapture.source }}</td>
+              <td><span class="jv-muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Language</span></td>
+              <td>{{ selectedCapture.language ?? "auto" }}</td>
+            </tr>
+            <tr>
+              <td><span class="jv-muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Duration</span></td>
+              <td>{{ fmtDuration(selectedCapture.duration_ms) }}</td>
+              <td><span class="jv-muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;">Created</span></td>
+              <td>{{ new Date(selectedCapture.created_at).toLocaleString() }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3 style="margin:20px 0 6px;">Refined transcript</h3>
         <p class="captures__body">{{ selectedCapture.transcript || "(empty)" }}</p>
-        <h3>Raw (pre-refinement)</h3>
-        <p class="captures__body captures__body--raw">{{ selectedCapture.raw_transcript || "—" }}</p>
+        <h3 style="margin:16px 0 6px;">Raw (pre-refinement)</h3>
+        <p class="captures__body captures__body--raw jv-mono">{{ selectedCapture.raw_transcript || "—" }}</p>
       </template>
     </div>
   </div>
 </template>
 
 <style scoped>
-.captures { display: grid; grid-template-columns: 380px 1fr; height: 100%; gap: 0; }
-.captures__readiness { padding: 12px 16px; background: var(--surface-2, #fbfaf7); border-radius: 6px; margin: 0 8px 12px; }
-.captures__readiness h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
-.checklist { display: flex; flex-direction: column; gap: 4px; }
-.check-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-3, #888); }
-.check-row.ready { color: var(--accent, #3a7d63); }
-.check-row__icon { width: 16px; text-align: center; }
-.captures__item { padding: 10px 16px; cursor: pointer; border-radius: 6px; margin: 0 8px 2px; }
-.captures__item:hover { background: var(--surface-2, #fbfaf7); }
-.captures__item--active { background: var(--accent, #3a7d63); color: #fff; }
-.captures__item-row { display: flex; gap: 8px; align-items: center; font-size: 11px; opacity: 0.7; }
-.captures__source { font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-.captures__date { margin-left: auto; }
-.captures__transcript { font-size: 13px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.captures__detail { padding: 32px; overflow-y: auto; }
-.captures__pill-row { display: flex; justify-content: center; padding: 16px 0; }
-.captures__detail-empty { text-align: center; color: var(--ink-2, #4a4a4a); padding: 40px; }
-.captures__meta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; margin: 16px 0 24px; }
-.captures__meta div { display: flex; flex-direction: column; }
-.captures__meta dt { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; }
-.captures__meta dd { margin: 0; font-size: 14px; }
-.captures__body { white-space: pre-wrap; line-height: 1.6; }
-.captures__body--raw { color: var(--ink-3, #888); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
-.captures__empty { padding: 32px; text-align: center; color: var(--ink-3, #888); }
-.btn { height: 32px; padding: 0 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--line-strong, #cfccc4); background: var(--surface-2, #fbfaf7); color: inherit; }
-.btn--primary { background: var(--accent, #3a7d63); color: #fff; border-color: var(--accent, #3a7d63); }
+.captures {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  height: 100%;
+  gap: 16px;
+  padding: 16px;
+}
+
+/* List pane */
+.captures__list { display: flex; flex-direction: column; gap: 0; overflow-y: auto; padding: 0; }
+.captures__list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.captures__search { padding: 8px 16px; }
+
+.captures__source { font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 11px; }
+.captures__item-row { display: flex; align-items: center; gap: 8px; }
+.captures__transcript { font-size: 13px; margin-top: 3px; }
+
+.captures__checklist { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.captures__check-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-3); }
+.captures__check-row--ok { color: var(--accent); }
+
+.captures__empty { padding: 24px 16px; text-align: center; }
+
+/* Detail pane */
+.captures__detail { padding: 28px; overflow-y: auto; }
+.captures__pill-row { display: flex; justify-content: center; padding: 16px 0 20px; }
+.captures__detail-empty { text-align: center; padding: 40px; }
+.captures__meta-table { margin: 14px 0 20px; }
+.captures__meta-table td { font-size: 13px; padding: 6px 12px 6px 0; border: none; }
+.captures__meta-table tbody tr:hover td { background: transparent; }
+
+.captures__body { white-space: pre-wrap; line-height: 1.6; color: var(--ink-2); margin-top: 4px; }
+.captures__body--raw { color: var(--ink-3); font-size: 13px; }
 </style>

@@ -1,15 +1,17 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
+import JvButton from "../components/jv/JvButton.vue";
+import JvInput from "../components/jv/JvInput.vue";
+import JvSelect from "../components/jv/JvSelect.vue";
+import JvCheckbox from "../components/jv/JvCheckbox.vue";
+import JvField from "../components/jv/JvField.vue";
 
 const api = useApi();
 const settings = ref(null);
-
-// External engines edited inline against settings.engines.external (the
-// PUT-saved config list); /v1/engines is the live catalog but isn't where
-// the operator-visible config lives.
 
 // ─── External engine probe state ────────────────────────────────────────
 const probe = ref(null);
@@ -144,6 +146,10 @@ function removeUrlOverride(key) {
   }
 }
 
+const probeModelOptions = computed(() =>
+  probeModels.value.map((m) => ({ label: m, value: m }))
+);
+
 // ─── Core settings load + save ──────────────────────────────────────────
 async function refresh() {
   settings.value = await api.request("/v1/settings");
@@ -177,225 +183,327 @@ onMounted(refresh);
 
 <template>
   <div v-if="settings">
-    <!-- ─── Connection — UI-side endpoint + auth (moved here from the colophon footer) ─── -->
-    <section class="block stack">
-      <h3>Connection</h3>
-      <p class="endnote">Where this UI sends API requests. Persists in localStorage; not part of server settings.</p>
-      <div class="grid">
-        <label>
-          <span>Server URL</span>
-          <input v-model="api.serverUrl" spellcheck="false" @blur="reload" />
-        </label>
-        <label>
-          <span>Bearer token (optional)</span>
-          <input v-model="api.token" type="password" placeholder="optional" />
-        </label>
-      </div>
-      <div class="row">
-        <button @click="reload">Reload from server</button>
-        <span class="endnote">Re-fetches health + engines + voices against the new URL.</span>
-      </div>
-    </section>
 
-    <!-- ─── Server (saved on the server itself; restart-sensitive) ─── -->
-    <section class="block">
-      <h3>Server</h3>
-      <div class="grid">
-        <label><span>Host (restart required)</span><input v-model="settings.server.host" /></label>
-        <label><span>Port (restart required)</span><input type="number" v-model.number="settings.server.port" /></label>
-        <label class="check"><input type="checkbox" v-model="settings.server.docs_enabled" /><span>Docs enabled (Swagger + Redoc)</span></label>
+    <!-- ─── Connection ─── -->
+    <div class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header">
+          <h3 class="jv-card__title">Connection</h3>
+        </div>
+        <p class="jv-muted" style="font-size: 12px; margin-bottom: 14px;">Where this UI sends API requests. Persists in localStorage; not part of server settings.</p>
+        <div class="settings-grid">
+          <JvField label="Server URL" layout="block">
+            <JvInput v-model="api.serverUrl" :spellcheck="false" @blur="reload" />
+          </JvField>
+          <JvField label="Bearer token (optional)" layout="block">
+            <JvInput v-model="api.token" type="password" placeholder="optional" />
+          </JvField>
+        </div>
+        <div class="jv-row" style="margin-top: 14px;">
+          <JvButton variant="secondary" @click="reload">Reload from server</JvButton>
+          <span class="jv-muted" style="font-size: 12px;">Re-fetches health + engines + voices against the new URL.</span>
+        </div>
       </div>
-    </section>
+    </div>
+
+    <!-- ─── Server ─── -->
+    <div class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header">
+          <h3 class="jv-card__title">Server</h3>
+        </div>
+        <div class="settings-grid">
+          <JvField label="Host (restart required)" layout="block">
+            <JvInput v-model="settings.server.host" />
+          </JvField>
+          <JvField label="Port (restart required)" layout="block">
+            <JvInput v-model.number="settings.server.port" type="number" />
+          </JvField>
+        </div>
+        <div style="margin-top: 14px;">
+          <JvCheckbox v-model="settings.server.docs_enabled" label="Docs enabled (Swagger + Redoc)" />
+        </div>
+      </div>
+    </div>
 
     <!-- ─── Cache ─── -->
-    <section class="block">
-      <h3>Cache</h3>
-      <div class="grid">
-        <label><span>Max memory entries</span><input type="number" v-model.number="settings.cache.max_memory_entries" /></label>
-        <label><span>Max disk bytes per scope</span><input type="number" v-model.number="settings.cache.max_disk_bytes_per_scope" /></label>
-        <label class="check"><input type="checkbox" v-model="settings.cache.enabled" /><span>Cache enabled</span></label>
+    <div class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header">
+          <h3 class="jv-card__title">Cache</h3>
+        </div>
+        <div class="settings-grid">
+          <JvField label="Max memory entries" layout="block">
+            <JvInput v-model.number="settings.cache.max_memory_entries" type="number" />
+          </JvField>
+          <JvField label="Max disk bytes per scope" layout="block">
+            <JvInput v-model.number="settings.cache.max_disk_bytes_per_scope" type="number" />
+          </JvField>
+        </div>
+        <div style="margin-top: 14px;">
+          <JvCheckbox v-model="settings.cache.enabled" label="Cache enabled" />
+        </div>
       </div>
-    </section>
+    </div>
 
     <!-- ─── Limits ─── -->
-    <section class="block">
-      <h3>Limits</h3>
-      <div class="grid">
-        <label><span>Text max chars</span><input type="number" v-model.number="settings.limits.text_max_chars" /></label>
-        <label><span>Chapter max lines</span><input type="number" v-model.number="settings.limits.chapter_max_lines" /></label>
-        <label><span>Reference clip max bytes</span><input type="number" v-model.number="settings.limits.reference_clip_max_bytes" /></label>
-        <label><span>Request body max bytes</span><input type="number" v-model.number="settings.limits.request_body_max_bytes" /></label>
+    <div class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header">
+          <h3 class="jv-card__title">Limits</h3>
+        </div>
+        <div class="settings-grid">
+          <JvField label="Text max chars" layout="block">
+            <JvInput v-model.number="settings.limits.text_max_chars" type="number" />
+          </JvField>
+          <JvField label="Chapter max lines" layout="block">
+            <JvInput v-model.number="settings.limits.chapter_max_lines" type="number" />
+          </JvField>
+          <JvField label="Reference clip max bytes" layout="block">
+            <JvInput v-model.number="settings.limits.reference_clip_max_bytes" type="number" />
+          </JvField>
+          <JvField label="Request body max bytes" layout="block">
+            <JvInput v-model.number="settings.limits.request_body_max_bytes" type="number" />
+          </JvField>
+        </div>
       </div>
-    </section>
+    </div>
 
     <!-- ─── Local model paths ─── -->
-    <section class="block" v-if="settings.engines">
-      <h3>Local model paths</h3>
-      <label>
-        <span>Kokoro model directory (absolute path)</span>
-        <input v-model="settings.engines.kokoro.model_dir_override" spellcheck="false" placeholder="e.g. C:\Users\you\kokoro-multi-lang-v1_0" />
-      </label>
-      <p class="endnote">Restart required after changing.</p>
-    </section>
+    <div class="jv-section" v-if="settings.engines">
+      <div class="jv-card">
+        <div class="jv-card__header">
+          <h3 class="jv-card__title">Local model paths</h3>
+        </div>
+        <JvField label="Kokoro model directory (absolute path)" layout="block">
+          <JvInput
+            v-model="settings.engines.kokoro.model_dir_override"
+            :spellcheck="false"
+            placeholder="e.g. C:\Users\you\kokoro-multi-lang-v1_0"
+          />
+        </JvField>
+        <p class="jv-muted" style="font-size: 12px; margin-top: 8px;">Restart required after changing.</p>
+      </div>
+    </div>
 
     <!-- ─── Training ─── -->
-    <section class="block" v-if="settings.training">
-      <h3>Training</h3>
-      <div class="grid">
-        <label><span>Max concurrent jobs</span><input type="number" v-model.number="settings.training.max_concurrent_jobs" /></label>
-        <label><span>Max samples per job</span><input type="number" v-model.number="settings.training.max_samples_per_job" /></label>
-        <label><span>Sample loss every (steps)</span><input type="number" v-model.number="settings.training.sample_loss_every" /></label>
-        <label><span>Default voice language (BCP-47)</span><input type="text" v-model="settings.training.default_voice_language" /></label>
-      </div>
-      <label class="check" style="margin-top: 14px;">
-        <input type="checkbox" v-model="settings.training.enabled" />
-        <span>Training enabled (master gate — off makes POST /v1/train return 501)</span>
-      </label>
-
-      <template v-if="settings.training.validation">
-        <h4 class="subsection-heading">Validation thresholds</h4>
-        <div class="grid">
-          <label><span>Min sample duration (s)</span><input type="number" step="0.1" v-model.number="settings.training.validation.min_sample_duration_secs" /></label>
-          <label><span>Max sample duration (s)</span><input type="number" step="0.1" v-model.number="settings.training.validation.max_sample_duration_secs" /></label>
-          <label><span>Min SNR (dB)</span><input type="number" step="0.5" v-model.number="settings.training.validation.min_snr_db" /></label>
-          <label><span>Max silence ratio</span><input type="number" step="0.05" v-model.number="settings.training.validation.max_silence_ratio" /></label>
-          <label><span>Min accepted samples</span><input type="number" v-model.number="settings.training.validation.min_accepted_samples" /></label>
+    <div class="jv-section" v-if="settings.training">
+      <div class="jv-card">
+        <div class="jv-card__header">
+          <h3 class="jv-card__title">Training</h3>
         </div>
-      </template>
-    </section>
+        <div class="settings-grid">
+          <JvField label="Max concurrent jobs" layout="block">
+            <JvInput v-model.number="settings.training.max_concurrent_jobs" type="number" />
+          </JvField>
+          <JvField label="Max samples per job" layout="block">
+            <JvInput v-model.number="settings.training.max_samples_per_job" type="number" />
+          </JvField>
+          <JvField label="Sample loss every (steps)" layout="block">
+            <JvInput v-model.number="settings.training.sample_loss_every" type="number" />
+          </JvField>
+          <JvField label="Default voice language (BCP-47)" layout="block">
+            <JvInput v-model="settings.training.default_voice_language" />
+          </JvField>
+        </div>
+        <div style="margin-top: 14px;">
+          <JvCheckbox
+            v-model="settings.training.enabled"
+            label="Training enabled (master gate — off makes POST /v1/train return 501)"
+          />
+        </div>
+
+        <template v-if="settings.training.validation">
+          <div class="jv-divider"></div>
+          <h4 style="margin-bottom: 12px; color: var(--ink-3); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">Validation thresholds</h4>
+          <div class="settings-grid">
+            <JvField label="Min sample duration (s)" layout="block">
+              <JvInput v-model.number="settings.training.validation.min_sample_duration_secs" type="number" />
+            </JvField>
+            <JvField label="Max sample duration (s)" layout="block">
+              <JvInput v-model.number="settings.training.validation.max_sample_duration_secs" type="number" />
+            </JvField>
+            <JvField label="Min SNR (dB)" layout="block">
+              <JvInput v-model.number="settings.training.validation.min_snr_db" type="number" />
+            </JvField>
+            <JvField label="Max silence ratio" layout="block">
+              <JvInput v-model.number="settings.training.validation.max_silence_ratio" type="number" />
+            </JvField>
+            <JvField label="Min accepted samples" layout="block">
+              <JvInput v-model.number="settings.training.validation.min_accepted_samples" type="number" />
+            </JvField>
+          </div>
+        </template>
+      </div>
+    </div>
 
     <!-- ─── External TTS servers ─── -->
-    <section class="block">
-      <h3>External TTS servers (OpenAI-compatible)</h3>
-      <p class="endnote" style="margin-bottom: 14px;">
-        Register an external server that implements the OpenAI TTS API (<span class="mono">POST /v1/audio/speech</span>) as a JustTTS engine.
-        Compatible with kokoro-fastapi, openai-edge-tts, OpenAI itself, or any custom server.
-      </p>
+    <div class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header">
+          <h3 class="jv-card__title">External TTS servers (OpenAI-compatible)</h3>
+        </div>
+        <p class="jv-muted" style="font-size: 12px; margin-bottom: 16px;">
+          Register an external server that implements the OpenAI TTS API (<code class="jv-mono">POST /v1/audio/speech</code>) as a JustTTS engine.
+          Compatible with kokoro-fastapi, openai-edge-tts, OpenAI itself, or any custom server.
+        </p>
 
-      <table v-if="settings.engines && settings.engines.external && settings.engines.external.length">
-        <thead>
-          <tr>
-            <th>id</th>
-            <th>name</th>
-            <th>base_url</th>
-            <th>model</th>
-            <th>voices</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(ext, idx) in settings.engines.external" :key="ext.id">
-            <td><span class="mono">{{ ext.id }}</span></td>
-            <td><input type="text" v-model="ext.name" /></td>
-            <td><input type="text" v-model="ext.base_url" spellcheck="false" /></td>
-            <td><input type="text" v-model="ext.model" /></td>
-            <td>
-              <input
-                type="text"
-                :value="voicesText(ext)"
-                @change="setVoicesText(ext, $event.target.value)"
-                placeholder="comma-separated" />
-            </td>
-            <td><button class="bare danger" @click="removeExternalEngine(idx)">Remove</button></td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-else class="empty">No external engines configured.</p>
+        <table v-if="settings.engines && settings.engines.external && settings.engines.external.length" class="jv-table" style="margin-bottom: 20px;">
+          <thead>
+            <tr>
+              <th>id</th>
+              <th>name</th>
+              <th>base_url</th>
+              <th>model</th>
+              <th>voices</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(ext, idx) in settings.engines.external" :key="ext.id">
+              <td><code class="jv-mono">{{ ext.id }}</code></td>
+              <td><JvInput v-model="ext.name" /></td>
+              <td><JvInput v-model="ext.base_url" :spellcheck="false" /></td>
+              <td><JvInput v-model="ext.model" /></td>
+              <td>
+                <JvInput
+                  :modelValue="voicesText(ext)"
+                  @update:modelValue="setVoicesText(ext, $event)"
+                  placeholder="comma-separated"
+                />
+              </td>
+              <td class="jv-table__actions">
+                <JvButton variant="danger-outline" size="sm" @click="removeExternalEngine(idx)">Remove</JvButton>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p v-else class="jv-muted" style="font-style: italic; margin-bottom: 16px;">No external engines configured.</p>
 
-      <h4 class="subsection-heading">Add a server</h4>
-      <div class="grid">
-        <label style="grid-column: 1 / -1;"><span>Base URL</span><input type="text" v-model="newExternal.base_url" placeholder="http://127.0.0.1:8880" spellcheck="false" /></label>
-        <label style="grid-column: 1 / -1;"><span>API key (optional — required for OpenAI itself)</span><input type="password" v-model="newExternal.api_key" placeholder="leave blank for self-hosted servers" /></label>
-      </div>
-      <div class="row" style="margin-top: 12px; align-items: center; gap: 12px;">
-        <button class="secondary" @click="testExternalConnection" :disabled="probeBusy || !newExternal.base_url">
-          {{ probeBusy ? "Probing…" : "Test connection" }}
-        </button>
-        <span class="endnote">Pings the server and lists its models + voices.</span>
-      </div>
+        <div class="jv-divider"></div>
+        <h4 style="margin-bottom: 14px; color: var(--ink-3); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">Add a server</h4>
 
-      <div v-if="probe" class="probe-result" :class="probe.reachable ? 'probe-ok' : 'probe-fail'" style="margin-top: 12px;">
-        <strong>{{ probe.reachable ? "Reachable" : "Unreachable" }}</strong>
-        <template v-if="probe.server_hint && probe.server_hint !== 'unknown'"> · <span class="mono">{{ probe.server_hint }}</span></template>
-        <span v-if="probeModels.length"> · {{ probeModels.length }} model{{ probeModels.length !== 1 ? "s" : "" }}</span>
-        <span v-if="probeVoices.length"> · {{ probeVoices.length }} voice{{ probeVoices.length !== 1 ? "s" : "" }}</span>
-        <span v-if="probe.error" style="color: var(--danger, #b00020);"> · {{ probe.error }}</span>
-      </div>
+        <div class="settings-grid" style="margin-bottom: 14px;">
+          <div style="grid-column: 1 / -1;">
+            <JvField label="Base URL" layout="block">
+              <JvInput v-model="newExternal.base_url" placeholder="http://127.0.0.1:8880" :spellcheck="false" />
+            </JvField>
+          </div>
+          <div style="grid-column: 1 / -1;">
+            <JvField label="API key (optional — required for OpenAI itself)" layout="block">
+              <JvInput v-model="newExternal.api_key" type="password" placeholder="leave blank for self-hosted servers" />
+            </JvField>
+          </div>
+        </div>
 
-      <div class="grid" style="margin-top: 12px;">
-        <label><span>id (e.g. <span class="mono">external-kokoro</span>)</span><input type="text" v-model="newExternal.id" placeholder="external-kokoro-local" spellcheck="false" /></label>
-        <label><span>Name</span><input type="text" v-model="newExternal.name" placeholder="Local Kokoro FastAPI" /></label>
-        <label>
-          <span>Model</span>
-          <select v-if="probeModels.length" v-model="newExternal.model">
-            <option v-for="m in probeModels" :key="m" :value="m">{{ m }}</option>
-          </select>
-          <input v-else type="text" v-model="newExternal.model" placeholder="kokoro" />
-        </label>
-        <label style="grid-column: 1 / -1;">
-          <span>Voices (comma-separated)</span>
-          <input type="text" v-model="newExternal.voicesText" placeholder="af_heart, af_bella, am_michael" spellcheck="false" />
-          <p v-if="probeVoices.length" class="endnote" style="margin-top: 4px;">
-            Discovered: <span class="mono">{{ probeVoices.join(", ") }}</span>
-          </p>
-        </label>
-      </div>
-      <div style="margin-top: 12px;">
-        <button class="primary" @click="addExternalEngine" :disabled="addBusy || !newExternal.id || !newExternal.base_url">
+        <div class="jv-row" style="margin-bottom: 14px;">
+          <JvButton variant="secondary" :loading="probeBusy" :disabled="probeBusy || !newExternal.base_url" @click="testExternalConnection">
+            {{ probeBusy ? "Probing…" : "Test connection" }}
+          </JvButton>
+          <span class="jv-muted" style="font-size: 12px;">Pings the server and lists its models + voices.</span>
+        </div>
+
+        <div
+          v-if="probe"
+          class="jv-banner"
+          :class="probe.reachable ? '' : 'jv-banner--danger'"
+          style="margin-bottom: 14px;"
+        >
+          <strong>{{ probe.reachable ? "Reachable" : "Unreachable" }}</strong>
+          <template v-if="probe.server_hint && probe.server_hint !== 'unknown'"> · <code class="jv-mono">{{ probe.server_hint }}</code></template>
+          <span v-if="probeModels.length"> · {{ probeModels.length }} model{{ probeModels.length !== 1 ? "s" : "" }}</span>
+          <span v-if="probeVoices.length"> · {{ probeVoices.length }} voice{{ probeVoices.length !== 1 ? "s" : "" }}</span>
+          <span v-if="probe.error"> · {{ probe.error }}</span>
+        </div>
+
+        <div class="settings-grid" style="margin-bottom: 14px;">
+          <JvField label="id (e.g. external-kokoro)" layout="block">
+            <JvInput v-model="newExternal.id" placeholder="external-kokoro-local" :spellcheck="false" />
+          </JvField>
+          <JvField label="Name" layout="block">
+            <JvInput v-model="newExternal.name" placeholder="Local Kokoro FastAPI" />
+          </JvField>
+          <JvField label="Model" layout="block">
+            <JvSelect
+              v-if="probeModels.length"
+              v-model="newExternal.model"
+              :options="probeModelOptions"
+            />
+            <JvInput v-else v-model="newExternal.model" placeholder="kokoro" />
+          </JvField>
+          <div style="grid-column: 1 / -1;">
+            <JvField label="Voices (comma-separated)" layout="block">
+              <JvInput v-model="newExternal.voicesText" placeholder="af_heart, af_bella, am_michael" :spellcheck="false" />
+              <p v-if="probeVoices.length" class="jv-muted" style="font-size: 11px; margin-top: 4px;">
+                Discovered: <code class="jv-mono">{{ probeVoices.join(", ") }}</code>
+              </p>
+            </JvField>
+          </div>
+        </div>
+
+        <JvButton
+          variant="primary"
+          :loading="addBusy"
+          :disabled="addBusy || !newExternal.id || !newExternal.base_url"
+          @click="addExternalEngine"
+        >
           {{ addBusy ? "Adding…" : "Add external server" }}
-        </button>
+        </JvButton>
       </div>
-    </section>
+    </div>
 
     <!-- ─── Model URL overrides ─── -->
-    <section class="block" v-if="settings.models">
-      <h3>Model URL overrides</h3>
-      <p class="endnote" style="margin-bottom: 14px;">
-        Override download URLs per variant. Useful when upstream artifacts move or when mirroring to an internal CDN.
-        Keyed by variant id (e.g. <span class="mono">kokoro-multi-lang-v1_0</span>).
-      </p>
+    <div class="jv-section" v-if="settings.models">
+      <div class="jv-card">
+        <div class="jv-card__header">
+          <h3 class="jv-card__title">Model URL overrides</h3>
+        </div>
+        <p class="jv-muted" style="font-size: 12px; margin-bottom: 16px;">
+          Override download URLs per variant. Useful when upstream artifacts move or when mirroring to an internal CDN.
+          Keyed by variant id (e.g. <code class="jv-mono">kokoro-multi-lang-v1_0</code>).
+        </p>
 
-      <table v-if="urlOverrideKeys.length">
-        <thead>
-          <tr>
-            <th>Variant id</th>
-            <th>Override URL</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="key in urlOverrideKeys" :key="key">
-            <td><span class="mono">{{ key }}</span></td>
-            <td><input type="text" v-model="settings.models.url_overrides[key]" spellcheck="false" /></td>
-            <td><button class="bare danger" @click="removeUrlOverride(key)">Remove</button></td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-else class="endnote">No URL overrides set.</p>
+        <table v-if="urlOverrideKeys.length" class="jv-table" style="margin-bottom: 16px;">
+          <thead>
+            <tr>
+              <th>Variant id</th>
+              <th>Override URL</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="key in urlOverrideKeys" :key="key">
+              <td><code class="jv-mono">{{ key }}</code></td>
+              <td><JvInput v-model="settings.models.url_overrides[key]" :spellcheck="false" /></td>
+              <td class="jv-table__actions">
+                <JvButton variant="danger-outline" size="sm" @click="removeUrlOverride(key)">Remove</JvButton>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p v-else class="jv-muted" style="font-style: italic; margin-bottom: 14px;">No URL overrides set.</p>
 
-      <div class="row" style="margin-top: 12px; gap: 8px;">
-        <input type="text" v-model="newOverrideVariantId" placeholder="variant id (e.g. kokoro-multi-lang-v1_0)" style="flex: 1;" />
-        <input type="text" v-model="newOverrideUrl" placeholder="override URL" style="flex: 2;" />
-        <button class="secondary" @click="addUrlOverride" :disabled="!newOverrideVariantId || !newOverrideUrl">Add override</button>
+        <div class="jv-row" style="margin-bottom: 8px;">
+          <JvInput v-model="newOverrideVariantId" placeholder="variant id (e.g. kokoro-multi-lang-v1_0)" style="flex: 1;" />
+          <JvInput v-model="newOverrideUrl" placeholder="override URL" style="flex: 2;" />
+          <JvButton variant="secondary" :disabled="!newOverrideVariantId || !newOverrideUrl" @click="addUrlOverride">Add override</JvButton>
+        </div>
+        <p class="jv-muted" style="font-size: 12px;">Saved with Settings.</p>
       </div>
-      <p class="endnote">Saved with Settings.</p>
-    </section>
+    </div>
 
     <!-- ─── Save ─── -->
-    <section class="block">
-      <button class="primary" @click="save">Save settings</button>
-    </section>
+    <div class="jv-section">
+      <JvButton variant="primary" size="lg" @click="save">Save settings</JvButton>
+    </div>
+
   </div>
 </template>
 
 <style scoped>
-.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-label { display: block; }
-label.check { display: flex; align-items: center; gap: 8px; }
-label > span { display: block; font-size: 11px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
-.subsection-heading { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin-top: 20px; margin-bottom: 12px; }
-.row { display: flex; flex-wrap: wrap; }
-.probe-result { font-size: 13px; padding: 8px 12px; border-radius: 6px; }
-.probe-ok { background: color-mix(in srgb, var(--accent, #1a6b3c) 10%, transparent); border: 1px solid color-mix(in srgb, var(--accent, #1a6b3c) 30%, transparent); }
-.probe-fail { background: color-mix(in srgb, var(--danger, #b00020) 10%, transparent); border: 1px solid color-mix(in srgb, var(--danger, #b00020) 30%, transparent); }
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
 </style>

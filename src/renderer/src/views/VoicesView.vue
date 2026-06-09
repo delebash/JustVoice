@@ -1,8 +1,15 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
+import JvButton from "../components/jv/JvButton.vue";
+import JvInput from "../components/jv/JvInput.vue";
+import JvTextarea from "../components/jv/JvTextarea.vue";
+import JvSelect from "../components/jv/JvSelect.vue";
+import JvTag from "../components/jv/JvTag.vue";
+import JvField from "../components/jv/JvField.vue";
 
 const api = useApi();
 const voices = ref([]);
@@ -67,9 +74,9 @@ const blendSources = ref([
 ]);
 
 const BLEND_STRATEGIES = [
-  { id: "slerp", label: "Spherical linear interpolation (slerp)" },
-  { id: "lerp", label: "Linear interpolation (lerp)" },
-  { id: "weighted_sum", label: "Weighted sum" },
+  { label: "Spherical linear interpolation (slerp)", value: "slerp" },
+  { label: "Linear interpolation (lerp)", value: "lerp" },
+  { label: "Weighted sum", value: "weighted_sum" },
 ];
 
 const defaultEngine = computed(() => {
@@ -77,8 +84,17 @@ const defaultEngine = computed(() => {
   return loaded ? loaded.id : engines.value[0]?.id ?? "";
 });
 
-const engineVoices = computed(() =>
-  voices.value.filter((v) => v.engine === selectedEngine.value)
+const engineVoiceOptions = computed(() =>
+  voices.value
+    .filter((v) => v.engine === selectedEngine.value)
+    .map((v) => ({ label: `${v.name} (${v.id})`, value: v.id }))
+);
+
+const engineOptions = computed(() =>
+  engines.value.map((e) => ({
+    label: `${e.name ?? e.id}${e.status === "loaded" ? "" : " (not loaded)"}`,
+    value: e.id,
+  }))
 );
 
 const valid = computed(() => {
@@ -92,22 +108,12 @@ const valid = computed(() => {
 });
 
 const busyLabel = computed(() => {
-  const map = {
-    clone: "Cloning…",
-    design: "Designing…",
-    import: "Importing…",
-    blend: "Blending…",
-  };
+  const map = { clone: "Cloning…", design: "Designing…", import: "Importing…", blend: "Blending…" };
   return map[modal.value] ?? "Working…";
 });
 
 const submitLabel = computed(() => {
-  const map = {
-    clone: "Clone voice",
-    design: "Design voice",
-    import: "Import clip",
-    blend: "Blend voices",
-  };
+  const map = { clone: "Clone voice", design: "Design voice", import: "Import clip", blend: "Blend voices" };
   return map[modal.value] ?? "Submit";
 });
 
@@ -122,7 +128,6 @@ const modalTitle = computed(() => {
 });
 
 function openModal(kind) {
-  // reset all fields
   voiceName.value = "";
   selectedEngine.value = defaultEngine.value;
   cloneFile.value = null;
@@ -166,55 +171,32 @@ async function submit() {
     if (modal.value === "clone") {
       const ref_wav_b64 = await fileToB64(cloneFile.value);
       body = {
-        engine,
-        name,
-        ref_wav_b64,
-        language: "en-US",
+        engine, name, ref_wav_b64, language: "en-US",
         ...(cloneTranscript.value.trim() ? { transcript: cloneTranscript.value.trim() } : {}),
       };
-      await api.request("/v1/voices/clone", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      await api.request("/v1/voices/clone", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       pushToast({ message: `Voice "${name}" cloned.` });
     } else if (modal.value === "design") {
       body = { engine, name, prompt: designPrompt.value.trim(), language: "en-US" };
-      await api.request("/v1/voices/design", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      await api.request("/v1/voices/design", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       pushToast({ message: `Voice "${name}" designed.` });
     } else if (modal.value === "import") {
       const wav_b64 = await fileToB64(importFile.value);
       body = {
-        engine,
-        name,
-        wav_b64,
-        language: "en-US",
+        engine, name, wav_b64, language: "en-US",
         ...(importTranscript.value.trim() ? { transcript: importTranscript.value.trim() } : {}),
       };
-      await api.request("/v1/voices/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      await api.request("/v1/voices/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       pushToast({ message: `Voice "${name}" imported.` });
     } else if (modal.value === "blend") {
       const validSources = blendSources.value.filter((s) => s.voice_id);
       body = {
-        engine,
-        name,
+        engine, name,
         source_voice_ids: validSources.map((s) => s.voice_id),
         weights: validSources.map((s) => Number(s.weight) || 1.0),
         strategy: blendStrategy.value,
       };
-      await api.request("/v1/voices/blend", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      await api.request("/v1/voices/blend", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       pushToast({ message: `Voice "${name}" blended.` });
     }
 
@@ -226,58 +208,80 @@ async function submit() {
     busy.value = false;
   }
 }
+
+// Voice type → JvTag variant mapping
+function voiceTypeVariant(source) {
+  if (source === "preset") return "default";
+  if (source === "clone") return "accent";
+  if (source === "design") return "success";
+  if (source === "blend") return "warn";
+  return "default";
+}
 </script>
 
 <template>
   <!-- ── Add a voice ──────────────────────────────────────────────────── -->
-  <section class="block">
-    <h3>Add a voice</h3>
-    <div class="row">
-      <button @click="openModal('clone')">Clone from reference</button>
-      <button @click="openModal('design')">Design from prose</button>
-      <button @click="openModal('import')">Import existing clip</button>
-      <button @click="openModal('blend')">Blend voices</button>
+  <div class="jv-section">
+    <div class="jv-card">
+      <div class="jv-card__header">
+        <h3 class="jv-card__title">Add a voice</h3>
+      </div>
+      <div class="jv-btn-group" style="margin-bottom: 14px;">
+        <JvButton variant="secondary" @click="openModal('clone')">Clone from reference</JvButton>
+        <JvButton variant="secondary" @click="openModal('design')">Design from prose</JvButton>
+        <JvButton variant="secondary" @click="openModal('import')">Import existing clip</JvButton>
+        <JvButton variant="secondary" @click="openModal('blend')">Blend voices</JvButton>
+      </div>
+      <p class="jv-muted" style="font-size: 12px; line-height: 1.6;">
+        <strong style="color: var(--ink);">Clone</strong>: 3–30 second reference WAV → cloned voice (Qwen3, Chatterbox).
+        <strong style="color: var(--ink);">Design</strong>: prose description → voice (Qwen3 native).
+        <strong style="color: var(--ink);">Import</strong>: bring your own clip as-is, no synthesis training.
+        <strong style="color: var(--ink);">Blend</strong>: interpolate between two or more voices in embedding space (engines with <code class="jv-mono">supports_embedding_blending</code>).
+      </p>
     </div>
-    <p class="endnote" style="margin-top: 14px;">
-      <strong style="font-style: normal; color: var(--ink); font-weight: 600;">Clone</strong>: 3–30 second reference WAV → cloned voice (Qwen3, Chatterbox).
-      <strong style="font-style: normal; color: var(--ink); font-weight: 600;">Design</strong>: prose description → voice (Qwen3 native).
-      <strong style="font-style: normal; color: var(--ink); font-weight: 600;">Import</strong>: bring your own clip as-is, no synthesis training.
-      <strong style="font-style: normal; color: var(--ink); font-weight: 600;">Blend</strong>: interpolate between two or more voices in embedding space (engines with <span class="mono">supports_embedding_blending</span>).
-    </p>
-  </section>
+  </div>
 
   <!-- ── Voice table ──────────────────────────────────────────────────── -->
-  <section class="block">
-    <h3>{{ voices.length }} voices registered</h3>
-    <table v-if="voices.length">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Engine</th>
-          <th>Source</th>
-          <th>Lang</th>
-          <th>Identifier</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="v in voices" :key="v.id" :class="{ orphan: orphanIds.includes(v.id) }">
-          <td>
-            <span class="em">{{ v.name }}</span>
-            <span v-if="orphanIds.includes(v.id)" class="tag danger" style="margin-left: 8px;">orphan</span>
-          </td>
-          <td><span class="tag">{{ v.engine }}</span></td>
-          <td>{{ v.source }}</td>
-          <td>{{ v.language }}</td>
-          <td><span class="mono">{{ v.id }}</span></td>
-          <td>
-            <button v-if="v.source !== 'preset'" class="bare danger" @click="deleteVoice(v.id)">Delete</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    <p v-else class="endnote">No voices registered. Install + load an engine to see preset voices.</p>
-  </section>
+  <div class="jv-section">
+    <div class="jv-card">
+      <div class="jv-card__header">
+        <h3 class="jv-card__title">{{ voices.length }} voices registered</h3>
+      </div>
+      <table v-if="voices.length" class="jv-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Engine</th>
+            <th>Type</th>
+            <th>Lang</th>
+            <th>Identifier</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="v in voices" :key="v.id" :class="{ 'row-orphan': orphanIds.includes(v.id) }">
+            <td>
+              <strong>{{ v.name }}</strong>
+              <JvTag v-if="orphanIds.includes(v.id)" variant="danger" label="orphan" style="margin-left: 8px;" />
+            </td>
+            <td><span class="jv-mono jv-muted">{{ v.engine }}</span></td>
+            <td><JvTag :variant="voiceTypeVariant(v.source)" :label="v.source" /></td>
+            <td class="jv-muted">{{ v.language }}</td>
+            <td><code class="jv-mono">{{ v.id }}</code></td>
+            <td class="jv-table__actions">
+              <JvButton
+                v-if="v.source !== 'preset'"
+                variant="danger-outline"
+                size="sm"
+                @click="deleteVoice(v.id)"
+              >Delete</JvButton>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else class="jv-muted" style="padding: 16px 0; font-style: italic;">No voices registered. Install + load an engine to see preset voices.</p>
+    </div>
+  </div>
 
   <!-- ── Modal ───────────────────────────────────────────────────────── -->
   <div class="modal-overlay" v-if="modal" @click.self="modal = null">
@@ -285,73 +289,63 @@ async function submit() {
 
       <div class="modal-head">
         <span class="modal-title">{{ modalTitle }}</span>
-        <button class="bare" @click="modal = null">Close</button>
+        <JvButton variant="ghost" size="sm" @click="modal = null">Close</JvButton>
       </div>
 
       <div class="modal-body">
 
         <!-- Engine + Name (all modes) -->
-        <div class="row">
-          <label class="grow">
-            <span>Engine</span>
-            <select v-model="selectedEngine">
-              <option v-for="e in engines" :key="e.id" :value="e.id">
-                {{ e.name ?? e.id }}{{ e.status === 'loaded' ? '' : ' (not loaded)' }}
-              </option>
-            </select>
-          </label>
-          <label class="grow">
-            <span>Voice name</span>
-            <input v-model="voiceName" placeholder="e.g. Sarah" />
-          </label>
+        <div class="jv-row" style="align-items: flex-end;">
+          <div style="flex: 1;">
+            <JvField label="Engine" layout="block">
+              <JvSelect v-model="selectedEngine" :options="engineOptions" />
+            </JvField>
+          </div>
+          <div style="flex: 1;">
+            <JvField label="Voice name" layout="block">
+              <JvInput v-model="voiceName" placeholder="e.g. Sarah" />
+            </JvField>
+          </div>
         </div>
 
         <!-- Clone fields -->
         <template v-if="modal === 'clone'">
-          <label style="margin-top: 14px; display: block;">
-            <span>Reference audio (3–30 s WAV / MP3 / M4A / FLAC)</span>
-            <input type="file" accept="audio/*" @change="cloneFile = $event.target.files[0]" />
-          </label>
-          <label style="margin-top: 14px; display: block;">
-            <span>Transcript of clip <em style="font-weight:400;">(optional — improves cloning fidelity)</em></span>
-            <textarea v-model="cloneTranscript" placeholder="What's actually said in the reference clip — engines that support text-conditioned cloning use this." style="min-height: 72px;"></textarea>
-          </label>
+          <JvField label="Reference audio (3–30 s WAV / MP3 / M4A / FLAC)" layout="block" style="margin-top: 14px;">
+            <input type="file" accept="audio/*" class="jv-file-input" @change="cloneFile = $event.target.files[0]" />
+          </JvField>
+          <JvField label="Transcript of clip (optional — improves cloning fidelity)" layout="block" style="margin-top: 14px;">
+            <JvTextarea v-model="cloneTranscript" placeholder="What's actually said in the reference clip — engines that support text-conditioned cloning use this." :rows="3" />
+          </JvField>
         </template>
 
         <!-- Design fields -->
         <template v-else-if="modal === 'design'">
-          <label style="margin-top: 14px; display: block;">
-            <span>Prose description</span>
-            <textarea v-model="designPrompt" placeholder="a calm middle-aged British man, warm and unhurried" style="min-height: 90px;"></textarea>
-          </label>
-          <p class="endnote" style="margin-top: 6px;">Qwen3-native via the CustomVoice design path. Other engines may approximate from the prompt as a fallback.</p>
+          <JvField label="Prose description" layout="block" style="margin-top: 14px;">
+            <JvTextarea v-model="designPrompt" placeholder="a calm middle-aged British man, warm and unhurried" :rows="4" />
+          </JvField>
+          <p class="jv-muted" style="font-size: 12px; margin-top: 6px;">Qwen3-native via the CustomVoice design path. Other engines may approximate from the prompt as a fallback.</p>
         </template>
 
         <!-- Import fields -->
         <template v-else-if="modal === 'import'">
-          <label style="margin-top: 14px; display: block;">
-            <span>Audio clip (WAV preferred)</span>
-            <input type="file" accept="audio/*" @change="importFile = $event.target.files[0]" />
-          </label>
-          <label style="margin-top: 14px; display: block;">
-            <span>Transcript <em style="font-weight:400;">(optional)</em></span>
-            <textarea v-model="importTranscript" placeholder="What's said in the clip." style="min-height: 72px;"></textarea>
-          </label>
-          <p class="endnote" style="margin-top: 6px;">Imported clips are stored as-is. For voice cloning use the Clone flow.</p>
+          <JvField label="Audio clip (WAV preferred)" layout="block" style="margin-top: 14px;">
+            <input type="file" accept="audio/*" class="jv-file-input" @change="importFile = $event.target.files[0]" />
+          </JvField>
+          <JvField label="Transcript (optional)" layout="block" style="margin-top: 14px;">
+            <JvTextarea v-model="importTranscript" placeholder="What's said in the clip." :rows="3" />
+          </JvField>
+          <p class="jv-muted" style="font-size: 12px; margin-top: 6px;">Imported clips are stored as-is. For voice cloning use the Clone flow.</p>
         </template>
 
         <!-- Blend fields -->
         <template v-else-if="modal === 'blend'">
-          <label style="margin-top: 14px; display: block;">
-            <span>Interpolation strategy</span>
-            <select v-model="blendStrategy">
-              <option v-for="s in BLEND_STRATEGIES" :key="s.id" :value="s.id">{{ s.label }}</option>
-            </select>
-          </label>
+          <JvField label="Interpolation strategy" layout="block" style="margin-top: 14px;">
+            <JvSelect v-model="blendStrategy" :options="BLEND_STRATEGIES" />
+          </JvField>
 
           <div style="margin-top: 14px;">
-            <span style="font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 600; letter-spacing: .04em; display: block; margin-bottom: 8px;">Source voices + weights</span>
-            <table>
+            <p class="jv-muted" style="font-size: 11px; text-transform: uppercase; font-weight: 600; letter-spacing: .04em; margin-bottom: 8px;">Source voices + weights</p>
+            <table class="jv-table">
               <thead>
                 <tr>
                   <th>Voice</th>
@@ -362,34 +356,32 @@ async function submit() {
               <tbody>
                 <tr v-for="(s, idx) in blendSources" :key="idx">
                   <td>
-                    <select v-model="s.voice_id">
-                      <option value="">— pick a voice —</option>
-                      <option v-for="v in engineVoices" :key="v.id" :value="v.id">
-                        {{ v.name }} ({{ v.id }})
-                      </option>
-                    </select>
+                    <JvSelect
+                      v-model="s.voice_id"
+                      :options="[{ label: '— pick a voice —', value: '' }, ...engineVoiceOptions]"
+                    />
                   </td>
                   <td>
-                    <input type="number" step="0.1" min="0" v-model="s.weight" style="width: 90px;" />
+                    <JvInput type="number" :modelValue="String(s.weight)" @update:modelValue="s.weight = $event" style="width: 90px;" />
                   </td>
                   <td>
-                    <button class="bare" v-if="blendSources.length > 2" @click="removeBlendSource(idx)">Remove</button>
+                    <JvButton variant="ghost" size="sm" v-if="blendSources.length > 2" @click="removeBlendSource(idx)">Remove</JvButton>
                   </td>
                 </tr>
               </tbody>
             </table>
-            <button class="bare" style="margin-top: 8px;" @click="addBlendSource">+ Add source</button>
-            <p class="endnote" style="margin-top: 6px;">Weights normalize automatically. All source voices must belong to the selected engine.</p>
+            <JvButton variant="ghost" size="sm" style="margin-top: 8px;" @click="addBlendSource">+ Add source</JvButton>
+            <p class="jv-muted" style="font-size: 12px; margin-top: 6px;">Weights normalize automatically. All source voices must belong to the selected engine.</p>
           </div>
         </template>
 
       </div><!-- /.modal-body -->
 
-      <div style="padding: 14px 22px; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--border);">
-        <button class="bare" @click="modal = null">Cancel</button>
-        <button class="primary" :disabled="busy || !valid" @click="submit">
+      <div class="modal-footer">
+        <JvButton variant="ghost" @click="modal = null">Cancel</JvButton>
+        <JvButton variant="primary" :disabled="busy || !valid" :loading="busy" @click="submit">
           {{ busy ? busyLabel : submitLabel }}
-        </button>
+        </JvButton>
       </div>
 
     </div>
@@ -397,5 +389,51 @@ async function submit() {
 </template>
 
 <style scoped>
-.orphan { opacity: 0.7; }
+.row-orphan { opacity: 0.7; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  width: min(620px, 92vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-3);
+  overflow: hidden;
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--line);
+}
+.modal-title { font-size: 14px; font-weight: 600; color: var(--ink); }
+.modal-body { padding: 20px 22px; overflow-y: auto; flex: 1; }
+.modal-footer {
+  padding: 14px 22px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+}
+
+/* File input inherits basic styling */
+.jv-file-input {
+  display: block;
+  font-size: 13px;
+  color: var(--ink-2);
+  margin-top: 4px;
+}
 </style>

@@ -1,7 +1,12 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup>
 import { ref, computed, onBeforeUnmount } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
+import JvButton from "../components/jv/JvButton.vue";
+import JvInput from "../components/jv/JvInput.vue";
+import JvSelect from "../components/jv/JvSelect.vue";
+import JvField from "../components/jv/JvField.vue";
 
 const api = useApi();
 
@@ -26,6 +31,8 @@ const PRESETS = [
   { id: "podcast", label: "Podcast (MP3)" },
   { id: "youtube", label: "YouTube (AAC/M4A)" },
 ];
+
+const PRESET_OPTIONS = PRESETS.map((p) => ({ label: p.label, value: p.id }));
 
 const masterExt = computed(() => (masterPreset.value === "youtube" ? "m4a" : "mp3"));
 
@@ -123,120 +130,132 @@ onBeforeUnmount(revokeMastered);
 </script>
 
 <template>
-  <section class="block">
-    <h3>Analyze a WAV</h3>
-    <p class="endnote">
-      Drop a 16-bit PCM WAV. Reports format, duration, loudness (peak/RMS/crest), silence ratio,
-      clipping ratio, and a SHA-256 fingerprint.
-    </p>
-    <div class="row" style="align-items: flex-end">
-      <label style="flex: 1">
-        <span>WAV file</span>
+  <div class="audio-tools-view">
+    <!-- ── Analyze ── -->
+    <section class="jv-card jv-section">
+      <h3 class="jv-section__title">Analyze a WAV</h3>
+      <p class="jv-muted" style="margin-bottom: 16px;">
+        Drop a 16-bit PCM WAV. Reports format, duration, loudness (peak/RMS/crest), silence ratio,
+        clipping ratio, and a SHA-256 fingerprint.
+      </p>
+
+      <JvField label="WAV file" layout="block">
         <input
           type="file"
           accept="audio/wav,.wav"
-          @change="analyzeFile = $event.target.files[0]" />
-      </label>
-      <button class="primary" :disabled="analyzeBusy || !analyzeFile" @click="runAnalyze">
-        {{ analyzeBusy ? "Analyzing…" : "Analyze" }}
-      </button>
-    </div>
-    <p class="endnote" style="margin-top: 6px">POST /v1/analyze</p>
+          class="file-input"
+          @change="analyzeFile = $event.target.files[0]"
+        />
+      </JvField>
 
-    <table v-if="analysis" style="margin-top: 12px">
-      <tbody>
-        <tr>
-          <th>SHA-256</th>
-          <td class="mono" colspan="3">{{ analysis.sha256 }}</td>
-        </tr>
-        <tr>
-          <th>File size</th>
-          <td>{{ fmtKB(analysis.file_size_bytes) }}</td>
-          <th>Duration</th>
-          <td>{{ analysis.format.duration_sec.toFixed(3) }} s</td>
-        </tr>
-        <tr>
-          <th>Sample rate</th>
-          <td>{{ analysis.format.sample_rate }} Hz</td>
-          <th>Channels</th>
-          <td>{{ analysis.format.channels }}</td>
-        </tr>
-        <tr>
-          <th>Bit depth</th>
-          <td>{{ analysis.format.bits_per_sample }}-bit</td>
-          <th>Samples</th>
-          <td>{{ analysis.format.sample_count.toLocaleString() }}</td>
-        </tr>
-        <tr>
-          <th>Peak</th>
-          <td>{{ fmtDb(analysis.loudness.peak_dbfs) }}</td>
-          <th>RMS</th>
-          <td>{{ fmtDb(analysis.loudness.rms_dbfs) }}</td>
-        </tr>
-        <tr>
-          <th>Crest factor</th>
-          <td>{{ fmtDb(analysis.loudness.crest_factor_db) }}</td>
-          <th>Silence ratio</th>
-          <td>{{ fmtPct(analysis.loudness.silence_ratio) }}</td>
-        </tr>
-        <tr>
-          <th>Clipping ratio</th>
-          <td colspan="3">{{ fmtPct(analysis.loudness.clipping_ratio) }}</td>
-        </tr>
-      </tbody>
-    </table>
-  </section>
-
-  <section class="block">
-    <h3>Apply a mastering preset</h3>
-    <p class="endnote">
-      Upload a WAV, pick a preset, get a mastered MP3/M4A back. Requires ffmpeg on the server. ACX
-      targets audiobook spec (−23 LUFS, −3 dBTP, head/tail silence). YouTube outputs AAC.
-    </p>
-    <div class="grid">
-      <label>
-        <span>WAV file</span>
-        <input
-          type="file"
-          accept="audio/wav,.wav"
-          @change="masterFile = $event.target.files[0]" />
-      </label>
-      <label>
-        <span>Preset</span>
-        <select v-model="masterPreset">
-          <option v-for="p in PRESETS" :key="p.id" :value="p.id">{{ p.label }}</option>
-        </select>
-      </label>
-      <label>
-        <span>Title (optional)</span>
-        <input type="text" v-model="masterTitle" placeholder="Chapter 1" />
-      </label>
-      <label>
-        <span>Author (optional)</span>
-        <input type="text" v-model="masterAuthor" placeholder="Author name" />
-      </label>
-      <label style="grid-column: 1 / -1">
-        <span>Book / album (optional)</span>
-        <input type="text" v-model="masterBook" placeholder="Book title" />
-      </label>
-    </div>
-    <div class="row" style="margin-top: 12px">
-      <button class="primary" :disabled="masterBusy || !masterFile" @click="runMaster">
-        {{ masterBusy ? "Mastering…" : "Master" }}
-      </button>
-      <span class="endnote">POST /v1/master</span>
-    </div>
-
-    <div v-if="masteredUrl" style="margin-top: 14px">
-      <audio :src="masteredUrl" controls preload="metadata" style="width: 100%"></audio>
-      <div class="row" style="margin-top: 8px; align-items: center">
-        <button @click="downloadMastered">Download {{ masteredName }}</button>
-        <span class="endnote">{{ masteredMime }} · {{ fmtKB(masteredBytes) }}</span>
+      <div class="jv-row" style="margin-top: 12px; align-items: center;">
+        <JvButton variant="primary" :disabled="analyzeBusy || !analyzeFile" :loading="analyzeBusy" @click="runAnalyze">
+          {{ analyzeBusy ? "Analyzing…" : "Analyze" }}
+        </JvButton>
+        <span class="jv-mono jv-muted">POST /v1/analyze</span>
       </div>
-    </div>
-  </section>
+
+      <div v-if="analysis" style="margin-top: 16px;">
+        <table class="jv-table">
+          <tbody>
+            <tr>
+              <td><span class="jv-muted">SHA-256</span></td>
+              <td colspan="3" class="jv-mono">{{ analysis.sha256 }}</td>
+            </tr>
+            <tr>
+              <td><span class="jv-muted">File size</span></td>
+              <td>{{ fmtKB(analysis.file_size_bytes) }}</td>
+              <td><span class="jv-muted">Duration</span></td>
+              <td>{{ analysis.format.duration_sec.toFixed(3) }} s</td>
+            </tr>
+            <tr>
+              <td><span class="jv-muted">Sample rate</span></td>
+              <td>{{ analysis.format.sample_rate }} Hz</td>
+              <td><span class="jv-muted">Channels</span></td>
+              <td>{{ analysis.format.channels }}</td>
+            </tr>
+            <tr>
+              <td><span class="jv-muted">Bit depth</span></td>
+              <td>{{ analysis.format.bits_per_sample }}-bit</td>
+              <td><span class="jv-muted">Samples</span></td>
+              <td>{{ analysis.format.sample_count.toLocaleString() }}</td>
+            </tr>
+            <tr>
+              <td><span class="jv-muted">Peak</span></td>
+              <td>{{ fmtDb(analysis.loudness.peak_dbfs) }}</td>
+              <td><span class="jv-muted">RMS</span></td>
+              <td>{{ fmtDb(analysis.loudness.rms_dbfs) }}</td>
+            </tr>
+            <tr>
+              <td><span class="jv-muted">Crest factor</span></td>
+              <td>{{ fmtDb(analysis.loudness.crest_factor_db) }}</td>
+              <td><span class="jv-muted">Silence ratio</span></td>
+              <td>{{ fmtPct(analysis.loudness.silence_ratio) }}</td>
+            </tr>
+            <tr>
+              <td><span class="jv-muted">Clipping ratio</span></td>
+              <td colspan="3">{{ fmtPct(analysis.loudness.clipping_ratio) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Master ── -->
+    <section class="jv-card jv-section">
+      <h3 class="jv-section__title">Apply a mastering preset</h3>
+      <p class="jv-muted" style="margin-bottom: 16px;">
+        Upload a WAV, pick a preset, get a mastered MP3/M4A back. Requires ffmpeg on the server. ACX
+        targets audiobook spec (−23 LUFS, −3 dBTP, head/tail silence). YouTube outputs AAC.
+      </p>
+
+      <div class="master-grid">
+        <JvField label="WAV file" layout="block">
+          <input
+            type="file"
+            accept="audio/wav,.wav"
+            class="file-input"
+            @change="masterFile = $event.target.files[0]"
+          />
+        </JvField>
+
+        <JvField label="Preset" layout="block">
+          <JvSelect v-model="masterPreset" :options="PRESET_OPTIONS" />
+        </JvField>
+
+        <JvField label="Title (optional)" layout="block">
+          <JvInput type="text" v-model="masterTitle" placeholder="Chapter 1" />
+        </JvField>
+
+        <JvField label="Author (optional)" layout="block">
+          <JvInput type="text" v-model="masterAuthor" placeholder="Author name" />
+        </JvField>
+
+        <JvField label="Book / album (optional)" layout="block" style="grid-column: 1 / -1;">
+          <JvInput type="text" v-model="masterBook" placeholder="Book title" />
+        </JvField>
+      </div>
+
+      <div class="jv-row" style="margin-top: 12px; align-items: center;">
+        <JvButton variant="primary" :disabled="masterBusy || !masterFile" :loading="masterBusy" @click="runMaster">
+          {{ masterBusy ? "Mastering…" : "Master" }}
+        </JvButton>
+        <span class="jv-mono jv-muted">POST /v1/master</span>
+      </div>
+
+      <div v-if="masteredUrl" style="margin-top: 16px;">
+        <audio :src="masteredUrl" controls preload="metadata" style="width: 100%; display: block;"></audio>
+        <div class="jv-row" style="margin-top: 10px; align-items: center;">
+          <JvButton variant="secondary" @click="downloadMastered">Download {{ masteredName }}</JvButton>
+          <span class="jv-muted jv-mono">{{ masteredMime }} · {{ fmtKB(masteredBytes) }}</span>
+        </div>
+      </div>
+    </section>
+  </div>
 </template>
 
 <style scoped>
-.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 32px; }
+.audio-tools-view { padding: 32px; max-width: 860px; display: flex; flex-direction: column; gap: 24px; }
+.master-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px; }
+.file-input { font-size: 13px; color: var(--ink-2); cursor: pointer; }
 </style>

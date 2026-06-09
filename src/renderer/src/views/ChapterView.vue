@@ -1,8 +1,14 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
+import JvButton from "../components/jv/JvButton.vue";
+import JvField from "../components/jv/JvField.vue";
+import JvSelect from "../components/jv/JvSelect.vue";
+import JvTextarea from "../components/jv/JvTextarea.vue";
+import JvInput from "../components/jv/JvInput.vue";
 
 const api = useApi();
 const tasks = useRenderTasks();
@@ -34,12 +40,18 @@ const audio = ref(null);
 const busy = ref(false);
 
 const PRESETS = [
-  { id: "", label: "None (raw WAV)" },
-  { id: "acx", label: "ACX — Audible/Amazon" },
-  { id: "inaudio", label: "INaudio — Findaway / Spotify" },
-  { id: "podcast", label: "Podcast" },
-  { id: "youtube", label: "YouTube" },
+  { label: "None (raw WAV)", value: "" },
+  { label: "ACX — Audible/Amazon", value: "acx" },
+  { label: "INaudio — Findaway / Spotify", value: "inaudio" },
+  { label: "Podcast", value: "podcast" },
+  { label: "YouTube", value: "youtube" },
 ];
+
+const voiceOptions = computed(() =>
+  availableVoices.value.length === 0
+    ? [{ label: "— no voices available —", value: "" }]
+    : availableVoices.value.map((v) => ({ label: `${v.name} — ${v.id}`, value: v.id }))
+);
 
 async function refreshVoices() {
   try {
@@ -102,43 +114,73 @@ onMounted(refreshVoices);
 </script>
 
 <template>
-  <section class="block stack">
-    <h3>Chapter render</h3>
-    <label>
-      <span>
-        Voice (applied to every line — multi-voice scenes use POST /v1/render_scene)
-        <span v-if="currentEngine" class="endnote" style="text-transform: none; font-weight: 400; margin-left: 8px;">
-          from <strong style="font-style: normal; color: var(--ink);">{{ currentEngine.name }}</strong>
-        </span>
-      </span>
-      <select v-model="voice" :disabled="availableVoices.length === 0">
-        <option v-if="availableVoices.length === 0" value="">— no voices available —</option>
-        <option v-for="v in availableVoices" :key="v.id" :value="v.id">{{ v.name }} — {{ v.id }}</option>
-      </select>
-      <p v-if="emptyVoiceReason" class="endnote" style="margin-top: 6px;">{{ emptyVoiceReason }}</p>
-    </label>
-    <label>
-      <span>Script — one line per row, blank lines ignored</span>
-      <textarea v-model="lines" rows="10" style="min-height: 240px;"></textarea>
-    </label>
-    <div class="grid-2">
-      <label>
-        <span>Silence between lines (ms)</span>
-        <input type="number" v-model.number="silenceMs" min="0" max="5000" />
-      </label>
-      <label>
-        <span>Mastering preset</span>
-        <select v-model="preset">
-          <option v-for="p in PRESETS" :key="p.id" :value="p.id">{{ p.label }}</option>
-        </select>
-      </label>
+  <div class="chapter-view">
+    <div class="jv-section">
+      <h3 class="jv-section__title">Chapter render</h3>
+
+      <div class="jv-card">
+        <JvField label="Voice" layout="block">
+          <template #default>
+            <JvSelect v-model="voice" :options="voiceOptions" :disabled="availableVoices.length === 0" />
+            <span v-if="currentEngine" class="jv-field__hint">
+              from <strong>{{ currentEngine.name }}</strong>
+            </span>
+            <p v-if="emptyVoiceReason" class="jv-field__hint" style="color: var(--warn-ink)">{{ emptyVoiceReason }}</p>
+          </template>
+        </JvField>
+
+        <div class="jv-divider" />
+
+        <JvField label="Script" layout="block" hint="One line per row — blank lines are ignored">
+          <JvTextarea v-model="lines" :rows="10" style="min-height: 240px" />
+        </JvField>
+
+        <div class="chapter-view__grid">
+          <JvField label="Silence between lines (ms)" layout="block">
+            <JvInput type="number" v-model="silenceMs" />
+          </JvField>
+          <JvField label="Mastering preset" layout="block">
+            <JvSelect v-model="preset" :options="PRESETS" />
+          </JvField>
+        </div>
+
+        <div class="jv-divider" />
+
+        <div class="jv-floating">
+          <JvButton
+            variant="primary"
+            size="lg"
+            :loading="busy"
+            :disabled="busy || !voice"
+            :label="busy ? 'Rendering chapter…' : 'Render chapter'"
+            @click="render"
+          />
+          <span class="jv-muted" style="font-size: 12px; font-family: var(--font-mono)">
+            POST /v1/render_chapter → audio/wav
+          </span>
+          <span v-if="audio" class="jv-pill jv-pill--green">Ready</span>
+        </div>
+
+        <audio v-if="audio" :src="audio" :key="audio" controls class="chapter-view__audio" />
+      </div>
     </div>
-    <div class="row">
-      <button class="primary" :disabled="busy || !voice" @click="render">
-        {{ busy ? "Rendering chapter…" : "Render chapter" }}
-      </button>
-      <span class="endnote">POST /v1/render_chapter → audio/wav or audio/mpeg (with mastering)</span>
-    </div>
-    <audio v-if="audio" :src="audio" :key="audio" controls style="width: 100%"></audio>
-  </section>
+  </div>
 </template>
+
+<style scoped>
+.chapter-view {
+  padding: 24px 32px 64px;
+}
+
+.chapter-view__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.chapter-view__audio {
+  width: 100%;
+  margin-top: 12px;
+}
+</style>

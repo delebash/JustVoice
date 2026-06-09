@@ -8,6 +8,8 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import ListPane from "../components/ListPane.vue";
+import JvButton from "../components/jv/JvButton.vue";
+import JvTag from "../components/jv/JvTag.vue";
 import { projectsService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
 
@@ -127,70 +129,86 @@ onMounted(refresh);
   <div class="books">
     <ListPane v-model:search-value="search" title="Projects" search-placeholder="Search by name…">
       <template #actions>
-        <button class="btn btn--primary" @click="createBlank">+ New</button>
+        <JvButton variant="primary" size="sm" label="+ New" @click="createBlank" />
       </template>
 
       <div class="books__filter">
         <button
           v-for="t in PROJECT_TYPES"
           :key="t.id"
-          class="filter-chip"
-          :class="{ 'filter-chip--active': projectTypeFilter === t.id }"
+          class="jv-pill"
+          :class="projectTypeFilter === t.id ? 'jv-pill--solid' : 'jv-pill--ghost'"
           @click="projectTypeFilter = t.id"
         >
           {{ t.label }}
         </button>
       </div>
 
-      <div v-if="loading" class="books__empty">Loading…</div>
+      <div v-if="loading" class="books__empty jv-muted">Loading…</div>
       <div v-else-if="filtered.length === 0" class="books__empty">
-        <p>No projects yet.</p>
-        <button class="btn" @click="importJustWriteFromFile" :disabled="importing">
-          {{ importing ? "Importing…" : "Import from JustWrite" }}
-        </button>
+        <p class="jv-muted">No projects yet.</p>
+        <JvButton variant="secondary" size="sm" :loading="importing" :label="importing ? 'Importing…' : 'Import from JustWrite'" @click="importJustWriteFromFile" style="margin-top: 12px" />
       </div>
+
       <div
         v-for="p in filtered"
         :key="p.id"
-        class="books__item"
-        :class="{ 'books__item--active': p.id === selectedId }"
+        class="jv-pane-list__item"
+        :class="{ 'jv-pane-list__item--active': p.id === selectedId }"
         @click="selectedId = p.id"
       >
         <div class="books__item-row">
-          <span class="books__type-pill">{{ PROJECT_TYPE_LABEL[p.project_type] ?? p.project_type }}</span>
-          <strong class="books__item-name">{{ p.name }}</strong>
+          <JvTag :label="PROJECT_TYPE_LABEL[p.project_type] ?? p.project_type" />
+          <strong class="jv-ellipsis">{{ p.name }}</strong>
         </div>
-        <span class="books__item-meta">{{ p.scene_count }} scenes</span>
+        <span class="jv-pane-list__meta">{{ p.scene_count }} scenes</span>
       </div>
     </ListPane>
 
     <div class="books__detail">
-      <div v-if="!selectedProject" class="books__detail-empty">
-        <p>Select a project on the left, or import a JustWrite book to get started.</p>
-        <div class="books__cta-row">
-          <button class="btn" @click="importJustWriteFromFile" :disabled="importing">
-            {{ importing ? "Importing…" : "Import JustWrite book" }}
-          </button>
-          <button class="btn" @click="createBlank">+ New blank project</button>
+      <div v-if="!selectedProject" class="books__detail-empty jv-card">
+        <p class="jv-muted">Select a project on the left, or import a JustWrite book to get started.</p>
+        <div class="jv-btn-group" style="margin-top: 16px; justify-content: center;">
+          <JvButton variant="secondary" :loading="importing" :label="importing ? 'Importing…' : 'Import JustWrite book'" @click="importJustWriteFromFile" />
+          <JvButton variant="secondary" label="+ New blank project" @click="createBlank" />
         </div>
       </div>
+
       <template v-else>
-        <header class="books__detail-header">
-          <h2>{{ selectedProject.name }}</h2>
-          <span class="books__type-pill books__type-pill--inline">{{
-            PROJECT_TYPE_LABEL[selectedProject.project_type] ?? selectedProject.project_type
-          }}</span>
-        </header>
-        <p class="books__description">{{ selectedProject.description || "No description." }}</p>
-        <dl class="books__meta">
-          <div><dt>Scenes</dt><dd>{{ selectedProject.scene_count }}</dd></div>
-          <div><dt>Mastering preset</dt><dd>{{ selectedProject.mastering_preset ?? "—" }}</dd></div>
-          <div><dt>Imported from</dt><dd>{{ selectedProject.imported_from ?? "—" }}</dd></div>
-          <div><dt>Created</dt><dd>{{ new Date(selectedProject.created_at).toLocaleString() }}</dd></div>
-        </dl>
-        <div class="books__detail-actions">
-          <button class="btn btn--primary">Render all scenes</button>
-          <button class="btn" @click="exportProject(selectedProject.id)">Export ZIP</button>
+        <div class="jv-card books__detail-card">
+          <header class="books__detail-header">
+            <h2>{{ selectedProject.name }}</h2>
+            <JvTag :label="PROJECT_TYPE_LABEL[selectedProject.project_type] ?? selectedProject.project_type" style="margin-left: 12px" />
+          </header>
+          <p class="jv-muted" style="margin: 8px 0 20px">{{ selectedProject.description || "No description." }}</p>
+
+          <div class="jv-divider" />
+
+          <dl class="books__meta">
+            <div>
+              <dt>Scenes</dt>
+              <dd>{{ selectedProject.scene_count }}</dd>
+            </div>
+            <div>
+              <dt>Mastering preset</dt>
+              <dd>{{ selectedProject.mastering_preset ?? "—" }}</dd>
+            </div>
+            <div>
+              <dt>Imported from</dt>
+              <dd>{{ selectedProject.imported_from ?? "—" }}</dd>
+            </div>
+            <div>
+              <dt>Created</dt>
+              <dd>{{ new Date(selectedProject.created_at).toLocaleString() }}</dd>
+            </div>
+          </dl>
+
+          <div class="jv-divider" />
+
+          <div class="jv-btn-group">
+            <JvButton variant="primary" label="Render all scenes" />
+            <JvButton variant="secondary" label="Export ZIP" @click="exportProject(selectedProject.id)" />
+          </div>
         </div>
       </template>
     </div>
@@ -204,90 +222,67 @@ onMounted(refresh);
   height: 100%;
   gap: 0;
 }
+
 .books__filter {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   padding: 0 12px 12px;
 }
-.filter-chip {
-  background: transparent;
-  border: 1px solid var(--line, #e3e1dc);
-  border-radius: 999px;
-  padding: 4px 12px;
-  font-size: 12px;
-  cursor: pointer;
-  color: inherit;
+
+.books__item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.filter-chip--active {
-  background: var(--accent, #3a7d63);
-  color: #fff;
-  border-color: var(--accent, #3a7d63);
-}
-.books__item {
-  padding: 12px 16px;
-  border-radius: 6px;
-  margin: 0 8px 4px;
-  cursor: pointer;
-}
-.books__item:hover { background: var(--surface-2, #fbfaf7); }
-.books__item--active {
-  background: var(--accent, #3a7d63);
-  color: #fff;
-}
-.books__item-row { display: flex; align-items: center; gap: 8px; }
-.books__item-name { font-size: 14px; }
-.books__item-meta { font-size: 12px; opacity: 0.7; display: block; margin-top: 2px; }
-.books__type-pill {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 2px 6px;
-  border-radius: 3px;
-  background: rgba(0, 0, 0, 0.08);
-  font-weight: 600;
-}
-.books__item--active .books__type-pill { background: rgba(255, 255, 255, 0.2); }
-.books__type-pill--inline { vertical-align: middle; margin-left: 12px; }
+
 .books__detail {
-  padding: 32px;
+  padding: 24px 32px;
   overflow-y: auto;
 }
+
 .books__detail-empty {
   padding: 40px;
   text-align: center;
-  color: var(--ink-2, #4a4a4a);
 }
-.books__detail-header { display: flex; align-items: baseline; }
-.books__detail-header h2 { margin: 0; }
-.books__description { color: var(--ink-2, #4a4a4a); margin: 8px 0 24px; }
+
+.books__detail-card {
+  max-width: 640px;
+}
+
+.books__detail-header {
+  display: flex;
+  align-items: baseline;
+}
+
 .books__meta {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px 24px;
-  margin-bottom: 24px;
+  gap: 14px 24px;
+  margin: 16px 0;
 }
-.books__meta div { display: flex; flex-direction: column; }
-.books__meta dt { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; }
-.books__meta dd { margin: 0; font-size: 14px; }
-.books__detail-actions { display: flex; gap: 8px; }
-.books__empty { padding: 32px; text-align: center; color: var(--ink-3, #888); }
-.books__cta-row { display: flex; gap: 8px; justify-content: center; margin-top: 16px; }
-.btn {
-  height: 32px;
-  padding: 0 16px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  border: 1px solid var(--line-strong, #cfccc4);
-  background: var(--surface-2, #fbfaf7);
-  color: inherit;
+
+.books__meta div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
-.btn--primary {
-  background: var(--accent, #3a7d63);
-  color: #fff;
-  border-color: var(--accent, #3a7d63);
+
+.books__meta dt {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
 }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.books__meta dd {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.books__empty {
+  padding: 32px;
+  text-align: center;
+}
 </style>

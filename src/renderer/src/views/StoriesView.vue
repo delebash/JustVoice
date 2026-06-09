@@ -10,8 +10,9 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
-import ListPane from "../components/ListPane.vue";
 import { pushToast } from "../services/toastBridge.js";
+import JvButton from "../components/jv/JvButton.vue";
+import JvInput from "../components/jv/JvInput.vue";
 
 const api = useApi();
 
@@ -89,46 +90,60 @@ onMounted(refresh);
 
 <template>
   <div class="stories">
-    <ListPane v-model:search-value="search" title="Stories" search-placeholder="Search stories…">
-      <template #actions>
-        <button class="btn btn--primary" @click="createStory">+ New</button>
-      </template>
-
-      <div v-if="filtered.length === 0" class="stories__empty">
-        <p>No stories yet. Click <strong>+ New</strong> to start arranging clips on a multi-track timeline.</p>
+    <!-- ── Story list ───────────────────────────────────────────────── -->
+    <div class="stories__sidebar jv-card jv-card--flat">
+      <div class="jv-row stories__list-header">
+        <span class="jv-section__title" style="margin:0;">Stories</span>
+        <JvButton variant="primary" size="sm" label="+ New" @click="createStory" />
       </div>
+      <div style="padding:8px 16px;">
+        <JvInput v-model="search" placeholder="Search stories…" size="sm" />
+      </div>
+
+      <p v-if="filtered.length === 0" class="stories__empty jv-muted">
+        No stories yet. Click <strong>+ New</strong> to start arranging clips on a multi-track timeline.
+      </p>
+
       <div
         v-for="s in filtered"
         :key="s.id"
-        class="stories__item"
-        :class="{ 'stories__item--active': s.id === selectedId }"
+        class="jv-pane-list__item stories__story-item"
+        :class="{ 'jv-pane-list__item--active': s.id === selectedId }"
         @click="selectedId = s.id"
       >
         <strong>{{ s.name }}</strong>
-        <span class="stories__item-meta">{{ s.items?.length || 0 }} clips</span>
+        <span class="jv-pane-list__meta">{{ s.items?.length || 0 }} clips</span>
       </div>
-    </ListPane>
+    </div>
 
-    <div class="stories__detail">
-      <div v-if="!selectedStory" class="stories__detail-empty">
+    <!-- ── Timeline detail ─────────────────────────────────────────── -->
+    <div class="stories__detail jv-card">
+      <div v-if="!selectedStory" class="stories__detail-empty jv-muted">
         <p>Select a story on the left, or create one to start arranging clips.</p>
       </div>
       <template v-else>
-        <header class="stories__detail-header">
-          <h2>{{ selectedStory.name }}</h2>
-          <span class="stories__duration">{{ fmtTime(totalDurationMs) }}</span>
-        </header>
-        <p v-if="selectedStory.description" class="stories__description">{{ selectedStory.description }}</p>
+        <div class="jv-row stories__detail-header">
+          <h2 style="margin:0;">{{ selectedStory.name }}</h2>
+          <span class="stories__duration jv-muted" style="font-variant-numeric:tabular-nums;">{{ fmtTime(totalDurationMs) }}</span>
+        </div>
+        <p v-if="selectedStory.description" class="jv-muted" style="margin:6px 0 16px;">{{ selectedStory.description }}</p>
 
-        <div class="stories__transport">
-          <button class="btn" @click="playing = !playing">{{ playing ? "⏸ Pause" : "▶ Play" }}</button>
-          <button class="btn">⏹ Stop</button>
-          <span class="stories__playhead">{{ fmtTime(playheadMs) }} / {{ fmtTime(totalDurationMs) }}</span>
+        <!-- Transport controls -->
+        <div class="jv-row stories__transport">
+          <JvButton
+            :variant="playing ? 'secondary' : 'primary'"
+            :label="playing ? '⏸ Pause' : '▶ Play'"
+            @click="playing = !playing"
+          />
+          <JvButton variant="secondary" label="⏹ Stop" @click="playing = false; playheadMs = 0" />
+          <div class="jv-spacer" />
+          <span class="jv-mono jv-muted stories__playhead">{{ fmtTime(playheadMs) }} / {{ fmtTime(totalDurationMs) }}</span>
         </div>
 
+        <!-- Multi-track timeline — custom layout, keep scoped CSS -->
         <div class="timeline">
           <div v-for="t in trackCount" :key="t" class="timeline__track">
-            <div class="timeline__label">Track {{ t }}</div>
+            <div class="timeline__label jv-muted">Track {{ t }}</div>
             <div class="timeline__lane">
               <div
                 v-for="item in (selectedStory.items || []).filter((i) => (i.track ?? 0) === t - 1)"
@@ -142,7 +157,7 @@ onMounted(refresh);
           </div>
         </div>
 
-        <p class="stories__hint">
+        <p class="stories__hint jv-muted">
           Full timeline editor (drag-to-arrange, trim handles, version-pin) lives in the Phase 4c
           follow-on. This view renders the layout; interactive edit lands in v1.1.
         </p>
@@ -152,39 +167,75 @@ onMounted(refresh);
 </template>
 
 <style scoped>
-.stories { display: grid; grid-template-columns: 360px 1fr; height: 100%; gap: 0; }
-.stories__item { padding: 12px 16px; cursor: pointer; border-radius: 6px; margin: 0 8px 2px; display: flex; flex-direction: column; gap: 2px; }
-.stories__item:hover { background: var(--surface-2, #fbfaf7); }
-.stories__item--active { background: var(--accent, #3a7d63); color: #fff; }
-.stories__item-meta { font-size: 11px; opacity: 0.7; }
-.stories__detail { padding: 32px; overflow-y: auto; }
-.stories__detail-empty { padding: 40px; text-align: center; color: var(--ink-2, #4a4a4a); }
-.stories__detail-header { display: flex; align-items: baseline; gap: 12px; }
-.stories__detail-header h2 { margin: 0; }
-.stories__duration { color: var(--ink-3, #888); font-variant-numeric: tabular-nums; }
-.stories__description { color: var(--ink-2, #4a4a4a); margin: 8px 0 24px; }
-.stories__transport { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
-.stories__playhead { font-variant-numeric: tabular-nums; color: var(--ink-3, #888); margin-left: auto; }
-.timeline { background: var(--surface-2, #fbfaf7); border: 1px solid var(--line, #e3e1dc); border-radius: 6px; padding: 12px; }
-.timeline__track { display: flex; gap: 12px; margin-bottom: 6px; align-items: center; }
-.timeline__label { width: 80px; font-size: 11px; color: var(--ink-2, #4a4a4a); text-transform: uppercase; letter-spacing: 0.05em; }
-.timeline__lane { flex: 1; height: 32px; background: rgba(0, 0, 0, 0.04); border-radius: 4px; position: relative; }
+.stories {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  height: 100%;
+  gap: 16px;
+  padding: 16px;
+}
+
+/* Sidebar */
+.stories__sidebar {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 0;
+}
+.stories__list-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.stories__story-item { margin: 0 8px 2px; }
+.stories__empty { padding: 24px 16px; text-align: center; }
+
+/* Detail pane */
+.stories__detail { padding: 28px; overflow-y: auto; }
+.stories__detail-empty { padding: 40px; text-align: center; }
+.stories__detail-header { margin-bottom: 4px; align-items: baseline; }
+.stories__transport { margin-bottom: 20px; }
+.stories__playhead { font-size: 12px; }
+.stories__hint { font-size: 12px; margin-top: 16px; font-style: italic; }
+
+/* Timeline — view-specific layout kept as scoped CSS */
+.timeline {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 12px;
+}
+.timeline__track {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 6px;
+  align-items: center;
+}
+.timeline__label {
+  width: 80px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+.timeline__lane {
+  flex: 1;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: var(--r-sm);
+  position: relative;
+}
 .timeline__clip {
   position: absolute;
   top: 4px;
   bottom: 4px;
-  background: var(--accent, #3a7d63);
+  background: var(--accent);
   border-radius: 3px;
   padding: 0 6px;
   font-size: 11px;
-  color: #fff;
+  color: var(--on-accent);
   line-height: 24px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.stories__empty { padding: 24px; text-align: center; color: var(--ink-3, #888); }
-.stories__hint { font-size: 12px; color: var(--ink-3, #888); margin-top: 16px; font-style: italic; }
-.btn { height: 32px; padding: 0 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--line-strong, #cfccc4); background: var(--surface-2, #fbfaf7); color: inherit; }
-.btn--primary { background: var(--accent, #3a7d63); color: #fff; border-color: var(--accent, #3a7d63); }
 </style>

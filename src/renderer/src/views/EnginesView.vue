@@ -1,9 +1,12 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
+import JvButton from "../components/jv/JvButton.vue";
+import JvTag from "../components/jv/JvTag.vue";
 
 const api = useApi();
 const tasks = useRenderTasks();
@@ -272,8 +275,6 @@ async function load(id, variant) {
   const isExternal = eng?.backend === "external-openai-tts";
   busy.value[id] = "load";
   const variantSuffix = variant ? ` (${variant})` : "";
-  // Surface a task strip at the top of the page so the user sees a global
-  // spinner during the 5–30 s subprocess-spawn + model-load window.
   const task = tasks.start({
     label: `Loading · ${eng?.name || id}${variantSuffix}`,
     kind: "load",
@@ -294,9 +295,6 @@ async function load(id, variant) {
     });
   } catch (e) {
     const raw = String(e.message || e);
-    // External engines fail to load when the remote server is unreachable —
-    // surface that root cause and a remediation hint up front rather than
-    // making the user parse the 503 JSON body.
     const hint = isExternal
       ? "The remote TTS server isn't responding. Check that it's running, then try again."
       : "";
@@ -311,16 +309,10 @@ async function load(id, variant) {
   }
 }
 
-// Variant rows in the "Show variants" subtable just pick which model
-// checkpoint to load — the engine venv is already installed. Wraps load()
-// with the chosen variant id; same UX path as the row's Load button.
 function loadVariant(engineId, variantId) {
   return load(engineId, variantId);
 }
 
-// Variant displayed as the engine's "default" — the one Load on the row loads.
-// Resolved from `engine.default_variant_id` (declared in the engine manifest)
-// against the variants returned by /v1/engines/<id>/models.
 function defaultVariantFor(engine) {
   const v = variants.value[engine.id];
   if (!v) return null;
@@ -329,15 +321,6 @@ function defaultVariantFor(engine) {
   return (v.variants || []).find((x) => x.id === did) || null;
 }
 
-// All variants EXCEPT the engine's default — these get their own Load button.
-// The default is shown separately in the header so the user isn't offered
-// two routes to the same model.
-// Compact "what kind of engine is this" badge — derived from the engine's
-// capabilities so each tag stays in one place. Three big buckets:
-//   - "Preset + clone"  — has preset voices AND supports voice cloning
-//   - "Presets only"    — has preset voices, no cloning
-//   - "Clone-only"      — voice cloning, no presets (the user has to clone first)
-//   - "Other"           — neither (rare; might be a model with weird API)
 function engineType(engine) {
   const caps = engine.capabilities || [];
   const hasPresets = caps.includes("preset_voices");
@@ -388,9 +371,6 @@ async function uninstall(id) {
     });
     if (!ok) return;
   } else if (hasPipPackages) {
-    // Two-state choice: model files only, or also pip-uninstall the engine's
-    // exclusive packages. Shared deps (e.g. torch with other installed
-    // engines) are kept either way — that's a server-side decision.
     const choice = await promptDialog({
       title: `Uninstall ${id}?`,
       message:
@@ -446,8 +426,6 @@ async function uninstall(id) {
     if (isExternal) {
       message = `${displayName} removed from this server (the remote service is unaffected).`;
     } else {
-      // Managed engines: the whole engine venv + models + voices + state were
-      // rmtree'd — surface that so the user knows disk has been reclaimed.
       message = `${displayName} uninstalled — venv, model files and state removed.${depsNote}`;
     }
     pushToast({
@@ -494,16 +472,16 @@ onMounted(() => {
 
     <div v-if="system.gpus && system.gpus.length" class="subblock">
       <h4>GPU{{ system.gpus.length > 1 ? "s" : "" }}</h4>
-      <table>
+      <table class="jv-table">
         <thead>
           <tr><th>Vendor</th><th>Model</th><th>VRAM</th><th>Driver</th></tr>
         </thead>
         <tbody>
           <tr v-for="(g, i) in system.gpus" :key="i">
-            <td><span class="tag">{{ g.vendor }}</span></td>
+            <td><JvTag :label="g.vendor" /></td>
             <td><strong>{{ g.name }}</strong></td>
             <td>{{ g.vram_mb ? (g.vram_mb / 1024).toFixed(1) + " GB" : "—" }}</td>
-            <td class="mono">{{ g.driver || "—" }}</td>
+            <td class="jv-mono">{{ g.driver || "—" }}</td>
           </tr>
         </tbody>
       </table>
@@ -512,7 +490,7 @@ onMounted(() => {
     <div class="subblock">
       <h4>Acceleration runtimes</h4>
       <div class="tags">
-        <span v-for="r in activeRuntimes" :key="r" class="tag">{{ r }}</span>
+        <JvTag v-for="r in activeRuntimes" :key="r" :label="r" />
         <span v-if="!activeRuntimes.length" class="endnote">CPU only — no accelerated runtime detected.</span>
       </div>
     </div>
@@ -521,7 +499,7 @@ onMounted(() => {
   <!-- ─── Engine catalog ─── -->
   <section class="block">
     <h3>{{ engines.length }} engine{{ engines.length === 1 ? "" : "s" }}</h3>
-    <table>
+    <table class="jv-table">
       <thead>
         <tr>
           <th>Name</th>
@@ -538,15 +516,15 @@ onMounted(() => {
             <td>
               <div class="engine-name">{{ e.name }}</div>
               <div class="engine-tags">
-                <span class="tag accent">{{ engineType(e) }}</span>
-                <span v-if="e.capabilities.includes('voice_design')" class="tag">design</span>
-                <span v-if="e.capabilities.includes('instruct_field')" class="tag">instruct</span>
-                <span v-if="e.capabilities.includes('paralinguistic_tags')" class="tag">[tags]</span>
-                <span v-if="e.capabilities.includes('single_speaker_dialogue')" class="tag">dialogue</span>
+                <JvTag variant="accent" :label="engineType(e)" />
+                <JvTag v-if="e.capabilities.includes('voice_design')" label="design" />
+                <JvTag v-if="e.capabilities.includes('instruct_field')" label="instruct" />
+                <JvTag v-if="e.capabilities.includes('paralinguistic_tags')" label="[tags]" />
+                <JvTag v-if="e.capabilities.includes('single_speaker_dialogue')" label="dialogue" />
               </div>
               <div class="engine-desc">{{ e.description }}</div>
             </td>
-            <td class="mono">{{ e.backend }}</td>
+            <td class="jv-mono">{{ e.backend }}</td>
             <td>
               <span class="status" :class="e.status">
                 <span class="sq"></span>{{ e.status.replace("_", " ") }}
@@ -554,19 +532,44 @@ onMounted(() => {
             </td>
             <td>{{ fmtDisk(e.prerequisites.disk_space_mb) }}</td>
             <td class="actions">
-              <button class="secondary" :disabled="busy[e.id]" @click="loadVariants(e.id)">
-                {{ variants[e.id] ? "Hide variants" : "Show variants" }}
-              </button>
-              <button v-if="e.status === 'not_installed'" class="primary" :disabled="busy[e.id]" @click="install(e.id)">
-                {{ busy[e.id] === "install" ? "Installing…" : "Install" }}
-              </button>
-              <button v-else-if="e.status === 'installed'" class="primary" :disabled="busy[e.id]" @click="load(e.id)">
-                {{ busy[e.id] === "load" ? "Loading…" : "Load" }}
-              </button>
-              <button v-else-if="e.status === 'loaded'" class="bare" @click="unload">Unload</button>
-              <button v-if="e.status !== 'not_installed'" class="bare danger" :disabled="busy[e.id]" @click="uninstall(e.id)">
-                {{ busy[e.id] === "uninstall" ? "Uninstalling…" : "Uninstall" }}
-              </button>
+              <div class="jv-btn-group">
+                <JvButton variant="secondary" size="sm" :disabled="!!busy[e.id]" @click="loadVariants(e.id)">
+                  {{ variants[e.id] ? "Hide variants" : "Show variants" }}
+                </JvButton>
+                <JvButton
+                  v-if="e.status === 'not_installed'"
+                  variant="primary"
+                  size="sm"
+                  :loading="busy[e.id] === 'install'"
+                  :disabled="!!busy[e.id]"
+                  :label="busy[e.id] === 'install' ? 'Installing…' : 'Install'"
+                  @click="install(e.id)"
+                />
+                <JvButton
+                  v-else-if="e.status === 'installed'"
+                  variant="primary"
+                  size="sm"
+                  :loading="busy[e.id] === 'load'"
+                  :disabled="!!busy[e.id]"
+                  :label="busy[e.id] === 'load' ? 'Loading…' : 'Load'"
+                  @click="load(e.id)"
+                />
+                <JvButton
+                  v-else-if="e.status === 'loaded'"
+                  variant="secondary"
+                  size="sm"
+                  label="Unload"
+                  @click="unload"
+                />
+                <JvButton
+                  v-if="e.status !== 'not_installed'"
+                  variant="danger-outline"
+                  size="sm"
+                  :disabled="!!busy[e.id]"
+                  :label="busy[e.id] === 'uninstall' ? 'Uninstalling…' : 'Uninstall'"
+                  @click="uninstall(e.id)"
+                />
+              </div>
             </td>
           </tr>
 
@@ -574,7 +577,7 @@ onMounted(() => {
           <tr v-if="progress[e.id]" :key="e.id + '-progress'" class="progress-row-tr">
             <td colspan="5" class="progress-cell">
               <div class="progress-inline-row">
-                <span class="progress-phase mono">{{ (progress[e.id].phase || "").toUpperCase() }}</span>
+                <span class="progress-phase jv-mono">{{ (progress[e.id].phase || "").toUpperCase() }}</span>
                 <div class="progress-track">
                   <div
                     class="progress-bar"
@@ -585,25 +588,27 @@ onMounted(() => {
                     :style="progress[e.id].bytes_total > 0 ? { width: pct(progress[e.id]) + '%' } : {}"
                   ></div>
                 </div>
-                <span class="progress-bytes mono">
+                <span class="progress-bytes jv-mono">
                   <template v-if="progress[e.id].bytes_total > 0">
                     {{ (progress[e.id].bytes_downloaded / 1048576).toFixed(1) }} / {{ (progress[e.id].bytes_total / 1048576).toFixed(1) }} MB
                   </template>
                 </span>
-                <button
+                <JvButton
                   v-if="installJobs[e.id] && !['completed', 'failed'].includes(progress[e.id].phase)"
-                  class="bare danger"
+                  variant="danger-outline"
+                  size="sm"
+                  label="Cancel"
                   @click="cancelInstall(e.id)"
-                >Cancel</button>
-                <button class="bare" @click="viewInstallLog(e.id)">View log</button>
+                />
+                <JvButton variant="ghost" size="sm" label="View log" @click="viewInstallLog(e.id)" />
               </div>
               <div v-if="progress[e.id].current_file" class="endnote progress-file">
-                <span class="mono">{{ progress[e.id].current_file }}</span>
+                <span class="jv-mono">{{ progress[e.id].current_file }}</span>
               </div>
               <div v-if="progress[e.id].error" class="endnote progress-error">
                 <strong>Install failed.</strong> {{ progress[e.id].error }}
-                <button class="bare" style="margin-left: 12px;" @click="viewInstallLog(e.id)">View install log</button>
-                <button class="bare" style="margin-left: 12px;" @click="dismiss(e.id)">Dismiss</button>
+                <JvButton variant="ghost" size="sm" label="View install log" style="margin-left:12px;" @click="viewInstallLog(e.id)" />
+                <JvButton variant="ghost" size="sm" label="Dismiss" style="margin-left:8px;" @click="dismiss(e.id)" />
               </div>
             </td>
           </tr>
@@ -613,12 +618,10 @@ onMounted(() => {
             <td colspan="5" class="variants-cell">
               <div class="variants-header">
                 <span class="variants-title">Model variants</span>
-                <button class="bare" @click="hideVariants(e.id)">Hide</button>
+                <JvButton variant="ghost" size="sm" label="Hide" @click="hideVariants(e.id)" />
               </div>
 
-              <!-- Default model — what clicking Load on the engine row loads.
-                   Surfaced here so the user can see which variant the
-                   adapter actually instantiates. -->
+              <!-- Default model note -->
               <div v-if="defaultVariantFor(e)" class="endnote variants-default-note">
                 <strong style="font-style: normal; color: var(--ink);">Default model:</strong>
                 {{ defaultVariantFor(e).name }}
@@ -628,7 +631,7 @@ onMounted(() => {
               <p v-if="otherVariantsFor(e).length === 0" class="endnote variants-default-note">
                 No alternative variants — the row's Load button loads the default above.
               </p>
-              <table v-else class="variants-table">
+              <table v-else class="jv-table variants-table">
                 <thead>
                   <tr>
                     <th>Variant</th>
@@ -642,22 +645,25 @@ onMounted(() => {
                   <tr v-for="v in otherVariantsFor(e)" :key="v.id">
                     <td>
                       <span>{{ v.name }}</span>
-                      <span
+                      <JvTag
                         v-if="(variants[e.id].recommended.would_oom || []).includes(v.id)"
-                        class="tag danger"
+                        variant="danger"
+                        label="Won't fit"
                         style="margin-left: 8px;"
-                      >Won't fit</span>
+                      />
                       <div v-if="v.description" class="endnote" style="margin-top: 3px;">{{ v.description }}</div>
                     </td>
-                    <td class="mono">{{ v.size_mb >= 1024 ? (v.size_mb / 1024).toFixed(1) + " GB" : v.size_mb + " MB" }}</td>
-                    <td class="mono">{{ v.vram_mb ? (v.vram_mb >= 1024 ? (v.vram_mb / 1024).toFixed(1) + " GB" : v.vram_mb + " MB") : "CPU" }}</td>
-                    <td class="mono">{{ v.quality != null ? v.quality + "/100" : "—" }}</td>
-                    <td class="actions">
-                      <button
-                        class="primary"
-                        :disabled="busy[e.id] || (variants[e.id].recommended.would_oom || []).includes(v.id)"
+                    <td class="jv-mono">{{ v.size_mb >= 1024 ? (v.size_mb / 1024).toFixed(1) + " GB" : v.size_mb + " MB" }}</td>
+                    <td class="jv-mono">{{ v.vram_mb ? (v.vram_mb >= 1024 ? (v.vram_mb / 1024).toFixed(1) + " GB" : v.vram_mb + " MB") : "CPU" }}</td>
+                    <td class="jv-mono">{{ v.quality != null ? v.quality + "/100" : "—" }}</td>
+                    <td class="jv-table__actions">
+                      <JvButton
+                        variant="primary"
+                        size="sm"
+                        label="Load"
+                        :disabled="!!busy[e.id] || (variants[e.id].recommended.would_oom || []).includes(v.id)"
                         @click="loadVariant(e.id, v.id)"
-                      >Load</button>
+                      />
                     </td>
                   </tr>
                 </tbody>
@@ -676,11 +682,7 @@ onMounted(() => {
     </p>
   </section>
 
-  <!-- ─── Install log modal ────────────────────────────────────────────
-       Opens when the user clicks "View install log" on a failed or in-flight
-       install. Streams the rolling tail of pip / download output from
-       /v1/jobs/{id} so the underlying error is visible without tailing the
-       server log. -->
+  <!-- ─── Install log modal ─────────────────────────────────────────── -->
   <Teleport to="body">
     <div v-if="logModal.open" class="log-modal-backdrop" @click.self="closeLogModal">
       <div class="log-modal">
@@ -688,17 +690,19 @@ onMounted(() => {
           <div>
             <h3 style="margin: 0; font-size: 18px;">Install log — {{ logModal.engineId }}</h3>
             <p class="endnote" style="margin: 4px 0 0;">
-              Phase: <span class="mono">{{ logModal.status || "(unknown)" }}</span>
+              Phase: <span class="jv-mono">{{ logModal.status || "(unknown)" }}</span>
               <span v-if="logModal.error"> · <span style="color: var(--danger);">error: {{ logModal.error }}</span></span>
             </p>
           </div>
-          <button class="bare" @click="closeLogModal" aria-label="Close">✕</button>
+          <JvButton variant="ghost" size="icon" label="✕" aria-label="Close" @click="closeLogModal" />
         </header>
         <pre class="log-modal-body">{{ (logModal.lines || []).join("\n") || (logModal.busy ? "Loading…" : "(no output captured)") }}</pre>
         <footer class="log-modal-footer">
-          <button @click="refreshLogModal">Refresh</button>
-          <button @click="copyLogToClipboard">Copy</button>
-          <button class="primary" @click="closeLogModal">Close</button>
+          <div class="jv-btn-group">
+            <JvButton variant="secondary" label="Refresh" @click="refreshLogModal" />
+            <JvButton variant="secondary" label="Copy" @click="copyLogToClipboard" />
+            <JvButton variant="primary" label="Close" @click="closeLogModal" />
+          </div>
         </footer>
       </div>
     </div>
@@ -706,11 +710,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.mono { font-family: var(--font-mono); font-size: 11px; }
-
-/* Engine name + description in the first table cell — readable, not greyed-out.
-   The default .endnote (serif italic 300 muted) was washing the description out
-   to the point of unreadability inside a packed row. */
+/* Engine name + description in the first table cell */
 .engine-name {
   font-family: var(--font-serif);
   font-weight: 400;
@@ -739,15 +739,13 @@ onMounted(() => {
 
 .tags { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 
-/* Status — view-local, matches topbar indicator. */
+/* Status indicator */
 .status { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); white-space: nowrap; }
 .status .sq { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 .status.installed { color: var(--accent); }
 .status.loaded { color: var(--success); }
 
 .actions { white-space: nowrap; }
-.actions button + button { margin-left: 8px; }
-
 .foot { margin-top: 16px; }
 
 /* ── Install log modal ────────────────────────────────────────────── */
@@ -769,6 +767,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   box-shadow: 0 8px 32px rgba(28, 28, 26, 0.18);
+  border-radius: var(--r-lg);
 }
 :deep(.log-modal-header) {
   display: flex;
@@ -783,8 +782,8 @@ onMounted(() => {
   overflow: auto;
   margin: 0;
   padding: 16px 22px;
-  background: #1c1c1a;
-  color: #e8e3d4;
+  background: var(--ink);
+  color: var(--surface);
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.5;
@@ -807,7 +806,7 @@ onMounted(() => {
 .progress-inline-row .progress-track { flex: 1; }
 .progress-bytes { font-size: 11px; color: var(--muted); min-width: 120px; text-align: right; }
 .progress-file { margin-top: 6px; }
-.progress-error { margin-top: 6px; color: var(--danger, #e05); }
+.progress-error { margin-top: 6px; color: var(--danger); }
 
 /* ── Variants sub-table ──────────────────────────────────────────── */
 .variants-row-tr td { background: var(--surface-2); padding: 14px 10px; border-bottom: 1px solid var(--border-soft); }

@@ -1,8 +1,14 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
+import JvButton from "../components/jv/JvButton.vue";
+import JvField from "../components/jv/JvField.vue";
+import JvSelect from "../components/jv/JvSelect.vue";
+import JvTextarea from "../components/jv/JvTextarea.vue";
+import JvInput from "../components/jv/JvInput.vue";
 
 const api = useApi();
 const tasks = useRenderTasks();
@@ -45,6 +51,13 @@ const engineJson = ref("");
 const engineJsonError = ref("");
 
 const EMOTIONS = ["", "neutral", "happy", "sad", "angry", "fearful", "whispered", "shouted", "sarcastic", "contemptuous"];
+const emotionOptions = computed(() => EMOTIONS.map((e) => ({ label: e || "(none)", value: e })));
+
+const voiceOptions = computed(() =>
+  availableVoices.value.length === 0
+    ? [{ label: "— no voices available —", value: "" }]
+    : availableVoices.value.map((v) => ({ label: `${v.name} — ${v.id}`, value: v.id }))
+);
 
 const wordCount = computed(() => text.value.trim().split(/\s+/).filter(Boolean).length);
 
@@ -151,102 +164,136 @@ onMounted(refreshVoices);
 </script>
 
 <template>
-  <section class="block stack">
-    <h3>Voice + text</h3>
-    <div class="row">
-      <label class="grow">
-        <span>
-          Voice
-          <span v-if="currentEngine" class="endnote" style="text-transform: none; font-weight: 400; margin-left: 8px;">
-            from <strong style="font-style: normal; color: var(--ink);">{{ currentEngine.name }}</strong>
-          </span>
-        </span>
-        <select v-model="voice" :disabled="availableVoices.length === 0">
-          <option v-if="availableVoices.length === 0" value="">— no voices available —</option>
-          <option v-for="v in availableVoices" :key="v.id" :value="v.id">{{ v.name }} — {{ v.id }}</option>
-        </select>
-      </label>
-    </div>
-    <p v-if="emptyVoiceReason" class="endnote" style="margin-top: 6px;">
-      {{ emptyVoiceReason }}
-    </p>
-    <div style="margin-top: 16px">
-      <label>
-        <span>Text</span>
-        <textarea v-model="text" rows="5" style="width: 100%"></textarea>
-      </label>
-      <p class="endnote" style="margin-top: 6px">
-        Inline tags:
-        <span class="mono">[laugh]</span>,
-        <span class="mono">[pause:0.5s]</span>,
-        <span class="mono">[whisper]…[/whisper]</span>,
-        <span class="mono">[speed:0.7]…[/speed]</span>
-      </p>
-    </div>
-    <div class="row" style="margin-top: 16px">
-      <button class="primary" :disabled="busy || !voice" @click="generate">
-        {{ busy ? "Rendering…" : "Render" }}
-      </button>
-      <span class="endnote">POST /v1/generate &rarr; audio/wav</span>
-    </div>
-    <audio v-if="audio" :src="audio" :key="audio" controls style="margin-top: 18px; width: 100%"></audio>
-  </section>
+  <div class="generate-view">
+    <!-- ── Voice + Text ─────────────────────────────────────────────────── -->
+    <div class="jv-section">
+      <h3 class="jv-section__title">Voice + text</h3>
 
-  <section class="block stack">
-    <h3>Delivery overlay</h3>
-    <p class="endnote" style="margin-bottom: 18px">
-      All optional. Untouched controls fall through to the voice's defaults. Universal knobs apply to every engine;
-      engine-specific knobs (Chatterbox exaggeration, ElevenLabs stability, etc.) go in the JSON box below.
-    </p>
-    <div class="grid-2">
-      <label>
-        <span>Speed — {{ speed.toFixed(2) }}×</span>
-        <input type="range" v-model.number="speed" min="0.5" max="2.0" step="0.05" />
-      </label>
-      <label>
-        <span>Pitch — {{ pitch > 0 ? "+" : "" }}{{ pitch }} semitones</span>
-        <input type="range" v-model.number="pitch" min="-12" max="12" step="1" />
-      </label>
-      <label>
-        <span>Emotion</span>
-        <select v-model="emotion">
-          <option v-for="e in EMOTIONS" :key="e" :value="e">{{ e || "(none)" }}</option>
-        </select>
-      </label>
-      <label>
-        <span>Gain — {{ gain > 0 ? "+" : "" }}{{ gain }} dB</span>
-        <input type="range" v-model.number="gain" min="-24" max="12" step="1" />
-      </label>
-      <label>
-        <span>Pause before (ms)</span>
-        <input type="number" min="0" max="5000" v-model.number="pauseBefore" />
-      </label>
-      <label>
-        <span>Pause after (ms)</span>
-        <input type="number" min="0" max="5000" v-model.number="pauseAfter" />
-      </label>
+      <div class="jv-card">
+        <JvField label="Voice" layout="block">
+          <JvSelect
+            v-model="voice"
+            :options="voiceOptions"
+            :disabled="availableVoices.length === 0"
+          />
+          <span v-if="currentEngine" class="jv-field__hint">
+            from <strong>{{ currentEngine.name }}</strong>
+          </span>
+          <p v-if="emptyVoiceReason" class="jv-field__hint" style="color: var(--warn-ink)">
+            {{ emptyVoiceReason }}
+          </p>
+        </JvField>
+
+        <div class="jv-divider" />
+
+        <JvField label="Text" layout="block">
+          <JvTextarea v-model="text" :rows="5" />
+          <span class="jv-field__hint">
+            Inline tags:
+            <code class="jv-mono">[laugh]</code>,
+            <code class="jv-mono">[pause:0.5s]</code>,
+            <code class="jv-mono">[whisper]…[/whisper]</code>,
+            <code class="jv-mono">[speed:0.7]…[/speed]</code>
+          </span>
+        </JvField>
+
+        <div class="jv-divider" />
+
+        <div class="jv-floating">
+          <JvButton
+            variant="primary"
+            size="lg"
+            :loading="busy"
+            :disabled="busy || !voice"
+            :label="busy ? 'Rendering…' : 'Render'"
+            @click="generate"
+          />
+          <span class="jv-muted" style="font-size: 12px; font-family: var(--font-mono)">
+            POST /v1/generate &rarr; audio/wav
+          </span>
+          <span class="jv-spacer" />
+          <span class="jv-pill jv-pill--ghost jv-mono">{{ wordCount }} words</span>
+        </div>
+
+        <audio v-if="audio" :src="audio" :key="audio" controls class="generate-view__audio" />
+      </div>
     </div>
-    <div style="margin-top: 22px">
-      <label>
-        <span>Instruct (Qwen3-native; prefix on other engines where supported)</span>
-        <input v-model="instruct" placeholder='e.g. "with growing horror, slowly losing composure"' />
-      </label>
+
+    <!-- ── Delivery overlay ───────────────────────────────────────────────── -->
+    <div class="jv-section">
+      <h3 class="jv-section__title">Delivery overlay</h3>
+
+      <div class="jv-card">
+        <p class="jv-muted" style="font-size: 13px; margin-bottom: 18px">
+          All optional. Untouched controls fall through to the voice's defaults. Universal knobs apply to every engine;
+          engine-specific knobs go in the JSON box below.
+        </p>
+
+        <div class="generate-view__grid">
+          <JvField :label="`Speed — ${speed.toFixed(2)}×`" layout="block">
+            <input type="range" v-model.number="speed" min="0.5" max="2.0" step="0.05" class="generate-view__range" />
+          </JvField>
+          <JvField :label="`Pitch — ${pitch > 0 ? '+' : ''}${pitch} semitones`" layout="block">
+            <input type="range" v-model.number="pitch" min="-12" max="12" step="1" class="generate-view__range" />
+          </JvField>
+          <JvField label="Emotion" layout="block">
+            <JvSelect v-model="emotion" :options="emotionOptions" />
+          </JvField>
+          <JvField :label="`Gain — ${gain > 0 ? '+' : ''}${gain} dB`" layout="block">
+            <input type="range" v-model.number="gain" min="-24" max="12" step="1" class="generate-view__range" />
+          </JvField>
+          <JvField label="Pause before (ms)" layout="block">
+            <JvInput type="number" v-model="pauseBefore" />
+          </JvField>
+          <JvField label="Pause after (ms)" layout="block">
+            <JvInput type="number" v-model="pauseAfter" />
+          </JvField>
+        </div>
+
+        <div class="jv-divider" />
+
+        <JvField label="Instruct" layout="block" hint="Qwen3-native; prefix on other engines where supported">
+          <JvInput v-model="instruct" placeholder='e.g. "with growing horror, slowly losing composure"' />
+        </JvField>
+
+        <JvField label="Engine-specific knobs (JSON)" layout="block" style="margin-top: 16px">
+          <JvTextarea
+            v-model="engineJson"
+            :rows="3"
+            spellcheck="false"
+            placeholder='{"exaggeration": 0.85, "cfg_weight": 0.5, "temperature": 0.9}'
+          />
+          <div v-if="engineJsonError" class="jv-banner jv-banner--danger" style="margin-top: 8px; margin-bottom: 0">
+            {{ engineJsonError }}
+          </div>
+          <span v-else class="jv-field__hint">
+            Chatterbox: exaggeration / cfg_weight / temperature / speed_factor · ElevenLabs: stability / similarity_boost · Qwen3: use Instruct field above.
+          </span>
+        </JvField>
+      </div>
     </div>
-    <div style="margin-top: 22px">
-      <label>
-        <span>Engine-specific knobs (JSON)</span>
-        <textarea
-          v-model="engineJson"
-          rows="3"
-          spellcheck="false"
-          placeholder='{"exaggeration": 0.85, "cfg_weight": 0.5, "temperature": 0.9}'></textarea>
-      </label>
-      <p v-if="engineJsonError" class="errband" style="margin-top: 8px"><span class="lbl">JSON</span>{{ engineJsonError }}</p>
-      <p v-else class="endnote" style="margin-top: 6px">
-        Chatterbox: exaggeration / cfg_weight / temperature / speed_factor · ElevenLabs: stability / similarity_boost
-        · Qwen3 picks up the Instruct field above.
-      </p>
-    </div>
-  </section>
+  </div>
 </template>
 
+<style scoped>
+.generate-view {
+  padding: 24px 32px 64px;
+}
+
+.generate-view__audio {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.generate-view__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.generate-view__range {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+</style>

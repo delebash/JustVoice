@@ -1,8 +1,10 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup>
 import { ref, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
+import JvButton from "../components/jv/JvButton.vue";
 
 const api = useApi();
 const stats = ref(null);
@@ -50,58 +52,78 @@ onMounted(loadStats);
 </script>
 
 <template>
-  <section class="block">
-    <h3>Total on disk</h3>
-    <div class="stats" v-if="stats">
-      <div class="stat">
-        <div class="k">Entries</div>
-        <div class="v">{{ stats.total_entries_on_disk }}</div>
-        <div class="x">held across all scopes</div>
-      </div>
-      <div class="stat">
-        <div class="k">Disk used</div>
-        <div class="v">{{ fmtMB(stats.total_bytes_on_disk) }}<span class="unit"> MB</span></div>
-        <div class="x">across scopes</div>
-      </div>
-      <div class="stat">
-        <div class="k">Memory</div>
-        <div class="v">{{ stats.memory_entries }}</div>
-        <div class="x">{{ fmtMB(stats.memory_bytes) }} MB in-process</div>
-      </div>
-      <div class="stat stat--action">
-        <button class="danger" @click="purgeAll">Purge all scopes</button>
-      </div>
-    </div>
-  </section>
+  <div class="cache-view">
+    <!-- ── Total stats ── -->
+    <section class="jv-card jv-section">
+      <h3 class="jv-section__title">Total on disk</h3>
 
-  <section class="block">
-    <h3>By scope</h3>
-    <template v-if="stats && Object.keys(stats.scopes || {}).length">
-      <table>
-        <thead>
-          <tr>
-            <th>Scope</th>
-            <th>Entries</th>
-            <th>Disk · MB</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(scopeStats, scope) in stats.scopes" :key="scope">
-            <td><span class="mono">{{ scope }}</span></td>
-            <td>{{ scopeStats.entries_on_disk }}</td>
-            <td>{{ fmtMB(scopeStats.bytes_on_disk) }}</td>
-            <td>
-              <button class="bare danger" @click="purgeScope(scope)">Purge</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </template>
-    <p class="empty" v-else>Cache is empty.</p>
-  </section>
+      <div v-if="stats" class="stats-grid">
+        <div class="jv-chip-card">
+          <div>
+            <div class="stat-label">Entries</div>
+            <strong class="stat-value">{{ stats.total_entries_on_disk }}</strong>
+            <div class="jv-muted stat-sub">held across all scopes</div>
+          </div>
+        </div>
+        <div class="jv-chip-card">
+          <div>
+            <div class="stat-label">Disk used</div>
+            <strong class="stat-value">{{ fmtMB(stats.total_bytes_on_disk) }} <span class="stat-unit">MB</span></strong>
+            <div class="jv-muted stat-sub">across scopes</div>
+          </div>
+        </div>
+        <div class="jv-chip-card">
+          <div>
+            <div class="stat-label">Memory</div>
+            <strong class="stat-value">{{ stats.memory_entries }}</strong>
+            <div class="jv-muted stat-sub">{{ fmtMB(stats.memory_bytes) }} MB in-process</div>
+          </div>
+        </div>
+        <div class="stat-action">
+          <JvButton variant="danger-outline" label="Purge all scopes" @click="purgeAll" />
+        </div>
+      </div>
+    </section>
+
+    <!-- ── By scope ── -->
+    <section class="jv-card jv-section">
+      <h3 class="jv-section__title">By scope</h3>
+
+      <template v-if="stats && Object.keys(stats.scopes || {}).length">
+        <table class="jv-table">
+          <thead>
+            <tr>
+              <th>Scope</th>
+              <th>Entries</th>
+              <th>Disk · MB</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(scopeStats, scope) in stats.scopes" :key="scope">
+              <td><span class="jv-mono">{{ scope }}</span></td>
+              <td>{{ scopeStats.entries_on_disk }}</td>
+              <td>{{ fmtMB(scopeStats.bytes_on_disk) }}</td>
+              <td>
+                <div class="jv-table__actions">
+                  <JvButton variant="danger-outline" size="sm" label="Purge" @click="purgeScope(scope)" />
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </template>
+      <p v-else class="jv-table__empty">Cache is empty.</p>
+    </section>
+  </div>
 </template>
 
 <style scoped>
-.stat--action { display: flex; align-items: flex-end; }
+.cache-view { padding: 32px; max-width: 860px; display: flex; flex-direction: column; gap: 24px; }
+.stats-grid { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-top: 12px; }
+.stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-3); margin-bottom: 4px; }
+.stat-value { font-size: 22px; font-weight: 600; color: var(--ink); }
+.stat-unit { font-size: 13px; font-weight: 400; color: var(--ink-2); }
+.stat-sub { font-size: 11px; margin-top: 2px; }
+.stat-action { display: flex; align-items: flex-end; padding-bottom: 4px; }
 </style>
