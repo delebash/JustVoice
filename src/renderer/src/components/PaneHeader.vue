@@ -1,11 +1,9 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!--
+  PaneHeader — shared eyebrow + H1 at the top of each view / pane.
+  Uses .jv-pane-header etc. classes from justvoice.css.
+-->
 <script setup>
-// Shared eyebrow + H1 header used at the top of every pane/view.
-//
-// When `helpKey` is set, a small "?" affordance (HelpTrigger) is rendered
-// at the start of the actions row. Clicking it opens the JwHelpDrawer
-// scoped to that doc — single source of truth: docs/*.md, identified by
-// the slug in docs/toc.json.
-
 import HelpTrigger from "./HelpTrigger.vue";
 
 defineProps({
@@ -16,12 +14,12 @@ defineProps({
 </script>
 
 <template>
-  <header class="pane-header">
-    <div class="pane-title">
-      <span v-if="eyebrow" class="pane-eyebrow">{{ eyebrow }}</span>
-      <h1 class="pane-h1">{{ title }}</h1>
+  <header class="jv-pane-header">
+    <div class="jv-pane-header__title">
+      <span v-if="eyebrow" class="jv-pane-header__eyebrow">{{ eyebrow }}</span>
+      <h1 class="jv-pane-header__h1">{{ title }}</h1>
     </div>
-    <div class="pane-actions" v-if="helpKey || $slots.default">
+    <div class="jv-pane-header__actions" v-if="helpKey || $slots.default">
       <HelpTrigger v-if="helpKey" :slug="helpKey" :label="title" />
       <slot />
     </div>

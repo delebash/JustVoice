@@ -1,667 +1,288 @@
-/* JustTTS — global styles.
- *
- * Layered on top of the design token system in ./assets/styles/tokens.css.
- * Mercury banking aesthetic (hard contrast on white) coexists with the
- * Jw* component primitives, which read state from the token vars.
- */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* ============================================================
+   JustVoice — global styles entry point.
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,300;1,6..72,400;1,6..72,500&family=JetBrains+Mono:wght@400;500&display=swap");
-@import "./assets/styles/tokens.css";
+     1. Inter + JetBrains Mono webfonts.
+     2. justvoice.css — design tokens, base reset, .jv-* primitives,
+        .jv-app shell layout, .jv-card / .jv-btn / .jv-input /
+        .jv-select / .jv-checkbox / .jv-pill / .jv-table / .jv-pane
+        / .jv-banner / .jv-floating / .jv-field.
+     3. Component-level CSS below for the few singleton wrappers
+        (AppDialog, AppModal, EmptyState, PaneHeader, Toast,
+        TaskStrip) that pair Reka headless behavior with their own
+        styling layer.
+   ============================================================ */
 
-* {
-  box-sizing: border-box;
-}
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+@import "./assets/styles/justvoice.css";
 
-html,
-body {
-  margin: 0;
-  padding: 0;
-  background: var(--app-bg, var(--bg));
-  color: var(--ink);
-  font-family: var(--font-sans, "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-/* ─── Typography — JustTTS loads Inter + Newsreader + JetBrains Mono.
-   tokens.css (cribbed from JustWrite) repoints these vars at Fraunces /
-   Spline Sans, which we DON'T load, so headings fell back to Georgia and
-   mono to Menlo. Re-bind every font var to the faces we actually ship so
-   the intended look renders. ─── */
-:root {
-  --font-sans:  "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --font-ui:    "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --font-serif: "Newsreader", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-  --font-mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
-}
-
-/* ─── Palette — the legacy GUI's "Mercury" editorial system. Warm cream
-   paper, hard hairlines, sharp corners, forest-green accent (matches the
-   legacy /legacy/ GUI exactly). Overrides JustWrite's white/oklch tokens;
-   views read these var names so one block re-skins everything. ─── */
-:root {
-  --bg:            #faf8f3;   /* paper — main scroll backdrop (legacy --paper) */
-  --app-bg:        #faf8f3;
-  --surface:       #fffefa;   /* paper-elev — inputs, modals */
-  --surface-2:     #faf8f3;   /* footer, no contrast band */
-  --surface-3:     #f3eee0;   /* tag chip fill, hover */
-
-  --border:        #e8e3d4;       /* legacy --line */
-  --border-soft:   #f0ebdf;
-  --border-strong: #cdc4af;       /* legacy --line-strong */
-
-  --ink:    #1c1c1a;
-  --ink-2:  #4a4640;
-  --muted:  #7a7567;
-  --subtle: #a8a18f;
-
-  --accent:       #1F3A2E;   /* forest green — legacy accent */
-  --accent-ink:   #142820;
-  --accent-soft:  #e9efe9;
-  --accent-line:  #c8d4cb;
-  --on-accent:    #faf8f3;
-
-  --danger:      #8b2520;
-  --danger-bg:   #f4e4e3;
-  --danger-ink:  #5a1410;
-  --danger-line: #e1c3c0;
-
-  --success:      #2f7d4f;
-  --success-soft: #e3efe6;
-
-  --shadow-1: none;          /* flat editorial — hairlines do the work */
-
-  /* Sharp corners everywhere. One knob to round if ever wanted. */
-  --r-control: 0px;
-  --r-card: 0px;
-}
-body { font-feature-settings: 'ss01', 'cv11'; }
-html, body { background: var(--bg); }
-body { background: var(--bg); }   /* override tokens.css radial-gradient bg */
-
-/* ─── App shell — fixed top chrome + footer, one scrolling content area.
-   tokens.css sets `body { overflow: hidden }` (JustWrite drives its own
-   inner scroll panes); our layout is plain flow, so without a dedicated
-   scroll region everything below the fold was clipped with no way to
-   reach it. This shell restores scrolling the modern desktop-app way. ─── */
+/* App shell — App.vue still tags its root with .app-shell. Same
+   layout shape as .jv-app, aliased here so we don't have to retag. */
 .app-shell {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 80px 1fr;
   height: 100vh;
   overflow: hidden;
-}
-.app-shell > .topbar,
-.app-shell > .tabs { flex-shrink: 0; }
-.app-shell > main {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-strong) transparent;
-}
-.app-shell > main::-webkit-scrollbar { width: 12px; }
-.app-shell > main::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
-  border-radius: 7px;
-  border: 3px solid var(--app-bg, var(--surface-2));
-  background-clip: content-box;
-}
-.app-shell > main::-webkit-scrollbar-thumb:hover { background: var(--muted); }
-
-.main-inner {
-  max-width: 1180px;
-  padding: 56px 40px 80px;
-  animation: rise 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
-  animation-delay: 120ms;
-}
-
-/* Topbar — legacy editorial: serif italic logo, mono version, accent status dot.
-   IMPORTANT: these rules must override the global `.app-shell .status` block
-   below, which uppercases + tracks .status for use inside the block content.
-   Same specificity, so we duplicate `.app-shell .topbar .status` to win — and
-   reset text-transform/letter-spacing so the topbar pill stays mixed case. */
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 20px 40px;
-  border-bottom: 1px solid var(--border);
-  animation: rise 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
-}
-.topbar .logo {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 500;
-  font-size: 26px;
-  letter-spacing: -0.005em;
-  line-height: 1;
-}
-.topbar .dot { color: var(--accent); }
-.topbar .ver {
-  font-family: var(--font-sans);
-  font-size: 12px;
-  color: var(--muted);
-  letter-spacing: 0.04em;
-}
-.app-shell .topbar .status {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--accent);
-  letter-spacing: 0.02em;
-  text-transform: none;
-}
-.app-shell .topbar .status.warn { color: var(--danger); }
-.app-shell .topbar .status .sq {
-  width: 8px;
-  height: 8px;
-  background: currentColor;
-  border-radius: 999px;
-}
-
-/* Tabs — legacy spacing + active underline = accent. */
-.tabs {
-  display: flex;
-  gap: 32px;
-  padding: 0 40px;
-  border-bottom: 1px solid var(--border);
-  overflow-x: auto;
-  animation: rise 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
-  animation-delay: 80ms;
-}
-.tabs .tab {
-  background: none;
-  border: none;
-  color: var(--muted);
-  padding: 18px 0;
-  font-size: 13.5px;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  letter-spacing: 0.005em;
-  transition: color .12s ease, border-color .12s ease;
-}
-.tabs .tab:hover { color: var(--ink); }
-.tabs .tab.active {
-  color: var(--ink);
-  border-bottom-color: var(--accent);
-  font-weight: 500;
-}
-
-/* Page head — serif italic display, legacy treatment. */
-.page-head { margin-bottom: 44px; }
-.page-head h2 {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 400;
-  font-size: 42px;
-  letter-spacing: -0.018em;
-  margin: 0 0 8px;
-  font-variation-settings: 'opsz' 60;
-}
-.page-head .period { color: var(--accent); }
-.page-head .lede {
-  color: var(--ink-2);
-  margin: 0;
-  max-width: 580px;
-  font-size: 14.5px;
-  line-height: 1.6;
-}
-
-/* Sections — NO card box. Hairline separators only. This is the legacy
-   "section break" treatment that the user wants back; the previous boxed
-   .block made everything read as generic white panels. */
-.block {
-  margin-top: 48px;
-  padding: 32px 0 0;
-  background: transparent;
-  border: none;
-  border-top: 1px solid var(--border);
-}
-.block:first-of-type {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: none;
-}
-
-/* Section heading — serif italic, the editorial counterpart to the page h2. */
-.block h3 {
-  margin: 0 0 20px;
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 400;
-  font-size: 22px;
-  letter-spacing: -0.005em;
-  text-transform: none;
-  color: var(--ink);
-  font-variation-settings: 'opsz' 30;
-}
-
-/* Field labels — the legacy uppercase letter-spaced convention. Views wrap
-   controls as <label><span>Label</span><input/></label>; the span is the
-   visible label. */
-.app-shell label > span {
-  display: block;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 8px;
-}
-
-/* Checkbox labels — different from field labels: mixed case, normal weight,
-   sitting next to the checkbox rather than above it. Legacy used inline-style
-   overrides for this; we promote it to a class so views don't repeat the css. */
-.app-shell label.check {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-}
-.app-shell label.check > span {
-  display: inline;
-  margin: 0;
-  font-size: 14px;
-  font-weight: 400;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--ink);
-}
-.app-shell label.check > input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  padding: 0;
-}
-
-.mono {
-  font-family: var(--font-mono);
+  background: var(--bg);
 }
 
 /* ============================================================
-   Form controls — JustTTS's own clean set.
-   One global system so every view's raw <input>/<select>/<button>
-   looks consistent and modern. Views should NOT re-declare these;
-   they only add layout (widths, grid, labels). Keep the warm
-   palette + oxblood accent the rest of the app uses.
+   Reka-Dialog overlay + modal/dialog shapes — used by AppModal
+   and AppDialog. Pair the headless behaviour (focus trap, Esc, ARIA)
+   with JustVoice surface visuals.
    ============================================================ */
 
-/* Oxblood accent on every native range / checkbox / radio, replacing the
-   browser's default blue-purple so the controls match the palette. */
-input[type="range"],
-input[type="checkbox"],
-input[type="radio"] { accent-color: var(--accent); }
+.jv-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 22, 24, 0.42);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 900;
+  animation: jv-overlay-in 0.18s ease-out both;
+}
+.jv-overlay[data-state="closed"] { animation: jv-overlay-out 0.18s ease-in both; }
+@keyframes jv-overlay-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes jv-overlay-out { from { opacity: 1; } to { opacity: 0; } }
 
-/* Text inputs, selects, textareas — shared box. */
-.app-shell input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
-.app-shell textarea,
-.app-shell select {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 100%;
+.jv-modal,
+.jv-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--r-control);
-  padding: 10px 13px;
-  font-family: var(--font-sans);
-  font-size: 14px;
-  color: var(--ink);
-  outline: none;
-  transition: border-color .12s ease, box-shadow .12s ease;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-3);
+  width: calc(100vw - 64px);
+  max-height: calc(100vh - 96px);
+  display: flex;
+  flex-direction: column;
+  z-index: 950;
+  animation: jv-modal-in 0.22s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
-.app-shell textarea { line-height: 1.6; resize: vertical; min-height: 96px; }
-.app-shell input:focus,
-.app-shell textarea:focus,
-.app-shell select:focus {
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent);
-}
-.app-shell input::placeholder,
-.app-shell textarea::placeholder { color: var(--subtle); }
-
-/* Custom select caret (native arrow suppressed via appearance:none). */
-.app-shell select {
-  padding-right: 32px;
-  cursor: pointer;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%237a756c' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 11px center;
+.jv-modal       { min-width: 480px; max-width: 640px; }
+.jv-modal--wide { max-width: 960px; }
+.jv-dialog      { min-width: 380px; max-width: 540px; }
+@keyframes jv-modal-in {
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 8px)); }
+  to   { opacity: 1; transform: translate(-50%, -50%); }
 }
 
-/* Range slider — slim track, oxblood thumb. */
-.app-shell input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 4px;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: var(--border-strong);
-  cursor: pointer;
+.jv-modal__header,
+.jv-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--line);
 }
-.app-shell input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 16px; height: 16px;
-  border-radius: 50%;
-  background: var(--accent);
-  border: 2px solid var(--surface);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-  cursor: pointer;
-}
-.app-shell input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; }
-
-/* Buttons — legacy "Mercury" set: bordered, sharp, hover inverts to ink.
-   Views pick a class; no per-view button CSS. `.tab` (nav) is excluded — it
-   has its own borderless styling and must not pick up the bordered/invert
-   chrome (otherwise hovering a tab fills it solid ink). */
-.app-shell button:not(.tab) {
-  font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 10px 18px;
-  border: 1px solid var(--ink);
-  border-radius: var(--r-control);
-  background: var(--surface);
-  color: var(--ink);
-  transition: background .12s ease, color .12s ease, border-color .12s ease;
-}
-.app-shell button:not(.tab):not(:disabled):hover { background: var(--ink); color: var(--surface); }
-.app-shell button:not(.tab):disabled { opacity: 0.4; cursor: default; }
-.app-shell button:not(.tab):disabled:hover { background: var(--surface); color: var(--ink); }
-
-/* Primary — oxblood fill, the main call to action. */
-.app-shell button.primary {
-  background: var(--accent);
-  color: var(--on-accent);
-  border-color: var(--accent);
-}
-.app-shell button.primary:not(:disabled):hover { background: var(--accent-ink); border-color: var(--accent-ink); color: var(--on-accent); }
-
-/* Secondary — bordered surface (same as base, named for clarity). */
-.app-shell button.secondary { background: var(--surface); color: var(--ink); border-color: var(--border-strong); }
-.app-shell button.secondary:not(:disabled):hover { background: var(--ink); color: var(--surface); border-color: var(--ink); }
-
-/* Bare — text-only, no border. Used for inline/destructive row actions. */
-.app-shell button.bare {
-  background: none;
-  border: none;
-  color: var(--accent);
-  padding: 6px 4px;
-  font-size: 12.5px;
-}
-.app-shell button.bare:not(:disabled):hover { background: none; color: var(--accent-ink); text-decoration: underline; text-underline-offset: 3px; }
-.app-shell button.bare.danger,
-.app-shell button.danger { color: var(--danger); border-color: var(--danger); }
-.app-shell button.danger { background: var(--surface); }
-.app-shell button.danger:not(:disabled):hover { background: var(--danger); color: var(--on-accent); border-color: var(--danger); }
-.app-shell button.bare.danger:not(:disabled):hover { background: none; color: var(--danger-ink); }
-
-/* ─── Shared layout + display primitives used across every view ─── */
-
-/* Horizontal field row; children with .grow flex to fill. */
-.app-shell .row { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
-.app-shell .row > .grow { flex: 1; min-width: 220px; }
-
-/* Legacy form layout primitives. Use .grid-2 for two-column form grids
-   (every form on every view uses this in legacy) and .stack inside a .block
-   to give children consistent 24px vertical rhythm. */
-.app-shell .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 32px; }
-.app-shell .block.stack > * + *,
-.app-shell .stack > * + * { margin-top: 24px; }
-
-/* Tag / chip — legacy pill: accent-soft fill, accent text, fully rounded. */
-.app-shell .tag {
-  display: inline-block;
-  font-family: var(--font-sans);
-  font-size: 10.5px;
-  font-weight: 500;
+.jv-modal__titleblock,
+.jv-dialog__titleblock { flex: 1; min-width: 0; }
+.jv-modal__eyebrow {
+  font-size: 10px;
+  font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 3px 9px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  border: none;
-  border-radius: 999px;
-  white-space: nowrap;
+  color: var(--ink-3);
+  margin-bottom: 4px;
 }
-.app-shell .tag.danger { background: var(--danger-bg); color: var(--danger); }
-.app-shell .tag.accent { background: var(--accent-soft); color: var(--accent); }
-
-/* Status dot + label. */
-.app-shell .status { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); white-space: nowrap; }
-.app-shell .status .sq { width: 8px; height: 8px; background: currentColor; }
-.app-shell .status.installed { color: var(--accent); }
-.app-shell .status.loaded { color: var(--success); }
-.app-shell .status.warn, .app-shell .status.failed { color: var(--danger); }
-
-/* Tables inside sections — legacy editorial: uppercase letter-spaced headers,
-   tabular nums, accent-tinted hover. Views may still override locally. */
-.app-shell .block table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.app-shell .block thead th {
-  text-align: left;
-  font-family: var(--font-sans);
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-  padding: 12px 18px 12px 0;
-  border-bottom: 1px solid var(--border-strong);
-}
-.app-shell .block thead th:last-child { padding-right: 0; text-align: right; }
-.app-shell .block tbody td {
-  padding: 14px 18px 14px 0;
-  border-bottom: 1px solid var(--border);
-  vertical-align: middle;
-  font-variant-numeric: tabular-nums;
-}
-.app-shell .block tbody td:last-child { padding-right: 0; text-align: right; }
-.app-shell .block tbody tr:hover td { background: rgba(31, 58, 46, 0.025); }
-.app-shell .block tbody td .em {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 500;
-  font-size: 17px;
+.jv-modal__title,
+.jv-dialog__title {
+  font-size: 16px;
+  font-weight: 600;
   letter-spacing: -0.005em;
-  font-variation-settings: 'opsz' 24;
+  color: var(--ink);
+  line-height: 1.3;
 }
-.app-shell .block tbody tr.active td { background: var(--accent-soft); }
+.jv-modal__close,
+.jv-dialog__close {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  border-radius: var(--r-control);
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.jv-modal__close:hover,
+.jv-dialog__close:hover { background: var(--surface-2); color: var(--ink); }
 
-/* Stats grid — huge serif numerals, oldstyle nums, hairline separators.
-   Legacy treatment. Used by Overview / Cache / Engines "machine" panel. */
-.app-shell .stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0;
-}
-.app-shell .stats > .stat {
-  padding: 0 32px 0 0;
-  border-right: 1px solid var(--border);
-}
-.app-shell .stats > .stat + .stat { padding-left: 32px; }
-.app-shell .stats > .stat:last-child { border-right: none; padding-right: 0; }
-.app-shell .stat .k {
-  font-size: 11px;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.13em;
-  margin-bottom: 14px;
-}
-.app-shell .stat .v {
-  font-family: var(--font-serif);
-  font-weight: 300;
-  font-size: 68px;
-  line-height: 1;
-  letter-spacing: -0.04em;
-  font-variant-numeric: oldstyle-nums tabular-nums;
-  font-variation-settings: 'opsz' 72;
-  display: inline-block;
+.jv-modal__body,
+.jv-dialog__body {
+  padding: 18px 22px 22px;
+  overflow-y: auto;
   color: var(--ink);
 }
-.app-shell .stat .v .unit {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 300;
-  font-size: 19px;
-  color: var(--muted);
-  margin-left: 6px;
-  letter-spacing: -0.005em;
-  font-variation-settings: 'opsz' 30;
-}
-.app-shell .stat .x {
-  font-size: 12.5px;
-  color: var(--muted);
-  margin-top: 12px;
-  line-height: 1.4;
+.jv-modal--flush > .jv-modal__body { padding: 0; }
+
+.jv-modal__footer,
+.jv-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 22px 18px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
+  border-radius: 0 0 var(--r-card) var(--r-card);
 }
 
-/* Engine row — legacy three-column editorial row (name | backend | status). */
-.app-shell .engines { border-top: 1px solid var(--border); }
-.app-shell .engine {
-  display: grid;
-  grid-template-columns: 1fr 1fr 130px;
-  align-items: baseline;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--border);
-  gap: 24px;
-}
-.app-shell .engine .name {
-  font-family: var(--font-serif);
-  font-weight: 400;
-  font-size: 18px;
-  letter-spacing: -0.005em;
-  font-variation-settings: 'opsz' 24;
-}
-.app-shell .engine .name .qual {
-  font-style: italic;
-  font-weight: 300;
-  color: var(--muted);
-  font-size: 15px;
-  margin-left: 4px;
-}
-.app-shell .engine .be {
-  font-family: var(--font-mono);
-  font-size: 12.5px;
+.jv-dialog__body { display: flex; flex-direction: column; gap: 16px; }
+.jv-dialog__message {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
   color: var(--ink-2);
+  white-space: pre-line;
 }
-.app-shell .engine .st {
-  font-family: var(--font-sans);
-  font-size: 11.5px;
-  font-weight: 500;
+.jv-dialog__field { display: flex; flex-direction: column; gap: 6px; }
+.jv-dialog__label {
+  font-size: 11px;
+  font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--accent);
-  text-align: right;
+  color: var(--ink-3);
 }
-.app-shell .engine .st.off { color: var(--muted); font-weight: 400; }
+.jv-dialog__help { font-size: 11.5px; color: var(--ink-3); }
 
-/* Endnote — legacy: serif italic light grey for fine print. */
-.app-shell .endnote {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 300;
-  font-size: 14px;
-  color: var(--muted);
-  font-variation-settings: 'opsz' 20;
-}
+/* ============================================================
+   PaneHeader (.jv-pane-header / -title / -eyebrow / -h1 / -actions)
+   ============================================================ */
 
-/* Inline progress bar — engine install, training, any byte/percent op. */
-.app-shell .progress-track { height: 6px; background: var(--surface-3); border: 1px solid var(--border); overflow: hidden; }
-.app-shell .progress-bar { height: 100%; background: var(--ink); transition: width .2s linear; }
-.app-shell .progress-bar.phase-completed { background: var(--success); }
-.app-shell .progress-bar.phase-failed { background: var(--danger); }
-.app-shell .progress-bar.indeterminate {
-  width: 35% !important;
-  animation: progress-indet 1.1s ease-in-out infinite;
+.jv-pane-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
 }
-@keyframes progress-indet { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
-
-/* Inline error banner — legacy: danger-soft fill, left accent rule. */
-.app-shell .errband {
-  display: flex; gap: 14px; align-items: center;
-  padding: 14px 22px; margin: 0 0 28px;
-  background: var(--danger-bg); color: var(--danger);
-  border: none; border-left: 3px solid var(--danger);
-  font-size: 13.5px;
+.jv-pane-header__title { min-width: 0; }
+.jv-pane-header__eyebrow {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 6px;
 }
-.app-shell .errband .lbl {
-  font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; font-size: 10.5px; flex-shrink: 0;
+.jv-pane-header__h1 {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin: 0;
+  color: var(--ink);
 }
-
-/* Empty-state line — legacy: serif italic centered. */
-.app-shell .empty {
-  padding: 32px 0;
-  color: var(--muted);
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 300;
-  font-size: 18px;
-  text-align: center;
-  font-variation-settings: 'opsz' 24;
+.jv-pane-header__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ─── Task strip — JustWrite-inspired live progress ─── */
+/* ============================================================
+   TaskStrip — used by components/TaskStrip.vue
+   ============================================================ */
 
 .task-strip {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
-  padding: 9px 14px;
-  border: 1px solid var(--border);
+  padding: 10px 14px;
   background: var(--surface);
-  font-size: 12px;
-  margin: 0 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  font-size: 13px;
+  margin-bottom: 12px;
 }
-
-.task-strip[data-status="completed"] { border-color: var(--success); }
-.task-strip[data-status="failed"] { border-color: var(--danger); }
-.task-strip[data-status="cancelled"] { opacity: 0.6; }
-
+.task-strip[data-status="completed"] { border-color: var(--success-line); background: var(--success-bg); }
+.task-strip[data-status="failed"]    { border-color: var(--danger-line);  background: var(--danger-bg);  }
+.task-strip[data-status="cancelled"] { opacity: 0.65; }
 .task-spin {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: var(--r-pill);
   background: var(--accent);
-  animation: task-pulse 1.2s ease-in-out infinite;
+  animation: jv-task-pulse 1.2s ease-in-out infinite;
 }
-
 .task-spin[data-status="completed"] { background: var(--success); animation: none; }
-.task-spin[data-status="failed"] { background: var(--danger); animation: none; }
-.task-spin[data-status="cancelled"] { background: var(--muted); animation: none; }
-
-@keyframes task-pulse {
+.task-spin[data-status="failed"]    { background: var(--danger);  animation: none; }
+.task-spin[data-status="cancelled"] { background: var(--ink-3);   animation: none; }
+@keyframes jv-task-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.85); }
+  50%      { opacity: 0.4; transform: scale(0.85); }
 }
-
-.task-label { font-weight: 600; font-size: 13px; }
+.task-label { font-weight: 600; color: var(--ink); }
 .task-stat {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--muted);
+  color: var(--ink-3);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-
-.task-track { flex-basis: 100%; height: 3px; background: var(--border); margin-top: 6px; overflow: hidden; }
-.task-fill { height: 100%; background: var(--ink); transition: width 200ms linear; }
 .task-spacer { flex: 1; }
+.task-track {
+  flex-basis: 100%;
+  height: 3px;
+  background: var(--surface-3);
+  margin-top: 6px;
+  overflow: hidden;
+  border-radius: var(--r-pill);
+}
+.task-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 200ms linear;
+  border-radius: var(--r-pill);
+}
+
+/* ============================================================
+   Toaster (vue-sonner) — Toast.vue sets class="jv-toaster"
+   ============================================================ */
+
+.jv-toaster [data-sonner-toast] {
+  font-family: var(--font-ui) !important;
+  border-radius: var(--r-card) !important;
+  border: 1px solid var(--line) !important;
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  box-shadow: var(--shadow-2) !important;
+}
+.jv-toaster [data-sonner-toast][data-type="success"] { border-color: var(--success-line) !important; }
+.jv-toaster [data-sonner-toast][data-type="error"]   { border-color: var(--danger-line) !important;  }
+.jv-toaster [data-sonner-toast][data-type="warning"] { border-color: var(--warn-line) !important;    }
+
+/* ============================================================
+   Native form-element accent so range/checkbox/radio pick up the
+   forest-green even when not inside a Jv* component.
+   ============================================================ */
+
+input[type="range"],
+input[type="checkbox"],
+input[type="radio"] { accent-color: var(--accent); }
+
+input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%;
+  height: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--line-strong);
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+}

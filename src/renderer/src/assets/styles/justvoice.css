@@ -1,0 +1,763 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* ============================================================
+   JustVoice — design system
+
+   Locks in the "refreshing" preview-HTML aesthetic the user picked:
+   cream paper backdrop with floating white cards, forest-green accent,
+   warm gold + oxblood accents, soft 6/8px corners, Inter throughout.
+
+   Source palette + sizing: preview/ux-feature-inventory.html.
+
+   This file is intentionally self-sufficient — does NOT import the
+   JustWrite oklch token system. Every primitive a view needs (.jv-card,
+   .jv-btn, .jv-input, .jv-pill, .jv-table, .jv-pane, .jv-field,
+   .jv-banner, .jv-floating) is declared here so views can drop the
+   ad-hoc scoped CSS and pick up consistent visuals.
+   ============================================================ */
+
+:root {
+  /* Surfaces — cream paper + white cards. */
+  --bg:          #f6f5f1;
+  --surface:     #ffffff;
+  --surface-2:   #fbfaf7;
+  --surface-3:   #f3f1ec;
+  --app-bg:      #f6f5f1;
+  --paper:       #ffffff;
+  --sidebar-bg:  #fbfaf7;
+
+  /* Lines */
+  --line:         #e3e1dc;
+  --line-strong:  #cfccc4;
+  --border:       #e3e1dc;
+  --border-soft:  #ebe9e4;
+  --border-strong:#cfccc4;
+
+  /* Ink */
+  --ink:    #1a1a1a;
+  --ink-2:  #4a4a4a;
+  --ink-3:  #888888;
+  --muted:  #6a6a6a;
+  --subtle: #888888;
+
+  /* Accents (signature 4-color editorial palette) */
+  --accent:      #3a7d63;
+  --accent-ink:  #2c6049;
+  --accent-soft: #e8f0eb;
+  --accent-line: #b8d2c3;
+  --on-accent:   #ffffff;
+
+  --warn:        #c89a3a;
+  --warn-bg:     #fff8e3;
+  --warn-ink:    #8a6a1f;
+  --warn-line:   #e6cd84;
+  --gold:        #c89a3a;
+  --gold-soft:   #f6ecc8;
+
+  --danger:      #a8442e;
+  --danger-bg:   #fbecea;
+  --danger-ink:  #7a2f1f;
+  --danger-line: #e3b6ac;
+
+  --success:      #3a7d63;
+  --success-bg:   #e8f0eb;
+  --success-soft: #e8f0eb;
+  --success-ink:  #2c6049;
+  --success-line: #b8d2c3;
+
+  --info:        #2f74b5;
+  --info-bg:     #e8eff7;
+
+  /* Mention chips (kept for any lifted JustWrite UI) */
+  --mention-character: #6aa9ff;
+  --mention-location:  #57c08a;
+  --mention-object:    #d9a441;
+  --mention-group:     #b083e0;
+
+  /* Typography */
+  --font-ui:    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-sans:  "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-serif: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Radii — soft, per preview. NOT sharp corners. */
+  --r-sm:       4px;
+  --r-md:       6px;
+  --r-lg:       8px;
+  --r-xl:       12px;
+  --r-pill:     999px;
+  --r-control:  6px;
+  --r-card:     8px;
+
+  /* Shadow — flat editorial with a barely-there lift. */
+  --shadow-1:    0 1px 2px rgba(20, 22, 24, 0.04);
+  --shadow-2:    0 4px 12px rgba(20, 22, 24, 0.06);
+  --shadow-3:    0 8px 24px rgba(20, 22, 24, 0.08);
+  --shadow-soft: rgba(0, 0, 0, 0.04);
+
+  /* Status dots */
+  --status-todo:   #cfccc4;
+  --status-draft:  #c89a3a;
+  --status-revise: #a8442e;
+  --status-final:  #3a7d63;
+
+  /* Hue knobs preserved for appearance.js retinting */
+  --accent-hue:   150;
+  --danger-hue:   18;
+  --success-hue:  150;
+  --info-hue:     220;
+}
+
+/* Dark mode follows the preview's @media block. uiStore can also set
+   the .dark class on documentElement for explicit toggles. */
+html.dark, html[data-theme="dark"] {
+  --bg:           #1a1a1c;
+  --surface:      #232326;
+  --surface-2:    #2a2a2e;
+  --surface-3:    #303034;
+  --app-bg:       #1a1a1c;
+  --sidebar-bg:   #232326;
+  --paper:        #232326;
+  --line:         #36363b;
+  --line-strong:  #4a4a50;
+  --border:       #36363b;
+  --border-soft:  #2c2c30;
+  --border-strong:#4a4a50;
+  --ink:          #e8e6e1;
+  --ink-2:        #b8b5ad;
+  --ink-3:        #8a8780;
+  --muted:        #8a8780;
+  --subtle:       #6a6760;
+  --accent:       #5fa882;
+  --accent-soft:  #1f3329;
+  --accent-line:  #2c4a3a;
+}
+
+/* ============================================================
+   Reset + global baseline
+   ============================================================ */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-ui);
+  color: var(--ink);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+h1 { font-size: 24px; }
+h2 { font-size: 18px; }
+h3 { font-size: 14px; }
+h4 { font-size: 13px; }
+
+p { margin: 0; color: var(--ink-2); }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+code, pre {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* Thin custom scrollbar (cream-friendly). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: var(--r-pill);
+  border: 2px solid var(--bg);
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--ink-3); }
+
+/* ============================================================
+   App shell — 80px left sidebar + scrolling main pane.
+   App.vue can use these classes instead of scoped CSS.
+   ============================================================ */
+
+.jv-app {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.jv-sidebar {
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 0 12px;
+  gap: 4px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.jv-sidebar__brand {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--on-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.5px;
+  margin-bottom: 18px;
+}
+.jv-sidebar__nav {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--ink-2);
+  transition: background-color 0.12s, color 0.12s;
+  margin: 2px 0;
+  user-select: none;
+}
+.jv-sidebar__nav:hover {
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+}
+.jv-sidebar__nav--active,
+.jv-sidebar__nav--active:hover {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.jv-sidebar__icon { font-size: 18px; line-height: 1; }
+.jv-sidebar__label {
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+  max-width: 56px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jv-sidebar__spacer { flex: 1; }
+.jv-sidebar__version {
+  font-size: 10px;
+  color: var(--ink-3);
+  padding-bottom: 8px;
+}
+
+.jv-main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+}
+.jv-topbar {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 22px 32px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+.jv-topbar__title {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+.jv-topbar__period { color: var(--accent); }
+.jv-topbar__status {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.jv-topbar__status--warn { color: var(--warn-ink); }
+.jv-topbar__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(58, 125, 99, 0.18);
+}
+.jv-topbar__status--warn .jv-topbar__dot {
+  background: var(--warn);
+  box-shadow: 0 0 0 3px rgba(200, 154, 58, 0.18);
+}
+.jv-topbar__url {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-left: 6px;
+}
+
+.jv-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 32px 64px;
+}
+.jv-content__lede {
+  color: var(--ink-2);
+  font-size: 13px;
+  margin: 0 0 20px;
+  max-width: 720px;
+}
+
+/* ============================================================
+   Cards — the basic floating-white-on-cream primitive.
+   ============================================================ */
+
+.jv-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 16px;
+  box-shadow: var(--shadow-1);
+}
+.jv-card--flat { box-shadow: none; }
+.jv-card--soft { background: var(--surface-2); }
+.jv-card--bare { background: transparent; border: 0; box-shadow: none; padding: 0; }
+
+.jv-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.jv-card__title { font-size: 14px; font-weight: 600; margin: 0; }
+.jv-card__body { color: var(--ink-2); }
+
+/* Compact inline data card (the .mock-card from preview). */
+.jv-chip-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.jv-chip-card strong { color: var(--ink); font-weight: 600; }
+
+/* ============================================================
+   Buttons
+   ============================================================ */
+
+.jv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--r-control);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: filter 0.12s, background-color 0.12s, border-color 0.12s;
+  white-space: nowrap;
+}
+.jv-btn:hover { filter: brightness(0.94); }
+.jv-btn:active { filter: brightness(0.88); }
+.jv-btn:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
+
+.jv-btn--secondary {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+.jv-btn--secondary:hover {
+  background: var(--surface-2);
+  filter: none;
+}
+
+.jv-btn--ghost {
+  background: transparent;
+  color: var(--ink);
+  border-color: transparent;
+}
+.jv-btn--ghost:hover {
+  background: var(--surface-2);
+  filter: none;
+}
+
+.jv-btn--danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+.jv-btn--danger-outline {
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.jv-btn--danger-outline:hover {
+  background: var(--danger-bg);
+  filter: none;
+}
+
+.jv-btn--lg { height: 40px; padding: 0 20px; font-size: 14px; }
+.jv-btn--sm { height: 26px; padding: 0 10px; font-size: 12px; }
+.jv-btn--icon {
+  width: 32px;
+  padding: 0;
+  border-color: var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-2);
+}
+.jv-btn--icon:hover { background: var(--surface-2); color: var(--ink); filter: none; }
+
+.jv-btn-group {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ============================================================
+   Inputs
+   ============================================================ */
+
+.jv-input,
+.jv-textarea,
+.jv-select {
+  display: block;
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.jv-input:focus,
+.jv-textarea:focus,
+.jv-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.jv-input::placeholder,
+.jv-textarea::placeholder {
+  color: var(--ink-3);
+}
+.jv-textarea {
+  height: auto;
+  min-height: 96px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+.jv-select {
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'><path fill='%23888' d='M0 0h8L4 5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+.jv-field {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px;
+  align-items: center;
+  margin: 10px 0;
+}
+.jv-field--block {
+  display: block;
+}
+.jv-field--block > label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+  margin-bottom: 6px;
+}
+.jv-field > label {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.jv-field__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.jv-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ink-2);
+  user-select: none;
+}
+.jv-checkbox input { margin: 0; cursor: pointer; }
+
+/* ============================================================
+   Pills + tags
+   ============================================================ */
+
+.jv-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  font-size: 11px;
+  line-height: 18px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.jv-pill--green   { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.jv-pill--warn    { color: var(--warn-ink); border-color: var(--warn-line); background: var(--warn-bg); }
+.jv-pill--danger  { color: var(--danger-ink); border-color: var(--danger-line); background: var(--danger-bg); }
+.jv-pill--solid   { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.jv-pill--ghost   { background: transparent; border-color: var(--line); }
+
+.jv-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+/* ============================================================
+   Tables
+   ============================================================ */
+
+.jv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.jv-table thead th {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.jv-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-2);
+  vertical-align: middle;
+}
+.jv-table tbody td strong { color: var(--ink); font-weight: 600; }
+.jv-table tbody tr:hover td { background: var(--surface-2); }
+.jv-table tbody tr:last-child td { border-bottom: 0; }
+.jv-table__empty {
+  text-align: center;
+  color: var(--ink-3);
+  font-style: italic;
+  padding: 32px 12px;
+}
+.jv-table__actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+/* ============================================================
+   Pane — list + detail two-column layout
+   ============================================================ */
+
+.jv-pane {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+.jv-pane-list {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 8px;
+  min-height: 200px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.jv-pane-detail {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 20px 24px;
+  min-height: 200px;
+}
+.jv-pane-list__item {
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  margin-bottom: 2px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--ink);
+  transition: background-color 0.1s, color 0.1s;
+}
+.jv-pane-list__item:hover { background: var(--surface-2); }
+.jv-pane-list__item--active,
+.jv-pane-list__item--active:hover {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.jv-pane-list__meta {
+  font-size: 11px;
+  color: var(--ink-3);
+  display: block;
+  margin-top: 2px;
+}
+.jv-pane-list__item--active .jv-pane-list__meta { color: rgba(255, 255, 255, 0.75); }
+
+/* ============================================================
+   Banners + callouts
+   ============================================================ */
+
+.jv-banner {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--r-md);
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.jv-banner strong { color: var(--ink); }
+.jv-banner--warn   { border-left-color: var(--warn); background: var(--warn-bg); }
+.jv-banner--danger { border-left-color: var(--danger); background: var(--danger-bg); color: var(--danger-ink); }
+.jv-banner--info   { border-left-color: var(--info); background: var(--info-bg); }
+
+/* ============================================================
+   Floating generate box (preview's .floating-gen)
+   ============================================================ */
+
+.jv-floating {
+  background: linear-gradient(180deg, var(--surface), var(--surface-2));
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin: 12px 0;
+  box-shadow: var(--shadow-2);
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ============================================================
+   Misc helpers
+   ============================================================ */
+
+.jv-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.jv-col { display: flex; flex-direction: column; gap: 8px; }
+.jv-spacer { flex: 1; }
+.jv-divider { height: 1px; background: var(--line); margin: 16px 0; }
+
+.jv-section { margin-bottom: 28px; }
+.jv-section__title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.jv-section__title-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+}
+
+.jv-mono { font-family: var(--font-mono); font-size: 12px; }
+.jv-muted { color: var(--ink-3); }
+.jv-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Backwards-compat: a few JustWrite-derived components reference
+   `.btn`, `.btn--primary`, `.btn--danger`. Map them onto the jv-* shape
+   so they don't render naked. */
+.btn { @apply jv-btn; }  /* tailwind syntax — falls back to next rule if no preprocessor */
+.btn, button.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--r-control);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+.btn--danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }

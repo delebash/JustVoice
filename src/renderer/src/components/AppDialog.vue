@@ -1,13 +1,12 @@
-<script setup>
-// Renderer-side host for promptDialog() / confirmDialog() in
-// services/dialog.js. Mounted once at the top level in App.vue. Reka UI
-// Dialog primitives under the hood — same prompt logic (per-field values,
-// requireMatch, enter-to-submit on the last field, focus+select the first
-// field) as the PrimeVue version it replaces.
-//
-// Backdrop click and Esc both route through cancel() so the pending
-// dialog promise resolves to the cancellation sentinel.
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!--
+  AppDialog — singleton dialog host for promptDialog() / confirmDialog()
+  (services/dialog.js). Mounted once at the top of App.vue.
 
+  Built on Reka UI's headless Dialog primitives for a11y (focus trap,
+  Esc, ARIA) and visually styled with the JustVoice .jv-* CSS layer.
+-->
+<script setup>
 import { computed, nextTick, ref, watch } from "vue";
 import { dialogState, _resolveDialog } from "../services/dialog.js";
 import {
@@ -19,41 +18,26 @@ import {
   DialogClose,
 } from "reka-ui";
 import Icon from "./Icon.vue";
-import JwButton from "./ui/JwButton.vue";
-import JwInput from "./ui/JwInput.vue";
-import JwSelect from "./ui/JwSelect.vue";
+import JvButton from "./jv/JvButton.vue";
+import JvInput from "./jv/JvInput.vue";
+import JvSelect from "./jv/JvSelect.vue";
 
-const t = (k) => ({
-  "dialog.defaultTitle": "Confirm",
-  "dialog.confirmLabel": "Confirm",
-  "dialog.cancelLabel": "Cancel",
-  "dialog.okLabel": "OK",
-  "dialog.closeLabel": "Close",
-}[k] || k);
-
-// Normalize the active dialog into a uniform shape the template can read.
-// Single-field prompts become a one-element `fields` list internally so
-// the template only deals with one case.
-//
-// We intentionally do NOT gate on dialogState.open — the body needs to
-// stay rendered during Reka UI's close animation, and the service keeps
-// kind/options around for that purpose (see services/dialog.js).
-// Visibility is driven by `visible` below; that's what controls whether
-// Reka shows the dialog at all.
+// Normalize the active dialog into a single shape the template reads.
+// Single-field prompts become a one-element `fields` list so the template
+// handles one case only.
 const dialog = computed(() => {
   if (!dialogState.kind) return null;
   const opts = dialogState.options || {};
   if (dialogState.kind === "confirm") {
     return {
       kind: "confirm",
-      title: opts.title || t("dialog.defaultTitle"),
+      title: opts.title || "Confirm",
       message: opts.message || "",
-      confirmLabel: opts.confirmLabel || t("dialog.confirmLabel"),
-      cancelLabel: opts.cancelLabel || t("dialog.cancelLabel"),
+      confirmLabel: opts.confirmLabel || "Confirm",
+      cancelLabel: opts.cancelLabel || "Cancel",
       danger: !!opts.danger,
     };
   }
-  // prompt
   const fields = Array.isArray(opts.fields) && opts.fields.length
     ? opts.fields
     : [{
@@ -68,26 +52,20 @@ const dialog = computed(() => {
     kind: "prompt",
     title: opts.title || "",
     message: opts.message || "",
-    confirmLabel: opts.confirmLabel || t("dialog.okLabel"),
-    cancelLabel: opts.cancelLabel || t("dialog.cancelLabel"),
+    confirmLabel: opts.confirmLabel || "OK",
+    cancelLabel: opts.cancelLabel || "Cancel",
     danger: !!opts.danger,
     fields,
     isSingle: !Array.isArray(opts.fields),
-    // requireMatch: a string the input value must equal (case-sensitive)
-    // before the Confirm button enables. Used for "Type RESET to confirm"-style
-    // double-confirmations.
     requireMatch: opts.requireMatch || null,
   };
 });
 
-// Dialog visibility mirrors the service's open flag; closing via Esc /
-// X / backdrop routes through cancel() so the pending promise resolves.
 const visible = computed({
   get: () => dialogState.open,
   set: (v) => { if (!v) cancel(); },
 });
 
-// values keyed by field.key. Re-seeded each time a new dialog opens.
 const values = ref({});
 const firstInput = ref(null);
 
@@ -112,7 +90,6 @@ const canSubmit = computed(() => {
     const first = d.fields[0]?.key;
     if (String(values.value[first] ?? "") !== d.requireMatch) return false;
   }
-  // Require non-empty text fields (selects always have a value).
   for (const f of d.fields) {
     if (f.type === "select") continue;
     if (f.optional) continue;
@@ -122,8 +99,6 @@ const canSubmit = computed(() => {
   return true;
 });
 
-// Capture the underlying DOM node so focus()/select() work whether the ref
-// is a native element or a component instance ($el).
 function captureFirst(el, i) {
   if (i !== 0) return;
   firstInput.value = el?.$el ?? el ?? null;
@@ -153,8 +128,6 @@ function submit() {
 }
 
 function onEnter(e, isLastField) {
-  // Enter submits only when on the last field (or single-field prompts).
-  // Shift+Enter is reserved for any future multiline inputs.
   if (e.shiftKey) return;
   if (isLastField) { e.preventDefault(); submit(); }
 }
@@ -163,41 +136,39 @@ function onEnter(e, isLastField) {
 <template>
   <DialogRoot :open="visible" @update:open="(v) => visible = v">
     <DialogPortal>
-      <DialogOverlay class="app-modal-overlay" />
-      <DialogContent class="app-modal app-dialog">
-        <header class="app-modal-header">
+      <DialogOverlay class="jv-overlay" />
+      <DialogContent class="jv-dialog">
+        <header class="jv-dialog__header">
           <DialogTitle as-child>
-            <div class="app-modal-titleblock">
-              <div v-if="dialog?.title" class="modal-title">{{ dialog.title }}</div>
+            <div class="jv-dialog__titleblock">
+              <div v-if="dialog?.title" class="jv-dialog__title">{{ dialog.title }}</div>
             </div>
           </DialogTitle>
-          <DialogClose class="app-modal-close" aria-label="Close">
+          <DialogClose class="jv-dialog__close" aria-label="Close">
             <Icon name="Close" :size="14" />
           </DialogClose>
         </header>
 
-        <div v-if="dialog" class="app-modal-body dlg-body">
-          <div v-if="dialog.message" class="dlg-message">{{ dialog.message }}</div>
+        <div v-if="dialog" class="jv-dialog__body">
+          <p v-if="dialog.message" class="jv-dialog__message">{{ dialog.message }}</p>
 
           <template v-if="dialog.kind === 'prompt'">
             <div
               v-for="(f, i) in dialog.fields"
               :key="f.key"
-              class="dlg-field"
+              class="jv-dialog__field"
             >
-              <label v-if="f.label" class="dlg-label" :for="`dlg-field-${f.key}`">{{ f.label }}</label>
-              <JwSelect
+              <label v-if="f.label" class="jv-dialog__label" :for="`jv-field-${f.key}`">{{ f.label }}</label>
+              <JvSelect
                 v-if="f.type === 'select'"
-                :input-id="`dlg-field-${f.key}`"
+                :input-id="`jv-field-${f.key}`"
                 :ref="el => captureFirst(el, i)"
                 v-model="values[f.key]"
                 :options="f.options || []"
-                option-label="label"
-                option-value="value"
               />
-              <JwInput
+              <JvInput
                 v-else
-                :id="`dlg-field-${f.key}`"
+                :id="`jv-field-${f.key}`"
                 :ref="el => captureFirst(el, i)"
                 :type="f.type || 'text'"
                 :placeholder="f.placeholder || ''"
@@ -205,16 +176,16 @@ function onEnter(e, isLastField) {
                 @keydown.enter="onEnter($event, i === dialog.fields.length - 1)"
                 @keydown.escape.prevent="cancel"
               />
-              <div v-if="f.help" class="dlg-help">{{ f.help }}</div>
+              <span v-if="f.help" class="jv-dialog__help">{{ f.help }}</span>
             </div>
           </template>
         </div>
 
-        <footer class="app-modal-footer">
-          <JwButton :label="dialog?.cancelLabel || 'Cancel'" intent="ghost" @click="cancel" />
-          <JwButton
+        <footer class="jv-dialog__footer">
+          <JvButton variant="ghost" :label="dialog?.cancelLabel || 'Cancel'" @click="cancel" />
+          <JvButton
+            :variant="dialog?.danger ? 'danger' : 'primary'"
             :label="dialog?.confirmLabel || 'OK'"
-            :intent="dialog?.danger ? 'danger' : 'primary'"
             :disabled="!canSubmit"
             @click="submit"
           />
@@ -223,25 +194,3 @@ function onEnter(e, isLastField) {
     </DialogPortal>
   </DialogRoot>
 </template>
-
-<style scoped>
-.dlg-body {
-  display: flex; flex-direction: column;
-  gap: 14px;
-}
-.dlg-message {
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--ink-2);
-  white-space: pre-line;
-}
-.dlg-field { display: flex; flex-direction: column; gap: 6px; }
-.dlg-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-}
-.dlg-help { font-size: 11.5px; color: var(--muted); }
-</style>

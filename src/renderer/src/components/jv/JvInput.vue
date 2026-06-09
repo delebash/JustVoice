@@ -1,28 +1,30 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!--
+  JvInput — JustVoice text input. Thin v-model wrapper around <input>;
+  styling comes entirely from .jv-input in justvoice.css. Forward common
+  attrs + events so callers can drop in placeholder/autocomplete/etc.
+-->
 <script setup>
-// Custom text input — replaces PrimeVue InputText. Thin wrapper around
-// <input>: v-model, size modifier, standard HTML attrs pass through.
-// Visual rules live in tokens.css under the "JwInput / JwTextarea" section.
-
 import { computed } from "vue";
 
 const props = defineProps({
   modelValue: { type: [String, Number], default: "" },
-  size:       { type: String, default: "regular" }, // small | regular
+  type:       { type: String, default: "text" },
+  placeholder:{ type: String, default: "" },
   disabled:   { type: Boolean, default: false },
   readonly:   { type: Boolean, default: false },
-  placeholder:{ type: String, default: "" },
-  type:       { type: String, default: "text" },    // text | email | url | password | search | tel | number
-  autocomplete:{ type: String, default: undefined },
-  name:       { type: String, default: undefined },
+  invalid:    { type: Boolean, default: false },
   id:         { type: String, default: undefined },
+  name:       { type: String, default: undefined },
+  autocomplete:{ type: String, default: undefined },
   autofocus:  { type: Boolean, default: false },
-  invalid:    { type: Boolean, default: false },    // shows error border
+  size:       { type: String, default: "md" },   // sm | md
 });
 const emit = defineEmits(["update:modelValue", "blur", "focus", "keydown"]);
 
 const classes = computed(() => [
-  "jw-input",
-  props.size === "small" && "jw-input--small",
+  "jv-input",
+  props.size === "sm" && "jv-input--sm",
   { "is-invalid": props.invalid },
 ]);
 </script>
