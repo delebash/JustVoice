@@ -143,7 +143,7 @@ onMounted(refresh);
 
     <!-- ── Catalogue: 6 stat tiles per preview HTML §Overview ─────────── -->
     <div class="jv-section">
-      <h3 class="jv-section__title">Catalogue <JvTag variant="default" label="JustVoice" /></h3>
+      <h3 class="jv-section__title">Catalogue</h3>
       <div class="overview-view__stats">
         <div class="jv-card overview-view__stat">
           <div class="overview-view__stat-label">Voices</div>
@@ -188,7 +188,11 @@ onMounted(refresh);
 
     <!-- ── Loaded engine card per preview HTML §Overview ──────────────── -->
     <div class="jv-section">
-      <h3 class="jv-section__title">Loaded engine <JvTag variant="default" label="combined" /></h3>
+      <h3 class="jv-section__title">
+        Loaded engine
+        <JvTag v-if="loadedEngine" variant="success" label="ready" />
+        <JvTag v-else variant="default" label="none" />
+      </h3>
       <div class="jv-card overview-view__loaded">
         <template v-if="loadedEngine">
           <div class="overview-view__loaded-cell">
@@ -215,7 +219,11 @@ onMounted(refresh);
 
     <!-- ── Active tasks card — always shown, empty state when nothing in flight. -->
     <div class="jv-section">
-      <h3 class="jv-section__title">Active tasks <JvTag variant="accent" label="new" /></h3>
+      <h3 class="jv-section__title">
+        Active tasks
+        <JvTag v-if="runningTasks.length" variant="warn" :label="`${runningTasks.length} in flight`" />
+        <JvTag v-else variant="default" label="idle" />
+      </h3>
       <div class="jv-card">
         <template v-if="runningTasks.length">
           <div v-for="t in runningTasks" :key="t.id" class="overview-view__task">
@@ -240,7 +248,10 @@ onMounted(refresh);
 
     <!-- ── Recent generations table — always shown, empty state when no history. -->
     <div class="jv-section">
-      <h3 class="jv-section__title">Recent generations <JvTag variant="default" label="voicebox" /></h3>
+      <h3 class="jv-section__title">
+        Recent generations
+        <JvTag v-if="recentGenerations.length" variant="default" :label="`last ${recentGenerations.length}`" />
+      </h3>
       <div class="jv-card jv-card--flat">
         <table v-if="recentGenerations.length" class="jv-table">
           <thead>

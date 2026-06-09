@@ -11,7 +11,24 @@ import JvCheckbox from "../components/jv/JvCheckbox.vue";
 import JvField from "../components/jv/JvField.vue";
 
 const api = useApi();
-const settings = ref(null);
+// Initialize with the same shape the API returns so the sub-nav + every
+// field renders before /v1/settings comes back (or when the server is
+// offline). refresh() overwrites with real values when the server is up.
+const settings = ref({
+  server:    { host: "127.0.0.1", port: 17494, docs_enabled: true },
+  logging:   {},
+  cache:     { enabled: true, max_memory_entries: 50, max_disk_bytes_per_scope: 2_000_000_000 },
+  limits:    { text_max_chars: 100000, chapter_max_lines: 5000, reference_clip_max_bytes: 25_000_000, request_body_max_bytes: 100_000_000 },
+  cors:      {},
+  auth:      {},
+  mastering: {},
+  training:  {},
+  models:    {},
+  engines:   { kokoro: { model_dir_override: "" } },
+  app:       { primary_use_case: "unset", secondary_use_cases: [], onboarding_shown: false },
+  generation:{ max_chunk_chars: 800, crossfade_ms: 50 },
+});
+const serverReachable = ref(false);
 
 // ─── External engine probe state ────────────────────────────────────────
 const probe = ref(null);
@@ -152,7 +169,17 @@ const probeModelOptions = computed(() =>
 
 // ─── Core settings load + save ──────────────────────────────────────────
 async function refresh() {
-  settings.value = await api.request("/v1/settings");
+  try {
+    const live = await api.request("/v1/settings");
+    if (live && typeof live === "object") {
+      // Merge server values into the seeded defaults so partial responses
+      // don't blank out fields the server didn't return.
+      settings.value = { ...settings.value, ...live };
+      serverReachable.value = true;
+    }
+  } catch {
+    serverReachable.value = false;
+  }
 }
 
 async function reload() {
@@ -198,7 +225,12 @@ const activeSub = ref("general");
 </script>
 
 <template>
-  <div v-if="settings">
+  <div>
+    <p v-if="!serverReachable" class="jv-banner jv-banner--warn">
+      <strong>Server offline.</strong> Showing default values; changes won't persist until the server is reachable.
+      <span class="jv-spacer" />
+      <a href="#" @click.prevent="reload">Retry</a>
+    </p>
 
     <!-- ── Sub-nav (matches preview HTML §13). ────────────────────────── -->
     <div class="settings-subnav">
