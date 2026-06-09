@@ -104,7 +104,7 @@ Ported from voicebox commit `b35b90961d5bc83a8b4e96e8b6ccde2a03152ff9` (MIT) und
 | Legacy Rust repo reference | `reference_legacy_repo.md` |
 | Operator-tunable training settings | `reference_settings_training.md` |
 | About to write a question or non-terse closer | `feedback_user_preferences.md` |
-| When/how to use ultracode vs solo Opus vs Sonnet subagent | `feedback_ultracode_usage_rule.md` |
+| When/how (rarely) to use ultracode — subagents disabled 2026-06-09 | `feedback_ultracode_usage_rule.md` |
 | JustWrite↔JustVoice HTTP boundary | `CONTRACT.md` (in-repo) |
 | Use-case scope (audiobook / game / podcast / dictation) | `project_use_cases.md` |
 | Licensing, SPDX headers, lifted-file attribution | `project_licensing_attribution.md` |

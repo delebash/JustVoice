@@ -53,7 +53,7 @@ What to do at session start:
 - `project_final_architecture` — current architectural plan (NOT forking voicebox; lifting patterns; JustTTS=engine pool, JustWrite=audiobook orchestration). READ FIRST.
 - `project_use_cases` — multi-use (audiobook + game + podcast + dictation); ALL voicebox features in scope.
 - `project_licensing_attribution` — per-file SPDX headers + lifted-file attribution blocks; current Apache-2.0, flips to GPL-3.0-or-later when pedalboard lands.
-- `feedback_ultracode_usage_rule` — when to invoke ultracode vs solo Opus vs Sonnet subagent.
+- `feedback_ultracode_usage_rule` — when (rarely) to invoke ultracode. **User disabled subagent delegation 2026-06-09 — do all work inline by default.**
 - `project_gotchas` — `justtts-server` rename, native-dialog ban, Tauri spawn-loop fix. Load before debugging boot failures.
 - `feedback_user_preferences` — terse reports, no permission-asking, verify by running code.
 
