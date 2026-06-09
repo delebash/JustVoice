@@ -40,6 +40,46 @@ export const useApi = defineStore("api", () => {
     }
   }
 
+  // Convenience helpers used by service modules.
+  function get(path, opts = {}) {
+    return request(path, { ...opts, method: "GET" });
+  }
+
+  function post(path, body, opts = {}) {
+    return request(path, {
+      ...opts,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
+      body: body != null ? JSON.stringify(body) : undefined,
+    });
+  }
+
+  async function requestBlob(method, path, opts = {}) {
+    const headers = { ...(opts.headers || {}) };
+    if (token.value) headers.Authorization = `Bearer ${token.value}`;
+    const url = serverUrl.value.replace(/\/$/, "") + path;
+    const res = await fetch(url, { ...opts, method, headers });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`${res.status} ${res.statusText}: ${text}`);
+    }
+    return res.blob();
+  }
+
+  async function postForm(path, formData, opts = {}) {
+    const headers = { ...(opts.headers || {}) };
+    if (token.value) headers.Authorization = `Bearer ${token.value}`;
+    const url = serverUrl.value.replace(/\/$/, "") + path;
+    const res = await fetch(url, { ...opts, method: "POST", headers, body: formData });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`${res.status} ${res.statusText}: ${text}`);
+    }
+    const ct = res.headers.get("content-type") || "";
+    if (ct.includes("json")) return res.json();
+    return res.text();
+  }
+
   return {
     serverUrl,
     token,
@@ -47,6 +87,10 @@ export const useApi = defineStore("api", () => {
     setServer,
     setToken,
     request,
+    get,
+    post,
+    requestBlob,
+    postForm,
     isAuthed: computed(() => !!token.value),
   };
 });

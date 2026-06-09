@@ -62,3 +62,4 @@ scripts/_shots/
 # Server data dir (settings, audio, etc.)
 data/
 server/data/
+target/

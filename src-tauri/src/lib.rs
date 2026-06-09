@@ -25,13 +25,18 @@
 //! Phase 3+ atomic license flip: file is GPL-3.0-or-later (was Apache-2.0
 //! before pedalboard adoption). See DESIGN_FREEZE.md §3.1.
 
+mod audio_capture;
+mod hotkey_monitor;
+mod permissions;
+mod synthetic_keys;
+mod system_audio;
+
 use std::net::{SocketAddr, TcpStream};
 use std::process::{Child, Command};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use tauri::{
-    image::Image,
     menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Manager, WindowEvent,
@@ -288,102 +293,121 @@ fn stop_audio_playback() -> Result<(), String> {
 
 #[tauri::command]
 fn is_system_audio_supported() -> Result<bool, String> {
-    // True only on platforms with a working capture backend.
-    // wasapi-loopback (Windows), ScreenCaptureKit (macOS 13+), pipewire (Linux).
-    // Until backends land we report false.
-    Ok(false)
+    Ok(system_audio::is_system_audio_supported())
 }
 
 #[tauri::command]
-fn start_system_audio_capture() -> Result<(), String> {
-    Err("System audio capture not yet implemented".to_string())
+async fn start_system_audio_capture(
+    state: tauri::State<'_, audio_capture::AudioCaptureState>,
+) -> Result<(), String> {
+    // Default max-duration: 5 minutes. The renderer can call stop_system_audio_capture
+    // earlier to flush the buffer and get the WAV path.
+    audio_capture::start_capture(&state, 300).await
 }
 
 #[tauri::command]
-fn stop_system_audio_capture() -> Result<(), String> {
-    Ok(())
+async fn stop_system_audio_capture(
+    state: tauri::State<'_, audio_capture::AudioCaptureState>,
+) -> Result<String, String> {
+    // Returns base64-encoded WAV data. The renderer saves it to disk or passes
+    // it directly to the Python server for transcription.
+    audio_capture::stop_capture(&state).await
 }
 
 // ── macOS TCC permission stubs ───────────────────────────────────────────
 
 #[tauri::command]
 fn check_accessibility_permission() -> Result<bool, String> {
-    #[cfg(target_os = "macos")]
-    {
-        // TODO: AXIsProcessTrustedWithOptions via cocoa-foundation crate.
-        Ok(false)
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        Ok(true)
-    }
+    Ok(permissions::check_accessibility())
 }
 
 #[tauri::command]
 fn check_input_monitoring_permission() -> Result<bool, String> {
-    #[cfg(target_os = "macos")]
-    {
-        // TODO: IOHIDCheckAccess via macOS HID framework.
-        Ok(false)
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        Ok(true)
-    }
+    Ok(permissions::check_input_monitoring())
 }
 
 #[tauri::command]
 fn open_accessibility_settings() -> Result<(), String> {
-    #[cfg(target_os = "macos")]
-    {
-        let _ = std::process::Command::new("open")
-            .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
-            .spawn();
-        Ok(())
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        Err("accessibility settings are macOS-specific".to_string())
-    }
+    permissions::open_accessibility()
 }
 
 #[tauri::command]
 fn open_input_monitoring_settings() -> Result<(), String> {
+    permissions::open_input_monitoring()
+}
+
+// ── Paste + hotkey commands ───────────────────────────────────────────────
+
+#[tauri::command]
+fn paste_final_text(text: String, _focus: serde_json::Value) -> Result<(), String> {
+    // Write `text` to the clipboard, fire Ctrl/Cmd+V, clear after 500ms.
+    // The `_focus` parameter carries the previously focused window handle
+    // (populated by the renderer before the overlay shows); it's reserved for
+    // a future "re-focus the original window before pasting" feature.
     #[cfg(target_os = "macos")]
     {
-        let _ = std::process::Command::new("open")
-            .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
-            .spawn();
-        Ok(())
+        if !permissions::check_accessibility() {
+            return Err(
+                "Accessibility permission required to post synthetic key events. \
+                 Grant it in System Settings → Privacy & Security → Accessibility."
+                    .to_string(),
+            );
+        }
     }
-    #[cfg(not(target_os = "macos"))]
-    {
-        Err("input-monitoring settings are macOS-specific".to_string())
-    }
-}
-
-// ── Paste / hotkey stubs (Phase 4c follow-on) ─────────────────────────────
-
-#[tauri::command]
-fn paste_final_text(_text: String, _focus: serde_json::Value) -> Result<(), String> {
-    Err("paste_final_text not yet implemented; full hotkey/paste port deferred".to_string())
+    synthetic_keys::paste_text_with_restore(&text, 500)
 }
 
 #[tauri::command]
-fn enable_hotkey() -> Result<(), String> {
+fn enable_hotkey(
+    app: tauri::AppHandle,
+    hotkey_state: tauri::State<'_, hotkey_monitor::HotkeyState>,
+) -> Result<(), String> {
+    // Enable with empty bindings — the renderer must call update_chord_bindings
+    // with the actual chord strings from the user's settings to arm the monitor.
+    let bindings = std::collections::HashMap::new();
+    let mut guard = hotkey_state.monitor.lock().unwrap();
+    *guard = Some(hotkey_monitor::HotkeyMonitor::spawn(app, bindings));
     Ok(())
 }
 
 #[tauri::command]
-fn disable_hotkey() -> Result<(), String> {
+fn disable_hotkey(
+    hotkey_state: tauri::State<'_, hotkey_monitor::HotkeyState>,
+) -> Result<(), String> {
+    let mut guard = hotkey_state.monitor.lock().unwrap();
+    *guard = None; // Drop triggers HotkeyMonitor::drop → shuts down the dispatcher
     Ok(())
 }
 
 #[tauri::command]
 fn update_chord_bindings(
-    _push_to_talk: Vec<String>,
-    _toggle_to_talk: Vec<String>,
+    push_to_talk: Vec<String>,
+    toggle_to_talk: Vec<String>,
+    app: tauri::AppHandle,
+    hotkey_state: tauri::State<'_, hotkey_monitor::HotkeyState>,
 ) -> Result<(), String> {
+    use hotkey_monitor::{ChordAction, HotkeyMonitor};
+
+    let ptt_keys: std::collections::HashSet<_> = push_to_talk
+        .iter()
+        .flat_map(|s| hotkey_monitor::parse_chord_str(s))
+        .collect();
+    let toggle_keys: std::collections::HashSet<_> = toggle_to_talk
+        .iter()
+        .flat_map(|s| hotkey_monitor::parse_chord_str(s))
+        .collect();
+
+    let mut bindings = std::collections::HashMap::new();
+    bindings.insert(ChordAction::PushToTalk, ptt_keys);
+    bindings.insert(ChordAction::ToggleToTalk, toggle_keys);
+
+    let mut guard = hotkey_state.monitor.lock().unwrap();
+    match guard.as_mut() {
+        Some(monitor) => monitor.update_bindings(bindings),
+        None => {
+            *guard = Some(HotkeyMonitor::spawn(app, bindings));
+        }
+    }
     Ok(())
 }
 
@@ -526,6 +550,8 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
         .manage(sidecar)
+        .manage(audio_capture::AudioCaptureState::new())
+        .manage(hotkey_monitor::HotkeyState::new())
         .invoke_handler(tauri::generate_handler![
             server_health,
             start_server,

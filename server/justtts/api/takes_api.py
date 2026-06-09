@@ -8,13 +8,16 @@ paragraph 47 doesn't invalidate paragraph 48.
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database import Take, get_db
+from ..database.models import Generation
 from ..errors import not_found, bad_request
 
 
@@ -92,3 +95,29 @@ async def delete_take(take_id: str, db: Session = Depends(get_db)) -> dict:
     db.delete(take)
     db.commit()
     return {"deleted": True}
+
+
+@router.get(
+    "/v1/generations/{generation_id}/audio",
+    summary="Stream the WAV for a completed generation",
+    responses={200: {"content": {"audio/wav": {}}}},
+)
+async def get_generation_audio(generation_id: str, db: Session = Depends(get_db)) -> FileResponse:
+    """Return the audio file for a generation by its ID.
+
+    Used by the take-versioning UI to play back individual takes without
+    re-rendering. Only works for generations that have an audio_path on disk.
+    """
+    gen = db.query(Generation).filter(Generation.id == generation_id).first()
+    if not gen:
+        raise not_found(f"generation {generation_id}")
+    if not gen.audio_path:
+        raise bad_request("generation has no audio on disk (status may not be 'completed')")
+    p = Path(gen.audio_path)
+    if not p.is_file():
+        raise not_found(f"audio file missing from disk: {gen.audio_path}")
+    return FileResponse(
+        path=str(p),
+        media_type="audio/wav",
+        filename=f"{generation_id}.wav",
+    )
