@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JustTTS — Style Mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #f5f5f4;
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    color: #18181b;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 56px 32px 96px;
+  }
+
+  .page-hd {
+    border-bottom: 2px solid #18181b;
+    padding-bottom: 22px;
+    margin-bottom: 48px;
+  }
+  .page-hd h1 {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 400;
+    font-style: italic;
+    font-size: 56px;
+    line-height: 1;
+    margin: 0 0 10px;
+    letter-spacing: -0.02em;
+  }
+  .page-hd p {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    color: #52525b;
+    margin: 0;
+    max-width: 720px;
+    line-height: 1.55;
+  }
+
+  .mock {
+    margin-bottom: 56px;
+  }
+  .mock-hd {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #d4d4d8;
+  }
+  .mock-hd .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    color: #71717a;
+    letter-spacing: 0.18em;
+  }
+  .mock-hd .name {
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 500;
+    font-size: 22px;
+    letter-spacing: -0.005em;
+  }
+  .mock-hd .ref {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #71717a;
+    letter-spacing: 0.04em;
+    margin-left: auto;
+  }
+  .mock-spec {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #52525b;
+    letter-spacing: 0.02em;
+    margin-bottom: 18px;
+    line-height: 1.6;
+  }
+  .mock-frame {
+    overflow: hidden;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.08), 0 24px 48px -16px rgba(0,0,0,0.12);
+  }
+
+  /* ════════════════════════════════════════════════════════
+     MOCKUP 1 — LINEAR-STYLE MONOCHROME
+     Pure white. Near-black ink. One warm coral accent.
+     Inter, tabular numerals, hairline rules.
+     ════════════════════════════════════════════════════════ */
+  .mk-linear {
+    background: #ffffff;
+    font-family: 'Inter', sans-serif;
+    color: #09090b;
+    --lin-line: #ececec;
+    --lin-dim: #71717a;
+    --lin-accent: #ff6b35;
+  }
+  .mk-linear .topbar {
+    display: flex; align-items: center;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--lin-line);
+    gap: 20px;
+  }
+  .mk-linear .topbar .logo {
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: -0.01em;
+  }
+  .mk-linear .topbar .ver {
+    font-size: 11.5px;
+    color: var(--lin-dim);
+    letter-spacing: 0;
+  }
+  .mk-linear .topbar .status {
+    margin-left: auto;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11.5px;
+    color: var(--lin-dim);
+  }
+  .mk-linear .topbar .status .dot {
+    width: 6px; height: 6px;
+    background: #22c55e;
+    border-radius: 999px;
+  }
+  .mk-linear .nav {
+    display: flex;
+    padding: 0 24px;
+    gap: 4px;
+    border-bottom: 1px solid var(--lin-line);
+  }
+  .mk-linear .nav .item {
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--lin-dim);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .mk-linear .nav .item.active { color: #09090b; border-bottom-color: #09090b; font-weight: 500; }
+  .mk-linear .body { padding: 32px 24px; }
+  .mk-linear h2 {
+    margin: 0 0 4px;
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+  .mk-linear .sub {
+    color: var(--lin-dim);
+    font-size: 13px;
+    margin-bottom: 32px;
+  }
+  .mk-linear .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border: 1px solid var(--lin-line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .mk-linear .stat {
+    padding: 20px 22px;
+    border-right: 1px solid var(--lin-line);
+  }
+  .mk-linear .stat:last-child { border-right: none; }
+  .mk-linear .stat .k {
+    font-size: 12px;
+    color: var(--lin-dim);
+    margin-bottom: 8px;
+  }
+  .mk-linear .stat .v {
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    font-variant-numeric: tabular-nums;
+  }
+  .mk-linear .stat .u { color: var(--lin-dim); font-size: 14px; font-weight: 400; margin-left: 6px; letter-spacing: 0; }
+  .mk-linear .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin: 36px 0 14px;
+  }
+  .mk-linear .section-head h3 { font-size: 13px; font-weight: 600; margin: 0; }
+  .mk-linear .section-head .meta { font-size: 12px; color: var(--lin-dim); }
+  .mk-linear .engine {
+    display: grid;
+    grid-template-columns: 24px 1fr 1fr 110px;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 0;
+    border-top: 1px solid var(--lin-line);
+    font-size: 13.5px;
+  }
+  .mk-linear .engine .st { text-align: right; }
+  .mk-linear .engine:last-child { border-bottom: 1px solid var(--lin-line); }
+  .mk-linear .engine .dot { width: 8px; height: 8px; background: var(--lin-accent); border-radius: 999px; }
+  .mk-linear .engine .dot.off { background: #d4d4d8; }
+  .mk-linear .engine .be { color: var(--lin-dim); font-size: 12.5px; }
+  .mk-linear .engine .st { font-size: 12px; color: var(--lin-dim); }
+  .mk-linear .engine .st.ready { color: var(--lin-accent); font-weight: 500; }
+
+  /* ════════════════════════════════════════════════════════
+     MOCKUP 2 — VERCEL / GEIST
+     Pure b/w. Geist Sans for labels. Geist Mono for data.
+     Tight tables, oversized monospace numerals.
+     ════════════════════════════════════════════════════════ */
+  .mk-vercel {
+    background: #ffffff;
+    color: #000;
+    font-family: 'Geist', sans-serif;
+    --ver-line: #eaeaea;
+    --ver-dim: #666;
+  }
+  .mk-vercel .topbar {
+    display: flex; align-items: center;
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--ver-line);
+    gap: 28px;
+  }
+  .mk-vercel .topbar .logo {
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: -0.02em;
+  }
+  .mk-vercel .topbar .crumb {
+    font-family: 'Geist Mono', monospace;
+    font-size: 12px;
+    color: var(--ver-dim);
+  }
+  .mk-vercel .topbar .crumb b { color: #000; font-weight: 500; }
+  .mk-vercel .topbar .status {
+    margin-left: auto;
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    color: var(--ver-dim);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .mk-vercel .topbar .status .sq { width: 7px; height: 7px; background: #000; }
+  .mk-vercel .nav {
+    display: flex;
+    padding: 0 28px;
+    gap: 24px;
+    border-bottom: 1px solid var(--ver-line);
+  }
+  .mk-vercel .nav .item {
+    padding: 14px 0;
+    font-size: 13px;
+    color: var(--ver-dim);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .mk-vercel .nav .item.active { color: #000; border-bottom-color: #000; font-weight: 500; }
+  .mk-vercel .body { padding: 36px 28px; }
+  .mk-vercel h2 {
+    margin: 0 0 28px;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .mk-vercel .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    border: 1px solid var(--ver-line);
+  }
+  .mk-vercel .cell {
+    padding: 22px 24px;
+    border-right: 1px solid var(--ver-line);
+  }
+  .mk-vercel .cell:last-child { border-right: none; }
+  .mk-vercel .cell .k {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ver-dim);
+    margin-bottom: 12px;
+  }
+  .mk-vercel .cell .v {
+    font-family: 'Geist Mono', monospace;
+    font-size: 38px;
+    font-weight: 500;
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+  .mk-vercel .cell .u {
+    display: block;
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    color: var(--ver-dim);
+    margin-top: 10px;
+    letter-spacing: 0;
+  }
+  .mk-vercel .table {
+    margin-top: 32px;
+    border: 1px solid var(--ver-line);
+  }
+  .mk-vercel .table .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 110px;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--ver-line);
+    font-family: 'Geist Mono', monospace;
+    font-size: 13px;
+    align-items: center;
+  }
+  .mk-vercel .table .row:last-child { border-bottom: none; }
+  .mk-vercel .table .row.head {
+    background: #fafafa;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ver-dim);
+    padding-top: 10px; padding-bottom: 10px;
+  }
+  .mk-vercel .table .row .st {
+    text-align: right;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+  .mk-vercel .table .row .st.ready { color: #000; }
+  .mk-vercel .table .row .st.off { color: var(--ver-dim); }
+
+  /* ════════════════════════════════════════════════════════
+     MOCKUP 3 — MERCURY / BANKING WARM
+     Warm cream paper. Serif numerals. Forest accent.
+     Generous whitespace, ultra-calm, refined.
+     ════════════════════════════════════════════════════════ */
+  .mk-mercury {
+    background: #FAF8F3;
+    color: #1c1c1a;
+    font-family: 'Inter', sans-serif;
+    --mer-line: #e8e3d4;
+    --mer-dim: #7a7567;
+    --mer-accent: #1F3A2E;
+  }
+  .mk-mercury .topbar {
+    display: flex; align-items: center;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--mer-line);
+    gap: 24px;
+  }
+  .mk-mercury .topbar .logo {
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: 22px;
+    letter-spacing: -0.005em;
+  }
+  .mk-mercury .topbar .ver {
+    font-size: 12px;
+    color: var(--mer-dim);
+    letter-spacing: 0.04em;
+  }
+  .mk-mercury .topbar .status {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--mer-accent);
+    font-weight: 500;
+    display: inline-flex; align-items: center; gap: 8px;
+    letter-spacing: 0.02em;
+  }
+  .mk-mercury .topbar .status .dot { width: 7px; height: 7px; border-radius: 999px; background: var(--mer-accent); }
+  .mk-mercury .nav {
+    display: flex;
+    padding: 0 32px;
+    gap: 28px;
+    border-bottom: 1px solid var(--mer-line);
+  }
+  .mk-mercury .nav .item {
+    padding: 16px 0;
+    font-size: 13px;
+    color: var(--mer-dim);
+    cursor: pointer;
+    border-bottom: 1.5px solid transparent;
+    margin-bottom: -1px;
+    letter-spacing: 0.005em;
+  }
+  .mk-mercury .nav .item.active { color: #1c1c1a; border-bottom-color: var(--mer-accent); font-weight: 500; }
+  .mk-mercury .body { padding: 48px 32px 40px; }
+  .mk-mercury h2 {
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 38px;
+    letter-spacing: -0.015em;
+    margin: 0 0 6px;
+  }
+  .mk-mercury .sub {
+    color: var(--mer-dim);
+    font-size: 13.5px;
+    margin-bottom: 44px;
+    max-width: 520px;
+    line-height: 1.55;
+  }
+  .mk-mercury .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+  }
+  .mk-mercury .stat {
+    padding: 0 28px 0 0;
+    border-right: 1px solid var(--mer-line);
+  }
+  .mk-mercury .stat + .stat { padding-left: 28px; }
+  .mk-mercury .stat:last-child { border-right: none; padding-right: 0; }
+  .mk-mercury .stat .k {
+    font-size: 11.5px;
+    color: var(--mer-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 12px;
+  }
+  .mk-mercury .stat .v {
+    font-family: 'Newsreader', serif;
+    font-weight: 300;
+    font-size: 62px;
+    line-height: 1;
+    letter-spacing: -0.035em;
+    font-variant-numeric: oldstyle-nums tabular-nums;
+  }
+  .mk-mercury .stat .u {
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 17px;
+    color: var(--mer-dim);
+    margin-left: 4px;
+  }
+  .mk-mercury .stat .x {
+    font-size: 12px;
+    color: var(--mer-dim);
+    margin-top: 10px;
+    letter-spacing: 0.005em;
+  }
+  .mk-mercury .section {
+    margin-top: 56px;
+    padding-top: 28px;
+    border-top: 1px solid var(--mer-line);
+  }
+  .mk-mercury .section h3 {
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 22px;
+    margin: 0 0 18px;
+    letter-spacing: -0.005em;
+  }
+  .mk-mercury .engine {
+    display: grid;
+    grid-template-columns: 1fr 1fr 130px;
+    align-items: baseline;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--mer-line);
+    gap: 18px;
+    font-size: 14px;
+  }
+  .mk-mercury .engine .st { text-align: right; }
+  .mk-mercury .engine .name { font-family: 'Newsreader', serif; font-weight: 400; font-size: 17px; }
+  .mk-mercury .engine .be { color: var(--mer-dim); font-size: 12.5px; }
+  .mk-mercury .engine .st { color: var(--mer-accent); font-weight: 500; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+  .mk-mercury .engine .st.off { color: var(--mer-dim); font-weight: 400; }
+
+  /* ════════════════════════════════════════════════════════
+     MOCKUP 4 — RAYCAST / TOOL-DARK
+     Deep charcoal. Subtle borders. Coral accent.
+     JetBrains Mono for data, Inter for chrome.
+     ════════════════════════════════════════════════════════ */
+  .mk-raycast {
+    background: #0E0E10;
+    color: #ededed;
+    font-family: 'Inter', sans-serif;
+    --ray-line: #232327;
+    --ray-line-2: #2a2a2e;
+    --ray-dim: #71717a;
+    --ray-accent: #FF5E5E;
+    --ray-good: #FACC15;
+  }
+  .mk-raycast .topbar {
+    display: flex; align-items: center;
+    padding: 12px 22px;
+    border-bottom: 1px solid var(--ray-line);
+    gap: 20px;
+  }
+  .mk-raycast .topbar .logo {
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: -0.005em;
+  }
+  .mk-raycast .topbar .ver {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ray-dim);
+  }
+  .mk-raycast .topbar .status {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ray-dim);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .mk-raycast .topbar .status .dot { width: 7px; height: 7px; background: var(--ray-good); border-radius: 999px; box-shadow: 0 0 8px var(--ray-good); }
+  .mk-raycast .nav {
+    display: flex;
+    padding: 6px 14px;
+    gap: 2px;
+    border-bottom: 1px solid var(--ray-line);
+    background: #0a0a0c;
+  }
+  .mk-raycast .nav .item {
+    padding: 8px 14px;
+    font-size: 12.5px;
+    color: var(--ray-dim);
+    cursor: pointer;
+    border-radius: 6px;
+  }
+  .mk-raycast .nav .item.active { background: #1a1a1d; color: #fff; }
+  .mk-raycast .body { padding: 28px 22px; }
+  .mk-raycast h2 {
+    margin: 0 0 22px;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+  .mk-raycast .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .mk-raycast .stat {
+    background: #18181b;
+    border: 1px solid var(--ray-line-2);
+    padding: 18px 20px;
+    border-radius: 10px;
+  }
+  .mk-raycast .stat .k {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: var(--ray-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .mk-raycast .stat .v {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 30px;
+    font-weight: 500;
+    letter-spacing: -0.03em;
+    color: #fff;
+    line-height: 1;
+  }
+  .mk-raycast .stat .u {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ray-dim);
+    margin-top: 10px;
+  }
+  .mk-raycast .section { margin-top: 28px; }
+  .mk-raycast .section .head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .mk-raycast .section h3 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ray-dim);
+    margin: 0;
+  }
+  .mk-raycast .engine {
+    background: #18181b;
+    border: 1px solid var(--ray-line-2);
+    border-radius: 8px;
+    padding: 12px 18px;
+    margin-bottom: 8px;
+    display: grid;
+    grid-template-columns: 14px 1fr 1fr 110px;
+    align-items: center;
+    gap: 16px;
+    font-size: 13px;
+  }
+  .mk-raycast .engine .st { text-align: right; }
+  .mk-raycast .engine .dot { width: 8px; height: 8px; background: var(--ray-good); border-radius: 999px; }
+  .mk-raycast .engine .dot.off { background: var(--ray-line-2); }
+  .mk-raycast .engine .name { color: #fff; font-weight: 500; }
+  .mk-raycast .engine .be { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--ray-dim); }
+  .mk-raycast .engine .st {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ray-dim);
+  }
+  .mk-raycast .engine .st.ready { color: var(--ray-good); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="page-hd">
+    <h1>JustTTS — <em>style explorations</em></h1>
+    <p>
+      Four directions for the admin GUI, each modelled on a real, currently shipping web product. Same Overview screen, same data, different visual vocabularies. Pick whichever feels right and I'll execute it cleanly across all six views.
+    </p>
+  </header>
+
+  <!-- ─────────── MOCK 1 ─────────── -->
+  <article class="mock">
+    <div class="mock-hd">
+      <span class="num">01</span>
+      <span class="name">Linear · Monochrome calm</span>
+      <span class="ref">ref: linear.app · 2025 redesign</span>
+    </div>
+    <div class="mock-spec">
+      Type: Inter. Palette: white, near-black, one warm coral. Hairline 1px rules. Subtle rounded inputs. Status colour only on the dot — the kind of restraint Linear actually shipped when they cut their purple back to monochrome.
+    </div>
+    <div class="mock-frame mk-linear">
+      <div class="topbar">
+        <span class="logo">Justtts</span>
+        <span class="ver">v0.1.0 · api v1</span>
+        <span class="status"><span class="dot"></span>Operational</span>
+      </div>
+      <div class="nav">
+        <div class="item active">Overview</div>
+        <div class="item">Generate</div>
+        <div class="item">Voices</div>
+        <div class="item">Personas</div>
+        <div class="item">Cache</div>
+        <div class="item">Settings</div>
+      </div>
+      <div class="body">
+        <h2>Overview</h2>
+        <div class="sub">Current state of the server, catalogue, and cache.</div>
+        <div class="stats">
+          <div class="stat"><div class="k">Voices</div><div class="v">54<span class="u">across 1 engine</span></div></div>
+          <div class="stat"><div class="k">Personas</div><div class="v">3</div></div>
+          <div class="stat"><div class="k">Cache</div><div class="v">142.3<span class="u">MB · 1,204 entries</span></div></div>
+        </div>
+        <div class="section-head">
+          <h3>Engines</h3>
+          <span class="meta">2 registered</span>
+        </div>
+        <div class="engine">
+          <span class="dot"></span>
+          <span>Kokoro (stub)</span>
+          <span class="be">sherpa-onnx</span>
+          <span class="st ready">Ready</span>
+        </div>
+        <div class="engine">
+          <span class="dot off"></span>
+          <span>Qwen3</span>
+          <span class="be">candle</span>
+          <span class="st">Not loaded</span>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- ─────────── MOCK 2 ─────────── -->
+  <article class="mock">
+    <div class="mock-hd">
+      <span class="num">02</span>
+      <span class="name">Vercel · Pure b/w mono</span>
+      <span class="ref">ref: vercel.com dashboard · 2026 Geist</span>
+    </div>
+    <div class="mock-spec">
+      Type: Geist Sans + Geist Mono. Palette: #000 on #fff. Mono for every piece of data (counts, IDs, identifiers); sans only for headings and nav. Tight grid, no rounded corners on data cards. The aesthetic Vercel landed on for the redesigned dashboard.
+    </div>
+    <div class="mock-frame mk-vercel">
+      <div class="topbar">
+        <span class="logo">▲ justtts</span>
+        <span class="crumb">delebash <b>/</b> justtts <b>/</b> overview</span>
+        <span class="status"><span class="sq"></span>operational</span>
+      </div>
+      <div class="nav">
+        <div class="item active">Overview</div>
+        <div class="item">Generate</div>
+        <div class="item">Voices</div>
+        <div class="item">Personas</div>
+        <div class="item">Cache</div>
+        <div class="item">Settings</div>
+      </div>
+      <div class="body">
+        <h2>Overview</h2>
+        <div class="grid">
+          <div class="cell">
+            <div class="k">Voices</div>
+            <div class="v">54</div>
+            <span class="u">across 1 engine</span>
+          </div>
+          <div class="cell">
+            <div class="k">Personas</div>
+            <div class="v">03</div>
+            <span class="u">bound</span>
+          </div>
+          <div class="cell">
+            <div class="k">Cache · disk</div>
+            <div class="v">142.3</div>
+            <span class="u">MB · 1,204 entries</span>
+          </div>
+        </div>
+        <div class="table">
+          <div class="row head">
+            <span>engine</span>
+            <span>backend</span>
+            <span class="st">state</span>
+          </div>
+          <div class="row">
+            <span>kokoro-stub</span>
+            <span>sherpa-onnx</span>
+            <span class="st ready">● ready</span>
+          </div>
+          <div class="row">
+            <span>qwen3-candle</span>
+            <span>candle</span>
+            <span class="st off">○ not loaded</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- ─────────── MOCK 3 ─────────── -->
+  <article class="mock">
+    <div class="mock-hd">
+      <span class="num">03</span>
+      <span class="name">Mercury · Warm serif banking</span>
+      <span class="ref">ref: mercury.com · warm-paper banking</span>
+    </div>
+    <div class="mock-spec">
+      Type: Newsreader (variable serif) for headings + numerals, Inter for body. Palette: warm cream paper, forest accent. Old-style figures with tabular numerals. Generous whitespace. The grown-up, almost-print aesthetic that banking apps use to feel trustworthy.
+    </div>
+    <div class="mock-frame mk-mercury">
+      <div class="topbar">
+        <span class="logo">Justtts.</span>
+        <span class="ver">v 0.1.0 · API v1</span>
+        <span class="status"><span class="dot"></span>Operational</span>
+      </div>
+      <div class="nav">
+        <div class="item active">Overview</div>
+        <div class="item">Generate</div>
+        <div class="item">Voices</div>
+        <div class="item">Personas</div>
+        <div class="item">Cache</div>
+        <div class="item">Settings</div>
+      </div>
+      <div class="body">
+        <h2>Overview.</h2>
+        <div class="sub">An at-a-glance reading of what's loaded, what's bound, and what the cache is holding on disk right now.</div>
+        <div class="stats">
+          <div class="stat">
+            <div class="k">Voices</div>
+            <div class="v">54</div>
+            <div class="x">across 1 engine</div>
+          </div>
+          <div class="stat">
+            <div class="k">Personas</div>
+            <div class="v">3</div>
+            <div class="x">named &amp; bound</div>
+          </div>
+          <div class="stat">
+            <div class="k">Cache</div>
+            <div class="v">142.3<span class="u">MB</span></div>
+            <div class="x">1,204 entries on disk</div>
+          </div>
+        </div>
+        <div class="section">
+          <h3>Engines</h3>
+          <div class="engine">
+            <div class="name">Kokoro <span style="font-style: italic; color: var(--mer-dim); font-size:14px;">— stub</span></div>
+            <div class="be">sherpa-onnx</div>
+            <div class="st">Ready</div>
+          </div>
+          <div class="engine">
+            <div class="name">Qwen3</div>
+            <div class="be">candle</div>
+            <div class="st off">Not loaded</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- ─────────── MOCK 4 ─────────── -->
+  <article class="mock">
+    <div class="mock-hd">
+      <span class="num">04</span>
+      <span class="name">Raycast · Tool-grade dark</span>
+      <span class="ref">ref: raycast.com · charcoal + coral</span>
+    </div>
+    <div class="mock-spec">
+      Type: Inter + JetBrains Mono. Palette: charcoal #0E0E10, soft borders, signal yellow + coral accents. Subtle glow on status dots, rounded 8–10px cards. Honest dark-mode tool — the school Linear, Warp, and Arc all started in before going light-first.
+    </div>
+    <div class="mock-frame mk-raycast">
+      <div class="topbar">
+        <span class="logo">Justtts</span>
+        <span class="ver">v0.1.0 · api v1</span>
+        <span class="status"><span class="dot"></span>operational</span>
+      </div>
+      <div class="nav">
+        <div class="item active">Overview</div>
+        <div class="item">Generate</div>
+        <div class="item">Voices</div>
+        <div class="item">Personas</div>
+        <div class="item">Cache</div>
+        <div class="item">Settings</div>
+      </div>
+      <div class="body">
+        <h2>Overview</h2>
+        <div class="stats">
+          <div class="stat">
+            <div class="k">Voices</div>
+            <div class="v">54</div>
+            <span class="u">across 1 engine</span>
+          </div>
+          <div class="stat">
+            <div class="k">Personas</div>
+            <div class="v">03</div>
+            <span class="u">bound</span>
+          </div>
+          <div class="stat">
+            <div class="k">Cache · disk</div>
+            <div class="v">142.3</div>
+            <span class="u">MB · 1,204 entries</span>
+          </div>
+        </div>
+        <div class="section">
+          <div class="head">
+            <h3>Engines</h3>
+          </div>
+          <div class="engine">
+            <span class="dot"></span>
+            <span class="name">Kokoro (stub)</span>
+            <span class="be">sherpa-onnx</span>
+            <span class="st ready">Ready</span>
+          </div>
+          <div class="engine">
+            <span class="dot off"></span>
+            <span class="name">Qwen3</span>
+            <span class="be">candle</span>
+            <span class="st">Not loaded</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+</div>
+</body>
+</html>

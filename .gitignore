@@ -36,3 +36,29 @@ Thumbs.db
 # Build artifacts
 build/
 dist-electron/
+
+# Engine model weights — downloaded at runtime from HuggingFace; not source
+server/justtts/engines/*/models/
+server/justtts/engines/*/.venv/
+server/justtts/engines/*/voices/
+server/justtts/engines/*/state/
+server/justtts/engines/.shared-venv/
+
+# Voicebox upstream audit clone — reference only, separate repo upstream
+voicebox-upstream/
+
+# Test-render artifacts (audio output of smoke tests)
+scripts/*.wav
+scripts/_shots/
+
+# SQLite DBs created at runtime
+*.db
+*.sqlite
+*.sqlite3
+*-journal
+*-wal
+*-shm
+
+# Server data dir (settings, audio, etc.)
+data/
+server/data/

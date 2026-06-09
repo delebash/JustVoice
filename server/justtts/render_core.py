@@ -4,6 +4,11 @@ Single source of truth for the per-line render pipeline used by
 both `/v1/generate` (one line) and `/v1/render_chapter` (many).
 Handles: cache lookup, lexicon substitution, engine auto-load,
 synthesize, gain-db PCM scaling, cache store.
+
+Phase 3 lift: long-text inputs (> settings.generation.max_chunk_chars)
+go through the chunked path (audio/chunked.py from voicebox MIT) so
+chapter-scale renders split at sentence boundaries and crossfade-blend
+to eliminate clicks.
 """
 
 from __future__ import annotations
@@ -14,7 +19,14 @@ import wave
 from dataclasses import dataclass
 from typing import Any
 
+import numpy as np
+
 from .app_state import AppState
+from .audio.chunked import (
+    DEFAULT_MAX_CHUNK_CHARS,
+    concatenate_audio_chunks,
+    split_text_into_chunks,
+)
 from .audio.wav import strip_wav_header, write_wav_container
 from .cache import CacheKeyBuilder, pack_pcm_with_format, unpack_pcm_with_format
 from .delivery import apply_gain_db, canonical_json
@@ -129,23 +141,58 @@ def render_line(
                 f"Try POST /v1/engines/{engine_id}/load with explicit device + model_variant."
             )
 
-    synth_req = SynthRequest(
-        voice_id=voice,
-        text=effective_text,
-        language=language,
-        delivery=delivery,
-        seed=seed,
-    )
-    try:
-        out = engine.synthesize(synth_req)
-    except Exception as e:
-        raise internal(f"engine synthesize: {e}")
+    # Phase 3: chunked generation for long-form input. Below the threshold,
+    # use the single-shot fast path. Above, split at sentence boundaries +
+    # crossfade-blend the per-chunk audio.
+    max_chunk_chars = int(getattr(settings.generation, "max_chunk_chars", DEFAULT_MAX_CHUNK_CHARS))
+    crossfade_ms = int(getattr(settings.generation, "crossfade_ms", 50))
 
-    # Strip WAV header → raw PCM
-    if out.is_wav_container:
-        pcm = strip_wav_header(out.bytes)
+    if len(effective_text) > max_chunk_chars:
+        chunks = split_text_into_chunks(effective_text, max_chars=max_chunk_chars)
+        pcm_chunks: list[np.ndarray] = []
+        chunk_sr = None
+        chunk_ch = 1
+        for piece in chunks:
+            synth_req = SynthRequest(
+                voice_id=voice,
+                text=piece,
+                language=language,
+                delivery=delivery,
+                seed=seed,
+            )
+            try:
+                out = engine.synthesize(synth_req)
+            except Exception as e:
+                raise internal(f"engine synthesize (chunked): {e}")
+            chunk_pcm_bytes = strip_wav_header(out.bytes) if out.is_wav_container else out.bytes
+            samples = np.frombuffer(chunk_pcm_bytes, dtype="<i2").astype(np.float32) / 32767.0
+            pcm_chunks.append(samples)
+            chunk_sr = out.sample_rate
+            chunk_ch = out.channels
+        merged = concatenate_audio_chunks(pcm_chunks, chunk_sr or 22050, crossfade_ms=crossfade_ms)
+        # Back to int16 PCM bytes.
+        pcm = (np.clip(merged, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
+        out_sample_rate = chunk_sr or 22050
+        out_channels = chunk_ch
     else:
-        pcm = out.bytes
+        synth_req = SynthRequest(
+            voice_id=voice,
+            text=effective_text,
+            language=language,
+            delivery=delivery,
+            seed=seed,
+        )
+        try:
+            out = engine.synthesize(synth_req)
+        except Exception as e:
+            raise internal(f"engine synthesize: {e}")
+        # Strip WAV header → raw PCM
+        if out.is_wav_container:
+            pcm = strip_wav_header(out.bytes)
+        else:
+            pcm = out.bytes
+        out_sample_rate = out.sample_rate
+        out_channels = out.channels
 
     # Post-render gain
     if delivery.get("gain_db"):
@@ -155,12 +202,12 @@ def render_line(
 
     # Cache write
     if cache_enabled and cache is not None:
-        cache.put(cache_scope, cache_key, pack_pcm_with_format(pcm, out.sample_rate, out.channels))
+        cache.put(cache_scope, cache_key, pack_pcm_with_format(pcm, out_sample_rate, out_channels))
 
     return RenderedLine(
         pcm=pcm,
-        sample_rate=out.sample_rate,
-        channels=out.channels,
+        sample_rate=out_sample_rate,
+        channels=out_channels,
         effective_delivery=delivery,
     )
 

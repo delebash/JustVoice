@@ -44,6 +44,17 @@ class AppState:
         if job_id in self._jobs:
             self._jobs[job_id].update(patch)
 
+    def job_append_log(self, job_id: str, line: str, max_lines: int = 400) -> None:
+        """Append a line to the job's rolling log tail. Caps at `max_lines`
+        so a long install doesn't balloon the in-memory job state."""
+        job = self._jobs.get(job_id)
+        if job is None:
+            return
+        log = job.setdefault("log_tail", [])
+        log.append(line)
+        if len(log) > max_lines:
+            del log[: len(log) - max_lines]
+
 
 # Singleton — set in main.py during boot, retrieved via Depends.
 _STATE: AppState | None = None

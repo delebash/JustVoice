@@ -1,0 +1,2984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Justtts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400;1,6..72,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<style>
+  :root {
+    --paper: #FAF8F3;
+    --paper-elev: #FFFEFA;
+    --ink: #1c1c1a;
+    --ink-mid: #4a4640;
+    --ink-dim: #7a7567;
+    --line: #e8e3d4;
+    --line-strong: #cdc4af;
+    --accent: #1F3A2E;
+    --accent-soft: #e9efe9;
+    --danger: #8b2520;
+    --danger-soft: #f4e4e3;
+
+    --sans: 'Inter', -apple-system, system-ui, sans-serif;
+    --serif: 'Newsreader', 'Iowan Old Style', Georgia, serif;
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 400 14px/1.55 var(--sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'ss01', 'cv11';
+  }
+
+  /* — Element resets — */
+  button, input, textarea, select {
+    font: inherit;
+    color: inherit;
+    background: var(--paper-elev);
+    border: 1px solid var(--line-strong);
+    border-radius: 0;
+    padding: 10px 14px;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  input, textarea, select {
+    width: 100%;
+    font-size: 14px;
+    transition: border-color 120ms ease;
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--accent);
+  }
+  textarea {
+    resize: vertical;
+    min-height: 110px;
+    line-height: 1.6;
+  }
+  select {
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--ink-dim) 50%),
+      linear-gradient(135deg, var(--ink-dim) 50%, transparent 50%);
+    background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 34px;
+  }
+  ::placeholder { color: var(--ink-dim); opacity: 0.7; }
+  ::selection { background: var(--accent); color: var(--paper); }
+
+  button {
+    cursor: pointer;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 18px;
+    border: 1px solid var(--ink);
+    background: var(--paper-elev);
+    color: var(--ink);
+    transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+    letter-spacing: 0;
+  }
+  button:hover { background: var(--ink); color: var(--paper); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; background: var(--paper-elev); color: var(--ink); }
+  button.primary {
+    background: var(--accent);
+    color: var(--paper);
+    border-color: var(--accent);
+  }
+  button.primary:hover { background: #142820; border-color: #142820; }
+  button.danger {
+    background: var(--paper-elev);
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+  button.danger:hover { background: var(--danger); color: var(--paper); }
+  button.bare {
+    border: none;
+    background: transparent;
+    padding: 6px 2px;
+    color: var(--danger);
+    font-size: 12.5px;
+  }
+  button.bare:hover { background: transparent; color: #5a1410; text-decoration: underline; text-underline-offset: 3px; }
+
+  /* — Labels (uppercase sans, the Mercury convention) — */
+  label {
+    display: block;
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-bottom: 8px;
+  }
+
+  /* — Top bar — */
+  .topbar {
+    display: flex;
+    align-items: center;
+    padding: 20px 40px;
+    border-bottom: 1px solid var(--line);
+    gap: 24px;
+  }
+  .topbar .logo {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 26px;
+    letter-spacing: -0.005em;
+    line-height: 1;
+  }
+  .topbar .logo .dot {
+    color: var(--accent);
+  }
+  .topbar .ver {
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--ink-dim);
+    letter-spacing: 0.04em;
+  }
+  .topbar .status {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+  }
+  .topbar .status.warn { color: var(--danger); }
+  .topbar .status .sq {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 999px;
+  }
+  .topbar .status.warn .sq { background: var(--danger); }
+
+  /* — Tabs — */
+  .tabs {
+    display: flex;
+    padding: 0 40px;
+    gap: 32px;
+    border-bottom: 1px solid var(--line);
+  }
+  .tabs .tab {
+    padding: 18px 0;
+    font-family: var(--sans);
+    font-size: 13.5px;
+    color: var(--ink-dim);
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    border-bottom: 1.5px solid transparent;
+    margin-bottom: -1px;
+    transition: color 120ms ease, border-color 120ms ease;
+    letter-spacing: 0.005em;
+  }
+  .tabs .tab:hover { color: var(--ink); background: transparent; }
+  .tabs .tab.active {
+    color: var(--ink);
+    border-bottom-color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* — Main — */
+  main {
+    padding: 56px 40px 80px;
+    max-width: 1180px;
+  }
+  main .page-head {
+    margin-bottom: 44px;
+  }
+  main h2 {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 42px;
+    letter-spacing: -0.018em;
+    margin: 0 0 8px;
+    font-variation-settings: 'opsz' 60;
+  }
+  main h2 .period { color: var(--accent); }
+  main .lede {
+    color: var(--ink-mid);
+    font-size: 14.5px;
+    line-height: 1.6;
+    max-width: 580px;
+  }
+  main h3 {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 22px;
+    letter-spacing: -0.005em;
+    margin: 0 0 20px;
+    font-variation-settings: 'opsz' 30;
+  }
+
+  section.block {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid var(--line);
+  }
+  section.block:first-of-type { margin-top: 0; padding-top: 0; border-top: none; }
+
+  /* — Stats — */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+  }
+  .stat {
+    padding: 0 32px 0 0;
+    border-right: 1px solid var(--line);
+  }
+  .stat + .stat { padding-left: 32px; }
+  .stat:last-child { border-right: none; padding-right: 0; }
+  .stat .k {
+    font-size: 11px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.13em;
+    margin-bottom: 14px;
+  }
+  .stat .v {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: 68px;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    font-variant-numeric: oldstyle-nums tabular-nums;
+    font-variation-settings: 'opsz' 72;
+    display: inline-block;
+  }
+  .stat .v .unit {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    font-size: 19px;
+    color: var(--ink-dim);
+    margin-left: 6px;
+    letter-spacing: -0.005em;
+    font-variation-settings: 'opsz' 30;
+  }
+  .stat .x {
+    font-size: 12.5px;
+    color: var(--ink-dim);
+    margin-top: 12px;
+    line-height: 1.4;
+  }
+
+  /* — Tables — */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  thead th {
+    text-align: left;
+    font-family: var(--sans);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    padding: 12px 18px 12px 0;
+    border-bottom: 1px solid var(--line-strong);
+  }
+  thead th:last-child { padding-right: 0; text-align: right; }
+  tbody td {
+    padding: 14px 18px 14px 0;
+    border-bottom: 1px solid var(--line);
+    vertical-align: middle;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  tbody td:last-child { padding-right: 0; text-align: right; }
+  tbody td .em {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 500;
+    font-size: 17px;
+    letter-spacing: -0.005em;
+    font-variation-settings: 'opsz' 24;
+  }
+  tbody td .mono {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-mid);
+  }
+  tbody tr:hover td { background: rgba(31, 58, 46, 0.025); }
+
+  /* — Engine row — */
+  .engines {
+    border-top: 1px solid var(--line);
+  }
+  .engine {
+    display: grid;
+    grid-template-columns: 1fr 1fr 130px;
+    align-items: baseline;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--line);
+    gap: 24px;
+  }
+  .engine .name {
+    font-family: var(--serif);
+    font-style: normal;
+    font-weight: 400;
+    font-size: 18px;
+    letter-spacing: -0.005em;
+    font-variation-settings: 'opsz' 24;
+  }
+  .engine .name .qual {
+    font-style: italic;
+    font-weight: 300;
+    color: var(--ink-dim);
+    font-size: 15px;
+    margin-left: 4px;
+  }
+  .engine .be {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-mid);
+  }
+  .engine .st {
+    font-family: var(--sans);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-align: right;
+  }
+  .engine .st.off { color: var(--ink-dim); font-weight: 400; }
+
+  /* — Forms — */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 32px; }
+  .stack > * + * { margin-top: 24px; }
+  .row { display: flex; align-items: center; gap: 18px; }
+
+  /* — Tag — */
+  .tag {
+    display: inline-block;
+    font-family: var(--sans);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: 999px;
+  }
+
+  /* — Error band — */
+  .errband {
+    background: var(--danger-soft);
+    border-left: 3px solid var(--danger);
+    padding: 14px 22px;
+    margin-bottom: 28px;
+    color: var(--danger);
+    font-size: 13.5px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .errband .lbl {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  /* — Empty state — */
+  .empty {
+    padding: 32px 0;
+    color: var(--ink-dim);
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    font-size: 18px;
+    text-align: center;
+    font-variation-settings: 'opsz' 24;
+  }
+
+  /* — Audio — */
+  audio { width: 100%; margin-top: 18px; }
+
+  /* — Modal — */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(28, 28, 26, 0.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+    padding: 24px;
+  }
+  .modal {
+    background: var(--paper-elev);
+    border: 1px solid var(--line-strong);
+    padding: 28px;
+    max-width: 560px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal h3 {
+    margin-top: 0;
+  }
+
+  /* — Range input — */
+  input[type=range] {
+    width: 100%;
+    accent-color: var(--accent);
+    padding: 0;
+    border: none;
+    background: transparent;
+  }
+
+  /* — Lexicon table row active highlight — */
+  tbody tr.active td { background: var(--accent-soft); }
+
+  /* — File input — */
+  input[type=file] {
+    padding: 7px 9px;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  /* — Helper — */
+  .endnote {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    font-size: 14px;
+    color: var(--ink-dim);
+    font-variation-settings: 'opsz' 20;
+  }
+
+  /* — Footer (colophon + connection) — */
+  footer.colophon {
+    border-top: 1px solid var(--line);
+    padding: 28px 40px 32px;
+    background: var(--paper);
+    display: grid;
+    grid-template-columns: 1fr 1fr auto auto;
+    gap: 24px;
+    align-items: end;
+  }
+  footer.colophon label { font-size: 10px; margin-bottom: 6px; }
+  footer.colophon input {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 11px;
+    background: var(--paper-elev);
+  }
+  footer.colophon .imp {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    font-size: 13px;
+    color: var(--ink-dim);
+    line-height: 1.5;
+    font-variation-settings: 'opsz' 18;
+    max-width: 240px;
+    text-align: right;
+  }
+
+  /* — Task strip (inline progress for in-flight ops) — */
+  .task-strip {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 9px 14px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 12px;
+    margin: 0 0 14px;
+    border-radius: 0;
+  }
+  .task-strip[data-status="completed"] { border-color: #2d9d2d; }
+  .task-strip[data-status="failed"]    { border-color: #b00020; }
+  .task-strip[data-status="cancelled"] { opacity: 0.6; }
+  .task-spin {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--ink);
+    animation: task-pulse 1.2s ease-in-out infinite;
+  }
+  .task-spin[data-status="completed"] { background: #2d9d2d; animation: none; }
+  .task-spin[data-status="failed"]    { background: #b00020; animation: none; }
+  .task-spin[data-status="cancelled"] { background: var(--ink-dim); animation: none; }
+  @keyframes task-pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%     { opacity: 0.4; transform: scale(0.85); }
+  }
+  .task-label { font-weight: 600; font-size: 13px; }
+  .task-stat {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-dim);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .task-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #2d9d2d;
+  }
+  .task-stat[data-fresh="stalling"] .task-dot { background: #d97706; animation: task-pulse 1.2s ease-in-out infinite; }
+  .task-stat[data-fresh="stuck"]    .task-dot { background: #b00020; animation: task-pulse 1.2s ease-in-out infinite; }
+  .task-stat[data-fresh="stalling"] { color: #d97706; }
+  .task-stat[data-fresh="stuck"]    { color: #b00020; }
+  .task-track {
+    flex-basis: 100%;
+    height: 3px;
+    background: var(--line);
+    border-radius: 0;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+  .task-fill {
+    height: 100%;
+    background: var(--ink);
+    transition: width 200ms linear;
+  }
+  .task-spacer { flex: 1; min-width: 4px; }
+
+  /* — Toasts — */
+  .toast-stack {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 9999;
+    pointer-events: none;
+    max-width: 380px;
+  }
+  .toast {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 13px;
+    line-height: 1.4;
+    border-radius: 0;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    animation: toast-in 240ms cubic-bezier(.2,.7,.2,1) both;
+    border-left: 3px solid var(--paper);
+  }
+  .toast[data-kind="success"] { border-left-color: #2d9d2d; }
+  .toast[data-kind="error"]   { border-left-color: #b00020; background: #2a0a0e; }
+  .toast[data-kind="info"]    { border-left-color: #3b82f6; }
+  .toast-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--paper);
+    flex-shrink: 0;
+  }
+  .toast[data-kind="success"] .toast-dot { background: #2d9d2d; }
+  .toast[data-kind="error"]   .toast-dot { background: #ff5566; }
+  .toast[data-kind="info"]    .toast-dot { background: #60a5fa; }
+  .toast-msg { flex: 1; min-width: 0; }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* — Install/uninstall progress — */
+  .progress-cell {
+    padding: 12px 16px 14px 16px;
+    background: var(--paper);
+    border-top: 1px solid var(--line);
+  }
+  .progress-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 13px;
+  }
+  .progress-phase {
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 11px;
+    min-width: 90px;
+    color: var(--ink-dim);
+  }
+  .progress-track {
+    flex: 1;
+    height: 6px;
+    background: var(--line);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    background: var(--ink);
+    transition: width 200ms linear;
+  }
+  .progress-bar.phase-failed { background: #b00020; }
+  .progress-bar.phase-completed { background: #2d9d2d; }
+  .progress-bytes {
+    font-family: var(--mono);
+    min-width: 130px;
+    text-align: right;
+    font-size: 12px;
+    color: var(--ink-dim);
+  }
+  .progress-file { margin-top: 6px; }
+  .progress-error {
+    margin-top: 6px;
+    color: #b00020;
+  }
+
+  /* — Animation — */
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .topbar, .tabs, main, footer.colophon {
+    animation: rise 520ms cubic-bezier(.2,.7,.2,1) both;
+  }
+  .topbar       { animation-delay:   0ms; }
+  .tabs         { animation-delay:  80ms; }
+  main          { animation-delay: 180ms; }
+  footer.colophon { animation-delay: 280ms; }
+
+  /* — Scrollbar — */
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-track { background: var(--paper); }
+  ::-webkit-scrollbar-thumb { background: var(--line-strong); border: 2px solid var(--paper); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--ink-dim); }
+
+  /* — Compact — */
+  @media (max-width: 900px) {
+    .topbar, .tabs, main, footer.colophon { padding-left: 22px; padding-right: 22px; }
+    .tabs { gap: 18px; overflow-x: auto; }
+    .stats { grid-template-columns: 1fr; }
+    .stat { border-right: none; border-bottom: 1px solid var(--line); padding: 22px 0; }
+    .stat + .stat { padding-left: 0; }
+    .stat:last-child { border-bottom: none; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .engine { grid-template-columns: 1fr; gap: 4px; padding: 18px 0; }
+    .engine .st { text-align: left; }
+    main h2 { font-size: 34px; }
+    footer.colophon { grid-template-columns: 1fr; }
+    footer.colophon .imp { text-align: left; max-width: none; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script type="module">
+const { createApp, ref, computed, watch, onMounted } = Vue;
+
+const VIEWS = [
+  { id: 'overview', label: 'Overview', lede: 'Current state of the server, catalogue, and cache held on disk.' },
+  { id: 'generate', label: 'Generate', lede: 'Pick a voice. Type the line. Apply delivery overlay. The server renders it.' },
+  { id: 'chapter',  label: 'Chapter',  lede: 'Multi-line script in, mastered chapter out. The audiobook-production endpoint.' },
+  { id: 'voices',   label: 'Voices',   lede: 'The full voice catalogue, by engine and language. Clone, design, import, or blend new voices.' },
+  { id: 'train',    label: 'Train',    lede: 'Voice fine-tuning. LoRA adapters on top of base engines. Restart-survivable jobs.' },
+  { id: 'personas', label: 'Personas', lede: 'Named characters bound to voices. Stable across sessions.' },
+  { id: 'lexicons', label: 'Lexicons', lede: 'Pronunciation dictionaries. Make character names pronounce consistently every render.' },
+  { id: 'compare',  label: 'Compare',  lede: 'Two WAV files in, side-by-side report out. Format, loudness, sample-level diff.' },
+  { id: 'engines',  label: 'Engines',  lede: 'Install, switch, and manage TTS engines. Auto-recommended for your hardware.' },
+  { id: 'cache',    label: 'Cache',    lede: 'Audio renders kept on disk so the same line costs nothing twice.' },
+  { id: 'settings', label: 'Settings', lede: 'Operator knobs that take effect at runtime; some require a restart.' },
+];
+
+const BLEND_STRATEGIES = [
+  { id: 'slerp', label: 'SLERP — spherical (best for normalized embeddings)' },
+  { id: 'lerp', label: 'LERP — linear (fast, may go off-manifold)' },
+  { id: 'weighted_sum', label: 'Weighted sum — N-way generalization' },
+];
+
+const EMOTIONS = [
+  '', 'neutral', 'happy', 'sad', 'angry', 'fearful',
+  'whispered', 'shouted', 'sarcastic', 'contemptuous',
+];
+
+const MASTER_PRESETS = [
+  { id: '', label: 'None (raw WAV)' },
+  { id: 'acx', label: 'ACX — Audible/Amazon audiobook submission' },
+  { id: 'inaudio', label: 'INaudio — Findaway / Spotify audiobook distribution' },
+  { id: 'podcast', label: 'Podcast — broad RMS / loudness for streaming' },
+  { id: 'youtube', label: 'YouTube — broadcast-ready -14 LUFS target' },
+];
+
+const app = {
+  setup() {
+    const serverUrl = ref(localStorage.getItem('jt:server') || 'http://127.0.0.1:17494');
+    const token = ref(localStorage.getItem('jt:token') || '');
+    const view = ref('overview');
+    const health = ref(null);
+    const voices = ref([]);
+    const personas = ref([]);
+    const settings = ref(null);
+    const cacheStats = ref(null);
+    const error = ref('');
+
+    const renderVoice = ref('af_heart');
+    const renderText = ref('Hello, narrator. This is a single-line render through the stub Kokoro engine.');
+    const renderAudio = ref(null);
+    const renderBusy = ref(false);
+    // Delivery overlay — all optional, all default off so behaviour
+    // matches the prior "just text" render until the user touches a knob.
+    const deliverySpeed = ref(1.0);
+    const deliveryEmotion = ref('');
+    const deliveryPitch = ref(0);
+    const deliveryPauseBefore = ref(0);
+    const deliveryPauseAfter = ref(0);
+    const deliveryGain = ref(0);
+    const deliveryInstruct = ref('');
+    const deliveryEngineJson = ref('');
+
+    const personaName = ref('');
+    const personaVoice = ref('af_heart');
+
+    // Engines view state
+    const enginesList = ref([]);
+    const systemInfo = ref(null);
+    const engineModels = ref({});         // { [engineId]: { variants, recommended } }
+    const engineBusy = ref({});            // { [engineId]: 'install' | 'load' | null }
+
+    // Lexicons view state
+    const lexicons = ref([]);
+    const lexNewName = ref('');
+    const lexSelectedId = ref('');
+    const lexNewGrapheme = ref('');
+    const lexNewPhoneme = ref('');
+    const lexNewAlias = ref('');
+
+    // Render Chapter view state
+    const chapterLines = ref('Once upon a time, in a quiet little town.\nThe wind whispered through the trees.\nAnd then she said, "follow me."');
+    const chapterVoice = ref('af_heart');
+    const chapterPreset = ref('');
+    const chapterSilenceMs = ref(250);
+    const chapterAudio = ref(null);
+    const chapterBusy = ref(false);
+
+    // Voices: clone / design / import / blend modals
+    const voiceModal = ref(null);     // 'clone' | 'design' | 'import' | 'blend' | null
+    const voiceCloneName = ref('');
+    const voiceCloneFile = ref(null);
+    const voiceCloneTranscript = ref('');
+    const voiceDesignName = ref('');
+    const voiceDesignPrompt = ref('');
+    const voiceImportName = ref('');
+    const voiceImportFile = ref(null);
+    const voiceBusy = ref(false);
+
+    // Blend modal state — N-way embedding interpolation
+    const blendName = ref('');
+    const blendEngine = ref('');
+    const blendStrategy = ref('slerp');
+    const blendSources = ref([]);  // [{ voice_id, weight }]
+
+    // Train tab state
+    const trainJobs = ref([]);
+    const trainEngine = ref('');
+    const trainName = ref('');
+    const trainEpochs = ref('');
+    const trainLearningRate = ref('');
+    const trainBaseVoice = ref('');
+    const trainFiles = ref([]);  // [{ file, transcript }]
+    const trainBusy = ref(false);
+
+    // Custom confirm dialog (replaces the browser confirm() system box)
+    const confirmDialog = ref(null);  // { title, message, confirmLabel, confirmStyle, resolve }
+    function customConfirm({ title, message, confirmLabel = 'OK', confirmStyle = '' }) {
+      return new Promise((resolve) => {
+        confirmDialog.value = { title, message, confirmLabel, confirmStyle, resolve };
+      });
+    }
+    function resolveConfirm(value) {
+      if (confirmDialog.value) {
+        confirmDialog.value.resolve(value);
+        confirmDialog.value = null;
+      }
+    }
+
+    // Toast queue (replaces alert() for non-blocking notifications)
+    const toasts = ref([]); // [{ id, message, kind: 'success' | 'error' | 'info' }]
+    let _toastCounter = 0;
+    function toast(message, opts = {}) {
+      const id = ++_toastCounter;
+      const kind = opts.kind || 'success';
+      const duration = opts.duration ?? 3500;
+      toasts.value = [...toasts.value, { id, message, kind }];
+      if (duration > 0) {
+        setTimeout(() => {
+          toasts.value = toasts.value.filter(t => t.id !== id);
+        }, duration);
+      }
+      return id;
+    }
+    function dismissToast(id) {
+      toasts.value = toasts.value.filter(t => t.id !== id);
+    }
+
+    function progressBarStyle(p) {
+      const pct = p.bytes_total > 0
+        ? Math.min(100, Math.round(100 * p.bytes_downloaded / p.bytes_total))
+        : (p.phase === 'completed' ? 100 : 0);
+      return { width: pct + '%' };
+    }
+
+    // Live install/uninstall progress per engine
+    const engineProgress = ref({});   // { [engineId]: { phase, bytes_downloaded, bytes_total, current_file, error } }
+
+    // ─── Compare tab state ─────────────────────────────────────────────
+    const compareFileA = ref(null);
+    const compareFileB = ref(null);
+    const compareLabelA = ref('');
+    const compareLabelB = ref('');
+    const compareReport = ref(null);
+    const compareBusy = ref(false);
+
+    async function runCompare() {
+      if (!compareFileA.value || !compareFileB.value) return;
+      compareBusy.value = true;
+      compareReport.value = null;
+      try {
+        const [a_b64, b_b64] = await Promise.all([
+          readFileAsBase64(compareFileA.value),
+          readFileAsBase64(compareFileB.value),
+        ]);
+        compareReport.value = await api('/v1/compare', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            a_wav_b64: a_b64,
+            b_wav_b64: b_b64,
+            a_label: compareLabelA.value || null,
+            b_label: compareLabelB.value || null,
+          }),
+        });
+      } finally {
+        compareBusy.value = false;
+      }
+    }
+
+    function fmtDb(n) {
+      if (n === null || n === undefined) return '—';
+      if (!isFinite(n)) return n > 0 ? '∞' : '−∞';
+      return (n >= 0 ? '+' : '') + n.toFixed(2) + ' dB';
+    }
+
+    // ─── Task strip (JustWrite-inspired) ──────────────────────────────
+    // A single task store backing the inline progress strips shown on
+    // Generate / Chapter / Engines tabs. Each surface pushes a task
+    // when it kicks off an operation, polls progress, and removes the
+    // task on completion. The store also exposes a "now" tick so the
+    // elapsed counter updates live without each component owning a
+    // timer.
+    const tasks = ref([]);
+    const taskNow = ref(Date.now());
+    setInterval(() => { taskNow.value = Date.now(); }, 100);
+
+    function pushTask(opts) {
+      // opts: { id, label, kind: 'generate'|'chapter'|'install'|'train',
+      //         status?, percent?, statsFn?: (task)=>string[], onCancel?: ()=>void }
+      const task = {
+        id: opts.id || `task-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+        label: opts.label,
+        kind: opts.kind || 'generate',
+        startedAt: Date.now(),
+        lastUpdateAt: Date.now(),
+        status: opts.status || 'running',
+        percent: opts.percent ?? null,
+        stats: opts.stats || [],
+        statsFn: opts.statsFn || null,
+        onCancel: opts.onCancel || null,
+        cancelled: false,
+      };
+      tasks.value = [...tasks.value, task];
+      return task;
+    }
+    function updateTask(id, patch) {
+      const idx = tasks.value.findIndex(t => t.id === id);
+      if (idx < 0) return;
+      const next = { ...tasks.value[idx], ...patch, lastUpdateAt: Date.now() };
+      tasks.value = [...tasks.value.slice(0, idx), next, ...tasks.value.slice(idx + 1)];
+    }
+    function removeTask(id) {
+      tasks.value = tasks.value.filter(t => t.id !== id);
+    }
+    function cancelTask(id) {
+      const t = tasks.value.find(x => x.id === id);
+      if (!t || !t.onCancel) return;
+      t.onCancel();
+      updateTask(id, { cancelled: true, status: 'cancelled' });
+      setTimeout(() => removeTask(id), 1200);
+    }
+    function elapsedSeconds(task) {
+      return Math.max(0, (taskNow.value - task.startedAt) / 1000).toFixed(1);
+    }
+    function freshness(task) {
+      if (task.status !== 'running') return null;
+      const ago = taskNow.value - task.lastUpdateAt;
+      if (ago < 3000) return 'fresh';
+      if (ago < 10000) return 'stalling';
+      return 'stuck';
+    }
+    function taskStats(task) {
+      if (task.statsFn) return task.statsFn(task);
+      return task.stats;
+    }
+
+    // New URL override row state (for the Settings tab Add UI)
+    const newOverrideVariantId = ref('');
+    const newOverrideUrl = ref('');
+
+    // External-engine "add new" form state (Settings tab)
+    const newExternal = ref({ id: '', name: '', base_url: '', model: 'kokoro', api_key: '', voicesText: '' });
+    const probeResult = ref(null);       // { reachable, models, voices, server_hint, recommended_model, error }
+    const probeBusy = ref(false);
+    const probeAvailableModels = ref([]); // populated from probe; lets the GUI offer a dropdown
+    const probeAvailableVoices = ref([]); // populated from probe
+
+    async function testExternalConnection() {
+      if (!newExternal.value.base_url) return;
+      probeBusy.value = true;
+      probeResult.value = null;
+      try {
+        const result = await api('/v1/engines/external/probe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            base_url: newExternal.value.base_url,
+            api_key: newExternal.value.api_key || null,
+          }),
+        });
+        probeResult.value = result;
+        probeAvailableModels.value = result.models || [];
+        probeAvailableVoices.value = result.voices || [];
+        // Auto-fill model field from recommendation if user hasn't customized it
+        if (result.recommended_model && (!newExternal.value.model || newExternal.value.model === 'kokoro')) {
+          newExternal.value.model = result.recommended_model;
+        }
+        // Auto-fill voices if empty
+        if (result.voices && result.voices.length > 0 && !newExternal.value.voicesText) {
+          newExternal.value.voicesText = result.voices.join(', ');
+        }
+        // Auto-suggest a sensible id + name based on server hint
+        if (!newExternal.value.id) {
+          newExternal.value.id = result.server_hint === 'unknown'
+            ? 'external-tts'
+            : `external-${result.server_hint}`;
+        }
+        if (!newExternal.value.name) {
+          const u = newExternal.value.base_url.replace(/^https?:\/\//, '');
+          newExternal.value.name = `${result.server_hint} @ ${u}`;
+        }
+      } finally {
+        probeBusy.value = false;
+      }
+    }
+
+    async function addExternalEngine() {
+      if (!newExternal.value.id || !newExternal.value.base_url) return;
+      const voices = newExternal.value.voicesText
+        ? newExternal.value.voicesText.split(',').map(s => s.trim()).filter(Boolean)
+        : [];
+      const config = {
+        id: newExternal.value.id,
+        name: newExternal.value.name || newExternal.value.id,
+        base_url: newExternal.value.base_url,
+        model: newExternal.value.model || 'kokoro',
+        api_key: newExternal.value.api_key || null,
+        voices,
+        response_format: 'wav',
+      };
+      try {
+        // POST /v1/engines/external — registers live in the registry
+        // AND persists to settings.json in one call. No "save settings"
+        // step required; the new engine appears in the Engines tab
+        // immediately.
+        await api('/v1/engines/external', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config),
+        });
+        // Reflect in the local settings state so the table shows it
+        if (!settings.value.engines) settings.value.engines = { kokoro: {}, external: [] };
+        if (!settings.value.engines.external) settings.value.engines.external = [];
+        settings.value.engines.external.push(config);
+        // Refresh the engines catalog so the new row appears
+        await refreshEngines();
+        await refreshVoices();
+        toast(`${config.name} registered. Click Load on the Engines tab to use it.`, { kind: 'success', duration: 5000 });
+        // Reset form
+        newExternal.value = { id: '', name: '', base_url: '', model: 'kokoro', api_key: '', voicesText: '' };
+        probeResult.value = null;
+        probeAvailableModels.value = [];
+        probeAvailableVoices.value = [];
+      } catch (_) { /* surfaced via global error band */ }
+    }
+
+    async function removeExternalEngine(idx) {
+      const cfg = settings.value.engines?.external?.[idx];
+      if (!cfg) return;
+      const ok = await customConfirm({
+        title: `Remove ${cfg.name}?`,
+        message: `External engine "${cfg.id}" will be unregistered from this server and removed from settings. The remote server itself is not affected.`,
+        confirmLabel: 'Remove',
+        confirmStyle: 'danger',
+      });
+      if (!ok) return;
+      try {
+        await api(`/v1/engines/external/${encodeURIComponent(cfg.id)}`, { method: 'DELETE' });
+        settings.value.engines.external.splice(idx, 1);
+        await refreshEngines();
+        await refreshVoices();
+        toast(`${cfg.name} removed.`);
+      } catch (_) { /* surfaced */ }
+    }
+
+    function addUrlOverride() {
+      if (!newOverrideVariantId.value || !newOverrideUrl.value) return;
+      if (!settings.value.models) settings.value.models = { url_overrides: {} };
+      if (!settings.value.models.url_overrides) settings.value.models.url_overrides = {};
+      settings.value.models.url_overrides[newOverrideVariantId.value] = newOverrideUrl.value;
+      newOverrideVariantId.value = '';
+      newOverrideUrl.value = '';
+    }
+
+    function removeUrlOverride(key) {
+      if (settings.value?.models?.url_overrides) {
+        delete settings.value.models.url_overrides[key];
+      }
+    }
+
+    watch(serverUrl, (v) => localStorage.setItem('jt:server', v));
+    watch(token, (v) => localStorage.setItem('jt:token', v));
+
+    async function api(path, opts = {}) {
+      const headers = { ...(opts.headers || {}) };
+      if (token.value) headers.Authorization = `Bearer ${token.value}`;
+      const url = serverUrl.value.replace(/\/$/, '') + path;
+      try {
+        const res = await fetch(url, { ...opts, headers });
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`${res.status} ${res.statusText}: ${body}`);
+        }
+        const ct = res.headers.get('content-type') || '';
+        if (ct.startsWith('audio/')) return await res.blob();
+        if (ct.includes('json')) return await res.json();
+        return await res.text();
+      } catch (e) {
+        error.value = String(e.message || e);
+        throw e;
+      }
+    }
+
+    async function refreshAll() {
+      error.value = '';
+      try {
+        health.value = await api('/v1/health');
+        const v = await api('/v1/voices');
+        voices.value = v.voices;
+        const p = await api('/v1/personas');
+        personas.value = p.personas;
+        settings.value = await api('/v1/settings');
+        cacheStats.value = await api('/v1/cache/stats');
+        // New surfaces this session — load on boot too so all tabs
+        // have data when the user clicks them.
+        try {
+          systemInfo.value = await api('/v1/system/info');
+          const e = await api('/v1/engines');
+          enginesList.value = e.engines;
+        } catch (_) { /* ok if older server without engines API */ }
+        try {
+          const lx = await api('/v1/lexicons');
+          lexicons.value = lx.lexicons || [];
+        } catch (_) { /* ok */ }
+        try {
+          const t = await api('/v1/train');
+          trainJobs.value = t.jobs || [];
+        } catch (_) { /* ok if older server */ }
+      } catch (_) { /* surfaced */ }
+    }
+
+    onMounted(refreshAll);
+
+    function buildDelivery() {
+      // Construct the optional-everywhere Delivery object the server
+      // expects. Only include fields the user explicitly changed.
+      const d = {};
+      if (Math.abs(deliverySpeed.value - 1.0) > 0.001) d.speed = deliverySpeed.value;
+      if (deliveryEmotion.value) d.emotion = deliveryEmotion.value;
+      if (Math.abs(deliveryPitch.value) > 0.001) d.pitch = deliveryPitch.value;
+      if (deliveryPauseBefore.value > 0) d.pause_before = deliveryPauseBefore.value;
+      if (deliveryPauseAfter.value > 0) d.pause_after = deliveryPauseAfter.value;
+      if (Math.abs(deliveryGain.value) > 0.001) d.gain_db = deliveryGain.value;
+      if (deliveryInstruct.value.trim()) d.instruct = deliveryInstruct.value.trim();
+      if (deliveryEngineJson.value.trim()) {
+        try {
+          d.engine = JSON.parse(deliveryEngineJson.value);
+        } catch (e) {
+          // Don't fail the whole render — surface the JSON error and
+          // let the rest of the delivery overlay still apply.
+          error.value = `Engine knobs JSON parse error: ${e.message}`;
+        }
+      }
+      return Object.keys(d).length ? d : undefined;
+    }
+
+    async function generate() {
+      renderBusy.value = true;
+      if (renderAudio.value) {
+        URL.revokeObjectURL(renderAudio.value);
+        renderAudio.value = null;
+      }
+      const ctl = new AbortController();
+      const wordCount = renderText.value.trim().split(/\s+/).filter(Boolean).length;
+      const charCount = renderText.value.length;
+      const task = pushTask({
+        label: `Render · ${renderVoice.value}`,
+        kind: 'generate',
+        statsFn: (t) => {
+          const stats = [`${charCount} chars`, `${wordCount} words`];
+          if (t.bytesOut) {
+            stats.push(`${(t.bytesOut / 1024).toFixed(1)} KB`);
+            const elapsedSec = (taskNow.value - t.startedAt) / 1000;
+            // Estimate audio duration: 16-bit mono PCM at 24kHz =
+            // 48000 bytes/sec. Minus ~44 bytes for WAV header.
+            const audioSec = Math.max(0, (t.bytesOut - 44)) / 48000;
+            stats.push(`${audioSec.toFixed(1)}s audio`);
+            if (audioSec > 0.1 && t.status === 'completed') {
+              const rtf = elapsedSec / audioSec;
+              stats.push(`${rtf.toFixed(2)}× realtime`);
+              const wps = wordCount / Math.max(0.1, elapsedSec);
+              stats.push(`${wps.toFixed(1)} words/s`);
+            }
+          }
+          return stats;
+        },
+        onCancel: () => ctl.abort(),
+      });
+      try {
+        const body = {
+          voice: renderVoice.value,
+          text: renderText.value,
+          cache: false,
+        };
+        const delivery = buildDelivery();
+        if (delivery) body.delivery = delivery;
+        const blob = await api('/v1/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: ctl.signal,
+        });
+        updateTask(task.id, { bytesOut: blob.size, status: 'completed' });
+        renderAudio.value = URL.createObjectURL(blob);
+        setTimeout(() => removeTask(task.id), 1500);
+      } catch (e) {
+        if (!ctl.signal.aborted) {
+          updateTask(task.id, { status: 'failed' });
+          setTimeout(() => removeTask(task.id), 3500);
+        }
+      } finally {
+        renderBusy.value = false;
+      }
+    }
+
+    // ─── Render Chapter ────────────────────────────────────────────────
+    async function renderChapter() {
+      chapterBusy.value = true;
+      if (chapterAudio.value) {
+        URL.revokeObjectURL(chapterAudio.value);
+        chapterAudio.value = null;
+      }
+      const ctl = new AbortController();
+      const lines = chapterLines.value.split('\n').filter(l => l.trim());
+      const totalWords = lines.reduce((sum, l) => sum + l.trim().split(/\s+/).filter(Boolean).length, 0);
+      const totalChars = lines.reduce((sum, l) => sum + l.length, 0);
+      const task = pushTask({
+        label: `Chapter · ${lines.length} lines${chapterPreset.value ? ' · ' + chapterPreset.value : ''}`,
+        kind: 'chapter',
+        statsFn: (t) => {
+          const stats = [`${lines.length} lines`, `${totalWords} words`, `${totalChars} chars`];
+          if (t.bytesOut) {
+            stats.push(`${(t.bytesOut / 1024 / 1024).toFixed(2)} MB`);
+            const elapsedSec = (taskNow.value - t.startedAt) / 1000;
+            const wps = totalWords / Math.max(0.1, elapsedSec);
+            stats.push(`${wps.toFixed(1)} words/s`);
+          }
+          return stats;
+        },
+        onCancel: () => ctl.abort(),
+      });
+      try {
+        const body = {
+          lines: lines.map(text => ({ voice: chapterVoice.value, text })),
+          between_lines: { silence_ms: Number(chapterSilenceMs.value) || 0 },
+        };
+        if (chapterPreset.value) body.master = chapterPreset.value;
+        const blob = await api('/v1/render_chapter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: ctl.signal,
+        });
+        updateTask(task.id, { bytesOut: blob.size, status: 'completed' });
+        chapterAudio.value = URL.createObjectURL(blob);
+        setTimeout(() => removeTask(task.id), 1500);
+      } catch (e) {
+        if (!ctl.signal.aborted) {
+          updateTask(task.id, { status: 'failed' });
+          setTimeout(() => removeTask(task.id), 3500);
+        }
+      } finally {
+        chapterBusy.value = false;
+      }
+    }
+
+    // ─── Engines management ───────────────────────────────────────────
+    async function refreshEngines() {
+      try {
+        systemInfo.value = await api('/v1/system/info');
+        const e = await api('/v1/engines');
+        enginesList.value = e.engines;
+      } catch (_) { /* surfaced */ }
+    }
+
+    async function refreshVoices() {
+      try {
+        const v = await api('/v1/voices');
+        voices.value = v.voices;
+      } catch (_) { /* surfaced */ }
+    }
+
+    async function loadEngineModels(engineId) {
+      try {
+        const [variants, recommended] = await Promise.all([
+          api(`/v1/engines/${engineId}/models`),
+          api(`/v1/engines/${engineId}/models/recommended`),
+        ]);
+        engineModels.value = { ...engineModels.value, [engineId]: { variants: variants.variants, recommended } };
+      } catch (_) { /* surfaced */ }
+    }
+
+    async function installEngine(engineId, modelVariant) {
+      engineBusy.value = { ...engineBusy.value, [engineId]: 'install' };
+      engineProgress.value = { ...engineProgress.value, [engineId]: { phase: 'connecting', bytes_downloaded: 0, bytes_total: 0 } };
+      try {
+        const body = modelVariant ? { model_variant: modelVariant } : {};
+        // Install returns 202 immediately with a job_id; the actual
+        // download happens in a background task. We poll the job for
+        // progress until it transitions to completed or failed.
+        const accepted = await api(`/v1/engines/${engineId}/install`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const jobId = accepted.job_id;
+        await pollInstallJob(engineId, jobId);
+        await refreshEngines();
+        await refreshVoices();
+      } finally {
+        engineBusy.value = { ...engineBusy.value, [engineId]: null };
+        const finalState = engineProgress.value[engineId];
+        // Auto-clear ONLY on success — failed states stick around so
+        // the user can read the error. They go away on the next install
+        // attempt for this engine or when the user clicks Dismiss /
+        // hits Reload in the footer.
+        if (finalState && finalState.phase === 'completed') {
+          setTimeout(() => {
+            const copy = { ...engineProgress.value };
+            delete copy[engineId];
+            engineProgress.value = copy;
+          }, 3000);
+        } else if (!finalState) {
+          // Defensive: clear if somehow there's no final state
+          const copy = { ...engineProgress.value };
+          delete copy[engineId];
+          engineProgress.value = copy;
+        }
+        // Failed: leave engineProgress[engineId] intact.
+      }
+    }
+
+    function dismissEngineProgress(engineId) {
+      const copy = { ...engineProgress.value };
+      delete copy[engineId];
+      engineProgress.value = copy;
+    }
+
+    async function pollInstallJob(engineId, jobId) {
+      const installTask = pushTask({
+        id: `install-${engineId}`,
+        label: `Installing · ${engineId}`,
+        kind: 'install',
+        statsFn: (t) => {
+          const stats = [];
+          if (t.phase) stats.push(t.phase);
+          if (t.bytesTotal > 0) {
+            stats.push(`${(t.bytesDl / 1024 / 1024).toFixed(1)} / ${(t.bytesTotal / 1024 / 1024).toFixed(1)} MB`);
+            // Throughput from start (smoothes across phases — better
+            // than instantaneous which jitters)
+            const elapsedSec = (taskNow.value - t.startedAt) / 1000;
+            if (elapsedSec > 1.0 && t.bytesDl > 0) {
+              const mbps = (t.bytesDl / 1024 / 1024) / elapsedSec;
+              stats.push(`${mbps.toFixed(1)} MB/s`);
+              if (t.bytesTotal > t.bytesDl) {
+                const etaSec = (t.bytesTotal - t.bytesDl) / (t.bytesDl / elapsedSec);
+                stats.push(`~${Math.ceil(etaSec)}s ETA`);
+              }
+            }
+          }
+          return stats;
+        },
+      });
+      while (true) {
+        try {
+          const job = await api(`/v1/jobs/${jobId}`);
+          engineProgress.value = { ...engineProgress.value, [engineId]: {
+            phase: job.phase,
+            bytes_downloaded: job.bytes_downloaded || 0,
+            bytes_total: job.bytes_total || 0,
+            current_file: job.current_file || null,
+            error: job.error || null,
+          } };
+          updateTask(installTask.id, {
+            phase: job.phase,
+            bytesDl: job.bytes_downloaded || 0,
+            bytesTotal: job.bytes_total || 0,
+            percent: job.bytes_total ? Math.min(100, Math.round(100 * (job.bytes_downloaded || 0) / job.bytes_total)) : null,
+          });
+          if (job.phase === 'completed') {
+            updateTask(installTask.id, { status: 'completed' });
+            toast(`${engineId} installed. Click Load to use it.`, { kind: 'success', duration: 5000 });
+            setTimeout(() => removeTask(installTask.id), 1500);
+            return;
+          }
+          if (job.phase === 'failed') {
+            updateTask(installTask.id, { status: 'failed' });
+            toast(`${engineId} install failed: ${job.error || 'unknown error'}`, { kind: 'error', duration: 8000 });
+            setTimeout(() => removeTask(installTask.id), 4000);
+            return;
+          }
+        } catch (e) {
+          engineProgress.value = { ...engineProgress.value, [engineId]: { phase: 'failed', error: String(e), bytes_downloaded: 0, bytes_total: 0 } };
+          updateTask(installTask.id, { status: 'failed' });
+          setTimeout(() => removeTask(installTask.id), 4000);
+          return;
+        }
+        await new Promise(r => setTimeout(r, 800));
+      }
+    }
+
+    async function loadEngine(engineId) {
+      engineBusy.value = { ...engineBusy.value, [engineId]: 'load' };
+      try {
+        await api(`/v1/engines/${engineId}/load`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ device: 'auto' }),
+        });
+        await refreshEngines();
+        // Loading an engine surfaces its preset voices — refresh the
+        // voices catalog so the Generate/Persona pickers see them.
+        await refreshVoices();
+      } finally {
+        engineBusy.value = { ...engineBusy.value, [engineId]: null };
+      }
+    }
+
+    async function uninstallEngine(engineId) {
+      const ok = await customConfirm({
+        title: `Uninstall ${engineId}?`,
+        message: `Model files will be removed from disk. You'll need to download them again to use ${engineId}.`,
+        confirmLabel: 'Uninstall',
+        confirmStyle: 'danger',
+      });
+      if (!ok) return;
+      engineBusy.value = { ...engineBusy.value, [engineId]: 'uninstall' };
+      try {
+        await api(`/v1/engines/${engineId}`, { method: 'DELETE' });
+        await refreshEngines();
+        // After uninstall, voices for the removed engine may be stale —
+        // refresh the voice catalog too.
+        const v = await api('/v1/voices');
+        voices.value = v.voices;
+        toast(`${engineId} uninstalled.`);
+      } finally {
+        engineBusy.value = { ...engineBusy.value, [engineId]: null };
+      }
+    }
+
+    async function unloadEngine() {
+      engineBusy.value = { ...engineBusy.value, _global: 'unload' };
+      try {
+        const resp = await api(`/v1/engines/unload`, { method: 'POST' });
+        await refreshEngines();
+        // Some sidecar engines hide their preset voices when unloaded —
+        // refresh so the picker reflects reality.
+        await refreshVoices();
+        const prev = resp?.previous_engine;
+        toast(prev ? `${prev} unloaded — VRAM freed.` : 'No engine was loaded.');
+      } finally {
+        engineBusy.value = { ...engineBusy.value, _global: null };
+      }
+    }
+
+    async function deleteVoice(voiceId) {
+      const ok = await customConfirm({
+        title: 'Delete voice?',
+        message: `Voice "${voiceId}" will be permanently removed. Personas that reference it will keep the id but fail to render until rebound.`,
+        confirmLabel: 'Delete',
+        confirmStyle: 'danger',
+      });
+      if (!ok) return;
+      try {
+        await api(`/v1/voices/${voiceId}`, { method: 'DELETE' });
+        await refreshVoices();
+        toast(`Voice "${voiceId}" deleted.`);
+      } catch (_) { /* surfaced */ }
+    }
+
+    // ─── Lexicons ─────────────────────────────────────────────────────
+    async function refreshLexicons() {
+      try {
+        const lx = await api('/v1/lexicons');
+        lexicons.value = lx.lexicons || [];
+      } catch (_) { /* surfaced */ }
+    }
+
+    async function createLexicon() {
+      if (!lexNewName.value.trim()) return;
+      await api('/v1/lexicons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: lexNewName.value, entries: [] }),
+      });
+      lexNewName.value = '';
+      await refreshLexicons();
+    }
+
+    async function deleteLexicon(id) {
+      const ok = await customConfirm({
+        title: 'Delete lexicon?',
+        message: 'All entries in this lexicon will be removed.',
+        confirmLabel: 'Delete',
+        confirmStyle: 'danger',
+      });
+      if (!ok) return;
+      await api(`/v1/lexicons/${id}`, { method: 'DELETE' });
+      await refreshLexicons();
+    }
+
+    async function appendLexEntry() {
+      if (!lexSelectedId.value || !lexNewGrapheme.value.trim()) return;
+      const entry = { grapheme: lexNewGrapheme.value };
+      if (lexNewPhoneme.value.trim()) entry.phoneme_ipa = lexNewPhoneme.value;
+      if (lexNewAlias.value.trim()) entry.alias = lexNewAlias.value;
+      await api(`/v1/lexicons/${lexSelectedId.value}/entries`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry),
+      });
+      lexNewGrapheme.value = '';
+      lexNewPhoneme.value = '';
+      lexNewAlias.value = '';
+      await refreshLexicons();
+    }
+
+    // ─── Voice clone / design / import / blend ────────────────────────
+    function openVoiceModal(kind) {
+      voiceModal.value = kind;
+      voiceCloneName.value = '';
+      voiceCloneFile.value = null;
+      voiceCloneTranscript.value = '';
+      voiceDesignName.value = '';
+      voiceDesignPrompt.value = '';
+      voiceImportName.value = '';
+      voiceImportFile.value = null;
+      blendName.value = '';
+      blendEngine.value = '';
+      blendStrategy.value = 'slerp';
+      blendSources.value = [{ voice_id: '', weight: 1.0 }, { voice_id: '', weight: 1.0 }];
+    }
+
+    function closeVoiceModal() {
+      voiceModal.value = null;
+    }
+
+    async function readFileAsBase64(file) {
+      return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => {
+          const dataUrl = r.result;
+          const comma = dataUrl.indexOf(',');
+          resolve(comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl);
+        };
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+    }
+
+    async function submitClone() {
+      if (!voiceCloneName.value.trim() || !voiceCloneFile.value) return;
+      voiceBusy.value = true;
+      try {
+        const ref_wav_b64 = await readFileAsBase64(voiceCloneFile.value);
+        await api('/v1/voices/clone', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: voiceCloneName.value,
+            ref_wav_b64,
+            transcript: voiceCloneTranscript.value || undefined,
+          }),
+        });
+        const v = await api('/v1/voices');
+        voices.value = v.voices;
+        closeVoiceModal();
+      } finally {
+        voiceBusy.value = false;
+      }
+    }
+
+    async function submitDesign() {
+      if (!voiceDesignName.value.trim() || !voiceDesignPrompt.value.trim()) return;
+      voiceBusy.value = true;
+      try {
+        await api('/v1/voices/design', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: voiceDesignName.value, prompt: voiceDesignPrompt.value }),
+        });
+        const v = await api('/v1/voices');
+        voices.value = v.voices;
+        closeVoiceModal();
+      } finally {
+        voiceBusy.value = false;
+      }
+    }
+
+    async function submitImport() {
+      if (!voiceImportName.value.trim() || !voiceImportFile.value) return;
+      voiceBusy.value = true;
+      try {
+        const wav_b64 = await readFileAsBase64(voiceImportFile.value);
+        await api('/v1/voices/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: voiceImportName.value, wav_b64 }),
+        });
+        const v = await api('/v1/voices');
+        voices.value = v.voices;
+        closeVoiceModal();
+      } finally {
+        voiceBusy.value = false;
+      }
+    }
+
+    function addBlendSource() {
+      blendSources.value.push({ voice_id: '', weight: 1.0 });
+    }
+    function removeBlendSource(idx) {
+      if (blendSources.value.length > 2) blendSources.value.splice(idx, 1);
+    }
+
+    async function submitBlend() {
+      if (!blendName.value.trim() || !blendEngine.value) return;
+      const valid = blendSources.value.filter(s => s.voice_id);
+      if (valid.length < 2) return;
+      voiceBusy.value = true;
+      try {
+        await api('/v1/voices/blend', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            engine: blendEngine.value,
+            name: blendName.value,
+            source_voice_ids: valid.map(s => s.voice_id),
+            weights: valid.map(s => Number(s.weight) || 1.0),
+            strategy: blendStrategy.value,
+          }),
+        });
+        const v = await api('/v1/voices');
+        voices.value = v.voices;
+        closeVoiceModal();
+      } finally {
+        voiceBusy.value = false;
+      }
+    }
+
+    // ─── Training ──────────────────────────────────────────────────────
+    async function refreshTrainJobs() {
+      try {
+        const t = await api('/v1/train');
+        trainJobs.value = t.jobs || [];
+      } catch (_) { /* surfaced */ }
+    }
+
+    function addTrainFile(event) {
+      const files = Array.from(event.target.files || []);
+      for (const file of files) {
+        trainFiles.value.push({ file, transcript: '' });
+      }
+      event.target.value = '';
+    }
+    function removeTrainFile(idx) {
+      trainFiles.value.splice(idx, 1);
+    }
+
+    async function submitTrain() {
+      if (!trainName.value.trim() || !trainEngine.value) return;
+      if (!trainFiles.value.length) return;
+      trainBusy.value = true;
+      try {
+        const samples = await Promise.all(
+          trainFiles.value.map(async ({ file, transcript }) => ({
+            wav_b64: await readFileAsBase64(file),
+            transcript: transcript || '',
+          })),
+        );
+        const body = {
+          engine: trainEngine.value,
+          name: trainName.value,
+          samples,
+        };
+        if (trainEpochs.value) body.epochs = Number(trainEpochs.value);
+        if (trainLearningRate.value) body.learning_rate = Number(trainLearningRate.value);
+        if (trainBaseVoice.value) body.base_voice = trainBaseVoice.value;
+        await api('/v1/train', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        trainName.value = '';
+        trainEpochs.value = '';
+        trainLearningRate.value = '';
+        trainBaseVoice.value = '';
+        trainFiles.value = [];
+        await refreshTrainJobs();
+      } finally {
+        trainBusy.value = false;
+      }
+    }
+
+    async function cancelTrainJob(id) {
+      const ok = await customConfirm({
+        title: 'Cancel training job?',
+        message: `Job ${id} will be stopped. Already-trained adapter weights up to the cancellation point are preserved.`,
+        confirmLabel: 'Cancel job',
+        confirmStyle: 'danger',
+      });
+      if (!ok) return;
+      await api(`/v1/train/${id}`, { method: 'DELETE' });
+      await refreshTrainJobs();
+    }
+
+    async function createPersona() {
+      if (!personaName.value.trim()) return;
+      await api('/v1/personas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: personaName.value, voice_id: personaVoice.value }),
+      });
+      personaName.value = '';
+      const p = await api('/v1/personas');
+      personas.value = p.personas;
+    }
+
+    async function deletePersona(id) {
+      const ok = await customConfirm({
+        title: 'Release persona?',
+        message: 'The voice + delivery binding will be deleted. The underlying voice is not affected.',
+        confirmLabel: 'Release',
+        confirmStyle: 'danger',
+      });
+      if (!ok) return;
+      await api(`/v1/personas/${id}`, { method: 'DELETE' });
+      const p = await api('/v1/personas');
+      personas.value = p.personas;
+      toast('Persona released.');
+    }
+
+    async function clearCache(scope) {
+      const q = scope ? `?scope=${encodeURIComponent(scope)}` : '';
+      await api(`/v1/cache/clear${q}`, { method: 'POST' });
+      cacheStats.value = await api('/v1/cache/stats');
+    }
+
+    async function saveSettings() {
+      try {
+        await api('/v1/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(settings.value),
+        });
+        toast('Settings saved. Some changes may need a server restart.', { kind: 'success', duration: 4000 });
+      } catch (e) {
+        toast(`Failed to save settings: ${e.message || e}`, { kind: 'error', duration: 6000 });
+      }
+    }
+
+    function fmtMB(bytes) {
+      if (bytes == null) return '—';
+      return (bytes / 1024 / 1024).toFixed(1);
+    }
+
+    function fmtDate(s) {
+      try {
+        return new Date(s).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
+      } catch (_) {
+        return s;
+      }
+    }
+
+    return {
+      VIEWS, EMOTIONS, MASTER_PRESETS, BLEND_STRATEGIES,
+      serverUrl, token, view, health, voices, personas, settings, cacheStats, error,
+      renderVoice, renderText, renderAudio, renderBusy,
+      deliverySpeed, deliveryEmotion, deliveryPitch, deliveryPauseBefore,
+      deliveryPauseAfter, deliveryGain, deliveryInstruct, deliveryEngineJson,
+      personaName, personaVoice,
+      enginesList, systemInfo, engineModels, engineBusy,
+      lexicons, lexNewName, lexSelectedId, lexNewGrapheme, lexNewPhoneme, lexNewAlias,
+      chapterLines, chapterVoice, chapterPreset, chapterSilenceMs, chapterAudio, chapterBusy,
+      voiceModal, voiceCloneName, voiceCloneFile, voiceCloneTranscript,
+      voiceDesignName, voiceDesignPrompt, voiceImportName, voiceImportFile, voiceBusy,
+      blendName, blendEngine, blendStrategy, blendSources,
+      addBlendSource, removeBlendSource, submitBlend,
+      trainJobs, trainEngine, trainName, trainEpochs, trainLearningRate, trainBaseVoice,
+      trainFiles, trainBusy, refreshTrainJobs, addTrainFile, removeTrainFile,
+      submitTrain, cancelTrainJob,
+      confirmDialog, resolveConfirm,
+      toasts, dismissToast,
+      engineProgress, progressBarStyle, dismissEngineProgress,
+      tasks, taskNow, elapsedSeconds, freshness, taskStats, cancelTask,
+      newOverrideVariantId, newOverrideUrl, addUrlOverride, removeUrlOverride,
+      urlOverrideKeys: computed(() => Object.keys(settings.value?.models?.url_overrides || {})),
+      newExternal, addExternalEngine, removeExternalEngine,
+      probeResult, probeBusy, probeAvailableModels, probeAvailableVoices, testExternalConnection,
+      compareFileA, compareFileB, compareLabelA, compareLabelB, compareReport, compareBusy,
+      runCompare, fmtDb,
+      refreshAll, generate, createPersona, deletePersona, clearCache, saveSettings,
+      renderChapter, refreshEngines, refreshVoices, loadEngineModels, installEngine, loadEngine, unloadEngine, uninstallEngine,
+      deleteVoice,
+      refreshLexicons, createLexicon, deleteLexicon, appendLexEntry,
+      openVoiceModal, closeVoiceModal, submitClone, submitDesign, submitImport,
+      fmtMB, fmtDate,
+      voicesByEngine: computed(() => {
+        const out = {};
+        for (const v of voices.value) {
+          (out[v.engine] = out[v.engine] || []).push(v);
+        }
+        return out;
+      }),
+      selectedLexicon: computed(() => lexicons.value.find(l => l.id === lexSelectedId.value)),
+      currentView: computed(() => VIEWS.find(v => v.id === view.value)),
+    };
+  },
+  template: `
+  <div>
+    <!-- ─────── Top bar ─────── -->
+    <header class="topbar">
+      <span class="logo">Justtts<span class="dot">.</span></span>
+      <span class="ver" v-if="health">v{{ health.version }} · API {{ health.api_version }}</span>
+      <span class="ver" v-else>not connected</span>
+      <span class="status" :class="{ warn: !health || health.status !== 'ok' }">
+        <span class="sq"></span>
+        {{ health && health.status === 'ok' ? 'Operational' : (health ? health.status : 'Offline') }}
+      </span>
+    </header>
+
+    <!-- ─────── Tabs ─────── -->
+    <nav class="tabs">
+      <button
+        v-for="v in VIEWS"
+        :key="v.id"
+        class="tab"
+        :class="{ active: view === v.id }"
+        @click="view = v.id">
+        {{ v.label }}
+      </button>
+    </nav>
+
+    <!-- ─────── Main ─────── -->
+    <main>
+      <div class="page-head">
+        <h2>{{ currentView.label }}<span class="period">.</span></h2>
+        <p class="lede">{{ currentView.lede }}</p>
+      </div>
+
+      <div v-if="error" class="errband">
+        <span class="lbl">Error</span>
+        <span>{{ error }}</span>
+      </div>
+
+      <!-- ─── Task strip — visible across every tab while ops are in flight ─── -->
+      <div v-for="task in tasks" :key="task.id" class="task-strip" :data-status="task.status">
+        <span class="task-spin" :data-status="task.status"></span>
+        <span class="task-label">{{ task.label }}</span>
+        <span class="task-stat">{{ elapsedSeconds(task) }}s</span>
+        <span v-for="(s, i) in taskStats(task)" :key="i" class="task-stat">{{ s }}</span>
+        <span v-if="freshness(task)" class="task-stat" :data-fresh="freshness(task)">
+          <span class="task-dot"></span>
+          <template v-if="freshness(task) === 'fresh'">live</template>
+          <template v-else-if="freshness(task) === 'stalling'">stalling</template>
+          <template v-else>stuck</template>
+        </span>
+        <span v-if="task.status === 'completed'" class="task-stat" style="color: #2d9d2d;">done</span>
+        <span v-if="task.status === 'failed'" class="task-stat" style="color: #b00020;">failed</span>
+        <span v-if="task.status === 'cancelled'" class="task-stat" style="color: var(--ink-dim);">cancelled</span>
+        <div v-if="task.percent != null" class="task-track">
+          <div class="task-fill" :style="{ width: task.percent + '%' }"></div>
+        </div>
+        <span class="task-spacer"></span>
+        <button v-if="task.onCancel && task.status === 'running'" class="bare" @click="cancelTask(task.id)">Cancel</button>
+      </div>
+
+      <!-- ─── Overview ─── -->
+      <template v-if="view === 'overview'">
+        <section class="block">
+          <h3>Catalogue</h3>
+          <div class="stats">
+            <div class="stat">
+              <div class="k">Voices</div>
+              <div class="v">{{ voices.length }}</div>
+              <div class="x">across {{ Object.keys(voicesByEngine).length }} engine{{ Object.keys(voicesByEngine).length === 1 ? '' : 's' }}</div>
+            </div>
+            <div class="stat">
+              <div class="k">Personas</div>
+              <div class="v">{{ personas.length }}</div>
+              <div class="x">named &amp; bound</div>
+            </div>
+            <div class="stat" v-if="cacheStats">
+              <div class="k">Cache</div>
+              <div class="v">{{ fmtMB(cacheStats.total_bytes_on_disk) }}<span class="unit">MB</span></div>
+              <div class="x">{{ cacheStats.total_entries_on_disk }} entries on disk</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="block" v-if="health && health.engines && health.engines.length">
+          <h3>Engines</h3>
+          <div class="engines">
+            <div v-for="e in health.engines" :key="e.id" class="engine">
+              <div class="name">{{ e.name }}<span class="qual" v-if="e.id && e.id.includes('stub')">— stub</span></div>
+              <div class="be">{{ e.backend }}</div>
+              <div class="st" :class="{ off: !e.ready }">{{ e.ready ? 'Ready' : 'Not loaded' }}</div>
+            </div>
+          </div>
+        </section>
+      </template>
+
+      <!-- ─── Generate ─── -->
+      <template v-if="view === 'generate'">
+        <section class="block stack">
+          <div>
+            <label>Voice</label>
+            <select v-model="renderVoice">
+              <option v-for="v in voices" :key="v.id" :value="v.id">{{ v.name }} — {{ v.id }}</option>
+            </select>
+          </div>
+          <div>
+            <label>Text</label>
+            <textarea v-model="renderText"></textarea>
+            <span class="endnote">Inline tags: <span class="mono" style="font-size: 11px;">[laugh]</span>, <span class="mono" style="font-size: 11px;">[pause:0.5s]</span>, <span class="mono" style="font-size: 11px;">[whisper]...[/whisper]</span>, <span class="mono" style="font-size: 11px;">[speed:0.7]...[/speed]</span></span>
+          </div>
+          <div class="row">
+            <button class="primary" @click="generate" :disabled="renderBusy">
+              {{ renderBusy ? 'Rendering…' : 'Render' }}
+            </button>
+            <span class="endnote">POST /v1/generate &rarr; audio/wav</span>
+          </div>
+          <audio v-if="renderAudio" :src="renderAudio" :key="renderAudio" controls autoplay></audio>
+        </section>
+
+        <section class="block">
+          <h3>Delivery overlay</h3>
+          <p class="endnote" style="margin-bottom: 16px;">All optional. Untouched controls fall through to the voice's defaults. Universal knobs apply to every engine; engine-specific knobs (Chatterbox exaggeration, ElevenLabs stability, etc.) go in the JSON box.</p>
+          <div class="grid-2">
+            <div>
+              <label>Speed — {{ deliverySpeed.toFixed(2) }}×</label>
+              <input type="range" min="0.5" max="2.0" step="0.05" v-model.number="deliverySpeed" />
+            </div>
+            <div>
+              <label>Pitch — {{ deliveryPitch > 0 ? '+' : '' }}{{ deliveryPitch }} semitones</label>
+              <input type="range" min="-12" max="12" step="1" v-model.number="deliveryPitch" />
+            </div>
+            <div>
+              <label>Emotion</label>
+              <select v-model="deliveryEmotion">
+                <option v-for="e in EMOTIONS" :key="e" :value="e">{{ e || '(none)' }}</option>
+              </select>
+            </div>
+            <div>
+              <label>Gain — {{ deliveryGain > 0 ? '+' : '' }}{{ deliveryGain }} dB</label>
+              <input type="range" min="-24" max="12" step="1" v-model.number="deliveryGain" />
+            </div>
+            <div>
+              <label>Pause before (ms)</label>
+              <input type="number" min="0" max="5000" v-model.number="deliveryPauseBefore" />
+            </div>
+            <div>
+              <label>Pause after (ms)</label>
+              <input type="number" min="0" max="5000" v-model.number="deliveryPauseAfter" />
+            </div>
+          </div>
+          <div style="margin-top: 22px;">
+            <label>Instruct (Qwen3-native; prefix on other engines where supported)</label>
+            <input type="text" v-model="deliveryInstruct" placeholder='e.g. "with growing horror, slowly losing composure"' />
+          </div>
+          <div style="margin-top: 22px;">
+            <label>Engine-specific knobs (JSON)</label>
+            <textarea v-model="deliveryEngineJson" placeholder='{"exaggeration": 0.85, "cfg_weight": 0.5, "temperature": 0.9}' style="min-height: 60px;"></textarea>
+            <span class="endnote">Chatterbox: exaggeration / cfg_weight / temperature / speed_factor · ElevenLabs: stability / similarity_boost · Qwen3 picks up the Instruct field above</span>
+          </div>
+        </section>
+      </template>
+
+      <!-- ─── Chapter ─── -->
+      <template v-if="view === 'chapter'">
+        <section class="block stack">
+          <div>
+            <label>Voice (applied to every line — multi-voice scenes use POST /v1/render_scene)</label>
+            <select v-model="chapterVoice">
+              <option v-for="v in voices" :key="v.id" :value="v.id">{{ v.name }} — {{ v.id }}</option>
+            </select>
+          </div>
+          <div>
+            <label>Script — one line per row, blank lines ignored</label>
+            <textarea v-model="chapterLines" style="min-height: 240px;"></textarea>
+          </div>
+          <div class="grid-2">
+            <div>
+              <label>Silence between lines (ms)</label>
+              <input type="number" min="0" max="5000" v-model.number="chapterSilenceMs" />
+            </div>
+            <div>
+              <label>Mastering preset</label>
+              <select v-model="chapterPreset">
+                <option v-for="p in MASTER_PRESETS" :key="p.id" :value="p.id">{{ p.label }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <button class="primary" @click="renderChapter" :disabled="chapterBusy">
+              {{ chapterBusy ? 'Rendering chapter…' : 'Render chapter' }}
+            </button>
+            <span class="endnote">POST /v1/render_chapter &rarr; audio/wav or audio/mpeg (with mastering)</span>
+          </div>
+          <audio v-if="chapterAudio" :src="chapterAudio" :key="chapterAudio" controls></audio>
+        </section>
+      </template>
+
+      <!-- ─── Voices ─── -->
+      <template v-if="view === 'voices'">
+        <section class="block">
+          <h3>Add a voice</h3>
+          <div class="row">
+            <button @click="openVoiceModal('clone')">Clone from reference</button>
+            <button @click="openVoiceModal('design')">Design from prose</button>
+            <button @click="openVoiceModal('import')">Import existing clip</button>
+            <button @click="openVoiceModal('blend')">Blend voices</button>
+          </div>
+          <p class="endnote" style="margin-top: 10px;">
+            <strong>Clone</strong>: 3-30 second reference WAV → cloned voice (Qwen3, Chatterbox).
+            <strong>Design</strong>: prose description → voice (Qwen3 native).
+            <strong>Import</strong>: bring your own clip as-is, no synthesis training.
+            <strong>Blend</strong>: interpolate between two or more voices in embedding space (engines with <span class="mono">supports_embedding_blending</span>).
+          </p>
+        </section>
+
+        <section class="block">
+          <h3>{{ voices.length }} voices registered</h3>
+          <table v-if="voices.length">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Engine</th>
+                <th>Source</th>
+                <th>Lang</th>
+                <th>Identifier</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="v in voices" :key="v.id" :class="{ orphan: !enginesList.find(e => e.id === v.engine) }">
+                <td>
+                  <span class="em">{{ v.name }}</span>
+                  <span v-if="!enginesList.find(e => e.id === v.engine)" class="tag" style="margin-left: 8px; background: #fce4e4; color: #b00020;">orphan</span>
+                </td>
+                <td><span class="tag">{{ v.engine }}</span></td>
+                <td>{{ v.source }}</td>
+                <td>{{ v.language }}</td>
+                <td><span class="mono">{{ v.id }}</span></td>
+                <td style="text-align: right;">
+                  <button v-if="v.source !== 'preset'" class="bare" @click="deleteVoice(v.id)" style="color: var(--danger, #b00020);">Delete</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="empty">No voices registered. Install + load an engine to see preset voices.</div>
+        </section>
+      </template>
+
+      <!-- ─── Compare ─── -->
+      <template v-if="view === 'compare'">
+        <section class="block stack">
+          <h3>Two WAVs in, side-by-side report out</h3>
+          <p class="endnote" style="margin-bottom: 12px;">
+            Drop two 16-bit PCM WAV files. JustTTS reports format match, peak/RMS loudness diff, sample-level RMSE if formats line up, and a coarse verdict (<span class="mono">identical</span> / <span class="mono">near-identical</span> / <span class="mono">similar</span> / <span class="mono">different</span> / <span class="mono">unrelated</span>). Use this to compare two TTS pipelines' output of the same text + voice.
+          </p>
+          <div class="grid-2">
+            <div>
+              <label>A (baseline) — label (optional)</label>
+              <input type="text" v-model="compareLabelA" placeholder="e.g. JustTTS Kokoro" />
+              <div style="margin-top: 10px;">
+                <label>WAV file A</label>
+                <input type="file" accept="audio/wav,audio/x-wav,.wav" @change="compareFileA = $event.target.files[0]" />
+              </div>
+            </div>
+            <div>
+              <label>B (compared against A) — label (optional)</label>
+              <input type="text" v-model="compareLabelB" placeholder="e.g. Local Kokoro FastAPI" />
+              <div style="margin-top: 10px;">
+                <label>WAV file B</label>
+                <input type="file" accept="audio/wav,audio/x-wav,.wav" @change="compareFileB = $event.target.files[0]" />
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <button class="primary" @click="runCompare" :disabled="compareBusy || !compareFileA || !compareFileB">
+              {{ compareBusy ? 'Analyzing…' : 'Compare' }}
+            </button>
+            <span class="endnote">POST /v1/compare</span>
+          </div>
+        </section>
+
+        <section class="block" v-if="compareReport">
+          <h3>
+            Verdict: <span class="tag" :data-verdict="compareReport.verdict">{{ compareReport.verdict }}</span>
+          </h3>
+          <table style="margin-top: 14px;">
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th>{{ compareReport.a_label || 'A' }}</th>
+                <th>{{ compareReport.b_label || 'B' }}</th>
+                <th>Δ (B − A)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>SHA-256</td>
+                <td><span class="mono" style="font-size: 11px;">{{ compareReport.a.sha256.slice(0, 16) }}…</span></td>
+                <td><span class="mono" style="font-size: 11px;">{{ compareReport.b.sha256.slice(0, 16) }}…</span></td>
+                <td>{{ compareReport.identical ? 'identical' : 'differ' }}</td>
+              </tr>
+              <tr>
+                <td>File size</td>
+                <td>{{ (compareReport.a.file_size_bytes / 1024).toFixed(1) }} KB</td>
+                <td>{{ (compareReport.b.file_size_bytes / 1024).toFixed(1) }} KB</td>
+                <td>{{ ((compareReport.b.file_size_bytes - compareReport.a.file_size_bytes) / 1024).toFixed(1) }} KB</td>
+              </tr>
+              <tr>
+                <td>Sample rate</td>
+                <td>{{ compareReport.a.format.sample_rate }} Hz</td>
+                <td>{{ compareReport.b.format.sample_rate }} Hz</td>
+                <td>{{ compareReport.format_match ? '—' : 'mismatch' }}</td>
+              </tr>
+              <tr>
+                <td>Channels</td>
+                <td>{{ compareReport.a.format.channels }}</td>
+                <td>{{ compareReport.b.format.channels }}</td>
+                <td>{{ compareReport.a.format.channels === compareReport.b.format.channels ? '—' : 'mismatch' }}</td>
+              </tr>
+              <tr>
+                <td>Duration</td>
+                <td>{{ compareReport.a.format.duration_sec.toFixed(3) }}s</td>
+                <td>{{ compareReport.b.format.duration_sec.toFixed(3) }}s</td>
+                <td>{{ (compareReport.duration_diff_sec >= 0 ? '+' : '') + compareReport.duration_diff_sec.toFixed(3) }}s</td>
+              </tr>
+              <tr>
+                <td>Peak loudness</td>
+                <td>{{ fmtDb(compareReport.a.loudness.peak_dbfs) }}</td>
+                <td>{{ fmtDb(compareReport.b.loudness.peak_dbfs) }}</td>
+                <td>{{ fmtDb(compareReport.peak_diff_db) }}</td>
+              </tr>
+              <tr>
+                <td>RMS loudness</td>
+                <td>{{ fmtDb(compareReport.a.loudness.rms_dbfs) }}</td>
+                <td>{{ fmtDb(compareReport.b.loudness.rms_dbfs) }}</td>
+                <td>{{ fmtDb(compareReport.rms_diff_db) }}</td>
+              </tr>
+              <tr>
+                <td>Crest factor (peak − RMS)</td>
+                <td>{{ fmtDb(compareReport.a.loudness.crest_factor_db) }}</td>
+                <td>{{ fmtDb(compareReport.b.loudness.crest_factor_db) }}</td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td>Silence ratio</td>
+                <td>{{ (compareReport.a.loudness.silence_ratio * 100).toFixed(1) }}%</td>
+                <td>{{ (compareReport.b.loudness.silence_ratio * 100).toFixed(1) }}%</td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td>Clipping ratio</td>
+                <td>{{ (compareReport.a.loudness.clipping_ratio * 100).toFixed(3) }}%</td>
+                <td>{{ (compareReport.b.loudness.clipping_ratio * 100).toFixed(3) }}%</td>
+                <td>—</td>
+              </tr>
+              <tr v-if="compareReport.sample_rmse !== null">
+                <td>Sample-level RMSE</td>
+                <td colspan="2">{{ compareReport.sample_rmse.toFixed(5) }} (normalized to [-1, 1])</td>
+                <td>—</td>
+              </tr>
+              <tr v-if="compareReport.max_sample_delta !== null">
+                <td>Max sample Δ</td>
+                <td colspan="2">{{ compareReport.max_sample_delta.toFixed(5) }}</td>
+                <td>—</td>
+              </tr>
+              <tr v-if="compareReport.pct_identical_samples !== null">
+                <td>% identical samples</td>
+                <td colspan="2">{{ (compareReport.pct_identical_samples * 100).toFixed(3) }}%</td>
+                <td>—</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="endnote" style="margin-top: 16px;">
+            <strong>How to read it.</strong>
+            <span v-if="compareReport.identical">Bit-identical — the two files are the same bytes. The pipelines produced identical output (rare; suggests deterministic sampling + same model + same seed).</span>
+            <span v-else-if="!compareReport.format_match">Formats differ — comparing sample-by-sample isn't meaningful until you resample one to match the other. The duration / loudness deltas are still useful.</span>
+            <span v-else>Same format but different bytes. Sample RMSE near zero = perceptually near-identical (different floating-point paths can produce tiny diffs). RMSE 0.01-0.05 = similar quality but different model state. RMSE &gt; 0.1 = audibly different output.</span>
+          </p>
+        </section>
+      </template>
+
+      <!-- ─── Train ─── -->
+      <template v-if="view === 'train'">
+        <section class="block stack">
+          <h3>Queue a fine-tune</h3>
+          <div class="grid-2">
+            <div>
+              <label>Voice name</label>
+              <input v-model="trainName" placeholder="Sarah-trained" />
+            </div>
+            <div>
+              <label>Engine</label>
+              <select v-model="trainEngine">
+                <option value="">Pick an engine…</option>
+                <option v-for="e in enginesList" :key="e.id" :value="e.id">{{ e.name }}</option>
+              </select>
+            </div>
+            <div>
+              <label>Base voice (optional)</label>
+              <select v-model="trainBaseVoice">
+                <option value="">— none —</option>
+                <option v-for="v in voices" :key="v.id" :value="v.id">{{ v.name }} ({{ v.engine }})</option>
+              </select>
+            </div>
+            <div>
+              <label>Epochs (optional override)</label>
+              <input type="number" v-model="trainEpochs" placeholder="engine default" />
+            </div>
+            <div>
+              <label>Learning rate (optional override)</label>
+              <input type="number" step="0.00001" v-model="trainLearningRate" placeholder="engine default" />
+            </div>
+          </div>
+          <div>
+            <label>Add reference samples (WAV + spoken transcript per sample)</label>
+            <input type="file" accept="audio/*" multiple @change="addTrainFile" />
+            <div v-if="trainFiles.length" style="margin-top: 10px;">
+              <table>
+                <thead><tr><th>File</th><th>Transcript</th><th></th></tr></thead>
+                <tbody>
+                  <tr v-for="(s, idx) in trainFiles" :key="idx">
+                    <td class="mono">{{ s.file.name }}</td>
+                    <td><input v-model="s.transcript" placeholder="What the speaker says in this clip" /></td>
+                    <td><button class="bare" @click="removeTrainFile(idx)">Remove</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="endnote" style="margin-top: 8px;">
+              5-30 min total works best. Transcripts strongly recommended (engines that accept them train faster). Server runs pre-flight QC — bad SNR / clipped / too-silent samples are rejected before training kicks off.
+            </p>
+          </div>
+          <div class="row">
+            <button class="primary" @click="submitTrain" :disabled="trainBusy || !trainEngine || !trainName || !trainFiles.length">
+              {{ trainBusy ? 'Queueing…' : 'Queue training job' }}
+            </button>
+            <span class="endnote">POST /v1/train &rarr; returns 202 with job_id. Engine must have <span class="mono">supports_training</span> = true.</span>
+          </div>
+        </section>
+
+        <section class="block">
+          <div class="row">
+            <h3 style="margin: 0;">{{ trainJobs.length }} training jobs</h3>
+            <button class="bare" @click="refreshTrainJobs">Refresh</button>
+          </div>
+          <table v-if="trainJobs.length">
+            <thead>
+              <tr>
+                <th>Job</th>
+                <th>Engine</th>
+                <th>Voice</th>
+                <th>Phase</th>
+                <th>Progress</th>
+                <th>Final loss</th>
+                <th>Voice id</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="j in trainJobs" :key="j.job_id">
+                <td><span class="mono">{{ j.job_id }}</span></td>
+                <td><span class="tag">{{ j.engine }}</span></td>
+                <td>{{ j.voice_name }}</td>
+                <td>{{ j.phase }}<span v-if="j.error" class="endnote"> — {{ j.error }}</span></td>
+                <td>{{ Math.round((j.progress || 0) * 100) }}%</td>
+                <td>{{ j.loss_curve && j.loss_curve.length ? j.loss_curve[j.loss_curve.length-1].toFixed(3) : '—' }}</td>
+                <td><span class="mono">{{ j.final_voice_id || '—' }}</span></td>
+                <td>
+                  <button v-if="['queued','validating','preparing','running'].includes(j.phase)" class="bare" @click="cancelTrainJob(j.job_id)">Cancel</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="empty">No training jobs.</div>
+        </section>
+      </template>
+
+      <!-- ─── Personas ─── -->
+      <template v-if="view === 'personas'">
+        <section class="block stack">
+          <h3>Bind a new persona</h3>
+          <div class="grid-2">
+            <div>
+              <label>Name</label>
+              <input v-model="personaName" placeholder="Sarah, Mr Holmes, the narrator…" />
+            </div>
+            <div>
+              <label>Voice</label>
+              <select v-model="personaVoice">
+                <option v-for="v in voices" :key="v.id" :value="v.id">{{ v.name }} — {{ v.id }}</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <button class="primary" @click="createPersona">Bind persona</button>
+          </div>
+        </section>
+
+        <section class="block">
+          <h3>{{ personas.length }} bound</h3>
+          <table v-if="personas.length">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Voice</th>
+                <th>Bound</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="p in personas" :key="p.id">
+                <td><span class="em">{{ p.name }}</span></td>
+                <td><span class="mono">{{ p.voice_id }}</span></td>
+                <td>{{ fmtDate(p.created_at) }}</td>
+                <td>
+                  <button class="bare" @click="deletePersona(p.id)">Release</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="empty">No personas bound.</div>
+        </section>
+      </template>
+
+      <!-- ─── Lexicons ─── -->
+      <template v-if="view === 'lexicons'">
+        <section class="block stack">
+          <h3>New lexicon</h3>
+          <div class="row">
+            <input v-model="lexNewName" placeholder="e.g. book-1-character-names" style="flex: 1;" />
+            <button class="primary" @click="createLexicon">Create lexicon</button>
+          </div>
+          <p class="endnote">
+            Per-render pronunciation dictionary. Apply to <span class="mono" style="font-size: 11px;">/v1/generate</span> via <span class="mono" style="font-size: 11px;">lexicons: [&quot;lex_id&quot;]</span>. Engine matches grapheme strings and uses your IPA / alias instead of its default pronunciation.
+          </p>
+        </section>
+
+        <section class="block" v-if="lexicons.length">
+          <h3>{{ lexicons.length }} lexicons</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Entries</th>
+                <th>ID</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="lx in lexicons" :key="lx.id" @click="lexSelectedId = lx.id" style="cursor: pointer;" :class="{ active: lexSelectedId === lx.id }">
+                <td><span class="em">{{ lx.name }}</span></td>
+                <td>{{ (lx.entries || []).length }}</td>
+                <td><span class="mono">{{ lx.id }}</span></td>
+                <td style="text-align: right;">
+                  <button class="bare" @click.stop="deleteLexicon(lx.id)">Delete</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+        <div v-else class="empty">No lexicons yet.</div>
+
+        <section class="block stack" v-if="selectedLexicon">
+          <h3>{{ selectedLexicon.name }} — entries</h3>
+          <table v-if="(selectedLexicon.entries || []).length">
+            <thead><tr><th>Grapheme</th><th>IPA</th><th>Alias</th></tr></thead>
+            <tbody>
+              <tr v-for="(e, i) in selectedLexicon.entries" :key="i">
+                <td><span class="em">{{ e.grapheme }}</span></td>
+                <td><span class="mono">{{ e.phoneme_ipa || '—' }}</span></td>
+                <td>{{ e.alias || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="empty" style="padding: 16px 0;">No entries in this lexicon yet.</div>
+
+          <h3 style="margin-top: 24px;">Append entry</h3>
+          <div class="grid-2">
+            <div>
+              <label>Grapheme (word as it appears)</label>
+              <input v-model="lexNewGrapheme" placeholder="Aelindor" />
+            </div>
+            <div>
+              <label>Phoneme IPA (preferred)</label>
+              <input v-model="lexNewPhoneme" placeholder="ˈeɪ.lɪn.dɔːr" />
+            </div>
+          </div>
+          <div>
+            <label>Alias (alternative — engine reads this instead of grapheme)</label>
+            <input v-model="lexNewAlias" placeholder="ay-lin-door" />
+          </div>
+          <div>
+            <button class="primary" @click="appendLexEntry">Append entry</button>
+            <span class="endnote" style="margin-left: 14px;">Provide IPA OR alias OR both. Engine prefers IPA where supported.</span>
+          </div>
+        </section>
+      </template>
+
+      <!-- ─── Engines ─── -->
+      <template v-if="view === 'engines'">
+        <section class="block" v-if="systemInfo">
+          <h3>This machine</h3>
+          <div class="stats">
+            <div class="stat">
+              <div class="k">OS / Arch</div>
+              <div class="v" style="font-size: 28px;">{{ systemInfo.os.family }}<span class="unit">{{ systemInfo.os.arch }}</span></div>
+              <div class="x">{{ systemInfo.os.version }}</div>
+            </div>
+            <div class="stat">
+              <div class="k">CPU</div>
+              <div class="v" style="font-size: 28px;">{{ systemInfo.cpu.cores_logical }}<span class="unit">threads</span></div>
+              <div class="x">{{ systemInfo.cpu.brand }}</div>
+            </div>
+            <div class="stat">
+              <div class="k">Memory</div>
+              <div class="v">{{ Math.round(systemInfo.memory.total_mb / 1024) }}<span class="unit">GB</span></div>
+              <div class="x">{{ Math.round(systemInfo.memory.available_mb / 1024) }} GB available</div>
+            </div>
+          </div>
+
+          <div v-if="systemInfo.gpus && systemInfo.gpus.length" style="margin-top: 24px;">
+            <h3>GPU{{ systemInfo.gpus.length > 1 ? 's' : '' }}</h3>
+            <table>
+              <thead><tr><th>Vendor</th><th>Model</th><th>VRAM</th><th>Driver</th></tr></thead>
+              <tbody>
+                <tr v-for="(g, i) in systemInfo.gpus" :key="i">
+                  <td><span class="tag">{{ g.vendor }}</span></td>
+                  <td><span class="em">{{ g.model }}</span></td>
+                  <td>{{ g.vram_mb ? (g.vram_mb / 1024).toFixed(1) + ' GB' : '—' }}</td>
+                  <td><span class="mono">{{ g.driver_version || '—' }}</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="margin-top: 24px;">
+            <h3>Acceleration runtimes</h3>
+            <div class="row" style="flex-wrap: wrap; gap: 8px;">
+              <span v-if="systemInfo.runtimes.cuda" class="tag">CUDA {{ systemInfo.runtimes.cuda.version }}</span>
+              <span v-if="systemInfo.runtimes.metal" class="tag">Metal</span>
+              <span v-if="systemInfo.runtimes.coreml" class="tag">CoreML</span>
+              <span v-if="systemInfo.runtimes.directml" class="tag">DirectML</span>
+              <span v-if="systemInfo.runtimes.rocm" class="tag">ROCm {{ systemInfo.runtimes.rocm.version }}</span>
+              <span v-if="systemInfo.runtimes.vulkan" class="tag">Vulkan</span>
+              <span class="tag">CPU</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="block" v-if="enginesList.length">
+          <h3>{{ enginesList.length }} engines</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Engine</th>
+                <th>Backend</th>
+                <th>Status</th>
+                <th>Disk</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="e in enginesList" :key="e.id">
+                <tr>
+                  <td>
+                    <span class="em">{{ e.name }}</span>
+                    <span v-if="e.is_stubbed" class="tag" style="margin-left: 8px;">stub mode</span>
+                  </td>
+                  <td><span class="mono">{{ e.backend }}</span></td>
+                  <td>
+                    <span class="status" :class="{ ok: e.status === 'loaded' || e.status === 'installed', warn: e.status === 'installing' || e.status === 'loading' }">
+                      <span class="sq"></span>{{ e.status.replace('_', ' ') }}
+                    </span>
+                  </td>
+                  <td>{{ e.prerequisites.disk_space_mb >= 1024 ? (e.prerequisites.disk_space_mb / 1024).toFixed(1) + ' GB' : e.prerequisites.disk_space_mb + ' MB' }}</td>
+                  <td style="text-align: right;">
+                    <button v-if="e.status === 'not_installed'" class="primary" :disabled="engineBusy[e.id]" @click="installEngine(e.id, null)">
+                      {{ engineBusy[e.id] === 'install' ? 'Installing…' : 'Install' }}
+                    </button>
+                    <button v-else-if="e.status === 'installed'" class="primary" :disabled="engineBusy[e.id]" @click="loadEngine(e.id)">
+                      {{ engineBusy[e.id] === 'load' ? 'Loading…' : 'Load' }}
+                    </button>
+                    <button v-else-if="e.status === 'loaded'" class="bare" :disabled="engineBusy._global" @click="unloadEngine()">
+                      {{ engineBusy._global === 'unload' ? 'Unloading…' : 'Unload' }}
+                    </button>
+                    <button v-if="e.status !== 'not_installed'" class="bare" :disabled="engineBusy[e.id]" @click="uninstallEngine(e.id)" style="margin-left: 10px; color: var(--danger, #b00020);">
+                      {{ engineBusy[e.id] === 'uninstall' ? 'Uninstalling…' : 'Uninstall' }}
+                    </button>
+                  </td>
+                </tr>
+                <tr v-if="engineProgress[e.id]" :key="e.id + '-progress'">
+                  <td colspan="5" class="progress-cell">
+                    <div class="progress-row">
+                      <span class="progress-phase">{{ engineProgress[e.id].phase }}</span>
+                      <div class="progress-track">
+                        <div class="progress-bar" :class="'phase-' + engineProgress[e.id].phase" :style="progressBarStyle(engineProgress[e.id])"></div>
+                      </div>
+                      <span class="progress-bytes">
+                        <template v-if="engineProgress[e.id].bytes_total > 0">
+                          {{ (engineProgress[e.id].bytes_downloaded / 1024 / 1024).toFixed(1) }} / {{ (engineProgress[e.id].bytes_total / 1024 / 1024).toFixed(1) }} MB
+                        </template>
+                        <template v-else>—</template>
+                      </span>
+                    </div>
+                    <div v-if="engineProgress[e.id].current_file" class="endnote progress-file">
+                      <span class="mono">{{ engineProgress[e.id].current_file }}</span>
+                    </div>
+                    <div v-if="engineProgress[e.id].error" class="endnote progress-error">
+                      <strong>Install failed.</strong> {{ engineProgress[e.id].error }}
+                      <button class="bare" style="margin-left: 12px;" @click="dismissEngineProgress(e.id)">Dismiss</button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+          <p class="endnote" style="margin-top: 14px;">
+            Engines load one at a time. Loading a new engine unloads the previous one to free GPU memory. The "stub mode" tag means the engine is registered but its model files aren't downloaded — install to hear real audio.
+          </p>
+        </section>
+
+        <section class="block" v-for="e in enginesList" :key="'detail-' + e.id">
+          <h3>{{ e.name }} — details</h3>
+          <p class="endnote" style="margin-bottom: 14px; line-height: 1.6;">{{ e.description }}</p>
+          <div class="row" style="flex-wrap: wrap; gap: 6px; margin-bottom: 12px;">
+            <span v-for="cap in e.capabilities" :key="cap" class="tag">{{ cap.replace('_', ' ') }}</span>
+          </div>
+          <p class="endnote">
+            GPU runtimes:
+            <span v-if="!e.prerequisites.gpu_runtimes.length">CPU only</span>
+            <span v-for="r in e.prerequisites.gpu_runtimes" :key="r" class="mono" style="margin: 0 4px;">{{ r }}</span>
+          </p>
+          <button v-if="!engineModels[e.id]" @click="loadEngineModels(e.id)" style="margin-top: 10px;">Show model variants</button>
+          <div v-if="engineModels[e.id]" style="margin-top: 16px;">
+            <table>
+              <thead><tr><th>Variant</th><th>Size</th><th>VRAM</th><th>Quality</th><th></th></tr></thead>
+              <tbody>
+                <tr v-for="v in engineModels[e.id].variants" :key="v.id">
+                  <td>
+                    <span class="em">{{ v.name }}</span>
+                    <span v-if="engineModels[e.id].recommended.best_fit && engineModels[e.id].recommended.best_fit.id === v.id" class="tag" style="margin-left: 8px;">recommended</span>
+                    <span v-if="(engineModels[e.id].recommended.would_oom || []).includes(v.id)" class="tag" style="background: var(--danger-soft); color: var(--danger); margin-left: 8px;">won't fit</span>
+                  </td>
+                  <td>{{ v.size_mb >= 1024 ? (v.size_mb / 1024).toFixed(1) + ' GB' : v.size_mb + ' MB' }}</td>
+                  <td>{{ v.vram_mb ? (v.vram_mb / 1024).toFixed(1) + ' GB' : 'CPU' }}</td>
+                  <td>{{ v.quality }}/100</td>
+                  <td style="text-align: right;">
+                    <button class="primary" :disabled="engineBusy[e.id] || (engineModels[e.id].recommended.would_oom || []).includes(v.id)" @click="installEngine(e.id, v.id)">Install</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </template>
+
+      <!-- ─── Cache ─── -->
+      <template v-if="view === 'cache'">
+        <section class="block" v-if="cacheStats">
+          <h3>Total on disk</h3>
+          <div class="stats">
+            <div class="stat">
+              <div class="k">Entries</div>
+              <div class="v">{{ cacheStats.total_entries_on_disk }}</div>
+              <div class="x">held across all scopes</div>
+            </div>
+            <div class="stat">
+              <div class="k">Disk used</div>
+              <div class="v">{{ fmtMB(cacheStats.total_bytes_on_disk) }}<span class="unit">MB</span></div>
+              <div class="x">across scopes</div>
+            </div>
+            <div class="stat" style="display:flex; align-items:flex-end;">
+              <button class="danger" @click="clearCache()">Purge all scopes</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="block" v-if="cacheStats && Object.keys(cacheStats.scopes || {}).length">
+          <h3>By scope</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Scope</th>
+                <th>Entries</th>
+                <th>Disk · MB</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(stats, scope) in cacheStats.scopes" :key="scope">
+                <td><span class="em">{{ scope }}</span></td>
+                <td>{{ stats.entries_on_disk }}</td>
+                <td>{{ fmtMB(stats.bytes_on_disk) }}</td>
+                <td>
+                  <button class="bare" @click="clearCache(scope)">Purge</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </template>
+
+      <!-- ─── Settings ─── -->
+      <template v-if="view === 'settings'">
+        <section class="block" v-if="settings">
+          <h3>Cache</h3>
+          <div class="grid-2">
+            <div>
+              <label>Max memory entries</label>
+              <input type="number" v-model.number="settings.cache.max_memory_entries" />
+            </div>
+            <div>
+              <label>Max disk bytes per scope</label>
+              <input type="number" v-model.number="settings.cache.max_disk_bytes_per_scope" />
+            </div>
+          </div>
+          <div style="margin-top: 22px;">
+            <label class="row" style="cursor: pointer; gap: 10px; margin: 0; text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 400; color: var(--ink);">
+              <input type="checkbox" v-model="settings.cache.enabled" style="width: 16px; height: 16px; padding: 0; cursor: pointer;" />
+              <span>Cache enabled</span>
+            </label>
+          </div>
+        </section>
+
+        <section class="block" v-if="settings">
+          <h3>Limits</h3>
+          <div class="grid-2">
+            <div>
+              <label>Text — max chars</label>
+              <input type="number" v-model.number="settings.limits.text_max_chars" />
+            </div>
+            <div>
+              <label>Chapter — max lines</label>
+              <input type="number" v-model.number="settings.limits.chapter_max_lines" />
+            </div>
+            <div>
+              <label>Reference clip — max bytes</label>
+              <input type="number" v-model.number="settings.limits.reference_clip_max_bytes" />
+            </div>
+            <div>
+              <label>Request body — max bytes</label>
+              <input type="number" v-model.number="settings.limits.request_body_max_bytes" />
+            </div>
+          </div>
+        </section>
+
+        <section class="block" v-if="settings && settings.training">
+          <h3>Training (Phase 5)</h3>
+          <div class="grid-2">
+            <div>
+              <label>Max concurrent jobs</label>
+              <input type="number" v-model.number="settings.training.max_concurrent_jobs" />
+            </div>
+            <div>
+              <label>Max samples per job</label>
+              <input type="number" v-model.number="settings.training.max_samples_per_job" />
+            </div>
+            <div>
+              <label>Sample loss every (steps)</label>
+              <input type="number" v-model.number="settings.training.sample_loss_every" />
+            </div>
+            <div>
+              <label>Default voice language (BCP-47)</label>
+              <input type="text" v-model="settings.training.default_voice_language" />
+            </div>
+          </div>
+          <div style="margin-top: 14px;">
+            <label class="row" style="cursor: pointer; gap: 10px; margin: 0; text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 400; color: var(--ink);">
+              <input type="checkbox" v-model="settings.training.enabled" style="width: 16px; height: 16px; padding: 0; cursor: pointer;" />
+              <span>Training enabled (master gate — off makes POST /v1/train return 501)</span>
+            </label>
+          </div>
+          <h3 style="margin-top: 22px; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;">Validation thresholds</h3>
+          <div class="grid-2">
+            <div>
+              <label>Min sample duration (s)</label>
+              <input type="number" step="0.1" v-model.number="settings.training.validation.min_sample_duration_secs" />
+            </div>
+            <div>
+              <label>Max sample duration (s)</label>
+              <input type="number" step="0.1" v-model.number="settings.training.validation.max_sample_duration_secs" />
+            </div>
+            <div>
+              <label>Min SNR (dB)</label>
+              <input type="number" step="0.5" v-model.number="settings.training.validation.min_snr_db" />
+            </div>
+            <div>
+              <label>Max silence ratio</label>
+              <input type="number" step="0.05" v-model.number="settings.training.validation.max_silence_ratio" />
+            </div>
+            <div>
+              <label>Min accepted samples</label>
+              <input type="number" v-model.number="settings.training.validation.min_accepted_samples" />
+            </div>
+          </div>
+        </section>
+
+        <section class="block" v-if="settings && settings.engines">
+          <h3>Local model paths</h3>
+          <p class="endnote" style="margin-bottom: 14px;">
+            Point JustTTS's <strong>built-in sherpa-onnx Kokoro</strong> at an existing local Kokoro model directory instead of downloading. The path should contain <span class="mono">model.onnx</span> + <span class="mono">voices.bin</span> + <span class="mono">tokens.txt</span> (flat or one directory deep). Restart required after changing.
+          </p>
+          <div class="grid-2">
+            <div style="grid-column: 1 / -1;">
+              <label>Kokoro model directory (absolute path)</label>
+              <input type="text" v-model="settings.engines.kokoro.model_dir_override" spellcheck="false" placeholder="e.g. C:\Users\you\kokoro-multi-lang-v1_0" />
+            </div>
+          </div>
+        </section>
+
+        <section class="block" v-if="settings && settings.engines">
+          <h3>External TTS servers (OpenAI-compatible)</h3>
+          <p class="endnote" style="margin-bottom: 14px;">
+            Register an external server that implements the OpenAI TTS API (<span class="mono">POST /v1/audio/speech</span>) as a JustTTS engine. Compatible with kokoro-fastapi, openai-edge-tts, OpenAI itself, or any custom server. Each becomes a separate engine in the catalog so you can A/B compare backends side by side. Restart required after add/remove.
+          </p>
+          <table v-if="settings.engines.external && settings.engines.external.length">
+            <thead>
+              <tr>
+                <th>id</th>
+                <th>name</th>
+                <th>base_url</th>
+                <th>model</th>
+                <th>voices</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(ext, idx) in settings.engines.external" :key="idx">
+                <td><span class="mono">{{ ext.id }}</span></td>
+                <td><input type="text" v-model="ext.name" /></td>
+                <td><input type="text" v-model="ext.base_url" spellcheck="false" /></td>
+                <td><input type="text" v-model="ext.model" /></td>
+                <td>
+                  <input type="text" :value="(ext.voices || []).join(', ')" @change="ext.voices = $event.target.value.split(',').map(s => s.trim()).filter(Boolean)" placeholder="comma-separated" />
+                </td>
+                <td><button class="bare" @click="removeExternalEngine(idx)" style="color: var(--danger, #b00020);">Remove</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="empty">No external engines configured.</div>
+          <div style="margin-top: 14px;">
+            <h4 style="font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 10px;">Add a new external server</h4>
+            <div class="grid-2">
+              <div style="grid-column: 1 / -1;">
+                <label>base URL</label>
+                <input type="text" v-model="newExternal.base_url" placeholder="http://127.0.0.1:8880" spellcheck="false" />
+              </div>
+              <div style="grid-column: 1 / -1;">
+                <label>API key (optional — required for OpenAI itself)</label>
+                <input type="password" v-model="newExternal.api_key" placeholder="leave blank for self-hosted servers" />
+              </div>
+            </div>
+            <div class="row" style="margin-top: 12px;">
+              <button @click="testExternalConnection" :disabled="probeBusy || !newExternal.base_url">
+                {{ probeBusy ? 'Probing…' : 'Test connection' }}
+              </button>
+              <span class="endnote">Pings the server and lists its models + voices.</span>
+            </div>
+
+            <!-- Probe result panel -->
+            <div v-if="probeResult" class="task-strip" style="margin-top: 12px; margin-bottom: 12px;" :data-status="probeResult.reachable ? 'completed' : 'failed'">
+              <span class="task-spin" :data-status="probeResult.reachable ? 'completed' : 'failed'"></span>
+              <span class="task-label">
+                {{ probeResult.reachable ? 'Reachable' : 'Unreachable' }}
+                <template v-if="probeResult.server_hint && probeResult.server_hint !== 'unknown'"> · {{ probeResult.server_hint }}</template>
+              </span>
+              <span v-if="probeResult.models && probeResult.models.length" class="task-stat">{{ probeResult.models.length }} models</span>
+              <span v-if="probeResult.voices && probeResult.voices.length" class="task-stat">{{ probeResult.voices.length }} voices</span>
+              <span v-if="probeResult.error" class="task-stat" style="color: #b00020;">{{ probeResult.error }}</span>
+            </div>
+
+            <!-- Detail fields, shown after probe (or for manual entry) -->
+            <div class="grid-2" style="margin-top: 8px;">
+              <div>
+                <label>id (unique, prefix with <span class="mono">external-</span>)</label>
+                <input type="text" v-model="newExternal.id" placeholder="external-kokoro-local" spellcheck="false" />
+              </div>
+              <div>
+                <label>name</label>
+                <input type="text" v-model="newExternal.name" placeholder="Local Kokoro FastAPI" />
+              </div>
+              <div>
+                <label>model</label>
+                <select v-if="probeAvailableModels.length" v-model="newExternal.model">
+                  <option v-for="m in probeAvailableModels" :key="m" :value="m">{{ m }}</option>
+                </select>
+                <input v-else type="text" v-model="newExternal.model" placeholder="kokoro" />
+              </div>
+              <div></div>
+              <div style="grid-column: 1 / -1;">
+                <label>voices (comma-separated)</label>
+                <input type="text" v-model="newExternal.voicesText" placeholder="af_heart, af_bella, am_michael" spellcheck="false" />
+                <div v-if="probeAvailableVoices.length" style="margin-top: 6px;">
+                  <span class="endnote">Discovered voices ({{ probeAvailableVoices.length }}): </span>
+                  <span class="mono" style="font-size: 11px;">{{ probeAvailableVoices.join(', ') }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="row" style="margin-top: 12px;">
+              <button class="primary" @click="addExternalEngine" :disabled="!newExternal.id || !newExternal.base_url">Add external server</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="block" v-if="settings && settings.models">
+          <h3>Model URL overrides</h3>
+          <p class="endnote" style="margin-bottom: 14px;">
+            Override download URLs per variant. Useful when upstream artifacts move (k2-fsa retags releases, HF repos rename) or when you want to mirror downloads onto an internal CDN. Keyed by variant id (e.g. <span class="mono">kokoro-multi-lang-v1_0</span>). Sidecar engines don't use these — they download via the Python sidecar's HuggingFace cache.
+          </p>
+          <table v-if="urlOverrideKeys.length">
+            <thead>
+              <tr>
+                <th>Variant id</th>
+                <th>Override URL</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="key in urlOverrideKeys" :key="key">
+                <td><span class="mono">{{ key }}</span></td>
+                <td><input type="text" v-model="settings.models.url_overrides[key]" spellcheck="false" /></td>
+                <td><button class="bare" @click="removeUrlOverride(key)">Remove</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="empty">No URL overrides set.</div>
+          <div class="row" style="margin-top: 12px;">
+            <input type="text" v-model="newOverrideVariantId" placeholder="variant id (e.g. kokoro-multi-lang-v1_0)" style="flex: 1;" />
+            <input type="text" v-model="newOverrideUrl" placeholder="override URL" style="flex: 2;" />
+            <button @click="addUrlOverride" :disabled="!newOverrideVariantId || !newOverrideUrl">Add override</button>
+          </div>
+        </section>
+
+        <section class="block">
+          <div class="row">
+            <button class="primary" @click="saveSettings">Save settings</button>
+            <span class="endnote">Some changes require a server restart.</span>
+          </div>
+        </section>
+      </template>
+    </main>
+
+    <!-- ─── Voice add modal (clone / design / import / blend) ─── -->
+    <div v-if="voiceModal" class="modal-backdrop" @click.self="closeVoiceModal">
+      <div class="modal">
+        <h3 v-if="voiceModal === 'clone'">Clone voice from reference</h3>
+        <h3 v-else-if="voiceModal === 'design'">Design voice from prose</h3>
+        <h3 v-else-if="voiceModal === 'import'">Import existing audio clip</h3>
+        <h3 v-else-if="voiceModal === 'blend'">Blend voices via embedding interpolation</h3>
+
+        <div class="stack" style="margin-top: 16px;">
+          <div>
+            <label>Voice name</label>
+            <input v-if="voiceModal === 'clone'" v-model="voiceCloneName" placeholder="Sarah" />
+            <input v-else-if="voiceModal === 'design'" v-model="voiceDesignName" placeholder="Mr Holmes" />
+            <input v-else-if="voiceModal === 'import'" v-model="voiceImportName" placeholder="My recording" />
+            <input v-else-if="voiceModal === 'blend'" v-model="blendName" placeholder="Sarah × Mr Holmes" />
+          </div>
+
+          <div v-if="voiceModal === 'clone'">
+            <label>Reference audio (3-30 s WAV/MP3/M4A/FLAC)</label>
+            <input type="file" accept="audio/*" @change="voiceCloneFile = $event.target.files[0]" />
+            <div style="margin-top: 14px;">
+              <label>Transcript of the clip (optional — improves cloning fidelity on some engines)</label>
+              <textarea v-model="voiceCloneTranscript" placeholder="What's actually said in the reference clip — engines that support text-conditioned cloning use this."></textarea>
+            </div>
+          </div>
+
+          <div v-else-if="voiceModal === 'design'">
+            <label>Prose description</label>
+            <textarea v-model="voiceDesignPrompt" placeholder='e.g. "a calm middle-aged British man, slight northern accent, narrator-warm timbre"' style="min-height: 100px;"></textarea>
+            <span class="endnote">Qwen3-native via the CustomVoice design path. Other engines may approximate this from the prompt as a fallback.</span>
+          </div>
+
+          <div v-else-if="voiceModal === 'import'">
+            <label>Audio clip (WAV preferred)</label>
+            <input type="file" accept="audio/*" @change="voiceImportFile = $event.target.files[0]" />
+            <span class="endnote">Imported clips don't get re-synthesized — they're used as-is for playback. For voice cloning use the Clone flow.</span>
+          </div>
+
+          <div v-else-if="voiceModal === 'blend'">
+            <div>
+              <label>Engine</label>
+              <select v-model="blendEngine">
+                <option value="">Pick an engine…</option>
+                <option v-for="e in enginesList" :key="e.id" :value="e.id">{{ e.name }}</option>
+              </select>
+              <span class="endnote">All source voices must belong to this engine. Engines without <span class="mono">supports_embedding_blending</span> return 501.</span>
+            </div>
+            <div style="margin-top: 14px;">
+              <label>Interpolation strategy</label>
+              <select v-model="blendStrategy">
+                <option v-for="s in BLEND_STRATEGIES" :key="s.id" :value="s.id">{{ s.label }}</option>
+              </select>
+            </div>
+            <div style="margin-top: 14px;">
+              <label>Source voices + weights</label>
+              <table>
+                <thead><tr><th>Voice</th><th>Weight</th><th></th></tr></thead>
+                <tbody>
+                  <tr v-for="(s, idx) in blendSources" :key="idx">
+                    <td>
+                      <select v-model="s.voice_id">
+                        <option value="">— pick —</option>
+                        <option v-for="v in voices.filter(v => !blendEngine || v.engine === blendEngine)" :key="v.id" :value="v.id">{{ v.name }} ({{ v.id }})</option>
+                      </select>
+                    </td>
+                    <td><input type="number" step="0.1" v-model="s.weight" /></td>
+                    <td><button class="bare" v-if="blendSources.length > 2" @click="removeBlendSource(idx)">Remove</button></td>
+                  </tr>
+                </tbody>
+              </table>
+              <button class="bare" @click="addBlendSource">+ Add source</button>
+              <p class="endnote" style="margin-top: 6px;">
+                Weights normalize automatically — pass any non-negative values. Same recipe twice returns the same voice (idempotent).
+              </p>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top: 20px;">
+            <button v-if="voiceModal === 'clone'" class="primary" :disabled="voiceBusy || !voiceCloneName || !voiceCloneFile" @click="submitClone">
+              {{ voiceBusy ? 'Cloning…' : 'Clone voice' }}
+            </button>
+            <button v-else-if="voiceModal === 'design'" class="primary" :disabled="voiceBusy || !voiceDesignName || !voiceDesignPrompt" @click="submitDesign">
+              {{ voiceBusy ? 'Designing…' : 'Design voice' }}
+            </button>
+            <button v-else-if="voiceModal === 'import'" class="primary" :disabled="voiceBusy || !voiceImportName || !voiceImportFile" @click="submitImport">
+              {{ voiceBusy ? 'Importing…' : 'Import clip' }}
+            </button>
+            <button v-else-if="voiceModal === 'blend'" class="primary" :disabled="voiceBusy || !blendName || !blendEngine || blendSources.filter(s => s.voice_id).length < 2" @click="submitBlend">
+              {{ voiceBusy ? 'Blending…' : 'Blend voices' }}
+            </button>
+            <button @click="closeVoiceModal">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Toast queue (non-blocking notifications) ─── -->
+    <div class="toast-stack">
+      <div v-for="t in toasts" :key="t.id" class="toast" :data-kind="t.kind" @click="dismissToast(t.id)">
+        <span class="toast-dot"></span>
+        <span class="toast-msg">{{ t.message }}</span>
+      </div>
+    </div>
+
+    <!-- ─── Custom confirm dialog (replaces native confirm()) ─── -->
+    <div v-if="confirmDialog" class="modal-backdrop" @click.self="resolveConfirm(false)">
+      <div class="modal" style="max-width: 460px;">
+        <h3 style="margin-top: 0;">{{ confirmDialog.title }}</h3>
+        <p style="margin: 14px 0 24px; line-height: 1.55; color: var(--ink-2, #555);">
+          {{ confirmDialog.message }}
+        </p>
+        <div class="row" style="justify-content: flex-end; gap: 10px;">
+          <button @click="resolveConfirm(false)">Cancel</button>
+          <button
+            class="primary"
+            :style="confirmDialog.confirmStyle === 'danger' ? 'background: var(--danger, #b00020); border-color: var(--danger, #b00020);' : ''"
+            @click="resolveConfirm(true)">
+            {{ confirmDialog.confirmLabel }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────── Colophon ─────── -->
+    <footer class="colophon">
+      <div>
+        <label>Server endpoint</label>
+        <input v-model="serverUrl" @blur="refreshAll" spellcheck="false" />
+      </div>
+      <div>
+        <label>Bearer token</label>
+        <input v-model="token" type="password" @blur="refreshAll" spellcheck="false" placeholder="optional" />
+      </div>
+      <div>
+        <button @click="refreshAll">Reload</button>
+      </div>
+      <div class="imp">
+        Set in Newsreader &amp; Inter.<br />
+        Apache 2.0 · justtts
+      </div>
+    </footer>
+  </div>
+  `,
+};
+
+createApp(app).mount('#app');
+</script>
+</body>
+</html>

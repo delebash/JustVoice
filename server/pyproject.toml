@@ -4,7 +4,7 @@ version = "0.0.1"
 description = "An open-source TTS server built for audiobook production, useful for any TTS workload."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "Apache-2.0" }
+license = { text = "GPL-3.0-or-later" }
 authors = [{ name = "JustTTS contributors" }]
 keywords = ["tts", "text-to-speech", "audiobook", "speech-synthesis", "voice-cloning"]
 
@@ -21,6 +21,15 @@ dependencies = [
     "typer>=0.12",
     "rich>=13",
     "requests>=2.32",  # for download streaming with progress
+    "psutil>=5.9",  # CPU/RAM detection in system_info (stdlib fallback exists)
+    "sqlalchemy>=2.0",  # Phase 1.5: primary persistence layer (atomic JSON still used for settings.json only)
+    "python-multipart>=0.0.18",  # backup/restore endpoints accept multipart uploads
+    "pyloudnorm>=0.1",  # EBU R128 LUFS measurement for ACX mastering verification + analyzer
+    # Phase 3: pedalboard adoption triggers the Apache-2.0 → GPL-3.0-or-later
+    # atomic license flip. pedalboard is Spotify's audio-effects library
+    # (compressor, reverb, EQ, delay, chorus, pitch-shift, gain, HP/LP filters).
+    # GPL-3.0 (verified at https://github.com/spotify/pedalboard/blob/master/LICENSE).
+    "pedalboard>=0.9",
 ]
 
 [project.optional-dependencies]

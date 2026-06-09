@@ -44,6 +44,8 @@ def kokoro() -> EngineInfo:
             model_files_needed=["kokoro-base"],
             gpu_runtimes=["cuda", "coreml", "directml", "cpu"],
         ),
+        runtime_deps=["sherpa_onnx"],
+        pip_packages=["sherpa-onnx>=1.13"],
     )
 
 
@@ -57,6 +59,7 @@ def luxtts() -> EngineInfo:
         prerequisites=Prerequisites(
             sidecar=False, disk_space_mb=1200, gpu_runtimes=["cuda", "metal"]
         ),
+        runtime_deps=["luxtts", "torch"],
     )
 
 
@@ -81,6 +84,8 @@ def qwen3() -> EngineInfo:
         prerequisites=Prerequisites(
             sidecar=False, disk_space_mb=7000, gpu_runtimes=["cuda", "metal"]
         ),
+        runtime_deps=["qwen3_tts", "torch"],
+        pip_packages=["qwen-tts>=0.1", "torch>=2.2"],
     )
 
 
@@ -103,6 +108,8 @@ def chatterbox() -> EngineInfo:
         prerequisites=Prerequisites(
             sidecar=False, disk_space_mb=2800, gpu_runtimes=["cuda"]
         ),
+        runtime_deps=["chatterbox", "torch"],
+        pip_packages=["chatterbox-tts>=0.2", "torch>=2.2"],
     )
 
 
@@ -116,6 +123,7 @@ def tada() -> EngineInfo:
         prerequisites=Prerequisites(
             sidecar=False, disk_space_mb=6000, gpu_runtimes=["cuda", "metal"]
         ),
+        runtime_deps=["tada", "torch"],
     )
 
 
@@ -129,6 +137,7 @@ def dia() -> EngineInfo:
         prerequisites=Prerequisites(
             sidecar=False, disk_space_mb=6000, gpu_runtimes=["cuda", "metal"]
         ),
+        runtime_deps=["dia", "torch"],
     )
 
 
@@ -142,6 +151,7 @@ def moss_tts() -> EngineInfo:
         prerequisites=Prerequisites(
             sidecar=False, disk_space_mb=12000, gpu_runtimes=["cuda"]
         ),
+        runtime_deps=["moss_tts", "torch"],
     )
 
 
@@ -160,6 +170,7 @@ def higgs_audio() -> EngineInfo:
         prerequisites=Prerequisites(
             sidecar=False, disk_space_mb=8000, gpu_runtimes=["cuda"]
         ),
+        runtime_deps=["higgs_audio", "torch"],
     )
 
 

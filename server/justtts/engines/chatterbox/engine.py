@@ -1,0 +1,167 @@
+"""Chatterbox engine subprocess — Resemble AI's ChatterboxMultilingualTTS.
+
+Adapter ported from voicebox's backends/chatterbox_backend.py. Differences:
+- We talk over loopback HTTP to the host (via justtts_plugin.serve), not
+  asyncio in-process.
+- Voice prompts come in as audio_prompt_path; we forward the path through
+  to model.generate() the same way voicebox does.
+- macOS CPU fallback retained (PyTorch MPS has a known issue with this model).
+"""
+
+from __future__ import annotations
+
+import sys as _sys
+from pathlib import Path as _P
+
+_sys.path.insert(0, str(_P(__file__).resolve().parent))
+
+import logging
+import platform
+import threading
+
+from justtts_plugin import (
+    EmbeddedEngine,
+    EngineMeta,
+    PresetVoice,
+    SynthOutput,
+    SynthRequest,
+    serve,
+)
+
+log = logging.getLogger("justtts.engines.chatterbox")
+
+# Per-language generation defaults, ported verbatim from voicebox.
+_LANG_DEFAULTS = {
+    "he": {"exaggeration": 0.4, "cfg_weight": 0.7, "temperature": 0.65, "repetition_penalty": 2.5},
+}
+_GLOBAL_DEFAULTS = {"exaggeration": 0.5, "cfg_weight": 0.5, "temperature": 0.8, "repetition_penalty": 2.0}
+
+
+class Chatterbox(EmbeddedEngine):
+    meta = EngineMeta(
+        engine_id="chatterbox",
+        display_name="Chatterbox",
+        backend="pytorch",
+        supports_cloning=True,
+        supports_paralinguistic_tags=True,
+    )
+
+    # voicebox uses a class-level lock to serialize torch.load monkey-patching
+    # on CPU. We mirror that pattern.
+    _load_lock = threading.Lock()
+
+    def __init__(self, model_dir=None):
+        super().__init__(model_dir)
+        self.model = None
+        self._device = None
+
+    def _pick_device_chatterbox(self, requested: str) -> str:
+        """Override the default device picker — Chatterbox needs CPU on macOS
+        due to a known PyTorch MPS issue with their model.
+        """
+        if platform.system() == "Darwin":
+            return "cpu"
+        return self.pick_device(requested)
+
+    def load(self, device: str = "auto", variant: str | None = None) -> None:
+        if self.model is not None:
+            return
+        device = self._pick_device_chatterbox(device)
+        self._device = device
+        log.info("loading Chatterbox on %s …", device)
+
+        import torch
+        from chatterbox.mtl_tts import ChatterboxMultilingualTTS
+
+        if device == "cpu":
+            # CPU path — patch torch.load to force map_location='cpu'.
+            _orig = torch.load
+
+            def _patched(*args, **kwargs):
+                kwargs.setdefault("map_location", "cpu")
+                return _orig(*args, **kwargs)
+
+            with Chatterbox._load_lock:
+                torch.load = _patched
+                try:
+                    self.model = ChatterboxMultilingualTTS.from_pretrained(device=device)
+                finally:
+                    torch.load = _orig
+        else:
+            self.model = ChatterboxMultilingualTTS.from_pretrained(device=device)
+
+        # Force eager attention (output_attentions support).
+        try:
+            t3_tfmr = self.model.t3.tfmr
+            if hasattr(t3_tfmr, "config") and hasattr(t3_tfmr.config, "_attn_implementation"):
+                t3_tfmr.config._attn_implementation = "eager"
+                for layer in getattr(t3_tfmr, "layers", []):
+                    if hasattr(layer, "self_attn"):
+                        layer.self_attn._attn_implementation = "eager"
+        except AttributeError as e:
+            log.warning("could not patch t3 attention impl: %s", e)
+
+        log.info("Chatterbox loaded on %s", device)
+
+    def unload(self) -> None:
+        if self.model is None:
+            return
+        import torch
+
+        del self.model
+        self.model = None
+        if self._device == "cuda" and torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        self._device = None
+
+    def voices(self) -> list[PresetVoice]:
+        # Chatterbox is clone-only.
+        return []
+
+    def synth(self, req: SynthRequest) -> SynthOutput:
+        if self.model is None:
+            raise RuntimeError("chatterbox: engine not loaded — call /load first")
+
+        import numpy as np
+        import torch
+
+        ref_audio = req.audio_prompt_path
+        if ref_audio:
+            from pathlib import Path
+
+            if not Path(ref_audio).is_file():
+                log.warning("reference audio not found: %s", ref_audio)
+                ref_audio = None
+
+        language = (req.language or "en").split("-")[0].lower()
+        defaults = _LANG_DEFAULTS.get(language, _GLOBAL_DEFAULTS)
+
+        # Engine-specific overrides come in through req.delivery.engine.
+        delivery = req.delivery or {}
+        engine_overrides = delivery.get("engine") or {}
+
+        if req.seed is not None:
+            torch.manual_seed(req.seed)
+            if self._device == "cuda" and torch.cuda.is_available():
+                torch.cuda.manual_seed_all(req.seed)
+
+        wav = self.model.generate(
+            req.text,
+            language_id=language,
+            audio_prompt_path=ref_audio,
+            exaggeration=float(engine_overrides.get("exaggeration", defaults["exaggeration"])),
+            cfg_weight=float(engine_overrides.get("cfg_weight", defaults["cfg_weight"])),
+            temperature=float(engine_overrides.get("temperature", defaults["temperature"])),
+            repetition_penalty=float(engine_overrides.get("repetition_penalty", defaults["repetition_penalty"])),
+        )
+
+        if isinstance(wav, torch.Tensor):
+            audio = wav.squeeze().cpu().numpy().astype(np.float32)
+        else:
+            audio = np.asarray(wav, dtype=np.float32)
+        sample_rate = int(getattr(self.model, "sr", None) or getattr(self.model, "sample_rate", 24000))
+        return SynthOutput.from_numpy(audio, sample_rate=sample_rate, channels=1)
+
+
+if __name__ == "__main__":
+    serve(Chatterbox())

@@ -10,6 +10,7 @@ The GUI (Vue 3 SPA) is served from /ui/ via StaticFiles.
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -18,8 +19,13 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from .api import (
+    active_tasks_api,
     analyzer_api,
+    backup_api,
+    bulk_delete_api,
     cache_api,
+    capture_readiness_api,
+    channels_api,
     engines_api,
     engines_models_api,
     external_api,
@@ -27,20 +33,26 @@ from .api import (
     health,
     lexicons_api,
     master_api,
+    mcp_bindings_api,
     models_api,
     personas_api,
     phase5_api,
+    project_export_api,
+    projects_api,
     render_chapter_api,
+    render_presets_api,
     settings_api,
+    sse_streams_api,
     system_api,
+    takes_api,
+    voice_preview_api,
     voices_api,
+    webhooks_api,
 )
 from .app_state import AppState, set_state
 from .auth import BearerAuthMiddleware
-from .engines.catalog import known_engines
 from .engines.external_openai import ExternalOpenAiTtsBackend
-from .engines.factory import construct as construct_backend
-from .engines.kokoro import KokoroBackend
+from .engines.manager import get_manager, shutdown_manager
 from .errors import ApiError, api_exception_handler, http_exception_handler
 from .paths import default_data_dir, models_root
 from .version import API_VERSION, PRODUCT, VERSION
@@ -50,6 +62,13 @@ log = logging.getLogger(__name__)
 
 def create_app(data_dir: Path | None = None) -> FastAPI:
     data_dir = data_dir or default_data_dir()
+
+    # Phase 1.5: SQLite is the primary persistence layer. init_db() runs
+    # idempotent migrations + creates net-new tables. settings.json stays
+    # as the only atomic-JSON store (per CLAUDE.md scope-down).
+    from .database import init_db
+    init_db(data_dir)
+
     state = AppState(data_dir)
     set_state(state)
     _register_existing_engines(state, data_dir)
@@ -66,11 +85,15 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         redoc_url="/redoc" if settings.server.docs_enabled else None,
     )
 
-    # CORS
-    if settings.cors.origins:
+    # CORS — the bundled UI is a different origin than this loopback server,
+    # so without these headers the webview's fetch() calls are blocked and
+    # the GUI renders empty (e.g. no engines listed). Defaults cover the dev
+    # server + the packaged Tauri webview; both are operator-tunable.
+    if settings.cors.origins or settings.cors.origin_regex:
         app.add_middleware(
             CORSMiddleware,
             allow_origins=settings.cors.origins,
+            allow_origin_regex=settings.cors.origin_regex or None,
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
@@ -101,56 +124,121 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(master_api.router)
     app.include_router(phase5_api.router)
 
-    # GUI — single-file Vue SPA at gui/index.html
-    gui_dir = Path("gui")
-    if gui_dir.is_dir():
-        app.mount("/ui", StaticFiles(directory=str(gui_dir), html=True), name="ui")
+    # Phase 4a backend (DESIGN_FREEZE §5)
+    app.include_router(takes_api.router)
+    app.include_router(channels_api.router)
+    app.include_router(mcp_bindings_api.router)
+    app.include_router(active_tasks_api.router)
+    app.include_router(capture_readiness_api.router)
+    app.include_router(sse_streams_api.router)
+    app.include_router(projects_api.router)
 
-        @app.get("/", include_in_schema=False)
-        async def root_redirect():
-            return RedirectResponse("/ui/")
+    # Phase 4a addendum (gap-decision workflow v1.0 endpoints)
+    app.include_router(webhooks_api.router)
+    app.include_router(render_presets_api.router)
+    app.include_router(bulk_delete_api.router)
+    app.include_router(voice_preview_api.router)
+    app.include_router(backup_api.router)
+    app.include_router(project_export_api.router)
+
+    # Shutdown hook — make sure any running managed engine subprocess is
+    # killed before the host server exits. Without this, ctrl-C in dev
+    # would leave engine subprocesses orphaned.
+    @app.on_event("shutdown")
+    async def _shutdown_managed_engines() -> None:
+        try:
+            shutdown_manager()
+        except Exception as e:
+            log.warning("manager shutdown raised: %s", e)
+
+    # GUI — the Vite-built Vue SPA (dist/). The Tauri webview loads this build
+    # directly; serving it here lets the headless server show the same UI at
+    # its own origin (same-origin fetch, no CORS dance). The build references
+    # its assets at absolute /assets/... paths, so it MUST mount at root.
+    # Legacy single-file GUI — kept in-repo at legacy-gui/ purely as a UX
+    # reference for side-by-side comparison while the new SPA catches up.
+    # Served at /legacy/ so it talks to the same v1 API (mostly compatible).
+    # Mounted before the root catch-all. Not shipped in production builds.
+    legacy_dir = Path(__file__).resolve().parents[2] / "legacy-gui"
+    if legacy_dir.is_dir() and (legacy_dir / "index.html").is_file():
+        # Bare /legacy (no trailing slash) — redirect so the link just works.
+        @app.get("/legacy", include_in_schema=False)
+        async def legacy_redirect():
+            return RedirectResponse("/legacy/")
+
+        app.mount(
+            "/legacy", StaticFiles(directory=str(legacy_dir), html=True), name="legacy"
+        )
+        log.info("Legacy reference UI served from %s", legacy_dir)
+
+    ui_dir = _locate_ui_dir()
+    if ui_dir is not None:
+        # /ui/ kept as a redirect for the documented headless URL.
+        @app.get("/ui", include_in_schema=False)
+        @app.get("/ui/", include_in_schema=False)
+        async def ui_redirect():
+            return RedirectResponse("/")
+
+        # Mounted last so every /v1/... router and /docs win first.
+        app.mount("/", StaticFiles(directory=str(ui_dir), html=True), name="ui")
+        log.info("UI served from %s", ui_dir)
+    else:
+        log.warning(
+            "UI build not found — headless UI disabled. Run `npm run build:vite` "
+            "to produce dist/, or set JUSTTTS_UI_DIR."
+        )
 
     return app
 
 
-def _register_existing_engines(state: AppState, data_dir: Path) -> None:
-    """Walk installed model dirs + register the real engine for each.
+def _locate_ui_dir() -> Path | None:
+    """Find the Vite build output (dist/) across dev + packaged layouts."""
+    candidates: list[Path] = []
+    override = os.environ.get("JUSTTTS_UI_DIR")
+    if override:
+        candidates.append(Path(override))
+    # Source layout: server/justtts/app.py -> parents[2] is the repo root.
+    candidates.append(Path(__file__).resolve().parents[2] / "dist")
+    # Packaged / cwd fallback.
+    candidates.append(Path.cwd() / "dist")
+    for c in candidates:
+        if c.is_dir() and (c / "index.html").is_file():
+            return c
+    return None
 
-    Kokoro: register when its files exist on disk (or the override path
-    resolves). Sidecar engines: register when the `.installed` marker is
-    present — the actual model files live in the HF cache and are pulled
-    on first load.
+
+def _register_existing_engines(state: AppState, data_dir: Path) -> None:
+    """Boot-time engine registration.
+
+    Managed engines (Kokoro + future ported sidecars) are handled by the
+    plugin manager — discovery runs the first time `get_manager()` is
+    called, which we trigger here so the catalog is populated before the
+    first request. The manager doesn't auto-LOAD anything; that's the
+    user's explicit action via /v1/engines/{id}/load.
+
+    Legacy sidecar engines that haven't been ported yet still need their
+    in-process registration here, gated by an `.installed` marker file
+    under the data dir. Once each engine is ported to a manifest.py, its
+    entry below can be removed.
     """
     settings = state.settings.get()
     models_dir = models_root(data_dir)
 
-    # Kokoro — real files on disk
-    override = settings.engines.kokoro.model_dir_override
-    default_dir = models_dir / "kokoro"
-    kokoro_dir = Path(override) if override else default_dir
-    kokoro = KokoroBackend(kokoro_dir)
-    if kokoro.model_files_present():
-        state.engines.register(kokoro)
-        log.info("Kokoro registered from %s", kokoro_dir)
-    else:
-        log.info(
-            "Kokoro model files not found under %s — install via /v1/engines/kokoro/install or set engines.kokoro.model_dir_override",
-            kokoro_dir,
-        )
+    # Kick off plugin discovery so the catalog is ready.
+    mgr = get_manager()
+    log.info(
+        "plugin manager discovered %d managed engines: %s",
+        len(mgr.manifests()),
+        ", ".join(sorted(mgr.manifests().keys())) or "(none)",
+    )
 
-    # Sidecar engines — marker file is enough
-    for entry in known_engines():
-        if entry.id == "kokoro":
-            continue
-        marker = models_dir / entry.id / ".installed"
-        if not marker.is_file():
-            continue
-        backend = construct_backend(entry.id, models_dir / entry.id)
-        if backend is None:
-            log.warning("no backend factory for %s — skipping", entry.id)
-            continue
-        state.engines.register(backend)
-        log.info("%s registered from marker at %s", entry.id, marker)
+    # All built-in engines (kokoro, chatterbox, dia, tada, qwen3, luxtts,
+    # moss-tts, higgs-audio) now live as managed plugins under
+    # engines/<id>/. The legacy in-process engine factory was removed
+    # along with the per-engine flat-file modules. External OpenAI-compat
+    # engines are still registered in `state.engines` via
+    # `_register_external_engines` below — they don't need subprocess
+    # isolation because they're just httpx clients.
 
 
 def _register_external_engines(state: AppState) -> None:

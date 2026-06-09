@@ -1,0 +1,3 @@
+# Deps for Chatterbox are declared in manifest.INSTALL — that lets the
+# manager handle torch+CUDA detection, --no-deps for chatterbox-tts, and
+# the right install order. This file kept for tooling that scans it.

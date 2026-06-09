@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "An open-source TTS server built for audiobook production, useful for any TTS workload."
 authors = ["JustTTS contributors"]
 edition = "2021"
-license = "Apache-2.0"
+license = "GPL-3.0-or-later"
 rust-version = "1.85"
 
 [lib]
@@ -15,7 +15,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
 tauri-plugin-http = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"

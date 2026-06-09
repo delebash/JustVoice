@@ -1,0 +1,959 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>JustVoice — UX feature inventory preview</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      /* ===========================================================
+         NEUTRAL aesthetic — locks in FEATURE SCOPE only.
+         Visual direction (modern-pro-tool / editorial-but-modern /
+         studio-tool-minimal) is a separate decision in Phase 4.
+         =========================================================== */
+      :root {
+        --bg: #f6f5f1;
+        --surface: #ffffff;
+        --surface-2: #fbfaf7;
+        --ink: #1a1a1a;
+        --ink-2: #4a4a4a;
+        --ink-3: #888;
+        --line: #e3e1dc;
+        --line-strong: #cfccc4;
+        --accent: #3a7d63;
+        --warn: #c89a3a;
+        --danger: #a8442e;
+        --voicebox: #2f74b5;
+        --jtorig: #7a3aa6;
+        --combined: #b86b1f;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1a1a1c;
+          --surface: #232326;
+          --surface-2: #2a2a2e;
+          --ink: #e8e6e1;
+          --ink-2: #b8b5ad;
+          --ink-3: #888;
+          --line: #36363b;
+          --line-strong: #4a4a50;
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+        font-size: 14px;
+        color: var(--ink);
+        background: var(--bg);
+        line-height: 1.4;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: 80px 1fr;
+        min-height: 100vh;
+      }
+
+      /* ── 80px left icon sidebar (voicebox shape) ───────────── */
+      .sidebar {
+        background: var(--surface);
+        border-right: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 18px;
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
+      }
+      .sidebar .brand {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        background: var(--accent);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 18px;
+        margin-bottom: 18px;
+        letter-spacing: -0.5px;
+      }
+      .sidebar .nav-btn {
+        width: 56px;
+        height: 56px;
+        margin: 4px 0;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        text-decoration: none;
+        color: var(--ink-2);
+        font-size: 9.5px;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        transition: background 0.1s;
+        cursor: pointer;
+      }
+      .sidebar .nav-btn:hover { background: var(--surface-2); color: var(--ink); }
+      .sidebar .nav-btn.active { background: var(--accent); color: #fff; }
+      .sidebar .nav-btn .icon { font-size: 18px; line-height: 1; }
+      .sidebar .nav-spacer { flex: 1; }
+
+      /* ── main content area ─────────────────────────────────── */
+      main {
+        padding: 24px 32px 64px;
+        max-width: 1280px;
+      }
+      .preview-banner {
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--accent);
+        padding: 12px 16px;
+        margin-bottom: 24px;
+        font-size: 13px;
+        color: var(--ink-2);
+      }
+      .preview-banner strong { color: var(--ink); }
+      .preview-banner ul { margin: 8px 0 0 0; padding-left: 20px; }
+      .preview-banner li { margin: 2px 0; }
+      h1 { font-size: 24px; margin: 0 0 4px; font-weight: 600; letter-spacing: -0.01em; }
+      h2 {
+        font-size: 18px;
+        margin: 40px 0 8px;
+        padding-top: 24px;
+        border-top: 1px solid var(--line);
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      h2:first-of-type { border-top: 0; padding-top: 0; }
+      h2 .src-tag {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+        color: #fff;
+      }
+      .src-tag.voicebox { background: var(--voicebox); }
+      .src-tag.jtorig { background: var(--jtorig); }
+      .src-tag.combined { background: var(--combined); }
+      h3 {
+        font-size: 14px;
+        margin: 16px 0 8px;
+        font-weight: 600;
+        color: var(--ink);
+      }
+      p { margin: 4px 0 8px; color: var(--ink-2); }
+      .features {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px 16px;
+        margin: 8px 0 16px;
+        padding-left: 16px;
+      }
+      .features li { font-size: 13px; color: var(--ink-2); line-height: 1.6; }
+      .features li::marker { color: var(--ink-3); }
+
+      /* ── mockup chrome shared between views ─────────────────── */
+      .mockup {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 16px;
+        margin: 12px 0 8px;
+      }
+      .mockup-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .mock-card {
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 10px 12px;
+        font-size: 13px;
+      }
+      .mock-input {
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 13px;
+        color: var(--ink-2);
+        min-height: 36px;
+      }
+      .mock-input.tall { min-height: 120px; padding-top: 10px; }
+      .mock-btn {
+        background: var(--accent);
+        color: #fff;
+        border: 0;
+        border-radius: 6px;
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+      }
+      .mock-btn.secondary {
+        background: var(--surface-2);
+        color: var(--ink);
+        border: 1px solid var(--line-strong);
+      }
+      .mock-btn.danger { background: var(--danger); }
+      .pill {
+        display: inline-block;
+        padding: 2px 8px;
+        font-size: 11px;
+        border: 1px solid var(--line-strong);
+        border-radius: 999px;
+        color: var(--ink-2);
+        background: var(--surface);
+      }
+      .pill.green { color: var(--accent); border-color: var(--accent); }
+      .pill.warn { color: var(--warn); border-color: var(--warn); }
+      table.mock {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin: 8px 0;
+      }
+      table.mock th,
+      table.mock td {
+        text-align: left;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--line);
+      }
+      table.mock th {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--ink-3);
+        font-weight: 600;
+      }
+
+      /* ── faux timeline ──────────────────────────────────────── */
+      .timeline {
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 10px;
+        margin-top: 8px;
+      }
+      .timeline-track {
+        display: flex;
+        gap: 4px;
+        margin: 4px 0;
+      }
+      .timeline-track-label {
+        width: 100px;
+        font-size: 11px;
+        color: var(--ink-2);
+        line-height: 28px;
+        flex-shrink: 0;
+      }
+      .timeline-clip {
+        height: 28px;
+        background: var(--accent);
+        opacity: 0.6;
+        border-radius: 3px;
+        position: relative;
+        font-size: 10px;
+        color: #fff;
+        padding: 0 6px;
+        line-height: 28px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .timeline-clip.alt { background: var(--warn); }
+      .timeline-clip.alt2 { background: var(--voicebox); }
+
+      /* ── two-pane list/detail ───────────────────────────────── */
+      .pane {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 12px;
+      }
+      .pane-list {
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 10px;
+        min-height: 200px;
+      }
+      .pane-list .item {
+        padding: 8px 10px;
+        border-radius: 4px;
+        margin-bottom: 2px;
+        font-size: 13px;
+      }
+      .pane-list .item:hover { background: var(--surface); }
+      .pane-list .item.active { background: var(--accent); color: #fff; }
+      .pane-list .item .meta {
+        font-size: 11px;
+        opacity: 0.7;
+        display: block;
+        margin-top: 2px;
+      }
+      .pane-detail {
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 14px;
+        min-height: 200px;
+      }
+      .field-row {
+        display: grid;
+        grid-template-columns: 140px 1fr;
+        gap: 8px;
+        margin: 8px 0;
+        align-items: center;
+        font-size: 13px;
+      }
+      .field-row label { color: var(--ink-2); }
+
+      .floating-gen {
+        position: relative;
+        background: linear-gradient(180deg, var(--surface), var(--surface-2));
+        border: 1px solid var(--line-strong);
+        border-radius: 16px;
+        padding: 14px 16px;
+        margin: 8px 0;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.04);
+      }
+
+      .legend {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin: 8px 0 12px;
+        font-size: 11.5px;
+        color: var(--ink-2);
+      }
+      .legend .sw {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        margin-right: 6px;
+        vertical-align: middle;
+      }
+
+      footer {
+        margin-top: 64px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+        font-size: 12px;
+        color: var(--ink-3);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <!-- 80px sidebar — voicebox shape -->
+      <aside class="sidebar">
+        <div class="brand" title="JustVoice">JV</div>
+        <div class="nav-btn" style="position: relative" title="Update available">
+          <span class="icon" style="color: var(--warn)">●</span><span style="font-size: 9px">UPDATE</span>
+        </div>
+        <a class="nav-btn active" title="Generate"><span class="icon">📝</span><span>Generate</span></a>
+        <a class="nav-btn" title="Books / Chapters"><span class="icon">📖</span><span>Books</span></a>
+        <a class="nav-btn" title="Stories timeline"><span class="icon">🎬</span><span>Stories</span></a>
+        <a class="nav-btn" title="Voices"><span class="icon">🎙️</span><span>Voices</span></a>
+        <a class="nav-btn" title="Personas"><span class="icon">🎭</span><span>Personas</span></a>
+        <a class="nav-btn" title="Lexicons"><span class="icon">📚</span><span>Lexicons</span></a>
+        <a class="nav-btn" title="Captures / Dictation"><span class="icon">🎚️</span><span>Capture</span></a>
+        <a class="nav-btn" title="Effects chain"><span class="icon">🎛️</span><span>Effects</span></a>
+        <a class="nav-btn" title="Engines / Models"><span class="icon">🧠</span><span>Engines</span></a>
+        <a class="nav-btn" title="Train"><span class="icon">🏋️</span><span>Train</span></a>
+        <a class="nav-btn" title="Compare"><span class="icon">⚖️</span><span>Compare</span></a>
+        <a class="nav-btn" title="Cache"><span class="icon">💾</span><span>Cache</span></a>
+        <div class="nav-spacer"></div>
+        <a class="nav-btn" title="Settings"><span class="icon">⚙️</span><span>Settings</span></a>
+      </aside>
+
+      <main>
+        <h1>JustVoice — UX feature inventory preview</h1>
+        <div class="preview-banner" style="border-left-color: var(--warn)">
+          <strong>Headless mode also supported.</strong> Same as voicebox: the Python sidecar runs standalone via <code>justtts-server serve --port 17494</code>. The Tauri shell is the desktop GUI; the headless server exposes the same HTTP API + serves the renderer at <code>/ui/</code> so power users can run JustVoice on a remote box and hit it from any browser. Both modes share the same engine pool, voices, mastering, and SQLite store.
+        </div>
+        <div class="preview-banner">
+          <strong>What you're looking at.</strong> A long scroll showing every planned tab + its features, side-by-side with which source it comes from. Aesthetic is intentionally neutral — visual direction (colors, type, density) is a separate decision later in Phase 4. This preview is for <strong>feature scope verification</strong> only.
+          <ul>
+            <li><strong>13 tabs total</strong> in the left sidebar — collapses some voicebox + JustVoice (codebase) overlap (e.g. Models→Engines).</li>
+            <li>Voicebox's full feature set is in (Stories, Captures/Dictation, Effects, Engine model management, MCP server in Settings).</li>
+            <li>JustVoice (codebase)'s audiobook features are in (Books, Chapters, Personas, Lexicons, Train, Compare, Cache, ACX mastering preset in Settings).</li>
+            <li>Combined features (multi-engine Voices with cloning + presets + designed; FloatingGenerateBox; AudioPlayer global transport) appear in their most natural tab.</li>
+          </ul>
+          <div class="legend">
+            <span><span class="sw" style="background: var(--voicebox)"></span>From voicebox</span>
+            <span><span class="sw" style="background: var(--jtorig)"></span>From JustVoice (codebase)</span>
+            <span><span class="sw" style="background: var(--combined)"></span>Combined / both</span>
+          </div>
+        </div>
+
+        <!-- ──────────────────────────────────────────────────────────── -->
+        <h2>1. Generate <span class="src-tag combined">combined</span></h2>
+        <p>Main TTS playground. Pick a voice, pick an engine, type text, hear it. Inherits voicebox's <em>FloatingGenerateBox</em> for cross-route generate; inherits JustVoice (codebase)'s engine catalog + paralinguistic-tag slash menu.</p>
+        <div class="mockup">
+          <div class="mock-input tall">Once upon a midnight dreary, while I pondered weak and weary, over many a quaint and curious volume of forgotten lore…  <br><br><em style="opacity:0.6">Type "/" for paralinguistic tags: [laugh] [sigh] [pause]</em></div>
+          <div class="floating-gen mockup-row" style="margin-top: 12px">
+            <div class="mock-card">🎙️ Voice: <strong>Narrator (Chatterbox)</strong></div>
+            <div class="mock-card">🧠 Engine: <strong>Chatterbox Turbo</strong> ▾</div>
+            <div class="mock-card">🗣️ Language: en ▾</div>
+            <div class="mock-card">🎛️ Effects: <strong>none</strong> ▾</div>
+            <div class="mock-card">🎭 Persona rewrite: ☐</div>
+            <div style="flex:1"></div>
+            <button class="mock-btn">▶ Generate</button>
+          </div>
+        </div>
+        <ul class="features">
+          <li>FloatingGenerateBox pinned bottom (voicebox)</li>
+          <li>Engine + voice + language picker (combined)</li>
+          <li>Paralinguistic slash-menu for Chatterbox Turbo (voicebox)</li>
+          <li>Per-generation seed + temperature override (JustVoice (codebase))</li>
+          <li>Personality LLM rewrite toggle (voicebox)</li>
+          <li>Inline lexicon preview (JustVoice (codebase))</li>
+          <li>History table with takes, favorites, retry (combined)</li>
+          <li>Stop / cancel queued generation (voicebox)</li>
+        </ul>
+
+        <!-- ──────────────────────────────────────────────────────────── -->
+        <h2>2. Books <span class="src-tag jtorig">JustTTS</span></h2>
+        <p>Audiobook project list. Each book is a tree of Chapters → Scenes → Blocks. Imports from JustWrite via <code>POST /books/import</code>. This tab is mostly for users who run JustVoice <em>without</em> JustWrite — JustWrite's StudioView drives via HTTP.</p>
+        <div class="pane">
+          <div class="pane-list">
+            <div class="item active">The Stillwater Heist <span class="meta">12 chapters · 4h 12m · 5 cast</span></div>
+            <div class="item">A Lantern in Winter <span class="meta">18 chapters · 7h 50m · 8 cast</span></div>
+            <div class="item">Untitled draft <span class="meta">3 chapters · 38m · 2 cast</span></div>
+            <div class="item">+ Import from JustWrite</div>
+          </div>
+          <div class="pane-detail">
+            <div class="field-row"><label>Title</label><div class="mock-input">The Stillwater Heist</div></div>
+            <div class="field-row"><label>Author</label><div class="mock-input">D. Nash</div></div>
+            <div class="field-row"><label>Mastering preset</label><div class="mock-input">ACX (-20 LUFS / -3.5 dB peak)</div></div>
+            <div class="field-row"><label>Cast</label><div><span class="pill">Narrator</span> <span class="pill">Mara</span> <span class="pill">Lt. Park</span> <span class="pill">Old Crow</span> <span class="pill">Child #1</span></div></div>
+            <div class="field-row"><label>Status</label><div><span class="pill green">8 chapters rendered</span> <span class="pill warn">4 pending</span></div></div>
+            <div style="margin-top: 14px; display: flex; gap: 8px">
+              <button class="mock-btn">Render all chapters</button>
+              <button class="mock-btn secondary">Export M4B (JustWrite)</button>
+              <button class="mock-btn secondary">QC report</button>
+            </div>
+          </div>
+        </div>
+        <ul class="features">
+          <li>Book CRUD + import from JustWrite (JustTTS)</li>
+          <li>Chapter list with render status (JustTTS)</li>
+          <li>Per-book cast (Persona list scoped to book)</li>
+          <li>Mastering preset per book</li>
+          <li>Batch render with progress (JustTTS)</li>
+          <li>ACX QC report per chapter</li>
+          <li>Export M4B handled by JustWrite when integrated</li>
+        </ul>
+
+        <!-- ──────────────────────────────────────────────────────────── -->
+        <h2>3. Stories <span class="src-tag voicebox">from voicebox</span></h2>
+        <p>Multi-track timeline editor — voicebox's hallmark feature. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement. Drag-and-drop clips, trim, split, version-pin per clip.</p>
+        <div class="mockup">
+          <div class="mockup-row" style="margin-bottom: 10px">
+            <button class="mock-btn">▶ Play</button>
+            <button class="mock-btn secondary">⏸ Pause</button>
+            <button class="mock-btn secondary">⏹ Stop</button>
+            <span class="pill">00:48 / 03:12</span>
+            <div style="flex:1"></div>
+            <span class="pill">Zoom: 60s</span>
+            <button class="mock-btn secondary">+ Add track</button>
+          </div>
+          <div class="timeline">
+            <div class="timeline-track">
+              <div class="timeline-track-label">Narrator</div>
+              <div class="timeline-clip" style="width: 180px">Opening — Take 3</div>
+              <div class="timeline-clip" style="width: 80px">Bridge</div>
+              <div class="timeline-clip" style="width: 220px">Chapter 1 — Take 1</div>
+            </div>
+            <div class="timeline-track">
+              <div class="timeline-track-label">Mara</div>
+              <div style="width: 200px"></div>
+              <div class="timeline-clip alt" style="width: 100px">"You're late"</div>
+              <div class="timeline-clip alt" style="width: 60px">"Run"</div>
+            </div>
+            <div class="timeline-track">
+              <div class="timeline-track-label">SFX</div>
+              <div style="width: 60px"></div>
+              <div class="timeline-clip alt2" style="width: 40px">Door</div>
+              <div style="width: 200px"></div>
+              <div class="timeline-clip alt2" style="width: 60px">Rain</div>
+            </div>
+          </div>
+        </div>
+        <ul class="features">
+          <li>Multi-track DAW-style timeline (voicebox)</li>
+          <li>Per-clip trim handles, split-at-playhead (voicebox)</li>
+          <li>Volume slider 0-200% per clip (voicebox)</li>
+          <li>Version-pin per clip — pick take 2 of 5 (voicebox)</li>
+          <li>WaveSurfer waveforms per clip (voicebox)</li>
+          <li>Drag-drop audio import (WAV/MP3/FLAC/OGG/M4A)</li>
+          <li>Spacebar play/pause, scrub bar (voicebox)</li>
+          <li>Zoom 10s → entire-project (voicebox)</li>
+          <li>FloatingGenerateBox pins above timeline (voicebox)</li>
+        </ul>
+
+        <!-- ──────────────────────────────────────────────────────────── -->
+        <h2>4. Voices <span class="src-tag combined">combined</span></h2>
+        <p>Voice profile library. Cloned voices, preset voices (Kokoro 54 + Qwen 9), designed voices (text-prompted future). Inherits voicebox's VoiceInspector pattern + JustVoice (codebase)'s blend/train surfaces.</p>
+        <table class="mock">
+          <thead>
+            <tr><th></th><th>Name</th><th>Type</th><th>Engine</th><th>Language</th><th>Samples</th><th>Gens</th><th>Effects</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>🎙️</td><td><strong>Narrator</strong></td><td>cloned</td><td>Chatterbox</td><td>en</td><td>4</td><td>312</td><td>—</td></tr>
+            <tr><td>🎙️</td><td><strong>Mara</strong></td><td>cloned</td><td>Chatterbox</td><td>en</td><td>2</td><td>87</td><td>radio</td></tr>
+            <tr><td>🎙️</td><td><strong>af_alloy</strong></td><td>preset</td><td>Kokoro</td><td>en</td><td>—</td><td>0</td><td>—</td></tr>
+            <tr><td>🎙️</td><td><strong>Heroic Baritone</strong></td><td>designed</td><td>Qwen CV</td><td>en</td><td>—</td><td>14</td><td>reverb</td></tr>
+            <tr><td>🎙️</td><td><strong>Blend: Narrator+Crow</strong></td><td>blended</td><td>Chatterbox</td><td>en</td><td>—</td><td>3</td><td>—</td></tr>
+          </tbody>
+        </table>
+        <ul class="features">
+          <li>Voice profile table + right-pane inspector (voicebox)</li>
+          <li>Three voice_type discriminators: cloned / preset / designed (voicebox)</li>
+          <li>Multi-sample cloning + record-in-app (voicebox)</li>
+          <li>Import / export .justvoice.zip (voicebox lift, renamed)</li>
+          <li>Per-voice default effects chain (voicebox)</li>
+          <li>Voice blending (lerp/slerp/weighted_sum) (JustVoice (codebase))</li>
+          <li>Voice training jobs entry point (JustVoice (codebase))</li>
+          <li>Voice → persona link (JustVoice (codebase))</li>
+          <li>Whisper-driven reference transcription (voicebox)</li>
+        </ul>
+
+        <!-- ──────────────────────────────────────────────────────────── -->
+        <h2>5. Personas <span class="src-tag jtorig">JustTTS</span></h2>
+        <p>Character bios — backstory, age, accent, mannerisms. Each persona maps to a voice + optional LLM-rewrite prompt that rewrites generated text "in character." JustWrite character imports drop here.</p>
+        <div class="pane">
+          <div class="pane-list">
+            <div class="item">Mara <span class="meta">Lead detective · 32 · NYC accent</span></div>
+            <div class="item active">Old Crow <span class="meta">Informant · 60s · gravelly</span></div>
+            <div class="item">Lt. Park <span class="meta">Captain · 45 · clipped</span></div>
+            <div class="item">+ New persona</div>
+          </div>
+          <div class="pane-detail">
+            <div class="field-row"><label>Name</label><div class="mock-input">Old Crow</div></div>
+            <div class="field-row"><label>Voice profile</label><div class="mock-input">Crow (cloned, Chatterbox)</div></div>
+            <div class="field-row"><label>Engine override</label><div class="mock-input">(use voice default)</div></div>
+            <div class="field-row"><label>Personality</label><div class="mock-input tall">A retired racetrack tout with three teeth and four lies for every truth. Speaks in fragments. Calls everyone "boss". Suspicious of cops. Comfortable with silence — would rather pause than misspeak.</div></div>
+            <div class="field-row"><label>LLM rewrite</label><div><span class="pill green">enabled</span></div></div>
+            <div class="field-row"><label>Lexicon override</label><div class="mock-input">street-slang.lex</div></div>
+          </div>
+        </div>
+        <ul class="features">
+          <li>Persona = character bio + voice mapping (JustTTS)</li>
+          <li>Personality prompt for LLM-rewrite (voicebox concept)</li>
+          <li>Per-persona engine override</li>
+          <li>Per-persona lexicon override</li>
+          <li>Auto-create from JustWrite character roster</li>
+        </ul>
+
+        <!-- ──────────────────────────────────────────────────────────── -->
+        <h2>6. Lexicons <span class="src-tag jtorig">JustTTS</span></h2>
+        <p>Pronunciation dictionaries. Force "ARPAnet" → "AR-pa-net," "Beauchamp" → "BEE-chum," domain words → consistent phoneme-level pronunciation across a whole book. Per-character override.</p>
+        <div class="pane">
+          <div class="pane-list">
+            <div class="item active">Stillwater Heist <span class="meta">94 entries · book-scoped</span></div>
+            <div class="item">Domain — Nautical <span class="meta">42 entries · reusable</span></div>
+            <div class="item">Street slang <span class="meta">28 entries · persona-scoped to Old Crow</span></div>
+            <div class="item">+ New lexicon</div>
+          </div>
+          <div class="pane-detail">
+            <table class="mock">
+              <thead><tr><th>Word</th><th>Pronunciation (IPA or phonetic)</th><th>Note</th></tr></thead>
+              <tbody>
+                <tr><td>Beauchamp</td><td>/ˈbiːtʃəm/</td><td>family name in Ch.3</td></tr>
+                <tr><td>Stillwater</td><td>STILL-water (not still-WAH-ter)</td><td>protag's hometown</td></tr>
+                <tr><td>NYPD</td><td>en-why-pee-dee (letter-by-letter)</td><td>—</td></tr>
+                <tr><td>Worcestershire</td><td>WUS-tə-shər</td><td>cooking scene</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <ul class="features">
+          <li>Lexicon CRUD with per-book / per-persona scopes (JustTTS)</li>
+          <li>IPA and ASCII-phonetic input (JustTTS)</li>
+          <li>Live preview against current text in Generate (JustTTS)</li>
+          <li>Applied as preprocessing pass before TTS (JustTTS)</li>
+          <li>Sharable / exportable lexicons (.justlex.json)</li>
+        </ul>
+
+        <!-- ──────────────────────────────────────────────────────────── -->
+        <h2>7. Captures / Dictation <span class="src-tag voicebox">from voicebox</span></h2>
+        <p>Voicebox's signature dictation pill + global hotkey. Lets a user speak into any text field. Also captures audio for cloning sample collection.</p>
+        <div class="mockup">
+          <div class="mockup-row">
+            <div class="mock-card">🎚️ <strong>Global hotkey:</strong> ⌥⌘V (push-to-talk)</div>
+            <div class="mock-card">🎙️ <strong>Toggle hotkey:</strong> ⌥⌘D</div>
+            <div class="mock-card">🔉 <strong>Source:</strong> Default mic ▾</div>
+          </div>
+          <table class="mock">
+            <thead><tr><th>When</th><th>Duration</th><th>Source</th><th>Transcript preview</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>2026-06-08 14:22</td><td>0:18</td><td>mic</td><td>"Voice memo: remember Chapter 4 needs a new opening line about the…"</td><td><button class="mock-btn secondary">→ Sample</button></td></tr>
+              <tr><td>2026-06-08 14:05</td><td>0:42</td><td>system</td><td>"Recording from podcast — the host described an interesting way to…"</td><td><button class="mock-btn secondary">→ Sample</button></td></tr>
+              <tr><td>2026-06-07 19:11</td><td>2:04</td><td>mic</td><td>"Reading aloud Chapter 2 for cloning sample collection…"</td><td><button class="mock-btn secondary">→ Sample</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <ul class="features">
+          <li>Global push-to-talk + toggle hotkeys (voicebox)</li>
+          <li>System-audio capture (cpal/symphonia/wasapi/screencapturekit) (voicebox)</li>
+          <li>Floating dictation pill window (voicebox)</li>
+          <li>Whisper transcription with model select (voicebox)</li>
+          <li>Refinement: smart cleanup, self-correction, preserve-technical (voicebox)</li>
+          <li>One-click "promote capture → voice sample" (JustTTS bridge)</li>
+        </ul>
+
+        <!-- ──────────────────────────────────────────────────────────── -->
+        <h2>8. Effects <span class="src-tag voicebox">from voicebox</span></h2>
+        <p>Pedalboard-backed effects chain. Apply non-destructively (creates a new generation version, preserves the original). 8 effect types + 4 built-in presets + custom presets.</p>
+        <div class="mockup">
+          <div class="mockup-row">
+            <div class="mock-card">Preset: <strong>Radio voice</strong> ▾</div>
+            <button class="mock-btn secondary">+ Add effect</button>
+            <button class="mock-btn secondary">Save as preset</button>
+            <div style="flex: 1"></div>
+            <button class="mock-btn">Apply → new version</button>
+          </div>
+          <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap">
+            <div class="mock-card">🎚️ Pitch shift <strong>+0 st</strong> ✕</div>
+            <div class="mock-card">🎚️ High-pass <strong>180 Hz</strong> ✕</div>
+            <div class="mock-card">🎚️ Low-pass <strong>4500 Hz</strong> ✕</div>
+            <div class="mock-card">🎚️ Compressor <strong>3:1 / -18 dB</strong> ✕</div>
+            <div class="mock-card">🎚️ Gain <strong>+4 dB</strong> ✕</div>
+          </div>
+        </div>
+        <ul class="features">
+          <li>8 effects: pitch shift / reverb / delay / chorus / compressor / gain / HP / LP (voicebox)</li>
+          <li>4 built-in presets: Robotic, Radio, Echo Chamber, Deep Voice (voicebox)</li>
+          <li>Per-voice default effects chain (voicebox)</li>
+          <li>Non-destructive: applying creates a new generation version (voicebox)</li>
+          <li>Source-lineage tracking via source_version_id (voicebox)</li>
+          <li>Custom user presets (voicebox)</li>
+          <li>Note: pedalboard adoption triggers Apache-2.0 → GPL-3.0 flip</li>
+        </ul>
+
+        <!-- ──────────────────────────────────────────────────────────── -->
+        <h2>9. Engines <span class="src-tag combined">combined</span></h2>
+        <p>Installed engine catalog. Install / load / unload models. Voicebox's 7 + JustVoice (codebase)'s 3 experimental (Dia, MossTTS, Higgs) = up to 10 engines. Per-engine venv isolation (JustVoice (codebase) advantage).</p>
+        <table class="mock">
+          <thead>
+            <tr><th>Engine</th><th>Type</th><th>Size</th><th>Languages</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Kokoro</strong></td><td>preset (54 voices)</td><td>82 MB</td><td>8</td><td><span class="pill green">loaded · CPU realtime</span></td><td><button class="mock-btn secondary">Unload</button></td></tr>
+            <tr><td><strong>Chatterbox Turbo</strong></td><td>clone + paralinguistic</td><td>350 MB</td><td>en</td><td><span class="pill green">loaded</span></td><td><button class="mock-btn secondary">Unload</button></td></tr>
+            <tr><td><strong>Chatterbox Multilingual</strong></td><td>clone</td><td>1.2 GB</td><td>23</td><td><span class="pill">installed</span></td><td><button class="mock-btn">Load</button></td></tr>
+            <tr><td><strong>Qwen3-TTS</strong></td><td>clone + designed</td><td>1.7 GB</td><td>10</td><td><span class="pill">installed</span></td><td><button class="mock-btn">Load</button></td></tr>
+            <tr><td><strong>LuxTTS (ZipVoice)</strong></td><td>clone · 48 kHz</td><td>1.0 GB</td><td>en</td><td><span class="pill">installed</span></td><td><button class="mock-btn">Load</button></td></tr>
+            <tr><td><strong>Hume TADA</strong></td><td>clone · 700s coherent</td><td>3.2 GB</td><td>10</td><td><span class="pill">not installed</span></td><td><button class="mock-btn">Install</button></td></tr>
+            <tr><td><strong>Dia (Nari Labs)</strong></td><td>multi-speaker dialogue</td><td>3.0 GB</td><td>en</td><td><span class="pill warn">experimental</span></td><td><button class="mock-btn">Install</button></td></tr>
+            <tr><td><strong>MossTTS</strong></td><td>clone</td><td>—</td><td>en+zh</td><td><span class="pill warn">experimental</span></td><td><button class="mock-btn">Install</button></td></tr>
+            <tr><td><strong>Higgs Audio v3</strong></td><td>clone · 11 langs</td><td>—</td><td>11</td><td><span class="pill warn">experimental</span></td><td><button class="mock-btn">Install</button></td></tr>
+            <tr><td><strong>External (OpenAI-compatible)</strong></td><td>HTTP TTS</td><td>0 MB</td><td>—</td><td><span class="pill">3 configured</span></td><td><button class="mock-btn secondary">Configure</button></td></tr>
+          </tbody>
+        </table>
+        <ul class="features">
+          <li>Per-engine venv isolation — install Chatterbox without breaking Kokoro (JustTTS)</li>
+          <li>Install progress + cancel (JustTTS)</li>
+          <li>Load / unload with VRAM tracking (combined)</li>
+          <li>Engine catalog with capabilities (cloning, paralinguistic, designed voices) (combined)</li>
+          <li>Cross-platform GPU detection: CUDA / MPS / XPU / DirectML / ROCm (voicebox utility lifted to JustTTS)</li>
+          <li>External OpenAI-compatible TTS configurable (JustTTS)</li>
+        </ul>
+
+        <!-- ──────────────────────────────────────────────────────────── -->
+        <h2>10. Train <span class="src-tag jtorig">JustTTS</span></h2>
+        <p>Voice training jobs. PEFT/LoRA-based fine-tuning on supported engines. QC pipeline checks SNR / clipping / silence ratio per sample before accepting it into the training set.</p>
+        <div class="mockup">
+          <table class="mock">
+            <thead><tr><th>Job</th><th>Voice</th><th>Samples</th><th>Phase</th><th>Progress</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>train-2026-06-08-1</td><td>Old Crow</td><td>23 / 25 accepted</td><td>training</td><td>step 1240 / 5000</td><td><button class="mock-btn danger">Cancel</button></td></tr>
+              <tr><td>train-2026-06-07-2</td><td>Mara</td><td>18 / 22 accepted</td><td>completed</td><td>✓ done</td><td><button class="mock-btn secondary">Inspect</button></td></tr>
+              <tr><td>train-2026-06-06-1</td><td>Lt. Park</td><td>9 / 24 accepted</td><td>failed</td><td>QC: 15 samples below SNR threshold</td><td><button class="mock-btn secondary">Retry</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <ul class="features">
+          <li>Per-sample QC: SNR, clipping ratio, silence ratio (JustTTS)</li>
+          <li>PEFT/LoRA adapter training (JustTTS)</li>
+          <li>Live training progress + sample loss (JustTTS)</li>
+          <li>Job queue with concurrent-jobs limit (JustTTS)</li>
+          <li>Failed-QC sample inspection (JustTTS)</li>
+        </ul>
+
+        <!-- ──────────────────────────────────────────────────────────── -->
+        <h2>11. Compare <span class="src-tag jtorig">JustTTS</span></h2>
+        <p>A/B audio comparison. Side-by-side waveforms, peak/RMS/duration diff, sample-level RMSE, verdict (identical / near-identical / similar / different / unrelated).</p>
+        <div class="mockup">
+          <div class="mockup-row">
+            <div class="mock-card">📂 A: <strong>chapter-04-take-1.wav</strong> · 4:12 · -19.8 LUFS · -3.7 dB peak</div>
+            <div class="mock-card">📂 B: <strong>chapter-04-take-2.wav</strong> · 4:14 · -20.1 LUFS · -3.5 dB peak</div>
+          </div>
+          <div class="mockup-row" style="margin-top: 12px">
+            <div class="mock-card">Peak Δ: <strong>+0.2 dB</strong></div>
+            <div class="mock-card">RMS Δ: <strong>-0.3 dB</strong></div>
+            <div class="mock-card">Duration Δ: <strong>+2.0 s</strong></div>
+            <div class="mock-card">Sample RMSE: <strong>0.08</strong></div>
+            <div class="mock-card">Crest factor Δ: <strong>+0.5 dB</strong></div>
+            <div class="mock-card">Verdict: <span class="pill warn">similar</span></div>
+          </div>
+        </div>
+        <ul class="features">
+          <li>Side-by-side WAV analysis (JustTTS)</li>
+          <li>Peak / RMS / LUFS / crest factor / clipping ratio / silence ratio (JustTTS)</li>
+          <li>Sample-level RMSE + max delta + identical-sample % (JustTTS)</li>
+          <li>Verdict classifier (identical / near-identical / similar / different / unrelated)</li>
+          <li>Bulk compare across takes for QC pass (JustTTS)</li>
+        </ul>
+
+        <!-- ──────────────────────────────────────────────────────────── -->
+        <h2>12. Cache <span class="src-tag jtorig">JustTTS</span></h2>
+        <p>Disk-LRU render cache. Keyed on (engine, voice, lexicon hash, persona hash, text hash, effects hash). Inspect, prune, manually invalidate.</p>
+        <div class="mockup">
+          <div class="mockup-row">
+            <div class="mock-card">Total: <strong>2.4 GB · 18,442 entries</strong></div>
+            <div class="mock-card">Hit rate: <strong>71%</strong></div>
+            <div class="mock-card">Oldest: <strong>32 days ago</strong></div>
+            <div style="flex:1"></div>
+            <button class="mock-btn secondary">Prune &gt; 30 days</button>
+            <button class="mock-btn danger">Clear all</button>
+          </div>
+        </div>
+        <ul class="features">
+          <li>Disk-LRU cache (JustTTS)</li>
+          <li>Cache key includes engine prefix (collision-safe — fixed-ahead-of-voicebox)</li>
+          <li>Bulk prune / by-voice / by-age (JustTTS)</li>
+          <li>Cache stats: hit rate, size, age distribution (JustTTS)</li>
+        </ul>
+
+        <!-- ──────────────────────────────────────────────────────────── -->
+        <h2>13. Settings <span class="src-tag combined">combined</span></h2>
+        <p>Every operator-tunable value in one place. Per CLAUDE.md, no value is hardcoded — every knob lives in <code>settings.json</code>.</p>
+        <div class="mockup">
+          <h3 style="margin-top:0">Connection</h3>
+          <div class="field-row"><label>Server URL</label><div class="mock-input">http://localhost:17494</div></div>
+          <div class="field-row"><label>Bearer token</label><div class="mock-input">●●●●●●●●●●●●</div></div>
+
+          <h3>Mastering (ACX preset)</h3>
+          <div class="field-row"><label>Loudness target</label><div class="mock-input">-20.0 LUFS</div></div>
+          <div class="field-row"><label>True peak ceiling</label><div class="mock-input">-3.5 dBFS</div></div>
+          <div class="field-row"><label>Head silence</label><div class="mock-input">0.75 s</div></div>
+          <div class="field-row"><label>Tail silence</label><div class="mock-input">3.00 s</div></div>
+
+          <h3>Generation</h3>
+          <div class="field-row"><label>Max chunk chars</label><div class="mock-input">800</div></div>
+          <div class="field-row"><label>Crossfade ms</label><div class="mock-input">50</div></div>
+          <div class="field-row"><label>Default seed</label><div class="mock-input">random</div></div>
+
+          <h3>Capture / Dictation</h3>
+          <div class="field-row"><label>Push-to-talk hotkey</label><div class="mock-input">⌥⌘V</div></div>
+          <div class="field-row"><label>Toggle hotkey</label><div class="mock-input">⌥⌘D</div></div>
+          <div class="field-row"><label>Whisper model</label><div class="mock-input">base ▾</div></div>
+
+          <h3>MCP server (for Unreal / agent integrations)</h3>
+          <div class="field-row"><label>Enabled</label><div><span class="pill green">on</span></div></div>
+          <div class="field-row"><label>Endpoint</label><div class="mock-input">http://localhost:17495/mcp</div></div>
+          <div class="field-row"><label>Per-client tokens</label><div><span class="pill">3 configured</span></div></div>
+
+          <h3>GPU diagnostics</h3>
+          <div class="field-row"><label>Backend</label><div class="mock-input">CUDA (12.4) · NVIDIA RTX 4090 · 24 GB</div></div>
+          <div class="field-row"><label>Compute capability</label><div class="mock-input">sm_89 (supported by current torch build)</div></div>
+          <div class="field-row"><label>HSA override</label><div class="mock-input">(auto)</div></div>
+          <div class="field-row"><label>Force CPU on Mac</label><div><span class="pill">off</span></div></div>
+
+          <h3>Logs / About / Changelog (settings sub-views)</h3>
+          <div class="mockup-row">
+            <button class="mock-btn secondary">📜 Open log file</button>
+            <button class="mock-btn secondary">📰 What's new</button>
+            <button class="mock-btn secondary">ℹ️ About JustVoice v0.1.0</button>
+            <button class="mock-btn secondary">📋 Third-party licenses</button>
+          </div>
+
+          <h3>External TTS engines (OpenAI-compatible)</h3>
+          <table class="mock">
+            <thead><tr><th>Name</th><th>Base URL</th><th>Model</th><th>Voices</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>ElevenLabs</td><td>https://api.elevenlabs.io/v1</td><td>eleven_v2</td><td>34</td><td><button class="mock-btn secondary">Edit</button></td></tr>
+              <tr><td>OpenAI</td><td>https://api.openai.com/v1</td><td>tts-1-hd</td><td>6</td><td><button class="mock-btn secondary">Edit</button></td></tr>
+              <tr><td>Local Piper</td><td>http://localhost:10200</td><td>piper</td><td>12</td><td><button class="mock-btn secondary">Edit</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <ul class="features">
+          <li>Mastering presets (ACX / iAudio / Podcast / YouTube) (JustTTS)</li>
+          <li>Generation chunking + crossfade tuning (combined)</li>
+          <li>Capture hotkeys + Whisper model (voicebox)</li>
+          <li>MCP server on/off + per-client tokens (voicebox)</li>
+          <li>External TTS engines configuration (JustTTS)</li>
+          <li>Logging / cache / limits / auth / CORS (JustTTS)</li>
+          <li>Training validation thresholds (JustTTS)</li>
+        </ul>
+
+        <h2>⚠️ Honest gap update <span class="src-tag voicebox">missed features added</span></h2>
+        <p>After reading voicebox's actual GUI code directly, I found ~20 features I missed in the original preview. Full list in <code>preview/voicebox-feature-comparison.md</code>. Highlights now added to the relevant sections below. The biggest miss was <strong>Audio output channels</strong> — voicebox has a whole concept for routing voices to specific audio output devices (multi-monitor, OBS, per-character podcast monitoring).</p>
+        <div class="mockup">
+          <ul class="features" style="grid-template-columns: 1fr">
+            <li><strong>Keep server running when app closes</strong> — Rust IPC, pairs with system tray. Critical for in-flight generations.</li>
+            <li><strong>Network access mode</strong> (local 127.0.0.1 vs remote 0.0.0.0) — for headless use from another machine.</li>
+            <li><strong>Theme + Language selectors</strong> (light/dark/system + i18n locale).</li>
+            <li><strong>Autoplay on generate</strong> toggle.</li>
+            <li><strong>Open generations / captures folder</strong> buttons (platform.filesystem.openPath).</li>
+            <li><strong>ChordPicker</strong> — full keyboard-combo editor (not a text input) for push-to-talk + toggle-to-talk hotkeys.</li>
+            <li><strong>Animated capture pill preview</strong> in settings cycling recording → transcribing → refining → rest.</li>
+            <li><strong>Allow auto-paste</strong> toggle (paste transcription into focused text field).</li>
+            <li><strong>Mac TCC permission gates</strong> (Accessibility + Input Monitoring) — inline notices on relevant pages.</li>
+            <li><strong>Capture language selector</strong> (separate from app i18n).</li>
+            <li><strong>LLM refinement model size picker</strong> (0.6B / 1.7B / 4B) for dictation post-process.</li>
+            <li><strong>Default playback voice for dictation</strong> — which voice replies when MCP agents call <code>speak</code>.</li>
+            <li><strong>Dictation readiness checklist</strong> (6 gates: mic perm + input monitoring + accessibility + STT model + LLM model + hotkey).</li>
+            <li><strong>MCP install snippets</strong> for Claude Desktop / claude-code CLI / stdio shim, with OS-detected binary paths + copy buttons.</li>
+            <li><strong>MCP per-client bindings table</strong> with client_id, label, profile mapping, last_seen_at timestamps.</li>
+            <li><strong>MCP tools sidebar</strong> listing exposed tools.</li>
+            <li><strong>Inline API reference card</strong> in Settings → General with endpoint list + link to /docs.</li>
+            <li><strong>Full auto-updater UI</strong> (not just badge): check button, download progress bar with MB/MB, restart-and-install action, error display.</li>
+            <li><strong>Live connection status pill</strong> (offline / connecting / online with animated green pulse).</li>
+            <li><strong>GpuInfoCard</strong> — live GPU name + backend (CUDA/MPS/Metal/XPU/DirectML/ROCm) + VRAM used + active indicator.</li>
+            <li><strong>CUDA wheel download flow</strong> in GPU settings (idle → stopping → waiting → ready phases with progress bar).</li>
+            <li><strong>Logs / Changelog / About</strong> as proper settings sub-pages, not just buttons.</li>
+            <li><strong>DictateWindow</strong> — separate Tauri webview (<code>?view=dictate</code>) so the dictation pill floats OVER other apps.</li>
+            <li><strong>TitleBarDragRegion + AudioKeepAlive</strong> — Tauri shell quality-of-life.</li>
+            <li><strong>Audio output channels</strong> (full new concept): named channel configs that route voice profiles to specific output devices. Voices tab gets a channel-routing MultiSelect column.</li>
+          </ul>
+        </div>
+
+        <h2>System tray <span class="src-tag jtorig">JustVoice addition</span></h2>
+        <p>Tray icon + menu so the user can leave JustVoice running in the background (long-form chapter renders, MCP server for Unreal, dictation hotkey). Voicebox doesn't have this — we add it via Tauri 2's built-in tray API.</p>
+        <div class="mockup">
+          <div class="mockup-row" style="align-items: flex-start; gap: 32px">
+            <div>
+              <div style="display: inline-block; padding: 6px 8px; background: var(--ink); border-radius: 4px; color: #fff; font-size: 11px">
+                System tray (Windows / macOS / Linux):
+              </div>
+              <div style="margin-top: 8px; padding: 8px; background: #1a1a1c; border-radius: 4px; display: inline-block;">
+                <span style="background: var(--accent); width: 16px; height: 16px; border-radius: 3px; display: inline-block; line-height: 16px; text-align: center; font-size: 10px; color: white; vertical-align: middle">JV</span>
+                <span style="color: #ccc; font-size: 11px; margin-left: 8px; vertical-align: middle">JustVoice — Server running (port 17494)</span>
+              </div>
+            </div>
+            <div style="background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 0; min-width: 220px; font-size: 13px">
+              <div style="padding: 6px 14px; border-bottom: 1px solid var(--line); color: var(--ink-3); font-size: 11px">JustVoice — Operational</div>
+              <div style="padding: 6px 14px">📺 Show window</div>
+              <div style="padding: 6px 14px">🔵 Hide window</div>
+              <div style="height: 1px; background: var(--line); margin: 4px 0"></div>
+              <div style="padding: 6px 14px">▶️ Start server</div>
+              <div style="padding: 6px 14px; opacity: 0.6">⏹ Stop server <span style="color: var(--ink-3); font-size: 11px">(running)</span></div>
+              <div style="padding: 6px 14px">🔄 Restart server</div>
+              <div style="height: 1px; background: var(--line); margin: 4px 0"></div>
+              <div style="padding: 6px 14px">🎙️ Start dictation (⌥⌘V)</div>
+              <div style="padding: 6px 14px">🎚️ MCP server: <span class="pill green">on</span></div>
+              <div style="height: 1px; background: var(--line); margin: 4px 0"></div>
+              <div style="padding: 6px 14px">⚙️ Open settings</div>
+              <div style="padding: 6px 14px">📋 Copy server URL</div>
+              <div style="padding: 6px 14px">📜 Open log file</div>
+              <div style="height: 1px; background: var(--line); margin: 4px 0"></div>
+              <div style="padding: 6px 14px">ℹ️ About</div>
+              <div style="padding: 6px 14px; color: var(--danger)">🚪 Quit JustVoice</div>
+            </div>
+          </div>
+        </div>
+        <ul class="features">
+          <li><strong>Close-to-tray</strong>: clicking the window close button minimizes to tray instead of quitting (configurable in Settings)</li>
+          <li><strong>Left-click tray icon</strong>: toggle window visibility</li>
+          <li><strong>Right-click tray icon</strong>: full menu (above)</li>
+          <li><strong>Server lifecycle from tray</strong>: start / stop / restart the Python sidecar without opening the window</li>
+          <li><strong>Tray status indicator</strong>: green dot when server is up, yellow during model load, red on error</li>
+          <li><strong>Dictation hotkey accessible from tray</strong>: even when window is hidden</li>
+          <li><strong>MCP server toggle in tray</strong>: quick on/off for game-dialogue / Unreal use case</li>
+          <li><strong>Copy server URL</strong>: useful when running headless on a remote box and connecting from a browser</li>
+          <li>Implemented via Tauri 2's built-in <code>tray</code> module (no extra plugin needed)</li>
+        </ul>
+
+        <h2>Voicebox feature coverage — verification checklist <span class="src-tag voicebox">verify scope</span></h2>
+        <p>Every voicebox UI element from the upstream audit, mapped to the preview section that covers it. If any row reads "missing," tell me and I'll add it.</p>
+        <table class="mock">
+          <thead><tr><th>Voicebox feature</th><th>Source location</th><th>Preview section</th></tr></thead>
+          <tbody>
+            <tr><td>80px icon sidebar with 7 tabs</td><td>app/src/components/Sidebar.tsx:16-30</td><td>✓ left rail (with 6 added tabs)</td></tr>
+            <tr><td>Generate tab (text + voice + engine + paralinguistic)</td><td>app/src/components/MainEditor/MainEditor.tsx</td><td>✓ §1 Generate</td></tr>
+            <tr><td>FloatingGenerateBox (pinned, reflows around track editor)</td><td>app/src/components/Generation/FloatingGenerateBox.tsx</td><td>✓ §1 Generate (lower box)</td></tr>
+            <tr><td>EngineModelSelector</td><td>app/src/components/Generation/EngineModelSelector.tsx</td><td>✓ §1 Generate</td></tr>
+            <tr><td>ParalinguisticInput (/ slash menu)</td><td>app/src/components/Generation/ParalinguisticInput.tsx</td><td>✓ §1 Generate (textarea hint)</td></tr>
+            <tr><td>History table with versions, takes, favorites, retry</td><td>app/src/components/History/HistoryTable.tsx</td><td>✓ §1 features list (combined with takes in §4 Phase 4)</td></tr>
+            <tr><td>Stories tab — multi-track timeline</td><td>app/src/components/StoriesTab/StoriesTab.tsx</td><td>✓ §3 Stories</td></tr>
+            <tr><td>StoryTrackEditor (per-clip WaveSurfer, trim, split, volume, version-pin)</td><td>app/src/components/StoriesTab/StoryTrackEditor.tsx</td><td>✓ §3 Stories (timeline mockup)</td></tr>
+            <tr><td>Story drag-and-drop audio import (.wav .mp3 .flac .ogg .m4a .aac .webm)</td><td>app/src/components/StoriesTab/StoryContent.tsx:320-360</td><td>✓ §3 Stories features list</td></tr>
+            <tr><td>Voices tab — table + inspector</td><td>app/src/components/VoicesTab/VoicesTab.tsx</td><td>✓ §4 Voices</td></tr>
+            <tr><td>VoiceInspector (react-hook-form + zod)</td><td>app/src/components/VoiceProfiles/*</td><td>✓ §4 Voices features list</td></tr>
+            <tr><td>Multi-sample voice cloning + record-in-app</td><td>app/src/components/VoiceProfiles/AudioSampleRecording.tsx</td><td>✓ §4 Voices features list</td></tr>
+            <tr><td>Profile import / export .voicebox.zip → .justvoice.zip</td><td>app/src/components/MainEditor → apiClient.importProfile</td><td>✓ §4 Voices features list</td></tr>
+            <tr><td>Per-voice channel routing (native device assignments)</td><td>VoicesTab MultiSelect + AudioPlayer device routing</td><td>✓ §4 Voices features list (added)</td></tr>
+            <tr><td>Captures tab — dictation pill + global hotkey</td><td>app/src/components/CapturesTab + DictateWindow</td><td>✓ §7 Captures</td></tr>
+            <tr><td>Push-to-talk + toggle-to-talk hotkeys (capture_chords.py)</td><td>backend/utils/capture_chords.py</td><td>✓ §7 Captures + §13 Settings</td></tr>
+            <tr><td>System-audio capture (cpal/symphonia/wasapi/screencapturekit)</td><td>tauri/src-tauri/src/audio_capture/</td><td>✓ §7 Captures features list</td></tr>
+            <tr><td>Whisper transcription + refinement (smart cleanup / self-correction / preserve-technical)</td><td>backend/services/transcribe.py + refinement.py</td><td>✓ §7 Captures features list</td></tr>
+            <tr><td>Effects tab — pedalboard chain editor</td><td>app/src/components/EffectsTab + EffectsChainEditor.tsx</td><td>✓ §8 Effects</td></tr>
+            <tr><td>8 effect types (pitch / reverb / delay / chorus / compressor / gain / HP / LP)</td><td>backend/services/effects.py + utils/effects.py</td><td>✓ §8 Effects features list</td></tr>
+            <tr><td>4 built-in presets (Robotic / Radio / Echo Chamber / Deep Voice) + custom</td><td>backend/services/effects.py</td><td>✓ §8 Effects features list</td></tr>
+            <tr><td>Non-destructive: apply-effects → new generation version</td><td>backend/services/versions.py</td><td>✓ §8 Effects features list</td></tr>
+            <tr><td>Models tab → renamed Engines</td><td>app/src/components/ModelsTab</td><td>✓ §9 Engines</td></tr>
+            <tr><td>Engine install / load / unload with HF download progress</td><td>backend/backends/__init__.py + utils/hf_progress.py</td><td>✓ §9 Engines</td></tr>
+            <tr><td>Cross-platform GPU detection (CUDA / MPS / XPU / DirectML / ROCm)</td><td>backend/backends/base.py:80-126</td><td>✓ §9 Engines features list + §13 GPU diagnostics</td></tr>
+            <tr><td>Settings tab</td><td>app/src/components/SettingsTab</td><td>✓ §13 Settings</td></tr>
+            <tr><td>Settings sub-routes: general / generation / captures / mcp / gpu / logs / changelog / about</td><td>app/src/router.tsx</td><td>✓ §13 Settings sub-sections</td></tr>
+            <tr><td>MCP server (per-client X-Voicebox-Client-Id → X-JustVoice-Client-Id)</td><td>backend/mcp_server/ + routes/mcp_bindings.py</td><td>✓ §13 Settings (MCP section)</td></tr>
+            <tr><td>fastmcp tool surface (speak / transcribe / list_captures / list_profiles)</td><td>backend/mcp_server/tools.py</td><td>✓ §13 Settings features list</td></tr>
+            <tr><td>Auto-updater + update-available badge in sidebar</td><td>tauri-plugin-updater + Sidebar.tsx:99-107</td><td>✓ sidebar UPDATE indicator (added)</td></tr>
+            <tr><td>Global AudioPlayer transport (any view triggers playback via setAudioWithAutoPlay)</td><td>app/src/stores/playerStore.ts + AudioPlayer.tsx</td><td>✓ §3 Stories transport row + §4 Voices preview</td></tr>
+            <tr><td>Headless / web mode (web/ workspace serves the same UI)</td><td>web/src/main.tsx</td><td>✓ banner at top + same /ui/ HTTP endpoint</td></tr>
+            <tr><td>External OpenAI-compatible TTS providers</td><td>backend/services/tts.py (OpenAI fallback)</td><td>✓ §13 Settings external table</td></tr>
+            <tr><td>Languages (23 incl. zh / en / ja / ko / de / fr / ru / pt / es / it / he / ar / da / el / fi / hi / ms / nl / no / pl / sv / sw / tr)</td><td>backend/models.py language pattern</td><td>✓ §1 Generate language picker + per-engine in §9</td></tr>
+            <tr><td>Generation seed + instruct field</td><td>backend/models.py GenerationRequest</td><td>✓ §1 Generate features list</td></tr>
+            <tr><td>Personality / LLM-rewrite toggle on generate</td><td>backend/services/personality.py + llm.py</td><td>✓ §1 Generate + §5 Personas</td></tr>
+            <tr><td>Chunked generation with crossfade (long-form)</td><td>backend/utils/chunked_tts.py</td><td>✓ §13 Settings generation section</td></tr>
+            <tr><td>Cancel queued / running generation per-row Stop</td><td>backend/routes/generations.py /cancel</td><td>✓ §1 Generate features list</td></tr>
+            <tr><td>Per-engine ModelConfig metadata (HF repo, size, languages, supports_instruct)</td><td>backend/backends/*_backend.py MODEL_CONFIGS</td><td>✓ §9 Engines table columns</td></tr>
+            <tr><td>Light + dark theme toggle</td><td>app/src/index.css :root + .dark</td><td>✓ HTML uses prefers-color-scheme (will be a toggle in app)</td></tr>
+            <tr><td>i18n via i18next</td><td>app/src/locales/*.json</td><td>(Phase 6 polish — not blocking MVP)</td></tr>
+          </tbody>
+        </table>
+
+        <h2>JustVoice additions beyond voicebox <span class="src-tag jtorig">our additions</span></h2>
+        <table class="mock">
+          <thead><tr><th>JustVoice feature</th><th>Why it's here</th><th>Preview section</th></tr></thead>
+          <tbody>
+            <tr><td>Books tab + JustWrite import endpoint</td><td>Audiobook orchestration — when JustWrite is not driving</td><td>§2 Books</td></tr>
+            <tr><td>Personas tab (character bios + voice mapping)</td><td>Audiobook + game-dialogue character scaling</td><td>§5 Personas</td></tr>
+            <tr><td>Lexicons tab (pronunciation dictionaries with per-character override)</td><td>Pronunciation discipline across a whole book</td><td>§6 Lexicons</td></tr>
+            <tr><td>Train tab (PEFT/LoRA fine-tuning with QC pipeline)</td><td>Voice-specific training for custom narrators</td><td>§10 Train</td></tr>
+            <tr><td>Compare tab (A/B WAV analysis, sample-level RMSE)</td><td>QC pass before shipping a chapter</td><td>§11 Compare</td></tr>
+            <tr><td>Cache tab (disk-LRU render cache with engine-prefix safety)</td><td>Re-render avoidance + cross-engine collision fix</td><td>§12 Cache</td></tr>
+            <tr><td>ACX mastering preset (-20 LUFS / -3.5 dB peak / -60 dB noise floor)</td><td>Audiobook deliverable spec compliance</td><td>§13 Settings mastering</td></tr>
+            <tr><td>Per-engine venv isolation (no module-global singletons)</td><td>Install Chatterbox without breaking Kokoro</td><td>§9 Engines features list</td></tr>
+            <tr><td>External OpenAI-compatible TTS provider configuration</td><td>ElevenLabs / OpenAI / local Piper / etc.</td><td>§13 Settings external table</td></tr>
+          </tbody>
+        </table>
+
+        <footer>
+          Preview generated 2026-06-08 evening. Total tabs: <strong>13</strong>.
+          Visual aesthetic (colors, type scale, density) is NOT decided yet — this preview uses neutral defaults.
+          Once feature scope is verified, the Phase 4 design pass picks one of: modern-pro-tool / editorial-but-modern / studio-tool-minimal.
+          Open this file in any browser: <code>file:///E:/Dev/Web/justtts-new/preview/ux-feature-inventory.html</code>
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>

@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter
 
 from ..app_state import get_state
+from ..engines.manager import get_manager
 from ..errors import bad_request, not_found
 from ..models import (
     CloneVoiceRequest,
@@ -36,7 +37,24 @@ def _stored_to_dto(rec: VoiceRecord) -> Voice:
 async def list_voices() -> VoiceList:
     st = get_state()
     out: list[Voice] = []
-    # Presets from every registered engine
+
+    # 1. Static presets from managed engine manifests (always available, no
+    #    subprocess needed). Kokoro ships 54 here; clone-only engines empty.
+    mgr = get_manager()
+    for manifest in mgr.manifests().values():
+        for v in manifest.static_voices:
+            out.append(
+                Voice(
+                    id=v.get("id"),
+                    engine=manifest.id,
+                    source="preset",
+                    name=v.get("name", v.get("id", "")),
+                    language=v.get("language", "en"),
+                    gender=v.get("gender", "") or "",
+                )
+            )
+
+    # 2. Presets from in-process engines (currently only external-openai-tts).
     for engine in st.engines.all():
         for p in engine.voices():
             out.append(
@@ -50,7 +68,8 @@ async def list_voices() -> VoiceList:
                     sample_url=p.sample_url,
                 )
             )
-    # Stored
+
+    # 3. Stored (clones / designs / imports).
     for rec in st.voices.list():
         out.append(_stored_to_dto(rec))
     return VoiceList(voices=out)

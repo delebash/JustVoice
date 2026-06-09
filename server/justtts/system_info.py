@@ -7,7 +7,9 @@ specific paths (lspci on Linux, wmic on Windows, system_profiler on macOS).
 
 from __future__ import annotations
 
+import ctypes
 import logging
+import os
 import platform
 import shutil
 import subprocess
@@ -25,8 +27,9 @@ def detect() -> SystemInfo:
         ram_total = psutil.virtual_memory().total // (1024 * 1024)
         cpu_cores = psutil.cpu_count(logical=True) or 0
     except ImportError:
-        ram_total = 0
-        cpu_cores = 0
+        # psutil not installed — fall back to stdlib so the panel isn't all zeros.
+        cpu_cores = os.cpu_count() or 0
+        ram_total = _ram_total_mb_stdlib()
     return SystemInfo(
         os=f"{platform.system()} {platform.release()}",
         cpu_name=_cpu_name(),
@@ -36,6 +39,37 @@ def detect() -> SystemInfo:
         runtimes=_detect_runtimes(),
         ffmpeg=_detect_ffmpeg(),
     )
+
+
+def _ram_total_mb_stdlib() -> int:
+    """Best-effort total RAM without psutil. Returns 0 if undeterminable."""
+    try:
+        if sys.platform == "win32":
+            class _MemStatus(ctypes.Structure):
+                _fields_ = [
+                    ("dwLength", ctypes.c_ulong),
+                    ("dwMemoryLoad", ctypes.c_ulong),
+                    ("ullTotalPhys", ctypes.c_ulonglong),
+                    ("ullAvailPhys", ctypes.c_ulonglong),
+                    ("ullTotalPageFile", ctypes.c_ulonglong),
+                    ("ullAvailPageFile", ctypes.c_ulonglong),
+                    ("ullTotalVirtual", ctypes.c_ulonglong),
+                    ("ullAvailVirtual", ctypes.c_ulonglong),
+                    ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+                ]
+
+            stat = _MemStatus()
+            stat.dwLength = ctypes.sizeof(_MemStatus)
+            if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat)):
+                return int(stat.ullTotalPhys) // (1024 * 1024)
+        else:
+            # Linux / macOS: sysconf gives page size * page count.
+            pages = os.sysconf("SC_PHYS_PAGES")
+            page_size = os.sysconf("SC_PAGE_SIZE")
+            return int(pages) * int(page_size) // (1024 * 1024)
+    except Exception as e:
+        log.debug("stdlib RAM detection failed: %s", e)
+    return 0
 
 
 def _cpu_name() -> str:

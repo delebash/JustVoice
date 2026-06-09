@@ -127,6 +127,12 @@ function fmtDb(n) {
           <td>{{ report.format_match ? "—" : "mismatch" }}</td>
         </tr>
         <tr>
+          <td>Channels</td>
+          <td>{{ report.a.format.channels }}</td>
+          <td>{{ report.b.format.channels }}</td>
+          <td>{{ report.a.format.channels === report.b.format.channels ? "—" : "mismatch" }}</td>
+        </tr>
+        <tr>
           <td>Duration</td>
           <td>{{ report.a.format.duration_sec.toFixed(3) }}s</td>
           <td>{{ report.b.format.duration_sec.toFixed(3) }}s</td>
@@ -144,9 +150,32 @@ function fmtDb(n) {
           <td>{{ fmtDb(report.b.loudness.rms_dbfs) }}</td>
           <td>{{ fmtDb(report.rms_diff_db) }}</td>
         </tr>
+        <tr>
+          <td>Crest factor (peak − RMS)</td>
+          <td>{{ fmtDb(report.a.loudness.crest_factor_db) }}</td>
+          <td>{{ fmtDb(report.b.loudness.crest_factor_db) }}</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>Silence ratio</td>
+          <td>{{ (report.a.loudness.silence_ratio * 100).toFixed(1) }}%</td>
+          <td>{{ (report.b.loudness.silence_ratio * 100).toFixed(1) }}%</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td>Clipping ratio</td>
+          <td>{{ (report.a.loudness.clipping_ratio * 100).toFixed(3) }}%</td>
+          <td>{{ (report.b.loudness.clipping_ratio * 100).toFixed(3) }}%</td>
+          <td>—</td>
+        </tr>
         <tr v-if="report.sample_rmse !== null">
           <td>Sample-level RMSE</td>
           <td colspan="2">{{ report.sample_rmse.toFixed(5) }} (normalized [-1, 1])</td>
+          <td>—</td>
+        </tr>
+        <tr v-if="report.max_sample_delta !== null && report.max_sample_delta !== undefined">
+          <td>Max sample Δ</td>
+          <td colspan="2">{{ report.max_sample_delta.toFixed(5) }}</td>
           <td>—</td>
         </tr>
         <tr v-if="report.pct_identical_samples !== null">
@@ -156,16 +185,24 @@ function fmtDb(n) {
         </tr>
       </tbody>
     </table>
+    <p class="endnote" style="margin-top: 16px; line-height: 1.6">
+      <strong style="font-style: normal; font-weight: 600; color: var(--ink)">How to read it.</strong>
+      <span v-if="report.identical">
+        Bit-identical — the two files are the same bytes. Suggests deterministic sampling + same model + same seed.
+      </span>
+      <span v-else-if="!report.format_match">
+        Formats differ — comparing sample-by-sample isn't meaningful until you resample one to match the other. The
+        duration / loudness deltas are still useful.
+      </span>
+      <span v-else>
+        Same format but different bytes. Sample RMSE near zero = perceptually near-identical (different floating-point
+        paths can produce tiny diffs). RMSE 0.01–0.05 = similar quality but different model state. RMSE &gt; 0.1 =
+        audibly different output.
+      </span>
+    </p>
   </section>
 </template>
 
 <style scoped>
-.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 14px; }
-th { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; color: var(--muted); }
-td { padding: 8px 10px; border-bottom: 1px solid var(--border-soft); }
-.mono { font-family: var(--font-mono); font-size: 11px; }
-.tag { display: inline-block; padding: 2px 10px; background: var(--surface-3); font-size: 13px; font-weight: 500; }
-label > span { display: block; font-size: 11px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
-input { width: 100%; padding: 6px 10px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink); font-size: 13px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 32px; }
 </style>

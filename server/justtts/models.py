@@ -80,8 +80,40 @@ class LimitsSettings(BaseModel):
     request_body_max_bytes: int = 100 * 1024 * 1024
 
 
+class GenerationSettings(BaseModel):
+    """Knobs for the chunked TTS pipeline (Phase 3 lift from voicebox).
+
+    Long text is split at sentence boundaries into chunks, generated
+    per-chunk via the active engine, then concatenated with a short
+    crossfade to eliminate clicks. Short text (≤ max_chunk_chars) skips
+    chunking entirely via the single-shot fast path.
+    """
+
+    max_chunk_chars: int = 800  # 100-5000 in UI slider
+    crossfade_ms: int = 50  # 0-200 in UI slider; 0 = hard cut
+    normalize_audio: bool = True
+    autoplay_on_generate: bool = True
+
+
 class CorsSettings(BaseModel):
-    origins: list[str] = []
+    # The bundled UI runs from a different origin than the loopback server
+    # (dev: http://localhost:1430 ; packaged Tauri webview: tauri://localhost
+    # or http://tauri.localhost). Browsers enforce CORS on fetch() to the
+    # server, so these must be allowed or the GUI sees empty responses.
+    # Operator-tunable via PATCH /v1/settings.
+    origins: list[str] = [
+        "http://localhost:1430",
+        "http://127.0.0.1:1430",
+        "tauri://localhost",
+        "http://tauri.localhost",
+        "https://tauri.localhost",
+    ]
+    # Regex fallback so arbitrary loopback dev ports (and the tauri scheme)
+    # work without re-listing each one. Empty string disables it.
+    origin_regex: str = (
+        r"^(https?://(localhost|127\.0\.0\.1)(:\d+)?"
+        r"|tauri://localhost|https?://tauri\.localhost)$"
+    )
 
 
 class AuthSettings(BaseModel):
@@ -102,9 +134,13 @@ class MasterPreset(BaseModel):
 
 
 class MasterPresetSettings(BaseModel):
+    # ACX spec: -23 to -18 LUFS, true peak <= -3 dB, noise floor <= -60 dB RMS,
+    # 44.1 kHz / 16-bit / mono / MP3 192 kbps CBR for retail audio. We center
+    # LUFS at -20 (safely inside -23/-18) and add 0.5 dB peak headroom (-3.5)
+    # so production variance doesn't push peaks over the ACX limit.
     acx: MasterPreset = MasterPreset(
-        loudness_target_lufs=-19.0,
-        true_peak_dbfs=-3.0,
+        loudness_target_lufs=-20.0,
+        true_peak_dbfs=-3.5,
         loudness_range_lu=7.0,
         sample_rate=44_100,
         channels=1,
@@ -199,6 +235,7 @@ class Settings(BaseModel):
     training: TrainingSettings = TrainingSettings()
     models: ModelsSettings = ModelsSettings()
     engines: EnginesSettings = EnginesSettings()
+    generation: GenerationSettings = GenerationSettings()
 
 
 class SettingsPatch(BaseModel):
@@ -214,6 +251,7 @@ class SettingsPatch(BaseModel):
     training: TrainingSettings | None = None
     models: ModelsSettings | None = None
     engines: EnginesSettings | None = None
+    generation: GenerationSettings | None = None
 
 
 class SettingsPatchResponse(BaseModel):
@@ -381,6 +419,31 @@ class EngineInfo(BaseModel):
     status: EngineStatus = "not_installed"
     current: bool = False
     is_stubbed: bool = False
+    # Importable module names this engine needs to load. Catalog-static —
+    # used by the installer to decide whether a pip step is needed and to
+    # check (via find_spec) whether the install eventually made the engine
+    # importable.
+    runtime_deps: list[str] = []
+    # pip package specs (e.g. "sherpa-onnx>=1.13"). The installer pip-installs
+    # these as the first phase of an Install before downloading model files.
+    # Empty means "no pip step needed" — either pure-Python or pip name not
+    # yet known.
+    pip_packages: list[str] = []
+    # When the engine has multiple model variants in `/v1/engines/<id>/models`,
+    # this is the id of the one `POST /v1/engines/<id>/load` (with no
+    # `model_variant` arg) actually loads. The GUI uses it to (a) label
+    # the default model in the variants subtable and (b) hide that variant
+    # from the per-variant Load list so the user isn't offered two routes
+    # to the same checkpoint.
+    default_variant_id: str | None = None
+    # "shared" (engine runs against the shared venv at engines/.shared-venv,
+    # voicebox monolith style — fast Install = model-only download) or "venv"
+    # (engine gets its own private venv, for engines that genuinely conflict
+    # with the shared interpreter). Default is "shared".
+    isolation: str = "shared"
+    # OSes this engine works on. UI hides engines whose list doesn't include
+    # the user's current OS. Values: "windows" | "linux" | "macos".
+    supported_oses: list[str] = []
 
 
 class EnginesListResponse(BaseModel):
@@ -451,14 +514,17 @@ class UnloadResponse(BaseModel):
 class UninstallResponse(BaseModel):
     engine_id: str
     model_files_removed: bool
+    pip_packages_removed: list[str] = []
 
 
 # ─── Jobs (install progress) ────────────────────────────────────────────
 
 
-JobPhase = Literal[
-    "connecting", "downloading", "verifying", "extracting", "completed", "failed"
-]
+# Free-form to keep room for engine-specific phases emitted by the manager
+# (creating-venv, installing-plugin, downloading-model, extracting-model,
+# torch, model-tarball, …). The GUI only cares about completed vs failed
+# transitions plus showing the latest phase string in a progress label.
+JobPhase = str
 
 
 class JobStatus(BaseModel):
@@ -470,6 +536,11 @@ class JobStatus(BaseModel):
     bytes_total: int = 0
     current_file: str | None = None
     error: str | None = None
+    # Rolling tail of pip / download output lines — capped at 400 entries so
+    # a failed install can be debugged from the GUI without tailing the server
+    # log. Each line is whatever the installer's `progress()` callback last
+    # emitted (raw pip output, status updates, error tracebacks).
+    log_tail: list[str] = []
 
 
 # ─── External engine probe ─────────────────────────────────────────────

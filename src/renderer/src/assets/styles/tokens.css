@@ -1798,18 +1798,25 @@ html[data-editor-layout="page"] .rich-editor--manuscript .manuscript-inner.with-
   --normal-bg: var(--ink);
   --normal-text: var(--surface);
   --normal-border: transparent;
-  /* severity ramps — match our JwButton intent colours */
-  --success-bg: var(--status-done);
-  --success-text: var(--surface);
+  /* Severity ramps — keyed to the project palette in styles.css.
+     The old tokens (--status-done, --info, --gold) were JustWrite-only
+     vars that don't exist in JustTTS. Sonner with `rich-colors` enabled
+     uses these CSS custom properties to colour each toast variant; if
+     a referenced var is undefined, the entire toast frame ends up with
+     no background and the message text becomes invisible (the user only
+     sees the close-button X). Pinning each to a known palette colour
+     (with white-ish on-accent text) restores visible toasts. */
+  --success-bg: var(--success, #2f7d4f);
+  --success-text: var(--on-accent, #faf8f3);
   --success-border: transparent;
-  --info-bg: var(--info);
-  --info-text: var(--surface);
+  --info-bg: var(--ink-2, #4a4640);
+  --info-text: var(--surface, #fffefa);
   --info-border: transparent;
   --error-bg: var(--danger);
-  --error-text: var(--surface);
+  --error-text: var(--on-accent, #faf8f3);
   --error-border: transparent;
-  --warning-bg: var(--gold);
-  --warning-text: color-mix(in oklab, var(--gold) 22%, black);
+  --warning-bg: #c89a3a;
+  --warning-text: var(--ink);
   --warning-border: transparent;
 }
 [data-sonner-toast] {

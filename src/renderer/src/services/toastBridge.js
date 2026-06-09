@@ -11,12 +11,30 @@
 import { toast } from "vue-sonner";
 
 // Show one toast.
-export function pushToast({ message, action } = {}, ms = 6000) {
+//
+// `kind` ("success" | "error" | "warning" | "info") routes to the matching
+// vue-sonner variant so the Toaster's rich-colors give errors a red frame,
+// successes green, etc. `duration` (ms) on the options object wins; the
+// legacy positional `ms` arg is still honored as a fallback. Before this,
+// both kind and duration were silently dropped and every toast looked the
+// same — error toasts were indistinguishable from successes.
+export function pushToast({ message, kind, action, duration } = {}, ms) {
   if (!message) return;
-  toast(message, {
-    duration: ms,
+  const opts = {
+    duration: duration ?? ms ?? 6000,
     action: action ? { label: action.label, onClick: action.fn } : undefined,
-  });
+  };
+  const fn =
+    kind === "error"
+      ? toast.error
+      : kind === "success"
+        ? toast.success
+        : kind === "warning" || kind === "warn"
+          ? toast.warning
+          : kind === "info"
+            ? toast.info
+            : toast;
+  fn(message, opts);
 }
 
 // Dismiss any visible toast (the old dismissToast cleared the single slot).

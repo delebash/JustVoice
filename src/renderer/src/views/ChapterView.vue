@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
@@ -8,7 +8,25 @@ const api = useApi();
 const tasks = useRenderTasks();
 
 const voices = ref([]);
+const currentEngine = ref(null);
 const voice = ref("");
+
+// Same "voices belong to loaded engine" model as GenerateView.
+const availableVoices = computed(() => {
+  if (!currentEngine.value) return [];
+  return voices.value.filter((v) => v.engine === currentEngine.value.id);
+});
+const emptyVoiceReason = computed(() => {
+  if (!currentEngine.value) return "No engine loaded. Go to Engines and click Load on one.";
+  const caps = currentEngine.value.capabilities || [];
+  const cloneOnly = caps.includes("voice_cloning") && !caps.includes("preset_voices");
+  if (availableVoices.value.length === 0) {
+    return cloneOnly
+      ? `${currentEngine.value.name} is clone-only. Clone a reference WAV on the Voices tab first.`
+      : `${currentEngine.value.name} has no voices in the catalog yet.`;
+  }
+  return "";
+});
 const lines = ref("Once upon a time, in a quiet little town.\nThe wind whispered through the trees.\nAnd then she said, 'follow me.'");
 const preset = ref("");
 const silenceMs = ref(250);
@@ -24,9 +42,16 @@ const PRESETS = [
 ];
 
 async function refreshVoices() {
-  const v = await api.request("/v1/voices");
-  voices.value = v.voices;
-  if (!voice.value && voices.value.length) voice.value = voices.value[0].id;
+  try {
+    const [v, cur] = await Promise.all([
+      api.request("/v1/voices"),
+      api.request("/v1/engines/current").catch(() => ({ engine: null })),
+    ]);
+    voices.value = v.voices || [];
+    currentEngine.value = cur?.engine || null;
+    const stillValid = availableVoices.value.some((x) => x.id === voice.value);
+    if (!stillValid) voice.value = availableVoices.value[0]?.id || "";
+  } catch (_) {}
 }
 
 async function render() {
@@ -77,14 +102,29 @@ onMounted(refreshVoices);
 </script>
 
 <template>
-  <section class="block">
+  <section class="block stack">
     <h3>Chapter render</h3>
-    <div class="row">
-      <label class="grow">
-        <span>Voice</span>
-        <select v-model="voice">
-          <option v-for="v in voices" :key="v.id" :value="v.id">{{ v.name }} — {{ v.id }}</option>
-        </select>
+    <label>
+      <span>
+        Voice (applied to every line — multi-voice scenes use POST /v1/render_scene)
+        <span v-if="currentEngine" class="endnote" style="text-transform: none; font-weight: 400; margin-left: 8px;">
+          from <strong style="font-style: normal; color: var(--ink);">{{ currentEngine.name }}</strong>
+        </span>
+      </span>
+      <select v-model="voice" :disabled="availableVoices.length === 0">
+        <option v-if="availableVoices.length === 0" value="">— no voices available —</option>
+        <option v-for="v in availableVoices" :key="v.id" :value="v.id">{{ v.name }} — {{ v.id }}</option>
+      </select>
+      <p v-if="emptyVoiceReason" class="endnote" style="margin-top: 6px;">{{ emptyVoiceReason }}</p>
+    </label>
+    <label>
+      <span>Script — one line per row, blank lines ignored</span>
+      <textarea v-model="lines" rows="10" style="min-height: 240px;"></textarea>
+    </label>
+    <div class="grid-2">
+      <label>
+        <span>Silence between lines (ms)</span>
+        <input type="number" v-model.number="silenceMs" min="0" max="5000" />
       </label>
       <label>
         <span>Mastering preset</span>
@@ -92,30 +132,13 @@ onMounted(refreshVoices);
           <option v-for="p in PRESETS" :key="p.id" :value="p.id">{{ p.label }}</option>
         </select>
       </label>
-      <label>
-        <span>Silence between lines (ms)</span>
-        <input type="number" v-model.number="silenceMs" min="0" max="5000" />
-      </label>
     </div>
-    <div style="margin-top: 12px">
-      <label>
-        <span>Lines (one per row)</span>
-        <textarea v-model="lines" rows="10"></textarea>
-      </label>
-    </div>
-    <div class="row" style="margin-top: 12px">
+    <div class="row">
       <button class="primary" :disabled="busy || !voice" @click="render">
         {{ busy ? "Rendering chapter…" : "Render chapter" }}
       </button>
-      <span class="endnote">POST /v1/render_chapter</span>
+      <span class="endnote">POST /v1/render_chapter → audio/wav or audio/mpeg (with mastering)</span>
     </div>
-    <audio v-if="audio" :src="audio" :key="audio" controls style="margin-top: 16px; width: 100%"></audio>
+    <audio v-if="audio" :src="audio" :key="audio" controls style="width: 100%"></audio>
   </section>
 </template>
-
-<style scoped>
-.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-.row > label.grow { flex: 1; min-width: 240px; }
-label > span { display: block; font-size: 11px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
-input, select, textarea { width: 100%; padding: 6px 10px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink); font-size: 13px; font-family: var(--font-sans); }
-</style>

@@ -1,0 +1,14 @@
+b35b90961d5bc83a8b4e96e8b6ccde2a03152ff9
+# Voicebox upstream commit pin
+# Repo: https://github.com/jamiepine/voicebox
+# Date: 2026-04-26 (locked 2026-06-08)
+# License at this commit: MIT
+#
+# This is the canonical reference commit for any code lifted, ported, or
+# translated into JustTTS from voicebox. Every per-file attribution header
+# must reference this exact SHA. Do not bump silently — update this file
+# in a deliberate PR that also re-verifies upstream is still MIT-licensed.
+#
+# If voicebox ever relicenses to a non-permissive license, the MIT grant on
+# this SHA survives in perpetuity. Do NOT cherry-pick patches from any
+# post-relicense commit.
