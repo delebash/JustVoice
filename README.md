@@ -1,6 +1,8 @@
 # 🎙️ JustVoice
 
-> Open-source voice production studio. Voice cloning, audiobook production, game NPC dialogue, podcast assembly, dictation. Tauri + Vue + Python.
+**A cross-platform open-source voice production studio for audiobook producers, game developers, podcasters, dictation users, and accessibility users. Built on Tauri 2 + Vue 3 + Python FastAPI.**
+
+JustWrite-compatible imports are one of several supported workflows — see `docs/import-formats.md`.
 
 License: **GPL-3.0-or-later** (see `LICENSE`).
 
@@ -12,7 +14,7 @@ License: **GPL-3.0-or-later** (see `LICENSE`).
 - **Dictation** — global hotkey + Whisper + local LLM refinement + OS-level paste injection
 - **General TTS** — 10 engines (Kokoro, Chatterbox, Qwen3, LuxTTS, TADA, Dia, MossTTS, Higgs, plus OpenAI-compatible external providers), all installable to isolated venvs
 
-The same engine pool + voice library + persona system + lexicon system serves all five use cases.
+**Five audiences share one engine pool, voice catalogue, lexicon, and persona layer — differentiation lives in import/export pipelines and per-use-case UI surfaces.**
 
 ## Documentation
 

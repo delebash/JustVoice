@@ -16,7 +16,7 @@ const tasks = useRenderTasks();
 const voices = ref([]);          // all voices the server returns
 const currentEngine = ref(null); // { id, name, capabilities } of the loaded engine, or null
 const voice = ref("");
-const text = ref("Hello. This is a test render through JustTTS.");
+const text = ref("Hello. This is a test render through JustVoice.");
 const audio = ref(null);
 const busy = ref(false);
 

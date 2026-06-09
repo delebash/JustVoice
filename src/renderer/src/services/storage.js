@@ -3,7 +3,7 @@
 //
 // Why a sync API over an async store: Pinia state initialisers run at
 // module-import time (`state: () => ({ ...load() })`), so we can't await
-// in there. We hydrate every `justwrite:*` key from IDB into an
+// in there. We hydrate every `justvoice:*` key from IDB into an
 // in-memory `cache` once at app boot, before Vue mounts, then back the
 // sync getters with that cache. Writes update the cache immediately and
 // queue a per-key debounced write to IDB so a typing session doesn't
@@ -21,13 +21,13 @@
 
 import { createStore, get, set, del, keys as idbKeys } from "idb-keyval";
 
-const PREFIX = "justwrite:";
+const PREFIX = "justvoice:";
 
 // Dedicated IDB database + object store so we don't share scope with any
 // other consumer in the same origin.
-const store = createStore("justwrite", "kv");
+const store = createStore("justvoice", "kv");
 
-// Synchronous shadow of every justwrite:* key. Populated by bootStorage().
+// Synchronous shadow of every justvoice:* key. Populated by bootStorage().
 const cache = new Map();
 let booted = false;
 

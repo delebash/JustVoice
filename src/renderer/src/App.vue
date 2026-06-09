@@ -31,9 +31,9 @@ import WebhooksView from "./views/WebhooksView.vue";
 const VIEWS = [
   { id: "overview",  label: "Overview",  icon: "🏠", lede: "Current state of the server, catalogue, and cache held on disk.", component: OverviewView },
   { id: "generate",  label: "Generate",  icon: "📝", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it.", component: GenerateView },
-  { id: "books",     label: "Books",     icon: "📖", lede: "Audiobooks, game voicelines, podcasts — multi-use Project library.", component: BooksView },
+  { id: "books",     label: "Projects",  icon: "📖", lede: "Audiobooks, game voicelines, podcasts — multi-use Project library.", component: BooksView },
   { id: "stories",   label: "Stories",   icon: "🎬", lede: "Multi-track timeline editor. Voicebox's hallmark feature ported to Vue.", component: StoriesView },
-  { id: "chapter",   label: "Chapter",   icon: "📑", lede: "Multi-line script in, mastered chapter out. The audiobook-production endpoint.", component: ChapterView },
+  { id: "chapter",   label: "Chapter",   icon: "📑", lede: "Multi-line script in, mastered output out. Works for audiobook chapters, podcast episodes, game dialogue batches, or any multi-line script.", component: ChapterView },
   { id: "voices",    label: "Voices",    icon: "🎙️", lede: "The full voice catalogue. Clone, design, import, or blend new voices.", component: VoicesView },
   { id: "personas",  label: "Personas",  icon: "🎭", lede: "Named characters bound to voices. Stable across sessions.", component: PersonasView },
   { id: "lexicons",  label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Make character names pronounce consistently every render.", component: LexiconsView },
