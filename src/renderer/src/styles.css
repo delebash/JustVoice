@@ -387,6 +387,59 @@ input[type="radio"] { accent-color: var(--accent); }
 }
 
 /* ============================================================
+   .kbd — keyboard chord chip used in Settings → Capture for
+   the push-to-talk / toggle-to-talk hotkey display. Voicebox-
+   parity glyph mini-cap with monospace lettering.
+   ============================================================ */
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+
+/* ============================================================
+   .snippet-row — code-block + copy button pair. Used in
+   Settings → MCP for install snippet copy-paste UX.
+   ============================================================ */
+
+.snippet-row {
+  position: relative;
+  margin-top: 4px;
+}
+.snippet-row .jv-btn,
+.snippet-row .jv-btn--ghost {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+.snippet-row pre,
+.snippet-row .jv-code-block {
+  margin: 0;
+  padding: 10px 14px;
+  padding-right: 70px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ============================================================
    Connection status pill — voicebox-parity ConnectionStatus
    (online/offline/connecting). Lives in the Connection card
    header in Settings → General.

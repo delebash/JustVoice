@@ -398,6 +398,66 @@ const appearance = ref({
   accentHue: 158, // matches preview's green accent — hsl(158, 55%, 36%)
   locale: "en",
 });
+
+// ── Capture / Dictation settings (voicebox parity — preview Capture sub-tab) ──
+// Mirrors the shape of settings.capture in the server-side Settings model.
+// Persisted via PATCH /v1/settings when wired; for now uses localStorage so
+// the UI is interactive immediately.
+const CAPTURE_KEY = "justvoice:capture_settings";
+const capture = ref({
+  sttModel: "turbo",
+  llmModel: "1.7B",
+  refinementMode: "smart-cleanup",
+  language: "auto",
+  allowAutoPaste: true,
+  defaultPlaybackVoice: "",
+});
+try {
+  const raw = localStorage.getItem(CAPTURE_KEY);
+  if (raw) Object.assign(capture.value, JSON.parse(raw));
+} catch {}
+
+// ── MCP server settings + bindings (voicebox parity — preview MCP sub-tab) ──
+const mcp = ref({
+  enabled: true,
+  transport: "http",
+});
+const mcpBindings = ref([]);
+async function loadMcpBindings() {
+  const r = await api.safeRequest("/v1/mcp/bindings", { bindings: [] });
+  mcpBindings.value = (r?.bindings || []).map((b) => ({
+    client_id: b.client_id,
+    label: b.label,
+    persona: b.persona_id || null,
+    engine: b.engine || null,
+    last_seen: b.last_seen_at ? new Date(b.last_seen_at).toLocaleString() : null,
+  }));
+}
+
+const MCP_SNIPPETS = {
+  claude_desktop: `{
+  "mcpServers": {
+    "justvoice": {
+      "command": "justtts-server",
+      "args": ["mcp"],
+      "env": { "JV_CLIENT_ID": "claude_desktop_main" }
+    }
+  }
+}`,
+  claude_code: "claude mcp add justvoice -- justtts-server mcp --client-id claude_code_v1",
+  stdio: `"C:\\\\Program Files\\\\JustVoice\\\\mcp-shim.exe" --endpoint http://localhost:17494/mcp --client-id custom_demo`,
+};
+
+async function copySnippet(key) {
+  const text = MCP_SNIPPETS[key];
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    pushToast({ message: "Copied to clipboard.", duration: 2000 });
+  } catch {
+    pushToast({ message: "Couldn't access clipboard — copy manually.", kind: "warning", duration: 3000 });
+  }
+}
 function loadAppearance() {
   try {
     const raw = localStorage.getItem(APPEARANCE_KEY);
@@ -425,6 +485,7 @@ function applyAppearance() {
 onMounted(() => {
   loadAppearance();
   loadGpuInfo();
+  loadMcpBindings();
 });
 </script>
 
@@ -1019,52 +1080,274 @@ onMounted(() => {
     </div>
 
     <!-- ─── Capture / Dictation · placeholder. ─── -->
+    <!-- ─── Capture / Dictation (voicebox parity, preview lines 1640-1662) ─── -->
     <div v-show="activeSub === 'capture'" class="jv-section">
       <div class="jv-card">
-        <div class="jv-card__header"><h3 class="jv-card__title">Capture / Dictation</h3></div>
-        <p class="jv-muted">ChordPicker for push-to-talk + toggle hotkeys, Whisper STT model + LLM refinement model + capture language + auto-paste + 6-gate readiness checklist + speaker-correction-memory clear-all panel land with tasks <code>#84</code> and <code>#94</code>. See <a href="#captures">Captures tab</a> for the live readiness view.</p>
+        <div class="jv-card__header"><h3 class="jv-card__title">Hotkeys (ChordPicker)</h3></div>
+        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 14px">
+          Press-and-hold or toggle hotkeys for dictation. ChordPicker is a live keyboard combo editor —
+          press the chord, peak-set is captured, Esc/Tab pass through.
+        </p>
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Push-to-talk</div>
+              <div class="setting-row__desc">Hold the chord to record. Release to stop + transcribe.</div>
+            </div>
+            <div class="jv-row" style="gap: 6px">
+              <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">V</span>
+              <JvButton variant="ghost" size="sm" label="Edit" />
+              <JvButton variant="ghost" size="sm" label="Clear" />
+            </div>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Toggle-to-talk</div>
+              <div class="setting-row__desc">Press once to start, press again to stop. Useful for long passages.</div>
+            </div>
+            <div class="jv-row" style="gap: 6px">
+              <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">D</span>
+              <JvButton variant="ghost" size="sm" label="Edit" />
+              <JvButton variant="ghost" size="sm" label="Clear" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-show="activeSub === 'capture'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">Models</h3></div>
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">STT (Whisper)</div>
+              <div class="setting-row__desc">Speech-to-text model. Larger = better accuracy + slower. Turbo is best balance.</div>
+            </div>
+            <JvSelect
+              v-model="capture.sttModel"
+              :options="[
+                { label: 'faster-whisper-base.en (fast, recommended)', value: 'base.en' },
+                { label: 'faster-whisper-small.en', value: 'small.en' },
+                { label: 'faster-whisper-medium.en', value: 'medium.en' },
+                { label: 'faster-whisper-large-v3', value: 'large-v3' },
+                { label: 'faster-whisper-turbo (near-best, fast)', value: 'turbo' },
+              ]"
+            />
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">LLM refinement model</div>
+              <div class="setting-row__desc">Cleans transcribed text — fixes punctuation, capitalization, optional self-correction.</div>
+            </div>
+            <JvSelect
+              v-model="capture.llmModel"
+              :options="[
+                { label: 'Qwen 0.6B (fastest)', value: '0.6B' },
+                { label: 'Qwen 1.7B (balanced)', value: '1.7B' },
+                { label: 'Qwen 4B (best)', value: '4B' },
+                { label: 'Off — raw transcription only', value: 'off' },
+              ]"
+            />
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Refinement mode</div>
+              <div class="setting-row__desc">
+                smart-cleanup = punctuation + capitalization only. self-correction = also fixes likely misheard words.
+                preserve-technical = keep code-like tokens verbatim.
+              </div>
+            </div>
+            <JvSelect
+              v-model="capture.refinementMode"
+              :options="[
+                { label: 'smart-cleanup', value: 'smart-cleanup' },
+                { label: 'self-correction', value: 'self-correction' },
+                { label: 'preserve-technical', value: 'preserve-technical' },
+              ]"
+            />
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Capture language</div>
+              <div class="setting-row__desc">Whisper language hint. "auto" detects per-recording.</div>
+            </div>
+            <JvSelect
+              v-model="capture.language"
+              :options="[
+                { label: 'auto', value: 'auto' },
+                { label: 'English (en)', value: 'en' },
+                { label: 'Spanish (es)', value: 'es' },
+                { label: 'French (fr)', value: 'fr' },
+                { label: 'German (de)', value: 'de' },
+                { label: 'Japanese (ja)', value: 'ja' },
+              ]"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-show="activeSub === 'capture'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">Output</h3></div>
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Allow auto-paste</div>
+              <div class="setting-row__desc">
+                Paste transcription into the focused text field automatically. Requires Accessibility
+                permission on macOS (Privacy → Accessibility) and Input Monitoring for the hotkey.
+              </div>
+            </div>
+            <JvToggle v-model="capture.allowAutoPaste" aria-label="Allow auto-paste" />
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Default playback voice (MCP <code class="jv-mono">speak</code>)</div>
+              <div class="setting-row__desc">
+                Voice agents call <code class="jv-mono">justvoice.speak</code> with no voice arg. This is the
+                fallback profile they get.
+              </div>
+            </div>
+            <JvSelect v-model="capture.defaultPlaybackVoice" :options="[{ label: '(none — pick a profile)', value: '' }]" />
+          </div>
+        </div>
+        <p class="jv-muted" style="font-size: 11.5px; margin-top: 8px">
+          Captures live under <code class="jv-mono">~/.justvoice/captures/</code>. See the
+          <a href="#captures">Captures tab</a> for the live recording list + 6-gate readiness checklist.
+        </p>
       </div>
     </div>
 
     <!-- ─── MCP server — install snippets + tool listing (task #92) ─── -->
+    <!-- ─── MCP server (voicebox parity, preview lines 1664-1715) ─── -->
     <div v-show="activeSub === 'mcp'" class="jv-section">
       <div class="jv-card">
-        <div class="jv-card__header"><h3 class="jv-card__title">MCP server</h3></div>
-        <p class="jv-muted" style="margin-bottom: 16px">
-          JustVoice exposes its core capabilities (generate, list voices, list profiles, dictate)
-          as an MCP server over stdio so AI agents (Claude Desktop, claude-code, etc.) can drive
-          voice production directly.
+        <div class="jv-card__header" style="display: flex; align-items: center; gap: 10px">
+          <h3 class="jv-card__title" style="margin: 0">MCP server</h3>
+          <span class="jv-spacer" />
+          <span class="jv-pill jv-pill--green">on</span>
+        </div>
+        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 12px">
+          Exposes JustVoice tools to AI agents (Claude Desktop, claude-code, Unreal Editor, custom scripts).
+          The server runs in-process on the JustVoice port; agents connect via the URL below.
         </p>
+        <div class="settings-grid">
+          <JvField label="Endpoint" layout="block">
+            <JvInput :value="`${api.serverUrl}/mcp`" :readonly="true" />
+          </JvField>
+          <JvField label="Transport" layout="block">
+            <JvSelect
+              v-model="mcp.transport"
+              :options="[
+                { label: 'HTTP + SSE', value: 'http' },
+                { label: 'stdio (via shim)', value: 'stdio' },
+              ]"
+            />
+          </JvField>
+        </div>
+        <div class="setting-row" style="margin-top: 14px">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Enabled</div>
+              <div class="setting-row__desc">Toggle off to block agent connections without uninstalling.</div>
+            </div>
+            <JvToggle v-model="mcp.enabled" aria-label="MCP server enabled" />
+          </div>
+        </div>
+      </div>
+    </div>
 
-        <h4 style="margin-top: 12px; margin-bottom: 8px;">Claude Desktop</h4>
-        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 6px">
-          Add to <code class="jv-mono">~/Library/Application Support/Claude/claude_desktop_config.json</code>
-          (macOS) or <code class="jv-mono">%APPDATA%\Claude\claude_desktop_config.json</code> (Windows):
+    <div v-show="activeSub === 'mcp'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">Exposed tools</h3></div>
+        <div class="jv-row" style="gap: 6px; flex-wrap: wrap; margin-top: 8px">
+          <span class="jv-chip-card"><strong>speak</strong> · synth + play</span>
+          <span class="jv-chip-card"><strong>transcribe</strong> · WAV → text</span>
+          <span class="jv-chip-card"><strong>list_captures</strong></span>
+          <span class="jv-chip-card"><strong>list_profiles</strong></span>
+          <span class="jv-chip-card"><strong>list_personas</strong></span>
+          <span class="jv-chip-card"><strong>render_chapter</strong></span>
+          <span class="jv-chip-card"><strong>refine</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <div v-show="activeSub === 'mcp'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">Per-client bindings</h3></div>
+        <p class="jv-muted" style="font-size: 12.5px">
+          Bind a default voice and engine per client ID. Agents that send their <code class="jv-mono">JV_CLIENT_ID</code>
+          get the bound voice when calling <code class="jv-mono">speak</code> without arguments.
         </p>
-        <pre class="jv-code-block">{
+        <table class="jv-table" style="margin-top: 12px">
+          <thead>
+            <tr>
+              <th>Client ID</th><th>Label</th><th>Default persona</th><th>Default engine</th><th>Last seen</th><th class="right"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="b in mcpBindings" :key="b.client_id">
+              <td><code class="jv-mono">{{ b.client_id }}</code></td>
+              <td>{{ b.label || "—" }}</td>
+              <td>{{ b.persona || "(none)" }}</td>
+              <td>{{ b.engine || "(none)" }}</td>
+              <td class="jv-muted">{{ b.last_seen || "never" }}</td>
+              <td class="right">
+                <JvButton variant="ghost" size="sm" label="Edit" />
+                <JvButton variant="ghost" size="sm" label="✕" />
+              </td>
+            </tr>
+            <tr v-if="!mcpBindings.length">
+              <td colspan="6" class="jv-muted" style="text-align: center; padding: 16px">
+                No clients connected yet. Bindings appear here when an agent first calls a tool with its client ID.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-show="activeSub === 'mcp'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">Install snippets</h3></div>
+
+        <h4 style="margin: 14px 0 6px; font-size: 12.5px; color: var(--ink-2)">Claude Desktop · <code class="jv-mono">claude_desktop_config.json</code></h4>
+        <div class="snippet-row">
+          <pre class="jv-code-block">{
   "mcpServers": {
     "justvoice": {
       "command": "justtts-server",
-      "args": ["mcp"]
+      "args": ["mcp"],
+      "env": { "JV_CLIENT_ID": "claude_desktop_main" }
     }
   }
 }</pre>
+          <JvButton variant="ghost" size="sm" label="Copy" @click="copySnippet('claude_desktop')" />
+        </div>
 
-        <h4 style="margin-top: 16px; margin-bottom: 8px;">claude-code (CLI)</h4>
-        <pre class="jv-code-block">claude mcp add justvoice -- justtts-server mcp</pre>
+        <h4 style="margin: 14px 0 6px; font-size: 12.5px; color: var(--ink-2)">claude-code CLI</h4>
+        <div class="snippet-row">
+          <pre class="jv-code-block">claude mcp add justvoice -- justtts-server mcp --client-id claude_code_v1</pre>
+          <JvButton variant="ghost" size="sm" label="Copy" @click="copySnippet('claude_code')" />
+        </div>
 
-        <h4 style="margin-top: 16px; margin-bottom: 8px;">Exposed tools</h4>
-        <ul class="jv-muted" style="font-size: 12.5px; margin-left: 18px; line-height: 1.7">
-          <li><code class="jv-mono">justvoice.speak</code> — render text to audio + play through default device</li>
-          <li><code class="jv-mono">justvoice.generate</code> — render text to audio, return WAV bytes</li>
-          <li><code class="jv-mono">justvoice.list_voices</code> — catalog of all available voices</li>
-          <li><code class="jv-mono">justvoice.list_profiles</code> — saved voice profiles + personalities</li>
-          <li><code class="jv-mono">justvoice.dictate_start</code> / <code class="jv-mono">dictate_stop</code> — push-to-talk transcription</li>
-        </ul>
-        <p class="jv-muted" style="font-size: 11.5px; margin-top: 10px">
-          Per-client bindings table (enable/disable per tool per client) lands with the Captures
-          MCP integration — see <a href="#captures">Captures tab</a>.
-        </p>
+        <h4 style="margin: 14px 0 6px; font-size: 12.5px; color: var(--ink-2)">stdio shim (Unreal / custom)</h4>
+        <div class="snippet-row">
+          <pre class="jv-code-block">"C:\\Program Files\\JustVoice\\mcp-shim.exe" --endpoint http://localhost:17494/mcp --client-id custom_demo</pre>
+          <JvButton variant="ghost" size="sm" label="Copy" @click="copySnippet('stdio')" />
+        </div>
       </div>
     </div>
 
