@@ -13,6 +13,9 @@ import JvTag from "../components/jv/JvTag.vue";
 import ImportModal from "./ImportModal.vue";
 import { projectsService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
+import { useCopy } from "../services/copy.js";
+
+const copy = useCopy();
 
 const projects = ref([]);
 const selectedId = ref(null);
@@ -126,7 +129,7 @@ onMounted(refresh);
 
       <div v-if="loading" class="books__empty jv-muted">Loading…</div>
       <div v-else-if="filtered.length === 0" class="books__empty">
-        <p class="jv-muted">No projects yet.</p>
+        <p class="jv-muted">No {{ copy.book.plural.toLowerCase() }} yet.</p>
         <JvButton variant="secondary" size="sm" label="+ Import…" @click="showImport = true" style="margin-top: 12px" />
       </div>
 
@@ -141,16 +144,16 @@ onMounted(refresh);
           <JvTag :label="PROJECT_TYPE_LABEL[p.project_type] ?? p.project_type" />
           <strong class="jv-ellipsis">{{ p.name }}</strong>
         </div>
-        <span class="jv-pane-list__meta">{{ p.scene_count }} scenes</span>
+        <span class="jv-pane-list__meta">{{ p.scene_count }} {{ copy.chapter.plural.toLowerCase() }}</span>
       </div>
     </ListPane>
 
     <div class="books__detail">
       <div v-if="!selectedProject" class="books__detail-empty jv-card">
-        <p class="jv-muted">Select a project on the left, or import one from JustWrite / a CSV / an SRT / Audacity labels / a JustVoice standard JSON to get started.</p>
+        <p class="jv-muted">Select a {{ copy.book.singular.toLowerCase() }} on the left, or import one from JustWrite / a CSV / an SRT / Audacity labels / a JustVoice standard JSON.</p>
         <div class="jv-btn-group" style="margin-top: 16px; justify-content: center;">
           <JvButton variant="primary" label="+ Import…" @click="showImport = true" />
-          <JvButton variant="secondary" label="+ New blank project" @click="createBlank" />
+          <JvButton variant="secondary" :label="`+ New blank ${copy.book.singular.toLowerCase()}`" @click="createBlank" />
         </div>
       </div>
 

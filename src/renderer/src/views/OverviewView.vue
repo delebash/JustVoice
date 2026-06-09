@@ -4,7 +4,9 @@ import { ref, onMounted, computed } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import JvTag from "../components/jv/JvTag.vue";
+import { useCopy } from "../services/copy.js";
 
+const copy = useCopy();
 const api = useApi();
 const health = ref(null);
 const engines = ref([]);
@@ -59,7 +61,7 @@ onMounted(refresh);
           </div>
         </div>
         <div class="jv-card overview-view__stat">
-          <div class="overview-view__stat-label">Personas</div>
+          <div class="overview-view__stat-label">{{ copy.cast.plural }}</div>
           <div class="overview-view__stat-value">{{ personas.length }}</div>
           <div class="overview-view__stat-sub jv-muted">named &amp; bound</div>
         </div>
