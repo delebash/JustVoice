@@ -246,6 +246,69 @@
    Toaster (vue-sonner) — Toast.vue sets class="jv-toaster"
    ============================================================ */
 
+/* Quiet inline note — used by OverviewView's headless-mode call-out and
+   anywhere else we want a one-line "info" / "warn" / "danger" callout
+   without the heavy bordered banner. Plain paragraph that flows at the
+   content edge so the text aligns with the lede/headings around it. */
+p.note {
+  display: block;
+  margin: 0 0 22px;
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.65;
+}
+p.note strong { color: var(--ink); }
+p.note .tag-info,
+p.note .tag-warn,
+p.note .tag-danger {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--voicebox, #2f74b5);
+  padding: 1px 7px;
+  border-radius: 3px;
+  margin-right: 8px;
+  vertical-align: baseline;
+}
+p.note .tag-warn   { background: var(--warn); }
+p.note .tag-danger { background: var(--danger); }
+p.note code {
+  background: var(--surface-3);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+/* vue-sonner's <Toaster> renders an <ol> as a static block by default;
+   if it ends up inside our .app-shell grid it gets the 80px sidebar
+   column width and toasts wrap one character per line. Force the
+   toaster ol to position:fixed at the bottom-center so it escapes
+   the grid regardless of where it mounts. */
+ol.jv-toaster {
+  position: fixed !important;
+  bottom: 40px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: auto !important;
+  max-width: 420px !important;
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  z-index: 1000 !important;
+  pointer-events: none;
+}
+ol.jv-toaster > li,
+ol.jv-toaster > [data-sonner-toast] {
+  display: block !important;
+  width: 420px !important;
+  max-width: 90vw !important;
+  pointer-events: auto;
+}
 .jv-toaster [data-sonner-toast] {
   font-family: var(--font-ui) !important;
   border-radius: var(--r-card) !important;
@@ -253,6 +316,8 @@
   background: var(--surface) !important;
   color: var(--ink) !important;
   box-shadow: var(--shadow-2) !important;
+  white-space: normal !important;
+  word-break: normal !important;
 }
 .jv-toaster [data-sonner-toast][data-type="success"] { border-color: var(--success-line) !important; }
 .jv-toaster [data-sonner-toast][data-type="error"]   { border-color: var(--danger-line) !important;  }

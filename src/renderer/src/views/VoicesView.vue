@@ -75,7 +75,7 @@ const TYPE_FILTERS = [
 ];
 
 const filteredVoices = computed(() => {
-  let list = voices.value;
+  let list = voices.value || [];
   if (typeFilter.value !== "all") list = list.filter((v) => v.source === typeFilter.value);
   if (search.value.trim()) {
     const q = search.value.trim().toLowerCase();
@@ -85,13 +85,14 @@ const filteredVoices = computed(() => {
 });
 
 const typeCounts = computed(() => {
-  const cs = { all: voices.value.length, clone: 0, preset: 0, design: 0, blend: 0 };
-  for (const v of voices.value) if (cs[v.source] !== undefined) cs[v.source]++;
+  const list = voices.value || [];
+  const cs = { all: list.length, clone: 0, preset: 0, design: 0, blend: 0 };
+  for (const v of list) if (cs[v.source] !== undefined) cs[v.source]++;
   return cs;
 });
 
 // ── Voice clone gate (#99) — Chatterbox is the only local clone engine. ──
-const chatterboxLoaded = computed(() => engines.value.some((e) => e.id?.includes("chatterbox") && e.status === "loaded"));
+const chatterboxLoaded = computed(() => (engines.value || []).some((e) => e?.id?.includes("chatterbox") && e?.status === "loaded"));
 
 // ── Voice preview (LRU-cached on backend). ──────────────────────────
 const previewAudio = ref(null);
@@ -115,10 +116,14 @@ async function previewVoice(v) {
 }
 
 async function refresh() {
-  const v = await api.request("/v1/voices");
-  voices.value = v.voices;
-  const e = await api.request("/v1/engines");
-  engines.value = e.engines;
+  try {
+    const v = await api.request("/v1/voices");
+    voices.value = v?.voices ?? [];
+  } catch { voices.value = []; }
+  try {
+    const e = await api.request("/v1/engines");
+    engines.value = e?.engines ?? [];
+  } catch { engines.value = []; }
 }
 
 const orphanIds = computed(() => {

@@ -136,6 +136,23 @@ watch(
   { immediate: true },
 );
 
+// Hash routing: keep the URL in sync both directions.
+//   - Hash change (back/forward, bookmarked URL) updates the active view.
+//   - Active view change writes the hash so deep-linking works.
+if (typeof window !== "undefined") {
+  window.addEventListener("hashchange", () => {
+    const hashId = window.location.hash.replace(/^#/, "");
+    if (hashId && VIEWS.some((v) => v.id === hashId) && view.value !== hashId) {
+      view.value = hashId;
+    }
+  });
+}
+watch(view, (v) => {
+  if (typeof window !== "undefined" && v && window.location.hash.replace(/^#/, "") !== v) {
+    window.history.replaceState(null, "", "#" + v);
+  }
+});
+
 function onWelcomeClosed() {
   // The store has already flipped shown=true and persisted; re-route
   // the default tab now that we know the producer's intent.

@@ -2,38 +2,69 @@
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import { useApi } from "../stores/api.js";
+import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
+import JvButton from "../components/jv/JvButton.vue";
 import JvTag from "../components/jv/JvTag.vue";
 import { useCopy } from "../services/copy.js";
 
 const copy = useCopy();
 const api = useApi();
+const tasks = useRenderTasks();
+
 const health = ref(null);
 const engines = ref([]);
 const voices = ref([]);
 const personas = ref([]);
+const projects = ref([]);
+const lexicons = ref([]);
+const captures = ref([]);
 const stats = ref(null);
+const recentGenerations = ref([]);
+const loadedEngine = ref(null);
 
-async function refresh() {
+let toastedUnreachable = false;
+async function safeRequest(path, fallback) {
   try {
-    const [h, e, v, p, s] = await Promise.all([
-      api.request("/v1/health"),
-      api.request("/v1/engines"),
-      api.request("/v1/voices"),
-      api.request("/v1/personas"),
-      api.request("/v1/cache/stats"),
-    ]);
-    health.value = h;
-    engines.value = e.engines;
-    voices.value = v.voices;
-    personas.value = p.personas || [];
-    stats.value = s;
+    return await api.request(path);
   } catch (err) {
-    pushToast({ message: `Server unreachable: ${err.message || err}`, kind: "error" });
+    if (!toastedUnreachable) {
+      toastedUnreachable = true;
+      pushToast({ message: `Server unreachable: ${err.message || err}. Some panels will show "—".`, kind: "error" });
+    }
+    return fallback;
   }
 }
 
-const installedCount = computed(() => engines.value.filter((e) => e.status !== "not_installed").length);
+async function refresh() {
+  // Run every catalogue probe in parallel; any failure just leaves the
+  // relevant stat empty rather than nuking the whole view with a fatal.
+  const [h, e, v, p, pr, lx, ca, s, g, ce] = await Promise.all([
+    safeRequest("/v1/health", null),
+    safeRequest("/v1/engines", { engines: [] }),
+    safeRequest("/v1/voices", { voices: [] }),
+    safeRequest("/v1/personas", { personas: [] }),
+    safeRequest("/v1/projects", { projects: [] }),
+    safeRequest("/v1/lexicons", { lexicons: [] }),
+    safeRequest("/v1/captures?limit=1", { captures: [], total: null }),
+    safeRequest("/v1/cache/stats", null),
+    safeRequest("/v1/generations/recent?limit=5", { generations: [] }),
+    safeRequest("/v1/engines/current", { engine: null }),
+  ]);
+  health.value = h;
+  engines.value = e.engines || [];
+  voices.value = v.voices || [];
+  personas.value = p.personas || [];
+  projects.value = pr.projects || [];
+  lexicons.value = lx.lexicons || [];
+  captures.value = ca.captures || [];
+  // Total may come back as null when the server is down; treat as "—".
+  captures.totalCount = ca.total ?? (ca.captures?.length ?? null);
+  stats.value = s;
+  recentGenerations.value = g.generations || [];
+  loadedEngine.value = ce.engine || null;
+}
+
 const voicesByEngine = computed(() => {
   const map = {};
   for (const v of voices.value) {
@@ -43,69 +74,199 @@ const voicesByEngine = computed(() => {
   return map;
 });
 
+const projectsByType = computed(() => {
+  const map = {};
+  for (const p of projects.value) {
+    const k = p.project_type || "custom";
+    map[k] = (map[k] || 0) + 1;
+  }
+  return map;
+});
+
+const projectsSummary = computed(() => {
+  const m = projectsByType.value;
+  const parts = [];
+  if (m.audiobook) parts.push(`${m.audiobook} audiobook`);
+  if (m.game_voicelines) parts.push(`${m.game_voicelines} game`);
+  if (m.podcast) parts.push(`${m.podcast} podcast`);
+  if (m.custom) parts.push(`${m.custom} custom`);
+  return parts.length ? parts.join(" · ") : "—";
+});
+
+const lexiconEntriesSummary = computed(() => {
+  if (!lexicons.value.length) return "—";
+  const total = lexicons.value.reduce((s, lx) => s + (lx.entry_count ?? 0), 0);
+  return `${total} entries`;
+});
+
+const cacheMB = computed(() => {
+  if (!stats.value) return "—";
+  return (stats.value.total_bytes_on_disk / 1024 / 1024).toFixed(1);
+});
+
+const cacheHitRate = computed(() => {
+  if (!stats.value || !stats.value.hits || !stats.value.requests) return "—";
+  return Math.round((stats.value.hits / stats.value.requests) * 100) + "%";
+});
+
+const captureCount = computed(() => captures.totalCount ?? captures.value.length ?? 0);
+
+function fmtAgo(iso) {
+  if (!iso) return "—";
+  const t = new Date(iso).getTime();
+  const ago = Date.now() - t;
+  if (ago < 60_000) return Math.floor(ago / 1000) + "s ago";
+  if (ago < 3_600_000) return Math.floor(ago / 60_000) + "m ago";
+  if (ago < 86_400_000) return Math.floor(ago / 3_600_000) + "h ago";
+  return Math.floor(ago / 86_400_000) + "d ago";
+}
+
+function fmtDur(sec) {
+  if (sec == null) return "—";
+  const s = Math.round(sec);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+const runningTasks = computed(() => tasks.running || []);
+
 onMounted(refresh);
 </script>
 
 <template>
   <div class="overview-view">
-    <!-- ── Catalogue stats ──────────────────────────────────────────────── -->
+    <p class="note">
+      <span class="tag-info">info</span>
+      <strong>Headless mode also available.</strong>
+      Launch the Python sidecar via <code>justtts-server serve --port 17494</code>. The same UI is served at
+      <code>http://localhost:17494/ui/</code> so you can run JustVoice on a remote box and hit it from any browser.
+    </p>
+
+    <!-- ── Catalogue: 6 stat tiles per preview HTML §Overview ─────────── -->
     <div class="jv-section">
-      <h3 class="jv-section__title">Catalogue</h3>
+      <h3 class="jv-section__title">Catalogue <JvTag variant="default" label="JustVoice" /></h3>
       <div class="overview-view__stats">
         <div class="jv-card overview-view__stat">
           <div class="overview-view__stat-label">Voices</div>
-          <div class="overview-view__stat-value">{{ voices.length }}</div>
+          <div class="overview-view__stat-value">{{ voices.length || 0 }}</div>
           <div class="overview-view__stat-sub jv-muted">
-            across {{ Object.keys(voicesByEngine).length }}
-            engine{{ Object.keys(voicesByEngine).length === 1 ? "" : "s" }}
+            across {{ Object.keys(voicesByEngine).length || 0 }} engine{{ Object.keys(voicesByEngine).length === 1 ? "" : "s" }}
           </div>
         </div>
         <div class="jv-card overview-view__stat">
           <div class="overview-view__stat-label">{{ copy.cast.plural }}</div>
-          <div class="overview-view__stat-value">{{ personas.length }}</div>
+          <div class="overview-view__stat-value">{{ personas.length || 0 }}</div>
           <div class="overview-view__stat-sub jv-muted">named &amp; bound</div>
         </div>
-        <div v-if="stats" class="jv-card overview-view__stat">
+        <div class="jv-card overview-view__stat">
+          <div class="overview-view__stat-label">{{ copy.book.plural }}</div>
+          <div class="overview-view__stat-value">{{ projects.length || 0 }}</div>
+          <div class="overview-view__stat-sub jv-muted">{{ projectsSummary }}</div>
+        </div>
+        <div class="jv-card overview-view__stat">
+          <div class="overview-view__stat-label">Lexicons</div>
+          <div class="overview-view__stat-value">{{ lexicons.length || 0 }}</div>
+          <div class="overview-view__stat-sub jv-muted">{{ lexiconEntriesSummary }}</div>
+        </div>
+        <div class="jv-card overview-view__stat">
           <div class="overview-view__stat-label">Cache</div>
           <div class="overview-view__stat-value">
-            {{ (stats.total_bytes_on_disk / 1024 / 1024).toFixed(1) }}<span class="overview-view__unit">MB</span>
+            <template v-if="stats && Number.isFinite(parseFloat(cacheMB))">{{ cacheMB }}<span class="overview-view__unit">MB</span></template>
+            <template v-else>—</template>
           </div>
-          <div class="overview-view__stat-sub jv-muted">{{ stats.total_entries_on_disk }} entries on disk</div>
+          <div class="overview-view__stat-sub jv-muted">
+            <template v-if="stats">{{ stats.total_entries_on_disk ?? 0 }} entries<span v-if="cacheHitRate !== '—'"> · {{ cacheHitRate }} hit</span></template>
+            <template v-else>server offline</template>
+          </div>
+        </div>
+        <div class="jv-card overview-view__stat">
+          <div class="overview-view__stat-label">Captures</div>
+          <div class="overview-view__stat-value">{{ captureCount }}</div>
+          <div class="overview-view__stat-sub jv-muted">last 30 days</div>
         </div>
       </div>
     </div>
 
-    <!-- ── Engines ─────────────────────────────────────────────────────── -->
-    <div class="jv-section" v-if="health && health.engines && health.engines.length">
-      <h3 class="jv-section__title">Engines</h3>
+    <!-- ── Loaded engine card per preview HTML §Overview ──────────────── -->
+    <div class="jv-section">
+      <h3 class="jv-section__title">Loaded engine <JvTag variant="default" label="combined" /></h3>
+      <div class="jv-card overview-view__loaded">
+        <template v-if="loadedEngine">
+          <div class="overview-view__loaded-cell">
+            <div class="overview-view__loaded-k">Engine</div>
+            <strong class="overview-view__loaded-v">{{ loadedEngine.name }}</strong>
+          </div>
+          <div class="overview-view__loaded-cell">
+            <div class="overview-view__loaded-k">Backend</div>
+            <span class="jv-muted">{{ loadedEngine.backend || loadedEngine.device || "—" }}</span>
+          </div>
+          <div class="overview-view__loaded-cell" v-if="loadedEngine.vram_total_mb">
+            <div class="overview-view__loaded-k">VRAM</div>
+            <span class="jv-muted">{{ (loadedEngine.vram_used_mb || 0) / 1024 | 0 }} / {{ (loadedEngine.vram_total_mb / 1024).toFixed(0) }} GB</span>
+          </div>
+          <div class="jv-spacer" />
+          <JvButton variant="secondary" size="sm" label="Unload" />
+          <JvButton variant="primary" size="sm" label="Switch" />
+        </template>
+        <template v-else>
+          <p class="jv-muted" style="margin: 4px 0">No engine loaded. <a href="#engines">Go to Engines → Load</a> to pick one.</p>
+        </template>
+      </div>
+    </div>
 
+    <!-- ── Active tasks card — always shown, empty state when nothing in flight. -->
+    <div class="jv-section">
+      <h3 class="jv-section__title">Active tasks <JvTag variant="accent" label="new" /></h3>
+      <div class="jv-card">
+        <template v-if="runningTasks.length">
+          <div v-for="t in runningTasks" :key="t.id" class="overview-view__task">
+            <span class="jv-pill jv-pill--solid">● {{ t.kind || "Render" }}</span>
+            <strong>{{ t.label }}</strong>
+            <span class="jv-muted">{{ t.statsLine || "" }}</span>
+            <div class="jv-spacer" />
+            <div class="overview-view__task-bar">
+              <div
+                class="overview-view__task-fill"
+                :style="{ width: ((t.progress ?? 0) * 100) + '%' }"
+              />
+            </div>
+            <JvButton variant="danger-outline" size="sm" label="Cancel" @click="t.onCancel?.()" />
+          </div>
+        </template>
+        <p v-else class="jv-muted overview-view__empty">
+          Nothing in flight. Renders started from <a href="#generate">Generate</a>, <a href="#chapter">Chapter</a>, or batch renders from <a href="#books">{{ copy.book.plural }}</a> show up here with a live progress bar + cancel.
+        </p>
+      </div>
+    </div>
+
+    <!-- ── Recent generations table — always shown, empty state when no history. -->
+    <div class="jv-section">
+      <h3 class="jv-section__title">Recent generations <JvTag variant="default" label="voicebox" /></h3>
       <div class="jv-card jv-card--flat">
-        <table class="jv-table">
+        <table v-if="recentGenerations.length" class="jv-table">
           <thead>
-            <tr>
-              <th>Name</th>
-              <th>Backend</th>
-              <th>Status</th>
-            </tr>
+            <tr><th>When</th><th>Voice</th><th>Text</th><th>Duration</th><th class="jv-table__actions">Actions</th></tr>
           </thead>
           <tbody>
-            <tr v-for="e in health.engines" :key="e.id">
+            <tr v-for="g in recentGenerations" :key="g.id">
+              <td class="jv-muted">{{ fmtAgo(g.created_at) }}</td>
               <td>
-                <strong>{{ e.name }}</strong>
-                <span v-if="e.id && e.id.includes('stub')" class="jv-muted"> — stub</span>
+                <strong>{{ g.voice_name || g.voice_id }}</strong>
+                <span v-if="g.engine" class="jv-pill jv-pill--ghost" style="margin-left: 6px">{{ g.engine }}</span>
               </td>
-              <td>{{ e.backend }}</td>
-              <td>
-                <JvTag
-                  :label="e.ready ? 'Ready' : 'Not loaded'"
-                  :variant="e.ready ? 'success' : 'default'"
-                />
+              <td class="jv-muted" style="max-width: 480px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
+                "{{ (g.text || "").slice(0, 80) }}{{ (g.text || "").length > 80 ? "…" : "" }}"
+              </td>
+              <td>{{ fmtDur(g.duration_sec) }}</td>
+              <td class="jv-table__actions">
+                <JvButton variant="ghost" size="sm" label="▶" />
+                <JvButton variant="ghost" size="sm" label="★" />
+                <JvButton variant="ghost" size="sm" label="↻" />
               </td>
             </tr>
           </tbody>
         </table>
-        <p class="jv-muted" style="font-size: 12px; margin-top: 12px">
-          {{ installedCount }} of {{ engines.length }} installed. One engine is loaded at a time.
+        <p v-else class="jv-muted overview-view__empty">
+          No renders yet. Open <a href="#generate">Generate</a> to produce your first line, or import a manuscript from <a href="#books">{{ copy.book.plural }}</a>. Recent generations appear here with replay / favorite / re-render actions.
         </p>
       </div>
     </div>
@@ -154,5 +315,62 @@ onMounted(refresh);
 
 .overview-view__stat-sub {
   font-size: 12px;
+}
+
+.overview-view__loaded {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.overview-view__loaded-cell { min-width: 0; }
+.overview-view__loaded-k {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.overview-view__loaded-v {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.overview-view__task {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+.overview-view__task + .overview-view__task {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  margin-top: 8px;
+}
+.overview-view__task-bar {
+  width: 220px;
+  height: 8px;
+  background: var(--surface-3);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+.overview-view__task-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--r-pill);
+  transition: width 0.3s ease;
+}
+
+.overview-view__empty {
+  margin: 0;
+  padding: 6px 0;
+  font-size: 13px;
+}
+.overview-view__empty a {
+  color: var(--accent);
+  text-decoration: underline;
 }
 </style>
