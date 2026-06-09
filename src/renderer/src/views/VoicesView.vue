@@ -15,6 +15,105 @@ const api = useApi();
 const voices = ref([]);
 const engines = ref([]);
 
+// ── Gender auto-detect + click-cycle override (lift #85). ─────────────
+//
+// Auto-detect rules:
+//   - OpenAI voices: built-in canon (Alloy/Echo/Fable/Onyx/Nova/Shimmer + Ash/Coral/Sage/Verse/Ballad)
+//   - Kokoro voices: parse <region><gender>_<name> (af_alloy = American Female, bm_george = British Male)
+//   - Cloned / freeform: first-name dictionary; ambiguous names left unset
+const OPENAI_VOICE_GENDER = {
+  alloy:"N", echo:"M", fable:"M", onyx:"M", nova:"F", shimmer:"F",
+  ash:"M", coral:"F", sage:"N", verse:"M", ballad:"M",
+};
+const FIRST_NAME_GENDER = {
+  // Female-leaning
+  sarah:"F", emma:"F", lily:"F", maya:"F", anna:"F", mara:"F", lisa:"F", rachel:"F", chloe:"F", hannah:"F", grace:"F", sophia:"F", olivia:"F", emily:"F", isabella:"F", ava:"F", mia:"F", abigail:"F", nicole:"F", katie:"F", laura:"F",
+  // Male-leaning
+  michael:"M", james:"M", john:"M", robert:"M", david:"M", peter:"M", paul:"M", george:"M", thomas:"M", chris:"M", brian:"M", scott:"M", mark:"M", jack:"M", henry:"M", oliver:"M", tom:"M", andrew:"M", daniel:"M",
+  // Ambiguous — deliberately omitted: alex, jamie, sam, riley, charlie, taylor, jordan, robin, casey
+};
+function autoDetectGender(v) {
+  if (v.gender_user_override) return v.gender_user_override;
+  if (v.gender) return v.gender;
+  if (v.engine === "openai" || v.engine?.startsWith("openai")) {
+    const m = OPENAI_VOICE_GENDER[v.name?.toLowerCase()];
+    if (m) return m;
+  }
+  if (v.engine === "kokoro") {
+    // af_alloy → American Female; bm_george → British Male
+    const m = /^[a-z]([fm])_/.exec(v.name?.toLowerCase() || "");
+    if (m) return m[1] === "f" ? "F" : "M";
+  }
+  // Cloned / freeform voices — match leading first-name token (sarah.wav, michael.wav).
+  const first = v.name?.toLowerCase()?.split(/[\s._-]/)[0];
+  if (first && FIRST_NAME_GENDER[first]) return FIRST_NAME_GENDER[first];
+  return "?";
+}
+
+const GENDER_CYCLE = ["?", "F", "M", "N", ""];
+function cycleGender(v) {
+  const cur = autoDetectGender(v);
+  const idx = GENDER_CYCLE.indexOf(cur);
+  const next = GENDER_CYCLE[(idx + 1) % GENDER_CYCLE.length];
+  // TODO: persist via PATCH /v1/voices/{id} { gender_user_override: next }.
+  // For now, write to in-memory voice object so the cycle is visible.
+  v.gender_user_override = next || null;
+  if (next === "") v.gender_user_override = null;
+  voices.value = [...voices.value]; // force reactivity
+}
+
+// ── Catalog filtering + search. ──────────────────────────────────────
+const search = ref("");
+const typeFilter = ref("all"); // all | clone | preset | design | blend
+
+const TYPE_FILTERS = [
+  { id: "all",    label: "All" },
+  { id: "clone",  label: "Cloned" },
+  { id: "preset", label: "Preset" },
+  { id: "design", label: "Designed" },
+  { id: "blend",  label: "Blended" },
+];
+
+const filteredVoices = computed(() => {
+  let list = voices.value;
+  if (typeFilter.value !== "all") list = list.filter((v) => v.source === typeFilter.value);
+  if (search.value.trim()) {
+    const q = search.value.trim().toLowerCase();
+    list = list.filter((v) => (v.name || "").toLowerCase().includes(q) || (v.id || "").toLowerCase().includes(q));
+  }
+  return list;
+});
+
+const typeCounts = computed(() => {
+  const cs = { all: voices.value.length, clone: 0, preset: 0, design: 0, blend: 0 };
+  for (const v of voices.value) if (cs[v.source] !== undefined) cs[v.source]++;
+  return cs;
+});
+
+// ── Voice clone gate (#99) — Chatterbox is the only local clone engine. ──
+const chatterboxLoaded = computed(() => engines.value.some((e) => e.id?.includes("chatterbox") && e.status === "loaded"));
+
+// ── Voice preview (LRU-cached on backend). ──────────────────────────
+const previewAudio = ref(null);
+const previewingId = ref(null);
+async function previewVoice(v) {
+  previewingId.value = v.id;
+  if (previewAudio.value) {
+    URL.revokeObjectURL(previewAudio.value);
+    previewAudio.value = null;
+  }
+  try {
+    const blob = await api.request(`/v1/voices/${v.id}/preview`, { method: "POST" });
+    previewAudio.value = URL.createObjectURL(blob);
+    const audio = new Audio(previewAudio.value);
+    audio.play().catch(() => {});
+  } catch (e) {
+    pushToast({ message: `Preview failed: ${e.message || e}`, kind: "error" });
+  } finally {
+    previewingId.value = null;
+  }
+}
+
 async function refresh() {
   const v = await api.request("/v1/voices");
   voices.value = v.voices;
@@ -220,67 +319,109 @@ function voiceTypeVariant(source) {
 </script>
 
 <template>
-  <!-- ── Add a voice ──────────────────────────────────────────────────── -->
-  <div class="jv-section">
-    <div class="jv-card">
-      <div class="jv-card__header">
-        <h3 class="jv-card__title">Add a voice</h3>
-      </div>
-      <div class="jv-btn-group" style="margin-bottom: 14px;">
-        <JvButton variant="secondary" @click="openModal('clone')">Clone from reference</JvButton>
-        <JvButton variant="secondary" @click="openModal('design')">Design from prose</JvButton>
-        <JvButton variant="secondary" @click="openModal('import')">Import existing clip</JvButton>
-        <JvButton variant="secondary" @click="openModal('blend')">Blend voices</JvButton>
-      </div>
-      <p class="jv-muted" style="font-size: 12px; line-height: 1.6;">
-        <strong style="color: var(--ink);">Clone</strong>: 3–30 second reference WAV → cloned voice (Qwen3, Chatterbox).
-        <strong style="color: var(--ink);">Design</strong>: prose description → voice (Qwen3 native).
-        <strong style="color: var(--ink);">Import</strong>: bring your own clip as-is, no synthesis training.
-        <strong style="color: var(--ink);">Blend</strong>: interpolate between two or more voices in embedding space (engines with <code class="jv-mono">supports_embedding_blending</code>).
-      </p>
+  <!-- ── Toolbar: search + type filter + + Clone primary action ─────────── -->
+  <div class="voices-view__toolbar">
+    <JvInput v-model="search" placeholder="Search voices…" class="voices-view__search" />
+    <div class="voices-view__chips">
+      <button
+        v-for="f in TYPE_FILTERS"
+        :key="f.id"
+        class="jv-pill"
+        :class="typeFilter === f.id ? 'jv-pill--solid' : 'jv-pill--ghost'"
+        @click="typeFilter = f.id"
+      >{{ f.label }} ({{ typeCounts[f.id] || 0 }})</button>
     </div>
+    <span class="jv-spacer" />
+    <JvButton variant="secondary" size="sm" label="⬇ Import .justvoice.zip" @click="openModal('import')" />
+    <JvButton
+      variant="primary"
+      size="sm"
+      :disabled="!chatterboxLoaded"
+      :title="chatterboxLoaded ? '' : 'Voice cloning requires Chatterbox loaded'"
+      label="+ Clone new voice"
+      @click="openModal('clone')"
+    />
   </div>
 
-  <!-- ── Voice table ──────────────────────────────────────────────────── -->
-  <div class="jv-section">
-    <div class="jv-card">
-      <div class="jv-card__header">
-        <h3 class="jv-card__title">{{ voices.length }} voices registered</h3>
-      </div>
-      <table v-if="voices.length" class="jv-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Engine</th>
-            <th>Type</th>
-            <th>Lang</th>
-            <th>Identifier</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="v in voices" :key="v.id" :class="{ 'row-orphan': orphanIds.includes(v.id) }">
-            <td>
-              <strong>{{ v.name }}</strong>
-              <JvTag v-if="orphanIds.includes(v.id)" variant="danger" label="orphan" style="margin-left: 8px;" />
-            </td>
-            <td><span class="jv-mono jv-muted">{{ v.engine }}</span></td>
-            <td><JvTag :variant="voiceTypeVariant(v.source)" :label="v.source" /></td>
-            <td class="jv-muted">{{ v.language }}</td>
-            <td><code class="jv-mono">{{ v.id }}</code></td>
-            <td class="jv-table__actions">
-              <JvButton
-                v-if="v.source !== 'preset'"
-                variant="danger-outline"
-                size="sm"
-                @click="deleteVoice(v.id)"
-              >Delete</JvButton>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-else class="jv-muted" style="padding: 16px 0; font-style: italic;">No voices registered. Install + load an engine to see preset voices.</p>
+  <!-- Hint when clone-gate is closed (#99). -->
+  <p v-if="!chatterboxLoaded" class="jv-banner jv-banner--warn">
+    Voice cloning is Chatterbox-only. <strong>Load Chatterbox</strong> in the Engines tab to enable the "+ Clone new voice" button.
+  </p>
+
+  <!-- Add additional creation paths (Design / Blend) — less common, behind a details toggle -->
+  <details class="voices-view__add-more">
+    <summary>Other ways to add a voice — Design from prose · Blend voices</summary>
+    <div class="jv-btn-group" style="margin-top: 10px">
+      <JvButton variant="secondary" @click="openModal('design')">Design from prose (Qwen3)</JvButton>
+      <JvButton variant="secondary" @click="openModal('blend')">Blend voices</JvButton>
     </div>
+    <p class="jv-muted" style="font-size: 11.5px; margin-top: 8px">
+      <strong style="color: var(--ink);">Design</strong>: text-prompt → voice (Qwen3 native).
+      <strong style="color: var(--ink);">Blend</strong>: interpolate two or more voices in embedding space (engines with <code class="jv-mono">supports_embedding_blending</code>).
+    </p>
+  </details>
+
+  <!-- ── Voice catalog table ──────────────────────────────────────────── -->
+  <div class="jv-section" style="margin-top: 14px">
+    <table v-if="filteredVoices.length" class="jv-table voices-view__table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Name</th>
+          <th>Gender</th>
+          <th>Type</th>
+          <th>Engine</th>
+          <th>Lang</th>
+          <th>Samples</th>
+          <th>Gens</th>
+          <th>Effects</th>
+          <th>Channel</th>
+          <th class="jv-table__actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="v in filteredVoices" :key="v.id" :class="{ 'row-orphan': orphanIds.includes(v.id) }">
+          <td>🎙️</td>
+          <td>
+            <strong>{{ v.name }}</strong>
+            <JvTag v-if="orphanIds.includes(v.id)" variant="danger" label="orphan" style="margin-left: 6px" />
+          </td>
+          <td>
+            <!-- Click-cycle gender chip per #85. -->
+            <button
+              type="button"
+              class="voices-view__gender-chip"
+              :data-gender="autoDetectGender(v)"
+              :title="`Gender: ${autoDetectGender(v) || 'unset'} — click to cycle ? → F → M → N → unset`"
+              @click="cycleGender(v)"
+            >{{ autoDetectGender(v) || '·' }}</button>
+          </td>
+          <td><JvTag :variant="voiceTypeVariant(v.source)" :label="v.source" /></td>
+          <td><span class="jv-mono jv-muted">{{ v.engine }}</span></td>
+          <td class="jv-muted">{{ v.language || "en" }}</td>
+          <td>{{ v.sample_count ?? (v.source === "preset" ? "—" : 0) }}</td>
+          <td>{{ v.generation_count ?? 0 }}</td>
+          <td class="jv-muted">{{ v.default_effects?.join(", ") || "—" }}</td>
+          <td class="jv-muted">{{ v.channel_id || "Default" }}</td>
+          <td class="jv-table__actions">
+            <JvButton variant="ghost" size="sm" :loading="previewingId === v.id" label="▶" :title="`Preview ${v.name}`" @click="previewVoice(v)" />
+            <JvButton variant="ghost" size="sm" label="⚙" :title="`Tune ${v.name}`" />
+            <JvButton
+              v-if="v.source !== 'preset'"
+              variant="danger-outline"
+              size="sm"
+              label="✕"
+              :title="`Delete ${v.name}`"
+              @click="deleteVoice(v.id)"
+            />
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p v-else class="jv-muted" style="padding: 24px 0; text-align: center; font-style: italic;">
+      <span v-if="voices.length === 0">No voices registered. Install + load an engine to see preset voices.</span>
+      <span v-else>No voices match "{{ search }}" or filter "{{ typeFilter }}".</span>
+    </p>
   </div>
 
   <!-- ── Modal ───────────────────────────────────────────────────────── -->
@@ -436,4 +577,69 @@ function voiceTypeVariant(source) {
   color: var(--ink-2);
   margin-top: 4px;
 }
+
+/* Toolbar — search + type filter chips + + Clone primary action. */
+.voices-view__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.voices-view__search { max-width: 280px; }
+.voices-view__chips {
+  display: inline-flex;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  padding: 2px;
+  gap: 2px;
+}
+.voices-view__chips .jv-pill {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+}
+.voices-view__add-more {
+  margin-top: 6px;
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+}
+.voices-view__add-more > summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--ink-2);
+  user-select: none;
+}
+.voices-view__add-more > summary:hover { color: var(--ink); }
+
+.voices-view__table { font-size: 13px; }
+
+/* Gender chip: click-cycle ❓ → F → M → N → unset. */
+.voices-view__gender-chip {
+  appearance: none;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-2);
+  width: 28px;
+  height: 22px;
+  border-radius: var(--r-pill);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  transition: background 0.1s, color 0.1s;
+}
+.voices-view__gender-chip:hover { background: var(--surface-2); color: var(--ink); }
+.voices-view__gender-chip[data-gender="F"] { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+.voices-view__gender-chip[data-gender="M"] { color: var(--voicebox, #2f74b5); border-color: rgba(47, 116, 181, 0.4); background: #eef4fb; }
+.voices-view__gender-chip[data-gender="N"] { color: var(--warn-ink); border-color: var(--warn-line); background: var(--warn-bg); }
+.voices-view__gender-chip[data-gender="?"] { color: var(--ink-3); border-color: var(--line); }
 </style>
