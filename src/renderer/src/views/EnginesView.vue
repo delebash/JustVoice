@@ -64,16 +64,12 @@ function dismiss(id) {
 }
 
 async function refresh() {
-  const e = await api.request("/v1/engines");
-  engines.value = e.engines;
+  const e = await api.safeRequest("/v1/engines", { engines: [] });
+  engines.value = e?.engines ?? [];
 }
 
 async function loadSystem() {
-  try {
-    system.value = await api.request("/v1/system/info");
-  } catch (_) {
-    // Hardware panel is best-effort; the engine list is the point.
-  }
+  system.value = await api.safeRequest("/v1/system/info", null);
 }
 
 async function loadVariants(id) {

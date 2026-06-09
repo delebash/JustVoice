@@ -14,11 +14,7 @@ function fmtMB(bytes) {
 }
 
 async function loadStats() {
-  try {
-    stats.value = await api.request("/v1/cache/stats");
-  } catch (e) {
-    pushToast({ message: `Failed: ${e.message || e}`, kind: "error" });
-  }
+  stats.value = await api.safeRequest("/v1/cache/stats", { total_bytes_on_disk: 0, total_entries_on_disk: 0, scopes: [] });
 }
 
 async function purgeAll() {

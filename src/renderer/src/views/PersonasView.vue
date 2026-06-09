@@ -23,13 +23,13 @@ function fmtDate(iso) {
 }
 
 async function loadPersonas() {
-  const data = await api.request("/v1/personas");
-  personas.value = data.personas;
+  const data = await api.safeRequest("/v1/personas", { personas: [] });
+  personas.value = data?.personas ?? [];
 }
 
 async function loadVoices() {
-  const data = await api.request("/v1/voices");
-  voices.value = data.voices;
+  const data = await api.safeRequest("/v1/voices", { voices: [] });
+  voices.value = data?.voices ?? [];
 }
 
 async function bindPersona() {

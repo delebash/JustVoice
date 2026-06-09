@@ -23,8 +23,8 @@ const newAlias = ref("");
 const selected = computed(() => lexicons.value.find((lx) => lx.id === selectedId.value) ?? null);
 
 async function refresh() {
-  const data = await api.request("/v1/lexicons");
-  lexicons.value = data.lexicons;
+  const data = await api.safeRequest("/v1/lexicons", { lexicons: [] });
+  lexicons.value = data?.lexicons ?? [];
 }
 
 async function createLexicon() {

@@ -80,6 +80,20 @@ export const useApi = defineStore("api", () => {
     return res.text();
   }
 
+  // safeRequest — like request() but swallows errors and returns the
+  // provided fallback. Use in view refresh() functions so server-offline
+  // doesn't blank the entire view. The fallback should match the
+  // successful response shape so destructuring `.voices` / `.projects`
+  // / etc. keeps working.
+  async function safeRequest(path, fallback = null, opts = {}) {
+    try {
+      const result = await request(path, opts);
+      return result ?? fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
   return {
     serverUrl,
     token,
@@ -87,6 +101,7 @@ export const useApi = defineStore("api", () => {
     setServer,
     setToken,
     request,
+    safeRequest,
     get,
     post,
     requestBlob,
