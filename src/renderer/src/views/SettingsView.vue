@@ -179,13 +179,40 @@ async function save() {
 }
 
 onMounted(refresh);
+
+// ── Sub-nav (matches preview HTML §13). ─────────────────────────────
+const SUBS = [
+  { id: "general",    label: "General" },
+  { id: "mastering",  label: "Mastering" },
+  { id: "generation", label: "Generation" },
+  { id: "capture",    label: "Capture / Dictation" },
+  { id: "mcp",        label: "MCP server" },
+  { id: "gpu",        label: "GPU" },
+  { id: "external",   label: "External TTS" },
+  { id: "appearance", label: "Appearance" },
+  { id: "logs",       label: "Logs" },
+  { id: "changelog",  label: "Changelog" },
+  { id: "about",      label: "About" },
+];
+const activeSub = ref("general");
 </script>
 
 <template>
   <div v-if="settings">
 
-    <!-- ─── Connection ─── -->
-    <div class="jv-section">
+    <!-- ── Sub-nav (matches preview HTML §13). ────────────────────────── -->
+    <div class="settings-subnav">
+      <a
+        v-for="s in SUBS"
+        :key="s.id"
+        class="settings-subnav__tab"
+        :class="{ 'settings-subnav__tab--active': activeSub === s.id }"
+        @click="activeSub = s.id"
+      >{{ s.label }}</a>
+    </div>
+
+    <!-- ─── General · Connection ─── -->
+    <div v-show="activeSub === 'general'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header">
           <h3 class="jv-card__title">Connection</h3>
@@ -206,8 +233,8 @@ onMounted(refresh);
       </div>
     </div>
 
-    <!-- ─── Server ─── -->
-    <div class="jv-section">
+    <!-- ─── General · Server ─── -->
+    <div v-show="activeSub === 'general'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header">
           <h3 class="jv-card__title">Server</h3>
@@ -226,8 +253,8 @@ onMounted(refresh);
       </div>
     </div>
 
-    <!-- ─── Cache ─── -->
-    <div class="jv-section">
+    <!-- ─── General · Cache ─── -->
+    <div v-show="activeSub === 'general'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header">
           <h3 class="jv-card__title">Cache</h3>
@@ -246,8 +273,8 @@ onMounted(refresh);
       </div>
     </div>
 
-    <!-- ─── Limits ─── -->
-    <div class="jv-section">
+    <!-- ─── General · Limits ─── -->
+    <div v-show="activeSub === 'general'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header">
           <h3 class="jv-card__title">Limits</h3>
@@ -269,8 +296,8 @@ onMounted(refresh);
       </div>
     </div>
 
-    <!-- ─── Local model paths ─── -->
-    <div class="jv-section" v-if="settings.engines">
+    <!-- ─── GPU · Local model paths ─── -->
+    <div v-show="activeSub === 'gpu'" class="jv-section" v-if="settings.engines">
       <div class="jv-card">
         <div class="jv-card__header">
           <h3 class="jv-card__title">Local model paths</h3>
@@ -286,8 +313,8 @@ onMounted(refresh);
       </div>
     </div>
 
-    <!-- ─── Training ─── -->
-    <div class="jv-section" v-if="settings.training">
+    <!-- ─── Generation · Training ─── -->
+    <div v-show="activeSub === 'generation'" class="jv-section" v-if="settings.training">
       <div class="jv-card">
         <div class="jv-card__header">
           <h3 class="jv-card__title">Training</h3>
@@ -337,8 +364,8 @@ onMounted(refresh);
       </div>
     </div>
 
-    <!-- ─── External TTS servers ─── -->
-    <div class="jv-section">
+    <!-- ─── External TTS · servers ─── -->
+    <div v-show="activeSub === 'external'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header">
           <h3 class="jv-card__title">External TTS servers (OpenAI-compatible)</h3>
@@ -452,8 +479,8 @@ onMounted(refresh);
       </div>
     </div>
 
-    <!-- ─── Model URL overrides ─── -->
-    <div class="jv-section" v-if="settings.models">
+    <!-- ─── External TTS · Model URL overrides ─── -->
+    <div v-show="activeSub === 'external'" class="jv-section" v-if="settings.models">
       <div class="jv-card">
         <div class="jv-card__header">
           <h3 class="jv-card__title">Model URL overrides</h3>
@@ -492,8 +519,89 @@ onMounted(refresh);
       </div>
     </div>
 
+    <!-- ─── Mastering · placeholder until #88 lands. ─── -->
+    <div v-show="activeSub === 'mastering'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">Mastering</h3></div>
+        <p class="jv-muted">Per-preset mastering knobs (ACX -20 LUFS / -3.5 dB peak / -60 dB noise floor, iAudio, Podcast, YouTube, Custom) land with task <code>#88</code>. The active preset still applies on every render — see <code>POST /v1/settings/mastering</code>.</p>
+      </div>
+    </div>
+
+    <!-- ─── Capture / Dictation · placeholder. ─── -->
+    <div v-show="activeSub === 'capture'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">Capture / Dictation</h3></div>
+        <p class="jv-muted">ChordPicker for push-to-talk + toggle hotkeys, Whisper STT model + LLM refinement model + capture language + auto-paste + 6-gate readiness checklist + speaker-correction-memory clear-all panel land with tasks <code>#84</code> and <code>#94</code>. See <a href="#captures">Captures tab</a> for the live readiness view.</p>
+      </div>
+    </div>
+
+    <!-- ─── MCP server · placeholder. ─── -->
+    <div v-show="activeSub === 'mcp'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">MCP server</h3></div>
+        <p class="jv-muted">Per-client bindings table + Claude Desktop / claude-code / stdio install snippets + exposed tools list land with task <code>#92</code>.</p>
+      </div>
+    </div>
+
+    <!-- ─── GPU · placeholder, augments Local model paths above. ─── -->
+    <div v-show="activeSub === 'gpu'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">GpuInfoCard + CUDA wheel flow</h3></div>
+        <p class="jv-muted">Live GPU backend (CUDA / MPS / Metal / XPU / DirectML / ROCm) + VRAM total/used + compute capability + HSA override + Force-CPU-on-Mac toggle + CUDA wheel switch flow (idle → stopping → waiting → ready) land with task <code>#91</code>. For now the Engines tab shows the basics.</p>
+      </div>
+    </div>
+
+    <!-- ─── Appearance · placeholder. ─── -->
+    <div v-show="activeSub === 'appearance'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">Appearance</h3></div>
+        <p class="jv-muted">Theme (Light / Dark / Follow system) + Accent hue slider + Density (Compact / Default / Spacious) + Language locale picker land with task <code>#93</code> (paired with task <code>#97</code> for the i18next wiring).</p>
+      </div>
+    </div>
+
+    <!-- ─── Logs · placeholder. ─── -->
+    <div v-show="activeSub === 'logs'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">Logs</h3></div>
+        <p class="jv-muted">Live log tail viewer + Open-log-file / Download-last-24h / Copy-last-100-lines actions are pending. For now use the tray menu's "📜 Open log file" action — that opens the log in your OS default editor.</p>
+      </div>
+    </div>
+
+    <!-- ─── Changelog · placeholder. ─── -->
+    <div v-show="activeSub === 'changelog'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">What's new in v0.1.0</h3></div>
+        <ul class="jv-muted" style="margin-left: 18px; line-height: 1.7">
+          <li>Multi-use Project model (audiobook / game_voicelines / podcast / custom)</li>
+          <li>Per-engine venv isolation</li>
+          <li>Take versioning with source-lineage</li>
+          <li>HMAC-signed webhooks with exponential backoff</li>
+          <li>Backup / restore via signed ZIP</li>
+          <li>Audio output channels (multi-device routing)</li>
+          <li>System tray with full lifecycle controls</li>
+          <li>Multi-adapter import (JustWrite / CSV / SRT / Audacity labels / standard JSON)</li>
+          <li>In-app help drawer with ~14 docs</li>
+          <li>Multi-use first-run onboarding (5 audiences)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ─── About · placeholder. ─── -->
+    <div v-show="activeSub === 'about'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">About JustVoice v0.1.0</h3></div>
+        <p>JustVoice is a cross-platform open-source voice production studio for audiobook producers, game developers, podcasters, dictation users, and accessibility users. Built on Tauri 2 + Vue 3 + Python FastAPI.</p>
+        <p class="jv-muted" style="font-size: 12px; margin-top: 10px">Licensed GPL-3.0-or-later. Portions ported from voicebox (MIT) and JustWrite (MIT) — see <code>NOTICE.md</code>.</p>
+        <div class="jv-btn-group" style="margin-top: 14px">
+          <JvButton variant="secondary" label="📋 Third-party licenses" />
+          <JvButton variant="secondary" label="🐛 Report an issue" />
+          <JvButton variant="secondary" label="🎬 Run welcome again" @click="$emit('reset-onboarding')" />
+        </div>
+      </div>
+    </div>
+
     <!-- ─── Save ─── -->
-    <div class="jv-section">
+    <div v-show="['general','mastering','generation','capture','external'].includes(activeSub)" class="jv-section">
       <JvButton variant="primary" size="lg" @click="save">Save settings</JvButton>
     </div>
 
@@ -501,6 +609,31 @@ onMounted(refresh);
 </template>
 
 <style scoped>
+/* Sub-nav — tab strip at top of Settings (matches preview HTML §13). */
+.settings-subnav {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.settings-subnav__tab {
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--ink-2);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  text-decoration: none;
+  user-select: none;
+}
+.settings-subnav__tab:hover { color: var(--ink); }
+.settings-subnav__tab--active {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+  font-weight: 500;
+}
+
 .settings-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
