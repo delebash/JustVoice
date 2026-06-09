@@ -23,15 +23,13 @@ const stats = ref(null);
 const recentGenerations = ref([]);
 const loadedEngine = ref(null);
 
-let toastedUnreachable = false;
 async function safeRequest(path, fallback) {
+  // Silent fallback — when offline, the topbar Offline indicator + empty
+  // cards already communicate the state. Don't fire a redundant toast on
+  // boot (was the unstyled-toast-spam bug from 2026-06-09).
   try {
     return await api.request(path);
-  } catch (err) {
-    if (!toastedUnreachable) {
-      toastedUnreachable = true;
-      pushToast({ message: `Server unreachable: ${err.message || err}. Some panels will show "—".`, kind: "error" });
-    }
+  } catch {
     return fallback;
   }
 }

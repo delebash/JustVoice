@@ -5,6 +5,40 @@
 
 ---
 
+## BUILD MILESTONE — 2026-06-09: Capability manifest + profiles + auto-chunking wired + take-lineage + 3-tier voice tuning + global audio player. 81 server tests pass. vite build clean.
+
+## 2026-06-09 ship list (voicebox-parity sweep)
+
+**Backend:**
+- `audio/chunked.py` finally wired into `api/generate_api.py:165-228` — auto-chunking now LIVE on both managed + in-process synth paths. Was lifted in task #53 but dead code until today.
+- `api/profiles_api.py` — new module, full CRUD for VoiceProfile + `/compose` stub. List/get/create/update/delete + 501 compose handler.
+- `database/models.py` — `personality` + `default_delivery` Text columns added to VoiceProfile (migration in `database/migrations.py:_migrate_voice_profiles_personality`).
+- `api/takes_api.py` — added `GET /v1/takes/recent` (history table) + `GET /v1/takes/{id}/lineage` (take chain).
+- `api/engines_api.py` — `/v1/engines/capabilities` + `/v1/engines/{id}/capabilities` endpoints from `engines/capability_details.py` (hand-authored, verified from upstream HuggingFace cards).
+- `delivery_merge.py` — 3-tier merge (#88): preset > request > profile defaults. `GenerateRequest` gained `profile_id` + `preset_id` fields.
+- Models: `KnobSpec`, `InlineTagSet`, `EngineCapabilityDetail`, `EngineCapabilitiesResponse` for capability manifest.
+
+**Frontend:**
+- New views: `ProfilesView.vue` (card grid + create/edit modal + test-compose).
+- New components: `SlashTagMenu.vue` (engine-aware `/`-key tag picker, ↑↓ Enter Esc nav), `GlobalAudioPlayer.vue` (bottom-anchored player with animated bars + scrub + volume), `LineageViewer.vue` (vertical timeline modal for take chain).
+- New store: `stores/audioPlayer.js` (pinia, shared `<audio>` element across views).
+- `GenerateView.vue`: capability fetch replaces hardcoded CAPABILITY map; auto-resize textarea (140→360px); Profile + Compose chips; SlashTagMenu wired via `/` keystroke; history table (relative time + ▶ routes to GlobalAudioPlayer).
+- `JvTextarea.vue`: opt-in `autosize` prop with min/max heights.
+- `SettingsView.vue`: API reference table (#96), MCP install snippets (#92), GPU info card with `/v1/system` fetch (#91), Auto-updater UI hooked to Tauri (#90), Appearance picker writing CSS custom properties (#93).
+- `App.vue`: ProfilesView mounted in sidebar between Voices + Personas.
+
+**Memory + global rules:**
+- `~/.claude/CLAUDE.md` (global, all-project): Rules #0 (no permission), #1 (verify don't guess), #2 (no subagent delegation), #3 (upstream parity is file-by-file), #4 (web research first for library/model questions). Removed never-commit rule per user.
+- `feedback_voicebox_parity_audit_hard_rule.md`: project-specific reinforcement.
+- `reference_voicebox_parity_matrix.md`: file-by-file matrix of voicebox→ours with status per row. Updated as items ship.
+- `reference_engine_capability_surface.md`: per-engine knob + inline-tag surface, verified from upstream HuggingFace cards (`bosonai/higgs-audio-v3-tts-4b` 21-emotion enum, Chatterbox-Turbo's `[laugh][cough]` paralinguistic, etc.).
+- `feedback_static_vs_configurable.md`: don't over-configurize; static where it doesn't vary per deployment.
+- `feedback_ultracode_usage_rule.md`: added "audits are NOT mechanical → solo Opus only".
+
+**Closed tasks (2026-06-09):** #85, #86, #87, #88, #89, #90, #91, #92, #93, #94, #96, #98, #99, #100.
+
+---
+
 ## BUILD MILESTONE — 2026-06-08 FINAL: JustVoice-native UI + take versioning + Tauri Rust subsystems all landed. vite build clean (676 modules, 39.70 kB CSS / 8.16 kB gzip). cargo check clean on Windows.
 
 ---

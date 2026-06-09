@@ -4,7 +4,6 @@ import { ref, onMounted, computed, watch } from "vue";
 import { useApi } from "./stores/api.js";
 import { useRenderTasks } from "./stores/renderTasks.js";
 import { useOnboarding } from "./stores/onboarding.js";
-import { pushToast } from "./services/toastBridge.js";
 import Toast from "./components/Toast.vue";
 import TaskStrip from "./components/TaskStrip.vue";
 import AppDialog from "./components/AppDialog.vue";
@@ -12,12 +11,14 @@ import AudioKeepAlive from "./components/AudioKeepAlive.vue";
 import WelcomeOnboarding from "./components/WelcomeOnboarding.vue";
 import JvHelpDrawer from "./components/JvHelpDrawer.vue";
 import HelpTrigger from "./components/HelpTrigger.vue";
+import GlobalAudioPlayer from "./components/GlobalAudioPlayer.vue";
 
 import OverviewView from "./views/OverviewView.vue";
 import GenerateView from "./views/GenerateView.vue";
 import ChapterView from "./views/ChapterView.vue";
 import BooksView from "./views/BooksView.vue";
 import VoicesView from "./views/VoicesView.vue";
+import ProfilesView from "./views/ProfilesView.vue";
 import CompareView from "./views/CompareView.vue";
 import TrainView from "./views/TrainView.vue";
 import PersonasView from "./views/PersonasView.vue";
@@ -34,11 +35,12 @@ import WebhooksView from "./views/WebhooksView.vue";
 
 const VIEWS = [
   { id: "overview",  label: "Overview",  icon: "🏠", lede: "Current state of the server, catalogue, and cache held on disk.", component: OverviewView },
-  { id: "generate",  label: "Generate",  icon: "📝", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it.", component: GenerateView },
+  { id: "generate",  label: "Generate",  icon: "📝", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it. Type / for paralinguistic tags.", component: GenerateView },
   { id: "books",     label: "Projects",  icon: "📖", lede: "Audiobooks, game voicelines, podcasts — multi-use Project library.", component: BooksView },
   { id: "stories",   label: "Stories",   icon: "🎬", lede: "Multi-track timeline editor. Voicebox's hallmark feature ported to Vue.", component: StoriesView },
   { id: "chapter",   label: "Chapter",   icon: "📑", lede: "Multi-line script in, mastered output out. Works for audiobook chapters, podcast episodes, game dialogue batches, or any multi-line script.", component: ChapterView },
   { id: "voices",    label: "Voices",    icon: "🎙️", lede: "The full voice catalogue. Clone, design, import, or blend new voices.", component: VoicesView },
+  { id: "profiles",  label: "Profiles",  icon: "👤", lede: "Voice profiles bundle name + voice + personality + default effects. The Compose button in Generate uses the personality prompt.", component: ProfilesView },
   { id: "personas",  label: "Personas",  icon: "🎭", lede: "Named characters bound to voices. Stable across sessions.", component: PersonasView },
   { id: "lexicons",  label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Make character names pronounce consistently every render.", component: LexiconsView },
   { id: "captures",  label: "Captures",  icon: "🎚️", lede: "Dictation recordings + voice-sample capture. Animated pill + 6-gate readiness.", component: CapturesView },
@@ -62,6 +64,7 @@ const HELP_SLUG_BY_VIEW = {
   stories:  "stories",
   chapter:  "take-versioning",
   voices:   "voices",
+  profiles: "personas",
   personas: "personas",
   lexicons: "lexicons",
   captures: "dictation",
@@ -121,10 +124,13 @@ function resolveInitialTab() {
 }
 
 async function refresh() {
+  // Silent on failure — the topbar Offline indicator communicates the
+  // state without a boot-time toast. (Redundant toast was annoying on
+  // every dev reload before the server was up.)
   try {
     health.value = await api.request("/v1/health");
-  } catch (e) {
-    pushToast({ message: `Server unreachable: ${e.message || e}`, kind: "error" });
+  } catch {
+    health.value = null;
   }
 }
 
@@ -212,5 +218,6 @@ onMounted(async () => {
     <AppDialog />
     <WelcomeOnboarding v-if="showWelcome" @close="onWelcomeClosed" />
     <JvHelpDrawer />
+    <GlobalAudioPlayer />
   </div>
 </template>

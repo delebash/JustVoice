@@ -97,6 +97,135 @@ async def delete_take(take_id: str, db: Session = Depends(get_db)) -> dict:
     return {"deleted": True}
 
 
+class RecentTakeRow(BaseModel):
+    """A flat row for the History / Recent generations table.
+
+    Mirrors voicebox's HistoryTable shape (when / voice / text preview /
+    take / effects / actions). Different from `TakeResponse` above (which
+    is the block-scoped take object); this is for the global Generate-view
+    history table at the bottom of the page.
+    """
+
+    id: str
+    when: datetime
+    voice: Optional[str] = None
+    text: str
+    take: Optional[str] = None
+    effects: Optional[str] = None
+    status: str
+    is_favorited: bool = False
+    audio_url: Optional[str] = None
+
+
+class RecentTakesResponse(BaseModel):
+    takes: list[RecentTakeRow]
+
+
+@router.get(
+    "/v1/takes/recent",
+    response_model=RecentTakesResponse,
+    summary="Recent generations across the whole DB — drives Generate's History table",
+)
+async def list_recent_takes(limit: int = 20, db: Session = Depends(get_db)) -> RecentTakesResponse:
+    """Last N generations regardless of block / project, newest first.
+
+    Voicebox parity: matches the History tab feature at
+    voicebox/app/src/components/History/HistoryTable.tsx + useHistory.ts.
+    Returns a flat row shape so the Generate view's history card and a
+    future dedicated History tab can both consume the same payload.
+    """
+    rows = (
+        db.query(Generation)
+        .order_by(Generation.created_at.desc())
+        .limit(max(1, min(100, limit)))
+        .all()
+    )
+    out: list[RecentTakeRow] = []
+    for r in rows:
+        # Take label — block_id if present (chapter context), else just the
+        # status. Voicebox shows "3 of 7" but that requires lineage which
+        # we don't compute here. Leave None for now; #98 will fill this in.
+        take_label = None
+        out.append(
+            RecentTakeRow(
+                id=r.id,
+                when=r.created_at,
+                voice=r.profile_id or None,
+                text=(r.text or "")[:120],
+                take=take_label,
+                effects=None,
+                status=r.status,
+                is_favorited=bool(r.is_favorited),
+                audio_url=f"/v1/generations/{r.id}/audio" if r.audio_path else None,
+            )
+        )
+    return RecentTakesResponse(takes=out)
+
+
+class LineageNode(BaseModel):
+    """One link in a take's source-chain. Walks `Take.source_take_id`
+    backward to the original take. UI renders this as a vertical timeline.
+    """
+
+    take_id: str
+    generation_id: str
+    label: Optional[str] = None
+    is_default: bool = False
+    created_at: datetime
+    audio_url: Optional[str] = None
+    text_preview: Optional[str] = None
+
+
+class LineageResponse(BaseModel):
+    chain: list[LineageNode]
+    block_id: Optional[str] = None
+
+
+@router.get(
+    "/v1/takes/{take_id}/lineage",
+    response_model=LineageResponse,
+    summary="Walk a take's source chain back to its original (task #98)",
+)
+async def get_take_lineage(take_id: str, db: Session = Depends(get_db)) -> LineageResponse:
+    """Returns the chain of takes ordered oldest → newest.
+
+    A "lineage" is the source_take_id chain: each take points to the take
+    it was re-rolled from. The chain ends at the original (source_take_id
+    is null). Useful for the take-versioning UI to show "this is the 4th
+    iteration of a line that started 2 weeks ago".
+    """
+    chain: list[LineageNode] = []
+    visited: set[str] = set()
+    cur_id: Optional[str] = take_id
+    block_id: Optional[str] = None
+    # Walk backward up to a sane bound — protects against accidental cycles
+    # (shouldn't happen given the FK constraint, but defense in depth).
+    for _ in range(50):
+        if not cur_id or cur_id in visited:
+            break
+        visited.add(cur_id)
+        take = db.query(Take).filter(Take.id == cur_id).first()
+        if not take:
+            break
+        gen = db.query(Generation).filter(Generation.id == take.generation_id).first()
+        block_id = take.block_id
+        chain.append(
+            LineageNode(
+                take_id=take.id,
+                generation_id=take.generation_id,
+                label=take.label,
+                is_default=bool(take.is_default),
+                created_at=take.created_at,
+                audio_url=(f"/v1/generations/{gen.id}/audio" if gen and gen.audio_path else None),
+                text_preview=((gen.text or "")[:120] if gen else None),
+            )
+        )
+        cur_id = take.source_take_id
+    # Reverse so oldest (root) comes first — easier for UI to render as a top-to-bottom timeline.
+    chain.reverse()
+    return LineageResponse(chain=chain, block_id=block_id)
+
+
 @router.get(
     "/v1/generations/{generation_id}/audio",
     summary="Stream the WAV for a completed generation",

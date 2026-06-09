@@ -481,6 +481,90 @@ class CurrentEngineResponse(BaseModel):
     engine: EngineInfo | None = None
 
 
+# ─── Engine capability detail (drives Generate UI gating) ───────────────
+#
+# The boolean Feature enum above answers "does engine X support cloning?"
+# This richer set answers "what KNOB RANGES does engine X accept, what
+# INLINE TAGS does its tokenizer parse, and where in the text do they
+# need to go?" Driven by the per-engine verified-from-upstream research
+# captured in memory/reference_engine_capability_surface.md. Used by the
+# Generate view + the paralinguistic slash menu.
+
+
+class KnobSpec(BaseModel):
+    """A continuous-value control (slider + number input)."""
+
+    key: str  # e.g. "temperature" / "exaggeration" / "cfg_weight" / "speed"
+    label: str
+    min: float
+    max: float
+    step: float
+    default: float
+    unit: str = ""  # display suffix, e.g. "×" / "st" / "dB"
+    hint: str = ""
+    advanced: bool = False  # hide behind a Show-advanced toggle
+
+
+class InlineTagSet(BaseModel):
+    """A category of inline tags this engine's tokenizer recognizes.
+
+    Drives the slash menu in Generate / Chapter textareas. Different engines
+    use different syntaxes — Higgs uses `<|emotion:anger|>`, Chatterbox-Turbo
+    uses `[laugh]`, Dia uses `(sighs)`, MOSS uses `[S1] [S2] [pause 1.5s]`.
+    """
+
+    category: str  # "emotion" | "style" | "prosody" | "sfx" | "paralinguistic" | "speaker" | "pause"
+    label: str
+    tags: list[str]
+    syntax: str  # f-string with {value}, e.g. "<|emotion:{value}|>"
+    placement: Literal["start_of_turn", "inline_anywhere"] = "inline_anywhere"
+    hint: str = ""
+
+
+class EngineCapabilityDetail(BaseModel):
+    """Per-engine (or per-variant) capability surface for UI gating.
+
+    The id may be either an engine_id or a model-variant id when a single
+    engine has multiple variants with materially different parameter sets
+    (e.g. chatterbox vs chatterbox-turbo — Turbo silently ignores
+    exaggeration/cfg_weight/min_p).
+    """
+
+    engine_id: str
+    display_name: str
+
+    # Capability booleans (richer than the Feature enum — variant-aware)
+    supports_voice_cloning: bool = False
+    supports_clone_prompt_text: bool = False  # ref-audio transcript field
+    supports_voice_design: bool = False  # qwen3-style description
+    supports_instruct_freeform: bool = False  # qwen3-style prose textarea
+    supports_phoneme_input: bool = False  # kokoro raw-IPA bypass
+    supports_multi_speaker: bool = False  # MOSS speaker_prompts map
+
+    # Numeric / continuous knobs (sliders)
+    knobs: list[KnobSpec] = []
+
+    # Inline-tag taxonomies (slash menu + capability hints)
+    inline_tags: list[InlineTagSet] = []
+
+    # Pitch — special-cased because it's the most-requested control even
+    # though most engines lack it natively. Values:
+    # - native_st_range: engine's own pitch range (only LuxTTS + Higgs)
+    # - post_process_available: server can do pedalboard WAV pitch-shift
+    #   on the output regardless of engine support
+    pitch_native_st_range: list[int] | None = None  # [min, max] semitones
+    pitch_post_process: bool = False
+
+    # Free-form notes for the UI to display under the capability banner.
+    notes: list[str] = []
+
+
+class EngineCapabilitiesResponse(BaseModel):
+    """`GET /v1/engines/capabilities` payload."""
+
+    engines: dict[str, EngineCapabilityDetail]
+
+
 class ModelFile(BaseModel):
     url: str
     sha256: str
@@ -622,6 +706,12 @@ class GenerateRequest(BaseModel):
     lexicons: list[str] = []
     cache_scope: str = "default"
     cache: bool = True
+    # Tier-2 voice tuning (task #88) — if set, profile.default_delivery merges
+    # under the request's delivery (request wins on conflict). Optional.
+    profile_id: str | None = None
+    # Tier-3 render preset (task #88) — if set, preset overrides request +
+    # profile delivery. Highest precedence in the 3-tier merge.
+    preset_id: str | None = None
 
 
 class ChapterLine(BaseModel):

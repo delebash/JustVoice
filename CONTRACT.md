@@ -1,6 +1,6 @@
 # JustTTS ↔ JustWrite Contract
 
-> Authoritative definition of the boundary between JustTTS (voice production server) and JustWrite (novel writing app). Last revised 2026-06-08 after the multi-workflow architecture decision (see `~/.claude/projects/E--Dev-Web-justtts/memory/project_final_architecture.md`).
+> Authoritative definition of the boundary between JustTTS (voice production server) and JustWrite (novel writing app). Last revised 2026-06-09 (added profiles + capability manifest + take lineage + 3-tier voice tuning endpoints; see `MORNING_RECAP.md` "2026-06-09 ship list").
 
 ## Product split
 
@@ -30,19 +30,41 @@ JustTTS exposes a versioned HTTP API. All Pydantic request/response shapes live 
 | `DELETE /v1/jobs/{id}` | Cancel a render job | JustWrite |
 | `POST /v1/master` | Apply a mastering preset to audio bytes | JustWrite |
 | `POST /v1/analyze` | LUFS / peak / noise floor / clipping report | JustWrite |
-| `GET /v1/voices` | List voice profiles | JustWrite, Unreal, all callers |
+| `POST /v1/generate` | Single-line synthesis → audio/wav. Auto-chunks long text. | All callers |
+| `GET /v1/voices` | List voice catalog (engine presets + stored voices) | JustWrite, Unreal, all callers |
 | `POST /v1/voices/clone` | Clone a voice from a sample | JustWrite (for fast cast UX), JustTTS UI |
 | `POST /v1/voices/blend` | Blend two voice profiles | JustTTS UI (Phase 5+) |
+| `GET /v1/profiles` | List voice profiles (name + voice_type + personality + default_delivery + effects_chain) | JustWrite, JustTTS UI |
+| `GET /v1/profiles/{id}` | Get one profile | JustWrite, JustTTS UI |
+| `POST /v1/profiles` | Create a voice profile | JustTTS UI |
+| `PATCH /v1/profiles/{id}` | Update a voice profile | JustTTS UI |
+| `DELETE /v1/profiles/{id}` | Delete a voice profile | JustTTS UI |
+| `POST /v1/profiles/{id}/compose` | LLM-fill a fresh in-character line (501 until settings.llm wired) | JustTTS UI |
 | `GET /v1/personas` | List personas (character bios + voice mapping) | JustWrite, JustTTS UI |
 | `POST /v1/personas` | Create/update a persona | JustWrite, JustTTS UI |
 | `GET /v1/lexicons` | List pronunciation dictionaries | JustWrite, JustTTS UI |
 | `POST /v1/lexicons/apply` | Run a text through a lexicon (for preview) | JustWrite editor |
-| `GET /v1/engines` | List installed engines + capabilities | JustWrite, JustTTS UI |
+| `GET /v1/engines` | List installed engines + boolean capability flags | JustWrite, JustTTS UI |
+| `GET /v1/engines/capabilities` | Full per-engine knob + inline-tag manifest (drives UI gating) | JustTTS UI |
+| `GET /v1/engines/{id}/capabilities` | Single-engine knob + inline-tag detail | JustTTS UI |
 | `POST /v1/engines/{id}/load` | Load an engine into memory | JustTTS UI |
+| `GET /v1/takes/recent` | Last N generations across the DB — drives the History card | JustTTS UI |
+| `GET /v1/takes/{id}/lineage` | Walk a take's source chain back to the original | JustTTS UI |
 | `GET /v1/settings` | Read settings (operator-tunable values) | All callers |
 | `PATCH /v1/settings` | Update settings | JustTTS UI |
 
 Endpoint additions are non-breaking. Endpoint removals or shape changes are major-version bumps. The OpenAPI snapshot is committed to the JustTTS repo and diffed in CI.
+
+### Three-tier voice tuning (2026-06-09)
+
+`POST /v1/generate` accepts optional `profile_id` and `preset_id` fields. When set, the server merges delivery overlays in this precedence (highest first):
+
+1. **Tier 3** — `RenderPreset.delivery_json` (looked up by `preset_id`)
+2. **Tier 3** — the request's `delivery` field
+3. **Tier 2** — `VoiceProfile.default_delivery` JSON (looked up by `profile_id`)
+4. **Tier 1** — engine defaults (from the capability manifest)
+
+The merge is dict-deep — engine-specific subdicts (`delivery.engine.*`) merge at the inner-key level too. Implementation: `server/justtts/delivery_merge.py`.
 
 ### Authentication
 

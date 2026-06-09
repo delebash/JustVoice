@@ -2,8 +2,12 @@
 
 Dispatches voice lookup + synth through either the manager (managed
 engines) or the legacy in-process registry (external engines). Both
-paths return audio/wav bytes; the manager's subprocess produces a
-complete WAV already, so we just pass it through.
+paths return audio/wav bytes.
+
+Long text (> settings.generation.max_chunk_chars) is auto-chunked at
+sentence boundaries via `audio/chunked.py` (the voicebox lift). Below
+the threshold, a single-shot synth call is used. Without this wrapping
+some engines truncate or hallucinate trailing noise on long inputs.
 """
 
 from __future__ import annotations
@@ -11,13 +15,34 @@ from __future__ import annotations
 import io
 import wave
 
+import numpy as np
 from fastapi import APIRouter, Response
 
 from ..app_state import get_state
+from ..audio.chunked import (
+    DEFAULT_MAX_CHUNK_CHARS,
+    concatenate_audio_chunks,
+    split_text_into_chunks,
+)
+from ..audio.wav import strip_wav_header, write_wav_container
+from ..delivery_merge import merge_delivery
 from ..engines.base import SynthRequest
 from ..engines.manager import get_manager
 from ..errors import bad_request, internal, not_found
 from ..models import GenerateRequest
+
+
+def _samples_from_chunk_bytes(audio_bytes: bytes, is_wav: bool) -> np.ndarray:
+    """Decode one chunk's bytes (PCM or WAV) → float32 samples in [-1, 1]."""
+    pcm = strip_wav_header(audio_bytes) if is_wav else audio_bytes
+    return np.frombuffer(pcm, dtype="<i2").astype(np.float32) / 32767.0
+
+
+def _chunking_params(settings) -> tuple[int, int]:
+    """Pull max_chunk_chars + crossfade_ms from settings.generation."""
+    max_chunk_chars = int(getattr(settings.generation, "max_chunk_chars", DEFAULT_MAX_CHUNK_CHARS))
+    crossfade_ms = int(getattr(settings.generation, "crossfade_ms", 50))
+    return max_chunk_chars, crossfade_ms
 
 router = APIRouter(tags=["generation"])
 
@@ -155,37 +180,77 @@ async def _generate_via_manager(
     the stored voice's reference WAV path here so the engine subprocess
     can pass it to `model.generate(audio_prompt_path=…)` without needing
     its own access to the host's voice store.
+
+    Long text (> settings.generation.max_chunk_chars) is split at sentence
+    boundaries and per-chunk results are crossfade-concatenated. This is
+    the voicebox lift wired into the single-line generate path (was dead
+    code before — render_core.py used it for chapter renders, but the /v1/
+    generate route was passing long text in one shot, which truncates or
+    hallucinates trailing noise on most engines).
     """
     mgr = get_manager()
-    body = {
-        "voice_id": req.voice,
-        "text": req.text,
-        "language": req.language,
-        "delivery": req.delivery.model_dump(exclude_none=True) if req.delivery else {},
-        "seed": req.seed,
-        "audio_prompt_path": audio_prompt_path,
-    }
+    st = get_state()
+    max_chunk_chars, crossfade_ms = _chunking_params(st.settings.get())
+    request_delivery = req.delivery.model_dump(exclude_none=True) if req.delivery else {}
+    # 3-tier voice tuning merge (#88): preset > request > profile defaults.
+    # Always runs — when profile_id / preset_id are None, returns the
+    # request delivery unchanged.
+    from ..database.session import SessionLocal
+    db = SessionLocal()
     try:
-        audio_bytes, meta = mgr.synth(engine_id, body)
+        delivery = merge_delivery(request_delivery, req.profile_id, req.preset_id, db)
+    finally:
+        db.close()
+
+    def _synth_one(text: str, chunk_seed: int | None):
+        body = {
+            "voice_id": req.voice,
+            "text": text,
+            "language": req.language,
+            "delivery": delivery,
+            "seed": chunk_seed,
+            "audio_prompt_path": audio_prompt_path,
+        }
+        return mgr.synth(engine_id, body)
+
+    try:
+        if len(req.text) <= max_chunk_chars:
+            audio_bytes, meta = _synth_one(req.text, req.seed)
+            if not meta.get("is_wav_container"):
+                sr = meta.get("sample_rate") or 24000
+                channels = meta.get("channels") or 1
+                audio_bytes = write_wav_container(audio_bytes, sr, channels)
+            return Response(content=audio_bytes, media_type="audio/wav")
+
+        # Long-form path: split → per-chunk synth → crossfade-concat → WAV
+        chunks = split_text_into_chunks(req.text, max_chars=max_chunk_chars)
+        pcm_chunks: list[np.ndarray] = []
+        sample_rate = 24000
+        channels = 1
+        for i, piece in enumerate(chunks):
+            # Vary seed per chunk to avoid correlated RNG artefacts while
+            # staying deterministic for (text, seed) reproducibility.
+            chunk_seed = (req.seed + i) if req.seed is not None else None
+            audio_bytes, meta = _synth_one(piece, chunk_seed)
+            sample_rate = meta.get("sample_rate") or sample_rate
+            channels = meta.get("channels") or channels
+            pcm_chunks.append(_samples_from_chunk_bytes(audio_bytes, bool(meta.get("is_wav_container"))))
+
+        merged = concatenate_audio_chunks(pcm_chunks, sample_rate, crossfade_ms=crossfade_ms)
+        pcm_int16 = (np.clip(merged, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
+        wav_bytes = write_wav_container(pcm_int16, sample_rate, channels)
+        return Response(content=wav_bytes, media_type="audio/wav")
     except Exception as e:
         raise internal(f"engine synthesize: {e}")
-    # Manager passes through whatever the engine returned. Convert raw PCM
-    # → WAV here so the host's response is always audio/wav.
-    if not meta.get("is_wav_container"):
-        sr = meta.get("sample_rate") or 24000
-        channels = meta.get("channels") or 1
-        buf = io.BytesIO()
-        with wave.open(buf, "wb") as w:
-            w.setnchannels(channels)
-            w.setsampwidth(2)
-            w.setframerate(sr)
-            w.writeframes(audio_bytes)
-        audio_bytes = buf.getvalue()
-    return Response(content=audio_bytes, media_type="audio/wav")
 
 
 def _generate_via_inprocess(engine_id: str, req: GenerateRequest) -> Response:
-    """Synth via a legacy in-process engine (external-openai-tts today)."""
+    """Synth via a legacy in-process engine (external-openai-tts today).
+
+    Also auto-chunks long text — same threshold + crossfade as the managed
+    path. Without this, single-line generates of long text via in-process
+    engines silently truncate.
+    """
     st = get_state()
     engine = st.engines.get(engine_id)
     if engine is None:
@@ -200,28 +265,54 @@ def _generate_via_inprocess(engine_id: str, req: GenerateRequest) -> Response:
                 f"Try POST /v1/engines/{engine_id}/load with explicit device + model_variant."
             )
 
-    synth_req = SynthRequest(
-        voice_id=req.voice,
-        text=req.text,
-        language=req.language,
-        delivery=req.delivery.model_dump(exclude_none=True) if req.delivery else {},
-        seed=req.seed,
-    )
+    max_chunk_chars, crossfade_ms = _chunking_params(st.settings.get())
+    request_delivery = req.delivery.model_dump(exclude_none=True) if req.delivery else {}
+    from ..database.session import SessionLocal
+    db = SessionLocal()
+    try:
+        delivery = merge_delivery(request_delivery, req.profile_id, req.preset_id, db)
+    finally:
+        db.close()
+
+    def _synth_one(text: str, chunk_seed: int | None):
+        synth_req = SynthRequest(
+            voice_id=req.voice,
+            text=text,
+            language=req.language,
+            delivery=delivery,
+            seed=chunk_seed,
+        )
+        return engine.synthesize(synth_req)
 
     try:
-        out = engine.synthesize(synth_req)
+        if len(req.text) <= max_chunk_chars:
+            out = _synth_one(req.text, req.seed)
+            if out.is_wav_container:
+                wav_bytes = out.bytes
+            else:
+                buf = io.BytesIO()
+                with wave.open(buf, "wb") as w:
+                    w.setnchannels(out.channels)
+                    w.setsampwidth(2)
+                    w.setframerate(out.sample_rate)
+                    w.writeframes(out.bytes)
+                wav_bytes = buf.getvalue()
+            return Response(content=wav_bytes, media_type="audio/wav")
+
+        chunks = split_text_into_chunks(req.text, max_chars=max_chunk_chars)
+        pcm_chunks: list[np.ndarray] = []
+        sample_rate = 24000
+        channels = 1
+        for i, piece in enumerate(chunks):
+            chunk_seed = (req.seed + i) if req.seed is not None else None
+            out = _synth_one(piece, chunk_seed)
+            sample_rate = out.sample_rate or sample_rate
+            channels = out.channels or channels
+            pcm_chunks.append(_samples_from_chunk_bytes(out.bytes, out.is_wav_container))
+
+        merged = concatenate_audio_chunks(pcm_chunks, sample_rate, crossfade_ms=crossfade_ms)
+        pcm_int16 = (np.clip(merged, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
+        wav_bytes = write_wav_container(pcm_int16, sample_rate, channels)
+        return Response(content=wav_bytes, media_type="audio/wav")
     except Exception as e:
         raise internal(f"engine synthesize: {e}")
-
-    if not out.is_wav_container:
-        buf = io.BytesIO()
-        with wave.open(buf, "wb") as w:
-            w.setnchannels(out.channels)
-            w.setsampwidth(2)
-            w.setframerate(out.sample_rate)
-            w.writeframes(out.bytes)
-        wav_bytes = buf.getvalue()
-    else:
-        wav_bytes = out.bytes
-
-    return Response(content=wav_bytes, media_type="audio/wav")

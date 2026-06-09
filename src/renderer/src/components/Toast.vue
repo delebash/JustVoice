@@ -5,6 +5,11 @@
 -->
 <script setup>
 import { Toaster } from "vue-sonner";
+// vue-sonner ships its own base CSS that the package's components rely on
+// for positioning, animation, and the close button. Without it the toast
+// renders as plain unstyled text. Co-located here so the dependency on
+// the package's CSS is visible next to the package's component usage.
+import "vue-sonner/style.css";
 </script>
 
 <template>

@@ -50,6 +50,8 @@ What to do at session start:
 
 **Highest-priority memory files** (load before touching the relevant code):
 
+- ⛔ `feedback_voicebox_parity_audit_hard_rule` — **MANDATORY on every session, every feature touch.** Two hard rules in one file: (A) Voicebox feature parity verified file-by-file against `E:/Dev/Web/voicebox-upstream/`, never from summaries (auto-chunking lifted but dead, missing Compose button, missing settings sub-pages, etc.). (B) Upstream library/model questions go to WebSearch/WebFetch/Context7 FIRST, never training-data recall (fabricated Chatterbox 10-item emotion enum 2026-06-09). LOAD AND APPLY BEFORE ANY OTHER MEMORY.
+- `reference_engine_capability_surface` — per-engine knob/inline-tag/pitch/cloning surfaces verified from upstream model cards + adapter line-level audits. Drives Generate UI + capability manifest endpoint.
 - `project_final_architecture` — current architectural plan (NOT forking voicebox; lifting patterns; JustTTS=engine pool, JustWrite=audiobook orchestration). READ FIRST.
 - `project_use_cases` — multi-use (audiobook + game + podcast + dictation); ALL voicebox features in scope.
 - `project_licensing_attribution` — per-file SPDX headers + lifted-file attribution blocks; current Apache-2.0, flips to GPL-3.0-or-later when pedalboard lands.

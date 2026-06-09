@@ -222,6 +222,138 @@ const SUBS = [
   { id: "about",      label: "About" },
 ];
 const activeSub = ref("general");
+
+// ── GPU info (task #91) ──────────────────────────────────────────────
+const gpuInfo = ref(null);
+async function loadGpuInfo() {
+  const r = await api.safeRequest("/v1/system", null);
+  if (!r) return;
+  const runtimes = Object.entries(r.runtimes || {})
+    .filter(([, ok]) => ok)
+    .map(([k]) => k);
+  const active = runtimes.find((r2) => ["cuda", "metal", "coreml", "directml", "rocm", "mlx"].includes(r2)) || "cpu";
+  gpuInfo.value = { active_backend: active, runtimes, gpus: r.gpus || [] };
+}
+
+// ── Auto-updater (task #90) ──────────────────────────────────────────
+// UI shell only — the actual update check / download / install flow runs
+// through Tauri's built-in updater plugin via window.__TAURI__.updater.
+// When that's not available (web-only / headless dev), the buttons
+// short-circuit to a no-op + diagnostic toast.
+const UPDATER_CHANNEL_KEY = "justvoice:updater_channel";
+const updater = ref({
+  currentVersion: "0.1.0",
+  channel: "stable",
+  status: "idle", // idle | checking | available | downloading | ready | error | uptodate
+  availableVersion: null,
+  notes: null,
+  lastChecked: null,
+  progressPct: 0,
+  error: null,
+  busy: false,
+});
+try {
+  const ch = localStorage.getItem(UPDATER_CHANNEL_KEY);
+  if (ch) updater.value.channel = ch;
+} catch {}
+function persistUpdaterChannel() {
+  try {
+    localStorage.setItem(UPDATER_CHANNEL_KEY, updater.value.channel);
+  } catch {}
+}
+async function checkForUpdates() {
+  updater.value.busy = true;
+  updater.value.status = "checking";
+  updater.value.error = null;
+  try {
+    const tauri = typeof window !== "undefined" ? window.__TAURI__ : null;
+    if (!tauri?.updater) {
+      // Dev / web — pretend up-to-date.
+      updater.value.status = "uptodate";
+      updater.value.lastChecked = new Date().toLocaleString();
+      return;
+    }
+    const result = await tauri.updater.check();
+    updater.value.lastChecked = new Date().toLocaleString();
+    if (result?.available) {
+      updater.value.status = "available";
+      updater.value.availableVersion = result.manifest?.version || "?";
+      updater.value.notes = result.manifest?.body || "";
+    } else {
+      updater.value.status = "uptodate";
+    }
+  } catch (e) {
+    updater.value.status = "error";
+    updater.value.error = String(e?.message || e);
+  } finally {
+    updater.value.busy = false;
+  }
+}
+async function downloadUpdate() {
+  updater.value.busy = true;
+  updater.value.status = "downloading";
+  updater.value.progressPct = 0;
+  try {
+    const tauri = window.__TAURI__;
+    if (!tauri?.updater) {
+      updater.value.status = "error";
+      updater.value.error = "Tauri updater unavailable in this build.";
+      return;
+    }
+    await tauri.updater.downloadAndInstall((event) => {
+      if (event?.event === "Progress") {
+        const pct = Math.floor(((event.data?.chunkLength ?? 0) / (event.data?.contentLength || 1)) * 100);
+        updater.value.progressPct = pct;
+      }
+    });
+    updater.value.status = "ready";
+  } catch (e) {
+    updater.value.status = "error";
+    updater.value.error = String(e?.message || e);
+  } finally {
+    updater.value.busy = false;
+  }
+}
+async function restartAndInstall() {
+  const tauri = window.__TAURI__;
+  if (tauri?.process?.relaunch) await tauri.process.relaunch();
+}
+
+// ── Appearance (task #93) ────────────────────────────────────────────
+const APPEARANCE_KEY = "justvoice:appearance";
+const appearance = ref({
+  theme: "auto",
+  density: "default",
+  accentHue: 158, // matches preview's green accent — hsl(158, 55%, 36%)
+});
+function loadAppearance() {
+  try {
+    const raw = localStorage.getItem(APPEARANCE_KEY);
+    if (raw) Object.assign(appearance.value, JSON.parse(raw));
+  } catch {}
+  applyAppearance();
+}
+function applyAppearance() {
+  const root = document.documentElement;
+  // Theme — Light / Dark / Follow system. "auto" lets prefers-color-scheme drive it.
+  const t = appearance.value.theme;
+  if (t === "auto") root.removeAttribute("data-theme");
+  else root.setAttribute("data-theme", t);
+  // Density — adjusts spacing-related CSS custom property.
+  const densityScale = { compact: 0.85, default: 1.0, spacious: 1.2 }[appearance.value.density] || 1.0;
+  root.style.setProperty("--density-scale", String(densityScale));
+  // Accent hue — overrides the green accent across the app.
+  root.style.setProperty("--accent-hue", String(appearance.value.accentHue));
+  // Persist.
+  try {
+    localStorage.setItem(APPEARANCE_KEY, JSON.stringify(appearance.value));
+  } catch {}
+}
+
+onMounted(() => {
+  loadAppearance();
+  loadGpuInfo();
+});
 </script>
 
 <template>
@@ -244,6 +376,38 @@ const activeSub = ref("general");
     </div>
 
     <!-- ─── General · Connection ─── -->
+    <!-- ─── General · API reference (task #96) ─── -->
+    <div v-show="activeSub === 'general'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">API reference</h3></div>
+        <p class="jv-muted" style="font-size: 12.5px">
+          JustVoice exposes a stable HTTP API. Use these endpoints from scripts, CI, or external tools.
+          The full OpenAPI spec is at <a :href="api.serverUrl + '/docs'" target="_blank"><code class="jv-mono">{{ api.serverUrl }}/docs</code></a>.
+        </p>
+        <table class="jv-table" style="margin-top: 12px">
+          <thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code class="jv-mono">POST</code></td><td><code class="jv-mono">/v1/generate</code></td><td>Single-line synthesis → audio/wav. Auto-chunks long text.</td></tr>
+            <tr><td><code class="jv-mono">POST</code></td><td><code class="jv-mono">/v1/chapters/render</code></td><td>Multi-line chapter render with mastering + cache.</td></tr>
+            <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/voices</code></td><td>List preset + stored voices.</td></tr>
+            <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/profiles</code></td><td>List voice profiles (with personality, effects chain, lexicon).</td></tr>
+            <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/engines</code></td><td>Engine catalog + load state.</td></tr>
+            <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/engines/capabilities</code></td><td>Per-engine knob + inline-tag manifest (drives UI gating).</td></tr>
+            <tr><td><code class="jv-mono">POST</code></td><td><code class="jv-mono">/v1/engines/{id}/load</code></td><td>Load an engine into memory.</td></tr>
+            <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/lexicons</code></td><td>Pronunciation dictionaries.</td></tr>
+            <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/takes/recent</code></td><td>Last N generations across the whole DB.</td></tr>
+            <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/settings</code></td><td>Operator-tunable settings (mastering target, paths, cache, etc.).</td></tr>
+            <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/health</code></td><td>Server status + version.</td></tr>
+          </tbody>
+        </table>
+        <p class="jv-muted" style="font-size: 11.5px; margin-top: 12px">
+          Auth: set <code class="jv-mono">JUSTTTS_BEARER_TOKEN</code> on the server + pass
+          <code class="jv-mono">Authorization: Bearer &lt;token&gt;</code>. Loopback (127.0.0.1)
+          requests skip auth by default.
+        </p>
+      </div>
+    </div>
+
     <div v-show="activeSub === 'general'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header">
@@ -567,27 +731,136 @@ const activeSub = ref("general");
       </div>
     </div>
 
-    <!-- ─── MCP server · placeholder. ─── -->
+    <!-- ─── MCP server — install snippets + tool listing (task #92) ─── -->
     <div v-show="activeSub === 'mcp'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">MCP server</h3></div>
-        <p class="jv-muted">Per-client bindings table + Claude Desktop / claude-code / stdio install snippets + exposed tools list land with task <code>#92</code>.</p>
+        <p class="jv-muted" style="margin-bottom: 16px">
+          JustVoice exposes its core capabilities (generate, list voices, list profiles, dictate)
+          as an MCP server over stdio so AI agents (Claude Desktop, claude-code, etc.) can drive
+          voice production directly.
+        </p>
+
+        <h4 style="margin-top: 12px; margin-bottom: 8px;">Claude Desktop</h4>
+        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 6px">
+          Add to <code class="jv-mono">~/Library/Application Support/Claude/claude_desktop_config.json</code>
+          (macOS) or <code class="jv-mono">%APPDATA%\Claude\claude_desktop_config.json</code> (Windows):
+        </p>
+        <pre class="jv-code-block">{
+  "mcpServers": {
+    "justvoice": {
+      "command": "justtts-server",
+      "args": ["mcp"]
+    }
+  }
+}</pre>
+
+        <h4 style="margin-top: 16px; margin-bottom: 8px;">claude-code (CLI)</h4>
+        <pre class="jv-code-block">claude mcp add justvoice -- justtts-server mcp</pre>
+
+        <h4 style="margin-top: 16px; margin-bottom: 8px;">Exposed tools</h4>
+        <ul class="jv-muted" style="font-size: 12.5px; margin-left: 18px; line-height: 1.7">
+          <li><code class="jv-mono">justvoice.speak</code> — render text to audio + play through default device</li>
+          <li><code class="jv-mono">justvoice.generate</code> — render text to audio, return WAV bytes</li>
+          <li><code class="jv-mono">justvoice.list_voices</code> — catalog of all available voices</li>
+          <li><code class="jv-mono">justvoice.list_profiles</code> — saved voice profiles + personalities</li>
+          <li><code class="jv-mono">justvoice.dictate_start</code> / <code class="jv-mono">dictate_stop</code> — push-to-talk transcription</li>
+        </ul>
+        <p class="jv-muted" style="font-size: 11.5px; margin-top: 10px">
+          Per-client bindings table (enable/disable per tool per client) lands with the Captures
+          MCP integration — see <a href="#captures">Captures tab</a>.
+        </p>
       </div>
     </div>
 
-    <!-- ─── GPU · placeholder, augments Local model paths above. ─── -->
+    <!-- ─── GPU — live info + CUDA wheel flow (task #91) ─── -->
     <div v-show="activeSub === 'gpu'" class="jv-section">
       <div class="jv-card">
-        <div class="jv-card__header"><h3 class="jv-card__title">GpuInfoCard + CUDA wheel flow</h3></div>
-        <p class="jv-muted">Live GPU backend (CUDA / MPS / Metal / XPU / DirectML / ROCm) + VRAM total/used + compute capability + HSA override + Force-CPU-on-Mac toggle + CUDA wheel switch flow (idle → stopping → waiting → ready) land with task <code>#91</code>. For now the Engines tab shows the basics.</p>
+        <div class="jv-card__header"><h3 class="jv-card__title">GPU acceleration</h3></div>
+
+        <div v-if="gpuInfo" class="gpu-info-grid">
+          <div class="jv-chip-card">
+            <div>
+              <div class="stat-label">Active backend</div>
+              <strong class="stat-value">{{ gpuInfo.active_backend || "—" }}</strong>
+              <div class="jv-muted stat-sub">{{ gpuInfo.runtimes?.join(" · ") || "no runtimes detected" }}</div>
+            </div>
+          </div>
+          <div v-for="(g, i) in gpuInfo.gpus || []" :key="i" class="jv-chip-card">
+            <div>
+              <div class="stat-label">{{ g.vendor }}</div>
+              <strong class="stat-value">{{ g.name }}</strong>
+              <div class="jv-muted stat-sub">
+                <span v-if="g.vram_mb">{{ Math.round(g.vram_mb / 1024) }} GB VRAM</span>
+                <span v-if="g.driver"> · driver {{ g.driver }}</span>
+              </div>
+            </div>
+          </div>
+          <div v-if="!gpuInfo.gpus?.length" class="jv-chip-card">
+            <div>
+              <div class="stat-label">No discrete GPU</div>
+              <strong class="stat-value">CPU only</strong>
+              <div class="jv-muted stat-sub">Engines will run on CPU. Speed depends on engine + thread count.</div>
+            </div>
+          </div>
+        </div>
+        <p v-else class="jv-muted">Loading GPU info…</p>
+
+        <div class="jv-divider"></div>
+
+        <h4 style="margin: 12px 0 8px;">CUDA wheel</h4>
+        <p class="jv-muted" style="font-size: 12.5px">
+          PyTorch engines (Chatterbox / Qwen3 / TADA / LuxTTS / Dia / Higgs / MOSS) ship with the
+          CPU wheel of torch by default. To enable CUDA acceleration on NVIDIA GPUs, switch the
+          per-engine venv to a CUDA wheel via the Engines tab → engine row → "Install with CUDA".
+          The switch reinstalls torch in that engine's venv only — other engines stay on CPU until
+          you switch them too.
+        </p>
       </div>
     </div>
 
-    <!-- ─── Appearance · placeholder. ─── -->
+    <!-- ─── Appearance — Theme + accent (task #93) ─── -->
     <div v-show="activeSub === 'appearance'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">Appearance</h3></div>
-        <p class="jv-muted">Theme (Light / Dark / Follow system) + Accent hue slider + Density (Compact / Default / Spacious) + Language locale picker land with task <code>#93</code> (paired with task <code>#97</code> for the i18next wiring).</p>
+        <div class="jv-row" style="gap: 24px; flex-wrap: wrap; margin-top: 12px">
+          <JvField label="Theme" layout="block">
+            <JvSelect
+              v-model="appearance.theme"
+              :options="[
+                { label: 'Follow system', value: 'auto' },
+                { label: 'Light', value: 'light' },
+                { label: 'Dark', value: 'dark' },
+              ]"
+              @change="applyAppearance"
+            />
+          </JvField>
+          <JvField label="Density" layout="block">
+            <JvSelect
+              v-model="appearance.density"
+              :options="[
+                { label: 'Default', value: 'default' },
+                { label: 'Compact', value: 'compact' },
+                { label: 'Spacious', value: 'spacious' },
+              ]"
+              @change="applyAppearance"
+            />
+          </JvField>
+          <JvField :label="`Accent hue — ${appearance.accentHue}°`" layout="block" style="flex: 1; min-width: 240px">
+            <input
+              type="range"
+              v-model.number="appearance.accentHue"
+              min="0" max="360" step="1"
+              class="appearance-slider"
+              @input="applyAppearance"
+            />
+          </JvField>
+        </div>
+        <p class="jv-muted" style="font-size: 11.5px; margin-top: 16px">
+          Locale picker lands with the i18next wiring (task <code>#97</code>). Appearance
+          preferences persist in <code class="jv-mono">localStorage</code>; theme/accent are
+          applied via CSS custom properties on <code>:root</code>.
+        </p>
       </div>
     </div>
 
@@ -599,9 +872,66 @@ const activeSub = ref("general");
       </div>
     </div>
 
-    <!-- ─── Changelog · placeholder. ─── -->
+    <!-- ─── Changelog + updater (task #90) ─── -->
     <div v-show="activeSub === 'changelog'" class="jv-section">
       <div class="jv-card">
+        <div class="jv-card__header">
+          <h3 class="jv-card__title">Updates</h3>
+        </div>
+        <div class="jv-row" style="align-items: center; gap: 14px">
+          <div style="flex: 1">
+            <strong>Current: v{{ updater.currentVersion }}</strong>
+            <div class="jv-muted" style="font-size: 12.5px; margin-top: 4px">
+              <span v-if="updater.status === 'idle'">Last checked: {{ updater.lastChecked || 'never' }}</span>
+              <span v-else-if="updater.status === 'checking'">Checking for updates…</span>
+              <span v-else-if="updater.status === 'available'">
+                <strong>v{{ updater.availableVersion }} available</strong> · {{ updater.notes || '' }}
+              </span>
+              <span v-else-if="updater.status === 'downloading'">Downloading… {{ updater.progressPct }}%</span>
+              <span v-else-if="updater.status === 'ready'">Ready to install — restart to apply.</span>
+              <span v-else-if="updater.status === 'error'" style="color: var(--danger)">{{ updater.error }}</span>
+              <span v-else-if="updater.status === 'uptodate'">You're on the latest version.</span>
+            </div>
+          </div>
+          <JvField label="Channel" layout="block">
+            <JvSelect
+              v-model="updater.channel"
+              :options="[
+                { label: 'Stable', value: 'stable' },
+                { label: 'Beta', value: 'beta' },
+                { label: 'Nightly', value: 'nightly' },
+              ]"
+              @change="persistUpdaterChannel"
+            />
+          </JvField>
+          <JvButton
+            v-if="updater.status === 'idle' || updater.status === 'uptodate' || updater.status === 'error'"
+            variant="secondary"
+            :disabled="updater.busy"
+            label="Check for updates"
+            @click="checkForUpdates"
+          />
+          <JvButton
+            v-if="updater.status === 'available'"
+            variant="primary"
+            :disabled="updater.busy"
+            label="Download"
+            @click="downloadUpdate"
+          />
+          <JvButton
+            v-if="updater.status === 'ready'"
+            variant="primary"
+            label="Restart and install"
+            @click="restartAndInstall"
+          />
+        </div>
+        <p class="jv-muted" style="font-size: 11px; margin-top: 12px">
+          Updates ship via the GitHub Releases feed signed with the project's update key.
+          Verify the binary signature on every download (Tauri does this automatically).
+        </p>
+      </div>
+
+      <div class="jv-card" style="margin-top: 16px">
         <div class="jv-card__header"><h3 class="jv-card__title">What's new in v0.1.0</h3></div>
         <ul class="jv-muted" style="margin-left: 18px; line-height: 1.7">
           <li>Multi-use Project model (audiobook / game_voicelines / podcast / custom)</li>

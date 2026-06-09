@@ -74,6 +74,17 @@ class VoiceProfile(Base):
     effects_chain = Column(Text, nullable=True)
     # Per-profile lexicon override (nullable: profile inherits project default).
     default_lexicon_id = Column(String, ForeignKey("lexicons.id", ondelete="SET NULL"), nullable=True)
+    # Free-form personality prompt — drives the LLM-backed "Compose" action
+    # in Generate (write a fresh in-character line for this profile). Lifted
+    # from voicebox's profile model where `personality` enables the Wand2
+    # button in FloatingGenerateBox.
+    personality = Column(Text, nullable=True)
+    # Tier-2 (per-voice) delivery overlay defaults. JSON dict matching the
+    # Delivery Pydantic shape (speed / pitch / gain_db / temperature /
+    # emotion / instruct / engine.* etc). Used by the 3-tier merge in
+    # render_core: render_preset (Tier 3) > profile.default_delivery
+    # (Tier 2) > engine defaults (Tier 1). See task #88.
+    default_delivery = Column(Text, nullable=True)
     # Stats — denormalized for fast list rendering. Updated by triggers /
     # application-level counters; never the source of truth.
     generation_count = Column(Integer, default=0, nullable=False)

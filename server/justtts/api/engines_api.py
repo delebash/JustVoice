@@ -16,11 +16,16 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from fastapi import HTTPException
+
 from ..app_state import get_state
+from ..engines.capability_details import CAPABILITY_DETAILS, lookup as lookup_capability
 from ..engines.catalog import compute_status, known_engines
 from ..engines.manager import EngineManifest, get_manager
 from ..models import (
     CurrentEngineResponse,
+    EngineCapabilitiesResponse,
+    EngineCapabilityDetail,
     EngineInfo,
     EnginesListResponse,
     Feature,
@@ -151,6 +156,36 @@ async def list_engines() -> EnginesListResponse:
         seen.add(eid)
 
     return EnginesListResponse(engines=catalog, current=cur)
+
+
+@router.get(
+    "/v1/engines/capabilities",
+    response_model=EngineCapabilitiesResponse,
+    summary="Per-engine knob + inline-tag capability detail (drives Generate UI gating)",
+)
+async def list_engine_capabilities() -> EngineCapabilitiesResponse:
+    """Return the full per-engine capability detail map.
+
+    Keys may be either engine ids (`kokoro`, `qwen3`) or variant ids
+    (`chatterbox-turbo`, `chatterbox-multilingual`) where the variant has
+    materially different supported parameters from its base engine.
+
+    The frontend should try the variant id first, then fall back to the
+    base engine id — the same convention `lookup()` follows server-side.
+    """
+    return EngineCapabilitiesResponse(engines=dict(CAPABILITY_DETAILS))
+
+
+@router.get(
+    "/v1/engines/{engine_id}/capabilities",
+    response_model=EngineCapabilityDetail,
+    summary="Single-engine knob + inline-tag detail",
+)
+async def get_engine_capability(engine_id: str) -> EngineCapabilityDetail:
+    detail = lookup_capability(engine_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail=f"No capability detail for engine {engine_id!r}")
+    return detail
 
 
 @router.get("/v1/engines/current", response_model=CurrentEngineResponse)

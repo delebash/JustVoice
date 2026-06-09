@@ -48,6 +48,7 @@ def run_migrations(engine) -> None:
     # Add per-table migrations here as the schema evolves. Each must be
     # idempotent — safe to run on a fresh DB AND on an upgraded one.
     _migrate_generations_ok_status_and_preset(engine, inspector, tables)
+    _migrate_voice_profiles_personality(engine, inspector, tables)
 
 
 # ── helpers ───────────────────────────────────────────────────────────────
@@ -91,3 +92,20 @@ def _migrate_generations_ok_status_and_preset(engine, inspector, tables: set[str
         )
     if "preset_id" not in columns:
         _add_column(engine, "generations", "preset_id VARCHAR", "preset_id")
+
+
+def _migrate_voice_profiles_personality(engine, inspector, tables: set[str]) -> None:
+    """Adds `personality TEXT` + `default_delivery TEXT` to voice_profiles.
+
+    - `personality`: drives Generate view's Compose button (LLM-fills
+      textarea with in-character line). Lifted from voicebox.
+    - `default_delivery`: Tier-2 delivery overlay defaults for the 3-tier
+      voice tuning system (task #88). JSON-serialized Delivery shape.
+    """
+    if "voice_profiles" not in tables:
+        return
+    columns = _get_columns(inspector, "voice_profiles")
+    if "personality" not in columns:
+        _add_column(engine, "voice_profiles", "personality TEXT", "personality")
+    if "default_delivery" not in columns:
+        _add_column(engine, "voice_profiles", "default_delivery TEXT", "default_delivery")
