@@ -6,6 +6,7 @@ the configured data dir. Writes go through atomic rename.
 from .atomic import atomic_write_json
 from .lexicons import LexiconStore
 from .personas import PersonaStore
+from .projects import ProjectStore
 from .settings_store import SettingsStore
 from .training_jobs import TrainingRegistry
 from .voices import VoiceStore
@@ -16,5 +17,6 @@ __all__ = [
     "VoiceStore",
     "PersonaStore",
     "LexiconStore",
+    "ProjectStore",
     "TrainingRegistry",
 ]

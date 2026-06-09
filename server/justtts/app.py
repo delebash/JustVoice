@@ -123,6 +123,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(cache_api.router)
     app.include_router(master_api.router)
     app.include_router(phase5_api.router)
+    app.include_router(projects_api.router)
 
     # Phase 4a backend (DESIGN_FREEZE §5)
     app.include_router(takes_api.router)
