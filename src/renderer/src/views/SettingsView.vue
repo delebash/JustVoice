@@ -567,7 +567,7 @@ onMounted(() => {
           <h3 class="jv-card__title">External TTS servers (OpenAI-compatible)</h3>
         </div>
         <p class="jv-muted" style="font-size: 12px; margin-bottom: 16px;">
-          Register an external server that implements the OpenAI TTS API (<code class="jv-mono">POST /v1/audio/speech</code>) as a JustTTS engine.
+          Register an external server that implements the OpenAI TTS API (<code class="jv-mono">POST /v1/audio/speech</code>) as a JustVoice engine.
           Compatible with kokoro-fastapi, openai-edge-tts, OpenAI itself, or any custom server.
         </p>
 

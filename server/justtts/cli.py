@@ -20,7 +20,7 @@ from .models import Settings
 from .paths import default_data_dir
 from .version import VERSION
 
-app = typer.Typer(name="justtts", no_args_is_help=True, help="JustTTS server CLI")
+app = typer.Typer(name="justtts", no_args_is_help=True, help="JustVoice server CLI")
 
 
 @app.command()
@@ -31,7 +31,7 @@ def serve(
     log_level: str = typer.Option("info", "--log-level", envvar="JUSTTTS_LOG_LEVEL"),
     no_docs: bool = typer.Option(False, "--no-docs", help="Disable Swagger/Redoc UIs"),
 ):
-    """Boot the JustTTS server."""
+    """Boot the JustVoice server."""
     logging.basicConfig(
         level=log_level.upper(),
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -48,7 +48,7 @@ def serve(
     bind_port = port or settings.server.port
 
     typer.secho(
-        f"JustTTS {VERSION} — http://{bind_host}:{bind_port}/  (data: {dd})",
+        f"JustVoice {VERSION} — http://{bind_host}:{bind_port}/  (data: {dd})",
         fg=typer.colors.GREEN,
     )
     uvicorn.run(fastapi_app, host=bind_host, port=bind_port, log_level=log_level.lower())
