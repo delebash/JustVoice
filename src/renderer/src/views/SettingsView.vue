@@ -511,6 +511,55 @@ async function copySnippet(key) {
     pushToast({ message: "Couldn't access clipboard — copy manually.", kind: "warning", duration: 3000 });
   }
 }
+
+// ── Log viewer (voicebox parity — preview Logs sub-tab) ──────────────
+const logsPreview = ref(`Loading recent log lines…`);
+async function loadLogsPreview() {
+  const r = await api.safeRequest("/v1/logs/tail?lines=80", null);
+  if (r?.text) logsPreview.value = r.text;
+  else logsPreview.value = "(no recent log lines — server may be offline or logging not yet wired)";
+}
+async function openLogFile() {
+  const tauri = typeof window !== "undefined" ? window.__TAURI__ : null;
+  if (!tauri?.shell?.open) {
+    pushToast({ message: "Open in OS file explorer requires Tauri.", kind: "warning" });
+    return;
+  }
+  const r = await api.safeRequest("/v1/system", null);
+  const logPath = r?.data_dir ? `${r.data_dir}/logs/justvoice.log` : null;
+  if (!logPath) {
+    pushToast({ message: "Couldn't locate log path. Check the server is running.", kind: "error" });
+    return;
+  }
+  try {
+    await tauri.shell.open(logPath);
+  } catch (e) {
+    pushToast({ message: `Couldn't open log: ${e?.message || e}`, kind: "error" });
+  }
+}
+async function downloadRecentLogs() {
+  try {
+    const blob = await api.request("/v1/logs/download?hours=24");
+    if (blob instanceof Blob) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `justvoice-logs-${new Date().toISOString().slice(0, 10)}.txt`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+  } catch (e) {
+    pushToast({ message: `Log download failed: ${e?.message || e}`, kind: "error" });
+  }
+}
+async function copyRecentLogs() {
+  try {
+    await navigator.clipboard.writeText(logsPreview.value || "");
+    pushToast({ message: "Last 100 lines copied.", duration: 2000 });
+  } catch {
+    pushToast({ message: "Clipboard unavailable.", kind: "warning" });
+  }
+}
 function loadAppearance() {
   try {
     const raw = localStorage.getItem(APPEARANCE_KEY);
@@ -539,6 +588,7 @@ onMounted(() => {
   loadAppearance();
   loadGpuInfo();
   loadMcpBindings();
+  loadLogsPreview();
 });
 </script>
 
@@ -1636,11 +1686,20 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── Logs · placeholder. ─── -->
+    <!-- ─── Logs (voicebox parity, preview lines 1771-1788) ─── -->
     <div v-show="activeSub === 'logs'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">Logs</h3></div>
-        <p class="jv-muted">Live log tail viewer + Open-log-file / Download-last-24h / Copy-last-100-lines actions are pending. For now use the tray menu's "📜 Open log file" action — that opens the log in your OS default editor.</p>
+        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 14px">
+          Server-side log file. Useful for debugging engine load failures, render errors, and
+          inspecting auth attempts. Live tail is read from <code class="jv-mono">~/.justvoice/logs/</code>.
+        </p>
+        <div class="jv-row" style="gap: 8px; margin-bottom: 14px">
+          <JvButton variant="secondary" size="sm" label="📂 Open log file" @click="openLogFile" />
+          <JvButton variant="secondary" size="sm" label="📥 Download last 24h" @click="downloadRecentLogs" />
+          <JvButton variant="secondary" size="sm" label="📋 Copy last 100 lines" @click="copyRecentLogs" />
+        </div>
+        <pre class="jv-code-block" style="max-height: 280px; overflow: auto; margin: 0">{{ logsPreview }}</pre>
       </div>
     </div>
 
