@@ -3,6 +3,9 @@ import { ref, onMounted, computed } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
+import { useCopy } from "../services/copy.js";
+
+const copy = useCopy();
 
 const api = useApi();
 const voices = ref([]);
@@ -70,7 +73,7 @@ onMounted(refresh);
         </tr>
       </tbody>
     </table>
-    <p v-else class="endnote">No voices registered. Install + load an engine to see preset voices.</p>
+    <p v-else class="endnote">No {{ copy.cast.plural.toLowerCase() }} registered. Install + load an engine to see preset voices.</p>
   </section>
 </template>
 

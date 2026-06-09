@@ -1,10 +1,23 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
+import { useOnboarding } from "../stores/onboarding.js";
 
 const api = useApi();
+const onboarding = useOnboarding();
 const settings = ref(null);
+
+const USE_CASE_LABELS = {
+  audiobook:     "Audiobook",
+  game:          "Game",
+  podcast:       "Podcast",
+  dictation:     "Dictation",
+  accessibility: "Accessibility",
+  multiple:      "A bit of everything",
+  unset:         "Not set",
+};
+const primaryLabel = computed(() => USE_CASE_LABELS[onboarding.primaryUseCase] || "Not set");
 
 async function refresh() {
   settings.value = await api.request("/v1/settings");
@@ -22,6 +35,14 @@ async function save() {
   } catch (e) {
     pushToast({ message: `Save failed: ${e.message || e}`, kind: "error" });
   }
+}
+
+async function runWelcomeAgain() {
+  // Re-open the first-run welcome modal by flipping `shown` back to
+  // false. App.vue's `showWelcome` computed reactively mounts the
+  // modal as soon as the persisted reset round-trips.
+  await onboarding.reset();
+  pushToast({ message: "Welcome reopened.", duration: 2500 });
 }
 
 onMounted(refresh);
@@ -69,6 +90,14 @@ onMounted(refresh);
     <section class="block">
       <button class="primary" @click="save">Save settings</button>
     </section>
+
+    <section class="block about-block">
+      <h3>About</h3>
+      <p class="endnote">
+        Primary use case: <strong>{{ primaryLabel }}</strong>.
+        <button type="button" class="link" @click="runWelcomeAgain">Run welcome again</button>
+      </p>
+    </section>
   </div>
 </template>
 
@@ -80,4 +109,12 @@ label > span { display: block; font-size: 11px; text-transform: uppercase; color
 input[type="text"], input[type="number"], input:not([type]) { width: 100%; padding: 6px 10px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink); font-size: 13px; }
 button.primary { background: var(--ink); color: var(--surface); border: 1px solid var(--ink); padding: 8px 16px; cursor: pointer; font-size: 13px; }
 .endnote { font-size: 11px; color: var(--muted); margin-top: 6px; }
+.about-block { margin-top: 8px; }
+.about-block .endnote { font-size: 12.5px; color: var(--ink-2, var(--muted)); }
+.about-block .link {
+  appearance: none; background: transparent; border: 0;
+  color: var(--accent, #3a7d63); padding: 0 0 0 6px;
+  font: inherit; cursor: pointer; text-decoration: underline;
+}
+.about-block .link:hover { color: var(--accent-ink, var(--accent, #3a7d63)); }
 </style>

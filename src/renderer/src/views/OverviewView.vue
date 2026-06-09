@@ -1,8 +1,10 @@
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import { useApi } from "../stores/api.js";
+import { useCopy } from "../services/copy.js";
 
 const api = useApi();
+const copy = useCopy();
 const health = ref(null);
 const engines = ref([]);
 const voices = ref([]);
@@ -51,8 +53,9 @@ onMounted(refresh);
     <h3>Catalog</h3>
     <div class="stats">
       <div class="stat">
-        <div class="k">Voices</div>
+        <div class="k">{{ copy.cast.plural }}</div>
         <div class="v">{{ voices.length }}</div>
+        <div v-if="!voices.length" class="x">No {{ copy.cast.plural.toLowerCase() }} yet — open Engines to install a voice pack.</div>
       </div>
       <div class="stat">
         <div class="k">Engines installed</div>

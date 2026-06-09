@@ -3,6 +3,9 @@ import { ref, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
+import { useCopy } from "../services/copy.js";
+
+const copy = useCopy();
 
 const api = useApi();
 const tasks = useRenderTasks();
@@ -78,7 +81,8 @@ onMounted(refreshVoices);
 
 <template>
   <section class="block">
-    <h3>Chapter render</h3>
+    <h3>{{ copy.chapter.singular }} render</h3>
+    <p class="endnote" v-if="!voices.length">No voices yet — install an engine to register your first {{ copy.cast.singular.toLowerCase() }} before rendering a {{ copy.chapter.singular.toLowerCase() }}.</p>
     <div class="row">
       <label class="grow">
         <span>Voice</span>
@@ -99,13 +103,13 @@ onMounted(refreshVoices);
     </div>
     <div style="margin-top: 12px">
       <label>
-        <span>Lines (one per row)</span>
+        <span>{{ copy.line.plural }} (one per row)</span>
         <textarea v-model="lines" rows="10"></textarea>
       </label>
     </div>
     <div class="row" style="margin-top: 12px">
       <button class="primary" :disabled="busy || !voice" @click="render">
-        {{ busy ? "Rendering chapter…" : "Render chapter" }}
+        {{ busy ? `Rendering ${copy.chapter.singular.toLowerCase()}…` : `Render ${copy.chapter.singular.toLowerCase()}` }}
       </button>
       <span class="endnote">POST /v1/render_chapter</span>
     </div>
