@@ -63,3 +63,4 @@ scripts/_shots/
 data/
 server/data/
 target/
+.claude/worktrees/
