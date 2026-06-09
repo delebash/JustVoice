@@ -510,11 +510,11 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── General · Desktop lifecycle (voicebox parity) ─── -->
+    <!-- ─── General · Lifecycle (voicebox parity — preview line 1564) ─── -->
     <div v-show="activeSub === 'general'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header">
-          <h3 class="jv-card__title">Desktop app</h3>
+          <h3 class="jv-card__title">Lifecycle</h3>
         </div>
 
         <!-- Keep server running on close — closes window to tray but keeps -->
@@ -587,107 +587,11 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── General · Appearance (theme + locale) ─── -->
-    <div v-show="activeSub === 'general'" class="jv-section">
-      <div class="jv-card">
-        <div class="jv-card__header">
-          <h3 class="jv-card__title">Appearance</h3>
-        </div>
-        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 6px">
-          Visual and locale preferences. Persisted in browser localStorage; no server round-trip.
-        </p>
+    <!-- Appearance card removed from General — lives in its own sub-tab
+         per preview line 1547 (showSubsection('appearance')). Theme +
+         Density + Accent + Language all editable from Settings →
+         Appearance sub-tab. -->
 
-        <div class="setting-row">
-          <div class="setting-row__head">
-            <div>
-              <div class="setting-row__title">Theme</div>
-              <div class="setting-row__desc">
-                Light, Dark, or Follow system. Applied immediately via CSS custom properties.
-              </div>
-            </div>
-            <JvSelect
-              v-model="appearance.theme"
-              :options="[
-                { label: 'Follow system', value: 'auto' },
-                { label: 'Light', value: 'light' },
-                { label: 'Dark', value: 'dark' },
-              ]"
-              @change="applyAppearance"
-            />
-          </div>
-        </div>
-
-        <div class="setting-row">
-          <div class="setting-row__head">
-            <div>
-              <div class="setting-row__title">Density</div>
-              <div class="setting-row__desc">
-                Compact reduces row spacing for power users. Spacious adds breathing room.
-              </div>
-            </div>
-            <JvSelect
-              v-model="appearance.density"
-              :options="[
-                { label: 'Default', value: 'default' },
-                { label: 'Compact', value: 'compact' },
-                { label: 'Spacious', value: 'spacious' },
-              ]"
-              @change="applyAppearance"
-            />
-          </div>
-        </div>
-
-        <div class="setting-row">
-          <div class="setting-row__head">
-            <div>
-              <div class="setting-row__title">Accent hue · {{ appearance.accentHue }}°</div>
-              <div class="setting-row__desc">
-                Drag to pick a new accent color across the whole app. Default 158° = forest green.
-              </div>
-            </div>
-            <span class="setting-row__value">
-              <span class="accent-preview" :style="{ background: `hsl(${appearance.accentHue} 55% 36%)` }" />
-            </span>
-          </div>
-          <input
-            type="range"
-            v-model.number="appearance.accentHue"
-            min="0" max="360" step="1"
-            class="setting-row__slider"
-            @input="applyAppearance"
-          />
-        </div>
-
-        <div class="setting-row">
-          <div class="setting-row__head">
-            <div>
-              <div class="setting-row__title">Language</div>
-              <div class="setting-row__desc">
-                UI language. Engine output language is configured per-voice in the Profile.
-                Full i18next wiring lands with task <code>#97</code> — the picker persists your
-                preference now and the locale will apply once translations ship.
-              </div>
-            </div>
-            <JvSelect
-              v-model="appearance.locale"
-              :options="[
-                { label: 'English (en)', value: 'en' },
-                { label: 'Spanish (es)', value: 'es' },
-                { label: 'French (fr)', value: 'fr' },
-                { label: 'German (de)', value: 'de' },
-                { label: 'Italian (it)', value: 'it' },
-                { label: 'Portuguese (pt)', value: 'pt' },
-                { label: 'Russian (ru)', value: 'ru' },
-                { label: 'Japanese (ja)', value: 'ja' },
-                { label: 'Korean (ko)', value: 'ko' },
-                { label: 'Chinese (zh)', value: 'zh' },
-              ]"
-              @change="applyAppearance"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- ─── General · Updates ─── -->
     <div v-show="activeSub === 'general'" class="jv-section">
@@ -1214,8 +1118,18 @@ onMounted(() => {
     <div v-show="activeSub === 'appearance'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">Appearance</h3></div>
-        <div class="jv-row" style="gap: 24px; flex-wrap: wrap; margin-top: 12px">
-          <JvField label="Theme" layout="block">
+        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 6px">
+          Visual and locale preferences. Persisted in browser localStorage; no server round-trip.
+        </p>
+
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Theme</div>
+              <div class="setting-row__desc">
+                Light, Dark, or Follow system. Applied immediately via CSS custom properties.
+              </div>
+            </div>
             <JvSelect
               v-model="appearance.theme"
               :options="[
@@ -1225,8 +1139,17 @@ onMounted(() => {
               ]"
               @change="applyAppearance"
             />
-          </JvField>
-          <JvField label="Density" layout="block">
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Density</div>
+              <div class="setting-row__desc">
+                Compact reduces row spacing for power users. Spacious adds breathing room.
+              </div>
+            </div>
             <JvSelect
               v-model="appearance.density"
               :options="[
@@ -1236,22 +1159,58 @@ onMounted(() => {
               ]"
               @change="applyAppearance"
             />
-          </JvField>
-          <JvField :label="`Accent hue — ${appearance.accentHue}°`" layout="block" style="flex: 1; min-width: 240px">
-            <input
-              type="range"
-              v-model.number="appearance.accentHue"
-              min="0" max="360" step="1"
-              class="appearance-slider"
-              @input="applyAppearance"
-            />
-          </JvField>
+          </div>
         </div>
-        <p class="jv-muted" style="font-size: 11.5px; margin-top: 16px">
-          Locale picker lands with the i18next wiring (task <code>#97</code>). Appearance
-          preferences persist in <code class="jv-mono">localStorage</code>; theme/accent are
-          applied via CSS custom properties on <code>:root</code>.
-        </p>
+
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Accent hue · {{ appearance.accentHue }}°</div>
+              <div class="setting-row__desc">
+                Drag to pick a new accent color across the whole app. Default 158° = forest green.
+              </div>
+            </div>
+            <span class="setting-row__value">
+              <span class="accent-preview" :style="{ background: `hsl(${appearance.accentHue} 55% 36%)` }" />
+            </span>
+          </div>
+          <input
+            type="range"
+            v-model.number="appearance.accentHue"
+            min="0" max="360" step="1"
+            class="setting-row__slider"
+            @input="applyAppearance"
+          />
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Language</div>
+              <div class="setting-row__desc">
+                UI language. Engine output language is configured per-voice in the Profile.
+                Full i18next wiring lands with task <code>#97</code> — the picker persists your
+                preference now and the locale will apply once translations ship.
+              </div>
+            </div>
+            <JvSelect
+              v-model="appearance.locale"
+              :options="[
+                { label: 'English (en)', value: 'en' },
+                { label: 'Spanish (es)', value: 'es' },
+                { label: 'French (fr)', value: 'fr' },
+                { label: 'German (de)', value: 'de' },
+                { label: 'Italian (it)', value: 'it' },
+                { label: 'Portuguese (pt)', value: 'pt' },
+                { label: 'Russian (ru)', value: 'ru' },
+                { label: 'Japanese (ja)', value: 'ja' },
+                { label: 'Korean (ko)', value: 'ko' },
+                { label: 'Chinese (zh)', value: 'zh' },
+              ]"
+              @change="applyAppearance"
+            />
+          </div>
+        </div>
       </div>
     </div>
 
