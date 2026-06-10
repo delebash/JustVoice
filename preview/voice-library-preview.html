@@ -138,7 +138,7 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .cast-card.unassigned{border-style:dashed}
 .cast-card:hover{border-color:var(--line-strong)}
 .cast-card.sel{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-.cast-card.narrator{grid-column:1 / -1;display:flex}
+.cast-card.narrator{grid-column:1 / -1;display:flex;width:100%}
 .portrait{width:48px;height:48px;border-radius:10px;color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-serif);font-weight:600;font-size:17px;flex:none}
 .cast-chip-main{font-size:9.5px;padding:0 6px;border:1px solid var(--line-strong);border-radius:999px;color:var(--ink-3)}
 .cast-role{font-size:11px;color:var(--ink-3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -243,16 +243,21 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
           <div class="studio-tabs" id="steps"></div>
           <div class="studio-body">
             <div class="studio-main">
-              <div class="row" style="margin-bottom:14px;flex-wrap:nowrap">
+              <div class="row" style="margin-bottom:10px;flex-wrap:nowrap">
                 <div id="cast-heading" style="min-width:0"></div>
                 <span class="spacer"></span>
                 <button class="btn secondary sm">✕ Clear cast</button>
                 <button class="btn sm">✨ Smart-assign</button>
               </div>
+              <p style="font-size:12.5px;color:var(--ink-2);max-width:680px;margin:0 0 18px;line-height:1.55">
+                <strong>Smart-assign</strong> asks your LLM to match each role's name and description against
+                the voice library and propose a cast. Override any pick manually — select a card,
+                then click a voice in the library. Click an assigned voice again to unassign it.
+              </p>
 
-              <div id="narrator-card"></div>
+              <div id="narrator-card" style="margin-bottom:4px"></div>
 
-              <div style="display:flex;align-items:flex-end;gap:12px;margin:22px 0 12px">
+              <div style="display:flex;align-items:flex-end;gap:12px;margin:24px 0 14px">
                 <div>
                   <div class="eyebrow" id="char-eyebrow">Characters</div>
                   <div class="display sm" id="char-counter"></div>
@@ -328,11 +333,31 @@ const VOICES = [
   { id:"crow",  name:"Old Crow",             engine:"chatterbox", type:"cloned",  g:"M", tone:"gravel, three teeth", lang:"en", samples:3,  effects:"radio·gain", channel:"OBS virtual" },
   { id:"blend", name:"Blend: Narrator+Crow", engine:"chatterbox", type:"blended", g:"M", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
   { id:"marat", name:"Mara (fine-tuned)",    engine:"chatterbox", type:"trained", g:"F", tone:"",                    lang:"en", samples:12, effects:"—",          channel:"Default" },
-  { id:"al",    name:"af_alloy",             engine:"kokoro",     type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
-  { id:"be",    name:"af_bella",             engine:"kokoro",     type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
-  { id:"he",    name:"af_heart",             engine:"kokoro",     type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
-  { id:"mi",    name:"am_michael",           engine:"kokoro",     type:"preset",  g:"M", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
-  { id:"ge",    name:"bm_george",            engine:"kokoro",     type:"preset",  g:"M", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"al",    name:"af_alloy",              engine:"kokoro",     type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"ao",    name:"af_aoede",              engine:"kokoro",     type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"be",    name:"af_bella",              engine:"kokoro",     type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"he",    name:"af_heart",              engine:"kokoro",     type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"ja",    name:"af_jadzia",             engine:"kokoro",     type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"je",    name:"af_jessica",            engine:"kokoro",     type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"ko",    name:"af_kore",               engine:"kokoro",     type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"ni",    name:"af_nicole",             engine:"kokoro",     type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"no",    name:"af_nova",               engine:"kokoro",     type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"ri",    name:"af_river",              engine:"kokoro",     type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"sa",    name:"af_sarah_k",            engine:"kokoro",     type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"sk",    name:"af_sky_k",              engine:"kokoro",     type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"ad",    name:"am_adam_k",             engine:"kokoro",     type:"preset",  g:"M", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"ec",    name:"am_echo",               engine:"kokoro",     type:"preset",  g:"M", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"er",    name:"am_eric",               engine:"kokoro",     type:"preset",  g:"M", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"fe",    name:"am_fenrir",             engine:"kokoro",     type:"preset",  g:"M", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"li",    name:"am_liam",               engine:"kokoro",     type:"preset",  g:"M", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"mi",    name:"am_michael",            engine:"kokoro",     type:"preset",  g:"M", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"on",    name:"am_onyx",               engine:"kokoro",     type:"preset",  g:"M", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"pu",    name:"am_puck",               engine:"kokoro",     type:"preset",  g:"M", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"ba",    name:"bf_alice",              engine:"kokoro",     type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"bf",    name:"bf_emma",               engine:"kokoro",     type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"bd",    name:"bm_daniel",             engine:"kokoro",     type:"preset",  g:"M", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"ge",    name:"bm_george",             engine:"kokoro",     type:"preset",  g:"M", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"bl",    name:"bm_lewis",              engine:"kokoro",     type:"preset",  g:"M", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
   { id:"bar",   name:"Heroic Baritone",      engine:"qwen3",      type:"designed",g:"M", tone:"booming, theatrical", lang:"en", samples:"—",effects:"reverb",     channel:"Default" },
   { id:"news",  name:"Calm Newsreader",      engine:"qwen3",      type:"designed",g:"N", tone:"measured, neutral",   lang:"en", samples:"—",effects:"—",          channel:"Default" },
   { id:"sky",   name:"af_sky",               engine:"extkokoro",  type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
@@ -393,6 +418,15 @@ const PROJECTS = {
       { id:"halvard",  name:"Halvard Renn", role:"Antagonist?",     main:true,  voice:"crow" },
       { id:"petra",    name:"Petra Lange",  role:"Aunt",            main:false, voice:null },
       { id:"tomas",    name:"Tomas",        role:"Boy on the pier", main:false, voice:null },
+      { id:"oren",     name:"Mrs. Oren",    role:"Neighbor",        main:false, voice:null },
+      { id:"surv",     name:"The Surveyor", role:"Unknown",         main:false, voice:null },
+      { id:"brakk",    name:"Brakk",        role:"Harbormaster",    main:false, voice:"ge" },
+      { id:"sefa",     name:"Sefa",         role:"Printer's girl",  main:false, voice:null },
+      { id:"dario",    name:"Dario Lange",  role:"Cousin",          main:false, voice:null },
+      { id:"matron",   name:"The Matron",   role:"Boarding house",  main:false, voice:"no" },
+      { id:"verle",    name:"Verle",        role:"Constable",       main:false, voice:null },
+      { id:"oddny",    name:"Oddny",        role:"Fishwife",        main:false, voice:null },
+      { id:"keeper",   name:"Lampkeeper",   role:"Ch. 9 only",      main:false, voice:null },
     ],
   },
   harbor: {
@@ -435,7 +469,9 @@ let castSearch = "", uncastOnly = false;
 /* Density by CAST SIZE, not use case. Demo threshold 8 (real default
    ~25, operator-tunable). Manual override per project wins. */
 const DENSITY_THRESHOLD = 8;
-const castModeOverride = {};   // projectId -> "cards" | "table"
+// Audiobook demo pinned to cards so card-scrolling is testable; the
+// auto-threshold would flip its 15-character cast to the table.
+const castModeOverride = { heist: "cards" };   // projectId -> "cards" | "table"
 function castMode(p){
   if(castModeOverride[projectId]) return castModeOverride[projectId];
   return p.cast.filter(c=>!c.primary).length > DENSITY_THRESHOLD ? "table" : "cards";
@@ -662,7 +698,7 @@ function renderStudioLib(){
   let rows=vs.map(v=>{
     const assigned=c&&c.voice===v.id;
     const isPlaying=playingId===v.id;
-    return `<div class="voice-row ${assigned?"assigned":""} ${ready?"":"dormant"}" onclick="pickVoice('${v.id}')">
+    return `<div class="voice-row ${assigned?"assigned":""} ${ready?"":"dormant"}" title="${assigned?`Click to unassign from ${c?c.name:""}`:`Click to assign to ${c?c.name:"the selected role"}`}" onclick="pickVoice('${v.id}')">
       <span class="glyph" style="background:${grad(v.name)}">${v.name[0]}</span>
       <span class="nm"><b>${v.name}</b>${v.tone?`<i>${v.tone}</i>`:""}</span>
       ${assigned?`<span class="check">✓</span>`:""}
@@ -686,14 +722,14 @@ function pickVoice(voiceId){
   const v=voiceById(voiceId);
   const c=project().cast.find(x=>x.id===selectedChar);
   if(!c){toast("Select a role first.");return}
-  if(engineState(v.engine)==="not_installed"){toast(`${ENGINES[v.engine].name} isn't installed — install it from the Engines tab first.`);return}
-  if(!engineReady(v.engine)){ startLoad(v.engine,()=>assign(c,v)); return; }
-  assign(c,v);
-}
-function assign(c,v){
-  c.voice=v.id;
-  toast(`<span class="a">${v.name}</span> assigned to ${c.name}.`);
-  play(v.id);
+  if(c.voice===v.id){
+    c.voice=null;
+    toast(`${v.name} unassigned from ${c.name}.`);
+  } else {
+    c.voice=v.id;
+    const needs=!engineReady(v.engine)?` ${ENGINES[v.engine].name} will load at render time.`:"";
+    toast(`<span class="a">${v.name}</span> assigned to ${c.name}.${needs}`);
+  }
   renderAll();
 }
 
