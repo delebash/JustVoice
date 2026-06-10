@@ -235,6 +235,16 @@ async function refresh() {
   }
 }
 
+// Boot banner — the Python server takes a few seconds to come up on
+// fresh launch. Without any signal, the UI looks broken (empty stores,
+// no engine, no voices). Track elapsed time-since-mount; if no health
+// response by 1s, show "Server starting…" until it lands. Hides as
+// soon as health.value populates.
+const bootElapsedMs = ref(0);
+const showBootBanner = computed(() =>
+  !health.value && bootElapsedMs.value > 1000,
+);
+
 // Once the primary-use-case selection lands (either from hydrate() or
 // the welcome modal), settle on the initial tab.
 watch(
@@ -288,8 +298,25 @@ function onWelcomeClosed() {
 }
 
 onMounted(async () => {
+  const start = performance.now();
+  const tick = setInterval(() => { bootElapsedMs.value = performance.now() - start; }, 200);
+  // Polling loop until the server comes up — every 1.5s while health is
+  // still null. Stops as soon as health.value populates (or the user
+  // navigates away).
   await onboarding.hydrate();
   await refresh();
+  if (!health.value) {
+    const poll = setInterval(async () => {
+      await refresh();
+      if (health.value) {
+        clearInterval(poll);
+        clearInterval(tick);
+        bootElapsedMs.value = 0;
+      }
+    }, 1500);
+  } else {
+    clearInterval(tick);
+  }
 });
 </script>
 
@@ -386,6 +413,10 @@ onMounted(async () => {
       </header>
 
       <div class="jv-content">
+        <div v-if="showBootBanner" class="jv-banner jv-banner--warn jv-boot-banner">
+          <span class="jv-boot-banner__spinner" />
+          <span>Server starting… The Python sidecar is spinning up. Engine and voice catalogues will populate when it's ready.</span>
+        </div>
         <p v-if="effectiveLede" class="jv-content__lede">{{ effectiveLede }}</p>
         <TaskStrip v-for="task in tasks.running" :key="task.id" :task="task" />
         <component :is="currentView?.component" />

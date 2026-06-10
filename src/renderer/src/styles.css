@@ -384,6 +384,24 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 }
 .jv-topbar__engine-icon { font-size: 12px; }
 
+/* Boot banner — shown only when /v1/health hasn't responded yet after
+   ~1s, so the user doesn't see an empty UI and assume it's broken. */
+.jv-boot-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+.jv-boot-banner__spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--warn-line);
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: jvSpin 0.65s linear infinite;
+}
+
 @keyframes jvConnectionPulse {
   0%, 100% { box-shadow: 0 0 0 3px rgba(58, 125, 99, 0.18); }
   50%      { box-shadow: 0 0 0 5px rgba(58, 125, 99, 0.08); }

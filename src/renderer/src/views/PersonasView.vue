@@ -18,6 +18,7 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
+import EmptyState from "../components/EmptyState.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 
 const api = useApi();
@@ -172,13 +173,52 @@ async function deletePersona() {
     confirmLabel: "Delete",
   });
   if (!ok) return;
+  // Save the persona's full shape so the Undo action can re-create it.
+  // The id may not be reusable (post-delete some backends accept it,
+  // others assign a new one); we hand the full body to /v1/personas
+  // POST and accept whatever id comes back.
+  const snapshot = { ...draft.value };
+  const personaName = snapshot.name || "Persona";
   try {
-    await api.request(`/v1/personas/${draft.value.id}`, { method: "DELETE" });
+    await api.request(`/v1/personas/${snapshot.id}`, { method: "DELETE" });
     selectedId.value = null;
     await loadAll();
-    pushToast({ kind: "success", title: "Persona deleted" });
+    pushToast({
+      kind: "success",
+      message: `${personaName} deleted.`,
+      duration: 6000,
+      action: {
+        label: "Undo",
+        fn: async () => {
+          try {
+            const body = {
+              name: snapshot.name,
+              voice_id: snapshot.voice_id,
+              bio: snapshot.bio,
+              personality: snapshot.personality,
+              language: snapshot.language,
+              avatar_path: snapshot.avatar_path,
+              default_delivery: snapshot.default_delivery || {},
+              effects_chain: snapshot.effects_chain || [],
+              lexicon_id: snapshot.lexicon_id,
+              engine_override: snapshot.engine_override,
+            };
+            const restored = await api.request("/v1/personas", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            });
+            await loadAll();
+            selectedId.value = restored?.id || snapshot.id;
+            pushToast({ kind: "success", message: `${personaName} restored.` });
+          } catch (e) {
+            pushToast({ kind: "error", message: `Undo failed: ${e?.message || e}` });
+          }
+        },
+      },
+    });
   } catch (e) {
-    pushToast({ kind: "error", title: "Delete failed", description: String(e?.message ?? e) });
+    pushToast({ kind: "error", message: `Delete failed: ${e?.message ?? e}` });
   }
 }
 
@@ -278,13 +318,17 @@ onMounted(loadAll);
       </div>
 
       <div v-if="loading" class="jv-muted personas__empty">Loading…</div>
+      <EmptyState
+        v-else-if="!filteredPersonas.length && !personas.length"
+        icon="Sparkle"
+        title="No characters yet"
+        message="A persona pairs a name + bio + voice + personality. Audiobook cast, game NPCs, podcast hosts all live here."
+        action-label="+ Create your first persona"
+        compact
+        @action="createBlank"
+      />
       <div v-else-if="!filteredPersonas.length" class="personas__empty jv-muted">
-        <template v-if="!personas.length">
-          No personas yet. Use <strong>+ New</strong> to create one.
-        </template>
-        <template v-else>
-          No personas match this filter.
-        </template>
+        No personas match this filter.
       </div>
       <div
         v-for="p in filteredPersonas"

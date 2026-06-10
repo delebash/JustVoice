@@ -15,6 +15,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import ListPane from "../components/ListPane.vue";
 import JvButton from "../components/jv/JvButton.vue";
 import JvTag from "../components/jv/JvTag.vue";
+import EmptyState from "../components/EmptyState.vue";
 import ImportModal from "./ImportModal.vue";
 import { projectsService } from "../services/projects.js";
 import { useApi } from "../stores/api.js";
@@ -383,9 +384,17 @@ onMounted(refresh);
       </div>
 
       <div v-if="loading" class="books__empty jv-muted">Loading…</div>
+      <EmptyState
+        v-else-if="filtered.length === 0 && !search && projectTypeFilter === 'all'"
+        icon="Sparkle"
+        :title="`No ${copy.book.plural.toLowerCase()} yet`"
+        :message="`Import from JustWrite, paste a manuscript chapter, or start blank. Studio walks you from cast → script → render.`"
+        action-label="+ Import…"
+        compact
+        @action="showImport = true"
+      />
       <div v-else-if="filtered.length === 0" class="books__empty">
-        <p class="jv-muted">No {{ copy.book.plural.toLowerCase() }} yet.</p>
-        <JvButton variant="secondary" size="sm" label="+ Import…" @click="showImport = true" style="margin-top: 12px" />
+        <p class="jv-muted">No {{ copy.book.plural.toLowerCase() }} match this filter.</p>
       </div>
 
       <div
