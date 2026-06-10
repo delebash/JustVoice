@@ -37,7 +37,6 @@ from .api import (
     models_api,
     personas_api,
     phase5_api,
-    profiles_api,
     project_export_api,
     projects_api,
     render_chapter_api,
@@ -123,7 +122,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(system_api.router)
     app.include_router(settings_api.router)
     app.include_router(voices_api.router)
-    app.include_router(profiles_api.router)
     app.include_router(personas_api.router)
     app.include_router(lexicons_api.router)
     app.include_router(engines_api.router)

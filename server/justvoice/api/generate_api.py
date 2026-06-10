@@ -193,9 +193,8 @@ async def _generate_via_manager(
     max_chunk_chars, crossfade_ms = _chunking_params(st.settings.get())
     request_delivery = req.delivery.model_dump(exclude_none=True) if req.delivery else {}
     # 3-tier voice tuning merge (#88): preset > request > persona defaults.
-    # When persona_id is set, resolve persona.default_delivery via the
-    # JSON PersonaStore and pass it as `tier2_overlay`. Falls back to the
-    # legacy profile_id path while the Profile-kill transition is in flight.
+    # Resolve persona.default_delivery via the JSON PersonaStore and pass
+    # it as `tier2_overlay`.
     persona_overlay = None
     if req.persona_id:
         persona = st.personas.get(req.persona_id)
@@ -207,7 +206,6 @@ async def _generate_via_manager(
     try:
         delivery = merge_delivery(
             request_delivery,
-            req.profile_id,
             req.preset_id,
             db,
             tier2_overlay=persona_overlay,
@@ -280,10 +278,21 @@ def _generate_via_inprocess(engine_id: str, req: GenerateRequest) -> Response:
 
     max_chunk_chars, crossfade_ms = _chunking_params(st.settings.get())
     request_delivery = req.delivery.model_dump(exclude_none=True) if req.delivery else {}
+    persona_overlay = None
+    if req.persona_id:
+        persona = st.personas.get(req.persona_id)
+        if persona is not None:
+            persona_overlay = persona.default_delivery or {}
+
     from ..database.session import SessionLocal
     db = SessionLocal()
     try:
-        delivery = merge_delivery(request_delivery, req.profile_id, req.preset_id, db)
+        delivery = merge_delivery(
+            request_delivery,
+            req.preset_id,
+            db,
+            tier2_overlay=persona_overlay,
+        )
     finally:
         db.close()
 

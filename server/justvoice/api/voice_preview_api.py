@@ -115,7 +115,7 @@ async def preview_voice(body: VoicePreviewRequest) -> VoicePreviewResponse:
 
     Returns a preview_id that can be passed to
     POST /v1/voices/preview/{id}/save within 10 minutes to promote the
-    candidate to a persistent VoiceProfile.
+    candidate to a persistent Voice.
     """
     # Validate per-source inputs.
     if body.source in ("cloned", "imported"):

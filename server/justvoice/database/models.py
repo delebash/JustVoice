@@ -54,70 +54,22 @@ def _utcnow() -> datetime:
 # ── Voice + engine layer ──────────────────────────────────────────────────
 
 
-class VoiceProfile(Base):
-    """A reusable voice. Cloned (from samples), preset (engine-built-in),
-    or designed (text-prompted)."""
-
-    __tablename__ = "voice_profiles"
-
-    id = Column(String, primary_key=True, default=_uuid)
-    name = Column(String, nullable=False, unique=True)
-    description = Column(Text)
-    language = Column(String, default="en")
-    avatar_path = Column(String, nullable=True)
-    # "cloned" | "preset" | "designed"
-    voice_type = Column(String, nullable=False, default="cloned")
-    preset_engine = Column(String, nullable=True)
-    preset_voice_id = Column(String, nullable=True)
-    design_prompt = Column(Text, nullable=True)
-    default_engine = Column(String, nullable=True)
-    # Serialized effects chain (EffectConfig[]).
-    effects_chain = Column(Text, nullable=True)
-    # Per-profile lexicon override (nullable: profile inherits project default).
-    default_lexicon_id = Column(String, ForeignKey("lexicons.id", ondelete="SET NULL"), nullable=True)
-    # Free-form personality prompt — drives the LLM-backed "Compose" action
-    # in Generate (write a fresh in-character line for this profile). Lifted
-    # from the profile model in the preview; `personality` enables the
-    # Compose (✨) button on the Generate view.
-    personality = Column(Text, nullable=True)
-    # Tier-2 (per-voice) delivery overlay defaults. JSON dict matching the
-    # Delivery Pydantic shape (speed / pitch / gain_db / temperature /
-    # emotion / instruct / engine.* etc). Used by the 3-tier merge in
-    # render_core: render_preset (Tier 3) > profile.default_delivery
-    # (Tier 2) > engine defaults (Tier 1). See task #88.
-    default_delivery = Column(Text, nullable=True)
-    # Stats — denormalized for fast list rendering. Updated by triggers /
-    # application-level counters; never the source of truth.
-    generation_count = Column(Integer, default=0, nullable=False)
-    sample_count = Column(Integer, default=0, nullable=False)
-    created_at = Column(DateTime, default=_utcnow)
-    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+# VoiceProfile / ProfileSample / ProfileChannel removed in Slice 4 of the
+# Profile-kill rollout (see plan locked decision #1). Persona now carries
+# voice_id + delivery + effects + personality + lexicon directly.
+# Audio-channel routing per character lives on PersonaChannel below.
 
 
-class ProfileSample(Base):
-    """Reference audio for a cloned voice profile."""
+class PersonaChannel(Base):
+    """Many-to-many: which audio output channels does this persona play through.
 
-    __tablename__ = "profile_samples"
-
-    id = Column(String, primary_key=True, default=_uuid)
-    profile_id = Column(String, ForeignKey("voice_profiles.id", ondelete="CASCADE"), nullable=False)
-    audio_path = Column(String, nullable=False)
-    reference_text = Column(Text, nullable=False)
-    duration_sec = Column(Float, nullable=True)
-    sample_rate = Column(Integer, nullable=True)
-    created_at = Column(DateTime, default=_utcnow)
-
-
-class ProfileChannel(Base):
-    """Many-to-many: which audio output channels does this profile play through.
-
-    A voice profile with channel routing assigned overrides the global
-    AudioPlayer device choice for its playback.
+    A persona with channel routing assigned overrides the global AudioPlayer
+    device choice for its playback. Replaces ProfileChannel (Slice 4).
     """
 
-    __tablename__ = "profile_channels"
+    __tablename__ = "persona_channels"
 
-    profile_id = Column(String, ForeignKey("voice_profiles.id", ondelete="CASCADE"), primary_key=True)
+    persona_id = Column(String, ForeignKey("personas.id", ondelete="CASCADE"), primary_key=True)
     channel_id = Column(String, ForeignKey("channels.id", ondelete="CASCADE"), primary_key=True)
 
 
@@ -157,13 +109,6 @@ class Persona(Base):
     effects_chain = Column(Text, nullable=True)
     engine_override = Column(String, nullable=True)
     lexicon_id = Column(String, ForeignKey("lexicons.id", ondelete="SET NULL"), nullable=True)
-    # Transition-window columns — kept during Slice 1-3 and removed in Slice 4
-    # once /v1/profiles is deleted. `voice_profile_id` is no longer written by
-    # the new API; existing rows from prior versions are preserved.
-    voice_profile_id = Column(
-        String, ForeignKey("voice_profiles.id", ondelete="SET NULL"), nullable=True
-    )
-    personality_enabled = Column(Boolean, default=False, nullable=False)
     # Provenance — where did this persona come from?
     imported_from = Column(String, nullable=True)  # "justwrite" | "manual" | "unreal" | "voice_profile"
     imported_id = Column(String, nullable=True)  # foreign id in the source system
@@ -290,7 +235,11 @@ class Generation(Base):
     id = Column(String, primary_key=True, default=_uuid)
     block_id = Column(String, ForeignKey("blocks.id", ondelete="SET NULL"), nullable=True)
     persona_id = Column(String, ForeignKey("personas.id", ondelete="SET NULL"), nullable=True)
-    profile_id = Column(String, ForeignKey("voice_profiles.id", ondelete="SET NULL"), nullable=True)
+    # `profile_id` column retained as a plain string for backward DB compat
+    # with rows written before Slice 4 of the Profile-kill rollout. New
+    # writes leave it null and use persona_id instead. The FK to
+    # voice_profiles is gone because the table is dropped.
+    profile_id = Column(String, nullable=True)
     # Denormalized so generations survive their project being deleted.
     # Useful for the cache layer + bulk-delete by project / chapter.
     project_id = Column(String, nullable=True)
@@ -472,7 +421,10 @@ class MCPBinding(Base):
 
     client_id = Column(String, primary_key=True)
     label = Column(String, nullable=True)
-    profile_id = Column(String, ForeignKey("voice_profiles.id", ondelete="SET NULL"), nullable=True)
+    # Replaces the prior voice_profiles FK — now points at personas after
+    # Slice 4 of the Profile-kill rollout. Nullable; MCP clients without
+    # a bound persona fall back to the global default.
+    persona_id = Column(String, ForeignKey("personas.id", ondelete="SET NULL"), nullable=True)
     default_personality = Column(Boolean, default=False, nullable=False)
     default_engine = Column(String, nullable=True)
     last_seen_at = Column(DateTime, nullable=True)
@@ -535,7 +487,10 @@ class RenderPreset(Base):
     id = Column(String, primary_key=True, default=_uuid)
     name = Column(String, nullable=False)
     project_id = Column(String, ForeignKey("projects.id", ondelete="CASCADE"), nullable=True)
-    voice_id = Column(String, ForeignKey("voice_profiles.id", ondelete="RESTRICT"), nullable=False)
+    # After Slice 4 of the Profile-kill rollout the preset binds to a
+    # Persona, not the dropped VoiceProfile. ondelete RESTRICT prevents
+    # deleting a Persona that has render presets bound to it.
+    voice_id = Column(String, ForeignKey("personas.id", ondelete="RESTRICT"), nullable=False)
     # JSON: Delivery shape
     delivery_json = Column(Text, nullable=False, default="{}")
     # "acx" | "inaudio" | "podcast" | "youtube" | "none" | None
@@ -598,7 +553,9 @@ class TrainingJob(Base):
     __tablename__ = "training_jobs"
 
     id = Column(String, primary_key=True, default=_uuid)
-    profile_id = Column(String, ForeignKey("voice_profiles.id", ondelete="CASCADE"), nullable=False)
+    # Replaces the prior voice_profiles FK after Slice 4 of the
+    # Profile-kill rollout. Training jobs target a persona's voice.
+    persona_id = Column(String, ForeignKey("personas.id", ondelete="CASCADE"), nullable=False)
     engine = Column(String, nullable=False)
     # "qc" | "training" | "completed" | "failed"
     status = Column(String, nullable=False, default="qc")

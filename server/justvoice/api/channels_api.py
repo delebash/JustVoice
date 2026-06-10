@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """/v1/channels — audio output channel configs.
 
-Maps a voice profile to specific OS audio output devices. Use cases:
-multi-monitor setups, route certain voices to OBS virtual mic, per-character
-podcast monitoring across multiple outputs.
+Maps a persona to specific OS audio output devices. Use cases: multi-monitor
+setups, route certain voices to OBS virtual mic, per-character podcast
+monitoring across multiple outputs.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from ..database import Channel, ProfileChannel, get_db
+from ..database import Channel, PersonaChannel, get_db
 from ..errors import not_found
 
 
@@ -57,7 +57,7 @@ class UpdateChannelRequest(BaseModel):
     device_ids: Optional[list[str]] = None
 
 
-class ProfileChannels(BaseModel):
+class PersonaChannels(BaseModel):
     channel_ids: list[str]
 
 
@@ -113,18 +113,18 @@ async def delete_channel(channel_id: str, db: Session = Depends(get_db)) -> dict
     return {"deleted": True}
 
 
-@router.get("/v1/profiles/{profile_id}/channels", response_model=ProfileChannels)
-async def get_profile_channels(profile_id: str, db: Session = Depends(get_db)) -> ProfileChannels:
-    rows = db.query(ProfileChannel).filter(ProfileChannel.profile_id == profile_id).all()
-    return ProfileChannels(channel_ids=[r.channel_id for r in rows])
+@router.get("/v1/personas/{persona_id}/channels", response_model=PersonaChannels)
+async def get_persona_channels(persona_id: str, db: Session = Depends(get_db)) -> PersonaChannels:
+    rows = db.query(PersonaChannel).filter(PersonaChannel.persona_id == persona_id).all()
+    return PersonaChannels(channel_ids=[r.channel_id for r in rows])
 
 
-@router.put("/v1/profiles/{profile_id}/channels", response_model=ProfileChannels)
-async def set_profile_channels(
-    profile_id: str, body: ProfileChannels, db: Session = Depends(get_db)
-) -> ProfileChannels:
-    db.query(ProfileChannel).filter(ProfileChannel.profile_id == profile_id).delete()
+@router.put("/v1/personas/{persona_id}/channels", response_model=PersonaChannels)
+async def set_persona_channels(
+    persona_id: str, body: PersonaChannels, db: Session = Depends(get_db)
+) -> PersonaChannels:
+    db.query(PersonaChannel).filter(PersonaChannel.persona_id == persona_id).delete()
     for cid in body.channel_ids:
-        db.add(ProfileChannel(profile_id=profile_id, channel_id=cid))
+        db.add(PersonaChannel(persona_id=persona_id, channel_id=cid))
     db.commit()
     return body

@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient
 
 from justvoice.api import takes_api
 from justvoice.database import get_db
-from justvoice.database.models import Block, Generation, Scene, Project, Take, VoiceProfile
+from justvoice.database.models import Block, Generation, Persona, Scene, Project, Take
 from justvoice.errors import ApiError, api_exception_handler
 from fastapi import HTTPException
 from justvoice.errors import http_exception_handler
@@ -31,8 +31,14 @@ pytest_plugins = ["tests.conftest_db"]
 
 
 def _seed(db_session):
-    """Insert one VoiceProfile + Project + Scene + Block; return (voice, block)."""
-    v = VoiceProfile(name="V", voice_type="cloned")
+    """Insert one Persona + Project + Scene + Block; return (voice, block).
+
+    After Slice 4 of the Profile-kill rollout the test seeds a Persona
+    in place of the now-dropped VoiceProfile. Generation.profile_id is
+    retained as a plain string column for backward DB compat, so the
+    test passes the persona id through it as before.
+    """
+    v = Persona(name="V")
     db_session.add(v)
     p = Project(name="Book", project_type="audiobook")
     db_session.add(p)

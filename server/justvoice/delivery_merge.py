@@ -24,7 +24,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from .database.models import RenderPreset, VoiceProfile
+from .database.models import RenderPreset
 
 
 logger = logging.getLogger("justvoice.delivery-merge")
@@ -61,7 +61,6 @@ def _deep_merge(base: dict, overlay: dict) -> dict:
 
 def merge_delivery(
     request_delivery: Optional[dict],
-    profile_id: Optional[str],
     preset_id: Optional[str],
     db: Session,
     tier2_overlay: Optional[dict] = None,
@@ -69,25 +68,16 @@ def merge_delivery(
     """Collapse the 3 tiers into a single effective delivery dict.
 
     Precedence (highest first):
-      preset.delivery > request.delivery > tier2
+      preset.delivery > request.delivery > tier2_overlay (persona)
 
-    Tier-2 source priority: `tier2_overlay` (dict, used when the caller
-    has already resolved persona.default_delivery from PersonaStore)
-    wins over `profile_id` (legacy VoiceProfile lookup, kept during the
-    Profile-kill transition window — see plan).
+    Caller is responsible for resolving persona.default_delivery from
+    PersonaStore and passing it as `tier2_overlay`. The legacy
+    profile_id lookup was removed in Slice 4 of the Profile-kill rollout.
 
     Returns the merged delivery dict (or empty {} if nothing supplied).
     """
-    # Tier 2 — persona overlay (new) OR profile defaults (legacy fallback)
-    tier2: dict = {}
-    if tier2_overlay is not None:
-        tier2 = tier2_overlay or {}
-    elif profile_id:
-        prof = db.query(VoiceProfile).filter(VoiceProfile.id == profile_id).first()
-        if prof:
-            tier2 = _decode_json_dict(prof.default_delivery)
-        else:
-            logger.warning("merge_delivery: profile %s not found, skipping Tier-2", profile_id)
+    # Tier 2 — persona overlay (caller-resolved)
+    tier2: dict = tier2_overlay or {}
 
     # Tier 3a — request.delivery (set by the caller per-request)
     tier3a: dict = request_delivery or {}

@@ -492,7 +492,6 @@ def _materialize_standard(
             bio=bio_text or None,
             imported_from=standard.source,
             imported_id=char.id,
-            personality_enabled=bool(bio_text),
         )
         db.add(persona)
         db.flush()

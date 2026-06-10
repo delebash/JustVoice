@@ -12,12 +12,10 @@ see `migrations.py` for the why.
 from .session import init_db, get_db, SessionLocal, engine
 from .models import (
     Base,
-    # Voice + engine layer
-    VoiceProfile,
-    ProfileSample,
-    ProfileChannel,
-    # Persona layer
+    # Persona layer (Persona absorbs the former Profile-side fields per
+    # Slice 4 of the Profile-kill rollout)
     Persona,
+    PersonaChannel,
     # Lexicon layer
     Lexicon,
     LexiconEntry,
@@ -57,10 +55,8 @@ __all__ = [
     "SessionLocal",
     "engine",
     "Base",
-    "VoiceProfile",
-    "ProfileSample",
-    "ProfileChannel",
     "Persona",
+    "PersonaChannel",
     "Lexicon",
     "LexiconEntry",
     "Project",

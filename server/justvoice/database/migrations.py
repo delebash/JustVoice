@@ -50,6 +50,7 @@ def run_migrations(engine) -> None:
     _migrate_generations_ok_status_and_preset(engine, inspector, tables)
     _migrate_voice_profiles_personality(engine, inspector, tables)
     _migrate_personas_absorb_profile_fields(engine, inspector, tables)
+    _migrate_drop_voice_profile_tables(engine, inspector, tables)
 
 
 # ── helpers ───────────────────────────────────────────────────────────────
@@ -98,10 +99,10 @@ def _migrate_generations_ok_status_and_preset(engine, inspector, tables: set[str
 def _migrate_voice_profiles_personality(engine, inspector, tables: set[str]) -> None:
     """Adds `personality TEXT` + `default_delivery TEXT` to voice_profiles.
 
-    - `personality`: drives Generate view's Compose button (LLM-fills
-      textarea with in-character line).
-    - `default_delivery`: Tier-2 delivery overlay defaults for the 3-tier
-      voice tuning system (task #88). JSON-serialized Delivery shape.
+    Kept idempotent so older databases finish their column add BEFORE
+    the Profile→Persona migration in migrate_profiles.py reads them.
+    Becomes a no-op (table missing) after the table-drop migration
+    below runs once.
     """
     if "voice_profiles" not in tables:
         return
@@ -138,3 +139,28 @@ def _migrate_personas_absorb_profile_fields(engine, inspector, tables: set[str])
         _add_column(engine, "personas", "effects_chain TEXT", "effects_chain")
     if "imported_id" not in columns:
         _add_column(engine, "personas", "imported_id VARCHAR", "imported_id")
+
+
+def _migrate_drop_voice_profile_tables(engine, inspector, tables: set[str]) -> None:
+    """Drop voice_profiles, profile_samples, profile_channels (Slice 4).
+
+    Runs AFTER `_migrate_personas_absorb_profile_fields` AND AFTER the
+    one-shot Profile→Persona data migration in `migrate_profiles.py` has
+    a chance to read voice_profiles at AppState init.
+
+    The personas.voice_profile_id + personas.personality_enabled columns
+    are LEFT IN PLACE as dead null residue. Dropping them via
+    `ALTER TABLE … DROP COLUMN` fails on SQLite because the original
+    CREATE TABLE statement embeds an FK declaration that references the
+    soon-dropped voice_profiles table — SQLite refuses to drop a column
+    that participates in an FK definition. The correct fix is a full
+    table-recreate (CREATE … AS SELECT, drop, rename); that's a heavier
+    migration deferred to a later cleanup slice. The dead columns are
+    harmless because no code writes to them after Slice 1-3.
+    """
+    with engine.connect() as conn:
+        for table in ("profile_channels", "profile_samples", "voice_profiles"):
+            if table in tables:
+                conn.execute(text(f"DROP TABLE IF EXISTS {table}"))
+                logger.info("Dropped %s table (Slice 4 of Profile-kill)", table)
+        conn.commit()

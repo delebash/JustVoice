@@ -4,6 +4,9 @@
 When an Unreal editor / Claude / Cursor calls `justvoice.speak` without
 specifying voice or personality, the per-client binding's defaults apply.
 Critical for the "Unreal NPCs always use Chatterbox + persona" config.
+
+After Slice 4 of the Profile-kill rollout the binding points at a Persona
+rather than a (now-dead) VoiceProfile.
 """
 
 from __future__ import annotations
@@ -25,7 +28,7 @@ router = APIRouter(tags=["mcp"])
 class MCPBindingResponse(BaseModel):
     client_id: str
     label: Optional[str]
-    profile_id: Optional[str]
+    persona_id: Optional[str]
     default_personality: bool
     default_engine: Optional[str]
     last_seen_at: Optional[datetime]
@@ -42,7 +45,7 @@ class MCPBindingList(BaseModel):
 class UpsertMCPBindingRequest(BaseModel):
     client_id: str = Field(..., min_length=1, max_length=80)
     label: Optional[str] = None
-    profile_id: Optional[str] = None
+    persona_id: Optional[str] = None
     default_personality: bool = False
     default_engine: Optional[str] = None
 
@@ -60,7 +63,7 @@ async def upsert_mcp_binding(
     existing = db.query(MCPBinding).filter(MCPBinding.client_id == body.client_id).first()
     if existing:
         existing.label = body.label
-        existing.profile_id = body.profile_id
+        existing.persona_id = body.persona_id
         existing.default_personality = body.default_personality
         existing.default_engine = body.default_engine
         db.commit()
@@ -69,7 +72,7 @@ async def upsert_mcp_binding(
     binding = MCPBinding(
         client_id=body.client_id,
         label=body.label,
-        profile_id=body.profile_id,
+        persona_id=body.persona_id,
         default_personality=body.default_personality,
         default_engine=body.default_engine,
     )

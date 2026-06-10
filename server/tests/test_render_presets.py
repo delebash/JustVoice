@@ -8,13 +8,15 @@ from __future__ import annotations
 import json
 from sqlalchemy.exc import IntegrityError
 
-from justvoice.database.models import RenderPreset, VoiceProfile
+from justvoice.database.models import Persona, RenderPreset
 
 pytest_plugins = ["tests.conftest_db"]
 
 
 def _make_voice(db_session, name="V1"):
-    v = VoiceProfile(name=name, voice_type="cloned")
+    # After Slice 4 of the Profile-kill rollout RenderPreset.voice_id
+    # references a Persona, not a VoiceProfile.
+    v = Persona(name=name)
     db_session.add(v)
     db_session.commit()
     db_session.refresh(v)
