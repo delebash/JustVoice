@@ -21,6 +21,7 @@ import BooksView from "./views/BooksView.vue";
 import VoicesView from "./views/VoicesView.vue";
 // ProfilesView removed — Persona is the sole identity layer after the
 // Profile-kill (plan Q1). All voice config now lives directly on Persona.
+import StudioView from "./views/StudioView.vue";
 import CompareView from "./views/CompareView.vue";
 import TrainView from "./views/TrainView.vue";
 import PersonasView from "./views/PersonasView.vue";
@@ -45,6 +46,7 @@ const VIEWS = [
   { id: "overview",  label: "Overview",  icon: "🏠", lede: "", component: OverviewView },
   { id: "generate",  label: "Generate",  icon: "📝", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it. Type / for paralinguistic tags.", component: GenerateView },
   { id: "books",     label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Imports from JustWrite via POST /v1/projects/import?source=justwrite.", component: BooksView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "studio",    label: "Studio",    icon: "🎬", lede: "Cast → Script → Render production environment. Three-tab flow for multi-character work. Cast assigns voices to characters; Script runs LLM speaker attribution (Phase 3 backend); Render batches the whole project.", component: StudioView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "stories",   label: "Stories",   icon: "🎬", lede: "Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.", component: StoriesView, visibleFor: ["game", "podcast", "multiple", "unset"] },
   { id: "chapter",   label: "Chapter",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved. Pinned floating generate bar at bottom.", component: ChapterView, visibleFor: ["audiobook", "podcast", "multiple", "unset"] },
   { id: "voices",    label: "Voices",    icon: "🎙️", lede: "Voice library — cloned, preset (Kokoro 54 + Qwen 9), designed (text-prompt → voice), blended. Per-voice channel routing.", component: VoicesView },
