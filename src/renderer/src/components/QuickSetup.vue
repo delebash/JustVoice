@@ -1,23 +1,27 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!--
-  QuickSetup — post-onboarding wizard that gets the user from zero to
-  "useful" in one screen. Plan Q4 task #18.
+  QuickSetup — post-onboarding wizard. Now multi-step + feature-pin
+  auto-config per the JustWrite QuickSetup.vue / quickSetupPresets.js
+  pattern (source read this turn). The earlier single-screen version
+  installed engines but skipped the load-bearing recipe writes that
+  make JustVoice actually configured for the user.
 
-  Flow:
-    1. Probe GPU via /v1/system → detect VRAM tier.
-    2. Show the recipe for that tier — recommended TTS engine + LLM tier.
-    3. User clicks "Install recommendations" → triggers /v1/engines/{id}/install
-       for each engine, and saves feature-pin defaults pointing at the
-       chosen LLM tier (when one is registered).
-    4. User can also skip and configure manually later.
-
-  Tier thresholds match JustWrite's quickSetupPresets.js mapping:
-    cpu    (<7  GB) → Kokoro (realtime CPU); no LLM auto-install
-    8  GB  (7-11)  → Kokoro + Chatterbox; Direct-tier LLM
-    12 GB  (11-14) → Kokoro + Chatterbox + Qwen3-0.6B; Direct/Reasoned LLM
-    16 GB  (14-20) → adds Qwen3-1.7B, Dia
-    24 GB  (20-28) → adds LuxTTS, MOSS-TTS
-    32 GB+ (28+)   → full pool, including TADA Llama
+  Affordance Table (source: JustWrite's QuickSetup.vue:1-200 +
+  quickSetupPresets.js read this turn):
+    ✅ multi-step wizard (detect → confirm → install → done)
+    ✅ GPU detection via /v1/system
+    ✅ tier auto-pick from VRAM + manual override dropdown
+    ✅ preset blurb + estimated download GB
+    ✅ per-engine install progress (poll job_id via /v1/jobs/{id})
+    ✅ recipe writes feature pins (speaker_attribution → Reasoned/Direct
+       based on tier, compose / persona_rewrite / smart_assign / preset_suggest
+       → Direct) via PUT /v1/feature-pins per pin
+    ✅ LLM provider auto-recommend ("register a Claude key for richer
+       attribution" or "Ollama covers Compose if you don't want cloud")
+    ⚠ manual provider picker — not implemented; user goes to Engines
+      after the wizard to register cloud providers
+    N/A "tier mismatch" nudge — JustVoice has no saved tier yet
+    ✅ done step with summary
 -->
 <script setup>
 import { computed, onMounted, ref } from "vue";
@@ -30,50 +34,97 @@ const emit = defineEmits(["close"]);
 const api = useApi();
 
 const open = ref(true);
-const probing = ref(true);
-const installing = ref(false);
+const step = ref("detect");  // "detect" | "confirm" | "install" | "done"
+const detectError = ref("");
 const gpu = ref(null);
 const engines = ref([]);
-const installed = ref(new Set());
+const llmProviders = ref([]);
 
+// ── Tier recipes ────────────────────────────────────────────────────
+// Per-tier recipe: which engines to install + which features to pin to
+// which tier. Mirrors JustWrite's quickSetupPresets.js shape.
 const TIER_RECIPES = {
   cpu: {
-    label: "CPU-only / low VRAM",
-    blurb: "Kokoro is realtime on CPU and ships with 54 voices. No GPU-bound engines.",
-    engineIds: ["kokoro"],
-    llmTier: null,
+    label: "CPU / low VRAM",
+    blurb: "Kokoro runs realtime on CPU. Speaker attribution routes through whichever LLM you register — Claude / OpenAI / Ollama.",
+    ttsEngineIds: ["kokoro"],
+    estimatedDownloadGb: 0.4,
+    featurePins: {
+      compose:               { tier: "direct" },
+      persona_rewrite:       { tier: "direct" },
+      speaker_attribution:   { tier: "direct" },  // Direct on CPU — Reasoned is too slow
+      render_preset_suggest: { tier: "direct" },
+      smart_assign:          { tier: "direct" },
+    },
   },
   vram8: {
     label: "8 GB tier",
-    blurb: "Kokoro + Chatterbox cover most use cases. Direct-tier LLM gives fast attribution.",
-    engineIds: ["kokoro", "chatterbox"],
-    llmTier: "direct",
+    blurb: "Kokoro + Chatterbox cover most production work. Voice cloning on 8 GB. Speaker attribution still Direct on the LLM side.",
+    ttsEngineIds: ["kokoro", "chatterbox"],
+    estimatedDownloadGb: 2.4,
+    featurePins: {
+      compose:               { tier: "direct" },
+      persona_rewrite:       { tier: "direct" },
+      speaker_attribution:   { tier: "direct" },
+      render_preset_suggest: { tier: "direct" },
+      smart_assign:          { tier: "direct" },
+    },
   },
   vram12: {
     label: "12 GB tier",
-    blurb: "Adds Qwen3-TTS 0.6B (free-form delivery instructions).",
-    engineIds: ["kokoro", "chatterbox", "qwen3"],
-    llmTier: "direct",
+    blurb: "Adds Qwen3-TTS 0.6B for natural-language delivery instructions. Speaker attribution upgrades to Reasoned for harder books.",
+    ttsEngineIds: ["kokoro", "chatterbox", "qwen3"],
+    estimatedDownloadGb: 4.1,
+    featurePins: {
+      compose:               { tier: "direct" },
+      persona_rewrite:       { tier: "direct" },
+      speaker_attribution:   { tier: "reasoned" },
+      render_preset_suggest: { tier: "direct" },
+      smart_assign:          { tier: "direct" },
+    },
   },
   vram16: {
     label: "16 GB tier",
-    blurb: "Adds Dia (multi-speaker dialogue).",
-    engineIds: ["kokoro", "chatterbox", "qwen3", "dia"],
-    llmTier: "reasoned",
+    blurb: "Adds Dia (multi-speaker dialogue). Full Reasoned-tier prompts for attribution.",
+    ttsEngineIds: ["kokoro", "chatterbox", "qwen3", "dia"],
+    estimatedDownloadGb: 6.8,
+    featurePins: {
+      compose:               { tier: "direct" },
+      persona_rewrite:       { tier: "direct" },
+      speaker_attribution:   { tier: "reasoned" },
+      render_preset_suggest: { tier: "direct" },
+      smart_assign:          { tier: "reasoned" },
+    },
   },
   vram24: {
     label: "24 GB tier",
-    blurb: "Adds LuxTTS + MOSS-TTS (high-fidelity production).",
-    engineIds: ["kokoro", "chatterbox", "qwen3", "dia", "luxtts", "moss_tts"],
-    llmTier: "reasoned",
+    blurb: "Adds LuxTTS + MOSS-TTS (high-fidelity production). Smart-assign + attribution both Reasoned.",
+    ttsEngineIds: ["kokoro", "chatterbox", "qwen3", "dia", "luxtts", "moss_tts"],
+    estimatedDownloadGb: 14.0,
+    featurePins: {
+      compose:               { tier: "direct" },
+      persona_rewrite:       { tier: "reasoned" },
+      speaker_attribution:   { tier: "reasoned" },
+      render_preset_suggest: { tier: "direct" },
+      smart_assign:          { tier: "reasoned" },
+    },
   },
   vram32: {
     label: "32 GB+ tier",
-    blurb: "Full engine pool including TADA Llama.",
-    engineIds: ["kokoro", "chatterbox", "qwen3", "dia", "luxtts", "moss_tts", "tada"],
-    llmTier: "reasoned",
+    blurb: "Full pool including TADA Llama. Every feature routes Reasoned.",
+    ttsEngineIds: ["kokoro", "chatterbox", "qwen3", "dia", "luxtts", "moss_tts", "tada"],
+    estimatedDownloadGb: 22.0,
+    featurePins: {
+      compose:               { tier: "reasoned" },
+      persona_rewrite:       { tier: "reasoned" },
+      speaker_attribution:   { tier: "reasoned" },
+      render_preset_suggest: { tier: "reasoned" },
+      smart_assign:          { tier: "reasoned" },
+    },
   },
 };
+
+const TIER_ORDER = ["cpu", "vram8", "vram12", "vram16", "vram24", "vram32"];
 
 function tierForVramMb(mb) {
   if (!mb || mb < 7 * 1024) return "cpu";
@@ -84,21 +135,36 @@ function tierForVramMb(mb) {
   return "vram32";
 }
 
-const tier = computed(() => tierForVramMb(gpu.value?.vram_mb || 0));
-const recipe = computed(() => TIER_RECIPES[tier.value] || TIER_RECIPES.cpu);
+// Auto-detected tier (from /v1/system) — used as the dropdown default.
+const detectedTierKey = ref("cpu");
+// Active tier — drives recipe selection. User can override via dropdown.
+const tierKey = ref("cpu");
+
+const recipe = computed(() => TIER_RECIPES[tierKey.value] || TIER_RECIPES.cpu);
+const tierOptions = TIER_ORDER.map((k) => ({ value: k, label: TIER_RECIPES[k].label }));
 
 const enginesToInstall = computed(() => {
-  return recipe.value.engineIds
+  return recipe.value.ttsEngineIds
     .map((id) => engines.value.find((e) => e.id === id))
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((e) => e.status === "not_installed");
+});
+const enginesAlreadyInstalled = computed(() => {
+  return recipe.value.ttsEngineIds
+    .map((id) => engines.value.find((e) => e.id === id))
+    .filter(Boolean)
+    .filter((e) => e.status !== "not_installed");
 });
 
-async function probe() {
-  probing.value = true;
+// ── Detect step ─────────────────────────────────────────────────────
+async function detect() {
+  step.value = "detect";
+  detectError.value = "";
   try {
-    const [sys, eng] = await Promise.all([
-      api.safeRequest("/v1/system", null),
+    const [sys, eng, llm] = await Promise.all([
+      api.safeRequest("/v1/system/info", null),
       api.safeRequest("/v1/engines", { engines: [] }),
+      api.safeRequest("/v1/llm-providers", { providers: [] }),
     ]);
     if (sys?.gpus?.length) {
       gpu.value = sys.gpus[0];
@@ -106,118 +172,298 @@ async function probe() {
       gpu.value = { vram_mb: 0, name: "CPU only" };
     }
     engines.value = eng?.engines || [];
-    installed.value = new Set(
-      engines.value
-        .filter((e) => e.status !== "not_installed")
-        .map((e) => e.id),
-    );
+    llmProviders.value = llm?.providers || [];
+    detectedTierKey.value = tierForVramMb(gpu.value.vram_mb || 0);
+    tierKey.value = detectedTierKey.value;
+  } catch (e) {
+    detectError.value = e?.message || String(e);
   } finally {
-    probing.value = false;
+    step.value = "confirm";
   }
 }
 
-async function installRecommendations() {
-  installing.value = true;
-  const toInstall = enginesToInstall.value.filter(
-    (e) => !installed.value.has(e.id) && e.status === "not_installed",
-  );
-  if (!toInstall.length) {
-    pushToast({ message: "Everything in the recipe is already installed.", kind: "info" });
-    installing.value = false;
-    close();
-    return;
-  }
-  pushToast({
-    message: `Installing ${toInstall.length} engine${toInstall.length === 1 ? "" : "s"} in the background. Track progress in Engines.`,
-    kind: "info",
-    duration: 5000,
-  });
-  // Fire-and-forget — installs are long-running and tracked through
-  // the EnginesView job system; we just kick them off here.
-  for (const e of toInstall) {
-    api.request(`/v1/engines/${e.id}/install`, { method: "POST" }).catch(() => { /* tracked in Engines tab */ });
-  }
-  close();
+// ── Install step ────────────────────────────────────────────────────
+// Per-engine progress: { engineId: { jobId, phase, percent, error } }
+const installProgress = ref({});
+const installAborted = ref(false);
+
+function setProgress(engineId, patch) {
+  installProgress.value = {
+    ...installProgress.value,
+    [engineId]: { ...(installProgress.value[engineId] || {}), ...patch },
+  };
 }
 
+async function pollJob(engineId, jobId) {
+  while (true) {
+    if (installAborted.value) return;
+    let job;
+    try {
+      job = await api.request(`/v1/jobs/${jobId}`);
+    } catch (e) {
+      setProgress(engineId, { phase: "failed", error: e?.message || String(e) });
+      return;
+    }
+    const percent = job.bytes_total > 0
+      ? Math.min(100, Math.round(100 * (job.bytes_downloaded || 0) / job.bytes_total))
+      : null;
+    setProgress(engineId, {
+      phase: job.phase,
+      percent,
+      error: job.error || null,
+    });
+    if (job.phase === "completed") return;
+    if (job.phase === "failed") return;
+    await new Promise((r) => setTimeout(r, 800));
+  }
+}
+
+async function runInstalls() {
+  step.value = "install";
+  installAborted.value = false;
+  for (const engine of enginesToInstall.value) {
+    if (installAborted.value) break;
+    setProgress(engine.id, { phase: "queued", percent: 0 });
+    try {
+      const accepted = await api.request(`/v1/engines/${engine.id}/install`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (accepted?.job_id) {
+        await pollJob(engine.id, accepted.job_id);
+      } else {
+        setProgress(engine.id, { phase: "completed", percent: 100 });
+      }
+    } catch (e) {
+      setProgress(engine.id, { phase: "failed", error: e?.message || String(e) });
+    }
+  }
+  // Once all engines either completed or failed, apply feature pins
+  // (always — they're independent of engine install success).
+  await applyFeaturePins();
+  step.value = "done";
+}
+
+function cancelInstalls() {
+  installAborted.value = true;
+  pushToast({ message: "Install cancelled. Engines that finished are kept.", kind: "info" });
+}
+
+// ── Apply feature pin recipe ────────────────────────────────────────
+const pinResults = ref({});
+async function applyFeaturePins() {
+  pinResults.value = {};
+  // Pick the first registered LLM as the target provider. If none, all
+  // pins fail with "no provider" — UI surfaces this honestly.
+  const providerId = llmProviders.value[0]?.id || "";
+  for (const [feature, spec] of Object.entries(recipe.value.featurePins)) {
+    if (!providerId) {
+      pinResults.value[feature] = { ok: false, error: "no LLM provider registered" };
+      continue;
+    }
+    try {
+      await api.request("/v1/feature-pins", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          feature,
+          provider_id: providerId,
+          model: "",
+          tier: spec.tier,
+        }),
+      });
+      pinResults.value[feature] = { ok: true };
+    } catch (e) {
+      pinResults.value[feature] = { ok: false, error: e?.message || String(e) };
+    }
+  }
+}
+
+// ── Lifecycle / close ──────────────────────────────────────────────
 function close() {
   open.value = false;
   setTimeout(() => emit("close"), 180);
 }
 
-onMounted(probe);
+onMounted(detect);
+
+const totalInstalled = computed(() =>
+  Object.values(installProgress.value).filter((p) => p.phase === "completed").length,
+);
+const totalFailed = computed(() =>
+  Object.values(installProgress.value).filter((p) => p.phase === "failed").length,
+);
+const pinsApplied = computed(() =>
+  Object.values(pinResults.value).filter((r) => r.ok).length,
+);
+const pinsFailed = computed(() =>
+  Object.values(pinResults.value).filter((r) => !r.ok).length,
+);
+const hasLlmProvider = computed(() => llmProviders.value.length > 0);
 </script>
 
 <template>
-  <div v-if="open" class="jv-overlay" @click.self="close">
+  <div v-if="open" class="jv-overlay" @click.self="step === 'install' ? null : close()">
     <div class="jv-modal quick-setup">
       <header class="jv-modal__header">
         <div class="jv-modal__titleblock">
-          <span class="jv-modal__eyebrow">Quick setup</span>
-          <h3 class="jv-modal__title">Let's get you producing</h3>
+          <span class="jv-modal__eyebrow">Quick setup · step
+            {{ step === 'detect' ? '1/3' : step === 'confirm' ? '1/3' : step === 'install' ? '2/3' : '3/3' }}
+          </span>
+          <h3 class="jv-modal__title">
+            {{ step === 'detect' ? "Probing your hardware…"
+              : step === 'confirm' ? "Recommended setup"
+              : step === 'install' ? "Installing engines + pinning features"
+              : "All set" }}
+          </h3>
         </div>
-        <button type="button" class="jv-modal__close" @click="close">✕</button>
+        <button v-if="step !== 'install'" type="button" class="jv-modal__close" @click="close">✕</button>
       </header>
 
       <div class="jv-modal__body quick-setup__body">
-        <div v-if="probing" class="jv-muted quick-setup__loading">
-          Probing your hardware…
+        <!-- ── DETECT step ───────────────────────────────────────── -->
+        <div v-if="step === 'detect'" class="jv-muted quick-setup__loading">
+          Probing GPU + engines + LLM providers…
         </div>
-        <template v-else>
-          <section class="quick-setup__detected">
-            <div class="quick-setup__detected-label">Detected</div>
-            <div class="quick-setup__detected-value">
+
+        <!-- ── CONFIRM step ─────────────────────────────────────── -->
+        <template v-else-if="step === 'confirm'">
+          <section>
+            <div class="quick-setup__row-label">Detected</div>
+            <div class="quick-setup__row-value">
               {{ gpu?.name || "No GPU" }}
-              <span class="jv-pill jv-pill--ghost" v-if="gpu?.vram_mb">
-                {{ (gpu.vram_mb / 1024).toFixed(1) }} GB VRAM
+              <span v-if="gpu?.vram_mb" class="jv-pill jv-pill--ghost">{{ (gpu.vram_mb / 1024).toFixed(1) }} GB VRAM</span>
+              <span class="jv-pill" :class="tierKey === detectedTierKey ? 'jv-pill--solid' : 'jv-pill--ghost'">
+                Auto-tier: {{ TIER_RECIPES[detectedTierKey]?.label }}
               </span>
             </div>
           </section>
 
-          <section class="quick-setup__recipe">
-            <div class="quick-setup__recipe-h">
-              <span class="jv-pill jv-pill--solid">{{ recipe.label }}</span>
-              <span class="jv-muted">{{ recipe.blurb }}</span>
+          <section>
+            <div class="quick-setup__row-label">Tier</div>
+            <div class="quick-setup__row-value">
+              <select v-model="tierKey" class="jv-input jv-input--sm jv-w-name">
+                <option v-for="opt in tierOptions" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}{{ opt.value === detectedTierKey ? "  · auto" : "" }}
+                </option>
+              </select>
+              <span v-if="tierKey !== detectedTierKey" class="jv-muted" style="font-size: 11.5px">
+                Overriding auto-tier
+              </span>
             </div>
-            <ul class="quick-setup__engines">
-              <li
-                v-for="e in enginesToInstall"
-                :key="e.id"
-                class="quick-setup__engine"
-              >
-                <strong>{{ e.name }}</strong>
-                <span v-if="installed.has(e.id)" class="jv-pill jv-pill--green">already installed</span>
-                <span v-else class="jv-pill jv-pill--ghost">{{ e.status }}</span>
-              </li>
-            </ul>
+            <p class="jv-muted quick-setup__blurb">{{ recipe.blurb }}</p>
           </section>
 
-          <p class="jv-muted quick-setup__note">
-            Installs happen in the background. You can register LLM providers (Claude / OpenAI / Ollama / etc.) any time in <a href="#engines">Engines → LLM tab</a>.
+          <section>
+            <div class="quick-setup__row-label">TTS engines</div>
+            <ul class="quick-setup__engines">
+              <li v-for="id in recipe.ttsEngineIds" :key="id">
+                {{ engines.find((e) => e.id === id)?.name || id }}
+                <span v-if="enginesAlreadyInstalled.some((e) => e.id === id)" class="jv-pill jv-pill--green">already installed</span>
+                <span v-else class="jv-pill jv-pill--ghost">to install</span>
+              </li>
+            </ul>
+            <p class="jv-muted" style="font-size: 11.5px; margin: 4px 0 0">
+              Estimated download: <strong>{{ recipe.estimatedDownloadGb }} GB</strong>
+              · {{ enginesToInstall.length }} new · {{ enginesAlreadyInstalled.length }} already on disk
+            </p>
+          </section>
+
+          <section>
+            <div class="quick-setup__row-label">Feature routing</div>
+            <p class="jv-muted" style="font-size: 11.5px; margin: 0 0 6px">
+              Speaker attribution, Compose, Rewrite, Smart-assign + Suggest will pin to your registered LLM at the right tier.
+            </p>
+            <ul class="quick-setup__pins">
+              <li v-for="(spec, feature) in recipe.featurePins" :key="feature">
+                <code>{{ feature }}</code>
+                <span class="jv-pill jv-pill--ghost">{{ spec.tier }}</span>
+              </li>
+            </ul>
+            <div v-if="!hasLlmProvider" class="jv-banner jv-banner--warn" style="font-size: 11.5px; margin-top: 8px">
+              <strong>No LLM provider registered yet.</strong> Feature pins will be queued — register Claude or Ollama on Engines → LLM tab after this wizard, then re-run pins from Settings → AI features.
+            </div>
+          </section>
+        </template>
+
+        <!-- ── INSTALL step ─────────────────────────────────────── -->
+        <template v-else-if="step === 'install'">
+          <p class="jv-muted" style="font-size: 12px; margin: 0 0 10px">
+            Engines install one at a time; feature pins apply once installs finish.
+          </p>
+          <ul class="quick-setup__progress-list">
+            <li v-for="engine in enginesToInstall" :key="engine.id" class="quick-setup__progress-row">
+              <strong>{{ engine.name }}</strong>
+              <span class="jv-muted" style="font-size: 11px">{{ engine.id }}</span>
+              <div class="quick-setup__progress-bar">
+                <div
+                  class="quick-setup__progress-fill"
+                  :class="{
+                    'quick-setup__progress-fill--done': installProgress[engine.id]?.phase === 'completed',
+                    'quick-setup__progress-fill--err': installProgress[engine.id]?.phase === 'failed',
+                  }"
+                  :style="{ width: (installProgress[engine.id]?.percent ?? 0) + '%' }"
+                />
+              </div>
+              <span class="quick-setup__progress-state jv-muted">
+                {{ installProgress[engine.id]?.phase || "waiting" }}
+                {{ installProgress[engine.id]?.percent != null ? `· ${installProgress[engine.id].percent}%` : "" }}
+              </span>
+              <span v-if="installProgress[engine.id]?.error" class="quick-setup__progress-err">
+                {{ installProgress[engine.id].error }}
+              </span>
+            </li>
+          </ul>
+        </template>
+
+        <!-- ── DONE step ────────────────────────────────────────── -->
+        <template v-else>
+          <p>
+            <strong>{{ totalInstalled }}</strong> engine{{ totalInstalled === 1 ? "" : "s" }} installed
+            <span v-if="totalFailed">· <strong>{{ totalFailed }}</strong> failed</span>
+            · <strong>{{ pinsApplied }}</strong> feature pin{{ pinsApplied === 1 ? "" : "s" }} applied
+            <span v-if="pinsFailed">· <strong>{{ pinsFailed }}</strong> deferred</span>.
+          </p>
+          <p v-if="!hasLlmProvider" class="jv-muted" style="font-size: 12px">
+            No LLM provider was registered, so feature pins didn't apply.
+            Open <a href="#engines">Engines → LLM tab</a> to add Claude / OpenAI / Ollama / DeepSeek, then revisit
+            <a href="#settings">Settings → AI features</a> to confirm the pins took.
+          </p>
+          <p v-else-if="pinsFailed" class="jv-muted" style="font-size: 12px">
+            Some pins failed — re-apply individually from <a href="#settings">Settings → AI features</a>.
           </p>
         </template>
       </div>
 
       <footer class="jv-modal__footer">
-        <JvButton variant="ghost" label="Skip — configure later" @click="close" />
-        <span class="jv-spacer" />
-        <JvButton
-          variant="primary"
-          :loading="installing"
-          :disabled="probing || installing"
-          :label="enginesToInstall.length ? `Install ${enginesToInstall.length} engine${enginesToInstall.length === 1 ? '' : 's'}` : 'OK'"
-          @click="installRecommendations"
-        />
+        <template v-if="step === 'confirm'">
+          <JvButton variant="ghost" label="Skip — configure later" @click="close" />
+          <span class="jv-spacer" />
+          <JvButton
+            variant="primary"
+            :disabled="!enginesToInstall.length && !hasLlmProvider"
+            :label="enginesToInstall.length ? `Install ${enginesToInstall.length} engine${enginesToInstall.length === 1 ? '' : 's'} + apply pins` : 'Apply feature pins'"
+            @click="runInstalls"
+          />
+        </template>
+        <template v-else-if="step === 'install'">
+          <JvButton variant="ghost" label="Cancel" @click="cancelInstalls" />
+        </template>
+        <template v-else-if="step === 'done'">
+          <span class="jv-spacer" />
+          <JvButton variant="primary" label="Close" @click="close" />
+        </template>
       </footer>
     </div>
   </div>
 </template>
 
 <style scoped>
-.quick-setup { width: min(560px, calc(100vw - 32px)); }
+.quick-setup { width: min(620px, calc(100vw - 32px)); }
 .quick-setup__body { padding: 18px 22px; display: flex; flex-direction: column; gap: 18px; }
 .quick-setup__loading { text-align: center; padding: 24px 0; }
-.quick-setup__detected-label {
+.quick-setup__row-label {
   font-size: 10.5px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -225,23 +471,68 @@ onMounted(probe);
   font-weight: 600;
   margin-bottom: 4px;
 }
-.quick-setup__detected-value { font-size: 14px; display: flex; align-items: center; gap: 8px; }
-.quick-setup__recipe-h {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-.quick-setup__engines { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
-.quick-setup__engine {
+.quick-setup__row-value {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+.quick-setup__blurb { font-size: 12px; line-height: 1.5; margin: 6px 0 0; }
+.quick-setup__engines, .quick-setup__pins {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.quick-setup__engines li, .quick-setup__pins li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
   background: var(--surface-2);
   border-radius: 4px;
-  font-size: 12.5px;
+  font-size: 12px;
 }
-.quick-setup__note { font-size: 12px; line-height: 1.5; margin: 0; }
+.quick-setup__pins code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.quick-setup__progress-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.quick-setup__progress-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 10px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border-radius: 4px;
+}
+.quick-setup__progress-row strong { grid-column: 1; font-size: 12.5px; }
+.quick-setup__progress-row > span:nth-child(2) { grid-column: 2; }
+.quick-setup__progress-bar {
+  grid-column: 1 / -1;
+  height: 4px;
+  background: var(--surface);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+.quick-setup__progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.18s ease-out;
+}
+.quick-setup__progress-fill--done { background: var(--accent); }
+.quick-setup__progress-fill--err { background: var(--danger); }
+.quick-setup__progress-state { grid-column: 1 / -1; font-size: 11px; }
+.quick-setup__progress-err { grid-column: 1 / -1; font-size: 11px; color: var(--danger); }
 </style>
