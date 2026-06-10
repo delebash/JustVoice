@@ -554,6 +554,37 @@ class Webhook(Base):
     created_at = Column(DateTime, default=_utcnow)
 
 
+# ── Speaker-attribution correction memory (Phase 5) ──────────────────────
+
+
+class SpeakerCorrection(Base):
+    """Writer-supplied corrections to speaker-attribution mistakes.
+
+    Phase 5 of the Profile-kill plan. Captured when a block's persona_id
+    changes via PATCH (the writer fixing the analyze pipeline's output).
+    The extraction backend reads the top-12 most-recent per project as
+    worked examples injected into the LLM prompt — so the next analyze
+    run gets steered by the writer's prior fixes.
+
+    Capped at 200 per project (old ones drop on insert).
+    """
+
+    __tablename__ = "speaker_corrections"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    project_id = Column(String, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    # The block.text at the time of correction (snippet for the
+    # worked-example block in the prompt).
+    text_snippet = Column(Text, nullable=False)
+    # The character the writer assigned (may be null for "unknown" /
+    # "narrator" — both also count as corrections worth remembering).
+    character_id = Column(String, ForeignKey("personas.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=_utcnow)
+
+
+Index("ix_speaker_corrections_project_created", SpeakerCorrection.project_id, SpeakerCorrection.created_at)
+
+
 # ── Training jobs ────────────────────────────────────────────────────────
 
 

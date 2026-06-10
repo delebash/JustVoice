@@ -47,6 +47,8 @@ from .models import (
     Webhook,
     # Training jobs
     TrainingJob,
+    # Speaker-attribution correction memory (Phase 5)
+    SpeakerCorrection,
 )
 
 __all__ = [
@@ -77,4 +79,5 @@ __all__ = [
     "RenderPreset",
     "Webhook",
     "TrainingJob",
+    "SpeakerCorrection",
 ]

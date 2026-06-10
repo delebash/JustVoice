@@ -354,6 +354,17 @@ async def update_block(
     b = db.query(Block).filter(Block.id == block_id).first()
     if not b:
         raise not_found(f"block {block_id}")
+
+    # Phase 5: capture speaker corrections — when persona_id changes from
+    # the existing value to a new one AND the existing value wasn't null
+    # (manual reassignment, not "first assignment"), write a
+    # SpeakerCorrection row for the future analyze pipeline to learn from.
+    persona_id_changed = (
+        body.persona_id is not None
+        and b.persona_id is not None
+        and body.persona_id != b.persona_id
+    )
+
     if body.position is not None:
         b.position = body.position
     if body.text is not None:
@@ -368,6 +379,31 @@ async def update_block(
         b.extraction_confidence = body.extraction_confidence
     if body.source is not None:
         b.source = body.source
+
+    if persona_id_changed:
+        # Look up the parent project via the scene.
+        scene = db.query(Scene).filter(Scene.id == b.scene_id).first()
+        if scene:
+            from ..database.models import SpeakerCorrection
+
+            db.add(
+                SpeakerCorrection(
+                    project_id=scene.project_id,
+                    text_snippet=b.text[:400],
+                    character_id=body.persona_id,
+                )
+            )
+            # Cap at 200 per project — drop oldest on overflow.
+            existing = (
+                db.query(SpeakerCorrection)
+                .filter(SpeakerCorrection.project_id == scene.project_id)
+                .order_by(SpeakerCorrection.created_at.desc())
+                .offset(200)
+                .all()
+            )
+            for row in existing:
+                db.delete(row)
+
     db.commit()
     db.refresh(b)
     return BlockResponse.from_orm(b)

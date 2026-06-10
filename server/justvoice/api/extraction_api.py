@@ -67,6 +67,29 @@ class AnalyzeSceneResponse(BaseModel):
     confidence_floor: float
 
 
+def _resolve_corrections(project_id: str, db: Session, *, limit: int = 12) -> list[dict]:
+    """Look up the top-N most-recent SpeakerCorrection rows for the
+    project. Phase 5 feedback loop — these inject into the LLM prompt
+    via prompts.format_corrections as worked examples.
+    """
+    from ..database.models import SpeakerCorrection
+
+    rows = (
+        db.query(SpeakerCorrection)
+        .filter(SpeakerCorrection.project_id == project_id)
+        .order_by(SpeakerCorrection.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "text_snippet": r.text_snippet,
+            "character_id": r.character_id or "unknown",
+        }
+        for r in rows
+    ]
+
+
 def _resolve_cast(scene_id: str, db: Session) -> list[dict]:
     """Look up the project's cast (via ProjectPersona) for `scene_id`."""
     scene = db.query(Scene).filter(Scene.id == scene_id).first()
@@ -107,7 +130,7 @@ async def analyze_scene_endpoint(
         raise not_found(f"scene {scene_id}")
 
     characters = body.characters if body.characters is not None else _resolve_cast(scene_id, db)
-    corrections = body.corrections or []
+    corrections = body.corrections if body.corrections is not None else _resolve_corrections(scene.project_id, db)
 
     settings = get_state().settings.get()
     req = AnalyzeRequest(
@@ -198,3 +221,35 @@ async def analyze_text_endpoint(body: AnalyzeTextRequest) -> AnalyzeSceneRespons
         tier_used=tier.name,
         confidence_floor=tier.confidence_floor,
     )
+
+
+# ── Speaker-correction management (Phase 5) ──────────────────────────────
+
+
+class CorrectionsCountResponse(BaseModel):
+    project_id: str
+    count: int
+
+
+@router.get(
+    "/v1/projects/{project_id}/corrections/count",
+    response_model=CorrectionsCountResponse,
+)
+async def count_corrections(project_id: str, db: Session = Depends(get_db)) -> CorrectionsCountResponse:
+    from ..database.models import SpeakerCorrection
+
+    n = db.query(SpeakerCorrection).filter(SpeakerCorrection.project_id == project_id).count()
+    return CorrectionsCountResponse(project_id=project_id, count=n)
+
+
+@router.delete("/v1/projects/{project_id}/corrections")
+async def clear_corrections(project_id: str, db: Session = Depends(get_db)) -> dict:
+    from ..database.models import SpeakerCorrection
+
+    deleted = (
+        db.query(SpeakerCorrection)
+        .filter(SpeakerCorrection.project_id == project_id)
+        .delete()
+    )
+    db.commit()
+    return {"deleted": deleted}
