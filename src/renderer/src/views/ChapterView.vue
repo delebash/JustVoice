@@ -6,6 +6,7 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { useTakesStore } from "../stores/takes.js";
 import { pushToast } from "../services/toastBridge.js";
 import { projectsService } from "../services/projects.js";
+import { useCopy } from "../services/copy.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvField from "../components/jv/JvField.vue";
 import JvSelect from "../components/jv/JvSelect.vue";
@@ -14,6 +15,10 @@ import JvTag from "../components/jv/JvTag.vue";
 const api = useApi();
 const tasks = useRenderTasks();
 const takesStore = useTakesStore();
+// Per-use-case terminology (plan locked decision #7 / Slice 5). Audiobook
+// users see "Chapter / Line"; game devs see "Scene / Voiceline"; podcasters
+// see "Segment / Block"; etc. Driven by the onboarding primary use case.
+const copy = useCopy();
 
 // ── Project / scene / block selection ──────────────────────────────────────
 
@@ -31,9 +36,9 @@ const projectOptions = computed(() =>
 
 const sceneOptions = computed(() =>
   scenes.value.length === 0
-    ? [{ label: "— no scenes —", value: null }]
+    ? [{ label: `— no ${copy.value.chapter.plural.toLowerCase()} —`, value: null }]
     : scenes.value.map((s) => ({
-        label: s.title || `Scene ${s.position + 1}`,
+        label: s.title || `${copy.value.chapter.singular} ${s.position + 1}`,
         value: s.id,
       }))
 );
@@ -219,7 +224,7 @@ async function regenerateBlock(block) {
     // for now we just refresh so any server-created takes show up.)
     takesStore.invalidate(block.id);
     await takesStore.fetchTakes(block.id);
-    pushToast({ message: "Block regenerated.", kind: "success" });
+    pushToast({ message: `${copy.value.line.singular} regenerated.`, kind: "success" });
   } catch (e) {
     tasks.fail(task.id, String(e.message || e));
     pushToast({ message: `Regen failed: ${e.message || e}`, kind: "error", duration: 6000 });
@@ -308,22 +313,22 @@ function compareDropdownOptions(blockId) {
 
     <!-- ── Project / scene selectors ───────────────────────────────────── -->
     <div class="jv-section">
-      <h3 class="jv-section__title">Chapter view</h3>
+      <h3 class="jv-section__title">{{ copy.chapter.singular }} view</h3>
 
       <div class="jv-card chapter-view__selectors">
-        <JvField label="Project" layout="inline">
+        <JvField :label="copy.book.singular" layout="inline">
           <JvSelect
             v-model="selectedProjectId"
             :options="projectOptions"
-            placeholder="Select a project…"
+            :placeholder="`Select a ${copy.book.singular.toLowerCase()}…`"
           />
         </JvField>
-        <JvField label="Scene / Chapter" layout="inline">
+        <JvField :label="copy.chapter.singular" layout="inline">
           <JvSelect
             v-model="selectedSceneId"
             :options="sceneOptions"
             :disabled="!selectedProjectId || !scenes.length"
-            placeholder="Select a scene…"
+            :placeholder="`Select a ${copy.chapter.singular.toLowerCase()}…`"
           />
         </JvField>
         <JvField label="Voice for re-generate" layout="inline">
@@ -338,7 +343,9 @@ function compareDropdownOptions(blockId) {
 
     <!-- ── No project banner ───────────────────────────────────────────── -->
     <div v-if="!selectedProjectId" class="jv-banner">
-      No project selected. <a href="#books"><strong>Go to Projects</strong></a> → import one (JustWrite / CSV / SRT / Audacity labels / JustVoice JSON) or create a blank one.
+      No {{ copy.book.singular.toLowerCase() }} selected.
+      <a href="#books"><strong>Go to {{ copy.book.plural }}</strong></a>
+      → import one (JustWrite / CSV / SRT / Audacity labels / JustVoice JSON) or create a blank one.
     </div>
 
     <!-- ── No blocks yet ──────────────────────────────────────────────── -->
@@ -346,7 +353,7 @@ function compareDropdownOptions(blockId) {
       v-else-if="selectedSceneId && blocks.length === 0"
       class="jv-banner"
     >
-      This scene has no blocks yet.
+      This {{ copy.chapter.singular.toLowerCase() }} has no {{ copy.line.plural.toLowerCase() }} yet.
     </div>
 
     <!-- ── Block list ─────────────────────────────────────────────────── -->

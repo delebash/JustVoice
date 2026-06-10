@@ -35,26 +35,36 @@ import EffectsView from "./views/EffectsView.vue";
 import AudioChannelsView from "./views/AudioChannelsView.vue";
 import WebhooksView from "./views/WebhooksView.vue";
 
+// Per-view `visibleFor` declares which onboarding primary-use-case values
+// surface this tab in the sidebar. The full set is:
+//   audiobook · game · podcast · dictation · accessibility · multiple · unset
+// Omit `visibleFor` to mean "always visible" (universal tabs: Overview,
+// Generate, Voices, Personas, Engines, Settings).
+const ALL_USE_CASES = ["audiobook", "game", "podcast", "dictation", "accessibility", "multiple", "unset"];
 const VIEWS = [
   { id: "overview",  label: "Overview",  icon: "🏠", lede: "", component: OverviewView },
   { id: "generate",  label: "Generate",  icon: "📝", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it. Type / for paralinguistic tags.", component: GenerateView },
-  { id: "books",     label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Imports from JustWrite via POST /v1/projects/import?source=justwrite.", component: BooksView },
-  { id: "stories",   label: "Stories",   icon: "🎬", lede: "Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.", component: StoriesView },
-  { id: "chapter",   label: "Chapter",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved. Pinned floating generate bar at bottom.", component: ChapterView },
+  { id: "books",     label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Imports from JustWrite via POST /v1/projects/import?source=justwrite.", component: BooksView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "stories",   label: "Stories",   icon: "🎬", lede: "Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.", component: StoriesView, visibleFor: ["game", "podcast", "multiple", "unset"] },
+  { id: "chapter",   label: "Chapter",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved. Pinned floating generate bar at bottom.", component: ChapterView, visibleFor: ["audiobook", "podcast", "multiple", "unset"] },
   { id: "voices",    label: "Voices",    icon: "🎙️", lede: "Voice library — cloned, preset (Kokoro 54 + Qwen 9), designed (text-prompt → voice), blended. Per-voice channel routing.", component: VoicesView },
-  { id: "personas",  label: "Personas",  icon: "🎭", lede: "Characters. Each persona has a name, bio, voice, personality (TTS delivery instruction), default delivery, effects, lexicon override. Cross-project — one Mara across many books or quests. Filter by usage in the library list.", component: PersonasView },
-  { id: "lexicons",  label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Force \"Beauchamp\" → \"BEE-chum\", domain words → consistent phoneme-level pronunciation across a whole book. Per-character override.", component: LexiconsView },
-  { id: "captures",  label: "Captures",  icon: "🎚️", lede: "Dictation pill + global hotkey. Speak into any text field. Also captures audio for cloning sample collection.", component: CapturesView },
-  { id: "effects",   label: "Effects",   icon: "🎛️", lede: "Pedalboard-backed effects chain. Apply non-destructively — creates a new generation version that preserves the original. 8 types · 4 built-in presets + custom.", component: EffectsView },
+  { id: "personas",  label: "Personas",  icon: "🎭", lede: "Characters. Each persona has a name, bio, voice, personality (TTS delivery instruction), default delivery, effects, lexicon override. Cross-project — one Mara across many books or quests. Filter by usage in the library list.", component: PersonasView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "lexicons",  label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Force \"Beauchamp\" → \"BEE-chum\", domain words → consistent phoneme-level pronunciation across a whole book. Per-character override.", component: LexiconsView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "captures",  label: "Captures",  icon: "🎚️", lede: "Dictation pill + global hotkey. Speak into any text field. Also captures audio for cloning sample collection.", component: CapturesView, visibleFor: ["dictation", "accessibility", "multiple", "unset"] },
+  { id: "effects",   label: "Effects",   icon: "🎛️", lede: "Pedalboard-backed effects chain. Apply non-destructively — creates a new generation version that preserves the original. 8 types · 4 built-in presets + custom.", component: EffectsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   { id: "engines",   label: "Engines",   icon: "🧠", lede: "Installed engine catalog. Install / load / unload models. Per-engine venv isolation (JustVoice advantage — install Chatterbox without breaking Kokoro).", component: EnginesView },
-  { id: "train",     label: "Train",     icon: "🏋️", lede: "PEFT/LoRA-based fine-tuning. QC pipeline checks SNR / clipping / silence ratio per sample before accepting it.", component: TrainView },
-  { id: "compare",   label: "Compare",   icon: "⚖️", lede: "A/B audio comparison. Side-by-side waveforms, peak/RMS/duration diff, sample-level RMSE, verdict. Bulk compare across takes for QC pass.", component: CompareView },
-  { id: "cache",     label: "Cache",     icon: "💾", lede: "Disk-LRU render cache. Keyed on (engine, voice, lexicon hash, persona hash, text hash, effects hash). Engine prefix prevents cross-engine collisions.", component: CacheView },
-  { id: "audio",     label: "Audio",     icon: "🔧", lede: "Stand-alone audio tools — analyze any 16-bit PCM WAV, or apply a mastering preset to a WAV without going through the chapter render pipeline. Useful for inspecting reference clips before cloning, or quickly mastering an external recording.", component: AudioToolsView },
-  { id: "channels",  label: "Channels",  icon: "🔊", lede: "Audio output channel configs. Route specific voices to specific OS audio devices — multi-monitor, OBS virtual mic, per-character podcast monitoring.", component: AudioChannelsView },
-  { id: "webhooks",  label: "Webhooks",  icon: "🔔", lede: "HMAC-SHA256-signed outbound event notifications. At-least-once delivery with exponential backoff (1s → 5s → 30s → 5min).", component: WebhooksView },
+  { id: "train",     label: "Train",     icon: "🏋️", lede: "PEFT/LoRA-based fine-tuning. QC pipeline checks SNR / clipping / silence ratio per sample before accepting it.", component: TrainView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "compare",   label: "Compare",   icon: "⚖️", lede: "A/B audio comparison. Side-by-side waveforms, peak/RMS/duration diff, sample-level RMSE, verdict. Bulk compare across takes for QC pass.", component: CompareView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "cache",     label: "Cache",     icon: "💾", lede: "Disk-LRU render cache. Keyed on (engine, voice, lexicon hash, persona hash, text hash, effects hash). Engine prefix prevents cross-engine collisions.", component: CacheView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "audio",     label: "Audio Tools", icon: "🔧", lede: "Stand-alone audio tools — analyze any 16-bit PCM WAV, or apply a mastering preset to a WAV without going through the chapter render pipeline. Useful for inspecting reference clips before cloning, or quickly mastering an external recording.", component: AudioToolsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "channels",  label: "Channels",  icon: "🔊", lede: "Audio output channel configs. Route specific voices to specific OS audio devices — multi-monitor, OBS virtual mic, per-character podcast monitoring.", component: AudioChannelsView, visibleFor: ["podcast", "game", "multiple", "unset"] },
+  { id: "webhooks",  label: "Webhooks",  icon: "🔔", lede: "HMAC-SHA256-signed outbound event notifications. At-least-once delivery with exponential backoff (1s → 5s → 30s → 5min).", component: WebhooksView, visibleFor: ["game", "multiple", "unset"] },
   { id: "settings",  label: "Settings",  icon: "⚙️", lede: "Every operator-tunable value. Per CLAUDE.md, no value is hardcoded — every knob lives in settings.json.", component: SettingsView },
 ];
+
+function isVisibleFor(viewEntry, useCase) {
+  return !viewEntry.visibleFor || viewEntry.visibleFor.includes(useCase);
+}
 
 // Map each view id → docs/<slug>.md for the topbar HelpTrigger.
 // Views without a dedicated doc fall back to getting-started.
@@ -106,6 +116,13 @@ let initialTabResolved = false;
 const currentView = computed(() => VIEWS.find((v) => v.id === view.value));
 const currentHelpSlug = computed(() => HELP_SLUG_BY_VIEW[view.value] || "getting-started");
 const showWelcome = computed(() => onboarding.hydrated && !onboarding.shown);
+
+// Sidebar gating by onboarding primary use case (plan locked decision #7).
+// Universal tabs (no `visibleFor`) always render; conditional tabs only
+// appear when the user's use case is in the entry's allow-list.
+const visibleViews = computed(() =>
+  VIEWS.filter((v) => isVisibleFor(v, onboarding.primaryUseCase || "unset")),
+);
 
 function resolveInitialTab() {
   if (initialTabResolved) return;
@@ -180,7 +197,7 @@ onMounted(async () => {
     <aside class="jv-sidebar">
       <div class="jv-sidebar__brand" title="JustVoice">JV</div>
       <a
-        v-for="v in VIEWS"
+        v-for="v in visibleViews"
         :key="v.id"
         class="jv-sidebar__nav"
         :class="{ 'jv-sidebar__nav--active': view === v.id }"
