@@ -23,7 +23,7 @@ const GROUPS = [
     ],
   },
   {
-    title: "Generate",
+    title: "Scratchpad",
     items: [
       { keys: ["/"], label: "Open paralinguistic tag menu (slash menu)" },
     ],
