@@ -17,6 +17,19 @@ User tested the restructure build and corrected three things; all landed:
 
 **Still open:** user re-test of dialogs + landing flow; deeper visual polish (Settings double tab row, Engines NOT-INSTALLED badge styling, Books bulk-bar wrap) — candidates for the Phase 4 design pass; stories.md doc referenced by toc.json doesn't exist on disk.
 
+### NEXT SESSION — requires the JustWrite repo added (user request 2026-06-10)
+
+This session was scoped to JustVoice only (no list_repos/add_repo tools) — these two tasks were explicitly requested and BLOCKED on JustWrite access. Per ⛔ feedback_upstream_audit_hard_rule, do NOT do them from comment paraphrases — read JustWrite file-by-file.
+
+**Task 1 — audit JustVoice Studio against JustWrite's studio tab ("what you got wrong").** Verify every lift claim line-by-line against the actual JustWrite source. The claim inventory to check:
+- `StudioView.vue:5` — "Render flow ported in shape from JustWrite's StudioView.vue"
+- `StudioView.vue:1050-1115` — voice library sidebar "per SettingsProviderForm.vue:965-1100", 13 affordances, letters A–J cited at :288/:296/:337
+- `ProviderForm.vue:5` — "direct port of SettingsProviderForm.vue:362-657"; tier picker "per :225-242"
+- `renderTasks.js:1` + `TaskStrip.vue:4` — adapted from JustWrite aiTasks.js / AiTaskStrip
+Produce a Rule #6.1 Affordance Table (source file:line | affordance | present-in-JustVoice file:line ✅/❌) and fix the ❌s. Pay attention to the user's specific complaint area: how JustWrite's studio tab composes the workspace (layout, what's first, how casting/episode flows differ per content type).
+
+**Task 2 — plan (then execute) removing JustWrite's audio studio.** End-state: JustWrite delegates ALL audio production to JustVoice over CONTRACT.md (`/v1/render_chapter`, `/v1/render_chapter_async` + jobs, voices/personas/lexicons endpoints). Note CONTRACT.md staleness flagged earlier: it lists `/v1/render_chapter_async` + `/v1/jobs/*` and `/v1/profiles`, which don't exist server-side yet — reconcile the contract BEFORE deleting anything in JustWrite (either build the async render+jobs surface in JustVoice or amend the contract). Audit which JustWrite components/services constitute its "audio studio" (its StudioView/audio tab, m4b.js stays per CONTRACT — M4B muxing is client-side in JustWrite), map each to its JustVoice replacement, then remove.
+
 ---
 
 ## 2026-06-10 (night) — UX restructure: swap-at-render, project-first home, 8-item nav, STT provider slot (branch `claude/jolly-curie-jkgysf`, slices A–F)
