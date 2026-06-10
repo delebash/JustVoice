@@ -100,3 +100,94 @@ async def delete_persona(id: str) -> dict:
     if not get_state().personas.delete(id):
         raise not_found(f"persona {id}")
     return {"deleted": True}
+
+
+class ComposeResponse(BaseModel):
+    text: str
+    persona_id: str
+    note: str | None = None  # diagnostic note if compose was stubbed
+
+
+class RewriteRequest(BaseModel):
+    text: str
+
+
+class RewriteResponse(BaseModel):
+    original: str
+    rewritten: str
+    persona_id: str
+    note: str | None = None
+
+
+def _require_persona_with_personality(persona_id: str):
+    """Shared guard for /compose + /rewrite — both need a persona with a
+    non-empty personality field. Raises 404 / 400 as appropriate."""
+    from fastapi import HTTPException
+
+    persona = get_state().personas.get(persona_id)
+    if not persona:
+        raise not_found(f"persona {persona_id}")
+    if not (persona.personality and persona.personality.strip()):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"persona {persona_id} has no personality prompt — set one "
+                "to enable Compose / Rewrite."
+            ),
+        )
+    return persona
+
+
+@router.post(
+    "/v1/personas/{id}/compose",
+    response_model=ComposeResponse,
+    summary="Generate a fresh in-character line via LLM",
+)
+async def compose_with_personality(id: str) -> ComposeResponse:
+    """LLM-fills a line of dialogue in the persona's personality voice.
+
+    Drives the Compose button in the Generate view's floating bar.
+
+    Currently STUBBED — JustVoice does not yet have an LLM service wired.
+    The provider registry + dispatch lands in Phase 2 of the plan. Until
+    then this returns a 501 with a useful diagnostic message.
+    """
+    from fastapi import HTTPException
+
+    _require_persona_with_personality(id)
+    raise HTTPException(
+        status_code=501,
+        detail=(
+            "LLM service not configured. Wire an LLM provider in Settings → "
+            "AI Engines to enable the Compose action. The provider registry "
+            "lands in Phase 2 of the Profile-kill plan."
+        ),
+    )
+
+
+@router.post(
+    "/v1/personas/{id}/rewrite",
+    response_model=RewriteResponse,
+    summary="Rewrite the supplied text in the persona's character voice (preview-then-accept)",
+)
+async def rewrite_in_character(id: str, body: RewriteRequest) -> RewriteResponse:
+    """Take the user's text + persona.personality, return a rewritten
+    in-character version for preview. The user accepts (text replaces
+    the textarea) or rejects (original preserved) before sending to TTS.
+
+    NEVER an automatic render-time hook — see plan Q3. Always explicit.
+
+    Currently STUBBED — see /compose above. Lands when Phase 2's LLM
+    provider registry ships.
+    """
+    from fastapi import HTTPException
+
+    _require_persona_with_personality(id)
+    raise HTTPException(
+        status_code=501,
+        detail=(
+            "LLM service not configured. Wire an LLM provider in Settings → "
+            "AI Engines to enable the Rewrite action. The provider registry "
+            "lands in Phase 2 of the Profile-kill plan."
+        ),
+    )

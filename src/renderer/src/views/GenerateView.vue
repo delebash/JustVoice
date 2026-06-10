@@ -28,19 +28,21 @@ const history = ref([]);
 // Voice profiles — profile selection layer on top of the voice-keyed
 // generate flow. Profile selection enables Compose + per-profile
 // effects_chain pre-fill + persona-rewrite gating.
-const profiles = ref([]);
-const selectedProfileId = ref("");
+const personas = ref([]);
+const selectedPersonaId = ref("");
 const composeBusy = ref(false);
+const rewriteBusy = ref(false);
+const rewritePreview = ref(null);  // { original, rewritten } | null
 
-const selectedProfile = computed(() =>
-  profiles.value.find((p) => p.id === selectedProfileId.value) || null,
+const selectedPersona = computed(() =>
+  personas.value.find((p) => p.id === selectedPersonaId.value) || null,
 );
 const hasPersonality = computed(() =>
-  !!(selectedProfile.value?.personality && selectedProfile.value.personality.trim()),
+  !!(selectedPersona.value?.personality && selectedPersona.value.personality.trim()),
 );
-const profileOptions = computed(() => [
-  { label: "— no profile —", value: "" },
-  ...profiles.value.map((p) => ({ label: p.name, value: p.id })),
+const personaOptions = computed(() => [
+  { label: "— no persona —", value: "" },
+  ...personas.value.map((p) => ({ label: p.name, value: p.id })),
 ]);
 
 const availableVoices = computed(() => {
@@ -70,7 +72,10 @@ const temperature = ref(0.7);
 const seed = ref("random");
 const instruct = ref("");
 const autoplay = ref(true);
-const personaRewrite = ref(false);
+// Note: the legacy `personaRewrite` checkbox has been replaced by an
+// explicit Rewrite button (plan Q3 + locked decision #3). The button
+// triggers a preview-then-accept modal — manuscript words are never
+// silently rewritten at render time.
 const stylePrompt = ref("");
 
 // ── Engine capability gating ──────────────────────────────────────────
@@ -194,20 +199,16 @@ watch(
 const attachedLexicon = ref(null);  // { id, name, entries: [LexiconEntry] }
 const showLexiconPreview = ref(false);
 
-// Watch the selected profile — when it changes and has a default
-// lexicon, fetch entries and populate the attached lexicon. When the
-// user clears the profile or picks one without a lexicon, drop back
-// to the empty state. Cancellation isn't critical here since the
-// fetch is cheap and idempotent.
+// Watch the selected persona — when it changes and has a lexicon, fetch
+// entries and populate the attached lexicon. When the user clears the
+// persona or picks one without a lexicon, drop back to the empty state.
 let lexiconFetchSeq = 0;
-watch(selectedProfile, async (p) => {
-  const lexId = p?.default_lexicon_id;
+watch(selectedPersona, async (p) => {
+  const lexId = p?.lexicon_id;
   if (!lexId) { attachedLexicon.value = null; return; }
   const mySeq = ++lexiconFetchSeq;
   try {
     const lex = await api.safeRequest(`/v1/lexicons/${lexId}`, null);
-    // Drop if a newer fetch superseded this one (rapid profile-switch
-    // race) — keep only the most recent result.
     if (mySeq !== lexiconFetchSeq) return;
     attachedLexicon.value = lex && lex.id ? lex : null;
   } catch {
@@ -289,36 +290,35 @@ const deliveryDirectionPlaceholder =
 
 async function refreshVoices() {
   try {
-    const [v, cur, h, caps, profs] = await Promise.all([
+    const [v, cur, h, caps, pers] = await Promise.all([
       api.safeRequest("/v1/voices", { voices: [] }),
       api.safeRequest("/v1/engines/current", { engine: null }),
       api.safeRequest("/v1/takes/recent", { takes: [] }),
       api.safeRequest("/v1/engines/capabilities", { engines: {} }),
-      api.safeRequest("/v1/profiles", { profiles: [] }),
+      api.safeRequest("/v1/personas", { personas: [] }),
     ]);
     voices.value = v?.voices || [];
     currentEngine.value = cur?.engine || null;
     history.value = (h?.takes || []).slice(0, 10);
     capabilityMap.value = caps?.engines || {};
-    profiles.value = profs?.profiles || [];
+    personas.value = pers?.personas || [];
     const stillValid = availableVoices.value.some((x) => x.id === voice.value);
     if (!stillValid) voice.value = availableVoices.value[0]?.id || "";
   } catch (_) {}
 }
 
 async function composeLine() {
-  if (!selectedProfileId.value || !hasPersonality.value) return;
+  if (!selectedPersonaId.value || !hasPersonality.value) return;
   composeBusy.value = true;
   try {
-    const r = await api.request(`/v1/profiles/${selectedProfileId.value}/compose`, {
+    const r = await api.request(`/v1/personas/${selectedPersonaId.value}/compose`, {
       method: "POST",
     });
     if (r?.text) text.value = r.text;
   } catch (e) {
-    // 501 = LLM not configured — show a useful toast rather than failing silently.
     pushToast({
       message: e?.message?.includes("501") || e?.status === 501
-        ? "Compose unavailable — wire an LLM service in Settings → External."
+        ? "Compose unavailable — wire an LLM provider in Settings → AI Engines (Phase 2)."
         : `Compose failed: ${e?.message || e}`,
       kind: "warning",
       duration: 6000,
@@ -326,6 +326,45 @@ async function composeLine() {
   } finally {
     composeBusy.value = false;
   }
+}
+
+async function rewriteLine() {
+  if (!selectedPersonaId.value || !hasPersonality.value) return;
+  if (!text.value.trim()) {
+    pushToast({ message: "Type something to rewrite first.", kind: "info" });
+    return;
+  }
+  rewriteBusy.value = true;
+  try {
+    const r = await api.request(`/v1/personas/${selectedPersonaId.value}/rewrite`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: text.value }),
+    });
+    if (r?.rewritten) {
+      rewritePreview.value = { original: r.original, rewritten: r.rewritten };
+    }
+  } catch (e) {
+    pushToast({
+      message: e?.message?.includes("501") || e?.status === 501
+        ? "Rewrite unavailable — wire an LLM provider in Settings → AI Engines (Phase 2)."
+        : `Rewrite failed: ${e?.message || e}`,
+      kind: "warning",
+      duration: 6000,
+    });
+  } finally {
+    rewriteBusy.value = false;
+  }
+}
+
+function acceptRewrite() {
+  if (!rewritePreview.value) return;
+  text.value = rewritePreview.value.rewritten;
+  rewritePreview.value = null;
+}
+
+function rejectRewrite() {
+  rewritePreview.value = null;
 }
 
 function buildDelivery() {
@@ -389,7 +428,7 @@ async function generate() {
     // pronunciation overrides before TTS — matches the populated state
     // shown in the lexicon-preview row above.
     if (attachedLexicon.value?.id) body.lexicons = [attachedLexicon.value.id];
-    if (selectedProfileId.value) body.profile_id = selectedProfileId.value;
+    if (selectedPersonaId.value) body.persona_id = selectedPersonaId.value;
     const blob = await api.request("/v1/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -593,27 +632,13 @@ onMounted(refreshVoices);
       <div class="jv-chip-card">🗣️ Lang:
         <strong>{{ availableVoices.find((v) => v.id === voice)?.language || "en" }}</strong>
       </div>
-      <div class="jv-chip-card">👤 Profile:
-        <strong>{{ selectedProfile?.name || "none" }}</strong>
-        <select v-model="selectedProfileId" class="generate-view__chip-select">
-          <option v-for="o in profileOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
+      <div class="jv-chip-card">🎭 Persona:
+        <strong>{{ selectedPersona?.name || "none" }}</strong>
+        <select v-model="selectedPersonaId" class="generate-view__chip-select">
+          <option v-for="o in personaOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
         </select>
       </div>
       <div class="jv-chip-card">🎛️ Effects: <strong>none</strong> <span class="muted">▾</span></div>
-      <label
-        class="jv-chip-card"
-        :class="{ 'jv-chip-card--disabled': !hasPersonality }"
-        :title="hasPersonality
-          ? 'Re-roll the input through the profile\'s personality prompt via LLM before TTS'
-          : 'Pick a profile with a personality prompt to enable persona rewrite'"
-      >
-        🎭 Persona rewrite
-        <input
-          type="checkbox"
-          v-model="personaRewrite"
-          :disabled="!hasPersonality"
-        />
-      </label>
       <label class="jv-chip-card">
         🔁 Autoplay
         <input type="checkbox" v-model="autoplay" />
@@ -622,12 +647,23 @@ onMounted(refreshVoices);
       <JvButton
         variant="ghost"
         size="lg"
+        :loading="rewriteBusy"
+        :disabled="rewriteBusy || !hasPersonality"
+        label="✏️ Rewrite"
+        :title="hasPersonality
+          ? 'Rewrite the textarea text in this persona\'s voice (preview-then-accept). Manuscript words stay verbatim unless you accept the result.'
+          : 'Pick a persona that has a personality prompt to enable Rewrite'"
+        @click="rewriteLine"
+      />
+      <JvButton
+        variant="ghost"
+        size="lg"
         :loading="composeBusy"
         :disabled="composeBusy || !hasPersonality"
         label="🎲 Compose"
         :title="hasPersonality
-          ? 'Generate a fresh in-character line via the profile\'s personality prompt'
-          : 'Pick a profile that has a personality prompt to enable Compose'"
+          ? 'Generate a fresh in-character line via the persona\'s personality prompt'
+          : 'Pick a persona that has a personality prompt to enable Compose'"
         @click="composeLine"
       />
       <JvButton
@@ -979,6 +1015,47 @@ onMounted(refreshVoices);
         <p v-else class="jv-table__empty">No takes yet. Render something above — recent generations land here.</p>
       </div>
     </div>
+
+    <!-- Rewrite preview modal — preview-then-accept (plan Q3 + locked
+         decision #3). User accepts → text replaces textarea. Reject →
+         original stays. THEN user clicks Generate to TTS. The rewrite
+         is NEVER an automatic render-time hook. -->
+    <div
+      v-if="rewritePreview"
+      class="jv-overlay"
+      @click.self="rejectRewrite"
+    >
+      <div class="jv-modal generate-view__rewrite-modal">
+        <header class="jv-modal__header">
+          <div class="jv-modal__titleblock">
+            <span class="jv-modal__eyebrow">Rewrite preview</span>
+            <h3 class="jv-modal__title">
+              In {{ selectedPersona?.name || "character" }}'s voice
+            </h3>
+          </div>
+          <button type="button" class="jv-modal__close" @click="rejectRewrite">✕</button>
+        </header>
+        <div class="jv-modal__body">
+          <div class="generate-view__rewrite-grid">
+            <div>
+              <div class="generate-view__rewrite-h">Original</div>
+              <p class="generate-view__rewrite-text">{{ rewritePreview.original }}</p>
+            </div>
+            <div>
+              <div class="generate-view__rewrite-h">Rewritten</div>
+              <p class="generate-view__rewrite-text generate-view__rewrite-text--new">
+                {{ rewritePreview.rewritten }}
+              </p>
+            </div>
+          </div>
+        </div>
+        <footer class="jv-modal__footer">
+          <span class="jv-spacer" />
+          <JvButton variant="secondary" label="Reject" @click="rejectRewrite" />
+          <JvButton variant="primary" label="Accept (replaces text)" @click="acceptRewrite" />
+        </footer>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1109,6 +1186,38 @@ onMounted(refreshVoices);
   flex-wrap: wrap;
   gap: 8px;
   font-size: 11.5px;
+}
+
+/* Rewrite preview modal — side-by-side original vs LLM-rewritten text. */
+.generate-view__rewrite-modal { width: min(820px, calc(100vw - 32px)); }
+.generate-view__rewrite-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.generate-view__rewrite-h {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 6px;
+}
+.generate-view__rewrite-text {
+  font-family: var(--font-serif, Georgia, serif);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 0;
+  white-space: pre-wrap;
+}
+.generate-view__rewrite-text--new {
+  background: var(--accent-soft);
+  border-color: var(--accent-line, var(--accent));
 }
 
 </style>

@@ -769,11 +769,13 @@ class GenerateRequest(BaseModel):
     lexicons: list[str] = []
     cache_scope: str = "default"
     cache: bool = True
-    # Tier-2 voice tuning (task #88) — if set, profile.default_delivery merges
-    # under the request's delivery (request wins on conflict). Optional.
+    # Tier-2 voice tuning. After the Profile-kill, the canonical source is
+    # `persona_id` → persona.default_delivery; `profile_id` is the legacy
+    # path kept during the transition window.
+    persona_id: str | None = None
     profile_id: str | None = None
     # Tier-3 render preset (task #88) — if set, preset overrides request +
-    # profile delivery. Highest precedence in the 3-tier merge.
+    # persona delivery. Highest precedence in the 3-tier merge.
     preset_id: str | None = None
 
 

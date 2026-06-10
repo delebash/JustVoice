@@ -64,17 +64,25 @@ def merge_delivery(
     profile_id: Optional[str],
     preset_id: Optional[str],
     db: Session,
+    tier2_overlay: Optional[dict] = None,
 ) -> dict:
     """Collapse the 3 tiers into a single effective delivery dict.
 
     Precedence (highest first):
-      preset.delivery > request.delivery > profile.default_delivery
+      preset.delivery > request.delivery > tier2
+
+    Tier-2 source priority: `tier2_overlay` (dict, used when the caller
+    has already resolved persona.default_delivery from PersonaStore)
+    wins over `profile_id` (legacy VoiceProfile lookup, kept during the
+    Profile-kill transition window — see plan).
 
     Returns the merged delivery dict (or empty {} if nothing supplied).
     """
-    # Tier 2 — profile defaults
+    # Tier 2 — persona overlay (new) OR profile defaults (legacy fallback)
     tier2: dict = {}
-    if profile_id:
+    if tier2_overlay is not None:
+        tier2 = tier2_overlay or {}
+    elif profile_id:
         prof = db.query(VoiceProfile).filter(VoiceProfile.id == profile_id).first()
         if prof:
             tier2 = _decode_json_dict(prof.default_delivery)
