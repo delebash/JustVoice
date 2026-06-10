@@ -37,6 +37,16 @@ const voiceParamsModalOpen = ref(false);
 const tuningVoice = ref(null);  // {voiceId, name, params}
 const smartAssignBusy = ref(false);
 
+// Script tab state (Phase 4 / Slice 2)
+const scenes = ref([]);
+const selectedSceneId = ref(null);
+const sceneText = ref("");
+const analyzeBusy = ref(false);
+const analyzeRows = ref([]);
+const analyzeTierUsed = ref(null);
+const analyzeFloor = ref(null);
+const editedFlags = ref({});  // {rowIdx: true} for rows the user changed
+
 // Adapt the tab labels to the project's use case via useCopy.
 const TAB_LABELS = computed(() => ({
   cast:   copy.value.cast.singular === "NPC" ? "NPCs" : (copy.value.cast.plural || "Cast"),
@@ -116,8 +126,155 @@ async function loadProjectPersonas(projectId) {
   }
 }
 
-watch(selectedProjectId, (id) => loadProjectPersonas(id), { immediate: true });
+watch(selectedProjectId, (id) => {
+  loadProjectPersonas(id);
+  loadScenesForProject(id);
+}, { immediate: true });
 watch(personas, () => loadProjectPersonas(selectedProjectId.value));
+
+async function loadScenesForProject(projectId) {
+  if (!projectId) {
+    scenes.value = [];
+    selectedSceneId.value = null;
+    return;
+  }
+  try {
+    const r = await api.safeRequest(`/v1/projects/${projectId}/scenes`, { scenes: [] });
+    scenes.value = r?.scenes || [];
+    if (!selectedSceneId.value && scenes.value.length) {
+      selectedSceneId.value = scenes.value[0].id;
+    }
+  } catch {
+    scenes.value = [];
+  }
+}
+
+async function loadSceneText(sceneId) {
+  if (!sceneId) {
+    sceneText.value = "";
+    return;
+  }
+  try {
+    const r = await api.safeRequest(`/v1/scenes/${sceneId}/blocks`, []);
+    const blocks = Array.isArray(r) ? r : (r?.blocks ?? []);
+    sceneText.value = blocks.map((b) => b.text).join("\n\n");
+  } catch {
+    sceneText.value = "";
+  }
+}
+
+watch(selectedSceneId, (id) => {
+  loadSceneText(id);
+  analyzeRows.value = [];
+  editedFlags.value = {};
+}, { immediate: true });
+
+async function runAnalyze() {
+  if (!selectedSceneId.value || !sceneText.value.trim()) {
+    pushToast({ message: "Pick a scene with text to analyze.", kind: "info" });
+    return;
+  }
+  analyzeBusy.value = true;
+  try {
+    const r = await api.request(`/v1/scenes/${selectedSceneId.value}/analyze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: sceneText.value }),
+    });
+    analyzeRows.value = r.rows || [];
+    analyzeTierUsed.value = r.tier_used;
+    analyzeFloor.value = r.confidence_floor;
+    editedFlags.value = {};
+    pushToast({
+      message: `Analyzed ${analyzeRows.value.length} segment${analyzeRows.value.length === 1 ? "" : "s"} using ${r.tier_used} tier.`,
+      kind: "success",
+      duration: 3500,
+    });
+  } catch (e) {
+    pushToast({
+      message: e?.message?.includes("501") || e?.status === 501
+        ? "Analyze unavailable — wire an LLM provider in Engines → LLM tab."
+        : `Analyze failed: ${e?.message || e}`,
+      kind: "warning",
+      duration: 6000,
+    });
+  } finally {
+    analyzeBusy.value = false;
+  }
+}
+
+function setRowSpeaker(idx, speaker) {
+  if (!analyzeRows.value[idx]) return;
+  analyzeRows.value[idx] = { ...analyzeRows.value[idx], speaker, source: "manual" };
+  editedFlags.value = { ...editedFlags.value, [idx]: true };
+}
+
+async function applyAnalyzed() {
+  if (!selectedSceneId.value || !analyzeRows.value.length) return;
+  // Bulk-create blocks from the attribution rows. We assume the
+  // scene is empty before Apply (caller can confirm in a follow-up).
+  let created = 0;
+  let failed = 0;
+  for (let i = 0; i < analyzeRows.value.length; i += 1) {
+    const row = analyzeRows.value[i];
+    const persona_id = row.speaker !== "narrator" && row.speaker !== "unknown" ? row.speaker : null;
+    try {
+      await api.request(`/v1/scenes/${selectedSceneId.value}/blocks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          position: i,
+          text: row.text,
+          persona_id,
+          metadata: {},
+          extraction_confidence: row.confidence,
+          source: row.source || "llm",
+        }),
+      });
+      created += 1;
+    } catch (_) {
+      failed += 1;
+    }
+  }
+  pushToast({
+    message: failed
+      ? `Applied ${created}, failed ${failed}.`
+      : `Applied ${created} blocks.`,
+    kind: failed ? "warning" : "success",
+    duration: 5000,
+  });
+}
+
+function speakerLabel(spk) {
+  if (!spk || spk === "unknown") return "unknown";
+  if (spk === "narrator") return narratorPersona.value?.name || "Narrator";
+  const persona = projectPersonas.value.find((p) => p.id === spk);
+  return persona?.name || spk;
+}
+
+function speakerOptions() {
+  const opts = [
+    { label: "— narrator —", value: "narrator" },
+    { label: "— unknown —", value: "unknown" },
+  ];
+  for (const p of projectPersonas.value) {
+    if (p.id !== narratorPersona.value?.id) {
+      opts.push({ label: p.name, value: p.id });
+    }
+  }
+  return opts;
+}
+
+function sourceChipClass(source) {
+  return {
+    tag: "studio__source-chip studio__source-chip--tag",
+    propagated: "studio__source-chip studio__source-chip--propagated",
+    llm: "studio__source-chip studio__source-chip--llm",
+    floored: "studio__source-chip studio__source-chip--floored",
+    narration: "studio__source-chip studio__source-chip--narration",
+    manual: "studio__source-chip studio__source-chip--manual",
+  }[source] || "studio__source-chip";
+}
 
 function voiceById(voiceId) {
   return voices.value.find((v) => v.id === voiceId) || null;
@@ -383,12 +540,90 @@ onMounted(loadAll);
       </template>
     </section>
 
-    <!-- ── Script tab (Slice 2) ─────────────────────────────────────── -->
+    <!-- ── Script tab — Phase 4 / Slice 2 ───────────────────────────── -->
     <section v-if="tab === 'script'" class="studio__script">
-      <p class="jv-muted">
-        Script tab arrives in Phase 4 / Slice 2 — paragraph extraction + Analyze button calling
-        POST /v1/scenes/{id}/analyze.
-      </p>
+      <div v-if="!selectedProject" class="jv-banner">
+        Pick a {{ copy.book.singular.toLowerCase() }} above to attribute its script.
+      </div>
+      <template v-else>
+        <header class="studio__script-toolbar">
+          <label class="studio__script-label">{{ copy.chapter.singular }}:</label>
+          <select v-model="selectedSceneId" class="jv-input studio__script-select">
+            <option v-if="!scenes.length" :value="null">— no {{ copy.chapter.plural.toLowerCase() }} —</option>
+            <option v-for="s in scenes" :key="s.id" :value="s.id">{{ s.title || `${copy.chapter.singular} ${s.position + 1}` }}</option>
+          </select>
+          <span class="jv-spacer" />
+          <JvButton
+            variant="primary"
+            size="sm"
+            :loading="analyzeBusy"
+            :disabled="analyzeBusy || !sceneText.trim()"
+            label="🔍 Analyze"
+            @click="runAnalyze"
+          />
+          <JvButton
+            v-if="analyzeRows.length"
+            variant="secondary"
+            size="sm"
+            label="✓ Apply"
+            @click="applyAnalyzed"
+          />
+        </header>
+
+        <p v-if="analyzeTierUsed" class="jv-muted studio__script-meta">
+          Routed to <strong>{{ analyzeTierUsed }}</strong> tier · confidence floor {{ analyzeFloor }} · {{ analyzeRows.length }} segments
+        </p>
+
+        <textarea
+          v-if="!analyzeRows.length"
+          class="jv-input studio__script-text"
+          v-model="sceneText"
+          :placeholder="`Paste the ${copy.chapter.singular.toLowerCase()} text here, then click Analyze.`"
+        />
+
+        <table v-else class="jv-table studio__script-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Kind</th>
+              <th>Speaker</th>
+              <th>Source</th>
+              <th>Confidence</th>
+              <th>Text</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(row, i) in analyzeRows" :key="i">
+              <td class="jv-muted">{{ i + 1 }}</td>
+              <td><span class="jv-pill jv-pill--ghost">{{ row.kind }}</span></td>
+              <td>
+                <select
+                  v-if="row.kind === 'dialogue'"
+                  :value="row.speaker"
+                  class="jv-input jv-input--sm"
+                  @change="setRowSpeaker(i, $event.target.value)"
+                >
+                  <option
+                    v-for="o in speakerOptions()"
+                    :key="o.value"
+                    :value="o.value"
+                  >{{ o.label }}</option>
+                </select>
+                <span v-else>{{ speakerLabel(row.speaker) }}</span>
+                <span v-if="editedFlags[i]" class="studio__edited">✎</span>
+              </td>
+              <td>
+                <span :class="sourceChipClass(row.source)">{{ row.source }}</span>
+                <span v-if="row.source === 'floored' && row.floored_from" class="jv-muted">
+                  from {{ speakerLabel(row.floored_from) }}
+                </span>
+              </td>
+              <td class="jv-mono">{{ (row.confidence * 100).toFixed(0) }}%</td>
+              <td class="studio__script-text-cell">{{ row.text }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </template>
     </section>
 
     <!-- ── Render tab (Phase 6) ─────────────────────────────────────── -->
@@ -554,4 +789,63 @@ onMounted(loadAll);
   border-color: var(--accent);
 }
 .studio__voice-row:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ── Script tab ───────────────────────────────────────────────────── */
+.studio__script-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.studio__script-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+.studio__script-select { flex: 1 1 240px; max-width: 360px; }
+
+.studio__script-meta {
+  font-size: 11.5px;
+  margin: 0 0 8px;
+}
+
+.studio__script-text {
+  width: 100%;
+  min-height: 240px;
+  font-family: var(--font-serif, Georgia, serif);
+  font-size: 13.5px;
+  line-height: 1.55;
+  resize: vertical;
+  padding: 12px 14px;
+}
+
+.studio__script-table { font-size: 12px; width: 100%; }
+.studio__script-table th { white-space: nowrap; }
+.studio__script-text-cell {
+  max-width: 480px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.studio__edited { color: var(--accent); margin-left: 6px; font-size: 11px; }
+
+.studio__source-chip {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  border: 1px solid var(--border-soft);
+}
+.studio__source-chip--tag         { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.studio__source-chip--propagated  { background: var(--accent-soft); color: var(--ink-2); }
+.studio__source-chip--llm         { color: var(--ink-3); }
+.studio__source-chip--floored     { background: var(--warn-bg, var(--surface-2)); color: var(--warn, var(--ink-2)); border-color: var(--warn, var(--border-soft)); }
+.studio__source-chip--narration   { color: var(--muted); border-style: dashed; }
+.studio__source-chip--manual      { background: var(--surface); }
 </style>
