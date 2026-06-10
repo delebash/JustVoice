@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>JustVoice — voice library design preview</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+/* ── Tokens — identical to src/renderer/src/styles.css light theme ── */
+:root {
+  --bg:#f6f5f1; --surface:#fff; --surface-2:#fbfaf7; --surface-3:#f3f1ec;
+  --ink:#1a1a1a; --ink-2:#4a4a4a; --ink-3:#888;
+  --line:#e3e1dc; --line-strong:#cfccc4;
+  --accent:#3a7d63; --accent-ink:#2c6049; --accent-soft:#e8f0eb; --accent-line:#b8d2c3;
+  --warn:#c89a3a; --warn-bg:#fff8e3; --warn-ink:#8a6a1f; --warn-line:#e6cd84;
+  --danger:#a8442e; --danger-bg:#fbecea; --danger-ink:#7a2f1f; --danger-line:#e3b6ac;
+  --info-blue:#2f74b5; --info-soft:#eaf2fa;
+  --r-card:8px; --r-control:6px; --r-pill:999px;
+  --shadow-1:0 1px 2px rgba(20,22,24,.04);
+  --shadow-2:0 4px 12px rgba(20,22,24,.06);
+  --font-ui:"Inter",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--font-ui);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{margin:0;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+p{margin:0;color:var(--ink-2)}
+code{font-family:var(--font-mono);font-size:12px}
+strong{font-weight:600;color:var(--ink)}
+.muted{color:var(--ink-3)}
+button{font:inherit}
+
+/* ── App shell — mirrors the CURRENT app (lane sidebar) ── */
+.app{display:grid;grid-template-columns:80px 1fr;height:100vh;overflow:hidden}
+.sidebar{background:var(--surface-2);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:14px 0 10px;gap:2px;overflow-y:auto}
+.brand{width:44px;height:44px;border-radius:10px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;letter-spacing:-.5px;margin-bottom:10px}
+.lane-h{width:56px;font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);text-align:center;margin:8px 0 2px;font-weight:600}
+.nav-item{width:56px;height:50px;border:0;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;background:transparent;color:var(--ink-2);transition:background .12s,color .12s}
+.nav-item:hover{background:var(--surface);color:var(--ink)}
+.nav-item.active,.nav-item.active:hover{background:var(--accent);color:#fff}
+.nav-item .icon{font-size:16px;line-height:1}
+.nav-item .lbl{font-size:8.5px;letter-spacing:.04em;text-transform:uppercase;font-weight:500;white-space:nowrap;max-width:54px;overflow:hidden;text-overflow:ellipsis}
+.sidebar .spacer{flex:1}
+
+main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.topbar{display:flex;align-items:baseline;gap:14px;padding:22px 32px 14px;border-bottom:1px solid var(--line)}
+.topbar h1{font-size:24px;font-weight:600;letter-spacing:-.015em}
+.topbar .period{color:var(--accent)}
+.engine-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2);background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-pill);padding:3px 12px;cursor:default}
+.status{margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2)}
+.status .dot{width:8px;height:8px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 3px rgba(58,125,99,.18)}
+.status .url{font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
+.content{flex:1;overflow-y:auto;padding:24px 32px 64px}
+.lede{color:var(--ink-2);font-size:13px;margin:0 0 18px;max-width:740px}
+
+/* ── Primitives (preview design language) ── */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--shadow-1)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.spacer{flex:1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 14px;border-radius:var(--r-control);border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:13px;font-weight:500;line-height:1;cursor:pointer;white-space:nowrap}
+.btn:hover{filter:brightness(.94)}
+.btn.secondary{background:var(--surface);color:var(--ink);border-color:var(--line-strong)}
+.btn.secondary:hover{background:var(--surface-2);filter:none}
+.btn.ghost{background:transparent;color:var(--ink-2);border:0}
+.btn.ghost:hover{background:var(--surface-2);color:var(--ink)}
+.btn.sm{height:26px;padding:0 10px;font-size:12px}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.input{display:block;height:34px;padding:0 12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-control);color:var(--ink);font:inherit;font-size:13px}
+.input:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.input::placeholder{color:var(--ink-3)}
+
+.pill{display:inline-flex;align-items:center;gap:4px;padding:1px 9px;font-size:11px;border-radius:var(--r-pill);border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);white-space:nowrap;line-height:17px}
+.pill.green{color:var(--accent-ink);border-color:var(--accent);background:var(--accent-soft)}
+.pill.warn{color:var(--warn-ink);border-color:var(--warn-line);background:var(--warn-bg)}
+.pill.blue{color:var(--info-blue);border-color:var(--info-blue);background:var(--info-soft)}
+.pill.ghost{background:transparent;border-style:dashed}
+.pill.solid{background:var(--accent);color:#fff;border-color:var(--accent)}
+.pill .dot{width:7px;height:7px;border-radius:999px;display:inline-block}
+
+/* Filter chips */
+.chips{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-control);padding:2px;gap:2px}
+.chip{border:0;background:transparent;border-radius:4px;padding:4px 11px;font-size:12px;color:var(--ink-2);cursor:pointer}
+.chip:hover{color:var(--ink)}
+.chip.active{background:var(--accent);color:#fff}
+
+/* ── Voices: engine-grouped table ── */
+.vtable{width:100%;border-collapse:collapse;font-size:13px}
+.vtable thead th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.vtable td{padding:8px 14px;border-bottom:1px solid var(--line);color:var(--ink-2);vertical-align:middle}
+.vtable tbody tr:last-child td{border-bottom:0}
+.vtable tr.voice:hover td{background:var(--surface-2)}
+.vtable .right{text-align:right;white-space:nowrap}
+
+/* Engine group header row */
+tr.group td{background:var(--surface-3);border-bottom:1px solid var(--line);padding:7px 14px}
+tr.group .g-row{display:flex;align-items:center;gap:10px}
+tr.group .g-name{font-weight:600;color:var(--ink);font-size:13px}
+tr.group .g-count{font-size:11.5px;color:var(--ink-3)}
+
+/* Dormant (engine not loaded) rows */
+tr.voice.dormant td{color:var(--ink-3)}
+tr.voice.dormant strong{color:var(--ink-3);font-weight:500}
+tr.voice.dormant .pill{opacity:.55}
+tr.voice.dormant .emoji{filter:grayscale(1);opacity:.5}
+
+/* Playing shimmer */
+.playing-bars{display:inline-flex;align-items:flex-end;gap:2px;height:14px;margin-right:6px}
+.playing-bars i{width:3px;background:var(--accent);border-radius:1px;animation:bar .7s ease-in-out infinite}
+.playing-bars i:nth-child(2){animation-delay:.18s}.playing-bars i:nth-child(3){animation-delay:.36s}
+@keyframes bar{0%,100%{height:4px}50%{height:14px}}
+
+/* Inline load confirm + progress (lives inside the group header) */
+.load-confirm{display:inline-flex;align-items:center;gap:8px;background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:var(--r-control);padding:3px 6px 3px 12px;font-size:12px;color:var(--warn-ink)}
+.load-progress{display:inline-flex;align-items:center;gap:10px;font-size:12px;color:var(--ink-2)}
+.load-progress .track{width:170px;height:6px;background:var(--surface);border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.load-progress .fill{height:100%;background:var(--accent);width:0%;transition:width .12s linear}
+
+/* Toolbar hint line */
+.hint-line{font-size:11.5px;color:var(--ink-3);margin:6px 0 12px}
+
+/* ── Studio ── */
+.studio{display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start}
+.cast-pane{padding:16px}
+.cast-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:6px;cursor:pointer;border:1px solid transparent}
+.cast-row:hover{background:var(--surface-2)}
+.cast-row.sel{background:var(--accent-soft);border-color:var(--accent-line)}
+.cast-row .avatar{width:30px;height:30px;border-radius:999px;background:var(--surface-3);display:flex;align-items:center;justify-content:center;font-size:15px}
+.cast-row .who{flex:1;min-width:0}
+.cast-row .who .nm{font-weight:600;font-size:13px;color:var(--ink)}
+.cast-row .who .vc{font-size:11.5px;color:var(--ink-3)}
+.lib-pane{padding:0;overflow:hidden}
+.lib-head{padding:12px 14px 8px;border-bottom:1px solid var(--line)}
+.lib-head .t{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3)}
+.lib-body{max-height:62vh;overflow-y:auto;padding:6px}
+.lib-group{display:flex;align-items:center;gap:8px;padding:8px 8px 4px;font-size:11.5px;color:var(--ink-2)}
+.lib-group .dot{width:7px;height:7px;border-radius:999px}
+.lib-group .nm{font-weight:600;color:var(--ink);font-size:12px}
+.lib-group .ct{color:var(--ink-3)}
+.lib-voice{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0;background:transparent;padding:7px 8px;border-radius:5px;cursor:pointer;font-size:12.5px;color:var(--ink)}
+.lib-voice:hover{background:var(--surface-2)}
+.lib-voice.dormant{color:var(--ink-3)}
+.lib-voice.dormant .emoji{filter:grayscale(1);opacity:.5}
+.lib-voice .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-voice .act{font-size:11px;color:var(--ink-3)}
+.lib-voice:hover .act{color:var(--accent)}
+
+/* Toast */
+.toast-host{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:8px;z-index:50}
+.toast{background:var(--ink);color:#fff;font-size:12.5px;padding:10px 16px;border-radius:8px;box-shadow:var(--shadow-2);opacity:0;transform:translateY(6px);transition:all .25s}
+.toast.show{opacity:1;transform:none}
+.toast .a{color:#9fd3bd;font-weight:600}
+
+/* Demo note */
+.demo-note{position:fixed;left:96px;bottom:12px;font-size:11px;color:var(--ink-3);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px 12px;box-shadow:var(--shadow-1)}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">JV</div>
+    <div class="lane-h">Workflow</div>
+    <button class="nav-item" data-tab="x"><span class="icon">🏠</span><span class="lbl">Home</span></button>
+    <button class="nav-item" data-tab="studio"><span class="icon">🎬</span><span class="lbl">Studio</span></button>
+    <button class="nav-item" data-tab="x"><span class="icon">📝</span><span class="lbl">Generate</span></button>
+    <button class="nav-item" data-tab="x"><span class="icon">📑</span><span class="lbl">Chapter</span></button>
+    <div class="lane-h">Library</div>
+    <button class="nav-item" data-tab="x"><span class="icon">📖</span><span class="lbl">Projects</span></button>
+    <button class="nav-item active" data-tab="voices"><span class="icon">🎙️</span><span class="lbl">Voices</span></button>
+    <button class="nav-item" data-tab="x"><span class="icon">🎭</span><span class="lbl">Personas</span></button>
+    <button class="nav-item" data-tab="x"><span class="icon">📚</span><span class="lbl">Lexicons</span></button>
+    <button class="nav-item" data-tab="x"><span class="icon">🧠</span><span class="lbl">Engines</span></button>
+    <div class="lane-h">Tools</div>
+    <button class="nav-item" data-tab="x"><span class="icon">⚖️</span><span class="lbl">Compare</span></button>
+    <button class="nav-item" data-tab="x"><span class="icon">🏋️</span><span class="lbl">Train</span></button>
+    <div class="spacer"></div>
+    <button class="nav-item" data-tab="x"><span class="icon">⚙️</span><span class="lbl">Settings</span></button>
+  </aside>
+
+  <main>
+    <header class="topbar">
+      <h1 id="title">Voices<span class="period">.</span></h1>
+      <span class="engine-pill" id="engine-pill">🧠 <strong id="engine-pill-name">Chatterbox Turbo</strong></span>
+      <span class="status"><span class="dot"></span>Operational <span class="url">· http://127.0.0.1:17494</span></span>
+    </header>
+    <div class="content">
+
+      <!-- ════════ VOICES ════════ -->
+      <section id="tab-voices">
+        <p class="lede">Voice library — cloned, preset, designed, blended. Grouped by engine so you always know what's ready to play and what needs a load first.</p>
+
+        <div class="row" style="margin-bottom:4px">
+          <input class="input" style="max-width:280px" placeholder="Search voices…" id="search" />
+          <div class="chips" id="type-chips"></div>
+          <div class="spacer"></div>
+          <button class="btn secondary sm">⬇ Import .justvoice.zip</button>
+          <button class="btn sm">+ Clone new voice</button>
+        </div>
+        <p class="hint-line">One engine loads at a time — switching takes ~40 s. Voices under an unloaded engine are shown dimmed until you load it.</p>
+
+        <div class="card" style="overflow:hidden">
+          <table class="vtable">
+            <thead>
+              <tr><th style="width:30px"></th><th>Name</th><th>Type</th><th>Lang</th><th>Samples</th><th>Effects</th><th>Channel</th><th class="right" style="width:190px"></th></tr>
+            </thead>
+            <tbody id="vbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ════════ STUDIO ════════ -->
+      <section id="tab-studio" style="display:none">
+        <p class="lede">Cast tab — assign voices to characters. The voice library on the right uses the same engine grouping: ready voices play instantly, dimmed ones need their engine loaded first.</p>
+        <div class="studio">
+          <div class="card cast-pane">
+            <div class="lib-head" style="border:0;padding:0 0 10px"><span class="t">Cast — The Stillwater Heist</span></div>
+            <div id="cast"></div>
+          </div>
+          <div class="card lib-pane">
+            <div class="lib-head"><span class="t">Voice library</span></div>
+            <div class="lib-body" id="lib"></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<div class="toast-host" id="toasts"></div>
+<div class="demo-note">Demo: engine load mocked at 4 s — real load ≈ 40 s · preview play mocked at 2 s</div>
+
+<script>
+/* ───────────────────────── Mock state ───────────────────────── */
+const ENGINES = {
+  chatterbox: { name: "Chatterbox Turbo", loadSecs: 40 },
+  kokoro:     { name: "Kokoro",           loadSecs: 25 },
+  qwen3:      { name: "Qwen3-TTS",        loadSecs: 55 },
+};
+let loadedEngine = "chatterbox";
+let loading = null;            // { engine, pct, timer, autoplayVoiceId, confirmOpen }
+let playingId = null;
+let playTimer = null;
+
+const VOICES = [
+  { id:"narrator", name:"Narrator",            engine:"chatterbox", type:"cloned",   lang:"en", samples:4,  effects:"—",            channel:"Default" },
+  { id:"mara",     name:"Mara",                engine:"chatterbox", type:"cloned",   lang:"en", samples:2,  effects:"radio",        channel:"Default" },
+  { id:"oldcrow",  name:"Old Crow",            engine:"chatterbox", type:"cloned",   lang:"en", samples:3,  effects:"radio · gain", channel:"OBS virtual" },
+  { id:"blend1",   name:"Blend: Narrator+Crow",engine:"chatterbox", type:"blended",  lang:"en", samples:"—",effects:"—",            channel:"Default" },
+  { id:"maratr",   name:"Mara (fine-tuned)",   engine:"chatterbox", type:"trained",  lang:"en", samples:12, effects:"—",            channel:"Default" },
+  { id:"af_alloy", name:"af_alloy",            engine:"kokoro",     type:"preset",   lang:"en", samples:"—",effects:"—",            channel:"Default" },
+  { id:"af_bella", name:"af_bella",            engine:"kokoro",     type:"preset",   lang:"en", samples:"—",effects:"—",            channel:"Default" },
+  { id:"af_heart", name:"af_heart",            engine:"kokoro",     type:"preset",   lang:"en", samples:"—",effects:"—",            channel:"Default" },
+  { id:"am_mich",  name:"am_michael",          engine:"kokoro",     type:"preset",   lang:"en", samples:"—",effects:"—",            channel:"Default" },
+  { id:"bm_george",name:"bm_george",           engine:"kokoro",     type:"preset",   lang:"en", samples:"—",effects:"—",            channel:"Default" },
+  { id:"baritone", name:"Heroic Baritone",     engine:"qwen3",      type:"designed", lang:"en", samples:"—",effects:"reverb",       channel:"Default" },
+  { id:"newsread", name:"Calm Newsreader",     engine:"qwen3",      type:"designed", lang:"en", samples:"—",effects:"—",            channel:"Default" },
+  { id:"fieldrec", name:"Field Recording 03",  engine:"qwen3",      type:"imported", lang:"en", samples:1,  effects:"—",            channel:"Default" },
+];
+
+const TYPE_PILL = {
+  cloned:   { cls:"green", label:"cloned" },
+  designed: { cls:"warn",  label:"designed" },
+  blended:  { cls:"blue",  label:"blended" },
+  preset:   { cls:"",      label:"preset" },
+  imported: { cls:"ghost", label:"imported" },
+  trained:  { cls:"solid", label:"trained" },
+};
+const TYPE_FILTERS = ["all","cloned","preset","designed","blended","imported","trained"];
+let typeFilter = "all";
+let search = "";
+
+const CAST = [
+  { id:"p1", name:"Mara",      icon:"🕵️", voice:"mara" },
+  { id:"p2", name:"Old Crow",  icon:"🧓", voice:"oldcrow" },
+  { id:"p3", name:"Narrator",  icon:"📖", voice:"narrator" },
+  { id:"p4", name:"Constable", icon:"👮", voice:null },
+];
+let selectedCast = "p4";
+
+/* ───────────────────────── Helpers ───────────────────────── */
+const $ = (s) => document.querySelector(s);
+function toast(msg) {
+  const t = document.createElement("div");
+  t.className = "toast"; t.innerHTML = msg;
+  $("#toasts").appendChild(t);
+  requestAnimationFrame(() => t.classList.add("show"));
+  setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 3400);
+}
+function pillHtml(type) {
+  const p = TYPE_PILL[type];
+  return `<span class="pill ${p.cls}">${p.label}</span>`;
+}
+function enginesOrdered() {
+  return Object.keys(ENGINES).sort((a, b) => (b === loadedEngine) - (a === loadedEngine));
+}
+function voicesFor(engineId) {
+  return VOICES.filter(v =>
+    v.engine === engineId &&
+    (typeFilter === "all" || v.type === typeFilter) &&
+    (!search || v.name.toLowerCase().includes(search)));
+}
+
+/* ───────────────────────── Load flow ───────────────────────── */
+function askLoad(engineId, autoplayVoiceId) {
+  if (loading) return;
+  loading = { engine: engineId, pct: 0, timer: null, autoplayVoiceId, confirmOpen: true };
+  renderAll();
+}
+function confirmLoad() {
+  loading.confirmOpen = false;
+  const tickMs = 50, durMs = 4000; // mock: 4s stands in for ~40s
+  loading.timer = setInterval(() => {
+    loading.pct = Math.min(100, loading.pct + 100 * tickMs / durMs);
+    updateProgressBars();
+    if (loading.pct >= 100) finishLoad();
+  }, tickMs);
+  renderAll();
+}
+function cancelLoad() {
+  if (loading?.timer) clearInterval(loading.timer);
+  loading = null;
+  renderAll();
+}
+function finishLoad() {
+  clearInterval(loading.timer);
+  const eng = loading.engine, auto = loading.autoplayVoiceId;
+  const prev = ENGINES[loadedEngine].name;
+  loadedEngine = eng;
+  loading = null;
+  $("#engine-pill-name").textContent = ENGINES[eng].name;
+  toast(`<span class="a">${ENGINES[eng].name} loaded</span> — previews ready. ${prev} was unloaded.`);
+  renderAll();
+  if (auto) play(auto);
+}
+function updateProgressBars() {
+  document.querySelectorAll(".load-progress .fill").forEach(el => el.style.width = loading.pct + "%");
+  document.querySelectorAll(".load-progress .pct").forEach(el => el.textContent = Math.round(loading.pct) + "%");
+}
+
+/* ───────────────────────── Preview play (mock) ───────────────────────── */
+function play(voiceId) {
+  if (playTimer) clearTimeout(playTimer);
+  playingId = voiceId;
+  renderAll();
+  playTimer = setTimeout(() => { playingId = null; renderAll(); }, 2000);
+}
+
+/* ───────────────────────── Renderers ───────────────────────── */
+function groupHeaderHtml(engineId, count, light) {
+  const eng = ENGINES[engineId];
+  const isLoaded = engineId === loadedEngine;
+  const isLoading = loading && loading.engine === engineId;
+  let right = "";
+  if (isLoaded) {
+    right = `<span class="pill green"><span class="dot" style="background:var(--accent)"></span>loaded</span>`;
+  } else if (isLoading && loading.confirmOpen) {
+    right = `<span class="load-confirm">Replaces ${ENGINES[loadedEngine].name} · ~${eng.loadSecs}s
+               <button class="btn sm" onclick="confirmLoad()">Load</button>
+               <button class="btn ghost sm" onclick="cancelLoad()">Cancel</button></span>`;
+  } else if (isLoading) {
+    right = `<span class="load-progress">Loading ${eng.name}… <span class="pct">0%</span>
+               <span class="track"><span class="fill"></span></span>
+               <button class="btn ghost sm" onclick="cancelLoad()">Cancel</button></span>`;
+  } else {
+    right = `<span class="pill ghost"><span class="dot" style="background:var(--ink-3)"></span>not loaded</span>
+             <button class="btn secondary sm" ${loading ? "disabled" : ""} onclick="askLoad('${engineId}')">Load engine (~${eng.loadSecs}s)</button>`;
+  }
+  return { isLoaded, right };
+}
+
+function renderVoicesTable() {
+  const tbody = $("#vbody");
+  let html = "";
+  for (const engineId of enginesOrdered()) {
+    const vs = voicesFor(engineId);
+    if (!vs.length && (typeFilter !== "all" || search)) continue;
+    const { isLoaded, right } = groupHeaderHtml(engineId, vs.length);
+    html += `<tr class="group"><td colspan="8"><div class="g-row">
+               <span class="g-name">${ENGINES[engineId].name}</span>
+               <span class="g-count">${vs.length} voice${vs.length === 1 ? "" : "s"}</span>
+               <span class="spacer"></span>${right}</div></td></tr>`;
+    for (const v of vs) {
+      const dormant = !isLoaded;
+      const isPlaying = playingId === v.id;
+      let action;
+      if (isPlaying) {
+        action = `<span class="playing-bars"><i></i><i></i><i></i></span><span style="color:var(--accent);font-size:12px">playing…</span>`;
+      } else if (dormant) {
+        action = `<button class="btn ghost sm" ${loading ? "disabled" : ""}
+                    title="${ENGINES[v.engine].name} isn't loaded. Loading takes ~${ENGINES[v.engine].loadSecs}s and replaces ${ENGINES[loadedEngine].name}."
+                    onclick="askLoad('${v.engine}','${v.id}')">Load to preview</button>`;
+      } else {
+        action = `<button class="btn ghost sm" onclick="play('${v.id}')">▶ Preview</button>
+                  <button class="btn ghost sm">Edit</button>`;
+      }
+      html += `<tr class="voice ${dormant ? "dormant" : ""}">
+        <td class="emoji">🎙️</td>
+        <td><strong>${v.name}</strong></td>
+        <td>${pillHtml(v.type)}</td>
+        <td>${v.lang}</td><td>${v.samples}</td><td>${v.effects}</td><td>${v.channel}</td>
+        <td class="right">${action}</td></tr>`;
+    }
+  }
+  tbody.innerHTML = html;
+  if (loading && !loading.confirmOpen) updateProgressBars();
+}
+
+function renderChips() {
+  $("#type-chips").innerHTML = TYPE_FILTERS.map(f => {
+    const n = f === "all" ? VOICES.length : VOICES.filter(v => v.type === f).length;
+    return `<button class="chip ${typeFilter === f ? "active" : ""}" onclick="setFilter('${f}')">${f[0].toUpperCase() + f.slice(1)} (${n})</button>`;
+  }).join("");
+}
+function setFilter(f) { typeFilter = f; renderAll(); }
+
+function renderCast() {
+  $("#cast").innerHTML = CAST.map(c => {
+    const v = VOICES.find(x => x.id === c.voice);
+    return `<div class="cast-row ${selectedCast === c.id ? "sel" : ""}" onclick="selectCast('${c.id}')">
+      <span class="avatar">${c.icon}</span>
+      <span class="who"><span class="nm">${c.name}</span><br>
+        <span class="vc">${v ? `${v.name} · ${ENGINES[v.engine].name}` : "no voice assigned — pick one on the right"}</span></span>
+      ${v ? pillHtml(v.type) : `<span class="pill warn">unassigned</span>`}
+    </div>`;
+  }).join("");
+}
+function selectCast(id) { selectedCast = id; renderAll(); }
+
+function renderLib() {
+  let html = "";
+  for (const engineId of enginesOrdered()) {
+    const vs = VOICES.filter(v => v.engine === engineId);
+    const isLoaded = engineId === loadedEngine;
+    const isLoading = loading && loading.engine === engineId;
+    let tail;
+    if (isLoaded) tail = `<span class="dot" style="background:var(--accent)"></span>`;
+    else if (isLoading && loading.confirmOpen) tail = `<button class="btn sm" onclick="confirmLoad()">Load ~${ENGINES[engineId].loadSecs}s</button><button class="btn ghost sm" onclick="cancelLoad()">✕</button>`;
+    else if (isLoading) tail = `<span class="load-progress"><span class="track" style="width:90px"><span class="fill"></span></span><button class="btn ghost sm" onclick="cancelLoad()">✕</button></span>`;
+    else tail = `<button class="btn ghost sm" ${loading ? "disabled" : ""} onclick="askLoad('${engineId}')" title="Loading takes ~${ENGINES[engineId].loadSecs}s and replaces ${ENGINES[loadedEngine].name}">Load</button>`;
+    html += `<div class="lib-group">${isLoaded ? "" : `<span class="dot" style="background:var(--ink-3)"></span>`}
+               <span class="nm">${ENGINES[engineId].name}</span><span class="ct">${vs.length}</span>
+               <span class="spacer"></span>${tail}</div>`;
+    for (const v of vs) {
+      const dormant = !isLoaded;
+      const isPlaying = playingId === v.id;
+      html += `<button class="lib-voice ${dormant ? "dormant" : ""}"
+                 title="${dormant ? `${ENGINES[v.engine].name} isn't loaded — load it to assign & preview` : `Click to assign to ${CAST.find(c => c.id === selectedCast)?.name}`}"
+                 onclick="libClick('${v.id}')">
+        <span class="emoji">🎙️</span><span class="nm">${v.name}</span>
+        ${pillHtml(v.type)}
+        <span class="act">${isPlaying ? "🔊" : dormant ? "load first" : "assign ▸"}</span>
+      </button>`;
+    }
+  }
+  $("#lib").innerHTML = html;
+  if (loading && !loading.confirmOpen) updateProgressBars();
+}
+function libClick(voiceId) {
+  const v = VOICES.find(x => x.id === voiceId);
+  if (v.engine !== loadedEngine) { askLoad(v.engine, voiceId); return; }
+  const c = CAST.find(c => c.id === selectedCast);
+  c.voice = voiceId;
+  toast(`<span class="a">${v.name}</span> assigned to ${c.name}.`);
+  play(voiceId);
+  renderAll();
+}
+
+/* ───────────────────────── Tabs ───────────────────────── */
+let tab = "voices";
+document.querySelectorAll(".nav-item").forEach(b => b.addEventListener("click", () => {
+  const t = b.dataset.tab;
+  if (t === "x") { toast("Decorative in this mock — only Voices & Studio are wired."); return; }
+  tab = t;
+  document.querySelectorAll(".nav-item").forEach(x => x.classList.toggle("active", x === b));
+  $("#tab-voices").style.display = t === "voices" ? "" : "none";
+  $("#tab-studio").style.display = t === "studio" ? "" : "none";
+  $("#title").innerHTML = (t === "voices" ? "Voices" : "Studio") + '<span class="period">.</span>';
+}));
+
+$("#search").addEventListener("input", e => { search = e.target.value.trim().toLowerCase(); renderAll(); });
+
+function renderAll() { renderChips(); renderVoicesTable(); renderCast(); renderLib(); }
+renderAll();
+</script>
+</body>
+</html>
