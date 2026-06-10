@@ -20,6 +20,7 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { useUiContext } from "../stores/uiContext.js";
 import { useCopy } from "../services/copy.js";
+import { useOnboarding } from "../stores/onboarding.js";
 import { pushToast } from "../services/toastBridge.js";
 import { withEngineSwap } from "../services/engineSwap.js";
 import { promptDialog } from "../services/dialog.js";
@@ -42,6 +43,20 @@ const personas = ref([]);
 const voices = ref([]);
 const engines = ref([]);
 const tab = ref("cast");
+
+// Characters-first is wrong for some use cases (user feedback
+// 2026-06-10): podcasters open into the episode content, not a cast
+// grid. Applied once on mount; the user's manual tab clicks always win
+// afterwards.
+const onboardingStore = useOnboarding();
+const STUDIO_START_TAB_BY_USE_CASE = {
+  podcast: "script",
+  dictation: "script",
+};
+onMounted(() => {
+  const start = STUDIO_START_TAB_BY_USE_CASE[onboardingStore.primaryUseCase];
+  if (start && tab.value === "cast") tab.value = start;
+});
 const loading = ref(false);
 
 const selectedCharacterId = ref(null);
@@ -392,8 +407,17 @@ async function loadAll() {
     personas.value = p?.personas ?? [];
     voices.value = v?.voices ?? [];
     engines.value = e?.engines ?? [];
-    // Default to the first audiobook/game/podcast project.
-    if (!selectedProjectId.value && projects.value.length) {
+    // Projects → "Open in Studio" hands the picked project over via
+    // localStorage; honor it before any default.
+    let pending = null;
+    try {
+      pending = window.localStorage?.getItem("jv.studio.pendingProjectId");
+      if (pending) window.localStorage?.removeItem("jv.studio.pendingProjectId");
+    } catch { /* ignore */ }
+    if (pending && projects.value.some((p) => p.id === pending)) {
+      selectedProjectId.value = pending;
+    } else if (!selectedProjectId.value && projects.value.length) {
+      // Default to the first audiobook/game/podcast project.
       const first = projects.value.find(
         (p) => ["audiobook", "game_voicelines", "podcast"].includes(p.project_type),
       ) || projects.value[0];

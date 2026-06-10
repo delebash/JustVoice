@@ -1,6 +1,6 @@
-# Takes editor (Home → Studio → Takes tab)
+# Takes editor (Studio → Takes tab)
 
-The block/take editor lives inside **Home (Studio)** as the **Takes** tab. The project comes from Studio's header switcher; pick a chapter/scene inside the tab. Each block is a paragraph (or speech act). Each block has takes (versions). Render the whole chapter from Studio's Render tab as a single mastered WAV.
+The block/take editor lives inside **Studio** as the **Takes** tab. The project comes from Studio's header switcher; pick a chapter/scene inside the tab. Each block is a paragraph (or speech act). Each block has takes (versions). Render the whole chapter from Studio's Render tab as a single mastered WAV.
 
 (The old standalone "Chapter" sidebar entry is gone — `#chapter` bookmarks land in Studio.) For one-off renders use the [Scratchpad](generate.md). For multi-track timeline arrangement use [stories.md](stories.md).
 

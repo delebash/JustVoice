@@ -43,7 +43,7 @@ For non-JustWrite workflows (a podcaster manually assembling an audiobook), you 
 
 ## Game-dev → ZIP bundle
 
-For NPC dialogue + game audio, the project library's (Studio → "Manage projects ›") **Export → ZIP** packages:
+For NPC dialogue + game audio, the Projects tab's **Export → ZIP** packages:
 - One WAV per block, named by block_id (or by block.character + sequence if set)
 - A `manifest.json` listing each WAV's metadata:
   ```json

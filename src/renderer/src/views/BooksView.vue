@@ -433,7 +433,12 @@ async function createBlank() {
 }
 
 function openInChapter() {
-  // Chapter lives inside Studio as the Takes tab now (plan D2).
+  // Open the selected project in Studio (the Takes editor lives there).
+  // Hand the selection over via localStorage — Studio reads + clears it
+  // on load so it opens THIS project, not its default.
+  try {
+    if (selectedId.value) window.localStorage?.setItem("jv.studio.pendingProjectId", selectedId.value);
+  } catch { /* ignore */ }
   window.location.hash = "#studio";
 }
 

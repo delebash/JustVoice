@@ -6,7 +6,7 @@ JustVoice is a cross-platform voice-production studio. Five audiences share one 
 
 1. **Pick a use case.** The Welcome modal asks what you're doing with JustVoice. Your choice tunes terminology (Chapters vs Quests vs Episodes) and the landing tab — nothing is hidden: every feature stays reachable in the same 8-item sidebar regardless. You can re-pick later in Settings → About.
 
-2. **You land in Home (Studio)** — the project workspace. No project yet? The empty state offers the three ways in: **Import manuscript** (JustWrite / CSV / SRT / Audacity labels), **New project**, or **Just try a line** (jumps to the Scratchpad).
+2. **You land in Projects** — the project library. Click **+ New blank Project** (pick a project type: audiobook / game voicelines / podcast / custom) or **+ Import…** (JustWrite / CSV / SRT / Audacity labels). Then **Open in Studio** to produce it. (Just exploring? Skip straight to the Scratchpad and render a line.)
 
 3. **Pick a voice — any voice.** Voice pickers always show the *entire* catalog (Kokoro's 54 presets, your clones, every engine's voices) even before anything is installed or loaded. Badges tell you the cost: `●` renders immediately, `⇄` rendering will swap engines (you'll be asked once), `⬇` engine needs installing first. Audition with ▶ Preview in Library → Voices.
 
@@ -16,9 +16,9 @@ The Engines tab is for **installing** engines and picking model sizes — day-to
 
 ## Common next steps
 
-- **Producing an audiobook.** Home (Studio) → Import manuscript → Cast tab (assign voices; a warning chip appears if your cast spans multiple engines — batch renders swap once per engine, not per line) → Script (speaker attribution) → Render → Takes (per-block re-rolls).
-- **Voicing game NPCs.** Library → Voices → "+ Clone new voice" with a reference WAV (Chatterbox required). Then Studio → Import with a CSV of dialogue rows.
-- **Recording a podcast script.** Studio → New project → type "Podcast" → use Stories to arrange voiced segments on a multi-track timeline.
+- **Producing an audiobook.** Projects → Import manuscript → Open in Studio → Cast tab (assign voices; a warning chip appears if your cast spans multiple engines — batch renders swap once per engine, not per line) → Script (speaker attribution) → Render → Takes (per-block re-rolls).
+- **Voicing game NPCs.** Library → Voices → "+ Clone new voice" with a reference WAV (Chatterbox required). Then Projects → "+ Import…" with a CSV of dialogue rows.
+- **Recording a podcast script.** Projects → "+ New blank Project" → type "Podcast" → use Stories to arrange voiced segments on a multi-track timeline.
 - **Dictating with global hotkey.** Captures tab → readiness checklist → set the push-to-talk chord in Settings → Capture. Whisper preloads in the background at boot; or wire an online STT provider under Engines → STT.
 
 ## Headless mode
@@ -31,9 +31,10 @@ The same UI is served at `http://localhost:17494/ui/`. Connect from any browser 
 
 ## Where things live
 
-The sidebar is 8 flat items — same for every use case:
+The sidebar is 9 flat items — same for every use case:
 
-- **Home (Studio).** The project workspace: project switcher + Import + New in the header; Cast → Script → Render → Takes tabs. "Manage projects ›" opens the full project library (metadata, QC, M4B export).
+- **Projects.** The library and entry point: create (with a project type), import, metadata, QC, M4B export. Open a project in Studio from here.
+- **Studio.** The production workspace for the selected project: Cast → Script → Render → Takes tabs (podcasters open into the episode content, not the cast). The header also has a project switcher + New + Import.
 - **Scratchpad.** One-off lines — try a voice, test a delivery, render a sentence.
 - **Stories.** Multi-track timeline for podcast / dialogue assembly.
 - **Captures.** Dictation + recorded samples.

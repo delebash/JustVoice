@@ -2,7 +2,7 @@
 
 The **Scratchpad** tab (formerly "Generate") renders one line of text to audio. Pick a voice, type the line, optionally apply delivery overlays, click ▶. The server returns audio bytes you can replay, favorite, or download.
 
-This is JustVoice's quick single-line surface — production work (casting, batch rendering, takes) lives in Home (Studio); see [take-versioning.md](take-versioning.md).
+This is JustVoice's quick single-line surface — production work (casting, batch rendering, takes) lives in Studio (open a project from the Projects tab); see [take-versioning.md](take-versioning.md).
 
 ## When to use the Scratchpad
 

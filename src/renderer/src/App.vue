@@ -72,11 +72,12 @@ const SETTINGS_TABS = [
 ];
 
 const VIEWS = [
-  // Project-first home (plan D2): Studio is the workspace the app opens
-  // into. Chapter's block/take editor lives inside Studio as the Takes
-  // tab (#chapter redirects). Overview is gone — its stat cards' job is
-  // covered by the engine pill + task strip + Studio's empty state.
-  { id: "studio",   label: "Home",       icon: "🏠", lede: "Your production workspace. Cast assigns voices to characters; Script runs speaker attribution; Render batches the project (grouped by engine — one swap per engine); Takes is the per-block re-roll editor.", component: StudioView },
+  // Projects first (user-corrected 2026-06-10: the workflow is pick/create
+  // a project THEN work it — Studio is the workspace, not the entry).
+  // BooksView owns creation (+ New blank Project with a project-type
+  // select), import, metadata, QC, M4B export.
+  { id: "books",    label: "Projects",   icon: "📖", lede: "Your project library. Create (+ New blank Project — pick audiobook / game voicelines / podcast / custom), import a manuscript, manage metadata, QC, and exports. Open a project in Studio to produce it.", component: BooksView },
+  { id: "studio",   label: "Studio",     icon: "🎬", lede: "The production workspace for the selected project. Cast assigns voices; Script runs speaker attribution; Render batches the project (grouped by engine — one swap per engine); Takes is the per-block re-roll editor.", component: StudioView },
   { id: "generate", label: "Scratchpad", icon: "✏️", lede: "Quick one-off lines — try a voice, test a delivery, render a sentence. Any voice is pickable; rendering with a cold engine asks before swapping. Type / for paralinguistic tags.", component: GenerateView },
   { id: "stories",  label: "Stories",    icon: "🎞️", lede: "Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.", component: StoriesView },
   { id: "captures", label: "Captures",   icon: "🎚️", lede: "Dictation pill + global hotkey. Speak into any text field. Also captures audio for cloning sample collection.", component: CapturesView },
@@ -84,9 +85,6 @@ const VIEWS = [
   { id: "labs",     label: "Labs",       icon: "🧪", lede: "", component: TabShellView, props: { baseId: "labs", tabs: LABS_TABS } },
   { id: "engines",  label: "Engines",    icon: "🧠", lede: "Installed engine catalog. Install / load / unload models per kind slot (TTS · STT · LLM) — loading Whisper never evicts your TTS engine. Register online providers below the engine list.", component: EnginesView },
   { id: "settings", label: "Settings",   icon: "⚙️", lede: "Every operator-tunable value. Per CLAUDE.md, no value is hardcoded — every knob lives in settings.json.", component: TabShellView, props: { baseId: "settings", tabs: SETTINGS_TABS }, pinned: true },
-
-  // Routable but not in the sidebar:
-  { id: "books",    label: "Projects",   icon: "📖", lede: "Multi-use Project library — metadata, QC, M4B export. Day-to-day production lives in Home (Studio).", component: BooksView, hidden: true },
 ];
 
 // Map each view id → docs/<slug>.md for the topbar HelpTrigger.
@@ -103,18 +101,16 @@ const HELP_SLUG_BY_VIEW = {
   settings: "getting-started",
 };
 
-// Project-first landing (plan D2): every use case opens into Studio —
-// with a project, that's the work in progress; without one, Studio's
-// empty state offers the three entry actions (Import · New project ·
-// "Just try a line" → Scratchpad). Dictation is the one exception:
-// those users live in Captures.
+// Landing (user-corrected): Projects is the entry for production use
+// cases — pick or create a project there, then open it in Studio.
+// Dictation users live in Captures.
 const DEFAULT_TAB_BY_USE_CASE = {
-  audiobook:     "studio",
-  game:          "studio",
-  podcast:       "studio",
+  audiobook:     "books",
+  game:          "books",
+  podcast:       "books",
   dictation:     "captures",
-  multiple:      "studio",
-  unset:         "studio",
+  multiple:      "books",
+  unset:         "books",
 };
 
 // Old hash routes → their new homes. Chapter merged into Studio's Takes
@@ -213,7 +209,7 @@ function resolveInitialTab() {
     initialTabResolved = true;
     return;
   }
-  const tab = DEFAULT_TAB_BY_USE_CASE[onboarding.primaryUseCase] || "studio";
+  const tab = DEFAULT_TAB_BY_USE_CASE[onboarding.primaryUseCase] || "books";
   view.value = tab;
   initialTabResolved = true;
 }
