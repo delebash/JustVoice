@@ -26,6 +26,7 @@ from .api import (
     cache_api,
     capture_readiness_api,
     channels_api,
+    effect_presets_api,
     engines_api,
     engines_models_api,
     external_api,
@@ -152,6 +153,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(voice_preview_api.router)
     app.include_router(backup_api.router)
     app.include_router(project_export_api.router)
+    app.include_router(effect_presets_api.router)
 
     # Shutdown hook — make sure any running managed engine subprocess is
     # killed before the host server exits. Without this, ctrl-C in dev

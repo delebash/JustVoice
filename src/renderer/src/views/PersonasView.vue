@@ -18,6 +18,7 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
+import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 
 const api = useApi();
 
@@ -180,14 +181,16 @@ async function deletePersona() {
   }
 }
 
+const effectsEditorOpen = ref(false);
+
 function openEffectsEditor() {
-  // EffectsChainEditorModal lands in Slice 7. Stubbed here so the
-  // affordance is visible but does nothing destructive yet.
-  pushToast({
-    kind: "info",
-    title: "Effects chain editor — coming in Slice 7",
-    description: "Will open the drag-drop chain editor (reverb / EQ / compressor / etc).",
-  });
+  effectsEditorOpen.value = true;
+}
+
+function onEffectsSaved(newChain) {
+  draft.value.effects_chain = newChain;
+  effectsEditorOpen.value = false;
+  markDirty();
 }
 
 function openDeliveryHint() {
@@ -429,6 +432,16 @@ onMounted(loadAll);
         </div>
       </div>
     </section>
+
+    <!-- Effects chain editor — opens from the Effects chain row above. -->
+    <EffectsChainEditorModal
+      v-if="draft"
+      :open="effectsEditorOpen"
+      v-model="draft.effects_chain"
+      :context-label="draft.name || 'Persona'"
+      @save="onEffectsSaved"
+      @cancel="effectsEditorOpen = false"
+    />
   </div>
 </template>
 
