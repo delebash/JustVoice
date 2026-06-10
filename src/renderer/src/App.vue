@@ -18,9 +18,7 @@ import JvHelpDrawer from "./components/JvHelpDrawer.vue";
 import HelpTrigger from "./components/HelpTrigger.vue";
 import GlobalAudioPlayer from "./components/GlobalAudioPlayer.vue";
 
-import OverviewView from "./views/OverviewView.vue";
 import GenerateView from "./views/GenerateView.vue";
-import ChapterView from "./views/ChapterView.vue";
 import BooksView from "./views/BooksView.vue";
 import VoicesView from "./views/VoicesView.vue";
 // ProfilesView removed — Persona is the sole identity layer after the
@@ -59,10 +57,12 @@ import WebhooksView from "./views/WebhooksView.vue";
 const ALL_USE_CASES = ["audiobook", "game", "podcast", "dictation", "multiple", "unset"];
 const VIEWS = [
   // ─── Workflow lane ─────────────────────────────────────────────────
-  { id: "overview",  lane: "workflow", label: "Home",      icon: "🏠", lede: "", component: OverviewView },
-  { id: "studio",    lane: "workflow", label: "Studio",    icon: "🎬", lede: "Cast → Script → Render production environment. Three-tab flow for multi-character work. Cast assigns voices to characters; Script runs LLM speaker attribution (Phase 3 backend); Render batches the whole project.", component: StudioView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
-  { id: "generate",  lane: "workflow", label: "Generate",  icon: "📝", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it. Type / for paralinguistic tags.", component: GenerateView },
-  { id: "chapter",   lane: "workflow", label: "Chapter",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved. Pinned floating generate bar at bottom.", component: ChapterView, visibleFor: ["audiobook", "podcast", "multiple", "unset"] },
+  // Project-first home (plan D2): Studio is the workspace the app opens
+  // into. Chapter's block/take editor lives inside Studio as the Takes
+  // tab (#chapter redirects). Overview is gone — its stat cards' job is
+  // covered by the engine pill + task strip + Studio's empty state.
+  { id: "studio",    lane: "workflow", label: "Studio",    icon: "🎬", lede: "Your production workspace. Cast assigns voices to characters; Script runs speaker attribution; Render batches the project (grouped by engine — one swap per engine); Takes is the per-block re-roll editor.", component: StudioView },
+  { id: "generate",  lane: "workflow", label: "Scratchpad", icon: "✏️", lede: "Quick one-off lines — try a voice, test a delivery, render a sentence. Any voice is pickable; rendering with a cold engine asks before swapping. Type / for paralinguistic tags.", component: GenerateView },
   { id: "stories",   lane: "workflow", label: "Stories",   icon: "🎞️", lede: "Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.", component: StoriesView, visibleFor: ["game", "podcast", "multiple", "unset"] },
   { id: "captures",  lane: "workflow", label: "Captures",  icon: "🎚️", lede: "Dictation pill + global hotkey. Speak into any text field. Also captures audio for cloning sample collection.", component: CapturesView, visibleFor: ["dictation", "multiple", "unset"] },
 
@@ -115,11 +115,10 @@ function isVisibleFor(viewEntry, useCase) {
 // Map each view id → docs/<slug>.md for the topbar HelpTrigger.
 // Views without a dedicated doc fall back to getting-started.
 const HELP_SLUG_BY_VIEW = {
-  overview: "getting-started",
+  studio:   "core-concepts",
   generate: "generate",
   books:    "core-concepts",
   stories:  "stories",
-  chapter:  "take-versioning",
   voices:   "voices",
   personas: "personas",
   lexicons: "lexicons",
@@ -135,22 +134,25 @@ const HELP_SLUG_BY_VIEW = {
   settings: "getting-started",
 };
 
-// Map the onboarding primary use case → starting tab on launch. Audiobook
-// and podcast both land on Chapter because that's where the multi-line
-// script-in / mastered-audio-out workflow lives today. Game devs need
-// the voice catalogue first. Dictation users hit the single-line
-// Generate panel. "multiple" + "unset" fall back to Overview so first-time
-// producers see the catalogue, engines, and cache state at a glance.
+// Project-first landing (plan D2): every use case opens into Studio —
+// with a project, that's the work in progress; without one, Studio's
+// empty state offers the three entry actions (Import · New project ·
+// "Just try a line" → Scratchpad). Dictation is the one exception:
+// those users live in Captures.
 const DEFAULT_TAB_BY_USE_CASE = {
-  audiobook:     "chapter",
-  game:          "voices",
-  podcast:       "chapter",
-  dictation:     "generate",
-  multiple:      "overview",
-  unset:         "overview",
+  audiobook:     "studio",
+  game:          "studio",
+  podcast:       "studio",
+  dictation:     "captures",
+  multiple:      "studio",
+  unset:         "studio",
 };
 
-const view = ref("overview");
+// Old hash routes → their new homes (Chapter merged into Studio's Takes
+// tab; Overview retired). Keeps bookmarks working.
+const HASH_REDIRECTS = { chapter: "studio", overview: "studio" };
+
+const view = ref("studio");
 const health = ref(null);
 const api = useApi();
 const tasks = useRenderTasks();
@@ -194,23 +196,11 @@ const stateLedeOverride = computed(() => {
   // each view owns its own data. For the lede we infer state from a
   // few signals that ARE available here: health (server up) and the
   // last engine load that flowed through the api store.
-  const v = view.value;
-  // `current_engine` is the engine_id of the currently-loaded TTS slot
-  // (post Phase 2 / Slice 1 per-kind slots). Null = no engine OR server
-  // offline; the topbar Offline indicator owns the offline messaging,
-  // so we skip the lede override when health is null entirely.
+  // Post swap-at-render there is no "load an engine first" prerequisite:
+  // every voice is pickable cold, and the first render offers the swap.
+  // The old no-engine ledes ("Open Engines first") are gone — they
+  // contradicted that model. Slot kept for future state-aware prompts.
   if (!health.value) return null;
-  const hasEngine = !!health.value.current_engine;
-
-  if (v === "generate" && !hasEngine) {
-    return "No engine loaded yet. Open Engines → pick one → click Load. Then come back here.";
-  }
-  if (v === "studio" && !hasEngine) {
-    return "Studio needs a loaded engine to render. Open Engines first.";
-  }
-  if (v === "chapter" && !hasEngine) {
-    return "Chapter rendering needs a loaded engine. Open Engines first.";
-  }
   return null;
 });
 const effectiveLede = computed(() => stateLedeOverride.value || currentView.value?.lede || "");
@@ -239,13 +229,13 @@ function resolveInitialTab() {
   // Don't override an explicit hash route — power users land where they
   // bookmarked. `#voices` / `#chapter` etc. all win over the default.
   const hash = (typeof window !== "undefined" && window.location.hash) || "";
-  const hashId = hash.replace(/^#/, "");
+  const hashId = HASH_REDIRECTS[hash.replace(/^#/, "")] || hash.replace(/^#/, "");
   if (hashId && VIEWS.some((v) => v.id === hashId)) {
     view.value = hashId;
     initialTabResolved = true;
     return;
   }
-  const tab = DEFAULT_TAB_BY_USE_CASE[onboarding.primaryUseCase] || "overview";
+  const tab = DEFAULT_TAB_BY_USE_CASE[onboarding.primaryUseCase] || "studio";
   view.value = tab;
   initialTabResolved = true;
 }
@@ -284,7 +274,8 @@ watch(
 //   - Active view change writes the hash so deep-linking works.
 if (typeof window !== "undefined") {
   window.addEventListener("hashchange", () => {
-    const hashId = window.location.hash.replace(/^#/, "");
+    const raw = window.location.hash.replace(/^#/, "");
+    const hashId = HASH_REDIRECTS[raw] || raw;
     if (hashId && VIEWS.some((v) => v.id === hashId) && view.value !== hashId) {
       view.value = hashId;
     }

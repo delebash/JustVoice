@@ -22,7 +22,11 @@ import { useUiContext } from "../stores/uiContext.js";
 import { useCopy } from "../services/copy.js";
 import { pushToast } from "../services/toastBridge.js";
 import { withEngineSwap } from "../services/engineSwap.js";
+import { promptDialog } from "../services/dialog.js";
+import { projectsService } from "../services/projects.js";
 import JvButton from "../components/jv/JvButton.vue";
+import ChapterView from "./ChapterView.vue";
+import ImportModal from "./ImportModal.vue";
 import VoiceParamsModal from "../components/VoiceParamsModal.vue";
 import EmptyState from "../components/EmptyState.vue";
 
@@ -196,6 +200,9 @@ const TAB_LABELS = computed(() => ({
   cast:   copy.value.cast.plural || "Cast",
   script: copy.value.chapter.singular || "Script",
   render: "Render",
+  // Chapter's block/take editor, absorbed as Studio's fourth tab
+  // (plan D2). Shares this view's project switcher via the projectId prop.
+  takes:  "Takes",
 }));
 
 const selectedProject = computed(() =>
@@ -321,6 +328,55 @@ function openVoiceTunerForLibraryVoice(voice) {
     personaId: null,  // null → not bound; modal save handler skips persistence
   };
   voiceParamsModalOpen.value = true;
+}
+
+// ── Project-workspace actions (plan D2: Studio header = workspace) ──
+// Import + New project live here so Projects/BooksView is reachable
+// FROM Studio rather than being a sibling concept; BooksView stays the
+// management surface (metadata, QC, M4B, export) via "Manage projects".
+
+const showImport = ref(false);
+
+function goScratchpad() {
+  window.location.hash = "#generate";
+}
+
+async function onImportCreated(created) {
+  showImport.value = false;
+  await loadAll();
+  if (created?.project_id) selectedProjectId.value = created.project_id;
+}
+
+async function createBlankProject() {
+  const values = await promptDialog({
+    title: "New project",
+    confirmLabel: "Create",
+    fields: [
+      { key: "name", label: "Project name" },
+      {
+        key: "project_type", label: "Project type", type: "select",
+        defaultValue: "audiobook",
+        options: [
+          { value: "audiobook", label: "Audiobook" },
+          { value: "game_voicelines", label: "Game voicelines" },
+          { value: "podcast", label: "Podcast" },
+          { value: "custom", label: "Custom" },
+        ],
+      },
+    ],
+  });
+  if (!values || !values.name) return;
+  try {
+    const created = await projectsService.create({
+      name: values.name,
+      project_type: values.project_type || "audiobook",
+      metadata: {},
+    });
+    await loadAll();
+    selectedProjectId.value = created.id;
+  } catch (e) {
+    pushToast({ kind: "error", title: "Create failed", description: String(e?.message ?? e) });
+  }
 }
 
 async function loadAll() {
@@ -844,18 +900,37 @@ onMounted(loadAll);
 
 <template>
   <div class="studio">
-    <!-- ── Project picker ───────────────────────────────────────────── -->
+    <!-- ── Project workspace header (plan D2) ───────────────────────── -->
     <div class="jv-section studio__project-bar">
       <label class="studio__project-label">{{ copy.book.singular }}:</label>
       <select v-model="selectedProjectId" class="jv-input studio__project-select">
         <option v-for="o in projectOptions" :key="o.value || 'none'" :value="o.value">{{ o.label }}</option>
       </select>
+      <JvButton variant="ghost" size="sm" label="＋ New" title="Create a blank project" @click="createBlankProject" />
+      <JvButton variant="ghost" size="sm" label="📥 Import" title="Import a manuscript (JustWrite / CSV / SRT / Audacity labels / JustVoice JSON)" @click="showImport = true" />
       <span class="jv-spacer" />
       <span v-if="selectedProject" class="jv-pill jv-pill--ghost">{{ selectedProject.project_type }}</span>
+      <a href="#books" class="jv-muted studio__manage-link" title="Project metadata, QC, M4B export">Manage {{ copy.book.plural.toLowerCase() }} ›</a>
     </div>
 
+    <!-- ── No-projects empty state — the app's landing surface ──────── -->
+    <EmptyState
+      v-if="!loading && !projects.length"
+      icon="Sparkle"
+      title="Start a production"
+      message="Import a manuscript to cast voices and render it, create a blank project, or just try a line in the Scratchpad. Voices are browsable before any engine is installed — rendering offers to load what's needed."
+    >
+      <template #actions>
+        <div class="studio__empty-actions">
+          <JvButton variant="primary" label="📥 Import manuscript" @click="showImport = true" />
+          <JvButton variant="secondary" label="＋ New project" @click="createBlankProject" />
+          <JvButton variant="ghost" label="✏️ Just try a line" @click="goScratchpad" />
+        </div>
+      </template>
+    </EmptyState>
+
     <!-- ── Tabs ─────────────────────────────────────────────────────── -->
-    <div class="studio__tabs">
+    <div v-if="projects.length" class="studio__tabs">
       <button
         v-for="(label, key) in TAB_LABELS"
         :key="key"
@@ -867,7 +942,7 @@ onMounted(loadAll);
     </div>
 
     <!-- ── Cast tab ─────────────────────────────────────────────────── -->
-    <section v-if="tab === 'cast'" class="studio__cast">
+    <section v-if="projects.length && tab === 'cast'" class="studio__cast">
       <div v-if="!selectedProject" class="jv-banner">
         Pick a {{ copy.book.singular.toLowerCase() }} above to manage its {{ copy.cast.plural.toLowerCase() }}.
       </div>
@@ -1069,7 +1144,7 @@ onMounted(loadAll);
     </section>
 
     <!-- ── Script tab — Phase 4 / Slice 2 ───────────────────────────── -->
-    <section v-if="tab === 'script'" class="studio__script">
+    <section v-if="projects.length && tab === 'script'" class="studio__script">
       <div v-if="!selectedProject" class="jv-banner">
         Pick a {{ copy.book.singular.toLowerCase() }} above to attribute its script.
       </div>
@@ -1161,7 +1236,7 @@ onMounted(loadAll);
     </section>
 
     <!-- ── Render tab — Phase 6 / Slice 1 ───────────────────────────── -->
-    <section v-if="tab === 'render'" class="studio__render">
+    <section v-if="projects.length && tab === 'render'" class="studio__render">
       <div v-if="!selectedProject" class="jv-banner">
         Pick a {{ copy.book.singular.toLowerCase() }} above to render its {{ copy.chapter.plural.toLowerCase() }}.
       </div>
@@ -1298,6 +1373,15 @@ onMounted(loadAll);
       </template>
     </section>
 
+    <!-- ── Takes tab — Chapter's block/take editor, absorbed (plan D2).
+         Project selection comes from the workspace header above. ───── -->
+    <section v-if="projects.length && tab === 'takes'" class="studio__takes">
+      <ChapterView :project-id="selectedProjectId" />
+    </section>
+
+    <!-- Import manuscript — same modal BooksView uses. -->
+    <ImportModal v-if="showImport" @close="showImport = false" @created="onImportCreated" />
+
     <!-- Voice params modal — Tier-2 voice tuning. -->
     <VoiceParamsModal
       v-if="tuningVoice"
@@ -1385,6 +1469,9 @@ onMounted(loadAll);
   font-weight: 600;
 }
 .studio__project-select { flex: 1 1 260px; max-width: 480px; }
+.studio__manage-link { font-size: 12px; text-decoration: none; }
+.studio__manage-link:hover { text-decoration: underline; }
+.studio__empty-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 
 .studio__tabs {
   display: flex;

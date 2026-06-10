@@ -17,6 +17,13 @@ import LineageViewer from "../components/LineageViewer.vue";
 import VoicePicker from "../components/VoicePicker.vue";
 import { withEngineSwap } from "../services/engineSwap.js";
 
+// Hosted inside Studio as the Takes tab (plan D2): when `projectId` is
+// passed, the project comes from Studio's header switcher and this view
+// hides its own project selector (the scene select stays).
+const props = defineProps({
+  projectId: { type: String, default: null },
+});
+
 const api = useApi();
 const tasks = useRenderTasks();
 const takesStore = useTakesStore();
@@ -49,6 +56,11 @@ const sceneOptions = computed(() =>
 );
 
 async function loadProjects() {
+  if (props.projectId) {
+    // Studio drives project selection — no own list needed.
+    selectedProjectId.value = props.projectId;
+    return;
+  }
   try {
     const res = await projectsService.list();
     projects.value = res.projects || [];
@@ -59,6 +71,10 @@ async function loadProjects() {
     pushToast({ message: `Failed to load projects: ${e.message || e}`, kind: "error" });
   }
 }
+
+watch(() => props.projectId, (id) => {
+  if (id) selectedProjectId.value = id;
+});
 
 async function loadScenes(projectId) {
   scenes.value = [];
@@ -340,10 +356,12 @@ function compareDropdownOptions(blockId) {
 
     <!-- ── Project / scene selectors ───────────────────────────────────── -->
     <div class="jv-section">
-      <h3 class="jv-section__title">{{ copy.chapter.singular }} view</h3>
+      <h3 v-if="!props.projectId" class="jv-section__title">{{ copy.chapter.singular }} view</h3>
 
       <div class="jv-card chapter-view__selectors">
-        <JvField :label="copy.book.singular" layout="inline">
+        <!-- Project selector hidden when hosted in Studio (the Studio
+             header's project switcher drives it). -->
+        <JvField v-if="!props.projectId" :label="copy.book.singular" layout="inline">
           <JvSelect
             v-model="selectedProjectId"
             :options="projectOptions"

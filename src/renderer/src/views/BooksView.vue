@@ -433,7 +433,8 @@ async function createBlank() {
 }
 
 function openInChapter() {
-  window.location.hash = "#chapter";
+  // Chapter lives inside Studio as the Takes tab now (plan D2).
+  window.location.hash = "#studio";
 }
 
 function toggleSceneSelect(id) {
