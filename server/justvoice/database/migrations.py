@@ -51,6 +51,7 @@ def run_migrations(engine) -> None:
     _migrate_voice_profiles_personality(engine, inspector, tables)
     _migrate_personas_absorb_profile_fields(engine, inspector, tables)
     _migrate_drop_voice_profile_tables(engine, inspector, tables)
+    _migrate_render_presets_effects_chain(engine, inspector, tables)
 
 
 # ── helpers ───────────────────────────────────────────────────────────────
@@ -139,6 +140,20 @@ def _migrate_personas_absorb_profile_fields(engine, inspector, tables: set[str])
         _add_column(engine, "personas", "effects_chain TEXT", "effects_chain")
     if "imported_id" not in columns:
         _add_column(engine, "personas", "imported_id VARCHAR", "imported_id")
+
+
+def _migrate_render_presets_effects_chain(engine, inspector, tables: set[str]) -> None:
+    """Add `effects_chain TEXT` to render_presets (Slice 6 of the
+    Profile-kill plan / Effects v1 wiring).
+
+    The column carries a JSON list of {type, params} dicts; the render
+    pipeline overlays it on top of `persona.effects_chain` at TTS time.
+    """
+    if "render_presets" not in tables:
+        return
+    columns = _get_columns(inspector, "render_presets")
+    if "effects_chain" not in columns:
+        _add_column(engine, "render_presets", "effects_chain TEXT", "effects_chain")
 
 
 def _migrate_drop_voice_profile_tables(engine, inspector, tables: set[str]) -> None:

@@ -69,6 +69,17 @@ class CacheKeyBuilder:
             self._h.update(b"\n")
         return self
 
+    def with_effects_chain(self, chain_hash: str) -> "CacheKeyBuilder":
+        """Include the resolved effects-chain hash (Slice 6 of the
+        Profile-kill plan / Effects v1 wiring). When the chain changes
+        the cache busts. Empty chains hash to a constant so "no effects"
+        cache hits propagate across requests.
+        """
+        self._h.update(b"fx:")
+        self._h.update((chain_hash or "noeffects").encode("utf-8"))
+        self._h.update(b"\n")
+        return self
+
     def finish(self) -> str:
         return self._h.hexdigest()
 

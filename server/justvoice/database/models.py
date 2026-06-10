@@ -493,6 +493,9 @@ class RenderPreset(Base):
     voice_id = Column(String, ForeignKey("personas.id", ondelete="RESTRICT"), nullable=False)
     # JSON: Delivery shape
     delivery_json = Column(Text, nullable=False, default="{}")
+    # Per-preset effects chain (Slice 6) — overlays the persona's chain
+    # at render time. JSON list of {type, params} dicts.
+    effects_chain = Column(Text, nullable=True)
     # "acx" | "inaudio" | "podcast" | "youtube" | "none" | None
     master = Column(String, nullable=True)
     # JSON list of lexicon IDs

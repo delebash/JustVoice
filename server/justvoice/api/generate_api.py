@@ -24,6 +24,7 @@ from ..audio.chunked import (
     concatenate_audio_chunks,
     split_text_into_chunks,
 )
+from ..audio.effects import apply_effects_chain, parse_chain, resolve_chain
 from ..audio.wav import strip_wav_header, write_wav_container
 from ..delivery_merge import merge_delivery
 from ..engines.base import SynthRequest
@@ -36,6 +37,30 @@ def _samples_from_chunk_bytes(audio_bytes: bytes, is_wav: bool) -> np.ndarray:
     """Decode one chunk's bytes (PCM or WAV) → float32 samples in [-1, 1]."""
     pcm = strip_wav_header(audio_bytes) if is_wav else audio_bytes
     return np.frombuffer(pcm, dtype="<i2").astype(np.float32) / 32767.0
+
+
+def _resolve_effects_chain(req: GenerateRequest, db) -> list[dict]:
+    """Resolve the effects chain for this render: persona → preset overlay.
+
+    Returns an empty list when no effects apply. Caller passes the result
+    to `apply_effects_chain(wav_bytes, chain)` after TTS.
+    """
+    st = get_state()
+    persona_chain: list[dict] = []
+    if req.persona_id:
+        persona = st.personas.get(req.persona_id)
+        if persona is not None:
+            persona_chain = persona.effects_chain or []
+
+    preset_chain: list[dict] = []
+    if req.preset_id:
+        from ..database.models import RenderPreset
+
+        preset = db.query(RenderPreset).filter(RenderPreset.id == req.preset_id).first()
+        if preset is not None:
+            preset_chain = parse_chain(preset.effects_chain)
+
+    return resolve_chain(persona_chain, preset_chain)
 
 
 def _chunking_params(settings) -> tuple[int, int]:
@@ -210,6 +235,8 @@ async def _generate_via_manager(
             db,
             tier2_overlay=persona_overlay,
         )
+        # Effects chain (Slice 6) — cascaded persona → preset.
+        effects = _resolve_effects_chain(req, db)
     finally:
         db.close()
 
@@ -231,6 +258,7 @@ async def _generate_via_manager(
                 sr = meta.get("sample_rate") or 24000
                 channels = meta.get("channels") or 1
                 audio_bytes = write_wav_container(audio_bytes, sr, channels)
+            audio_bytes = apply_effects_chain(audio_bytes, effects)
             return Response(content=audio_bytes, media_type="audio/wav")
 
         # Long-form path: split → per-chunk synth → crossfade-concat → WAV
@@ -250,6 +278,7 @@ async def _generate_via_manager(
         merged = concatenate_audio_chunks(pcm_chunks, sample_rate, crossfade_ms=crossfade_ms)
         pcm_int16 = (np.clip(merged, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
         wav_bytes = write_wav_container(pcm_int16, sample_rate, channels)
+        wav_bytes = apply_effects_chain(wav_bytes, effects)
         return Response(content=wav_bytes, media_type="audio/wav")
     except Exception as e:
         raise internal(f"engine synthesize: {e}")
@@ -293,6 +322,7 @@ def _generate_via_inprocess(engine_id: str, req: GenerateRequest) -> Response:
             db,
             tier2_overlay=persona_overlay,
         )
+        effects = _resolve_effects_chain(req, db)
     finally:
         db.close()
 
@@ -319,6 +349,7 @@ def _generate_via_inprocess(engine_id: str, req: GenerateRequest) -> Response:
                     w.setframerate(out.sample_rate)
                     w.writeframes(out.bytes)
                 wav_bytes = buf.getvalue()
+            wav_bytes = apply_effects_chain(wav_bytes, effects)
             return Response(content=wav_bytes, media_type="audio/wav")
 
         chunks = split_text_into_chunks(req.text, max_chars=max_chunk_chars)
@@ -335,6 +366,7 @@ def _generate_via_inprocess(engine_id: str, req: GenerateRequest) -> Response:
         merged = concatenate_audio_chunks(pcm_chunks, sample_rate, crossfade_ms=crossfade_ms)
         pcm_int16 = (np.clip(merged, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
         wav_bytes = write_wav_container(pcm_int16, sample_rate, channels)
+        wav_bytes = apply_effects_chain(wav_bytes, effects)
         return Response(content=wav_bytes, media_type="audio/wav")
     except Exception as e:
         raise internal(f"engine synthesize: {e}")
