@@ -271,6 +271,21 @@ class EnginesSettings(BaseModel):
     feature_pins: list[FeaturePinConfig] = []
 
 
+class CaptureSettings(BaseModel):
+    """Dictation / capture pipeline knobs (Settings → Capture)."""
+
+    # Whisper size loaded on first capture (base/small/medium/large/turbo).
+    stt_model: str = "base"
+    # "auto" lets Whisper detect; anything else forces a language code.
+    language: str = "auto"
+    # Run LLM refinement automatically after STT completes.
+    auto_refine: bool = False
+    # Refinement behaviour toggles (see refinement.py prompt builder).
+    smart_cleanup: bool = True
+    self_correction: bool = True
+    preserve_technical: bool = True
+
+
 class ModelsSettings(BaseModel):
     url_overrides: dict[str, str] = {}
 
@@ -311,6 +326,7 @@ class Settings(BaseModel):
     models: ModelsSettings = ModelsSettings()
     engines: EnginesSettings = EnginesSettings()
     generation: GenerationSettings = GenerationSettings()
+    captures: CaptureSettings = CaptureSettings()
     app: AppSettings = AppSettings()
 
 
@@ -328,6 +344,7 @@ class SettingsPatch(BaseModel):
     models: ModelsSettings | None = None
     engines: EnginesSettings | None = None
     generation: GenerationSettings | None = None
+    captures: CaptureSettings | None = None
     app: AppSettings | None = None
 
 

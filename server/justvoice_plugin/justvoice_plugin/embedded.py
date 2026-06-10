@@ -56,6 +56,12 @@ class EmbeddedEngine:
         meta.supports_cloning. Default raises."""
         raise NotImplementedError("This engine does not support voice cloning.")
 
+    def transcribe(self, audio_path: str, language: str | None = None) -> str:
+        """Speech-to-text. Override in KIND="stt" engines (whisper).
+        `audio_path` is a host-local file the subprocess can read.
+        Default raises — TTS engines don't transcribe."""
+        raise NotImplementedError("This engine does not support transcription.")
+
     # ─── Shared helpers (subclasses just call these) ────────────────────
 
     def is_loaded(self) -> bool:

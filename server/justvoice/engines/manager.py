@@ -1243,6 +1243,23 @@ class EngineManager:
             raise RuntimeError(f"engine clone failed: {r.text}")
         return r.json()
 
+    def transcribe(self, audio_path: str, language: str | None = None) -> str:
+        """Speech-to-text via the loaded KIND="stt" engine (whisper).
+
+        Raises RuntimeError with an actionable message when no STT engine
+        is loaded — the captures API maps that to a 409 the UI can show.
+        """
+        proc = self.loaded_for("stt")
+        if proc is None:
+            raise RuntimeError(
+                "no STT engine loaded — install + load Whisper on the Engines "
+                "tab (or POST /v1/engines/whisper/load) first"
+            )
+        r = proc.post("/transcribe", json={"audio_path": audio_path, "language": language})
+        if r.status_code != 200:
+            raise RuntimeError(f"transcribe failed: {r.text[:400]}")
+        return r.json().get("text", "")
+
     def _require_current(self, engine_id: str) -> EngineProcess:
         with self._lock:
             for proc in self._loaded.values():

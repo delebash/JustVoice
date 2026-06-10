@@ -7,21 +7,125 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
+import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { captureReadinessService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
+import { useWavRecorder } from "../composables/useWavRecorder.js";
 import CapturePill from "../components/CapturePill.vue";
 import JvButton from "../components/jv/JvButton.vue";
 import JvTag from "../components/jv/JvTag.vue";
 import JvInput from "../components/jv/JvInput.vue";
 
 const api = useApi();
+const audioPlayer = useAudioPlayer();
+const recorder = useWavRecorder();
 
 const captures = ref([]);
 const search = ref("");
 const selectedId = ref(null);
 const readiness = ref(null);
 const pillState = ref("rest");
-const elapsedMs = ref(0);
+const elapsedMs = recorder.elapsedMs;
+const uploading = ref(false);
+const refining = ref(false);
+
+const MIN_RECORDING_MS = 500;
+
+async function startRecording() {
+  try {
+    await recorder.start();
+    pillState.value = "recording";
+  } catch {
+    pushToast({ kind: "error", title: "Mic unavailable", description: recorder.error || "Microphone access failed." });
+  }
+}
+
+async function stopRecording() {
+  const tooShort = recorder.elapsedMs.value < MIN_RECORDING_MS;
+  const blob = await recorder.stop();
+  if (!blob || tooShort) {
+    pillState.value = "rest";
+    if (tooShort) pushToast({ kind: "info", title: "Recording too short, canceled" });
+    return;
+  }
+  pillState.value = "transcribing";
+  uploading.value = true;
+  try {
+    const form = new FormData();
+    form.append("file", blob, "capture.wav");
+    form.append("source", "recording");
+    const created = await api.postForm("/v1/captures", form);
+    pillState.value = "completed";
+    await refresh();
+    selectedId.value = created.id;
+    setTimeout(() => { if (pillState.value === "completed") pillState.value = "rest"; }, 2000);
+  } catch (e) {
+    pillState.value = "rest";
+    const msg = String(e?.message ?? e);
+    if (msg.includes("503") && msg.includes("loading")) {
+      pushToast({ kind: "info", title: "Whisper is loading", description: "First run downloads the model. Try again in a moment.", duration: 6000 });
+    } else {
+      pushToast({ kind: "error", title: "Transcription failed", description: msg, duration: 7000 });
+    }
+  } finally {
+    uploading.value = false;
+  }
+}
+
+function toggleRecording() {
+  if (recorder.isRecording.value) stopRecording();
+  else startRecording();
+}
+
+function playCapture(c) {
+  audioPlayer.play({
+    url: `${api.serverUrl.replace(/\/$/, "")}/v1/captures/${c.id}/audio`,
+    title: "Capture",
+    subtitle: (c.transcript || "").slice(0, 80),
+  });
+}
+
+async function refineSelected() {
+  const c = selectedCapture.value;
+  if (!c) return;
+  refining.value = true;
+  pillState.value = "refining";
+  try {
+    const updated = await api.request(`/v1/captures/${c.id}/refine`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    captures.value = captures.value.map((x) => (x.id === updated.id ? updated : x));
+    pillState.value = "completed";
+    setTimeout(() => { if (pillState.value === "completed") pillState.value = "rest"; }, 2000);
+  } catch (e) {
+    pillState.value = "rest";
+    const msg = String(e?.message ?? e);
+    pushToast({
+      kind: msg.includes("501") ? "info" : "error",
+      title: msg.includes("501") ? "No LLM provider wired" : "Refine failed",
+      description: msg.includes("501")
+        ? "Add a provider in Engines → LLM, then pin it to dictation_refine in Settings → AI Features."
+        : msg,
+      duration: 7000,
+    });
+  } finally {
+    refining.value = false;
+  }
+}
+
+async function deleteSelected() {
+  const c = selectedCapture.value;
+  if (!c) return;
+  try {
+    await api.request(`/v1/captures/${c.id}`, { method: "DELETE" });
+    selectedId.value = null;
+    await refresh();
+  } catch (e) {
+    pushToast({ kind: "error", title: "Delete failed", description: String(e?.message ?? e) });
+  }
+}
 
 const filtered = computed(() => {
   if (!search.value) return captures.value;
@@ -127,11 +231,13 @@ onMounted(() => {
       <div class="captures__list-header">
         <span class="jv-section__title" style="margin:0;">Captures</span>
         <JvButton
-          variant="primary"
+          :variant="recorder.isRecording.value ? 'danger' : 'primary'"
           size="sm"
-          disabled
-          title="Recording requires the desktop capture pipeline (mic → Whisper → refine), which isn't wired up yet"
-          label="Record"
+          :loading="uploading"
+          :disabled="uploading"
+          :title="readiness && !readiness.stt.ready ? 'First recording will download the Whisper model' : 'Record from the microphone'"
+          :label="recorder.isRecording.value ? '⏹ Stop' : '● Record'"
+          @click="toggleRecording"
         />
       </div>
       <div class="captures__search">
@@ -175,7 +281,7 @@ onMounted(() => {
     <!-- ── Detail pane ──────────────────────────────────────────────── -->
     <div class="captures__detail jv-card">
       <div class="captures__pill-row">
-        <CapturePill :state="pillState" :elapsed-ms="elapsedMs" />
+        <CapturePill :state="pillState" :elapsed-ms="elapsedMs" @stop="stopRecording" />
       </div>
       <div v-if="!selectedCapture" class="captures__detail-empty jv-muted">
         <p>Select a capture to inspect, or press the dictation hotkey to record.</p>
@@ -199,6 +305,21 @@ onMounted(() => {
             </tr>
           </tbody>
         </table>
+
+        <div class="jv-row" style="gap: 6px; margin-bottom: 12px">
+          <JvButton variant="secondary" size="sm" label="▶ Play" @click="playCapture(selectedCapture)" />
+          <JvButton
+            variant="secondary"
+            size="sm"
+            :loading="refining"
+            :disabled="refining || !(readiness && readiness.llm.ready)"
+            :title="readiness && readiness.llm.ready ? 'Clean up the transcript with the pinned LLM' : 'Wire an LLM provider (Engines → LLM) to enable refinement'"
+            label="✨ Refine"
+            @click="refineSelected"
+          />
+          <span class="jv-spacer" />
+          <JvButton variant="danger-outline" size="sm" label="✕ Delete" @click="deleteSelected" />
+        </div>
 
         <h4 class="captures__sub-h">Refined transcript</h4>
         <p class="captures__body">{{ selectedCapture.transcript || "(empty)" }}</p>

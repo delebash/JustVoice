@@ -72,13 +72,27 @@ def _check_model_cached(hf_repo: str) -> bool:
 
 @router.get("/v1/capture/readiness", response_model=CaptureReadiness)
 async def get_capture_readiness() -> CaptureReadiness:
-    # Default model picks; in a fuller implementation we'd read these from
-    # CaptureSettings. For v1 we use the defaults.
-    whisper_model = _WHISPER_DEFAULT
-    llm_model = _LLM_DEFAULT
+    """Two gates: (1) the Whisper size picked in settings.captures is in
+    the HF cache (loaded-or-loadable without a download), and (2) an LLM
+    provider is registered for refinement. The UI keys the Record button
+    and the refine affordance off these independently — STT-only
+    dictation works without any LLM."""
+    from ..app_state import get_state
+    from ..engines.llm.registry import get_llm_registry
+    from ..engines.manager import get_manager
 
-    whisper_ready = _check_model_cached(f"openai/whisper-{whisper_model}")
-    llm_ready = _check_model_cached(f"Qwen/Qwen3-{llm_model}-Instruct")
+    settings = get_state().settings.get()
+    whisper_model = getattr(settings.captures, "stt_model", _WHISPER_DEFAULT)
+
+    mgr = get_manager()
+    stt_loaded = mgr.loaded_for("stt") is not None
+    whisper_ready = stt_loaded or _check_model_cached(f"openai/whisper-{whisper_model}")
+
+    adapters = get_llm_registry().all()
+    llm_ready = bool(adapters)
+    llm_label = (
+        f"LLM refinement ({adapters[0].id})" if adapters else "LLM refinement (no provider)"
+    )
 
     return CaptureReadiness(
         stt=ModelReadiness(
@@ -88,7 +102,6 @@ async def get_capture_readiness() -> CaptureReadiness:
         ),
         llm=ModelReadiness(
             ready=llm_ready,
-            display_name=_LLM_DISPLAY.get(llm_model, llm_model),
-            size_mb=_LLM_SIZE_MB.get(llm_model),
+            display_name=llm_label,
         ),
     )

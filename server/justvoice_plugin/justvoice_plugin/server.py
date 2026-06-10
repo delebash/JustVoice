@@ -2,7 +2,7 @@
 
 `serve(engine)` boots a FastAPI on an OS-assigned port (port 0 → kernel
 picks one), writes the port to stdout as one line `PORT=<n>` so the host
-can read it back, then accepts the host's HTTP calls (`/health, /load,
+can read it back, then accepts the host's HTTP calls (`/health, /load, /transcribe,
 /voices, /synth, /clone, /info, /unload`).
 
 Why HTTP, not stdio JSON-RPC: easy to curl-debug an engine in isolation,
@@ -56,6 +56,11 @@ class CloneBody(BaseModel):
     transcript: str | None = None
 
 
+class TranscribeBody(BaseModel):
+    audio_path: str
+    language: str | None = None
+
+
 # ─── App factory ───────────────────────────────────────────────────────
 
 
@@ -107,6 +112,21 @@ def make_app(engine: EmbeddedEngine) -> FastAPI:
         if not engine.is_loaded():
             raise HTTPException(status_code=409, detail="engine not loaded")
         return {"voices": [v.__dict__ for v in (await asyncio.to_thread(engine.voices))]}
+
+    @app.post("/transcribe")
+    async def transcribe(body: TranscribeBody):
+        if not engine.is_loaded():
+            raise HTTPException(status_code=409, detail="engine not loaded")
+        try:
+            text = await asyncio.to_thread(engine.transcribe, body.audio_path, body.language)
+        except NotImplementedError as e:
+            raise HTTPException(status_code=501, detail=str(e))
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except Exception as e:
+            log.exception("transcribe failed")
+            raise HTTPException(status_code=500, detail=f"transcribe failed: {e}")
+        return {"text": text}
 
     @app.post("/synth")
     async def synth(body: SynthBody):
