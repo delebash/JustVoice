@@ -147,22 +147,37 @@ async def compose_with_personality(id: str) -> ComposeResponse:
     """LLM-fills a line of dialogue in the persona's personality voice.
 
     Drives the Compose button in the Generate view's floating bar.
-
-    Currently STUBBED — JustVoice does not yet have an LLM service wired.
-    The provider registry + dispatch lands in Phase 2 of the plan. Until
-    then this returns a 501 with a useful diagnostic message.
+    Phase 2 / Slice 7 — wired to the LLM provider registry. Looks up
+    settings.engines.feature_pins.compose to route the call; falls
+    back to the first registered LLM if no pin set.
     """
     from fastapi import HTTPException
 
-    _require_persona_with_personality(id)
-    raise HTTPException(
-        status_code=501,
-        detail=(
-            "LLM service not configured. Wire an LLM provider in Settings → "
-            "AI Engines to enable the Compose action. The provider registry "
-            "lands in Phase 2 of the Profile-kill plan."
-        ),
+    from ..engines.llm import LLMMessage
+    from ..engines.llm.dispatch import LLMNotConfiguredError, chat
+
+    persona = _require_persona_with_personality(id)
+    system_prompt = (
+        f"You are voicing a character. Their personality:\n\n"
+        f"{persona.personality.strip()}\n\n"
+        f"Write a single, fresh in-character line they would say. "
+        f"Reply with the line only — no quotes, no preamble, no narration."
     )
+    settings = get_state().settings.get()
+    try:
+        resp = chat(
+            settings=settings,
+            feature="compose",
+            messages=[LLMMessage(role="user", content="Compose a line.")],
+            system=system_prompt,
+            temperature=0.9,
+            max_tokens=300,
+        )
+    except LLMNotConfiguredError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"LLM call failed: {e}")
+    return ComposeResponse(text=resp.text.strip(), persona_id=id, note=None)
 
 
 @router.post(
@@ -176,18 +191,47 @@ async def rewrite_in_character(id: str, body: RewriteRequest) -> RewriteResponse
     the textarea) or rejects (original preserved) before sending to TTS.
 
     NEVER an automatic render-time hook — see plan Q3. Always explicit.
-
-    Currently STUBBED — see /compose above. Lands when Phase 2's LLM
-    provider registry ships.
+    Phase 2 / Slice 7 — wired to the LLM provider registry. Routes via
+    settings.engines.feature_pins.persona_rewrite.
     """
     from fastapi import HTTPException
 
-    _require_persona_with_personality(id)
-    raise HTTPException(
-        status_code=501,
-        detail=(
-            "LLM service not configured. Wire an LLM provider in Settings → "
-            "AI Engines to enable the Rewrite action. The provider registry "
-            "lands in Phase 2 of the Profile-kill plan."
-        ),
+    from ..engines.llm import LLMMessage
+    from ..engines.llm.dispatch import LLMNotConfiguredError, chat
+
+    persona = _require_persona_with_personality(id)
+    if not body.text.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="rewrite requires non-empty text",
+        )
+
+    system_prompt = (
+        f"Rewrite the user's line in this character's voice.\n\n"
+        f"Character personality:\n{persona.personality.strip()}\n\n"
+        f"Rules:\n"
+        f"- Preserve the line's meaning.\n"
+        f"- Match the character's diction, rhythm, vocabulary, accent markers.\n"
+        f"- Reply with the rewritten line only — no quotes, no preamble, "
+        f"no narration, no explanation."
+    )
+    settings = get_state().settings.get()
+    try:
+        resp = chat(
+            settings=settings,
+            feature="persona_rewrite",
+            messages=[LLMMessage(role="user", content=body.text)],
+            system=system_prompt,
+            temperature=0.6,
+            max_tokens=max(300, len(body.text) // 2 + 200),
+        )
+    except LLMNotConfiguredError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"LLM call failed: {e}")
+    return RewriteResponse(
+        original=body.text,
+        rewritten=resp.text.strip(),
+        persona_id=id,
+        note=None,
     )
