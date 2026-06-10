@@ -222,7 +222,7 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 
         <div class="row" style="margin-bottom:16px">
           <div class="combo" id="proj-combo" style="width:340px"></div>
-          <span class="pill ghost" id="proj-type"></span>
+          <span id="proj-traits" style="display:inline-flex;gap:6px;align-items:center"></span>
         </div>
 
         <div class="steps" id="steps"></div>
@@ -283,23 +283,21 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 <script>
 /* ───────── Engines: bundled (installed/not) + pluggable + external ───────── */
 const ENGINES = {
-  chatterbox: { name:"Chatterbox Turbo",        kind:"bundled",  installed:true,  loadSecs:40 },
-  kokoro:     { name:"Kokoro",                  kind:"bundled",  installed:true,  loadSecs:25 },
-  qwen3:      { name:"Qwen3-TTS",               kind:"plugin",   installed:false, installSize:"2.1 GB" },
+  chatterbox: { name:"Chatterbox Turbo",          kind:"bundled",  installed:true,  loadSecs:40 },
+  kokoro:     { name:"Kokoro",                    kind:"bundled",  installed:true,  loadSecs:25 },
+  qwen3:      { name:"Qwen3-TTS",                 kind:"plugin",   installed:false, installSize:"2.1 GB" },
   extkokoro:  { name:"Kokoro FastAPI (external)", kind:"external", online:true },
 };
-let loadedEngine = "chatterbox";   // exactly one bundled/plugin engine loaded at a time
+let loadedEngine = "chatterbox";
 let loading = null;
 let playingId = null, playTimer = null;
 
-/* engineState: 'loaded' | 'installed' (load to use) | 'not_installed' | 'external' */
 function engineState(id){
   const e = ENGINES[id];
   if (e.kind === "external") return "external";
   if (!e.installed) return "not_installed";
   return id === loadedEngine ? "loaded" : "installed";
 }
-/* ready = voices playable right now with zero wait */
 function engineReady(id){
   const s = engineState(id);
   return s === "loaded" || (s === "external" && ENGINES[id].online);
@@ -325,15 +323,51 @@ const VOICES = [
 const TYPE_PILL = { cloned:"green", designed:"warn", blended:"blue", preset:"", imported:"ghost", trained:"solid" };
 const GENDER_CYCLE = ["F","M","N","?"];
 
-/* ───────── Projects: multi-use, not audiobook-only ───────── */
+/* ───────────────────────────────────────────────────────────────────
+   TRAIT MODEL — use cases are PRESETS of traits; Studio reads traits,
+   never the use-case name. Adding a future use case = a new preset.
+
+   primaryRoles : "single" (narrator) | "multiple" (hosts) | "none"
+   lineSource   : "prose" (LLM attribution) | "script" (parse labels)
+                  | "structured" (pre-attributed import)
+   output       : "stitched" | "perLine" | "timeline"
+   mastering    : display label for the default target
+   copy         : terminology (rides the app's useCopy service)
+─────────────────────────────────────────────────────────────────── */
+const PRESETS = {
+  audiobook: {
+    primaryRoles:"single", lineSource:"prose", output:"stitched", mastering:"ACX −20 LUFS",
+    copy:{ role:"Character", roles:"Characters", primaryEyebrow:"Narrator", unit:"chapter" },
+  },
+  game: {
+    primaryRoles:"none", lineSource:"structured", output:"perLine", mastering:"raw",
+    copy:{ role:"NPC", roles:"NPCs", primaryEyebrow:"", unit:"line" },
+  },
+  podcast: {
+    primaryRoles:"multiple", lineSource:"script", output:"stitched", mastering:"−16 LUFS",
+    copy:{ role:"Guest", roles:"Guests", primaryEyebrow:"Hosts", unit:"episode" },
+  },
+};
+/* Steps derive from traits — no type branching. */
+function scriptStep(p){
+  const t=p.traits;
+  if(t.lineSource==="prose")      return { label:"Script", sub:"Speaker analysis (LLM)" };
+  if(t.lineSource==="script")     return { label:"Script", sub:"Parsed from episode script" };
+  /* structured */                return { label:"Lines",  sub:`${p.lineCount} imported · mapped` };
+}
+function renderStep(p){
+  const t=p.traits;
+  if(t.output==="perLine")  return { label:"Render", sub:"Per-line WAV + JSON sidecar" };
+  if(t.output==="timeline") return { label:"Render", sub:"Timeline mix (Stories)" };
+  return { label:"Render", sub:`${p.traits.copy.unit[0].toUpperCase()+p.traits.copy.unit.slice(1)} audio · ${t.mastering}` };
+}
+
 const PROJECTS = {
   heist: {
-    name:"The Stillwater Heist", type:"audiobook",
-    scriptLabel:"Script", scriptSub:"Speaker analysis",
-    renderSub:"Chapter audio · ACX master",
+    name:"The Stillwater Heist", preset:"audiobook",
     castHeadline:"The voice of everything that isn't spoken",
     cast:[
-      { id:"narrator", name:"Narrator",     role:"Narration · interior thought · scene markers", main:false, voice:"narr", isNarrator:true },
+      { id:"narrator", name:"Narrator",     role:"Narration · interior thought · scene markers", primary:true, voice:"narr" },
       { id:"elen",     name:"Elen Vael",    role:"Protagonist",     main:true,  voice:"mara" },
       { id:"idris",    name:"Idris Vael",   role:"Father (dec.)",   main:true,  voice:null },
       { id:"june",     name:"June Asari",   role:"Friend / cipher", main:true,  voice:"be" },
@@ -343,12 +377,8 @@ const PROJECTS = {
     ],
   },
   harbor: {
-    name:"Harbor Lights — NPC dialogue", type:"game",
-    // Game lines arrive pre-attributed from quest tools — no LLM
-    // attribution step. Script becomes the import-mapping surface.
-    scriptLabel:"Lines", scriptSub:"742 imported · mapped",
-    renderSub:"Per-line WAV + JSON sidecar",
-    castHeadline:null, // games have no narrator band
+    name:"Harbor Lights — NPC dialogue", preset:"game", lineCount:742,
+    castHeadline:null,
     cast:[
       { id:"dock",   name:"Dockmaster Hale",  role:"Quest giver", lines:84,  main:true,  voice:"crow" },
       { id:"ferry",  name:"Ferryman",         role:"Ambient",     lines:12,  main:false, voice:null },
@@ -366,12 +396,31 @@ const PROJECTS = {
       { id:"clerk",  name:"Harbor Clerk",     role:"Ambient",     lines:15,  main:false, voice:null },
     ],
   },
+  oldports: {
+    name:"Old Ports — Ep. 12", preset:"podcast",
+    castHeadline:"The voices that carry the show",
+    cast:[
+      { id:"renn",  name:"Renn Calloway", role:"Host · every segment",    primary:true, voice:"news" },
+      { id:"posa",  name:"Petra Os",      role:"Co-host · every segment", primary:true, voice:"mara" },
+      { id:"guest1",name:"Dr. Ada Lin",   role:"Guest · maritime historian", main:true, voice:null },
+      { id:"guest2",name:"Capt. Verol",   role:"Guest · retired pilot",      main:false, voice:"adam" },
+      { id:"reader",name:"Letter reader", role:"Listener-mail segment",      main:false, voice:null },
+    ],
+  },
 };
+for(const pr of Object.values(PROJECTS)) pr.traits = PRESETS[pr.preset];
+
 let projectId = "heist";
 let selectedChar = "idris";
 let castSearch = "", uncastOnly = false;
-let libEngine = "chatterbox", vEngine = "chatterbox";
-let vType = "all", vSearch = "", libSearch = "";
+/* Density by CAST SIZE, not use case. Demo threshold 8 (real default
+   ~25, operator-tunable). Manual override per project wins. */
+const DENSITY_THRESHOLD = 8;
+const castModeOverride = {};   // projectId -> "cards" | "table"
+function castMode(p){
+  if(castModeOverride[projectId]) return castModeOverride[projectId];
+  return p.cast.filter(c=>!c.primary).length > DENSITY_THRESHOLD ? "table" : "cards";
+}
 
 /* ───────── Helpers ───────── */
 const $ = (s) => document.querySelector(s);
@@ -384,7 +433,7 @@ function pill(type){return `<span class="pill ${TYPE_PILL[type]}">${type}</span>
 function genderChip(v){const c=v.g==="F"?"f":v.g==="M"?"m":"";return `<button class="gender ${c}" title="Click to cycle gender" onclick="event.stopPropagation();cycleGender('${v.id}')">${v.g}</button>`}
 function cycleGender(id){const v=voiceById(id);v.g=GENDER_CYCLE[(GENDER_CYCLE.indexOf(v.g)+1)%GENDER_CYCLE.length];renderAll()}
 
-/* ───────── Load flow (bundled/plugin engines only) ───────── */
+/* ───────── Load flow ───────── */
 function startLoad(engineId, afterLoad){
   if(loading) return;
   if(engineState(engineId)==="not_installed"){toast(`${ENGINES[engineId].name} isn't installed — install it from the Engines tab first.`);return}
@@ -409,21 +458,21 @@ function finishLoad(){
 }
 function play(id){if(playTimer)clearTimeout(playTimer);playingId=id;renderAll();playTimer=setTimeout(()=>{playingId=null;renderAll()},2000)}
 
-/* ───────── Engine combobox — bundled / pluggable / external sections ───────── */
+/* ───────── Engine combobox ───────── */
 function engineItemHtml(id, currentId, onPickName){
-  const e=ENGINES[id], s=engineState(id);
-  const dot = s==="loaded" ? "on" : s==="external" ? "ext" : s==="not_installed" ? "none" : "off";
-  const tag = s==="loaded" ? "loaded"
-            : s==="installed" ? `not loaded · ~${e.loadSecs}s`
-            : s==="not_installed" ? `not installed · ${e.installSize}`
+  const e=ENGINES[id], st=engineState(id);
+  const dot = st==="loaded" ? "on" : st==="external" ? "ext" : st==="not_installed" ? "none" : "off";
+  const tag = st==="loaded" ? "loaded"
+            : st==="installed" ? `not loaded · ~${e.loadSecs}s`
+            : st==="not_installed" ? `not installed · ${e.installSize}`
             : (e.online ? "online · no load needed" : "offline");
   return `<button class="combo-item ${id===currentId?"sel":""}" onclick="${onPickName}('${id}')">
     <span class="e-dot ${dot}"></span>${e.name}<span class="tag">${tag}</span></button>`;
 }
 function comboHtml(hostId, currentId, onPickName){
-  const cur=ENGINES[currentId], s=engineState(currentId);
-  const dot = s==="loaded" ? "on" : s==="external" ? "ext" : s==="not_installed" ? "none" : "off";
-  const tag = s==="loaded" ? "loaded" : s==="installed" ? "not loaded" : s==="not_installed" ? "not installed" : "external · online";
+  const cur=ENGINES[currentId], st=engineState(currentId);
+  const dot = st==="loaded" ? "on" : st==="external" ? "ext" : st==="not_installed" ? "none" : "off";
+  const tag = st==="loaded" ? "loaded" : st==="installed" ? "not loaded" : st==="not_installed" ? "not installed" : "external · online";
   const bundled = Object.keys(ENGINES).filter(id=>ENGINES[id].kind!=="external"&&ENGINES[id].installed);
   const plugins = Object.keys(ENGINES).filter(id=>!ENGINES[id].installed&&ENGINES[id].kind!=="external");
   const external = Object.keys(ENGINES).filter(id=>ENGINES[id].kind==="external");
@@ -442,25 +491,27 @@ function comboHtml(hostId, currentId, onPickName){
 }
 function toggleCombo(hostId){document.getElementById(hostId).classList.toggle("open")}
 document.addEventListener("click",(e)=>{if(!e.target.closest(".combo"))document.querySelectorAll(".combo").forEach(c=>c.classList.remove("open"))});
+let libEngine = "chatterbox", vEngine = "chatterbox";
+let vType = "all", vSearch = "", libSearch = "";
 function pickLibEngine(id){libEngine=id;renderAll()}
 function pickVEngine(id){vEngine=id;renderAll()}
 
-/* ───────── Engine banner — load / install / offline variants ───────── */
+/* ───────── Engine banner ───────── */
 function bannerHtml(engineId){
-  const e=ENGINES[engineId], s=engineState(engineId);
+  const e=ENGINES[engineId], st=engineState(engineId);
   if(loading && loading.engine===engineId){
     return `<div class="load-banner"><div class="row">
       <span>Loading <strong>${e.name}</strong>… <span class="pct">0%</span></span>
       <span class="track"><span class="fill"></span></span>
       <button class="btn ghost sm" onclick="cancelLoad()">Cancel</button></div></div>`;
   }
-  if(s==="loaded") return "";
-  if(s==="external"){
+  if(st==="loaded") return "";
+  if(st==="external"){
     return e.online ? "" : `<div class="load-banner"><div class="row">
       <span><strong>${e.name}</strong> isn't responding. Start the server, then retry.</span>
       <span class="spacer"></span><button class="btn secondary sm">Retry</button></div></div>`;
   }
-  if(s==="not_installed"){
+  if(st==="not_installed"){
     return `<div class="load-banner install"><div class="row">
       <span><strong>${e.name}</strong> isn't installed — it's a pluggable engine (own venv, ${e.installSize} download). Voices shown for browsing.</span>
       <span class="spacer"></span>
@@ -472,18 +523,28 @@ function bannerHtml(engineId){
     <button class="btn sm" ${loading?"disabled":""} onclick="startLoad('${engineId}')">Load ${e.name} (~${e.loadSecs}s)</button></div></div>`;
 }
 
-/* ───────── Studio: project picker + cast ───────── */
+/* ───────── Studio: project picker + trait chips ───────── */
 function projComboHtml(){
   const p=project();
   let items=Object.entries(PROJECTS).map(([id,pr])=>
     `<button class="combo-item ${id===projectId?"sel":""}" onclick="pickProject('${id}')">
-       ${pr.name}<span class="tag">${pr.type}</span></button>`).join("");
+       ${pr.name}<span class="tag">${pr.preset}</span></button>`).join("");
   return `<button class="combo-btn" onclick="toggleCombo('proj-combo')">
       📖 ${p.name}<span class="chev">▾</span></button>
     <div class="combo-pop">${items}</div>`;
 }
 function pickProject(id){projectId=id;castSearch="";uncastOnly=false;selectedChar=project().cast.find(c=>!c.voice)?.id||project().cast[0].id;renderAll()}
+function traitChipsHtml(p){
+  const t=p.traits;
+  const chips=[ p.preset,
+    t.primaryRoles==="single"?"narrator":t.primaryRoles==="multiple"?"hosts":"no narrator",
+    t.lineSource==="prose"?"LLM attribution":t.lineSource==="script"?"script parse":"pre-attributed",
+    t.output==="stitched"?`stitched · ${t.mastering}`:t.output==="perLine"?"per-line files":"timeline mix",
+  ];
+  return chips.map((c,i)=>`<span class="pill ${i===0?"solid":"ghost"}" title="Use-case preset = a bundle of traits; Studio reads the traits">${c}</span>`).join("");
+}
 
+/* ───────── Cast rendering ───────── */
 function castCardHtml(c){
   const v=c.voice?voiceById(c.voice):null;
   const needsAttention=v&&!engineReady(v.engine);
@@ -494,8 +555,8 @@ function castCardHtml(c){
   } else {
     voiceLine=`<div class="cast-unassigned">⚠ No voice</div>`;
   }
-  return `<button class="cast-card ${c.isNarrator?"narrator":""} ${selectedChar===c.id?"sel":""}" onclick="selectChar('${c.id}')">
-    <div class="portrait" style="background:${c.isNarrator?"var(--accent)":grad(c.name)}">${c.isNarrator?"🎧":initials(c.name)}</div>
+  return `<button class="cast-card ${c.primary&&project().traits.primaryRoles==="single"?"narrator":""} ${selectedChar===c.id?"sel":""}" onclick="selectChar('${c.id}')">
+    <div class="portrait" style="background:${c.primary?"var(--accent)":grad(c.name)}">${c.primary&&project().traits.primaryRoles==="single"?"🎧":initials(c.name)}</div>
     <div style="flex:1;min-width:0">
       <div style="display:flex;align-items:center;gap:6px"><b style="font-size:13.5px">${c.name}</b>${c.main?`<span class="cast-chip-main">main</span>`:""}</div>
       <div class="cast-role">${c.role}</div>
@@ -505,10 +566,12 @@ function castCardHtml(c){
 function selectChar(id){selectedChar=id;renderAll()}
 
 function castTableHtml(p){
-  let cast=p.cast.filter(c=>!c.isNarrator);
+  const copy=p.traits.copy;
+  const hasLines=p.cast.some(c=>c.lines!=null);
+  let cast=p.cast.filter(c=>!c.primary);
   if(castSearch) cast=cast.filter(c=>c.name.toLowerCase().includes(castSearch));
   if(uncastOnly) cast=cast.filter(c=>!c.voice);
-  cast=[...cast].sort((a,b2)=>(b2.lines||0)-(a.lines||0));
+  if(hasLines) cast=[...cast].sort((a,b2)=>(b2.lines||0)-(a.lines||0));
   const rows=cast.map(c=>{
     const v=c.voice?voiceById(c.voice):null;
     const needs=v&&!engineReady(v.engine);
@@ -516,53 +579,60 @@ function castTableHtml(p){
       <td style="width:34px"><span class="glyph" style="background:${grad(c.name)}">${initials(c.name)[0]}</span></td>
       <td><b>${c.name}</b>${c.main?` <span class="cast-chip-main">main</span>`:""}</td>
       <td>${c.role}</td>
-      <td class="right">${c.lines??"—"}</td>
+      ${hasLines?`<td class="right">${c.lines??"—"}</td>`:""}
       <td>${v?`<span style="display:inline-flex;align-items:center;gap:6px"><span class="glyph" style="background:${grad(v.name)}">${v.name[0]}</span><b style="font-size:12px">${v.name}</b>${needs?`<span class="cast-needs">⚠ needs ${ENGINES[v.engine].name}</span>`:""}</span>`
             :`<span class="cast-unassigned" style="margin-top:0">⚠ No voice</span>`}</td>
     </tr>`;
   }).join("");
-  return `<div class="cast-toolbar">
-      <input class="input" placeholder="Search NPCs…" value="${castSearch}" oninput="castSearch=this.value.trim().toLowerCase();renderStudio()" />
-      <button class="chip ${uncastOnly?"active":""}" style="border:1px solid var(--line)" onclick="uncastOnly=!uncastOnly;renderStudio()">Uncast only</button>
-      <span style="font-size:11px;color:var(--ink-3)">${cast.length} shown · sorted by line count</span>
-    </div>
-    <div class="card" style="overflow:hidden"><table class="ctable">
-      <thead><tr><th></th><th>NPC</th><th>Role</th><th class="right">Lines</th><th>Voice</th></tr></thead>
-      <tbody>${rows||`<tr><td colspan="5" style="text-align:center;font-style:italic;color:var(--ink-3);padding:16px">No NPCs match.</td></tr>`}</tbody>
+  return `<div class="card" style="overflow:hidden"><table class="ctable">
+      <thead><tr><th></th><th>${copy.role}</th><th>Role</th>${hasLines?`<th class="right">Lines</th>`:""}<th>Voice</th></tr></thead>
+      <tbody>${rows||`<tr><td colspan="5" style="text-align:center;font-style:italic;color:var(--ink-3);padding:16px">No ${copy.roles.toLowerCase()} match.</td></tr>`}</tbody>
     </table></div>`;
 }
 
 function renderStudio(){
-  const p=project();
+  const p=project(), t=p.traits, copy=t.copy;
   $("#proj-combo").innerHTML=projComboHtml();
-  $("#proj-type").textContent=p.type;
+  $("#proj-traits").innerHTML=traitChipsHtml(p);
   const unassigned=p.cast.filter(c=>!c.voice).length;
-  // Lab removed from the workflow — it's a bench/testing tool, lives in
-  // the Tools lane (Speaker Lab / Render Lab), not a production step.
+  const ss=scriptStep(p), rs=renderStep(p);
+  /* Lab removed — bench tooling lives in the Tools lane, not the workflow. */
   $("#steps").innerHTML=`
     <button class="step active"><span class="ic">🎧</span><span><b>Cast</b><span>${p.cast.length-unassigned}/${p.cast.length} cast</span></span></button>
-    <button class="step"><span class="ic">💬</span><span><b>${p.scriptLabel}</b><span>${p.scriptSub}</span></span></button>
-    <button class="step"><span class="ic">🎚️</span><span><b>Render</b><span>${p.renderSub}</span></span></button>`;
-  const narrator=p.cast.find(c=>c.isNarrator);
-  if(narrator){
-    $("#cast-heading").innerHTML=`<div class="eyebrow">Narrator</div><div class="display">${p.castHeadline}</div>`;
-    $("#narrator-card").innerHTML=castCardHtml(narrator);
-    $("#char-eyebrow").textContent="Characters";
+    <button class="step"><span class="ic">💬</span><span><b>${ss.label}</b><span>${ss.sub}</span></span></button>
+    <button class="step"><span class="ic">🎚️</span><span><b>${rs.label}</b><span>${rs.sub}</span></span></button>`;
+
+  /* Primary-roles band: single narrator card, multiple host cards, or none. */
+  const primaries=p.cast.filter(c=>c.primary);
+  if(t.primaryRoles!=="none"&&primaries.length){
+    $("#cast-heading").innerHTML=`<div class="eyebrow">${copy.primaryEyebrow}</div><div class="display">${p.castHeadline}</div>`;
+    $("#narrator-card").innerHTML=t.primaryRoles==="single"
+      ? castCardHtml(primaries[0])
+      : `<div class="cast-grid">${primaries.map(castCardHtml).join("")}</div>`;
   } else {
-    $("#cast-heading").innerHTML=`<div class="eyebrow">${p.type==="game"?"NPC cast":"Cast"}</div><div class="display">Every speaking role, one voice each</div>`;
+    $("#cast-heading").innerHTML=`<div class="eyebrow">Cast</div><div class="display">Every speaking role, one voice each</div>`;
     $("#narrator-card").innerHTML="";
-    $("#char-eyebrow").textContent=p.type==="game"?"NPCs":"Characters";
   }
-  // Cards read beautifully at novel scale (≤ ~30 roles); game casts run
-  // 50-500 NPCs, so they get a searchable, line-count-sorted table.
-  if(p.type==="game"){
-    $("#cast-grid").innerHTML=castTableHtml(p);
+  $("#char-eyebrow").textContent=copy.roles;
+
+  /* Density by cast size with manual override. */
+  const mode=castMode(p);
+  const nonPrimary=p.cast.filter(c=>!c.primary);
+  const toolbar=`<div class="cast-toolbar">
+      ${mode==="table"?`<input class="input" placeholder="Search ${copy.roles.toLowerCase()}…" value="${castSearch}" oninput="castSearch=this.value.trim().toLowerCase();renderStudio()" />
+      <button class="chip ${uncastOnly?"active":""}" style="border:1px solid var(--line)" onclick="uncastOnly=!uncastOnly;renderStudio()">Uncast only</button>`:""}
+      <span style="font-size:11px;color:var(--ink-3)">${nonPrimary.length} ${copy.roles.toLowerCase()}${mode==="table"&&nonPrimary.some(c=>c.lines!=null)?" · sorted by line count":""}</span>
+      <span class="spacer"></span>
+      <span class="chips"><button class="chip ${mode==="cards"?"active":""}" onclick="castModeOverride['${projectId}']='cards';renderStudio()">Cards</button><button class="chip ${mode==="table"?"active":""}" onclick="castModeOverride['${projectId}']='table';renderStudio()">Table</button></span>
+    </div>`;
+  if(mode==="table"){
+    $("#cast-grid").innerHTML=toolbar+castTableHtml(p);
     $("#cast-grid").classList.remove("cast-grid");
   } else {
-    $("#cast-grid").innerHTML=p.cast.filter(c=>!c.isNarrator).map(castCardHtml).join("");
-    $("#cast-grid").classList.add("cast-grid");
+    $("#cast-grid").innerHTML=toolbar+`<div class="cast-grid">${nonPrimary.map(castCardHtml).join("")}</div>`;
+    $("#cast-grid").classList.remove("cast-grid");
   }
-  $("#char-counter").textContent=`${p.cast.filter(c=>!c.isNarrator).length} ${p.type==="game"?"NPCs":"characters"} · ${unassigned} unassigned`;
+  $("#char-counter").textContent=`${nonPrimary.length} ${copy.roles.toLowerCase()} · ${unassigned} unassigned`;
 }
 
 /* ───────── Studio: voice library aside ───────── */
@@ -587,7 +657,7 @@ function renderStudioLib(){
   $("#studio-lib").innerHTML=`
     <div class="eyebrow" style="margin-bottom:8px">Voice library</div>
     <div class="combo" id="lib-combo">${comboHtml("lib-combo",libEngine,"pickLibEngine")}</div>
-    <div class="picking">${c?`Picking voice for <b style="color:var(--ink)">${c.name}</b>`:"Select a character to assign a voice."}</div>
+    <div class="picking">${c?`Picking voice for <b style="color:var(--ink)">${c.name}</b>`:"Select a role to assign a voice."}</div>
     ${bannerHtml(libEngine)}
     <div class="toolbar"><input class="input" placeholder="Search voices…" value="${libSearch}" oninput="libSearch=this.value.trim().toLowerCase();renderStudioLib()" /><span class="count">${vs.length}</span></div>
     <div style="display:flex;flex-direction:column;gap:2px;max-height:50vh;overflow-y:auto">${rows||`<div class="muted" style="font-size:12px;padding:12px;text-align:center;font-style:italic">No voices match.</div>`}</div>`;
@@ -595,7 +665,7 @@ function renderStudioLib(){
 function pickVoice(voiceId){
   const v=voiceById(voiceId);
   const c=project().cast.find(x=>x.id===selectedChar);
-  if(!c){toast("Select a character first.");return}
+  if(!c){toast("Select a role first.");return}
   if(engineState(v.engine)==="not_installed"){toast(`${ENGINES[v.engine].name} isn't installed — install it from the Engines tab first.`);return}
   if(!engineReady(v.engine)){ startLoad(v.engine,()=>assign(c,v)); return; }
   assign(c,v);
@@ -636,16 +706,16 @@ function renderVoicesView(){
       <td class="right">${act}</td></tr>`;
   }).join("")||`<tr><td colspan="9" style="text-align:center;font-style:italic;color:var(--ink-3);padding:18px">No voices match.</td></tr>`;
 }
-$("#v-search").addEventListener("input",e=>{vSearch=e.target.value.trim().toLowerCase();renderAll()});
+document.querySelector("#v-search").addEventListener("input",e=>{vSearch=e.target.value.trim().toLowerCase();renderAll()});
 
 /* ───────── Tabs ───────── */
 document.querySelectorAll(".nav-item").forEach(b=>b.addEventListener("click",()=>{
   const t=b.dataset.tab;
   if(t==="x"){toast("Decorative in this mock — only Studio & Voices are wired.");return}
   document.querySelectorAll(".nav-item").forEach(x=>x.classList.toggle("active",x===b));
-  $("#tab-studio").style.display=t==="studio"?"":"none";
-  $("#tab-voices").style.display=t==="voices"?"":"none";
-  $("#title").innerHTML=(t==="studio"?"Studio":"Voices")+'<span class="period">.</span>';
+  document.querySelector("#tab-studio").style.display=t==="studio"?"":"none";
+  document.querySelector("#tab-voices").style.display=t==="voices"?"":"none";
+  document.querySelector("#title").innerHTML=(t==="studio"?"Studio":"Voices")+'<span class="period">.</span>';
 }));
 
 function renderAll(){renderStudio();renderStudioLib();renderVoicesView()}
