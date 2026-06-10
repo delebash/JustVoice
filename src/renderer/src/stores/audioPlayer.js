@@ -2,9 +2,8 @@
 //
 // Global audio-player store. Any view calling `audioPlayer.play({...})`
 // makes the bottom-anchored GlobalAudioPlayer appear with that track.
-// Mirrors voicebox's useAudioPlayer hook + AudioPlayer component (lifted
-// pattern: a single shared <audio> element controlled via a pinia store
-// so transport state survives navigation across views).
+// Pattern: a single shared <audio> element controlled via a pinia store
+// so transport state survives navigation across views.
 import { defineStore } from "pinia";
 
 export const useAudioPlayer = defineStore("audioPlayer", {

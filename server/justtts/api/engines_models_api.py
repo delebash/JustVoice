@@ -117,6 +117,23 @@ async def load_engine(id: str, req: LoadRequest) -> LoadResponse:
     return LoadResponse(engine_id=id, device=req.device, model_variant=req.model_variant)
 
 
+@router.post("/v1/engines/{id}/cancel-load")
+async def cancel_engine_load(id: str) -> dict:
+    """Signal an in-flight `POST /v1/engines/{id}/load` to abort. The
+    load loop checks the cancel flag at safe points (between shared-venv
+    setup, model download, subprocess spawn, and child `/load`) and
+    raises 'cancelled by user' which surfaces back as a 503 to the
+    original load request. Subprocess is killed if already spawned, so
+    no VRAM keeps being consumed after the cancel."""
+    if not _is_managed(id):
+        # In-process engines (external-openai-tts) — load is synchronous;
+        # no cancel hook needed because there's nothing to interrupt.
+        return {"engine_id": id, "cancelled": False, "reason": "engine is not managed; nothing to cancel"}
+    mgr = get_manager()
+    cancelled = mgr.request_cancel_load(id)
+    return {"engine_id": id, "cancelled": cancelled}
+
+
 @router.post("/v1/engines/unload", response_model=UnloadResponse)
 async def unload_engine() -> UnloadResponse:
     st = get_state()

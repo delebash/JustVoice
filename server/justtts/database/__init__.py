@@ -4,9 +4,9 @@
 Per DESIGN_FREEZE.md §4, every entity except user-editable preferences lives
 here. `settings.json` is the ONLY remaining atomic-JSON store.
 
-Migration pattern lifted from voicebox `backend/database/migrations.py` —
-hand-rolled idempotent column-existence checks, no Alembic. See
-`migrations.py` for the why.
+Migration pattern is hand-rolled idempotent column-existence checks
+(MIT-lifted; per-file attribution in `migrations.py` header). No Alembic;
+see `migrations.py` for the why.
 """
 
 from .session import init_db, get_db, SessionLocal, engine

@@ -1,10 +1,9 @@
 """Chatterbox engine subprocess — Resemble AI's ChatterboxMultilingualTTS.
 
-Adapter ported from voicebox's backends/chatterbox_backend.py. Differences:
+Adapter for `chatterbox-tts`. Key shape:
 - We talk over loopback HTTP to the host (via justtts_plugin.serve), not
   asyncio in-process.
-- Voice prompts come in as audio_prompt_path; we forward the path through
-  to model.generate() the same way voicebox does.
+- Voice prompts come in as audio_prompt_path; forwarded to model.generate().
 - macOS CPU fallback retained (PyTorch MPS has a known issue with this model).
 """
 
@@ -30,7 +29,7 @@ from justtts_plugin import (
 
 log = logging.getLogger("justtts.engines.chatterbox")
 
-# Per-language generation defaults, ported verbatim from voicebox.
+# Per-language generation defaults.
 _LANG_DEFAULTS = {
     "he": {"exaggeration": 0.4, "cfg_weight": 0.7, "temperature": 0.65, "repetition_penalty": 2.5},
 }
@@ -46,8 +45,7 @@ class Chatterbox(EmbeddedEngine):
         supports_paralinguistic_tags=True,
     )
 
-    # voicebox uses a class-level lock to serialize torch.load monkey-patching
-    # on CPU. We mirror that pattern.
+    # Class-level lock to serialize torch.load monkey-patching on CPU.
     _load_lock = threading.Lock()
 
     def __init__(self, model_dir=None):

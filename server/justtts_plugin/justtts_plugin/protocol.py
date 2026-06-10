@@ -1,4 +1,4 @@
-"""Wire-level dataclasses shared between the JustTTS host and every engine
+"""Wire-level dataclasses shared between the JustVoice host and every engine
 subprocess. These mirror the in-process protocol in server/justtts/engines/
 base.py so adapter logic ports cleanly between the two transports.
 

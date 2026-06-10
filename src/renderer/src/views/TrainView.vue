@@ -18,13 +18,28 @@ const voices = ref([]);
 const trainJobs = ref([]);
 
 // ── form state ────────────────────────────────────────────────────────────────
-const trainName = ref("");
-const trainEngine = ref("");
+// 8 fields matching preview/full-app-preview.html §Train New training job:
+//   Voice profile / Base engine / Method / Steps / SNR threshold (dB) /
+//   Max clipping ratio / Max silence ratio / Concurrent jobs limit
+const trainName = ref("");          // 1) Voice profile (output name)
+const trainEngine = ref("");        // 2) Base engine
 const trainBaseVoice = ref("");
+const trainMethod = ref("lora_r16_a32"); // 3) Method
+const trainSteps = ref(5000);       // 4) Steps
+const trainSnrThreshold = ref(30);  // 5) SNR threshold (dB)
+const trainClipRatio = ref(0.002);  // 6) Max clipping ratio
+const trainSilenceRatio = ref(0.35);// 7) Max silence ratio
+const trainConcurrency = ref(1);    // 8) Concurrent jobs limit
 const trainEpochs = ref("");
 const trainLearningRate = ref("");
 const samples = ref([]); // [{ file, transcript }]
 const trainBusy = ref(false);
+
+const TRAIN_METHODS = [
+  { id: "lora_r16_a32", label: "LoRA (r=16, α=32)" },
+  { id: "lora_r8_a16",  label: "LoRA (r=8, α=16)" },
+  { id: "full_finetune", label: "Full fine-tune" },
+];
 
 // ── derived ───────────────────────────────────────────────────────────────────
 const canSubmit = computed(
@@ -109,6 +124,14 @@ async function submitTrain() {
       engine: trainEngine.value,
       name: trainName.value.trim(),
       samples: samplePayload,
+      method: trainMethod.value,
+      steps: trainSteps.value || undefined,
+      qc: {
+        snr_threshold_db: trainSnrThreshold.value,
+        max_clipping_ratio: trainClipRatio.value,
+        max_silence_ratio: trainSilenceRatio.value,
+      },
+      concurrent_jobs_limit: trainConcurrency.value,
     };
     if (trainEpochs.value) body.epochs = Number(trainEpochs.value);
     if (trainLearningRate.value) body.learning_rate = Number(trainLearningRate.value);
@@ -200,11 +223,29 @@ onUnmounted(() => {
       </div>
 
       <div class="train-grid">
-        <JvField label="Voice name" layout="block">
-          <JvInput v-model="trainName" placeholder="Sarah-trained" />
+        <JvField label="Voice profile (output name)" layout="block">
+          <JvInput v-model="trainName" placeholder="Old Crow-trained" />
         </JvField>
-        <JvField label="Engine" layout="block">
+        <JvField label="Base engine" layout="block">
           <JvSelect v-model="trainEngine" :options="engineOptions" placeholder="Pick an engine…" />
+        </JvField>
+        <JvField label="Method" layout="block">
+          <JvSelect v-model="trainMethod" :options="TRAIN_METHODS.map((m) => ({ label: m.label, value: m.id }))" />
+        </JvField>
+        <JvField label="Steps" layout="block">
+          <JvInput v-model.number="trainSteps" type="number" placeholder="5000" />
+        </JvField>
+        <JvField label="SNR threshold (dB)" layout="block">
+          <JvInput v-model.number="trainSnrThreshold" type="number" placeholder="30" />
+        </JvField>
+        <JvField label="Max clipping ratio" layout="block">
+          <JvInput v-model.number="trainClipRatio" type="number" step="0.001" placeholder="0.002" />
+        </JvField>
+        <JvField label="Max silence ratio" layout="block">
+          <JvInput v-model.number="trainSilenceRatio" type="number" step="0.01" placeholder="0.35" />
+        </JvField>
+        <JvField label="Concurrent jobs limit" layout="block">
+          <JvInput v-model.number="trainConcurrency" type="number" placeholder="1" />
         </JvField>
         <JvField label="Base voice (optional)" layout="block">
           <JvSelect
@@ -212,14 +253,9 @@ onUnmounted(() => {
             :options="[{ label: '— none —', value: '' }, ...voiceOptions]"
           />
         </JvField>
-        <JvField label="Epochs (optional override)" layout="block">
-          <JvInput v-model="trainEpochs" type="number" placeholder="engine default" />
+        <JvField label="Learning rate (optional override)" layout="block">
+          <JvInput v-model="trainLearningRate" type="number" placeholder="engine default" />
         </JvField>
-        <div style="grid-column: 1 / -1;">
-          <JvField label="Learning rate (optional override)" layout="block">
-            <JvInput v-model="trainLearningRate" type="number" placeholder="engine default" />
-          </JvField>
-        </div>
       </div>
 
       <div class="jv-divider"></div>

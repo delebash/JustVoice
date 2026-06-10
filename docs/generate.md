@@ -20,14 +20,15 @@ Below the textarea is a row of chip cards. Each chip selects one input:
 | 🎙️ Voice | Pick from the currently-loaded engine's voices. Disabled when no engine is loaded — see the "No engine loaded" banner. |
 | 🧠 Engine | Shows which TTS engine is loaded. Switch via [engines.md](engines.md). |
 | 🗣️ Lang | Language hint for engines that support per-call language switching (Chatterbox-Multilingual, Qwen3). |
-| 🎭 Profile | Pick a [voice profile](profiles.md) — wraps voice + delivery defaults + effects + personality. |
+| 👤 Profile | Pick a [voice profile](profiles.md) — wraps voice + delivery defaults + effects + personality. |
 | 🎛️ Effects | Apply a saved effects chain to the output. |
-| 🎭 Persona rewrite | (Only when the selected profile has a personality prompt) Re-rolls input through the persona's LLM rewrite before TTS. |
+| 🎭 Persona rewrite | Re-rolls input through the selected profile's personality prompt via LLM before TTS. Always visible; disabled (with tooltip) when no profile or no personality is set. |
 | 🔁 Autoplay | Auto-play the result on render. |
 
-The two action buttons at the right end:
-- **🎲 Compose** — only appears when the selected profile has a personality prompt. Asks the LLM to write a fresh in-character line and fills the textarea. Requires LLM service configured.
-- **▶ Generate** — renders the textarea content. While rendering, shows **⏹** to stop.
+The three action buttons at the right end:
+- **🎲 Compose** — asks the LLM to write a fresh in-character line into the textarea, using the selected profile's `personality` prompt. Always visible; **disabled** when no profile is selected or the selected profile has no personality prompt (tooltip explains why). Requires an LLM service configured in Settings → External.
+- **▶ Generate** — renders the textarea content. Disabled until a voice is picked.
+- **⏹ Stop** — cancels a queued/running render. Always visible; disabled when nothing is in flight.
 
 ## Capability banner
 
@@ -36,7 +37,7 @@ Below the chip bar is a banner showing what the currently-loaded engine actually
 - ✓ pitch ±N st (native) — engine accepts pitch shift directly
 - ✓ temperature — sampling-variance knob is real
 - ✓ seed — deterministic generation supported
-- ✓ N emotion tags — the engine has a discrete emotion enum (e.g. Higgs's 21 tags)
+- ✓ N emotion tags — the engine has a declared emotion taxonomy in its capability manifest
 - ✓ free-form delivery — accepts the Delivery direction textarea (Qwen3 / LuxTTS only)
 - ✓ cloning — accepts a reference WAV
 - ✓ IPA phoneme input — bypass the text parser (Kokoro)
@@ -45,38 +46,66 @@ Engines that don't support a feature show **✗** with a note ("use Qwen3 / LuxT
 
 ## Delivery overlay
 
-The card below the banner has paired slider + number inputs for the engine's accepted knobs:
+The card below the banner has paired slider + number inputs. The six **primary controls** are universal across engines:
 
 - **Speed** — 0.5–2.0× pacing multiplier
-- **Temperature** — sampling variance (engine-specific range)
-- **Pitch** — semitones. Native for LuxTTS / Higgs; post-process via pedalboard for others; disabled when no pitch path exists.
+- **Pitch** — semitones. Native for LuxTTS (T-shift); post-process via pedalboard for others; disabled when no pitch path exists.
 - **Gain** — output WAV amplitude in dB
-- **Pause before / after** — silence padding in ms
-- **Seed** — randomize button next to it
+- **Temperature** — sampling variance (engine-specific range)
+- **Pause before → after** — silence padding in ms
+- **Seed** — `🎲 randomize` button next to it
 
-### Emotion dropdown
+### Emotion
 
-Shows ONLY when the engine declares an emotion taxonomy (Higgs has 21 tags). For Higgs, the dropdown's hint reads "Inserted at the start of the line — shapes the whole turn" because emotion tags must be turn-leading.
+There's **no dedicated Emotion dropdown** — emotion is inserted inline via the SlashTagMenu like every other inline tag. Type `/` in the main textarea (or click the **🏷️ Insert tag** button below the textarea) and pick from the engine's available tags — whatever the engine declares in its capability manifest.
+
+The capability banner above the Delivery overlay still announces "✓ N emotion tags" for engines that have a taxonomy, so users know they're available. Tags whose manifest entry carries a `placement: start_of_turn` rule get inserted at the start of the line automatically (regardless of cursor position).
 
 ### Delivery direction (free-form)
 
-Shown ONLY when the engine accepts a freeform `instruct` field (Qwen3 / LuxTTS). For Chatterbox the field is disabled with a hint to use the Emotion dropdown or inline paralinguistic tags instead.
+Shown ONLY when the engine accepts a freeform `instruct` field (Qwen3 / LuxTTS). For Chatterbox the field is disabled with a hint to use the Emotion dropdown or inline paralinguistic tags instead. The pill in the label flips between `disabled · requires Qwen3-TTS or LuxTTS` (ghost) and `free-form` (green) based on capability.
 
-### Engine-specific JSON (advanced)
+### Style prompt (Qwen3-specific)
 
-Collapsed `<details>` for power users — paste arbitrary engine-specific overrides like `{"exaggeration": 1.2, "cfg_weight": 0.5}`. Merged with the form values; form wins on conflict.
+Optional short tone/style descriptor — e.g. `warm narrative voice, calm tempo`. Shown ONLY when the engine declares `supports_style_prompt: true` in its capability manifest (currently Qwen3 only). Different from Delivery direction: the style prompt sets a consistent voice character; the delivery direction shapes THIS line's delivery.
+
+### Engine-specific knobs
+
+Below the primary controls, the form auto-renders any extra knobs the engine declares in its capability manifest (`server/justtts/engines/capability_details.py`). For example:
+
+- **Chatterbox / Chatterbox-Turbo** — `exaggeration`, `cfg_weight`, `min_p` (advanced, Chatterbox vanilla only)
+- **Qwen3** — advanced: `Top k`, `Top p`, `Repetition penalty`
+- **LuxTTS** — native `T-shift` pitch (continuous), `inference_steps`, `guidance_scale`
+- **TADA** — `Flow steps`, `Noise temperature`, `Speaker faithfulness`
+- **Dia / MOSS** — per-engine sampler knobs
+
+Each knob renders as a paired slider + number input, just like the primary controls. Non-advanced knobs appear in the main grid; advanced knobs live behind a collapsible `⚙ Show advanced knobs (N)` details block. Values only ship to the API when they differ from the engine's default — no payload noise.
+
+This replaces the old "Raw engine knobs (JSON)" textarea. The manifest is the source of truth: add a `KnobSpec` to an engine's `capability_details.py` entry and the UI picks it up automatically.
+
+## Lexicon preview
+
+Below the engine-specific knobs there's a one-line row showing which pronunciation lexicon (if any) is attached to the current render:
+
+> `Lexicon preview applies before TTS: [no lexicon attached pill] · 0 word replacements would apply · [View applied entries]`
+
+The row is always visible — it has two states:
+
+- **No lexicon attached** (default): the pill reads `no lexicon attached`, count is `0`, the `View applied entries` button is disabled. An inline hint reads `— attach via Personas.`
+- **Lexicon attached**: the pill shows the lexicon name, the count reflects how many distinct words in the current textarea text would actually be replaced, and the `View applied entries` button opens a modal listing every match (`Word / Pronunciation / Format / Count`).
+
+**How a lexicon gets attached.** Picking a Profile in the 👤 Profile chip auto-attaches that profile's `default_lexicon_id` lexicon (if it has one). The Generate view watches `selectedProfile`, fetches `/v1/lexicons/{id}`, and populates the row + modal. Switching profiles re-fetches; picking a profile without a lexicon drops back to the empty state. The lexicon is also sent to the server at render time as `lexicons: ["lex_id"]` so the actual pronunciation overrides apply during TTS — not just preview.
 
 ## Paralinguistic slash menu
 
 Type **/** in the textarea. A menu pops up with the engine's inline-tag taxonomy:
 
 - **Chatterbox-Turbo:** `[laugh] [cough] [chuckle] [sigh]` — inline anywhere.
-- **Higgs Audio v3:** `<|emotion:anger|>`, `<|style:whispering|>`, `<|prosody:speed_slow|>` (placed at start of turn); `<|sfx:laughter|>`, `<|sfx:cough|>` (inline anywhere).
 - **Dia:** `[S1] [S2]` speaker tags + `(laughs) (sighs) (clears throat)` for non-verbal sounds.
 - **MOSS-TTSD:** `[S1] [S2] [S3]` speaker markers + `[pause 1.5s]` for exact timing.
 - **Kokoro:** no inline tags (speed only).
 
-Filter by typing. Use ↑↓ to navigate, Enter / Tab to insert, Esc to close. Tags with the start-of-turn placement rule (Higgs emotions / style / prosody) get inserted at position 0 regardless of cursor location.
+Filter by typing. Use ↑↓ to navigate, Enter / Tab to insert, Esc to close. Tags whose manifest carries a start-of-turn placement rule get inserted at position 0 regardless of cursor location.
 
 ## Auto-chunking
 
@@ -85,6 +114,37 @@ Long text (> `settings.generation.max_chunk_chars`, default 800) gets split at s
 The splitter knows about abbreviations (`Mr.`, `Dr.`, `e.g.`), decimal numbers, CJK sentence-end punctuation (`。！？`), and treats `[bracket]` paralinguistic tags as atomic (never split inside one).
 
 Per-chunk seeds are deterministically varied (`seed + chunk_index`) so the same `(text, seed)` pair always produces the same output, while artefact correlation across chunks stays low.
+
+## In-flight status strip + status panel
+
+Hitting ▶ Generate (or any AI-driven action — Compose, chapter renders, engine installs, training jobs) pushes an accent-tinted progress strip into the top of the content area. Adapted from JustWrite's `AiTaskStrip` pattern.
+
+### Strip lifecycle
+
+| State | Visual | Auto-dismiss |
+|---|---|---|
+| `running` | animated ✨ sparkle + elapsed seconds + per-feature stats + live/stalling/stuck freshness | — (Cancel button while running) |
+| `completed` | green ✓ badge + `done` + soft-green strip | 5 seconds |
+| `failed` | red ⚠ badge + `failed` + inline error + red-bordered strip | **never** (manual ✕ only — so you can read the error) |
+| `cancelled` | gray ⊘ badge + `cancelled` + muted strip | 3 seconds |
+
+Per-task stat chips render whatever the calling view's `statsFn` emits: characters, words, KB out, audio seconds, realtime factor for TTS renders; tokens / first-token latency / tokens-per-second for LLM-driven actions like Compose.
+
+Buttons on the right:
+- **Details** — opens the side-slide status panel (see below).
+- **Cancel** — while running, if the task has a cancel handler.
+- **✕** — once finished, dismisses the strip immediately. Failed strips don't auto-clear so you can read the error.
+
+### Status panel
+
+A persistent **Open full status panel** pill appears at the bottom-right of the screen whenever a task is in flight (or recently finished and still visible). Click it — or any strip's Details button — to slide in the **AI tasks** panel from the right.
+
+The panel has two sections:
+
+- **Running** — accent-tinted cards for every active task. Phase dot (`Live` / `Stalling` / `Stuck`), elapsed time, per-feature stats, per-task Cancel. A `× Cancel all` action at the top of the section when more than one is running.
+- **Recent** — last 50 completed / cancelled / failed tasks with status icon (✓ / ⊘ / ⚠), elapsed duration, stat summary, and the error message for failed runs. `🗑 Clear` clears the recent list.
+
+The panel closes on backdrop click, Escape, or the ✕ Close button.
 
 ## History
 
@@ -100,9 +160,9 @@ Click a take to see its lineage via the [take versioning](take-versioning.md) ch
 
 - **"No engine loaded. Go to Engines → Load."** — Click the link to the [Engines](engines.md) tab and load one. Kokoro is the lightest if you're unsure.
 - **Voice dropdown says "no voices available"** — The loaded engine is clone-only (Chatterbox) and you haven't cloned a reference WAV yet. Use the link in the banner to [Voices](voices.md).
-- **Compose button missing** — No profile selected, or the selected profile has no personality prompt. Edit the profile.
+- **Compose button is disabled (grayed out)** — No profile is selected, or the selected profile has no personality prompt. Pick a profile in the 👤 Profile chip or add a personality prompt via [Profiles](profiles.md).
 - **Compose returns "LLM not configured"** — Wire an OpenAI-compatible endpoint in Settings → External.
-- **Slash menu shows no tags** — The loaded engine has no inline-tag taxonomy. Switch to Chatterbox-Turbo, Higgs, Dia, or MOSS to access tags.
+- **Slash menu shows no tags** — The loaded engine has no inline-tag taxonomy. Switch to Chatterbox-Turbo, Dia, or MOSS to access tags.
 - **Render is silent / clipped at the end** — Some engines (Chatterbox family) hallucinate trailing noise; the trim utility removes that. If clipping the actual content, file an issue with the offending text.
 - **Pitch slider grayed out** — The engine doesn't accept pitch shift. Switch to LuxTTS for native pitch control.
 
@@ -116,9 +176,10 @@ Click a take to see its lineage via the [take versioning](take-versioning.md) ch
 | Effects chip | `delivery.engine.*` (mostly profile-managed) |
 | Seed | `seed` |
 | Delivery overlay sliders | `delivery.speed / pitch / gain_db / temperature / pause_before / pause_after` |
-| Emotion dropdown | `delivery.emotion` |
+| Inline emotion / paralinguistic / SFX tags (via SlashTagMenu) | inline in `text` (e.g. `[laugh]` for Chatterbox-Turbo, `(sighs)` for Dia) |
 | Delivery direction | `delivery.instruct` |
-| Engine-JSON details | `delivery.engine` |
+| Style prompt | `delivery.style_prompt` (Qwen3 only) |
+| Engine-specific knobs (advanced + primary) | `delivery.engine.{key}` — only sent when changed from default |
 | Render preset (no UI yet) | `preset_id` |
 | Lexicon attach | `lexicons: ["lex_id"]` |
 

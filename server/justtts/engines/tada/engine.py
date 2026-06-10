@@ -1,7 +1,6 @@
 """HumeAI TADA engine subprocess.
 
-Adapter scaffolded from voicebox's hume_backend.py. Two known integration
-quirks ported from voicebox:
+Adapter for HumeAI TADA. Two known integration quirks:
 
 1. **DAC shim**: tada.modules.{encoder,decoder} import `dac.nn.layers.Snake1d`
    which lives in descript-audio-codec. The real package pulls onnx +

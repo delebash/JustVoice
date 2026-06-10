@@ -2,12 +2,12 @@
 
 TADA's encoder/decoder import `from dac.nn.layers import Snake1d`. The
 real descript-audio-codec package pulls onnx + tensorboard + matplotlib
-via descript-audiotools (~500 MB of unrelated tooling). Voicebox's
-shipped shim provides just the Snake1d class voicebox actually uses, so
-we install it into sys.modules BEFORE TADA's imports run.
+via descript-audiotools (~500 MB of unrelated tooling). This shim
+provides only the Snake1d class TADA actually uses, installed into
+sys.modules BEFORE TADA's imports run.
 
-Ported from voicebox/backend/utils/dac_shim.py. The math is the standard
-Snake activation: x + (1/alpha) * sin(alpha*x)**2.
+The math is the standard Snake activation:
+x + (1/alpha) * sin(alpha*x)**2.
 """
 
 from __future__ import annotations

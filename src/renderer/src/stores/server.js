@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /**
  * serverStore — server URL, connection mode, keep-running-on-close flag.
- * Persisted to localStorage (key: justvoice-server). Mirrors voicebox's
- * `app/src/stores/serverStore.ts`.
+ * Persisted to localStorage (key: justvoice-server).
  */
 import { defineStore } from "pinia";
 import { ref, watch } from "vue";

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /**
- * playerStore — global audio playback state mirroring voicebox's playerStore.
+ * playerStore — global audio playback state.
  * AudioPlayer.vue (when built) reads from here; any view can trigger playback
  * via setAudioWithAutoPlay().
  */

@@ -11,7 +11,7 @@ Route specific voices to specific OS audio devices. The **Channels** tab is wher
 
 ## How it works
 
-JustVoice enumerates OS audio devices on startup (PortAudio under the hood — same enumeration as voicebox). Each device gets:
+JustVoice enumerates OS audio devices on startup (PortAudio under the hood). Each device gets:
 - Name (`Realtek Audio`, `BlackHole 2ch`, `BT Headset`)
 - Default flag (the system default)
 - Sample rate

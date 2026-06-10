@@ -3,10 +3,24 @@
 import { ref, onMounted, computed } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
+import { useOnboarding } from "../stores/onboarding.js";
 import { pushToast } from "../services/toastBridge.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvTag from "../components/jv/JvTag.vue";
 import { useCopy } from "../services/copy.js";
+
+const onboarding = useOnboarding();
+
+// Use-case quick-actions — small clickable cards that jump to the most
+// likely entry point for each audience. The card matching the user's
+// onboarded primary use case is visually highlighted so repeat users
+// see "their" workflow first.
+const QUICK_ACTIONS = [
+  { id: "audiobook", icon: "📖", title: "Render an audiobook chapter",  href: "#chapter",  desc: "Long-form narration with take versioning + ACX mastering" },
+  { id: "game",      icon: "🎮", title: "Generate a game dialogue line", href: "#generate", desc: "Single-line render with per-line WAV + JSON export" },
+  { id: "podcast",   icon: "🎬", title: "Build a podcast in Stories",    href: "#stories",  desc: "Multi-track timeline with named tracks + effects" },
+  { id: "dictation", icon: "🎙️", title: "Dictate into any app",          href: "#captures", desc: "Push-to-talk → Whisper → LLM refine → paste" },
+];
 
 const copy = useCopy();
 const api = useApi();
@@ -132,52 +146,31 @@ onMounted(refresh);
 
 <template>
   <div class="overview-view">
-    <!-- ── First-run / server-offline help banner. ─────────────────────────
-         Shows when /v1/health failed at boot. Walks the user through the
-         exact commands to get the Python server running. Most common cause
-         of "no engines listed" / "panels show —" complaints. -->
-    <div v-if="!health" class="server-help-banner">
-      <div class="server-help-banner__head">
-        <span class="server-help-banner__dot" />
-        <strong>Server not reachable at {{ api.serverUrl }}</strong>
-      </div>
-      <p>
-        The JustVoice server isn't responding, so engines / voices / projects can't be listed.
-        If you launched via the Tauri desktop app, the server should auto-start — if it didn't, the
-        most likely cause is the JustVoice CLI hasn't been installed yet.
+    <!-- ── Intro band + quick-actions ─────────────────────────────────
+         Centered display title "JustVoice." + tagline + 4 use-case
+         quick-actions. The card matching the user's onboarded primary
+         use case is highlighted with the brand accent. -->
+    <section class="overview-view__intro">
+      <h1 class="overview-view__hero">JustVoice</h1>
+      <p class="overview-view__tagline">
+        A voice production studio for audiobook producers, game developers, podcasters, dictation, and accessibility.
       </p>
-      <details class="server-help-banner__details">
-        <summary>First-time setup — install the JustVoice server</summary>
-        <ol class="server-help-banner__steps">
-          <li>
-            Open a terminal in the project root and run:
-            <pre class="jv-code-block">cd server
-pip install -e .[kokoro]</pre>
-          </li>
-          <li>
-            Then restart JustVoice. The Tauri shell will spawn the server automatically next launch.
-          </li>
-          <li>
-            Or run the server manually in a separate terminal:
-            <pre class="jv-code-block">npm run server</pre>
-            and leave it running while you use the app.
-          </li>
-        </ol>
-        <p class="jv-muted" style="font-size: 11.5px; margin-top: 10px">
-          Already installed? Check the server URL in
-          <a href="#settings">Settings → Connection</a> (default
-          <code class="jv-mono">http://127.0.0.1:17494</code>) and try
-          <a href="#" @click.prevent="refresh">Retry</a>.
-        </p>
-      </details>
-    </div>
-
-    <p class="note">
-      <span class="tag-info">info</span>
-      <strong>Headless mode also available.</strong>
-      Launch the JustVoice server standalone with <code>justtts-server serve --port 17494</code>. The same UI is served at
-      <code>http://localhost:17494/ui/</code> so you can run JustVoice on a remote box and hit it from any browser.
-    </p>
+      <div class="overview-view__quick-actions">
+        <a
+          v-for="q in QUICK_ACTIONS"
+          :key="q.id"
+          class="overview-view__quick-action"
+          :class="{ 'overview-view__quick-action--active': onboarding.primaryUseCase === q.id }"
+          :href="q.href"
+        >
+          <span class="overview-view__quick-action-icon">{{ q.icon }}</span>
+          <div class="overview-view__quick-action-body">
+            <strong class="overview-view__quick-action-title">{{ q.title }}</strong>
+            <span class="overview-view__quick-action-desc">{{ q.desc }}</span>
+          </div>
+        </a>
+      </div>
+    </section>
 
     <!-- ── Catalogue: 6 stat tiles per preview HTML §Overview ─────────── -->
     <div class="jv-section">
@@ -323,8 +316,93 @@ pip install -e .[kokoro]</pre>
 </template>
 
 <style scoped>
-.overview-view {
-  padding: 24px 32px 64px;
+/* No outer padding — `.jv-content` already pads `24px 32px 64px`.
+   Double-padding pushed the hero ~48px below the topbar; this drops
+   the duplicate so the hero sits close to the section title. */
+.overview-view { padding: 0; }
+
+/* Intro band — big centered "JustVoice." display title + tagline +
+   4 use-case quick-action cards. This is the first thing a user sees
+   on the dashboard, so the title gets the brand-period treatment
+   (matches the topbar's `JustVoice.` pattern) and outsized type. */
+.overview-view__intro {
+  /* Negative top margin tightens against the `.jv-content` 24px
+     top padding — pulls the JustVoice hero up close to the topbar
+     without dropping the padding for other views. */
+  margin: -12px 0 24px;
+  text-align: center;
+}
+.overview-view__hero {
+  margin: 0;
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  color: var(--ink);
+}
+.overview-view__tagline {
+  margin: 8px auto 18px;
+  max-width: 640px;
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.overview-view__quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  text-align: left;        /* cards stay left-aligned even though the band is centered */
+  max-width: 1080px;
+  margin: 0 auto;
+}
+.overview-view__quick-action {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  text-decoration: none;
+  transition: border-color 0.12s, background 0.12s, transform 0.05s;
+}
+.overview-view__quick-action:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+  text-decoration: none;
+}
+.overview-view__quick-action:active { transform: translateY(1px); }
+.overview-view__quick-action--active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.overview-view__quick-action--active:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.overview-view__quick-action-icon {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.overview-view__quick-action-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.overview-view__quick-action-title {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.overview-view__quick-action-desc {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  line-height: 1.4;
 }
 
 .overview-view__stats {
@@ -348,12 +426,13 @@ pip install -e .[kokoro]</pre>
 }
 
 .overview-view__stat-value {
-  font-size: 32px;
+  font-size: 30px;            /* matches preview .stat .v */
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1.05;
   color: var(--ink);
   letter-spacing: -0.02em;
 }
+
 
 .overview-view__unit {
   font-size: 16px;

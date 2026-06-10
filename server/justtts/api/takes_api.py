@@ -100,9 +100,9 @@ async def delete_take(take_id: str, db: Session = Depends(get_db)) -> dict:
 class RecentTakeRow(BaseModel):
     """A flat row for the History / Recent generations table.
 
-    Mirrors voicebox's HistoryTable shape (when / voice / text preview /
-    take / effects / actions). Different from `TakeResponse` above (which
-    is the block-scoped take object); this is for the global Generate-view
+    Row shape for the History table (when / voice / text preview / take /
+    effects / actions). Different from `TakeResponse` above (which is the
+    block-scoped take object); this is for the global Generate-view
     history table at the bottom of the page.
     """
 
@@ -129,8 +129,6 @@ class RecentTakesResponse(BaseModel):
 async def list_recent_takes(limit: int = 20, db: Session = Depends(get_db)) -> RecentTakesResponse:
     """Last N generations regardless of block / project, newest first.
 
-    Voicebox parity: matches the History tab feature at
-    voicebox/app/src/components/History/HistoryTable.tsx + useHistory.ts.
     Returns a flat row shape so the Generate view's history card and a
     future dedicated History tab can both consume the same payload.
     """

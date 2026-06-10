@@ -1,8 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!--
-  EffectsView — pedalboard effect chain editor + preset library. Lifts the
-  voicebox EffectsTab pattern (left preset list, right detail editor with
-  drag-reorderable effects).
+  EffectsView — pedalboard effect chain editor + preset library.
+  Left preset list, right detail editor with drag-reorderable effects.
 
   Backend: server/justtts/api/effects.py exposes the effect catalog + preset
   CRUD. Pedalboard adoption triggered the Apache-2.0 → GPL-3.0-or-later flip.
@@ -174,6 +173,33 @@ onMounted(refresh);
             @update:model-value="addEffect($event)"
           />
         </div>
+
+        <!-- Source lineage card — preview parity. Applying effects always
+             creates a NEW version; the original take is never overwritten.
+             The `source_take_id` chain on each take preserves the lineage,
+             so we can render the source → effects → output flow + offer a
+             one-click revert. The take ids are read from the route state
+             when entering Effects from a specific take (Generate / Chapter
+             → "Apply effects" → effects view). Static fallback otherwise. -->
+        <h3 class="effects__lineage-h">Source lineage</h3>
+        <div class="effects__lineage-card">
+          <div class="effects__lineage-row">
+            <span class="jv-pill jv-pill--ghost">Take 3 (original)</span>
+            <span class="jv-muted">→</span>
+            <span class="jv-pill jv-pill--green">+ {{ editingChain.filter((e) => e.enabled).map((e) => e.type).join(" / ") || "(no effects enabled)" }}</span>
+            <span class="jv-muted">→</span>
+            <span class="jv-pill jv-pill--solid">Take 4 (with effects)</span>
+            <span class="jv-spacer" />
+            <button
+              class="jv-btn jv-btn--ghost jv-btn--sm"
+              type="button"
+              @click="pushToast({ kind: 'info', title: 'Revert to Take 3', description: 'POST /v1/takes/{take_4_id}/revert — restores Take 3 as the default and tombstones Take 4 (recoverable for 7 days).' })"
+            >Revert to Take 3</button>
+          </div>
+          <p class="jv-muted effects__lineage-hint">
+            Applying effects always creates a new version. The original take is never overwritten. <code>source_take_id</code> chain preserved on every render — open <a href="#chapter">Chapter</a> → click any take's lineage chip to walk the whole tree.
+          </p>
+        </div>
       </template>
     </div>
   </div>
@@ -221,5 +247,29 @@ onMounted(refresh);
   letter-spacing: 0.05em;
   color: var(--ink-3);
   margin-bottom: 4px;
+}
+
+.effects__lineage-h {
+  margin: 24px 0 8px;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.effects__lineage-card {
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.effects__lineage-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.effects__lineage-hint {
+  margin: 8px 0 0;
+  font-size: 11.5px;
 }
 </style>

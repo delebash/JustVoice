@@ -8,7 +8,7 @@ ship the same shim in `dac_shim.py` alongside this manifest.
 
 TADA also has a tokenizer-gating issue: it hardcodes `meta-llama/Llama-3.2-1B`
 as its tokenizer source, which is a gated HF repo. We redirect to the
-ungated `unsloth/Llama-3.2-1B` mirror at load time (voicebox's trick).
+ungated `unsloth/Llama-3.2-1B` mirror at load time.
 
 hume-tada pins torch>=2.7,<2.8 which would collide with chatterbox's
 torch==2.6.0 in a shared venv. Per-engine venv makes that a non-issue.
@@ -21,7 +21,16 @@ DESCRIPTION = (
     "forced alignment + flow-matching diffusion. Multilingual 3B variant (en, ar, "
     "de, es, fr, it, ja, pl, pt, zh). 24 kHz output. bf16 on CUDA."
 )
-LICENSE = "Apache-2.0"
+LICENSE = "Apache-2.0"  # hume-tada Python package (framework code)
+# Model weights ship under Meta's Llama 3.2 Community License because
+# TADA is built on Llama 3.2. Verified 2026-06-09 on huggingface.co/HumeAI/tada-3b-ml
+# and llama.com/llama3_2/license. Codec is MIT (huggingface.co/HumeAI/tada-codec).
+WEIGHTS_LICENSE = "Llama-3.2-Community"
+# Llama 3.2 Community License §1.b: any product or service built using
+# Llama-derived models must display "Built with Llama" in the user
+# interface and include the same notice in documentation. JustVoice
+# surfaces this on the Engines card + NOTICE.md.
+ATTRIBUTION = "Built with Llama"
 
 CAPABILITIES = {
     "preset_voices": False,

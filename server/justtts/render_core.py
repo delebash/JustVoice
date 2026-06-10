@@ -6,7 +6,7 @@ Handles: cache lookup, lexicon substitution, engine auto-load,
 synthesize, gain-db PCM scaling, cache store.
 
 Phase 3 lift: long-text inputs (> settings.generation.max_chunk_chars)
-go through the chunked path (audio/chunked.py from voicebox MIT) so
+go through the chunked path (audio/chunked.py — upstream MIT lift) so
 chapter-scale renders split at sentence boundaries and crossfade-blend
 to eliminate clicks.
 """

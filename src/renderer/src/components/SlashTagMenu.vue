@@ -4,8 +4,8 @@
 
   Driven by the EngineCapabilityDetail.inline_tags taxonomy fetched
   from /v1/engines/capabilities. Different engines use different
-  syntaxes — Higgs `<|emotion:anger|>`, Chatterbox-Turbo `[laugh]`,
-  Dia `(sighs)`, MOSS `[S1]` + `[pause 1.5s]`. The menu reads the
+  syntaxes — Chatterbox-Turbo `[laugh]`, Dia `(sighs)`,
+  MOSS `[S1]` + `[pause 1.5s]`. The menu reads the
   syntax + placement rule from the manifest entry, so the same
   component works across engines without per-engine branches.
 
@@ -57,7 +57,7 @@ const filtered = computed(() => {
       });
     }
   }
-  return out.slice(0, 30);  // cap visible to avoid blowout on Higgs's 40+
+  return out.slice(0, 30);  // cap visible to avoid blowout on engines with 40+ tags
 });
 
 // Reset selection when query changes.

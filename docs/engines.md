@@ -1,21 +1,24 @@
 # Engines
 
-JustVoice ships with up to 10 TTS engines. Each engine runs in its own Python venv (per-engine isolation) so installing Chatterbox doesn't break Kokoro's dependency tree.
+JustVoice ships with 7 commercial-output-permitting TTS engines plus an external OpenAI-compatible bridge. Each engine runs in its own Python venv or against a shared one (see Isolation below) so installing Chatterbox doesn't break Kokoro's dependency tree.
+
+> **Why no Higgs?** Higgs Audio v3 was removed 2026-06-09 — its model weights are released under a non-commercial license, which conflicts with JustVoice's audiobook / game / podcast use cases where users sell their generated output. Every remaining bundled engine's weights permit commercial output (verified against each engine's HuggingFace model card).
+>
+> **TADA attribution.** TADA's wrapper code is Apache-2.0 but its weights are released under the Llama 3.2 Community License (it's built on Llama 3.2). The license requires any product or service built on Llama-derivative models to display **"Built with Llama"** in the UI AND include the same notice in documentation. JustVoice surfaces it on the TADA Engines card under the description (driven by the engine manifest's `WEIGHTS_LICENSE` + `ATTRIBUTION` fields). If you publish work produced with TADA (audiobook, podcast, game), reproduce **"Built with Llama"** in your credits. See `NOTICE.md` for the authoritative copy.
 
 ## The catalog
 
-| Engine | Type | Size | Languages | Speed | Voice cloning |
-|---|---|---|---|---|---|
-| **Kokoro** | preset (54 voices) | 82 MB | 8 | CPU-realtime | — |
-| **Chatterbox Turbo** | clone + paralinguistic | 350 MB | en | GPU 1-2× realtime | ✓ |
-| **Chatterbox Multilingual** | clone | 1.2 GB | 23 | GPU 1-2× realtime | ✓ |
-| **Qwen3-TTS** | clone + designed | 1.7 GB | 10 | GPU 0.5-1× realtime | ✓ |
-| **LuxTTS (ZipVoice)** | clone · 48 kHz | 1.0 GB | en | GPU 1× realtime | ✓ |
-| **Hume TADA** | clone · long-form coherent | 3.2 GB | 10 | GPU 0.5× realtime | ✓ |
-| **Dia (Nari Labs)** | multi-speaker dialogue | 3.0 GB | en | GPU 0.5× realtime | — |
-| **MossTTS** | clone | — | en + zh | GPU | ✓ (experimental) |
-| **Higgs Audio v3** | clone | — | 11 | GPU | ✓ (experimental) |
-| **External** (OpenAI-compatible) | HTTP | 0 MB | — | Network | varies |
+| Engine | Type | Size | Languages | Speed | Voice cloning | Weight license |
+|---|---|---|---|---|---|---|
+| **Kokoro** | preset (54 voices) | 82 MB | 8 | CPU-realtime | — | Apache-2.0 |
+| **Chatterbox Turbo** | clone + paralinguistic | 350 MB | en | GPU 1-2× realtime | ✓ | MIT |
+| **Chatterbox Multilingual** | clone | 1.2 GB | 23 | GPU 1-2× realtime | ✓ | MIT |
+| **Qwen3-TTS** | clone + designed | 1.7 GB | 10 | GPU 0.5-1× realtime | ✓ | Apache-2.0 |
+| **LuxTTS (ZipVoice)** | clone · 48 kHz | 1.0 GB | en | GPU 1× realtime | ✓ | Apache-2.0 |
+| **Hume TADA** | clone · long-form coherent | 3.2 GB | 10 | GPU 0.5× realtime | ✓ | Llama 3.2 Community (+ MIT codec) |
+| **Dia (Nari Labs)** | multi-speaker dialogue | 3.0 GB | en | GPU 0.5× realtime | — | Apache-2.0 |
+| **MossTTS** | clone | — | en + zh | GPU | ✓ (experimental) | Apache-2.0 |
+| **External** (OpenAI-compatible) | HTTP | 0 MB | — | Network | varies | depends on provider |
 
 ## Picking an engine for a use case
 
@@ -37,6 +40,20 @@ Only one engine is **loaded** at a time per GPU. Loading takes 10-30s (model loa
 - `loaded · CPU realtime` — Kokoro running on CPU.
 
 Click Load on any installed engine; the currently loaded one auto-unloads.
+
+### Cancelling an in-flight load
+
+Loading can take a while — first-time loads also fetch model weights (hundreds of MB to multiple GB) and may stall if you have a flaky connection. While a load is in progress:
+
+- A progress strip appears at the top of the content area with elapsed time + `spawning subprocess`, `loading model weights`.
+- The strip has a **Cancel** button. Clicking it sends `POST /v1/engines/{id}/cancel-load`, which:
+  - Sets a cancel flag the manager polls between safe steps (shared-venv setup → model download → subprocess spawn → child `/load` call).
+  - Kills the child subprocess if already spawned, so no VRAM is left allocated.
+  - Aborts the client-side fetch so you stop waiting.
+- The strip flips to `cancelled` and stays visible for 3 seconds, with a **↻ Retry** button to re-run the same load (or click ✕ to dismiss).
+- If a load fails for any reason, the strip stays in `failed` state with the error message until manually dismissed, plus the same **↻ Retry** button.
+
+The same Cancel + Retry pattern applies to every long-running operation in the app per the standing rule: render, install, train, compose, import — all gain those affordances.
 
 ## GPU detection + tier-aware default
 

@@ -22,7 +22,7 @@
         --accent: #3a7d63;
         --warn: #c89a3a;
         --danger: #a8442e;
-        --voicebox: #2f74b5;
+        --info-blue: #2f74b5;
         --jtorig: #7a3aa6;
         --combined: #b86b1f;
       }
@@ -53,7 +53,7 @@
         min-height: 100vh;
       }
 
-      /* ── 80px left icon sidebar (voicebox shape) ───────────── */
+      /* ── 80px left icon sidebar (upstream shape) ───────────── */
       .sidebar {
         background: var(--surface);
         border-right: 1px solid var(--line);
@@ -141,7 +141,7 @@
         font-weight: 600;
         color: #fff;
       }
-      .src-tag.voicebox { background: var(--voicebox); }
+      .src-tag.legacy-src { background: var(--info-blue); }
       .src-tag.jtorig { background: var(--jtorig); }
       .src-tag.combined { background: var(--combined); }
       h3 {
@@ -274,7 +274,7 @@
         text-overflow: ellipsis;
       }
       .timeline-clip.alt { background: var(--warn); }
-      .timeline-clip.alt2 { background: var(--voicebox); }
+      .timeline-clip.alt2 { background: var(--info-blue); }
 
       /* ── two-pane list/detail ───────────────────────────────── */
       .pane {
@@ -358,7 +358,7 @@
   </head>
   <body>
     <div class="layout">
-      <!-- 80px sidebar — voicebox shape -->
+      <!-- 80px sidebar — upstream shape -->
       <aside class="sidebar">
         <div class="brand" title="JustVoice">JV</div>
         <div class="nav-btn" style="position: relative" title="Update available">
@@ -383,18 +383,18 @@
       <main>
         <h1>JustVoice — UX feature inventory preview</h1>
         <div class="preview-banner" style="border-left-color: var(--warn)">
-          <strong>Headless mode also supported.</strong> Same as voicebox: the Python sidecar runs standalone via <code>justtts-server serve --port 17494</code>. The Tauri shell is the desktop GUI; the headless server exposes the same HTTP API + serves the renderer at <code>/ui/</code> so power users can run JustVoice on a remote box and hit it from any browser. Both modes share the same engine pool, voices, mastering, and SQLite store.
+          <strong>Headless mode also supported.</strong> Same as upstream: the Python sidecar runs standalone via <code>justtts-server serve --port 17494</code>. The Tauri shell is the desktop GUI; the headless server exposes the same HTTP API + serves the renderer at <code>/ui/</code> so power users can run JustVoice on a remote box and hit it from any browser. Both modes share the same engine pool, voices, mastering, and SQLite store.
         </div>
         <div class="preview-banner">
           <strong>What you're looking at.</strong> A long scroll showing every planned tab + its features, side-by-side with which source it comes from. Aesthetic is intentionally neutral — visual direction (colors, type, density) is a separate decision later in Phase 4. This preview is for <strong>feature scope verification</strong> only.
           <ul>
-            <li><strong>13 tabs total</strong> in the left sidebar — collapses some voicebox + JustVoice (codebase) overlap (e.g. Models→Engines).</li>
+            <li><strong>13 tabs total</strong> in the left sidebar — collapses some upstream + JustVoice (codebase) overlap (e.g. Models→Engines).</li>
             <li>Voicebox's full feature set is in (Stories, Captures/Dictation, Effects, Engine model management, MCP server in Settings).</li>
             <li>JustVoice (codebase)'s audiobook features are in (Books, Chapters, Personas, Lexicons, Train, Compare, Cache, ACX mastering preset in Settings).</li>
             <li>Combined features (multi-engine Voices with cloning + presets + designed; FloatingGenerateBox; AudioPlayer global transport) appear in their most natural tab.</li>
           </ul>
           <div class="legend">
-            <span><span class="sw" style="background: var(--voicebox)"></span>From voicebox</span>
+            <span><span class="sw" style="background: var(--info-blue)"></span>From upstream</span>
             <span><span class="sw" style="background: var(--jtorig)"></span>From JustVoice (codebase)</span>
             <span><span class="sw" style="background: var(--combined)"></span>Combined / both</span>
           </div>
@@ -402,7 +402,7 @@
 
         <!-- ──────────────────────────────────────────────────────────── -->
         <h2>1. Generate <span class="src-tag combined">combined</span></h2>
-        <p>Main TTS playground. Pick a voice, pick an engine, type text, hear it. Inherits voicebox's <em>FloatingGenerateBox</em> for cross-route generate; inherits JustVoice (codebase)'s engine catalog + paralinguistic-tag slash menu.</p>
+        <p>Main TTS playground. Pick a voice, pick an engine, type text, hear it. Inherits upstream's <em>FloatingGenerateBox</em> for cross-route generate; inherits JustVoice (codebase)'s engine catalog + paralinguistic-tag slash menu.</p>
         <div class="mockup">
           <div class="mock-input tall">Once upon a midnight dreary, while I pondered weak and weary, over many a quaint and curious volume of forgotten lore…  <br><br><em style="opacity:0.6">Type "/" for paralinguistic tags: [laugh] [sigh] [pause]</em></div>
           <div class="floating-gen mockup-row" style="margin-top: 12px">
@@ -416,18 +416,18 @@
           </div>
         </div>
         <ul class="features">
-          <li>FloatingGenerateBox pinned bottom (voicebox)</li>
+          <li>FloatingGenerateBox pinned bottom (upstream)</li>
           <li>Engine + voice + language picker (combined)</li>
-          <li>Paralinguistic slash-menu for Chatterbox Turbo (voicebox)</li>
+          <li>Paralinguistic slash-menu for Chatterbox Turbo (upstream)</li>
           <li>Per-generation seed + temperature override (JustVoice (codebase))</li>
-          <li>Personality LLM rewrite toggle (voicebox)</li>
+          <li>Personality LLM rewrite toggle (upstream)</li>
           <li>Inline lexicon preview (JustVoice (codebase))</li>
           <li>History table with takes, favorites, retry (combined)</li>
-          <li>Stop / cancel queued generation (voicebox)</li>
+          <li>Stop / cancel queued generation (upstream)</li>
         </ul>
 
         <!-- ──────────────────────────────────────────────────────────── -->
-        <h2>2. Books <span class="src-tag jtorig">JustTTS</span></h2>
+        <h2>2. Books <span class="src-tag jtorig">JustVoice</span></h2>
         <p>Audiobook project list. Each book is a tree of Chapters → Scenes → Blocks. Imports from JustWrite via <code>POST /books/import</code>. This tab is mostly for users who run JustVoice <em>without</em> JustWrite — JustWrite's StudioView drives via HTTP.</p>
         <div class="pane">
           <div class="pane-list">
@@ -450,18 +450,18 @@
           </div>
         </div>
         <ul class="features">
-          <li>Book CRUD + import from JustWrite (JustTTS)</li>
-          <li>Chapter list with render status (JustTTS)</li>
+          <li>Book CRUD + import from JustWrite (JustVoice)</li>
+          <li>Chapter list with render status (JustVoice)</li>
           <li>Per-book cast (Persona list scoped to book)</li>
           <li>Mastering preset per book</li>
-          <li>Batch render with progress (JustTTS)</li>
+          <li>Batch render with progress (JustVoice)</li>
           <li>ACX QC report per chapter</li>
           <li>Export M4B handled by JustWrite when integrated</li>
         </ul>
 
         <!-- ──────────────────────────────────────────────────────────── -->
-        <h2>3. Stories <span class="src-tag voicebox">from voicebox</span></h2>
-        <p>Multi-track timeline editor — voicebox's hallmark feature. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement. Drag-and-drop clips, trim, split, version-pin per clip.</p>
+        <h2>3. Stories <span class="src-tag legacy-src">from upstream</span></h2>
+        <p>Multi-track timeline editor — upstream's hallmark feature. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement. Drag-and-drop clips, trim, split, version-pin per clip.</p>
         <div class="mockup">
           <div class="mockup-row" style="margin-bottom: 10px">
             <button class="mock-btn">▶ Play</button>
@@ -495,20 +495,20 @@
           </div>
         </div>
         <ul class="features">
-          <li>Multi-track DAW-style timeline (voicebox)</li>
-          <li>Per-clip trim handles, split-at-playhead (voicebox)</li>
-          <li>Volume slider 0-200% per clip (voicebox)</li>
-          <li>Version-pin per clip — pick take 2 of 5 (voicebox)</li>
-          <li>WaveSurfer waveforms per clip (voicebox)</li>
+          <li>Multi-track DAW-style timeline (upstream)</li>
+          <li>Per-clip trim handles, split-at-playhead (upstream)</li>
+          <li>Volume slider 0-200% per clip (upstream)</li>
+          <li>Version-pin per clip — pick take 2 of 5 (upstream)</li>
+          <li>WaveSurfer waveforms per clip (upstream)</li>
           <li>Drag-drop audio import (WAV/MP3/FLAC/OGG/M4A)</li>
-          <li>Spacebar play/pause, scrub bar (voicebox)</li>
-          <li>Zoom 10s → entire-project (voicebox)</li>
-          <li>FloatingGenerateBox pins above timeline (voicebox)</li>
+          <li>Spacebar play/pause, scrub bar (upstream)</li>
+          <li>Zoom 10s → entire-project (upstream)</li>
+          <li>FloatingGenerateBox pins above timeline (upstream)</li>
         </ul>
 
         <!-- ──────────────────────────────────────────────────────────── -->
         <h2>4. Voices <span class="src-tag combined">combined</span></h2>
-        <p>Voice profile library. Cloned voices, preset voices (Kokoro 54 + Qwen 9), designed voices (text-prompted future). Inherits voicebox's VoiceInspector pattern + JustVoice (codebase)'s blend/train surfaces.</p>
+        <p>Voice profile library. Cloned voices, preset voices (Kokoro 54 + Qwen 9), designed voices (text-prompted future). Inherits upstream's VoiceInspector pattern + JustVoice (codebase)'s blend/train surfaces.</p>
         <table class="mock">
           <thead>
             <tr><th></th><th>Name</th><th>Type</th><th>Engine</th><th>Language</th><th>Samples</th><th>Gens</th><th>Effects</th></tr>
@@ -522,19 +522,19 @@
           </tbody>
         </table>
         <ul class="features">
-          <li>Voice profile table + right-pane inspector (voicebox)</li>
-          <li>Three voice_type discriminators: cloned / preset / designed (voicebox)</li>
-          <li>Multi-sample cloning + record-in-app (voicebox)</li>
-          <li>Import / export .justvoice.zip (voicebox lift, renamed)</li>
-          <li>Per-voice default effects chain (voicebox)</li>
+          <li>Voice profile table + right-pane inspector (upstream)</li>
+          <li>Three voice_type discriminators: cloned / preset / designed (upstream)</li>
+          <li>Multi-sample cloning + record-in-app (upstream)</li>
+          <li>Import / export .justvoice.zip (upstream lift, renamed)</li>
+          <li>Per-voice default effects chain (upstream)</li>
           <li>Voice blending (lerp/slerp/weighted_sum) (JustVoice (codebase))</li>
           <li>Voice training jobs entry point (JustVoice (codebase))</li>
           <li>Voice → persona link (JustVoice (codebase))</li>
-          <li>Whisper-driven reference transcription (voicebox)</li>
+          <li>Whisper-driven reference transcription (upstream)</li>
         </ul>
 
         <!-- ──────────────────────────────────────────────────────────── -->
-        <h2>5. Personas <span class="src-tag jtorig">JustTTS</span></h2>
+        <h2>5. Personas <span class="src-tag jtorig">JustVoice</span></h2>
         <p>Character bios — backstory, age, accent, mannerisms. Each persona maps to a voice + optional LLM-rewrite prompt that rewrites generated text "in character." JustWrite character imports drop here.</p>
         <div class="pane">
           <div class="pane-list">
@@ -553,15 +553,15 @@
           </div>
         </div>
         <ul class="features">
-          <li>Persona = character bio + voice mapping (JustTTS)</li>
-          <li>Personality prompt for LLM-rewrite (voicebox concept)</li>
+          <li>Persona = character bio + voice mapping (JustVoice)</li>
+          <li>Personality prompt for LLM-rewrite (upstream concept)</li>
           <li>Per-persona engine override</li>
           <li>Per-persona lexicon override</li>
           <li>Auto-create from JustWrite character roster</li>
         </ul>
 
         <!-- ──────────────────────────────────────────────────────────── -->
-        <h2>6. Lexicons <span class="src-tag jtorig">JustTTS</span></h2>
+        <h2>6. Lexicons <span class="src-tag jtorig">JustVoice</span></h2>
         <p>Pronunciation dictionaries. Force "ARPAnet" → "AR-pa-net," "Beauchamp" → "BEE-chum," domain words → consistent phoneme-level pronunciation across a whole book. Per-character override.</p>
         <div class="pane">
           <div class="pane-list">
@@ -583,15 +583,15 @@
           </div>
         </div>
         <ul class="features">
-          <li>Lexicon CRUD with per-book / per-persona scopes (JustTTS)</li>
-          <li>IPA and ASCII-phonetic input (JustTTS)</li>
-          <li>Live preview against current text in Generate (JustTTS)</li>
-          <li>Applied as preprocessing pass before TTS (JustTTS)</li>
+          <li>Lexicon CRUD with per-book / per-persona scopes (JustVoice)</li>
+          <li>IPA and ASCII-phonetic input (JustVoice)</li>
+          <li>Live preview against current text in Generate (JustVoice)</li>
+          <li>Applied as preprocessing pass before TTS (JustVoice)</li>
           <li>Sharable / exportable lexicons (.justlex.json)</li>
         </ul>
 
         <!-- ──────────────────────────────────────────────────────────── -->
-        <h2>7. Captures / Dictation <span class="src-tag voicebox">from voicebox</span></h2>
+        <h2>7. Captures / Dictation <span class="src-tag legacy-src">from upstream</span></h2>
         <p>Voicebox's signature dictation pill + global hotkey. Lets a user speak into any text field. Also captures audio for cloning sample collection.</p>
         <div class="mockup">
           <div class="mockup-row">
@@ -609,16 +609,16 @@
           </table>
         </div>
         <ul class="features">
-          <li>Global push-to-talk + toggle hotkeys (voicebox)</li>
-          <li>System-audio capture (cpal/symphonia/wasapi/screencapturekit) (voicebox)</li>
-          <li>Floating dictation pill window (voicebox)</li>
-          <li>Whisper transcription with model select (voicebox)</li>
-          <li>Refinement: smart cleanup, self-correction, preserve-technical (voicebox)</li>
-          <li>One-click "promote capture → voice sample" (JustTTS bridge)</li>
+          <li>Global push-to-talk + toggle hotkeys (upstream)</li>
+          <li>System-audio capture (cpal/symphonia/wasapi/screencapturekit) (upstream)</li>
+          <li>Floating dictation pill window (upstream)</li>
+          <li>Whisper transcription with model select (upstream)</li>
+          <li>Refinement: smart cleanup, self-correction, preserve-technical (upstream)</li>
+          <li>One-click "promote capture → voice sample" (JustVoice bridge)</li>
         </ul>
 
         <!-- ──────────────────────────────────────────────────────────── -->
-        <h2>8. Effects <span class="src-tag voicebox">from voicebox</span></h2>
+        <h2>8. Effects <span class="src-tag legacy-src">from upstream</span></h2>
         <p>Pedalboard-backed effects chain. Apply non-destructively (creates a new generation version, preserves the original). 8 effect types + 4 built-in presets + custom presets.</p>
         <div class="mockup">
           <div class="mockup-row">
@@ -637,18 +637,18 @@
           </div>
         </div>
         <ul class="features">
-          <li>8 effects: pitch shift / reverb / delay / chorus / compressor / gain / HP / LP (voicebox)</li>
-          <li>4 built-in presets: Robotic, Radio, Echo Chamber, Deep Voice (voicebox)</li>
-          <li>Per-voice default effects chain (voicebox)</li>
-          <li>Non-destructive: applying creates a new generation version (voicebox)</li>
-          <li>Source-lineage tracking via source_version_id (voicebox)</li>
-          <li>Custom user presets (voicebox)</li>
+          <li>8 effects: pitch shift / reverb / delay / chorus / compressor / gain / HP / LP (upstream)</li>
+          <li>4 built-in presets: Robotic, Radio, Echo Chamber, Deep Voice (upstream)</li>
+          <li>Per-voice default effects chain (upstream)</li>
+          <li>Non-destructive: applying creates a new generation version (upstream)</li>
+          <li>Source-lineage tracking via source_version_id (upstream)</li>
+          <li>Custom user presets (upstream)</li>
           <li>Note: pedalboard adoption triggers Apache-2.0 → GPL-3.0 flip</li>
         </ul>
 
         <!-- ──────────────────────────────────────────────────────────── -->
         <h2>9. Engines <span class="src-tag combined">combined</span></h2>
-        <p>Installed engine catalog. Install / load / unload models. Voicebox's 7 + JustVoice (codebase)'s 3 experimental (Dia, MossTTS, Higgs) = up to 10 engines. Per-engine venv isolation (JustVoice (codebase) advantage).</p>
+        <p>Installed engine catalog. Install / load / unload models. 9 engines total (Kokoro, Chatterbox×2, Qwen3, LuxTTS, TADA, Dia, MossTTS) — Higgs was removed 2026-06-09 because its weights are non-commercial. Per-engine venv isolation.</p>
         <table class="mock">
           <thead>
             <tr><th>Engine</th><th>Type</th><th>Size</th><th>Languages</th><th>Status</th><th></th></tr>
@@ -662,21 +662,20 @@
             <tr><td><strong>Hume TADA</strong></td><td>clone · 700s coherent</td><td>3.2 GB</td><td>10</td><td><span class="pill">not installed</span></td><td><button class="mock-btn">Install</button></td></tr>
             <tr><td><strong>Dia (Nari Labs)</strong></td><td>multi-speaker dialogue</td><td>3.0 GB</td><td>en</td><td><span class="pill warn">experimental</span></td><td><button class="mock-btn">Install</button></td></tr>
             <tr><td><strong>MossTTS</strong></td><td>clone</td><td>—</td><td>en+zh</td><td><span class="pill warn">experimental</span></td><td><button class="mock-btn">Install</button></td></tr>
-            <tr><td><strong>Higgs Audio v3</strong></td><td>clone · 11 langs</td><td>—</td><td>11</td><td><span class="pill warn">experimental</span></td><td><button class="mock-btn">Install</button></td></tr>
             <tr><td><strong>External (OpenAI-compatible)</strong></td><td>HTTP TTS</td><td>0 MB</td><td>—</td><td><span class="pill">3 configured</span></td><td><button class="mock-btn secondary">Configure</button></td></tr>
           </tbody>
         </table>
         <ul class="features">
-          <li>Per-engine venv isolation — install Chatterbox without breaking Kokoro (JustTTS)</li>
-          <li>Install progress + cancel (JustTTS)</li>
+          <li>Per-engine venv isolation — install Chatterbox without breaking Kokoro (JustVoice)</li>
+          <li>Install progress + cancel (JustVoice)</li>
           <li>Load / unload with VRAM tracking (combined)</li>
           <li>Engine catalog with capabilities (cloning, paralinguistic, designed voices) (combined)</li>
-          <li>Cross-platform GPU detection: CUDA / MPS / XPU / DirectML / ROCm (voicebox utility lifted to JustTTS)</li>
-          <li>External OpenAI-compatible TTS configurable (JustTTS)</li>
+          <li>Cross-platform GPU detection: CUDA / MPS / XPU / DirectML / ROCm (upstream utility lifted to JustVoice)</li>
+          <li>External OpenAI-compatible TTS configurable (JustVoice)</li>
         </ul>
 
         <!-- ──────────────────────────────────────────────────────────── -->
-        <h2>10. Train <span class="src-tag jtorig">JustTTS</span></h2>
+        <h2>10. Train <span class="src-tag jtorig">JustVoice</span></h2>
         <p>Voice training jobs. PEFT/LoRA-based fine-tuning on supported engines. QC pipeline checks SNR / clipping / silence ratio per sample before accepting it into the training set.</p>
         <div class="mockup">
           <table class="mock">
@@ -689,15 +688,15 @@
           </table>
         </div>
         <ul class="features">
-          <li>Per-sample QC: SNR, clipping ratio, silence ratio (JustTTS)</li>
-          <li>PEFT/LoRA adapter training (JustTTS)</li>
-          <li>Live training progress + sample loss (JustTTS)</li>
-          <li>Job queue with concurrent-jobs limit (JustTTS)</li>
-          <li>Failed-QC sample inspection (JustTTS)</li>
+          <li>Per-sample QC: SNR, clipping ratio, silence ratio (JustVoice)</li>
+          <li>PEFT/LoRA adapter training (JustVoice)</li>
+          <li>Live training progress + sample loss (JustVoice)</li>
+          <li>Job queue with concurrent-jobs limit (JustVoice)</li>
+          <li>Failed-QC sample inspection (JustVoice)</li>
         </ul>
 
         <!-- ──────────────────────────────────────────────────────────── -->
-        <h2>11. Compare <span class="src-tag jtorig">JustTTS</span></h2>
+        <h2>11. Compare <span class="src-tag jtorig">JustVoice</span></h2>
         <p>A/B audio comparison. Side-by-side waveforms, peak/RMS/duration diff, sample-level RMSE, verdict (identical / near-identical / similar / different / unrelated).</p>
         <div class="mockup">
           <div class="mockup-row">
@@ -714,15 +713,15 @@
           </div>
         </div>
         <ul class="features">
-          <li>Side-by-side WAV analysis (JustTTS)</li>
-          <li>Peak / RMS / LUFS / crest factor / clipping ratio / silence ratio (JustTTS)</li>
-          <li>Sample-level RMSE + max delta + identical-sample % (JustTTS)</li>
+          <li>Side-by-side WAV analysis (JustVoice)</li>
+          <li>Peak / RMS / LUFS / crest factor / clipping ratio / silence ratio (JustVoice)</li>
+          <li>Sample-level RMSE + max delta + identical-sample % (JustVoice)</li>
           <li>Verdict classifier (identical / near-identical / similar / different / unrelated)</li>
-          <li>Bulk compare across takes for QC pass (JustTTS)</li>
+          <li>Bulk compare across takes for QC pass (JustVoice)</li>
         </ul>
 
         <!-- ──────────────────────────────────────────────────────────── -->
-        <h2>12. Cache <span class="src-tag jtorig">JustTTS</span></h2>
+        <h2>12. Cache <span class="src-tag jtorig">JustVoice</span></h2>
         <p>Disk-LRU render cache. Keyed on (engine, voice, lexicon hash, persona hash, text hash, effects hash). Inspect, prune, manually invalidate.</p>
         <div class="mockup">
           <div class="mockup-row">
@@ -735,10 +734,10 @@
           </div>
         </div>
         <ul class="features">
-          <li>Disk-LRU cache (JustTTS)</li>
-          <li>Cache key includes engine prefix (collision-safe — fixed-ahead-of-voicebox)</li>
-          <li>Bulk prune / by-voice / by-age (JustTTS)</li>
-          <li>Cache stats: hit rate, size, age distribution (JustTTS)</li>
+          <li>Disk-LRU cache (JustVoice)</li>
+          <li>Cache key includes engine prefix (collision-safe — fixed-ahead-of-upstream)</li>
+          <li>Bulk prune / by-voice / by-age (JustVoice)</li>
+          <li>Cache stats: hit rate, size, age distribution (JustVoice)</li>
         </ul>
 
         <!-- ──────────────────────────────────────────────────────────── -->
@@ -795,17 +794,17 @@
           </table>
         </div>
         <ul class="features">
-          <li>Mastering presets (ACX / iAudio / Podcast / YouTube) (JustTTS)</li>
+          <li>Mastering presets (ACX / iAudio / Podcast / YouTube) (JustVoice)</li>
           <li>Generation chunking + crossfade tuning (combined)</li>
-          <li>Capture hotkeys + Whisper model (voicebox)</li>
-          <li>MCP server on/off + per-client tokens (voicebox)</li>
-          <li>External TTS engines configuration (JustTTS)</li>
-          <li>Logging / cache / limits / auth / CORS (JustTTS)</li>
-          <li>Training validation thresholds (JustTTS)</li>
+          <li>Capture hotkeys + Whisper model (upstream)</li>
+          <li>MCP server on/off + per-client tokens (upstream)</li>
+          <li>External TTS engines configuration (JustVoice)</li>
+          <li>Logging / cache / limits / auth / CORS (JustVoice)</li>
+          <li>Training validation thresholds (JustVoice)</li>
         </ul>
 
-        <h2>⚠️ Honest gap update <span class="src-tag voicebox">missed features added</span></h2>
-        <p>After reading voicebox's actual GUI code directly, I found ~20 features I missed in the original preview. Full list in <code>preview/voicebox-feature-comparison.md</code>. Highlights now added to the relevant sections below. The biggest miss was <strong>Audio output channels</strong> — voicebox has a whole concept for routing voices to specific audio output devices (multi-monitor, OBS, per-character podcast monitoring).</p>
+        <h2>⚠️ Honest gap update <span class="src-tag legacy-src">missed features added</span></h2>
+        <p>After reading upstream's actual GUI code directly, I found ~20 features I missed in the original preview. Full list in <code>preview/upstream-feature-comparison.md</code>. Highlights now added to the relevant sections below. The biggest miss was <strong>Audio output channels</strong> — upstream has a whole concept for routing voices to specific audio output devices (multi-monitor, OBS, per-character podcast monitoring).</p>
         <div class="mockup">
           <ul class="features" style="grid-template-columns: 1fr">
             <li><strong>Keep server running when app closes</strong> — Rust IPC, pairs with system tray. Critical for in-flight generations.</li>
@@ -882,8 +881,8 @@
           <li>Implemented via Tauri 2's built-in <code>tray</code> module (no extra plugin needed)</li>
         </ul>
 
-        <h2>Voicebox feature coverage — verification checklist <span class="src-tag voicebox">verify scope</span></h2>
-        <p>Every voicebox UI element from the upstream audit, mapped to the preview section that covers it. If any row reads "missing," tell me and I'll add it.</p>
+        <h2>Voicebox feature coverage — verification checklist <span class="src-tag legacy-src">verify scope</span></h2>
+        <p>Every upstream UI element from the upstream audit, mapped to the preview section that covers it. If any row reads "missing," tell me and I'll add it.</p>
         <table class="mock">
           <thead><tr><th>Voicebox feature</th><th>Source location</th><th>Preview section</th></tr></thead>
           <tbody>
@@ -899,7 +898,7 @@
             <tr><td>Voices tab — table + inspector</td><td>app/src/components/VoicesTab/VoicesTab.tsx</td><td>✓ §4 Voices</td></tr>
             <tr><td>VoiceInspector (react-hook-form + zod)</td><td>app/src/components/VoiceProfiles/*</td><td>✓ §4 Voices features list</td></tr>
             <tr><td>Multi-sample voice cloning + record-in-app</td><td>app/src/components/VoiceProfiles/AudioSampleRecording.tsx</td><td>✓ §4 Voices features list</td></tr>
-            <tr><td>Profile import / export .voicebox.zip → .justvoice.zip</td><td>app/src/components/MainEditor → apiClient.importProfile</td><td>✓ §4 Voices features list</td></tr>
+            <tr><td>Profile import / export .upstream.zip → .justvoice.zip</td><td>app/src/components/MainEditor → apiClient.importProfile</td><td>✓ §4 Voices features list</td></tr>
             <tr><td>Per-voice channel routing (native device assignments)</td><td>VoicesTab MultiSelect + AudioPlayer device routing</td><td>✓ §4 Voices features list (added)</td></tr>
             <tr><td>Captures tab — dictation pill + global hotkey</td><td>app/src/components/CapturesTab + DictateWindow</td><td>✓ §7 Captures</td></tr>
             <tr><td>Push-to-talk + toggle-to-talk hotkeys (capture_chords.py)</td><td>backend/utils/capture_chords.py</td><td>✓ §7 Captures + §13 Settings</td></tr>
@@ -931,7 +930,7 @@
           </tbody>
         </table>
 
-        <h2>JustVoice additions beyond voicebox <span class="src-tag jtorig">our additions</span></h2>
+        <h2>JustVoice additions beyond upstream <span class="src-tag jtorig">our additions</span></h2>
         <table class="mock">
           <thead><tr><th>JustVoice feature</th><th>Why it's here</th><th>Preview section</th></tr></thead>
           <tbody>

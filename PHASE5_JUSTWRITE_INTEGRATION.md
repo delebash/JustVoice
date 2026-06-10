@@ -22,11 +22,12 @@
 **File**: `justwrite-app/src-tauri/src/lib.rs:944-1107` (per the audit).
 
 ```rust
-// Existing `voicebox_install` command — rename to `justvoice_install`.
-// Or add a parallel command if you want backward compat with the voicebox path.
+// Replace JustWrite's legacy `*_install` command (whatever name it currently uses)
+// with `justvoice_install`. Optionally keep the old one as a deprecated alias
+// for backward compat with users running the previous JustWrite installer.
 #[tauri::command]
 async fn justvoice_install(app: tauri::AppHandle) -> Result<InstallResult, String> {
-    // Same shape as voicebox_install but clones JustVoice instead.
+    // Clones JustVoice and runs its per-engine venv setup.
     // Repo: https://github.com/delebash/justtts-new  (or new fork URL)
     // Branch: main
     // Then runs the per-engine venv setup via `python -m justtts.cli setup`.
@@ -44,13 +45,13 @@ fn justvoice_health(server_url: String) -> Result<bool, String> {
 }
 ```
 
-Register both in `invoke_handler!` alongside (or replacing) the voicebox commands.
+Register both in `invoke_handler!` alongside (or replacing) the legacy install command.
 
 ### 2. Point `services/render.js` at JustVoice's endpoints
 
-**File**: `justwrite-app/src/renderer/src/services/render.js` (existing voicebox-driving code).
+**File**: `justwrite-app/src/renderer/src/services/render.js` (the existing render-driving code).
 
-Replace voicebox URLs with JustVoice's. Add a config item to JustWrite settings for the JustVoice server URL (default `http://127.0.0.1:17494`).
+Replace the legacy server URLs with JustVoice's. Add a config item to JustWrite settings for the JustVoice server URL (default `http://127.0.0.1:17494`).
 
 Concrete shape: when the user clicks "Render audiobook" in StudioView, do this loop:
 

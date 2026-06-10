@@ -2,15 +2,12 @@
 """/v1/profiles — voice-profile CRUD.
 
 The VoiceProfile model has existed in the DB schema since Phase 1.5
-(task #56) but had no HTTP surface — voicebox's UI treats profiles as
+(task #56) but had no HTTP surface. JustVoice's UI treats profiles as
 the canonical user-facing object (a profile bundles voice + language +
 personality + samples + effects + lexicon). This module gives the
-frontend a way to actually CRUD them.
-
-Lifted shape from voicebox's profile endpoints (`useProfiles` hook +
-`ProfileForm` component). Adds /compose stub for the LLM-backed
-"write me a fresh in-character line" action — returns 501 until an LLM
-service is configured in settings.
+frontend a way to actually CRUD them. Includes a /compose stub for the
+LLM-backed "write me a fresh in-character line" action — returns 501
+until an LLM service is configured in settings.
 """
 
 from __future__ import annotations
@@ -205,21 +202,20 @@ async def delete_profile(profile_id: str, db: Session = Depends(get_db)) -> dict
 @router.post(
     "/v1/profiles/{profile_id}/compose",
     response_model=ComposeResponse,
-    summary="Generate a fresh in-character line via LLM (voicebox parity)",
+    summary="Generate a fresh in-character line via LLM",
 )
 async def compose_with_personality(
     profile_id: str, db: Session = Depends(get_db)
 ) -> ComposeResponse:
     """LLM-fills a line of dialogue in the profile's personality voice.
 
-    Voicebox parity: matches the Compose button in FloatingGenerateBox
-    (Dices icon, only shown when profile.personality is non-empty).
+    Drives the Compose button in the Generate view's floating bar (✨ icon,
+    only shown when profile.personality is non-empty).
 
     Currently STUBBED — JustVoice does not yet have an LLM service wired.
     Returns a 501-equivalent ComposeResponse with a diagnostic `note` so
     the UI can render a useful "LLM not configured" message instead of
-    a generic 500. Wire an OpenAI-compatible client in settings to
-    activate. See also: voicebox uses its own internal LLM router.
+    a generic 500. Wire an OpenAI-compatible client in settings to activate.
     """
     p = db.query(VoiceProfile).filter(VoiceProfile.id == profile_id).first()
     if not p:

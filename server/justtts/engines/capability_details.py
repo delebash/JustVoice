@@ -176,6 +176,7 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
         supports_voice_cloning=True,
         supports_voice_design=True,
         supports_instruct_freeform=True,
+        supports_style_prompt=True,
         knobs=[
             KnobSpec(
                 key="talker_temperature", label="Temperature",
@@ -200,89 +201,6 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
         notes=[
             "Instruct field is the primary control — describe voice in plain "
             "English (\"young, sarcastic\", \"stadium announcement\", \"angry whisper\").",
-        ],
-    ),
-
-    # ─── Higgs Audio v3 (heavy inline-tag model) ──────────────────────
-    "higgs-audio": EngineCapabilityDetail(
-        engine_id="higgs-audio",
-        display_name="Higgs Audio v3",
-        supports_voice_cloning=True,
-        supports_clone_prompt_text=True,  # references: [{audio_path, text}]
-        knobs=[
-            _temperature_knob(default=0.8),
-            KnobSpec(
-                key="top_p", label="Top p", min=0.0, max=1.0, step=0.01,
-                default=1.0, advanced=True,
-            ),
-            KnobSpec(
-                key="top_k", label="Top k", min=1, max=200, step=1,
-                default=50, advanced=True,
-            ),
-            KnobSpec(
-                key="max_new_tokens", label="Max new tokens",
-                min=128, max=4096, step=64, default=1024, advanced=True,
-            ),
-            _seed_knob(),
-        ],
-        inline_tags=[
-            # All 21 emotions, verified against the v3 README.
-            InlineTagSet(
-                category="emotion", label="Emotion",
-                tags=[
-                    "elation", "amusement", "enthusiasm", "determination",
-                    "pride", "contentment", "affection", "relief",
-                    "contemplation", "confusion", "surprise", "awe",
-                    "longing", "arousal", "anger", "fear", "disgust",
-                    "bitterness", "sadness", "shame", "helplessness",
-                ],
-                syntax="<|emotion:{value}|>",
-                placement="start_of_turn",
-                hint="Goes at the START of the line — shapes the whole turn.",
-            ),
-            InlineTagSet(
-                category="style", label="Style",
-                tags=["singing", "shouting", "whispering"],
-                syntax="<|style:{value}|>",
-                placement="start_of_turn",
-            ),
-            InlineTagSet(
-                category="prosody", label="Prosody",
-                tags=[
-                    "speed_very_slow", "speed_slow", "speed_fast", "speed_very_fast",
-                    "pitch_low", "pitch_high",
-                    "expressive_high", "expressive_low",
-                ],
-                syntax="<|prosody:{value}|>",
-                placement="start_of_turn",
-                hint="Speed / pitch / delivery modifiers. Place at start.",
-            ),
-            InlineTagSet(
-                category="pause", label="Pause",
-                tags=["pause", "long_pause"],
-                syntax="<|prosody:{value}|>",
-                placement="inline_anywhere",
-                hint="pause ≈ 400-700ms, long_pause ≈ 700-1500ms.",
-            ),
-            InlineTagSet(
-                category="sfx", label="Sound effects",
-                tags=[
-                    "cough", "laughter", "crying", "screaming", "burping",
-                    "humming", "sigh", "sniff", "sneeze",
-                ],
-                syntax="<|sfx:{value}|>",
-                placement="inline_anywhere",
-                hint="Insert at the moment in text. Pair with onomatopoeia "
-                     "(e.g. \"<|sfx:laughter|> Haha\").",
-            ),
-        ],
-        pitch_native_st_range=[-3, 3],  # via pitch_low / pitch_high tags
-        pitch_post_process=True,
-        notes=[
-            "Inline-tag-driven model. Emotion + style + prosody shape the "
-            "whole turn — placement matters.",
-            "Cloning fidelity improves substantially when you supply the ref "
-            "audio's exact transcript.",
         ],
     ),
 

@@ -15,13 +15,13 @@ If the runtimes list is empty, you're CPU-only. Most engines work on CPU but slo
 | Kokoro | ~15× realtime (fastest CPU engine) |
 | Chatterbox | ~0.5× realtime — long renders take minutes |
 | Qwen3-TTS | ~0.2× — practically GPU-only |
-| Higgs Audio | ~0.1× — GPU-only |
+| TADA / Dia / MOSS | ~0.1× — practically GPU-only |
 
 For audiobook-scale work, get CUDA (NVIDIA) or Metal (Apple Silicon) working.
 
 ## CUDA wheel switch (NVIDIA)
 
-PyTorch engines (Chatterbox / Qwen3 / TADA / LuxTTS / Dia / Higgs / MOSS) ship with the **CPU wheel** of torch by default. To enable CUDA acceleration:
+PyTorch engines (Chatterbox / Qwen3 / TADA / LuxTTS / Dia / MOSS) ship with the **CPU wheel** of torch by default. To enable CUDA acceleration:
 
 1. Settings → GPU — confirm the runtimes panel lists `cuda` (means the driver is installed).
 2. Engines tab → find the engine you want — click **Install with CUDA**.
@@ -59,8 +59,8 @@ Each engine has a `vram_min_mb` in its manifest. The Engines tab shows the requi
 | Kokoro | <1 GB |
 | Chatterbox | ~4 GB |
 | Qwen3-TTS 1.7B | ~9 GB |
-| Higgs Audio v3 4B | ~12 GB |
 | TADA 3B | ~9 GB |
+| MOSS-TTSD | ~12-16 GB |
 
 You can load one engine at a time. Unload via the Engines tab to free VRAM before loading another.
 

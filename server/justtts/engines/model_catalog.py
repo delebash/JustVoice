@@ -28,8 +28,6 @@ def models_for(engine_id: str) -> list[ModelVariant]:
             return _dia_variants()
         case "moss-tts":
             return _moss_tts_variants()
-        case "higgs-audio":
-            return _higgs_audio_variants()
         case _:
             return []
 
@@ -238,21 +236,6 @@ def _moss_tts_variants() -> list[ModelVariant]:
             quality=90,
             languages=["en", "zh"],
             files=[_hf_placeholder("moss-llm/moss-tts-v1.5", 12000)],
-        )
-    ]
-
-
-def _higgs_audio_variants() -> list[ModelVariant]:
-    return [
-        ModelVariant(
-            id="higgs-audio-v3",
-            name="Higgs Audio v3",
-            description="Best inline mid-utterance control. **Non-commercial license.**",
-            size_mb=8000,
-            vram_mb=12000,
-            quality=93,
-            languages=["en"],
-            files=[_hf_placeholder("higgs-audio/v3", 8000)],
         )
     ]
 

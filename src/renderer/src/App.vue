@@ -6,6 +6,7 @@ import { useRenderTasks } from "./stores/renderTasks.js";
 import { useOnboarding } from "./stores/onboarding.js";
 import Toast from "./components/Toast.vue";
 import TaskStrip from "./components/TaskStrip.vue";
+import TaskStatusPanel from "./components/TaskStatusPanel.vue";
 import AppDialog from "./components/AppDialog.vue";
 import AudioKeepAlive from "./components/AudioKeepAlive.vue";
 import WelcomeOnboarding from "./components/WelcomeOnboarding.vue";
@@ -34,10 +35,10 @@ import AudioChannelsView from "./views/AudioChannelsView.vue";
 import WebhooksView from "./views/WebhooksView.vue";
 
 const VIEWS = [
-  { id: "overview",  label: "Overview",  icon: "🏠", lede: "Current state of the server, catalogue, cache, and any in-flight work. Live connection pill at the top reflects health pings every 5s.", component: OverviewView },
+  { id: "overview",  label: "Overview",  icon: "🏠", lede: "", component: OverviewView },
   { id: "generate",  label: "Generate",  icon: "📝", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it. Type / for paralinguistic tags.", component: GenerateView },
   { id: "books",     label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Imports from JustWrite via POST /v1/projects/import?source=justwrite.", component: BooksView },
-  { id: "stories",   label: "Stories",   icon: "🎬", lede: "Multi-track timeline editor — voicebox's hallmark feature. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.", component: StoriesView },
+  { id: "stories",   label: "Stories",   icon: "🎬", lede: "Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.", component: StoriesView },
   { id: "chapter",   label: "Chapter",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved. Pinned floating generate bar at bottom.", component: ChapterView },
   { id: "voices",    label: "Voices",    icon: "🎙️", lede: "Voice profile library. Cloned, preset (Kokoro 54 + Qwen 9), designed (text-prompt → voice), blended. Per-voice default effects + channel routing.", component: VoicesView },
   { id: "profiles",  label: "Profiles",  icon: "👤", lede: "Voice profiles bundle a voice + personality prompt + default delivery overlay + effects chain + lexicon override into one named, reusable thing. The Generate tab's 🎭 Profile chip picks from this list; the 🎲 Compose button uses the personality prompt to write fresh in-character lines via LLM.", component: ProfilesView },
@@ -48,7 +49,7 @@ const VIEWS = [
   { id: "engines",   label: "Engines",   icon: "🧠", lede: "Installed engine catalog. Install / load / unload models. Per-engine venv isolation (JustVoice advantage — install Chatterbox without breaking Kokoro).", component: EnginesView },
   { id: "train",     label: "Train",     icon: "🏋️", lede: "PEFT/LoRA-based fine-tuning. QC pipeline checks SNR / clipping / silence ratio per sample before accepting it.", component: TrainView },
   { id: "compare",   label: "Compare",   icon: "⚖️", lede: "A/B audio comparison. Side-by-side waveforms, peak/RMS/duration diff, sample-level RMSE, verdict. Bulk compare across takes for QC pass.", component: CompareView },
-  { id: "cache",     label: "Cache",     icon: "💾", lede: "Disk-LRU render cache. Keyed on (engine, voice, lexicon hash, persona hash, text hash, effects hash). Engine prefix added to fix voicebox's cross-engine collision.", component: CacheView },
+  { id: "cache",     label: "Cache",     icon: "💾", lede: "Disk-LRU render cache. Keyed on (engine, voice, lexicon hash, persona hash, text hash, effects hash). Engine prefix prevents cross-engine collisions.", component: CacheView },
   { id: "audio",     label: "Audio",     icon: "🔧", lede: "Stand-alone audio tools — analyze any 16-bit PCM WAV, or apply a mastering preset to a WAV without going through the chapter render pipeline. Useful for inspecting reference clips before cloning, or quickly mastering an external recording.", component: AudioToolsView },
   { id: "channels",  label: "Channels",  icon: "🔊", lede: "Audio output channel configs. Route specific voices to specific OS audio devices — multi-monitor, OBS virtual mic, per-character podcast monitoring.", component: AudioChannelsView },
   { id: "webhooks",  label: "Webhooks",  icon: "🔔", lede: "HMAC-SHA256-signed outbound event notifications. At-least-once delivery with exponential backoff (1s → 5s → 30s → 5min).", component: WebhooksView },
@@ -196,19 +197,27 @@ onMounted(async () => {
 
     <main class="jv-main">
       <header class="jv-topbar">
-        <h2 class="jv-topbar__title">
-          {{ currentView?.label }}<span class="jv-topbar__period">.</span>
-          <HelpTrigger :slug="currentHelpSlug" :label="currentView?.label || 'JustVoice'" />
-        </h2>
-        <span class="jv-topbar__status" :class="{ 'jv-topbar__status--warn': !health || health.status !== 'ok' }">
+        <h2 class="jv-topbar__title">{{ currentView?.label }}</h2>
+        <button
+          type="button"
+          class="jv-topbar__status"
+          :class="{ 'jv-topbar__status--warn': !health || health.status !== 'ok' }"
+          data-task-panel-toggle
+          :title="tasks.activeCount ? 'Open status panel' : 'Server status'"
+          @click="tasks.togglePanel()"
+        >
           <span class="jv-topbar__dot"></span>
           {{ health && health.status === "ok" ? "Operational" : (health ? health.status : "Offline") }}
           <span class="jv-topbar__url">· {{ api.serverUrl }}</span>
-        </span>
+          <span v-if="tasks.activeCount" class="jv-topbar__taskcount">
+            · <strong>{{ tasks.activeCount }}</strong> in flight
+          </span>
+        </button>
+        <HelpTrigger :slug="currentHelpSlug" :label="currentView?.label || 'JustVoice'" />
       </header>
 
       <div class="jv-content">
-        <p class="jv-content__lede">{{ currentView?.lede }}</p>
+        <p v-if="currentView?.lede" class="jv-content__lede">{{ currentView.lede }}</p>
         <TaskStrip v-for="task in tasks.running" :key="task.id" :task="task" />
         <component :is="currentView?.component" />
       </div>
@@ -219,5 +228,6 @@ onMounted(async () => {
     <WelcomeOnboarding v-if="showWelcome" @close="onWelcomeClosed" />
     <JvHelpDrawer />
     <GlobalAudioPlayer />
+    <TaskStatusPanel />
   </div>
 </template>

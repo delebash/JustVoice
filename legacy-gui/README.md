@@ -1,4 +1,4 @@
-# JustTTS reference GUI
+# JustVoice reference GUI
 
 A single-file Vue 3 SPA for browsing voices, managing personas, generating audio, inspecting the cache, and tuning settings. No build step.
 

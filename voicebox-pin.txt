@@ -5,7 +5,7 @@ b35b90961d5bc83a8b4e96e8b6ccde2a03152ff9
 # License at this commit: MIT
 #
 # This is the canonical reference commit for any code lifted, ported, or
-# translated into JustTTS from voicebox. Every per-file attribution header
+# translated into JustVoice from voicebox. Every per-file attribution header
 # must reference this exact SHA. Do not bump silently — update this file
 # in a deliberate PR that also re-verifies upstream is still MIT-licensed.
 #

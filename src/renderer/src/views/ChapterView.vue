@@ -561,7 +561,7 @@ function compareDropdownOptions(blockId) {
       </div>
     </div>
 
-    <!-- ── Floating generate bar (voicebox parity, preview lines 791-798) ──
+    <!-- ── Floating generate bar (preview lines 791-798) ──
          Pinned at bottom of the chapter editor. Shows the active voice +
          engine + effects + LLM-rewrite toggle. The lede above promises
          this. "Render block" button is disabled until a block is selected;

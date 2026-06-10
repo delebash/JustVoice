@@ -258,7 +258,6 @@ onMounted(load);
                 { label: 'Qwen3-TTS', value: 'qwen3' },
                 { label: 'LuxTTS', value: 'luxtts' },
                 { label: 'TADA', value: 'tada' },
-                { label: 'Higgs Audio', value: 'higgs-audio' },
                 { label: 'Dia', value: 'dia' },
               ]"
             />

@@ -47,13 +47,25 @@ class LexiconStore:
         with self._lock:
             return self._cache.get(id)
 
-    def create(self, name: str, entries: list[LexiconEntry] | None = None) -> Lexicon:
+    def create(
+        self,
+        name: str,
+        entries: list[LexiconEntry] | None = None,
+        scope: str = "global",
+        description: str | None = None,
+        project_id: str | None = None,
+        persona_id: str | None = None,
+    ) -> Lexicon:
         with self._lock:
             id = f"lex_{uuid.uuid4().hex}"
             lex = Lexicon(
                 id=id,
                 name=name,
                 entries=entries or [],
+                scope=scope,
+                description=description,
+                project_id=project_id,
+                persona_id=persona_id,
                 created_at=_now(),
                 updated_at=_now(),
             )

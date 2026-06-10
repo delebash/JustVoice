@@ -38,7 +38,7 @@ Authoritative inventory of third-party software shipped with, bundled into, or i
 
 ## Compatibility legend
 
-- **Apache-2.0 compatible** — can be combined with JustTTS while it's Apache-2.0.
+- **Apache-2.0 compatible** — can be combined with JustVoice while it's Apache-2.0.
 - **GPL-3.0 compatible** — will be compatible after the pedalboard-induced license flip. Apache-2.0 is GPLv3-compatible but **not** GPLv2-compatible — relicensing to "GPL-2.0-only" would break transformers/sherpa-onnx/requests/peft/safetensors.
 - **AGPL** — would force the combined work to AGPL-3.0. CI gate (`pip-licenses --fail-on AGPL-3.0...`) blocks AGPL deps.
 

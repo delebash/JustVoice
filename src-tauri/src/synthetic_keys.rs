@@ -192,7 +192,7 @@ pub fn send_paste() -> Result<(), String> {
 /// `restore_delay_ms` restore whatever was on the clipboard before.
 ///
 /// Clipboard save/restore uses the platform clipboard APIs directly
-/// (same approach as the voicebox `clipboard.rs`) rather than `arboard`,
+/// rather than `arboard`,
 /// which can't round-trip binary formats or multi-item pasteboard content.
 pub fn paste_text_with_restore(text: &str, restore_delay_ms: u64) -> Result<(), String> {
     write_text_to_clipboard(text)?;

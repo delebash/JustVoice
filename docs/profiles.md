@@ -33,7 +33,7 @@ A profile always references one voice. Multiple profiles can wrap the same voice
 | Language | Default language for renders using this profile. Some engines (Chatterbox-Multilingual) accept a language switch per-render; others (Kokoro) bake it in. |
 | Voice type | `cloned` (reference WAV) / `preset` (engine built-in) / `designed` (text-prompted, Qwen3-style). |
 | Default engine | Which TTS engine to use for this profile. If unset, the currently-loaded engine is used. |
-| Personality | Free-form prompt describing the character's voice mannerisms. **When set, the Generate tab shows the 🎲 Compose button for this profile** — clicking it asks the LLM to write a fresh in-character line. Examples below. |
+| Personality | Free-form prompt describing the character's voice mannerisms. **When set, the Generate tab's 🎲 Compose button is enabled for this profile** — clicking it asks the LLM to write a fresh in-character line. (The button is always visible; without a personality it's disabled with a tooltip explaining what to set.) Examples below. |
 | Effects chain | Pedalboard chain applied to output WAV — reverb, EQ, compressor, room sim, etc. Saved as a JSON array. |
 | Default delivery | Tier-2 voice tuning JSON (speed / pitch / temperature / exaggeration / etc.). See "3-tier voice tuning" below. |
 | Default lexicon | Pronunciation dictionary applied before TTS. Overrides any project default. |
@@ -73,11 +73,16 @@ Keep prompts under 500 characters — the LLM doesn't need a novel; it needs voi
 
 ## Compose action
 
-**Requires:** profile has a non-empty personality prompt + an LLM service is configured.
+The 🎲 Compose button next to Generate is **always visible**, but only **enabled** when both:
 
-In Generate, pick a profile → the 🎲 Compose button appears. Click it → JustVoice asks the LLM (per settings.llm config) to write a fresh in-character line based on the personality prompt → the textarea fills with the result.
+1. The selected profile has a non-empty `personality` prompt
+2. An LLM service is configured (Settings → External)
+
+In Generate, pick a profile with a personality → 🎲 Compose becomes clickable → JustVoice asks the LLM (per settings.llm config) to write a fresh in-character line based on the personality prompt → the textarea fills with the result. You can edit it before pressing ▶ Generate.
 
 Until you wire an LLM service, Compose returns 501 with a "LLM not configured" toast and the textarea stays empty.
+
+The button's tooltip explains the disabled state — either "Pick a profile that has a personality prompt to enable Compose" (no profile, or no personality) or the normal "Generate a fresh in-character line via the profile's personality prompt" (ready).
 
 ## Cloning a voice into a profile
 
@@ -111,7 +116,7 @@ When calling `/v1/generate`, pass `profile_id` to apply the profile's `default_d
 
 ## Troubleshooting
 
-- **Compose button doesn't show** — Profile has no personality prompt, or no profile is selected. Edit the profile to add personality.
+- **Compose button is disabled (grayed out)** — Profile has no personality prompt, or no profile is selected. Edit the profile to add personality, or pick a profile that already has one.
 - **Compose returns "LLM not configured"** — Wire an OpenAI-compatible endpoint in Settings → External.
 - **Profile selector empty** — No profiles exist yet. Use "+ New profile" on the Profiles tab.
 - **Profile name conflict** — Profile names must be unique. Edit the conflicting one or pick a different name.

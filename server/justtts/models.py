@@ -81,7 +81,7 @@ class LimitsSettings(BaseModel):
 
 
 class GenerationSettings(BaseModel):
-    """Knobs for the chunked TTS pipeline (Phase 3 lift from voicebox).
+    """Knobs for the chunked TTS pipeline (Phase 3 upstream MIT lift; see audio/chunked.py header).
 
     Long text is split at sentence boundaries into chunks, generated
     per-chunk via the active engine, then concatenated with a short
@@ -366,6 +366,17 @@ class Persona(BaseModel):
     name: str
     voice_id: str
     default_delivery: dict[str, Any] = {}
+    # Rich-editor fields (preview parity — see views/PersonasView.vue):
+    #   bio              – personality prompt drives LLM rewrite-in-character.
+    #   engine_override  – pin this persona to a specific engine, override voice default.
+    #   lexicon_id       – per-persona pronunciation dictionary (street-slang etc.).
+    #   llm_rewrite_enabled / llm_model – toggle + model for the rewrite pipeline.
+    bio: str | None = None
+    engine_override: str | None = None
+    lexicon_id: str | None = None
+    llm_rewrite_enabled: bool = False
+    llm_model: str | None = None
+    imported_from: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -378,6 +389,11 @@ class CreatePersonaRequest(BaseModel):
     name: str
     voice_id: str
     default_delivery: dict[str, Any] = {}
+    bio: str | None = None
+    engine_override: str | None = None
+    lexicon_id: str | None = None
+    llm_rewrite_enabled: bool = False
+    llm_model: str | None = None
 
 
 # ─── Lexicons ───────────────────────────────────────────────────────────
@@ -393,6 +409,13 @@ class Lexicon(BaseModel):
     id: str
     name: str
     entries: list[LexiconEntry] = []
+    # Scope discriminator — drives the badge in LexiconsView. "global" =
+    # reusable across projects; "project" = book-scoped (set project_id);
+    # "persona" = persona-scoped (set persona_id).
+    scope: str = "global"
+    description: str | None = None
+    project_id: str | None = None
+    persona_id: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -404,6 +427,10 @@ class LexiconList(BaseModel):
 class CreateLexiconRequest(BaseModel):
     name: str
     entries: list[LexiconEntry] = []
+    scope: str = "global"
+    description: str | None = None
+    project_id: str | None = None
+    persona_id: str | None = None
 
 
 # ─── Engines / catalog ─────────────────────────────────────────────────
@@ -463,13 +490,25 @@ class EngineInfo(BaseModel):
     # to the same checkpoint.
     default_variant_id: str | None = None
     # "shared" (engine runs against the shared venv at engines/.shared-venv,
-    # voicebox monolith style — fast Install = model-only download) or "venv"
+    # monolithic shared-venv style — fast Install = model-only download) or "venv"
     # (engine gets its own private venv, for engines that genuinely conflict
     # with the shared interpreter). Default is "shared".
     isolation: str = "shared"
     # OSes this engine works on. UI hides engines whose list doesn't include
     # the user's current OS. Values: "windows" | "linux" | "macos".
     supported_oses: list[str] = []
+    # Model-weights license — distinct from framework code license (the
+    # `license` field above tracks the Python package). Common values:
+    # "Apache-2.0", "MIT", "Llama-3.2-Community", "CC-BY-NC-4.0".
+    # Set per engine manifest (`WEIGHTS_LICENSE = "..."`). Surfaced in
+    # the Engines tab so users selling produced audio know the terms.
+    weights_license: str = ""
+    # Attribution text the producing tool must display when the user
+    # ships output produced by this engine. Llama-3.2 §1.b mandates
+    # "Built with Llama" for any Llama-derivative model — TADA hits
+    # this. Empty string means no attribution required. The UI shows
+    # a copyable attribution row when this is non-empty.
+    attribution: str = ""
 
 
 class EnginesListResponse(BaseModel):
@@ -509,8 +548,8 @@ class InlineTagSet(BaseModel):
     """A category of inline tags this engine's tokenizer recognizes.
 
     Drives the slash menu in Generate / Chapter textareas. Different engines
-    use different syntaxes — Higgs uses `<|emotion:anger|>`, Chatterbox-Turbo
-    uses `[laugh]`, Dia uses `(sighs)`, MOSS uses `[S1] [S2] [pause 1.5s]`.
+    use different syntaxes — Chatterbox-Turbo uses `[laugh]`, Dia uses
+    `(sighs)`, MOSS uses `[S1] [S2] [pause 1.5s]`.
     """
 
     category: str  # "emotion" | "style" | "prosody" | "sfx" | "paralinguistic" | "speaker" | "pause"
@@ -540,6 +579,7 @@ class EngineCapabilityDetail(BaseModel):
     supports_instruct_freeform: bool = False  # qwen3-style prose textarea
     supports_phoneme_input: bool = False  # kokoro raw-IPA bypass
     supports_multi_speaker: bool = False  # MOSS speaker_prompts map
+    supports_style_prompt: bool = False  # qwen3 style-prompt field (e.g. "warm narrative voice, calm tempo")
 
     # Numeric / continuous knobs (sliders)
     knobs: list[KnobSpec] = []
@@ -549,7 +589,7 @@ class EngineCapabilityDetail(BaseModel):
 
     # Pitch — special-cased because it's the most-requested control even
     # though most engines lack it natively. Values:
-    # - native_st_range: engine's own pitch range (only LuxTTS + Higgs)
+    # - native_st_range: engine's own pitch range (only LuxTTS currently)
     # - post_process_available: server can do pedalboard WAV pitch-shift
     #   on the output regardless of engine support
     pitch_native_st_range: list[int] | None = None  # [min, max] semitones

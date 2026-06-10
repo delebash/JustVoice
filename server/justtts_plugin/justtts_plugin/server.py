@@ -61,7 +61,7 @@ class CloneBody(BaseModel):
 
 
 def make_app(engine: EmbeddedEngine) -> FastAPI:
-    app = FastAPI(title=f"JustTTS engine: {engine.meta.engine_id or 'unknown'}")
+    app = FastAPI(title=f"JustVoice engine: {engine.meta.engine_id or 'unknown'}")
 
     @app.get("/health")
     async def health():

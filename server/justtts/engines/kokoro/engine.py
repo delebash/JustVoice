@@ -1,6 +1,6 @@
 """Kokoro engine subprocess — sherpa-onnx wrapper.
 
-Runs in its own venv created by the JustTTS engine manager. The host
+Runs in its own venv created by the JustVoice engine manager. The host
 spawns this script with `python engine.py serve --port 0`; we bind to a
 free port, write `PORT=<n>` to stdout (the `justtts_plugin.serve` shim
 handles that), then accept the host's HTTP requests.

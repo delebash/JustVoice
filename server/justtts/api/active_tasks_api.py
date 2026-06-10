@@ -70,7 +70,7 @@ async def get_active_tasks(db: Session = Depends(get_db)) -> ActiveTasksResponse
         from ..utils.progress import get_progress_manager  # type: ignore
 
         pm = get_progress_manager()
-        for entry in pm.list_active():  # voicebox-style API
+        for entry in pm.list_active():
             downloads.append(
                 ActiveDownloadTask(
                     model_name=entry["model_name"],

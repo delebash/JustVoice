@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!--
-  CapturesView — dictation + voice-sample capture list. Lifts the voicebox
-  CapturesTab pattern translated to Vue. The animated CapturePill component
-  surfaces live state; the table lists past captures with their transcripts.
+  CapturesView — dictation + voice-sample capture list. The animated
+  CapturePill component surfaces live state; the table lists past
+  captures with their transcripts.
 -->
 <script setup>
 import { computed, onMounted, ref } from "vue";
@@ -96,6 +96,55 @@ onMounted(() => {
 
 <template>
   <div class="captures">
+    <!-- ── Top band: hotkeys + animated pill preview (preview parity) ── -->
+    <div class="captures__top">
+      <section class="jv-card captures__hotkeys">
+        <h3 class="captures__band-h">Hotkeys</h3>
+        <div class="captures__hotkey-row">
+          <span class="jv-chip-card">
+            🎚️ Push-to-talk:
+            <strong>
+              <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">V</span>
+            </strong>
+            <button class="jv-btn jv-btn--ghost jv-btn--sm" type="button">Change</button>
+          </span>
+          <span class="jv-chip-card">
+            🎙️ Toggle:
+            <strong>
+              <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">D</span>
+            </strong>
+            <button class="jv-btn jv-btn--ghost jv-btn--sm" type="button">Change</button>
+          </span>
+          <span class="jv-chip-card">
+            🔉 Source: <strong>Default mic</strong> <span class="caret">▾</span>
+          </span>
+          <span class="jv-chip-card">
+            🌐 Capture language: <strong>auto</strong> <span class="caret">▾</span>
+          </span>
+          <label class="jv-chip-card captures__autopaste">
+            🤖 Auto-paste
+            <input type="checkbox" checked />
+          </label>
+        </div>
+      </section>
+
+      <section class="jv-card captures__pill-preview">
+        <h3 class="captures__band-h">Live capture pill</h3>
+        <div class="captures__pill-states">
+          <span class="cap-pill cap-pill--recording">
+            <span class="bars"><span></span><span></span><span></span><span></span><span></span></span>
+            Recording 0:04
+          </span>
+          <span class="cap-pill cap-pill--transcribing">⋯ Transcribing</span>
+          <span class="cap-pill cap-pill--refining">✓ Refining</span>
+          <span class="cap-pill cap-pill--rest">○ Rest</span>
+        </div>
+        <p class="jv-muted captures__pill-hint">
+          The pill renders in a separate transparent Tauri window (<code>?view=dictate</code>) — see the "Show dictate" button in the topbar.
+        </p>
+      </section>
+    </div>
+
     <!-- ── List pane ────────────────────────────────────────────────── -->
     <div class="captures__list jv-card jv-card--flat">
       <div class="captures__list-header">
@@ -173,9 +222,9 @@ onMounted(() => {
           </tbody>
         </table>
 
-        <h3 style="margin:20px 0 6px;">Refined transcript</h3>
+        <h4 class="captures__sub-h">Refined transcript</h4>
         <p class="captures__body">{{ selectedCapture.transcript || "(empty)" }}</p>
-        <h3 style="margin:16px 0 6px;">Raw (pre-refinement)</h3>
+        <h4 class="captures__sub-h">Raw (pre-refinement)</h4>
         <p class="captures__body captures__body--raw jv-mono">{{ selectedCapture.raw_transcript || "—" }}</p>
       </template>
     </div>
@@ -186,10 +235,105 @@ onMounted(() => {
 .captures {
   display: grid;
   grid-template-columns: 380px 1fr;
+  grid-template-rows: auto 1fr;
   height: 100%;
   gap: 16px;
   padding: 16px;
 }
+
+.captures__top {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .captures__top { grid-template-columns: 1fr; }
+}
+.captures__hotkeys, .captures__pill-preview { padding: 14px 18px; }
+.captures__band-h,
+.captures__sub-h {
+  margin: 0 0 10px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+.captures__sub-h:not(:first-of-type) { margin-top: 16px; }
+.captures__hotkey-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.captures__autopaste {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.captures__pill-states {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.captures__pill-hint { font-size: 11.5px; margin: 10px 0 0; }
+
+/* Capture-pill visual styles — match the standalone DictateWindow's pill */
+.cap-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.cap-pill--recording { background: rgba(196, 60, 60, 0.92); }
+.cap-pill--transcribing { background: #2c2c2e; }
+.cap-pill--refining { background: var(--accent); }
+.cap-pill--rest { background: rgba(0, 0, 0, 0.45); }
+.cap-pill .bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+.cap-pill .bars > span {
+  display: inline-block;
+  width: 3px;
+  background: #fff;
+  border-radius: 1px;
+  animation: capPillBar 0.9s ease-in-out infinite;
+}
+.cap-pill .bars > span:nth-child(1) { height: 30%; animation-delay: 0ms; }
+.cap-pill .bars > span:nth-child(2) { height: 70%; animation-delay: 100ms; }
+.cap-pill .bars > span:nth-child(3) { height: 50%; animation-delay: 200ms; }
+.cap-pill .bars > span:nth-child(4) { height: 90%; animation-delay: 300ms; }
+.cap-pill .bars > span:nth-child(5) { height: 40%; animation-delay: 400ms; }
+@keyframes capPillBar {
+  0%, 100% { transform: scaleY(0.5); }
+  50%      { transform: scaleY(1); }
+}
+
+.kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  margin: 0 1px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+}
+.caret { color: var(--ink-3); font-size: 10px; }
 
 /* List pane */
 .captures__list { display: flex; flex-direction: column; gap: 0; overflow-y: auto; padding: 0; }

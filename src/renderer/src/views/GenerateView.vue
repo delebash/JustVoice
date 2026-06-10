@@ -1,13 +1,12 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, reactive, onMounted, computed, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast } from "../services/toastBridge.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvField from "../components/jv/JvField.vue";
-import JvSelect from "../components/jv/JvSelect.vue";
 import JvTextarea from "../components/jv/JvTextarea.vue";
 import JvInput from "../components/jv/JvInput.vue";
 import SlashTagMenu from "../components/SlashTagMenu.vue";
@@ -26,9 +25,9 @@ const busy = ref(false);
 // Take history rendered at the bottom of the page. Stubbed until the
 // /v1/takes/recent route lands with #87 — safeRequest returns [] when 404.
 const history = ref([]);
-// Voice profiles — voicebox-parity profile selection layer on top of
-// the voice-keyed generate flow. Profile selection enables Compose +
-// per-profile effects_chain pre-fill + persona-rewrite gating.
+// Voice profiles — profile selection layer on top of the voice-keyed
+// generate flow. Profile selection enables Compose + per-profile
+// effects_chain pre-fill + persona-rewrite gating.
 const profiles = ref([]);
 const selectedProfileId = ref("");
 const composeBusy = ref(false);
@@ -63,7 +62,6 @@ const emptyVoiceReason = computed(() => {
 });
 
 const speed = ref(1.0);
-const emotion = ref("");
 const pitch = ref(0);
 const gain = ref(0);
 const pauseBefore = ref(0);
@@ -71,10 +69,9 @@ const pauseAfter = ref(0);
 const temperature = ref(0.7);
 const seed = ref("random");
 const instruct = ref("");
-const engineJson = ref("");
-const engineJsonError = ref("");
 const autoplay = ref(true);
 const personaRewrite = ref(false);
+const stylePrompt = ref("");
 
 // ── Engine capability gating ──────────────────────────────────────────
 // Capability detail fetched from GET /v1/engines/capabilities. Variant
@@ -147,9 +144,117 @@ const pitchMin               = computed(() => pitchNative.value?.[0] ?? -12);
 const pitchMax               = computed(() => pitchNative.value?.[1] ?? 12);
 const supportsTemperature    = computed(() => hasKnob("temperature") || hasKnob("talker_temperature"));
 const supportsSeed           = computed(() => hasKnob("seed"));
+const supportsStylePrompt    = computed(() => engineCaps.value.supports_style_prompt === true);
 
+// ── Capability-driven engine knobs ───────────────────────────────────
+//
+// The Delivery overlay above renders cross-engine primary controls
+// (Speed / Pitch / Gain / Temperature / Pause / Seed). Anything else
+// the engine accepts comes from its capability manifest's `knobs`
+// list. We render those dynamically — typed sliders + number inputs,
+// no more "Raw engine knobs (JSON)" escape hatch the user couldn't use.
+//
+// Keys ALREADY covered by primary controls are filtered out so we
+// don't render two "Temperature" sliders on Qwen3 (talker_temperature
+// is the same knob as the primary one).
+const PRIMARY_KNOB_KEYS = new Set([
+  "speed", "speed_factor",                  // covered by primary Speed
+  "temperature", "talker_temperature",      // covered by primary Temperature
+  "seed",                                   // covered by primary Seed
+  "t_shift",                                // covered by primary Pitch
+]);
+
+const manifestedKnobs = computed(() =>
+  (engineCaps.value.knobs || []).filter((k) => !PRIMARY_KNOB_KEYS.has(k.key)),
+);
+const primaryEngineKnobs  = computed(() => manifestedKnobs.value.filter((k) => !k.advanced));
+const advancedEngineKnobs = computed(() => manifestedKnobs.value.filter((k) =>  k.advanced));
+
+// Per-knob value store, keyed by knob.key. Seeded from `default`
+// whenever the manifest changes (engine switch). Values that match
+// the default are stripped from the payload so we don't send noise.
+const knobValues = reactive({});
+watch(
+  manifestedKnobs,
+  (knobs) => {
+    for (const k of knobs) {
+      if (knobValues[k.key] === undefined) knobValues[k.key] = k.default;
+    }
+  },
+  { immediate: true },
+);
+
+// ── Lexicon preview ────────────────────────────────────────────────
+//
+// Lexicons attach via voice profiles (Profile.default_lexicon_id) and
+// persona overrides. When the user picks a profile on this view that
+// has a lexicon, we fetch `/v1/lexicons/{id}` and populate
+// `attachedLexicon` — the preview row's populated state + the
+// "applied entries" modal then work against real data.
+const attachedLexicon = ref(null);  // { id, name, entries: [LexiconEntry] }
+const showLexiconPreview = ref(false);
+
+// Watch the selected profile — when it changes and has a default
+// lexicon, fetch entries and populate the attached lexicon. When the
+// user clears the profile or picks one without a lexicon, drop back
+// to the empty state. Cancellation isn't critical here since the
+// fetch is cheap and idempotent.
+let lexiconFetchSeq = 0;
+watch(selectedProfile, async (p) => {
+  const lexId = p?.default_lexicon_id;
+  if (!lexId) { attachedLexicon.value = null; return; }
+  const mySeq = ++lexiconFetchSeq;
+  try {
+    const lex = await api.safeRequest(`/v1/lexicons/${lexId}`, null);
+    // Drop if a newer fetch superseded this one (rapid profile-switch
+    // race) — keep only the most recent result.
+    if (mySeq !== lexiconFetchSeq) return;
+    attachedLexicon.value = lex && lex.id ? lex : null;
+  } catch {
+    if (mySeq === lexiconFetchSeq) attachedLexicon.value = null;
+  }
+}, { immediate: true });
+
+// Client-side match: walk the lexicon entries longest-first, find every
+// case-insensitive occurrence in the current text, return distinct
+// matches with their pronunciation. Schema follows the `LexiconEntry`
+// pydantic model — `grapheme` is the word to match, `phoneme_ipa` /
+// `alias` is the replacement (IPA preferred when both are set).
+const appliedLexiconMatches = computed(() => {
+  if (!attachedLexicon.value || !text.value) return [];
+  const entries = [...(attachedLexicon.value.entries || [])].sort(
+    (a, b) => (b.grapheme?.length || 0) - (a.grapheme?.length || 0),
+  );
+  const seen = new Set();
+  const matches = [];
+  for (const e of entries) {
+    if (!e.grapheme) continue;
+    const replacement = e.phoneme_ipa || e.alias;
+    if (!replacement) continue;
+    const escaped = e.grapheme.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`\\b${escaped}\\b`, "gi");
+    const found = text.value.match(re);
+    if (!found) continue;
+    const key = e.grapheme.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    matches.push({
+      word: e.grapheme,
+      replacement,
+      notation: e.phoneme_ipa ? "IPA" : "phonetic",
+      count: found.length,
+    });
+  }
+  return matches;
+});
+const appliedLexiconCount = computed(() =>
+  appliedLexiconMatches.value.reduce((sum, m) => sum + m.count, 0),
+);
+
+// Used by the capability banner pill "✓ N emotion tags" — keeps the
+// count even though the dropdown is gone (emotion is inserted inline
+// via SlashTagMenu now).
 const EMOTIONS = computed(() => emotionTagSet.value?.tags || []);
-const emotionOptions = computed(() => [{ label: "(neutral)", value: "" }, ...EMOTIONS.value.map((e) => ({ label: e, value: e }))]);
 
 const voiceOptions = computed(() =>
   availableVoices.value.length === 0
@@ -159,24 +264,28 @@ const voiceOptions = computed(() =>
 
 const wordCount = computed(() => text.value.trim().split(/\s+/).filter(Boolean).length);
 
-// Multi-line placeholder hint shown when the textarea is empty.
-// Matches the preview HTML's poetic example + paralinguistic tag hint
-// when the engine supports inline tags. Renders engine-specific syntax
-// (Higgs uses `<|sfx:laughter|>`, Turbo uses `[laugh]`, Dia uses `(laughs)`).
+// Multi-line placeholder hint shown when the textarea is empty. Shows
+// the poetic example sentence plus a discovery hint that lists WHAT
+// kinds of inline tags this engine accepts (emotion / paralinguistic /
+// SFX / prosody). Naming the categories beats listing specific tag
+// names because (a) the SlashTagMenu shows the full list anyway, and
+// (b) the categories tell users WHAT they can shape (mood vs sound vs
+// timing) at a glance.
 const paralinguisticHint = computed(() => {
   const intro = "Once upon a midnight dreary, while I pondered weak and weary…";
-  const set = paralinguisticTagSet.value;
-  if (!set || !set.tags?.length) return intro;
-  const syntax = set.syntax || "[{value}]";
-  const sample = set.tags.slice(0, 4).map((t) => syntax.replace("{value}", t)).join(" ");
-  return `${intro}\n\nType "/" for tags: ${sample}`;
+  const tagSets = engineCaps.value.inline_tags || [];
+  if (!tagSets.length) return intro;
+  const categories = [...new Set(tagSets.map((s) => s.category).filter(Boolean))];
+  if (!categories.length) return intro;
+  return `${intro}\n\nType "/" for ${categories.join(", ")} tags — or use the Insert tag button below.`;
 });
 
-const deliveryDirectionPlaceholder = computed(() =>
-  supportsFreeform.value
-    ? 'e.g. "with growing horror, voice gradually quieter, last word almost whispered"'
-    : "Disabled — this engine doesn't accept free-form delivery direction."
-);
+// Placeholder always shows the example sentence — the pill in the
+// label communicates the disabled state, and the hint below explains
+// why and what to use instead. Repeating "Disabled — ..." in the
+// placeholder was the third duplicate of the same signal.
+const deliveryDirectionPlaceholder =
+  'e.g. "with growing horror, voice gradually quieter, last word almost whispered"';
 
 async function refreshVoices() {
   try {
@@ -222,7 +331,6 @@ async function composeLine() {
 function buildDelivery() {
   const d = {};
   if (Math.abs(speed.value - 1.0) > 0.001) d.speed = speed.value;
-  if (emotion.value) d.emotion = emotion.value;
   if (Math.abs(pitch.value) > 0.001) d.pitch = pitch.value;
   if (Math.abs(gain.value) > 0.001) d.gain_db = gain.value;
   if (pauseBefore.value > 0) d.pause_before = pauseBefore.value;
@@ -230,17 +338,22 @@ function buildDelivery() {
   if (Math.abs(temperature.value - 0.7) > 0.001) d.temperature = temperature.value;
   if (seed.value && seed.value !== "random") d.seed = Number(seed.value) || seed.value;
   if (instruct.value.trim()) d.instruct = instruct.value.trim();
-  engineJsonError.value = "";
-  if (engineJson.value.trim()) {
-    try {
-      const parsed = JSON.parse(engineJson.value);
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) d.engine = parsed;
-      else { engineJsonError.value = "Engine knobs must be a JSON object."; return null; }
-    } catch (e) {
-      engineJsonError.value = `Invalid JSON: ${e.message}`;
-      return null;
-    }
+  if (supportsStylePrompt.value && stylePrompt.value.trim()) d.style_prompt = stylePrompt.value.trim();
+
+  // Manifested engine knobs — only include keys whose current value
+  // differs from the spec's default (don't pollute the payload with
+  // defaults the engine would apply anyway).
+  const engineKnobs = {};
+  for (const k of manifestedKnobs.value) {
+    const v = knobValues[k.key];
+    if (v == null) continue;
+    const isDefault = typeof v === "number" && typeof k.default === "number"
+      ? Math.abs(v - k.default) < 1e-9
+      : v === k.default;
+    if (!isDefault) engineKnobs[k.key] = v;
   }
+  if (Object.keys(engineKnobs).length) d.engine = engineKnobs;
+
   return Object.keys(d).length ? d : undefined;
 }
 
@@ -250,10 +363,6 @@ async function generate() {
     return;
   }
   const delivery = buildDelivery();
-  if (engineJsonError.value) {
-    pushToast({ message: engineJsonError.value, kind: "error" });
-    return;
-  }
   busy.value = true;
   if (audio.value) { URL.revokeObjectURL(audio.value); audio.value = null; }
   const ctl = new AbortController();
@@ -271,10 +380,16 @@ async function generate() {
       return out;
     },
     onCancel: () => ctl.abort(),
+    onRetry: () => generate(),
   });
   try {
     const body = { voice: voice.value, text: text.value, cache: false };
     if (delivery) body.delivery = delivery;
+    // Attach the profile's lexicon (if any) so the server applies the
+    // pronunciation overrides before TTS — matches the populated state
+    // shown in the lexicon-preview row above.
+    if (attachedLexicon.value?.id) body.lexicons = [attachedLexicon.value.id];
+    if (selectedProfileId.value) body.profile_id = selectedProfileId.value;
     const blob = await api.request("/v1/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -303,8 +418,8 @@ function randomizeSeed() {
   seed.value = String(Math.floor(Math.random() * 1_000_000_000));
 }
 
-// Format an ISO timestamp as a short relative-time string. Mirrors
-// voicebox's HistoryTable cell shape ("just now", "12m", "2h", "3d").
+// Format an ISO timestamp as a short relative-time string
+// ("just now", "12m", "2h", "3d").
 function relativeTime(iso) {
   if (!iso) return "";
   const t = new Date(iso).getTime();
@@ -330,8 +445,8 @@ function playTake(h) {
 // Watches the main textarea for a "/" keystroke and pops up the
 // engine-aware tag menu. The menu reads engineCaps.inline_tags and
 // inserts the formatted token at cursor (or at start-of-text for tags
-// whose placement rule is "start_of_turn", per Higgs's emotion/style/
-// prosody placement constraint).
+// whose placement rule is "start_of_turn", per the manifest's per-tag
+// placement constraint).
 const slashOpen = ref(false);
 const slashAnchor = ref(null);
 const slashQuery = ref("");
@@ -373,6 +488,22 @@ function onTextareaInput(e) {
   }
 }
 
+// Button-triggered open of SlashTagMenu — same menu as typing "/" but
+// reachable without keyboard discovery. The handler positions the menu
+// at the textarea, sets slashStart to the current caret (so onSlashInsert
+// has no "/query" span to replace — the tag just inserts at the caret).
+function openTagMenu() {
+  const el = textareaEl.value || document.querySelector("textarea.generate-view__text");
+  if (!el) return;
+  textareaEl.value = el;
+  el.focus();
+  const caret = el.selectionStart ?? text.value.length;
+  slashStart.value = caret;
+  slashQuery.value = "";
+  slashAnchor.value = el.getBoundingClientRect();
+  slashOpen.value = true;
+}
+
 function onSlashInsert({ rendered, placement }) {
   const el = textareaEl.value;
   if (!el || slashStart.value < 0) return;
@@ -384,7 +515,7 @@ function onSlashInsert({ rendered, placement }) {
   let inserted;
   let newCaret;
   if (placement === "start_of_turn") {
-    // Drop at position 0 — Higgs's emotion/style/prosody constraint.
+    // Drop at position 0 — start_of_turn placement (engine constraint).
     // Avoid duplicating if the same tag is already at the start.
     if (value.startsWith(rendered)) {
       inserted = beforeSlash + afterCaret;
@@ -436,6 +567,18 @@ onMounted(refreshVoices);
       @close="slashOpen = false"
     />
 
+    <!-- Persistent affordance for users who don't know the "/" shortcut.
+         Opens the same SlashTagMenu programmatically. Visible only when
+         the loaded engine has inline tags to offer. -->
+    <button
+      v-if="engineCaps.inline_tags?.length"
+      type="button"
+      class="jv-btn jv-btn--ghost jv-btn--sm generate-view__tag-button"
+      @click="openTagMenu"
+    >
+      🏷️ Insert tag…
+    </button>
+
     <!-- Floating chip-card bar (matches preview HTML §1 mockup). -->
     <div class="jv-floating generate-view__floating">
       <div class="jv-chip-card">🎙️ Voice:
@@ -450,16 +593,26 @@ onMounted(refreshVoices);
       <div class="jv-chip-card">🗣️ Lang:
         <strong>{{ availableVoices.find((v) => v.id === voice)?.language || "en" }}</strong>
       </div>
-      <div class="jv-chip-card">🎭 Profile:
+      <div class="jv-chip-card">👤 Profile:
         <strong>{{ selectedProfile?.name || "none" }}</strong>
         <select v-model="selectedProfileId" class="generate-view__chip-select">
           <option v-for="o in profileOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
         </select>
       </div>
       <div class="jv-chip-card">🎛️ Effects: <strong>none</strong> <span class="muted">▾</span></div>
-      <label class="jv-chip-card" v-if="hasPersonality">
+      <label
+        class="jv-chip-card"
+        :class="{ 'jv-chip-card--disabled': !hasPersonality }"
+        :title="hasPersonality
+          ? 'Re-roll the input through the profile\'s personality prompt via LLM before TTS'
+          : 'Pick a profile with a personality prompt to enable persona rewrite'"
+      >
         🎭 Persona rewrite
-        <input type="checkbox" v-model="personaRewrite" />
+        <input
+          type="checkbox"
+          v-model="personaRewrite"
+          :disabled="!hasPersonality"
+        />
       </label>
       <label class="jv-chip-card">
         🔁 Autoplay
@@ -467,13 +620,14 @@ onMounted(refreshVoices);
       </label>
       <span class="jv-spacer" />
       <JvButton
-        v-if="hasPersonality"
         variant="ghost"
         size="lg"
         :loading="composeBusy"
-        :disabled="composeBusy"
+        :disabled="composeBusy || !hasPersonality"
         label="🎲 Compose"
-        title="Generate a fresh in-character line via the profile's personality prompt"
+        :title="hasPersonality
+          ? 'Generate a fresh in-character line via the profile\'s personality prompt'
+          : 'Pick a profile that has a personality prompt to enable Compose'"
         @click="composeLine"
       />
       <JvButton
@@ -485,11 +639,11 @@ onMounted(refreshVoices);
         @click="generate"
       />
       <JvButton
-        v-if="busy"
         variant="danger-outline"
         size="sm"
+        :disabled="!busy"
         label="⏹"
-        title="Stop queued / running"
+        :title="busy ? 'Stop queued / running render' : 'No render in flight'"
       />
     </div>
 
@@ -540,140 +694,251 @@ onMounted(refreshVoices);
       <h3 class="jv-section__title">Delivery overlay</h3>
       <div class="jv-card">
         <div class="generate-view__grid">
-          <JvField :label="`Speed — ${speed.toFixed(2)}×`" layout="block">
+          <JvField layout="block">
+            <template #label>
+              Speed <span class="jv-muted generate-view__label-hint">slider 0.5–2.0×</span>
+            </template>
             <div class="generate-view__paired">
               <input type="range" v-model.number="speed" min="0.5" max="2.0" step="0.05" class="generate-view__range" />
               <JvInput v-model.number="speed" type="number" size="sm" class="generate-view__num" />
+              <span class="jv-muted">×</span>
             </div>
           </JvField>
-          <JvField :label="`Temperature — ${temperature.toFixed(2)}`" layout="block">
-            <div class="generate-view__paired">
-              <input type="range" v-model.number="temperature" min="0" max="1" step="0.05" class="generate-view__range" />
-              <JvInput v-model.number="temperature" type="number" size="sm" class="generate-view__num" />
-            </div>
-          </JvField>
-          <JvField :label="`Pitch — ${pitch > 0 ? '+' : ''}${pitch} st`" layout="block">
+          <JvField layout="block">
+            <template #label>
+              Pitch <span class="jv-muted generate-view__label-hint">slider ±{{ Math.max(Math.abs(pitchMin), Math.abs(pitchMax)) }} st</span>
+            </template>
             <div class="generate-view__paired">
               <input type="range" v-model.number="pitch" :min="pitchMin" :max="pitchMax" step="1" class="generate-view__range" :disabled="!pitchNative && !pitchPostProcess" />
               <JvInput v-model.number="pitch" type="number" size="sm" class="generate-view__num" :disabled="!pitchNative && !pitchPostProcess" />
+              <span class="jv-muted">st</span>
             </div>
             <span v-if="pitchNative" class="jv-field__hint">Native — engine accepts pitch directly.</span>
             <span v-else-if="pitchPostProcess" class="jv-field__hint">Post-process — applied to output WAV (pedalboard).</span>
             <span v-else class="jv-field__hint">Disabled — no pitch shift available for this engine.</span>
           </JvField>
-          <JvField :label="`Gain — ${gain > 0 ? '+' : ''}${gain} dB`" layout="block">
+          <JvField layout="block">
+            <template #label>
+              Gain <span class="jv-muted generate-view__label-hint">slider ±12 dB</span>
+            </template>
             <div class="generate-view__paired">
               <input type="range" v-model.number="gain" min="-24" max="12" step="1" class="generate-view__range" />
               <JvInput v-model.number="gain" type="number" size="sm" class="generate-view__num" />
+              <span class="jv-muted">dB</span>
             </div>
           </JvField>
-          <JvField label="Pause before / after (ms)" layout="block">
+          <JvField layout="block">
+            <template #label>
+              Temperature <span class="jv-muted generate-view__label-hint">slider 0–1</span>
+            </template>
             <div class="generate-view__paired">
-              <JvInput v-model.number="pauseBefore" type="number" size="sm" />
+              <input type="range" v-model.number="temperature" min="0" max="1" step="0.05" class="generate-view__range" />
+              <JvInput v-model.number="temperature" type="number" size="sm" class="generate-view__num" />
+            </div>
+          </JvField>
+          <JvField layout="block">
+            <template #label>
+              Pause before → after <span class="jv-muted generate-view__label-hint">ms</span>
+            </template>
+            <div class="generate-view__paired generate-view__paired--pause">
+              <JvInput v-model.number="pauseBefore" type="number" size="sm" class="generate-view__pause-num" />
               <span class="jv-muted">→</span>
-              <JvInput v-model.number="pauseAfter" type="number" size="sm" />
+              <JvInput v-model.number="pauseAfter" type="number" size="sm" class="generate-view__pause-num" />
             </div>
           </JvField>
           <JvField label="Seed" layout="block">
-            <div class="generate-view__paired">
-              <JvInput v-model="seed" />
-              <JvButton variant="ghost" size="sm" label="🎲" @click="randomizeSeed" />
+            <div class="generate-view__paired generate-view__paired--seed">
+              <JvInput v-model="seed" class="generate-view__seed-input" />
+              <JvButton variant="ghost" size="sm" label="🎲 randomize" @click="randomizeSeed" />
             </div>
           </JvField>
         </div>
 
         <div class="jv-divider" />
 
-        <!-- Capability-gated Emotion dropdown — only shows for engines
-             that declare an emotion inline-tag taxonomy (Higgs's 21). -->
-        <JvField v-if="supportsEmotion" label="Emotion" layout="block">
-          <JvSelect v-model="emotion" :options="emotionOptions" />
-          <span class="jv-field__hint">
-            {{ EMOTIONS.length }} {{ currentEngine?.name }} emotions.
-            <template v-if="emotionTagSet?.placement === 'start_of_turn'">
-              Inserted at the start of the line — shapes the whole turn.
-            </template>
-          </span>
-        </JvField>
+        <!-- Emotion is inserted inline via the SlashTagMenu (type `/`
+             in the main textarea or click the 🏷️ Insert tag button).
+             Engines with a declared emotion taxonomy surface their
+             tags through that menu; no per-engine dropdown needed.
+             The capability banner above still announces "✓ N emotion
+             tags" so users know they're available. -->
 
-        <!-- Capability-gated Delivery direction textarea. -->
-        <div class="generate-view__delivery-direction">
-          <div class="generate-view__delivery-label">
-            <label class="jv-field__label">Delivery direction</label>
+        <!-- Capability-gated Delivery direction textarea. Uses the
+             same `JvField + #label slot` shape as the Qwen3 example
+             below so the eyebrow renders uppercase and the
+             enabled/disabled pill sits inline with the label — same
+             pattern as `Raw engine knobs (JSON)`. -->
+        <JvField layout="block" style="margin-top: 16px">
+          <template #label>
+            Delivery direction
             <span v-if="!supportsFreeform" class="jv-pill jv-pill--ghost">disabled · requires Qwen3-TTS or LuxTTS</span>
             <span v-else class="jv-pill jv-pill--green">free-form</span>
-          </div>
+          </template>
           <JvTextarea
             v-model="instruct"
             :rows="3"
             :disabled="!supportsFreeform"
             :placeholder="deliveryDirectionPlaceholder"
+            class="generate-view__delivery-textarea"
           />
-          <span class="jv-field__hint" v-if="!supportsFreeform">
+          <span class="jv-field__hint" v-if="!supportsFreeform && (supportsEmotion || supportsParalinguistic)">
             {{ currentEngine?.name || "This engine" }} doesn't accept free-form delivery prose.
-            <span v-if="supportsEmotion">Use the Emotion dropdown above</span><span v-if="supportsEmotion && supportsParalinguistic"> and </span><span v-if="supportsParalinguistic">embed {{ paralinguisticTagSet?.category }} tags in the main text</span>.
+            Use the
+            <strong>🏷️ Insert tag</strong> button (or type <code class="jv-mono">/</code> in the text)
+            to add
+            <span v-if="supportsEmotion">emotion</span><span v-if="supportsEmotion && supportsParalinguistic"> and </span><span v-if="supportsParalinguistic">{{ paralinguisticTagSet?.category }}</span>
+            tags inline instead.
           </span>
-        </div>
+        </JvField>
 
-        <div class="jv-divider" />
+        <!-- Style prompt — Qwen3-specific. Sits under Delivery direction
+             because both are about shaping the line's tone. Gated on the
+             engine declaring `supports_style_prompt` in its capability
+             manifest (only Qwen3 today). -->
+        <JvField v-if="supportsStylePrompt" layout="block" style="margin-top: 12px">
+          <template #label>
+            Style prompt <span class="jv-muted generate-view__label-hint">optional · {{ currentEngine?.name }}-specific</span>
+          </template>
+          <JvInput
+            v-model="stylePrompt"
+            placeholder="warm narrative voice, calm tempo"
+          />
+          <span class="jv-field__hint">
+            Short tone/style descriptor for the engine. Different from Delivery direction — the style prompt sets a consistent voice character, the delivery direction shapes THIS line's delivery.
+          </span>
+        </JvField>
 
-        <details class="generate-view__advanced">
-          <summary>⚙ Show engine-specific JSON (advanced)</summary>
-          <JvField label="Raw engine knobs (JSON)" layout="block" style="margin-top: 12px">
-            <JvTextarea
-              v-model="engineJson"
-              :rows="3"
-              spellcheck="false"
-              placeholder='{ "emotion_strength": 0.7, "exaggeration": 1.2, "cfg_weight": 0.5 }'
-            />
-            <div v-if="engineJsonError" class="jv-banner jv-banner--danger" style="margin-top: 8px; margin-bottom: 0">{{ engineJsonError }}</div>
-            <span v-else class="jv-field__hint">
-              Merged with the form values above. Form wins on key conflict. Most users never open this.
-            </span>
-          </JvField>
+        <!-- Engine-specific knobs — rendered straight from the engine's
+             capability manifest (server/justtts/engines/capability_details.py).
+             Non-advanced knobs show inline; advanced ones live in the
+             collapsible below. Each KnobSpec → paired slider + number.
+             Replaces the old "Raw engine knobs (JSON)" textarea — users
+             can't be expected to know what JSON keys each engine accepts. -->
+        <template v-if="primaryEngineKnobs.length">
+          <div class="jv-divider" />
+          <h4 class="generate-view__knobs-h">{{ currentEngine?.name || "Engine" }}-specific knobs</h4>
+          <div class="generate-view__grid">
+            <JvField v-for="k in primaryEngineKnobs" :key="k.key" layout="block">
+              <template #label>
+                {{ k.label }}
+                <span v-if="k.hint" class="jv-muted generate-view__label-hint">{{ k.hint }}</span>
+              </template>
+              <div class="generate-view__paired">
+                <input
+                  type="range"
+                  v-model.number="knobValues[k.key]"
+                  :min="k.min" :max="k.max" :step="k.step"
+                  class="generate-view__range"
+                />
+                <JvInput
+                  v-model.number="knobValues[k.key]"
+                  type="number" size="sm"
+                  class="generate-view__num"
+                  :min="k.min" :max="k.max" :step="k.step"
+                />
+              </div>
+            </JvField>
+          </div>
+        </template>
+
+        <div class="jv-divider" v-if="advancedEngineKnobs.length || primaryEngineKnobs.length" />
+
+        <details v-if="advancedEngineKnobs.length" class="generate-view__advanced">
+          <summary>⚙ Show advanced knobs ({{ advancedEngineKnobs.length }})</summary>
+          <p class="jv-muted generate-view__advanced-hint">
+            Power-user controls for {{ currentEngine?.name }}. Defaults work for most cases — change only if you know what each knob affects.
+          </p>
+          <div class="generate-view__grid generate-view__grid--advanced">
+            <JvField v-for="k in advancedEngineKnobs" :key="k.key" layout="block">
+              <template #label>
+                {{ k.label }}
+                <span v-if="k.hint" class="jv-muted generate-view__label-hint">{{ k.hint }}</span>
+              </template>
+              <div class="generate-view__paired">
+                <input
+                  type="range"
+                  v-model.number="knobValues[k.key]"
+                  :min="k.min" :max="k.max" :step="k.step"
+                  class="generate-view__range"
+                />
+                <JvInput
+                  v-model.number="knobValues[k.key]"
+                  type="number" size="sm"
+                  class="generate-view__num"
+                  :min="k.min" :max="k.max" :step="k.step"
+                />
+              </div>
+            </JvField>
+          </div>
         </details>
 
         <div class="jv-divider" />
 
-        <!-- Lexicon preview row — shows which pronunciation dictionaries are
-             attached and would apply before TTS. Stubbed for now until the
-             Personas tab is wired to attach lexicons to voices. -->
+        <!-- Lexicon preview row — single always-visible shape per UX
+             rule "everything visible, disable don't hide". Pill shows
+             the attached lexicon name (or "no lexicon attached"); the
+             count always renders (0 when nothing attached); the View
+             applied entries button is always rendered and disabled when
+             count is 0. Personas link sits inline only when nothing is
+             attached so the user knows where to wire one up. -->
         <div class="generate-view__lexicon-row">
           <span class="jv-muted">Lexicon preview applies before TTS:</span>
-          <span class="jv-pill jv-pill--ghost">no lexicon attached</span>
-          <span class="jv-muted">— attach via <a href="#personas">Personas</a> or pass <code class="jv-mono">lexicons: ["lex_id"]</code> in the API.</span>
+          <span class="jv-pill jv-pill--ghost">{{ attachedLexicon?.name || "no lexicon attached" }}</span>
+          <span class="jv-muted">
+            {{ appliedLexiconCount }} word replacement{{ appliedLexiconCount === 1 ? "" : "s" }} would apply.
+          </span>
+          <span v-if="!attachedLexicon" class="jv-muted">
+            — attach via <a href="#personas">Personas</a>.
+          </span>
+          <span class="jv-spacer" />
+          <button
+            type="button"
+            class="jv-btn jv-btn--ghost jv-btn--sm"
+            :disabled="!appliedLexiconCount"
+            :title="appliedLexiconCount
+              ? 'View matches against the current text'
+              : (attachedLexicon
+                ? 'Type text to see matching entries from this lexicon'
+                : 'Attach a lexicon via Personas first')"
+            @click="showLexiconPreview = true"
+          >View applied entries</button>
         </div>
-      </div>
-    </div>
 
-    <!-- Capability example — what the same panel would look like with a
-         different engine. Educational: explains why the controls above
-         re-render when you switch engines. Hidden on engines that already
-         match the example (qwen3 / luxtts). -->
-    <div v-if="currentEngine?.id !== 'qwen3' && currentEngine?.id !== 'luxtts'" class="jv-section">
-      <h3 class="jv-section__title">What this panel would look like with <em>Qwen3-TTS</em> instead</h3>
-      <div class="jv-card jv-card--soft">
-        <p class="jv-muted" style="font-size: 12px; margin: 0 0 12px">
-          Engine swap → Delivery direction textarea becomes the primary control. Emotion dropdown is hidden (Qwen3 doesn't have a discrete enum). Pitch range narrows to ±6 st per the engine's capability manifest.
-        </p>
-        <JvField layout="block">
-          <template #label>
-            Delivery direction
-            <span class="jv-pill jv-pill--green">free-form</span>
-          </template>
-          <JvTextarea
-            :rows="3"
-            disabled
-            placeholder="with growing horror, voice gradually quieter, last word almost whispered"
-          />
-          <span class="jv-field__hint">Plain language. The model interprets the prose directly. This is what voicebox / Qwen3 / LuxTTS expect.</span>
-        </JvField>
-        <JvField label="Style prompt (optional, Qwen3-specific)" layout="block" style="margin-top: 12px">
-          <JvInput disabled placeholder="warm narrative voice, calm tempo" />
-        </JvField>
-        <div class="generate-view__manifest">
-          <span class="jv-muted">Capability manifest from server:</span>
-          <code class="jv-mono">{ instruct: "freeform", emotions: null, style_prompt: true, pitch_range: [-6, 6], paralinguistic: [] }</code>
+        <!-- Applied-entries preview modal — client-side match against
+             the current textarea text. Same scan logic as the Lexicons
+             tab's "▶ Preview against text" button. -->
+        <div v-if="showLexiconPreview && attachedLexicon" class="jv-overlay" @click.self="showLexiconPreview = false">
+          <div class="jv-modal">
+            <header class="jv-modal__header">
+              <div class="jv-modal__titleblock">
+                <span class="jv-modal__eyebrow">{{ attachedLexicon.name }}</span>
+                <h3 class="jv-modal__title">Applied entries · {{ appliedLexiconCount }} replacement{{ appliedLexiconCount === 1 ? "" : "s" }}</h3>
+              </div>
+              <button type="button" class="jv-modal__close" @click="showLexiconPreview = false">✕</button>
+            </header>
+            <div class="jv-modal__body">
+              <p v-if="!appliedLexiconMatches.length" class="jv-muted">
+                None of the lexicon's words appear in the current text. Type a word that's in the lexicon to see it here.
+              </p>
+              <table v-else class="jv-table">
+                <thead>
+                  <tr><th>Word</th><th>Pronunciation</th><th>Format</th><th class="right">Count</th></tr>
+                </thead>
+                <tbody>
+                  <tr v-for="m in appliedLexiconMatches" :key="m.word">
+                    <td><strong>{{ m.word }}</strong></td>
+                    <td><code class="jv-mono">{{ m.replacement }}</code></td>
+                    <td>{{ m.notation }}</td>
+                    <td class="right">{{ m.count }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <footer class="jv-modal__footer">
+              <span class="jv-spacer" />
+              <button type="button" class="jv-btn jv-btn--secondary" @click="showLexiconPreview = false">Close</button>
+            </footer>
+          </div>
         </div>
       </div>
     </div>
@@ -718,38 +983,49 @@ onMounted(refreshVoices);
 </template>
 
 <style scoped>
-.generate-view {
-  padding: 24px 32px 64px;
-}
+/*
+ * GenerateView — layout only. ALL control sizing (input height, button
+ * padding, slider rendering, textarea min-height, floating-bar padding,
+ * chip-card radius) lives in the global styles.css. This file is the
+ * page-specific grid, gaps, and per-field widths that don't belong in
+ * a global primitive.
+ */
 
+/* No outer padding — `.jv-content` already handles `24px 32px 64px`.
+   Adding more here pushes the textarea right of the lede and leaves a
+   visible indent step between the two. */
+.generate-view { padding: 0; }
+
+/* Main textarea — 140px floor + readable 15px/1.55 typography. */
 .generate-view__text {
   font-size: 15px;
   line-height: 1.55;
   min-height: 140px;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 
-.generate-view__floating {
-  margin: 14px 0;
+/* Persistent SlashTagMenu opener — small ghost button beneath the
+   textarea. Discoverability for users who don't know the "/" trigger. */
+.generate-view__tag-button {
+  margin-bottom: 10px;
 }
 
+/* The native <select> next to the strong-text label inside a chip-card.
+   We hide the visible width of the select (the chip's strong text shows
+   the chosen value) but keep the native dropdown clickable. */
 .generate-view__chip-select {
   appearance: none;
   background: transparent;
   border: 0;
-  font-family: inherit;
-  font-size: inherit;
-  font-weight: 600;
+  font: inherit;
   color: var(--ink);
   cursor: pointer;
   margin-left: 6px;
-  width: 12px;          /* hide the native arrow + label; the strong text shows the value */
+  width: 12px;
   overflow: hidden;
 }
 
-.generate-view__caps {
-  margin: 16px 0 6px;
-}
+/* Capability indicator pills row */
 .generate-view__caps-list {
   display: flex;
   gap: 6px;
@@ -757,36 +1033,42 @@ onMounted(refreshVoices);
   margin-top: 8px;
 }
 
-.generate-view__audio {
-  width: 100%;
-  margin-top: 12px;
-}
+.generate-view__audio { width: 100%; margin-top: 12px; }
 
+/* Delivery overlay paired-control grid — tight row gap, generous
+   column gap (matches preview/full-app-preview.html:124 `.field-grid`). */
 .generate-view__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 18px 28px;
+  gap: 8px 24px;
 }
 
-.generate-view__paired {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.generate-view__range {
-  flex: 1;
-  accent-color: var(--accent);
-  cursor: pointer;
-}
-.generate-view__num {
-  width: 96px;
-  text-align: right;
-  font-family: var(--font-mono);
+/* Paired slider + numeric input on the same row. */
+.generate-view__paired { display: flex; align-items: center; gap: 10px; }
+.generate-view__range  { flex: 1; cursor: pointer; }
+.generate-view__num    { width: 88px; text-align: right; font-family: var(--font-mono); }
+
+/* In-label hint — the "slider 0.5–2.0×" suffix that sits after the
+   field label. The parent label is uppercase + letter-spaced via the
+   global .jv-field__label rule; this overrides the case + weight back
+   to regular so the hint reads as a quiet annotation rather than a
+   second eyebrow. Matches preview L434/442/450/458 muted-span pattern. */
+.generate-view__label-hint {
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 11px;
 }
 
-.generate-view__advanced {
-  margin-top: 4px;
-}
+/* Pause: two narrow boxes + → separator + trailing `ms` label. */
+.generate-view__paired--pause { gap: 8px; }
+.generate-view__pause-num { width: 88px; text-align: right; font-family: var(--font-mono); }
+
+/* Seed: moderate-width input + randomize button. */
+.generate-view__paired--seed { gap: 8px; }
+.generate-view__seed-input   { width: 180px; font-family: var(--font-mono); }
+
+/* Advanced details (engine JSON escape hatch) — small uppercase summary. */
 .generate-view__advanced > summary {
   cursor: pointer;
   font-size: 11px;
@@ -799,14 +1081,27 @@ onMounted(refreshVoices);
 }
 .generate-view__advanced > summary:hover { color: var(--ink); }
 
-.generate-view__delivery-direction { margin-top: 16px; }
-.generate-view__delivery-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
+/* Subordinate textareas (delivery direction / engine JSON / Qwen3
+   example) override the global jv-textarea 96px floor with the
+   preview's 60–64px floors. */
+.generate-view__delivery-textarea { min-height: 64px; }
+
+/* Engine-specific knobs section header — small uppercase eyebrow,
+   same treatment as the global jv-field__label so it lines up with
+   the "Speed" / "Temperature" / etc. labels above. */
+.generate-view__knobs-h {
+  margin: 0 0 12px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+  font-weight: 600;
 }
-.generate-view__delivery-label .jv-field__label { margin: 0; }
+.generate-view__advanced-hint {
+  font-size: 11.5px;
+  margin: 8px 0 14px;
+}
+.generate-view__grid--advanced { margin-top: 12px; }
 
 .generate-view__lexicon-row {
   display: flex;
@@ -815,20 +1110,5 @@ onMounted(refreshVoices);
   gap: 8px;
   font-size: 11.5px;
 }
-.generate-view__lexicon-row code { font-size: 11px; }
 
-.generate-view__manifest {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-  font-size: 11px;
-}
-.generate-view__manifest code {
-  background: var(--surface-3);
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-size: 10.5px;
-}
 </style>

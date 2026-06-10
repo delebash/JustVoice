@@ -236,8 +236,10 @@ def _register_existing_engines(state: AppState, data_dir: Path) -> None:
     )
 
     # All built-in engines (kokoro, chatterbox, dia, tada, qwen3, luxtts,
-    # moss-tts, higgs-audio) now live as managed plugins under
-    # engines/<id>/. The legacy in-process engine factory was removed
+    # moss-tts) now live as managed plugins under engines/<id>/. Higgs
+    # was removed 2026-06-09 (non-commercial weight license conflicted
+    # with commercial-output use cases). The legacy in-process engine
+    # factory was removed
     # along with the per-engine flat-file modules. External OpenAI-compat
     # engines are still registered in `state.engines` via
     # `_register_external_engines` below — they don't need subprocess

@@ -64,7 +64,7 @@ def _info_from_manifest(manifest: EngineManifest, status: str) -> EngineInfo:
         if enabled and k in _CAPABILITY_TO_FEATURE
     ]
     # Implicit GPU accel for any engine declaring CUDA / MPS / Metal in
-    # gpu_runtimes — voicebox does the same.
+    # gpu_runtimes — implicit GPU support if any GPU runtime is listed.
     req = manifest.requirements
     runtimes = req.get("gpu_runtimes", []) or []
     if any(r in ("cuda", "mps", "metal", "directml", "xpu", "coreml") for r in runtimes) and "gpu_accel" not in feature_list:
@@ -88,6 +88,8 @@ def _info_from_manifest(manifest: EngineManifest, status: str) -> EngineInfo:
         default_variant_id=manifest.default_variant_id,
         isolation=manifest.isolation,
         supported_oses=manifest.supported_oses,
+        weights_license=manifest.weights_license,
+        attribution=manifest.attribution,
     )
 
 

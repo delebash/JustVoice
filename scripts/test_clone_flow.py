@@ -85,7 +85,7 @@ def main() -> int:
         "/v1/generate",
         {
             "voice": voice_id,
-            "text": "This is the cloned voice speaking. Hello from Chatterbox via the JustTTS plugin pipeline.",
+            "text": "This is the cloned voice speaking. Hello from Chatterbox via the JustVoice plugin pipeline.",
         },
         raw=True,
     )

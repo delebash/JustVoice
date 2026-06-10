@@ -47,7 +47,17 @@ class PersonaStore:
         with self._lock:
             return self._cache.get(id)
 
-    def create(self, name: str, voice_id: str, default_delivery: dict | None = None) -> Persona:
+    def create(
+        self,
+        name: str,
+        voice_id: str,
+        default_delivery: dict | None = None,
+        bio: str | None = None,
+        engine_override: str | None = None,
+        lexicon_id: str | None = None,
+        llm_rewrite_enabled: bool = False,
+        llm_model: str | None = None,
+    ) -> Persona:
         with self._lock:
             id = f"persona_{uuid.uuid4().hex}"
             persona = Persona(
@@ -55,6 +65,11 @@ class PersonaStore:
                 name=name,
                 voice_id=voice_id,
                 default_delivery=default_delivery or {},
+                bio=bio,
+                engine_override=engine_override,
+                lexicon_id=lexicon_id,
+                llm_rewrite_enabled=llm_rewrite_enabled,
+                llm_model=llm_model,
                 created_at=_now(),
                 updated_at=_now(),
             )

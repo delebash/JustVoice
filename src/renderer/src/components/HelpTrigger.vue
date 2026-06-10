@@ -44,24 +44,27 @@ function open() {
 <style scoped>
 .help-trigger {
   appearance: none;
-  border: 0;
-  background: transparent;
+  border: 1px solid var(--accent-line, var(--accent));
+  background: var(--accent-soft, rgba(58, 125, 99, 0.12));
   width: 22px;
   height: 22px;
   display: inline-grid;
   place-items: center;
   border-radius: var(--r-pill, 999px);
   cursor: pointer;
-  color: var(--ink-3);
+  color: var(--accent);
   font-size: 12px;
-  font-weight: 600;
-  transition: background 0.12s, color 0.12s;
+  font-weight: 700;
+  transition: background 0.12s, color 0.12s, transform 0.05s, box-shadow 0.12s;
   font-family: var(--font-ui, inherit);
+  box-shadow: 0 0 0 0 var(--accent-soft);
 }
 .help-trigger:hover {
-  background: var(--surface-2);
-  color: var(--ink);
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
+.help-trigger:active { transform: scale(0.94); }
 .help-trigger:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;

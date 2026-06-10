@@ -6,8 +6,8 @@ treats them uniformly.
 
 Structurally typed (Protocol) rather than ABC so third-party engines
 published as pip packages can satisfy the contract without importing
-this module at runtime. Same pattern voicebox and the previous
-JustTTS sidecar used.
+this module at runtime. Same Protocol-typing pattern the previous
+JustVoice sidecar used.
 """
 
 from __future__ import annotations

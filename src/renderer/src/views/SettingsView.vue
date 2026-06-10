@@ -223,7 +223,7 @@ function saveDebounced() {
   }, 350);
 }
 
-// ─── Keep-server-running + Network access (voicebox parity, Tauri commands) ──
+// ─── Keep-server-running + Network access (preview parity, Tauri commands) ──
 const keepServerRunning = ref(true);
 const allowNetworkAccess = ref(false);
 const KEEP_RUNNING_KEY = "justvoice:keep_server_running";
@@ -415,7 +415,7 @@ const appearance = ref({
   locale: "en",
 });
 
-// ── Capture / Dictation settings (voicebox parity — preview Capture sub-tab) ──
+// ── Capture / Dictation settings (preview parity — preview Capture sub-tab) ──
 // Mirrors the shape of settings.capture in the server-side Settings model.
 // Persisted via PATCH /v1/settings when wired; for now uses localStorage so
 // the UI is interactive immediately.
@@ -433,7 +433,7 @@ try {
   if (raw) Object.assign(capture.value, JSON.parse(raw));
 } catch {}
 
-// ── Mastering settings (voicebox parity — preview Mastering sub-tab) ─────
+// ── Mastering settings (preview parity — preview Mastering sub-tab) ─────
 // Six knobs per preset (LUFS / peak / noise floor / head silence / tail
 // silence / apply-effects-pre-master) + 5 named presets. Active preset
 // drives the chapter render pipeline + the Audio Tools "Apply preset" flow.
@@ -470,7 +470,7 @@ const masterPresetLabel = computed(
   () => MASTER_PRESETS.find((p) => p.id === mastering.value.active)?.label || "Custom"
 );
 
-// ── MCP server settings + bindings (voicebox parity — preview MCP sub-tab) ──
+// ── MCP server settings + bindings (preview parity — preview MCP sub-tab) ──
 const mcp = ref({
   enabled: true,
   transport: "http",
@@ -512,7 +512,7 @@ async function copySnippet(key) {
   }
 }
 
-// ── Log viewer (voicebox parity — preview Logs sub-tab) ──────────────
+// ── Log viewer (preview parity — preview Logs sub-tab) ──────────────
 const logsPreview = ref(`Loading recent log lines…`);
 async function loadLogsPreview() {
   const r = await api.safeRequest("/v1/logs/tail?lines=80", null);
@@ -674,7 +674,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── General · Lifecycle (voicebox parity — preview line 1564) ─── -->
+    <!-- ─── General · Lifecycle (preview parity — preview line 1564) ─── -->
     <div v-show="activeSub === 'general'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header">
@@ -716,7 +716,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── General · Server bind (voicebox parity) ─── -->
+    <!-- ─── General · Server bind (preview parity) ─── -->
     <div v-show="activeSub === 'general'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header">
@@ -881,7 +881,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── Generation · Pipeline knobs (voicebox parity) ─── -->
+    <!-- ─── Generation · Pipeline knobs (preview parity) ─── -->
     <div v-show="activeSub === 'generation'" class="jv-section" v-if="settings.generation">
       <div class="jv-card">
         <div class="jv-card__header">
@@ -1175,7 +1175,7 @@ onMounted(() => {
     </div>
 
     <!-- ─── Mastering · placeholder until #88 lands. ─── -->
-    <!-- ─── Mastering (voicebox parity, preview lines 1599-1632) ─── -->
+    <!-- ─── Mastering (preview parity, preview lines 1599-1632) ─── -->
     <div v-show="activeSub === 'mastering'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header" style="display: flex; align-items: center; gap: 10px">
@@ -1235,7 +1235,7 @@ onMounted(() => {
     </div>
 
     <!-- ─── Capture / Dictation · placeholder. ─── -->
-    <!-- ─── Capture / Dictation (voicebox parity, preview lines 1640-1662) ─── -->
+    <!-- ─── Capture / Dictation (preview parity, preview lines 1640-1662) ─── -->
     <div v-show="activeSub === 'capture'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">Hotkeys (ChordPicker)</h3></div>
@@ -1386,7 +1386,7 @@ onMounted(() => {
     </div>
 
     <!-- ─── MCP server — install snippets + tool listing (task #92) ─── -->
-    <!-- ─── MCP server (voicebox parity, preview lines 1664-1715) ─── -->
+    <!-- ─── MCP server (preview parity, preview lines 1664-1715) ─── -->
     <div v-show="activeSub === 'mcp'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header" style="display: flex; align-items: center; gap: 10px">
@@ -1507,7 +1507,7 @@ onMounted(() => {
     </div>
 
     <!-- ─── GPU — live info + CUDA wheel flow (task #91) ─── -->
-    <!-- ─── GPU acceleration (voicebox parity, preview lines 1717-1741) ─── -->
+    <!-- ─── GPU acceleration (preview parity, preview lines 1717-1741) ─── -->
     <div v-show="activeSub === 'gpu'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">GpuInfoCard</h3></div>
@@ -1686,7 +1686,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── Logs (voicebox parity, preview lines 1771-1788) ─── -->
+    <!-- ─── Logs (preview parity, preview lines 1771-1788) ─── -->
     <div v-show="activeSub === 'logs'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">Logs</h3></div>

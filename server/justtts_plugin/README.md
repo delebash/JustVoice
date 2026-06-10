@@ -1,6 +1,6 @@
 # justtts-plugin
 
-Tiny SDK every JustTTS engine subprocess imports. Provides:
+Tiny SDK every JustVoice engine subprocess imports. Provides:
 
 - `EmbeddedEngine` — base class for your adapter.
 - `serve(engine)` — boots a FastAPI on an auto-assigned port and announces it via stdout.
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     serve(MyEngine())
 ```
 
-That's the whole adapter contract. The JustTTS host handles install (uv venv + uv pip install per the engine's `manifest.py`), subprocess lifecycle, HTTP proxy from the host's `/v1/generate` to the engine's `/synth`, and shutdown.
+That's the whole adapter contract. The JustVoice host handles install (uv venv + uv pip install per the engine's `manifest.py`), subprocess lifecycle, HTTP proxy from the host's `/v1/generate` to the engine's `/synth`, and shutdown.
 
 ## License
 

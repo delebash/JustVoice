@@ -4,23 +4,23 @@ Executive status: post-architecture-decision execution plan (2026-06-08). See `~
 
 ## Decision summary
 
-- **NOT forking voicebox.** JustTTS-new stays as the base; lift ~328 LOC of voicebox utilities + UX patterns with attribution.
-- **JustTTS = engine pool + voice production. JustWrite = audiobook orchestration UI.** Wire format = HTTP. See `CONTRACT.md`.
+- **JustVoice-new stays as the base.** ~328 LOC of utilities + UX patterns were lifted from an upstream MIT codebase with per-file attribution headers (see `NOTICE.md`).
+- **JustVoice = engine pool + voice production. JustWrite = audiobook orchestration UI.** Wire format = HTTP. See `CONTRACT.md`.
 - **Multi-use product**: audiobook + game (Unreal) + podcast + dictation + accessibility.
 - **License**: Apache-2.0 today; flips to **GPL-3.0-or-later** when pedalboard adoption lands (Phase 3+).
 - **Stack stays Vue 3 + Pinia + Tauri 2 + Python 3.10+ FastAPI**. No React rewrite.
 - **Storage**: migrate from atomic JSON to SQLite (via SQLAlchemy). `settings.json` is the only remaining JSON store.
 - **UX**: Mercury aesthetic dropped. New visual identity chosen in Phase 4 design pass.
-- **Navigation**: 80px left icon sidebar (voicebox shape).
+- **Navigation**: 80px left icon sidebar.
 - **Engines**: all ~10 (no MVP trim).
 
 ## Phase 1 — Foundation docs ✅ in progress
 
 Deliverables:
-- `CONTRACT.md` — JustWrite↔JustTTS HTTP boundary ✅
+- `CONTRACT.md` — JustWrite↔JustVoice HTTP boundary ✅
 - `NOTICE.md` — third-party attribution ✅
 - `LICENSES.md` — dep license table ✅
-- `voicebox-pin.txt` — upstream commit pin ✅
+- `voicebox-pin.txt` — pinned upstream MIT commit referenced by per-file attribution headers ✅
 - `LICENSES/Apache-2.0.txt` — full license text (pending)
 - `LICENSES/MIT.txt` — full license text (pending)
 - `LICENSES/BSD-3-Clause.txt` — full license text (pending)
@@ -29,11 +29,11 @@ Deliverables:
 
 ## Phase 1.5 — Storage migration (atomic JSON → SQLite)
 
-Goal: Replace `server/justtts/storage/*.json` patterns with SQLite tables via SQLAlchemy. Lift voicebox's hand-rolled migration pattern.
+Goal: Replace `server/justtts/storage/*.json` patterns with SQLite tables via SQLAlchemy. Lift the upstream hand-rolled migration pattern.
 
 Deliverables:
 - `server/justtts/storage/db.py` — SQLAlchemy engine + session + base
-- `server/justtts/storage/migrations.py` — idempotent column-existence migrations (lift voicebox pattern)
+- `server/justtts/storage/migrations.py` — idempotent column-existence migrations (lifted from upstream — per-file MIT attribution in header)
 - ORM models for: VoiceProfile, ProfileSample, Persona, Lexicon, LexiconEntry, Project, Chapter, Scene, Block, Generation, Take, RenderJob, StoryItem
 - Per-storage-module migration of CRUD code from JSON to SQLAlchemy queries
 - `settings.json` retained as the only atomic-JSON store
@@ -57,19 +57,19 @@ Deliverables:
 
 ## Phase 3 — Voicebox utility + UX lift
 
-Goal: lift `~328 LOC` of voicebox's `base.py` utilities + `chunked_tts.py` + supporting patterns. Adopt pedalboard (triggers license flip).
+Goal: lift `~328 LOC` of upstream `base.py` utilities + `chunked_tts.py` + supporting patterns (per-file MIT attribution headers). Adopt pedalboard (triggers license flip).
 
 Deliverables:
-- `server/justtts/engines/base.py` — port of voicebox `base.py` with attribution block (is_model_cached, get_torch_device, model_load_progress, patch_chatterbox_f32, combine_voice_prompts, manual_seed, empty_device_cache, check_cuda_compatibility)
-- `server/justtts/audio/chunked.py` — port of voicebox `chunked_tts.py`
+- `server/justtts/engines/base.py` — port of upstream `base.py` with per-file MIT attribution block (is_model_cached, get_torch_device, model_load_progress, patch_chatterbox_f32, combine_voice_prompts, manual_seed, empty_device_cache, check_cuda_compatibility)
+- `server/justtts/audio/chunked.py` — port of upstream `chunked_tts.py` (per-file MIT attribution)
 - `server/justtts/audio/effects.py` — adopt pedalboard for effects chain (compressor, EQ, reverb, etc.)
 - **LICENSE FLIP PR**: root `LICENSE` Apache-2.0 → GPL-3.0-or-later, `pyproject.toml`'s license field, `NOTICE.md`, `LICENSES.md`, every first-party SPDX header. Atomic commit.
 - Refactor existing engine plugins to use unified base
 - Wire `chunked_generate()` into `render_core.py`; expose `max_chunk_chars` + `crossfade_ms` in `settings.json`
 
-## Phase 4 — Take versioning + voicebox UX patterns + complete UX redesign (revised after gap audit)
+## Phase 4 — Take versioning + UX pattern port + complete UX redesign (revised after gap audit)
 
-Goal: per-paragraph take versioning, port all voicebox UX patterns to Vue, complete visual redesign. Scope grew from 4-5w → 6-8w after reading voicebox GUI code directly. See `preview/voicebox-feature-comparison.md` for the honest gap list (~20 features missed in initial scoping).
+Goal: per-paragraph take versioning, port all upstream UX patterns to Vue, complete visual redesign. Scope grew from 4-5w → 6-8w after reading upstream GUI code directly (~20 features missed in initial scoping).
 
 **🛑 PAUSE BEFORE STARTING UI WORK (4b)** — needs UX visual direction from user (one of: modern-pro-tool / editorial-but-modern / studio-tool-minimal). Phase 4a + 4c can start without it.
 
@@ -117,18 +117,18 @@ Phase 4c (Tauri shell work, no UX block, ~1w):
 
 ## Phase 5 — JustWrite integration
 
-Goal: JustWrite drives JustTTS via HTTP for audiobook production.
+Goal: JustWrite drives JustVoice via HTTP for audiobook production.
 
 Deliverables:
 - JustWrite's `services/render.js` calls `POST /v1/render_chapter` per chapter
-- JustWrite's `src-tauri/src/lib.rs:944-1107` extended/renamed: `justtts_install` clones JustTTS-new, sets up per-engine venvs, downloads default models
-- End-to-end smoke test: JustWrite project → JustTTS HTTP → chapter WAVs → JustWrite mux to M4B (via `services/m4b.js`) → ACX validation pass
+- JustWrite's `src-tauri/src/lib.rs:944-1107` extended/renamed: `justtts_install` clones JustVoice-new, sets up per-engine venvs, downloads default models
+- End-to-end smoke test: JustWrite project → JustVoice HTTP → chapter WAVs → JustWrite mux to M4B (via `services/m4b.js`) → ACX validation pass
 - OpenAPI snapshot committed; JustWrite consumes the typed shape
 
 ## Phase 6 — Optional: MCP + Unreal + signing + tray + release
 
 Deliverables:
-- Port voicebox `mcp_server/` (gated by `settings.mcp.enabled`) for Unreal/agent-driven integrations
+- Port the upstream `mcp_server/` (gated by `settings.mcp.enabled`) for Unreal/agent-driven integrations
 - Unreal `.uplugin` (separate repo) calling `/v1/render_chapter` for NPC dialogue
 - Tauri updater config (delebash GitHub releases endpoint + minisign keys)
 - **System tray + close-to-tray** via Tauri 2's `tray` module:

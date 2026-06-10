@@ -5,8 +5,8 @@ Schema is the implementation of DESIGN_FREEZE.md §4. Every entity except
 user-editable preferences (settings.json) lives here.
 
 Convention:
-- Primary keys are UUID4 strings (matches voicebox pattern, easier to debug
-  than autoincrement integers, no risk of leaking sequence size in logs).
+- Primary keys are UUID4 strings — easier to debug than autoincrement
+  integers, no risk of leaking sequence size in logs.
 - Foreign keys use ON DELETE CASCADE where the child has no meaning without
   its parent (e.g. samples for a deleted voice). RESTRICT where the child
   references a long-lived parent that shouldn't be silently nulled
@@ -15,8 +15,9 @@ Convention:
   native JSON1 extension but we don't depend on it for portability.
 - All datetimes are stored in UTC.
 
-Migration pattern (voicebox lift): see migrations.py — idempotent
-column-existence checks, no Alembic.
+Migration pattern: see migrations.py — idempotent column-existence
+checks, no Alembic. (Pattern lifted under MIT; attribution in
+migrations.py SPDX header.)
 """
 
 from __future__ import annotations
@@ -76,8 +77,8 @@ class VoiceProfile(Base):
     default_lexicon_id = Column(String, ForeignKey("lexicons.id", ondelete="SET NULL"), nullable=True)
     # Free-form personality prompt — drives the LLM-backed "Compose" action
     # in Generate (write a fresh in-character line for this profile). Lifted
-    # from voicebox's profile model where `personality` enables the Wand2
-    # button in FloatingGenerateBox.
+    # from the profile model in the preview; `personality` enables the
+    # Compose (✨) button on the Generate view.
     personality = Column(Text, nullable=True)
     # Tier-2 (per-voice) delivery overlay defaults. JSON dict matching the
     # Delivery Pydantic shape (speed / pitch / gain_db / temperature /
@@ -120,7 +121,7 @@ class ProfileChannel(Base):
     channel_id = Column(String, ForeignKey("channels.id", ondelete="CASCADE"), primary_key=True)
 
 
-# ── Persona layer (JustVoice addition; voicebox folds this into VoiceProfile) ──
+# ── Persona layer (character bios — separate from VoiceProfile) ──
 
 
 class Persona(Base):

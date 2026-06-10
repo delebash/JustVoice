@@ -12,7 +12,7 @@ License: **GPL-3.0-or-later** (see `LICENSE`).
 - **Game NPC voicing** — voice 50–500 NPCs from one project, export per-line WAVs for Unreal Engine import
 - **Podcasting** — multi-track timeline editor, paralinguistic tags, multi-character mixing
 - **Dictation** — global hotkey + Whisper + local LLM refinement + OS-level paste injection
-- **General TTS** — 10 engines (Kokoro, Chatterbox, Qwen3, LuxTTS, TADA, Dia, MossTTS, Higgs, plus OpenAI-compatible external providers), all installable to isolated venvs
+- **General TTS** — 9 engines (Kokoro, Chatterbox×2, Qwen3×2, LuxTTS, TADA, Dia, MossTTS, plus OpenAI-compatible external providers), all installable to isolated venvs and all permitting commercial output
 
 **Five audiences share one engine pool, voice catalogue, lexicon, and persona layer — differentiation lives in import/export pipelines and per-use-case UI surfaces.**
 
@@ -27,10 +27,10 @@ Read the docs in this order:
 | `CONTRACT.md` | The JustWrite ↔ JustVoice HTTP boundary contract |
 | `PHASE_PLAN.md` | Build phases 1 → 6 (status of each) |
 | `PHASE5_JUSTWRITE_INTEGRATION.md` | Concrete JustWrite-side edits for the JustWrite → JustVoice audiobook bridge |
-| `NOTICE.md` | Third-party attribution (voicebox MIT lift, etc.) |
+| `NOTICE.md` | Third-party attribution (MIT/Apache lifts + Llama 3.2 weights for TADA) |
 | `LICENSES.md` | Dependency license inventory |
 | `MORNING_RECAP.md` | Current build state — what shipped, what's pending |
-| `voicebox-pin.txt` | The exact voicebox commit hash from which we lifted code |
+| `voicebox-pin.txt` | Pinned upstream commit hash for code lifted under MIT — referenced by per-file attribution headers |
 
 ## Quick start
 
@@ -82,10 +82,10 @@ Or use the Engines tab in the UI for per-engine install with progress.
 ├── server/                    # Python FastAPI server — the brain
 │   ├── justtts/
 │   │   ├── api/               # /v1/* HTTP routes (~30 endpoint files)
-│   │   ├── audio/             # WAV math, analyzer, chunked TTS (voicebox lift)
+│   │   ├── audio/             # WAV math, analyzer, chunked TTS
 │   │   ├── database/          # SQLAlchemy ORM + idempotent column migrations
 │   │   │   ├── models.py      # 24 ORM tables matching DESIGN_FREEZE §4
-│   │   │   ├── migrations.py  # Voicebox MIT lift with attribution
+│   │   │   ├── migrations.py  # Idempotent column-existence helpers (per-file attribution in header)
 │   │   │   └── session.py     # init_db + get_db dependency
 │   │   ├── engines/           # Per-engine plugin manifests + adapters + per-engine venv
 │   │   ├── storage/           # Atomic JSON for settings.json only (everything else is in SQLite now)
@@ -93,17 +93,15 @@ Or use the Engines tab in the UI for per-engine install with progress.
 │   │   └── app.py             # FastAPI factory; create_app() registers all routers
 │   └── tests/                 # pytest baseline
 ├── preview/
-│   ├── ux-feature-inventory.html  # Visual feature catalog (cream/forest-green aesthetic preview)
-│   └── voicebox-feature-comparison.md  # 234-feature gap audit vs voicebox upstream
-└── voicebox-upstream/         # Read-only audit clone (gitignored; for reference only)
+│   └── ux-feature-inventory.html  # Visual feature catalog (cream/forest-green aesthetic preview)
 ```
 
 ## What's done as of the current build
 
-✅ **Phase 1** — Foundation docs (CONTRACT, NOTICE, LICENSES, voicebox-pin)
+✅ **Phase 1** — Foundation docs (CONTRACT, NOTICE, LICENSES)
 ✅ **Phase 1.5** — SQLite migration: 24 ORM tables, idempotent migrations, foreign keys ON, init_db wired into FastAPI startup
 ✅ **Phase 2** — pytest baseline (~15 tests) + mastering.py audit (already correct — uses ffmpeg loudnorm, not np.clip)
-✅ **Phase 3** — Voicebox base.py utilities + chunked_tts lifted with attribution; pedalboard adopted; **atomic license flip Apache-2.0 → GPL-3.0-or-later** across LICENSE + pyproject.toml + 15 first-party SPDX headers
+✅ **Phase 3** — Upstream torch helpers + chunked TTS lifted (per-file MIT attribution in headers); pedalboard adopted; **atomic license flip Apache-2.0 → GPL-3.0-or-later** across LICENSE + pyproject.toml + 15 first-party SPDX headers
 ✅ **Phase 4a** — 14 new backend endpoints: takes, channels, mcp_bindings, projects (with JustWrite import), webhooks (HMAC signed), render_presets, bulk_delete (atomic with dry-run guard), backup/restore (stream-zipped), voice_preview (LRU), project_export, sse_streams, active_tasks, capture_readiness
 ✅ **Phase 4c (Tauri)** — System tray with 11-item menu, close-to-tray when keep-server-running is on, 21 Tauri invoke commands (start/stop/restart_server, set_keep_server_running, audio device + Mac TCC + hotkey stubs)
 ✅ **Phase 5 (JustVoice side)** — All endpoints for JustWrite to drive JustVoice are live; PHASE5_JUSTWRITE_INTEGRATION.md documents the JustWrite-side edits
@@ -119,20 +117,20 @@ See `MORNING_RECAP.md` for the current build state. JustVoice's data model + HTT
 
 ## Project relationships
 
-### To `voicebox` (jamiepine/voicebox, MIT)
-
-We lift ~328 LOC of utilities + the chunked-tts algorithm + UX patterns from voicebox with per-file attribution headers. Specific files: `engines/_torch_helpers.py`, `audio/chunked.py`, `database/migrations.py`. Pinned at commit `b35b90961d5bc83a8b4e96e8b6ccde2a03152ff9` (see `voicebox-pin.txt`). We did **not fork** voicebox — JustVoice is a separate codebase with explicit MIT credits where lifted. The voicebox community deserves credit for the technical breakthroughs we built on; this README honors that.
-
 ### To `justwrite-app` (same developer)
 
 JustWrite is the novel-writing app. JustVoice can be driven by JustWrite (the audiobook workflow) OR run standalone (game, podcast, dictation). The wire format is HTTP per `CONTRACT.md`. JustWrite owns the manuscript + final M4B mux (via FFmpeg.wasm); JustVoice owns the engine pool + ACX mastering. Either can ship without the other.
+
+### Upstream code lifts
+
+A handful of files in this repo (`engines/_torch_helpers.py`, `audio/chunked.py`, `database/migrations.py`) carry per-file MIT attribution headers referencing a pinned upstream commit. The full license trail is in `NOTICE.md` + `voicebox-pin.txt`.
 
 ## Contributing
 
 Per-file SPDX-License-Identifier headers required on every new file:
 
 - `GPL-3.0-or-later` for first-party files
-- `MIT AND GPL-3.0-or-later` for voicebox lifts (with full attribution block referencing the pinned commit)
+- `MIT AND GPL-3.0-or-later` for files lifted from upstream MIT code (with full attribution block referencing the pinned commit in `voicebox-pin.txt`)
 
 See `project_licensing_attribution` in the memory layer for the policy + templates.
 

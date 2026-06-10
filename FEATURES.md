@@ -378,7 +378,6 @@ JustVoice ships with up to 10 engines. Each engine = its own pip-installable ada
 | **TADA (HumeAI)** | 700s+ coherent audio; multilingual variant | 10 | 3.2 GB |
 | **Dia (Nari Labs)** | Multi-speaker dialogue (experimental) | en | 3.0 GB |
 | **MossTTS** | Cloning (experimental) | en+zh | TBD |
-| **Higgs Audio v3** | Cloning, 11 languages (experimental) | 11 | TBD |
 | **External OpenAI-compatible TTS** | ElevenLabs / OpenAI / Piper / etc. | — | 0 |
 
 ### How to use
@@ -901,7 +900,7 @@ The engine has a token limit (Dia at 1024 tokens by default cuts a long paragrap
 
 ### Voice cloning produces wrong-voice output
 
-If using MLX (Apple Silicon), there's a known voicebox bug where MLX silently falls back to the default voice on cloning failure. JustVoice's port fixed this — it raises an explicit error. If you see it, file an issue.
+If using MLX (Apple Silicon), there's a known upstream bug where MLX silently falls back to the default voice on cloning failure. JustVoice raises an explicit error in this path. If you see it, file an issue.
 
 ### Effects don't apply
 

@@ -1,13 +1,13 @@
 """Manifest for LuxTTS (ZipVoice).
 
-Voicebox installs LuxTTS via:
+LuxTTS installs via:
 - Custom find-links for piper-phonemize (no PyPI wheels)
 - git+ for LinaCodec (uv-only source, pip can't resolve)
-- git+ for Zipvoice itself
+- git+ for ZipVoice itself
 
-ZipVoice is also published on PyPI as `zipvoice`, but voicebox uses the
-git fork at ysharma3501/LuxTTS for some specific fixes. We default to
-the git path for compatibility with their adapter code.
+ZipVoice is also published on PyPI as `zipvoice`, but the git fork at
+ysharma3501/LuxTTS has fixes our adapter relies on, so the git path is
+the default for compatibility.
 """
 
 ID = "luxtts"
@@ -42,7 +42,7 @@ INSTALL = [
             "huggingface_hub>=0.20",
         ],
     },
-    # piper-phonemize ships no PyPI wheels — voicebox uses k2-fsa's find-links index.
+    # piper-phonemize ships no PyPI wheels — use k2-fsa's find-links index.
     {
         "kind": "pip-find-links",
         "url": "https://k2-fsa.github.io/icefall/piper_phonemize.html",
@@ -50,7 +50,7 @@ INSTALL = [
     },
     # LinaCodec is git-only.
     {"kind": "pip-git", "url": "https://github.com/ysharma3501/LinaCodec.git"},
-    # ZipVoice via voicebox's mirror.
+    # ZipVoice via the ysharma3501/LuxTTS git mirror.
     {"kind": "pip-git", "url": "https://github.com/ysharma3501/LuxTTS.git"},
 ]
 

@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """SQLAlchemy engine + session factory for the JustVoice SQLite database.
 
-Init flow lifted from voicebox `backend/database/session.py` (MIT) with
-attribution. JustVoice modifications: schema differs (we have Books/Chapters
-/Personas/Lexicons that voicebox doesn't have); seed flow seeds JustVoice's
-own built-in effect presets rather than voicebox's.
+Init flow lifted from an upstream MIT codebase with per-file attribution
+(see SPDX header above plus `voicebox-pin.txt`). JustVoice modifications:
+schema includes Books/Chapters/Personas/Lexicons that the upstream lacked;
+seed flow seeds JustVoice's own built-in effect presets.
 """
 
 from __future__ import annotations

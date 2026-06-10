@@ -5,7 +5,7 @@ description = "An open-source TTS server built for audiobook production, useful 
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "GPL-3.0-or-later" }
-authors = [{ name = "JustTTS contributors" }]
+authors = [{ name = "JustVoice contributors" }]
 keywords = ["tts", "text-to-speech", "audiobook", "speech-synthesis", "voice-cloning"]
 
 # Core dependencies — these are needed even for the empty-engine

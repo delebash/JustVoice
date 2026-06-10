@@ -1,9 +1,8 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!--
   GlobalAudioPlayer — bottom-anchored transport bar that plays any audio
-  URL pushed via the audioPlayer pinia store. Mirrors voicebox's
-  AudioPlayer.tsx position + behavior (fixed bottom strip, persists across
-  view nav, single shared <audio> element so seeking/state survive).
+  URL pushed via the audioPlayer pinia store. Fixed bottom strip, persists
+  across view nav, single shared <audio> element so seeking/state survive.
 -->
 <script setup>
 import { ref, watch, onMounted } from "vue";

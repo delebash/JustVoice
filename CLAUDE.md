@@ -4,7 +4,7 @@
 
 Product name: **JustVoice**. The Python package + console-script names (`justtts` / `justtts-server`) are kept as technical identifiers until a deliberate rename PR — the `justtts-server` naming-collision fix from `project_gotchas` must be preserved through the rename. References to "JustTTS" in older memory files refer to the same product under its prior name.
 
-Serves audiobook production, game dialogue (Unreal), podcasting, dictation, and accessibility. Standalone product — JustWrite drives JustVoice for audiobooks but JustVoice does not depend on JustWrite. See `CONTRACT.md` for the JustWrite↔JustVoice HTTP boundary. Also runs **headless** as `justtts-server serve` (no Tauri shell), same as voicebox's headless mode.
+Serves audiobook production, game dialogue (Unreal), podcasting, dictation, and accessibility. Standalone product — JustWrite drives JustVoice for audiobooks but JustVoice does not depend on JustWrite. See `CONTRACT.md` for the JustWrite↔JustVoice HTTP boundary. Also runs **headless** as `justtts-server serve` (no Tauri shell).
 
 ## ⛔ RULE #0 — NEVER ASK FOR PERMISSION
 
@@ -44,22 +44,22 @@ On a fresh session you'll already have:
 
 What to do at session start:
 1. Read `MORNING_RECAP.md` in this repo — single file, gets you to the current state of code, what shipped, what's pending
-2. Read `CONTRACT.md` if any work touches the JustWrite↔JustTTS boundary
+2. Read `CONTRACT.md` if any work touches the JustWrite↔JustVoice boundary
 3. Look at the memory-index one-liners — note which exist; don't read them yet
 4. When a question or task touches a topic an index entry covers, **then** read that specific memory file before answering
 
 **Highest-priority memory files** (load before touching the relevant code):
 
-- ⛔ `feedback_voicebox_parity_audit_hard_rule` — **MANDATORY on every session, every feature touch.** Two hard rules in one file: (A) Voicebox feature parity verified file-by-file against `E:/Dev/Web/voicebox-upstream/`, never from summaries (auto-chunking lifted but dead, missing Compose button, missing settings sub-pages, etc.). (B) Upstream library/model questions go to WebSearch/WebFetch/Context7 FIRST, never training-data recall (fabricated Chatterbox 10-item emotion enum 2026-06-09). LOAD AND APPLY BEFORE ANY OTHER MEMORY.
+- ⛔ `feedback_upstream_audit_hard_rule` — **MANDATORY on every session, every feature touch.** (A) Feature-parity claims against any upstream codebase verified file-by-file, never from summaries — lifted-but-not-wired code is the failure mode (e.g. auto-chunking module landed but wasn't imported by the generate API for weeks). (B) Upstream library/model questions (license, parameters, capabilities) go to WebSearch/WebFetch/Context7 FIRST, never training-data recall (fabricated Chatterbox emotion enum, 2026-06-09). LOAD AND APPLY BEFORE ANY OTHER MEMORY.
 - `reference_engine_capability_surface` — per-engine knob/inline-tag/pitch/cloning surfaces verified from upstream model cards + adapter line-level audits. Drives Generate UI + capability manifest endpoint.
-- `project_final_architecture` — current architectural plan (NOT forking voicebox; lifting patterns; JustTTS=engine pool, JustWrite=audiobook orchestration). READ FIRST.
-- `project_use_cases` — multi-use (audiobook + game + podcast + dictation); ALL voicebox features in scope.
-- `project_licensing_attribution` — per-file SPDX headers + lifted-file attribution blocks; current Apache-2.0, flips to GPL-3.0-or-later when pedalboard lands.
+- `project_final_architecture` — current architectural plan (JustVoice = engine pool; JustWrite = audiobook orchestration). READ FIRST.
+- `project_use_cases` — multi-use (audiobook + game + podcast + dictation); full production studio scope.
+- `project_licensing_attribution` — per-file SPDX headers + lifted-file attribution blocks (lifted code carries an MIT header pointing at `voicebox-pin.txt`); ship license is GPL-3.0-or-later.
 - `feedback_ultracode_usage_rule` — when (rarely) to invoke ultracode. **User disabled subagent delegation 2026-06-09 — do all work inline by default.**
 - `project_gotchas` — `justtts-server` rename, native-dialog ban, Tauri spawn-loop fix. Load before debugging boot failures.
 - `feedback_user_preferences` — terse reports, no permission-asking, verify by running code.
 
-**Failure modes from prior sessions** (signals you missed the relevant memory): proposing forking voicebox after 2026-06-08 (we decided NOT to fork), proposing Rust anywhere, Docker, asking permission, using native dialogs, hallucinating file paths, re-investigating decisions already made. If you catch yourself about to do any of these, that's the cue to load the matching memory file.
+**Failure modes from prior sessions** (signals you missed the relevant memory): proposing Rust anywhere, Docker, asking permission, using native dialogs, hallucinating file paths, re-investigating decisions already made. If you catch yourself about to do any of these, that's the cue to load the matching memory file.
 
 ## Architecture
 
@@ -94,7 +94,7 @@ Three layers:
 - **All commits**: ruff + pytest pass.
 - **Cross-language API stability**: Pydantic models in `server/justtts/models.py` are the source of truth. The Vue client uses fetch directly against the OpenAPI shape. The CONTRACT.md endpoint list is the JustWrite-facing surface.
 - **Storage**: SQLite (via SQLAlchemy) is the primary persistence layer for everything except user-editable preferences. `settings.json` is the ONLY remaining atomic-JSON store. The migration from atomic JSON to SQLite happens in Phase 1.5.
-- **Licensing**: every file gets an SPDX-License-Identifier header. Lifted/ported/translated files from voicebox get a full attribution block referencing `voicebox-pin.txt`. See `project_licensing_attribution` memory for templates and CI guards.
+- **Licensing**: every file gets an SPDX-License-Identifier header. Files lifted from an upstream MIT codebase get a full attribution block referencing `voicebox-pin.txt`. See `project_licensing_attribution` memory for templates and CI guards.
 
 ## How to run
 
@@ -116,7 +116,7 @@ npm run tauri build
 
 ## What this app is for
 
-JustTTS / JustVoice is a voice production studio for FIVE distinct audiences:
+JustVoice is a voice production studio for FIVE distinct audiences:
 
 1. **Audiobook producers** (primary differentiator). Long-form narration. Multi-character casting via personas. Pronunciation discipline via lexicons. ACX-spec mastering. JustWrite-driven workflow via CONTRACT.md.
 2. **Game developers** (Unreal Engine integration). NPC dialogue at 50–500 character scale. Per-line WAV + JSON sidecar export. Future `.uplugin` for Unreal Editor.

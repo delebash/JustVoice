@@ -5,7 +5,7 @@ engines) or the legacy in-process registry (external engines). Both
 paths return audio/wav bytes.
 
 Long text (> settings.generation.max_chunk_chars) is auto-chunked at
-sentence boundaries via `audio/chunked.py` (the voicebox lift). Below
+sentence boundaries via `audio/chunked.py` (upstream MIT lift; attribution in header). Below
 the threshold, a single-shot synth call is used. Without this wrapping
 some engines truncate or hallucinate trailing noise on long inputs.
 """
@@ -183,7 +183,7 @@ async def _generate_via_manager(
 
     Long text (> settings.generation.max_chunk_chars) is split at sentence
     boundaries and per-chunk results are crossfade-concatenated. This is
-    the voicebox lift wired into the single-line generate path (was dead
+    the chunked-TTS path wired into the single-line generate path (was dead
     code before — render_core.py used it for chapter renders, but the /v1/
     generate route was passing long text in one shot, which truncates or
     hallucinates trailing noise on most engines).

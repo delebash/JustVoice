@@ -81,9 +81,9 @@ class EmbeddedEngine:
         """Cross-platform device detection. Returns the device string the
         engine should `.to()`.
 
-        Ported from voicebox's backends/base.py::get_torch_device — same
-        priority order so JustTTS engines get the same device routing
-        voicebox uses on every OS:
+        Cross-platform device detection (ported from upstream MIT
+        torch helpers; per-file attribution in engines/_torch_helpers.py).
+        Priority order:
 
         1. If `requested` is anything other than "auto", honor it (caller
            explicitly chose a device).

@@ -1,281 +1,720 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* ============================================================
-   JustVoice — global styles entry point.
-
-     1. Inter + JetBrains Mono webfonts.
-     2. justvoice.css — design tokens, base reset, .jv-* primitives,
-        .jv-app shell layout, .jv-card / .jv-btn / .jv-input /
-        .jv-select / .jv-checkbox / .jv-pill / .jv-table / .jv-pane
-        / .jv-banner / .jv-floating / .jv-field.
-     3. Component-level CSS below for the few singleton wrappers
-        (AppDialog, AppModal, EmptyState, PaneHeader, Toast,
-        TaskStrip) that pair Reka headless behavior with their own
-        styling layer.
-   ============================================================ */
+/*
+ * JustVoice global styles
+ * ------------------------
+ * Single-source CSS. Derived directly from `preview/full-app-preview.html`
+ * (the canonical visual spec), BEM-renamed with `jv-` prefix so views
+ * compose Vue components against named primitives. Replaces the old
+ * `styles.css` + `assets/styles/justvoice.css` pair which had ~1.3k lines
+ * of JW-inherited bloat that no longer applied.
+ *
+ * Layering:
+ *   1. design tokens + reset
+ *   2. app shell (sidebar / topbar / main / content)
+ *   3. primitives (card / btn / input / pill / chip / table / pane / banner)
+ *   4. composite (section / floating / modal / dialog / drawer / toggle / segmented)
+ *   5. animations + helpers
+ *
+ * Views must not redeclare control styling. Per-view `<style scoped>`
+ * blocks are reserved for layout (grid, spacing) and never override the
+ * primitives' colours, radii, or heights.
+ */
 
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
-@import "./assets/styles/justvoice.css";
 
-/* App shell — App.vue still tags its root with .app-shell. Same
-   layout shape as .jv-app, aliased here so we don't have to retag. */
+/* =========================================================
+   1. Design tokens (preview/full-app-preview.html L11-25)
+   ========================================================= */
+
+:root {
+  --bg: #f6f5f1;
+  --surface: #fff;
+  --surface-2: #fbfaf7;
+  --surface-3: #f3f1ec;
+
+  --ink: #1a1a1a;
+  --ink-2: #4a4a4a;
+  --ink-3: #888;
+
+  --line: #e3e1dc;
+  --line-strong: #cfccc4;
+
+  --accent: #3a7d63;
+  --accent-ink: #2c6049;
+  --accent-soft: #e8f0eb;
+  --accent-line: #b8d2c3;
+
+  --warn: #c89a3a;
+  --warn-bg: #fff8e3;
+  --warn-ink: #8a6a1f;
+  --warn-line: #e6cd84;
+
+  --danger: #a8442e;
+  --danger-bg: #fbecea;
+  --danger-ink: #7a2f1f;
+  --danger-line: #e3b6ac;
+
+  --info-blue: #2f74b5;
+  --jtorig: #7a3aa6;
+  --combined: #b86b1f;
+
+  --r-card: 8px;
+  --r-control: 6px;
+  --r-pill: 999px;
+
+  --shadow-1: 0 1px 2px rgba(20, 22, 24, 0.04);
+  --shadow-2: 0 4px 12px rgba(20, 22, 24, 0.06);
+  --shadow-3: 0 8px 24px rgba(20, 22, 24, 0.08);
+
+  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+
+[data-theme="dark"] {
+  --bg: #1a1c1a;
+  --surface: #232624;
+  --surface-2: #1e211f;
+  --surface-3: #2a2e2c;
+  --ink: #f0eee8;
+  --ink-2: #c5c2bb;
+  --ink-3: #8a8780;
+  --line: #353835;
+  --line-strong: #4a4d49;
+  --accent: #5fa882;
+  --accent-soft: #1f3329;
+  --accent-line: #2c4a3a;
+}
+
+/* =========================================================
+   1.5. Reset + base typography
+   ========================================================= */
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+h1 { font-size: 22px; }
+h2 { font-size: 18px; }
+h3 { font-size: 14px; }
+h4 { font-size: 13px; }
+p { margin: 0; color: var(--ink-2); }
+code, pre { font-family: var(--font-mono); font-size: 12px; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+strong { font-weight: 600; color: var(--ink); }
+
+/* Range inputs (enabled): native control + OS system accent — purple
+   on Windows-with-purple-accent, blue on default macOS, etc. The
+   `AccentColor` keyword forces Chromium/WebView2 to read the OS accent;
+   `accent-color: auto` paints nothing on Win 11. */
+input[type="range"] { accent-color: AccentColor; }
+
+/* Range inputs (DISABLED): native disabled state collapses the track
+   on Windows + WebView2 — the slider becomes invisible to the user
+   even though it's still in the DOM. Force a custom render so the
+   disabled state is visibly muted-but-present: thin gray track + gray
+   thumb on a slightly transparent slider. */
+input[type="range"]:disabled {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  background: var(--surface-3);
+  border-radius: var(--r-pill);
+  cursor: not-allowed;
+  opacity: 0.75;
+  border: 0;
+  padding: 0;
+  outline: 0;
+}
+input[type="range"]:disabled::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--line-strong);
+  border: 2px solid var(--surface);
+  box-shadow: var(--shadow-1);
+  cursor: not-allowed;
+}
+input[type="range"]:disabled::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--line-strong);
+  border: 2px solid var(--surface);
+  box-shadow: var(--shadow-1);
+  cursor: not-allowed;
+}
+input[type="range"]:disabled::-moz-range-track {
+  height: 6px;
+  background: var(--surface-3);
+  border-radius: var(--r-pill);
+}
+
+input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
+
+/* Custom scrollbars — quiet, cream-friendly. */
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: var(--r-pill); border: 2px solid var(--bg); }
+
+/* =========================================================
+   2. App shell (preview L37-67)
+   ========================================================= */
+
 .app-shell {
   display: grid;
   grid-template-columns: 80px 1fr;
   height: 100vh;
   overflow: hidden;
+}
+
+.jv-sidebar {
+  background: var(--surface-2);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 0 12px;
+  gap: 3px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.jv-sidebar__brand {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 16px; letter-spacing: -0.5px;
+  margin-bottom: 14px;
+}
+.jv-sidebar__nav {
+  width: 56px; height: 54px;
+  border-radius: 10px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--ink-2);
+  transition: background 0.12s, color 0.12s;
+  margin: 1px 0;
+  user-select: none;
+}
+.jv-sidebar__nav:hover { background: var(--surface); color: var(--ink); text-decoration: none; }
+.jv-sidebar__nav--active,
+.jv-sidebar__nav--active:hover { background: var(--accent); color: #fff; }
+.jv-sidebar__icon { font-size: 17px; line-height: 1; }
+.jv-sidebar__label {
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+  max-width: 54px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jv-sidebar__spacer { flex: 1; }
+.jv-sidebar__version { font-size: 10px; color: var(--ink-3); padding-bottom: 8px; }
+
+.jv-main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: var(--bg);
 }
 
-/* ============================================================
-   Reka-Dialog overlay + modal/dialog shapes — used by AppModal
-   and AppDialog. Pair the headless behaviour (focus trap, Esc, ARIA)
-   with JustVoice surface visuals.
-   ============================================================ */
-
-.jv-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(20, 22, 24, 0.42);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-  z-index: 900;
-  animation: jv-overlay-in 0.18s ease-out both;
-}
-.jv-overlay[data-state="closed"] { animation: jv-overlay-out 0.18s ease-in both; }
-@keyframes jv-overlay-in  { from { opacity: 0; } to { opacity: 1; } }
-@keyframes jv-overlay-out { from { opacity: 1; } to { opacity: 0; } }
-
-.jv-modal,
-.jv-dialog {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--r-card);
-  box-shadow: var(--shadow-3);
-  width: calc(100vw - 64px);
-  max-height: calc(100vh - 96px);
+.jv-topbar {
   display: flex;
-  flex-direction: column;
-  z-index: 950;
-  animation: jv-modal-in 0.22s cubic-bezier(0.2, 0.7, 0.3, 1) both;
-}
-.jv-modal       { min-width: 480px; max-width: 640px; }
-.jv-modal--wide { max-width: 960px; }
-.jv-dialog      { min-width: 380px; max-width: 540px; }
-@keyframes jv-modal-in {
-  from { opacity: 0; transform: translate(-50%, calc(-50% + 8px)); }
-  to   { opacity: 1; transform: translate(-50%, -50%); }
-}
-
-.jv-modal__header,
-.jv-dialog__header {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 18px 22px 14px;
-  border-bottom: 1px solid var(--line);
-}
-.jv-modal__titleblock,
-.jv-dialog__titleblock { flex: 1; min-width: 0; }
-.jv-modal__eyebrow {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  margin-bottom: 4px;
-}
-.jv-modal__title,
-.jv-dialog__title {
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: -0.005em;
-  color: var(--ink);
-  line-height: 1.3;
-}
-.jv-modal__close,
-.jv-dialog__close {
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  background: transparent;
-  border-radius: var(--r-control);
-  color: var(--ink-3);
-  cursor: pointer;
-}
-.jv-modal__close:hover,
-.jv-dialog__close:hover { background: var(--surface-2); color: var(--ink); }
-
-.jv-modal__body,
-.jv-dialog__body {
-  padding: 18px 22px 22px;
-  overflow-y: auto;
-  color: var(--ink);
-}
-.jv-modal--flush > .jv-modal__body { padding: 0; }
-
-.jv-modal__footer,
-.jv-dialog__footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 14px 22px 18px;
-  border-top: 1px solid var(--line);
-  background: var(--surface-2);
-  border-radius: 0 0 var(--r-card) var(--r-card);
-}
-
-.jv-dialog__body { display: flex; flex-direction: column; gap: 16px; }
-.jv-dialog__message {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--ink-2);
-  white-space: pre-line;
-}
-.jv-dialog__field { display: flex; flex-direction: column; gap: 6px; }
-.jv-dialog__label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-.jv-dialog__help { font-size: 11.5px; color: var(--ink-3); }
-
-/* ============================================================
-   PaneHeader (.jv-pane-header / -title / -eyebrow / -h1 / -actions)
-   ============================================================ */
-
-.jv-pane-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+  align-items: baseline;
   gap: 16px;
-  margin-bottom: 20px;
-  padding-bottom: 14px;
+  padding: 22px 32px 14px;
   border-bottom: 1px solid var(--line);
 }
-.jv-pane-header__title { min-width: 0; }
-.jv-pane-header__eyebrow {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  margin-bottom: 6px;
-}
-.jv-pane-header__h1 {
-  font-size: 22px;
+.jv-topbar__title {
+  font-size: 24px;
   font-weight: 600;
   letter-spacing: -0.015em;
   margin: 0;
-  color: var(--ink);
 }
-.jv-pane-header__actions {
+.jv-topbar__status {
+  margin-left: auto;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  flex-shrink: 0;
-}
-
-/* ============================================================
-   TaskStrip — used by components/TaskStrip.vue
-   ============================================================ */
-
-.task-strip {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--r-card);
-  font-size: 13px;
-  margin-bottom: 12px;
-}
-.task-strip[data-status="completed"] { border-color: var(--success-line); background: var(--success-bg); }
-.task-strip[data-status="failed"]    { border-color: var(--danger-line);  background: var(--danger-bg);  }
-.task-strip[data-status="cancelled"] { opacity: 0.65; }
-.task-spin {
-  width: 8px;
-  height: 8px;
+  font-size: 12px;
+  color: var(--ink-2);
+  /* Now a clickable button — opens the TaskStatusPanel. Keep the
+     visual subtle so it still reads as a status indicator; the
+     `in flight` chip on the right is what tells the user there's
+     something to open. */
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: var(--r-pill);
+  padding: 4px 10px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.jv-topbar__status:hover {
+  background: var(--surface-2);
+  border-color: var(--line);
+}
+.jv-topbar__taskcount {
+  color: var(--accent);
+  font-weight: 500;
+}
+.jv-topbar__taskcount strong { font-weight: 700; color: var(--accent-ink); }
+.jv-topbar__dot {
+  width: 8px; height: 8px;
+  border-radius: 999px;
   background: var(--accent);
-  animation: jv-task-pulse 1.2s ease-in-out infinite;
+  box-shadow: 0 0 0 3px rgba(58, 125, 99, 0.18);
+  animation: jvConnectionPulse 2.5s ease-in-out infinite;
 }
-.task-spin[data-status="completed"] { background: var(--success); animation: none; }
-.task-spin[data-status="failed"]    { background: var(--danger);  animation: none; }
-.task-spin[data-status="cancelled"] { background: var(--ink-3);   animation: none; }
-@keyframes jv-task-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%      { opacity: 0.4; transform: scale(0.85); }
+.jv-topbar__status--warn .jv-topbar__dot {
+  background: var(--warn);
+  box-shadow: 0 0 0 3px rgba(200, 154, 58, 0.18);
+  animation: none;
 }
-.task-label { font-weight: 600; color: var(--ink); }
-.task-stat {
+.jv-topbar__url {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--ink-3);
-  font-variant-numeric: tabular-nums;
+  margin-left: 4px;
+}
+
+/* HelpTrigger in the topbar — small gap from the status pill so the
+   `?` icon sits as a stable far-right control on every view. */
+.jv-topbar .help-trigger { margin-left: 10px; }
+
+@keyframes jvConnectionPulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(58, 125, 99, 0.18); }
+  50%      { box-shadow: 0 0 0 5px rgba(58, 125, 99, 0.08); }
+}
+
+.jv-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 32px 64px;
+}
+.jv-content__lede {
+  color: var(--ink-2);
+  font-size: 13px;
+  margin: 0 0 10px;
+  max-width: 740px;
+}
+
+/* =========================================================
+   3. Primitives — cards, buttons, inputs, pills, chips, tables, panes
+   ========================================================= */
+
+/* Cards (preview L73-78) */
+.jv-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 16px;
+  box-shadow: var(--shadow-1);
+}
+.jv-card--soft { background: var(--surface-2); box-shadow: none; }
+.jv-card--flat { box-shadow: none; }
+.jv-card--bare { background: transparent; border: 0; box-shadow: none; padding: 0; }
+.jv-card__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.jv-card__title { font-size: 14px; font-weight: 600; margin: 0; flex: 1; }
+.jv-card__body { color: var(--ink-2); }
+
+/* Chip-card — inline data card with a label + value (preview L80-84) */
+.jv-chip-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--ink-2);
   white-space: nowrap;
 }
-.task-spacer { flex: 1; }
-.task-track {
-  flex-basis: 100%;
-  height: 3px;
-  background: var(--surface-3);
-  margin-top: 6px;
-  overflow: hidden;
-  border-radius: var(--r-pill);
-}
-.task-fill {
-  height: 100%;
+.jv-chip-card strong { font-weight: 600; color: var(--ink); }
+.jv-chip-card .caret { color: var(--ink-3); font-size: 10px; }
+.jv-chip-card--disabled { opacity: 0.55; cursor: not-allowed; }
+.jv-chip-card--disabled input { cursor: not-allowed; }
+
+/* Buttons (preview L98-110) */
+.jv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--r-control);
+  border: 1px solid var(--accent);
   background: var(--accent);
-  transition: width 200ms linear;
-  border-radius: var(--r-pill);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 0.1s, background 0.1s, color 0.1s, border-color 0.1s;
+}
+.jv-btn:hover { filter: brightness(0.94); }
+.jv-btn:disabled, .jv-btn[disabled] { opacity: 0.55; cursor: not-allowed; filter: none; }
+.jv-btn--primary  { background: var(--accent); border-color: var(--accent); color: #fff; }
+.jv-btn--secondary {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+.jv-btn--secondary:hover { background: var(--surface-2); filter: none; }
+.jv-btn--ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 0;
+}
+.jv-btn--ghost:hover { background: var(--surface-2); }
+.jv-btn--danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+.jv-btn--danger-outline {
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.jv-btn--danger-outline:hover { background: var(--danger-bg); filter: none; }
+.jv-btn--icon {
+  width: 32px;
+  padding: 0;
+  background: var(--surface);
+  color: var(--ink-2);
+  border-color: var(--line-strong);
+}
+.jv-btn--sm { height: 26px; padding: 0 10px; font-size: 12px; }
+.jv-btn--lg { height: 38px; padding: 0 18px; font-size: 14px; }
+.jv-btn-group { display: inline-flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.jv-btn__spinner {
+  width: 12px; height: 12px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: jvSpin 0.65s linear infinite;
+}
+@keyframes jvSpin { to { transform: rotate(360deg); } }
+
+/* Inputs (preview L113-117) */
+.jv-input,
+.jv-textarea,
+.jv-select {
+  display: block;
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.jv-input:focus, .jv-textarea:focus, .jv-select:focus {
+  outline: 0;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.jv-input::placeholder,
+.jv-textarea::placeholder { color: var(--ink-3); }
+.jv-input:disabled,
+.jv-textarea:disabled,
+.jv-select:disabled {
+  background: var(--surface-2);
+  color: var(--ink-3);
+  cursor: not-allowed;
+}
+.jv-input--sm { height: 28px; padding: 0 10px; font-size: 12px; }
+
+.jv-textarea {
+  height: auto;
+  min-height: 96px;
+  padding: 10px 12px;
+  resize: vertical;
+  line-height: 1.5;
 }
 
-/* ============================================================
-   Toaster (vue-sonner) — Toast.vue sets class="jv-toaster"
-   ============================================================ */
+.jv-select {
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'><path fill='%23888' d='M0 0h8L4 5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
 
-/* Quiet inline note — used by OverviewView's headless-mode call-out and
-   anywhere else we want a one-line "info" / "warn" / "danger" callout
-   without the heavy bordered banner. Plain paragraph that flows at the
-   content edge so the text aligns with the lede/headings around it. */
-p.note {
+.jv-file-input {
+  display: block;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+/* Field block (preview L119-124) */
+.jv-field {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 14px;
+  align-items: center;
+  margin: 10px 0;
+  font-size: 13px;
+}
+.jv-field > label {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+/* `.jv-field__label` is the explicit BEM block-label class. Always
+   renders as the uppercase eyebrow regardless of how the wrapper is
+   composed, so per-view custom layouts get the same look as a plain
+   `<JvField layout="block">`. User preference confirmed 2026-06-09:
+   sub-headers / field labels uniformly all-caps. */
+.jv-field__label,
+.jv-field--block > label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.jv-field--block { display: block; }
+.jv-field__hint {
+  display: block;
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-top: 4px;
+}
+
+/* Pills (preview L130-135) */
+.jv-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  font-size: 11px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-2);
+  white-space: nowrap;
+  line-height: 18px;
+}
+.jv-pill--green  { color: var(--accent);     border-color: var(--accent);     background: var(--accent-soft); }
+.jv-pill--warn   { color: var(--warn-ink);   border-color: var(--warn-line);  background: var(--warn-bg); }
+.jv-pill--danger { color: var(--danger-ink); border-color: var(--danger-line); background: var(--danger-bg); }
+.jv-pill--solid  { background: var(--accent); color: #fff; border-color: var(--accent); }
+.jv-pill--ghost  { background: transparent; }
+
+/* Tags — alias for pill in some views (kept for component compat). */
+.jv-tag { /* matches .jv-pill */
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  font-size: 11px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+/* Filter chips group (preview L178-183) */
+.jv-chips {
+  display: inline-flex;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  padding: 2px;
+  gap: 2px;
+}
+.jv-chip {
+  height: 28px;
+  padding: 0 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+.jv-chip:hover { color: var(--ink); }
+.jv-chip--active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-1);
+}
+
+/* Tables (preview L138-145) */
+.jv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.jv-table thead th {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.jv-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-2);
+  vertical-align: middle;
+}
+.jv-table tbody td strong { color: var(--ink); }
+.jv-table tbody tr:hover td { background: var(--surface-2); }
+.jv-table .right { text-align: right; }
+.jv-table__actions {
+  text-align: right;
+  white-space: nowrap;
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.jv-table__empty {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--ink-3);
+  font-style: italic;
+}
+
+/* Two-column list + detail pane (preview L148-155) */
+.jv-pane {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+.jv-pane-list {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 8px;
+  max-height: 72vh;
+  overflow-y: auto;
+}
+.jv-pane-detail {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 20px 24px;
+}
+.jv-pane-list__item {
+  padding: 10px 12px;
+  border-radius: 4px;
+  margin-bottom: 2px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--ink);
+}
+.jv-pane-list__item:hover { background: var(--surface-2); }
+.jv-pane-list__item--active { background: var(--accent); color: #fff; }
+.jv-pane-list__meta {
+  font-size: 11px;
+  color: var(--ink-3);
+  display: block;
+  margin-top: 2px;
+}
+.jv-pane-list__item--active .jv-pane-list__meta { color: rgba(255, 255, 255, 0.78); }
+
+.jv-pane-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.jv-pane-header__title { flex: 1; font-size: 16px; font-weight: 600; margin: 0; }
+.jv-pane-header__h1 { flex: 1; font-size: 22px; font-weight: 600; margin: 0; }
+.jv-pane-header__eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+}
+.jv-pane-header__actions { display: flex; gap: 8px; align-items: center; }
+
+/* Banners + notes (preview L160-173) */
+.jv-banner {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--r-control);
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+.jv-banner strong { color: var(--ink); }
+.jv-banner code {
+  background: rgba(255, 255, 255, 0.55);
+  padding: 0 5px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.jv-banner--warn   { border-left-color: var(--warn);     background: var(--warn-bg); }
+.jv-banner--danger { border-left-color: var(--danger);   background: var(--danger-bg); color: var(--danger-ink); }
+.jv-banner--info   { border-left-color: var(--info-blue); background: #eef4fb; }
+
+/* Borderless informational paragraph — quiet prose block with an
+   inline chip ("info" / "warn" / "danger") prefixed via .tag-info etc.
+   Matches preview/full-app-preview.html L168-173 (`p.note`). */
+p.note,
+.note {
   display: block;
   margin: 0 0 22px;
   font-size: 13px;
   color: var(--ink-2);
   line-height: 1.65;
 }
-p.note strong { color: var(--ink); }
-p.note .tag-info,
-p.note .tag-warn,
-p.note .tag-danger {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #fff;
-  background: var(--voicebox, #2f74b5);
-  padding: 1px 7px;
-  border-radius: 3px;
-  margin-right: 8px;
-  vertical-align: baseline;
-}
-p.note .tag-warn   { background: var(--warn); }
-p.note .tag-danger { background: var(--danger); }
-p.note code {
+.note strong { color: var(--ink); }
+.note code {
   background: var(--surface-3);
   padding: 1px 5px;
   border-radius: 3px;
@@ -283,315 +722,560 @@ p.note code {
   color: var(--ink);
   word-break: break-all;
 }
-
-/* vue-sonner's <Toaster> renders an <ol> as a static block by default;
-   if it ends up inside our .app-shell grid it gets the 80px sidebar
-   column width and toasts wrap one character per line. Force the
-   toaster ol to position:fixed at the bottom-center so it escapes
-   the grid regardless of where it mounts. */
-ol.jv-toaster {
-  position: fixed !important;
-  bottom: 40px !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  width: auto !important;
-  max-width: 420px !important;
-  list-style: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  z-index: 1000 !important;
-  pointer-events: none;
+.tag-info,
+.tag-warn,
+.tag-danger {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  padding: 1px 7px;
+  border-radius: 3px;
+  margin-right: 8px;
+  vertical-align: baseline;
 }
-ol.jv-toaster > li,
-ol.jv-toaster > [data-sonner-toast] {
-  display: block !important;
-  width: 420px !important;
-  max-width: 90vw !important;
-  pointer-events: auto;
+.tag-info   { background: var(--info-blue); }
+.tag-warn   { background: var(--warn); }
+.tag-danger { background: var(--danger); }
+
+/* =========================================================
+   4. Composite — section, floating, modal, dialog, drawer
+   ========================================================= */
+
+.jv-section {
+  margin-bottom: 30px;
 }
-.jv-toaster [data-sonner-toast] {
-  font-family: var(--font-ui) !important;
-  border-radius: var(--r-card) !important;
-  border: 1px solid var(--line) !important;
-  background: var(--surface) !important;
-  color: var(--ink) !important;
-  box-shadow: var(--shadow-2) !important;
-  white-space: normal !important;
-  word-break: normal !important;
+.jv-section__title {
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
 }
-.jv-toaster [data-sonner-toast][data-type="success"] { border-color: var(--success-line) !important; }
-.jv-toaster [data-sonner-toast][data-type="error"]   { border-color: var(--danger-line) !important;  }
-.jv-toaster [data-sonner-toast][data-type="warning"] { border-color: var(--warn-line) !important;    }
 
-/* ============================================================
-   Native form-element accent so range/checkbox/radio pick up the
-   forest-green even when not inside a Jv* component.
-   ============================================================ */
+.jv-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 18px 0;
+  width: 100%;
+}
 
-input[type="range"],
-input[type="checkbox"],
-input[type="radio"] { accent-color: var(--accent); }
+.jv-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.jv-col { display: flex; flex-direction: column; gap: 8px; }
+.jv-spacer { flex: 1; }
+.jv-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jv-muted { color: var(--ink-3); }
+.jv-mono { font-family: var(--font-mono); }
 
-/* ============================================================
-   Setting row — voicebox-parity SettingRow pattern. One row per
-   tunable: title + description on the left, value/toggle/slider
-   on the right, optional control underneath the head.
-   ============================================================ */
+/* Floating generate bar (preview L176) */
+.jv-floating {
+  background: linear-gradient(180deg, var(--surface), var(--surface-2));
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin: 14px 0;
+  box-shadow: var(--shadow-2);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
 
+/* Empty-state block */
+.jv-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--ink-2);
+}
+.jv-empty--compact { padding: 16px 12px; }
+.jv-empty__icon { font-size: 28px; margin-bottom: 8px; opacity: 0.6; }
+.jv-empty__title { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.jv-empty__message { font-size: 12px; color: var(--ink-3); }
+
+/* Toggle switch — replaces JW JvCheckbox in toggle contexts. */
+.jv-toggle {
+  position: relative;
+  display: inline-block;
+  width: 38px;
+  height: 22px;
+  background: var(--line-strong);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  vertical-align: middle;
+}
+.jv-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: var(--surface);
+  border-radius: 50%;
+  box-shadow: var(--shadow-1);
+  transition: transform 0.15s ease;
+}
+.jv-toggle--on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.jv-toggle--on .jv-toggle__thumb { transform: translateX(16px); }
+.jv-toggle--disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Segmented control — used in Settings sub-nav + filters. */
+.jv-segmented {
+  display: inline-flex;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  padding: 2px;
+  gap: 2px;
+}
+.jv-segmented__btn {
+  height: 28px;
+  padding: 0 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+.jv-segmented__btn:hover { color: var(--ink); }
+.jv-segmented__btn--active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-1);
+}
+.jv-segmented--sm .jv-segmented__btn { height: 24px; font-size: 11px; padding: 0 10px; }
+
+/* Modal — generic overlay-anchored card. */
+.jv-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 22, 24, 0.36);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  animation: jvOverlayIn 0.12s ease-out;
+}
+.jv-modal {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  width: min(620px, 92vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-3);
+  overflow: hidden;
+  animation: jvModalIn 0.16s ease-out;
+}
+.jv-modal--wide { width: min(840px, 94vw); }
+.jv-modal--flush .jv-modal__body { padding: 0; }
+.jv-modal__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--line);
+}
+.jv-modal__title { font-size: 14px; font-weight: 600; color: var(--ink); margin: 0; flex: 1; }
+.jv-modal__eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+}
+.jv-modal__titleblock { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.jv-modal__close {
+  background: transparent;
+  border: 0;
+  color: var(--ink-3);
+  font-size: 18px;
+  cursor: pointer;
+  width: 28px; height: 28px;
+  border-radius: 6px;
+}
+.jv-modal__close:hover { background: var(--surface-2); color: var(--ink); }
+.jv-modal__body { padding: 20px 22px; overflow-y: auto; flex: 1; }
+.jv-modal__footer {
+  padding: 14px 22px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+}
+
+/* Dialog — confirm/prompt micro-modal */
+.jv-dialog {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  width: min(440px, 90vw);
+  box-shadow: var(--shadow-3);
+  overflow: hidden;
+  animation: jvModalIn 0.16s ease-out;
+}
+.jv-dialog__header { padding: 18px 22px 6px; }
+.jv-dialog__title { font-size: 15px; font-weight: 600; margin: 0; }
+.jv-dialog__titleblock { display: flex; flex-direction: column; gap: 4px; }
+.jv-dialog__body { padding: 6px 22px 18px; }
+.jv-dialog__message { color: var(--ink-2); font-size: 13px; line-height: 1.5; margin: 0; }
+.jv-dialog__field { margin-top: 12px; }
+.jv-dialog__label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+  margin-bottom: 4px;
+}
+.jv-dialog__help { font-size: 11px; color: var(--ink-3); margin-top: 4px; }
+.jv-dialog__footer {
+  padding: 14px 22px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+}
+.jv-dialog__close {
+  background: transparent;
+  border: 0;
+  color: var(--ink-3);
+  font-size: 18px;
+  cursor: pointer;
+  width: 28px; height: 28px;
+  border-radius: 6px;
+}
+
+/* Help drawer (slide-in side panel for per-feature docs) */
+.jv-help-drawer__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 22, 24, 0.32);
+  z-index: 210;
+  animation: jvOverlayIn 0.12s ease-out;
+}
+.jv-help-drawer {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: min(520px, 92vw);
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  box-shadow: var(--shadow-3);
+  z-index: 211;
+  display: flex;
+  flex-direction: column;
+  animation: jvDrawerIn 0.18s ease-out;
+}
+.jv-help-drawer__header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 18px 24px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.jv-help-drawer__titleblock { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.jv-help-drawer__eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+}
+.jv-help-drawer__title { font-size: 16px; font-weight: 600; margin: 0; }
+.jv-help-drawer__slug { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); }
+.jv-help-drawer__close {
+  background: transparent;
+  border: 0;
+  color: var(--ink-3);
+  font-size: 20px;
+  cursor: pointer;
+  width: 32px; height: 32px;
+  border-radius: 6px;
+}
+.jv-help-drawer__close:hover { background: var(--surface-2); color: var(--ink); }
+.jv-help-drawer__body { flex: 1; overflow-y: auto; padding: 18px 24px 28px; }
+.jv-help-drawer__empty { color: var(--ink-3); font-style: italic; padding: 24px 0; text-align: center; }
+.jv-help-drawer__footer {
+  padding: 12px 24px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.jv-help-drawer__prose { color: var(--ink); line-height: 1.6; font-size: 13px; }
+.jv-help-drawer__prose h1 { font-size: 18px; margin: 16px 0 8px; }
+.jv-help-drawer__prose h2 { font-size: 15px; margin: 14px 0 6px; }
+.jv-help-drawer__prose h3 { font-size: 13px; margin: 12px 0 6px; color: var(--ink); }
+.jv-help-drawer__prose p { margin: 0 0 10px; color: var(--ink-2); }
+.jv-help-drawer__prose code { background: var(--surface-3); padding: 1px 5px; border-radius: 3px; font-size: 12px; color: var(--ink); }
+.jv-help-drawer__prose pre { background: var(--surface-3); padding: 12px 14px; border-radius: 6px; overflow-x: auto; font-size: 12px; line-height: 1.5; margin: 8px 0; }
+.jv-help-drawer__prose ul, .jv-help-drawer__prose ol { margin: 0 0 10px 18px; padding: 0; color: var(--ink-2); }
+.jv-help-drawer__prose li { margin-bottom: 4px; }
+
+/* Stat tile grid (preview L185-190) — used by Overview / Engines /
+   Cache / Compare to render `.k` (eyebrow) + `.v` (big value) + `.x`
+   (sub) inside a `.stat` card. */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+.stats { /* alias used by EnginesView */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stat .k {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+.stat .v {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.stat .unit {
+  font-size: 14px;
+  font-weight: 500;
+  margin-left: 3px;
+  color: var(--ink-2);
+}
+.stat .x { font-size: 11px; color: var(--ink-3); }
+
+/* Engine-page section block + sub-block (was in deleted justvoice.css). */
+section.block { margin-bottom: 30px; }
+section.block > h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.subblock { margin-top: 16px; }
+.subblock > h4 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.endnote { font-size: 11.5px; color: var(--ink-3); font-style: italic; }
+
+/* Inline progress bar (preview L246-247) */
+.prog {
+  height: 6px;
+  background: var(--surface-3);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+  width: 100%;
+}
+.prog .fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+/* Sub-nav for Settings tabs (preview L240-243) */
+.subnav {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0;
+}
+.subnav a {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--ink-2);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.subnav a:hover { color: var(--ink); }
+.subnav a.active {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+  font-weight: 500;
+}
+
+/* MCP / install snippet copy box (preview L250-251) */
+.snippet {
+  background: #1a1a1c;
+  color: #e8e6e1;
+  border-radius: var(--r-control);
+  padding: 12px 16px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  white-space: pre-wrap;
+  position: relative;
+  overflow: hidden;
+}
+.snippet .copy {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 0;
+  padding: 3px 9px;
+  font-size: 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Setting row — SettingRow pattern (also used heavily
+   by Settings sub-pages). Two-column head: title + description on the
+   left, control on the right. Optional control underneath. */
 .setting-row {
-  padding: 14px 0;
-  border-top: 1px solid var(--border-soft, var(--border));
+  display: block;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
 }
-.setting-row:first-of-type { border-top: 0; padding-top: 0; }
-.setting-row:last-of-type  { padding-bottom: 0; }
-
+.setting-row:last-child { border-bottom: 0; }
 .setting-row__head {
   display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
 }
+.setting-row__head > :first-child { flex: 1; min-width: 0; }
 .setting-row__title {
   font-size: 13px;
   font-weight: 600;
   color: var(--ink);
-  margin-bottom: 3px;
 }
 .setting-row__desc {
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--ink-3);
-  line-height: 1.5;
-  max-width: 540px;
+  margin-top: 2px;
+  line-height: 1.45;
 }
 .setting-row__value {
-  font-size: 12.5px;
   font-family: var(--font-mono);
+  font-size: 12px;
   color: var(--ink-2);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  padding-top: 2px;
 }
 .setting-row__slider {
-  width: 100%;
-  margin-top: 10px;
-  cursor: pointer;
-}
-
-.accent-preview {
-  display: inline-block;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  vertical-align: middle;
-}
-
-/* ============================================================
-   .kbd — keyboard chord chip used in Settings → Capture for
-   the push-to-talk / toggle-to-talk hotkey display. Voicebox-
-   parity glyph mini-cap with monospace lettering.
-   ============================================================ */
-
-.kbd {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ink);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  box-shadow: inset 0 -1px 0 var(--border);
-}
-
-/* ============================================================
-   .snippet-row — code-block + copy button pair. Used in
-   Settings → MCP for install snippet copy-paste UX.
-   ============================================================ */
-
-.snippet-row {
-  position: relative;
-  margin-top: 4px;
-}
-.snippet-row .jv-btn,
-.snippet-row .jv-btn--ghost {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-}
-.snippet-row pre,
-.snippet-row .jv-code-block {
-  margin: 0;
-  padding: 10px 14px;
-  padding-right: 70px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-/* ============================================================
-   .jv-chips — pill-button group for preset selection (Settings
-   → Mastering active preset). One chip can be --active.
-   ============================================================ */
-
-.jv-chips {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.jv-chip {
-  display: inline-flex;
   align-items: center;
-  padding: 6px 14px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  color: var(--ink-2);
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
-}
-.jv-chip:hover {
-  background: var(--surface);
-  color: var(--ink);
-}
-.jv-chip--active,
-.jv-chip--active:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+  gap: 10px;
+  margin-top: 8px;
 }
 
-/* ============================================================
-   Connection status pill — voicebox-parity ConnectionStatus
-   (online/offline/connecting). Lives in the Connection card
-   header in Settings → General.
-   ============================================================ */
-
+/* Connection status pill (Settings General → Connection card). */
 .connection-status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  font-size: 11px;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  font-weight: 600;
-  background: var(--surface);
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  font-size: 12px;
+  color: var(--ink-2);
 }
 .connection-status__dot {
-  width: 7px;
-  height: 7px;
+  width: 8px; height: 8px;
   border-radius: 50%;
-  background: var(--ink-3);
-}
-.connection-status--online {
-  border-color: hsl(var(--accent-hue, 158) 55% 36% / 0.4);
-  color: hsl(var(--accent-hue, 158) 55% 30%);
-}
-.connection-status--online .connection-status__dot {
   background: var(--accent);
-  box-shadow: 0 0 5px 1px hsl(var(--accent-hue, 158) 55% 36% / 0.5);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
-.connection-status--offline {
-  border-color: var(--danger-line, hsl(0 70% 50% / 0.4));
-  color: var(--danger, hsl(0 65% 45%));
-}
-.connection-status--offline .connection-status__dot {
-  background: var(--danger, hsl(0 65% 50%));
-}
-.connection-status--connecting .connection-status__dot {
-  background: var(--ink-3);
-  animation: jv-connection-pulse 1.2s ease-in-out infinite;
-}
-@keyframes jv-connection-pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
-}
+.connection-status--warn { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn-ink); }
+.connection-status--warn .connection-status__dot { background: var(--warn); box-shadow: 0 0 0 3px rgba(200,154,58,0.18); }
+.connection-status--offline .connection-status__dot { background: var(--ink-3); box-shadow: 0 0 0 3px rgba(136,136,136,0.18); }
 
-/* ============================================================
-   Server-help banner (Overview first-run guidance when /v1/health
-   fails). Surfaces the install / start commands so the most common
-   "no engines listed" failure mode has a clear recovery path.
-   ============================================================ */
-
-.server-help-banner {
-  margin-bottom: 18px;
-  padding: 14px 18px;
-  border: 1px solid var(--warn-line, hsl(38 90% 50% / 0.4));
-  background: var(--warn-bg, hsl(38 100% 96%));
-  border-radius: 8px;
-  color: var(--ink);
-}
-.server-help-banner__head {
+/* MCP install snippets group (Settings → MCP). */
+.snippets {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-  font-size: 13px;
+  flex-direction: column;
+  gap: 12px;
 }
-.server-help-banner__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: hsl(38 90% 50%);
-  box-shadow: 0 0 4px hsl(38 90% 50% / 0.4);
+.snippet-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
-.server-help-banner > p { font-size: 12.5px; line-height: 1.55; margin: 0 0 8px; }
-.server-help-banner__details > summary {
-  cursor: pointer;
+.snippet-row > strong {
   font-size: 12px;
   font-weight: 600;
-  margin-top: 4px;
-  padding: 4px 0;
-}
-.server-help-banner__steps {
-  margin: 8px 0 0 22px;
-  padding: 0;
-  font-size: 12.5px;
-  line-height: 1.6;
-}
-.server-help-banner__steps li { margin-bottom: 8px; }
-.server-help-banner__steps pre {
-  margin: 6px 0 0;
-  padding: 8px 12px;
-  background: var(--surface-2);
-  border-radius: 4px;
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  white-space: pre-wrap;
+  color: var(--ink);
 }
 
-input[type="range"] {
-  -webkit-appearance: none; appearance: none;
-  width: 100%;
-  height: 4px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--r-pill);
-  background: var(--line-strong);
-  cursor: pointer;
+/* Kbd chip (preview L253) */
+.kbd {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 1px 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  color: var(--ink);
 }
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 16px; height: 16px;
-  border-radius: 50%;
-  background: var(--accent);
-  border: 2px solid var(--surface);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
-  cursor: pointer;
+
+/* Code block */
+.jv-code-block {
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  padding: 10px 14px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-x: auto;
 }
+
+/* Toaster anchor (vue-sonner sets its own positioning; this just
+   ensures the host doesn't get pushed by other fixed-position UI). */
+.jv-toaster { z-index: 250; }
+
+/* =========================================================
+   5. Animations
+   ========================================================= */
+
+@keyframes jvOverlayIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes jvOverlayOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes jvModalIn {
+  from { opacity: 0; transform: scale(0.97) translateY(4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes jvDrawerIn {
+  from { transform: translateX(20px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+@keyframes jvTaskPulse {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1; }
+}
+.jv-task-pulse { animation: jvTaskPulse 1.4s ease-in-out infinite; }
+.jv-btn-spin { animation: jvSpin 0.65s linear infinite; display: inline-block; }

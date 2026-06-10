@@ -1,4 +1,4 @@
-# JustTTS — Deep Audit: Old GUI vs New GUI vs Server
+# JustVoice — Deep Audit: Old GUI vs New GUI vs Server
 
 > Generated 2026-06-08 from a 4-way parallel audit (old GUI, new GUI, new server API, legacy server API).
 > Old GUI = single-file `legacy-gui/index.html` (also at `E:\Dev\Web\justtts\gui\index.html`), now served at **`/legacy/`** for side-by-side comparison.

@@ -11,8 +11,7 @@ const props = defineProps({
   invalid:    { type: Boolean, default: false },
   id:         { type: String, default: undefined },
   // Auto-resize the textarea to fit its content, between minHeightPx and
-  // maxHeightPx. Matches voicebox FloatingGenerateBox auto-resize behaviour
-  // (FloatingGenerateBox.tsx:201-248). Default off — opt-in per usage so
+  // maxHeightPx. Default off — opt-in per usage so
   // existing fixed-rows textareas aren't disturbed.
   autosize:   { type: Boolean, default: false },
   minHeightPx:{ type: Number, default: 100 },

@@ -1,11 +1,18 @@
-"""Static engine catalog — what JustTTS knows about each engine,
+"""Static engine catalog — what JustVoice knows about each engine,
 independent of whether it's installed.
 
-Mirrors the Rust ``engines::catalog`` module. 8 engines:
-  - kokoro (Rust-native via sherpa-onnx; now Python-native via
-    sherpa-onnx-python — same .onnx weights, same audio output)
-  - luxtts, qwen3, chatterbox (3 variants), tada, dia, moss-tts,
-    higgs-audio (all PyTorch-based)
+7 engines, all commercial-output-permitting per their model-weight
+licenses (Higgs v3 was removed 2026-06-09 because its weights are
+declared non-commercial, which conflicted with JustVoice's audiobook /
+game / podcast commercial-output use cases):
+  - kokoro (sherpa-onnx-python — Apache-2.0 weights)
+  - luxtts (Apache-2.0 weights)
+  - qwen3 (Apache-2.0 weights)
+  - chatterbox / chatterbox-turbo / chatterbox-multilingual (MIT)
+  - tada (Llama 3.2 Community License — requires "Built with Llama"
+    attribution on the producing tool)
+  - dia (Apache-2.0)
+  - moss-tts (Apache-2.0 — upstream explicitly states "free commercial use")
 """
 
 from __future__ import annotations
@@ -22,7 +29,6 @@ def known_engines() -> list[EngineInfo]:
         tada(),
         dia(),
         moss_tts(),
-        higgs_audio(),
     ]
 
 
@@ -152,25 +158,6 @@ def moss_tts() -> EngineInfo:
             sidecar=False, disk_space_mb=12000, gpu_runtimes=["cuda"]
         ),
         runtime_deps=["moss_tts", "torch"],
-    )
-
-
-def higgs_audio() -> EngineInfo:
-    return EngineInfo(
-        id="higgs-audio",
-        name="Higgs Audio v3",
-        description="Higgs Audio v3 — rich expression control, wide emotional range. **Non-commercial license.**",
-        backend="python",
-        capabilities=[
-            "voice_cloning",
-            "paralinguistic_tags",
-            "instruct_field",
-            "gpu_accel",
-        ],
-        prerequisites=Prerequisites(
-            sidecar=False, disk_space_mb=8000, gpu_runtimes=["cuda"]
-        ),
-        runtime_deps=["higgs_audio", "torch"],
     )
 
 

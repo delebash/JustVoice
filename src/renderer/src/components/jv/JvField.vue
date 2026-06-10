@@ -16,7 +16,12 @@ defineProps({
 
 <template>
   <div class="jv-field" :class="layout === 'block' ? 'jv-field--block' : ''">
-    <label v-if="label" :for="$attrs.for ?? undefined">{{ label }}</label>
+    <!-- Named `label` slot lets callers put a pill or button next to the
+         label text (matches preview's "Delivery direction [free-form]"
+         pattern). Falls through to the `label` prop when no slot used. -->
+    <label v-if="$slots.label || label" :for="$attrs.for ?? undefined">
+      <slot name="label">{{ label }}</slot>
+    </label>
     <div>
       <slot />
       <span v-if="hint" class="jv-field__hint">{{ hint }}</span>

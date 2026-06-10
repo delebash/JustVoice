@@ -66,6 +66,22 @@ function dismiss(id) {
 async function refresh() {
   const e = await api.safeRequest("/v1/engines", { engines: [] });
   engines.value = e?.engines ?? [];
+  // Eager-fetch model variants for every engine so the always-visible
+  // model picker on each card populates without a per-card "Show
+  // variants" toggle. Fire in parallel; failures (missing /models
+  // endpoint for an external engine) are swallowed per-engine.
+  await Promise.all(
+    engines.value.map(async (eng) => {
+      if (variants.value[eng.id]) return;
+      try {
+        const [models, recommended] = await Promise.all([
+          api.request(`/v1/engines/${eng.id}/models`).catch(() => ({ variants: [] })),
+          api.request(`/v1/engines/${eng.id}/models/recommended`).catch(() => ({})),
+        ]);
+        variants.value = { ...variants.value, [eng.id]: { variants: models.variants || [], recommended } };
+      } catch { /* per-engine failure tolerated */ }
+    }),
+  );
 }
 
 async function loadSystem() {
@@ -271,18 +287,33 @@ async function load(id, variant) {
   const isExternal = eng?.backend === "external-openai-tts";
   busy.value[id] = "load";
   const variantSuffix = variant ? ` (${variant})` : "";
+  const ctl = new AbortController();
   const task = tasks.start({
     label: `Loading · ${eng?.name || id}${variantSuffix}`,
     kind: "load",
     statsFn: () => ["spawning subprocess", "loading model weights"],
+    // Two-stage cancel: signal the server to abort the in-flight load
+    // (kills the subprocess + sets the manager's cancel flag), then
+    // abort the client fetch so we stop waiting.
+    onCancel: async () => {
+      try {
+        await fetch(`${api.serverUrl}/v1/engines/${id}/cancel-load`, { method: "POST" });
+      } catch (_) { /* best-effort; client abort still fires */ }
+      ctl.abort();
+    },
+    // Retry re-runs the same load. The strip/panel shows a Retry button
+    // for finished tasks (failed / cancelled) once this is in place.
+    onRetry: () => load(id, variant),
   });
   try {
     await api.request(`/v1/engines/${id}/load`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ device: "auto", model_variant: variant || null }),
+      signal: ctl.signal,
     });
     await refresh();
+    currentLoadedVariant.value = variant || eng?.default_variant_id || null;
     tasks.finish(task.id);
     pushToast({
       message: `${eng?.name || id}${variantSuffix} loaded.`,
@@ -290,6 +321,10 @@ async function load(id, variant) {
       duration: 4500,
     });
   } catch (e) {
+    if (ctl.signal.aborted) {
+      // tasks.cancel() was triggered by the strip; nothing more to log.
+      return;
+    }
     const raw = String(e.message || e);
     const hint = isExternal
       ? "The remote TTS server isn't responding. Check that it's running, then try again."
@@ -317,6 +352,49 @@ function defaultVariantFor(engine) {
   return (v.variants || []).find((x) => x.id === did) || null;
 }
 
+// All variants for a given engine — used by the always-visible model
+// picker. Returns an empty list before variants are fetched (eager
+// fetch fires on `refresh()` so this rarely matters in practice).
+function allVariantsFor(engine) {
+  const v = variants.value[engine.id];
+  return v?.variants || [];
+}
+
+// Per-engine isolation discriminator. Drives whether the engine shows
+// an Install button (venv engines need an explicit install step;
+// shared engines have their shared venv built transparently on first
+// model load). Falls back to "shared" if the field isn't present.
+function isolation(engine) {
+  return engine.isolation || "shared";
+}
+
+// Bottom-of-card destructive action label:
+//   - venv-isolated engines: "Uninstall" (removes venv + downloaded models)
+//   - shared engines:        "Remove downloaded models" (no venv to remove)
+function uninstallLabel(engine) {
+  return isolation(engine) === "venv" ? "Uninstall" : "Remove downloaded models";
+}
+
+// Currently-loaded model variant id — set when load() resolves, cleared
+// on unload. Drives the `Currently loaded` chip in the model picker.
+// (Server doesn't track this per-variant today; the variant id is just
+// what we last passed to /v1/engines/{id}/load.)
+const currentLoadedVariant = ref(null);
+
+// Status pill resolver — derives the three visually-distinct states
+// (not_installed / installed / loaded) the user can scan from a list
+// of 8 engine cards at a glance. The strings here are user-facing.
+function statusLabel(engine) {
+  if (engine.status === "loaded") return "Loaded";
+  if (engine.status === "installed") return "Installed";
+  return "Not installed";
+}
+function statusIcon(engine) {
+  if (engine.status === "loaded") return "●";
+  if (engine.status === "installed") return "✓";
+  return "⊘";
+}
+
 function engineType(engine) {
   const caps = engine.capabilities || [];
   const hasPresets = caps.includes("preset_voices");
@@ -337,6 +415,7 @@ function otherVariantsFor(engine) {
 async function unload() {
   try {
     const resp = await api.request("/v1/engines/unload", { method: "POST" });
+    currentLoadedVariant.value = null;
     await refresh();
     pushToast({
       message: resp?.previous_engine
@@ -507,186 +586,182 @@ onMounted(() => {
       or run <code class="jv-mono">justtts-server serve</code> from a terminal.
     </p>
 
-    <table v-if="engines.length" class="jv-table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Backend</th>
-          <th>Status</th>
-          <th>Disk</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <template v-for="e in engines" :key="e.id">
-          <!-- Main engine row -->
-          <tr>
-            <td>
-              <div class="engine-name">{{ e.name }}</div>
-              <div class="engine-tags">
-                <JvTag variant="accent" :label="engineType(e)" />
-                <JvTag v-if="e.capabilities.includes('voice_design')" label="design" />
-                <JvTag v-if="e.capabilities.includes('instruct_field')" label="instruct" />
-                <JvTag v-if="e.capabilities.includes('paralinguistic_tags')" label="[tags]" />
-                <JvTag v-if="e.capabilities.includes('single_speaker_dialogue')" label="dialogue" />
-              </div>
-              <div class="engine-desc">{{ e.description }}</div>
-            </td>
-            <td class="jv-mono">{{ e.backend }}</td>
-            <td>
-              <span class="status" :class="e.status">
-                <span class="sq"></span>{{ e.status.replace("_", " ") }}
-              </span>
-            </td>
-            <td>{{ fmtDisk(e.prerequisites.disk_space_mb) }}</td>
-            <td class="actions">
-              <div class="jv-btn-group">
-                <JvButton variant="secondary" size="sm" :disabled="!!busy[e.id]" @click="loadVariants(e.id)">
-                  {{ variants[e.id] ? "Hide variants" : "Show variants" }}
-                </JvButton>
-                <JvButton
-                  v-if="e.status === 'not_installed'"
-                  variant="primary"
-                  size="sm"
-                  :loading="busy[e.id] === 'install'"
-                  :disabled="!!busy[e.id]"
-                  :label="busy[e.id] === 'install' ? 'Installing…' : 'Install'"
-                  @click="install(e.id)"
-                />
-                <JvButton
-                  v-else-if="e.status === 'installed'"
-                  variant="primary"
-                  size="sm"
-                  :loading="busy[e.id] === 'load'"
-                  :disabled="!!busy[e.id]"
-                  :label="busy[e.id] === 'load' ? 'Loading…' : 'Load'"
-                  @click="load(e.id)"
-                />
-                <JvButton
-                  v-else-if="e.status === 'loaded'"
-                  variant="secondary"
-                  size="sm"
-                  label="Unload"
-                  @click="unload"
-                />
-                <JvButton
-                  v-if="e.status !== 'not_installed'"
-                  variant="danger-outline"
-                  size="sm"
-                  :disabled="!!busy[e.id]"
-                  :label="busy[e.id] === 'uninstall' ? 'Uninstalling…' : 'Uninstall'"
-                  @click="uninstall(e.id)"
-                />
-              </div>
-            </td>
-          </tr>
+    <!-- Engine cards — one per discovered engine. Replaces the prior
+         table layout. Per the design pinned 2026-06-09:
+           - Status pill at the top, 3 visually distinct states
+             (not installed / installed / loaded).
+           - "Loaded: <variant>" summary line when in VRAM.
+           - Always-visible model picker (variants), with
+             `Recommended` (manifest's default_variant_id) and
+             `Currently loaded` chips. **No GPU-aware suggestions —
+             manifest default only.**
+           - Install button only on venv-isolated engines; shared
+             engines have their venv set up transparently on first
+             model load (per user, 2026-06-09).
+           - Uninstall label varies: "Uninstall" (venv: rm venv + models),
+             "Remove downloaded models" (shared: rm just models). -->
+    <div v-if="engines.length" class="engine-cards">
+      <article v-for="e in engines" :key="e.id" class="engine-card" :data-status="e.status">
+        <header class="engine-card__head">
+          <div class="engine-card__title">
+            <h3>{{ e.name }}</h3>
+            <div class="engine-card__tags">
+              <JvTag variant="accent" :label="engineType(e)" />
+              <JvTag v-if="e.capabilities.includes('voice_design')" label="design" />
+              <JvTag v-if="e.capabilities.includes('instruct_field')" label="instruct" />
+              <JvTag v-if="e.capabilities.includes('paralinguistic_tags')" label="[tags]" />
+              <JvTag v-if="e.capabilities.includes('single_speaker_dialogue')" label="dialogue" />
+            </div>
+          </div>
+          <span class="engine-card__status-pill" :data-status="e.status">
+            <span class="engine-card__status-icon">{{ statusIcon(e) }}</span>
+            {{ statusLabel(e) }}
+          </span>
+        </header>
 
-          <!-- Inline install-progress row -->
-          <tr v-if="progress[e.id]" :key="e.id + '-progress'" class="progress-row-tr">
-            <td colspan="5" class="progress-cell">
-              <div class="progress-inline-row">
-                <span class="progress-phase jv-mono">{{ (progress[e.id].phase || "").toUpperCase() }}</span>
-                <div class="progress-track">
-                  <div
-                    class="progress-bar"
-                    :class="[
-                      'phase-' + progress[e.id].phase,
-                      progress[e.id].bytes_total === 0 && progress[e.id].phase !== 'completed' ? 'indeterminate' : ''
-                    ]"
-                    :style="progress[e.id].bytes_total > 0 ? { width: pct(progress[e.id]) + '%' } : {}"
-                  ></div>
-                </div>
-                <span class="progress-bytes jv-mono">
-                  <template v-if="progress[e.id].bytes_total > 0">
-                    {{ (progress[e.id].bytes_downloaded / 1048576).toFixed(1) }} / {{ (progress[e.id].bytes_total / 1048576).toFixed(1) }} MB
-                  </template>
+        <p class="engine-card__desc">{{ e.description }}</p>
+
+        <!-- License + attribution. weights_license differs from the
+             framework code license (LICENSE field on the manifest) when
+             the model weights have their own terms — e.g. TADA ships
+             Apache-2.0 code on top of Llama 3.2 weights. Attribution is
+             surfaced inline because it's a CONTRACT the producing
+             audiobook / podcast author must honor in their distribution. -->
+        <div v-if="e.weights_license || e.attribution" class="engine-card__license">
+          <span class="engine-card__license-pill">
+            <span class="engine-card__license-icon">⚖</span>
+            Weights: <strong>{{ e.weights_license || "Apache-2.0" }}</strong>
+          </span>
+          <span v-if="e.attribution" class="engine-card__attribution">
+            <strong>Required attribution:</strong>
+            <code class="jv-mono">{{ e.attribution }}</code>
+            <span class="jv-muted">— include in your published work's credits.</span>
+          </span>
+        </div>
+
+        <!-- Currently-loaded summary — only shown when a model is in VRAM. -->
+        <div v-if="e.status === 'loaded'" class="engine-card__loaded">
+          <strong>Loaded:</strong>
+          <code class="jv-mono">{{ currentLoadedVariant || e.default_variant_id || "(default)" }}</code>
+          <span class="jv-muted">· {{ e.backend }} · {{ fmtDisk(e.prerequisites.disk_space_mb) }} on disk</span>
+        </div>
+
+        <!-- Install progress (download + venv build) — only while in flight or after failure. -->
+        <div v-if="progress[e.id]" class="engine-card__progress">
+          <div class="engine-card__progress-row">
+            <span class="engine-card__progress-phase jv-mono">{{ (progress[e.id].phase || "").toUpperCase() }}</span>
+            <div class="engine-card__progress-track">
+              <div
+                class="engine-card__progress-fill"
+                :class="[
+                  'phase-' + progress[e.id].phase,
+                  progress[e.id].bytes_total === 0 && progress[e.id].phase !== 'completed' ? 'indeterminate' : ''
+                ]"
+                :style="progress[e.id].bytes_total > 0 ? { width: pct(progress[e.id]) + '%' } : {}"
+              />
+            </div>
+            <span class="engine-card__progress-bytes jv-mono">
+              <template v-if="progress[e.id].bytes_total > 0">
+                {{ (progress[e.id].bytes_downloaded / 1048576).toFixed(1) }} / {{ (progress[e.id].bytes_total / 1048576).toFixed(1) }} MB
+              </template>
+            </span>
+            <JvButton
+              v-if="installJobs[e.id] && !['completed', 'failed'].includes(progress[e.id].phase)"
+              variant="danger-outline"
+              size="sm"
+              label="Cancel"
+              @click="cancelInstall(e.id)"
+            />
+            <JvButton variant="ghost" size="sm" label="View log" @click="viewInstallLog(e.id)" />
+          </div>
+          <div v-if="progress[e.id].current_file" class="engine-card__progress-file">
+            <span class="jv-mono">{{ progress[e.id].current_file }}</span>
+          </div>
+          <div v-if="progress[e.id].error" class="engine-card__progress-error">
+            <strong>Install failed.</strong> {{ progress[e.id].error }}
+            <JvButton variant="ghost" size="sm" label="View install log" @click="viewInstallLog(e.id)" />
+            <JvButton variant="ghost" size="sm" label="Dismiss" @click="dismiss(e.id)" />
+          </div>
+        </div>
+
+        <!-- Model picker — always visible. Recommended (manifest default)
+             and Currently loaded chips on appropriate rows. Won't-fit
+             rows from the recommender are flagged but still listable. -->
+        <div v-if="allVariantsFor(e).length" class="engine-card__models">
+          <h4 class="engine-card__models-h">Models</h4>
+          <ul class="engine-card__model-list">
+            <li
+              v-for="v in allVariantsFor(e)"
+              :key="v.id"
+              class="engine-card__model-row"
+              :class="{ 'engine-card__model-row--current': v.id === currentLoadedVariant }"
+            >
+              <div class="engine-card__model-info">
+                <strong>{{ v.name }}</strong>
+                <span class="engine-card__model-meta jv-muted">
+                  {{ v.size_mb >= 1024 ? (v.size_mb / 1024).toFixed(1) + " GB" : v.size_mb + " MB" }}
+                  <template v-if="v.vram_mb"> · {{ v.vram_mb >= 1024 ? (v.vram_mb / 1024).toFixed(1) + " GB" : v.vram_mb + " MB" }} VRAM</template>
+                  <template v-if="v.quality != null"> · q{{ v.quality }}/100</template>
                 </span>
-                <JvButton
-                  v-if="installJobs[e.id] && !['completed', 'failed'].includes(progress[e.id].phase)"
-                  variant="danger-outline"
-                  size="sm"
-                  label="Cancel"
-                  @click="cancelInstall(e.id)"
+                <div v-if="v.description" class="engine-card__model-desc">{{ v.description }}</div>
+              </div>
+              <div class="engine-card__model-chips">
+                <span v-if="v.id === e.default_variant_id" class="jv-pill jv-pill--ghost">Recommended</span>
+                <span v-if="v.id === currentLoadedVariant && e.status === 'loaded'" class="jv-pill jv-pill--solid">★ Currently loaded</span>
+                <JvTag
+                  v-if="(variants[e.id]?.recommended?.would_oom || []).includes(v.id)"
+                  variant="danger"
+                  label="Won't fit"
                 />
-                <JvButton variant="ghost" size="sm" label="View log" @click="viewInstallLog(e.id)" />
               </div>
-              <div v-if="progress[e.id].current_file" class="endnote progress-file">
-                <span class="jv-mono">{{ progress[e.id].current_file }}</span>
-              </div>
-              <div v-if="progress[e.id].error" class="endnote progress-error">
-                <strong>Install failed.</strong> {{ progress[e.id].error }}
-                <JvButton variant="ghost" size="sm" label="View install log" style="margin-left:12px;" @click="viewInstallLog(e.id)" />
-                <JvButton variant="ghost" size="sm" label="Dismiss" style="margin-left:8px;" @click="dismiss(e.id)" />
-              </div>
-            </td>
-          </tr>
+              <JvButton
+                v-if="v.id !== currentLoadedVariant || e.status !== 'loaded'"
+                variant="primary"
+                size="sm"
+                label="Load"
+                :loading="busy[e.id] === 'load'"
+                :disabled="!!busy[e.id] || (variants[e.id]?.recommended?.would_oom || []).includes(v.id)"
+                @click="loadVariant(e.id, v.id)"
+              />
+            </li>
+          </ul>
+        </div>
 
-          <!-- Model variants row -->
-          <tr v-if="variants[e.id]" :key="e.id + '-variants'" class="variants-row-tr">
-            <td colspan="5" class="variants-cell">
-              <div class="variants-header">
-                <span class="variants-title">Model variants</span>
-                <JvButton variant="ghost" size="sm" label="Hide" @click="hideVariants(e.id)" />
-              </div>
+        <!-- Bottom actions row -->
+        <footer class="engine-card__actions">
+          <JvButton
+            v-if="isolation(e) === 'venv' && e.status === 'not_installed'"
+            variant="primary"
+            size="sm"
+            :loading="busy[e.id] === 'install'"
+            :disabled="!!busy[e.id]"
+            :label="busy[e.id] === 'install' ? 'Installing…' : 'Install'"
+            @click="install(e.id)"
+          />
+          <JvButton
+            v-if="e.status === 'loaded'"
+            variant="secondary"
+            size="sm"
+            label="Unload"
+            @click="unload"
+          />
+          <span class="engine-card__spacer" />
+          <JvButton
+            v-if="e.status !== 'not_installed'"
+            variant="danger-outline"
+            size="sm"
+            :disabled="!!busy[e.id]"
+            :label="busy[e.id] === 'uninstall' ? 'Working…' : uninstallLabel(e)"
+            @click="uninstall(e.id)"
+          />
+        </footer>
+      </article>
+    </div>
 
-              <!-- Default model note -->
-              <div v-if="defaultVariantFor(e)" class="endnote variants-default-note">
-                <strong style="font-style: normal; color: var(--ink);">Default model:</strong>
-                {{ defaultVariantFor(e).name }}
-                <span v-if="defaultVariantFor(e).description"> — {{ defaultVariantFor(e).description }}</span>
-              </div>
-
-              <p v-if="otherVariantsFor(e).length === 0" class="endnote variants-default-note">
-                No alternative variants — the row's Load button loads the default above.
-              </p>
-              <table v-else class="jv-table variants-table">
-                <thead>
-                  <tr>
-                    <th>Variant</th>
-                    <th>Size</th>
-                    <th>VRAM</th>
-                    <th>Quality</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="v in otherVariantsFor(e)" :key="v.id">
-                    <td>
-                      <span>{{ v.name }}</span>
-                      <JvTag
-                        v-if="(variants[e.id].recommended.would_oom || []).includes(v.id)"
-                        variant="danger"
-                        label="Won't fit"
-                        style="margin-left: 8px;"
-                      />
-                      <div v-if="v.description" class="endnote" style="margin-top: 3px;">{{ v.description }}</div>
-                    </td>
-                    <td class="jv-mono">{{ v.size_mb >= 1024 ? (v.size_mb / 1024).toFixed(1) + " GB" : v.size_mb + " MB" }}</td>
-                    <td class="jv-mono">{{ v.vram_mb ? (v.vram_mb >= 1024 ? (v.vram_mb / 1024).toFixed(1) + " GB" : v.vram_mb + " MB") : "CPU" }}</td>
-                    <td class="jv-mono">{{ v.quality != null ? v.quality + "/100" : "—" }}</td>
-                    <td class="jv-table__actions">
-                      <JvButton
-                        variant="primary"
-                        size="sm"
-                        label="Load"
-                        :disabled="!!busy[e.id] || (variants[e.id].recommended.would_oom || []).includes(v.id)"
-                        @click="loadVariant(e.id, v.id)"
-                      />
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <div class="endnote variants-note" v-if="variants[e.id].recommended.detected_vram_mb">
-                Detected VRAM: {{ (variants[e.id].recommended.detected_vram_mb / 1024).toFixed(1) }} GB
-              </div>
-            </td>
-          </tr>
-        </template>
-      </tbody>
-    </table>
-    <p class="endnote foot">
-      Engines load one at a time — loading a new engine unloads the previous one to free GPU memory.
-      Install downloads the model files; Load brings the engine into memory ready to render.
+    <p class="endnote engine-cards__foot">
+      Engines load one at a time — loading a new model unloads the previously loaded one to free GPU memory.
+      Shared engines (Kokoro, Chatterbox, LuxTTS, Qwen3, TADA) have their runtime set up transparently the first time you load any model.
+      Venv-isolated engines (Dia, MOSS) need a one-time Install before you can load.
     </p>
   </section>
 
@@ -718,43 +793,346 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* Engine name + description in the first table cell */
-.engine-name {
+/* ── Engine cards grid ────────────────────────────────────────────── */
+.engine-cards {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(560px, 1fr));
+  margin-top: 8px;
+}
+.engine-cards__foot {
+  margin-top: 18px;
+  max-width: 920px;
+  line-height: 1.55;
+}
+
+/* ── Single card ──────────────────────────────────────────────────── */
+.engine-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px 16px;
+  border: 1px solid var(--border, var(--border-soft));
+  border-radius: var(--r-lg, 10px);
+  background: var(--surface);
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.engine-card:hover {
+  border-color: var(--border-strong, var(--accent-line));
+}
+.engine-card[data-status="loaded"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-line, transparent) inset;
+}
+.engine-card[data-status="loading"] {
+  border-color: var(--warn, var(--accent-line));
+}
+
+/* ── Card header (title block + status pill) ──────────────────────── */
+.engine-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.engine-card__title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.engine-card__title h3 {
+  margin: 0;
   font-family: var(--font-serif);
   font-weight: 400;
-  font-size: 17px;
+  font-size: 19px;
   letter-spacing: -0.005em;
-  font-variation-settings: 'opsz' 24;
   color: var(--ink);
 }
-.engine-desc {
-  margin-top: 6px;
-  font-family: var(--font-sans);
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--ink-2);
-  max-width: 480px;
-}
-.engine-tags {
+.engine-card__tags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 8px;
 }
 
-.subblock { margin-top: 24px; }
-.subblock h4 { margin: 0 0 10px; font-weight: 600; font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+/* Status pill — three visual states. Loaded = solid accent;
+   loading = warn outline; installed = neutral outline; not_installed
+   = muted ghost. Same shape across states for predictable scanning. */
+.engine-card__status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: var(--r-pill, 999px);
+  border: 1px solid var(--border, var(--border-soft));
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.engine-card__status-pill[data-status="loaded"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--surface);
+}
+.engine-card__status-pill[data-status="loading"] {
+  background: var(--warn-bg, transparent);
+  border-color: var(--warn, var(--accent-line));
+  color: var(--warn-ink, var(--accent));
+}
+.engine-card__status-pill[data-status="installed"] {
+  background: var(--accent-soft, transparent);
+  border-color: var(--accent-line, var(--border));
+  color: var(--accent);
+}
+.engine-card__status-pill[data-status="not_installed"] {
+  background: transparent;
+  border-style: dashed;
+  color: var(--muted);
+}
+.engine-card__status-icon {
+  font-size: 12px;
+  line-height: 1;
+}
 
-.tags { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+/* ── Description + currently-loaded summary ───────────────────────── */
+.engine-card__desc {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  max-width: 720px;
+}
+.engine-card__loaded {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--accent-soft, var(--surface-2));
+  border-left: 3px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.engine-card__loaded code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: transparent;
+  color: var(--accent);
+}
 
-/* Status indicator */
-.status { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); white-space: nowrap; }
-.status .sq { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-.status.installed { color: var(--accent); }
-.status.loaded { color: var(--success); }
+/* ── License + attribution row ────────────────────────────────────── */
+.engine-card__license {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.engine-card__license-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: var(--r-pill, 999px);
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  font-size: 11.5px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.engine-card__license-pill strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+.engine-card__license-icon {
+  font-size: 11px;
+  opacity: 0.7;
+}
+.engine-card__attribution {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 5px 10px;
+  background: var(--warn-bg, var(--accent-soft));
+  border-left: 3px solid var(--warn, var(--accent));
+  border-radius: 0 6px 6px 0;
+  font-size: 12px;
+  color: var(--warn-ink, var(--ink-2));
+}
+.engine-card__attribution code {
+  background: transparent;
+  padding: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
 
-.actions { white-space: nowrap; }
-.foot { margin-top: 16px; }
+/* ── Install progress block ───────────────────────────────────────── */
+.engine-card__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+}
+.engine-card__progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.engine-card__progress-phase {
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  color: var(--ink-2);
+  min-width: 80px;
+}
+.engine-card__progress-track {
+  flex: 1 1 200px;
+  height: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-pill, 999px);
+  overflow: hidden;
+  min-width: 140px;
+}
+.engine-card__progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+.engine-card__progress-fill.phase-failed { background: var(--danger); }
+.engine-card__progress-fill.phase-completed { background: var(--success, var(--accent)); }
+.engine-card__progress-fill.indeterminate {
+  width: 35% !important;
+  animation: engineCardIndeterminate 1.4s ease-in-out infinite;
+}
+@keyframes engineCardIndeterminate {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(285%); }
+}
+.engine-card__progress-bytes {
+  font-size: 10.5px;
+  color: var(--muted);
+  min-width: 110px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.engine-card__progress-file {
+  font-size: 11px;
+  color: var(--muted);
+  word-break: break-all;
+}
+.engine-card__progress-error {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 8px 10px;
+  background: var(--danger-bg, var(--surface));
+  border-left: 3px solid var(--danger);
+  border-radius: 0 6px 6px 0;
+  font-size: 12px;
+  color: var(--danger-ink, var(--danger));
+}
+
+/* ── Models picker (always-visible variant list) ──────────────────── */
+.engine-card__models {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.engine-card__models-h {
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.engine-card__model-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.engine-card__model-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: start;
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--surface);
+  transition: background 0.15s, border-color 0.15s;
+}
+.engine-card__model-row:hover {
+  background: var(--surface-2);
+  border-color: var(--border, var(--accent-line));
+}
+.engine-card__model-row--current {
+  background: var(--accent-soft, var(--surface-2));
+  border-color: var(--accent);
+  border-left-width: 3px;
+}
+.engine-card__model-info {
+  min-width: 0;
+}
+.engine-card__model-info > strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.engine-card__model-meta {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.engine-card__model-desc {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  max-width: 480px;
+}
+.engine-card__model-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* ── Bottom actions row ───────────────────────────────────────────── */
+.engine-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+}
+.engine-card__spacer {
+  flex: 1;
+  min-width: 4px;
+}
 
 /* ── Install log modal ────────────────────────────────────────────── */
 :deep(.log-modal-backdrop) {
@@ -807,33 +1185,4 @@ onMounted(() => {
   border-top: 1px solid var(--border);
 }
 
-/* ── Inline progress row ─────────────────────────────────────────── */
-.progress-row-tr td { background: var(--surface-2); border-bottom: 1px solid var(--border-soft); padding: 10px 10px 12px; }
-.progress-inline-row { display: flex; align-items: center; gap: 12px; }
-.progress-phase { font-size: 11px; letter-spacing: 0.06em; min-width: 90px; color: var(--ink-2); }
-.progress-inline-row .progress-track { flex: 1; }
-.progress-bytes { font-size: 11px; color: var(--muted); min-width: 120px; text-align: right; }
-.progress-file { margin-top: 6px; }
-.progress-error { margin-top: 6px; color: var(--danger); }
-
-/* ── Variants sub-table ──────────────────────────────────────────── */
-.variants-row-tr td { background: var(--surface-2); padding: 14px 10px; border-bottom: 1px solid var(--border-soft); }
-.variants-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.variants-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; color: var(--muted); }
-.variants-table { margin: 0; background: transparent; }
-.variants-table th { background: transparent; }
-.variants-table tbody tr:hover td { background: var(--surface-3, var(--surface-2)); }
-.variants-note { margin-top: 8px; }
-.variants-default-note {
-  margin: 0 0 12px;
-  padding: 8px 12px;
-  background: var(--accent-soft);
-  border-left: 3px solid var(--accent);
-  line-height: 1.5;
-  font-size: 12.5px;
-  color: var(--ink-2);
-  font-style: normal;
-  font-family: var(--font-sans);
-  max-width: 720px;
-}
 </style>

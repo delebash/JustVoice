@@ -2044,12 +2044,12 @@ const app = {
         <section class="block stack">
           <h3>Two WAVs in, side-by-side report out</h3>
           <p class="endnote" style="margin-bottom: 12px;">
-            Drop two 16-bit PCM WAV files. JustTTS reports format match, peak/RMS loudness diff, sample-level RMSE if formats line up, and a coarse verdict (<span class="mono">identical</span> / <span class="mono">near-identical</span> / <span class="mono">similar</span> / <span class="mono">different</span> / <span class="mono">unrelated</span>). Use this to compare two TTS pipelines' output of the same text + voice.
+            Drop two 16-bit PCM WAV files. JustVoice reports format match, peak/RMS loudness diff, sample-level RMSE if formats line up, and a coarse verdict (<span class="mono">identical</span> / <span class="mono">near-identical</span> / <span class="mono">similar</span> / <span class="mono">different</span> / <span class="mono">unrelated</span>). Use this to compare two TTS pipelines' output of the same text + voice.
           </p>
           <div class="grid-2">
             <div>
               <label>A (baseline) — label (optional)</label>
-              <input type="text" v-model="compareLabelA" placeholder="e.g. JustTTS Kokoro" />
+              <input type="text" v-model="compareLabelA" placeholder="e.g. JustVoice Kokoro" />
               <div style="margin-top: 10px;">
                 <label>WAV file A</label>
                 <input type="file" accept="audio/wav,audio/x-wav,.wav" @change="compareFileA = $event.target.files[0]" />
@@ -2691,7 +2691,7 @@ const app = {
         <section class="block" v-if="settings && settings.engines">
           <h3>Local model paths</h3>
           <p class="endnote" style="margin-bottom: 14px;">
-            Point JustTTS's <strong>built-in sherpa-onnx Kokoro</strong> at an existing local Kokoro model directory instead of downloading. The path should contain <span class="mono">model.onnx</span> + <span class="mono">voices.bin</span> + <span class="mono">tokens.txt</span> (flat or one directory deep). Restart required after changing.
+            Point JustVoice's <strong>built-in sherpa-onnx Kokoro</strong> at an existing local Kokoro model directory instead of downloading. The path should contain <span class="mono">model.onnx</span> + <span class="mono">voices.bin</span> + <span class="mono">tokens.txt</span> (flat or one directory deep). Restart required after changing.
           </p>
           <div class="grid-2">
             <div style="grid-column: 1 / -1;">
@@ -2704,7 +2704,7 @@ const app = {
         <section class="block" v-if="settings && settings.engines">
           <h3>External TTS servers (OpenAI-compatible)</h3>
           <p class="endnote" style="margin-bottom: 14px;">
-            Register an external server that implements the OpenAI TTS API (<span class="mono">POST /v1/audio/speech</span>) as a JustTTS engine. Compatible with kokoro-fastapi, openai-edge-tts, OpenAI itself, or any custom server. Each becomes a separate engine in the catalog so you can A/B compare backends side by side. Restart required after add/remove.
+            Register an external server that implements the OpenAI TTS API (<span class="mono">POST /v1/audio/speech</span>) as a JustVoice engine. Compatible with kokoro-fastapi, openai-edge-tts, OpenAI itself, or any custom server. Each becomes a separate engine in the catalog so you can A/B compare backends side by side. Restart required after add/remove.
           </p>
           <table v-if="settings.engines.external && settings.engines.external.length">
             <thead>

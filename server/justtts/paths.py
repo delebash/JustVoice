@@ -1,6 +1,6 @@
 """Data directory resolution — where settings.json + storage lives.
 
-Matches the Rust CLI's resolve_data_dir behavior so existing JustTTS
+Matches the Rust CLI's resolve_data_dir behavior so existing JustVoice
 data dirs transfer to the Python port without copying files.
 
 Resolution order:

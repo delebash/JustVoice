@@ -1,15 +1,13 @@
-"""Cross-platform shared-venv setup — voicebox's `justfile setup-python` recipe
-ported to Python so the host can drive it from the GUI's "Set up engines"
-action.
+"""Cross-platform shared-venv setup — `setup-python` recipe in Python so the
+host can drive it from the GUI's "Set up engines" action.
 
 Shared engines (manifest.ISOLATION == "shared", the default) all run against
 ONE Python interpreter at `server/justtts/engines/.shared-venv/`. Setup
 detects GPU + OS, installs the right torch wheel, then bulk-installs every
-shared engine's `SHARED_INSTALL_STEPS`. This matches voicebox's monolith
-architecture and means clicking "Install" on a shared engine afterwards
-only downloads model files.
+shared engine's `SHARED_INSTALL_STEPS`. Once the shared venv exists, clicking
+"Install" on a shared engine afterwards only downloads model files.
 
-Cross-platform detection mirrors voicebox's justfile:
+Cross-platform detection:
     - macOS arm64:    Apple Silicon → CPU torch + optional MLX deps later
     - macOS x86_64:   CPU torch
     - Linux:          nvidia-smi → cu124 / cu128; else CPU
@@ -46,8 +44,8 @@ log = logging.getLogger(__name__)
 def detect_gpu() -> tuple[str, str | None, str]:
     """Returns (vendor, torch_index_url_or_None, label).
 
-    Mirrors voicebox's Windows-side detection (powershell Win32_VideoController)
-    + Linux-side (nvidia-smi). Override via JUSTTTS_TORCH_INDEX env var.
+    Windows-side detection uses powershell Win32_VideoController; Linux-side
+    uses nvidia-smi. Override via JUSTTTS_TORCH_INDEX env var.
     """
     # User override always wins.
     override = os.environ.get("JUSTTTS_TORCH_INDEX")
@@ -73,7 +71,7 @@ def detect_gpu() -> tuple[str, str | None, str]:
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
 
-    # Intel Arc on Windows — voicebox detects via Get-CimInstance Win32_VideoController.
+    # Intel Arc on Windows — detect via Get-CimInstance Win32_VideoController.
     if _current_os_label() == "windows":
         try:
             r = subprocess.run(
@@ -162,7 +160,7 @@ def setup_shared_venv(
     # 4. Walk every shared engine, execute its shared_install_steps in order.
     #    Within an engine's steps we keep the original ordering so that
     #    --no-deps + git overrides come AFTER the subdeps they replace
-    #    (mirrors voicebox's justfile sequencing).
+    #    (preserves the upstream justfile sequencing).
     manifests = discover_engines()
     shared_ids: list[str] = []
     for mid, m in sorted(manifests.items()):
@@ -208,7 +206,7 @@ def setup_shared_venv(
             else:
                 log.warning("unknown shared install step kind for %s: %r", mid, kind)
 
-    # 5. Apple Silicon: install voicebox's MLX deps if we're on arm64+Darwin.
+    # 5. Apple Silicon: install MLX deps if we're on arm64+Darwin.
     #    Optional — skip cleanly if file doesn't exist yet (we haven't ported it).
     if _current_os_label() == "macos" and platform.machine() == "arm64":
         mlx_file = Path(__file__).resolve().parents[2] / "engines" / "_mlx_requirements.txt"

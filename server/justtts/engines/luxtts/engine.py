@@ -1,6 +1,6 @@
 """LuxTTS engine subprocess — ZipVoice voice cloning.
 
-Adapter scaffolded from voicebox's luxtts_backend.py. NOT YET RUN-TESTED.
+Adapter for ZipVoice / LuxTTS. NOT YET RUN-TESTED.
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""justtts-plugin — minimal SDK every JustTTS engine subprocess imports.
+"""justtts-plugin — minimal SDK every JustVoice engine subprocess imports.
 
 Engine authors write:
 
@@ -19,7 +19,7 @@ Engine authors write:
         serve(MyEngine())
 
 That's the whole adapter contract. The base class + FastAPI shim handle
-port allocation, the JustTTS-host handshake (port written to stdout),
+port allocation, the JustVoice-host handshake (port written to stdout),
 HTTP routes, and error envelopes.
 """
 

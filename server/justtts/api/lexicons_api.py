@@ -18,7 +18,14 @@ async def list_lexicons() -> LexiconList:
 
 @router.post("/v1/lexicons", response_model=Lexicon, status_code=201)
 async def create_lexicon(body: CreateLexiconRequest) -> Lexicon:
-    return get_state().lexicons.create(body.name, body.entries)
+    return get_state().lexicons.create(
+        body.name,
+        body.entries,
+        scope=body.scope,
+        description=body.description,
+        project_id=body.project_id,
+        persona_id=body.persona_id,
+    )
 
 
 @router.get("/v1/lexicons/{id}", response_model=Lexicon)

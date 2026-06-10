@@ -2,7 +2,7 @@
 `[whisper]...[/whisper]`, `[speed:0.7]...[/speed]`, `[pitch:-3]...[/pitch]`.
 
 Produces a token stream the per-engine dispatchers translate into either
-native paralinguistic markers (Chatterbox, Higgs) or instruct-field
+native paralinguistic markers (Chatterbox-Turbo, MOSS) or instruct-field
 insertions (Qwen3) or strip-with-warning (Kokoro).
 """
 

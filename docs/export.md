@@ -82,7 +82,7 @@ Useful for handing a project to a collaborator, archiving a finished book, or mo
 
 ## Single take → ZIP (with effects history)
 
-Per-take ZIP export (voicebox parity feature, not yet exposed in the UI but the endpoint exists): bundles the take's audio + every effects-applied version + a manifest with the lineage. Useful for handing a take to a sound designer.
+Per-take ZIP export (endpoint exists but not yet exposed in the UI): bundles the take's audio + every effects-applied version + a manifest with the lineage. Useful for handing a take to a sound designer.
 
 API: `GET /v1/takes/{take_id}/export` returns the ZIP.
 
@@ -97,6 +97,6 @@ Useful for masking JustVoice-produced audio without re-rendering.
 ## Troubleshooting
 
 - **M4B is missing chapter markers** — JustWrite must pass the chapter manifest to FFmpeg's `-i FFMETADATAFILE` argument. Check JustWrite's `services/m4b.js` for the call.
-- **WAV plays at wrong speed** — Mismatched sample rate. Check the engine's output rate vs the destination application's expected rate. Engines emit at their native rate (Kokoro 24 kHz, Chatterbox 24 kHz, Higgs 16/24 kHz depending on variant).
+- **WAV plays at wrong speed** — Mismatched sample rate. Check the engine's output rate vs the destination application's expected rate. Engines emit at their native rate (Kokoro 24 kHz, Chatterbox 24 kHz, LuxTTS 48 kHz, TADA 24 kHz).
 - **Mastered audio is silent at the start** — A bug in the mastering normalize step. Try the "iAudio" target instead of ACX; iAudio's threshold is gentler.
 - **ZIP export is huge** — Unmastered + every take is large. Use the project export with "Default takes only" checkbox to slim it down.

@@ -78,9 +78,9 @@ def _current_os_label() -> str:
 
 
 # Where the shared venv lives — engines with ISOLATION="shared" (the default
-# voicebox-style monolith) all run against this interpreter. The venv contains
+# monolithic style) all run against this interpreter. The venv contains
 # torch + every shared engine's Python deps, set up once via the
-# `setup-python` recipe ported from voicebox's justfile.
+# `setup-python` recipe.
 SHARED_VENV_DIR = ENGINES_DIR / ".shared-venv"
 
 
@@ -117,6 +117,24 @@ class EngineManifest:
     @property
     def license(self) -> str:
         return getattr(self.module, "LICENSE", "")
+
+    @property
+    def weights_license(self) -> str:
+        """Model-weights license — distinct from framework code license.
+        Falls back to LICENSE when WEIGHTS_LICENSE is unset (most engines
+        ship Apache-2.0 code + Apache-2.0 weights, so the fallback is
+        usually right). Override on engines whose weights diverge from
+        their wrapper code license — e.g. TADA (Apache code + Llama-3.2
+        Community weights)."""
+        return getattr(self.module, "WEIGHTS_LICENSE", "") or getattr(self.module, "LICENSE", "")
+
+    @property
+    def attribution(self) -> str:
+        """Attribution string the consuming tool must display when
+        shipping output produced by this engine. Empty string means
+        none required. Llama-3.2 §1.b mandates "Built with Llama" for
+        any Llama-derivative — TADA sets this to that string."""
+        return getattr(self.module, "ATTRIBUTION", "")
 
     @property
     def capabilities(self) -> dict[str, bool]:
@@ -157,10 +175,9 @@ class EngineManifest:
         engines/.shared-venv/) or "venv" (engine gets its own private venv at
         engines/<id>/.venv/).
 
-        Default is "shared" — voicebox proves that the 5 core engines
-        coexist in one venv with selective --no-deps. Reserve "venv" for
-        engines that genuinely can't fit (e.g. MOSS-TTS needs flash-attn,
-        Higgs might need newer transformers, Dia pins specific triton).
+        Default is "shared" — the 5 core engines coexist in one venv with
+        selective --no-deps. Reserve "venv" for engines that genuinely
+        can't fit (e.g. MOSS-TTS needs flash-attn, Dia pins specific triton).
         """
         return getattr(self.module, "ISOLATION", "shared")
 
@@ -299,7 +316,7 @@ def _detect_torch_index_url() -> tuple[str | None, str]:
     """Pick a torch wheel index based on detected hardware.
 
     Returns (index_url, label). When index_url is None, default PyPI is used
-    (CPU-only wheels). Mirrors voicebox's justfile detection logic.
+    (CPU-only wheels). Detection logic for CUDA / Intel Arc / Apple Silicon.
     """
     # User override always wins.
     override = os.environ.get("JUSTTTS_TORCH_INDEX")
@@ -322,8 +339,8 @@ def _detect_torch_index_url() -> tuple[str | None, str]:
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
 
-    # Intel Arc — voicebox uses XPU wheels. We don't auto-detect Arc reliably,
-    # so users with Arc set JUSTTTS_TORCH_INDEX themselves.
+    # Intel Arc uses XPU wheels. We don't auto-detect Arc reliably, so
+    # users with Arc set JUSTTTS_TORCH_INDEX themselves.
     override = os.environ.get("JUSTTTS_TORCH_INDEX")
     if override:
         return override, f"override({override})"
@@ -441,7 +458,7 @@ def _install_engine_isolated(
 
     # 1. Create venv — idempotent (uv complains if one exists, so we
     #    pass --allow-existing). Pin to the same Python interpreter the
-    #    JustTTS host is running on so wheel-compat matches the host's
+    #    JustVoice host is running on so wheel-compat matches the host's
     #    environment (otherwise uv may pick a different uv-managed Python
     #    version and pull wheels the host can't use).
     emit("creating-venv", f"uv venv {venv}")
@@ -831,7 +848,7 @@ class EngineProcess:
         # synth on consumer GPUs. Better to wait than to false-error.
         self.client = httpx.Client(base_url=f"http://127.0.0.1:{self.port}", timeout=1800.0)
 
-        # Pipe stderr to our logger so engine logs surface in JustTTS server logs.
+        # Pipe stderr to our logger so engine logs surface in JustVoice server logs.
         def relay_stderr() -> None:
             assert self.proc is not None
             assert self.proc.stderr is not None
@@ -914,7 +931,31 @@ class EngineManager:
         self._manifests: dict[str, EngineManifest] = {}
         self._current: EngineProcess | None = None
         self._lock = threading.RLock()
+        # Engine ids the client has requested to cancel-load. Checked by
+        # `cancel_check` callbacks inside `load()`. Adds are made by the
+        # `/v1/engines/{id}/cancel-load` endpoint; entries are removed at
+        # the end of `load()` (whether the cancel landed in time or not).
+        self._cancel_load_requests: set[str] = set()
         self.refresh_manifests()
+
+    def request_cancel_load(self, engine_id: str) -> bool:
+        """Mark an in-flight load for cancellation. Returns True if a load is
+        actually in progress for that engine; False otherwise (no-op cancel).
+        The load loop polls `cancel_check()` at safe points and raises
+        `RuntimeError("cancelled")` to short-circuit. Side effect: kills the
+        subprocess if it was already spawned."""
+        with self._lock:
+            self._cancel_load_requests.add(engine_id)
+            # If the subprocess is already up, kill it so the model load
+            # inside the child can't keep consuming VRAM.
+            if self._current and self._current.manifest.id == engine_id:
+                try:
+                    self._current.terminate()
+                except Exception:
+                    pass
+                self._current = None
+                return True
+        return False
 
     def refresh_manifests(self) -> None:
         with self._lock:
@@ -990,56 +1031,84 @@ class EngineManager:
         if m is None:
             raise RuntimeError(f"unknown engine: {engine_id}")
 
-        # For shared engines (voicebox-style monolith), Load is the only
-        # button. If the shared venv isn't built or model files aren't on
-        # disk yet, do that first — same task, no separate Install step.
-        if m.isolation == "shared":
-            if not shared_venv_exists():
-                if progress:
-                    progress("setup-shared-venv", "first-time setup: creating shared venv…")
-                from . import shared_venv as sv
-                sv.setup_shared_venv(progress=progress, cancel_check=cancel_check)
-
-            # Run model downloads if they haven't been fetched yet. For HF-cache
-            # engines with no expected_files, this is a no-op (engine.load()
-            # pulls from HF on first import). For Kokoro etc. we download here
-            # so first-time Load is one transparent step.
-            if not m.is_installed:
-                if progress:
-                    progress("downloading-model", f"first load of {engine_id} — fetching model files")
-                _install_engine_shared(m, progress, cancel_check)
-        else:
-            # Isolated engine — needs its own venv built via the Install button.
-            if not m.is_installed:
-                raise RuntimeError(
-                    f"engine {engine_id} (isolated) is not installed yet. "
-                    f"Click Install to build its venv."
-                )
-
+        # Drop any stale cancel flag and compose the caller's `cancel_check`
+        # (if any) with our flag-driven one. Either signal aborts the load.
         with self._lock:
-            # Unload current engine first — one loaded at a time.
-            if self._current and self._current.manifest.id != engine_id:
-                log.info("unloading current engine %s before loading %s", self._current.manifest.id, engine_id)
-                self._current.terminate()
-                self._current = None
-            elif self._current and self._current.manifest.id == engine_id and self._current.is_alive():
-                # Already loaded — just return current voices.
-                return self._current.get("/voices").json()
+            self._cancel_load_requests.discard(engine_id)
+        _server_cancel = lambda: engine_id in self._cancel_load_requests  # noqa: E731
+        if cancel_check is None:
+            effective_cancel = _server_cancel
+        else:
+            effective_cancel = lambda: _server_cancel() or cancel_check()  # noqa: E731
 
-            proc = EngineProcess(m)
-            proc.spawn()
-            self._current = proc
+        def _maybe_cancel() -> None:
+            if effective_cancel():
+                raise RuntimeError("cancelled by user")
 
-        # Now POST /load to the engine — this is where the model actually
-        # comes into memory.
-        r = proc.post("/load", json={"device": device, "variant": variant})
-        if r.status_code != 200:
-            log.warning("engine %s /load failed: %s", engine_id, r.text[:400])
+        try:
+            _maybe_cancel()
+
+            # For shared engines (monolithic style), Load is the only
+            # button. If the shared venv isn't built or model files aren't on
+            # disk yet, do that first — same task, no separate Install step.
+            if m.isolation == "shared":
+                if not shared_venv_exists():
+                    if progress:
+                        progress("setup-shared-venv", "first-time setup: creating shared venv…")
+                    from . import shared_venv as sv
+                    sv.setup_shared_venv(progress=progress, cancel_check=effective_cancel)
+
+                _maybe_cancel()
+
+                # Run model downloads if they haven't been fetched yet. For HF-cache
+                # engines with no expected_files, this is a no-op (engine.load()
+                # pulls from HF on first import). For Kokoro etc. we download here
+                # so first-time Load is one transparent step.
+                if not m.is_installed:
+                    if progress:
+                        progress("downloading-model", f"first load of {engine_id} — fetching model files")
+                    _install_engine_shared(m, progress, effective_cancel)
+            else:
+                # Isolated engine — needs its own venv built via the Install button.
+                if not m.is_installed:
+                    raise RuntimeError(
+                        f"engine {engine_id} (isolated) is not installed yet. "
+                        f"Click Install to build its venv."
+                    )
+
+            _maybe_cancel()
+
             with self._lock:
-                proc.terminate()
-                self._current = None
-            raise RuntimeError(f"engine load failed: {r.text}")
-        return r.json()
+                # Unload current engine first — one loaded at a time.
+                if self._current and self._current.manifest.id != engine_id:
+                    log.info("unloading current engine %s before loading %s", self._current.manifest.id, engine_id)
+                    self._current.terminate()
+                    self._current = None
+                elif self._current and self._current.manifest.id == engine_id and self._current.is_alive():
+                    # Already loaded — just return current voices.
+                    return self._current.get("/voices").json()
+
+                proc = EngineProcess(m)
+                proc.spawn()
+                self._current = proc
+
+            _maybe_cancel()
+
+            # Now POST /load to the engine — this is where the model actually
+            # comes into memory.
+            r = proc.post("/load", json={"device": device, "variant": variant})
+            if r.status_code != 200:
+                log.warning("engine %s /load failed: %s", engine_id, r.text[:400])
+                with self._lock:
+                    proc.terminate()
+                    self._current = None
+                raise RuntimeError(f"engine load failed: {r.text}")
+            return r.json()
+        finally:
+            # Always clear the cancel flag — leaving stale "cancelled" state
+            # would block the next load attempt.
+            with self._lock:
+                self._cancel_load_requests.discard(engine_id)
 
     def unload(self) -> dict:
         with self._lock:
@@ -1107,7 +1176,7 @@ def get_manager() -> EngineManager:
 
 
 def shutdown_manager() -> None:
-    """Called on JustTTS server shutdown — kill any running engine subprocess."""
+    """Called on JustVoice server shutdown — kill any running engine subprocess."""
     global _manager
     with _manager_lock:
         if _manager is None:

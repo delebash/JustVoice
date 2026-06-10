@@ -34,6 +34,6 @@
     ],
     "category": "AudioVideo",
     "shortDescription": "Voice production studio for audiobooks, games, podcasts, and dictation",
-    "longDescription": "JustVoice — an open-source voice production studio. Audiobook production with ACX-compliant mastering, game-dialogue export, podcast assembly, dictation, and accessibility. Renders through Kokoro, Qwen3-TTS, Chatterbox, Higgs Audio, LuxTTS, TADA, Dia, and MOSS-TTSD engines."
+    "longDescription": "JustVoice — an open-source voice production studio. Audiobook production with ACX-compliant mastering, game-dialogue export, podcast assembly, dictation, and accessibility. Renders through Kokoro, Qwen3-TTS, Chatterbox, LuxTTS, TADA, Dia, and MOSS-TTSD engines."
   }
 }

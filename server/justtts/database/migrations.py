@@ -16,8 +16,8 @@ user has exactly one SQLite file. Alembic's strengths — migration tracking
 across environments, rollback, team coordination — don't apply here and would
 add bundling complexity (alembic.ini, env.py, versions/ directory all need to
 survive PyInstaller). The column-existence checks below are idempotent, run
-in <50 ms on startup, and have been battle-tested in voicebox across 12+
-schema changes.
+in <50 ms on startup, and have been battle-tested upstream across 12+
+schema changes (see SPDX header above for the upstream attribution).
 
 If the project ever moves to a server-based deployment or Postgres, this
 decision should be revisited.
@@ -98,7 +98,7 @@ def _migrate_voice_profiles_personality(engine, inspector, tables: set[str]) -> 
     """Adds `personality TEXT` + `default_delivery TEXT` to voice_profiles.
 
     - `personality`: drives Generate view's Compose button (LLM-fills
-      textarea with in-character line). Lifted from voicebox.
+      textarea with in-character line).
     - `default_delivery`: Tier-2 delivery overlay defaults for the 3-tier
       voice tuning system (task #88). JSON-serialized Delivery shape.
     """

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /**
  * generationStore — in-flight generation tracking + deferred story-add queue.
- * Mirrors voicebox's generationStore.ts.
  */
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";

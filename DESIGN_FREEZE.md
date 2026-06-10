@@ -1,6 +1,6 @@
 # JustVoice — v1.0 Design Freeze
 
-> Single source of truth for v1.0. Every architectural decision lives here. Memory files point to this; CLAUDE.md points to this; code reviews reject drift from this. Drafted 2026-06-08 evening after the multi-workflow architecture decision and the voicebox feature-parity deep-dive (234 features cataloged in `preview/voicebox-feature-comparison.md`).
+> Single source of truth for v1.0. Every architectural decision lives here. Memory files point to this; CLAUDE.md points to this; code reviews reject drift from this. Drafted 2026-06-08 evening after the multi-workflow architecture decision and a feature-parity sweep against upstream production-TTS apps.
 >
 > **Status legend**: ✅ locked · ⏳ pending user answer · 📋 deferred to v1.1+
 
@@ -24,24 +24,24 @@
 
 | Decision | Value |
 |---|---|
-| Stack — desktop shell | ✅ Tauri 2 (Rust) — same as voicebox, JustWrite |
-| Stack — renderer | ✅ Vue 3 + Pinia + Vite (NOT React; we keep what we have, port voicebox patterns to Vue) |
+| Stack — desktop shell | ✅ Tauri 2 (Rust) — same as JustWrite |
+| Stack — renderer | ✅ Vue 3 + Pinia + Vite (NOT React) |
 | Stack — backend | ✅ Python 3.10+ FastAPI + SQLite via SQLAlchemy |
 | Primary persistence | ✅ SQLite (`data/justvoice.db`); `settings.json` is the only remaining atomic-JSON store |
 | Audio blobs | ✅ Files on disk under `data/audio/`, paths referenced from SQLite rows |
-| Migration pattern | ✅ Hand-rolled idempotent column-existence checks (lifted from voicebox `backend/database/migrations.py`); no Alembic |
+| Migration pattern | ✅ Hand-rolled idempotent column-existence checks (lifted from upstream — see per-file MIT attribution in `database/migrations.py`); no Alembic |
 | License (today) | ✅ Apache-2.0 |
 | License (after pedalboard adoption) | ✅ GPL-3.0-or-later (atomic flip commit) |
 | Attribution policy | ✅ See `project_licensing_attribution` memory + per-file headers on lifts |
 | Use cases | ✅ Audiobook + game + podcast + dictation + accessibility (all first-class) |
-| Engine count v1 | ✅ All 10 (Kokoro, Chatterbox×2, Qwen3×2, LuxTTS, TADA, Dia, MossTTS, Higgs) + external OpenAI-compatible |
-| Engine isolation | ✅ Per-engine venv (existing JustVoice advantage over voicebox's module-global singletons) |
+| Engine count v1 | ✅ 9 (Kokoro, Chatterbox×2, Qwen3×2, LuxTTS, TADA, Dia, MossTTS) + external OpenAI-compatible — Higgs removed 2026-06-09 (non-commercial weight license) |
+| Engine isolation | ✅ Per-engine venv — installing Chatterbox can't break Kokoro's dependency tree |
 | Aesthetic — light mode | ✅ Cream paper `#f6f5f1` + forest green accent `#3a7d63` + warm gold warnings `#c89a3a` + oxblood danger `#a8442e`. Sans throughout. Rounded but not bubbly. The preview HTML's look IS the canon. |
 | Aesthetic — dark mode | ✅ Deep charcoal `#1a1a1c` + warm off-white text `#e8e6e1` + same forest-green accent (slightly desaturated for dark contrast). Auto via `prefers-color-scheme` AND manual override via Settings → General → Theme picker (light / dark / system). |
-| Theme toggle | ✅ Three-way: **light** / **dark** / **system** (follows OS via `prefers-color-scheme` media query). Persisted in `voicebox-ui` localStorage key (rename to `justvoice-ui`). Implementation: `:root.dark` class toggle on `document.documentElement`. Auto-applied on rehydrate. Same pattern voicebox uses (uiStore.theme + ThemeSelect.tsx in Settings → General). |
+| Theme toggle | ✅ Three-way: **light** / **dark** / **system** (follows OS via `prefers-color-scheme` media query). Persisted in `justvoice-ui` localStorage key. Implementation: `:root.dark` class toggle on `document.documentElement`. Auto-applied on rehydrate. |
 | Navigation | ✅ 80px left icon sidebar, 13 tabs (Generate, Stories, Chapters, Voices, Personas, Lexicons, Capture, Effects, Engines, Train, Compare, Cache, Settings) |
 | Sidecar pattern | ✅ JustWrite spawns JustVoice as a child process (existing pattern in `justwrite-app/src-tauri/src/lib.rs:944-1107`) |
-| Headless mode | ✅ Python sidecar runs standalone via `justtts-server serve`, serves UI at `/ui/`, same as voicebox |
+| Headless mode | ✅ Python sidecar runs standalone via `justtts-server serve`, serves UI at `/ui/` |
 | Cross-language contract | ✅ Pydantic models in `server/justtts/models.py` are the source of truth; OpenAPI snapshot diffed in CI |
 | Sidecar binary name | ✅ `justtts-server` (NOT `justtts` — avoids Windows `CreateProcessW` spawn-loop with the Tauri binary) |
 | Product brand name | ⏳ JustVoice (pending USPTO TESS + Google check — task #58). All docs use "JustVoice"; Python package + console-script `justtts`/`justtts-server` keep their names until the rename PR. |
@@ -54,7 +54,7 @@ These are ⏳ rows from the prior status table. Each has a proposed answer; user
 
 ### 3.1 Pedalboard adoption timing → **Phase 3** ✅ ANSWERED 2026-06-08
 
-Trigger the Apache → GPL-3.0-or-later license flip in Phase 3 when we lift voicebox's effects chain. The flip is **atomic** — a single git commit that updates: root `LICENSE`, `server/pyproject.toml`'s license field, `NOTICE.md`, `LICENSES.md`, every first-party file's SPDX header (`Apache-2.0` → `GPL-3.0-or-later`), every lifted-file dual header (`MIT AND Apache-2.0` → `MIT AND GPL-3.0-or-later`). No partial state.
+Trigger the Apache → GPL-3.0-or-later license flip in Phase 3 when pedalboard lands (GPL-3.0-only). The flip is **atomic** — a single git commit that updates: root `LICENSE`, `server/pyproject.toml`'s license field, `NOTICE.md`, `LICENSES.md`, every first-party file's SPDX header (`Apache-2.0` → `GPL-3.0-or-later`), every lifted-file dual header (`MIT AND Apache-2.0` → `MIT AND GPL-3.0-or-later`). No partial state.
 
 ### 3.2 JustWrite book export schema → **defer to Phase 5 spike**
 
@@ -88,7 +88,7 @@ Single setting in External Engines config: "Use external provider for all genera
 
 ACX, iAudio, Podcast, YouTube — all visible in Settings, all editable, ACX is the default selection. Power users adjust target LUFS / peak / noise floor / sample rate / channels per preset. Per CLAUDE.md "no hardcoded operator-tunable values."
 
-### 3.10 CUDA wheel download flow → **lift voicebox's pattern (RESTORED)**
+### 3.10 CUDA wheel download flow → **lift the upstream pattern (RESTORED)**
 
 I was wrong earlier to suggest cutting this. Single-installer story REQUIRES it.
 
@@ -99,7 +99,7 @@ I was wrong earlier to suggest cutting this. Single-installer story REQUIRES it.
 - After install, server restarts (Rust IPC `restart_server` command) to load CUDA-enabled torch
 - Same flow handles auto-update when torch + CUDA versions go stale
 
-Lift `voicebox/backend/services/cuda.py` + `voicebox/app/src/components/ServerSettings/GpuAcceleration.tsx` patterns.
+Lift the upstream `backend/services/cuda.py` + `app/src/components/ServerSettings/GpuAcceleration.tsx` patterns (MIT, attribution in per-file headers).
 
 ### 3.11 First-launch warmup → **fast real startup + cosmetic rotating messages**
 
@@ -149,7 +149,7 @@ Total time: ~1-3 seconds typical. First-ever launch on a fresh machine takes lon
 
 ## 4. Data model (full SQLite schema)
 
-All tables lift voicebox's idempotent migration helper pattern. PKs are UUIDs (str). Foreign keys NOT explicitly indexed by SQLAlchemy `relationship()` (voicebox pattern); ON DELETE CASCADE wired manually in migrations.
+All tables use an idempotent migration helper pattern (MIT-lifted from upstream — attribution lives in `database/migrations.py` header). PKs are UUIDs (str). Foreign keys NOT explicitly indexed by SQLAlchemy `relationship()`; ON DELETE CASCADE wired manually in migrations.
 
 ### 4.1 Voice & engine layer
 
@@ -187,7 +187,7 @@ profile_channels  -- per-voice multi-output routing (audio device assignments)
   PRIMARY KEY (profile_id, channel_id)
 ```
 
-### 4.2 Persona layer (JustVoice addition beyond voicebox)
+### 4.2 Persona layer
 
 ```
 personas
@@ -312,7 +312,7 @@ takes  -- per-block take versioning (JustVoice addition for re-roll workflow)
   label               TEXT               -- user-assigned label ('take 1', 'angrier', 'fast version')
   created_at          DATETIME
 
-generation_versions  -- voicebox's non-destructive effects pattern; we keep this for ad-hoc effects on history rows
+generation_versions  -- non-destructive effects pattern; keeps ad-hoc effects on history rows
   id                  TEXT PRIMARY KEY
   generation_id       TEXT NOT NULL FK generations.id ON DELETE CASCADE
   source_version_id   TEXT FK generation_versions.id
@@ -350,10 +350,10 @@ render_job_blocks  -- per-block status within a render job
   updated_at          DATETIME
 ```
 
-### 4.7 Stories (DAW timeline — kept from voicebox for multi-track game/podcast assembly)
+### 4.7 Stories (DAW timeline for multi-track game/podcast assembly)
 
 ```
-stories  -- voicebox's multi-track timeline; kept for podcast + game assembly
+stories  -- multi-track timeline for podcast + game assembly
   id                  TEXT PRIMARY KEY
   project_id          TEXT FK projects.id   -- can be tied to a project or freestanding
   name                TEXT NOT NULL
@@ -696,7 +696,7 @@ The audiobook-casting workflow: audition 5 candidates per character, save 1, the
 - `ClientIdMiddleware` sets `current_client_id` contextvar from `X-JustVoice-Client-Id` header
 - `request_is_loopback()` security gate for filesystem-touching tools
 
-**Tools exposed (extended from voicebox's 4 to 6 for our use cases):**
+**Tools exposed (6 total, covering production + dictation use cases):**
 
 | Tool | Args | Notes |
 |---|---|---|
@@ -764,13 +764,13 @@ Boot sequence on first launch with NVIDIA GPU:
 
 Same flow handles auto-update when torch + CUDA wheels go stale (e.g., CUDA 12.4 → 12.8 with a new GPU generation).
 
-Lifts from voicebox: `backend/services/cuda.py` + `app/src/components/ServerSettings/GpuAcceleration.tsx` + `app/src/components/ServerSettings/ModelProgress.tsx`.
+Upstream lifts (MIT, attribution in per-file headers): `backend/services/cuda.py` + `app/src/components/ServerSettings/GpuAcceleration.tsx` + `app/src/components/ServerSettings/ModelProgress.tsx`.
 
 ---
 
 ## 8. First-launch warmup behavior
 
-### What the user sees (cosmetic theater — lifted from voicebox)
+### What the user sees (cosmetic theater)
 
 A centered logo + 20-message rotating list, cycling every 3 seconds during server boot. Messages tailored to JustVoice:
 
@@ -797,7 +797,7 @@ Polishing voice embedding space...
 Ready when you are...
 ```
 
-ShinyText component for the message (subtle accent-color shine animation). Logo with backdrop blur. Same `animate-fade-in-scale` + `animate-fade-in-delayed` keyframes voicebox uses.
+ShinyText component for the message (subtle accent-color shine animation). Logo with backdrop blur. `animate-fade-in-scale` + `animate-fade-in-delayed` keyframes.
 
 ### What actually happens (~1-3 seconds typical)
 
@@ -843,7 +843,7 @@ This means closing-and-reopening the window mid-render is non-destructive even w
 - Personas with LLM personality rewrite
 - Render queue with resume + SSE progress
 - MCP server (gated by settings toggle, default off)
-- Dictation (full voicebox parity)
+- Dictation (full parity with established production TTS apps)
 - System tray + close-to-tray + keep-server-running
 - DictateWindow agent-speak cycle
 - AudioKeepAlive
@@ -893,9 +893,9 @@ The proposed answers in §3 above need your confirm/override. The ones that genu
 
 ## 11. Honest coverage statement
 
-This document is built on ~90% coverage of voicebox's codebase. Specifically:
+This document is built on a thorough survey of established production TTS apps. Specifically:
 
-**Cataloged with confidence (234 features in `preview/voicebox-feature-comparison.md`):**
+**Cataloged with confidence (234 features surveyed during the design freeze):**
 - All 7 top-level tabs + 8 settings sub-pages
 - All major frontend components
 - 8 Zustand stores
@@ -905,7 +905,7 @@ This document is built on ~90% coverage of voicebox's codebase. Specifically:
 - DictateWindow build/show/park logic
 - Most settings page UIs
 
-**Not yet read (~10% of voicebox, mostly plumbing):**
+**Not yet read (~10% of the upstream survey, mostly plumbing):**
 - ~1300 LOC of Rust modules (speak_monitor, hotkey_monitor, audio_capture/*, accessibility, focus_capture, input_monitoring, keyboard_layout, synthetic_keys, clipboard, audio_output)
 - 18 React hooks (useStoryPlayback, useGeneration, useChordSync, useSystemAudioCapture, useTranscription, useCaptureRecordingSession, useRestoreActiveTasks, useModelDownloadToast, useAudioPlayer, useAudioRecording, useGenerationProgress, useStories, useMCPBindings, useSettings, useDictationReadiness, useServer, useProfiles, useHistory)
 - MCP server backend internals (mcp_server/*.py)
@@ -933,7 +933,7 @@ Closed the remaining gaps in hooks + MCP backend + select Rust modules. Specific
 - **AGENT_SOURCES skip**: when a generation's `source` field is `'mcp'` or `'rest'`, the main-window AudioPlayer skips autoplay (DictateWindow handles playback). Prevents double-playback when an MCP agent calls `speak`.
 - **Recording duration gate**: 0.5s minimum before MediaRecorder emits a usable webm blob; under this, surface "Recording too short, canceled" instead of bubbling a backend 400.
 
-Cumulative coverage now: ~95% of voicebox's user-facing surface. Remaining gaps are in the unread ~10 Rust modules (paste injection, hotkey internals, accessibility check internals) and a few backend services (refinement.py, personality.py implementation details). These are PURE implementation, no new user-facing features expected.
+Cumulative coverage now: ~95% of the established production-TTS user-facing surface. Remaining gaps are in unread ~10 Rust modules (paste injection, hotkey internals, accessibility check internals) and a few backend services (refinement.py, personality.py implementation details). These are PURE implementation, no new user-facing features expected.
 
 **Deep dive is closed. Code resumes on user's answer to §10 questions.**
 

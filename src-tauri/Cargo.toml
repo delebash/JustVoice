@@ -2,7 +2,7 @@
 name = "justtts"
 version = "0.1.0"
 description = "An open-source TTS server built for audiobook production, useful for any TTS workload."
-authors = ["JustTTS contributors"]
+authors = ["JustVoice contributors"]
 edition = "2021"
 license = "GPL-3.0-or-later"
 rust-version = "1.85"
@@ -32,8 +32,8 @@ hound = "3.5"
 scopeguard = "1.2"
 
 # ── Global hotkey monitoring ───────────────────────────────────────────────
-# keytap is the upstream voicebox crate (jamiepine/keytap): left/right
-# modifier fidelity, clean Drop-based shutdown, no unsafe Sonoma dance.
+# keytap (jamiepine/keytap, MIT): left/right modifier fidelity,
+# clean Drop-based shutdown, no unsafe Sonoma dance.
 keytap = "0.4"
 
 [target.'cfg(target_os = "windows")'.dependencies]

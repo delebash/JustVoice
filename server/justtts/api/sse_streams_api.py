@@ -4,7 +4,7 @@
 Subscribed by:
 - useGenerationProgress (auto-play on complete + history invalidation)
 - useModelDownloadToast (toast progress bar tied to download)
-- DictateWindow agent-speak cycle (MCP voicebox.speak playback)
+- DictateWindow agent-speak cycle (MCP justvoice.speak playback)
 """
 
 from __future__ import annotations

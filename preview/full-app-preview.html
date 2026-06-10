@@ -15,7 +15,7 @@
   --accent:#3a7d63; --accent-ink:#2c6049; --accent-soft:#e8f0eb; --accent-line:#b8d2c3;
   --warn:#c89a3a; --warn-bg:#fff8e3; --warn-ink:#8a6a1f; --warn-line:#e6cd84;
   --danger:#a8442e; --danger-bg:#fbecea; --danger-ink:#7a2f1f; --danger-line:#e3b6ac;
-  --voicebox:#2f74b5; --jtorig:#7a3aa6; --combined:#b86b1f;
+  --info-blue:#2f74b5; --jtorig:#7a3aa6; --combined:#b86b1f;
   --r-card:8px; --r-control:6px; --r-pill:999px;
   --shadow-1:0 1px 2px rgba(20,22,24,.04);
   --shadow-2:0 4px 12px rgba(20,22,24,.06);
@@ -90,7 +90,7 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .section{margin-bottom:30px}
 .section h3{margin:0 0 12px;display:flex;align-items:center;gap:8px}
 .src-tag{font-size:9px;text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:3px;font-weight:600;color:#fff}
-.src-tag.voicebox{background:var(--voicebox)}
+.src-tag.legacy-src{background:var(--info-blue)}
 .src-tag.jtorig{background:var(--jtorig)}
 .src-tag.combined{background:var(--combined)}
 .src-tag.new{background:var(--accent)}
@@ -160,14 +160,14 @@ select.input{cursor:pointer;appearance:none;padding-right:28px;background-image:
 .banner{background:var(--surface-2);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:var(--r-control);padding:14px 18px;margin-bottom:18px;font-size:13px;color:var(--ink-2);line-height:1.6}
 .banner.warn{border-left-color:var(--warn);background:var(--warn-bg)}
 .banner.danger{border-left-color:var(--danger);background:var(--danger-bg);color:var(--danger-ink)}
-.banner.info{border-left-color:var(--voicebox);background:#eef4fb}
+.banner.info{border-left-color:var(--info-blue);background:#eef4fb}
 .banner strong{color:var(--ink)}
 .banner code{background:rgba(255,255,255,.55);padding:0 5px;border-radius:3px;font-size:12px}
 
 /* Note — borderless quiet informational paragraph. Plain block. */
 p.note{display:block;margin:0 0 22px;font-size:13px;color:var(--ink-2);line-height:1.65}
 p.note strong{color:var(--ink)}
-p.note .tag-info{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:var(--voicebox);padding:1px 7px;border-radius:3px;margin-right:8px;vertical-align:baseline}
+p.note .tag-info{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:var(--info-blue);padding:1px 7px;border-radius:3px;margin-right:8px;vertical-align:baseline}
 p.note .tag-warn{background:var(--warn)}
 p.note .tag-danger{background:var(--danger)}
 p.note code{background:var(--surface-3);padding:1px 5px;border-radius:3px;font-size:12px;color:var(--ink);word-break:break-all}
@@ -195,7 +195,7 @@ p.note code{background:var(--surface-3);padding:1px 5px;border-radius:3px;font-s
 .tl-label{width:90px;font-size:11px;color:var(--ink-2);flex-shrink:0}
 .tl-clip{height:30px;background:var(--accent);opacity:.78;border-radius:3px;font-size:10px;color:#fff;padding:0 7px;line-height:30px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
 .tl-clip.alt{background:var(--warn)}
-.tl-clip.alt2{background:var(--voicebox)}
+.tl-clip.alt2{background:var(--info-blue)}
 .tl-clip.alt3{background:var(--jtorig)}
 .tl-gap{flex-shrink:0}
 
@@ -372,7 +372,7 @@ pip install -e .[kokoro]</pre>
   </div>
 
   <div class="section">
-    <h3>Recent generations <span class="src-tag voicebox">voicebox</span></h3>
+    <h3>Recent generations <span class="src-tag legacy-src">upstream</span></h3>
     <div class="card card--flat">
       <table class="tbl">
         <thead><tr><th>When</th><th>Voice</th><th>Text</th><th>Duration</th><th class="right">Actions</th></tr></thead>
@@ -543,7 +543,7 @@ pip install -e .[kokoro]</pre>
       <div class="field block">
         <label>Delivery direction <span class="pill green">free-form</span></label>
         <textarea class="input" style="min-height:64px">with growing horror, voice gradually quieter, last word almost whispered</textarea>
-        <span class="hint">Plain language. The model interprets the prose directly. This is what voicebox / Qwen3 / LuxTTS expect.</span>
+        <span class="hint">Plain language. The model interprets the prose directly. This is what Qwen3 / LuxTTS expect.</span>
       </div>
       <div class="field block" style="margin-top:12px">
         <label>Style prompt <span class="muted" style="font-weight:400;letter-spacing:0;text-transform:none">— optional, Qwen3-specific</span></label>
@@ -557,7 +557,7 @@ pip install -e .[kokoro]</pre>
   </div>
 
   <div class="section">
-    <h3>History — takes, favorites, retry <span class="src-tag voicebox">voicebox</span></h3>
+    <h3>History — takes, favorites, retry <span class="src-tag legacy-src">upstream</span></h3>
     <table class="tbl">
       <thead><tr><th>When</th><th>Voice</th><th>Text preview</th><th>Take</th><th>Effects</th><th class="right">Actions</th></tr></thead>
       <tbody>
@@ -800,7 +800,7 @@ pip install -e .[kokoro]</pre>
 
 <!-- ════════════════════ STORIES ════════════════════ -->
 <section class="view" id="view-stories">
-  <p class="lede">Multi-track timeline editor — voicebox's hallmark feature. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement. <span class="src-tag voicebox">voicebox</span></p>
+  <p class="lede">Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.</p>
 
   <div class="card">
     <div class="row" style="margin-bottom:10px">
@@ -887,7 +887,7 @@ pip install -e .[kokoro]</pre>
   </div>
 
   <div class="section" style="margin-top:18px">
-    <h3>Voice inspector — Narrator <span class="src-tag voicebox">voicebox</span></h3>
+    <h3>Voice inspector — Narrator <span class="src-tag legacy-src">upstream</span></h3>
     <div class="card">
       <div class="field-grid">
         <div class="field block"><label>Name</label><input class="input" value="Narrator" /></div>
@@ -1131,7 +1131,7 @@ pip install -e .[kokoro]</pre>
 
 <!-- ════════════════════ CAPTURES ════════════════════ -->
 <section class="view" id="view-captures">
-  <p class="lede">Dictation pill + global hotkey. Speak into any text field. Also captures audio for cloning sample collection. <span class="src-tag voicebox">voicebox</span> <span class="src-tag new">+ readiness gates</span></p>
+  <p class="lede">Dictation pill + global hotkey. Speak into any text field. Also captures audio for cloning sample collection. <span class="src-tag legacy-src">upstream</span> <span class="src-tag new">+ readiness gates</span></p>
 
   <div class="section">
     <h3>Dictation readiness</h3>
@@ -1187,7 +1187,7 @@ pip install -e .[kokoro]</pre>
 
 <!-- ════════════════════ EFFECTS ════════════════════ -->
 <section class="view" id="view-effects">
-  <p class="lede">Pedalboard-backed effects chain. Apply non-destructively — creates a new generation version that preserves the original. 8 types · 4 built-in presets + custom. <span class="src-tag voicebox">voicebox</span></p>
+  <p class="lede">Pedalboard-backed effects chain. Apply non-destructively — creates a new generation version that preserves the original. 8 types · 4 built-in presets + custom. <span class="src-tag legacy-src">upstream</span></p>
 
   <div class="section">
     <h3>Presets</h3>
@@ -1252,14 +1252,13 @@ pip install -e .[kokoro]</pre>
         </td><td class="actions"><button class="btn ghost sm">Cancel</button></td></tr>
         <tr><td><strong>Dia (Nari Labs)</strong> <span class="muted">multi-speaker dialogue</span></td><td>dialogue</td><td>3.0 GB</td><td>en</td><td><span class="pill warn">experimental</span></td><td class="actions"><button class="btn sm">Install</button></td></tr>
         <tr><td><strong>MossTTS</strong></td><td>clone</td><td>—</td><td>en+zh</td><td><span class="pill warn">experimental</span></td><td class="actions"><button class="btn sm">Install</button></td></tr>
-        <tr><td><strong>Higgs Audio v3</strong></td><td>clone</td><td>—</td><td>11</td><td><span class="pill warn">experimental</span></td><td class="actions"><button class="btn sm">Install</button></td></tr>
         <tr><td><strong>External (OpenAI-compatible)</strong></td><td>HTTP</td><td>0 MB</td><td>—</td><td><span class="pill ghost">3 configured</span></td><td class="actions"><button class="btn secondary sm">Configure</button></td></tr>
       </tbody>
     </table>
   </div>
 
   <div class="section" style="margin-top:18px">
-    <h3>GPU diagnostics <span class="src-tag voicebox">voicebox utility lifted</span></h3>
+    <h3>GPU diagnostics <span class="src-tag legacy-src">upstream utility lifted</span></h3>
     <div class="card">
       <div class="field-grid">
         <div class="field block"><label>Backend</label><strong>CUDA 12.4</strong></div>
@@ -1368,7 +1367,7 @@ pip install -e .[kokoro]</pre>
 
 <!-- ════════════════════ CACHE ════════════════════ -->
 <section class="view" id="view-cache">
-  <p class="lede">Disk-LRU render cache. Keyed on (engine, voice, lexicon hash, persona hash, text hash, effects hash). Engine prefix added to fix voicebox's cross-engine collision. <span class="src-tag jtorig">JustVoice</span></p>
+  <p class="lede">Disk-LRU render cache. Keyed on (engine, voice, lexicon hash, persona hash, text hash, effects hash). Engine prefix prevents cross-engine collisions. <span class="src-tag jtorig">JustVoice</span></p>
 
   <div class="section">
     <h3>Stats</h3>
@@ -1471,7 +1470,7 @@ pip install -e .[kokoro]</pre>
 
 <!-- ════════════════════ CHANNELS ════════════════════ -->
 <section class="view" id="view-channels">
-  <p class="lede">Audio output channel configs. Route specific voices to specific OS audio devices — multi-monitor, OBS virtual mic, per-character podcast monitoring. <span class="src-tag voicebox">voicebox</span></p>
+  <p class="lede">Audio output channel configs. Route specific voices to specific OS audio devices — multi-monitor, OBS virtual mic, per-character podcast monitoring. <span class="src-tag legacy-src">upstream</span></p>
 
   <div class="row" style="margin-bottom:12px">
     <div class="spacer"></div>
@@ -1571,7 +1570,7 @@ pip install -e .[kokoro]</pre>
     </div>
 
     <div class="card section">
-      <h3>Auto-updater <span class="src-tag voicebox">voicebox</span></h3>
+      <h3>Auto-updater <span class="src-tag legacy-src">upstream</span></h3>
       <div class="field"><label>Current version</label><strong>v0.1.0</strong></div>
       <div class="field"><label>Update available</label><div class="row"><span class="pill warn">v0.1.1 — 12.4 MB</span><button class="btn secondary sm">Check now</button><button class="btn sm">⬇ Download</button></div></div>
       <div class="field"><label>Channel</label><select class="input"><option>Stable</option><option>Beta</option><option>Nightly</option></select></div>
@@ -1717,7 +1716,7 @@ pip install -e .[kokoro]</pre>
   <!-- GPU -->
   <div class="settings-sub" id="sub-gpu" style="display:none">
     <div class="card section">
-      <h3>GpuInfoCard <span class="src-tag voicebox">voicebox</span></h3>
+      <h3>GpuInfoCard <span class="src-tag legacy-src">upstream</span></h3>
       <div class="field"><label>Backend</label><strong>CUDA (12.4)</strong></div>
       <div class="field"><label>Device</label><strong>NVIDIA GeForce RTX 4090</strong></div>
       <div class="field"><label>VRAM (total / used)</label><strong>24 GB / 3.8 GB</strong> <div class="prog" style="width:200px"><div class="fill" style="width:16%"></div></div></div>

@@ -1,7 +1,7 @@
 """Settings storage — single JSON file with atomic write + patch.
 
 Same on-disk layout as the Rust core's SettingsStore — settings.json
-lives at ``$DATA_DIR/settings.json``. Existing JustTTS data dirs
+lives at ``$DATA_DIR/settings.json``. Existing JustVoice data dirs
 transfer with no migration.
 
 Corrupt files fall back to defaults with a logger warning; the

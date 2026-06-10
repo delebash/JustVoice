@@ -1,7 +1,7 @@
 """Qwen3-TTS CustomVoice engine subprocess.
 
-Adapter scaffolded from voicebox's qwen_custom_voice_backend.py.
-Generates with `model.generate_custom_voice(text, speaker=<id>, instruct=<str>)`
+Adapter for Qwen3-TTS CustomVoice. Generates with
+`model.generate_custom_voice(text, speaker=<id>, instruct=<str>)`
 on the qwen-tts library. NOT YET RUN-TESTED on this machine.
 """
 
@@ -27,9 +27,9 @@ log = logging.getLogger("justtts.engines.qwen3")
 
 QWEN_REPO = "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
 
-# Qwen3 expects language NAMES ("english"), not BCP-47 codes ("en"). Mirror
-# voicebox's backends/__init__.py LANGUAGE_CODE_TO_NAME map. Anything not in
-# the map falls back to "auto".
+# Qwen3 expects language NAMES ("english"), not BCP-47 codes ("en").
+# Maps the 10 supported language codes; anything not in the map falls
+# back to "auto".
 _LANG_NAME = {
     "en": "english", "zh": "chinese", "ja": "japanese", "ko": "korean",
     "de": "german", "fr": "french", "ru": "russian", "pt": "portuguese",

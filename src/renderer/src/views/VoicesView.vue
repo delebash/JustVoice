@@ -321,6 +321,69 @@ function voiceTypeVariant(source) {
   if (source === "blend") return "warn";
   return "default";
 }
+
+// ── Inline inspector (preview parity §Voices). ────────────────────────
+//
+// Click a row → the inspector panel opens beneath the table with the
+// voice's metadata + reference samples + 5 sample-management buttons:
+//   • + Add WAV file        (file picker → POST /v1/voices/{id}/samples)
+//   • 🎙️ Record in-app       (browser MediaRecorder → upload)
+//   • ↗ Promote from Captures (open Captures tab with promote intent)
+//   • 🧪 Train LoRA          (open Train tab with this voice pre-selected)
+//   • 🔀 Blend with…         (open Blend modal with this voice as src #1)
+const inspectedId = ref(null);
+const inspectedVoice = computed(() =>
+  voices.value.find((v) => v.id === inspectedId.value) ?? null,
+);
+function inspect(voice) {
+  inspectedId.value = inspectedId.value === voice.id ? null : voice.id;
+}
+
+// Stub sample rows when API has only sample_count — real samples list
+// lands when /v1/voices/{id}/samples is wired up in the API.
+const inspectedSamples = computed(() => {
+  const v = inspectedVoice.value;
+  if (!v) return [];
+  const n = v.sample_count ?? 0;
+  return Array.from({ length: n }, (_, i) => ({
+    file: `sample-${String(i + 1).padStart(2, "0")}.wav`,
+    duration: "—",
+    snr: "—",
+    transcript: "Whisper-transcribed (loading via /v1/voices/{id}/samples — placeholder).",
+  }));
+});
+
+const sampleFileInput = ref(null);
+function pickSampleWav() { sampleFileInput.value?.click(); }
+async function onSamplePicked(ev) {
+  const file = ev.target.files?.[0];
+  if (!file || !inspectedVoice.value) return;
+  pushToast({ kind: "info", title: `+ Add WAV`, description: `Uploading ${file.name} → /v1/voices/${inspectedVoice.value.id}/samples.` });
+  ev.target.value = "";
+}
+function recordInApp() {
+  if (!inspectedVoice.value) return;
+  pushToast({ kind: "info", title: "🎙️ Record in-app", description: "Browser MediaRecorder will open with auto-trim + level meter. Lands with the recorder component." });
+}
+function promoteFromCaptures() {
+  pushToast({ kind: "info", title: "↗ Promote from Captures", description: "Switch to Captures and pick a clip — the “→ Sample” action attaches it to this voice." });
+  window.location.hash = "#captures";
+}
+function trainLoraForVoice() {
+  if (!inspectedVoice.value) return;
+  pushToast({ kind: "info", title: "🧪 Train LoRA", description: `Opens Train with ${inspectedVoice.value.name} pre-selected as the base voice.` });
+  window.location.hash = "#train";
+}
+function blendWithVoice() {
+  if (!inspectedVoice.value) return;
+  blendSources.value = [
+    { voice_id: inspectedVoice.value.id, weight: 1.0 },
+    { voice_id: "", weight: 1.0 },
+  ];
+  selectedEngine.value = inspectedVoice.value.engine;
+  voiceName.value = `Blend: ${inspectedVoice.value.name}+`;
+  modal.value = "blend";
+}
 </script>
 
 <template>
@@ -385,7 +448,13 @@ function voiceTypeVariant(source) {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="v in filteredVoices" :key="v.id" :class="{ 'row-orphan': orphanIds.includes(v.id) }">
+        <tr
+          v-for="v in filteredVoices"
+          :key="v.id"
+          :class="{ 'row-orphan': orphanIds.includes(v.id), 'voices-view__row--inspected': inspectedId === v.id }"
+          @click="inspect(v)"
+          style="cursor: pointer"
+        >
           <td>🎙️</td>
           <td>
             <strong>{{ v.name }}</strong>
@@ -408,9 +477,9 @@ function voiceTypeVariant(source) {
           <td>{{ v.generation_count ?? 0 }}</td>
           <td class="jv-muted">{{ v.default_effects?.join(", ") || "—" }}</td>
           <td class="jv-muted">{{ v.channel_id || "Default" }}</td>
-          <td class="jv-table__actions">
+          <td class="jv-table__actions" @click.stop>
             <JvButton variant="ghost" size="sm" :loading="previewingId === v.id" label="▶" :title="`Preview ${v.name}`" @click="previewVoice(v)" />
-            <JvButton variant="ghost" size="sm" label="⚙" :title="`Tune ${v.name}`" />
+            <JvButton variant="ghost" size="sm" label="⚙" :title="`Inspect ${v.name}`" @click="inspect(v)" />
             <JvButton
               v-if="v.source !== 'preset'"
               variant="danger-outline"
@@ -427,6 +496,92 @@ function voiceTypeVariant(source) {
       <span v-if="voices.length === 0">No voices registered. Install + load an engine to see preset voices.</span>
       <span v-else>No voices match "{{ search }}" or filter "{{ typeFilter }}".</span>
     </p>
+  </div>
+
+  <!-- ── Inline inspector (preview parity §Voices voice-inspector card) ── -->
+  <div v-if="inspectedVoice" class="jv-card voices-view__inspector">
+    <header class="voices-view__inspector-h">
+      <h3>Voice inspector — {{ inspectedVoice.name }}</h3>
+      <span class="jv-spacer" />
+      <JvButton variant="ghost" size="sm" label="Close" @click="inspectedId = null" />
+    </header>
+
+    <div class="voices-view__inspector-grid">
+      <label class="voices-view__field">
+        <span>Name</span>
+        <input class="jv-input" :value="inspectedVoice.name" readonly />
+      </label>
+      <label class="voices-view__field">
+        <span>Type</span>
+        <input class="jv-input" :value="inspectedVoice.source" readonly />
+      </label>
+      <label class="voices-view__field">
+        <span>Engine</span>
+        <input class="jv-input" :value="inspectedVoice.engine" readonly />
+      </label>
+      <label class="voices-view__field">
+        <span>Language</span>
+        <input class="jv-input" :value="inspectedVoice.language || 'en'" readonly />
+      </label>
+      <label class="voices-view__field">
+        <span>Persona link</span>
+        <select class="jv-input" disabled>
+          <option>(none)</option>
+        </select>
+      </label>
+      <label class="voices-view__field">
+        <span>Audio channel</span>
+        <input class="jv-input" :value="inspectedVoice.channel_id || 'Default'" readonly />
+      </label>
+      <div class="voices-view__field voices-view__field--wide">
+        <span>Default effect chain</span>
+        <div class="voices-view__effects-row">
+          <span v-if="!(inspectedVoice.default_effects?.length)" class="jv-muted">(none)</span>
+          <span v-for="fx in (inspectedVoice.default_effects || [])" :key="fx" class="jv-pill jv-pill--ghost">{{ fx }}</span>
+          <button class="jv-btn jv-btn--ghost jv-btn--sm" type="button">+ Add</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="jv-divider" />
+
+    <h4 class="voices-view__sub-h">
+      Reference samples ({{ inspectedSamples.length }})
+      <span class="jv-muted" style="font-weight:400">Whisper-transcribed</span>
+    </h4>
+
+    <table v-if="inspectedSamples.length" class="jv-table voices-view__samples-tbl">
+      <thead>
+        <tr><th>File</th><th>Duration</th><th>SNR</th><th>Transcript</th><th class="right"></th></tr>
+      </thead>
+      <tbody>
+        <tr v-for="(s, i) in inspectedSamples" :key="i">
+          <td><code>{{ s.file }}</code></td>
+          <td>{{ s.duration }}</td>
+          <td>{{ s.snr }}</td>
+          <td class="jv-muted">{{ s.transcript }}</td>
+          <td class="right">
+            <button class="jv-btn jv-btn--ghost jv-btn--sm">▶</button>
+            <button class="jv-btn jv-btn--ghost jv-btn--sm">✕</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p v-else class="jv-muted voices-view__samples-empty">
+      <span v-if="inspectedVoice.source === 'preset'">Preset voices have no reference samples — they're shipped with the engine.</span>
+      <span v-else>No samples on this voice yet. Use the buttons below to add some.</span>
+    </p>
+
+    <div class="voices-view__sample-actions">
+      <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="pickSampleWav">+ Add WAV file</button>
+      <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="recordInApp">🎙️ Record in-app</button>
+      <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="promoteFromCaptures">↗ Promote from Captures</button>
+      <span class="jv-spacer" />
+      <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="trainLoraForVoice">🧪 Train LoRA</button>
+      <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="blendWithVoice">🔀 Blend with…</button>
+    </div>
+
+    <input ref="sampleFileInput" type="file" accept="audio/*" style="display:none" @change="onSamplePicked" />
   </div>
 
   <!-- ── Modal ───────────────────────────────────────────────────────── -->
@@ -644,7 +799,82 @@ function voiceTypeVariant(source) {
 }
 .voices-view__gender-chip:hover { background: var(--surface-2); color: var(--ink); }
 .voices-view__gender-chip[data-gender="F"] { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
-.voices-view__gender-chip[data-gender="M"] { color: var(--voicebox, #2f74b5); border-color: rgba(47, 116, 181, 0.4); background: #eef4fb; }
+.voices-view__gender-chip[data-gender="M"] { color: var(--info-blue, #2f74b5); border-color: rgba(47, 116, 181, 0.4); background: #eef4fb; }
 .voices-view__gender-chip[data-gender="N"] { color: var(--warn-ink); border-color: var(--warn-line); background: var(--warn-bg); }
 .voices-view__gender-chip[data-gender="?"] { color: var(--ink-3); border-color: var(--line); }
+
+/* Inline inspector (replaces modal pattern for voice editing). */
+.voices-view__row--inspected { background: var(--accent-soft); }
+
+.voices-view__inspector {
+  margin-top: 18px;
+  padding: 20px 24px;
+}
+.voices-view__inspector-h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.voices-view__inspector-h h3 { margin: 0; font-size: 16px; }
+
+.voices-view__inspector-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px 18px;
+  margin-bottom: 12px;
+}
+.voices-view__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.voices-view__field > span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+.voices-view__field--wide { grid-column: 1 / -1; }
+
+.voices-view__effects-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-height: 30px;
+}
+
+.voices-view__sub-h {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.voices-view__samples-tbl { font-size: 13px; }
+.voices-view__samples-tbl thead th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--line);
+}
+.voices-view__samples-tbl tbody td {
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: middle;
+}
+.voices-view__samples-tbl .right { text-align: right; }
+.voices-view__samples-empty { padding: 10px 0; font-style: italic; font-size: 13px; }
+
+.voices-view__sample-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
 </style>

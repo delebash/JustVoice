@@ -10,9 +10,9 @@
 # portions.
 """Shared helpers used by the PyTorch-based engine adapters.
 
-Lifted from voicebox's `backend/backends/base.py` — cross-platform device
-picking (CUDA / MPS / XPU / DirectML / ROCm), HuggingFace cache probing,
-compute-capability checks, and the Chatterbox f32 monkeypatch.
+Upstream MIT lift (see SPDX header above for source URL) — cross-platform
+device picking (CUDA / MPS / XPU / DirectML / ROCm), HuggingFace cache
+probing, compute-capability checks, and the Chatterbox f32 monkeypatch.
 
 Backward-compat aliases for the JustVoice helpers `auto_device`,
 `force_cpu_on_mac`, `cuda_empty_cache`, `tensor_to_wav_bytes` are exported
@@ -257,9 +257,9 @@ def model_load_progress(
 ):
     """Context manager for model loading with HF download progress tracking.
 
-    Lifts voicebox's pattern: patches tqdm, drives the SSE progress stream,
-    and reports errors back to both the progress manager and the task manager
-    on exception.
+    Upstream pattern (see file header): patches tqdm, drives the SSE
+    progress stream, and reports errors back to both the progress manager
+    and the task manager on exception.
 
     Usage:
         with model_load_progress("qwen-tts-1.7B", is_cached) as ctx:
