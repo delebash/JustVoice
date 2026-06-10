@@ -1,10 +1,10 @@
-# Generate
+# Scratchpad
 
-The **Generate** tab renders one line of text to audio. Pick a voice, type the line, optionally apply delivery overlays, click ▶. The server returns audio bytes you can replay, favorite, or download.
+The **Scratchpad** tab (formerly "Generate") renders one line of text to audio. Pick a voice, type the line, optionally apply delivery overlays, click ▶. The server returns audio bytes you can replay, favorite, or download.
 
-This is JustVoice's primary single-line interface — for batch chapter-style rendering, see [chapter.md](take-versioning.md).
+This is JustVoice's quick single-line surface — production work (casting, batch rendering, takes) lives in Home (Studio); see [take-versioning.md](take-versioning.md).
 
-## When to use Generate
+## When to use the Scratchpad
 
 - **Dictation users** — quick line synthesis, paste, send. Use the [MCP server](mcp-server.md) for agent-driven workflows.
 - **Game devs** — render NPC dialogue lines one at a time during iteration. Use [chapter.md](take-versioning.md) for bulk export.
@@ -17,8 +17,8 @@ Below the textarea is a row of chip cards. Each chip selects one input:
 
 | Chip | What it does |
 |---|---|
-| 🎙️ Voice | Pick from the currently-loaded engine's voices. Disabled when no engine is loaded — see the "No engine loaded" banner. |
-| 🧠 Engine | Shows which TTS engine is loaded. Switch via [engines.md](engines.md). |
+| 🎙️ Voice | Pick from the **full catalog** — every engine's presets + your clones, grouped by engine, with availability badges (`●` loaded · `⇄` swap on render · `⬇` not installed). Picking is always free; a `⇄` next to the chip means rendering will offer an engine swap. |
+| 🧠 Engine | Shows which TTS engine is loaded right now. You don't need to switch it manually — rendering a cold voice prompts the swap. |
 | 🗣️ Lang | Language hint for engines that support per-call language switching (Chatterbox-Multilingual, Qwen3). |
 | 👤 Profile | Pick a [voice profile](profiles.md) — wraps voice + delivery defaults + effects + personality. |
 | 🎛️ Effects | Apply a saved effects chain to the output. |
@@ -158,8 +158,9 @@ Click a take to see its lineage via the [take versioning](take-versioning.md) ch
 
 ## Troubleshooting
 
-- **"No engine loaded. Go to Engines → Load."** — Click the link to the [Engines](engines.md) tab and load one. Kokoro is the lightest if you're unsure.
-- **Voice dropdown says "no voices available"** — The loaded engine is clone-only (Chatterbox) and you haven't cloned a reference WAV yet. Use the link in the banner to [Voices](voices.md).
+- **"Engine swap needed" dialog on render** — expected: the picked voice lives on an engine that isn't loaded. Confirm to swap (progress shows in the task strip), tick *Always swap without asking* to never see it again, or pick a `●` voice to render on the loaded engine.
+- **A voice is grayed out with ⬇** — its engine isn't installed. Install it on the [Engines](engines.md) tab; the voice becomes renderable (`⇄`) immediately after.
+- **Voice dropdown is empty** — no engines installed and no stored voices yet. Install Kokoro (54 presets, CPU-realtime) on the Engines tab, or clone a voice under Library → [Voices](voices.md).
 - **Compose button is disabled (grayed out)** — No profile is selected, or the selected profile has no personality prompt. Pick a profile in the 👤 Profile chip or add a personality prompt via [Profiles](profiles.md).
 - **Compose returns "LLM not configured"** — Wire an OpenAI-compatible endpoint in Settings → External.
 - **Slash menu shows no tags** — The loaded engine has no inline-tag taxonomy. Switch to Chatterbox-Turbo, Dia, or MOSS to access tags.

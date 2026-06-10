@@ -30,7 +30,7 @@ In the Chapter editor, each Block row shows:
 
 ## Settings snapshot
 
-Every take stores `settings_snapshot`: a frozen copy of every input that produced it — voice, engine, temperature, seed, effects chain, lexicon entries applied, persona LLM rewrite output if any. You can read this on any take to know exactly what produced it (Generate tab's Show JSON view, or the take detail panel).
+Every take stores `settings_snapshot`: a frozen copy of every input that produced it — voice, engine, temperature, seed, effects chain, lexicon entries applied, persona LLM rewrite output if any. You can read this on any take to know exactly what produced it (the Scratchpad's Show JSON view, or the take detail panel in Studio → Takes).
 
 ## Cleanup
 

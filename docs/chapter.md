@@ -1,8 +1,8 @@
-# Chapter editor
+# Takes editor (Home → Studio → Takes tab)
 
-The **Chapter** tab is the multi-line audiobook workspace. Pick a project → chapter → scene → block. Each block is a paragraph (or speech act). Each block has takes (versions). Render the whole chapter as a single mastered WAV.
+The block/take editor lives inside **Home (Studio)** as the **Takes** tab. The project comes from Studio's header switcher; pick a chapter/scene inside the tab. Each block is a paragraph (or speech act). Each block has takes (versions). Render the whole chapter from Studio's Render tab as a single mastered WAV.
 
-This is where audiobook production lives. For one-off renders use [generate.md](generate.md). For multi-track timeline arrangement use [stories.md](stories.md).
+(The old standalone "Chapter" sidebar entry is gone — `#chapter` bookmarks land in Studio.) For one-off renders use the [Scratchpad](generate.md). For multi-track timeline arrangement use [stories.md](stories.md).
 
 ## Concepts
 
@@ -59,7 +59,7 @@ Old takes stay in the DB until you bulk-delete them — useful for going back if
 
 ## Project import
 
-The Chapter tab is gated on having a project selected. New users: hit the **Go to Projects** link in the empty-state banner to import a manuscript. Adapters:
+The Takes tab follows Studio's project switcher. New users: use **Import manuscript** in Studio's header (or the empty-state buttons). Adapters:
 
 - **JustWrite JSON** — the primary integration (see [CONTRACT.md](../CONTRACT.md))
 - **CSV** — `character,text` columns
@@ -91,6 +91,7 @@ Mastering is applied before export — change the target via [mastering.md](mast
 
 - **"No project selected. Go to Projects."** — Click the link to import or create a blank project.
 - **"No blocks in this scene"** — Empty scene. Add blocks via the import flow or click "+ Block" on the scene.
-- **A block won't render** — Check the persona is attributed (not "(unset)"). Persona must map to a profile or have an engine fallback.
-- **Chapter render fails partway** — Check the task-strip error. Most common: engine failed to load on first use; load it manually via [engines.md](engines.md) first.
+- **A block won't render** — Check the persona is attributed (not "(unset)") and has a voice assigned in the Cast tab.
+- **"Engine swap needed" on regenerate** — the picked voice's engine isn't loaded; confirm the swap (or tick *Always swap without asking*). Batch renders group blocks by engine server-side, so a multi-engine cast swaps once per engine — never per block.
+- **Chapter render fails partway** — Check the task-strip error for the failing engine; the strip's ↻ Retry re-runs the render.
 - **Mastered output is too quiet / loud** — Switch mastering target in [mastering.md](mastering.md).

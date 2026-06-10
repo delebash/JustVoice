@@ -1,6 +1,6 @@
 # Use cases
 
-JustVoice serves five distinct audiences. Pick your primary at first launch — the UI retunes terminology, the default tab, and which features are surfaced first.
+JustVoice serves five distinct audiences. Pick your primary at first launch — it tunes terminology (Chapters vs Quests vs Episodes) and the landing tab. Nothing is hidden: every use case sees the same 8-item sidebar.
 
 ## 🎧 Audiobook production
 
@@ -8,7 +8,7 @@ JustVoice serves five distinct audiences. Pick your primary at first launch — 
 
 **Flow**:
 1. **Import** the manuscript (JustWrite export, or any of the supported [import-formats.md](import-formats.md)).
-2. **Cast** — pick voices for every character via the Voices tab. Smart-assign auto-matches; review.
+2. **Cast** — pick voices for every character in Home (Studio) → Cast. Smart-assign auto-matches; review. Any voice from any engine is pickable; a warning chip appears if the cast spans multiple engines (batch renders swap once per engine).
 3. **Script** — let the AI work out who speaks each line. Manually correct any misattributions in the Script tab. Corrections feed back into subsequent re-analyses.
 4. **Render** — batch render every chapter. ACX [mastering.md](mastering.md) preset applies automatically.
 5. **Export** — M4B audiobook file with chapter markers (via JustWrite's m4b.js, or directly via the Export tab).

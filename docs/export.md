@@ -10,10 +10,10 @@ JustVoice produces audio in three shapes, depending on what you're doing with it
 
 ## Single render → WAV
 
-Every `/v1/generate` call returns `audio/wav`. The Generate tab's ▶ button downloads through the browser's audio element; the History card's ▶ replays via the [global player](generate.md#history).
+Every `/v1/generate` call returns `audio/wav`. The Scratchpad's ▶ button plays through the browser's audio element; the History card's ▶ replays via the [global player](generate.md#history).
 
 To save the file outside the app:
-- **Generate tab** — right-click the audio player → "Save audio as…"
+- **Scratchpad** — right-click the audio player → "Save audio as…"
 - **API** — `curl -X POST -H "Content-Type: application/json" -d '...' /v1/generate > out.wav`
 
 ## Chapter render → mastered WAV
@@ -25,7 +25,7 @@ Chapter renders apply mastering before emitting WAV. Choose the target via [mast
 - **YouTube** — -14 LUFS streaming target
 - **None** — raw concatenation, no mastering
 
-The chapter tab's **Render → Export → WAV** action emits one mastered WAV per chapter.
+Studio's **Render** tab emits one mastered WAV per chapter (blocks render grouped by engine — a multi-engine cast costs one swap per engine, not per block).
 
 ## Audiobook → M4B
 
@@ -43,7 +43,7 @@ For non-JustWrite workflows (a podcaster manually assembling an audiobook), you 
 
 ## Game-dev → ZIP bundle
 
-For NPC dialogue + game audio, the Chapter tab's **Export → ZIP** packages:
+For NPC dialogue + game audio, the project library's (Studio → "Manage projects ›") **Export → ZIP** packages:
 - One WAV per block, named by block_id (or by block.character + sequence if set)
 - A `manifest.json` listing each WAV's metadata:
   ```json

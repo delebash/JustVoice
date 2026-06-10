@@ -4,20 +4,22 @@ JustVoice is a cross-platform voice-production studio. Five audiences share one 
 
 ## First launch
 
-1. **Pick a use case.** The Welcome modal asks what you're doing with JustVoice. Your choice retunes the UI: audiobook producers land on the Books tab with chapters terminology; game devs land on Voices with "voice line set" terminology; podcasters land on the Stories timeline. The chosen use case is also highlighted on the Overview dashboard as a quick-action card so you can jump straight back into your workflow. You can re-pick later in Settings → About.
+1. **Pick a use case.** The Welcome modal asks what you're doing with JustVoice. Your choice tunes terminology (Chapters vs Quests vs Episodes) and the landing tab — nothing is hidden: every feature stays reachable in the same 8-item sidebar regardless. You can re-pick later in Settings → About.
 
-2. **Load an engine.** Open the Engines tab. Click Load on Kokoro (free, fast, CPU-realtime, 54 preset voices, 8 languages) — that's the lightest starting point. Then try Chatterbox Turbo if you want voice cloning (clone from a reference WAV/MP3).
+2. **You land in Home (Studio)** — the project workspace. No project yet? The empty state offers the three ways in: **Import manuscript** (JustWrite / CSV / SRT / Audacity labels), **New project**, or **Just try a line** (jumps to the Scratchpad).
 
-3. **Pick a voice.** Voices tab. Hit ▶ Preview on any row to audition.
+3. **Pick a voice — any voice.** Voice pickers always show the *entire* catalog (Kokoro's 54 presets, your clones, every engine's voices) even before anything is installed or loaded. Badges tell you the cost: `●` renders immediately, `⇄` rendering will swap engines (you'll be asked once), `⬇` engine needs installing first. Audition with ▶ Preview in Library → Voices.
 
-4. **Generate a line.** Generate tab. Type text. Click ▶ Generate. The Delivery overlay below the textarea lets you tune speed / pitch / temperature / emotion (Chatterbox) or delivery direction (Qwen3 / LuxTTS).
+4. **Render a line.** Scratchpad tab. Type text, click ▶ Generate. If the voice's engine isn't loaded, JustVoice asks — "Swap to Chatterbox? (~40s)" — with an *Always swap without asking* checkbox. The Delivery overlay below the textarea tunes speed / pitch / temperature / emotion tags.
+
+The Engines tab is for **installing** engines and picking model sizes — day-to-day engine switching happens automatically at render time.
 
 ## Common next steps
 
-- **Producing an audiobook.** Import a manuscript via Books → "+ Import…", choose JustWrite or CSV or SRT or Audacity Labels, then open Studio (when it lands) for the Cast → Script → Render flow.
-- **Voicing game NPCs.** Voices tab → "+ Clone new voice" with a reference WAV (Chatterbox required). Then Books → "+ Import…" with a CSV of dialogue rows.
-- **Recording a podcast script.** Books → "+ New blank Project" → Project type "Podcast" → use Stories to arrange voiced segments on a multi-track timeline.
-- **Dictating with global hotkey.** Captures tab → confirm all 6 readiness gates pass → set the push-to-talk chord in Settings → Capture.
+- **Producing an audiobook.** Home (Studio) → Import manuscript → Cast tab (assign voices; a warning chip appears if your cast spans multiple engines — batch renders swap once per engine, not per line) → Script (speaker attribution) → Render → Takes (per-block re-rolls).
+- **Voicing game NPCs.** Library → Voices → "+ Clone new voice" with a reference WAV (Chatterbox required). Then Studio → Import with a CSV of dialogue rows.
+- **Recording a podcast script.** Studio → New project → type "Podcast" → use Stories to arrange voiced segments on a multi-track timeline.
+- **Dictating with global hotkey.** Captures tab → readiness checklist → set the push-to-talk chord in Settings → Capture. Whisper preloads in the background at boot; or wire an online STT provider under Engines → STT.
 
 ## Headless mode
 
@@ -29,10 +31,19 @@ The same UI is served at `http://localhost:17494/ui/`. Connect from any browser 
 
 ## Where things live
 
-- **Overview.** Dashboard — intro band + quick-actions for each audience + the engine/voice catalogue, loaded engine status, in-flight render tasks, and recent generations.
-- **Settings.** Server URL, mastering preset (ACX / iAudio / Podcast / YouTube), generation defaults, capture hotkeys, MCP server, GPU diagnostics.
-- **Engines.** Per-engine venv isolation — installing Chatterbox doesn't break Kokoro.
-- **Cache.** Disk-LRU render cache. Identical render of the same line costs nothing twice.
+The sidebar is 8 flat items — same for every use case:
+
+- **Home (Studio).** The project workspace: project switcher + Import + New in the header; Cast → Script → Render → Takes tabs. "Manage projects ›" opens the full project library (metadata, QC, M4B export).
+- **Scratchpad.** One-off lines — try a voice, test a delivery, render a sentence.
+- **Stories.** Multi-track timeline for podcast / dialogue assembly.
+- **Captures.** Dictation + recorded samples.
+- **Library.** Sub-tabs: Voices · Personas · Lexicons · Effects · Presets.
+- **Labs.** Sub-tabs: Compare · Audio Tools · Render Lab · Speaker Lab · Train.
+- **Engines.** Install engines, pick model sizes, register online providers (TTS / STT / LLM). Per-engine venv isolation — installing Chatterbox doesn't break Kokoro.
+- **Settings.** Sub-tabs: General · Cache · Channels · Webhooks. Every operator-tunable value lives here.
+
+Plus, everywhere: the topbar **engine pill** (loaded engine · variant; pulses during swaps; click → Engines) and the **task strip/panel** showing every render, install, swap, and background load with progress + cancel.
+
 - **System tray.** Right-click the JustVoice icon in your OS tray (Windows) / menu bar (macOS) for quick access to Show app, Show dictate, Engines, Captures, Settings, and Quit — all without bringing the main window to the foreground.
 
-See [core-concepts.md](core-concepts.md) next for the data model and `[Project → Scene → Block]` shape that all five audiences share.
+See [core-concepts.md](core-concepts.md) next for the data model, the `[Project → Scene → Block]` shape all five audiences share, and how the one-engine-at-a-time pool works.
