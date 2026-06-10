@@ -38,6 +38,18 @@ A rendered audio version of a Block. Multiple takes per Block; one is the **defa
 
 These compose. A persona has a voice; the voice can have effects; the persona can have a lexicon override; all three are queried for every Block render.
 
+## The engine pool — how voices, engines, and swaps relate
+
+TTS models are large: only **one TTS engine occupies your GPU at a time**. (Engines are slotted by *kind* — TTS, STT, LLM — so loading Whisper for dictation never evicts your TTS engine.) Three rules make that constraint painless:
+
+1. **Browsing is always free.** Voice catalogs come from engine manifests and your saved clones/designs — not from loaded models. Every picker shows *every* renderable voice, even with nothing loaded at all. Each voice carries an honest badge: `●` engine loaded (renders immediately), `⇄` engine cold (rendering will swap), `⬇` engine not installed.
+
+2. **Only rendering pays.** Picking a cold voice costs nothing. When you hit Render with one, JustVoice asks once — "This voice uses Chatterbox (currently loaded: Kokoro). Swap?" — with an *Always swap without asking* checkbox (`settings.generation.auto_engine_swap`). The swap shows live progress in the task strip like any engine load.
+
+3. **Batch renders swap per engine, never per line.** A chapter cast across 3 engines is rendered grouped: all of engine A's lines, one swap, all of engine B's, one swap, all of engine C's — then stitched back in script order. 500 blocks across 3 engines costs **2 swaps total**, not 499. The Cast tab warns when a cast spans multiple engines so the cost is visible while casting.
+
+And the render cache makes re-renders free: a line whose text/voice/delivery didn't change comes straight off disk without touching any engine — iterative re-rolls only pay swaps for engines whose lines actually changed.
+
 ## Mastering
 
 Every render can go through a mastering preset on the way out. ACX (-20 LUFS / -3.5 dB peak / -60 dB noise floor) is the audiobook spec. See [mastering.md](mastering.md).

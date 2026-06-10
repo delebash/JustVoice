@@ -1,9 +1,11 @@
-# LLM + TTS providers
+# LLM + TTS + STT providers
 
-JustVoice's Engines tab handles two kinds of provider:
+JustVoice has **three provider slots** — TTS, LLM, and STT — and each follows the same pattern: a local managed engine as the private/offline default, plus optional online providers you register with a base URL + API key.
 
-- **Local engines** — Kokoro / Chatterbox / Qwen3-TTS / Dia / LuxTTS / MossTTS / TADA. Managed by JustVoice, installed into per-engine Python venvs, loaded one-at-a-time per kind (TTS / LLM / embedding). See `engines.md` for the catalog.
-- **Online + self-hosted providers** — Anthropic Claude / OpenAI / Gemini / Ollama / DeepSeek / OpenRouter for LLM; ElevenLabs / Speechify / Speechmatics / OpenAI TTS / OpenAI-compatible servers for TTS. These talk HTTP, don't install anything locally, and need an API key + base URL.
+- **Local engines** — Kokoro / Chatterbox / Qwen3-TTS / Dia / LuxTTS / MossTTS / TADA for TTS; Whisper for STT. Managed by JustVoice, installed into per-engine Python venvs, loaded one-at-a-time per kind (TTS / STT / LLM / embedding). See `engines.md` for the catalog.
+- **Online + self-hosted providers** — Anthropic Claude / OpenAI / Gemini / Ollama / DeepSeek / OpenRouter for LLM; ElevenLabs / Speechify / Speechmatics / OpenAI TTS / OpenAI-compatible servers for TTS; OpenAI / Groq / self-hosted whisper servers for STT. These talk HTTP, don't install anything locally, and need an API key + base URL.
+
+"OpenAI-compatible" means the de-facto standard wire shape: `POST {base_url}/v1/audio/speech` for TTS, `POST {base_url}/audio/transcriptions` for STT, `POST {base_url}/chat/completions` for LLM. One adapter covers the official APIs *and* anything self-hosted that speaks the same shape.
 
 The Engines tab is split into both sections per kind. This doc covers the **online + self-hosted provider** flow.
 
@@ -16,6 +18,8 @@ The Engines tab is split into both sections per kind. This doc covers the **onli
 | Your own TTS server | OpenAI-compatible (TTS provider) | Point a base URL at your Kokoro-FastAPI / Chatterbox-TTS-Server / Qwen3-TTS server |
 | Low-cost cloud LLM | DeepSeek or OpenRouter (LLM provider) | Cheaper per-token than Claude / OpenAI for speaker attribution at audiobook scale |
 | Local LLM, no API costs | Ollama (LLM provider) | Run llama3.2 / qwen3 / mistral locally. Routes everything through your machine |
+| Dictation on a weak machine | OpenAI or Groq (STT provider) | Transcription happens in the cloud — no local Whisper model, no download, no RAM cost. Register under Engines → STT, then flip the "Used for dictation" radio |
+| Dictation that stays private | Nothing — local Whisper is the default | Whisper base runs realtime on CPU and preloads in the background at boot |
 
 ## Adding a provider
 

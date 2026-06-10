@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-06-10 (night) — UX restructure: swap-at-render, project-first home, 8-item nav, STT provider slot (branch `claude/jolly-curie-jkgysf`, slices A–F)
+
+The approved UX-restructure plan landed in full. 152 server tests pass, ruff clean, vite build clean.
+
+**Slice A (server truth + swap contract):** Whisper now visible in Engines (stt tab label + whisper in `known_engines()` + 5 variants in `model_catalog` — base/small/medium/large/turbo, `vram_mb=0` all CPU-capable). `engine_voice_cache` table persists each `/load` response's live voice list per (engine, variant); `/v1/voices` carries `engine_loaded` + `variant_id` flags and surfaces cached variant-discovered voices while cold. **Swap-at-render contract:** `allow_engine_swap` on Generate/RenderChapter/BlockRender requests; cold managed engine without the flag (or `generation.auto_engine_swap`) → 409 problem+json `engine-swap-required` with from/to engine, variant, est_seconds, weights_on_disk (`render_core.raise_if_swap_blocked`; ApiError gained `extra`). Batch `render_chapter` renders grouped by engine (stable in-engine order, output reassembled by position) — one swap per engine per batch.
+
+**Slice B (client):** shared `VoicePicker.vue` (full catalog grouped by engine, ●/⇄/⬇ badges, never loads) replacing the five divergent pickers (Generate chip, Chapter regen + chip, Stories bar, RenderLab, plus Studio library badges + multi-engine-cast warning chip). `services/engineSwap.js withEngineSwap()` owns the 409→confirm(with "always swap" checkbox → settings read-modify-write)→retry flow under a kind:'load' task. api.js errors carry `.status`/`.body`; confirm dialogs support a checkbox. `/v1/health` now reports the manager's TTS slot + `current_variant` (the pill previously NEVER showed managed engines); topbar pill shows `engine · variant` and pulses during swaps.
+
+**Slice C (project-first home):** Studio is the landing view (dictation → Captures); Studio header = project switcher + New + Import (ImportModal) + "Manage projects ›" (#books); no-projects empty state with the 3 entry actions; ChapterView absorbed as Studio's Takes tab via a `projectId` prop (own selector hidden when hosted); Generate→Scratchpad rename; Overview unrouted; #chapter/#overview redirect.
+
+**Slice D (nav):** 8 flat sidebar items (Home·Scratchpad·Stories·Captures·Library·Labs·Engines·Settings), `visibleFor` gating deleted. `TabShellView.vue` hosts Library (Voices/Personas/Lexicons/Effects/Presets), Labs (Compare/Audio/RenderLab/SpeakerLab/Train), Settings (General/Cache/Channels/Webhooks). Hash routing handles `#library/voices` sub-paths; all legacy hashes rewrite in place. Projects (#books) routable but not in nav.
+
+**Slice E (STT provider slot):** `engines.external_stt` + `captures.stt_provider`/`preload_stt`; `engines/stt_external.py` openai-compat adapter (`POST {base}/audio/transcriptions` — OpenAI/Groq/self-hosted); captures `_transcribe()` dispatcher (local keeps the Whisper gate, external skips it, unknown id → 422); provider-aware `/v1/capture/readiness`; Engines→STT "Used for dictation" radio + ProviderForm kindHint="stt"; **Whisper boot preload** as a visible non-blocking task (App.vue after first healthy poll, gated on installed+local+preload_stt). **Fixed latent data loss:** partial `{engines:{external}}` PATCHes validated as default-filled EnginesSettings and wiped `llm`/`feature_pins` on disk — all engines-section PATCHes now send the full section.
+
+**Slice F (docs):** core-concepts "engine pool" section (browse free / swap-at-render / one-swap-per-engine batches / cache); engines.md loading section rewritten + STT section; providers.md covers the three provider slots; dictation.md local-vs-online STT; toc titles updated.
+
+**Still open:** runtime smoke test against a live engine (swap prompt, grouped batch, boot preload, online STT end-to-end); Scratchpad internal layout polish; visual design pass (Phase 4); CONTRACT.md staleness from the prior session's list.
+
+---
+
 ## 2026-06-10 (evening) — Full-app audit + dead-wiring sweep (branch `claude/jolly-curie-jkgysf`)
 
 Full code audit (every view, every router) then a truth pass. 112 server tests pass, ruff clean, vite build clean. Key changes:

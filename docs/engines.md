@@ -30,9 +30,9 @@ JustVoice ships with 7 commercial-output-permitting TTS engines plus an external
 - **Podcast voiceover.** Chatterbox Turbo if you want it to sound like you; Kokoro if you want preset variety fast.
 - **Dictation playback** (MCP `speak` tool). Kokoro. Lowest latency.
 
-## Loading / unloading
+## Loading / unloading — and why you rarely need this tab
 
-Only one engine is **loaded** at a time per GPU. Loading takes 10-30s (model load + warmup). The Engines tab shows the current state per engine:
+Only one engine is **loaded** at a time *per kind slot* (TTS / STT / LLM) — loading a new TTS engine evicts the prior TTS engine, but Whisper (STT) and LLM engines stay resident alongside it. Loading takes 10-30s (model load + warmup). The Engines tab shows the current state per engine:
 
 - `not installed` — first download required.
 - `installed` — present on disk, not currently in VRAM.
@@ -40,6 +40,14 @@ Only one engine is **loaded** at a time per GPU. Loading takes 10-30s (model loa
 - `loaded · CPU realtime` — Kokoro running on CPU.
 
 Click Load on any installed engine; the currently loaded one auto-unloads.
+
+**You usually don't need to come here to switch engines.** Voice pickers show every engine's voices regardless of what's loaded (badges: `●` loaded · `⇄` swap on render · `⬇` not installed), and rendering with a cold voice offers the swap right there — confirm once, or tick *Always swap without asking*. Batch renders group lines by engine server-side, so a multi-engine cast costs one swap per engine per run, not one per line. The topbar pill always shows the loaded `engine · variant` and pulses while a swap runs. The Engines tab remains the place to **install** engines, pick **model variants/sizes**, and manage **providers**.
+
+## STT (Whisper) — dictation's engine
+
+The STT tab manages **Whisper** (sizes base / small / medium / large / turbo — all CPU-capable; base is realtime on CPU). Because STT has its own kind slot, loading Whisper never evicts your TTS engine. By default Whisper loads in the background right after boot ("Preparing dictation" in the task strip) so the first Record is instant — disable via `captures.preload_stt`.
+
+Below the engine card, **Registered providers** lets you add an online STT service instead (OpenAI, Groq, or any self-hosted whisper server speaking the OpenAI transcription shape), and the **Used for dictation** radio picks which route transcribes. Online STT needs no local model at all. See [providers.md](providers.md) and [dictation.md](dictation.md).
 
 ### Cancelling an in-flight load
 

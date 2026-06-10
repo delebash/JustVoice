@@ -1,6 +1,15 @@
 # Dictation
 
-JustVoice's dictation feature lets you speak into any text field via a global hotkey. The floating capture pill appears, you talk, Whisper transcribes, an optional LLM refines, and the result is pasted into the focused text field.
+JustVoice's dictation feature lets you speak into any text field via a global hotkey. The floating capture pill appears, you talk, the active STT engine transcribes, an optional LLM refines, and the result is pasted into the focused text field.
+
+## STT: local Whisper or an online provider
+
+Transcription is a **provider slot** like TTS and LLM:
+
+- **Local Whisper (the default).** Private and offline. Whisper has its own engine slot, so it coexists with your loaded TTS engine. It **preloads in the background right after boot** ("Preparing dictation" appears briefly in the task strip) so your first Record never waits on a cold start — disable with `captures.preload_stt` if you'd rather it load lazily on first use. Sizes (base → large-v3 → turbo) are picked on the Engines → STT tab; base is realtime on CPU.
+- **Online STT.** Register an OpenAI-compatible provider (OpenAI `whisper-1`, Groq `whisper-large-v3`, or a self-hosted faster-whisper server) under Engines → STT → Registered providers, then select it in the **Used for dictation** radio. No local model, no download — readiness is just base URL + key. Audio leaves your machine; that's the trade.
+
+The Captures tab's readiness banner reflects whichever route is active and links to Engines → STT when an online provider is misconfigured.
 
 ## 6-gate readiness checklist
 

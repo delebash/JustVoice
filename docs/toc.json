@@ -18,8 +18,8 @@
   {
     "group": "Producing audio",
     "items": [
-      { "slug": "generate",           "title": "Generate" },
-      { "slug": "chapter",            "title": "Chapter editor" },
+      { "slug": "generate",           "title": "Scratchpad" },
+      { "slug": "chapter",            "title": "Takes editor (Studio)" },
       { "slug": "take-versioning",    "title": "Take versioning" },
       { "slug": "stories",            "title": "Stories timeline" },
       { "slug": "effects",            "title": "Effects chain" },
@@ -30,7 +30,7 @@
     "group": "Engines & providers",
     "items": [
       { "slug": "engines",            "title": "Engines" },
-      { "slug": "providers",          "title": "LLM + TTS providers" },
+      { "slug": "providers",          "title": "LLM + TTS + STT providers" },
       { "slug": "ai-features",        "title": "AI feature routing" },
       { "slug": "quick-setup",        "title": "Quick Setup wizard" },
       { "slug": "gpu",                "title": "GPU / CUDA" }
