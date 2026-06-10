@@ -304,6 +304,51 @@ async function renderScene(scene) {
   }
 }
 
+const qcReport = ref(null);
+const qcBusy = ref(false);
+const m4bBusy = ref(false);
+
+async function runQcReport() {
+  const p = selectedProject.value;
+  if (!p || qcBusy.value) return;
+  qcBusy.value = true;
+  try {
+    qcReport.value = await api.request(`/v1/projects/${p.id}/qc`);
+  } catch (e) {
+    pushToast({ kind: "error", title: "QC failed", description: String(e?.message ?? e) });
+  } finally {
+    qcBusy.value = false;
+  }
+}
+
+async function exportM4b() {
+  const p = selectedProject.value;
+  if (!p || m4bBusy.value) return;
+  m4bBusy.value = true;
+  try {
+    const blob = await api.requestBlob("GET", `/v1/projects/${p.id}/export_m4b`);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(p.name || "audiobook").replace(/\W+/g, "-")}.m4b`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    pushToast({ kind: "success", title: "M4B exported" });
+  } catch (e) {
+    const msg = String(e?.message ?? e);
+    pushToast({
+      kind: msg.includes("501") ? "info" : "error",
+      title: msg.includes("501") ? "ffmpeg required" : (msg.includes("409") ? "Nothing rendered yet" : "Export failed"),
+      description: msg.includes("501")
+        ? "Install ffmpeg and make sure it's on PATH, then retry."
+        : msg,
+      duration: 7000,
+    });
+  } finally {
+    m4bBusy.value = false;
+  }
+}
+
 async function renderAllChapters() {
   const p = selectedProject.value;
   if (!p || !scenes.value.length || renderBusy.value) return;
@@ -597,11 +642,44 @@ onMounted(refresh);
 
           <div class="books__actions">
             <JvButton variant="primary" :loading="renderBusy" :disabled="renderBusy || !scenes.length" label="▶ Render all chapters" @click="renderAllChapters" />
-            <JvButton variant="secondary" disabled title="M4B export isn't implemented yet — JustWrite drives this via the render pipeline" label="Export M4B" />
-            <JvButton variant="secondary" disabled title="ACX QC report isn't implemented yet" label="QC report" />
+            <JvButton variant="secondary" :loading="m4bBusy" :disabled="m4bBusy" title="Stitch rendered chapters into an .m4b with chapter markers (requires ffmpeg)" label="Export M4B" @click="exportM4b" />
+            <JvButton variant="secondary" :loading="qcBusy" :disabled="qcBusy" title="Per-chapter loudness check against ACX bounds" label="QC report" @click="runQcReport" />
             <JvButton variant="secondary" label="Export ZIP" @click="exportProject(selectedProject.id)" />
             <span class="books__spacer" />
             <button class="jv-btn jv-btn--danger-outline jv-btn--sm" type="button" @click="deleteProject">Delete project</button>
+          </div>
+
+          <div v-if="qcReport" class="jv-card jv-card--flat" style="margin: 12px 0; padding: 12px 16px;">
+            <div class="jv-row" style="margin-bottom: 8px;">
+              <strong>ACX QC — {{ qcReport.project_name }}</strong>
+              <span class="jv-pill" :class="qcReport.overall_pass ? 'jv-pill--green' : 'jv-pill--ghost'">
+                {{ qcReport.overall_pass ? "PASS" : "needs work" }}
+              </span>
+              <span class="jv-spacer" />
+              <button class="jv-btn jv-btn--ghost jv-btn--sm" @click="qcReport = null">✕</button>
+            </div>
+            <table class="jv-table">
+              <thead>
+                <tr><th>Chapter</th><th>Rendered</th><th>Duration</th><th>Peak dBFS</th><th>RMS dBFS</th><th>Verdict</th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in qcReport.scenes" :key="r.scene_id">
+                  <td><strong>{{ r.title || `#${r.position + 1}` }}</strong></td>
+                  <td :class="{ 'jv-muted': !r.complete }">{{ r.blocks_rendered }}/{{ r.blocks_total }}</td>
+                  <td>{{ r.duration_sec }}s</td>
+                  <td>{{ r.peak_dbfs ?? "—" }} <span v-if="r.peak_ok === false">⚠</span></td>
+                  <td>{{ r.rms_dbfs ?? "—" }} <span v-if="r.rms_ok === false">⚠</span></td>
+                  <td>
+                    <span class="jv-pill" :class="(r.complete && r.peak_ok && r.rms_ok) ? 'jv-pill--green' : 'jv-pill--ghost'">
+                      {{ !r.complete ? "incomplete" : (r.peak_ok && r.rms_ok ? "ok" : "level") }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="jv-muted" style="font-size: 11px; margin: 8px 0 0;">
+              {{ qcReport.notes?.[0] }} {{ qcReport.notes?.[1] }}
+            </p>
           </div>
 
           <div class="jv-divider" />

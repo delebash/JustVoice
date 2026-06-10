@@ -46,7 +46,19 @@ class RenderedLine:
 
 
 def _resolve_engine_for_voice(state: AppState, voice_id: str) -> str | None:
-    """Find the engine id that owns a voice id (preset or stored)."""
+    """Find the engine id that owns a voice id (preset or stored).
+
+    Checks managed-manifest static voices (Kokoro's 54 presets etc.)
+    first, then in-process engines (external providers), then the stored
+    voice library."""
+    try:
+        from .engines.manager import get_manager
+
+        for manifest in get_manager().manifests().values():
+            if any(v.get("id") == voice_id for v in manifest.static_voices):
+                return manifest.id
+    except Exception:
+        pass
     for engine in state.engines.all():
         if any(p.id == voice_id for p in engine.voices()):
             return engine.meta.engine_id
@@ -54,6 +66,62 @@ def _resolve_engine_for_voice(state: AppState, voice_id: str) -> str | None:
     if stored:
         return stored.engine
     return None
+
+
+class _ManagedSynthOut:
+    """Shape-compatible stand-in for engines.base.SynthOutput."""
+
+    def __init__(self, audio_bytes: bytes, meta: dict):
+        self.bytes = audio_bytes
+        self.is_wav_container = bool(meta.get("is_wav_container"))
+        self.sample_rate = int(meta.get("sample_rate") or 24000)
+        self.channels = int(meta.get("channels") or 1)
+
+
+class _ManagedEngineFacade:
+    """Adapts the managed-subprocess manager to the in-process engine
+    interface render_line consumes (.meta flags / .ready() / .load() /
+    .synthesize()). This is what lets Studio Render, Chapter regen, and
+    Projects batch render reach Kokoro/Chatterbox/etc. — before this
+    facade, the chapter pipeline only worked for external API engines."""
+
+    def __init__(self, state: AppState, engine_id: str):
+        from .engines.manager import get_manager
+
+        self._state = state
+        self._mgr = get_manager()
+        self._id = engine_id
+        manifest = self._mgr.manifests()[engine_id]
+        caps = manifest.capabilities or {}
+
+        class _Meta:
+            supports_paralinguistic_tags = bool(caps.get("paralinguistic_tags"))
+
+        self.meta = _Meta()
+
+    def ready(self) -> bool:
+        return self._mgr.current_for("tts") == self._id
+
+    def load(self, device: str = "auto", variant=None) -> None:
+        self._mgr.load(self._id, device=device, variant=variant)
+
+    def synthesize(self, req) -> _ManagedSynthOut:
+        body = {
+            "voice_id": req.voice_id,
+            "text": req.text,
+            "language": req.language,
+            "delivery": req.delivery or {},
+            "seed": req.seed,
+        }
+        # Cloned / imported voices carry a reference clip on disk that the
+        # engine subprocess needs as audio_prompt_path.
+        stored = self._state.voices.get(req.voice_id)
+        if stored is not None and stored.source in ("cloned", "imported"):
+            ref = self._state.voices.ref_wav_path(stored.id)
+            if ref.is_file():
+                body["audio_prompt_path"] = str(ref.resolve())
+        audio_bytes, meta = self._mgr.synth(self._id, body)
+        return _ManagedSynthOut(audio_bytes, meta)
 
 
 def _apply_lexicons(text: str, lexicon_ids: list[str], state: AppState) -> str:
@@ -100,6 +168,16 @@ def render_line(
         raise not_found(f"voice {voice}")
     engine = state.engines.get(engine_id)
     if engine is None:
+        # Managed subprocess engine — wrap the manager in the in-process
+        # interface so the rest of this function is path-agnostic.
+        try:
+            from .engines.manager import get_manager
+
+            if engine_id in get_manager().manifests():
+                engine = _ManagedEngineFacade(state, engine_id)
+        except Exception:
+            engine = None
+    if engine is None:
         raise not_found(f"engine {engine_id}")
 
     # Inline-tag stripping for engines that don't support paralinguistic cues
@@ -133,7 +211,8 @@ def render_line(
     if not engine.ready():
         try:
             engine.load("auto", None)
-            state.engines.set_current(engine_id)
+            if state.engines.get(engine_id) is not None:
+                state.engines.set_current(engine_id)
         except Exception as e:
             raise bad_request(
                 f"engine '{engine_id}' failed to load on first use: {e}. "

@@ -232,23 +232,20 @@ async function regenerateBlock(block) {
     onCancel: () => {},
   });
   try {
-    // Render the block text as a single line.
-    const blob = await api.request("/v1/render_chapter", {
+    // Take-atomic re-roll: the server renders, persists the Generation,
+    // and chains a new Take off the current default in one call.
+    const r = await api.request(`/v1/blocks/${block.id}/render`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        lines: [{ voice, text: block.text }],
-        between_lines: { silence_ms: 0 },
-      }),
+      body: JSON.stringify({ voice, set_default: false }),
     });
-    tasks.update(task.id, { meta: { bytesOut: blob.size } });
     tasks.finish(task.id);
-    // After regen succeeds, refresh the takes for this block so the new take
-    // appears.  (A future endpoint may auto-create the Take row server-side;
-    // for now we just refresh so any server-created takes show up.)
     takesStore.invalidate(block.id);
     await takesStore.fetchTakes(block.id);
-    pushToast({ message: `${copy.value.line.singular} regenerated.`, kind: "success" });
+    pushToast({
+      message: `${copy.value.line.singular} regenerated — new take ${r?.take?.id ? "created" : "saved"}.`,
+      kind: "success",
+    });
   } catch (e) {
     tasks.fail(task.id, String(e.message || e));
     pushToast({ message: `Regen failed: ${e.message || e}`, kind: "error", duration: 6000 });

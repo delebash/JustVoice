@@ -46,6 +46,7 @@ from .api import (
     personas_api,
     phase5_api,
     project_export_api,
+    project_qc_api,
     projects_api,
     render_chapter_api,
     render_presets_api,
@@ -171,6 +172,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(voice_preview_api.router)
     app.include_router(backup_api.router)
     app.include_router(project_export_api.router)
+    app.include_router(project_qc_api.router)
     app.include_router(effect_presets_api.router)
     app.include_router(llm_providers_api.router)
     app.include_router(feature_pins_api.router)
