@@ -13,6 +13,7 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
+import EmptyState from "../components/EmptyState.vue";
 
 const api = useApi();
 
@@ -233,9 +234,15 @@ onMounted(refresh);
       <div class="lex__list-meta jv-muted">{{ lexicons.length }} dictionaries</div>
 
       <div v-if="loading" class="lex__empty jv-muted">Loading…</div>
-      <div v-else-if="!lexicons.length" class="lex__empty jv-muted">
-        No lexicons yet. Use <strong>+ New</strong> or import a <code>.justlex.json</code>.
-      </div>
+      <EmptyState
+        v-else-if="!lexicons.length"
+        icon="Sparkle"
+        title="No lexicons yet"
+        message="Pronunciation dictionaries force domain words and proper names — Beauchamp → BEE-chum — to render consistently across a whole project."
+        action-label="+ New lexicon"
+        compact
+        @action="newName = 'New lexicon'; createLexicon()"
+      />
 
       <div
         v-for="lx in lexicons"
