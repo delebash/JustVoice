@@ -189,3 +189,68 @@ def test_cache_clear_rejects_unsupported_filters(tmp_path, monkeypatch):
         )
     # Entry survived the rejected call.
     assert len(state._render_cache.entries()) == 1
+
+
+# ── story items (timeline clips) ─────────────────────────────────────
+
+
+def _seed_gen(seed, text="clip", duration=2.5):
+    g = Generation(text=text, engine="kokoro", status="completed", duration_sec=duration,
+                   audio_path="/tmp/fake.wav")
+    seed.add(g)
+    seed.commit()
+    return g
+
+
+def test_story_item_add_auto_placement(api_client):
+    client, seed = api_client
+    story = client.post("/v1/stories", json={"name": "Ep"}).json()
+    g1 = _seed_gen(seed, "first", 2.0)
+    g2 = _seed_gen(seed, "second", 1.0)
+
+    r1 = client.post(f"/v1/stories/{story['id']}/items", json={"generation_id": g1.id})
+    assert r1.status_code == 200
+    item1 = r1.json()["items"][0]
+    assert item1["start_time_ms"] == 0
+    assert item1["duration"] == 2.0
+    assert item1["audio_url"] == f"/v1/generations/{g1.id}/audio"
+
+    # Second clip on the same track lands 200 ms after the first ends.
+    r2 = client.post(f"/v1/stories/{story['id']}/items", json={"generation_id": g2.id})
+    items = r2.json()["items"]
+    assert len(items) == 2
+    assert items[1]["start_time_ms"] == 2200
+
+    # Explicit placement wins.
+    g3 = _seed_gen(seed, "third", 1.0)
+    r3 = client.post(
+        f"/v1/stories/{story['id']}/items",
+        json={"generation_id": g3.id, "track": 1, "start_time_ms": 500},
+    )
+    placed = [i for i in r3.json()["items"] if i["generation_id"] == g3.id][0]
+    assert placed["track"] == 1 and placed["start_time_ms"] == 500
+
+
+def test_story_item_patch_and_delete(api_client):
+    client, seed = api_client
+    story = client.post("/v1/stories", json={"name": "Ep2"}).json()
+    g = _seed_gen(seed)
+    item = client.post(f"/v1/stories/{story['id']}/items", json={"generation_id": g.id}).json()["items"][0]
+
+    r = client.patch(
+        f"/v1/stories/{story['id']}/items/{item['id']}",
+        json={"start_time_ms": 1234, "volume": 0.5, "track": 2},
+    )
+    updated = r.json()["items"][0]
+    assert updated["start_time_ms"] == 1234
+    assert updated["volume"] == 0.5
+    assert updated["track"] == 2
+
+    # Volume outside 0..2 rejected.
+    assert client.patch(
+        f"/v1/stories/{story['id']}/items/{item['id']}", json={"volume": 3.0}
+    ).status_code == 422
+
+    r = client.delete(f"/v1/stories/{story['id']}/items/{item['id']}")
+    assert r.json()["items"] == []
+    assert client.delete(f"/v1/stories/{story['id']}/items/{item['id']}").status_code == 404

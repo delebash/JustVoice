@@ -18,6 +18,8 @@ import wave
 import numpy as np
 from fastapi import APIRouter, Response
 
+import logging
+
 from ..app_state import get_state
 from ..audio.chunked import (
     DEFAULT_MAX_CHUNK_CHARS,
@@ -78,6 +80,8 @@ def _chunking_params(settings) -> tuple[int, int]:
     max_chunk_chars = int(getattr(settings.generation, "max_chunk_chars", DEFAULT_MAX_CHUNK_CHARS))
     crossfade_ms = int(getattr(settings.generation, "crossfade_ms", 50))
     return max_chunk_chars, crossfade_ms
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(tags=["generation"])
 
@@ -206,6 +210,71 @@ def _resolve_audio_prompt_for_stored(stored) -> str | None:
     return str(path.resolve())
 
 
+def _persist_and_respond(
+    req: GenerateRequest,
+    wav_bytes: bytes,
+    engine_id: str,
+    effects: list[dict] | None,
+) -> Response:
+    """Write the render to disk + a Generation row, return the audio
+    Response with X-Generation-Id.
+
+    Until this landed, NO production path ever wrote a Generation row —
+    the takes/history/lineage/stories layer read a table nothing
+    populated. Persistence failure is non-fatal: the user still gets
+    their audio, we just log the miss.
+    """
+    import json as _json
+    import uuid as _uuid
+
+    gen_id = _uuid.uuid4().hex
+    headers = {"X-Generation-Id": gen_id}
+    try:
+        from ..audio.wav import parse_wav_header
+        from ..database.models import Generation
+        from ..database.session import SessionLocal
+
+        out_dir = get_state().data_dir / "generations"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        audio_path = out_dir / f"{gen_id}.wav"
+        audio_path.write_bytes(wav_bytes)
+
+        try:
+            fmt, _o, _sz = parse_wav_header(wav_bytes)
+            duration = fmt.duration_sec
+        except Exception:
+            duration = None
+
+        db = SessionLocal()
+        try:
+            db.add(
+                Generation(
+                    id=gen_id,
+                    # Ad-hoc renders are voice-keyed, not persona-keyed; the
+                    # legacy profile_id string column carries the voice id
+                    # (matches what /v1/takes/recent surfaces as "voice").
+                    profile_id=req.voice,
+                    persona_id=req.persona_id,
+                    text=req.text,
+                    language=req.language or "en",
+                    engine=engine_id,
+                    seed=req.seed,
+                    audio_path=str(audio_path),
+                    duration_sec=duration,
+                    status="completed",
+                    source="manual",
+                    preset_id=req.preset_id,
+                    effects_chain=_json.dumps(effects) if effects else None,
+                )
+            )
+            db.commit()
+        finally:
+            db.close()
+    except Exception as e:
+        log.warning("generation persistence failed (audio still served): %s", e)
+    return Response(content=wav_bytes, media_type="audio/wav", headers=headers)
+
+
 async def _generate_via_manager(
     engine_id: str, req: GenerateRequest, audio_prompt_path: str | None = None
 ) -> Response:
@@ -278,7 +347,7 @@ async def _generate_via_manager(
                 channels = meta.get("channels") or 1
                 audio_bytes = write_wav_container(audio_bytes, sr, channels)
             audio_bytes = apply_effects_chain(audio_bytes, effects)
-            return Response(content=audio_bytes, media_type="audio/wav")
+            return _persist_and_respond(req, audio_bytes, engine_id, effects)
 
         # Long-form path: split → per-chunk synth → crossfade-concat → WAV
         chunks = split_text_into_chunks(req.text, max_chars=max_chunk_chars)
@@ -298,7 +367,7 @@ async def _generate_via_manager(
         pcm_int16 = (np.clip(merged, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
         wav_bytes = write_wav_container(pcm_int16, sample_rate, channels)
         wav_bytes = apply_effects_chain(wav_bytes, effects)
-        return Response(content=wav_bytes, media_type="audio/wav")
+        return _persist_and_respond(req, wav_bytes, engine_id, effects)
     except Exception as e:
         raise internal(f"engine synthesize: {e}")
 
@@ -373,7 +442,7 @@ def _generate_via_inprocess(engine_id: str, req: GenerateRequest) -> Response:
                     w.writeframes(out.bytes)
                 wav_bytes = buf.getvalue()
             wav_bytes = apply_effects_chain(wav_bytes, effects)
-            return Response(content=wav_bytes, media_type="audio/wav")
+            return _persist_and_respond(req, wav_bytes, engine_id, effects)
 
         chunks = split_text_into_chunks(req.text, max_chars=max_chunk_chars)
         pcm_chunks: list[np.ndarray] = []
@@ -390,6 +459,6 @@ def _generate_via_inprocess(engine_id: str, req: GenerateRequest) -> Response:
         pcm_int16 = (np.clip(merged, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
         wav_bytes = write_wav_container(pcm_int16, sample_rate, channels)
         wav_bytes = apply_effects_chain(wav_bytes, effects)
-        return Response(content=wav_bytes, media_type="audio/wav")
+        return _persist_and_respond(req, wav_bytes, engine_id, effects)
     except Exception as e:
         raise internal(f"engine synthesize: {e}")
