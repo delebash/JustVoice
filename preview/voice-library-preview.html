@@ -130,6 +130,18 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .studio-tab-sub{display:block;font-size:10.5px;color:var(--ink-3);line-height:1.3}
 .studio-body{display:grid;grid-template-columns:minmax(0,1fr) 440px;flex:1;min-height:0}
 .studio-main{display:flex;flex-direction:column;overflow:hidden;padding:16px 22px 12px;min-width:0}
+.studio-body.no-aside{grid-template-columns:1fr}
+.studio-body.no-aside .studio-aside{display:none}
+/* Script line rows */
+.line-row{display:flex;align-items:flex-start;gap:10px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 12px;font-size:12.5px;cursor:pointer}
+.line-row:hover{border-color:var(--line-strong)}
+.line-row .sp{display:inline-flex;align-items:center;gap:6px;flex:none;width:130px;font-weight:600;font-size:12px}
+.line-row .txt{flex:1;min-width:0;color:var(--ink-2);line-height:1.45}
+.line-row .kind{flex:none}
+.scroll-fill{flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:2px 8px 10px 2px}
+/* Render progress */
+.prog{height:6px;background:var(--surface-3);border:1px solid var(--line);border-radius:999px;overflow:hidden;min-width:120px}
+.prog .fill{height:100%;background:var(--accent);width:0%;transition:width .15s linear}
 .studio-main>*{flex:none}
 .cast-scroller{flex:1 1 auto;min-height:0;overflow-y:auto;padding:2px 2px 10px;margin-right:-6px;padding-right:8px}
 .studio-aside{border-left:1px solid var(--line);background:var(--surface-3);padding:20px 18px;display:flex;flex-direction:column;overflow:hidden;min-height:0}
@@ -469,6 +481,59 @@ for(const pr of Object.values(PROJECTS)) pr.traits = PRESETS[pr.preset];
 let projectId = "heist";
 let selectedChar = "idris";
 let castSearch = "", uncastOnly = false;
+let activeStep = "cast";   // cast | script | render
+
+/* ── Script-tab mock data ── */
+const SCRIPT_LINES = {
+  heist: [
+    { sp:"narrator", kind:"narration", text:"The rain had been falling since the ferry left Old Harbor, and by midnight the stairwell smelled of wet rope and lamp oil.", conf:.98 },
+    { sp:"elen",     kind:"dialogue",  text:"\u201cYou're late. Three minutes past the hour, and the rain is starting again.\u201d", conf:.95 },
+    { sp:"halvard",  kind:"dialogue",  text:"\u201cBoss, I'd rather not say. But the lantern \u2014 the lantern went out on its own.\u201d", conf:.61 },
+    { sp:"narrator", kind:"narration", text:"She didn't answer. The lantern in her hand swung once and went dark.", conf:.97 },
+    { sp:"elen",     kind:"thought",   text:"If the wheel was missing, then someone had already been here. Someone who knew.", conf:.74 },
+    { sp:"june",     kind:"dialogue",  text:"\u201cThe ledger. Petra said you'd want the ledger before the tide.\u201d", conf:.93 },
+    { sp:"narrator", kind:"narration", text:"Below them, the harbor bell counted four. Somewhere a door closed that should have been locked.", conf:.99 },
+    { sp:"petra",    kind:"dialogue",  text:"\u201cDon't take the coast road. Not tonight.\u201d", conf:.58 },
+    { sp:"narrator", kind:"narration", text:"It was 1924. Or near enough \u2014 the dates blur where the water meets the books.", conf:.96 },
+    { sp:"tomas",    kind:"dialogue",  text:"\u201cMiss! The printer's boy says the apron's still warm!\u201d", conf:.88 },
+  ],
+  oldports: [
+    { sp:"renn",  kind:"dialogue", text:"Welcome back to Old Ports \u2014 episode twelve. Petra, you found something in the archive this week.", conf:.99 },
+    { sp:"posa",  kind:"dialogue", text:"I did \u2014 a pilot's logbook from 1911, and it names the lighthouse keeper we talked about in episode nine.", conf:.98 },
+    { sp:"guest1",kind:"dialogue", text:"If I can jump in \u2014 that logbook is one of three. The other two never left the family.", conf:.91 },
+    { sp:"renn",  kind:"dialogue", text:"This is exactly why we do listener mail last.", conf:.97 },
+    { sp:"reader",kind:"dialogue", text:"\u201cDear Old Ports \u2014 my grandmother swore the bell rang twice the night the pier burned\u2026\u201d", conf:.84 },
+  ],
+};
+/* ── Lines-tab (structured import) mock data ── */
+const GAME_LINES = {
+  harbor: [
+    { id:"HL-0107", npc:"dock",   text:"Tide's against you, friend. Nothing ships till dawn.", event:"quest_intro",  status:"rendered" },
+    { id:"HL-0142", npc:"dock",   text:"The manifest? Ask the clerk \u2014 if you can wake him.", event:"quest_step",   status:"rendered" },
+    { id:"HL-0166", npc:"guard",  text:"Move along. Pier's closed.",                              event:"bark",         status:"pending" },
+    { id:"HL-0167", npc:"guard",  text:"You hear that? Probably nothing. Probably.",              event:"bark",         status:"pending" },
+    { id:"HL-0203", npc:"yia",    text:"Salt, rope, lamp oil \u2014 and questions cost extra.",   event:"vendor_open",  status:"changed" },
+    { id:"HL-0241", npc:"capt",   text:"My pilot's license says I decide what's reckless.",       event:"quest_intro",  status:"rendered" },
+    { id:"HL-0258", npc:"urchin", text:"Penny for the tide table, two for who asked about you.",  event:"quest_step",   status:"pending" },
+    { id:"HL-0301", npc:"priest", text:"The tide takes names. It gave one back this morning.",    event:"lore",         status:"pending" },
+  ],
+};
+/* ── Render-tab mock data ── */
+const RENDER_UNITS = {
+  heist: [
+    { n:1, title:"Cold Open",            blocks:27, status:"rendered", dur:"14:12" },
+    { n:2, title:"The Lantern",          blocks:34, status:"rendered", dur:"18:40" },
+    { n:3, title:"June, with a printer's apron", blocks:22, status:"changed", dur:"11:05" },
+    { n:4, title:"A bearing, no compass", blocks:31, status:"pending",  dur:"\u2014" },
+    { n:5, title:"Old Harbor 7",          blocks:29, status:"pending",  dur:"\u2014" },
+  ],
+  oldports: [
+    { n:1, title:"Cold open + theme",   blocks:3,  status:"rendered", dur:"1:50" },
+    { n:2, title:"The pilot's logbook", blocks:18, status:"changed",  dur:"22:14" },
+    { n:3, title:"Listener mail",       blocks:7,  status:"pending",  dur:"\u2014" },
+  ],
+};
+let renderJob = null; // { pct, timer }
 /* Density by CAST SIZE, not use case. Demo threshold 8 (real default
    ~25, operator-tunable). Manual override per project wins. */
 const DENSITY_THRESHOLD = 8;
@@ -657,9 +722,35 @@ function renderStudio(){
   const ss=scriptStep(p), rs=renderStep(p);
   /* Lab removed — bench tooling lives in the Tools lane, not the workflow. */
   $("#steps").innerHTML=`
-    <button class="studio-tab active"><span class="ic">🎧</span><span><span class="studio-tab-name">Cast</span><span class="studio-tab-sub">${p.cast.length-unassigned}/${p.cast.length} cast${unassigned?` · ${unassigned} unassigned`:""}</span></span></button>
-    <button class="studio-tab"><span class="ic">💬</span><span><span class="studio-tab-name">${ss.label}</span><span class="studio-tab-sub">${ss.sub}</span></span></button>
-    <button class="studio-tab"><span class="ic">🎚️</span><span><span class="studio-tab-name">${rs.label}</span><span class="studio-tab-sub">${rs.sub}</span></span></button>`;
+    <button class="studio-tab ${activeStep==="cast"?"active":""}" onclick="setStep('cast')"><span class="ic">🎧</span><span><span class="studio-tab-name">Cast</span><span class="studio-tab-sub">${p.cast.length-unassigned}/${p.cast.length} cast${unassigned?` · ${unassigned} unassigned`:""}</span></span></button>
+    <button class="studio-tab ${activeStep==="script"?"active":""}" onclick="setStep('script')"><span class="ic">💬</span><span><span class="studio-tab-name">${ss.label}</span><span class="studio-tab-sub">${ss.sub}</span></span></button>
+    <button class="studio-tab ${activeStep==="render"?"active":""}" onclick="setStep('render')"><span class="ic">🎚️</span><span><span class="studio-tab-name">${rs.label}</span><span class="studio-tab-sub">${rs.sub}</span></span></button>`;
+  document.querySelector(".studio-body").classList.toggle("no-aside",activeStep!=="cast");
+  if(activeStep!=="cast"){ renderStepContent(p); return; }
+
+  // Returning from script/render: restore the cast skeleton if it was replaced.
+  if(!document.getElementById("cast-heading")){
+    document.querySelector(".studio-main").innerHTML=`
+      <div class="row" style="margin-bottom:8px;flex-wrap:nowrap">
+        <div id="cast-heading" style="min-width:0"></div>
+        <span class="spacer"></span>
+        <button class="btn secondary sm">✕ Clear cast</button>
+        <button class="btn sm">✨ Smart-assign</button>
+      </div>
+      <p style="font-size:12.5px;color:var(--ink-2);margin:0 0 14px;line-height:1.5">
+        <strong>Smart-assign</strong> proposes a cast from the voice library. Override manually — select a card, then click a voice; click again to unassign.
+      </p>
+      <div id="narrator-card" style="margin-bottom:4px"></div>
+      <div style="display:flex;align-items:flex-end;gap:12px;margin:16px 0 10px">
+        <div>
+          <div class="eyebrow" id="char-eyebrow">Characters</div>
+          <div class="display sm" id="char-counter"></div>
+        </div>
+        <span class="spacer"></span>
+        <span id="cast-mode"></span>
+      </div>
+      <div class="cast-scroller"><div id="cast-grid"></div></div>`;
+  }
 
   /* Primary-roles band: single narrator card, multiple host cards, or none. */
   const primaries=p.cast.filter(c=>c.primary);
@@ -691,6 +782,146 @@ function renderStudio(){
   $("#char-counter").textContent=`${nonPrimary.length} ${copy.roles.toLowerCase()} · ${unassigned} unassigned`;
   $("#cast-mode").innerHTML=`<span class="chips"><button class="chip ${mode==="cards"?"active":""}" onclick="castModeOverride['${projectId}']='cards';renderStudio()">Cards</button><button class="chip ${mode==="table"?"active":""}" onclick="castModeOverride['${projectId}']='table';renderStudio()">Table</button></span>`;
 }
+
+function setStep(st){activeStep=st;renderAll()}
+
+/* ── Script / Lines / Render tab content (replaces the cast zone) ── */
+function speakerName(id){const c=project().cast.find(x=>x.id===id);return c?c.name:id}
+function speakerChip(id){const n=speakerName(id);return `<span class="sp"><span class="glyph" style="background:${grad(n)}">${initials(n)[0]}</span>${n}</span>`}
+function cycleSpeaker(idx){
+  const lines=SCRIPT_LINES[projectId]; const ids=project().cast.map(c=>c.id);
+  const cur=ids.indexOf(lines[idx].sp); lines[idx].sp=ids[(cur+1)%ids.length]; lines[idx].conf=1;
+  renderAll();
+}
+function renderStepContent(p){
+  const main=document.querySelector(".studio-main");
+  if(activeStep==="script"){
+    if(p.traits.lineSource==="structured"){
+      // Game: import-mapping surface, not attribution
+      const lines=GAME_LINES[projectId]||[];
+      main.innerHTML=`
+        <div class="row" style="margin-bottom:8px;flex-wrap:nowrap">
+          <div style="min-width:0"><div class="eyebrow">Lines</div><div class="display">Imported, pre-attributed</div></div>
+          <span class="spacer"></span>
+          <button class="btn secondary sm">⬇ Re-import</button>
+          <button class="btn sm">Map columns…</button>
+        </div>
+        <p style="font-size:12.5px;color:var(--ink-2);margin:0 0 12px">
+          Lines arrive attributed from your quest tool — no LLM pass needed. <code class="muted">harbor_lines.csv</code> · speaker → <b>NPC</b>, text → <b>Line</b>, event → <b>Event ID</b>.
+        </p>
+        <div class="card" style="overflow-y:auto;flex:1;min-height:0"><table class="ctable">
+          <thead><tr><th>Line ID</th><th>NPC</th><th>Text</th><th>Event</th><th>Status</th></tr></thead>
+          <tbody>${lines.map(l=>`<tr>
+            <td><code class="muted" style="font-size:11px">${l.id}</code></td>
+            <td style="white-space:nowrap">${speakerChip(l.npc)}</td>
+            <td style="color:var(--ink-2)">${l.text}</td>
+            <td><span class="pill ghost">${l.event}</span></td>
+            <td>${l.status==="rendered"?'<span class="pill green">rendered</span>':l.status==="changed"?'<span class="pill warn">changed</span>':'<span class="pill">pending</span>'}</td>
+          </tr>`).join("")}</tbody></table></div>`;
+      return;
+    }
+    // Prose/script attribution view
+    const lines=SCRIPT_LINES[projectId]||[];
+    const low=lines.filter(l=>l.conf<.7).length;
+    main.innerHTML=`
+      <div class="row" style="margin-bottom:8px;flex-wrap:nowrap">
+        <div style="min-width:0"><div class="eyebrow">Script</div><div class="display">${p.traits.lineSource==="script"?"Parsed from episode script":"Who speaks each line"}</div></div>
+        <span class="spacer"></span>
+        <button class="btn secondary sm">≡ Batch analyze…</button>
+        <button class="btn sm">✨ Re-analyze</button>
+      </div>
+      <p style="font-size:12.5px;color:var(--ink-2);margin:0 0 12px">
+        ${p.traits.lineSource==="script"
+          ?"Speakers come from the script's labels; the LLM only fills gaps."
+          :"The LLM attributes each line to a speaker and classifies it as narration, dialogue, or thought."}
+        Click a line's speaker to correct it — corrections feed back into the next analysis.
+        <b>${lines.length} lines${low?` · <span style="color:var(--warn-ink)">${low} low-confidence</span>`:""}</b>
+      </p>
+      <div class="scroll-fill">${lines.map((l,i)=>`
+        <div class="line-row" title="Click to cycle speaker (correction)" onclick="cycleSpeaker(${i})">
+          ${speakerChip(l.sp)}
+          <span class="txt">${l.text}</span>
+          <span class="kind">${l.kind==="narration"?'<span class="pill ghost">narration</span>':l.kind==="thought"?'<span class="pill blue">thought</span>':'<span class="pill green">dialogue</span>'}</span>
+          ${l.conf<.7?'<span class="pill warn" title="Low attribution confidence">'+Math.round(l.conf*100)+"%</span>":""}
+        </div>`).join("")}</div>`;
+    return;
+  }
+  // ── Render tab ──
+  if(p.traits.output==="perLine"){
+    const lines=GAME_LINES[projectId]||[];
+    const done=lines.filter(l=>l.status==="rendered").length, changed=lines.filter(l=>l.status==="changed").length;
+    main.innerHTML=`
+      <div class="row" style="margin-bottom:8px;flex-wrap:nowrap">
+        <div style="min-width:0"><div class="eyebrow">Render</div><div class="display">Per-line WAV + JSON sidecar</div></div>
+        <span class="spacer"></span>
+        <button class="btn secondary sm" ${changed?"":"disabled"}>↻ Render changed (${changed})</button>
+        <button class="btn sm" onclick="startRenderJob()">▶ Render all</button>
+      </div>
+      <p style="font-size:12.5px;color:var(--ink-2);margin:0 0 12px">
+        Output: <code class="muted">export/{npc}/{line_id}.wav</code> + <code class="muted">.json</code> sidecar (event ID, duration, text hash). Only changed lines re-render.
+      </p>
+      ${renderJobHtml()}
+      <div class="row" style="gap:18px;margin-bottom:12px">
+        <div class="card" style="padding:12px 18px"><div class="eyebrow">Lines</div><div class="display sm">${p.lineCount}</div></div>
+        <div class="card" style="padding:12px 18px"><div class="eyebrow">Rendered</div><div class="display sm">${done} <span class="muted" style="font-size:12px">shown</span></div></div>
+        <div class="card" style="padding:12px 18px"><div class="eyebrow">Changed</div><div class="display sm" style="color:var(--warn-ink)">${changed}</div></div>
+        <div class="card" style="padding:12px 18px"><div class="eyebrow">Mastering</div><div class="display sm">raw</div></div>
+      </div>
+      <div class="card" style="overflow-y:auto;flex:1;min-height:0"><table class="ctable">
+        <thead><tr><th>Line ID</th><th>NPC</th><th>Event</th><th>Status</th><th class="right"></th></tr></thead>
+        <tbody>${lines.map(l=>`<tr>
+          <td><code class="muted" style="font-size:11px">${l.id}</code></td>
+          <td style="white-space:nowrap">${speakerChip(l.npc)}</td>
+          <td><span class="pill ghost">${l.event}</span></td>
+          <td>${l.status==="rendered"?'<span class="pill green">rendered</span>':l.status==="changed"?'<span class="pill warn">changed</span>':'<span class="pill">pending</span>'}</td>
+          <td class="right"><button class="btn ghost sm">▶</button><button class="btn ghost sm">↻</button></td>
+        </tr>`).join("")}</tbody></table></div>`;
+    return;
+  }
+  // Stitched (audiobook chapters / podcast segments)
+  const units=RENDER_UNITS[projectId]||[];
+  const unitName=p.traits.copy.unit;
+  main.innerHTML=`
+    <div class="row" style="margin-bottom:8px;flex-wrap:nowrap">
+      <div style="min-width:0"><div class="eyebrow">Render</div><div class="display">${unitName[0].toUpperCase()+unitName.slice(1)} audio · ${p.traits.mastering}</div></div>
+      <span class="spacer"></span>
+      <button class="btn secondary sm">Apply master only</button>
+      <button class="btn sm" onclick="startRenderJob()">▶ Render all ${unitName}s</button>
+    </div>
+    <p style="font-size:12.5px;color:var(--ink-2);margin:0 0 12px">
+      Each ${unitName} renders line-by-line with the cast's voices, stitches, then masters to <b>${p.traits.mastering}</b>. Unchanged lines come from cache.
+    </p>
+    ${renderJobHtml()}
+    <div class="card" style="overflow-y:auto;flex:1;min-height:0"><table class="ctable">
+      <thead><tr><th style="width:36px">#</th><th>${unitName[0].toUpperCase()+unitName.slice(1)}</th><th class="right">Blocks</th><th class="right">Duration</th><th>Status</th><th class="right"></th></tr></thead>
+      <tbody>${units.map(u=>`<tr>
+        <td class="muted">${u.n}</td>
+        <td><b>${u.title}</b></td>
+        <td class="right">${u.blocks}</td>
+        <td class="right muted">${u.dur}</td>
+        <td>${u.status==="rendered"?'<span class="pill green">rendered</span>':u.status==="changed"?'<span class="pill warn">changed</span>':'<span class="pill">pending</span>'}</td>
+        <td class="right"><button class="btn ghost sm">▶</button><button class="btn ghost sm">↻</button><button class="btn ghost sm">⬇</button></td>
+      </tr>`).join("")}</tbody></table></div>`;
+}
+function renderJobHtml(){
+  if(!renderJob) return "";
+  return `<div class="load-banner" style="background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-ink)"><div class="row">
+    <span>Rendering… <span class="pct">${Math.round(renderJob.pct)}%</span></span>
+    <span class="prog" style="flex:1"><span class="fill" style="width:${renderJob.pct}%"></span></span>
+    <button class="btn ghost sm" onclick="cancelRenderJob()">Cancel</button></div></div>`;
+}
+function startRenderJob(){
+  if(renderJob) return;
+  renderJob={pct:0};
+  renderJob.timer=setInterval(()=>{
+    renderJob.pct=Math.min(100,renderJob.pct+100*120/6000);
+    document.querySelectorAll(".studio-main .prog .fill").forEach(el=>el.style.width=renderJob.pct+"%");
+    document.querySelectorAll(".studio-main .pct").forEach(el=>el.textContent=Math.round(renderJob.pct)+"%");
+    if(renderJob.pct>=100){clearInterval(renderJob.timer);renderJob=null;toast('<span class="a">Render complete</span> (mock).');renderAll();}
+  },120);
+  renderAll();
+}
+function cancelRenderJob(){if(renderJob?.timer)clearInterval(renderJob.timer);renderJob=null;renderAll()}
 
 /* ───────── Studio: voice library aside ───────── */
 function renderStudioLib(){

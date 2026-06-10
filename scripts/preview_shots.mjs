@@ -61,6 +61,34 @@ await page.locator("#proj-combo .combo-item", { hasText: "Harbor Lights" }).clic
 await page.waitForTimeout(250);
 await page.screenshot({ path: `${OUT}/08-studio-game-project.png` });
 
+// 9b. Script tab (audiobook attribution view)
+await page.locator('.nav-item[data-tab="studio"]').click();
+await page.waitForTimeout(250);
+await page.locator("#proj-combo .combo-btn").click();
+await page.waitForTimeout(150);
+await page.locator("#proj-combo .combo-item", { hasText: "Stillwater" }).click();
+await page.waitForTimeout(250);
+await page.locator(".studio-tab", { hasText: "Script" }).click();
+await page.waitForTimeout(250);
+await page.screenshot({ path: `${OUT}/10-script-audiobook.png` });
+
+// 9c. Render tab (audiobook chapters)
+await page.locator(".studio-tab", { hasText: "Render" }).click();
+await page.waitForTimeout(250);
+await page.screenshot({ path: `${OUT}/11-render-audiobook.png` });
+
+// 9d. Game: Lines tab + per-line render
+await page.locator("#proj-combo .combo-btn").click();
+await page.waitForTimeout(150);
+await page.locator("#proj-combo .combo-item", { hasText: "Harbor Lights" }).click();
+await page.waitForTimeout(250);
+await page.locator(".studio-tab", { hasText: "Lines" }).click();
+await page.waitForTimeout(250);
+await page.screenshot({ path: `${OUT}/12-lines-game.png` });
+await page.locator(".studio-tab", { hasText: "Render" }).click();
+await page.waitForTimeout(250);
+await page.screenshot({ path: `${OUT}/13-render-game.png` });
+
 // 9. Voices view — combobox + carded table
 await page.locator('.nav-item[data-tab="voices"]').click();
 await page.waitForTimeout(300);
