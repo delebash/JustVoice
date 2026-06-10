@@ -56,6 +56,11 @@ class EngineMeta:
     display_name: str
     backend: str
     supported_runtimes: list[str]
+    # Phase 2 / Slice 1 of the Profile-kill plan: engines split into
+    # disjoint kinds so EngineManager can keep one slot per kind loaded
+    # simultaneously. The default "tts" keeps existing manifests + the
+    # external-OpenAI adapter compatible without code change.
+    kind: str = "tts"  # "tts" | "llm" | "embedding"
     supports_cloning: bool = False
     supports_streaming: bool = False
     supports_paralinguistic_tags: bool = False

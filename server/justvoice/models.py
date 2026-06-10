@@ -512,6 +512,16 @@ class EngineInfo(BaseModel):
     # from the per-variant Load list so the user isn't offered two routes
     # to the same checkpoint.
     default_variant_id: str | None = None
+    # Phase 2 / Slice 1 — engine discriminator (tts / llm / embedding).
+    # EngineManager keeps one slot loaded per kind so an LLM and a TTS
+    # engine can be resident simultaneously (required for speaker
+    # attribution + render in the same flow).
+    kind: str = "tts"
+    # Phase 2 / Slice 1 — the actual variant currently loaded for this
+    # engine (server-truth, not local-state). null when the engine isn't
+    # loaded. The dropdown UI uses this to label "Loaded: <variant>"
+    # correctly across page refreshes.
+    current_variant_id: str | None = None
     # "shared" (engine runs against the shared venv at engines/.shared-venv,
     # monolithic shared-venv style — fast Install = model-only download) or "venv"
     # (engine gets its own private venv, for engines that genuinely conflict

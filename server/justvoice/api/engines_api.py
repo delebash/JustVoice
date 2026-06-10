@@ -70,6 +70,7 @@ def _info_from_manifest(manifest: EngineManifest, status: str) -> EngineInfo:
     if any(r in ("cuda", "mps", "metal", "directml", "xpu", "coreml") for r in runtimes) and "gpu_accel" not in feature_list:
         feature_list.append("gpu_accel")
 
+    mgr = get_manager()
     return EngineInfo(
         id=manifest.id,
         name=manifest.name,
@@ -86,6 +87,10 @@ def _info_from_manifest(manifest: EngineManifest, status: str) -> EngineInfo:
         current=False,  # filled in by caller
         is_stubbed=False,
         default_variant_id=manifest.default_variant_id,
+        # Phase 2 / Slice 1 — kind + current_variant_id surface so the
+        # EnginesView dropdown can group by tab + label "Loaded: <v>".
+        kind=manifest.kind,
+        current_variant_id=mgr.current_variant_id(manifest.id),
         isolation=manifest.isolation,
         supported_oses=manifest.supported_oses,
         weights_license=manifest.weights_license,

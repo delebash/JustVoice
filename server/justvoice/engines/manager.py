@@ -137,6 +137,14 @@ class EngineManifest:
         return getattr(self.module, "ATTRIBUTION", "")
 
     @property
+    def kind(self) -> str:
+        """Phase 2 / Slice 1 — engine discriminator. Defaults to "tts"
+        so every existing manifest stays backward-compatible without
+        edits. LLM provider engines (Phase 2 / Slice 3+) declare
+        KIND = "llm"; embedding engines KIND = "embedding"."""
+        return getattr(self.module, "KIND", "tts")
+
+    @property
     def capabilities(self) -> dict[str, bool]:
         return getattr(self.module, "CAPABILITIES", {})
 
@@ -925,11 +933,26 @@ class EngineProcess:
 
 
 class EngineManager:
-    """Top-level manager. One process loaded at a time."""
+    """Top-level manager. One process per `kind` slot loaded at a time
+    (Phase 2 / Slice 1 — was a single _current slot pre-Profile-kill).
+
+    Slots map: kind ("tts" | "llm" | "embedding") → EngineProcess. Loading
+    a new engine of the same kind unloads the prior occupant of THAT slot;
+    other kinds stay loaded. Required for speaker attribution (needs LLM
+    + TTS resident simultaneously) and similar mixed-kind workflows.
+
+    `_current` is kept as a back-compat alias pointing at the TTS slot so
+    callers that haven't been ported to the kind-aware API (current_id(),
+    _require_current(), synth()) keep working.
+    """
 
     def __init__(self):
         self._manifests: dict[str, EngineManifest] = {}
-        self._current: EngineProcess | None = None
+        # Per-kind slot map (Phase 2 / Slice 1).
+        self._loaded: dict[str, EngineProcess] = {}
+        # Per-engine last loaded variant — surfaced as EngineInfo.current_variant_id
+        # so the UI shows server truth not local-state.
+        self._current_variants: dict[str, str] = {}
         self._lock = threading.RLock()
         # Engine ids the client has requested to cancel-load. Checked by
         # `cancel_check` callbacks inside `load()`. Adds are made by the
@@ -937,6 +960,34 @@ class EngineManager:
         # the end of `load()` (whether the cancel landed in time or not).
         self._cancel_load_requests: set[str] = set()
         self.refresh_manifests()
+
+    # ─── Per-kind slot helpers (Phase 2 / Slice 1) ────────────────────
+
+    @property
+    def _current(self) -> EngineProcess | None:
+        """Back-compat alias for callers that haven't been ported to the
+        kind-aware API. Returns the TTS slot's process or None."""
+        return self._loaded.get("tts")
+
+    @_current.setter
+    def _current(self, proc: EngineProcess | None) -> None:
+        if proc is None:
+            self._loaded.pop("tts", None)
+        else:
+            self._loaded["tts"] = proc
+
+    def loaded_for(self, kind: str) -> EngineProcess | None:
+        with self._lock:
+            proc = self._loaded.get(kind)
+            return proc if proc and proc.is_alive() else None
+
+    def current_for(self, kind: str) -> str | None:
+        proc = self.loaded_for(kind)
+        return proc.manifest.id if proc else None
+
+    def current_variant_id(self, engine_id: str) -> str | None:
+        with self._lock:
+            return self._current_variants.get(engine_id)
 
     def request_cancel_load(self, engine_id: str) -> bool:
         """Mark an in-flight load for cancellation. Returns True if a load is
@@ -946,15 +997,16 @@ class EngineManager:
         subprocess if it was already spawned."""
         with self._lock:
             self._cancel_load_requests.add(engine_id)
-            # If the subprocess is already up, kill it so the model load
-            # inside the child can't keep consuming VRAM.
-            if self._current and self._current.manifest.id == engine_id:
-                try:
-                    self._current.terminate()
-                except Exception:
-                    pass
-                self._current = None
-                return True
+            # Find this engine across all kind slots and terminate it.
+            for kind, proc in list(self._loaded.items()):
+                if proc.manifest.id == engine_id:
+                    try:
+                        proc.terminate()
+                    except Exception:
+                        pass
+                    self._loaded.pop(kind, None)
+                    self._current_variants.pop(engine_id, None)
+                    return True
         return False
 
     def refresh_manifests(self) -> None:
@@ -975,13 +1027,15 @@ class EngineManager:
             m = self._manifests.get(engine_id)
             if not m:
                 return "not_installed"
-            if self._current and self._current.manifest.id == engine_id and self._current.is_alive():
-                return "loaded"
+            for proc in self._loaded.values():
+                if proc.manifest.id == engine_id and proc.is_alive():
+                    return "loaded"
             return "installed" if m.is_installed else "not_installed"
 
     def current_id(self) -> str | None:
-        with self._lock:
-            return self._current.manifest.id if self._current and self._current.is_alive() else None
+        """Back-compat: returns the TTS slot's engine id. New callers
+        should use current_for(kind) explicitly."""
+        return self.current_for("tts")
 
     # ─── Install / Uninstall ──────────────────────────────────────────
 
@@ -1006,9 +1060,11 @@ class EngineManager:
         if m is None:
             raise InstallError(f"unknown engine: {engine_id}")
         with self._lock:
-            if self._current and self._current.manifest.id == engine_id:
-                self._current.terminate()
-                self._current = None
+            for kind, proc in list(self._loaded.items()):
+                if proc.manifest.id == engine_id:
+                    proc.terminate()
+                    self._loaded.pop(kind, None)
+            self._current_variants.pop(engine_id, None)
         removed = []
         for sub in (".venv", "models", "voices", "state"):
             p = m.engine_dir / sub
@@ -1078,31 +1134,47 @@ class EngineManager:
 
             _maybe_cancel()
 
+            target_kind = m.kind
             with self._lock:
-                # Unload current engine first — one loaded at a time.
-                if self._current and self._current.manifest.id != engine_id:
-                    log.info("unloading current engine %s before loading %s", self._current.manifest.id, engine_id)
-                    self._current.terminate()
-                    self._current = None
-                elif self._current and self._current.manifest.id == engine_id and self._current.is_alive():
+                # Unload the SAME-KIND slot's prior occupant — other kinds
+                # stay loaded (Phase 2 / Slice 1).
+                prior = self._loaded.get(target_kind)
+                if prior and prior.manifest.id != engine_id:
+                    log.info(
+                        "unloading %s engine %s before loading %s",
+                        target_kind, prior.manifest.id, engine_id,
+                    )
+                    prior.terminate()
+                    self._loaded.pop(target_kind, None)
+                elif prior and prior.manifest.id == engine_id and prior.is_alive():
                     # Already loaded — just return current voices.
-                    return self._current.get("/voices").json()
+                    if variant is not None:
+                        self._current_variants[engine_id] = variant
+                    return prior.get("/voices").json()
 
+                if progress:
+                    progress("spawning", f"spawning {engine_id} subprocess")
                 proc = EngineProcess(m)
                 proc.spawn()
-                self._current = proc
+                self._loaded[target_kind] = proc
 
             _maybe_cancel()
 
             # Now POST /load to the engine — this is where the model actually
             # comes into memory.
+            if progress:
+                progress("loading_weights", f"loading {engine_id} weights")
             r = proc.post("/load", json={"device": device, "variant": variant})
             if r.status_code != 200:
                 log.warning("engine %s /load failed: %s", engine_id, r.text[:400])
                 with self._lock:
                     proc.terminate()
-                    self._current = None
+                    self._loaded.pop(target_kind, None)
                 raise RuntimeError(f"engine load failed: {r.text}")
+            with self._lock:
+                self._current_variants[engine_id] = variant or m.default_variant_id or ""
+            if progress:
+                progress("warming_up", f"{engine_id} ready")
             return r.json()
         finally:
             # Always clear the cancel flag — leaving stale "cancelled" state
@@ -1110,13 +1182,35 @@ class EngineManager:
             with self._lock:
                 self._cancel_load_requests.discard(engine_id)
 
-    def unload(self) -> dict:
+    def unload(self, kind: str | None = None) -> dict:
+        """Unload the engine in the given kind's slot.
+
+        kind=None means "unload all slots" (back-compat with the
+        pre-Slice-1 /v1/engines/unload behavior that emptied the single
+        loaded slot). New callers should pass kind explicitly.
+        """
         with self._lock:
-            if not self._current:
+            if kind is None:
+                if not self._loaded:
+                    return {"previous_engine": None}
+                # Back-compat: surface the first kind's previous engine,
+                # then drop everything.
+                prev = next(iter(self._loaded.values())).manifest.id
+                for proc in list(self._loaded.values()):
+                    try:
+                        proc.terminate()
+                    except Exception:
+                        pass
+                self._loaded.clear()
+                self._current_variants.clear()
+                return {"previous_engine": prev}
+            proc = self._loaded.get(kind)
+            if not proc:
                 return {"previous_engine": None}
-            prev = self._current.manifest.id
-            self._current.terminate()
-            self._current = None
+            prev = proc.manifest.id
+            proc.terminate()
+            self._loaded.pop(kind, None)
+            self._current_variants.pop(prev, None)
         return {"previous_engine": prev}
 
     # ─── Synth / voices / clone — HTTP proxy ─────────────────────────
@@ -1153,11 +1247,12 @@ class EngineManager:
 
     def _require_current(self, engine_id: str) -> EngineProcess:
         with self._lock:
-            if not self._current or self._current.manifest.id != engine_id or not self._current.is_alive():
-                raise RuntimeError(
-                    f"engine {engine_id} is not loaded — POST /v1/engines/{engine_id}/load first"
-                )
-            return self._current
+            for proc in self._loaded.values():
+                if proc.manifest.id == engine_id and proc.is_alive():
+                    return proc
+            raise RuntimeError(
+                f"engine {engine_id} is not loaded — POST /v1/engines/{engine_id}/load first"
+            )
 
 
 # ─── Singleton accessor ───────────────────────────────────────────────
