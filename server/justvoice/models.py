@@ -208,11 +208,17 @@ class KokoroEngineSettings(BaseModel):
 class ExternalEngineConfig(BaseModel):
     id: str
     name: str
-    base_url: str
+    base_url: str = ""
     api_key: str | None = None
-    model: str
+    model: str = ""
     voices: list[str] = []
     response_format: str = "wav"
+    # Phase 2 / Slice 5 — TTS provider type discriminator. Default
+    # "openai-compat" matches the prior single-pattern behavior so
+    # existing settings.engines.external entries keep working without
+    # edits. New types: elevenlabs / speechify / speechmatics / openai-tts /
+    # edge-tts (Edge TTS deferred — needs Tauri-side msedge-tts wiring).
+    provider_type: str = "openai-compat"
 
 
 class LLMProviderConfig(BaseModel):

@@ -264,21 +264,91 @@ def _register_existing_engines(state: AppState, data_dir: Path) -> None:
 
 
 def _register_external_engines(state: AppState) -> None:
-    """Register any configured external OpenAI-compatible TTS servers."""
+    """Register every configured external TTS provider.
+
+    Phase 2 / Slice 5: the `provider_type` discriminator on
+    ExternalEngineConfig picks the right adapter class. Default
+    "openai-compat" preserves the legacy single-pattern behavior for
+    existing settings.engines.external entries.
+    """
     settings = state.settings.get()
     for cfg in settings.engines.external:
-        backend = ExternalOpenAiTtsBackend(
+        try:
+            backend = _build_external_engine(cfg)
+            state.engines.register(backend)
+            log.info(
+                "external TTS provider registered: id=%s type=%s",
+                cfg.id,
+                cfg.provider_type,
+            )
+        except Exception as e:
+            log.warning(
+                "external TTS provider %s skipped at boot: %s",
+                cfg.id,
+                e,
+            )
+
+
+def _build_external_engine(cfg):
+    """Pick the right adapter class for cfg.provider_type."""
+    pt = (cfg.provider_type or "openai-compat").lower()
+    if pt in ("openai-compat", "openai-tts", "external-openai-tts"):
+        # OpenAI TTS uses the same /v1/audio/speech shape as openai-compat;
+        # they're the same adapter with a different default base_url.
+        base_url = cfg.base_url or (
+            "https://api.openai.com" if pt == "openai-tts" else ""
+        )
+        if not base_url:
+            raise ValueError(
+                f"{cfg.id}: openai-compat external engine needs a base_url"
+            )
+        return ExternalOpenAiTtsBackend(
             id=cfg.id,
             name=cfg.name,
-            base_url=cfg.base_url,
+            base_url=base_url,
             api_key=cfg.api_key,
-            model=cfg.model,
+            model=cfg.model or "tts-1",
             voices=cfg.voices,
             response_format=cfg.response_format,
         )
-        state.engines.register(backend)
-        log.info(
-            "external OpenAI-compatible engine registered: id=%s base_url=%s",
-            cfg.id,
-            cfg.base_url,
+    if pt == "elevenlabs":
+        from .engines.tts_providers.elevenlabs import ElevenLabsBackend
+
+        return ElevenLabsBackend(
+            id=cfg.id,
+            name=cfg.name,
+            api_key=cfg.api_key or "",
+            model=cfg.model or "eleven_flash_v2_5",
+            voices=cfg.voices,
+            base_url=cfg.base_url,
+            response_format=cfg.response_format,
         )
+    if pt == "speechify":
+        from .engines.tts_providers.speechify import SpeechifyBackend
+
+        return SpeechifyBackend(
+            id=cfg.id,
+            name=cfg.name,
+            api_key=cfg.api_key or "",
+            model=cfg.model or "simba-multilingual",
+            voices=cfg.voices,
+            base_url=cfg.base_url,
+            response_format=cfg.response_format,
+        )
+    if pt == "speechmatics":
+        from .engines.tts_providers.speechmatics import SpeechmaticsBackend
+
+        return SpeechmaticsBackend(
+            id=cfg.id,
+            name=cfg.name,
+            api_key=cfg.api_key or "",
+            model=cfg.model or "default",
+            voices=cfg.voices,
+            base_url=cfg.base_url,
+            response_format=cfg.response_format,
+        )
+    if pt == "edge-tts":
+        raise NotImplementedError(
+            "Edge TTS adapter requires Tauri-side msedge-tts wiring — deferred"
+        )
+    raise ValueError(f"unknown TTS provider_type: {pt!r}")
