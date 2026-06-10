@@ -78,18 +78,36 @@ def construct(cfg: "LLMProviderConfig") -> "LLMAdapter":
             default_model=cfg.default_model,
             timeout_seconds=cfg.timeout_seconds,
         )
-    if pt in ("openai", "openai-compat", "deepseek", "openrouter", "ollama"):
-        # OpenAI-shaped providers all use the same adapter base. Slice 4 ports
-        # the rest from JustWrite's services/openai-compat.js. Until then,
-        # registering an OpenAI-shape provider raises a clear NotImplementedError
-        # so the user gets a useful message rather than a silent fail.
-        raise NotImplementedError(
-            f"provider_type {pt!r} adapter lands in Phase 2 / Slice 4 — "
-            f"only 'anthropic' is wired today"
+    if pt in ("openai", "openai-compat", "deepseek", "openrouter"):
+        from .openai_compat import OpenAICompatAdapter
+
+        return OpenAICompatAdapter(
+            cfg.id,
+            provider_type=pt,
+            api_key=cfg.api_key or "",
+            base_url=cfg.base_url,
+            default_model=cfg.default_model,
+            timeout_seconds=cfg.timeout_seconds,
+        )
+    if pt == "ollama":
+        from .ollama import OllamaAdapter
+
+        return OllamaAdapter(
+            cfg.id,
+            api_key=cfg.api_key or "",
+            base_url=cfg.base_url,
+            default_model=cfg.default_model,
+            timeout_seconds=cfg.timeout_seconds,
         )
     if pt == "gemini":
-        raise NotImplementedError(
-            "Gemini adapter lands in Phase 2 / Slice 4"
+        from .gemini import GeminiAdapter
+
+        return GeminiAdapter(
+            cfg.id,
+            api_key=cfg.api_key or "",
+            base_url=cfg.base_url,
+            default_model=cfg.default_model,
+            timeout_seconds=cfg.timeout_seconds,
         )
     raise ValueError(f"unknown LLM provider_type: {pt!r}")
 
