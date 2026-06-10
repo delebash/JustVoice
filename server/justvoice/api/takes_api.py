@@ -224,6 +224,40 @@ async def get_take_lineage(take_id: str, db: Session = Depends(get_db)) -> Linea
     return LineageResponse(chain=chain, block_id=block_id)
 
 
+class UpdateGenerationRequest(BaseModel):
+    is_favorited: Optional[bool] = None
+
+
+@router.patch("/v1/generations/{generation_id}")
+async def update_generation(
+    generation_id: str, body: UpdateGenerationRequest, db: Session = Depends(get_db)
+) -> dict:
+    """Patch generation-level flags — currently just the History ★ toggle."""
+    gen = db.query(Generation).filter(Generation.id == generation_id).first()
+    if not gen:
+        raise not_found(f"generation {generation_id}")
+    if body.is_favorited is not None:
+        gen.is_favorited = body.is_favorited
+    db.commit()
+    return {"id": gen.id, "is_favorited": bool(gen.is_favorited)}
+
+
+@router.delete("/v1/generations/{generation_id}")
+async def delete_generation(generation_id: str, db: Session = Depends(get_db)) -> dict:
+    """Delete a single generation (History ✕). Removes the audio file too."""
+    gen = db.query(Generation).filter(Generation.id == generation_id).first()
+    if not gen:
+        raise not_found(f"generation {generation_id}")
+    if gen.audio_path:
+        try:
+            Path(gen.audio_path).unlink(missing_ok=True)
+        except OSError:
+            pass
+    db.delete(gen)
+    db.commit()
+    return {"deleted": True, "id": generation_id}
+
+
 @router.get(
     "/v1/generations/{generation_id}/audio",
     summary="Stream the WAV for a completed generation",

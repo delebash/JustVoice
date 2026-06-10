@@ -10,6 +10,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
+import { promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvInput from "../components/jv/JvInput.vue";
 
@@ -18,7 +19,6 @@ const api = useApi();
 const stories = ref([]);
 const search = ref("");
 const selectedId = ref(null);
-const playing = ref(false);
 const playheadMs = ref(0);
 const zoomMs = ref(60_000); // 60-second window default — matches preview HTML.
 const generatorVoiceId = ref("");
@@ -62,18 +62,6 @@ async function loadGeneratorState() {
   } catch { /* fail silent — bar still renders, just empty */ }
 }
 
-async function generateAtPlayhead() {
-  if (!selectedStory.value) return;
-  if (!generatorVoiceId.value) {
-    pushToast({ kind: "error", title: "Pick a voice first" });
-    return;
-  }
-  pushToast({
-    kind: "info",
-    title: "▶ Generate & insert at playhead",
-    description: `Will render with voice ${generatorVoiceId.value} on engine ${generatorEngineId.value || "current"} and drop the clip at ${fmtTime(playheadMs.value)} on the selected track.`,
-  });
-}
 
 const filtered = computed(() => {
   if (!search.value) return stories.value;
@@ -109,13 +97,10 @@ async function refresh() {
 }
 
 async function createStory() {
-  const name = prompt("Story name:");
+  const name = await promptDialog({ title: "New story", label: "Story name", confirmLabel: "Create" });
   if (!name) return;
   try {
-    const created = await api.request("/v1/stories", {
-      method: "POST",
-      body: { name },
-    });
+    const created = await api.post("/v1/stories", { name });
     await refresh();
     selectedId.value = created.id;
   } catch (e) {
@@ -187,13 +172,13 @@ onMounted(async () => {
         <!-- Transport controls -->
         <div class="jv-row stories__transport">
           <JvButton
-            :variant="playing ? 'secondary' : 'primary'"
-            :label="playing ? '⏸ Pause' : '▶ Play'"
-            @click="playing = !playing"
+            variant="primary"
+            label="▶ Play"
+            disabled
+            title="Multi-track playback isn't implemented yet"
           />
-          <JvButton variant="secondary" label="⏹ Stop" @click="playing = false; playheadMs = 0" />
           <span class="jv-pill jv-pill--ghost jv-mono stories__playhead">{{ fmtTime(playheadMs) }} / {{ fmtTime(totalDurationMs) }}</span>
-          <span class="jv-muted" style="font-size: 11px">spacebar play/pause · arrow keys scrub</span>
+          <span class="jv-muted" style="font-size: 11px">playback engine lands with the interactive editor</span>
           <div class="jv-spacer" />
           <select
             class="jv-input stories__zoom"
@@ -202,13 +187,9 @@ onMounted(async () => {
           >
             <option v-for="z in ZOOM_OPTIONS" :key="z.id" :value="z.id">{{ z.label }}</option>
           </select>
-          <JvButton variant="secondary" size="sm" label="+ Add track" />
-          <JvButton variant="secondary" size="sm" label="⬇ Drop WAV/MP3/FLAC/OGG/M4A here" />
+          <JvButton variant="secondary" size="sm" disabled title="Interactive track editing isn't implemented yet" label="+ Add track" />
         </div>
 
-        <p class="jv-muted stories__dnd-hint">
-          Drag-drop WAV / MP3 / FLAC / OGG / M4A / AAC / WebM onto a track to import. Per-clip controls (trim handles · split-at-playhead with S · volume 0–200% · version-pin) land via task <code>#95</code>.
-        </p>
 
         <!-- Multi-track timeline — custom layout, keep scoped CSS -->
         <div class="timeline">
@@ -256,8 +237,8 @@ onMounted(async () => {
             variant="primary"
             size="lg"
             label="▶ Generate & insert at playhead"
-            :disabled="!generatorVoiceId"
-            @click="generateAtPlayhead"
+            disabled
+            title="Clip insertion isn't implemented yet — the timeline currently visualises existing story items"
           />
         </div>
       </template>

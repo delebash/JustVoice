@@ -127,14 +127,6 @@ export const channelsService = {
   remove(id) {
     return withApi().request("DELETE", `/v1/channels/${id}`);
   },
-  getProfileChannels(profileId) {
-    return withApi().get(`/v1/profiles/${profileId}/channels`);
-  },
-  setProfileChannels(profileId, channelIds) {
-    return withApi().request("PUT", `/v1/profiles/${profileId}/channels`, {
-      channel_ids: channelIds,
-    });
-  },
 };
 
 export const mcpBindingsService = {

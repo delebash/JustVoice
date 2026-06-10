@@ -8,6 +8,7 @@ import { pushToast } from "../services/toastBridge.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvTag from "../components/jv/JvTag.vue";
 import { useCopy } from "../services/copy.js";
+import { useAudioPlayer } from "../stores/audioPlayer.js";
 
 const onboarding = useOnboarding();
 
@@ -24,6 +25,7 @@ const QUICK_ACTIONS = [
 
 const copy = useCopy();
 const api = useApi();
+const audioPlayer = useAudioPlayer();
 const tasks = useRenderTasks();
 
 const health = ref(null);
@@ -60,7 +62,7 @@ async function refresh() {
     safeRequest("/v1/lexicons", { lexicons: [] }),
     safeRequest("/v1/captures?limit=1", { captures: [], total: null }),
     safeRequest("/v1/cache/stats", null),
-    safeRequest("/v1/generations/recent?limit=5", { generations: [] }),
+    safeRequest("/v1/takes/recent?limit=5", { takes: [] }),
     safeRequest("/v1/engines/current", { engine: null }),
   ]);
   health.value = h;
@@ -73,8 +75,27 @@ async function refresh() {
   // Total may come back as null when the server is down; treat as "—".
   captures.totalCount = ca.total ?? (ca.captures?.length ?? null);
   stats.value = s;
-  recentGenerations.value = g.generations || [];
+  recentGenerations.value = g.takes || [];
   loadedEngine.value = ce.engine || null;
+}
+
+async function unloadEngine() {
+  try {
+    await api.request("/v1/engines/unload", { method: "POST" });
+    await refresh();
+  } catch (e) {
+    pushToast({ kind: "error", title: "Unload failed", description: String(e?.message ?? e) });
+  }
+}
+function goEngines() { window.location.hash = "#engines"; }
+
+function playRecent(g) {
+  if (!g.audio_url) return;
+  audioPlayer.play({
+    url: `${api.serverUrl.replace(/\/$/, "")}${g.audio_url}`,
+    title: g.voice || "Generation",
+    subtitle: (g.text || "").slice(0, 80),
+  });
 }
 
 const voicesByEngine = computed(() => {
@@ -323,8 +344,8 @@ onMounted(refresh);
             <span class="jv-muted">{{ (loadedEngine.vram_used_mb || 0) / 1024 | 0 }} / {{ (loadedEngine.vram_total_mb / 1024).toFixed(0) }} GB</span>
           </div>
           <div class="jv-spacer" />
-          <JvButton variant="secondary" size="sm" label="Unload" />
-          <JvButton variant="primary" size="sm" label="Switch" />
+          <JvButton variant="secondary" size="sm" label="Unload" @click="unloadEngine" />
+          <JvButton variant="primary" size="sm" label="Switch" title="Pick a different engine" @click="goEngines" />
         </template>
         <template v-else>
           <p class="jv-muted" style="margin: 4px 0">No engine loaded. <a href="#engines">Go to Engines → Load</a> to pick one.</p>
@@ -370,29 +391,24 @@ onMounted(refresh);
       <div class="jv-card jv-card--flat">
         <table v-if="recentGenerations.length" class="jv-table">
           <thead>
-            <tr><th>When</th><th>Voice</th><th>Text</th><th>Duration</th><th class="jv-table__actions">Actions</th></tr>
+            <tr><th>When</th><th>Voice</th><th>Text</th><th>Status</th><th class="jv-table__actions">Actions</th></tr>
           </thead>
           <tbody>
             <tr v-for="g in recentGenerations" :key="g.id">
-              <td class="jv-muted">{{ fmtAgo(g.created_at) }}</td>
-              <td>
-                <strong>{{ g.voice_name || g.voice_id }}</strong>
-                <span v-if="g.engine" class="jv-pill jv-pill--ghost" style="margin-left: 6px">{{ g.engine }}</span>
-              </td>
+              <td class="jv-muted">{{ fmtAgo(g.when) }}</td>
+              <td><strong>{{ g.voice || "—" }}</strong></td>
               <td class="jv-muted" style="max-width: 480px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
                 "{{ (g.text || "").slice(0, 80) }}{{ (g.text || "").length > 80 ? "…" : "" }}"
               </td>
-              <td>{{ fmtDur(g.duration_sec) }}</td>
+              <td>{{ g.status || "—" }}</td>
               <td class="jv-table__actions">
-                <JvButton variant="ghost" size="sm" label="▶" />
-                <JvButton variant="ghost" size="sm" label="★" />
-                <JvButton variant="ghost" size="sm" label="↻" />
+                <JvButton variant="ghost" size="sm" label="▶" :disabled="!g.audio_url" title="Play" @click="playRecent(g)" />
               </td>
             </tr>
           </tbody>
         </table>
         <p v-else class="jv-muted overview-view__empty">
-          No renders yet. Open <a href="#generate">Generate</a> to produce your first line, or import a manuscript from <a href="#books">{{ copy.book.plural }}</a>. Recent generations appear here with replay / favorite / re-render actions.
+          No renders yet. Open <a href="#generate">Generate</a> to produce your first line, or import a manuscript from <a href="#books">{{ copy.book.plural }}</a>. Recent generations appear here with replay; favorite and re-render live in Generate → History.
         </p>
       </div>
     </div>

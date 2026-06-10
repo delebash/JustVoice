@@ -13,7 +13,6 @@ from typing import Optional, Literal
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 from ..database import Generation, get_db

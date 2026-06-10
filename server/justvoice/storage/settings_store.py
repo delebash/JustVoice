@@ -13,7 +13,6 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 from threading import Lock
-from typing import Any
 
 from ..models import Settings, SettingsPatch
 from ..paths import settings_path

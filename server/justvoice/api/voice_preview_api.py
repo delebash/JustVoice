@@ -156,7 +156,6 @@ async def preview_voice(body: VoicePreviewRequest) -> VoicePreviewResponse:
     audio_prompt_path: Optional[str] = None
     if body.source in ("cloned", "imported") and body.ref_wav_b64:
         import tempfile
-        from pathlib import Path
 
         raw = base64.b64decode(body.ref_wav_b64)
         tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
@@ -217,9 +216,6 @@ async def save_preview(
     # Lazy-import to avoid circular deps; the actual voice persistence still
     # lives in the existing storage layer (until route-by-route SQLAlchemy
     # migration completes).
-    from ..app_state import get_state
-
-    state = get_state()
     # Use the existing voices storage to persist the cloned voice.
     # For v1 this delegates to whatever the existing /v1/voices/clone path uses.
     return {

@@ -22,7 +22,6 @@ const selectedId = ref(null);
 const readiness = ref(null);
 const pillState = ref("rest");
 const elapsedMs = ref(0);
-const isRecording = ref(false);
 
 const filtered = computed(() => {
   if (!search.value) return captures.value;
@@ -57,28 +56,6 @@ async function refreshReadiness() {
   }
 }
 
-function startRecording() {
-  isRecording.value = true;
-  pillState.value = "recording";
-  elapsedMs.value = 0;
-  const start = performance.now();
-  const tick = () => {
-    if (!isRecording.value) return;
-    elapsedMs.value = performance.now() - start;
-    requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
-}
-function stopRecording() {
-  isRecording.value = false;
-  pillState.value = "transcribing";
-  setTimeout(() => (pillState.value = "refining"), 1500);
-  setTimeout(() => {
-    pillState.value = "completed";
-    refresh();
-  }, 3000);
-  setTimeout(() => (pillState.value = "rest"), 5000);
-}
 
 function fmtDuration(ms) {
   if (!ms) return "0:00";
@@ -106,14 +83,14 @@ onMounted(() => {
             <strong>
               <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">V</span>
             </strong>
-            <button class="jv-btn jv-btn--ghost jv-btn--sm" type="button">Change</button>
+            <button class="jv-btn jv-btn--ghost jv-btn--sm" type="button" disabled title="Hotkey editing isn't wired to the desktop shell yet">Change</button>
           </span>
           <span class="jv-chip-card">
             🎙️ Toggle:
             <strong>
               <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">D</span>
             </strong>
-            <button class="jv-btn jv-btn--ghost jv-btn--sm" type="button">Change</button>
+            <button class="jv-btn jv-btn--ghost jv-btn--sm" type="button" disabled title="Hotkey editing isn't wired to the desktop shell yet">Change</button>
           </span>
           <span class="jv-chip-card">
             🔉 Source: <strong>Default mic</strong> <span class="caret">▾</span>
@@ -150,10 +127,11 @@ onMounted(() => {
       <div class="captures__list-header">
         <span class="jv-section__title" style="margin:0;">Captures</span>
         <JvButton
-          :variant="isRecording ? 'danger' : 'primary'"
+          variant="primary"
           size="sm"
-          :label="isRecording ? 'Stop' : 'Record'"
-          @click="isRecording ? stopRecording() : startRecording()"
+          disabled
+          title="Recording requires the desktop capture pipeline (mic → Whisper → refine), which isn't wired up yet"
+          label="Record"
         />
       </div>
       <div class="captures__search">
@@ -197,7 +175,7 @@ onMounted(() => {
     <!-- ── Detail pane ──────────────────────────────────────────────── -->
     <div class="captures__detail jv-card">
       <div class="captures__pill-row">
-        <CapturePill :state="pillState" :elapsed-ms="elapsedMs" @stop="stopRecording" />
+        <CapturePill :state="pillState" :elapsed-ms="elapsedMs" />
       </div>
       <div v-if="!selectedCapture" class="captures__detail-empty jv-muted">
         <p>Select a capture to inspect, or press the dictation hotkey to record.</p>

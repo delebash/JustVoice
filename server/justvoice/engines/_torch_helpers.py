@@ -28,7 +28,7 @@ import platform
 import wave
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Optional
 
 
 logger = logging.getLogger(__name__)

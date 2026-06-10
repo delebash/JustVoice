@@ -25,6 +25,7 @@ from .api import (
     bulk_delete_api,
     cache_api,
     capture_readiness_api,
+    captures_api,
     channels_api,
     effect_presets_api,
     engines_api,
@@ -49,6 +50,7 @@ from .api import (
     render_presets_api,
     settings_api,
     sse_streams_api,
+    stories_api,
     system_api,
     takes_api,
     voice_preview_api,
@@ -60,8 +62,8 @@ from .auth import BearerAuthMiddleware
 from .engines.external_openai import ExternalOpenAiTtsBackend
 from .engines.manager import get_manager, shutdown_manager
 from .errors import ApiError, api_exception_handler, http_exception_handler
-from .paths import default_data_dir, models_root
-from .version import API_VERSION, PRODUCT, VERSION
+from .paths import default_data_dir
+from .version import PRODUCT, VERSION
 
 log = logging.getLogger(__name__)
 
@@ -100,7 +102,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         title=PRODUCT,
         version=VERSION,
         description="An open-source TTS server built for audiobook production, useful for any TTS workload.",
-        license_info={"name": "Apache-2.0", "identifier": "Apache-2.0"},
+        license_info={"name": "GPL-3.0-or-later", "identifier": "GPL-3.0-or-later"},
         openapi_url="/openapi.json" if settings.server.docs_enabled else None,
         docs_url="/docs" if settings.server.docs_enabled else None,
         redoc_url="/redoc" if settings.server.docs_enabled else None,
@@ -153,7 +155,8 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(active_tasks_api.router)
     app.include_router(capture_readiness_api.router)
     app.include_router(sse_streams_api.router)
-    app.include_router(projects_api.router)
+    app.include_router(stories_api.router)
+    app.include_router(captures_api.router)
 
     # Phase 4a addendum (gap-decision workflow v1.0 endpoints)
     app.include_router(webhooks_api.router)
@@ -249,9 +252,6 @@ def _register_existing_engines(state: AppState, data_dir: Path) -> None:
     under the data dir. Once each engine is ported to a manifest.py, its
     entry below can be removed.
     """
-    settings = state.settings.get()
-    models_dir = models_root(data_dir)
-
     # Kick off plugin discovery so the catalog is ready.
     mgr = get_manager()
     log.info(

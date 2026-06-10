@@ -34,7 +34,6 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    UniqueConstraint,
     Index,
 )
 from sqlalchemy.orm import declarative_base

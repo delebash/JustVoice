@@ -22,6 +22,8 @@ const voice = ref("");
 const text = ref("");
 const audio = ref(null);
 const busy = ref(false);
+// In-flight render's AbortController — lets the ⏹ Stop button cancel.
+const activeCtl = ref(null);
 // Take history rendered at the bottom of the page. Stubbed until the
 // /v1/takes/recent route lands with #87 — safeRequest returns [] when 404.
 const history = ref([]);
@@ -405,6 +407,7 @@ async function generate() {
   busy.value = true;
   if (audio.value) { URL.revokeObjectURL(audio.value); audio.value = null; }
   const ctl = new AbortController();
+  activeCtl.value = ctl;
   const charCount = text.value.length;
   const task = tasks.start({
     label: `Render · ${voice.value}`,
@@ -450,7 +453,12 @@ async function generate() {
     }
   } finally {
     busy.value = false;
+    activeCtl.value = null;
   }
+}
+
+function stopGenerate() {
+  activeCtl.value?.abort();
 }
 
 function randomizeSeed() {
@@ -468,6 +476,37 @@ function relativeTime(iso) {
   if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m`;
   if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h`;
   return `${Math.floor(diffSec / 86400)}d`;
+}
+
+async function toggleFavorite(h) {
+  try {
+    const r = await api.request(`/v1/generations/${h.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_favorited: !h.is_favorited }),
+    });
+    h.is_favorited = r.is_favorited;
+  } catch (e) {
+    pushToast({ message: `Favorite failed: ${e.message || e}`, kind: "error" });
+  }
+}
+
+// Load a history row back into the editor — text + voice + persona-free
+// state, ready to tweak and re-render. (The server truncates history text
+// to 120 chars, so this is "start from", not a byte-exact retry.)
+function loadIntoEditor(h) {
+  if (h.text) text.value = h.text;
+  if (h.voice && availableVoices.value.some((v) => v.id === h.voice)) voice.value = h.voice;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+async function deleteTake(h) {
+  try {
+    await api.request(`/v1/generations/${h.id}`, { method: "DELETE" });
+    history.value = history.value.filter((x) => x.id !== h.id);
+  } catch (e) {
+    pushToast({ message: `Delete failed: ${e.message || e}`, kind: "error" });
+  }
 }
 
 function playTake(h) {
@@ -638,7 +677,6 @@ onMounted(refreshVoices);
           <option v-for="o in personaOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
         </select>
       </div>
-      <div class="jv-chip-card">🎛️ Effects: <strong>none</strong> <span class="muted">▾</span></div>
       <label class="jv-chip-card">
         🔁 Autoplay
         <input type="checkbox" v-model="autoplay" />
@@ -680,6 +718,7 @@ onMounted(refreshVoices);
         :disabled="!busy"
         label="⏹"
         :title="busy ? 'Stop queued / running render' : 'No render in flight'"
+        @click="stopGenerate"
       />
     </div>
 
@@ -1005,9 +1044,9 @@ onMounted(refreshVoices);
               <td>{{ h.effects || "—" }}</td>
               <td class="right">
                 <JvButton variant="ghost" size="sm" label="▶" :disabled="!h.audio_url" @click="playTake(h)" />
-                <JvButton variant="ghost" size="sm" :label="h.is_favorited ? '★' : '☆'" title="Favorite" />
-                <JvButton variant="ghost" size="sm" label="↻" title="Retry" />
-                <JvButton variant="ghost" size="sm" label="✕" title="Delete" />
+                <JvButton variant="ghost" size="sm" :label="h.is_favorited ? '★' : '☆'" title="Favorite" @click="toggleFavorite(h)" />
+                <JvButton variant="ghost" size="sm" label="↻" title="Load text + voice back into the editor" @click="loadIntoEditor(h)" />
+                <JvButton variant="ghost" size="sm" label="✕" title="Delete this generation" @click="deleteTake(h)" />
               </td>
             </tr>
           </tbody>

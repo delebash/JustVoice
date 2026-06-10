@@ -43,7 +43,6 @@ import io
 import json
 import logging
 import wave
-from typing import Iterable
 
 import numpy as np
 

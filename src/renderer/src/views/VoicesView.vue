@@ -105,7 +105,14 @@ async function previewVoice(v) {
     previewAudio.value = null;
   }
   try {
-    const blob = await api.request(`/v1/voices/${v.id}/preview`, { method: "POST" });
+    const blob = await api.request("/v1/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        voice: v.id,
+        text: "This is a quick preview of how this voice sounds when reading a sentence.",
+      }),
+    });
     previewAudio.value = URL.createObjectURL(blob);
     const audio = new Audio(previewAudio.value);
     audio.play().catch(() => {});
@@ -340,39 +347,12 @@ function inspect(voice) {
   inspectedId.value = inspectedId.value === voice.id ? null : voice.id;
 }
 
-// Stub sample rows when API has only sample_count — real samples list
-// lands when /v1/voices/{id}/samples is wired up in the API.
-const inspectedSamples = computed(() => {
-  const v = inspectedVoice.value;
-  if (!v) return [];
-  const n = v.sample_count ?? 0;
-  return Array.from({ length: n }, (_, i) => ({
-    file: `sample-${String(i + 1).padStart(2, "0")}.wav`,
-    duration: "—",
-    snr: "—",
-    transcript: "Whisper-transcribed (loading via /v1/voices/{id}/samples — placeholder).",
-  }));
-});
+// The API exposes only sample_count today (no per-sample listing route),
+// so the inspector reports the count rather than fabricating rows.
+const inspectedSampleCount = computed(() => inspectedVoice.value?.sample_count ?? 0);
 
-const sampleFileInput = ref(null);
-function pickSampleWav() { sampleFileInput.value?.click(); }
-async function onSamplePicked(ev) {
-  const file = ev.target.files?.[0];
-  if (!file || !inspectedVoice.value) return;
-  pushToast({ kind: "info", title: `+ Add WAV`, description: `Uploading ${file.name} → /v1/voices/${inspectedVoice.value.id}/samples.` });
-  ev.target.value = "";
-}
-function recordInApp() {
-  if (!inspectedVoice.value) return;
-  pushToast({ kind: "info", title: "🎙️ Record in-app", description: "Browser MediaRecorder will open with auto-trim + level meter. Lands with the recorder component." });
-}
-function promoteFromCaptures() {
-  pushToast({ kind: "info", title: "↗ Promote from Captures", description: "Switch to Captures and pick a clip — the “→ Sample” action attaches it to this voice." });
-  window.location.hash = "#captures";
-}
 function trainLoraForVoice() {
   if (!inspectedVoice.value) return;
-  pushToast({ kind: "info", title: "🧪 Train LoRA", description: `Opens Train with ${inspectedVoice.value.name} pre-selected as the base voice.` });
   window.location.hash = "#train";
 }
 function blendWithVoice() {
@@ -547,7 +527,7 @@ function blendWithVoice() {
         <div class="voices-view__effects-row">
           <span v-if="!(inspectedVoice.default_effects?.length)" class="jv-muted">(none)</span>
           <span v-for="fx in (inspectedVoice.default_effects || [])" :key="fx" class="jv-pill jv-pill--ghost">{{ fx }}</span>
-          <button class="jv-btn jv-btn--ghost jv-btn--sm" type="button">+ Add</button>
+          <button class="jv-btn jv-btn--ghost jv-btn--sm" type="button" disabled title="Per-voice default effects land with the samples API — use Personas → effects chain meanwhile">+ Add</button>
         </div>
       </div>
     </div>
@@ -555,42 +535,22 @@ function blendWithVoice() {
     <div class="jv-divider" />
 
     <h4 class="voices-view__sub-h">
-      Reference samples ({{ inspectedSamples.length }})
-      <span class="jv-muted" style="font-weight:400">Whisper-transcribed</span>
+      Reference samples ({{ inspectedSampleCount }})
     </h4>
 
-    <table v-if="inspectedSamples.length" class="jv-table voices-view__samples-tbl">
-      <thead>
-        <tr><th>File</th><th>Duration</th><th>SNR</th><th>Transcript</th><th class="right"></th></tr>
-      </thead>
-      <tbody>
-        <tr v-for="(s, i) in inspectedSamples" :key="i">
-          <td><code>{{ s.file }}</code></td>
-          <td>{{ s.duration }}</td>
-          <td>{{ s.snr }}</td>
-          <td class="jv-muted">{{ s.transcript }}</td>
-          <td class="right">
-            <button class="jv-btn jv-btn--ghost jv-btn--sm">▶</button>
-            <button class="jv-btn jv-btn--ghost jv-btn--sm">✕</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    <p v-else class="jv-muted voices-view__samples-empty">
+    <p class="jv-muted voices-view__samples-empty">
       <span v-if="inspectedVoice.source === 'preset'">Preset voices have no reference samples — they're shipped with the engine.</span>
-      <span v-else>No samples on this voice yet. Use the buttons below to add some.</span>
+      <span v-else-if="inspectedSampleCount">{{ inspectedSampleCount }} sample{{ inspectedSampleCount === 1 ? "" : "s" }} on disk. Per-sample listing arrives with the samples API.</span>
+      <span v-else>No samples on this voice yet.</span>
     </p>
 
     <div class="voices-view__sample-actions">
-      <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="pickSampleWav">+ Add WAV file</button>
-      <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="recordInApp">🎙️ Record in-app</button>
-      <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="promoteFromCaptures">↗ Promote from Captures</button>
+      <button class="jv-btn jv-btn--secondary jv-btn--sm" disabled title="Sample management API (/v1/voices/{id}/samples) isn't implemented yet">+ Add WAV file</button>
+      <button class="jv-btn jv-btn--secondary jv-btn--sm" disabled title="In-app recorder isn't implemented yet">🎙️ Record in-app</button>
       <span class="jv-spacer" />
-      <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="trainLoraForVoice">🧪 Train LoRA</button>
+      <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="trainLoraForVoice" title="Open the Train tab">🧪 Train LoRA</button>
       <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="blendWithVoice">🔀 Blend with…</button>
     </div>
-
-    <input ref="sampleFileInput" type="file" accept="audio/*" style="display:none" @change="onSamplePicked" />
   </div>
 
   <!-- ── Modal ───────────────────────────────────────────────────────── -->

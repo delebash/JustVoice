@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import math
 import struct
 from pathlib import Path
 

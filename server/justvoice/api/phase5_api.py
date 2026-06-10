@@ -8,7 +8,6 @@ implementing the optional methods on the TTSBackend protocol.
 from __future__ import annotations
 
 import hashlib
-import json
 import uuid
 from datetime import datetime, timezone
 

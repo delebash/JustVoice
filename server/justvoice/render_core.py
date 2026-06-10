@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import io
 import logging
-import wave
 from dataclasses import dataclass
 from typing import Any
 

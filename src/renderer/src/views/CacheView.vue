@@ -15,8 +15,6 @@ import JvButton from "../components/jv/JvButton.vue";
 
 const api = useApi();
 const stats = ref(null);
-const voices = ref([]);
-const engines = ref([]);
 const recent = ref([]);
 
 function fmtMB(bytes) {
@@ -42,10 +40,6 @@ async function loadStats() {
 }
 async function loadPickers() {
   try {
-    const v = await api.safeRequest("/v1/voices", { voices: [] });
-    voices.value = v?.voices ?? [];
-    const e = await api.safeRequest("/v1/engines", { engines: [] });
-    engines.value = e?.engines ?? [];
     const r = await api.safeRequest("/v1/cache/recent", { entries: [] });
     recent.value = r?.entries ?? [];
   } catch { /* fail silent */ }
@@ -90,46 +84,6 @@ async function pruneOlderThan(days) {
     await api.request(`/v1/cache/clear?older_than_days=${days}`, { method: "POST" });
     await loadStats();
     pushToast({ kind: "success", title: `Pruned entries older than ${days} days` });
-  } catch (e) {
-    pushToast({ kind: "error", title: "Prune failed", description: String(e?.message ?? e) });
-  }
-}
-async function pruneByVoice() {
-  const list = voices.value.map((v) => `${v.id} (${v.name})`).join("\n");
-  const id = prompt(`Voice id to prune:\n\nAvailable:\n${list}`);
-  if (!id) return;
-  try {
-    await api.request(`/v1/cache/clear?voice_id=${encodeURIComponent(id)}`, { method: "POST" });
-    await loadStats();
-    pushToast({ kind: "success", title: `Pruned voice "${id}"` });
-  } catch (e) {
-    pushToast({ kind: "error", title: "Prune failed", description: String(e?.message ?? e) });
-  }
-}
-async function pruneByEngine() {
-  const list = engines.value.map((e) => `${e.id} (${e.name})`).join("\n");
-  const id = prompt(`Engine id to prune:\n\nAvailable:\n${list}`);
-  if (!id) return;
-  try {
-    await api.request(`/v1/cache/clear?engine=${encodeURIComponent(id)}`, { method: "POST" });
-    await loadStats();
-    pushToast({ kind: "success", title: `Pruned engine "${id}"` });
-  } catch (e) {
-    pushToast({ kind: "error", title: "Prune failed", description: String(e?.message ?? e) });
-  }
-}
-async function pruneUnfavorited() {
-  const ok = await confirmDialog({
-    title: "Prune unfavorited?",
-    message: "Removes all cached renders not pinned as favorites. Favorited entries (★) are preserved.",
-    danger: true,
-    confirmLabel: "Prune unfavorited",
-  });
-  if (!ok) return;
-  try {
-    await api.request(`/v1/cache/clear?favorited=false`, { method: "POST" });
-    await loadStats();
-    pushToast({ kind: "success", title: "Pruned unfavorited entries" });
   } catch (e) {
     pushToast({ kind: "error", title: "Prune failed", description: String(e?.message ?? e) });
   }
@@ -190,14 +144,11 @@ onMounted(async () => {
       <h3 class="jv-section__title">Actions</h3>
       <div class="cache-view__actions">
         <button class="jv-btn jv-btn--secondary" @click="pruneOlderThan(30)">Prune &gt; 30 days</button>
-        <button class="jv-btn jv-btn--secondary" @click="pruneByVoice">Prune by voice…</button>
-        <button class="jv-btn jv-btn--secondary" @click="pruneByEngine">Prune by engine…</button>
-        <button class="jv-btn jv-btn--secondary" @click="pruneUnfavorited">Prune unfavorited</button>
         <span class="jv-spacer" />
         <JvButton variant="danger-outline" :label="`Clear all (${totalSizeGb} GB · ${totalEntries} entries)`" @click="purgeAll" />
       </div>
       <p class="jv-muted cache-view__actions-hint">
-        All destructive actions require confirmation. Filtered prune uses the <code>/v1/cache/clear</code> endpoint with <code>older_than_days</code> / <code>voice_id</code> / <code>engine</code> / <code>favorited</code> query params.
+        All destructive actions require confirmation. Cache entries are keyed by opaque content hash, so pruning is by scope or age only.
       </p>
     </section>
 
@@ -207,9 +158,8 @@ onMounted(async () => {
       <table class="jv-table">
         <thead>
           <tr>
-            <th>Engine</th>
-            <th>Voice</th>
-            <th>Text preview</th>
+            <th>Scope</th>
+            <th>Key</th>
             <th>Size</th>
             <th>Age</th>
             <th class="right"></th>
@@ -217,11 +167,10 @@ onMounted(async () => {
         </thead>
         <tbody>
           <tr v-for="r in recent" :key="r.id">
-            <td><span class="jv-pill jv-pill--ghost">{{ r.engine }}</span></td>
-            <td>{{ r.voice }}</td>
-            <td class="jv-muted">{{ r.text_preview || "—" }}</td>
-            <td>{{ fmtMB(r.size_bytes || 0) }} MB</td>
-            <td>{{ fmtAge(r.created_at) }}</td>
+            <td><span class="jv-pill jv-pill--ghost">{{ r.scope }}</span></td>
+            <td class="jv-mono jv-muted">{{ (r.key || "").slice(0, 16) }}…</td>
+            <td>{{ fmtMB(r.bytes || 0) }} MB</td>
+            <td>{{ fmtAge(r.mtime * 1000) }}</td>
             <td class="right">
               <button class="jv-btn jv-btn--ghost jv-btn--sm" @click="deleteEntry(r.id)" title="Delete this entry">✕</button>
             </td>

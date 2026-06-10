@@ -8,9 +8,7 @@ in JSON (`audio_data` field) — distinct from ElevenLabs returning raw bytes.
 from __future__ import annotations
 
 import base64
-import io
 import logging
-import wave
 
 import httpx
 

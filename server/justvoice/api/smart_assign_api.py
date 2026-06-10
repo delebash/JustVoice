@@ -71,12 +71,18 @@ def _format_characters(chars: list[SmartAssignCharacter]) -> str:
     lines: list[str] = []
     for c in chars:
         bits = [f'id="{c.id}"', f'name="{c.name}"']
-        if c.role: bits.append(f'role="{c.role}"')
-        if c.gender: bits.append(f'gender="{c.gender}"')
-        if c.pronouns: bits.append(f'pronouns="{c.pronouns}"')
-        if c.aliases: bits.append(f'aliases="{", ".join(c.aliases)}"')
-        if c.bio: bits.append(f'description="{c.bio[:200]}"')
-        elif c.personality: bits.append(f'description="{c.personality[:200]}"')
+        if c.role:
+            bits.append(f'role="{c.role}"')
+        if c.gender:
+            bits.append(f'gender="{c.gender}"')
+        if c.pronouns:
+            bits.append(f'pronouns="{c.pronouns}"')
+        if c.aliases:
+            bits.append(f'aliases="{", ".join(c.aliases)}"')
+        if c.bio:
+            bits.append(f'description="{c.bio[:200]}"')
+        elif c.personality:
+            bits.append(f'description="{c.personality[:200]}"')
         lines.append("- " + ", ".join(bits))
     return "\n".join(lines)
 
@@ -85,11 +91,16 @@ def _format_voices(voices: list[SmartAssignVoice]) -> str:
     lines: list[str] = []
     for v in voices:
         bits = [f'id="{v.id}"', f'name="{v.name}"']
-        if v.gender: bits.append(f'gender="{v.gender}"')
-        if v.age: bits.append(f'age={v.age}')
-        if v.accent: bits.append(f'accent="{v.accent}"')
-        if v.tone: bits.append(f'tone="{v.tone}"')
-        if v.language: bits.append(f'language="{v.language}"')
+        if v.gender:
+            bits.append(f'gender="{v.gender}"')
+        if v.age:
+            bits.append(f'age={v.age}')
+        if v.accent:
+            bits.append(f'accent="{v.accent}"')
+        if v.tone:
+            bits.append(f'tone="{v.tone}"')
+        if v.language:
+            bits.append(f'language="{v.language}"')
         lines.append("- " + ", ".join(bits))
     return "\n".join(lines)
 

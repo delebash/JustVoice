@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Iterable
 
 
 # 40+ dialogue-tag verbs. Order doesn't matter — they're joined into one

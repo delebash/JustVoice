@@ -22,8 +22,13 @@ import { projectsService } from "../services/projects.js";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { useCopy } from "../services/copy.js";
+import { confirmDialog, promptDialog } from "../services/dialog.js";
+import { useRenderTasks } from "../stores/renderTasks.js";
+import { useAudioPlayer } from "../stores/audioPlayer.js";
 
 const api = useApi();
+const tasks = useRenderTasks();
+const audioPlayer = useAudioPlayer();
 
 const copy = useCopy();
 
@@ -260,24 +265,68 @@ function commitMastering(v) {
   patchProject({ mastering_preset: v || null });
 }
 
-// Action stubs — wire to real endpoints when those land. Each shows a
-// toast so the operator gets feedback; the click target itself is the
-// real UX win (no missing button).
+// Render one scene through the same /v1/render_chapter pipeline Studio
+// uses; result lands in the global audio player + a download via the
+// task strip.
+const renderBusy = ref(false);
+
+async function renderScene(scene) {
+  const ctl = new AbortController();
+  const label = scene.title ?? `${copy.value.chapter.singular} ${scene.position}`;
+  const task = tasks.start({
+    kind: "chapter",
+    feature: "render-scene",
+    label: `${label} → render`,
+    onCancel: () => { ctl.abort(); tasks.cancel(task.id); },
+    onRetry: () => renderScene(scene),
+    meta: { sceneId: scene.id, projectId: selectedProject.value?.id },
+  });
+  try {
+    const audio = await api.request("/v1/render_chapter", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scene_id: scene.id }),
+      signal: ctl.signal,
+    });
+    if (audio instanceof Blob) {
+      const url = URL.createObjectURL(audio);
+      tasks.finish(task.id, { result: { url, filename: `${label.replace(/[^a-z0-9_-]+/gi, "_")}.wav` } });
+      audioPlayer.play({ url, title: `${label} — rendered`, subtitle: selectedProject.value?.name || "" });
+    } else {
+      tasks.finish(task.id);
+    }
+    return true;
+  } catch (e) {
+    if (ctl.signal.aborted) return false;
+    tasks.fail(task.id, e?.message || String(e));
+    pushToast({ kind: "error", title: `${label} render failed`, description: String(e?.message ?? e) });
+    return false;
+  }
+}
+
 async function renderAllChapters() {
   const p = selectedProject.value;
-  if (!p) return;
-  pushToast({ kind: "info", title: "Render queued", description: `Rendering ${scenes.value.length} ${copy.chapter.plural.toLowerCase()} for ${p.name}.` });
-}
-async function exportM4B() {
-  pushToast({ kind: "info", title: "Export M4B", description: "Sent to JustWrite render pipeline (POST /v1/projects/{id}/export_m4b)." });
-}
-async function downloadQcReport() {
-  pushToast({ kind: "info", title: "QC report", description: "Generating ACX QC report (GET /v1/projects/{id}/qc)." });
+  if (!p || !scenes.value.length || renderBusy.value) return;
+  renderBusy.value = true;
+  try {
+    for (const s of scenes.value) {
+      const ok = await renderScene(s);
+      if (!ok) break;
+    }
+  } finally {
+    renderBusy.value = false;
+  }
 }
 async function deleteProject() {
   const p = selectedProject.value;
   if (!p) return;
-  if (!confirm(`Delete "${p.name}"? This removes the project and all its scenes + blocks. Takes and generations are preserved (only the project metadata is removed).`)) return;
+  const ok = await confirmDialog({
+    title: "Delete project?",
+    message: `Delete "${p.name}"? This removes the project and all its scenes + blocks. Takes and generations are preserved (only the project metadata is removed).`,
+    danger: true,
+    confirmLabel: "Delete",
+  });
+  if (!ok) return;
   try {
     await projectsService.remove(p.id);
     selectedId.value = null;
@@ -311,16 +360,35 @@ async function exportProject(projectId) {
 }
 
 async function createBlank() {
-  const name = prompt("Project name:");
-  if (!name) return;
-  const projectType = prompt("Project type (audiobook / game_voicelines / podcast / custom):", "audiobook") ?? "audiobook";
+  const values = await promptDialog({
+    title: "New project",
+    confirmLabel: "Create",
+    fields: [
+      { key: "name", label: "Project name" },
+      {
+        key: "project_type", label: "Project type", type: "select",
+        defaultValue: "audiobook",
+        options: [
+          { value: "audiobook", label: "Audiobook" },
+          { value: "game_voicelines", label: "Game voicelines" },
+          { value: "podcast", label: "Podcast" },
+          { value: "custom", label: "Custom" },
+        ],
+      },
+    ],
+  });
+  if (!values || !values.name) return;
   try {
-    const created = await projectsService.create({ name, project_type: projectType, metadata: {} });
+    const created = await projectsService.create({ name: values.name, project_type: values.project_type || "audiobook", metadata: {} });
     await refresh();
     selectedId.value = created.id;
   } catch (e) {
     pushToast({ kind: "error", title: "Create failed", description: String(e?.message ?? e) });
   }
+}
+
+function openInChapter() {
+  window.location.hash = "#chapter";
 }
 
 function toggleSceneSelect(id) {
@@ -346,17 +414,18 @@ const allScenesSelected = computed(
 );
 
 async function renderSelected() {
-  const ids = Array.from(selectedSceneIds.value);
-  if (!ids.length) return;
-  pushToast({ kind: "info", title: `Render queued (${ids.length})`, description: `Rendering ${ids.length} ${copy.chapter.plural.toLowerCase()} in sequence.` });
-}
-async function remasterSelected() {
-  const ids = Array.from(selectedSceneIds.value);
-  if (!ids.length) return;
-  pushToast({ kind: "info", title: `Re-master queued (${ids.length})`, description: "Skips TTS — runs mastering pass on existing takes." });
-}
-async function exportSelectedZip() {
-  pushToast({ kind: "info", title: "Export ZIP", description: `Bundling ${selectedSceneIds.value.size} ${copy.chapter.plural.toLowerCase()} as ZIP.` });
+  if (renderBusy.value) return;
+  const queue = scenes.value.filter((s) => selectedSceneIds.value.has(s.id));
+  if (!queue.length) return;
+  renderBusy.value = true;
+  try {
+    for (const s of queue) {
+      const ok = await renderScene(s);
+      if (!ok) break;
+    }
+  } finally {
+    renderBusy.value = false;
+  }
 }
 
 function sceneStatusPill(scene) {
@@ -527,9 +596,9 @@ onMounted(refresh);
           <div class="jv-divider" />
 
           <div class="books__actions">
-            <JvButton variant="primary" label="▶ Render all chapters" @click="renderAllChapters" />
-            <JvButton variant="secondary" label="Export M4B (via JustWrite)" @click="exportM4B" />
-            <JvButton variant="secondary" label="QC report" @click="downloadQcReport" />
+            <JvButton variant="primary" :loading="renderBusy" :disabled="renderBusy || !scenes.length" label="▶ Render all chapters" @click="renderAllChapters" />
+            <JvButton variant="secondary" disabled title="M4B export isn't implemented yet — JustWrite drives this via the render pipeline" label="Export M4B" />
+            <JvButton variant="secondary" disabled title="ACX QC report isn't implemented yet" label="QC report" />
             <JvButton variant="secondary" label="Export ZIP" @click="exportProject(selectedProject.id)" />
             <span class="books__spacer" />
             <button class="jv-btn jv-btn--danger-outline jv-btn--sm" type="button" @click="deleteProject">Delete project</button>
@@ -564,14 +633,9 @@ onMounted(refresh);
               >▶ Render selected ({{ selectedSceneCount }})</button>
               <button
                 class="jv-btn jv-btn--secondary jv-btn--sm"
-                :disabled="!selectedSceneCount"
-                @click="remasterSelected"
+                disabled
+                title="Re-master-only pass isn't implemented yet"
               >↻ Re-master selected</button>
-              <button
-                class="jv-btn jv-btn--secondary jv-btn--sm"
-                :disabled="!selectedSceneCount"
-                @click="exportSelectedZip"
-              >⬇ Export selected as ZIP</button>
               <button class="jv-btn jv-btn--ghost jv-btn--sm" @click="clearSelection">Clear</button>
             </div>
 
@@ -613,19 +677,16 @@ onMounted(refresh);
                     <span class="jv-pill" :class="sceneStatusPill(s).cls">{{ sceneStatusPill(s).label }}</span>
                   </td>
                   <td class="books__row-actions">
-                    <button class="jv-btn jv-btn--ghost jv-btn--sm" title="Play chapter">▶</button>
-                    <button class="jv-btn jv-btn--ghost jv-btn--sm" title="Open in Chapter view">Open</button>
-                    <button class="jv-btn jv-btn--ghost jv-btn--sm" title="Re-render (creates new takes per block)">↻</button>
-                    <button class="jv-btn jv-btn--ghost jv-btn--sm" title="Re-master only (skip re-render)">⚙</button>
+                    <button class="jv-btn jv-btn--ghost jv-btn--sm" title="Render this chapter now" @click="renderScene(s)">▶</button>
+                    <button class="jv-btn jv-btn--ghost jv-btn--sm" title="Open in Chapter view" @click="openInChapter">Open</button>
                   </td>
                 </tr>
               </tbody>
             </table>
 
             <p v-if="scenes.length" class="books__table-help jv-muted">
-              Per-row <strong>▶</strong> plays the rendered chapter. <strong>↻</strong> re-renders (creates new takes per block, source-lineage preserved).
-              <strong>⚙</strong> re-masters only — skips TTS, re-runs the mastering pass on existing takes (fast).
-              Each in-flight render emits SSE progress on <code>/v1/generate/{id}/status</code> and can be cancelled per-row.
+              Per-row <strong>▶</strong> renders that chapter through the mastering pipeline and plays the result.
+              In-flight renders show in the task strip and can be cancelled there.
             </p>
           </template>
         </div>

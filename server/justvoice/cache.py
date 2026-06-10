@@ -10,6 +10,7 @@ import hashlib
 import logging
 import struct
 import threading
+import time
 from collections import OrderedDict
 from pathlib import Path
 
@@ -146,6 +147,61 @@ class RenderCache:
                 self._memory = OrderedDict(
                     (k, v) for k, v in self._memory.items() if k[0] != scope
                 )
+
+    def prune_older_than(self, days: float) -> int:
+        """Delete every disk entry whose mtime is older than `days` days.
+        Returns the number of entries removed. Memory LRU is rebuilt from
+        the surviving keys' scopes lazily (we just drop everything — it's
+        a small read-through cache)."""
+        cutoff = time.time() - days * 86400
+        removed = 0
+        with self._lock:
+            for scope_dir in self._root.iterdir():
+                if not scope_dir.is_dir():
+                    continue
+                for f in scope_dir.glob("*.bin"):
+                    try:
+                        if f.stat().st_mtime < cutoff:
+                            f.unlink(missing_ok=True)
+                            removed += 1
+                    except OSError:
+                        continue
+            self._memory.clear()
+        return removed
+
+    def entries(self, limit: int = 50) -> list[dict]:
+        """Newest-first disk entry listing for the Cache tab's Recent table.
+        Keys are opaque hashes; scope + size + mtime are the only
+        user-meaningful fields."""
+        out: list[dict] = []
+        for scope_dir in self._root.iterdir():
+            if not scope_dir.is_dir():
+                continue
+            for f in scope_dir.glob("*.bin"):
+                try:
+                    st = f.stat()
+                except OSError:
+                    continue
+                out.append(
+                    {
+                        "id": f"{scope_dir.name}/{f.stem}",
+                        "scope": scope_dir.name,
+                        "key": f.stem,
+                        "bytes": st.st_size,
+                        "mtime": st.st_mtime,
+                    }
+                )
+        out.sort(key=lambda e: e["mtime"], reverse=True)
+        return out[: max(1, limit)]
+
+    def delete_entry(self, scope: str, key: str) -> bool:
+        with self._lock:
+            path = self._path(scope, key)
+            self._memory.pop((scope, key), None)
+            if path.exists():
+                path.unlink(missing_ok=True)
+                return True
+            return False
 
     def stats(self) -> CacheStats:
         scopes: dict[str, ScopeStats] = {}

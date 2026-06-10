@@ -29,12 +29,10 @@ Cross-platform notes:
 
 from __future__ import annotations
 
-import importlib.util
 import logging
 import os
 import shutil
 import signal
-import socket
 import subprocess
 import sys
 import threading
@@ -44,7 +42,6 @@ from typing import Any, Callable
 
 import httpx
 
-from ..app_state import AppState
 
 log = logging.getLogger(__name__)
 
@@ -611,7 +608,7 @@ def _install_model_tarball(
     # models_dir, treat it as already-downloaded.
     expected = step.get("expected_files", [])
     if expected and all(any(models_dir.rglob(f)) for f in expected):
-        emit("model-tarball", f"model files already present, skipping download")
+        emit("model-tarball", "model files already present, skipping download")
         return
 
     # Decide archive format from URL suffix.
@@ -694,7 +691,6 @@ def _install_model_file(
     downloaded = 0
     with requests.get(url, stream=True, timeout=600) as r:
         r.raise_for_status()
-        total = int(r.headers.get("content-length", 0) or 0)
         with dest.open("wb") as f:
             for chunk in r.iter_content(chunk_size=1024 * 64):
                 check_cancel()
