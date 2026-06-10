@@ -47,6 +47,91 @@ async def persona_usage(db: Session = Depends(get_db)) -> PersonaUsageMap:
     return PersonaUsageMap(usage=usage)
 
 
+# ── Cross-project NPC detail (Phase 7 / Slice 1) ─────────────────────────
+
+
+class PersonaUsageProjectDetail(BaseModel):
+    project_id: str
+    project_name: str
+    project_type: str
+    scene_count: int  # scenes in the project that have at least one block for this persona
+    line_count: int   # total blocks attributed to this persona across the project
+
+
+class PersonaUsageDetailResponse(BaseModel):
+    persona_id: str
+    projects: list[PersonaUsageProjectDetail]
+    total_lines: int
+
+
+@router.get(
+    "/v1/personas/{persona_id}/usage-detail",
+    response_model=PersonaUsageDetailResponse,
+)
+async def persona_usage_detail(
+    persona_id: str, db: Session = Depends(get_db)
+) -> PersonaUsageDetailResponse:
+    """Per-project line counts for one persona — drives the cross-project
+    detail panel in PersonasView (Phase 7 / Slice 1, plan task #76)."""
+    from ..database.models import Block, Scene
+
+    persona_exists = (
+        get_state().personas.get(persona_id) is not None
+        or db.query(ProjectPersona).filter(ProjectPersona.persona_id == persona_id).first() is not None
+    )
+    if not persona_exists:
+        raise not_found(f"persona {persona_id}")
+
+    # Aggregate by project — count blocks attributed to this persona,
+    # plus how many distinct scenes those blocks live in.
+    rows = (
+        db.query(
+            Project.id,
+            Project.name,
+            Project.project_type,
+            Scene.id.label("scene_id"),
+            Block.id.label("block_id"),
+        )
+        .join(Scene, Scene.project_id == Project.id)
+        .join(Block, Block.scene_id == Scene.id)
+        .filter(Block.persona_id == persona_id)
+        .all()
+    )
+
+    by_project: dict[str, dict] = {}
+    for pid, pname, ptype, scene_id, _block_id in rows:
+        entry = by_project.setdefault(
+            pid,
+            {
+                "project_id": pid,
+                "project_name": pname,
+                "project_type": ptype,
+                "scene_ids": set(),
+                "line_count": 0,
+            },
+        )
+        entry["scene_ids"].add(scene_id)
+        entry["line_count"] += 1
+
+    projects = [
+        PersonaUsageProjectDetail(
+            project_id=e["project_id"],
+            project_name=e["project_name"],
+            project_type=e["project_type"],
+            scene_count=len(e["scene_ids"]),
+            line_count=e["line_count"],
+        )
+        for e in by_project.values()
+    ]
+    projects.sort(key=lambda p: p.line_count, reverse=True)
+
+    return PersonaUsageDetailResponse(
+        persona_id=persona_id,
+        projects=projects,
+        total_lines=sum(p.line_count for p in projects),
+    )
+
+
 @router.post("/v1/personas", response_model=Persona, status_code=201)
 async def create_persona(body: CreatePersonaRequest) -> Persona:
     return get_state().personas.create(

@@ -108,6 +108,7 @@ function bufferFor(persona) {
 watch(selectedPersona, (p) => {
   draft.value = bufferFor(p);
   dirty.value = false;
+  loadUsageDetail(p?.id || null);
 }, { immediate: true });
 
 function markDirty() { dirty.value = true; }
@@ -182,9 +183,25 @@ async function deletePersona() {
 }
 
 const effectsEditorOpen = ref(false);
+const usageDetail = ref(null);
+const usageDetailBusy = ref(false);
 
 function openEffectsEditor() {
   effectsEditorOpen.value = true;
+}
+
+async function loadUsageDetail(personaId) {
+  if (!personaId) {
+    usageDetail.value = null;
+    return;
+  }
+  usageDetailBusy.value = true;
+  try {
+    const r = await api.safeRequest(`/v1/personas/${personaId}/usage-detail`, null);
+    usageDetail.value = r;
+  } finally {
+    usageDetailBusy.value = false;
+  }
 }
 
 function onEffectsSaved(newChain) {
@@ -422,6 +439,39 @@ onMounted(loadAll);
             </div>
           </div>
         </div>
+
+        <!-- Cross-project usage detail panel (Phase 7 / Slice 1). -->
+        <div
+          v-if="usageDetail && usageDetail.projects && usageDetail.projects.length"
+          class="jv-divider"
+        />
+        <section
+          v-if="usageDetail && usageDetail.projects && usageDetail.projects.length"
+          class="personas__cross-project"
+        >
+          <h4 class="personas__section-h">
+            Across projects
+            <span class="jv-pill jv-pill--ghost">{{ usageDetail.total_lines }} line{{ usageDetail.total_lines === 1 ? "" : "s" }}</span>
+          </h4>
+          <table class="jv-table personas__cross-project-table">
+            <thead>
+              <tr>
+                <th>Project</th>
+                <th>Type</th>
+                <th class="jv-mono">Scenes</th>
+                <th class="jv-mono">Lines</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="p in usageDetail.projects" :key="p.project_id">
+                <td><strong>{{ p.project_name }}</strong></td>
+                <td><span class="jv-pill jv-pill--ghost">{{ p.project_type }}</span></td>
+                <td class="jv-mono">{{ p.scene_count }}</td>
+                <td class="jv-mono">{{ p.line_count }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
 
         <div class="jv-divider" />
 

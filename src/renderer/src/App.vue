@@ -23,6 +23,7 @@ import VoicesView from "./views/VoicesView.vue";
 // Profile-kill (plan Q1). All voice config now lives directly on Persona.
 import StudioView from "./views/StudioView.vue";
 import SpeakerLabView from "./views/SpeakerLabView.vue";
+import RenderLabView from "./views/RenderLabView.vue";
 import CompareView from "./views/CompareView.vue";
 import TrainView from "./views/TrainView.vue";
 import PersonasView from "./views/PersonasView.vue";
@@ -59,6 +60,7 @@ const VIEWS = [
   { id: "train",     label: "Train",     icon: "🏋️", lede: "PEFT/LoRA-based fine-tuning. QC pipeline checks SNR / clipping / silence ratio per sample before accepting it.", component: TrainView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "compare",   label: "Compare",   icon: "⚖️", lede: "A/B audio comparison. Side-by-side waveforms, peak/RMS/duration diff, sample-level RMSE, verdict. Bulk compare across takes for QC pass.", component: CompareView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   { id: "speakerlab",label: "Speaker Lab",icon: "🔬", lede: "Advanced attribution tuning workbench. Up to 4 columns compare tier + propagation + floor configurations side-by-side. Disagreement badges flag where columns diverge. Calls the same backend the Studio Script tab uses.", component: SpeakerLabView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "renderlab", label: "Render Lab", icon: "🧪", lede: "Voice parameter A/B matrix. Pick a voice + sample sentence + 1-2 parameter axes; render up to 16 cells in parallel (capped at 2 concurrent). Save any cell as a render preset.", component: RenderLabView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   { id: "cache",     label: "Cache",     icon: "💾", lede: "Disk-LRU render cache. Keyed on (engine, voice, lexicon hash, persona hash, text hash, effects hash). Engine prefix prevents cross-engine collisions.", component: CacheView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   { id: "audio",     label: "Audio Tools", icon: "🔧", lede: "Stand-alone audio tools — analyze any 16-bit PCM WAV, or apply a mastering preset to a WAV without going through the chapter render pipeline. Useful for inspecting reference clips before cloning, or quickly mastering an external recording.", component: AudioToolsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   { id: "channels",  label: "Channels",  icon: "🔊", lede: "Audio output channel configs. Route specific voices to specific OS audio devices — multi-monitor, OBS virtual mic, per-character podcast monitoring.", component: AudioChannelsView, visibleFor: ["podcast", "game", "multiple", "unset"] },
