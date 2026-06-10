@@ -28,6 +28,8 @@ def models_for(engine_id: str) -> list[ModelVariant]:
             return _dia_variants()
         case "moss-tts":
             return _moss_tts_variants()
+        case "whisper":
+            return _whisper_variants()
         case _:
             return []
 
@@ -237,6 +239,71 @@ def _moss_tts_variants() -> list[ModelVariant]:
             languages=["en", "zh"],
             files=[_hf_placeholder("moss-llm/moss-tts-v1.5", 12000)],
         )
+    ]
+
+
+_WHISPER_LANGS = [
+    "en", "es", "fr", "de", "it", "pt", "nl", "ja", "zh", "ko", "ru", "ar",
+    "hi", "tr", "pl", "uk",
+]
+
+
+def _whisper_variants() -> list[ModelVariant]:
+    """Whisper STT sizes. vram_mb=0 throughout — every size runs on CPU
+    (larger ones are just slow there), so no variant should ever be
+    flagged would-oom. Sizes are the HF safetensors downloads; weights
+    pull into the HF cache on first load like the other sidecars."""
+    return [
+        ModelVariant(
+            id="base",
+            name="Whisper base",
+            description="74M params — realtime on CPU. The dictation default.",
+            size_mb=290,
+            vram_mb=0,
+            quality=65,
+            languages=_WHISPER_LANGS,
+            files=[_hf_placeholder("openai/whisper-base", 290)],
+        ),
+        ModelVariant(
+            id="small",
+            name="Whisper small",
+            description="244M params — noticeably better accuracy, still CPU-viable.",
+            size_mb=970,
+            vram_mb=0,
+            quality=75,
+            languages=_WHISPER_LANGS,
+            files=[_hf_placeholder("openai/whisper-small", 970)],
+        ),
+        ModelVariant(
+            id="medium",
+            name="Whisper medium",
+            description="769M params — strong accuracy; GPU recommended for realtime.",
+            size_mb=3100,
+            vram_mb=0,
+            quality=85,
+            languages=_WHISPER_LANGS,
+            files=[_hf_placeholder("openai/whisper-medium", 3100)],
+        ),
+        ModelVariant(
+            id="large",
+            name="Whisper large-v3",
+            description="1.55B params — best accuracy. GPU strongly recommended.",
+            size_mb=3100,
+            vram_mb=0,
+            quality=95,
+            languages=_WHISPER_LANGS,
+            files=[_hf_placeholder("openai/whisper-large-v3", 3100)],
+        ),
+        ModelVariant(
+            id="turbo",
+            name="Whisper turbo (large-v3-turbo)",
+            description="809M params — near-large accuracy at ~6× the speed. The GPU pick.",
+            size_mb=1600,
+            vram_mb=0,
+            quality=90,
+            languages=_WHISPER_LANGS,
+            files=[_hf_placeholder("openai/whisper-large-v3-turbo", 1600)],
+        ),
     ]
 
 

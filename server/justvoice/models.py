@@ -93,6 +93,11 @@ class GenerationSettings(BaseModel):
     crossfade_ms: int = 50  # 0-200 in UI slider; 0 = hard cut
     normalize_audio: bool = True
     autoplay_on_generate: bool = True
+    # Swap-at-render (WS2): when true, renders that need a different
+    # managed engine swap silently instead of returning the 409
+    # engine-swap-required contract. Set by the swap prompt's
+    # "always swap without asking" checkbox.
+    auto_engine_swap: bool = False
 
 
 class CorsSettings(BaseModel):
@@ -394,6 +399,12 @@ class Voice(BaseModel):
     language: str
     gender: str = ""
     sample_url: str | None = None
+    # Availability truth (WS1): is this voice's engine occupying its kind
+    # slot right now, and which variant produced/serves the voice. Pickers
+    # show every voice regardless — these flags only drive the
+    # loaded/swap-needed badges, never filtering.
+    engine_loaded: bool = False
+    variant_id: str | None = None
 
 
 class VoiceList(BaseModel):
@@ -857,6 +868,9 @@ class GenerateRequest(BaseModel):
     # chip). Layers between the persona chain and the render preset's
     # chain; the EffectPreset's chain is copied at render time.
     effects_preset_id: str | None = None
+    # Swap-at-render contract (WS2): opt-in to loading a different managed
+    # engine when the voice needs one. False → 409 engine-swap-required.
+    allow_engine_swap: bool = False
 
 
 class ChapterLine(BaseModel):
@@ -887,6 +901,9 @@ class RenderChapterRequest(BaseModel):
     book: str | None = None
     cache_scope: str = "default"
     lexicons: list[str] = []
+    # Swap-at-render contract (WS2). Batch renders group lines by engine
+    # server-side, so a multi-engine cast costs one swap per engine.
+    allow_engine_swap: bool = False
 
 
 # ─── Phase 5 — blend + train ───────────────────────────────────────────

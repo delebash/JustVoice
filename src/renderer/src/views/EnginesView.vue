@@ -53,9 +53,9 @@ const variants = reactive({});
 // > first available. Reactive so the info panel re-renders on change.
 const selectedVariants = reactive({});  // {engineId: variantId}
 
-// Tab selection: TTS / LLM / Embeddings. Filters which engines surface.
+// Tab selection: TTS / STT / LLM / Embeddings. Filters which engines surface.
 // Falls back to "tts" so existing manifests show by default.
-const KIND_LABELS = { tts: "TTS", llm: "LLM", embedding: "Embeddings" };
+const KIND_LABELS = { tts: "TTS", stt: "STT", llm: "LLM", embedding: "Embeddings" };
 const activeKind = ref("tts");
 
 // ── Registered providers (JustWrite SettingsProviderForm pattern) ─────

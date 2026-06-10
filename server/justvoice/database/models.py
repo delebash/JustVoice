@@ -148,6 +148,23 @@ class Voice(Base):
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
 
+class EngineVoiceCache(Base):
+    """Last-known live voice list per (engine, variant) — captured from the
+    engine subprocess's /load response every time a load succeeds.
+
+    Lets /v1/voices surface voices from engines/variants that aren't
+    currently loaded (manifest STATIC_VOICES covers the declared presets;
+    this covers variant-dependent lists discovered only at load time).
+    """
+
+    __tablename__ = "engine_voice_cache"
+
+    engine_id = Column(String, primary_key=True)
+    variant_id = Column(String, primary_key=True, default="")
+    voices_json = Column(Text, nullable=False, default="[]")
+    refreshed_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+
 # ── Lexicon layer (pronunciation dictionaries) ────────────────────────────
 
 

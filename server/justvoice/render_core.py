@@ -30,7 +30,7 @@ from .audio.wav import strip_wav_header, write_wav_container
 from .cache import CacheKeyBuilder, pack_pcm_with_format, unpack_pcm_with_format
 from .delivery import apply_gain_db, canonical_json
 from .engines.base import SynthRequest
-from .errors import bad_request, internal, not_found
+from .errors import bad_request, engine_swap_required, internal, not_found
 from .inline_tags import strip as strip_tags
 from .version import VERSION
 
@@ -142,6 +142,55 @@ def _apply_lexicons(text: str, lexicon_ids: list[str], state: AppState) -> str:
     return out
 
 
+def _swap_estimate_seconds(disk_space_mb: int) -> int:
+    """Rough engine-swap wall-clock tiers keyed off weights size. Honest
+    enough for a confirm prompt; the task strip shows real progress."""
+    if disk_space_mb < 1000:
+        return 15
+    if disk_space_mb < 4000:
+        return 45
+    return 90
+
+
+def raise_if_swap_blocked(
+    state: AppState,
+    engine_id: str,
+    allow_engine_swap: bool,
+) -> None:
+    """The swap-at-render gate (plan WS2). Only managed subprocess engines
+    have a swap cost — in-process external providers are always free to
+    'load' (a HEAD ping). Raises the 409 engine-swap-required contract
+    unless the request or settings.generation.auto_engine_swap allows it.
+    """
+    if allow_engine_swap:
+        return
+    settings = state.settings.get()
+    if bool(getattr(settings.generation, "auto_engine_swap", False)):
+        return
+    from .engines.manager import get_manager
+
+    mgr = get_manager()
+    m = mgr.get_manifest(engine_id)
+    if m is None:
+        return  # not a managed engine — nothing to gate
+    from_engine = mgr.current_for(m.kind)
+    weights_on_disk = bool(m.is_installed)
+    disk_mb = int(m.requirements.get("disk_space_mb", 0) or 0)
+    raise engine_swap_required(
+        (
+            f"This voice uses engine '{engine_id}', which is not loaded"
+            + (f" (currently loaded: '{from_engine}')" if from_engine else "")
+            + ". Retry with allow_engine_swap=true to swap, or enable "
+            "settings.generation.auto_engine_swap."
+        ),
+        from_engine=from_engine,
+        to_engine=engine_id,
+        to_variant=m.default_variant_id,
+        est_seconds=_swap_estimate_seconds(disk_mb) if weights_on_disk else None,
+        weights_on_disk=weights_on_disk,
+    )
+
+
 def render_line(
     state: AppState,
     voice: str,
@@ -153,6 +202,7 @@ def render_line(
     lexicons: list[str] | None = None,
     cache_scope: str = "default",
     use_cache: bool = True,
+    allow_engine_swap: bool = False,
 ) -> RenderedLine:
     settings = state.settings.get()
     delivery = delivery or {}
@@ -207,8 +257,13 @@ def render_line(
             sr, ch, pcm = unpack_pcm_with_format(cached)
             return RenderedLine(pcm=pcm, sample_rate=sr, channels=ch, effective_delivery=delivery)
 
-    # Auto-load on first synthesize
+    # Auto-load on first synthesize. For managed engines this is an engine
+    # swap (evicts the kind-slot occupant, seconds-to-minutes) — gated by
+    # the explicit swap contract. Cache hits above never reach this point,
+    # so re-renders of unchanged lines stay engine-free.
     if not engine.ready():
+        if isinstance(engine, _ManagedEngineFacade):
+            raise_if_swap_blocked(state, engine_id, allow_engine_swap)
         try:
             engine.load("auto", None)
             if state.engines.get(engine_id) is not None:

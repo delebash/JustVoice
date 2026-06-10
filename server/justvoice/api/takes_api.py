@@ -230,6 +230,9 @@ class BlockRenderRequest(BaseModel):
     voice: Optional[str] = None      # override; falls back to the block's persona
     set_default: bool = False        # promote the new take immediately
     seed: Optional[int] = None
+    # Swap-at-render contract (WS2): opt-in to a managed-engine swap when
+    # the voice needs one. False → 409 engine-swap-required.
+    allow_engine_swap: bool = False
 
 
 class BlockRenderResponse(BaseModel):
@@ -283,6 +286,7 @@ async def render_block(
         seed=body.seed,
         lexicons=lexicons,
         use_cache=False,  # a re-roll must produce a NEW performance
+        allow_engine_swap=body.allow_engine_swap,
     )
     wav_bytes = pcm_to_wav(rl)
 

@@ -927,6 +927,37 @@ class EngineProcess:
         self.port = None
 
 
+def _persist_voice_cache(engine_id: str, variant_id: str | None, payload: dict) -> None:
+    """Best-effort write of a /load response's live voice list into the
+    engine_voice_cache table, keyed by (engine, variant). Lets /v1/voices
+    show variant-discovered voices while the engine is cold. Never raises —
+    a missing/uninitialized DB (unit tests, bare manager usage) is a no-op.
+    """
+    try:
+        import json
+        from datetime import datetime
+
+        from ..database import session as db_session
+        from ..database.models import EngineVoiceCache
+
+        if db_session.SessionLocal is None:
+            return
+        voices = payload.get("voices") or []
+        db = db_session.SessionLocal()
+        try:
+            row = db.get(EngineVoiceCache, (engine_id, variant_id or ""))
+            if row is None:
+                row = EngineVoiceCache(engine_id=engine_id, variant_id=variant_id or "")
+                db.add(row)
+            row.voices_json = json.dumps(voices)
+            row.refreshed_at = datetime.utcnow()
+            db.commit()
+        finally:
+            db.close()
+    except Exception:
+        log.debug("voice-cache persist failed for %s", engine_id, exc_info=True)
+
+
 # ─── EngineManager — public surface ───────────────────────────────────
 
 
@@ -986,6 +1017,11 @@ class EngineManager:
     def current_variant_id(self, engine_id: str) -> str | None:
         with self._lock:
             return self._current_variants.get(engine_id)
+
+    def loaded_ids(self) -> set[str]:
+        """Engine ids currently occupying any kind slot (alive only)."""
+        with self._lock:
+            return {p.manifest.id for p in self._loaded.values() if p.is_alive()}
 
     def request_cancel_load(self, engine_id: str) -> bool:
         """Mark an in-flight load for cancellation. Returns True if a load is
@@ -1148,7 +1184,13 @@ class EngineManager:
                     # Already loaded — just return current voices.
                     if variant is not None:
                         self._current_variants[engine_id] = variant
-                    return prior.get("/voices").json()
+                    payload = prior.get("/voices").json()
+                    _persist_voice_cache(
+                        engine_id,
+                        self._current_variants.get(engine_id) or m.default_variant_id,
+                        payload,
+                    )
+                    return payload
 
                 if progress:
                     progress("spawning", f"spawning {engine_id} subprocess")
@@ -1173,7 +1215,9 @@ class EngineManager:
                 self._current_variants[engine_id] = variant or m.default_variant_id or ""
             if progress:
                 progress("warming_up", f"{engine_id} ready")
-            return r.json()
+            payload = r.json()
+            _persist_voice_cache(engine_id, self._current_variants.get(engine_id), payload)
+            return payload
         finally:
             # Always clear the cancel flag — leaving stale "cancelled" state
             # would block the next load attempt.

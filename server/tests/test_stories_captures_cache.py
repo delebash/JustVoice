@@ -184,9 +184,7 @@ def test_cache_clear_rejects_unsupported_filters(tmp_path, monkeypatch):
     state._render_cache.put("kokoro", "ccc", b"z")
 
     with pytest.raises(ApiError):
-        asyncio.get_event_loop().run_until_complete(
-            cache_api.clear_cache(voice_id="af_bella")
-        )
+        asyncio.run(cache_api.clear_cache(voice_id="af_bella"))
     # Entry survived the rejected call.
     assert len(state._render_cache.entries()) == 1
 

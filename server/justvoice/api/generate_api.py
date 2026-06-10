@@ -33,6 +33,7 @@ from ..engines.base import SynthRequest
 from ..engines.manager import get_manager
 from ..errors import bad_request, internal, not_found
 from ..models import GenerateRequest
+from ..render_core import raise_if_swap_blocked
 
 
 def _samples_from_chunk_bytes(audio_bytes: bytes, is_wav: bool) -> np.ndarray:
@@ -151,19 +152,21 @@ async def generate(req: GenerateRequest) -> Response:
     if managed_owner is not None:
         return await _generate_via_manager(managed_owner, req)
 
-    # Voice belongs to a managed engine that isn't the currently-loaded one?
-    # Return a clear error rather than silently switching engines — the GUI
-    # filters its dropdown to the loaded engine's voices, so reaching this
-    # branch usually means an API caller passed an id from a different engine
-    # by mistake.
+    # Voice belongs to a managed engine that isn't the currently-loaded one —
+    # the swap-at-render contract (WS2). With allow_engine_swap (or the
+    # auto_engine_swap setting) we swap and proceed; otherwise the 409
+    # engine-swap-required problem tells the client to prompt + retry.
     static_owner = _find_static_voice_owner(req.voice)
     if static_owner is not None:
         if mgr.current_id() != static_owner:
-            raise bad_request(
-                f"voice {req.voice!r} belongs to engine {static_owner!r} which is not "
-                f"currently loaded. Load it on the Engines tab first, or pick a voice "
-                f"belonging to the loaded engine."
-            )
+            raise_if_swap_blocked(st, static_owner, req.allow_engine_swap)
+            try:
+                mgr.load(static_owner, device="auto")
+            except Exception as e:
+                raise bad_request(
+                    f"engine '{static_owner}' failed to load for voice {req.voice!r}: {e}. "
+                    f"Try POST /v1/engines/{static_owner}/load with explicit device + model_variant."
+                )
         return await _generate_via_manager(static_owner, req)
 
     stored = st.voices.get(req.voice)
@@ -171,8 +174,9 @@ async def generate(req: GenerateRequest) -> Response:
         # Stored voice's engine — may be managed or in-process.
         prompt_path = _resolve_audio_prompt_for_stored(stored)
         if mgr.get_manifest(stored.engine):
-            # Auto-load the managed engine if it's installed but not loaded.
+            # Managed engine not loaded → same swap contract as above.
             if mgr.current_id() != stored.engine:
+                raise_if_swap_blocked(st, stored.engine, req.allow_engine_swap)
                 try:
                     mgr.load(stored.engine, device="auto")
                 except Exception as e:

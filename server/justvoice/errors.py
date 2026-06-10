@@ -11,12 +11,25 @@ from fastapi.responses import JSONResponse
 
 
 class ApiError(HTTPException):
-    """HTTPException variant that flags the slug for RFC 7807 type uri."""
+    """HTTPException variant that flags the slug for RFC 7807 type uri.
 
-    def __init__(self, status_code: int, slug: str, title: str, detail: str):
+    `extra` fields are merged top-level into the problem+json body —
+    machine-readable context beyond the human `detail` string (e.g. the
+    engine-swap-required contract's from/to engine ids).
+    """
+
+    def __init__(
+        self,
+        status_code: int,
+        slug: str,
+        title: str,
+        detail: str,
+        extra: dict | None = None,
+    ):
         super().__init__(status_code=status_code, detail=detail)
         self.slug = slug
         self.title = title
+        self.extra = extra or {}
 
 
 def bad_request(detail: str) -> ApiError:
@@ -39,6 +52,36 @@ def conflict(detail: str) -> ApiError:
     return ApiError(409, "conflict", "Conflict", detail)
 
 
+def engine_swap_required(
+    detail: str,
+    *,
+    from_engine: str | None,
+    to_engine: str,
+    to_variant: str | None,
+    est_seconds: int | None,
+    weights_on_disk: bool,
+) -> ApiError:
+    """409 contract for swap-at-render (plan WS2): the resolved voice needs
+    an engine that isn't in its kind slot, and neither the request's
+    allow_engine_swap flag nor settings.generation.auto_engine_swap granted
+    the swap. The client catches code "engine-swap-required", prompts, and
+    retries with allow_engine_swap=true."""
+    return ApiError(
+        409,
+        "engine-swap-required",
+        "Engine Swap Required",
+        detail,
+        extra={
+            "code": "engine-swap-required",
+            "from_engine": from_engine,
+            "to_engine": to_engine,
+            "to_variant": to_variant,
+            "est_seconds": est_seconds,
+            "weights_on_disk": weights_on_disk,
+        },
+    )
+
+
 def not_implemented(detail: str) -> ApiError:
     return ApiError(501, "not-implemented", "Not Implemented", detail)
 
@@ -59,6 +102,8 @@ async def api_exception_handler(request: Request, exc: ApiError):
         "detail": exc.detail,
         "instance": request.url.path,
     }
+    if exc.extra:
+        body.update(exc.extra)
     return JSONResponse(
         status_code=exc.status_code,
         content=body,

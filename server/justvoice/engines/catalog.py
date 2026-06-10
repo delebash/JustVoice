@@ -13,6 +13,9 @@ game / podcast commercial-output use cases):
     attribution on the producing tool)
   - dia (Apache-2.0)
   - moss-tts (Apache-2.0 — upstream explicitly states "free commercial use")
+
+Plus one KIND="stt" engine:
+  - whisper (MIT code, Apache-2.0 weights) — dictation/transcription
 """
 
 from __future__ import annotations
@@ -29,6 +32,7 @@ def known_engines() -> list[EngineInfo]:
         tada(),
         dia(),
         moss_tts(),
+        whisper(),
     ]
 
 
@@ -158,6 +162,25 @@ def moss_tts() -> EngineInfo:
             sidecar=False, disk_space_mb=12000, gpu_runtimes=["cuda"]
         ),
         runtime_deps=["moss_tts", "torch"],
+    )
+
+
+def whisper() -> EngineInfo:
+    return EngineInfo(
+        id="whisper",
+        name="Whisper STT",
+        description=(
+            "OpenAI Whisper speech-to-text via transformers — powers dictation "
+            "captures and clone-sample transcripts. Sizes base / small / medium / "
+            "large (large-v3) / turbo (large-v3-turbo); base runs realtime on CPU."
+        ),
+        backend="python",
+        capabilities=["gpu_accel"],
+        prerequisites=Prerequisites(
+            sidecar=False, disk_space_mb=3100, gpu_runtimes=["cuda", "mps", "cpu"]
+        ),
+        runtime_deps=["transformers", "librosa", "torch"],
+        pip_packages=["transformers>=4.44", "librosa>=0.10", "soundfile>=0.12"],
     )
 
 

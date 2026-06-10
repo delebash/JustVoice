@@ -23,7 +23,7 @@ from ..delivery_merge import merge_delivery
 from ..errors import bad_request, internal, not_found
 from ..mastering import have_ffmpeg, master
 from ..models import ChapterLine, Delivery, RenderChapterRequest
-from ..render_core import concat_lines, render_line
+from ..render_core import _resolve_engine_for_voice, concat_lines, render_line
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["generation"])
@@ -145,9 +145,18 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
             f"lines count {len(lines)} > limit {settings.limits.chapter_max_lines}"
         )
 
-    rendered = []
-    for line in lines:
-        rl = render_line(
+    # Group-by-engine render order (WS2): a multi-engine cast renders all of
+    # engine A's lines, swaps once, renders engine B's, etc. — one swap per
+    # distinct engine per batch instead of one per block. The stable sort
+    # keeps each engine's lines in script order; output is reassembled by
+    # original position before concat, so playback order never changes.
+    engine_of = [_resolve_engine_for_voice(st, line.voice) or "" for line in lines]
+    order = sorted(range(len(lines)), key=lambda i: engine_of[i])
+
+    rendered: list = [None] * len(lines)
+    for i in order:
+        line = lines[i]
+        rendered[i] = render_line(
             st,
             voice=line.voice,
             text=line.text,
@@ -157,8 +166,8 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
             lexicons=merged_lexicons,
             cache_scope=req.cache_scope,
             use_cache=True,
+            allow_engine_swap=req.allow_engine_swap,
         )
-        rendered.append(rl)
 
     combined = concat_lines(rendered, silence_ms=req.between_lines.silence_ms)
 

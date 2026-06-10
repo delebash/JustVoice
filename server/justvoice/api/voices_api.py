@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter
@@ -33,15 +34,45 @@ def _stored_to_dto(rec: VoiceRecord) -> Voice:
     )
 
 
+def _cached_voice_lists() -> list[tuple[str, str, list[dict]]]:
+    """Rows from engine_voice_cache as (engine_id, variant_id, voices).
+    Empty when the DB isn't initialized (bare unit tests)."""
+    try:
+        from ..database import session as db_session
+        from ..database.models import EngineVoiceCache
+
+        if db_session.SessionLocal is None:
+            return []
+        db = db_session.SessionLocal()
+        try:
+            rows = db.query(EngineVoiceCache).all()
+            return [
+                (r.engine_id, r.variant_id or "", json.loads(r.voices_json or "[]"))
+                for r in rows
+            ]
+        finally:
+            db.close()
+    except Exception:
+        return []
+
+
 @router.get("/v1/voices", response_model=VoiceList, summary="List all voices (presets + stored)")
 async def list_voices() -> VoiceList:
     st = get_state()
     out: list[Voice] = []
 
+    mgr = get_manager()
+    loaded = mgr.loaded_ids()
+    seen: set[tuple[str, str]] = set()
+
+    def _flags(engine_id: str) -> tuple[bool, str | None]:
+        is_loaded = engine_id in loaded
+        return is_loaded, (mgr.current_variant_id(engine_id) if is_loaded else None)
+
     # 1. Static presets from managed engine manifests (always available, no
     #    subprocess needed). Kokoro ships 54 here; clone-only engines empty.
-    mgr = get_manager()
     for manifest in mgr.manifests().values():
+        eng_loaded, variant = _flags(manifest.id)
         for v in manifest.static_voices:
             out.append(
                 Voice(
@@ -51,10 +82,39 @@ async def list_voices() -> VoiceList:
                     name=v.get("name", v.get("id", "")),
                     language=v.get("language", "en"),
                     gender=v.get("gender", "") or "",
+                    engine_loaded=eng_loaded,
+                    variant_id=variant,
+                )
+            )
+            seen.add((manifest.id, v.get("id") or ""))
+
+    # 1.5 Cached live voice lists from previously loaded (engine, variant)
+    #     pairs — persisted by the manager on every successful load. Covers
+    #     variant-discovered voices while the engine is cold. Static presets
+    #     win on id collisions.
+    for engine_id, variant_id, cached in _cached_voice_lists():
+        eng_loaded = engine_id in loaded
+        for v in cached:
+            vid = v.get("id") or ""
+            if not vid or (engine_id, vid) in seen:
+                continue
+            seen.add((engine_id, vid))
+            out.append(
+                Voice(
+                    id=vid,
+                    engine=engine_id,
+                    source="preset",
+                    name=v.get("name", vid),
+                    language=v.get("language", "en"),
+                    gender=v.get("gender", "") or "",
+                    sample_url=v.get("sample_url"),
+                    engine_loaded=eng_loaded,
+                    variant_id=variant_id or None,
                 )
             )
 
     # 2. Presets from in-process engines (currently only external-openai-tts).
+    #    External providers have no load cost — ready() means renderable now.
     for engine in st.engines.all():
         for p in engine.voices():
             out.append(
@@ -66,12 +126,15 @@ async def list_voices() -> VoiceList:
                     language=p.language,
                     gender=p.gender or "",
                     sample_url=p.sample_url,
+                    engine_loaded=engine.ready(),
                 )
             )
 
     # 3. Stored (clones / designs / imports).
     for rec in st.voices.list():
-        out.append(_stored_to_dto(rec))
+        dto = _stored_to_dto(rec)
+        dto.engine_loaded, dto.variant_id = _flags(rec.engine)
+        out.append(dto)
     return VoiceList(voices=out)
 
 
