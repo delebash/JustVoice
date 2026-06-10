@@ -5,6 +5,35 @@
 
 ---
 
+## 2026-06-10 (remote session) — Q6 width sweep + Q7 audit pass
+
+**2 commits, pushed to `origin/claude/nice-franklin-dzisd5`** (remote env can't push main). Branch: `claude/nice-franklin-dzisd5`, shas `e8166c7` + `b12dd3a`.
+
+### Q6 — width architecture applied across all views (`e8166c7`)
+
+- `JvSelect` + `JvTextarea` gained the same content-typed `width` prop as JvInput.
+- Every untagged form control swept onto `--w-*` tokens (Train, Personas, Lexicons, Books, Settings, AudioTools, AudioChannels, Compare, Chapter, Webhooks, RenderLab, VoiceParamsModal, EffectsChainEditorModal, Captures/Voices searches).
+- Ad-hoc scoped-CSS pixel widths replaced with tokens where the content type matched.
+- **New shell tokens**: `--shell-form` (880px) / `--shell-page` (1100px) — all 9 views with hand-rolled page max-widths (860/900/920/1000/1080/1100) snapped to one of the two.
+- `AddProviderModal.vue` deleted (superseded-by-ProviderForm sweep item from the band below).
+
+### Q7 — audit pass (`b12dd3a`)
+
+- **Native-dialog ban enforced**: 4 `confirm()` calls → `confirmDialog()` (Settings corrections-clear, Webhooks delete, Books delete-project, AudioChannels delete-channel).
+- **Real bug**: VoicesView filter chips + type tags compared `clone/design/blend` against the server's `cloned/designed/blended` literals — filters never matched. Fixed + Imported/Trained chips added. `.jv-pill--accent` was an unstyled JvTag variant — styled (info-blue).
+- **Gender click-cycle persists now**: new `PATCH /v1/voices/{id}` (UpdateVoiceRequest + `VoiceStore.update`), localStorage map for engine presets. 7 new tests (`test_voices_update.py`).
+- **LineageViewer (task #98) was never mounted** — lifted-but-not-wired. ChapterView's lineage pill is now a button that opens it.
+- Dead inspector buttons (sample ▶/✕, effects + Add) disabled with explanatory titles per "disable don't hide".
+- `StatPill.vue` deleted (unused JustWrite leftover). SPDX headers added to 13 renderer files that lacked them.
+
+### Honest caveats
+
+- The authoritative Q6/Q7 plan text (`~/.claude/plans/1-what-are-the-magical-scone.md`) lives on the user's machine and was NOT readable from this remote env — work was done from the recap one-liners + codebase audit. The Q7 12-item list should be diffed against this session's fixes; unaddressed items remain open.
+- pytest 110/110, vite build clean. NOT runtime-clicked (no Tauri in this env) — the runtime-unverified list from the band below still stands, plus: LineageViewer open/close, PATCH gender round-trip from the UI, confirmDialog flows in the 4 converted views.
+- Container ruff 0.15.8 reports 45 pre-existing server lint errors at HEAD (newer ruff than local); untouched.
+
+---
+
 ## 2026-06-10 — Rule #6.1 (Affordance Table) added + 4 lies caught + tests added
 
 **11 commits this session.** Last sha: `4e58f87` (pushed to origin/main).
