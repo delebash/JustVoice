@@ -6,7 +6,7 @@ import { chromium } from "playwright";
 import { mkdir } from "fs/promises";
 
 const BASE = process.env.BASE || "http://localhost:17494";
-const OUT = process.env.OUT || "E:/Dev/Web/justtts-new/scripts/_shots";
+const OUT = process.env.OUT || "E:/Dev/Web/justvoice-new/scripts/_shots";
 const TAB = process.env.TAB || "Overview";
 
 await mkdir(OUT, { recursive: true });

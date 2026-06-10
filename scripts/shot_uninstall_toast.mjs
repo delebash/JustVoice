@@ -3,7 +3,7 @@
 import { chromium } from "playwright";
 
 const BASE = process.env.BASE || "http://localhost:17494";
-const OUT = process.env.OUT || "E:/Dev/Web/justtts-new/scripts/_shots";
+const OUT = process.env.OUT || "E:/Dev/Web/justvoice-new/scripts/_shots";
 const TARGET = process.env.TARGET || "luxtts";
 
 const browser = await chromium.launch();

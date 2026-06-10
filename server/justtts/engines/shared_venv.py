@@ -2,7 +2,7 @@
 host can drive it from the GUI's "Set up engines" action.
 
 Shared engines (manifest.ISOLATION == "shared", the default) all run against
-ONE Python interpreter at `server/justtts/engines/.shared-venv/`. Setup
+ONE Python interpreter at `server/justvoice/engines/.shared-venv/`. Setup
 detects GPU + OS, installs the right torch wheel, then bulk-installs every
 shared engine's `SHARED_INSTALL_STEPS`. Once the shared venv exists, clicking
 "Install" on a shared engine afterwards only downloads model files.
@@ -45,10 +45,10 @@ def detect_gpu() -> tuple[str, str | None, str]:
     """Returns (vendor, torch_index_url_or_None, label).
 
     Windows-side detection uses powershell Win32_VideoController; Linux-side
-    uses nvidia-smi. Override via JUSTTTS_TORCH_INDEX env var.
+    uses nvidia-smi. Override via JUSTVOICE_TORCH_INDEX env var.
     """
     # User override always wins.
-    override = os.environ.get("JUSTTTS_TORCH_INDEX")
+    override = os.environ.get("JUSTVOICE_TORCH_INDEX")
     if override:
         return "override", override, f"override({override})"
 
@@ -85,7 +85,7 @@ def detect_gpu() -> tuple[str, str | None, str]:
             pass
 
     # Linux ROCm: skip for now (would need rocm-smi detection); user can
-    # set JUSTTTS_TORCH_INDEX=https://download.pytorch.org/whl/rocm6.0
+    # set JUSTVOICE_TORCH_INDEX=https://download.pytorch.org/whl/rocm6.0
     return "cpu", None, "cpu"
 
 
@@ -139,9 +139,9 @@ def setup_shared_venv(
         raise InstallError(f"venv created but python not at {py}")
     check_cancel()
 
-    # 2. justtts_plugin (the SDK every engine subprocess imports).
-    plugin_dir = Path(__file__).resolve().parents[2] / "justtts_plugin"
-    emit("installing-plugin", f"installing justtts_plugin from {plugin_dir}")
+    # 2. justvoice_plugin (the SDK every engine subprocess imports).
+    plugin_dir = Path(__file__).resolve().parents[2] / "justvoice_plugin"
+    emit("installing-plugin", f"installing justvoice_plugin from {plugin_dir}")
     _run_uv_pip(uv, py, ["pip", "install", str(plugin_dir)], emit, check_cancel)
     check_cancel()
 

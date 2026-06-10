@@ -3,7 +3,7 @@
 import { chromium } from "playwright";
 
 const BASE = process.env.BASE || "http://127.0.0.1:17497";
-const OUT = process.env.OUT || "E:/Dev/Web/justtts-new/scripts/_shots";
+const OUT = process.env.OUT || "E:/Dev/Web/justvoice-new/scripts/_shots";
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });

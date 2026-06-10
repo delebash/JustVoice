@@ -2,12 +2,12 @@
 
 Runs in its own venv created by the JustVoice engine manager. The host
 spawns this script with `python engine.py serve --port 0`; we bind to a
-free port, write `PORT=<n>` to stdout (the `justtts_plugin.serve` shim
+free port, write `PORT=<n>` to stdout (the `justvoice_plugin.serve` shim
 handles that), then accept the host's HTTP requests.
 
-Model layout (the host puts files under $JUSTTTS_MODEL_DIR):
+Model layout (the host puts files under $JUSTVOICE_MODEL_DIR):
 
-    engines/kokoro/models/                          ← JUSTTTS_MODEL_DIR
+    engines/kokoro/models/                          ← JUSTVOICE_MODEL_DIR
       kokoro-multi-lang-v1_0/                       ← what k2-fsa's tarball unpacks into
         model.onnx, voices.bin, tokens.txt, lexicon-*.txt, espeak-ng-data/
 
@@ -29,7 +29,7 @@ _sys.path.insert(0, str(_P(__file__).resolve().parent))
 import logging
 from pathlib import Path
 
-from justtts_plugin import (
+from justvoice_plugin import (
     EmbeddedEngine,
     EngineMeta,
     PresetVoice,
@@ -40,7 +40,7 @@ from justtts_plugin import (
 
 from voices import VOICES, speaker_id_for  # noqa: E402  — same dir, see sys.path tweak above
 
-log = logging.getLogger("justtts.engines.kokoro")
+log = logging.getLogger("justvoice.engines.kokoro")
 
 
 class Kokoro(EmbeddedEngine):

@@ -3,7 +3,7 @@
   EffectsView — pedalboard effect chain editor + preset library.
   Left preset list, right detail editor with drag-reorderable effects.
 
-  Backend: server/justtts/api/effects.py exposes the effect catalog + preset
+  Backend: server/justvoice/api/effects.py exposes the effect catalog + preset
   CRUD. Pedalboard adoption triggered the Apache-2.0 → GPL-3.0-or-later flip.
 -->
 <script setup>

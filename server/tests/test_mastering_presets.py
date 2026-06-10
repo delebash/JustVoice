@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from justtts.models import MasterPreset, MasterPresetSettings
+from justvoice.models import MasterPreset, MasterPresetSettings
 
 
 @pytest.fixture

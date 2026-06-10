@@ -41,10 +41,10 @@
 | Theme toggle | ✅ Three-way: **light** / **dark** / **system** (follows OS via `prefers-color-scheme` media query). Persisted in `justvoice-ui` localStorage key. Implementation: `:root.dark` class toggle on `document.documentElement`. Auto-applied on rehydrate. |
 | Navigation | ✅ 80px left icon sidebar, 13 tabs (Generate, Stories, Chapters, Voices, Personas, Lexicons, Capture, Effects, Engines, Train, Compare, Cache, Settings) |
 | Sidecar pattern | ✅ JustWrite spawns JustVoice as a child process (existing pattern in `justwrite-app/src-tauri/src/lib.rs:944-1107`) |
-| Headless mode | ✅ Python sidecar runs standalone via `justtts-server serve`, serves UI at `/ui/` |
-| Cross-language contract | ✅ Pydantic models in `server/justtts/models.py` are the source of truth; OpenAPI snapshot diffed in CI |
-| Sidecar binary name | ✅ `justtts-server` (NOT `justtts` — avoids Windows `CreateProcessW` spawn-loop with the Tauri binary) |
-| Product brand name | ⏳ JustVoice (pending USPTO TESS + Google check — task #58). All docs use "JustVoice"; Python package + console-script `justtts`/`justtts-server` keep their names until the rename PR. |
+| Headless mode | ✅ Python sidecar runs standalone via `justvoice-server serve`, serves UI at `/ui/` |
+| Cross-language contract | ✅ Pydantic models in `server/justvoice/models.py` are the source of truth; OpenAPI snapshot diffed in CI |
+| Sidecar binary name | ✅ `justvoice-server` (NOT `justvoice` — avoids Windows `CreateProcessW` spawn-loop with the Tauri binary) |
+| Product brand name | ⏳ JustVoice (pending USPTO TESS + Google check — task #58). All docs use "JustVoice"; Python package + console-script `justvoice`/`justvoice-server` keep their names until the rename PR. |
 
 ---
 
@@ -128,7 +128,7 @@ Voicebox's loading screen rotates 20 friendly messages every 3 seconds ("Warming
 - "Polishing voice embedding space..."
 - "Ready when you are..."
 
-The actual `_run_startup` (in `server/justtts/app.py`) does:
+The actual `_run_startup` (in `server/justvoice/app.py`) does:
 
 1. Log version + Python + platform info
 2. SQLite migrations (idempotent column-existence checks, <50ms)
@@ -509,7 +509,7 @@ training_jobs
 
 ## 5. HTTP API surface (v1.0 endpoints)
 
-Versioned `/v1/*`. All shapes from `server/justtts/models.py`. OpenAPI snapshot diffed in CI.
+Versioned `/v1/*`. All shapes from `server/justvoice/models.py`. OpenAPI snapshot diffed in CI.
 
 ### Voice + profile
 - `GET /v1/voices` — list profiles

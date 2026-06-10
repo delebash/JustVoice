@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import math
 
-from justtts.audio.analyzer import analyze, compare
+from justvoice.audio.analyzer import analyze, compare
 
 
 def test_sine_wave_has_expected_peak(sine_wav: bytes) -> None:

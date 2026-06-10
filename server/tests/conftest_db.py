@@ -13,8 +13,8 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from justtts.database.models import Base
-from justtts.database import migrations as migrations_mod
+from justvoice.database.models import Base
+from justvoice.database import migrations as migrations_mod
 
 
 @pytest.fixture

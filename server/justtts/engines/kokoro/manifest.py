@@ -39,7 +39,7 @@ REQUIREMENTS = {
 
 # uv pip install steps run against engines/kokoro/.venv.  No torch needed
 # — sherpa-onnx ships its own ONNX runtime as a wheel.  numpy comes in via
-# justtts-plugin (the host installs that one automatically).
+# justvoice-plugin (the host installs that one automatically).
 INSTALL = [
     # Python dep.
     {"kind": "pip", "packages": ["sherpa-onnx>=1.13"]},

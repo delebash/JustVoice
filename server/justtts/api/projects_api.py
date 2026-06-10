@@ -425,7 +425,7 @@ async def remove_from_cast(
 # ── Multi-adapter import pipeline ─────────────────────────────────────────
 #
 # Replaces the original JustWrite-only endpoint. Sources are pluggable
-# (see server/justtts/imports/) and the adapter registry produces a
+# (see server/justvoice/imports/) and the adapter registry produces a
 # normalized StandardImport that this endpoint materializes into ORM
 # rows. JustWrite is one adapter among several (csv_lines, srt,
 # audacity_labels, justvoice_standard, elevenlabs-stub).

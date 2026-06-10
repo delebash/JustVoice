@@ -1,5 +1,5 @@
 [project]
-name = "justtts"
+name = "justvoice"
 version = "0.0.1"
 description = "An open-source TTS server built for audiobook production, useful for any TTS workload."
 readme = "README.md"
@@ -10,7 +10,7 @@ keywords = ["tts", "text-to-speech", "audiobook", "speech-synthesis", "voice-clo
 
 # Core dependencies — these are needed even for the empty-engine
 # install. ML/engine deps are extras so users can `pip install
-# justtts[kokoro]` or `[chatterbox]` etc.
+# justvoice[kokoro]` or `[chatterbox]` etc.
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.32",
@@ -59,19 +59,19 @@ training = [
 dev = ["pytest>=8", "pytest-asyncio>=0.24", "playwright>=1.48", "ruff>=0.7"]
 
 [project.scripts]
-# Named `justtts-server` (not `justtts`) so it doesn't collide with the
-# Tauri desktop binary, which is `justtts.exe`. The Rust shell spawns
+# Named `justvoice-server` (not `justvoice`) so it doesn't collide with the
+# Tauri desktop binary, which is `justvoice.exe`. The Rust shell spawns
 # this command in dev mode; on Windows, CreateProcessW resolves command
 # names relative to the parent binary's directory first — using the same
 # name would cause the shell to spawn itself, opening windows forever.
-justtts-server = "justtts.cli:app"
+justvoice-server = "justvoice.cli:app"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["justtts*"]
+include = ["justvoice*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,4 +1,4 @@
-# justtts-plugin
+# justvoice-plugin
 
 Tiny SDK every JustVoice engine subprocess imports. Provides:
 
@@ -10,8 +10,8 @@ Tiny SDK every JustVoice engine subprocess imports. Provides:
 ## Writing an engine adapter
 
 ```python
-# server/justtts/engines/myengine/engine.py
-from justtts_plugin import EmbeddedEngine, EngineMeta, PresetVoice, SynthOutput, serve
+# server/justvoice/engines/myengine/engine.py
+from justvoice_plugin import EmbeddedEngine, EngineMeta, PresetVoice, SynthOutput, serve
 
 class MyEngine(EmbeddedEngine):
     meta = EngineMeta(

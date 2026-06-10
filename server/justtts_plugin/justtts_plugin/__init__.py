@@ -1,8 +1,8 @@
-"""justtts-plugin — minimal SDK every JustVoice engine subprocess imports.
+"""justvoice-plugin — minimal SDK every JustVoice engine subprocess imports.
 
 Engine authors write:
 
-    from justtts_plugin import EmbeddedEngine, PresetVoice, SynthOutput, serve
+    from justvoice_plugin import EmbeddedEngine, PresetVoice, SynthOutput, serve
 
     class MyEngine(EmbeddedEngine):
         def load(self, device="auto", variant=None):

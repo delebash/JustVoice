@@ -583,7 +583,7 @@ onMounted(() => {
     <p v-if="!engines.length" class="jv-banner jv-banner--warn">
       No engines listed — the Python server may not be running. Check the
       <a href="#settings">Settings → Connection</a> tab for the server URL,
-      or run <code class="jv-mono">justtts-server serve</code> from a terminal.
+      or run <code class="jv-mono">justvoice-server serve</code> from a terminal.
     </p>
 
     <!-- Engine cards — one per discovered engine. Replaces the prior

@@ -65,7 +65,7 @@ Spawns a Tauri window with the Vue UI. The Python sidecar (FastAPI on port 17494
 ```
 cd server
 pip install -e .[kokoro]
-justtts-server serve --port 17494
+justvoice-server serve --port 17494
 ```
 
 That's it. The same UI is served at `http://localhost:17494/ui/`. Power users:
@@ -75,7 +75,7 @@ That's it. The same UI is served at `http://localhost:17494/ui/`. Power users:
 - Bring up the Python server via Docker / systemd / supervisor
 - Script against the HTTP API (`/v1/render_chapter`, `/v1/voices`, etc.)
 
-> **Important**: the Python script is `justtts-server`, not `justtts`. On Windows the Tauri binary is `justtts.exe`; using the same name would cause an infinite spawn loop. Never rename.
+> **Important**: the Python script is `justvoice-server`, not `justvoice`. On Windows the Tauri binary is `justvoice.exe`; using the same name would cause an infinite spawn loop. Never rename.
 
 ---
 
@@ -870,7 +870,7 @@ result = await mcp.call("justvoice.render_block", {
 Stale Python sidecar squatting on port 17494. The Tauri shell evicts stale listeners on startup (kills any LISTENING process on the port). If it's stuck:
 
 - Open Task Manager / Activity Monitor
-- Find `justtts-server` or `python` listening on 17494
+- Find `justvoice-server` or `python` listening on 17494
 - Kill it manually
 - Restart JustVoice
 

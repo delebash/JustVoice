@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from justtts.storage.atomic import write_json_atomic, read_json
+from justvoice.storage.atomic import write_json_atomic, read_json
 
 
 def test_round_trip(tmp_storage_dir: Path) -> None:

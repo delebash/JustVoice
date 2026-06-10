@@ -10,7 +10,7 @@ collects them into a registry and exposes:
   - `run_adapter(source_id, raw, filename)` — convenience wrapper
 
 Adding a new adapter:
-  1. Create `server/justtts/imports/adapters/<name>.py` exporting
+  1. Create `server/justvoice/imports/adapters/<name>.py` exporting
      `SOURCE_ID` + `parse(raw, *, filename)`.
   2. Append an `_ADAPTER_REGISTRY` entry below with the AdapterInfo.
   3. Document the input shape in `docs/import-formats.md`.

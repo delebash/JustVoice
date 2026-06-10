@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 
-from justtts.database.models import Block, Persona, Project, ProjectPersona, Scene
+from justvoice.database.models import Block, Persona, Project, ProjectPersona, Scene
 
 pytest_plugins = ["tests.conftest_db"]
 

@@ -491,13 +491,13 @@ const MCP_SNIPPETS = {
   claude_desktop: `{
   "mcpServers": {
     "justvoice": {
-      "command": "justtts-server",
+      "command": "justvoice-server",
       "args": ["mcp"],
       "env": { "JV_CLIENT_ID": "claude_desktop_main" }
     }
   }
 }`,
-  claude_code: "claude mcp add justvoice -- justtts-server mcp --client-id claude_code_v1",
+  claude_code: "claude mcp add justvoice -- justvoice-server mcp --client-id claude_code_v1",
   stdio: `"C:\\\\Program Files\\\\JustVoice\\\\mcp-shim.exe" --endpoint http://localhost:17494/mcp --client-id custom_demo`,
 };
 
@@ -637,7 +637,7 @@ onMounted(() => {
           </tbody>
         </table>
         <p class="jv-muted" style="font-size: 11.5px; margin-top: 12px">
-          Auth: set <code class="jv-mono">JUSTTTS_BEARER_TOKEN</code> on the server + pass
+          Auth: set <code class="jv-mono">JUSTVOICE_BEARER_TOKEN</code> on the server + pass
           <code class="jv-mono">Authorization: Bearer &lt;token&gt;</code>. Loopback (127.0.0.1)
           requests skip auth by default.
         </p>
@@ -1483,7 +1483,7 @@ onMounted(() => {
           <pre class="jv-code-block">{
   "mcpServers": {
     "justvoice": {
-      "command": "justtts-server",
+      "command": "justvoice-server",
       "args": ["mcp"],
       "env": { "JV_CLIENT_ID": "claude_desktop_main" }
     }
@@ -1494,7 +1494,7 @@ onMounted(() => {
 
         <h4 style="margin: 14px 0 6px; font-size: 12.5px; color: var(--ink-2)">claude-code CLI</h4>
         <div class="snippet-row">
-          <pre class="jv-code-block">claude mcp add justvoice -- justtts-server mcp --client-id claude_code_v1</pre>
+          <pre class="jv-code-block">claude mcp add justvoice -- justvoice-server mcp --client-id claude_code_v1</pre>
           <JvButton variant="ghost" size="sm" label="Copy" @click="copySnippet('claude_code')" />
         </div>
 

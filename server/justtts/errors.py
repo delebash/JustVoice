@@ -53,7 +53,7 @@ def internal(detail: str = "An internal error occurred. See server logs for deta
 
 async def api_exception_handler(request: Request, exc: ApiError):
     body = {
-        "type": f"https://justtts.dev/errors/{exc.slug}",
+        "type": f"https://justvoice.dev/errors/{exc.slug}",
         "title": exc.title,
         "status": exc.status_code,
         "detail": exc.detail,
@@ -79,7 +79,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     elif exc.status_code == 422:
         slug, title = "validation-error", "Validation Error"
     body = {
-        "type": f"https://justtts.dev/errors/{slug}",
+        "type": f"https://justvoice.dev/errors/{slug}",
         "title": title,
         "status": exc.status_code,
         "detail": str(exc.detail),

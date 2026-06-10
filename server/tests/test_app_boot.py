@@ -19,7 +19,7 @@ def _route_paths(app) -> set[str]:
 
 
 def test_app_creates_without_error() -> None:
-    from justtts.app import create_app
+    from justvoice.app import create_app
 
     app = create_app()
     assert app is not None
@@ -28,7 +28,7 @@ def test_app_creates_without_error() -> None:
 
 def test_contract_endpoints_registered() -> None:
     """Sanity-check the CONTRACT.md endpoints exist after app boot."""
-    from justtts.app import create_app
+    from justvoice.app import create_app
 
     app = create_app()
     paths = _route_paths(app)
@@ -46,7 +46,7 @@ def test_contract_endpoints_registered() -> None:
 
 def test_no_v0_routes_leaked() -> None:
     """All API surface should be under /v1 (or /ui for the renderer)."""
-    from justtts.app import create_app
+    from justvoice.app import create_app
 
     app = create_app()
     paths = _route_paths(app)

@@ -59,7 +59,7 @@ jobs:
         run: pip install -e "./server[dev]"
 
       - name: ruff check
-        run: ruff check server/justtts/
+        run: ruff check server/justvoice/
 
       - name: pytest
         run: python -m pytest server/tests/ -x

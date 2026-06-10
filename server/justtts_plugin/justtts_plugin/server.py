@@ -29,7 +29,7 @@ from pydantic import BaseModel, ConfigDict
 from .embedded import EmbeddedEngine
 from .protocol import SynthRequest
 
-log = logging.getLogger("justtts_plugin.server")
+log = logging.getLogger("justvoice_plugin.server")
 
 
 # ─── Pydantic models for the HTTP envelope ─────────────────────────────
@@ -132,9 +132,9 @@ def make_app(engine: EmbeddedEngine) -> FastAPI:
 
         media = "audio/wav" if out.is_wav_container else "audio/L16"
         headers = {
-            "X-JustTTS-Sample-Rate": str(out.sample_rate),
-            "X-JustTTS-Channels": str(out.channels),
-            "X-JustTTS-WAV-Container": "1" if out.is_wav_container else "0",
+            "X-JustVoice-Sample-Rate": str(out.sample_rate),
+            "X-JustVoice-Channels": str(out.channels),
+            "X-JustVoice-WAV-Container": "1" if out.is_wav_container else "0",
         }
         return Response(content=out.audio_bytes, media_type=media, headers=headers)
 
@@ -201,7 +201,7 @@ def serve(engine: EmbeddedEngine) -> None:
 
     # Configure logging to stderr so it doesn't pollute the PORT= handshake on stdout.
     logging.basicConfig(
-        level=os.environ.get("JUSTTTS_LOG_LEVEL", "INFO"),
+        level=os.environ.get("JUSTVOICE_LOG_LEVEL", "INFO"),
         stream=sys.stderr,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )

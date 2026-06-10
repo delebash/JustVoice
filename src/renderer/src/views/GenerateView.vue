@@ -77,7 +77,7 @@ const stylePrompt = ref("");
 // Capability detail fetched from GET /v1/engines/capabilities. Variant
 // ids (chatterbox-turbo, chatterbox-multilingual) take precedence over
 // base engine ids. Falls back to base engine id when no variant entry.
-// See server/justtts/engines/capability_details.py for the source.
+// See server/justvoice/engines/capability_details.py for the source.
 const capabilityMap = ref({});  // { engine_id: EngineCapabilityDetail }
 
 function lookupCapability(engineId) {
@@ -809,7 +809,7 @@ onMounted(refreshVoices);
         </JvField>
 
         <!-- Engine-specific knobs — rendered straight from the engine's
-             capability manifest (server/justtts/engines/capability_details.py).
+             capability manifest (server/justvoice/engines/capability_details.py).
              Non-advanced knobs show inline; advanced ones live in the
              collapsible below. Each KnobSpec → paired slider + number.
              Replaces the old "Raw engine knobs (JSON)" textarea — users

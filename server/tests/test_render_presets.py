@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 from sqlalchemy.exc import IntegrityError
 
-from justtts.database.models import RenderPreset, VoiceProfile
+from justvoice.database.models import RenderPreset, VoiceProfile
 
 pytest_plugins = ["tests.conftest_db"]
 

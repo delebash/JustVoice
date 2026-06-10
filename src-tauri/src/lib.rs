@@ -79,7 +79,7 @@ impl SidecarState {
 // ── Sidecar spawn helpers ────────────────────────────────────────────────
 
 fn spawn_sidecar() -> std::io::Result<Option<Child>> {
-    if std::env::var("JUSTTTS_DEV_NO_SIDECAR").is_ok() {
+    if std::env::var("JUSTVOICE_DEV_NO_SIDECAR").is_ok() {
         return Ok(None);
     }
 
@@ -99,24 +99,24 @@ fn spawn_sidecar() -> std::io::Result<Option<Child>> {
         eprintln!("[sidecar] port {SERVER_PORT} freed");
     }
 
-    // IMPORTANT: never spawn an unqualified `justtts` — the Tauri binary is
-    // also `justtts.exe`, and Windows CreateProcessW searches the running
+    // IMPORTANT: never spawn an unqualified `justvoice` — the Tauri binary is
+    // also `justvoice.exe`, and Windows CreateProcessW searches the running
     // binary's directory first, so that name resolves to OUR binary,
     // spawning a new desktop window in an infinite loop.
     let cmd = if cfg!(debug_assertions) {
-        match Command::new("justtts-server").arg("serve").spawn() {
+        match Command::new("justvoice-server").arg("serve").spawn() {
             Ok(child) => child,
             Err(_) => Command::new("python")
-                .args(["-m", "justtts.cli", "serve"])
+                .args(["-m", "justvoice.cli", "serve"])
                 .spawn()?,
         }
     } else {
         let exe = std::env::current_exe()?;
         let dir = exe.parent().unwrap_or_else(|| std::path::Path::new("."));
         let bin = if cfg!(windows) {
-            dir.join("justtts-server.exe")
+            dir.join("justvoice-server.exe")
         } else {
-            dir.join("justtts-server")
+            dir.join("justvoice-server")
         };
         Command::new(bin).spawn()?
     };

@@ -8,7 +8,7 @@ import time
 
 import pytest
 
-from justtts.api import voice_preview_api as vp
+from justvoice.api import voice_preview_api as vp
 
 
 @pytest.mark.asyncio

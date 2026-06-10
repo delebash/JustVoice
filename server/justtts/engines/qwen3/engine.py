@@ -14,7 +14,7 @@ _sys.path.insert(0, str(_P(__file__).resolve().parent))
 
 import logging
 
-from justtts_plugin import (
+from justvoice_plugin import (
     EmbeddedEngine,
     EngineMeta,
     PresetVoice,
@@ -23,7 +23,7 @@ from justtts_plugin import (
     serve,
 )
 
-log = logging.getLogger("justtts.engines.qwen3")
+log = logging.getLogger("justvoice.engines.qwen3")
 
 QWEN_REPO = "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
 

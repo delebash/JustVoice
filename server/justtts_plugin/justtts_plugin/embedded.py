@@ -14,7 +14,7 @@ from pathlib import Path
 
 from .protocol import EngineMeta, PresetVoice, SynthOutput, SynthRequest, VoiceCloneResponse
 
-logger = logging.getLogger("justtts_plugin.embedded")
+logger = logging.getLogger("justvoice_plugin.embedded")
 
 
 class EmbeddedEngine:
@@ -28,7 +28,7 @@ class EmbeddedEngine:
     def __init__(self, model_dir: Path | None = None):
         # model_dir is where the host has placed (or expects) this engine's
         # downloaded model files. The host passes this in via env var
-        # JUSTTTS_MODEL_DIR when it spawns the subprocess; the subclass can
+        # JUSTVOICE_MODEL_DIR when it spawns the subprocess; the subclass can
         # use it as-is or ignore it (e.g. if it wants HF cache instead).
         self.model_dir = model_dir or self._default_model_dir()
         self._loaded = False
@@ -62,9 +62,9 @@ class EmbeddedEngine:
         return self._loaded
 
     def _default_model_dir(self) -> Path:
-        """Where the host puts model files when JUSTTTS_MODEL_DIR isn't set
+        """Where the host puts model files when JUSTVOICE_MODEL_DIR isn't set
         (mostly during local development of an engine)."""
-        env = os.environ.get("JUSTTTS_MODEL_DIR")
+        env = os.environ.get("JUSTVOICE_MODEL_DIR")
         if env:
             return Path(env)
         return Path.cwd() / ".models"

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import pytest
 
-from justtts.audio.wav import parse_wav_header, strip_wav_header, write_wav_container
+from justvoice.audio.wav import parse_wav_header, strip_wav_header, write_wav_container
 
 
 def test_round_trip_preserves_pcm(synth_sine_pcm: bytes) -> None:

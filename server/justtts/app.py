@@ -188,7 +188,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     else:
         log.warning(
             "UI build not found — headless UI disabled. Run `npm run build:vite` "
-            "to produce dist/, or set JUSTTTS_UI_DIR."
+            "to produce dist/, or set JUSTVOICE_UI_DIR."
         )
 
     return app
@@ -197,10 +197,10 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 def _locate_ui_dir() -> Path | None:
     """Find the Vite build output (dist/) across dev + packaged layouts."""
     candidates: list[Path] = []
-    override = os.environ.get("JUSTTTS_UI_DIR")
+    override = os.environ.get("JUSTVOICE_UI_DIR")
     if override:
         candidates.append(Path(override))
-    # Source layout: server/justtts/app.py -> parents[2] is the repo root.
+    # Source layout: server/justvoice/app.py -> parents[2] is the repo root.
     candidates.append(Path(__file__).resolve().parents[2] / "dist")
     # Packaged / cwd fallback.
     candidates.append(Path.cwd() / "dist")

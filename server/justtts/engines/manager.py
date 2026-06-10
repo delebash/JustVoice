@@ -1,8 +1,8 @@
 """Subprocess engine manager — discovery, install (uv), lifecycle, HTTP proxy.
 
-Each engine lives in `server/justtts/engines/<id>/` with three source files:
+Each engine lives in `server/justvoice/engines/<id>/` with three source files:
 - `manifest.py`   declarative metadata + install steps
-- `engine.py`    adapter that subclasses justtts_plugin.EmbeddedEngine
+- `engine.py`    adapter that subclasses justvoice_plugin.EmbeddedEngine
 - `requirements.txt`  pip requirements
 
 On Install: `uv venv` creates `engines/<id>/.venv/`, then we run each step
@@ -277,7 +277,7 @@ def discover_engines() -> dict[str, EngineManifest]:
         if not (child / "__init__.py").is_file():
             log.warning("engine dir %s has manifest.py but no __init__.py — skipping", child)
             continue
-        module_name = f"justtts.engines.{child.name}.manifest"
+        module_name = f"justvoice.engines.{child.name}.manifest"
         try:
             # Always re-import so manifest edits are picked up on refresh.
             if module_name in importlib.sys.modules:
@@ -319,7 +319,7 @@ def _detect_torch_index_url() -> tuple[str | None, str]:
     (CPU-only wheels). Detection logic for CUDA / Intel Arc / Apple Silicon.
     """
     # User override always wins.
-    override = os.environ.get("JUSTTTS_TORCH_INDEX")
+    override = os.environ.get("JUSTVOICE_TORCH_INDEX")
     if override:
         return override, f"override({override})"
 
@@ -334,14 +334,14 @@ def _detect_torch_index_url() -> tuple[str | None, str]:
             # 2.7+). cu128 only ships wheels for torch 2.7+; using it as
             # the default breaks engines that pin older torch (chatterbox
             # pins 2.6.0). Users on CUDA 12.8 with a torch>=2.7 engine
-            # can override via JUSTTTS_TORCH_INDEX=https://download.pytorch.org/whl/cu128.
+            # can override via JUSTVOICE_TORCH_INDEX=https://download.pytorch.org/whl/cu128.
             return "https://download.pytorch.org/whl/cu124", "cuda-124"
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
 
     # Intel Arc uses XPU wheels. We don't auto-detect Arc reliably, so
-    # users with Arc set JUSTTTS_TORCH_INDEX themselves.
-    override = os.environ.get("JUSTTTS_TORCH_INDEX")
+    # users with Arc set JUSTVOICE_TORCH_INDEX themselves.
+    override = os.environ.get("JUSTVOICE_TORCH_INDEX")
     if override:
         return override, f"override({override})"
 
@@ -480,10 +480,10 @@ def _install_engine_isolated(
     if not python_exe.is_file():
         raise InstallError(f"venv created but python not found at {python_exe}")
 
-    # 2. Always install justtts-plugin first so the engine subprocess has its
+    # 2. Always install justvoice-plugin first so the engine subprocess has its
     #    base class + serve() shim available.
-    plugin_dir = Path(__file__).resolve().parents[2] / "justtts_plugin"
-    emit("installing-plugin", f"installing justtts_plugin from {plugin_dir}")
+    plugin_dir = Path(__file__).resolve().parents[2] / "justvoice_plugin"
+    emit("installing-plugin", f"installing justvoice_plugin from {plugin_dir}")
     _run_uv_pip(uv, python_exe, ["pip", "install", str(plugin_dir)], emit, check_cancel)
 
     # 3. Execute each step from manifest.INSTALL.
@@ -804,8 +804,8 @@ class EngineProcess:
         env.pop("HUGGINGFACE_HUB_CACHE", None)
         env.pop("TRANSFORMERS_CACHE", None)
         env.pop("HF_HUB_CACHE", None)
-        env["JUSTTTS_MODEL_DIR"] = str(self.manifest.models_dir)
-        env["JUSTTTS_ENGINE_DIR"] = str(self.manifest.engine_dir)
+        env["JUSTVOICE_MODEL_DIR"] = str(self.manifest.models_dir)
+        env["JUSTVOICE_ENGINE_DIR"] = str(self.manifest.engine_dir)
 
         cmd = [str(python_exe), str(engine_py), "serve", "--port", "0"]
         log.info("spawning engine subprocess: %s", " ".join(cmd))
@@ -1134,9 +1134,9 @@ class EngineManager:
         if r.status_code != 200:
             raise RuntimeError(f"engine synth failed: {r.text}")
         # Mirror the engine's audio headers back through to the host caller.
-        sample_rate = r.headers.get("X-JustTTS-Sample-Rate")
-        channels = r.headers.get("X-JustTTS-Channels")
-        is_wav = r.headers.get("X-JustTTS-WAV-Container") == "1"
+        sample_rate = r.headers.get("X-JustVoice-Sample-Rate")
+        channels = r.headers.get("X-JustVoice-Channels")
+        is_wav = r.headers.get("X-JustVoice-WAV-Container") == "1"
         return r.content, {
             "media_type": r.headers.get("content-type", "audio/wav"),
             "sample_rate": int(sample_rate) if sample_rate else None,

@@ -53,7 +53,7 @@ class BearerAuthMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=401,
                 content={
-                    "type": "https://justtts.dev/errors/unauthorized",
+                    "type": "https://justvoice.dev/errors/unauthorized",
                     "title": "Unauthorized",
                     "status": 401,
                     "detail": "Authorization header missing or malformed",
@@ -66,7 +66,7 @@ class BearerAuthMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=403,
                 content={
-                    "type": "https://justtts.dev/errors/forbidden",
+                    "type": "https://justvoice.dev/errors/forbidden",
                     "title": "Forbidden",
                     "status": 403,
                     "detail": "Bearer token not accepted",

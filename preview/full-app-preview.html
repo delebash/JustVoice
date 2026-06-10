@@ -314,7 +314,7 @@ p.note code{background:var(--surface-3);padding:1px 5px;border-radius:3px;font-s
       <strong>Server not reachable at <code>http://127.0.0.1:17494</code></strong>
     </div>
     <p style="font-size:12.5px;line-height:1.55;margin:0 0 6px">
-      The Python sidecar isn't responding, so engines / voices / projects can't be listed. If you launched via the Tauri desktop app, the sidecar should auto-start — if it didn't, the most likely cause is the <code>justtts-server</code> command isn't installed yet.
+      The Python sidecar isn't responding, so engines / voices / projects can't be listed. If you launched via the Tauri desktop app, the sidecar should auto-start — if it didn't, the most likely cause is the <code>justvoice-server</code> command isn't installed yet.
     </p>
     <details>
       <summary style="cursor:pointer;font-size:12px;font-weight:600;padding:4px 0">First-time setup — install the Python sidecar</summary>
@@ -329,7 +329,7 @@ pip install -e .[kokoro]</pre>
     </details>
   </div>
 
-  <p class="note"><span class="tag-info">info</span><strong>Headless mode also available.</strong> Launch the Python sidecar standalone via <code>justtts-server serve --port 17494</code>. The same UI is served at <code>http://localhost:17494/ui/</code> so you can run JustVoice on a remote box and hit it from any browser.</p>
+  <p class="note"><span class="tag-info">info</span><strong>Headless mode also available.</strong> Launch the Python sidecar standalone via <code>justvoice-server serve --port 17494</code>. The same UI is served at <code>http://localhost:17494/ui/</code> so you can run JustVoice on a remote box and hit it from any browser.</p>
 
   <div class="section">
     <h3>Catalogue <span class="src-tag jtorig">JustVoice</span></h3>

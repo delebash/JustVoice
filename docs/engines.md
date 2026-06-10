@@ -69,7 +69,7 @@ Switching CUDA versions is a 4-phase flow: idle → stopping engines → waiting
 
 ## Per-engine venv isolation
 
-Each engine lives at `server/justtts/engines/<engine_id>/.venv/`. Installing Chatterbox writes to its own venv; Kokoro's venv is untouched. This is JustVoice's main reliability advantage over flat-environment TTS tools — engine-A's broken dependency upgrade can't take down engine-B's renders.
+Each engine lives at `server/justvoice/engines/<engine_id>/.venv/`. Installing Chatterbox writes to its own venv; Kokoro's venv is untouched. This is JustVoice's main reliability advantage over flat-environment TTS tools — engine-A's broken dependency upgrade can't take down engine-B's renders.
 
 ## External (OpenAI-compatible) providers
 

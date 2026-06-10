@@ -2,7 +2,7 @@
 import { chromium } from "playwright";
 
 const BASE = process.env.BASE || "http://localhost:1430";
-const OUT = process.env.OUT || "E:/Dev/Web/justtts-new/scripts/_shots";
+const OUT = process.env.OUT || "E:/Dev/Web/justvoice-new/scripts/_shots";
 const TABS = (process.env.TABS || "Engines,Settings,Generate,Voices").split(",");
 
 const browser = await chromium.launch();

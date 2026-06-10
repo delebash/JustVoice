@@ -15,7 +15,7 @@ _sys.path.insert(0, str(_P(__file__).resolve().parent))
 
 import logging
 
-from justtts_plugin import (
+from justvoice_plugin import (
     EmbeddedEngine,
     EngineMeta,
     PresetVoice,
@@ -24,7 +24,7 @@ from justtts_plugin import (
     serve,
 )
 
-log = logging.getLogger("justtts.engines.dia")
+log = logging.getLogger("justvoice.engines.dia")
 
 DIA_HF_REPO = "nari-labs/Dia-1.6B-0626"
 

@@ -7,7 +7,7 @@ against silent shape drift.
 
 from __future__ import annotations
 
-from justtts.models import (
+from justvoice.models import (
     MasterPresetSettings,
     Settings,
     SettingsPatch,

@@ -20,15 +20,15 @@ from .models import Settings
 from .paths import default_data_dir
 from .version import VERSION
 
-app = typer.Typer(name="justtts", no_args_is_help=True, help="JustVoice server CLI")
+app = typer.Typer(name="justvoice", no_args_is_help=True, help="JustVoice server CLI")
 
 
 @app.command()
 def serve(
-    host: str | None = typer.Option(None, "--host", envvar="JUSTTTS_HOST"),
-    port: int | None = typer.Option(None, "--port", envvar="JUSTTTS_PORT"),
-    data_dir: Path | None = typer.Option(None, "--data-dir", envvar="JUSTTTS_DATA_DIR"),
-    log_level: str = typer.Option("info", "--log-level", envvar="JUSTTTS_LOG_LEVEL"),
+    host: str | None = typer.Option(None, "--host", envvar="JUSTVOICE_HOST"),
+    port: int | None = typer.Option(None, "--port", envvar="JUSTVOICE_PORT"),
+    data_dir: Path | None = typer.Option(None, "--data-dir", envvar="JUSTVOICE_DATA_DIR"),
+    log_level: str = typer.Option("info", "--log-level", envvar="JUSTVOICE_LOG_LEVEL"),
     no_docs: bool = typer.Option(False, "--no-docs", help="Disable Swagger/Redoc UIs"),
 ):
     """Boot the JustVoice server."""

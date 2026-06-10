@@ -17,12 +17,12 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from justtts.api import takes_api
-from justtts.database import get_db
-from justtts.database.models import Block, Generation, Scene, Project, Take, VoiceProfile
-from justtts.errors import ApiError, api_exception_handler
+from justvoice.api import takes_api
+from justvoice.database import get_db
+from justvoice.database.models import Block, Generation, Scene, Project, Take, VoiceProfile
+from justvoice.errors import ApiError, api_exception_handler
 from fastapi import HTTPException
-from justtts.errors import http_exception_handler
+from justvoice.errors import http_exception_handler
 
 pytest_plugins = ["tests.conftest_db"]
 

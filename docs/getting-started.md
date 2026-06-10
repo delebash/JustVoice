@@ -23,7 +23,7 @@ JustVoice is a cross-platform voice-production studio. Five audiences share one 
 
 JustVoice runs without the desktop shell. From a terminal:
 
-    justtts-server serve --port 17494
+    justvoice-server serve --port 17494
 
 The same UI is served at `http://localhost:17494/ui/`. Connect from any browser on your network. Useful for running JustVoice on a remote GPU box and hitting it from a laptop.
 

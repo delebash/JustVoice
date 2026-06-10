@@ -1,6 +1,6 @@
 """Training job registry — restart-survivable.
 
-Jobs persist as ``$DATA_DIR/justtts/training/jobs/<id>.json``. In-flight
+Jobs persist as ``$DATA_DIR/justvoice/training/jobs/<id>.json``. In-flight
 phases (Validating / Preparing / Running) are reconciled to Failed on
 boot since the Python worker won't have the in-memory state to resume.
 """

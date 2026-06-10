@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-ENGINES_DIR = Path(__file__).resolve().parent.parent / "justtts" / "engines"
+ENGINES_DIR = Path(__file__).resolve().parent.parent / "justvoice" / "engines"
 
 
 def _engine_ids() -> list[str]:
@@ -33,7 +33,7 @@ def test_manifest_imports_cleanly(engine_id: str) -> None:
 
     manifest_path = ENGINES_DIR / engine_id / "manifest.py"
     spec = importlib.util.spec_from_file_location(
-        f"justtts.engines.{engine_id}.manifest", manifest_path
+        f"justvoice.engines.{engine_id}.manifest", manifest_path
     )
     assert spec is not None
     mod = importlib.util.module_from_spec(spec)

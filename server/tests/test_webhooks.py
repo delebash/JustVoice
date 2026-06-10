@@ -11,8 +11,8 @@ import hashlib
 import hmac
 import json
 
-from justtts.api.webhooks_api import _hash_secret
-from justtts.database.models import Webhook
+from justvoice.api.webhooks_api import _hash_secret
+from justvoice.database.models import Webhook
 
 pytest_plugins = ["tests.conftest_db"]
 

@@ -19,13 +19,13 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            artifact_name: justtts-server-linux
+            artifact_name: justvoice-server-linux
             sidecar_triple: x86_64-unknown-linux-gnu
           - os: windows-latest
-            artifact_name: justtts-server-windows
+            artifact_name: justvoice-server-windows
             sidecar_triple: x86_64-pc-windows-msvc
           - os: macos-latest
-            artifact_name: justtts-server-macos
+            artifact_name: justvoice-server-macos
             sidecar_triple: universal-apple-darwin
 
     steps:
@@ -47,53 +47,53 @@ jobs:
         run: |
           # x86_64 slice
           arch -x86_64 python -m PyInstaller \
-            --onefile server/justtts/__main__.py \
-            --name justtts-server \
+            --onefile server/justvoice/__main__.py \
+            --name justvoice-server \
             --distpath dist-x86 \
             --workpath build-x86
 
           # arm64 slice
           arch -arm64 python -m PyInstaller \
-            --onefile server/justtts/__main__.py \
-            --name justtts-server \
+            --onefile server/justvoice/__main__.py \
+            --name justvoice-server \
             --distpath dist-arm64 \
             --workpath build-arm64
 
           # Fuse into a fat binary
           mkdir -p dist
-          lipo -create -output dist/justtts-server \
-            dist-x86/justtts-server \
-            dist-arm64/justtts-server
+          lipo -create -output dist/justvoice-server \
+            dist-x86/justvoice-server \
+            dist-arm64/justvoice-server
 
       - name: Build PyInstaller sidecar (non-macOS)
         if: runner.os != 'macOS'
         # No spec file exists — use inline command
         run: |
-          pyinstaller --onefile server/justtts/__main__.py \
-            --name justtts-server \
+          pyinstaller --onefile server/justvoice/__main__.py \
+            --name justvoice-server \
             --distpath dist
 
       # Tauri expects sidecars named <binary>-<target-triple>[.exe]
       - name: Rename sidecar for Tauri triple (Unix)
         if: runner.os != 'Windows'
         run: |
-          cp dist/justtts-server \
-            "dist/justtts-server-${{ matrix.sidecar_triple }}"
+          cp dist/justvoice-server \
+            "dist/justvoice-server-${{ matrix.sidecar_triple }}"
 
       - name: Rename sidecar for Tauri triple (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Copy-Item dist\justtts-server.exe `
-            "dist\justtts-server-${{ matrix.sidecar_triple }}.exe"
+          Copy-Item dist\justvoice-server.exe `
+            "dist\justvoice-server-${{ matrix.sidecar_triple }}.exe"
 
       - name: Upload sidecar artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
           path: |
-            dist/justtts-server-${{ matrix.sidecar_triple }}
-            dist/justtts-server-${{ matrix.sidecar_triple }}.exe
+            dist/justvoice-server-${{ matrix.sidecar_triple }}
+            dist/justvoice-server-${{ matrix.sidecar_triple }}.exe
           if-no-files-found: error
           retention-days: 1
 
@@ -113,7 +113,7 @@ jobs:
           - platform: windows
             runner: windows-latest
             tauri_targets: msi,nsis
-            artifact_name: justtts-server-windows
+            artifact_name: justvoice-server-windows
             sidecar_triple: x86_64-pc-windows-msvc
             sidecar_ext: .exe
             rust_target: x86_64-pc-windows-msvc
@@ -122,7 +122,7 @@ jobs:
           - platform: macos
             runner: macos-latest
             tauri_targets: dmg,app
-            artifact_name: justtts-server-macos
+            artifact_name: justvoice-server-macos
             sidecar_triple: universal-apple-darwin
             sidecar_ext: ""
             rust_target: universal-apple-darwin
@@ -131,7 +131,7 @@ jobs:
           - platform: linux
             runner: ubuntu-latest
             tauri_targets: appimage,deb
-            artifact_name: justtts-server-linux
+            artifact_name: justvoice-server-linux
             sidecar_triple: x86_64-unknown-linux-gnu
             sidecar_ext: ""
             rust_target: x86_64-unknown-linux-gnu
@@ -150,9 +150,9 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           mkdir -p src-tauri/binaries
-          cp "sidecar-bin/justtts-server-${{ matrix.sidecar_triple }}" \
-            "src-tauri/binaries/justtts-server-${{ matrix.sidecar_triple }}"
-          chmod +x "src-tauri/binaries/justtts-server-${{ matrix.sidecar_triple }}"
+          cp "sidecar-bin/justvoice-server-${{ matrix.sidecar_triple }}" \
+            "src-tauri/binaries/justvoice-server-${{ matrix.sidecar_triple }}"
+          chmod +x "src-tauri/binaries/justvoice-server-${{ matrix.sidecar_triple }}"
 
       - name: Place sidecar into Tauri binaries dir (Windows)
         if: runner.os == 'Windows'
@@ -160,8 +160,8 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force src-tauri\binaries | Out-Null
           Copy-Item `
-            "sidecar-bin\justtts-server-${{ matrix.sidecar_triple }}.exe" `
-            "src-tauri\binaries\justtts-server-${{ matrix.sidecar_triple }}.exe"
+            "sidecar-bin\justvoice-server-${{ matrix.sidecar_triple }}.exe" `
+            "src-tauri\binaries\justvoice-server-${{ matrix.sidecar_triple }}.exe"
 
       # ── Toolchains ──────────────────────────────────────────────────────
       - name: Set up Node 20

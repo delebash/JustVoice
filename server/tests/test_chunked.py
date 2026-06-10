@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from justtts.audio.chunked import (
+from justvoice.audio.chunked import (
     concatenate_audio_chunks,
     split_text_into_chunks,
 )

@@ -208,12 +208,12 @@ Reference: <https://elevenlabs.io/docs/api-reference/studio>.
 
 ## Writing your own adapter
 
-1. Create `server/justtts/imports/adapters/<your_source>.py`. Export
+1. Create `server/justvoice/imports/adapters/<your_source>.py`. Export
    `SOURCE_ID` (snake_case string) and `parse(raw: bytes, *, filename:
    str | None = None) -> StandardImport`. Raise `bad_request(...)` on
    any parse error so the server surfaces RFC 7807 problem-details.
 
-2. Register it in `server/justtts/imports/__init__.py` by appending a
+2. Register it in `server/justvoice/imports/__init__.py` by appending a
    `(AdapterInfo(...), parse)` tuple to `_ADAPTER_REGISTRY`. Set
    `docs_anchor` to a stable id you'll use as a section anchor in
    this document — the GUI passes it through `data-help-key` for the

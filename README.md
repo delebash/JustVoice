@@ -37,8 +37,8 @@ Read the docs in this order:
 ### Desktop app
 
 ```bash
-git clone https://github.com/delebash/justtts-new.git
-cd justtts-new
+git clone https://github.com/delebash/justvoice-new.git
+cd justvoice-new
 npm install
 cd server && pip install -e .[kokoro] && cd ..
 npm run tauri dev
@@ -49,12 +49,12 @@ npm run tauri dev
 ```bash
 cd server
 pip install -e .[kokoro]
-justtts-server serve --port 17494
+justvoice-server serve --port 17494
 ```
 
 Then point any browser at `http://localhost:17494/ui/`.
 
-> **Naming**: the Python console script is `justtts-server`, not `justtts`. Don't rename — on Windows, using the same name as the Tauri binary causes infinite spawn loops.
+> **Naming**: the Python console script is `justvoice-server`, not `justvoice`. Don't rename — on Windows, using the same name as the Tauri binary causes infinite spawn loops.
 
 ### Install more engines
 
@@ -80,7 +80,7 @@ Or use the Engines tab in the UI for per-engine install with progress.
 │       ├── services/          # HTTP client per endpoint group (projects, webhooks, takes, …)
 │       └── views/             # One per top-level tab
 ├── server/                    # Python FastAPI server — the brain
-│   ├── justtts/
+│   ├── justvoice/
 │   │   ├── api/               # /v1/* HTTP routes (~30 endpoint files)
 │   │   ├── audio/             # WAV math, analyzer, chunked TTS
 │   │   ├── database/          # SQLAlchemy ORM + idempotent column migrations

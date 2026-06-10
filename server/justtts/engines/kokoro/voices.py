@@ -1,7 +1,7 @@
 """Kokoro's 54-voice preset catalog + speaker_id lookup.
 
 Pure-data module — no third-party imports. Both the engine subprocess
-(which wraps each tuple in a `justtts_plugin.PresetVoice`) AND the host
+(which wraps each tuple in a `justvoice_plugin.PresetVoice`) AND the host
 catalog (which surfaces voices to the GUI even when Kokoro isn't loaded)
 import from this module. Voice ids follow k2-fsa's naming
 `<lang><gender>_<name>`; speaker id is the 0-based index into VOICES.

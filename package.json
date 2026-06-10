@@ -1,5 +1,5 @@
 {
-  "name": "justtts",
+  "name": "justvoice",
   "version": "0.1.0",
   "description": "An open-source TTS server built for audiobook production, useful for any TTS workload.",
   "private": true,
@@ -11,7 +11,7 @@
     "dev": "tauri dev",
     "build": "tauri build",
     "tauri": "tauri",
-    "server": "cd server && python -m justtts.cli serve"
+    "server": "cd server && python -m justvoice.cli serve"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.7.0",

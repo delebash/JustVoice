@@ -2,9 +2,9 @@
 
 **A cross-platform open-source voice production server. Tauri + Vue + Python.**
 
-Product name: **JustVoice**. The Python package + console-script names (`justtts` / `justtts-server`) are kept as technical identifiers until a deliberate rename PR — the `justtts-server` naming-collision fix from `project_gotchas` must be preserved through the rename. References to "JustTTS" in older memory files refer to the same product under its prior name.
+Product name: **JustVoice**. The Python package + console-script names (`justvoice` / `justvoice-server`) are kept as technical identifiers until a deliberate rename PR — the `justvoice-server` naming-collision fix from `project_gotchas` must be preserved through the rename. References to "JustVoice" in older memory files refer to the same product under its prior name.
 
-Serves audiobook production, game dialogue (Unreal), podcasting, dictation, and accessibility. Standalone product — JustWrite drives JustVoice for audiobooks but JustVoice does not depend on JustWrite. See `CONTRACT.md` for the JustWrite↔JustVoice HTTP boundary. Also runs **headless** as `justtts-server serve` (no Tauri shell).
+Serves audiobook production, game dialogue (Unreal), podcasting, dictation, and accessibility. Standalone product — JustWrite drives JustVoice for audiobooks but JustVoice does not depend on JustWrite. See `CONTRACT.md` for the JustWrite↔JustVoice HTTP boundary. Also runs **headless** as `justvoice-server serve` (no Tauri shell).
 
 ## ⛔ RULE #0 — NEVER ASK FOR PERMISSION
 
@@ -40,7 +40,7 @@ Confirm only for genuinely destructive ops (`git reset --hard`, force-push to ma
 
 On a fresh session you'll already have:
 - This file (`CLAUDE.md`) auto-loaded
-- The memory index (`~/.claude/projects/E--Dev-Web-justtts/memory/MEMORY.md`) auto-loaded — every memory file has a one-line description there
+- The memory index (`~/.claude/projects/E--Dev-Web-justvoice/memory/MEMORY.md`) auto-loaded — every memory file has a one-line description there
 
 What to do at session start:
 1. Read `MORNING_RECAP.md` in this repo — single file, gets you to the current state of code, what shipped, what's pending
@@ -56,7 +56,7 @@ What to do at session start:
 - `project_use_cases` — multi-use (audiobook + game + podcast + dictation); full production studio scope.
 - `project_licensing_attribution` — per-file SPDX headers + lifted-file attribution blocks (lifted code carries an MIT header pointing at `voicebox-pin.txt`); ship license is GPL-3.0-or-later.
 - `feedback_ultracode_usage_rule` — when (rarely) to invoke ultracode. **User disabled subagent delegation 2026-06-09 — do all work inline by default.**
-- `project_gotchas` — `justtts-server` rename, native-dialog ban, Tauri spawn-loop fix. Load before debugging boot failures.
+- `project_gotchas` — `justvoice-server` rename, native-dialog ban, Tauri spawn-loop fix. Load before debugging boot failures.
 - `feedback_user_preferences` — terse reports, no permission-asking, verify by running code.
 
 **Failure modes from prior sessions** (signals you missed the relevant memory): proposing Rust anywhere, Docker, asking permission, using native dialogs, hallucinating file paths, re-investigating decisions already made. If you catch yourself about to do any of these, that's the cue to load the matching memory file.
@@ -69,18 +69,18 @@ Three layers:
 
 2. **`src/renderer/`** — Vue 3 + Vite single-page app. Pinia stores for state. Components in `src/renderer/src/components/`. Views (one per tab) in `src/renderer/src/views/`. Talks HTTP to the Python server.
 
-3. **`server/justtts/`** — Python 3.10+ FastAPI server. All business logic: engines, storage, render pipeline, mastering, cache, API. PyTorch-based engines run in-process. Kokoro runs through `sherpa-onnx-python`. SQLite (via SQLAlchemy) is the primary persistence layer.
+3. **`server/justvoice/`** — Python 3.10+ FastAPI server. All business logic: engines, storage, render pipeline, mastering, cache, API. PyTorch-based engines run in-process. Kokoro runs through `sherpa-onnx-python`. SQLite (via SQLAlchemy) is the primary persistence layer.
 
 ## What goes where
 
 | Concern | Layer |
 |---|---|
-| TTS model loading + inference | `server/justtts/engines/<engine>/` (manifest.py + engine.py per engine) |
-| Storage (settings, voices, profiles, projects, chapters, takes, generations, lexicons, personas, story_items) | `server/justtts/storage/` (SQLite via SQLAlchemy + atomic JSON for `settings.json` only) |
-| Render orchestration + cache | `server/justtts/render_core.py` + `server/justtts/api/render_chapter_api.py` |
-| Audio analyzer + WAV math + mastering | `server/justtts/audio/` + `server/justtts/mastering.py` |
-| API endpoints | `server/justtts/api/<area>_api.py` |
-| Pydantic models (request/response shapes) | `server/justtts/models.py` |
+| TTS model loading + inference | `server/justvoice/engines/<engine>/` (manifest.py + engine.py per engine) |
+| Storage (settings, voices, profiles, projects, chapters, takes, generations, lexicons, personas, story_items) | `server/justvoice/storage/` (SQLite via SQLAlchemy + atomic JSON for `settings.json` only) |
+| Render orchestration + cache | `server/justvoice/render_core.py` + `server/justvoice/api/render_chapter_api.py` |
+| Audio analyzer + WAV math + mastering | `server/justvoice/audio/` + `server/justvoice/mastering.py` |
+| API endpoints | `server/justvoice/api/<area>_api.py` |
+| Pydantic models (request/response shapes) | `server/justvoice/models.py` |
 | UI components + views | `src/renderer/src/components/` and `views/` |
 | Pinia stores (api, toasts, tasks) | `src/renderer/src/stores/` |
 | Desktop-only concerns (file picker, OS-level paths) | `src-tauri/src/lib.rs` |
@@ -92,7 +92,7 @@ Three layers:
 - **Rust** (Tauri shell): keep minimal. If you find yourself writing business logic in Rust, move it to Python.
 - **No hardcoded operator-tunable values** — every knob lives in `settings.json` + reachable via `PATCH /v1/settings`.
 - **All commits**: ruff + pytest pass.
-- **Cross-language API stability**: Pydantic models in `server/justtts/models.py` are the source of truth. The Vue client uses fetch directly against the OpenAPI shape. The CONTRACT.md endpoint list is the JustWrite-facing surface.
+- **Cross-language API stability**: Pydantic models in `server/justvoice/models.py` are the source of truth. The Vue client uses fetch directly against the OpenAPI shape. The CONTRACT.md endpoint list is the JustWrite-facing surface.
 - **Storage**: SQLite (via SQLAlchemy) is the primary persistence layer for everything except user-editable preferences. `settings.json` is the ONLY remaining atomic-JSON store. The migration from atomic JSON to SQLite happens in Phase 1.5.
 - **Licensing**: every file gets an SPDX-License-Identifier header. Files lifted from an upstream MIT codebase get a full attribution block referencing `voicebox-pin.txt`. See `project_licensing_attribution` memory for templates and CI guards.
 
@@ -106,13 +106,13 @@ npm run tauri dev
 
 # Headless (Python server only — same UI via /ui/)
 cd server && pip install -e .[kokoro]
-justtts-server serve     # NOT `justtts serve` — see project_gotchas memory
+justvoice-server serve     # NOT `justvoice serve` — see project_gotchas memory
 
 # Build production installer
 npm run tauri build
 ```
 
-**Important — naming**: the Python console script is `justtts-server`, not `justtts`. The Tauri binary is `justtts.exe`; using the same name for both causes Windows `CreateProcessW` to resolve `Command::new("justtts")` to the Tauri binary itself, spawning infinite windows. Never revert the rename.
+**Important — naming**: the Python console script is `justvoice-server`, not `justvoice`. The Tauri binary is `justvoice.exe`; using the same name for both causes Windows `CreateProcessW` to resolve `Command::new("justvoice")` to the Tauri binary itself, spawning infinite windows. Never revert the rename.
 
 ## What this app is for
 

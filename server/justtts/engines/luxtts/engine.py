@@ -13,7 +13,7 @@ _sys.path.insert(0, str(_P(__file__).resolve().parent))
 import logging
 import os
 
-from justtts_plugin import (
+from justvoice_plugin import (
     EmbeddedEngine,
     EngineMeta,
     PresetVoice,
@@ -22,7 +22,7 @@ from justtts_plugin import (
     serve,
 )
 
-log = logging.getLogger("justtts.engines.luxtts")
+log = logging.getLogger("justvoice.engines.luxtts")
 
 LUXTTS_HF_REPO = "YatharthS/LuxTTS"
 

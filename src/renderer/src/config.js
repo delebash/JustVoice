@@ -2,7 +2,7 @@
 //
 // Two serving modes, and we must pick the right API origin for each:
 //
-//  1. Server-served UI (headless `justtts-server serve`, or any case where the
+//  1. Server-served UI (headless `justvoice-server serve`, or any case where the
 //     Python server hosts dist/ at its own origin). Here the API lives on the
 //     SAME origin the page was loaded from — use window.location.origin so it
 //     works on whatever port/host the server happens to bind. Same-origin also

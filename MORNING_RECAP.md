@@ -11,16 +11,16 @@
 
 Massive rebrand + license-hygiene sweep + UX polish. All in one commit.
 
-**Brand rename — JustTTS → JustVoice:**
+**Brand rename — JustVoice → JustVoice:**
 - All product-facing strings renamed across docs, UI, comments, Tauri configs, package metadata, legacy-gui, preview HTML, CSS tokens (`--voicebox` → `--info-blue`).
-- **Preserved as technical identifiers** (spawn-loop fix from `project_gotchas`): Python package `server/justtts/`, console script `justtts-server`, Tauri binary `justtts.exe`, X-JustTTS-* HTTP wire headers (manager.py:1138-1140 + justtts_plugin/server.py:135-137), `JUSTTTS_DATA_DIR`/`JUSTTTS_MODEL_DIR`/`JUSTTTS_TORCH_INDEX` env vars. CLAUDE.md L5 keeps the rename-history note pointing readers at "JustTTS" in legacy memory files.
+- **Preserved as technical identifiers** (spawn-loop fix from `project_gotchas`): Python package `server/justvoice/`, console script `justvoice-server`, Tauri binary `justvoice.exe`, X-JustVoice-* HTTP wire headers (manager.py:1138-1140 + justvoice_plugin/server.py:135-137), `JUSTVOICE_DATA_DIR`/`JUSTVOICE_MODEL_DIR`/`JUSTVOICE_TORCH_INDEX` env vars. CLAUDE.md L5 keeps the rename-history note pointing readers at "JustVoice" in legacy memory files.
 
 **Voicebox reference removal:**
 - All non-attribution voicebox references stripped (~130 mentions): strategic docs, code comments, "voicebox-parity" labels, the comparison file (`preview/voicebox-feature-comparison.md` deleted), src-tag chip labels.
 - **Kept where MIT §3 requires it**: `voicebox-pin.txt`, NOTICE.md voicebox section, LICENSES.md row, SPDX-FileCopyrightText headers on every lifted file (7 Rust + 5 Vue + 3 Python), visible UI footer at `SettingsView.vue:1787` + `preview/full-app-preview.html:1812` ("Portions ported from voicebox (MIT)…").
 
 **Engine catalog — Higgs removed:**
-- `server/justtts/engines/higgs_audio/` deleted entirely. Higgs Audio v3's weights ship under a non-commercial license that would taint commercial audiobook / game / podcast output.
+- `server/justvoice/engines/higgs_audio/` deleted entirely. Higgs Audio v3's weights ship under a non-commercial license that would taint commercial audiobook / game / podcast output.
 - Each remaining engine's MODEL WEIGHTS license verified commercial-output-permitting via WebFetch on its HuggingFace model card (see `project_engine_weight_licenses` memory).
 - Engines now: 7 base / 9 with variants (Kokoro, Chatterbox + Turbo + Multilingual, Qwen3 + 0.6B, LuxTTS, TADA, Dia, MOSS-TTSD) + external OpenAI-compatible.
 
@@ -89,7 +89,7 @@ ae3c0ce refactor(ui): sweep all 18 views to Jv* primitives + jv-* utility classe
 de592a7 feat: JustVoice v1.0 design freeze + Phase 1-5 implementation + atomic license flip
 ```
 
-Repo: `E:\Dev\Web\justtts-new\` (GitHub: `delebash/justtts-new`, branch: `main`)
+Repo: `E:\Dev\Web\justvoice-new\` (GitHub: `delebash/justvoice-new`, branch: `main`)
 
 ---
 
@@ -111,7 +111,7 @@ Repo: `E:\Dev\Web\justtts-new\` (GitHub: `delebash/justtts-new`, branch: `main`)
 - `ChapterView.vue` rewritten: project → scene → block navigation; per-block prev/next take arrows (`← Take 3 of 7 →`); dropdown with timestamps + default marker; JvTag badge on default; source-lineage pill (`← from Take N`); audio player at `/v1/generations/{id}/audio`; action row (Regenerate / Set as default / Compare side-by-side / Delete with two-step confirm).
 - New `stores/takes.js` (`useTakesStore`): keyed by `block_id`; `takes` Map, `loaded` Set, `activeTakeIds` Map; methods `fetchTakes / navigatePrev / navigateNext / promoteToDefault / removeTake / relabelTake / invalidate`.
 - New `stores/api.js`: `.get / .post / .requestBlob / .postForm` helpers.
-- Server: `server/justtts/api/takes_api.py` — `GET /v1/generations/{id}/audio` serves WAV via `FileResponse`.
+- Server: `server/justvoice/api/takes_api.py` — `GET /v1/generations/{id}/audio` serves WAV via `FileResponse`.
 
 ### Tauri Rust subsystems (commit 16bfacd)
 Ported from voicebox commit `b35b90961d5bc83a8b4e96e8b6ccde2a03152ff9` (MIT) under MIT AND GPL-3.0-or-later. Per-file attribution headers reference `voicebox-pin.txt`.
@@ -142,7 +142,7 @@ Ported from voicebox commit `b35b90961d5bc83a8b4e96e8b6ccde2a03152ff9` (MIT) und
 - **Linux paste injection**: `synthetic_keys.rs` Linux branch is TODO (X11/Wayland).
 - **Non-Kokoro engine lifecycle**: chatterbox / TADA / Qwen3 / Dia / LuxTTS should install (recipes verified against engine model cards); MOSS is EXPERIMENTAL (likely needs adapter edits on first install). Higgs was removed 2026-06-09 (non-commercial weight license).
 - **Phase 5 engine-flag flips**: blend + train infrastructure is in place; adapters need `supports_embedding_blending=True` / `supports_training=True` + matching methods. Start with Chatterbox.
-- **PyInstaller bundling**: production `tauri build` expects `justtts-server.exe` next to itself; no build script produces it yet. Reference: `E:\Dev\Web\justtts\sidecars\justtts-sidecar\build_binary.py`.
+- **PyInstaller bundling**: production `tauri build` expects `justvoice-server.exe` next to itself; no build script produces it yet. Reference: `E:\Dev\Web\justvoice\sidecars\justvoice-sidecar\build_binary.py`.
 - **Signing**: Apple notarization + Linux AppImage signing pending (Windows EV-cert is v1 scope).
 - **Live smoke test**: `tauri dev` end-to-end boot + GUI tab round-trips not re-confirmed after 16bfacd. Do this before any further Rust or server work.
 - **UE integration**: deferred post-v1 (see memory `project_unreal_deep_dive_deferred`).
@@ -158,7 +158,7 @@ Ported from voicebox commit `b35b90961d5bc83a8b4e96e8b6ccde2a03152ff9` (MIT) und
 - Design: JustVoice-native (cream/forest-green/gold/oxblood). JustWrite token system gone.
 - Multi-use: audiobook + game (Unreal) + podcast + dictation + accessibility, all first-class
 - No multi-user accounts (forever out of scope)
-- `justtts-server` script name must not be reverted (spawn-loop prevention)
+- `justvoice-server` script name must not be reverted (spawn-loop prevention)
 
 ---
 
@@ -194,10 +194,10 @@ npm run tauri dev
 
 # Headless Python server only
 cd server
-justtts-server serve --port 17494
+justvoice-server serve --port 17494
 
 # Verify server factory
-python -c "from justtts.app import create_app; print(len(create_app().routes))"
+python -c "from justvoice.app import create_app; print(len(create_app().routes))"
 ```
 
-Use `justtts-server`, never `justtts` — the Tauri binary owns that name on Windows.
+Use `justvoice-server`, never `justvoice` — the Tauri binary owns that name on Windows.

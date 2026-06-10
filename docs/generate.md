@@ -71,7 +71,7 @@ Optional short tone/style descriptor — e.g. `warm narrative voice, calm tempo`
 
 ### Engine-specific knobs
 
-Below the primary controls, the form auto-renders any extra knobs the engine declares in its capability manifest (`server/justtts/engines/capability_details.py`). For example:
+Below the primary controls, the form auto-renders any extra knobs the engine declares in its capability manifest (`server/justvoice/engines/capability_details.py`). For example:
 
 - **Chatterbox / Chatterbox-Turbo** — `exaggeration`, `cfg_weight`, `min_p` (advanced, Chatterbox vanilla only)
 - **Qwen3** — advanced: `Top k`, `Top p`, `Repetition penalty`

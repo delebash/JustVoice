@@ -5,7 +5,7 @@ JustVoice — an open-source voice production server (audiobook + game dialogue 
 Copyright (c) 2026 JustVoice contributors.
 Licensed under the GNU General Public License, version 3 or later (see `LICENSE`).
 
-> **License flip happened 2026-06-08 Phase 3** when `pedalboard` (Spotify, GPL-3.0) was adopted for the effects chain. The flip was atomic — a single commit updated root `LICENSE` (Apache-2.0 → GPL-3.0-or-later), `server/pyproject.toml`'s license field, this NOTICE, `LICENSES.md`, and every first-party file's SPDX header (`Apache-2.0` → `GPL-3.0-or-later`, `MIT AND Apache-2.0` → `MIT AND GPL-3.0-or-later`). See `~/.claude/projects/E--Dev-Web-justtts/memory/project_licensing_attribution.md` for the policy and `DESIGN_FREEZE.md` §3.1 for the decision.
+> **License flip happened 2026-06-08 Phase 3** when `pedalboard` (Spotify, GPL-3.0) was adopted for the effects chain. The flip was atomic — a single commit updated root `LICENSE` (Apache-2.0 → GPL-3.0-or-later), `server/pyproject.toml`'s license field, this NOTICE, `LICENSES.md`, and every first-party file's SPDX header (`Apache-2.0` → `GPL-3.0-or-later`, `MIT AND Apache-2.0` → `MIT AND GPL-3.0-or-later`). See `~/.claude/projects/E--Dev-Web-justvoice/memory/project_licensing_attribution.md` for the policy and `DESIGN_FREEZE.md` §3.1 for the decision.
 
 This product incorporates, links against, or depends on the following third-party software. Each component retains its original license. See `LICENSES.md` for the authoritative inventory and `LICENSES/<SPDX-id>.txt` for full license texts.
 
@@ -84,11 +84,11 @@ Copyright 2018- The HuggingFace team. All rights reserved.
 
 ### chatterbox-tts (MIT) / qwen-tts (license TBD — verify before relying on lift)
 
-- Engine extras; `pip install justtts[chatterbox]` / `[qwen3]`
+- Engine extras; `pip install justvoice[chatterbox]` / `[qwen3]`
 
 ### faster-whisper (MIT) / peft (Apache-2.0) / safetensors (Apache-2.0) — training extras
 
-- `pip install justtts[training]`
+- `pip install justvoice[training]`
 
 ### pedalboard (GPL-3.0) — Phase 3+
 

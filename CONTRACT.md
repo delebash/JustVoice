@@ -6,7 +6,7 @@
 
 - **JustWrite** — pure novel writing app. Owns: manuscript editor, character roster, scene/chapter tree, export to audiobook orchestration. Does NOT contain: TTS engine code, voice cloning, ACX mastering, M4B mux, lexicons, persona LLM-rewrite. Distributes as its own installer.
 
-- **JustVoice** (Python package + console-script kept as `justtts` / `justtts-server` until the rename PR — naming-collision fix from `project_gotchas` memory must be preserved through the rename) — standalone voice production server. Owns: engine pool, voice profiles, voice cloning, persona LLM-rewrite, lexicons, per-chapter render, ACX mastering, take versioning, multi-track timeline editor, dictation, MCP server, captures. Distributes as its own installer with Tauri shell + Python sidecar.
+- **JustVoice** (Python package + console-script kept as `justvoice` / `justvoice-server` until the rename PR — naming-collision fix from `project_gotchas` memory must be preserved through the rename) — standalone voice production server. Owns: engine pool, voice profiles, voice cloning, persona LLM-rewrite, lexicons, per-chapter render, ACX mastering, take versioning, multi-track timeline editor, dictation, MCP server, captures. Distributes as its own installer with Tauri shell + Python sidecar.
 
 The audiobook workflow is JustWrite *orchestrating* JustVoice via HTTP. JustWrite holds the manuscript and the project shape; JustVoice holds the voices and the audio.
 
@@ -14,11 +14,11 @@ The audiobook workflow is JustWrite *orchestrating* JustVoice via HTTP. JustWrit
 
 The multi-use case for JustVoice — audiobook, game dialogue (Unreal), podcasting, dictation, accessibility — requires JustVoice to be a standalone product. JustWrite-only callers would couple TTS to novel writing, blocking the other use cases. Splitting also keeps JustWrite small for users who don't care about audio.
 
-See `~/.claude/projects/E--Dev-Web-justtts/memory/project_use_cases.md` for the multi-use rationale.
+See `~/.claude/projects/E--Dev-Web-justvoice/memory/project_use_cases.md` for the multi-use rationale.
 
 ## Wire format
 
-JustVoice exposes a versioned HTTP API. All Pydantic request/response shapes live in `server/justtts/models.py` (the cross-language source of truth per CLAUDE.md). The Vue renderer and any external caller (JustWrite, an Unreal plugin, an MCP agent, a `curl` script) hit the same endpoints.
+JustVoice exposes a versioned HTTP API. All Pydantic request/response shapes live in `server/justvoice/models.py` (the cross-language source of truth per CLAUDE.md). The Vue renderer and any external caller (JustWrite, an Unreal plugin, an MCP agent, a `curl` script) hit the same endpoints.
 
 ### Stable endpoints (semver-protected)
 
@@ -64,7 +64,7 @@ Endpoint additions are non-breaking. Endpoint removals or shape changes are majo
 3. **Tier 2** — `VoiceProfile.default_delivery` JSON (looked up by `profile_id`)
 4. **Tier 1** — engine defaults (from the capability manifest)
 
-The merge is dict-deep — engine-specific subdicts (`delivery.engine.*`) merge at the inner-key level too. Implementation: `server/justtts/delivery_merge.py`.
+The merge is dict-deep — engine-specific subdicts (`delivery.engine.*`) merge at the inner-key level too. Implementation: `server/justvoice/delivery_merge.py`.
 
 ### Authentication
 
@@ -129,7 +129,7 @@ JustVoice listens on `127.0.0.1:17494` (configurable). JustWrite spawns JustVoic
 
 ## Contract testing
 
-- The OpenAPI schema for `/v1/*` lives at `server/justtts/openapi.json` (snapshot, regenerated in CI).
+- The OpenAPI schema for `/v1/*` lives at `server/justvoice/openapi.json` (snapshot, regenerated in CI).
 - On every PR, CI diffs the new OpenAPI snapshot against the committed one. Breaking changes (removed endpoint, removed required field, type narrowing) fail CI.
 - JustWrite's `services/render.js` is the canonical consumer. Any breaking JustVoice PR must include a coordinated JustWrite PR.
 - A `tests/test_contract.py` pytest module asserts the OpenAPI shape of every endpoint in this document.

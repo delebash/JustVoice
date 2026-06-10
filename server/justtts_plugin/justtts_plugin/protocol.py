@@ -1,5 +1,5 @@
 """Wire-level dataclasses shared between the JustVoice host and every engine
-subprocess. These mirror the in-process protocol in server/justtts/engines/
+subprocess. These mirror the in-process protocol in server/justvoice/engines/
 base.py so adapter logic ports cleanly between the two transports.
 
 Each request type carries only the fields an engine plausibly needs; the

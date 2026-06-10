@@ -28,7 +28,7 @@ _sys.path.insert(0, str(_P(__file__).resolve().parent))
 import logging
 import threading
 
-from justtts_plugin import (
+from justvoice_plugin import (
     EmbeddedEngine,
     EngineMeta,
     PresetVoice,
@@ -38,7 +38,7 @@ from justtts_plugin import (
 )
 from dac_shim import install_dac_shim  # noqa: E402
 
-log = logging.getLogger("justtts.engines.tada")
+log = logging.getLogger("justvoice.engines.tada")
 
 TADA_CODEC_REPO = "HumeAI/tada-codec"
 TADA_MODEL_REPO = "HumeAI/tada-3b-ml"

@@ -38,11 +38,11 @@ build/
 dist-electron/
 
 # Engine model weights — downloaded at runtime from HuggingFace; not source
-server/justtts/engines/*/models/
-server/justtts/engines/*/.venv/
-server/justtts/engines/*/voices/
-server/justtts/engines/*/state/
-server/justtts/engines/.shared-venv/
+server/justvoice/engines/*/models/
+server/justvoice/engines/*/.venv/
+server/justvoice/engines/*/voices/
+server/justvoice/engines/*/state/
+server/justvoice/engines/.shared-venv/
 
 # Voicebox upstream audit clone — reference only, separate repo upstream
 voicebox-upstream/

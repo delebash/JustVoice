@@ -1,5 +1,5 @@
 [package]
-name = "justtts"
+name = "justvoice"
 version = "0.1.0"
 description = "An open-source TTS server built for audiobook production, useful for any TTS workload."
 authors = ["JustVoice contributors"]
@@ -8,7 +8,7 @@ license = "GPL-3.0-or-later"
 rust-version = "1.85"
 
 [lib]
-name = "justtts_lib"
+name = "justvoice_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

@@ -8,7 +8,7 @@
 
 ## What JustVoice exposes (already in this repo, ready to call)
 
-- `POST /v1/projects/import?source=justwrite` — accepts a JustWrite book export JSON, auto-creates Project + Scenes + Blocks + Personas + VoiceProfiles. Returns `{ project_id, scene_count, block_count, persona_count, created_personas, reused_personas }`. See `server/justtts/api/projects_api.py:JustWriteBookImport`.
+- `POST /v1/projects/import?source=justwrite` — accepts a JustWrite book export JSON, auto-creates Project + Scenes + Blocks + Personas + VoiceProfiles. Returns `{ project_id, scene_count, block_count, persona_count, created_personas, reused_personas }`. See `server/justvoice/api/projects_api.py:JustWriteBookImport`.
 - `POST /v1/render_jobs` — kicks off a chapter / project render. SSE progress at `/v1/render_jobs/{id}/stream`.
 - `POST /v1/master` — applies the active mastering preset (ACX by default) to a chapter WAV.
 - `POST /v1/analyze` — LUFS / peak / noise floor / clipping report (the ACX QC gate).
@@ -28,12 +28,12 @@
 #[tauri::command]
 async fn justvoice_install(app: tauri::AppHandle) -> Result<InstallResult, String> {
     // Clones JustVoice and runs its per-engine venv setup.
-    // Repo: https://github.com/delebash/justtts-new  (or new fork URL)
+    // Repo: https://github.com/delebash/justvoice-new  (or new fork URL)
     // Branch: main
-    // Then runs the per-engine venv setup via `python -m justtts.cli setup`.
+    // Then runs the per-engine venv setup via `python -m justvoice.cli setup`.
     install_from_git(
         &app,
-        "https://github.com/delebash/justtts-new.git",
+        "https://github.com/delebash/justvoice-new.git",
         "main",
         "justvoice-server",  // installed via `pip install -e server/`
     ).await

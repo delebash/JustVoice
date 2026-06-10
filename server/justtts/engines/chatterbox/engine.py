@@ -1,7 +1,7 @@
 """Chatterbox engine subprocess — Resemble AI's ChatterboxMultilingualTTS.
 
 Adapter for `chatterbox-tts`. Key shape:
-- We talk over loopback HTTP to the host (via justtts_plugin.serve), not
+- We talk over loopback HTTP to the host (via justvoice_plugin.serve), not
   asyncio in-process.
 - Voice prompts come in as audio_prompt_path; forwarded to model.generate().
 - macOS CPU fallback retained (PyTorch MPS has a known issue with this model).
@@ -18,7 +18,7 @@ import logging
 import platform
 import threading
 
-from justtts_plugin import (
+from justvoice_plugin import (
     EmbeddedEngine,
     EngineMeta,
     PresetVoice,
@@ -27,7 +27,7 @@ from justtts_plugin import (
     serve,
 )
 
-log = logging.getLogger("justtts.engines.chatterbox")
+log = logging.getLogger("justvoice.engines.chatterbox")
 
 # Per-language generation defaults.
 _LANG_DEFAULTS = {

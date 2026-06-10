@@ -55,7 +55,7 @@ JustVoice serves five distinct audiences. Pick your primary at first launch — 
 **Goal**: real-time TTS with low-latency engines for screen-reader use.
 
 **Flow**:
-- Keep JustVoice running headless (`justtts-server serve`).
+- Keep JustVoice running headless (`justvoice-server serve`).
 - MCP integrations with assistive tools, or a thin OS-level shim that pipes selected text to `/v1/render`.
 
 **Engine pick**: Kokoro (CPU-realtime, no GPU needed) or a small Chatterbox model.
