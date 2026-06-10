@@ -5,6 +5,8 @@ import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast } from "../services/toastBridge.js";
+import { withEngineSwap } from "../services/engineSwap.js";
+import VoicePicker from "../components/VoicePicker.vue";
 import JvButton from "../components/jv/JvButton.vue";
 import JvField from "../components/jv/JvField.vue";
 import JvTextarea from "../components/jv/JvTextarea.vue";
@@ -16,6 +18,7 @@ const tasks = useRenderTasks();
 const audioPlayer = useAudioPlayer();
 
 const voices = ref([]);
+const engines = ref([]);  // /v1/engines — VoicePicker not-installed badges
 const currentEngine = ref(null);
 const voice = ref("");
 // Empty so the placeholder hint is visible on first open.
@@ -59,10 +62,9 @@ const personaOptions = computed(() => [
   ...personas.value.map((p) => ({ label: p.name, value: p.id })),
 ]);
 
-const availableVoices = computed(() => {
-  if (!currentEngine.value) return [];
-  return voices.value.filter((v) => v.engine === currentEngine.value.id);
-});
+// The full catalog — picking is always free (decision D1); rendering a
+// cold voice goes through the swap prompt instead of being hidden here.
+const availableVoices = computed(() => voices.value);
 
 // Returns an object so the template can render real <a> hash-links into
 // the banner rather than a flat string. `kind` lets the template pick
@@ -271,12 +273,6 @@ const appliedLexiconCount = computed(() =>
 // via SlashTagMenu now).
 const EMOTIONS = computed(() => emotionTagSet.value?.tags || []);
 
-const voiceOptions = computed(() =>
-  availableVoices.value.length === 0
-    ? [{ label: "— no voices available —", value: "" }]
-    : availableVoices.value.map((v) => ({ label: v.name, value: v.id }))
-);
-
 const wordCount = computed(() => text.value.trim().split(/\s+/).filter(Boolean).length);
 
 // Multi-line placeholder hint shown when the textarea is empty. Shows
@@ -304,15 +300,17 @@ const deliveryDirectionPlaceholder =
 
 async function refreshVoices() {
   try {
-    const [v, cur, h, caps, pers, fx] = await Promise.all([
+    const [v, cur, h, caps, pers, fx, eng] = await Promise.all([
       api.safeRequest("/v1/voices", { voices: [] }),
       api.safeRequest("/v1/engines/current", { engine: null }),
       api.safeRequest("/v1/takes/recent", { takes: [] }),
       api.safeRequest("/v1/engines/capabilities", { engines: {} }),
       api.safeRequest("/v1/personas", { personas: [] }),
       api.safeRequest("/v1/effect-presets", { presets: [] }),
+      api.safeRequest("/v1/engines", { engines: [] }),
     ]);
     voices.value = v?.voices || [];
+    engines.value = eng?.engines || [];
     currentEngine.value = cur?.engine || null;
     history.value = (h?.takes || []).slice(0, 10);
     capabilityMap.value = caps?.engines || {};
@@ -447,14 +445,22 @@ async function generate() {
     if (attachedLexicon.value?.id) body.lexicons = [attachedLexicon.value.id];
     if (selectedPersonaId.value) body.persona_id = selectedPersonaId.value;
     if (selectedEffectsPresetId.value) body.effects_preset_id = selectedEffectsPresetId.value;
-    const blob = await api.request("/v1/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: ctl.signal,
-    });
+    const blob = await withEngineSwap((allowSwap) =>
+      api.request("/v1/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...body, allow_engine_swap: allowSwap }),
+        signal: ctl.signal,
+      })
+    );
+    if (blob === null) {
+      // User declined the engine swap — nothing rendered.
+      tasks.cancel(task.id);
+      return;
+    }
     tasks.update(task.id, { meta: { bytesOut: blob.size } });
     tasks.finish(task.id);
+    refreshVoices();  // engine_loaded badges may have changed after a swap
     audio.value = URL.createObjectURL(blob);
     if (autoplay.value) {
       // <audio> auto-plays via the v-if/key, but iOS Safari requires explicit
@@ -676,10 +682,17 @@ onMounted(refreshVoices);
     <div class="jv-floating generate-view__floating">
       <div class="jv-chip-card generate-view__chip" :class="{ 'generate-view__chip--disabled': availableVoices.length === 0 }">🎙️ Voice:
         <strong>{{ availableVoices.find((v) => v.id === voice)?.name || "Pick a voice" }}</strong>
+        <span
+          v-if="voice && availableVoices.find((v) => v.id === voice) && !availableVoices.find((v) => v.id === voice).engine_loaded"
+          title="This voice's engine isn't loaded — rendering will ask to swap"
+        >⇄</span>
         <span class="generate-view__chip-caret">▾</span>
-        <select v-model="voice" :disabled="availableVoices.length === 0" class="generate-view__chip-select" title="Pick a voice">
-          <option v-for="o in voiceOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-        </select>
+        <VoicePicker
+          v-model="voice"
+          :voices="availableVoices"
+          :engines="engines"
+          select-class="generate-view__chip-select"
+        />
       </div>
       <div class="jv-chip-card">🧠 Engine:
         <strong>{{ currentEngine?.name || "none loaded" }}</strong>

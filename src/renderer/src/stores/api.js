@@ -20,6 +20,16 @@ export const useApi = defineStore("api", () => {
     localStorage.setItem("jt:token", v);
   }
 
+  // Build an Error carrying machine-readable context: .status (HTTP code)
+  // and .body (parsed problem+json, or null). The swap-at-render helper
+  // keys off err.body.code === "engine-swap-required".
+  function _httpError(res, text) {
+    const err = new Error(`${res.status} ${res.statusText}: ${text}`);
+    err.status = res.status;
+    try { err.body = JSON.parse(text); } catch { err.body = null; }
+    return err;
+  }
+
   async function request(path, opts = {}) {
     const headers = { ...(opts.headers || {}) };
     if (token.value) headers.Authorization = `Bearer ${token.value}`;
@@ -27,8 +37,7 @@ export const useApi = defineStore("api", () => {
     try {
       const res = await fetch(url, { ...opts, headers });
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`${res.status} ${res.statusText}: ${text}`);
+        throw _httpError(res, await res.text());
       }
       const ct = res.headers.get("content-type") || "";
       if (ct.startsWith("audio/")) return await res.blob();
@@ -60,8 +69,7 @@ export const useApi = defineStore("api", () => {
     const url = serverUrl.value.replace(/\/$/, "") + path;
     const res = await fetch(url, { ...opts, method, headers });
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`${res.status} ${res.statusText}: ${text}`);
+      throw _httpError(res, await res.text());
     }
     return res.blob();
   }
@@ -72,8 +80,7 @@ export const useApi = defineStore("api", () => {
     const url = serverUrl.value.replace(/\/$/, "") + path;
     const res = await fetch(url, { ...opts, method: "POST", headers, body: formData });
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`${res.status} ${res.statusText}: ${text}`);
+      throw _httpError(res, await res.text());
     }
     const ct = res.headers.get("content-type") || "";
     if (ct.includes("json")) return res.json();

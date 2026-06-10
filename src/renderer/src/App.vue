@@ -159,6 +159,13 @@ const uiContext = useUiContext();
 const { t } = useI18n();
 let initialTabResolved = false;
 
+// Any engine load/swap task in flight — the topbar pill pulses while
+// true (swaps triggered by renders show up here via the shared
+// engineSwap helper's task, same as manual Engines-tab loads).
+const swapInFlight = computed(() =>
+  tasks.running.some((t) => t.status === "running" && t.kind === "load"),
+);
+
 // Localized sidebar labels — proves the i18n scaffold is live. VIEWS
 // holds the English defaults so the data lookup stays static; this
 // computed swaps to the locale's keys when a translation exists.
@@ -413,18 +420,25 @@ onMounted(async () => {
           </template>
         </h2>
 
-        <!-- Engine pill — persistent visibility of the currently-loaded
-             TTS engine. Click jumps to Engines tab. -->
+        <!-- Engine pill — swap-status pill (plan WS3): shows the loaded
+             TTS engine · variant, pulses while an engine load/swap task
+             runs. Click jumps to Engines tab. -->
         <button
           v-if="health"
           type="button"
           class="jv-topbar__engine-pill"
-          :class="{ 'jv-topbar__engine-pill--empty': !health.current_engine }"
-          :title="health.current_engine ? `Loaded: ${health.current_engine}. Click to manage engines.` : 'No engine loaded. Click to load one.'"
+          :class="{
+            'jv-topbar__engine-pill--empty': !health.current_engine && !swapInFlight,
+            'jv-topbar__engine-pill--swapping': swapInFlight,
+          }"
+          :title="swapInFlight ? 'Engine swap in progress…' : (health.current_engine ? `Loaded: ${health.current_engine}. Click to manage engines.` : 'No engine loaded. Voices stay pickable — rendering loads the engine (with a prompt).')"
           @click="view = 'engines'"
         >
-          <span class="jv-topbar__engine-icon">🧠</span>
-          {{ health.current_engine || "No engine" }}
+          <span class="jv-topbar__engine-icon">{{ swapInFlight ? "⇄" : "🧠" }}</span>
+          <template v-if="swapInFlight">Swapping…</template>
+          <template v-else>
+            {{ health.current_engine || "No engine" }}<span v-if="health.current_variant" class="jv-topbar__engine-variant"> · {{ health.current_variant }}</span>
+          </template>
         </button>
 
         <button

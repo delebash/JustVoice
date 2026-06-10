@@ -14,6 +14,8 @@ import JvField from "../components/jv/JvField.vue";
 import JvSelect from "../components/jv/JvSelect.vue";
 import JvTag from "../components/jv/JvTag.vue";
 import LineageViewer from "../components/LineageViewer.vue";
+import VoicePicker from "../components/VoicePicker.vue";
+import { withEngineSwap } from "../services/engineSwap.js";
 
 const api = useApi();
 const tasks = useRenderTasks();
@@ -109,31 +111,27 @@ onMounted(loadProjects);
 // ── Voices (for re-generation) ─────────────────────────────────────────────
 
 const voices = ref([]);
+const engines = ref([]);  // VoicePicker not-installed badges
 const currentEngine = ref(null);
 
 async function refreshVoices() {
   try {
-    const [v, cur] = await Promise.all([
+    const [v, cur, eng] = await Promise.all([
       api.request("/v1/voices"),
       api.request("/v1/engines/current").catch(() => ({ engine: null })),
+      api.safeRequest("/v1/engines", { engines: [] }),
     ]);
     voices.value = v.voices || [];
+    engines.value = eng?.engines || [];
     currentEngine.value = cur?.engine || null;
   } catch (_) {}
 }
 
 onMounted(refreshVoices);
 
-const availableVoices = computed(() => {
-  if (!currentEngine.value) return [];
-  return voices.value.filter((v) => v.engine === currentEngine.value.id);
-});
-
-const voiceOptions = computed(() =>
-  availableVoices.value.length === 0
-    ? [{ label: "— no voices loaded —", value: "" }]
-    : availableVoices.value.map((v) => ({ label: `${v.name} — ${v.id}`, value: v.id }))
-);
+// Full catalog — picking is free; rendering a cold voice goes through
+// the shared swap prompt (services/engineSwap.js).
+const availableVoices = computed(() => voices.value);
 
 // Default voice for re-generation.
 const regenVoice = ref("");
@@ -234,12 +232,20 @@ async function regenerateBlock(block) {
   try {
     // Take-atomic re-roll: the server renders, persists the Generation,
     // and chains a new Take off the current default in one call.
-    const r = await api.request(`/v1/blocks/${block.id}/render`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ voice, set_default: false }),
-    });
+    const r = await withEngineSwap((allowSwap) =>
+      api.request(`/v1/blocks/${block.id}/render`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voice, set_default: false, allow_engine_swap: allowSwap }),
+      })
+    );
+    if (r === null) {
+      // User declined the engine swap.
+      tasks.cancel(task.id);
+      return;
+    }
     tasks.finish(task.id);
+    refreshVoices();  // engine_loaded badges may have changed after a swap
     takesStore.invalidate(block.id);
     await takesStore.fetchTakes(block.id);
     pushToast({
@@ -353,10 +359,10 @@ function compareDropdownOptions(blockId) {
           />
         </JvField>
         <JvField label="Voice for re-generate" layout="inline">
-          <JvSelect
+          <VoicePicker
             v-model="regenVoice"
-            :options="voiceOptions"
-            :disabled="availableVoices.length === 0"
+            :voices="availableVoices"
+            :engines="engines"
           />
         </JvField>
       </div>
@@ -606,9 +612,16 @@ function compareDropdownOptions(blockId) {
     <div v-if="blocks.length" class="jv-floating chapter-view__generate-bar">
       <div class="jv-chip-card">🎙️
         <strong>{{ availableVoices.find((v) => v.id === regenVoice)?.name || regenVoice || "no voice" }}</strong>
-        <select v-model="regenVoice" :disabled="!availableVoices.length" class="chapter-view__chip-select">
-          <option v-for="o in voiceOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-        </select>
+        <span
+          v-if="regenVoice && availableVoices.find((v) => v.id === regenVoice) && !availableVoices.find((v) => v.id === regenVoice).engine_loaded"
+          title="This voice's engine isn't loaded — rendering will ask to swap"
+        >⇄</span>
+        <VoicePicker
+          v-model="regenVoice"
+          :voices="availableVoices"
+          :engines="engines"
+          select-class="chapter-view__chip-select"
+        />
       </div>
       <div class="jv-chip-card">🧠
         <strong>{{ currentEngine?.name || "no engine" }}</strong>

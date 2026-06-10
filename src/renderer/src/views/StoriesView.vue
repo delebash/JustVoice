@@ -17,6 +17,8 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { promptDialog, confirmDialog } from "../services/dialog.js";
+import { withEngineSwap } from "../services/engineSwap.js";
+import VoicePicker from "../components/VoicePicker.vue";
 import JvButton from "../components/jv/JvButton.vue";
 import JvInput from "../components/jv/JvInput.vue";
 
@@ -37,13 +39,16 @@ const savingItem = ref(false);
 
 // ── Catalog state for the generator bar ──────────────────────────────
 const voices = ref([]);
+const engines = ref([]);  // VoicePicker not-installed badges
 const currentEngine = ref(null);
 async function loadGeneratorState() {
-  const [v, e] = await Promise.all([
+  const [v, e, eng] = await Promise.all([
     api.safeRequest("/v1/voices", { voices: [] }),
     api.safeRequest("/v1/engines/current", { engine: null }),
+    api.safeRequest("/v1/engines", { engines: [] }),
   ]);
   voices.value = v?.voices ?? [];
+  engines.value = eng?.engines ?? [];
   currentEngine.value = e?.engine ?? null;
   if (!generatorVoiceId.value && voices.value.length) generatorVoiceId.value = voices.value[0].id;
 }
@@ -239,16 +244,33 @@ async function generateAtPlayhead() {
   generating.value = true;
   try {
     // Raw fetch — we need the X-Generation-Id response header, which the
-    // api store's blob path doesn't expose.
-    const res = await fetch(`${api.serverUrl.replace(/\/$/, "")}/v1/generate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(api.token ? { Authorization: `Bearer ${api.token}` } : {}),
-      },
-      body: JSON.stringify({ voice: generatorVoiceId.value, text: generatorText.value.trim(), cache: false }),
-    });
-    if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+    // api store's blob path doesn't expose. Wrapped in the shared
+    // swap-at-render flow: a cold voice 409s, prompts, retries.
+    const doGenerate = async (allowSwap) => {
+      const res = await fetch(`${api.serverUrl.replace(/\/$/, "")}/v1/generate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(api.token ? { Authorization: `Bearer ${api.token}` } : {}),
+        },
+        body: JSON.stringify({
+          voice: generatorVoiceId.value,
+          text: generatorText.value.trim(),
+          cache: false,
+          allow_engine_swap: allowSwap,
+        }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        const err = new Error(`${res.status}: ${text}`);
+        err.status = res.status;
+        try { err.body = JSON.parse(text); } catch { err.body = null; }
+        throw err;
+      }
+      return res;
+    };
+    const res = await withEngineSwap(doGenerate);
+    if (res === null) return;  // user declined the engine swap
     const genId = res.headers.get("X-Generation-Id");
     await res.blob(); // drain — the clip plays from the server copy
     if (!genId) throw new Error("server did not return X-Generation-Id");
@@ -476,10 +498,13 @@ onMounted(async () => {
         <div class="stories__floating">
           <label class="jv-chip-card stories__chip" title="Voice for the new clip">
             🎙️
-            <select v-model="generatorVoiceId" class="stories__chip-select">
-              <option v-if="!voices.length" value="">no voices</option>
-              <option v-for="v in voices" :key="v.id" :value="v.id">{{ v.name || v.id }}</option>
-            </select>
+            <VoicePicker
+              v-model="generatorVoiceId"
+              :voices="voices"
+              :engines="engines"
+              select-class="stories__chip-select"
+              title="Voice for the new clip"
+            />
           </label>
           <span class="jv-chip-card stories__chip">
             🧠 <strong>{{ currentEngine?.name || "no engine" }}</strong>

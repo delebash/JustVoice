@@ -25,6 +25,10 @@
 //     confirmLabel: "Delete", danger: true,
 //   });
 //
+//   With `checkbox: { label: "..." }` the confirm resolves to
+//   { ok: boolean, checked: boolean } instead of a bare boolean —
+//   used by the engine-swap prompt's "always swap without asking".
+//
 // A single dialog at a time. The host component (AppDialog.vue) reads
 // `dialogState` and calls _resolveDialog(...) on confirm / cancel.
 

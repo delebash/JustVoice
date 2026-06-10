@@ -36,6 +36,9 @@ const dialog = computed(() => {
       confirmLabel: opts.confirmLabel || "Confirm",
       cancelLabel: opts.cancelLabel || "Cancel",
       danger: !!opts.danger,
+      // Optional checkbox ({ label }) — when present the confirm resolves
+      // { ok, checked } instead of a bare boolean.
+      checkbox: opts.checkbox || null,
     };
   }
   const fields = Array.isArray(opts.fields) && opts.fields.length
@@ -68,10 +71,12 @@ const visible = computed({
 
 const values = ref({});
 const firstInput = ref(null);
+const checkboxChecked = ref(false);
 
 watch(
   () => dialogState.open,
   async (open) => {
+    if (open) checkboxChecked.value = false;
     if (!open || !dialog.value || dialog.value.kind !== "prompt") return;
     const next = {};
     for (const f of dialog.value.fields) next[f.key] = f.defaultValue ?? "";
@@ -106,13 +111,20 @@ function captureFirst(el, i) {
 
 function cancel() {
   if (!dialog.value) return;
-  _resolveDialog(dialog.value.kind === "confirm" ? false : null);
+  if (dialog.value.kind === "confirm") {
+    _resolveDialog(dialog.value.checkbox ? { ok: false, checked: false } : false);
+    return;
+  }
+  _resolveDialog(null);
 }
 
 function submit() {
   const d = dialog.value;
   if (!d) return;
-  if (d.kind === "confirm") { _resolveDialog(true); return; }
+  if (d.kind === "confirm") {
+    _resolveDialog(d.checkbox ? { ok: true, checked: checkboxChecked.value } : true);
+    return;
+  }
   if (!canSubmit.value) return;
   if (d.isSingle) {
     const v = String(values.value[d.fields[0].key] ?? "").trim();
@@ -151,6 +163,11 @@ function onEnter(e, isLastField) {
 
         <div v-if="dialog" class="jv-dialog__body">
           <p v-if="dialog.message" class="jv-dialog__message">{{ dialog.message }}</p>
+
+          <label v-if="dialog.kind === 'confirm' && dialog.checkbox" class="jv-dialog__checkbox">
+            <input type="checkbox" v-model="checkboxChecked" />
+            <span>{{ dialog.checkbox.label }}</span>
+          </label>
 
           <template v-if="dialog.kind === 'prompt'">
             <div

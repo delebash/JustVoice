@@ -21,6 +21,7 @@ import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { useUiContext } from "../stores/uiContext.js";
 import { useCopy } from "../services/copy.js";
 import { pushToast } from "../services/toastBridge.js";
+import { withEngineSwap } from "../services/engineSwap.js";
 import JvButton from "../components/jv/JvButton.vue";
 import VoiceParamsModal from "../components/VoiceParamsModal.vue";
 import EmptyState from "../components/EmptyState.vue";
@@ -247,6 +248,20 @@ const filteredVoices = computed(() => {
     .filter((v) => !q || (v.name || "").toLowerCase().includes(q) || (v.id || "").toLowerCase().includes(q) || (v.tone || "").toLowerCase().includes(q));
 });
 
+// Distinct engines across the project's cast. >1 means batch renders
+// will swap engines (once per engine, server-side grouping) — surfaced
+// as a warning chip in the Cast toolbar so the cost is visible while
+// casting, not discovered mid-render.
+const castEngines = computed(() => {
+  const set = new Set();
+  for (const p of projectPersonas.value) {
+    if (!p.voice_id) continue;
+    const v = voices.value.find((x) => x.id === p.voice_id);
+    if (v?.engine) set.add(v.engine);
+  }
+  return [...set];
+});
+
 // Map persona_id → voice_id, so the voice library can show ✓ next to
 // voices already cast to the selected character. JustWrite affordance G
 // from the source-of-truth read this turn.
@@ -264,14 +279,18 @@ async function previewVoice(voice) {
   if (previewingVoiceId.value) return;
   previewingVoiceId.value = voice.id;
   try {
-    const blob = await api.request("/v1/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        voice: voice.id,
-        text: "This is a quick preview of how this voice sounds when reading a sentence.",
-      }),
-    });
+    const blob = await withEngineSwap((allowSwap) =>
+      api.request("/v1/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          voice: voice.id,
+          text: "This is a quick preview of how this voice sounds when reading a sentence.",
+          allow_engine_swap: allowSwap,
+        }),
+      })
+    );
+    if (blob === null) return;  // user declined the engine swap
     if (blob instanceof Blob) {
       const url = URL.createObjectURL(blob);
       audioPlayer.play({
@@ -467,12 +486,22 @@ async function renderScene(scene) {
       scene_id: scene.id,
       preset_id: scenePresetSelections.value[scene.id] || null,
     };
-    const audio = await api.request("/v1/render_chapter", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: abortController.signal,
-    });
+    // Swap-at-render: a cast voice on a cold engine 409s; the shared
+    // helper prompts once and retries. The server groups blocks by
+    // engine, so a multi-engine cast costs one swap per engine.
+    const audio = await withEngineSwap((allowSwap) =>
+      api.request("/v1/render_chapter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...body, allow_engine_swap: allowSwap }),
+        signal: abortController.signal,
+      })
+    );
+    if (audio === null) {
+      // User declined the engine swap.
+      tasks.cancel(task.id);
+      return;
+    }
     // /v1/render_chapter returns audio/wav (a Blob via api.request). Drop
     // it into the GlobalAudioPlayer so the user can hear the result
     // immediately, and store the URL on the task so the strip can
@@ -848,6 +877,13 @@ onMounted(loadAll);
           <h3 class="jv-section__title" style="margin: 0">
             {{ copy.cast.plural }} — {{ characterPersonas.length }}
           </h3>
+          <span
+            v-if="castEngines.length > 1"
+            class="jv-pill jv-pill--warn"
+            :title="`Engines: ${castEngines.join(', ')}. The server renders grouped by engine, so a batch render swaps ${castEngines.length - 1} time(s) total — not per line.`"
+          >
+            ⇄ {{ copy.cast.plural }} spans {{ castEngines.length }} engines
+          </span>
           <span class="jv-spacer" />
           <JvButton
             variant="secondary"
@@ -986,6 +1022,10 @@ onMounted(loadAll);
               >
                 <span class="studio__voice-row-name-row">
                   <strong class="studio__voice-row-name">{{ v.name }}</strong>
+                  <span
+                    class="jv-muted"
+                    :title="v.engine_loaded ? 'Engine loaded — renders immediately' : 'Engine not loaded — rendering will swap (prompted once)'"
+                  >{{ v.engine_loaded ? "●" : "⇄" }}</span>
                   <span
                     v-if="isVoiceAssignedToSelected(v.id)"
                     class="studio__voice-row-assigned"

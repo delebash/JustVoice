@@ -30,6 +30,9 @@ class HealthResponse(BaseModel):
     version: str
     api_version: str
     current_engine: str | None = None
+    # Variant loaded in the TTS slot — drives the topbar "engine · variant"
+    # swap-status pill.
+    current_variant: str | None = None
     engines: list[EngineHealth] = []
 
 

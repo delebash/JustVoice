@@ -12,11 +12,14 @@ import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { promptDialog } from "../services/dialog.js";
+import { withEngineSwap } from "../services/engineSwap.js";
+import VoicePicker from "../components/VoicePicker.vue";
 import JvButton from "../components/jv/JvButton.vue";
 
 const api = useApi();
 
 const voices = ref([]);
+const engines = ref([]);  // VoicePicker not-installed badges
 const selectedVoiceId = ref("");
 const sampleText = ref(
   "The night was thick with fog, and the lanterns barely caught the cobblestones."
@@ -46,8 +49,12 @@ function parseValues(str) {
 }
 
 async function loadVoices() {
-  const r = await api.safeRequest("/v1/voices", { voices: [] });
+  const [r, eng] = await Promise.all([
+    api.safeRequest("/v1/voices", { voices: [] }),
+    api.safeRequest("/v1/engines", { engines: [] }),
+  ]);
   voices.value = r?.voices || [];
+  engines.value = eng?.engines || [];
   if (!selectedVoiceId.value && voices.value.length) {
     selectedVoiceId.value = voices.value[0].id;
   }
@@ -76,22 +83,26 @@ function buildMatrix() {
   return out;
 }
 
-async function renderCell(cell) {
-  cell.status = "rendering";
-  cell.audioUrl = null;
-  cell.error = null;
-  try {
-    const body = {
+function requestCell(cell, allowSwap) {
+  return api.request("/v1/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
       voice: selectedVoiceId.value,
       text: sampleText.value,
       delivery: cell.params,
       cache: false,
-    };
-    const blob = await api.request("/v1/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+      allow_engine_swap: allowSwap,
+    }),
+  });
+}
+
+async function renderCell(cell, allowSwap = true) {
+  cell.status = "rendering";
+  cell.audioUrl = null;
+  cell.error = null;
+  try {
+    const blob = await requestCell(cell, allowSwap);
     cell.audioUrl = URL.createObjectURL(blob);
     cell.status = "done";
   } catch (e) {
@@ -121,12 +132,31 @@ async function runAll() {
 
   running.value = true;
   try {
+    // The first cell runs alone through the shared swap prompt — ONE
+    // prompt covers the whole matrix (single voice, single engine). The
+    // remaining cells reuse the now-loaded engine.
+    const first = cells.value[0];
+    first.status = "rendering";
+    try {
+      const blob = await withEngineSwap((allow) => requestCell(first, allow));
+      if (blob === null) {
+        // User declined the engine swap — abandon the run.
+        first.status = "queued";
+        return;
+      }
+      first.audioUrl = URL.createObjectURL(blob);
+      first.status = "done";
+    } catch (e) {
+      first.status = "failed";
+      first.error = String(e?.message || e);
+    }
+
     // Concurrency-limited worker pool (cap 2 to protect local engines).
-    let cursor = 0;
+    let cursor = 1;
     async function worker() {
       while (cursor < cells.value.length) {
         const idx = cursor++;
-        await renderCell(cells.value[idx]);
+        await renderCell(cells.value[idx], true);
       }
     }
     await Promise.all(Array.from({ length: MAX_CONCURRENCY }, worker));
@@ -174,9 +204,12 @@ onMounted(loadVoices);
       <div class="renderlab__form">
         <label class="renderlab__field">
           <span>Voice</span>
-          <select v-model="selectedVoiceId" class="jv-input">
-            <option v-for="v in voices" :key="v.id" :value="v.id">{{ v.name }} ({{ v.engine }})</option>
-          </select>
+          <VoicePicker
+            v-model="selectedVoiceId"
+            :voices="voices"
+            :engines="engines"
+            select-class="jv-input"
+          />
         </label>
         <label class="renderlab__field">
           <span>Sample sentence</span>

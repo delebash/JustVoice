@@ -396,6 +396,14 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   color: #fff;
 }
 .jv-topbar__engine-icon { font-size: 12px; }
+.jv-topbar__engine-variant { font-weight: 400; opacity: 0.75; }
+.jv-topbar__engine-pill--swapping {
+  animation: jv-engine-pill-pulse 1.2s ease-in-out infinite;
+}
+@keyframes jv-engine-pill-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
 
 /* Boot banner — shown only when /v1/health hasn't responded yet after
    ~1s, so the user doesn't see an empty UI and assume it's broken. */
@@ -1141,6 +1149,16 @@ p.note,
   margin-bottom: 4px;
 }
 .jv-dialog__help { font-size: 11px; color: var(--ink-3); margin-top: 4px; }
+.jv-dialog__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+  user-select: none;
+}
 .jv-dialog__footer {
   padding: 14px 22px;
   display: flex;
