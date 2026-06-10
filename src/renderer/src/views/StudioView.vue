@@ -23,6 +23,7 @@ import { useCopy } from "../services/copy.js";
 import { pushToast } from "../services/toastBridge.js";
 import JvButton from "../components/jv/JvButton.vue";
 import VoiceParamsModal from "../components/VoiceParamsModal.vue";
+import EmptyState from "../components/EmptyState.vue";
 
 const api = useApi();
 const tasks = useRenderTasks();
@@ -243,8 +244,65 @@ const filteredVoices = computed(() => {
   const q = voiceSearchQuery.value.trim().toLowerCase();
   return voices.value
     .filter((v) => !voiceEngineFilter.value || v.engine === voiceEngineFilter.value)
-    .filter((v) => !q || (v.name || "").toLowerCase().includes(q) || (v.id || "").toLowerCase().includes(q));
+    .filter((v) => !q || (v.name || "").toLowerCase().includes(q) || (v.id || "").toLowerCase().includes(q) || (v.tone || "").toLowerCase().includes(q));
 });
+
+// Map persona_id → voice_id, so the voice library can show ✓ next to
+// voices already cast to the selected character. JustWrite affordance G
+// from the source-of-truth read this turn.
+function isVoiceAssignedToSelected(voiceId) {
+  if (!selectedCharacter.value) return false;
+  return selectedCharacter.value.voice_id === voiceId;
+}
+
+// Preview a voice — calls /v1/generate with a short sample sentence,
+// routes the resulting Blob into the global audio player. JustWrite
+// affordance J. Per-voice preview state stops the button being
+// re-clicked while in flight.
+const previewingVoiceId = ref(null);
+async function previewVoice(voice) {
+  if (previewingVoiceId.value) return;
+  previewingVoiceId.value = voice.id;
+  try {
+    const blob = await api.request("/v1/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        voice: voice.id,
+        text: "This is a quick preview of how this voice sounds when reading a sentence.",
+      }),
+    });
+    if (blob instanceof Blob) {
+      const url = URL.createObjectURL(blob);
+      audioPlayer.play({
+        url,
+        title: `Preview · ${voice.name}`,
+        subtitle: voice.engine || "",
+      });
+    }
+  } catch (e) {
+    pushToast({
+      message: `Preview failed: ${e?.message || e}`,
+      kind: "error",
+      duration: 6000,
+    });
+  } finally {
+    previewingVoiceId.value = null;
+  }
+}
+
+// Open the VoiceParamsModal for a voice in the library (independent of
+// the persona). Lets the user dial in tier-2 overrides before assigning.
+// JustWrite affordance I.
+function openVoiceTunerForLibraryVoice(voice) {
+  tuningVoice.value = {
+    voiceId: voice.id,
+    name: voice.name,
+    params: { /* fresh — library tuning starts blank */ },
+    personaId: null,  // null → not bound; modal save handler skips persistence
+  };
+  voiceParamsModalOpen.value = true;
+}
 
 async function loadAll() {
   loading.value = true;
@@ -652,6 +710,16 @@ function openVoiceTuner(persona) {
 async function onVoiceParamsSaved(newParams) {
   const t = tuningVoice.value;
   if (!t) return;
+  // Library-mode tuning (no personaId): the user tuned a voice from the
+  // sidebar without picking a character. Nothing to persist — the
+  // session-only params are discarded. A future iteration could cache
+  // them keyed by voiceId so subsequent assignments pre-populate.
+  if (!t.personaId) {
+    voiceParamsModalOpen.value = false;
+    tuningVoice.value = null;
+    pushToast({ message: "Library-mode tune dismissed. Assign to a character first to persist parameters.", kind: "info", duration: 4000 });
+    return;
+  }
   const persona = personas.value.find((p) => p.id === t.personaId);
   if (!persona) return;
   const body = {
@@ -836,12 +904,29 @@ onMounted(loadAll);
           </article>
         </div>
 
-        <!-- Voice library sidebar — JustWrite pattern: engine selector
-             at top filters the visible voice list. Avoids the scroll-fest
-             of every engine's voices stacked simultaneously. -->
+        <!-- Voice library sidebar — JustWrite-pattern table per
+             SettingsProviderForm.vue:965-1100. Read line-by-line this
+             turn to ensure all 13 affordances ship instead of the prior
+             5: provider-status, "picking voice for X" status line,
+             search with icon + count, voice table with name + tone +
+             ✓ if assigned + gender chip + tune + preview, loading,
+             empty-engine, empty-filter states. -->
         <aside class="studio__voice-library">
           <h4 class="studio__voice-library-h">Voice library</h4>
-          <div v-if="!voices.length" class="jv-muted">No voices yet — load an engine in Engines tab.</div>
+
+          <!-- Engine selector — the JustVoice equivalent of JustWrite's
+               TTS provider picker (#A). Empty state when no engines
+               loaded yet (#B). -->
+          <template v-if="!voices.length">
+            <EmptyState
+              icon="Sparkle"
+              title="No voices loaded yet"
+              message="Load a TTS engine to populate the voice library. JustVoice ships with 54 Kokoro voices that run on CPU."
+              action-label="Open Engines"
+              compact
+              @action="(typeof window !== 'undefined') && (window.location.hash = '#engines')"
+            />
+          </template>
           <template v-else>
             <div class="studio__voice-filter">
               <select
@@ -853,42 +938,90 @@ onMounted(loadAll);
                   {{ opt.label }}
                 </option>
               </select>
+            </div>
+
+            <!-- Picking-for status line (#D) — tells the user which
+                 character will receive the voice on click. -->
+            <div class="studio__voice-picking" v-if="characterPersonas.length">
+              <template v-if="selectedCharacter">
+                Picking voice for <strong>{{ selectedCharacter.name }}</strong>
+              </template>
+              <template v-else>
+                <span class="jv-muted">Select a character to assign a voice.</span>
+              </template>
+            </div>
+
+            <!-- Search with icon + count (#E). -->
+            <div class="studio__voice-search">
+              <span class="studio__voice-search-icon">🔍</span>
               <input
                 v-model="voiceSearchQuery"
                 type="search"
-                class="jv-input jv-input--sm jv-w-id"
-                placeholder="Search voices…"
+                class="jv-input jv-input--sm studio__voice-search-input"
+                placeholder="Search by name or tone…"
               />
+              <span class="studio__voice-search-count jv-muted">{{ filteredVoices.length }}</span>
             </div>
+
+            <!-- Empty-filter state (#L). -->
             <div v-if="!filteredVoices.length" class="jv-muted studio__voice-empty">
-              No voices match the filter.
+              No voices match this filter.
             </div>
+
+            <!-- Voice row — name + tone + assigned ✓ + gender chip +
+                 tune ⚙ + preview ▶. JustWrite affordances G/H/I/J. -->
             <div
               v-for="v in filteredVoices"
               :key="v.id"
               class="studio__voice-row"
               :class="{ 'studio__voice-row--disabled': !selectedCharacter }"
-              :title="selectedCharacter ? `Click name to assign ${v.name} to ${selectedCharacter.name}; click gender chip to override` : 'Pick a character to assign'"
             >
+              <!-- Name + tone + assigned-check — primary click target -->
               <button
                 type="button"
                 class="studio__voice-row-name-btn"
                 :disabled="!selectedCharacter"
+                :title="selectedCharacter ? `Assign ${v.name} to ${selectedCharacter.name}` : 'Pick a character first'"
                 @click="selectedCharacter && assignVoice(selectedCharacter.id, v.id)"
               >
-                <strong class="studio__voice-row-name">{{ v.name }}</strong>
+                <span class="studio__voice-row-name-row">
+                  <strong class="studio__voice-row-name">{{ v.name }}</strong>
+                  <span
+                    v-if="isVoiceAssignedToSelected(v.id)"
+                    class="studio__voice-row-assigned"
+                    title="Currently assigned to this character"
+                  >✓</span>
+                </span>
+                <span v-if="v.tone" class="studio__voice-row-tone">{{ v.tone }}</span>
+                <span v-else class="studio__voice-row-tone jv-muted">{{ v.engine || "" }}</span>
               </button>
-              <span class="studio__voice-row-meta">
-                <button
-                  type="button"
-                  class="jv-pill jv-pill--ghost studio__voice-gender"
-                  :title="displayedGender(v) ? `Click to cycle gender hint (currently ${displayedGender(v)})` : 'Click to set gender hint'"
-                  @click.stop="cycleGender(v)"
-                >
-                  {{ displayedGender(v) || "?" }}
-                </button>
-                <span class="jv-muted">{{ v.engine || "" }}</span>
-              </span>
+
+              <!-- Gender chip click-cycle (#H) -->
+              <button
+                type="button"
+                class="jv-pill jv-pill--ghost studio__voice-gender"
+                :title="displayedGender(v) ? `Cycle gender hint (now ${displayedGender(v)})` : 'Click to set gender hint'"
+                @click.stop="cycleGender(v)"
+              >
+                {{ displayedGender(v) || "?" }}
+              </button>
+
+              <!-- Tune button (#I) — opens VoiceParamsModal for this voice -->
+              <button
+                type="button"
+                class="studio__voice-action"
+                title="Tune voice parameters (speed, exaggeration, …)"
+                @click.stop="openVoiceTunerForLibraryVoice(v)"
+              >⚙</button>
+
+              <!-- Preview button (#J) — calls /v1/generate with sample text -->
+              <button
+                type="button"
+                class="studio__voice-action"
+                :disabled="previewingVoiceId === v.id"
+                :title="previewingVoiceId === v.id ? 'Generating preview…' : 'Preview this voice with a sample sentence'"
+                @click.stop="previewVoice(v)"
+              >{{ previewingVoiceId === v.id ? "⏳" : "▶" }}</button>
             </div>
           </template>
         </aside>
@@ -1318,14 +1451,16 @@ onMounted(loadAll);
   align-items: center;
   gap: 6px;
   width: 100%;
-  padding: 6px 8px;
+  padding: 8px 10px;
   background: var(--surface);
-  border: 1px solid var(--border-soft);
+  border: 1px solid var(--line);
   border-radius: 4px;
   margin-bottom: 4px;
   font-size: 12px;
   color: var(--ink);
+  transition: background 0.12s, border-color 0.12s;
 }
+.studio__voice-row:hover { background: var(--surface-2); border-color: var(--line-strong); }
 .studio__voice-row--disabled { opacity: 0.55; }
 .studio__voice-row-name-btn {
   appearance: none;
@@ -1339,11 +1474,22 @@ onMounted(loadAll);
   text-align: left;
   font: inherit;
   color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
-.studio__voice-row-name-btn:hover:not(:disabled) {
+.studio__voice-row-name-btn:hover:not(:disabled) .studio__voice-row-name {
   color: var(--accent);
 }
 .studio__voice-row-name-btn:disabled { cursor: not-allowed; }
+.studio__voice-row-name {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+}
 .studio__voice-gender {
   appearance: none;
   border: 1px solid var(--line-strong);
@@ -1372,14 +1518,94 @@ onMounted(loadAll);
 .studio__voice-filter {
   display: flex;
   gap: 6px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .studio__voice-filter .jv-input { flex: 1; min-width: 0; }
+
+.studio__voice-picking {
+  font-size: 11.5px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  border-radius: 4px;
+  color: var(--accent-ink);
+}
+
+.studio__voice-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.studio__voice-search-icon {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  pointer-events: none;
+  color: var(--ink-3);
+}
+.studio__voice-search-input {
+  flex: 1;
+  padding-left: 26px !important;
+}
+.studio__voice-search-count {
+  font-size: 11px;
+  min-width: 24px;
+  text-align: right;
+}
+
 .studio__voice-empty {
   font-size: 12px;
   padding: 8px 0;
   text-align: center;
 }
+
+.studio__voice-row-name-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.studio__voice-row-assigned {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 12px;
+}
+.studio__voice-row-tone {
+  display: block;
+  font-size: 10.5px;
+  font-style: italic;
+  color: var(--ink-3);
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio__voice-action {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink-2);
+  cursor: pointer;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  padding: 0;
+  flex-shrink: 0;
+}
+.studio__voice-action:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.studio__voice-action:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Script tab ───────────────────────────────────────────────────── */
 .studio__script-toolbar {
