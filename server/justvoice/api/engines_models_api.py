@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter
+from pydantic import BaseModel
 
 from ..app_state import get_state
 from ..engines.catalog import known_engines
@@ -134,17 +135,35 @@ async def cancel_engine_load(id: str) -> dict:
     return {"engine_id": id, "cancelled": cancelled}
 
 
+class UnloadRequest(BaseModel):
+    """Optional body: when `kind` is supplied (Phase 2 / Slice 1),
+    only the engine in that kind's slot is unloaded. Other-kind slots
+    stay loaded — required for the speaker-attribution workflow where
+    an LLM + TTS engine need to be resident at the same time.
+
+    Omitting the body or sending {} preserves the legacy behavior of
+    unloading every loaded engine.
+    """
+    kind: str | None = None
+
+
 @router.post("/v1/engines/unload", response_model=UnloadResponse)
-async def unload_engine() -> UnloadResponse:
+async def unload_engine(body: UnloadRequest | None = None) -> UnloadResponse:
     st = get_state()
     mgr = get_manager()
-    previous_managed = mgr.current_id()
-    previous_inproc = st.engines.current()
+    requested_kind = body.kind if body else None
+
+    if requested_kind:
+        previous_managed = mgr.current_for(requested_kind)
+        previous_inproc = None
+    else:
+        previous_managed = mgr.current_id()
+        previous_inproc = st.engines.current()
     previous = previous_managed or previous_inproc
 
     if previous_managed:
-        mgr.unload()
-    if previous_inproc:
+        mgr.unload(kind=requested_kind)
+    if previous_inproc and not requested_kind:
         engine = st.engines.get(previous_inproc)
         if engine:
             try:
