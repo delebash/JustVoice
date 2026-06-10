@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>JustVoice — voice library design preview v3</title>
+<title>JustVoice — voice library design preview v4</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -136,6 +136,18 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .glyph{width:20px;height:20px;border-radius:999px;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600;flex:none}
 
 .studio{display:grid;grid-template-columns:1fr 360px;gap:18px;align-items:start}
+
+/* Game-scale cast table (card grid doesn't scale past ~30 roles) */
+.cast-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.cast-toolbar .input{max-width:240px}
+.ctable{width:100%;border-collapse:collapse;font-size:13px}
+.ctable thead th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.ctable td{padding:7px 12px;border-bottom:1px solid var(--line);color:var(--ink-2);vertical-align:middle}
+.ctable tbody tr:last-child td{border-bottom:0}
+.ctable tbody tr{cursor:pointer}
+.ctable tbody tr:hover td{background:var(--surface-2)}
+.ctable tbody tr.sel td{background:var(--accent-soft)}
+.ctable .right{text-align:right;white-space:nowrap}
 
 /* ── Voice library panel ── */
 .lib .toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
@@ -317,6 +329,7 @@ const GENDER_CYCLE = ["F","M","N","?"];
 const PROJECTS = {
   heist: {
     name:"The Stillwater Heist", type:"audiobook",
+    scriptLabel:"Script", scriptSub:"Speaker analysis",
     renderSub:"Chapter audio · ACX master",
     castHeadline:"The voice of everything that isn't spoken",
     cast:[
@@ -331,19 +344,32 @@ const PROJECTS = {
   },
   harbor: {
     name:"Harbor Lights — NPC dialogue", type:"game",
+    // Game lines arrive pre-attributed from quest tools — no LLM
+    // attribution step. Script becomes the import-mapping surface.
+    scriptLabel:"Lines", scriptSub:"742 imported · mapped",
     renderSub:"Per-line WAV + JSON sidecar",
     castHeadline:null, // games have no narrator band
     cast:[
-      { id:"dock",   name:"Dockmaster Hale", role:"Quest giver · 84 lines",  main:true,  voice:"crow" },
-      { id:"ferry",  name:"Ferryman",        role:"Ambient · 12 lines",      main:false, voice:null },
-      { id:"yia",    name:"Merchant Yia",    role:"Vendor · 47 lines",       main:true,  voice:null },
-      { id:"guard",  name:"Guard Captain",   role:"Barks · 156 lines",       main:true,  voice:null },
-      { id:"urchin", name:"Pier Urchin",     role:"Quest · 31 lines",        main:false, voice:"he" },
+      { id:"dock",   name:"Dockmaster Hale",  role:"Quest giver", lines:84,  main:true,  voice:"crow" },
+      { id:"ferry",  name:"Ferryman",         role:"Ambient",     lines:12,  main:false, voice:null },
+      { id:"yia",    name:"Merchant Yia",     role:"Vendor",      lines:47,  main:true,  voice:null },
+      { id:"guard",  name:"Guard Captain",    role:"Barks",       lines:156, main:true,  voice:null },
+      { id:"urchin", name:"Pier Urchin",      role:"Quest",       lines:31,  main:false, voice:"he" },
+      { id:"smith",  name:"Smith Varga",      role:"Vendor",      lines:38,  main:false, voice:null },
+      { id:"inn",    name:"Innkeeper Maro",   role:"Quest giver", lines:62,  main:true,  voice:null },
+      { id:"widow",  name:"Widow Castellan",  role:"Quest",       lines:55,  main:false, voice:"sar" },
+      { id:"drunk",  name:"Drunk Sailor",     role:"Ambient",     lines:9,   main:false, voice:null },
+      { id:"priest", name:"Tide Priest",      role:"Lore",        lines:71,  main:false, voice:null },
+      { id:"kid1",   name:"Net Boy",          role:"Ambient",     lines:6,   main:false, voice:null },
+      { id:"capt",   name:"Captain Issa",     role:"Quest giver", lines:97,  main:true,  voice:"sky" },
+      { id:"smug",   name:"Smuggler Wren",    role:"Quest",       lines:44,  main:false, voice:null },
+      { id:"clerk",  name:"Harbor Clerk",     role:"Ambient",     lines:15,  main:false, voice:null },
     ],
   },
 };
 let projectId = "heist";
 let selectedChar = "idris";
+let castSearch = "", uncastOnly = false;
 let libEngine = "chatterbox", vEngine = "chatterbox";
 let vType = "all", vSearch = "", libSearch = "";
 
@@ -456,7 +482,7 @@ function projComboHtml(){
       📖 ${p.name}<span class="chev">▾</span></button>
     <div class="combo-pop">${items}</div>`;
 }
-function pickProject(id){projectId=id;selectedChar=project().cast.find(c=>!c.voice)?.id||project().cast[0].id;renderAll()}
+function pickProject(id){projectId=id;castSearch="";uncastOnly=false;selectedChar=project().cast.find(c=>!c.voice)?.id||project().cast[0].id;renderAll()}
 
 function castCardHtml(c){
   const v=c.voice?voiceById(c.voice):null;
@@ -478,16 +504,45 @@ function castCardHtml(c){
 }
 function selectChar(id){selectedChar=id;renderAll()}
 
+function castTableHtml(p){
+  let cast=p.cast.filter(c=>!c.isNarrator);
+  if(castSearch) cast=cast.filter(c=>c.name.toLowerCase().includes(castSearch));
+  if(uncastOnly) cast=cast.filter(c=>!c.voice);
+  cast=[...cast].sort((a,b2)=>(b2.lines||0)-(a.lines||0));
+  const rows=cast.map(c=>{
+    const v=c.voice?voiceById(c.voice):null;
+    const needs=v&&!engineReady(v.engine);
+    return `<tr class="${selectedChar===c.id?"sel":""}" onclick="selectChar('${c.id}')">
+      <td style="width:34px"><span class="glyph" style="background:${grad(c.name)}">${initials(c.name)[0]}</span></td>
+      <td><b>${c.name}</b>${c.main?` <span class="cast-chip-main">main</span>`:""}</td>
+      <td>${c.role}</td>
+      <td class="right">${c.lines??"—"}</td>
+      <td>${v?`<span style="display:inline-flex;align-items:center;gap:6px"><span class="glyph" style="background:${grad(v.name)}">${v.name[0]}</span><b style="font-size:12px">${v.name}</b>${needs?`<span class="cast-needs">⚠ needs ${ENGINES[v.engine].name}</span>`:""}</span>`
+            :`<span class="cast-unassigned" style="margin-top:0">⚠ No voice</span>`}</td>
+    </tr>`;
+  }).join("");
+  return `<div class="cast-toolbar">
+      <input class="input" placeholder="Search NPCs…" value="${castSearch}" oninput="castSearch=this.value.trim().toLowerCase();renderStudio()" />
+      <button class="chip ${uncastOnly?"active":""}" style="border:1px solid var(--line)" onclick="uncastOnly=!uncastOnly;renderStudio()">Uncast only</button>
+      <span style="font-size:11px;color:var(--ink-3)">${cast.length} shown · sorted by line count</span>
+    </div>
+    <div class="card" style="overflow:hidden"><table class="ctable">
+      <thead><tr><th></th><th>NPC</th><th>Role</th><th class="right">Lines</th><th>Voice</th></tr></thead>
+      <tbody>${rows||`<tr><td colspan="5" style="text-align:center;font-style:italic;color:var(--ink-3);padding:16px">No NPCs match.</td></tr>`}</tbody>
+    </table></div>`;
+}
+
 function renderStudio(){
   const p=project();
   $("#proj-combo").innerHTML=projComboHtml();
   $("#proj-type").textContent=p.type;
   const unassigned=p.cast.filter(c=>!c.voice).length;
+  // Lab removed from the workflow — it's a bench/testing tool, lives in
+  // the Tools lane (Speaker Lab / Render Lab), not a production step.
   $("#steps").innerHTML=`
     <button class="step active"><span class="ic">🎧</span><span><b>Cast</b><span>${p.cast.length-unassigned}/${p.cast.length} cast</span></span></button>
-    <button class="step"><span class="ic">💬</span><span><b>Script</b><span>Speaker analysis</span></span></button>
-    <button class="step"><span class="ic">🎚️</span><span><b>Render</b><span>${p.renderSub}</span></span></button>
-    <button class="step"><span class="ic">🧪</span><span><b>Lab</b><span>A/B engine params</span></span></button>`;
+    <button class="step"><span class="ic">💬</span><span><b>${p.scriptLabel}</b><span>${p.scriptSub}</span></span></button>
+    <button class="step"><span class="ic">🎚️</span><span><b>Render</b><span>${p.renderSub}</span></span></button>`;
   const narrator=p.cast.find(c=>c.isNarrator);
   if(narrator){
     $("#cast-heading").innerHTML=`<div class="eyebrow">Narrator</div><div class="display">${p.castHeadline}</div>`;
@@ -498,7 +553,15 @@ function renderStudio(){
     $("#narrator-card").innerHTML="";
     $("#char-eyebrow").textContent=p.type==="game"?"NPCs":"Characters";
   }
-  $("#cast-grid").innerHTML=p.cast.filter(c=>!c.isNarrator).map(castCardHtml).join("");
+  // Cards read beautifully at novel scale (≤ ~30 roles); game casts run
+  // 50-500 NPCs, so they get a searchable, line-count-sorted table.
+  if(p.type==="game"){
+    $("#cast-grid").innerHTML=castTableHtml(p);
+    $("#cast-grid").classList.remove("cast-grid");
+  } else {
+    $("#cast-grid").innerHTML=p.cast.filter(c=>!c.isNarrator).map(castCardHtml).join("");
+    $("#cast-grid").classList.add("cast-grid");
+  }
   $("#char-counter").textContent=`${p.cast.filter(c=>!c.isNarrator).length} ${p.type==="game"?"NPCs":"characters"} · ${unassigned} unassigned`;
 }
 
