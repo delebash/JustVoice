@@ -325,6 +325,40 @@ function providerLabel(providerId) {
   return aiProviders.value.find((p) => p.id === providerId)?.name || providerId;
 }
 
+// Fallback provider — when no pin is set for a feature, the dispatch
+// uses the first registered LLM. Surface its name in the "Inherit
+// default" option so users know which provider their feature actually
+// falls through to.
+const fallbackProvider = computed(() => aiProviders.value[0] || null);
+
+// Per-provider model cache. Lazy-fetched when the user clicks the
+// 🔄 button next to a feature row, then offered as datalist options
+// so the model input becomes a typing-combobox like ProviderForm.
+const providerModels = ref({});  // { providerId: string[] }
+const providerModelsBusy = ref({});  // { providerId: boolean }
+
+async function fetchProviderModels(providerId) {
+  if (!providerId) return;
+  providerModelsBusy.value = { ...providerModelsBusy.value, [providerId]: true };
+  try {
+    const r = await api.request(`/v1/llm-providers/${providerId}/models`);
+    providerModels.value = { ...providerModels.value, [providerId]: r?.models || [] };
+    if (!(r?.models || []).length) {
+      pushToast({ message: `${providerLabel(providerId)} returned no models.`, kind: "info" });
+    }
+  } catch (e) {
+    pushToast({ message: `Couldn't list models for ${providerLabel(providerId)}: ${e?.message || e}`, kind: "error" });
+  } finally {
+    providerModelsBusy.value = { ...providerModelsBusy.value, [providerId]: false };
+  }
+}
+
+// Lab destination per feature — speaker_attribution lands in Speaker Lab.
+// Future: smart_assign → Smart-Assign Lab when it ships.
+const LAB_PATHS = {
+  speaker_attribution: { href: "#speakerlab", label: "Speaker Lab" },
+};
+
 async function savePin(feature, providerId, model, tier) {
   if (!providerId) {
     pushToast({ message: "Pick a provider first.", kind: "info" });
@@ -966,25 +1000,45 @@ onMounted(() => {
                     savePin(entry.key, pid, existing?.model || '', existing?.tier || entry.recommended_tier);
                   }"
                 >
-                  <option value="">— unpinned (fallback) —</option>
+                  <option value="">
+                    Inherit default{{ fallbackProvider ? ` · ${fallbackProvider.name}` : "" }}
+                  </option>
                   <option v-for="p in aiProviders" :key="p.id" :value="p.id">
                     {{ p.name }}
                   </option>
                 </select>
               </td>
               <td>
-                <input
-                  type="text"
-                  class="jv-input jv-input--sm jv-w-id"
-                  :value="pinForFeature(entry.key)?.model || ''"
-                  :placeholder="aiProviders.find((p) => p.id === pinForFeature(entry.key)?.provider_id)?.default_model || 'default'"
-                  :disabled="aiBusy || !pinForFeature(entry.key)"
-                  @change="(e) => {
-                    const p = pinForFeature(entry.key);
-                    if (!p) return;
-                    savePin(entry.key, p.provider_id, e.target.value, p.tier);
-                  }"
-                />
+                <div style="display: flex; gap: 4px; align-items: center;">
+                  <input
+                    type="text"
+                    class="jv-input jv-input--sm jv-w-id"
+                    :value="pinForFeature(entry.key)?.model || ''"
+                    :placeholder="aiProviders.find((p) => p.id === pinForFeature(entry.key)?.provider_id)?.default_model || 'default'"
+                    :disabled="aiBusy || !pinForFeature(entry.key)"
+                    :list="pinForFeature(entry.key)?.provider_id ? `ai-models-${pinForFeature(entry.key).provider_id}` : null"
+                    @change="(e) => {
+                      const p = pinForFeature(entry.key);
+                      if (!p) return;
+                      savePin(entry.key, p.provider_id, e.target.value, p.tier);
+                    }"
+                  />
+                  <button
+                    v-if="pinForFeature(entry.key)?.provider_id"
+                    type="button"
+                    class="jv-btn jv-btn--ghost jv-btn--sm"
+                    :disabled="providerModelsBusy[pinForFeature(entry.key).provider_id]"
+                    title="Fetch model list from provider"
+                    @click="fetchProviderModels(pinForFeature(entry.key).provider_id)"
+                    style="padding: 2px 6px; min-width: 0;"
+                  >{{ providerModelsBusy[pinForFeature(entry.key).provider_id] ? "…" : "↻" }}</button>
+                  <datalist
+                    v-if="pinForFeature(entry.key)?.provider_id && providerModels[pinForFeature(entry.key).provider_id]"
+                    :id="`ai-models-${pinForFeature(entry.key).provider_id}`"
+                  >
+                    <option v-for="m in providerModels[pinForFeature(entry.key).provider_id]" :key="m" :value="m" />
+                  </datalist>
+                </div>
               </td>
               <td>
                 <select
@@ -1006,14 +1060,24 @@ onMounted(() => {
                 </div>
               </td>
               <td>
-                <button
-                  v-if="pinForFeature(entry.key)"
-                  type="button"
-                  class="jv-btn jv-btn--ghost jv-btn--sm"
-                  :disabled="aiBusy"
-                  title="Clear pin"
-                  @click="clearPin(entry.key)"
-                >✕</button>
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <a
+                    v-if="LAB_PATHS[entry.key]"
+                    :href="LAB_PATHS[entry.key].href"
+                    class="jv-muted"
+                    style="font-size: 10.5px; text-decoration: underline dotted;"
+                    :title="`Tune this feature's prompts + tier in ${LAB_PATHS[entry.key].label}`"
+                  >Lab</a>
+                  <button
+                    v-if="pinForFeature(entry.key)"
+                    type="button"
+                    class="jv-btn jv-btn--ghost jv-btn--sm"
+                    :disabled="aiBusy"
+                    title="Clear pin"
+                    @click="clearPin(entry.key)"
+                    style="padding: 2px 6px; min-width: 0;"
+                  >✕</button>
+                </div>
               </td>
             </tr>
           </tbody>
