@@ -264,7 +264,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.cache-view { padding: 32px; max-width: 860px; display: flex; flex-direction: column; gap: 24px; }
+.cache-view { padding: 32px; max-width: var(--shell-form); display: flex; flex-direction: column; gap: 24px; }
 .stats-grid { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-top: 12px; }
 .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-3); margin-bottom: 4px; }
 .stat-value { font-size: 22px; font-weight: 600; color: var(--ink); }

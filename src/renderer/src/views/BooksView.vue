@@ -438,7 +438,7 @@ onMounted(refresh);
             <label class="books__field">
               <span>Title</span>
               <input
-                class="jv-input"
+                class="jv-input jv-w-name"
                 :value="selectedProject.name"
                 placeholder="Project title"
                 @change="commitName"
@@ -448,7 +448,7 @@ onMounted(refresh);
             <label class="books__field">
               <span>Author</span>
               <input
-                class="jv-input"
+                class="jv-input jv-w-name"
                 v-model="editAuthor"
                 placeholder="e.g., D. Nash"
                 @change="commitMeta('author', editAuthor)"
@@ -458,7 +458,7 @@ onMounted(refresh);
             <label class="books__field">
               <span>Mastering preset</span>
               <select
-                class="jv-input"
+                class="jv-input jv-w-name"
                 :value="selectedProject.mastering_preset ?? ''"
                 @change="(ev) => commitMastering(ev.target.value)"
               >
@@ -469,7 +469,7 @@ onMounted(refresh);
             <label class="books__field">
               <span>Render preset</span>
               <select
-                class="jv-input"
+                class="jv-input jv-w-name"
                 v-model="editRenderPreset"
                 @change="commitMeta('render_preset', editRenderPreset)"
               >
@@ -516,7 +516,7 @@ onMounted(refresh);
             <label class="books__field books__field--wide">
               <span>Webhook on complete</span>
               <input
-                class="jv-input"
+                class="jv-input jv-w-url"
                 v-model="editWebhookUrl"
                 placeholder="https://your-service.local/webhooks/render"
                 @change="commitMeta('webhook_url', editWebhookUrl)"
@@ -719,7 +719,7 @@ onMounted(refresh);
 }
 
 .books__detail-card {
-  max-width: 1000px;
+  max-width: var(--shell-page);
 }
 
 .books__detail-header {

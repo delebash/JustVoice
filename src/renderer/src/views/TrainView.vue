@@ -224,37 +224,38 @@ onUnmounted(() => {
 
       <div class="train-grid">
         <JvField label="Voice profile (output name)" layout="block">
-          <JvInput v-model="trainName" placeholder="Old Crow-trained" />
+          <JvInput v-model="trainName" placeholder="Old Crow-trained" width="name" />
         </JvField>
         <JvField label="Base engine" layout="block">
-          <JvSelect v-model="trainEngine" :options="engineOptions" placeholder="Pick an engine…" />
+          <JvSelect v-model="trainEngine" :options="engineOptions" placeholder="Pick an engine…" width="name" />
         </JvField>
         <JvField label="Method" layout="block">
-          <JvSelect v-model="trainMethod" :options="TRAIN_METHODS.map((m) => ({ label: m.label, value: m.id }))" />
+          <JvSelect v-model="trainMethod" :options="TRAIN_METHODS.map((m) => ({ label: m.label, value: m.id }))" width="name" />
         </JvField>
         <JvField label="Steps" layout="block">
-          <JvInput v-model.number="trainSteps" type="number" placeholder="5000" />
+          <JvInput v-model.number="trainSteps" type="number" placeholder="5000" width="token" />
         </JvField>
         <JvField label="SNR threshold (dB)" layout="block">
-          <JvInput v-model.number="trainSnrThreshold" type="number" placeholder="30" />
+          <JvInput v-model.number="trainSnrThreshold" type="number" placeholder="30" width="token" />
         </JvField>
         <JvField label="Max clipping ratio" layout="block">
-          <JvInput v-model.number="trainClipRatio" type="number" step="0.001" placeholder="0.002" />
+          <JvInput v-model.number="trainClipRatio" type="number" step="0.001" placeholder="0.002" width="token" />
         </JvField>
         <JvField label="Max silence ratio" layout="block">
-          <JvInput v-model.number="trainSilenceRatio" type="number" step="0.01" placeholder="0.35" />
+          <JvInput v-model.number="trainSilenceRatio" type="number" step="0.01" placeholder="0.35" width="token" />
         </JvField>
         <JvField label="Concurrent jobs limit" layout="block">
-          <JvInput v-model.number="trainConcurrency" type="number" placeholder="1" />
+          <JvInput v-model.number="trainConcurrency" type="number" placeholder="1" width="token" />
         </JvField>
         <JvField label="Base voice (optional)" layout="block">
           <JvSelect
             v-model="trainBaseVoice"
             :options="[{ label: '— none —', value: '' }, ...voiceOptions]"
+            width="name"
           />
         </JvField>
         <JvField label="Learning rate (optional override)" layout="block">
-          <JvInput v-model="trainLearningRate" type="number" placeholder="engine default" />
+          <JvInput v-model="trainLearningRate" type="number" placeholder="engine default" width="token" />
         </JvField>
       </div>
 

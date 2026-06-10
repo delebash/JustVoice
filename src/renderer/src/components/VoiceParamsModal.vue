@@ -157,7 +157,7 @@ onMounted(() => {
             <input
               v-if="k.type === 'number'"
               type="number"
-              class="jv-input"
+              class="jv-input jv-w-token"
               :value="params[k.key] ?? ''"
               :min="k.min"
               :max="k.max"
@@ -197,7 +197,7 @@ onMounted(() => {
               <input
                 v-if="k.type === 'number'"
                 type="number"
-                class="jv-input"
+                class="jv-input jv-w-token"
                 :value="params[k.key] ?? ''"
                 :min="k.min"
                 :max="k.max"

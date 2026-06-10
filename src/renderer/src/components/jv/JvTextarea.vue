@@ -16,6 +16,10 @@ const props = defineProps({
   autosize:   { type: Boolean, default: false },
   minHeightPx:{ type: Number, default: 100 },
   maxHeightPx:{ type: Number, default: 300 },
+  // Content-typed width caps (plan Q6). One of:
+  //   token / id / name / url / path / prose / edit / full
+  // Default is empty (full width; behaves as before).
+  width:      { type: String, default: "" },
 });
 const emit = defineEmits(["update:modelValue", "blur", "focus", "keydown", "input"]);
 
@@ -38,8 +42,8 @@ watch(() => props.modelValue, () => nextTick(resize));
 <template>
   <textarea
     ref="textareaEl"
-    class="jv-textarea jv-textarea--full"
-    :class="{ 'is-invalid': invalid }"
+    class="jv-textarea"
+    :class="[width ? `jv-w-${width}` : 'jv-textarea--full', { 'is-invalid': invalid }]"
     :value="modelValue"
     :placeholder="placeholder"
     :disabled="disabled"

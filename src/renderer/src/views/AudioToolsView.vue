@@ -220,19 +220,19 @@ onBeforeUnmount(revokeMastered);
         </JvField>
 
         <JvField label="Preset" layout="block">
-          <JvSelect v-model="masterPreset" :options="PRESET_OPTIONS" />
+          <JvSelect v-model="masterPreset" :options="PRESET_OPTIONS" width="name" />
         </JvField>
 
         <JvField label="Title (optional)" layout="block">
-          <JvInput type="text" v-model="masterTitle" placeholder="Chapter 1" />
+          <JvInput type="text" v-model="masterTitle" placeholder="Chapter 1" width="name" />
         </JvField>
 
         <JvField label="Author (optional)" layout="block">
-          <JvInput type="text" v-model="masterAuthor" placeholder="Author name" />
+          <JvInput type="text" v-model="masterAuthor" placeholder="Author name" width="name" />
         </JvField>
 
         <JvField label="Book / album (optional)" layout="block" style="grid-column: 1 / -1;">
-          <JvInput type="text" v-model="masterBook" placeholder="Book title" />
+          <JvInput type="text" v-model="masterBook" placeholder="Book title" width="name" />
         </JvField>
       </div>
 
@@ -255,7 +255,7 @@ onBeforeUnmount(revokeMastered);
 </template>
 
 <style scoped>
-.audio-tools-view { padding: 32px; max-width: 860px; display: flex; flex-direction: column; gap: 24px; }
+.audio-tools-view { padding: 32px; max-width: var(--shell-form); display: flex; flex-direction: column; gap: 24px; }
 .master-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px; }
 .file-input { font-size: 13px; color: var(--ink-2); cursor: pointer; }
 </style>

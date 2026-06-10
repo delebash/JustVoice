@@ -284,7 +284,7 @@ onMounted(() => {
         <!-- Add a new effect -->
         <div class="effects-modal__row effects-modal__add">
           <span class="effects-modal__add-label">Add effect:</span>
-          <select v-model="addEffectType" class="jv-input">
+          <select v-model="addEffectType" class="jv-input jv-w-name">
             <option value="">— pick a type —</option>
             <option
               v-for="e in effectiveCatalog"
@@ -305,7 +305,7 @@ onMounted(() => {
         <div class="effects-modal__row effects-modal__saveas">
           <input
             v-model="saveAsName"
-            class="jv-input"
+            class="jv-input jv-w-name"
             placeholder="Name (e.g. Cave reverb, Phone filter)…"
           />
           <JvButton

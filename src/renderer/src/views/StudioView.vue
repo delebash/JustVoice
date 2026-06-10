@@ -1344,7 +1344,7 @@ onMounted(loadAll);
   color: var(--ink-3);
   font-weight: 600;
 }
-.studio__project-select { flex: 1 1 260px; max-width: 480px; }
+.studio__project-select { flex: 1 1 260px; max-width: var(--w-path); }
 
 .studio__tabs {
   display: flex;
@@ -1621,7 +1621,7 @@ onMounted(loadAll);
   color: var(--ink-3);
   font-weight: 600;
 }
-.studio__script-select { flex: 1 1 240px; max-width: 360px; }
+.studio__script-select { flex: 1 1 240px; max-width: var(--w-url); }
 
 .studio__script-meta {
   font-size: 11.5px;

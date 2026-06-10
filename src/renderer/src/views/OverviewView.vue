@@ -426,7 +426,7 @@ onMounted(refresh);
 }
 .overview-view__tagline {
   margin: 8px auto 18px;
-  max-width: 640px;
+  max-width: var(--w-prose);
   color: var(--ink-2);
   font-size: 14px;
   line-height: 1.5;
@@ -437,7 +437,7 @@ onMounted(refresh);
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 10px;
   text-align: left;        /* cards stay left-aligned even though the band is centered */
-  max-width: 1080px;
+  max-width: var(--shell-page);
   margin: 0 auto;
 }
 

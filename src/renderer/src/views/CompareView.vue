@@ -292,17 +292,17 @@ onMounted(loadBulkPickers);
       <div class="jv-card cmp__bulk-card">
         <div class="cmp__bulk-row">
           <span class="jv-muted">Compare all takes for:</span>
-          <select class="jv-input" v-model="selectedProject" @change="loadScenes(selectedProject)" style="width:260px">
+          <select class="jv-input jv-w-name" v-model="selectedProject" @change="loadScenes(selectedProject)">
             <option value="">— pick a project —</option>
             <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
           </select>
-          <select class="jv-input" v-model="selectedScene" :disabled="!scenes.length" style="width:260px">
+          <select class="jv-input jv-w-name" v-model="selectedScene" :disabled="!scenes.length">
             <option value="">— pick a chapter —</option>
             <option v-for="s in scenes" :key="s.id" :value="s.id">
               {{ s.title || `Chapter ${s.position}` }}
             </option>
           </select>
-          <input class="jv-input" v-model="selectedBlock" placeholder="Block id (optional)" style="width:160px" />
+          <input class="jv-input jv-w-id" v-model="selectedBlock" placeholder="Block id (optional)" />
           <span class="jv-spacer" />
           <JvButton variant="primary" size="sm" :loading="bulkBusy" label="Run QC pass" @click="runBulkQc" />
         </div>
@@ -315,7 +315,7 @@ onMounted(loadBulkPickers);
 </template>
 
 <style scoped>
-.cmp { padding: 24px 32px; max-width: 1100px; display: flex; flex-direction: column; gap: 18px; }
+.cmp { padding: 24px 32px; max-width: var(--shell-page); display: flex; flex-direction: column; gap: 18px; }
 
 .cmp__toolbar {
   display: flex;

@@ -373,29 +373,29 @@ onMounted(loadAll);
         <div class="personas__grid">
           <label class="personas__field">
             <span>Name</span>
-            <input class="jv-input" v-model="draft.name" @input="markDirty" />
+            <input class="jv-input jv-w-name" v-model="draft.name" @input="markDirty" />
           </label>
 
           <label class="personas__field">
             <span>Voice</span>
-            <select class="jv-input" v-model="draft.voice_id" @change="markDirty">
+            <select class="jv-input jv-w-name" v-model="draft.voice_id" @change="markDirty">
               <option v-for="v in voices" :key="v.id" :value="v.id">{{ v.name }} ({{ v.id }})</option>
             </select>
           </label>
 
           <label class="personas__field">
             <span>Language</span>
-            <input class="jv-input" v-model="draft.language" @input="markDirty" placeholder="en" />
+            <input class="jv-input jv-w-token" v-model="draft.language" @input="markDirty" placeholder="en" />
           </label>
 
           <label class="personas__field">
             <span>Avatar path</span>
-            <input class="jv-input" v-model="draft.avatar_path" @input="markDirty" placeholder="(optional)" />
+            <input class="jv-input jv-w-path" v-model="draft.avatar_path" @input="markDirty" placeholder="(optional)" />
           </label>
 
           <label class="personas__field">
             <span>Engine override</span>
-            <select class="jv-input" v-model="draft.engine_override" @change="markDirty">
+            <select class="jv-input jv-w-name" v-model="draft.engine_override" @change="markDirty">
               <option value="">(use voice default)</option>
               <option v-for="e in engines" :key="e.id" :value="e.id">{{ e.name || e.id }}</option>
             </select>
@@ -403,7 +403,7 @@ onMounted(loadAll);
 
           <label class="personas__field">
             <span>Lexicon override</span>
-            <select class="jv-input" v-model="draft.lexicon_id" @change="markDirty">
+            <select class="jv-input jv-w-name" v-model="draft.lexicon_id" @change="markDirty">
               <option value="">(none — use project default)</option>
               <option v-for="lx in lexicons" :key="lx.id" :value="lx.id">{{ lx.name }}</option>
             </select>
@@ -625,7 +625,7 @@ onMounted(loadAll);
 }
 
 .personas__editor {
-  max-width: 920px;
+  max-width: var(--shell-form);
 }
 .personas__editor-h {
   display: flex;

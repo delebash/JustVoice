@@ -173,7 +173,7 @@ onMounted(loadVoices);
       <div class="renderlab__form">
         <label class="renderlab__field">
           <span>Voice</span>
-          <select v-model="selectedVoiceId" class="jv-input">
+          <select v-model="selectedVoiceId" class="jv-input jv-w-name">
             <option v-for="v in voices" :key="v.id" :value="v.id">{{ v.name }} ({{ v.engine }})</option>
           </select>
         </label>

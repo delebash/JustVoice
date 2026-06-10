@@ -19,6 +19,10 @@ const props = defineProps({
   disabled:   { type: Boolean, default: false },
   id:         { type: String, default: undefined },
   inputId:    { type: String, default: undefined },
+  // Content-typed width caps (plan Q6). One of:
+  //   token / id / name / url / path / prose / edit / full
+  // Default is empty (no cap; behaves as before).
+  width:      { type: String, default: "" },
 });
 const emit = defineEmits(["update:modelValue"]);
 
@@ -41,7 +45,7 @@ function onChange(e) {
 <template>
   <select
     class="jv-select"
-    :class="{ 'is-empty': modelValue == null || modelValue === '' }"
+    :class="[width && `jv-w-${width}`, { 'is-empty': modelValue == null || modelValue === '' }]"
     :value="modelValue ?? ''"
     :disabled="disabled"
     :id="id || inputId"

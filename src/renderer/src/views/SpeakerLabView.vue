@@ -357,7 +357,7 @@ onMounted(() => {
   gap: 8px;
   margin-bottom: 8px;
 }
-.splab__input-select { width: 200px; }
+.splab__input-select { width: var(--w-name); }
 
 .splab__text {
   width: 100%;
@@ -392,7 +392,7 @@ onMounted(() => {
   gap: 8px;
   align-items: center;
 }
-.splab__add-cast > input { max-width: 240px; }
+.splab__add-cast > input { max-width: var(--w-name); }
 
 .splab__columns {
   display: grid;

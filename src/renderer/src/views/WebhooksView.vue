@@ -157,7 +157,7 @@ onMounted(refresh);
       <h3 class="jv-section__title" style="margin-bottom: 16px;">New webhook subscription</h3>
 
       <JvField label="URL" layout="block">
-        <JvInput type="url" v-model="adding.url" placeholder="https://your-server/webhook" />
+        <JvInput type="url" v-model="adding.url" placeholder="https://your-server/webhook" width="url" />
       </JvField>
 
       <JvField label="Events" layout="block">
@@ -173,7 +173,7 @@ onMounted(refresh);
       </JvField>
 
       <JvField label="Secret (auto-generated if blank)" layout="block">
-        <JvInput type="text" v-model="adding.secret" placeholder="32 random bytes recommended" />
+        <JvInput type="text" v-model="adding.secret" placeholder="32 random bytes recommended" width="url" />
       </JvField>
 
       <div class="jv-btn-group" style="margin-top: 16px;">
@@ -185,7 +185,7 @@ onMounted(refresh);
 </template>
 
 <style scoped>
-.webhooks-view { padding: 32px; max-width: 1100px; }
+.webhooks-view { padding: 32px; max-width: var(--shell-page); }
 .editor-card { margin-top: 16px; }
 .events-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
 .secret-code { background: rgba(0,0,0,0.05); padding: 4px 8px; border-radius: 4px; }

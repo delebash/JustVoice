@@ -1068,7 +1068,7 @@ onMounted(() => { refresh(); loadSystem(); loadProviders(); });
 .engines-view__foot {
   margin-top: 18px;
   font-size: 11.5px;
-  max-width: 880px;
+  max-width: var(--w-edit);
   line-height: 1.55;
 }
 

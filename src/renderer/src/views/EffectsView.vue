@@ -199,7 +199,7 @@ onMounted(refresh);
 .effects-view__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 16px;
+  gap: var(--gap-grid);
 }
 
 .effects-view__preset {

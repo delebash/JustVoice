@@ -316,7 +316,7 @@ onMounted(refresh);
         <div class="lex__field">
           <label>Live preview text</label>
           <input
-            class="jv-input"
+            class="jv-input jv-w-prose"
             v-model="previewText"
             placeholder="Beauchamp arrived in Stillwater on the NYPD ferry. — Worcestershire sauce on his cuff."
           />
@@ -353,15 +353,15 @@ onMounted(refresh);
         <div class="lex__entry-grid">
           <label class="lex__field">
             <span>Grapheme (as written)</span>
-            <input class="jv-input" v-model="newGrapheme" placeholder="Beauchamp" @keydown.enter="appendEntry" />
+            <input class="jv-input jv-w-name" v-model="newGrapheme" placeholder="Beauchamp" @keydown.enter="appendEntry" />
           </label>
           <label class="lex__field">
             <span>Phoneme IPA</span>
-            <input class="jv-input" v-model="newPhonemeIpa" placeholder="/ˈbiːtʃəm/" @keydown.enter="appendEntry" />
+            <input class="jv-input jv-w-name" v-model="newPhonemeIpa" placeholder="/ˈbiːtʃəm/" @keydown.enter="appendEntry" />
           </label>
           <label class="lex__field">
             <span>Alias (phonetic — engine reads this)</span>
-            <input class="jv-input" v-model="newAlias" placeholder="bee-chum" @keydown.enter="appendEntry" />
+            <input class="jv-input jv-w-name" v-model="newAlias" placeholder="bee-chum" @keydown.enter="appendEntry" />
           </label>
           <label class="lex__field">
             <span>Note (optional)</span>
@@ -447,7 +447,7 @@ onMounted(refresh);
 
 .lex__detail { padding: 24px 32px; overflow-y: auto; }
 .lex__detail-empty { padding: 40px; text-align: center; }
-.lex__editor { max-width: 1000px; }
+.lex__editor { max-width: var(--shell-page); }
 
 .lex__editor-h {
   display: flex;

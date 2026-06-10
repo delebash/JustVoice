@@ -335,6 +335,7 @@ function compareDropdownOptions(blockId) {
             v-model="selectedProjectId"
             :options="projectOptions"
             :placeholder="`Select a ${copy.book.singular.toLowerCase()}…`"
+            width="name"
           />
         </JvField>
         <JvField :label="copy.chapter.singular" layout="inline">
@@ -343,6 +344,7 @@ function compareDropdownOptions(blockId) {
             :options="sceneOptions"
             :disabled="!selectedProjectId || !scenes.length"
             :placeholder="`Select a ${copy.chapter.singular.toLowerCase()}…`"
+            width="name"
           />
         </JvField>
         <JvField label="Voice for re-generate" layout="inline">
@@ -350,6 +352,7 @@ function compareDropdownOptions(blockId) {
             v-model="regenVoice"
             :options="voiceOptions"
             :disabled="availableVoices.length === 0"
+            width="name"
           />
         </JvField>
       </div>

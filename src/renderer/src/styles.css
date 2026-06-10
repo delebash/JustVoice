@@ -79,6 +79,11 @@
   --w-prose: 640px;  /* description, hint paragraph */
   --w-edit:  880px;  /* manuscript reading width */
 
+  /* Per-surface page shells (plan Q6). Every view's top-level max-width
+     comes from one of these two — not an ad-hoc pixel value. */
+  --shell-form: 880px;   /* form-first pages — single-column editor/settings panes */
+  --shell-page: 1100px;  /* default page shell — tables, master-detail, QC grids */
+
   --gap-grid: 16px;  /* canonical card-grid gap */
 }
 

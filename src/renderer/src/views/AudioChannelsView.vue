@@ -129,7 +129,7 @@ onMounted(() => {
       <h3 class="jv-section__title" style="margin-bottom: 16px;">{{ editing.id ? "Edit channel" : "Add channel" }}</h3>
 
       <JvField label="Name" layout="block">
-        <JvInput v-model="editing.name" placeholder="e.g. OBS virtual mic" />
+        <JvInput v-model="editing.name" placeholder="e.g. OBS virtual mic" width="name" />
       </JvField>
 
       <JvField label="Devices (comma-separated IDs)" layout="block">
@@ -163,7 +163,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.channels-view { padding: 32px; max-width: 900px; }
+.channels-view { padding: 32px; max-width: var(--shell-form); }
 .editor-card { margin-top: 8px; }
 .devices-details { margin-top: 8px; font-size: 12px; color: var(--ink-2); }
 .devices-details ul { margin: 4px 0 0; padding-left: 20px; }

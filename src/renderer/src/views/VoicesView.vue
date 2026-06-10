@@ -390,7 +390,7 @@ function blendWithVoice() {
 <template>
   <!-- ── Toolbar: search + type filter + + Clone primary action ─────────── -->
   <div class="voices-view__toolbar">
-    <JvInput v-model="search" placeholder="Search voices…" class="voices-view__search" />
+    <JvInput v-model="search" placeholder="Search voices…" width="name" />
     <div class="voices-view__chips">
       <button
         v-for="f in TYPE_FILTERS"
@@ -672,7 +672,7 @@ function blendWithVoice() {
                     />
                   </td>
                   <td>
-                    <JvInput type="number" :modelValue="String(s.weight)" @update:modelValue="s.weight = $event" style="width: 90px;" />
+                    <JvInput type="number" :modelValue="String(s.weight)" @update:modelValue="s.weight = $event" width="token" />
                   </td>
                   <td>
                     <JvButton variant="ghost" size="sm" v-if="blendSources.length > 2" @click="removeBlendSource(idx)">Remove</JvButton>
@@ -755,7 +755,6 @@ function blendWithVoice() {
   flex-wrap: wrap;
   margin-bottom: 12px;
 }
-.voices-view__search { max-width: 280px; }
 .voices-view__chips {
   display: inline-flex;
   background: var(--surface-2);

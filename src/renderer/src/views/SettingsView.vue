@@ -796,10 +796,10 @@ onMounted(() => {
         <p class="jv-muted" style="font-size: 12px; margin-bottom: 14px;">Where this UI sends API requests. Persists in localStorage; not part of server settings.</p>
         <div class="settings-grid">
           <JvField label="Server URL" layout="block">
-            <JvInput v-model="api.serverUrl" :spellcheck="false" @blur="reload" />
+            <JvInput v-model="api.serverUrl" :spellcheck="false" width="url" @blur="reload" />
           </JvField>
           <JvField label="Bearer token (optional)" layout="block">
-            <JvInput v-model="api.token" type="password" placeholder="optional" />
+            <JvInput v-model="api.token" type="password" placeholder="optional" width="url" />
           </JvField>
         </div>
         <div class="jv-row" style="margin-top: 14px;">
@@ -920,6 +920,7 @@ onMounted(() => {
             <div class="jv-row" style="gap: 8px">
               <JvSelect
                 v-model="updater.channel"
+                width="id"
                 :options="[
                   { label: 'Stable', value: 'stable' },
                   { label: 'Beta', value: 'beta' },
@@ -1172,6 +1173,7 @@ onMounted(() => {
           <JvInput
             v-model="settings.engines.kokoro.model_dir_override"
             :spellcheck="false"
+            width="path"
             placeholder="e.g. C:\Users\you\kokoro-multi-lang-v1_0"
           />
         </JvField>
@@ -1283,7 +1285,7 @@ onMounted(() => {
             <JvInput v-model.number="settings.training.sample_loss_every" type="number" width="token" />
           </JvField>
           <JvField label="Default voice language (BCP-47)" layout="block">
-            <JvInput v-model="settings.training.default_voice_language" />
+            <JvInput v-model="settings.training.default_voice_language" width="token" />
           </JvField>
         </div>
         <div style="margin-top: 14px;">
@@ -1398,22 +1400,23 @@ onMounted(() => {
 
         <div class="settings-grid" style="margin-bottom: 14px;">
           <JvField label="id (e.g. external-kokoro)" layout="block">
-            <JvInput v-model="newExternal.id" placeholder="external-kokoro-local" :spellcheck="false" />
+            <JvInput v-model="newExternal.id" placeholder="external-kokoro-local" :spellcheck="false" width="id" />
           </JvField>
           <JvField label="Name" layout="block">
-            <JvInput v-model="newExternal.name" placeholder="Local Kokoro FastAPI" />
+            <JvInput v-model="newExternal.name" placeholder="Local Kokoro FastAPI" width="name" />
           </JvField>
           <JvField label="Model" layout="block">
             <JvSelect
               v-if="probeModels.length"
               v-model="newExternal.model"
               :options="probeModelOptions"
+              width="id"
             />
-            <JvInput v-else v-model="newExternal.model" placeholder="kokoro" />
+            <JvInput v-else v-model="newExternal.model" placeholder="kokoro" width="id" />
           </JvField>
           <div style="grid-column: 1 / -1;">
             <JvField label="Voices (comma-separated)" layout="block">
-              <JvInput v-model="newExternal.voicesText" placeholder="af_heart, af_bella, am_michael" :spellcheck="false" />
+              <JvInput v-model="newExternal.voicesText" placeholder="af_heart, af_bella, am_michael" :spellcheck="false" width="prose" />
               <p v-if="probeVoices.length" class="jv-muted" style="font-size: 11px; margin-top: 4px;">
                 Discovered: <code class="jv-mono">{{ probeVoices.join(", ") }}</code>
               </p>
@@ -1464,8 +1467,8 @@ onMounted(() => {
         <p v-else class="jv-muted" style="font-style: italic; margin-bottom: 14px;">No URL overrides set.</p>
 
         <div class="jv-row" style="margin-bottom: 8px;">
-          <JvInput v-model="newOverrideVariantId" placeholder="variant id (e.g. kokoro-multi-lang-v1_0)" style="flex: 1;" />
-          <JvInput v-model="newOverrideUrl" placeholder="override URL" style="flex: 2;" />
+          <JvInput v-model="newOverrideVariantId" placeholder="variant id (e.g. kokoro-multi-lang-v1_0)" width="name" />
+          <JvInput v-model="newOverrideUrl" placeholder="override URL" width="path" />
           <JvButton variant="secondary" :disabled="!newOverrideVariantId || !newOverrideUrl" @click="addUrlOverride">Add override</JvButton>
         </div>
         <p class="jv-muted" style="font-size: 12px;">Saved with Settings.</p>
@@ -1581,6 +1584,7 @@ onMounted(() => {
             </div>
             <JvSelect
               v-model="capture.sttModel"
+              width="name"
               :options="[
                 { label: 'faster-whisper-base.en (fast, recommended)', value: 'base.en' },
                 { label: 'faster-whisper-small.en', value: 'small.en' },
@@ -1599,6 +1603,7 @@ onMounted(() => {
             </div>
             <JvSelect
               v-model="capture.llmModel"
+              width="name"
               :options="[
                 { label: 'Qwen 0.6B (fastest)', value: '0.6B' },
                 { label: 'Qwen 1.7B (balanced)', value: '1.7B' },
@@ -1619,6 +1624,7 @@ onMounted(() => {
             </div>
             <JvSelect
               v-model="capture.refinementMode"
+              width="name"
               :options="[
                 { label: 'smart-cleanup', value: 'smart-cleanup' },
                 { label: 'self-correction', value: 'self-correction' },
@@ -1635,6 +1641,7 @@ onMounted(() => {
             </div>
             <JvSelect
               v-model="capture.language"
+              width="name"
               :options="[
                 { label: 'auto', value: 'auto' },
                 { label: 'English (en)', value: 'en' },
@@ -1673,7 +1680,7 @@ onMounted(() => {
                 fallback profile they get.
               </div>
             </div>
-            <JvSelect v-model="capture.defaultPlaybackVoice" :options="[{ label: '(none — pick a profile)', value: '' }]" />
+            <JvSelect v-model="capture.defaultPlaybackVoice" :options="[{ label: '(none — pick a profile)', value: '' }]" width="name" />
           </div>
         </div>
         <p class="jv-muted" style="font-size: 11.5px; margin-top: 8px">
@@ -1698,11 +1705,12 @@ onMounted(() => {
         </p>
         <div class="settings-grid">
           <JvField label="Endpoint" layout="block">
-            <JvInput :value="`${api.serverUrl}/mcp`" :readonly="true" />
+            <JvInput :value="`${api.serverUrl}/mcp`" :readonly="true" width="url" />
           </JvField>
           <JvField label="Transport" layout="block">
             <JvSelect
               v-model="mcp.transport"
+              width="name"
               :options="[
                 { label: 'HTTP + SSE', value: 'http' },
                 { label: 'stdio (via shim)', value: 'stdio' },
@@ -1902,6 +1910,7 @@ onMounted(() => {
             </div>
             <JvSelect
               v-model="appearance.theme"
+              width="name"
               :options="[
                 { label: 'Follow system', value: 'auto' },
                 { label: 'Light', value: 'light' },
@@ -1922,6 +1931,7 @@ onMounted(() => {
             </div>
             <JvSelect
               v-model="appearance.density"
+              width="name"
               :options="[
                 { label: 'Default', value: 'default' },
                 { label: 'Compact', value: 'compact' },
@@ -1965,6 +1975,7 @@ onMounted(() => {
             </div>
             <JvSelect
               v-model="appearance.locale"
+              width="name"
               :options="[
                 { label: 'English (en)', value: 'en' },
                 { label: 'Spanish (es)', value: 'es' },
@@ -2025,6 +2036,7 @@ onMounted(() => {
           <JvField label="Channel" layout="block">
             <JvSelect
               v-model="updater.channel"
+              width="id"
               :options="[
                 { label: 'Stable', value: 'stable' },
                 { label: 'Beta', value: 'beta' },

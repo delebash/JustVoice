@@ -1143,7 +1143,7 @@ onMounted(refreshVoices);
 
 /* Seed: moderate-width input + randomize button. */
 .generate-view__paired--seed { gap: 8px; }
-.generate-view__seed-input   { width: 180px; font-family: var(--font-mono); }
+.generate-view__seed-input   { width: var(--w-id); font-family: var(--font-mono); }
 
 /* Advanced details (engine JSON escape hatch) — small uppercase summary. */
 .generate-view__advanced > summary {

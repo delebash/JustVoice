@@ -157,7 +157,7 @@ onMounted(() => {
         />
       </div>
       <div class="captures__search">
-        <JvInput v-model="search" placeholder="Search transcripts…" size="sm" />
+        <JvInput v-model="search" placeholder="Search transcripts…" size="sm" width="name" />
       </div>
 
       <!-- Readiness banner -->
