@@ -112,6 +112,11 @@ class BlockResponse(BaseModel):
     persona_id: Optional[str]
     direction: Optional[str]
     metadata: dict
+    # Phase 3 / Slice 2 — extraction telemetry surfaced to the Studio
+    # Script tab. Null on blocks created manually (source="manual" or
+    # left null pre-extraction).
+    extraction_confidence: Optional[float] = None
+    source: Optional[str] = None
     created_at: datetime
 
     @classmethod
@@ -124,6 +129,8 @@ class BlockResponse(BaseModel):
             persona_id=row.persona_id,
             direction=row.direction,
             metadata=json.loads(row.metadata_json or "{}"),
+            extraction_confidence=row.extraction_confidence,
+            source=row.source,
             created_at=row.created_at,
         )
 
@@ -170,6 +177,11 @@ class CreateBlockRequest(BaseModel):
     persona_id: Optional[str] = None
     direction: Optional[str] = None
     metadata: dict = Field(default_factory=dict)
+    # Phase 3 / Slice 2 — extraction telemetry. When the Studio Script
+    # tab "Apply" action writes blocks from an analyze run, it passes
+    # these through; manual block creation leaves them null + source="manual".
+    extraction_confidence: Optional[float] = None
+    source: Optional[str] = "manual"
 
 
 class UpdateBlockRequest(BaseModel):
@@ -178,6 +190,8 @@ class UpdateBlockRequest(BaseModel):
     persona_id: Optional[str] = None
     direction: Optional[str] = None
     metadata: Optional[dict] = None
+    extraction_confidence: Optional[float] = None
+    source: Optional[str] = None
 
 
 class CastAssignRequest(BaseModel):
@@ -324,6 +338,8 @@ async def create_block(
         persona_id=body.persona_id,
         direction=body.direction,
         metadata_json=json.dumps(body.metadata),
+        extraction_confidence=body.extraction_confidence,
+        source=body.source,
     )
     db.add(b)
     db.commit()
@@ -348,6 +364,10 @@ async def update_block(
         b.direction = body.direction
     if body.metadata is not None:
         b.metadata_json = json.dumps(body.metadata)
+    if body.extraction_confidence is not None:
+        b.extraction_confidence = body.extraction_confidence
+    if body.source is not None:
+        b.source = body.source
     db.commit()
     db.refresh(b)
     return BlockResponse.from_orm(b)

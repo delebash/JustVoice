@@ -52,6 +52,7 @@ def run_migrations(engine) -> None:
     _migrate_personas_absorb_profile_fields(engine, inspector, tables)
     _migrate_drop_voice_profile_tables(engine, inspector, tables)
     _migrate_render_presets_effects_chain(engine, inspector, tables)
+    _migrate_blocks_extraction_telemetry(engine, inspector, tables)
 
 
 # ── helpers ───────────────────────────────────────────────────────────────
@@ -140,6 +141,20 @@ def _migrate_personas_absorb_profile_fields(engine, inspector, tables: set[str])
         _add_column(engine, "personas", "effects_chain TEXT", "effects_chain")
     if "imported_id" not in columns:
         _add_column(engine, "personas", "imported_id VARCHAR", "imported_id")
+
+
+def _migrate_blocks_extraction_telemetry(engine, inspector, tables: set[str]) -> None:
+    """Add extraction_confidence FLOAT + source TEXT to blocks (Phase 3 /
+    Slice 2). Populated when blocks land via POST /v1/scenes/{id}/analyze.
+    The Studio Script tab and the Speaker Lab both read these.
+    """
+    if "blocks" not in tables:
+        return
+    columns = _get_columns(inspector, "blocks")
+    if "extraction_confidence" not in columns:
+        _add_column(engine, "blocks", "extraction_confidence FLOAT", "extraction_confidence")
+    if "source" not in columns:
+        _add_column(engine, "blocks", "source VARCHAR", "source")
 
 
 def _migrate_render_presets_effects_chain(engine, inspector, tables: set[str]) -> None:

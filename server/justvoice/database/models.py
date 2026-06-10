@@ -218,6 +218,13 @@ class Block(Base):
     # Emotion/style hint passed through to the engine's instruct field
     direction = Column(String, nullable=True)
     metadata_json = Column(Text, nullable=True)
+    # Phase 3 / Slice 2 — extraction telemetry. Populated when blocks
+    # land via POST /v1/scenes/{id}/analyze; the Studio Script tab
+    # reads these to render audit chips ("floored from <X>", "anchor: said")
+    # and the Speaker Lab uses them for disagreement badges.
+    extraction_confidence = Column(Float, nullable=True)
+    # "tag" | "propagated" | "llm" | "floored" | "narration" | "manual"
+    source = Column(String, nullable=True)
     created_at = Column(DateTime, default=_utcnow)
 
 
