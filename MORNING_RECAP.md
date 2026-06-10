@@ -277,7 +277,7 @@ Ported from voicebox commit `b35b90961d5bc83a8b4e96e8b6ccde2a03152ff9` (MIT) und
 ```powershell
 # One-time setup
 npm install
-cd server; pip install -e .[kokoro]; cd ..
+cd server; pip install -e .; cd ..
 
 # Dev (Tauri + Vite + Python sidecar)
 npm run tauri dev

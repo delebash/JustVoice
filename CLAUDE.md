@@ -101,11 +101,11 @@ Three layers:
 ```bash
 # Dev (Tauri + Vite + Python sidecar all running)
 npm install
-cd server && pip install -e .[kokoro] && cd ..
+cd server && pip install -e . && cd ..
 npm run tauri dev
 
 # Headless (Python server only — same UI via /ui/)
-cd server && pip install -e .[kokoro]
+cd server && pip install -e .
 justvoice-server serve     # NOT `justvoice serve` — see project_gotchas memory
 
 # Build production installer
