@@ -7,6 +7,44 @@
 
 ## BUILD MILESTONE — 2026-06-09: Capability manifest + profiles + auto-chunking wired + take-lineage + 3-tier voice tuning + global audio player. 81 server tests pass. vite build clean.
 
+## 2026-06-09 evening ship — commit `7fdd6f1` (pushed)
+
+Massive rebrand + license-hygiene sweep + UX polish. All in one commit.
+
+**Brand rename — JustTTS → JustVoice:**
+- All product-facing strings renamed across docs, UI, comments, Tauri configs, package metadata, legacy-gui, preview HTML, CSS tokens (`--voicebox` → `--info-blue`).
+- **Preserved as technical identifiers** (spawn-loop fix from `project_gotchas`): Python package `server/justtts/`, console script `justtts-server`, Tauri binary `justtts.exe`, X-JustTTS-* HTTP wire headers (manager.py:1138-1140 + justtts_plugin/server.py:135-137), `JUSTTTS_DATA_DIR`/`JUSTTTS_MODEL_DIR`/`JUSTTTS_TORCH_INDEX` env vars. CLAUDE.md L5 keeps the rename-history note pointing readers at "JustTTS" in legacy memory files.
+
+**Voicebox reference removal:**
+- All non-attribution voicebox references stripped (~130 mentions): strategic docs, code comments, "voicebox-parity" labels, the comparison file (`preview/voicebox-feature-comparison.md` deleted), src-tag chip labels.
+- **Kept where MIT §3 requires it**: `voicebox-pin.txt`, NOTICE.md voicebox section, LICENSES.md row, SPDX-FileCopyrightText headers on every lifted file (7 Rust + 5 Vue + 3 Python), visible UI footer at `SettingsView.vue:1787` + `preview/full-app-preview.html:1812` ("Portions ported from voicebox (MIT)…").
+
+**Engine catalog — Higgs removed:**
+- `server/justtts/engines/higgs_audio/` deleted entirely. Higgs Audio v3's weights ship under a non-commercial license that would taint commercial audiobook / game / podcast output.
+- Each remaining engine's MODEL WEIGHTS license verified commercial-output-permitting via WebFetch on its HuggingFace model card (see `project_engine_weight_licenses` memory).
+- Engines now: 7 base / 9 with variants (Kokoro, Chatterbox + Turbo + Multilingual, Qwen3 + 0.6B, LuxTTS, TADA, Dia, MOSS-TTSD) + external OpenAI-compatible.
+
+**TADA Llama 3.2 attribution:**
+- New manifest fields `WEIGHTS_LICENSE` + `ATTRIBUTION` (in `EmbeddedEngine`/manager.py:121-138) flow through `EngineInfo` (models.py:500-512) → `/v1/engines` → EnginesView card (`.engine-card__license` pill + `.engine-card__attribution` warn-tinted row).
+- TADA manifest declares `WEIGHTS_LICENSE = "Llama-3.2-Community"` + `ATTRIBUTION = "Built with Llama"` per Llama §1.b.
+- NOTICE.md + docs/engines.md document the attribution requirement.
+
+**UX polish (long-running ops):**
+- `renderTasks.js` store: `panelOpen` + `openPanel`/`closePanel`/`togglePanel`, `cancelAll`, `retry(id)`, `dismiss(id)`, `activeCount` computed, `_scheduleAutoDismiss` (5s completed / 3s cancelled / never failed), `_timers: Map`. Tasks accept `onRetry` callback.
+- New components `TaskStrip.vue` (accent-tinted inline strip with Details/Cancel/Retry/Dismiss) + `TaskStatusPanel.vue` (right-side slide-in with Running + Recent sections, teleported, click-outside + Esc).
+- Topbar status pill is now clickable button → `tasks.togglePanel()` (App.vue:203-212).
+
+**Engine load — server-side cancel:**
+- `EngineManager._cancel_load_requests: set[str]` + `request_cancel_load(engine_id)` method (manager.py:917-945). Polled at safe steps (shared-venv setup, model download, subprocess spawn, child /load).
+- `POST /v1/engines/{id}/cancel-load` endpoint (engines_models_api.py:120-135). EnginesView wires `AbortController` + Cancel button + `onRetry: () => load(id, variant)` (EnginesView.vue:290-306).
+
+**EnginesView card-layout rewrite:**
+- Replaced table with `.engine-cards` grid + per-engine card. Status pill (4 visual states: loaded/loading/installed/not_installed), currently-loaded summary, install progress with indeterminate-shimmer, always-visible model picker with Recommended + ★ Currently loaded chips, footer Install (venv-only) / Unload / Uninstall.
+- All `.engine-card__*` scoped CSS landed. Build 725 modules → 3.67s.
+
+**Lexicon auto-attach on Generate:**
+- `GenerateView.vue`: `attachedLexicon` ref (L194), watch on `selectedProfile` fetches `/v1/lexicons/{default_lexicon_id}` (L204-214), sends `body.lexicons = [attachedLexicon.value.id]` at render time (L391). Always-visible row with View applied entries modal.
+
 ## 2026-06-09 ship list (UX parity sweep)
 
 **Backend:**
