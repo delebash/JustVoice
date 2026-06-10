@@ -10,6 +10,7 @@ import JvTextarea from "../components/jv/JvTextarea.vue";
 import JvSelect from "../components/jv/JvSelect.vue";
 import JvTag from "../components/jv/JvTag.vue";
 import JvField from "../components/jv/JvField.vue";
+import EmptyState from "../components/EmptyState.vue";
 
 const api = useApi();
 const voices = ref([]);
@@ -492,9 +493,17 @@ function blendWithVoice() {
         </tr>
       </tbody>
     </table>
+    <EmptyState
+      v-else-if="voices.length === 0"
+      icon="Sparkle"
+      title="No voices registered"
+      message="Load an engine to see its preset voices, or clone a new voice from a reference WAV. JustVoice ships with 54 Kokoro presets out of the box."
+      action-label="Open Engines"
+      compact
+      @action="$router && $router.push?.('#engines'); window.location.hash = '#engines'"
+    />
     <p v-else class="jv-muted" style="padding: 24px 0; text-align: center; font-style: italic;">
-      <span v-if="voices.length === 0">No voices registered. Install + load an engine to see preset voices.</span>
-      <span v-else>No voices match "{{ search }}" or filter "{{ typeFilter }}".</span>
+      No voices match "{{ search }}" or filter "{{ typeFilter }}".
     </p>
   </div>
 

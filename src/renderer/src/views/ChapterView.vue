@@ -7,7 +7,9 @@ import { useTakesStore } from "../stores/takes.js";
 import { pushToast } from "../services/toastBridge.js";
 import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
+import { useUiContext } from "../stores/uiContext.js";
 import JvButton from "../components/jv/JvButton.vue";
+import EmptyState from "../components/EmptyState.vue";
 import JvField from "../components/jv/JvField.vue";
 import JvSelect from "../components/jv/JvSelect.vue";
 import JvTag from "../components/jv/JvTag.vue";
@@ -88,6 +90,18 @@ async function loadBlocks(sceneId) {
 
 watch(selectedProjectId, (id) => loadScenes(id));
 watch(selectedSceneId, (id) => loadBlocks(id));
+
+// Breadcrumb publishing — Chapter › [Project] › [Scene]
+const uiContext = useUiContext();
+function publishCrumbs() {
+  const segments = [];
+  const project = projects.value.find((p) => p.id === selectedProjectId.value);
+  if (project) segments.push({ label: project.name, href: "#books" });
+  const scene = scenes.value.find((s) => s.id === selectedSceneId.value);
+  if (scene) segments.push({ label: scene.title || `Chapter ${scene.position + 1}` });
+  uiContext.set(segments);
+}
+watch([selectedProjectId, selectedSceneId, projects, scenes], publishCrumbs);
 
 onMounted(loadProjects);
 
@@ -342,11 +356,15 @@ function compareDropdownOptions(blockId) {
     </div>
 
     <!-- ── No project banner ───────────────────────────────────────────── -->
-    <div v-if="!selectedProjectId" class="jv-banner">
-      No {{ copy.book.singular.toLowerCase() }} selected.
-      <a href="#books"><strong>Go to {{ copy.book.plural }}</strong></a>
-      → import one (JustWrite / CSV / SRT / Audacity labels / JustVoice JSON) or create a blank one.
-    </div>
+    <EmptyState
+      v-if="!selectedProjectId"
+      icon="Sparkle"
+      :title="`No ${copy.book.singular.toLowerCase()} selected`"
+      :message="`Import a manuscript (JustWrite / CSV / SRT / Audacity labels / JustVoice JSON) or create a blank one to start.`"
+      :action-label="`Open ${copy.book.plural}`"
+      compact
+      @action="(typeof window !== 'undefined') && (window.location.hash = '#books')"
+    />
 
     <!-- ── No blocks yet ──────────────────────────────────────────────── -->
     <div
@@ -354,6 +372,7 @@ function compareDropdownOptions(blockId) {
       class="jv-banner"
     >
       This {{ copy.chapter.singular.toLowerCase() }} has no {{ copy.line.plural.toLowerCase() }} yet.
+      Open <a href="#studio">Studio → Script tab</a> to paste prose and run speaker attribution.
     </div>
 
     <!-- ── Block list ─────────────────────────────────────────────────── -->

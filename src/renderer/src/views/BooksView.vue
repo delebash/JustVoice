@@ -16,6 +16,7 @@ import ListPane from "../components/ListPane.vue";
 import JvButton from "../components/jv/JvButton.vue";
 import JvTag from "../components/jv/JvTag.vue";
 import EmptyState from "../components/EmptyState.vue";
+import { useUiContext } from "../stores/uiContext.js";
 import ImportModal from "./ImportModal.vue";
 import { projectsService } from "../services/projects.js";
 import { useApi } from "../stores/api.js";
@@ -214,11 +215,14 @@ const personasAvailableForCast = computed(() => {
   return allPersonas.value.filter((p) => !castIds.has(p.id));
 });
 
+const uiContext = useUiContext();
+
 watch(selectedProject, (p) => {
   if (!p) {
     editAuthor.value = "";
     editRenderPreset.value = "";
     editWebhookUrl.value = "";
+    uiContext.clear();
     return;
   }
   const meta = projectMeta.value;
@@ -226,6 +230,7 @@ watch(selectedProject, (p) => {
   editRenderPreset.value = meta.render_preset ?? "default";
   editWebhookUrl.value = meta.webhook_url ?? "";
   loadDetail(p.id);
+  uiContext.set([{ label: p.name }]);
 }, { immediate: true });
 
 async function patchProject(body) {

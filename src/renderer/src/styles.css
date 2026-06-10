@@ -298,6 +298,19 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   letter-spacing: -0.015em;
   margin: 0;
 }
+.jv-topbar__crumb-sep {
+  margin: 0 8px;
+  color: var(--ink-3);
+  font-weight: 400;
+}
+.jv-topbar__crumb {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+.jv-topbar__crumb:hover { color: var(--accent); text-decoration: none; }
+.jv-topbar__crumb--current { color: var(--ink); }
 .jv-topbar__status {
   margin-left: auto;
   display: inline-flex;

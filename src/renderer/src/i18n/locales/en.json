@@ -12,13 +12,34 @@
     "loading": "Loading…"
   },
   "sidebar": {
-    "overview": "Overview",
+    "overview": "Home",
     "generate": "Generate",
     "studio": "Studio",
+    "chapter": "Chapter",
+    "stories": "Stories",
+    "captures": "Captures",
+    "books": "Projects",
     "personas": "Personas",
     "voices": "Voices",
+    "lexicons": "Lexicons",
+    "effects": "Effects",
+    "presets": "Presets",
     "engines": "Engines",
+    "compare": "Compare",
+    "audio": "Audio Tools",
+    "speakerlab": "Speaker Lab",
+    "renderlab": "Render Lab",
+    "train": "Train",
+    "cache": "Cache",
+    "channels": "Channels",
+    "webhooks": "Webhooks",
     "settings": "Settings"
+  },
+  "lanes": {
+    "workflow": "Workflow",
+    "library": "Library",
+    "tools": "Tools",
+    "advanced": "Advanced"
   },
   "studio": {
     "title": "Studio",

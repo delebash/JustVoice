@@ -1,9 +1,11 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup>
 import { ref, onMounted, computed, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { useApi } from "./stores/api.js";
 import { useRenderTasks } from "./stores/renderTasks.js";
 import { useOnboarding } from "./stores/onboarding.js";
+import { useUiContext } from "./stores/uiContext.js";
 import Toast from "./components/Toast.vue";
 import TaskStrip from "./components/TaskStrip.vue";
 import TaskStatusPanel from "./components/TaskStatusPanel.vue";
@@ -11,6 +13,7 @@ import AppDialog from "./components/AppDialog.vue";
 import AudioKeepAlive from "./components/AudioKeepAlive.vue";
 import WelcomeOnboarding from "./components/WelcomeOnboarding.vue";
 import QuickSetup from "./components/QuickSetup.vue";
+import KeyboardCheatsheet from "./components/KeyboardCheatsheet.vue";
 import JvHelpDrawer from "./components/JvHelpDrawer.vue";
 import HelpTrigger from "./components/HelpTrigger.vue";
 import GlobalAudioPlayer from "./components/GlobalAudioPlayer.vue";
@@ -154,7 +157,25 @@ const health = ref(null);
 const api = useApi();
 const tasks = useRenderTasks();
 const onboarding = useOnboarding();
+const uiContext = useUiContext();
+const { t } = useI18n();
 let initialTabResolved = false;
+
+// Localized sidebar labels — proves the i18n scaffold is live. VIEWS
+// holds the English defaults so the data lookup stays static; this
+// computed swaps to the locale's keys when a translation exists.
+function localizedViewLabel(viewEntry) {
+  const key = `sidebar.${viewEntry.id}`;
+  const translated = t(key);
+  // vue-i18n returns the key itself when no match — fall back to the
+  // English default in that case so we never render a path string.
+  return translated && translated !== key ? translated : viewEntry.label;
+}
+function localizedLaneLabel(laneId) {
+  const key = `lanes.${laneId}`;
+  const translated = t(key);
+  return translated && translated !== key ? translated : laneId;
+}
 
 const currentView = computed(() => VIEWS.find((v) => v.id === view.value));
 const currentHelpSlug = computed(() => HELP_SLUG_BY_VIEW[view.value] || "getting-started");
@@ -268,6 +289,9 @@ watch(view, (v) => {
   if (typeof window !== "undefined" && v && window.location.hash.replace(/^#/, "") !== v) {
     window.history.replaceState(null, "", "#" + v);
   }
+  // Clear stale breadcrumb segments when navigating between top-level
+  // views — the new view repopulates them on mount if it has context.
+  uiContext.clear();
 });
 
 // QuickSetup shows once, the first time the user picks a real use case
@@ -331,7 +355,7 @@ onMounted(async () => {
 
       <template v-for="lane in lanesWithViews" :key="lane.id">
         <div class="jv-sidebar__lane-header" v-if="!lane.collapsible">
-          {{ lane.label }}
+          {{ localizedLaneLabel(lane.id) }}
         </div>
         <button
           v-else
@@ -340,7 +364,7 @@ onMounted(async () => {
           @click="advancedExpanded = !advancedExpanded"
           :aria-expanded="advancedExpanded"
         >
-          <span>{{ lane.label }}</span>
+          <span>{{ localizedLaneLabel(lane.id) }}</span>
           <span class="jv-sidebar__lane-chev">{{ advancedExpanded ? '▾' : '▸' }}</span>
         </button>
         <template v-if="!lane.collapsible || advancedExpanded">
@@ -349,11 +373,11 @@ onMounted(async () => {
             :key="v.id"
             class="jv-sidebar__nav"
             :class="{ 'jv-sidebar__nav--active': view === v.id }"
-            :title="v.label"
+            :title="localizedViewLabel(v)"
             @click="view = v.id"
           >
             <span class="jv-sidebar__icon">{{ v.icon || '·' }}</span>
-            <span class="jv-sidebar__label">{{ v.label }}</span>
+            <span class="jv-sidebar__label">{{ localizedViewLabel(v) }}</span>
           </a>
         </template>
       </template>
@@ -378,7 +402,18 @@ onMounted(async () => {
 
     <main class="jv-main">
       <header class="jv-topbar">
-        <h2 class="jv-topbar__title">{{ currentView?.label }}</h2>
+        <h2 class="jv-topbar__title">
+          {{ currentView?.label }}
+          <template v-for="(seg, i) in uiContext.breadcrumb" :key="i">
+            <span class="jv-topbar__crumb-sep">›</span>
+            <a
+              v-if="seg.href"
+              class="jv-topbar__crumb"
+              :href="seg.href"
+            >{{ seg.label }}</a>
+            <span v-else class="jv-topbar__crumb jv-topbar__crumb--current">{{ seg.label }}</span>
+          </template>
+        </h2>
 
         <!-- Engine pill — persistent visibility of the currently-loaded
              TTS engine. Click jumps to Engines tab. -->
@@ -427,6 +462,7 @@ onMounted(async () => {
     <AppDialog />
     <WelcomeOnboarding v-if="showWelcome" @close="onWelcomeClosed" />
     <QuickSetup v-if="showQuickSetup" @close="onQuickSetupClosed" />
+    <KeyboardCheatsheet />
     <JvHelpDrawer />
     <GlobalAudioPlayer />
     <TaskStatusPanel />

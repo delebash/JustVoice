@@ -17,6 +17,8 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
+import { useAudioPlayer } from "../stores/audioPlayer.js";
+import { useUiContext } from "../stores/uiContext.js";
 import { useCopy } from "../services/copy.js";
 import { pushToast } from "../services/toastBridge.js";
 import JvButton from "../components/jv/JvButton.vue";
@@ -24,6 +26,8 @@ import VoiceParamsModal from "../components/VoiceParamsModal.vue";
 
 const api = useApi();
 const tasks = useRenderTasks();
+const audioPlayer = useAudioPlayer();
+const uiContext = useUiContext();
 const copy = useCopy();
 
 const projects = ref([]);
@@ -288,6 +292,23 @@ watch(selectedProjectId, (id) => {
 }, { immediate: true });
 watch(personas, () => loadProjectPersonas(selectedProjectId.value));
 
+// Publish breadcrumb segments to the topbar (plan Q7 Slice 1):
+//   Studio › [Project name] › [Tab label]
+// Cleared automatically by App.vue when the user switches top-level
+// views. Updates as the project picker / tab changes.
+function publishCrumbs() {
+  const segments = [];
+  const project = selectedProject.value;
+  if (project) {
+    segments.push({ label: project.name, href: "#books" });
+  }
+  if (tab.value) {
+    segments.push({ label: TAB_LABELS.value[tab.value] || tab.value });
+  }
+  uiContext.set(segments);
+}
+watch([() => selectedProject.value?.name, tab, TAB_LABELS], publishCrumbs, { immediate: true });
+
 async function loadScenesForProject(projectId) {
   if (!projectId) {
     scenes.value = [];
@@ -394,8 +415,24 @@ async function renderScene(scene) {
       body: JSON.stringify(body),
       signal: abortController.signal,
     });
-    tasks.finish(task.id, { result: audio });
-    pushToast({ message: `${scene.title || "Scene"} render complete.`, kind: "success" });
+    // /v1/render_chapter returns audio/wav (a Blob via api.request). Drop
+    // it into the GlobalAudioPlayer so the user can hear the result
+    // immediately, and store the URL on the task so the strip can
+    // expose download + play actions per scene.
+    if (audio instanceof Blob) {
+      const blobUrl = URL.createObjectURL(audio);
+      const label = scene.title || `${copy.value.chapter.singular} ${scene.position + 1}`;
+      tasks.finish(task.id, { result: { url: blobUrl, filename: `${label.replace(/[^a-z0-9_-]+/gi, "_")}.wav` } });
+      audioPlayer.play({
+        url: blobUrl,
+        title: `${label} — rendered`,
+        subtitle: selectedProject.value?.name || "",
+      });
+      pushToast({ message: `${label} render complete. Now playing.`, kind: "success" });
+    } else {
+      tasks.finish(task.id, { result: audio });
+      pushToast({ message: `${scene.title || "Scene"} render complete.`, kind: "success" });
+    }
   } catch (e) {
     if (abortController.signal.aborted) {
       // Already marked cancelled in onCancel handler.
@@ -1059,6 +1096,20 @@ onMounted(loadAll);
                       class="jv-btn jv-btn--secondary jv-btn--sm"
                       @click="renderScene(s)"
                     >↻ Retry</button>
+                    <button
+                      v-if="taskForScene(s.id).status === 'completed' && taskForScene(s.id).result?.url"
+                      type="button"
+                      class="jv-btn jv-btn--ghost jv-btn--sm"
+                      title="Play in global audio player"
+                      @click="audioPlayer.play({ url: taskForScene(s.id).result.url, title: s.title || 'Scene', subtitle: selectedProject?.name || '' })"
+                    >▶ Play</button>
+                    <a
+                      v-if="taskForScene(s.id).status === 'completed' && taskForScene(s.id).result?.url"
+                      :href="taskForScene(s.id).result.url"
+                      :download="taskForScene(s.id).result.filename || 'scene.wav'"
+                      class="jv-btn jv-btn--ghost jv-btn--sm"
+                      title="Download WAV"
+                    >⬇ Download</a>
                     <button
                       v-if="taskForScene(s.id).status !== 'running'"
                       type="button"
