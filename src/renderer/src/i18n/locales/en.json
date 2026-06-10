@@ -1,0 +1,53 @@
+{
+  "_meta": {
+    "language_name": "English",
+    "language_code": "en",
+    "_note": "Phase 9 / Slice 1 i18n scaffold — only a small handful of strings are extracted yet. Full sweep deferred to a dedicated phase when production translation passes are sourced."
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "reset": "Reset",
+    "loading": "Loading…"
+  },
+  "sidebar": {
+    "overview": "Overview",
+    "generate": "Generate",
+    "studio": "Studio",
+    "personas": "Personas",
+    "voices": "Voices",
+    "engines": "Engines",
+    "settings": "Settings"
+  },
+  "studio": {
+    "title": "Studio",
+    "tabs": {
+      "cast": "Cast",
+      "script": "Script",
+      "render": "Render"
+    },
+    "analyze": "Analyze",
+    "apply": "Apply",
+    "suggest_preset": "Suggest"
+  },
+  "engines": {
+    "kinds": {
+      "tts": "TTS",
+      "llm": "LLM",
+      "embedding": "Embeddings"
+    },
+    "actions": {
+      "install": "Install",
+      "download": "Download",
+      "load": "Load",
+      "unload": "Unload",
+      "remove": "Remove"
+    },
+    "status": {
+      "not_installed": "Not installed",
+      "installed": "Installed",
+      "loaded": "Loaded"
+    }
+  }
+}
