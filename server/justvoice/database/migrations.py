@@ -53,6 +53,20 @@ def run_migrations(engine) -> None:
     _migrate_drop_voice_profile_tables(engine, inspector, tables)
     _migrate_render_presets_effects_chain(engine, inspector, tables)
     _migrate_blocks_extraction_telemetry(engine, inspector, tables)
+    _migrate_personas_llm_fields(engine, inspector, tables)
+
+
+def _migrate_personas_llm_fields(engine, inspector, tables: set[str]) -> None:
+    """Phase 2 storage unification — personas move from the JSON store
+    into SQLite, which needs the two LLM-preference fields the JSON shape
+    carried but the table never had."""
+    if "personas" not in tables:
+        return
+    columns = _get_columns(inspector, "personas")
+    if "llm_rewrite_enabled" not in columns:
+        _add_column(engine, "personas", "llm_rewrite_enabled BOOLEAN DEFAULT 0", "llm_rewrite_enabled")
+    if "llm_model" not in columns:
+        _add_column(engine, "personas", "llm_model VARCHAR", "llm_model")
 
 
 # ── helpers ───────────────────────────────────────────────────────────────

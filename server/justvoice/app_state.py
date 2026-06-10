@@ -1,8 +1,8 @@
 """Application-wide state container, FastAPI-injected via Depends.
 
-Holds long-lived singletons: the engine registry, the four stores
-(settings/voices/personas/lexicons), the training registry, the
-render cache, and the data dir.
+Holds long-lived singletons: the engine registry, the stores
+(settings on JSON; voices/personas/lexicons on SQLite), the training
+registry, the render cache, and the data dir.
 """
 
 from __future__ import annotations
@@ -16,7 +16,6 @@ from .paths import cache_root
 from .storage import (
     LexiconStore,
     PersonaStore,
-    ProjectStore,
     SettingsStore,
     TrainingRegistry,
     VoiceStore,
@@ -29,6 +28,10 @@ class AppState:
     def __init__(self, data_dir: Path):
         self.data_dir = data_dir
         data_dir.mkdir(parents=True, exist_ok=True)
+        # SQLite first — the voice/persona/lexicon stores are DB-backed
+        # (Phase 2 storage unification). init_db is idempotent.
+        from .database import init_db
+        init_db(data_dir)
         self.settings = SettingsStore(data_dir)
         self.voices = VoiceStore(data_dir)
         self.personas = PersonaStore(data_dir)
@@ -37,7 +40,6 @@ class AppState:
             max_memory_entries=self.settings.get().cache.max_memory_entries,
         )
         self.lexicons = LexiconStore(data_dir)
-        self.projects = ProjectStore(data_dir)
         self.training = TrainingRegistry(data_dir)
         self.engines = EngineRegistry()
         self._jobs: dict[str, dict] = {}  # install jobs, in-memory

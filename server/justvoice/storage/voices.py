@@ -1,9 +1,11 @@
-"""Voice storage — directory per voice under ``$DATA_DIR/voices/<id>/``.
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Voice storage — SQLite metadata + on-disk audio artifacts (Phase 2).
 
-Each voice dir contains:
-  - manifest.json — the VoiceRecord
-  - ref.wav       — primary reference clip (clone/import only)
-  - samples/      — additional samples added via /samples
+Metadata rows live in the ``voices`` table; binary artifacts keep their
+old layout under ``$DATA_DIR/voices/<id>/`` (ref.wav + samples/). Legacy
+``manifest.json`` files import on first construction and are renamed to
+``manifest.json.migrated`` in place (the directory must survive — it
+holds the reference audio the engines clone from).
 """
 
 from __future__ import annotations
@@ -14,17 +16,74 @@ import shutil
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from threading import RLock
 
-from ..models import VoiceRecord
+from ..database import models as orm
+from ..models import BlendRecipe, VoiceRecord
 from ..paths import voices_root
-from .atomic import atomic_write_json
 
 log = logging.getLogger(__name__)
 
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _session():
+    from ..database.session import SessionLocal
+
+    if SessionLocal is None:
+        raise RuntimeError("Database not initialized — init_db() must run before stores")
+    return SessionLocal()
+
+
+def _to_pydantic(row: orm.Voice) -> VoiceRecord:
+    blend = None
+    if row.blend_recipe_json:
+        try:
+            blend = BlendRecipe.model_validate(json.loads(row.blend_recipe_json))
+        except Exception:
+            blend = None
+    embedding = None
+    if row.embedding_json:
+        try:
+            embedding = json.loads(row.embedding_json)
+        except Exception:
+            embedding = None
+    return VoiceRecord(
+        id=row.id,
+        engine=row.engine,
+        source=row.source,
+        name=row.name,
+        language=row.language,
+        gender=row.gender,
+        design_prompt=row.design_prompt,
+        transcript=row.transcript,
+        sample_count=row.sample_count or 0,
+        blend_recipe=blend,
+        embedding=embedding,
+        adapter_path=row.adapter_path,
+        training_job_id=row.training_job_id,
+        created_at=row.created_at or _now(),
+        updated_at=row.updated_at or _now(),
+    )
+
+
+def _apply(row: orm.Voice, record: VoiceRecord) -> None:
+    row.engine = record.engine
+    row.source = record.source
+    row.name = record.name
+    row.language = record.language
+    row.gender = record.gender
+    row.design_prompt = record.design_prompt
+    row.transcript = record.transcript
+    row.sample_count = record.sample_count
+    row.blend_recipe_json = (
+        json.dumps(record.blend_recipe.model_dump()) if record.blend_recipe else None
+    )
+    row.embedding_json = json.dumps(record.embedding) if record.embedding else None
+    row.adapter_path = record.adapter_path
+    row.training_job_id = record.training_job_id
+    row.updated_at = record.updated_at
 
 
 class VoiceStore:
@@ -35,23 +94,38 @@ class VoiceStore:
     def __init__(self, data_dir: Path):
         self._dir = voices_root(data_dir)
         self._dir.mkdir(parents=True, exist_ok=True)
-        self._lock = RLock()
-        self._cache: dict[str, VoiceRecord] = {}
-        self._load_all()
+        self._import_legacy_manifests()
 
-    def _load_all(self) -> None:
-        for sub in self._dir.iterdir():
-            if not sub.is_dir():
-                continue
-            manifest = sub / self.MANIFEST_FILENAME
-            if not manifest.exists():
-                continue
-            try:
-                text = manifest.read_text(encoding="utf-8")
-                record = VoiceRecord.model_validate(json.loads(text))
-                self._cache[record.id] = record
-            except Exception as e:
-                log.warning("voice manifest %s unreadable: %s", manifest, e)
+    def _import_legacy_manifests(self) -> None:
+        db = _session()
+        try:
+            imported = 0
+            for sub in self._dir.iterdir():
+                if not sub.is_dir():
+                    continue
+                manifest = sub / self.MANIFEST_FILENAME
+                if not manifest.exists():
+                    continue
+                try:
+                    record = VoiceRecord.model_validate(
+                        json.loads(manifest.read_text(encoding="utf-8"))
+                    )
+                except Exception as e:
+                    log.warning("voice manifest %s unreadable, skipping: %s", manifest, e)
+                    continue
+                if db.query(orm.Voice).filter(orm.Voice.id == record.id).first() is None:
+                    row = orm.Voice(id=record.id, created_at=record.created_at)
+                    _apply(row, record)
+                    db.add(row)
+                    imported += 1
+                manifest.rename(manifest.with_suffix(".json.migrated"))
+            db.commit()
+            if imported:
+                log.info("migrated %d legacy voice manifests into SQLite", imported)
+        finally:
+            db.close()
+
+    # ── on-disk artifact helpers (unchanged layout) ───────────────────
 
     def voice_dir(self, id: str) -> Path:
         return self._dir / id
@@ -62,53 +136,70 @@ class VoiceStore:
     def samples_dir(self, id: str) -> Path:
         return self.voice_dir(id) / self.SAMPLES_DIRNAME
 
+    def write_ref_wav(self, id: str, data: bytes) -> None:
+        self.voice_dir(id).mkdir(parents=True, exist_ok=True)
+        self.ref_wav_path(id).write_bytes(data)
+
+    # ── CRUD ──────────────────────────────────────────────────────────
+
     def list(self) -> list[VoiceRecord]:
-        with self._lock:
-            return sorted(self._cache.values(), key=lambda r: r.created_at)
+        db = _session()
+        try:
+            rows = db.query(orm.Voice).order_by(orm.Voice.created_at).all()
+            return [_to_pydantic(r) for r in rows]
+        finally:
+            db.close()
 
     def get(self, id: str) -> VoiceRecord | None:
-        with self._lock:
-            return self._cache.get(id)
+        db = _session()
+        try:
+            row = db.query(orm.Voice).filter(orm.Voice.id == id).first()
+            return _to_pydantic(row) if row else None
+        finally:
+            db.close()
 
     def create(self, record: VoiceRecord) -> VoiceRecord:
-        with self._lock:
-            if not record.id:
-                record.id = f"voice_{uuid.uuid4().hex}"
-            record.created_at = _now()
-            record.updated_at = _now()
-            self._flush(record)
-            self._cache[record.id] = record
+        if not record.id:
+            record.id = f"voice_{uuid.uuid4().hex}"
+        record.created_at = _now()
+        record.updated_at = _now()
+        db = _session()
+        try:
+            row = orm.Voice(id=record.id, created_at=record.created_at)
+            _apply(row, record)
+            db.add(row)
+            db.commit()
             return record.model_copy(deep=True)
-
-    def write_ref_wav(self, id: str, data: bytes) -> None:
-        with self._lock:
-            self.voice_dir(id).mkdir(parents=True, exist_ok=True)
-            self.ref_wav_path(id).write_bytes(data)
+        finally:
+            db.close()
 
     def add_sample(self, id: str, data: bytes) -> int:
-        with self._lock:
-            record = self._cache.get(id)
-            if not record:
+        db = _session()
+        try:
+            row = db.query(orm.Voice).filter(orm.Voice.id == id).first()
+            if not row:
                 raise KeyError(f"voice not found: {id}")
             self.samples_dir(id).mkdir(parents=True, exist_ok=True)
-            next_idx = record.sample_count + 1
+            next_idx = (row.sample_count or 0) + 1
             (self.samples_dir(id) / f"sample_{next_idx:03d}.wav").write_bytes(data)
-            record.sample_count = next_idx
-            record.updated_at = _now()
-            self._flush(record)
+            row.sample_count = next_idx
+            row.updated_at = _now()
+            db.commit()
             return next_idx
+        finally:
+            db.close()
 
     def delete(self, id: str) -> bool:
-        with self._lock:
-            if id not in self._cache:
+        db = _session()
+        try:
+            row = db.query(orm.Voice).filter(orm.Voice.id == id).first()
+            if not row:
                 return False
             d = self.voice_dir(id)
             if d.exists():
                 shutil.rmtree(d, ignore_errors=True)
-            self._cache.pop(id, None)
+            db.delete(row)
+            db.commit()
             return True
-
-    def _flush(self, record: VoiceRecord) -> None:
-        d = self.voice_dir(record.id)
-        d.mkdir(parents=True, exist_ok=True)
-        atomic_write_json(d / self.MANIFEST_FILENAME, record.model_dump())
+        finally:
+            db.close()

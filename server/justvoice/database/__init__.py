@@ -19,6 +19,7 @@ from .models import (
     # Lexicon layer
     Lexicon,
     LexiconEntry,
+    Voice,
     # Project layer (use-case generalized: audiobook + game + podcast)
     Project,
     ProjectPersona,
@@ -61,6 +62,7 @@ __all__ = [
     "PersonaChannel",
     "Lexicon",
     "LexiconEntry",
+    "Voice",
     "Project",
     "ProjectPersona",
     "Scene",

@@ -108,9 +108,42 @@ class Persona(Base):
     effects_chain = Column(Text, nullable=True)
     engine_override = Column(String, nullable=True)
     lexicon_id = Column(String, ForeignKey("lexicons.id", ondelete="SET NULL"), nullable=True)
+    # Per-persona LLM rewrite preferences (explicit tool, never render-time).
+    llm_rewrite_enabled = Column(Boolean, default=False, nullable=False)
+    llm_model = Column(String, nullable=True)
     # Provenance — where did this persona come from?
     imported_from = Column(String, nullable=True)  # "justwrite" | "manual" | "unreal" | "voice_profile"
     imported_id = Column(String, nullable=True)  # foreign id in the source system
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+
+# ── Voice layer (stored TTS voice artifacts) ──────────────────────────────
+
+
+class Voice(Base):
+    """A stored voice (cloned / designed / blended / imported). Metadata
+    lives here; binary artifacts (ref.wav, samples/) stay on disk under
+    $DATA_DIR/voices/<id>/. Engine preset voices are NOT rows — they come
+    from the engine manifests at runtime."""
+
+    __tablename__ = "voices"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    engine = Column(String, nullable=False)
+    # "cloned" | "designed" | "blended" | "imported"
+    source = Column(String, nullable=False)
+    name = Column(String, nullable=False)
+    language = Column(String, nullable=False, default="en-US")
+    gender = Column(String, nullable=True)
+    design_prompt = Column(Text, nullable=True)
+    transcript = Column(Text, nullable=True)
+    sample_count = Column(Integer, default=0, nullable=False)
+    # JSON blobs — BlendRecipe + embedding vector
+    blend_recipe_json = Column(Text, nullable=True)
+    embedding_json = Column(Text, nullable=True)
+    adapter_path = Column(String, nullable=True)
+    training_job_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
