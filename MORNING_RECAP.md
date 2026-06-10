@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-06-10 (late night) — post-restructure corrections from live user testing (same branch, commits fb81585..00977b8)
+
+User tested the restructure build and corrected three things; all landed:
+
+1. **Projects-first, NOT Studio-first (supersedes Slice C/D's D2/D3 landing).** Projects (BooksView) is back in the sidebar as the FIRST item and the landing tab for all production use cases (dictation → Captures). Studio label reverted from "Home" to "Studio" — it's the workspace you open a project INTO. Project creation with an explicit type happens in Projects ('+ New blank Project'). Projects → "Open in Studio" hands the selected project over via localStorage `jv.studio.pendingProjectId` (Studio loadAll reads+clears). Studio's start tab is per use case (`STUDIO_START_TAB_BY_USE_CASE`): podcast/dictation open on Script, audiobook/game on Cast — "podcast wouldn't want characters first".
+
+2. **App-wide dialog bug (root cause of "New button doesn't work" + "modal at bottom of screen, locks it"):** Reka UI portals DialogOverlay + DialogContent to <body> as SIBLINGS and doesn't position the content; `.jv-dialog` had NO position rule → every prompt/confirm rendered in flow at page bottom UNDER the fixed overlay (z-index 200) that ate all clicks. Fixed: `.jv-dialog` fixed+centered, z 210, new jvDialogIn keyframes carrying the centering translate. WelcomeOnboarding's `.app-modal*` classes had ZERO css anywhere — same fix applied. Pattern note: `.jv-modal` users are fine (card is INSIDE .jv-overlay's flex centering); JvHelpDrawer self-positions.
+
+3. **GUI quality pass driven by REAL screenshots** (headless chromium at /opt/pw-browsers against the live server + built dist — the screenshot harness recipe: boot `python -m uvicorn --factory justvoice.app:create_app`, playwright-core with executablePath to /opt/pw-browsers/chromium_headless_shell-*/chrome-linux/headless_shell, PATCH settings app.onboarding_shown=true first). Fixes: `.jv-content > *` max-width 1160px centered (everything was full-bleed ~1330px); `accent-color` on range/checkbox/radio (sliders were browser-blue); Scratchpad's contradictory "No engine loaded → Go to Engines" banner removed (showed beside 64 pickable voices; emptyVoiceReason now only fires on a truly empty catalog); Stop is a labeled button only visible while rendering; Studio empty-cast void → EmptyState; **EnginesView kind-tab loop was hardcoded ['tts','llm','embedding'] so the STT tab NEVER rendered** despite Slice A's KIND_LABELS fix (label map ≠ render loop — Affordance-Table failure mode); now derives from KIND_LABELS with per-kind online counts.
+
+**Still open:** user re-test of dialogs + landing flow; deeper visual polish (Settings double tab row, Engines NOT-INSTALLED badge styling, Books bulk-bar wrap) — candidates for the Phase 4 design pass; stories.md doc referenced by toc.json doesn't exist on disk.
+
+---
+
 ## 2026-06-10 (night) — UX restructure: swap-at-render, project-first home, 8-item nav, STT provider slot (branch `claude/jolly-curie-jkgysf`, slices A–F)
 
 The approved UX-restructure plan landed in full. 152 server tests pass, ruff clean, vite build clean.
