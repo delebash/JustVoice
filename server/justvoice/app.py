@@ -28,6 +28,7 @@ from .api import (
     channels_api,
     effect_presets_api,
     engines_api,
+    extraction_api,
     feature_pins_api,
     llm_providers_api,
     engines_models_api,
@@ -162,6 +163,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(effect_presets_api.router)
     app.include_router(llm_providers_api.router)
     app.include_router(feature_pins_api.router)
+    app.include_router(extraction_api.router)
 
     # Shutdown hook — make sure any running managed engine subprocess is
     # killed before the host server exits. Without this, ctrl-C in dev
