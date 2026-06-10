@@ -14,6 +14,7 @@ from ..models import (
     CloneVoiceRequest,
     DesignVoiceRequest,
     ImportVoiceRequest,
+    UpdateVoiceRequest,
     Voice,
     VoiceList,
     VoiceRecord,
@@ -95,6 +96,20 @@ async def get_voice(id: str) -> Voice:
     if rec:
         return _stored_to_dto(rec)
     raise not_found(f"voice {id}")
+
+
+@router.patch("/v1/voices/{id}", response_model=Voice, summary="Update a stored voice's metadata")
+async def update_voice(id: str, body: UpdateVoiceRequest) -> Voice:
+    st = get_state()
+    # Preset voices ship with the engine — nothing stored to update.
+    for engine in st.engines.all():
+        for p in engine.voices():
+            if p.id == id:
+                raise bad_request(f"voice {id} is an engine preset and cannot be updated")
+    rec = st.voices.update(id, **body.model_dump(exclude_unset=True))
+    if not rec:
+        raise not_found(f"voice {id}")
+    return _stored_to_dto(rec)
 
 
 @router.delete("/v1/voices/{id}", summary="Delete a stored voice")

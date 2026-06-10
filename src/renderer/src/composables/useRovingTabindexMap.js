@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 /**
  * useRovingTabindexMap — lazy registry of useRovingTabindex instances
  * keyed by an arbitrary id (sectionId, chapterId, etc.).

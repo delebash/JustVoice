@@ -35,6 +35,10 @@ const FIRST_NAME_GENDER = {
 };
 function autoDetectGender(v) {
   if (v.gender_user_override) return v.gender_user_override;
+  if (v.source === "preset") {
+    const o = loadPresetGenderOverrides()[v.id];
+    if (o) return o;
+  }
   if (v.gender) return v.gender;
   if (v.engine === "openai" || v.engine?.startsWith("openai")) {
     const m = OPENAI_VOICE_GENDER[v.name?.toLowerCase()];
@@ -52,27 +56,57 @@ function autoDetectGender(v) {
 }
 
 const GENDER_CYCLE = ["?", "F", "M", "N", ""];
-function cycleGender(v) {
+
+// Preset voices ship with the engine — no stored record to PATCH, so
+// their overrides persist in localStorage. Stored voices persist via
+// PATCH /v1/voices/{id}.
+const PRESET_GENDER_KEY = "justvoice.presetGenderOverrides";
+function loadPresetGenderOverrides() {
+  try { return JSON.parse(localStorage.getItem(PRESET_GENDER_KEY)) || {}; } catch { return {}; }
+}
+function savePresetGenderOverride(id, gender) {
+  try {
+    const map = loadPresetGenderOverrides();
+    if (gender) map[id] = gender; else delete map[id];
+    localStorage.setItem(PRESET_GENDER_KEY, JSON.stringify(map));
+  } catch { /* storage unavailable — override stays session-local */ }
+}
+
+async function cycleGender(v) {
   const cur = autoDetectGender(v);
   const idx = GENDER_CYCLE.indexOf(cur);
   const next = GENDER_CYCLE[(idx + 1) % GENDER_CYCLE.length];
-  // TODO: persist via PATCH /v1/voices/{id} { gender_user_override: next }.
-  // For now, write to in-memory voice object so the cycle is visible.
   v.gender_user_override = next || null;
-  if (next === "") v.gender_user_override = null;
   voices.value = [...voices.value]; // force reactivity
+  if (v.source === "preset") {
+    savePresetGenderOverride(v.id, v.gender_user_override);
+    return;
+  }
+  try {
+    await api.request(`/v1/voices/${v.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gender: v.gender_user_override || "" }),
+    });
+  } catch (e) {
+    pushToast({ message: `Couldn't save gender: ${e.message || e}`, kind: "error" });
+  }
 }
 
 // ── Catalog filtering + search. ──────────────────────────────────────
 const search = ref("");
-const typeFilter = ref("all"); // all | clone | preset | design | blend
+// Filter ids match the server's VoiceSource literals exactly
+// (models.py: preset | cloned | designed | imported | blended | trained).
+const typeFilter = ref("all");
 
 const TYPE_FILTERS = [
-  { id: "all",    label: "All" },
-  { id: "clone",  label: "Cloned" },
-  { id: "preset", label: "Preset" },
-  { id: "design", label: "Designed" },
-  { id: "blend",  label: "Blended" },
+  { id: "all",      label: "All" },
+  { id: "preset",   label: "Preset" },
+  { id: "cloned",   label: "Cloned" },
+  { id: "designed", label: "Designed" },
+  { id: "imported", label: "Imported" },
+  { id: "blended",  label: "Blended" },
+  { id: "trained",  label: "Trained" },
 ];
 
 const filteredVoices = computed(() => {
@@ -87,7 +121,7 @@ const filteredVoices = computed(() => {
 
 const typeCounts = computed(() => {
   const list = voices.value || [];
-  const cs = { all: list.length, clone: 0, preset: 0, design: 0, blend: 0 };
+  const cs = { all: list.length, preset: 0, cloned: 0, designed: 0, imported: 0, blended: 0, trained: 0 };
   for (const v of list) if (cs[v.source] !== undefined) cs[v.source]++;
   return cs;
 });
@@ -317,9 +351,10 @@ async function submit() {
 // Voice type → JvTag variant mapping
 function voiceTypeVariant(source) {
   if (source === "preset") return "default";
-  if (source === "clone") return "accent";
-  if (source === "design") return "success";
-  if (source === "blend") return "warn";
+  if (source === "cloned") return "accent";
+  if (source === "designed") return "success";
+  if (source === "blended") return "warn";
+  if (source === "trained") return "accent";
   return "default";
 }
 
@@ -547,7 +582,7 @@ function blendWithVoice() {
         <div class="voices-view__effects-row">
           <span v-if="!(inspectedVoice.default_effects?.length)" class="jv-muted">(none)</span>
           <span v-for="fx in (inspectedVoice.default_effects || [])" :key="fx" class="jv-pill jv-pill--ghost">{{ fx }}</span>
-          <button class="jv-btn jv-btn--ghost jv-btn--sm" type="button">+ Add</button>
+          <button class="jv-btn jv-btn--ghost jv-btn--sm" type="button" disabled title="Per-voice default effect chain editing lands with the Effects integration">+ Add</button>
         </div>
       </div>
     </div>
@@ -570,8 +605,8 @@ function blendWithVoice() {
           <td>{{ s.snr }}</td>
           <td class="jv-muted">{{ s.transcript }}</td>
           <td class="right">
-            <button class="jv-btn jv-btn--ghost jv-btn--sm">▶</button>
-            <button class="jv-btn jv-btn--ghost jv-btn--sm">✕</button>
+            <button class="jv-btn jv-btn--ghost jv-btn--sm" disabled title="Sample playback lands with /v1/voices/{id}/samples">▶</button>
+            <button class="jv-btn jv-btn--ghost jv-btn--sm" disabled title="Sample delete lands with /v1/voices/{id}/samples">✕</button>
           </td>
         </tr>
       </tbody>

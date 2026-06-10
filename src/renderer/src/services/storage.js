@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Storage adapter — swaps localStorage for IndexedDB while keeping the
 // synchronous read/write shape every store was written against.
 //

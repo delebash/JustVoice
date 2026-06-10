@@ -21,6 +21,7 @@ import ImportModal from "./ImportModal.vue";
 import { projectsService } from "../services/projects.js";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
+import { confirmDialog } from "../services/dialog.js";
 import { useCopy } from "../services/copy.js";
 
 const api = useApi();
@@ -277,7 +278,13 @@ async function downloadQcReport() {
 async function deleteProject() {
   const p = selectedProject.value;
   if (!p) return;
-  if (!confirm(`Delete "${p.name}"? This removes the project and all its scenes + blocks. Takes and generations are preserved (only the project metadata is removed).`)) return;
+  const ok = await confirmDialog({
+    title: "Delete project?",
+    message: `Delete "${p.name}"? This removes the project and all its scenes + blocks. Takes and generations are preserved (only the project metadata is removed).`,
+    danger: true,
+    confirmLabel: "Delete",
+  });
+  if (!ok) return;
   try {
     await projectsService.remove(p.id);
     selectedId.value = null;

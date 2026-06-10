@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 /**
  * useRovingTabindex — keyboard focus management for linear lists.
  *

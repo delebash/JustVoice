@@ -9,6 +9,7 @@ import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
 import { useUiContext } from "../stores/uiContext.js";
 import JvButton from "../components/jv/JvButton.vue";
+import LineageViewer from "../components/LineageViewer.vue";
 import EmptyState from "../components/EmptyState.vue";
 import JvField from "../components/jv/JvField.vue";
 import JvSelect from "../components/jv/JvSelect.vue";
@@ -188,6 +189,10 @@ function takeDropdownOptions(blockId) {
 }
 
 // ── Source lineage pill ────────────────────────────────────────────────────
+
+// Clicking the pill opens the LineageViewer modal (task #98) for the
+// active take — walks source_take_id back to the original.
+const lineageTakeId = ref(null);
 
 function sourceTakeLabel(take, blockId) {
   if (!take?.source_take_id) return null;
@@ -441,11 +446,14 @@ function compareDropdownOptions(blockId) {
                 label="default"
               />
 
-              <!-- Lineage pill -->
-              <span
+              <!-- Lineage pill — click opens the full source-chain viewer -->
+              <button
                 v-if="sourceTakeLabel(getActiveTake(block.id), block.id)"
-                class="jv-pill chapter-view__lineage"
-              >{{ sourceTakeLabel(getActiveTake(block.id), block.id) }}</span>
+                type="button"
+                class="jv-pill chapter-view__lineage chapter-view__lineage--btn"
+                title="View full take lineage"
+                @click="lineageTakeId = getActiveTake(block.id).id"
+              >{{ sourceTakeLabel(getActiveTake(block.id), block.id) }}</button>
             </div>
 
             <!-- ── Audio playback ─────────────────────────────────────── -->
@@ -622,6 +630,11 @@ function compareDropdownOptions(blockId) {
     </div>
 
   </div>
+  <LineageViewer
+    :take-id="lineageTakeId"
+    :open="lineageTakeId != null"
+    @close="lineageTakeId = null"
+  />
 </template>
 
 <style scoped>
@@ -765,6 +778,8 @@ function compareDropdownOptions(blockId) {
   max-width: 340px;
 }
 
+.chapter-view__lineage--btn { cursor: pointer; font: inherit; }
+.chapter-view__lineage--btn:hover { border-color: var(--accent); color: var(--accent); }
 .chapter-view__lineage {
   font-size: 11px;
   background: var(--warn-bg);

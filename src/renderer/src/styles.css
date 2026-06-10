@@ -743,6 +743,9 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 .jv-pill--warn   { color: var(--warn-ink);   border-color: var(--warn-line);  background: var(--warn-bg); }
 .jv-pill--danger { color: var(--danger-ink); border-color: var(--danger-line); background: var(--danger-bg); }
 .jv-pill--solid  { background: var(--accent); color: #fff; border-color: var(--accent); }
+/* "accent" is JvTag's fifth variant — was unstyled (fell through to the
+   base pill). Info-blue tint keeps it distinct from green/warn/danger. */
+.jv-pill--accent { color: var(--info-blue); border-color: var(--info-blue); background: transparent; }
 .jv-pill--ghost  { background: transparent; }
 
 /* Tags — alias for pill in some views (kept for component compat). */

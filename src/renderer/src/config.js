@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Backend base URL.
 //
 // Two serving modes, and we must pick the right API origin for each:

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Tiny fetch wrapper around the FastAPI server. Pinia store so any
 // component can call `useApi().request(...)` and shared state (server
 // URL, bearer token, last error) is reactive.

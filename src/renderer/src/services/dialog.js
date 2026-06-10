@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Imperative, promise-based dialog API that replaces the browser's
 // built-in prompt() / confirm() (which leak the "from localhost" chrome
 // in dev and look out of place in the packaged Tauri shell).

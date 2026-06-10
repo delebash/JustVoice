@@ -8,6 +8,7 @@
 import { onMounted, ref } from "vue";
 import { webhooksService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
+import { confirmDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvInput from "../components/jv/JvInput.vue";
 import JvField from "../components/jv/JvField.vue";
@@ -61,7 +62,13 @@ async function createWebhook() {
 }
 
 async function deleteWebhook(w) {
-  if (!confirm(`Delete webhook ${w.url}?`)) return;
+  const ok = await confirmDialog({
+    title: "Delete webhook?",
+    message: `Delete webhook ${w.url}?`,
+    danger: true,
+    confirmLabel: "Delete",
+  });
+  if (!ok) return;
   try {
     await webhooksService.remove(w.id);
     await refresh();

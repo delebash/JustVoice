@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup>
 // Single-select combobox: typeable input + click-to-open dropdown.
 // Two modes governed by props:

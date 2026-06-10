@@ -98,6 +98,21 @@ class VoiceStore:
             self._flush(record)
             return next_idx
 
+    def update(self, id: str, **fields) -> VoiceRecord | None:
+        """Partial metadata update. Unknown fields are rejected by Pydantic
+        on assignment; None values are skipped (PATCH semantics)."""
+        with self._lock:
+            record = self._cache.get(id)
+            if not record:
+                return None
+            for key, value in fields.items():
+                if value is None:
+                    continue
+                setattr(record, key, value)
+            record.updated_at = _now()
+            self._flush(record)
+            return record.model_copy(deep=True)
+
     def delete(self, id: str) -> bool:
         with self._lock:
             if id not in self._cache:

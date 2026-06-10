@@ -417,7 +417,13 @@ async function loadCorrections() {
   } catch { /* ignore */ }
 }
 async function clearProjectCorrections(projectId) {
-  if (!confirm("Clear all speaker corrections for this project? This cannot be undone.")) return;
+  const ok = await confirmDialog({
+    title: "Clear corrections?",
+    message: "Clear all speaker corrections for this project? This cannot be undone.",
+    danger: true,
+    confirmLabel: "Clear all",
+  });
+  if (!ok) return;
   try {
     await api.request(`/v1/projects/${projectId}/corrections`, { method: "DELETE" });
     correctionsCounts.value = { ...correctionsCounts.value, [projectId]: 0 };

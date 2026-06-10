@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Bridge between callers (the ui store, anywhere) and vue-sonner's
 // imperative toast() API. Unlike PrimeVue's ToastService, sonner needs no
 // service-binding from a setup() context — `toast(...)` works anywhere.

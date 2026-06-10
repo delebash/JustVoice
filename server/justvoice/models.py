@@ -377,6 +377,18 @@ class VoiceList(BaseModel):
     voices: list[Voice]
 
 
+class UpdateVoiceRequest(BaseModel):
+    """PATCH /v1/voices/{id} — partial update of a stored voice's metadata.
+
+    Only metadata fields; audio/embedding fields are managed by their own
+    endpoints. None means "leave unchanged".
+    """
+
+    name: str | None = None
+    language: str | None = None
+    gender: str | None = None
+
+
 class CloneVoiceRequest(BaseModel):
     engine: str
     name: str

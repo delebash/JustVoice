@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Custom v-tooltip directive — replaces PrimeVue's. Floating UI handles
 // positioning (with flip + shift fallbacks) so a tooltip near the viewport
 // edge bounces to a side that fits. One delay-debounced show on hover OR

@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup>
 // Breadcrumb trail rendered in place of a pane-eyebrow. Each segment is
 // { label, to?, onClick? }: a segment with a `to` route or an `onClick`
