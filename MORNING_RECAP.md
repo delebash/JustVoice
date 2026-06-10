@@ -19,6 +19,7 @@ Full code audit (every view, every router) then a truth pass. 112 server tests p
 
 ---
 
+## 2026-06-10 — Rule #6.1 (Affordance Table) added + 4 lies caught + tests added
 
 **11 commits this session.** Last sha: `4e58f87` (pushed to origin/main).
 
