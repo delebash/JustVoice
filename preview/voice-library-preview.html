@@ -59,7 +59,8 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .status{margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2)}
 .status .dot{width:8px;height:8px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 3px rgba(58,125,99,.18)}
 .status .url{font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
-.content{flex:1;overflow-y:auto;padding:24px 32px 64px}
+.content{flex:1;overflow:hidden;padding:24px 32px;display:flex;flex-direction:column}
+.content>section{flex:1;min-height:0;display:flex;flex-direction:column}
 .lede{color:var(--ink-2);font-size:13px;margin:0 0 20px;max-width:760px}
 
 /* ── Primitives ── */
@@ -117,19 +118,19 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 
 /* ── Studio pane (JustWrite structure: one bounded pane, tab strip on
      tinted bg, main white pane + tinted aside divided by border-left) ── */
-.studio-pane{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow-1);overflow:hidden;height:calc(100vh - 248px);min-height:560px}
-.studio-tabs{display:flex;gap:28px;padding:0 22px;border-bottom:1px solid var(--line);background:var(--surface-2);flex:none}
-.studio-tab{display:flex;align-items:center;gap:9px;padding:12px 2px 10px;border:0;border-bottom:2px solid transparent;background:transparent;text-align:left;cursor:pointer;margin-bottom:-1px}
-.studio-tab .ic{font-size:13px;color:var(--ink-3);flex:none}
-.studio-tab:hover .studio-tab-name{color:var(--ink)}
-.studio-tab.active{border-bottom-color:var(--accent)}
+.studio-pane{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow-1);overflow:hidden;flex:1;min-height:0}
+.studio-tabs{display:flex;gap:8px;padding:10px 22px;border-bottom:1px solid var(--line);background:var(--surface-2);flex:none}
+.studio-tab{display:flex;align-items:center;gap:10px;padding:8px 14px;border:1px solid var(--line);border-radius:9px;background:var(--surface);text-align:left;min-width:210px;cursor:pointer}
+.studio-tab .ic{font-size:14px;color:var(--ink-3);flex:none}
+.studio-tab:hover{border-color:var(--line-strong)}
+.studio-tab.active{background:var(--accent-soft);border-color:var(--accent-line)}
 .studio-tab.active .ic{color:var(--accent-ink)}
-.studio-tab.active .studio-tab-name{color:var(--accent-ink)}
-.studio-tab-name{display:block;font-size:13px;font-weight:600;color:var(--ink-2);line-height:1.2}
+.studio-tab-name{display:block;font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.25}
 .studio-tab-sub{display:block;font-size:10.5px;color:var(--ink-3);line-height:1.3}
 .studio-body{display:grid;grid-template-columns:minmax(0,1fr) 440px;flex:1;min-height:0}
 .studio-main{overflow-y:auto;padding:20px 22px 40px;min-width:0}
-.studio-aside{border-left:1px solid var(--line);background:var(--surface-2);padding:20px 18px;overflow-y:auto}
+.studio-aside{border-left:1px solid var(--line);background:var(--surface-2);padding:20px 18px;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.voice-list{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:2px}
 
 /* Cast cards */
 .cast-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
@@ -161,7 +162,7 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .ctable .right{text-align:right;white-space:nowrap}
 
 /* ── Voice library panel ── */
-.lib .toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.lib .toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex:none}
 .lib .count{font-size:11px;color:var(--ink-3);background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:2px 8px}
 .picking{font-size:11.5px;color:var(--ink-3);margin:8px 0 10px}
 .voice-row{display:flex;align-items:center;gap:10px;width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;cursor:pointer;text-align:left;font-size:12.5px;color:var(--ink);user-select:none;flex-wrap:nowrap}
@@ -181,7 +182,7 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 
 /* Voices view table */
 .vtable{width:100%;border-collapse:collapse;font-size:13px}
-.vtable thead th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.vtable thead th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--surface-2);position:sticky;top:0;z-index:2}
 .vtable td{padding:8px 14px;border-bottom:1px solid var(--line);color:var(--ink-2);vertical-align:middle}
 .vtable tbody tr:last-child td{border-bottom:0}
 .vtable tbody tr:hover td{background:var(--surface-2)}
@@ -283,7 +284,7 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 
         <div id="v-banner"></div>
 
-        <div class="card" style="overflow:hidden">
+        <div class="card" style="overflow-y:auto;flex:1;min-height:0">
           <table class="vtable">
             <thead><tr><th style="width:34px"></th><th>Name</th><th>Type</th><th style="width:30px">G</th><th>Lang</th><th>Samples</th><th>Effects</th><th>Channel</th><th class="right" style="width:170px"></th></tr></thead>
             <tbody id="v-body"></tbody>
@@ -679,7 +680,7 @@ function renderStudioLib(){
     <div class="combo" id="lib-combo" style="margin-bottom:10px">${comboHtml("lib-combo",libEngine,"pickLibEngine")}</div>
     ${bannerHtml(libEngine)}
     <div class="toolbar"><input class="input" placeholder="Search voices…" value="${libSearch}" oninput="libSearch=this.value.trim().toLowerCase();renderStudioLib()" /><span class="count">${vs.length}</span></div>
-    <div style="display:flex;flex-direction:column;gap:6px">${rows||`<div class="muted" style="font-size:12px;padding:12px;text-align:center;font-style:italic">No voices match.</div>`}</div>`;
+    <div class="voice-list">${rows||`<div class="muted" style="font-size:12px;padding:12px;text-align:center;font-style:italic">No voices match.</div>`}</div>`;
 }
 function pickVoice(voiceId){
   const v=voiceById(voiceId);
