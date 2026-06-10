@@ -365,18 +365,36 @@ class Persona(BaseModel):
     id: str
     name: str
     voice_id: str
-    default_delivery: dict[str, Any] = {}
-    # Rich-editor fields (preview parity — see views/PersonasView.vue):
-    #   bio              – personality prompt drives LLM rewrite-in-character.
-    #   engine_override  – pin this persona to a specific engine, override voice default.
-    #   lexicon_id       – per-persona pronunciation dictionary (street-slang etc.).
-    #   llm_rewrite_enabled / llm_model – toggle + model for the rewrite pipeline.
+    # Persona is the sole identity layer after the Profile-kill (plan Q1).
+    # All voice-styling fields live here directly, not behind a Profile FK.
+    language: str = "en"
+    avatar_path: str | None = None
+    # Character context (backstory, age, mannerisms) — distinct from `personality`.
     bio: str | None = None
-    engine_override: str | None = None
+    # TTS delivery instruction. Engines that declare `supports_instruct_freeform`
+    # (Qwen3-TTS, LuxTTS) consume it as the `instruct` / style-prompt field at
+    # render time. Engines that don't accept it ignore it. Smart-assign uses it
+    # as input context for voice matching. **Never an LLM rewrite of the
+    # manuscript at render time** — Rewrite is a separate explicit tool.
+    personality: str | None = None
+    # Tier-2 delivery overlay defaults (3-tier voice tuning per task #88):
+    #   render_preset (Tier 3) > persona.default_delivery (Tier 2) > engine (Tier 1).
+    # JSON dict matching the Delivery shape (speed / pitch / gain_db / etc).
+    default_delivery: dict[str, Any] = {}
+    # Effects chain — pedalboard-backed, applied after TTS produces WAV. List
+    # of {type, params} dicts. Cascade order: persona → render preset (overlay)
+    # → per-block override. Wired in Slice 6.
+    effects_chain: list[dict[str, Any]] = []
     lexicon_id: str | None = None
+    engine_override: str | None = None
+    # Legacy rewrite-toggle fields. Kept on disk for backwards-compatibility
+    # with existing persona JSON files. The actual Rewrite affordance becomes
+    # an explicit button on Generate / Studio Script tab (Slice 3) — these
+    # flags will be dropped in Slice 4 after the UI is migrated.
     llm_rewrite_enabled: bool = False
     llm_model: str | None = None
     imported_from: str | None = None
+    imported_id: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -388,10 +406,15 @@ class PersonaList(BaseModel):
 class CreatePersonaRequest(BaseModel):
     name: str
     voice_id: str
-    default_delivery: dict[str, Any] = {}
+    language: str = "en"
+    avatar_path: str | None = None
     bio: str | None = None
-    engine_override: str | None = None
+    personality: str | None = None
+    default_delivery: dict[str, Any] = {}
+    effects_chain: list[dict[str, Any]] = []
     lexicon_id: str | None = None
+    engine_override: str | None = None
+    # Legacy — see Persona model
     llm_rewrite_enabled: bool = False
     llm_model: str | None = None
 

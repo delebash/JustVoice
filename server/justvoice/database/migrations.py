@@ -49,6 +49,7 @@ def run_migrations(engine) -> None:
     # idempotent — safe to run on a fresh DB AND on an upgraded one.
     _migrate_generations_ok_status_and_preset(engine, inspector, tables)
     _migrate_voice_profiles_personality(engine, inspector, tables)
+    _migrate_personas_absorb_profile_fields(engine, inspector, tables)
 
 
 # ── helpers ───────────────────────────────────────────────────────────────
@@ -109,3 +110,31 @@ def _migrate_voice_profiles_personality(engine, inspector, tables: set[str]) -> 
         _add_column(engine, "voice_profiles", "personality TEXT", "personality")
     if "default_delivery" not in columns:
         _add_column(engine, "voice_profiles", "default_delivery TEXT", "default_delivery")
+
+
+def _migrate_personas_absorb_profile_fields(engine, inspector, tables: set[str]) -> None:
+    """Adds voice-styling columns to personas as part of the Profile-kill
+    rollout (Slice 1 of the approved plan).
+
+    Persona becomes the sole identity layer; effects/delivery/personality
+    and friends move from VoiceProfile onto Persona. The actual data
+    migration (copying voice_profile rows into orphan Persona records) is
+    in `migrate_profiles.py` and runs at AppState init.
+    """
+    if "personas" not in tables:
+        return
+    columns = _get_columns(inspector, "personas")
+    if "voice_id" not in columns:
+        _add_column(engine, "personas", "voice_id VARCHAR", "voice_id")
+    if "language" not in columns:
+        _add_column(engine, "personas", "language VARCHAR DEFAULT 'en'", "language")
+    if "avatar_path" not in columns:
+        _add_column(engine, "personas", "avatar_path VARCHAR", "avatar_path")
+    if "personality" not in columns:
+        _add_column(engine, "personas", "personality TEXT", "personality")
+    if "default_delivery" not in columns:
+        _add_column(engine, "personas", "default_delivery TEXT", "default_delivery")
+    if "effects_chain" not in columns:
+        _add_column(engine, "personas", "effects_chain TEXT", "effects_chain")
+    if "imported_id" not in columns:
+        _add_column(engine, "personas", "imported_id VARCHAR", "imported_id")

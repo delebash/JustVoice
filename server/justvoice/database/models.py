@@ -125,25 +125,47 @@ class ProfileChannel(Base):
 
 
 class Persona(Base):
-    """Character bio + voice mapping. Imported from JustWrite character roster
-    or created manually inside JustVoice. The free-form `bio` field drives
-    the LLM personality-rewrite path when `personality_enabled` is set on a
-    generation.
+    """Character — the sole identity layer after the Profile-kill (plan Q1).
+
+    All voice-styling fields live directly on the persona, not behind a
+    Profile FK. `personality` is a TTS delivery instruction (engines that
+    accept `supports_instruct_freeform` consume it; others ignore it).
+    Rewrite is a separate explicit LLM tool, not a render-time hook on
+    this row.
+
+    Imported from JustWrite character roster, voice-profile migration, or
+    created manually inside JustVoice.
     """
 
     __tablename__ = "personas"
 
     id = Column(String, primary_key=True, default=_uuid)
     name = Column(String, nullable=False)
+    language = Column(String, default="en")
+    avatar_path = Column(String, nullable=True)
     bio = Column(Text, nullable=True)  # max 2000 chars enforced at the API layer
+    # Direct FK to a Voice (TTS artifact) — Voices live as JSON manifests
+    # today (storage/voices.py); this column carries the voice id verbatim
+    # and is not a foreign key constraint.
+    voice_id = Column(String, nullable=True)
+    # TTS delivery instruction (Qwen3 `instruct`, LuxTTS style-prompt).
+    personality = Column(Text, nullable=True)
+    # Tier-2 delivery overlay (JSON-serialized Delivery shape).
+    default_delivery = Column(Text, nullable=True)
+    # Pedalboard effects chain (JSON array of {type, params}). Cascade order:
+    # persona → render preset (overlay) → per-block override. Wired in Slice 6.
+    effects_chain = Column(Text, nullable=True)
+    engine_override = Column(String, nullable=True)
+    lexicon_id = Column(String, ForeignKey("lexicons.id", ondelete="SET NULL"), nullable=True)
+    # Transition-window columns — kept during Slice 1-3 and removed in Slice 4
+    # once /v1/profiles is deleted. `voice_profile_id` is no longer written by
+    # the new API; existing rows from prior versions are preserved.
     voice_profile_id = Column(
         String, ForeignKey("voice_profiles.id", ondelete="SET NULL"), nullable=True
     )
-    engine_override = Column(String, nullable=True)
-    lexicon_id = Column(String, ForeignKey("lexicons.id", ondelete="SET NULL"), nullable=True)
     personality_enabled = Column(Boolean, default=False, nullable=False)
     # Provenance — where did this persona come from?
-    imported_from = Column(String, nullable=True)  # "justwrite" | "manual" | "unreal"
+    imported_from = Column(String, nullable=True)  # "justwrite" | "manual" | "unreal" | "voice_profile"
     imported_id = Column(String, nullable=True)  # foreign id in the source system
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)

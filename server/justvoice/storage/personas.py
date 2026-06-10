@@ -57,24 +57,42 @@ class PersonaStore:
         lexicon_id: str | None = None,
         llm_rewrite_enabled: bool = False,
         llm_model: str | None = None,
+        language: str = "en",
+        avatar_path: str | None = None,
+        personality: str | None = None,
+        effects_chain: list[dict] | None = None,
+        imported_from: str | None = None,
+        imported_id: str | None = None,
+        id: str | None = None,
     ) -> Persona:
+        """Create a persona.
+
+        `id` may be supplied for migrations that need to preserve the source
+        record's id; otherwise a fresh `persona_<uuid>` is allocated.
+        """
         with self._lock:
-            id = f"persona_{uuid.uuid4().hex}"
+            new_id = id or f"persona_{uuid.uuid4().hex}"
             persona = Persona(
-                id=id,
+                id=new_id,
                 name=name,
                 voice_id=voice_id,
-                default_delivery=default_delivery or {},
+                language=language,
+                avatar_path=avatar_path,
                 bio=bio,
-                engine_override=engine_override,
+                personality=personality,
+                default_delivery=default_delivery or {},
+                effects_chain=effects_chain or [],
                 lexicon_id=lexicon_id,
+                engine_override=engine_override,
                 llm_rewrite_enabled=llm_rewrite_enabled,
                 llm_model=llm_model,
+                imported_from=imported_from,
+                imported_id=imported_id,
                 created_at=_now(),
                 updated_at=_now(),
             )
-            self._cache[id] = persona
-            atomic_write_json(self._path(id), persona.model_dump())
+            self._cache[new_id] = persona
+            atomic_write_json(self._path(new_id), persona.model_dump())
             return persona.model_copy(deep=True)
 
     def update(self, id: str, **fields) -> Persona | None:

@@ -27,6 +27,10 @@ async def create_persona(body: CreatePersonaRequest) -> Persona:
         lexicon_id=body.lexicon_id,
         llm_rewrite_enabled=body.llm_rewrite_enabled,
         llm_model=body.llm_model,
+        language=body.language,
+        avatar_path=body.avatar_path,
+        personality=body.personality,
+        effects_chain=body.effects_chain,
     )
 
 
@@ -50,6 +54,10 @@ async def update_persona(id: str, body: CreatePersonaRequest) -> Persona:
         lexicon_id=body.lexicon_id,
         llm_rewrite_enabled=body.llm_rewrite_enabled,
         llm_model=body.llm_model,
+        language=body.language,
+        avatar_path=body.avatar_path,
+        personality=body.personality,
+        effects_chain=body.effects_chain,
     )
     if not p:
         raise not_found(f"persona {id}")
