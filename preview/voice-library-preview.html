@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>JustVoice — voice library design preview</title>
+<title>JustVoice — voice library design preview v3</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
-/* ── Tokens — identical to src/renderer/src/styles.css light theme ── */
+/* ── Tokens — JustVoice palette + JustWrite's serif-display pattern ── */
 :root {
   --bg:#f6f5f1; --surface:#fff; --surface-2:#fbfaf7; --surface-3:#f3f1ec;
   --ink:#1a1a1a; --ink-2:#4a4a4a; --ink-3:#888;
@@ -21,23 +21,27 @@
   --shadow-1:0 1px 2px rgba(20,22,24,.04);
   --shadow-2:0 4px 12px rgba(20,22,24,.06);
   --font-ui:"Inter",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --font-serif:"Fraunces","Iowan Old Style",Georgia,serif;
   --font-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--font-ui);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
 h1,h2,h3,h4{margin:0;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
 p{margin:0;color:var(--ink-2)}
-code{font-family:var(--font-mono);font-size:12px}
-strong{font-weight:600;color:var(--ink)}
+strong,b{font-weight:600;color:var(--ink)}
 .muted{color:var(--ink-3)}
 button{font:inherit}
 
-/* ── App shell — mirrors the CURRENT app (lane sidebar) ── */
+.eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.display{font-family:var(--font-serif);font-size:21px;font-weight:600;color:var(--ink)}
+.display.sm{font-size:18px}
+
+/* ── App shell ── */
 .app{display:grid;grid-template-columns:80px 1fr;height:100vh;overflow:hidden}
 .sidebar{background:var(--surface-2);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:14px 0 10px;gap:2px;overflow-y:auto}
-.brand{width:44px;height:44px;border-radius:10px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;letter-spacing:-.5px;margin-bottom:10px}
+.brand{width:44px;height:44px;border-radius:10px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;margin-bottom:10px}
 .lane-h{width:56px;font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);text-align:center;margin:8px 0 2px;font-weight:600}
-.nav-item{width:56px;height:50px;border:0;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;background:transparent;color:var(--ink-2);transition:background .12s,color .12s}
+.nav-item{width:56px;height:50px;border:0;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;background:transparent;color:var(--ink-2)}
 .nav-item:hover{background:var(--surface);color:var(--ink)}
 .nav-item.active,.nav-item.active:hover{background:var(--accent);color:#fff}
 .nav-item .icon{font-size:16px;line-height:1}
@@ -48,14 +52,14 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .topbar{display:flex;align-items:baseline;gap:14px;padding:22px 32px 14px;border-bottom:1px solid var(--line)}
 .topbar h1{font-size:24px;font-weight:600;letter-spacing:-.015em}
 .topbar .period{color:var(--accent)}
-.engine-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2);background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-pill);padding:3px 12px;cursor:default}
+.engine-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2);background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-pill);padding:3px 12px}
 .status{margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2)}
 .status .dot{width:8px;height:8px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 3px rgba(58,125,99,.18)}
 .status .url{font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
 .content{flex:1;overflow-y:auto;padding:24px 32px 64px}
-.lede{color:var(--ink-2);font-size:13px;margin:0 0 18px;max-width:740px}
+.lede{color:var(--ink-2);font-size:13px;margin:0 0 18px;max-width:760px}
 
-/* ── Primitives (preview design language) ── */
+/* ── Primitives ── */
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--shadow-1)}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .spacer{flex:1}
@@ -66,8 +70,9 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .btn.ghost{background:transparent;color:var(--ink-2);border:0}
 .btn.ghost:hover{background:var(--surface-2);color:var(--ink)}
 .btn.sm{height:26px;padding:0 10px;font-size:12px}
-.btn:disabled{opacity:.55;cursor:not-allowed}
-.input{display:block;height:34px;padding:0 12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-control);color:var(--ink);font:inherit;font-size:13px}
+.btn.icon{width:26px;padding:0}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.input{display:block;height:34px;padding:0 12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-control);color:var(--ink);font:inherit;font-size:13px;width:100%}
 .input:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .input::placeholder{color:var(--ink-3)}
 
@@ -77,74 +82,88 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .pill.blue{color:var(--info-blue);border-color:var(--info-blue);background:var(--info-soft)}
 .pill.ghost{background:transparent;border-style:dashed}
 .pill.solid{background:var(--accent);color:#fff;border-color:var(--accent)}
-.pill .dot{width:7px;height:7px;border-radius:999px;display:inline-block}
 
-/* Filter chips */
 .chips{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-control);padding:2px;gap:2px}
 .chip{border:0;background:transparent;border-radius:4px;padding:4px 11px;font-size:12px;color:var(--ink-2);cursor:pointer}
-.chip:hover{color:var(--ink)}
 .chip.active{background:var(--accent);color:#fff}
 
-/* ── Voices: engine-grouped table ── */
+/* ── Engine / project combobox (JustWrite picker pattern) ── */
+.combo{position:relative}
+.combo-btn{display:flex;align-items:center;gap:8px;width:100%;height:36px;padding:0 12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-control);cursor:pointer;font-size:13px;color:var(--ink);text-align:left}
+.combo-btn:hover{border-color:var(--line-strong)}
+.combo-btn .chev{margin-left:auto;color:var(--ink-3);font-size:10px}
+.combo-pop{position:absolute;top:calc(100% + 4px);left:0;min-width:100%;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--shadow-2);padding:4px;z-index:30;display:none}
+.combo.open .combo-pop{display:block}
+.combo-h{font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);padding:7px 10px 3px}
+.combo-item{display:flex;align-items:center;gap:8px;width:100%;border:0;background:transparent;border-radius:5px;padding:8px 10px;font-size:12.5px;color:var(--ink);cursor:pointer;text-align:left;white-space:nowrap}
+.combo-item:hover{background:var(--surface-2)}
+.combo-item.sel{background:var(--accent-soft)}
+.combo-item .tag{margin-left:auto;font-size:10.5px;color:var(--ink-3);padding-left:14px}
+.e-dot{width:7px;height:7px;border-radius:999px;flex:none}
+.e-dot.on{background:var(--accent)}
+.e-dot.off{background:var(--line-strong)}
+.e-dot.ext{background:var(--info-blue)}
+.e-dot.none{background:transparent;border:1px dashed var(--line-strong)}
+
+/* Engine banners */
+.load-banner{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:var(--r-card);padding:10px 14px;font-size:12.5px;color:var(--warn-ink);margin-bottom:10px}
+.load-banner.install{background:var(--surface-2);border-color:var(--line);color:var(--ink-2)}
+.load-banner .row{gap:8px}
+.load-banner .track{flex:1;min-width:120px;height:6px;background:rgba(255,255,255,.7);border:1px solid var(--warn-line);border-radius:999px;overflow:hidden}
+.load-banner .fill{height:100%;background:var(--accent);width:0%;transition:width .12s linear}
+
+/* ── Studio steps ── */
+.steps{display:grid;grid-template-columns:repeat(4,minmax(160px,220px));gap:12px;margin-bottom:22px}
+.step{display:flex;gap:10px;align-items:center;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);cursor:pointer;text-align:left}
+.step .ic{font-size:15px;color:var(--ink-3)}
+.step b{display:block;font-size:13.5px}
+.step span{font-size:11.5px;color:var(--ink-3)}
+.step.active{background:var(--accent-soft);border-color:var(--accent-line)}
+.step.active .ic{color:var(--accent-ink)}
+
+/* Cast cards */
+.cast-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.cast-card{display:flex;gap:12px;align-items:flex-start;padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);cursor:pointer;text-align:left;box-shadow:var(--shadow-1)}
+.cast-card:hover{border-color:var(--line-strong)}
+.cast-card.sel{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.cast-card.narrator{grid-column:1 / -1;display:flex}
+.portrait{width:48px;height:48px;border-radius:10px;color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-serif);font-weight:600;font-size:17px;flex:none}
+.cast-chip-main{font-size:9.5px;padding:0 6px;border:1px solid var(--line-strong);border-radius:999px;color:var(--ink-3)}
+.cast-role{font-size:11px;color:var(--ink-3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cast-voice{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11.5px}
+.cast-unassigned{display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;color:var(--warn-ink);background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:5px;padding:2px 8px}
+.cast-needs{display:inline-flex;align-items:center;gap:5px;margin-left:6px;font-size:10px;color:var(--warn-ink)}
+.glyph{width:20px;height:20px;border-radius:999px;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600;flex:none}
+
+.studio{display:grid;grid-template-columns:1fr 360px;gap:18px;align-items:start}
+
+/* ── Voice library panel ── */
+.lib .toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.lib .count{font-size:11px;color:var(--ink-3);background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:2px 8px}
+.picking{font-size:11.5px;color:var(--ink-3);margin:8px 0 10px}
+.voice-row{display:flex;align-items:center;gap:9px;width:100%;border:1px solid transparent;background:transparent;border-radius:7px;padding:7px 9px;cursor:pointer;text-align:left;font-size:12.5px;color:var(--ink);user-select:none;flex-wrap:nowrap}
+.voice-row:hover{background:var(--surface-2)}
+.voice-row.assigned{border-color:var(--accent);background:var(--accent-soft)}
+.voice-row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.voice-row .nm i{display:block;font-size:10px;color:var(--ink-3);font-style:italic}
+.voice-row .check{color:var(--accent);font-weight:700}
+.voice-row.dormant{opacity:.55}
+.gender{width:22px;height:22px;border-radius:999px;border:1px solid var(--line-strong);background:var(--surface);font-size:10px;font-weight:600;color:var(--ink-2);cursor:pointer;flex:none}
+.gender.f{border-color:#c98aa7;color:#a85a7e;background:#faf0f5}
+.gender.m{border-color:#7e9cc4;color:#4a6fa0;background:#eef3fa}
+.playing-bars{display:inline-flex;align-items:flex-end;gap:2px;height:13px}
+.playing-bars i{width:3px;background:var(--accent);border-radius:1px;animation:bar .7s ease-in-out infinite}
+.playing-bars i:nth-child(2){animation-delay:.18s}.playing-bars i:nth-child(3){animation-delay:.36s}
+@keyframes bar{0%,100%{height:4px}50%{height:13px}}
+
+/* Voices view table */
 .vtable{width:100%;border-collapse:collapse;font-size:13px}
 .vtable thead th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--surface-2)}
 .vtable td{padding:8px 14px;border-bottom:1px solid var(--line);color:var(--ink-2);vertical-align:middle}
 .vtable tbody tr:last-child td{border-bottom:0}
-.vtable tr.voice:hover td{background:var(--surface-2)}
+.vtable tbody tr:hover td{background:var(--surface-2)}
 .vtable .right{text-align:right;white-space:nowrap}
-
-/* Engine group header row */
-tr.group td{background:var(--surface-3);border-bottom:1px solid var(--line);padding:7px 14px}
-tr.group .g-row{display:flex;align-items:center;gap:10px}
-tr.group .g-name{font-weight:600;color:var(--ink);font-size:13px}
-tr.group .g-count{font-size:11.5px;color:var(--ink-3)}
-
-/* Dormant (engine not loaded) rows */
-tr.voice.dormant td{color:var(--ink-3)}
-tr.voice.dormant strong{color:var(--ink-3);font-weight:500}
-tr.voice.dormant .pill{opacity:.55}
-tr.voice.dormant .emoji{filter:grayscale(1);opacity:.5}
-
-/* Playing shimmer */
-.playing-bars{display:inline-flex;align-items:flex-end;gap:2px;height:14px;margin-right:6px}
-.playing-bars i{width:3px;background:var(--accent);border-radius:1px;animation:bar .7s ease-in-out infinite}
-.playing-bars i:nth-child(2){animation-delay:.18s}.playing-bars i:nth-child(3){animation-delay:.36s}
-@keyframes bar{0%,100%{height:4px}50%{height:14px}}
-
-/* Inline load confirm + progress (lives inside the group header) */
-.load-confirm{display:inline-flex;align-items:center;gap:8px;background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:var(--r-control);padding:3px 6px 3px 12px;font-size:12px;color:var(--warn-ink)}
-.load-progress{display:inline-flex;align-items:center;gap:10px;font-size:12px;color:var(--ink-2)}
-.load-progress .track{width:170px;height:6px;background:var(--surface);border:1px solid var(--line);border-radius:999px;overflow:hidden}
-.load-progress .fill{height:100%;background:var(--accent);width:0%;transition:width .12s linear}
-
-/* Toolbar hint line */
-.hint-line{font-size:11.5px;color:var(--ink-3);margin:6px 0 12px}
-
-/* ── Studio ── */
-.studio{display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start}
-.cast-pane{padding:16px}
-.cast-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:6px;cursor:pointer;border:1px solid transparent}
-.cast-row:hover{background:var(--surface-2)}
-.cast-row.sel{background:var(--accent-soft);border-color:var(--accent-line)}
-.cast-row .avatar{width:30px;height:30px;border-radius:999px;background:var(--surface-3);display:flex;align-items:center;justify-content:center;font-size:15px}
-.cast-row .who{flex:1;min-width:0}
-.cast-row .who .nm{font-weight:600;font-size:13px;color:var(--ink)}
-.cast-row .who .vc{font-size:11.5px;color:var(--ink-3)}
-.lib-pane{padding:0;overflow:hidden}
-.lib-head{padding:12px 14px 8px;border-bottom:1px solid var(--line)}
-.lib-head .t{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3)}
-.lib-body{max-height:62vh;overflow-y:auto;padding:6px}
-.lib-group{display:flex;align-items:center;gap:8px;padding:8px 8px 4px;font-size:11.5px;color:var(--ink-2)}
-.lib-group .dot{width:7px;height:7px;border-radius:999px}
-.lib-group .nm{font-weight:600;color:var(--ink);font-size:12px}
-.lib-group .ct{color:var(--ink-3)}
-.lib-voice{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0;background:transparent;padding:7px 8px;border-radius:5px;cursor:pointer;font-size:12.5px;color:var(--ink)}
-.lib-voice:hover{background:var(--surface-2)}
-.lib-voice.dormant{color:var(--ink-3)}
-.lib-voice.dormant .emoji{filter:grayscale(1);opacity:.5}
-.lib-voice .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lib-voice .act{font-size:11px;color:var(--ink-3)}
-.lib-voice:hover .act{color:var(--accent)}
+.vtable tr.dormant td{opacity:.55}
 
 /* Toast */
 .toast-host{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:8px;z-index:50}
@@ -152,7 +171,6 @@ tr.voice.dormant .emoji{filter:grayscale(1);opacity:.5}
 .toast.show{opacity:1;transform:none}
 .toast .a{color:#9fd3bd;font-weight:600}
 
-/* Demo note */
 .demo-note{position:fixed;left:96px;bottom:12px;font-size:11px;color:var(--ink-3);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px 12px;box-shadow:var(--shadow-1)}
 </style>
 </head>
@@ -162,12 +180,12 @@ tr.voice.dormant .emoji{filter:grayscale(1);opacity:.5}
     <div class="brand">JV</div>
     <div class="lane-h">Workflow</div>
     <button class="nav-item" data-tab="x"><span class="icon">🏠</span><span class="lbl">Home</span></button>
-    <button class="nav-item" data-tab="studio"><span class="icon">🎬</span><span class="lbl">Studio</span></button>
+    <button class="nav-item active" data-tab="studio"><span class="icon">🎬</span><span class="lbl">Studio</span></button>
     <button class="nav-item" data-tab="x"><span class="icon">📝</span><span class="lbl">Generate</span></button>
     <button class="nav-item" data-tab="x"><span class="icon">📑</span><span class="lbl">Chapter</span></button>
     <div class="lane-h">Library</div>
     <button class="nav-item" data-tab="x"><span class="icon">📖</span><span class="lbl">Projects</span></button>
-    <button class="nav-item active" data-tab="voices"><span class="icon">🎙️</span><span class="lbl">Voices</span></button>
+    <button class="nav-item" data-tab="voices"><span class="icon">🎙️</span><span class="lbl">Voices</span></button>
     <button class="nav-item" data-tab="x"><span class="icon">🎭</span><span class="lbl">Personas</span></button>
     <button class="nav-item" data-tab="x"><span class="icon">📚</span><span class="lbl">Lexicons</span></button>
     <button class="nav-item" data-tab="x"><span class="icon">🧠</span><span class="lbl">Engines</span></button>
@@ -180,47 +198,66 @@ tr.voice.dormant .emoji{filter:grayscale(1);opacity:.5}
 
   <main>
     <header class="topbar">
-      <h1 id="title">Voices<span class="period">.</span></h1>
-      <span class="engine-pill" id="engine-pill">🧠 <strong id="engine-pill-name">Chatterbox Turbo</strong></span>
+      <h1 id="title">Studio<span class="period">.</span></h1>
+      <span class="engine-pill">🧠 <strong id="engine-pill-name">Chatterbox Turbo</strong></span>
       <span class="status"><span class="dot"></span>Operational <span class="url">· http://127.0.0.1:17494</span></span>
     </header>
     <div class="content">
 
-      <!-- ════════ VOICES ════════ -->
-      <section id="tab-voices">
-        <p class="lede">Voice library — cloned, preset, designed, blended. Grouped by engine so you always know what's ready to play and what needs a load first.</p>
+      <!-- ════════ STUDIO ════════ -->
+      <section id="tab-studio">
+        <p class="lede"><strong>Studio</strong> turns a project into produced audio in three steps — choose voices in <strong>Cast</strong>, let the LLM work out who speaks each line in <strong>Script</strong>, then batch-generate in <strong>Render</strong>. Works the same for audiobooks, game dialogue, and podcasts.</p>
 
-        <div class="row" style="margin-bottom:4px">
-          <input class="input" style="max-width:280px" placeholder="Search voices…" id="search" />
-          <div class="chips" id="type-chips"></div>
-          <div class="spacer"></div>
-          <button class="btn secondary sm">⬇ Import .justvoice.zip</button>
-          <button class="btn sm">+ Clone new voice</button>
+        <div class="row" style="margin-bottom:16px">
+          <div class="combo" id="proj-combo" style="width:340px"></div>
+          <span class="pill ghost" id="proj-type"></span>
         </div>
-        <p class="hint-line">One engine loads at a time — switching takes ~40 s. Voices under an unloaded engine are shown dimmed until you load it.</p>
 
-        <div class="card" style="overflow:hidden">
-          <table class="vtable">
-            <thead>
-              <tr><th style="width:30px"></th><th>Name</th><th>Type</th><th>Lang</th><th>Samples</th><th>Effects</th><th>Channel</th><th class="right" style="width:190px"></th></tr>
-            </thead>
-            <tbody id="vbody"></tbody>
-          </table>
+        <div class="steps" id="steps"></div>
+
+        <div class="studio">
+          <div>
+            <div class="row" style="margin-bottom:12px">
+              <div id="cast-heading"></div>
+              <span class="spacer"></span>
+              <button class="btn secondary sm">✕ Clear cast</button>
+              <button class="btn sm">✨ Smart-assign</button>
+            </div>
+
+            <div id="narrator-card"></div>
+
+            <div style="margin:22px 0 12px">
+              <div class="eyebrow" id="char-eyebrow">Characters</div>
+              <div class="display sm" id="char-counter"></div>
+            </div>
+            <div class="cast-grid" id="cast-grid"></div>
+          </div>
+
+          <aside class="card lib" style="padding:14px" id="studio-lib"></aside>
         </div>
       </section>
 
-      <!-- ════════ STUDIO ════════ -->
-      <section id="tab-studio" style="display:none">
-        <p class="lede">Cast tab — assign voices to characters. The voice library on the right uses the same engine grouping: ready voices play instantly, dimmed ones need their engine loaded first.</p>
-        <div class="studio">
-          <div class="card cast-pane">
-            <div class="lib-head" style="border:0;padding:0 0 10px"><span class="t">Cast — The Stillwater Heist</span></div>
-            <div id="cast"></div>
-          </div>
-          <div class="card lib-pane">
-            <div class="lib-head"><span class="t">Voice library</span></div>
-            <div class="lib-body" id="lib"></div>
-          </div>
+      <!-- ════════ VOICES ════════ -->
+      <section id="tab-voices" style="display:none">
+        <p class="lede">Voice library — cloned, preset, designed, blended. Pick an engine to browse its voices. Bundled engines load one at a time (~25–55 s); external providers are ready whenever they're online.</p>
+
+        <div class="row" style="margin-bottom:10px">
+          <div class="combo" id="v-combo" style="width:320px"></div>
+          <input class="input" style="max-width:240px" placeholder="Search voices…" id="v-search" />
+          <div class="chips" id="v-chips"></div>
+          <span id="v-count" style="font-size:11px;color:var(--ink-3)"></span>
+          <div class="spacer"></div>
+          <button class="btn secondary sm">⬇ Import</button>
+          <button class="btn sm">+ Clone new voice</button>
+        </div>
+
+        <div id="v-banner"></div>
+
+        <div class="card" style="overflow:hidden">
+          <table class="vtable">
+            <thead><tr><th style="width:34px"></th><th>Name</th><th>Type</th><th style="width:30px">G</th><th>Lang</th><th>Samples</th><th>Effects</th><th>Channel</th><th class="right" style="width:170px"></th></tr></thead>
+            <tbody id="v-body"></tbody>
+          </table>
         </div>
       </section>
 
@@ -229,259 +266,326 @@ tr.voice.dormant .emoji{filter:grayscale(1);opacity:.5}
 </div>
 
 <div class="toast-host" id="toasts"></div>
-<div class="demo-note">Demo: engine load mocked at 4 s — real load ≈ 40 s · preview play mocked at 2 s</div>
+<div class="demo-note">Demo: engine load mocked at 4 s — real ≈ 40 s · play mocked at 2 s · gender chips cycle · two projects show audiobook vs game</div>
 
 <script>
-/* ───────────────────────── Mock state ───────────────────────── */
+/* ───────── Engines: bundled (installed/not) + pluggable + external ───────── */
 const ENGINES = {
-  chatterbox: { name: "Chatterbox Turbo", loadSecs: 40 },
-  kokoro:     { name: "Kokoro",           loadSecs: 25 },
-  qwen3:      { name: "Qwen3-TTS",        loadSecs: 55 },
+  chatterbox: { name:"Chatterbox Turbo",        kind:"bundled",  installed:true,  loadSecs:40 },
+  kokoro:     { name:"Kokoro",                  kind:"bundled",  installed:true,  loadSecs:25 },
+  qwen3:      { name:"Qwen3-TTS",               kind:"plugin",   installed:false, installSize:"2.1 GB" },
+  extkokoro:  { name:"Kokoro FastAPI (external)", kind:"external", online:true },
 };
-let loadedEngine = "chatterbox";
-let loading = null;            // { engine, pct, timer, autoplayVoiceId, confirmOpen }
-let playingId = null;
-let playTimer = null;
+let loadedEngine = "chatterbox";   // exactly one bundled/plugin engine loaded at a time
+let loading = null;
+let playingId = null, playTimer = null;
+
+/* engineState: 'loaded' | 'installed' (load to use) | 'not_installed' | 'external' */
+function engineState(id){
+  const e = ENGINES[id];
+  if (e.kind === "external") return "external";
+  if (!e.installed) return "not_installed";
+  return id === loadedEngine ? "loaded" : "installed";
+}
+/* ready = voices playable right now with zero wait */
+function engineReady(id){
+  const s = engineState(id);
+  return s === "loaded" || (s === "external" && ENGINES[id].online);
+}
 
 const VOICES = [
-  { id:"narrator", name:"Narrator",            engine:"chatterbox", type:"cloned",   lang:"en", samples:4,  effects:"—",            channel:"Default" },
-  { id:"mara",     name:"Mara",                engine:"chatterbox", type:"cloned",   lang:"en", samples:2,  effects:"radio",        channel:"Default" },
-  { id:"oldcrow",  name:"Old Crow",            engine:"chatterbox", type:"cloned",   lang:"en", samples:3,  effects:"radio · gain", channel:"OBS virtual" },
-  { id:"blend1",   name:"Blend: Narrator+Crow",engine:"chatterbox", type:"blended",  lang:"en", samples:"—",effects:"—",            channel:"Default" },
-  { id:"maratr",   name:"Mara (fine-tuned)",   engine:"chatterbox", type:"trained",  lang:"en", samples:12, effects:"—",            channel:"Default" },
-  { id:"af_alloy", name:"af_alloy",            engine:"kokoro",     type:"preset",   lang:"en", samples:"—",effects:"—",            channel:"Default" },
-  { id:"af_bella", name:"af_bella",            engine:"kokoro",     type:"preset",   lang:"en", samples:"—",effects:"—",            channel:"Default" },
-  { id:"af_heart", name:"af_heart",            engine:"kokoro",     type:"preset",   lang:"en", samples:"—",effects:"—",            channel:"Default" },
-  { id:"am_mich",  name:"am_michael",          engine:"kokoro",     type:"preset",   lang:"en", samples:"—",effects:"—",            channel:"Default" },
-  { id:"bm_george",name:"bm_george",           engine:"kokoro",     type:"preset",   lang:"en", samples:"—",effects:"—",            channel:"Default" },
-  { id:"baritone", name:"Heroic Baritone",     engine:"qwen3",      type:"designed", lang:"en", samples:"—",effects:"reverb",       channel:"Default" },
-  { id:"newsread", name:"Calm Newsreader",     engine:"qwen3",      type:"designed", lang:"en", samples:"—",effects:"—",            channel:"Default" },
-  { id:"fieldrec", name:"Field Recording 03",  engine:"qwen3",      type:"imported", lang:"en", samples:1,  effects:"—",            channel:"Default" },
+  { id:"narr",  name:"Narrator",             engine:"chatterbox", type:"cloned",  g:"M", tone:"warm, unhurried",     lang:"en", samples:4,  effects:"—",          channel:"Default" },
+  { id:"mara",  name:"Mara",                 engine:"chatterbox", type:"cloned",  g:"F", tone:"clipped, noir",       lang:"en", samples:2,  effects:"radio",      channel:"Default" },
+  { id:"crow",  name:"Old Crow",             engine:"chatterbox", type:"cloned",  g:"M", tone:"gravel, three teeth", lang:"en", samples:3,  effects:"radio·gain", channel:"OBS virtual" },
+  { id:"blend", name:"Blend: Narrator+Crow", engine:"chatterbox", type:"blended", g:"M", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"marat", name:"Mara (fine-tuned)",    engine:"chatterbox", type:"trained", g:"F", tone:"",                    lang:"en", samples:12, effects:"—",          channel:"Default" },
+  { id:"al",    name:"af_alloy",             engine:"kokoro",     type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"be",    name:"af_bella",             engine:"kokoro",     type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"he",    name:"af_heart",             engine:"kokoro",     type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"mi",    name:"am_michael",           engine:"kokoro",     type:"preset",  g:"M", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"ge",    name:"bm_george",            engine:"kokoro",     type:"preset",  g:"M", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"bar",   name:"Heroic Baritone",      engine:"qwen3",      type:"designed",g:"M", tone:"booming, theatrical", lang:"en", samples:"—",effects:"reverb",     channel:"Default" },
+  { id:"news",  name:"Calm Newsreader",      engine:"qwen3",      type:"designed",g:"N", tone:"measured, neutral",   lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"sky",   name:"af_sky",               engine:"extkokoro",  type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"sar",   name:"af_sarah",             engine:"extkokoro",  type:"preset",  g:"F", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
+  { id:"adam",  name:"am_adam",              engine:"extkokoro",  type:"preset",  g:"M", tone:"",                    lang:"en", samples:"—",effects:"—",          channel:"Default" },
 ];
+const TYPE_PILL = { cloned:"green", designed:"warn", blended:"blue", preset:"", imported:"ghost", trained:"solid" };
+const GENDER_CYCLE = ["F","M","N","?"];
 
-const TYPE_PILL = {
-  cloned:   { cls:"green", label:"cloned" },
-  designed: { cls:"warn",  label:"designed" },
-  blended:  { cls:"blue",  label:"blended" },
-  preset:   { cls:"",      label:"preset" },
-  imported: { cls:"ghost", label:"imported" },
-  trained:  { cls:"solid", label:"trained" },
+/* ───────── Projects: multi-use, not audiobook-only ───────── */
+const PROJECTS = {
+  heist: {
+    name:"The Stillwater Heist", type:"audiobook",
+    renderSub:"Chapter audio · ACX master",
+    castHeadline:"The voice of everything that isn't spoken",
+    cast:[
+      { id:"narrator", name:"Narrator",     role:"Narration · interior thought · scene markers", main:false, voice:"narr", isNarrator:true },
+      { id:"elen",     name:"Elen Vael",    role:"Protagonist",     main:true,  voice:"mara" },
+      { id:"idris",    name:"Idris Vael",   role:"Father (dec.)",   main:true,  voice:null },
+      { id:"june",     name:"June Asari",   role:"Friend / cipher", main:true,  voice:"be" },
+      { id:"halvard",  name:"Halvard Renn", role:"Antagonist?",     main:true,  voice:"crow" },
+      { id:"petra",    name:"Petra Lange",  role:"Aunt",            main:false, voice:null },
+      { id:"tomas",    name:"Tomas",        role:"Boy on the pier", main:false, voice:null },
+    ],
+  },
+  harbor: {
+    name:"Harbor Lights — NPC dialogue", type:"game",
+    renderSub:"Per-line WAV + JSON sidecar",
+    castHeadline:null, // games have no narrator band
+    cast:[
+      { id:"dock",   name:"Dockmaster Hale", role:"Quest giver · 84 lines",  main:true,  voice:"crow" },
+      { id:"ferry",  name:"Ferryman",        role:"Ambient · 12 lines",      main:false, voice:null },
+      { id:"yia",    name:"Merchant Yia",    role:"Vendor · 47 lines",       main:true,  voice:null },
+      { id:"guard",  name:"Guard Captain",   role:"Barks · 156 lines",       main:true,  voice:null },
+      { id:"urchin", name:"Pier Urchin",     role:"Quest · 31 lines",        main:false, voice:"he" },
+    ],
+  },
 };
-const TYPE_FILTERS = ["all","cloned","preset","designed","blended","imported","trained"];
-let typeFilter = "all";
-let search = "";
+let projectId = "heist";
+let selectedChar = "idris";
+let libEngine = "chatterbox", vEngine = "chatterbox";
+let vType = "all", vSearch = "", libSearch = "";
 
-const CAST = [
-  { id:"p1", name:"Mara",      icon:"🕵️", voice:"mara" },
-  { id:"p2", name:"Old Crow",  icon:"🧓", voice:"oldcrow" },
-  { id:"p3", name:"Narrator",  icon:"📖", voice:"narrator" },
-  { id:"p4", name:"Constable", icon:"👮", voice:null },
-];
-let selectedCast = "p4";
-
-/* ───────────────────────── Helpers ───────────────────────── */
+/* ───────── Helpers ───────── */
 const $ = (s) => document.querySelector(s);
-function toast(msg) {
-  const t = document.createElement("div");
-  t.className = "toast"; t.innerHTML = msg;
-  $("#toasts").appendChild(t);
-  requestAnimationFrame(() => t.classList.add("show"));
-  setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 3400);
-}
-function pillHtml(type) {
-  const p = TYPE_PILL[type];
-  return `<span class="pill ${p.cls}">${p.label}</span>`;
-}
-function enginesOrdered() {
-  return Object.keys(ENGINES).sort((a, b) => (b === loadedEngine) - (a === loadedEngine));
-}
-function voicesFor(engineId) {
-  return VOICES.filter(v =>
-    v.engine === engineId &&
-    (typeFilter === "all" || v.type === typeFilter) &&
-    (!search || v.name.toLowerCase().includes(search)));
-}
+function toast(msg){const t=document.createElement("div");t.className="toast";t.innerHTML=msg;$("#toasts").appendChild(t);requestAnimationFrame(()=>t.classList.add("show"));setTimeout(()=>{t.classList.remove("show");setTimeout(()=>t.remove(),300)},3400)}
+function grad(name){const h=(name.charCodeAt(0)*7)%360,h2=(h+60)%360;return `linear-gradient(135deg, oklch(0.78 0.07 ${h}), oklch(0.62 0.08 ${h2}))`}
+function initials(name){return name.split(" ").map(s=>s[0]).slice(0,2).join("")}
+function voiceById(id){return VOICES.find(v=>v.id===id)}
+function project(){return PROJECTS[projectId]}
+function pill(type){return `<span class="pill ${TYPE_PILL[type]}">${type}</span>`}
+function genderChip(v){const c=v.g==="F"?"f":v.g==="M"?"m":"";return `<button class="gender ${c}" title="Click to cycle gender" onclick="event.stopPropagation();cycleGender('${v.id}')">${v.g}</button>`}
+function cycleGender(id){const v=voiceById(id);v.g=GENDER_CYCLE[(GENDER_CYCLE.indexOf(v.g)+1)%GENDER_CYCLE.length];renderAll()}
 
-/* ───────────────────────── Load flow ───────────────────────── */
-function askLoad(engineId, autoplayVoiceId) {
-  if (loading) return;
-  loading = { engine: engineId, pct: 0, timer: null, autoplayVoiceId, confirmOpen: true };
+/* ───────── Load flow (bundled/plugin engines only) ───────── */
+function startLoad(engineId, afterLoad){
+  if(loading) return;
+  if(engineState(engineId)==="not_installed"){toast(`${ENGINES[engineId].name} isn't installed — install it from the Engines tab first.`);return}
+  loading={engine:engineId,pct:0,afterLoad};
+  loading.timer=setInterval(()=>{
+    loading.pct=Math.min(100,loading.pct+100*50/4000);
+    document.querySelectorAll(".load-banner .fill").forEach(el=>el.style.width=loading.pct+"%");
+    document.querySelectorAll(".load-banner .pct").forEach(el=>el.textContent=Math.round(loading.pct)+"%");
+    if(loading.pct>=100) finishLoad();
+  },50);
   renderAll();
 }
-function confirmLoad() {
-  loading.confirmOpen = false;
-  const tickMs = 50, durMs = 4000; // mock: 4s stands in for ~40s
-  loading.timer = setInterval(() => {
-    loading.pct = Math.min(100, loading.pct + 100 * tickMs / durMs);
-    updateProgressBars();
-    if (loading.pct >= 100) finishLoad();
-  }, tickMs);
-  renderAll();
-}
-function cancelLoad() {
-  if (loading?.timer) clearInterval(loading.timer);
-  loading = null;
-  renderAll();
-}
-function finishLoad() {
+function cancelLoad(){if(loading?.timer)clearInterval(loading.timer);loading=null;renderAll()}
+function finishLoad(){
   clearInterval(loading.timer);
-  const eng = loading.engine, auto = loading.autoplayVoiceId;
-  const prev = ENGINES[loadedEngine].name;
-  loadedEngine = eng;
-  loading = null;
-  $("#engine-pill-name").textContent = ENGINES[eng].name;
+  const prev=ENGINES[loadedEngine].name, eng=loading.engine, after=loading.afterLoad;
+  loadedEngine=eng; loading=null;
+  $("#engine-pill-name").textContent=ENGINES[eng].name;
   toast(`<span class="a">${ENGINES[eng].name} loaded</span> — previews ready. ${prev} was unloaded.`);
   renderAll();
-  if (auto) play(auto);
+  if(after) after();
 }
-function updateProgressBars() {
-  document.querySelectorAll(".load-progress .fill").forEach(el => el.style.width = loading.pct + "%");
-  document.querySelectorAll(".load-progress .pct").forEach(el => el.textContent = Math.round(loading.pct) + "%");
+function play(id){if(playTimer)clearTimeout(playTimer);playingId=id;renderAll();playTimer=setTimeout(()=>{playingId=null;renderAll()},2000)}
+
+/* ───────── Engine combobox — bundled / pluggable / external sections ───────── */
+function engineItemHtml(id, currentId, onPickName){
+  const e=ENGINES[id], s=engineState(id);
+  const dot = s==="loaded" ? "on" : s==="external" ? "ext" : s==="not_installed" ? "none" : "off";
+  const tag = s==="loaded" ? "loaded"
+            : s==="installed" ? `not loaded · ~${e.loadSecs}s`
+            : s==="not_installed" ? `not installed · ${e.installSize}`
+            : (e.online ? "online · no load needed" : "offline");
+  return `<button class="combo-item ${id===currentId?"sel":""}" onclick="${onPickName}('${id}')">
+    <span class="e-dot ${dot}"></span>${e.name}<span class="tag">${tag}</span></button>`;
+}
+function comboHtml(hostId, currentId, onPickName){
+  const cur=ENGINES[currentId], s=engineState(currentId);
+  const dot = s==="loaded" ? "on" : s==="external" ? "ext" : s==="not_installed" ? "none" : "off";
+  const tag = s==="loaded" ? "loaded" : s==="installed" ? "not loaded" : s==="not_installed" ? "not installed" : "external · online";
+  const bundled = Object.keys(ENGINES).filter(id=>ENGINES[id].kind!=="external"&&ENGINES[id].installed);
+  const plugins = Object.keys(ENGINES).filter(id=>!ENGINES[id].installed&&ENGINES[id].kind!=="external");
+  const external = Object.keys(ENGINES).filter(id=>ENGINES[id].kind==="external");
+  return `<button class="combo-btn" onclick="toggleCombo('${hostId}')">
+      <span class="e-dot ${dot}"></span>${cur.name}
+      <span class="tag" style="margin-left:auto;font-size:10.5px;color:var(--ink-3)">${tag}</span>
+      <span class="chev">▾</span></button>
+    <div class="combo-pop">
+      <div class="combo-h">Installed engines</div>
+      ${bundled.map(id=>engineItemHtml(id,currentId,onPickName)).join("")}
+      <div class="combo-h">Available to install</div>
+      ${plugins.map(id=>engineItemHtml(id,currentId,onPickName)).join("")}
+      <div class="combo-h">External providers</div>
+      ${external.map(id=>engineItemHtml(id,currentId,onPickName)).join("")}
+    </div>`;
+}
+function toggleCombo(hostId){document.getElementById(hostId).classList.toggle("open")}
+document.addEventListener("click",(e)=>{if(!e.target.closest(".combo"))document.querySelectorAll(".combo").forEach(c=>c.classList.remove("open"))});
+function pickLibEngine(id){libEngine=id;renderAll()}
+function pickVEngine(id){vEngine=id;renderAll()}
+
+/* ───────── Engine banner — load / install / offline variants ───────── */
+function bannerHtml(engineId){
+  const e=ENGINES[engineId], s=engineState(engineId);
+  if(loading && loading.engine===engineId){
+    return `<div class="load-banner"><div class="row">
+      <span>Loading <strong>${e.name}</strong>… <span class="pct">0%</span></span>
+      <span class="track"><span class="fill"></span></span>
+      <button class="btn ghost sm" onclick="cancelLoad()">Cancel</button></div></div>`;
+  }
+  if(s==="loaded") return "";
+  if(s==="external"){
+    return e.online ? "" : `<div class="load-banner"><div class="row">
+      <span><strong>${e.name}</strong> isn't responding. Start the server, then retry.</span>
+      <span class="spacer"></span><button class="btn secondary sm">Retry</button></div></div>`;
+  }
+  if(s==="not_installed"){
+    return `<div class="load-banner install"><div class="row">
+      <span><strong>${e.name}</strong> isn't installed — it's a pluggable engine (own venv, ${e.installSize} download). Voices shown for browsing.</span>
+      <span class="spacer"></span>
+      <button class="btn secondary sm" onclick="toast('Routes to Engines tab → ${e.name} → Install (mock).')">Install in Engines ▸</button></div></div>`;
+  }
+  return `<div class="load-banner"><div class="row">
+    <span><strong>${e.name}</strong> isn't loaded — voices shown for browsing. Loading takes ~${e.loadSecs}s and replaces ${ENGINES[loadedEngine].name}.</span>
+    <span class="spacer"></span>
+    <button class="btn sm" ${loading?"disabled":""} onclick="startLoad('${engineId}')">Load ${e.name} (~${e.loadSecs}s)</button></div></div>`;
 }
 
-/* ───────────────────────── Preview play (mock) ───────────────────────── */
-function play(voiceId) {
-  if (playTimer) clearTimeout(playTimer);
-  playingId = voiceId;
-  renderAll();
-  playTimer = setTimeout(() => { playingId = null; renderAll(); }, 2000);
+/* ───────── Studio: project picker + cast ───────── */
+function projComboHtml(){
+  const p=project();
+  let items=Object.entries(PROJECTS).map(([id,pr])=>
+    `<button class="combo-item ${id===projectId?"sel":""}" onclick="pickProject('${id}')">
+       ${pr.name}<span class="tag">${pr.type}</span></button>`).join("");
+  return `<button class="combo-btn" onclick="toggleCombo('proj-combo')">
+      📖 ${p.name}<span class="chev">▾</span></button>
+    <div class="combo-pop">${items}</div>`;
 }
+function pickProject(id){projectId=id;selectedChar=project().cast.find(c=>!c.voice)?.id||project().cast[0].id;renderAll()}
 
-/* ───────────────────────── Renderers ───────────────────────── */
-function groupHeaderHtml(engineId, count, light) {
-  const eng = ENGINES[engineId];
-  const isLoaded = engineId === loadedEngine;
-  const isLoading = loading && loading.engine === engineId;
-  let right = "";
-  if (isLoaded) {
-    right = `<span class="pill green"><span class="dot" style="background:var(--accent)"></span>loaded</span>`;
-  } else if (isLoading && loading.confirmOpen) {
-    right = `<span class="load-confirm">Replaces ${ENGINES[loadedEngine].name} · ~${eng.loadSecs}s
-               <button class="btn sm" onclick="confirmLoad()">Load</button>
-               <button class="btn ghost sm" onclick="cancelLoad()">Cancel</button></span>`;
-  } else if (isLoading) {
-    right = `<span class="load-progress">Loading ${eng.name}… <span class="pct">0%</span>
-               <span class="track"><span class="fill"></span></span>
-               <button class="btn ghost sm" onclick="cancelLoad()">Cancel</button></span>`;
+function castCardHtml(c){
+  const v=c.voice?voiceById(c.voice):null;
+  const needsAttention=v&&!engineReady(v.engine);
+  let voiceLine;
+  if(v){
+    voiceLine=`<div class="cast-voice"><span class="glyph" style="background:${grad(v.name)}">${v.name[0]}</span><b>${v.name}</b>
+      ${needsAttention?`<span class="cast-needs" title="${ENGINES[v.engine].name} isn't ready — render will load it">⚠ needs ${ENGINES[v.engine].name}</span>`:""}</div>`;
   } else {
-    right = `<span class="pill ghost"><span class="dot" style="background:var(--ink-3)"></span>not loaded</span>
-             <button class="btn secondary sm" ${loading ? "disabled" : ""} onclick="askLoad('${engineId}')">Load engine (~${eng.loadSecs}s)</button>`;
+    voiceLine=`<div class="cast-unassigned">⚠ No voice</div>`;
   }
-  return { isLoaded, right };
+  return `<button class="cast-card ${c.isNarrator?"narrator":""} ${selectedChar===c.id?"sel":""}" onclick="selectChar('${c.id}')">
+    <div class="portrait" style="background:${c.isNarrator?"var(--accent)":grad(c.name)}">${c.isNarrator?"🎧":initials(c.name)}</div>
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:6px"><b style="font-size:13.5px">${c.name}</b>${c.main?`<span class="cast-chip-main">main</span>`:""}</div>
+      <div class="cast-role">${c.role}</div>
+      ${voiceLine}
+    </div></button>`;
 }
+function selectChar(id){selectedChar=id;renderAll()}
 
-function renderVoicesTable() {
-  const tbody = $("#vbody");
-  let html = "";
-  for (const engineId of enginesOrdered()) {
-    const vs = voicesFor(engineId);
-    if (!vs.length && (typeFilter !== "all" || search)) continue;
-    const { isLoaded, right } = groupHeaderHtml(engineId, vs.length);
-    html += `<tr class="group"><td colspan="8"><div class="g-row">
-               <span class="g-name">${ENGINES[engineId].name}</span>
-               <span class="g-count">${vs.length} voice${vs.length === 1 ? "" : "s"}</span>
-               <span class="spacer"></span>${right}</div></td></tr>`;
-    for (const v of vs) {
-      const dormant = !isLoaded;
-      const isPlaying = playingId === v.id;
-      let action;
-      if (isPlaying) {
-        action = `<span class="playing-bars"><i></i><i></i><i></i></span><span style="color:var(--accent);font-size:12px">playing…</span>`;
-      } else if (dormant) {
-        action = `<button class="btn ghost sm" ${loading ? "disabled" : ""}
-                    title="${ENGINES[v.engine].name} isn't loaded. Loading takes ~${ENGINES[v.engine].loadSecs}s and replaces ${ENGINES[loadedEngine].name}."
-                    onclick="askLoad('${v.engine}','${v.id}')">Load to preview</button>`;
-      } else {
-        action = `<button class="btn ghost sm" onclick="play('${v.id}')">▶ Preview</button>
-                  <button class="btn ghost sm">Edit</button>`;
-      }
-      html += `<tr class="voice ${dormant ? "dormant" : ""}">
-        <td class="emoji">🎙️</td>
-        <td><strong>${v.name}</strong></td>
-        <td>${pillHtml(v.type)}</td>
-        <td>${v.lang}</td><td>${v.samples}</td><td>${v.effects}</td><td>${v.channel}</td>
-        <td class="right">${action}</td></tr>`;
-    }
+function renderStudio(){
+  const p=project();
+  $("#proj-combo").innerHTML=projComboHtml();
+  $("#proj-type").textContent=p.type;
+  const unassigned=p.cast.filter(c=>!c.voice).length;
+  $("#steps").innerHTML=`
+    <button class="step active"><span class="ic">🎧</span><span><b>Cast</b><span>${p.cast.length-unassigned}/${p.cast.length} cast</span></span></button>
+    <button class="step"><span class="ic">💬</span><span><b>Script</b><span>Speaker analysis</span></span></button>
+    <button class="step"><span class="ic">🎚️</span><span><b>Render</b><span>${p.renderSub}</span></span></button>
+    <button class="step"><span class="ic">🧪</span><span><b>Lab</b><span>A/B engine params</span></span></button>`;
+  const narrator=p.cast.find(c=>c.isNarrator);
+  if(narrator){
+    $("#cast-heading").innerHTML=`<div class="eyebrow">Narrator</div><div class="display">${p.castHeadline}</div>`;
+    $("#narrator-card").innerHTML=castCardHtml(narrator);
+    $("#char-eyebrow").textContent="Characters";
+  } else {
+    $("#cast-heading").innerHTML=`<div class="eyebrow">${p.type==="game"?"NPC cast":"Cast"}</div><div class="display">Every speaking role, one voice each</div>`;
+    $("#narrator-card").innerHTML="";
+    $("#char-eyebrow").textContent=p.type==="game"?"NPCs":"Characters";
   }
-  tbody.innerHTML = html;
-  if (loading && !loading.confirmOpen) updateProgressBars();
+  $("#cast-grid").innerHTML=p.cast.filter(c=>!c.isNarrator).map(castCardHtml).join("");
+  $("#char-counter").textContent=`${p.cast.filter(c=>!c.isNarrator).length} ${p.type==="game"?"NPCs":"characters"} · ${unassigned} unassigned`;
 }
 
-function renderChips() {
-  $("#type-chips").innerHTML = TYPE_FILTERS.map(f => {
-    const n = f === "all" ? VOICES.length : VOICES.filter(v => v.type === f).length;
-    return `<button class="chip ${typeFilter === f ? "active" : ""}" onclick="setFilter('${f}')">${f[0].toUpperCase() + f.slice(1)} (${n})</button>`;
-  }).join("");
-}
-function setFilter(f) { typeFilter = f; renderAll(); }
-
-function renderCast() {
-  $("#cast").innerHTML = CAST.map(c => {
-    const v = VOICES.find(x => x.id === c.voice);
-    return `<div class="cast-row ${selectedCast === c.id ? "sel" : ""}" onclick="selectCast('${c.id}')">
-      <span class="avatar">${c.icon}</span>
-      <span class="who"><span class="nm">${c.name}</span><br>
-        <span class="vc">${v ? `${v.name} · ${ENGINES[v.engine].name}` : "no voice assigned — pick one on the right"}</span></span>
-      ${v ? pillHtml(v.type) : `<span class="pill warn">unassigned</span>`}
+/* ───────── Studio: voice library aside ───────── */
+function renderStudioLib(){
+  const c=project().cast.find(x=>x.id===selectedChar);
+  const vs=VOICES.filter(v=>v.engine===libEngine&&(!libSearch||v.name.toLowerCase().includes(libSearch)));
+  const ready=engineReady(libEngine);
+  const notInstalled=engineState(libEngine)==="not_installed";
+  let rows=vs.map(v=>{
+    const assigned=c&&c.voice===v.id;
+    const isPlaying=playingId===v.id;
+    return `<div class="voice-row ${assigned?"assigned":""} ${ready?"":"dormant"}" onclick="pickVoice('${v.id}')">
+      <span class="glyph" style="background:${grad(v.name)}">${v.name[0]}</span>
+      <span class="nm"><b>${v.name}</b>${v.tone?`<i>${v.tone}</i>`:""}</span>
+      ${assigned?`<span class="check">✓</span>`:""}
+      ${genderChip(v)}
+      <button class="btn ghost sm icon" title="Tune voice parameters (speed, exaggeration, …)" onclick="event.stopPropagation();toast('Voice tuner opens here (mock).')">⚙</button>
+      ${isPlaying?`<span class="playing-bars"><i></i><i></i><i></i></span>`
+        :`<button class="btn ghost sm icon" title="${ready?"Preview":notInstalled?ENGINES[libEngine].name+' must be installed first':ENGINES[libEngine].name+' must be loaded first'}" ${ready?"":"disabled"} onclick="event.stopPropagation();play('${v.id}')">▶</button>`}
     </div>`;
   }).join("");
+  $("#studio-lib").innerHTML=`
+    <div class="eyebrow" style="margin-bottom:8px">Voice library</div>
+    <div class="combo" id="lib-combo">${comboHtml("lib-combo",libEngine,"pickLibEngine")}</div>
+    <div class="picking">${c?`Picking voice for <b style="color:var(--ink)">${c.name}</b>`:"Select a character to assign a voice."}</div>
+    ${bannerHtml(libEngine)}
+    <div class="toolbar"><input class="input" placeholder="Search voices…" value="${libSearch}" oninput="libSearch=this.value.trim().toLowerCase();renderStudioLib()" /><span class="count">${vs.length}</span></div>
+    <div style="display:flex;flex-direction:column;gap:2px;max-height:50vh;overflow-y:auto">${rows||`<div class="muted" style="font-size:12px;padding:12px;text-align:center;font-style:italic">No voices match.</div>`}</div>`;
 }
-function selectCast(id) { selectedCast = id; renderAll(); }
-
-function renderLib() {
-  let html = "";
-  for (const engineId of enginesOrdered()) {
-    const vs = VOICES.filter(v => v.engine === engineId);
-    const isLoaded = engineId === loadedEngine;
-    const isLoading = loading && loading.engine === engineId;
-    let tail;
-    if (isLoaded) tail = `<span class="dot" style="background:var(--accent)"></span>`;
-    else if (isLoading && loading.confirmOpen) tail = `<button class="btn sm" onclick="confirmLoad()">Load ~${ENGINES[engineId].loadSecs}s</button><button class="btn ghost sm" onclick="cancelLoad()">✕</button>`;
-    else if (isLoading) tail = `<span class="load-progress"><span class="track" style="width:90px"><span class="fill"></span></span><button class="btn ghost sm" onclick="cancelLoad()">✕</button></span>`;
-    else tail = `<button class="btn ghost sm" ${loading ? "disabled" : ""} onclick="askLoad('${engineId}')" title="Loading takes ~${ENGINES[engineId].loadSecs}s and replaces ${ENGINES[loadedEngine].name}">Load</button>`;
-    html += `<div class="lib-group">${isLoaded ? "" : `<span class="dot" style="background:var(--ink-3)"></span>`}
-               <span class="nm">${ENGINES[engineId].name}</span><span class="ct">${vs.length}</span>
-               <span class="spacer"></span>${tail}</div>`;
-    for (const v of vs) {
-      const dormant = !isLoaded;
-      const isPlaying = playingId === v.id;
-      html += `<button class="lib-voice ${dormant ? "dormant" : ""}"
-                 title="${dormant ? `${ENGINES[v.engine].name} isn't loaded — load it to assign & preview` : `Click to assign to ${CAST.find(c => c.id === selectedCast)?.name}`}"
-                 onclick="libClick('${v.id}')">
-        <span class="emoji">🎙️</span><span class="nm">${v.name}</span>
-        ${pillHtml(v.type)}
-        <span class="act">${isPlaying ? "🔊" : dormant ? "load first" : "assign ▸"}</span>
-      </button>`;
-    }
-  }
-  $("#lib").innerHTML = html;
-  if (loading && !loading.confirmOpen) updateProgressBars();
+function pickVoice(voiceId){
+  const v=voiceById(voiceId);
+  const c=project().cast.find(x=>x.id===selectedChar);
+  if(!c){toast("Select a character first.");return}
+  if(engineState(v.engine)==="not_installed"){toast(`${ENGINES[v.engine].name} isn't installed — install it from the Engines tab first.`);return}
+  if(!engineReady(v.engine)){ startLoad(v.engine,()=>assign(c,v)); return; }
+  assign(c,v);
 }
-function libClick(voiceId) {
-  const v = VOICES.find(x => x.id === voiceId);
-  if (v.engine !== loadedEngine) { askLoad(v.engine, voiceId); return; }
-  const c = CAST.find(c => c.id === selectedCast);
-  c.voice = voiceId;
+function assign(c,v){
+  c.voice=v.id;
   toast(`<span class="a">${v.name}</span> assigned to ${c.name}.`);
-  play(voiceId);
+  play(v.id);
   renderAll();
 }
 
-/* ───────────────────────── Tabs ───────────────────────── */
-let tab = "voices";
-document.querySelectorAll(".nav-item").forEach(b => b.addEventListener("click", () => {
-  const t = b.dataset.tab;
-  if (t === "x") { toast("Decorative in this mock — only Voices & Studio are wired."); return; }
-  tab = t;
-  document.querySelectorAll(".nav-item").forEach(x => x.classList.toggle("active", x === b));
-  $("#tab-voices").style.display = t === "voices" ? "" : "none";
-  $("#tab-studio").style.display = t === "studio" ? "" : "none";
-  $("#title").innerHTML = (t === "voices" ? "Voices" : "Studio") + '<span class="period">.</span>';
+/* ───────── Voices view ───────── */
+const V_FILTERS=["all","cloned","preset","designed","blended","imported","trained"];
+function renderVoicesView(){
+  $("#v-combo").innerHTML=comboHtml("v-combo",vEngine,"pickVEngine");
+  $("#v-chips").innerHTML=V_FILTERS.map(f=>{
+    const n=f==="all"?VOICES.filter(v=>v.engine===vEngine).length:VOICES.filter(v=>v.engine===vEngine&&v.type===f).length;
+    return `<button class="chip ${vType===f?"active":""}" onclick="vType='${f}';renderAll()">${f[0].toUpperCase()+f.slice(1)} (${n})</button>`;
+  }).join("");
+  $("#v-banner").innerHTML=bannerHtml(vEngine);
+  const ready=engineReady(vEngine);
+  const notInstalled=engineState(vEngine)==="not_installed";
+  const vs=VOICES.filter(v=>v.engine===vEngine&&(vType==="all"||v.type===vType)&&(!vSearch||v.name.toLowerCase().includes(vSearch)));
+  $("#v-count").textContent=`${vs.length} voice${vs.length===1?"":"s"}`;
+  $("#v-body").innerHTML=vs.map(v=>{
+    const isPlaying=playingId===v.id;
+    let act;
+    if(isPlaying) act=`<span class="playing-bars"><i></i><i></i><i></i></span> <span style="color:var(--accent);font-size:12px">playing…</span>`;
+    else if(notInstalled) act=`<button class="btn ghost sm" disabled title="Install ${ENGINES[v.engine].name} from the Engines tab">Install first</button>`;
+    else if(!ready) act=`<button class="btn ghost sm" ${loading?"disabled":""} title="Loads ${ENGINES[v.engine].name} (~${ENGINES[v.engine].loadSecs}s), then plays" onclick="startLoad('${v.engine}',()=>play('${v.id}'))">Load &amp; preview</button>`;
+    else act=`<button class="btn ghost sm" onclick="play('${v.id}')">▶ Preview</button><button class="btn ghost sm">Edit</button>`;
+    return `<tr class="${ready?"":"dormant"}">
+      <td><span class="glyph" style="background:${grad(v.name)}">${v.name[0]}</span></td>
+      <td><b>${v.name}</b>${v.tone?`<div class="muted" style="font-size:10.5px;font-style:italic">${v.tone}</div>`:""}</td>
+      <td>${pill(v.type)}</td>
+      <td>${genderChip(v)}</td>
+      <td>${v.lang}</td><td>${v.samples}</td><td>${v.effects}</td><td>${v.channel}</td>
+      <td class="right">${act}</td></tr>`;
+  }).join("")||`<tr><td colspan="9" style="text-align:center;font-style:italic;color:var(--ink-3);padding:18px">No voices match.</td></tr>`;
+}
+$("#v-search").addEventListener("input",e=>{vSearch=e.target.value.trim().toLowerCase();renderAll()});
+
+/* ───────── Tabs ───────── */
+document.querySelectorAll(".nav-item").forEach(b=>b.addEventListener("click",()=>{
+  const t=b.dataset.tab;
+  if(t==="x"){toast("Decorative in this mock — only Studio & Voices are wired.");return}
+  document.querySelectorAll(".nav-item").forEach(x=>x.classList.toggle("active",x===b));
+  $("#tab-studio").style.display=t==="studio"?"":"none";
+  $("#tab-voices").style.display=t==="voices"?"":"none";
+  $("#title").innerHTML=(t==="studio"?"Studio":"Voices")+'<span class="period">.</span>';
 }));
 
-$("#search").addEventListener("input", e => { search = e.target.value.trim().toLowerCase(); renderAll(); });
-
-function renderAll() { renderChips(); renderVoicesTable(); renderCast(); renderLib(); }
+function renderAll(){renderStudio();renderStudioLib();renderVoicesView()}
 renderAll();
 </script>
 </body>
