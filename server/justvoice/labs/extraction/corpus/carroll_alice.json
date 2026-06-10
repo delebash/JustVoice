@@ -1,0 +1,20 @@
+{
+  "slug": "carroll_alice",
+  "title": "Alice's Adventures in Wonderland — Cheshire Cat scene",
+  "source": "Lewis Carroll, Alice's Adventures in Wonderland (1865). Public domain via Project Gutenberg.",
+  "genre": "fantasy-epithet-heavy",
+  "characters": [
+    { "id": "c_alice", "name": "Alice", "aliases": [] },
+    { "id": "c_cat", "name": "the Cheshire Cat", "aliases": ["the Cat", "Cheshire Cat", "Cat"] }
+  ],
+  "text": "\"Cheshire Puss,\" Alice began, rather timidly, \"would you tell me, please, which way I ought to go from here?\"\n\n\"That depends a good deal on where you want to get to,\" said the Cat.\n\n\"I don't much care where,\" said Alice.\n\n\"Then it doesn't matter which way you go,\" said the Cat.\n\n\"—so long as I get SOMEWHERE,\" Alice added as an explanation.\n\n\"Oh, you're sure to do that,\" said the Cat, \"if you only walk long enough.\"",
+  "ground_truth": [
+    { "dialogue_id": 0, "speaker": "c_alice" },
+    { "dialogue_id": 1, "speaker": "c_cat" },
+    { "dialogue_id": 2, "speaker": "c_alice" },
+    { "dialogue_id": 3, "speaker": "c_cat" },
+    { "dialogue_id": 4, "speaker": "c_alice" },
+    { "dialogue_id": 5, "speaker": "c_cat" },
+    { "dialogue_id": 6, "speaker": "c_cat" }
+  ]
+}
