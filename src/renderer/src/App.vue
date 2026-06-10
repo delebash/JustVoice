@@ -19,7 +19,8 @@ import GenerateView from "./views/GenerateView.vue";
 import ChapterView from "./views/ChapterView.vue";
 import BooksView from "./views/BooksView.vue";
 import VoicesView from "./views/VoicesView.vue";
-import ProfilesView from "./views/ProfilesView.vue";
+// ProfilesView removed — Persona is the sole identity layer after the
+// Profile-kill (plan Q1). All voice config now lives directly on Persona.
 import CompareView from "./views/CompareView.vue";
 import TrainView from "./views/TrainView.vue";
 import PersonasView from "./views/PersonasView.vue";
@@ -40,9 +41,8 @@ const VIEWS = [
   { id: "books",     label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Imports from JustWrite via POST /v1/projects/import?source=justwrite.", component: BooksView },
   { id: "stories",   label: "Stories",   icon: "🎬", lede: "Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.", component: StoriesView },
   { id: "chapter",   label: "Chapter",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved. Pinned floating generate bar at bottom.", component: ChapterView },
-  { id: "voices",    label: "Voices",    icon: "🎙️", lede: "Voice profile library. Cloned, preset (Kokoro 54 + Qwen 9), designed (text-prompt → voice), blended. Per-voice default effects + channel routing.", component: VoicesView },
-  { id: "profiles",  label: "Profiles",  icon: "👤", lede: "Voice profiles bundle a voice + personality prompt + default delivery overlay + effects chain + lexicon override into one named, reusable thing. The Generate tab's 🎭 Profile chip picks from this list; the 🎲 Compose button uses the personality prompt to write fresh in-character lines via LLM.", component: ProfilesView },
-  { id: "personas",  label: "Personas",  icon: "🎭", lede: "Character bios — backstory, age, accent, mannerisms. Each maps to a voice + optional LLM-rewrite prompt that rewrites generated text \"in character.\" JustWrite character imports drop here.", component: PersonasView },
+  { id: "voices",    label: "Voices",    icon: "🎙️", lede: "Voice library — cloned, preset (Kokoro 54 + Qwen 9), designed (text-prompt → voice), blended. Per-voice channel routing.", component: VoicesView },
+  { id: "personas",  label: "Personas",  icon: "🎭", lede: "Characters. Each persona has a name, bio, voice, personality (TTS delivery instruction), default delivery, effects, lexicon override. Cross-project — one Mara across many books or quests. Filter by usage in the library list.", component: PersonasView },
   { id: "lexicons",  label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Force \"Beauchamp\" → \"BEE-chum\", domain words → consistent phoneme-level pronunciation across a whole book. Per-character override.", component: LexiconsView },
   { id: "captures",  label: "Captures",  icon: "🎚️", lede: "Dictation pill + global hotkey. Speak into any text field. Also captures audio for cloning sample collection.", component: CapturesView },
   { id: "effects",   label: "Effects",   icon: "🎛️", lede: "Pedalboard-backed effects chain. Apply non-destructively — creates a new generation version that preserves the original. 8 types · 4 built-in presets + custom.", component: EffectsView },
@@ -65,7 +65,6 @@ const HELP_SLUG_BY_VIEW = {
   stories:  "stories",
   chapter:  "take-versioning",
   voices:   "voices",
-  profiles: "personas",
   personas: "personas",
   lexicons: "lexicons",
   captures: "dictation",

@@ -1,10 +1,14 @@
-"""/v1/personas CRUD."""
+"""/v1/personas CRUD + cross-project usage."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from ..app_state import get_state
+from ..database import get_db
+from ..database.models import Project, ProjectPersona
 from ..errors import not_found
 from ..models import CreatePersonaRequest, Persona, PersonaList
 
@@ -14,6 +18,33 @@ router = APIRouter(tags=["personas"])
 @router.get("/v1/personas", response_model=PersonaList)
 async def list_personas() -> PersonaList:
     return PersonaList(personas=get_state().personas.list())
+
+
+class PersonaProjectUsage(BaseModel):
+    project_id: str
+    project_name: str
+
+
+class PersonaUsageMap(BaseModel):
+    usage: dict[str, list[PersonaProjectUsage]]
+
+
+@router.get("/v1/personas/usage", response_model=PersonaUsageMap)
+async def persona_usage(db: Session = Depends(get_db)) -> PersonaUsageMap:
+    """Return {persona_id: [{project_id, project_name}, ...]} for every
+    persona referenced via ProjectPersona. Drives the Personas tab's
+    library-mode "Used in N projects" badges + filter chips."""
+    rows = (
+        db.query(ProjectPersona.persona_id, Project.id, Project.name)
+        .join(Project, Project.id == ProjectPersona.project_id)
+        .all()
+    )
+    usage: dict[str, list[PersonaProjectUsage]] = {}
+    for persona_id, project_id, project_name in rows:
+        usage.setdefault(persona_id, []).append(
+            PersonaProjectUsage(project_id=project_id, project_name=project_name)
+        )
+    return PersonaUsageMap(usage=usage)
 
 
 @router.post("/v1/personas", response_model=Persona, status_code=201)

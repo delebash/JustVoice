@@ -1,17 +1,16 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!--
-  PersonasView — Character bios + voice mapping. Per preview Personas §:
-  left pane lists characters, right pane is a rich editor with:
-    • Name, Voice profile, Engine override, Lexicon override
-    • LLM-rewrite toggle + LLM model picker
-    • Personality (free-form textarea, drives the LLM-rewrite + Compose actions)
-    • Default delivery overlay (chip-card row of Speed/Pitch/Pause-after)
-    • Auto-create from JustWrite character roster button
-    • Save / Delete actions
+  PersonasView — Personas are the sole identity layer after the Profile-kill
+  (see plan: voice + delivery + effects + personality all live here directly).
 
-  Persona vs Profile note: a profile is a reusable voice config (cross-project),
-  a persona is a named character in one project's cast bound to a profile.
-  Two characters can share a profile; one profile can back many personas.
+  Layout:
+    Left:  library list with filter chips (All / Used / Unused / By project)
+           and a "Used in N project(s)" badge per persona card.
+    Right: rich editor for the selected persona.
+
+  Persona vs Voice: Voice is the TTS artifact (engine preset or cloned WAV).
+  Persona is the character that USES a voice + adds bio, personality,
+  delivery overrides, effects, lexicon overrides. No Profile layer in between.
 -->
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
@@ -19,7 +18,6 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
-import JvToggle from "../components/jv/JvToggle.vue";
 
 const api = useApi();
 
@@ -27,37 +25,56 @@ const personas = ref([]);
 const voices = ref([]);
 const engines = ref([]);
 const lexicons = ref([]);
+const projects = ref([]);
+const usage = ref({});  // { persona_id: [{project_id, project_name}, ...] }
 const selectedId = ref(null);
 const loading = ref(false);
+
+const FILTERS = ["all", "used", "unused", "by-project"];
+const filter = ref("all");
+const filterProjectId = ref("");
 
 // Editable buffer for the selected persona — committed via "Save".
 const draft = ref(null);
 const dirty = ref(false);
 
-const LLM_MODELS = [
-  { id: "qwen-1.7b-local", label: "local Qwen 1.7B" },
-  { id: "qwen-4b-local",   label: "local Qwen 4B" },
-  { id: "openai-mini",     label: "OpenAI (cloud) — gpt-4o-mini" },
-  { id: "anthropic-haiku", label: "Anthropic (cloud) — Claude Haiku 4.5" },
-];
-
 const selectedPersona = computed(() =>
   personas.value.find((p) => p.id === selectedId.value) ?? null,
 );
 
+const filteredPersonas = computed(() => {
+  if (filter.value === "all") return personas.value;
+  if (filter.value === "used") return personas.value.filter((p) => (usage.value[p.id] || []).length > 0);
+  if (filter.value === "unused") return personas.value.filter((p) => !(usage.value[p.id] || []).length);
+  if (filter.value === "by-project" && filterProjectId.value) {
+    return personas.value.filter((p) =>
+      (usage.value[p.id] || []).some((u) => u.project_id === filterProjectId.value),
+    );
+  }
+  return personas.value;
+});
+
+function usageCount(personaId) {
+  return (usage.value[personaId] || []).length;
+}
+
 async function loadAll() {
   loading.value = true;
   try {
-    const [pRes, vRes, eRes, lRes] = await Promise.all([
-      api.safeRequest("/v1/personas",  { personas: [] }),
-      api.safeRequest("/v1/voices",    { voices: [] }),
-      api.safeRequest("/v1/engines",   { engines: [] }),
-      api.safeRequest("/v1/lexicons",  { lexicons: [] }),
+    const [pRes, vRes, eRes, lRes, prRes, uRes] = await Promise.all([
+      api.safeRequest("/v1/personas",       { personas: [] }),
+      api.safeRequest("/v1/voices",         { voices: [] }),
+      api.safeRequest("/v1/engines",        { engines: [] }),
+      api.safeRequest("/v1/lexicons",       { lexicons: [] }),
+      api.safeRequest("/v1/projects",       { projects: [] }),
+      api.safeRequest("/v1/personas/usage", { usage: {} }),
     ]);
     personas.value = pRes?.personas ?? [];
     voices.value   = vRes?.voices   ?? [];
     engines.value  = eRes?.engines  ?? [];
     lexicons.value = lRes?.lexicons ?? [];
+    projects.value = prRes?.projects ?? [];
+    usage.value    = uRes?.usage    ?? {};
     if (!selectedId.value && personas.value.length) {
       selectedId.value = personas.value[0].id;
     }
@@ -72,12 +89,18 @@ function bufferFor(persona) {
     id: persona.id,
     name: persona.name ?? "",
     voice_id: persona.voice_id ?? "",
+    language: persona.language ?? "en",
+    avatar_path: persona.avatar_path ?? "",
+    bio: persona.bio ?? "",
+    personality: persona.personality ?? "",
     engine_override: persona.engine_override ?? "",
     lexicon_id: persona.lexicon_id ?? "",
+    default_delivery: { ...(persona.default_delivery ?? {}) },
+    effects_chain: [...(persona.effects_chain ?? [])],
+    // Legacy fields kept on disk; not surfaced in the UI now that Rewrite
+    // is an explicit Generate-tab button. Round-tripped on save.
     llm_rewrite_enabled: !!persona.llm_rewrite_enabled,
     llm_model: persona.llm_model ?? "qwen-1.7b-local",
-    bio: persona.bio ?? "",
-    default_delivery: { ...(persona.default_delivery ?? {}) },
   };
 }
 
@@ -89,7 +112,7 @@ watch(selectedPersona, (p) => {
 function markDirty() { dirty.value = true; }
 
 async function createBlank() {
-  const name = prompt("Persona name (e.g. Old Crow):");
+  const name = prompt("Persona name (e.g. Mara, Narrator):");
   if (!name) return;
   if (!voices.value.length) {
     pushToast({ kind: "error", title: "Add a voice first", description: "Personas bind to a voice — go to Voices and create one." });
@@ -113,8 +136,12 @@ async function savePersona() {
   const body = {
     name: draft.value.name,
     voice_id: draft.value.voice_id,
-    default_delivery: draft.value.default_delivery,
+    language: draft.value.language || "en",
+    avatar_path: draft.value.avatar_path || null,
     bio: draft.value.bio || null,
+    personality: draft.value.personality || null,
+    default_delivery: draft.value.default_delivery,
+    effects_chain: draft.value.effects_chain || [],
     engine_override: draft.value.engine_override || null,
     lexicon_id: draft.value.lexicon_id || null,
     llm_rewrite_enabled: draft.value.llm_rewrite_enabled,
@@ -153,11 +180,21 @@ async function deletePersona() {
   }
 }
 
-async function autoCreateFromJustWrite() {
+function openEffectsEditor() {
+  // EffectsChainEditorModal lands in Slice 7. Stubbed here so the
+  // affordance is visible but does nothing destructive yet.
   pushToast({
     kind: "info",
-    title: "Auto-create from JustWrite",
-    description: "Will pull the character roster from the active JustWrite project and create one persona per character (POST /v1/personas/import?source=justwrite).",
+    title: "Effects chain editor — coming in Slice 7",
+    description: "Will open the drag-drop chain editor (reverb / EQ / compressor / etc).",
+  });
+}
+
+function openDeliveryHint() {
+  pushToast({
+    kind: "info",
+    title: "Edit delivery in Generate",
+    description: "Tune Speed / Pitch / Pause-after on the Generate tab, then save as the persona default.",
   });
 }
 
@@ -197,18 +234,54 @@ onMounted(loadAll);
         <h3>Personas</h3>
         <JvButton variant="primary" size="sm" label="+ New" @click="createBlank" />
       </header>
+
+      <!-- Library-mode filter chips: All / Used / Unused / By project.
+           The "by project" chip reveals a project dropdown. Cross-project
+           Personas are the model — these chips help you find them. -->
+      <div class="personas__filter">
+        <button
+          v-for="f in FILTERS"
+          :key="f"
+          type="button"
+          class="jv-chip-card personas__chip"
+          :class="{ 'personas__chip--active': filter === f }"
+          @click="filter = f"
+        >{{ f === 'by-project' ? 'By project' : (f.charAt(0).toUpperCase() + f.slice(1)) }}</button>
+        <select
+          v-if="filter === 'by-project'"
+          class="jv-input personas__filter-select"
+          v-model="filterProjectId"
+        >
+          <option value="">— pick a project —</option>
+          <option v-for="pr in projects" :key="pr.id" :value="pr.id">{{ pr.name }}</option>
+        </select>
+      </div>
+
       <div v-if="loading" class="jv-muted personas__empty">Loading…</div>
-      <div v-else-if="!personas.length" class="personas__empty jv-muted">
-        No personas yet. Use <strong>+ New</strong> or <strong>Auto-create from JustWrite</strong> below.
+      <div v-else-if="!filteredPersonas.length" class="personas__empty jv-muted">
+        <template v-if="!personas.length">
+          No personas yet. Use <strong>+ New</strong> to create one.
+        </template>
+        <template v-else>
+          No personas match this filter.
+        </template>
       </div>
       <div
-        v-for="p in personas"
+        v-for="p in filteredPersonas"
         :key="p.id"
         class="personas__item"
         :class="{ 'personas__item--active': p.id === selectedId }"
         @click="selectedId = p.id"
       >
-        <div class="personas__item-name">{{ p.name }}</div>
+        <div class="personas__item-row">
+          <div class="personas__item-name">{{ p.name }}</div>
+          <span
+            class="jv-pill"
+            :class="usageCount(p.id) > 0 ? 'jv-pill--green' : 'jv-pill--ghost'"
+          >
+            {{ usageCount(p.id) }} project{{ usageCount(p.id) === 1 ? '' : 's' }}
+          </span>
+        </div>
         <div class="personas__item-meta jv-muted">{{ listMeta(p) }}</div>
       </div>
     </aside>
@@ -216,16 +289,21 @@ onMounted(loadAll);
     <section class="personas__detail">
       <div v-if="!draft" class="jv-card personas__detail-empty">
         <p class="jv-muted">Select a persona on the left, or create one with <strong>+ New</strong>.</p>
-        <div style="margin-top:14px">
-          <JvButton variant="secondary" label="Auto-create from JustWrite character roster" @click="autoCreateFromJustWrite" />
-        </div>
       </div>
 
       <div v-else class="jv-card personas__editor">
         <header class="personas__editor-h">
           <h2>{{ draft.name || "(unnamed)" }}</h2>
           <span v-if="dirty" class="jv-pill jv-pill--warn">Unsaved changes</span>
-          <span v-if="selectedPersona?.imported_from" class="jv-pill jv-pill--ghost">imported_from = {{ selectedPersona.imported_from }}</span>
+          <span v-if="selectedPersona?.imported_from" class="jv-pill jv-pill--ghost">
+            imported from {{ selectedPersona.imported_from }}
+          </span>
+          <span
+            v-if="usageCount(draft.id) > 0"
+            class="jv-pill jv-pill--green"
+          >
+            Used in {{ usageCount(draft.id) }} project{{ usageCount(draft.id) === 1 ? '' : 's' }}
+          </span>
         </header>
 
         <div class="personas__grid">
@@ -235,10 +313,20 @@ onMounted(loadAll);
           </label>
 
           <label class="personas__field">
-            <span>Voice profile</span>
+            <span>Voice</span>
             <select class="jv-input" v-model="draft.voice_id" @change="markDirty">
               <option v-for="v in voices" :key="v.id" :value="v.id">{{ v.name }} ({{ v.id }})</option>
             </select>
+          </label>
+
+          <label class="personas__field">
+            <span>Language</span>
+            <input class="jv-input" v-model="draft.language" @input="markDirty" placeholder="en" />
+          </label>
+
+          <label class="personas__field">
+            <span>Avatar path</span>
+            <input class="jv-input" v-model="draft.avatar_path" @input="markDirty" placeholder="(optional)" />
           </label>
 
           <label class="personas__field">
@@ -257,53 +345,77 @@ onMounted(loadAll);
             </select>
           </label>
 
-          <div class="personas__field">
-            <span>LLM rewrite</span>
-            <div class="personas__toggle-row">
-              <JvToggle v-model="draft.llm_rewrite_enabled" @update:modelValue="markDirty" />
-              <span class="jv-muted personas__toggle-hint">Rewrite each generation in character before TTS.</span>
-            </div>
-          </div>
-
-          <label class="personas__field">
-            <span>LLM model</span>
-            <select
-              class="jv-input"
-              v-model="draft.llm_model"
-              :disabled="!draft.llm_rewrite_enabled"
-              @change="markDirty"
-            >
-              <option v-for="m in LLM_MODELS" :key="m.id" :value="m.id">{{ m.label }}</option>
-            </select>
-          </label>
-
           <label class="personas__field personas__field--wide">
-            <span>Personality</span>
+            <span>Bio (character context)</span>
             <textarea
               class="jv-input personas__textarea"
               v-model="draft.bio"
               placeholder="A retired racetrack tout with three teeth and four lies for every truth. Speaks in fragments. Calls everyone &quot;boss.&quot; Suspicious of cops. Comfortable with silence…"
               @input="markDirty"
             />
-            <p class="jv-muted personas__hint">Used by the <strong>🎲 Compose</strong> action in Generate and by the LLM-rewrite path when the toggle above is on. Up to 2000 characters.</p>
+            <p class="jv-muted personas__hint">
+              Character backstory: age, history, mannerisms. Read by Smart-assign
+              to match voices to characters. Up to 2000 characters. Not used as a
+              TTS instruction — that's the Personality field below.
+            </p>
+          </label>
+
+          <label class="personas__field personas__field--wide">
+            <span>Personality (TTS delivery instruction)</span>
+            <textarea
+              class="jv-input personas__textarea"
+              v-model="draft.personality"
+              placeholder="Clipped, world-weary noir delivery. Dry wit. Boston accent in stressful moments. Never overshares."
+              @input="markDirty"
+            />
+            <p class="jv-muted personas__hint">
+              Passed to engines that accept freeform delivery instructions
+              (Qwen3-TTS, LuxTTS) as the engine's <code>instruct</code> /
+              style-prompt field at render time. Engines that don't accept it
+              ignore it. <strong>Never an LLM rewrite of the manuscript</strong> —
+              the Rewrite button on Generate is the explicit tool for that.
+            </p>
           </label>
 
           <div class="personas__field personas__field--wide">
-            <span>Default delivery overlay</span>
+            <span>Default delivery overlay (Tier-2)</span>
             <div class="personas__chips">
-              <span v-if="!Object.keys(draft.default_delivery || {}).length" class="jv-muted">No defaults set — uses the engine + voice defaults at render time.</span>
+              <span v-if="!Object.keys(draft.default_delivery || {}).length" class="jv-muted">
+                No defaults set — uses the engine + voice defaults at render time.
+              </span>
               <span
                 v-for="(value, key) in draft.default_delivery"
                 :key="key"
-                class="jv-chip-card personas__chip"
+                class="jv-chip-card personas__chip-display"
               >
                 {{ deliveryChipLabel(key) }}: <strong>{{ deliveryChipValue(key, value) }}</strong>
               </span>
               <button
                 class="jv-btn jv-btn--ghost jv-btn--sm"
                 type="button"
-                @click="pushToast({ kind: 'info', title: 'Open delivery overlay', description: 'Edit Speed / Pitch / Pause-after in the Generate tab and click “Save as default delivery”.' })"
+                @click="openDeliveryHint"
               >+ Edit</button>
+            </div>
+          </div>
+
+          <div class="personas__field personas__field--wide">
+            <span>Effects chain</span>
+            <div class="personas__chips">
+              <span v-if="!(draft.effects_chain || []).length" class="jv-muted">
+                No effects. Reverb, EQ, compressor, pitch shift, etc. apply after TTS — Slice 7 builds the editor.
+              </span>
+              <span
+                v-for="(ef, i) in draft.effects_chain"
+                :key="i"
+                class="jv-chip-card personas__chip-display"
+              >
+                {{ ef.type || '?' }}
+              </span>
+              <button
+                class="jv-btn jv-btn--ghost jv-btn--sm"
+                type="button"
+                @click="openEffectsEditor"
+              >+ Edit chain</button>
             </div>
           </div>
         </div>
@@ -311,7 +423,6 @@ onMounted(loadAll);
         <div class="jv-divider" />
 
         <div class="personas__actions">
-          <JvButton variant="secondary" label="Auto-create from JustWrite character roster" @click="autoCreateFromJustWrite" />
           <span class="personas__spacer" />
           <JvButton variant="primary" label="Save" :disabled="!dirty" @click="savePersona" />
           <button class="jv-btn jv-btn--danger-outline" type="button" @click="deletePersona">Delete</button>
@@ -324,7 +435,7 @@ onMounted(loadAll);
 <style scoped>
 .personas {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 340px 1fr;
   height: 100%;
   gap: 0;
 }
@@ -349,6 +460,31 @@ onMounted(loadAll);
   text-transform: uppercase;
   color: var(--ink-2);
 }
+
+.personas__filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 14px 10px;
+  align-items: center;
+}
+.personas__chip {
+  font-size: 11px;
+  padding: 4px 10px;
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid var(--border-soft);
+}
+.personas__chip--active {
+  background: var(--accent);
+  color: var(--surface);
+  border-color: var(--accent);
+}
+.personas__filter-select {
+  flex: 1 1 100%;
+  margin-top: 6px;
+}
+
 .personas__empty {
   padding: 24px 16px;
   font-size: 13px;
@@ -363,7 +499,12 @@ onMounted(loadAll);
   background: var(--accent-soft);
   border-left-color: var(--accent);
 }
-.personas__item-name { font-weight: 600; font-size: 14px; }
+.personas__item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.personas__item-name { font-weight: 600; font-size: 14px; flex: 1; }
 .personas__item-meta { font-size: 11.5px; margin-top: 2px; }
 
 .personas__detail {
@@ -384,6 +525,7 @@ onMounted(loadAll);
   align-items: center;
   gap: 10px;
   margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 .personas__editor-h h2 { margin: 0; font-size: 22px; }
 
@@ -406,16 +548,8 @@ onMounted(loadAll);
 }
 .personas__field--wide { grid-column: 1 / -1; }
 
-.personas__toggle-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 32px;
-}
-.personas__toggle-hint { font-size: 12px; }
-
 .personas__textarea {
-  min-height: 140px;
+  min-height: 100px;
   font-family: inherit;
   resize: vertical;
 }
@@ -428,7 +562,7 @@ onMounted(loadAll);
   align-items: center;
   gap: 8px;
 }
-.personas__chip { font-size: 13px; }
+.personas__chip-display { font-size: 13px; }
 
 .personas__actions {
   display: flex;
