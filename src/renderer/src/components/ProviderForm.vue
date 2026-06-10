@@ -73,7 +73,17 @@ const PROVIDER_HINTS = {
   "openai-compat": { url: "https://platform.openai.com/docs/api-reference/audio/createSpeech", label: "OpenAI-compatible spec", note: "Any server speaking POST /v1/audio/speech. Point baseUrl at the server root." },
 };
 
-const hint = computed(() => PROVIDER_HINTS[props.draft?.provider_type] || PROVIDER_HINTS[props.draft?.id] || null);
+// STT providers all speak the same shape — one static hint.
+const STT_HINT = {
+  url: "https://platform.openai.com/docs/guides/speech-to-text",
+  label: "OpenAI transcription docs",
+  note: "Any server speaking POST {base_url}/audio/transcriptions — OpenAI (whisper-1), Groq (whisper-large-v3), or a self-hosted faster-whisper server.",
+};
+
+const hint = computed(() => {
+  if (props.kindHint === "stt") return STT_HINT;
+  return PROVIDER_HINTS[props.draft?.provider_type] || PROVIDER_HINTS[props.draft?.id] || null;
+});
 
 function openHint() {
   if (!hint.value?.url) return;
@@ -306,10 +316,15 @@ async function onSave() {
 }
 
 function showLlmFields() {
+  if (props.kindHint === "stt") return false;
   return props.kindHint === "llm" || props.draft?.kind === "llm" || props.draft?.kind === "both";
 }
 function showTtsFields() {
+  if (props.kindHint === "stt") return false;
   return props.kindHint === "tts" || props.draft?.kind === "tts" || props.draft?.kind === "both";
+}
+function showSttFields() {
+  return props.kindHint === "stt" || props.draft?.kind === "stt";
 }
 </script>
 
@@ -336,13 +351,16 @@ function showTtsFields() {
         :placeholder="`e.g. ${hint?.label || 'My provider'}`"
       />
 
-      <!-- #5 kind select — llm / tts / both -->
-      <span class="provider-form__label">Kind</span>
-      <select v-model="draft.kind" class="jv-input jv-input--sm jv-w-id">
-        <option value="llm">LLM (chat / embedding)</option>
-        <option value="tts">TTS (voice)</option>
-        <option value="both">Both</option>
-      </select>
+      <!-- #5 kind select — llm / tts / both. STT providers are always
+           kind=stt (the tab decides); no select to mis-set. -->
+      <template v-if="!showSttFields()">
+        <span class="provider-form__label">Kind</span>
+        <select v-model="draft.kind" class="jv-input jv-input--sm jv-w-id">
+          <option value="llm">LLM (chat / embedding)</option>
+          <option value="tts">TTS (voice)</option>
+          <option value="both">Both</option>
+        </select>
+      </template>
 
       <!-- #6 base URL -->
       <span class="provider-form__label">Base URL</span>
@@ -451,6 +469,22 @@ function showTtsFields() {
         <datalist id="provider-form-embed-models">
           <option v-for="m in embeddingModels" :key="m" :value="m" />
         </datalist>
+      </template>
+
+      <!-- STT: wire format + transcription model (plan D4). -->
+      <template v-if="showSttFields()">
+        <span class="provider-form__label" title="The wire format. openai-compat posts multipart audio to {base_url}/audio/transcriptions.">API format</span>
+        <select v-model="draft.provider_type" class="jv-input jv-input--sm jv-w-id">
+          <option value="openai-compat">OpenAI-compatible</option>
+        </select>
+
+        <span class="provider-form__label">Transcription model</span>
+        <input
+          type="text"
+          class="jv-input jv-input--sm jv-w-name"
+          v-model="draft.stt_model"
+          placeholder="whisper-1 (OpenAI) · whisper-large-v3 (Groq)"
+        />
       </template>
 
       <!-- #13 TTS: TTS model Combobox + Fetch -->

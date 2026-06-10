@@ -250,7 +250,13 @@ onMounted(() => {
         <div class="captures__checklist">
           <div class="captures__check-row" :class="{ 'captures__check-row--ok': readiness.stt.ready }">
             <JvTag :variant="readiness.stt.ready ? 'success' : 'default'" :label="readiness.stt.ready ? '✓' : '○'" />
-            <span>{{ readiness.stt.display_name }} {{ readiness.stt.ready ? "loaded" : "not loaded" }}</span>
+            <span v-if="readiness.stt_provider && readiness.stt_provider !== 'local-whisper'">
+              {{ readiness.stt.display_name }} — {{ readiness.stt.ready ? "ready" : (readiness.stt.error || "not configured") }}
+              <a v-if="!readiness.stt.ready" href="#engines">Fix in Engines → STT ›</a>
+            </span>
+            <span v-else>
+              {{ readiness.stt.display_name }} {{ readiness.stt.ready ? "ready" : "— preparing dictation (loads in the background; first run downloads the model)" }}
+            </span>
           </div>
           <div class="captures__check-row" :class="{ 'captures__check-row--ok': readiness.llm.ready }">
             <JvTag :variant="readiness.llm.ready ? 'success' : 'default'" :label="readiness.llm.ready ? '✓' : '○'" />

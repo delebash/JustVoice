@@ -229,6 +229,25 @@ class ExternalEngineConfig(BaseModel):
     provider_type: str = "openai-compat"
 
 
+class ExternalSTTProviderConfig(BaseModel):
+    """Slice E (plan D4) — registered online STT provider.
+
+    Third instance of the provider-slot pattern (TTS external / LLM
+    registry / STT). `provider_type` "openai-compat" posts multipart
+    audio to {base_url}/audio/transcriptions — the de-facto standard
+    shape, so one adapter covers OpenAI, Groq, and self-hosted whisper
+    servers. Dictation uses the provider whose id matches
+    settings.captures.stt_provider.
+    """
+
+    id: str
+    name: str
+    provider_type: str = "openai-compat"
+    base_url: str = ""  # e.g. https://api.openai.com/v1
+    api_key: str | None = None
+    model: str = "whisper-1"
+
+
 class LLMProviderConfig(BaseModel):
     """Phase 2 / Slice 3 — registered LLM provider entry.
 
@@ -272,6 +291,8 @@ class EnginesSettings(BaseModel):
     torch_index_override: str = ""
     kokoro: KokoroEngineSettings = KokoroEngineSettings()
     external: list[ExternalEngineConfig] = []
+    # Slice E (plan D4) — online STT providers (mirrors `external` for TTS).
+    external_stt: list[ExternalSTTProviderConfig] = []
     # Phase 2 / Slice 3 — LLM provider registry. Each entry registers an
     # adapter at boot (server/justvoice/engines/llm/registry.py).
     llm: list[LLMProviderConfig] = []
@@ -284,6 +305,12 @@ class CaptureSettings(BaseModel):
 
     # Whisper size loaded on first capture (base/small/medium/large/turbo).
     stt_model: str = "base"
+    # Which STT performs transcription: "local-whisper" (default) or the
+    # id of an engines.external_stt provider (plan D4).
+    stt_provider: str = "local-whisper"
+    # Background-load local Whisper after boot so the first Record never
+    # cold-starts (plan D5). Only applies when stt_provider is local.
+    preload_stt: bool = True
     # "auto" lets Whisper detect; anything else forces a language code.
     language: str = "auto"
     # Run LLM refinement automatically after STT completes.

@@ -311,12 +311,47 @@ onMounted(async () => {
         clearInterval(poll);
         clearInterval(tick);
         bootElapsedMs.value = 0;
+        maybePreloadStt();
       }
     }, 1500);
   } else {
     clearInterval(tick);
+    maybePreloadStt();
   }
 });
+
+// Whisper boot preload (plan D5): once the server is up, background-load
+// local Whisper so the first Record never cold-starts. Non-blocking and
+// quiet — visible only as a task in the strip/panel; any failure falls
+// back to the existing lazy load on first Record. Skipped when the user
+// turned preload off, dictates through an online provider, or Whisper
+// isn't installed yet (a silent boot must never trigger the shared-venv
+// setup + model download).
+let _sttPreloadAttempted = false;
+async function maybePreloadStt() {
+  if (_sttPreloadAttempted) return;
+  _sttPreloadAttempted = true;
+  try {
+    const settings = await api.safeRequest("/v1/settings", null);
+    const captures = settings?.captures || {};
+    if (captures.preload_stt === false) return;
+    if ((captures.stt_provider || "local-whisper") !== "local-whisper") return;
+    const e = await api.safeRequest("/v1/engines", { engines: [] });
+    const whisper = (e?.engines || []).find((x) => x.id === "whisper");
+    if (!whisper || whisper.status !== "installed") return;  // loaded or not installed
+    const task = tasks.start({ kind: "load", label: "Preparing dictation (Whisper)" });
+    try {
+      await api.request("/v1/engines/whisper/load", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device: "auto", model_variant: captures.stt_model || "base" }),
+      });
+      tasks.finish(task.id);
+    } catch (err) {
+      tasks.fail(task.id, String(err?.message || err));
+    }
+  } catch { /* preload is best-effort */ }
+}
 </script>
 
 <template>

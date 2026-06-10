@@ -70,12 +70,17 @@ const activeKind = ref("tts");
 
 const llmProviders = ref([]);
 const ttsProviders = ref([]);
+// STT tab (plan D4): online transcription providers from
+// settings.engines.external_stt + which route dictation actually uses.
+const sttProviders = ref([]);
+const sttActiveProvider = ref("local-whisper");
 const editingKey = ref("");  // "" | "new" | "<provider-id>"
 const draft = ref(null);
 
 const visibleProviders = computed(() => {
   if (activeKind.value === "llm") return llmProviders.value;
   if (activeKind.value === "tts") return ttsProviders.value;
+  if (activeKind.value === "stt") return sttProviders.value;
   return [];
 });
 
@@ -109,6 +114,47 @@ async function loadProviders() {
   } catch {
     ttsProviders.value = [];
   }
+  // STT list — settings.engines.external_stt + the active route.
+  try {
+    const s = await api.safeRequest("/v1/settings", null);
+    const list = s?.engines?.external_stt || [];
+    sttProviders.value = list.map((p) => ({
+      id: p.id,
+      name: p.name || p.id,
+      kind: "stt",
+      provider_type: p.provider_type || "openai-compat",
+      base_url: p.base_url || "",
+      api_key: "",  // never echoed back; empty == "leave existing"
+      has_api_key: !!p.api_key,
+      stt_model: p.model || "whisper-1",
+    }));
+    sttActiveProvider.value = s?.captures?.stt_provider || "local-whisper";
+  } catch {
+    sttProviders.value = [];
+  }
+}
+
+// "Used for dictation" radio — PATCH captures.stt_provider. Sends the
+// full captures section (PATCH replaces top-level sections wholesale).
+async function setSttProvider(providerId) {
+  try {
+    const current = await api.request("/v1/settings");
+    const captures = { ...(current?.captures || {}), stt_provider: providerId };
+    await api.request("/v1/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ captures }),
+    });
+    sttActiveProvider.value = providerId;
+    pushToast({
+      message: providerId === "local-whisper"
+        ? "Dictation uses local Whisper."
+        : `Dictation uses ${providerId} (online).`,
+      kind: "success",
+    });
+  } catch (e) {
+    pushToast({ message: `Switch failed: ${e?.message || e}`, kind: "error" });
+  }
 }
 
 function defaultDraft(kind) {
@@ -125,6 +171,17 @@ function defaultDraft(kind) {
       pinned_tier: "",
     };
   }
+  if (kind === "stt") {
+    return {
+      id: "",
+      name: "",
+      kind: "stt",
+      provider_type: "openai-compat",
+      base_url: "https://api.openai.com/v1",
+      api_key: "",
+      stt_model: "whisper-1",
+    };
+  }
   return {
     id: "",
     name: "",
@@ -139,7 +196,8 @@ function defaultDraft(kind) {
 }
 
 function startNewProvider() {
-  draft.value = defaultDraft(activeKind.value === "tts" ? "tts" : "llm");
+  const kind = activeKind.value === "tts" ? "tts" : activeKind.value === "stt" ? "stt" : "llm";
+  draft.value = defaultDraft(kind);
   editingKey.value = "new";
 }
 function startEditProvider(p) {
@@ -176,10 +234,39 @@ async function saveProvider(payload) {
           body: JSON.stringify(body),
         });
       }
-    } else {
-      // TTS: read current settings, splice/replace, PATCH back.
+    } else if (payload.kind === "stt") {
+      // STT: same read-modify-write as TTS, against engines.external_stt.
       const current = await api.request("/v1/settings");
-      const externals = [...(current?.engines?.external || [])];
+      const engines = { ...(current?.engines || {}) };
+      const externals = [...(engines.external_stt || [])];
+      const filtered = externals.filter((e) => e.id !== payload.id);
+      let apiKey = payload.api_key || null;
+      if (editingKey.value !== "new" && !payload.api_key) {
+        const prev = externals.find((e) => e.id === editingKey.value);
+        if (prev?.api_key) apiKey = prev.api_key;
+      }
+      filtered.push({
+        id: payload.id,
+        name: payload.name || payload.id,
+        provider_type: payload.provider_type || "openai-compat",
+        base_url: payload.base_url || "",
+        api_key: apiKey,
+        model: payload.stt_model || "whisper-1",
+      });
+      engines.external_stt = filtered;
+      await api.request("/v1/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ engines }),
+      });
+    } else {
+      // TTS: read current settings, splice/replace, PATCH back. The PATCH
+      // must carry the FULL engines section — a partial {external} body
+      // validates as a default EnginesSettings and wipes llm/feature_pins/
+      // external_stt on disk.
+      const current = await api.request("/v1/settings");
+      const engines = { ...(current?.engines || {}) };
+      const externals = [...(engines.external || [])];
       const filtered = externals.filter((e) => e.id !== payload.id);
       // When editing existing and api_key is blank, preserve the old one.
       let apiKey = payload.api_key || null;
@@ -197,10 +284,11 @@ async function saveProvider(payload) {
         voices: Array.isArray(payload.voices) ? payload.voices : [],
         response_format: payload.response_format || "wav",
       });
+      engines.external = filtered;
       await api.request("/v1/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ engines: { external: filtered } }),
+        body: JSON.stringify({ engines }),
       });
     }
     pushToast({ message: `${payload.name || payload.id} saved.`, kind: "success" });
@@ -225,12 +313,23 @@ async function deleteProvider() {
     if (draft.value.kind === "llm") {
       await api.request(`/v1/llm-providers/${draft.value.id}`, { method: "DELETE" });
     } else {
+      // Full engines section (see saveProvider) — partial PATCH wipes
+      // the other engines.* lists.
       const current = await api.request("/v1/settings");
-      const externals = (current?.engines?.external || []).filter((e) => e.id !== draft.value.id);
+      const engines = { ...(current?.engines || {}) };
+      if (draft.value.kind === "stt") {
+        engines.external_stt = (engines.external_stt || []).filter((e) => e.id !== draft.value.id);
+        // Deleting the active dictation provider falls back to local.
+        if ((current?.captures?.stt_provider || "local-whisper") === draft.value.id) {
+          await setSttProvider("local-whisper");
+        }
+      } else {
+        engines.external = (engines.external || []).filter((e) => e.id !== draft.value.id);
+      }
       await api.request("/v1/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ engines: { external: externals } }),
+        body: JSON.stringify({ engines }),
       });
     }
     pushToast({ message: `${draft.value.name || draft.value.id} deleted.`, kind: "success" });
@@ -258,7 +357,7 @@ const activeRuntimes = computed(() => {
 });
 
 const enginesByKind = computed(() => {
-  const out = { tts: [], llm: [], embedding: [] };
+  const out = { tts: [], stt: [], llm: [], embedding: [] };
   for (const e of engines.value) {
     const k = e.kind || "tts";
     (out[k] = out[k] || []).push(e);
@@ -776,20 +875,48 @@ onMounted(() => { refresh(); loadSystem(); loadProviders(); });
 
     <!-- ── Registered providers (online + self-hosted) ─────────────── -->
     <div v-if="activeKind !== 'embedding'" class="engines-view__section-h">
-      <h3>{{ activeKind === 'llm' ? 'Online LLM providers' : 'Online + self-hosted TTS providers' }}</h3>
+      <h3>{{ activeKind === 'llm' ? 'Online LLM providers' : activeKind === 'stt' ? 'Online STT providers' : 'Online + self-hosted TTS providers' }}</h3>
       <span class="jv-muted" style="font-size: 12px">
         {{ activeKind === 'llm'
           ? 'Cloud providers (Anthropic, OpenAI, Gemini, DeepSeek, OpenRouter) + local OpenAI-compat (Ollama). No venv install — API key + base URL only.'
-          : 'ElevenLabs, Speechify, Speechmatics, OpenAI TTS, self-hosted Kokoro / Chatterbox / Dia servers. JustVoice talks /v1/audio/speech.' }}
+          : activeKind === 'stt'
+            ? 'OpenAI-compatible transcription (OpenAI, Groq, self-hosted whisper servers). JustVoice posts audio to {base_url}/audio/transcriptions — no local model needed.'
+            : 'ElevenLabs, Speechify, Speechmatics, OpenAI TTS, self-hosted Kokoro / Chatterbox / Dia servers. JustVoice talks /v1/audio/speech.' }}
       </span>
       <span class="jv-spacer" />
       <JvButton
         v-if="editingKey !== 'new'"
         variant="primary"
         size="sm"
-        :label="`+ Add ${activeKind === 'llm' ? 'LLM' : 'TTS'} provider`"
+        :label="`+ Add ${activeKind === 'llm' ? 'LLM' : activeKind === 'stt' ? 'STT' : 'TTS'} provider`"
         @click="startNewProvider"
       />
+    </div>
+
+    <!-- Which STT route dictation uses (plan D4). Local Whisper is the
+         installed default; any registered online provider can take over. -->
+    <div v-if="activeKind === 'stt'" class="jv-card engines-view__stt-route">
+      <strong class="engines-view__stt-route-h">Used for dictation</strong>
+      <label class="engines-view__stt-route-opt">
+        <input
+          type="radio"
+          name="stt-route"
+          value="local-whisper"
+          :checked="sttActiveProvider === 'local-whisper'"
+          @change="setSttProvider('local-whisper')"
+        />
+        <span>Local Whisper <span class="jv-muted">(private, offline — loads in the background)</span></span>
+      </label>
+      <label v-for="p in sttProviders" :key="p.id" class="engines-view__stt-route-opt">
+        <input
+          type="radio"
+          name="stt-route"
+          :value="p.id"
+          :checked="sttActiveProvider === p.id"
+          @change="setSttProvider(p.id)"
+        />
+        <span>{{ p.name || p.id }} <span class="jv-muted">(online · {{ p.provider_type }})</span></span>
+      </label>
     </div>
 
     <!-- Inline editor for a new provider — sits above the existing list. -->
@@ -834,7 +961,7 @@ onMounted(() => { refresh(); loadSystem(); loadProviders(); });
       </li>
     </ul>
     <p v-else-if="activeKind !== 'embedding' && editingKey !== 'new'" class="jv-muted engines-view__empty">
-      No {{ activeKind === 'llm' ? 'LLM' : 'TTS' }} providers registered. Click <strong>+ Add</strong> to register one — Claude, OpenAI, ElevenLabs, etc.
+      No {{ activeKind === 'llm' ? 'LLM' : activeKind === 'stt' ? 'STT' : 'TTS' }} providers registered. Click <strong>+ Add</strong> to register one{{ activeKind === 'stt' ? ' — OpenAI, Groq, or a self-hosted whisper server.' : ' — Claude, OpenAI, ElevenLabs, etc.' }}
     </p>
 
     <p class="engines-view__foot jv-muted">
@@ -1073,6 +1200,16 @@ onMounted(() => { refresh(); loadSystem(); loadProviders(); });
 }
 
 /* ── Section header (Local engines / Online providers split) ─────── */
+.engines-view__stt-route {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.engines-view__stt-route-h { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-3); }
+.engines-view__stt-route-opt { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+
 .engines-view__section-h {
   display: flex;
   align-items: baseline;

@@ -124,6 +124,43 @@ def _wav_duration_ms(data: bytes) -> int | None:
         return None
 
 
+def _resolve_stt_provider():
+    """The active STT route (plan D4): None → local Whisper; otherwise the
+    matching engines.external_stt entry. Unknown id → 422 with a pointer
+    at the Engines → STT tab."""
+    settings = get_state().settings.get()
+    provider_id = getattr(settings.captures, "stt_provider", "local-whisper")
+    if not provider_id or provider_id == "local-whisper":
+        return None
+    for cfg in getattr(settings.engines, "external_stt", []):
+        if cfg.id == provider_id:
+            return cfg
+    raise HTTPException(
+        status_code=422,
+        detail=(
+            f"captures.stt_provider points at unknown STT provider {provider_id!r}. "
+            "Register it on the Engines → STT tab or switch back to Local Whisper."
+        ),
+    )
+
+
+async def _transcribe(audio_path: str, language: str | None) -> str:
+    """One dispatcher for both transcription call sites: local Whisper
+    (existing load-gate + manager path) or an online provider (no local
+    model involved at all)."""
+    import asyncio
+
+    cfg = _resolve_stt_provider()
+    if cfg is None:
+        _ensure_stt_loaded()
+        return await asyncio.to_thread(
+            get_manager().transcribe, audio_path, language
+        )
+    from ..engines.stt_external import transcribe_external
+
+    return await asyncio.to_thread(transcribe_external, cfg, audio_path, language)
+
+
 def _ensure_stt_loaded() -> None:
     """Raise an HTTPException unless a KIND=stt engine is loaded.
 
@@ -181,8 +218,6 @@ async def create_capture(
     if not audio_bytes:
         raise HTTPException(status_code=400, detail="uploaded file is empty")
 
-    _ensure_stt_loaded()
-
     settings = get_state().settings.get().captures
     resolved_language = language if language is not None else settings.language
     if resolved_language == "auto":
@@ -196,12 +231,10 @@ async def create_capture(
     audio_path.write_bytes(audio_bytes)
 
     try:
-        import asyncio
-
-        mgr = get_manager()
-        transcript = await asyncio.to_thread(
-            mgr.transcribe, str(audio_path), resolved_language
-        )
+        transcript = await _transcribe(str(audio_path), resolved_language)
+    except HTTPException:
+        audio_path.unlink(missing_ok=True)
+        raise
     except Exception as e:
         audio_path.unlink(missing_ok=True)
         raise HTTPException(status_code=500, detail=f"transcription failed: {e}")
@@ -313,15 +346,14 @@ async def retranscribe_capture(
     if not path.exists():
         raise HTTPException(status_code=410, detail=f"audio for capture {capture_id} is gone")
 
-    _ensure_stt_loaded()
     language = body.language
     if language == "auto":
         language = None
 
-    import asyncio
-
     try:
-        transcript = await asyncio.to_thread(get_manager().transcribe, str(path), language)
+        transcript = await _transcribe(str(path), language)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"transcription failed: {e}")
 

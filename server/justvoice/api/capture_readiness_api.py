@@ -29,6 +29,9 @@ class ModelReadiness(BaseModel):
 class CaptureReadiness(BaseModel):
     stt: ModelReadiness
     llm: ModelReadiness
+    # Which STT route is active: "local-whisper" or an external provider id
+    # (plan D4). Lets the UI explain readiness in the right terms.
+    stt_provider: str = "local-whisper"
 
 
 _WHISPER_DEFAULT = "turbo"
@@ -84,6 +87,42 @@ async def get_capture_readiness() -> CaptureReadiness:
     settings = get_state().settings.get()
     whisper_model = getattr(settings.captures, "stt_model", _WHISPER_DEFAULT)
 
+    # Online STT provider active (plan D4): readiness is credentials, not
+    # a local model — no download gate at all.
+    provider_id = getattr(settings.captures, "stt_provider", "local-whisper")
+    external_cfg = None
+    if provider_id and provider_id != "local-whisper":
+        for cfg in getattr(settings.engines, "external_stt", []):
+            if cfg.id == provider_id:
+                external_cfg = cfg
+                break
+
+    if provider_id != "local-whisper":
+        if external_cfg is None:
+            stt_readiness = ModelReadiness(
+                ready=False,
+                display_name=f"Unknown STT provider {provider_id!r}",
+                error="Provider not found — register it on the Engines → STT tab.",
+            )
+        else:
+            has_url = bool(external_cfg.base_url)
+            stt_readiness = ModelReadiness(
+                ready=has_url,
+                display_name=f"{external_cfg.name or external_cfg.id} (online STT)",
+                error=None if has_url else "Provider has no base URL configured.",
+            )
+        adapters = get_llm_registry().all()
+        return CaptureReadiness(
+            stt=stt_readiness,
+            llm=ModelReadiness(
+                ready=bool(adapters),
+                display_name=(
+                    f"LLM refinement ({adapters[0].id})" if adapters else "LLM refinement (no provider)"
+                ),
+            ),
+            stt_provider=provider_id,
+        )
+
     mgr = get_manager()
     stt_loaded = mgr.loaded_for("stt") is not None
     whisper_ready = stt_loaded or _check_model_cached(f"openai/whisper-{whisper_model}")
@@ -104,4 +143,5 @@ async def get_capture_readiness() -> CaptureReadiness:
             ready=llm_ready,
             display_name=llm_label,
         ),
+        stt_provider="local-whisper",
     )
