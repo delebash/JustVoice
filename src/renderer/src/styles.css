@@ -433,6 +433,23 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   overflow-y: auto;
   padding: 24px 32px 64px;
 }
+/* Reading measure: views were stretching edge-to-edge (~1330px text
+   lines, full-bleed inputs). Cap every view's content and center it —
+   the scroll container stays full width so the background doesn't
+   shift. Individual layouts (grids, tables) keep working inside. */
+.jv-content > * {
+  width: 100%;
+  max-width: 1160px;
+  margin-left: auto;
+  margin-right: auto;
+}
+/* Native controls picked up the browser's default blue — keep range /
+   checkbox / radio on the app accent everywhere. */
+input[type="range"],
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent);
+}
 .jv-content__lede {
   color: var(--ink-2);
   font-size: 13px;

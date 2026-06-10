@@ -994,7 +994,15 @@ onMounted(loadAll);
           />
         </header>
 
-        <div class="studio__cast-grid">
+        <EmptyState
+          v-if="!projectPersonas.length"
+          icon="Sparkle"
+          compact
+          :title="`No ${copy.cast.plural.toLowerCase()} yet`"
+          :message="`Import a manuscript with dialogue (📥 Import above) or add ${copy.cast.plural.toLowerCase()} — then click a voice on the right to assign it. Smart-assign can match the whole ${copy.cast.plural.toLowerCase()} automatically.`"
+        />
+
+        <div v-if="projectPersonas.length" class="studio__cast-grid">
           <!-- Narrator card -->
           <article v-if="narratorPersona" class="jv-card studio__char-card studio__char-card--narrator">
             <div class="studio__char-h">

@@ -740,7 +740,7 @@ onMounted(() => { refresh(); loadSystem(); loadProviders(); });
          can switch even when one tab is currently empty. -->
     <div class="engines-view__tabs">
       <button
-        v-for="k in ['tts', 'llm', 'embedding']"
+        v-for="k in Object.keys(KIND_LABELS)"
         :key="k"
         type="button"
         class="engines-view__tab"
@@ -748,7 +748,7 @@ onMounted(() => { refresh(); loadSystem(); loadProviders(); });
         @click="activeKind = k; cancelEdit()"
       >{{ KIND_LABELS[k] }}
         <span class="jv-muted" style="font-size: 11px">
-          ({{ (enginesByKind[k] || []).length }} local{{ k === 'llm' ? ` · ${llmProviders.length} online` : k === 'tts' ? ` · ${ttsProviders.length} online` : '' }})
+          ({{ (enginesByKind[k] || []).length }} local{{ k === 'llm' ? ` · ${llmProviders.length} online` : k === 'tts' ? ` · ${ttsProviders.length} online` : k === 'stt' ? ` · ${sttProviders.length} online` : '' }})
         </span>
       </button>
     </div>

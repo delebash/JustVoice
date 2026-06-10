@@ -66,18 +66,13 @@ const personaOptions = computed(() => [
 // cold voice goes through the swap prompt instead of being hidden here.
 const availableVoices = computed(() => voices.value);
 
-// Returns an object so the template can render real <a> hash-links into
-// the banner rather than a flat string. `kind` lets the template pick
-// which CTA to show; `null` means "no banner needed".
-const emptyVoiceReason = computed(() => {
-  if (!currentEngine.value) return { kind: "no-engine" };
-  const caps = currentEngine.value.capabilities || [];
-  const isCloneOnly = caps.includes("voice_cloning") && !caps.includes("preset_voices");
-  if (availableVoices.value.length === 0) {
-    return isCloneOnly ? { kind: "clone-only", engine: currentEngine.value.name } : { kind: "empty-catalog", engine: currentEngine.value.name };
-  }
-  return null;
-});
+// Banner only when there is genuinely nothing to pick. "No engine
+// loaded" is NOT a reason anymore — the full catalog is browsable cold
+// and rendering offers the swap (this banner used to show even with 64
+// pickable voices, contradicting the picker right above it).
+const emptyVoiceReason = computed(() =>
+  availableVoices.value.length === 0 ? { kind: "empty-catalog" } : null,
+);
 
 const speed = ref(1.0);
 const pitch = ref(0);
@@ -750,25 +745,17 @@ onMounted(refreshVoices);
         @click="generate"
       />
       <JvButton
+        v-if="busy"
         variant="danger-outline"
-        size="sm"
-        :disabled="!busy"
-        label="⏹"
-        :title="busy ? 'Stop queued / running render' : 'No render in flight'"
+        size="lg"
+        label="⏹ Stop"
+        title="Stop the running render"
         @click="stopGenerate"
       />
     </div>
 
     <p v-if="emptyVoiceReason" class="jv-banner jv-banner--warn">
-      <template v-if="emptyVoiceReason.kind === 'no-engine'">
-        No engine loaded. <a href="#engines">Go to Engines → Load</a>.
-      </template>
-      <template v-else-if="emptyVoiceReason.kind === 'clone-only'">
-        {{ emptyVoiceReason.engine }} is clone-only — <a href="#voices">clone a reference WAV in Voices</a> first.
-      </template>
-      <template v-else-if="emptyVoiceReason.kind === 'empty-catalog'">
-        {{ emptyVoiceReason.engine }} has no voices in the catalog. <a href="#voices">Visit Voices</a> to add one.
-      </template>
+      No voices yet — <a href="#engines">install an engine</a> (Kokoro ships 54 presets) or <a href="#library/voices">clone one in Library → Voices</a>.
     </p>
 
     <audio
