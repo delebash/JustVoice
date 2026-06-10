@@ -215,9 +215,48 @@ class ExternalEngineConfig(BaseModel):
     response_format: str = "wav"
 
 
+class LLMProviderConfig(BaseModel):
+    """Phase 2 / Slice 3 — registered LLM provider entry.
+
+    Mirrors JustWrite's per-provider settings shape. `provider_type`
+    discriminates which adapter (anthropic / openai / openai-compat /
+    gemini / ollama / deepseek / openrouter) handles the dispatch.
+    `base_url` defaults are baked into the adapter; setting it here
+    overrides (used for self-hosted Ollama or proxy endpoints).
+    """
+
+    id: str
+    name: str
+    provider_type: str  # "anthropic" | "openai" | "openai-compat" | "gemini" | "ollama" | "deepseek" | "openrouter"
+    base_url: str = ""
+    api_key: str | None = None
+    default_model: str = ""
+    timeout_seconds: int = 60
+    extra: dict[str, str] = {}  # provider-specific extras (org id, region, etc.)
+
+
+class FeaturePinConfig(BaseModel):
+    """Phase 2 / Slice 7 — which provider+model handles each LLM feature.
+
+    Looked up at dispatch time by feature key (compose / persona_rewrite /
+    speaker_attribution / render_preset_suggest / smart_assign). The QuickSetup
+    wizard pre-fills these based on the hardware tier preset.
+    """
+
+    feature: str  # "compose" | "persona_rewrite" | "speaker_attribution" | "render_preset_suggest" | "smart_assign"
+    provider_id: str
+    model: str = ""
+    tier: str | None = None  # "guided" | "direct" | "reasoned" — null = use auto-classify
+
+
 class EnginesSettings(BaseModel):
     kokoro: KokoroEngineSettings = KokoroEngineSettings()
     external: list[ExternalEngineConfig] = []
+    # Phase 2 / Slice 3 — LLM provider registry. Each entry registers an
+    # adapter at boot (server/justvoice/engines/llm/registry.py).
+    llm: list[LLMProviderConfig] = []
+    # Phase 2 / Slice 7 — pin LLM features to specific provider+model+tier.
+    feature_pins: list[FeaturePinConfig] = []
 
 
 class ModelsSettings(BaseModel):

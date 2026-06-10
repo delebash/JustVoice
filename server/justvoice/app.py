@@ -28,6 +28,7 @@ from .api import (
     channels_api,
     effect_presets_api,
     engines_api,
+    llm_providers_api,
     engines_models_api,
     external_api,
     generate_api,
@@ -85,6 +86,10 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 
     _register_existing_engines(state, data_dir)
     _register_external_engines(state)
+    # Phase 2 / Slice 3 — register LLM providers from settings.engines.llm[].
+    from .engines.llm.registry import load_from_settings as load_llm_providers
+
+    load_llm_providers(state.settings.get())
 
     settings = state.settings.get()
     app = FastAPI(
@@ -154,6 +159,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(backup_api.router)
     app.include_router(project_export_api.router)
     app.include_router(effect_presets_api.router)
+    app.include_router(llm_providers_api.router)
 
     # Shutdown hook — make sure any running managed engine subprocess is
     # killed before the host server exits. Without this, ctrl-C in dev
