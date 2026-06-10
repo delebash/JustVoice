@@ -1124,15 +1124,87 @@ p.note,
   border-top: 1px solid var(--line);
 }
 
-/* Dialog — confirm/prompt micro-modal */
+/* Reka-portal modal (WelcomeOnboarding). Same self-positioning rule as
+   .jv-dialog below: the DialogOverlay and DialogContent are SIBLINGS in
+   the portal, so the content must center itself — these classes
+   previously had no CSS at all (card rendered at page bottom). */
+.app-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 22, 24, 0.36);
+  z-index: 200;
+  animation: jvOverlayIn 0.12s ease-out;
+}
+.app-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 210;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  width: min(620px, 92vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-3);
+  overflow: hidden;
+  animation: jvDialogIn 0.16s ease-out;
+}
+.app-modal--wide { width: min(880px, 94vw); }
+.app-modal-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 22px 10px;
+}
+.app-modal-titleblock { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.app-modal-close {
+  background: transparent;
+  border: 0;
+  color: var(--ink-3);
+  font-size: 18px;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+}
+.app-modal-close:hover { background: var(--surface-2); color: var(--ink); }
+.app-modal-body { overflow-y: auto; flex: 1; }
+.app-modal-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--line);
+}
+
+/* Dialog — confirm/prompt micro-modal.
+   Reka's DialogContent portals to <body> and does NOT position itself —
+   without the fixed centering below, the card rendered in normal flow at
+   the bottom of the page UNDER the fixed .jv-overlay (z-index 200),
+   which made every prompt/confirm dialog unreachable ("modal at bottom
+   of screen, screen locked"). The entry animation must carry the
+   centering translate, since `animation` overrides `transform`. */
 .jv-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 210; /* above .jv-overlay (200) */
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-card);
   width: min(440px, 90vw);
+  max-height: 85vh;
+  overflow: hidden auto;
   box-shadow: var(--shadow-3);
-  overflow: hidden;
-  animation: jvModalIn 0.16s ease-out;
+  animation: jvDialogIn 0.16s ease-out;
+}
+@keyframes jvDialogIn {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.97); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 .jv-dialog__header { padding: 18px 22px 6px; }
 .jv-dialog__title { font-size: 15px; font-weight: 600; margin: 0; }
