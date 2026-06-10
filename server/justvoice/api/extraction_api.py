@@ -143,3 +143,58 @@ async def analyze_scene_endpoint(
         tier_used=tier.name,
         confidence_floor=tier.confidence_floor,
     )
+
+
+class AnalyzeTextRequest(BaseModel):
+    """Speaker-Lab body — analyze raw text without a scene id. Caller
+    supplies the cast directly + the same tuning flags as the scene-
+    scoped endpoint."""
+
+    text: str
+    characters: list[dict] = []
+    corrections: list[dict] = []
+    tier: str | None = None
+    propagate: bool = True
+    use_floor: bool = True
+
+
+@router.post(
+    "/v1/extraction/analyze-text",
+    response_model=AnalyzeSceneResponse,
+    summary="Run speaker attribution on free-form text (Speaker Lab)",
+)
+async def analyze_text_endpoint(body: AnalyzeTextRequest) -> AnalyzeSceneResponse:
+    """No scene id — for the Speaker Lab + ad-hoc analysis. Returns the
+    same AnalyzeSceneResponse shape with scene_id="(adhoc)".
+    """
+    settings = get_state().settings.get()
+    req = AnalyzeRequest(
+        text=body.text,
+        characters=body.characters,
+        corrections=body.corrections,
+        tier=body.tier,
+        propagate=body.propagate,
+        use_floor=body.use_floor,
+    )
+    try:
+        rows = analyze_scene(settings=settings, request=req)
+    except LLMNotConfiguredError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    except Exception as e:
+        log.exception("extraction pipeline failed")
+        raise HTTPException(status_code=502, detail=f"extraction failed: {e}")
+
+    from ..engines.llm.dispatch import resolve_tier
+
+    tier = resolve_tier(settings, "speaker_attribution")
+    if body.tier and body.tier in {"guided", "direct", "reasoned"}:
+        from ..engines.llm.tiers import TIERS
+
+        tier = TIERS[body.tier]
+
+    return AnalyzeSceneResponse(
+        scene_id="(adhoc)",
+        rows=[AttributionRowResponse(**row.__dict__) for row in rows],
+        tier_used=tier.name,
+        confidence_floor=tier.confidence_floor,
+    )
