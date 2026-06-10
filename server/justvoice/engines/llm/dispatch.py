@@ -18,6 +18,7 @@ from typing import Iterable
 
 from .base import LLMAdapter, LLMMessage, LLMResponse
 from .registry import get_llm_registry
+from .tiers import TierSpec, spec_for
 
 log = logging.getLogger(__name__)
 
@@ -61,6 +62,18 @@ def resolve_pin(settings, feature: str) -> tuple[LLMAdapter, str, str | None]:
     return adapter, pin.model or adapter.default_model, pin.tier
 
 
+def resolve_tier(settings, feature: str) -> TierSpec:
+    """Combine pin-resolution + tier auto-classify into one call.
+
+    Returns the TierSpec the dispatcher should use for a feature: pin
+    tier override wins, else auto-classified from the resolved model id.
+    Slice 7 + the extraction backend (Phase 3) read system_key from
+    this spec to pick the right prompt body.
+    """
+    _adapter, model, tier_override = resolve_pin(settings, feature)
+    return spec_for(model, tier_override)
+
+
 def chat(
     *,
     settings,
@@ -69,15 +82,22 @@ def chat(
     system: str | None = None,
     temperature: float = 0.7,
     max_tokens: int | None = None,
-    think: bool = False,
+    think: bool | None = None,
 ) -> LLMResponse:
-    """One-shot LLM call for a feature key."""
-    adapter, model, _tier = resolve_pin(settings, feature)
+    """One-shot LLM call for a feature key.
+
+    `think` defaults to the resolved tier's `think` flag so reasoned-tier
+    models on Ollama emit reasoning blocks without the caller knowing the
+    tier. Pass an explicit bool to override (e.g. the Speaker-Lab forces
+    `think: false` to compare reasoned vs direct on the same model).
+    """
+    adapter, model, tier_override = resolve_pin(settings, feature)
+    tier = spec_for(model, tier_override)
     return adapter.chat(
         list(messages),
         model=model,
         temperature=temperature,
         max_tokens=max_tokens,
         system=system,
-        think=think,
+        think=tier.think if think is None else think,
     )

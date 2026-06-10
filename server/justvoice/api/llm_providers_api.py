@@ -208,3 +208,35 @@ async def list_provider_models(provider_id: str) -> dict:
     except Exception as e:
         log.warning("LLM provider %s models() failed: %s", provider_id, e)
         return {"models": [], "error": str(e)}
+
+
+class TierClassifyRequest(BaseModel):
+    model: str
+
+
+class TierClassifyResponse(BaseModel):
+    model: str
+    tier: str
+    system_key: str
+    think: bool
+    confidence_floor: float
+
+
+@router.post("/v1/llm-providers/classify-tier", response_model=TierClassifyResponse)
+async def classify_model_tier(body: TierClassifyRequest) -> TierClassifyResponse:
+    """Auto-classify a model id into a tier (Phase 2 / Slice 6).
+
+    Settings AI Features + Speaker Lab call this to show "this model
+    auto-routes to Reasoned tier" hints before the user pins a feature.
+    """
+    from ..engines.llm.tiers import classify, TIERS
+
+    tier_name = classify(body.model)
+    spec = TIERS[tier_name]
+    return TierClassifyResponse(
+        model=body.model,
+        tier=spec.name,
+        system_key=spec.system_key,
+        think=spec.think,
+        confidence_floor=spec.confidence_floor,
+    )
