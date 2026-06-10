@@ -20,11 +20,32 @@ The Persona layer holds the **character bio**, the **voice mapping** (which can 
 | Engine override | Per-persona engine selection. Useful when one character sounds best in Chatterbox while the rest use Kokoro. |
 | Lexicon override | A persona-scoped lexicon (e.g. street slang for Old Crow). Overrides any project-level lexicon for this character only. |
 
-## LLM rewrite
+## Personality field — two distinct uses
 
-When enabled on a persona, every generated line for that persona goes through an LLM with the persona's personality prompt before TTS. The model rewrites the line in voice — adding mannerisms, contractions, characteristic phrases. Useful when the manuscript prose narrates dialogue plainly and you want the audio to carry more character.
+The **Personality** field on a persona is a short description of how the character speaks. Examples: "Clipped, world-weary noir delivery. Dry wit. Boston accent in stressful moments." or "Eager, optimistic, ends sentences with rising intonation."
 
-Costs an LLM call per block; configure the model in Settings → Capture (the same LLM that drives refinement + Smart-assign).
+It feeds two completely different surfaces:
+
+### 1. TTS delivery instruction (automatic at render time)
+
+Engines that accept a freeform style prompt (Qwen3-TTS, LuxTTS) receive the persona's personality as their `instruct` field when JustVoice renders a block voiced by that persona. The TTS model uses it to adjust *delivery* — pacing, intonation, vocal warmth — without changing the manuscript words.
+
+Engines that don't accept freeform instructions (Kokoro, Chatterbox) ignore the field at render time.
+
+The flow is automatic — no checkbox, no extra dispatch. Just write a personality, render a chapter, and instruct-capable engines pick it up.
+
+A render preset's `delivery.instruct` overrides the persona's personality when both are set — useful when you want a chapter-specific delivery (whispered, intimate) without changing the persona's baseline.
+
+### 2. Rewrite — explicit LLM tool (Generate + Studio Script)
+
+The persona's personality is also the system prompt for the **Rewrite** button:
+
+- **Generate view** — type a line, click ✏️ Rewrite. The LLM rewrites the line in the persona's voice. A preview appears; accept to replace the textarea, discard to keep the original.
+- **Studio Script tab** — right-click a dialogue row attributed to a persona. Same preview-then-accept flow; accepted text replaces the block's text. The block is marked with a ✨ icon so you can spot rewritten blocks later.
+
+Rewrite is always explicit — never auto-applied at render time. The manuscript words are sacred unless you ask for a rewrite and accept it.
+
+Routes through your AI Features pin for `persona_rewrite` (see `ai-features.md`).
 
 ## Auto-create from JustWrite (and other imports)
 

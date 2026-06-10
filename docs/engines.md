@@ -71,6 +71,15 @@ Switching CUDA versions is a 4-phase flow: idle → stopping engines → waiting
 
 Each engine lives at `server/justvoice/engines/<engine_id>/.venv/`. Installing Chatterbox writes to its own venv; Kokoro's venv is untouched. This is JustVoice's main reliability advantage over flat-environment TTS tools — engine-A's broken dependency upgrade can't take down engine-B's renders.
 
-## External (OpenAI-compatible) providers
+## Online + self-hosted providers (LLM + TTS)
 
-ElevenLabs, OpenAI TTS, local Piper, anything that speaks OpenAI's TTS HTTP protocol. Configure in Settings → External TTS engines. Probe button checks reachability + lists available voices.
+Local engines (above) are managed by JustVoice — installed into per-engine venvs, loaded one-at-a-time. Online + self-hosted providers are a separate flow:
+
+- **LLM providers** — Anthropic Claude, OpenAI, Gemini, Ollama, DeepSeek, OpenRouter. Needed for Compose, Persona rewrite, Speaker attribution, Smart-assign, Render preset suggest.
+- **TTS providers** — ElevenLabs, Speechify, Speechmatics, OpenAI TTS, OpenAI-compatible self-hosted servers (Kokoro-FastAPI, Chatterbox-TTS-Server, Dia-TTS-Server, Qwen3-TTS).
+
+Both register through Engines → LLM tab or TTS tab → **+ Add provider**, with an inline form that handles API key, base URL, model picking (with Fetch button), tier picker (LLM), voice multi-select (TTS), and Ping verification. See [providers.md](providers.md) for the full flow.
+
+The Engines tab also tracks **how many** registered providers exist per kind. Tab labels read "TTS (N local · M online)" so you can see at a glance whether you have credentials configured.
+
+After registering one or more LLM providers, configure feature routing in [ai-features.md](ai-features.md) — pin specific features (Compose, Speaker attribution, etc.) to specific provider+model+tier combinations.

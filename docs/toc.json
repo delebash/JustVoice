@@ -27,9 +27,12 @@
     ]
   },
   {
-    "group": "Engines & hardware",
+    "group": "Engines & providers",
     "items": [
       { "slug": "engines",            "title": "Engines" },
+      { "slug": "providers",          "title": "LLM + TTS providers" },
+      { "slug": "ai-features",        "title": "AI feature routing" },
+      { "slug": "quick-setup",        "title": "Quick Setup wizard" },
       { "slug": "gpu",                "title": "GPU / CUDA" }
     ]
   },
@@ -53,6 +56,12 @@
       { "slug": "webhooks",           "title": "Webhooks" },
       { "slug": "system-tray",        "title": "System tray" },
       { "slug": "channels",           "title": "Audio output channels" }
+    ]
+  },
+  {
+    "group": "Reference",
+    "items": [
+      { "slug": "keyboard-shortcuts", "title": "Keyboard shortcuts" }
     ]
   }
 ]

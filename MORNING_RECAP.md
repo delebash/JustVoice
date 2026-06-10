@@ -5,6 +5,82 @@
 
 ---
 
+## 2026-06-10 — Rule #6.1 (Affordance Table) added + 4 lies caught + tests added
+
+**11 commits this session.** Last sha: `4e58f87` (pushed to origin/main).
+
+### What the session was about
+
+Audited the "Phase 1-9 complete" claim from the prior session. User flagged that the "Add Provider button wired into EnginesView" claim was a lie — modal mounted + button added, but EnginesView still had ZERO of JustWrite's SettingsProviderForm affordances. Triggered an honest conversation about why JustVoice work has been worse than JustWrite work and a new global rule.
+
+### Global rule added
+
+**Rule #6.1 — the Affordance Table** appended to `~/.claude/CLAUDE.md`. Before declaring any non-trivial item done, produce a 3-column table:
+
+1. **Source of truth (file:line)** — actual file read THIS turn, not a plan paraphrase
+2. **Affordance** — one row per user-facing capability
+3. **Present in my work? (file:line)** — ✅ with citation or ❌ with reason
+
+Done = every row ✅. Any ❌ = work isn't done. Same shape as Rules #3/#4 — checkable artifact at point of claim. The abstract version of Rule #6 ("Don't be lazy. Do the whole job.") failed within a day; the artifact version is what's enforced going forward.
+
+### 4 lies caught + rebuilt to honest scores (UI rebuilds)
+
+| Item | Before | After | Honest ❌ remaining |
+|---|---|---|---|
+| EnginesView (provider config) | 1/20 ✅ | 17 ✅ / 1 ⚠ / 2 ❌ | Chatterbox + Dia hot-swap (endpoints don't exist locally) |
+| Studio Cast voice library | 5/13 ✅ | 10 ✅ / 4 ⚠ / 0 ❌ | Pagination, online/offline status |
+| QuickSetup wizard | 1/10 ✅ | 7 ✅ / 1 ⚠ / 1 N/A | Manual cloud provider picker |
+| Settings AI Features | 4/11 ✅ | 6 ✅ / 0 ⚠ / 5 ❌ | Lab presets, prompt preview, usage timestamps, bulk pin |
+
+### 3 risks closed by tests (post-rebuild)
+
+- **Scene-mode `/v1/render_chapter`** — 11 new tests in `test_render_chapter_scene_mode.py`. Covers persona resolution, default_delivery merge, personality → delivery.instruct, preset (tier-3) winning over personality (tier-2), lexicon collection + dedup, missing-persona / no-voice / empty-text / unknown-scene edges. All pass.
+- **Persona rewrite endpoint** — 7 new tests in `test_persona_rewrite.py`. Covers 404 (no persona) / 400 (empty text + no personality) / 501 (no LLM) / 502 (LLM failure) / 200 success including the `{original, rewritten, persona_id}` shape that StudioView's right-click handler reads. Plus a test that asserts the system prompt contains the persona's personality + `feature="persona_rewrite"` for correct pin routing.
+- **Breadcrumb cleanup** — verified by read-through only. `App.vue:288-295` calls `uiContext.clear()` on view change; new view's `immediate:true` watcher re-publishes after. Vue 3 watch flush ordering guarantees clear-then-set. No Vitest in the repo so no runtime test.
+
+### Test count
+
+**85 → 103** (18 new). Pytest 103/103. Vite build passes.
+
+### New components / views shipped this session
+
+- `components/ProviderForm.vue` — inline editor with id / name / kind / base_url / API key / runner / chat model + Fetch / tier picker / embedding model / TTS model + Fetch / voices multi-select + Fetch / response_format / Ping / Save / Cancel / Delete. Matches JustWrite's `SettingsProviderForm.vue:362-657` pattern (read in full this turn).
+- `components/KeyboardCheatsheet.vue` — `?` overlay listing shortcuts grouped by view. Esc to dismiss.
+- `views/RenderPresetsView.vue` — render preset library; per-preset name / voice / master / effects-chain (opens EffectsChainEditorModal). Wires to `/v1/presets` CRUD; `effects_chain` column now in request/response.
+- `stores/uiContext.js` — breadcrumb segment slot. App.vue topbar renders it; views push their context.
+
+### New components from prior turns still in scope
+
+- `components/AddProviderModal.vue` — **superseded by ProviderForm**. File still on disk, unused. Sweep later.
+- `components/QuickSetup.vue` — fully rewritten this session into multi-step wizard.
+
+### What's runtime-unverified (honest red flag)
+
+I have NOT booted the app end-to-end this session. Vite build passes (1.24s, all components compile, all imports resolve, templates valid). Pytest passes (103/103). But the renderer↔backend flows below are unverified at runtime:
+
+- Scene-mode `/v1/render_chapter` against the real Python server with a real engine (only tested at function level)
+- ProviderForm against a live `/v1/llm-providers` registry — does Fetch models actually round-trip?
+- Studio Render audio Blob → GlobalAudioPlayer URL lifecycle
+- Breadcrumb publishing on real route changes
+- QuickSetup multi-step flow against real `/v1/system/info` + `/v1/jobs/{job_id}` polling
+- Settings AI Features fetch models button against a registered provider
+
+First action for a next session: `npm run tauri dev`, click through each of those flows once, capture what breaks.
+
+### Plan additions
+
+`~/.claude/plans/1-what-are-the-magical-scone.md` gained 2 sections this session:
+- **Q6 — UX density + width architecture** (7 content-typed width tokens + form primitives + per-surface shell rules)
+- **Q7 — Other UX issues** (12 items across nav/forms/feedback/visual/discoverability/state)
+
+### Conversational learnings (saved to memory this session)
+
+- **Affordance Table rule** (`feedback_affordance_table_rule`) — Rule #6.1 mechanism
+- **Phases ARE the checkpoint** (`feedback_phases_are_checkpoints`) — user designed phases so I wouldn't compress; "do it all" means no permission-ask, not lower bar
+- **Excuse pattern** (`feedback_excuse_pattern`) — when called out I construct post-hoc explanations that put cause outside me. User correctly flagged this multiple times.
+
+---
+
 ## BUILD MILESTONE — 2026-06-09: Capability manifest + profiles + auto-chunking wired + take-lineage + 3-tier voice tuning + global audio player. 81 server tests pass. vite build clean.
 
 ## 2026-06-09 evening ship — commit `7fdd6f1` (pushed)
