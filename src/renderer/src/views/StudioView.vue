@@ -47,6 +47,14 @@ const analyzeTierUsed = ref(null);
 const analyzeFloor = ref(null);
 const editedFlags = ref({});  // {rowIdx: true} for rows the user changed
 
+// Render tab state (Phase 6 / Slice 1)
+const renderPresets = ref([]);
+const scenePresetSelections = ref({});  // {sceneId: presetId}
+const sceneSelectedForRender = ref({});  // {sceneId: bool}
+const renderBusyScene = ref(null);
+const suggestBusyScene = ref(null);
+const sceneBlockCounts = ref({});  // {sceneId: count of blocks}
+
 // Adapt the tab labels to the project's use case via useCopy.
 const TAB_LABELS = computed(() => ({
   cast:   copy.value.cast.singular === "NPC" ? "NPCs" : (copy.value.cast.plural || "Cast"),
@@ -144,9 +152,113 @@ async function loadScenesForProject(projectId) {
     if (!selectedSceneId.value && scenes.value.length) {
       selectedSceneId.value = scenes.value[0].id;
     }
+    // Eager-fetch per-scene block counts for the Render tab's
+    // "Select all unrendered" affordance.
+    sceneBlockCounts.value = {};
+    await Promise.all(
+      scenes.value.map(async (s) => {
+        try {
+          const blocks = await api.safeRequest(`/v1/scenes/${s.id}/blocks`, []);
+          const list = Array.isArray(blocks) ? blocks : blocks?.blocks ?? [];
+          sceneBlockCounts.value = { ...sceneBlockCounts.value, [s.id]: list.length };
+        } catch { /* tolerated */ }
+      }),
+    );
+    // Load render presets — global + project-scoped.
+    const presets = await api.safeRequest(`/v1/presets`, { presets: [] });
+    renderPresets.value = (presets?.presets || []).filter(
+      (p) => !p.project_id || p.project_id === projectId,
+    );
   } catch {
     scenes.value = [];
   }
+}
+
+function presetOptions() {
+  return [
+    { label: "— none —", value: "" },
+    ...renderPresets.value.map((p) => ({ label: p.name, value: p.id })),
+  ];
+}
+
+async function suggestPresetFor(scene) {
+  suggestBusyScene.value = scene.id;
+  try {
+    const r = await api.request(`/v1/llm/preset-suggest`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scene_id: scene.id }),
+    });
+    if (r?.preset_id) {
+      scenePresetSelections.value = { ...scenePresetSelections.value, [scene.id]: r.preset_id };
+      pushToast({
+        message: `Suggested "${r.preset_name}" — ${r.reason || "no reason given"}`,
+        kind: "success",
+        duration: 4500,
+      });
+    } else if (r?.note) {
+      pushToast({ message: r.note, kind: "warning", duration: 5000 });
+    }
+  } catch (e) {
+    pushToast({
+      message: e?.message?.includes("501") || e?.status === 501
+        ? "Suggest unavailable — wire an LLM provider in Engines → LLM tab."
+        : `Suggest failed: ${e?.message || e}`,
+      kind: "warning",
+      duration: 6000,
+    });
+  } finally {
+    suggestBusyScene.value = null;
+  }
+}
+
+async function renderScene(scene) {
+  if (!sceneBlockCounts.value[scene.id]) {
+    pushToast({ message: "Scene has no blocks to render. Analyze + Apply first.", kind: "info" });
+    return;
+  }
+  renderBusyScene.value = scene.id;
+  try {
+    const body = {
+      scene_id: scene.id,
+      preset_id: scenePresetSelections.value[scene.id] || null,
+    };
+    await api.request("/v1/render_chapter", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    pushToast({ message: `${scene.title || "Scene"} render complete.`, kind: "success" });
+  } catch (e) {
+    pushToast({ message: `Render failed: ${e?.message || e}`, kind: "error", duration: 7000 });
+  } finally {
+    renderBusyScene.value = null;
+  }
+}
+
+async function renderSelected() {
+  const queue = scenes.value.filter((s) => sceneSelectedForRender.value[s.id]);
+  if (!queue.length) {
+    pushToast({ message: "Select at least one scene to render.", kind: "info" });
+    return;
+  }
+  for (const s of queue) {
+    await renderScene(s);
+  }
+}
+
+function selectAllUnrendered() {
+  // Mark every scene with blocks as selected. (No "rendered" status
+  // surfaced via API yet — Render tab counts blocks as the proxy.)
+  const next = {};
+  for (const s of scenes.value) {
+    if (sceneBlockCounts.value[s.id]) next[s.id] = true;
+  }
+  sceneSelectedForRender.value = next;
+}
+
+function selectedSceneCount() {
+  return Object.values(sceneSelectedForRender.value).filter(Boolean).length;
 }
 
 async function loadSceneText(sceneId) {
@@ -626,11 +738,81 @@ onMounted(loadAll);
       </template>
     </section>
 
-    <!-- ── Render tab (Phase 6) ─────────────────────────────────────── -->
+    <!-- ── Render tab — Phase 6 / Slice 1 ───────────────────────────── -->
     <section v-if="tab === 'render'" class="studio__render">
-      <p class="jv-muted">
-        Render tab arrives in Phase 6 — batch render, per-chapter preset, Suggest button.
-      </p>
+      <div v-if="!selectedProject" class="jv-banner">
+        Pick a {{ copy.book.singular.toLowerCase() }} above to render its {{ copy.chapter.plural.toLowerCase() }}.
+      </div>
+      <template v-else>
+        <header class="studio__render-toolbar">
+          <JvButton variant="secondary" size="sm" label="Select all with blocks" @click="selectAllUnrendered" />
+          <span class="jv-muted">{{ selectedSceneCount() }} selected</span>
+          <span class="jv-spacer" />
+          <JvButton
+            variant="primary"
+            size="sm"
+            :disabled="!selectedSceneCount() || renderBusyScene !== null"
+            :label="`▶ Render selected (${selectedSceneCount()})`"
+            @click="renderSelected"
+          />
+        </header>
+
+        <table class="jv-table studio__render-table">
+          <thead>
+            <tr>
+              <th class="studio__render-check"></th>
+              <th>#</th>
+              <th>{{ copy.chapter.singular }}</th>
+              <th>{{ copy.line.plural }}</th>
+              <th>Render preset</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(s, i) in scenes" :key="s.id">
+              <td class="studio__render-check">
+                <input
+                  type="checkbox"
+                  :checked="!!sceneSelectedForRender[s.id]"
+                  @change="sceneSelectedForRender = { ...sceneSelectedForRender, [s.id]: $event.target.checked }"
+                />
+              </td>
+              <td class="jv-muted">{{ i + 1 }}</td>
+              <td>
+                <strong>{{ s.title || `${copy.chapter.singular} ${s.position + 1}` }}</strong>
+              </td>
+              <td class="jv-mono">{{ sceneBlockCounts[s.id] || 0 }}</td>
+              <td>
+                <select
+                  :value="scenePresetSelections[s.id] || ''"
+                  class="jv-input jv-input--sm"
+                  @change="scenePresetSelections = { ...scenePresetSelections, [s.id]: $event.target.value }"
+                >
+                  <option v-for="o in presetOptions()" :key="o.value" :value="o.value">{{ o.label }}</option>
+                </select>
+              </td>
+              <td class="studio__render-actions">
+                <JvButton
+                  variant="ghost"
+                  size="sm"
+                  :loading="suggestBusyScene === s.id"
+                  :disabled="suggestBusyScene === s.id"
+                  label="💡 Suggest"
+                  @click="suggestPresetFor(s)"
+                />
+                <JvButton
+                  variant="secondary"
+                  size="sm"
+                  :loading="renderBusyScene === s.id"
+                  :disabled="renderBusyScene !== null"
+                  label="▶ Render"
+                  @click="renderScene(s)"
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </template>
     </section>
 
     <!-- Voice params modal — Tier-2 voice tuning. -->
@@ -848,4 +1030,19 @@ onMounted(loadAll);
 .studio__source-chip--floored     { background: var(--warn-bg, var(--surface-2)); color: var(--warn, var(--ink-2)); border-color: var(--warn, var(--border-soft)); }
 .studio__source-chip--narration   { color: var(--muted); border-style: dashed; }
 .studio__source-chip--manual      { background: var(--surface); }
+
+/* ── Render tab ───────────────────────────────────────────────────── */
+.studio__render-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.studio__render-table { font-size: 12.5px; }
+.studio__render-check { width: 32px; }
+.studio__render-actions {
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
 </style>
