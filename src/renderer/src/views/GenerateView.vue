@@ -32,6 +32,18 @@ const history = ref([]);
 // effects_chain pre-fill + persona-rewrite gating.
 const personas = ref([]);
 const selectedPersonaId = ref("");
+// Effect-chain presets (Effects tab library). Picking one sends
+// effects_preset_id with the render; the server copies its chain and
+// applies it after TTS (layered on top of the persona's chain).
+const effectPresets = ref([]);
+const selectedEffectsPresetId = ref("");
+const selectedEffectsPreset = computed(() =>
+  effectPresets.value.find((p) => p.id === selectedEffectsPresetId.value) || null,
+);
+const effectsPresetOptions = computed(() => [
+  { label: "— none —", value: "" },
+  ...effectPresets.value.map((p) => ({ label: p.name, value: p.id })),
+]);
 const composeBusy = ref(false);
 const rewriteBusy = ref(false);
 const rewritePreview = ref(null);  // { original, rewritten } | null
@@ -292,18 +304,20 @@ const deliveryDirectionPlaceholder =
 
 async function refreshVoices() {
   try {
-    const [v, cur, h, caps, pers] = await Promise.all([
+    const [v, cur, h, caps, pers, fx] = await Promise.all([
       api.safeRequest("/v1/voices", { voices: [] }),
       api.safeRequest("/v1/engines/current", { engine: null }),
       api.safeRequest("/v1/takes/recent", { takes: [] }),
       api.safeRequest("/v1/engines/capabilities", { engines: {} }),
       api.safeRequest("/v1/personas", { personas: [] }),
+      api.safeRequest("/v1/effect-presets", { presets: [] }),
     ]);
     voices.value = v?.voices || [];
     currentEngine.value = cur?.engine || null;
     history.value = (h?.takes || []).slice(0, 10);
     capabilityMap.value = caps?.engines || {};
     personas.value = pers?.personas || [];
+    effectPresets.value = fx?.presets || [];
     const stillValid = availableVoices.value.some((x) => x.id === voice.value);
     if (!stillValid) voice.value = availableVoices.value[0]?.id || "";
   } catch (_) {}
@@ -432,6 +446,7 @@ async function generate() {
     // shown in the lexicon-preview row above.
     if (attachedLexicon.value?.id) body.lexicons = [attachedLexicon.value.id];
     if (selectedPersonaId.value) body.persona_id = selectedPersonaId.value;
+    if (selectedEffectsPresetId.value) body.effects_preset_id = selectedEffectsPresetId.value;
     const blob = await api.request("/v1/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -659,9 +674,10 @@ onMounted(refreshVoices);
 
     <!-- Floating chip-card bar (matches preview HTML §1 mockup). -->
     <div class="jv-floating generate-view__floating">
-      <div class="jv-chip-card">🎙️ Voice:
+      <div class="jv-chip-card generate-view__chip" :class="{ 'generate-view__chip--disabled': availableVoices.length === 0 }">🎙️ Voice:
         <strong>{{ availableVoices.find((v) => v.id === voice)?.name || "Pick a voice" }}</strong>
-        <select v-model="voice" :disabled="availableVoices.length === 0" class="generate-view__chip-select">
+        <span class="generate-view__chip-caret">▾</span>
+        <select v-model="voice" :disabled="availableVoices.length === 0" class="generate-view__chip-select" title="Pick a voice">
           <option v-for="o in voiceOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
         </select>
       </div>
@@ -671,10 +687,18 @@ onMounted(refreshVoices);
       <div class="jv-chip-card">🗣️ Lang:
         <strong>{{ availableVoices.find((v) => v.id === voice)?.language || "en" }}</strong>
       </div>
-      <div class="jv-chip-card">🎭 Persona:
+      <div class="jv-chip-card generate-view__chip">🎭 Persona:
         <strong>{{ selectedPersona?.name || "none" }}</strong>
-        <select v-model="selectedPersonaId" class="generate-view__chip-select">
+        <span class="generate-view__chip-caret">▾</span>
+        <select v-model="selectedPersonaId" class="generate-view__chip-select" title="Pick a persona">
           <option v-for="o in personaOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
+        </select>
+      </div>
+      <div class="jv-chip-card generate-view__chip">🎛️ Effects:
+        <strong>{{ selectedEffectsPreset?.name || "none" }}</strong>
+        <span class="generate-view__chip-caret">▾</span>
+        <select v-model="selectedEffectsPresetId" class="generate-view__chip-select" title="Apply a saved effect-chain preset to this render">
+          <option v-for="o in effectsPresetOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
         </select>
       </div>
       <label class="jv-chip-card">
@@ -1126,20 +1150,31 @@ onMounted(refreshVoices);
   margin-bottom: 10px;
 }
 
-/* The native <select> next to the strong-text label inside a chip-card.
-   We hide the visible width of the select (the chip's strong text shows
-   the chosen value) but keep the native dropdown clickable. */
-.generate-view__chip-select {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  font: inherit;
-  color: var(--ink);
+/* Chip-with-dropdown: the native <select> stretches invisibly across the
+   ENTIRE chip, so clicking anywhere on it opens the dropdown. (The old
+   pattern shrank the select to an invisible 12px sliver — the chip looked
+   interactive but only that sliver was clickable.) The visible value is
+   the <strong> text; the ▾ caret signals the affordance. */
+.generate-view__chip {
+  position: relative;
   cursor: pointer;
-  margin-left: 6px;
-  width: 12px;
-  overflow: hidden;
 }
+.generate-view__chip--disabled { cursor: default; opacity: 0.6; }
+.generate-view__chip-caret {
+  color: var(--ink-3);
+  font-size: 10px;
+  margin-left: 2px;
+}
+.generate-view__chip-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: 0;
+  cursor: pointer;
+}
+.generate-view__chip-select:disabled { cursor: default; }
 
 /* Capability indicator pills row */
 .generate-view__caps-list {

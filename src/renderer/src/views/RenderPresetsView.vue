@@ -19,7 +19,7 @@
 import { onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { confirmDialog } from "../services/dialog.js";
+import { confirmDialog, promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 
@@ -60,7 +60,7 @@ function personaName(id) {
 }
 
 async function createPreset() {
-  const name = prompt("Name this render preset:");
+  const name = await promptDialog({ title: "New render preset", label: "Preset name", confirmLabel: "Create" });
   if (!name) return;
   if (!personas.value.length) {
     pushToast({ message: "Create a persona first.", kind: "info" });

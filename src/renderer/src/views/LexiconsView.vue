@@ -11,7 +11,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { confirmDialog } from "../services/dialog.js";
+import { confirmDialog, promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import EmptyState from "../components/EmptyState.vue";
 
@@ -132,10 +132,12 @@ async function appendEntry() {
 }
 
 async function bulkPasteTsv() {
-  const raw = prompt(
-    "Paste TSV (one entry per line, columns: word [TAB] pronunciation [TAB] format(ipa|phonetic) [TAB] note). Example:\nBeauchamp\t/ˈbiːtʃəm/\tipa\tfamily name",
-    "",
-  );
+  const raw = await promptDialog({
+    title: "Bulk paste TSV",
+    label: "One entry per line: word [TAB] pronunciation [TAB] format(ipa|phonetic) [TAB] note",
+    placeholder: "Beauchamp\t/ˈbiːtʃəm/\tipa\tfamily name",
+    confirmLabel: "Append",
+  });
   if (!raw || !selectedId.value) return;
   const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   let appended = 0, failed = 0;

@@ -41,12 +41,6 @@ const TERMS = {
     cast:    { singular: "Voice",   plural: "Voices"   },
     line:    { singular: "Block",   plural: "Blocks"   },
   },
-  accessibility: {
-    book:    { singular: "Document", plural: "Documents" },
-    chapter: { singular: "Section",  plural: "Sections"  },
-    cast:    { singular: "Voice",    plural: "Voices"    },
-    line:    { singular: "Line",     plural: "Lines"     },
-  },
   // multiple + unset both fall back to neutral terminology so neither
   // alienates the producers who didn't pick a primary use case.
   multiple: {

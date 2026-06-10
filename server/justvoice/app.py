@@ -39,6 +39,7 @@ from .api import (
     generate_api,
     health,
     lexicons_api,
+    logs_api,
     master_api,
     mcp_bindings_api,
     models_api,
@@ -70,6 +71,10 @@ log = logging.getLogger(__name__)
 
 def create_app(data_dir: Path | None = None) -> FastAPI:
     data_dir = data_dir or default_data_dir()
+
+    # Ring-buffer log capture for Settings → Logs (tail / copy / download).
+    from .logbuffer import install as install_log_buffer
+    install_log_buffer()
 
     # Phase 1.5: SQLite is the primary persistence layer. init_db() runs
     # idempotent migrations + creates net-new tables. settings.json stays
@@ -157,6 +162,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(sse_streams_api.router)
     app.include_router(stories_api.router)
     app.include_router(captures_api.router)
+    app.include_router(logs_api.router)
 
     # Phase 4a addendum (gap-decision workflow v1.0 endpoints)
     app.include_router(webhooks_api.router)

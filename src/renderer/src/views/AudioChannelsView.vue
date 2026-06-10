@@ -10,6 +10,7 @@
 import { onMounted, ref } from "vue";
 import { channelsService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
+import { confirmDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvInput from "../components/jv/JvInput.vue";
 import JvTextarea from "../components/jv/JvTextarea.vue";
@@ -62,7 +63,8 @@ async function save() {
 }
 
 async function deleteChannel(c) {
-  if (!confirm(`Delete channel '${c.name}'?`)) return;
+  const ok = await confirmDialog({ title: "Delete channel?", message: `Delete channel '${c.name}'?`, danger: true, confirmLabel: "Delete" });
+  if (!ok) return;
   try {
     await channelsService.remove(c.id);
     await refresh();

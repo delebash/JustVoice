@@ -16,7 +16,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { confirmDialog } from "../services/dialog.js";
+import { confirmDialog, promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import EmptyState from "../components/EmptyState.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
@@ -115,7 +115,7 @@ watch(selectedPersona, (p) => {
 function markDirty() { dirty.value = true; }
 
 async function createBlank() {
-  const name = prompt("Persona name (e.g. Mara, Narrator):");
+  const name = await promptDialog({ title: "New persona", label: "Persona name (e.g. Mara, Narrator)", confirmLabel: "Create" });
   if (!name) return;
   if (!voices.value.length) {
     pushToast({ kind: "error", title: "Add a voice first", description: "Personas bind to a voice — go to Voices and create one." });

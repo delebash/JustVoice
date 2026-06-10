@@ -11,6 +11,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
+import { promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 
 const api = useApi();
@@ -135,7 +136,7 @@ async function runAll() {
 }
 
 async function saveAsPreset(cell) {
-  const name = prompt(`Save preset name for ${cell.key}:`);
+  const name = await promptDialog({ title: "Save as render preset", label: `Preset name for ${cell.key}`, confirmLabel: "Save" });
   if (!name) return;
   try {
     await api.request("/v1/presets", {

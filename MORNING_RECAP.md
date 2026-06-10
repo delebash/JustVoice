@@ -5,7 +5,18 @@
 
 ---
 
-## 2026-06-10 — Rule #6.1 (Affordance Table) added + 4 lies caught + tests added
+## 2026-06-10 (evening) — Full-app audit + dead-wiring sweep (branch `claude/jolly-curie-jkgysf`)
+
+Full code audit (every view, every router) then a truth pass. 112 server tests pass, ruff clean, vite build clean. Key changes:
+
+**Server:** new `/v1/stories` CRUD + `/v1/captures` list/delete (tables existed since Phase 1.5, views errored on every load); `/v1/cache/recent` + per-entry DELETE; **fixed destructive bug** — cache "prune by voice/engine/age" silently purged the ENTIRE cache (server ignored the filters); real `older_than_days` + 400 on unsupportable filters; `PATCH`/`DELETE /v1/generations/{id}` (History ★/✕); `/v1/logs/tail` + `/v1/logs/download` via in-memory ring buffer; `effects_preset_id` on GenerateRequest (persona chain → picked chain → render-preset chain); deduped double `projects_api` mount; OpenAPI license_info Apache→GPL; all 45 ruff violations fixed.
+
+**Frontend:** deleted 14 dead files (stores player/generation/server/audioChannel, components AddProviderModal/AppModal/Breadcrumb/ChordPicker/Combobox/PaneHeader/StatPill, both roving-tabindex composables) + dead `/v1/profiles` service fns. **Generate chip pickers were unusable** — the select was a hidden 12px sliver; now an invisible overlay across the whole chip with a ▾ caret (Voice/Persona/Effects). Effects chip wired to effect presets for real. Stop button wired to AbortController; History ★/↻/✕ wired. VoicesView preview repointed to `/v1/generate`; fabricated sample rows removed. BooksView batch render now actually renders via `/v1/render_chapter` (was fake-success toasts); M4B/QC/re-master honestly disabled. Stories/Captures fake controls (simulated recording, narration-only generate) disabled with honest tooltips. LineageViewer finally mounted (ChapterView lineage pill → chain modal). SettingsView: `/v1/system/info` fix, logs card live, MCP binding ✕ wired, fake GPU phase/torch text removed, API table corrected, About buttons now real links. ALL native `prompt()`/`confirm()` replaced with in-app dialogs (10 views). **Accessibility removed as a use case** (onboarding card, store, copy.js, App.vue gating; stored values normalize via VALID-set fallback).
+
+**Still open (plan on file):** storage split-brain (personas/voices/lexicons JSON stores vs SQLite Persona table) — Phase 2; take-atomic block render + M4B/QC — Phase 3; Whisper STT plugin (dictation backend is absent — Rust capture exists, no server STT) vs game WAV+JSON export — Phase 4 priority is the user's call; Stories build-or-bench — Phase 5; CONTRACT.md still lists `/v1/profiles` + `/v1/render_chapter_async` as stable (neither exists) — fix with the next contract rev. Train/Blend remain dead until engine flags flip (Phase 5 plan, start Chatterbox).
+
+---
+
 
 **11 commits this session.** Last sha: `4e58f87` (pushed to origin/main).
 

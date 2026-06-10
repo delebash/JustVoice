@@ -52,6 +52,16 @@ def _resolve_effects_chain(req: GenerateRequest, db) -> list[dict]:
         if persona is not None:
             persona_chain = persona.effects_chain or []
 
+    # Explicit Generate-view pick (Effects chip) — an EffectPreset chain,
+    # layered after the persona chain.
+    picked_chain: list[dict] = []
+    if req.effects_preset_id:
+        from ..database.models import EffectPreset
+
+        fx = db.query(EffectPreset).filter(EffectPreset.id == req.effects_preset_id).first()
+        if fx is not None:
+            picked_chain = parse_chain(fx.chain_json)
+
     preset_chain: list[dict] = []
     if req.preset_id:
         from ..database.models import RenderPreset
@@ -60,7 +70,7 @@ def _resolve_effects_chain(req: GenerateRequest, db) -> list[dict]:
         if preset is not None:
             preset_chain = parse_chain(preset.effects_chain)
 
-    return resolve_chain(persona_chain, preset_chain)
+    return resolve_chain(resolve_chain(persona_chain, picked_chain), preset_chain)
 
 
 def _chunking_params(settings) -> tuple[int, int]:

@@ -830,6 +830,10 @@ class GenerateRequest(BaseModel):
     # Tier-3 render preset (task #88) — if set, preset overrides request +
     # persona delivery. Highest precedence in the 3-tier merge.
     preset_id: str | None = None
+    # Explicit effect-chain preset picked on the Generate view (Effects
+    # chip). Layers between the persona chain and the render preset's
+    # chain; the EffectPreset's chain is copied at render time.
+    effects_preset_id: str | None = None
 
 
 class ChapterLine(BaseModel):

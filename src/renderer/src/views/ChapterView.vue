@@ -13,6 +13,7 @@ import EmptyState from "../components/EmptyState.vue";
 import JvField from "../components/jv/JvField.vue";
 import JvSelect from "../components/jv/JvSelect.vue";
 import JvTag from "../components/jv/JvTag.vue";
+import LineageViewer from "../components/LineageViewer.vue";
 
 const api = useApi();
 const tasks = useRenderTasks();
@@ -187,7 +188,16 @@ function takeDropdownOptions(blockId) {
   }));
 }
 
-// ── Source lineage pill ────────────────────────────────────────────────────
+// ── Source lineage pill + lineage-chain modal (task #98) ──────────────────
+
+const lineageOpen = ref(false);
+const lineageTakeId = ref(null);
+function openLineage(take) {
+  if (!take?.id) return;
+  lineageTakeId.value = take.id;
+  lineageOpen.value = true;
+}
+
 
 function sourceTakeLabel(take, blockId) {
   if (!take?.source_take_id) return null;
@@ -438,11 +448,14 @@ function compareDropdownOptions(blockId) {
                 label="default"
               />
 
-              <!-- Lineage pill -->
-              <span
+              <!-- Lineage pill — click opens the take-chain timeline. -->
+              <button
                 v-if="sourceTakeLabel(getActiveTake(block.id), block.id)"
+                type="button"
                 class="jv-pill chapter-view__lineage"
-              >{{ sourceTakeLabel(getActiveTake(block.id), block.id) }}</span>
+                title="View this take's full lineage chain"
+                @click="openLineage(getActiveTake(block.id))"
+              >{{ sourceTakeLabel(getActiveTake(block.id), block.id) }}</button>
             </div>
 
             <!-- ── Audio playback ─────────────────────────────────────── -->
@@ -618,6 +631,11 @@ function compareDropdownOptions(blockId) {
       />
     </div>
 
+    <LineageViewer
+    :open="lineageOpen"
+    :take-id="lineageTakeId"
+    @close="lineageOpen = false"
+  />
   </div>
 </template>
 

@@ -3,7 +3,7 @@
 // First-run welcome modal. Asks the producer what they're here for so
 // terminology (services/copy.js), the launch tab (App.vue), and
 // featured docs can adapt. Six choices in a 3x2 grid:
-//   audiobook · game · podcast · dictation · accessibility · multiple
+//   audiobook · game · podcast · dictation · multiple
 // "Choose later" dismisses without committing to a primary use case
 // (shown stays true so we don't re-prompt every launch — the About
 // pane in Settings has a "Run welcome again" link for re-opening).
@@ -62,12 +62,6 @@ const OPTIONS = [
     emoji: "⌨️",
     title: "Dictation",
     blurb: "Real-time TTS with global hotkeys and agent-driven workflows.",
-  },
-  {
-    id: "accessibility",
-    emoji: "🔊",
-    title: "Accessibility",
-    blurb: "Reader-friendly playback, screen-reader-aware controls.",
   },
 ];
 

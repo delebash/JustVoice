@@ -45,7 +45,7 @@ import WebhooksView from "./views/WebhooksView.vue";
 
 // Per-view `visibleFor` declares which onboarding primary-use-case values
 // surface this tab in the sidebar. The full set is:
-//   audiobook · game · podcast · dictation · accessibility · multiple · unset
+//   audiobook · game · podcast · dictation · multiple · unset
 // Omit `visibleFor` to mean "always visible" (universal tabs: Home,
 // Generate, Voices, Personas, Engines, Settings).
 //
@@ -56,7 +56,7 @@ import WebhooksView from "./views/WebhooksView.vue";
 //   advanced — Cache, channels, webhooks — collapsed by default.
 // Settings is its own thing — pinned at the very bottom of the sidebar
 // outside the Advanced collapse.
-const ALL_USE_CASES = ["audiobook", "game", "podcast", "dictation", "accessibility", "multiple", "unset"];
+const ALL_USE_CASES = ["audiobook", "game", "podcast", "dictation", "multiple", "unset"];
 const VIEWS = [
   // ─── Workflow lane ─────────────────────────────────────────────────
   { id: "overview",  lane: "workflow", label: "Home",      icon: "🏠", lede: "", component: OverviewView },
@@ -64,7 +64,7 @@ const VIEWS = [
   { id: "generate",  lane: "workflow", label: "Generate",  icon: "📝", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it. Type / for paralinguistic tags.", component: GenerateView },
   { id: "chapter",   lane: "workflow", label: "Chapter",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved. Pinned floating generate bar at bottom.", component: ChapterView, visibleFor: ["audiobook", "podcast", "multiple", "unset"] },
   { id: "stories",   lane: "workflow", label: "Stories",   icon: "🎞️", lede: "Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.", component: StoriesView, visibleFor: ["game", "podcast", "multiple", "unset"] },
-  { id: "captures",  lane: "workflow", label: "Captures",  icon: "🎚️", lede: "Dictation pill + global hotkey. Speak into any text field. Also captures audio for cloning sample collection.", component: CapturesView, visibleFor: ["dictation", "accessibility", "multiple", "unset"] },
+  { id: "captures",  lane: "workflow", label: "Captures",  icon: "🎚️", lede: "Dictation pill + global hotkey. Speak into any text field. Also captures audio for cloning sample collection.", component: CapturesView, visibleFor: ["dictation", "multiple", "unset"] },
 
   // ─── Library lane ──────────────────────────────────────────────────
   { id: "books",     lane: "library", label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Imports from JustWrite via POST /v1/projects/import?source=justwrite.", component: BooksView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
@@ -139,15 +139,13 @@ const HELP_SLUG_BY_VIEW = {
 // and podcast both land on Chapter because that's where the multi-line
 // script-in / mastered-audio-out workflow lives today. Game devs need
 // the voice catalogue first. Dictation users hit the single-line
-// Generate panel. Accessibility users start in Settings to dial in
-// playback. "multiple" + "unset" fall back to Overview so first-time
+// Generate panel. "multiple" + "unset" fall back to Overview so first-time
 // producers see the catalogue, engines, and cache state at a glance.
 const DEFAULT_TAB_BY_USE_CASE = {
   audiobook:     "chapter",
   game:          "voices",
   podcast:       "chapter",
   dictation:     "generate",
-  accessibility: "settings",
   multiple:      "overview",
   unset:         "overview",
 };

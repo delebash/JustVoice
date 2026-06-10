@@ -417,7 +417,13 @@ async function loadCorrections() {
   } catch { /* ignore */ }
 }
 async function clearProjectCorrections(projectId) {
-  if (!confirm("Clear all speaker corrections for this project? This cannot be undone.")) return;
+  const okClear = await confirmDialog({
+    title: "Clear corrections?",
+    message: "Clear all speaker corrections for this project? This cannot be undone.",
+    danger: true,
+    confirmLabel: "Clear",
+  });
+  if (!okClear) return;
   try {
     await api.request(`/v1/projects/${projectId}/corrections`, { method: "DELETE" });
     correctionsCounts.value = { ...correctionsCounts.value, [projectId]: 0 };
@@ -430,7 +436,7 @@ async function clearProjectCorrections(projectId) {
 // ── GPU info (task #91) ──────────────────────────────────────────────
 const gpuInfo = ref(null);
 async function loadGpuInfo() {
-  const r = await api.safeRequest("/v1/system", null);
+  const r = await api.safeRequest("/v1/system/info", null);
   if (!r) return;
   const runtimes = Object.entries(r.runtimes || {})
     .filter(([, ok]) => ok)
@@ -620,6 +626,23 @@ async function loadMcpBindings() {
   }));
 }
 
+async function deleteMcpBinding(b) {
+  const ok = await confirmDialog({
+    title: "Remove MCP binding?",
+    message: `Remove the binding for client "${b.client_id}"? The client re-registers on its next tool call.`,
+    danger: true,
+    confirmLabel: "Remove",
+  });
+  if (!ok) return;
+  try {
+    await api.request(`/v1/mcp/bindings/${encodeURIComponent(b.client_id)}`, { method: "DELETE" });
+    await loadMcpBindings();
+    pushToast({ message: `Binding "${b.client_id}" removed.`, kind: "success" });
+  } catch (e) {
+    pushToast({ message: `Remove failed: ${e?.message || e}`, kind: "error" });
+  }
+}
+
 const MCP_SNIPPETS = {
   claude_desktop: `{
   "mcpServers": {
@@ -650,25 +673,7 @@ const logsPreview = ref(`Loading recent log lines…`);
 async function loadLogsPreview() {
   const r = await api.safeRequest("/v1/logs/tail?lines=80", null);
   if (r?.text) logsPreview.value = r.text;
-  else logsPreview.value = "(no recent log lines — server may be offline or logging not yet wired)";
-}
-async function openLogFile() {
-  const tauri = typeof window !== "undefined" ? window.__TAURI__ : null;
-  if (!tauri?.shell?.open) {
-    pushToast({ message: "Open in OS file explorer requires Tauri.", kind: "warning" });
-    return;
-  }
-  const r = await api.safeRequest("/v1/system", null);
-  const logPath = r?.data_dir ? `${r.data_dir}/logs/justvoice.log` : null;
-  if (!logPath) {
-    pushToast({ message: "Couldn't locate log path. Check the server is running.", kind: "error" });
-    return;
-  }
-  try {
-    await tauri.shell.open(logPath);
-  } catch (e) {
-    pushToast({ message: `Couldn't open log: ${e?.message || e}`, kind: "error" });
-  }
+  else logsPreview.value = "(no recent log lines — server may be offline)";
 }
 async function downloadRecentLogs() {
   try {
@@ -759,9 +764,9 @@ onMounted(() => {
           <thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
           <tbody>
             <tr><td><code class="jv-mono">POST</code></td><td><code class="jv-mono">/v1/generate</code></td><td>Single-line synthesis → audio/wav. Auto-chunks long text.</td></tr>
-            <tr><td><code class="jv-mono">POST</code></td><td><code class="jv-mono">/v1/chapters/render</code></td><td>Multi-line chapter render with mastering + cache.</td></tr>
+            <tr><td><code class="jv-mono">POST</code></td><td><code class="jv-mono">/v1/render_chapter</code></td><td>Multi-line chapter render with mastering + cache.</td></tr>
             <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/voices</code></td><td>List preset + stored voices.</td></tr>
-            <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/profiles</code></td><td>List voice profiles (with personality, effects chain, lexicon).</td></tr>
+            <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/personas</code></td><td>List personas (voice + personality + effects chain + lexicon).</td></tr>
             <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/engines</code></td><td>Engine catalog + load state.</td></tr>
             <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/engines/capabilities</code></td><td>Per-engine knob + inline-tag manifest (drives UI gating).</td></tr>
             <tr><td><code class="jv-mono">POST</code></td><td><code class="jv-mono">/v1/engines/{id}/load</code></td><td>Load an engine into memory.</td></tr>
@@ -1549,8 +1554,7 @@ onMounted(() => {
             </div>
             <div class="jv-row" style="gap: 6px">
               <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">V</span>
-              <JvButton variant="ghost" size="sm" label="Edit" />
-              <JvButton variant="ghost" size="sm" label="Clear" />
+              <JvButton variant="ghost" size="sm" label="Edit" disabled title="Hotkey editing isn't wired to the desktop shell yet" />
             </div>
           </div>
         </div>
@@ -1562,8 +1566,7 @@ onMounted(() => {
             </div>
             <div class="jv-row" style="gap: 6px">
               <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">D</span>
-              <JvButton variant="ghost" size="sm" label="Edit" />
-              <JvButton variant="ghost" size="sm" label="Clear" />
+              <JvButton variant="ghost" size="sm" label="Edit" disabled title="Hotkey editing isn't wired to the desktop shell yet" />
             </div>
           </div>
         </div>
@@ -1758,8 +1761,7 @@ onMounted(() => {
               <td>{{ b.engine || "(none)" }}</td>
               <td class="jv-muted">{{ b.last_seen || "never" }}</td>
               <td class="right">
-                <JvButton variant="ghost" size="sm" label="Edit" />
-                <JvButton variant="ghost" size="sm" label="✕" />
+                <JvButton variant="ghost" size="sm" label="✕" title="Remove this binding" @click="deleteMcpBinding(b)" />
               </td>
             </tr>
             <tr v-if="!mcpBindings.length">
@@ -1869,17 +1871,9 @@ onMounted(() => {
           on CUDA and Kokoro on CPU is fine. Phases: <code class="jv-mono">idle → stopping engines →
           waiting for download → ready</code>.
         </p>
-        <div class="jv-row" style="margin-top: 14px">
-          <span class="jv-pill jv-pill--green">phase: ready</span>
-          <span class="jv-muted" style="font-size: 12px">torch 2.4.1+cu124 · 2.1 GB</span>
-          <span class="jv-spacer" />
-          <JvButton variant="secondary" size="sm" label="Switch to CPU-only" />
-          <JvButton variant="secondary" size="sm" label="Switch to ROCm (AMD)" />
-          <JvButton variant="secondary" size="sm" label="Re-download" />
-        </div>
         <p class="jv-muted" style="font-size: 11.5px; margin-top: 10px">
-          The switch is per-engine. Use the Engines tab → engine row → "Install with CUDA" to enable
-          per engine. On Apple Silicon, MPS / CoreML is auto-detected — no switch required.
+          The switch is per-engine — use the <a href="#engines">Engines tab</a> → engine card →
+          install options. On Apple Silicon, MPS / CoreML is auto-detected — no switch required.
         </p>
       </div>
     </div>
@@ -2084,8 +2078,8 @@ onMounted(() => {
         <p>JustVoice is a cross-platform open-source voice production studio for audiobook producers, game developers, podcasters, dictation users, and accessibility users. Built on Tauri 2 + Vue 3 + Python FastAPI.</p>
         <p class="jv-muted" style="font-size: 12px; margin-top: 10px">Licensed GPL-3.0-or-later. Portions ported from voicebox (MIT) and JustWrite (MIT) — see <code>NOTICE.md</code>.</p>
         <div class="jv-btn-group" style="margin-top: 14px">
-          <JvButton variant="secondary" label="📋 Third-party licenses" />
-          <JvButton variant="secondary" label="🐛 Report an issue" />
+          <a class="jv-btn jv-btn--secondary" href="https://github.com/delebash/JustVoice/blob/main/LICENSES.md" target="_blank" rel="noopener">📋 Third-party licenses</a>
+          <a class="jv-btn jv-btn--secondary" href="https://github.com/delebash/JustVoice/issues/new" target="_blank" rel="noopener">🐛 Report an issue</a>
           <JvButton variant="secondary" label="🎬 Run welcome again" @click="$emit('reset-onboarding')" />
         </div>
       </div>

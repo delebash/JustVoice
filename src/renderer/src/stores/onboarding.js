@@ -17,7 +17,6 @@ const VALID = new Set([
   "game",
   "podcast",
   "dictation",
-  "accessibility",
   "multiple",
   "unset",
 ]);

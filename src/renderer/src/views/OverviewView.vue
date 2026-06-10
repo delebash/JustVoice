@@ -180,7 +180,7 @@ const nextStep = computed(() => {
     };
   }
 
-  // Dictation / accessibility: engine + voice is all the user needs.
+  // Dictation: engine + voice is all the user needs.
   if (useCase === "dictation") {
     return captures.value?.length
       ? null
@@ -191,10 +191,6 @@ const nextStep = computed(() => {
           cta: { label: "Open Captures", href: "#captures" },
         };
   }
-  if (useCase === "accessibility") {
-    return null;
-  }
-
   // Script-producing use cases need a project, then a scene, then blocks.
   if (!projects.value.length) {
     return {
@@ -245,7 +241,7 @@ onMounted(refresh);
     <section class="overview-view__intro">
       <h1 class="overview-view__hero">JustVoice</h1>
       <p class="overview-view__tagline">
-        A voice production studio for audiobook producers, game developers, podcasters, dictation, and accessibility.
+        A voice production studio for audiobook producers, game developers, podcasters, and dictation.
       </p>
 
       <!-- State-aware Next-step card. Drives first-run + bootstrap arc. -->
