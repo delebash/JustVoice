@@ -19,12 +19,18 @@ const props = defineProps({
   autocomplete:{ type: String, default: undefined },
   autofocus:  { type: Boolean, default: false },
   size:       { type: String, default: "md" },   // sm | md
+  // Content-typed width caps (plan Q6 / Slice 1). One of:
+  //   token / id / name / url / path / prose / edit / full
+  // Default is empty (no cap; behaves as before). Passing a width helps
+  // form rows visually communicate what kind of content the field holds.
+  width:      { type: String, default: "" },
 });
 const emit = defineEmits(["update:modelValue", "blur", "focus", "keydown"]);
 
 const classes = computed(() => [
   "jv-input",
   props.size === "sm" && "jv-input--sm",
+  props.width && `jv-w-${props.width}`,
   { "is-invalid": props.invalid },
 ]);
 </script>

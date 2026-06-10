@@ -32,6 +32,12 @@ const onboarding = useOnboarding();
 const open = ref(true);
 const submitting = ref(false);
 
+// Per plan Q4 / Slice 1: the "A bit of everything" card is removed from
+// the primary 5-card grid (it was equal-rank with real choices, so most
+// users picked it as the "safe" option and landed in the worst neutral-
+// terminology mode). Users who genuinely want neutral mode use the
+// tertiary "Use neutral terminology" link in the footer, which sets
+// primary = "multiple" through the same store path.
 const OPTIONS = [
   {
     id: "audiobook",
@@ -62,12 +68,6 @@ const OPTIONS = [
     emoji: "🔊",
     title: "Accessibility",
     blurb: "Reader-friendly playback, screen-reader-aware controls.",
-  },
-  {
-    id: "multiple",
-    emoji: "🤷",
-    title: "A bit of everything",
-    blurb: "Use the full surface — neutral terminology, no defaults nudged.",
   },
 ];
 
@@ -150,7 +150,14 @@ function onOutside(e) {
         </div>
 
         <footer class="app-modal-footer welcome-footer">
-          <span class="welcome-footnote">Skip and JustVoice keeps neutral terminology.</span>
+          <button
+            type="button"
+            class="welcome-neutral-link"
+            :disabled="submitting"
+            @click="pick('multiple')"
+          >
+            Use neutral terminology
+          </button>
           <JvButton
             label="Choose later"
             variant="ghost"
@@ -192,13 +199,35 @@ function onOutside(e) {
 .welcome-body { padding: 22px 24px; }
 
 .welcome-grid {
+  /* Five cards — 5-col on wide, 3-col on medium, 2-col on narrow.
+     Dropped from 6 cards (Q4 audit): "A bit of everything" became a
+     footer link. */
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
 }
-@media (max-width: 720px) {
+@media (max-width: 980px) {
+  .welcome-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 640px) {
   .welcome-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+.welcome-neutral-link {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  color: var(--ink-3);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  cursor: pointer;
+  margin-right: auto;
+}
+.welcome-neutral-link:hover { color: var(--ink); }
+.welcome-neutral-link:disabled { opacity: 0.5; cursor: default; }
 
 .welcome-card {
   appearance: none;

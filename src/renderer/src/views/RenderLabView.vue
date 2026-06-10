@@ -179,7 +179,7 @@ onMounted(loadVoices);
         </label>
         <label class="renderlab__field">
           <span>Sample sentence</span>
-          <textarea v-model="sampleText" class="jv-input renderlab__text" rows="3" />
+          <textarea v-model="sampleText" class="jv-input jv-input--full renderlab__text" rows="3" />
         </label>
       </div>
     </section>

@@ -368,7 +368,7 @@ onMounted(loadAll);
           <label class="personas__field personas__field--wide">
             <span>Bio (character context)</span>
             <textarea
-              class="jv-input personas__textarea"
+              class="jv-input jv-input--full personas__textarea"
               v-model="draft.bio"
               placeholder="A retired racetrack tout with three teeth and four lies for every truth. Speaks in fragments. Calls everyone &quot;boss.&quot; Suspicious of cops. Comfortable with silence…"
               @input="markDirty"
@@ -383,7 +383,7 @@ onMounted(loadAll);
           <label class="personas__field personas__field--wide">
             <span>Personality (TTS delivery instruction)</span>
             <textarea
-              class="jv-input personas__textarea"
+              class="jv-input jv-input--full personas__textarea"
               v-model="draft.personality"
               placeholder="Clipped, world-weary noir delivery. Dry wit. Boston accent in stressful moments. Never overshares."
               @input="markDirty"

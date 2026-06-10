@@ -141,6 +141,77 @@ function fmtDur(sec) {
 
 const runningTasks = computed(() => tasks.running || []);
 
+// State-aware Next-step card — plan Q4 / Slice 1. Drives the user from
+// whatever state they're in to the next concrete action. Order of
+// precedence reflects priority: nothing else matters until an engine is
+// loaded, no work can happen without a project, no render preview until
+// blocks exist, etc. Returns null when the user is past the bootstrap
+// arc and there's no specific "do this next" prompt.
+const nextStep = computed(() => {
+  const useCase = onboarding.primaryUseCase || "unset";
+
+  if (!loadedEngine.value) {
+    return {
+      eyebrow: "Step 1",
+      title: "Load your first engine",
+      body: "JustVoice ships with 7 engines. Kokoro runs on CPU in realtime — a good first install.",
+      cta: { label: "Open Engines", href: "#engines" },
+    };
+  }
+
+  // Dictation / accessibility: engine + voice is all the user needs.
+  if (useCase === "dictation") {
+    return captures.value?.length
+      ? null
+      : {
+          eyebrow: "Next step",
+          title: "Bind your dictation hotkey",
+          body: "Open Captures, set a global hotkey, then speak into any text field.",
+          cta: { label: "Open Captures", href: "#captures" },
+        };
+  }
+  if (useCase === "accessibility") {
+    return null;
+  }
+
+  // Script-producing use cases need a project, then a scene, then blocks.
+  if (!projects.value.length) {
+    return {
+      eyebrow: "Step 2",
+      title: `Create your first ${copy.value.book.singular.toLowerCase()}`,
+      body: useCase === "audiobook"
+        ? "Import from JustWrite, paste a manuscript chapter, or start blank. Studio walks you from cast → script → render."
+        : `Open ${copy.value.book.plural} → Create new to start.`,
+      cta: { label: `Open ${copy.value.book.plural}`, href: "#books" },
+    };
+  }
+
+  // Has project, no cast — Studio Cast tab.
+  if (!personas.value.length) {
+    return {
+      eyebrow: "Step 3",
+      title: `Add ${copy.value.cast.plural.toLowerCase()} to your ${copy.value.book.singular.toLowerCase()}`,
+      body: `Each ${copy.value.cast.singular.toLowerCase()} pairs a name with a voice. Studio's Cast tab handles the assignment.`,
+      cta: { label: "Open Studio", href: "#studio" },
+    };
+  }
+
+  // Active work in progress — nothing to suggest.
+  if (runningTasks.value.length) return null;
+
+  // Steady-state: prompt to keep producing.
+  return {
+    eyebrow: "Pick up",
+    title: recentGenerations.value.length
+      ? "Pick up where you left off"
+      : "Open Studio to start producing",
+    body: recentGenerations.value.length
+      ? "Your last renders are listed below. Studio's Script tab is where multi-line work lives."
+      : "Studio walks you from cast → script → render. Generate is the single-line workbench for one-offs.",
+    cta: { label: "Open Studio", href: "#studio" },
+  };
+});
+
 onMounted(refresh);
 </script>
 
@@ -155,7 +226,20 @@ onMounted(refresh);
       <p class="overview-view__tagline">
         A voice production studio for audiobook producers, game developers, podcasters, dictation, and accessibility.
       </p>
-      <div class="overview-view__quick-actions">
+
+      <!-- State-aware Next-step card. Drives first-run + bootstrap arc. -->
+      <a
+        v-if="nextStep"
+        class="overview-view__next-step"
+        :href="nextStep.cta.href"
+      >
+        <span class="overview-view__next-step-eyebrow">{{ nextStep.eyebrow }}</span>
+        <strong class="overview-view__next-step-title">{{ nextStep.title }}</strong>
+        <p class="overview-view__next-step-body">{{ nextStep.body }}</p>
+        <span class="overview-view__next-step-cta">{{ nextStep.cta.label }} →</span>
+      </a>
+
+      <div class="overview-view__quick-actions" v-if="!recentGenerations.length">
         <a
           v-for="q in QUICK_ACTIONS"
           :key="q.id"
@@ -355,6 +439,57 @@ onMounted(refresh);
   text-align: left;        /* cards stay left-aligned even though the band is centered */
   max-width: 1080px;
   margin: 0 auto;
+}
+
+/* State-aware Next-step card — sits above quick-actions when there's
+   a concrete "do this next" prompt. Uses brand accent to read as the
+   primary CTA on the page. */
+.overview-view__next-step {
+  display: block;
+  max-width: 560px;
+  margin: 0 auto 18px;
+  padding: 16px 20px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  text-decoration: none;
+  text-align: left;
+  box-shadow: var(--shadow-2);
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.overview-view__next-step:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-3);
+  text-decoration: none;
+}
+.overview-view__next-step-eyebrow {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  font-weight: 600;
+}
+.overview-view__next-step-title {
+  display: block;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 4px 0 6px;
+  color: #fff;
+}
+.overview-view__next-step-body {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: 0.92;
+}
+.overview-view__next-step-cta {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
 }
 .overview-view__quick-action {
   display: flex;

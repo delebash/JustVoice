@@ -221,10 +221,12 @@ async def _generate_via_manager(
     # Resolve persona.default_delivery via the JSON PersonaStore and pass
     # it as `tier2_overlay`.
     persona_overlay = None
+    persona_personality: str | None = None
     if req.persona_id:
         persona = st.personas.get(req.persona_id)
         if persona is not None:
             persona_overlay = persona.default_delivery or {}
+            persona_personality = (persona.personality or "").strip() or None
 
     from ..database.session import SessionLocal
     db = SessionLocal()
@@ -235,6 +237,13 @@ async def _generate_via_manager(
             db,
             tier2_overlay=persona_overlay,
         )
+        # Persona.personality → delivery.instruct: a TTS delivery instruction,
+        # not an LLM rewrite. Engines that declare supports_instruct_field
+        # (Qwen3-TTS today) consume delivery["instruct"] as the engine's
+        # style-prompt at synth time; engines that don't, ignore it. An
+        # explicit instruct in the request/preset wins over the persona's.
+        if persona_personality and not delivery.get("instruct"):
+            delivery["instruct"] = persona_personality
         # Effects chain (Slice 6) — cascaded persona → preset.
         effects = _resolve_effects_chain(req, db)
     finally:
@@ -308,10 +317,12 @@ def _generate_via_inprocess(engine_id: str, req: GenerateRequest) -> Response:
     max_chunk_chars, crossfade_ms = _chunking_params(st.settings.get())
     request_delivery = req.delivery.model_dump(exclude_none=True) if req.delivery else {}
     persona_overlay = None
+    persona_personality: str | None = None
     if req.persona_id:
         persona = st.personas.get(req.persona_id)
         if persona is not None:
             persona_overlay = persona.default_delivery or {}
+            persona_personality = (persona.personality or "").strip() or None
 
     from ..database.session import SessionLocal
     db = SessionLocal()
@@ -322,6 +333,8 @@ def _generate_via_inprocess(engine_id: str, req: GenerateRequest) -> Response:
             db,
             tier2_overlay=persona_overlay,
         )
+        if persona_personality and not delivery.get("instruct"):
+            delivery["instruct"] = persona_personality
         effects = _resolve_effects_chain(req, db)
     finally:
         db.close()

@@ -38,7 +38,7 @@ watch(() => props.modelValue, () => nextTick(resize));
 <template>
   <textarea
     ref="textareaEl"
-    class="jv-textarea"
+    class="jv-textarea jv-textarea--full"
     :class="{ 'is-invalid': invalid }"
     :value="modelValue"
     :placeholder="placeholder"

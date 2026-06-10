@@ -33,6 +33,7 @@ class RenderPresetResponse(BaseModel):
     project_id: Optional[str]
     voice_id: str
     delivery: dict
+    effects_chain: list[dict]
     master: Optional[MasterTarget]
     lexicons: list[str]
     seed: Optional[int]
@@ -43,12 +44,20 @@ class RenderPresetResponse(BaseModel):
 
     @classmethod
     def from_orm(cls, row: RenderPreset) -> "RenderPresetResponse":
+        chain_raw = row.effects_chain
+        try:
+            chain = json.loads(chain_raw) if chain_raw else []
+            if not isinstance(chain, list):
+                chain = []
+        except (json.JSONDecodeError, TypeError):
+            chain = []
         return cls(
             id=row.id,
             name=row.name,
             project_id=row.project_id,
             voice_id=row.voice_id,
             delivery=json.loads(row.delivery_json or "{}"),
+            effects_chain=chain,
             master=row.master,  # type: ignore
             lexicons=json.loads(row.lexicons_json or "[]"),
             seed=row.seed,
@@ -67,6 +76,7 @@ class CreateRenderPresetRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     voice_id: str
     delivery: dict = Field(default_factory=dict)
+    effects_chain: list[dict] = Field(default_factory=list)
     master: Optional[MasterTarget] = None
     lexicons: list[str] = []
     seed: Optional[int] = None
@@ -79,6 +89,7 @@ class UpdateRenderPresetRequest(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=120)
     voice_id: Optional[str] = None
     delivery: Optional[dict] = None
+    effects_chain: Optional[list[dict]] = None
     master: Optional[MasterTarget] = None
     lexicons: Optional[list[str]] = None
     seed: Optional[int] = None
@@ -117,6 +128,7 @@ async def create_preset(
         project_id=body.project_id,
         voice_id=body.voice_id,
         delivery_json=json.dumps(body.delivery),
+        effects_chain=json.dumps(body.effects_chain) if body.effects_chain else None,
         master=body.master,
         lexicons_json=json.dumps(body.lexicons),
         seed=body.seed,
@@ -142,6 +154,8 @@ async def update_preset(
         preset.voice_id = body.voice_id
     if body.delivery is not None:
         preset.delivery_json = json.dumps(body.delivery)
+    if body.effects_chain is not None:
+        preset.effects_chain = json.dumps(body.effects_chain) if body.effects_chain else None
     if body.master is not None:
         preset.master = body.master
     if body.lexicons is not None:

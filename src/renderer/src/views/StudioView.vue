@@ -16,12 +16,14 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
+import { useRenderTasks } from "../stores/renderTasks.js";
 import { useCopy } from "../services/copy.js";
 import { pushToast } from "../services/toastBridge.js";
 import JvButton from "../components/jv/JvButton.vue";
 import VoiceParamsModal from "../components/VoiceParamsModal.vue";
 
 const api = useApi();
+const tasks = useRenderTasks();
 const copy = useCopy();
 
 const projects = ref([]);
@@ -36,6 +38,124 @@ const selectedCharacterId = ref(null);
 const voiceParamsModalOpen = ref(false);
 const tuningVoice = ref(null);  // {voiceId, name, params}
 const smartAssignBusy = ref(false);
+
+// JustWrite-style voice library filter: engine selector + name search.
+// "" = all engines. Defaults to the currently-loaded TTS engine when one
+// is up (set by the engines load below). Persists in localStorage so the
+// user's pick survives reloads.
+const VOICE_ENGINE_KEY = "jv.studio.cast.engineFilter";
+const voiceEngineFilter = ref(
+  (typeof window !== "undefined" && window.localStorage?.getItem(VOICE_ENGINE_KEY)) || "",
+);
+watch(voiceEngineFilter, (v) => {
+  try { window.localStorage?.setItem(VOICE_ENGINE_KEY, v || ""); } catch { /* ignore */ }
+});
+const voiceSearchQuery = ref("");
+
+// Gender overrides — local-only per-voice gender hint that the user
+// click-cycles (engine label → female → male → neutral → engine label).
+// Smart-assign reads from voice.gender; this overlay lets the user fix
+// the hint without editing the engine's manifest. Persists in
+// localStorage so the override survives reloads.
+const GENDER_OVERRIDE_KEY = "jv.studio.voiceGenderOverrides";
+const GENDER_CYCLE = ["female", "male", "neutral", ""];
+const voiceGenderOverrides = ref({});
+try {
+  const raw = typeof window !== "undefined" ? window.localStorage?.getItem(GENDER_OVERRIDE_KEY) : null;
+  if (raw) voiceGenderOverrides.value = JSON.parse(raw);
+} catch { /* ignore */ }
+watch(voiceGenderOverrides, (v) => {
+  try { window.localStorage?.setItem(GENDER_OVERRIDE_KEY, JSON.stringify(v)); } catch { /* ignore */ }
+}, { deep: true });
+
+function displayedGender(voice) {
+  if (Object.prototype.hasOwnProperty.call(voiceGenderOverrides.value, voice.id)) {
+    return voiceGenderOverrides.value[voice.id];
+  }
+  return voice.gender || "";
+}
+function cycleGender(voice) {
+  const current = displayedGender(voice);
+  const idx = GENDER_CYCLE.indexOf(current);
+  const next = GENDER_CYCLE[(idx + 1) % GENDER_CYCLE.length];
+  if (next === (voice.gender || "")) {
+    // Cycled back to the engine's value — drop the override.
+    const copy = { ...voiceGenderOverrides.value };
+    delete copy[voice.id];
+    voiceGenderOverrides.value = copy;
+  } else {
+    voiceGenderOverrides.value = { ...voiceGenderOverrides.value, [voice.id]: next };
+  }
+}
+
+// Per-block right-click Rewrite (plan Q1 / LD3). When the user
+// right-clicks a Script tab row, we open a preview modal where the LLM
+// rewrites that block's text in the persona's voice. User accepts →
+// row.text replaces; rejects → original stays.
+const rewriteModalOpen = ref(false);
+const rewriteRowIndex = ref(null);
+const rewriteOriginal = ref("");
+const rewritePreview = ref("");
+const rewriteBusy = ref(false);
+const rewriteError = ref("");
+
+function rewriteRow(idx) {
+  if (!analyzeRows.value[idx]) return;
+  const row = analyzeRows.value[idx];
+  // Only dialogue/character rows have a persona to rewrite against.
+  if (row.kind !== "dialogue") {
+    pushToast({ message: "Rewrite only applies to dialogue rows.", kind: "info" });
+    return;
+  }
+  if (!row.speaker || row.speaker === "narrator" || row.speaker === "unknown") {
+    pushToast({ message: "Assign a persona to this row first.", kind: "info" });
+    return;
+  }
+  rewriteRowIndex.value = idx;
+  rewriteOriginal.value = row.text;
+  rewritePreview.value = "";
+  rewriteError.value = "";
+  rewriteModalOpen.value = true;
+  runRewrite();
+}
+
+async function runRewrite() {
+  const idx = rewriteRowIndex.value;
+  if (idx == null || !analyzeRows.value[idx]) return;
+  const row = analyzeRows.value[idx];
+  const personaId = row.speaker;
+  rewriteBusy.value = true;
+  try {
+    const r = await api.request(`/v1/personas/${personaId}/rewrite`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: row.text }),
+    });
+    rewritePreview.value = r?.text || r?.rewritten || "";
+    if (!rewritePreview.value) {
+      rewriteError.value = "LLM returned an empty rewrite.";
+    }
+  } catch (e) {
+    rewriteError.value = e?.message || String(e);
+  } finally {
+    rewriteBusy.value = false;
+  }
+}
+
+function acceptRewrite() {
+  const idx = rewriteRowIndex.value;
+  if (idx == null || !analyzeRows.value[idx] || !rewritePreview.value) {
+    rewriteModalOpen.value = false;
+    return;
+  }
+  analyzeRows.value[idx] = {
+    ...analyzeRows.value[idx],
+    text: rewritePreview.value,
+    rewritten: true,
+  };
+  rewriteModalOpen.value = false;
+  pushToast({ message: "Block rewritten. Apply to save.", kind: "success" });
+}
 
 // Script tab state (Phase 4 / Slice 2)
 const scenes = ref([]);
@@ -55,10 +175,20 @@ const renderBusyScene = ref(null);
 const suggestBusyScene = ref(null);
 const sceneBlockCounts = ref({});  // {sceneId: count of blocks}
 
-// Adapt the tab labels to the project's use case via useCopy.
+// Per-scene task lookup so the render row can show a progress strip
+// driven by the renderTasks store.
+function taskForScene(sceneId) {
+  return tasks.running.find(
+    (t) => t.feature === "render-scene" && t.meta?.sceneId === sceneId,
+  ) || null;
+}
+
+// Adapt the tab labels to the project's use case via useCopy. The Cast
+// tab uses the cast.plural; the Script tab takes the chapter terminology
+// (Chapter/Quest/Episode); Render is universal (a render is a render).
 const TAB_LABELS = computed(() => ({
-  cast:   copy.value.cast.singular === "NPC" ? "NPCs" : (copy.value.cast.plural || "Cast"),
-  script: "Script",
+  cast:   copy.value.cast.plural || "Cast",
+  script: copy.value.chapter.singular || "Script",
   render: "Render",
 }));
 
@@ -92,6 +222,24 @@ const voiceLibraryByEngine = computed(() => {
     (out[k] = out[k] || []).push(v);
   }
   return out;
+});
+
+// Engine options for the Cast tab voice-list filter dropdown. Each entry
+// shows the engine label + voice count to make picking easier.
+const voiceEngineOptions = computed(() => {
+  const opts = Object.entries(voiceLibraryByEngine.value)
+    .map(([id, group]) => ({ value: id, label: `${id} (${group.length})` }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  return [{ value: "", label: `All engines (${voices.value.length})` }, ...opts];
+});
+
+// Filtered + flattened voice list driving the Cast tab sidebar. Honors
+// engine filter + name search. Empty list → "no voices match" placeholder.
+const filteredVoices = computed(() => {
+  const q = voiceSearchQuery.value.trim().toLowerCase();
+  return voices.value
+    .filter((v) => !voiceEngineFilter.value || v.engine === voiceEngineFilter.value)
+    .filter((v) => !q || (v.name || "").toLowerCase().includes(q) || (v.id || "").toLowerCase().includes(q));
 });
 
 async function loadAll() {
@@ -218,19 +366,44 @@ async function renderScene(scene) {
     return;
   }
   renderBusyScene.value = scene.id;
+
+  // Standing rule (memory feedback_long_running_process_rule): every
+  // long-running operation registers a task with cancel + retry handles
+  // so the global TaskStrip + StatusPanel can surface progress.
+  const abortController = new AbortController();
+  const task = tasks.start({
+    kind: "chapter",
+    feature: "render-scene",
+    label: `${scene.title || copy.value.chapter.singular} → ${copy.value.chapter.singular.toLowerCase()} render`,
+    onCancel: () => {
+      abortController.abort();
+      tasks.cancel(task.id);
+    },
+    onRetry: () => renderScene(scene),
+    meta: { sceneId: scene.id, projectId: selectedProjectId.value },
+  });
+
   try {
     const body = {
       scene_id: scene.id,
       preset_id: scenePresetSelections.value[scene.id] || null,
     };
-    await api.request("/v1/render_chapter", {
+    const audio = await api.request("/v1/render_chapter", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: abortController.signal,
     });
+    tasks.finish(task.id, { result: audio });
     pushToast({ message: `${scene.title || "Scene"} render complete.`, kind: "success" });
   } catch (e) {
-    pushToast({ message: `Render failed: ${e?.message || e}`, kind: "error", duration: 7000 });
+    if (abortController.signal.aborted) {
+      // Already marked cancelled in onCancel handler.
+      pushToast({ message: `${scene.title || "Scene"} render cancelled.`, kind: "info" });
+    } else {
+      tasks.fail(task.id, e?.message || String(e));
+      pushToast({ message: `Render failed: ${e?.message || e}`, kind: "error", duration: 7000 });
+    }
   } finally {
     renderBusyScene.value = null;
   }
@@ -626,26 +799,59 @@ onMounted(loadAll);
           </article>
         </div>
 
-        <!-- Voice library sidebar (becomes a panel below the cast on narrow viewports). -->
+        <!-- Voice library sidebar — JustWrite pattern: engine selector
+             at top filters the visible voice list. Avoids the scroll-fest
+             of every engine's voices stacked simultaneously. -->
         <aside class="studio__voice-library">
           <h4 class="studio__voice-library-h">Voice library</h4>
           <div v-if="!voices.length" class="jv-muted">No voices yet — load an engine in Engines tab.</div>
           <template v-else>
-            <div v-for="(group, engineId) in voiceLibraryByEngine" :key="engineId" class="studio__voice-group">
-              <div class="studio__voice-group-h">{{ engineId }}</div>
+            <div class="studio__voice-filter">
+              <select
+                v-model="voiceEngineFilter"
+                class="jv-input jv-input--sm jv-w-id"
+                title="Filter by engine"
+              >
+                <option v-for="opt in voiceEngineOptions" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </option>
+              </select>
+              <input
+                v-model="voiceSearchQuery"
+                type="search"
+                class="jv-input jv-input--sm jv-w-id"
+                placeholder="Search voices…"
+              />
+            </div>
+            <div v-if="!filteredVoices.length" class="jv-muted studio__voice-empty">
+              No voices match the filter.
+            </div>
+            <div
+              v-for="v in filteredVoices"
+              :key="v.id"
+              class="studio__voice-row"
+              :class="{ 'studio__voice-row--disabled': !selectedCharacter }"
+              :title="selectedCharacter ? `Click name to assign ${v.name} to ${selectedCharacter.name}; click gender chip to override` : 'Pick a character to assign'"
+            >
               <button
-                v-for="v in group"
-                :key="v.id"
                 type="button"
-                class="studio__voice-row"
+                class="studio__voice-row-name-btn"
                 :disabled="!selectedCharacter"
-                :title="selectedCharacter ? `Assign ${v.name} to ${selectedCharacter.name}` : 'Pick a character to assign'"
                 @click="selectedCharacter && assignVoice(selectedCharacter.id, v.id)"
               >
-                <strong>{{ v.name }}</strong>
-                <span v-if="v.gender" class="jv-pill jv-pill--ghost">{{ v.gender }}</span>
-                <span class="jv-muted">{{ v.language || "" }}</span>
+                <strong class="studio__voice-row-name">{{ v.name }}</strong>
               </button>
+              <span class="studio__voice-row-meta">
+                <button
+                  type="button"
+                  class="jv-pill jv-pill--ghost studio__voice-gender"
+                  :title="displayedGender(v) ? `Click to cycle gender hint (currently ${displayedGender(v)})` : 'Click to set gender hint'"
+                  @click.stop="cycleGender(v)"
+                >
+                  {{ displayedGender(v) || "?" }}
+                </button>
+                <span class="jv-muted">{{ v.engine || "" }}</span>
+              </span>
             </div>
           </template>
         </aside>
@@ -688,7 +894,7 @@ onMounted(loadAll);
 
         <textarea
           v-if="!analyzeRows.length"
-          class="jv-input studio__script-text"
+          class="jv-input jv-input--full studio__script-text"
           v-model="sceneText"
           :placeholder="`Paste the ${copy.chapter.singular.toLowerCase()} text here, then click Analyze.`"
         />
@@ -705,14 +911,19 @@ onMounted(loadAll);
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(row, i) in analyzeRows" :key="i">
+            <tr
+              v-for="(row, i) in analyzeRows"
+              :key="i"
+              @contextmenu.prevent="rewriteRow(i)"
+              :title="row.kind === 'dialogue' ? 'Right-click to rewrite this line in character' : ''"
+            >
               <td class="jv-muted">{{ i + 1 }}</td>
               <td><span class="jv-pill jv-pill--ghost">{{ row.kind }}</span></td>
               <td>
                 <select
                   v-if="row.kind === 'dialogue'"
                   :value="row.speaker"
-                  class="jv-input jv-input--sm"
+                  class="jv-input jv-input--sm jv-w-id"
                   @change="setRowSpeaker(i, $event.target.value)"
                 >
                   <option
@@ -723,6 +934,7 @@ onMounted(loadAll);
                 </select>
                 <span v-else>{{ speakerLabel(row.speaker) }}</span>
                 <span v-if="editedFlags[i]" class="studio__edited">✎</span>
+                <span v-if="row.rewritten" class="studio__edited" title="LLM-rewritten">✨</span>
               </td>
               <td>
                 <span :class="sourceChipClass(row.source)">{{ row.source }}</span>
@@ -769,47 +981,94 @@ onMounted(loadAll);
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(s, i) in scenes" :key="s.id">
-              <td class="studio__render-check">
-                <input
-                  type="checkbox"
-                  :checked="!!sceneSelectedForRender[s.id]"
-                  @change="sceneSelectedForRender = { ...sceneSelectedForRender, [s.id]: $event.target.checked }"
-                />
-              </td>
-              <td class="jv-muted">{{ i + 1 }}</td>
-              <td>
-                <strong>{{ s.title || `${copy.chapter.singular} ${s.position + 1}` }}</strong>
-              </td>
-              <td class="jv-mono">{{ sceneBlockCounts[s.id] || 0 }}</td>
-              <td>
-                <select
-                  :value="scenePresetSelections[s.id] || ''"
-                  class="jv-input jv-input--sm"
-                  @change="scenePresetSelections = { ...scenePresetSelections, [s.id]: $event.target.value }"
-                >
-                  <option v-for="o in presetOptions()" :key="o.value" :value="o.value">{{ o.label }}</option>
-                </select>
-              </td>
-              <td class="studio__render-actions">
-                <JvButton
-                  variant="ghost"
-                  size="sm"
-                  :loading="suggestBusyScene === s.id"
-                  :disabled="suggestBusyScene === s.id"
-                  label="💡 Suggest"
-                  @click="suggestPresetFor(s)"
-                />
-                <JvButton
-                  variant="secondary"
-                  size="sm"
-                  :loading="renderBusyScene === s.id"
-                  :disabled="renderBusyScene !== null"
-                  label="▶ Render"
-                  @click="renderScene(s)"
-                />
-              </td>
-            </tr>
+            <template v-for="(s, i) in scenes" :key="s.id">
+              <tr>
+                <td class="studio__render-check">
+                  <input
+                    type="checkbox"
+                    :checked="!!sceneSelectedForRender[s.id]"
+                    @change="sceneSelectedForRender = { ...sceneSelectedForRender, [s.id]: $event.target.checked }"
+                  />
+                </td>
+                <td class="jv-muted">{{ i + 1 }}</td>
+                <td>
+                  <strong>{{ s.title || `${copy.chapter.singular} ${s.position + 1}` }}</strong>
+                </td>
+                <td class="jv-mono">{{ sceneBlockCounts[s.id] || 0 }}</td>
+                <td>
+                  <select
+                    :value="scenePresetSelections[s.id] || ''"
+                    class="jv-input jv-input--sm jv-w-id"
+                    @change="scenePresetSelections = { ...scenePresetSelections, [s.id]: $event.target.value }"
+                  >
+                    <option v-for="o in presetOptions()" :key="o.value" :value="o.value">{{ o.label }}</option>
+                  </select>
+                </td>
+                <td class="studio__render-actions">
+                  <JvButton
+                    variant="ghost"
+                    size="sm"
+                    :loading="suggestBusyScene === s.id"
+                    :disabled="suggestBusyScene === s.id"
+                    label="💡 Suggest"
+                    @click="suggestPresetFor(s)"
+                  />
+                  <JvButton
+                    variant="secondary"
+                    size="sm"
+                    :loading="renderBusyScene === s.id"
+                    :disabled="renderBusyScene !== null && renderBusyScene !== s.id"
+                    label="▶ Render"
+                    @click="renderScene(s)"
+                  />
+                </td>
+              </tr>
+              <!-- Per-scene progress strip — appears below the row when
+                   a render task is in flight or finished-but-still-visible. -->
+              <tr v-if="taskForScene(s.id)" class="studio__render-progress-row">
+                <td colspan="6" class="studio__render-progress-cell">
+                  <div class="studio__render-progress">
+                    <span
+                      class="jv-pill"
+                      :class="{
+                        'jv-pill--solid': taskForScene(s.id).status === 'running',
+                        'jv-pill--green': taskForScene(s.id).status === 'completed',
+                        'jv-pill--danger': taskForScene(s.id).status === 'failed',
+                        'jv-pill--warn': taskForScene(s.id).status === 'cancelled',
+                      }"
+                    >{{ taskForScene(s.id).status }}</span>
+                    <div class="studio__render-bar">
+                      <div
+                        class="studio__render-bar-fill"
+                        :class="{ 'studio__render-bar-fill--indeterminate': taskForScene(s.id).percent == null && taskForScene(s.id).status === 'running' }"
+                        :style="taskForScene(s.id).percent != null ? { width: (taskForScene(s.id).percent * 100) + '%' } : {}"
+                      />
+                    </div>
+                    <span v-if="taskForScene(s.id).error" class="jv-muted" style="color: var(--danger); font-size: 11.5px;">
+                      {{ taskForScene(s.id).error }}
+                    </span>
+                    <button
+                      v-if="taskForScene(s.id).status === 'running'"
+                      type="button"
+                      class="jv-btn jv-btn--danger-outline jv-btn--sm"
+                      @click="taskForScene(s.id).onCancel?.()"
+                    >Cancel</button>
+                    <button
+                      v-if="taskForScene(s.id).status === 'failed' || taskForScene(s.id).status === 'cancelled'"
+                      type="button"
+                      class="jv-btn jv-btn--secondary jv-btn--sm"
+                      @click="renderScene(s)"
+                    >↻ Retry</button>
+                    <button
+                      v-if="taskForScene(s.id).status !== 'running'"
+                      type="button"
+                      class="jv-btn jv-btn--ghost jv-btn--sm"
+                      @click="tasks.dismiss(taskForScene(s.id).id)"
+                    >✕</button>
+                  </div>
+                </td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </template>
@@ -825,6 +1084,60 @@ onMounted(loadAll);
       @save="onVoiceParamsSaved"
       @cancel="voiceParamsModalOpen = false; tuningVoice = null"
     />
+
+    <!-- Per-block Rewrite preview (right-click on Script tab). -->
+    <div v-if="rewriteModalOpen" class="jv-overlay" @click.self="rewriteModalOpen = false">
+      <div class="jv-modal" style="width: min(720px, calc(100vw - 32px));">
+        <header class="jv-modal__header">
+          <div class="jv-modal__titleblock">
+            <span class="jv-modal__eyebrow">Rewrite in character</span>
+            <h3 class="jv-modal__title">
+              {{ rewriteRowIndex != null && analyzeRows[rewriteRowIndex] ? speakerLabel(analyzeRows[rewriteRowIndex].speaker) : "Block" }}
+            </h3>
+          </div>
+          <button type="button" class="jv-modal__close" @click="rewriteModalOpen = false">✕</button>
+        </header>
+        <div class="jv-modal__body" style="padding: 16px 22px; display: flex; flex-direction: column; gap: 14px;">
+          <div>
+            <div class="jv-form-row__label" style="margin-bottom: 4px">Original</div>
+            <div style="padding: 10px 12px; background: var(--surface-2); border-radius: 6px; font-size: 13px; line-height: 1.5;">
+              {{ rewriteOriginal }}
+            </div>
+          </div>
+          <div>
+            <div class="jv-form-row__label" style="margin-bottom: 4px">Rewritten</div>
+            <div v-if="rewriteBusy" class="jv-muted" style="padding: 10px 12px;">Generating rewrite…</div>
+            <div v-else-if="rewriteError" class="jv-muted" style="padding: 10px 12px; color: var(--danger);">
+              {{ rewriteError }}
+            </div>
+            <textarea
+              v-else
+              v-model="rewritePreview"
+              class="jv-textarea jv-textarea--full"
+              style="min-height: 100px;"
+              placeholder="Rewrite will appear here…"
+            />
+          </div>
+        </div>
+        <footer class="jv-modal__footer">
+          <JvButton
+            variant="secondary"
+            size="sm"
+            :disabled="rewriteBusy"
+            label="↻ Try again"
+            @click="runRewrite"
+          />
+          <span class="jv-spacer" />
+          <JvButton variant="secondary" label="Discard" @click="rewriteModalOpen = false" />
+          <JvButton
+            variant="primary"
+            :disabled="rewriteBusy || !rewritePreview.trim()"
+            label="Accept"
+            @click="acceptRewrite"
+          />
+        </footer>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -950,7 +1263,6 @@ onMounted(loadAll);
   font-family: var(--font-mono);
 }
 .studio__voice-row {
-  appearance: none;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -959,18 +1271,64 @@ onMounted(loadAll);
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: 4px;
-  cursor: pointer;
-  text-align: left;
   margin-bottom: 4px;
-  font: inherit;
   font-size: 12px;
   color: var(--ink);
 }
-.studio__voice-row:hover:not(:disabled) {
-  background: var(--accent-soft);
-  border-color: var(--accent);
+.studio__voice-row--disabled { opacity: 0.55; }
+.studio__voice-row-name-btn {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
 }
-.studio__voice-row:disabled { opacity: 0.55; cursor: not-allowed; }
+.studio__voice-row-name-btn:hover:not(:disabled) {
+  color: var(--accent);
+}
+.studio__voice-row-name-btn:disabled { cursor: not-allowed; }
+.studio__voice-gender {
+  appearance: none;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-2);
+  cursor: pointer;
+  padding: 1px 8px;
+  font-size: 10.5px;
+  border-radius: var(--r-pill);
+}
+.studio__voice-gender:hover { background: var(--surface-2); }
+.studio__voice-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.studio__voice-row-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 10.5px;
+}
+.studio__voice-filter {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.studio__voice-filter .jv-input { flex: 1; min-width: 0; }
+.studio__voice-empty {
+  font-size: 12px;
+  padding: 8px 0;
+  text-align: center;
+}
 
 /* ── Script tab ───────────────────────────────────────────────────── */
 .studio__script-toolbar {
@@ -1044,5 +1402,38 @@ onMounted(loadAll);
   display: flex;
   gap: 6px;
   white-space: nowrap;
+}
+
+/* Per-scene progress strip under the row when a render task is in flight. */
+.studio__render-progress-row { background: var(--surface-2); }
+.studio__render-progress-cell { padding: 6px 12px 8px; }
+.studio__render-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.studio__render-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--surface);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+.studio__render-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.18s ease-out;
+}
+.studio__render-bar-fill--indeterminate {
+  width: 36%;
+  position: absolute;
+  left: 0;
+  animation: studio-progress-indeterminate 1.4s ease-in-out infinite;
+}
+@keyframes studio-progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(280%); }
 }
 </style>

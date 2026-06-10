@@ -238,7 +238,7 @@ onMounted(() => {
       </div>
       <textarea
         v-model="text"
-        class="jv-input splab__text"
+        class="jv-input jv-input--full splab__text"
         placeholder="Paste the scene text here (or load a sample)…"
       />
     </section>

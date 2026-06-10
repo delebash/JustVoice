@@ -29,6 +29,7 @@ import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvTag from "../components/jv/JvTag.vue";
+import AddProviderModal from "../components/AddProviderModal.vue";
 
 const api = useApi();
 const tasks = useRenderTasks();
@@ -56,6 +57,26 @@ const selectedVariants = reactive({});  // {engineId: variantId}
 // Falls back to "tts" so existing manifests show by default.
 const KIND_LABELS = { tts: "TTS", llm: "LLM", embedding: "Embeddings" };
 const activeKind = ref("tts");
+
+// Add-provider modal state. The modal handles BOTH llm + tts registrations
+// (its kind prop drives the form shape). Opening from the tab keeps the
+// current activeKind so the user sees the right defaults.
+const addProviderOpen = ref(false);
+const addProviderKind = ref("llm");
+function openAddProvider() {
+  // Only LLM + TTS are user-addable for now. Embedding adapters are
+  // backend-only until a use case appears.
+  addProviderKind.value = activeKind.value === "embedding" ? "llm" : activeKind.value;
+  addProviderOpen.value = true;
+}
+async function onProviderSaved() {
+  // Refresh the engine catalog so the new row appears, then nudge the
+  // active tab to the kind the user just added.
+  await refresh();
+  if (addProviderKind.value && availableKinds.value.includes(addProviderKind.value)) {
+    activeKind.value = addProviderKind.value;
+  }
+}
 
 const RUNTIME_LABELS = {
   cuda: "CUDA",
@@ -453,16 +474,26 @@ onMounted(() => { refresh(); loadSystem(); });
       <a href="#settings">Settings → Connection</a> for the server URL.
     </p>
 
-    <!-- Tabs by kind. Hidden when only one kind has any engines. -->
-    <div v-if="availableKinds.length > 1" class="engines-view__tabs">
-      <button
-        v-for="k in availableKinds"
-        :key="k"
-        type="button"
-        class="engines-view__tab"
-        :class="{ 'engines-view__tab--active': activeKind === k }"
-        @click="activeKind = k"
-      >{{ KIND_LABELS[k] }} ({{ enginesByKind[k].length }})</button>
+    <!-- Tabs by kind + Add Provider trigger. -->
+    <div class="engines-view__tabs">
+      <template v-if="availableKinds.length > 1">
+        <button
+          v-for="k in availableKinds"
+          :key="k"
+          type="button"
+          class="engines-view__tab"
+          :class="{ 'engines-view__tab--active': activeKind === k }"
+          @click="activeKind = k"
+        >{{ KIND_LABELS[k] }} ({{ enginesByKind[k].length }})</button>
+      </template>
+      <span class="engines-view__tabs-spacer" />
+      <JvButton
+        v-if="activeKind !== 'embedding'"
+        variant="primary"
+        size="sm"
+        :label="`+ Add ${KIND_LABELS[activeKind] || activeKind} provider`"
+        @click="openAddProvider"
+      />
     </div>
 
     <!-- Per-engine row: dropdown + selection-driven info + ONE contextual button -->
@@ -576,6 +607,13 @@ onMounted(() => { refresh(); loadSystem(); });
     <p class="engines-view__foot jv-muted">
       <strong>One engine per kind</strong> — loading a new TTS engine unloads the prior TTS; LLM and embedding engines stay loaded independently. Shared engines (Kokoro, Chatterbox, LuxTTS, Qwen3, TADA) build their venv transparently on first load. Venv-isolated engines (Dia, MOSS) need a one-time Install before Load.
     </p>
+
+    <AddProviderModal
+      :open="addProviderOpen"
+      :kind="addProviderKind"
+      @close="addProviderOpen = false"
+      @saved="onProviderSaved"
+    />
   </section>
 </template>
 
@@ -607,10 +645,12 @@ onMounted(() => { refresh(); loadSystem(); });
 /* ── Kind tabs ────────────────────────────────────────────────────── */
 .engines-view__tabs {
   display: flex;
+  align-items: center;
   gap: 4px;
   margin: 6px 0 14px;
   border-bottom: 1px solid var(--border-soft);
 }
+.engines-view__tabs-spacer { flex: 1; }
 .engines-view__tab {
   appearance: none;
   background: transparent;

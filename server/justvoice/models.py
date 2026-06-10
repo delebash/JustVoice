@@ -845,7 +845,14 @@ class BetweenLines(BaseModel):
 
 
 class RenderChapterRequest(BaseModel):
-    lines: list[ChapterLine]
+    # Direct mode: pass `lines[]` literally (the legacy path — JustWrite
+    # adapter, single-chapter renders from CLI, etc.).
+    # Scene mode: pass `scene_id` (+ optional `preset_id`); the server
+    # resolves blocks → personas → lines internally. `lines` may be omitted
+    # in scene mode.
+    lines: list[ChapterLine] = []
+    scene_id: str | None = None
+    preset_id: str | None = None
     between_lines: BetweenLines = BetweenLines()
     master: Literal["acx", "inaudio", "podcast", "youtube", "none"] | None = None
     title: str | None = None

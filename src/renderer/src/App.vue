@@ -10,6 +10,7 @@ import TaskStatusPanel from "./components/TaskStatusPanel.vue";
 import AppDialog from "./components/AppDialog.vue";
 import AudioKeepAlive from "./components/AudioKeepAlive.vue";
 import WelcomeOnboarding from "./components/WelcomeOnboarding.vue";
+import QuickSetup from "./components/QuickSetup.vue";
 import JvHelpDrawer from "./components/JvHelpDrawer.vue";
 import HelpTrigger from "./components/HelpTrigger.vue";
 import GlobalAudioPlayer from "./components/GlobalAudioPlayer.vue";
@@ -35,38 +36,74 @@ import SettingsView from "./views/SettingsView.vue";
 import CapturesView from "./views/CapturesView.vue";
 import StoriesView from "./views/StoriesView.vue";
 import EffectsView from "./views/EffectsView.vue";
+import RenderPresetsView from "./views/RenderPresetsView.vue";
 import AudioChannelsView from "./views/AudioChannelsView.vue";
 import WebhooksView from "./views/WebhooksView.vue";
 
 // Per-view `visibleFor` declares which onboarding primary-use-case values
 // surface this tab in the sidebar. The full set is:
 //   audiobook · game · podcast · dictation · accessibility · multiple · unset
-// Omit `visibleFor` to mean "always visible" (universal tabs: Overview,
+// Omit `visibleFor` to mean "always visible" (universal tabs: Home,
 // Generate, Voices, Personas, Engines, Settings).
+//
+// `lane` groups tabs in the sidebar (plan Q4 architecture):
+//   workflow — Do the work. Always-on for the current use case.
+//   library  — Manage assets (voices, characters, etc.).
+//   tools    — Diagnostics, comparison, training labs.
+//   advanced — Cache, channels, webhooks — collapsed by default.
+// Settings is its own thing — pinned at the very bottom of the sidebar
+// outside the Advanced collapse.
 const ALL_USE_CASES = ["audiobook", "game", "podcast", "dictation", "accessibility", "multiple", "unset"];
 const VIEWS = [
-  { id: "overview",  label: "Overview",  icon: "🏠", lede: "", component: OverviewView },
-  { id: "generate",  label: "Generate",  icon: "📝", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it. Type / for paralinguistic tags.", component: GenerateView },
-  { id: "books",     label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Imports from JustWrite via POST /v1/projects/import?source=justwrite.", component: BooksView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
-  { id: "studio",    label: "Studio",    icon: "🎬", lede: "Cast → Script → Render production environment. Three-tab flow for multi-character work. Cast assigns voices to characters; Script runs LLM speaker attribution (Phase 3 backend); Render batches the whole project.", component: StudioView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
-  { id: "stories",   label: "Stories",   icon: "🎬", lede: "Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.", component: StoriesView, visibleFor: ["game", "podcast", "multiple", "unset"] },
-  { id: "chapter",   label: "Chapter",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved. Pinned floating generate bar at bottom.", component: ChapterView, visibleFor: ["audiobook", "podcast", "multiple", "unset"] },
-  { id: "voices",    label: "Voices",    icon: "🎙️", lede: "Voice library — cloned, preset (Kokoro 54 + Qwen 9), designed (text-prompt → voice), blended. Per-voice channel routing.", component: VoicesView },
-  { id: "personas",  label: "Personas",  icon: "🎭", lede: "Characters. Each persona has a name, bio, voice, personality (TTS delivery instruction), default delivery, effects, lexicon override. Cross-project — one Mara across many books or quests. Filter by usage in the library list.", component: PersonasView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
-  { id: "lexicons",  label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Force \"Beauchamp\" → \"BEE-chum\", domain words → consistent phoneme-level pronunciation across a whole book. Per-character override.", component: LexiconsView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
-  { id: "captures",  label: "Captures",  icon: "🎚️", lede: "Dictation pill + global hotkey. Speak into any text field. Also captures audio for cloning sample collection.", component: CapturesView, visibleFor: ["dictation", "accessibility", "multiple", "unset"] },
-  { id: "effects",   label: "Effects",   icon: "🎛️", lede: "Pedalboard-backed effects chain. Apply non-destructively — creates a new generation version that preserves the original. 8 types · 4 built-in presets + custom.", component: EffectsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "engines",   label: "Engines",   icon: "🧠", lede: "Installed engine catalog. Install / load / unload models. Per-engine venv isolation (JustVoice advantage — install Chatterbox without breaking Kokoro).", component: EnginesView },
-  { id: "train",     label: "Train",     icon: "🏋️", lede: "PEFT/LoRA-based fine-tuning. QC pipeline checks SNR / clipping / silence ratio per sample before accepting it.", component: TrainView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
-  { id: "compare",   label: "Compare",   icon: "⚖️", lede: "A/B audio comparison. Side-by-side waveforms, peak/RMS/duration diff, sample-level RMSE, verdict. Bulk compare across takes for QC pass.", component: CompareView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "speakerlab",label: "Speaker Lab",icon: "🔬", lede: "Advanced attribution tuning workbench. Up to 4 columns compare tier + propagation + floor configurations side-by-side. Disagreement badges flag where columns diverge. Calls the same backend the Studio Script tab uses.", component: SpeakerLabView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "renderlab", label: "Render Lab", icon: "🧪", lede: "Voice parameter A/B matrix. Pick a voice + sample sentence + 1-2 parameter axes; render up to 16 cells in parallel (capped at 2 concurrent). Save any cell as a render preset.", component: RenderLabView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "cache",     label: "Cache",     icon: "💾", lede: "Disk-LRU render cache. Keyed on (engine, voice, lexicon hash, persona hash, text hash, effects hash). Engine prefix prevents cross-engine collisions.", component: CacheView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "audio",     label: "Audio Tools", icon: "🔧", lede: "Stand-alone audio tools — analyze any 16-bit PCM WAV, or apply a mastering preset to a WAV without going through the chapter render pipeline. Useful for inspecting reference clips before cloning, or quickly mastering an external recording.", component: AudioToolsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "channels",  label: "Channels",  icon: "🔊", lede: "Audio output channel configs. Route specific voices to specific OS audio devices — multi-monitor, OBS virtual mic, per-character podcast monitoring.", component: AudioChannelsView, visibleFor: ["podcast", "game", "multiple", "unset"] },
-  { id: "webhooks",  label: "Webhooks",  icon: "🔔", lede: "HMAC-SHA256-signed outbound event notifications. At-least-once delivery with exponential backoff (1s → 5s → 30s → 5min).", component: WebhooksView, visibleFor: ["game", "multiple", "unset"] },
-  { id: "settings",  label: "Settings",  icon: "⚙️", lede: "Every operator-tunable value. Per CLAUDE.md, no value is hardcoded — every knob lives in settings.json.", component: SettingsView },
+  // ─── Workflow lane ─────────────────────────────────────────────────
+  { id: "overview",  lane: "workflow", label: "Home",      icon: "🏠", lede: "", component: OverviewView },
+  { id: "studio",    lane: "workflow", label: "Studio",    icon: "🎬", lede: "Cast → Script → Render production environment. Three-tab flow for multi-character work. Cast assigns voices to characters; Script runs LLM speaker attribution (Phase 3 backend); Render batches the whole project.", component: StudioView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "generate",  lane: "workflow", label: "Generate",  icon: "📝", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it. Type / for paralinguistic tags.", component: GenerateView },
+  { id: "chapter",   lane: "workflow", label: "Chapter",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved. Pinned floating generate bar at bottom.", component: ChapterView, visibleFor: ["audiobook", "podcast", "multiple", "unset"] },
+  { id: "stories",   lane: "workflow", label: "Stories",   icon: "🎞️", lede: "Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.", component: StoriesView, visibleFor: ["game", "podcast", "multiple", "unset"] },
+  { id: "captures",  lane: "workflow", label: "Captures",  icon: "🎚️", lede: "Dictation pill + global hotkey. Speak into any text field. Also captures audio for cloning sample collection.", component: CapturesView, visibleFor: ["dictation", "accessibility", "multiple", "unset"] },
+
+  // ─── Library lane ──────────────────────────────────────────────────
+  { id: "books",     lane: "library", label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Imports from JustWrite via POST /v1/projects/import?source=justwrite.", component: BooksView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "voices",    lane: "library", label: "Voices",    icon: "🎙️", lede: "Voice library — cloned, preset (Kokoro 54 + Qwen 9), designed (text-prompt → voice), blended. Per-voice channel routing.", component: VoicesView },
+  { id: "personas",  lane: "library", label: "Personas",  icon: "🎭", lede: "Characters. Each persona has a name, bio, voice, personality (TTS delivery instruction), default delivery, effects, lexicon override. Cross-project — one Mara across many books or quests. Filter by usage in the library list.", component: PersonasView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "lexicons",  lane: "library", label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Force \"Beauchamp\" → \"BEE-chum\", domain words → consistent phoneme-level pronunciation across a whole book. Per-character override.", component: LexiconsView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "effects",   lane: "library", label: "Effects",   icon: "🎛️", lede: "Pedalboard-backed effects chain. Apply non-destructively — creates a new generation version that preserves the original. 8 types · 4 built-in presets + custom.", component: EffectsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "presets",   lane: "library", label: "Presets",   icon: "🎚️", lede: "Render presets — named bundles of voice + delivery + effects chain + master target. Studio Render binds one per scene to lock per-chapter or per-quest output consistency.", component: RenderPresetsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "engines",   lane: "library", label: "Engines",   icon: "🧠", lede: "Installed engine catalog. Install / load / unload models. Per-engine venv isolation (JustVoice advantage — install Chatterbox without breaking Kokoro).", component: EnginesView },
+
+  // ─── Tools lane ────────────────────────────────────────────────────
+  { id: "compare",   lane: "tools", label: "Compare",   icon: "⚖️", lede: "A/B audio comparison. Side-by-side waveforms, peak/RMS/duration diff, sample-level RMSE, verdict. Bulk compare across takes for QC pass.", component: CompareView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "audio",     lane: "tools", label: "Audio Tools", icon: "🔧", lede: "Stand-alone audio tools — analyze any 16-bit PCM WAV, or apply a mastering preset to a WAV without going through the chapter render pipeline. Useful for inspecting reference clips before cloning, or quickly mastering an external recording.", component: AudioToolsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "speakerlab",lane: "tools", label: "Speaker Lab",icon: "🔬", lede: "Advanced attribution tuning workbench. Up to 4 columns compare tier + propagation + floor configurations side-by-side. Disagreement badges flag where columns diverge. Calls the same backend the Studio Script tab uses.", component: SpeakerLabView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "renderlab", lane: "tools", label: "Render Lab", icon: "🧪", lede: "Voice parameter A/B matrix. Pick a voice + sample sentence + 1-2 parameter axes; render up to 16 cells in parallel (capped at 2 concurrent). Save any cell as a render preset.", component: RenderLabView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "train",     lane: "tools", label: "Train",     icon: "🏋️", lede: "PEFT/LoRA-based fine-tuning. QC pipeline checks SNR / clipping / silence ratio per sample before accepting it.", component: TrainView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+
+  // ─── Advanced lane (collapsed by default) ──────────────────────────
+  { id: "cache",     lane: "advanced", label: "Cache",     icon: "💾", lede: "Disk-LRU render cache. Keyed on (engine, voice, lexicon hash, persona hash, text hash, effects hash). Engine prefix prevents cross-engine collisions.", component: CacheView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "channels",  lane: "advanced", label: "Channels",  icon: "🔊", lede: "Audio output channel configs. Route specific voices to specific OS audio devices — multi-monitor, OBS virtual mic, per-character podcast monitoring.", component: AudioChannelsView, visibleFor: ["podcast", "game", "multiple", "unset"] },
+  { id: "webhooks",  lane: "advanced", label: "Webhooks",  icon: "🔔", lede: "HMAC-SHA256-signed outbound event notifications. At-least-once delivery with exponential backoff (1s → 5s → 30s → 5min).", component: WebhooksView, visibleFor: ["game", "multiple", "unset"] },
+
+  // ─── Settings — pinned at the very bottom, always visible ──────────
+  { id: "settings",  lane: "pinned", label: "Settings",  icon: "⚙️", lede: "Every operator-tunable value. Per CLAUDE.md, no value is hardcoded — every knob lives in settings.json.", component: SettingsView },
 ];
+
+const LANES = [
+  { id: "workflow", label: "Workflow" },
+  { id: "library",  label: "Library" },
+  { id: "tools",    label: "Tools" },
+  { id: "advanced", label: "Advanced", collapsible: true },
+];
+
+// Advanced lane collapses by default — persist the user's choice across
+// sessions via localStorage.
+const ADV_KEY = "jv.sidebar.advanced.expanded";
+const advancedExpanded = ref(
+  typeof window !== "undefined" && window.localStorage?.getItem(ADV_KEY) === "1",
+);
+watch(advancedExpanded, (v) => {
+  try { window.localStorage?.setItem(ADV_KEY, v ? "1" : "0"); } catch { /* ignore */ }
+});
 
 function isVisibleFor(viewEntry, useCase) {
   return !viewEntry.visibleFor || viewEntry.visibleFor.includes(useCase);
@@ -121,6 +158,36 @@ let initialTabResolved = false;
 
 const currentView = computed(() => VIEWS.find((v) => v.id === view.value));
 const currentHelpSlug = computed(() => HELP_SLUG_BY_VIEW[view.value] || "getting-started");
+
+// State-aware lede override (plan Q4 / Slice 1). When a view's
+// preconditions aren't met, swap the static lede for a concrete
+// next-action prompt that points the user where they need to go. The
+// static lede acts as a fallback once the view is in a usable state.
+const stateLedeOverride = computed(() => {
+  // We don't load engine / project / persona state at the App level —
+  // each view owns its own data. For the lede we infer state from a
+  // few signals that ARE available here: health (server up) and the
+  // last engine load that flowed through the api store.
+  const v = view.value;
+  // `current_engine` is the engine_id of the currently-loaded TTS slot
+  // (post Phase 2 / Slice 1 per-kind slots). Null = no engine OR server
+  // offline; the topbar Offline indicator owns the offline messaging,
+  // so we skip the lede override when health is null entirely.
+  if (!health.value) return null;
+  const hasEngine = !!health.value.current_engine;
+
+  if (v === "generate" && !hasEngine) {
+    return "No engine loaded yet. Open Engines → pick one → click Load. Then come back here.";
+  }
+  if (v === "studio" && !hasEngine) {
+    return "Studio needs a loaded engine to render. Open Engines first.";
+  }
+  if (v === "chapter" && !hasEngine) {
+    return "Chapter rendering needs a loaded engine. Open Engines first.";
+  }
+  return null;
+});
+const effectiveLede = computed(() => stateLedeOverride.value || currentView.value?.lede || "");
 const showWelcome = computed(() => onboarding.hydrated && !onboarding.shown);
 
 // Sidebar gating by onboarding primary use case (plan locked decision #7).
@@ -128,6 +195,17 @@ const showWelcome = computed(() => onboarding.hydrated && !onboarding.shown);
 // appear when the user's use case is in the entry's allow-list.
 const visibleViews = computed(() =>
   VIEWS.filter((v) => isVisibleFor(v, onboarding.primaryUseCase || "unset")),
+);
+
+// Sidebar grouped by lane for the 4-lane render structure.
+const lanesWithViews = computed(() =>
+  LANES.map((lane) => ({
+    ...lane,
+    views: visibleViews.value.filter((v) => v.lane === lane.id),
+  })).filter((lane) => lane.views.length > 0),
+);
+const pinnedViews = computed(() =>
+  visibleViews.value.filter((v) => v.lane === "pinned"),
 );
 
 function resolveInitialTab() {
@@ -182,10 +260,31 @@ watch(view, (v) => {
   }
 });
 
+// QuickSetup shows once, the first time the user picks a real use case
+// (skipped for "unset" / "multiple" — the user signaled they want to
+// explore manually). Persists "quick_setup_seen" in localStorage so the
+// wizard doesn't re-prompt on every launch.
+const QUICK_SETUP_KEY = "jv.quickSetup.seen";
+const showQuickSetup = ref(false);
+
+function maybeShowQuickSetup() {
+  if (typeof window === "undefined") return;
+  if (window.localStorage?.getItem(QUICK_SETUP_KEY) === "1") return;
+  const useCase = onboarding.primaryUseCase;
+  if (!useCase || useCase === "unset" || useCase === "multiple") return;
+  showQuickSetup.value = true;
+}
+function onQuickSetupClosed() {
+  showQuickSetup.value = false;
+  try { window.localStorage?.setItem(QUICK_SETUP_KEY, "1"); } catch { /* ignore */ }
+}
+
 function onWelcomeClosed() {
   // The store has already flipped shown=true and persisted; re-route
   // the default tab now that we know the producer's intent.
   if (!initialTabResolved) resolveInitialTab();
+  // Then chain the QuickSetup wizard for hardware-aware engine recommendations.
+  maybeShowQuickSetup();
 }
 
 onMounted(async () => {
@@ -199,11 +298,44 @@ onMounted(async () => {
     <!-- Silent looping WAV holds the macOS CoreAudio session open across idle. -->
     <AudioKeepAlive />
 
-    <!-- 80px left icon sidebar — preview HTML spec. -->
+    <!-- Left sidebar — 4-lane structure (plan Q4). -->
     <aside class="jv-sidebar">
       <div class="jv-sidebar__brand" title="JustVoice">JV</div>
+
+      <template v-for="lane in lanesWithViews" :key="lane.id">
+        <div class="jv-sidebar__lane-header" v-if="!lane.collapsible">
+          {{ lane.label }}
+        </div>
+        <button
+          v-else
+          type="button"
+          class="jv-sidebar__lane-header jv-sidebar__lane-header--toggle"
+          @click="advancedExpanded = !advancedExpanded"
+          :aria-expanded="advancedExpanded"
+        >
+          <span>{{ lane.label }}</span>
+          <span class="jv-sidebar__lane-chev">{{ advancedExpanded ? '▾' : '▸' }}</span>
+        </button>
+        <template v-if="!lane.collapsible || advancedExpanded">
+          <a
+            v-for="v in lane.views"
+            :key="v.id"
+            class="jv-sidebar__nav"
+            :class="{ 'jv-sidebar__nav--active': view === v.id }"
+            :title="v.label"
+            @click="view = v.id"
+          >
+            <span class="jv-sidebar__icon">{{ v.icon || '·' }}</span>
+            <span class="jv-sidebar__label">{{ v.label }}</span>
+          </a>
+        </template>
+      </template>
+
+      <div class="jv-sidebar__spacer" />
+
+      <!-- Settings pinned at bottom — outside the Advanced collapse. -->
       <a
-        v-for="v in visibleViews"
+        v-for="v in pinnedViews"
         :key="v.id"
         class="jv-sidebar__nav"
         :class="{ 'jv-sidebar__nav--active': view === v.id }"
@@ -213,13 +345,28 @@ onMounted(async () => {
         <span class="jv-sidebar__icon">{{ v.icon || '·' }}</span>
         <span class="jv-sidebar__label">{{ v.label }}</span>
       </a>
-      <div class="jv-sidebar__spacer" />
+
       <span class="jv-sidebar__version" v-if="health">v{{ health.version }}</span>
     </aside>
 
     <main class="jv-main">
       <header class="jv-topbar">
         <h2 class="jv-topbar__title">{{ currentView?.label }}</h2>
+
+        <!-- Engine pill — persistent visibility of the currently-loaded
+             TTS engine. Click jumps to Engines tab. -->
+        <button
+          v-if="health"
+          type="button"
+          class="jv-topbar__engine-pill"
+          :class="{ 'jv-topbar__engine-pill--empty': !health.current_engine }"
+          :title="health.current_engine ? `Loaded: ${health.current_engine}. Click to manage engines.` : 'No engine loaded. Click to load one.'"
+          @click="view = 'engines'"
+        >
+          <span class="jv-topbar__engine-icon">🧠</span>
+          {{ health.current_engine || "No engine" }}
+        </button>
+
         <button
           type="button"
           class="jv-topbar__status"
@@ -239,7 +386,7 @@ onMounted(async () => {
       </header>
 
       <div class="jv-content">
-        <p v-if="currentView?.lede" class="jv-content__lede">{{ currentView.lede }}</p>
+        <p v-if="effectiveLede" class="jv-content__lede">{{ effectiveLede }}</p>
         <TaskStrip v-for="task in tasks.running" :key="task.id" :task="task" />
         <component :is="currentView?.component" />
       </div>
@@ -248,6 +395,7 @@ onMounted(async () => {
     <Toast />
     <AppDialog />
     <WelcomeOnboarding v-if="showWelcome" @close="onWelcomeClosed" />
+    <QuickSetup v-if="showQuickSetup" @close="onQuickSetupClosed" />
     <JvHelpDrawer />
     <GlobalAudioPlayer />
     <TaskStatusPanel />

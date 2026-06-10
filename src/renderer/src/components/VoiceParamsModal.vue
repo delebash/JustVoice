@@ -52,18 +52,35 @@ async function loadCapability() {
   if (!props.voiceId) return;
   const seq = ++capabilityFetchSeq.value;
   try {
-    const r = await api.safeRequest(
-      `/v1/engines/capabilities`,
-      { engines: {} },
-    );
+    // Resolve which engine owns this voice. /v1/voices returns each
+    // voice with its engine id; cross-reference against the capability
+    // map so the right knob schema renders. The previous "pick first
+    // engine in the map" path produced wrong knobs for any voice that
+    // wasn't from whatever engine sorted first.
+    const [voicesResp, capsResp] = await Promise.all([
+      api.safeRequest(`/v1/voices`, { voices: [] }),
+      api.safeRequest(`/v1/engines/capabilities`, { engines: {} }),
+    ]);
     if (seq !== capabilityFetchSeq.value) return;
-    // Capability map is keyed by engine id; we don't know the engine
-    // here, so render any non-empty entry — preferring the loaded engine
-    // when the user has set a default. Fallback: union of every engine's
-    // knobs.
-    const engines = r?.engines || {};
-    const keys = Object.keys(engines);
-    capability.value = keys.length ? engines[keys[0]] : { knobs: [] };
+    const voices = voicesResp?.voices || [];
+    const me = voices.find((v) => v.id === props.voiceId);
+    const engineId = me?.engine || me?.engine_id;
+    const engines = capsResp?.engines || {};
+    if (engineId && engines[engineId]) {
+      capability.value = engines[engineId];
+      return;
+    }
+    // Fallback: voice not in /v1/voices yet, or no engine reported.
+    // Use union of all engines' knobs so the user at least sees something
+    // editable instead of an empty modal.
+    const allKnobs = Object.values(engines).flatMap((e) => e?.knobs || []);
+    const seen = new Set();
+    const unionKnobs = allKnobs.filter((k) => {
+      if (seen.has(k.key)) return false;
+      seen.add(k.key);
+      return true;
+    });
+    capability.value = { knobs: unionKnobs };
   } catch {
     capability.value = { knobs: [] };
   }

@@ -17,8 +17,11 @@ import JvButton from "../components/jv/JvButton.vue";
 import JvTag from "../components/jv/JvTag.vue";
 import ImportModal from "./ImportModal.vue";
 import { projectsService } from "../services/projects.js";
+import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { useCopy } from "../services/copy.js";
+
+const api = useApi();
 
 const copy = useCopy();
 
@@ -32,7 +35,13 @@ const showImport = ref(false);
 const scenes = ref([]);
 const scenesLoading = ref(false);
 const cast = ref([]);
+const allPersonas = ref([]);
 const selectedSceneIds = ref(new Set());
+
+// Add-personas-to-project modal state.
+const addCastOpen = ref(false);
+const addCastSelection = ref(new Set());
+const addCastBusy = ref(false);
 
 // In-flight edits to the project's metadata_json (Author / Render preset /
 // Webhook). PATCH /v1/projects/{id} commits them on blur.
@@ -130,18 +139,79 @@ async function loadDetail(projectId) {
   scenesLoading.value = true;
   selectedSceneIds.value = new Set();
   try {
-    const [sceneRes, castRes] = await Promise.all([
+    const [sceneRes, castRes, personasRes] = await Promise.all([
       projectsService.listScenes(projectId).catch(() => []),
       projectsService.getCast(projectId).catch(() => ({ cast: [] })),
+      api.safeRequest("/v1/personas", { personas: [] }),
     ]);
     scenes.value = Array.isArray(sceneRes) ? sceneRes : (sceneRes?.scenes ?? []);
     cast.value = castRes?.cast ?? [];
+    allPersonas.value = personasRes?.personas ?? [];
   } catch (e) {
     pushToast({ kind: "error", title: "Failed to load project detail", description: String(e?.message ?? e) });
   } finally {
     scenesLoading.value = false;
   }
 }
+
+function openAddCast() {
+  // Pre-fill selection with anyone not already cast.
+  addCastSelection.value = new Set();
+  addCastOpen.value = true;
+}
+
+function toggleAddCast(personaId) {
+  if (addCastSelection.value.has(personaId)) {
+    addCastSelection.value.delete(personaId);
+  } else {
+    addCastSelection.value.add(personaId);
+  }
+  // Trigger reactivity on Set mutation.
+  addCastSelection.value = new Set(addCastSelection.value);
+}
+
+async function commitAddCast() {
+  const p = selectedProject.value;
+  if (!p) return;
+  if (!addCastSelection.value.size) {
+    addCastOpen.value = false;
+    return;
+  }
+  addCastBusy.value = true;
+  try {
+    for (const personaId of addCastSelection.value) {
+      await api.request(`/v1/projects/${p.id}/cast`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ persona_id: personaId }),
+      });
+    }
+    pushToast({ message: `Added ${addCastSelection.value.size} ${addCastSelection.value.size === 1 ? "persona" : "personas"} to the project.`, kind: "success" });
+    addCastSelection.value = new Set();
+    addCastOpen.value = false;
+    await loadDetail(p.id);
+  } catch (e) {
+    pushToast({ message: `Add failed: ${e?.message || e}`, kind: "error" });
+  } finally {
+    addCastBusy.value = false;
+  }
+}
+
+async function removeCast(personaId) {
+  const p = selectedProject.value;
+  if (!p) return;
+  try {
+    await api.request(`/v1/projects/${p.id}/cast/${personaId}`, { method: "DELETE" });
+    await loadDetail(p.id);
+  } catch (e) {
+    pushToast({ message: `Remove failed: ${e?.message || e}`, kind: "error" });
+  }
+}
+
+const personasAvailableForCast = computed(() => {
+  const castIds = new Set(cast.value.map((c) => c.persona_id));
+  return allPersonas.value.filter((p) => !castIds.has(p.id));
+});
 
 watch(selectedProject, (p) => {
   if (!p) {
@@ -397,10 +467,26 @@ onMounted(refresh);
               <span>Cast</span>
               <div class="books__cast-row">
                 <span v-if="!cast.length" class="jv-muted">No cast assigned yet.</span>
-                <span v-for="c in cast" :key="c.persona_id" class="jv-pill jv-pill--ghost">
+                <span
+                  v-for="c in cast"
+                  :key="c.persona_id"
+                  class="jv-pill jv-pill--ghost books__cast-pill"
+                >
                   {{ c.persona_name ?? c.role_label ?? c.persona_id }}
+                  <button
+                    type="button"
+                    class="books__cast-pill-x"
+                    title="Remove from project"
+                    @click="removeCast(c.persona_id)"
+                  >✕</button>
                 </span>
-                <button class="jv-btn jv-btn--ghost jv-btn--sm" type="button">+ Add</button>
+                <button
+                  class="jv-btn jv-btn--ghost jv-btn--sm"
+                  type="button"
+                  @click="openAddCast"
+                  :disabled="!personasAvailableForCast.length"
+                  :title="personasAvailableForCast.length ? 'Add personas from your global library' : 'Every persona is already in this project'"
+                >+ Add personas</button>
               </div>
             </div>
 
@@ -534,6 +620,56 @@ onMounted(refresh);
 
     <!-- Multi-adapter import modal (justwrite / csv_lines / srt / audacity_labels / justvoice_standard / elevenlabs-stub). -->
     <ImportModal v-if="showImport" @close="showImport = false" @created="onImportCreated" />
+
+    <!-- Add-personas-to-project multi-select modal. -->
+    <div v-if="addCastOpen" class="jv-overlay" @click.self="addCastOpen = false">
+      <div class="jv-modal" style="width: min(540px, calc(100vw - 32px));">
+        <header class="jv-modal__header">
+          <div class="jv-modal__titleblock">
+            <span class="jv-modal__eyebrow">Project: {{ selectedProject?.name }}</span>
+            <h3 class="jv-modal__title">Add personas to this project</h3>
+          </div>
+          <button type="button" class="jv-modal__close" @click="addCastOpen = false">✕</button>
+        </header>
+        <div class="jv-modal__body" style="padding: 14px 22px;">
+          <p v-if="!personasAvailableForCast.length" class="jv-muted">
+            Every persona is already in this project. Create more personas in the Personas tab.
+          </p>
+          <ul v-else style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px;">
+            <li
+              v-for="p in personasAvailableForCast"
+              :key="p.id"
+            >
+              <label style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer;">
+                <input
+                  type="checkbox"
+                  :checked="addCastSelection.has(p.id)"
+                  @change="toggleAddCast(p.id)"
+                />
+                <div style="flex: 1; min-width: 0;">
+                  <strong>{{ p.name }}</strong>
+                  <div class="jv-muted" style="font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    {{ p.bio || "(no bio)" }}
+                  </div>
+                </div>
+              </label>
+            </li>
+          </ul>
+        </div>
+        <footer class="jv-modal__footer">
+          <span class="jv-muted" style="font-size: 12px;">{{ addCastSelection.size }} selected</span>
+          <span class="jv-spacer" />
+          <JvButton variant="secondary" label="Cancel" @click="addCastOpen = false" />
+          <JvButton
+            variant="primary"
+            :loading="addCastBusy"
+            :disabled="addCastBusy || !addCastSelection.size"
+            :label="`Add ${addCastSelection.size || ''} persona${addCastSelection.size === 1 ? '' : 's'}`"
+            @click="commitAddCast"
+          />
+        </footer>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -615,6 +751,20 @@ onMounted(refresh);
   gap: 6px;
   min-height: 32px;
 }
+.books__cast-pill { display: inline-flex; align-items: center; gap: 4px; }
+.books__cast-pill-x {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0 0 0 2px;
+  margin-left: 2px;
+  color: inherit;
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+  opacity: 0.6;
+}
+.books__cast-pill-x:hover { opacity: 1; color: var(--danger); }
 
 .books__actions {
   display: flex;

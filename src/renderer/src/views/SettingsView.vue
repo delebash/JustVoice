@@ -281,6 +281,7 @@ onMounted(refresh);
 // ── Sub-nav (matches preview HTML §13). ─────────────────────────────
 const SUBS = [
   { id: "general",    label: "General" },
+  { id: "ai",         label: "AI features" },
   { id: "mastering",  label: "Mastering" },
   { id: "generation", label: "Generation" },
   { id: "capture",    label: "Capture / Dictation" },
@@ -293,6 +294,104 @@ const SUBS = [
   { id: "about",      label: "About" },
 ];
 const activeSub = ref("general");
+
+// ── AI features panel (plan Q5 / Slice 1) ───────────────────────────
+// Pin LLM features (compose / persona_rewrite / speaker_attribution /
+// render_preset_suggest / smart_assign) to specific provider + model +
+// tier. Backend at server/justvoice/api/feature_pins_api.py.
+const aiCatalog = ref([]);
+const aiPins = ref([]);
+const aiProviders = ref([]);
+const aiBusy = ref(false);
+
+async function loadAiPanel() {
+  try {
+    const [pins, providers] = await Promise.all([
+      api.safeRequest("/v1/feature-pins", { pins: [], catalog: [] }),
+      api.safeRequest("/v1/llm-providers", { providers: [] }),
+    ]);
+    aiCatalog.value = pins?.catalog || [];
+    aiPins.value = pins?.pins || [];
+    aiProviders.value = providers?.providers || [];
+  } catch (e) {
+    pushToast({ message: `AI panel load failed: ${e?.message || e}`, kind: "error" });
+  }
+}
+
+function pinForFeature(key) {
+  return aiPins.value.find((p) => p.feature === key) || null;
+}
+function providerLabel(providerId) {
+  return aiProviders.value.find((p) => p.id === providerId)?.name || providerId;
+}
+
+async function savePin(feature, providerId, model, tier) {
+  if (!providerId) {
+    pushToast({ message: "Pick a provider first.", kind: "info" });
+    return;
+  }
+  aiBusy.value = true;
+  try {
+    await api.request("/v1/feature-pins", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ feature, provider_id: providerId, model: model || "", tier: tier || null }),
+    });
+    await loadAiPanel();
+    pushToast({ message: `${feature} pinned to ${providerLabel(providerId)}.`, kind: "success" });
+  } catch (e) {
+    pushToast({ message: `Pin failed: ${e?.message || e}`, kind: "error" });
+  } finally {
+    aiBusy.value = false;
+  }
+}
+
+async function clearPin(feature) {
+  aiBusy.value = true;
+  try {
+    await api.request(`/v1/feature-pins/${feature}`, { method: "DELETE" });
+    await loadAiPanel();
+    pushToast({ message: `${feature} pin cleared — falls back to first registered LLM.`, kind: "success" });
+  } catch (e) {
+    pushToast({ message: `Clear failed: ${e?.message || e}`, kind: "error" });
+  } finally {
+    aiBusy.value = false;
+  }
+}
+
+// ── Corrections badge (Phase 5 surfacing) ───────────────────────────
+const correctionsCounts = ref({});   // {projectId: count}
+const projectsForCorrections = ref([]);
+async function loadCorrections() {
+  try {
+    const r = await api.safeRequest("/v1/projects", { projects: [] });
+    projectsForCorrections.value = r?.projects || [];
+    // Pull corrections per project. Cap at 30 to keep this cheap.
+    const slice = projectsForCorrections.value.slice(0, 30);
+    const counts = {};
+    await Promise.all(
+      slice.map(async (p) => {
+        try {
+          const c = await api.safeRequest(`/v1/projects/${p.id}/corrections/count`, { count: 0 });
+          counts[p.id] = c?.count ?? 0;
+        } catch {
+          counts[p.id] = 0;
+        }
+      }),
+    );
+    correctionsCounts.value = counts;
+  } catch { /* ignore */ }
+}
+async function clearProjectCorrections(projectId) {
+  if (!confirm("Clear all speaker corrections for this project? This cannot be undone.")) return;
+  try {
+    await api.request(`/v1/projects/${projectId}/corrections`, { method: "DELETE" });
+    correctionsCounts.value = { ...correctionsCounts.value, [projectId]: 0 };
+    pushToast({ message: "Corrections cleared.", kind: "success" });
+  } catch (e) {
+    pushToast({ message: `Clear failed: ${e?.message || e}`, kind: "error" });
+  }
+}
 
 // ── GPU info (task #91) ──────────────────────────────────────────────
 const gpuInfo = ref(null);
@@ -589,6 +688,8 @@ onMounted(() => {
   loadGpuInfo();
   loadMcpBindings();
   loadLogsPreview();
+  loadAiPanel();
+  loadCorrections();
 });
 </script>
 
@@ -729,10 +830,10 @@ onMounted(() => {
         </p>
         <div class="settings-grid">
           <JvField label="Host" layout="block">
-            <JvInput v-model="settings.server.host" />
+            <JvInput v-model="settings.server.host" width="id" />
           </JvField>
           <JvField label="Port" layout="block">
-            <JvInput v-model.number="settings.server.port" type="number" />
+            <JvInput v-model.number="settings.server.port" type="number" width="token" />
           </JvField>
         </div>
         <div class="setting-row" style="margin-top: 14px">
@@ -821,6 +922,139 @@ onMounted(() => {
       </div>
     </div>
 
+    <!-- ─── AI features (Phase 2 / Slice 7 UI surface) ─── -->
+    <div v-show="activeSub === 'ai'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header">
+          <h3 class="jv-card__title">AI feature routing</h3>
+        </div>
+        <p class="jv-muted" style="font-size: 12.5px; margin: 4px 0 14px">
+          Pin LLM features to a specific provider, model, and tier. Unpinned features fall back to the first registered LLM provider. Register providers in <a href="#engines">Engines → LLM tab → + Add LLM provider</a>.
+        </p>
+
+        <div v-if="!aiProviders.length" class="jv-banner jv-banner--warn" style="margin-bottom: 12px">
+          No LLM providers registered yet. Compose, Rewrite, Smart-assign, Speaker attribution, and Suggest will return errors until at least one provider is added.
+        </div>
+
+        <table class="jv-table jv-form-section" style="max-width: 880px">
+          <thead>
+            <tr>
+              <th style="width: 180px">Feature</th>
+              <th>Provider</th>
+              <th style="width: 200px">Model</th>
+              <th style="width: 120px">Tier</th>
+              <th style="width: 80px" />
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="entry in aiCatalog" :key="entry.key">
+              <td>
+                <strong style="font-size: 12.5px">{{ entry.label }}</strong>
+                <div class="jv-muted" style="font-size: 11px; line-height: 1.4; margin-top: 2px">
+                  {{ entry.description }}
+                </div>
+              </td>
+              <td>
+                <select
+                  class="jv-input jv-input--sm jv-w-id"
+                  :value="pinForFeature(entry.key)?.provider_id || ''"
+                  :disabled="aiBusy || !aiProviders.length"
+                  @change="(e) => {
+                    const pid = e.target.value;
+                    if (!pid) { clearPin(entry.key); return; }
+                    const existing = pinForFeature(entry.key);
+                    savePin(entry.key, pid, existing?.model || '', existing?.tier || entry.recommended_tier);
+                  }"
+                >
+                  <option value="">— unpinned (fallback) —</option>
+                  <option v-for="p in aiProviders" :key="p.id" :value="p.id">
+                    {{ p.name }}
+                  </option>
+                </select>
+              </td>
+              <td>
+                <input
+                  type="text"
+                  class="jv-input jv-input--sm jv-w-id"
+                  :value="pinForFeature(entry.key)?.model || ''"
+                  :placeholder="aiProviders.find((p) => p.id === pinForFeature(entry.key)?.provider_id)?.default_model || 'default'"
+                  :disabled="aiBusy || !pinForFeature(entry.key)"
+                  @change="(e) => {
+                    const p = pinForFeature(entry.key);
+                    if (!p) return;
+                    savePin(entry.key, p.provider_id, e.target.value, p.tier);
+                  }"
+                />
+              </td>
+              <td>
+                <select
+                  class="jv-input jv-input--sm jv-w-token"
+                  :value="pinForFeature(entry.key)?.tier || entry.recommended_tier"
+                  :disabled="aiBusy || !pinForFeature(entry.key)"
+                  @change="(e) => {
+                    const p = pinForFeature(entry.key);
+                    if (!p) return;
+                    savePin(entry.key, p.provider_id, p.model || '', e.target.value);
+                  }"
+                >
+                  <option value="guided">Guided</option>
+                  <option value="direct">Direct</option>
+                  <option value="reasoned">Reasoned</option>
+                </select>
+                <div v-if="entry.recommended_tier && entry.recommended_tier !== (pinForFeature(entry.key)?.tier || entry.recommended_tier)" class="jv-muted" style="font-size: 10.5px">
+                  rec: {{ entry.recommended_tier }}
+                </div>
+              </td>
+              <td>
+                <button
+                  v-if="pinForFeature(entry.key)"
+                  type="button"
+                  class="jv-btn jv-btn--ghost jv-btn--sm"
+                  :disabled="aiBusy"
+                  title="Clear pin"
+                  @click="clearPin(entry.key)"
+                >✕</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ── Speaker corrections — Phase 5 surfacing ── -->
+      <div class="jv-card" style="margin-top: 16px">
+        <div class="jv-card__header">
+          <h3 class="jv-card__title">Speaker corrections</h3>
+        </div>
+        <p class="jv-muted" style="font-size: 12.5px; margin: 4px 0 12px">
+          Manual fixes you make on the Studio Script tab become correction memory — the top 12 most recent corrections per project inject into the next Analyze run as worked examples. Clearing wipes the project's correction history.
+        </p>
+        <p v-if="!projectsForCorrections.length" class="jv-muted">No projects yet.</p>
+        <table v-else class="jv-table" style="max-width: 720px">
+          <thead>
+            <tr><th>Project</th><th style="width: 120px; text-align: right">Corrections</th><th style="width: 120px" /></tr>
+          </thead>
+          <tbody>
+            <tr v-for="p in projectsForCorrections" :key="p.id">
+              <td>{{ p.name }}</td>
+              <td style="text-align: right">
+                <span :class="['jv-pill', correctionsCounts[p.id] ? 'jv-pill--solid' : '']">
+                  {{ correctionsCounts[p.id] ?? 0 }}
+                </span>
+              </td>
+              <td>
+                <button
+                  type="button"
+                  class="jv-btn jv-btn--ghost jv-btn--sm"
+                  :disabled="!correctionsCounts[p.id]"
+                  @click="clearProjectCorrections(p.id)"
+                >Clear all</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- ─── General · Cache ─── -->
     <div v-show="activeSub === 'general'" class="jv-section">
       <div class="jv-card">
@@ -829,10 +1063,10 @@ onMounted(() => {
         </div>
         <div class="settings-grid">
           <JvField label="Max memory entries" layout="block">
-            <JvInput v-model.number="settings.cache.max_memory_entries" type="number" />
+            <JvInput v-model.number="settings.cache.max_memory_entries" type="number" width="token" />
           </JvField>
           <JvField label="Max disk bytes per scope" layout="block">
-            <JvInput v-model.number="settings.cache.max_disk_bytes_per_scope" type="number" />
+            <JvInput v-model.number="settings.cache.max_disk_bytes_per_scope" type="number" width="token" />
           </JvField>
         </div>
         <div style="margin-top: 14px;">
@@ -849,16 +1083,16 @@ onMounted(() => {
         </div>
         <div class="settings-grid">
           <JvField label="Text max chars" layout="block">
-            <JvInput v-model.number="settings.limits.text_max_chars" type="number" />
+            <JvInput v-model.number="settings.limits.text_max_chars" type="number" width="token" />
           </JvField>
           <JvField label="Chapter max lines" layout="block">
-            <JvInput v-model.number="settings.limits.chapter_max_lines" type="number" />
+            <JvInput v-model.number="settings.limits.chapter_max_lines" type="number" width="token" />
           </JvField>
           <JvField label="Reference clip max bytes" layout="block">
-            <JvInput v-model.number="settings.limits.reference_clip_max_bytes" type="number" />
+            <JvInput v-model.number="settings.limits.reference_clip_max_bytes" type="number" width="token" />
           </JvField>
           <JvField label="Request body max bytes" layout="block">
-            <JvInput v-model.number="settings.limits.request_body_max_bytes" type="number" />
+            <JvInput v-model.number="settings.limits.request_body_max_bytes" type="number" width="token" />
           </JvField>
         </div>
       </div>
@@ -976,13 +1210,13 @@ onMounted(() => {
         </div>
         <div class="settings-grid">
           <JvField label="Max concurrent jobs" layout="block">
-            <JvInput v-model.number="settings.training.max_concurrent_jobs" type="number" />
+            <JvInput v-model.number="settings.training.max_concurrent_jobs" type="number" width="token" />
           </JvField>
           <JvField label="Max samples per job" layout="block">
-            <JvInput v-model.number="settings.training.max_samples_per_job" type="number" />
+            <JvInput v-model.number="settings.training.max_samples_per_job" type="number" width="token" />
           </JvField>
           <JvField label="Sample loss every (steps)" layout="block">
-            <JvInput v-model.number="settings.training.sample_loss_every" type="number" />
+            <JvInput v-model.number="settings.training.sample_loss_every" type="number" width="token" />
           </JvField>
           <JvField label="Default voice language (BCP-47)" layout="block">
             <JvInput v-model="settings.training.default_voice_language" />
@@ -1000,19 +1234,19 @@ onMounted(() => {
           <h4 style="margin-bottom: 12px; color: var(--ink-3); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">Validation thresholds</h4>
           <div class="settings-grid">
             <JvField label="Min sample duration (s)" layout="block">
-              <JvInput v-model.number="settings.training.validation.min_sample_duration_secs" type="number" />
+              <JvInput v-model.number="settings.training.validation.min_sample_duration_secs" type="number" width="token" />
             </JvField>
             <JvField label="Max sample duration (s)" layout="block">
-              <JvInput v-model.number="settings.training.validation.max_sample_duration_secs" type="number" />
+              <JvInput v-model.number="settings.training.validation.max_sample_duration_secs" type="number" width="token" />
             </JvField>
             <JvField label="Min SNR (dB)" layout="block">
-              <JvInput v-model.number="settings.training.validation.min_snr_db" type="number" />
+              <JvInput v-model.number="settings.training.validation.min_snr_db" type="number" width="token" />
             </JvField>
             <JvField label="Max silence ratio" layout="block">
-              <JvInput v-model.number="settings.training.validation.max_silence_ratio" type="number" />
+              <JvInput v-model.number="settings.training.validation.max_silence_ratio" type="number" width="token" />
             </JvField>
             <JvField label="Min accepted samples" layout="block">
-              <JvInput v-model.number="settings.training.validation.min_accepted_samples" type="number" />
+              <JvInput v-model.number="settings.training.validation.min_accepted_samples" type="number" width="token" />
             </JvField>
           </div>
         </template>
@@ -1068,12 +1302,12 @@ onMounted(() => {
         <div class="settings-grid" style="margin-bottom: 14px;">
           <div style="grid-column: 1 / -1;">
             <JvField label="Base URL" layout="block">
-              <JvInput v-model="newExternal.base_url" placeholder="http://127.0.0.1:8880" :spellcheck="false" />
+              <JvInput v-model="newExternal.base_url" placeholder="http://127.0.0.1:8880" :spellcheck="false" width="url" />
             </JvField>
           </div>
           <div style="grid-column: 1 / -1;">
             <JvField label="API key (optional — required for OpenAI itself)" layout="block">
-              <JvInput v-model="newExternal.api_key" type="password" placeholder="leave blank for self-hosted servers" />
+              <JvInput v-model="newExternal.api_key" type="password" placeholder="leave blank for self-hosted servers" width="url" />
             </JvField>
           </div>
         </div>
@@ -1202,19 +1436,19 @@ onMounted(() => {
 
         <div class="settings-grid" style="margin-top: 16px">
           <JvField label="Loudness target (LUFS)" layout="block">
-            <JvInput v-model.number="mastering.lufs" type="number" step="0.5" />
+            <JvInput v-model.number="mastering.lufs" type="number" step="0.5" width="token" />
           </JvField>
           <JvField label="True peak ceiling (dBFS)" layout="block">
-            <JvInput v-model.number="mastering.peakDbfs" type="number" step="0.1" />
+            <JvInput v-model.number="mastering.peakDbfs" type="number" step="0.1" width="token" />
           </JvField>
           <JvField label="Noise floor (dBFS)" layout="block">
-            <JvInput v-model.number="mastering.noiseFloor" type="number" step="1" />
+            <JvInput v-model.number="mastering.noiseFloor" type="number" step="1" width="token" />
           </JvField>
           <JvField label="Head silence (s)" layout="block">
-            <JvInput v-model.number="mastering.headSilence" type="number" step="0.05" />
+            <JvInput v-model.number="mastering.headSilence" type="number" step="0.05" width="token" />
           </JvField>
           <JvField label="Tail silence (s)" layout="block">
-            <JvInput v-model.number="mastering.tailSilence" type="number" step="0.25" />
+            <JvInput v-model.number="mastering.tailSilence" type="number" step="0.25" width="token" />
           </JvField>
         </div>
 
