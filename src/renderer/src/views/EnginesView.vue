@@ -29,7 +29,7 @@ import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvTag from "../components/jv/JvTag.vue";
-import AddProviderModal from "../components/AddProviderModal.vue";
+import ProviderForm from "../components/ProviderForm.vue";
 
 const api = useApi();
 const tasks = useRenderTasks();
@@ -58,23 +58,186 @@ const selectedVariants = reactive({});  // {engineId: variantId}
 const KIND_LABELS = { tts: "TTS", llm: "LLM", embedding: "Embeddings" };
 const activeKind = ref("tts");
 
-// Add-provider modal state. The modal handles BOTH llm + tts registrations
-// (its kind prop drives the form shape). Opening from the tab keeps the
-// current activeKind so the user sees the right defaults.
-const addProviderOpen = ref(false);
-const addProviderKind = ref("llm");
-function openAddProvider() {
-  // Only LLM + TTS are user-addable for now. Embedding adapters are
-  // backend-only until a use case appears.
-  addProviderKind.value = activeKind.value === "embedding" ? "llm" : activeKind.value;
-  addProviderOpen.value = true;
+// ── Registered providers (JustWrite SettingsProviderForm pattern) ─────
+//
+// Two stores feed the per-tab Registered Providers section:
+//   LLM tab: /v1/llm-providers — full CRUD with adapter ping + models().
+//   TTS tab: settings.engines.external[] — registered via PATCH /v1/settings.
+//
+// `editingKey` holds the id of the provider currently expanded in edit
+// mode, or "new" when the Add row is open. The draft is a working copy
+// that ProviderForm mutates; on Save we POST or PATCH and refresh.
+
+const llmProviders = ref([]);
+const ttsProviders = ref([]);
+const editingKey = ref("");  // "" | "new" | "<provider-id>"
+const draft = ref(null);
+
+const visibleProviders = computed(() => {
+  if (activeKind.value === "llm") return llmProviders.value;
+  if (activeKind.value === "tts") return ttsProviders.value;
+  return [];
+});
+
+async function loadProviders() {
+  // LLM list — backend endpoint with `registered` flag.
+  try {
+    const r = await api.safeRequest("/v1/llm-providers", { providers: [] });
+    llmProviders.value = (r?.providers || []).map((p) => ({ ...p, kind: "llm" }));
+  } catch {
+    llmProviders.value = [];
+  }
+  // TTS list — settings.engines.external[] surfaces every registered
+  // external TTS server. Read straight from /v1/settings since there's
+  // no dedicated /v1/tts-providers endpoint yet.
+  try {
+    const s = await api.safeRequest("/v1/settings", null);
+    const list = s?.engines?.external || [];
+    ttsProviders.value = list.map((p) => ({
+      id: p.id,
+      name: p.name || p.id,
+      kind: "tts",
+      provider_type: p.provider_type || "openai-compat",
+      base_url: p.base_url || "",
+      api_key: "",  // never echoed back; treat empty == "leave existing"
+      has_api_key: !!p.api_key,
+      default_model: "",
+      tts_model: p.model || "",
+      voices: Array.isArray(p.voices) ? [...p.voices] : [],
+      response_format: p.response_format || "wav",
+    }));
+  } catch {
+    ttsProviders.value = [];
+  }
 }
-async function onProviderSaved() {
-  // Refresh the engine catalog so the new row appears, then nudge the
-  // active tab to the kind the user just added.
-  await refresh();
-  if (addProviderKind.value && availableKinds.value.includes(addProviderKind.value)) {
-    activeKind.value = addProviderKind.value;
+
+function defaultDraft(kind) {
+  if (kind === "llm") {
+    return {
+      id: "",
+      name: "",
+      kind: "llm",
+      provider_type: "anthropic",
+      base_url: "https://api.anthropic.com",
+      api_key: "",
+      default_model: "claude-haiku-4-5",
+      embedding_model: "",
+      pinned_tier: "",
+    };
+  }
+  return {
+    id: "",
+    name: "",
+    kind: "tts",
+    provider_type: "openai-compat",
+    base_url: "",
+    api_key: "",
+    tts_model: "",
+    voices: [],
+    response_format: "wav",
+  };
+}
+
+function startNewProvider() {
+  draft.value = defaultDraft(activeKind.value === "tts" ? "tts" : "llm");
+  editingKey.value = "new";
+}
+function startEditProvider(p) {
+  draft.value = { ...p };
+  editingKey.value = p.id;
+}
+function cancelEdit() {
+  editingKey.value = "";
+  draft.value = null;
+}
+
+async function saveProvider(payload) {
+  try {
+    if (payload.kind === "llm") {
+      const body = {
+        id: payload.id,
+        name: payload.name,
+        provider_type: payload.provider_type,
+        base_url: payload.base_url || "",
+        api_key: payload.api_key || null,
+        default_model: payload.default_model || "",
+        timeout_seconds: payload.timeout_seconds || 60,
+      };
+      if (editingKey.value === "new") {
+        await api.request("/v1/llm-providers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+      } else {
+        await api.request(`/v1/llm-providers/${editingKey.value}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+      }
+    } else {
+      // TTS: read current settings, splice/replace, PATCH back.
+      const current = await api.request("/v1/settings");
+      const externals = [...(current?.engines?.external || [])];
+      const filtered = externals.filter((e) => e.id !== payload.id);
+      // When editing existing and api_key is blank, preserve the old one.
+      let apiKey = payload.api_key || null;
+      if (editingKey.value !== "new" && !payload.api_key) {
+        const prev = externals.find((e) => e.id === editingKey.value);
+        if (prev?.api_key) apiKey = prev.api_key;
+      }
+      filtered.push({
+        id: payload.id,
+        name: payload.name || payload.id,
+        provider_type: payload.provider_type || "openai-compat",
+        base_url: payload.base_url || "",
+        api_key: apiKey,
+        model: payload.tts_model || "",
+        voices: Array.isArray(payload.voices) ? payload.voices : [],
+        response_format: payload.response_format || "wav",
+      });
+      await api.request("/v1/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ engines: { external: filtered } }),
+      });
+    }
+    pushToast({ message: `${payload.name || payload.id} saved.`, kind: "success" });
+    cancelEdit();
+    await loadProviders();
+    await refresh();
+  } catch (e) {
+    pushToast({ message: `Save failed: ${e?.message || e}`, kind: "error", duration: 7000 });
+  }
+}
+
+async function deleteProvider() {
+  if (!draft.value) return;
+  const ok = await confirmDialog({
+    title: `Delete ${draft.value.name || draft.value.id}?`,
+    message: "The provider will be unregistered. Feature pins referencing it fall back to the first available provider.",
+    danger: true,
+    confirmLabel: "Delete",
+  });
+  if (!ok) return;
+  try {
+    if (draft.value.kind === "llm") {
+      await api.request(`/v1/llm-providers/${draft.value.id}`, { method: "DELETE" });
+    } else {
+      const current = await api.request("/v1/settings");
+      const externals = (current?.engines?.external || []).filter((e) => e.id !== draft.value.id);
+      await api.request("/v1/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ engines: { external: externals } }),
+      });
+    }
+    pushToast({ message: `${draft.value.name || draft.value.id} deleted.`, kind: "success" });
+    cancelEdit();
+    await loadProviders();
+  } catch (e) {
+    pushToast({ message: `Delete failed: ${e?.message || e}`, kind: "error" });
   }
 }
 
@@ -429,7 +592,7 @@ async function uninstall(engine) {
   }
 }
 
-onMounted(() => { refresh(); loadSystem(); });
+onMounted(() => { refresh(); loadSystem(); loadProviders(); });
 </script>
 
 <template>
@@ -474,26 +637,29 @@ onMounted(() => { refresh(); loadSystem(); });
       <a href="#settings">Settings → Connection</a> for the server URL.
     </p>
 
-    <!-- Tabs by kind + Add Provider trigger. -->
+    <!-- Tabs by kind — always render TTS / LLM / Embeddings so the user
+         can switch even when one tab is currently empty. -->
     <div class="engines-view__tabs">
-      <template v-if="availableKinds.length > 1">
-        <button
-          v-for="k in availableKinds"
-          :key="k"
-          type="button"
-          class="engines-view__tab"
-          :class="{ 'engines-view__tab--active': activeKind === k }"
-          @click="activeKind = k"
-        >{{ KIND_LABELS[k] }} ({{ enginesByKind[k].length }})</button>
-      </template>
-      <span class="engines-view__tabs-spacer" />
-      <JvButton
-        v-if="activeKind !== 'embedding'"
-        variant="primary"
-        size="sm"
-        :label="`+ Add ${KIND_LABELS[activeKind] || activeKind} provider`"
-        @click="openAddProvider"
-      />
+      <button
+        v-for="k in ['tts', 'llm', 'embedding']"
+        :key="k"
+        type="button"
+        class="engines-view__tab"
+        :class="{ 'engines-view__tab--active': activeKind === k }"
+        @click="activeKind = k; cancelEdit()"
+      >{{ KIND_LABELS[k] }}
+        <span class="jv-muted" style="font-size: 11px">
+          ({{ (enginesByKind[k] || []).length }} local{{ k === 'llm' ? ` · ${llmProviders.length} online` : k === 'tts' ? ` · ${ttsProviders.length} online` : '' }})
+        </span>
+      </button>
+    </div>
+
+    <!-- ── Section header — Local engines ──────────────────────────── -->
+    <div v-if="visibleEngines.length" class="engines-view__section-h">
+      <h3>Local engines</h3>
+      <span class="jv-muted" style="font-size: 12px">
+        Managed by JustVoice — installed into per-engine venvs and loaded into one slot per kind.
+      </span>
     </div>
 
     <!-- Per-engine row: dropdown + selection-driven info + ONE contextual button -->
@@ -604,16 +770,77 @@ onMounted(() => { refresh(); loadSystem(); });
       No {{ KIND_LABELS[activeKind] }} engines yet.
     </p>
 
-    <p class="engines-view__foot jv-muted">
+    <p v-if="visibleEngines.length" class="engines-view__foot jv-muted">
       <strong>One engine per kind</strong> — loading a new TTS engine unloads the prior TTS; LLM and embedding engines stay loaded independently. Shared engines (Kokoro, Chatterbox, LuxTTS, Qwen3, TADA) build their venv transparently on first load. Venv-isolated engines (Dia, MOSS) need a one-time Install before Load.
     </p>
 
-    <AddProviderModal
-      :open="addProviderOpen"
-      :kind="addProviderKind"
-      @close="addProviderOpen = false"
-      @saved="onProviderSaved"
+    <!-- ── Registered providers (online + self-hosted) ─────────────── -->
+    <div v-if="activeKind !== 'embedding'" class="engines-view__section-h">
+      <h3>{{ activeKind === 'llm' ? 'Online LLM providers' : 'Online + self-hosted TTS providers' }}</h3>
+      <span class="jv-muted" style="font-size: 12px">
+        {{ activeKind === 'llm'
+          ? 'Cloud providers (Anthropic, OpenAI, Gemini, DeepSeek, OpenRouter) + local OpenAI-compat (Ollama). No venv install — API key + base URL only.'
+          : 'ElevenLabs, Speechify, Speechmatics, OpenAI TTS, self-hosted Kokoro / Chatterbox / Dia servers. JustVoice talks /v1/audio/speech.' }}
+      </span>
+      <span class="jv-spacer" />
+      <JvButton
+        v-if="editingKey !== 'new'"
+        variant="primary"
+        size="sm"
+        :label="`+ Add ${activeKind === 'llm' ? 'LLM' : 'TTS'} provider`"
+        @click="startNewProvider"
+      />
+    </div>
+
+    <!-- Inline editor for a new provider — sits above the existing list. -->
+    <ProviderForm
+      v-if="editingKey === 'new' && draft && activeKind !== 'embedding'"
+      :draft="draft"
+      editing-key="new"
+      :kind-hint="activeKind"
+      @save="saveProvider"
+      @cancel="cancelEdit"
     />
+
+    <!-- Registered provider rows — click Edit to expand into the form. -->
+    <ul v-if="activeKind !== 'embedding' && visibleProviders.length" class="engines-view__provider-list">
+      <li v-for="p in visibleProviders" :key="p.id" class="engines-view__provider">
+        <template v-if="editingKey === p.id && draft">
+          <ProviderForm
+            :draft="draft"
+            :editing-key="editingKey"
+            :kind-hint="activeKind"
+            @save="saveProvider"
+            @cancel="cancelEdit"
+            @delete="deleteProvider"
+          />
+        </template>
+        <template v-else>
+          <div class="engines-view__provider-row">
+            <div class="engines-view__provider-id">
+              <strong>{{ p.name || p.id }}</strong>
+              <span class="jv-muted" style="font-size: 11px"> · {{ p.id }} · {{ p.provider_type }}</span>
+            </div>
+            <div class="engines-view__provider-meta">
+              <span v-if="p.has_api_key || p.api_key" class="jv-pill jv-pill--ghost" title="API key on file">🔑</span>
+              <span v-if="p.registered" class="jv-pill jv-pill--green">live</span>
+              <span v-else-if="activeKind === 'llm'" class="jv-pill jv-pill--warn">unregistered</span>
+              <span v-if="p.default_model || p.tts_model" class="jv-muted" style="font-size: 11px">{{ p.default_model || p.tts_model }}</span>
+            </div>
+            <span class="jv-spacer" />
+            <JvButton variant="ghost" size="sm" label="Edit" @click="startEditProvider(p)" />
+          </div>
+        </template>
+      </li>
+    </ul>
+    <p v-else-if="activeKind !== 'embedding' && editingKey !== 'new'" class="jv-muted engines-view__empty">
+      No {{ activeKind === 'llm' ? 'LLM' : 'TTS' }} providers registered. Click <strong>+ Add</strong> to register one — Claude, OpenAI, ElevenLabs, etc.
+    </p>
+
+    <p class="engines-view__foot jv-muted">
+      <strong>Feature pins</strong> route Compose / Persona rewrite / Speaker attribution / Suggest / Smart-assign to specific providers + models — configure in
+      <a href="#settings">Settings → AI features</a>. Unpinned features fall back to the first registered LLM provider.
+    </p>
   </section>
 </template>
 
@@ -844,4 +1071,44 @@ onMounted(() => { refresh(); loadSystem(); });
   max-width: 880px;
   line-height: 1.55;
 }
+
+/* ── Section header (Local engines / Online providers split) ─────── */
+.engines-view__section-h {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 22px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.engines-view__section-h h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ── Registered-provider list ───────────────────────────────────── */
+.engines-view__provider-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.engines-view__provider {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+.engines-view__provider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+}
+.engines-view__provider-id { display: flex; align-items: baseline; gap: 6px; }
+.engines-view__provider-meta { display: flex; align-items: center; gap: 6px; }
 </style>
