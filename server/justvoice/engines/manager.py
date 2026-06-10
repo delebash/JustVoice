@@ -323,8 +323,10 @@ def _detect_torch_index_url() -> tuple[str | None, str]:
     Returns (index_url, label). When index_url is None, default PyPI is used
     (CPU-only wheels). Detection logic for CUDA / Intel Arc / Apple Silicon.
     """
-    # User override always wins.
-    override = os.environ.get("JUSTVOICE_TORCH_INDEX")
+    # Env-var override always wins; then the settings knob.
+    from .shared_venv import _settings_torch_override
+
+    override = os.environ.get("JUSTVOICE_TORCH_INDEX") or _settings_torch_override()
     if override:
         return override, f"override({override})"
 

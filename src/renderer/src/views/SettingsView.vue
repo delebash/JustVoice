@@ -461,6 +461,61 @@ const gpuVramPct = computed(() => {
   return total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
 });
 
+// ── Torch backend (Settings → GPU) ──────────────────────────────────
+// GET /v1/engines/setup returns the REAL detection result (gpu_label +
+// the torch wheel index the next setup run will use). The force buttons
+// write settings.engines.torch_index_override ("" = auto-detect), then
+// POST /v1/engines/setup re-runs the shared-venv install with it.
+const setupStatus = ref(null);
+const setupBusy = ref(false);
+const TORCH_INDEXES = {
+  cpu: "https://download.pytorch.org/whl/cpu",
+  rocm: "https://download.pytorch.org/whl/rocm6.0",
+};
+
+async function loadSetupStatus() {
+  setupStatus.value = await api.safeRequest("/v1/engines/setup", null);
+}
+
+async function setTorchOverride(indexUrl) {
+  try {
+    const cur = await api.request("/v1/settings");
+    const engines = { ...(cur.engines || {}), torch_index_override: indexUrl };
+    await api.request("/v1/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ engines }),
+    });
+    await loadSetupStatus();
+    pushToast({
+      message: indexUrl
+        ? "Backend override saved. Re-run engine setup to reinstall torch with it."
+        : "Override cleared — auto-detection is back in charge. Re-run engine setup to apply.",
+      kind: "success",
+      duration: 5000,
+    });
+  } catch (e) {
+    pushToast({ message: `Save failed: ${e?.message || e}`, kind: "error" });
+  }
+}
+
+async function rerunEngineSetup() {
+  if (setupBusy.value) return;
+  setupBusy.value = true;
+  try {
+    const r = await api.request("/v1/engines/setup", { method: "POST" });
+    pushToast({
+      message: `Engine setup started (job ${r.job_id}). Track it on the Engines tab — torch reinstall can take several minutes.`,
+      kind: "info",
+      duration: 7000,
+    });
+  } catch (e) {
+    pushToast({ message: `Setup failed to start: ${e?.message || e}`, kind: "error" });
+  } finally {
+    setupBusy.value = false;
+  }
+}
+
 // ── Auto-updater (task #90) ──────────────────────────────────────────
 // UI shell only — the actual update check / download / install flow runs
 // through Tauri's built-in updater plugin via window.__TAURI__.updater.
@@ -725,6 +780,7 @@ function applyAppearance() {
 onMounted(() => {
   loadAppearance();
   loadGpuInfo();
+  loadSetupStatus();
   loadMcpBindings();
   loadLogsPreview();
   loadAiPanel();
@@ -1864,16 +1920,32 @@ onMounted(() => {
 
     <div v-show="activeSub === 'gpu'" class="jv-section">
       <div class="jv-card">
-        <div class="jv-card__header"><h3 class="jv-card__title">CUDA wheel download flow</h3></div>
+        <div class="jv-card__header"><h3 class="jv-card__title">Torch backend (shared engine venv)</h3></div>
         <p class="jv-muted" style="font-size: 12.5px">
-          PyTorch engines ship with the CPU wheel by default. Switching to CUDA reinstalls torch in
-          the engine's venv with the matching CUDA build (~2 GB download). Per-engine — Chatterbox
-          on CUDA and Kokoro on CPU is fine. Phases: <code class="jv-mono">idle → stopping engines →
-          waiting for download → ready</code>.
+          JustVoice detects your GPU and picks the matching PyTorch build when the shared engine
+          venv is set up. Force a different backend below; the change applies on the next setup run
+          (torch reinstall, ~2 GB download). On Apple Silicon, MPS is automatic — no switch needed.
         </p>
+        <div v-if="setupStatus" class="jv-row" style="margin-top: 12px; gap: 8px; flex-wrap: wrap">
+          <span class="jv-pill" :class="setupStatus.ready ? 'jv-pill--green' : 'jv-pill--ghost'">
+            venv: {{ setupStatus.ready ? "ready" : "not set up" }}
+          </span>
+          <span class="jv-pill jv-pill--ghost">detected: {{ setupStatus.gpu_label || "cpu" }}</span>
+          <span class="jv-pill jv-pill--ghost" :title="setupStatus.torch_index_url || 'default PyPI (CPU wheels)'">
+            wheel index: {{ setupStatus.torch_index_url ? setupStatus.torch_index_url.split("/whl/")[1] || setupStatus.torch_index_url : "pypi (cpu)" }}
+          </span>
+        </div>
+        <p v-else class="jv-muted" style="margin-top: 12px">Loading detection…</p>
+        <div class="jv-row" style="margin-top: 14px; gap: 6px; flex-wrap: wrap">
+          <JvButton variant="secondary" size="sm" label="Force CPU-only" title="Use CPU torch wheels regardless of detected GPU" @click="setTorchOverride(TORCH_INDEXES.cpu)" />
+          <JvButton variant="secondary" size="sm" label="Force ROCm (AMD)" title="Use ROCm 6.0 torch wheels (Linux + AMD)" @click="setTorchOverride(TORCH_INDEXES.rocm)" />
+          <JvButton variant="secondary" size="sm" label="Auto-detect" title="Clear the override and re-detect" @click="setTorchOverride('')" />
+          <span class="jv-spacer" />
+          <JvButton variant="primary" size="sm" :loading="setupBusy" :disabled="setupBusy" label="Re-run engine setup" @click="rerunEngineSetup" />
+        </div>
         <p class="jv-muted" style="font-size: 11.5px; margin-top: 10px">
-          The switch is per-engine — use the <a href="#engines">Engines tab</a> → engine card →
-          install options. On Apple Silicon, MPS / CoreML is auto-detected — no switch required.
+          The <code class="jv-mono">JUSTVOICE_TORCH_INDEX</code> env var still wins over this setting.
+          Hardware-aware engine recommendations live in QuickSetup and the Engines tab's Recommended chips.
         </p>
       </div>
     </div>

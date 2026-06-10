@@ -256,6 +256,12 @@ class FeaturePinConfig(BaseModel):
 
 
 class EnginesSettings(BaseModel):
+    # Torch wheel-index override for the shared venv. "" = auto-detect
+    # (nvidia-smi → CUDA, Apple Silicon → MPS, else CPU). Set to a wheel
+    # index URL (e.g. https://download.pytorch.org/whl/cpu or .../rocm6.0)
+    # to force a backend; takes effect on the next engine setup run.
+    # The JUSTVOICE_TORCH_INDEX env var still wins over this setting.
+    torch_index_override: str = ""
     kokoro: KokoroEngineSettings = KokoroEngineSettings()
     external: list[ExternalEngineConfig] = []
     # Phase 2 / Slice 3 — LLM provider registry. Each entry registers an

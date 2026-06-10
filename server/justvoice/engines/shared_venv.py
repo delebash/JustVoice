@@ -41,14 +41,26 @@ log = logging.getLogger(__name__)
 # ─── GPU / wheel-index detection ──────────────────────────────────────
 
 
+def _settings_torch_override() -> str | None:
+    """settings.engines.torch_index_override, when the app state is up.
+    Lazy import — this module is also exercised from tests without a
+    booted AppState."""
+    try:
+        from ..app_state import get_state
+
+        return (get_state().settings.get().engines.torch_index_override or "").strip() or None
+    except Exception:
+        return None
+
+
 def detect_gpu() -> tuple[str, str | None, str]:
     """Returns (vendor, torch_index_url_or_None, label).
 
     Windows-side detection uses powershell Win32_VideoController; Linux-side
     uses nvidia-smi. Override via JUSTVOICE_TORCH_INDEX env var.
     """
-    # User override always wins.
-    override = os.environ.get("JUSTVOICE_TORCH_INDEX")
+    # Env-var override always wins; the settings knob is next.
+    override = os.environ.get("JUSTVOICE_TORCH_INDEX") or _settings_torch_override()
     if override:
         return "override", override, f"override({override})"
 
