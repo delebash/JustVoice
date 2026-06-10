@@ -49,15 +49,18 @@ button{font:inherit}
 .sidebar .spacer{flex:1}
 
 main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
-.topbar{display:flex;align-items:baseline;gap:14px;padding:22px 32px 14px;border-bottom:1px solid var(--line)}
-.topbar h1{font-size:24px;font-weight:600;letter-spacing:-.015em}
+.topbar{display:flex;align-items:baseline;gap:14px;padding:20px 32px 14px;border-bottom:1px solid var(--line)}
+.topbar h1{font-size:24px;font-weight:600;letter-spacing:-.015em;line-height:1.15}
 .topbar .period{color:var(--accent)}
+.hdr-chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-2);background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-pill);padding:3px 11px;white-space:nowrap}
+.hdr-chip .k{font-weight:700;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3)}
+.hdr-chip b{font-size:11.5px}
 .engine-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2);background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-pill);padding:3px 12px}
 .status{margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2)}
 .status .dot{width:8px;height:8px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 3px rgba(58,125,99,.18)}
 .status .url{font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
 .content{flex:1;overflow-y:auto;padding:24px 32px 64px}
-.lede{color:var(--ink-2);font-size:13px;margin:0 0 18px;max-width:760px}
+.lede{color:var(--ink-2);font-size:13px;margin:0 0 20px;max-width:760px}
 
 /* ── Primitives ── */
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--shadow-1)}
@@ -112,18 +115,26 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .load-banner .track{flex:1;min-width:120px;height:6px;background:rgba(255,255,255,.7);border:1px solid var(--warn-line);border-radius:999px;overflow:hidden}
 .load-banner .fill{height:100%;background:var(--accent);width:0%;transition:width .12s linear}
 
-/* ── Studio steps ── */
-.steps{display:grid;grid-template-columns:repeat(4,minmax(160px,220px));gap:12px;margin-bottom:22px}
-.step{display:flex;gap:10px;align-items:center;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);cursor:pointer;text-align:left}
-.step .ic{font-size:15px;color:var(--ink-3)}
-.step b{display:block;font-size:13.5px}
-.step span{font-size:11.5px;color:var(--ink-3)}
-.step.active{background:var(--accent-soft);border-color:var(--accent-line)}
-.step.active .ic{color:var(--accent-ink)}
+/* ── Studio pane (JustWrite structure: one bounded pane, tab strip on
+     tinted bg, main white pane + tinted aside divided by border-left) ── */
+.studio-pane{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow-1);overflow:hidden;height:calc(100vh - 248px);min-height:560px}
+.studio-tabs{display:flex;gap:28px;padding:0 22px;border-bottom:1px solid var(--line);background:var(--surface-2);flex:none}
+.studio-tab{display:flex;align-items:center;gap:9px;padding:12px 2px 10px;border:0;border-bottom:2px solid transparent;background:transparent;text-align:left;cursor:pointer;margin-bottom:-1px}
+.studio-tab .ic{font-size:13px;color:var(--ink-3);flex:none}
+.studio-tab:hover .studio-tab-name{color:var(--ink)}
+.studio-tab.active{border-bottom-color:var(--accent)}
+.studio-tab.active .ic{color:var(--accent-ink)}
+.studio-tab.active .studio-tab-name{color:var(--accent-ink)}
+.studio-tab-name{display:block;font-size:13px;font-weight:600;color:var(--ink-2);line-height:1.2}
+.studio-tab-sub{display:block;font-size:10.5px;color:var(--ink-3);line-height:1.3}
+.studio-body{display:grid;grid-template-columns:minmax(0,1fr) 440px;flex:1;min-height:0}
+.studio-main{overflow-y:auto;padding:20px 22px 40px;min-width:0}
+.studio-aside{border-left:1px solid var(--line);background:var(--surface-2);padding:20px 18px;overflow-y:auto}
 
 /* Cast cards */
 .cast-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
-.cast-card{display:flex;gap:12px;align-items:flex-start;padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);cursor:pointer;text-align:left;box-shadow:var(--shadow-1)}
+.cast-card{display:flex;gap:12px;align-items:flex-start;padding:12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;cursor:pointer;text-align:left}
+.cast-card.unassigned{border-style:dashed}
 .cast-card:hover{border-color:var(--line-strong)}
 .cast-card.sel{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .cast-card.narrator{grid-column:1 / -1;display:flex}
@@ -135,7 +146,7 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .cast-needs{display:inline-flex;align-items:center;gap:5px;margin-left:6px;font-size:10px;color:var(--warn-ink)}
 .glyph{width:20px;height:20px;border-radius:999px;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:600;flex:none}
 
-.studio{display:grid;grid-template-columns:1fr 360px;gap:18px;align-items:start}
+
 
 /* Game-scale cast table (card grid doesn't scale past ~30 roles) */
 .cast-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
@@ -153,8 +164,8 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .lib .toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .lib .count{font-size:11px;color:var(--ink-3);background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:2px 8px}
 .picking{font-size:11.5px;color:var(--ink-3);margin:8px 0 10px}
-.voice-row{display:flex;align-items:center;gap:9px;width:100%;border:1px solid transparent;background:transparent;border-radius:7px;padding:7px 9px;cursor:pointer;text-align:left;font-size:12.5px;color:var(--ink);user-select:none;flex-wrap:nowrap}
-.voice-row:hover{background:var(--surface-2)}
+.voice-row{display:flex;align-items:center;gap:10px;width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;cursor:pointer;text-align:left;font-size:12.5px;color:var(--ink);user-select:none;flex-wrap:nowrap}
+.voice-row:hover{border-color:var(--line-strong)}
 .voice-row.assigned{border-color:var(--accent);background:var(--accent-soft)}
 .voice-row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .voice-row .nm i{display:block;font-size:10px;color:var(--ink-3);font-style:italic}
@@ -211,7 +222,9 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
   <main>
     <header class="topbar">
       <h1 id="title">Studio<span class="period">.</span></h1>
-      <span class="engine-pill">🧠 <strong id="engine-pill-name">Chatterbox Turbo</strong></span>
+      <span class="spacer" style="flex:1"></span>
+      <span class="hdr-chip"><span class="k">TTS</span><b id="engine-pill-name">Chatterbox Turbo</b><span style="color:var(--accent)">●</span></span>
+      <span class="hdr-chip" style="cursor:pointer" onclick="toast('Routes to Engines tab (mock).')">⚙ Engines</span>
       <span class="status"><span class="dot"></span>Operational <span class="url">· http://127.0.0.1:17494</span></span>
     </header>
     <div class="content">
@@ -220,32 +233,37 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
       <section id="tab-studio">
         <p class="lede"><strong>Studio</strong> turns a project into produced audio in three steps — choose voices in <strong>Cast</strong>, let the LLM work out who speaks each line in <strong>Script</strong>, then batch-generate in <strong>Render</strong>. Works the same for audiobooks, game dialogue, and podcasts.</p>
 
-        <div class="row" style="margin-bottom:16px">
+        <div class="row" style="margin-bottom:12px">
           <div class="combo" id="proj-combo" style="width:340px"></div>
           <span id="proj-traits" style="display:inline-flex;gap:6px;align-items:center"></span>
         </div>
 
-        <div class="steps" id="steps"></div>
+        <div class="studio-pane">
+          <div class="studio-tabs" id="steps"></div>
+          <div class="studio-body">
+            <div class="studio-main">
+              <div class="row" style="margin-bottom:14px;flex-wrap:nowrap">
+                <div id="cast-heading" style="min-width:0"></div>
+                <span class="spacer"></span>
+                <button class="btn secondary sm">✕ Clear cast</button>
+                <button class="btn sm">✨ Smart-assign</button>
+              </div>
 
-        <div class="studio">
-          <div>
-            <div class="row" style="margin-bottom:12px">
-              <div id="cast-heading"></div>
-              <span class="spacer"></span>
-              <button class="btn secondary sm">✕ Clear cast</button>
-              <button class="btn sm">✨ Smart-assign</button>
+              <div id="narrator-card"></div>
+
+              <div style="display:flex;align-items:flex-end;gap:12px;margin:22px 0 12px">
+                <div>
+                  <div class="eyebrow" id="char-eyebrow">Characters</div>
+                  <div class="display sm" id="char-counter"></div>
+                </div>
+                <span class="spacer"></span>
+                <span id="cast-mode"></span>
+              </div>
+              <div id="cast-grid"></div>
             </div>
 
-            <div id="narrator-card"></div>
-
-            <div style="margin:22px 0 12px">
-              <div class="eyebrow" id="char-eyebrow">Characters</div>
-              <div class="display sm" id="char-counter"></div>
-            </div>
-            <div class="cast-grid" id="cast-grid"></div>
+            <aside class="studio-aside lib" id="studio-lib"></aside>
           </div>
-
-          <aside class="card lib" style="padding:14px" id="studio-lib"></aside>
         </div>
       </section>
 
@@ -536,12 +554,13 @@ function projComboHtml(){
 function pickProject(id){projectId=id;castSearch="";uncastOnly=false;selectedChar=project().cast.find(c=>!c.voice)?.id||project().cast[0].id;renderAll()}
 function traitChipsHtml(p){
   const t=p.traits;
-  const chips=[ p.preset,
+  const traits=[
     t.primaryRoles==="single"?"narrator":t.primaryRoles==="multiple"?"hosts":"no narrator",
     t.lineSource==="prose"?"LLM attribution":t.lineSource==="script"?"script parse":"pre-attributed",
     t.output==="stitched"?`stitched · ${t.mastering}`:t.output==="perLine"?"per-line files":"timeline mix",
   ];
-  return chips.map((c,i)=>`<span class="pill ${i===0?"solid":"ghost"}" title="Use-case preset = a bundle of traits; Studio reads the traits">${c}</span>`).join("");
+  return `<span class="pill solid">${p.preset}</span>
+    <span style="font-size:11px;color:var(--ink-3)" title="Use-case preset = a bundle of traits; Studio reads the traits">${traits.join(" · ")}</span>`;
 }
 
 /* ───────── Cast rendering ───────── */
@@ -555,7 +574,7 @@ function castCardHtml(c){
   } else {
     voiceLine=`<div class="cast-unassigned">⚠ No voice</div>`;
   }
-  return `<button class="cast-card ${c.primary&&project().traits.primaryRoles==="single"?"narrator":""} ${selectedChar===c.id?"sel":""}" onclick="selectChar('${c.id}')">
+  return `<button class="cast-card ${c.primary&&project().traits.primaryRoles==="single"?"narrator":""} ${selectedChar===c.id?"sel":""} ${v?"":"unassigned"}" onclick="selectChar('${c.id}')">
     <div class="portrait" style="background:${c.primary?"var(--accent)":grad(c.name)}">${c.primary&&project().traits.primaryRoles==="single"?"🎧":initials(c.name)}</div>
     <div style="flex:1;min-width:0">
       <div style="display:flex;align-items:center;gap:6px"><b style="font-size:13.5px">${c.name}</b>${c.main?`<span class="cast-chip-main">main</span>`:""}</div>
@@ -598,9 +617,9 @@ function renderStudio(){
   const ss=scriptStep(p), rs=renderStep(p);
   /* Lab removed — bench tooling lives in the Tools lane, not the workflow. */
   $("#steps").innerHTML=`
-    <button class="step active"><span class="ic">🎧</span><span><b>Cast</b><span>${p.cast.length-unassigned}/${p.cast.length} cast</span></span></button>
-    <button class="step"><span class="ic">💬</span><span><b>${ss.label}</b><span>${ss.sub}</span></span></button>
-    <button class="step"><span class="ic">🎚️</span><span><b>${rs.label}</b><span>${rs.sub}</span></span></button>`;
+    <button class="studio-tab active"><span class="ic">🎧</span><span><span class="studio-tab-name">Cast</span><span class="studio-tab-sub">${p.cast.length-unassigned}/${p.cast.length} cast${unassigned?` · ${unassigned} unassigned`:""}</span></span></button>
+    <button class="studio-tab"><span class="ic">💬</span><span><span class="studio-tab-name">${ss.label}</span><span class="studio-tab-sub">${ss.sub}</span></span></button>
+    <button class="studio-tab"><span class="ic">🎚️</span><span><span class="studio-tab-name">${rs.label}</span><span class="studio-tab-sub">${rs.sub}</span></span></button>`;
 
   /* Primary-roles band: single narrator card, multiple host cards, or none. */
   const primaries=p.cast.filter(c=>c.primary);
@@ -618,21 +637,19 @@ function renderStudio(){
   /* Density by cast size with manual override. */
   const mode=castMode(p);
   const nonPrimary=p.cast.filter(c=>!c.primary);
-  const toolbar=`<div class="cast-toolbar">
-      ${mode==="table"?`<input class="input" placeholder="Search ${copy.roles.toLowerCase()}…" value="${castSearch}" oninput="castSearch=this.value.trim().toLowerCase();renderStudio()" />
-      <button class="chip ${uncastOnly?"active":""}" style="border:1px solid var(--line)" onclick="uncastOnly=!uncastOnly;renderStudio()">Uncast only</button>`:""}
-      <span style="font-size:11px;color:var(--ink-3)">${nonPrimary.length} ${copy.roles.toLowerCase()}${mode==="table"&&nonPrimary.some(c=>c.lines!=null)?" · sorted by line count":""}</span>
-      <span class="spacer"></span>
-      <span class="chips"><button class="chip ${mode==="cards"?"active":""}" onclick="castModeOverride['${projectId}']='cards';renderStudio()">Cards</button><button class="chip ${mode==="table"?"active":""}" onclick="castModeOverride['${projectId}']='table';renderStudio()">Table</button></span>
-    </div>`;
+  const toolbar=mode==="table"?`<div class="cast-toolbar">
+      <input class="input" placeholder="Search ${copy.roles.toLowerCase()}…" value="${castSearch}" oninput="castSearch=this.value.trim().toLowerCase();renderStudio()" />
+      <button class="chip ${uncastOnly?"active":""}" style="border:1px solid var(--line)" onclick="uncastOnly=!uncastOnly;renderStudio()">Uncast only</button>
+      <span style="font-size:11px;color:var(--ink-3)">${nonPrimary.some(c=>c.lines!=null)?"sorted by line count":""}</span>
+    </div>`:"";
   if(mode==="table"){
     $("#cast-grid").innerHTML=toolbar+castTableHtml(p);
-    $("#cast-grid").classList.remove("cast-grid");
   } else {
-    $("#cast-grid").innerHTML=toolbar+`<div class="cast-grid">${nonPrimary.map(castCardHtml).join("")}</div>`;
-    $("#cast-grid").classList.remove("cast-grid");
+    $("#cast-grid").innerHTML=`<div class="cast-grid">${nonPrimary.map(castCardHtml).join("")}</div>`;
   }
+  $("#cast-grid").classList.remove("cast-grid");
   $("#char-counter").textContent=`${nonPrimary.length} ${copy.roles.toLowerCase()} · ${unassigned} unassigned`;
+  $("#cast-mode").innerHTML=`<span class="chips"><button class="chip ${mode==="cards"?"active":""}" onclick="castModeOverride['${projectId}']='cards';renderStudio()">Cards</button><button class="chip ${mode==="table"?"active":""}" onclick="castModeOverride['${projectId}']='table';renderStudio()">Table</button></span>`;
 }
 
 /* ───────── Studio: voice library aside ───────── */
@@ -655,12 +672,14 @@ function renderStudioLib(){
     </div>`;
   }).join("");
   $("#studio-lib").innerHTML=`
-    <div class="eyebrow" style="margin-bottom:8px">Voice library</div>
-    <div class="combo" id="lib-combo">${comboHtml("lib-combo",libEngine,"pickLibEngine")}</div>
-    <div class="picking">${c?`Picking voice for <b style="color:var(--ink)">${c.name}</b>`:"Select a role to assign a voice."}</div>
+    <div style="margin-bottom:14px">
+      <div class="eyebrow">Voice library</div>
+      <div class="display sm" style="margin-top:2px">${c?`<span style="font-family:var(--font-ui);font-size:11.5px;font-weight:400;color:var(--ink-3)">assigning to</span> ${c.name}`:"Select a role"}</div>
+    </div>
+    <div class="combo" id="lib-combo" style="margin-bottom:10px">${comboHtml("lib-combo",libEngine,"pickLibEngine")}</div>
     ${bannerHtml(libEngine)}
     <div class="toolbar"><input class="input" placeholder="Search voices…" value="${libSearch}" oninput="libSearch=this.value.trim().toLowerCase();renderStudioLib()" /><span class="count">${vs.length}</span></div>
-    <div style="display:flex;flex-direction:column;gap:2px;max-height:50vh;overflow-y:auto">${rows||`<div class="muted" style="font-size:12px;padding:12px;text-align:center;font-style:italic">No voices match.</div>`}</div>`;
+    <div style="display:flex;flex-direction:column;gap:6px">${rows||`<div class="muted" style="font-size:12px;padding:12px;text-align:center;font-style:italic">No voices match.</div>`}</div>`;
 }
 function pickVoice(voiceId){
   const v=voiceById(voiceId);
