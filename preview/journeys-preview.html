@@ -1295,7 +1295,8 @@ const stepsSplab = [
       <div class="row" style="margin-bottom:8px"><span class="combo-cell">Load from chapter…<span class="chev">▼</span></span><button class="btn ghost sm">✕ Clear</button><button class="btn secondary sm">✨ Sample: Ch. 3</button><span class="spacer"></span><span class="muted" style="font-size:11px">1,242 words · 6,810 chars · ~1.7k tokens</span></div>
       <textarea class="input" style="height:54px;padding:8px 12px;resize:none;font-size:12.5px">"Whose office is it?" Bern closed the green book. "I don't know," he said. "I have wondered." "Ask her about the winter of '61. Watch her hands," Tom said.</textarea>
     </div>
-    <div style="display:grid;grid-template-columns:minmax(0,860px) minmax(200px,1fr);gap:12px;margin-bottom:12px;align-items:start">
+    <div class="row" style="margin-bottom:8px"><button class="btn secondary sm">＋ Add column</button></div>
+    <div style="display:grid;grid-template-columns:minmax(0,860px);gap:12px;margin-bottom:12px;align-items:start">
       <div class="card" style="padding:12px 14px">
         <div class="row" style="flex-wrap:nowrap;margin-bottom:8px"><input class="input" style="height:28px;font-size:12.5px;max-width:140px" value="Run A"/><span class="spacer"></span><button class="btn sm">▶ Run</button><button class="btn ghost sm">🗑</button></div>
         <div class="row" style="flex-wrap:nowrap;margin-bottom:8px"><span class="eyebrow" style="flex:none">Presets</span><span class="combo-cell" style="font-size:11.5px">Default (built-in)<span class="chev">▼</span></span><span class="pill green" style="font-size:9.5px">✓ production</span><button class="btn sm" style="height:22px;font-size:10.5px">Use as production</button><button class="btn ghost sm" style="font-size:10.5px">⬇ Load</button><button class="btn ghost sm" style="font-size:10.5px">＋ Save as</button></div>
@@ -1325,7 +1326,6 @@ Paragraphs (dialogue segments tagged inline): {{paragraphs}}</textarea>
         </div>
         <p class="muted" style="font-size:10.5px;margin-top:6px">Raw tab shows the model's JSON exactly as it streams — <span class="mono" style="font-size:10px">[{"speaker":"mara","confidence":0.91}, …]</span>. Anchors and narration never came from the LLM; floors demote weak picks to “unknown”.</p>
       </div>
-      <button class="card" style="border-style:dashed;display:flex;align-items:center;justify-content:center;min-height:160px;cursor:pointer;color:var(--ink-3);font-size:12.5px;background:transparent">＋ Add column<br/>race another model<br/>on the same input</button>
     </div>
     </div>`) },
 
