@@ -1,7 +1,21 @@
 <!DOCTYPE html>
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!--
-  Engines page UX redesign — clickable mock v6 (docs/plans engines-ux plan).
+  Engines page UX redesign — clickable mock v7 (docs/plans engines-ux plan).
+
+  v7 additions (user direction):
+    - search + capability filter chips (All/TTS/STT/LLM/EMBED) on BOTH tabs
+    - EMBED is a first-class capability: chip, provider form field
+      (OpenAI text-embedding-3-small, Ollama nomic-embed-text), local
+      Embeddings — EMBED section (honest empty state until a local
+      embedding engine ships; the manager's embedding slot already exists)
+    - chat-model picker is a REAL combobox: lists models fetched from the
+      provider's /v1/models, type-to-filter, click to pick, or enter any
+      custom model id the list doesn't know; ⟳ Fetch models re-queries
+    - scope decision: Engines = inventory & connections ONLY. Feature
+      routing / defaults / prompt configs / usage live in Settings → AI
+      features (cross-links added both ways). Hardware-tier presets idea
+      → QuickSetup wizard (Next horizons).
 
   v6 — THE TWO-WORLD SPLIT (user decision: "free vs money"):
     Two top-level tabs, one for each real ontology:
@@ -29,7 +43,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>JustVoice — Engines redesign mock v6</title>
+<title>JustVoice — Engines redesign mock v7</title>
 <style>
 :root {
   --bg:#f6f5f1; --surface:#fff; --surface-2:#fbfaf7; --surface-3:#f3f1ec;
@@ -104,6 +118,7 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
 .cap.stt{border-color:#c8d4e8;background:#eaf0f8;color:#3a5a8c}
 .cap.llm{border-color:#e2d2b0;background:var(--gold-soft);color:var(--gold)}
 .cap.iso{border-color:#d8c8e8;background:#f1eaf8;color:#6a4a8c}
+.cap.emb{border-color:#bcd9d4;background:#e3f1ee;color:#2e6e64}
 .ghead .desc{color:var(--ink-3);font-size:12px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ghead .gsum{margin-left:auto;display:flex;align-items:center;gap:8px;flex:none;font-size:12px;color:var(--ink-2)}
 .ghead .gsum .ldd{color:var(--accent-ink);font-weight:600}
@@ -180,6 +195,21 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
 .addengine h3{font-family:var(--font-serif);font-size:14px;margin:0;display:inline}
 .addengine .sub{font-size:11.5px;color:var(--ink-3);display:block;margin-top:4px}
 .warn{font-size:11.5px;color:var(--red);margin-top:8px}
+/* capability filter chips (both tabs) */
+.fchips{display:flex;gap:6px;align-items:center}
+.fchip{font:inherit;font-size:11.5px;font-weight:700;letter-spacing:.04em;border:1px solid var(--line);border-radius:999px;padding:5px 13px;cursor:pointer;background:var(--surface);color:var(--ink-2)}
+.fchip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+/* model combobox (provider forms) — list from the provider's /v1/models, or type your own */
+.modelpick .caret{pointer-events:auto;cursor:pointer}
+.mlist{position:absolute;z-index:30;top:100%;left:0;margin-top:4px;width:300px;max-height:230px;overflow:auto;background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;box-shadow:0 10px 28px rgba(20,22,24,.18);display:none}
+.modelpick.open .mlist{display:block}
+.mlist .mi{padding:7px 12px;font-size:12.5px;cursor:pointer;display:flex;gap:8px;align-items:baseline}
+.mlist .mi:hover{background:var(--accent-soft)}
+.mlist .mi .mid{font-family:var(--font-mono);font-size:12px}
+.mlist .mi .mtag{margin-left:auto;font-size:10px;color:var(--ink-3)}
+.mlist .mfoot{padding:7px 12px;font-size:11px;color:var(--ink-3);border-top:1px solid var(--line);background:var(--surface-2)}
+.emptysec{margin-top:10px;border:1px dashed var(--line-strong);border-radius:10px;padding:16px 18px;font-size:12.5px;color:var(--ink-3);background:var(--surface)}
+.xlink{font-size:12px;color:var(--accent-ink);text-decoration:underline;cursor:pointer;white-space:nowrap}
 .hidden{display:none!important}
 </style>
 </head>
@@ -208,6 +238,13 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
       🔍 <input id="q" placeholder="Search local models and engines… (try “turbo”, “0.6b”, “japanese”)" oninput="doFilter()">
       <span class="hint">/</span>
     </div>
+    <div class="fchips" id="fchips-local">
+      <button class="fchip on" data-cap="all" onclick="setCapFilter('local','all',this)">All</button>
+      <button class="fchip" data-cap="tts" onclick="setCapFilter('local','tts',this)">TTS</button>
+      <button class="fchip" data-cap="stt" onclick="setCapFilter('local','stt',this)">STT</button>
+      <button class="fchip" data-cap="llm" onclick="setCapFilter('local','llm',this)">LLM</button>
+      <button class="fchip" data-cap="emb" onclick="setCapFilter('local','emb',this)">EMBED</button>
+    </div>
     <div class="machine">
       <div><div class="m">GPU</div><div class="v">RTX 2070 SUPER <small>· CUDA</small></div></div>
       <div><div class="m">VRAM</div><div class="v">8 GB <small>· 4.6 GB free</small></div></div>
@@ -235,9 +272,9 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
   </div>
 
   <!-- ── Voice generation — TTS ── -->
-  <div class="section-h"><h2>Voice generation <span class="ksuffix">— TTS</span></h2><span class="count">8 engines · 15 models</span><span class="note">one model loaded at a time — loading another swaps the TTS slot</span></div>
+  <div class="section-h" data-cap="tts"><h2>Voice generation <span class="ksuffix">— TTS</span></h2><span class="count">8 engines · 15 models</span><span class="note">one model loaded at a time — loading another swaps the TTS slot</span></div>
 
-  <div class="group fresh" data-search="mylab tts custom isolated added">
+  <div class="group fresh" data-cap="tts" data-search="mylab tts custom isolated added">
     <div class="ghead" onclick="tog(this)">
       <span class="chev">▶</span>
       <span class="nm">MyLab TTS</span><span class="id">mylab-tts</span>
@@ -256,7 +293,7 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
     </div>
   </div>
 
-  <div class="group open" data-search="kokoro 82m preset cpu realtime english japanese chinese">
+  <div class="group open" data-cap="tts" data-search="kokoro 82m preset cpu realtime english japanese chinese">
     <div class="ghead" onclick="tog(this)">
       <span class="chev">▶</span>
       <span class="nm">Kokoro</span><span class="id">kokoro</span>
@@ -274,7 +311,7 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
     </div>
   </div>
 
-  <div class="group" data-search="chatterbox resemble cloning multilingual turbo tags 23 languages">
+  <div class="group" data-cap="tts" data-search="chatterbox resemble cloning multilingual turbo tags 23 languages">
     <div class="ghead" onclick="tog(this)">
       <span class="chev">▶</span>
       <span class="nm">Chatterbox</span><span class="id">chatterbox</span>
@@ -298,7 +335,7 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
     </div>
   </div>
 
-  <div class="group open" data-search="qwen3 tts alibaba customvoice base instruct cloning vivian ryan">
+  <div class="group open" data-cap="tts" data-search="qwen3 tts alibaba customvoice base instruct cloning vivian ryan">
     <div class="ghead" onclick="tog(this)">
       <span class="chev">▶</span>
       <span class="nm">Qwen3-TTS</span><span class="id">qwen3</span>
@@ -334,7 +371,7 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
     </div>
   </div>
 
-  <div class="group" data-search="luxtts fast cpu english cloning">
+  <div class="group" data-cap="tts" data-search="luxtts fast cpu english cloning">
     <div class="ghead" onclick="tog(this)">
       <span class="chev">▶</span>
       <span class="nm">LuxTTS</span><span class="id">luxtts</span>
@@ -352,7 +389,7 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
     </div>
   </div>
 
-  <div class="group" data-search="tada hume multilingual flow matching llama">
+  <div class="group" data-cap="tts" data-search="tada hume multilingual flow matching llama">
     <div class="ghead" onclick="tog(this)">
       <span class="chev">▶</span>
       <span class="nm">TADA</span><span class="id">tada</span>
@@ -370,7 +407,7 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
     </div>
   </div>
 
-  <div class="group" data-search="dia nari labs dialogue s1 s2 speakers venv isolated">
+  <div class="group" data-cap="tts" data-search="dia nari labs dialogue s1 s2 speakers venv isolated">
     <div class="ghead" onclick="tog(this)">
       <span class="chev">▶</span>
       <span class="nm">Dia</span><span class="id">dia</span>
@@ -389,7 +426,7 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
     </div>
   </div>
 
-  <div class="group" data-search="moss ttsd long form dialogue venv big isolated">
+  <div class="group" data-cap="tts" data-search="moss ttsd long form dialogue venv big isolated">
     <div class="ghead" onclick="tog(this)">
       <span class="chev">▶</span>
       <span class="nm">MOSS-TTSD</span><span class="id">moss-tts</span>
@@ -409,9 +446,9 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
   </div>
 
   <!-- ── Transcription — STT ── -->
-  <div class="section-h"><h2>Transcription <span class="ksuffix">— STT</span></h2><span class="count">1 engine · 5 models</span><span class="note">powers dictation, /v1/transcribe, and agent transcription</span></div>
+  <div class="section-h" data-cap="stt"><h2>Transcription <span class="ksuffix">— STT</span></h2><span class="count">1 engine · 5 models</span><span class="note">powers dictation, /v1/transcribe, and agent transcription</span></div>
 
-  <div class="group" data-search="whisper stt openai transcription dictation turbo base small medium large">
+  <div class="group" data-cap="stt" data-search="whisper stt openai transcription dictation turbo base small medium large">
     <div class="ghead" onclick="tog(this)">
       <span class="chev">▶</span>
       <span class="nm">Whisper</span><span class="id">whisper</span>
@@ -450,9 +487,9 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
   </div>
 
   <!-- ── Language models — LLM ── -->
-  <div class="section-h"><h2>Language models <span class="ksuffix">— LLM</span></h2><span class="count">1 engine · 3 models</span><span class="note">stays loaded alongside TTS — speaker attribution needs both</span></div>
+  <div class="section-h" data-cap="llm"><h2>Language models <span class="ksuffix">— LLM</span></h2><span class="count">1 engine · 3 models</span><span class="note">stays loaded alongside TTS · feature routing lives in <span class="xlink" title="Which provider+model each AI feature uses — pins, defaults, prompt configs">Settings → AI features</span></span></div>
 
-  <div class="group open" data-search="qwen3 llm local refinement compose rewrite attribution 0.6b 1.7b 4b">
+  <div class="group open" data-cap="llm" data-search="qwen3 llm local refinement compose rewrite attribution 0.6b 1.7b 4b">
     <div class="ghead" onclick="tog(this)">
       <span class="chev">▶</span>
       <span class="nm">Qwen3 LLM (local)</span><span class="id">qwen3-llm</span>
@@ -482,6 +519,12 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
     </div>
   </div>
 
+  <!-- ── Embeddings — EMBED ── -->
+  <div class="section-h" data-cap="emb"><h2>Embeddings <span class="ksuffix">— EMBED</span></h2><span class="count">0 engines</span><span class="note">powers semantic search / RAG over your manuscripts (future features)</span></div>
+  <div class="emptysec" data-cap="emb" data-search="embeddings empty local rag semantic">
+    No local embedding engine yet — the engine slot exists and one is planned. Meanwhile, cloud embeddings work today via the <b>Online providers</b> tab (OpenAI · text-embedding-3-small, Ollama · nomic-embed-text).
+  </div>
+
   <div class="fitnote">Hardware fit, against your card and what's currently loaded:<span class="fit ok"></span>fits<span class="fit tight"></span>tight — free a slot first<span class="fit no"></span>won't fit in 8 GB</div>
 
   <div class="runtime" data-search="shared runtime venv maintenance rebuild remove">
@@ -507,7 +550,20 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
   <!-- ════════════════ TAB 2: ONLINE PROVIDERS ════════════════ -->
   <div class="tabpane" id="pane-online">
 
-  <div class="costnote">💳 These call external APIs with your keys — usage is billed by the provider, and your text leaves this machine. Local models on the other tab are free and private.</div>
+  <div class="toprow">
+    <div class="search">
+      🔍 <input id="qp" placeholder="Search providers… (try “openai”, “elevenlabs”)" oninput="doFilterProv()">
+    </div>
+    <div class="fchips" id="fchips-online">
+      <button class="fchip on" data-cap="all" onclick="setCapFilter('online','all',this)">All</button>
+      <button class="fchip" data-cap="tts" onclick="setCapFilter('online','tts',this)">TTS</button>
+      <button class="fchip" data-cap="stt" onclick="setCapFilter('online','stt',this)">STT</button>
+      <button class="fchip" data-cap="llm" onclick="setCapFilter('online','llm',this)">LLM</button>
+      <button class="fchip" data-cap="emb" onclick="setCapFilter('online','emb',this)">EMBED</button>
+    </div>
+  </div>
+
+  <div class="costnote">💳 These call external APIs with your keys — usage is billed by the provider, and your text leaves this machine. Local models on the other tab are free and private. · <span class="xlink" title="Which provider+model each AI feature uses — pins, defaults, prompt configs">feature routing → Settings · AI features</span></div>
 
   <div class="section-h"><h2>Your providers</h2><span class="count">3 configured</span><button class="btn primary sm" onclick="toggleNewProv()" title="Connect a cloud or self-hosted API — no install, no downloads, no VRAM">+ Add provider</button></div>
 
@@ -516,8 +572,8 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
       <span class="right"><button class="btn ghost sm" onclick="toggleNewProv()">Cancel</button></span></div>
     <div class="pform">
       <div class="presets">
-        <span class="preset" onclick="preset(this,['llm'],'http://localhost:11434','Ollama')">Ollama</span>
-        <span class="preset" onclick="preset(this,['llm','tts','stt'],'https://api.openai.com/v1','OpenAI')">OpenAI</span>
+        <span class="preset" onclick="preset(this,['llm','emb'],'http://localhost:11434','Ollama')">Ollama</span>
+        <span class="preset" onclick="preset(this,['llm','tts','stt','emb'],'https://api.openai.com/v1','OpenAI')">OpenAI</span>
         <span class="preset" onclick="preset(this,['llm'],'https://api.anthropic.com','Anthropic')">Anthropic</span>
         <span class="preset" onclick="preset(this,['tts'],'https://api.elevenlabs.io/v1','ElevenLabs')">ElevenLabs</span>
         <span class="preset" onclick="preset(this,['llm'],'https://api.deepseek.com','DeepSeek')">DeepSeek</span>
@@ -531,6 +587,7 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
           <label><input type="checkbox" id="c-llm"> <span class="cap llm">LLM</span></label>
           <label><input type="checkbox" id="c-tts"> <span class="cap tts">TTS</span></label>
           <label><input type="checkbox" id="c-stt"> <span class="cap stt">STT</span></label>
+          <label><input type="checkbox" id="c-emb"> <span class="cap emb">EMBED</span></label>
         </div>
       </div>
       <div class="formfoot">
@@ -542,15 +599,15 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
     </div>
   </div>
 
-  <div class="prov" data-search="ollama local llm qwen3 8b 14b self hosted">
+  <div class="prov" data-cap="llm emb" data-search="ollama local llm embed nomic qwen3 8b 14b self hosted">
     <div class="prow">
       <span class="dot" title="Reachable"></span>
       <div class="pmain">
         <span class="nm">Ollama (this PC)</span>
-        <span class="caps" style="display:inline-flex;margin-left:6px"><span class="cap llm">LLM</span></span>
+        <span class="caps" style="display:inline-flex;margin-left:6px"><span class="cap llm">LLM</span><span class="cap emb">EMBED</span></span>
         <span class="builtin">BUILT-IN</span>
         <span class="url">http://localhost:11434</span>
-        <span class="msum">chat: <b>qwen3:8b</b> · 2 models pulled · no key — self-hosted, actually free</span>
+        <span class="msum">chat: <b>qwen3:8b</b> · embed: <b>nomic-embed-text</b> · 3 models pulled · no key — self-hosted, actually free</span>
       </div>
       <span class="right"><button class="btn ghost sm" title="Ping the server and re-fetch its model list">Test</button><button class="btn ghost sm" onclick="togEdit(this)" title="Edit inline — URL, key, capabilities, models">Edit</button></span>
     </div>
@@ -563,11 +620,14 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
           <label><input type="checkbox" checked> <span class="cap llm">LLM</span></label>
           <label><input type="checkbox"> <span class="cap tts">TTS</span></label>
           <label><input type="checkbox"> <span class="cap stt">STT</span></label>
+          <label><input type="checkbox" checked> <span class="cap emb">EMBED</span></label>
         </div>
       </div>
       <div class="frow">
         <div class="f modelpick"><label>Chat model</label><input type="text" value="qwen3:8b"><span class="caret">▾</span>
-          <div class="fhint">✓ fetched — type to filter or pick from 2 models on this server</div></div>
+          <div class="fhint">✓ fetched — pick from 3 models on this server, or type a model to pull</div></div>
+        <div class="f modelpick"><label>Embedding model</label><input type="text" value="nomic-embed-text"><span class="caret">▾</span>
+          <div class="fhint">✓ fetched — 1 embedding model on this server</div></div>
       </div>
       <div class="formfoot">
         <span class="pstatus"><span class="dot"></span>reachable · 2 models · 38 ms</span>
@@ -580,15 +640,15 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
     </div>
   </div>
 
-  <div class="prov" data-search="openai cloud llm tts stt whisper gpt voices">
+  <div class="prov" data-cap="llm tts stt emb" data-search="openai cloud llm tts stt embed whisper gpt voices">
     <div class="prow">
       <span class="dot" title="Reachable"></span>
       <div class="pmain">
         <span class="nm">OpenAI</span>
-        <span class="caps" style="display:inline-flex;margin-left:6px"><span class="cap llm">LLM</span><span class="cap tts">TTS</span><span class="cap stt">STT</span></span>
+        <span class="caps" style="display:inline-flex;margin-left:6px"><span class="cap llm">LLM</span><span class="cap tts">TTS</span><span class="cap stt">STT</span><span class="cap emb">EMBED</span></span>
         <span class="builtin">BUILT-IN</span>
         <span class="url">https://api.openai.com/v1</span>
-        <span class="msum">chat: <b>gpt-4o-mini</b> · tts: <b>gpt-4o-mini-tts</b> · 10 voices · stt: <b>whisper-1</b> · key set</span>
+        <span class="msum">chat: <b>gpt-4o-mini</b> · tts: <b>gpt-4o-mini-tts</b> · 10 voices · stt: <b>whisper-1</b> · embed: <b>text-embedding-3-small</b> · key set</span>
       </div>
       <span class="right"><button class="btn ghost sm">Test</button><button class="btn ghost sm" onclick="togEdit(this)">Edit</button></span>
     </div>
@@ -601,15 +661,20 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
           <label><input type="checkbox" checked> <span class="cap llm">LLM</span></label>
           <label><input type="checkbox" checked> <span class="cap tts">TTS</span></label>
           <label><input type="checkbox" checked> <span class="cap stt">STT</span></label>
+          <label><input type="checkbox" checked> <span class="cap emb">EMBED</span></label>
         </div>
       </div>
       <div class="frow">
-        <div class="f modelpick"><label>Chat model</label><input type="text" value="gpt-4o-mini"><span class="caret">▾</span>
-          <div class="fhint">✓ fetched — type to filter or pick from 143 chat models</div></div>
+        <div class="f modelpick" id="chatpick"><label>Chat model</label><input type="text" id="chatpick-in" value="gpt-4o-mini" oninput="filterModels()" onfocus="openModels()"><span class="caret" onclick="toggleModels()" title="Pick from the models this provider's API reports">▾</span>
+          <div class="mlist" id="chatpick-list"></div>
+          <div class="fhint">✓ fetched from /v1/models — pick from the list, filter by typing, or enter any model id the list doesn't know</div></div>
+        <button class="btn ghost sm" style="margin-bottom:22px" title="Re-query the provider's /v1/models">⟳ Fetch models</button>
         <div class="f modelpick"><label>TTS model</label><input type="text" value="gpt-4o-mini-tts"><span class="caret">▾</span>
           <div class="fhint">✓ fetched — 3 TTS models on this account</div></div>
         <div class="f modelpick"><label>STT model</label><input type="text" value="whisper-1"><span class="caret">▾</span>
           <div class="fhint">✓ fetched — 2 STT models</div></div>
+        <div class="f modelpick"><label>Embedding model</label><input type="text" value="text-embedding-3-small"><span class="caret">▾</span>
+          <div class="fhint">✓ fetched — 4 embedding models</div></div>
       </div>
       <div class="frow"><div class="f"><label>Voices (fetched from /v1/audio/voices)</label>
         <div class="voicechips"><span class="vchip">alloy</span><span class="vchip">ash</span><span class="vchip">ballad</span><span class="vchip">coral</span><span class="vchip">echo</span><span class="vchip">fable</span><span class="vchip">nova</span><span class="vchip">onyx</span><span class="vchip">sage</span><span class="vchip">shimmer</span></div>
@@ -625,7 +690,7 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
     </div>
   </div>
 
-  <div class="prov" data-search="elevenlabs tts cloud">
+  <div class="prov" data-cap="tts" data-search="elevenlabs tts cloud">
     <div class="prow">
       <span class="dot off" title="Key not set"></span>
       <div class="pmain">
@@ -720,12 +785,67 @@ function doFilter(){
 document.addEventListener("keydown", e => {
   if (e.key === "/" && document.activeElement.tagName !== "INPUT"){ e.preventDefault(); document.getElementById("q").focus(); }
 });
+// capability filter chips — local tab filters groups/sections; online filters provider rows
+const capFilter = { local: "all", online: "all" };
+function setCapFilter(tab, cap, btn){
+  capFilter[tab] = cap;
+  btn.parentElement.querySelectorAll(".fchip").forEach(c => c.classList.toggle("on", c === btn));
+  if (tab === "local") {
+    document.querySelectorAll("#pane-local .group, #pane-local .section-h, #pane-local .emptysec").forEach(el => {
+      const caps = (el.getAttribute("data-cap") || "").split(" ");
+      el.classList.toggle("hidden", cap !== "all" && !caps.includes(cap));
+    });
+  } else {
+    document.querySelectorAll("#pane-online .prov:not(#newprov)").forEach(el => {
+      const caps = (el.getAttribute("data-cap") || "").split(" ");
+      el.classList.toggle("hidden", cap !== "all" && !caps.includes(cap));
+    });
+  }
+}
+function doFilterProv(){
+  const q = document.getElementById("qp").value.trim().toLowerCase();
+  document.querySelectorAll("#pane-online .prov:not(#newprov)").forEach(el => {
+    el.classList.toggle("hidden", q && !el.getAttribute("data-search").includes(q));
+  });
+}
+
+// ── chat-model combobox: list from the provider's /v1/models, or type your own ──
+// Mocked response of GET https://api.openai.com/v1/models (chat-capable subset).
+const FETCHED_MODELS = [
+  ["gpt-4o-mini", "fast · cheap"],
+  ["gpt-4o", "flagship"],
+  ["gpt-4.1", "long context"],
+  ["gpt-4.1-mini", ""],
+  ["gpt-4.1-nano", "cheapest"],
+  ["o3", "reasoning"],
+  ["o3-mini", "reasoning · fast"],
+  ["o4-mini", "reasoning"],
+  ["chatgpt-4o-latest", "tracks ChatGPT"],
+  ["gpt-4o-audio-preview", "audio in/out"],
+];
+function renderModels(filter){
+  const list = document.getElementById("chatpick-list");
+  const f = (filter || "").toLowerCase();
+  const hits = FETCHED_MODELS.filter(([id]) => !f || id.includes(f));
+  list.innerHTML = hits.map(([id, tag]) =>
+    '<div class="mi" onclick="pickModel(\'' + id + '\')"><span class="mid">' + id + '</span><span class="mtag">' + tag + '</span></div>'
+  ).join("") + '<div class="mfoot">' + (hits.length ? hits.length + " of 143 chat models from /v1/models" : "no match in the fetched list") + ' — or keep typing to use a custom model id</div>';
+}
+function openModels(){ renderModels(document.getElementById("chatpick-in").value === "gpt-4o-mini" ? "" : document.getElementById("chatpick-in").value); document.getElementById("chatpick").classList.add("open"); }
+function toggleModels(){ const el = document.getElementById("chatpick"); el.classList.contains("open") ? el.classList.remove("open") : openModels(); }
+function filterModels(){ renderModels(document.getElementById("chatpick-in").value); document.getElementById("chatpick").classList.add("open"); }
+function pickModel(id){ document.getElementById("chatpick-in").value = id; document.getElementById("chatpick").classList.remove("open"); }
+document.addEventListener("click", e => {
+  const pick = document.getElementById("chatpick");
+  if (pick && !pick.contains(e.target)) pick.classList.remove("open");
+});
+
 function preset(el, caps, url, name){
   document.querySelectorAll(".preset").forEach(p => p.classList.remove("sel"));
   el.classList.add("sel");
   document.getElementById("f-name").value = name === "Custom…" ? "" : name;
   document.getElementById("f-url").value = url;
-  ["llm","tts","stt"].forEach(c => document.getElementById("c-"+c).checked = caps.includes(c));
+  ["llm","tts","stt","emb"].forEach(c => document.getElementById("c-"+c).checked = caps.includes(c));
 }
 function installDia(){
   const state = document.getElementById("dia-state");
