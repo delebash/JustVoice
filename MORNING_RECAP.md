@@ -5,6 +5,39 @@
 
 ---
 
+## 2026-06-11 (remote session, later) — Voicebox parity audit + fixes
+
+**`docs/VOICEBOX_PARITY.md` is the deliverable** — file-by-file audit vs
+the pin (b35b909, same code as the user's v0.5.0 screenshots). Suite at
+182 passing; e2e 6/6 green; all pushed to `claude/nice-franklin-dzisd5`.
+
+Findings fixed (F1–F7): **real MCP server** at /mcp (justvoice.speak/
+transcribe/list_voices/list_personas; client-id header → bindings with
+last-seen; Settings→MCP panel rebuilt from mock to real incl. correct
+snippets) · **variant dropdown was cosmetic** — every engine ignored it
+(chatterbox/qwen3 now branch on variant; catalog placeholders corrected;
+test_variant_wiring pins ids) · **builtin effect presets never seeded**
+(+ chorus missing, enabled:false still applied) · **persona file-store/
+SQLite split-brain** broke binding FKs (store now mirrors) · **History
+★/↻/✕ dead** (favorite/delete endpoints + handlers) · **Overview recent
+table fetched a nonexistent endpoint** (now /v1/takes/recent, buttons
+wired, prefill handoff to Generate).
+
+Gaps closed (G1/G2): **bundled Whisper STT engine** (KIND=stt, new slot)
++ **local Qwen3 LLM engine** (KIND=llm, 'local-qwen3' provider w/ auto-
+load) + **refinement port** (verbatim prompt corpus) + **/v1/captures +
+/v1/transcribe** (the captures table previously had NO api) +
+settings.captures + settings.mcp sections + Engines STT tab. Real model
+loads still need the user's GPU — wiring covered by fake-STT tests.
+
+Also: Settings→General **Workspace focus picker** (sidebar use-case
+gating had no post-onboarding control) · Engines info row horizontal ·
+ruff debt cleared · attribution 4→21 files · **Next horizons** section
+in IMPLEMENTATION_PLAN (JustWrite round-trip, Unreal .uplugin, Ship-it,
+desktop dictation completion, deferred ideas). User-machine test items
+unchanged: engine loads, real renders, Ollama attribution, ffmpeg M4B,
+Tauri hotkey + MCP-from-Claude smoke test (snippets in Settings→MCP).
+
 ## 2026-06-11/12 (remote session) — design phase + Phases A–E implementation
 
 **~40 commits pushed to `origin/claude/nice-franklin-dzisd5`.** Suite at 159 passing; every milestone live-verified with Playwright against the running headless server.

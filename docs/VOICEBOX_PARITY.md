@@ -198,10 +198,30 @@ standalone rewrite/respond/speak endpoint"). Ours: explicit
 landed, both now work with zero external setup once qwen3-llm is
 installed.
 
----
+## Frontend sweep (upstream `app/src/components/` vs our views)
 
-*Remaining: frontend view sweep + licensing sweep (tracked in the
-implementation plan's audit section).*
+Tab-level coverage: VoicesTab→Voices · CapturesTab→Captures ·
+EffectsTab→Effects · ModelsTab→Engines · StoriesTab→Stories ·
+AudioStudio/AudioTab→Audio Tools · MainEditor+Generation→Generate ·
+History→Generate History table · ServerTab→Settings sub-tabs (all 8
+upstream sub-tabs have JustVoice counterparts incl. Logs/Changelog/About).
+Desktop-only pieces (AccessibilityGate, InputMonitoringGate, TitleBar)
+defer with the Tauri work. **Findings from the sweep:** the Settings →
+MCP panel was mock-grade (fake toggles, wrong snippets, dead bindings
+table) — rebuilt against the real server; **F7** — Overview's Recent
+generations fetched a NONEXISTENT `/v1/generations/recent` (table
+permanently empty, three dead action buttons) — now reads
+`/v1/takes/recent` with play/favorite/re-render wired.
+
+## Licensing sweep
+
+`voicebox-pin.txt` references grew from **4 → 21 files** this pass.
+Newly attributed: the MCP package (4 files), refinement.py,
+captures_api.py, seed.py, whisper + qwen3_llm engines, and adapted-from
+headers on database/models.py, chatterbox/engine.py, qwen3/engine.py.
+Independent-implementation files (mastering, analyzer, render_core,
+imports/, extraction/) verified as not lifted — no header needed beyond
+SPDX.
 
 ## Gap list (ranked by user value)
 
