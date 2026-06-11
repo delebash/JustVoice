@@ -111,6 +111,25 @@ Maps directly: `book.title` → `project.name`, `chapters` → `scenes`,
 
 ---
 
+## <a id="import-book_prose"></a>Book / manuscript (`book_prose`)
+
+EPUB, DOCX, Markdown, or plain text — the audiobook entry point for any
+finished book. Stdlib-only parsing (works headless, no optional deps).
+
+- **EPUB** — chapters follow the spine; chapter title = first `<h1>`–`<h3>`
+  in each document; nav/cover and near-empty front-matter docs are skipped
+  (each skip is reported in `warnings`). Title/author/language come from
+  the OPF metadata.
+- **DOCX** — `Heading 1/2/3` paragraph styles start a new chapter; title
+  from `docProps/core.xml` when present, else the file name.
+- **Markdown** — `#`/`##`/`###` headings start chapters.
+- **TXT** — short `Chapter N` / `Part N` lines start chapters; otherwise
+  the whole file becomes one scene.
+
+Every paragraph becomes one `line` with `character_id: null` — prose
+carries no speaker data. Speakers are discovered later by Script
+extraction and promoted to personas (see CONCEPTS.md §3).
+
 ## <a id="import-csv_lines"></a>CSV lines (`csv_lines`)
 
 For studios who track dialogue in a spreadsheet. UTF-8 with header row

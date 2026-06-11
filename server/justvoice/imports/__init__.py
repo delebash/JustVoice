@@ -22,6 +22,7 @@ from typing import Callable
 
 from .adapters import (
     audacity_labels,
+    book_prose,
     csv_lines,
     elevenlabs,
     justvoice_standard,
@@ -43,6 +44,17 @@ _ADAPTER_REGISTRY: list[tuple[AdapterInfo, Callable[..., StandardImport]]] = [
             docs_anchor="import-justwrite",
         ),
         justwrite.parse,
+    ),
+    (
+        AdapterInfo(
+            id=book_prose.SOURCE_ID,
+            label="Book / manuscript",
+            description="EPUB, DOCX, Markdown, or plain text — chapters split on headings; speakers discovered later in Script.",
+            file_extensions=[".epub", ".docx", ".md", ".markdown", ".txt"],
+            implemented=True,
+            docs_anchor="import-book_prose",
+        ),
+        book_prose.parse,
     ),
     (
         AdapterInfo(
