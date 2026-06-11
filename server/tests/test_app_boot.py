@@ -18,19 +18,19 @@ def _route_paths(app) -> set[str]:
     return paths
 
 
-def test_app_creates_without_error() -> None:
+def test_app_creates_without_error(tmp_path) -> None:
     from justvoice.app import create_app
 
-    app = create_app()
+    app = create_app(data_dir=tmp_path)
     assert app is not None
     assert hasattr(app, "routes")
 
 
-def test_contract_endpoints_registered() -> None:
+def test_contract_endpoints_registered(tmp_path) -> None:
     """Sanity-check the CONTRACT.md endpoints exist after app boot."""
     from justvoice.app import create_app
 
-    app = create_app()
+    app = create_app(data_dir=tmp_path)
     paths = _route_paths(app)
     # Spot-check the most load-bearing CONTRACT.md endpoints.
     contract = {
@@ -44,11 +44,11 @@ def test_contract_endpoints_registered() -> None:
     assert not missing, f"CONTRACT.md endpoints missing from app: {missing}"
 
 
-def test_no_v0_routes_leaked() -> None:
+def test_no_v0_routes_leaked(tmp_path) -> None:
     """All API surface should be under /v1 (or /ui for the renderer)."""
     from justvoice.app import create_app
 
-    app = create_app()
+    app = create_app(data_dir=tmp_path)
     paths = _route_paths(app)
     for p in paths:
         if p.startswith("/api/v0") or p.startswith("/v0"):

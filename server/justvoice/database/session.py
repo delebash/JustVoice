@@ -42,7 +42,15 @@ def init_db(data_dir: Optional[Path] = None) -> None:
     global engine, SessionLocal, _db_path
 
     if engine is not None:
-        return
+        # Idempotent for the same target; re-init when a DIFFERENT data_dir
+        # is explicitly requested (tests). Without this, the first boot in a
+        # pytest process pins EVERY later create_app(tmp_path) to the first
+        # dir — endpoint tests were silently sharing the developer's real DB.
+        if data_dir is None or (_db_path is not None and _db_path.parent == Path(data_dir)):
+            return
+        engine.dispose()
+        engine = None
+        SessionLocal = None
 
     if data_dir is None:
         data_dir = default_data_dir()
