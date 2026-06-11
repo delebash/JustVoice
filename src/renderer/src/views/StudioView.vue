@@ -295,9 +295,14 @@ function colorFor(name) {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
-// First line of the persona bio doubles as the card's role line.
+// First meaningful bio line doubles as the card's role line. Demo +
+// imported bios often carry a "Voice hint:" block — skip it.
 function personaRole(p) {
-  return (p?.bio || "").split("\n")[0].trim();
+  for (const line of (p?.bio || "").split("\n")) {
+    const t = line.trim();
+    if (t && !/^voice hint:?$/i.test(t)) return t;
+  }
+  return "";
 }
 
 const clearCastBusy = ref(false);
@@ -1733,7 +1738,7 @@ watch(selectedProjectId, (id) => {
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .studio__char-card:hover { border-color: var(--accent-line, var(--accent)); }
-.studio__char-card--narrator { background: var(--accent-soft); }
+.studio__char-card--narrator { background: var(--accent-soft); grid-column: 1 / -1; }
 .studio__char-card--selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .studio__char-card--unassigned { border-style: dashed; }
 
