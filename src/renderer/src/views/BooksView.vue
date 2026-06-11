@@ -38,6 +38,7 @@ const projectTypeFilter = ref("all");
 const loading = ref(false);
 const showImport = ref(false);
 const showNewProject = ref(false);
+const newProjectKind = ref("");
 
 const scenes = ref([]);
 const scenesLoading = ref(false);
@@ -445,7 +446,19 @@ function sceneStatusPill(scene) {
   return                  { label: "—",          cls: "jv-pill--ghost" };
 }
 
-onMounted(refresh);
+onMounted(() => {
+  refresh();
+  // Home's Start-something pills hand a kind over via sessionStorage —
+  // consume it once and open the kind picker preselected.
+  try {
+    const k = window.sessionStorage?.getItem("jv.books.createKind");
+    if (k !== null) {
+      window.sessionStorage.removeItem("jv.books.createKind");
+      newProjectKind.value = k || "";
+      showNewProject.value = true;
+    }
+  } catch { /* ignore */ }
+});
 
 // Keep the app-wide active project (sidebar vocabulary, topbar chips,
 // Home resume card) in sync with this view's selection.
@@ -764,6 +777,7 @@ watch(selectedId, (id) => {
     <ImportModal v-if="showImport" @close="showImport = false" @created="onImportCreated" />
     <NewProjectModal
       v-if="showNewProject"
+      :initial-kind="newProjectKind"
       @close="showNewProject = false"
       @create="onCreateProject"
       @import="onCreateFromImport"

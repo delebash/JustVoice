@@ -14,6 +14,10 @@
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import JvButton from "./jv/JvButton.vue";
 
+const props = defineProps({
+  // Preselect a kind (Home's Start-something pills hand this over).
+  initialKind: { type: String, default: "" },
+});
 const emit = defineEmits(["close", "create", "import", "demo"]);
 
 const KINDS = [
@@ -47,7 +51,7 @@ const KINDS = [
   },
 ];
 
-const selected = ref("audiobook");
+const selected = ref(props.initialKind && KINDS.some((k) => k.id === props.initialKind) ? props.initialKind : "audiobook");
 const name = ref("");
 const nameInput = ref(null);
 
