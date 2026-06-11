@@ -98,3 +98,46 @@ def test_promote_creates_then_reuses(client):
     # Promoting again reuses, never duplicates.
     r2 = client.post(f"/v1/projects/{pid}/personas/promote", json=body)
     assert r2.json()["created"] == [] and r2.json()["reused"] == [new_id]
+
+
+# ── Speaker Lab per-column overrides reach the LLM call ──────────────
+
+
+def test_analyze_text_threads_model_temp_prompt_overrides(client, monkeypatch):
+    captured = {}
+
+    def fake_chat(*, settings, feature, messages, system=None, temperature=0.7,
+                  max_tokens=None, think=None, model_override=None):
+        captured.update(system=system, temperature=temperature, model_override=model_override)
+
+        class R:
+            text = '[{"speaker": "mara", "confidence": 0.9}]'
+
+        return R()
+
+    from justvoice.engines.llm.tiers import TIERS
+
+    monkeypatch.setattr("justvoice.extraction.pipeline.chat", fake_chat)
+    # No provider in the test env — pin resolution would 501 before the
+    # stubbed chat runs. Tier resolution is stubbed in both call sites
+    # (pipeline prompt pick + endpoint echo-back).
+    monkeypatch.setattr(
+        "justvoice.extraction.pipeline.resolve_tier", lambda settings, feature: TIERS["guided"]
+    )
+    monkeypatch.setattr(
+        "justvoice.engines.llm.dispatch.resolve_tier", lambda settings, feature: TIERS["guided"]
+    )
+    r = client.post(
+        "/v1/extraction/analyze-text",
+        json={
+            "text": '"Hello," said Mara.',
+            "characters": [{"id": "mara", "name": "Mara"}],
+            "model": "qwen3:14b",
+            "temperature": 0.05,
+            "system_prompt": "CUSTOM PROMPT BODY",
+        },
+    )
+    assert r.status_code == 200, r.text
+    assert captured["model_override"] == "qwen3:14b"
+    assert captured["temperature"] == 0.05
+    assert captured["system"] == "CUSTOM PROMPT BODY"

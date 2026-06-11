@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from pydantic import BaseModel
@@ -70,6 +70,12 @@ class AnalyzeRequest(BaseModel):
     tier: str | None = None
     propagate: bool = True  # apply anchor propagation pass
     use_floor: bool = True  # demote below-floor LLM picks to "unknown"
+    # Speaker Lab per-column overrides — None means "use the feature pin /
+    # tier defaults". Prompts let the lab tune wording before promoting a
+    # preset to production.
+    model: str | None = None
+    temperature: float | None = None
+    system_prompt: str | None = None
 
 
 def _strip_thinking(text: str) -> str:
@@ -123,7 +129,7 @@ def analyze_scene(
 
         tier = TIERS[request.tier]
 
-    system = system_for(tier.system_key)
+    system = request.system_prompt or system_for(tier.system_key)
     user = USER_TEMPLATE.format(
         characters=format_characters(request.characters),
         corrections=format_corrections(request.corrections),
@@ -141,9 +147,10 @@ def analyze_scene(
                 feature="speaker_attribution",
                 messages=[LLMMessage(role="user", content=user)],
                 system=system,
-                temperature=0.2,
+                temperature=request.temperature if request.temperature is not None else 0.2,
                 max_tokens=max(800, 12 * n_dialogue),
                 think=tier.think,
+                model_override=request.model,
             )
             llm_picks = _extract_first_json_array(resp.text)
         except LLMNotConfiguredError:

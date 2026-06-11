@@ -83,6 +83,7 @@ def chat(
     temperature: float = 0.7,
     max_tokens: int | None = None,
     think: bool | None = None,
+    model_override: str | None = None,
 ) -> LLMResponse:
     """One-shot LLM call for a feature key.
 
@@ -92,6 +93,12 @@ def chat(
     `think: false` to compare reasoned vs direct on the same model).
     """
     adapter, model, tier_override = resolve_pin(settings, feature)
+    if model_override:
+        # Speaker Lab column override — same provider, different model.
+        # The tier re-derives from the OVERRIDE (a qwen3:14b column goes
+        # Reasoned even when the pin's default model is Guided-class).
+        model = model_override
+        tier_override = None
     tier = spec_for(model, tier_override)
     return adapter.chat(
         list(messages),

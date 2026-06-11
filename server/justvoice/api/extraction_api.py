@@ -180,6 +180,10 @@ class AnalyzeTextRequest(BaseModel):
     tier: str | None = None
     propagate: bool = True
     use_floor: bool = True
+    # Speaker Lab per-column overrides (None = pin/tier defaults).
+    model: str | None = None
+    temperature: float | None = None
+    system_prompt: str | None = None
 
 
 @router.post(
@@ -199,6 +203,9 @@ async def analyze_text_endpoint(body: AnalyzeTextRequest) -> AnalyzeSceneRespons
         tier=body.tier,
         propagate=body.propagate,
         use_floor=body.use_floor,
+        model=body.model,
+        temperature=body.temperature,
+        system_prompt=body.system_prompt,
     )
     try:
         rows = analyze_scene(settings=settings, request=req)
