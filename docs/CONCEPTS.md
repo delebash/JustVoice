@@ -33,33 +33,40 @@ Audience differences that drive UI, not data:
   realtime surfaces; chapters and lines never apply. Don't force them into
   the project framing.
 
-## 2. Voice vs Persona vs Cast (the actor/role model)
+## 2. Voice vs Persona (and what "cast" actually is)
 
 Reference: `Persona` model in `server/justvoice/models.py`.
 
+Decision (2026-06-11): there are only **two** entities — there is no
+separate "cast member" object, and none exists in storage.
+
 - **Voice = the instrument.** A clone, preset, or blend. No character
   attached.
-- **Persona = the actor.** A *project-independent* library object bundling
-  everything that makes a character sound like themselves: `voice_id`,
-  delivery defaults (speed/pitch/gain), effects chain (e.g. ghost = whisper +
-  reverb), optional lexicon, and bio/`personality` text (consumed as a style
-  prompt by instruct-capable engines, and used by Smart-assign for voice
-  matching). Personas outlive projects: book 2 reuses book 1's "Mara Vance"
-  and she arrives sounding identical.
-- **Cast = the casting sheet.** *Project-scoped*: which personas speak in
-  this project, which voice/persona plays each speaker, plus project-local
-  facts (line counts, "discovered in ch. 4"). Studio · Cast is the surface
-  where assignment happens.
+- **Persona = the character.** A library object bundling everything that
+  makes a character sound like themselves: `voice_id`, delivery defaults
+  (speed/pitch/gain), effects chain (e.g. ghost = whisper + reverb),
+  optional lexicon, and bio/`personality` text (consumed as a style prompt
+  by instruct-capable engines, and used by Smart-assign for voice matching).
+- **Cast is not a third thing.** It's the Studio surface that lists the
+  personas speaking *in the current project*, plus project-local stats
+  (line counts, "discovered in ch. 4") that live on the project, not the
+  persona.
+
+The whole reason persona is a library-level concept instead of living
+inside the project: **persistence**. Personas survive the project and cross
+project kinds — book 2 reuses book 1's "Mara Vance" and she arrives sounding
+identical; the same persona can speak in an audiobook and a game project.
 
 Consequences worth keeping visible in UI:
 
-- One voice can play multiple personas (Old Crow voices Tom Harlan in
-  *Stillwater* and Guard Captain Hale in *Emberfall*).
-- One voice can back multiple personas *with different delivery* (the
-  "Sarah" clone backs both the Stillwater Narrator persona and her
-  podcast-host persona).
-- Cast cards are personas under the hood; the real implementation should
-  show "backed by persona ➜" with a jump to the Personas tab.
+- One voice can back multiple personas (Old Crow voices Tom Harlan in
+  *Stillwater* and Guard Captain Hale in *Emberfall*), and with different
+  delivery per persona (the "Sarah" clone backs both the Stillwater
+  Narrator and her podcast-host persona).
+- Since cast cards ARE personas, edits made on the Cast surface (voice,
+  delivery) edit the persona — and therefore follow it to other projects.
+  The UI should make that visible ("backed by persona ➜" jump to the
+  Personas tab) so cross-project edits never surprise anyone.
 
 ## 3. When personas get created (the four doors in)
 
