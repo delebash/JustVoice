@@ -1073,3 +1073,69 @@ async def create_demo_project(
         committed=True, project_id=project.id, standard=standard, warnings=[]
     )
 
+class ShowNotesResponse(BaseModel):
+    project_id: str
+    markdown: str
+
+
+SHOW_NOTES_SYSTEM = """You write podcast show notes. Given a transcript-style
+script (segments with speaker names), produce concise markdown:
+
+## Episode summary
+2-3 sentences.
+
+## Chapters
+- One bullet per segment/topic, naming who speaks.
+
+## Pull quotes
+2 short verbatim quotes, attributed.
+
+Return ONLY the markdown."""
+
+
+@router.post("/v1/projects/{project_id}/show-notes", response_model=ShowNotesResponse)
+async def project_show_notes(
+    project_id: str, db: Session = Depends(get_db)
+) -> ShowNotesResponse:
+    """LLM show notes from the project's segments (CONCEPTS §14.4).
+    501 when no provider is pinned, same contract as analyze."""
+    from fastapi import HTTPException
+
+    from ..engines.llm import LLMMessage
+    from ..engines.llm.dispatch import LLMNotConfiguredError, chat
+
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if project is None:
+        raise not_found(f"project {project_id}")
+    scenes = (
+        db.query(Scene).filter(Scene.project_id == project_id).order_by(Scene.position).all()
+    )
+    parts: list[str] = []
+    for scene in scenes:
+        parts.append(f"## {scene.title or 'Segment'}")
+        rows = (
+            db.query(Block).filter(Block.scene_id == scene.id).order_by(Block.position).all()
+        )
+        for b in rows:
+            who = None
+            if b.persona_id:
+                p_row = db.query(Persona.name).filter(Persona.id == b.persona_id).first()
+                who = p_row[0] if p_row else None
+            parts.append(f"{who or 'NARRATION'}: {b.text}")
+    script = "\n".join(parts)
+    if not script.strip():
+        raise bad_request("project has no segments to summarize")
+
+    settings = get_state().settings.get()
+    try:
+        resp = chat(
+            settings=settings,
+            feature="show_notes",
+            messages=[LLMMessage(role="user", content=script[:24000])],
+            system=SHOW_NOTES_SYSTEM,
+            temperature=0.4,
+        )
+    except LLMNotConfiguredError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    return ShowNotesResponse(project_id=project_id, markdown=resp.text.strip())
+

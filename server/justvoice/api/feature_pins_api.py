@@ -55,6 +55,12 @@ FEATURE_CATALOG = [
         "recommended_tier": "direct",
     },
     {
+        "key": "show_notes",
+        "label": "Show notes",
+        "description": "Drafts episode show notes (summary, chapter list with speakers) from the project's segments. Drives the podcast Export surface.",
+        "recommended_tier": "direct",
+    },
+    {
         "key": "smart_assign",
         "label": "Smart-assign",
         "description": "Matches characters to voices based on age/gender/tone/accent. Drives the Studio Cast tab Smart-assign button (Phase 4).",

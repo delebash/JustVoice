@@ -294,6 +294,23 @@ async function exportM4b(p) {
 }
 
 const qcReport = ref(null); // { project_id, chapters: [...], all_ok, limits }
+const showNotes = ref(null); // { project_id, markdown }
+async function generateShowNotes() {
+  const p = selectedProject.value;
+  if (!p) return;
+  pushToast({ kind: "info", title: "Show notes", description: "Drafting from the episode segments…" });
+  try {
+    showNotes.value = await api.request(`/v1/projects/${p.id}/show-notes`, { method: "POST" });
+  } catch (e) {
+    pushToast({
+      kind: "error",
+      title: "Show notes failed",
+      description: String(e?.message ?? e).includes("501")
+        ? "No LLM provider pinned — connect one in Engines → LLM, then pin show_notes in Settings → AI features."
+        : String(e?.message ?? e),
+    });
+  }
+}
 async function runQc(p) {
   pushToast({ kind: "info", title: "QC report", description: "Rendering + measuring chapters (cache-served when unchanged)…" });
   try {
@@ -590,9 +607,21 @@ onMounted(refresh);
             <JvButton variant="primary" label="▶ Render all chapters" @click="renderAllChapters" />
             <JvButton variant="secondary" label="Export M4B" title="Render all chapters (cache-served when unchanged) and download one .m4b with chapter markers" @click="exportM4B" />
             <JvButton variant="secondary" label="QC report" @click="downloadQcReport" />
+            <JvButton v-if="selectedProject?.project_type === 'podcast'" variant="secondary" label="📝 Show notes" title="Draft episode show notes from the segments (LLM)" @click="generateShowNotes" />
             <JvButton variant="secondary" label="Export ZIP" @click="exportProject(selectedProject.id)" />
             <span class="books__spacer" />
             <button class="jv-btn jv-btn--danger-outline jv-btn--sm" type="button" @click="deleteProject">Delete project</button>
+          </div>
+
+          <!-- Show notes (POST /v1/projects/{id}/show-notes) -->
+          <div v-if="showNotes && showNotes.project_id === selectedProject.id" class="books__qc">
+            <div class="books__qc-head">
+              <strong>Show notes</strong>
+              <span class="jv-spacer" />
+              <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" title="Copy markdown" @click="navigator.clipboard?.writeText(showNotes.markdown)">⧉ Copy</button>
+              <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" @click="showNotes = null">✕</button>
+            </div>
+            <pre class="books__notes">{{ showNotes.markdown }}</pre>
           </div>
 
           <!-- ACX QC report (GET /v1/projects/{id}/qc) -->
@@ -971,4 +1000,9 @@ onMounted(refresh);
 .books__qc-head { display: flex; align-items: center; gap: 10px; }
 .books__qc-limits { font-size: 11.5px; }
 .books__qc-bad { color: var(--danger, #a8442e); font-weight: 600; }
+.books__notes {
+  margin: 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface-2); font-size: 12.5px; line-height: 1.6;
+  white-space: pre-wrap; max-height: 360px; overflow-y: auto;
+}
 </style>

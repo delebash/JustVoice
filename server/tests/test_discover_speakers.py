@@ -213,3 +213,30 @@ def test_usage_ledger_records_chat_calls(client, monkeypatch):
 
     client.delete("/v1/ai-usage")
     assert client.get("/v1/ai-usage").json()["total_calls"] == 0
+
+
+# ── show notes ───────────────────────────────────────────────────────
+
+
+def test_show_notes_501_without_llm_and_works_with_stub(client, monkeypatch):
+    pid, _scene = _import_project(client)
+    r = client.post(f"/v1/projects/{pid}/show-notes")
+    assert r.status_code == 501
+
+    def fake_chat(*, settings, feature, messages, system=None, temperature=0.7,
+                  max_tokens=None, think=None, model_override=None):
+        assert feature == "show_notes"
+        assert "Mara Vance" in messages[0].content
+
+        class R:
+            text = "## Episode summary\nA test episode."
+
+        return R()
+
+    monkeypatch.setattr("justvoice.api.projects_api.chat", fake_chat, raising=False)
+    import justvoice.engines.llm.dispatch as dispatch
+
+    monkeypatch.setattr(dispatch, "chat", fake_chat)
+    r = client.post(f"/v1/projects/{pid}/show-notes")
+    assert r.status_code == 200, r.text
+    assert r.json()["markdown"].startswith("## Episode summary")
