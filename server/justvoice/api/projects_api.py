@@ -28,6 +28,7 @@ from ..database import (
     Persona,
     get_db,
 )
+from ..database.models import Lexicon as DbLexicon, LexiconEntry as DbLexiconEntry
 from ..errors import not_found, bad_request
 from ..app_state import get_state
 from ..models import LexiconEntry
@@ -601,12 +602,19 @@ def _materialize_standard(
     return p, len(standard.scenes), total_blocks, created_personas, reused_personas
 
 
-def _materialize_lexicon(standard: StandardImport, project: Project, lexicon_store) -> str | None:
+def _materialize_lexicon(
+    standard: StandardImport, project: Project, lexicon_store, db: Session
+) -> str | None:
     """Create a project-scoped lexicon from the import's entries.
 
     Returns the new lexicon id (also written to project.default_lexicon_id),
     or None when the import carries no lexicon entries. Previously these
     entries were silently dropped on commit.
+
+    Mid-Phase-1.5 reality: lexicons are served from the file store, but
+    projects.default_lexicon_id is a FOREIGN KEY into the SQLite lexicons
+    table — so we write BOTH, same id, or the commit dies on the FK
+    (found live: importing Stillwater 500'd on IntegrityError).
     """
     if not standard.lexicon_entries:
         return None
@@ -621,6 +629,24 @@ def _materialize_lexicon(standard: StandardImport, project: Project, lexicon_sto
         description=f"Materialized from {standard.source} import",
         project_id=project.id,
     )
+    db.add(
+        DbLexicon(
+            id=lex.id,
+            name=lex.name,
+            description=lex.description,
+            scope="project",
+            project_id=project.id,
+        )
+    )
+    for e in standard.lexicon_entries:
+        db.add(
+            DbLexiconEntry(
+                lexicon_id=lex.id,
+                word=e.grapheme,
+                pronunciation=e.phoneme_ipa or e.alias or "",
+                notation="ipa" if e.phoneme_ipa else "phonetic",
+            )
+        )
     project.default_lexicon_id = lex.id
     return lex.id
 
@@ -687,7 +713,7 @@ async def import_project(
     project, _scene_count, _block_count, _created, _reused = _materialize_standard(
         standard, db
     )
-    _materialize_lexicon(standard, project, get_state().lexicons)
+    _materialize_lexicon(standard, project, get_state().lexicons, db)
     db.commit()
     db.refresh(project)
     standard.project.id = project.id

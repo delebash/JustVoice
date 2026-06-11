@@ -57,7 +57,7 @@ def test_lexicon_entries_materialize_and_set_default(db_session, tmp_path):
     store = LexiconStore(tmp_path)
     project, *_ = _materialize_standard(_standard("Stillwater", lexicon=True), db_session)
 
-    lex_id = _materialize_lexicon(_standard("Stillwater", lexicon=True), project, store)
+    lex_id = _materialize_lexicon(_standard("Stillwater", lexicon=True), project, store, db_session)
     db_session.commit()
 
     assert lex_id is not None
@@ -69,10 +69,18 @@ def test_lexicon_entries_materialize_and_set_default(db_session, tmp_path):
     assert [e.grapheme for e in lex.entries] == ["Hecate"]
     assert lex.entries[0].alias == "HEH-kuh-tee"
 
+    # FK target rows must exist in SQLite too (projects.default_lexicon_id
+    # is a FOREIGN KEY — the live import 500'd before this dual-write).
+    from justvoice.database.models import Lexicon as DbLexicon, LexiconEntry as DbLexiconEntry
+    row = db_session.query(DbLexicon).filter(DbLexicon.id == lex_id).one()
+    assert row.project_id == project.id
+    words = [e.word for e in db_session.query(DbLexiconEntry).filter(DbLexiconEntry.lexicon_id == lex_id)]
+    assert words == ["Hecate"]
+
 
 def test_no_lexicon_entries_is_a_noop(db_session, tmp_path):
     store = LexiconStore(tmp_path)
     project, *_ = _materialize_standard(_standard("Plain"), db_session)
-    assert _materialize_lexicon(_standard("Plain"), project, store) is None
+    assert _materialize_lexicon(_standard("Plain"), project, store, db_session) is None
     assert project.default_lexicon_id is None
     assert store.list() == []
