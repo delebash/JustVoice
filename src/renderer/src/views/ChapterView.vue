@@ -384,6 +384,80 @@ watch(selectedProjectId, (id) => {
   const p = projects.value.find((x) => x.id === id);
   if (p) activeProject.open(p);
 });
+
+// ── Export panel (journeys "Export — <project>" screen, Chapters nav) ─
+// Package card + ACX checklist. The checklist shows only what the
+// server actually measures (/v1/projects/{id}/qc: per-chapter RMS +
+// peak); unmeasured spec items render as "not checked" — no fake ✓.
+const exportOpen = ref(false);
+const exportQc = ref(null);
+const exportQcBusy = ref(false);
+const exportBusy = ref("");
+
+const selectedProjectRec = computed(() =>
+  projects.value.find((p) => p.id === selectedProjectId.value) || null,
+);
+
+async function runExportQc() {
+  if (!selectedProjectId.value || exportQcBusy.value) return;
+  exportQcBusy.value = true;
+  exportQc.value = null;
+  try {
+    exportQc.value = await api.request(`/v1/projects/${selectedProjectId.value}/qc`);
+  } catch (e) {
+    pushToast({ message: `QC failed: ${e?.message || e}`, kind: "error", duration: 7000 });
+  } finally {
+    exportQcBusy.value = false;
+  }
+}
+
+const qcDurationLabel = computed(() => {
+  const total = (exportQc.value?.chapters || []).reduce((s, c) => s + (c.duration_s || 0), 0);
+  if (!total) return "";
+  const h = Math.floor(total / 3600), m = Math.round((total % 3600) / 60);
+  return h ? `${h} h ${String(m).padStart(2, "0")} m` : `${m} m`;
+});
+
+function saveBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function exportM4B() {
+  const p = selectedProjectRec.value;
+  if (!p || exportBusy.value) return;
+  exportBusy.value = "m4b";
+  pushToast({ message: "Export M4B — rendering anything not cached, then muxing chapters…", kind: "info" });
+  try {
+    const blob = await api.requestBlob("POST", `/v1/projects/${p.id}/export_m4b`);
+    saveBlob(blob, `${(p.name || "book").replace(/[^\w.-]+/g, "_")}.m4b`);
+    pushToast({ message: "M4B exported.", kind: "success" });
+  } catch (e) {
+    pushToast({ message: `Export failed: ${e?.message || e}`, kind: "error", duration: 7000 });
+  } finally {
+    exportBusy.value = "";
+  }
+}
+
+async function exportChapterWavs() {
+  const p = selectedProjectRec.value;
+  if (!p || exportBusy.value) return;
+  exportBusy.value = "zip";
+  pushToast({ message: "Packaging per-chapter audio…", kind: "info" });
+  try {
+    const blob = await projectsService.exportZip(p.id, { includeAudio: true, includeMasters: true });
+    saveBlob(blob, `${(p.name || "book").replace(/[^\w.-]+/g, "_")}.zip`);
+    pushToast({ message: "Chapter package exported.", kind: "success" });
+  } catch (e) {
+    pushToast({ message: `Export failed: ${e?.message || e}`, kind: "error", duration: 7000 });
+  } finally {
+    exportBusy.value = "";
+  }
+}
 </script>
 
 <template>
@@ -419,6 +493,67 @@ watch(selectedProjectId, (id) => {
             width="name"
           />
         </JvField>
+        <span class="jv-spacer" />
+        <JvButton
+          variant="secondary"
+          size="sm"
+          :label="exportOpen ? '✕ Close export' : '⬇ Export'"
+          :disabled="!selectedProjectId"
+          title="Package the whole project — M4B with chapter markers, per-chapter audio, ACX checklist"
+          @click="exportOpen = !exportOpen; exportOpen && !exportQc && runExportQc()"
+        />
+      </div>
+    </div>
+
+    <!-- ── Export panel (package + ACX checklist) ─────────────────────── -->
+    <div v-if="exportOpen && selectedProjectRec" class="chapter-view__export">
+      <div class="jv-card chapter-view__export-card">
+        <div class="chapter-view__export-h">
+          <strong>{{ copy.book.singular }} package</strong>
+          <span class="jv-pill" :class="exportQc?.all_ok ? 'jv-pill--green' : 'jv-pill--ghost'">{{ exportQc?.all_ok ? "ready" : "unchecked" }}</span>
+        </div>
+        <div class="chapter-view__export-id">
+          <span class="chapter-view__export-portrait">{{ (selectedProjectRec.name || "?").slice(0, 1).toUpperCase() }}</span>
+          <div>
+            <div class="chapter-view__export-name">{{ selectedProjectRec.name }}</div>
+            <div class="jv-muted" style="font-size:12px">
+              {{ scenes.length }} {{ copy.chapter.plural.toLowerCase() }}<template v-if="qcDurationLabel"> · {{ qcDurationLabel }}</template>
+            </div>
+          </div>
+        </div>
+        <div class="chapter-view__sum-row"><span>Format</span><b>M4B (AAC) · chapter markers from {{ copy.chapter.singular.toLowerCase() }} titles</b></div>
+        <div class="chapter-view__sum-row"><span>Also export</span><b>per-{{ copy.chapter.singular.toLowerCase() }} WAV + masters (zip)</b></div>
+        <div class="chapter-view__sum-row"><span>Master</span><b>{{ selectedProjectRec.mastering_preset || (selectedProjectRec.project_type === "audiobook" ? "ACX −20 LUFS" : "default") }}</b></div>
+        <div class="chapter-view__export-actions">
+          <JvButton variant="primary" :loading="exportBusy === 'm4b'" :disabled="!!exportBusy" label="⬇ Export M4B" @click="exportM4B" />
+          <JvButton variant="secondary" :loading="exportBusy === 'zip'" :disabled="!!exportBusy" :label="`⬇ ${copy.chapter.singular} WAVs (zip)`" @click="exportChapterWavs" />
+        </div>
+      </div>
+
+      <div class="jv-card chapter-view__export-card">
+        <div class="chapter-view__export-h">
+          <strong>ACX checklist</strong>
+          <span class="jv-spacer" />
+          <JvButton variant="ghost" size="sm" :loading="exportQcBusy" label="↻ Re-check" title="Render every chapter (cache-served when unchanged) and measure against the ACX limits" @click="runExportQc" />
+        </div>
+        <p v-if="exportQcBusy" class="jv-muted">Rendering + measuring {{ copy.chapter.plural.toLowerCase() }} — cached audio makes this fast…</p>
+        <template v-else-if="exportQc">
+          <ul class="chapter-view__ckl">
+            <li><span :class="exportQc.chapters.every(c => c.rms_ok) ? 'ok' : 'bad'">{{ exportQc.chapters.every(c => c.rms_ok) ? "✓" : "✗" }}</span>
+              RMS between −23 dB and −18 dB ({{ exportQc.chapters.filter(c => c.rms_ok).length }} of {{ exportQc.chapters.length }} {{ copy.chapter.plural.toLowerCase() }})</li>
+            <li><span :class="exportQc.chapters.every(c => c.peak_ok) ? 'ok' : 'bad'">{{ exportQc.chapters.every(c => c.peak_ok) ? "✓" : "✗" }}</span>
+              Peak ≤ −3 dB</li>
+            <li><span class="dim">○</span> Noise floor ≤ −60 dB RMS <span class="jv-muted">— not measured yet (needs room-tone analysis)</span></li>
+            <li><span class="dim">○</span> Room tone head/tail <span class="jv-muted">— not measured yet</span></li>
+            <li><span class="dim">○</span> Opening & closing credits <span class="jv-muted">— add as {{ copy.chapter.plural.toLowerCase() }}</span></li>
+          </ul>
+          <div class="jv-banner" :class="exportQc.all_ok ? 'jv-banner--info' : 'jv-banner--warn'" style="margin-top:10px;font-size:12px">
+            {{ exportQc.all_ok
+              ? "Measured checks pass. Mastering chain: project preset — duplicate under Render Presets to tweak."
+              : "Some chapters are out of spec — fix levels in Studio · Render, then re-check." }}
+          </div>
+        </template>
+        <p v-else class="jv-muted">Run the check to measure every {{ copy.chapter.singular.toLowerCase() }} against the ACX limits.</p>
       </div>
     </div>
 
@@ -959,4 +1094,28 @@ watch(selectedProjectId, (id) => {
   padding: 0 4px;
 }
 .chapter__direction { cursor: pointer; border-style: dashed; font: inherit; font-size: 11px; }
+
+.chapter-view__export { display: flex; gap: 12px; align-items: stretch; margin-bottom: 14px; }
+.chapter-view__export-card { flex: 1; padding: 14px 16px; margin: 0; }
+.chapter-view__export-h { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.chapter-view__export-id { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+.chapter-view__export-portrait {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 700; flex: none;
+}
+.chapter-view__export-name { font-size: 17px; font-weight: 700; }
+.chapter-view__sum-row {
+  display: flex; justify-content: space-between; gap: 14px;
+  font-size: 12px; padding: 6px 0; border-bottom: 1px dashed var(--line);
+}
+.chapter-view__sum-row span { color: var(--ink-3); flex: none; }
+.chapter-view__sum-row b { font-weight: 600; text-align: right; }
+.chapter-view__export-actions { display: flex; gap: 8px; margin-top: 14px; }
+.chapter-view__ckl { list-style: none; margin: 0; padding: 0; font-size: 12.5px; }
+.chapter-view__ckl li { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; }
+.chapter-view__ckl .ok { color: var(--accent); font-weight: 700; }
+.chapter-view__ckl .bad { color: var(--danger); font-weight: 700; }
+.chapter-view__ckl .dim { color: var(--ink-3); }
 </style>
