@@ -4,6 +4,7 @@ import { ref, onMounted, computed } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { useOnboarding } from "../stores/onboarding.js";
+import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast } from "../services/toastBridge.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvTag from "../components/jv/JvTag.vue";
@@ -35,6 +36,7 @@ const lexicons = ref([]);
 const captures = ref([]);
 const stats = ref(null);
 const recentGenerations = ref([]);
+const audioPlayer = useAudioPlayer();
 const loadedEngine = ref(null);
 
 async function safeRequest(path, fallback) {
@@ -60,7 +62,7 @@ async function refresh() {
     safeRequest("/v1/lexicons", { lexicons: [] }),
     safeRequest("/v1/captures?limit=1", { captures: [], total: null }),
     safeRequest("/v1/cache/stats", null),
-    safeRequest("/v1/generations/recent?limit=5", { generations: [] }),
+    safeRequest("/v1/takes/recent?limit=5", { takes: [] }),
     safeRequest("/v1/engines/current", { engine: null }),
   ]);
   health.value = h;
@@ -73,7 +75,9 @@ async function refresh() {
   // Total may come back as null when the server is down; treat as "—".
   captures.totalCount = ca.total ?? (ca.captures?.length ?? null);
   stats.value = s;
-  recentGenerations.value = g.generations || [];
+  // /v1/takes/recent shape (the audit found the prior fetch hit a
+  // nonexistent /v1/generations/recent — table was permanently empty).
+  recentGenerations.value = g.takes || [];
   loadedEngine.value = ce.engine || null;
 }
 
@@ -123,6 +127,34 @@ const cacheHitRate = computed(() => {
 
 const captureCount = computed(() => captures.totalCount ?? captures.value.length ?? 0);
 
+function playGen(g) {
+  if (!g?.audio_url) return;
+  audioPlayer.play({
+    url: `${api.serverUrl}${g.audio_url}`,
+    title: g.voice || "Take",
+    subtitle: (g.text || "").slice(0, 80),
+  });
+}
+async function favGen(g) {
+  try {
+    const r = await api.request(`/v1/generations/${g.id}/favorite`, { method: "PATCH" });
+    g.is_favorited = !!r?.is_favorited;
+  } catch (e) {
+    pushToast({ message: `Favorite failed: ${e?.message || e}`, kind: "error" });
+  }
+}
+function retryGen(g) {
+  // Hand the text to Generate via sessionStorage (no shared store between
+  // views); GenerateView consumes the key on mount.
+  try {
+    window.sessionStorage?.setItem(
+      "jv.generate.prefill",
+      JSON.stringify({ text: g.text || "", voice: g.voice || "" }),
+    );
+  } catch { /* private mode — link still works, just without prefill */ }
+  window.location.hash = "#generate";
+}
+
 function fmtAgo(iso) {
   if (!iso) return "—";
   const t = new Date(iso).getTime();
@@ -131,12 +163,6 @@ function fmtAgo(iso) {
   if (ago < 3_600_000) return Math.floor(ago / 60_000) + "m ago";
   if (ago < 86_400_000) return Math.floor(ago / 3_600_000) + "h ago";
   return Math.floor(ago / 86_400_000) + "d ago";
-}
-
-function fmtDur(sec) {
-  if (sec == null) return "—";
-  const s = Math.round(sec);
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
 const runningTasks = computed(() => tasks.running || []);
@@ -370,23 +396,23 @@ onMounted(refresh);
       <div class="jv-card jv-card--flat">
         <table v-if="recentGenerations.length" class="jv-table">
           <thead>
-            <tr><th>When</th><th>Voice</th><th>Text</th><th>Duration</th><th class="jv-table__actions">Actions</th></tr>
+            <tr><th>When</th><th>Voice</th><th>Text</th><th>Take</th><th class="jv-table__actions">Actions</th></tr>
           </thead>
           <tbody>
             <tr v-for="g in recentGenerations" :key="g.id">
-              <td class="jv-muted">{{ fmtAgo(g.created_at) }}</td>
+              <td class="jv-muted">{{ fmtAgo(g.when) }}</td>
               <td>
-                <strong>{{ g.voice_name || g.voice_id }}</strong>
-                <span v-if="g.engine" class="jv-pill jv-pill--ghost" style="margin-left: 6px">{{ g.engine }}</span>
+                <strong>{{ g.voice || "—" }}</strong>
+                <span v-if="g.status && g.status !== 'completed'" class="jv-pill jv-pill--ghost" style="margin-left: 6px">{{ g.status }}</span>
               </td>
               <td class="jv-muted" style="max-width: 480px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
                 "{{ (g.text || "").slice(0, 80) }}{{ (g.text || "").length > 80 ? "…" : "" }}"
               </td>
-              <td>{{ fmtDur(g.duration_sec) }}</td>
+              <td>{{ g.take || g.status || "—" }}</td>
               <td class="jv-table__actions">
-                <JvButton variant="ghost" size="sm" label="▶" />
-                <JvButton variant="ghost" size="sm" label="★" />
-                <JvButton variant="ghost" size="sm" label="↻" />
+                <JvButton variant="ghost" size="sm" label="▶" :disabled="!g.audio_url" title="Play this generation" @click="playGen(g)" />
+                <JvButton variant="ghost" size="sm" :label="g.is_favorited ? '★' : '☆'" :title="g.is_favorited ? 'Unfavorite' : 'Favorite'" @click="favGen(g)" />
+                <JvButton variant="ghost" size="sm" label="↻" title="Re-render — opens Generate with this text" @click="retryGen(g)" />
               </td>
             </tr>
           </tbody>

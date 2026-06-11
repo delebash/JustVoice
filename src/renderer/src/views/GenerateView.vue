@@ -613,7 +613,22 @@ function onSlashInsert({ rendered, placement }) {
   }, 0);
 }
 
-onMounted(refreshVoices);
+onMounted(async () => {
+  await refreshVoices();
+  // One-shot prefill handoff — Overview's ↻ Re-render (and any future
+  // cross-view "open in Generate" affordance) stashes {text, voice} here.
+  try {
+    const raw = window.sessionStorage?.getItem("jv.generate.prefill");
+    if (raw) {
+      window.sessionStorage.removeItem("jv.generate.prefill");
+      const pre = JSON.parse(raw);
+      if (pre?.text) text.value = pre.text;
+      if (pre?.voice && availableVoices.value.some((x) => x.id === pre.voice)) {
+        voice.value = pre.voice;
+      }
+    }
+  } catch { /* malformed prefill — ignore */ }
+});
 </script>
 
 <template>
