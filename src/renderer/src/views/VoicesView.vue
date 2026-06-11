@@ -365,11 +365,14 @@ async function submit() {
 
 // Voice type → JvTag variant mapping
 function voiceTypeVariant(source) {
+  // One distinct tint per type (v11): neutral / green / solid-green /
+  // gold / blue / violet — so the column reads at a glance.
   if (source === "preset") return "default";
-  if (source === "cloned") return "accent";
-  if (source === "designed") return "success";
+  if (source === "cloned") return "success";
+  if (source === "designed") return "solid";
   if (source === "blended") return "warn";
   if (source === "trained") return "accent";
+  if (source === "imported") return "violet";
   return "default";
 }
 
@@ -507,7 +510,9 @@ function blendWithVoice() {
           @click="inspect(v)"
           style="cursor: pointer"
         >
-          <td>🎙️</td>
+          <td @click.stop>
+            <JvButton variant="ghost" size="sm" :loading="previewingId === v.id" label="▶" :title="`Preview ${v.name}`" @click="previewVoice(v)" />
+          </td>
           <td>
             <strong>{{ v.name }}</strong>
             <JvTag v-if="orphanIds.includes(v.id)" variant="danger" label="orphan" style="margin-left: 6px" />
@@ -520,7 +525,7 @@ function blendWithVoice() {
               :data-gender="autoDetectGender(v)"
               :title="`Gender: ${autoDetectGender(v) || 'unset'} — click to cycle ? → F → M → N → unset`"
               @click="cycleGender(v)"
-            >{{ autoDetectGender(v) || '·' }}</button>
+            >{{ (autoDetectGender(v) || "?").charAt(0).toUpperCase() }}</button>
           </td>
           <td><JvTag :variant="voiceTypeVariant(v.source)" :label="v.source" /></td>
           <td><span class="jv-mono jv-muted">{{ v.engine }}</span></td>
@@ -531,7 +536,6 @@ function blendWithVoice() {
           <td class="jv-muted">{{ v.channel_id || "Default" }}</td>
           <td class="jv-muted voices-view__castas" :title="(castAsByVoice[v.id] || []).join(', ')">{{ (castAsByVoice[v.id] || []).join(' · ') || "—" }}</td>
           <td class="jv-table__actions" @click.stop>
-            <JvButton variant="ghost" size="sm" :loading="previewingId === v.id" label="▶" :title="`Preview ${v.name}`" @click="previewVoice(v)" />
             <JvButton variant="ghost" size="sm" label="⚙" :title="`Inspect ${v.name}`" @click="inspect(v)" />
             <JvButton
               v-if="v.source !== 'preset'"
@@ -840,6 +844,8 @@ function blendWithVoice() {
 .voices-view__table { font-size: 13px; }
 
 /* Gender chip: click-cycle ❓ → F → M → N → unset. */
+.voices-view__gender-chip[data-gender="female"] { border-color: #c98aa7; color: #a85a7e; background: #faf0f5; }
+.voices-view__gender-chip[data-gender="male"]   { border-color: #7e9cc4; color: #4a6fa0; background: #eef3fa; }
 .voices-view__gender-chip {
   appearance: none;
   border: 1px solid var(--line-strong);
