@@ -45,11 +45,14 @@ Lines grid (grouped, status pills, stale-on-reimport + re-render-changed)
 `{group}/{line_id}.wav` + deterministic manifest.json (+ opt-in viseme
 sidecar later, CONCEPTS §15).
 
-## Phase C — Podcast + plain text (🎙️ tab)
+## Phase C — Podcast + plain text (🎙️ tab) — IN PROGRESS
 
-Markdown speaker-label adapter, segments view w/ tag pills, timeline
-(Stories-derived) with pause profile + ducking, −16 LUFS preset export;
-plain-text kind = same surfaces, neutral labels, no timeline.
+✅ Markdown speaker-label adapter (podcast_markdown — labels/headings/
+markers/tag preservation). −16 LUFS preset already ships (mastering
+presets); per-episode export = render_chapter master=podcast.
+REMAINING: segments view w/ tag pills · timeline (audit StoriesView
+first — may be partial) · plain-text kind surfaces (reuse podcast,
+neutral labels).
 
 ## Phase D — First-run, live voice, QC, help (🚀 ⌨️ 🎧 ❓ tabs)
 
