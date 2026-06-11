@@ -13,19 +13,22 @@ no JS parser code is vendored from JustWrite.
 
 ## Phase A — Audiobook core flow (mock: 📖 tab)
 
-- **A0 Book import** ✅ *(in progress)*: `imports/adapters/book_prose.py`
+- **A0 Book import** ✅ done: `imports/adapters/book_prose.py`
   — EPUB/DOCX/MD/TXT → StandardImport (chapter split on headings/spine,
   front-matter skip, paragraphs→lines, narrator-implied). Registry entry +
   pytest w/ synthetic fixtures. Then: ImportModal dry-run preview UI (mock
   `#audiobook/2`), kind picker on create (mock `#audiobook/1` — 4 kinds incl.
   plain text alias), lexicon materialization fix (`projects_api.py` import
   path).
-- **A1 Voices**: v11 voice-library design transfer (table, engine combo,
+- **A1 Voices** ✅ done (cast-as column; row preview w/ ask-before-load; engine filter; gender/type chips; delete custom-only)
+  —: v11 voice-library design transfer (table, engine combo,
   load banners, preview play).
-- **A2 Studio Cast**: card+library click assignment (audiobook scale),
+- **A2 Studio Cast** ✅ done (assign/unassign verified live; picking status; smart-assign through runner)
+  —: card+library click assignment (audiobook scale),
   per-row dropdown (table scale), smart-assign stub behind feature pin
   (mock `#audiobook/4`, `#game/4`).
-- **A3 Script**: extraction pipeline wiring per CONCEPTS §16 — Studio
+- **A3 Script** ✅ done (task runner everywhere; discovered-speakers banner + promote endpoints; Speaker Lab v5 w/ per-column model/temp/prompt overrides + raw_llm)
+  —: extraction pipeline wiring per CONCEPTS §16 — Studio
   Script analyze + discovered-speakers banner → personas; Speaker Lab final
   design (single column default, add/delete column, presets save/load/
   use-as-production, both prompts, Raw/Parsed streaming results); **AI task
