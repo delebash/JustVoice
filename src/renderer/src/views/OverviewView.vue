@@ -1,31 +1,36 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!--
+  Home — the daily driver (journeys-preview, Library journey step 1).
+  "Everything the old Overview did well, reorganized: resume where you
+  left off, catalogue at a glance, live tasks, loaded engine, recent
+  generations."
+
+  Layout contract, top to bottom:
+    row 1 — Continue/Resume card (active project) · Start-something card
+    row 2 — six stat cards (Projects/Voices/Personas/Lexicons/Cache/Captures)
+    row 3 — Active tasks panel · Loaded engine card
+    row 4 — Recent generations list
+    footer — global hotkey banner
+
+  The bootstrap arc (no engine yet / no project yet) keeps a single
+  compact next-step banner above row 1; the mock assumes a warmed-up
+  install, the real app has to drive a cold one to that state first.
+-->
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { useOnboarding } from "../stores/onboarding.js";
+import { useActiveProject } from "../stores/activeProject.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast } from "../services/toastBridge.js";
 import JvButton from "../components/jv/JvButton.vue";
-import JvTag from "../components/jv/JvTag.vue";
-import { useCopy } from "../services/copy.js";
 
 const onboarding = useOnboarding();
-
-// Use-case quick-actions — small clickable cards that jump to the most
-// likely entry point for each audience. The card matching the user's
-// onboarded primary use case is visually highlighted so repeat users
-// see "their" workflow first.
-const QUICK_ACTIONS = [
-  { id: "audiobook", icon: "📖", title: "Render an audiobook chapter",  href: "#chapter",  desc: "Long-form narration with take versioning + ACX mastering" },
-  { id: "game",      icon: "🎮", title: "Generate a game dialogue line", href: "#generate", desc: "Single-line render with per-line WAV + JSON export" },
-  { id: "podcast",   icon: "🎬", title: "Build a podcast in Stories",    href: "#stories",  desc: "Multi-track timeline with named tracks + effects" },
-  { id: "dictation", icon: "🎙️", title: "Dictate into any app",          href: "#captures", desc: "Push-to-talk → Whisper → LLM refine → paste" },
-];
-
-const copy = useCopy();
 const api = useApi();
 const tasks = useRenderTasks();
+const activeProject = useActiveProject();
+const audioPlayer = useAudioPlayer();
 
 const health = ref(null);
 const engines = ref([]);
@@ -36,13 +41,13 @@ const lexicons = ref([]);
 const captures = ref([]);
 const stats = ref(null);
 const recentGenerations = ref([]);
-const audioPlayer = useAudioPlayer();
 const loadedEngine = ref(null);
+const system = ref(null);
+const settings = ref(null);
 
 async function safeRequest(path, fallback) {
   // Silent fallback — when offline, the topbar Offline indicator + empty
-  // cards already communicate the state. Don't fire a redundant toast on
-  // boot (was the unstyled-toast-spam bug from 2026-06-09).
+  // cards already communicate the state.
   try {
     return await api.request(path);
   } catch {
@@ -51,9 +56,7 @@ async function safeRequest(path, fallback) {
 }
 
 async function refresh() {
-  // Run every catalogue probe in parallel; any failure just leaves the
-  // relevant stat empty rather than nuking the whole view with a fatal.
-  const [h, e, v, p, pr, lx, ca, s, g, ce] = await Promise.all([
+  const [h, e, v, p, pr, lx, ca, s, g, ce, sy, st] = await Promise.all([
     safeRequest("/v1/health", null),
     safeRequest("/v1/engines", { engines: [] }),
     safeRequest("/v1/voices", { voices: [] }),
@@ -62,8 +65,10 @@ async function refresh() {
     safeRequest("/v1/lexicons", { lexicons: [] }),
     safeRequest("/v1/captures?limit=1", { captures: [], total: null }),
     safeRequest("/v1/cache/stats", null),
-    safeRequest("/v1/takes/recent?limit=5", { takes: [] }),
+    safeRequest("/v1/takes/recent?limit=4", { takes: [] }),
     safeRequest("/v1/engines/current", { engine: null }),
+    safeRequest("/v1/system/info", null),
+    safeRequest("/v1/settings", null),
   ]);
   health.value = h;
   engines.value = e.engines || [];
@@ -72,61 +77,137 @@ async function refresh() {
   projects.value = pr.projects || [];
   lexicons.value = lx.lexicons || [];
   captures.value = ca.captures || [];
-  // Total may come back as null when the server is down; treat as "—".
   captures.totalCount = ca.total ?? (ca.captures?.length ?? null);
   stats.value = s;
-  // /v1/takes/recent shape (the audit found the prior fetch hit a
-  // nonexistent /v1/generations/recent — table was permanently empty).
   recentGenerations.value = g.takes || [];
   loadedEngine.value = ce.engine || null;
+  system.value = sy;
+  settings.value = st;
 }
 
-const voicesByEngine = computed(() => {
-  const map = {};
-  for (const v of voices.value) {
-    const k = v.engine || "unknown";
-    map[k] = (map[k] || 0) + 1;
+// ── Continue card (active project) ───────────────────────────────────
+const continueProject = computed(() => {
+  if (activeProject.id) {
+    const rec = projects.value.find((p) => p.id === activeProject.id);
+    if (rec) return rec;
   }
-  return map;
+  // Fall back to the most recently updated project so a fresh session
+  // still gets a Resume affordance.
+  return [...projects.value].sort(
+    (a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0),
+  )[0] || null;
 });
 
-const projectsByType = computed(() => {
-  const map = {};
-  for (const p of projects.value) {
-    const k = p.project_type || "custom";
-    map[k] = (map[k] || 0) + 1;
-  }
-  return map;
+const KIND_META = {
+  audiobook:       { icon: "📖", label: "audiobook", unit: "chapters", home: "#chapter" },
+  game_voicelines: { icon: "🎮", label: "game",      unit: "quests",   home: "#lines" },
+  podcast:         { icon: "🎙️", label: "podcast",   unit: "episodes", home: "#chapter" },
+  custom:          { icon: "📄", label: "text",      unit: "sections", home: "#chapter" },
+};
+const continueMeta = computed(() => KIND_META[continueProject.value?.project_type] || KIND_META.custom);
+
+const continueStatus = computed(() => {
+  const p = continueProject.value;
+  if (!p) return "";
+  const bits = [`${continueMeta.value.icon} ${continueMeta.value.label}`];
+  if (p.scene_count != null) bits.push(`${p.scene_count} ${continueMeta.value.unit}`);
+  const render = tasks.running.find((t) => t.status === "running");
+  if (render) bits.push(render.label);
+  if (p.updated_at) bits.push(`last open ${fmtAgo(p.updated_at)}`);
+  return bits.join(" · ");
 });
 
-const projectsSummary = computed(() => {
-  const m = projectsByType.value;
-  const parts = [];
-  if (m.audiobook) parts.push(`${m.audiobook} audiobook`);
-  if (m.game_voicelines) parts.push(`${m.game_voicelines} game`);
-  if (m.podcast) parts.push(`${m.podcast} podcast`);
-  if (m.custom) parts.push(`${m.custom} custom`);
-  return parts.length ? parts.join(" · ") : "—";
-});
+function resumeProject() {
+  const p = continueProject.value;
+  if (!p) return;
+  activeProject.open(p);
+  window.location.hash = continueMeta.value.home;
+}
 
-const lexiconEntriesSummary = computed(() => {
-  if (!lexicons.value.length) return "—";
-  const total = lexicons.value.reduce((s, lx) => s + (lx.entry_count ?? 0), 0);
-  return `${total} entries`;
-});
+// ── Start something (kind pills → Projects create flow) ──────────────
+const KIND_PILLS = [
+  { kind: "audiobook",       label: "📖 Audiobook" },
+  { kind: "game_voicelines", label: "🎮 Game" },
+  { kind: "podcast",         label: "🎙️ Podcast" },
+  { kind: "custom",          label: "📄 Text" },
+];
+function startKind(kind) {
+  // Projects view consumes this on mount and opens the create flow with
+  // the kind preselected (journeys kind-picker step).
+  try { window.sessionStorage?.setItem("jv.books.createKind", kind || ""); } catch { /* ignore */ }
+  window.location.hash = "#books";
+}
 
-const cacheMB = computed(() => {
+// ── Stat cards ────────────────────────────────────────────────────────
+const projectKindCount = computed(() => {
+  const kinds = new Set(projects.value.map((p) => p.project_type || "custom"));
+  return kinds.size;
+});
+const lexiconEntries = computed(() =>
+  lexicons.value.reduce((s, lx) => s + (lx.entry_count ?? 0), 0),
+);
+const cacheGB = computed(() => {
+  if (!stats.value?.total_bytes_on_disk) return null;
+  return (stats.value.total_bytes_on_disk / 1024 / 1024 / 1024).toFixed(1);
+});
+const cacheSub = computed(() => {
   if (!stats.value) return "—";
-  return (stats.value.total_bytes_on_disk / 1024 / 1024).toFixed(1);
+  const bits = [];
+  if (stats.value.entry_count != null) bits.push(`${stats.value.entry_count} takes`);
+  if (stats.value.hits && stats.value.requests) {
+    bits.push(`${Math.round((stats.value.hits / stats.value.requests) * 100)}% hit`);
+  }
+  return bits.join(" · ") || "—";
 });
-
-const cacheHitRate = computed(() => {
-  if (!stats.value || !stats.value.hits || !stats.value.requests) return "—";
-  return Math.round((stats.value.hits / stats.value.requests) * 100) + "%";
-});
-
 const captureCount = computed(() => captures.totalCount ?? captures.value.length ?? 0);
 
+const statCards = computed(() => [
+  { label: "Projects", value: projects.value.length, sub: projectKindCount.value ? `${projectKindCount.value} kind${projectKindCount.value === 1 ? "" : "s"}` : "create one to start", href: "#books" },
+  { label: "Voices", value: voices.value.length, sub: `across ${new Set(voices.value.map((v) => v.engine || "?")).size} engines`, href: "#voices" },
+  { label: "Personas", value: personas.value.length, sub: "cross-project characters", href: "#personas" },
+  { label: "Lexicons", value: lexicons.value.length, sub: `${lexiconEntries.value} entries`, href: "#lexicons" },
+  { label: "Cache", value: cacheGB.value ? `${cacheGB.value} GB` : "0", sub: cacheSub.value, href: "#cache" },
+  { label: "Captures", value: captureCount.value, sub: "dictation + TTS history", href: "#captures" },
+]);
+
+// ── Active tasks ──────────────────────────────────────────────────────
+const liveTasks = computed(() => tasks.running.filter((t) => t.status === "running"));
+function taskKind(t) {
+  const l = (t.label || "").toLowerCase();
+  if (l.includes("render")) return "render";
+  if (l.includes("extract") || l.includes("script") || l.includes("analy")) return "extract";
+  if (l.includes("clone") || l.includes("train")) return "train";
+  return "task";
+}
+function cancelTask(t) {
+  try { t.onCancel?.(); } catch { /* task may have just finished */ }
+  tasks.cancel?.(t.id);
+}
+
+// ── Loaded engine card ────────────────────────────────────────────────
+const gpu = computed(() => system.value?.gpus?.[0] || null);
+const deviceLabel = computed(() => gpu.value ? `CUDA · ${gpu.value.name}` : (system.value ? "CPU" : ""));
+const externalCount = computed(() => (settings.value?.engines?.external || []).length);
+const unloading = ref(false);
+async function unloadEngine() {
+  unloading.value = true;
+  try {
+    await api.request("/v1/engines/unload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "tts" }),
+    });
+    window.dispatchEvent(new Event("jv:health-refresh"));
+    await refresh();
+    pushToast({ message: "Engine unloaded.", kind: "success" });
+  } catch (e) {
+    pushToast({ message: `Unload failed: ${e?.message || e}`, kind: "error" });
+  } finally {
+    unloading.value = false;
+  }
+}
+
+// ── Recent generations ────────────────────────────────────────────────
 function playGen(g) {
   if (!g?.audio_url) return;
   audioPlayer.play({
@@ -135,531 +216,205 @@ function playGen(g) {
     subtitle: (g.text || "").slice(0, 80),
   });
 }
-async function favGen(g) {
-  try {
-    const r = await api.request(`/v1/generations/${g.id}/favorite`, { method: "PATCH" });
-    g.is_favorited = !!r?.is_favorited;
-  } catch (e) {
-    pushToast({ message: `Favorite failed: ${e?.message || e}`, kind: "error" });
-  }
+function genDownloadUrl(g) {
+  return g?.audio_url ? `${api.serverUrl}${g.audio_url}` : "#";
 }
-function retryGen(g) {
-  // Hand the text to Generate via sessionStorage (no shared store between
-  // views); GenerateView consumes the key on mount.
-  try {
-    window.sessionStorage?.setItem(
-      "jv.generate.prefill",
-      JSON.stringify({ text: g.text || "", voice: g.voice || "" }),
-    );
-  } catch { /* private mode — link still works, just without prefill */ }
-  window.location.hash = "#generate";
-}
-
 function fmtAgo(iso) {
   if (!iso) return "—";
-  const t = new Date(iso).getTime();
-  const ago = Date.now() - t;
-  if (ago < 60_000) return Math.floor(ago / 1000) + "s ago";
-  if (ago < 3_600_000) return Math.floor(ago / 60_000) + "m ago";
-  if (ago < 86_400_000) return Math.floor(ago / 3_600_000) + "h ago";
-  return Math.floor(ago / 86_400_000) + "d ago";
+  const ago = Date.now() - new Date(iso).getTime();
+  if (ago < 60_000) return "just now";
+  if (ago < 3_600_000) return Math.floor(ago / 60_000) + " min";
+  if (ago < 86_400_000) return Math.floor(ago / 3_600_000) + " h";
+  return Math.floor(ago / 86_400_000) + " d";
 }
 
-const runningTasks = computed(() => tasks.running || []);
+// ── Hotkey banner ─────────────────────────────────────────────────────
+const hotkeyEnabled = computed(() => !!settings.value?.captures?.hotkey_enabled);
+function chordLabel(keys) {
+  return (keys || []).map((k) => k.replace(/Right|Left/, "")).join("+") || "—";
+}
+const speakChord = computed(() => chordLabel(settings.value?.captures?.chord_toggle_to_talk_keys));
+const dictateChord = computed(() => chordLabel(settings.value?.captures?.chord_push_to_talk_keys));
 
-// State-aware Next-step card — plan Q4 / Slice 1. Drives the user from
-// whatever state they're in to the next concrete action. Order of
-// precedence reflects priority: nothing else matters until an engine is
-// loaded, no work can happen without a project, no render preview until
-// blocks exist, etc. Returns null when the user is past the bootstrap
-// arc and there's no specific "do this next" prompt.
+// ── Bootstrap banner (cold install — mock assumes a warmed-up state) ──
 const nextStep = computed(() => {
-  const useCase = onboarding.primaryUseCase || "unset";
-
-  if (!loadedEngine.value) {
-    return {
-      eyebrow: "Step 1",
-      title: "Load your first engine",
-      body: "JustVoice ships with 7 engines. Kokoro runs on CPU in realtime — a good first install.",
-      cta: { label: "Open Engines", href: "#engines" },
-    };
+  if (health.value && !loadedEngine.value && !health.value.current_engine) {
+    return { title: "Load your first engine", body: "Kokoro runs on CPU in realtime — a good first pick.", href: "#engines", cta: "Open Engines" };
   }
-
-  // Dictation / accessibility: engine + voice is all the user needs.
-  if (useCase === "dictation") {
-    return captures.value?.length
-      ? null
-      : {
-          eyebrow: "Next step",
-          title: "Bind your dictation hotkey",
-          body: "Open Captures, set a global hotkey, then speak into any text field.",
-          cta: { label: "Open Captures", href: "#captures" },
-        };
+  if (health.value && !projects.value.length) {
+    return { title: "Create your first project", body: "Pick what you're making — the whole app reshapes around it.", href: "#books", cta: "Open Projects" };
   }
-  if (useCase === "accessibility") {
-    return null;
-  }
-
-  // Script-producing use cases need a project, then a scene, then blocks.
-  if (!projects.value.length) {
-    return {
-      eyebrow: "Step 2",
-      title: `Create your first ${copy.value.book.singular.toLowerCase()}`,
-      body: useCase === "audiobook"
-        ? "Import from JustWrite, paste a manuscript chapter, or start blank. Studio walks you from cast → script → render."
-        : `Open ${copy.value.book.plural} → Create new to start.`,
-      cta: { label: `Open ${copy.value.book.plural}`, href: "#books" },
-    };
-  }
-
-  // Has project, no cast — Studio Cast tab.
-  if (!personas.value.length) {
-    return {
-      eyebrow: "Step 3",
-      title: `Add ${copy.value.cast.plural.toLowerCase()} to your ${copy.value.book.singular.toLowerCase()}`,
-      body: `Each ${copy.value.cast.singular.toLowerCase()} pairs a name with a voice. Studio's Cast tab handles the assignment.`,
-      cta: { label: "Open Studio", href: "#studio" },
-    };
-  }
-
-  // Active work in progress — nothing to suggest.
-  if (runningTasks.value.length) return null;
-
-  // Steady-state: prompt to keep producing.
-  return {
-    eyebrow: "Pick up",
-    title: recentGenerations.value.length
-      ? "Pick up where you left off"
-      : "Open Studio to start producing",
-    body: recentGenerations.value.length
-      ? "Your last renders are listed below. Studio's Script tab is where multi-line work lives."
-      : "Studio walks you from cast → script → render. Generate is the single-line workbench for one-offs.",
-    cta: { label: "Open Studio", href: "#studio" },
-  };
+  return null;
 });
+
+function goEngines() { window.location.hash = "#engines"; }
 
 onMounted(refresh);
 </script>
 
 <template>
-  <div class="overview-view">
-    <!-- ── Intro band + quick-actions ─────────────────────────────────
-         Centered display title "JustVoice." + tagline + 4 use-case
-         quick-actions. The card matching the user's onboarded primary
-         use case is highlighted with the brand accent. -->
-    <section class="overview-view__intro">
-      <h1 class="overview-view__hero">JustVoice</h1>
-      <p class="overview-view__tagline">
-        A voice production studio for audiobook producers, game developers, podcasters, dictation, and accessibility.
-      </p>
+  <div class="home">
+    <!-- Bootstrap arc — one compact banner, gone once warmed up. -->
+    <a v-if="nextStep" class="jv-banner jv-banner--info home__next" :href="nextStep.href">
+      <strong>{{ nextStep.title }}</strong>
+      <span class="jv-muted">{{ nextStep.body }}</span>
+      <span class="jv-spacer" />
+      <span class="home__next-cta">{{ nextStep.cta }} ➜</span>
+    </a>
 
-      <!-- State-aware Next-step card. Drives first-run + bootstrap arc. -->
-      <a
-        v-if="nextStep"
-        class="overview-view__next-step"
-        :href="nextStep.cta.href"
-      >
-        <span class="overview-view__next-step-eyebrow">{{ nextStep.eyebrow }}</span>
-        <strong class="overview-view__next-step-title">{{ nextStep.title }}</strong>
-        <p class="overview-view__next-step-body">{{ nextStep.body }}</p>
-        <span class="overview-view__next-step-cta">{{ nextStep.cta.label }} →</span>
+    <!-- Row 1 — Continue + Start something -->
+    <div class="home__row home__row--top">
+      <div v-if="continueProject" class="jv-card home__continue">
+        <div class="home__portrait" :title="continueMeta.label">{{ (continueProject.name || "?").slice(0, 1).toUpperCase() }}</div>
+        <div class="home__continue-main">
+          <div class="home__eyebrow">Continue</div>
+          <div class="home__display">{{ continueProject.name }}</div>
+          <div class="jv-muted home__substat">{{ continueStatus }}</div>
+        </div>
+        <JvButton variant="primary" label="Resume ➜" title="Open this project's home base" @click="resumeProject" />
+      </div>
+      <div class="jv-card home__start">
+        <div class="home__eyebrow" style="margin-bottom:8px">Start something</div>
+        <div class="home__pills">
+          <button v-for="k in KIND_PILLS" :key="k.kind" type="button" class="jv-pill home__pill"
+            :title="`New ${k.kind === 'game_voicelines' ? 'game dialogue' : k.kind} project`"
+            @click="startKind(k.kind)">{{ k.label }}</button>
+        </div>
+        <JvButton variant="secondary" size="sm" label="＋ New project" style="margin-top:10px" @click="startKind('')" />
+      </div>
+    </div>
+
+    <!-- Row 2 — six stat cards -->
+    <div class="home__stats">
+      <a v-for="c in statCards" :key="c.label" class="jv-card home__stat" :href="c.href" :title="`Open ${c.label}`">
+        <div class="home__eyebrow">{{ c.label }}</div>
+        <div class="home__display home__display--num">{{ c.value }}</div>
+        <div class="jv-muted home__substat">{{ c.sub }}</div>
       </a>
+    </div>
 
-      <div class="overview-view__quick-actions" v-if="!recentGenerations.length">
-        <a
-          v-for="q in QUICK_ACTIONS"
-          :key="q.id"
-          class="overview-view__quick-action"
-          :class="{ 'overview-view__quick-action--active': onboarding.primaryUseCase === q.id }"
-          :href="q.href"
-        >
-          <span class="overview-view__quick-action-icon">{{ q.icon }}</span>
-          <div class="overview-view__quick-action-body">
-            <strong class="overview-view__quick-action-title">{{ q.title }}</strong>
-            <span class="overview-view__quick-action-desc">{{ q.desc }}</span>
-          </div>
-        </a>
+    <!-- Row 3 — Active tasks + Loaded engine -->
+    <div class="home__row">
+      <div class="jv-card home__tasks">
+        <div class="home__cardhead">
+          <span class="home__eyebrow">Active tasks</span>
+          <span v-if="liveTasks.length" class="jv-pill jv-pill--warn">{{ liveTasks.length }} in flight</span>
+          <span class="jv-spacer" />
+          <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" data-task-panel-toggle @click="tasks.togglePanel()">open panel ➜</button>
+        </div>
+        <p v-if="!liveTasks.length" class="jv-muted home__empty">Nothing running. Renders, script analysis, and clones show up here with live progress.</p>
+        <div v-for="t in liveTasks" :key="t.id" class="home__task">
+          <span class="jv-pill home__task-kind" :class="`home__task-kind--${taskKind(t)}`">{{ taskKind(t) }}</span>
+          <strong class="home__task-label">{{ t.label }}</strong>
+          <span class="jv-muted home__task-stats">{{ t.statsFn ? t.statsFn(t) : "" }}</span>
+          <div class="home__prog"><div class="home__prog-fill" :style="{ width: (t.percent ?? 30) + '%' }" /></div>
+          <button v-if="t.onCancel" type="button" class="jv-btn jv-btn--ghost jv-btn--sm home__task-x" title="Cancel" @click="cancelTask(t)">✕</button>
+        </div>
       </div>
-    </section>
 
-    <!-- ── Catalogue: 6 stat tiles per preview HTML §Overview ─────────── -->
-    <div class="jv-section">
-      <h3 class="jv-section__title">Catalogue</h3>
-      <div class="overview-view__stats">
-        <div class="jv-card overview-view__stat">
-          <div class="overview-view__stat-label">Voices</div>
-          <div class="overview-view__stat-value">{{ voices.length || 0 }}</div>
-          <div class="overview-view__stat-sub jv-muted">
-            across {{ Object.keys(voicesByEngine).length || 0 }} engine{{ Object.keys(voicesByEngine).length === 1 ? "" : "s" }}
+      <div class="jv-card home__engine">
+        <div class="home__cardhead">
+          <span class="home__eyebrow">Loaded engine</span>
+          <span class="jv-pill" :class="health?.current_engine ? 'jv-pill--green' : ''">{{ health?.current_engine ? "ready" : "none" }}</span>
+        </div>
+        <template v-if="health?.current_engine">
+          <div class="home__engine-line">
+            <strong>{{ health.current_engine }}</strong>
+            <span class="jv-muted">{{ deviceLabel }}</span>
+            <span class="jv-spacer" />
+            <span v-if="gpu?.vram_mb" class="jv-mono jv-muted home__vram">VRAM {{ (gpu.vram_used_mb / 1024).toFixed(1) }} / {{ (gpu.vram_mb / 1024).toFixed(0) }} GB</span>
           </div>
-        </div>
-        <div class="jv-card overview-view__stat">
-          <div class="overview-view__stat-label">{{ copy.cast.plural }}</div>
-          <div class="overview-view__stat-value">{{ personas.length || 0 }}</div>
-          <div class="overview-view__stat-sub jv-muted">named &amp; bound</div>
-        </div>
-        <div class="jv-card overview-view__stat">
-          <div class="overview-view__stat-label">{{ copy.book.plural }}</div>
-          <div class="overview-view__stat-value">{{ projects.length || 0 }}</div>
-          <div class="overview-view__stat-sub jv-muted">{{ projectsSummary }}</div>
-        </div>
-        <div class="jv-card overview-view__stat">
-          <div class="overview-view__stat-label">Lexicons</div>
-          <div class="overview-view__stat-value">{{ lexicons.length || 0 }}</div>
-          <div class="overview-view__stat-sub jv-muted">{{ lexiconEntriesSummary }}</div>
-        </div>
-        <div class="jv-card overview-view__stat">
-          <div class="overview-view__stat-label">Cache</div>
-          <div class="overview-view__stat-value">
-            <template v-if="stats && Number.isFinite(parseFloat(cacheMB))">{{ cacheMB }}<span class="overview-view__unit">MB</span></template>
-            <template v-else>—</template>
-          </div>
-          <div class="overview-view__stat-sub jv-muted">
-            <template v-if="stats">{{ stats.total_entries_on_disk ?? 0 }} entries<span v-if="cacheHitRate !== '—'"> · {{ cacheHitRate }} hit</span></template>
-            <template v-else>server offline</template>
-          </div>
-        </div>
-        <div class="jv-card overview-view__stat">
-          <div class="overview-view__stat-label">Captures</div>
-          <div class="overview-view__stat-value">{{ captureCount }}</div>
-          <div class="overview-view__stat-sub jv-muted">last 30 days</div>
+          <div v-if="gpu?.vram_mb" class="home__prog home__prog--vram"><div class="home__prog-fill" :style="{ width: Math.round(((gpu.vram_used_mb || 0) / gpu.vram_mb) * 100) + '%' }" /></div>
+        </template>
+        <p v-else class="jv-muted home__empty">No TTS engine in memory. Loading happens on first use, or pick one now.</p>
+        <div class="home__engine-foot">
+          <span class="jv-muted home__substat" style="flex:1">
+            {{ externalCount ? `● ${externalCount} external provider${externalCount === 1 ? "" : "s"} registered` : "no external providers" }}
+          </span>
+          <JvButton v-if="health?.current_engine" variant="ghost" size="sm" label="Unload" :loading="unloading" title="Free the model's memory — next render reloads it" @click="unloadEngine" />
+          <JvButton variant="secondary" size="sm" label="Switch ▾" title="Open Engines to load a different model" @click="goEngines" />
         </div>
       </div>
     </div>
 
-    <!-- ── Loaded engine card per preview HTML §Overview ──────────────── -->
-    <div class="jv-section">
-      <h3 class="jv-section__title">
-        Loaded engine
-        <JvTag v-if="loadedEngine" variant="success" label="ready" />
-        <JvTag v-else variant="default" label="none" />
-      </h3>
-      <div class="jv-card overview-view__loaded">
-        <template v-if="loadedEngine">
-          <div class="overview-view__loaded-cell">
-            <div class="overview-view__loaded-k">Engine</div>
-            <strong class="overview-view__loaded-v">{{ loadedEngine.name }}</strong>
-          </div>
-          <div class="overview-view__loaded-cell">
-            <div class="overview-view__loaded-k">Backend</div>
-            <span class="jv-muted">{{ loadedEngine.backend || loadedEngine.device || "—" }}</span>
-          </div>
-          <div class="overview-view__loaded-cell" v-if="loadedEngine.vram_total_mb">
-            <div class="overview-view__loaded-k">VRAM</div>
-            <span class="jv-muted">{{ (loadedEngine.vram_used_mb || 0) / 1024 | 0 }} / {{ (loadedEngine.vram_total_mb / 1024).toFixed(0) }} GB</span>
-          </div>
-          <div class="jv-spacer" />
-          <JvButton variant="secondary" size="sm" label="Unload" />
-          <JvButton variant="primary" size="sm" label="Switch" />
-        </template>
-        <template v-else>
-          <p class="jv-muted" style="margin: 4px 0">No engine loaded. <a href="#engines">Go to Engines → Load</a> to pick one.</p>
-        </template>
+    <!-- Row 4 — Recent generations -->
+    <div class="jv-card home__recent">
+      <div class="home__cardhead">
+        <span class="home__eyebrow">Recent generations</span>
+        <span class="jv-spacer" />
+        <a class="jv-btn jv-btn--ghost jv-btn--sm" href="#generate" title="Full history lives on Generate">all history ➜</a>
+      </div>
+      <p v-if="!recentGenerations.length" class="jv-muted home__empty">Render something — your latest takes land here for one-click replay.</p>
+      <div v-for="g in recentGenerations" :key="g.id" class="home__gen">
+        <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" title="Play" @click="playGen(g)">▶</button>
+        <span class="home__gen-text">{{ g.text || "—" }}</span>
+        <span class="jv-muted home__gen-who">{{ g.voice || "?" }}</span>
+        <span class="jv-mono jv-muted home__gen-meta">{{ g.take ? g.take + " · " : "" }}{{ fmtAgo(g.when) }}</span>
+        <a class="jv-btn jv-btn--ghost jv-btn--sm" :href="genDownloadUrl(g)" download title="Download WAV">⬇</a>
       </div>
     </div>
 
-    <!-- ── Active tasks card — always shown, empty state when nothing in flight. -->
-    <div class="jv-section">
-      <h3 class="jv-section__title">
-        Active tasks
-        <JvTag v-if="runningTasks.length" variant="warn" :label="`${runningTasks.length} in flight`" />
-        <JvTag v-else variant="default" label="idle" />
-      </h3>
-      <div class="jv-card">
-        <template v-if="runningTasks.length">
-          <div v-for="t in runningTasks" :key="t.id" class="overview-view__task">
-            <span class="jv-pill jv-pill--solid">● {{ t.kind || "Render" }}</span>
-            <strong>{{ t.label }}</strong>
-            <span class="jv-muted">{{ t.statsLine || "" }}</span>
-            <div class="jv-spacer" />
-            <div class="overview-view__task-bar">
-              <div
-                class="overview-view__task-fill"
-                :style="{ width: ((t.progress ?? 0) * 100) + '%' }"
-              />
-            </div>
-            <JvButton variant="danger-outline" size="sm" label="Cancel" @click="t.onCancel?.()" />
-          </div>
-        </template>
-        <p v-else class="jv-muted overview-view__empty">
-          Nothing in flight. Renders started from <a href="#generate">Generate</a>, <a href="#chapter">Chapter</a>, or batch renders from <a href="#books">{{ copy.book.plural }}</a> show up here with a live progress bar + cancel.
-        </p>
-      </div>
+    <!-- Hotkey banner -->
+    <div class="jv-banner jv-banner--info home__hotkeys" v-if="hotkeyEnabled">
+      Press <span class="jv-mono">{{ speakChord }}</span> anywhere to speak · hold <span class="jv-mono">{{ dictateChord }}</span> to dictate — no project needed.
     </div>
-
-    <!-- ── Recent generations table — always shown, empty state when no history. -->
-    <div class="jv-section">
-      <h3 class="jv-section__title">
-        Recent generations
-        <JvTag v-if="recentGenerations.length" variant="default" :label="`last ${recentGenerations.length}`" />
-      </h3>
-      <div class="jv-card jv-card--flat">
-        <table v-if="recentGenerations.length" class="jv-table">
-          <thead>
-            <tr><th>When</th><th>Voice</th><th>Text</th><th>Take</th><th class="jv-table__actions">Actions</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="g in recentGenerations" :key="g.id">
-              <td class="jv-muted">{{ fmtAgo(g.when) }}</td>
-              <td>
-                <strong>{{ g.voice || "—" }}</strong>
-                <span v-if="g.status && g.status !== 'completed'" class="jv-pill jv-pill--ghost" style="margin-left: 6px">{{ g.status }}</span>
-              </td>
-              <td class="jv-muted" style="max-width: 480px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
-                "{{ (g.text || "").slice(0, 80) }}{{ (g.text || "").length > 80 ? "…" : "" }}"
-              </td>
-              <td>{{ g.take || g.status || "—" }}</td>
-              <td class="jv-table__actions">
-                <JvButton variant="ghost" size="sm" label="▶" :disabled="!g.audio_url" title="Play this generation" @click="playGen(g)" />
-                <JvButton variant="ghost" size="sm" :label="g.is_favorited ? '★' : '☆'" :title="g.is_favorited ? 'Unfavorite' : 'Favorite'" @click="favGen(g)" />
-                <JvButton variant="ghost" size="sm" label="↻" title="Re-render — opens Generate with this text" @click="retryGen(g)" />
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <p v-else class="jv-muted overview-view__empty">
-          No renders yet. Open <a href="#generate">Generate</a> to produce your first line, or import a manuscript from <a href="#books">{{ copy.book.plural }}</a>. Recent generations appear here with replay / favorite / re-render actions.
-        </p>
-      </div>
+    <div class="jv-banner home__hotkeys" v-else>
+      Global speak/dictate hotkeys are off — flip them on in <a href="#captures">Captures</a> to talk from anywhere in the OS.
     </div>
   </div>
 </template>
 
 <style scoped>
-/* No outer padding — `.jv-content` already pads `24px 32px 64px`.
-   Double-padding pushed the hero ~48px below the topbar; this drops
-   the duplicate so the hero sits close to the section title. */
-.overview-view { padding: 0; }
-
-/* Intro band — big centered "JustVoice." display title + tagline +
-   4 use-case quick-action cards. This is the first thing a user sees
-   on the dashboard, so the title gets the brand-period treatment
-   (matches the topbar's `JustVoice.` pattern) and outsized type. */
-.overview-view__intro {
-  /* Negative top margin tightens against the `.jv-content` 24px
-     top padding — pulls the JustVoice hero up close to the topbar
-     without dropping the padding for other views. */
-  margin: -12px 0 24px;
-  text-align: center;
+.home { display: flex; flex-direction: column; gap: 12px; }
+.home__row { display: flex; gap: 10px; align-items: stretch; }
+.home__row > .jv-card { margin: 0; }
+.home__row--top .home__continue { flex: 2; display: flex; align-items: center; gap: 14px; padding: 14px 18px; }
+.home__row--top .home__start { flex: 1; padding: 14px 18px; }
+.home__portrait {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; flex: none;
 }
-.overview-view__hero {
-  margin: 0;
-  font-size: 36px;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  line-height: 1;
-  color: var(--ink);
+.home__continue-main { min-width: 0; flex: 1; }
+.home__eyebrow {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-3);
 }
-.overview-view__tagline {
-  margin: 8px auto 18px;
-  max-width: var(--w-prose);
-  color: var(--ink-2);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.overview-view__quick-actions {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 10px;
-  text-align: left;        /* cards stay left-aligned even though the band is centered */
-  max-width: var(--shell-page);
-  margin: 0 auto;
-}
-
-/* State-aware Next-step card — sits above quick-actions when there's
-   a concrete "do this next" prompt. Uses brand accent to read as the
-   primary CTA on the page. */
-.overview-view__next-step {
-  display: block;
-  max-width: 560px;
-  margin: 0 auto 18px;
-  padding: 16px 20px;
-  border-radius: 10px;
-  background: var(--accent);
-  color: #fff;
-  text-decoration: none;
-  text-align: left;
-  box-shadow: var(--shadow-2);
-  transition: transform 0.12s, box-shadow 0.12s;
-}
-.overview-view__next-step:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-3);
-  text-decoration: none;
-}
-.overview-view__next-step-eyebrow {
-  display: block;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  opacity: 0.85;
-  font-weight: 600;
-}
-.overview-view__next-step-title {
-  display: block;
-  font-size: 18px;
-  font-weight: 600;
-  margin: 4px 0 6px;
-  color: #fff;
-}
-.overview-view__next-step-body {
-  margin: 0 0 10px;
-  font-size: 13px;
-  line-height: 1.5;
-  opacity: 0.92;
-}
-.overview-view__next-step-cta {
-  display: inline-block;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 10px;
-  background: rgba(255, 255, 255, 0.18);
-  border-radius: 4px;
-}
-.overview-view__quick-action {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px 16px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--r-card);
-  text-decoration: none;
-  transition: border-color 0.12s, background 0.12s, transform 0.05s;
-}
-.overview-view__quick-action:hover {
-  border-color: var(--line-strong);
-  background: var(--surface-2);
-  text-decoration: none;
-}
-.overview-view__quick-action:active { transform: translateY(1px); }
-.overview-view__quick-action--active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-.overview-view__quick-action--active:hover {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.overview-view__quick-action-icon {
-  font-size: 22px;
-  line-height: 1;
-  flex-shrink: 0;
-}
-.overview-view__quick-action-body {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-.overview-view__quick-action-title {
-  font-size: 13px;
-  color: var(--ink);
-  font-weight: 600;
-  line-height: 1.3;
-}
-.overview-view__quick-action-desc {
-  font-size: 11.5px;
-  color: var(--ink-3);
-  line-height: 1.4;
-}
-
-.overview-view__stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-
-.overview-view__stat {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.overview-view__stat-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  font-weight: 600;
-}
-
-.overview-view__stat-value {
-  font-size: 30px;            /* matches preview .stat .v */
-  font-weight: 700;
-  line-height: 1.05;
-  color: var(--ink);
-  letter-spacing: -0.02em;
-}
-
-
-.overview-view__unit {
-  font-size: 16px;
-  font-weight: 500;
-  margin-left: 4px;
-  color: var(--ink-2);
-}
-
-.overview-view__stat-sub {
-  font-size: 12px;
-}
-
-.overview-view__loaded {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-.overview-view__loaded-cell { min-width: 0; }
-.overview-view__loaded-k {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  font-weight: 600;
-  margin-bottom: 2px;
-}
-.overview-view__loaded-v {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.overview-view__task {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 4px 0;
-}
-.overview-view__task + .overview-view__task {
-  border-top: 1px solid var(--line);
-  padding-top: 12px;
-  margin-top: 8px;
-}
-.overview-view__task-bar {
-  width: 220px;
-  height: 8px;
-  background: var(--surface-3);
-  border-radius: var(--r-pill);
-  overflow: hidden;
-}
-.overview-view__task-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: var(--r-pill);
-  transition: width 0.3s ease;
-}
-
-.overview-view__empty {
-  margin: 0;
-  padding: 6px 0;
-  font-size: 13px;
-}
-.overview-view__empty a {
-  color: var(--accent);
-  text-decoration: underline;
-}
+.home__display { font-size: 19px; font-weight: 700; color: var(--ink); }
+.home__display--num { font-size: 21px; margin: 2px 0; }
+.home__substat { font-size: 11.5px; }
+.home__pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.home__pill { cursor: pointer; }
+.home__pill:hover { border-color: var(--accent); color: var(--accent-ink); }
+.home__stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+.home__stat { padding: 11px 14px; cursor: pointer; text-decoration: none; color: inherit; margin: 0; }
+.home__stat:hover { border-color: var(--accent-line); }
+.home__tasks { flex: 1.4; padding: 12px 16px; }
+.home__engine { flex: 1; padding: 12px 16px; }
+.home__cardhead { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.home__empty { font-size: 12px; margin: 4px 0; }
+.home__task { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 4px 0; }
+.home__task-kind { text-transform: uppercase; font-size: 9.5px; }
+.home__task-kind--render { background: var(--accent); color: #fff; border-color: var(--accent); }
+.home__task-kind--extract { background: #eaf0f8; color: #3a5a8c; border-color: #c8d4e8; }
+.home__task-label { flex: none; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home__task-stats { font-size: 11px; flex: none; }
+.home__prog { flex: 1; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+.home__prog--vram { margin: 8px 0; }
+.home__prog-fill { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width .4s; }
+.home__task-x { color: var(--danger); }
+.home__engine-line { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+.home__vram { font-size: 11px; }
+.home__engine-foot { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.home__recent { padding: 12px 16px; margin: 0; }
+.home__gen { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.home__gen:last-child { border-bottom: 0; }
+.home__gen-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home__gen-who { flex: none; font-size: 11px; }
+.home__gen-meta { flex: none; font-size: 10.5px; }
+.home__next { display: flex; gap: 10px; align-items: center; text-decoration: none; }
+.home__next-cta { color: var(--accent-ink); font-weight: 600; }
+.home__hotkeys { font-size: 11.5px; }
+.home__hotkeys .jv-mono { font-size: 10.5px; background: var(--surface-3); padding: 1px 6px; border-radius: 4px; }
 </style>
