@@ -216,3 +216,29 @@ Implementation shape (single-sourced, headless-parity):
 Rejected alternatives: external-docs-only (context switch, useless
 offline); coach-mark overlays everywhere (annoying after first run —
 reduced to the one-time hint strip).
+
+## 10. LLM & STT in first-run (optional helpers, never blockers)
+
+Question (2026-06-11): should the user select an LLM and STT at startup?
+
+Yes — both ride in QuickSetup as **optional, skippable rows** under the
+engine list. Principle: the TTS core never depends on either; skipping
+costs specific features, and the UI says exactly which.
+
+- **LLM — connect, don't bundle.** QuickSetup probes for running local
+  servers (Ollama / LM Studio on their default ports) and offers one-click
+  connect; otherwise add any OpenAI-compatible endpoint + key, or skip.
+  This sets the default provider for the per-feature bindings that already
+  exist in settings (`LLMBinding` in `models.py` — speaker_attribution,
+  smart_assign, render_preset_suggest, compose, persona_rewrite; QuickSetup
+  pre-fills per hardware tier).
+  **Graceful degradation when skipped:** Script becomes manual speaker
+  assignment, Smart-assign hides, preset-suggest hides — each spot shows a
+  "connect an LLM" hint deep-linking to setup. Audiobook EPUB flow is the
+  big loser without one; games/podcasts barely notice (their sources name
+  speakers).
+- **STT — bundle small.** Whisper-small (~244 MB) as a checkbox, on by
+  default. Consumers: Train dataset auto-transcripts, promoting captures
+  to clone samples. Skipped → Train asks for manual transcripts.
+- Both re-offerable later: Settings → AI features, plus the deep-links
+  from degraded spots. First-run stays one screen — no wizard sprawl.
