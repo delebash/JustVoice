@@ -240,3 +240,57 @@ async def classify_model_tier(body: TierClassifyRequest) -> TierClassifyResponse
         think=spec.think,
         confidence_floor=spec.confidence_floor,
     )
+
+# ── Local-server detection (QuickSetup "Ollama detected → Connect") ─────
+
+
+class DetectedLocalProvider(BaseModel):
+    provider_type: str          # "ollama" | "openai_compat"
+    name: str
+    base_url: str
+    models: list[str]
+    already_registered: bool
+
+
+class DetectLocalResponse(BaseModel):
+    detected: list[DetectedLocalProvider]
+
+
+@router.get("/v1/llm-providers/detect-local", response_model=DetectLocalResponse)
+async def detect_local_llm_providers() -> DetectLocalResponse:
+    """Probe the well-known local LLM servers (Ollama :11434, LM Studio
+    :1234). Powers the first-run "Ollama detected · <model> → Connect"
+    row — detect-and-connect, never bundle (CONCEPTS §10)."""
+    import httpx
+
+    state = get_state()
+    registered_urls = {
+        (p.base_url or "").rstrip("/") for p in state.settings.get().engines.llm
+    }
+    out: list[DetectedLocalProvider] = []
+
+    probes = [
+        ("ollama", "Ollama (local)", "http://127.0.0.1:11434", "/api/tags",
+         lambda d: [m.get("name", "") for m in d.get("models", [])]),
+        ("openai_compat", "LM Studio (local)", "http://127.0.0.1:1234", "/v1/models",
+         lambda d: [m.get("id", "") for m in d.get("data", [])]),
+    ]
+    for ptype, name, base, path, extract in probes:
+        try:
+            r = httpx.get(base + path, timeout=1.5)
+            if r.status_code != 200:
+                continue
+            models = [m for m in extract(r.json()) if m]
+            out.append(
+                DetectedLocalProvider(
+                    provider_type=ptype,
+                    name=name,
+                    base_url=base,
+                    models=models,
+                    already_registered=base in registered_urls,
+                )
+            )
+        except Exception:
+            continue
+    return DetectLocalResponse(detected=out)
+

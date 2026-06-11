@@ -142,3 +142,30 @@ def test_analyze_text_threads_model_temp_prompt_overrides(client, monkeypatch):
     assert captured["temperature"] == 0.05
     assert captured["system"] == "CUSTOM PROMPT BODY"
     assert r.json()["raw_llm"] == '[{"speaker": "mara", "confidence": 0.9}]'
+
+
+# ── local LLM detection probe ────────────────────────────────────────
+
+
+def test_detect_local_llm_providers(client, monkeypatch):
+    class FakeResp:
+        status_code = 200
+
+        def json(self):
+            return {"models": [{"name": "llama3.1:8b"}, {"name": "qwen3:14b"}]}
+
+    def fake_get(url, timeout=None):
+        if "11434" in url:
+            return FakeResp()
+        raise ConnectionError("down")
+
+    import httpx
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+    r = client.get("/v1/llm-providers/detect-local")
+    assert r.status_code == 200, r.text
+    det = r.json()["detected"]
+    assert len(det) == 1
+    assert det[0]["provider_type"] == "ollama"
+    assert "qwen3:14b" in det[0]["models"]
+    assert det[0]["already_registered"] is False

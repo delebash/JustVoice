@@ -280,13 +280,56 @@ async function applyFeaturePins() {
   }
 }
 
+// ── Optional helpers — local LLM detect-and-connect + STT readiness ──
+// (CONCEPTS §10: connect, don't bundle; skipping costs named features.)
+const detectedLocal = ref([]);  // [{provider_type, name, base_url, models, already_registered}]
+const sttReadiness = ref(null); // {ready, display_name, size_mb}
+const connectingLocal = ref("");
+
+async function probeHelpers() {
+  try {
+    const r = await api.request("/v1/llm-providers/detect-local");
+    detectedLocal.value = r?.detected || [];
+  } catch { detectedLocal.value = []; }
+  try {
+    const r = await api.request("/v1/capture/readiness");
+    sttReadiness.value = r?.stt || null;
+  } catch { sttReadiness.value = null; }
+}
+
+async function connectLocal(d) {
+  connectingLocal.value = d.base_url;
+  try {
+    await api.request("/v1/llm-providers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: d.provider_type === "ollama" ? "ollama-local" : "lmstudio-local",
+        name: d.name,
+        provider_type: d.provider_type,
+        base_url: d.base_url,
+        api_key: null,
+        default_model: d.models[0] || "",
+        timeout_seconds: 120,
+      }),
+    });
+    pushToast({ message: `${d.name} connected — feature pins can route to it.`, kind: "success" });
+    await probeHelpers();
+    await detect(); // refresh llmProviders so pins pick it up
+  } catch (e) {
+    pushToast({ message: `Connect failed: ${e?.message || e}`, kind: "error" });
+  } finally {
+    connectingLocal.value = "";
+  }
+}
+
 // ── Lifecycle / close ──────────────────────────────────────────────
 function close() {
   open.value = false;
   setTimeout(() => emit("close"), 180);
 }
 
-onMounted(detect);
+onMounted(() => { detect(); probeHelpers(); });
 
 const totalInstalled = computed(() =>
   Object.values(installProgress.value).filter((p) => p.phase === "completed").length,
@@ -384,6 +427,35 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
             <div v-if="!hasLlmProvider" class="jv-banner jv-banner--warn" style="font-size: 11.5px; margin-top: 8px">
               <strong>No LLM provider registered yet.</strong> Feature pins will be queued — register Claude or Ollama on Engines → LLM tab after this wizard, then re-run pins from Settings → AI features.
             </div>
+          </section>
+
+          <section>
+            <div class="quick-setup__row-label">Optional helpers</div>
+            <p class="jv-muted" style="font-size: 11.5px; margin: 0 0 6px">
+              Skip either — the features that need them wait quietly until you connect one.
+            </p>
+            <ul class="quick-setup__helpers">
+              <li v-for="d in detectedLocal" :key="d.base_url">
+                <span class="quick-setup__helper-ic">🧠</span>
+                <span class="quick-setup__helper-name"><strong>{{ d.name }} detected</strong>
+                  <span v-if="d.models.length" class="jv-muted"> · {{ d.models[0] }}{{ d.models.length > 1 ? ` +${d.models.length - 1}` : "" }}</span>
+                </span>
+                <span v-if="d.already_registered" class="jv-pill jv-pill--green">connected</span>
+                <JvButton v-else size="sm" variant="secondary" :loading="connectingLocal === d.base_url" label="Connect" :title="`Register ${d.name} as an LLM provider`" @click="connectLocal(d)" />
+              </li>
+              <li v-if="!detectedLocal.length">
+                <span class="quick-setup__helper-ic">🧠</span>
+                <span class="quick-setup__helper-name jv-muted">No local LLM server detected (Ollama :11434 / LM Studio :1234) — Script attribution + Smart-assign stay manual until one is connected.</span>
+              </li>
+              <li v-if="sttReadiness">
+                <span class="quick-setup__helper-ic">🎤</span>
+                <span class="quick-setup__helper-name"><strong>STT — {{ sttReadiness.display_name }}</strong>
+                  <span class="jv-muted"> · Train transcripts + capture promotion + dictation</span>
+                </span>
+                <span v-if="sttReadiness.ready" class="jv-pill jv-pill--green">cached</span>
+                <span v-else class="jv-pill jv-pill--ghost" :title="'Downloads on first use'">{{ sttReadiness.size_mb ? `${sttReadiness.size_mb} MB on first use` : "downloads on first use" }}</span>
+              </li>
+            </ul>
           </section>
         </template>
 
@@ -535,4 +607,11 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
 .quick-setup__progress-fill--err { background: var(--danger); }
 .quick-setup__progress-state { grid-column: 1 / -1; font-size: 11px; }
 .quick-setup__progress-err { grid-column: 1 / -1; font-size: 11px; color: var(--danger); }
+.quick-setup__helpers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.quick-setup__helpers li {
+  display: flex; align-items: center; gap: 10px;
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font-size: 12.5px;
+}
+.quick-setup__helper-ic { flex: none; }
+.quick-setup__helper-name { flex: 1; min-width: 0; }
 </style>
