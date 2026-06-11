@@ -5,6 +5,7 @@ import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { useTakesStore } from "../stores/takes.js";
 import { pushToast } from "../services/toastBridge.js";
+import { promptDialog } from "../services/dialog.js";
 import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
 import { useUiContext } from "../stores/uiContext.js";
@@ -34,6 +35,26 @@ async function loadPersonas() {
     personasById.value = Object.fromEntries((r?.personas || []).map((p) => [p.id, p.name]));
   } catch { /* tolerated */ }
 }
+async function editDirection(block) {
+  const value = await promptDialog({
+    title: "Performance note",
+    message: "Direction for this line — instruct-capable engines (Qwen3, LuxTTS) perform it; others ignore it.",
+    placeholder: "e.g. weary, almost whispering",
+    initial: block.direction || "",
+  });
+  if (value === null || value === undefined) return;
+  try {
+    await api.request(`/v1/blocks/${block.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ direction: value.trim() || null }),
+    });
+    block.direction = value.trim() || null;
+  } catch (e) {
+    pushToast({ message: `Save failed: ${e?.message || e}`, kind: "error" });
+  }
+}
+
 function personaName(id) {
   return personasById.value[id] || id.slice(0, 8);
 }
@@ -422,7 +443,13 @@ function compareDropdownOptions(blockId) {
         <div class="chapter-view__block-header">
           <span class="chapter-view__block-num">{{ block.position + 1 }}</span>
           <span v-if="block.persona_id" class="jv-pill jv-pill--green">{{ personaName(block.persona_id) }}</span>
-          <span v-if="block.direction" class="jv-pill jv-pill--warn">{{ block.direction }}</span>
+          <button
+            type="button"
+            class="jv-pill chapter__direction"
+            :class="block.direction ? 'jv-pill--warn' : 'jv-pill--ghost'"
+            :title="block.direction ? 'Edit the performance note for this line' : 'Add a performance note — instruct-capable engines perform it (e.g. weary, almost whispering)'"
+            @click="editDirection(block)"
+          >{{ block.direction || "＋ direction" }}</button>
         </div>
 
         <!-- Block text (read-only) -->
@@ -921,4 +948,5 @@ function compareDropdownOptions(blockId) {
   border-radius: 4px;
   padding: 0 4px;
 }
+.chapter__direction { cursor: pointer; border-style: dashed; font: inherit; font-size: 11px; }
 </style>
