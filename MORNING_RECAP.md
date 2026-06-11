@@ -33,9 +33,11 @@ Lab promote now freezes model+prompts via POST /v1/production-configs
 (scene analyze consumes them). Tier-classifier bug fixed: Ollama-style
 'qwen3:14b' ids never matched the size regex.
 
-User-machine checks: fit dots need real GPU VRAM in /v1/system/info;
-provider model-fetch combobox inside ProviderForm is the remaining
-polish item (mock shows the contract).
+User-machine checks: fit dots need real GPU VRAM in /v1/system/info.
+(Earlier recap draft claimed the provider model-fetch combobox was a
+remaining polish item — WRONG, verified live: ProviderForm already
+ships chat/TTS/embedding Comboboxes + Fetch models, and they render in
+the new inline edit. Nothing UI-side is pending.)
 
 ## 2026-06-11 (remote session, later) — Voicebox parity audit + fixes
 
