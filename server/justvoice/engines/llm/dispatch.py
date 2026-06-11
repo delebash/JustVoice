@@ -30,16 +30,76 @@ class LLMNotConfiguredError(RuntimeError):
     message rather than a generic 500."""
 
 
+# Default role per feature — the factory wiring of the two-speed pattern
+# (docs/plans/2026-06-11-engines-ai-features-implementation.md). Latency-
+# sensitive interactive features ride Quick; accuracy-critical async
+# features ride Accuracy. Used only when no production config and no pin.
+DEFAULT_FEATURE_ROLES: dict[str, str] = {
+    "refine": "quick",
+    "compose": "quick",
+    "persona_rewrite": "quick",
+    "voice_gender": "quick",
+    "speaker_attribution": "accuracy",
+    "smart_assign": "accuracy",
+    "show_notes": "accuracy",
+    "render_preset_suggest": "accuracy",
+}
+
+
+def _resolve_role(settings, role: str) -> tuple[LLMAdapter, str] | None:
+    """Map a role name to (adapter, model) via settings.engines.llm_roles."""
+    roles = getattr(settings.engines, "llm_roles", None)
+    target = getattr(roles, role, None) if roles else None
+    if target is None or not target.provider_id:
+        return None
+    adapter = get_llm_registry().get(target.provider_id)
+    if adapter is None:
+        return None
+    return adapter, target.model or adapter.default_model
+
+
+def active_production_config(settings, feature: str):
+    """The frozen Lab config for a feature, or None. Precedence step 1."""
+    configs = getattr(settings.engines, "production_configs", []) or []
+    return next((c for c in configs if c.feature == feature), None)
+
+
 def resolve_pin(settings, feature: str) -> tuple[LLMAdapter, str, str | None]:
     """Resolve the (provider, model, tier) tuple for a feature key.
 
-    Returns (adapter, model, tier). Raises LLMNotConfiguredError when
-    no pin exists for the feature or the pinned provider isn't
-    registered (settings entry missing / boot construct() failed).
+    Precedence (AI-features redesign):
+      1. active production config (model part — prompts ride separately)
+      2. feature pin with explicit provider/model
+      3. feature pin inheriting a role ("quick"/"accuracy")
+      4. DEFAULT_FEATURE_ROLES → llm_roles
+      5. first registered adapter (legacy fallback)
+    Raises LLMNotConfiguredError when nothing resolves.
     """
+    cfg = active_production_config(settings, feature)
+    if cfg is not None:
+        adapter = get_llm_registry().get(cfg.provider_id)
+        if adapter is not None:
+            return adapter, cfg.model or adapter.default_model, cfg.tier
+        log.warning(
+            "production config %r for %s names unregistered provider %s — falling through",
+            cfg.name, feature, cfg.provider_id,
+        )
+
     feature_pins = getattr(settings.engines, "feature_pins", []) or []
     pin = next((p for p in feature_pins if p.feature == feature), None)
-    if pin is None:
+
+    if pin is not None and not pin.provider_id and pin.role:
+        resolved = _resolve_role(settings, pin.role)
+        if resolved is not None:
+            return resolved[0], resolved[1], pin.tier
+
+    if pin is None or not pin.provider_id:
+        # Role-default path: the feature's factory role, if configured.
+        default_role = DEFAULT_FEATURE_ROLES.get(feature)
+        if default_role:
+            resolved = _resolve_role(settings, default_role)
+            if resolved is not None:
+                return resolved[0], resolved[1], None
         # No pin set yet — fall back to the first registered LLM if any.
         # Better UX than 501 in the "user added one Claude key but didn't
         # configure pins" common case.

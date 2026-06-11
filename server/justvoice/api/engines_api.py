@@ -90,6 +90,7 @@ def _info_from_manifest(manifest: EngineManifest, status: str) -> EngineInfo:
         # Phase 2 / Slice 1 — kind + current_variant_id surface so the
         # EnginesView dropdown can group by tab + label "Loaded: <v>".
         kind=manifest.kind,
+        kinds=manifest.kinds,
         current_variant_id=mgr.current_variant_id(manifest.id),
         isolation=manifest.isolation,
         supported_oses=manifest.supported_oses,

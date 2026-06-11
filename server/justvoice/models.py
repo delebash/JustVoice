@@ -249,10 +249,46 @@ class FeaturePinConfig(BaseModel):
     wizard pre-fills these based on the hardware tier preset.
     """
 
-    feature: str  # "compose" | "persona_rewrite" | "speaker_attribution" | "render_preset_suggest" | "smart_assign"
-    provider_id: str
+    feature: str  # "compose" | "persona_rewrite" | "speaker_attribution" | "render_preset_suggest" | "smart_assign" | "refine" | ...
+    provider_id: str = ""
     model: str = ""
     tier: str | None = None  # "guided" | "direct" | "reasoned" — null = use auto-classify
+    # Inherit a model role instead of naming provider+model directly.
+    # "quick" | "accuracy" | None. Explicit provider_id/model win over role.
+    role: str | None = None
+
+
+class LLMRoleTarget(BaseModel):
+    """One half of the Quick/Accuracy pair (Settings → AI features)."""
+
+    provider_id: str
+    model: str = ""
+
+
+class LLMRolesSettings(BaseModel):
+    """The two plain-language model roles. Features inherit one of these
+    unless pinned to something specific. Recommended (never hardcoded)
+    by GET /v1/llm-roles/recommendations."""
+
+    quick: LLMRoleTarget | None = None
+    accuracy: LLMRoleTarget | None = None
+
+
+class ProductionConfig(BaseModel):
+    """A feature frozen exactly as tuned in its Lab — model AND prompts.
+    The active config beats pins and roles (precedence step 1). One per
+    feature; deleting it reverts the feature to Default (tier-resolved)."""
+
+    feature: str
+    name: str
+    provider_id: str
+    model: str = ""
+    tier: str | None = None
+    temperature: float | None = None
+    system_prompt: str | None = None
+    user_prompt: str | None = None
+    promoted_at: str | None = None  # ISO timestamp
+    source: str = "speaker_lab"
 
 
 class EnginesSettings(BaseModel):
@@ -263,6 +299,10 @@ class EnginesSettings(BaseModel):
     llm: list[LLMProviderConfig] = []
     # Phase 2 / Slice 7 — pin LLM features to specific provider+model+tier.
     feature_pins: list[FeaturePinConfig] = []
+    # AI-features redesign (docs/plans/2026-06-11): the Quick/Accuracy pair
+    # + per-feature frozen configs promoted from Labs.
+    llm_roles: LLMRolesSettings = LLMRolesSettings()
+    production_configs: list[ProductionConfig] = []
 
 
 class ModelsSettings(BaseModel):
@@ -606,6 +646,9 @@ class EngineInfo(BaseModel):
     # engine can be resident simultaneously (required for speaker
     # attribution + render in the same flow).
     kind: str = "tts"
+    # Engines redesign: full capability list (manifest KINDS, falling back
+    # to [KIND]). `kind` stays = kinds[0] for back-compat consumers.
+    kinds: list[str] = []
     # Phase 2 / Slice 1 — the actual variant currently loaded for this
     # engine (server-truth, not local-state). null when the engine isn't
     # loaded. The dropdown UI uses this to label "Loaded: <variant>"
@@ -743,6 +786,9 @@ class ModelVariant(BaseModel):
     quality: int
     languages: list[str]
     files: list[ModelFile] = []
+    # Engines redesign: weights present in the local HF cache. None =
+    # unknown (non-HF distribution, e.g. Kokoro's GitHub tarballs).
+    on_disk: bool | None = None
 
 
 class ModelsListResponse(BaseModel):

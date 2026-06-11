@@ -137,13 +137,23 @@ async def analyze_scene_endpoint(
     corrections = body.corrections if body.corrections is not None else _resolve_corrections(scene.project_id, db)
 
     settings = get_state().settings.get()
+    # AI-features redesign: the ACTIVE production config (promoted from
+    # Speaker Lab) wins outright — model AND prompts — unless the body
+    # explicitly overrides (the Lab itself passes explicit values via the
+    # text endpoint, not this scene endpoint).
+    from ..engines.llm.dispatch import active_production_config
+
+    cfg = active_production_config(settings, "speaker_attribution")
     req = AnalyzeRequest(
         text=body.text,
         characters=characters,
         corrections=corrections,
-        tier=body.tier,
+        tier=body.tier or (cfg.tier if cfg else None),
         propagate=body.propagate,
         use_floor=body.use_floor,
+        model=(cfg.model or None) if cfg else None,
+        temperature=cfg.temperature if cfg else None,
+        system_prompt=cfg.system_prompt if cfg else None,
     )
 
     try:

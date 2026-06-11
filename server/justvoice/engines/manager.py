@@ -139,7 +139,17 @@ class EngineManifest:
         so every existing manifest stays backward-compatible without
         edits. LLM provider engines (Phase 2 / Slice 3+) declare
         KIND = "llm"; embedding engines KIND = "embedding"."""
-        return getattr(self.module, "KIND", "tts")
+        return self.kinds[0]
+
+    @property
+    def kinds(self) -> list[str]:
+        """Engines redesign: multi-capability engines declare
+        KINDS = ["tts", "stt"]; single-capability manifests keep KIND.
+        Always non-empty; kinds[0] is the primary (slot + section)."""
+        ks = getattr(self.module, "KINDS", None)
+        if isinstance(ks, (list, tuple)) and ks:
+            return [str(k) for k in ks]
+        return [getattr(self.module, "KIND", "tts")]
 
     @property
     def capabilities(self) -> dict[str, bool]:

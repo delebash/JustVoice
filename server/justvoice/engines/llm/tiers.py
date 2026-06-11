@@ -114,10 +114,12 @@ def classify(model_id: str) -> Tier:
             return "reasoned"
 
     # Qwen3 ≥14B is hybrid — tier up to Reasoned for best accuracy.
-    qwen3_size = re.search(r"qwen3?-?(\d+)b\b", s)
+    # Id separators vary by host: "qwen3-14b" (HF), "qwen3:14b" (Ollama),
+    # "qwen3_14b"; sizes can be fractional ("qwen3:0.6b").
+    qwen3_size = re.search(r"qwen3?[-:_]?(\d+(?:\.\d+)?)b\b", s)
     if qwen3_size:
         try:
-            if int(qwen3_size.group(1)) >= 14:
+            if float(qwen3_size.group(1)) >= 14:
                 return "reasoned"
         except (TypeError, ValueError):
             pass

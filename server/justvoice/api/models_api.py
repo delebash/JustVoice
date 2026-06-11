@@ -17,7 +17,16 @@ router = APIRouter(tags=["engines"])
 async def list_models(id: str) -> ModelsListResponse:
     if not any(e.id == id for e in known_engines()):
         raise not_found(f"engine {id}")
-    return ModelsListResponse(engine_id=id, variants=models_for(id))
+    variants = models_for(id)
+    # Engines redesign: per-model on-disk flag drives the verb shown
+    # (Download vs Load/Delete). HF-cache probe; non-HF urls stay None.
+    from ..hf_cache import is_hf_repo_cached, repo_from_url
+
+    for v in variants:
+        repo = repo_from_url(v.files[0].url) if v.files else None
+        if repo:
+            v.on_disk = is_hf_repo_cached(repo)
+    return ModelsListResponse(engine_id=id, variants=variants)
 
 
 @router.get("/v1/engines/{id}/models/recommended", response_model=RecommendedResponse)
