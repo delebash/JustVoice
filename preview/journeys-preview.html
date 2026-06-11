@@ -698,12 +698,73 @@ is we stopped trying to preserve the waveform…</div>
 ];
 
 /* ════════════════════════════════════════════════════════════════════
+   Identity flow — how a name in a source file becomes a voiced persona
+   ════════════════════════════════════════════════════════════════════ */
+const fchip = (nm,col,extra) => `<span class="pill" style="margin:2px 3px 2px 0">${glyph(nm,col)} ${nm}${extra?` <span class="muted" style="font-size:10px">${extra}</span>`:''}</span>`;
+const stepsFlow = [
+{ nav:"Personas", t:"One pipeline, four doors in. Speakers named by the source become personas at import; an EPUB's are discovered later by Script.",
+  html: () => shell("audiobook","Personas","Identity flow — character → persona → voice", "", `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:6px">
+      <div class="card" style="padding:12px 14px">
+        <div class="eyebrow">📖 EPUB / DOCX</div>
+        <p style="font-size:11.5px;margin:6px 0">Prose only — <strong>no speaker data inside the file</strong>.</p>
+        <p style="font-size:11.5px;margin:0 0 8px">Import creates just the project + chapters. Later, <strong>Script</strong> (LLM) finds who speaks…</p>
+        <span class="pill warn">personas created later, on “＋ Create &amp; add to cast”</span>
+      </div>
+      <div class="card" style="padding:12px 14px">
+        <div class="eyebrow">✍️ .jw.json (JustWrite)</div>
+        <p style="font-size:11.5px;margin:6px 0">The novel project <strong>carries its character sheet</strong> — names, roles, bios.</p>
+        <p style="font-size:11.5px;margin:0 0 8px">Bios flow into the persona's <em>personality</em> field → Smart-assign uses them.</p>
+        <span class="pill green">personas created at import</span>
+      </div>
+      <div class="card" style="padding:12px 14px">
+        <div class="eyebrow">🎮 CSV / string table</div>
+        <p style="font-size:11.5px;margin:6px 0">The <strong>speaker column</strong> names every NPC explicitly.</p>
+        <p style="font-size:11.5px;margin:0 0 8px">9 unique values → 9 personas. Performance notes ride along.</p>
+        <span class="pill green">personas created at import</span>
+      </div>
+      <div class="card" style="padding:12px 14px">
+        <div class="eyebrow">🎙️ Markdown script</div>
+        <p style="font-size:11.5px;margin:6px 0"><strong>SARAH: / JIN: / MAVE:</strong> labels name the speakers.</p>
+        <p style="font-size:11.5px;margin:0 0 8px">Unknown labels become new personas; known ones match existing.</p>
+        <span class="pill green">personas created at import</span>
+      </div>
+    </div>
+    <div style="text-align:center;font-size:17px;color:var(--ink-3);line-height:1.2">↓ &nbsp; deduped by <span class="mono" style="font-size:11px">imported_from + imported_id</span> — re-import updates, never duplicates &nbsp; ↓</div>
+    <div class="card" style="padding:12px 16px;margin:8px 0;background:var(--accent-soft);border-color:var(--accent-line)">
+      <div class="row" style="flex-wrap:nowrap;align-items:flex-start">
+        <div style="flex:none;width:210px"><div class="eyebrow" style="color:var(--accent-ink)">Persona library</div>
+          <p style="font-size:11.5px;margin:4px 0 0;color:var(--accent-ink)"><strong>Project-independent.</strong> The durable “actor”: voice + delivery defaults + effects chain + lexicon + bio/personality.</p></div>
+        <div style="flex:1;min-width:0">
+          ${fchip("Narrator (Sarah)",C.narr,"voice: Sarah · cloned")}${fchip("Mara Vance",C.mara,"voice: Mara · noir delivery")}${fchip("Tom Harlan",C.tom,"voice: Old Crow")}${fchip("The Stranger",C.stranger,"⚠ no voice yet")}<br/>
+          ${fchip("Guard Capt. Hale",C.guard,"gruff · +5% pace")}${fchip("The Hollow Voice",C.ghost,"whisper · reverb chain")}${fchip("Lost Child",C.child,"voice: af_jessica")}<br/>
+          ${fchip("Sarah (host)",C.sarah,"voice: Sarah · cloned — same voice, different persona than Narrator")}${fchip("Mave",C.mave,"tags: [laughs] ok")}
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center;font-size:17px;color:var(--ink-3)">↓ &nbsp; <span style="font-size:12px">cast = which personas speak <em>in this project</em>, and what plays them</span> &nbsp; ↓</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:8px 0">
+      ${[["Stillwater · audiobook",[["Narrator (Sarah)","Sarah (cloned)",C.narr],["Mara Vance","Mara (cloned)",C.mara],["Tom Harlan","Old Crow (cloned)",C.tom]]],
+         ["Emberfall · game",[["Guard Capt. Hale","Old Crow (cloned)",C.guard],["The Hollow Voice","Blend: Narr+Crow",C.ghost],["Lost Child","af_jessica",C.child]]],
+         ["Signal &amp; Noise · podcast",[["Sarah (host)","Sarah (cloned)",C.sarah],["Jin","am_echo",C.jin],["Mave","af_nova",C.mave]]]]
+        .map(p=>`<div class="card" style="padding:10px 14px"><div class="eyebrow">${p[0]}</div>
+          ${p[1].map(r=>`<div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;padding:4px 0;border-bottom:1px dashed var(--line)"><span style="display:inline-flex;gap:6px;align-items:center">${glyph(r[0],r[2])} ${r[0]}</span><span class="muted">→ ${r[1]}</span></div>`).join("")}</div>`).join("")}
+    </div>
+    <div style="text-align:center;font-size:17px;color:var(--ink-3)">↓</div>
+    <div class="card" style="padding:11px 16px;margin-top:8px">
+      <div class="row" style="flex-wrap:nowrap"><div class="eyebrow" style="flex:none;width:80px">Render</div>
+      <p style="font-size:12px;margin:0">Every line renders through its speaker's <strong>persona</strong>: voice → engine, + delivery defaults (speed/pitch) + effects chain (e.g. ghost reverb) + lexicon (pronunciations). Note <strong>Old Crow</strong> above: one <em>voice</em> playing two different <em>personas</em> in two projects — and “Sarah” the voice backs both the Narrator persona and the podcast-host persona with different delivery.</p></div>
+    </div>`) },
+];
+
+/* ════════════════════════════════════════════════════════════════════
    Director — journey/step navigation
    ════════════════════════════════════════════════════════════════════ */
 const JOURNEYS = {
   audiobook:{ label:"📖 Audiobook — Sarah", steps:stepsAudiobook, who:"Sarah · indie author" },
   game:     { label:"🎮 Game — Marcus",     steps:stepsGame,      who:"Marcus · solo game dev" },
   podcast:  { label:"🎙️ Podcast — Priya",   steps:stepsPodcast,   who:"Priya · podcast producer" },
+  flow:     { label:"🧭 Identity flow",      steps:stepsFlow,      who:"Concept map" },
 };
 let cur = { j:"audiobook", s:0 };
 
@@ -734,7 +795,7 @@ document.addEventListener("keydown",e=>{
   if(e.key==="ArrowLeft") move(-1);
 });
 (function init(){
-  const m = location.hash.match(/^#(audiobook|game|podcast)\/(\d+)/);
+  const m = location.hash.match(/^#(audiobook|game|podcast|flow)\/(\d+)/);
   if(m){ cur.j=m[1]; cur.s=Math.min(parseInt(m[2])-1, JOURNEYS[m[1]].steps.length-1); }
   render();
 })();
