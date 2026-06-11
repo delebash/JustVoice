@@ -70,12 +70,15 @@ DEFERRED (model/desktop-dependent — needs the user's machine):
   TTS+STT models on disk; design + endpoints land when a model-equipped
   machine can verify them honestly)
 
-## Phase E — JustWrite adopts + polish (🗂 tab, CONCEPTS §13)
+## Phase E — JustWrite adopts + polish (🗂 tab, CONCEPTS §13) — SUBSTANTIALLY DONE
 
-AI usage ledger + Settings panel · backup/restore UI over /v1/backup ·
-tutorial/demo projects per kind · Ollama admin (model pull) ·
-voice-metadata heuristics · per-line director notes · LLM show notes ·
-word-timestamp caption export (SRT/VTT).
+✅ AI usage ledger + Settings panel · ✅ backup/restore UI · ✅ demo
+projects per kind (kind picker link) · ✅ detect-and-connect local LLM
+(model pull in-app = follow-on) · ✅ voice-gender three-pass (kokoro id
+convention fixed) · ✅ per-line director notes (editable pill) · ✅ LLM
+show notes (feature pin + endpoint + podcast action).
+DEFERRED (model/desktop-dependent): SRT/VTT captions (need engine word
+timestamps) · Wwise/WAAPI export target · timeline ducking/pause-profile.
 Voices backlog: ✅ hide built-in voices shipped (🙈 per preset row + hidden-count chip; delete stays custom-only); grow ⚙ Inspect into a full Edit modal (rename, gender,
 language, effects chain, channel, samples). UI rule: tooltips get added
 to every control we touch, as we go.

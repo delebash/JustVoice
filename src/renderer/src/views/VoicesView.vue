@@ -45,8 +45,9 @@ function autoDetectGender(v) {
     if (m) return m;
   }
   if (v.engine === "kokoro") {
-    // af_alloy → American Female; bm_george → British Male
-    const m = /^[a-z]([fm])_/.exec(v.name?.toLowerCase() || "");
+    // af_alloy → American Female; bm_george → British Male. The ID
+    // carries the convention — the display name ('Alloy') doesn't.
+    const m = /^[a-z]([fm])_/.exec((v.id || v.name || "").toLowerCase());
     if (m) return m[1] === "f" ? "F" : "M";
   }
   // Cloned / freeform voices — match leading first-name token (sarah.wav, michael.wav).

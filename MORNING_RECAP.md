@@ -5,6 +5,38 @@
 
 ---
 
+## 2026-06-11/12 (remote session) — design phase + Phases A–E implementation
+
+**~40 commits pushed to `origin/claude/nice-franklin-dzisd5`.** Suite at 159 passing; every milestone live-verified with Playwright against the running headless server.
+
+### Design phase (committed first)
+- `preview/journeys-preview.html` — 12-tab clickable mock (3 production journeys, first-run, live voice, fix-it loop, library, help, Speaker Lab v5, Proof & QC, identity flow). The approved visual contract.
+- `docs/CONCEPTS.md` §1–17 — every design decision on record (persona=cast, kinds, tiers, dual surfaces for AI tasks, dictation bidirectional…).
+- `docs/IMPLEMENTATION_PLAN.md` — phase tracker; **read it for current ✅/deferred state**.
+
+### Phase A (audiobook) ✅
+book_prose import (EPUB/DOCX/MD/TXT, stdlib) + dry-run preview table + kind-picker modal (killed 2 native prompt()s) · voices polish (cast-as column, row preview w/ ask-before-load → 409 contract, engine filter, hide built-ins) · Cast assign/unassign live-verified · Script+Smart-assign through the task runner · discovered-speakers banner + promote endpoints · Speaker Lab v5 (model/temp/prompt per column, presets, use-as-production, raw_llm) · real ACX QC + M4B export (ffmpeg mux w/ chapter marks).
+
+### Phase B (game) ✅
+Stable line ids end-to-end (CSV id col → Block.metadata source_ref) · per-line VO zip + diffable manifest · re-import update-in-place by id (staleness DERIVED: latest take text vs block text) · POST /v1/blocks/{id}/render · LinesView grid (grouped, status chips, re-render-changed, re-import, export).
+
+### Phase C (podcast/plain text) ✅
+podcast_markdown adapter (labels/headings/markers/[tags]) · import content-sniffing (.md collision) · ChapterView segments (persona-name pills + [tag] pills; fixed TWO bare-array shape bugs) · −16 preset existed; timeline=StoriesView.
+
+### Phase D — QuickSetup detect-and-connect local LLM (probe endpoint) + STT readiness row; help drawer verified live (per-view contextual ?). DEFERRED to a model/desktop machine: Tauri global hotkey (stubbed in lib.rs), proof-listen + Whisper round-trip QC, word timestamps.
+
+### Phase E — AI usage ledger (+Settings panel) · backup/restore UI · demo projects per kind · director-note pills · LLM show notes (new feature pin) · gender heuristic kokoro-id fix.
+
+### Big bugs found by live-driving (regression-tested)
+welcome modal invisible while holding Reka body pointer-lock (app click-dead) · ImportModal called two nonexistent service methods · personas/lexicons split-brain (SQLite vs file store) → dual-write helper · DB engine pinned to first test's dir (endpoint tests silently shared the real dev DB) · header engine pill frozen at boot.
+
+### Caveats for the user's test
+- No TTS/LLM models in the dev container — engine loads, real renders, attribution need YOUR machine. Everything 501/409s gracefully with guidance.
+- ffmpeg absent here — M4B/mastering verified via stubbed argv tests + clean 503.
+- My repeated import tests left ~17 duplicate Stillwater projects in THIS container's data dir only.
+
+---
+
 ## 2026-06-10 (remote session) — Q6 width sweep + Q7 audit pass
 
 **2 commits, pushed to `origin/claude/nice-franklin-dzisd5`** (remote env can't push main). Branch: `claude/nice-franklin-dzisd5`, shas `e8166c7` + `b12dd3a`.
