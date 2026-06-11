@@ -1065,6 +1065,48 @@ const stepsFixit = [
    Journey G — Library & tools sweep (every remaining surface, in flow order)
    ════════════════════════════════════════════════════════════════════ */
 const stepsLibrary = [
+{ nav:"Home", t:"Home, the daily driver — everything the old Overview did well, reorganized: resume where you left off, catalogue at a glance, live tasks, loaded engine, recent generations.",
+  html: () => shell("audiobook","Home","Home", `<span class="hdr-chip" style="border-color:var(--info-blue);color:var(--info-blue);cursor:pointer">⚙ AI · 1 running</span>`, `
+    <div style="flex:1;min-height:0;overflow-y:auto;padding-right:4px">
+    <div class="row" style="margin-bottom:12px;flex-wrap:nowrap;align-items:stretch">
+      <div class="card" style="flex:2;padding:14px 18px;display:flex;align-items:center;gap:14px">
+        <div class="portrait" style="width:52px;height:52px;background:${C.narr};font-size:18px;flex:none">S</div>
+        <div style="min-width:0;flex:1"><div class="eyebrow">Continue</div><div class="display sm">Stillwater</div>
+          <div class="muted" style="font-size:11.5px">📖 audiobook · ch. 3 rendering 64% · 2 of 8 mastered · last open 20 min ago</div></div>
+        <button class="btn">Resume ➜</button>
+      </div>
+      <div class="card" style="flex:1;padding:14px 18px"><div class="eyebrow" style="margin-bottom:8px">Start something</div>
+        <div class="row"><span class="pill">📖 Audiobook</span><span class="pill">🎮 Game</span><span class="pill">🎙️ Podcast</span><span class="pill">📄 Text</span></div>
+        <button class="btn secondary sm" style="margin-top:10px">＋ New project</button></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:12px">
+      ${[["Projects","4","2 kinds · 1 rendering"],["Voices","33","across 3 engines"],["Personas","9","used in 3 projects"],["Lexicons","3","24 entries"],["Cache","3.2<span style=\"font-size:12px\"> GB</span>","1,847 takes · 71% hit"],["Captures","18","last 30 days"]]
+        .map(t=>`<div class="card" style="padding:11px 14px;cursor:pointer"><div class="eyebrow">${t[0]}</div><div class="display sm" style="margin:2px 0">${t[1]}</div><div class="muted" style="font-size:10.5px">${t[2]}</div></div>`).join("")}
+    </div>
+    <div class="row" style="align-items:stretch;margin-bottom:12px;flex-wrap:nowrap">
+      <div class="card" style="flex:1.4;padding:12px 16px">
+        <div class="row" style="margin-bottom:8px"><span class="eyebrow">Active tasks</span><span class="pill warn">2 in flight</span><span class="spacer"></span><button class="btn ghost sm" style="font-size:10.5px">open panel ➜</button></div>
+        <div class="row" style="flex-wrap:nowrap;margin-bottom:8px;font-size:12px"><span class="pill solid" style="background:var(--accent);color:#fff;border-color:var(--accent)">render</span><strong style="flex:none">Stillwater · ch. 3</strong><span class="muted" style="font-size:11px">38 / 59 lines · cached 21</span><div class="prog" style="flex:1"><div class="fill" style="width:64%"></div></div><button class="btn ghost sm" style="color:var(--danger);font-size:10.5px">✕</button></div>
+        <div class="row" style="flex-wrap:nowrap;font-size:12px"><span class="pill blue">extract</span><strong style="flex:none">Script · ch. 4</strong><span class="muted" style="font-size:11px">qwen3:14b · 0:12 · 1,840 tok · segment 21/47</span><div class="prog" style="flex:1"><div class="fill" style="width:45%"></div></div><button class="btn ghost sm" style="color:var(--danger);font-size:10.5px">✕</button></div>
+      </div>
+      <div class="card" style="flex:1;padding:12px 16px">
+        <div class="row" style="margin-bottom:8px"><span class="eyebrow">Loaded engine</span><span class="pill green">ready</span></div>
+        <div class="row" style="flex-wrap:nowrap;font-size:12.5px"><strong>Chatterbox Turbo</strong><span class="muted" style="font-size:11px">CUDA · RTX 4070</span><span class="spacer"></span><span class="mono muted" style="font-size:11px">VRAM 6.2 / 12 GB</span></div>
+        <div class="prog" style="margin:8px 0"><div class="fill" style="width:52%"></div></div>
+        <div class="row"><span class="muted" style="font-size:11px;flex:1">● Kokoro FastAPI external · online</span><button class="btn ghost sm" style="font-size:10.5px">Unload</button><button class="btn secondary sm" style="font-size:10.5px">Switch ▾</button></div>
+      </div>
+    </div>
+    <div class="card" style="padding:12px 16px;margin-bottom:12px">
+      <div class="row" style="margin-bottom:6px"><span class="eyebrow">Recent generations</span><span class="spacer"></span><button class="btn ghost sm" style="font-size:10.5px">all history ➜</button></div>
+      ${[["Welcome back. [chuckles] Let's pick up where we left off…","Alex · Generate","2.8 s","just now"],
+         ["“Your grandfather swore his oath on the Hecate stone…”","Edith Vance · Stillwater ch. 5","3.9 s","18 min"],
+         ["Halt. Ashfall's closed to outsiders since the burning.","Old Crow · Emberfall Q01","2.4 s","2 h"],
+         ["thanks everyone — raid incoming, treat them well","Dana · hotkey → OBS","2.1 s","3 h"]]
+        .map(g=>`<div class="row" style="flex-wrap:nowrap;font-size:12px;padding:6px 0;border-bottom:1px dashed var(--line)"><button class="btn ghost sm">▶</button><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g[0]}</span><span class="muted" style="flex:none;font-size:11px">${g[1]}</span><span class="mono muted" style="flex:none;font-size:10.5px">${g[2]} · ${g[3]}</span><button class="btn ghost sm">⬇</button></div>`).join("")}
+    </div>
+    <div class="banner info" style="font-size:11.5px">Press <span class="mono" style="font-size:10.5px">Ctrl+Shift+Space</span> anywhere to speak · hold <span class="mono" style="font-size:10.5px">Ctrl+Shift+D</span> to dictate — no project needed.</div>
+    </div>`) },
+
 { nav:"Generate", t:"Generate — the no-project surface. Paste text, pick a voice, get a WAV. The knobs change with the engine's actual capabilities.",
   html: () => shell("audiobook","Generate","Generate", "", `
     <div class="two-col">
