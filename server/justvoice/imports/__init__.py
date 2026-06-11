@@ -27,6 +27,7 @@ from .adapters import (
     elevenlabs,
     justvoice_standard,
     justwrite,
+    podcast_markdown,
     srt,
 )
 from .standard_schema import AdapterInfo, StandardImport
@@ -55,6 +56,17 @@ _ADAPTER_REGISTRY: list[tuple[AdapterInfo, Callable[..., StandardImport]]] = [
             docs_anchor="import-book_prose",
         ),
         book_prose.parse,
+    ),
+    (
+        AdapterInfo(
+            id=podcast_markdown.SOURCE_ID,
+            label="Podcast script (markdown)",
+            description="Speaker-labeled script — SARAH: / **JIN:** paragraphs become segments; [tags] ride along; ## headings split segments.",
+            file_extensions=[".md", ".markdown", ".txt", ".fountain"],
+            implemented=True,
+            docs_anchor="import-podcast_markdown",
+        ),
+        podcast_markdown.parse,
     ),
     (
         AdapterInfo(

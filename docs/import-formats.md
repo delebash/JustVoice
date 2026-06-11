@@ -130,6 +130,17 @@ Every paragraph becomes one `line` with `character_id: null` — prose
 carries no speaker data. Speakers are discovered later by Script
 extraction and promoted to personas (see CONCEPTS.md §3).
 
+## <a id="import-podcast_markdown"></a>Podcast script (`podcast_markdown`)
+
+Speaker-labeled markdown/text — the podcast way-in. `SARAH:` /
+`**JIN:**` / `[MAVE]:` at paragraph start name the speaker (short
+ALL-CAPS or Title-Case labels only — prose sentences with colons are
+left alone); unlabeled paragraphs continue the current speaker.
+`## headings` split segments into scenes; `— marker —` / `---` lines
+import as unattributed marker lines (`delivery.marker=true`).
+Paralinguistic tags like `[laughs]` stay in the text — capable engines
+perform them. Unknown labels become characters → personas at commit.
+
 ## <a id="import-csv_lines"></a>CSV lines (`csv_lines`)
 
 For studios who track dialogue in a spreadsheet. UTF-8 with header row
