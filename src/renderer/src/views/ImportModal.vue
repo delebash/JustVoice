@@ -33,6 +33,12 @@ import JvSelect from "../components/jv/JvSelect.vue";
 import { projectsService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
 
+const props = defineProps({
+  // When set, the import MERGES into this project by stable line id
+  // (game re-import flow) instead of creating a new project.
+  projectId: { type: String, default: null },
+});
+
 const emit = defineEmits(["close", "created"]);
 
 const adapters = ref([]);          // [{ id, label, description, file_extensions, implemented, docs_anchor }]
@@ -73,7 +79,7 @@ function onKey(e) {
 onMounted(async () => {
   window.addEventListener("keydown", onKey);
   try {
-    const res = await projectsService.listAdapters();
+    const res = await projectsService.listImportAdapters();
     adapters.value = res.adapters || [];
     // Default to JustWrite — the primary integration partner.
     const def = adapters.value.find((a) => a.id === "justwrite" && a.implemented);
@@ -127,7 +133,7 @@ async function doPreview() {
   previewing.value = true;
   preview.value = null;
   try {
-    const res = await projectsService.import({
+    const res = await projectsService.runImport({
       source: selectedSource.value,
       file: file.value,
       dryRun: true,
@@ -144,10 +150,11 @@ async function doCommit() {
   if (!canCommit.value) return;
   committing.value = true;
   try {
-    const res = await projectsService.import({
+    const res = await projectsService.runImport({
       source: selectedSource.value,
       file: file.value,
       dryRun: false,
+      projectId: props.projectId,
     });
     pushToast({
       message: `Imported "${res.standard?.project?.name || "project"}"`,
@@ -219,7 +226,7 @@ const previewWarnings = computed(() => preview.value?.warnings || []);
       <header class="im-header">
         <div class="im-titleblock">
           <div class="im-eyebrow">Import</div>
-          <div id="im-title" class="im-title">Import a project</div>
+          <div id="im-title" class="im-title">{{ props.projectId ? "Re-import — update in place" : "Import a project" }}</div>
         </div>
         <button type="button" class="im-close" aria-label="Close" @click="emit('close')">&times;</button>
       </header>

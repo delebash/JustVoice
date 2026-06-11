@@ -37,7 +37,7 @@ no JS parser code is vendored from JustWrite.
 - **A4 Render + export**: chapter batch render w/ cache stats + ACX check
   column; M4B + chapter WAV export + ACX checklist (mock `#audiobook/6,7`).
 
-## Phase B — Game flow (🎮 tab)
+## Phase B — Game flow (🎮 tab) ✅ done
 
 CSV column mapping (saved per project, stable line IDs, dup check) →
 Lines grid (grouped, status pills, stale-on-reimport + re-render-changed)

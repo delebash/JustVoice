@@ -27,6 +27,7 @@ import VoicesView from "./views/VoicesView.vue";
 // Profile-kill (plan Q1). All voice config now lives directly on Persona.
 import StudioView from "./views/StudioView.vue";
 import SpeakerLabView from "./views/SpeakerLabView.vue";
+import LinesView from "./views/LinesView.vue";
 import RenderLabView from "./views/RenderLabView.vue";
 import CompareView from "./views/CompareView.vue";
 import TrainView from "./views/TrainView.vue";
@@ -63,6 +64,7 @@ const VIEWS = [
   { id: "studio",    lane: "workflow", label: "Studio",    icon: "🎬", lede: "Cast → Script → Render production environment. Three-tab flow for multi-character work. Cast assigns voices to characters; Script runs LLM speaker attribution (Phase 3 backend); Render batches the whole project.", component: StudioView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "generate",  lane: "workflow", label: "Generate",  icon: "📝", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it. Type / for paralinguistic tags.", component: GenerateView },
   { id: "chapter",   lane: "workflow", label: "Chapter",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved. Pinned floating generate bar at bottom.", component: ChapterView, visibleFor: ["audiobook", "podcast", "multiple", "unset"] },
+  { id: "lines",     lane: "workflow", label: "Lines",      icon: "🎮", lede: "Every line of the game project — stable ids, characters, derived take status. Re-import the writers\u2019 next sheet (only changed lines go stale), re-render exactly those, export per-line WAVs + manifest.", component: LinesView, visibleFor: ["game", "multiple", "unset"] },
   { id: "stories",   lane: "workflow", label: "Stories",   icon: "🎞️", lede: "Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.", component: StoriesView, visibleFor: ["game", "podcast", "multiple", "unset"] },
   { id: "captures",  lane: "workflow", label: "Captures",  icon: "🎚️", lede: "Dictation pill + global hotkey. Speak into any text field. Also captures audio for cloning sample collection.", component: CapturesView, visibleFor: ["dictation", "accessibility", "multiple", "unset"] },
 

@@ -416,6 +416,7 @@ onMounted(refresh);
   <div class="books">
     <ListPane v-model:search-value="search" title="Projects" search-placeholder="Search by name…">
       <template #actions>
+        <JvButton variant="secondary" size="sm" label="⬇ Import" title="Create a project from a file — EPUB, DOCX, CSV, markdown, JustWrite JSON" @click="showImport = true" />
         <JvButton variant="primary" size="sm" label="+ New" @click="createBlank" />
       </template>
 
