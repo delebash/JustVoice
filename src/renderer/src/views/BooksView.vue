@@ -18,6 +18,7 @@ import JvTag from "../components/jv/JvTag.vue";
 import EmptyState from "../components/EmptyState.vue";
 import { useUiContext } from "../stores/uiContext.js";
 import ImportModal from "./ImportModal.vue";
+import NewProjectModal from "../components/NewProjectModal.vue";
 import { projectsService } from "../services/projects.js";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
@@ -34,6 +35,7 @@ const search = ref("");
 const projectTypeFilter = ref("all");
 const loading = ref(false);
 const showImport = ref(false);
+const showNewProject = ref(false);
 
 const scenes = ref([]);
 const scenesLoading = ref(false);
@@ -317,17 +319,25 @@ async function exportProject(projectId) {
   }
 }
 
-async function createBlank() {
-  const name = prompt("Project name:");
-  if (!name) return;
-  const projectType = prompt("Project type (audiobook / game_voicelines / podcast / custom):", "audiobook") ?? "audiobook";
+function createBlank() {
+  // Kind picker modal — native prompt() dialogs are banned (project_gotchas).
+  showNewProject.value = true;
+}
+
+async function onCreateProject({ name, project_type }) {
   try {
-    const created = await projectsService.create({ name, project_type: projectType, metadata: {} });
+    const created = await projectsService.create({ name, project_type, metadata: {} });
+    showNewProject.value = false;
     await refresh();
     selectedId.value = created.id;
   } catch (e) {
     pushToast({ kind: "error", title: "Create failed", description: String(e?.message ?? e) });
   }
+}
+
+function onCreateFromImport() {
+  showNewProject.value = false;
+  showImport.value = true;
 }
 
 function toggleSceneSelect(id) {
@@ -641,6 +651,12 @@ onMounted(refresh);
 
     <!-- Multi-adapter import modal (justwrite / csv_lines / srt / audacity_labels / justvoice_standard / elevenlabs-stub). -->
     <ImportModal v-if="showImport" @close="showImport = false" @created="onImportCreated" />
+    <NewProjectModal
+      v-if="showNewProject"
+      @close="showNewProject = false"
+      @create="onCreateProject"
+      @import="onCreateFromImport"
+    />
 
     <!-- Add-personas-to-project multi-select modal. -->
     <div v-if="addCastOpen" class="jv-overlay" @click.self="addCastOpen = false">
