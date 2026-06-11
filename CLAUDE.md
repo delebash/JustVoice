@@ -97,7 +97,7 @@ Three layers:
 ## Project rules
 
 - **Python**: ruff for lint, pytest for tests. Run `ruff check` + `pytest` before committing.
-- **Vue**: prefer single-file components. **Mercury aesthetic is being dropped in Phase 4** for a distinct multi-use visual identity (decision deferred to Phase 4 design pass — see `project_final_architecture`). No CSS framework — `styles.css` carries the canonical design tokens.
+- **Vue**: prefer single-file components. **Mercury (the legacy-gui look: cream, sharp corners, oxblood) is already gone** — `styles.css` was rebuilt from `preview/full-app-preview.html` (warm paper, white cards, green accent, rounded). The Phase 4 design pass decides whether that working system becomes the final multi-use identity or gets evolved (see `project_final_architecture`). No CSS framework — `styles.css` carries the canonical design tokens.
 - **Rust** (Tauri shell): keep minimal. If you find yourself writing business logic in Rust, move it to Python.
 - **No hardcoded operator-tunable values** — every knob lives in `settings.json` + reachable via `PATCH /v1/settings`.
 - **All commits**: ruff + pytest pass.

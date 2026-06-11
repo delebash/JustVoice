@@ -10,7 +10,7 @@ Executive status: post-architecture-decision execution plan (2026-06-08). See `~
 - **License**: Apache-2.0 today; flips to **GPL-3.0-or-later** when pedalboard adoption lands (Phase 3+).
 - **Stack stays Vue 3 + Pinia + Tauri 2 + Python 3.10+ FastAPI**. No React rewrite.
 - **Storage**: migrate from atomic JSON to SQLite (via SQLAlchemy). `settings.json` is the only remaining JSON store.
-- **UX**: Mercury aesthetic dropped. New visual identity chosen in Phase 4 design pass.
+- **UX**: Mercury (legacy-gui look) dropped — styles.css now derives from preview/full-app-preview.html (paper + white cards + green accent). Phase 4 design pass blesses or evolves that system as the final identity.
 - **Navigation**: 80px left icon sidebar.
 - **Engines**: all ~10 (no MVP trim).
 
@@ -105,7 +105,7 @@ Phase 4b (UI, blocked on UX direction, ~3-4w):
 - **Full auto-updater section** (check / download progress / restart-install / errors)
 - **Theme + Language selectors**
 - **Audio channels routing** on Voices tab (per-voice channel MultiSelect)
-- Aesthetic redesign: complete CSS overhaul, drop Mercury, distinct identity
+- Aesthetic redesign: ✅ CSS overhauled (Mercury dropped, full-app-preview tokens); final-identity decision = Phase 4 design pass
 
 Phase 4c (Tauri shell work, no UX block, ~1w):
 - **Keep server running when app closes** — Rust IPC + sidecar lifecycle preservation
