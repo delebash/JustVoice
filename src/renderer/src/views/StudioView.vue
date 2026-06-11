@@ -21,11 +21,13 @@ import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { useUiContext } from "../stores/uiContext.js";
 import { useCopy } from "../services/copy.js";
 import { pushToast } from "../services/toastBridge.js";
+import { useActiveProject } from "../stores/activeProject.js";
 import JvButton from "../components/jv/JvButton.vue";
 import VoiceParamsModal from "../components/VoiceParamsModal.vue";
 import EmptyState from "../components/EmptyState.vue";
 
 const api = useApi();
+const activeProject = useActiveProject();
 const tasks = useRenderTasks();
 const audioPlayer = useAudioPlayer();
 const uiContext = useUiContext();
@@ -322,7 +324,8 @@ async function loadAll() {
     engines.value = e?.engines ?? [];
     // Default to the first audiobook/game/podcast project.
     if (!selectedProjectId.value && projects.value.length) {
-      const first = projects.value.find(
+      const prefer = projects.value.find((p) => p.id === activeProject.id);
+      const first = prefer || projects.value.find(
         (p) => ["audiobook", "game_voicelines", "podcast"].includes(p.project_type),
       ) || projects.value[0];
       selectedProjectId.value = first.id;
@@ -924,6 +927,13 @@ async function smartAssignCast() {
 }
 
 onMounted(loadAll);
+
+// Keep the app-wide active project (sidebar vocabulary, topbar chips,
+// Home resume card) in sync with this view's selection.
+watch(selectedProjectId, (id) => {
+  const p = projects.value.find((x) => x.id === id);
+  if (p) activeProject.open(p);
+});
 </script>
 
 <template>

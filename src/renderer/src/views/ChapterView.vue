@@ -9,6 +9,7 @@ import { promptDialog } from "../services/dialog.js";
 import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
 import { useUiContext } from "../stores/uiContext.js";
+import { useActiveProject } from "../stores/activeProject.js";
 import JvButton from "../components/jv/JvButton.vue";
 import LineageViewer from "../components/LineageViewer.vue";
 import EmptyState from "../components/EmptyState.vue";
@@ -17,6 +18,7 @@ import JvSelect from "../components/jv/JvSelect.vue";
 import JvTag from "../components/jv/JvTag.vue";
 
 const api = useApi();
+const activeProject = useActiveProject();
 const tasks = useRenderTasks();
 const takesStore = useTakesStore();
 // Per-use-case terminology (plan locked decision #7 / Slice 5). Audiobook
@@ -97,7 +99,8 @@ async function loadProjects() {
     const res = await projectsService.list();
     projects.value = res.projects || [];
     if (projects.value.length && !selectedProjectId.value) {
-      selectedProjectId.value = projects.value[0].id;
+      const prefer = projects.value.find((p) => p.id === activeProject.id);
+      selectedProjectId.value = (prefer || projects.value[0]).id;
     }
   } catch (e) {
     pushToast({ message: `Failed to load projects: ${e.message || e}`, kind: "error" });
@@ -374,6 +377,13 @@ function compareDropdownOptions(blockId) {
       value: t.id,
     }));
 }
+
+// Keep the app-wide active project (sidebar vocabulary, topbar chips,
+// Home resume card) in sync with this view's selection.
+watch(selectedProjectId, (id) => {
+  const p = projects.value.find((x) => x.id === id);
+  if (p) activeProject.open(p);
+});
 </script>
 
 <template>

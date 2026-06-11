@@ -24,8 +24,10 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
 import { useCopy } from "../services/copy.js";
+import { useActiveProject } from "../stores/activeProject.js";
 
 const api = useApi();
+const activeProject = useActiveProject();
 
 const copy = useCopy();
 
@@ -125,7 +127,8 @@ async function refresh() {
     const res = await projectsService.list();
     projects.value = res.projects ?? [];
     if (!selectedId.value && projects.value.length > 0) {
-      selectedId.value = projects.value[0].id;
+      const prefer = projects.value.find((p) => p.id === activeProject.id);
+      selectedId.value = (prefer || projects.value[0]).id;
     }
   } catch (e) {
     pushToast({ kind: "error", title: "Failed to load projects", description: String(e?.message ?? e) });
@@ -443,6 +446,13 @@ function sceneStatusPill(scene) {
 }
 
 onMounted(refresh);
+
+// Keep the app-wide active project (sidebar vocabulary, topbar chips,
+// Home resume card) in sync with this view's selection.
+watch(selectedId, (id) => {
+  const p = projects.value.find((x) => x.id === id);
+  if (p) activeProject.open(p);
+});
 </script>
 
 <template>

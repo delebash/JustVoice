@@ -366,6 +366,33 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
    `?` icon sits as a stable far-right control on every view. */
 .jv-topbar .help-trigger { margin-left: 10px; }
 
+/* Active-project chips — the journeys topbar contract (Project / Kind /
+   Master). Mirrors the mock's .hdr-chip exactly. */
+.jv-topbar__proj {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--ink-2);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  padding: 3px 11px;
+  white-space: nowrap;
+}
+button.jv-topbar__proj { cursor: pointer; }
+button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-ink); }
+.jv-topbar__proj-k {
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.jv-topbar__proj b { font-weight: 600; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+
 /* Engine pill — always-visible reminder of the currently-loaded TTS
    engine. Shows in the topbar to keep load-bearing state visible no
    matter which view the user is on. */

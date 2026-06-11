@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import { useApi } from "./stores/api.js";
 import { useRenderTasks } from "./stores/renderTasks.js";
 import { useOnboarding } from "./stores/onboarding.js";
+import { useActiveProject } from "./stores/activeProject.js";
 import { useUiContext } from "./stores/uiContext.js";
 import Toast from "./components/Toast.vue";
 import TaskStrip from "./components/TaskStrip.vue";
@@ -62,10 +63,10 @@ const VIEWS = [
   // ─── Workflow lane ─────────────────────────────────────────────────
   { id: "overview",  lane: "workflow", label: "Home",      icon: "🏠", lede: "", component: OverviewView },
   { id: "studio",    lane: "workflow", label: "Studio",    icon: "🎬", lede: "Cast → Script → Render production environment. Three-tab flow for multi-character work. Cast assigns voices to characters; Script runs LLM speaker attribution (Phase 3 backend); Render batches the whole project.", component: StudioView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
-  { id: "generate",  lane: "workflow", label: "Generate",  icon: "📝", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it. Type / for paralinguistic tags.", component: GenerateView },
-  { id: "chapter",   lane: "workflow", label: "Chapter",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved. Pinned floating generate bar at bottom.", component: ChapterView, visibleFor: ["audiobook", "podcast", "multiple", "unset"] },
+  { id: "chapter",   lane: "workflow", label: "Chapters",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved. Pinned floating generate bar at bottom.", component: ChapterView, visibleFor: ["audiobook", "podcast", "multiple", "unset"] },
   { id: "lines",     lane: "workflow", label: "Lines",      icon: "🎮", lede: "Every line of the game project — stable ids, characters, derived take status. Re-import the writers\u2019 next sheet (only changed lines go stale), re-render exactly those, export per-line WAVs + manifest.", component: LinesView, visibleFor: ["game", "multiple", "unset"] },
   { id: "stories",   lane: "workflow", label: "Stories",   icon: "🎞️", lede: "Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.", component: StoriesView, visibleFor: ["game", "podcast", "multiple", "unset"] },
+  { id: "generate",  lane: "workflow", label: "Generate",  icon: "📝", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it. Type / for paralinguistic tags.", component: GenerateView },
   { id: "captures",  lane: "workflow", label: "Captures",  icon: "🎚️", lede: "Dictation pill + global hotkey. Speak into any text field. Also captures audio for cloning sample collection.", component: CapturesView, visibleFor: ["dictation", "accessibility", "multiple", "unset"] },
 
   // ─── Library lane ──────────────────────────────────────────────────
@@ -73,18 +74,18 @@ const VIEWS = [
   { id: "voices",    lane: "library", label: "Voices",    icon: "🎙️", lede: "Voice library — cloned, preset (Kokoro 54 + Qwen 9), designed (text-prompt → voice), blended. Per-voice channel routing.", component: VoicesView },
   { id: "personas",  lane: "library", label: "Personas",  icon: "🎭", lede: "Characters. Each persona has a name, bio, voice, personality (TTS delivery instruction), default delivery, effects, lexicon override. Cross-project — one Mara across many books or quests. Filter by usage in the library list.", component: PersonasView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "lexicons",  lane: "library", label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Force \"Beauchamp\" → \"BEE-chum\", domain words → consistent phoneme-level pronunciation across a whole book. Per-character override.", component: LexiconsView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
-  { id: "effects",   lane: "library", label: "Effects",   icon: "🎛️", lede: "Pedalboard-backed effects chain. Apply non-destructively — creates a new generation version that preserves the original. 8 types · 4 built-in presets + custom.", component: EffectsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "presets",   lane: "library", label: "Presets",   icon: "🎚️", lede: "Render presets — named bundles of voice + delivery + effects chain + master target. Studio Render binds one per scene to lock per-chapter or per-quest output consistency.", component: RenderPresetsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   { id: "engines",   lane: "library", label: "Engines",   icon: "🧠", lede: "Installed engine catalog. Install / load / unload models. Per-engine venv isolation (JustVoice advantage — install Chatterbox without breaking Kokoro).", component: EnginesView },
 
   // ─── Tools lane ────────────────────────────────────────────────────
   { id: "compare",   lane: "tools", label: "Compare",   icon: "⚖️", lede: "A/B audio comparison. Side-by-side waveforms, peak/RMS/duration diff, sample-level RMSE, verdict. Bulk compare across takes for QC pass.", component: CompareView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "audio",     lane: "tools", label: "Audio Tools", icon: "🔧", lede: "Stand-alone audio tools — analyze any 16-bit PCM WAV, or apply a mastering preset to a WAV without going through the chapter render pipeline. Useful for inspecting reference clips before cloning, or quickly mastering an external recording.", component: AudioToolsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   { id: "speakerlab",lane: "tools", label: "Speaker Lab",icon: "🔬", lede: "Speaker-extraction testbed. Paste any text, tune model + temperature + tier + prompts per column, race configurations side-by-side, and promote the winner to production. Same backend as Studio · Script.", component: SpeakerLabView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "renderlab", lane: "tools", label: "Render Lab", icon: "🧪", lede: "Voice parameter A/B matrix. Pick a voice + sample sentence + 1-2 parameter axes; render up to 16 cells in parallel (capped at 2 concurrent). Save any cell as a render preset.", component: RenderLabView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   { id: "train",     lane: "tools", label: "Train",     icon: "🏋️", lede: "PEFT/LoRA-based fine-tuning. QC pipeline checks SNR / clipping / silence ratio per sample before accepting it.", component: TrainView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
 
   // ─── Advanced lane (collapsed by default) ──────────────────────────
+  { id: "renderlab", lane: "advanced", label: "Render Lab", icon: "🧪", lede: "Voice parameter A/B matrix. Pick a voice + sample sentence + 1-2 parameter axes; render up to 16 cells in parallel (capped at 2 concurrent). Save any cell as a render preset.", component: RenderLabView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "audio",     lane: "advanced", label: "Audio Tools", icon: "🔧", lede: "Stand-alone audio tools — analyze any 16-bit PCM WAV, or apply a mastering preset to a WAV without going through the chapter render pipeline. Useful for inspecting reference clips before cloning, or quickly mastering an external recording.", component: AudioToolsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "presets",   lane: "advanced", label: "Presets",   icon: "🎚️", lede: "Render presets — named bundles of voice + delivery + effects chain + master target. Studio Render binds one per scene to lock per-chapter or per-quest output consistency.", component: RenderPresetsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "effects",   lane: "advanced", label: "Effects",   icon: "🎛️", lede: "Pedalboard-backed effects chain. Apply non-destructively — creates a new generation version that preserves the original. 8 types · 4 built-in presets + custom.", component: EffectsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   { id: "cache",     lane: "advanced", label: "Cache",     icon: "💾", lede: "Disk-LRU render cache. Keyed on (engine, voice, lexicon hash, persona hash, text hash, effects hash). Engine prefix prevents cross-engine collisions.", component: CacheView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   { id: "channels",  lane: "advanced", label: "Channels",  icon: "🔊", lede: "Audio output channel configs. Route specific voices to specific OS audio devices — multi-monitor, OBS virtual mic, per-character podcast monitoring.", component: AudioChannelsView, visibleFor: ["podcast", "game", "multiple", "unset"] },
   { id: "webhooks",  lane: "advanced", label: "Webhooks",  icon: "🔔", lede: "HMAC-SHA256-signed outbound event notifications. At-least-once delivery with exponential backoff (1s → 5s → 30s → 5min).", component: WebhooksView, visibleFor: ["game", "multiple", "unset"] },
@@ -114,6 +115,21 @@ function isVisibleFor(viewEntry, useCase) {
   return !viewEntry.visibleFor || viewEntry.visibleFor.includes(useCase);
 }
 
+// ── Per-kind nav vocabulary (journeys-preview KIND_NAV contract) ──────
+// When a project is open, the structure item swaps with its kind:
+// audiobook → Chapters · game → Lines · podcast → Episodes + Timeline.
+// A string = show with this label; false = hide for this kind.
+const KIND_STRUCT = {
+  audiobook: { chapter: "Chapters", lines: false, stories: false },
+  game:      { chapter: false,      lines: "Lines", stories: false },
+  podcast:   { chapter: "Episodes", lines: false, stories: "Timeline" },
+  text:      { chapter: "Chapters", lines: false, stories: false },
+};
+
+// The open project's kind also drives the visibleFor filtering — the
+// sidebar follows what you're MAKING, not the install-time focus.
+const KIND_TO_USE_CASE = { audiobook: "audiobook", game: "game", podcast: "podcast", text: "multiple" };
+
 // Map each view id → docs/<slug>.md for the topbar HelpTrigger.
 // Views without a dedicated doc fall back to getting-started.
 const HELP_SLUG_BY_VIEW = {
@@ -137,19 +153,16 @@ const HELP_SLUG_BY_VIEW = {
   settings: "getting-started",
 };
 
-// Map the onboarding primary use case → starting tab on launch. Audiobook
-// and podcast both land on Chapter because that's where the multi-line
-// script-in / mastered-audio-out workflow lives today. Game devs need
-// the voice catalogue first. Dictation users hit the single-line
-// Generate panel. Accessibility users start in Settings to dial in
-// playback. "multiple" + "unset" fall back to Overview so first-time
-// producers see the catalogue, engines, and cache state at a glance.
+// Every use case launches on Home — the journeys contract makes it the
+// daily driver ("resume where you left off, catalogue at a glance, live
+// tasks, loaded engine, recent generations"). Explicit hash deep-links
+// still win in resolveInitialTab.
 const DEFAULT_TAB_BY_USE_CASE = {
-  audiobook:     "chapter",
-  game:          "voices",
-  podcast:       "chapter",
-  dictation:     "generate",
-  accessibility: "settings",
+  audiobook:     "overview",
+  game:          "overview",
+  podcast:       "overview",
+  dictation:     "overview",
+  accessibility: "overview",
   multiple:      "overview",
   unset:         "overview",
 };
@@ -159,6 +172,7 @@ const health = ref(null);
 const api = useApi();
 const tasks = useRenderTasks();
 const onboarding = useOnboarding();
+const activeProject = useActiveProject();
 const uiContext = useUiContext();
 const { t } = useI18n();
 let initialTabResolved = false;
@@ -215,10 +229,27 @@ const showWelcome = computed(() => onboarding.hydrated && !onboarding.shown);
 
 // Sidebar gating by onboarding primary use case (plan locked decision #7).
 // Universal tabs (no `visibleFor`) always render; conditional tabs only
-// appear when the user's use case is in the entry's allow-list.
-const visibleViews = computed(() =>
-  VIEWS.filter((v) => isVisibleFor(v, onboarding.primaryUseCase || "unset")),
+// appear when the user's use case is in the entry's allow-list. With a
+// project open, the project's kind takes over: the struct item swaps
+// (Chapters / Lines / Episodes+Timeline) and visibleFor filters against
+// the kind's vocabulary instead of the install-time focus.
+const effectiveUseCase = computed(() =>
+  KIND_TO_USE_CASE[activeProject.kind] || onboarding.primaryUseCase || "unset",
 );
+const visibleViews = computed(() =>
+  VIEWS.filter((v) => {
+    const struct = KIND_STRUCT[activeProject.kind];
+    if (struct && v.id in struct) return !!struct[v.id];
+    return isVisibleFor(v, effectiveUseCase.value);
+  }),
+);
+
+// Sidebar label override per kind (Chapters → Episodes, Stories → Timeline).
+function navLabel(v) {
+  const struct = KIND_STRUCT[activeProject.kind];
+  const override = struct?.[v.id];
+  return typeof override === "string" ? override : localizedViewLabel(v);
+}
 
 // Sidebar grouped by lane for the 4-lane render structure.
 const lanesWithViews = computed(() =>
@@ -381,11 +412,11 @@ onMounted(async () => {
             :key="v.id"
             class="jv-sidebar__nav"
             :class="{ 'jv-sidebar__nav--active': view === v.id }"
-            :title="localizedViewLabel(v)"
+            :title="navLabel(v)"
             @click="view = v.id"
           >
             <span class="jv-sidebar__icon">{{ v.icon || '·' }}</span>
-            <span class="jv-sidebar__label">{{ localizedViewLabel(v) }}</span>
+            <span class="jv-sidebar__label">{{ navLabel(v) }}</span>
           </a>
         </template>
       </template>
@@ -411,7 +442,7 @@ onMounted(async () => {
     <main class="jv-main">
       <header class="jv-topbar">
         <h2 class="jv-topbar__title">
-          {{ currentView?.label }}
+          {{ currentView ? navLabel(currentView) : '' }}
           <template v-for="(seg, i) in uiContext.breadcrumb" :key="i">
             <span class="jv-topbar__crumb-sep">›</span>
             <a
@@ -422,6 +453,20 @@ onMounted(async () => {
             <span v-else class="jv-topbar__crumb jv-topbar__crumb--current">{{ seg.label }}</span>
           </template>
         </h2>
+
+        <!-- Active-project chips (journeys topbar contract) — Project /
+             Kind / Master. Click the project chip to jump to Projects. -->
+        <template v-if="activeProject.id">
+          <button type="button" class="jv-topbar__proj" title="Active project — workflow surfaces target it. Click to switch projects." @click="view = 'books'">
+            <span class="jv-topbar__proj-k">Project</span><b>{{ activeProject.name }}</b>
+          </button>
+          <span class="jv-topbar__proj" :title="`Project kind — decides the sidebar vocabulary and the export pipeline`">
+            <span class="jv-topbar__proj-k">Kind</span><b>{{ activeProject.kindIcon }} {{ activeProject.kindLabel }}</b>
+          </span>
+          <span v-if="activeProject.master" class="jv-topbar__proj" title="Mastering preset applied on render">
+            <span class="jv-topbar__proj-k">Master</span><b>{{ activeProject.master }}</b>
+          </span>
+        </template>
 
         <!-- Engine pill — persistent visibility of the currently-loaded
              TTS engine. Click jumps to Engines tab. -->

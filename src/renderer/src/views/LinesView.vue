@@ -10,14 +10,16 @@
   per-line WAV zip + manifest.
 -->
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
+import { useActiveProject } from "../stores/activeProject.js";
 import JvButton from "../components/jv/JvButton.vue";
 import ImportModal from "./ImportModal.vue";
 
 const api = useApi();
+const activeProject = useActiveProject();
 const tasks = useRenderTasks();
 
 const projects = ref([]);
@@ -73,7 +75,8 @@ async function loadProjects() {
     const r = await api.safeRequest("/v1/projects", { projects: [] });
     projects.value = r?.projects || [];
     if (!selectedProjectId.value && gameProjects.value.length) {
-      selectedProjectId.value = gameProjects.value[0].id;
+      const prefer = gameProjects.value.find((p) => p.id === activeProject.id);
+      selectedProjectId.value = (prefer || gameProjects.value[0]).id;
       await loadLines();
     }
   } catch (_) { /* tolerated */ }
@@ -170,6 +173,13 @@ function statusPill(s) {
 }
 
 onMounted(loadProjects);
+
+// Keep the app-wide active project (sidebar vocabulary, topbar chips,
+// Home resume card) in sync with this view's selection.
+watch(selectedProjectId, (id) => {
+  const p = projects.value.find((x) => x.id === id);
+  if (p) activeProject.open(p);
+});
 </script>
 
 <template>
