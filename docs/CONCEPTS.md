@@ -491,3 +491,17 @@ Mocked as Speaker Lab step 3 (`#splab/3`).
 - Visual fidelity note: JustVoice keeps its own design language (the
   grid/green aesthetic) — the JustWrite screenshots are functional
   reference, not pixel reference (user, 2026-06-11).
+
+## 17. Dictation is bidirectional (capture gap closed, 2026-06-11)
+
+The Live-voice journey originally mocked only **type → speak** (TTS into a
+virtual mic). Real dictation is the other direction and is now mocked too
+(`#dictation/3`): **hold a second hotkey and talk** — mic capture, live
+Whisper transcript in the same floating overlay (mic mode), spoken
+punctuation ("comma", "period", "new paragraph"), and on release the text
+**types into whatever app has focus** (or clipboard). Settings gains:
+dictation hold-to-talk hotkey · **STT engine picker** (local Whisper,
+sherpa-onnx, or any OpenAI-compatible `/v1/audio/transcriptions` server) ·
+insert-as choice. Captures keeps both kinds of history — TTS phrases and
+dictation transcripts — and clean recordings still promote to clone
+samples.
