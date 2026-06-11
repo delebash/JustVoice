@@ -450,6 +450,7 @@ function blendWithVoice() {
         :key="f.id"
         class="jv-pill"
         :class="typeFilter === f.id ? 'jv-pill--solid' : 'jv-pill--ghost'"
+        :title="f.id === 'all' ? 'Show every voice' : `Show only ${f.label.toLowerCase()} voices`"
         @click="typeFilter = f.id"
       >{{ f.label }} ({{ typeCounts[f.id] || 0 }})</button>
     </div>
@@ -825,6 +826,12 @@ function blendWithVoice() {
   cursor: pointer;
   font-family: inherit;
   font-weight: 500;
+}
+/* Same specificity as the rule above, declared after — without this the
+   transparent background wins and the ACTIVE chip renders white-on-nothing. */
+.voices-view__chips .jv-pill--solid {
+  background: var(--accent);
+  color: #fff;
 }
 .voices-view__add-more {
   margin-top: 6px;

@@ -426,6 +426,9 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 }
 
 .jv-content {
+  /* Reserve the scrollbar lane so filtering between long and empty lists
+     doesn't shift the whole layout sideways. */
+  scrollbar-gutter: stable;
   flex: 1;
   overflow-y: auto;
   padding: 24px 32px 64px;
@@ -792,6 +795,37 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   color: var(--ink);
   box-shadow: var(--shadow-1);
 }
+
+/* Modal shell (Reka Dialog) — shared by WelcomeOnboarding + any portal
+   modal using the app-modal classes. Without this the dialog renders
+   position:static below the fold while Reka still locks <body>
+   pointer-events — the whole app goes click-dead. */
+.app-modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(20, 20, 18, 0.45);
+  z-index: 900;
+}
+.app-modal {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(640px, 94vw);
+  max-height: 86vh; overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-3);
+  padding: 20px 24px;
+  z-index: 901;
+}
+.app-modal--wide { width: min(880px, 96vw); }
+.app-modal-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.app-modal-titleblock { min-width: 0; }
+.app-modal-body { color: var(--ink-2); }
+.app-modal-close {
+  margin-left: auto; border: 0; background: transparent;
+  font-size: 20px; line-height: 1; cursor: pointer; color: var(--ink-3);
+}
+.app-modal-close:hover { color: var(--ink); }
 
 /* Native form controls — accent green, never Chrome blue. */
 input[type="range"],

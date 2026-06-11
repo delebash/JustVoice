@@ -62,6 +62,10 @@ AI usage ledger + Settings panel · backup/restore UI over /v1/backup ·
 tutorial/demo projects per kind · Ollama admin (model pull) ·
 voice-metadata heuristics · per-line director notes · LLM show notes ·
 word-timestamp caption export (SRT/VTT).
+Voices backlog: hide/disable built-in voices (delete stays custom-only —
+already enforced); grow ⚙ Inspect into a full Edit modal (rename, gender,
+language, effects chain, channel, samples). UI rule: tooltips get added
+to every control we touch, as we go.
 
 ## Styling is part of every milestone — not a later phase
 
