@@ -374,8 +374,9 @@ async function loadScenesForProject(projectId) {
     return;
   }
   try {
-    const r = await api.safeRequest(`/v1/projects/${projectId}/scenes`, { scenes: [] });
-    scenes.value = r?.scenes || [];
+    const r = await api.safeRequest(`/v1/projects/${projectId}/scenes`, []);
+    // Endpoint returns a bare array (block_count included per scene).
+    scenes.value = Array.isArray(r) ? r : r?.scenes || [];
     if (!selectedSceneId.value && scenes.value.length) {
       selectedSceneId.value = scenes.value[0].id;
     }
@@ -555,26 +556,52 @@ async function runAnalyze() {
     return;
   }
   analyzeBusy.value = true;
+  const ctrl = new AbortController();
+  const sceneTitle = scenes.value.find((sc) => sc.id === selectedSceneId.value)?.title || "scene";
+  const wordCount = sceneText.value.trim().split(/\s+/).length;
+  const task = tasks.start({
+    kind: "extract",
+    feature: "speaker_attribution",
+    label: `Speaker extraction · ${sceneTitle}`,
+    onCancel: () => ctrl.abort(),
+    onRetry: () => runAnalyze(),
+    statsFn: (t) => {
+      const out = [`${wordCount} words in`];
+      if (t.meta?.rows != null) out.push(`${t.meta.rows} segments`);
+      if (t.meta?.tier) out.push(`${t.meta.tier} tier`);
+      return out;
+    },
+  });
   try {
     const r = await api.request(`/v1/scenes/${selectedSceneId.value}/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: sceneText.value }),
+      signal: ctrl.signal,
     });
     analyzeRows.value = r.rows || [];
     analyzeTierUsed.value = r.tier_used;
     analyzeFloor.value = r.confidence_floor;
     editedFlags.value = {};
+    tasks.update(task.id, { meta: { rows: analyzeRows.value.length, tier: r.tier_used } });
+    tasks.finish(task.id);
     pushToast({
       message: `Analyzed ${analyzeRows.value.length} segment${analyzeRows.value.length === 1 ? "" : "s"} using ${r.tier_used} tier.`,
       kind: "success",
       duration: 3500,
     });
   } catch (e) {
+    if (ctrl.signal.aborted) {
+      // tasks.cancel already marked it; nothing else to do.
+    } else {
+      tasks.fail(task.id, e?.message || String(e));
+    }
     pushToast({
-      message: e?.message?.includes("501") || e?.status === 501
-        ? "Analyze unavailable — wire an LLM provider in Engines → LLM tab."
-        : `Analyze failed: ${e?.message || e}`,
+      message: ctrl.signal.aborted
+        ? "Analyze cancelled."
+        : e?.message?.includes("501") || e?.status === 501
+          ? "Analyze unavailable — wire an LLM provider in Engines → LLM tab."
+          : `Analyze failed: ${e?.message || e}`,
       kind: "warning",
       duration: 6000,
     });
@@ -767,10 +794,24 @@ async function smartAssignCast() {
     return;
   }
   smartAssignBusy.value = true;
+  const saCtrl = new AbortController();
+  const saTask = tasks.start({
+    kind: "extract",
+    feature: "smart_assign",
+    label: `Smart-assign · ${characterPersonas.value.length} characters`,
+    onCancel: () => saCtrl.abort(),
+    onRetry: () => smartAssignCast(),
+    statsFn: (t) => {
+      const out = [`${characterPersonas.value.length} characters`, `${voices.value.length} voices`];
+      if (t.meta?.applied != null) out.push(`${t.meta.applied} applied`);
+      return out;
+    },
+  });
   try {
     const r = await api.request("/v1/llm/smart-assign", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: saCtrl.signal,
       body: JSON.stringify({
         characters: characterPersonas.value.map((p) => ({
           id: p.id,
@@ -796,6 +837,8 @@ async function smartAssignCast() {
         applied += 1;
       }
     }
+    tasks.update(saTask.id, { meta: { applied } });
+    tasks.finish(saTask.id);
     pushToast({
       message: applied
         ? `Smart-assign applied ${applied} assignment${applied === 1 ? "" : "s"}.`
@@ -804,6 +847,7 @@ async function smartAssignCast() {
       duration: 4500,
     });
   } catch (e) {
+    if (!saCtrl.signal.aborted) tasks.fail(saTask.id, e?.message || String(e));
     pushToast({
       message: e?.message?.includes("501") || e?.status === 501
         ? "Smart-assign unavailable — wire an LLM provider in Engines → LLM tab."
