@@ -179,3 +179,40 @@ over the podcast machinery:
 Boundary with Generate: a single phrase needs no project at all — that's
 Generate. Plain-text projects are for text you want to *keep, structure,
 and re-render*.
+
+## 9. Help system — three altitudes (proposal, mocked in ❓ tab)
+
+User requirement: menu/item-sensitive help — a "?" by headings opening a
+side panel with the correct topic — plus full user documentation.
+
+Design: three altitudes, each with its own delivery:
+
+1. **Micro — tooltips.** Hover any control. Already in the design system.
+2. **Task — the "?" drawer.** A `?` button on every view header AND on
+   complex cards (item-sensitivity). Opens a right-side, non-modal drawer
+   scoped to that topic so users read while doing. Topic template:
+   *What is this → How to use it → Concrete example → Related links*.
+   Search across all topics (`/`); `F1` opens help for the focused area.
+3. **Flow — "Show me" tours.** Help topics link to a guided replay of the
+   matching journey (the same step sequences as the journeys mock),
+   overlaid on the real app.
+
+Reinforcements:
+- **Empty states are help** — every empty list states what the thing is
+  and offers the first action.
+- **First-visit hint strip** — one dismissable line per view pointing at
+  the `?` and the tour; shown once, never again.
+
+Implementation shape (single-sourced, headless-parity):
+- One markdown file per topic in `docs/help/`, with front-matter
+  `id`/`related`. Served by the FastAPI server (`GET /v1/help/{id}` +
+  index for search), so desktop and `/ui/` headless render identical
+  content, offline.
+- UI regions carry `data-help-id`; the drawer maps region → topic.
+  Card-level `?` opens the same drawer scrolled to the topic anchor.
+- The same markdown set builds the public docs site later — write once.
+- Journeys docs (`docs/journeys/`) become the tour scripts.
+
+Rejected alternatives: external-docs-only (context switch, useless
+offline); coach-mark overlays everywhere (annoying after first run —
+reduced to the one-time hint strip).
