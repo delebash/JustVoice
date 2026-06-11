@@ -186,6 +186,18 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .seg .mark{flex:none;font-size:11px;color:var(--ink-3)}
 .seg.music{background:var(--surface-3);border-style:dashed;color:var(--ink-3);font-size:12px}
 
+/* voice library aside (v11) */
+.voice-row{display:flex;align-items:center;gap:10px;width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;cursor:pointer;text-align:left;font-size:12.5px;color:var(--ink)}
+.voice-row:hover{border-color:var(--line-strong)}
+.voice-row.assigned{border-color:var(--accent);background:var(--accent-soft)}
+.voice-row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.voice-row .nm i{display:block;font-size:10px;color:var(--ink-3);font-style:italic}
+.voice-row .check{color:var(--accent);font-weight:700}
+.picking{font-size:11.5px;color:var(--ink-2);background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:6px;padding:5px 10px;margin-bottom:10px}
+.combo-cell{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:4px 9px;cursor:pointer;font-size:12.5px}
+.combo-cell:hover{border-color:var(--line-strong)}
+.combo-cell .chev{color:var(--ink-3);font-size:9px;margin-left:2px}
+
 /* checklists */
 .ckl{list-style:none;margin:0;padding:0;font-size:12.5px}
 .ckl li{display:flex;gap:8px;align-items:baseline;padding:5px 0;border-bottom:1px dashed var(--line)}
@@ -382,13 +394,23 @@ const stepsAudiobook = [
       </tbody></table>
     </div>`) },
 
-{ nav:"Studio", t:"Studio · Cast — she assigns voices. Narrator gets her cloned voice; characters get picks from the library.",
+{ nav:"Studio", t:"Studio · Cast — select a character card, then click a voice in the library to assign it. She's picking for Tom Harlan right now.",
   html: () => shell("audiobook","Studio","Studio — Cast", projChip("Stillwater","Audiobook","ACX"), `
-    <p class="lede"><strong>Cast</strong> maps people to voices. Smart-assign proposes; she overrides. The two “discovered” cards came back from Script analysis of chapters 4 and 6.</p>
+    <p class="lede"><strong>Cast</strong> maps people to voices: <strong>select a card → click a voice</strong> in the library; click the assigned voice again to unassign. ▶ auditions any voice in place. Smart-assign proposes the whole cast; she overrides card by card.</p>
     <div class="row" style="margin-bottom:12px"><span class="pill solid" style="background:var(--accent);color:#fff;border-color:var(--accent)">1 · Cast</span><span class="pill">2 · Script</span><span class="pill">3 · Render</span><span class="spacer"></span><button class="btn secondary sm">✕ Clear cast</button><button class="btn sm">✨ Smart-assign</button></div>
-    <div class="cast-grid" style="overflow-y:auto;padding:2px">
-      <div class="cast-card narrator"><span class="portrait" style="background:${C.narr}">N</span><div style="min-width:0;flex:1"><strong>Narrator</strong> <span class="pill green" style="margin-left:6px">main</span><div class="cast-role">carries ~62% of the book</div><div class="cast-voice">${glyph("Sa", C.narr)} Sarah (cloned) · Chatterbox <button class="btn ghost sm">▶</button></div></div></div>
-      ${BOOK.cast.map(p=>`<div class="cast-card ${p[3]?'':'unassigned'}"><span class="portrait" style="background:${C[p[2]]}">${p[0][0]}</span><div style="min-width:0;flex:1"><strong>${p[0]}</strong><div class="cast-role">${p[1]}</div>${p[3]?`<div class="cast-voice">${glyph(p[3],C[p[2]])} ${p[3]} <button class="btn ghost sm">▶</button></div>`:`<span class="cast-unassigned">⚠ no voice assigned</span>`}</div></div>`).join("")}
+    <div class="two-col" style="grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr)">
+      <div class="cast-grid" style="overflow-y:auto;padding:2px;align-content:start">
+        <div class="cast-card narrator"><span class="portrait" style="background:${C.narr}">N</span><div style="min-width:0;flex:1"><strong>Narrator</strong> <span class="pill green" style="margin-left:6px">main</span><div class="cast-role">carries ~62% of the book</div><div class="cast-voice">${glyph("Sa", C.narr)} Sarah (cloned) · Chatterbox <button class="btn ghost sm">▶</button></div></div></div>
+        ${BOOK.cast.map(p=>`<div class="cast-card ${p[3]?'':'unassigned'}" ${p[0]==="Tom Harlan"?'style="border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)"':''}><span class="portrait" style="background:${C[p[2]]}">${p[0][0]}</span><div style="min-width:0;flex:1"><strong>${p[0]}</strong><div class="cast-role">${p[1]}</div>${p[3]?`<div class="cast-voice">${glyph(p[3],C[p[2]])} ${p[3]} <button class="btn ghost sm">▶</button></div>`:`<span class="cast-unassigned">⚠ no voice assigned</span>`}</div></div>`).join("")}
+      </div>
+      <div class="card"><div class="card-h"><strong>Voice library</strong><span class="pill">Chatterbox · 5</span><span class="pill ghost">Kokoro · 28</span></div><div class="card-b">
+        <div class="picking">Picking for: <strong>Tom Harlan</strong> — click a voice to assign</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${[["Sarah (cloned)","warm, unhurried","narr","Narrator"],["Mara (cloned)","clipped, noir","mara","Mara Vance"],["Old Crow (cloned)","gravel, three teeth","tom",null],["Blend: Narrator+Crow","","stranger",null],["af_heart · Kokoro","","edith","Edith Vance"],["am_echo · Kokoro","","doc","Doc Ainsley"],["am_adam_k · Kokoro","","guard",null]].map(v=>`
+          <button class="voice-row ${v[3]?'assigned':''}"><span class="glyph" style="background:${C[v[2]]}">${v[0][0]}</span><span class="nm">${v[0]}${v[1]?`<i>${v[1]}</i>`:''}</span>${v[3]?`<span class="check">✓ ${v[3]}</span>`:''}<span class="btn ghost sm">▶</span></button>`).join("")}
+        </div>
+        <p class="muted" style="font-size:11.5px;margin-top:10px">Assigned voices show who they're cast as. One voice can play multiple minor characters.</p>
+      </div></div>
     </div>`) },
 
 { nav:"Studio", t:"Studio · Script — the LLM works out who speaks each line. It found two speakers who aren't in her cast yet.",
@@ -505,11 +527,17 @@ const stepsGame = [
 
 { nav:"Studio", t:"Studio · Cast at game scale — 9 NPCs in a table, not cards. His CSV already says who speaks, so there's no Script step here.",
   html: () => shell("game","Studio","Studio — Cast", projChip("Emberfall — Act 1","Game","48 kHz"), `
-    <p class="lede">Speakers came straight from the CSV — no LLM attribution needed for games. The Studio strip is two steps here: <strong>Cast → Render</strong>.</p>
+    <p class="lede">Speakers came straight from the CSV — no LLM attribution needed for games. At table scale the <strong>voice cell is the picker</strong>: click it for a searchable dropdown of the library. ▶ test-line auditions the voice on a real line from the script. Smart-assign still fills the whole column at once.</p>
     <div class="row" style="margin-bottom:12px"><span class="pill solid" style="background:var(--accent);color:#fff;border-color:var(--accent)">1 · Cast</span><span class="pill">2 · Render</span><span class="spacer"></span><button class="btn sm">✨ Smart-assign</button></div>
     <div class="card" style="flex:1;min-height:0;overflow-y:auto">
       <table class="vtable"><thead><tr><th>NPC</th><th class="right">Lines</th><th>Voice</th><th>Performance defaults</th><th class="right"></th></tr></thead><tbody>
-        ${GAME.npcs.map(n=>`<tr><td><span style="display:inline-flex;align-items:center;gap:8px">${glyph(n[0],C[n[1]])} <strong>${n[0]}</strong></span></td><td class="right">${n[2]}</td><td>${n[3]?`<span style="display:inline-flex;align-items:center;gap:6px">${glyph(n[3],C[n[1]])} ${n[3]}</span>`:'<span class="cast-unassigned" style="margin:0">⚠ unassigned</span>'}</td><td class="muted" style="font-size:12px">${n[0]==="The Hollow Voice"?"whisper · reverb send":n[0]==="Guard Captain Hale"?"gruff · +5% pace":"—"}</td><td class="right"><button class="btn ghost sm">▶ test line</button></td></tr>`).join("")}
+        ${GAME.npcs.map(n=>`<tr><td><span style="display:inline-flex;align-items:center;gap:8px">${glyph(n[0],C[n[1]])} <strong>${n[0]}</strong></span></td><td class="right">${n[2]}</td><td style="position:relative">${n[3]?`<span class="combo-cell">${glyph(n[3],C[n[1]])} ${n[3]}<span class="chev">▼</span></span>`:n[0]==="The Hollow Voice"?`
+          <span class="combo-cell" style="border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)">choose a voice…<span class="chev">▲</span></span>
+          <span style="position:absolute;top:calc(100% - 4px);left:13px;z-index:30;min-width:250px;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow-2);padding:5px;display:block">
+            <input class="input" style="height:28px;font-size:12px;margin-bottom:5px" placeholder="Search 33 voices…" value="who" />
+            <button class="voice-row" style="margin-bottom:4px"><span class="glyph" style="background:${C.ghost}">B</span><span class="nm">Blend: Narrator+Crow<i>hollow, doubled</i></span><span class="btn ghost sm">▶</span></button>
+            <button class="voice-row"><span class="glyph" style="background:${C.keeper}">W</span><span class="nm">Whisperer (cloned)<i>breathy, close-mic</i></span><span class="btn ghost sm">▶</span></button>
+          </span>`:'<span class="combo-cell" style="color:var(--warn-ink);border-color:var(--warn-line);background:var(--warn-bg)">⚠ choose a voice…<span class="chev">▼</span></span>'}</td><td class="muted" style="font-size:12px">${n[0]==="The Hollow Voice"?"whisper · reverb send":n[0]==="Guard Captain Hale"?"gruff · +5% pace":"—"}</td><td class="right"><button class="btn ghost sm">▶ test line</button></td></tr>`).join("")}
       </tbody></table>
     </div>`) },
 
@@ -621,7 +649,7 @@ is we stopped trying to preserve the waveform…</div>
     <p class="lede">Speakers came from the script labels — like games, no LLM attribution needed. Studio is <strong>Cast → Render</strong>; assembly happens in Timeline.</p>
     <div class="row" style="margin-bottom:12px"><span class="pill solid" style="background:var(--accent);color:#fff;border-color:var(--accent)">1 · Cast</span><span class="pill">2 · Render</span></div>
     <div class="cast-grid" style="max-width:980px">
-      ${POD.hosts.map(h=>`<div class="cast-card"><span class="portrait" style="background:${C[h[2]]}">${h[0][0]}</span><div style="min-width:0;flex:1"><strong>${h[0]}</strong> <span class="pill ghost" style="margin-left:4px">${h[1]}</span><div class="cast-voice">${glyph(h[3],C[h[2]])} ${h[3]} <button class="btn ghost sm">▶</button></div><div class="cast-role" style="margin-top:4px">${h[0]==="Mave"?"supports [laughs] · [sighs] — Chatterbox tags":"tags: supported"}</div></div></div>`).join("")}
+      ${POD.hosts.map(h=>`<div class="cast-card"><span class="portrait" style="background:${C[h[2]]}">${h[0][0]}</span><div style="min-width:0;flex:1"><strong>${h[0]}</strong> <span class="pill ghost" style="margin-left:4px">${h[1]}</span><div class="cast-voice"><span class="combo-cell">${glyph(h[3],C[h[2]])} ${h[3]}<span class="chev">▼</span></span> <button class="btn ghost sm">▶</button></div><div class="cast-role" style="margin-top:4px">${h[0]==="Mave"?"supports [laughs] · [sighs] — Chatterbox tags":"tags: supported"}</div></div></div>`).join("")}
     </div>
     <div class="banner info" style="margin-top:14px;max-width:980px"><strong>Paralinguistic tags</strong> ride with each segment — engines that support <span class="tagp">[laughs]</span> perform them; others get the tag stripped and a note in the render log.</div>`) },
 
