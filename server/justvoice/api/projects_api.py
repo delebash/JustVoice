@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Optional, Literal, Any
+from typing import Optional, Literal
 
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from pydantic import BaseModel, Field
@@ -29,6 +29,8 @@ from ..database import (
     get_db,
 )
 from ..errors import not_found, bad_request
+from ..app_state import get_state
+from ..models import LexiconEntry
 from ..imports import list_adapters, run_adapter
 from ..imports.standard_schema import (
     AdapterListResponse,
@@ -539,6 +541,9 @@ def _materialize_standard(
         if existing:
             char_to_persona_id[char.id] = existing.id
             reused_personas.append(existing.id)
+            # A reused persona still needs the cast link for THIS project —
+            # without it, book two imports with an empty Cast tab.
+            db.add(ProjectPersona(project_id=p.id, persona_id=existing.id))
             continue
         bio_text = char.notes or ""
         if char.voice_hint:
@@ -594,6 +599,30 @@ def _materialize_standard(
             total_blocks += 1
 
     return p, len(standard.scenes), total_blocks, created_personas, reused_personas
+
+
+def _materialize_lexicon(standard: StandardImport, project: Project, lexicon_store) -> str | None:
+    """Create a project-scoped lexicon from the import's entries.
+
+    Returns the new lexicon id (also written to project.default_lexicon_id),
+    or None when the import carries no lexicon entries. Previously these
+    entries were silently dropped on commit.
+    """
+    if not standard.lexicon_entries:
+        return None
+    entries = [
+        LexiconEntry(grapheme=e.grapheme, phoneme_ipa=e.phoneme_ipa, alias=e.alias)
+        for e in standard.lexicon_entries
+    ]
+    lex = lexicon_store.create(
+        name=f"{project.name} (imported)",
+        entries=entries,
+        scope="project",
+        description=f"Materialized from {standard.source} import",
+        project_id=project.id,
+    )
+    project.default_lexicon_id = lex.id
+    return lex.id
 
 
 @router.get("/v1/projects/import/adapters", response_model=AdapterListResponse)
@@ -658,6 +687,7 @@ async def import_project(
     project, _scene_count, _block_count, _created, _reused = _materialize_standard(
         standard, db
     )
+    _materialize_lexicon(standard, project, get_state().lexicons)
     db.commit()
     db.refresh(project)
     standard.project.id = project.id
