@@ -202,6 +202,8 @@ const TAB_LABELS = computed(() => {
   for (const t of visibleTabs.value) out[t.key] = t.label;
   return out;
 });
+const isGameProject = computed(() => selectedProject.value?.project_type === "game_voicelines");
+
 const visibleTabs = computed(() => {
   const isGame = selectedProject.value?.project_type === "game_voicelines";
   const keys = isGame ? ["cast", "render"] : ["cast", "script", "render"];
@@ -1177,6 +1179,35 @@ watch(selectedProjectId, (id) => {
             from <a href="#books">{{ copy.book.plural }}</a>.
           </p>
         </div>
+        <table v-else-if="isGameProject" class="jv-table studio__npc-table">
+          <thead><tr><th></th><th>NPC</th><th>Role</th><th>Voice</th><th></th></tr></thead>
+          <tbody>
+            <tr
+              v-for="p in projectPersonas"
+              :key="p.id"
+              class="studio__npc-row"
+              :class="{ 'studio__npc-row--selected': selectedCharacterId === p.id }"
+              :title="`Select, then click a voice in the library to cast ${p.name}`"
+              @click="selectedCharacterId = p.id"
+            >
+              <td><span class="studio__char-portrait studio__char-portrait--sm" :style="{ background: colorFor(p.name) }">{{ (p.name || "?").charAt(0).toUpperCase() }}</span></td>
+              <td><strong>{{ p.name }}</strong></td>
+              <td class="jv-muted" style="font-size:12px">{{ personaRole(p) }}</td>
+              <td>
+                <template v-if="p.voice_id">
+                  <span class="studio__char-glyph" :style="{ background: colorFor(voiceById(p.voice_id)?.name), color: '#fff' }">{{ (voiceById(p.voice_id)?.name || "?").slice(0, 2) }}</span>
+                  {{ voiceById(p.voice_id)?.name || p.voice_id }}
+                  <span class="jv-muted">· {{ voiceById(p.voice_id)?.engine || "" }}</span>
+                </template>
+                <span v-else class="studio__char-unassigned">⚠ no voice</span>
+              </td>
+              <td style="text-align:right;white-space:nowrap">
+                <button v-if="p.voice_id" type="button" class="studio__voice-action" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(p.voice_id))">▶</button>
+                <button v-if="p.voice_id" type="button" class="studio__voice-action" title="Tune voice parameters" @click.stop="openVoiceTuner(p)">⚙</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
         <div v-else class="studio__cast-grid">
           <!-- Narrator card -->
           <article
@@ -2107,4 +2138,10 @@ watch(selectedProjectId, (id) => {
 .studio__discovered-chip { display: inline-flex; align-items: center; gap: 5px; }
 .studio__discovered-x { border: 0; background: transparent; cursor: pointer; color: var(--ink-3); font-size: 11px; padding: 0; }
 .studio__discovered-x:hover { color: var(--danger); }
+
+.studio__npc-table { margin: 0; }
+.studio__npc-row { cursor: pointer; }
+.studio__npc-row:hover td { background: var(--surface-2); }
+.studio__npc-row--selected td { background: var(--accent-soft); }
+.studio__char-portrait--sm { width: 28px; height: 28px; font-size: 12px; }
 </style>

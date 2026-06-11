@@ -366,6 +366,14 @@ async function exportProject(projectId) {
   }
 }
 
+// Mock's Open ➜ — make it the active project and land in its kind's
+// home base (Chapters / Lines / Episodes).
+const KIND_HOME = { audiobook: "#chapter", game_voicelines: "#lines", podcast: "#chapter", custom: "#chapter" };
+function openProjectHome(p) {
+  activeProject.open(p);
+  window.location.hash = KIND_HOME[p.project_type] || "#chapter";
+}
+
 function createBlank() {
   // Kind picker modal — native prompt() dialogs are banned (project_gotchas).
   showNewProject.value = true;
@@ -513,7 +521,15 @@ watch(selectedId, (id) => {
           <JvTag :label="PROJECT_TYPE_LABEL[p.project_type] ?? p.project_type" />
           <strong class="jv-ellipsis">{{ p.name }}</strong>
         </div>
-        <span class="jv-pane-list__meta">{{ p.scene_count }} {{ copy.chapter.plural.toLowerCase() }}</span>
+        <span class="jv-pane-list__meta">
+          {{ p.scene_count }} {{ copy.chapter.plural.toLowerCase() }}
+          <button
+            type="button"
+            class="books__open"
+            :title="`Open in its home base — the sidebar reshapes to this kind`"
+            @click.stop="openProjectHome(p)"
+          >Open ➜</button>
+        </span>
       </div>
     </ListPane>
 
@@ -1029,4 +1045,11 @@ watch(selectedId, (id) => {
   background: var(--surface-2); font-size: 12.5px; line-height: 1.6;
   white-space: pre-wrap; max-height: 360px; overflow-y: auto;
 }
+
+.books__open {
+  appearance: none; border: 0; background: transparent;
+  color: var(--accent-ink); font: inherit; font-size: 11px; font-weight: 600;
+  cursor: pointer; margin-left: 8px; padding: 0;
+}
+.books__open:hover { text-decoration: underline; }
 </style>
