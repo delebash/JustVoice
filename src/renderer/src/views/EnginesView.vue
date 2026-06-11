@@ -593,540 +593,448 @@ async function uninstall(engine) {
   }
 }
 
+
+// ─── Engines redesign (v7 contract — preview/engines-redesign.html) ───
+const topTab = ref("local");           // "local" | "online"
+const q = ref("");                      // local-tab search
+const qp = ref("");                     // online-tab search
+const capLocal = ref("all");            // capability chip filters
+const capOnline = ref("all");
+const expanded = reactive({});          // engineId -> bool (manual toggles)
+
+const SECTIONS = [
+  { id: "tts",       title: "Voice generation", suffix: "TTS",
+    note: "one model loaded at a time — loading another swaps the TTS slot" },
+  { id: "stt",       title: "Transcription", suffix: "STT",
+    note: "powers dictation, /v1/transcribe, and agent transcription" },
+  { id: "llm",       title: "Language models", suffix: "LLM",
+    note: "" },
+  { id: "embedding", title: "Embeddings", suffix: "EMBED",
+    note: "powers semantic search / RAG (future features)" },
+];
+
+function engineCaps(e) { return e.kinds?.length ? e.kinds : [e.kind || "tts"]; }
+
+function searchBlob(e) {
+  const vs = variantsFor(e.id).map((v) => `${v.name} ${v.description || ""}`).join(" ");
+  return `${e.name} ${e.id} ${e.description || ""} ${vs}`.toLowerCase();
+}
+
+function engineVisible(e, sectionId) {
+  if (engineCaps(e)[0] !== sectionId) return false;
+  if (capLocal.value !== "all" && !engineCaps(e).includes(capLocal.value)) return false;
+  if (q.value.trim() && !searchBlob(e).includes(q.value.trim().toLowerCase())) return false;
+  return true;
+}
+
+const sectionData = computed(() =>
+  SECTIONS.map((s) => {
+    const list = engines.value.filter((e) => engineVisible(e, s.id));
+    const rank = { loaded: 0, installed: 1, not_installed: 2 };
+    list.sort((a, b) => (rank[a.status] ?? 3) - (rank[b.status] ?? 3));
+    const all = engines.value.filter((e) => engineCaps(e)[0] === s.id);
+    const modelCount = all.reduce((n, e) => n + variantsFor(e.id).length, 0);
+    return { ...s, engines: list, engineCount: all.length, modelCount };
+  }).filter((s) => s.engineCount > 0 || s.id === "embedding"),
+);
+
+function isOpen(e) {
+  if (expanded[e.id] !== undefined) return expanded[e.id];
+  if (q.value.trim()) return true;                        // search auto-expands
+  return e.status === "loaded" || progress[e.id] != null; // smart defaults
+}
+function toggleOpen(e) { expanded[e.id] = !isOpen(e); }
+
+function groupSummary(e) {
+  const vs = variantsFor(e.id);
+  const onDisk = vs.filter((v) => v.on_disk === true).length;
+  const parts = [`${vs.length} model${vs.length === 1 ? "" : "s"}`];
+  if (vs.some((v) => v.on_disk !== null)) parts.push(onDisk ? `${onDisk} on disk` : "none on disk");
+  return parts.join(" · ");
+}
+function loadedVariantName(e) {
+  if (e.status !== "loaded") return null;
+  const v = variantsFor(e.id).find((x) => x.id === e.current_variant_id);
+  return v ? v.name : (e.current_variant_id || e.name);
+}
+
+// fits-your-hardware dot — needs a detected GPU VRAM figure; hidden otherwise.
+const gpuVramMb = computed(() => {
+  const g = (system.value?.gpus || [])[0];
+  return g?.vram_mb || null;
+});
+function fitFor(v) {
+  if (!gpuVramMb.value || !v.vram_mb) return null;
+  if (v.vram_mb > gpuVramMb.value) return "no";
+  if (v.vram_mb > gpuVramMb.value * 0.8) return "tight";
+  return "ok";
+}
+const FIT_TITLES = {
+  ok: "Fits your hardware",
+  tight: "Tight — close other models first",
+  no: "Won't fit on this card",
+};
+
+// Loaded-now rail — one slot per kind from server truth.
+const rail = computed(() => {
+  const out = {};
+  for (const k of ["tts", "stt", "llm"]) {
+    const e = engines.value.find((x) => x.status === "loaded" && (x.kind || "tts") === k);
+    out[k] = e ? { engine: e, model: loadedVariantName(e) } : null;
+  }
+  return out;
+});
+const railVram = computed(() => {
+  let mb = 0;
+  for (const k of ["tts", "stt", "llm"]) {
+    const slot = rail.value[k];
+    if (!slot) continue;
+    const v = variantsFor(slot.engine.id).find((x) => x.id === slot.engine.current_variant_id);
+    mb += v?.vram_mb || 0;
+  }
+  return mb;
+});
+async function unloadKind(kind) {
+  try {
+    await api.request("/v1/engines/unload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind }),
+    });
+    window.dispatchEvent(new Event("jv:health-refresh"));
+    await refresh();
+  } catch (e) {
+    pushToast({ message: `Unload failed: ${e.message || e}`, kind: "error" });
+  }
+}
+
+// Per-model verbs (the three pairs). Variant-level state beats engine-level.
+function modelLoaded(e, v) { return isLoadedVariant(e, v.id); }
+function modelOnDisk(e, v) { return v.on_disk === true || (v.on_disk == null && isOnDisk(e, v.id)); }
+function engineNeedsInstall(e) { return e.isolation === "venv" && e.status === "not_installed"; }
+
+async function deleteModel(e, v) {
+  const ok = await confirmDialog({
+    title: `Delete ${v.name}?`,
+    message: `Removes the downloaded weights (${fmtDisk(v.size_mb)}) from disk. The engine stays; you can download again anytime.`,
+    danger: true,
+    confirmLabel: "Delete model",
+  });
+  if (!ok) return;
+  try {
+    await api.request(`/v1/engines/${e.id}/models/${encodeURIComponent(v.id)}`, { method: "DELETE" });
+    pushToast({ message: `${v.name} deleted.`, kind: "success" });
+    delete variants[e.id];
+    await refresh();
+  } catch (err) {
+    pushToast({ message: `Delete failed: ${err.message || err}`, kind: "error" });
+  }
+}
+
+// Online tab — merge both provider stores with capability chips.
+const allProviders = computed(() => {
+  const rows = [];
+  for (const pr of llmProviders.value) {
+    rows.push({ ...pr, caps: ["llm"], msum: `chat: ${pr.default_model || "—"}${pr.has_api_key ? " · key set" : " · no key"}`, online: !!pr.registered });
+  }
+  for (const pr of ttsProviders.value) {
+    rows.push({ ...pr, caps: ["tts"], msum: `tts: ${pr.tts_model || "—"}${pr.has_api_key ? " · key set" : " · no key"}`, online: false });
+  }
+  return rows.filter((r) => {
+    if (capOnline.value !== "all" && !r.caps.includes(capOnline.value)) return false;
+    const blob = `${r.name} ${r.id} ${r.base_url || ""}`.toLowerCase();
+    if (qp.value.trim() && !blob.includes(qp.value.trim().toLowerCase())) return false;
+    return true;
+  });
+});
+
+const sharedEngines = computed(() => engines.value.filter((e) => e.isolation !== "venv").length);
+
 onMounted(() => { refresh(); loadSystem(); loadProviders(); });
 </script>
 
 <template>
-  <!-- ─── This machine — hardware probe ─── -->
-  <section class="jv-section" v-if="system">
-    <h3 class="jv-section__title">This machine</h3>
-    <div class="jv-card engines-view__hw">
-      <div class="engines-view__hw-cell">
-        <div class="engines-view__hw-k">OS</div>
-        <strong>{{ system.os }}</strong>
+  <!-- Engines redesign — the free-vs-money split (preview/engines-redesign.html v7). -->
+  <div class="ev-tabs">
+    <button type="button" class="ev-tab" :class="{ on: topTab === 'local' }" @click="topTab = 'local'">
+      <span class="t1">Local models</span>
+      <span class="t2"><span class="free">FREE</span> · run on your machine · disk + VRAM</span>
+    </button>
+    <button type="button" class="ev-tab" :class="{ on: topTab === 'online' }" @click="topTab = 'online'; cancelEdit()">
+      <span class="t1">Online providers</span>
+      <span class="t2"><span class="paid">METERED</span> · your accounts · API key + URL</span>
+    </button>
+  </div>
+
+  <!-- ════ LOCAL MODELS ════ -->
+  <div v-show="topTab === 'local'">
+    <div class="ev-toprow">
+      <div class="ev-search">
+        🔍 <input v-model="q" placeholder="Search local models and engines…" title="Filters engines and models; matching groups auto-expand">
       </div>
-      <div class="engines-view__hw-cell">
-        <div class="engines-view__hw-k">CPU</div>
-        <strong>{{ system.cpu_cores }}</strong>
-        <span class="jv-muted">threads</span>
+      <div class="ev-chips">
+        <button v-for="c in ['all','tts','stt','llm','embedding']" :key="c" type="button"
+          class="ev-chip" :class="{ on: capLocal === c }" @click="capLocal = c"
+        >{{ c === 'all' ? 'All' : c === 'embedding' ? 'EMBED' : c.toUpperCase() }}</button>
       </div>
-      <div class="engines-view__hw-cell">
-        <div class="engines-view__hw-k">Memory</div>
-        <strong>{{ Math.round(system.ram_total_mb / 1024) }} GB</strong>
-      </div>
-      <div class="engines-view__hw-cell" v-for="(g, i) in system.gpus || []" :key="i">
-        <div class="engines-view__hw-k">GPU {{ i + 1 }}</div>
-        <strong>{{ g.name }}</strong>
+    </div>
+
+    <div class="jv-card ev-hw" v-if="system">
+      <div class="ev-hw-cell"><div class="k">OS</div><strong>{{ system.os }}</strong></div>
+      <div class="ev-hw-cell"><div class="k">CPU</div><strong>{{ system.cpu_cores }}</strong> <span class="jv-muted">threads</span></div>
+      <div class="ev-hw-cell"><div class="k">Memory</div><strong>{{ Math.round(system.ram_total_mb / 1024) }} GB</strong></div>
+      <div class="ev-hw-cell" v-for="(g, i) in system.gpus || []" :key="i">
+        <div class="k">GPU</div><strong>{{ g.name }}</strong>
         <span class="jv-muted" v-if="g.vram_mb">{{ (g.vram_mb / 1024).toFixed(1) }} GB VRAM</span>
       </div>
-      <div class="engines-view__hw-cell">
-        <div class="engines-view__hw-k">Acceleration</div>
-        <span class="engines-view__hw-runtimes">
-          <JvTag v-for="r in activeRuntimes" :key="r" :label="r" />
-          <span v-if="!activeRuntimes.length" class="jv-muted">CPU only</span>
-        </span>
+      <div class="ev-hw-cell"><div class="k">Acceleration</div>
+        <span><JvTag v-for="r in activeRuntimes" :key="r" :label="r" /><span v-if="!activeRuntimes.length" class="jv-muted">CPU only</span></span>
       </div>
     </div>
-  </section>
 
-  <!-- ─── Engine catalog ─── -->
-  <section class="jv-section">
-    <h3 class="jv-section__title">Engines</h3>
+    <!-- Loaded-now rail -->
+    <div class="ev-rail">
+      <div class="ev-rail-h">Loaded now</div>
+      <div class="ev-slot" v-for="k in ['tts','stt','llm']" :key="k" :class="{ empty: !rail[k] }">
+        <span class="k">{{ k.toUpperCase() }}</span>
+        <div v-if="rail[k]">
+          <div class="nm">{{ rail[k].model || rail[k].engine.name }}</div>
+          <div class="sub">{{ rail[k].engine.name }}</div>
+        </div>
+        <div v-else><div class="nm">— nothing loaded</div></div>
+        <button v-if="rail[k]" type="button" class="ev-x" title="Free this slot — weights stay on disk" @click="unloadKind(k)">Unload</button>
+      </div>
+      <div class="ev-vrtotal" v-if="railVram" title="Sum of the loaded models' declared VRAM needs">
+        est. VRAM <strong>{{ fmtDisk(railVram) }}</strong><span v-if="gpuVramMb"> / {{ fmtDisk(gpuVramMb) }}</span>
+      </div>
+    </div>
 
     <p v-if="!engines.length" class="jv-banner jv-banner--warn">
-      No engines listed — the Python server may not be running. Check
-      <a href="#settings">Settings → Connection</a> for the server URL.
+      No engines listed — the Python server may not be running. Check <a href="#settings">Settings → Connection</a>.
     </p>
 
-    <!-- Tabs by kind — always render TTS / LLM / Embeddings so the user
-         can switch even when one tab is currently empty. -->
-    <div class="engines-view__tabs">
-      <button
-        v-for="k in ['tts', 'stt', 'llm', 'embedding']"
-        :key="k"
-        type="button"
-        class="engines-view__tab"
-        :class="{ 'engines-view__tab--active': activeKind === k }"
-        @click="activeKind = k; cancelEdit()"
-      >{{ KIND_LABELS[k] }}
-        <span class="jv-muted" style="font-size: 11px">
-          ({{ (enginesByKind[k] || []).length }} local{{ k === 'llm' ? ` · ${llmProviders.length} online` : k === 'tts' ? ` · ${ttsProviders.length} online` : '' }})
-        </span>
-      </button>
-    </div>
+    <!-- capability sections -->
+    <div v-for="sec in sectionData" :key="sec.id">
+      <div class="ev-section-h">
+        <h3>{{ sec.title }} <span class="suffix">— {{ sec.suffix }}</span></h3>
+        <span class="count">{{ sec.engineCount }} engine{{ sec.engineCount === 1 ? '' : 's' }} · {{ sec.modelCount }} models</span>
+        <span class="note" v-if="sec.id === 'llm'">stays loaded alongside TTS · feature routing lives in <a class="ev-xlink" href="#settings" title="Which provider+model each AI feature uses">Settings → AI features</a></span>
+        <span class="note" v-else>{{ sec.note }}</span>
+      </div>
 
-    <!-- ── Section header — Local engines ──────────────────────────── -->
-    <div v-if="visibleEngines.length" class="engines-view__section-h">
-      <h3>Local engines</h3>
-      <span class="jv-muted" style="font-size: 12px">
-        Managed by JustVoice — installed into per-engine venvs and loaded into one slot per kind.
-      </span>
-    </div>
+      <div v-if="!sec.engines.length && sec.id === 'embedding'" class="ev-empty">
+        No local embedding engine yet — the engine slot exists and one is planned. Cloud embeddings work today via the <b>Online providers</b> tab.
+      </div>
 
-    <!-- Per-engine row: dropdown + selection-driven info + ONE contextual button -->
-    <ul v-if="visibleEngines.length" class="engines-view__list">
-      <li
-        v-for="e in visibleEngines"
-        :key="e.id"
-        class="engines-view__engine"
-        :data-status="e.status"
-      >
-        <header class="engines-view__head">
-          <div class="engines-view__title">
-            <strong>{{ e.name }}</strong>
-            <span class="engines-view__id jv-muted">{{ e.id }}</span>
-          </div>
-          <span class="engines-view__status" :data-status="e.status">
-            {{ e.status === 'loaded' ? '● Loaded' : e.status === 'installed' ? '✓ Installed' : '⊘ Not installed' }}
+      <div v-for="e in sec.engines" :key="e.id" class="ev-group">
+        <div class="ev-ghead" @click="toggleOpen(e)">
+          <span class="chev" :class="{ open: isOpen(e) }">▶</span>
+          <span class="nm">{{ e.name }}</span><span class="id">{{ e.id }}</span>
+          <span class="ev-caps">
+            <span v-for="c in engineCaps(e)" :key="c" class="ev-cap" :class="c">{{ c === 'embedding' ? 'EMBED' : c.toUpperCase() }}</span>
+            <span v-if="e.isolation === 'venv'" class="ev-cap iso" title="Runs in its own isolated environment — the same mechanism custom engines use">ISOLATED</span>
           </span>
-        </header>
-
-        <p v-if="e.description" class="engines-view__desc">{{ e.description }}</p>
-
-        <!-- Model dropdown + contextual action button row. -->
-        <div class="engines-view__pick">
-          <label class="engines-view__pick-label">Model:</label>
-          <select
-            v-model="selectedVariants[e.id]"
-            class="jv-input engines-view__pick-select"
-            :disabled="busy[e.id] != null"
-          >
-            <option v-if="!variantsFor(e.id).length" value="">— no variants —</option>
-            <option
-              v-for="v in variantsFor(e.id)"
-              :key="v.id"
-              :value="v.id"
-            >
-              {{ v.name }}
-              <template v-if="v.id === e.current_variant_id"> · loaded</template>
-              <template v-else-if="v.id === e.default_variant_id"> · recommended</template>
-              <template v-if="v.size_mb"> · {{ fmtDisk(v.size_mb) }}</template>
-              <template v-if="v.vram_mb"> · {{ fmtDisk(v.vram_mb) }} VRAM</template>
-            </option>
-          </select>
-          <span class="jv-spacer" />
-          <!-- Contextual action button — Download / Load / Unload / etc. -->
-          <JvButton
-            :variant="contextualAction(e).variant"
-            size="sm"
-            :loading="contextualAction(e).busy"
-            :disabled="contextualAction(e).disabled"
-            :label="contextualAction(e).label"
-            @click="contextualAction(e).action()"
-          />
-          <!-- Delete button — only enabled when at least one variant is on disk. -->
-          <button
-            type="button"
-            class="jv-btn jv-btn--danger-outline jv-btn--sm"
-            :disabled="e.status === 'not_installed' || busy[e.id] != null"
-            @click="uninstall(e)"
-          >Remove</button>
-        </div>
-
-        <!-- Selection-driven info panel: shows the SELECTED variant's
-             detail (not the loaded one) so the user can audit before
-             clicking Load / Download. -->
-        <div v-if="selectedVariantFor(e)" class="engines-view__info">
-          <div class="engines-view__info-meta">
-            <span class="engines-view__info-item" title="Download size of the selected model on disk">
-              <span class="engines-view__info-k">Disk</span> {{ fmtDisk(selectedVariantFor(e).size_mb) }}
-            </span>
-            <span class="engines-view__info-item" v-if="selectedVariantFor(e).vram_mb" title="GPU memory needed to load this model">
-              <span class="engines-view__info-k">VRAM</span> {{ fmtDisk(selectedVariantFor(e).vram_mb) }}
-            </span>
-            <span class="engines-view__info-item" v-if="selectedVariantFor(e).quality != null" title="Relative output quality across the catalog (higher is better)">
-              <span class="engines-view__info-k">Quality</span> {{ selectedVariantFor(e).quality }}/100
-            </span>
-            <span class="engines-view__info-item" v-if="e.weights_license || e.attribution" title="License of the model weights">
-              <span class="engines-view__info-k">License</span> {{ e.weights_license || 'Apache-2.0' }}<template v-if="e.attribution"> — must show "{{ e.attribution }}"</template>
-            </span>
-          </div>
-          <p v-if="selectedVariantFor(e).description" class="engines-view__info-about">
-            {{ selectedVariantFor(e).description }}
-          </p>
-        </div>
-
-        <!-- Inline progress for active install / load — consumes phase
-             events from EngineManager.load() (Phase 2 / Slice 1). -->
-        <div v-if="progress[e.id]" class="engines-view__progress">
-          <span class="engines-view__progress-phase jv-mono">{{ (progress[e.id].phase || '').toUpperCase() }}</span>
-          <div class="engines-view__progress-track">
-            <div
-              class="engines-view__progress-fill"
-              :class="{ 'engines-view__progress-fill--indeterminate': progress[e.id].bytes_total === 0 && progress[e.id].phase !== 'completed' }"
-              :style="progress[e.id].bytes_total > 0 ? { width: pct(progress[e.id]) + '%' } : {}"
-            />
-          </div>
-          <span class="engines-view__progress-bytes jv-mono" v-if="progress[e.id].bytes_total > 0">
-            {{ (progress[e.id].bytes_downloaded / 1048576).toFixed(1) }} / {{ (progress[e.id].bytes_total / 1048576).toFixed(1) }} MB
+          <span class="desc" :title="e.description">{{ e.description }}</span>
+          <span class="gsum">
+            <span v-if="progress[e.id]" class="ev-progress"><i :style="progress[e.id].bytes_total > 0 ? { width: pct(progress[e.id]) + '%' } : { width: '30%' }" /></span>
+            <span v-if="progress[e.id]" class="meta">{{ (progress[e.id].phase || '').replaceAll('_', ' ') }}</span>
+            <span v-if="!progress[e.id] && engineNeedsInstall(e)" class="ev-badge none">engine not installed</span>
+            <JvButton v-if="!progress[e.id] && engineNeedsInstall(e)" variant="primary" size="sm"
+              :label="busy[e.id] === 'install' ? 'Installing…' : 'Install engine'" :disabled="busy[e.id] != null"
+              title="One-time: builds this engine's isolated venv. Models download separately afterwards."
+              @click.stop="install(e, null)" />
+            <span v-if="!progress[e.id] && !engineNeedsInstall(e)" class="meta">{{ groupSummary(e) }}</span>
+            <span v-if="!progress[e.id] && !engineNeedsInstall(e) && loadedVariantName(e)" class="ldd">● {{ loadedVariantName(e) }} loaded</span>
           </span>
-          <span v-if="progress[e.id].error" class="engines-view__progress-error">{{ progress[e.id].error }}</span>
         </div>
-      </li>
-    </ul>
-    <p v-else-if="engines.length" class="jv-muted engines-view__empty">
-      No {{ KIND_LABELS[activeKind] }} engines yet.
-    </p>
 
-    <p v-if="visibleEngines.length" class="engines-view__foot jv-muted">
-      <strong>One engine per kind</strong> — loading a new TTS engine unloads the prior TTS; LLM and embedding engines stay loaded independently. Shared engines (Kokoro, Chatterbox, LuxTTS, Qwen3, TADA) build their venv transparently on first load. Venv-isolated engines (Dia, MOSS) need a one-time Install before Load.
-    </p>
-
-    <!-- ── Registered providers (online + self-hosted) ─────────────── -->
-    <div v-if="activeKind !== 'embedding'" class="engines-view__section-h">
-      <h3>{{ activeKind === 'llm' ? 'Online LLM providers' : 'Online + self-hosted TTS providers' }}</h3>
-      <span class="jv-muted" style="font-size: 12px">
-        {{ activeKind === 'llm'
-          ? 'Cloud providers (Anthropic, OpenAI, Gemini, DeepSeek, OpenRouter) + local OpenAI-compat (Ollama). No venv install — API key + base URL only.'
-          : 'ElevenLabs, Speechify, Speechmatics, OpenAI TTS, self-hosted Kokoro / Chatterbox / Dia servers. JustVoice talks /v1/audio/speech.' }}
-      </span>
-      <span class="jv-spacer" />
-      <JvButton
-        v-if="editingKey !== 'new'"
-        variant="primary"
-        size="sm"
-        :label="`+ Add ${activeKind === 'llm' ? 'LLM' : 'TTS'} provider`"
-        @click="startNewProvider"
-      />
+        <div class="ev-gbody" v-if="isOpen(e)">
+          <div v-for="v in variantsFor(e.id)" :key="v.id" class="ev-model" :class="{ dim: engineNeedsInstall(e) }">
+            <span v-if="fitFor(v)" class="ev-fit" :class="fitFor(v)" :title="FIT_TITLES[fitFor(v)]"></span>
+            <span class="vn">{{ v.name }}</span>
+            <span class="vmeta">{{ fmtDisk(v.size_mb) }}<span v-if="v.vram_mb"> · {{ fmtDisk(v.vram_mb) }} VRAM</span></span>
+            <span class="vdesc" :title="v.description">{{ v.description }}</span>
+            <span class="right">
+              <span v-if="modelLoaded(e, v)" class="ev-badge loaded">● Loaded</span>
+              <JvButton v-if="modelLoaded(e, v)" variant="ghost" size="sm" label="Unload model" title="Free the slot — weights stay on disk" @click="unload(e)" />
+              <JvButton v-if="modelLoaded(e, v)" variant="ghost" size="sm" label="Delete model" class="ev-danger" title="Delete the downloaded weights from disk" @click="deleteModel(e, v)" />
+              <JvButton v-if="!modelLoaded(e, v) && modelOnDisk(e, v)" variant="primary" size="sm"
+                :label="busy[e.id] === 'load' ? 'Loading…' : 'Load model'" :disabled="busy[e.id] != null"
+                :title="`Load into the ${(e.kind || 'tts').toUpperCase()} slot`" @click="load(e, v.id)" />
+              <JvButton v-if="!modelLoaded(e, v) && modelOnDisk(e, v) && v.on_disk === true" variant="ghost" size="sm" label="Delete model" class="ev-danger"
+                :title="`Delete the downloaded weights — frees ${fmtDisk(v.size_mb)}`" @click="deleteModel(e, v)" />
+              <JvButton v-if="!modelLoaded(e, v) && !modelOnDisk(e, v)" variant="primary" size="sm"
+                :label="busy[e.id] === 'install' ? 'Downloading…' : `⬇ Download ${fmtDisk(v.size_mb)}`"
+                :disabled="busy[e.id] != null || engineNeedsInstall(e)"
+                title="Fetch the weights — nothing loads until you say so" @click="install(e, v.id)" />
+            </span>
+          </div>
+          <div class="ev-gfoot" v-if="e.isolation === 'venv' && e.status !== 'not_installed'">
+            isolated venv
+            <JvButton variant="ghost" size="sm" label="Uninstall engine" class="ev-danger" style="margin-left:auto"
+              title="Remove this engine's venv and all its downloaded models" @click="uninstall(e)" />
+          </div>
+          <div class="ev-gfoot" v-else-if="e.isolation !== 'venv' && (e.status === 'installed' || e.status === 'loaded')">
+            shared runtime · engine installed automatically
+          </div>
+          <div v-if="progress[e.id]?.error" class="ev-error">{{ progress[e.id].error }}</div>
+        </div>
+      </div>
     </div>
 
-    <!-- Inline editor for a new provider — sits above the existing list. -->
+    <p class="ev-fitnote" v-if="gpuVramMb">
+      Hardware fit, against your card:
+      <span class="ev-fit ok"></span> fits
+      <span class="ev-fit tight"></span> tight — free a slot first
+      <span class="ev-fit no"></span> won't fit in {{ fmtDisk(gpuVramMb) }}
+    </p>
+
+    <div class="ev-runtime">
+      Shared runtime (torch + common deps for the {{ sharedEngines }} shared engines)
+      <span class="jv-muted" style="margin-left:auto">engines install into it automatically on first use</span>
+    </div>
+  </div>
+
+  <!-- ════ ONLINE PROVIDERS ════ -->
+  <div v-show="topTab === 'online'">
+    <div class="ev-toprow">
+      <div class="ev-search">🔍 <input v-model="qp" placeholder="Search providers…"></div>
+      <div class="ev-chips">
+        <button v-for="c in ['all','tts','llm']" :key="c" type="button" class="ev-chip" :class="{ on: capOnline === c }" @click="capOnline = c"
+        >{{ c === 'all' ? 'All' : c.toUpperCase() }}</button>
+      </div>
+      <JvButton variant="primary" size="sm" label="+ Add provider" title="Connect a cloud or self-hosted API — no install, no downloads, no VRAM" @click="startNewProvider" />
+    </div>
+
+    <div class="ev-costnote">
+      💳 These call external APIs with your keys — usage is billed by the provider, and your text leaves this machine.
+      Local models on the other tab are free and private. ·
+      <a class="ev-xlink" href="#settings" title="Which provider+model each AI feature uses">feature routing → Settings · AI features</a>
+    </div>
+
     <ProviderForm
-      v-if="editingKey === 'new' && draft && activeKind !== 'embedding'"
+      v-if="editingKey === 'new' && draft"
       :draft="draft"
       editing-key="new"
-      :kind-hint="activeKind"
       @save="saveProvider"
       @cancel="cancelEdit"
     />
 
-    <!-- Registered provider rows — click Edit to expand into the form. -->
-    <ul v-if="activeKind !== 'embedding' && visibleProviders.length" class="engines-view__provider-list">
-      <li v-for="p in visibleProviders" :key="p.id" class="engines-view__provider">
-        <template v-if="editingKey === p.id && draft">
-          <ProviderForm
-            :draft="draft"
-            :editing-key="editingKey"
-            :kind-hint="activeKind"
-            @save="saveProvider"
-            @cancel="cancelEdit"
-            @delete="deleteProvider"
-          />
-        </template>
-        <template v-else>
-          <div class="engines-view__provider-row">
-            <div class="engines-view__provider-id">
-              <strong>{{ p.name || p.id }}</strong>
-              <span class="jv-muted" style="font-size: 11px"> · {{ p.id }} · {{ p.provider_type }}</span>
-            </div>
-            <div class="engines-view__provider-meta">
-              <span v-if="p.has_api_key || p.api_key" class="jv-pill jv-pill--ghost" title="API key on file">🔑</span>
-              <span v-if="p.registered" class="jv-pill jv-pill--green">live</span>
-              <span v-else-if="activeKind === 'llm'" class="jv-pill jv-pill--warn">unregistered</span>
-              <span v-if="p.default_model || p.tts_model" class="jv-muted" style="font-size: 11px">{{ p.default_model || p.tts_model }}</span>
-            </div>
-            <span class="jv-spacer" />
-            <JvButton variant="ghost" size="sm" label="Edit" @click="startEditProvider(p)" />
-          </div>
-        </template>
-      </li>
-    </ul>
-    <p v-else-if="activeKind !== 'embedding' && editingKey !== 'new'" class="jv-muted engines-view__empty">
-      No {{ activeKind === 'llm' ? 'LLM' : 'TTS' }} providers registered. Click <strong>+ Add</strong> to register one — Claude, OpenAI, ElevenLabs, etc.
-    </p>
-
-    <p class="engines-view__foot jv-muted">
-      <strong>Feature pins</strong> route Compose / Persona rewrite / Speaker attribution / Suggest / Smart-assign to specific providers + models — configure in
-      <a href="#settings">Settings → AI features</a>. Unpinned features fall back to the first registered LLM provider.
-    </p>
-  </section>
+    <div v-for="pr in allProviders" :key="`${pr.kind}-${pr.id}`" class="ev-prov">
+      <div class="ev-prow" v-if="editingKey !== pr.id">
+        <span class="ev-dot" :class="{ off: !pr.has_api_key && pr.kind !== 'llm' }"></span>
+        <div class="pmain">
+          <span class="nm">{{ pr.name || pr.id }}</span>
+          <span class="ev-caps" style="display:inline-flex;margin-left:6px">
+            <span v-for="c in pr.caps" :key="c" class="ev-cap" :class="c">{{ c.toUpperCase() }}</span>
+          </span>
+          <span class="url">{{ pr.base_url || '—' }}</span>
+          <span class="msum">{{ pr.msum }}</span>
+        </div>
+        <span class="right">
+          <JvButton variant="ghost" size="sm" label="Edit" title="Edit inline — URL, key, capabilities, models" @click="startEditProvider(pr)" />
+        </span>
+      </div>
+      <ProviderForm
+        v-if="editingKey === pr.id && draft"
+        :draft="draft"
+        :editing-key="pr.id"
+        @save="saveProvider"
+        @cancel="cancelEdit"
+        @delete="deleteProvider"
+      />
+    </div>
+    <p v-if="!allProviders.length" class="jv-muted" style="margin-top:14px">No providers yet — click “+ Add provider”.</p>
+  </div>
 </template>
 
+
 <style scoped>
-.engines-view__hw {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 16px 24px;
-}
-.engines-view__hw-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.engines-view__hw-k {
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  font-weight: 600;
-}
-.engines-view__hw-runtimes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 2px;
-}
-
-/* ── Kind tabs ────────────────────────────────────────────────────── */
-.engines-view__tabs {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin: 6px 0 14px;
-  border-bottom: 1px solid var(--border-soft);
-}
-.engines-view__tabs-spacer { flex: 1; }
-.engines-view__tab {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  padding: 8px 14px;
-  font: inherit;
-  font-size: 12.5px;
-  color: var(--ink-2);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-}
-.engines-view__tab:hover { color: var(--ink); }
-.engines-view__tab--active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-  font-weight: 600;
-}
-
-/* ── Engine row ───────────────────────────────────────────────────── */
-.engines-view__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.engines-view__engine {
-  border: 1px solid var(--border-soft);
-  border-radius: 8px;
-  background: var(--surface);
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  transition: border-color 0.15s;
-}
-.engines-view__engine:hover {
-  border-color: var(--border);
-}
-.engines-view__engine[data-status="loaded"] {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent-line, transparent) inset;
-}
-
-.engines-view__head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.engines-view__title {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  flex: 1;
-}
-.engines-view__title strong { font-size: 15px; }
-.engines-view__id {
-  font-family: var(--font-mono);
-  font-size: 11px;
-}
-
-.engines-view__status {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border-soft);
-  background: var(--surface-2);
-  color: var(--ink-2);
-  white-space: nowrap;
-}
-.engines-view__status[data-status="loaded"] {
-  background: var(--accent);
-  color: var(--surface);
-  border-color: var(--accent);
-}
-.engines-view__status[data-status="installed"] {
-  color: var(--accent);
-  border-color: var(--accent-line, var(--accent));
-}
-.engines-view__status[data-status="not_installed"] {
-  border-style: dashed;
-  color: var(--muted);
-}
-
-.engines-view__desc {
-  margin: 0;
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--ink-2);
-}
-
-.engines-view__pick {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.engines-view__pick-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  font-weight: 600;
-}
-.engines-view__pick-select {
-  flex: 1 1 260px;
-  min-width: 200px;
-}
-
-.engines-view__info {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
-  background: var(--surface-2);
-  border-radius: 6px;
-  font-size: 12.5px;
-}
-/* Horizontal meta line — label·value pairs flow inline and wrap,
-   separated by middots, instead of the old one-pair-per-row grid. */
-.engines-view__info-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  column-gap: 8px;
-  row-gap: 4px;
-}
-.engines-view__info-item {
-  white-space: nowrap;
-}
-.engines-view__info-item + .engines-view__info-item::before {
-  content: "·";
-  color: var(--ink-3);
-  margin-right: 8px;
-}
-.engines-view__info-about {
-  margin: 0;
-  line-height: 1.5;
-  color: var(--ink-2);
-}
-.engines-view__info-k {
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  font-weight: 600;
-  margin-right: 2px;
-}
-
-/* ── Inline progress ──────────────────────────────────────────────── */
-.engines-view__progress {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  background: var(--surface-2);
-  border: 1px solid var(--border-soft);
-  border-radius: 6px;
-  font-size: 11px;
-}
-.engines-view__progress-phase {
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  font-weight: 600;
-  color: var(--ink-2);
-  min-width: 100px;
-}
-.engines-view__progress-track {
-  flex: 1 1 200px;
-  height: 6px;
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
-  border-radius: 999px;
-  overflow: hidden;
-  min-width: 140px;
-}
-.engines-view__progress-fill {
-  height: 100%;
-  background: var(--accent);
-  transition: width 0.2s ease;
-}
-.engines-view__progress-fill--indeterminate {
-  width: 35% !important;
-  animation: engineCardIndeterminate 1.4s ease-in-out infinite;
-}
-@keyframes engineCardIndeterminate {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(285%); }
-}
-.engines-view__progress-bytes {
-  font-size: 10.5px;
-  color: var(--muted);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-.engines-view__progress-error {
-  font-size: 11px;
-  color: var(--danger);
-}
-
-.engines-view__empty { padding: 16px 0; }
-
-.engines-view__foot {
-  margin-top: 18px;
-  font-size: 11.5px;
-  max-width: var(--w-edit);
-  line-height: 1.55;
-}
-
-/* ── Section header (Local engines / Online providers split) ─────── */
-.engines-view__section-h {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin: 22px 0 10px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--line);
-  flex-wrap: wrap;
-}
-.engines-view__section-h h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-/* ── Registered-provider list ───────────────────────────────────── */
-.engines-view__provider-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.engines-view__provider {
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--surface);
-}
-.engines-view__provider-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-}
-.engines-view__provider-id { display: flex; align-items: baseline; gap: 6px; }
-.engines-view__provider-meta { display: flex; align-items: center; gap: 6px; }
+/* ── Engines redesign (v7 contract) ─────────────────────────────────── */
+.ev-tabs{display:flex;gap:10px;border-bottom:2px solid var(--line);margin-bottom:16px}
+.ev-tab{display:flex;flex-direction:column;gap:1px;padding:10px 22px 12px;border:1px solid transparent;border-bottom:0;border-radius:10px 10px 0 0;cursor:pointer;background:transparent;font:inherit;text-align:left;margin-bottom:-2px}
+.ev-tab .t1{font-weight:700;font-size:14.5px;color:var(--ink-2)}
+.ev-tab .t2{font-size:11px;color:var(--ink-3)}
+.ev-tab.on{background:var(--surface);border-color:var(--line);border-bottom:2px solid var(--surface)}
+.ev-tab.on .t1{color:var(--ink)}
+.ev-tab.on .t2 .free{color:var(--accent-ink,#2c6049);font-weight:700}
+.ev-tab.on .t2 .paid{color:#b08a3e;font-weight:700}
+.ev-toprow{display:flex;gap:12px;align-items:center;margin-bottom:14px}
+.ev-search{flex:1;display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:0 14px}
+.ev-search input{flex:1;border:0;outline:0;font:inherit;font-size:13.5px;background:transparent;padding:11px 0}
+.ev-chips{display:flex;gap:6px}
+.ev-chip{font:inherit;font-size:11.5px;font-weight:700;letter-spacing:.04em;border:1px solid var(--line);border-radius:999px;padding:5px 13px;cursor:pointer;background:var(--surface);color:var(--ink-2)}
+.ev-chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.ev-hw{display:flex;gap:26px;align-items:center;padding:12px 18px;margin-bottom:14px}
+.ev-hw-cell .k{font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em}
+.ev-rail{display:flex;align-items:center;background:var(--surface);border:1px solid var(--accent-line,#b8d2c3);border-radius:10px;margin-bottom:18px;overflow:hidden}
+.ev-rail-h{background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:14px 16px;align-self:stretch;display:flex;align-items:center;border-right:1px solid var(--accent-line,#b8d2c3)}
+.ev-slot{display:flex;align-items:center;gap:10px;padding:9px 16px;border-right:1px solid var(--line);flex:1;min-width:0}
+.ev-slot .k{font-size:10.5px;font-weight:700;color:var(--ink-3);width:30px}
+.ev-slot .nm{font-weight:600;font-size:13px;white-space:nowrap}
+.ev-slot .sub{font-size:11px;color:var(--ink-3);white-space:nowrap}
+.ev-slot.empty .nm{color:var(--ink-3);font-weight:400}
+.ev-x{margin-left:auto;border:1px solid var(--line);background:var(--surface);border-radius:6px;font-size:11px;padding:3px 9px;cursor:pointer;color:var(--ink-2)}
+.ev-x:hover{border-color:#b04a3e;color:#b04a3e}
+.ev-vrtotal{padding:9px 16px;font-size:12px;color:var(--ink-2);border-left:1px solid var(--line);white-space:nowrap}
+.ev-section-h{display:flex;align-items:baseline;gap:10px;margin:26px 0 0;padding-bottom:8px;border-bottom:2px solid var(--line)}
+.ev-section-h h3{font-family:var(--font-serif,Georgia,serif);font-size:17px;margin:0;font-weight:600}
+.ev-section-h .suffix{color:var(--ink-3);font-weight:400}
+.ev-section-h .count{font-size:12px;color:var(--ink-3)}
+.ev-section-h .note{margin-left:auto;font-size:12px;color:var(--ink-3)}
+.ev-xlink{color:var(--accent-ink,#2c6049);text-decoration:underline}
+.ev-group{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-top:10px;box-shadow:0 1px 3px rgba(20,22,24,.04);overflow:hidden}
+.ev-ghead{display:flex;align-items:center;gap:10px;padding:11px 16px;cursor:pointer}
+.ev-ghead:hover{background:var(--surface-2)}
+.ev-ghead .chev{color:var(--ink-3);font-size:10px;width:11px;transition:transform .15s;flex:none}
+.ev-ghead .chev.open{transform:rotate(90deg)}
+.ev-ghead .nm{font-weight:700;font-size:14px;white-space:nowrap}
+.ev-ghead .id{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3)}
+.ev-ghead .desc{color:var(--ink-3);font-size:12px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev-ghead .gsum{margin-left:auto;display:flex;align-items:center;gap:8px;flex:none;font-size:12px;color:var(--ink-2)}
+.ev-ghead .gsum .meta{font-size:12px;color:var(--ink-2)}
+.ev-ghead .gsum .ldd{color:var(--accent-ink,#2c6049);font-weight:600}
+.ev-caps{display:flex;gap:4px;flex:none}
+.ev-cap{font-size:9.5px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:999px;border:1px solid var(--line-strong,#cfccc4);color:var(--ink-2);background:var(--surface)}
+.ev-cap.tts{border-color:var(--accent-line,#b8d2c3);background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049)}
+.ev-cap.stt{border-color:#c8d4e8;background:#eaf0f8;color:#3a5a8c}
+.ev-cap.llm{border-color:#e2d2b0;background:#f5edda;color:#b08a3e}
+.ev-cap.embedding{border-color:#bcd9d4;background:#e3f1ee;color:#2e6e64}
+.ev-cap.iso{border-color:#d8c8e8;background:#f1eaf8;color:#6a4a8c}
+.ev-badge{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:4px 11px;border-radius:999px}
+.ev-badge.loaded{background:var(--accent);color:#fff}
+.ev-badge.none{border:1px dashed var(--line-strong,#cfccc4);color:var(--ink-3)}
+.ev-gbody{border-top:1px solid var(--line)}
+.ev-model{display:flex;align-items:center;gap:12px;padding:10px 16px 10px 37px;border-bottom:1px solid var(--line)}
+.ev-model:last-of-type{border-bottom:0}
+.ev-model:hover{background:var(--surface-2)}
+.ev-model.dim{opacity:.55}
+.ev-model .vn{font-weight:600;font-size:13.5px;min-width:170px}
+.ev-model .vmeta{font-size:11.5px;color:var(--ink-3);min-width:150px}
+.ev-model .vdesc{font-size:12px;color:var(--ink-2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev-model .right{margin-left:auto;display:flex;gap:8px;align-items:center;flex:none}
+.ev-fit{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
+.ev-fit.ok{background:#4d9b6d}
+.ev-fit.tight{background:#d9a23c}
+.ev-fit.no{background:#c45a4d}
+.ev-gfoot{display:flex;align-items:center;gap:10px;padding:8px 16px 8px 37px;font-size:11.5px;color:var(--ink-3);background:var(--surface-2)}
+.ev-error{padding:8px 16px;font-size:12px;color:#b04a3e}
+.ev-progress{height:6px;border-radius:3px;background:var(--surface-3,#f3f1ec);width:120px;overflow:hidden;display:inline-block}
+.ev-progress i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.ev-danger{color:#b04a3e !important}
+.ev-fitnote{font-size:11px;color:var(--ink-3);margin:14px 2px 0}
+.ev-fitnote .ev-fit{vertical-align:middle;margin:0 3px 0 10px}
+.ev-runtime{display:flex;align-items:center;gap:10px;margin-top:14px;padding:10px 16px;border:1px dashed var(--line-strong,#cfccc4);border-radius:10px;font-size:12px;color:var(--ink-3)}
+.ev-empty{margin-top:10px;border:1px dashed var(--line-strong,#cfccc4);border-radius:10px;padding:16px 18px;font-size:12.5px;color:var(--ink-3);background:var(--surface)}
+.ev-costnote{display:flex;gap:10px;align-items:center;margin-bottom:14px;padding:10px 16px;border:1px solid #e2d2b0;background:#f5edda;border-radius:10px;font-size:12.5px;color:var(--ink-2)}
+.ev-prov{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-top:10px;overflow:hidden}
+.ev-prow{display:flex;align-items:center;gap:12px;padding:12px 16px}
+.ev-dot{width:8px;height:8px;border-radius:50%;background:#4d9b6d;flex:none}
+.ev-dot.off{background:var(--line-strong,#cfccc4)}
+.ev-prow .pmain{min-width:0;flex:1}
+.ev-prow .nm{font-weight:600}
+.ev-prow .url{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);display:block}
+.ev-prow .msum{font-size:11.5px;color:var(--ink-2)}
+.ev-prow .right{margin-left:auto;display:flex;gap:8px;align-items:center;flex:none}
 </style>
+

@@ -356,13 +356,81 @@ const SUBS = [
   { id: "capture",    label: "Capture / Dictation" },
   { id: "mcp",        label: "MCP server" },
   { id: "gpu",        label: "GPU" },
-  { id: "external",   label: "External TTS" },
   { id: "appearance", label: "Appearance" },
   { id: "logs",       label: "Logs" },
   { id: "changelog",  label: "Changelog" },
   { id: "about",      label: "About" },
 ];
 const activeSub = ref("general");
+
+// ── Model roles — Quick / Accuracy (engines redesign 2026-06-11) ─────
+// Two plain-language roles; features inherit one unless pinned. The
+// recommendations endpoint classifies registered providers' models so
+// the user never answers "which model is fast?" cold.
+const roleRecs = ref(null);
+const roles = ref({ quick: null, accuracy: null });
+async function loadRoles() {
+  const [recs, st] = await Promise.all([
+    api.safeRequest("/v1/llm-roles/recommendations", null),
+    api.safeRequest("/v1/settings", null),
+  ]);
+  roleRecs.value = recs;
+  roles.value = {
+    quick: st?.engines?.llm_roles?.quick || null,
+    accuracy: st?.engines?.llm_roles?.accuracy || null,
+  };
+}
+function roleValue(role) {
+  const t = roles.value[role];
+  return t ? `${t.provider_id}::${t.model}` : "";
+}
+async function setRole(role, packed) {
+  const [provider_id, model] = (packed || "::").split("::");
+  const next = { ...roles.value, [role]: provider_id ? { provider_id, model } : null };
+  try {
+    await api.request("/v1/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ engines: { llm_roles: next } }),
+    });
+    roles.value = next;
+    pushToast({ message: `${role === "quick" ? "Quick" : "Accuracy"} model updated.`, duration: 2500 });
+  } catch (e) {
+    pushToast({ message: `Save failed: ${e?.message || e}`, kind: "error" });
+  }
+}
+function acceptRecommendedRoles() {
+  const q = roleRecs.value?.recommended_quick;
+  const a = roleRecs.value?.recommended_accuracy;
+  if (q) setRole("quick", `${q.provider_id}::${q.model}`);
+  if (a) setRole("accuracy", `${a.provider_id}::${a.model}`);
+}
+
+// ── Production configs (Speaker Lab promote → here) ─────────────────
+const prodConfigs = ref([]);
+async function loadProdConfigs() {
+  const r = await api.safeRequest("/v1/production-configs", { configs: [] });
+  prodConfigs.value = r?.configs || [];
+}
+function configFor(feature) {
+  return prodConfigs.value.find((c) => c.feature === feature) || null;
+}
+function goHash(h) { window.location.hash = h; }
+async function revertConfig(feature) {
+  const ok = await confirmDialog({
+    title: "Revert to Default?",
+    message: "The feature goes back to the routing table + tier-resolved prompts. The Lab preset itself is untouched.",
+    confirmLabel: "Revert",
+  });
+  if (!ok) return;
+  try {
+    await api.request(`/v1/production-configs/${feature}`, { method: "DELETE" });
+    await loadProdConfigs();
+    pushToast({ message: "Reverted to Default (tier-resolved).", duration: 2500 });
+  } catch (e) {
+    pushToast({ message: `Revert failed: ${e?.message || e}`, kind: "error" });
+  }
+}
 
 // ── AI features panel (plan Q5 / Slice 1) ───────────────────────────
 // Pin LLM features (compose / persona_rewrite / speaker_attribution /
@@ -848,6 +916,8 @@ onMounted(() => {
   loadMcpBindings();
   loadLogsPreview();
   loadAiPanel();
+  loadRoles();
+  loadProdConfigs();
   loadCorrections();
 });
 </script>
@@ -1130,6 +1200,69 @@ onMounted(() => {
     </div>
 
     <!-- ─── AI features (Phase 2 / Slice 7 UI surface) ─── -->
+    <!-- ─── AI · Model roles (engines redesign) ─── -->
+    <div v-show="activeSub === 'ai'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header" style="display:flex;align-items:center;gap:10px">
+          <h3 class="jv-card__title" style="margin:0">Model roles</h3>
+          <span class="jv-spacer" />
+          <JvButton v-if="roleRecs?.recommended_quick || roleRecs?.recommended_accuracy" variant="secondary" size="sm"
+            label="Use recommended" title="Apply the app's hardware-aware picks for both roles" @click="acceptRecommendedRoles" />
+        </div>
+        <p class="jv-muted" style="font-size:12.5px">
+          Two jobs, two models. <b>Quick</b> answers in under a second (dictation cleanup, Compose, Rewrite);
+          <b>Accuracy</b> takes its time (speaker extraction, smart-assign, show notes). Features inherit these
+          unless pinned below. Manage connections on the <a href="#engines">Engines page</a>.
+        </p>
+        <div class="settings-grid" style="margin-top:12px">
+          <JvField label="Quick model" layout="block">
+            <select class="jv-input" :value="roleValue('quick')" @change="setRole('quick', $event.target.value)"
+              title="Sub-second answers — used by every keystroke-adjacent feature">
+              <option value="">(not set — features fall back to the first provider)</option>
+              <option v-for="c in roleRecs?.candidates || []" :key="`q-${c.provider_id}-${c.model}`" :value="`${c.provider_id}::${c.model}`">
+                {{ c.label }}{{ roleRecs?.recommended_quick && roleRecs.recommended_quick.model === c.model && roleRecs.recommended_quick.provider_id === c.provider_id ? ' · RECOMMENDED' : '' }}
+              </option>
+            </select>
+          </JvField>
+          <JvField label="Accuracy model" layout="block">
+            <select class="jv-input" :value="roleValue('accuracy')" @change="setRole('accuracy', $event.target.value)"
+              title="Takes its time, gets it right — used inside async jobs">
+              <option value="">(not set — features fall back to the first provider)</option>
+              <option v-for="c in roleRecs?.candidates || []" :key="`a-${c.provider_id}-${c.model}`" :value="`${c.provider_id}::${c.model}`">
+                {{ c.label }}{{ roleRecs?.recommended_accuracy && roleRecs.recommended_accuracy.model === c.model && roleRecs.recommended_accuracy.provider_id === c.provider_id ? ' · RECOMMENDED' : '' }}
+              </option>
+            </select>
+          </JvField>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── AI · Production configs (Speaker Lab promote lands here) ─── -->
+    <div v-show="activeSub === 'ai'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">Production configs</h3></div>
+        <p class="jv-muted" style="font-size:12.5px">
+          A config freezes a feature exactly as tuned in its Lab — model <i>and</i> prompts. The active config
+          beats the pins below. <b>Default (tier-resolved)</b> = routing decides the model; prompts auto-match its size.
+          Precedence: <span class="jv-mono" style="font-size:11px">config → pin → role → tier</span>.
+        </p>
+        <div v-for="f in [{ key: 'speaker_attribution', label: 'Speaker extraction', lab: '#speakerlab' }]" :key="f.key"
+          style="display:flex;align-items:center;gap:10px;margin-top:10px;padding:11px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2)">
+          <strong style="font-size:13.5px">{{ f.label }}</strong>
+          <span class="jv-muted" style="font-size:12px">
+            Active: <b style="color:var(--ink)">{{ configFor(f.key)?.name || 'Default (tier-resolved)' }}</b>
+            <span v-if="configFor(f.key)" class="jv-pill jv-pill--violet" style="margin-left:6px">FROM SPEAKER LAB</span>
+          </span>
+          <span v-if="configFor(f.key)" class="jv-mono jv-muted" style="font-size:11px">
+            {{ configFor(f.key).model }}<span v-if="configFor(f.key).temperature != null"> · temp {{ configFor(f.key).temperature }}</span><span v-if="configFor(f.key).system_prompt"> · custom prompts</span>
+          </span>
+          <span class="jv-spacer" />
+          <JvButton variant="ghost" size="sm" label="Open in Speaker Lab" title="Retune the prompts and re-promote" @click="goHash(f.lab)" />
+          <JvButton v-if="configFor(f.key)" variant="ghost" size="sm" label="Revert to Default" title="Back to the routing table + tier-resolved prompts" @click="revertConfig(f.key)" />
+        </div>
+      </div>
+    </div>
+
     <div v-show="activeSub === 'ai'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header">
@@ -1521,124 +1654,11 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── External TTS · servers ─── -->
-    <div v-show="activeSub === 'external'" class="jv-section">
-      <div class="jv-card">
-        <div class="jv-card__header">
-          <h3 class="jv-card__title">External TTS servers (OpenAI-compatible)</h3>
-        </div>
-        <p class="jv-muted" style="font-size: 12px; margin-bottom: 16px;">
-          Register an external server that implements the OpenAI TTS API (<code class="jv-mono">POST /v1/audio/speech</code>) as a JustVoice engine.
-          Compatible with kokoro-fastapi, openai-edge-tts, OpenAI itself, or any custom server.
-        </p>
-
-        <table v-if="settings.engines && settings.engines.external && settings.engines.external.length" class="jv-table" style="margin-bottom: 20px;">
-          <thead>
-            <tr>
-              <th>id</th>
-              <th>name</th>
-              <th>base_url</th>
-              <th>model</th>
-              <th>voices</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(ext, idx) in settings.engines.external" :key="ext.id">
-              <td><code class="jv-mono">{{ ext.id }}</code></td>
-              <td><JvInput v-model="ext.name" /></td>
-              <td><JvInput v-model="ext.base_url" :spellcheck="false" /></td>
-              <td><JvInput v-model="ext.model" /></td>
-              <td>
-                <JvInput
-                  :modelValue="voicesText(ext)"
-                  @update:modelValue="setVoicesText(ext, $event)"
-                  placeholder="comma-separated"
-                />
-              </td>
-              <td class="jv-table__actions">
-                <JvButton variant="danger-outline" size="sm" @click="removeExternalEngine(idx)">Remove</JvButton>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <p v-else class="jv-muted" style="font-style: italic; margin-bottom: 16px;">No external engines configured.</p>
-
-        <div class="jv-divider"></div>
-        <h4 style="margin-bottom: 14px; color: var(--ink-3); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">Add a server</h4>
-
-        <div class="settings-grid" style="margin-bottom: 14px;">
-          <div style="grid-column: 1 / -1;">
-            <JvField label="Base URL" layout="block">
-              <JvInput v-model="newExternal.base_url" placeholder="http://127.0.0.1:8880" :spellcheck="false" width="url" />
-            </JvField>
-          </div>
-          <div style="grid-column: 1 / -1;">
-            <JvField label="API key (optional — required for OpenAI itself)" layout="block">
-              <JvInput v-model="newExternal.api_key" type="password" placeholder="leave blank for self-hosted servers" width="url" />
-            </JvField>
-          </div>
-        </div>
-
-        <div class="jv-row" style="margin-bottom: 14px;">
-          <JvButton variant="secondary" :loading="probeBusy" :disabled="probeBusy || !newExternal.base_url" @click="testExternalConnection">
-            {{ probeBusy ? "Probing…" : "Test connection" }}
-          </JvButton>
-          <span class="jv-muted" style="font-size: 12px;">Pings the server and lists its models + voices.</span>
-        </div>
-
-        <div
-          v-if="probe"
-          class="jv-banner"
-          :class="probe.reachable ? '' : 'jv-banner--danger'"
-          style="margin-bottom: 14px;"
-        >
-          <strong>{{ probe.reachable ? "Reachable" : "Unreachable" }}</strong>
-          <template v-if="probe.server_hint && probe.server_hint !== 'unknown'"> · <code class="jv-mono">{{ probe.server_hint }}</code></template>
-          <span v-if="probeModels.length"> · {{ probeModels.length }} model{{ probeModels.length !== 1 ? "s" : "" }}</span>
-          <span v-if="probeVoices.length"> · {{ probeVoices.length }} voice{{ probeVoices.length !== 1 ? "s" : "" }}</span>
-          <span v-if="probe.error"> · {{ probe.error }}</span>
-        </div>
-
-        <div class="settings-grid" style="margin-bottom: 14px;">
-          <JvField label="id (e.g. external-kokoro)" layout="block">
-            <JvInput v-model="newExternal.id" placeholder="external-kokoro-local" :spellcheck="false" width="id" />
-          </JvField>
-          <JvField label="Name" layout="block">
-            <JvInput v-model="newExternal.name" placeholder="Local Kokoro FastAPI" width="name" />
-          </JvField>
-          <JvField label="Model" layout="block">
-            <JvSelect
-              v-if="probeModels.length"
-              v-model="newExternal.model"
-              :options="probeModelOptions"
-              width="id"
-            />
-            <JvInput v-else v-model="newExternal.model" placeholder="kokoro" width="id" />
-          </JvField>
-          <div style="grid-column: 1 / -1;">
-            <JvField label="Voices (comma-separated)" layout="block">
-              <JvInput v-model="newExternal.voicesText" placeholder="af_heart, af_bella, am_michael" :spellcheck="false" width="prose" />
-              <p v-if="probeVoices.length" class="jv-muted" style="font-size: 11px; margin-top: 4px;">
-                Discovered: <code class="jv-mono">{{ probeVoices.join(", ") }}</code>
-              </p>
-            </JvField>
-          </div>
-        </div>
-
-        <JvButton
-          variant="primary"
-          :loading="addBusy"
-          :disabled="addBusy || !newExternal.id || !newExternal.base_url"
-          @click="addExternalEngine"
-        >
-          {{ addBusy ? "Adding…" : "Add external server" }}
-        </JvButton>
-      </div>
-    </div>
-
-    <!-- ─── External TTS · Model URL overrides ─── -->
-    <div v-show="activeSub === 'external'" class="jv-section" v-if="settings.models">
+    <!-- External TTS servers moved to Engines → Online providers
+         (engines redesign 2026-06-11) — settings.engines.external data
+         unchanged; this page no longer renders it. -->
+    <!-- ─── General · Model URL overrides (was under External TTS) ─── -->
+    <div v-show="activeSub === 'general'" class="jv-section" v-if="settings.models">
       <div class="jv-card">
         <div class="jv-card__header">
           <h3 class="jv-card__title">Model URL overrides</h3>
