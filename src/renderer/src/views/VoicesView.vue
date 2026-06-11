@@ -447,6 +447,38 @@ const inspectedVoice = computed(() =>
 );
 function inspect(voice) {
   inspectedId.value = inspectedId.value === voice.id ? null : voice.id;
+  if (inspectedId.value) {
+    editDraft.value = { name: voice.name || "", gender: voice.gender || "", language: voice.language || "en" };
+  }
+}
+
+// Edit-voice (Phase E: grow Inspect into a full editor). Presets ship
+// with the engine and stay read-only; stored voices (cloned / blended /
+// designed / trained / imported) PATCH their metadata.
+const editDraft = ref({ name: "", gender: "", language: "en" });
+const editSaving = ref(false);
+const inspectedEditable = computed(() => inspectedVoice.value && inspectedVoice.value.source !== "preset");
+async function saveVoiceEdit() {
+  const v = inspectedVoice.value;
+  if (!v || editSaving.value) return;
+  editSaving.value = true;
+  try {
+    await api.request(`/v1/voices/${v.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: editDraft.value.name?.trim() || v.name,
+        gender: editDraft.value.gender || null,
+        language: editDraft.value.language || null,
+      }),
+    });
+    pushToast({ kind: "success", title: "Voice updated" });
+    await refresh();
+  } catch (e) {
+    pushToast({ kind: "error", title: "Update failed", description: String(e?.message ?? e) });
+  } finally {
+    editSaving.value = false;
+  }
 }
 
 // Stub sample rows when API has only sample_count — real samples list
@@ -648,13 +680,24 @@ function blendWithVoice() {
     <header class="voices-view__inspector-h">
       <h3>Voice inspector — {{ inspectedVoice.name }}</h3>
       <span class="jv-spacer" />
+      <JvButton
+        v-if="inspectedEditable"
+        variant="primary"
+        size="sm"
+        label="Save changes"
+        :loading="editSaving"
+        title="Rename / gender / language — PATCHes the stored voice"
+        @click="saveVoiceEdit"
+      />
+      <span v-else class="jv-pill jv-pill--ghost" title="Engine presets ship with the engine — clone or blend to make an editable copy">preset · read-only</span>
       <JvButton variant="ghost" size="sm" label="Close" @click="inspectedId = null" />
     </header>
 
     <div class="voices-view__inspector-grid">
       <label class="voices-view__field">
         <span>Name</span>
-        <input class="jv-input" :value="inspectedVoice.name" readonly />
+        <input v-if="inspectedEditable" class="jv-input" v-model="editDraft.name" title="Rename — every picker and persona link follows the id, so renaming is safe" />
+        <input v-else class="jv-input" :value="inspectedVoice.name" readonly title="Engine presets are read-only" />
       </label>
       <label class="voices-view__field">
         <span>Type</span>
@@ -665,8 +708,19 @@ function blendWithVoice() {
         <input class="jv-input" :value="inspectedVoice.engine" readonly />
       </label>
       <label class="voices-view__field">
+        <span>Gender</span>
+        <select v-if="inspectedEditable" class="jv-input" v-model="editDraft.gender" title="Drives Smart-assign's gender matching">
+          <option value="">unspecified</option>
+          <option value="female">female</option>
+          <option value="male">male</option>
+          <option value="neutral">neutral</option>
+        </select>
+        <input v-else class="jv-input" :value="inspectedVoice.gender || '—'" readonly title="Engine presets are read-only — use the gender chip override in Studio's library" />
+      </label>
+      <label class="voices-view__field">
         <span>Language</span>
-        <input class="jv-input" :value="inspectedVoice.language || 'en'" readonly />
+        <input v-if="inspectedEditable" class="jv-input" v-model="editDraft.language" title="BCP-47 code, e.g. en, en-GB, de" />
+        <input v-else class="jv-input" :value="inspectedVoice.language || 'en'" readonly />
       </label>
       <label class="voices-view__field">
         <span>Persona link</span>
