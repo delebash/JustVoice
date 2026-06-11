@@ -1096,6 +1096,42 @@ watch(selectedProjectId, (id) => {
         :title="t.key === 'cast' ? 'Map people to voices' : t.key === 'script' ? 'Who speaks each line' : 'Batch render + mastering'"
         @click="tab = t.key"
       >{{ t.label }}</button>
+      <template v-if="tab === 'script' && selectedProject">
+        <span class="jv-spacer" />
+        <select v-model="selectedSceneId" class="jv-input jv-input--sm studio__script-select">
+          <option v-if="!scenes.length" :value="null">— no {{ copy.chapter.plural.toLowerCase() }} —</option>
+          <option v-for="sc in scenes" :key="sc.id" :value="sc.id">{{ sc.title || `${copy.chapter.singular} ${sc.position + 1}` }}</option>
+        </select>
+        <JvButton
+          variant="primary"
+          size="sm"
+          :loading="analyzeBusy"
+          :disabled="analyzeBusy || !sceneText.trim()"
+          label="✨ Analyze chapter"
+          title="LLM works out who speaks each line"
+          @click="runAnalyze"
+        />
+        <JvButton
+          v-if="analyzeRows.length"
+          variant="secondary"
+          size="sm"
+          label="✓ Apply"
+          title="Write the attribution onto this chapter's blocks"
+          @click="applyAnalyzed"
+        />
+      </template>
+      <template v-if="tab === 'render' && selectedProject">
+        <span class="jv-spacer" />
+        <span class="jv-pill jv-pill--green" :title="`Applied on render — set per project in Projects`">{{ masterPill }}</span>
+        <JvButton
+          variant="secondary"
+          size="sm"
+          :disabled="renderBusyScene !== null"
+          label="▶ Render all"
+          title="Queue every chapter that has blocks"
+          @click="renderAll"
+        />
+      </template>
       <template v-if="tab === 'cast' && selectedProject">
         <span class="jv-spacer" />
         <JvButton
@@ -1322,30 +1358,6 @@ watch(selectedProjectId, (id) => {
         Pick a {{ copy.book.singular.toLowerCase() }} above to attribute its script.
       </div>
       <template v-else>
-        <header class="studio__script-toolbar">
-          <label class="studio__script-label">{{ copy.chapter.singular }}:</label>
-          <select v-model="selectedSceneId" class="jv-input studio__script-select">
-            <option v-if="!scenes.length" :value="null">— no {{ copy.chapter.plural.toLowerCase() }} —</option>
-            <option v-for="s in scenes" :key="s.id" :value="s.id">{{ s.title || `${copy.chapter.singular} ${s.position + 1}` }}</option>
-          </select>
-          <span class="jv-spacer" />
-          <JvButton
-            variant="primary"
-            size="sm"
-            :loading="analyzeBusy"
-            :disabled="analyzeBusy || !sceneText.trim()"
-            label="🔍 Analyze"
-            @click="runAnalyze"
-          />
-          <JvButton
-            v-if="analyzeRows.length"
-            variant="secondary"
-            size="sm"
-            label="✓ Apply"
-            @click="applyAnalyzed"
-          />
-        </header>
-
         <!-- Discovered speakers — promotion banner (mock #audiobook/5) -->
         <div v-if="discovered.length" class="jv-banner jv-banner--warn studio__discovered">
           <strong>{{ discovered.length }} speaker{{ discovered.length === 1 ? "" : "s" }} found that {{ discovered.length === 1 ? "isn't" : "aren't" }} in your cast:</strong>
@@ -1428,7 +1440,6 @@ watch(selectedProjectId, (id) => {
           <JvButton variant="secondary" size="sm" label="Select all with blocks" @click="selectAllUnrendered" />
           <span class="jv-muted">{{ selectedSceneCount() }} selected</span>
           <span class="jv-spacer" />
-          <span class="jv-pill jv-pill--green" :title="`Applied on render — set per project in Projects`">{{ masterPill }}</span>
           <JvButton
             variant="secondary"
             size="sm"
@@ -1437,14 +1448,6 @@ watch(selectedProjectId, (id) => {
             label="🎧 Run ACX QC"
             title="Render every chapter (cache-served when unchanged) and measure RMS + peak against the ACX limits"
             @click="runQC"
-          />
-          <JvButton
-            variant="secondary"
-            size="sm"
-            :disabled="renderBusyScene !== null"
-            label="▶ Render all"
-            title="Queue every chapter that has blocks"
-            @click="renderAll"
           />
           <JvButton
             variant="primary"
