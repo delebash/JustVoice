@@ -267,3 +267,82 @@ Grounded in code: `engines/llm/tiers.py`, `SpeakerLabView.vue`,
   record: ~+2 pp accuracy at 2.3× token cost — not the default, kept so
   the next bigger local model can be re-scored in one click. Headless:
   `python -m justvoice.labs.extraction.run --corpus <slug> --tier <t>`.
+
+## 13. Final idea pass — JustWrite carry-overs (2026-06-11)
+
+Audited `justwrite-app` file-by-file for transplant candidates. Verdicts:
+
+### Why TWO speaker LLM features existed (on the record, as requested)
+
+JustWrite separates **speaker identification** from **speaker attribution**,
+and JustVoice should keep that separation:
+
+- **Identification** (`services/analysis/entityExtraction.js`) answers
+  *"who exists in this text?"* — scans prose, proposes new
+  characters/locations/objects as a **review list, never a commit**
+  (tick-box before anything lands), deduped against the existing cast.
+  Runs rarely (once per import/chapter), so it can afford a bigger model.
+  In JustVoice this is the "N speakers found that aren't in your cast"
+  banner — the discovered-speakers flow.
+- **Attribution** (`services/speakerAttribution.js`) answers *"who speaks
+  THIS line?"* — the [D#]-numbered segment pipeline with dialogue-anchor
+  propagation, tier-resolved prompts, confidence floor. Runs constantly
+  (every chapter, every re-analysis), so it must be cheap and is the thing
+  Speaker Lab tunes.
+
+Different cadence, different cost profile, different failure modes →
+separate feature pins so each can bind to a different provider/model/tier.
+JustVoice's `feature_pins_api.py` already supports this; the UI should
+expose both pins, not one "LLM" setting.
+
+### Adopt (with where it lands)
+
+1. **AI usage ledger** (`stores/ai.js` — tokens + estimated cost per
+   feature, byFeature totals, recent-activity list, capped log; Settings →
+   Usage section with per-provider badges). JV: `/v1/ai_usage` + Settings →
+   AI usage panel. Pairs with feature pins: see exactly what attribution
+   costs vs smart-assign.
+2. **Global AI task registry** (`stores/aiTasks.js` — in-flight calls
+   survive component unmount; header status button + slide-in panel;
+   stalled detection ~5 s / stuck >30 s via lastDeltaAt). JV already has
+   active_tasks + SSE server-side; adopt the **header task panel UI** for
+   renders + LLM calls + training jobs in one place.
+3. **Editable hardware-preset store** (`stores/hardwarePresets.js` —
+   factory seed + user-editable tier recipes + reset; "model ids and
+   quants change every few weeks — store data, don't hardcode").
+   JV QuickSetup tiers should follow exactly this pattern (matches the
+   no-hardcoded-tunables rule).
+4. **Promotable prompt presets** (Speaker Lab `MODES` — lab presets can be
+   *promoted* to production; production prompt configs are stored, not
+   inlined). JV: per-feature system-prompt override on the feature pin,
+   factory-resettable, with "Promote to production" from the Speaker Lab
+   Tuner — already mocked as the 📌 pin button.
+5. **Backup UI** — server side already exists (`/v1/backup` + `/v1/restore`,
+   stream-zipped, settings + SQLite + optional blobs, DESIGN_FREEZE §5).
+   Adopt JustWrite's **manual "Export backup…" + restore flow** as a
+   Settings → General card, plus a scheduled-auto-backup toggle.
+6. **In-app help docs pattern** (`services/helpDocs.js` — `docs/*.md` +
+   `toc.json` bundled at build, same files shipped to the marketing site).
+   Exactly matches the help-drawer design already mocked (❓ tab); reuse
+   the loader pattern wholesale.
+7. **Tutorial project** (`services/tutorialProject.js` — a real seeded
+   project, "the Scrivener pattern", not a coach-mark tour). Converges
+   with the per-kind demo projects already in the journeys mock.
+8. **Ollama admin helpers** (`services/ollamaAdmin.js` — native /api/*
+   reachability + model list/pull). Powers the first-run "Ollama detected →
+   Connect" row and lets users pull a recommended model without leaving
+   the app.
+9. **Voice-metadata heuristics** (`services/voiceGender.js` — provider
+   canon → Kokoro id convention → heuristic fallback for gender/accent).
+   JV's voice library gender chips for external providers should use this
+   three-pass approach instead of guessing.
+10. **External TTS provider adapters** (`elevenlabs.js`, `speechify.js`)
+    — candidates for JV external-engine adapters later; low priority,
+    the OpenAI-compat path already covers most servers.
+
+### Skip (writer-side, stays in JustWrite)
+
+Voice fingerprint ("match my style"), session recap / resume briefing /
+stuck diagnostic, critique + multi-reader critique, AI-tell scanner, RAG
+character chat, plot templates, marketing pack, version diff (JV's
+equivalent is take history, which already exists).
