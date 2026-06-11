@@ -66,6 +66,9 @@ class AnalyzeSceneResponse(BaseModel):
     rows: list[AttributionRowResponse]
     tier_used: str
     confidence_floor: float
+    # Raw LLM reply text — Speaker Lab's "Raw" tab. None when the call
+    # was anchors-only / no dialogue.
+    raw_llm: str | None = None
 
 
 def _resolve_corrections(project_id: str, db: Session, *, limit: int = 12) -> list[dict]:
@@ -144,7 +147,8 @@ async def analyze_scene_endpoint(
     )
 
     try:
-        rows = analyze_scene(settings=settings, request=req)
+        raw_out: dict = {}
+        rows = analyze_scene(settings=settings, request=req, raw_out=raw_out)
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))
     except Exception as e:
@@ -163,6 +167,7 @@ async def analyze_scene_endpoint(
 
     return AnalyzeSceneResponse(
         scene_id=scene_id,
+        raw_llm=raw_out.get("llm_text"),
         rows=[AttributionRowResponse(**row.__dict__) for row in rows],
         tier_used=tier.name,
         confidence_floor=tier.confidence_floor,
@@ -208,7 +213,8 @@ async def analyze_text_endpoint(body: AnalyzeTextRequest) -> AnalyzeSceneRespons
         system_prompt=body.system_prompt,
     )
     try:
-        rows = analyze_scene(settings=settings, request=req)
+        raw_out: dict = {}
+        rows = analyze_scene(settings=settings, request=req, raw_out=raw_out)
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))
     except Exception as e:
@@ -225,6 +231,7 @@ async def analyze_text_endpoint(body: AnalyzeTextRequest) -> AnalyzeSceneRespons
 
     return AnalyzeSceneResponse(
         scene_id="(adhoc)",
+        raw_llm=raw_out.get("llm_text"),
         rows=[AttributionRowResponse(**row.__dict__) for row in rows],
         tier_used=tier.name,
         confidence_floor=tier.confidence_floor,

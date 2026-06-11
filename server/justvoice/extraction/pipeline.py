@@ -101,6 +101,7 @@ def analyze_scene(
     *,
     settings,
     request: AnalyzeRequest,
+    raw_out: dict | None = None,
 ) -> list[AttributionRow]:
     """Run the full pipeline.
 
@@ -152,6 +153,8 @@ def analyze_scene(
                 think=tier.think,
                 model_override=request.model,
             )
+            if raw_out is not None:
+                raw_out["llm_text"] = resp.text
             llm_picks = _extract_first_json_array(resp.text)
         except LLMNotConfiguredError:
             # Caller (the API layer) catches this separately to return

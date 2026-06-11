@@ -141,3 +141,4 @@ def test_analyze_text_threads_model_temp_prompt_overrides(client, monkeypatch):
     assert captured["model_override"] == "qwen3:14b"
     assert captured["temperature"] == 0.05
     assert captured["system"] == "CUSTOM PROMPT BODY"
+    assert r.json()["raw_llm"] == '[{"speaker": "mara", "confidence": 0.9}]'
