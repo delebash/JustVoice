@@ -1,4 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Several tables (Generation, GenerationVersion, Story, StoryItem,
+# EffectPreset, Capture, MCPBinding, Channel) adapt voicebox's schema (MIT)
+# — backend/database/models.py at the commit pinned in voicebox-pin.txt.
+# Original copyright (c) the voicebox authors.
 """ORM model definitions for the JustVoice SQLite database.
 
 Schema is the implementation of DESIGN_FREEZE.md §4. Every entity except

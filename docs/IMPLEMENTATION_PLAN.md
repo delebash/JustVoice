@@ -99,3 +99,38 @@ pytest for every adapter/endpoint (synthetic fixtures built in-test);
 extraction changes scored against `labs/extraction` corpus; renderer
 changes screenshot-verified against the corresponding mock screen;
 ✅ Playwright E2E shipped: scripts/e2e.mjs — 20-view zero-error sweep, real CSV import → Lines grid, adapter sniffing, 409 preview contract, backup zip. Run: node scripts/e2e.mjs (server up; --executable for a custom chrome).
+
+## Voicebox parity audit — 2026-06-11 (see docs/VOICEBOX_PARITY.md)
+
+File-by-file audit vs the pin (b35b909). Findings F1–F6 all fixed in
+this pass: real MCP server at /mcp (bindings were write-only), variant
+dropdown was cosmetic (chatterbox/qwen3 now honor it; catalog repos
+corrected from placeholders), builtin effect presets never seeded (+
+missing chorus, enabled-flag ignored), persona file-store/SQLite
+split-brain broke binding FKs, History ★/↻/✕ were decorative. Gaps
+G1/G2 closed server-side: bundled Whisper STT engine (KIND=stt) +
+local Qwen3 LLM engine (KIND=llm) + refinement port + /v1/captures +
+/v1/transcribe + justvoice.transcribe MCP tool + settings.captures.
+
+## Next horizons (recorded per user request — the post-audit roadmap)
+
+1. **JustWrite ↔ JustVoice round-trip live.** Drive CONTRACT.md end to
+   end from a real JustWrite install: import via
+   POST /v1/projects/import?source=justwrite, render, notify back via
+   webhooks. First integration milestone after the user's machine test.
+2. **Unreal .uplugin** (CONCEPTS §15): voicelines manifest →
+   SoundWaves import → MetaHumanSDK lip-sync hookup; per-line WAV +
+   JSON sidecar contract already ships from /export_voicelines.
+3. **Ship-it packaging:** installers per OS, model-download UX
+   (progress + resume), stdio MCP shim binary (parity §2 leftover),
+   sidecar bundling, first-run download sizes honest in the UI.
+4. **Desktop dictation completion:** Tauri global hotkey + chord
+   capture + auto-paste + DictateWindow pill against the now-real
+   captures backend; speak-pill SSE events (upstream events.py port).
+5. **Deferred idea-pass items:** SRT/VTT captions (needs engine word
+   timestamps) · Wwise/WAAPI export · proof-listen QC pass · timeline
+   ducking/pause profiles · Ollama in-app model pull · Edit-voice modal
+   (grow ⚙ Inspect) · per-project-type sidebar vocabulary (Phase 4
+   design pass) · opt-in multi-loaded-TTS setting with VRAM warning
+   (parity F1) · TADA 1B variant (gap G3) · binding-aware POST /speak
+   REST mirror (gap G4).

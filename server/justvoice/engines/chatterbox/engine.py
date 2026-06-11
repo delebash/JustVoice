@@ -1,3 +1,9 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Variant→class/repo mapping and turbo generation params adapted from
+# voicebox (MIT) — backend/backends/chatterbox_backend.py +
+# chatterbox_turbo_backend.py at the commit pinned in voicebox-pin.txt.
+# Original copyright (c) the voicebox authors.
 """Chatterbox engine subprocess — Resemble AI's ChatterboxMultilingualTTS.
 
 Adapter for `chatterbox-tts`. Key shape:

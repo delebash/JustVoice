@@ -1,3 +1,8 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Variant→repo map adapted from voicebox (MIT) — backend/backends/
+# qwen_custom_voice_backend.py + pytorch_backend.py at the commit pinned
+# in voicebox-pin.txt. Original copyright (c) the voicebox authors.
 """Qwen3-TTS CustomVoice engine subprocess.
 
 Adapter for Qwen3-TTS CustomVoice. Generates with

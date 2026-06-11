@@ -678,39 +678,88 @@ const masterPresetLabel = computed(
   () => MASTER_PRESETS.find((p) => p.id === mastering.value.active)?.label || "Custom"
 );
 
-// ── MCP server settings + bindings (preview parity — preview MCP sub-tab) ──
-const mcp = ref({
-  enabled: true,
-  transport: "http",
-});
+// ── MCP server — bindings + default voice (server is always-on at /mcp) ──
 const mcpBindings = ref([]);
+const mcpPersonas = ref([]);
+const mcpDefaultVoice = ref("");
+const bindingDraft = ref({ client_id: "", label: "", persona_id: "" });
 async function loadMcpBindings() {
-  const r = await api.safeRequest("/v1/mcp/bindings", { bindings: [] });
+  const [r, pers, s] = await Promise.all([
+    api.safeRequest("/v1/mcp/bindings", { bindings: [] }),
+    api.safeRequest("/v1/personas", { personas: [] }),
+    api.safeRequest("/v1/settings", null),
+  ]);
+  mcpPersonas.value = pers?.personas || [];
+  mcpDefaultVoice.value = s?.mcp?.default_voice || "";
   mcpBindings.value = (r?.bindings || []).map((b) => ({
     client_id: b.client_id,
     label: b.label,
-    persona: b.persona_id || null,
-    engine: b.engine || null,
+    persona_id: b.persona_id || null,
+    persona: mcpPersonas.value.find((p) => p.id === b.persona_id)?.name || b.persona_id || null,
+    engine: b.default_engine || null,
     last_seen: b.last_seen_at ? new Date(b.last_seen_at).toLocaleString() : null,
   }));
 }
+async function saveBinding() {
+  const d = bindingDraft.value;
+  if (!d.client_id.trim()) return;
+  try {
+    await api.request("/v1/mcp/bindings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_id: d.client_id.trim(),
+        label: d.label || null,
+        persona_id: d.persona_id || null,
+      }),
+    });
+    bindingDraft.value = { client_id: "", label: "", persona_id: "" };
+    await loadMcpBindings();
+  } catch (e) {
+    pushToast({ message: `Binding save failed: ${e?.message || e}`, kind: "error" });
+  }
+}
+function editBinding(b) {
+  bindingDraft.value = { client_id: b.client_id, label: b.label || "", persona_id: b.persona_id || "" };
+}
+async function deleteBinding(b) {
+  try {
+    await api.request(`/v1/mcp/bindings/${encodeURIComponent(b.client_id)}`, { method: "DELETE" });
+    await loadMcpBindings();
+  } catch (e) {
+    pushToast({ message: `Delete failed: ${e?.message || e}`, kind: "error" });
+  }
+}
+async function saveMcpDefaultVoice() {
+  try {
+    await api.request("/v1/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mcp: { default_voice: mcpDefaultVoice.value || null } }),
+    });
+    pushToast({ message: "MCP default voice saved.", duration: 2000 });
+  } catch (e) {
+    pushToast({ message: `Save failed: ${e?.message || e}`, kind: "error" });
+  }
+}
 
-const MCP_SNIPPETS = {
+// Real connection snippets — the server speaks Streamable HTTP at /mcp;
+// clients identify via the X-JustVoice-Client-Id header.
+const MCP_SNIPPETS = computed(() => ({
   claude_desktop: `{
   "mcpServers": {
     "justvoice": {
-      "command": "justvoice-server",
-      "args": ["mcp"],
-      "env": { "JV_CLIENT_ID": "claude_desktop_main" }
+      "url": "${api.serverUrl}/mcp",
+      "headers": { "X-JustVoice-Client-Id": "claude-desktop" }
     }
   }
 }`,
-  claude_code: "claude mcp add justvoice -- justvoice-server mcp --client-id claude_code_v1",
-  stdio: `"C:\\\\Program Files\\\\JustVoice\\\\mcp-shim.exe" --endpoint http://localhost:17494/mcp --client-id custom_demo`,
-};
+  claude_code: `claude mcp add justvoice --transport http --url ${api.serverUrl}/mcp --header "X-JustVoice-Client-Id: claude-code"`,
+  curl: `curl -X POST ${api.serverUrl}/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -H 'X-JustVoice-Client-Id: my-script' -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`,
+}));
 
 async function copySnippet(key) {
-  const text = MCP_SNIPPETS[key];
+  const text = MCP_SNIPPETS.value[key];
   if (!text) return;
   try {
     await navigator.clipboard.writeText(text);
@@ -1857,28 +1906,20 @@ onMounted(() => {
           The server runs in-process on the JustVoice port; agents connect via the URL below.
         </p>
         <div class="settings-grid">
-          <JvField label="Endpoint" layout="block">
-            <JvInput :value="`${api.serverUrl}/mcp`" :readonly="true" width="url" />
+          <JvField label="Endpoint (Streamable HTTP)" layout="block">
+            <JvInput :value="`${api.serverUrl}/mcp`" :readonly="true" width="url" title="Agents connect directly to this URL — no separate process" />
           </JvField>
-          <JvField label="Transport" layout="block">
-            <JvSelect
-              v-model="mcp.transport"
-              width="name"
-              :options="[
-                { label: 'HTTP + SSE', value: 'http' },
-                { label: 'stdio (via shim)', value: 'stdio' },
-              ]"
-            />
-          </JvField>
-        </div>
-        <div class="setting-row" style="margin-top: 14px">
-          <div class="setting-row__head">
-            <div>
-              <div class="setting-row__title">Enabled</div>
-              <div class="setting-row__desc">Toggle off to block agent connections without uninstalling.</div>
+          <JvField label="Default voice" layout="block">
+            <div style="display: flex; gap: 8px; align-items: center">
+              <JvInput
+                v-model="mcpDefaultVoice"
+                width="name"
+                placeholder="voice id, e.g. af_heart"
+                title="Used when an agent calls justvoice.speak with no voice/persona and no per-client binding"
+              />
+              <JvButton variant="secondary" size="sm" label="Save" @click="saveMcpDefaultVoice" />
             </div>
-            <JvToggle v-model="mcp.enabled" aria-label="MCP server enabled" />
-          </div>
+          </JvField>
         </div>
       </div>
     </div>
@@ -1887,13 +1928,10 @@ onMounted(() => {
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">Exposed tools</h3></div>
         <div class="jv-row" style="gap: 6px; flex-wrap: wrap; margin-top: 8px">
-          <span class="jv-chip-card"><strong>speak</strong> · synth + play</span>
-          <span class="jv-chip-card"><strong>transcribe</strong> · WAV → text</span>
-          <span class="jv-chip-card"><strong>list_captures</strong></span>
-          <span class="jv-chip-card"><strong>list_profiles</strong></span>
-          <span class="jv-chip-card"><strong>list_personas</strong></span>
-          <span class="jv-chip-card"><strong>render_chapter</strong></span>
-          <span class="jv-chip-card"><strong>refine</strong></span>
+          <span class="jv-chip-card" title="Render text to speech; returns a generation id + audio URL"><strong>justvoice.speak</strong></span>
+          <span class="jv-chip-card" title="Audio → text via the local Whisper engine"><strong>justvoice.transcribe</strong></span>
+          <span class="jv-chip-card" title="All voices (presets + cloned + designed)"><strong>justvoice.list_voices</strong></span>
+          <span class="jv-chip-card" title="Characters with their bound voice"><strong>justvoice.list_personas</strong></span>
         </div>
       </div>
     </div>
@@ -1902,8 +1940,9 @@ onMounted(() => {
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">Per-client bindings</h3></div>
         <p class="jv-muted" style="font-size: 12.5px">
-          Bind a default voice and engine per client ID. Agents that send their <code class="jv-mono">JV_CLIENT_ID</code>
-          get the bound voice when calling <code class="jv-mono">speak</code> without arguments.
+          Bind a default persona per client ID. Agents that send the
+          <code class="jv-mono">X-JustVoice-Client-Id</code> header get the bound persona's voice
+          when calling <code class="jv-mono">justvoice.speak</code> without arguments.
         </p>
         <table class="jv-table" style="margin-top: 12px">
           <thead>
@@ -1919,17 +1958,27 @@ onMounted(() => {
               <td>{{ b.engine || "(none)" }}</td>
               <td class="jv-muted">{{ b.last_seen || "never" }}</td>
               <td class="right">
-                <JvButton variant="ghost" size="sm" label="Edit" />
-                <JvButton variant="ghost" size="sm" label="✕" />
+                <JvButton variant="ghost" size="sm" label="Edit" title="Load this binding into the form below" @click="editBinding(b)" />
+                <JvButton variant="ghost" size="sm" label="✕" title="Remove this binding" @click="deleteBinding(b)" />
               </td>
             </tr>
             <tr v-if="!mcpBindings.length">
               <td colspan="6" class="jv-muted" style="text-align: center; padding: 16px">
-                No clients connected yet. Bindings appear here when an agent first calls a tool with its client ID.
+                No clients yet. Rows appear when an agent first calls a tool with its client ID — or add one below.
               </td>
             </tr>
           </tbody>
         </table>
+        <div class="jv-row" style="gap: 8px; margin-top: 12px; align-items: center; flex-wrap: wrap">
+          <JvInput v-model="bindingDraft.client_id" width="name" placeholder="client id (e.g. claude-code)" title="The X-JustVoice-Client-Id the agent sends" />
+          <JvInput v-model="bindingDraft.label" width="name" placeholder="label (optional)" />
+          <JvSelect
+            v-model="bindingDraft.persona_id"
+            width="name"
+            :options="[{ label: '(no persona)', value: '' }, ...mcpPersonas.map(p => ({ label: p.name, value: p.id }))]"
+          />
+          <JvButton variant="primary" size="sm" label="Save binding" :disabled="!bindingDraft.client_id.trim()" @click="saveBinding" />
+        </div>
       </div>
     </div>
 
@@ -1937,30 +1986,22 @@ onMounted(() => {
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">Install snippets</h3></div>
 
-        <h4 style="margin: 14px 0 6px; font-size: 12.5px; color: var(--ink-2)">Claude Desktop · <code class="jv-mono">claude_desktop_config.json</code></h4>
+        <h4 style="margin: 14px 0 6px; font-size: 12.5px; color: var(--ink-2)">Claude Desktop / any HTTP MCP client · <code class="jv-mono">mcp config JSON</code></h4>
         <div class="snippet-row">
-          <pre class="jv-code-block">{
-  "mcpServers": {
-    "justvoice": {
-      "command": "justvoice-server",
-      "args": ["mcp"],
-      "env": { "JV_CLIENT_ID": "claude_desktop_main" }
-    }
-  }
-}</pre>
-          <JvButton variant="ghost" size="sm" label="Copy" @click="copySnippet('claude_desktop')" />
+          <pre class="jv-code-block">{{ MCP_SNIPPETS.claude_desktop }}</pre>
+          <JvButton variant="ghost" size="sm" label="Copy" title="Copy the JSON config" @click="copySnippet('claude_desktop')" />
         </div>
 
         <h4 style="margin: 14px 0 6px; font-size: 12.5px; color: var(--ink-2)">claude-code CLI</h4>
         <div class="snippet-row">
-          <pre class="jv-code-block">claude mcp add justvoice -- justvoice-server mcp --client-id claude_code_v1</pre>
-          <JvButton variant="ghost" size="sm" label="Copy" @click="copySnippet('claude_code')" />
+          <pre class="jv-code-block">{{ MCP_SNIPPETS.claude_code }}</pre>
+          <JvButton variant="ghost" size="sm" label="Copy" title="Copy the one-liner" @click="copySnippet('claude_code')" />
         </div>
 
-        <h4 style="margin: 14px 0 6px; font-size: 12.5px; color: var(--ink-2)">stdio shim (Unreal / custom)</h4>
+        <h4 style="margin: 14px 0 6px; font-size: 12.5px; color: var(--ink-2)">curl smoke test</h4>
         <div class="snippet-row">
-          <pre class="jv-code-block">"C:\\Program Files\\JustVoice\\mcp-shim.exe" --endpoint http://localhost:17494/mcp --client-id custom_demo</pre>
-          <JvButton variant="ghost" size="sm" label="Copy" @click="copySnippet('stdio')" />
+          <pre class="jv-code-block">{{ MCP_SNIPPETS.curl }}</pre>
+          <JvButton variant="ghost" size="sm" label="Copy" title="Copy the curl command" @click="copySnippet('curl')" />
         </div>
       </div>
     </div>
