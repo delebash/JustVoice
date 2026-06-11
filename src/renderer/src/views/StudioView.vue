@@ -687,7 +687,13 @@ async function assignVoice(personaId, voiceId) {
       body: JSON.stringify(body),
     });
     await loadAll();
-    pushToast({ message: `Assigned ${voiceById(voiceId)?.name || voiceId} to ${persona.name}.`, kind: "success", duration: 3000 });
+    pushToast({
+      message: voiceId
+        ? `Assigned ${voiceById(voiceId)?.name || voiceId} to ${persona.name}.`
+        : `Unassigned voice from ${persona.name}.`,
+      kind: "success",
+      duration: 3000,
+    });
   } catch (e) {
     pushToast({ message: `Assign failed: ${e?.message || e}`, kind: "error" });
   }
@@ -981,8 +987,8 @@ onMounted(loadAll);
                 type="button"
                 class="studio__voice-row-name-btn"
                 :disabled="!selectedCharacter"
-                :title="selectedCharacter ? `Assign ${v.name} to ${selectedCharacter.name}` : 'Pick a character first'"
-                @click="selectedCharacter && assignVoice(selectedCharacter.id, v.id)"
+                :title="!selectedCharacter ? 'Pick a character first' : isVoiceAssignedToSelected(v.id) ? `Unassign ${v.name} from ${selectedCharacter.name}` : `Assign ${v.name} to ${selectedCharacter.name}`"
+                @click="selectedCharacter && assignVoice(selectedCharacter.id, isVoiceAssignedToSelected(v.id) ? '' : v.id)"
               >
                 <span class="studio__voice-row-name-row">
                   <strong class="studio__voice-row-name">{{ v.name }}</strong>
