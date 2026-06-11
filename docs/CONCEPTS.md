@@ -346,3 +346,61 @@ Voice fingerprint ("match my style"), session recap / resume briefing /
 stuck diagnostic, critique + multi-reader critique, AI-tell scanner, RAG
 character chat, plot templates, marketing pack, version diff (JV's
 equivalent is take history, which already exists).
+
+## 14. Final idea pass — competitive landscape (web research, 2026-06-11)
+
+Surveyed: ElevenLabs Studio, Wondercraft/Descript (podcast), Speechless +
+Wwise/Resemble/Replica (game VO), ebook2audiobook / audiblez / abogen /
+tts-audiobook-tool / Pozotron (audiobook OSS + QA). New ideas worth
+folding into the plan:
+
+1. **Word-level timestamps as a first-class render output.** Kokoro
+   already exposes per-word timing; abogen and tts-audiobook-tool build
+   their headline features on it (synced captions, read-along, timing
+   embedded in M4B/FLAC metadata). One cheap data artifact serves four
+   audiences: SRT/VTT caption export (podcast + accessibility),
+   Whispersync-style read-along, lip-sync timing in the game manifest,
+   and the proof-listen highlighter below. → Add `timings` to the take
+   record + manifest.
+2. **Proof-listen mode + STT round-trip QC (the big one).** Pozotron
+   sells exactly this to audiobook producers. Two layers:
+   (a) *Proof-listen surface*: play a chapter while text highlights
+   word-by-word; one-key flags (mispronunciation / artifact / pacing) que
+   into a punch list that feeds the existing fix-it loop.
+   (b) *Auto-QC*: we bundle Whisper anyway — transcribe each rendered
+   take, diff against source text, auto-flag divergent lines
+   (open-model hallucinations/skips caught locally, no human pass).
+   This is a genuine differentiator vs every OSS tool surveyed.
+3. **Per-line director notes for audiobooks.** ElevenLabs is building
+   "Director's Mode"; our game lines already carry performance notes —
+   promote the same field to audiobook/podcast blocks (feeds
+   instruct-capable engines; ignored elsewhere).
+4. **LLM show-notes / chapter-summary generation** (Wondercraft pattern):
+   episode show notes w/ timestamps + speaker names, chapter summaries
+   for M4B metadata. Trivial new feature pin; runs off the script we
+   already have.
+5. **Localization lane (defer, design for it).** Wondercraft dubs to 19
+   languages; Speechless tracks localized VO versions; ebook2audiobook
+   does 1100+ languages. JustVoice shape: per-project language variants —
+   same Scene/Block structure, translated text column, per-language
+   renders; game manifest gains a locale field. Don't build now; keep
+   block IDs language-agnostic so it bolts on later.
+6. **Wwise/WAAPI as a future game export target** (Speechless pattern:
+   script-to-SoundBank sync). The diffable manifest.json is the
+   foundation; a WAAPI push is an export adapter later, alongside the
+   .uplugin.
+7. **PDF import** (ebook2audiobook supports 20+ formats): add PDF to the
+   import-adapter roadmap behind EPUB/DOCX/MD/TXT — lower fidelity,
+   real demand.
+
+Validation from the survey: nothing else combines all five audiences +
+local-first + engine pool — closest neighbors are single-audience
+(chatterbox-Audiobook, audiblez = audiobook-only CLI/GUI; Wondercraft =
+cloud podcast; Speechless = game VO SaaS). The journeys mock's scope is
+the moat; the QC loop (#2) is the feature none of the OSS tools have.
+
+Sources: elevenlabs.io/docs + /audiobooks · wondercraft.ai · 
+audiokinetic.com/blog/speechless · resemble.ai/unreal · 
+github.com/DrewThomasson/ebook2audiobook · github.com/santinic/audiblez ·
+github.com/denizsafak/abogen · github.com/zeropointnine/tts-audiobook-tool ·
+pozotron.com
