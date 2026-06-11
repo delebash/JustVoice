@@ -506,6 +506,7 @@ _KIND_TO_PROJECT_TYPE: dict[str, str] = {
 def _materialize_standard(
     standard: StandardImport,
     db: Session,
+    persona_store=None,
 ) -> tuple[Project, int, int, list[str], list[str]]:
     """Turn a StandardImport into ORM rows. Returns (project, scene_count, block_count, created_personas, reused_personas).
 
@@ -545,6 +546,17 @@ def _materialize_standard(
             # A reused persona still needs the cast link for THIS project —
             # without it, book two imports with an empty Cast tab.
             db.add(ProjectPersona(project_id=p.id, persona_id=existing.id))
+            # Self-heal the file-store twin if a pre-dual-write import
+            # created only the SQLite row.
+            if persona_store is not None and persona_store.get(existing.id) is None:
+                persona_store.create(
+                    name=existing.name,
+                    voice_id="",
+                    bio=existing.bio,
+                    imported_from=existing.imported_from,
+                    imported_id=existing.imported_id,
+                    id=existing.id,
+                )
             continue
         bio_text = char.notes or ""
         if char.voice_hint:
@@ -560,6 +572,18 @@ def _materialize_standard(
         char_to_persona_id[char.id] = persona.id
         created_personas.append(persona.id)
         db.add(ProjectPersona(project_id=p.id, persona_id=persona.id))
+        # Dual-write (mid-Phase-1.5): the personas API serves from the file
+        # store, ProjectPersona FKs the SQLite row — write both, same id,
+        # or imported casts are invisible in Studio/Personas.
+        if persona_store is not None:
+            persona_store.create(
+                name=char.name,
+                voice_id="",
+                bio=bio_text or None,
+                imported_from=standard.source,
+                imported_id=char.id,
+                id=persona.id,
+            )
 
     # Scenes + Blocks.
     total_blocks = 0
@@ -711,7 +735,7 @@ async def import_project(
         )
 
     project, _scene_count, _block_count, _created, _reused = _materialize_standard(
-        standard, db
+        standard, db, persona_store=get_state().personas
     )
     _materialize_lexicon(standard, project, get_state().lexicons, db)
     db.commit()

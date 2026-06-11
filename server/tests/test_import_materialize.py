@@ -19,6 +19,7 @@ from justvoice.imports.standard_schema import (
     StandardScene,
 )
 from justvoice.storage.lexicons import LexiconStore
+from justvoice.storage.personas import PersonaStore
 
 pytest_plugins = ["tests.conftest_db"]
 
@@ -42,15 +43,43 @@ def _standard(name: str, lexicon: bool = False) -> StandardImport:
     )
 
 
-def test_reused_persona_is_linked_to_new_project(db_session):
-    p1, *_ = _materialize_standard(_standard("Book one"), db_session)
+def test_reused_persona_is_linked_to_new_project(db_session, tmp_path):
+    pstore = PersonaStore(tmp_path)
+    p1, *_ = _materialize_standard(_standard("Book one"), db_session, persona_store=pstore)
     db_session.commit()
-    p2, _sc, _bl, created, reused = _materialize_standard(_standard("Book two"), db_session)
+    p2, _sc, _bl, created, reused = _materialize_standard(
+        _standard("Book two"), db_session, persona_store=pstore
+    )
     db_session.commit()
 
     assert created == [] and len(reused) == 1
     links = db_session.query(ProjectPersona).filter(ProjectPersona.persona_id == reused[0]).all()
     assert {link.project_id for link in links} == {p1.id, p2.id}
+
+
+def test_personas_dual_write_file_store_matches_db(db_session, tmp_path):
+    pstore = PersonaStore(tmp_path)
+    _project, _sc, _bl, created, _re = _materialize_standard(
+        _standard("Book one"), db_session, persona_store=pstore
+    )
+    db_session.commit()
+    assert len(created) == 1
+    file_p = pstore.get(created[0])
+    assert file_p is not None and file_p.name == "Mara Vance"
+    assert file_p.voice_id == ""  # unassigned until Cast
+
+
+def test_reuse_self_heals_missing_file_twin(db_session, tmp_path):
+    # First import WITHOUT a file store (pre-dual-write behavior).
+    _p1, *_ = _materialize_standard(_standard("Book one"), db_session)
+    db_session.commit()
+    pstore = PersonaStore(tmp_path)
+    _p2, _sc, _bl, created, reused = _materialize_standard(
+        _standard("Book two"), db_session, persona_store=pstore
+    )
+    db_session.commit()
+    assert created == [] and len(reused) == 1
+    assert pstore.get(reused[0]) is not None  # healed
 
 
 def test_lexicon_entries_materialize_and_set_default(db_session, tmp_path):
