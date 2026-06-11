@@ -109,6 +109,19 @@ const TYPE_FILTERS = [
   { id: "trained",  label: "Trained" },
 ];
 
+// Hidden built-in voices — presets can't be deleted, but they can be
+// tucked away (user request 2026-06-11). Persisted per machine.
+const HIDDEN_KEY = "jv.voices.hidden";
+const hiddenIds = ref(new Set());
+try { hiddenIds.value = new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) || "[]")); } catch { hiddenIds.value = new Set(); }
+const showHidden = ref(false);
+function toggleHidden(v) {
+  const next = new Set(hiddenIds.value);
+  if (next.has(v.id)) next.delete(v.id); else next.add(v.id);
+  hiddenIds.value = next;
+  try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...next])); } catch { /* ignore */ }
+}
+
 const ENGINE_FILTER_KEY = "jv.voices.engineFilter";
 const engineFilter = ref(localStorage.getItem(ENGINE_FILTER_KEY) || "all");
 function setEngineFilter(id) {
@@ -124,8 +137,11 @@ const engineFilterOptions = computed(() => {
   ];
 });
 
+const hiddenCount = computed(() => (voices.value || []).filter((v) => hiddenIds.value.has(v.id)).length);
+
 const filteredVoices = computed(() => {
   let list = voices.value || [];
+  if (!showHidden.value) list = list.filter((v) => !hiddenIds.value.has(v.id));
   if (engineFilter.value !== "all") list = list.filter((v) => v.engine === engineFilter.value);
   if (typeFilter.value !== "all") list = list.filter((v) => v.source === typeFilter.value);
   if (search.value.trim()) {
@@ -490,6 +506,14 @@ function blendWithVoice() {
       style="min-width: 170px"
       @update:model-value="setEngineFilter"
     />
+    <button
+      v-if="hiddenCount"
+      type="button"
+      class="jv-pill"
+      :class="showHidden ? 'jv-pill--solid' : 'jv-pill--ghost'"
+      :title="showHidden ? 'Hide the hidden voices again' : 'Temporarily show voices you have hidden'"
+      @click="showHidden = !showHidden"
+    >🙈 hidden ({{ hiddenCount }})</button>
     <div class="voices-view__chips">
       <button
         v-for="f in TYPE_FILTERS"
@@ -584,6 +608,14 @@ function blendWithVoice() {
           <td class="jv-muted voices-view__castas" :title="(castAsByVoice[v.id] || []).join(', ')">{{ (castAsByVoice[v.id] || []).join(' · ') || "—" }}</td>
           <td class="jv-table__actions" @click.stop>
             <JvButton variant="ghost" size="sm" label="⚙" :title="`Inspect ${v.name}`" @click="inspect(v)" />
+            <JvButton
+              v-if="v.source === 'preset'"
+              variant="ghost"
+              size="sm"
+              :label="hiddenIds.has(v.id) ? '👁' : '🙈'"
+              :title="hiddenIds.has(v.id) ? `Unhide ${v.name}` : `Hide ${v.name} — built-ins can't be deleted, but they can be tucked away`"
+              @click="toggleHidden(v)"
+            />
             <JvButton
               v-if="v.source !== 'preset'"
               variant="danger-outline"
