@@ -133,9 +133,24 @@ main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .studio-body.no-aside{grid-template-columns:1fr}
 .studio-body.no-aside .studio-aside{display:none}
 /* Script line rows */
+.sp-wrap{position:relative;flex:none}
+.sp-pop{position:absolute;top:calc(100% + 4px);left:0;min-width:185px;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow-2);padding:4px;z-index:25;max-height:240px;overflow-y:auto}
+.sp-item{display:flex;align-items:center;gap:8px;width:100%;border:0;background:transparent;border-radius:5px;padding:6px 9px;font-size:12px;color:var(--ink);cursor:pointer;text-align:left}
+.sp-item:hover{background:var(--surface-2)}
+.sp-item.sel{background:var(--accent-soft)}
+.sp-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;background:transparent;border-radius:6px;padding:2px 6px 2px 2px;cursor:pointer;font-weight:600;font-size:12px;color:var(--ink)}
+.sp-btn:hover{border-color:var(--line-strong);background:var(--surface-2)}
+.sp-btn .caret{font-size:9px;color:var(--ink-3)}
+.rsel{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:0}
 .line-row{display:flex;align-items:flex-start;gap:10px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 12px;font-size:12.5px;cursor:pointer}
 .line-row:hover{border-color:var(--line-strong)}
-.line-row .sp{display:inline-flex;align-items:center;gap:6px;flex:none;width:130px;font-weight:600;font-size:12px}
+.line-row .sp{display:inline-flex;align-items:center;gap:6px;flex:none;font-weight:600;font-size:12px}
+.line-row .sp-wrap{width:150px}
+.line-row .kind,.line-head .kind{flex:none;width:92px}
+.line-row .acc,.line-head .acc{flex:none;width:86px;text-align:left}
+.line-head{display:flex;align-items:center;gap:10px;padding:4px 12px 6px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.line-head .sp-col{flex:none;width:150px}
+.line-head .txt{flex:1;min-width:0}
 .line-row .txt{flex:1;min-width:0;color:var(--ink-2);line-height:1.45}
 .line-row .kind{flex:none}
 .scroll-fill{flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:2px 8px 10px 2px}
@@ -534,6 +549,8 @@ const RENDER_UNITS = {
   ],
 };
 let renderJob = null; // { pct, timer }
+let openSpeakerIdx = null;            // which script line's speaker menu is open
+let renderSel = new Set();            // selected unit/line ids on the Render tab
 /* Density by CAST SIZE, not use case. Demo threshold 8 (real default
    ~25, operator-tunable). Manual override per project wins. */
 const DENSITY_THRESHOLD = 8;
@@ -656,7 +673,7 @@ function projComboHtml(){
       📖 ${p.name}<span class="chev">▾</span></button>
     <div class="combo-pop">${items}</div>`;
 }
-function pickProject(id){projectId=id;castSearch="";uncastOnly=false;selectedChar=project().cast.find(c=>!c.voice)?.id||project().cast[0].id;renderAll()}
+function pickProject(id){projectId=id;castSearch="";uncastOnly=false;renderSel=new Set();openSpeakerIdx=null;selectedChar=project().cast.find(c=>!c.voice)?.id||project().cast[0].id;renderAll()}
 function traitChipsHtml(p){
   const t=p.traits;
   const traits=[
@@ -783,16 +800,43 @@ function renderStudio(){
   $("#cast-mode").innerHTML=`<span class="chips"><button class="chip ${mode==="cards"?"active":""}" onclick="castModeOverride['${projectId}']='cards';renderStudio()">Cards</button><button class="chip ${mode==="table"?"active":""}" onclick="castModeOverride['${projectId}']='table';renderStudio()">Table</button></span>`;
 }
 
-function setStep(st){activeStep=st;renderAll()}
+function setStep(st){activeStep=st;renderSel=new Set();openSpeakerIdx=null;renderAll()}
 
 /* ── Script / Lines / Render tab content (replaces the cast zone) ── */
 function speakerName(id){const c=project().cast.find(x=>x.id===id);return c?c.name:id}
 function speakerChip(id){const n=speakerName(id);return `<span class="sp"><span class="glyph" style="background:${grad(n)}">${initials(n)[0]}</span>${n}</span>`}
-function cycleSpeaker(idx){
-  const lines=SCRIPT_LINES[projectId]; const ids=project().cast.map(c=>c.id);
-  const cur=ids.indexOf(lines[idx].sp); lines[idx].sp=ids[(cur+1)%ids.length]; lines[idx].conf=1;
+function toggleSpeakerMenu(idx,ev){
+  ev.stopPropagation();
+  openSpeakerIdx = openSpeakerIdx===idx ? null : idx;
   renderAll();
 }
+function setSpeaker(idx,castId,ev){
+  ev.stopPropagation();
+  const l=SCRIPT_LINES[projectId][idx];
+  if(l.sp!==castId){ l.sp=castId; l.conf=1; l.corrected=true; }
+  openSpeakerIdx=null;
+  renderAll();
+}
+document.addEventListener("click",()=>{ if(openSpeakerIdx!=null){openSpeakerIdx=null;renderAll();} });
+function speakerPicker(idx,currentId){
+  const open=openSpeakerIdx===idx;
+  const n=speakerName(currentId);
+  return `<span class="sp-wrap">
+    <button class="sp-btn" title="Change speaker" onclick="toggleSpeakerMenu(${idx},event)">
+      <span class="glyph" style="background:${grad(n)}">${initials(n)[0]}</span>${n}<span class="caret">▾</span>
+    </button>
+    ${open?`<span class="sp-pop">${project().cast.map(c=>
+      `<button class="sp-item ${c.id===currentId?"sel":""}" onclick="setSpeaker(${idx},'${c.id}',event)">
+        <span class="glyph" style="background:${grad(c.name)}">${initials(c.name)[0]}</span>${c.name}</button>`).join("")}</span>`:""}
+  </span>`;
+}
+/* Render-tab selection */
+function toggleRenderSel(id,ev){ev.stopPropagation();renderSel.has(id)?renderSel.delete(id):renderSel.add(id);renderAll()}
+function selectUnrendered(units){
+  renderSel=new Set(units.filter(u=>u.status!=="rendered").map(u=>u.id??u.n));
+  renderAll();
+}
+function clearRenderSel(){renderSel=new Set();renderAll()}
 function renderStepContent(p){
   const main=document.querySelector(".studio-main");
   if(activeStep==="script"){
@@ -834,15 +878,20 @@ function renderStepContent(p){
         ${p.traits.lineSource==="script"
           ?"Speakers come from the script's labels; the LLM only fills gaps."
           :"The LLM attributes each line to a speaker and classifies it as narration, dialogue, or thought."}
-        Click a line's speaker to correct it — corrections feed back into the next analysis.
+        Use the speaker dropdown on any line to correct it — corrections feed back into the next analysis.
         <b>${lines.length} lines${low?` · <span style="color:var(--warn-ink)">${low} low-confidence</span>`:""}</b>
       </p>
+      <div class="line-head"><span class="sp-col">Speaker</span><span class="txt">Line</span><span class="kind">Kind</span><span class="acc">Accuracy</span></div>
       <div class="scroll-fill">${lines.map((l,i)=>`
-        <div class="line-row" title="Click to cycle speaker (correction)" onclick="cycleSpeaker(${i})">
-          ${speakerChip(l.sp)}
+        <div class="line-row" style="cursor:default">
+          ${speakerPicker(i,l.sp)}
           <span class="txt">${l.text}</span>
           <span class="kind">${l.kind==="narration"?'<span class="pill ghost">narration</span>':l.kind==="thought"?'<span class="pill blue">thought</span>':'<span class="pill green">dialogue</span>'}</span>
-          ${l.conf<.7?'<span class="pill warn" title="Low attribution confidence">'+Math.round(l.conf*100)+"%</span>":""}
+          <span class="acc">${l.corrected
+            ?'<span class="pill green" title="Manually corrected — feeds the next analysis">corrected</span>'
+            :l.conf<.7
+              ?'<span class="pill warn" title="Low attribution confidence">'+Math.round(l.conf*100)+"%</span>"
+              :'<span class="muted" style="font-size:11.5px">'+Math.round(l.conf*100)+"%</span>"}</span>
         </div>`).join("")}</div>`;
     return;
   }
@@ -854,6 +903,8 @@ function renderStepContent(p){
       <div class="row" style="margin-bottom:8px;flex-wrap:nowrap">
         <div style="min-width:0"><div class="eyebrow">Render</div><div class="display">Per-line WAV + JSON sidecar</div></div>
         <span class="spacer"></span>
+        <button class="btn ghost sm" onclick='selectUnrendered(GAME_LINES[projectId])'>Select unrendered</button>
+        <button class="btn secondary sm" ${renderSel.size?"":"disabled"} onclick="startRenderJob()">▶ Render selected (${renderSel.size})</button>
         <button class="btn secondary sm" ${changed?"":"disabled"}>↻ Render changed (${changed})</button>
         <button class="btn sm" onclick="startRenderJob()">▶ Render all</button>
       </div>
@@ -868,8 +919,9 @@ function renderStepContent(p){
         <div class="card" style="padding:12px 18px"><div class="eyebrow">Mastering</div><div class="display sm">raw</div></div>
       </div>
       <div class="card" style="overflow-y:auto;flex:1;min-height:0"><table class="ctable">
-        <thead><tr><th>Line ID</th><th>NPC</th><th>Event</th><th>Status</th><th class="right"></th></tr></thead>
+        <thead><tr><th style="width:30px"><input type="checkbox" class="rsel" title="Select all" ${lines.length&&lines.every(l=>renderSel.has(l.id))?"checked":""} onclick="event.stopPropagation();${lines.every(l=>renderSel.has(l.id))?"clearRenderSel()":"renderSel=new Set(GAME_LINES[projectId].map(l=>l.id));renderAll()"}"/></th><th>Line ID</th><th>NPC</th><th>Event</th><th>Status</th><th class="right"></th></tr></thead>
         <tbody>${lines.map(l=>`<tr>
+          <td><input type="checkbox" class="rsel" ${renderSel.has(l.id)?"checked":""} onclick="toggleRenderSel('${l.id}',event)"/></td>
           <td><code class="muted" style="font-size:11px">${l.id}</code></td>
           <td style="white-space:nowrap">${speakerChip(l.npc)}</td>
           <td><span class="pill ghost">${l.event}</span></td>
@@ -885,7 +937,8 @@ function renderStepContent(p){
     <div class="row" style="margin-bottom:8px;flex-wrap:nowrap">
       <div style="min-width:0"><div class="eyebrow">Render</div><div class="display">${unitName[0].toUpperCase()+unitName.slice(1)} audio · ${p.traits.mastering}</div></div>
       <span class="spacer"></span>
-      <button class="btn secondary sm">Apply master only</button>
+      <button class="btn ghost sm" onclick='selectUnrendered(RENDER_UNITS[projectId])'>Select unrendered</button>
+      <button class="btn secondary sm" ${renderSel.size?"":"disabled"} onclick="startRenderJob()">▶ Render selected (${renderSel.size})</button>
       <button class="btn sm" onclick="startRenderJob()">▶ Render all ${unitName}s</button>
     </div>
     <p style="font-size:12.5px;color:var(--ink-2);margin:0 0 12px">
@@ -893,8 +946,9 @@ function renderStepContent(p){
     </p>
     ${renderJobHtml()}
     <div class="card" style="overflow-y:auto;flex:1;min-height:0"><table class="ctable">
-      <thead><tr><th style="width:36px">#</th><th>${unitName[0].toUpperCase()+unitName.slice(1)}</th><th class="right">Blocks</th><th class="right">Duration</th><th>Status</th><th class="right"></th></tr></thead>
+      <thead><tr><th style="width:30px"><input type="checkbox" class="rsel" title="Select all" ${units.length&&units.every(u=>renderSel.has(u.n))?"checked":""} onclick="event.stopPropagation();${units.every(u=>renderSel.has(u.n))?"clearRenderSel()":"renderSel=new Set(RENDER_UNITS[projectId].map(u=>u.n));renderAll()"}"/></th><th style="width:36px">#</th><th>${unitName[0].toUpperCase()+unitName.slice(1)}</th><th class="right">Blocks</th><th class="right">Duration</th><th>Status</th><th class="right"></th></tr></thead>
       <tbody>${units.map(u=>`<tr>
+        <td><input type="checkbox" class="rsel" ${renderSel.has(u.n)?"checked":""} onclick="toggleRenderSel(${u.n},event)"/></td>
         <td class="muted">${u.n}</td>
         <td><b>${u.title}</b></td>
         <td class="right">${u.blocks}</td>
