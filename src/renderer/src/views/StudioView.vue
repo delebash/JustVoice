@@ -25,6 +25,7 @@ import { useActiveProject } from "../stores/activeProject.js";
 import JvButton from "../components/jv/JvButton.vue";
 import VoiceParamsModal from "../components/VoiceParamsModal.vue";
 import EmptyState from "../components/EmptyState.vue";
+import { confirmDialog } from "../services/dialog.js";
 
 const api = useApi();
 const activeProject = useActiveProject();
@@ -193,18 +194,34 @@ function taskForScene(sceneId) {
   ) || null;
 }
 
-// Adapt the tab labels to the project's use case via useCopy. The Cast
-// tab uses the cast.plural; the Script tab takes the chapter terminology
-// (Chapter/Quest/Episode); Render is universal (a render is a render).
-const TAB_LABELS = computed(() => ({
-  cast:   copy.value.cast.plural || "Cast",
-  script: copy.value.chapter.singular || "Script",
-  render: "Render",
-}));
+// Numbered production steps (journeys contract): 1 · Cast → 2 · Script →
+// 3 · Render. Game projects skip Script — the CSV already says who
+// speaks — so the steps renumber to 1 · Cast → 2 · Render.
+const TAB_LABELS = computed(() => {
+  const out = {};
+  for (const t of visibleTabs.value) out[t.key] = t.label;
+  return out;
+});
+const visibleTabs = computed(() => {
+  const isGame = selectedProject.value?.project_type === "game_voicelines";
+  const keys = isGame ? ["cast", "render"] : ["cast", "script", "render"];
+  const names = { cast: "Cast", script: "Script", render: "Render" };
+  return keys.map((key, i) => ({ key, label: `${i + 1} · ${names[key]}` }));
+});
 
 const selectedProject = computed(() =>
   projects.value.find((p) => p.id === selectedProjectId.value) || null,
 );
+
+watch([selectedProject, () => tab.value], () => {
+  if (tab.value === "script" && !visibleTabs.value.some((t) => t.key === "script")) {
+    tab.value = "cast";
+  }
+  if (tab.value === "render") {
+    qcByScene.value = {};
+    loadCacheStats();
+  }
+});
 
 const projectOptions = computed(() => {
   if (!projects.value.length) return [{ label: "— no projects —", value: null }];
@@ -260,13 +277,47 @@ function isVoiceAssignedToSelected(voiceId) {
   return selectedCharacter.value.voice_id === voiceId;
 }
 
+// voice_id → persona name across the whole project cast — the library
+// rows show "✓ <name>" so one glance covers the full casting state.
+const castAsByVoiceId = computed(() => {
+  const out = {};
+  for (const p of projectPersonas.value) {
+    if (p.voice_id) out[p.voice_id] = out[p.voice_id] ? `${out[p.voice_id]}, ${p.name}` : p.name;
+  }
+  return out;
+});
+
+// First line of the persona bio doubles as the card's role line.
+function personaRole(p) {
+  return (p?.bio || "").split("\n")[0].trim();
+}
+
+const clearCastBusy = ref(false);
+async function clearCast() {
+  const cast = projectPersonas.value.filter((p) => p.voice_id);
+  if (!cast.length) return;
+  const ok = await confirmDialog({
+    title: "Clear cast?",
+    message: `Unassign voices from all ${cast.length} cast member${cast.length === 1 ? "" : "s"}. The personas stay — only the voice links go.`,
+    confirmLabel: "Clear cast",
+    danger: true,
+  });
+  if (!ok) return;
+  clearCastBusy.value = true;
+  try {
+    for (const p of cast) await assignVoice(p.id, "");
+  } finally {
+    clearCastBusy.value = false;
+  }
+}
+
 // Preview a voice — calls /v1/generate with a short sample sentence,
 // routes the resulting Blob into the global audio player. JustWrite
 // affordance J. Per-voice preview state stops the button being
 // re-clicked while in flight.
 const previewingVoiceId = ref(null);
 async function previewVoice(voice) {
-  if (previewingVoiceId.value) return;
+  if (!voice || previewingVoiceId.value) return;
   previewingVoiceId.value = voice.id;
   try {
     const blob = await api.request("/v1/generate", {
@@ -508,7 +559,80 @@ async function renderScene(scene) {
     }
   } finally {
     renderBusyScene.value = null;
+    loadCacheStats();
   }
+}
+
+// ── Render-tab cache stats + ACX QC (journeys Render contract) ───────
+const cacheStats = ref(null);   // {total, cached, scenes:[{scene_id,total,cached}]}
+const qcByScene = ref({});      // scene_id -> {ok, rms_ok, peak_ok, duration_s}
+const qcBusy = ref(false);
+
+async function loadCacheStats() {
+  cacheStats.value = null;
+  if (!selectedProjectId.value) return;
+  try {
+    cacheStats.value = await api.request(`/v1/render/cache-stats?project_id=${selectedProjectId.value}`);
+  } catch { /* no scenes yet — banner just hides */ }
+}
+const sceneCacheById = computed(() => {
+  const out = {};
+  for (const sc of cacheStats.value?.scenes || []) out[sc.scene_id] = sc;
+  return out;
+});
+
+const masterPill = computed(() => {
+  const m = selectedProject.value?.mastering_preset;
+  if (m === "acx" || (!m && selectedProject.value?.project_type === "audiobook")) {
+    return "ACX preset · −20 LUFS · peak −3 dB · noise floor −60 dB";
+  }
+  return m ? `master · ${m}` : "no master preset";
+});
+
+async function runQC() {
+  if (!selectedProjectId.value || qcBusy.value) return;
+  qcBusy.value = true;
+  const task = tasks.start({
+    kind: "qc",
+    feature: "acx-qc",
+    label: `ACX QC · ${selectedProject.value?.name || ""}`,
+    meta: { projectId: selectedProjectId.value },
+  });
+  try {
+    const r = await api.request(`/v1/projects/${selectedProjectId.value}/qc`);
+    const map = {};
+    for (const c of r?.chapters || []) map[c.scene_id] = c;
+    qcByScene.value = map;
+    tasks.finish(task.id);
+    pushToast({
+      message: r?.all_ok ? "ACX QC: every chapter passes." : "ACX QC: some chapters are out of spec — see the Check column.",
+      kind: r?.all_ok ? "success" : "info",
+      duration: 6000,
+    });
+    await loadCacheStats();
+  } catch (e) {
+    tasks.fail(task.id, e?.message || String(e));
+    pushToast({ message: `QC failed: ${e?.message || e}`, kind: "error", duration: 7000 });
+  } finally {
+    qcBusy.value = false;
+  }
+}
+
+async function renderAll() {
+  selectAllUnrendered();
+  await renderSelected();
+}
+
+function checkState(sceneId) {
+  const t = taskForScene(sceneId);
+  if (t?.status === "running") return { cls: "jv-pill--accent", label: "rendering…" };
+  const qc = qcByScene.value[sceneId];
+  if (qc) return qc.ok
+    ? { cls: "jv-pill--green", label: "✓ ACX pass" }
+    : { cls: "jv-pill--danger", label: `✗ ${!qc.rms_ok ? "RMS" : "peak"} out of spec` };
+  if (t?.status === "completed") return { cls: "jv-pill--green", label: "rendered" };
+  if (sceneSelectedForRender.value[sceneId]) return { cls: "jv-pill--ghost", label: "queued" };
+  return { cls: "jv-pill--ghost", label: "—" };
 }
 
 async function renderSelected() {
@@ -948,16 +1072,17 @@ watch(selectedProjectId, (id) => {
       <span v-if="selectedProject" class="jv-pill jv-pill--ghost">{{ selectedProject.project_type }}</span>
     </div>
 
-    <!-- ── Tabs ─────────────────────────────────────────────────────── -->
-    <div class="studio__tabs">
+    <!-- ── Production steps (1 · Cast → 2 · Script → 3 · Render) ────── -->
+    <div class="studio__steps">
       <button
-        v-for="(label, key) in TAB_LABELS"
-        :key="key"
+        v-for="t in visibleTabs"
+        :key="t.key"
         type="button"
-        class="studio__tab"
-        :class="{ 'studio__tab--active': tab === key }"
-        @click="tab = key"
-      >{{ label }}</button>
+        class="jv-pill studio__step"
+        :class="{ 'studio__step--active': tab === t.key }"
+        :title="t.key === 'cast' ? 'Map people to voices' : t.key === 'script' ? 'Who speaks each line' : 'Batch render + mastering'"
+        @click="tab = t.key"
+      >{{ t.label }}</button>
     </div>
 
     <!-- ── Cast tab ─────────────────────────────────────────────────── -->
@@ -967,6 +1092,11 @@ watch(selectedProjectId, (id) => {
       </div>
 
       <template v-else>
+        <p class="studio__lede">
+          <strong>Cast</strong> maps people to voices: <strong>select a card → click a voice</strong>
+          in the library; click the assigned voice again to unassign. ▶ auditions any voice in
+          place. Smart-assign proposes the whole cast; override card by card.
+        </p>
         <header class="studio__cast-toolbar">
           <h3 class="jv-section__title" style="margin: 0">
             {{ copy.cast.plural }} — {{ characterPersonas.length }}
@@ -975,31 +1105,48 @@ watch(selectedProjectId, (id) => {
           <JvButton
             variant="secondary"
             size="sm"
-            label="🪄 Smart-assign"
+            label="✕ Clear cast"
+            :loading="clearCastBusy"
+            :disabled="clearCastBusy || !projectPersonas.some((p) => p.voice_id)"
+            title="Unassign every voice — personas stay"
+            @click="clearCast"
+          />
+          <JvButton
+            variant="secondary"
+            size="sm"
+            label="✨ Smart-assign"
             :loading="smartAssignBusy"
             :disabled="smartAssignBusy"
+            title="LLM proposes a voice per character from bios + gender hints"
             @click="smartAssignCast"
           />
         </header>
 
         <div class="studio__cast-grid">
           <!-- Narrator card -->
-          <article v-if="narratorPersona" class="jv-card studio__char-card studio__char-card--narrator">
-            <div class="studio__char-h">
-              <div class="studio__char-portrait studio__char-portrait--narrator">📖</div>
-              <div class="studio__char-name">{{ narratorPersona.name }}</div>
-              <span class="jv-pill jv-pill--ghost">Narrator</span>
+          <article
+            v-if="narratorPersona"
+            class="jv-card studio__char-card studio__char-card--narrator"
+            :class="{ 'studio__char-card--selected': selectedCharacterId === narratorPersona.id }"
+            @click="selectedCharacterId = narratorPersona.id"
+            title="The narrator carries the prose between quotes — pick your steadiest voice"
+          >
+            <span class="studio__char-portrait studio__char-portrait--narrator">N</span>
+            <div class="studio__char-main">
+              <div class="studio__char-name-row">
+                <strong class="studio__char-name">{{ narratorPersona.name }}</strong>
+                <span class="jv-pill jv-pill--green">main</span>
+              </div>
+              <div class="studio__char-role jv-muted">{{ personaRole(narratorPersona) || "carries the narration" }}</div>
+              <div v-if="narratorPersona.voice_id" class="studio__char-voice">
+                <span class="studio__char-glyph">{{ (voiceById(narratorPersona.voice_id)?.name || "?").slice(0, 2) }}</span>
+                {{ voiceById(narratorPersona.voice_id)?.name || narratorPersona.voice_id }}
+                <span class="jv-muted">· {{ voiceById(narratorPersona.voice_id)?.engine || "" }}</span>
+                <button type="button" class="studio__voice-action" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(narratorPersona.voice_id))">▶</button>
+                <button type="button" class="studio__voice-action" title="Tune voice parameters" @click.stop="openVoiceTuner(narratorPersona)">⚙</button>
+              </div>
+              <span v-else class="studio__char-unassigned">⚠ no voice assigned</span>
             </div>
-            <div v-if="!narratorPersona.voice_id" class="jv-banner jv-banner--warn studio__char-warn">
-              No voice assigned.
-            </div>
-            <div v-else class="studio__char-voice">
-              <strong>{{ voiceById(narratorPersona.voice_id)?.name || narratorPersona.voice_id }}</strong>
-              <span class="jv-muted">{{ voiceById(narratorPersona.voice_id)?.engine || "" }}</span>
-            </div>
-            <footer class="studio__char-actions">
-              <JvButton variant="ghost" size="sm" label="⚙ Tune" @click="openVoiceTuner(narratorPersona)" />
-            </footer>
           </article>
 
           <!-- Character cards -->
@@ -1007,23 +1154,23 @@ watch(selectedProjectId, (id) => {
             v-for="p in characterPersonas"
             :key="p.id"
             class="jv-card studio__char-card"
-            :class="{ 'studio__char-card--selected': selectedCharacterId === p.id }"
+            :class="{ 'studio__char-card--selected': selectedCharacterId === p.id, 'studio__char-card--unassigned': !p.voice_id }"
+            :title="`Select, then click a voice in the library to cast ${p.name}`"
             @click="selectedCharacterId = p.id"
           >
-            <div class="studio__char-h">
-              <div class="studio__char-portrait">{{ (p.name || "?").charAt(0).toUpperCase() }}</div>
-              <div class="studio__char-name">{{ p.name }}</div>
+            <span class="studio__char-portrait">{{ (p.name || "?").charAt(0).toUpperCase() }}</span>
+            <div class="studio__char-main">
+              <strong class="studio__char-name">{{ p.name }}</strong>
+              <div class="studio__char-role jv-muted">{{ personaRole(p) }}</div>
+              <div v-if="p.voice_id" class="studio__char-voice">
+                <span class="studio__char-glyph">{{ (voiceById(p.voice_id)?.name || "?").slice(0, 2) }}</span>
+                {{ voiceById(p.voice_id)?.name || p.voice_id }}
+                <span class="jv-muted">· {{ voiceById(p.voice_id)?.engine || "" }}</span>
+                <button type="button" class="studio__voice-action" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(p.voice_id))">▶</button>
+                <button type="button" class="studio__voice-action" title="Tune voice parameters" @click.stop="openVoiceTuner(p)">⚙</button>
+              </div>
+              <span v-else class="studio__char-unassigned">⚠ no voice assigned</span>
             </div>
-            <div v-if="!p.voice_id" class="jv-banner jv-banner--warn studio__char-warn">
-              No voice assigned.
-            </div>
-            <div v-else class="studio__char-voice">
-              <strong>{{ voiceById(p.voice_id)?.name || p.voice_id }}</strong>
-              <span class="jv-muted">{{ voiceById(p.voice_id)?.engine || "" }}</span>
-            </div>
-            <footer class="studio__char-actions">
-              <JvButton variant="ghost" size="sm" label="⚙ Tune" @click.stop="openVoiceTuner(p)" />
-            </footer>
           </article>
         </div>
 
@@ -1110,10 +1257,10 @@ watch(selectedProjectId, (id) => {
                 <span class="studio__voice-row-name-row">
                   <strong class="studio__voice-row-name">{{ v.name }}</strong>
                   <span
-                    v-if="isVoiceAssignedToSelected(v.id)"
+                    v-if="castAsByVoiceId[v.id]"
                     class="studio__voice-row-assigned"
-                    title="Currently assigned to this character"
-                  >✓</span>
+                    :title="`Cast as ${castAsByVoiceId[v.id]}`"
+                  >✓ {{ castAsByVoiceId[v.id] }}</span>
                 </span>
                 <span v-if="v.tone" class="studio__voice-row-tone">{{ v.tone }}</span>
                 <span v-else class="studio__voice-row-tone jv-muted">{{ v.engine || "" }}</span>
@@ -1205,12 +1352,11 @@ watch(selectedProjectId, (id) => {
         <table v-else class="jv-table studio__script-table">
           <thead>
             <tr>
-              <th>#</th>
-              <th>Kind</th>
               <th>Speaker</th>
+              <th>Kind</th>
               <th>Source</th>
-              <th>Confidence</th>
               <th>Text</th>
+              <th>Confidence</th>
             </tr>
           </thead>
           <tbody>
@@ -1220,8 +1366,6 @@ watch(selectedProjectId, (id) => {
               @contextmenu.prevent="rewriteRow(i)"
               :title="row.kind === 'dialogue' ? 'Right-click to rewrite this line in character' : ''"
             >
-              <td class="jv-muted">{{ i + 1 }}</td>
-              <td><span class="jv-pill jv-pill--ghost">{{ row.kind }}</span></td>
               <td>
                 <select
                   v-if="row.kind === 'dialogue'"
@@ -1239,14 +1383,17 @@ watch(selectedProjectId, (id) => {
                 <span v-if="editedFlags[i]" class="studio__edited">✎</span>
                 <span v-if="row.rewritten" class="studio__edited" title="LLM-rewritten">✨</span>
               </td>
+              <td><span class="jv-pill jv-pill--ghost">{{ row.kind }}</span></td>
               <td>
                 <span :class="sourceChipClass(row.source)">{{ row.source }}</span>
                 <span v-if="row.source === 'floored' && row.floored_from" class="jv-muted">
                   from {{ speakerLabel(row.floored_from) }}
                 </span>
               </td>
-              <td class="jv-mono">{{ (row.confidence * 100).toFixed(0) }}%</td>
               <td class="studio__script-text-cell">{{ row.text }}</td>
+              <td>
+                <span class="jv-pill" :class="row.confidence > 0.9 ? 'jv-pill--green' : row.confidence > 0.8 ? '' : 'jv-pill--warn'">{{ (row.confidence * 100).toFixed(0) }}%</span>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -1263,6 +1410,24 @@ watch(selectedProjectId, (id) => {
           <JvButton variant="secondary" size="sm" label="Select all with blocks" @click="selectAllUnrendered" />
           <span class="jv-muted">{{ selectedSceneCount() }} selected</span>
           <span class="jv-spacer" />
+          <span class="jv-pill jv-pill--green" :title="`Applied on render — set per project in Projects`">{{ masterPill }}</span>
+          <JvButton
+            variant="secondary"
+            size="sm"
+            :loading="qcBusy"
+            :disabled="qcBusy"
+            label="🎧 Run ACX QC"
+            title="Render every chapter (cache-served when unchanged) and measure RMS + peak against the ACX limits"
+            @click="runQC"
+          />
+          <JvButton
+            variant="secondary"
+            size="sm"
+            :disabled="renderBusyScene !== null"
+            label="▶ Render all"
+            title="Queue every chapter that has blocks"
+            @click="renderAll"
+          />
           <JvButton
             variant="primary"
             size="sm"
@@ -1272,6 +1437,13 @@ watch(selectedProjectId, (id) => {
           />
         </header>
 
+        <!-- Cache banner — how much of the next render is free. -->
+        <div v-if="cacheStats && cacheStats.total" class="jv-banner studio__cache-banner" :class="cacheStats.cached ? 'jv-banner--info' : ''">
+          Cache: <strong>{{ cacheStats.cached }} of {{ cacheStats.total }}</strong>
+          {{ copy.line.plural.toLowerCase() }} unchanged since last render —
+          {{ cacheStats.cached ? `only ${cacheStats.total - cacheStats.cached} hit the engine` : "everything hits the engine on first render" }}.
+        </div>
+
         <table class="jv-table studio__render-table">
           <thead>
             <tr>
@@ -1279,7 +1451,9 @@ watch(selectedProjectId, (id) => {
               <th>#</th>
               <th>{{ copy.chapter.singular }}</th>
               <th>{{ copy.line.plural }}</th>
+              <th title="Lines served from the render cache — unchanged since last render">Cached</th>
               <th>Render preset</th>
+              <th>Check</th>
               <th></th>
             </tr>
           </thead>
@@ -1298,6 +1472,10 @@ watch(selectedProjectId, (id) => {
                   <strong>{{ s.title || `${copy.chapter.singular} ${s.position + 1}` }}</strong>
                 </td>
                 <td class="jv-mono">{{ sceneBlockCounts[s.id] || 0 }}</td>
+                <td class="jv-mono jv-muted">
+                  <template v-if="sceneCacheById[s.id]?.total">{{ sceneCacheById[s.id].cached }}/{{ sceneCacheById[s.id].total }}</template>
+                  <template v-else>—</template>
+                </td>
                 <td>
                   <select
                     :value="scenePresetSelections[s.id] || ''"
@@ -1306,6 +1484,9 @@ watch(selectedProjectId, (id) => {
                   >
                     <option v-for="o in presetOptions()" :key="o.value" :value="o.value">{{ o.label }}</option>
                   </select>
+                </td>
+                <td>
+                  <span class="jv-pill" :class="checkState(s.id).cls" :title="qcByScene[s.id] ? `RMS ${qcByScene[s.id].rms_dbfs?.toFixed?.(1)} dB · peak ${qcByScene[s.id].peak_dbfs?.toFixed?.(1)} dB · ${Math.round(qcByScene[s.id].duration_s || 0)}s` : ''">{{ checkState(s.id).label }}</span>
                 </td>
                 <td class="studio__render-actions">
                   <JvButton
@@ -1329,7 +1510,7 @@ watch(selectedProjectId, (id) => {
               <!-- Per-scene progress strip — appears below the row when
                    a render task is in flight or finished-but-still-visible. -->
               <tr v-if="taskForScene(s.id)" class="studio__render-progress-row">
-                <td colspan="6" class="studio__render-progress-cell">
+                <td colspan="8" class="studio__render-progress-cell">
                   <div class="studio__render-progress">
                     <span
                       class="jv-pill"
@@ -1479,27 +1660,17 @@ watch(selectedProjectId, (id) => {
 }
 .studio__project-select { flex: 1 1 260px; max-width: var(--w-path); }
 
-.studio__tabs {
-  display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--border-soft);
-}
-.studio__tab {
+.studio__steps { display: flex; gap: 8px; align-items: center; }
+.studio__step {
   appearance: none;
-  background: transparent;
-  border: 0;
-  padding: 10px 18px;
   font: inherit;
-  font-size: 13px;
-  color: var(--ink-2);
   cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
 }
-.studio__tab:hover { color: var(--ink); }
-.studio__tab--active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
+.studio__step:hover { border-color: var(--accent); color: var(--accent-ink); }
+.studio__step--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
   font-weight: 600;
 }
 
@@ -1517,43 +1688,57 @@ watch(selectedProjectId, (id) => {
   gap: 8px;
 }
 
+.studio__lede { font-size: 13px; color: var(--ink-2); margin: 0 0 4px; max-width: 880px; }
+
 .studio__cast-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+  align-content: start;
 }
 
+/* Compact horizontal card (mock .cast-card): portrait left, name/role/
+   voice line right. Selected = accent ring; unassigned = dashed edge. */
 .studio__char-card {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 12px 14px;
+  margin: 0;
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.studio__char-card:hover { border-color: var(--border-strong, var(--accent-line, var(--accent))); }
+.studio__char-card:hover { border-color: var(--accent-line, var(--accent)); }
 .studio__char-card--narrator { background: var(--accent-soft); }
-.studio__char-card--selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.studio__char-card--selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.studio__char-card--unassigned { border-style: dashed; }
 
-.studio__char-h { display: flex; align-items: center; gap: 10px; }
 .studio__char-portrait {
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: var(--surface-2);
+  background: var(--accent);
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  font-size: 16px;
+  font-weight: 700;
+  font-size: 15px;
+  flex: none;
 }
-.studio__char-portrait--narrator { background: var(--accent); color: var(--surface); }
-.studio__char-name { font-weight: 600; font-size: 14px; flex: 1; }
-
-.studio__char-warn { padding: 6px 8px; font-size: 11.5px; margin: 0; }
-.studio__char-voice { display: flex; flex-direction: column; font-size: 12.5px; }
-
-.studio__char-actions { display: flex; gap: 6px; padding-top: 6px; border-top: 1px solid var(--border-soft); }
+.studio__char-main { min-width: 0; flex: 1; }
+.studio__char-name-row { display: flex; align-items: center; gap: 6px; }
+.studio__char-name { font-weight: 600; font-size: 13.5px; }
+.studio__char-role { font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.studio__char-voice { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-top: 4px; }
+.studio__char-glyph {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--surface-3); color: var(--ink-2);
+  font-size: 9px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: none;
+}
+.studio__char-unassigned { font-size: 11.5px; color: var(--warn-ink); display: inline-block; margin-top: 4px; }
 
 .studio__voice-library {
   padding: 12px;

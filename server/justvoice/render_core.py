@@ -89,6 +89,50 @@ def _apply_lexicons(text: str, lexicon_ids: list[str], state: AppState) -> str:
     return out
 
 
+def probe_line_cached(
+    state: AppState,
+    voice: str,
+    text: str,
+    *,
+    language: str | None = None,
+    delivery: dict[str, Any] | None = None,
+    seed: int | None = None,
+    lexicons: list[str] | None = None,
+    cache_scope: str = "default",
+) -> bool | None:
+    """Would render_line serve this line from cache? Mirrors render_line's
+    key derivation byte-for-byte WITHOUT rendering or loading the engine.
+    Returns None when the voice can't be resolved (the render would 404)."""
+    settings = state.settings.get()
+    delivery = delivery or {}
+    lexicons = lexicons or []
+    engine_id = _resolve_engine_for_voice(state, voice)
+    if engine_id is None:
+        return None
+    engine = state.engines.get(engine_id)
+    if engine is None:
+        return None
+    effective_text = text
+    if not engine.meta.supports_paralinguistic_tags:
+        effective_text = strip_tags(effective_text)
+    effective_text = _apply_lexicons(effective_text, lexicons, state)
+    key = (
+        CacheKeyBuilder()
+        .with_engine(engine_id, VERSION)
+        .with_voice(voice)
+        .with_text(effective_text)
+        .with_language(language)
+        .with_seed(seed)
+        .with_delivery_json(canonical_json(delivery))
+        .with_lexicons(lexicons)
+        .finish()
+    )
+    cache = getattr(state, "_render_cache", None)
+    if not settings.cache.enabled or cache is None:
+        return False
+    return cache.has(cache_scope, key)
+
+
 def render_line(
     state: AppState,
     voice: str,

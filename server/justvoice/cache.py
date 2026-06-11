@@ -111,6 +111,14 @@ class RenderCache:
                 self._memory.popitem(last=False)
             return data
 
+    def has(self, scope: str, key: str) -> bool:
+        """Existence probe — no disk read, no LRU promotion. Drives the
+        Studio Render cache banner ("N of M lines unchanged")."""
+        with self._lock:
+            if (scope, key) in self._memory:
+                return True
+            return self._path(scope, key).exists()
+
     def put(self, scope: str, key: str, data: bytes) -> None:
         with self._lock:
             path = self._path(scope, key)
