@@ -727,26 +727,23 @@ onMounted(() => { refresh(); loadSystem(); loadProviders(); });
              detail (not the loaded one) so the user can audit before
              clicking Load / Download. -->
         <div v-if="selectedVariantFor(e)" class="engines-view__info">
-          <div class="engines-view__info-row">
-            <span class="engines-view__info-k">Size on disk</span>
-            <span>{{ fmtDisk(selectedVariantFor(e).size_mb) }}</span>
+          <div class="engines-view__info-meta">
+            <span class="engines-view__info-item" title="Download size of the selected model on disk">
+              <span class="engines-view__info-k">Disk</span> {{ fmtDisk(selectedVariantFor(e).size_mb) }}
+            </span>
+            <span class="engines-view__info-item" v-if="selectedVariantFor(e).vram_mb" title="GPU memory needed to load this model">
+              <span class="engines-view__info-k">VRAM</span> {{ fmtDisk(selectedVariantFor(e).vram_mb) }}
+            </span>
+            <span class="engines-view__info-item" v-if="selectedVariantFor(e).quality != null" title="Relative output quality across the catalog (higher is better)">
+              <span class="engines-view__info-k">Quality</span> {{ selectedVariantFor(e).quality }}/100
+            </span>
+            <span class="engines-view__info-item" v-if="e.weights_license || e.attribution" title="License of the model weights">
+              <span class="engines-view__info-k">License</span> {{ e.weights_license || 'Apache-2.0' }}<template v-if="e.attribution"> — must show "{{ e.attribution }}"</template>
+            </span>
           </div>
-          <div class="engines-view__info-row" v-if="selectedVariantFor(e).vram_mb">
-            <span class="engines-view__info-k">VRAM required</span>
-            <span>{{ fmtDisk(selectedVariantFor(e).vram_mb) }}</span>
-          </div>
-          <div class="engines-view__info-row" v-if="selectedVariantFor(e).quality != null">
-            <span class="engines-view__info-k">Quality</span>
-            <span>{{ selectedVariantFor(e).quality }}/100</span>
-          </div>
-          <div class="engines-view__info-row" v-if="e.weights_license || e.attribution">
-            <span class="engines-view__info-k">License</span>
-            <span>{{ e.weights_license || 'Apache-2.0' }}<template v-if="e.attribution"> — must show "{{ e.attribution }}"</template></span>
-          </div>
-          <div class="engines-view__info-row" v-if="selectedVariantFor(e).description">
-            <span class="engines-view__info-k">About</span>
-            <span>{{ selectedVariantFor(e).description }}</span>
-          </div>
+          <p v-if="selectedVariantFor(e).description" class="engines-view__info-about">
+            {{ selectedVariantFor(e).description }}
+          </p>
         </div>
 
         <!-- Inline progress for active install / load — consumes phase
@@ -994,16 +991,35 @@ onMounted(() => { refresh(); loadSystem(); loadProviders(); });
 }
 
 .engines-view__info {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 4px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   padding: 10px 12px;
   background: var(--surface-2);
   border-radius: 6px;
   font-size: 12.5px;
 }
-.engines-view__info-row {
-  display: contents;
+/* Horizontal meta line — label·value pairs flow inline and wrap,
+   separated by middots, instead of the old one-pair-per-row grid. */
+.engines-view__info-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 8px;
+  row-gap: 4px;
+}
+.engines-view__info-item {
+  white-space: nowrap;
+}
+.engines-view__info-item + .engines-view__info-item::before {
+  content: "·";
+  color: var(--ink-3);
+  margin-right: 8px;
+}
+.engines-view__info-about {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--ink-2);
 }
 .engines-view__info-k {
   font-size: 10.5px;
@@ -1011,6 +1027,7 @@ onMounted(() => { refresh(); loadSystem(); loadProviders(); });
   letter-spacing: 0.05em;
   color: var(--ink-3);
   font-weight: 600;
+  margin-right: 2px;
 }
 
 /* ── Inline progress ──────────────────────────────────────────────── */

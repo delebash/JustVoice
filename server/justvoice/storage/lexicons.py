@@ -41,7 +41,7 @@ class LexiconStore:
 
     def list(self) -> list[Lexicon]:
         with self._lock:
-            return sorted(self._cache.values(), key=lambda l: l.created_at)
+            return sorted(self._cache.values(), key=lambda lex: lex.created_at)
 
     def get(self, id: str) -> Lexicon | None:
         with self._lock:

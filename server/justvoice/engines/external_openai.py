@@ -50,7 +50,7 @@ class ExternalOpenAiTtsBackend:
 
     def load(self, device: str = "auto", model_variant: str | None = None) -> None:
         try:
-            resp = self._client.head(self._base_url + "/", timeout=5.0)
+            self._client.head(self._base_url + "/", timeout=5.0)
             self._ready = True
         except Exception as e:
             self._ready = False

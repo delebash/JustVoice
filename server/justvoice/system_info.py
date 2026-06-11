@@ -79,7 +79,7 @@ def _cpu_name() -> str:
             out = subprocess.check_output(
                 ["wmic", "cpu", "get", "name"], stderr=subprocess.DEVNULL, timeout=5
             ).decode("utf-8", errors="ignore")
-            lines = [l.strip() for l in out.splitlines() if l.strip() and "Name" not in l]
+            lines = [ln.strip() for ln in out.splitlines() if ln.strip() and "Name" not in ln]
             if lines:
                 return lines[0]
         except Exception:

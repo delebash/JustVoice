@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import json
-from sqlalchemy.exc import IntegrityError
 
 from justvoice.database.models import Persona, RenderPreset
 

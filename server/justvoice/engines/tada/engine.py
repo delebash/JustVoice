@@ -131,7 +131,6 @@ class Tada(EmbeddedEngine):
         import numpy as np
         import soundfile as sf
         import torch
-        from tada.modules.encoder import EncoderOutput
 
         if req.seed is not None:
             torch.manual_seed(req.seed)

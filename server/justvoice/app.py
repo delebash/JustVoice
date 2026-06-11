@@ -60,8 +60,8 @@ from .auth import BearerAuthMiddleware
 from .engines.external_openai import ExternalOpenAiTtsBackend
 from .engines.manager import get_manager, shutdown_manager
 from .errors import ApiError, api_exception_handler, http_exception_handler
-from .paths import default_data_dir, models_root
-from .version import API_VERSION, PRODUCT, VERSION
+from .paths import default_data_dir
+from .version import PRODUCT, VERSION
 
 log = logging.getLogger(__name__)
 
@@ -249,8 +249,6 @@ def _register_existing_engines(state: AppState, data_dir: Path) -> None:
     under the data dir. Once each engine is ported to a manifest.py, its
     entry below can be removed.
     """
-    settings = state.settings.get()
-    models_dir = models_root(data_dir)
 
     # Kick off plugin discovery so the catalog is ready.
     mgr = get_manager()

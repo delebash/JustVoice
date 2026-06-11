@@ -21,7 +21,6 @@ import subprocess
 import sys
 import tarfile
 import threading
-import uuid
 from pathlib import Path
 from typing import Callable
 

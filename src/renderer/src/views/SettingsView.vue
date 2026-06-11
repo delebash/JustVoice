@@ -11,8 +11,28 @@ import JvSelect from "../components/jv/JvSelect.vue";
 import JvCheckbox from "../components/jv/JvCheckbox.vue";
 import JvToggle from "../components/jv/JvToggle.vue";
 import JvField from "../components/jv/JvField.vue";
+import { useOnboarding } from "../stores/onboarding.js";
 
 const api = useApi();
+
+// ── Workspace focus (primary use case) ──────────────────────────────
+// The welcome modal asks this once; this card is the only place to
+// change it afterwards. Writing through onboarding.set() persists to
+// settings.json AND live re-filters the sidebar (App.vue visibleFor).
+const onboarding = useOnboarding();
+const USE_CASES = [
+  { id: "audiobook", label: "Audiobooks" },
+  { id: "game", label: "Game dialogue" },
+  { id: "podcast", label: "Podcasts" },
+  { id: "dictation", label: "Dictation" },
+  { id: "accessibility", label: "Accessibility" },
+  { id: "multiple", label: "A bit of everything" },
+  { id: "unset", label: "Not set (show all tabs)" },
+];
+async function setUseCase(id) {
+  await onboarding.set({ primary: id });
+  pushToast({ kind: "success", title: "Workspace focus updated", description: "The sidebar now shows the tabs for this use case." });
+}
 
 // ── Backup & restore (GET /v1/backup, POST /v1/restore) ─────────────
 const aiUsage = ref(null);
@@ -800,6 +820,28 @@ onMounted(() => {
         :class="{ 'settings-subnav__tab--active': activeSub === s.id }"
         @click="activeSub = s.id"
       >{{ s.label }}</a>
+    </div>
+
+    <!-- ─── General · Workspace focus ─── -->
+    <div v-show="activeSub === 'general'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">Workspace focus</h3></div>
+        <p class="jv-muted" style="font-size: 12.5px">
+          What you mostly make here. Tunes the sidebar (hides tabs that don't apply),
+          the vocabulary, and the launch tab. Pick "Not set" to show everything.
+        </p>
+        <div class="usecase-row">
+          <button
+            v-for="u in USE_CASES"
+            :key="u.id"
+            type="button"
+            class="usecase-chip"
+            :class="{ 'usecase-chip--active': onboarding.primaryUseCase === u.id }"
+            :title="u.id === 'unset' ? 'Show every tab in the sidebar' : `Focus the sidebar and vocabulary on ${u.label.toLowerCase()}`"
+            @click="setUseCase(u.id)"
+          >{{ u.label }}</button>
+        </div>
+      </div>
     </div>
 
     <!-- ─── General · Connection ─── -->
@@ -2252,5 +2294,32 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+}
+
+/* Workspace-focus chips — same visual family as the welcome modal's
+   use-case cards, compacted to a single selectable row. */
+.usecase-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.usecase-chip {
+  font: inherit;
+  font-size: 12.5px;
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.usecase-chip:hover { border-color: var(--accent); color: var(--ink); }
+.usecase-chip--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--surface);
+  font-weight: 600;
 }
 </style>

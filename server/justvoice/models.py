@@ -11,7 +11,7 @@ Models are grouped by domain with section comment dividers.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Any, Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 

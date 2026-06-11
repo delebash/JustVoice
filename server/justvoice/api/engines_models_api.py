@@ -16,7 +16,7 @@ from ..app_state import get_state
 from ..engines.catalog import known_engines
 from ..engines.manager import get_manager
 from ..engines.model_catalog import models_for, recommend_for_vram
-from ..errors import bad_request, not_found, service_unavailable
+from ..errors import not_found, service_unavailable
 from ..engines.shared_venv import detect_gpu
 from ..installer import cancel as cancel_install
 from ..installer import (
