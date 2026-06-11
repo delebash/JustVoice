@@ -758,12 +758,255 @@ const stepsFlow = [
 ];
 
 /* ════════════════════════════════════════════════════════════════════
-   Director — journey/step navigation
+   Journey D — First run (Alex): install engines → clone a voice → ready
    ════════════════════════════════════════════════════════════════════ */
+const wave = (n,h,c) => `<span style="display:inline-flex;align-items:flex-end;gap:2px;height:${h}px">${Array.from({length:n},(_,i)=>`<i style="width:3px;border-radius:1px;background:${c||'var(--accent)'};height:${3+Math.abs(Math.sin(i*2.7))* (h-3)}px"></i>`).join("")}</span>`;
+const stepsFirstrun = [
+{ nav:"Home", t:"Alex installed JustVoice five minutes ago. QuickSetup looks at the machine and proposes a sensible engine set — nothing downloads without consent.",
+  html: () => shell("audiobook","Home","Welcome to JustVoice", "", `
+    <div class="two-col" style="grid-template-columns:minmax(0,1.3fr) minmax(300px,1fr)">
+      <div class="card"><div class="card-h"><strong>Quick setup</strong><span class="pill green">hardware detected</span></div><div class="card-b">
+        <div class="sum-row"><span>GPU</span><b>NVIDIA RTX 4070 · 12 GB VRAM → tier: GPU-medium</b></div>
+        <div class="sum-row"><span>Disk for models</span><b class="mono" style="font-size:11px">D:\\JustVoice\\models · 212 GB free</b></div>
+        <p style="font-size:12.5px;margin:14px 0 8px"><strong>Recommended engines for this machine</strong> — pick what to install:</p>
+        ${[["Chatterbox Turbo","voice cloning · paralinguistic tags · the default workhorse","3.1 GB",true],
+           ["Kokoro (sherpa-onnx)","fast preset voices · light on VRAM · great for drafts","310 MB",true],
+           ["Qwen3-TTS","freeform style instructions ('weary, almost whispering')","2.1 GB",false]]
+          .map(e=>`<div class="row" style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;margin-bottom:7px;flex-wrap:nowrap">
+            <input type="checkbox" ${e[3]?'checked':''} style="accent-color:var(--accent)"/>
+            <div style="min-width:0;flex:1"><strong style="font-size:13px">${e[0]}</strong><div class="muted" style="font-size:11.5px">${e[1]}</div></div>
+            <span class="pill">${e[2]}</span></div>`).join("")}
+        <div class="row" style="margin-top:12px"><button class="btn">⬇ Install 2 engines (3.4 GB)</button><button class="btn ghost sm">Skip — I'll use an external server</button></div>
+      </div></div>
+      <div class="card"><div class="card-h"><strong>What happens next</strong></div><div class="card-b">
+        <ul class="ckl">
+          <li><span class="ok">1</span> Engines download &amp; verify (one-time)</li>
+          <li><span class="ok">2</span> Clone your voice from 30 s of audio — or skip and use preset voices</li>
+          <li><span class="ok">3</span> Pick what you're making (audiobook · game · podcast) and import</li>
+        </ul>
+        <div class="banner info" style="margin-top:14px">Everything runs <strong>locally</strong>. No audio or text leaves this machine unless you add an external provider yourself.</div>
+      </div></div>
+    </div>`) },
+
+{ nav:"Engines", t:"Engines download with real progress. The card states — installed / loading / external — are the same ones the whole app shows in its engine pill.",
+  html: () => shell("audiobook","Engines","Engines", "", `
+    <p class="lede">Bundled engines load one at a time (~25–55 s) and the active one powers every render. External OpenAI-compatible servers can be added and are ready whenever they're online.</p>
+    <div class="banner warn"><div class="row" style="flex-wrap:nowrap"><span style="flex:none">⬇ Installing <strong>Chatterbox Turbo</strong> — 2.1 of 3.1 GB</span><div class="prog" style="flex:1"><div class="fill" style="width:68%"></div></div><span style="flex:none">68% · 41 MB/s</span></div></div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(280px,1fr));gap:12px;max-width:980px">
+      ${[["Chatterbox Turbo","installing… 68%","warn","cloning · tags · 24 kHz"],
+         ["Kokoro (sherpa-onnx)","✓ installed · not loaded","","28 preset voices · 80 MB VRAM"],
+         ["Qwen3-TTS","not installed · 2.1 GB","ghost","freeform style instruct"],
+         ["Kokoro FastAPI (external)","● online · http://192.168.1.40:8880","blue","add any OpenAI-compatible TTS server"]]
+        .map(e=>`<div class="card" style="padding:13px 16px"><div class="row" style="flex-wrap:nowrap"><strong style="flex:1;font-size:13.5px">${e[0]}</strong><span class="pill ${e[2]}">${e[1]}</span></div><p class="muted" style="font-size:11.5px;margin-top:5px">${e[3]}</p></div>`).join("")}
+    </div>
+    <p class="muted" style="font-size:12px;margin-top:12px">＋ Add external provider — name + base URL + key; it appears in every voice picker with a blue dot.</p>`) },
+
+{ nav:"Voices", t:"Cloning: 30 seconds of clean audio. Record here or drop files; each sample gets a quality check before the clone is built.",
+  html: () => shell("audiobook","Voices","Voices — Clone new voice", "", `
+    <div class="two-col">
+      <div class="card"><div class="card-h"><strong>Samples</strong><span class="pill">2 of 3 recommended</span><span class="spacer"></span><button class="btn secondary sm">⏺ Record</button><button class="btn secondary sm">⬆ Upload</button></div><div class="card-b">
+        ${[["sample_01.wav","12.4 s",wave(36,16),"✓ clean · low noise floor","green"],
+           ["sample_02.wav","18.1 s",wave(48,16),"✓ clean","green"],
+           ["kitchen_take.m4a","9.2 s",wave(30,16,"var(--warn)"),"⚠ background hum — exclude or denoise","warn"]]
+          .map(s=>`<div class="row" style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;margin-bottom:7px;flex-wrap:nowrap">
+            <button class="btn ghost sm">▶</button><span class="mono" style="font-size:11.5px;flex:none;width:130px">${s[0]}</span>${s[2]}<span class="muted" style="font-size:11px;flex:none">${s[1]}</span><span class="spacer"></span><span class="pill ${s[4]}">${s[3]}</span></div>`).join("")}
+        <p class="muted" style="font-size:11.5px;margin-top:6px">Tip: varied sentences beat one long take. Avoid music beds and room echo.</p>
+      </div></div>
+      <div class="card"><div class="card-h"><strong>Build the clone</strong></div><div class="card-b">
+        <label class="eyebrow">Name</label>
+        <input class="input" value="Alex" style="margin:4px 0 12px"/>
+        <label class="eyebrow">Engine</label>
+        <div class="row" style="margin:4px 0 12px"><span class="pill green">Chatterbox Turbo — cloning supported</span></div>
+        <label style="display:flex;gap:8px;font-size:12px;align-items:flex-start;margin-bottom:14px"><input type="checkbox" checked style="accent-color:var(--accent);margin-top:2px"/> <span>I have the right to clone this voice (it's mine, or I have the speaker's consent). A consent note is stored with the voice.</span></label>
+        <button class="btn" style="width:100%">✨ Create voice clone</button>
+        <div class="banner good" style="margin-top:12px">Cloning is instant prompting, not training — the clone is ready as soon as samples upload. For a tighter match later, <strong>Train</strong> fine-tunes on 10+ minutes.</div>
+      </div></div>
+    </div>`) },
+
+{ nav:"Voices", t:"Audition the clone against the original. Tweak delivery, save — the voice is now in the library for every project and every kind.",
+  html: () => shell("audiobook","Voices","Voices — Audition “Alex”", "", `
+    <div class="card" style="max-width:880px;padding:18px 22px">
+      <label class="eyebrow">Test phrase</label>
+      <textarea class="input" style="height:64px;padding:10px 12px;margin:6px 0 12px;resize:none">The lake had a way of holding the morning fog long after the sun should have burned it off.</textarea>
+      <div class="row" style="margin-bottom:16px">
+        <button class="btn">▶ Generate &amp; play</button>
+        <span class="pill">speed 1.0×</span><span class="pill">pitch 0</span><span class="pill ghost">exaggeration 0.4</span>
+        <span class="spacer"></span><span class="muted" style="font-size:11.5px">2.1 s to generate</span>
+      </div>
+      <div class="row" style="gap:14px">
+        <div style="flex:1;border:1px solid var(--line);border-radius:8px;padding:11px 14px"><div class="eyebrow" style="margin-bottom:7px">Your sample</div>${wave(54,22,"var(--line-strong)")}<div class="row" style="margin-top:7px"><button class="btn ghost sm">▶</button><span class="muted" style="font-size:11px">sample_02.wav</span></div></div>
+        <div style="flex:1;border:1px solid var(--accent);background:var(--accent-soft);border-radius:8px;padding:11px 14px"><div class="eyebrow" style="margin-bottom:7px;color:var(--accent-ink)">Clone “Alex”</div>${wave(54,22)}<div class="row" style="margin-top:7px"><button class="btn ghost sm">▶</button><span class="muted" style="font-size:11px">generated just now</span></div></div>
+      </div>
+      <div class="row" style="margin-top:16px"><button class="btn">✓ Save to library</button><button class="btn secondary">↻ Regenerate</button><span class="spacer"></span><span class="pill ghost">later: Train → fine-tune for a tighter match</span></div>
+    </div>`) },
+
+{ nav:"Home", t:"Setup done — Home is the launchpad. Engines ready, a cloned voice in the library, and the kind picker one click away.",
+  html: () => shell("audiobook","Home","Home", "", `
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(240px,1fr));gap:12px;max-width:1080px;margin-bottom:14px">
+      <div class="card" style="padding:16px 18px"><div class="eyebrow">Start something</div><div class="display sm" style="margin:6px 0 10px">What are you making?</div><div class="row"><span class="pill">📖 Audiobook</span><span class="pill">🎮 Game</span><span class="pill">🎙️ Podcast</span></div><button class="btn sm" style="margin-top:12px">＋ New project</button></div>
+      <div class="card" style="padding:16px 18px"><div class="eyebrow">Engines</div><div style="font-size:12.5px;margin-top:8px">● Chatterbox Turbo — <strong>loaded</strong><br/><span class="muted">○ Kokoro — installed</span><br/><span style="color:var(--info-blue)">● Kokoro FastAPI — online</span></div></div>
+      <div class="card" style="padding:16px 18px"><div class="eyebrow">Voices</div><div style="font-size:12.5px;margin-top:8px">${glyph("Alex","#3a7d63")} <strong>Alex</strong> (cloned) · just now<br/><span class="muted" style="font-size:11.5px">+ 28 Kokoro presets</span></div><button class="btn ghost sm" style="margin-top:8px">＋ Clone another</button></div>
+    </div>
+    <div class="card" style="max-width:1080px;padding:14px 18px"><div class="row" style="flex-wrap:nowrap"><div style="flex:1"><strong style="font-size:13px">Try dictation</strong><p class="muted" style="font-size:12px;margin-top:3px">Press <span class="mono" style="font-size:11px">Ctrl+Shift+Space</span> anywhere — type, and JustVoice speaks it in your voice through any audio device.</p></div><button class="btn secondary sm">Set up hotkey ➜</button></div></div>`) },
+];
+
+/* ════════════════════════════════════════════════════════════════════
+   Journey E — Dictation / live voice (Dana)
+   ════════════════════════════════════════════════════════════════════ */
+const stepsDictation = [
+{ nav:"Settings", t:"Dana streams with a voice condition that limits long speaking. Setup: a global hotkey and an output routed into her streaming app.",
+  html: () => shell("audiobook","Settings","Settings — Dictation & live voice", "", `
+    <div class="card" style="max-width:760px;padding:18px 22px">
+      <div class="sum-row" style="align-items:center"><span><strong>Global hotkey</strong><br/><span class="muted" style="font-size:11.5px">works system-wide, even when JustVoice is in the tray</span></span><span class="mono" style="border:1px solid var(--line-strong);border-radius:6px;padding:4px 12px;font-size:12px">Ctrl + Shift + Space</span></div>
+      <div class="sum-row" style="align-items:center"><span><strong>Voice</strong></span><span class="combo-cell">${glyph("Dana","#7c5cbf")} Dana (cloned)<span class="chev">▼</span></span></div>
+      <div class="sum-row" style="align-items:center"><span><strong>Output channel</strong><br/><span class="muted" style="font-size:11.5px">audio device the speech plays into</span></span><span class="combo-cell">🎚 OBS Virtual Mic<span class="chev">▼</span></span></div>
+      <div class="sum-row" style="align-items:center"><span><strong>Also speak through</strong></span><span class="pill">Default speakers (monitor) ✓</span></div>
+      <div class="sum-row" style="align-items:center"><span><strong>Low-latency mode</strong><br/><span class="muted" style="font-size:11.5px">keeps the engine warm; first word in ~300 ms</span></span><span class="pill green">on</span></div>
+    </div>
+    <p class="muted" style="font-size:12px;margin-top:12px;max-width:760px">Channels are managed under <strong>Audio Channels</strong> — any output device or virtual cable (OBS, VB-Cable, Discord) can be a target. No project needed for any of this.</p>`) },
+
+{ nav:"Home", t:"Anywhere in the OS: hotkey → floating bar → type → it speaks as Dana into the virtual mic. Discord hears her voice; she never opened the app.",
+  html: () => `
+    <main style="grid-column:1 / -1;display:flex;align-items:center;justify-content:center;background:#2a2d31;position:relative">
+      <div style="position:absolute;inset:0;opacity:.18;background:
+        linear-gradient(90deg,transparent 24%, #fff 24.2%, transparent 24.4%),
+        linear-gradient(#3a3e44 1px,transparent 1px) 0 0/100% 38px"></div>
+      <div style="position:absolute;top:26px;left:34px;color:#9aa0a8;font-size:12px;font-family:var(--font-mono)">▶ any app — game, Discord, browser…</div>
+      <div style="background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.45);padding:16px 20px;width:560px;position:relative;z-index:2">
+        <div class="row" style="flex-wrap:nowrap;margin-bottom:10px">
+          ${glyph("Dana","#7c5cbf")} <strong style="font-size:13px">Dana (cloned)</strong>
+          <span class="pill blue">→ OBS Virtual Mic</span>
+          <span class="spacer"></span>
+          <span class="playing-bars" style="display:inline-flex;align-items:flex-end;gap:2px;height:13px">${wave(5,13)}</span>
+          <span class="muted" style="font-size:11px">speaking…</span>
+        </div>
+        <div style="border:1px solid var(--accent);border-radius:8px;padding:10px 13px;font-size:13.5px;box-shadow:0 0 0 3px var(--accent-soft)">thanks everyone — raid incoming, treat them well<span style="border-left:1.5px solid var(--ink);margin-left:2px"> </span></div>
+        <div class="row" style="margin-top:9px"><span class="muted" style="font-size:11px">Enter — speak · Esc — dismiss · ↑ — last phrase</span><span class="spacer"></span><span class="pill ghost">latency 0.3 s</span></div>
+      </div>
+      <div style="position:absolute;bottom:24px;right:30px;color:#9aa0a8;font-size:11.5px;font-family:var(--font-mono)">JustVoice in tray — main window closed</div>
+    </main>`,
+  bare:true },
+
+{ nav:"Captures", t:"Everything spoken is kept. History is replayable, pinnable for instant re-speak, and good takes can become cloning samples.",
+  html: () => shell("audiobook","Captures","Captures", "", `
+    <p class="lede">Every hotkey phrase and capture lands here. Pin the ones you repeat; promote clean recordings into voice-clone samples.</p>
+    <div class="row" style="margin-bottom:10px"><input class="input" style="max-width:260px" placeholder="Search history…"/><div class="chips"><button class="chip active">All</button><button class="chip">Pinned</button><button class="chip">Today</button></div></div>
+    <div class="card" style="flex:1;min-height:0;overflow-y:auto">
+      <table class="vtable"><thead><tr><th style="width:30px"></th><th>Phrase</th><th>Voice</th><th>Channel</th><th class="right">When</th><th class="right"></th></tr></thead><tbody>
+        ${[["📌","thanks everyone — raid incoming, treat them well","Dana","OBS Virtual Mic","just now"],
+           ["📌","be right back in five minutes","Dana","OBS Virtual Mic","2 h ago"],
+           ["","good morning chat, today we're finishing the water temple","Dana","OBS Virtual Mic","3 h ago"],
+           ["","yes — ship it, I'll review tonight","Dana","Discord cable","yesterday"],
+           ["","mic test recording (promoted to sample ➜ Dana v2)","—","capture","Mon"]]
+          .map(r=>`<tr><td>${r[0]}</td><td style="max-width:430px"><span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r[1]}</span></td><td>${r[2]}</td><td class="muted" style="font-size:12px">${r[3]}</td><td class="right muted" style="font-size:11.5px">${r[4]}</td><td class="right"><button class="btn ghost sm">▶</button><button class="btn ghost sm">⟲ speak again</button></td></tr>`).join("")}
+      </tbody></table>
+    </div>`) },
+
+{ nav:"Webhooks", t:"Agent-driven: the same server speaks for scripts and assistants over MCP and webhooks — no UI in the loop.",
+  html: () => shell("audiobook","Webhooks","Automation — MCP & webhooks", "", `
+    <div class="two-col">
+      <div class="card"><div class="card-h"><strong>MCP server</strong><span class="pill green">enabled</span></div><div class="card-b">
+        <p style="font-size:12.5px;margin-bottom:10px">Any MCP-capable agent (Claude Code, IDEs) can drive JustVoice — dictate commit messages, voice notifications, batch-generate while you're away.</p>
+        <div class="codeblock"><span class="k">tools exposed</span>
+justvoice.speak        <span class="s">{text, voice, channel}</span>
+justvoice.generate     <span class="s">{text, voice} → wav path</span>
+justvoice.list_voices  <span class="s">→ library</span>
+justvoice.render_scene <span class="s">{project, scene} → takes</span></div>
+        <div class="row" style="margin-top:10px"><span class="pill">scoped token per binding</span><span class="pill">rate-limited</span></div>
+      </div></div>
+      <div class="card"><div class="card-h"><strong>Webhooks</strong></div><div class="card-b">
+        <p style="font-size:12.5px;margin-bottom:10px">Outbound events with HMAC signatures — wire renders into a build pipeline (game VO CI) or notify when a chapter masters.</p>
+        ${[["render.completed","https://ci.emberfall.dev/hooks/vo","✓ 200 · 12 min ago"],["chapter.mastered","https://hooks.slack.com/T0…/B4…","✓ 200 · 2 h ago"]]
+          .map(w=>`<div style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;margin-bottom:7px;font-size:12px"><div class="row" style="flex-wrap:nowrap"><span class="mono" style="font-size:11px;font-weight:600">${w[0]}</span><span class="spacer"></span><span class="pill green">${w[2]}</span></div><div class="muted mono" style="font-size:10.5px;margin-top:3px">${w[1]}</div></div>`).join("")}
+        <button class="btn secondary sm" style="margin-top:4px">＋ Add webhook</button>
+      </div></div>
+    </div>`) },
+];
+
+/* ════════════════════════════════════════════════════════════════════
+   Journey F — Fix-it loop (lexicon → targeted re-render → compare)
+   ════════════════════════════════════════════════════════════════════ */
+const stepsFixit = [
+{ nav:"Studio", t:"Listening back to chapter 5, Sarah catches the engine saying “HEK-ayt” for Hecate. She flags it right on the line.",
+  html: () => shell("audiobook","Studio","Studio — Render · Chapter 5", projChip("Stillwater","Audiobook","ACX"), `
+    <div class="row" style="margin-bottom:10px"><span class="pill">1 · Cast</span><span class="pill">2 · Script</span><span class="pill solid" style="background:var(--accent);color:#fff;border-color:var(--accent)">3 · Render</span><span class="spacer"></span><span class="pill green">Chapter 5 · ✓ rendered</span></div>
+    <div class="scroll-fill">
+      ${[["Narrator","Old Debts began, as most things in Stillwater did, at the water's edge.","",false],
+         ["Edith Vance","“Your grandfather swore his oath on the Hecate stone, same as his father did.”","▶ playing — “HEK-ayt”",true],
+         ["Mara Vance","“The Hecate stone. You're telling me that's real?”","also affected",true],
+         ["Narrator","The name meant nothing to Mara, but Edith said it like a church word.","",false]]
+        .map(l=>`<div class="line-row" ${l[3]?'style="border-color:var(--warn-line);background:var(--warn-bg)"':''}>
+          <span class="sp">${glyph(l[0],C[l[0].startsWith("Edith")?"edith":l[0].startsWith("Mara")?"mara":"narr"])} ${l[0]}</span>
+          <span class="txt">${l[1].replace(/Hecate/g,'<mark style="background:var(--warn-bg);border-bottom:2px solid var(--warn);font-weight:600">Hecate</mark>')}</span>
+          ${l[2]?`<span class="pill warn" style="flex:none">${l[2]}</span>`:''}
+          <span style="flex:none"><button class="btn ghost sm">▶</button>${l[3]?'<button class="btn sm" style="height:24px">🔤 Fix pronunciation</button>':''}</span></div>`).join("")}
+    </div>
+    <div class="banner info">“Fix pronunciation” opens the Lexicon with the word pre-filled — the fix lands in the project lexicon, not just this line.</div>`) },
+
+{ nav:"Lexicons", t:"One lexicon entry: spell it how it should sound, test it in her narrator's voice, choose the scope.",
+  html: () => shell("audiobook","Lexicons","Lexicons — Stillwater", projChip("Stillwater","Audiobook","ACX"), `
+    <div class="two-col">
+      <div class="card"><div class="card-h"><strong>New entry</strong><span class="pill warn">from Render · ch. 5</span></div><div class="card-b">
+        <label class="eyebrow">Word / phrase</label>
+        <input class="input" value="Hecate" style="margin:4px 0 12px"/>
+        <label class="eyebrow">Say it as</label>
+        <div class="row" style="margin:4px 0 4px;flex-wrap:nowrap"><input class="input" value="HEH-kuh-tee"/><button class="btn secondary sm" style="flex:none">▶ Test in Narrator</button></div>
+        <p class="muted" style="font-size:11px;margin-bottom:12px">Respell phonetically — or switch to IPA: <span class="mono" style="font-size:11px">ˈhɛkəti</span></p>
+        <label class="eyebrow">Scope</label>
+        <div class="chips" style="margin:6px 0 14px"><button class="chip active">This project</button><button class="chip">Global</button><button class="chip">Persona: Edith</button></div>
+        <button class="btn" style="width:100%">✓ Save entry</button>
+      </div></div>
+      <div class="card"><div class="card-h"><strong>Stillwater lexicon</strong><span class="pill">14 entries</span></div><div class="card-b" style="padding:0">
+        <table class="vtable"><thead><tr><th>Word</th><th>Say as</th><th>Scope</th><th class="right">Hits</th></tr></thead><tbody>
+          ${[["Mara","MAH-rah","project",583],["Ainsley","AYNZ-lee","project",41],["Stillwater (the stone)","still-WAH-ter","project",27],["bowline","BOH-lin","global",6],["Hecate","HEH-kuh-tee","project — new","3"]]
+            .map((r,i)=>`<tr ${i===4?'style="background:var(--accent-soft)"':''}><td><strong>${r[0]}</strong></td><td class="mono" style="font-size:11.5px">${r[1]}</td><td class="muted" style="font-size:11.5px">${r[2]}</td><td class="right">${r[3]}</td></tr>`).join("")}
+        </tbody></table>
+      </div></div>
+    </div>`) },
+
+{ nav:"Studio", t:"Saving the entry tells Render exactly which lines it touches. Three lines re-render; 4 h 02 m of audiobook stays cached.",
+  html: () => shell("audiobook","Studio","Studio — Render", projChip("Stillwater","Audiobook","ACX"), `
+    <div class="banner warn"><strong>Lexicon change “Hecate” affects 3 lines</strong> across ch. 5 and ch. 7 &nbsp;<button class="btn sm" style="height:24px">↻ Re-render 3 lines</button><span style="margin-left:10px;font-size:11.5px">est. 9 s — the other 580 lines stay cached</span></div>
+    <div class="card" style="max-width:980px"><div class="card-b" style="padding:12px 16px">
+      ${[["ch. 5 · line 41","Edith Vance","“Your grandfather swore his oath on the Hecate stone…”",100],
+         ["ch. 5 · line 42","Mara Vance","“The Hecate stone. You're telling me that's real?”",100],
+         ["ch. 7 · line 18","Narrator","Hecate, Edith had said — and the word had followed Mara home.",46]]
+        .map(r=>`<div class="row" style="flex-wrap:nowrap;margin-bottom:9px">
+          <span class="mono" style="font-size:11px;width:96px;flex:none;color:var(--ink-3)">${r[0]}</span>
+          <span style="width:110px;flex:none;font-size:12px;font-weight:600">${r[1]}</span>
+          <span class="muted" style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r[2]}</span>
+          <div class="prog" style="width:130px;flex:none"><div class="fill" style="width:${r[3]}%"></div></div>
+          <span class="pill ${r[3]===100?'green':'blue'}" style="flex:none">${r[3]===100?'✓ done':'rendering'}</span></div>`).join("")}
+    </div></div>
+    <p class="muted" style="font-size:12px;margin-top:10px">Chapter audio re-stitches automatically after the lines land — mastering re-runs on ch. 5 and ch. 7 only.</p>`) },
+
+{ nav:"Compare", t:"A/B the old take against the new one before keeping it. Same line, same voice — only the lexicon changed.",
+  html: () => shell("audiobook","Compare","Compare — ch. 5 · line 41", projChip("Stillwater","Audiobook","ACX"), `
+    <p class="lede">“Your grandfather swore his oath on the <strong>Hecate</strong> stone, same as his father did.” — Edith Vance · af_heart</p>
+    <div class="row" style="gap:14px;max-width:980px;align-items:stretch">
+      <div style="flex:1;border:1px solid var(--line);border-radius:10px;padding:14px 16px">
+        <div class="row" style="margin-bottom:8px"><span class="eyebrow">Take A — before</span><span class="spacer"></span><span class="pill">“HEK-ayt”</span></div>
+        ${wave(64,26,"var(--line-strong)")}
+        <div class="row" style="margin-top:10px"><button class="btn secondary sm">▶ Play</button><span class="muted" style="font-size:11px">rendered Mon · 3.8 s</span></div>
+      </div>
+      <div style="flex:1;border:1px solid var(--accent);background:var(--accent-soft);border-radius:10px;padding:14px 16px">
+        <div class="row" style="margin-bottom:8px"><span class="eyebrow" style="color:var(--accent-ink)">Take B — after lexicon</span><span class="spacer"></span><span class="pill green">“HEH-kuh-tee”</span></div>
+        ${wave(64,26)}
+        <div class="row" style="margin-top:10px"><button class="btn secondary sm">▶ Play</button><span class="muted" style="font-size:11px">just now · 3.9 s</span></div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:14px;max-width:980px"><button class="btn">✓ Keep take B</button><button class="btn secondary">Keep A</button><span class="spacer"></span><span class="muted" style="font-size:12px">Old takes stay in history — nothing is destroyed until you clean up.</span></div>
+    <div class="banner good" style="margin-top:14px;max-width:980px">The loop: <strong>hear it → fix the lexicon → 3 lines re-render → A/B → keep.</strong> Same loop works for games (changed CSV lines) and podcasts (edited segments) — only the trigger differs.</div>`) },
+];
+
+
 const JOURNEYS = {
   audiobook:{ label:"📖 Audiobook — Sarah", steps:stepsAudiobook, who:"Sarah · indie author" },
   game:     { label:"🎮 Game — Marcus",     steps:stepsGame,      who:"Marcus · solo game dev" },
   podcast:  { label:"🎙️ Podcast — Priya",   steps:stepsPodcast,   who:"Priya · podcast producer" },
+  firstrun: { label:"🚀 First run — Alex",  steps:stepsFirstrun,  who:"Alex · brand-new user" },
+  dictation:{ label:"⌨️ Live voice — Dana", steps:stepsDictation, who:"Dana · streamer, limited speech" },
+  fixit:    { label:"🔤 Fix-it loop",        steps:stepsFixit,     who:"Sarah · pronunciation pass" },
   flow:     { label:"🧭 Identity flow",      steps:stepsFlow,      who:"Concept map" },
 };
 let cur = { j:"audiobook", s:0 };
@@ -795,7 +1038,7 @@ document.addEventListener("keydown",e=>{
   if(e.key==="ArrowLeft") move(-1);
 });
 (function init(){
-  const m = location.hash.match(/^#(audiobook|game|podcast|flow)\/(\d+)/);
+  const m = location.hash.match(/^#(audiobook|game|podcast|firstrun|dictation|fixit|flow)\/(\d+)/);
   if(m){ cur.j=m[1]; cur.s=Math.min(parseInt(m[2])-1, JOURNEYS[m[1]].steps.length-1); }
   render();
 })();
