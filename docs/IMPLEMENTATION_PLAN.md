@@ -134,3 +134,16 @@ local Qwen3 LLM engine (KIND=llm) + refinement port + /v1/captures +
    design pass) · opt-in multi-loaded-TTS setting with VRAM warning
    (parity F1) · TADA 1B variant (gap G3) · binding-aware POST /speak
    REST mirror (gap G4).
+
+## Engines + AI-features redesign — APPROVED 2026-06-11 (in progress)
+
+Seven-iteration mock loop landed the contracts: preview/
+engines-redesign.html (v7) + preview/ai-features-redesign.html.
+Free-vs-money two-tab Engines; one-row-per-model; Install/Uninstall
+engine (isolated only) · Download/Delete model · Load/Unload model;
+search+capability chips; live /v1/models combobox; Loaded-now rail;
+fit dots. AI features: Quick/Accuracy roles + plain-English routing +
+production configs (Lab promote freezes model+prompts; precedence
+config > override > role > tier-resolved; tier jargon internal-only).
+External TTS settings tab removed (Engines owns providers). Execution
+plan: docs/plans/2026-06-11-engines-ai-features-implementation.md.
