@@ -272,11 +272,37 @@ async function renderAllChapters() {
   pushToast({ kind: "info", title: "Render queued", description: `Rendering ${scenes.value.length} ${copy.chapter.plural.toLowerCase()} for ${p.name}.` });
 }
 async function exportM4B() {
-  pushToast({ kind: "info", title: "Export M4B", description: "Sent to JustWrite render pipeline (POST /v1/projects/{id}/export_m4b)." });
+  if (selectedProject.value) exportM4b(selectedProject.value);
 }
 async function downloadQcReport() {
-  pushToast({ kind: "info", title: "QC report", description: "Generating ACX QC report (GET /v1/projects/{id}/qc)." });
+  if (selectedProject.value) runQc(selectedProject.value);
 }
+async function exportM4b(p) {
+  pushToast({ kind: "info", title: "Export M4B", description: "Rendering chapters + muxing — this renders anything not cached." });
+  try {
+    const blob = await api.requestBlob("POST", `/v1/projects/${p.id}/export_m4b`);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(p.name || "book").replace(/[^\w.-]+/g, "_")}.m4b`;
+    a.click();
+    URL.revokeObjectURL(url);
+    pushToast({ kind: "success", title: "M4B exported" });
+  } catch (e) {
+    pushToast({ kind: "error", title: "Export failed", description: String(e?.message ?? e) });
+  }
+}
+
+const qcReport = ref(null); // { project_id, chapters: [...], all_ok, limits }
+async function runQc(p) {
+  pushToast({ kind: "info", title: "QC report", description: "Rendering + measuring chapters (cache-served when unchanged)…" });
+  try {
+    qcReport.value = await api.request(`/v1/projects/${p.id}/qc`);
+  } catch (e) {
+    pushToast({ kind: "error", title: "QC failed", description: String(e?.message ?? e) });
+  }
+}
+
 async function deleteProject() {
   const p = selectedProject.value;
   if (!p) return;
@@ -545,11 +571,40 @@ onMounted(refresh);
 
           <div class="books__actions">
             <JvButton variant="primary" label="▶ Render all chapters" @click="renderAllChapters" />
-            <JvButton variant="secondary" label="Export M4B (via JustWrite)" @click="exportM4B" />
+            <JvButton variant="secondary" label="Export M4B" title="Render all chapters (cache-served when unchanged) and download one .m4b with chapter markers" @click="exportM4B" />
             <JvButton variant="secondary" label="QC report" @click="downloadQcReport" />
             <JvButton variant="secondary" label="Export ZIP" @click="exportProject(selectedProject.id)" />
             <span class="books__spacer" />
             <button class="jv-btn jv-btn--danger-outline jv-btn--sm" type="button" @click="deleteProject">Delete project</button>
+          </div>
+
+          <!-- ACX QC report (GET /v1/projects/{id}/qc) -->
+          <div v-if="qcReport && qcReport.project_id === selectedProject.id" class="books__qc">
+            <div class="books__qc-head">
+              <strong>ACX QC</strong>
+              <span class="jv-pill" :class="qcReport.all_ok ? 'jv-pill--green' : 'jv-pill--warn'">
+                {{ qcReport.all_ok ? "✓ all chapters pass" : "issues found" }}
+              </span>
+              <span class="jv-muted books__qc-limits">
+                RMS {{ qcReport.limits.rms_min_db }}…{{ qcReport.limits.rms_max_db }} dB · peak ≤ {{ qcReport.limits.peak_max_db }} dB
+              </span>
+              <span class="jv-spacer" />
+              <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" @click="qcReport = null">✕</button>
+            </div>
+            <table class="jv-table">
+              <thead><tr><th>Chapter</th><th>Duration</th><th>RMS</th><th>Peak</th><th>Check</th></tr></thead>
+              <tbody>
+                <tr v-for="c in qcReport.chapters" :key="c.scene_id">
+                  <td><strong>{{ c.title }}</strong></td>
+                  <td class="jv-mono">{{ c.duration_s }}s</td>
+                  <td class="jv-mono" :class="{ 'books__qc-bad': !c.rms_ok }">{{ c.rms_dbfs }} dB</td>
+                  <td class="jv-mono" :class="{ 'books__qc-bad': !c.peak_ok }">{{ c.peak_dbfs }} dB</td>
+                  <td>
+                    <span class="jv-pill" :class="c.ok ? 'jv-pill--green' : 'jv-pill--warn'">{{ c.ok ? "✓ pass" : "✗ check" }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
           <div class="jv-divider" />
@@ -894,4 +949,8 @@ onMounted(refresh);
   font-size: 13px;
   cursor: pointer;
 }
+.books__qc { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.books__qc-head { display: flex; align-items: center; gap: 10px; }
+.books__qc-limits { font-size: 11.5px; }
+.books__qc-bad { color: var(--danger, #a8442e); font-weight: 600; }
 </style>

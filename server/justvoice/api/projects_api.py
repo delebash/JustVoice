@@ -16,7 +16,9 @@ import json
 from datetime import datetime
 from typing import Optional, Literal
 
-from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
+import re
+
+from fastapi import APIRouter, Depends, File, Form, Query, Request, Response, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -713,3 +715,92 @@ async def import_project(
         standard=standard,
         warnings=standard.warnings,
     )
+
+# ── Audiobook export + QC (mock #audiobook/7) ────────────────────────────
+
+
+class ChapterQCOut(BaseModel):
+    scene_id: str
+    title: str
+    duration_s: float
+    rms_dbfs: float
+    peak_dbfs: float
+    rms_ok: bool
+    peak_ok: bool
+    ok: bool
+
+
+class ProjectQCResponse(BaseModel):
+    project_id: str
+    chapters: list[ChapterQCOut]
+    all_ok: bool
+    limits: dict
+
+
+@router.get("/v1/projects/{project_id}/qc", response_model=ProjectQCResponse)
+async def project_qc(project_id: str, db: Session = Depends(get_db)) -> ProjectQCResponse:
+    """Render every chapter (cache-served when unchanged) and run the ACX
+    technical checks — RMS window + peak ceiling — per chapter."""
+    from ..export_audiobook import (
+        ACX_PEAK_MAX_DB,
+        ACX_RMS_MAX_DB,
+        ACX_RMS_MIN_DB,
+        assemble_project,
+        qc_report,
+    )
+
+    if db.query(Project).filter(Project.id == project_id).first() is None:
+        raise not_found(f"project {project_id}")
+    chapters = assemble_project(get_state(), project_id)
+    if not chapters:
+        raise bad_request("project has no scenes to check")
+    report = qc_report(chapters)
+    out = [
+        ChapterQCOut(
+            scene_id=c.scene_id, title=c.title, duration_s=c.duration_s,
+            rms_dbfs=c.rms_dbfs, peak_dbfs=c.peak_dbfs,
+            rms_ok=c.rms_ok, peak_ok=c.peak_ok, ok=c.ok,
+        )
+        for c in report
+    ]
+    return ProjectQCResponse(
+        project_id=project_id,
+        chapters=out,
+        all_ok=all(c.ok for c in out),
+        limits={
+            "rms_min_db": ACX_RMS_MIN_DB,
+            "rms_max_db": ACX_RMS_MAX_DB,
+            "peak_max_db": ACX_PEAK_MAX_DB,
+        },
+    )
+
+
+@router.post("/v1/projects/{project_id}/export_m4b")
+async def project_export_m4b(project_id: str, db: Session = Depends(get_db)) -> Response:
+    """Assemble all chapters into one .m4b with chapter markers."""
+    from fastapi import HTTPException
+
+    from ..export_audiobook import assemble_project, have_ffmpeg, mux_m4b
+
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if project is None:
+        raise not_found(f"project {project_id}")
+    if not have_ffmpeg():
+        raise HTTPException(
+            status_code=503,
+            detail="ffmpeg is not installed — required for M4B export. Install ffmpeg and restart the server.",
+        )
+    chapters = assemble_project(get_state(), project_id)
+    if not chapters:
+        raise bad_request("project has no scenes to export")
+    author = None
+    if project.description and project.description.startswith("by "):
+        author = project.description[3:]
+    m4b = mux_m4b(chapters, project.name, author)
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "_", project.name) or "book"
+    return Response(
+        content=m4b,
+        media_type="audio/mp4",
+        headers={"Content-Disposition": f'attachment; filename="{safe}.m4b"'},
+    )
+

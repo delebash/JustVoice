@@ -193,3 +193,28 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
         "youtube": "audio/aac",
     }
     return Response(content=mastered, media_type=media_map.get(req.master, "audio/wav"))
+
+def render_scene_to_wav(st, scene_id: str) -> bytes:
+    """Scene → mastered-input WAV bytes for audiobook assembly.
+
+    Same resolution + render path as scene-mode /v1/render_chapter, raw
+    WAV out (no per-chapter master — the M4B/QC layer owns loudness).
+    """
+    lines, scene_lexicons = _resolve_scene_to_lines(scene_id, None, st)
+    rendered = []
+    for line in lines:
+        rl = render_line(
+            st,
+            voice=line.voice,
+            text=line.text,
+            language=line.language,
+            delivery=line.delivery.model_dump(exclude_none=True) if line.delivery else None,
+            seed=line.seed,
+            lexicons=scene_lexicons,
+            cache_scope=f"scene:{scene_id}",
+            use_cache=True,
+        )
+        rendered.append(rl)
+    combined = concat_lines(rendered, silence_ms=600)
+    return write_wav_container(combined.pcm, combined.sample_rate, combined.channels)
+
