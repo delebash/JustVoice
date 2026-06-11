@@ -25,7 +25,16 @@ from justvoice_plugin import (
 
 log = logging.getLogger("justvoice.engines.qwen3")
 
-QWEN_REPO = "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
+# Variant id → HF repo. Repos verified against voicebox's backends at the
+# pin (qwen_custom_voice_backend.py QWEN_CV_HF_REPOS + pytorch_backend.py
+# Base repos). Base checkpoints are clone-only and silently drop `instruct`.
+QWEN_VARIANT_REPOS = {
+    "qwen3-cv-1.7b": "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
+    "qwen3-cv-0.6b": "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+    "qwen3-base-1.7b": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+    "qwen3-base-0.6b": "Qwen/Qwen3-TTS-12Hz-0.6B-Base",
+}
+DEFAULT_VARIANT = "qwen3-cv-1.7b"
 
 # Qwen3 expects language NAMES ("english"), not BCP-47 codes ("en").
 # Maps the 10 supported language codes; anything not in the map falls
@@ -64,13 +73,27 @@ class Qwen3(EmbeddedEngine):
         super().__init__(model_dir)
         self.model = None
         self._device = None
+        self._variant = None
+
+    @property
+    def _is_base(self) -> bool:
+        return bool(self._variant and "base" in self._variant)
 
     def load(self, device: str = "auto", variant: str | None = None) -> None:
+        if variant and variant not in QWEN_VARIANT_REPOS:
+            raise RuntimeError(
+                f"qwen3: unknown variant {variant!r}; valid: {sorted(QWEN_VARIANT_REPOS)}"
+            )
         if self.model is not None:
-            return
+            if variant and variant != self._variant:
+                self.unload()
+            else:
+                return
         device = self.pick_device(device)
         self._device = device
-        log.info("loading Qwen3-TTS CustomVoice on %s …", device)
+        self._variant = variant or DEFAULT_VARIANT
+        repo = QWEN_VARIANT_REPOS[self._variant]
+        log.info("loading Qwen3-TTS %s (%s) on %s …", self._variant, repo, device)
         # Canonical load pattern from qwen-tts's own cli/demo.py:
         #   Qwen3TTSModel.from_pretrained(ckpt, device_map=..., dtype=..., attn_implementation=...)
         # NOT a plain .to(device) call.
@@ -83,12 +106,12 @@ class Qwen3(EmbeddedEngine):
             dtype = torch.float32
 
         self.model = Qwen3TTSModel.from_pretrained(
-            QWEN_REPO,
+            repo,
             device_map=device,
             dtype=dtype,
             attn_implementation=None,  # no flash-attn on Windows / not installed
         )
-        log.info("Qwen3-TTS loaded on %s (dtype=%s)", device, dtype)
+        log.info("Qwen3-TTS %s loaded on %s (dtype=%s)", self._variant, device, dtype)
 
     def unload(self) -> None:
         if self.model is None:
@@ -102,6 +125,10 @@ class Qwen3(EmbeddedEngine):
         self._device = None
 
     def voices(self) -> list[PresetVoice]:
+        # Preset speakers ship only with the CustomVoice checkpoints; the
+        # Base checkpoints are clone-only.
+        if self._is_base:
+            return []
         return list(PRESET_VOICES)
 
     def synth(self, req: SynthRequest) -> SynthOutput:
@@ -129,6 +156,12 @@ class Qwen3(EmbeddedEngine):
                 req.text,
                 language=language,
                 ref_audio=req.audio_prompt_path,
+            )
+        elif self._is_base:
+            raise RuntimeError(
+                "qwen3: the Base checkpoint is clone-only — pass a cloned/"
+                "reference voice, or load a CustomVoice variant for preset "
+                "speakers."
             )
         else:
             arrays, sample_rate = self.model.generate_custom_voice(

@@ -52,6 +52,8 @@ class Chatterbox(EmbeddedEngine):
         super().__init__(model_dir)
         self.model = None
         self._device = None
+        self._variant = None
+        self._is_turbo = False
 
     def _pick_device_chatterbox(self, requested: str) -> str:
         """Override the default device picker — Chatterbox needs CPU on macOS
@@ -63,13 +65,27 @@ class Chatterbox(EmbeddedEngine):
 
     def load(self, device: str = "auto", variant: str | None = None) -> None:
         if self.model is not None:
-            return
+            if variant and variant != self._variant:
+                # Switching variants needs a fresh load — drop the old model.
+                self.unload()
+            else:
+                return
         device = self._pick_device_chatterbox(device)
         self._device = device
-        log.info("loading Chatterbox on %s …", device)
+        self._variant = variant or "chatterbox-multilingual-v2"
+        self._is_turbo = self._variant == "chatterbox-turbo-v1"
+        log.info("loading Chatterbox (%s) on %s …", self._variant, device)
 
         import torch
-        from chatterbox.mtl_tts import ChatterboxMultilingualTTS
+
+        # Variant → model class. Verified against voicebox's per-variant
+        # backends (chatterbox_backend.py / chatterbox_turbo_backend.py at
+        # the pin): Multilingual = chatterbox.mtl_tts on ResembleAI/chatterbox,
+        # Turbo = chatterbox.tts_turbo on ResembleAI/chatterbox-turbo.
+        if self._is_turbo:
+            from chatterbox.tts_turbo import ChatterboxTurboTTS as _ModelCls
+        else:
+            from chatterbox.mtl_tts import ChatterboxMultilingualTTS as _ModelCls
 
         if device == "cpu":
             # CPU path — patch torch.load to force map_location='cpu'.
@@ -82,11 +98,11 @@ class Chatterbox(EmbeddedEngine):
             with Chatterbox._load_lock:
                 torch.load = _patched
                 try:
-                    self.model = ChatterboxMultilingualTTS.from_pretrained(device=device)
+                    self.model = _ModelCls.from_pretrained(device=device)
                 finally:
                     torch.load = _orig
         else:
-            self.model = ChatterboxMultilingualTTS.from_pretrained(device=device)
+            self.model = _ModelCls.from_pretrained(device=device)
 
         # Force eager attention (output_attentions support).
         try:
@@ -143,15 +159,27 @@ class Chatterbox(EmbeddedEngine):
             if self._device == "cuda" and torch.cuda.is_available():
                 torch.cuda.manual_seed_all(req.seed)
 
-        wav = self.model.generate(
-            req.text,
-            language_id=language,
-            audio_prompt_path=ref_audio,
-            exaggeration=float(engine_overrides.get("exaggeration", defaults["exaggeration"])),
-            cfg_weight=float(engine_overrides.get("cfg_weight", defaults["cfg_weight"])),
-            temperature=float(engine_overrides.get("temperature", defaults["temperature"])),
-            repetition_penalty=float(engine_overrides.get("repetition_penalty", defaults["repetition_penalty"])),
-        )
+        if self._is_turbo:
+            # Turbo is English-only and takes no language_id / exaggeration /
+            # cfg_weight. Sampling params per voicebox's turbo backend.
+            wav = self.model.generate(
+                req.text,
+                audio_prompt_path=ref_audio,
+                temperature=float(engine_overrides.get("temperature", 0.8)),
+                top_k=1000,
+                top_p=0.95,
+                repetition_penalty=float(engine_overrides.get("repetition_penalty", 1.2)),
+            )
+        else:
+            wav = self.model.generate(
+                req.text,
+                language_id=language,
+                audio_prompt_path=ref_audio,
+                exaggeration=float(engine_overrides.get("exaggeration", defaults["exaggeration"])),
+                cfg_weight=float(engine_overrides.get("cfg_weight", defaults["cfg_weight"])),
+                temperature=float(engine_overrides.get("temperature", defaults["temperature"])),
+                repetition_penalty=float(engine_overrides.get("repetition_penalty", defaults["repetition_penalty"])),
+            )
 
         if isinstance(wav, torch.Tensor):
             audio = wav.squeeze().cpu().numpy().astype(np.float32)

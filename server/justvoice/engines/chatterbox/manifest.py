@@ -72,6 +72,10 @@ INSTALL = [
 
 MODELS = [
     {"hf_repo": "ResembleAI/chatterbox", "size_mb": 2700},
+    # Turbo variant — separate checkpoint, loaded when the user picks
+    # "Chatterbox Turbo" in the model dropdown (engine.py branches on the
+    # variant id). English-only, native paralinguistic tags.
+    {"hf_repo": "ResembleAI/chatterbox-turbo", "size_mb": 2200},
 ]
 
 # When the user clicks "Load" on the engine row (no specific variant chosen),

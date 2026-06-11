@@ -97,56 +97,64 @@ _QWEN_LANGS = [
 
 
 def _qwen3_variants() -> list[ModelVariant]:
+    # Repo ids verified against voicebox's backends at the pin
+    # (QWEN_CV_HF_REPOS + pytorch_backend Base repos) — the engine's
+    # QWEN_VARIANT_REPOS map uses the same ids.
     return [
         ModelVariant(
-            id="qwen3-tts-1.7b",
-            name="Qwen3-TTS 1.7B",
-            description="Highest English WER of the open-weight engines. Full feature set.",
+            id="qwen3-cv-1.7b",
+            name="Qwen3-TTS CustomVoice 1.7B",
+            description="9 preset speakers + instruct style control + cloning. Full feature set.",
             size_mb=3500,
             vram_mb=7000,
             quality=92,
             languages=_QWEN_LANGS,
-            files=[_hf_placeholder("Qwen/Qwen3-TTS-1.7B", 3500)],
+            files=[_hf_placeholder("Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice", 3500)],
         ),
         ModelVariant(
-            id="qwen3-tts-0.6b",
-            name="Qwen3-TTS 0.6B",
+            id="qwen3-cv-0.6b",
+            name="Qwen3-TTS CustomVoice 0.6B",
             description="Same feature set, lower quality ceiling, ~half VRAM, ~3× faster.",
             size_mb=1200,
             vram_mb=3500,
             quality=80,
             languages=_QWEN_LANGS,
-            files=[_hf_placeholder("Qwen/Qwen3-TTS-0.6B", 1200)],
+            files=[_hf_placeholder("Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice", 1200)],
+        ),
+        ModelVariant(
+            id="qwen3-base-1.7b",
+            name="Qwen3-TTS Base 1.7B (clone-only)",
+            description="Voice-cloning checkpoint — no preset speakers; drops instruct silently.",
+            size_mb=3500,
+            vram_mb=7000,
+            quality=90,
+            languages=_QWEN_LANGS,
+            files=[_hf_placeholder("Qwen/Qwen3-TTS-12Hz-1.7B-Base", 3500)],
+        ),
+        ModelVariant(
+            id="qwen3-base-0.6b",
+            name="Qwen3-TTS Base 0.6B (clone-only)",
+            description="Lightweight cloning checkpoint for lower-end hardware.",
+            size_mb=1200,
+            vram_mb=3500,
+            quality=78,
+            languages=_QWEN_LANGS,
+            files=[_hf_placeholder("Qwen/Qwen3-TTS-12Hz-0.6B-Base", 1200)],
         ),
     ]
 
 
 def _chatterbox_variants() -> list[ModelVariant]:
+    # Two real variants, verified against voicebox's per-variant backends at
+    # the pin: Multilingual lives in ResembleAI/chatterbox (mtl_tts class),
+    # Turbo in ResembleAI/chatterbox-turbo (tts_turbo class). The previously
+    # listed "Original (English)" variant and the "ResembleAI/
+    # chatterbox-multilingual" repo were unverified placeholders — dropped.
     return [
-        ModelVariant(
-            id="chatterbox-original-v1",
-            name="Chatterbox Original (500M, English)",
-            description="Original 500M-param English model. Emotion exaggeration + CFG controls. Highest English quality of the three.",
-            size_mb=2800,
-            vram_mb=7000,
-            quality=90,
-            languages=["en"],
-            files=[_hf_placeholder("ResembleAI/chatterbox", 2800)],
-        ),
-        ModelVariant(
-            id="chatterbox-turbo-v1",
-            name="Chatterbox Turbo (350M, English)",
-            description="Streamlined 350M-param variant. Native paralinguistic tags ([cough], [laugh], [chuckle]). Lower latency.",
-            size_mb=2200,
-            vram_mb=6000,
-            quality=82,
-            languages=["en"],
-            files=[_hf_placeholder("ResembleAI/chatterbox-turbo", 2200)],
-        ),
         ModelVariant(
             id="chatterbox-multilingual-v2",
             name="Chatterbox Multilingual v2 (500M, 23 langs)",
-            description="500M-param multilingual covering 23 languages via the request's `language` field.",
+            description="500M-param multilingual covering 23 languages via the request's `language` field. Emotion exaggeration + CFG controls.",
             size_mb=2800,
             vram_mb=7000,
             quality=88,
@@ -155,7 +163,17 @@ def _chatterbox_variants() -> list[ModelVariant]:
                 "it", "ja", "ko", "ms", "nl", "no", "pl", "pt", "ru", "sv",
                 "sw", "tr", "zh",
             ],
-            files=[_hf_placeholder("ResembleAI/chatterbox-multilingual", 2800)],
+            files=[_hf_placeholder("ResembleAI/chatterbox", 2800)],
+        ),
+        ModelVariant(
+            id="chatterbox-turbo-v1",
+            name="Chatterbox Turbo (350M, English)",
+            description="Streamlined English-only variant. Native paralinguistic tags ([cough], [laugh], [chuckle]). Lower latency; no exaggeration/CFG knobs.",
+            size_mb=2200,
+            vram_mb=6000,
+            quality=82,
+            languages=["en"],
+            files=[_hf_placeholder("ResembleAI/chatterbox-turbo", 2200)],
         ),
     ]
 

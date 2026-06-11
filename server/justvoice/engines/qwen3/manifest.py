@@ -54,8 +54,17 @@ INSTALL = [
 ]
 
 MODELS = [
+    # All four checkpoints upstream voicebox ships (CustomVoice = presets +
+    # instruct; Base = clone-only, drops instruct). The engine's variant map
+    # in engine.py mirrors this list one-for-one.
     {"hf_repo": "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice", "size_mb": 3500},
+    {"hf_repo": "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice", "size_mb": 1200},
+    {"hf_repo": "Qwen/Qwen3-TTS-12Hz-1.7B-Base", "size_mb": 3500},
+    {"hf_repo": "Qwen/Qwen3-TTS-12Hz-0.6B-Base", "size_mb": 1200},
 ]
+
+# Plain Load (no variant picked) loads CustomVoice 1.7B.
+DEFAULT_VARIANT_ID = "qwen3-cv-1.7b"
 
 # Preset speakers shipped with Qwen3-TTS CustomVoice. Static so the host
 # catalog can show them before the engine is loaded.
