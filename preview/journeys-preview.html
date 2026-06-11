@@ -1288,65 +1288,45 @@ const stepsHelp = [
    ════════════════════════════════════════════════════════════════════ */
 const srcChip = s => ({anchor:'<span class="pill green">anchor</span>',llm:'<span class="pill blue">llm</span>',prop:'<span class="pill">propagated</span>',floor:'<span class="pill warn">floored</span>'})[s];
 const stepsSplab = [
-{ nav:"Spk Lab", t:"Speaker-extraction testbed. Paste any text — chapters optional — then race two models. Every knob that exists is on the column: preset, provider, model, temp, tier, floors, and BOTH prompts.",
-  html: () => shell("audiobook","Spk Lab","Speaker Lab — Tuner", "", `
-    <div class="row" style="margin-bottom:8px;flex:none"><button class="btn sm">✳ Run all 2</button><button class="btn secondary sm">＋ Add column</button>
-      <span class="spacer"></span><span class="muted" style="font-size:11px">1,242 words · 6,810 chars · ~1.7k tokens</span></div>
+{ nav:"Spk Lab", t:"One column by default — a complete run config with its own results filling in below it as the model streams. Add a second column only when you want to race configs on the same input.",
+  html: () => shell("audiobook","Spk Lab","Speaker Lab", "", `
     <div style="flex:1;min-height:0;overflow-y:auto;padding-right:4px">
-    <div class="card" style="padding:10px 14px;margin-bottom:10px;flex:none">
-      <div class="row" style="margin-bottom:8px"><span class="combo-cell">Load from chapter…<span class="chev">▼</span></span><button class="btn ghost sm">✕ Clear</button><button class="btn secondary sm">✨ Sample: Ch. 3</button><span class="spacer"></span><span class="muted" style="font-size:11px">paste a few chapters, or load one from a project</span></div>
+    <div class="card" style="padding:10px 14px;margin-bottom:10px">
+      <div class="row" style="margin-bottom:8px"><span class="combo-cell">Load from chapter…<span class="chev">▼</span></span><button class="btn ghost sm">✕ Clear</button><button class="btn secondary sm">✨ Sample: Ch. 3</button><span class="spacer"></span><span class="muted" style="font-size:11px">1,242 words · 6,810 chars · ~1.7k tokens</span></div>
       <textarea class="input" style="height:54px;padding:8px 12px;resize:none;font-size:12.5px">"Whose office is it?" Bern closed the green book. "I don't know," he said. "I have wondered." "Ask her about the winter of '61. Watch her hands," Tom said.</textarea>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-      ${[["Run A","qwen3:14b","Reasoned","0.5","tweaked ●",1],["Run B","qwen3:8b","Guided","0.7","defaults",0]]
-        .map(c=>`<div class="card" style="padding:12px 14px">
-        <div class="row" style="flex-wrap:nowrap;margin-bottom:8px"><input class="input" style="height:28px;font-size:12.5px;max-width:140px" value="${c[0]}"/><span class="spacer"></span><button class="btn sm">▶ Run</button><button class="btn ghost sm">🗑</button></div>
+    <div style="display:grid;grid-template-columns:minmax(0,860px) minmax(200px,1fr);gap:12px;margin-bottom:12px;align-items:start">
+      <div class="card" style="padding:12px 14px">
+        <div class="row" style="flex-wrap:nowrap;margin-bottom:8px"><input class="input" style="height:28px;font-size:12.5px;max-width:140px" value="Run A"/><span class="spacer"></span><button class="btn sm">▶ Run</button><button class="btn ghost sm">🗑</button></div>
         <div class="row" style="flex-wrap:nowrap;margin-bottom:8px"><span class="eyebrow" style="flex:none">Presets</span><span class="combo-cell" style="font-size:11.5px">Default (built-in)<span class="chev">▼</span></span><span class="pill green" style="font-size:9.5px">✓ production</span><button class="btn sm" style="height:22px;font-size:10.5px">Use as production</button><button class="btn ghost sm" style="font-size:10.5px">⬇ Load</button><button class="btn ghost sm" style="font-size:10.5px">＋ Save as</button></div>
         <div style="background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:8px;padding:8px 11px;font-size:10.5px;line-height:1.55;color:var(--accent-ink);margin-bottom:8px">Splits paragraphs into segments at quote marks (deterministic, no LLM); narration auto-attributes to the narrator. <strong>This input → 11 paragraphs · 12 dialogue · 8 narration · 8 project characters.</strong> Tier auto-picked from the model — override if you know better.</div>
-        <div class="row" style="flex-wrap:nowrap;margin-bottom:8px"><input class="input" style="height:26px;font-size:11px" value="OpenAI-compatible (local)"/><input class="input" style="height:26px;font-size:11px;max-width:110px" value="${c[1]}"/><span class="muted" style="font-size:10.5px;flex:none">temp</span><input class="input" style="height:26px;font-size:11px;max-width:48px" value="0.2"/><button class="btn ghost sm" style="font-size:10.5px">⟲ Reset</button></div>
-        <div class="row" style="margin-bottom:8px"><span class="muted" style="font-size:11px">Tier:</span><span class="chips">${["Guided","Direct","Reasoned"].map(t=>`<button class="chip ${t===c[2]?'active':''}" style="padding:3px 9px;font-size:11px">${t}</button>`).join("")}</span>
+        <div class="row" style="flex-wrap:nowrap;margin-bottom:8px"><input class="input" style="height:26px;font-size:11px" value="OpenAI-compatible (local)"/><input class="input" style="height:26px;font-size:11px;max-width:110px" value="qwen3:14b"/><span class="muted" style="font-size:10.5px;flex:none">temp</span><input class="input" style="height:26px;font-size:11px;max-width:48px" value="0.2"/><button class="btn ghost sm" style="font-size:10.5px">⟲ Reset</button></div>
+        <div class="row" style="margin-bottom:8px"><span class="muted" style="font-size:11px">Tier:</span><span class="chips"><button class="chip" style="padding:3px 9px;font-size:11px">Guided</button><button class="chip" style="padding:3px 9px;font-size:11px">Direct</button><button class="chip active" style="padding:3px 9px;font-size:11px">Reasoned</button></span>
           <label style="font-size:11px;display:inline-flex;gap:4px;align-items:center"><input type="checkbox" checked style="accent-color:var(--accent)"/>anchor propagation (pre-LLM)</label>
-          <label style="font-size:11px;display:inline-flex;gap:4px;align-items:center"><input type="checkbox" checked style="accent-color:var(--accent)"/>floor</label><input class="input" style="height:24px;font-size:11px;max-width:44px" value="${c[3]}"/></div>
-        <div class="eyebrow" style="margin-bottom:4px">System prompt <span style="font-weight:400;text-transform:none;letter-spacing:0">· ${c[4]}</span></div>
+          <label style="font-size:11px;display:inline-flex;gap:4px;align-items:center"><input type="checkbox" checked style="accent-color:var(--accent)"/>floor</label><input class="input" style="height:24px;font-size:11px;max-width:44px" value="0.5"/></div>
+        <div class="eyebrow" style="margin-bottom:4px">System prompt <span style="font-weight:400;text-transform:none;letter-spacing:0">· tweaked ●</span></div>
         <textarea class="input" style="height:58px;padding:7px 10px;resize:none;font-size:11px;font-family:var(--font-mono);margin-bottom:8px">You are a dialogue attribution assistant for an audiobook producer. Narration (everything outside quotation marks) is always read by the narrator. Your job is to attribute each quoted dialogue segment to a character…</textarea>
         <div class="eyebrow" style="margin-bottom:4px">User prompt <span style="font-weight:400;text-transform:none;letter-spacing:0">· variables: <span class="mono" style="font-size:10px">{{characters}}</span> <span class="mono" style="font-size:10px">{{paragraphs}}</span></span></div>
-        <textarea class="input" style="height:44px;padding:7px 10px;resize:none;font-size:11px;font-family:var(--font-mono);margin-bottom:8px">Characters in this novel:
+        <textarea class="input" style="height:44px;padding:7px 10px;resize:none;font-size:11px;font-family:var(--font-mono);margin-bottom:10px">Characters in this novel:
 {{characters}}
 
 Paragraphs (dialogue segments tagged inline): {{paragraphs}}</textarea>
-      </div>`).join("")}
-    </div>
-    <div class="row" style="margin-bottom:8px">
-      <span class="pill green">Run A · qwen3:14b · Reasoned — 12/12 vs anchors · 14.2 s</span>
-      <span class="pill warn">Run B · qwen3:8b · Guided — 10/12 · 2 floored · 5.8 s</span>
-      <span class="spacer"></span><span class="chips"><button class="chip active">Parsed table</button><button class="chip">JSON</button></span></div>
-    <div class="two-col" style="flex:none;height:300px;margin-bottom:10px">
-      <div class="card" style="overflow:auto"><table class="vtable">
-        <thead><tr><th>Segment</th><th>A · 14b</th><th>B · 8b</th></tr></thead><tbody>
-          ${[["“Whose office is it?”",["Mara","llm",".91"],["Mara","llm",".79"],0],
-             ["Bern closed the green book.",["— narration","prop","—"],["— narration","prop","—"],0],
-             ["“I don't know,” he said. “I have wondered.”",["Bern","anchor",".99"],["Bern","anchor",".99"],0],
-             ["“Ask her about the winter of '61…” Tom said.",["Tom Harlan","anchor",".99"],["Tom Harlan","anchor",".99"],0],
-             ["“You'd do well to remember that.”",["Tom Harlan","llm",".88"],["unknown","floor",".58 → floored"],1]]
-            .map(r=>`<tr ${r[3]?'style="background:var(--warn-bg)"':''}><td style="font-size:11.5px;color:var(--ink-2)">${r[0]}</td>${[r[1],r[2]].map(x=>`<td style="white-space:nowrap;font-size:11.5px"><strong>${x[0]}</strong> ${srcChip(x[1])} <span class="muted" style="font-size:10px">${x[2]}</span></td>`).join("")}</tr>`).join("")}
-        </tbody></table></div>
-      <div class="card" style="display:flex;flex-direction:column;overflow:hidden"><div class="card-h"><strong>JSON output — Run A</strong><span class="muted" style="font-size:11px">what production consumes</span></div>
-        <div class="codeblock" style="border-radius:0;flex:1;overflow:auto">[
-  {<span class="k">"d"</span>: 1, <span class="k">"speaker"</span>: <span class="s">"mara"</span>,
-   <span class="k">"confidence"</span>: 0.91, <span class="k">"source"</span>: <span class="s">"llm"</span>},
-  {<span class="k">"d"</span>: 2, <span class="k">"speaker"</span>: <span class="s">"bern"</span>,
-   <span class="k">"confidence"</span>: 0.99, <span class="k">"source"</span>: <span class="s">"anchor"</span>},
-  {<span class="k">"d"</span>: 3, <span class="k">"speaker"</span>: <span class="s">"tom_harlan"</span>,
-   <span class="k">"confidence"</span>: 0.99, <span class="k">"source"</span>: <span class="s">"anchor"</span>},
-  {<span class="k">"d"</span>: 4, <span class="k">"speaker"</span>: <span class="s">"tom_harlan"</span>,
-   <span class="k">"confidence"</span>: 0.88, <span class="k">"source"</span>: <span class="s">"llm"</span>}
-]</div>
+        <div class="row" style="flex-wrap:nowrap;background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:7px;padding:6px 10px;font-size:11px;color:var(--warn-ink);margin-bottom:8px;cursor:pointer"><span>⚙</span><strong style="flex:1">Speaker Lab · Run A</strong><span class="mono" style="font-size:10.5px">0:07 · 642 tok · segment 5 / 12</span><button class="btn ghost sm" style="font-size:10.5px">Details</button><button class="btn ghost sm" style="font-size:10.5px;color:var(--danger)">✕ Cancel</button></div>
+        <div class="row" style="margin-bottom:6px"><span class="chips"><button class="chip" style="padding:3px 9px;font-size:11px">Raw</button><button class="chip active" style="padding:3px 9px;font-size:11px">Parsed (5)</button></span><span class="spacer"></span><span class="pill blue">filling as the model streams…</span></div>
+        <div style="border:1px solid var(--line);border-radius:8px;overflow:hidden">
+          ${[["1","Mara","dialogue · 91%","“Whose office is it?”",0],
+             ["2","Narrator","narration · auto","Bern closed the green book.",0],
+             ["3","Bern","dialogue · anchor","“I don't know,” he said. “I have wondered.”",0],
+             ["4","Tom Harlan","dialogue · anchor","“Ask her about the winter of '61. Watch her hands,” Tom said.",0],
+             ["5","Tom Harlan","dialogue · 88%","“You'd do well to remember that.”",0],
+             ["","","","",1],["","","","",1]]
+            .map(r=>r[4]?`<div style="padding:9px 11px;border-bottom:1px dashed var(--line)"><span style="display:inline-block;width:${45+Math.random()*35}%;height:10px;background:var(--surface-3);border-radius:4px"></span></div>`
+              :`<div class="row" style="flex-wrap:nowrap;padding:7px 11px;border-bottom:1px dashed var(--line);font-size:11.5px;align-items:flex-start"><span class="muted mono" style="font-size:10px;width:14px;flex:none">${r[0]}</span><span style="width:96px;flex:none"><strong style="font-size:11.5px">${r[1]}</strong><span class="muted" style="display:block;font-size:9px;text-transform:uppercase;letter-spacing:.04em">${r[2]}</span></span><span style="flex:1;color:var(--ink-2);font-size:11.5px">${r[3]}</span></div>`).join("")}
+        </div>
+        <p class="muted" style="font-size:10.5px;margin-top:6px">Raw tab shows the model's JSON exactly as it streams — <span class="mono" style="font-size:10px">[{"speaker":"mara","confidence":0.91}, …]</span>. Anchors and narration never came from the LLM; floors demote weak picks to “unknown”.</p>
       </div>
+      <button class="card" style="border-style:dashed;display:flex;align-items:center;justify-content:center;min-height:160px;cursor:pointer;color:var(--ink-3);font-size:12.5px;background:transparent">＋ Add column<br/>race another model<br/>on the same input</button>
     </div>
-    <div class="row" style="padding-bottom:6px">
-      <button class="btn secondary sm">＋ Save tweaks as preset “qwen14b · tight floor”</button><button class="btn secondary sm">⬇ Load preset ▾</button>
-      <span class="spacer"></span><button class="btn">✓ Use Run A as production</button>
-      <span class="muted" style="font-size:11px">pins model + tier + temp + both prompts as the Studio · Script method</span></div>
     </div>`) },
 
 
