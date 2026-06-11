@@ -1293,7 +1293,7 @@ const stepsSplab = [
     <div style="flex:1;min-height:0;overflow-y:auto;padding-right:4px">
     <div class="card" style="padding:10px 14px;margin-bottom:10px">
       <div class="row" style="margin-bottom:8px"><span class="combo-cell">Load from chapter…<span class="chev">▼</span></span><button class="btn ghost sm">✕ Clear</button><button class="btn secondary sm">✨ Sample: Ch. 3</button><span class="spacer"></span><span class="muted" style="font-size:11px">1,242 words · 6,810 chars · ~1.7k tokens</span></div>
-      <textarea class="input" style="height:54px;padding:8px 12px;resize:none;font-size:12.5px">"Whose office is it?" Bern closed the green book. "I don't know," he said. "I have wondered." "Ask her about the winter of '61. Watch her hands," Tom said.</textarea>
+      <textarea class="input" style="height:180px;padding:10px 13px;resize:vertical;font-size:13px;line-height:1.7">"Whose office is it?" Bern closed the green book. "I don't know," he said. "I have wondered." "Ask her about the winter of '61. Watch her hands," Tom said.</textarea>
     </div>
     <div class="row" style="margin-bottom:8px"><button class="btn secondary sm">＋ Add column</button></div>
     <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:12px;align-items:start">
@@ -1306,7 +1306,7 @@ const stepsSplab = [
           <label style="font-size:11px;display:inline-flex;gap:4px;align-items:center"><input type="checkbox" checked style="accent-color:var(--accent)"/>anchor propagation (pre-LLM)</label>
           <label style="font-size:11px;display:inline-flex;gap:4px;align-items:center"><input type="checkbox" checked style="accent-color:var(--accent)"/>floor</label><input class="input" style="height:24px;font-size:11px;max-width:44px" value="0.5"/></div>
         <div class="eyebrow" style="margin-bottom:4px">System prompt <span style="font-weight:400;text-transform:none;letter-spacing:0">· tweaked ●</span></div>
-        <textarea class="input" style="height:150px;padding:8px 11px;resize:vertical;font-size:11.5px;line-height:1.6;font-family:var(--font-mono);margin-bottom:8px">You are a dialogue attribution assistant for an audiobook producer. Narration (everything outside quotation marks) is always read by the narrator. Your job is to attribute each quoted dialogue segment to a character…</textarea>
+        <textarea class="input" style="height:120px;padding:8px 11px;resize:vertical;font-size:11.5px;line-height:1.6;font-family:var(--font-mono);margin-bottom:8px">You are a dialogue attribution assistant for an audiobook producer. Narration (everything outside quotation marks) is always read by the narrator. Your job is to attribute each quoted dialogue segment to a character…</textarea>
         <div class="eyebrow" style="margin-bottom:4px">User prompt <span style="font-weight:400;text-transform:none;letter-spacing:0">· variables: <span class="mono" style="font-size:10px">{{characters}}</span> <span class="mono" style="font-size:10px">{{paragraphs}}</span></span></div>
         <textarea class="input" style="height:110px;padding:8px 11px;resize:vertical;font-size:11.5px;line-height:1.6;font-family:var(--font-mono);margin-bottom:10px">Characters in this novel:
 {{characters}}
@@ -1314,7 +1314,7 @@ const stepsSplab = [
 Paragraphs (dialogue segments tagged inline): {{paragraphs}}</textarea>
         <div class="row" style="flex-wrap:nowrap;background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:7px;padding:6px 10px;font-size:11px;color:var(--warn-ink);margin-bottom:8px;cursor:pointer"><span>⚙</span><strong style="flex:1">Speaker Lab · Run A</strong><span class="mono" style="font-size:10.5px">0:07 · 642 tok · segment 5 / 12</span><button class="btn ghost sm" style="font-size:10.5px">Details</button><button class="btn ghost sm" style="font-size:10.5px;color:var(--danger)">✕ Cancel</button></div>
         <div class="row" style="margin-bottom:6px"><span class="chips"><button class="chip" style="padding:3px 9px;font-size:11px">Raw</button><button class="chip active" style="padding:3px 9px;font-size:11px">Parsed (5)</button></span><span class="spacer"></span><span class="pill blue">filling as the model streams…</span></div>
-        <div style="border:1px solid var(--line);border-radius:8px;overflow:hidden">
+        <div style="border:1px solid var(--line);border-radius:8px;max-height:420px;overflow-y:auto">
           ${[["1","Mara","dialogue · 91%","“Whose office is it?”",0],
              ["2","Narrator","narration · auto","Bern closed the green book.",0],
              ["3","Bern","dialogue · anchor","“I don't know,” he said. “I have wondered.”",0],
