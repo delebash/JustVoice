@@ -30,6 +30,10 @@ dependencies = [
     # (compressor, reverb, EQ, delay, chorus, pitch-shift, gain, HP/LP filters).
     # GPL-3.0 (verified at https://github.com/spotify/pedalboard/blob/master/LICENSE).
     "pedalboard>=0.9",
+    # MCP server (Model Context Protocol) — local AI agents call
+    # justvoice.speak / list_voices / list_personas at /mcp. Same major
+    # pin as upstream voicebox.
+    "fastmcp>=3.0,<4.0",
 ]
 
 [project.optional-dependencies]

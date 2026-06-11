@@ -20,6 +20,70 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _mirror_to_db(persona: Persona) -> None:
+    """Upsert the persona into the SQLite personas table.
+
+    FK targets (mcp_bindings.persona_id, lexicons.persona_id, generations,
+    project_personas) live in SQLite, so a file-store-only persona breaks
+    every binding written against it. Mid-Phase-1.5 the file store is still
+    the read path; this mirror keeps the DB row in lock-step until the
+    store flips to SQLite-primary. Best-effort: skips silently when the DB
+    isn't initialized (CLI tools, early boot)."""
+    try:
+        from ..database import session as _db_session
+        from ..database.models import Persona as DBPersona
+
+        if _db_session.SessionLocal is None:
+            return
+        db = _db_session.SessionLocal()
+    except Exception:
+        return
+    try:
+        row = db.query(DBPersona).filter(DBPersona.id == persona.id).first()
+        if row is None:
+            row = DBPersona(id=persona.id)
+            db.add(row)
+        row.name = persona.name
+        row.language = persona.language
+        row.avatar_path = persona.avatar_path
+        row.bio = persona.bio
+        row.voice_id = persona.voice_id or None
+        row.personality = persona.personality
+        row.default_delivery = json.dumps(persona.default_delivery) if persona.default_delivery else None
+        row.effects_chain = json.dumps(persona.effects_chain) if persona.effects_chain else None
+        row.engine_override = persona.engine_override
+        row.lexicon_id = persona.lexicon_id
+        row.imported_from = persona.imported_from
+        row.imported_id = persona.imported_id
+        db.commit()
+    except Exception as e:
+        log.warning("persona %s: SQLite mirror failed: %s", persona.id, e)
+        db.rollback()
+    finally:
+        db.close()
+
+
+def _delete_from_db(persona_id: str) -> None:
+    """Remove the SQLite twin on file-store delete (FKs are SET NULL/CASCADE)."""
+    try:
+        from ..database import session as _db_session
+        from ..database.models import Persona as DBPersona
+
+        if _db_session.SessionLocal is None:
+            return
+        db = _db_session.SessionLocal()
+    except Exception:
+        return
+    try:
+        db.query(DBPersona).filter(DBPersona.id == persona_id).delete()
+        db.commit()
+    except Exception as e:
+        log.warning("persona %s: SQLite delete-mirror failed: %s", persona_id, e)
+        db.rollback()
+    finally:
+        db.close()
+
+
 class PersonaStore:
     def __init__(self, data_dir: Path):
         self._dir = personas_root(data_dir)
@@ -93,6 +157,7 @@ class PersonaStore:
             )
             self._cache[new_id] = persona
             atomic_write_json(self._path(new_id), persona.model_dump())
+            _mirror_to_db(persona)
             return persona.model_copy(deep=True)
 
     def update(self, id: str, **fields) -> Persona | None:
@@ -106,6 +171,7 @@ class PersonaStore:
             new = Persona.model_validate(data)
             self._cache[id] = new
             atomic_write_json(self._path(id), new.model_dump())
+            _mirror_to_db(new)
             return new.model_copy(deep=True)
 
     def delete(self, id: str) -> bool:
@@ -116,4 +182,5 @@ class PersonaStore:
             p = self._path(id)
             if p.exists():
                 p.unlink()
+            _delete_from_db(id)
             return True

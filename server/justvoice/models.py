@@ -280,6 +280,13 @@ UseCase = Literal[
 ]
 
 
+class MCPSettings(BaseModel):
+    """MCP server (/mcp) behaviour. The default voice applies when an agent
+    calls justvoice.speak with no voice/persona and no per-client binding."""
+
+    default_voice: str | None = None
+
+
 class AppSettings(BaseModel):
     """First-run onboarding + cross-cutting UI preferences.
 
@@ -305,6 +312,7 @@ class Settings(BaseModel):
     models: ModelsSettings = ModelsSettings()
     engines: EnginesSettings = EnginesSettings()
     generation: GenerationSettings = GenerationSettings()
+    mcp: MCPSettings = MCPSettings()
     app: AppSettings = AppSettings()
 
 
@@ -322,6 +330,7 @@ class SettingsPatch(BaseModel):
     models: ModelsSettings | None = None
     engines: EnginesSettings | None = None
     generation: GenerationSettings | None = None
+    mcp: MCPSettings | None = None
     app: AppSettings | None = None
 
 

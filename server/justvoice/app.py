@@ -169,6 +169,14 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(smart_assign_api.router)
     app.include_router(preset_suggest_api.router)
 
+    # MCP server — justvoice.speak / list_voices / list_personas for local
+    # AI agents, mounted at /mcp (Streamable HTTP). Must mount before the
+    # root StaticFiles catch-all. Wraps the lifespan, so it goes after all
+    # on_event registrations would still fire (default lifespan preserved).
+    from .mcp import mount_into as mount_mcp
+
+    mount_mcp(app)
+
     # Shutdown hook — make sure any running managed engine subprocess is
     # killed before the host server exits. Without this, ctrl-C in dev
     # would leave engine subprocesses orphaned.

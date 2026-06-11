@@ -69,6 +69,13 @@ def projects_root(data_dir: Path) -> Path:
     return data_dir / "projects"
 
 
+def generations_root(data_dir: Path) -> Path:
+    """Ad-hoc generation WAVs (MCP speak, future Generate-tab persistence)."""
+    d = data_dir / "generations"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
 def training_root(data_dir: Path) -> Path:
     return storage_root(data_dir) / "training"
 
