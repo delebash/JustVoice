@@ -1288,44 +1288,71 @@ const stepsHelp = [
    ════════════════════════════════════════════════════════════════════ */
 const srcChip = s => ({anchor:'<span class="pill green">anchor</span>',llm:'<span class="pill blue">llm</span>',prop:'<span class="pill">propagated</span>',floor:'<span class="pill warn">floored</span>'})[s];
 const stepsSplab = [
-{ nav:"Spk Lab", t:"Speaker-extraction testbed. Paste any text — no project or chapters needed — name the cast, then race two local models on the exact same input.",
+{ nav:"Spk Lab", t:"Speaker-extraction testbed. Paste any text — chapters optional — then race two models. Every knob that exists is on the column: preset, provider, model, temp, tier, floors, and BOTH prompts.",
   html: () => shell("audiobook","Spk Lab","Speaker Lab — Tuner", "", `
     <div class="row" style="margin-bottom:8px"><span class="chips"><button class="chip active">Tuner</button><button class="chip">Lab (experimental)</button></span>
-      <span class="spacer"></span><span class="muted" style="font-size:11.5px">same extraction backend as Studio · Script — nothing touches production until you promote</span></div>
-    <div class="row" style="margin-bottom:6px">
-      <button class="btn secondary sm">⬇ Load from chapter ▾</button><span class="muted" style="font-size:11px">optional — the box is the input, type or paste anything</span>
-      <span class="spacer"></span>
-      <span class="pill">Mara ✕</span><span class="pill">Edith Vance ✕</span><span class="pill">Tom Harlan · alias: Tom ✕</span>
-      <input class="input" style="max-width:150px;height:26px;font-size:12px" placeholder="＋ character"/></div>
-    <textarea class="input" style="height:88px;padding:9px 12px;resize:none;font-size:13px;margin-bottom:10px">"Your grandmother ever tell you what's under the boathouse?" He said it without turning around. "She tells me lots of things. Few of them true." "Ask her about the winter of '61. Watch her hands," Tom said. "You'd do well to remember that."</textarea>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px">
-      ${[["A","Ollama · qwen3:8b","auto → Guided","think off · floor 0.7","defaults",""],
-         ["B","Ollama · qwen3:14b","auto → Reasoned","think on · floor 0.5","tweaked ●","border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)"]]
-        .map(c=>`<div class="card" style="padding:11px 14px;${c[5]}"><div class="row" style="flex-wrap:nowrap">
-          <span class="eyebrow" style="flex:none">Column ${c[0]}</span>
-          <span class="combo-cell">${c[1]}<span class="chev">▼</span></span>
-          <span class="pill blue">${c[2]}</span><span class="muted" style="font-size:10.5px">${c[3]}</span>
-          <span class="spacer"></span>
-          <label style="font-size:11px;display:inline-flex;gap:4px;align-items:center"><input type="checkbox" checked style="accent-color:var(--accent)"/>propagate</label>
-          <label style="font-size:11px;display:inline-flex;gap:4px;align-items:center"><input type="checkbox" checked style="accent-color:var(--accent)"/>floor</label>
-          <button class="btn ghost sm">Prompts: ${c[4]}</button><button class="btn sm">▶ Run</button></div></div>`).join("")}
+      <button class="btn sm">✳ Run all 2</button><button class="btn secondary sm">＋ Add column</button>
+      <span class="spacer"></span><span class="muted" style="font-size:11px">1,242 words · 6,810 chars · ~1.7k tokens</span></div>
+    <div class="card" style="padding:10px 14px;margin-bottom:10px;flex:none">
+      <div class="row" style="margin-bottom:8px"><span class="combo-cell">Load from chapter…<span class="chev">▼</span></span><button class="btn ghost sm">✕ Clear</button><button class="btn secondary sm">✨ Sample: Ch. 3</button><span class="spacer"></span><span class="muted" style="font-size:11px">paste a few chapters, or load one from a project</span></div>
+      <textarea class="input" style="height:54px;padding:8px 12px;resize:none;font-size:12.5px">"Whose office is it?" Bern closed the green book. "I don't know," he said. "I have wondered." "Ask her about the winter of '61. Watch her hands," Tom said.</textarea>
     </div>
-    <p class="muted" style="font-size:11px;margin:0 0 8px">Tier follows the model — pick qwen3:14b and it auto-switches to Reasoned (think=true); the 8b stays Guided (think=false). Override the select only if you know better; prompt bodies are editable per tier and resettable to the defaults we shipped (tuned on 8b/14b).</p>
-    <div class="card" style="flex:1;min-height:0;overflow:auto"><table class="vtable">
-      <thead><tr><th style="min-width:280px">Segment</th><th>A · qwen3:8b · Guided <span class="muted" style="font-weight:400">5.8 s</span></th><th>B · qwen3:14b · Reasoned <span class="muted" style="font-weight:400">14.2 s</span></th></tr></thead>
-      <tbody>
-        ${[["“Your grandmother ever tell you what's under the boathouse?”",["Tom Harlan","llm",".84"],["Tom Harlan","llm",".93"],0],
-           ["He said it without turning around.",["— narration","prop","—"],["— narration","prop","—"],0],
-           ["“She tells me lots of things. Few of them true.”",["Mara","llm",".82"],["Mara","llm",".91"],0],
-           ["“Ask her about the winter of '61. Watch her hands,” Tom said.",["Tom Harlan","anchor",".99"],["Tom Harlan","anchor",".99"],0],
-           ["“You'd do well to remember that.”",["unknown","floor",".58 → floored"],["Tom Harlan","llm",".88"],1]]
-          .map(r=>`<tr ${r[3]?'style="background:var(--warn-bg)"':''}><td style="font-size:12px;color:var(--ink-2)">${r[0]}</td>${[r[1],r[2]].map(c=>`<td style="white-space:nowrap"><strong style="font-size:12px">${c[0]}</strong> ${srcChip(c[1])} <span class="muted" style="font-size:10.5px">${c[2]}</span></td>`).join("")}</tr>`).join("")}
-      </tbody></table></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:1;min-height:0;overflow-y:auto;align-content:start">
+      ${[["Run A","qwen3:14b","Reasoned","0.5","tweaked ●",1],["Run B","qwen3:8b","Guided","0.7","defaults",0]]
+        .map(c=>`<div class="card" style="padding:12px 14px">
+        <div class="row" style="flex-wrap:nowrap;margin-bottom:8px"><input class="input" style="height:28px;font-size:12.5px;max-width:130px" value="${c[0]}"/><span class="chips"><button class="chip active" style="padding:3px 8px;font-size:11px">Audio Studio</button><button class="chip" style="padding:3px 8px;font-size:11px">Lab</button><button class="chip" style="padding:3px 8px;font-size:11px">Legacy</button></span><span class="spacer"></span><button class="btn ghost sm">🗑</button></div>
+        <div class="row" style="flex-wrap:nowrap;margin-bottom:8px"><span class="eyebrow" style="flex:none">Presets</span><span class="combo-cell" style="font-size:11.5px">Default (built-in)<span class="chev">▼</span></span><span class="pill green" style="font-size:9.5px">✓ production</span><button class="btn sm" style="height:22px;font-size:10.5px">Use as production</button><button class="btn ghost sm" style="font-size:10.5px">⬇ Load</button><button class="btn ghost sm" style="font-size:10.5px">＋ Save as</button></div>
+        <div style="background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:8px;padding:8px 11px;font-size:10.5px;line-height:1.55;color:var(--accent-ink);margin-bottom:8px">Splits paragraphs into segments at quote marks (deterministic, no LLM); narration auto-attributes to the narrator. <strong>This input → 11 paragraphs · 12 dialogue · 8 narration · 8 project characters.</strong> Tier auto-picked from the model — override if you know better.</div>
+        <div class="row" style="flex-wrap:nowrap;margin-bottom:8px"><input class="input" style="height:26px;font-size:11px" value="OpenAI-compatible (local)"/><input class="input" style="height:26px;font-size:11px;max-width:110px" value="${c[1]}"/><span class="muted" style="font-size:10.5px;flex:none">temp</span><input class="input" style="height:26px;font-size:11px;max-width:48px" value="0.2"/><button class="btn ghost sm" style="font-size:10.5px">⟲ Reset</button></div>
+        <div class="row" style="margin-bottom:8px"><span class="muted" style="font-size:11px">Tier:</span><span class="chips">${["Guided","Direct","Reasoned"].map(t=>`<button class="chip ${t===c[2]?'active':''}" style="padding:3px 9px;font-size:11px">${t}</button>`).join("")}</span>
+          <label style="font-size:11px;display:inline-flex;gap:4px;align-items:center"><input type="checkbox" checked style="accent-color:var(--accent)"/>anchor propagation (pre-LLM)</label>
+          <label style="font-size:11px;display:inline-flex;gap:4px;align-items:center"><input type="checkbox" checked style="accent-color:var(--accent)"/>floor</label><input class="input" style="height:24px;font-size:11px;max-width:44px" value="${c[3]}"/></div>
+        <div class="eyebrow" style="margin-bottom:4px">System prompt <span style="font-weight:400;text-transform:none;letter-spacing:0">· ${c[4]}</span></div>
+        <textarea class="input" style="height:58px;padding:7px 10px;resize:none;font-size:11px;font-family:var(--font-mono);margin-bottom:8px">You are a dialogue attribution assistant for an audiobook producer. Narration (everything outside quotation marks) is always read by the narrator. Your job is to attribute each quoted dialogue segment to a character…</textarea>
+        <div class="eyebrow" style="margin-bottom:4px">User prompt <span style="font-weight:400;text-transform:none;letter-spacing:0">· variables: <span class="mono" style="font-size:10px">{{characters}}</span> <span class="mono" style="font-size:10px">{{paragraphs}}</span></span></div>
+        <textarea class="input" style="height:44px;padding:7px 10px;resize:none;font-size:11px;font-family:var(--font-mono);margin-bottom:8px">Characters in this novel:
+{{characters}}
+
+Paragraphs (dialogue segments tagged inline): {{paragraphs}}</textarea>
+        <div class="row" style="flex-wrap:nowrap;background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:7px;padding:6px 10px;font-size:11px;color:var(--warn-ink)"><span>⚙</span><strong style="flex:1">Speaker Lab · ${c[0]}</strong><span class="mono" style="font-size:10.5px">${c[5]?'17.0 s · 1,204 tok · 309 words':'17.0 s · 989 tok · 244 words'}</span><button class="btn ghost sm" style="font-size:10.5px">Details</button><button class="btn ghost sm" style="font-size:10.5px;color:var(--danger)">✕ Cancel</button></div>
+      </div>`).join("")}
+    </div>`) },
+
+{ nav:"Spk Lab", t:"Runs land below each column: parsed table or raw JSON. Save the tweak as a named preset, load it back later, and promote the winner to production.",
+  html: () => shell("audiobook","Spk Lab","Speaker Lab — results", "", `
+    <div class="row" style="margin-bottom:10px"><span class="chips"><button class="chip active">Tuner</button><button class="chip">Lab (experimental)</button></span>
+      <span class="pill green">Run A · qwen3:14b · Reasoned — 12/12 vs anchors · 14.2 s</span>
+      <span class="pill warn">Run B · qwen3:8b · Guided — 10/12 · 2 floored · 5.8 s</span>
+      <span class="spacer"></span><span class="chips"><button class="chip active">Parsed table</button><button class="chip">JSON</button></span></div>
+    <div class="two-col">
+      <div class="card" style="overflow:auto"><table class="vtable">
+        <thead><tr><th>Segment</th><th>A · 14b</th><th>B · 8b</th></tr></thead><tbody>
+          ${[["“Whose office is it?”",["Mara","llm",".91"],["Mara","llm",".79"],0],
+             ["Bern closed the green book.",["— narration","prop","—"],["— narration","prop","—"],0],
+             ["“I don't know,” he said. “I have wondered.”",["Bern","anchor",".99"],["Bern","anchor",".99"],0],
+             ["“Ask her about the winter of '61…” Tom said.",["Tom Harlan","anchor",".99"],["Tom Harlan","anchor",".99"],0],
+             ["“You'd do well to remember that.”",["Tom Harlan","llm",".88"],["unknown","floor",".58 → floored"],1]]
+            .map(r=>`<tr ${r[3]?'style="background:var(--warn-bg)"':''}><td style="font-size:11.5px;color:var(--ink-2)">${r[0]}</td>${[r[1],r[2]].map(x=>`<td style="white-space:nowrap;font-size:11.5px"><strong>${x[0]}</strong> ${srcChip(x[1])} <span class="muted" style="font-size:10px">${x[2]}</span></td>`).join("")}</tr>`).join("")}
+        </tbody></table></div>
+      <div class="card"><div class="card-h"><strong>JSON output — Run A</strong><span class="muted" style="font-size:11px">what production consumes</span></div><div class="card-b" style="padding:0">
+        <div class="codeblock" style="border-radius:0;height:100%">[
+  {<span class="k">"d"</span>: 1, <span class="k">"speaker"</span>: <span class="s">"mara"</span>,
+   <span class="k">"confidence"</span>: 0.91, <span class="k">"source"</span>: <span class="s">"llm"</span>},
+  {<span class="k">"d"</span>: 2, <span class="k">"speaker"</span>: <span class="s">"bern"</span>,
+   <span class="k">"confidence"</span>: 0.99, <span class="k">"source"</span>: <span class="s">"anchor"</span>},
+  {<span class="k">"d"</span>: 3, <span class="k">"speaker"</span>: <span class="s">"tom_harlan"</span>,
+   <span class="k">"confidence"</span>: 0.99, <span class="k">"source"</span>: <span class="s">"anchor"</span>},
+  {<span class="k">"d"</span>: 4, <span class="k">"speaker"</span>: <span class="s">"tom_harlan"</span>,
+   <span class="k">"confidence"</span>: 0.88, <span class="k">"source"</span>: <span class="s">"llm"</span>}
+]</div>
+      </div></div>
+    </div>
     <div class="row" style="margin-top:10px">
-      <span class="pill">4/5 agree</span><span class="pill warn">1 divergence — 8b floored where 14b is confident</span>
+      <button class="btn secondary sm">＋ Save tweaks as preset “qwen14b · tight floor”</button>
+      <button class="btn secondary sm">⬇ Load preset ▾</button>
       <span class="spacer"></span>
-      <button class="btn">📌 Promote column B to production</button>
-      <span class="muted" style="font-size:11px">pins model + tier + prompt tweaks as the speaker-attribution method Studio · Script uses</span></div>`) },
+      <button class="btn">✓ Use Run A as production</button>
+      <span class="muted" style="font-size:11px">pins model + tier + temp + both prompts as the Studio · Script method</span></div>`) },
 
 { nav:"Spk Lab", t:"The Lab tab — the two-pass experiment, preserved. Scored against a ground-truth corpus; it wins on accuracy, costs 2.3× tokens, and stays off by default.",
   html: () => shell("audiobook","Spk Lab","Speaker Lab — Lab (experimental)", "", `
@@ -1359,26 +1386,69 @@ const stepsSplab = [
       </div></div>
     </div>`) },
 
-{ nav:"Spk Lab", t:"Every AI call in the app — extraction, smart-assign, suggestions — runs through one task runner: live time, tokens, stall detection, cancel. Finishing fires a notification.",
-  html: () => shell("audiobook","Spk Lab","Speaker Lab — run in progress", `<span class="hdr-chip" style="border-color:var(--info-blue);color:var(--info-blue)">⚙ AI · 1 running</span>`, `
-    <div class="two-col" style="grid-template-columns:minmax(0,1fr) 350px">
-      <div class="card" style="opacity:.6"><div class="card-h"><strong>Results</strong><span class="pill blue">column B streaming…</span></div><div class="card-b">
-        ${[1,1,1].map(()=>`<div style="height:14px;background:var(--surface-3);border-radius:4px;margin-bottom:10px;width:${60+Math.random()*30}%"></div>`).join("")}
-        <div class="row" style="margin-top:6px"><div class="prog" style="flex:1"><div class="fill" style="width:62%"></div></div><span class="muted" style="font-size:11px">segment 29 / 47</span></div>
-      </div></div>
-      <div class="card"><div class="card-h"><strong>AI tasks</strong><span class="pill blue">1 running · 1 queued</span></div><div class="card-b">
-        <div style="border:1px solid var(--info-blue);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:var(--info-soft)">
-          <div class="row" style="flex-wrap:nowrap"><strong style="font-size:12.5px;flex:1">Speaker extraction — qwen3:14b · Reasoned</strong><span class="pill blue">streaming</span></div>
-          <div class="row" style="margin-top:6px;font-size:11px;color:var(--ink-2)"><span class="mono">0:14</span><span>·</span><span class="mono">2,341 tok</span><span>·</span><span>last token 0.3 s ago</span><span class="spacer"></span><button class="btn ghost sm" style="color:var(--danger)">✕ Cancel</button></div>
+{ nav:"Spk Lab", t:"Every AI call gets two surfaces: a small inline bar at the call site (seconds · tokens · words · Details · Cancel), and a slide-out task queue that opens from the header chip or by clicking any inline bar.",
+  html: () => shell("audiobook","Spk Lab","Speaker Lab — runs in progress", `<span class="hdr-chip" style="border-color:var(--info-blue);color:var(--info-blue);cursor:pointer">⚙ AI · 2 running</span>`, `
+    <div class="two-col" style="grid-template-columns:minmax(0,1fr) 360px">
+      <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+        ${["Run A — qwen3:14b · Reasoned","Run B — qwen3:8b · Guided"].map((r,i)=>`
+        <div class="card" style="opacity:.65;padding:12px 14px">
+          <div class="row" style="flex-wrap:nowrap;margin-bottom:8px"><strong style="font-size:12.5px">${r}</strong><span class="pill blue">connecting</span><span class="spacer"></span></div>
+          ${[1,1].map(()=>`<div style="height:12px;background:var(--surface-3);border-radius:4px;margin-bottom:8px;width:${55+i*10+Math.random()*25}%"></div>`).join("")}
         </div>
-        <div style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;margin-bottom:8px">
-          <div class="row" style="flex-wrap:nowrap"><strong style="font-size:12px;flex:1;color:var(--ink-2)">Smart-assign — Emberfall cast</strong><span class="pill ghost">queued</span></div>
-        </div>
-        <p class="eyebrow" style="margin:10px 0 6px">History</p>
-        ${[["Speaker extraction — qwen3:8b · Guided","✓ done","0:09 · 1,872 tok"],["Render-preset suggest","✕ cancelled","0:04 · 312 tok"]]
-          .map(h=>`<div class="row" style="flex-wrap:nowrap;font-size:11.5px;padding:5px 0;border-bottom:1px dashed var(--line)"><span style="flex:1;color:var(--ink-2)">${h[0]}</span><span class="pill ${h[1].startsWith('✓')?'green':''}" style="flex:none">${h[1]}</span><span class="mono muted" style="font-size:10.5px;flex:none">${h[2]}</span></div>`).join("")}
-        <div class="banner warn" style="margin-top:10px;font-size:11.5px">Stall detection: no token for 5 s → amber; 30 s → likely stuck, offers cancel + retry. Tasks survive leaving the view — the ⚙ AI header chip reopens this panel from anywhere; completion fires a toast (and an OS notification if the window is unfocused).</div>
+        <div class="row" style="flex-wrap:nowrap;background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:7px;padding:7px 11px;font-size:11.5px;color:var(--warn-ink);cursor:pointer"><span>⚙</span><strong style="flex:1">Speaker Lab · ${r.split(" — ")[0]}</strong><span class="mono" style="font-size:10.5px">17.0 s · 0 tok</span><button class="btn ghost sm" style="font-size:10.5px">Details</button><button class="btn ghost sm" style="font-size:10.5px;color:var(--danger)">✕ Cancel</button></div>`).join("")}
+        <p class="muted" style="font-size:11px">The inline bar IS the entry point — every AI feature (extraction, smart-assign, suggestions, show notes) renders one at its call site; clicking it opens the queue →</p>
+      </div>
+      <div class="card"><div class="card-h"><span class="eyebrow" style="flex:1">Status</span><button class="btn ghost sm">✕ Close</button></div><div class="card-b">
+        <div class="display sm" style="margin-bottom:10px">AI tasks</div>
+        <div class="row" style="margin-bottom:8px"><span class="eyebrow">Running · 2</span><span class="spacer"></span><button class="btn ghost sm" style="font-size:10.5px;color:var(--danger)">✕ Cancel all</button></div>
+        ${[["Speaker Lab · Run A","speakerLab","connecting","17.0 s"],["Speaker Lab · Run B","speakerLab","connecting","17.0 s"]]
+          .map(t=>`<div style="border:1px solid var(--warn-line);background:var(--warn-bg);border-radius:8px;padding:9px 12px;margin-bottom:8px">
+            <div class="row" style="flex-wrap:nowrap"><strong style="font-size:12px;flex:1">${t[0]}</strong><span class="mono muted" style="font-size:10px">${t[1]}</span><button class="btn ghost sm" style="font-size:10.5px;color:var(--danger)">✕ Cancel</button></div>
+            <div class="row" style="margin-top:4px;font-size:11px;color:var(--ink-2)"><span style="width:7px;height:7px;border-radius:99px;background:var(--warn);display:inline-block"></span><span>${t[2]}</span><span class="mono">${t[3]}</span></div></div>`).join("")}
+        <div class="row" style="margin:12px 0 6px"><span class="eyebrow">Recent · 2</span></div>
+        ${[["Speaker extraction — ch. 4","✓ done","0:09 · 1,872 tok · 412 words"],["Render-preset suggest","✕ cancelled","0:04 · 312 tok"]]
+          .map(h=>`<div class="row" style="flex-wrap:nowrap;font-size:11.5px;padding:5px 0;border-bottom:1px dashed var(--line)"><span style="flex:1;color:var(--ink-2)">${h[0]}</span><span class="pill ${h[1].startsWith('✓')?'green':''}" style="flex:none">${h[1]}</span><span class="mono muted" style="font-size:10px;flex:none">${h[2]}</span></div>`).join("")}
+        <div class="banner warn" style="margin-top:10px;font-size:11px">No token 5 s → amber · 30 s → likely stuck (cancel + retry). Tasks survive leaving the view; completion fires a toast + OS notification when unfocused.</div>
       </div></div>
+    </div>`) },
+
+{ nav:"Generate", t:"What the label looks like at the Generate button: click ▶ Generate and the bar appears right under it — elapsed · audio rendered so far · engine · Cancel.",
+  html: () => shell("audiobook","Generate","Generate", `<span class="hdr-chip" style="border-color:var(--info-blue);color:var(--info-blue);cursor:pointer">⚙ AI · 1 running</span>`, `
+    <div class="two-col">
+      <div class="card"><div class="card-h"><strong>Quick generate</strong><span class="combo-cell">${glyph("Alex","#3a7d63")} Alex (cloned)<span class="chev">▼</span></span><span class="pill green">Chatterbox Turbo</span></div><div class="card-b">
+        <textarea class="input" style="height:90px;padding:10px 12px;resize:none">Welcome back. [chuckles] Let's pick up where we left off — chapter five, the storm cellar. The lake had gone the color of old pewter, and somewhere out on the water a loon called twice.</textarea>
+        <div class="row" style="margin-top:10px">
+          <span class="pill">speed 1.0×</span><span class="pill">exaggeration 0.4</span>
+          <span class="spacer"></span><button class="btn" disabled>▶ Generate</button>
+        </div>
+        <div class="row" style="flex-wrap:nowrap;background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:7px;padding:7px 11px;font-size:11.5px;color:var(--warn-ink);margin-top:10px;cursor:pointer">
+          <span>⚙</span><strong style="flex:1">Generate · Alex (cloned)</strong>
+          <span class="mono" style="font-size:10.5px">2.3 s · 41 words · 5.8 s audio rendered</span>
+          <button class="btn ghost sm" style="font-size:10.5px">Details</button><button class="btn ghost sm" style="font-size:10.5px;color:var(--danger)">✕ Cancel</button></div>
+        <p class="muted" style="font-size:11px;margin-top:8px">Same bar, every AI/render call. Click anywhere on it → the AI-tasks slide-out. When it finishes, the bar becomes the player row.</p>
+      </div></div>
+      <div class="card"><div class="card-h"><strong>History</strong></div><div class="card-b">
+        <div class="row" style="border:1px solid var(--line);border-radius:8px;padding:8px 11px;flex-wrap:nowrap;font-size:12px"><button class="btn ghost sm">▶</button><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">The lake had a way of holding the morning fog…</span><span class="muted" style="flex:none;font-size:11px">Alex · 4.1 s · 5 min ago</span></div>
+      </div></div>
+    </div>`) },
+
+{ nav:"Studio", t:"And from the Script tab: ✨ Analyze chapter shows the same label — elapsed · tokens · segment progress — while attributed rows fill in live above it.",
+  html: () => shell("audiobook","Studio","Studio — Script", projChip("Stillwater","Audiobook","ACX"), `
+    <div class="row" style="margin-bottom:10px"><span class="pill">1 · Cast</span><span class="pill solid" style="background:var(--accent);color:#fff;border-color:var(--accent)">2 · Script</span><span class="pill">3 · Render</span>
+      <span class="spacer"></span>
+      <select class="map-sel"><option>Chapter 4 · The Visitor</option></select>
+      <button class="btn sm" disabled>✨ Analyze chapter</button></div>
+    <div class="row" style="flex-wrap:nowrap;background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:7px;padding:7px 11px;font-size:11.5px;color:var(--warn-ink);margin-bottom:10px;cursor:pointer">
+      <span>⚙</span><strong style="flex:1">Speaker extraction · Chapter 4</strong>
+      <span class="mono" style="font-size:10.5px">qwen3:14b · Reasoned · 0:12 · 1,840 tok · segment 21 / 47</span>
+      <div class="prog" style="width:130px;flex:none"><div class="fill" style="width:45%"></div></div>
+      <button class="btn ghost sm" style="font-size:10.5px">Details</button><button class="btn ghost sm" style="font-size:10.5px;color:var(--danger)">✕ Cancel</button></div>
+    <div class="scroll-fill">
+      ${[["Narrator","narration","The lake had a way of holding the morning fog long after the sun should have burned it off.","98%","narr",1],
+         ["Mara Vance","dialogue","“You knew. All these years, you knew and you let me think it was my fault.”","96%","mara",1],
+         ["Edith Vance","dialogue","“Sit down, child. Some things only make sense told in order.”","94%","edith",1]]
+        .map(l=>`<div class="line-row"><span class="sp">${glyph(l[0],C[l[4]])} ${l[0]}</span><span class="kind"><span class="pill ghost">${l[1]}</span></span><span class="txt">${l[2]}</span><span class="acc"><span class="pill green">${l[3]}</span></span></div>`).join("")}
+      ${[1,2,3].map(()=>`<div class="line-row" style="opacity:.5"><span class="sp"><span style="width:90px;height:11px;background:var(--surface-3);border-radius:4px;display:inline-block"></span></span><span class="txt"><span style="display:inline-block;width:${55+Math.random()*30}%;height:11px;background:var(--surface-3);border-radius:4px"></span></span></div>`).join("")}
     </div>`) },
 
 ];

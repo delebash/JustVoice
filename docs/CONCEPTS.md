@@ -465,3 +465,27 @@ must surface to the user:
   unfocused
 
 Mocked as Speaker Lab step 3 (`#splab/3`).
+
+### §16 addendum — Speaker Lab + task runner details (from JustWrite screenshots)
+
+- **Two surfaces per AI task:** (1) a small **inline bar at the call
+  site** — seconds · tokens · words (or audio-seconds for TTS) ·
+  Details · Cancel — rendered wherever the task started (Generate
+  button, Script "Analyze chapter", Speaker Lab columns); clicking it
+  opens (2) the **AI-tasks slide-out**: Running (n) with per-task
+  source tag + status + elapsed + Cancel + "Cancel all", and Recent
+  with duration + tokens. Opens from the header ⚙ chip anywhere.
+- **Both prompts are editable per column** — system prompt AND user
+  prompt, the user prompt templated with `{{characters}}` /
+  `{{paragraphs}}` variables.
+- **Named tweak presets:** Save as / Load on each column; the active
+  production preset wears a ✓ production badge; "Use as production"
+  promotes the column's full config (model + tier + temp + both
+  prompts).
+- **JSON output view** alongside the parsed table — the raw structure
+  production consumes (d / speaker / confidence / source per segment).
+- Input header shows live **words · chars · ~tokens** counts; "Load
+  from chapter…" + Clear + Sample buttons sit above the paste box.
+- Visual fidelity note: JustVoice keeps its own design language (the
+  grid/green aesthetic) — the JustWrite screenshots are functional
+  reference, not pixel reference (user, 2026-06-11).
