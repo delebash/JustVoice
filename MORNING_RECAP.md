@@ -5,7 +5,30 @@
 
 ---
 
-## 2026-06-11 (remote session, latest) — Engines + AI-features redesign SHIPPED
+## 2026-06-11 (remote session, latest) — GUI completion pass (journeys-preview)
+
+One-shot pass per user directive (plan + execution record:
+docs/plans/2026-06-11-gui-completion-pass.md). Shipped: per-kind nav
+(Chapters/Lines/Episodes+Timeline swap on the open project, verified
+live ×3 kinds) + activeProject store + topbar Project/Kind/Master chips;
+new Home daily driver (Continue/Resume, kind pills → preselected kind
+picker, 6 stat cards, Active tasks, Loaded engine, Recent generations,
+hotkey banner); Studio rebuilt (numbered steps, game drops Script, mock
+Cast cards + whole-cast ✓, Render w/ cache banner + Cached column + Run
+ACX QC Check column); Chapters Export panel (package + honest ACX
+checklist); QuickSetup to contract + re-runnable from Settings; fix-it
+loop (flag word on block → Lexicons prefilled); voice Inspect editor
+(rename/gender/language). Backend: /v1/render/cache-stats +
+probe_line_cached + cache.has(); per-scene cache scope unified across
+render/QC/M4B; SessionLocal boot-order crash fixed (lazy _open_db).
+e2e ALL GREEN · 192 pytest · 16-view sweep zero JS errors.
+
+NEXT (user debug pass): element-level fidelity audit of remaining
+library surfaces (Generate/Personas/Projects/Captures/Stories/dictation
+screens) — clean but not yet mock-diffed; game/podcast Studio scales
+verified with demo data only.
+
+## 2026-06-11 (remote session, earlier) — Engines + AI-features redesign SHIPPED
 
 Seven-iteration mock loop (preview/engines-redesign.html v7 +
 preview/ai-features-redesign.html = the approved contracts; decision log

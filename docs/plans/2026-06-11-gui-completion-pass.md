@@ -90,6 +90,44 @@ Every commit: ruff + pytest green; renderer changes screenshot-verified
 against the corresponding mock step. Plan amended in-repo as findings
 land (user rule).
 
-## Punch list (S0 findings — amended as the audit runs)
+## Execution record (amended at end of pass)
 
-(filled in by the audit)
+Shipped, in order, each commit gates-green and live-verified:
+
+- **S1 nav/shell** — activeProject store; per-kind sidebar (Chapters /
+  Lines / Episodes+Timeline swap verified live for all three kinds);
+  lanes to the mock (Effects/Presets/Audio Tools/Render Lab →
+  Advanced); topbar Project/Kind/Master chips; Home = launch tab.
+- **S2 Home** — full journeys daily driver (Continue/Resume, kind
+  pills, 6 stat cards, Active tasks, Loaded engine, Recent
+  generations, hotkey banner; bootstrap banner for cold installs).
+- **S3 kind picker** — Home pills → Projects create with kind
+  preselected (NewProjectModal initialKind).
+- **S4 Studio** — numbered steps (game drops Script + renumbers);
+  Cast: lede, Clear cast, mock card anatomy, whole-cast ✓ cast-as;
+  Script: mock column order + confidence pills; Render: master pill,
+  Render all, Run ACX QC → Check column, Cached column + cache banner.
+  Backend: cache.has() probe, probe_line_cached, GET
+  /v1/render/cache-stats, unified per-scene cache scope, lazy
+  SessionLocal fix (boot-order crash).
+- **S5 Export** — Chapters Export panel: package card + honest ACX
+  checklist (measured ✓/✗ from /v1/projects/{id}/qc; unmeasured items
+  say so).
+- **S6 first-run** — QuickSetup: per-engine checkboxes, plain-English
+  routing (tier jargon removed per AI-features contract), What-
+  happens-next + locally banner; re-runnable from Settings → General.
+- **S7 fix-it loop** — 🔤 Fix pronunciation on chapter blocks →
+  Lexicons prefilled via jv.lexicon.prefill (selection-aware).
+- **S10 Edit voice** — Inspect editor: rename/gender/language PATCH on
+  stored voices; presets read-only pill.
+- **S11 final** — scripts/e2e.mjs ALL GREEN; 16-view screenshot sweep
+  zero JS errors; 192 pytest.
+
+**Left for the user's debug pass** (next plan): deep mock-fidelity
+audit of the remaining library surfaces (Generate knobs vs capability
+manifest, Personas used-in chips, Projects kind badges, Captures,
+Stories/Timeline anatomy, dictation screens) — they load clean and
+carry their phase-era designs, but did NOT get the element-by-element
+layout comparison this pass gave Home/Studio/Export/first-run/nav.
+Game/podcast Studio scales rendered with demo data only. User-machine
+items unchanged (hotkey, real downloads, fit dots, proof-listen).
