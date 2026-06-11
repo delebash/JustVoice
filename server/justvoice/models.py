@@ -237,6 +237,7 @@ class LLMProviderConfig(BaseModel):
     base_url: str = ""
     api_key: str | None = None
     default_model: str = ""
+    embedding_model: str = ""  # optional — provider doubles as the EMBED source
     timeout_seconds: int = 60
     extra: dict[str, str] = {}  # provider-specific extras (org id, region, etc.)
 

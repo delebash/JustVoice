@@ -33,6 +33,23 @@ Lab promote now freezes model+prompts via POST /v1/production-configs
 (scene analyze consumes them). Tier-classifier bug fixed: Ollama-style
 'qwen3:14b' ids never matched the size regex.
 
+**Provider form rebuilt to the mock's LAYOUT** (user caught the green
+JustWrite-style card surviving two "done" claims): form is now the card
+BODY (border-top + surface-2 under the white row header — no accent
+border), label-above-field flex rows (NAME·BASE URL·API KEY + cap
+checkboxes / API FORMAT·CHAT MODEL·EMBEDDING / TTS MODEL·VOICES·FORMAT),
+✓-fetched hints, voice toggle-chips, footer = ● status ("reachable · N
+models · M ms") · Test connection · Remove provider · Cancel · Save.
+Gaps the static mock left open, filled for real: `embedding_model`
+persisted end-to-end on LLM providers (was a dead form field) + EMBED
+chips/filter; "both"-capability providers save BOTH halves (llm store +
+engines.external, same id) and merge into ONE row w/ combined chips +
+mock-style summary line; row-level Test pings + re-colors the dot.
+**Critical fix found doing it**: PATCH /v1/settings did a top-level key
+replace — `{"engines":{"external":[…]}}` wiped engines.llm/llm_roles/
+production_configs. Store now deep-merges (lists replace); regression
+tests in `test_settings_patch_merge.py`.
+
 User-machine checks: fit dots need real GPU VRAM in /v1/system/info.
 (Earlier recap draft claimed the provider model-fetch combobox was a
 remaining polish item — WRONG, verified live: ProviderForm already

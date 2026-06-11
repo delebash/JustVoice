@@ -2,47 +2,36 @@
 <!--
   ProviderForm — inline editor for a single LLM or TTS provider.
 
-  Direct port of JustWrite's SettingsProviderForm.vue:362-657 pattern
-  (read in full this turn). Rendered inline in EnginesView's per-tab
-  Registered Providers section — appears either at the top of the list
-  (when adding) or in place of a provider's read-row (when editing).
+  Layout contract: preview/engines-redesign.html `.pform` (approved v7).
+  The form is the EXPANDED BODY of a provider card — EnginesView renders
+  it inside `.ev-prov` directly under the white `.ev-prow` header, so
+  this component carries no border/card chrome of its own: border-top +
+  surface-2 background only. No accent border, no tinted card (the old
+  green JustWrite-style card is gone deliberately).
 
-  Affordance coverage (per the 2026-06-10 EnginesView Affordance Table):
-    #3 id field (readonly on edit)
-    #4 name field
-    #5 kind select (llm / tts / both)
-    #6 base URL with placeholder
-    #7 BYO install hint band (per-provider seed metadata)
-    #8 API key password field
-    #9 LLM: runner select (openai-compat / ollama)
-    #10 LLM: chat model Combobox + Fetch models + loading/error
-    #11 LLM: tier segmented picker per chat model with auto/pinned + clear-pin
-    #12 LLM: embedding model Combobox
-    #13 TTS: TTS model Combobox + Fetch models
-    #14 TTS: voices multi-select + Fetch voices
-    #17 engine-specific param fields
-    #18 Save / Cancel buttons
-    #19 Ping action
-  Rows #15, #16 (Chatterbox / Dia hot-swap) are not implemented — the
-  /save_settings + /restart_server endpoints those JustWrite calls hit
-  aren't present in JustVoice's local engine managers. Documented as ❌
-  in the response, not silently skipped.
+  Structure, top to bottom (mirrors the mock element-for-element):
+    presets chip row (new providers only)
+    .pf-row 1 — NAME · BASE URL · API KEY · capability checkboxes
+    install/setup hint band (known provider types)
+    .pf-row 2 (LLM) — API FORMAT · CHAT MODEL (combobox + ✓-fetched hint)
+                      · ⟳ Fetch models · EMBEDDING MODEL (+ hint)
+    .pf-row 3 (TTS) — TTS MODEL (+ hint) · VOICES (+ hint) · ⟳ Fetch voices
+                      · RESPONSE FORMAT
+    fetched-voice chips (click to toggle selection)
+    .pf-foot — status dot + "reachable · N models · M ms" · spacer ·
+               Test connection · Remove provider · Cancel · Save
 -->
 <script setup>
-import { computed, ref, reactive, onBeforeUnmount, watch } from "vue";
+import { computed, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import JvButton from "./jv/JvButton.vue";
 
 const props = defineProps({
-  // The provider being edited. For new providers, pass an empty shape
-  // — the form initializes its own defaults from kindHint.
+  // The provider being edited. For new providers, pass an empty shape.
   draft: { type: Object, required: true },
-  // "new" or the provider id; "new" enables the id field for typing.
+  // "new" or the provider id; "new" enables presets + auto-id.
   editingKey: { type: String, required: true },
-  // "llm" or "tts" — drives which sections render. "both" appears
-  // inside the kind dropdown when editing a provider that handles both.
-  kindHint: { type: String, default: "llm" },
 });
 
 const emit = defineEmits(["save", "cancel", "delete"]);
@@ -71,9 +60,8 @@ function applyPreset(pr) {
   props.draft.kind = pr.kind;
 }
 
-// Capability checkboxes — the visual contract replaces the kind select.
-// They map onto the existing kind field ("llm" | "tts" | "both") so the
-// save plumbing is untouched.
+// Capability checkboxes — map onto the existing kind field
+// ("llm" | "tts" | "both") so the save plumbing is untouched.
 const capLLM = computed({
   get: () => props.draft.kind === "llm" || props.draft.kind === "both",
   set: (v) => { props.draft.kind = v ? (capTTS.value ? "both" : "llm") : (capTTS.value ? "tts" : "llm"); },
@@ -84,14 +72,13 @@ const capTTS = computed({
 });
 
 // Auto-slug the id from the name for new providers — the contract hides
-// the ID field (it was developer noise; pins reference it internally).
+// the ID field (developer noise; pins reference it internally).
 function slugify(name) {
   return (name || "provider").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "provider";
 }
 
-// Hint metadata — when the user types a known provider id, surface a
-// link to that provider's install guide or homepage. Mirrors the
-// JustWrite pattern at SettingsProviderForm.vue:34-49.
+// Hint metadata — when the provider type is known, surface a link to
+// that provider's install guide or homepage.
 const PROVIDER_HINTS = {
   // LLM
   anthropic:    { url: "https://console.anthropic.com/", label: "Anthropic Console", note: "Claude Haiku / Sonnet / Opus. API key from console; default model claude-haiku-4-5." },
@@ -121,10 +108,19 @@ function openHint() {
   }
 }
 
+function showLlmFields() {
+  // The capability checkboxes (draft.kind) are the single source of truth.
+  return props.draft?.kind === "llm" || props.draft?.kind === "both";
+}
+function showTtsFields() {
+  return props.draft?.kind === "tts" || props.draft?.kind === "both";
+}
+
 // ── Model discovery ─────────────────────────────────────────────────
-// For LLM providers, GET /v1/llm-providers/{id}/models returns the
-// adapter's `models()` result. For TTS providers, hits the probe
-// endpoint with the current baseUrl + apiKey to get models + voices.
+// Registered LLM providers answer through their adapter
+// (/v1/llm-providers/{id}/models); everything else goes through the
+// probe endpoint with the draft's current credentials so the user can
+// fetch before saving.
 const fetchedModels = ref([]);
 const modelsLoading = ref(false);
 const modelsError = ref("");
@@ -141,33 +137,27 @@ const ttsModels = computed(() =>
   fetchedModels.value.filter((m) => TTS_RX.test(m)),
 );
 
+function llmAdapterRegistered() {
+  return props.editingKey !== "new" && props.draft?.kind !== "tts";
+}
+
 async function fetchModels() {
   modelsError.value = "";
   modelsLoading.value = true;
   fetchedModels.value = [];
   try {
-    if (props.kindHint === "llm" && props.editingKey !== "new") {
-      // Live provider — the adapter is registered; ask it.
+    if (llmAdapterRegistered()) {
       const r = await api.request(`/v1/llm-providers/${props.editingKey}/models`);
       fetchedModels.value = r?.models || [];
       if (!fetchedModels.value.length) {
         modelsError.value = r?.error || "Provider returned no models.";
       }
     } else {
-      // New provider OR TTS — use the probe endpoint with the draft's
-      // current credentials so the user can fetch before saving.
       if (!props.draft.base_url) {
         modelsError.value = "Set a base URL first.";
         return;
       }
-      const r = await api.request("/v1/engines/external/probe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          base_url: props.draft.base_url,
-          api_key: props.draft.api_key || null,
-        }),
-      });
+      const r = await probe();
       fetchedModels.value = r?.models || [];
       if (!fetchedModels.value.length) modelsError.value = "Server returned no models.";
     }
@@ -183,6 +173,17 @@ const fetchedVoices = ref([]);
 const voicesLoading = ref(false);
 const voicesError = ref("");
 
+async function probe() {
+  return api.request("/v1/engines/external/probe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      base_url: props.draft.base_url,
+      api_key: props.draft.api_key || null,
+    }),
+  });
+}
+
 async function fetchVoices() {
   voicesError.value = "";
   voicesLoading.value = true;
@@ -192,14 +193,7 @@ async function fetchVoices() {
       voicesError.value = "Set a base URL first.";
       return;
     }
-    const r = await api.request("/v1/engines/external/probe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        base_url: props.draft.base_url,
-        api_key: props.draft.api_key || null,
-      }),
-    });
+    const r = await probe();
     fetchedVoices.value = r?.voices || [];
     if (!fetchedVoices.value.length) voicesError.value = "Server didn't return any voices.";
   } catch (e) {
@@ -225,112 +219,65 @@ function toggleVoice(v) {
   else cur.push(v);
   props.draft.voices = cur;
 }
-const voicesDropdownOpen = ref(false);
 
-// Close voices dropdown on outside click.
-let outsideClickFn = null;
-const voicesBoxRef = ref(null);
-function bindOutsideClick() {
-  outsideClickFn = (e) => {
-    if (voicesDropdownOpen.value && voicesBoxRef.value && !voicesBoxRef.value.contains(e.target)) {
-      voicesDropdownOpen.value = false;
-    }
-  };
-  document.addEventListener("mousedown", outsideClickFn);
-}
-function unbindOutsideClick() {
-  if (outsideClickFn) {
-    document.removeEventListener("mousedown", outsideClickFn);
-    outsideClickFn = null;
-  }
-}
-watch(voicesDropdownOpen, (open) => {
-  if (open) bindOutsideClick();
-  else unbindOutsideClick();
-});
-onBeforeUnmount(unbindOutsideClick);
+// ── Test connection (the mock's footer status line) ─────────────────
+// One button pings AND re-fetches models/voices; the result feeds the
+// "● reachable · N models · M ms" status in the footer.
+const testBusy = ref(false);
+const test = ref(null); // { ok, message, models, voices, ms }
 
-// ── Tier classification (LLM chat model) ────────────────────────────
-// Per JustWrite's `:225-242`, the tier is the prompt-routing bucket
-// for speaker attribution. Calls /v1/llm-providers/classify-tier to
-// auto-suggest; user can pin a different tier per model.
-const TIERS = [
-  { value: "guided",   label: "Guided",   blurb: "Small / Q3 models. Hand-held prompts." },
-  { value: "direct",   label: "Direct",   blurb: "8B+ models. Standard one-shot." },
-  { value: "reasoned", label: "Reasoned", blurb: "Reasoning models. Allow chain-of-thought." },
-];
-
-const autoTier = ref("");
-
-async function refreshAutoTier() {
-  autoTier.value = "";
-  const model = props.draft.default_model;
-  if (!model) return;
+async function doTest() {
+  test.value = null;
+  testBusy.value = true;
+  const t0 = performance.now();
+  const ms = () => Math.max(1, Math.round(performance.now() - t0));
   try {
-    const r = await api.request("/v1/llm-providers/classify-tier", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model }),
-    });
-    autoTier.value = r?.tier || "";
-  } catch {
-    autoTier.value = "";
-  }
-}
-
-watch(() => props.draft?.default_model, refreshAutoTier, { immediate: true });
-
-const pinnedTier = computed({
-  get() { return props.draft.pinned_tier || ""; },
-  set(v) { props.draft.pinned_tier = v; },
-});
-
-const effectiveTier = computed(() => pinnedTier.value || autoTier.value);
-
-function pinTier(t) {
-  pinnedTier.value = pinnedTier.value === t ? "" : t;  // toggle off if same
-}
-
-// ── Ping ────────────────────────────────────────────────────────────
-const pingResult = ref(null);
-const pingBusy = ref(false);
-
-async function doPing() {
-  pingResult.value = null;
-  pingBusy.value = true;
-  try {
-    if (props.kindHint === "llm" && props.editingKey !== "new") {
+    if (llmAdapterRegistered()) {
       const r = await api.request(`/v1/llm-providers/${props.editingKey}/ping`, { method: "POST" });
-      pingResult.value = { ok: !!r?.ok, message: r?.ok ? "Reachable." : (r?.error || "Not reachable.") };
+      test.value = r?.ok
+        ? { ok: true, ms: ms(), models: null, voices: null }
+        : { ok: false, message: r?.error || "not reachable" };
+      if (r?.ok) fetchModels();
     } else {
-      // For TTS / new providers, probe is the equivalent of a ping.
       if (!props.draft.base_url) {
-        pingResult.value = { ok: false, message: "Set a base URL first." };
+        test.value = { ok: false, message: "set a base URL first" };
         return;
       }
-      const r = await api.request("/v1/engines/external/probe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          base_url: props.draft.base_url,
-          api_key: props.draft.api_key || null,
-        }),
-      });
-      pingResult.value = {
-        ok: !!r,
-        message: r
-          ? `Reachable. Server hint: ${r.server_hint || "unknown"} · ${(r.models || []).length} models · ${(r.voices || []).length} voices.`
-          : "Probe failed.",
-      };
+      const r = await probe();
+      if (r) {
+        fetchedModels.value = r.models || [];
+        if (showTtsFields()) fetchedVoices.value = r.voices || [];
+        test.value = {
+          ok: true,
+          ms: ms(),
+          models: (r.models || []).length,
+          voices: (r.voices || []).length,
+        };
+      } else {
+        test.value = { ok: false, message: "probe failed" };
+      }
     }
   } catch (e) {
-    pingResult.value = { ok: false, message: e?.message || String(e) };
+    test.value = { ok: false, message: e?.message || String(e) };
   } finally {
-    pingBusy.value = false;
+    testBusy.value = false;
   }
 }
 
-// ── Save / Cancel / Delete ─────────────────────────────────────────
+const statusText = computed(() => {
+  if (testBusy.value) return "testing…";
+  if (!test.value) {
+    return props.draft?.api_key || props.draft?.base_url ? "not tested" : "not tested — key missing";
+  }
+  if (!test.value.ok) return `unreachable — ${test.value.message}`;
+  const bits = ["reachable"];
+  if (test.value.models != null) bits.push(`${test.value.models} models`);
+  if (showTtsFields() && test.value.voices) bits.push(`${test.value.voices} voices`);
+  bits.push(`${test.value.ms} ms`);
+  return bits.join(" · ");
+});
+
+// ── Save ─────────────────────────────────────────────────────────────
 async function onSave() {
   if (props.editingKey === "new" && !props.draft.id) {
     props.draft.id = slugify(props.draft.name);
@@ -346,86 +293,50 @@ async function onSave() {
     busy.value = false;
   }
 }
-
-function showLlmFields() {
-  // The capability checkboxes (draft.kind) are the single source of
-  // truth — kindHint defaulting to "llm" used to force LLM fields onto
-  // TTS-only providers (user-reported: every field stacked like the old
-  // form).
-  return props.draft?.kind === "llm" || props.draft?.kind === "both";
-}
-function showTtsFields() {
-  return props.draft?.kind === "tts" || props.draft?.kind === "both";
-}
 </script>
 
 <template>
-  <div class="provider-form">
-    <!-- Presets — one click fills url/format/capabilities (contract v7). -->
-    <div class="provider-form__presets" v-if="editingKey === 'new'">
+  <div class="pf">
+    <!-- Presets — one click fills url/format/capabilities. -->
+    <div class="pf-presets" v-if="editingKey === 'new'">
       <button v-for="pr in PRESETS" :key="pr.id" type="button"
-        class="provider-form__preset" :class="{ on: activePreset === pr.id }"
+        class="pf-preset" :class="{ on: activePreset === pr.id }"
         :title="pr.url || 'Start from a blank OpenAI-compatible provider'"
         @click="applyPreset(pr)">{{ pr.label }}</button>
     </div>
-    <div class="provider-form__grid">
-      <!-- id auto-generates from the name on create; shown readonly on
-           edit so feature pins don't orphan. -->
-      <template v-if="editingKey !== 'new'">
-        <span class="provider-form__label">ID</span>
-        <input type="text" class="jv-input jv-input--sm jv-w-id" :value="draft.id" readonly />
-      </template>
 
-      <!-- #4 display name -->
-      <span class="provider-form__label">Display name</span>
-      <input
-        type="text"
-        class="jv-input jv-input--sm jv-w-name"
-        v-model="draft.name"
-        :placeholder="`e.g. ${hint?.label || 'My provider'}`"
-      />
-
-      <!-- capabilities — checkboxes per the approved contract (replaces
-           the kind dropdown). What's checked decides which model fields
-           appear below and where this provider can be routed. -->
-      <span class="provider-form__label">Capabilities</span>
-      <div class="provider-form__caps">
-        <label title="Chat + embeddings — compose, rewrite, speaker extraction, refinement"><input type="checkbox" v-model="capLLM" /> <span class="provider-form__cap llm">LLM</span></label>
-        <label title="Voice synthesis via /v1/audio/speech"><input type="checkbox" v-model="capTTS" /> <span class="provider-form__cap tts">TTS</span></label>
+    <!-- Row 1: NAME · BASE URL · API KEY · capabilities -->
+    <div class="pf-row">
+      <div class="pf-f">
+        <label>Name</label>
+        <input type="text" v-model="draft.name" :placeholder="hint?.label || 'My provider'" />
       </div>
-
-      <!-- #6 base URL -->
-      <span class="provider-form__label">Base URL</span>
-      <input
-        type="text"
-        class="jv-input jv-input--sm jv-w-url"
-        v-model="draft.base_url"
-        placeholder="https://api.example.com/v1"
-      />
-
-      <!-- #7 BYO install hint band — surfaces the install/signup link
-           for known provider types. Spans both grid columns so the
-           description isn't squashed. -->
-      <div v-if="hint" class="provider-form__hint">
-        <strong>Install / setup:</strong>
-        <a href="#" @click.prevent="openHint">{{ hint.label }}</a>
-        <span class="jv-muted"> — {{ hint.note }}</span>
+      <div class="pf-f pf-wide">
+        <label>Base URL</label>
+        <input type="text" v-model="draft.base_url" placeholder="https://…" />
       </div>
+      <div class="pf-f">
+        <label>API key</label>
+        <input type="password" v-model="draft.api_key" autocomplete="off" placeholder="sk-… (blank for local)" />
+      </div>
+      <div class="pf-caps">
+        <label title="Chat + embeddings — compose, rewrite, speaker extraction, refinement"><input type="checkbox" v-model="capLLM" /> <span class="pf-cap llm">LLM</span></label>
+        <label title="Voice synthesis via /v1/audio/speech"><input type="checkbox" v-model="capTTS" /> <span class="pf-cap tts">TTS</span></label>
+      </div>
+    </div>
 
-      <!-- #8 API key -->
-      <span class="provider-form__label">API key</span>
-      <input
-        type="password"
-        class="jv-input jv-input--sm jv-w-url"
-        v-model="draft.api_key"
-        autocomplete="off"
-        placeholder="sk-… (leave blank for local self-hosted servers)"
-      />
+    <!-- Install/setup hint band for known provider types -->
+    <div v-if="hint" class="pf-hintband">
+      <strong>Install / setup:</strong>
+      <a href="#" @click.prevent="openHint">{{ hint.label }}</a>
+      <span class="jv-muted"> — {{ hint.note }}</span>
+    </div>
 
-      <!-- #9 LLM: runner select. Only render when kind includes llm. -->
-      <template v-if="showLlmFields()">
-        <span class="provider-form__label" title="The wire format the adapter uses. openai-compat covers Anthropic, OpenAI, DeepSeek, OpenRouter, OpenAI-compatible local servers. ollama uses /api/chat for reasoning support.">API format</span>
-        <select v-model="draft.provider_type" class="jv-input jv-input--sm jv-w-id">
+    <!-- Row 2 (LLM): API FORMAT · CHAT MODEL · fetch · EMBEDDING MODEL -->
+    <div class="pf-row" v-if="showLlmFields()">
+      <div class="pf-f">
+        <label title="The wire format the adapter uses. openai-compat covers OpenAI-compatible local servers, DeepSeek, OpenRouter; ollama uses /api/chat for reasoning support.">API format</label>
+        <select v-model="draft.provider_type">
           <option value="anthropic">Anthropic</option>
           <option value="openai">OpenAI</option>
           <option value="openai-compat">OpenAI-compatible</option>
@@ -434,327 +345,221 @@ function showTtsFields() {
           <option value="deepseek">DeepSeek</option>
           <option value="openrouter">OpenRouter</option>
         </select>
-
-        <!-- #10 chat model Combobox + Fetch button -->
-        <span class="provider-form__label">Chat model</span>
-        <div class="provider-form__fetch-row">
-          <input
-            type="text"
-            class="jv-input jv-input--sm jv-w-name"
-            v-model="draft.default_model"
-            :placeholder="chatModels.length ? `Type to filter ${chatModels.length} fetched models` : 'e.g. claude-haiku-4-5'"
-            list="provider-form-chat-models"
-          />
-          <datalist id="provider-form-chat-models">
-            <option v-for="m in chatModels" :key="m" :value="m" />
-          </datalist>
-          <JvButton
-            variant="secondary"
-            size="sm"
-            :loading="modelsLoading"
-            :disabled="modelsLoading || (editingKey === 'new' && !draft.base_url)"
-            :label="fetchedModels.length ? '↻ Refresh' : 'Fetch models'"
-            @click="fetchModels"
-          />
-        </div>
-        <span v-if="modelsError" class="provider-form__error">{{ modelsError }}</span>
-
-        <!-- Tier picker REMOVED (engines redesign): guided/direct/reasoned
-             is auto-classified internally; the only UI that surfaces it is
-             the Speaker Lab. -->
-        <!-- #12 embedding model Combobox -->
-        <span class="provider-form__label">Embedding model <span class="jv-muted">(optional)</span></span>
-        <input
-          type="text"
-          class="jv-input jv-input--sm jv-w-name"
-          v-model="draft.embedding_model"
-          :placeholder="embeddingModels.length ? `${embeddingModels.length} embedding models fetched` : 'text-embedding-3-small'"
-          list="provider-form-embed-models"
-        />
-        <datalist id="provider-form-embed-models">
+      </div>
+      <div class="pf-f">
+        <label>Chat model</label>
+        <span class="pf-pick">
+          <input type="text" v-model="draft.default_model" placeholder="e.g. claude-haiku-4-5" list="pf-chat-models" />
+          <span class="pf-caret" title="Pick from the models this provider's API reports">▾</span>
+        </span>
+        <datalist id="pf-chat-models">
+          <option v-for="m in chatModels" :key="m" :value="m" />
+        </datalist>
+        <div class="pf-fhint" v-if="chatModels.length">✓ fetched — pick from {{ chatModels.length }} models, or type any model id</div>
+        <div class="pf-fhint dim" v-else>Fetch to pick from this server's model list</div>
+      </div>
+      <JvButton
+        class="pf-fetchbtn"
+        variant="secondary"
+        size="sm"
+        :loading="modelsLoading"
+        :disabled="modelsLoading || (editingKey === 'new' && !draft.base_url)"
+        :label="fetchedModels.length ? '⟳ Refresh' : '⟳ Fetch models'"
+        title="Re-query the provider's model list"
+        @click="fetchModels"
+      />
+      <div class="pf-f">
+        <label>Embedding model <span class="pf-opt">optional</span></label>
+        <span class="pf-pick">
+          <input type="text" v-model="draft.embedding_model" placeholder="text-embedding-3-small" list="pf-embed-models" />
+          <span class="pf-caret">▾</span>
+        </span>
+        <datalist id="pf-embed-models">
           <option v-for="m in embeddingModels" :key="m" :value="m" />
         </datalist>
-      </template>
+        <div class="pf-fhint" v-if="embeddingModels.length">✓ fetched — {{ embeddingModels.length }} embedding models</div>
+      </div>
+    </div>
+    <div v-if="modelsError" class="pf-error">{{ modelsError }}</div>
 
-      <!-- #13 TTS: TTS model Combobox + Fetch -->
-      <template v-if="showTtsFields()">
-        <span class="provider-form__label">TTS model</span>
-        <div class="provider-form__fetch-row">
-          <input
-            type="text"
-            class="jv-input jv-input--sm jv-w-name"
-            v-model="draft.tts_model"
-            :placeholder="ttsModels.length ? `${ttsModels.length} TTS models fetched` : 'e.g. eleven_flash_v2_5'"
-            list="provider-form-tts-models"
-          />
-          <datalist id="provider-form-tts-models">
-            <option v-for="m in ttsModels" :key="m" :value="m" />
-          </datalist>
-          <JvButton
-            v-if="!showLlmFields()"
-            variant="secondary"
-            size="sm"
-            :loading="modelsLoading"
-            :disabled="modelsLoading || !draft.base_url"
-            :label="fetchedModels.length ? '↻ Refresh' : 'Fetch models'"
-            @click="fetchModels"
-          />
-        </div>
-
-        <!-- #14 voices multi-select + Fetch voices -->
-        <span class="provider-form__label">Voices</span>
-        <div class="provider-form__fetch-row" ref="voicesBoxRef">
-          <div class="provider-form__voices-input">
-            <input
-              type="text"
-              class="jv-input jv-input--sm jv-w-name"
-              :value="selectedVoiceArray().join(', ')"
-              @input="draft.voices = $event.target.value.split(',').map((s) => s.trim()).filter(Boolean)"
-              @focus="voicesDropdownOpen = !!fetchedVoices.length"
-              @click="voicesDropdownOpen = !!fetchedVoices.length"
-              :placeholder="fetchedVoices.length ? `Pick from ${fetchedVoices.length} or type` : 'e.g. af_bella, am_adam'"
-            />
-            <button
-              type="button"
-              class="provider-form__voices-chev"
-              :disabled="!fetchedVoices.length"
-              @click="voicesDropdownOpen = !voicesDropdownOpen"
-            >▾</button>
-            <ul v-if="voicesDropdownOpen && fetchedVoices.length" class="provider-form__voices-list">
-              <li
-                v-for="v in fetchedVoices"
-                :key="v"
-                :class="{ 'provider-form__voices-item--selected': isVoiceSelected(v) }"
-                @mousedown.prevent="toggleVoice(v)"
-              >
-                <span class="provider-form__voices-check">{{ isVoiceSelected(v) ? "✓" : "" }}</span>
-                {{ v }}
-              </li>
-            </ul>
-          </div>
-          <JvButton
-            variant="secondary"
-            size="sm"
-            :loading="voicesLoading"
-            :disabled="voicesLoading || !draft.base_url"
-            :label="fetchedVoices.length ? '↻ Refresh' : 'Fetch voices'"
-            @click="fetchVoices"
-          />
-        </div>
-        <span v-if="voicesError" class="provider-form__error">{{ voicesError }}</span>
-      </template>
-
-      <!-- Engine-specific param block (#17) — for online TTS providers,
-           this surfaces things like response_format. Lightweight v1
-           implementation: response_format select. Future extension is
-           a getParamSchema(provider_type) similar to JustWrite's
-           providerParams.js. -->
-      <template v-if="showTtsFields()">
-        <span class="provider-form__label">Response format</span>
-        <select v-model="draft.response_format" class="jv-input jv-input--sm jv-w-token">
+    <!-- Row 3 (TTS): TTS MODEL · VOICES · fetch · RESPONSE FORMAT -->
+    <div class="pf-row" v-if="showTtsFields()">
+      <div class="pf-f">
+        <label>TTS model</label>
+        <span class="pf-pick">
+          <input type="text" v-model="draft.tts_model" placeholder="e.g. eleven_flash_v2_5" list="pf-tts-models" />
+          <span class="pf-caret">▾</span>
+        </span>
+        <datalist id="pf-tts-models">
+          <option v-for="m in ttsModels" :key="m" :value="m" />
+        </datalist>
+        <div class="pf-fhint" v-if="ttsModels.length">✓ fetched — {{ ttsModels.length }} TTS models on this server</div>
+        <div class="pf-fhint dim" v-else>add a key + URL, then Test to fetch this server's models</div>
+      </div>
+      <div class="pf-f pf-wide">
+        <label>Voices</label>
+        <input
+          type="text"
+          :value="selectedVoiceArray().join(', ')"
+          @input="draft.voices = $event.target.value.split(',').map((s) => s.trim()).filter(Boolean)"
+          placeholder="e.g. af_bella, am_adam"
+        />
+        <div class="pf-fhint" v-if="fetchedVoices.length">✓ fetched — {{ fetchedVoices.length }} voices, click chips below to add</div>
+      </div>
+      <JvButton
+        class="pf-fetchbtn"
+        variant="secondary"
+        size="sm"
+        :loading="voicesLoading"
+        :disabled="voicesLoading || !draft.base_url"
+        :label="fetchedVoices.length ? '⟳ Refresh' : '⟳ Fetch voices'"
+        title="Query the provider's /v1/audio/voices"
+        @click="fetchVoices"
+      />
+      <div class="pf-f">
+        <label>Response format</label>
+        <select v-model="draft.response_format">
           <option value="wav">wav (recommended)</option>
           <option value="mp3">mp3</option>
           <option value="pcm">pcm</option>
           <option value="ogg">ogg</option>
         </select>
-      </template>
+      </div>
+    </div>
+    <div v-if="voicesError" class="pf-error">{{ voicesError }}</div>
+
+    <!-- Fetched voices as toggle chips (mock's voicechips row) -->
+    <div v-if="showTtsFields() && fetchedVoices.length" class="pf-voicechips">
+      <button
+        v-for="v in fetchedVoices"
+        :key="v"
+        type="button"
+        class="pf-vchip"
+        :class="{ on: isVoiceSelected(v) }"
+        @click="toggleVoice(v)"
+      >{{ v }}</button>
     </div>
 
-    <!-- Ping result strip + actions -->
-    <div v-if="pingResult" class="provider-form__ping-result" :class="{ 'provider-form__ping-result--err': !pingResult.ok }">
-      {{ pingResult.ok ? "✓ " : "✗ " }}{{ pingResult.message }}
-    </div>
-
-    <footer class="provider-form__footer">
+    <!-- Footer: status · spacer · Test connection · Remove · Cancel · Save -->
+    <footer class="pf-foot">
+      <span class="pf-status">
+        <span class="pf-dot" :class="{ off: !test || testBusy, err: test && !test.ok && !testBusy }"></span>
+        {{ statusText }}
+      </span>
+      <span class="pf-spacer"></span>
       <JvButton
         variant="ghost"
         size="sm"
-        :loading="pingBusy"
-        label="Ping"
-        @click="doPing"
-        title="Send a probe request to verify the URL + API key work."
+        :loading="testBusy"
+        label="Test connection"
+        title="Ping + re-fetch models and voices"
+        @click="doTest"
       />
       <button
         v-if="editingKey !== 'new'"
         type="button"
         class="jv-btn jv-btn--danger-outline jv-btn--sm"
         @click="emit('delete')"
-      >Delete</button>
-      <span class="jv-spacer" />
+      >Remove provider</button>
       <JvButton variant="ghost" size="sm" label="Cancel" @click="emit('cancel')" />
-      <JvButton variant="primary" size="sm" :loading="busy" label="Save" @click="onSave" />
+      <JvButton variant="primary" size="sm" :loading="busy" :label="editingKey === 'new' ? 'Save provider' : 'Save'" @click="onSave" />
     </footer>
   </div>
 </template>
 
 <style scoped>
-.provider-form {
-  border: 1.5px solid var(--accent);
-  border-radius: 10px;
-  background: var(--accent-soft);
-  padding: 14px;
-  margin: 8px 0 12px;
-}
-.provider-form__grid {
-  display: grid;
-  grid-template-columns: 140px minmax(0, 1fr);
-  gap: 8px 14px;
-  font-size: 12.5px;
-  align-items: center;
-}
-.provider-form__label {
-  color: var(--ink-3);
-  font-size: 11.5px;
-  font-weight: 500;
-}
-.provider-form__hint {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  background: var(--surface);
-  font-size: 11.5px;
-  line-height: 1.5;
-}
-.provider-form__hint strong { color: var(--accent-ink); }
-.provider-form__hint a {
-  color: var(--accent-ink);
-  text-decoration: underline;
-  margin-left: 4px;
-}
-.provider-form__fetch-row {
-  display: flex;
-  gap: 6px;
-  align-items: stretch;
-  flex-wrap: wrap;
-}
-.provider-form__error {
-  grid-column: 2;
-  font-size: 11px;
-  color: var(--danger);
-}
-.provider-form__tier-row {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.provider-form__tier-btn {
-  appearance: none;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 4px 12px;
-  font: inherit;
-  font-size: 11.5px;
-  cursor: pointer;
-  color: var(--ink-2);
-}
-.provider-form__tier-btn:hover { background: var(--surface-2); }
-.provider-form__tier-btn--active {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
-.provider-form__tier-btn--pinned::after {
-  content: " ●";
-  color: #fff;
-}
-.provider-form__tier-source {
-  font-size: 10.5px;
-}
-.provider-form__voices-input {
-  position: relative;
-  flex: 1;
-  min-width: 200px;
-}
-.provider-form__voices-input .jv-input { width: 100%; padding-right: 28px; }
-.provider-form__voices-chev {
-  appearance: none;
-  position: absolute;
-  top: 50%;
-  right: 4px;
-  transform: translateY(-50%);
-  width: 22px;
-  height: 22px;
-  border: 0;
-  background: transparent;
-  color: var(--ink-3);
-  cursor: pointer;
-  border-radius: 4px;
-  font-size: 10px;
-}
-.provider-form__voices-chev:hover:not(:disabled) {
-  color: var(--ink);
-  background: var(--surface-2);
-}
-.provider-form__voices-chev:disabled { opacity: 0.4; cursor: not-allowed; }
-.provider-form__voices-list {
-  position: absolute;
-  top: calc(100% + 2px);
-  left: 0;
-  right: 0;
-  z-index: 60;
-  margin: 0;
-  padding: 4px;
-  list-style: none;
-  background: var(--surface);
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  box-shadow: var(--shadow-3);
-  max-height: 240px;
-  overflow-y: auto;
-}
-.provider-form__voices-list li {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  font-size: 11.5px;
-  font-family: var(--font-mono);
-  border-radius: 3px;
-  cursor: pointer;
-}
-.provider-form__voices-list li:hover { background: var(--surface-2); }
-.provider-form__voices-item--selected {
-  color: var(--accent-ink);
-  font-weight: 600;
-  background: var(--accent-soft);
-}
-.provider-form__voices-check {
-  display: inline-block;
-  width: 12px;
-  color: var(--accent);
-}
-.provider-form__ping-result {
-  margin-top: 10px;
-  padding: 6px 10px;
-  border-radius: 4px;
-  font-size: 11.5px;
-  background: var(--accent-soft);
-  color: var(--accent-ink);
-}
-.provider-form__ping-result--err {
-  background: var(--danger-bg);
-  color: var(--danger-ink);
-}
-.provider-form__footer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 14px;
-  padding-top: 12px;
+/* Mock contract: the form is the card BODY — border-top + surface-2,
+   no card chrome of its own (the parent .ev-prov is the card). */
+.pf {
   border-top: 1px solid var(--line);
+  background: var(--surface-2);
+  padding: 16px 18px;
 }
-.provider-form__presets{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
-.provider-form__preset{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:999px;padding:5px 13px;cursor:pointer;background:var(--surface);color:var(--ink-2)}
-.provider-form__preset.on,.provider-form__preset:hover{border-color:var(--accent);color:var(--accent-ink,#2c6049);background:var(--accent-soft,#e8f0eb)}
-.provider-form__caps{display:flex;gap:16px;align-items:center}
-.provider-form__caps label{display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
-.provider-form__caps input{accent-color:var(--accent);width:15px;height:15px}
-.provider-form__cap{font-size:9.5px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:999px;border:1px solid var(--line-strong,#cfccc4)}
-.provider-form__cap.llm{border-color:#e2d2b0;background:#f5edda;color:#b08a3e}
-.provider-form__cap.tts{border-color:var(--accent-line,#b8d2c3);background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049)}
+.pf-presets { display: flex; gap: 8px; margin: 6px 0 4px; flex-wrap: wrap; }
+.pf-preset {
+  font: inherit; font-size: 12px;
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 5px 13px; cursor: pointer;
+  background: var(--surface); color: var(--ink-2);
+}
+.pf-preset.on, .pf-preset:hover {
+  border-color: var(--accent);
+  color: var(--accent-ink, #2c6049);
+  background: var(--accent-soft, #e8f0eb);
+}
+
+/* Horizontal field rows — labels ABOVE inputs, uppercase 11px. */
+.pf-row { display: flex; gap: 14px; margin-top: 10px; align-items: flex-end; flex-wrap: wrap; }
+.pf-f label {
+  font-size: 11px; color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: .05em;
+  display: block; margin-bottom: 3px;
+}
+.pf-f .pf-opt { text-transform: none; letter-spacing: 0; }
+.pf-row input[type="text"],
+.pf-row input[type="password"],
+.pf-row select {
+  font: inherit; font-size: 13px;
+  border: 1px solid var(--line); border-radius: 7px;
+  padding: 8px 11px; width: 240px;
+  background: var(--surface); color: var(--ink);
+}
+.pf-row select { width: auto; min-width: 170px; }
+.pf-wide input { width: 340px; }
+
+/* Model combobox affordance — caret over the input, hint line under. */
+.pf-pick { position: relative; display: block; }
+.pf-pick input { padding-right: 26px; }
+.pf-caret {
+  position: absolute; right: 9px; top: 50%; transform: translateY(-50%);
+  color: var(--ink-3); font-size: 11px; pointer-events: none;
+}
+.pf-fhint { font-size: 11px; color: var(--accent-ink, #2c6049); margin-top: 3px; }
+.pf-fhint.dim { color: var(--ink-3); }
+.pf-fetchbtn { margin-bottom: 22px; }
+
+.pf-caps { display: flex; gap: 14px; align-items: center; padding-bottom: 6px; }
+.pf-caps label { display: flex; gap: 6px; align-items: center; font-size: 13px; cursor: pointer; }
+.pf-caps input { accent-color: var(--accent); width: 15px; height: 15px; }
+.pf-cap {
+  font-size: 9.5px; font-weight: 700; letter-spacing: .05em;
+  padding: 2px 7px; border-radius: 999px;
+  border: 1px solid var(--line-strong, #cfccc4);
+}
+.pf-cap.llm { border-color: #e2d2b0; background: #f5edda; color: #b08a3e; }
+.pf-cap.tts { border-color: var(--accent-line, #b8d2c3); background: var(--accent-soft, #e8f0eb); color: var(--accent-ink, #2c6049); }
+
+.pf-hintband {
+  display: flex; align-items: flex-start; gap: 6px;
+  margin-top: 10px; padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: 7px;
+  background: var(--surface);
+  font-size: 11.5px; line-height: 1.5;
+}
+.pf-hintband strong { color: var(--ink-2); flex: none; }
+.pf-hintband a { color: var(--accent-ink, #2c6049); text-decoration: underline; flex: none; }
+
+.pf-voicechips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+.pf-vchip {
+  font: inherit; font-size: 11px;
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 2px 9px; cursor: pointer;
+  color: var(--ink-2); background: var(--surface);
+}
+.pf-vchip:hover { border-color: var(--accent); }
+.pf-vchip.on {
+  border-color: var(--accent);
+  background: var(--accent-soft, #e8f0eb);
+  color: var(--accent-ink, #2c6049);
+  font-weight: 600;
+}
+
+.pf-error { font-size: 11px; color: var(--danger, #b04a3e); margin-top: 6px; }
+
+.pf-foot { display: flex; gap: 8px; margin-top: 14px; align-items: center; }
+.pf-spacer { flex: 1; }
+.pf-status { font-size: 11.5px; color: var(--ink-3); display: flex; gap: 6px; align-items: center; }
+.pf-dot { width: 8px; height: 8px; border-radius: 50%; background: #4d9b6d; flex: none; }
+.pf-dot.off { background: var(--line-strong, #cfccc4); }
+.pf-dot.err { background: #c45a4d; }
 </style>

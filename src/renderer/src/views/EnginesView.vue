@@ -152,51 +152,66 @@ function cancelEdit() {
 }
 
 async function saveProvider(payload) {
+  // The capability checkboxes mean one provider can be LLM, TTS, or BOTH
+  // (the mock's OpenAI row). LLM half lives in /v1/llm-providers, TTS
+  // half in settings.engines.external — same id ties them together and
+  // allProviders merges them back into one row.
+  const wantsLlm = payload.kind === "llm" || payload.kind === "both";
+  const wantsTts = payload.kind === "tts" || payload.kind === "both";
   try {
-    if (payload.kind === "llm") {
+    const llmExists = llmProviders.value.some((p) => p.id === payload.id);
+    if (wantsLlm) {
       const body = {
         id: payload.id,
         name: payload.name,
         provider_type: payload.provider_type,
         base_url: payload.base_url || "",
-        api_key: payload.api_key || null,
+        api_key: payload.api_key || (llmExists ? "" : null),  // "" = keep existing key
         default_model: payload.default_model || "",
+        embedding_model: payload.embedding_model || "",
         timeout_seconds: payload.timeout_seconds || 60,
       };
-      if (editingKey.value === "new") {
+      if (llmExists) {
+        await api.request(`/v1/llm-providers/${payload.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+      } else {
         await api.request("/v1/llm-providers", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
-      } else {
-        await api.request(`/v1/llm-providers/${editingKey.value}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
       }
-    } else {
-      // TTS: read current settings, splice/replace, PATCH back.
-      const current = await api.request("/v1/settings");
-      const externals = [...(current?.engines?.external || [])];
-      const filtered = externals.filter((e) => e.id !== payload.id);
+    } else if (llmExists) {
+      // LLM capability unchecked on an existing provider — remove that half.
+      await api.request(`/v1/llm-providers/${payload.id}`, { method: "DELETE" });
+    }
+
+    // TTS half: read current settings, splice/replace (or drop), PATCH back.
+    const current = await api.request("/v1/settings");
+    const externals = [...(current?.engines?.external || [])];
+    const filtered = externals.filter((e) => e.id !== payload.id);
+    if (wantsTts) {
       // When editing existing and api_key is blank, preserve the old one.
       let apiKey = payload.api_key || null;
-      if (editingKey.value !== "new" && !payload.api_key) {
-        const prev = externals.find((e) => e.id === editingKey.value);
+      if (!payload.api_key) {
+        const prev = externals.find((e) => e.id === payload.id);
         if (prev?.api_key) apiKey = prev.api_key;
       }
       filtered.push({
         id: payload.id,
         name: payload.name || payload.id,
-        provider_type: payload.provider_type || "openai-compat",
+        provider_type: payload.provider_type === "openai" ? "openai-compat" : (payload.provider_type || "openai-compat"),
         base_url: payload.base_url || "",
         api_key: apiKey,
         model: payload.tts_model || "",
         voices: Array.isArray(payload.voices) ? payload.voices : [],
         response_format: payload.response_format || "wav",
       });
+    }
+    if (wantsTts || filtered.length !== externals.length) {
       await api.request("/v1/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -222,15 +237,19 @@ async function deleteProvider() {
   });
   if (!ok) return;
   try {
-    if (draft.value.kind === "llm") {
+    // Remove BOTH halves — a "both"-capability provider lives in the
+    // llm store and the external TTS list under the same id.
+    if (llmProviders.value.some((p) => p.id === draft.value.id)) {
       await api.request(`/v1/llm-providers/${draft.value.id}`, { method: "DELETE" });
-    } else {
-      const current = await api.request("/v1/settings");
-      const externals = (current?.engines?.external || []).filter((e) => e.id !== draft.value.id);
+    }
+    const current = await api.request("/v1/settings");
+    const externals = current?.engines?.external || [];
+    const filtered = externals.filter((e) => e.id !== draft.value.id);
+    if (filtered.length !== externals.length) {
       await api.request("/v1/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ engines: { external: externals } }),
+        body: JSON.stringify({ engines: { external: filtered } }),
       });
     }
     pushToast({ message: `${draft.value.name || draft.value.id} deleted.`, kind: "success" });
@@ -732,21 +751,90 @@ async function deleteModel(e, v) {
 }
 
 // Online tab — merge both provider stores with capability chips.
+// One row per provider — an id present in BOTH stores (llm + external
+// TTS) merges into a single row with combined capability chips, like
+// the mock's OpenAI row. The summary line mirrors the mock's msum:
+// "chat: … · embed: … · tts: … · N voices · key set / no key".
 const allProviders = computed(() => {
-  const rows = [];
+  const byId = new Map();
   for (const pr of llmProviders.value) {
-    rows.push({ ...pr, caps: ["llm"], msum: `chat: ${pr.default_model || "—"}${pr.has_api_key ? " · key set" : " · no key"}`, online: !!pr.registered });
+    byId.set(pr.id, {
+      ...pr,
+      kind: "llm",
+      caps: pr.embedding_model ? ["llm", "embedding"] : ["llm"],
+      online: !!pr.registered,
+    });
   }
   for (const pr of ttsProviders.value) {
-    rows.push({ ...pr, caps: ["tts"], msum: `tts: ${pr.tts_model || "—"}${pr.has_api_key ? " · key set" : " · no key"}`, online: false });
+    const prev = byId.get(pr.id);
+    if (prev) {
+      byId.set(pr.id, {
+        ...prev,
+        kind: "both",
+        caps: [...prev.caps, "tts"],
+        tts_model: pr.tts_model,
+        voices: pr.voices,
+        response_format: pr.response_format,
+        has_api_key: prev.has_api_key || pr.has_api_key,
+      });
+    } else {
+      byId.set(pr.id, { ...pr, kind: "tts", caps: ["tts"], online: false });
+    }
+  }
+  const rows = [];
+  for (const r of byId.values()) {
+    const bits = [];
+    if (r.caps.includes("llm")) bits.push(`chat: ${r.default_model || "—"}`);
+    if (r.embedding_model) bits.push(`embed: ${r.embedding_model}`);
+    if (r.caps.includes("tts")) {
+      bits.push(`tts: ${r.tts_model || "—"}`);
+      if (Array.isArray(r.voices) && r.voices.length) bits.push(`${r.voices.length} voices`);
+    }
+    const local = /localhost|127\.0\.0\.1/.test(r.base_url || "");
+    bits.push(r.has_api_key ? "key set" : (local ? "no key — self-hosted, free" : "no key"));
+    rows.push({ ...r, msum: bits.join(" · ") });
   }
   return rows.filter((r) => {
     if (capOnline.value !== "all" && !r.caps.includes(capOnline.value)) return false;
-    const blob = `${r.name} ${r.id} ${r.base_url || ""}`.toLowerCase();
+    const blob = `${r.name} ${r.id} ${r.base_url || ""} ${r.msum}`.toLowerCase();
     if (qp.value.trim() && !blob.includes(qp.value.trim().toLowerCase())) return false;
     return true;
   });
 });
+
+// Row-level Test (the mock's per-row Test button) — pings the provider
+// and re-colors the status dot with the measured latency in the title.
+const rowTest = reactive({});  // id -> { ok, ms, message }
+async function testProviderRow(pr) {
+  rowTest[pr.id] = { busy: true };
+  const t0 = performance.now();
+  const ms = () => Math.max(1, Math.round(performance.now() - t0));
+  try {
+    if (pr.caps.includes("llm") && pr.online) {
+      const r = await api.request(`/v1/llm-providers/${pr.id}/ping`, { method: "POST" });
+      rowTest[pr.id] = r?.ok ? { ok: true, ms: ms() } : { ok: false, message: r?.error || "not reachable" };
+    } else {
+      const r = await api.request("/v1/engines/external/probe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ base_url: pr.base_url, api_key: null }),
+      });
+      rowTest[pr.id] = r ? { ok: true, ms: ms() } : { ok: false, message: "probe failed" };
+    }
+  } catch (e) {
+    rowTest[pr.id] = { ok: false, message: e?.message || String(e) };
+  }
+  const t = rowTest[pr.id];
+  pushToast({
+    message: t.ok ? `${pr.name || pr.id}: reachable · ${t.ms} ms` : `${pr.name || pr.id}: ${t.message}`,
+    kind: t.ok ? "success" : "error",
+  });
+}
+function rowDotClass(pr) {
+  const t = rowTest[pr.id];
+  if (t && !t.busy) return t.ok ? "" : "err";
+  return (pr.has_api_key || pr.online || /localhost|127\.0\.0\.1/.test(pr.base_url || "")) ? "" : "off";
+}
 
 const sharedEngines = computed(() => engines.value.filter((e) => e.isolation !== "venv").length);
 
@@ -900,8 +988,8 @@ onMounted(() => { refresh(); loadSystem(); loadProviders(); });
     <div class="ev-toprow">
       <div class="ev-search">🔍 <input v-model="qp" placeholder="Search providers…"></div>
       <div class="ev-chips">
-        <button v-for="c in ['all','tts','llm']" :key="c" type="button" class="ev-chip" :class="{ on: capOnline === c }" @click="capOnline = c"
-        >{{ c === 'all' ? 'All' : c.toUpperCase() }}</button>
+        <button v-for="c in ['all','tts','llm','embedding']" :key="c" type="button" class="ev-chip" :class="{ on: capOnline === c }" @click="capOnline = c"
+        >{{ c === 'all' ? 'All' : c === 'embedding' ? 'EMBED' : c.toUpperCase() }}</button>
       </div>
       <JvButton variant="primary" size="sm" label="+ Add provider" title="Connect a cloud or self-hosted API — no install, no downloads, no VRAM" @click="startNewProvider" />
     </div>
@@ -912,27 +1000,49 @@ onMounted(() => { refresh(); loadSystem(); loadProviders(); });
       <a class="ev-xlink" href="#settings" title="Which provider+model each AI feature uses">feature routing → Settings · AI features</a>
     </div>
 
-    <ProviderForm
-      v-if="editingKey === 'new' && draft"
-      :draft="draft"
-      editing-key="new"
-      @save="saveProvider"
-      @cancel="cancelEdit"
-    />
+    <!-- New provider — a card with a placeholder header row; the form is
+         the card body, exactly like an editing row (mock's #newprov). -->
+    <div v-if="editingKey === 'new' && draft" class="ev-prov">
+      <div class="ev-prow">
+        <span class="ev-dot off"></span>
+        <div class="pmain"><span class="nm" style="color:var(--ink-3)">New provider</span></div>
+        <span class="right">
+          <JvButton variant="ghost" size="sm" label="Cancel" @click="cancelEdit" />
+        </span>
+      </div>
+      <ProviderForm
+        :draft="draft"
+        editing-key="new"
+        @save="saveProvider"
+        @cancel="cancelEdit"
+      />
+    </div>
 
+    <!-- The header row stays visible while editing — the form expands
+         beneath it as the card body (mock's .prov.editing). -->
     <div v-for="pr in allProviders" :key="`${pr.kind}-${pr.id}`" class="ev-prov">
-      <div class="ev-prow" v-if="editingKey !== pr.id">
-        <span class="ev-dot" :class="{ off: !pr.has_api_key && pr.kind !== 'llm' }"></span>
+      <div class="ev-prow">
+        <span class="ev-dot" :class="rowDotClass(pr)" :title="rowTest[pr.id]?.ok ? `Reachable · ${rowTest[pr.id].ms} ms` : (rowTest[pr.id]?.message || 'Click Test to check reachability')"></span>
         <div class="pmain">
           <span class="nm">{{ pr.name || pr.id }}</span>
           <span class="ev-caps" style="display:inline-flex;margin-left:6px">
-            <span v-for="c in pr.caps" :key="c" class="ev-cap" :class="c">{{ c.toUpperCase() }}</span>
+            <span v-for="c in pr.caps" :key="c" class="ev-cap" :class="c">{{ c === 'embedding' ? 'EMBED' : c.toUpperCase() }}</span>
           </span>
           <span class="url">{{ pr.base_url || '—' }}</span>
           <span class="msum">{{ pr.msum }}</span>
         </div>
         <span class="right">
-          <JvButton variant="ghost" size="sm" label="Edit" title="Edit inline — URL, key, capabilities, models" @click="startEditProvider(pr)" />
+          <JvButton
+            variant="ghost" size="sm" label="Test"
+            :loading="!!rowTest[pr.id]?.busy"
+            title="Ping the server and re-color the status dot"
+            @click="testProviderRow(pr)"
+          />
+          <JvButton
+            variant="ghost" size="sm" label="Edit"
+            title="Edit inline — URL, key, capabilities, models"
+            @click="editingKey === pr.id ? cancelEdit() : startEditProvider(pr)"
+          />
         </span>
       </div>
       <ProviderForm
@@ -1031,6 +1141,7 @@ onMounted(() => { refresh(); loadSystem(); loadProviders(); });
 .ev-prow{display:flex;align-items:center;gap:12px;padding:12px 16px}
 .ev-dot{width:8px;height:8px;border-radius:50%;background:#4d9b6d;flex:none}
 .ev-dot.off{background:var(--line-strong,#cfccc4)}
+.ev-dot.err{background:#c45a4d}
 .ev-prow .pmain{min-width:0;flex:1}
 .ev-prow .nm{font-weight:600}
 .ev-prow .url{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);display:block}

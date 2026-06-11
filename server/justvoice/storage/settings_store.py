@@ -21,6 +21,16 @@ from .atomic import atomic_write_json
 log = logging.getLogger(__name__)
 
 
+def _deep_merge(base: dict, update: dict) -> None:
+    """Recursively merge `update` into `base`. Dicts merge; everything
+    else (scalars, lists) replaces."""
+    for key, value in update.items():
+        if isinstance(value, dict) and isinstance(base.get(key), dict):
+            _deep_merge(base[key], value)
+        else:
+            base[key] = value
+
+
 class SettingsStore:
     """Thread-safe in-memory + disk-backed settings store."""
 
@@ -58,12 +68,19 @@ class SettingsStore:
             return self._current.model_copy(deep=True)
 
     def patch(self, patch: SettingsPatch) -> tuple[Settings, list[str]]:
-        """Apply a partial update. Returns (new_settings, restart_required_fields)."""
+        """Apply a partial update. Returns (new_settings, restart_required_fields).
+
+        Deep-merges dicts so `PATCH {"engines": {"external": [...]}}` only
+        touches `engines.external` — a shallow top-level assignment used to
+        replace the WHOLE engines subtree with section defaults, wiping
+        sibling state (llm providers, llm_roles, production_configs).
+        Lists replace wholesale; only fields the caller actually sent
+        (exclude_unset) participate.
+        """
         with self._lock:
             base = self._current.model_dump()
-            update = patch.model_dump(exclude_none=True)
-            for key, value in update.items():
-                base[key] = value
+            update = patch.model_dump(exclude_unset=True, exclude_none=True)
+            _deep_merge(base, update)
             new = Settings.model_validate(base)
             atomic_write_json(self._path, new.model_dump())
             restart_required = self._restart_required(self._current, new)

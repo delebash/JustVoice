@@ -41,6 +41,7 @@ class LLMProviderResponse(BaseModel):
     provider_type: str
     base_url: str = ""
     default_model: str = ""
+    embedding_model: str = ""
     has_api_key: bool
     registered: bool  # True if the adapter is live in the registry
     timeout_seconds: int = 60
@@ -61,6 +62,7 @@ class UpsertLLMProviderRequest(BaseModel):
     # null means "clear the key".
     api_key: str | None = None
     default_model: str = ""
+    embedding_model: str = ""
     timeout_seconds: int = 60
 
 
@@ -71,6 +73,7 @@ def _to_response(cfg: LLMProviderConfig, registered: bool) -> LLMProviderRespons
         provider_type=cfg.provider_type,
         base_url=cfg.base_url,
         default_model=cfg.default_model,
+        embedding_model=cfg.embedding_model,
         has_api_key=bool(cfg.api_key),
         registered=registered,
         timeout_seconds=cfg.timeout_seconds,
@@ -109,6 +112,7 @@ async def create_llm_provider(body: UpsertLLMProviderRequest) -> LLMProviderResp
         base_url=body.base_url,
         api_key=body.api_key or None,
         default_model=body.default_model,
+        embedding_model=body.embedding_model,
         timeout_seconds=body.timeout_seconds,
     )
     settings.engines.llm.append(cfg)
@@ -152,6 +156,7 @@ async def update_llm_provider(
         base_url=body.base_url,
         api_key=api_key,
         default_model=body.default_model,
+        embedding_model=body.embedding_model,
         timeout_seconds=body.timeout_seconds,
     )
     settings.engines.llm[idx] = cfg
