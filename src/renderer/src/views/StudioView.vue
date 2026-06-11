@@ -167,6 +167,9 @@ const scenes = ref([]);
 const selectedSceneId = ref(null);
 const sceneText = ref("");
 const analyzeBusy = ref(false);
+// Discovered speakers — identification results awaiting promotion (CONCEPTS §3).
+const discovered = ref([]);   // [{name, role_hint, approx_lines}]
+const promoting = ref(false);
 const analyzeRows = ref([]);
 const analyzeTierUsed = ref(null);
 const analyzeFloor = ref(null);
@@ -585,6 +588,7 @@ async function runAnalyze() {
     editedFlags.value = {};
     tasks.update(task.id, { meta: { rows: analyzeRows.value.length, tier: r.tier_used } });
     tasks.finish(task.id);
+    runDiscoverSpeakers(); // fire-and-forget — banner appears if it finds anyone
     pushToast({
       message: `Analyzed ${analyzeRows.value.length} segment${analyzeRows.value.length === 1 ? "" : "s"} using ${r.tier_used} tier.`,
       kind: "success",
@@ -607,6 +611,65 @@ async function runAnalyze() {
     });
   } finally {
     analyzeBusy.value = false;
+  }
+}
+
+async function runDiscoverSpeakers() {
+  discovered.value = [];
+  if (!selectedSceneId.value || !sceneText.value.trim()) return;
+  const ctrl = new AbortController();
+  const t = tasks.start({
+    kind: "extract",
+    feature: "speaker_identification",
+    label: "Speaker identification",
+    onCancel: () => ctrl.abort(),
+    statsFn: (x) => (x.meta?.found != null ? [`${x.meta.found} new speaker${x.meta.found === 1 ? "" : "s"}`] : []),
+  });
+  try {
+    const r = await api.request(`/v1/scenes/${selectedSceneId.value}/discover-speakers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: sceneText.value }),
+      signal: ctrl.signal,
+    });
+    discovered.value = r?.candidates || [];
+    tasks.update(t.id, { meta: { found: discovered.value.length } });
+    tasks.finish(t.id);
+  } catch (e) {
+    // Identification is best-effort sugar on top of analyze — a 501
+    // (no LLM) just means no banner; don't leave a sticky failed task.
+    tasks.dismiss(t.id);
+  }
+}
+
+function ignoreCandidate(name) {
+  discovered.value = discovered.value.filter((c) => c.name !== name);
+}
+
+async function promoteDiscovered() {
+  if (!discovered.value.length || !selectedProjectId.value) return;
+  promoting.value = true;
+  try {
+    const r = await api.request(`/v1/projects/${selectedProjectId.value}/personas/promote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        candidates: discovered.value.map((c) => ({ name: c.name, bio: c.role_hint || null })),
+      }),
+    });
+    const made = (r?.created || []).length;
+    pushToast({
+      message: made
+        ? `Added ${made} persona${made === 1 ? "" : "s"} to the cast — assign voices in Characters.`
+        : "Those speakers already existed — linked to this project.",
+      kind: "success",
+    });
+    discovered.value = [];
+    await loadAll();
+  } catch (e) {
+    pushToast({ message: `Promote failed: ${e?.message || e}`, kind: "error" });
+  } finally {
+    promoting.value = false;
   }
 }
 
@@ -1107,6 +1170,16 @@ onMounted(loadAll);
             @click="applyAnalyzed"
           />
         </header>
+
+        <!-- Discovered speakers — promotion banner (mock #audiobook/5) -->
+        <div v-if="discovered.length" class="jv-banner jv-banner--warn studio__discovered">
+          <strong>{{ discovered.length }} speaker{{ discovered.length === 1 ? "" : "s" }} found that {{ discovered.length === 1 ? "isn't" : "aren't" }} in your cast:</strong>
+          <span v-for="c in discovered" :key="c.name" class="jv-pill studio__discovered-chip" :title="c.role_hint || ''">
+            {{ c.name }}<template v-if="c.approx_lines"> · {{ c.approx_lines }} lines</template>
+            <button type="button" class="studio__discovered-x" title="Ignore — assign rows manually instead" @click="ignoreCandidate(c.name)">✕</button>
+          </span>
+          <JvButton size="sm" :loading="promoting" label="＋ Create personas & add to cast" @click="promoteDiscovered" />
+        </div>
 
         <p v-if="analyzeTierUsed" class="jv-muted studio__script-meta">
           Routed to <strong>{{ analyzeTierUsed }}</strong> tier · confidence floor {{ analyzeFloor }} · {{ analyzeRows.length }} segments
@@ -1763,4 +1836,8 @@ onMounted(loadAll);
   0% { transform: translateX(-100%); }
   100% { transform: translateX(280%); }
 }
+.studio__discovered { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.studio__discovered-chip { display: inline-flex; align-items: center; gap: 5px; }
+.studio__discovered-x { border: 0; background: transparent; cursor: pointer; color: var(--ink-3); font-size: 11px; padding: 0; }
+.studio__discovered-x:hover { color: var(--danger); }
 </style>

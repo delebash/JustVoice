@@ -14,6 +14,7 @@ actionable message from LLMNotConfiguredError.
 from __future__ import annotations
 
 import logging
+import re
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -253,3 +254,106 @@ async def clear_corrections(project_id: str, db: Session = Depends(get_db)) -> d
     )
     db.commit()
     return {"deleted": deleted}
+
+# ── Speaker identification — discovered-speakers banner (CONCEPTS §3) ──
+
+
+class DiscoverSpeakersRequest(BaseModel):
+    text: str
+
+
+class SpeakerCandidateOut(BaseModel):
+    name: str
+    role_hint: str | None = None
+    approx_lines: int | None = None
+
+
+class DiscoverSpeakersResponse(BaseModel):
+    scene_id: str
+    candidates: list[SpeakerCandidateOut]
+
+
+@router.post(
+    "/v1/scenes/{scene_id}/discover-speakers",
+    response_model=DiscoverSpeakersResponse,
+    summary="Find speaking characters not yet in the project cast",
+)
+async def discover_speakers_endpoint(
+    scene_id: str,
+    body: DiscoverSpeakersRequest,
+    db: Session = Depends(get_db),
+) -> DiscoverSpeakersResponse:
+    """Identification, not attribution: proposes NEW speakers as a review
+    list for the Script tab banner. Nothing is created here — promotion
+    is POST /v1/projects/{id}/personas/promote."""
+    from ..extraction.identify import identify_speakers
+
+    scene = db.query(Scene).filter(Scene.id == scene_id).first()
+    if scene is None:
+        raise not_found(f"scene {scene_id}")
+    known = [c.get("name", "") for c in _resolve_cast(scene_id, db)]
+    settings = get_state().settings.get()
+    try:
+        candidates = identify_speakers(body.text, known, settings=settings)
+    except LLMNotConfiguredError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    except Exception as e:
+        log.exception("speaker identification failed")
+        raise HTTPException(status_code=502, detail=f"identification failed: {e}")
+    return DiscoverSpeakersResponse(
+        scene_id=scene_id,
+        candidates=[
+            SpeakerCandidateOut(
+                name=c.name, role_hint=c.role_hint, approx_lines=c.approx_lines
+            )
+            for c in candidates
+        ],
+    )
+
+
+class PromoteCandidate(BaseModel):
+    name: str
+    bio: str | None = None
+
+
+class PromoteSpeakersRequest(BaseModel):
+    candidates: list[PromoteCandidate]
+
+
+class PromoteSpeakersResponse(BaseModel):
+    created: list[str]
+    reused: list[str]
+
+
+@router.post(
+    "/v1/projects/{project_id}/personas/promote",
+    response_model=PromoteSpeakersResponse,
+    summary="Promote discovered speakers to personas in this project's cast",
+)
+async def promote_speakers_endpoint(
+    project_id: str,
+    body: PromoteSpeakersRequest,
+    db: Session = Depends(get_db),
+) -> PromoteSpeakersResponse:
+    from ..database.models import Project
+    from ._persona_helpers import ensure_project_persona
+
+    if db.query(Project).filter(Project.id == project_id).first() is None:
+        raise not_found(f"project {project_id}")
+    store = get_state().personas
+    created: list[str] = []
+    reused: list[str] = []
+    for cand in body.candidates:
+        slug = re.sub(r"[^a-z0-9]+", "_", cand.name.lower()).strip("_") or "speaker"
+        pid, was_created = ensure_project_persona(
+            db,
+            store,
+            project_id,
+            name=cand.name,
+            bio=cand.bio,
+            imported_from="discovered",
+            imported_id=slug,
+        )
+        (created if was_created else reused).append(pid)
+    db.commit()
+    return PromoteSpeakersResponse(created=created, reused=reused)

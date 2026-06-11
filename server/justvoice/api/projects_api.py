@@ -31,6 +31,7 @@ from ..database import (
 from ..database.models import Lexicon as DbLexicon, LexiconEntry as DbLexiconEntry
 from ..errors import not_found, bad_request
 from ..app_state import get_state
+from ._persona_helpers import ensure_project_persona
 from ..models import LexiconEntry
 from ..imports import list_adapters, run_adapter
 from ..imports.standard_schema import (
@@ -530,60 +531,25 @@ def _materialize_standard(
     db.add(p)
     db.flush()
 
-    # Personas — reuse if (source, source_id) pair already exists.
+    # Personas — create-or-reuse via the shared dual-write helper.
     created_personas: list[str] = []
     reused_personas: list[str] = []
     char_to_persona_id: dict[str, str] = {}
     for char in standard.characters:
-        existing = (
-            db.query(Persona)
-            .filter(Persona.imported_from == standard.source, Persona.imported_id == char.id)
-            .first()
-        )
-        if existing:
-            char_to_persona_id[char.id] = existing.id
-            reused_personas.append(existing.id)
-            # A reused persona still needs the cast link for THIS project —
-            # without it, book two imports with an empty Cast tab.
-            db.add(ProjectPersona(project_id=p.id, persona_id=existing.id))
-            # Self-heal the file-store twin if a pre-dual-write import
-            # created only the SQLite row.
-            if persona_store is not None and persona_store.get(existing.id) is None:
-                persona_store.create(
-                    name=existing.name,
-                    voice_id="",
-                    bio=existing.bio,
-                    imported_from=existing.imported_from,
-                    imported_id=existing.imported_id,
-                    id=existing.id,
-                )
-            continue
         bio_text = char.notes or ""
         if char.voice_hint:
             bio_text = f"{bio_text}\n\nVoice hint:\n{char.voice_hint}".strip()
-        persona = Persona(
+        pid, created = ensure_project_persona(
+            db,
+            persona_store,
+            p.id,
             name=char.name,
             bio=bio_text or None,
             imported_from=standard.source,
             imported_id=char.id,
         )
-        db.add(persona)
-        db.flush()
-        char_to_persona_id[char.id] = persona.id
-        created_personas.append(persona.id)
-        db.add(ProjectPersona(project_id=p.id, persona_id=persona.id))
-        # Dual-write (mid-Phase-1.5): the personas API serves from the file
-        # store, ProjectPersona FKs the SQLite row — write both, same id,
-        # or imported casts are invisible in Studio/Personas.
-        if persona_store is not None:
-            persona_store.create(
-                name=char.name,
-                voice_id="",
-                bio=bio_text or None,
-                imported_from=standard.source,
-                imported_id=char.id,
-                id=persona.id,
-            )
+        char_to_persona_id[char.id] = pid
+        (created_personas if created else reused_personas).append(pid)
 
     # Scenes + Blocks.
     total_blocks = 0

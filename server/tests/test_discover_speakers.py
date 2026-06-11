@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Speaker identification — parser + discover/promote endpoints."""
+
+from __future__ import annotations
+
+import pytest
+from fastapi.testclient import TestClient
+
+from justvoice.app import create_app
+from justvoice.extraction.identify import SpeakerCandidate, parse_candidates
+
+
+# ── parser ───────────────────────────────────────────────────────────
+
+
+def test_parse_plain_array():
+    raw = '[{"name": "Tom Harlan", "role_hint": "neighbor", "approx_lines": 11}]'
+    out = parse_candidates(raw, ["Mara Vance"])
+    assert out == [SpeakerCandidate(name="Tom Harlan", role_hint="neighbor", approx_lines=11)]
+
+
+def test_parse_code_fenced_with_chatter():
+    raw = 'Sure! Here are the new speakers:\n```json\n[{"name": "The Stranger"}]\n```\nLet me know!'
+    out = parse_candidates(raw, [])
+    assert [c.name for c in out] == ["The Stranger"]
+
+
+def test_parse_dedupes_known_and_self_case_insensitive():
+    raw = '[{"name": "MARA VANCE"}, {"name": "Tom"}, {"name": "tom"}, {"name": "narrator"}]'
+    out = parse_candidates(raw, ["Mara Vance"])
+    assert [c.name for c in out] == ["Tom"]
+
+
+def test_parse_garbage_returns_empty():
+    assert parse_candidates("I could not find any JSON to give you.", []) == []
+    assert parse_candidates('{"name": "not a list"}', []) == []
+
+
+# ── endpoints ────────────────────────────────────────────────────────
+
+
+@pytest.fixture()
+def client(tmp_path):
+    app = create_app(data_dir=tmp_path)
+    return TestClient(app, raise_server_exceptions=False)
+
+
+def _import_project(client) -> tuple[str, str]:
+    payload = {
+        "schema": "justwrite/v1",
+        "book": {"title": "Stillwater", "author": "x", "language": "en-US", "description": None},
+        "characters": [{"id": "mara", "name": "Mara Vance", "voice_hint": None, "notes": None}],
+        "chapters": [
+            {"id": "ch1", "title": "One", "lines": [{"character_id": "mara", "text": "Hello."}]}
+        ],
+        "lexicon": [],
+    }
+    r = client.post("/v1/projects/import?source=justwrite", json=payload)
+    assert r.status_code == 200, r.text
+    pid = r.json()["project_id"]
+    scenes = client.get(f"/v1/projects/{pid}/scenes").json()
+    return pid, scenes[0]["id"]
+
+
+def test_discover_501_without_llm(client):
+    _pid, scene_id = _import_project(client)
+    r = client.post(f"/v1/scenes/{scene_id}/discover-speakers", json={"text": "“Hi,” said Tom."})
+    assert r.status_code == 501
+
+
+def test_discover_with_stubbed_llm(client, monkeypatch):
+    _pid, scene_id = _import_project(client)
+
+    def fake_identify(text, known, *, settings, chat_fn=None):
+        assert "Mara Vance" in known
+        return [SpeakerCandidate(name="Tom Harlan", role_hint="neighbor", approx_lines=3)]
+
+    monkeypatch.setattr("justvoice.extraction.identify.identify_speakers", fake_identify)
+    r = client.post(f"/v1/scenes/{scene_id}/discover-speakers", json={"text": "“Hi,” said Tom."})
+    assert r.status_code == 200, r.text
+    assert r.json()["candidates"] == [
+        {"name": "Tom Harlan", "role_hint": "neighbor", "approx_lines": 3}
+    ]
+
+
+def test_promote_creates_then_reuses(client):
+    pid, _scene_id = _import_project(client)
+    body = {"candidates": [{"name": "Tom Harlan", "bio": "neighbor"}]}
+    r1 = client.post(f"/v1/projects/{pid}/personas/promote", json=body)
+    assert r1.status_code == 200, r1.text
+    assert len(r1.json()["created"]) == 1 and r1.json()["reused"] == []
+    new_id = r1.json()["created"][0]
+
+    # File-store twin exists (dual-write) → Studio/Personas can see it.
+    names = [p["name"] for p in client.get("/v1/personas").json()["personas"]]
+    assert "Tom Harlan" in names
+
+    # Promoting again reuses, never duplicates.
+    r2 = client.post(f"/v1/projects/{pid}/personas/promote", json=body)
+    assert r2.json()["created"] == [] and r2.json()["reused"] == [new_id]
