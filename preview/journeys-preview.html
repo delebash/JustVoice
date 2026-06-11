@@ -1290,14 +1290,14 @@ const srcChip = s => ({anchor:'<span class="pill green">anchor</span>',llm:'<spa
 const stepsSplab = [
 { nav:"Spk Lab", t:"Speaker-extraction testbed. Paste any text — chapters optional — then race two models. Every knob that exists is on the column: preset, provider, model, temp, tier, floors, and BOTH prompts.",
   html: () => shell("audiobook","Spk Lab","Speaker Lab — Tuner", "", `
-    <div class="row" style="margin-bottom:8px"><span class="chips"><button class="chip active">Tuner</button><button class="chip">Lab (experimental)</button></span>
-      <button class="btn sm">✳ Run all 2</button><button class="btn secondary sm">＋ Add column</button>
+    <div class="row" style="margin-bottom:8px;flex:none"><button class="btn sm">✳ Run all 2</button><button class="btn secondary sm">＋ Add column</button>
       <span class="spacer"></span><span class="muted" style="font-size:11px">1,242 words · 6,810 chars · ~1.7k tokens</span></div>
+    <div style="flex:1;min-height:0;overflow-y:auto;padding-right:4px">
     <div class="card" style="padding:10px 14px;margin-bottom:10px;flex:none">
       <div class="row" style="margin-bottom:8px"><span class="combo-cell">Load from chapter…<span class="chev">▼</span></span><button class="btn ghost sm">✕ Clear</button><button class="btn secondary sm">✨ Sample: Ch. 3</button><span class="spacer"></span><span class="muted" style="font-size:11px">paste a few chapters, or load one from a project</span></div>
       <textarea class="input" style="height:54px;padding:8px 12px;resize:none;font-size:12.5px">"Whose office is it?" Bern closed the green book. "I don't know," he said. "I have wondered." "Ask her about the winter of '61. Watch her hands," Tom said.</textarea>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:1;min-height:0;overflow-y:auto;align-content:start">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
       ${[["Run A","qwen3:14b","Reasoned","0.5","tweaked ●",1],["Run B","qwen3:8b","Guided","0.7","defaults",0]]
         .map(c=>`<div class="card" style="padding:12px 14px">
         <div class="row" style="flex-wrap:nowrap;margin-bottom:8px"><input class="input" style="height:28px;font-size:12.5px;max-width:130px" value="${c[0]}"/><span class="chips"><button class="chip active" style="padding:3px 8px;font-size:11px">Audio Studio</button><button class="chip" style="padding:3px 8px;font-size:11px">Lab</button><button class="chip" style="padding:3px 8px;font-size:11px">Legacy</button></span><span class="spacer"></span><button class="btn ghost sm">🗑</button></div>
@@ -1314,77 +1314,24 @@ const stepsSplab = [
 {{characters}}
 
 Paragraphs (dialogue segments tagged inline): {{paragraphs}}</textarea>
-        <div class="row" style="flex-wrap:nowrap;background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:7px;padding:6px 10px;font-size:11px;color:var(--warn-ink)"><span>⚙</span><strong style="flex:1">Speaker Lab · ${c[0]}</strong><span class="mono" style="font-size:10.5px">${c[5]?'17.0 s · 1,204 tok · 309 words':'17.0 s · 989 tok · 244 words'}</span><button class="btn ghost sm" style="font-size:10.5px">Details</button><button class="btn ghost sm" style="font-size:10.5px;color:var(--danger)">✕ Cancel</button></div>
+        <div class="row" style="margin-bottom:8px"><button class="btn sm">▶ Run</button>${c[5]?'':'<span class="pill green">✓ done · 5.8 s · 989 tok</span>'}
+          <span class="chips"><button class="chip ${c[5]?'active':''}" style="padding:3px 9px;font-size:11px">Raw</button><button class="chip ${c[5]?'':'active'}" style="padding:3px 9px;font-size:11px">Parsed${c[5]?'':' (9)'}</button></span></div>
+        ${c[5]?`<div style="background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-family:var(--font-mono);font-size:11px;color:var(--ink-3)">(no output yet)</div>`
+          :`<div style="border:1px solid var(--line);border-radius:8px;overflow:hidden">${[
+            ["1","Narrator","narration · auto","June was already there, because June was always there. She had brought the small electric kettle she carried everywhere."],
+            ["2","June Asari","dialogue · 100%","“You haven't slept,”"],
+            ["3","Narrator","narration · auto","she said, without looking up."],
+            ["4","June Asari","dialogue · 100%","“Tea. Then the case. In that order.”"]]
+            .map(r=>`<div class="row" style="flex-wrap:nowrap;padding:7px 11px;border-bottom:1px dashed var(--line);font-size:11.5px;align-items:flex-start"><span class="muted mono" style="font-size:10px;width:14px;flex:none">${r[0]}</span><span style="width:92px;flex:none"><strong style="font-size:11.5px">${r[1]}</strong><span class="muted" style="display:block;font-size:9px;text-transform:uppercase;letter-spacing:.04em">${r[2]}</span></span><span style="flex:1;color:var(--ink-2);font-size:11.5px">${r[3]}</span></div>`).join("")}</div>`}
       </div>`).join("")}
-    </div>`) },
-
-{ nav:"Spk Lab", t:"Runs land below each column: parsed table or raw JSON. Save the tweak as a named preset, load it back later, and promote the winner to production.",
-  html: () => shell("audiobook","Spk Lab","Speaker Lab — results", "", `
-    <div class="row" style="margin-bottom:10px"><span class="chips"><button class="chip active">Tuner</button><button class="chip">Lab (experimental)</button></span>
-      <span class="pill green">Run A · qwen3:14b · Reasoned — 12/12 vs anchors · 14.2 s</span>
-      <span class="pill warn">Run B · qwen3:8b · Guided — 10/12 · 2 floored · 5.8 s</span>
-      <span class="spacer"></span><span class="chips"><button class="chip active">Parsed table</button><button class="chip">JSON</button></span></div>
-    <div class="two-col">
-      <div class="card" style="overflow:auto"><table class="vtable">
-        <thead><tr><th>Segment</th><th>A · 14b</th><th>B · 8b</th></tr></thead><tbody>
-          ${[["“Whose office is it?”",["Mara","llm",".91"],["Mara","llm",".79"],0],
-             ["Bern closed the green book.",["— narration","prop","—"],["— narration","prop","—"],0],
-             ["“I don't know,” he said. “I have wondered.”",["Bern","anchor",".99"],["Bern","anchor",".99"],0],
-             ["“Ask her about the winter of '61…” Tom said.",["Tom Harlan","anchor",".99"],["Tom Harlan","anchor",".99"],0],
-             ["“You'd do well to remember that.”",["Tom Harlan","llm",".88"],["unknown","floor",".58 → floored"],1]]
-            .map(r=>`<tr ${r[3]?'style="background:var(--warn-bg)"':''}><td style="font-size:11.5px;color:var(--ink-2)">${r[0]}</td>${[r[1],r[2]].map(x=>`<td style="white-space:nowrap;font-size:11.5px"><strong>${x[0]}</strong> ${srcChip(x[1])} <span class="muted" style="font-size:10px">${x[2]}</span></td>`).join("")}</tr>`).join("")}
-        </tbody></table></div>
-      <div class="card"><div class="card-h"><strong>JSON output — Run A</strong><span class="muted" style="font-size:11px">what production consumes</span></div><div class="card-b" style="padding:0">
-        <div class="codeblock" style="border-radius:0;height:100%">[
-  {<span class="k">"d"</span>: 1, <span class="k">"speaker"</span>: <span class="s">"mara"</span>,
-   <span class="k">"confidence"</span>: 0.91, <span class="k">"source"</span>: <span class="s">"llm"</span>},
-  {<span class="k">"d"</span>: 2, <span class="k">"speaker"</span>: <span class="s">"bern"</span>,
-   <span class="k">"confidence"</span>: 0.99, <span class="k">"source"</span>: <span class="s">"anchor"</span>},
-  {<span class="k">"d"</span>: 3, <span class="k">"speaker"</span>: <span class="s">"tom_harlan"</span>,
-   <span class="k">"confidence"</span>: 0.99, <span class="k">"source"</span>: <span class="s">"anchor"</span>},
-  {<span class="k">"d"</span>: 4, <span class="k">"speaker"</span>: <span class="s">"tom_harlan"</span>,
-   <span class="k">"confidence"</span>: 0.88, <span class="k">"source"</span>: <span class="s">"llm"</span>}
-]</div>
-      </div></div>
     </div>
-    <div class="row" style="margin-top:10px">
-      <button class="btn secondary sm">＋ Save tweaks as preset “qwen14b · tight floor”</button>
-      <button class="btn secondary sm">⬇ Load preset ▾</button>
-      <span class="spacer"></span>
-      <button class="btn">✓ Use Run A as production</button>
-      <span class="muted" style="font-size:11px">pins model + tier + temp + both prompts as the Studio · Script method</span></div>`) },
-
-{ nav:"Spk Lab", t:"The Lab tab — the two-pass experiment, preserved. Scored against a ground-truth corpus; it wins on accuracy, costs 2.3× tokens, and stays off by default.",
-  html: () => shell("audiobook","Spk Lab","Speaker Lab — Lab (experimental)", "", `
-    <div class="row" style="margin-bottom:10px"><span class="chips"><button class="chip">Tuner</button><button class="chip active">Lab (experimental)</button></span>
-      <span class="spacer"></span><span class="pill warn">not wired to production — preserved for future tuning</span></div>
-    <div class="two-col">
-      <div class="card"><div class="card-h"><strong>Run an experiment</strong></div><div class="card-b">
-        <label class="eyebrow">Ground-truth corpus</label>
-        <div class="row" style="margin:6px 0 12px"><span class="combo-cell">austen_persuasion · stillwater_ch4 · all<span class="chev">▼</span></span></div>
-        <label class="eyebrow">Pipeline</label>
-        <div style="margin:6px 0 12px">
-          <div class="row" style="border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:6px;flex-wrap:nowrap"><input type="radio" name="pp" style="accent-color:var(--accent)"/><div style="flex:1"><strong style="font-size:12.5px">Single-pass</strong><div class="muted" style="font-size:11px">production pipeline — one call per chunk</div></div></div>
-          <div class="row" style="border:1px solid var(--accent);background:var(--accent-soft);border-radius:8px;padding:8px 12px;flex-wrap:nowrap"><input type="radio" name="pp" checked style="accent-color:var(--accent)"/><div style="flex:1"><strong style="font-size:12.5px">Two-pass</strong><div class="muted" style="font-size:11px">pass 1: candidate speakers per chunk · pass 2: re-verify low-confidence picks with wider context</div></div></div>
-        </div>
-        <label class="eyebrow">Tier</label>
-        <div class="row" style="margin:6px 0 14px"><span class="combo-cell">auto (Reasoned)<span class="chev">▼</span></span></div>
-        <button class="btn" style="width:100%">▶ Run &amp; score</button>
-        <div class="codeblock" style="margin-top:12px"><span class="k">headless:</span> python -m justvoice.labs.extraction.run
-         --corpus stillwater_ch4 --tier reasoned</div>
-      </div></div>
-      <div class="card"><div class="card-h"><strong>Latest report</strong><span class="muted" style="font-size:11px">reports/2026-06-11T14-31.md</span></div><div class="card-b">
-        <div class="sum-row"><span>Block accuracy</span><b>two-pass <span style="color:var(--accent-ink)">91.4%</span> vs single 89.3% <span class="muted">(+2.1 pp)</span></b></div>
-        <div class="sum-row"><span>Token cost</span><b style="color:var(--warn-ink)">2.3× single-pass</b></div>
-        <div class="sum-row"><span>Wall time</span><b>38 s vs 16 s</b></div>
-        <p class="eyebrow" style="margin:12px 0 6px">Per-character F1</p>
-        ${[["Mara Vance",".96"],["Edith Vance",".94"],["Tom Harlan",".88"],["The Stranger",".71"]]
-          .map(f=>`<div class="row" style="flex-wrap:nowrap;margin-bottom:6px"><span style="width:110px;flex:none;font-size:12px">${f[0]}</span><div class="prog" style="flex:1"><div class="fill" style="width:${parseFloat(f[1])*100}%"></div></div><span class="mono muted" style="font-size:11px;width:30px;text-align:right">${f[1]}</span></div>`).join("")}
-        <p class="eyebrow" style="margin:12px 0 6px">Source breakdown</p>
-        <div class="row" style="font-size:11px">${srcChip("anchor")} 41% &nbsp;${srcChip("llm")} 38% &nbsp;${srcChip("prop")} 17% &nbsp;${srcChip("floor")} 4%</div>
-        <div class="banner info" style="margin-top:12px">Verdict on record: gain doesn't justify cost as the default. Kept here so the next bigger local model can be re-scored in one click.</div>
-      </div></div>
+    <div class="row" style="padding-bottom:6px">
+      <button class="btn secondary sm">＋ Save tweaks as preset</button><button class="btn secondary sm">⬇ Load preset ▾</button>
+      <span class="spacer"></span><button class="btn">✓ Use Run B as production</button>
+      <span class="muted" style="font-size:11px">pins model + tier + temp + both prompts as the Studio · Script method</span></div>
     </div>`) },
+
+
 
 { nav:"Spk Lab", t:"Every AI call gets two surfaces: a small inline bar at the call site (seconds · tokens · words · Details · Cancel), and a slide-out task queue that opens from the header chip or by clicking any inline bar.",
   html: () => shell("audiobook","Spk Lab","Speaker Lab — runs in progress", `<span class="hdr-chip" style="border-color:var(--info-blue);color:var(--info-blue);cursor:pointer">⚙ AI · 2 running</span>`, `
