@@ -130,11 +130,78 @@ live). Ported upstream's `BUILTIN_PRESETS` data into
 `create_app`. Live-verified: Robotic / Radio / Echo Chamber / Deep Voice
 now served.
 
+## 4. Routes (`app.py` route surface)
+
+Route-by-route disposition (upstream route → ours): `/generate` →
+`/v1/generate` (**ported+diverged** — chunked, cache, lexicons);
+`/health` → `/v1/health`; `/profiles*` → `/v1/voices` + `/v1/personas`
+(Profile-kill); `/history` → `/v1/takes/recent`; `/models*` →
+`/v1/engines` + `/v1/engines/{id}/models`; `/effects*` →
+`/v1/effect-presets` + apply-as-version; `/stories*` → `/v1/stories*`;
+`/channels*` → `/v1/channels*`; `/settings` → `/v1/settings`;
+`/captures*` + `/transcribe` → **ADDED 2026-06-11** (was missing — see
+§8); `/llm/generate` → provider dispatch (no raw passthrough endpoint —
+dropped-on-purpose: features go through pins); `/speak` → gap G4;
+`/cuda` (GPU info) → `/v1/system` (**diverged**; GPU detail is thinner —
+noted for the Engines "This machine" card); `/events/*` SSE →
+`/v1/streams/*` (**diverged**); `/tasks` → `/v1/active-tasks`.
+
+## 5. Auto-chunking + crossfade
+
+**ported+wired, re-verified.** `audio/chunked.py` (attributed lift) is
+imported and exercised by BOTH paths: `api/generate_api.py` (managed +
+in-process branches) and `render_core.render_line` (chapter/production
+renders). Knobs live in `settings.generation` (all four upstream knobs
+present). `tests/test_chunked.py` covers the splitter.
+
+## 7. Version lineage
+
+Upstream: `GenerationVersion` chain with `source_version_id`, default
+flag, favorites on the History surface. Ours: per-block `Take` chain
+(`source_take_id`) + `GET /v1/takes/{id}/lineage` + LineageViewer
+(mounted this session), `GenerationVersion` kept for one-off Generate
+work. **diverged** (per-block versioning is deliberately finer-grained).
+**Finding F6 ⛔ (fixed):** `Generation.is_favorited` was serialized but
+had no write path, and the History table's ★/↻/✕ buttons had no
+handlers. Wired: `PATCH /v1/generations/{id}/favorite`,
+`DELETE /v1/generations/{id}`, UI handlers + tooltips
+(`tests/test_generation_history_actions.py`).
+
+## 8. Dictation / captures (gaps G1+G2 — server side CLOSED 2026-06-11)
+
+Upstream backend pieces and their new JustVoice counterparts:
+
+| Upstream | JustVoice | Status |
+|---|---|---|
+| Whisper STT backends (5 sizes, transformers) | `engines/whisper/` managed engine, KIND="stt" (new slot kind) | **ported** (attributed; recipe identical — 16 kHz, forced-language decoder ids, no_grad) |
+| Qwen3 LLM backends (0.6B/1.7B/4B) | `engines/qwen3_llm/` managed engine, KIND="llm" + `local-qwen3` provider adapter | **ported** (chat template, enable_thinking=False, few-shot turns, top_p 0.9) |
+| `services/refinement.py` | `justvoice/refinement.py` | **ported verbatim** (prompt corpus + repetition-collapse + example set; LLM call goes through provider dispatch, feature="refine") |
+| `routes/captures.py` + `routes/transcription.py` | `api/captures_api.py` — /v1/transcribe + /v1/captures CRUD/refine/retranscribe | **ported** (the `captures` DB table existed with NO api — schema-without-API, same failure family) |
+| `capture_settings` singleton | `settings.captures` section (stt_model, language, auto_refine, llm_model, 3 refinement toggles, allow_auto_paste, default_playback_voice, hotkey_enabled, chord lists) | **ported** as settings.json section |
+| voicebox.transcribe MCP tool | `justvoice.transcribe` (base64 or loopback-only absolute path, 200 MB cap) | **ported** |
+| Global hotkey / chord capture / auto-paste / DictateWindow | Tauri-side stubs | **deferred** — desktop work; server contract now exists for it |
+
+Engines UI gains an STT tab; shim gains `/chat` + `/transcribe` routes;
+manager gains chat()/transcribe() slot passthroughs. Model loads remain
+machine-verifiable only with GPU+models — wiring covered by
+`tests/test_captures.py` (fake STT) + `tests/test_variant_wiring.py`.
+
+## 9. Personalities (Compose / Rewrite / "Respond")
+
+Upstream at the pin ships ONLY `/profiles/{id}/compose`; rewrite happens
+implicitly inside `/generate` when `personality=true`; **"Respond" from
+the README has no code path** (their own comment: "there is no
+standalone rewrite/respond/speak endpoint"). Ours: explicit
+`/v1/personas/{id}/compose` + `/v1/personas/{id}/rewrite`
+(preview-then-accept; never a render-time hook — locked decision #3).
+**diverged-on-purpose, surface exceeds upstream.** With the bundled LLM
+landed, both now work with zero external setup once qwen3-llm is
+installed.
+
 ---
 
-*Sections 4–5, 7–9 (routes, chunking, lineage, dictation,
-personalities), frontend sweep, and the licensing sweep are appended as
-those audit modules complete.*
+*Remaining: frontend view sweep + licensing sweep (tracked in the
+implementation plan's audit section).*
 
 ## Gap list (ranked by user value)
 

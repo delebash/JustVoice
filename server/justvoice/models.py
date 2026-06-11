@@ -280,6 +280,27 @@ UseCase = Literal[
 ]
 
 
+class CapturesSettings(BaseModel):
+    """Dictation capture + refinement defaults (upstream parity:
+    voicebox's capture_settings singleton, kept in settings.json per the
+    no-DB-singletons rule). Hotkey/chord fields are consumed by the
+    desktop shell; the server stores them so every window + CLI client
+    reads the same preferences."""
+
+    stt_model: str = "whisper-turbo"  # variant id on the whisper engine
+    language: str = "auto"
+    auto_refine: bool = True
+    llm_model: str = "qwen3-llm-0.6b"  # variant id on the qwen3-llm engine
+    smart_cleanup: bool = True
+    self_correction: bool = True
+    preserve_technical: bool = True
+    allow_auto_paste: bool = True
+    default_playback_voice: str | None = None
+    hotkey_enabled: bool = False
+    chord_push_to_talk_keys: list[str] = ["ControlRight", "ShiftRight"]
+    chord_toggle_to_talk_keys: list[str] = ["ControlRight", "ShiftRight", "Space"]
+
+
 class MCPSettings(BaseModel):
     """MCP server (/mcp) behaviour. The default voice applies when an agent
     calls justvoice.speak with no voice/persona and no per-client binding."""
@@ -312,6 +333,7 @@ class Settings(BaseModel):
     models: ModelsSettings = ModelsSettings()
     engines: EnginesSettings = EnginesSettings()
     generation: GenerationSettings = GenerationSettings()
+    captures: CapturesSettings = CapturesSettings()
     mcp: MCPSettings = MCPSettings()
     app: AppSettings = AppSettings()
 
@@ -330,6 +352,7 @@ class SettingsPatch(BaseModel):
     models: ModelsSettings | None = None
     engines: EnginesSettings | None = None
     generation: GenerationSettings | None = None
+    captures: CapturesSettings | None = None
     mcp: MCPSettings | None = None
     app: AppSettings | None = None
 

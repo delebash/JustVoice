@@ -56,6 +56,21 @@ class CloneBody(BaseModel):
     transcript: str | None = None
 
 
+class ChatBody(BaseModel):
+    prompt: str
+    system: str | None = None
+    max_tokens: int = 512
+    temperature: float = 0.7
+    # (user, assistant) few-shot pairs prepended as real chat turns.
+    examples: list[list[str]] | None = None
+
+
+class TranscribeBody(BaseModel):
+    wav_b64: str | None = None
+    audio_path: str | None = None
+    language: str | None = None
+
+
 # ─── App factory ───────────────────────────────────────────────────────
 
 
@@ -151,6 +166,57 @@ def make_app(engine: EmbeddedEngine) -> FastAPI:
             log.exception("engine clone failed")
             raise HTTPException(status_code=500, detail=f"engine clone failed: {e}")
         return resp.__dict__
+
+    @app.post("/chat")
+    async def chat(body: ChatBody):
+        """LLM-kind engines implement engine.chat(...) -> str. 501 otherwise."""
+        if not hasattr(engine, "chat"):
+            raise HTTPException(status_code=501, detail="engine does not support chat")
+        if not engine.is_loaded():
+            raise HTTPException(status_code=409, detail="engine not loaded")
+        try:
+            text = await asyncio.to_thread(
+                engine.chat,
+                body.prompt,
+                body.system,
+                body.max_tokens,
+                body.temperature,
+                [tuple(e) for e in (body.examples or [])],
+            )
+        except Exception as e:
+            log.exception("engine chat failed")
+            raise HTTPException(status_code=500, detail=f"engine chat failed: {e}")
+        return {"text": text}
+
+    @app.post("/transcribe")
+    async def transcribe(body: TranscribeBody):
+        """STT-kind engines implement engine.transcribe(...) -> str. 501 otherwise."""
+        if not hasattr(engine, "transcribe"):
+            raise HTTPException(status_code=501, detail="engine does not support transcription")
+        if not engine.is_loaded():
+            raise HTTPException(status_code=409, detail="engine not loaded")
+        import base64
+        import tempfile
+        from pathlib import Path
+
+        tmp_path: Path | None = None
+        audio_path = body.audio_path
+        if body.wav_b64:
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                tmp.write(base64.b64decode(body.wav_b64))
+                tmp_path = Path(tmp.name)
+            audio_path = str(tmp_path)
+        if not audio_path:
+            raise HTTPException(status_code=422, detail="pass wav_b64 or audio_path")
+        try:
+            text = await asyncio.to_thread(engine.transcribe, audio_path, body.language)
+        except Exception as e:
+            log.exception("engine transcribe failed")
+            raise HTTPException(status_code=500, detail=f"engine transcribe failed: {e}")
+        finally:
+            if tmp_path is not None:
+                tmp_path.unlink(missing_ok=True)
+        return {"text": text}
 
     @app.post("/unload")
     async def unload():

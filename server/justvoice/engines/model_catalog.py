@@ -28,6 +28,10 @@ def models_for(engine_id: str) -> list[ModelVariant]:
             return _dia_variants()
         case "moss-tts":
             return _moss_tts_variants()
+        case "whisper":
+            return _whisper_variants()
+        case "qwen3-llm":
+            return _qwen3_llm_variants()
         case _:
             return []
 
@@ -40,6 +44,60 @@ def _hf_placeholder(repo: str, size_mb: int) -> ModelFile:
         target_path="model.safetensors",
         size_bytes=size_mb * 1024 * 1024,
     )
+
+
+def _whisper_variants() -> list[ModelVariant]:
+    # Five sizes matching upstream voicebox's Models tab; ids match the
+    # engine's WHISPER_VARIANT_REPOS map (test_variant_wiring pins this).
+    sizes = [
+        ("whisper-base", "Whisper Base (74M)", "openai/whisper-base", 290, 1000, 55),
+        ("whisper-small", "Whisper Small (244M)", "openai/whisper-small", 970, 2000, 70),
+        ("whisper-medium", "Whisper Medium (769M)", "openai/whisper-medium", 3100, 5000, 82),
+        ("whisper-large", "Whisper Large v3 (1.5B)", "openai/whisper-large-v3", 6200, 10000, 95),
+        ("whisper-turbo", "Whisper Large v3 Turbo", "openai/whisper-large-v3-turbo", 3200, 6000, 92),
+    ]
+    return [
+        ModelVariant(
+            id=vid,
+            name=name,
+            description=(
+                "Recommended — large-v3 accuracy at ~6× the speed."
+                if vid == "whisper-turbo"
+                else "Speech-to-text checkpoint; bigger = more accurate, slower."
+            ),
+            size_mb=size,
+            vram_mb=vram,
+            quality=quality,
+            languages=["multilingual"],
+            files=[_hf_placeholder(repo, size)],
+        )
+        for vid, name, repo, size, vram, quality in sizes
+    ]
+
+
+def _qwen3_llm_variants() -> list[ModelVariant]:
+    # Three sizes matching upstream voicebox's Language Models section.
+    sizes = [
+        ("qwen3-llm-0.6b", "Qwen3 0.6B", "Qwen/Qwen3-0.6B", 1400, 1500, 60,
+         "Very fast — live transcript refinement. Recommended default."),
+        ("qwen3-llm-1.7b", "Qwen3 1.7B", "Qwen/Qwen3-1.7B", 3500, 4000, 75,
+         "Better self-correction handling and technical vocabulary."),
+        ("qwen3-llm-4b", "Qwen3 4B", "Qwen/Qwen3-4B", 8000, 9000, 85,
+         "Subtlest rewrites; needs a mid-range GPU."),
+    ]
+    return [
+        ModelVariant(
+            id=vid,
+            name=name,
+            description=desc,
+            size_mb=size,
+            vram_mb=vram,
+            quality=quality,
+            languages=["multilingual"],
+            files=[_hf_placeholder(repo, size)],
+        )
+        for vid, name, repo, size, vram, quality, desc in sizes
+    ]
 
 
 def _kokoro_variants() -> list[ModelVariant]:

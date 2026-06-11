@@ -879,9 +879,11 @@ class EngineProcess:
     def is_alive(self) -> bool:
         return self.proc is not None and self.proc.poll() is None
 
-    def post(self, path: str, json: dict | None = None) -> httpx.Response:
+    def post(self, path: str, json: dict | None = None, timeout: float | None = None) -> httpx.Response:
         if not self.client:
             raise RuntimeError("engine subprocess not running")
+        if timeout is not None:
+            return self.client.post(path, json=json, timeout=timeout)
         return self.client.post(path, json=json)
 
     def get(self, path: str) -> httpx.Response:
@@ -1169,6 +1171,15 @@ class EngineManager:
                 raise RuntimeError(f"engine load failed: {r.text}")
             with self._lock:
                 self._current_variants[engine_id] = variant or m.default_variant_id or ""
+            if target_kind == "llm":
+                # A freshly installed+loaded local LLM should immediately
+                # serve features through the provider registry.
+                try:
+                    from .llm.local_managed import register_local_adapter
+
+                    register_local_adapter()
+                except Exception as e:
+                    log.debug("local LLM adapter registration skipped: %s", e)
             if progress:
                 progress("warming_up", f"{engine_id} ready")
             return r.json()
@@ -1240,6 +1251,35 @@ class EngineManager:
         if r.status_code != 200:
             raise RuntimeError(f"engine clone failed: {r.text}")
         return r.json()
+
+    def chat(self, body: dict, *, timeout: float = 300.0) -> str:
+        """Chat completion via the loaded llm-slot engine (G1 wiring).
+        body matches the shim's ChatBody: prompt/system/max_tokens/
+        temperature/examples."""
+        proc = self.loaded_for("llm")
+        if proc is None:
+            raise RuntimeError(
+                "no local LLM engine loaded — install + load 'qwen3-llm' on "
+                "the Engines tab, or configure an external provider"
+            )
+        r = proc.post("/chat", json=body, timeout=timeout)
+        if r.status_code != 200:
+            raise RuntimeError(f"engine chat failed: {r.text}")
+        return r.json().get("text", "")
+
+    def transcribe(self, body: dict, *, timeout: float = 600.0) -> str:
+        """Transcription via the loaded stt-slot engine (G2 wiring).
+        body matches the shim's TranscribeBody: wav_b64/audio_path/language."""
+        proc = self.loaded_for("stt")
+        if proc is None:
+            raise RuntimeError(
+                "no STT engine loaded — install + load 'whisper' on the "
+                "Engines tab first"
+            )
+        r = proc.post("/transcribe", json=body, timeout=timeout)
+        if r.status_code != 200:
+            raise RuntimeError(f"engine transcribe failed: {r.text}")
+        return r.json().get("text", "")
 
     def _require_current(self, engine_id: str) -> EngineProcess:
         with self._lock:

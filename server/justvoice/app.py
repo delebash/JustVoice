@@ -25,6 +25,7 @@ from .api import (
     bulk_delete_api,
     cache_api,
     capture_readiness_api,
+    captures_api,
     channels_api,
     effect_presets_api,
     engines_api,
@@ -102,6 +103,12 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 
     load_llm_providers(state.settings.get())
 
+    # Bundled local LLM (qwen3-llm managed engine) — registered after the
+    # settings providers so the no-pin fallback prefers an explicit config.
+    from .engines.llm.local_managed import register_local_adapter
+
+    register_local_adapter()
+
     settings = state.settings.get()
     app = FastAPI(
         title=PRODUCT,
@@ -159,6 +166,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(mcp_bindings_api.router)
     app.include_router(active_tasks_api.router)
     app.include_router(capture_readiness_api.router)
+    app.include_router(captures_api.router)
     app.include_router(sse_streams_api.router)
     app.include_router(projects_api.router)
 

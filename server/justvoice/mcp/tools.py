@@ -98,6 +98,65 @@ def register_tools(mcp: FastMCP) -> None:
         return {"voices": voices[:limit], "total": len(voices)}
 
     @mcp.tool(
+        name="justvoice.transcribe",
+        description=(
+            "Transcribe an audio clip to text with the local Whisper STT "
+            "engine. Pass exactly one of `audio_base64` (bytes as base64) "
+            "or `audio_path` (absolute local file path — loopback callers "
+            "only)."
+        ),
+    )
+    async def justvoice_transcribe(
+        audio_base64: str | None = None,
+        audio_path: str | None = None,
+        language: str | None = None,
+    ) -> dict[str, Any]:
+        import base64 as b64
+        import tempfile
+        from pathlib import Path
+
+        from .context import request_is_loopback
+
+        if bool(audio_base64) == bool(audio_path):
+            raise ValueError("Pass exactly one of `audio_base64` or `audio_path`.")
+
+        from ..api.captures_api import _MAX_UPLOAD_MB, _stt_transcribe
+
+        # Absolute-path mode is loopback-only so a server bound on 0.0.0.0
+        # doesn't double as an arbitrary-local-file read primitive
+        # (upstream contract).
+        if audio_path is not None:
+            if not request_is_loopback():
+                raise ValueError(
+                    "`audio_path` is only available to loopback callers — "
+                    "remote callers must use `audio_base64`."
+                )
+            p = Path(audio_path)
+            if not p.is_absolute():
+                raise ValueError("`audio_path` must be absolute.")
+            if not p.is_file():
+                raise ValueError(f"File not found: {audio_path}")
+            if p.stat().st_size > _MAX_UPLOAD_MB * 1024 * 1024:
+                raise ValueError(f"File exceeds {_MAX_UPLOAD_MB} MB limit.")
+            text = _stt_transcribe(str(p), language)
+            return {"text": text, "language": language}
+
+        try:
+            raw = b64.b64decode(audio_base64, validate=True)
+        except Exception as exc:
+            raise ValueError(f"Invalid audio_base64: {exc}") from exc
+        if len(raw) > _MAX_UPLOAD_MB * 1024 * 1024:
+            raise ValueError(f"Audio exceeds {_MAX_UPLOAD_MB} MB limit.")
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            tmp.write(raw)
+            tmp_path = Path(tmp.name)
+        try:
+            text = _stt_transcribe(str(tmp_path), language)
+            return {"text": text, "language": language}
+        finally:
+            tmp_path.unlink(missing_ok=True)
+
+    @mcp.tool(
         name="justvoice.list_personas",
         description=(
             "List personas (characters) with their bound voice. Use the "

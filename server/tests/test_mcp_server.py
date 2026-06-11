@@ -35,7 +35,7 @@ def test_tools_registered() -> None:
 
     tools = asyncio.run(_run())
     names = {t.name for t in tools}
-    assert {"justvoice.speak", "justvoice.list_voices", "justvoice.list_personas"} <= names
+    assert {"justvoice.speak", "justvoice.transcribe", "justvoice.list_voices", "justvoice.list_personas"} <= names
 
 
 def test_resolve_precedence(app) -> None:

@@ -85,3 +85,32 @@ def test_manifest_default_variants_exist_in_catalog() -> None:
             f"{manifest_path.parent.name}: DEFAULT_VARIANT_ID {default!r} "
             f"not in catalog {sorted(catalog_ids)}"
         )
+
+
+def test_whisper_catalog_ids_match_engine_map() -> None:
+    from justvoice.engines.model_catalog import models_for
+
+    engine_mod = _load_engine_module("whisper")
+    catalog_ids = {v.id for v in models_for("whisper")}
+    assert catalog_ids == set(engine_mod.WHISPER_VARIANT_REPOS)
+    for v in models_for("whisper"):
+        assert engine_mod.WHISPER_VARIANT_REPOS[v.id] in v.files[0].url
+    assert engine_mod.DEFAULT_VARIANT in engine_mod.WHISPER_VARIANT_REPOS
+
+
+def test_qwen3_llm_catalog_ids_match_engine_map() -> None:
+    from justvoice.engines.model_catalog import models_for
+
+    engine_mod = _load_engine_module("qwen3_llm")
+    catalog_ids = {v.id for v in models_for("qwen3-llm")}
+    assert catalog_ids == set(engine_mod.QWEN_LLM_VARIANT_REPOS)
+    for v in models_for("qwen3-llm"):
+        assert engine_mod.QWEN_LLM_VARIANT_REPOS[v.id] in v.files[0].url
+
+
+def test_new_engine_kinds_discovered() -> None:
+    from justvoice.engines.manager import discover_engines
+
+    kinds = {k: m.kind for k, m in discover_engines().items()}
+    assert kinds.get("whisper") == "stt"
+    assert kinds.get("qwen3-llm") == "llm"

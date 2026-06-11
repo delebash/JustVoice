@@ -55,7 +55,7 @@ const selectedVariants = reactive({});  // {engineId: variantId}
 
 // Tab selection: TTS / LLM / Embeddings. Filters which engines surface.
 // Falls back to "tts" so existing manifests show by default.
-const KIND_LABELS = { tts: "TTS", llm: "LLM", embedding: "Embeddings" };
+const KIND_LABELS = { tts: "TTS", stt: "STT", llm: "LLM", embedding: "Embeddings" };
 const activeKind = ref("tts");
 
 // ── Registered providers (JustWrite SettingsProviderForm pattern) ─────
@@ -642,7 +642,7 @@ onMounted(() => { refresh(); loadSystem(); loadProviders(); });
          can switch even when one tab is currently empty. -->
     <div class="engines-view__tabs">
       <button
-        v-for="k in ['tts', 'llm', 'embedding']"
+        v-for="k in ['tts', 'stt', 'llm', 'embedding']"
         :key="k"
         type="button"
         class="engines-view__tab"
