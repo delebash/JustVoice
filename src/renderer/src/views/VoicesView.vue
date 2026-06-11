@@ -159,7 +159,22 @@ async function refresh() {
     const e = await api.request("/v1/engines");
     engines.value = e?.engines ?? [];
   } catch { engines.value = []; }
+  try {
+    const p = await api.request("/v1/personas");
+    personas.value = p?.personas ?? [];
+  } catch { personas.value = []; }
 }
+
+// ── "Cast as" — which personas a voice backs (CONCEPTS §2). ──────────
+const personas = ref([]);
+const castAsByVoice = computed(() => {
+  const map = {};
+  for (const p of personas.value) {
+    if (!p.voice_id) continue;
+    (map[p.voice_id] ||= []).push(p.name);
+  }
+  return map;
+});
 
 const orphanIds = computed(() => {
   const ids = new Set(engines.value.map((e) => e.id));
@@ -480,6 +495,7 @@ function blendWithVoice() {
           <th>Gens</th>
           <th>Effects</th>
           <th>Channel</th>
+          <th>Cast as</th>
           <th class="jv-table__actions">Actions</th>
         </tr>
       </thead>
@@ -513,6 +529,7 @@ function blendWithVoice() {
           <td>{{ v.generation_count ?? 0 }}</td>
           <td class="jv-muted">{{ v.default_effects?.join(", ") || "—" }}</td>
           <td class="jv-muted">{{ v.channel_id || "Default" }}</td>
+          <td class="jv-muted voices-view__castas" :title="(castAsByVoice[v.id] || []).join(', ')">{{ (castAsByVoice[v.id] || []).join(' · ') || "—" }}</td>
           <td class="jv-table__actions" @click.stop>
             <JvButton variant="ghost" size="sm" :loading="previewingId === v.id" label="▶" :title="`Preview ${v.name}`" @click="previewVoice(v)" />
             <JvButton variant="ghost" size="sm" label="⚙" :title="`Inspect ${v.name}`" @click="inspect(v)" />
@@ -920,4 +937,5 @@ function blendWithVoice() {
   margin-top: 10px;
   flex-wrap: wrap;
 }
+.voices-view__castas { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 </style>
