@@ -56,13 +56,19 @@ presets); per-episode export = render_chapter master=podcast.
 pause-profile + auto-ducking → Phase E backlog. Plain-text (custom)
 projects ride the same Chapter/Studio surfaces by design.
 
-## Phase D — First-run, live voice, QC, help (🚀 ⌨️ 🎧 ❓ tabs)
+## Phase D — First-run, live voice, QC, help (🚀 ⌨️ 🎧 ❓ tabs) — IN PROGRESS
 
-QuickSetup (hardware tier store — data not code; engine checkboxes; LLM
-detect-and-connect; STT bundle row; graceful degradation), hotkey overlay +
-channels + captures, Proof-listen + Whisper round-trip auto-QC (word
-timestamps in take record first), help drawer (docs/*.md + toc bundling,
-helpDocs.js pattern).
+✅ QuickSetup: hardware tiers + engine rows + feature-pin routing existed;
+ADDED detect-and-connect local LLM row (probe endpoint + one-click
+register) and STT readiness row (capture/readiness). ✅ Help system:
+drawer + per-view contextual ? + full docs/toc shipped and verified live.
+Captures/CapturePill/DictateWindow exist.
+DEFERRED (model/desktop-dependent — needs the user's machine):
+- Tauri global hotkey registration (stubbed in lib.rs — desktop runtime
+  untestable in this container)
+- Proof-listen + Whisper round-trip auto-QC + word timestamps (require
+  TTS+STT models on disk; design + endpoints land when a model-equipped
+  machine can verify them honestly)
 
 ## Phase E — JustWrite adopts + polish (🗂 tab, CONCEPTS §13)
 

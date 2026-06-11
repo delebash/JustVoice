@@ -4,6 +4,7 @@ import { ref, computed, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
+import { projectsService } from "../services/projects.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvInput from "../components/jv/JvInput.vue";
 import JvSelect from "../components/jv/JvSelect.vue";
@@ -12,6 +13,46 @@ import JvToggle from "../components/jv/JvToggle.vue";
 import JvField from "../components/jv/JvField.vue";
 
 const api = useApi();
+
+// ── Backup & restore (GET /v1/backup, POST /v1/restore) ─────────────
+const backupBusy = ref(false);
+const backupIncludeAudio = ref(true);
+async function downloadBackup() {
+  backupBusy.value = true;
+  try {
+    const blob = await api.requestBlob("GET", `/v1/backup?include_audio=${backupIncludeAudio.value}`);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `justvoice-backup-${new Date().toISOString().slice(0, 10)}.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+    pushToast({ kind: "success", title: "Backup downloaded" });
+  } catch (e) {
+    pushToast({ kind: "error", title: "Backup failed", description: String(e?.message ?? e) });
+  } finally {
+    backupBusy.value = false;
+  }
+}
+async function restoreBackup(ev) {
+  const f = ev.target?.files?.[0];
+  ev.target.value = "";
+  if (!f) return;
+  const ok = await confirmDialog({
+    title: "Restore from backup?",
+    message: `Restore "${f.name}"? This REPLACES the current settings and database. The server restarts its stores; a page reload follows.`,
+    confirmLabel: "Replace & restore",
+    danger: true,
+  });
+  if (!ok) return;
+  try {
+    await projectsService.restore(f, "replace", true);
+    pushToast({ kind: "success", title: "Restored — reloading" });
+    setTimeout(() => window.location.reload(), 1200);
+  } catch (e) {
+    pushToast({ kind: "error", title: "Restore failed", description: String(e?.message ?? e) });
+  }
+}
 // Initialize with the same shape the API returns so the sub-nav + every
 // field renders before /v1/settings comes back (or when the server is
 // offline). refresh() overwrites with real values when the server is up.
@@ -858,6 +899,31 @@ onMounted(() => {
     </div>
 
     <!-- ─── General · Server bind (preview parity) ─── -->
+    <div v-show="activeSub === 'general'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header">
+          <h3 class="jv-card__title">Backup & restore</h3>
+        </div>
+        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 14px">
+          One zip: settings.json + the full SQLite database{{ backupIncludeAudio ? " + all audio blobs, voice embeddings, training adapters" : "" }}.
+          Streamed from disk — large libraries don't load into RAM.
+        </p>
+        <div class="setting-row">
+          <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px">
+            <input v-model="backupIncludeAudio" type="checkbox" />
+            Include audio blobs (bigger, but a complete machine migration)
+          </label>
+        </div>
+        <div class="setting-row" style="display: flex; gap: 10px; margin-top: 10px">
+          <JvButton variant="primary" size="sm" :loading="backupBusy" label="⬇ Download backup" title="Stream a backup zip of this installation" @click="downloadBackup" />
+          <label class="jv-btn jv-btn--secondary jv-btn--sm" style="cursor: pointer" title="Restore from a backup zip — REPLACES current data after confirmation">
+            ⬆ Restore from zip…
+            <input type="file" accept=".zip" style="display: none" @change="restoreBackup" />
+          </label>
+        </div>
+      </div>
+    </div>
+
     <div v-show="activeSub === 'general'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header">
