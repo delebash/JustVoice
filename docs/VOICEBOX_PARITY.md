@@ -93,9 +93,46 @@ so binding it (`mcp_bindings.persona_id` FK → SQLite `personas`) failed
 with an IntegrityError. `PersonaStore` now mirrors create/update/delete
 into SQLite (`storage/personas.py::_mirror_to_db`).
 
+## 3. `database/` → `server/justvoice/database/`
+
+| Upstream table | JustVoice | Status |
+|---|---|---|
+| `profiles` + `profile_samples` | `personas` (+ voices file store) | **diverged** — Profile-kill rollout; persona is the sole identity layer. |
+| `generations`, `generation_versions` | same names | **diverged** — we add per-block `takes` (re-roll paragraph 47 without invalidating 48); upstream versions whole generations. |
+| `stories`, `story_items` | same names | **ported** (multi-track additions ours). |
+| `projects` | `projects` + `scenes`/`blocks`/`project_personas` | **diverged** — ours carries the import/production model. |
+| `audio_channels` + 2 mapping tables | `channels` + `persona_channels` | **diverged** (persona-keyed). |
+| `capture_settings` (singleton: stt model, refinement toggles, chords, auto-paste, default playback voice) | — | **missing** — lands with dictation/STT work (as a `settings.json` section per our no-DB-singletons rule), G2. |
+| `generation_settings` (singleton) | `settings.json` `generation` section | **diverged-on-purpose**; all four knobs present (max_chunk_chars / crossfade_ms / normalize_audio / autoplay_on_generate). |
+| `mcp_client_bindings` | `mcp_bindings` | **ported+wired** (see §2). |
+| `seed.py` (builtin effect presets + version backfill) | was missing | **FIXED** — see F5. |
+| `migrations.py` (inspector-based add-column) | same pattern | **ported**. |
+| — | webhooks, render_presets/jobs, speaker_corrections, training_jobs, lexicons | JustVoice additions. |
+
+## 6. Effects → `audio/effects.py` + presets
+
+Upstream effect registry: chorus, reverb, delay, compressor, gain,
+highpass, lowpass, pitch_shift (8 types). Ours covers all of them after
+F4, plus additions (distortion, eq_low/eq_mid/eq_high shelf/peak filters).
+
+**Finding F4 — `chorus` missing + `enabled` flag ignored ⛔ (fixed).**
+`_build_plugins` had no chorus branch — the Robotic preset would have
+silently become a no-op chain — and entries with `enabled: false` were
+still applied (upstream skips them; the chain editor toggles effects
+without removing them). Both fixed; `tests/test_seed_effect_presets.py::
+test_disabled_effects_are_skipped` pins the contract.
+
+**Finding F5 — built-in presets never seeded ⛔ (fixed).** The
+`EffectPreset` model + API shipped `is_builtin` guards from day one but
+nothing inserted the rows — `/v1/effect-presets` returned `[]` (verified
+live). Ported upstream's `BUILTIN_PRESETS` data into
+`database/seed.py` (attribution header), called idempotently from
+`create_app`. Live-verified: Robotic / Radio / Echo Chamber / Deep Voice
+now served.
+
 ---
 
-*Sections 3–9 (database, routes, chunking, effects, lineage, dictation,
+*Sections 4–5, 7–9 (routes, chunking, lineage, dictation,
 personalities), frontend sweep, and the licensing sweep are appended as
 those audit modules complete.*
 

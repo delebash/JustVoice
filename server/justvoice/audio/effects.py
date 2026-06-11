@@ -63,11 +63,17 @@ def _build_plugins(chain: list[dict]) -> list:
     for entry in chain or []:
         if not isinstance(entry, dict):
             continue
+        # Honor the per-effect enabled flag (upstream contract — the chain
+        # editor toggles effects without removing them from the chain).
+        if not entry.get("enabled", True):
+            continue
         kind = (entry.get("type") or "").lower()
         params = entry.get("params") or {}
         try:
             if kind == "reverb":
                 plugins.append(pb.Reverb(**params))
+            elif kind == "chorus":
+                plugins.append(pb.Chorus(**params))
             elif kind == "distortion":
                 plugins.append(pb.Distortion(**params))
             elif kind == "gain":
