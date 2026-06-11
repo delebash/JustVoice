@@ -486,6 +486,7 @@ async function load(engine, variant) {
       body: JSON.stringify({ device: "auto", model_variant: variant || null }),
       signal: ctl.signal,
     });
+    window.dispatchEvent(new Event("jv:health-refresh"));
     await refresh();
     tasks.finish(task.id);
     pushToast({ message: `${engine.name || engine.id} loaded.`, kind: "success", duration: 4500 });

@@ -1187,8 +1187,16 @@ p.note,
   border-top: 1px solid var(--line);
 }
 
-/* Dialog — confirm/prompt micro-modal */
+/* Dialog — confirm/prompt micro-modal.
+   Reka portals DialogContent as a SIBLING of the overlay, so the dialog
+   must position itself — inset+margin:auto centers it without a
+   transform (which would fight the jvModalIn animation). */
 .jv-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  height: fit-content;
+  z-index: 201;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-card);

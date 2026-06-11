@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import io
 import logging
-import wave
 from dataclasses import dataclass
 from typing import Any
 
@@ -47,13 +46,28 @@ class RenderedLine:
 
 
 def _resolve_engine_for_voice(state: AppState, voice_id: str) -> str | None:
-    """Find the engine id that owns a voice id (preset or stored)."""
+    """Find the engine id that owns a voice id (preset or stored).
+
+    Checks three sources: in-process engine voice lists, stored voices,
+    and managed-engine manifest static_voices. The manifest pass matters
+    for preset voices of NOT-YET-LOADED engines (e.g. kokoro's af_heart
+    before first load) — without it any render/preview against them
+    404s before auto-load can even run.
+    """
     for engine in state.engines.all():
         if any(p.id == voice_id for p in engine.voices()):
             return engine.meta.engine_id
     stored = state.voices.get(voice_id)
     if stored:
         return stored.engine
+    try:
+        from .engines.manager import get_manager
+
+        for manifest in get_manager().manifests().values():
+            if any(v.get("id") == voice_id for v in manifest.static_voices):
+                return manifest.id
+    except Exception:
+        pass
     return None
 
 

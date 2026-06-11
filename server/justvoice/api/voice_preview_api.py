@@ -15,12 +15,12 @@ import uuid
 from collections import OrderedDict
 from typing import Optional, Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..errors import not_found, bad_request
+from ..errors import conflict, not_found, bad_request
 
 
 router = APIRouter(tags=["voices"])
@@ -156,7 +156,6 @@ async def preview_voice(body: VoicePreviewRequest) -> VoicePreviewResponse:
     audio_prompt_path: Optional[str] = None
     if body.source in ("cloned", "imported") and body.ref_wav_b64:
         import tempfile
-        from pathlib import Path
 
         raw = base64.b64decode(body.ref_wav_b64)
         tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
@@ -219,7 +218,7 @@ async def save_preview(
     # migration completes).
     from ..app_state import get_state
 
-    state = get_state()
+    get_state()  # boot-checks app state; persistence below uses the voices store
     # Use the existing voices storage to persist the cloned voice.
     # For v1 this delegates to whatever the existing /v1/voices/clone path uses.
     return {
@@ -228,3 +227,75 @@ async def save_preview(
         "name": body.name,
         "note": "v1.0 preview promote: route stub — full implementation continues in Phase 5 follow-on",
     }
+
+# ── Row preview — audition an EXISTING voice (table ▶) ──────────────────
+
+PREVIEW_LINE_DEFAULT = "Hello — here's how this voice sounds."
+
+
+@router.post("/v1/voices/{voice_id}/preview")
+async def preview_existing_voice(voice_id: str, auto_load: bool = False) -> Response:
+    """Short audition clip for a stored or preset voice.
+
+    Mirrors /v1/generate's voice→engine routing (managed engines via the
+    manager, stored + in-process via the registry). When the owning
+    engine isn't loaded and auto_load is false, returns 409 with detail
+    "engine_not_loaded:<engine_id>" so the client can ask the user before
+    paying the 25–55 s load.
+    """
+    from ..app_state import get_state
+    from ..engines.manager import get_manager
+    from ..models import GenerateRequest
+    from .generate_api import (
+        _find_managed_voice_owner,
+        _find_static_voice_owner,
+        _generate_via_inprocess,
+        _generate_via_manager,
+        _resolve_audio_prompt_for_stored,
+    )
+
+    st = get_state()
+    mgr = get_manager()
+    req = GenerateRequest(voice=voice_id, text=PREVIEW_LINE_DEFAULT)
+
+    # 1. Voice of the currently-loaded managed engine — just synth.
+    owner = _find_managed_voice_owner(voice_id)
+    if owner is not None:
+        return await _generate_via_manager(owner, req)
+
+    # 2. Static voice of an installed-but-not-loaded managed engine.
+    static_owner = _find_static_voice_owner(voice_id)
+    if static_owner is not None:
+        if mgr.current_id() != static_owner:
+            if not auto_load:
+                raise conflict(f"engine_not_loaded:{static_owner}")
+            mgr.load(static_owner, device="auto")
+        return await _generate_via_manager(static_owner, req)
+
+    # 3. Stored voice (clone / design / import / blend).
+    stored = st.voices.get(voice_id)
+    if stored:
+        prompt_path = _resolve_audio_prompt_for_stored(stored)
+        if mgr.get_manifest(stored.engine):
+            if mgr.current_id() != stored.engine:
+                if not auto_load:
+                    raise conflict(f"engine_not_loaded:{stored.engine}")
+                mgr.load(stored.engine, device="auto")
+            return await _generate_via_manager(
+                stored.engine, req, audio_prompt_path=prompt_path
+            )
+        engine = st.engines.get(stored.engine)
+        if engine is None:
+            raise not_found(f"engine {stored.engine}")
+        if not engine.ready() and not auto_load:
+            raise conflict(f"engine_not_loaded:{stored.engine}")
+        return _generate_via_inprocess(stored.engine, req)
+
+    # 4. In-process engine preset.
+    for engine in st.engines.all():
+        if any(p.id == voice_id for p in engine.voices()):
+            if not engine.ready() and not auto_load:
+                raise conflict(f"engine_not_loaded:{engine.meta.engine_id}")
+            return _generate_via_inprocess(engine.meta.engine_id, req)
+
+    raise not_found(f"voice {voice_id}")

@@ -109,8 +109,24 @@ const TYPE_FILTERS = [
   { id: "trained",  label: "Trained" },
 ];
 
+const ENGINE_FILTER_KEY = "jv.voices.engineFilter";
+const engineFilter = ref(localStorage.getItem(ENGINE_FILTER_KEY) || "all");
+function setEngineFilter(id) {
+  engineFilter.value = id;
+  localStorage.setItem(ENGINE_FILTER_KEY, id);
+}
+const engineFilterOptions = computed(() => {
+  const counts = {};
+  for (const v of voices.value || []) counts[v.engine] = (counts[v.engine] || 0) + 1;
+  return [
+    { label: `All engines (${(voices.value || []).length})`, value: "all" },
+    ...Object.entries(counts).sort().map(([id, n]) => ({ label: `${id} (${n})`, value: id })),
+  ];
+});
+
 const filteredVoices = computed(() => {
   let list = voices.value || [];
+  if (engineFilter.value !== "all") list = list.filter((v) => v.engine === engineFilter.value);
   if (typeFilter.value !== "all") list = list.filter((v) => v.source === typeFilter.value);
   if (search.value.trim()) {
     const q = search.value.trim().toLowerCase();
@@ -132,6 +148,8 @@ const chatterboxLoaded = computed(() => (engines.value || []).some((e) => e?.id?
 // ── Voice preview (LRU-cached on backend). ──────────────────────────
 const previewAudio = ref(null);
 const previewingId = ref(null);
+const AUTOLOAD_KEY = "jv.voices.autoLoadEngine"; // "always" | unset (ask)
+
 async function previewVoice(v) {
   previewingId.value = v.id;
   if (previewAudio.value) {
@@ -139,7 +157,28 @@ async function previewVoice(v) {
     previewAudio.value = null;
   }
   try {
-    const blob = await api.request(`/v1/voices/${v.id}/preview`, { method: "POST" });
+    const always = localStorage.getItem(AUTOLOAD_KEY) === "always";
+    let blob;
+    try {
+      blob = await api.request(`/v1/voices/${v.id}/preview?auto_load=${always}`, { method: "POST" });
+    } catch (e) {
+      const m = String(e?.message || "").match(/engine_not_loaded:([\w.-]+)/);
+      if (!m) throw e;
+      const engineId = m[1];
+      const ok = await confirmDialog({
+        title: `Load ${engineId}?`,
+        message: `"${v.name}" needs the ${engineId} engine, which isn't loaded. Load it now to preview? The first load can take ~25–55 s; after that previews are instant.`,
+        confirmLabel: "Load & preview",
+      });
+      if (!ok) return;
+      pushToast({ message: `Loading ${engineId}… this can take up to a minute.`, kind: "info" });
+      blob = await api.request(`/v1/voices/${v.id}/preview?auto_load=true`, { method: "POST" });
+      pushToast({
+        message: `${engineId} loaded.`,
+        kind: "success",
+        action: { label: "Always auto-load", fn: () => localStorage.setItem(AUTOLOAD_KEY, "always") },
+      });
+    }
     previewAudio.value = URL.createObjectURL(blob);
     const audio = new Audio(previewAudio.value);
     audio.play().catch(() => {});
@@ -443,7 +482,14 @@ function blendWithVoice() {
 <template>
   <!-- ── Toolbar: search + type filter + + Clone primary action ─────────── -->
   <div class="voices-view__toolbar">
-    <JvInput v-model="search" placeholder="Search voices…" width="name" />
+    <JvInput v-model="search" placeholder="Search voices…" width="name" title="Filter by name or id" />
+    <JvSelect
+      :model-value="engineFilter"
+      :options="engineFilterOptions"
+      title="Show only voices from one engine"
+      style="min-width: 170px"
+      @update:model-value="setEngineFilter"
+    />
     <div class="voices-view__chips">
       <button
         v-for="f in TYPE_FILTERS"

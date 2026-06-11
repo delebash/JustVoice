@@ -341,6 +341,12 @@ onMounted(async () => {
   } else {
     clearInterval(tick);
   }
+  // Steady poll AFTER boot — without it the header engine pill freezes at
+  // its boot value ("No engine") even after the user loads one.
+  setInterval(refresh, 5000);
+  // Instant refresh when a view knows state changed (EnginesView after
+  // load/unload dispatches this).
+  window.addEventListener("jv:health-refresh", refresh);
 });
 </script>
 
