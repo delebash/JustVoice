@@ -1356,6 +1356,52 @@ const stepsSplab = [
 
 ];
 
+/* ════════════════════════════════════════════════════════════════════
+   Journey I — Proof & QC: proof-listen + STT round-trip verification
+   ════════════════════════════════════════════════════════════════════ */
+const stepsQC = [
+{ nav:"Studio", t:"Proof-listen: the chapter plays while the text highlights word-by-word. One key per problem — flags pile into a punch list without stopping playback.",
+  html: () => shell("audiobook","Studio","Proof & QC — Chapter 5 · Old Debts", projChip("Stillwater","Audiobook","ACX"), `
+    <div class="row" style="margin-bottom:10px">
+      <span class="chips"><button class="chip active">Proof-listen</button><button class="chip">Auto-QC (STT)</button></span>
+      <button class="btn sm">⏸ 12:41 / 35:02</button><span class="pill">1.4× listen speed</span>
+      <span class="spacer"></span>
+      <span class="muted" style="font-size:11.5px">M — mispronounce · A — artifact · P — pacing · ⏎ — flag &amp; continue</span></div>
+    <div class="two-col" style="grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr)">
+      <div class="card"><div class="card-b" style="font-size:14.5px;line-height:2;color:var(--ink-2);font-family:var(--font-serif)">
+        <p style="margin-bottom:14px">Edith poured the tea the way she did everything — slowly, and without apology. The lake outside the window had gone the color of <span style="background:var(--accent-soft)">old</span> <span style="background:var(--accent);color:#fff;border-radius:3px;padding:0 3px">pewter</span>, and somewhere out on the water a loon called twice and went quiet.</p>
+        <p style="margin-bottom:14px">“Your grandfather swore his oath on the <mark style="background:var(--warn-bg);border-bottom:2px solid var(--warn)">Hecate</mark> stone, same as his father did.” <span class="pill warn" style="font-size:10px">flagged M · 12:38</span></p>
+        <p>“And you never thought to tell me,” Mara said. It wasn't a question, and Edith didn't treat it as one.</p>
+      </div></div>
+      <div class="card"><div class="card-h"><strong>Punch list</strong><span class="pill warn">3 flags</span></div><div class="card-b">
+        ${[["M","Hecate — heard “HEK-ayt”","12:38","→ lexicon entry"],["A","click artifact at sentence start","04:12","→ re-render line"],["P","gap 2.8 s after paragraph","08:55","→ pause profile"]]
+          .map(f=>`<div style="border:1px solid var(--line);border-radius:8px;padding:8px 11px;margin-bottom:7px;font-size:12px"><div class="row" style="flex-wrap:nowrap"><span class="pill ${f[0]==='M'?'warn':''}" style="flex:none">${f[0]}</span><strong style="flex:1;font-size:12px">${f[1]}</strong><span class="mono muted" style="font-size:10.5px">${f[2]}</span></div><div class="row" style="margin-top:5px"><button class="btn ghost sm">▶ replay</button><span class="spacer"></span><button class="btn sm" style="height:22px;font-size:11px">${f[3]}</button></div></div>`).join("")}
+        <p class="muted" style="font-size:11.5px;margin-top:4px">Each fix routes into the existing loop: lexicon → targeted re-render → A/B compare.</p>
+      </div></div>
+    </div>`) },
+
+{ nav:"Studio", t:"Auto-QC — Whisper transcribes every rendered take and diffs it against the source text. Hallucinated or skipped words get caught locally, before a human ever listens.",
+  html: () => shell("audiobook","Studio","Proof & QC — Auto-QC report", projChip("Stillwater","Audiobook","ACX"), `
+    <div class="row" style="margin-bottom:10px">
+      <span class="chips"><button class="chip">Proof-listen</button><button class="chip active">Auto-QC (STT)</button></span>
+      <span class="pill green">583 lines verified in 3 m 51 s · Whisper small</span>
+      <span class="spacer"></span><button class="btn sm">↻ Re-run on stale takes</button></div>
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;max-width:880px;margin-bottom:12px">
+      ${[["Lines checked","583"],["Clean match","576"],["Flagged","7"],["Word error rate","0.4%"]]
+        .map(s=>`<div class="card" style="padding:12px 16px"><div class="eyebrow">${s[0]}</div><div class="display sm" style="margin-top:3px">${s[1]}</div></div>`).join("")}
+    </div>
+    <div class="card" style="flex:1;min-height:0;overflow-y:auto">
+      <table class="vtable"><thead><tr><th>Line</th><th>Source text vs heard</th><th>Issue</th><th class="right"></th></tr></thead><tbody>
+        ${[["ch5 · L41","…oath on the <b>Hecate</b> stone → heard “<b>HEK-ayt</b>”",'<span class="pill warn">pronunciation</span>'],
+           ["ch3 · L12","…she would <b>never</b> come back → heard “…she would come back”",'<span class="pill warn">dropped word</span>'],
+           ["ch7 · L88","…the storm <b>cellar</b> door → heard “…the storm cellar door door”",'<span class="pill warn">repeated word</span>'],
+           ["ch2 · L07","(2.1 s of audio past end of text)",'<span class="pill warn">trailing babble</span>']]
+          .map(r=>`<tr><td class="mono" style="font-size:11px;white-space:nowrap">${r[0]}</td><td style="font-size:12px">${r[1]}</td><td>${r[2]}</td><td class="right" style="white-space:nowrap"><button class="btn ghost sm">▶</button><button class="btn sm" style="height:22px;font-size:11px">↻ re-render</button></td></tr>`).join("")}
+      </tbody></table>
+    </div>
+    <div class="banner good" style="margin-top:10px">Auto-QC runs after every batch render (toggle in Settings). Open-model hallucinations — dropped words, repeats, trailing babble — get caught by the same Whisper install that powers Train transcripts. No cloud, no human pass for the clean 98.8%.</div>`) },
+];
+
 const JOURNEYS = {
   audiobook:{ label:"📖 Audiobook — Sarah", steps:stepsAudiobook, who:"Sarah · indie author" },
   game:     { label:"🎮 Game — Marcus",     steps:stepsGame,      who:"Marcus · solo game dev" },
@@ -1366,6 +1412,7 @@ const JOURNEYS = {
   library:  { label:"🗂 Library & tools",    steps:stepsLibrary,   who:"Shared machinery" },
   help:     { label:"❓ Help system",         steps:stepsHelp,      who:"Help — proposal" },
   splab:    { label:"🔬 Speaker Lab",         steps:stepsSplab,     who:"Attribution tuning" },
+  qc:       { label:"🎧 Proof & QC",           steps:stepsQC,        who:"Sarah · quality pass" },
   flow:     { label:"🧭 Identity flow",      steps:stepsFlow,      who:"Concept map" },
 };
 let cur = { j:"audiobook", s:0 };
@@ -1397,7 +1444,7 @@ document.addEventListener("keydown",e=>{
   if(e.key==="ArrowLeft") move(-1);
 });
 (function init(){
-  const m = location.hash.match(/^#(audiobook|game|podcast|firstrun|dictation|fixit|library|help|splab|flow)\/(\d+)/);
+  const m = location.hash.match(/^#(audiobook|game|podcast|firstrun|dictation|fixit|library|help|splab|qc|flow)\/(\d+)/);
   if(m){ cur.j=m[1]; cur.s=Math.min(parseInt(m[2])-1, JOURNEYS[m[1]].steps.length-1); }
   render();
 })();

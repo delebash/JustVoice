@@ -404,3 +404,25 @@ audiokinetic.com/blog/speechless · resemble.ai/unreal ·
 github.com/DrewThomasson/ebook2audiobook · github.com/santinic/audiblez ·
 github.com/denizsafak/abogen · github.com/zeropointnine/tts-audiobook-tool ·
 pozotron.com
+
+## 15. Unreal MetaHuman lip-sync integration (additional idea, 2026-06-11)
+
+Three integration points verified in the current ecosystem:
+
+- **MetaHumanSDK plugin** — in-editor "Create Lipsync Animation" from a
+  sound asset (EMetahuman mapping mode). Our per-line WAVs are already
+  the input; the future .uplugin automates it: import manifest.json →
+  create SoundWaves → batch-generate lipsync animations per line.
+- **Runtime MetaHuman Lip Sync** (Fab plugin) — audio-phoneme-driven,
+  language-independent, realtime; consumes audio directly.
+- **OVRLipSync-style viseme JSON** — runtime plugins consume a viseme
+  timeline (Oculus 15-viseme set).
+
+JustVoice's add: an optional **viseme/phoneme timing sidecar** per line in
+the game export. Derivation: word-level timestamps (§14.1) refined to
+phoneme timings via forced alignment (Whisper/sherpa alignment — we
+bundle STT already), mapped to the 15-viseme set. Manifest entry gains
+`"visemes": [...]` (opt-in export toggle). This rides entirely on
+artifacts we already planned — timestamps + STT — and makes the game
+export consumable by all three integration paths without JustVoice ever
+rendering a face.
