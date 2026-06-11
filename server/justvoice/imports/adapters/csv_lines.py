@@ -99,13 +99,17 @@ def parse(raw: bytes, *, filename: str | None = None) -> StandardImport:
             except ValueError:
                 pass
 
+        # Stable line id — the game build consumes audio BY THIS ID, and
+        # re-imports match rows on it (CONCEPTS §1/§3). Falls back to the
+        # row number when the sheet has no id column.
+        line_id = col(row, "id") or col(row, "line_id") or col(row, "dialogue_id")
         scene.lines.append(
             StandardLine(
                 character_id=char_id,
                 text=line_text,
                 delivery=delivery_obj,
                 pause_after_ms=pause_ms,
-                source_ref=f"row:{row_no}",
+                source_ref=line_id or f"row:{row_no}",
             )
         )
 

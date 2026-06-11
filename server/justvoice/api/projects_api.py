@@ -587,6 +587,12 @@ def _materialize_standard(
                     text=line.text,
                     persona_id=persona_id,
                     direction=direction,
+                    # source_ref = the import's stable line id (game CSV
+                    # dialogue ids, epub paragraph refs). Re-imports and
+                    # the voiceline export key on it.
+                    metadata_json=json.dumps({"source_ref": line.source_ref})
+                    if line.source_ref
+                    else None,
                 )
             )
             total_blocks += 1
@@ -802,5 +808,24 @@ async def project_export_m4b(project_id: str, db: Session = Depends(get_db)) -> 
         content=m4b,
         media_type="audio/mp4",
         headers={"Content-Disposition": f'attachment; filename="{safe}.m4b"'},
+    )
+
+@router.post("/v1/projects/{project_id}/export_voicelines")
+async def project_export_voicelines(
+    project_id: str, db: Session = Depends(get_db)
+) -> Response:
+    """Game export — zip of per-line WAVs named by stable line id, grouped
+    by scene, plus a diffable manifest.json (mock #game/6)."""
+    from ..export_voicelines import export_voicelines
+
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if project is None:
+        raise not_found(f"project {project_id}")
+    data = export_voicelines(get_state(), project_id)
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "_", project.name) or "voicelines"
+    return Response(
+        content=data,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{safe}_VO.zip"'},
     )
 

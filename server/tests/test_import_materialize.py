@@ -113,3 +113,16 @@ def test_no_lexicon_entries_is_a_noop(db_session, tmp_path):
     assert _materialize_lexicon(_standard("Plain"), project, store, db_session) is None
     assert project.default_lexicon_id is None
     assert store.list() == []
+
+
+def test_block_source_ref_persisted(db_session):
+    from justvoice.database.models import Block
+
+    std = _standard("Book one")
+    std.scenes[0].lines[0].source_ref = "Q01_HALE_001"
+    _materialize_standard(std, db_session)
+    db_session.commit()
+    import json as _json
+
+    block = db_session.query(Block).first()
+    assert _json.loads(block.metadata_json)["source_ref"] == "Q01_HALE_001"
