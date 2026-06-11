@@ -16,7 +16,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { confirmDialog } from "../services/dialog.js";
+import { confirmDialog, promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import EmptyState from "../components/EmptyState.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
@@ -39,6 +39,10 @@ const filterProjectId = ref("");
 // Editable buffer for the selected persona — committed via "Save".
 const draft = ref(null);
 const dirty = ref(false);
+// Declared BEFORE the immediate selectedPersona watch below — it calls
+// loadUsageDetail on first run, which writes these (TDZ crash if later).
+const usageDetail = ref(null);
+const usageDetailBusy = ref(false);
 
 const selectedPersona = computed(() =>
   personas.value.find((p) => p.id === selectedId.value) ?? null,
@@ -115,7 +119,11 @@ watch(selectedPersona, (p) => {
 function markDirty() { dirty.value = true; }
 
 async function createBlank() {
-  const name = prompt("Persona name (e.g. Mara, Narrator):");
+  const name = await promptDialog({
+    title: "New persona",
+    message: "Name the character (e.g. Mara, Narrator).",
+    placeholder: "Persona name",
+  });
   if (!name) return;
   if (!voices.value.length) {
     pushToast({ kind: "error", title: "Add a voice first", description: "Personas bind to a voice — go to Voices and create one." });
@@ -223,8 +231,6 @@ async function deletePersona() {
 }
 
 const effectsEditorOpen = ref(false);
-const usageDetail = ref(null);
-const usageDetailBusy = ref(false);
 
 function openEffectsEditor() {
   effectsEditorOpen.value = true;
