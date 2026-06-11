@@ -1,37 +1,32 @@
 <!DOCTYPE html>
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!--
-  Engines page UX redesign — clickable mock (docs/plans engines-ux plan, Step 1).
+  Engines page UX redesign — clickable mock v3 (docs/plans engines-ux plan, Step 1).
 
-  What this mock demonstrates (vs the current tabbed first-pass grid):
-    1. ONE scrollable page with capability sections — no kind tabs hiding 3/4
-       of the catalog. Voice generation → Transcription → Language models →
-       Online & self-hosted providers.
-    2. Capability CHIPS (TTS/STT/LLM) instead of an exclusive kind — the
-       multi-capability provider appears once with all three chips.
-    3. "Loaded now" rail — what's resident on the GPU per slot, est. VRAM,
-       one-click unload. Makes the one-slot-per-kind policy visible.
-    4. Fits-your-hardware dots per model variant (green fits / amber tight /
-       red won't fit), computed against the machine card's VRAM.
-    5. Status-first rows — right edge is always the state: Download (size) →
-       progress → Loaded badge.
+  Decisions baked in (user-directed):
+    1. ONE scrollable page with capability sections — no kind tabs.
+       Voice generation → Transcription → Language models → Providers.
+    2. Capability CHIPS (TTS/STT/LLM) instead of an exclusive kind.
+    3. "Loaded now" rail — per-slot resident model, est. VRAM, unload.
+    4. Fits-your-hardware dots per model (green/amber/red vs detected VRAM).
+    5. Status-first rows — right edge is always the state.
     6. One Add-provider form with capability checkboxes + presets.
-    7. Search box filtering engines, variants, and providers live.
-    8. THREE-LIFECYCLE VERBS (user direction 2026-06-11): Engine = Install /
-       Uninstall (venv; auto for shared-venv engines) · Model = Download
-       (size) / Delete (weights on disk) · Memory = Load / Unload (the slot).
-       Download is the first, most prominent action on any model not on
-       disk; Delete sits next to Load once weights exist; Uninstall engine
-       is tucked inside the expanded row.
+    7. Live search over models, engines, providers.
+    8. THREE-LIFECYCLE VERBS: Install/Uninstall engine (venv; auto for
+       shared-venv engines) · Download/Delete model (disk) · Load/Unload
+       model (memory). Download = primary first action when not on disk.
+    9. ONE ROW PER MODEL (user decision 2026-06-11, option C): every model
+       is its own row with its own verbs; engines are slim group headers
+       (name, chips, description, Install/Uninstall). No engine-level Load
+       button exists, so no ambiguous "which model does this load?".
 
-  Interactions wired in this mock: search filtering, expanding engine rows,
-  variant dropdowns w/ fits-dots, Load/Unload toggling the rail, the
-  Add-provider preset buttons driving the checkboxes. All state is fake.
+  Interactions wired: search, Load/Unload updating the rail, Add-provider
+  presets driving capability checkboxes. All state is fake.
 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>JustVoice — Engines redesign mock</title>
+<title>JustVoice — Engines redesign mock v3</title>
 <style>
 :root {
   --bg:#f6f5f1; --surface:#fff; --surface-2:#fbfaf7; --surface-3:#f3f1ec;
@@ -48,12 +43,8 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:v
 .page{max-width:1180px;margin:0 auto;padding:28px 32px 80px}
 h1{font-family:var(--font-serif);font-size:24px;margin:0}
 .lede{color:var(--ink-2);font-size:13px;margin:4px 0 0;max-width:760px}
-.mono{font-family:var(--font-mono)}
 
-/* cards */
-.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 3px rgba(20,22,24,.05);padding:16px 18px;margin-top:16px}
-
-/* topbar: search + machine */
+/* topbar */
 .toprow{display:flex;gap:14px;margin-top:18px;align-items:stretch}
 .search{flex:1;display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:0 14px}
 .search input{flex:1;border:0;outline:0;font:inherit;font-size:13.5px;background:transparent;padding:12px 0}
@@ -64,7 +55,7 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
 .machine .v small{font-weight:400;color:var(--ink-3)}
 
 /* loaded-now rail */
-.rail{display:flex;align-items:center;gap:0;background:var(--surface);border:1px solid var(--accent-line);border-radius:10px;margin-top:14px;overflow:hidden}
+.rail{display:flex;align-items:center;background:var(--surface);border:1px solid var(--accent-line);border-radius:10px;margin-top:14px;overflow:hidden}
 .rail .rail-h{background:var(--accent-soft);color:var(--accent-ink);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:14px 16px;align-self:stretch;display:flex;align-items:center;border-right:1px solid var(--accent-line)}
 .slot{display:flex;align-items:center;gap:10px;padding:10px 18px;border-right:1px solid var(--line);flex:1;min-width:0}
 .slot:last-child{border-right:0}
@@ -83,24 +74,36 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
 .section-h .count{font-size:12px;color:var(--ink-3)}
 .section-h .note{margin-left:auto;font-size:12px;color:var(--ink-3)}
 
-/* engine rows */
-.engine{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-top:10px;box-shadow:0 1px 3px rgba(20,22,24,.04)}
-.erow{display:flex;align-items:center;gap:12px;padding:13px 18px;cursor:pointer}
-.erow:hover{background:var(--surface-2)}
-.erow .chev{color:var(--ink-3);font-size:11px;width:12px;transition:transform .15s}
-.engine.open .erow .chev{transform:rotate(90deg)}
-.erow .nm{font-weight:600;font-size:14.5px}
-.erow .id{font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
+/* engine group: slim header + model rows inside one card */
+.group{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-top:12px;box-shadow:0 1px 3px rgba(20,22,24,.04);overflow:hidden}
+.ghead{display:flex;align-items:center;gap:10px;padding:10px 18px;background:var(--surface-2);border-bottom:1px solid var(--line)}
+.ghead .nm{font-weight:700;font-size:13.5px}
+.ghead .id{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3)}
 .caps{display:flex;gap:4px}
-.cap{font-size:9.5px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:999px;border:1px solid var(--line-strong);color:var(--ink-2);background:var(--surface-2)}
+.cap{font-size:9.5px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:999px;border:1px solid var(--line-strong);color:var(--ink-2);background:var(--surface)}
 .cap.tts{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent-ink)}
 .cap.stt{border-color:#c8d4e8;background:#eaf0f8;color:#3a5a8c}
 .cap.llm{border-color:#e2d2b0;background:var(--gold-soft);color:var(--gold)}
-.erow .desc{color:var(--ink-3);font-size:12px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.state{margin-left:auto;display:flex;align-items:center;gap:8px;flex:none}
+.ghead .desc{color:var(--ink-3);font-size:12px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ghead .gstate{margin-left:auto;display:flex;align-items:center;gap:8px;flex:none;font-size:11.5px;color:var(--ink-3)}
+.glink{border:0;background:none;font-size:11.5px;color:var(--ink-3);cursor:pointer;text-decoration:underline;padding:0}
+.glink:hover{color:var(--red)}
+
+/* model rows */
+.model{display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--line)}
+.model:last-child{border-bottom:0}
+.model:hover{background:var(--surface-2)}
+.model.dim{opacity:.5}
+.fit{width:9px;height:9px;border-radius:50%;flex:none}
+.fit.ok{background:#4d9b6d}
+.fit.tight{background:#d9a23c}
+.fit.no{background:#c45a4d}
+.model .vn{font-weight:600;font-size:13.5px;min-width:170px}
+.model .vmeta{font-size:11.5px;color:var(--ink-3);min-width:150px}
+.model .vdesc{font-size:12px;color:var(--ink-2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.model .right{margin-left:auto;display:flex;gap:8px;align-items:center;flex:none}
 .badge{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:4px 11px;border-radius:999px}
 .badge.loaded{background:var(--accent);color:#fff}
-.badge.installed{border:1px solid var(--accent-line);color:var(--accent-ink);background:var(--accent-soft)}
 .badge.none{border:1px dashed var(--line-strong);color:var(--ink-3)}
 .btn{font:inherit;font-size:12.5px;font-weight:600;border-radius:7px;padding:7px 14px;cursor:pointer;border:1px solid var(--line)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -110,25 +113,9 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
 .btn.danger{background:var(--surface);color:var(--red);border-color:var(--line)}
 .btn.danger:hover{border-color:var(--red);background:var(--red-soft)}
 .btn.sm{font-size:11.5px;padding:4px 10px}
-.uninstall-row{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);font-size:11.5px;color:var(--ink-3)}
-.uninstall-row .btn{margin-left:auto}
-
-/* expanded detail */
-.edetail{border-top:1px solid var(--line);padding:14px 18px;display:none}
-.engine.open .edetail{display:block}
-.variant{display:flex;align-items:center;gap:12px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;margin-top:8px;background:var(--surface-2)}
-.variant:first-child{margin-top:0}
-.fit{width:9px;height:9px;border-radius:50%;flex:none}
-.fit.ok{background:#4d9b6d}
-.fit.tight{background:#d9a23c}
-.fit.no{background:#c45a4d}
-.variant .vn{font-weight:600;font-size:13px}
-.variant .vmeta{font-size:11.5px;color:var(--ink-3)}
-.variant .vdesc{font-size:12px;color:var(--ink-2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.variant .right{margin-left:auto;display:flex;gap:8px;align-items:center;flex:none}
-.progress{height:6px;border-radius:3px;background:var(--surface-3);width:160px;overflow:hidden}
+.progress{height:6px;border-radius:3px;background:var(--surface-3);width:140px;overflow:hidden}
 .progress i{display:block;height:100%;width:46%;background:var(--accent);border-radius:3px}
-.fitnote{font-size:11px;color:var(--ink-3);margin-top:10px}
+.fitnote{font-size:11px;color:var(--ink-3);margin:14px 2px 0}
 .fitnote .fit{display:inline-block;vertical-align:middle;margin:0 3px 0 10px}
 
 /* providers */
@@ -137,10 +124,12 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
 .prov .url{font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
 .dot{width:8px;height:8px;border-radius:50%;background:#4d9b6d;flex:none}
 .dot.off{background:var(--line-strong)}
+.prov .right{margin-left:auto;display:flex;gap:8px}
 
 /* add provider form */
 .addform{margin-top:12px;border:1px solid var(--accent-line);background:var(--surface);border-radius:10px;padding:16px 18px}
 .addform h3{font-family:var(--font-serif);font-size:15px;margin:0 0 4px}
+.addform .sub{font-size:11.5px;color:var(--ink-3)}
 .presets{display:flex;gap:8px;margin:10px 0 14px}
 .preset{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:5px 13px;cursor:pointer;background:var(--surface);color:var(--ink-2)}
 .preset.sel,.preset:hover{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft)}
@@ -158,12 +147,11 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
 <div class="page">
 
   <h1>Engines</h1>
-  <p class="lede">Everything that can speak, listen, or think — local engines and online providers on one page. No tabs: scroll or search.</p>
+  <p class="lede">Every model that can speak, listen, or think — one list, one row per model. Engines are the group headers; providers live at the bottom.</p>
 
-  <!-- 7. search + machine summary -->
   <div class="toprow">
     <div class="search">
-      🔍 <input id="q" placeholder="Search engines, models, providers… (try “whisper”, “0.6b”, “japanese”)" oninput="doFilter()">
+      🔍 <input id="q" placeholder="Search models, engines, providers… (try “turbo”, “0.6b”, “japanese”)" oninput="doFilter()">
       <span class="hint">/</span>
     </div>
     <div class="machine">
@@ -173,199 +161,270 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
     </div>
   </div>
 
-  <!-- 4. loaded-now rail -->
   <div class="rail" id="rail">
     <div class="rail-h">Loaded now</div>
     <div class="slot" id="slot-tts">
       <span class="k">TTS</span>
       <div><div class="name">Kokoro 82M</div><div class="sub">CPU · realtime</div></div>
-      <button class="x" title="Free this slot" onclick="unload('tts')">Unload</button>
+      <button class="x" title="Free this slot — weights stay on disk" onclick="unload('tts')">Unload</button>
     </div>
-    <div class="slot" id="slot-stt">
+    <div class="slot empty" id="slot-stt">
       <span class="k">STT</span>
       <div><div class="name">— nothing loaded</div><div class="sub">dictation will auto-load Whisper</div></div>
     </div>
     <div class="slot" id="slot-llm">
       <span class="k">LLM</span>
       <div><div class="name">Qwen3 0.6B</div><div class="sub">CUDA · refinement + compose</div></div>
-      <button class="x" title="Free this slot" onclick="unload('llm')">Unload</button>
+      <button class="x" title="Free this slot — weights stay on disk" onclick="unload('llm')">Unload</button>
     </div>
     <div class="vrtotal">est. VRAM <strong id="vr">1.8 GB</strong> / 8 GB</div>
   </div>
 
   <!-- ── Voice generation ─────────────────────────────────────────── -->
-  <div class="section-h"><h2>Voice generation</h2><span class="count" data-count>7 engines · 14 models</span><span class="note">one loaded at a time — loading a new one swaps the TTS slot</span></div>
+  <div class="section-h"><h2>Voice generation</h2><span class="count">7 engines · 14 models</span><span class="note">one model loaded at a time — loading another swaps the TTS slot</span></div>
 
-  <div class="engine open" data-search="kokoro 82m english japanese chinese preset cpu realtime">
-    <div class="erow" onclick="tog(this)">
-      <span class="chev">▶</span>
+  <div class="group" data-search="kokoro 82m preset cpu realtime english japanese chinese">
+    <div class="ghead">
       <span class="nm">Kokoro</span><span class="id">kokoro</span>
       <span class="caps"><span class="cap tts">TTS</span></span>
-      <span class="desc">54 preset voices · 8 languages · CPU realtime — the recommended first engine</span>
-      <span class="state"><span class="badge loaded">● Loaded</span></span>
+      <span class="desc">54 preset voices · CPU realtime — the recommended first engine</span>
+      <span class="gstate">engine installs automatically · <button class="glink" title="Delete downloaded weights + venv">uninstall</button></span>
     </div>
-    <div class="edetail">
-      <div class="variant">
-        <span class="fit ok" title="Fits your hardware comfortably"></span>
-        <span class="vn">Kokoro 82M</span><span class="vmeta">350 MB · CPU-friendly</span>
-        <span class="vdesc">54 preset voices · en es fr hi it pt ja zh</span>
-        <span class="right"><span class="badge loaded">● Loaded</span><button class="btn ghost sm" title="Free the TTS slot — weights stay on disk" onclick="unload('tts')">Unload model</button></span>
-      </div>
-      <div class="uninstall-row">Engine installed automatically (shared venv) · model weights 350 MB on disk
-        <button class="btn danger sm" title="Delete the downloaded weights — frees 350 MB; engine stays available">Delete model</button>
-      </div>
+    <div class="model" data-search="kokoro 82m preset cpu en es fr hi it pt ja zh">
+      <span class="fit ok" title="Fits comfortably — runs on CPU"></span>
+      <span class="vn">Kokoro 82M</span><span class="vmeta">350 MB · CPU</span>
+      <span class="vdesc">54 preset voices · en es fr hi it pt ja zh</span>
+      <span class="right"><span class="badge loaded">● Loaded</span><button class="btn ghost sm" title="Free the TTS slot — weights stay on disk" onclick="unload('tts')">Unload model</button></span>
     </div>
   </div>
 
-  <div class="engine" data-search="chatterbox multilingual turbo resemble cloning 23 languages paralinguistic tags">
-    <div class="erow" onclick="tog(this)">
-      <span class="chev">▶</span>
+  <div class="group" data-search="chatterbox resemble cloning multilingual turbo tags">
+    <div class="ghead">
       <span class="nm">Chatterbox</span><span class="id">chatterbox</span>
       <span class="caps"><span class="cap tts">TTS</span></span>
-      <span class="desc">Zero-shot voice cloning · emotion exaggeration · 23 languages (Multilingual) or tags (Turbo)</span>
-      <span class="state"><span class="badge installed">✓ Installed</span><button class="btn primary sm" onclick="event.stopPropagation();loadTTS('Chatterbox ML v2','CUDA · 6.8 GB VRAM')">Load model</button></span>
+      <span class="desc">Zero-shot voice cloning · emotion exaggeration / CFG knobs</span>
+      <span class="gstate">engine installed · 1 of 2 models on disk · <button class="glink" title="Remove the venv + all downloaded models">uninstall</button></span>
     </div>
-    <div class="edetail">
-      <div class="variant">
-        <span class="fit tight" title="Tight: 6.8 GB needed, 8 GB card — close other models first"></span>
-        <span class="vn">Multilingual v2</span><span class="vmeta">2.7 GB disk · 6.8 GB VRAM</span>
-        <span class="vdesc">500M params · 23 languages via the request's language field · recommended</span>
-        <span class="right"><button class="btn primary sm" title="Load into the TTS slot (swaps out Kokoro)" onclick="loadTTS('Chatterbox ML v2','CUDA · 6.8 GB VRAM')">Load model</button><button class="btn danger sm" title="Delete the downloaded weights — frees 2.7 GB">Delete model</button></span>
-      </div>
-      <div class="variant">
-        <span class="fit ok" title="Fits your hardware"></span>
-        <span class="vn">Turbo</span><span class="vmeta">2.2 GB disk · 6 GB VRAM</span>
-        <span class="vdesc">English only · native [laugh] [cough] [chuckle] tags · lower latency</span>
-        <span class="right"><button class="btn primary sm" title="Fetch the weights from HuggingFace — nothing loads until you say so">⬇ Download 2.2 GB</button></span>
-      </div>
-      <div class="fitnote">Hardware fit, computed against your card:<span class="fit ok"></span>fits<span class="fit tight"></span>tight — close other models<span class="fit no"></span>won't fit in 8 GB</div>
-      <div class="uninstall-row">Engine installed (shared venv) · 1 of 2 models on disk (2.7 GB)
-        <button class="btn danger sm" title="Remove the engine's venv + all its downloaded models">Uninstall engine</button>
-      </div>
+    <div class="model" data-search="chatterbox multilingual v2 500m 23 languages cloning">
+      <span class="fit tight" title="Tight: needs 6.8 GB of your 8 GB — unload the LLM first"></span>
+      <span class="vn">Multilingual v2</span><span class="vmeta">2.7 GB · 6.8 GB VRAM</span>
+      <span class="vdesc">500M params · 23 languages · recommended</span>
+      <span class="right"><button class="btn primary sm" title="Load into the TTS slot (swaps out Kokoro)" onclick="loadSlot('tts','Chatterbox ML v2','CUDA · 6.8 GB VRAM','8.2 GB ⚠')">Load model</button><button class="btn danger sm" title="Delete the downloaded weights — frees 2.7 GB">Delete model</button></span>
+    </div>
+    <div class="model" data-search="chatterbox turbo english laugh cough chuckle tags low latency">
+      <span class="fit ok" title="Fits your hardware"></span>
+      <span class="vn">Turbo</span><span class="vmeta">2.2 GB · 6 GB VRAM</span>
+      <span class="vdesc">English only · native [laugh] [cough] [chuckle] tags · lower latency</span>
+      <span class="right"><button class="btn primary sm" title="Fetch from HuggingFace — nothing loads until you say so">⬇ Download 2.2 GB</button></span>
     </div>
   </div>
 
-  <div class="engine" data-search="qwen3 tts customvoice base alibaba instruct cloning vivian ryan download progress">
-    <div class="erow" onclick="tog(this)">
-      <span class="chev">▶</span>
+  <div class="group" data-search="qwen3 tts alibaba customvoice base instruct cloning vivian ryan">
+    <div class="ghead">
       <span class="nm">Qwen3-TTS</span><span class="id">qwen3</span>
       <span class="caps"><span class="cap tts">TTS</span></span>
-      <span class="desc">9 preset speakers + instruct style control (CustomVoice) · clone-only Base checkpoints</span>
-      <span class="state">
-        <span class="progress" title="Downloading CustomVoice 1.7B — 1.6 / 3.5 GB"><i></i></span>
-        <span class="vmeta">1.6 / 3.5 GB</span>
-        <button class="btn ghost sm">Cancel</button>
-      </span>
+      <span class="desc">9 preset speakers + instruct style control (CustomVoice) · clone-only Base</span>
+      <span class="gstate">engine installed · downloading 1 model</span>
     </div>
-    <div class="edetail">
-      <div class="variant"><span class="fit tight"></span><span class="vn">CustomVoice 1.7B</span><span class="vmeta">3.5 GB · 7 GB VRAM</span><span class="vdesc">presets + instruct + cloning — downloading…</span><span class="right"><span class="progress"><i></i></span><span class="vmeta">46%</span><button class="btn ghost sm">Cancel</button></span></div>
-      <div class="variant"><span class="fit ok"></span><span class="vn">CustomVoice 0.6B</span><span class="vmeta">1.2 GB · 3.5 GB VRAM</span><span class="vdesc">same features, ~3× faster, lower ceiling</span><span class="right"><button class="btn primary sm">⬇ Download 1.2 GB</button></span></div>
-      <div class="variant"><span class="fit tight"></span><span class="vn">Base 1.7B</span><span class="vmeta">3.5 GB · 7 GB VRAM</span><span class="vdesc">clone-only · drops instruct silently</span><span class="right"><button class="btn primary sm">⬇ Download 3.5 GB</button></span></div>
-      <div class="uninstall-row">Engine installed (shared venv) · 0 of 4 models on disk
-        <button class="btn danger sm" title="Remove the engine's venv + all its downloaded models">Uninstall engine</button>
-      </div>
+    <div class="model" data-search="qwen customvoice 1.7b instruct presets downloading">
+      <span class="fit tight"></span>
+      <span class="vn">CustomVoice 1.7B</span><span class="vmeta">3.5 GB · 7 GB VRAM</span>
+      <span class="vdesc">presets + instruct + cloning — downloading…</span>
+      <span class="right"><span class="progress" title="1.6 / 3.5 GB"><i></i></span><span class="vmeta">46%</span><button class="btn ghost sm">Cancel</button></span>
+    </div>
+    <div class="model" data-search="qwen customvoice 0.6b fast">
+      <span class="fit ok"></span>
+      <span class="vn">CustomVoice 0.6B</span><span class="vmeta">1.2 GB · 3.5 GB VRAM</span>
+      <span class="vdesc">same features, ~3× faster, lower quality ceiling</span>
+      <span class="right"><button class="btn primary sm">⬇ Download 1.2 GB</button></span>
+    </div>
+    <div class="model" data-search="qwen base 1.7b clone only">
+      <span class="fit tight"></span>
+      <span class="vn">Base 1.7B</span><span class="vmeta">3.5 GB · 7 GB VRAM</span>
+      <span class="vdesc">clone-only · drops instruct silently</span>
+      <span class="right"><button class="btn primary sm">⬇ Download 3.5 GB</button></span>
+    </div>
+    <div class="model" data-search="qwen base 0.6b clone only light">
+      <span class="fit ok"></span>
+      <span class="vn">Base 0.6B</span><span class="vmeta">1.2 GB · 3.5 GB VRAM</span>
+      <span class="vdesc">lightweight cloning checkpoint</span>
+      <span class="right"><button class="btn primary sm">⬇ Download 1.2 GB</button></span>
     </div>
   </div>
 
-  <div class="engine" data-search="luxtts fast cpu friendly english">
-    <div class="erow" onclick="tog(this)">
-      <span class="chev">▶</span>
+  <div class="group" data-search="luxtts fast cpu english cloning">
+    <div class="ghead">
       <span class="nm">LuxTTS</span><span class="id">luxtts</span>
       <span class="caps"><span class="cap tts">TTS</span></span>
-      <span class="desc">Fast, CPU-friendly English cloning — 300 MB</span>
-      <span class="state"><span class="badge none">not installed</span><button class="btn ghost sm" onclick="event.stopPropagation()" title="Shared venv — installs automatically on first model download">Install engine</button></span>
+      <span class="desc">Fast, CPU-friendly English cloning</span>
+      <span class="gstate">engine installs automatically</span>
+    </div>
+    <div class="model" data-search="luxtts 300mb cpu english">
+      <span class="fit ok"></span>
+      <span class="vn">LuxTTS</span><span class="vmeta">300 MB · CPU-friendly</span>
+      <span class="vdesc">English · cloning from short reference audio</span>
+      <span class="right"><button class="btn primary sm">⬇ Download 300 MB</button></span>
     </div>
   </div>
 
-  <div class="engine" data-search="tada hume 3b multilingual flow matching">
-    <div class="erow" onclick="tog(this)">
-      <span class="chev">▶</span>
+  <div class="group" data-search="tada hume multilingual flow matching">
+    <div class="ghead">
       <span class="nm">TADA</span><span class="id">tada</span>
       <span class="caps"><span class="cap tts">TTS</span></span>
-      <span class="desc">Hume's 3B multilingual — forced alignment + flow-matching diffusion</span>
-      <span class="state"><span class="badge none">not installed</span><button class="btn ghost sm" onclick="event.stopPropagation()" title="Builds the engine's isolated venv — one time">Install engine</button></span>
+      <span class="desc">Hume's flow-matching diffusion TTS · "Built with Llama" attribution required</span>
+      <span class="gstate">engine installs automatically</span>
+    </div>
+    <div class="model" data-search="tada 3b multilingual">
+      <span class="fit no" title="Needs ~10 GB VRAM — exceeds your 8 GB card"></span>
+      <span class="vn">TADA 3B Multilingual</span><span class="vmeta">4.5 GB · 10 GB VRAM</span>
+      <span class="vdesc">en ar zh de es fr it ja pl pt — won't fit on this card</span>
+      <span class="right"><button class="btn primary sm">⬇ Download 4.5 GB</button></span>
     </div>
   </div>
 
-  <div class="engine" data-search="dia nari labs dialogue speakers s1 s2">
-    <div class="erow" onclick="tog(this)">
-      <span class="chev">▶</span>
+  <!-- CASE 1: venv-isolated engine — clickable install journey.
+       Click "Install engine" to watch: creating venv → torch (CUDA) →
+       deps → done; badge flips, model row un-dims, Download enables. -->
+  <div class="group" data-search="dia nari labs dialogue s1 s2 speakers venv">
+    <div class="ghead">
       <span class="nm">Dia</span><span class="id">dia</span>
       <span class="caps"><span class="cap tts">TTS</span></span>
-      <span class="desc">Ultra-realistic single-pass dialogue — [S1]/[S2] speaker tags</span>
-      <span class="state"><span class="badge none">not installed</span><button class="btn ghost sm" onclick="event.stopPropagation()" title="Builds the engine's isolated venv — one time">Install engine</button></span>
+      <span class="desc" id="dia-desc">Ultra-realistic single-pass dialogue · [S1]/[S2] speaker tags · needs its own environment (conflicting deps)</span>
+      <span class="gstate" id="dia-state">
+        <span class="badge none">engine not installed</span>
+        <button class="btn primary sm" title="One-time: builds Dia's isolated venv (~2 min). Models download separately afterwards." onclick="installDia(this)">Install engine</button>
+      </span>
+    </div>
+    <div class="model dim" id="dia-model" data-search="dia 1.6b dialogue">
+      <span class="fit tight"></span>
+      <span class="vn">Dia 1.6B</span><span class="vmeta">3.4 GB · 7.8 GB VRAM</span>
+      <span class="vdesc" id="dia-model-desc">install the engine first, then download</span>
+      <span class="right"><button class="btn ghost sm" id="dia-dl" disabled>⬇ Download 3.4 GB</button></span>
     </div>
   </div>
 
-  <div class="engine" data-search="moss ttsd podcast long form">
-    <div class="erow" onclick="tog(this)">
-      <span class="chev">▶</span>
+  <div class="group" data-search="moss ttsd long form dialogue venv big">
+    <div class="ghead">
       <span class="nm">MOSS-TTSD</span><span class="id">moss-tts</span>
       <span class="caps"><span class="cap tts">TTS</span></span>
-      <span class="desc">Long-form dialogue synthesis — 13 GB, big-GPU territory</span>
-      <span class="state"><span class="badge none">not installed</span><button class="btn ghost sm" onclick="event.stopPropagation()" title="Builds the engine's isolated venv — one time">Install engine</button></span>
+      <span class="desc">Long-form dialogue synthesis — big-GPU territory</span>
+      <span class="gstate"><span class="badge none">engine not installed</span><button class="btn ghost sm" title="One-time: builds MOSS's isolated venv">Install engine</button></span>
+    </div>
+    <div class="model dim" data-search="moss ttsd 13gb">
+      <span class="fit no"></span>
+      <span class="vn">MOSS-TTSD v0</span><span class="vmeta">13 GB · 16+ GB VRAM</span>
+      <span class="vdesc">install the engine first · exceeds this card regardless</span>
+      <span class="right"><button class="btn ghost sm" disabled>⬇ Download 13 GB</button></span>
     </div>
   </div>
 
-  <!-- ── Transcription ────────────────────────────────────────────── -->
-  <div class="section-h"><h2>Transcription</h2><span class="count" data-count>1 engine · 5 models</span><span class="note">powers dictation, /v1/transcribe, and agent transcription</span></div>
+  <div class="fitnote">Hardware fit, against your card and what's currently loaded:<span class="fit ok"></span>fits<span class="fit tight"></span>tight — free a slot first<span class="fit no"></span>won't fit in 8 GB</div>
 
-  <div class="engine open" data-search="whisper stt transcription base small medium large turbo dictation">
-    <div class="erow" onclick="tog(this)">
-      <span class="chev">▶</span>
+  <!-- ── Transcription ────────────────────────────────────────────── -->
+  <div class="section-h"><h2>Transcription</h2><span class="count">1 engine · 5 models</span><span class="note">powers dictation, /v1/transcribe, and agent transcription</span></div>
+
+  <div class="group" data-search="whisper stt openai transcription dictation">
+    <div class="ghead">
       <span class="nm">Whisper</span><span class="id">whisper</span>
       <span class="caps"><span class="cap stt">STT</span></span>
-      <span class="desc">OpenAI's open speech-to-text · Turbo = large-v3 accuracy at ~6× speed</span>
-      <span class="state"><span class="badge installed">✓ Installed</span><button class="btn primary sm" onclick="event.stopPropagation();loadSTT('Whisper Turbo','CUDA · 6 GB VRAM')">Load model</button></span>
+      <span class="desc">OpenAI's open speech-to-text — bigger = more accurate, slower</span>
+      <span class="gstate">engine installed · 1 of 5 models on disk · <button class="glink">uninstall</button></span>
     </div>
-    <div class="edetail">
-      <div class="variant"><span class="fit ok"></span><span class="vn">Turbo</span><span class="vmeta">3.2 GB · recommended</span><span class="vdesc">large-v3 accuracy, ~6× faster</span><span class="right"><button class="btn primary sm" onclick="loadSTT('Whisper Turbo','CUDA · 6 GB VRAM')" title="Load into the STT slot">Load model</button><button class="btn danger sm" title="Delete the downloaded weights — frees 3.2 GB">Delete model</button></span></div>
-      <div class="variant"><span class="fit ok"></span><span class="vn">Base</span><span class="vmeta">290 MB</span><span class="vdesc">fastest, dictation-grade for clear audio</span><span class="right"><button class="btn primary sm">⬇ Download 290 MB</button></span></div>
-      <div class="variant"><span class="fit no" title="6.2 GB model + your loaded LLM won't fit in 8 GB"></span><span class="vn">Large v3</span><span class="vmeta">6.2 GB</span><span class="vdesc">max accuracy — exceeds free VRAM with your current loads</span><span class="right"><button class="btn primary sm">⬇ Download 6.2 GB</button></span></div>
-      <div class="uninstall-row">Engine installed (shared venv) · 1 of 5 models on disk (3.2 GB)
-        <button class="btn danger sm" title="Remove the engine's venv + all its downloaded models">Uninstall engine</button>
-      </div>
+    <div class="model" data-search="whisper turbo large v3 recommended">
+      <span class="fit ok"></span>
+      <span class="vn">Turbo</span><span class="vmeta">3.2 GB · 6 GB VRAM</span>
+      <span class="vdesc">large-v3 accuracy at ~6× the speed — recommended</span>
+      <span class="right"><button class="btn primary sm" title="Load into the STT slot" onclick="loadSlot('stt','Whisper Turbo','CUDA · 6 GB VRAM','7.8 GB ⚠')">Load model</button><button class="btn danger sm" title="Delete the downloaded weights — frees 3.2 GB">Delete model</button></span>
+    </div>
+    <div class="model" data-search="whisper base fastest">
+      <span class="fit ok"></span>
+      <span class="vn">Base</span><span class="vmeta">290 MB · 1 GB VRAM</span>
+      <span class="vdesc">fastest — dictation-grade for clear audio</span>
+      <span class="right"><button class="btn primary sm">⬇ Download 290 MB</button></span>
+    </div>
+    <div class="model" data-search="whisper small">
+      <span class="fit ok"></span>
+      <span class="vn">Small</span><span class="vmeta">970 MB · 2 GB VRAM</span>
+      <span class="vdesc">good speed/accuracy middle ground</span>
+      <span class="right"><button class="btn primary sm">⬇ Download 970 MB</button></span>
+    </div>
+    <div class="model" data-search="whisper medium">
+      <span class="fit ok"></span>
+      <span class="vn">Medium</span><span class="vmeta">3.1 GB · 5 GB VRAM</span>
+      <span class="vdesc">solid accuracy on accented speech</span>
+      <span class="right"><button class="btn primary sm">⬇ Download 3.1 GB</button></span>
+    </div>
+    <div class="model" data-search="whisper large v3 max accuracy">
+      <span class="fit no" title="6.2 GB + your loaded LLM won't fit in 8 GB"></span>
+      <span class="vn">Large v3</span><span class="vmeta">6.2 GB · 10 GB VRAM</span>
+      <span class="vdesc">max accuracy — exceeds free VRAM with your current loads</span>
+      <span class="right"><button class="btn primary sm">⬇ Download 6.2 GB</button></span>
     </div>
   </div>
 
   <!-- ── Language models ──────────────────────────────────────────── -->
-  <div class="section-h"><h2>Language models</h2><span class="count" data-count>1 engine · 3 models</span><span class="note">stays loaded alongside TTS — attribution needs both</span></div>
+  <div class="section-h"><h2>Language models</h2><span class="count">1 engine · 3 models</span><span class="note">stays loaded alongside TTS — speaker attribution needs both</span></div>
 
-  <div class="engine" data-search="qwen3 llm local refinement compose rewrite speaker attribution 0.6b 1.7b 4b">
-    <div class="erow" onclick="tog(this)">
-      <span class="chev">▶</span>
+  <div class="group" data-search="qwen3 llm local refinement compose rewrite attribution">
+    <div class="ghead">
       <span class="nm">Qwen3 LLM (local)</span><span class="id">qwen3-llm</span>
       <span class="caps"><span class="cap llm">LLM</span></span>
       <span class="desc">Dictation refinement · persona Compose/Rewrite · speaker attribution — zero external setup</span>
-      <span class="state"><span class="badge loaded">● Loaded</span></span>
+      <span class="gstate">engine installed · 1 of 3 models on disk · <button class="glink">uninstall</button></span>
     </div>
-    <div class="edetail">
-      <div class="variant"><span class="fit ok"></span><span class="vn">0.6B</span><span class="vmeta">1.4 GB · very fast</span><span class="vdesc">live transcript refinement — recommended</span><span class="right"><span class="badge loaded">● Loaded</span><button class="btn ghost sm" title="Free the LLM slot — weights stay on disk" onclick="unload('llm')">Unload model</button></span></div>
-      <div class="variant"><span class="fit ok"></span><span class="vn">1.7B</span><span class="vmeta">3.5 GB</span><span class="vdesc">better self-corrections + technical vocabulary</span><span class="right"><button class="btn primary sm">⬇ Download 3.5 GB</button></span></div>
-      <div class="variant"><span class="fit no"></span><span class="vn">4B</span><span class="vmeta">8 GB</span><span class="vdesc">subtlest rewrites — won't fit alongside a TTS model on 8 GB</span><span class="right"><button class="btn primary sm">⬇ Download 8 GB</button></span></div>
-      <div class="uninstall-row">Engine installed (shared venv) · 1 of 3 models on disk (1.4 GB)
-        <button class="btn danger sm" title="Remove the engine's venv + all its downloaded models">Uninstall engine</button>
-      </div>
+    <div class="model" data-search="qwen3 0.6b fast refinement recommended">
+      <span class="fit ok"></span>
+      <span class="vn">Qwen3 0.6B</span><span class="vmeta">1.4 GB · 1.5 GB VRAM</span>
+      <span class="vdesc">very fast — live transcript refinement · recommended</span>
+      <span class="right"><span class="badge loaded">● Loaded</span><button class="btn ghost sm" title="Free the LLM slot — weights stay on disk" onclick="unload('llm')">Unload model</button></span>
+    </div>
+    <div class="model" data-search="qwen3 1.7b corrections vocabulary">
+      <span class="fit ok"></span>
+      <span class="vn">Qwen3 1.7B</span><span class="vmeta">3.5 GB · 4 GB VRAM</span>
+      <span class="vdesc">better self-corrections + technical vocabulary</span>
+      <span class="right"><button class="btn primary sm">⬇ Download 3.5 GB</button></span>
+    </div>
+    <div class="model" data-search="qwen3 4b subtle rewrites">
+      <span class="fit no"></span>
+      <span class="vn">Qwen3 4B</span><span class="vmeta">8 GB · 9 GB VRAM</span>
+      <span class="vdesc">subtlest rewrites — won't fit alongside a TTS model on 8 GB</span>
+      <span class="right"><button class="btn primary sm">⬇ Download 8 GB</button></span>
     </div>
   </div>
 
+  <!-- CASE 2: third-party engine, not in the catalog — drop-in contract. -->
+  <div class="addform" data-search="add custom engine third party folder git manifest plugin" style="border-style:dashed">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <h3 style="margin:0">Add a custom engine</h3>
+      <span class="cap" style="border-color:var(--gold);color:var(--gold);background:var(--gold-soft)">FUTURE — NEXT HORIZONS</span>
+    </div>
+    <span class="sub">Engines aren't hardcoded — any folder with a <span style="font-family:var(--font-mono)">manifest.py</span> + <span style="font-family:var(--font-mono)">engine.py</span> is one. It gets its own isolated environment and process, and shows up above as a group with its models, capabilities, and install steps taken from its manifest.</span>
+    <div class="frow">
+      <div><label>Engine folder</label><input type="text" placeholder="D:\engines\my-tts-engine" style="width:300px"></div>
+      <span style="color:var(--ink-3);font-size:12px;padding-top:14px">or</span>
+      <div><label>Git URL</label><input type="text" placeholder="https://github.com/you/my-tts-engine" style="width:300px"></div>
+      <button class="btn primary" style="margin-left:auto">Add engine</button>
+    </div>
+    <div class="capnote" style="color:var(--red)">⚠ Custom engines run code on your machine inside their own venv. Only add engines from sources you trust — JustVoice can isolate their dependencies, not their behavior.</div>
+  </div>
+
   <!-- ── Providers ────────────────────────────────────────────────── -->
-  <div class="section-h"><h2>Online &amp; self-hosted providers</h2><span class="count" data-count>3 connected</span><span class="note">API key + URL — no install, no VRAM</span></div>
+  <div class="section-h"><h2>Online &amp; self-hosted providers</h2><span class="count">3 connected</span><span class="note">API key + URL — no install, no downloads, no VRAM</span></div>
 
   <div class="prov" data-search="ollama local llm qwen3 8b 14b">
     <span class="dot" title="Reachable"></span>
     <span class="nm">Ollama (this PC)</span>
     <span class="caps"><span class="cap llm">LLM</span></span>
     <span class="url">http://localhost:11434 · qwen3:8b, qwen3:14b</span>
-    <span class="state"><button class="btn ghost sm">Test</button><button class="btn ghost sm">Edit</button></span>
+    <span class="right"><button class="btn ghost sm">Test</button><button class="btn ghost sm">Edit</button></span>
   </div>
 
   <div class="prov" data-search="openai cloud llm tts stt whisper gpt">
     <span class="dot" title="Reachable"></span>
     <span class="nm">OpenAI</span>
     <span class="caps"><span class="cap llm">LLM</span><span class="cap tts">TTS</span><span class="cap stt">STT</span></span>
-    <span class="url">api.openai.com · one provider, three capabilities — no more duplicate entries per tab</span>
-    <span class="state"><button class="btn ghost sm">Test</button><button class="btn ghost sm">Edit</button></span>
+    <span class="url">api.openai.com · one provider, three capabilities — no duplicate entries per tab</span>
+    <span class="right"><button class="btn ghost sm">Test</button><button class="btn ghost sm">Edit</button></span>
   </div>
 
   <div class="prov" data-search="elevenlabs tts cloud">
@@ -373,13 +432,12 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
     <span class="nm">ElevenLabs</span>
     <span class="caps"><span class="cap tts">TTS</span></span>
     <span class="url">api.elevenlabs.io · key missing — click Edit to finish setup</span>
-    <span class="state"><button class="btn ghost sm">Edit</button></span>
+    <span class="right"><button class="btn ghost sm">Edit</button></span>
   </div>
 
-  <!-- 3+6. single add-provider form w/ capability checkboxes + presets -->
-  <div class="addform" data-search="add provider form anthropic openai ollama elevenlabs speechify deepseek">
+  <div class="addform" data-search="add provider anthropic openai ollama elevenlabs deepseek custom">
     <h3>Add a provider</h3>
-    <span class="vmeta">One form for everything online — pick a preset or fill it in; check what it can do.</span>
+    <span class="sub">One form for everything online — pick a preset or fill it in; check what it can do.</span>
     <div class="presets">
       <span class="preset" onclick="preset(this,['llm'],'http://localhost:11434','Ollama')">Ollama</span>
       <span class="preset" onclick="preset(this,['llm','tts','stt'],'https://api.openai.com','OpenAI')">OpenAI</span>
@@ -405,29 +463,59 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
 </div>
 
 <script>
-function tog(row){ row.parentElement.classList.toggle("open"); }
 function unload(kind){
   const s = document.getElementById("slot-"+kind);
   s.classList.add("empty");
   s.innerHTML = '<span class="k">'+kind.toUpperCase()+'</span><div><div class="name">— nothing loaded</div><div class="sub">slot free</div></div>';
   document.getElementById("vr").textContent = kind === "llm" ? "0.4 GB" : "1.4 GB";
 }
-function fill(kind, name, sub){
+function loadSlot(kind, name, sub, vr){
   const s = document.getElementById("slot-"+kind);
   s.classList.remove("empty");
   s.innerHTML = '<span class="k">'+kind.toUpperCase()+'</span><div><div class="name">'+name+'</div><div class="sub">'+sub+'</div></div><button class="x" onclick="unload(\''+kind+'\')">Unload</button>';
+  document.getElementById("vr").textContent = vr;
 }
-function loadTTS(n, s){ fill("tts", n, s); document.getElementById("vr").textContent = "8.2 GB ⚠"; }
-function loadSTT(n, s){ fill("stt", n, s); document.getElementById("vr").textContent = "7.8 GB ⚠"; }
 function doFilter(){
   const q = document.getElementById("q").value.trim().toLowerCase();
-  document.querySelectorAll("[data-search]").forEach(el => {
-    el.classList.toggle("hidden", q && !el.getAttribute("data-search").includes(q) );
+  // Model rows filter individually; a group hides when all its models hide.
+  document.querySelectorAll(".model, .prov, .addform").forEach(el => {
+    el.classList.toggle("hidden", q && !el.getAttribute("data-search").includes(q));
+  });
+  document.querySelectorAll(".group").forEach(g => {
+    const groupHit = g.getAttribute("data-search").includes(q);
+    const anyModel = [...g.querySelectorAll(".model")].some(m => !m.classList.contains("hidden"));
+    if (groupHit && q) g.querySelectorAll(".model").forEach(m => m.classList.remove("hidden"));
+    g.classList.toggle("hidden", q && !groupHit && !anyModel);
   });
 }
 document.addEventListener("keydown", e => {
   if (e.key === "/" && document.activeElement.tagName !== "INPUT"){ e.preventDefault(); document.getElementById("q").focus(); }
 });
+function installDia(btn){
+  const state = document.getElementById("dia-state");
+  const phases = ["creating venv…", "installing torch (CUDA 12.1)…", "installing dia deps…"];
+  let i = 0;
+  state.innerHTML = '<span class="progress" style="width:120px"><i id="dia-bar" style="width:5%"></i></span><span class="vmeta" id="dia-phase">' + phases[0] + "</span>";
+  const t = setInterval(() => {
+    i++;
+    const bar = document.getElementById("dia-bar");
+    const ph = document.getElementById("dia-phase");
+    if (i < phases.length) {
+      ph.textContent = phases[i];
+      bar.style.width = (5 + i * 33) + "%";
+    } else {
+      clearInterval(t);
+      state.innerHTML = 'engine installed · 0 of 1 models on disk · <button class="glink" title="Remove the venv + all downloaded models">uninstall</button>';
+      const row = document.getElementById("dia-model");
+      row.classList.remove("dim");
+      document.getElementById("dia-model-desc").textContent = "single-pass dialogue · [S1]/[S2] tags · voice cloning";
+      const dl = document.getElementById("dia-dl");
+      dl.disabled = false;
+      dl.classList.remove("ghost");
+      dl.classList.add("primary");
+    }
+  }, 900);
+}
 function preset(el, caps, url, name){
   document.querySelectorAll(".preset").forEach(p => p.classList.remove("sel"));
   el.classList.add("sel");
