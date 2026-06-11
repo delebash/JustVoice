@@ -23,10 +23,23 @@ probe_line_cached + cache.has(); per-scene cache scope unified across
 render/QC/M4B; SessionLocal boot-order crash fixed (lazy _open_db).
 e2e ALL GREEN · 192 pytest · 16-view sweep zero JS errors.
 
-NEXT (user debug pass): element-level fidelity audit of remaining
-library surfaces (Generate/Personas/Projects/Captures/Stories/dictation
-screens) — clean but not yet mock-diffed; game/podcast Studio scales
-verified with demo data only.
+SECOND PASS (same day, after user caught Cast/nav gaps): per-screen
+side-by-side discipline — docs/gui-parity/ holds mock-vs-app pairs +
+README status table (✅/🟡/⬜ per screen). Fixed in that pass: Cast
+pixel parity (narrator spans, colored portraits, library engine pills +
+amber picking banner + ✓ cast-as rows + footer), game Cast = NPC TABLE,
+Script/Render controls on the steps row, Chapters HOME-BASE status
+table (Words/Est. audio/Script/Render from cache-stats + Add chapter +
+Open in Studio), copy vocabulary follows the OPEN PROJECT kind (was
+leaking 'Section' into audiobooks), Projects rows get Open ➜ (kind home
+base), tools lane order + Spk Lab label. Part-1 grid regression (lede
+as grid child) fixed. Capture tool: scripts/parity-cap.mjs.
+
+STILL ⬜ (next pass, listed in docs/gui-parity/README.md): Captures,
+Webhooks, podcast Episodes/Timeline element diffs, first-run
+clone/audition screens, dictation OS flows, Proof & QC screens;
+Projects/Personas/Generate marked 🟡 (functional supersets of the mock,
+layout deviations noted).
 
 ## 2026-06-11 (remote session, earlier) — Engines + AI-features redesign SHIPPED
 
