@@ -348,10 +348,14 @@ async function onSave() {
 }
 
 function showLlmFields() {
-  return props.kindHint === "llm" || props.draft?.kind === "llm" || props.draft?.kind === "both";
+  // The capability checkboxes (draft.kind) are the single source of
+  // truth — kindHint defaulting to "llm" used to force LLM fields onto
+  // TTS-only providers (user-reported: every field stacked like the old
+  // form).
+  return props.draft?.kind === "llm" || props.draft?.kind === "both";
 }
 function showTtsFields() {
-  return props.kindHint === "tts" || props.draft?.kind === "tts" || props.draft?.kind === "both";
+  return props.draft?.kind === "tts" || props.draft?.kind === "both";
 }
 </script>
 

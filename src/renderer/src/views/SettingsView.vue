@@ -432,6 +432,88 @@ async function revertConfig(feature) {
   }
 }
 
+// ── Feature routing table (redesign) ────────────────────────────────
+// Default role per feature mirrors dispatch.DEFAULT_FEATURE_ROLES.
+const DEFAULT_ROLES = {
+  compose: "quick", persona_rewrite: "quick", refine: "quick", voice_gender: "quick",
+  speaker_attribution: "accuracy", smart_assign: "accuracy", show_notes: "accuracy",
+  render_preset_suggest: "accuracy",
+};
+const EXTRA_FEATURES = [
+  { key: "refine", label: "Dictation cleanup", description: "Captures: raw speech → clean text before paste (filler removal, self-corrections, punctuation)." },
+  { key: "voice_gender", label: "Voice gender guess", description: "Voices: labels fetched voices the built-in dictionary doesn't recognise." },
+];
+const routeRows = computed(() => {
+  const cat = aiCatalog.value.map((e) => ({ key: e.key, label: e.label, description: e.description }));
+  const merged = [...cat, ...EXTRA_FEATURES.filter((x) => !cat.some((c) => c.key === x.key))];
+  return merged.map((f) => ({ ...f, defaultRole: DEFAULT_ROLES[f.key] || "accuracy" }));
+});
+function routeValue(key) {
+  const pin = pinForFeature(key);
+  if (pin?.provider_id) return `prov::${pin.provider_id}`;
+  if (pin?.role) return `inherit-${pin.role}`;
+  return `inherit-${DEFAULT_ROLES[key] || "accuracy"}`;
+}
+async function setRoute(key, value) {
+  let body;
+  if (value.startsWith("prov::")) body = { feature: key, provider_id: value.slice(6), model: "" };
+  else body = { feature: key, provider_id: "", model: "", role: value.replace("inherit-", "") };
+  try {
+    await api.request("/v1/feature-pins", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    await loadAiPanel();
+  } catch (e) {
+    pushToast({ message: `Routing save failed: ${e?.message || e}`, kind: "error" });
+  }
+}
+function resolveRoute(key) {
+  const cfg = configFor(key);
+  if (cfg) return `${cfg.model || "?"} · ${cfg.provider_id} (config)`;
+  const pin = pinForFeature(key);
+  if (pin?.provider_id) {
+    const pr = aiProviders.value.find((x) => x.id === pin.provider_id);
+    return `${pin.model || pr?.default_model || "default"} · ${pr?.name || pin.provider_id}`;
+  }
+  const role = pin?.role || DEFAULT_ROLES[key] || "accuracy";
+  const t = roles.value[role];
+  if (t?.provider_id) return `${t.model || "default"} · ${t.provider_id} (${role})`;
+  const fb = fallbackProvider.value;
+  return fb ? `${fb.default_model || "default"} · ${fb.name || fb.id} (fallback)` : "— set a role above";
+}
+
+// ── Nudge banner — provider saved on Engines hands off here ─────────
+const nudge = ref(null);
+function loadNudge() {
+  try {
+    const raw = window.sessionStorage?.getItem("jv.ai.nudge");
+    if (raw) nudge.value = JSON.parse(raw);
+  } catch { /* ignore */ }
+}
+function dismissNudge() {
+  nudge.value = null;
+  try { window.sessionStorage?.removeItem("jv.ai.nudge"); } catch { /* ignore */ }
+}
+async function acceptNudge(role) {
+  if (!nudge.value) return;
+  await setRole(role, `${nudge.value.provider_id}::${nudge.value.model || ""}`);
+  dismissNudge();
+}
+
+// ── Usage strip (4-stat summary; detail panel below keeps the table) ──
+const usageStats = computed(() => {
+  const u = aiUsage.value;
+  if (!u) return null;
+  let tokens = 0; let busiest = null; let busiestCalls = 0;
+  for (const [feat, agg] of Object.entries(u.by_feature || {})) {
+    tokens += (agg.prompt_tokens || 0) + (agg.completion_tokens || 0);
+    if (agg.calls > busiestCalls) { busiest = feat; busiestCalls = agg.calls; }
+  }
+  return { calls: u.total_calls || 0, tokens, busiest, busiestCalls };
+});
+
 // ── AI features panel (plan Q5 / Slice 1) ───────────────────────────
 // Pin LLM features (compose / persona_rewrite / speaker_attribution /
 // render_preset_suggest / smart_assign) to specific provider + model +
@@ -918,6 +1000,7 @@ onMounted(() => {
   loadAiPanel();
   loadRoles();
   loadProdConfigs();
+  loadNudge();
   loadCorrections();
 });
 </script>
@@ -1200,7 +1283,19 @@ onMounted(() => {
     </div>
 
     <!-- ─── AI features (Phase 2 / Slice 7 UI surface) ─── -->
-    <!-- ─── AI · Model roles (engines redesign) ─── -->
+    <!-- ─── AI · nudge banner (Engines provider-save hands off here) ─── -->
+    <div v-show="activeSub === 'ai'" class="jv-section" v-if="nudge">
+      <div class="ai-nudge">
+        💡 You just connected <b>{{ nudge.name || nudge.provider_id }}</b><span v-if="nudge.model"> with <span class="jv-mono">{{ nudge.model }}</span></span>.
+        Use it as one of your model roles?
+        <span class="jv-spacer" />
+        <JvButton variant="primary" size="sm" label="Use for Accuracy" title="Speaker extraction, smart-assign, show notes run on it" @click="acceptNudge('accuracy')" />
+        <JvButton variant="secondary" size="sm" label="Use for Quick" title="Dictation cleanup, Compose, Rewrite run on it" @click="acceptNudge('quick')" />
+        <JvButton variant="ghost" size="sm" label="Not now" @click="dismissNudge" />
+      </div>
+    </div>
+
+    <!-- ─── AI · Model roles (engines redesign — full contract) ─── -->
     <div v-show="activeSub === 'ai'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header" style="display:flex;align-items:center;gap:10px">
@@ -1208,31 +1303,36 @@ onMounted(() => {
           <span class="jv-spacer" />
           <JvButton v-if="roleRecs?.recommended_quick || roleRecs?.recommended_accuracy" variant="secondary" size="sm"
             label="Use recommended" title="Apply the app's hardware-aware picks for both roles" @click="acceptRecommendedRoles" />
+          <a href="#engines" class="jv-muted" style="font-size:12px;text-decoration:underline" title="Connect providers / download local models">manage engines →</a>
         </div>
         <p class="jv-muted" style="font-size:12.5px">
-          Two jobs, two models. <b>Quick</b> answers in under a second (dictation cleanup, Compose, Rewrite);
-          <b>Accuracy</b> takes its time (speaker extraction, smart-assign, show notes). Features inherit these
-          unless pinned below. Manage connections on the <a href="#engines">Engines page</a>.
+          Two jobs, two models. Recommendations come from your hardware and what's installed — pick anything; the labels just explain the trade.
         </p>
-        <div class="settings-grid" style="margin-top:12px">
-          <JvField label="Quick model" layout="block">
-            <select class="jv-input" :value="roleValue('quick')" @change="setRole('quick', $event.target.value)"
-              title="Sub-second answers — used by every keystroke-adjacent feature">
-              <option value="">(not set — features fall back to the first provider)</option>
-              <option v-for="c in roleRecs?.candidates || []" :key="`q-${c.provider_id}-${c.model}`" :value="`${c.provider_id}::${c.model}`">
-                {{ c.label }}{{ roleRecs?.recommended_quick && roleRecs.recommended_quick.model === c.model && roleRecs.recommended_quick.provider_id === c.provider_id ? ' · RECOMMENDED' : '' }}
-              </option>
-            </select>
-          </JvField>
-          <JvField label="Accuracy model" layout="block">
-            <select class="jv-input" :value="roleValue('accuracy')" @change="setRole('accuracy', $event.target.value)"
-              title="Takes its time, gets it right — used inside async jobs">
-              <option value="">(not set — features fall back to the first provider)</option>
-              <option v-for="c in roleRecs?.candidates || []" :key="`a-${c.provider_id}-${c.model}`" :value="`${c.provider_id}::${c.model}`">
-                {{ c.label }}{{ roleRecs?.recommended_accuracy && roleRecs.recommended_accuracy.model === c.model && roleRecs.recommended_accuracy.provider_id === c.provider_id ? ' · RECOMMENDED' : '' }}
-              </option>
-            </select>
-          </JvField>
+        <div class="ai-roles">
+          <div class="ai-role">
+            <div class="ai-role__name"><span class="ai-rolechip quick">QUICK</span> Quick model</div>
+            <div class="ai-role__desc">Answers in under a second. Used for: dictation cleanup · Compose · Rewrite · voice-gender guess.</div>
+            <div class="ai-role__sel">
+              <select class="jv-input" :value="roleValue('quick')" @change="setRole('quick', $event.target.value)">
+                <option value="">(not set — features fall back to the first provider)</option>
+                <option v-for="c in roleRecs?.candidates || []" :key="`q-${c.provider_id}-${c.model}`" :value="`${c.provider_id}::${c.model}`">{{ c.label }}</option>
+              </select>
+              <span v-if="roleRecs?.recommended_quick" class="ai-rec" :title="`Best speed of what's installed: ${roleRecs.recommended_quick.label}`">RECOMMENDED: {{ roleRecs.recommended_quick.model }}</span>
+            </div>
+            <div class="ai-role__hint">A local small model keeps dictation cleanup free and instant — cloud models here bill on every sentence you speak.</div>
+          </div>
+          <div class="ai-role">
+            <div class="ai-role__name"><span class="ai-rolechip acc">ACCURACY</span> Accuracy model</div>
+            <div class="ai-role__desc">Takes its time, gets it right. Used for: speaker extraction · smart-assign · show notes.</div>
+            <div class="ai-role__sel">
+              <select class="jv-input" :value="roleValue('accuracy')" @change="setRole('accuracy', $event.target.value)">
+                <option value="">(not set — features fall back to the first provider)</option>
+                <option v-for="c in roleRecs?.candidates || []" :key="`a-${c.provider_id}-${c.model}`" :value="`${c.provider_id}::${c.model}`">{{ c.label }}</option>
+              </select>
+              <span v-if="roleRecs?.recommended_accuracy" class="ai-rec" :title="`Biggest model you can run: ${roleRecs.recommended_accuracy.label}`">RECOMMENDED: {{ roleRecs.recommended_accuracy.model }}</span>
+            </div>
+            <div class="ai-role__hint">These features run inside async jobs — a few extra seconds buys attribution quality you'll hear in the casting.</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1246,7 +1346,7 @@ onMounted(() => {
           beats the pins below. <b>Default (tier-resolved)</b> = routing decides the model; prompts auto-match its size.
           Precedence: <span class="jv-mono" style="font-size:11px">config → pin → role → tier</span>.
         </p>
-        <div v-for="f in [{ key: 'speaker_attribution', label: 'Speaker extraction', lab: '#speakerlab' }]" :key="f.key"
+        <div v-for="f in [{ key: 'speaker_attribution', label: 'Speaker extraction', lab: '#speakerlab', hasLab: true }, { key: 'smart_assign', label: 'Smart-assign voices', lab: '', hasLab: false }]" :key="f.key"
           style="display:flex;align-items:center;gap:10px;margin-top:10px;padding:11px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2)">
           <strong style="font-size:13.5px">{{ f.label }}</strong>
           <span class="jv-muted" style="font-size:12px">
@@ -1257,138 +1357,64 @@ onMounted(() => {
             {{ configFor(f.key).model }}<span v-if="configFor(f.key).temperature != null"> · temp {{ configFor(f.key).temperature }}</span><span v-if="configFor(f.key).system_prompt"> · custom prompts</span>
           </span>
           <span class="jv-spacer" />
-          <JvButton variant="ghost" size="sm" label="Open in Speaker Lab" title="Retune the prompts and re-promote" @click="goHash(f.lab)" />
+          <JvButton v-if="f.hasLab" variant="ghost" size="sm" label="Open in Speaker Lab" title="Retune the prompts and re-promote" @click="goHash(f.lab)" />
+          <span v-else class="jv-muted" style="font-size:11.5px">Lab coming later</span>
           <JvButton v-if="configFor(f.key)" variant="ghost" size="sm" label="Revert to Default" title="Back to the routing table + tier-resolved prompts" @click="revertConfig(f.key)" />
+        </div>
+        <div class="ai-ladder">
+          <div class="ai-step"><span class="n">1</span><span class="w">Active production config</span><span class="who">exact model + prompts, promoted from a Lab — wins outright</span></div>
+          <div class="ai-step"><span class="n">2</span><span class="w">Feature override</span><span class="who">a specific provider picked in the routing table</span></div>
+          <div class="ai-step"><span class="n">3</span><span class="w">Role default</span><span class="who">Quick or Accuracy, from Model roles above</span></div>
+          <div class="ai-step"><span class="n">4</span><span class="w">Tier-resolved prompts</span><span class="who">automatic — small models get guided prompts, big ones terse; never a setting</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── AI · usage strip (summary; the detail panel below keeps the table) ─── -->
+    <div v-show="activeSub === 'ai'" class="jv-section" v-if="usageStats">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">AI usage</h3></div>
+        <div class="ai-usage">
+          <div class="u"><b>{{ usageStats.calls.toLocaleString() }}</b>calls recorded</div>
+          <div class="u"><b>{{ usageStats.tokens.toLocaleString() }}</b>tokens total</div>
+          <div class="u"><b>{{ usageStats.busiest || '—' }}</b>busiest feature <small v-if="usageStats.busiestCalls">· {{ usageStats.busiestCalls }} calls</small></div>
         </div>
       </div>
     </div>
 
     <div v-show="activeSub === 'ai'" class="jv-section">
+      <!-- Feature routing — redesigned table (approved ai-features contract).
+           Plain-English rows; each inherits a role or overrides to a
+           provider; Resolves-to shows the actual model; CONFIG tag marks
+           rows where a promoted Lab config wins. -->
       <div class="jv-card">
-        <div class="jv-card__header">
-          <h3 class="jv-card__title">AI feature routing</h3>
-        </div>
-        <p class="jv-muted" style="font-size: 12.5px; margin: 4px 0 14px">
-          Pin LLM features to a specific provider, model, and tier. Unpinned features fall back to the first registered LLM provider. Register providers in <a href="#engines">Engines → LLM tab → + Add LLM provider</a>.
+        <div class="jv-card__header"><h3 class="jv-card__title">Feature routing</h3></div>
+        <p class="jv-muted" style="font-size: 12.5px">
+          Every AI feature, in plain words, and what answers it. “Inherit” follows the Model roles above —
+          override any row to a specific provider when you care. An active production config (purple tag) wins outright.
         </p>
-
-        <div v-if="!aiProviders.length" class="jv-banner jv-banner--warn" style="margin-bottom: 12px">
-          No LLM providers registered yet. Compose, Rewrite, Smart-assign, Speaker attribution, and Suggest will return errors until at least one provider is added.
-        </div>
-
-        <table class="jv-table jv-form-section" style="max-width: 880px">
-          <thead>
-            <tr>
-              <th style="width: 180px">Feature</th>
-              <th>Provider</th>
-              <th style="width: 200px">Model</th>
-              <th style="width: 120px">Tier</th>
-              <th style="width: 80px" />
-            </tr>
-          </thead>
+        <table class="jv-table" style="margin-top: 12px">
+          <thead><tr><th style="width:36%">Feature</th><th style="width:26%">Uses</th><th>Resolves to</th><th></th></tr></thead>
           <tbody>
-            <tr v-for="entry in aiCatalog" :key="entry.key">
+            <tr v-for="f in routeRows" :key="f.key">
               <td>
-                <strong style="font-size: 12.5px">{{ entry.label }}</strong>
-                <div class="jv-muted" style="font-size: 11px; line-height: 1.4; margin-top: 2px">
-                  {{ entry.description }}
-                </div>
+                <div style="font-weight:600">{{ f.label }}</div>
+                <div class="jv-muted" style="font-size:11.5px">{{ f.description }}</div>
               </td>
               <td>
-                <select
-                  class="jv-input jv-input--sm jv-w-id"
-                  :value="pinForFeature(entry.key)?.provider_id || ''"
-                  :disabled="aiBusy || !aiProviders.length"
-                  @change="(e) => {
-                    const pid = e.target.value;
-                    if (!pid) { clearPin(entry.key); return; }
-                    const existing = pinForFeature(entry.key);
-                    savePin(entry.key, pid, existing?.model || '', existing?.tier || entry.recommended_tier);
-                  }"
-                >
-                  <option value="">
-                    Inherit default{{ fallbackProvider ? ` · ${fallbackProvider.name}` : "" }}
-                  </option>
-                  <option v-for="p in aiProviders" :key="p.id" :value="p.id">
-                    {{ p.name }}
-                  </option>
+                <select class="jv-input jv-input--sm" style="min-width:200px" :value="routeValue(f.key)" @change="setRoute(f.key, $event.target.value)">
+                  <option value="inherit-quick">Inherit · Quick{{ f.defaultRole === 'quick' ? ' (default)' : '' }}</option>
+                  <option value="inherit-accuracy">Inherit · Accuracy{{ f.defaultRole === 'accuracy' ? ' (default)' : '' }}</option>
+                  <option v-for="pr in aiProviders" :key="pr.id" :value="`prov::${pr.id}`">{{ pr.name || pr.id }} · {{ pr.default_model || 'default model' }}</option>
                 </select>
               </td>
-              <td>
-                <div style="display: flex; gap: 4px; align-items: center;">
-                  <input
-                    type="text"
-                    class="jv-input jv-input--sm jv-w-id"
-                    :value="pinForFeature(entry.key)?.model || ''"
-                    :placeholder="aiProviders.find((p) => p.id === pinForFeature(entry.key)?.provider_id)?.default_model || 'default'"
-                    :disabled="aiBusy || !pinForFeature(entry.key)"
-                    :list="pinForFeature(entry.key)?.provider_id ? `ai-models-${pinForFeature(entry.key).provider_id}` : null"
-                    @change="(e) => {
-                      const p = pinForFeature(entry.key);
-                      if (!p) return;
-                      savePin(entry.key, p.provider_id, e.target.value, p.tier);
-                    }"
-                  />
-                  <button
-                    v-if="pinForFeature(entry.key)?.provider_id"
-                    type="button"
-                    class="jv-btn jv-btn--ghost jv-btn--sm"
-                    :disabled="providerModelsBusy[pinForFeature(entry.key).provider_id]"
-                    title="Fetch model list from provider"
-                    @click="fetchProviderModels(pinForFeature(entry.key).provider_id)"
-                    style="padding: 2px 6px; min-width: 0;"
-                  >{{ providerModelsBusy[pinForFeature(entry.key).provider_id] ? "…" : "↻" }}</button>
-                  <datalist
-                    v-if="pinForFeature(entry.key)?.provider_id && providerModels[pinForFeature(entry.key).provider_id]"
-                    :id="`ai-models-${pinForFeature(entry.key).provider_id}`"
-                  >
-                    <option v-for="m in providerModels[pinForFeature(entry.key).provider_id]" :key="m" :value="m" />
-                  </datalist>
-                </div>
-              </td>
-              <td>
-                <select
-                  class="jv-input jv-input--sm jv-w-token"
-                  :value="pinForFeature(entry.key)?.tier || entry.recommended_tier"
-                  :disabled="aiBusy || !pinForFeature(entry.key)"
-                  @change="(e) => {
-                    const p = pinForFeature(entry.key);
-                    if (!p) return;
-                    savePin(entry.key, p.provider_id, p.model || '', e.target.value);
-                  }"
-                >
-                  <option value="guided">Guided</option>
-                  <option value="direct">Direct</option>
-                  <option value="reasoned">Reasoned</option>
-                </select>
-                <div v-if="entry.recommended_tier && entry.recommended_tier !== (pinForFeature(entry.key)?.tier || entry.recommended_tier)" class="jv-muted" style="font-size: 10.5px">
-                  rec: {{ entry.recommended_tier }}
-                </div>
-              </td>
-              <td>
-                <div style="display: flex; align-items: center; gap: 4px;">
-                  <a
-                    v-if="LAB_PATHS[entry.key]"
-                    :href="LAB_PATHS[entry.key].href"
-                    class="jv-muted"
-                    style="font-size: 10.5px; text-decoration: underline dotted;"
-                    :title="`Tune this feature's prompts + tier in ${LAB_PATHS[entry.key].label}`"
-                  >Lab</a>
-                  <button
-                    v-if="pinForFeature(entry.key)"
-                    type="button"
-                    class="jv-btn jv-btn--ghost jv-btn--sm"
-                    :disabled="aiBusy"
-                    title="Clear pin"
-                    @click="clearPin(entry.key)"
-                    style="padding: 2px 6px; min-width: 0;"
-                  >✕</button>
-                </div>
-              </td>
+              <td><span class="jv-mono" style="font-size:11.5px">{{ resolveRoute(f.key) }}</span></td>
+              <td><span v-if="configFor(f.key)" class="jv-pill jv-pill--violet" :title="`Promoted Lab config '${configFor(f.key).name}' wins for this feature`">CONFIG</span></td>
             </tr>
           </tbody>
         </table>
       </div>
+
 
       <!-- ── Speaker corrections — Phase 5 surfacing ── -->
       <div class="jv-card" style="margin-top: 16px">
@@ -2356,6 +2382,29 @@ onMounted(() => {
   grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
+
+/* AI features — redesign cards (nudge, role panels, ladder, usage strip) */
+.ai-nudge{display:flex;gap:10px;align-items:center;padding:12px 16px;border:1px solid var(--accent-line,#b8d2c3);background:var(--accent-soft,#e8f0eb);border-radius:10px;font-size:13px}
+.ai-roles{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
+.ai-role{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:var(--surface-2,#fbfaf7)}
+.ai-role__name{font-weight:700;font-size:13.5px;display:flex;gap:8px;align-items:center}
+.ai-role__desc{font-size:12px;color:var(--ink-2);margin:3px 0 10px}
+.ai-role__sel{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ai-role__sel select{flex:1;min-width:220px}
+.ai-role__hint{font-size:11px;color:var(--ink-3);margin-top:7px}
+.ai-rolechip{font-size:10px;font-weight:700;letter-spacing:.04em;border-radius:999px;padding:2px 9px}
+.ai-rolechip.quick{background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049);border:1px solid var(--accent-line,#b8d2c3)}
+.ai-rolechip.acc{background:#f5edda;color:#b08a3e;border:1px solid #e2d2b0}
+.ai-rec{font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--accent-ink,#2c6049);background:var(--accent-soft,#e8f0eb);border:1px solid var(--accent-line,#b8d2c3);border-radius:999px;padding:2px 8px}
+.ai-ladder{margin-top:14px;border-left:3px solid var(--accent-line,#b8d2c3);padding-left:14px}
+.ai-step{display:flex;gap:10px;align-items:baseline;padding:4px 0;font-size:13px}
+.ai-step .n{font-weight:700;color:var(--accent-ink,#2c6049);font-family:var(--font-mono);font-size:12px}
+.ai-step .w{font-weight:600;min-width:200px}
+.ai-step .who{color:var(--ink-3);font-size:12px}
+.ai-usage{display:flex;gap:30px;margin-top:8px}
+.ai-usage .u{font-size:13px;color:var(--ink-2)}
+.ai-usage .u b{display:block;font-size:17px;color:var(--ink)}
+.ai-usage .u small{color:var(--ink-3)}
 
 /* Workspace-focus chips — same visual family as the welcome modal's
    use-case cards, compacted to a single selectable row. */
