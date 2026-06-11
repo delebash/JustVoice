@@ -1,7 +1,15 @@
 <!DOCTYPE html>
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!--
-  Engines page UX redesign — clickable mock v4 (docs/plans engines-ux plan).
+  Engines page UX redesign — clickable mock v5 (docs/plans engines-ux plan).
+
+  v5 additions (user direction):
+    - ALL provider rows collapsed by default; Edit expands in place; ONE
+      open form at a time; "+ Add provider" row hidden until clicked.
+    - A/B layout comparison toggle (mock-only chrome): A = providers have
+      one canonical home + slim "via providers" cross-ref rows ending each
+      capability section; B = provider rows duplicated fully inside every
+      capability section they serve (no separate providers section).
 
   Decisions baked in (user-directed across v1→v4):
     1. ONE scrollable page, capability sections titled WITH the capability:
@@ -35,7 +43,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>JustVoice — Engines redesign mock v4</title>
+<title>JustVoice — Engines redesign mock v5</title>
 <style>
 :root {
   --bg:#f6f5f1; --surface:#fff; --surface-2:#fbfaf7; --surface-3:#f3f1ec;
@@ -176,6 +184,25 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
 .addengine .sub{font-size:11.5px;color:var(--ink-3);display:block;margin-top:4px}
 .warn{font-size:11.5px;color:var(--red);margin-top:8px}
 .hidden{display:none!important}
+
+/* ── A/B layout variants ───────────────────────────────────────────── */
+.vswitch{display:flex;align-items:center;gap:10px;margin-top:18px;padding:10px 14px;border:1px solid var(--gold);background:var(--gold-soft);border-radius:10px;font-size:12.5px}
+.vswitch .vbtn{font:inherit;font-size:12px;font-weight:700;border:1px solid var(--line-strong);background:var(--surface);border-radius:999px;padding:5px 14px;cursor:pointer;color:var(--ink-2)}
+.vswitch .vbtn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.vswitch .vdesc2{color:var(--ink-2)}
+/* cross-reference rows (Variant A) */
+.xrefs{margin-top:10px}
+.xref-h{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:14px 0 6px 2px}
+.xref{display:flex;align-items:center;gap:10px;background:var(--surface-2);border:1px dashed var(--line-strong);border-radius:8px;padding:8px 14px;margin-top:6px;font-size:12.5px;color:var(--ink-2)}
+.xref .cloud{flex:none}
+.xref b{color:var(--ink)}
+.xref a{margin-left:auto;color:var(--accent-ink);cursor:pointer;font-size:12px;text-decoration:underline;white-space:nowrap}
+/* variant visibility */
+.vb{display:none}
+body.vb-mode .va{display:none!important}
+body.vb-mode .vb{display:block}
+body.vb-mode .vb.prov{display:block}
+body.vb-mode #prov-home{display:none}
 </style>
 </head>
 <body>
@@ -213,6 +240,14 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
       <button class="x" title="Free this slot — weights stay on disk" onclick="unload('llm')">Unload</button>
     </div>
     <div class="vrtotal">est. VRAM <strong id="vr">1.8 GB</strong> / 8 GB</div>
+  </div>
+
+  <!-- A/B comparison toggle — mock-only chrome, not part of the design -->
+  <div class="vswitch">
+    <strong>Compare layouts:</strong>
+    <button class="vbtn on" id="vbtn-a" onclick="setVariant('a')">A — one home + cross-refs</button>
+    <button class="vbtn" id="vbtn-b" onclick="setVariant('b')">B — providers duplicated per section</button>
+    <span class="vdesc2" id="vdesc">A: providers configured ONCE in their own section; each capability section ends with slim "via providers" pointer rows.</span>
   </div>
 
   <!-- ════ Voice generation — TTS ════ -->
@@ -394,6 +429,45 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
     </div>
   </div>
 
+
+  <!-- VARIANT A: slim cross-refs — canonical provider rows live in the providers section -->
+  <div class="xrefs va" data-search="openai elevenlabs tts via providers cloud">
+    <div class="xref-h">Online — via your providers</div>
+    <div class="xref"><span class="cloud">☁</span><b>OpenAI</b> · tts: gpt-4o-mini-tts · 10 voices · key set <a onclick="goProv()" title="Jump to this provider's row to edit it">configure ↓</a></div>
+    <div class="xref"><span class="cloud">☁</span><b>ElevenLabs</b> · eleven_flash_v2_5 · no key yet <a onclick="goProv()" title="Jump to this provider's row to edit it">configure ↓</a></div>
+  </div>
+
+  <!-- VARIANT B: the same providers rendered fully inside this section -->
+  <div class="prov vb" data-search="openai provider tts">
+    <div class="prow">
+      <span class="dot"></span>
+      <div class="pmain">
+        <span class="nm">OpenAI</span>
+        <span class="caps" style="display:inline-flex;margin-left:6px"><span class="cap tts">TTS</span></span>
+        <span class="builtin">BUILT-IN</span>
+        <span class="url">https://api.openai.com/v1</span>
+        <span class="msum">tts: <b>gpt-4o-mini-tts</b> · 10 voices · key set</span>
+      </div>
+      <span class="right"><button class="btn ghost sm">Test</button><button class="btn ghost sm" onclick="togEdit(this)">Edit</button></span>
+    </div>
+    <div class="pform"><div class="frow"><div class="f"><label>Base URL</label><input type="text" value="https://api.openai.com/v1"></div><div class="f"><label>API key</label><input type="text" placeholder="…"></div></div>
+      <div class="formfoot"><span class="pstatus">same provider record — editing here edits it everywhere</span><span class="spacer"></span><button class="btn ghost" onclick="togEdit(this)">Cancel</button><button class="btn primary">Save</button></div></div>
+  </div>
+  <div class="prov vb" data-search="elevenlabs provider tts">
+    <div class="prow">
+      <span class="dot off"></span>
+      <div class="pmain">
+        <span class="nm">ElevenLabs</span>
+        <span class="caps" style="display:inline-flex;margin-left:6px"><span class="cap tts">TTS</span></span>
+        <span class="builtin">BUILT-IN</span>
+        <span class="url">https://api.elevenlabs.io/v1</span>
+        <span class="msum">tts: <b>eleven_flash_v2_5</b> · no key — add one to fetch voices</span>
+      </div>
+      <span class="right"><button class="btn ghost sm">Test</button><button class="btn ghost sm" onclick="togEdit(this)">Edit</button></span>
+    </div>
+    <div class="pform"><div class="frow"><div class="f"><label>Base URL</label><input type="text" value="https://api.elevenlabs.io/v1"></div><div class="f"><label>API key</label><input type="text" placeholder="…"></div></div>
+      <div class="formfoot"><span class="pstatus">same provider record — editing here edits it everywhere</span><span class="spacer"></span><button class="btn ghost" onclick="togEdit(this)">Cancel</button><button class="btn primary">Save</button></div></div>
+  </div>
   <!-- ════ Transcription — STT ════ -->
   <div class="section-h"><h2>Transcription <span class="ksuffix">— STT</span></h2><span class="count">1 engine · 5 models</span><span class="note">powers dictation, /v1/transcribe, and agent transcription</span></div>
 
@@ -435,6 +509,27 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
     </div>
   </div>
 
+
+  <div class="xrefs va" data-search="openai stt whisper via providers cloud">
+    <div class="xref-h">Online — via your providers</div>
+    <div class="xref"><span class="cloud">☁</span><b>OpenAI</b> · stt: whisper-1 · key set <a onclick="goProv()" title="Jump to this provider's row to edit it">configure ↓</a></div>
+  </div>
+
+  <div class="prov vb" data-search="openai provider stt">
+    <div class="prow">
+      <span class="dot"></span>
+      <div class="pmain">
+        <span class="nm">OpenAI</span>
+        <span class="caps" style="display:inline-flex;margin-left:6px"><span class="cap stt">STT</span></span>
+        <span class="builtin">BUILT-IN</span>
+        <span class="url">https://api.openai.com/v1</span>
+        <span class="msum">stt: <b>whisper-1</b> · key set</span>
+      </div>
+      <span class="right"><button class="btn ghost sm">Test</button><button class="btn ghost sm" onclick="togEdit(this)">Edit</button></span>
+    </div>
+    <div class="pform"><div class="frow"><div class="f"><label>Base URL</label><input type="text" value="https://api.openai.com/v1"></div><div class="f"><label>API key</label><input type="text" placeholder="…"></div></div>
+      <div class="formfoot"><span class="pstatus">same provider record — editing here edits it everywhere</span><span class="spacer"></span><button class="btn ghost" onclick="togEdit(this)">Cancel</button><button class="btn primary">Save</button></div></div>
+  </div>
   <!-- ════ Language models — LLM ════ -->
   <div class="section-h"><h2>Language models <span class="ksuffix">— LLM</span></h2><span class="count">1 engine · 3 models</span><span class="note">stays loaded alongside TTS — speaker attribution needs both</span></div>
 
@@ -468,6 +563,43 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
     </div>
   </div>
 
+
+  <div class="xrefs va" data-search="openai ollama llm chat via providers cloud">
+    <div class="xref-h">Online — via your providers</div>
+    <div class="xref"><span class="cloud">☁</span><b>Ollama (this PC)</b> · chat: qwen3:8b · 2 models pulled <a onclick="goProv()" title="Jump to this provider's row to edit it">configure ↓</a></div>
+    <div class="xref"><span class="cloud">☁</span><b>OpenAI</b> · chat: gpt-4o-mini · key set <a onclick="goProv()" title="Jump to this provider's row to edit it">configure ↓</a></div>
+  </div>
+
+  <div class="prov vb" data-search="ollama (this pc) provider llm">
+    <div class="prow">
+      <span class="dot"></span>
+      <div class="pmain">
+        <span class="nm">Ollama (this PC)</span>
+        <span class="caps" style="display:inline-flex;margin-left:6px"><span class="cap llm">LLM</span></span>
+        <span class="builtin">BUILT-IN</span>
+        <span class="url">http://localhost:11434</span>
+        <span class="msum">chat: <b>qwen3:8b</b> · 2 models pulled · no key</span>
+      </div>
+      <span class="right"><button class="btn ghost sm">Test</button><button class="btn ghost sm" onclick="togEdit(this)">Edit</button></span>
+    </div>
+    <div class="pform"><div class="frow"><div class="f"><label>Base URL</label><input type="text" value="http://localhost:11434"></div><div class="f"><label>API key</label><input type="text" placeholder="…"></div></div>
+      <div class="formfoot"><span class="pstatus">same provider record — editing here edits it everywhere</span><span class="spacer"></span><button class="btn ghost" onclick="togEdit(this)">Cancel</button><button class="btn primary">Save</button></div></div>
+  </div>
+  <div class="prov vb" data-search="openai provider llm">
+    <div class="prow">
+      <span class="dot"></span>
+      <div class="pmain">
+        <span class="nm">OpenAI</span>
+        <span class="caps" style="display:inline-flex;margin-left:6px"><span class="cap llm">LLM</span></span>
+        <span class="builtin">BUILT-IN</span>
+        <span class="url">https://api.openai.com/v1</span>
+        <span class="msum">chat: <b>gpt-4o-mini</b> · key set</span>
+      </div>
+      <span class="right"><button class="btn ghost sm">Test</button><button class="btn ghost sm" onclick="togEdit(this)">Edit</button></span>
+    </div>
+    <div class="pform"><div class="frow"><div class="f"><label>Base URL</label><input type="text" value="https://api.openai.com/v1"></div><div class="f"><label>API key</label><input type="text" placeholder="…"></div></div>
+      <div class="formfoot"><span class="pstatus">same provider record — editing here edits it everywhere</span><span class="spacer"></span><button class="btn ghost" onclick="togEdit(this)">Cancel</button><button class="btn primary">Save</button></div></div>
+  </div>
   <div class="fitnote">Hardware fit, against your card and what's currently loaded:<span class="fit ok"></span>fits<span class="fit tight"></span>tight — free a slot first<span class="fit no"></span>won't fit in 8 GB</div>
 
   <div class="runtime" data-search="shared runtime venv maintenance rebuild remove">
@@ -488,7 +620,8 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
     <div class="warn">⚠ Custom engines run code on your machine inside their own venv. Only add sources you trust — isolation covers dependencies, not behavior.</div>
   </div>
 
-  <!-- ════ Providers ════ -->
+  <!-- ════ Providers (canonical home — hidden in Variant B) ════ -->
+  <div id="prov-home">
   <div class="section-h"><h2>Online &amp; self-hosted providers</h2><span class="count">3 configured</span><button class="btn primary sm" onclick="toggleNewProv()" title="Connect a cloud or self-hosted API — no install, no downloads, no VRAM">+ Add provider</button></div>
 
   <!-- blank inline ADD row (hidden until + Add provider) -->
@@ -562,7 +695,7 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
   </div>
 
   <!-- this row starts in editing state so the mock shows the inline form + live model discovery -->
-  <div class="prov editing" data-search="openai cloud llm tts stt whisper gpt voices">
+  <div class="prov" data-search="openai cloud llm tts stt whisper gpt voices">
     <div class="prow">
       <span class="dot" title="Reachable"></span>
       <div class="pmain">
@@ -647,13 +780,33 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
 
 </div>
 
+</div><!-- /page -->
+
 <script>
 function tog(head){ head.parentElement.classList.toggle("open"); }
 function togEdit(btn){
   const prov = btn.closest(".prov");
-  prov.classList.toggle("editing");
+  const wasOpen = prov.classList.contains("editing");
+  // one open form at a time — opening any form closes the others
+  document.querySelectorAll(".prov.editing").forEach(x => x.classList.remove("editing"));
+  document.getElementById("newprov").classList.add("hidden");
+  if (!wasOpen) prov.classList.add("editing");
 }
-function toggleNewProv(){ document.getElementById("newprov").classList.toggle("hidden"); }
+function setVariant(v){
+  document.body.classList.toggle("vb-mode", v === "b");
+  document.getElementById("vbtn-a").classList.toggle("on", v === "a");
+  document.getElementById("vbtn-b").classList.toggle("on", v === "b");
+  document.getElementById("vdesc").textContent = v === "a"
+    ? "A: providers configured ONCE in their own section; each capability section ends with slim \"via providers\" pointer rows."
+    : "B: provider rows render fully inside every capability section they serve (OpenAI appears 3×) — no separate providers section.";
+}
+function goProv(){
+  document.getElementById("prov-home").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function toggleNewProv(){
+  document.querySelectorAll(".prov.editing").forEach(x => x.classList.remove("editing"));
+  document.getElementById("newprov").classList.toggle("hidden");
+}
 function unload(kind){
   const s = document.getElementById("slot-"+kind);
   s.classList.add("empty");
@@ -668,7 +821,7 @@ function loadSlot(kind, name, sub, vr){
 }
 function doFilter(){
   const q = document.getElementById("q").value.trim().toLowerCase();
-  document.querySelectorAll(".model, .prov:not(#newprov), .addengine, .runtime").forEach(el => {
+  document.querySelectorAll(".model, .prov:not(#newprov), .addengine, .runtime, .xrefs").forEach(el => {
     el.classList.toggle("hidden", q && !el.getAttribute("data-search").includes(q));
   });
   document.querySelectorAll(".group").forEach(g => {
