@@ -27,6 +27,31 @@ const copy = useCopy();
 
 const projects = ref([]);
 const scenes = ref([]);
+const personasById = ref({});
+async function loadPersonas() {
+  try {
+    const r = await api.safeRequest("/v1/personas", { personas: [] });
+    personasById.value = Object.fromEntries((r?.personas || []).map((p) => [p.id, p.name]));
+  } catch { /* tolerated */ }
+}
+function personaName(id) {
+  return personasById.value[id] || id.slice(0, 8);
+}
+// [laughs]-style paralinguistic tags render as pills; capable engines
+// perform them (CONCEPTS §17), so they stay visible, not buried in prose.
+function tagParts(text) {
+  const out = [];
+  let last = 0;
+  const re = /\[(\w[\w -]{0,24})\]/g;
+  let m;
+  while ((m = re.exec(text || "")) !== null) {
+    if (m.index > last) out.push({ tag: false, text: text.slice(last, m.index) });
+    out.push({ tag: true, text: m[0] });
+    last = m.index + m[0].length;
+  }
+  if (last < (text || "").length) out.push({ tag: false, text: text.slice(last) });
+  return out.length ? out : [{ tag: false, text: text || "" }];
+}
 const blocks = ref([]);
 const selectedProjectId = ref(null);
 const selectedSceneId = ref(null);
@@ -65,7 +90,8 @@ async function loadScenes(projectId) {
   if (!projectId) return;
   try {
     const res = await projectsService.listScenes(projectId);
-    scenes.value = res.scenes || [];
+    // Endpoint returns a bare array (same shape fix as StudioView).
+    scenes.value = Array.isArray(res) ? res : res?.scenes || [];
     if (scenes.value.length) {
       selectedSceneId.value = scenes.value[0].id;
     }
@@ -79,7 +105,9 @@ async function loadBlocks(sceneId) {
   if (!sceneId) return;
   try {
     const res = await projectsService.listBlocks(sceneId);
-    blocks.value = (res.blocks || []).sort((a, b) => a.position - b.position);
+    // Bare-array endpoint (same family as the scenes shape fix).
+    const list = Array.isArray(res) ? res : res?.blocks || [];
+    blocks.value = [...list].sort((a, b) => a.position - b.position);
     // Pre-fetch takes for every block (parallel).
     for (const b of blocks.value) {
       takesStore.fetchTakes(b.id);
@@ -104,7 +132,7 @@ function publishCrumbs() {
 }
 watch([selectedProjectId, selectedSceneId, projects, scenes], publishCrumbs);
 
-onMounted(loadProjects);
+onMounted(() => { loadProjects(); loadPersonas(); });
 
 // ── Voices (for re-generation) ─────────────────────────────────────────────
 
@@ -393,12 +421,12 @@ function compareDropdownOptions(blockId) {
         <!-- Block header: position + persona -->
         <div class="chapter-view__block-header">
           <span class="chapter-view__block-num">{{ block.position + 1 }}</span>
-          <span v-if="block.persona_id" class="jv-pill">{{ block.persona_id }}</span>
+          <span v-if="block.persona_id" class="jv-pill jv-pill--green">{{ personaName(block.persona_id) }}</span>
           <span v-if="block.direction" class="jv-pill jv-pill--warn">{{ block.direction }}</span>
         </div>
 
         <!-- Block text (read-only) -->
-        <p class="chapter-view__block-text">{{ block.text }}</p>
+        <p class="chapter-view__block-text"><template v-for="(part, pi) in tagParts(block.text)" :key="pi"><span v-if="part.tag" class="chapter__tag">{{ part.text }}</span><template v-else>{{ part.text }}</template></template></p>
 
         <!-- Takes area -->
         <div v-if="takesStore.loaded.has(block.id)" class="chapter-view__takes">
@@ -884,5 +912,13 @@ function compareDropdownOptions(blockId) {
   padding-top: 10px;
   display: flex;
   gap: 8px;
+}
+.chapter__tag {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--info-soft, #eaf2fa);
+  color: var(--info-blue, #2f74b5);
+  border-radius: 4px;
+  padding: 0 4px;
 }
 </style>
