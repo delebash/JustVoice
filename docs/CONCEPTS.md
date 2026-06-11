@@ -4,8 +4,10 @@
 
 Working design decisions and mental models, captured from design-review
 discussion (2026-06-11). The clickable companion is
-`preview/journeys-preview.html` (tabs: Audiobook / Game / Podcast / Identity
-flow). The per-audience walkthroughs live in `docs/journeys/`.
+`preview/journeys-preview.html` (12 tabs: the three production journeys,
+First run, Live voice, Fix-it loop, Library & tools, Help, Speaker Lab,
+Proof & QC, Identity flow). Walkthroughs: `docs/journeys/`. Build order:
+`docs/IMPLEMENTATION_PLAN.md`.
 
 ## 1. One data model, per-kind vocabulary
 
