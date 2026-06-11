@@ -188,11 +188,21 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 
     # MCP server — justvoice.speak / list_voices / list_personas for local
     # AI agents, mounted at /mcp (Streamable HTTP). Must mount before the
-    # root StaticFiles catch-all. Wraps the lifespan, so it goes after all
-    # on_event registrations would still fire (default lifespan preserved).
-    from .mcp import mount_into as mount_mcp
+    # root StaticFiles catch-all. OPTIONAL: a venv that predates the
+    # fastmcp dependency (pip install -e . not re-run after pulling) must
+    # still boot the app — the Tauri shell otherwise hangs at "Server
+    # starting…" forever on an import crash.
+    try:
+        from .mcp import mount_into as mount_mcp
 
-    mount_mcp(app)
+        mount_mcp(app)
+    except ImportError as e:
+        log.warning(
+            "MCP server disabled — optional dependency missing (%s). "
+            "Run `pip install -e .` in server/ to enable /mcp.", e
+        )
+    except Exception as e:
+        log.warning("MCP server failed to mount (continuing without it): %s", e)
 
     # Shutdown hook — make sure any running managed engine subprocess is
     # killed before the host server exits. Without this, ctrl-C in dev

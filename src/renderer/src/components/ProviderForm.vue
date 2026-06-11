@@ -50,6 +50,45 @@ const emit = defineEmits(["save", "cancel", "delete"]);
 const api = useApi();
 const busy = ref(false);
 
+// ── Presets (approved engines-redesign contract) — one click fills
+// name / base URL / API format / capabilities. ───────────────────────
+const PRESETS = [
+  { id: "ollama",     label: "Ollama",     kind: "llm",  type: "ollama",        url: "http://localhost:11434" },
+  { id: "openai",     label: "OpenAI",     kind: "both", type: "openai",        url: "https://api.openai.com/v1" },
+  { id: "anthropic",  label: "Anthropic",  kind: "llm",  type: "anthropic",     url: "https://api.anthropic.com" },
+  { id: "elevenlabs", label: "ElevenLabs", kind: "tts",  type: "openai-compat", url: "https://api.elevenlabs.io/v1" },
+  { id: "deepseek",   label: "DeepSeek",   kind: "llm",  type: "deepseek",      url: "https://api.deepseek.com" },
+  { id: "custom",     label: "Custom…",    kind: "llm",  type: "openai-compat", url: "" },
+];
+const activePreset = ref("");
+function applyPreset(pr) {
+  activePreset.value = pr.id;
+  if (pr.id !== "custom") {
+    props.draft.name = props.draft.name || pr.label;
+    props.draft.base_url = pr.url;
+    props.draft.provider_type = pr.type;
+  }
+  props.draft.kind = pr.kind;
+}
+
+// Capability checkboxes — the visual contract replaces the kind select.
+// They map onto the existing kind field ("llm" | "tts" | "both") so the
+// save plumbing is untouched.
+const capLLM = computed({
+  get: () => props.draft.kind === "llm" || props.draft.kind === "both",
+  set: (v) => { props.draft.kind = v ? (capTTS.value ? "both" : "llm") : (capTTS.value ? "tts" : "llm"); },
+});
+const capTTS = computed({
+  get: () => props.draft.kind === "tts" || props.draft.kind === "both",
+  set: (v) => { props.draft.kind = v ? (capLLM.value ? "both" : "tts") : (capLLM.value ? "llm" : "tts"); },
+});
+
+// Auto-slug the id from the name for new providers — the contract hides
+// the ID field (it was developer noise; pins reference it internally).
+function slugify(name) {
+  return (name || "provider").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "provider";
+}
+
 // Hint metadata — when the user types a known provider id, surface a
 // link to that provider's install guide or homepage. Mirrors the
 // JustWrite pattern at SettingsProviderForm.vue:34-49.
@@ -293,6 +332,9 @@ async function doPing() {
 
 // ── Save / Cancel / Delete ─────────────────────────────────────────
 async function onSave() {
+  if (props.editingKey === "new" && !props.draft.id) {
+    props.draft.id = slugify(props.draft.name);
+  }
   if (!props.draft.name?.trim()) {
     pushToast({ message: "Give the provider a display name.", kind: "info" });
     return;
@@ -315,17 +357,20 @@ function showTtsFields() {
 
 <template>
   <div class="provider-form">
+    <!-- Presets — one click fills url/format/capabilities (contract v7). -->
+    <div class="provider-form__presets" v-if="editingKey === 'new'">
+      <button v-for="pr in PRESETS" :key="pr.id" type="button"
+        class="provider-form__preset" :class="{ on: activePreset === pr.id }"
+        :title="pr.url || 'Start from a blank OpenAI-compatible provider'"
+        @click="applyPreset(pr)">{{ pr.label }}</button>
+    </div>
     <div class="provider-form__grid">
-      <!-- #3 id field — readonly on edit so feature pins don't orphan. -->
-      <span class="provider-form__label">ID</span>
-      <input
-        type="text"
-        class="jv-input jv-input--sm jv-w-id"
-        :value="draft.id"
-        :readonly="editingKey !== 'new'"
-        @input="draft.id = $event.target.value"
-        placeholder="e.g. my-claude"
-      />
+      <!-- id auto-generates from the name on create; shown readonly on
+           edit so feature pins don't orphan. -->
+      <template v-if="editingKey !== 'new'">
+        <span class="provider-form__label">ID</span>
+        <input type="text" class="jv-input jv-input--sm jv-w-id" :value="draft.id" readonly />
+      </template>
 
       <!-- #4 display name -->
       <span class="provider-form__label">Display name</span>
@@ -336,13 +381,14 @@ function showTtsFields() {
         :placeholder="`e.g. ${hint?.label || 'My provider'}`"
       />
 
-      <!-- #5 kind select — llm / tts / both -->
-      <span class="provider-form__label">Kind</span>
-      <select v-model="draft.kind" class="jv-input jv-input--sm jv-w-id">
-        <option value="llm">LLM (chat / embedding)</option>
-        <option value="tts">TTS (voice)</option>
-        <option value="both">Both</option>
-      </select>
+      <!-- capabilities — checkboxes per the approved contract (replaces
+           the kind dropdown). What's checked decides which model fields
+           appear below and where this provider can be routed. -->
+      <span class="provider-form__label">Capabilities</span>
+      <div class="provider-form__caps">
+        <label title="Chat + embeddings — compose, rewrite, speaker extraction, refinement"><input type="checkbox" v-model="capLLM" /> <span class="provider-form__cap llm">LLM</span></label>
+        <label title="Voice synthesis via /v1/audio/speech"><input type="checkbox" v-model="capTTS" /> <span class="provider-form__cap tts">TTS</span></label>
+      </div>
 
       <!-- #6 base URL -->
       <span class="provider-form__label">Base URL</span>
@@ -409,36 +455,9 @@ function showTtsFields() {
         </div>
         <span v-if="modelsError" class="provider-form__error">{{ modelsError }}</span>
 
-        <!-- #11 Tier picker — segmented, with auto/pinned source label. -->
-        <template v-if="draft.default_model">
-          <span class="provider-form__label" title="Routes speaker attribution prompts. Guided = small models, Direct = mid, Reasoned = chain-of-thought. Auto-detected from the model id; pin to override.">Tier</span>
-          <div class="provider-form__tier-row">
-            <button
-              v-for="t in TIERS"
-              :key="t.value"
-              type="button"
-              class="provider-form__tier-btn"
-              :class="{
-                'provider-form__tier-btn--active': effectiveTier === t.value,
-                'provider-form__tier-btn--pinned': pinnedTier === t.value,
-              }"
-              :title="t.blurb"
-              @click="pinTier(t.value)"
-            >
-              {{ t.label }}
-            </button>
-            <span class="jv-muted provider-form__tier-source">
-              {{ pinnedTier ? "(pinned)" : autoTier ? `(auto-detected ${autoTier})` : "" }}
-            </span>
-            <button
-              v-if="pinnedTier"
-              type="button"
-              class="jv-btn jv-btn--ghost jv-btn--sm"
-              @click="pinnedTier = ''"
-            >Clear pin</button>
-          </div>
-        </template>
-
+        <!-- Tier picker REMOVED (engines redesign): guided/direct/reasoned
+             is auto-classified internally; the only UI that surfaces it is
+             the Speaker Lab. -->
         <!-- #12 embedding model Combobox -->
         <span class="provider-form__label">Embedding model <span class="jv-muted">(optional)</span></span>
         <input
@@ -725,4 +744,13 @@ function showTtsFields() {
   padding-top: 12px;
   border-top: 1px solid var(--line);
 }
+.provider-form__presets{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.provider-form__preset{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:999px;padding:5px 13px;cursor:pointer;background:var(--surface);color:var(--ink-2)}
+.provider-form__preset.on,.provider-form__preset:hover{border-color:var(--accent);color:var(--accent-ink,#2c6049);background:var(--accent-soft,#e8f0eb)}
+.provider-form__caps{display:flex;gap:16px;align-items:center}
+.provider-form__caps label{display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
+.provider-form__caps input{accent-color:var(--accent);width:15px;height:15px}
+.provider-form__cap{font-size:9.5px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:999px;border:1px solid var(--line-strong,#cfccc4)}
+.provider-form__cap.llm{border-color:#e2d2b0;background:#f5edda;color:#b08a3e}
+.provider-form__cap.tts{border-color:var(--accent-line,#b8d2c3);background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049)}
 </style>
