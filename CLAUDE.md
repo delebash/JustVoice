@@ -48,6 +48,15 @@ What to do at session start:
 3. Look at the memory-index one-liners — note which exist; don't read them yet
 4. When a question or task touches a topic an index entry covers, **then** read that specific memory file before answering
 
+**Plans live in the repo (user rule, 2026-06-11).** Plan-mode files in
+the container (`~/.claude/plans/`) are ephemeral — they die with the
+session. When a plan is approved, copy it verbatim into
+`docs/plans/<date>-<slug>.md` and commit it with the work that executes
+it; if the plan is amended mid-execution (user decisions, verified
+findings), update the repo copy in the same commit series. Past plans in
+`docs/plans/` are project history — read the relevant one before
+re-planning work in the same area.
+
 **Highest-priority memory files** (load before touching the relevant code):
 
 - ⛔ `feedback_upstream_audit_hard_rule` — **MANDATORY on every session, every feature touch.** (A) Feature-parity claims against any upstream codebase verified file-by-file, never from summaries — lifted-but-not-wired code is the failure mode (e.g. auto-chunking module landed but wasn't imported by the generate API for weeks). (B) Upstream library/model questions (license, parameters, capabilities) go to WebSearch/WebFetch/Context7 FIRST, never training-data recall (fabricated Chatterbox emotion enum, 2026-06-09). LOAD AND APPLY BEFORE ANY OTHER MEMORY.
