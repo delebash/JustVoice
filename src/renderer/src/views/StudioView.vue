@@ -287,6 +287,14 @@ const castAsByVoiceId = computed(() => {
   return out;
 });
 
+// Deterministic avatar colors (mock gives every character its own hue).
+const AVATAR_COLORS = ["#3a7d63", "#7c5cbf", "#b3552e", "#2e7d8a", "#a8763e", "#947b2f", "#c98aa7", "#5b7a99", "#b04a3e"];
+function colorFor(name) {
+  let h = 0;
+  for (const c of String(name || "?")) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
 // First line of the persona bio doubles as the card's role line.
 function personaRole(p) {
   return (p?.bio || "").split("\n")[0].trim();
@@ -1083,6 +1091,27 @@ watch(selectedProjectId, (id) => {
         :title="t.key === 'cast' ? 'Map people to voices' : t.key === 'script' ? 'Who speaks each line' : 'Batch render + mastering'"
         @click="tab = t.key"
       >{{ t.label }}</button>
+      <template v-if="tab === 'cast' && selectedProject">
+        <span class="jv-spacer" />
+        <JvButton
+          variant="secondary"
+          size="sm"
+          label="✕ Clear cast"
+          :loading="clearCastBusy"
+          :disabled="clearCastBusy || !projectPersonas.some((p) => p.voice_id)"
+          title="Unassign every voice — personas stay"
+          @click="clearCast"
+        />
+        <JvButton
+          variant="primary"
+          size="sm"
+          label="✨ Smart-assign"
+          :loading="smartAssignBusy"
+          :disabled="smartAssignBusy"
+          title="LLM proposes a voice per character from bios + gender hints"
+          @click="smartAssignCast"
+        />
+      </template>
     </div>
 
     <!-- ── Cast tab ─────────────────────────────────────────────────── -->
@@ -1097,41 +1126,17 @@ watch(selectedProjectId, (id) => {
           in the library; click the assigned voice again to unassign. ▶ auditions any voice in
           place. Smart-assign proposes the whole cast; override card by card.
         </p>
-        <header class="studio__cast-toolbar">
-          <h3 class="jv-section__title" style="margin: 0">
-            {{ copy.cast.plural }} — {{ characterPersonas.length }}
-          </h3>
-          <span class="jv-spacer" />
-          <JvButton
-            variant="secondary"
-            size="sm"
-            label="✕ Clear cast"
-            :loading="clearCastBusy"
-            :disabled="clearCastBusy || !projectPersonas.some((p) => p.voice_id)"
-            title="Unassign every voice — personas stay"
-            @click="clearCast"
-          />
-          <JvButton
-            variant="secondary"
-            size="sm"
-            label="✨ Smart-assign"
-            :loading="smartAssignBusy"
-            :disabled="smartAssignBusy"
-            title="LLM proposes a voice per character from bios + gender hints"
-            @click="smartAssignCast"
-          />
-        </header>
-
         <div class="studio__cast-grid">
           <!-- Narrator card -->
           <article
             v-if="narratorPersona"
             class="jv-card studio__char-card studio__char-card--narrator"
+            :style="{}"
             :class="{ 'studio__char-card--selected': selectedCharacterId === narratorPersona.id }"
             @click="selectedCharacterId = narratorPersona.id"
             title="The narrator carries the prose between quotes — pick your steadiest voice"
           >
-            <span class="studio__char-portrait studio__char-portrait--narrator">N</span>
+            <span class="studio__char-portrait" :style="{ background: colorFor(narratorPersona.name) }">N</span>
             <div class="studio__char-main">
               <div class="studio__char-name-row">
                 <strong class="studio__char-name">{{ narratorPersona.name }}</strong>
@@ -1139,7 +1144,7 @@ watch(selectedProjectId, (id) => {
               </div>
               <div class="studio__char-role jv-muted">{{ personaRole(narratorPersona) || "carries the narration" }}</div>
               <div v-if="narratorPersona.voice_id" class="studio__char-voice">
-                <span class="studio__char-glyph">{{ (voiceById(narratorPersona.voice_id)?.name || "?").slice(0, 2) }}</span>
+                <span class="studio__char-glyph" :style="{ background: colorFor(voiceById(narratorPersona.voice_id)?.name), color: '#fff' }">{{ (voiceById(narratorPersona.voice_id)?.name || "?").slice(0, 2) }}</span>
                 {{ voiceById(narratorPersona.voice_id)?.name || narratorPersona.voice_id }}
                 <span class="jv-muted">· {{ voiceById(narratorPersona.voice_id)?.engine || "" }}</span>
                 <button type="button" class="studio__voice-action" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(narratorPersona.voice_id))">▶</button>
@@ -1158,12 +1163,12 @@ watch(selectedProjectId, (id) => {
             :title="`Select, then click a voice in the library to cast ${p.name}`"
             @click="selectedCharacterId = p.id"
           >
-            <span class="studio__char-portrait">{{ (p.name || "?").charAt(0).toUpperCase() }}</span>
+            <span class="studio__char-portrait" :style="{ background: colorFor(p.name) }">{{ (p.name || "?").charAt(0).toUpperCase() }}</span>
             <div class="studio__char-main">
               <strong class="studio__char-name">{{ p.name }}</strong>
               <div class="studio__char-role jv-muted">{{ personaRole(p) }}</div>
               <div v-if="p.voice_id" class="studio__char-voice">
-                <span class="studio__char-glyph">{{ (voiceById(p.voice_id)?.name || "?").slice(0, 2) }}</span>
+                <span class="studio__char-glyph" :style="{ background: colorFor(voiceById(p.voice_id)?.name), color: '#fff' }">{{ (voiceById(p.voice_id)?.name || "?").slice(0, 2) }}</span>
                 {{ voiceById(p.voice_id)?.name || p.voice_id }}
                 <span class="jv-muted">· {{ voiceById(p.voice_id)?.engine || "" }}</span>
                 <button type="button" class="studio__voice-action" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(p.voice_id))">▶</button>
