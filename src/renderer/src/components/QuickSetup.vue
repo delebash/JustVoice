@@ -143,8 +143,18 @@ const tierKey = ref("cpu");
 const recipe = computed(() => TIER_RECIPES[tierKey.value] || TIER_RECIPES.cpu);
 const tierOptions = TIER_ORDER.map((k) => ({ value: k, label: TIER_RECIPES[k].label }));
 
+// Per-engine opt-out (mock: "pick what to install") — recipe engines
+// start checked; unchecking drops them from the install run.
+const deselectedEngineIds = ref(new Set());
+function toggleEngine(id) {
+  const next = new Set(deselectedEngineIds.value);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  deselectedEngineIds.value = next;
+}
 const enginesToInstall = computed(() => {
   return recipe.value.ttsEngineIds
+    .filter((id) => !deselectedEngineIds.value.has(id))
     .map((id) => engines.value.find((e) => e.id === id))
     .filter(Boolean)
     .filter((e) => e.status === "not_installed");
@@ -401,8 +411,16 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
           <section>
             <div class="quick-setup__row-label">TTS engines</div>
             <ul class="quick-setup__engines">
-              <li v-for="id in recipe.ttsEngineIds" :key="id">
-                {{ engines.find((e) => e.id === id)?.name || id }}
+              <li v-for="id in recipe.ttsEngineIds" :key="id" class="quick-setup__engine-row">
+                <input
+                  type="checkbox"
+                  :checked="!deselectedEngineIds.has(id)"
+                  :disabled="enginesAlreadyInstalled.some((e) => e.id === id)"
+                  :title="enginesAlreadyInstalled.some((e) => e.id === id) ? 'Already on disk' : 'Uncheck to skip this engine'"
+                  @change="toggleEngine(id)"
+                />
+                <span class="quick-setup__engine-name">{{ engines.find((e) => e.id === id)?.name || id }}</span>
+                <span v-if="engines.find((e) => e.id === id)?.description" class="jv-muted quick-setup__engine-blurb">{{ engines.find((e) => e.id === id)?.description }}</span>
                 <span v-if="enginesAlreadyInstalled.some((e) => e.id === id)" class="jv-pill jv-pill--green">already installed</span>
                 <span v-else class="jv-pill jv-pill--ghost">to install</span>
               </li>
@@ -416,14 +434,11 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
           <section>
             <div class="quick-setup__row-label">Feature routing</div>
             <p class="jv-muted" style="font-size: 11.5px; margin: 0 0 6px">
-              Speaker attribution, Compose, Rewrite, Smart-assign + Suggest will pin to your registered LLM at the right tier.
+              AI features route themselves: careful-reading work (Script speaker attribution)
+              goes to your strongest model; quick tasks (Compose, Rewrite, Smart-assign,
+              preset suggestions) go to the fastest. Tune any of it later in
+              Settings → AI features.
             </p>
-            <ul class="quick-setup__pins">
-              <li v-for="(spec, feature) in recipe.featurePins" :key="feature">
-                <code>{{ feature }}</code>
-                <span class="jv-pill jv-pill--ghost">{{ spec.tier }}</span>
-              </li>
-            </ul>
             <div v-if="!hasLlmProvider" class="jv-banner jv-banner--warn" style="font-size: 11.5px; margin-top: 8px">
               <strong>No LLM provider registered yet.</strong> Feature pins will be queued — register Claude or Ollama on Engines → LLM tab after this wizard, then re-run pins from Settings → AI features.
             </div>
@@ -456,6 +471,19 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
                 <span v-else class="jv-pill jv-pill--ghost" :title="'Downloads on first use'">{{ sttReadiness.size_mb ? `${sttReadiness.size_mb} MB on first use` : "downloads on first use" }}</span>
               </li>
             </ul>
+          </section>
+
+          <section>
+            <div class="quick-setup__row-label">What happens next</div>
+            <ol class="quick-setup__next">
+              <li>Engines download &amp; verify (one-time)</li>
+              <li>Clone your voice from ~30 s of audio — or skip and use preset voices</li>
+              <li>Pick what you're making (audiobook · game · podcast) and import</li>
+            </ol>
+            <div class="jv-banner jv-banner--info" style="font-size: 11.5px; margin-top: 8px">
+              Everything runs <strong>locally</strong>. No audio or text leaves this machine
+              unless you add an external provider yourself.
+            </div>
           </section>
         </template>
 
@@ -614,4 +642,9 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
 }
 .quick-setup__helper-ic { flex: none; }
 .quick-setup__helper-name { flex: 1; min-width: 0; }
+.quick-setup__engine-row { display: flex; align-items: center; gap: 8px; }
+.quick-setup__engine-row input { accent-color: var(--accent); width: 15px; height: 15px; flex: none; }
+.quick-setup__engine-name { font-weight: 600; }
+.quick-setup__engine-blurb { font-size: 11px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quick-setup__next { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.8; }
 </style>

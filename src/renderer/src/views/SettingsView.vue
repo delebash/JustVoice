@@ -34,6 +34,10 @@ async function setUseCase(id) {
   pushToast({ kind: "success", title: "Workspace focus updated", description: "The sidebar now shows the tabs for this use case." });
 }
 
+function rerunQuickSetup() {
+  window.dispatchEvent(new Event("jv:quick-setup"));
+}
+
 // ── Backup & restore (GET /v1/backup, POST /v1/restore) ─────────────
 const aiUsage = ref(null);
 async function loadAiUsage() {
@@ -1042,6 +1046,16 @@ onMounted(() => {
             :title="u.id === 'unset' ? 'Show every tab in the sidebar' : `Focus the sidebar and vocabulary on ${u.label.toLowerCase()}`"
             @click="setUseCase(u.id)"
           >{{ u.label }}</button>
+        </div>
+        <div style="margin-top: 12px; display: flex; align-items: center; gap: 10px">
+          <JvButton
+            variant="secondary"
+            size="sm"
+            label="⚙ Run Quick Setup again"
+            title="Re-probe hardware, pick engines to install, reconnect local LLM/STT helpers"
+            @click="rerunQuickSetup"
+          />
+          <span class="jv-muted" style="font-size: 11.5px">Hardware probe → recommended engines → helper connections.</span>
         </div>
       </div>
     </div>

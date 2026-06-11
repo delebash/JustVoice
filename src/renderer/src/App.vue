@@ -380,6 +380,8 @@ onMounted(async () => {
   // Instant refresh when a view knows state changed (EnginesView after
   // load/unload dispatches this).
   window.addEventListener("jv:health-refresh", refresh);
+  // Re-run the QuickSetup wizard on demand (Settings → General, Home).
+  window.addEventListener("jv:quick-setup", () => { showQuickSetup.value = true; });
 });
 </script>
 
