@@ -5,6 +5,38 @@
 
 ---
 
+## 2026-06-11 (remote session, latest) — Engines + AI-features redesign SHIPPED
+
+Seven-iteration mock loop (preview/engines-redesign.html v7 +
+preview/ai-features-redesign.html = the approved contracts; decision log
+in their headers + docs/plans/2026-06-11-engines-ai-features-
+implementation.md). Implemented and live-verified, 186 tests + e2e green:
+
+**Engines view rebuilt** — free-vs-money tabs (Local models / Online
+providers); capability sections (— TTS/— STT/— LLM/— EMBED w/ honest
+empty state); collapsed groups w/ summaries, smart auto-expand, search +
+capability chips; one row per model w/ verb pairs (Install/Uninstall
+engine for ISOLATED only · ⬇ Download/Delete model · Load/Unload model);
+Loaded-now rail w/ per-kind unload + est. VRAM; fit dots (needs GPU VRAM
+detection — hidden in container); providers tab w/ chips + inline
+ProviderForm edit. New backend: manifest KINDS, per-variant on_disk,
+DELETE model endpoint; fixed stale known_engines() gate that 404'd
+whisper/qwen3-llm models.
+
+**AI features (Settings)** — Model roles card (Quick/Accuracy w/
+/v1/llm-roles/recommendations + Use-recommended), Production configs
+card (active name, FROM SPEAKER LAB pill, Open in Lab, Revert);
+**External TTS sub-tab removed** (Engines owns providers; model-URL
+overrides refiled under General). Dispatch precedence: production config
+> explicit pin > pin.role > default role map > first adapter — Speaker
+Lab promote now freezes model+prompts via POST /v1/production-configs
+(scene analyze consumes them). Tier-classifier bug fixed: Ollama-style
+'qwen3:14b' ids never matched the size regex.
+
+User-machine checks: fit dots need real GPU VRAM in /v1/system/info;
+provider model-fetch combobox inside ProviderForm is the remaining
+polish item (mock shows the contract).
+
 ## 2026-06-11 (remote session, later) — Voicebox parity audit + fixes
 
 **`docs/VOICEBOX_PARITY.md` is the deliverable** — file-by-file audit vs

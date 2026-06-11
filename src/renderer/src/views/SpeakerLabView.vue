@@ -263,13 +263,32 @@ async function useAsProduction(col) {
     return;
   }
   const model = col.model.trim() || current.model;
+  const hasPrompts = !!(col.systemPrompt.trim() || col.userPrompt?.trim?.());
   const ok = await confirmDialog({
     title: "Use as production?",
-    message: `Studio · Script will use ${model}${col.tier ? ` (${col.tier} tier)` : " (auto tier)"} for speaker attribution from now on.${col.systemPrompt.trim() ? " Note: custom prompt text stays in the Lab for now — pins carry provider/model/tier." : ""}`,
-    confirmLabel: "Pin it",
+    message: `Studio · Script will run speaker extraction EXACTLY as this column: ${model}${col.tier ? ` (${col.tier} tier)` : " (auto tier)"}${hasPrompts ? " with this column's prompts" : ""}. Revert anytime in Settings → AI features.`,
+    confirmLabel: "Use as production",
   });
   if (!ok) return;
   try {
+    // Full freeze — model AND prompts (engines redesign: production
+    // configs beat pins/roles; Settings → AI features shows + reverts it).
+    await api.request("/v1/production-configs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        feature: "speaker_attribution",
+        name: `${model}${col.tier ? `-${col.tier}` : ""} · lab`,
+        provider_id: current.provider_id,
+        model,
+        tier: col.tier || null,
+        temperature: col.temperature ?? null,
+        system_prompt: col.systemPrompt?.trim() || null,
+        user_prompt: col.userPrompt?.trim?.() || null,
+        source: "speaker_lab",
+      }),
+    });
+    // Keep the pin in sync for older consumers.
     await api.request("/v1/feature-pins", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -279,10 +298,10 @@ async function useAsProduction(col) {
         model,
         tier: col.tier || null,
       }),
-    });
-    pushToast({ message: `Pinned ${model} as the production attribution model.`, kind: "success" });
+    }).catch(() => {});
+    pushToast({ message: `Production config saved — ${model}${hasPrompts ? " + prompts" : ""}. Manage it in Settings → AI features.`, kind: "success", duration: 5000 });
   } catch (e) {
-    pushToast({ message: `Pin failed: ${e?.message || e}`, kind: "error" });
+    pushToast({ message: `Promote failed: ${e?.message || e}`, kind: "error" });
   }
 }
 
