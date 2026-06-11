@@ -45,14 +45,16 @@ Lines grid (grouped, status pills, stale-on-reimport + re-render-changed)
 `{group}/{line_id}.wav` + deterministic manifest.json (+ opt-in viseme
 sidecar later, CONCEPTS §15).
 
-## Phase C — Podcast + plain text (🎙️ tab) — IN PROGRESS
+## Phase C — Podcast + plain text (🎙️ tab) ✅ done
 
 ✅ Markdown speaker-label adapter (podcast_markdown — labels/headings/
 markers/tag preservation). −16 LUFS preset already ships (mastering
 presets); per-episode export = render_chapter master=podcast.
-REMAINING: segments view w/ tag pills · timeline (audit StoriesView
-first — may be partial) · plain-text kind surfaces (reuse podcast,
-neutral labels).
+✅ Segments view (ChapterView): shape fixes + persona-name pills +
+[tag] pills, verified live w/ imported ep42. ✅ Adapter content-sniffing
+(.md collision). Timeline = existing StoriesView multi-track editor;
+pause-profile + auto-ducking → Phase E backlog. Plain-text (custom)
+projects ride the same Chapter/Studio surfaces by design.
 
 ## Phase D — First-run, live voice, QC, help (🚀 ⌨️ 🎧 ❓ tabs)
 
