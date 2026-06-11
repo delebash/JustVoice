@@ -126,3 +126,28 @@ def test_block_source_ref_persisted(db_session):
 
     block = db_session.query(Block).first()
     assert _json.loads(block.metadata_json)["source_ref"] == "Q01_HALE_001"
+
+
+def test_demo_projects_seed_through_the_real_materializer(db_session, tmp_path):
+    from justvoice.demo_projects import demo_standard
+    from justvoice.storage.personas import PersonaStore
+
+    pstore = PersonaStore(tmp_path)
+    for kind in ("audiobook", "game_voicelines", "podcast"):
+        std = demo_standard(kind)
+        project, scene_count, block_count, created, _re = _materialize_standard(
+            std, db_session, persona_store=pstore
+        )
+        db_session.commit()
+        assert project.project_type == kind
+        assert scene_count >= 1 and block_count >= 3
+        assert created  # personas land in both stores
+    # game demo carries stable line ids
+    import json as _json
+
+    from justvoice.database.models import Block, Project, Scene
+
+    game = db_session.query(Project).filter(Project.project_type == "game_voicelines").first()
+    scene = db_session.query(Scene).filter(Scene.project_id == game.id).first()
+    block = db_session.query(Block).filter(Block.scene_id == scene.id).first()
+    assert _json.loads(block.metadata_json)["source_ref"].startswith("Q0")

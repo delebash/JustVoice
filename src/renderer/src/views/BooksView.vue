@@ -361,6 +361,22 @@ async function onCreateProject({ name, project_type }) {
   }
 }
 
+async function onCreateDemo(kind) {
+  try {
+    const r = await api.request("/v1/projects/demo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind }),
+    });
+    showNewProject.value = false;
+    await refresh();
+    selectedId.value = r.project_id;
+    pushToast({ kind: "success", title: "Demo project loaded", description: "Explore freely — deleting it touches nothing else." });
+  } catch (e) {
+    pushToast({ kind: "error", title: "Demo failed", description: String(e?.message ?? e) });
+  }
+}
+
 function onCreateFromImport() {
   showNewProject.value = false;
   showImport.value = true;
@@ -712,6 +728,7 @@ onMounted(refresh);
       @close="showNewProject = false"
       @create="onCreateProject"
       @import="onCreateFromImport"
+      @demo="onCreateDemo"
     />
 
     <!-- Add-personas-to-project multi-select modal. -->

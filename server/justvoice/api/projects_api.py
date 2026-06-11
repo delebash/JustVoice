@@ -1044,3 +1044,32 @@ async def project_lines(project_id: str, db: Session = Depends(get_db)) -> Proje
             )
     return ProjectLinesResponse(project_id=project_id, lines=out, counts=counts)
 
+class CreateDemoRequest(BaseModel):
+    kind: str  # "audiobook" | "game_voicelines" | "podcast"
+
+
+@router.post("/v1/projects/demo", response_model=ImportRunResponse)
+async def create_demo_project(
+    body: CreateDemoRequest, db: Session = Depends(get_db)
+) -> ImportRunResponse:
+    """Seed a demo project for the kind — runs through the same
+    materializer as a real import (CONCEPTS §13.7), so personas, lexicon
+    dual-writes, and line ids behave exactly like production data."""
+    from ..demo_projects import demo_standard
+
+    try:
+        standard = demo_standard(body.kind)
+    except KeyError:
+        raise bad_request(
+            f"unknown demo kind {body.kind!r} — one of: audiobook, game_voicelines, podcast"
+        )
+    project, _sc, _bl, _created, _reused = _materialize_standard(
+        standard, db, persona_store=get_state().personas
+    )
+    db.commit()
+    db.refresh(project)
+    standard.project.id = project.id
+    return ImportRunResponse(
+        committed=True, project_id=project.id, standard=standard, warnings=[]
+    )
+

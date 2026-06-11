@@ -14,7 +14,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import JvButton from "./jv/JvButton.vue";
 
-const emit = defineEmits(["close", "create", "import"]);
+const emit = defineEmits(["close", "create", "import", "demo"]);
 
 const KINDS = [
   {
@@ -122,6 +122,13 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
         <button type="button" class="np-import" @click="emit('import')">
           …or create from a file (EPUB, DOCX, CSV, markdown)
         </button>
+        <button
+          v-if="selected !== 'custom'"
+          type="button"
+          class="np-import"
+          :title="`Seed a small ${KINDS.find(k => k.id === selected)?.label} project you can safely explore`"
+          @click="emit('demo', selected)"
+        >…or load a demo project</button>
       </footer>
     </div>
   </div>
