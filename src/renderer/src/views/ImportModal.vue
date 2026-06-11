@@ -93,23 +93,37 @@ onMounted(async () => {
 
 onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 
-// Auto-pick the adapter that claims this file's extension, so dropping
-// stillwater.epub lands on book_prose without touching the picker. A
-// manual selection that already matches the extension is left alone.
-function adapterForExtension(name) {
-  const dot = name.lastIndexOf(".");
+// Auto-pick the adapter for this file. Extension narrows the field;
+// when several adapters claim it (.md = book_prose AND podcast_markdown)
+// the file's CONTENT decides: speaker labels at paragraph start mean a
+// podcast script — without this, scripts imported as speakerless books.
+const SPEAKER_LABEL_RE = /^\s*(?:\*\*|\[)?[A-Z][A-Za-z0-9 .'-]{0,40}?(?:\]|\*\*)?\s*:/m;
+
+async function adapterForFile(f) {
+  const dot = f.name.lastIndexOf(".");
   if (dot < 0) return null;
-  const ext = name.slice(dot).toLowerCase();
-  const matches = (a) => a.implemented && (a.file_extensions || []).includes(ext);
-  if (selectedAdapter.value && matches(selectedAdapter.value)) return selectedAdapter.value;
-  return adapters.value.find(matches) || null;
+  const ext = f.name.slice(dot).toLowerCase();
+  const candidates = adapters.value.filter(
+    (a) => a.implemented && (a.file_extensions || []).includes(ext)
+  );
+  if (candidates.length <= 1) return candidates[0] || null;
+  let head = "";
+  try {
+    head = await f.slice(0, 4096).text();
+  } catch { /* binary or unreadable — fall through to first candidate */ }
+  const wantsPodcast = SPEAKER_LABEL_RE.test(head);
+  return (
+    candidates.find((a) =>
+      wantsPodcast ? a.id === "podcast_markdown" : a.id !== "podcast_markdown"
+    ) || candidates[0]
+  );
 }
 
-function acceptFile(f) {
+async function acceptFile(f) {
   file.value = f;
   filename.value = f.name;
   preview.value = null;
-  const match = adapterForExtension(f.name);
+  const match = await adapterForFile(f);
   if (match) selectedSource.value = match.id;
   // Dry-run immediately — the preview IS the import experience; the
   // commit button is just the confirmation.
