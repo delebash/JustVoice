@@ -152,3 +152,30 @@ the library, "Render Presets" in the sidebar, "ACX preset" on export) — the
 collision is confusing. Lean: rename mastering presets to **targets** (ACX
 target, podcast target); "preset" stays with the render-preset library, and
 "preset voice" reads as a plain adjective.
+
+## 8. Generic "paste some text" use → the Plain-text kind (thin alias)
+
+Question raised 2026-06-11: do we need a kind for "I just have pieces of
+text and want to manually assign a voice per piece"?
+
+Answer: **the podcast kind already covers the mechanics** — write-in-app
+segments, a speaker per segment, manual voice assignment, no import
+required. What it doesn't cover is the *front door*: a user making
+onboarding VO or a YouTube narration shouldn't have to read "Podcast" and
+mentally translate "Episodes".
+
+Decision: add a fourth kind, **📄 Plain text (Narration)**, as a thin alias
+over the podcast machinery:
+
+- Same section editor + per-section voice assignment (one voice for all is
+  just assigning once).
+- Neutral labels (Sections, not Episodes), **no Timeline**, no episode/ID3
+  framing.
+- Plain WAV/MP3 export, no spec checklist; mastering target configurable,
+  none by default.
+- Cost is near-zero: kinds are labels + defaults over the same
+  Scene/Block model — this is exactly what the kind switch exists for.
+
+Boundary with Generate: a single phrase needs no project at all — that's
+Generate. Plain-text projects are for text you want to *keep, structure,
+and re-render*.
