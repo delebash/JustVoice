@@ -314,7 +314,7 @@ function shell(kind, activeNav, title, chips, bodyHtml){
     <div class="lane-h">Library</div>
     ${nav("📖","Projects")}${nav("🎙️","Voices")}${nav("🎭","Personas")}${nav("📚","Lexicons")}${nav("🧠","Engines")}
     <div class="lane-h">Tools</div>
-    ${nav("⚖️","Compare")}${nav("🏋️","Train")}
+    ${nav("⚖️","Compare")}${nav("🏋️","Train")}${nav("🔬","Spk Lab")}
     <div class="spacer"></div>
     ${nav("⚙️","Settings")}
   </aside>
@@ -1280,6 +1280,82 @@ const stepsHelp = [
     </div>`) },
 ];
 
+/* ════════════════════════════════════════════════════════════════════
+   Journey H — Speaker Lab: tune attribution for YOUR card + model
+   Grounded in engines/llm/tiers.py (guided/direct/reasoned, think,
+   confidence_floor), SpeakerLabView.vue (comparison columns, source
+   chips), labs/extraction (corpus + F1 reports — the preserved Lab).
+   ════════════════════════════════════════════════════════════════════ */
+const srcChip = s => ({anchor:'<span class="pill green">anchor</span>',llm:'<span class="pill blue">llm</span>',prop:'<span class="pill">propagated</span>',floor:'<span class="pill warn">floored</span>'})[s];
+const stepsSplab = [
+{ nav:"Spk Lab", t:"The main tab. JustVoice detects the model, auto-classifies its tier, and lets you race tiers side-by-side on real text before pinning one to production.",
+  html: () => shell("audiobook","Spk Lab","Speaker Lab — Tuner", "", `
+    <div class="row" style="margin-bottom:10px"><span class="chips"><button class="chip active">Tuner</button><button class="chip">Lab (experimental)</button></span>
+      <span class="spacer"></span><span class="muted" style="font-size:11.5px">same backend as Studio · Script — nothing here touches your project until you pin</span></div>
+    <div class="card" style="padding:11px 16px;margin-bottom:10px"><div class="row" style="flex-wrap:nowrap">
+      <div style="flex:none"><div class="eyebrow">Detected model</div><strong style="font-size:13px">Ollama · qwen3:14b</strong></div>
+      <div style="flex:none;border-left:1px solid var(--line);padding-left:14px"><div class="eyebrow">Auto-classified</div><span class="pill blue">Reasoned</span> <span class="muted" style="font-size:11px">think blocks on · floor 0.5</span></div>
+      <div style="flex:1;min-width:0;border-left:1px solid var(--line);padding-left:14px"><div class="eyebrow">Why</div><span class="muted" style="font-size:11.5px">Qwen3 14B+ is hybrid-reasoning → tiers up. Sub-12B would get Guided (worked examples, floor 0.7); big non-reasoning models get Direct.</span></div>
+      <span class="combo-cell" style="flex:none">override: auto<span class="chev">▼</span></span>
+    </div></div>
+    <div class="row" style="margin-bottom:10px">
+      <span class="combo-cell">Stillwater · Chapter 4 — The Visitor<span class="chev">▼</span></span>
+      <span class="muted" style="font-size:11.5px">or paste any text</span>
+      <span class="pill ghost">characters: Mara · Edith · Tom Harlan · +aliases</span>
+      <span class="spacer"></span><button class="btn sm">▶ Run all columns</button></div>
+    <div class="card" style="flex:1;min-height:0;overflow:auto"><table class="vtable">
+      <thead><tr><th style="min-width:280px">Line</th>
+        <th>Reasoned <span class="muted" style="font-weight:400">· think · floor .5 · 14.2 s</span></th>
+        <th>Direct <span class="muted" style="font-weight:400">· floor .5 · 6.1 s</span></th>
+        <th>Guided <span class="muted" style="font-weight:400">· floor .7 · 5.8 s</span></th></tr></thead>
+      <tbody>
+        ${[["“Your grandmother ever tell you what's under the boathouse?”",["Tom Harlan","anchor",".99"],["Tom Harlan","anchor",".99"],["Tom Harlan","anchor",".99"]],
+           ["“She tells me lots of things. Few of them true.”",["Mara","llm",".93"],["Mara","llm",".88"],["Mara","llm",".84"]],
+           ["He said it without turning around.",["— narration","prop","—"],["— narration","prop","—"],["— narration","prop","—"]],
+           ["“Ask her about the winter of '61. Watch her hands.”",["Tom Harlan","llm",".91"],["Tom Harlan","llm",".79"],["unknown","floor",".62 → floored"]],
+           ["“You'd do well to remember that.”",["Tom Harlan","llm",".84"],["Mara","llm",".58"],["unknown","floor",".44 → floored"]]]
+          .map((r,i)=>`<tr ${i===4?'style="background:var(--warn-bg)"':''}><td style="font-size:12px;color:var(--ink-2)">${r[0]}</td>${r.slice(1).map(c=>`<td style="white-space:nowrap"><strong style="font-size:12px">${c[0]}</strong> ${srcChip(c[1])} <span class="muted" style="font-size:10.5px">${c[2]}</span></td>`).join("")}</tr>`).join("")}
+      </tbody></table></div>
+    <div class="row" style="margin-top:10px">
+      <span class="pill green">Reasoned: 47/47 vs anchors</span><span class="pill">Direct: 44/47 · 1 divergence</span><span class="pill warn">Guided: 41/47 · 6 floored</span>
+      <span class="spacer"></span>
+      <button class="btn">📌 Pin Reasoned to production</button>
+      <span class="muted" style="font-size:11px">writes the speaker_attribution feature pin — Studio · Script uses it from now on</span></div>`) },
+
+{ nav:"Spk Lab", t:"The Lab tab — the two-pass experiment, preserved. Scored against a ground-truth corpus; it wins on accuracy, costs 2.3× tokens, and stays off by default.",
+  html: () => shell("audiobook","Spk Lab","Speaker Lab — Lab (experimental)", "", `
+    <div class="row" style="margin-bottom:10px"><span class="chips"><button class="chip">Tuner</button><button class="chip active">Lab (experimental)</button></span>
+      <span class="spacer"></span><span class="pill warn">not wired to production — preserved for future tuning</span></div>
+    <div class="two-col">
+      <div class="card"><div class="card-h"><strong>Run an experiment</strong></div><div class="card-b">
+        <label class="eyebrow">Ground-truth corpus</label>
+        <div class="row" style="margin:6px 0 12px"><span class="combo-cell">austen_persuasion · stillwater_ch4 · all<span class="chev">▼</span></span></div>
+        <label class="eyebrow">Pipeline</label>
+        <div style="margin:6px 0 12px">
+          <div class="row" style="border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:6px;flex-wrap:nowrap"><input type="radio" name="pp" style="accent-color:var(--accent)"/><div style="flex:1"><strong style="font-size:12.5px">Single-pass</strong><div class="muted" style="font-size:11px">production pipeline — one call per chunk</div></div></div>
+          <div class="row" style="border:1px solid var(--accent);background:var(--accent-soft);border-radius:8px;padding:8px 12px;flex-wrap:nowrap"><input type="radio" name="pp" checked style="accent-color:var(--accent)"/><div style="flex:1"><strong style="font-size:12.5px">Two-pass</strong><div class="muted" style="font-size:11px">pass 1: candidate speakers per chunk · pass 2: re-verify low-confidence picks with wider context</div></div></div>
+        </div>
+        <label class="eyebrow">Tier</label>
+        <div class="row" style="margin:6px 0 14px"><span class="combo-cell">auto (Reasoned)<span class="chev">▼</span></span></div>
+        <button class="btn" style="width:100%">▶ Run &amp; score</button>
+        <div class="codeblock" style="margin-top:12px"><span class="k">headless:</span> python -m justvoice.labs.extraction.run
+         --corpus stillwater_ch4 --tier reasoned</div>
+      </div></div>
+      <div class="card"><div class="card-h"><strong>Latest report</strong><span class="muted" style="font-size:11px">reports/2026-06-11T14-31.md</span></div><div class="card-b">
+        <div class="sum-row"><span>Block accuracy</span><b>two-pass <span style="color:var(--accent-ink)">91.4%</span> vs single 89.3% <span class="muted">(+2.1 pp)</span></b></div>
+        <div class="sum-row"><span>Token cost</span><b style="color:var(--warn-ink)">2.3× single-pass</b></div>
+        <div class="sum-row"><span>Wall time</span><b>38 s vs 16 s</b></div>
+        <p class="eyebrow" style="margin:12px 0 6px">Per-character F1</p>
+        ${[["Mara Vance",".96"],["Edith Vance",".94"],["Tom Harlan",".88"],["The Stranger",".71"]]
+          .map(f=>`<div class="row" style="flex-wrap:nowrap;margin-bottom:6px"><span style="width:110px;flex:none;font-size:12px">${f[0]}</span><div class="prog" style="flex:1"><div class="fill" style="width:${parseFloat(f[1])*100}%"></div></div><span class="mono muted" style="font-size:11px;width:30px;text-align:right">${f[1]}</span></div>`).join("")}
+        <p class="eyebrow" style="margin:12px 0 6px">Source breakdown</p>
+        <div class="row" style="font-size:11px">${srcChip("anchor")} 41% &nbsp;${srcChip("llm")} 38% &nbsp;${srcChip("prop")} 17% &nbsp;${srcChip("floor")} 4%</div>
+        <div class="banner info" style="margin-top:12px">Verdict on record: gain doesn't justify cost as the default. Kept here so the next bigger local model can be re-scored in one click.</div>
+      </div></div>
+    </div>`) },
+
+];
+
 const JOURNEYS = {
   audiobook:{ label:"📖 Audiobook — Sarah", steps:stepsAudiobook, who:"Sarah · indie author" },
   game:     { label:"🎮 Game — Marcus",     steps:stepsGame,      who:"Marcus · solo game dev" },
@@ -1289,6 +1365,7 @@ const JOURNEYS = {
   fixit:    { label:"🔤 Fix-it loop",        steps:stepsFixit,     who:"Sarah · pronunciation pass" },
   library:  { label:"🗂 Library & tools",    steps:stepsLibrary,   who:"Shared machinery" },
   help:     { label:"❓ Help system",         steps:stepsHelp,      who:"Help — proposal" },
+  splab:    { label:"🔬 Speaker Lab",         steps:stepsSplab,     who:"Attribution tuning" },
   flow:     { label:"🧭 Identity flow",      steps:stepsFlow,      who:"Concept map" },
 };
 let cur = { j:"audiobook", s:0 };
@@ -1320,7 +1397,7 @@ document.addEventListener("keydown",e=>{
   if(e.key==="ArrowLeft") move(-1);
 });
 (function init(){
-  const m = location.hash.match(/^#(audiobook|game|podcast|firstrun|dictation|fixit|library|help|flow)\/(\d+)/);
+  const m = location.hash.match(/^#(audiobook|game|podcast|firstrun|dictation|fixit|library|help|splab|flow)\/(\d+)/);
   if(m){ cur.j=m[1]; cur.s=Math.min(parseInt(m[2])-1, JOURNEYS[m[1]].steps.length-1); }
   render();
 })();

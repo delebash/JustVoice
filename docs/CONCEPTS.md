@@ -242,3 +242,28 @@ costs specific features, and the UI says exactly which.
   to clone samples. Skipped → Train asks for manual transcripts.
 - Both re-offerable later: Settings → AI features, plus the deep-links
   from degraded spots. First-run stays one screen — no wizard sprawl.
+
+## 12. Speaker Lab (attribution tuning) — Tuner is production-facing, Lab is preserved
+
+Grounded in code: `engines/llm/tiers.py`, `SpeakerLabView.vue`,
+`api/extraction_api.py`, `api/feature_pins_api.py`, `labs/extraction/`.
+
+- **Tuner tab (the main one).** Detects the connected model and
+  auto-classifies its tier (heuristics ported from JustWrite's
+  modelMeta.js): reasoning-first families (DeepSeek-R1, Qwen3.5,
+  Phi-4-Reasoning, GLM-Z) and Qwen3 14B+ → **Reasoned** (think blocks on,
+  floor 0.5); ≥12B non-reasoning → **Direct** (floor 0.5); sub-12B →
+  **Guided** (worked-example prompt, floor 0.7 — safe fallback). The lab
+  races tiers side-by-side on real project text (same backend as Studio ·
+  Script), shows per-line speaker + source chip (anchor / llm / propagated
+  / floored) + confidence, and **"Pin to production"** writes the
+  `speaker_attribution` feature pin so Script uses the override from then
+  on. Nothing touches the project until pinned.
+- **Lab tab (experimental, deliberately preserved).** The two-pass
+  pipeline (pass 1: candidate speakers per chunk; pass 2: re-verify
+  low-confidence picks with wider context), scored against the
+  ground-truth corpus in `labs/extraction/corpus/` with markdown reports
+  (block accuracy, per-character F1, source breakdown). Verdict on
+  record: ~+2 pp accuracy at 2.3× token cost — not the default, kept so
+  the next bigger local model can be re-scored in one click. Headless:
+  `python -m justvoice.labs.extraction.run --corpus <slug> --tier <t>`.
