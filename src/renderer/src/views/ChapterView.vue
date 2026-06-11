@@ -458,6 +458,30 @@ async function exportChapterWavs() {
     exportBusy.value = "";
   }
 }
+
+// ── Fix-it loop entry (journeys fixit journey) ────────────────────────
+// Flag a misread word on the line → Lexicons opens with it prefilled.
+// Uses the user's text selection when it's inside this block; otherwise
+// asks. Lexicon hashes are part of the render-cache key, so saving the
+// entry re-renders exactly the lines that contain the word.
+async function flagPronunciation(block) {
+  let word = "";
+  const sel = typeof window !== "undefined" ? String(window.getSelection() || "").trim() : "";
+  if (sel && sel.length <= 60 && (block.text || "").includes(sel)) {
+    word = sel;
+  } else {
+    word = (await promptDialog({
+      title: "Fix a pronunciation",
+      message: "Which word or name did the engine misread?",
+      placeholder: "e.g. Hecate",
+    }))?.trim() || "";
+  }
+  if (!word) return;
+  try {
+    window.sessionStorage?.setItem("jv.lexicon.prefill", JSON.stringify({ grapheme: word, sceneId: selectedSceneId.value }));
+  } catch { /* private mode — link still works */ }
+  window.location.hash = "#lexicons";
+}
 </script>
 
 <template>
@@ -595,6 +619,13 @@ async function exportChapterWavs() {
             :title="block.direction ? 'Edit the performance note for this line' : 'Add a performance note — instruct-capable engines perform it (e.g. weary, almost whispering)'"
             @click="editDirection(block)"
           >{{ block.direction || "＋ direction" }}</button>
+          <span class="jv-spacer" />
+          <button
+            type="button"
+            class="jv-pill jv-pill--ghost chapter-view__fixit"
+            title="Heard a mispronunciation in this line? Send the word to Lexicons — only lines containing it re-render."
+            @click="flagPronunciation(block)"
+          >🔤 Fix pronunciation</button>
         </div>
 
         <!-- Block text (read-only) -->

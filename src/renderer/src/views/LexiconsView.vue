@@ -221,7 +221,26 @@ function runPreview() {
   previewResult.value = out;
 }
 
-onMounted(refresh);
+onMounted(async () => {
+  await refresh();
+  // Fix-it loop handoff (journeys fixit journey): Chapters/Studio flag a
+  // misread word → it arrives here prefilled, ready for a pronunciation.
+  try {
+    const raw = window.sessionStorage?.getItem("jv.lexicon.prefill");
+    if (raw) {
+      window.sessionStorage.removeItem("jv.lexicon.prefill");
+      const { grapheme } = JSON.parse(raw);
+      if (grapheme) {
+        newGrapheme.value = grapheme;
+        pushToast({
+          message: `Fixing “${grapheme}” — spell it how it should sound, test it, save. Only the lines containing it re-render; everything else stays cached.`,
+          kind: "info",
+          duration: 8000,
+        });
+      }
+    }
+  } catch { /* ignore */ }
+});
 </script>
 
 <template>
