@@ -5,6 +5,7 @@ import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast } from "../services/toastBridge.js";
+import { confirmDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvField from "../components/jv/JvField.vue";
 import JvTextarea from "../components/jv/JvTextarea.vue";
@@ -478,6 +479,40 @@ function playTake(h) {
     title: h.voice || "Take",
     subtitle: (h.text || "").slice(0, 80),
   });
+}
+
+async function toggleFavorite(h) {
+  try {
+    const r = await api.request(`/v1/generations/${h.id}/favorite`, { method: "PATCH" });
+    h.is_favorited = !!r?.is_favorited;
+  } catch (e) {
+    pushToast({ message: `Favorite failed: ${e?.message || e}`, kind: "error" });
+  }
+}
+
+function retryTake(h) {
+  // Reload the row's text into the editor; keep the current voice if the
+  // row's voice id is no longer resolvable.
+  if (h?.text) text.value = h.text;
+  if (h?.voice && availableVoices.value.some((x) => x.id === h.voice)) {
+    voice.value = h.voice;
+  }
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+async function deleteTake(h) {
+  const ok = await confirmDialog({
+    title: "Delete this generation?",
+    message: "Removes the history row and its audio file. This cannot be undone.",
+    confirmLabel: "Delete",
+  });
+  if (!ok) return;
+  try {
+    await api.request(`/v1/generations/${h.id}`, { method: "DELETE" });
+    history.value = history.value.filter((x) => x.id !== h.id);
+  } catch (e) {
+    pushToast({ message: `Delete failed: ${e?.message || e}`, kind: "error" });
+  }
 }
 
 // ── Slash-menu wiring ────────────────────────────────────────────────
@@ -1004,10 +1039,10 @@ onMounted(refreshVoices);
               <td>{{ h.take || h.status || "—" }}</td>
               <td>{{ h.effects || "—" }}</td>
               <td class="right">
-                <JvButton variant="ghost" size="sm" label="▶" :disabled="!h.audio_url" @click="playTake(h)" />
-                <JvButton variant="ghost" size="sm" :label="h.is_favorited ? '★' : '☆'" title="Favorite" />
-                <JvButton variant="ghost" size="sm" label="↻" title="Retry" />
-                <JvButton variant="ghost" size="sm" label="✕" title="Delete" />
+                <JvButton variant="ghost" size="sm" label="▶" :disabled="!h.audio_url" title="Play this generation" @click="playTake(h)" />
+                <JvButton variant="ghost" size="sm" :label="h.is_favorited ? '★' : '☆'" :title="h.is_favorited ? 'Unfavorite' : 'Favorite — pin this generation'" @click="toggleFavorite(h)" />
+                <JvButton variant="ghost" size="sm" label="↻" title="Retry — reload this text into the editor above" @click="retryTake(h)" />
+                <JvButton variant="ghost" size="sm" label="✕" title="Delete this generation (audio + history row)" @click="deleteTake(h)" />
               </td>
             </tr>
           </tbody>

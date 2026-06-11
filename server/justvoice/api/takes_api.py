@@ -160,6 +160,35 @@ async def list_recent_takes(limit: int = 20, db: Session = Depends(get_db)) -> R
     return RecentTakesResponse(takes=out)
 
 
+@router.patch("/v1/generations/{generation_id}/favorite")
+async def toggle_generation_favorite(
+    generation_id: str, db: Session = Depends(get_db)
+) -> dict:
+    """Toggle the favorite star on a generation. Parity-audit wire-up:
+    `is_favorited` was serialized in recent rows but had no write path
+    (upstream tracks favorites with a toggle on the History surface)."""
+    gen = db.query(Generation).filter(Generation.id == generation_id).first()
+    if not gen:
+        raise not_found(f"generation {generation_id}")
+    gen.is_favorited = not bool(gen.is_favorited)
+    db.commit()
+    return {"id": generation_id, "is_favorited": bool(gen.is_favorited)}
+
+
+@router.delete("/v1/generations/{generation_id}")
+async def delete_generation(generation_id: str, db: Session = Depends(get_db)) -> dict:
+    """Delete one generation (DB row + audio file). The History table's ✕.
+    Bulk deletion with filters stays on DELETE /v1/generations."""
+    gen = db.query(Generation).filter(Generation.id == generation_id).first()
+    if not gen:
+        raise not_found(f"generation {generation_id}")
+    if gen.audio_path:
+        Path(gen.audio_path).unlink(missing_ok=True)
+    db.delete(gen)
+    db.commit()
+    return {"deleted": True}
+
+
 class LineageNode(BaseModel):
     """One link in a take's source-chain. Walks `Take.source_take_id`
     backward to the original take. UI renders this as a vertical timeline.
