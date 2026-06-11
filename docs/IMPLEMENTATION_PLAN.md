@@ -63,6 +63,16 @@ tutorial/demo projects per kind · Ollama admin (model pull) ·
 voice-metadata heuristics · per-line director notes · LLM show notes ·
 word-timestamp caption export (SRT/VTT).
 
+## Styling is part of every milestone — not a later phase
+
+The journeys mock IS the approved visual contract: warm --bg with white
+bordered+shadowed cards on top, surface-2 table headers/sidebar, accent
+green on every interactive control (never browser-default blue). Every
+view milestone ends with a live screenshot compared against its mock
+screen — feature parity without the contrast/finish is not done.
+Global rules live in styles.css (tables self-card; form controls take
+accent-color); fixes go to the base layer first, per-view second.
+
 ## Testing per milestone
 
 pytest for every adapter/endpoint (synthetic fixtures built in-test);

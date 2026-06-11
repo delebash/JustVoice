@@ -792,11 +792,39 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   box-shadow: var(--shadow-1);
 }
 
-/* Tables (preview L138-145) */
+/* Native form controls — accent green, never Chrome blue. */
+input[type="range"],
+input[type="checkbox"],
+input[type="radio"],
+progress {
+  accent-color: var(--accent);
+}
+
+/* Tables (preview L138-145).
+   Tables are self-carding: white surface + border + shadow against --bg,
+   matching the journeys mock. Inside a .jv-card the chrome is stripped so
+   nested tables don't double-border. */
 .jv-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 13px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card, 8px);
+  box-shadow: var(--shadow-1);
+}
+.jv-table thead th:first-child { border-top-left-radius: var(--r-card, 8px); }
+.jv-table thead th:last-child { border-top-right-radius: var(--r-card, 8px); }
+.jv-table tbody tr:last-child td { border-bottom: 0; }
+.jv-table tbody tr:last-child td:first-child { border-bottom-left-radius: var(--r-card, 8px); }
+.jv-table tbody tr:last-child td:last-child { border-bottom-right-radius: var(--r-card, 8px); }
+.jv-card .jv-table,
+.jv-card--soft .jv-table {
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+  background: transparent;
 }
 .jv-table thead th {
   font-size: 11px;
