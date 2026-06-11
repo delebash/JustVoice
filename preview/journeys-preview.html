@@ -1288,39 +1288,44 @@ const stepsHelp = [
    ════════════════════════════════════════════════════════════════════ */
 const srcChip = s => ({anchor:'<span class="pill green">anchor</span>',llm:'<span class="pill blue">llm</span>',prop:'<span class="pill">propagated</span>',floor:'<span class="pill warn">floored</span>'})[s];
 const stepsSplab = [
-{ nav:"Spk Lab", t:"The main tab. JustVoice detects the model, auto-classifies its tier, and lets you race tiers side-by-side on real text before pinning one to production.",
+{ nav:"Spk Lab", t:"Speaker-extraction testbed. Paste any text — no project or chapters needed — name the cast, then race two local models on the exact same input.",
   html: () => shell("audiobook","Spk Lab","Speaker Lab — Tuner", "", `
-    <div class="row" style="margin-bottom:10px"><span class="chips"><button class="chip active">Tuner</button><button class="chip">Lab (experimental)</button></span>
-      <span class="spacer"></span><span class="muted" style="font-size:11.5px">same backend as Studio · Script — nothing here touches your project until you pin</span></div>
-    <div class="card" style="padding:11px 16px;margin-bottom:10px"><div class="row" style="flex-wrap:nowrap">
-      <div style="flex:none"><div class="eyebrow">Detected model</div><strong style="font-size:13px">Ollama · qwen3:14b</strong></div>
-      <div style="flex:none;border-left:1px solid var(--line);padding-left:14px"><div class="eyebrow">Auto-classified</div><span class="pill blue">Reasoned</span> <span class="muted" style="font-size:11px">think blocks on · floor 0.5</span></div>
-      <div style="flex:1;min-width:0;border-left:1px solid var(--line);padding-left:14px"><div class="eyebrow">Why</div><span class="muted" style="font-size:11.5px">Qwen3 14B+ is hybrid-reasoning → tiers up. Sub-12B would get Guided (worked examples, floor 0.7); big non-reasoning models get Direct.</span></div>
-      <span class="combo-cell" style="flex:none">override: auto<span class="chev">▼</span></span>
-    </div></div>
-    <div class="row" style="margin-bottom:10px">
-      <span class="combo-cell">Stillwater · Chapter 4 — The Visitor<span class="chev">▼</span></span>
-      <span class="muted" style="font-size:11.5px">or paste any text</span>
-      <span class="pill ghost">characters: Mara · Edith · Tom Harlan · +aliases</span>
-      <span class="spacer"></span><button class="btn sm">▶ Run all columns</button></div>
+    <div class="row" style="margin-bottom:8px"><span class="chips"><button class="chip active">Tuner</button><button class="chip">Lab (experimental)</button></span>
+      <span class="spacer"></span><span class="muted" style="font-size:11.5px">same extraction backend as Studio · Script — nothing touches production until you promote</span></div>
+    <div class="row" style="margin-bottom:6px">
+      <button class="btn secondary sm">⬇ Load from chapter ▾</button><span class="muted" style="font-size:11px">optional — the box is the input, type or paste anything</span>
+      <span class="spacer"></span>
+      <span class="pill">Mara ✕</span><span class="pill">Edith Vance ✕</span><span class="pill">Tom Harlan · alias: Tom ✕</span>
+      <input class="input" style="max-width:150px;height:26px;font-size:12px" placeholder="＋ character"/></div>
+    <textarea class="input" style="height:88px;padding:9px 12px;resize:none;font-size:13px;margin-bottom:10px">"Your grandmother ever tell you what's under the boathouse?" He said it without turning around. "She tells me lots of things. Few of them true." "Ask her about the winter of '61. Watch her hands," Tom said. "You'd do well to remember that."</textarea>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px">
+      ${[["A","Ollama · qwen3:8b","auto → Guided","think off · floor 0.7","defaults",""],
+         ["B","Ollama · qwen3:14b","auto → Reasoned","think on · floor 0.5","tweaked ●","border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)"]]
+        .map(c=>`<div class="card" style="padding:11px 14px;${c[5]}"><div class="row" style="flex-wrap:nowrap">
+          <span class="eyebrow" style="flex:none">Column ${c[0]}</span>
+          <span class="combo-cell">${c[1]}<span class="chev">▼</span></span>
+          <span class="pill blue">${c[2]}</span><span class="muted" style="font-size:10.5px">${c[3]}</span>
+          <span class="spacer"></span>
+          <label style="font-size:11px;display:inline-flex;gap:4px;align-items:center"><input type="checkbox" checked style="accent-color:var(--accent)"/>propagate</label>
+          <label style="font-size:11px;display:inline-flex;gap:4px;align-items:center"><input type="checkbox" checked style="accent-color:var(--accent)"/>floor</label>
+          <button class="btn ghost sm">Prompts: ${c[4]}</button><button class="btn sm">▶ Run</button></div></div>`).join("")}
+    </div>
+    <p class="muted" style="font-size:11px;margin:0 0 8px">Tier follows the model — pick qwen3:14b and it auto-switches to Reasoned (think=true); the 8b stays Guided (think=false). Override the select only if you know better; prompt bodies are editable per tier and resettable to the defaults we shipped (tuned on 8b/14b).</p>
     <div class="card" style="flex:1;min-height:0;overflow:auto"><table class="vtable">
-      <thead><tr><th style="min-width:280px">Line</th>
-        <th>Reasoned <span class="muted" style="font-weight:400">· think · floor .5 · 14.2 s</span></th>
-        <th>Direct <span class="muted" style="font-weight:400">· floor .5 · 6.1 s</span></th>
-        <th>Guided <span class="muted" style="font-weight:400">· floor .7 · 5.8 s</span></th></tr></thead>
+      <thead><tr><th style="min-width:280px">Segment</th><th>A · qwen3:8b · Guided <span class="muted" style="font-weight:400">5.8 s</span></th><th>B · qwen3:14b · Reasoned <span class="muted" style="font-weight:400">14.2 s</span></th></tr></thead>
       <tbody>
-        ${[["“Your grandmother ever tell you what's under the boathouse?”",["Tom Harlan","anchor",".99"],["Tom Harlan","anchor",".99"],["Tom Harlan","anchor",".99"]],
-           ["“She tells me lots of things. Few of them true.”",["Mara","llm",".93"],["Mara","llm",".88"],["Mara","llm",".84"]],
-           ["He said it without turning around.",["— narration","prop","—"],["— narration","prop","—"],["— narration","prop","—"]],
-           ["“Ask her about the winter of '61. Watch her hands.”",["Tom Harlan","llm",".91"],["Tom Harlan","llm",".79"],["unknown","floor",".62 → floored"]],
-           ["“You'd do well to remember that.”",["Tom Harlan","llm",".84"],["Mara","llm",".58"],["unknown","floor",".44 → floored"]]]
-          .map((r,i)=>`<tr ${i===4?'style="background:var(--warn-bg)"':''}><td style="font-size:12px;color:var(--ink-2)">${r[0]}</td>${r.slice(1).map(c=>`<td style="white-space:nowrap"><strong style="font-size:12px">${c[0]}</strong> ${srcChip(c[1])} <span class="muted" style="font-size:10.5px">${c[2]}</span></td>`).join("")}</tr>`).join("")}
+        ${[["“Your grandmother ever tell you what's under the boathouse?”",["Tom Harlan","llm",".84"],["Tom Harlan","llm",".93"],0],
+           ["He said it without turning around.",["— narration","prop","—"],["— narration","prop","—"],0],
+           ["“She tells me lots of things. Few of them true.”",["Mara","llm",".82"],["Mara","llm",".91"],0],
+           ["“Ask her about the winter of '61. Watch her hands,” Tom said.",["Tom Harlan","anchor",".99"],["Tom Harlan","anchor",".99"],0],
+           ["“You'd do well to remember that.”",["unknown","floor",".58 → floored"],["Tom Harlan","llm",".88"],1]]
+          .map(r=>`<tr ${r[3]?'style="background:var(--warn-bg)"':''}><td style="font-size:12px;color:var(--ink-2)">${r[0]}</td>${[r[1],r[2]].map(c=>`<td style="white-space:nowrap"><strong style="font-size:12px">${c[0]}</strong> ${srcChip(c[1])} <span class="muted" style="font-size:10.5px">${c[2]}</span></td>`).join("")}</tr>`).join("")}
       </tbody></table></div>
     <div class="row" style="margin-top:10px">
-      <span class="pill green">Reasoned: 47/47 vs anchors</span><span class="pill">Direct: 44/47 · 1 divergence</span><span class="pill warn">Guided: 41/47 · 6 floored</span>
+      <span class="pill">4/5 agree</span><span class="pill warn">1 divergence — 8b floored where 14b is confident</span>
       <span class="spacer"></span>
-      <button class="btn">📌 Pin Reasoned to production</button>
-      <span class="muted" style="font-size:11px">writes the speaker_attribution feature pin — Studio · Script uses it from now on</span></div>`) },
+      <button class="btn">📌 Promote column B to production</button>
+      <span class="muted" style="font-size:11px">pins model + tier + prompt tweaks as the speaker-attribution method Studio · Script uses</span></div>`) },
 
 { nav:"Spk Lab", t:"The Lab tab — the two-pass experiment, preserved. Scored against a ground-truth corpus; it wins on accuracy, costs 2.3× tokens, and stays off by default.",
   html: () => shell("audiobook","Spk Lab","Speaker Lab — Lab (experimental)", "", `
@@ -1351,6 +1356,28 @@ const stepsSplab = [
         <p class="eyebrow" style="margin:12px 0 6px">Source breakdown</p>
         <div class="row" style="font-size:11px">${srcChip("anchor")} 41% &nbsp;${srcChip("llm")} 38% &nbsp;${srcChip("prop")} 17% &nbsp;${srcChip("floor")} 4%</div>
         <div class="banner info" style="margin-top:12px">Verdict on record: gain doesn't justify cost as the default. Kept here so the next bigger local model can be re-scored in one click.</div>
+      </div></div>
+    </div>`) },
+
+{ nav:"Spk Lab", t:"Every AI call in the app — extraction, smart-assign, suggestions — runs through one task runner: live time, tokens, stall detection, cancel. Finishing fires a notification.",
+  html: () => shell("audiobook","Spk Lab","Speaker Lab — run in progress", `<span class="hdr-chip" style="border-color:var(--info-blue);color:var(--info-blue)">⚙ AI · 1 running</span>`, `
+    <div class="two-col" style="grid-template-columns:minmax(0,1fr) 350px">
+      <div class="card" style="opacity:.6"><div class="card-h"><strong>Results</strong><span class="pill blue">column B streaming…</span></div><div class="card-b">
+        ${[1,1,1].map(()=>`<div style="height:14px;background:var(--surface-3);border-radius:4px;margin-bottom:10px;width:${60+Math.random()*30}%"></div>`).join("")}
+        <div class="row" style="margin-top:6px"><div class="prog" style="flex:1"><div class="fill" style="width:62%"></div></div><span class="muted" style="font-size:11px">segment 29 / 47</span></div>
+      </div></div>
+      <div class="card"><div class="card-h"><strong>AI tasks</strong><span class="pill blue">1 running · 1 queued</span></div><div class="card-b">
+        <div style="border:1px solid var(--info-blue);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:var(--info-soft)">
+          <div class="row" style="flex-wrap:nowrap"><strong style="font-size:12.5px;flex:1">Speaker extraction — qwen3:14b · Reasoned</strong><span class="pill blue">streaming</span></div>
+          <div class="row" style="margin-top:6px;font-size:11px;color:var(--ink-2)"><span class="mono">0:14</span><span>·</span><span class="mono">2,341 tok</span><span>·</span><span>last token 0.3 s ago</span><span class="spacer"></span><button class="btn ghost sm" style="color:var(--danger)">✕ Cancel</button></div>
+        </div>
+        <div style="border:1px solid var(--line);border-radius:8px;padding:9px 12px;margin-bottom:8px">
+          <div class="row" style="flex-wrap:nowrap"><strong style="font-size:12px;flex:1;color:var(--ink-2)">Smart-assign — Emberfall cast</strong><span class="pill ghost">queued</span></div>
+        </div>
+        <p class="eyebrow" style="margin:10px 0 6px">History</p>
+        ${[["Speaker extraction — qwen3:8b · Guided","✓ done","0:09 · 1,872 tok"],["Render-preset suggest","✕ cancelled","0:04 · 312 tok"]]
+          .map(h=>`<div class="row" style="flex-wrap:nowrap;font-size:11.5px;padding:5px 0;border-bottom:1px dashed var(--line)"><span style="flex:1;color:var(--ink-2)">${h[0]}</span><span class="pill ${h[1].startsWith('✓')?'green':''}" style="flex:none">${h[1]}</span><span class="mono muted" style="font-size:10.5px;flex:none">${h[2]}</span></div>`).join("")}
+        <div class="banner warn" style="margin-top:10px;font-size:11.5px">Stall detection: no token for 5 s → amber; 30 s → likely stuck, offers cancel + retry. Tasks survive leaving the view — the ⚙ AI header chip reopens this panel from anywhere; completion fires a toast (and an OS notification if the window is unfocused).</div>
       </div></div>
     </div>`) },
 

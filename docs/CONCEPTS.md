@@ -426,3 +426,42 @@ bundle STT already), mapped to the 15-viseme set. Manifest entry gains
 artifacts we already planned — timestamps + STT — and makes the game
 export consumable by all three integration paths without JustVoice ever
 rendering a face.
+
+## 16. Speaker Lab corrected + AI task runner (user review, 2026-06-11)
+
+Supersedes the comparison-table description in §12 where they differ.
+
+**Speaker Lab purpose, precisely:** test **speaker extraction** on
+arbitrary text. There may be no project or chapters at all — the input is
+a plain **text box** (type or paste anything); "Load from chapter" is an
+optional convenience, not the entry point.
+
+**Columns compare MODELS, not tiers.** The real-world setup: two local
+models (e.g. qwen3:8b and qwen3:14b) run side-by-side on the same input.
+The **tier follows the model** — pick qwen3:14b and it auto-switches to
+Reasoned (think=true); the 8b stays at think=false. You select a tier
+manually only when you know better than the auto-classification; some
+models are hard-coded in `tiers.py`.
+
+**Prompts are part of what you tune.** Per-tier prompt bodies are
+editable in the lab and resettable to shipped defaults (the defaults were
+tuned against 8b/14b and found best there). **Promote** pins the whole
+tested combination — model + tier + prompt tweaks — as the production
+speaker-attribution method (`speaker_attribution` feature pin).
+
+**AI task runner (hard requirement, all AI features).** Ported from
+JustWrite's AIProgressBar + AITaskRunner pattern (`stores/aiTasks.js`):
+every AI call — extraction, smart-assign, preset suggest, show notes —
+must surface to the user:
+
+- live **elapsed time** and **token count** while streaming
+- **cancel** at any time
+- stall detection (no token ~5 s → amber; >30 s → likely stuck, offer
+  cancel + retry)
+- tasks survive leaving the view; a header ⚙ AI chip reopens the
+  slide-in panel from anywhere; history keeps recent done/cancelled runs
+  with duration + tokens
+- completion fires a toast, and an OS notification when the window is
+  unfocused
+
+Mocked as Speaker Lab step 3 (`#splab/3`).
