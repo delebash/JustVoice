@@ -663,6 +663,8 @@ async def import_project(
     dry_run: Optional[bool] = Form(default=None),
     source_q: Optional[str] = Query(default=None, alias="source"),
     dry_run_q: Optional[bool] = Query(default=None, alias="dry_run"),
+    project_id: Optional[str] = Form(default=None),
+    project_id_q: Optional[str] = Query(default=None, alias="project_id"),
     db: Session = Depends(get_db),
 ) -> ImportRunResponse:
     """Run an import adapter.
@@ -699,6 +701,29 @@ async def import_project(
             raise bad_request("import: no file uploaded and no raw request body")
 
     standard = run_adapter(effective_source, raw, filename=filename)
+
+    # Update mode — re-import INTO an existing project, matching by
+    # stable line ids (game workflow: writers' next CSV revision).
+    effective_project_id = (project_id or project_id_q or "").strip() or None
+    if effective_project_id and not effective_dry_run:
+        project = db.query(Project).filter(Project.id == effective_project_id).first()
+        if project is None:
+            raise not_found(f"project {effective_project_id}")
+        summary = _update_project_from_standard(
+            standard, project, db, get_state().personas
+        )
+        db.commit()
+        standard.project.id = project.id
+        standard.warnings.append(
+            "updated in place: "
+            + ", ".join(f"{k}={v}" for k, v in summary.items() if v)
+        )
+        return ImportRunResponse(
+            committed=True,
+            project_id=project.id,
+            standard=standard,
+            warnings=standard.warnings,
+        )
 
     if effective_dry_run:
         return ImportRunResponse(
@@ -828,4 +853,194 @@ async def project_export_voicelines(
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="{safe}_VO.zip"'},
     )
+
+# ── Game re-import (update-in-place) + line status (Phase B3/B5) ─────────
+
+
+def _update_project_from_standard(
+    standard: StandardImport,
+    project: Project,
+    db: Session,
+    persona_store,
+) -> dict:
+    """Update an existing project from a re-imported StandardImport,
+    matching scenes by source_id and blocks by stable line id
+    (source_ref). Changed text updates in place — staleness is derived
+    later (block text vs latest take's generation text), so only the
+    truly-changed lines lose their rendered status (CONCEPTS §3).
+
+    Requires every incoming line to carry a source_ref; without stable
+    ids an update merge would be guesswork.
+    """
+    for scene in standard.scenes:
+        for line in scene.lines:
+            if not line.source_ref or line.source_ref.startswith("row:"):
+                # row:N fallbacks are positional, not stable — reordering
+                # the sheet would silently mismatch every line.
+                raise bad_request(
+                    "update re-import requires a stable line id on every row "
+                    "(id / line_id / dialogue_id column)"
+                )
+
+    # Characters create-or-reuse, as on first import.
+    char_to_persona_id: dict[str, str] = {}
+    for char in standard.characters:
+        bio_text = char.notes or ""
+        if char.voice_hint:
+            bio_text = f"{bio_text}\n\nVoice hint:\n{char.voice_hint}".strip()
+        pid, _created = ensure_project_persona(
+            db, persona_store, project.id,
+            name=char.name, bio=bio_text or None,
+            imported_from=standard.source, imported_id=char.id,
+        )
+        char_to_persona_id[char.id] = pid
+
+    existing_scenes = (
+        db.query(Scene).filter(Scene.project_id == project.id).order_by(Scene.position).all()
+    )
+
+    def scene_key(sc: Scene) -> str | None:
+        if sc.metadata_json:
+            try:
+                return json.loads(sc.metadata_json).get("source_id") or sc.title
+            except json.JSONDecodeError:
+                return sc.title
+        return sc.title
+
+    by_key = {scene_key(sc): sc for sc in existing_scenes}
+    summary = {"scenes_added": 0, "added": 0, "updated": 0, "removed": 0, "unchanged": 0}
+
+    next_scene_pos = len(existing_scenes)
+    for std_scene in standard.scenes:
+        scene = by_key.get(std_scene.id) or by_key.get(std_scene.title)
+        if scene is None:
+            scene = Scene(
+                project_id=project.id,
+                position=next_scene_pos,
+                title=std_scene.title,
+                metadata_json=json.dumps(
+                    {"kind": std_scene.kind, "source_id": std_scene.id,
+                     "index_one_based": next_scene_pos + 1}
+                ),
+            )
+            db.add(scene)
+            db.flush()
+            next_scene_pos += 1
+            summary["scenes_added"] += 1
+
+        blocks = (
+            db.query(Block).filter(Block.scene_id == scene.id).order_by(Block.position).all()
+        )
+
+        def block_ref(b: Block) -> str | None:
+            if b.metadata_json:
+                try:
+                    return json.loads(b.metadata_json).get("source_ref")
+                except json.JSONDecodeError:
+                    return None
+            return None
+
+        by_ref = {block_ref(b): b for b in blocks if block_ref(b)}
+        incoming_refs = set()
+        next_pos = len(blocks)
+        for line in std_scene.lines:
+            incoming_refs.add(line.source_ref)
+            persona_id = (
+                char_to_persona_id.get(line.character_id) if line.character_id else None
+            )
+            existing = by_ref.get(line.source_ref)
+            if existing is None:
+                db.add(
+                    Block(
+                        scene_id=scene.id, position=next_pos, text=line.text,
+                        persona_id=persona_id,
+                        metadata_json=json.dumps({"source_ref": line.source_ref}),
+                    )
+                )
+                next_pos += 1
+                summary["added"] += 1
+            elif existing.text != line.text or existing.persona_id != persona_id:
+                existing.text = line.text
+                existing.persona_id = persona_id
+                summary["updated"] += 1
+            else:
+                summary["unchanged"] += 1
+        # Lines that vanished from the sheet are removed (takes cascade).
+        for ref, b in by_ref.items():
+            if ref not in incoming_refs:
+                db.delete(b)
+                summary["removed"] += 1
+    return summary
+
+
+class ProjectLineOut(BaseModel):
+    block_id: str
+    line_id: str | None
+    scene_id: str
+    scene_title: str | None
+    character: str | None
+    text: str
+    # "none" (never rendered) | "rendered" | "stale" (text changed since)
+    take_status: str
+
+
+class ProjectLinesResponse(BaseModel):
+    project_id: str
+    lines: list[ProjectLineOut]
+    counts: dict
+
+
+@router.get("/v1/projects/{project_id}/lines", response_model=ProjectLinesResponse)
+async def project_lines(project_id: str, db: Session = Depends(get_db)) -> ProjectLinesResponse:
+    """Flat per-line view for the game Lines grid (mock #game/3).
+    take_status is DERIVED: stale = latest take's generation text differs
+    from the block's current text — no stored flag to drift."""
+    from ..database.models import Generation, Take
+
+    if db.query(Project).filter(Project.id == project_id).first() is None:
+        raise not_found(f"project {project_id}")
+    scenes = (
+        db.query(Scene).filter(Scene.project_id == project_id).order_by(Scene.position).all()
+    )
+    out: list[ProjectLineOut] = []
+    counts = {"none": 0, "rendered": 0, "stale": 0}
+    for scene in scenes:
+        rows = (
+            db.query(Block).filter(Block.scene_id == scene.id).order_by(Block.position).all()
+        )
+        for b in rows:
+            latest = (
+                db.query(Generation.text)
+                .join(Take, Take.generation_id == Generation.id)
+                .filter(Take.block_id == b.id)
+                .order_by(Take.created_at.desc())
+                .first()
+            )
+            if latest is None:
+                status = "none"
+            elif latest[0] == b.text:
+                status = "rendered"
+            else:
+                status = "stale"
+            counts[status] += 1
+            line_id = None
+            if b.metadata_json:
+                try:
+                    line_id = json.loads(b.metadata_json).get("source_ref")
+                except json.JSONDecodeError:
+                    pass
+            persona = (
+                db.query(Persona.name).filter(Persona.id == b.persona_id).first()
+                if b.persona_id
+                else None
+            )
+            out.append(
+                ProjectLineOut(
+                    block_id=b.id, line_id=line_id,
+                    scene_id=scene.id, scene_title=scene.title,
+                    character=persona[0] if persona else None,
+                    text=b.text, take_status=status,
+                )
+            )
+    return ProjectLinesResponse(project_id=project_id, lines=out, counts=counts)
 
