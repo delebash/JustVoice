@@ -169,3 +169,47 @@ def test_detect_local_llm_providers(client, monkeypatch):
     assert det[0]["provider_type"] == "ollama"
     assert "qwen3:14b" in det[0]["models"]
     assert det[0]["already_registered"] is False
+
+
+# ── AI usage ledger ──────────────────────────────────────────────────
+
+
+def test_usage_ledger_records_chat_calls(client, monkeypatch):
+    from justvoice.engines.llm.tiers import TIERS
+    from justvoice.engines.llm.usage import get_ledger
+
+    get_ledger().clear()
+
+    class FakeAdapter:
+        def chat(self, messages, *, model, temperature, max_tokens, system, think):
+            from justvoice.engines.llm.base import LLMResponse
+
+            return LLMResponse(
+                text='[{"speaker": "mara", "confidence": 0.9}]',
+                model=model, prompt_tokens=120, completion_tokens=18,
+            )
+
+    monkeypatch.setattr(
+        "justvoice.engines.llm.dispatch.resolve_pin",
+        lambda settings, feature: (FakeAdapter(), "qwen3:8b", None),
+    )
+    monkeypatch.setattr(
+        "justvoice.extraction.pipeline.resolve_tier", lambda s, f: TIERS["guided"]
+    )
+    monkeypatch.setattr(
+        "justvoice.engines.llm.dispatch.resolve_tier", lambda s, f: TIERS["guided"]
+    )
+    r = client.post(
+        "/v1/extraction/analyze-text",
+        json={"text": '"Hi," said Mara.', "characters": [{"id": "mara", "name": "Mara"}]},
+    )
+    assert r.status_code == 200, r.text
+
+    usage = client.get("/v1/ai-usage").json()
+    feat = usage["by_feature"]["speaker_attribution"]
+    assert feat["calls"] == 1 and feat["errors"] == 0
+    assert feat["prompt_tokens"] == 120 and feat["completion_tokens"] == 18
+    assert usage["recent"][0]["model"] == "qwen3:8b"
+
+    client.delete("/v1/ai-usage")
+    assert client.get("/v1/ai-usage").json()["total_calls"] == 0

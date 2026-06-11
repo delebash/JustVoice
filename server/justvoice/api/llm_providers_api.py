@@ -294,3 +294,18 @@ async def detect_local_llm_providers() -> DetectLocalResponse:
             continue
     return DetectLocalResponse(detected=out)
 
+@router.get("/v1/ai-usage")
+async def ai_usage() -> dict:
+    """Token + duration ledger per feature (Settings → AI usage)."""
+    from ..engines.llm.usage import get_ledger
+
+    return get_ledger().snapshot()
+
+
+@router.delete("/v1/ai-usage")
+async def clear_ai_usage() -> dict:
+    from ..engines.llm.usage import get_ledger
+
+    get_ledger().clear()
+    return {"cleared": True}
+

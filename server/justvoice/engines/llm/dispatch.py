@@ -100,11 +100,36 @@ def chat(
         model = model_override
         tier_override = None
     tier = spec_for(model, tier_override)
-    return adapter.chat(
-        list(messages),
-        model=model,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        system=system,
-        think=tier.think if think is None else think,
+
+    import time as _time
+
+    from .usage import UsageEntry, get_ledger
+
+    started = _time.monotonic()
+    try:
+        resp = adapter.chat(
+            list(messages),
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            system=system,
+            think=tier.think if think is None else think,
+        )
+    except Exception as e:
+        get_ledger().record(
+            UsageEntry(
+                feature=feature, model=model, prompt_tokens=0, completion_tokens=0,
+                duration_ms=int((_time.monotonic() - started) * 1000),
+                ok=False, error=str(e)[:200],
+            )
+        )
+        raise
+    get_ledger().record(
+        UsageEntry(
+            feature=feature, model=resp.model or model,
+            prompt_tokens=resp.prompt_tokens, completion_tokens=resp.completion_tokens,
+            duration_ms=int((_time.monotonic() - started) * 1000),
+            ok=True,
+        )
     )
+    return resp

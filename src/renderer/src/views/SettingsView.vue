@@ -15,6 +15,14 @@ import JvField from "../components/jv/JvField.vue";
 const api = useApi();
 
 // ── Backup & restore (GET /v1/backup, POST /v1/restore) ─────────────
+const aiUsage = ref(null);
+async function loadAiUsage() {
+  try { aiUsage.value = await api.request("/v1/ai-usage"); } catch { aiUsage.value = null; }
+}
+async function clearAiUsage() {
+  try { await api.request("/v1/ai-usage", { method: "DELETE" }); await loadAiUsage(); } catch { /* toast not needed */ }
+}
+
 const backupBusy = ref(false);
 const backupIncludeAudio = ref(true);
 async function downloadBackup() {
@@ -765,6 +773,7 @@ function applyAppearance() {
 }
 
 onMounted(() => {
+  loadAiUsage();
   loadAppearance();
   loadGpuInfo();
   loadMcpBindings();
@@ -1193,6 +1202,36 @@ onMounted(() => {
     </div>
 
     <!-- ─── General · Cache ─── -->
+    <div v-show="activeSub === 'ai'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header">
+          <h3 class="jv-card__title">AI usage</h3>
+          <span class="jv-spacer" />
+          <JvButton variant="ghost" size="sm" label="↻" title="Refresh usage" @click="loadAiUsage" />
+          <JvButton variant="ghost" size="sm" label="Clear" title="Clear the usage log" @click="clearAiUsage" />
+        </div>
+        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 10px">
+          Tokens + wall time per feature, recorded for every LLM call (ported from JustWrite's usage ledger).
+        </p>
+        <table v-if="aiUsage && Object.keys(aiUsage.by_feature || {}).length" class="jv-table">
+          <thead>
+            <tr><th>Feature</th><th class="jv-right">Calls</th><th class="jv-right">Errors</th><th class="jv-right">Tokens in</th><th class="jv-right">Tokens out</th><th class="jv-right">Time</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="(agg, feature) in aiUsage.by_feature" :key="feature">
+              <td><code>{{ feature }}</code></td>
+              <td class="jv-right jv-mono">{{ agg.calls }}</td>
+              <td class="jv-right jv-mono" :style="agg.errors ? 'color: var(--danger)' : ''">{{ agg.errors }}</td>
+              <td class="jv-right jv-mono">{{ agg.prompt_tokens.toLocaleString() }}</td>
+              <td class="jv-right jv-mono">{{ agg.completion_tokens.toLocaleString() }}</td>
+              <td class="jv-right jv-mono">{{ (agg.duration_ms / 1000).toFixed(1) }}s</td>
+            </tr>
+          </tbody>
+        </table>
+        <p v-else class="jv-muted" style="font-size: 12.5px">No AI calls recorded yet this session.</p>
+      </div>
+    </div>
+
     <div v-show="activeSub === 'general'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header">
