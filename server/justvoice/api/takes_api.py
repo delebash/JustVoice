@@ -248,3 +248,47 @@ async def get_generation_audio(generation_id: str, db: Session = Depends(get_db)
         media_type="audio/wav",
         filename=f"{generation_id}.wav",
     )
+
+@router.post("/v1/blocks/{block_id}/render", response_model=TakeResponse)
+async def render_block(block_id: str, db: Session = Depends(get_db)) -> TakeResponse:
+    """Render ONE block through the production path (persona voice +
+    tier-2 delivery + lexicon) and persist Generation + default Take —
+    the Lines grid's per-row ↻ and 'Re-render N changed' both call this.
+    Clears derived staleness because the new generation carries the
+    block's current text."""
+    from ..app_state import get_state
+    from ..database.models import Block, Generation, Persona, Scene
+    from ..errors import not_found
+    from ..export_voicelines import _render_block_production
+
+    block = db.query(Block).filter(Block.id == block_id).first()
+    if block is None:
+        raise not_found(f"block {block_id}")
+    persona = (
+        db.query(Persona).filter(Persona.id == block.persona_id).first()
+        if block.persona_id
+        else None
+    )
+    state = get_state()
+    wav = _render_block_production(state, persona, block)
+
+    scene = db.query(Scene).filter(Scene.id == block.scene_id).first()
+    gen = Generation(
+        block_id=block.id,
+        persona_id=block.persona_id,
+        project_id=scene.project_id if scene else None,
+        chapter_id=block.scene_id,
+        text=block.text,
+        engine=state.engines.current() or "managed",
+        status="completed",
+        source="chapter_render",
+        duration_sec=round((len(wav) - 44) / (2 * 16000), 3) if len(wav) > 44 else None,
+    )
+    db.add(gen)
+    db.flush()
+    take = Take(block_id=block.id, generation_id=gen.id, is_default=True)
+    db.add(take)
+    db.commit()
+    db.refresh(take)
+    return TakeResponse.model_validate(take)
+

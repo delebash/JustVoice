@@ -98,3 +98,32 @@ def test_update_requires_stable_ids(client):
     )
     assert r.status_code == 400
     assert "stable line id" in r.text
+
+
+def test_block_render_clears_staleness(client, monkeypatch):
+    from justvoice.render_core import RenderedLine
+
+    pid = _import(client, CSV_V1)["project_id"]
+    _mark_rendered(client, pid, {"Q01_A"})
+    # change the text via re-import v2 → Q01_A goes stale
+    _import(client, CSV_V2, project_id=pid)
+    lines = client.get(f"/v1/projects/{pid}/lines").json()["lines"]
+    stale = next(r for r in lines if r["line_id"] == "Q01_A")
+    assert stale["take_status"] == "stale"
+
+    # voice on the persona so the production renderer accepts the block
+    personas = client.get("/v1/personas").json()["personas"]
+    hale = next(p for p in personas if p["name"] == "Hale")
+    body = {**{k: hale.get(k) for k in ("name", "language", "bio")}, "voice_id": "af_heart"}
+    client.put(f"/v1/personas/{hale['id']}", json=body)
+
+    monkeypatch.setattr(
+        "justvoice.render_core.render_line",
+        lambda st, voice, text, **kw: RenderedLine(
+            pcm=b"\x00\x00" * 160, sample_rate=16000, channels=1, effective_delivery={}
+        ),
+    )
+    r = client.post(f"/v1/blocks/{stale['block_id']}/render")
+    assert r.status_code == 200, r.text
+    lines = client.get(f"/v1/projects/{pid}/lines").json()["lines"]
+    assert next(x for x in lines if x["line_id"] == "Q01_A")["take_status"] == "rendered"
