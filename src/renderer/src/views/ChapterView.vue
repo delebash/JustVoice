@@ -482,6 +482,93 @@ async function flagPronunciation(block) {
   } catch { /* private mode — link still works */ }
   window.location.hash = "#lexicons";
 }
+
+// ── Chapters home base (journeys audiobook step 3): per-chapter status
+// table — "just text" → attributed → rendered. Open drills into the
+// block editor below; the whole-book actions sit on the toolbar. ──────
+const viewMode = ref("list");           // "list" | "detail"
+const chapterFilter = ref("");
+const chapterChip = ref("all");         // all | needs-script | ready | rendered
+const sceneStats = ref({});             // scene_id -> {words, blocks, attributed}
+const sceneCache = ref({});             // scene_id -> {total, cached}
+
+async function loadChapterList() {
+  if (!selectedProjectId.value) return;
+  // blocks per scene, in parallel — words + attribution state
+  const entries = await Promise.all(scenes.value.map(async (sc) => {
+    try {
+      const res = await projectsService.listBlocks(sc.id);
+      const blocks = res?.blocks || res || [];
+      const words = blocks.reduce((n, b) => n + String(b.text || "").split(/\s+/).filter(Boolean).length, 0);
+      const attributed = blocks.length > 0 && blocks.every((b) => !!b.persona_id);
+      return [sc.id, { words, blocks: blocks.length, attributed }];
+    } catch { return [sc.id, { words: 0, blocks: 0, attributed: false }]; }
+  }));
+  sceneStats.value = Object.fromEntries(entries);
+  try {
+    const r = await api.request(`/v1/render/cache-stats?project_id=${selectedProjectId.value}`);
+    sceneCache.value = Object.fromEntries((r?.scenes || []).map((sc) => [sc.scene_id, sc]));
+  } catch { sceneCache.value = {}; }
+}
+
+function estAudio(words) {
+  if (!words) return "—";
+  const min = words / 155;  // ~155 wpm narration pace
+  if (min < 1) return `${Math.round(min * 60)} s`;
+  const h = Math.floor(min / 60);
+  return h ? `${h} h ${String(Math.round(min % 60)).padStart(2, "0")} m` : `${Math.round(min)} m`;
+}
+function scriptState(id) {
+  const st = sceneStats.value[id];
+  if (!st || !st.blocks) return { cls: "jv-pill--ghost", label: "not analyzed" };
+  return st.attributed
+    ? { cls: "jv-pill--green", label: "attributed" }
+    : { cls: "jv-pill--warn", label: "unassigned speakers" };
+}
+function renderState(id) {
+  const c = sceneCache.value[id];
+  if (!c || !c.total) return { cls: "jv-pill--ghost", label: "—" };
+  if (c.cached === c.total) return { cls: "jv-pill--green", label: "✓ cached" };
+  if (c.cached > 0) return { cls: "jv-pill--accent", label: `${c.cached}/${c.total} cached` };
+  return { cls: "jv-pill--ghost", label: "—" };
+}
+const filteredScenes = computed(() => scenes.value.filter((sc) => {
+  const q = chapterFilter.value.trim().toLowerCase();
+  if (q && !(sc.title || "").toLowerCase().includes(q)) return false;
+  const st = sceneStats.value[sc.id];
+  if (chapterChip.value === "needs-script") return !st?.attributed;
+  if (chapterChip.value === "ready") return !!st?.attributed && renderState(sc.id).label !== "✓ cached";
+  if (chapterChip.value === "rendered") return renderState(sc.id).label === "✓ cached";
+  return true;
+}));
+function openChapter(sc) {
+  selectedSceneId.value = sc.id;
+  viewMode.value = "detail";
+}
+function backToList() {
+  viewMode.value = "list";
+  loadChapterList();
+}
+async function addChapter() {
+  const title = (await promptDialog({
+    title: `New ${copy.value.chapter.singular.toLowerCase()}`,
+    message: "Title:",
+    placeholder: `${copy.value.chapter.singular} ${scenes.value.length + 1}`,
+  }))?.trim();
+  if (!title) return;
+  try {
+    await projectsService.createScene(selectedProjectId.value, { title, position: scenes.value.length });
+    await loadScenes(selectedProjectId.value);
+    await loadChapterList();
+    pushToast({ kind: "success", title: `${copy.value.chapter.singular} added` });
+  } catch (e) {
+    pushToast({ kind: "error", title: "Add failed", description: String(e?.message ?? e) });
+  }
+}
+function openInStudio() {
+  window.location.hash = "#studio";
+}
+watch([scenes, selectedProjectId], () => { if (viewMode.value === "list") loadChapterList(); });
 </script>
 
 <template>
@@ -581,6 +668,46 @@ async function flagPronunciation(block) {
       </div>
     </div>
 
+    <!-- ── Chapters home base — per-chapter status table (mock step 3) ── -->
+    <template v-if="viewMode === 'list' && selectedProjectId">
+      <p class="chapter-view__lede jv-muted">
+        Each {{ copy.chapter.singular.toLowerCase() }} moves independently through
+        <strong>cast → script → render</strong>. Open one to read it, or send the whole
+        {{ copy.book.singular.toLowerCase() }} to Studio.
+      </p>
+      <div class="chapter-view__list-toolbar">
+        <input v-model="chapterFilter" class="jv-input jv-input--sm" style="max-width:260px" :placeholder="`Filter ${copy.chapter.plural.toLowerCase()}…`" />
+        <button v-for="c in [['all','All'],['needs-script','Needs script'],['ready','Ready'],['rendered','Rendered']]" :key="c[0]"
+          type="button" class="jv-pill" :class="chapterChip === c[0] ? 'jv-pill--solid' : 'jv-pill--ghost'"
+          :title="c[0]==='needs-script' ? 'Chapters with unattributed or missing blocks' : c[0]==='rendered' ? 'Fully cached — re-render is free' : ''"
+          @click="chapterChip = c[0]">{{ c[1] }}</button>
+        <span class="jv-spacer" />
+        <JvButton variant="secondary" size="sm" :label="`＋ Add ${copy.chapter.singular.toLowerCase()}`" @click="addChapter" />
+        <JvButton variant="primary" size="sm" label="Open in Studio ➜" title="Cast → Script → Render for the whole project" @click="openInStudio" />
+      </div>
+      <table class="jv-table chapter-view__list">
+        <thead><tr>
+          <th>{{ copy.chapter.singular }}</th>
+          <th class="chapter-view__num">Words</th>
+          <th class="chapter-view__num">Est. audio</th>
+          <th>Script</th>
+          <th>Render</th>
+          <th></th>
+        </tr></thead>
+        <tbody>
+          <tr v-for="sc in filteredScenes" :key="sc.id" class="chapter-view__list-row" @click="openChapter(sc)">
+            <td><strong>{{ sc.title || `${copy.chapter.singular} ${sc.position + 1}` }}</strong></td>
+            <td class="chapter-view__num jv-mono">{{ (sceneStats[sc.id]?.words ?? 0).toLocaleString() }}</td>
+            <td class="chapter-view__num jv-mono">{{ estAudio(sceneStats[sc.id]?.words) }}</td>
+            <td><span class="jv-pill" :class="scriptState(sc.id).cls">{{ scriptState(sc.id).label }}</span></td>
+            <td><span class="jv-pill" :class="renderState(sc.id).cls">{{ renderState(sc.id).label }}</span></td>
+            <td style="text-align:right"><JvButton variant="ghost" size="sm" label="Open" @click.stop="openChapter(sc)" /></td>
+          </tr>
+          <tr v-if="!filteredScenes.length"><td colspan="6" class="jv-muted" style="padding:14px">No {{ copy.chapter.plural.toLowerCase() }} match.</td></tr>
+        </tbody>
+      </table>
+    </template>
+
     <!-- ── No project banner ───────────────────────────────────────────── -->
     <EmptyState
       v-if="!selectedProjectId"
@@ -592,9 +719,14 @@ async function flagPronunciation(block) {
       @action="(typeof window !== 'undefined') && (window.location.hash = '#books')"
     />
 
+    <!-- ── Back to the chapter list (detail mode) ─────────────────────── -->
+    <div v-if="viewMode === 'detail' && selectedProjectId" class="chapter-view__backbar">
+      <JvButton variant="ghost" size="sm" :label="`← All ${copy.chapter.plural.toLowerCase()}`" @click="backToList" />
+    </div>
+
     <!-- ── No blocks yet ──────────────────────────────────────────────── -->
     <div
-      v-else-if="selectedSceneId && blocks.length === 0"
+      v-if="viewMode === 'detail' && selectedProjectId && selectedSceneId && blocks.length === 0"
       class="jv-banner"
     >
       This {{ copy.chapter.singular.toLowerCase() }} has no {{ copy.line.plural.toLowerCase() }} yet.
@@ -602,7 +734,7 @@ async function flagPronunciation(block) {
     </div>
 
     <!-- ── Block list ─────────────────────────────────────────────────── -->
-    <div v-else-if="blocks.length" class="jv-section">
+    <div v-if="viewMode === 'detail' && blocks.length" class="jv-section">
       <div
         v-for="block in blocks"
         :key="block.id"
@@ -835,7 +967,7 @@ async function flagPronunciation(block) {
          this. "Render block" button is disabled until a block is selected;
          once block-selection state exists (#87 follow-on) this renders the
          active block. -->
-    <div v-if="blocks.length" class="jv-floating chapter-view__generate-bar">
+    <div v-if="viewMode === 'detail' && blocks.length" class="jv-floating chapter-view__generate-bar">
       <div class="jv-chip-card">🎙️
         <strong>{{ availableVoices.find((v) => v.id === regenVoice)?.name || regenVoice || "no voice" }}</strong>
         <select v-model="regenVoice" :disabled="!availableVoices.length" class="chapter-view__chip-select">
@@ -1149,4 +1281,11 @@ async function flagPronunciation(block) {
 .chapter-view__ckl .ok { color: var(--accent); font-weight: 700; }
 .chapter-view__ckl .bad { color: var(--danger); font-weight: 700; }
 .chapter-view__ckl .dim { color: var(--ink-3); }
+
+.chapter-view__lede { font-size: 13px; margin: 0 0 4px; }
+.chapter-view__list-toolbar { display: flex; gap: 8px; align-items: center; margin: 4px 0 10px; flex-wrap: wrap; }
+.chapter-view__list-row { cursor: pointer; }
+.chapter-view__list-row:hover td { background: var(--surface-2); }
+.chapter-view__num { text-align: right; }
+.chapter-view__backbar { margin-bottom: 8px; }
 </style>

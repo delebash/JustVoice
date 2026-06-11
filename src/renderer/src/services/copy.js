@@ -15,6 +15,7 @@
 
 import { computed } from "vue";
 import { useOnboarding } from "../stores/onboarding.js";
+import { useActiveProject } from "../stores/activeProject.js";
 
 const TERMS = {
   audiobook: {
@@ -67,9 +68,17 @@ function dictFor(useCase) {
   return TERMS[useCase] || TERMS.unset;
 }
 
+// The open project's kind outranks the install-time focus — when you're
+// inside an audiobook, its sections are Chapters no matter what the
+// workspace focus says (journeys nav contract).
+const KIND_TO_USE_CASE = { audiobook: "audiobook", game: "game", podcast: "podcast", text: "multiple" };
+
 export function useCopy() {
   const onboarding = useOnboarding();
-  return computed(() => dictFor(onboarding.primaryUseCase));
+  const activeProject = useActiveProject();
+  return computed(() =>
+    dictFor(KIND_TO_USE_CASE[activeProject.kind] || onboarding.primaryUseCase),
+  );
 }
 
 // Plain accessor for non-component contexts (e.g. router titles).
