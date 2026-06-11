@@ -87,24 +87,39 @@ onMounted(async () => {
 
 onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 
+// Auto-pick the adapter that claims this file's extension, so dropping
+// stillwater.epub lands on book_prose without touching the picker. A
+// manual selection that already matches the extension is left alone.
+function adapterForExtension(name) {
+  const dot = name.lastIndexOf(".");
+  if (dot < 0) return null;
+  const ext = name.slice(dot).toLowerCase();
+  const matches = (a) => a.implemented && (a.file_extensions || []).includes(ext);
+  if (selectedAdapter.value && matches(selectedAdapter.value)) return selectedAdapter.value;
+  return adapters.value.find(matches) || null;
+}
+
+function acceptFile(f) {
+  file.value = f;
+  filename.value = f.name;
+  preview.value = null;
+  const match = adapterForExtension(f.name);
+  if (match) selectedSource.value = match.id;
+  // Dry-run immediately — the preview IS the import experience; the
+  // commit button is just the confirmation.
+  if (canPreview.value) doPreview();
+}
+
 function pickFromInput(e) {
   const f = e.target?.files?.[0];
-  if (f) {
-    file.value = f;
-    filename.value = f.name;
-    preview.value = null;
-  }
+  if (f) acceptFile(f);
 }
 
 function onDrop(e) {
   e.preventDefault();
   isDragging.value = false;
   const f = e.dataTransfer?.files?.[0];
-  if (f) {
-    file.value = f;
-    filename.value = f.name;
-    preview.value = null;
-  }
+  if (f) acceptFile(f);
 }
 
 async function doPreview() {
@@ -117,10 +132,7 @@ async function doPreview() {
       file: file.value,
       dryRun: true,
     });
-    preview.value = res.standard;
-    if (res.warnings?.length) {
-      pushToast({ message: `Preview warnings: ${res.warnings.join("; ")}`, kind: "warn" });
-    }
+    preview.value = res.standard; // warnings render inline in the preview
   } catch (e) {
     pushToast({ message: `Preview failed: ${e.message || e}`, kind: "error" });
   } finally {
@@ -167,6 +179,38 @@ const summary = computed(() => {
     lexicon: s.lexicon_entries?.length || 0,
   };
 });
+
+const WORDS_PER_MINUTE = 155; // narration pace for the est-audio column
+
+function estAudio(words) {
+  if (!words) return "—";
+  const min = words / WORDS_PER_MINUTE;
+  return min < 1 ? "<1 min" : `~${Math.round(min)} min`;
+}
+
+const SCENE_ROW_CAP = 12;
+
+// Per-chapter rows for the dry-run table (title · lines · words · est audio).
+const previewScenes = computed(() => {
+  const scenes = preview.value?.scenes || [];
+  return scenes.slice(0, SCENE_ROW_CAP).map((sc, i) => {
+    const words = (sc.lines || []).reduce(
+      (acc, l) => acc + (l.text ? l.text.split(/\s+/).length : 0),
+      0
+    );
+    return {
+      key: sc.id || i,
+      title: sc.title || `Scene ${i + 1}`,
+      lines: sc.lines?.length || 0,
+      words,
+      est: estAudio(words),
+    };
+  });
+});
+const previewScenesOverflow = computed(() =>
+  Math.max(0, (preview.value?.scenes?.length || 0) - SCENE_ROW_CAP)
+);
+const previewWarnings = computed(() => preview.value?.warnings || []);
 </script>
 
 <template>
@@ -237,11 +281,32 @@ const summary = computed(() => {
           <div class="preview-title">Preview</div>
           <dl>
             <dt>Project</dt><dd>{{ summary.name }} <span class="muted">({{ summary.kind }})</span></dd>
-            <dt>Characters</dt><dd>{{ summary.characters }}</dd>
+            <dt>Characters</dt><dd>{{ summary.characters || "found later, in Script" }}</dd>
             <dt>Scenes</dt><dd>{{ summary.scenes }}</dd>
             <dt>Lines</dt><dd>{{ summary.lines }}</dd>
             <dt>Lexicon entries</dt><dd>{{ summary.lexicon }}</dd>
           </dl>
+
+          <ul v-if="previewWarnings.length" class="preview-warnings">
+            <li v-for="(w, i) in previewWarnings" :key="i">⚠ {{ w }}</li>
+          </ul>
+
+          <table v-if="previewScenes.length" class="preview-scenes">
+            <thead>
+              <tr><th>Detected structure</th><th>Lines</th><th>Words</th><th>Est. audio</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in previewScenes" :key="row.key">
+                <td class="t">{{ row.title }}</td>
+                <td>{{ row.lines }}</td>
+                <td>{{ row.words.toLocaleString() }}</td>
+                <td>{{ row.est }}</td>
+              </tr>
+              <tr v-if="previewScenesOverflow">
+                <td class="t muted" colspan="4">… and {{ previewScenesOverflow }} more</td>
+              </tr>
+            </tbody>
+          </table>
         </section>
         </div>
       </div>
@@ -327,4 +392,18 @@ const summary = computed(() => {
 .preview dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; }
 .preview dt { color: var(--muted); font-size: 12px; }
 .preview dd { margin: 0; font-size: 13px; }
+.preview-warnings {
+  margin: 10px 0 0; padding: 8px 12px; list-style: none;
+  background: var(--warn-bg, #fff8e3); border: 1px solid var(--warn-line, #e6cd84);
+  border-radius: 6px; font-size: 12px; color: var(--warn-ink, #8a6a1f);
+}
+.preview-warnings li + li { margin-top: 3px; }
+.preview-scenes { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px; }
+.preview-scenes th {
+  text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--muted); padding: 4px 8px; border-bottom: 1px solid var(--line, #e3e1dc);
+}
+.preview-scenes td { padding: 5px 8px; border-bottom: 1px dashed var(--line, #e3e1dc); }
+.preview-scenes tr:last-child td { border-bottom: 0; }
+.preview-scenes td.t { max-width: 0; width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

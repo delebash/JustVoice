@@ -12,6 +12,8 @@ from justvoice.errors import ApiError
 from justvoice.imports import get_adapter, run_adapter
 from justvoice.imports.adapters.book_prose import parse
 
+pytest_plugins = ["tests.conftest_db"]
+
 # ── fixture builders ─────────────────────────────────────────────────
 
 _CONTAINER = """<?xml version="1.0"?>
@@ -190,3 +192,40 @@ def test_registered_and_runs_through_registry():
     assert get_adapter("book_prose") is not None
     out = run_adapter("book_prose", b"# T\n\nHello world paragraph.", filename="t.md")
     assert out.scenes[0].lines[0].text == "Hello world paragraph."
+
+
+# ── endpoint: multipart dry-run through the real router ──────────────
+
+
+def test_endpoint_multipart_dry_run_epub(db_session, tmp_path, monkeypatch):
+    from fastapi import FastAPI, HTTPException
+    from fastapi.testclient import TestClient
+
+    from justvoice.api import projects_api
+    from justvoice.database import get_db
+    from justvoice.errors import ApiError, api_exception_handler, http_exception_handler
+
+    app = FastAPI()
+    app.include_router(projects_api.router)
+    app.add_exception_handler(ApiError, api_exception_handler)
+    app.add_exception_handler(HTTPException, http_exception_handler)
+    app.dependency_overrides[get_db] = lambda: db_session
+
+    raw = _make_epub(
+        {
+            "front.xhtml": _xhtml(None, ["Tiny title page."]),
+            "ch1.xhtml": _xhtml("One", ["First chapter paragraph text goes here."]),
+        }
+    )
+    client = TestClient(app, raise_server_exceptions=False)
+    r = client.post(
+        "/v1/projects/import",
+        data={"source": "book_prose", "dry_run": "true"},
+        files={"file": ("stillwater.epub", raw, "application/epub+zip")},
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["committed"] is False and body["project_id"] is None
+    assert body["standard"]["project"]["name"] == "Stillwater"
+    assert [s["title"] for s in body["standard"]["scenes"]] == ["One"]
+    assert any("front matter" in w for w in body["warnings"])
