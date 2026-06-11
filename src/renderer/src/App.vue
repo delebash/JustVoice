@@ -78,8 +78,8 @@ const VIEWS = [
 
   // ─── Tools lane ────────────────────────────────────────────────────
   { id: "compare",   lane: "tools", label: "Compare",   icon: "⚖️", lede: "A/B audio comparison. Side-by-side waveforms, peak/RMS/duration diff, sample-level RMSE, verdict. Bulk compare across takes for QC pass.", component: CompareView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "speakerlab",lane: "tools", label: "Speaker Lab",icon: "🔬", lede: "Speaker-extraction testbed. Paste any text, tune model + temperature + tier + prompts per column, race configurations side-by-side, and promote the winner to production. Same backend as Studio · Script.", component: SpeakerLabView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   { id: "train",     lane: "tools", label: "Train",     icon: "🏋️", lede: "PEFT/LoRA-based fine-tuning. QC pipeline checks SNR / clipping / silence ratio per sample before accepting it.", component: TrainView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "speakerlab",lane: "tools", label: "Spk Lab",icon: "🔬", lede: "Speaker-extraction testbed. Paste any text, tune model + temperature + tier + prompts per column, race configurations side-by-side, and promote the winner to production. Same backend as Studio · Script.", component: SpeakerLabView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
 
   // ─── Advanced lane (collapsed by default) ──────────────────────────
   { id: "renderlab", lane: "advanced", label: "Render Lab", icon: "🧪", lede: "Voice parameter A/B matrix. Pick a voice + sample sentence + 1-2 parameter axes; render up to 16 cells in parallel (capped at 2 concurrent). Save any cell as a render preset.", component: RenderLabView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },

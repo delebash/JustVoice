@@ -255,9 +255,9 @@ const voiceLibraryByEngine = computed(() => {
 // shows the engine label + voice count to make picking easier.
 const voiceEngineOptions = computed(() => {
   const opts = Object.entries(voiceLibraryByEngine.value)
-    .map(([id, group]) => ({ value: id, label: `${id} (${group.length})` }))
+    .map(([id, group]) => ({ value: id, label: `${id} (${group.length})`, pill: `${id} · ${group.length}` }))
     .sort((a, b) => a.label.localeCompare(b.label));
-  return [{ value: "", label: `All engines (${voices.value.length})` }, ...opts];
+  return [{ value: "", label: `All engines (${voices.value.length})`, pill: `All · ${voices.value.length}` }, ...opts];
 });
 
 // Filtered + flattened voice list driving the Cast tab sidebar. Honors
@@ -1126,12 +1126,21 @@ watch(selectedProjectId, (id) => {
           in the library; click the assigned voice again to unassign. ▶ auditions any voice in
           place. Smart-assign proposes the whole cast; override card by card.
         </p>
-        <div class="studio__cast-grid">
+        <div class="studio__cast-cols">
+        <div v-if="!projectPersonas.length" class="studio__cast-empty">
+          <h4>No cast yet</h4>
+          <p class="jv-muted">
+            Two ways in: run <a href="#studio" @click.prevent="tab = 'script'">2 · Script</a> on a
+            {{ copy.chapter.singular.toLowerCase() }} — discovered speakers arrive here as personas —
+            or add existing <a href="#personas">Personas</a> to this {{ copy.book.singular.toLowerCase() }}
+            from <a href="#books">{{ copy.book.plural }}</a>.
+          </p>
+        </div>
+        <div v-else class="studio__cast-grid">
           <!-- Narrator card -->
           <article
             v-if="narratorPersona"
             class="jv-card studio__char-card studio__char-card--narrator"
-            :style="{}"
             :class="{ 'studio__char-card--selected': selectedCharacterId === narratorPersona.id }"
             @click="selectedCharacterId = narratorPersona.id"
             title="The narrator carries the prose between quotes — pick your steadiest voice"
@@ -1187,11 +1196,19 @@ watch(selectedProjectId, (id) => {
              ✓ if assigned + gender chip + tune + preview, loading,
              empty-engine, empty-filter states. -->
         <aside class="studio__voice-library">
-          <h4 class="studio__voice-library-h">Voice library</h4>
+          <div class="studio__voice-library-head">
+            <h4 class="studio__voice-library-h">Voice library</h4>
+            <button
+              v-for="opt in voiceEngineOptions"
+              :key="opt.value"
+              type="button"
+              class="jv-pill studio__engine-pill"
+              :class="voiceEngineFilter === opt.value ? '' : 'jv-pill--ghost'"
+              :title="opt.value ? `Show only ${opt.value} voices` : 'Show every engine'"
+              @click="voiceEngineFilter = opt.value"
+            >{{ opt.pill }}</button>
+          </div>
 
-          <!-- Engine selector — the JustVoice equivalent of JustWrite's
-               TTS provider picker (#A). Empty state when no engines
-               loaded yet (#B). -->
           <template v-if="!voices.length">
             <EmptyState
               icon="Sparkle"
@@ -1203,26 +1220,13 @@ watch(selectedProjectId, (id) => {
             />
           </template>
           <template v-else>
-            <div class="studio__voice-filter">
-              <select
-                v-model="voiceEngineFilter"
-                class="jv-input jv-input--sm jv-w-id"
-                title="Filter by engine"
-              >
-                <option v-for="opt in voiceEngineOptions" :key="opt.value" :value="opt.value">
-                  {{ opt.label }}
-                </option>
-              </select>
-            </div>
-
-            <!-- Picking-for status line (#D) — tells the user which
-                 character will receive the voice on click. -->
-            <div class="studio__voice-picking" v-if="characterPersonas.length">
+            <!-- Picking-for banner (mock: amber strip). -->
+            <div class="studio__voice-picking" v-if="projectPersonas.length">
               <template v-if="selectedCharacter">
-                Picking voice for <strong>{{ selectedCharacter.name }}</strong>
+                Picking for: <strong>{{ selectedCharacter.name }}</strong> — click a voice to assign
               </template>
               <template v-else>
-                <span class="jv-muted">Select a character to assign a voice.</span>
+                Select a character card, then click a voice to assign it.
               </template>
             </div>
 
@@ -1248,28 +1252,28 @@ watch(selectedProjectId, (id) => {
             <div
               v-for="v in filteredVoices"
               :key="v.id"
-              class="studio__voice-row"
-              :class="{ 'studio__voice-row--disabled': !selectedCharacter }"
+              class="studio__vrow"
+              :class="{ 'studio__vrow--assigned': !!castAsByVoiceId[v.id], 'studio__vrow--disabled': !selectedCharacter }"
             >
-              <!-- Name + tone + assigned-check — primary click target -->
+              <!-- Avatar + name + tone — primary click target (assign/unassign) -->
               <button
                 type="button"
-                class="studio__voice-row-name-btn"
+                class="studio__vrow-main"
                 :disabled="!selectedCharacter"
                 :title="!selectedCharacter ? 'Pick a character first' : isVoiceAssignedToSelected(v.id) ? `Unassign ${v.name} from ${selectedCharacter.name}` : `Assign ${v.name} to ${selectedCharacter.name}`"
                 @click="selectedCharacter && assignVoice(selectedCharacter.id, isVoiceAssignedToSelected(v.id) ? '' : v.id)"
               >
-                <span class="studio__voice-row-name-row">
-                  <strong class="studio__voice-row-name">{{ v.name }}</strong>
-                  <span
-                    v-if="castAsByVoiceId[v.id]"
-                    class="studio__voice-row-assigned"
-                    :title="`Cast as ${castAsByVoiceId[v.id]}`"
-                  >✓ {{ castAsByVoiceId[v.id] }}</span>
+                <span class="studio__vrow-avatar" :style="{ background: colorFor(v.name) }">{{ (v.name || "?").charAt(0).toUpperCase() }}</span>
+                <span class="studio__vrow-text">
+                  <strong class="studio__vrow-name">{{ v.name }}</strong>
+                  <i class="studio__vrow-tone">{{ v.tone || v.engine || "" }}</i>
                 </span>
-                <span v-if="v.tone" class="studio__voice-row-tone">{{ v.tone }}</span>
-                <span v-else class="studio__voice-row-tone jv-muted">{{ v.engine || "" }}</span>
               </button>
+              <span
+                v-if="castAsByVoiceId[v.id]"
+                class="studio__vrow-cast"
+                :title="`Cast as ${castAsByVoiceId[v.id]}`"
+              >✓ {{ castAsByVoiceId[v.id] }}</span>
 
               <!-- Gender chip click-cycle (#H) -->
               <button
@@ -1298,8 +1302,12 @@ watch(selectedProjectId, (id) => {
                 @click.stop="previewVoice(v)"
               >{{ previewingVoiceId === v.id ? "⏳" : "▶" }}</button>
             </div>
+            <p class="studio__voice-foot jv-muted">
+              Assigned voices show who they're cast as. One voice can play multiple minor characters.
+            </p>
           </template>
         </aside>
+        </div>
       </template>
     </section>
 
@@ -1679,12 +1687,23 @@ watch(selectedProjectId, (id) => {
   font-weight: 600;
 }
 
-.studio__cast {
+.studio__cast { display: flex; flex-direction: column; gap: 12px; }
+.studio__cast-cols {
   display: grid;
-  grid-template-columns: 1fr 280px;
-  gap: 18px;
+  grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr);
+  gap: 14px;
+  align-items: start;
 }
-@media (max-width: 900px) { .studio__cast { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .studio__cast-cols { grid-template-columns: 1fr; } }
+.studio__cast-empty {
+  border: 1px dashed var(--line-strong);
+  border-radius: 10px;
+  padding: 22px 24px;
+  background: var(--surface);
+}
+.studio__cast-empty h4 { margin: 0 0 6px; font-size: 14px; }
+.studio__cast-empty p { margin: 0; font-size: 12.5px; line-height: 1.6; }
+.studio__cast-empty a { color: var(--accent-ink); text-decoration: underline; }
 
 .studio__cast-toolbar {
   grid-column: 1 / -1;
@@ -1746,13 +1765,53 @@ watch(selectedProjectId, (id) => {
 .studio__char-unassigned { font-size: 11.5px; color: var(--warn-ink); display: inline-block; margin-top: 4px; }
 
 .studio__voice-library {
-  padding: 12px;
-  background: var(--surface-2);
-  border: 1px solid var(--border-soft);
-  border-radius: 8px;
-  max-height: 70vh;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  max-height: 76vh;
   overflow-y: auto;
 }
+.studio__voice-library-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.studio__voice-library-head .studio__voice-library-h { margin: 0 6px 0 0; }
+.studio__engine-pill { cursor: pointer; font-size: 11px; }
+.studio__engine-pill:hover { border-color: var(--accent); }
+
+/* Mock voice row: avatar · name + italic tone · ✓ cast-as · actions.
+   Assigned rows tint green. */
+.studio__vrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 10px;
+  margin-bottom: 6px;
+  background: var(--surface);
+}
+.studio__vrow--assigned {
+  background: var(--accent-soft);
+  border-color: var(--accent-line, #b8d2c3);
+}
+.studio__vrow--disabled { opacity: 0.75; }
+.studio__vrow-main {
+  appearance: none; border: 0; background: transparent;
+  display: flex; align-items: center; gap: 10px;
+  flex: 1; min-width: 0;
+  font: inherit; text-align: left; cursor: pointer; padding: 0;
+}
+.studio__vrow-main:disabled { cursor: not-allowed; }
+.studio__vrow-avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  color: #fff; font-size: 11px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: none;
+}
+.studio__vrow-text { min-width: 0; display: flex; flex-direction: column; }
+.studio__vrow-name { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.studio__vrow-tone { font-size: 11px; color: var(--ink-3); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.studio__vrow-cast { flex: none; font-size: 11.5px; font-weight: 600; color: var(--accent-ink); }
+.studio__voice-foot { font-size: 11.5px; margin: 10px 0 0; }
 .studio__voice-library-h {
   margin: 0 0 10px;
   font-size: 11px;
@@ -1846,13 +1905,13 @@ watch(selectedProjectId, (id) => {
 .studio__voice-filter .jv-input { flex: 1; min-width: 0; }
 
 .studio__voice-picking {
-  font-size: 11.5px;
-  padding: 6px 10px;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-line);
+  color: var(--warn-ink);
+  border-radius: 7px;
+  padding: 8px 11px;
+  font-size: 12px;
   margin-bottom: 8px;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-line);
-  border-radius: 4px;
-  color: var(--accent-ink);
 }
 
 .studio__voice-search {
