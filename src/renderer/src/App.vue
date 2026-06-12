@@ -391,19 +391,17 @@ onMounted(async () => {
         <div class="jv-sidebar__lane-header">
           {{ localizedLaneLabel(lane.id) }}
         </div>
-        <template>
-          <a
-            v-for="v in lane.views"
-            :key="v.id"
-            class="jv-sidebar__nav"
-            :class="{ 'jv-sidebar__nav--active': view === v.id }"
-            :title="navLabel(v)"
-            @click="view = v.id"
-          >
-            <span class="jv-sidebar__icon">{{ v.icon || '·' }}</span>
-            <span class="jv-sidebar__label">{{ navLabel(v) }}</span>
-          </a>
-        </template>
+        <a
+          v-for="v in lane.views"
+          :key="v.id"
+          class="jv-sidebar__nav"
+          :class="{ 'jv-sidebar__nav--active': view === v.id }"
+          :title="navLabel(v)"
+          @click="view = v.id"
+        >
+          <span class="jv-sidebar__icon">{{ v.icon || '·' }}</span>
+          <span class="jv-sidebar__label">{{ navLabel(v) }}</span>
+        </a>
       </template>
 
       <div class="jv-sidebar__spacer" />

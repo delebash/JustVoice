@@ -59,7 +59,13 @@ const canCreate = computed(() => !!name.value.trim());
 
 function pick(id) {
   selected.value = id;
+  // Dead-click fix: choosing a kind suggests a name immediately so
+  // Create lights up — typing replaces the suggestion (text selected).
+  if (!name.value.trim()) {
+    name.value = `My ${KINDS.find((k) => k.id === id)?.label.toLowerCase() || "project"}`;
+  }
   nameInput.value?.focus();
+  nameInput.value?.select();
 }
 
 function create() {
