@@ -5,6 +5,27 @@
 
 ---
 
+## 2026-06-12 — onboarding redesign: work first, recommend in context
+
+User decision: no welcome quiz, no auto QuickSetup wizard. First run =
+the kind picker ("What are you making?") on Projects; creating the
+first project silently sets workspace focus (KIND_TO_FOCUS) and lands
+in the kind home base. Dictation/Accessibility get focus-only links in
+the picker footer. WelcomeOnboarding.vue DELETED. QuickSetup survives
+only as Settings → Run Quick Setup (jv:quick-setup); its intelligence
+moved to components/RecommendCard.vue — dismissible "Recommended for
+your machine" on Home + Engines (GPU→Chatterbox suggestion, detected
+local LLM one-click connect; hidden on CPU-only w/ nothing detected).
+Engine ledes now say the truth: first render auto-installs Kokoro
+(~310 MB one-time). Also this morning: factory reset = delete DB file +
+init_db reseed (fallback: drop-all-tables on Windows file locks);
+mcp_bindings boot migration; CORS-on-500 fixed FOR REAL (catch-all
+middleware INSIDE CORSMiddleware + regression test — the bare exception
+handler ran outside CORS and the first 'fix' was wrong); /v1/system/info
+path, /v1/logs/tail ring, /v1/cache/recent built; QuickSetup dead-end
+button fixed. Verified live: reset → kind picker → create → Chapters,
+focus=audiobook, nav reshaped, zero errors.
+
 ## 2026-06-11 (remote session, latest) — GUI completion pass (journeys-preview)
 
 One-shot pass per user directive (plan + execution record:

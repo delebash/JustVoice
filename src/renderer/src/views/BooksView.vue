@@ -25,9 +25,11 @@ import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
 import { useCopy } from "../services/copy.js";
 import { useActiveProject } from "../stores/activeProject.js";
+import { useOnboarding } from "../stores/onboarding.js";
 
 const api = useApi();
 const activeProject = useActiveProject();
+const onboarding = useOnboarding();
 
 const copy = useCopy();
 
@@ -345,10 +347,24 @@ async function deleteProject() {
 }
 
 const KIND_HOME_HASH = { audiobook: "#chapter", game_voicelines: "#lines", podcast: "#chapter", custom: "#chapter" };
+const KIND_TO_FOCUS = { audiobook: "audiobook", game_voicelines: "game", podcast: "podcast", custom: "multiple" };
 function landInHomeBase(rec) {
   if (!rec) return;
+  // The first project quietly sets the workspace focus — no quiz
+  // (user decision 2026-06-12). Changeable any time in Settings.
+  if (onboarding.primaryUseCase === "unset") {
+    onboarding.set({ primary: KIND_TO_FOCUS[rec.project_type] || "multiple" }).catch(() => {});
+  }
   activeProject.open(rec);
   window.location.hash = KIND_HOME_HASH[rec.project_type] || "#chapter";
+}
+
+// "Not making projects?" path from the kind picker — dictation /
+// accessibility users set a focus instead of creating anything.
+async function onFocusOnly(focusId) {
+  showNewProject.value = false;
+  try { await onboarding.set({ primary: focusId }); } catch { /* persists next time */ }
+  window.location.hash = focusId === "dictation" ? "#captures" : "#settings";
 }
 
 async function onImportCreated({ project_id }) {
@@ -807,6 +823,7 @@ watch(selectedId, (id) => {
     <NewProjectModal
       v-if="showNewProject"
       :initial-kind="newProjectKind"
+      @focus-only="onFocusOnly"
       @close="showNewProject = false"
       @create="onCreateProject"
       @import="onCreateFromImport"

@@ -25,6 +25,7 @@ import { useActiveProject } from "../stores/activeProject.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast } from "../services/toastBridge.js";
 import JvButton from "../components/jv/JvButton.vue";
+import RecommendCard from "../components/RecommendCard.vue";
 
 const onboarding = useOnboarding();
 const api = useApi();
@@ -261,6 +262,8 @@ onMounted(refresh);
       <span class="jv-spacer" />
       <span class="home__next-cta">{{ nextStep.cta }} ➜</span>
     </a>
+
+    <RecommendCard />
 
     <!-- Row 1 — Continue + Start something -->
     <div class="home__row home__row--top">

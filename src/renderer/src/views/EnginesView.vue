@@ -30,6 +30,7 @@ import { confirmDialog, promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvTag from "../components/jv/JvTag.vue";
 import ProviderForm from "../components/ProviderForm.vue";
+import RecommendCard from "../components/RecommendCard.vue";
 
 const api = useApi();
 const tasks = useRenderTasks();
@@ -856,6 +857,7 @@ onMounted(() => { refresh(); loadSystem(); loadProviders(); });
 
   <!-- ════ LOCAL MODELS ════ -->
   <div v-show="topTab === 'local'">
+    <RecommendCard />
     <div class="ev-toprow">
       <div class="ev-search">
         🔍 <input v-model="q" placeholder="Search local models and engines…" title="Filters engines and models; matching groups auto-expand">

@@ -18,7 +18,7 @@ const props = defineProps({
   // Preselect a kind (Home's Start-something pills hand this over).
   initialKind: { type: String, default: "" },
 });
-const emit = defineEmits(["close", "create", "import", "demo"]);
+const emit = defineEmits(["close", "create", "import", "demo", "focus-only"]);
 
 const KINDS = [
   {
@@ -140,6 +140,13 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
           @click="emit('demo', selected)"
         >…or load a demo project</button>
       </footer>
+
+      <p class="np-focus-only">
+        Not making projects?
+        <a href="#" title="Real-time TTS + global hotkey workflows — no project needed" @click.prevent="emit('focus-only', 'dictation')">Set up dictation ➜</a>
+        ·
+        <a href="#" title="Reader-friendly playback + screen-reader-aware controls" @click.prevent="emit('focus-only', 'accessibility')">Accessibility ➜</a>
+      </p>
     </div>
   </div>
 </template>
@@ -204,4 +211,6 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 @media (max-width: 860px) {
   .np-grid { grid-template-columns: repeat(2, 1fr); }
 }
+.np-focus-only { margin: 10px 0 0; font-size: 11.5px; color: var(--muted, #888); }
+.np-focus-only a { color: var(--accent, #3a7d63); text-decoration: underline; }
 </style>

@@ -12,7 +12,6 @@ import TaskStrip from "./components/TaskStrip.vue";
 import TaskStatusPanel from "./components/TaskStatusPanel.vue";
 import AppDialog from "./components/AppDialog.vue";
 import AudioKeepAlive from "./components/AudioKeepAlive.vue";
-import WelcomeOnboarding from "./components/WelcomeOnboarding.vue";
 import QuickSetup from "./components/QuickSetup.vue";
 import KeyboardCheatsheet from "./components/KeyboardCheatsheet.vue";
 import JvHelpDrawer from "./components/JvHelpDrawer.vue";
@@ -196,28 +195,13 @@ const stateLedeOverride = computed(() => {
   if (!health.value) return null;
   const hasEngine = !!health.value.current_engine;
 
-  if (v === "generate" && !hasEngine) {
-    return "No engine loaded yet. Open Engines → pick one → click Load. Then come back here.";
-  }
-  if (v === "studio" && !hasEngine) {
-    return "Studio needs a loaded engine to render. Open Engines first.";
-  }
-  if (v === "chapter" && !hasEngine) {
-    return "Chapter rendering needs a loaded engine. Open Engines first.";
+  const firstRender = "No engine in memory — your first render sets one up automatically (Kokoro, ~310 MB one-time download). Prefer another engine? Pick it in Engines.";
+  if ((v === "generate" || v === "studio" || v === "chapter") && !hasEngine) {
+    return firstRender;
   }
   return null;
 });
 const effectiveLede = computed(() => stateLedeOverride.value || currentView.value?.lede || "");
-const showWelcome = computed(() => onboarding.hydrated && !onboarding.shown);
-
-// Picking a use case flips onboarding.shown, which unmounts the wizard
-// via the v-if BEFORE its delayed close event fires — so @close never
-// reached onWelcomeClosed and QuickSetup silently never chained (user-
-// hit: "clicked Audiobook, nothing happened"). Drive the follow-up from
-// the store transition instead; @close stays as the dismiss path.
-watch(() => onboarding.shown, (now, was) => {
-  if (now && !was && onboarding.hydrated) onWelcomeClosed();
-});
 
 // Sidebar gating by onboarding primary use case (plan locked decision #7).
 // Universal tabs (no `visibleFor`) always render; conditional tabs only
@@ -263,6 +247,18 @@ function resolveInitialTab() {
   if (hashId && VIEWS.some((v) => v.id === hashId)) {
     view.value = hashId;
     initialTabResolved = true;
+    return;
+  }
+  // First run = the real question, "What are you making?" (user decision
+  // 2026-06-12: no welcome quiz, no setup wizard — the kind picker opens,
+  // creating the first project sets the workspace focus, and engines
+  // install themselves on first render). One-shot: offering it marks
+  // onboarding shown whether or not a project gets created.
+  if (!onboarding.shown) {
+    try { window.sessionStorage?.setItem("jv.books.createKind", ""); } catch { /* ignore */ }
+    view.value = "books";
+    initialTabResolved = true;
+    onboarding.dismiss();
     return;
   }
   const tab = DEFAULT_TAB_BY_USE_CASE[onboarding.primaryUseCase] || "overview";
@@ -329,31 +325,12 @@ watch(view, (v) => {
   uiContext.clear();
 });
 
-// QuickSetup shows once, the first time the user picks a real use case
-// (skipped for "unset" / "multiple" — the user signaled they want to
-// explore manually). Persists "quick_setup_seen" in localStorage so the
-// wizard doesn't re-prompt on every launch.
-const QUICK_SETUP_KEY = "jv.quickSetup.seen";
+// QuickSetup is opt-in only (Settings → General → Run Quick Setup, via
+// the jv:quick-setup event). Its first-run role moved to the kind
+// picker + the contextual RecommendCard (user decision 2026-06-12).
 const showQuickSetup = ref(false);
-
-function maybeShowQuickSetup() {
-  if (typeof window === "undefined") return;
-  if (window.localStorage?.getItem(QUICK_SETUP_KEY) === "1") return;
-  const useCase = onboarding.primaryUseCase;
-  if (!useCase || useCase === "unset" || useCase === "multiple") return;
-  showQuickSetup.value = true;
-}
 function onQuickSetupClosed() {
   showQuickSetup.value = false;
-  try { window.localStorage?.setItem(QUICK_SETUP_KEY, "1"); } catch { /* ignore */ }
-}
-
-function onWelcomeClosed() {
-  // The store has already flipped shown=true and persisted; re-route
-  // the default tab now that we know the producer's intent.
-  if (!initialTabResolved) resolveInitialTab();
-  // Then chain the QuickSetup wizard for hardware-aware engine recommendations.
-  maybeShowQuickSetup();
 }
 
 onMounted(async () => {
@@ -505,7 +482,6 @@ onMounted(async () => {
 
     <Toast />
     <AppDialog />
-    <WelcomeOnboarding v-if="showWelcome" @close="onWelcomeClosed" />
     <QuickSetup v-if="showQuickSetup" @close="onQuickSetupClosed" />
     <KeyboardCheatsheet />
     <JvHelpDrawer />
