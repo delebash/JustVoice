@@ -64,6 +64,21 @@ function usageCount(personaId) {
   return (usage.value[personaId] || []).length;
 }
 
+// Live Personality-field verdict for the draft's voice engine — does it
+// actually consume the text as an instruct/style prompt at render time?
+const instructStatus = computed(() => {
+  if (!draft.value) return null;
+  const voice = voices.value.find((v) => v.id === draft.value.voice_id);
+  if (!voice) {
+    return { ok: false, text: "No voice cast yet — whether Personality reaches the TTS depends on the engine you pick." };
+  }
+  const eng = engines.value.find((e) => e.id === voice.engine);
+  const supports = (eng?.capabilities || []).includes("instruct_field");
+  return supports
+    ? { ok: true, text: `✓ ${eng?.name || voice.engine} reads this as its instruct prompt at render time.` }
+    : { ok: false, text: `✗ ${eng?.name || voice.engine} has no instruct field — this text only guides Smart-assign, not the audio.` };
+});
+
 async function loadAll() {
   loading.value = true;
   try {
@@ -439,11 +454,16 @@ onMounted(loadAll);
               @input="markDirty"
             />
             <p class="jv-muted personas__hint">
-              Passed to engines that accept freeform delivery instructions
-              (Qwen3-TTS, LuxTTS) as the engine's <code>instruct</code> /
-              style-prompt field at render time. Engines that don't accept it
-              ignore it. <strong>Never an LLM rewrite of the manuscript</strong> —
-              the Rewrite button on Generate is the explicit tool for that.
+              Passed to instruct-capable engines as the
+              <code>instruct</code> / style-prompt field at render time; other
+              engines ignore it. <strong>Never an LLM rewrite of the
+              manuscript</strong> — the Rewrite button on Generate is the
+              explicit tool for that.
+            </p>
+            <!-- Live verdict for THIS persona's engine (user ask: "how do
+                 I know what TTS takes input from bio and personality"). -->
+            <p v-if="instructStatus" class="personas__hint" :class="instructStatus.ok ? 'personas__instruct-ok' : 'jv-muted'">
+              {{ instructStatus.text }}
             </p>
           </label>
 
@@ -668,6 +688,7 @@ onMounted(loadAll);
 }
 
 .personas__hint { font-size: 11.5px; margin: 0; }
+.personas__instruct-ok { color: var(--accent-ink); font-weight: 600; }
 
 .personas__chips {
   display: flex;

@@ -357,19 +357,49 @@ async function clearCast() {
 // routes the resulting Blob into the global audio player. JustWrite
 // affordance J. Per-voice preview state stops the button being
 // re-clicked while in flight.
+// Engines whose manifest declares instruct_field — these consume the
+// persona's Personality text as a style prompt at render time. Drives
+// the "instruct" chip in the voice library (user ask: "how do I know
+// what TTS takes input from the bio and personality").
+const instructEngineIds = computed(() => new Set(
+  (engines.value || [])
+    .filter((e) => (e.capabilities || []).includes("instruct_field"))
+    .map((e) => e.id),
+));
+
 const previewingVoiceId = ref(null);
+// Same ask-before-load contract as the Voices page (user-hit: Studio
+// play silently switched/loaded engines). Shares the Voices opt-in key
+// so "Always auto-load" applies app-wide.
+const AUTOLOAD_KEY = "jv.voices.autoLoadEngine"; // "always" | unset (ask)
 async function previewVoice(voice) {
   if (!voice || previewingVoiceId.value) return;
   previewingVoiceId.value = voice.id;
   try {
-    const blob = await api.request("/v1/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        voice: voice.id,
-        text: "This is a quick preview of how this voice sounds when reading a sentence.",
-      }),
-    });
+    const always = localStorage.getItem(AUTOLOAD_KEY) === "always";
+    let blob;
+    try {
+      blob = await api.request(`/v1/voices/${voice.id}/preview?auto_load=${always}`, { method: "POST" });
+    } catch (e) {
+      const m = String(e?.message || "").match(/engine_not_loaded:([\w.-]+)/);
+      if (!m) throw e;
+      const engineId = m[1];
+      const ok = await confirmDialog({
+        title: `Load ${engineId}?`,
+        message: `"${voice.name}" needs the ${engineId} engine, which isn't loaded. Load it now to preview? The first load can take ~25–55 s; after that previews are instant.`,
+        confirmLabel: "Load & preview",
+      });
+      if (!ok) return;
+      pushToast({ message: `Loading ${engineId}… this can take up to a minute.`, kind: "info" });
+      blob = await api.request(`/v1/voices/${voice.id}/preview?auto_load=true`, { method: "POST" });
+      pushToast({
+        message: `${engineId} loaded.`,
+        kind: "success",
+        action: { label: "Always auto-load", fn: () => localStorage.setItem(AUTOLOAD_KEY, "always") },
+      });
+      // Topbar pill + Engines page track loads from anywhere.
+      window.dispatchEvent(new Event("jv:health-refresh"));
+    }
     if (blob instanceof Blob) {
       const url = URL.createObjectURL(blob);
       audioPlayer.play({
@@ -1391,7 +1421,14 @@ watch(selectedProjectId, (id) => {
                 <span class="studio__vrow-avatar" :style="{ background: colorFor(v.name) }">{{ (v.name || "?").charAt(0).toUpperCase() }}</span>
                 <span class="studio__vrow-text">
                   <strong class="studio__vrow-name">{{ v.name }}</strong>
-                  <i class="studio__vrow-tone">{{ v.tone || v.engine || "" }}</i>
+                  <i class="studio__vrow-tone">
+                    {{ v.tone || v.engine || "" }}
+                    <span
+                      v-if="instructEngineIds.has(v.engine)"
+                      class="studio__vrow-instruct"
+                      title="This engine reads the persona's Personality text as a delivery instruction at render time"
+                    >instruct</span>
+                  </i>
                 </span>
               </button>
               <span
@@ -2261,4 +2298,18 @@ watch(selectedProjectId, (id) => {
 .studio__addpersona-meta .jv-muted { font-size: 11.5px; }
 
 .studio__analyze-progress { display: flex; align-items: center; gap: 10px; }
+
+.studio__vrow-instruct {
+  font-size: 9px;
+  font-weight: 800;
+  font-style: normal;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 5px;
+  vertical-align: 1px;
+}
 </style>

@@ -505,8 +505,8 @@ class Persona(BaseModel):
     avatar_path: str | None = None
     # Character context (backstory, age, mannerisms) — distinct from `personality`.
     bio: str | None = None
-    # TTS delivery instruction. Engines that declare `supports_instruct_freeform`
-    # (Qwen3-TTS, LuxTTS) consume it as the `instruct` / style-prompt field at
+    # TTS delivery instruction. Engines whose manifest declares
+    # `instruct_field` consume it as the `instruct` / style-prompt field at
     # render time. Engines that don't accept it ignore it. Smart-assign uses it
     # as input context for voice matching. **Never an LLM rewrite of the
     # manuscript at render time** — Rewrite is a separate explicit tool.
