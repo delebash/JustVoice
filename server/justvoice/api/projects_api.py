@@ -34,7 +34,6 @@ from ..database.models import Lexicon as DbLexicon, LexiconEntry as DbLexiconEnt
 from ..errors import not_found, bad_request
 from ..app_state import get_state
 from ._persona_helpers import ensure_project_persona
-from ..models import LexiconEntry
 from ..imports import list_adapters, run_adapter
 from ..imports.standard_schema import (
     AdapterListResponse,
@@ -649,37 +648,28 @@ def _materialize_standard(
 
 
 def _materialize_lexicon(
-    standard: StandardImport, project: Project, lexicon_store, db: Session
+    standard: StandardImport, project: Project, db: Session
 ) -> str | None:
     """Create a project-scoped lexicon from the import's entries.
 
     Returns the new lexicon id (also written to project.default_lexicon_id),
-    or None when the import carries no lexicon entries. Previously these
-    entries were silently dropped on commit.
+    or None when the import carries no lexicon entries.
 
-    Mid-Phase-1.5 reality: lexicons are served from the file store, but
-    projects.default_lexicon_id is a FOREIGN KEY into the SQLite lexicons
-    table — so we write BOTH, same id, or the commit dies on the FK
-    (found live: importing Stillwater 500'd on IntegrityError).
+    Post-Phase-1.5 flip: LexiconStore reads the same rows, so this writes
+    ONLY through the caller's session (one transaction with the project
+    row — a separate store session would hit the FK before the project
+    commits). The old dual-write is gone.
     """
     if not standard.lexicon_entries:
         return None
-    entries = [
-        LexiconEntry(grapheme=e.grapheme, phoneme_ipa=e.phoneme_ipa, alias=e.alias)
-        for e in standard.lexicon_entries
-    ]
-    lex = lexicon_store.create(
-        name=f"{project.name} (imported)",
-        entries=entries,
-        scope="project",
-        description=f"Materialized from {standard.source} import",
-        project_id=project.id,
-    )
+    import uuid as _uuid
+
+    lex_id = f"lex_{_uuid.uuid4().hex}"
     db.add(
         DbLexicon(
-            id=lex.id,
-            name=lex.name,
-            description=lex.description,
+            id=lex_id,
+            name=f"{project.name} (imported)",
+            description=f"Materialized from {standard.source} import",
             scope="project",
             project_id=project.id,
         )
@@ -687,14 +677,14 @@ def _materialize_lexicon(
     for e in standard.lexicon_entries:
         db.add(
             DbLexiconEntry(
-                lexicon_id=lex.id,
+                lexicon_id=lex_id,
                 word=e.grapheme,
                 pronunciation=e.phoneme_ipa or e.alias or "",
                 notation="ipa" if e.phoneme_ipa else "phonetic",
             )
         )
-    project.default_lexicon_id = lex.id
-    return lex.id
+    project.default_lexicon_id = lex_id
+    return lex_id
 
 
 @router.get("/v1/projects/import/adapters", response_model=AdapterListResponse)
@@ -799,7 +789,7 @@ async def import_project(
     project, _scene_count, _block_count, _created, _reused = _materialize_standard(
         standard, db
     )
-    _materialize_lexicon(standard, project, get_state().lexicons, db)
+    _materialize_lexicon(standard, project, db)
     db.commit()
     db.refresh(project)
     standard.project.id = project.id

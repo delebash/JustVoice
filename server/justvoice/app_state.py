@@ -16,7 +16,6 @@ from .paths import cache_root
 from .storage import (
     LexiconStore,
     PersonaStore,
-    ProjectStore,
     SettingsStore,
     TrainingRegistry,
     VoiceStore,
@@ -37,7 +36,6 @@ class AppState:
             max_memory_entries=self.settings.get().cache.max_memory_entries,
         )
         self.lexicons = LexiconStore(data_dir)
-        self.projects = ProjectStore(data_dir)
         self.training = TrainingRegistry(data_dir)
         self.engines = EngineRegistry()
         self._jobs: dict[str, dict] = {}  # install jobs, in-memory

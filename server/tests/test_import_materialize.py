@@ -117,37 +117,90 @@ def test_store_crud_round_trip(tmp_db, tmp_path):
     assert store.list() == []
 
 
-def test_lexicon_entries_materialize_and_set_default(db_session, tmp_path):
-    store = LexiconStore(tmp_path)
-    project, *_ = _materialize_standard(_standard("Stillwater", lexicon=True), db_session)
+def test_lexicon_entries_materialize_and_set_default(tmp_db, tmp_path):
+    session_factory, _engine = tmp_db
+    db = session_factory()
+    try:
+        project, *_ = _materialize_standard(_standard("Stillwater", lexicon=True), db)
+        lex_id = _materialize_lexicon(_standard("Stillwater", lexicon=True), project, db)
+        db.commit()
+        assert lex_id is not None
+        assert project.default_lexicon_id == lex_id
+        project_id = project.id
 
-    lex_id = _materialize_lexicon(_standard("Stillwater", lexicon=True), project, store, db_session)
-    db_session.commit()
+        # FK target rows live in SQLite (one transaction with the project).
+        from justvoice.database.models import Lexicon as DbLexicon, LexiconEntry as DbLexiconEntry
+        row = db.query(DbLexicon).filter(DbLexicon.id == lex_id).one()
+        assert row.project_id == project_id
+        words = [e.word for e in db.query(DbLexiconEntry).filter(DbLexiconEntry.lexicon_id == lex_id)]
+        assert words == ["Hecate"]
+    finally:
+        db.close()
 
-    assert lex_id is not None
-    assert project.default_lexicon_id == lex_id
+    # Post-flip: the store reads the SAME rows.
+    store = LexiconStore(tmp_path, session_factory=session_factory)
     lex = store.get(lex_id)
     assert lex is not None
     assert lex.scope == "project"
-    assert lex.project_id == project.id
+    assert lex.project_id == project_id
     assert [e.grapheme for e in lex.entries] == ["Hecate"]
     assert lex.entries[0].alias == "HEH-kuh-tee"
 
-    # FK target rows must exist in SQLite too (projects.default_lexicon_id
-    # is a FOREIGN KEY — the live import 500'd before this dual-write).
-    from justvoice.database.models import Lexicon as DbLexicon, LexiconEntry as DbLexiconEntry
-    row = db_session.query(DbLexicon).filter(DbLexicon.id == lex_id).one()
-    assert row.project_id == project.id
-    words = [e.word for e in db_session.query(DbLexiconEntry).filter(DbLexiconEntry.lexicon_id == lex_id)]
-    assert words == ["Hecate"]
 
-
-def test_no_lexicon_entries_is_a_noop(db_session, tmp_path):
-    store = LexiconStore(tmp_path)
-    project, *_ = _materialize_standard(_standard("Plain"), db_session)
-    assert _materialize_lexicon(_standard("Plain"), project, store, db_session) is None
-    assert project.default_lexicon_id is None
+def test_no_lexicon_entries_is_a_noop(tmp_db, tmp_path):
+    session_factory, _engine = tmp_db
+    db = session_factory()
+    try:
+        project, *_ = _materialize_standard(_standard("Plain"), db)
+        assert _materialize_lexicon(_standard("Plain"), project, db) is None
+        assert project.default_lexicon_id is None
+        db.commit()
+    finally:
+        db.close()
+    store = LexiconStore(tmp_path, session_factory=session_factory)
     assert store.list() == []
+
+
+def test_lexicon_store_crud_round_trip(tmp_db, tmp_path):
+    from justvoice.models import LexiconEntry
+
+    session_factory, _engine = tmp_db
+    store = LexiconStore(tmp_path, session_factory=session_factory)
+    lex = store.create("Names", entries=[LexiconEntry(grapheme="Beauchamp", alias="bee-chum")])
+    got = store.get(lex.id)
+    assert [e.grapheme for e in got.entries] == ["Beauchamp"]
+    store.append_entry(lex.id, LexiconEntry(grapheme="Hecate", phoneme_ipa="/ˈhɛkəti/"))
+    got = store.get(lex.id)
+    assert [e.grapheme for e in got.entries] == ["Beauchamp", "Hecate"]
+    assert got.entries[1].phoneme_ipa == "/ˈhɛkəti/"
+    replaced = store.update(lex.id, [LexiconEntry(grapheme="Worcestershire", alias="WUSS-ter-sher")])
+    assert [e.grapheme for e in replaced.entries] == ["Worcestershire"]
+    assert store.delete(lex.id) is True
+    assert store.list() == []
+
+
+def test_legacy_lexicon_files_import_once(tmp_db, tmp_path):
+    import json as _json
+
+    session_factory, _engine = tmp_db
+    ldir = tmp_path / "lexicons"
+    ldir.mkdir(parents=True)
+    legacy = {
+        "id": "lex_legacy1", "name": "Old names", "scope": "global",
+        "entries": [{"grapheme": "Beauchamp", "alias": "bee-chum"}],
+        "created_at": "2026-06-01T00:00:00+00:00", "updated_at": "2026-06-01T00:00:00+00:00",
+    }
+    (ldir / "lex_legacy1.json").write_text(_json.dumps(legacy), encoding="utf-8")
+
+    store = LexiconStore(tmp_path, session_factory=session_factory)
+    lex = store.get("lex_legacy1")
+    assert lex is not None and [e.grapheme for e in lex.entries] == ["Beauchamp"]
+    assert not (ldir / "lex_legacy1.json").exists()
+    assert (ldir / "lex_legacy1.json.migrated").exists()
+
+    assert store.delete("lex_legacy1") is True
+    store2 = LexiconStore(tmp_path, session_factory=session_factory)
+    assert store2.get("lex_legacy1") is None
 
 
 def test_block_source_ref_persisted(db_session):

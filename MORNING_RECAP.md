@@ -71,17 +71,20 @@ vite build · live Playwright, zero JS errors).
   (engines.default_tts_engine, default kokoro) — Voices create flows
   prefer it when nothing is loaded.
 
-**Phase 1.5 flip — personas are SQLite-primary (same evening).**
-PersonaStore keeps its five-method surface but reads/writes the
-`personas` table; legacy `$DATA_DIR/personas/*.json` import once at
-init (id-based) and rename `.json.migrated` so deletes don't
-resurrect. The dual-write helper (`ensure_project_persona`) is DB-only
-now — the store sees its rows automatically. Verified live: legacy
-files migrated, persona→preset FK binding 201s by construction.
-`llm_rewrite_enabled`/`llm_model` accepted-not-persisted (the old
-mirror never wrote them either). **Voices / lexicons / projects file
-stores still exist — same split-brain risk class; lexicons (DB FK
-targets!) are the next flip candidate.**
+**Phase 1.5 flip — personas AND lexicons are SQLite-primary (same
+evening; user: "anything else that needs db fixing just do it").**
+Both stores keep their method surfaces but read/write the DB tables;
+legacy `$DATA_DIR/{personas,lexicons}/*.json` import once at init
+(id-based) and rename `.json.migrated` so deletes don't resurrect.
+The dual-writes are gone: `ensure_project_persona` and
+`_materialize_lexicon` write ONLY the caller's session (one
+transaction with the project row). Dormant legacy `ProjectStore`
+RETIRED (projects are DB-native via projects_api). Verified live:
+legacy files migrated on boot, persona→preset and persona→lexicon FK
+bindings work by construction. Survey of the rest: voices (audio
+blobs + manifests, no DB twin), training jobs, settings.json — all
+legitimately file-based; everything else is DB-native. The
+split-brain class is closed.
 
 **Still done since:** import split-on selector shipped (auto/h1/h1_h2/
 none — EPUB re-splits the merged spine); Captures (pin/filters/

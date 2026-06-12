@@ -150,7 +150,6 @@ async def factory_reset() -> FactoryResetResponse:
     )
     from ..storage.lexicons import LexiconStore
     from ..storage.personas import PersonaStore
-    from ..storage.projects import ProjectStore
     from ..storage.training_jobs import TrainingRegistry
     from ..storage.voices import VoiceStore
 
@@ -171,7 +170,6 @@ async def factory_reset() -> FactoryResetResponse:
         state.personas = PersonaStore(state_data_dir)
         state.voices = VoiceStore(state_data_dir)
         state.lexicons = LexiconStore(state_data_dir)
-        state.projects = ProjectStore(state_data_dir)
         state.training = TrainingRegistry(state_data_dir)
 
     # 3. Engines — a fresh install has nothing resident. Unload every
