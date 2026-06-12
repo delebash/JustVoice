@@ -595,7 +595,16 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
   flex: 1;
   overflow-y: auto;
   padding: 24px 32px 64px;
+  /* Flex column so a .jv-fill view can take exactly the height left after
+     the lede/banner siblings. `height: 100%` on a view root ignores those
+     siblings and overflows by their height — a phantom scrollbar. */
+  display: flex;
+  flex-direction: column;
 }
+.jv-content > * { flex-shrink: 0; }
+/* Canonical: views built from internally-scrolling panes (master-detail
+   lists etc.) put .jv-fill on their root instead of `height: 100%`. */
+.jv-fill { flex: 1 1 0; min-height: 0; }
 .jv-content__lede {
   color: var(--ink-2);
   font-size: 13px;

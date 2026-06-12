@@ -131,7 +131,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="captures">
+  <div class="captures jv-fill">
     <!-- ── Top band: hotkeys + animated pill preview (preview parity) ── -->
     <div class="captures__top">
       <section class="jv-card captures__hotkeys">
@@ -295,9 +295,7 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 380px 1fr;
   grid-template-rows: auto 1fr;
-  height: 100%;
   gap: 16px;
-  padding: 16px;
 }
 
 .captures__top {

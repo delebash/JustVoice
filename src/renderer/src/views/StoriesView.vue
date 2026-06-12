@@ -151,7 +151,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="stories">
+  <div class="stories jv-fill">
     <!-- ── Story list ───────────────────────────────────────────────── -->
     <div class="stories__sidebar jv-card jv-card--flat">
       <div class="jv-row stories__list-header">
@@ -275,9 +275,7 @@ onMounted(async () => {
 .stories {
   display: grid;
   grid-template-columns: 360px 1fr;
-  height: 100%;
   gap: 16px;
-  padding: 16px;
 }
 
 /* Sidebar */
