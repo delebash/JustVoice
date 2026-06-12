@@ -12,6 +12,9 @@ or multi-line POSTs with explicit tags inside the text.
 
 ID = "dia"
 NAME = "Dia"
+# engine.py loads nari-labs/Dia-1.6B-0626 unconditionally — declare the
+# matching catalog variant so the manager records what actually loaded.
+DEFAULT_VARIANT_ID = "dia-1.6b"
 
 # Dia pins `triton==3.2.0` (Linux) or `triton-windows==3.2.0.post18` and a
 # git-installed transformers main branch. The triton constraint excludes

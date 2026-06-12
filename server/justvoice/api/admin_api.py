@@ -2,10 +2,13 @@
 """POST /v1/admin/factory-reset — wipe to as-new-install (testing tier 3).
 
 Deletes every DB row (projects, scenes, blocks, takes, generations,
-personas, lexicons, captures, bindings, …), clears the render cache,
-and resets settings.json to defaults — keeping only the server
-host/port section so the running instance stays reachable. Downloaded
-engine models on disk are NOT deleted (multi-GB; remove via Engines).
+captures, bindings, …) AND the file-backed stores (personas, voices,
+lexicons, project JSON, training jobs, generation audio — mid-Phase-1.5
+these still live as files, so the DB wipe alone left them alive),
+clears the render cache, and resets settings.json to defaults — keeping
+only the server host/port section so the running instance stays
+reachable. Downloaded engine models on disk are NOT deleted (multi-GB;
+remove via Engines).
 """
 
 from __future__ import annotations
@@ -130,7 +133,48 @@ async def factory_reset() -> FactoryResetResponse:
         seed_builtin_effect_presets()
         seed_builtin_render_presets()
 
-    # 2. Render cache — memory + disk.
+    # 2. File-backed stores. Mid-Phase-1.5 personas/voices/lexicons/
+    # projects/training still live as JSON files + in-memory caches —
+    # the DB wipe alone leaves them all alive (user-hit 2026-06-12:
+    # personas survived reset). Blow away the dirs and re-instantiate
+    # the stores so the caches drop too. Engine model downloads stay.
+    import shutil
+
+    from ..paths import (
+        generations_root,
+        lexicons_root,
+        personas_root,
+        projects_root,
+        training_root,
+        voices_root,
+    )
+    from ..storage.lexicons import LexiconStore
+    from ..storage.personas import PersonaStore
+    from ..storage.projects import ProjectStore
+    from ..storage.training_jobs import TrainingRegistry
+    from ..storage.voices import VoiceStore
+
+    state_data_dir = getattr(state, "data_dir", None)
+    if state_data_dir is not None:
+        for root_fn in (
+            personas_root,
+            voices_root,
+            lexicons_root,
+            projects_root,
+            training_root,
+            generations_root,
+        ):
+            try:
+                shutil.rmtree(root_fn(state_data_dir), ignore_errors=True)
+            except Exception as e:  # noqa: BLE001 — reset keeps going
+                log.warning("factory reset: could not clear %s: %s", root_fn.__name__, e)
+        state.personas = PersonaStore(state_data_dir)
+        state.voices = VoiceStore(state_data_dir)
+        state.lexicons = LexiconStore(state_data_dir)
+        state.projects = ProjectStore(state_data_dir)
+        state.training = TrainingRegistry(state_data_dir)
+
+    # 3. Render cache — memory + disk.
     cache = getattr(state, "_render_cache", None)
     if cache is not None:
         try:
@@ -138,7 +182,7 @@ async def factory_reset() -> FactoryResetResponse:
         except Exception as e:
             log.warning("factory reset: cache clear failed: %s", e)
 
-    # 3. Settings to defaults; the live server section survives so the
+    # 4. Settings to defaults; the live server section survives so the
     #    instance stays reachable on its current host/port.
     current = state.settings.get()
     state.settings.set(Settings(server=current.server))

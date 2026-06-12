@@ -125,15 +125,13 @@ async function createBlank() {
     placeholder: "Persona name",
   });
   if (!name) return;
-  if (!voices.value.length) {
-    pushToast({ kind: "error", title: "Add a voice first", description: "Personas bind to a voice — go to Voices and create one." });
-    return;
-  }
   try {
+    // voice_id is optional server-side — the character can exist before
+    // a voice is cast (empty library used to dead-end creation here).
     const created = await api.request("/v1/personas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, voice_id: voices.value[0].id, default_delivery: {} }),
+      body: JSON.stringify({ name, voice_id: voices.value[0]?.id ?? null, default_delivery: {} }),
     });
     await loadAll();
     selectedId.value = created.id;
@@ -385,6 +383,7 @@ onMounted(loadAll);
           <label class="personas__field">
             <span>Voice</span>
             <select class="jv-input jv-w-name" v-model="draft.voice_id" @change="markDirty">
+              <option value="">— no voice yet (cast later) —</option>
               <option v-for="v in voices" :key="v.id" :value="v.id">{{ v.name }} ({{ v.id }})</option>
             </select>
           </label>

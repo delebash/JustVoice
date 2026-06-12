@@ -21,6 +21,8 @@ case MOSS won't load but other engines stay healthy).
 
 ID = "moss-tts"
 NAME = "MOSS-TTS v1.5"
+# Single catalog variant (engine.py loads fnlp/MOSS-TTSD-v0 unconditionally).
+DEFAULT_VARIANT_ID = "moss-tts-v1.5"
 
 # MOSS-TTSD requires flash-attn (build deps + CUDA toolkit + long compile)
 # and isn't supported on macOS by upstream. Isolated venv keeps the

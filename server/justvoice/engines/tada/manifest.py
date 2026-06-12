@@ -16,6 +16,9 @@ torch==2.6.0 in a shared venv. Per-engine venv makes that a non-issue.
 
 ID = "tada"
 NAME = "TADA"
+# engine.py loads HumeAI/tada-3b-ml unconditionally — declare the matching
+# catalog variant so the manager records what actually loaded.
+DEFAULT_VARIANT_ID = "tada-3b"
 DESCRIPTION = (
     "HumeAI TADA (Text-Acoustic Dual Alignment) — high-quality voice cloning via "
     "forced alignment + flow-matching diffusion. Multilingual 3B variant (en, ar, "

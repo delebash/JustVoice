@@ -75,3 +75,30 @@ def test_factory_reset_preserves_server_section(tmp_db, monkeypatch):  # noqa: F
     after = store.get()
     assert after.server.port == 4242          # reachability survives
     assert after.logging.level == "info"      # everything else defaults
+
+
+def test_factory_reset_clears_file_stores(tmp_db, tmp_path, monkeypatch):  # noqa: F811
+    """Personas (and the other file-backed stores) must not survive a
+    reset — user-hit 2026-06-12: the DB wipe left the persona JSON files
+    + in-memory cache alive, so 'reset' brought every character back."""
+    from justvoice.storage.personas import PersonaStore
+
+    session_factory, _engine = tmp_db
+    monkeypatch.setattr(admin_api.db_session, "SessionLocal", session_factory)
+    monkeypatch.setattr(admin_api.db_session, "_db_path", None)
+    monkeypatch.setattr(admin_api.db_session, "engine", None)
+
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    personas = PersonaStore(data_dir)
+    personas.create("Mara", voice_id=None)
+    assert len(personas.list()) == 1
+
+    state = SimpleNamespace(settings=_SettingsStore(), data_dir=data_dir, personas=personas)
+    monkeypatch.setattr(admin_api, "get_state", lambda: state)
+
+    asyncio.run(admin_api.factory_reset())
+
+    # In-memory store was re-instantiated empty AND the files are gone.
+    assert state.personas.list() == []
+    assert not list((data_dir / "personas").glob("*.json"))

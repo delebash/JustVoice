@@ -494,7 +494,11 @@ class ImportVoiceRequest(BaseModel):
 class Persona(BaseModel):
     id: str
     name: str
-    voice_id: str
+    # Optional — a persona can exist before a voice is cast (Studio Cast
+    # binds voices later; render skips voice-less personas). Was required,
+    # which 422'd persona creation with an empty voice library
+    # (user-hit 2026-06-12).
+    voice_id: str | None = None
     # Persona is the sole identity layer after the Profile-kill (plan Q1).
     # All voice-styling fields live here directly, not behind a Profile FK.
     language: str = "en"
@@ -535,7 +539,7 @@ class PersonaList(BaseModel):
 
 class CreatePersonaRequest(BaseModel):
     name: str
-    voice_id: str
+    voice_id: str | None = None
     language: str = "en"
     avatar_path: str | None = None
     bio: str | None = None

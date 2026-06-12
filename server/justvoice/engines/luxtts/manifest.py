@@ -12,6 +12,8 @@ the default for compatibility.
 
 ID = "luxtts"
 NAME = "LuxTTS"
+# Single catalog variant (engine.py loads YatharthS/LuxTTS unconditionally).
+DEFAULT_VARIANT_ID = "luxtts-base"
 DESCRIPTION = (
     "ZipVoice-based zero-shot voice cloning. ~1 GB VRAM, 48 kHz output, 150× realtime on "
     "CPU. Lightweight alternative to the Chatterbox/Qwen3 tier."

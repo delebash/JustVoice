@@ -189,6 +189,54 @@ def test_load_with_explicit_variant_records_it(monkeypatch) -> None:
     assert mgr.current_variant_id("fake-tts") == "fake-other-v2"
 
 
+def test_load_no_manifest_default_records_on_disk_variant(monkeypatch, tmp_path) -> None:
+    """Kokoro declares no DEFAULT_VARIANT_ID and loads whatever is on
+    disk — the manager must record the on-disk variant, not "" (user-hit
+    round 2: the first fix recorded empty for kokoro, so the Engines
+    page STILL couldn't highlight the loaded row after a restart)."""
+    mgr = _fake_manager(monkeypatch)
+    fake = _FakeManifest()
+    fake.id = "kokoro"  # real catalog id → real variant list
+    fake.default_variant_id = None
+    fake.models_dir = tmp_path
+    (tmp_path / "kokoro-en-v0_19").mkdir()
+    (tmp_path / "kokoro-en-v0_19" / "model.onnx").write_bytes(b"x")
+    mgr._manifests["kokoro"] = fake
+    mgr.load("kokoro", device="auto")
+    assert mgr.current_variant_id("kokoro") == "kokoro-en-v0_19"
+
+
+def test_load_no_manifest_default_no_disk_falls_back_to_catalog_first(
+    monkeypatch, tmp_path
+) -> None:
+    mgr = _fake_manager(monkeypatch)
+    fake = _FakeManifest()
+    fake.id = "kokoro"
+    fake.default_variant_id = None
+    fake.models_dir = tmp_path  # empty — nothing on disk
+    mgr._manifests["kokoro"] = fake
+    mgr.load("kokoro", device="auto")
+    assert mgr.current_variant_id("kokoro") == "kokoro-multi-lang-v1_0"
+
+
+def test_all_multi_variant_engines_resolve_a_real_variant() -> None:
+    """Every discovered engine must resolve a non-empty, catalog-valid
+    variant id for a no-variant load — pins dia/luxtts/moss-tts/tada's
+    new DEFAULT_VARIANT_IDs and kokoro's disk-probe fallback."""
+    from justvoice.engines.manager import EngineManager, discover_engines
+    from justvoice.engines.model_catalog import models_for
+
+    for engine_id, m in discover_engines().items():
+        resolved = EngineManager._resolved_default_variant(m)
+        catalog_ids = {v.id for v in models_for(engine_id)}
+        if not catalog_ids:
+            continue
+        assert resolved in catalog_ids, (
+            f"{engine_id}: no-variant load resolves to {resolved!r}, "
+            f"not in catalog {sorted(catalog_ids)}"
+        )
+
+
 def test_already_loaded_reload_keeps_resolved_variant(monkeypatch) -> None:
     mgr = _fake_manager(monkeypatch)
     mgr.load("fake-tts", device="auto", variant="fake-other-v2")

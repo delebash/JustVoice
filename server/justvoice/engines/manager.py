@@ -997,6 +997,37 @@ class EngineManager:
         with self._lock:
             return self._current_variants.get(engine_id)
 
+    @staticmethod
+    def _resolved_default_variant(m: EngineManifest) -> str:
+        """What variant id a no-variant load actually resolves to, so the
+        Engines page can highlight the right model row (user-hit twice:
+        load via Voices → both rows said "Load model").
+
+        Order: manifest DEFAULT_VARIANT_ID → sole catalog variant → the
+        variant whose files are in the engine's models_dir (kokoro loads
+        whatever's on disk; the tarball extracts into a variant-named
+        subdir) → first catalog variant as best effort.
+        """
+        if m.default_variant_id:
+            return m.default_variant_id
+        try:
+            from .model_catalog import models_for
+
+            variants = models_for(m.id)
+        except Exception:
+            return ""
+        if not variants:
+            return ""
+        if len(variants) > 1:
+            try:
+                for v in variants:
+                    d = m.models_dir / v.id
+                    if d.is_dir() and any(d.iterdir()):
+                        return v.id
+            except Exception:
+                pass
+        return variants[0].id
+
     def request_cancel_load(self, engine_id: str) -> bool:
         """Mark an in-flight load for cancellation. Returns True if a load is
         actually in progress for that engine; False otherwise (no-op cancel).
@@ -1161,8 +1192,8 @@ class EngineManager:
                     # (user-hit: load via Voices → both rows said "Load").
                     if variant not in (None, "", "auto"):
                         self._current_variants[engine_id] = variant
-                    elif engine_id not in self._current_variants:
-                        self._current_variants[engine_id] = m.default_variant_id or ""
+                    elif not self._current_variants.get(engine_id):
+                        self._current_variants[engine_id] = self._resolved_default_variant(m)
                     return prior.get("/voices").json()
 
                 if progress:
@@ -1186,7 +1217,9 @@ class EngineManager:
                 raise RuntimeError(f"engine load failed: {r.text}")
             with self._lock:
                 self._current_variants[engine_id] = (
-                    variant if variant not in (None, "", "auto") else (m.default_variant_id or "")
+                    variant
+                    if variant not in (None, "", "auto")
+                    else self._resolved_default_variant(m)
                 )
             if target_kind == "llm":
                 # A freshly installed+loaded local LLM should immediately

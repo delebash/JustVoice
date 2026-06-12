@@ -114,7 +114,7 @@ class PersonaStore:
     def create(
         self,
         name: str,
-        voice_id: str,
+        voice_id: str | None = None,
         default_delivery: dict | None = None,
         bio: str | None = None,
         engine_override: str | None = None,
