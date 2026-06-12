@@ -18,6 +18,7 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
+import JvInput from "../components/jv/JvInput.vue";
 import EmptyState from "../components/EmptyState.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 
@@ -35,6 +36,7 @@ const loading = ref(false);
 const FILTERS = ["all", "used", "unused", "by-project"];
 const filter = ref("all");
 const filterProjectId = ref("");
+const search = ref("");
 
 // Editable buffer for the selected persona — committed via "Save".
 const draft = ref(null);
@@ -49,15 +51,18 @@ const selectedPersona = computed(() =>
 );
 
 const filteredPersonas = computed(() => {
-  if (filter.value === "all") return personas.value;
-  if (filter.value === "used") return personas.value.filter((p) => (usage.value[p.id] || []).length > 0);
-  if (filter.value === "unused") return personas.value.filter((p) => !(usage.value[p.id] || []).length);
+  let list = personas.value;
+  if (filter.value === "used") list = list.filter((p) => (usage.value[p.id] || []).length > 0);
+  if (filter.value === "unused") list = list.filter((p) => !(usage.value[p.id] || []).length);
   if (filter.value === "by-project" && filterProjectId.value) {
-    return personas.value.filter((p) =>
+    list = list.filter((p) =>
       (usage.value[p.id] || []).some((u) => u.project_id === filterProjectId.value),
     );
   }
-  return personas.value;
+  const q = search.value.trim().toLowerCase();
+  if (q) list = list.filter((p) =>
+    (p.name || "").toLowerCase().includes(q) || (p.bio || "").toLowerCase().includes(q));
+  return list;
 });
 
 function usageCount(personaId) {
@@ -337,7 +342,8 @@ onMounted(loadAll);
   <div class="personas">
     <!-- ── Card grid (nothing selected) ─────────────────────────────── -->
     <template v-if="!draft">
-      <div class="personas__toolbar">
+      <div class="jv-lib-toolbar">
+        <JvInput v-model="search" placeholder="Search personas…" size="sm" width="name" />
         <!-- Library-mode filter chips: All / Used / Unused / By project.
              Cross-project Personas are the model — these help find them. -->
         <button
@@ -596,13 +602,6 @@ onMounted(loadAll);
   flex-direction: column;
 }
 
-.personas__toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 14px;
-}
 .personas__chip {
   font-size: 11px;
   padding: 4px 10px;

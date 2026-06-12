@@ -14,11 +14,24 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
+import JvInput from "../components/jv/JvInput.vue";
 import EmptyState from "../components/EmptyState.vue";
 
 const api = useApi();
 
 const lexicons = ref([]);
+const search = ref("");
+const SCOPE_FILTERS = [["all", "All"], ["global", "Reusable"], ["project", "Book"], ["persona", "Persona"]];
+const scopeFilter = ref("all");
+const filteredLexicons = computed(() => {
+  let list = lexicons.value;
+  if (scopeFilter.value !== "all") list = list.filter((l) => (l.scope || "global") === scopeFilter.value);
+  const q = search.value.trim().toLowerCase();
+  if (q) list = list.filter((l) =>
+    (l.name || "").toLowerCase().includes(q) ||
+    (l.entries || []).some((e) => (e.grapheme || "").toLowerCase().includes(q)));
+  return list;
+});
 const projects = ref([]);
 const personas = ref([]);
 const selectedId = ref(null);
@@ -317,8 +330,11 @@ onMounted(async () => {
   <div class="lex">
     <!-- ── Table (consolidated pattern 2026-06-12) ─────────────────── -->
     <template v-if="true">
-      <div class="lex__toolbar">
-        <span class="jv-muted">{{ lexicons.length }} dictionar{{ lexicons.length === 1 ? "y" : "ies" }} · applied before TTS</span>
+      <div class="jv-lib-toolbar">
+        <JvInput v-model="search" placeholder="Search lexicons + words…" size="sm" width="name" />
+        <div style="display:inline-flex;gap:4px">
+          <button v-for="f in SCOPE_FILTERS" :key="f[0]" type="button" class="jv-pill" :class="scopeFilter === f[0] ? 'jv-pill--solid' : 'jv-pill--ghost'" @click="scopeFilter = f[0]">{{ f[1] }}</button>
+        </div>
         <span class="jv-spacer" />
         <JvButton variant="secondary" size="sm" label="⬇ Import .justlex.json" @click="chooseImportFile" />
         <JvButton variant="primary" size="sm" label="+ New lexicon" @click="createLexicon" />
@@ -339,7 +355,7 @@ onMounted(async () => {
           <tr><th>Name</th><th style="width:130px">Scope</th><th style="width:90px">Entries</th><th>Words</th><th class="jv-table__actions" style="width:150px">Actions</th></tr>
         </thead>
         <tbody>
-          <tr v-for="lx in lexicons" :key="lx.id" class="lex__row" title="Click to edit" @click="selectedId = lx.id">
+          <tr v-for="lx in filteredLexicons" :key="lx.id" class="lex__row" title="Click to edit" @click="selectedId = lx.id">
             <td><strong>{{ lx.name }}</strong><div v-if="scopedToName(lx)" class="jv-muted" style="font-size:11.5px">{{ scopedToName(lx) }}</div></td>
             <td><span class="jv-pill" :class="scopeBadge(lx).cls">{{ scopeBadge(lx).label }}</span></td>
             <td>{{ (lx.entries || []).length }}</td>

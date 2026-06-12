@@ -68,7 +68,33 @@ re-planning work in the same area.
 - `project_gotchas` — `justvoice-server` rename, native-dialog ban, Tauri spawn-loop fix. Load before debugging boot failures.
 - `feedback_user_preferences` — terse reports, no permission-asking, verify by running code.
 
-**Failure modes from prior sessions** (signals you missed the relevant memory): proposing Rust anywhere, Docker, asking permission, using native dialogs, hallucinating file paths, re-investigating decisions already made. If you catch yourself about to do any of these, that's the cue to load the matching memory file.
+## ⛔ RULE #1 — PRECEDENT BEFORE PATTERN (UI work)
+
+Root cause of a whole inconsistency class (user-hit repeatedly,
+2026-06-12: bubble sub-nav next to Settings' tab strip, + New buttons
+on different sides, three interaction patterns across four library
+views): reaching for the nearest component instead of checking what
+the app already does for the same job.
+
+**Before adding ANY UI surface (toolbar, tab strip, list, dialog,
+button row), STOP and answer in writing — in the code comment or
+commit message — two questions:**
+1. *Which existing view already solves this shape?* Name the file and
+   the canonical class (e.g. `.jv-subnav`, `.jv-lib-toolbar`,
+   table+dialog pattern). Then USE it.
+2. *If genuinely nothing exists*, promote a NEW canonical class to
+   `styles.css` first — never a scoped one-off — so the next view has
+   a precedent to find.
+
+A grep for the obvious class names (`jv-subnav`, `jv-lib-toolbar`,
+`jv-table`, `jv-overlay`) costs 5 seconds; the user paying for the
+inconsistency costs a test round. Canonical inventory so far:
+`.jv-subnav` (tabbed views) · `.jv-lib-toolbar` (search → filter chips
+→ data dropdowns → spacer → actions, "+ New" rightmost) · `jv-table` +
+row-click→full-form dialog (library CRUD) · `confirmDialog`/
+`promptDialog` (never native) · `.jv-overlay`/`.jv-modal` shells.
+
+**Failure modes from prior sessions** (signals you missed the relevant memory): proposing Rust anywhere, Docker, asking permission, using native dialogs, hallucinating file paths, re-investigating decisions already made, building a UI element without naming its precedent (RULE #1). If you catch yourself about to do any of these, that's the cue to load the matching memory file.
 
 ## Architecture
 

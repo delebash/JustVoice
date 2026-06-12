@@ -13,17 +13,33 @@
   in plan Q1.
 -->
 <script setup>
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
+import JvInput from "../components/jv/JvInput.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 
 const api = useApi();
 
 const presets = ref([]);
 const loading = ref(false);
+
+// Canonical library toolbar (2026-06-12): search + ownership chips.
+const search = ref("");
+const FILTERS = [["all", "All"], ["builtin", "Built-in"], ["custom", "Custom"]];
+const filter = ref("all");
+const filtered = computed(() => {
+  let list = presets.value;
+  if (filter.value === "builtin") list = list.filter((p) => p.is_builtin);
+  if (filter.value === "custom") list = list.filter((p) => !p.is_builtin);
+  const q = search.value.trim().toLowerCase();
+  if (q) list = list.filter((p) =>
+    (p.name || "").toLowerCase().includes(q) ||
+    (p.chain || []).some((ef) => (ef.type || "").toLowerCase().includes(q)));
+  return list;
+});
 
 const editorOpen = ref(false);
 const editingPreset = ref(null);
@@ -136,7 +152,11 @@ onMounted(refresh);
         copy at apply time, like a voice template.
       </p>
 
-      <div class="effects-view__toolbar">
+      <div class="jv-lib-toolbar">
+        <JvInput v-model="search" placeholder="Search chains…" size="sm" width="name" />
+        <div class="voices-chips" style="display:inline-flex;gap:4px">
+          <button v-for="f in FILTERS" :key="f[0]" type="button" class="jv-pill" :class="filter === f[0] ? 'jv-pill--solid' : 'jv-pill--ghost'" @click="filter = f[0]">{{ f[1] }}</button>
+        </div>
         <span class="jv-spacer" />
         <JvButton variant="primary" size="sm" label="+ New chain preset" @click="startCreate" />
       </div>
@@ -152,7 +172,7 @@ onMounted(refresh);
           <tr><th>Name</th><th>Chain</th><th style="width:90px">Effects</th><th style="width:90px"></th><th class="jv-table__actions" style="width:150px">Actions</th></tr>
         </thead>
         <tbody>
-          <tr v-for="p in presets" :key="p.id" class="effects-view__row" title="Click to edit" @click="startEdit(p)">
+          <tr v-for="p in filtered" :key="p.id" class="effects-view__row" title="Click to edit" @click="startEdit(p)">
             <td><strong>{{ p.name }}</strong><div v-if="p.description" class="jv-muted" style="font-size:11.5px">{{ p.description }}</div></td>
             <td>
               <span v-for="(ef, i) in (p.chain || [])" :key="i" class="effects-view__chain-pill">{{ ef.type }}</span>
@@ -189,7 +209,6 @@ onMounted(refresh);
 .effects-view { padding: 0; }
 .effects-view__lede { font-size: 13px; max-width: 720px; margin: 8px 0 14px; }
 
-.effects-view__toolbar { margin-bottom: 16px; display: flex; }
 
 .effects-view__empty { padding: 40px 0; font-size: 13px; text-align: center; }
 

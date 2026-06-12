@@ -22,6 +22,7 @@ import { pushToast } from "../services/toastBridge.js";
 import { promptDialog } from "../services/dialog.js";
 import { confirmDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
+import JvInput from "../components/jv/JvInput.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 
 const api = useApi();
@@ -29,6 +30,23 @@ const api = useApi();
 const presets = ref([]);
 const personas = ref([]);
 const loading = ref(false);
+
+// Canonical library toolbar (2026-06-12): search + binding chips +
+// master-target dropdown.
+const search = ref("");
+const FILTERS = [["all", "All"], ["builtin", "Built-in"], ["delivery", "Delivery-only"], ["bound", "Persona-bound"]];
+const filter = ref("all");
+const masterFilter = ref("");
+const filtered = computed(() => {
+  let list = presets.value;
+  if (filter.value === "builtin") list = list.filter((p) => p.is_builtin);
+  if (filter.value === "delivery") list = list.filter((p) => !p.voice_id);
+  if (filter.value === "bound") list = list.filter((p) => !!p.voice_id);
+  if (masterFilter.value) list = list.filter((p) => (p.master || "") === masterFilter.value);
+  const q = search.value.trim().toLowerCase();
+  if (q) list = list.filter((p) => (p.name || "").toLowerCase().includes(q));
+  return list;
+});
 
 const editorOpen = ref(false);
 const editingPreset = ref(null);
@@ -176,14 +194,23 @@ onMounted(refresh);
 <template>
   <div class="render-presets-view">
     <div class="jv-section">
-      <div class="jv-section__head">
-        <h3 class="jv-section__title">Render presets</h3>
-        <JvButton variant="primary" size="sm" label="+ New preset" @click="createPreset" />
-      </div>
+      <h3 class="jv-section__title">Render presets</h3>
       <p class="jv-muted render-presets-view__lede">
         Named bundles of voice + delivery + effects chain + master target.
         Studio Render binds one preset per scene; the preset's settings overlay the persona's at render time.
       </p>
+      <div class="jv-lib-toolbar">
+        <JvInput v-model="search" placeholder="Search presets…" size="sm" width="name" />
+        <div style="display:inline-flex;gap:4px">
+          <button v-for="f in FILTERS" :key="f[0]" type="button" class="jv-pill" :class="filter === f[0] ? 'jv-pill--solid' : 'jv-pill--ghost'" @click="filter = f[0]">{{ f[1] }}</button>
+        </div>
+        <select class="jv-input jv-input--sm" style="max-width:160px" v-model="masterFilter" title="Filter by master target">
+          <option value="">All targets</option>
+          <option v-for="m in MASTER_TARGETS.filter((x) => x.value)" :key="m.value" :value="m.value">{{ m.label }}</option>
+        </select>
+        <span class="jv-spacer" />
+        <JvButton variant="primary" size="sm" label="+ New preset" @click="createPreset" />
+      </div>
 
       <div v-if="loading" class="jv-muted render-presets-view__empty">Loading…</div>
       <div v-else-if="!presets.length" class="jv-muted render-presets-view__empty">
@@ -195,7 +222,7 @@ onMounted(refresh);
           <tr><th>Name</th><th>Persona</th><th style="width:120px">Master target</th><th>Delivery</th><th style="width:90px"></th><th class="jv-table__actions" style="width:150px">Actions</th></tr>
         </thead>
         <tbody>
-          <tr v-for="p in presets" :key="p.id" class="render-presets-view__row" title="Click to edit" @click="openEdit(p)">
+          <tr v-for="p in filtered" :key="p.id" class="render-presets-view__row" title="Click to edit" @click="openEdit(p)">
             <td><strong>{{ p.name }}</strong></td>
             <td class="jv-muted">{{ p.voice_id ? personaName(p.voice_id) : "— delivery only —" }}</td>
             <td class="jv-muted">{{ p.master || "none" }}</td>

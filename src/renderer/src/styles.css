@@ -212,6 +212,17 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   overflow-x: hidden;
   scrollbar-width: thin;
 }
+/* Canonical library toolbar — Personas/Lexicons/Presets/Effects (and
+   Voices' anatomy): search · filter chips · per-data dropdowns · spacer
+   · actions, always in that order. */
+.jv-lib-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
 /* Canonical sub-tab strip — Settings + Labs (and any future tabbed
    view) share this. One tab style, no per-view bubbles. */
 .jv-subnav {
