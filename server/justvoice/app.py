@@ -126,6 +126,24 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     # so without these headers the webview's fetch() calls are blocked and
     # the GUI renders empty (e.g. no engines listed). Defaults cover the dev
     # server + the packaged Tauri webview; both are operator-tunable.
+    # Catch-all error envelope — MUST be registered before CORSMiddleware
+    # (Starlette wraps later-added middleware outside earlier ones), so
+    # unhandled exceptions become JSON 500s that flow OUT through CORS
+    # and reach the browser as real errors instead of "blocked by CORS".
+    # A bare @app.exception_handler(Exception) does NOT work for this:
+    # Starlette runs it in ServerErrorMiddleware, outside CORS (verified
+    # the hard way, 2026-06-12).
+    @app.middleware("http")
+    async def _error_envelope(request, call_next):  # noqa: ANN001
+        try:
+            return await call_next(request)
+        except Exception as exc:  # noqa: BLE001 — envelope everything
+            log.exception("unhandled error on %s %s", request.method, request.url.path)
+            return JSONResponse(
+                status_code=500,
+                content={"title": "Internal Server Error", "detail": str(exc)[:300]},
+            )
+
     if settings.cors.origins or settings.cors.origin_regex:
         app.add_middleware(
             CORSMiddleware,
@@ -136,19 +154,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
             allow_headers=["*"],
         )
 
-    # Unhandled exceptions normally bypass CORSMiddleware (the outermost
-    # ServerErrorMiddleware answers without ACAO headers), so browsers
-    # report every server 500 as "blocked by CORS" — wildly misleading
-    # (bit the user 2026-06-12). A catch-all handler returns a normal
-    # JSONResponse, which flows back through the middleware stack and
-    # gets its CORS headers; the browser then shows the real 500.
-    @app.exception_handler(Exception)
-    async def _unhandled(request, exc):  # noqa: ANN001
-        log.exception("unhandled error on %s %s", request.method, request.url.path)
-        return JSONResponse(
-            status_code=500,
-            content={"title": "Internal Server Error", "detail": str(exc)[:300]},
-        )
 
     # Auth — after CORS so preflights succeed without a token
     app.add_middleware(BearerAuthMiddleware)
