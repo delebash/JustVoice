@@ -94,7 +94,27 @@ inconsistency costs a test round. Canonical inventory so far:
 row-click→full-form dialog (library CRUD) · `confirmDialog`/
 `promptDialog` (never native) · `.jv-overlay`/`.jv-modal` shells.
 
-**Failure modes from prior sessions** (signals you missed the relevant memory): proposing Rust anywhere, Docker, asking permission, using native dialogs, hallucinating file paths, re-investigating decisions already made, building a UI element without naming its precedent (RULE #1). If you catch yourself about to do any of these, that's the cue to load the matching memory file.
+## ⛔ RULE #2 — RIGHT THE FIRST TIME (tempo)
+
+User directive, 2026-06-12, after a session of speed-caused rework:
+**"we try and get it right the first time even if we have to slow
+down."** Speed is NOT a value in this project. There is no deadline.
+Rework costs the user a full test round; slowness costs nothing.
+
+Operating tempo, mandatory:
+- A punch list is a QUEUE of single items, not a batch. One item at a
+  time: read the full surface it touches (the whole view/module — not
+  a grep skim), write the one-line current-state + target (RULE #1's
+  artifact), implement, verify, and only then take the next item.
+- Fewer items done correctly beats all items done fast. If a session
+  ends with half the list shipped right, that is SUCCESS; a session
+  that ships the whole list with rework seeds is FAILURE.
+- If an item's current-state line is hard to write, that's the signal
+  to surface it for discussion instead of coding it.
+- Never interleave items to save time; never let "context is running
+  out" justify skimming — the summary carries unfinished queues fine.
+
+**Failure modes from prior sessions** (signals you missed the relevant memory): proposing Rust anywhere, Docker, asking permission, using native dialogs, hallucinating file paths, re-investigating decisions already made, building a UI element without naming its precedent (RULE #1), batching/skimming through a punch list instead of single-item full reads (RULE #2). If you catch yourself about to do any of these, that's the cue to load the matching memory file.
 
 ## Architecture
 
