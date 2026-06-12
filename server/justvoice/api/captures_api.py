@@ -86,6 +86,7 @@ class CaptureRow(BaseModel):
     raw_transcript: Optional[str]
     refinement_flags: dict
     audio_url: str
+    pinned: bool = False
     created_at: datetime
 
 
@@ -104,8 +105,28 @@ def _row(c: Capture) -> CaptureRow:
         raw_transcript=c.raw_transcript,
         refinement_flags=json.loads(c.refinement_flags_json) if c.refinement_flags_json else {},
         audio_url=f"/v1/captures/{c.id}/audio",
+        pinned=bool(c.pinned),
         created_at=c.created_at,
     )
+
+
+class UpdateCaptureRequest(BaseModel):
+    pinned: Optional[bool] = None
+
+
+@router.patch("/v1/captures/{capture_id}", response_model=CaptureRow)
+async def update_capture(
+    capture_id: str, body: UpdateCaptureRequest, db: Session = Depends(get_db)
+) -> CaptureRow:
+    """Pin/unpin (parity: the journeys mock pins repeated phrases)."""
+    c = db.query(Capture).filter(Capture.id == capture_id).first()
+    if not c:
+        raise not_found(f"capture {capture_id}")
+    if body.pinned is not None:
+        c.pinned = body.pinned
+    db.commit()
+    db.refresh(c)
+    return _row(c)
 
 
 @router.post("/v1/transcribe")

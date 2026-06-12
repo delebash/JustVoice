@@ -55,6 +55,7 @@ def run_migrations(engine) -> None:
     _migrate_render_presets_voice_nullable(engine, inspector, tables)
     _migrate_blocks_extraction_telemetry(engine, inspector, tables)
     _migrate_mcp_bindings_persona(engine, inspector, tables)
+    _migrate_captures_pinned(engine, inspector, tables)
 
 
 # ── helpers ───────────────────────────────────────────────────────────────
@@ -273,6 +274,16 @@ def _migrate_drop_voice_profile_tables(engine, inspector, tables: set[str]) -> N
                 conn.execute(text(f"DROP TABLE IF EXISTS {table}"))
                 logger.info("Dropped %s table (Slice 4 of Profile-kill)", table)
         conn.commit()
+
+
+def _migrate_captures_pinned(engine, inspector, tables: set[str]) -> None:
+    """Add `pinned` to captures (parity with the journeys mock — pin the
+    stream phrases you repeat; pinned rows sort first)."""
+    if "captures" not in tables:
+        return
+    columns = _get_columns(inspector, "captures")
+    if "pinned" not in columns:
+        _add_column(engine, "captures", "pinned BOOLEAN NOT NULL DEFAULT 0", "pinned")
 
 
 def _migrate_mcp_bindings_persona(engine, inspector, tables: set[str]) -> None:

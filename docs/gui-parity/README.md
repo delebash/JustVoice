@@ -30,8 +30,8 @@ element-by-element — next pass.
 | Generate | generate-* | 🟡 | capability-driven knobs exceed mock; mock's inline tag-palette row is a slash-menu instead |
 | QuickSetup (first-run) | (quicksetup-v2.png, session) | ✅ | engine checkboxes, helpers, what-happens-next, re-runnable |
 | Fix-it → Lexicons | lexicons-* | ✅ | flag on block → prefilled grapheme verified live |
-| Captures | captures-* | ⬜ | loads clean; element diff not done |
-| Webhooks | webhooks-* | ⬜ | loads clean; element diff not done |
+| Captures | captures-* | 🟡 | judged 2026-06-12: All/Pinned/Today chips + 📌 pin (new `pinned` column + PATCH) + ↺ speak-again (Generate prefill) shipped to match mock. Remaining gaps: promote-recording→clone-sample flow (needs the clone pipeline on a capture), mock's flat table vs app's master/detail (kept — detail pane holds transcript/refine tools) |
+| Webhooks | webhooks-* | 🟡 | judged 2026-06-12: MCP-server card added above the table (mock pairs MCP+webhooks as one Automation surface) with real exposed tools + Settings link; lede mentions the CI use case. Remaining gap: mock's per-event ✓ 200 status pill vs app's Last-delivery column (column kept — same info) |
 | Episodes (podcast home base) | episodes-* | ⬜ | ChapterView w/ podcast vocabulary; segment-specific affordances (inline tag pills, markers) not diffed |
 | Timeline (podcast) | timeline-* | ⬜ | StoriesView; mock's grown-up timeline (music bed, stinger drag) not diffed |
 | First-run clone/audition steps | — | ⬜ | recording UI is desktop/mic-dependent; screens not diffed |

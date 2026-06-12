@@ -291,6 +291,15 @@ function resolveInitialTab() {
     initialTabResolved = true;
     return;
   }
+  // Legacy Settings sub-tab deep links (#cache/#channels/#webhooks) —
+  // only the hashchange listener handled these, so a COLD load of the
+  // URL fell through to Home (user-hit: parity capture landed wrong).
+  if (["cache", "channels", "webhooks"].includes(hashId)) {
+    try { window.sessionStorage?.setItem("jv.settings.sub", hashId); } catch { /* ignore */ }
+    view.value = "settings";
+    initialTabResolved = true;
+    return;
+  }
   // First run = the real question, "What are you making?" (user decision
   // 2026-06-12: no welcome quiz, no setup wizard — the kind picker opens,
   // creating the first project sets the workspace focus, and engines

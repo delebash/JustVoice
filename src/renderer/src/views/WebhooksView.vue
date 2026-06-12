@@ -107,11 +107,33 @@ onMounted(refresh);
 
 <template>
   <div class="webhooks-view">
+    <!-- MCP card (parity: the mock pairs MCP + webhooks as one
+         "Automation" surface — same server speaks for agents and
+         pipelines, no UI in the loop). -->
+    <div class="jv-card webhooks-view__mcp">
+      <div class="webhooks-view__mcp-h">
+        <strong>MCP server</strong>
+        <span class="jv-pill jv-pill--green">enabled</span>
+        <span class="jv-spacer" />
+        <a href="#settings" class="jv-muted" style="font-size:12px">configure → Settings · MCP</a>
+      </div>
+      <p class="jv-muted" style="font-size:12.5px; margin: 6px 0 10px">
+        Any MCP-capable agent (Claude Code, IDEs) can drive JustVoice — dictate commit
+        messages, voice notifications, batch-generate while you're away.
+      </p>
+      <pre class="webhooks-view__tools jv-mono">tools exposed
+justvoice.speak           {text, voice|persona, channel}
+justvoice.list_voices     → library
+justvoice.list_personas   → characters
+justvoice.transcribe      {audio} → text</pre>
+    </div>
+
     <header class="jv-section">
       <h2 class="jv-section__title">Webhooks</h2>
       <p class="jv-muted" style="margin-top: 4px; margin-bottom: 0;">
-        Server-pushed HMAC-SHA256-signed notifications for async integration.
-        At-least-once delivery with exponential backoff (1s → 5s → 30s → 5min).
+        Server-pushed HMAC-SHA256-signed notifications for async integration —
+        wire renders into a build pipeline (game VO CI) or notify when a chapter
+        masters. At-least-once delivery with exponential backoff (1s → 5s → 30s → 5min).
       </p>
     </header>
 
@@ -193,6 +215,18 @@ onMounted(refresh);
 
 <style scoped>
 .webhooks-view { padding: 32px; max-width: var(--shell-page); }
+.webhooks-view__mcp { padding: 14px 16px; margin-bottom: 16px; }
+.webhooks-view__mcp-h { display: flex; align-items: center; gap: 8px; }
+.webhooks-view__tools {
+  background: var(--ink);
+  color: #d7e6dc;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 0;
+  overflow-x: auto;
+}
 .editor-card { margin-top: 16px; }
 .events-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
 .secret-code { background: rgba(0,0,0,0.05); padding: 4px 8px; border-radius: 4px; }

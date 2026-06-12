@@ -24,14 +24,50 @@ const pillState = ref("rest");
 const elapsedMs = ref(0);
 const isRecording = ref(false);
 
+// All / Pinned / Today chips (parity: journeys mock) + search.
+const FILTERS = ["all", "pinned", "today"];
+const filter = ref("all");
 const filtered = computed(() => {
-  if (!search.value) return captures.value;
-  const q = search.value.toLowerCase();
-  return captures.value.filter(
-    (c) => (c.transcript || "").toLowerCase().includes(q) ||
-           (c.audio_path || "").toLowerCase().includes(q),
-  );
+  let list = captures.value;
+  if (filter.value === "pinned") list = list.filter((c) => c.pinned);
+  if (filter.value === "today") {
+    const today = new Date().toDateString();
+    list = list.filter((c) => new Date(c.created_at).toDateString() === today);
+  }
+  if (search.value) {
+    const q = search.value.toLowerCase();
+    list = list.filter(
+      (c) => (c.transcript || "").toLowerCase().includes(q) ||
+             (c.audio_path || "").toLowerCase().includes(q),
+    );
+  }
+  // Pinned first, newest within each group.
+  return [...list].sort((a, b) => (b.pinned - a.pinned) || (new Date(b.created_at) - new Date(a.created_at)));
 });
+
+async function togglePin(c) {
+  try {
+    const updated = await api.request(`/v1/captures/${c.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pinned: !c.pinned }),
+    });
+    const idx = captures.value.findIndex((x) => x.id === c.id);
+    if (idx >= 0) captures.value[idx] = updated;
+  } catch (e) {
+    pushToast({ kind: "error", title: "Pin failed", description: String(e?.message ?? e) });
+  }
+}
+
+// "Speak again" — re-say the transcript through TTS: Generate, prefilled.
+function speakAgain(c) {
+  if (!c?.transcript) {
+    pushToast({ kind: "info", message: "No transcript on this capture." });
+    return;
+  }
+  try { window.sessionStorage?.setItem("jv.generate.prefill", JSON.stringify({ text: c.transcript })); } catch { /* ignore */ }
+  window.location.hash = "#generate";
+}
 
 const selectedCapture = computed(() =>
   captures.value.find((c) => c.id === selectedId.value),
@@ -158,6 +194,16 @@ onMounted(() => {
       </div>
       <div class="captures__search">
         <JvInput v-model="search" placeholder="Search transcripts…" size="sm" width="name" />
+        <div class="captures__filters">
+          <button
+            v-for="f in FILTERS"
+            :key="f"
+            type="button"
+            class="jv-pill"
+            :class="filter === f ? 'jv-pill--solid' : 'jv-pill--ghost'"
+            @click="filter = f"
+          >{{ f.charAt(0).toUpperCase() + f.slice(1) }}</button>
+        </div>
       </div>
 
       <!-- Readiness banner -->
@@ -187,8 +233,21 @@ onMounted(() => {
         @click="selectedId = c.id"
       >
         <div class="captures__item-row">
+          <button
+            type="button"
+            class="captures__pin"
+            :class="{ 'captures__pin--on': c.pinned }"
+            :title="c.pinned ? 'Unpin' : 'Pin — repeated phrases sort first'"
+            @click.stop="togglePin(c)"
+          >📌</button>
           <span class="captures__source">{{ c.source }}</span>
           <span class="jv-pane-list__meta" style="margin-left:auto;">{{ new Date(c.created_at).toLocaleString() }}</span>
+          <button
+            type="button"
+            class="captures__pin"
+            title="Speak again — opens Generate with this transcript prefilled"
+            @click.stop="speakAgain(c)"
+          >↺</button>
         </div>
         <div class="jv-ellipsis captures__transcript">{{ c.transcript || "(no transcript)" }}</div>
       </div>
@@ -344,7 +403,19 @@ onMounted(() => {
   padding: 14px 16px 10px;
   border-bottom: 1px solid var(--line);
 }
-.captures__search { padding: 8px 16px; }
+.captures__search { padding: 8px 16px; display: flex; flex-direction: column; gap: 8px; }
+.captures__filters { display: flex; gap: 6px; }
+.captures__pin {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 2px;
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+.captures__pin:hover { opacity: 0.8; }
+.captures__pin--on { opacity: 1; filter: none; }
 
 .captures__source { font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 11px; }
 .captures__item-row { display: flex; align-items: center; gap: 8px; }

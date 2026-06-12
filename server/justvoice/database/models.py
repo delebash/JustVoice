@@ -461,6 +461,9 @@ class Capture(Base):
     raw_transcript = Column(Text, nullable=True)
     # JSON: {smart_cleanup, self_correction, preserve_technical}
     refinement_flags_json = Column(Text, nullable=True)
+    # Pinned captures sort first + survive the Pinned filter (parity:
+    # the journeys mock pins repeated stream phrases).
+    pinned = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=_utcnow)
 
 
