@@ -242,6 +242,19 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 .jv-toptab.on .t2 .free { color: var(--accent-ink, #2c6049); font-weight: 700; }
 .jv-toptab.on .t2 .paid { color: #b08a3e; font-weight: 700; }
 
+/* Canonical eyebrow micro-label + eyebrow-headed pane card — the Labs
+   panes (Speaker, Render): a jv-card whose first row is eyebrow ·
+   chips · spacer · actions, optionally followed by a muted hint. */
+.jv-eyebrow {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--ink-3); flex: none;
+}
+.jv-eyebrow em { text-transform: none; letter-spacing: 0; font-weight: 400; font-style: normal; }
+.jv-eyebrow--row { display: flex; align-items: center; gap: 8px; }
+.jv-pane-card { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.jv-pane-card__h { display: flex; align-items: center; gap: 8px; }
+.jv-pane-card__hint { font-size: 12px; margin: 0; }
+
 /* Canonical search pill — bordered search field with a leading icon
    slot (born in Engines mock v7). Width comes from the parent row. */
 .jv-searchbar {

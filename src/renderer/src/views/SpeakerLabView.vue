@@ -501,9 +501,9 @@ onMounted(async () => {
          all five labs) — no per-view header here. -->
 
     <!-- ── Input pane (carded — JustWrite's INPUT PASSAGE shape) ───── -->
-    <section class="jv-card splab__pane">
-      <div class="splab__pane-h">
-        <span class="splab__eyebrow">Input passage</span>
+    <section class="jv-card jv-pane-card">
+      <div class="jv-pane-card__h">
+        <span class="jv-eyebrow">Input passage</span>
         <span class="jv-spacer" />
         <span class="jv-muted splab__stats">{{ inputStats || "Paste a few chapters, or load one from a project." }}</span>
       </div>
@@ -527,13 +527,13 @@ onMounted(async () => {
     </section>
 
     <!-- ── Cast pane (carded to match) ─────────────────────────────── -->
-    <section class="jv-card splab__pane">
-      <div class="splab__pane-h">
-        <span class="splab__eyebrow">Cast</span>
+    <section class="jv-card jv-pane-card">
+      <div class="jv-pane-card__h">
+        <span class="jv-eyebrow">Cast</span>
         <span class="jv-spacer" />
         <span class="jv-muted splab__stats">{{ characters.length ? `${characters.length} character${characters.length === 1 ? "" : "s"}` : "empty" }}</span>
       </div>
-      <p class="jv-muted splab__pane-hint">
+      <p class="jv-muted jv-pane-card__hint">
         The model only attributes dialogue to ids on this list (rule 2 of the system prompt below) —
         add everyone who speaks in the passage. ✨ Sample fills the passage and this cast together.
       </p>
@@ -568,7 +568,7 @@ onMounted(async () => {
           <!-- Presets row — JustWrite Speaker Lab parity: dropdown,
                PRODUCTION badge, promote/save actions on one line. -->
           <div class="splab__presets">
-            <span class="splab__eyebrow">Presets</span>
+            <span class="jv-eyebrow">Presets</span>
             <select :value="col.presetName" class="jv-input jv-input--sm jv-w-name" title="Load a saved configuration" @change="loadPreset(col, $event.target.value)">
               <option value="">— defaults —</option>
               <option v-for="p in presets" :key="p.name" :value="p.name">{{ p.name }}</option>
@@ -628,7 +628,7 @@ onMounted(async () => {
 
           <!-- Tier segmented + toggles + floor value -->
           <div class="splab__column-knobs">
-            <span class="splab__eyebrow">Tier</span>
+            <span class="jv-eyebrow">Tier</span>
             <div class="splab__tierseg">
               <button
                 type="button"
@@ -665,7 +665,7 @@ onMounted(async () => {
 
           <!-- System prompt — shows the REAL body the pipeline sends -->
           <div class="splab__prompt">
-            <span class="splab__eyebrow splab__eyebrow--row">
+            <span class="jv-eyebrow jv-eyebrow--row">
               System prompt
               <em class="jv-muted">— exactly what the model receives; resolved from the tier</em>
               <template v-if="systemEdited(col)">
@@ -678,7 +678,7 @@ onMounted(async () => {
 
           <!-- User prompt — the template; tokens fill in server-side -->
           <div class="splab__prompt">
-            <span class="splab__eyebrow splab__eyebrow--row">
+            <span class="jv-eyebrow jv-eyebrow--row">
               User prompt
               <em class="jv-muted">— template · <code>{characters}</code>, <code>{corrections}</code>, <code>{paragraphs}</code> fill in server-side</em>
               <template v-if="userEdited(col)">
@@ -721,9 +721,6 @@ onMounted(async () => {
 <style scoped>
 .splab { padding: 0; display: flex; flex-direction: column; gap: 18px; }
 
-.splab__pane { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
-.splab__pane-h { display: flex; align-items: center; gap: 8px; }
-.splab__pane-hint { font-size: 12px; margin: 0; }
 .splab__input-toolbar { display: flex; align-items: center; gap: 8px; }
 .splab__input-select { width: var(--w-name); }
 .splab__stats { font-size: 11.5px; }
@@ -753,11 +750,6 @@ onMounted(async () => {
 .splab__column-h { display: flex; align-items: center; gap: 8px; }
 .splab__column-name { max-width: 150px; font-weight: 600; }
 
-.splab__eyebrow {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
-  text-transform: uppercase; color: var(--ink-3); flex: none;
-}
-.splab__eyebrow em { text-transform: none; letter-spacing: 0; font-weight: 400; font-style: normal; }
 
 .splab__presets { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .splab__prod { font-size: 10px; white-space: nowrap; }
@@ -771,7 +763,6 @@ onMounted(async () => {
 .splab__knob { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
 .splab__knob--inline span { font-size: 11px; color: var(--ink-3); }
 .splab__floor { width: var(--w-token); font-family: var(--font-mono); font-size: 12px; }
-.splab__eyebrow--row { display: flex; align-items: center; gap: 8px; }
 .splab__edited { font-size: 9px; }
 
 .splab__prompt { display: flex; flex-direction: column; gap: 4px; }

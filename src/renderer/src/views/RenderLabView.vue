@@ -13,6 +13,7 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
+import JvToggle from "../components/jv/JvToggle.vue";
 
 const api = useApi();
 
@@ -171,42 +172,31 @@ onMounted(loadVoices);
     <!-- Tab title + explainer lede live in LabsView (one mechanism for
          all five labs) — no per-view header here. -->
 
-    <section class="jv-section">
-      <h3 class="jv-section__title">Source</h3>
+    <!-- Source — canonical .jv-pane-card (Speaker tab precedent) -->
+    <section class="jv-card jv-pane-card">
+      <div class="jv-pane-card__h">
+        <span class="jv-eyebrow">Source</span>
+      </div>
       <div class="renderlab__form">
         <label class="renderlab__field">
-          <span>Voice</span>
+          <span class="jv-eyebrow">Voice</span>
           <select v-model="selectedVoiceId" class="jv-input jv-w-name">
             <option v-for="v in voices" :key="v.id" :value="v.id">{{ v.name }} ({{ v.engine }})</option>
           </select>
         </label>
         <label class="renderlab__field">
-          <span>Sample sentence</span>
+          <span class="jv-eyebrow">Sample sentence</span>
           <textarea v-model="sampleText" class="jv-input jv-input--full renderlab__text" rows="3" />
         </label>
       </div>
     </section>
 
-    <section class="jv-section">
-      <h3 class="jv-section__title">
-        Axes
+    <!-- Axes — eyebrow header carries the cells count + Run (actions right) -->
+    <section class="jv-card jv-pane-card">
+      <div class="jv-pane-card__h">
+        <span class="jv-eyebrow">Axes</span>
         <span class="jv-pill jv-pill--ghost">{{ matrixSize }} cells</span>
-      </h3>
-      <div class="renderlab__axes">
-        <div v-for="(a, i) in axes" :key="i" class="renderlab__axis">
-          <label class="renderlab__axis-enable">
-            <input type="checkbox" v-model="a.enabled" />
-            <span>{{ a.key }}</span>
-          </label>
-          <input
-            class="jv-input"
-            v-model="a.values"
-            :disabled="!a.enabled"
-            placeholder="comma-separated values"
-          />
-        </div>
-      </div>
-      <div class="renderlab__run">
+        <span class="jv-spacer" />
         <JvButton
           variant="primary"
           size="sm"
@@ -216,10 +206,30 @@ onMounted(loadVoices);
           @click="runAll"
         />
       </div>
+      <p class="jv-muted jv-pane-card__hint">
+        Toggle an axis on and list its values — every combination renders as one cell
+        (cap {{ MAX_CELLS }}, {{ MAX_CONCURRENCY }} at a time to protect local engines).
+      </p>
+      <div class="renderlab__axes">
+        <div v-for="(a, i) in axes" :key="i" class="renderlab__axis">
+          <span class="renderlab__axis-enable" :title="a.enabled ? `Vary ${a.key} across the matrix` : `${a.key} stays at the engine default`">
+            <JvToggle v-model="a.enabled" :aria-label="`Vary ${a.key}`" />
+            <span>{{ a.key }}</span>
+          </span>
+          <input
+            class="jv-input jv-input--sm jv-w-name"
+            v-model="a.values"
+            :disabled="!a.enabled"
+            placeholder="comma-separated values"
+          />
+        </div>
+      </div>
     </section>
 
-    <section v-if="cells.length" class="jv-section">
-      <h3 class="jv-section__title">Results</h3>
+    <section v-if="cells.length" class="jv-card jv-pane-card">
+      <div class="jv-pane-card__h">
+        <span class="jv-eyebrow">Results</span>
+      </div>
       <div class="renderlab__grid">
         <article v-for="c in cells" :key="c.key" class="jv-card renderlab__cell">
           <header class="renderlab__cell-h">
@@ -243,39 +253,21 @@ onMounted(loadVoices);
 
 .renderlab__form {
   display: grid;
-  grid-template-columns: 1fr 2fr;
+  grid-template-columns: auto 1fr;
   gap: 12px 16px;
 }
 .renderlab__field { display: flex; flex-direction: column; gap: 4px; }
-.renderlab__field > span {
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  font-weight: 600;
-}
 .renderlab__text { font-family: inherit; resize: vertical; }
 
-.renderlab__axes {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.renderlab__axis {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 8px;
-  align-items: center;
-}
+.renderlab__axes { display: flex; flex-wrap: wrap; gap: 10px 26px; }
+.renderlab__axis { display: flex; align-items: center; gap: 8px; }
 .renderlab__axis-enable {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   font-family: var(--font-mono);
   font-size: 12px;
 }
-
-.renderlab__run { margin-top: 10px; }
 
 .renderlab__grid {
   display: grid;
