@@ -153,11 +153,17 @@ async function doPreview() {
       dryRun: true,
     });
     preview.value = res.standard; // warnings render inline in the preview
+    excluded.value = new Set();   // checkboxes reset — everything included
   } catch (e) {
     pushToast({ message: `Preview failed: ${e.message || e}`, kind: "error" });
   } finally {
     previewing.value = false;
   }
+}
+
+function includedIndices() {
+  const n = preview.value?.scenes?.length || 0;
+  return Array.from({ length: n }, (_, i) => i).filter((i) => !excluded.value.has(i));
 }
 
 async function doCommit() {
@@ -168,6 +174,7 @@ async function doCommit() {
       source: selectedSource.value,
       file: file.value,
       dryRun: false,
+      includeScenes: excluded.value.size ? includedIndices() : null,
       projectId: props.projectId,
     });
     pushToast({
@@ -212,6 +219,18 @@ function estAudio(words) {
 const SCENE_ROW_CAP = 12;
 
 // Per-chapter rows for the dry-run table (title · lines · words · est audio).
+// Per-chapter include checkboxes (mock import screen): excluded indices
+// are dropped server-side via include_scenes on commit.
+const excluded = ref(new Set());
+function toggleScene(i) {
+  const next = new Set(excluded.value);
+  if (next.has(i)) next.delete(i); else next.add(i);
+  excluded.value = next;
+}
+const includedCount = computed(() =>
+  (preview.value?.scenes?.length || 0) - excluded.value.size
+);
+
 const previewScenes = computed(() => {
   const scenes = preview.value?.scenes || [];
   return scenes.slice(0, SCENE_ROW_CAP).map((sc, i) => {
@@ -221,6 +240,7 @@ const previewScenes = computed(() => {
     );
     return {
       key: sc.id || i,
+      index: i,
       title: sc.title || `Scene ${i + 1}`,
       lines: sc.lines?.length || 0,
       words,
@@ -314,17 +334,18 @@ const previewWarnings = computed(() => preview.value?.warnings || []);
 
           <table v-if="previewScenes.length" class="preview-scenes">
             <thead>
-              <tr><th>Detected structure</th><th>Lines</th><th>Words</th><th>Est. audio</th></tr>
+              <tr><th style="width:30px"></th><th>Detected structure</th><th>Lines</th><th>Words</th><th>Est. audio</th></tr>
             </thead>
             <tbody>
-              <tr v-for="row in previewScenes" :key="row.key">
+              <tr v-for="row in previewScenes" :key="row.key" :class="{ 'im-excluded': excluded.has(row.index) }">
+                <td><input type="checkbox" :checked="!excluded.has(row.index)" :title="excluded.has(row.index) ? 'Excluded — will not import' : 'Included'" @change="toggleScene(row.index)" /></td>
                 <td class="t">{{ row.title }}</td>
                 <td>{{ row.lines }}</td>
                 <td>{{ row.words.toLocaleString() }}</td>
                 <td>{{ row.est }}</td>
               </tr>
               <tr v-if="previewScenesOverflow">
-                <td class="t muted" colspan="4">… and {{ previewScenesOverflow }} more</td>
+                <td class="t muted" colspan="5">… and {{ previewScenesOverflow }} more (always included — uncheckable rows are capped for display)</td>
               </tr>
             </tbody>
           </table>
@@ -349,7 +370,7 @@ const previewWarnings = computed(() => preview.value?.warnings || []);
           :loading="committing"
           :disabled="!canCommit"
           @click="doCommit"
-        >Import</JvButton>
+        >{{ preview && includedCount ? `Import ${includedCount} ${includedCount === 1 ? "chapter" : "chapters"}` : "Import" }}</JvButton>
       </footer>
     </div>
   </div>
@@ -364,13 +385,14 @@ const previewWarnings = computed(() => preview.value?.warnings || []);
   padding: 24px;
 }
 .im-dialog {
-  background: var(--surface, #fff);
-  border-radius: 12px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
-  width: min(640px, 100%);
-  max-height: 90vh;
+  background: var(--bg, #f6f5f1);
+  border-radius: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
   display: flex; flex-direction: column;
   overflow: hidden;
+  padding: 0 max(24px, calc((100% - 1100px) / 2));
 }
 .im-header {
   display: flex; align-items: flex-start; justify-content: space-between;
@@ -432,4 +454,6 @@ const previewWarnings = computed(() => preview.value?.warnings || []);
 .preview-scenes td { padding: 5px 8px; border-bottom: 1px dashed var(--line, #e3e1dc); }
 .preview-scenes tr:last-child td { border-bottom: 0; }
 .preview-scenes td.t { max-width: 0; width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.im-excluded td { opacity: 0.45; }
+.im-excluded .t { text-decoration: line-through; }
 </style>

@@ -34,7 +34,7 @@ export const projectsService = {
   },
 
   /** Multi-adapter import. {source, file, dryRun?} -> ImportRunResponse. */
-  async runImport({ source, file, dryRun = false, projectId = null } = {}) {
+  async runImport({ source, file, dryRun = false, projectId = null, includeScenes = null } = {}) {
     if (!source) throw new Error("runImport: source is required");
     if (!file) throw new Error("runImport: file is required");
     const form = new FormData();
@@ -42,6 +42,9 @@ export const projectsService = {
     form.append("file", file);
     if (dryRun) form.append("dry_run", "true");
     if (projectId) form.append("project_id", projectId);  // update-in-place merge
+    if (Array.isArray(includeScenes)) {
+      form.append("include_scenes", includeScenes.join(","));
+    }
     return withApi().postForm(`/v1/projects/import`, form);
   },
 

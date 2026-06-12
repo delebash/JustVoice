@@ -707,6 +707,7 @@ async def import_project(
     dry_run_q: Optional[bool] = Query(default=None, alias="dry_run"),
     project_id: Optional[str] = Form(default=None),
     project_id_q: Optional[str] = Query(default=None, alias="project_id"),
+    include_scenes: Optional[str] = Form(default=None),
     db: Session = Depends(get_db),
 ) -> ImportRunResponse:
     """Run an import adapter.
@@ -743,6 +744,18 @@ async def import_project(
             raise bad_request("import: no file uploaded and no raw request body")
 
     standard = run_adapter(effective_source, raw, filename=filename)
+
+    # Per-chapter include list (import-page checkboxes): comma-separated
+    # scene indices from the dry-run preview. Unlisted scenes don't
+    # materialize. Dry runs ignore it — the preview always shows all.
+    if include_scenes is not None and not effective_dry_run:
+        try:
+            keep = {int(i) for i in include_scenes.split(",") if i.strip() != ""}
+        except ValueError:
+            raise bad_request("import: include_scenes must be comma-separated indices")
+        standard.scenes = [sc for i, sc in enumerate(standard.scenes) if i in keep]
+        if not standard.scenes:
+            raise bad_request("import: include_scenes excluded every chapter")
 
     # Update mode — re-import INTO an existing project, matching by
     # stable line ids (game workflow: writers' next CSV revision).
