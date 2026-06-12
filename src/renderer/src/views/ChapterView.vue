@@ -569,6 +569,50 @@ function openInStudio() {
   window.location.hash = "#studio";
 }
 watch([scenes, selectedProjectId], () => { if (viewMode.value === "list") loadChapterList(); });
+
+// ── Workflow strip (journeys audiobook arc): Import → Cast → Script →
+// Render → Export, with live status per step so the whole flow can be
+// walked and verified in order. ───────────────────────────────────────
+const castStats = ref({ total: 0, voiced: 0 });
+async function loadCastStats() {
+  castStats.value = { total: 0, voiced: 0 };
+  if (!selectedProjectId.value) return;
+  try {
+    const r = await api.request(`/v1/projects/${selectedProjectId.value}/cast`);
+    const cast = r?.cast || [];
+    const personas = await Promise.all(cast.map(async (c) => {
+      try { return await api.request(`/v1/personas/${c.persona_id}`); } catch { return null; }
+    }));
+    castStats.value = {
+      total: cast.length,
+      voiced: personas.filter((p) => p?.voice_id).length,
+    };
+  } catch { /* cast endpoint empty — strip shows 0 */ }
+}
+watch([selectedProjectId, viewMode], () => { if (viewMode.value === "list") loadCastStats(); });
+
+const workflowSteps = computed(() => {
+  const n = scenes.value.length;
+  const attributed = scenes.value.filter((sc) => sceneStats.value[sc.id]?.attributed).length;
+  const cachedAll = scenes.value.filter((sc) => {
+    const c = sceneCache.value[sc.id];
+    return c?.total && c.cached === c.total;
+  }).length;
+  return [
+    { label: "1 Import", sub: n ? `${n} ${copy.value.chapter.plural.toLowerCase()}` : "no text yet", done: n > 0, act: startImport },
+    { label: "2 Cast", sub: castStats.value.total ? `${castStats.value.voiced}/${castStats.value.total} voiced` : "no cast yet", done: castStats.value.total > 0 && castStats.value.voiced === castStats.value.total, act: () => goStudio() },
+    { label: "3 Script", sub: n ? `${attributed}/${n} attributed` : "—", done: n > 0 && attributed === n, act: () => goStudio() },
+    { label: "4 Render", sub: n ? `${cachedAll}/${n} rendered` : "—", done: n > 0 && cachedAll === n, act: () => goStudio() },
+    { label: "5 Export", sub: "M4B · WAVs · ACX", done: false, act: () => { exportOpen.value = true; runExportQc(); } },
+  ];
+});
+function startImport() {
+  try { window.sessionStorage?.setItem("jv.books.openImport", "1"); } catch { /* ignore */ }
+  window.location.hash = "#books";
+}
+function goStudio() {
+  window.location.hash = "#studio";
+}
 </script>
 
 <template>
@@ -670,6 +714,20 @@ watch([scenes, selectedProjectId], () => { if (viewMode.value === "list") loadCh
 
     <!-- ── Chapters home base — per-chapter status table (mock step 3) ── -->
     <template v-if="viewMode === 'list' && selectedProjectId">
+      <div class="chapter-view__flow">
+        <button
+          v-for="(st, i) in workflowSteps"
+          :key="st.label"
+          type="button"
+          class="chapter-view__flow-step"
+          :class="{ 'chapter-view__flow-step--done': st.done }"
+          :title="`Open step — ${st.sub}`"
+          @click="st.act()"
+        >
+          <span class="chapter-view__flow-label">{{ st.done ? "✓" : "" }} {{ st.label }}</span>
+          <span class="chapter-view__flow-sub">{{ st.sub }}</span>
+        </button>
+      </div>
       <p class="chapter-view__lede jv-muted">
         Each {{ copy.chapter.singular.toLowerCase() }} moves independently through
         <strong>cast → script → render</strong>. Open one to read it, or send the whole
@@ -703,9 +761,21 @@ watch([scenes, selectedProjectId], () => { if (viewMode.value === "list") loadCh
             <td><span class="jv-pill" :class="renderState(sc.id).cls">{{ renderState(sc.id).label }}</span></td>
             <td style="text-align:right"><JvButton variant="ghost" size="sm" label="Open" @click.stop="openChapter(sc)" /></td>
           </tr>
-          <tr v-if="!filteredScenes.length"><td colspan="6" class="jv-muted" style="padding:14px">No {{ copy.chapter.plural.toLowerCase() }} match.</td></tr>
+          <tr v-if="!filteredScenes.length && scenes.length"><td colspan="6" class="jv-muted" style="padding:14px">No {{ copy.chapter.plural.toLowerCase() }} match.</td></tr>
         </tbody>
       </table>
+      <div v-if="!scenes.length" class="chapter-view__no-chapters">
+        <h4>No {{ copy.chapter.plural.toLowerCase() }} yet</h4>
+        <p class="jv-muted">
+          Drop in a manuscript — EPUB, DOCX, Markdown, or plain text — and it splits into
+          {{ copy.chapter.plural.toLowerCase() }} with a preview before anything imports.
+          Or add an empty {{ copy.chapter.singular.toLowerCase() }} and paste prose in Studio · Script.
+        </p>
+        <div style="display:flex; gap:8px; margin-top:12px">
+          <JvButton variant="primary" label="⬆ Import a manuscript…" @click="startImport" />
+          <JvButton variant="secondary" :label="`＋ Add ${copy.chapter.singular.toLowerCase()}`" @click="addChapter" />
+        </div>
+      </div>
     </template>
 
     <!-- ── No project banner ───────────────────────────────────────────── -->
@@ -1288,4 +1358,23 @@ watch([scenes, selectedProjectId], () => { if (viewMode.value === "list") loadCh
 .chapter-view__list-row:hover td { background: var(--surface-2); }
 .chapter-view__num { text-align: right; }
 .chapter-view__backbar { margin-bottom: 8px; }
+
+.chapter-view__flow { display: flex; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.chapter-view__flow-step {
+  appearance: none; font: inherit; cursor: pointer; text-align: left;
+  display: flex; flex-direction: column; gap: 1px;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); padding: 7px 14px;
+}
+.chapter-view__flow-step:hover { border-color: var(--accent-line); }
+.chapter-view__flow-step--done { border-color: var(--accent-line); background: var(--accent-soft); }
+.chapter-view__flow-label { font-size: 12px; font-weight: 700; color: var(--ink-2); }
+.chapter-view__flow-step--done .chapter-view__flow-label { color: var(--accent-ink); }
+.chapter-view__flow-sub { font-size: 10.5px; color: var(--ink-3); }
+.chapter-view__no-chapters {
+  border: 1px dashed var(--line-strong); border-radius: 10px;
+  padding: 22px 24px; background: var(--surface); margin-top: 4px;
+}
+.chapter-view__no-chapters h4 { margin: 0 0 6px; font-size: 14px; }
+.chapter-view__no-chapters p { margin: 0; font-size: 12.5px; line-height: 1.6; max-width: 640px; }
 </style>

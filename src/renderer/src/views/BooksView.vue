@@ -344,11 +344,19 @@ async function deleteProject() {
   }
 }
 
+const KIND_HOME_HASH = { audiobook: "#chapter", game_voicelines: "#lines", podcast: "#chapter", custom: "#chapter" };
+function landInHomeBase(rec) {
+  if (!rec) return;
+  activeProject.open(rec);
+  window.location.hash = KIND_HOME_HASH[rec.project_type] || "#chapter";
+}
+
 async function onImportCreated({ project_id }) {
   pushToast({ kind: "success", title: "Project imported" });
   await refresh();
   if (project_id) selectedId.value = project_id;
   showImport.value = false;
+  landInHomeBase(projects.value.find((p) => p.id === project_id));
 }
 
 async function exportProject(projectId) {
@@ -385,6 +393,7 @@ async function onCreateProject({ name, project_type }) {
     showNewProject.value = false;
     await refresh();
     selectedId.value = created.id;
+    landInHomeBase(projects.value.find((p) => p.id === created.id));
   } catch (e) {
     pushToast({ kind: "error", title: "Create failed", description: String(e?.message ?? e) });
   }
@@ -459,6 +468,10 @@ onMounted(() => {
   // Home's Start-something pills hand a kind over via sessionStorage —
   // consume it once and open the kind picker preselected.
   try {
+    if (window.sessionStorage?.getItem("jv.books.openImport")) {
+      window.sessionStorage.removeItem("jv.books.openImport");
+      showImport.value = true;
+    }
     const k = window.sessionStorage?.getItem("jv.books.createKind");
     if (k !== null) {
       window.sessionStorage.removeItem("jv.books.createKind");
