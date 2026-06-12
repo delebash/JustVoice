@@ -1470,7 +1470,7 @@ onMounted(() => {
             <div class="ai-role__name"><span class="ai-rolechip quick">QUICK</span> Quick model</div>
             <div class="ai-role__desc">Answers in under a second. Used for: dictation cleanup · Compose · Rewrite · voice-gender guess.</div>
             <div class="ai-role__sel">
-              <select class="jv-input" :value="roleValue('quick')" @change="setRole('quick', $event.target.value)">
+              <select class="jv-input jv-w-url" :value="roleValue('quick')" @change="setRole('quick', $event.target.value)">
                 <option value="">(not set — features fall back to the first provider)</option>
                 <option v-for="c in roleRecs?.candidates || []" :key="`q-${c.provider_id}-${c.model}`" :value="`${c.provider_id}::${c.model}`">{{ c.label }}</option>
               </select>
@@ -1482,7 +1482,7 @@ onMounted(() => {
             <div class="ai-role__name"><span class="ai-rolechip acc">ACCURACY</span> Accuracy model</div>
             <div class="ai-role__desc">Takes its time, gets it right. Used for: speaker extraction · smart-assign · show notes.</div>
             <div class="ai-role__sel">
-              <select class="jv-input" :value="roleValue('accuracy')" @change="setRole('accuracy', $event.target.value)">
+              <select class="jv-input jv-w-url" :value="roleValue('accuracy')" @change="setRole('accuracy', $event.target.value)">
                 <option value="">(not set — features fall back to the first provider)</option>
                 <option v-for="c in roleRecs?.candidates || []" :key="`a-${c.provider_id}-${c.model}`" :value="`${c.provider_id}::${c.model}`">{{ c.label }}</option>
               </select>
@@ -1893,7 +1893,7 @@ onMounted(() => {
 
         <div class="jv-row" style="margin-bottom: 8px;">
           <JvInput v-model="newOverrideVariantId" placeholder="variant id (e.g. kokoro-multi-lang-v1_0)" width="name" />
-          <JvInput v-model="newOverrideUrl" placeholder="override URL" width="path" />
+          <JvInput v-model="newOverrideUrl" placeholder="override URL" width="url" />
           <JvButton variant="secondary" :disabled="!newOverrideVariantId || !newOverrideUrl" @click="addUrlOverride">Add override</JvButton>
         </div>
         <p class="jv-muted" style="font-size: 12px;">Saved with Settings.</p>

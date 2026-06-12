@@ -189,8 +189,8 @@ onMounted(loadBulkPickers);
         <span v-else class="jv-muted cmp__audio cmp__audio--empty">(B not chosen)</span>
       </div>
       <div class="cmp__labels">
-        <JvInput v-model="labelA" placeholder="Label A (optional)" />
-        <JvInput v-model="labelB" placeholder="Label B (optional)" />
+        <JvInput v-model="labelA" placeholder="Label A (optional)" width="name" />
+        <JvInput v-model="labelB" placeholder="Label B (optional)" width="name" />
       </div>
     </div>
 
