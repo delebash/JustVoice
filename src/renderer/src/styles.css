@@ -252,18 +252,18 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 
 /* Lane headers (Workflow / Library / Tools / Advanced) — plan Q4. */
 .jv-sidebar__lane-header {
-  width: 56px;
-  font-size: 8.5px;
-  letter-spacing: 0.1em;
+  width: 64px;
+  font-size: 9px;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: var(--ink-2);
+  color: var(--accent-ink);
   font-weight: 800;
   text-align: center;
   margin: 12px 0 4px;
-  padding: 0 0 3px;
+  padding: 3px 0;
   border: 0;
-  border-bottom: 2px solid var(--accent-line, #b8d2c3);
-  background: transparent;
+  border-radius: 6px;
+  background: var(--accent-soft);
   cursor: default;
   user-select: none;
 }
