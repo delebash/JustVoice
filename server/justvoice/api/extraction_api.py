@@ -364,14 +364,12 @@ async def promote_speakers_endpoint(
 
     if db.query(Project).filter(Project.id == project_id).first() is None:
         raise not_found(f"project {project_id}")
-    store = get_state().personas
     created: list[str] = []
     reused: list[str] = []
     for cand in body.candidates:
         slug = re.sub(r"[^a-z0-9]+", "_", cand.name.lower()).strip("_") or "speaker"
         pid, was_created = ensure_project_persona(
             db,
-            store,
             project_id,
             name=cand.name,
             bio=cand.bio,

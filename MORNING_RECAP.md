@@ -71,12 +71,31 @@ vite build · live Playwright, zero JS errors).
   (engines.default_tts_engine, default kokoro) — Voices create flows
   prefer it when nothing is loaded.
 
+**Phase 1.5 flip — personas are SQLite-primary (same evening).**
+PersonaStore keeps its five-method surface but reads/writes the
+`personas` table; legacy `$DATA_DIR/personas/*.json` import once at
+init (id-based) and rename `.json.migrated` so deletes don't
+resurrect. The dual-write helper (`ensure_project_persona`) is DB-only
+now — the store sees its rows automatically. Verified live: legacy
+files migrated, persona→preset FK binding 201s by construction.
+`llm_rewrite_enabled`/`llm_model` accepted-not-persisted (the old
+mirror never wrote them either). **Voices / lexicons / projects file
+stores still exist — same split-brain risk class; lexicons (DB FK
+targets!) are the next flip candidate.**
+
+**Still done since:** import split-on selector shipped (auto/h1/h1_h2/
+none — EPUB re-splits the merged spine); Captures (pin/filters/
+speak-again) + Webhooks (MCP card) + Episodes (marker-flag
+materialization bug fixed, ♪ rows, Open Timeline) parity rows judged →
+🟡; cold deep-link routing for #cache/#channels/#webhooks fixed.
+
 **Still pending:** Studio voice-library full layout rewrite to mirror
-Voices (badges/chips aligned only); import split-on selector
-(h1/h1+h2/page-breaks, adapter-level); parity ⬜ screens
-(docs/gui-parity/README.md); user-machine-only items (real engine
-loads/GPU, MCP smoke, Tauri hotkey, ffmpeg renders). Engines mock is
-at v7 — the v4 redlines plan is long complete.
+Voices (badges/chips aligned only); podcast Timeline grown-up editor
+(biggest parity gap — needs its own plan); lexicons store flip;
+user-machine-only items (real engine loads/GPU, MCP smoke, Tauri
+hotkey, ffmpeg renders, first-run clone/audition, dictation OS flows,
+Proof & QC). Engines mock is at v7 — the v4 redlines plan is long
+complete.
 
 ## 2026-06-12 (later) — 7-item UX batch (all user-approved)
 

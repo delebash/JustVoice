@@ -44,11 +44,10 @@ def _standard(name: str, lexicon: bool = False) -> StandardImport:
 
 
 def test_reused_persona_is_linked_to_new_project(db_session, tmp_path):
-    pstore = PersonaStore(tmp_path)
-    p1, *_ = _materialize_standard(_standard("Book one"), db_session, persona_store=pstore)
+    p1, *_ = _materialize_standard(_standard("Book one"), db_session)
     db_session.commit()
     p2, _sc, _bl, created, reused = _materialize_standard(
-        _standard("Book two"), db_session, persona_store=pstore
+        _standard("Book two"), db_session
     )
     db_session.commit()
 
@@ -57,29 +56,65 @@ def test_reused_persona_is_linked_to_new_project(db_session, tmp_path):
     assert {link.project_id for link in links} == {p1.id, p2.id}
 
 
-def test_personas_dual_write_file_store_matches_db(db_session, tmp_path):
-    pstore = PersonaStore(tmp_path)
-    _project, _sc, _bl, created, _re = _materialize_standard(
-        _standard("Book one"), db_session, persona_store=pstore
-    )
-    db_session.commit()
+def test_store_reads_materialized_personas(tmp_db, tmp_path):
+    """Post-flip: PersonaStore reads the SAME rows the materializer
+    writes — the dual-write (and its self-heal) is gone by design."""
+    session_factory, _engine = tmp_db
+    db = session_factory()
+    try:
+        _project, _sc, _bl, created, _re = _materialize_standard(
+            _standard("Book one"), db
+        )
+        db.commit()
+    finally:
+        db.close()
     assert len(created) == 1
-    file_p = pstore.get(created[0])
-    assert file_p is not None and file_p.name == "Mara Vance"
-    assert file_p.voice_id == ""  # unassigned until Cast
+    pstore = PersonaStore(tmp_path, session_factory=session_factory)
+    p = pstore.get(created[0])
+    assert p is not None and p.name == "Mara Vance"
+    assert not p.voice_id  # unassigned until Cast
 
 
-def test_reuse_self_heals_missing_file_twin(db_session, tmp_path):
-    # First import WITHOUT a file store (pre-dual-write behavior).
-    _p1, *_ = _materialize_standard(_standard("Book one"), db_session)
-    db_session.commit()
-    pstore = PersonaStore(tmp_path)
-    _p2, _sc, _bl, created, reused = _materialize_standard(
-        _standard("Book two"), db_session, persona_store=pstore
-    )
-    db_session.commit()
-    assert created == [] and len(reused) == 1
-    assert pstore.get(reused[0]) is not None  # healed
+def test_legacy_persona_files_import_once(tmp_db, tmp_path):
+    """Pre-flip JSON files import into SQLite at store init, get renamed
+    .migrated, and a later DELETE does not resurrect them."""
+    import json as _json
+
+    session_factory, _engine = tmp_db
+    pdir = tmp_path / "personas"
+    pdir.mkdir(parents=True)
+    legacy = {
+        "id": "persona_legacy1", "name": "Old Crow", "voice_id": "af_heart",
+        "language": "en", "default_delivery": {"speed": 0.97}, "effects_chain": [],
+        "created_at": "2026-06-01T00:00:00+00:00", "updated_at": "2026-06-01T00:00:00+00:00",
+    }
+    (pdir / "persona_legacy1.json").write_text(_json.dumps(legacy), encoding="utf-8")
+
+    store = PersonaStore(tmp_path, session_factory=session_factory)
+    p = store.get("persona_legacy1")
+    assert p is not None and p.name == "Old Crow"
+    assert p.default_delivery == {"speed": 0.97}
+    assert not (pdir / "persona_legacy1.json").exists()
+    assert (pdir / "persona_legacy1.json.migrated").exists()
+
+    # Delete, then re-construct the store — the persona must stay gone.
+    assert store.delete("persona_legacy1") is True
+    store2 = PersonaStore(tmp_path, session_factory=session_factory)
+    assert store2.get("persona_legacy1") is None
+
+
+def test_store_crud_round_trip(tmp_db, tmp_path):
+    session_factory, _engine = tmp_db
+    store = PersonaStore(tmp_path, session_factory=session_factory)
+    created = store.create("Mara", voice_id=None, bio="lake person")
+    assert store.get(created.id).bio == "lake person"
+    updated = store.update(created.id, personality="dry wit", voice_id="af_heart")
+    assert updated.personality == "dry wit" and updated.voice_id == "af_heart"
+    fetched = store.get(created.id)
+    assert fetched.personality == "dry wit" and fetched.voice_id == "af_heart"
+    assert [p.id for p in store.list()] == [created.id]
+    assert store.delete(created.id) is True
+    assert store.list() == []
 
 
 def test_lexicon_entries_materialize_and_set_default(db_session, tmp_path):
@@ -130,18 +165,16 @@ def test_block_source_ref_persisted(db_session):
 
 def test_demo_projects_seed_through_the_real_materializer(db_session, tmp_path):
     from justvoice.demo_projects import demo_standard
-    from justvoice.storage.personas import PersonaStore
 
-    pstore = PersonaStore(tmp_path)
     for kind in ("audiobook", "game_voicelines", "podcast"):
         std = demo_standard(kind)
         project, scene_count, block_count, created, _re = _materialize_standard(
-            std, db_session, persona_store=pstore
+            std, db_session
         )
         db_session.commit()
         assert project.project_type == kind
         assert scene_count >= 1 and block_count >= 3
-        assert created  # personas land in both stores
+        assert created  # personas land in SQLite
     # game demo carries stable line ids
     import json as _json
 

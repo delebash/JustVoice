@@ -551,7 +551,6 @@ _KIND_TO_PROJECT_TYPE: dict[str, str] = {
 def _materialize_standard(
     standard: StandardImport,
     db: Session,
-    persona_store=None,
 ) -> tuple[Project, int, int, list[str], list[str]]:
     """Turn a StandardImport into ORM rows. Returns (project, scene_count, block_count, created_personas, reused_personas).
 
@@ -585,7 +584,6 @@ def _materialize_standard(
             bio_text = f"{bio_text}\n\nVoice hint:\n{char.voice_hint}".strip()
         pid, created = ensure_project_persona(
             db,
-            persona_store,
             p.id,
             name=char.name,
             bio=bio_text or None,
@@ -776,9 +774,7 @@ async def import_project(
         project = db.query(Project).filter(Project.id == effective_project_id).first()
         if project is None:
             raise not_found(f"project {effective_project_id}")
-        summary = _update_project_from_standard(
-            standard, project, db, get_state().personas
-        )
+        summary = _update_project_from_standard(standard, project, db)
         db.commit()
         standard.project.id = project.id
         standard.warnings.append(
@@ -801,7 +797,7 @@ async def import_project(
         )
 
     project, _scene_count, _block_count, _created, _reused = _materialize_standard(
-        standard, db, persona_store=get_state().personas
+        standard, db
     )
     _materialize_lexicon(standard, project, get_state().lexicons, db)
     db.commit()
@@ -928,7 +924,6 @@ def _update_project_from_standard(
     standard: StandardImport,
     project: Project,
     db: Session,
-    persona_store,
 ) -> dict:
     """Update an existing project from a re-imported StandardImport,
     matching scenes by source_id and blocks by stable line id
@@ -956,7 +951,7 @@ def _update_project_from_standard(
         if char.voice_hint:
             bio_text = f"{bio_text}\n\nVoice hint:\n{char.voice_hint}".strip()
         pid, _created = ensure_project_persona(
-            db, persona_store, project.id,
+            db, project.id,
             name=char.name, bio=bio_text or None,
             imported_from=standard.source, imported_id=char.id,
         )
@@ -1131,7 +1126,7 @@ async def create_demo_project(
             f"unknown demo kind {body.kind!r} — one of: audiobook, game_voicelines, podcast"
         )
     project, _sc, _bl, _created, _reused = _materialize_standard(
-        standard, db, persona_store=get_state().personas
+        standard, db
     )
     db.commit()
     db.refresh(project)

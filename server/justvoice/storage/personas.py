@@ -1,4 +1,21 @@
-"""Persona storage — JSON file per persona under ``$DATA_DIR/personas/``."""
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Persona storage — SQLite-primary (Phase 1.5 flip, 2026-06-12).
+
+The file-per-persona JSON store kept a DB twin via a best-effort mirror,
+and the split-brain bit three separate times: preset creates 500'd on
+FK targets the DB never saw, factory reset left characters alive, and
+re-imports self-healed twins that were never missing. SQLite is now the
+single source of truth.
+
+Legacy `$DATA_DIR/personas/*.json` files are imported once at store
+init (id-based, so nothing is duplicated) and renamed `*.json.migrated`
+so a persona deleted later doesn't resurrect on the next boot.
+
+The legacy `llm_rewrite_enabled` / `llm_model` fields are accepted (old
+JSON files still validate; the API request shape keeps them) but are
+NOT persisted — the old mirror never wrote them to the DB either, and
+nothing reads them (Rewrite is an explicit tool, not a render hook).
+"""
 
 from __future__ import annotations
 
@@ -11,7 +28,6 @@ from threading import RLock
 
 from ..models import Persona
 from ..paths import personas_root
-from .atomic import atomic_write_json
 
 log = logging.getLogger(__name__)
 
@@ -20,96 +36,138 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _mirror_to_db(persona: Persona) -> None:
-    """Upsert the persona into the SQLite personas table.
+def _row_to_persona(row) -> Persona:
+    def _loads(raw, fallback):
+        if not raw:
+            return fallback
+        try:
+            out = json.loads(raw)
+            return out if isinstance(out, type(fallback)) else fallback
+        except (json.JSONDecodeError, TypeError):
+            return fallback
 
-    FK targets (mcp_bindings.persona_id, lexicons.persona_id, generations,
-    project_personas) live in SQLite, so a file-store-only persona breaks
-    every binding written against it. Mid-Phase-1.5 the file store is still
-    the read path; this mirror keeps the DB row in lock-step until the
-    store flips to SQLite-primary. Best-effort: skips silently when the DB
-    isn't initialized (CLI tools, early boot)."""
-    try:
-        from ..database import session as _db_session
-        from ..database.models import Persona as DBPersona
-
-        if _db_session.SessionLocal is None:
-            return
-        db = _db_session.SessionLocal()
-    except Exception:
-        return
-    try:
-        row = db.query(DBPersona).filter(DBPersona.id == persona.id).first()
-        if row is None:
-            row = DBPersona(id=persona.id)
-            db.add(row)
-        row.name = persona.name
-        row.language = persona.language
-        row.avatar_path = persona.avatar_path
-        row.bio = persona.bio
-        row.voice_id = persona.voice_id or None
-        row.personality = persona.personality
-        row.default_delivery = json.dumps(persona.default_delivery) if persona.default_delivery else None
-        row.effects_chain = json.dumps(persona.effects_chain) if persona.effects_chain else None
-        row.engine_override = persona.engine_override
-        row.lexicon_id = persona.lexicon_id
-        row.imported_from = persona.imported_from
-        row.imported_id = persona.imported_id
-        db.commit()
-    except Exception as e:
-        log.warning("persona %s: SQLite mirror failed: %s", persona.id, e)
-        db.rollback()
-    finally:
-        db.close()
-
-
-def _delete_from_db(persona_id: str) -> None:
-    """Remove the SQLite twin on file-store delete (FKs are SET NULL/CASCADE)."""
-    try:
-        from ..database import session as _db_session
-        from ..database.models import Persona as DBPersona
-
-        if _db_session.SessionLocal is None:
-            return
-        db = _db_session.SessionLocal()
-    except Exception:
-        return
-    try:
-        db.query(DBPersona).filter(DBPersona.id == persona_id).delete()
-        db.commit()
-    except Exception as e:
-        log.warning("persona %s: SQLite delete-mirror failed: %s", persona_id, e)
-        db.rollback()
-    finally:
-        db.close()
+    return Persona(
+        id=row.id,
+        name=row.name,
+        voice_id=row.voice_id,
+        language=row.language or "en",
+        avatar_path=row.avatar_path,
+        bio=row.bio,
+        personality=row.personality,
+        default_delivery=_loads(row.default_delivery, {}),
+        effects_chain=_loads(row.effects_chain, []),
+        lexicon_id=row.lexicon_id,
+        engine_override=row.engine_override,
+        imported_from=row.imported_from,
+        imported_id=row.imported_id,
+        created_at=row.created_at or _now(),
+        updated_at=row.updated_at or _now(),
+    )
 
 
 class PersonaStore:
-    def __init__(self, data_dir: Path):
+    """Same five-method surface as the retired file store; rows live in
+    the `personas` table. `session_factory` is injectable for tests; the
+    default resolves the module-global SessionLocal lazily at call time
+    so factory reset's re-init and test monkeypatching both work."""
+
+    def __init__(self, data_dir: Path, session_factory=None):
         self._dir = personas_root(data_dir)
         self._dir.mkdir(parents=True, exist_ok=True)
         self._lock = RLock()
-        self._cache: dict[str, Persona] = {}
-        self._load_all()
+        self._session_factory = session_factory
+        self._import_legacy_files()
 
-    def _load_all(self) -> None:
-        for f in self._dir.glob("*.json"):
-            try:
-                p = Persona.model_validate(json.loads(f.read_text(encoding="utf-8")))
-                self._cache[p.id] = p
-            except Exception as e:
-                log.warning("persona %s unreadable: %s", f, e)
+    # ── session plumbing ──────────────────────────────────────────────
 
-    def _path(self, id: str) -> Path:
-        return self._dir / f"{id}.json"
+    def _open(self):
+        if self._session_factory is not None:
+            return self._session_factory()
+        from ..database import session as _db_session
+
+        if _db_session.SessionLocal is None:
+            return None
+        return _db_session.SessionLocal()
+
+    # ── legacy file import (one-shot, idempotent) ─────────────────────
+
+    def _import_legacy_files(self) -> None:
+        files = sorted(self._dir.glob("*.json"))
+        if not files:
+            return
+        db = self._open()
+        if db is None:
+            # DB not initialized yet (CLI tools) — leave the files for the
+            # next construction; nothing is lost.
+            log.warning("persona store: DB not ready — legacy file import deferred")
+            return
+        from ..database.models import Persona as DBPersona
+
+        try:
+            for f in files:
+                try:
+                    p = Persona.model_validate(json.loads(f.read_text(encoding="utf-8")))
+                except Exception as e:  # noqa: BLE001 — skip unreadable, keep file
+                    log.warning("persona file %s unreadable, left in place: %s", f, e)
+                    continue
+                if db.query(DBPersona).filter(DBPersona.id == p.id).first() is None:
+                    db.add(self._to_row(p))
+                    log.info("persona %s imported from legacy file store", p.id)
+                db.commit()
+                f.rename(f.parent / (f.name + ".migrated"))
+        except Exception as e:  # noqa: BLE001 — boot must not die on this
+            log.warning("persona legacy-file import failed: %s", e)
+            db.rollback()
+        finally:
+            db.close()
+
+    @staticmethod
+    def _to_row(p: Persona):
+        from ..database.models import Persona as DBPersona
+
+        return DBPersona(
+            id=p.id,
+            name=p.name,
+            voice_id=p.voice_id or None,
+            language=p.language,
+            avatar_path=p.avatar_path,
+            bio=p.bio,
+            personality=p.personality,
+            default_delivery=json.dumps(p.default_delivery) if p.default_delivery else None,
+            effects_chain=json.dumps(p.effects_chain) if p.effects_chain else None,
+            lexicon_id=p.lexicon_id,
+            engine_override=p.engine_override,
+            imported_from=p.imported_from,
+            imported_id=p.imported_id,
+            created_at=p.created_at,
+            updated_at=p.updated_at,
+        )
+
+    # ── public surface ────────────────────────────────────────────────
 
     def list(self) -> list[Persona]:
-        with self._lock:
-            return sorted(self._cache.values(), key=lambda p: p.created_at)
+        from ..database.models import Persona as DBPersona
+
+        db = self._open()
+        if db is None:
+            return []
+        try:
+            rows = db.query(DBPersona).order_by(DBPersona.created_at).all()
+            return [_row_to_persona(r) for r in rows]
+        finally:
+            db.close()
 
     def get(self, id: str) -> Persona | None:
-        with self._lock:
-            return self._cache.get(id)
+        from ..database.models import Persona as DBPersona
+
+        db = self._open()
+        if db is None:
+            return None
+        try:
+            row = db.query(DBPersona).filter(DBPersona.id == id).first()
+            return _row_to_persona(row) if row else None
+        finally:
+            db.close()
 
     def create(
         self,
@@ -119,8 +177,8 @@ class PersonaStore:
         bio: str | None = None,
         engine_override: str | None = None,
         lexicon_id: str | None = None,
-        llm_rewrite_enabled: bool = False,
-        llm_model: str | None = None,
+        llm_rewrite_enabled: bool = False,  # accepted, not persisted (legacy)
+        llm_model: str | None = None,  # accepted, not persisted (legacy)
         language: str = "en",
         avatar_path: str | None = None,
         personality: str | None = None,
@@ -129,15 +187,11 @@ class PersonaStore:
         imported_id: str | None = None,
         id: str | None = None,
     ) -> Persona:
-        """Create a persona.
-
-        `id` may be supplied for migrations that need to preserve the source
-        record's id; otherwise a fresh `persona_<uuid>` is allocated.
-        """
+        """Create a persona. `id` may be supplied for migrations that need
+        to preserve the source record's id."""
         with self._lock:
-            new_id = id or f"persona_{uuid.uuid4().hex}"
             persona = Persona(
-                id=new_id,
+                id=id or f"persona_{uuid.uuid4().hex}",
                 name=name,
                 voice_id=voice_id,
                 language=language,
@@ -155,32 +209,83 @@ class PersonaStore:
                 created_at=_now(),
                 updated_at=_now(),
             )
-            self._cache[new_id] = persona
-            atomic_write_json(self._path(new_id), persona.model_dump())
-            _mirror_to_db(persona)
-            return persona.model_copy(deep=True)
+            db = self._open()
+            if db is None:
+                raise RuntimeError("persona store: database not initialized")
+            try:
+                db.add(self._to_row(persona))
+                db.commit()
+            except Exception:
+                db.rollback()
+                raise
+            finally:
+                db.close()
+            return persona
 
     def update(self, id: str, **fields) -> Persona | None:
+        """Patch semantics preserved from the file store: None values are
+        ignored (clear a string field by sending '')."""
         with self._lock:
-            persona = self._cache.get(id)
-            if not persona:
+            current = self.get(id)
+            if current is None:
                 return None
-            data = persona.model_dump()
+            data = current.model_dump()
             data.update({k: v for k, v in fields.items() if v is not None})
             data["updated_at"] = _now().isoformat()
             new = Persona.model_validate(data)
-            self._cache[id] = new
-            atomic_write_json(self._path(id), new.model_dump())
-            _mirror_to_db(new)
-            return new.model_copy(deep=True)
+
+            from ..database.models import Persona as DBPersona
+
+            db = self._open()
+            if db is None:
+                raise RuntimeError("persona store: database not initialized")
+            try:
+                row = db.query(DBPersona).filter(DBPersona.id == id).first()
+                if row is None:
+                    return None
+                row.name = new.name
+                row.voice_id = new.voice_id or None
+                row.language = new.language
+                row.avatar_path = new.avatar_path
+                row.bio = new.bio
+                row.personality = new.personality
+                row.default_delivery = (
+                    json.dumps(new.default_delivery) if new.default_delivery else None
+                )
+                row.effects_chain = (
+                    json.dumps(new.effects_chain) if new.effects_chain else None
+                )
+                row.lexicon_id = new.lexicon_id
+                row.engine_override = new.engine_override
+                row.imported_from = new.imported_from
+                row.imported_id = new.imported_id
+                row.updated_at = new.updated_at
+                db.commit()
+            except Exception:
+                db.rollback()
+                raise
+            finally:
+                db.close()
+            return new
 
     def delete(self, id: str) -> bool:
+        from ..database.models import Persona as DBPersona
+
         with self._lock:
-            if id not in self._cache:
+            db = self._open()
+            if db is None:
                 return False
-            self._cache.pop(id, None)
-            p = self._path(id)
-            if p.exists():
-                p.unlink()
-            _delete_from_db(id)
-            return True
+            try:
+                deleted = db.query(DBPersona).filter(DBPersona.id == id).delete()
+                db.commit()
+            except Exception:
+                db.rollback()
+                raise
+            finally:
+                db.close()
+            # Tidy any legacy artifacts so nothing can resurrect it.
+            for suffix in (".json", ".json.migrated"):
+                p = self._dir / f"{id}{suffix}"
+                if p.exists():
+                    p.unlink()
+            return bool(deleted)
