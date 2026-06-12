@@ -106,7 +106,7 @@ async def factory_reset() -> FactoryResetResponse:
         from ..database.seed import seed_builtin_effect_presets
         if file_recreated:
             seed_builtin_effect_presets()
-            cleared = len(Base.metadata.sorted_tables)
+            cleared = len(Base.metadata.tables)
         else:
             log.warning("factory reset: DB file locked — dropping tables in place instead")
     if not file_recreated and db_session.SessionLocal is not None:

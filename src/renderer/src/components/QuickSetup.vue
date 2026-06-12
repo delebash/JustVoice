@@ -542,9 +542,11 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
           <span class="jv-spacer" />
           <JvButton
             variant="primary"
-            :disabled="!enginesToInstall.length && !hasLlmProvider"
-            :label="enginesToInstall.length ? `Install ${enginesToInstall.length} engine${enginesToInstall.length === 1 ? '' : 's'} + apply pins` : 'Apply feature pins'"
-            @click="runInstalls"
+            :label="enginesToInstall.length
+              ? `Install ${enginesToInstall.length} engine${enginesToInstall.length === 1 ? '' : 's'} + apply pins`
+              : hasLlmProvider ? 'Apply feature pins' : 'Finish — connect an LLM later'"
+            title="Nothing here blocks you: AI features wait quietly until an LLM is connected (Engines → Online providers)"
+            @click="enginesToInstall.length || hasLlmProvider ? runInstalls() : close()"
           />
         </template>
         <template v-else-if="step === 'install'">
