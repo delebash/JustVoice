@@ -107,8 +107,14 @@ def test_analyze_text_threads_model_temp_prompt_overrides(client, monkeypatch):
     captured = {}
 
     def fake_chat(*, settings, feature, messages, system=None, temperature=0.7,
-                  max_tokens=None, think=None, model_override=None):
-        captured.update(system=system, temperature=temperature, model_override=model_override)
+                  max_tokens=None, think=None, model_override=None,
+                  provider_override=None):
+        captured.update(
+            system=system,
+            temperature=temperature,
+            model_override=model_override,
+            provider_override=provider_override,
+        )
 
         class R:
             text = '[{"speaker": "mara", "confidence": 0.9}]'

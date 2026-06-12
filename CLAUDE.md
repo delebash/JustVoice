@@ -92,7 +92,24 @@ inconsistency costs a test round. Canonical inventory so far:
 `.jv-subnav` (tabbed views) · `.jv-lib-toolbar` (search → filter chips
 → data dropdowns → spacer → actions, "+ New" rightmost) · `jv-table` +
 row-click→full-form dialog (library CRUD) · `confirmDialog`/
-`promptDialog` (never native) · `.jv-overlay`/`.jv-modal` shells.
+`promptDialog` (never native) · `.jv-overlay`/`.jv-modal` shells ·
+`.jv-fill` (pane views that fill the content area) · `JvToggle`
+(booleans — never raw `<input type="checkbox">`).
+
+**Design-conformance checklist** (born 2026-06-12 after a
+geometry-only "sweep" missed control-level slop — a sweep that doesn't
+check these checked nothing):
+1. Booleans → `JvToggle`/styled control, never a native checkbox.
+2. Inputs/selects sized by content-typed width tokens (`jv-w-name` /
+   `jv-w-id` / `jv-w-token` / `--w-*`) — never full-width stretch
+   unless the content is prose.
+3. Form rows → JvField pattern; sections that group controls → `jv-card`,
+   not naked rows on the page background.
+4. Buttons → `jv-btn`/`JvButton` variants only; no scoped one-offs.
+5. No internal jargon in user-facing copy ("pin", "manifest", feature
+   keys). If a knob's effect is invisible (e.g. a prompt resolved
+   server-side), SHOW the resolved truth in the UI — never an empty
+   box with a "defaults apply" placeholder (Speaker Lab lesson).
 
 ## ⛔ RULE #2 — RIGHT THE FIRST TIME (tempo)
 

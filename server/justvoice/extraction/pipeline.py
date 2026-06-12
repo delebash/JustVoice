@@ -76,6 +76,15 @@ class AnalyzeRequest(BaseModel):
     model: str | None = None
     temperature: float | None = None
     system_prompt: str | None = None
+    # Custom user-prompt template ({characters}/{corrections}/{paragraphs}
+    # tokens are substituted) and a per-call floor that beats the tier's
+    # default — both surfaced in the Lab for full parity with the
+    # JustWrite original.
+    user_prompt: str | None = None
+    confidence_floor: float | None = None
+    # Route this call through a specific registered LLM provider instead
+    # of the feature's resolved route (Speaker Lab provider dropdown).
+    provider_id: str | None = None
 
 
 def _strip_thinking(text: str) -> str:
@@ -131,10 +140,18 @@ def analyze_scene(
         tier = TIERS[request.tier]
 
     system = request.system_prompt or system_for(tier.system_key)
-    user = USER_TEMPLATE.format(
-        characters=format_characters(request.characters),
-        corrections=format_corrections(request.corrections),
-        paragraphs=format_paragraphs(segments),
+    # Token replacement instead of str.format so a user-edited template
+    # with stray braces can't raise KeyError mid-pipeline.
+    user = (
+        (request.user_prompt or USER_TEMPLATE)
+        .replace("{characters}", format_characters(request.characters))
+        .replace("{corrections}", format_corrections(request.corrections))
+        .replace("{paragraphs}", format_paragraphs(segments))
+    )
+    floor = (
+        request.confidence_floor
+        if request.confidence_floor is not None
+        else tier.confidence_floor
     )
 
     dialogue_segments = [s for s in segments if s["kind"] == "dialogue"]
@@ -152,6 +169,7 @@ def analyze_scene(
                 max_tokens=max(800, 12 * n_dialogue),
                 think=tier.think,
                 model_override=request.model,
+                provider_override=request.provider_id,
             )
             if raw_out is not None:
                 raw_out["llm_text"] = resp.text
@@ -216,7 +234,7 @@ def analyze_scene(
             continue
 
         # No anchor — defer to LLM but apply confidence floor.
-        if request.use_floor and llm_conf < tier.confidence_floor:
+        if request.use_floor and llm_conf < floor:
             rows.append(
                 AttributionRow(
                     paragraph_idx=seg["paragraph_idx"],

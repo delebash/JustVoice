@@ -154,6 +154,7 @@ async def analyze_scene_endpoint(
         model=(cfg.model or None) if cfg else None,
         temperature=cfg.temperature if cfg else None,
         system_prompt=cfg.system_prompt if cfg else None,
+        user_prompt=cfg.user_prompt if cfg else None,
     )
 
     try:
@@ -196,9 +197,12 @@ class AnalyzeTextRequest(BaseModel):
     propagate: bool = True
     use_floor: bool = True
     # Speaker Lab per-column overrides (None = pin/tier defaults).
+    provider_id: str | None = None
     model: str | None = None
     temperature: float | None = None
     system_prompt: str | None = None
+    user_prompt: str | None = None
+    confidence_floor: float | None = None
 
 
 @router.post(
@@ -221,6 +225,9 @@ async def analyze_text_endpoint(body: AnalyzeTextRequest) -> AnalyzeSceneRespons
         model=body.model,
         temperature=body.temperature,
         system_prompt=body.system_prompt,
+        user_prompt=body.user_prompt,
+        confidence_floor=body.confidence_floor,
+        provider_id=body.provider_id,
     )
     try:
         raw_out: dict = {}
@@ -244,7 +251,80 @@ async def analyze_text_endpoint(body: AnalyzeTextRequest) -> AnalyzeSceneRespons
         raw_llm=raw_out.get("llm_text"),
         rows=[AttributionRowResponse(**row.__dict__) for row in rows],
         tier_used=tier.name,
-        confidence_floor=tier.confidence_floor,
+        confidence_floor=(
+            body.confidence_floor
+            if body.confidence_floor is not None
+            else tier.confidence_floor
+        ),
+    )
+
+
+# ── Lab config — the truth the Speaker Lab displays ──────────────────────
+
+
+class ExtractionTierInfo(BaseModel):
+    name: str
+    label: str
+    system_key: str
+    think: bool
+    confidence_floor: float
+
+
+class ExtractionConfigResponse(BaseModel):
+    """Everything the Speaker Lab needs to SHOW what the pipeline will
+    actually send: the tier registry, both system-prompt bodies, the
+    user-prompt template, and the currently-resolved default route. The
+    server is the single source of truth — the UI never duplicates
+    prompt text."""
+
+    tiers: list[ExtractionTierInfo]
+    # {"guided": <full body>, "direct": <full body>}
+    system_prompts: dict[str, str]
+    user_template: str
+    # Where speaker_attribution routes today (production config > pin >
+    # role > fallback). All None when no LLM provider is registered.
+    resolved_provider_id: str | None = None
+    resolved_model: str | None = None
+    resolved_tier: str | None = None
+
+
+@router.get(
+    "/v1/extraction/config",
+    response_model=ExtractionConfigResponse,
+    summary="Tier specs + prompt bodies + resolved route (Speaker Lab)",
+)
+async def extraction_config() -> ExtractionConfigResponse:
+    from ..engines.llm.dispatch import resolve_pin
+    from ..engines.llm.tiers import TIERS
+    from ..extraction.prompts import DIRECT_SYSTEM, GUIDED_SYSTEM, USER_TEMPLATE
+
+    provider_id = model = tier_name = None
+    settings = get_state().settings.get()
+    try:
+        adapter, model, _tier_override = resolve_pin(settings, "speaker_attribution")
+        provider_id = adapter.provider_id
+        from ..engines.llm.dispatch import resolve_tier
+
+        tier_name = resolve_tier(settings, "speaker_attribution").name
+    except LLMNotConfiguredError:
+        pass
+
+    return ExtractionConfigResponse(
+        tiers=[
+            ExtractionTierInfo(
+                name=t.name,
+                label=t.name.capitalize(),
+                system_key=t.system_key,
+                think=t.think,
+                confidence_floor=t.confidence_floor,
+            )
+            for t in TIERS.values()
+        ],
+        system_prompts={"guided": GUIDED_SYSTEM, "direct": DIRECT_SYSTEM},
+        user_template=USER_TEMPLATE,
+        resolved_provider_id=provider_id,
+        resolved_model=model,
+        resolved_tier=tier_name,
     )
 
 

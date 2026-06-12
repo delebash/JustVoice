@@ -144,6 +144,7 @@ def chat(
     max_tokens: int | None = None,
     think: bool | None = None,
     model_override: str | None = None,
+    provider_override: str | None = None,
 ) -> LLMResponse:
     """One-shot LLM call for a feature key.
 
@@ -153,6 +154,19 @@ def chat(
     `think: false` to compare reasoned vs direct on the same model).
     """
     adapter, model, tier_override = resolve_pin(settings, feature)
+    if provider_override:
+        # Speaker Lab column override — route this call through a specific
+        # registered provider instead of the feature's resolved route.
+        other = get_llm_registry().get(provider_override)
+        if other is None:
+            raise LLMNotConfiguredError(
+                f"Provider {provider_override!r} isn't registered — check "
+                f"EnginesView's LLM tab."
+            )
+        adapter = other
+        if not model_override:
+            model = other.default_model
+            tier_override = None
     if model_override:
         # Speaker Lab column override — same provider, different model.
         # The tier re-derives from the OVERRIDE (a qwen3:14b column goes

@@ -20,9 +20,130 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
 import { promptDialog, confirmDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
+import JvToggle from "../components/jv/JvToggle.vue";
 
 const api = useApi();
 const tasks = useRenderTasks();
+
+// ── Lab truth surface ────────────────────────────────────────────────
+// GET /v1/extraction/config returns the tier registry, the REAL prompt
+// bodies, the user template, and the resolved route — so the textareas
+// below display exactly what the pipeline sends instead of an empty
+// "tier default" placeholder (user redline 2026-06-12: a lab that
+// hides its pipeline can't be trusted).
+const extractionConfig = ref(null);
+const llmProviders = ref([]);
+const productionCfg = ref(null); // active speaker_attribution config
+const providerModels = reactive({}); // providerId → [model ids]
+
+async function loadLabConfig() {
+  try { extractionConfig.value = await api.request("/v1/extraction/config"); } catch { /* server may be older */ }
+  try { llmProviders.value = (await api.request("/v1/llm-providers"))?.providers || []; } catch { /* tolerated */ }
+  await refreshProductionCfg();
+}
+async function refreshProductionCfg() {
+  try {
+    const r = await api.request("/v1/production-configs");
+    productionCfg.value = (r?.configs || []).find((c) => c.feature === "speaker_attribution") || null;
+  } catch { /* tolerated */ }
+}
+
+function tierSpec(name) {
+  return extractionConfig.value?.tiers?.find((t) => t.name === name) || null;
+}
+function defaultSystemFor(tierName) {
+  const spec = tierSpec(tierName);
+  return extractionConfig.value?.system_prompts?.[spec?.system_key || "guided"] || "";
+}
+function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+
+const resolvedProviderName = computed(() => {
+  const id = extractionConfig.value?.resolved_provider_id;
+  if (!id) return "no provider yet";
+  return llmProviders.value.find((p) => p.id === id)?.name || id;
+});
+
+function providerById(id) {
+  return llmProviders.value.find((p) => p.id === id) || null;
+}
+function effectiveDefaultModel(col) {
+  return providerById(col.providerId)?.default_model
+    || extractionConfig.value?.resolved_model
+    || "";
+}
+function effectiveTier(col) {
+  return col.tier || col.autoTier || extractionConfig.value?.resolved_tier || "guided";
+}
+function systemEdited(col) {
+  return col.systemPrompt.trim() !== defaultSystemFor(effectiveTier(col)).trim();
+}
+function userEdited(col) {
+  return col.userPrompt.trim() !== (extractionConfig.value?.user_template || "").trim();
+}
+
+// Write a tier's REAL prompt + floor into the column (JustWrite's
+// applyTier). Overwrites edits by design — switching tier means
+// "show me that tier's prompt".
+function applyTier(col, tierName) {
+  const name = tierName || extractionConfig.value?.resolved_tier || "guided";
+  const spec = tierSpec(name);
+  col.systemPrompt = defaultSystemFor(name);
+  if (spec) col.confidenceFloor = spec.confidence_floor;
+}
+function setTier(col, tierName) {
+  col.tier = tierName; // "" = auto-classify from the model
+  if (tierName) applyTier(col, tierName);
+  else reclassify(col);
+}
+
+// Auto tier: the server's classifier is the source of truth — ask it
+// for the column's effective model and reflect its pick.
+async function reclassify(col) {
+  const model = col.model.trim() || effectiveDefaultModel(col);
+  if (!model) {
+    col.autoTier = extractionConfig.value?.resolved_tier || null;
+    if (!col.tier) applyTier(col, col.autoTier);
+    return;
+  }
+  try {
+    const r = await api.request("/v1/llm-providers/classify-tier", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model }),
+    });
+    col.autoTier = r?.tier || null;
+    if (!col.tier && r) {
+      col.systemPrompt = extractionConfig.value?.system_prompts?.[r.system_key] || col.systemPrompt;
+      col.confidenceFloor = r.confidence_floor;
+    }
+  } catch { /* keep current prompt */ }
+}
+
+async function onProviderChange(col) {
+  col.model = "";
+  if (col.providerId) loadModelsFor(col.providerId);
+  await reclassify(col);
+}
+async function loadModelsFor(pid) {
+  if (!pid || providerModels[pid]) return;
+  try {
+    const r = await api.request(`/v1/llm-providers/${pid}/models`);
+    providerModels[pid] = r?.models || [];
+  } catch {
+    providerModels[pid] = [];
+  }
+}
+
+function resetColumn(col) {
+  col.providerId = "";
+  col.model = "";
+  col.temperature = "";
+  col.tier = "";
+  col.presetName = "";
+  col.userPrompt = extractionConfig.value?.user_template || "";
+  col.autoTier = extractionConfig.value?.resolved_tier || null;
+  applyTier(col, "");
+}
 
 const text = ref("");
 const characters = ref([]);  // [{id, name, aliases}]
@@ -71,9 +192,13 @@ function newColumn() {
   return {
     label: `Run ${tag}`,
     tier: "",            // "" = auto-classify from the model
-    model: "",           // "" = the feature pin's model
+    autoTier: null,      // server classifier's pick when tier = auto
+    providerId: "",      // "" = the feature's resolved route
+    model: "",           // "" = the provider's default model
     temperature: "",     // "" = pipeline default (0.2)
-    systemPrompt: "",    // "" = tier default body
+    systemPrompt: "",    // populated with the REAL tier body on add
+    userPrompt: "",      // populated with the REAL user template on add
+    confidenceFloor: 0.7,
     propagate: true,
     use_floor: true,
     busy: false,
@@ -86,6 +211,7 @@ function newColumn() {
 function addColumn() {
   if (columns.length >= MAX_COLUMNS) return;
   columns.push(newColumn());
+  resetColumn(columns[columns.length - 1]);
 }
 function removeColumn(idx) {
   if (columns.length <= 1) return;
@@ -165,6 +291,9 @@ async function runColumn(col) {
     },
   });
   try {
+    // Prompts ship as overrides only when edited away from the displayed
+    // defaults — the defaults already live server-side, so an untouched
+    // box and a null are the same prompt. What you see is what runs.
     const body = {
       text: text.value,
       characters: characters.value,
@@ -172,9 +301,15 @@ async function runColumn(col) {
       tier: col.tier || null,
       propagate: col.propagate,
       use_floor: col.use_floor,
+      provider_id: col.providerId || null,
       model: col.model.trim() || null,
       temperature: col.temperature === "" ? null : Number(col.temperature),
-      system_prompt: col.systemPrompt.trim() || null,
+      system_prompt: systemEdited(col) ? col.systemPrompt : null,
+      user_prompt: userEdited(col) ? col.userPrompt : null,
+      confidence_floor:
+        col.use_floor && col.confidenceFloor !== "" && col.confidenceFloor != null
+          ? Number(col.confidenceFloor)
+          : null,
     };
     const r = await api.request("/v1/extraction/analyze-text", {
       method: "POST",
@@ -205,9 +340,12 @@ async function runColumn(col) {
 function columnConfig(col) {
   return {
     tier: col.tier,
+    providerId: col.providerId,
     model: col.model,
     temperature: col.temperature,
     systemPrompt: col.systemPrompt,
+    userPrompt: col.userPrompt,
+    confidenceFloor: col.confidenceFloor,
     propagate: col.propagate,
     use_floor: col.use_floor,
   };
@@ -231,9 +369,21 @@ async function savePreset(col) {
 
 function loadPreset(col, name) {
   col.presetName = name;
+  if (!name) {
+    // "— defaults —" picked: back to the route's resolved configuration.
+    const keep = col.presetName;
+    resetColumn(col);
+    col.presetName = keep;
+    return;
+  }
   const p = presets.value.find((x) => x.name === name);
   if (!p) return;
   Object.assign(col, p.config);
+  // Older presets predate the prompt-truth fields — fill the gaps so
+  // the textareas never show stale emptiness.
+  if (!col.userPrompt) col.userPrompt = extractionConfig.value?.user_template || "";
+  if (!col.systemPrompt) applyTier(col, col.tier);
+  if (col.providerId) loadModelsFor(col.providerId);
 }
 
 function deletePreset(col) {
@@ -244,26 +394,28 @@ function deletePreset(col) {
 }
 
 async function useAsProduction(col) {
-  // Pinning needs a provider; reuse the existing speaker_attribution pin's
-  // provider (the lab tunes model/tier on top of it).
-  let pins;
-  try {
-    pins = await api.request("/v1/feature-pins");
-  } catch (e) {
-    pushToast({ message: `Couldn't read feature pins: ${e?.message || e}`, kind: "error" });
-    return;
+  // The column's own provider pick wins; otherwise reuse the feature's
+  // current route (pin) provider.
+  let providerId = col.providerId || extractionConfig.value?.resolved_provider_id || null;
+  let pinModel = "";
+  if (!providerId) {
+    try {
+      const pins = await api.request("/v1/feature-pins");
+      const current = (pins?.pins || []).find((p) => p.feature === "speaker_attribution");
+      providerId = current?.provider_id || null;
+      pinModel = current?.model || "";
+    } catch { /* fall through to the warning below */ }
   }
-  const current = (pins?.pins || []).find((p) => p.feature === "speaker_attribution");
-  if (!current) {
+  if (!providerId) {
     pushToast({
-      message: "No LLM provider pinned yet — add one in Engines → LLM, pin it to speaker_attribution in Settings → AI Features, then promote.",
+      message: "No LLM provider available — add one in Engines → LLM first.",
       kind: "warning",
       duration: 7000,
     });
     return;
   }
-  const model = col.model.trim() || current.model;
-  const hasPrompts = !!(col.systemPrompt.trim() || col.userPrompt?.trim?.());
+  const model = col.model.trim() || effectiveDefaultModel(col) || pinModel;
+  const hasPrompts = systemEdited(col) || userEdited(col);
   const ok = await confirmDialog({
     title: "Use as production?",
     message: `Studio · Script will run speaker extraction EXACTLY as this column: ${model}${col.tier ? ` (${col.tier} tier)` : " (auto tier)"}${hasPrompts ? " with this column's prompts" : ""}. Revert anytime in Settings → AI features.`,
@@ -278,13 +430,13 @@ async function useAsProduction(col) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         feature: "speaker_attribution",
-        name: `${model}${col.tier ? `-${col.tier}` : ""} · lab`,
-        provider_id: current.provider_id,
+        name: col.presetName || `${model}${col.tier ? `-${col.tier}` : ""} · lab`,
+        provider_id: providerId,
         model,
         tier: col.tier || null,
-        temperature: col.temperature ?? null,
-        system_prompt: col.systemPrompt?.trim() || null,
-        user_prompt: col.userPrompt?.trim?.() || null,
+        temperature: col.temperature === "" ? null : Number(col.temperature),
+        system_prompt: systemEdited(col) ? col.systemPrompt : null,
+        user_prompt: userEdited(col) ? col.userPrompt : null,
         source: "speaker_lab",
       }),
     });
@@ -294,11 +446,12 @@ async function useAsProduction(col) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         feature: "speaker_attribution",
-        provider_id: current.provider_id,
+        provider_id: providerId,
         model,
         tier: col.tier || null,
       }),
     }).catch(() => {});
+    await refreshProductionCfg();
     pushToast({ message: `Production config saved — ${model}${hasPrompts ? " + prompts" : ""}. Manage it in Settings → AI features.`, kind: "success", duration: 5000 });
   } catch (e) {
     pushToast({ message: `Promote failed: ${e?.message || e}`, kind: "error" });
@@ -332,9 +485,13 @@ function sourceChipClass(source) {
   }[source] || "splab__chip";
 }
 
-onMounted(() => {
+onMounted(async () => {
   loadProjects();
-  if (!columns.length) addColumn();  // ONE column by default
+  // Config first, so the first column's prompt boxes show the real
+  // bodies from the start.
+  await loadLabConfig();
+  if (!columns.length) addColumn(); // ONE column by default
+  else columns.forEach((c) => { if (!c.systemPrompt) resetColumn(c); });
 });
 </script>
 
@@ -343,8 +500,13 @@ onMounted(() => {
     <!-- Tab title + explainer lede live in LabsView (one mechanism for
          all five labs) — no per-view header here. -->
 
-    <!-- ── Input pane ─────────────────────────────────────────────── -->
-    <section class="jv-section">
+    <!-- ── Input pane (carded — JustWrite's INPUT PASSAGE shape) ───── -->
+    <section class="jv-card splab__pane">
+      <div class="splab__pane-h">
+        <span class="splab__eyebrow">Input passage</span>
+        <span class="jv-spacer" />
+        <span class="jv-muted splab__stats">{{ inputStats || "Paste a few chapters, or load one from a project." }}</span>
+      </div>
       <div class="splab__input-toolbar">
         <select v-model="selectedProjectId" class="jv-input splab__input-select" title="Optional — load a chapter from a project" @change="loadScenes">
           <option :value="null">Load from chapter…</option>
@@ -356,8 +518,6 @@ onMounted(() => {
         </select>
         <JvButton variant="ghost" size="sm" label="✕ Clear" title="Clear the text box" @click="text = ''" />
         <JvButton variant="secondary" size="sm" label="✨ Sample" title="Load a small sample passage + cast" @click="loadSample" />
-        <span class="jv-spacer" />
-        <span class="jv-muted splab__stats">{{ inputStats }}</span>
       </div>
       <textarea
         v-model="text"
@@ -366,9 +526,17 @@ onMounted(() => {
       />
     </section>
 
-    <!-- ── Cast pane ──────────────────────────────────────────────── -->
-    <section class="jv-section">
-      <h3 class="jv-section__title">Cast</h3>
+    <!-- ── Cast pane (carded to match) ─────────────────────────────── -->
+    <section class="jv-card splab__pane">
+      <div class="splab__pane-h">
+        <span class="splab__eyebrow">Cast</span>
+        <span class="jv-spacer" />
+        <span class="jv-muted splab__stats">{{ characters.length ? `${characters.length} character${characters.length === 1 ? "" : "s"}` : "empty" }}</span>
+      </div>
+      <p class="jv-muted splab__pane-hint">
+        The model only attributes dialogue to ids on this list (rule 2 of the system prompt below) —
+        add everyone who speaks in the passage. ✨ Sample fills the passage and this cast together.
+      </p>
       <ul v-if="characters.length" class="splab__cast">
         <li v-for="(c, i) in characters" :key="c.id">
           <strong>{{ c.name }}</strong>
@@ -377,8 +545,8 @@ onMounted(() => {
         </li>
       </ul>
       <div class="splab__add-cast">
-        <input v-model="newCharName" class="jv-input" placeholder="Character name" @keydown.enter="addCharacter" />
-        <input v-model="newCharAliases" class="jv-input" placeholder="Aliases (comma-separated, optional)" @keydown.enter="addCharacter" />
+        <input v-model="newCharName" class="jv-input jv-w-name" placeholder="Character name" @keydown.enter="addCharacter" />
+        <input v-model="newCharAliases" class="jv-input jv-w-name" placeholder="Aliases (comma-separated, optional)" @keydown.enter="addCharacter" />
         <JvButton variant="ghost" size="sm" label="＋ Add" @click="addCharacter" />
       </div>
     </section>
@@ -397,57 +565,128 @@ onMounted(() => {
             <button v-if="columns.length > 1" type="button" class="jv-btn jv-btn--ghost jv-btn--sm" title="Remove this column" @click="removeColumn(i)">🗑 Delete column</button>
           </header>
 
-          <!-- Presets row -->
+          <!-- Presets row — JustWrite Speaker Lab parity: dropdown,
+               PRODUCTION badge, promote/save actions on one line. -->
           <div class="splab__presets">
             <span class="splab__eyebrow">Presets</span>
-            <select :value="col.presetName" class="jv-input jv-input--sm" title="Load a saved configuration" @change="loadPreset(col, $event.target.value)">
+            <select :value="col.presetName" class="jv-input jv-input--sm jv-w-name" title="Load a saved configuration" @change="loadPreset(col, $event.target.value)">
               <option value="">— defaults —</option>
               <option v-for="p in presets" :key="p.name" :value="p.name">{{ p.name }}</option>
             </select>
-            <JvButton variant="ghost" size="sm" label="＋ Save as" title="Save this column's tweaks as a named preset" @click="savePreset(col)" />
             <JvButton v-if="col.presetName" variant="ghost" size="sm" label="🗑" title="Delete this preset" @click="deletePreset(col)" />
+            <span
+              v-if="productionCfg"
+              class="jv-pill jv-pill--green splab__prod"
+              :title="`Studio · Script currently runs '${productionCfg.name}' (${productionCfg.model || 'route default'}). Revert in Settings → AI features.`"
+            >✓ PRODUCTION · {{ productionCfg.name }}</span>
             <span class="jv-spacer" />
-            <JvButton variant="secondary" size="sm" label="✓ Use as production" title="Pin this model + tier as Studio · Script's attribution method" @click="useAsProduction(col)" />
+            <JvButton variant="secondary" size="sm" label="✓ Use as production" title="Freeze this column — model AND prompts — as Studio · Script's attribution method" @click="useAsProduction(col)" />
+            <JvButton variant="secondary" size="sm" label="＋ Save as" title="Save this column's tweaks as a named preset" @click="savePreset(col)" />
           </div>
 
-          <!-- Engine row: model + temp -->
+          <!-- Pipeline explainer (JustWrite parity banner) -->
+          <div class="jv-banner splab__pipeline-note">
+            Splits each paragraph into segments on double-quote marks (deterministic, no LLM).
+            Narration outside quotes auto-attributes to the narrator; the model only attributes
+            the dialogue segments. Cast: {{ characters.length }}.
+            <br />
+            <strong>Tier:</strong> <strong>Guided</strong> = strict rules + worked examples, for sub-12B models ·
+            <strong>Direct</strong> = strict rules only, no thinking — for 12B-class non-reasoning models ·
+            <strong>Reasoned</strong> = the Direct rules + reasoning enabled, for hybrid models (Qwen3 14B+).
+            Auto-picked from the selected model; override if you know better.
+          </div>
+
+          <!-- Route row: provider + model + temp + reset -->
           <div class="splab__knobrow">
-            <input v-model="col.model" class="jv-input jv-input--sm splab__model" placeholder="model — pin default (e.g. qwen3:14b)" title="Override the pinned model; tier auto-derives from it" />
+            <select
+              v-model="col.providerId"
+              class="jv-input jv-input--sm jv-w-name"
+              title="Route this run through a specific LLM provider"
+              @change="onProviderChange(col)"
+            >
+              <option value="">Route default — {{ resolvedProviderName }}</option>
+              <option v-for="p in llmProviders" :key="p.id" :value="p.id">{{ p.name }}</option>
+            </select>
+            <input
+              v-model="col.model"
+              :list="`splab-models-${i}`"
+              class="jv-input jv-input--sm jv-w-name splab__model"
+              :placeholder="`(provider default — ${effectiveDefaultModel(col) || 'none'})`"
+              title="Override the provider's default model; the tier re-derives from it"
+              @change="reclassify(col)"
+            />
+            <datalist :id="`splab-models-${i}`">
+              <option v-for="m in providerModels[col.providerId] || []" :key="m" :value="m" />
+            </datalist>
             <label class="splab__knob splab__knob--inline">
               <span>temp</span>
               <input v-model="col.temperature" class="jv-input jv-input--sm splab__temp" placeholder="0.2" title="Sampling temperature" />
             </label>
+            <span class="jv-spacer" />
+            <JvButton variant="ghost" size="sm" label="↺ Reset" title="Back to the route's resolved configuration — provider, model, tier, prompts, floor" @click="resetColumn(col)" />
           </div>
 
-          <!-- Tier + toggles -->
+          <!-- Tier segmented + toggles + floor value -->
           <div class="splab__column-knobs">
-            <label class="splab__knob">
-              <span>Tier</span>
-              <select v-model="col.tier" class="jv-input jv-input--sm" title="auto = classify from the model id">
-                <option value="">auto</option>
-                <option value="guided">guided</option>
-                <option value="direct">direct</option>
-                <option value="reasoned">reasoned</option>
-              </select>
-            </label>
-            <label class="splab__knob splab__knob--check" title="Pre-LLM: 'Tom said' anchors the adjacent quote at confidence 1.0">
-              <input type="checkbox" v-model="col.propagate" />
+            <span class="splab__eyebrow">Tier</span>
+            <div class="splab__tierseg">
+              <button
+                type="button"
+                class="jv-pill"
+                :class="col.tier === '' ? 'jv-pill--solid' : 'jv-pill--ghost'"
+                title="Classify from the selected model"
+                @click="setTier(col, '')"
+              >Auto{{ col.tier === '' && col.autoTier ? ` → ${cap(col.autoTier)}` : '' }}</button>
+              <button
+                v-for="t in extractionConfig?.tiers || []"
+                :key="t.name"
+                type="button"
+                class="jv-pill"
+                :class="col.tier === t.name ? 'jv-pill--solid' : 'jv-pill--ghost'"
+                :title="`floor ${t.confidence_floor}${t.think ? ' · reasoning on' : ''}`"
+                @click="setTier(col, t.name)"
+              >{{ t.label }}</button>
+            </div>
+            <span class="splab__knob" title="Pre-LLM: 'Tom said' anchors the adjacent quote at confidence 1.0">
+              <JvToggle v-model="col.propagate" aria-label="Anchor propagation" />
               <span>Anchor propagation (pre-LLM)</span>
-            </label>
-            <label class="splab__knob splab__knob--check" title="Demote below-floor LLM picks to 'unknown'">
-              <input type="checkbox" v-model="col.use_floor" />
+            </span>
+            <span class="splab__knob" title="Demote LLM picks below the floor to 'unknown'">
+              <JvToggle v-model="col.use_floor" aria-label="Confidence floor" />
               <span>Confidence floor</span>
-            </label>
+              <input
+                v-model="col.confidenceFloor"
+                class="jv-input jv-input--sm splab__floor"
+                :disabled="!col.use_floor"
+                title="0–1 · below this, picks demote to 'unknown'"
+              />
+            </span>
           </div>
 
-          <!-- System prompt -->
+          <!-- System prompt — shows the REAL body the pipeline sends -->
           <div class="splab__prompt">
-            <span class="splab__eyebrow">System prompt <em class="jv-muted">— empty = tier default · user prompt is templated server-side (&#123;&#123;characters&#125;&#125;, &#123;&#123;paragraphs&#125;&#125;)</em></span>
-            <textarea
-              v-model="col.systemPrompt"
-              class="jv-input jv-input--full splab__prompt-text"
-              placeholder="Leave empty to use the tier's default prompt body — or paste a tweak here…"
-            />
+            <span class="splab__eyebrow splab__eyebrow--row">
+              System prompt
+              <em class="jv-muted">— exactly what the model receives; resolved from the tier</em>
+              <template v-if="systemEdited(col)">
+                <span class="jv-pill jv-pill--ghost splab__edited">edited</span>
+                <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" title="Restore this tier's default body" @click="applyTier(col, col.tier)">↺ Tier default</button>
+              </template>
+            </span>
+            <textarea v-model="col.systemPrompt" class="jv-input jv-input--full splab__prompt-text" />
+          </div>
+
+          <!-- User prompt — the template; tokens fill in server-side -->
+          <div class="splab__prompt">
+            <span class="splab__eyebrow splab__eyebrow--row">
+              User prompt
+              <em class="jv-muted">— template · <code>{characters}</code>, <code>{corrections}</code>, <code>{paragraphs}</code> fill in server-side</em>
+              <template v-if="userEdited(col)">
+                <span class="jv-pill jv-pill--ghost splab__edited">edited</span>
+                <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" title="Restore the default template" @click="col.userPrompt = extractionConfig?.user_template || ''">↺ Default</button>
+              </template>
+            </span>
+            <textarea v-model="col.userPrompt" class="jv-input jv-input--full splab__prompt-text splab__prompt-text--user" />
           </div>
 
           <p v-if="col.error" class="splab__error">{{ col.error }}</p>
@@ -482,7 +721,10 @@ onMounted(() => {
 <style scoped>
 .splab { padding: 0; display: flex; flex-direction: column; gap: 18px; }
 
-.splab__input-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.splab__pane { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.splab__pane-h { display: flex; align-items: center; gap: 8px; }
+.splab__pane-hint { font-size: 12px; margin: 0; }
+.splab__input-toolbar { display: flex; align-items: center; gap: 8px; }
 .splab__input-select { width: var(--w-name); }
 .splab__stats { font-size: 11.5px; }
 
@@ -518,24 +760,31 @@ onMounted(() => {
 .splab__eyebrow em { text-transform: none; letter-spacing: 0; font-weight: 400; font-style: normal; }
 
 .splab__presets { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.splab__knobrow { display: flex; align-items: center; gap: 10px; }
-.splab__model { flex: 1; font-family: var(--font-mono); font-size: 12px; }
+.splab__prod { font-size: 10px; white-space: nowrap; }
+.splab__pipeline-note { font-size: 12px; line-height: 1.6; }
+.splab__knobrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.splab__model { font-family: var(--font-mono); font-size: 12px; }
 .splab__temp { width: 64px; font-family: var(--font-mono); font-size: 12px; }
 .splab__column-knobs { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.splab__tierseg { display: inline-flex; gap: 4px; }
+.splab__tierseg .jv-pill { cursor: pointer; border: 0; font: inherit; font-size: 11.5px; }
 .splab__knob { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
-.splab__knob--check { cursor: pointer; }
 .splab__knob--inline span { font-size: 11px; color: var(--ink-3); }
+.splab__floor { width: var(--w-token); font-family: var(--font-mono); font-size: 12px; }
+.splab__eyebrow--row { display: flex; align-items: center; gap: 8px; }
+.splab__edited { font-size: 9px; }
 
 .splab__prompt { display: flex; flex-direction: column; gap: 4px; }
 .splab__prompt-text {
   width: 100%;
-  min-height: 120px;
+  min-height: 150px;
   font-family: var(--font-mono);
   font-size: 11.5px;
   line-height: 1.6;
   resize: vertical;
   padding: 8px 11px;
 }
+.splab__prompt-text--user { min-height: 90px; }
 
 .splab__error {
   margin: 0; font-size: 12px; color: var(--danger-ink, #7a2f1f);
