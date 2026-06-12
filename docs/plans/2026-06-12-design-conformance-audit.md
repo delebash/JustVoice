@@ -87,3 +87,28 @@ Appearance/Cache/Channels(*)/Webhooks/Logs/Changelog/About.
    stay scoped as genuinely custom affordances — 20aea1d.
 4. ✅ Width tokens (F4): Compare labels → name, Settings role selects →
    url, override-URL path→url — b21cde6.
+
+
+## Resweep — 2026-06-12 late (rules 6-7 + shell, added after user catches)
+
+The first audit's five rules missed three layers the user caught on the
+Speaker tab (row grammar, shell widths, control semantics). Resweep of
+all 19 surfaces at 1920px against the new rules:
+
+- **Row grammar (rule 7)**: clean everywhere post-fixes. One probe flag
+  — Home's next-step banner CTA ("Open Engines ➜") right-aligned after
+  a spacer — is the right edge of a FULL-ROW LINK (the whole banner is
+  the <a>); functionally an action cluster, recorded acceptable.
+- **No-ghost decree (rule 6)**: handled at the token level (55f639a) —
+  every ghost button app-wide renders outlined; no per-surface
+  violations remain.
+- **Shell widths**: tables / master-detail / workbench views are
+  correctly wide (the JustWrite comparison nuance: width is fine when
+  rows use it). ONE real catch: **Labs · Train** — a two-column form
+  grid of ~250px controls spread across a 1750px card, huge dead
+  interior; the queue-a-fine-tune card is form-first and should take
+  `--shell-form` (880px). The jobs table below it stays wide. NOT yet
+  fixed — queued for go.
+- **Control semantics**: the Auto-pill and +Add classes were fixed in
+  814c233; the remaining semantics layer is inherently per-surface
+  judgment and stays a standing QC lens rather than a one-shot pass.
