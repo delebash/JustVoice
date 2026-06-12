@@ -64,8 +64,9 @@ async function resetUiState() {
     for (const k of ["jv.activeProject", "jv.quickSetup.seen"]) window.localStorage?.removeItem(k);
     window.sessionStorage?.clear();
   } catch { /* ignore */ }
-  window.location.hash = "#overview";
-  window.location.reload();
+  // Hash-free reload — same reason as factoryReset: a fragment would
+  // outrank the first-run kind picker in resolveInitialTab.
+  window.location.replace(window.location.pathname + window.location.search);
 }
 
 // Tier 3: factory reset — as-new install (testing).
@@ -82,8 +83,10 @@ async function factoryReset() {
   try {
     await api.request("/v1/admin/factory-reset", { method: "POST" });
     try { window.localStorage?.clear(); window.sessionStorage?.clear(); } catch { /* ignore */ }
-    window.location.hash = "#overview";
-    window.location.reload();
+    // Reload WITHOUT a hash — an explicit fragment outranks the
+    // first-run branch in resolveInitialTab, which skipped the kind
+    // picker after reset (user-hit: only a fresh relaunch showed it).
+    window.location.replace(window.location.pathname + window.location.search);
   } catch (e) {
     pushToast({ kind: "error", title: "Factory reset failed", description: String(e?.message ?? e) });
   }
