@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter
+from sqlalchemy import inspect
 from pydantic import BaseModel
 
 from ..app_state import get_state
@@ -75,18 +76,34 @@ class FactoryResetResponse(BaseModel):
 async def factory_reset() -> FactoryResetResponse:
     state = get_state()
 
-    # 1. Every DB table, children first (FK order).
+    # 1. Every DB table, children first (FK order). The ORM metadata can
+    # declare tables the live DB no longer has (e.g. legacy
+    # voice_profiles after the Profile-kill) — intersect with what's
+    # actually on disk, and never let one table abort the wipe
+    # (user-hit 2026-06-12: sqlite3.OperationalError no such table).
     cleared = 0
+    skipped: list[str] = []
     factory = db_session.SessionLocal
     if factory is not None:
         db = factory()
         try:
+            existing = set(inspect(db.get_bind()).get_table_names())
             for table in reversed(Base.metadata.sorted_tables):
-                db.execute(table.delete())
-                cleared += 1
+                if table.name not in existing:
+                    skipped.append(table.name)
+                    continue
+                try:
+                    db.execute(table.delete())
+                    cleared += 1
+                except Exception as e:
+                    db.rollback()
+                    skipped.append(table.name)
+                    log.warning("factory reset: could not clear %s: %s", table.name, e)
             db.commit()
         finally:
             db.close()
+    if skipped:
+        log.warning("factory reset: skipped tables: %s", ", ".join(skipped))
 
     # 2. Render cache — memory + disk.
     cache = getattr(state, "_render_cache", None)
