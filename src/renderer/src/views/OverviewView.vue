@@ -56,6 +56,51 @@ async function safeRequest(path, fallback) {
   }
 }
 
+// Session snapshot — Home paints instantly from the last visit's data
+// and refreshes silently (same pattern as the Engines-list cache;
+// user-hit: 'first looks like no project, then project info loads').
+// health stays live-only so we never claim reachability from cache.
+const HOME_CACHE_KEY = "jv.home.snapshot";
+function hydrateFromSnapshot() {
+  try {
+    const snap = JSON.parse(window.sessionStorage?.getItem(HOME_CACHE_KEY) || "null");
+    if (!snap) return;
+    engines.value = snap.engines || [];
+    voices.value = snap.voices || [];
+    personas.value = snap.personas || [];
+    projects.value = snap.projects || [];
+    lexicons.value = snap.lexicons || [];
+    captures.totalCount = snap.capturesTotal ?? null;
+    stats.value = snap.stats ?? null;
+    recentGenerations.value = snap.recentGenerations || [];
+    loadedEngine.value = snap.loadedEngine ?? null;
+    system.value = snap.system ?? null;
+    settings.value = snap.settings ?? null;
+    if (snap.miniStatus && snap.miniStatusProjectId === continueProject.value?.id) {
+      miniStatus.value = snap.miniStatus;
+    }
+  } catch { /* corrupt snapshot — fresh fetch covers it */ }
+}
+function writeSnapshot() {
+  try {
+    window.sessionStorage?.setItem(HOME_CACHE_KEY, JSON.stringify({
+      engines: engines.value,
+      voices: voices.value,
+      personas: personas.value,
+      projects: projects.value,
+      lexicons: lexicons.value,
+      capturesTotal: captures.totalCount ?? null,
+      stats: stats.value,
+      recentGenerations: recentGenerations.value,
+      loadedEngine: loadedEngine.value,
+      system: system.value,
+      settings: settings.value,
+      miniStatus: miniStatus.value,
+      miniStatusProjectId: continueProject.value?.id ?? null,
+    }));
+  } catch { /* storage full — next visit just fetches */ }
+}
+
 async function refresh() {
   const [h, e, v, p, pr, lx, ca, s, g, ce, sy, st] = await Promise.all([
     safeRequest("/v1/health", null),
@@ -84,6 +129,7 @@ async function refresh() {
   loadedEngine.value = ce.engine || null;
   system.value = sy;
   settings.value = st;
+  writeSnapshot();
 }
 
 // ── Continue card (active project) ───────────────────────────────────
@@ -136,12 +182,14 @@ async function loadMiniStatus() {
     const c = await api.request(`/v1/projects/${p.id}/cast`);
     const cast = c?.cast || [];
     out.castTotal = cast.length;
-    const personas = await Promise.all(cast.slice(0, 16).map(async (x) => {
-      try { return await api.request(`/v1/personas/${x.persona_id}`); } catch { return null; }
-    }));
-    out.castVoiced = personas.filter((x) => x?.voice_id).length;
+    // Voiced state comes from the personas list refresh() already
+    // fetched — the old per-persona GET fan-out (≤16 requests) was the
+    // slow part of the Home fill.
+    const byId = new Map(personas.value.map((x) => [x.id, x]));
+    out.castVoiced = cast.filter((x) => byId.get(x.persona_id)?.voice_id).length;
   } catch { /* no cast yet */ }
   miniStatus.value = out;
+  writeSnapshot();
 }
 watch(continueProject, loadMiniStatus);
 
@@ -289,7 +337,10 @@ const nextStep = computed(() => {
 
 function goEngines() { window.location.hash = "#engines"; }
 
-onMounted(refresh);
+onMounted(() => {
+  hydrateFromSnapshot();  // instant paint from the last visit
+  refresh();              // silent live replace
+});
 </script>
 
 <template>
