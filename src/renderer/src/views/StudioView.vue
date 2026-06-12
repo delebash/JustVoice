@@ -307,6 +307,33 @@ function personaRole(p) {
   return "";
 }
 
+// ── Add an existing library persona to this project's cast (user ask:
+// "cast i have no way to add a persona i have created"). The POST
+// endpoint existed; only the affordance was missing.
+const addPersonaOpen = ref(false);
+const addPersonaBusy = ref(null);
+const addablePersonas = computed(() => {
+  const inCast = new Set(projectPersonas.value.map((p) => p.id));
+  return personas.value.filter((p) => !inCast.has(p.id));
+});
+async function addPersonaToCast(p) {
+  if (!selectedProjectId.value || addPersonaBusy.value) return;
+  addPersonaBusy.value = p.id;
+  try {
+    await api.request(`/v1/projects/${selectedProjectId.value}/cast`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ persona_id: p.id }),
+    });
+    await loadProjectPersonas(selectedProjectId.value);
+    pushToast({ kind: "success", message: `${p.name} added to the cast.` });
+  } catch (e) {
+    pushToast({ kind: "error", message: `Add failed: ${e?.message || e}` });
+  } finally {
+    addPersonaBusy.value = null;
+  }
+}
+
 const clearCastBusy = ref(false);
 async function clearCast() {
   const cast = projectPersonas.value.filter((p) => p.voice_id);
@@ -449,8 +476,11 @@ async function loadScenesForProject(projectId) {
     const r = await api.safeRequest(`/v1/projects/${projectId}/scenes`, []);
     // Endpoint returns a bare array (block_count included per scene).
     scenes.value = Array.isArray(r) ? r : r?.scenes || [];
-    if (!selectedSceneId.value && scenes.value.length) {
-      selectedSceneId.value = scenes.value[0].id;
+    // Reset the scene selection whenever it doesn't belong to THIS
+    // project — keeping the old id froze Script/Render on the previous
+    // book's chapter (user-hit: "book dropdown doesn't change anything").
+    if (!scenes.value.some((s) => s.id === selectedSceneId.value)) {
+      selectedSceneId.value = scenes.value[0]?.id ?? null;
     }
     // Eager-fetch per-scene block counts for the Render tab's
     // "Select all unrendered" affordance.
@@ -695,6 +725,11 @@ watch(selectedSceneId, (id) => {
   editedFlags.value = {};
 }, { immediate: true });
 
+const analyzeCtrl = ref(null);
+function cancelAnalyze() {
+  analyzeCtrl.value?.abort();
+}
+
 async function runAnalyze() {
   if (!selectedSceneId.value || !sceneText.value.trim()) {
     pushToast({ message: "Pick a scene with text to analyze.", kind: "info" });
@@ -702,6 +737,7 @@ async function runAnalyze() {
   }
   analyzeBusy.value = true;
   const ctrl = new AbortController();
+  analyzeCtrl.value = ctrl;
   const sceneTitle = scenes.value.find((sc) => sc.id === selectedSceneId.value)?.title || "scene";
   const wordCount = sceneText.value.trim().split(/\s+/).length;
   const task = tasks.start({
@@ -753,6 +789,7 @@ async function runAnalyze() {
     });
   } finally {
     analyzeBusy.value = false;
+    analyzeCtrl.value = null;
   }
 }
 
@@ -1148,6 +1185,13 @@ watch(selectedProjectId, (id) => {
         <JvButton
           variant="secondary"
           size="sm"
+          label="＋ Add persona"
+          title="Add an existing library persona to this cast"
+          @click="addPersonaOpen = true"
+        />
+        <JvButton
+          variant="secondary"
+          size="sm"
           label="✕ Clear cast"
           :loading="clearCastBusy"
           :disabled="clearCastBusy || !projectPersonas.some((p) => p.voice_id)"
@@ -1412,6 +1456,20 @@ watch(selectedProjectId, (id) => {
           Routed to <strong>{{ analyzeTierUsed }}</strong> tier · confidence floor {{ analyzeFloor }} · {{ analyzeRows.length }} segments
         </p>
 
+        <!-- Inline analyze progress — the global task strip sits above the
+             fold; this one is impossible to miss next to the content
+             (user ask: "no ai progress bar when i clicked analyze"). -->
+        <div v-if="analyzeBusy" class="jv-banner studio__analyze-progress">
+          <span class="jv-boot-banner__spinner" />
+          <span>
+            <strong>Analyzing…</strong> the LLM is reading the
+            {{ copy.chapter.singular.toLowerCase() }} and attributing speakers —
+            long {{ copy.chapter.plural.toLowerCase() }} can take a minute or two.
+          </span>
+          <span class="jv-spacer" />
+          <JvButton variant="ghost" size="sm" label="Cancel" @click="cancelAnalyze" />
+        </div>
+
         <textarea
           v-if="!analyzeRows.length"
           class="jv-input jv-input--full studio__script-text"
@@ -1643,6 +1701,42 @@ watch(selectedProjectId, (id) => {
       @save="onVoiceParamsSaved"
       @cancel="voiceParamsModalOpen = false; tuningVoice = null"
     />
+
+    <!-- Add an existing library persona to the cast. -->
+    <div v-if="addPersonaOpen" class="jv-overlay" @click.self="addPersonaOpen = false">
+      <div class="jv-modal" style="width: min(520px, calc(100vw - 32px));">
+        <header class="jv-modal__header">
+          <div class="jv-modal__titleblock">
+            <span class="jv-modal__eyebrow">Cast</span>
+            <h3 class="jv-modal__title">Add a persona to this {{ copy.book.singular.toLowerCase() }}</h3>
+          </div>
+          <button type="button" class="jv-modal__close" title="Close" @click="addPersonaOpen = false">✕</button>
+        </header>
+        <div class="jv-modal__body">
+          <p v-if="!addablePersonas.length" class="jv-muted" style="margin: 4px 0 8px">
+            Every library persona is already in this cast.
+            <a href="#personas">Create a new persona</a> and it'll appear here.
+          </p>
+          <ul v-else class="studio__addpersona-list">
+            <li v-for="p in addablePersonas" :key="p.id" class="studio__addpersona-row">
+              <span class="studio__char-portrait studio__char-portrait--sm" :style="{ background: colorFor(p.name) }">{{ (p.name || "?").charAt(0).toUpperCase() }}</span>
+              <div class="studio__addpersona-meta">
+                <strong>{{ p.name }}</strong>
+                <span class="jv-muted">{{ voiceById(p.voice_id)?.name || (p.voice_id || "no voice yet") }}</span>
+              </div>
+              <JvButton
+                variant="secondary"
+                size="sm"
+                label="Add"
+                :loading="addPersonaBusy === p.id"
+                :disabled="addPersonaBusy !== null"
+                @click="addPersonaToCast(p)"
+              />
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
 
     <!-- Per-block Rewrite preview (right-click on Script tab). -->
     <div v-if="rewriteModalOpen" class="jv-overlay" @click.self="rewriteModalOpen = false">
@@ -2153,4 +2247,18 @@ watch(selectedProjectId, (id) => {
 .studio__npc-row:hover td { background: var(--surface-2); }
 .studio__npc-row--selected td { background: var(--accent-soft); }
 .studio__char-portrait--sm { width: 28px; height: 28px; font-size: 12px; }
+
+.studio__addpersona-list { list-style: none; margin: 0; padding: 0; max-height: 50vh; overflow-y: auto; }
+.studio__addpersona-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  border-bottom: 1px dashed var(--line);
+}
+.studio__addpersona-row:last-child { border-bottom: 0; }
+.studio__addpersona-meta { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.studio__addpersona-meta .jv-muted { font-size: 11.5px; }
+
+.studio__analyze-progress { display: flex; align-items: center; gap: 10px; }
 </style>
