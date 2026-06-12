@@ -117,6 +117,12 @@ Operating tempo, mandatory:
   their style and it's welcome. The rule governs execution order, not
   intake size: accept the whole list, record it as a repo plan, then
   execute it one item at a time.
+- **Reports arriving MID-EXECUTION are intake, not dispatch** (user
+  correction 2026-06-12, after item 13 was executed on arrival:
+  "i meant for you to add that to the next batch not execute now").
+  Append them to the queue plan doc and keep working the current item.
+  Each unplanned jump costs real money and time. Only an explicit
+  "do this one now" breaks queue order.
 
 **Failure modes from prior sessions** (signals you missed the relevant memory): proposing Rust anywhere, Docker, asking permission, using native dialogs, hallucinating file paths, re-investigating decisions already made, building a UI element without naming its precedent (RULE #1), batching/skimming through a punch list instead of single-item full reads (RULE #2). If you catch yourself about to do any of these, that's the cue to load the matching memory file.
 

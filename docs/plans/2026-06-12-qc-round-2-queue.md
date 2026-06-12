@@ -58,3 +58,19 @@ Unfinished items carry to the next session — never skimmed in.
     override · tuned params · unhide; enabled only when overridden);
     toolbar "Reset all voice tweaks" behind a confirm stating blast
     radius. No checkbox selection.
+
+## Status (2026-06-12 19:35)
+
+Done: 1 (Home FOUC), 3 (stall honesty), 4 (Select unrendered),
+5 (Export QC no-auto-run), 13 (render-button gate — executed out of
+turn on arrival; the process error that produced the mid-execution
+intake rule in CLAUDE.md RULE #2).
+
+Remaining, in order: 2 (Studio layout rework — JustWrite reference),
+6 (library = Voices controls + LOCAL badges + multi-engine notice),
+7 ("takes direction" rename), 9 (self-hosted providers),
+10 (inspector edit matrix), 11 (Captures always visible),
+12 (inline expand inspector + per-voice/all reset).
+
+New reports from the user land HERE as numbered items, not in the
+editor.
