@@ -184,6 +184,19 @@ const renderPresets = ref([]);
 const scenePresetSelections = ref({});  // {sceneId: presetId}
 const sceneSelectedForRender = ref({});  // {sceneId: bool}
 const renderBusyScene = ref(null);
+
+// Render gate (queue item 13): the buttons say WHY they're disabled
+// instead of failing later — no text → nothing to render; no voiced
+// cast → server would skip every block.
+const renderGate = computed(() => {
+  if (!scenes.value.some((s) => sceneBlockCounts.value[s.id])) {
+    return { ok: false, reason: "Nothing to render yet — chapters have no text. Import or paste in Chapters first." };
+  }
+  if (!projectPersonas.value.some((p) => p.voice_id)) {
+    return { ok: false, reason: "No voices assigned — cast at least one voice in 1 · Cast first." };
+  }
+  return { ok: true, reason: "" };
+});
 const suggestBusyScene = ref(null);
 const sceneBlockCounts = ref({});  // {sceneId: count of blocks}
 
@@ -1263,9 +1276,9 @@ watch(selectedProjectId, (id) => {
         <JvButton
           variant="secondary"
           size="sm"
-          :disabled="renderBusyScene !== null"
+          :disabled="renderBusyScene !== null || !renderGate.ok"
           label="▶ Render all"
-          title="Queue every chapter that has blocks"
+          :title="renderGate.ok ? 'Queue every chapter that has blocks' : renderGate.reason"
           @click="renderAll"
         />
       </template>
@@ -1652,10 +1665,12 @@ watch(selectedProjectId, (id) => {
           <JvButton
             variant="primary"
             size="sm"
-            :disabled="!selectedSceneCount() || renderBusyScene !== null"
+            :disabled="!selectedSceneCount() || renderBusyScene !== null || !renderGate.ok"
             :label="`▶ Render selected (${selectedSceneCount()})`"
+            :title="renderGate.ok ? '' : renderGate.reason"
             @click="renderSelected"
           />
+          <span v-if="!renderGate.ok" class="jv-muted" style="font-size:11.5px">{{ renderGate.reason }}</span>
         </header>
 
         <!-- Cache banner — how much of the next render is free. -->
