@@ -613,6 +613,60 @@ function startImport() {
 function goStudio() {
   window.location.hash = "#studio";
 }
+
+// ── Chapter management (rename / delete / reorder / paste-text) ──────
+async function renameChapter(sc) {
+  const title = (await promptDialog({
+    title: "Rename chapter", message: "New title:", placeholder: sc.title || "",
+  }))?.trim();
+  if (!title || title === sc.title) return;
+  try {
+    await api.request(`/v1/scenes/${sc.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title }) });
+    await loadScenes(selectedProjectId.value); await loadChapterList();
+  } catch (e) { pushToast({ kind: "error", title: "Rename failed", description: String(e?.message ?? e) }); }
+}
+async function deleteChapter(sc) {
+  const ok = await confirmDialog({
+    title: `Delete “${sc.title || "chapter"}”?`,
+    message: "Its text blocks and rendered takes go with it — permanently.",
+    danger: true, confirmLabel: "Delete chapter",
+  });
+  if (!ok) return;
+  try {
+    await api.request(`/v1/scenes/${sc.id}`, { method: "DELETE" });
+    await loadScenes(selectedProjectId.value); await loadChapterList();
+  } catch (e) { pushToast({ kind: "error", title: "Delete failed", description: String(e?.message ?? e) }); }
+}
+async function moveChapter(sc, dir) {
+  const target = sc.position + dir;
+  if (target < 0 || target >= scenes.value.length) return;
+  try {
+    await api.request(`/v1/scenes/${sc.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ position: target }) });
+    await loadScenes(selectedProjectId.value); await loadChapterList();
+  } catch (e) { pushToast({ kind: "error", title: "Reorder failed", description: String(e?.message ?? e) }); }
+}
+
+// Paste-text for an empty chapter: paragraphs → narrator-implied blocks.
+// NO speaker attribution — Studio · Script owns that.
+const pasteText = ref("");
+const pasteBusy = ref(false);
+async function savePastedText() {
+  const paras = pasteText.value.split(/\n\s*\n/).map((t) => t.trim()).filter(Boolean);
+  if (!paras.length || !selectedSceneId.value) return;
+  pasteBusy.value = true;
+  try {
+    for (let i = 0; i < paras.length; i++) {
+      await api.request(`/v1/scenes/${selectedSceneId.value}/blocks`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ position: i, text: paras[i] }),
+      });
+    }
+    pasteText.value = "";
+    await loadBlocks(selectedSceneId.value);
+    pushToast({ kind: "success", title: `${paras.length} blocks added`, description: "Assign speakers in Studio · Script when ready." });
+  } catch (e) { pushToast({ kind: "error", title: "Save failed", description: String(e?.message ?? e) }); }
+  finally { pasteBusy.value = false; }
+}
 </script>
 
 <template>
@@ -759,7 +813,13 @@ function goStudio() {
             <td class="chapter-view__num jv-mono">{{ estAudio(sceneStats[sc.id]?.words) }}</td>
             <td><span class="jv-pill" :class="scriptState(sc.id).cls">{{ scriptState(sc.id).label }}</span></td>
             <td><span class="jv-pill" :class="renderState(sc.id).cls">{{ renderState(sc.id).label }}</span></td>
-            <td style="text-align:right"><JvButton variant="ghost" size="sm" label="Open" @click.stop="openChapter(sc)" /></td>
+            <td style="text-align:right;white-space:nowrap">
+              <button type="button" class="chapter-view__act" title="Move up" @click.stop="moveChapter(sc, -1)">↑</button>
+              <button type="button" class="chapter-view__act" title="Move down" @click.stop="moveChapter(sc, 1)">↓</button>
+              <button type="button" class="chapter-view__act" title="Rename" @click.stop="renameChapter(sc)">✎</button>
+              <button type="button" class="chapter-view__act chapter-view__act--danger" title="Delete chapter" @click.stop="deleteChapter(sc)">✕</button>
+              <JvButton variant="ghost" size="sm" label="Open" @click.stop="openChapter(sc)" />
+            </td>
           </tr>
           <tr v-if="!filteredScenes.length && scenes.length"><td colspan="6" class="jv-muted" style="padding:14px">No {{ copy.chapter.plural.toLowerCase() }} match.</td></tr>
         </tbody>
@@ -799,8 +859,15 @@ function goStudio() {
       v-if="viewMode === 'detail' && selectedProjectId && selectedSceneId && blocks.length === 0"
       class="jv-banner"
     >
-      This {{ copy.chapter.singular.toLowerCase() }} has no {{ copy.line.plural.toLowerCase() }} yet.
-      Open <a href="#studio">Studio → Script tab</a> to paste prose and run speaker attribution.
+      <div style="margin-bottom:8px">
+        This {{ copy.chapter.singular.toLowerCase() }} has no {{ copy.line.plural.toLowerCase() }} yet.
+        Paste its text below (paragraphs become blocks, narrator-implied — assign
+        speakers later in <a href="#studio">Studio · Script</a>), or run attribution there directly.
+      </div>
+      <textarea v-model="pasteText" class="jv-input jv-input--full" rows="8" :placeholder="`Paste the ${copy.chapter.singular.toLowerCase()} text…`" style="width:100%"></textarea>
+      <div style="margin-top:8px">
+        <JvButton variant="primary" size="sm" :loading="pasteBusy" :disabled="pasteBusy || !pasteText.trim()" label="Add as blocks" @click="savePastedText" />
+      </div>
     </div>
 
     <!-- ── Block list ─────────────────────────────────────────────────── -->
@@ -1377,4 +1444,12 @@ function goStudio() {
 }
 .chapter-view__no-chapters h4 { margin: 0 0 6px; font-size: 14px; }
 .chapter-view__no-chapters p { margin: 0; font-size: 12.5px; line-height: 1.6; max-width: 640px; }
+
+.chapter-view__act {
+  appearance: none; border: 1px solid var(--line); background: var(--surface);
+  border-radius: 6px; font: inherit; font-size: 11px; padding: 2px 7px;
+  cursor: pointer; color: var(--ink-2); margin-right: 3px;
+}
+.chapter-view__act:hover { border-color: var(--accent); color: var(--accent-ink); }
+.chapter-view__act--danger:hover { border-color: var(--danger); color: var(--danger); }
 </style>

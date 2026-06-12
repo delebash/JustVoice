@@ -323,6 +323,48 @@ async def create_scene(
     return SceneResponse.from_orm(s)
 
 
+class UpdateSceneRequest(BaseModel):
+    title: str | None = None
+    position: int | None = None
+
+
+@router.patch("/v1/scenes/{scene_id}", response_model=SceneResponse)
+async def update_scene(
+    scene_id: str, body: UpdateSceneRequest, db: Session = Depends(get_db)
+) -> SceneResponse:
+    """Rename / reorder a chapter (Chapters management, 2026-06-12).
+    Position moves swap with the displaced neighbor so ordering stays
+    dense."""
+    sc = db.query(Scene).filter(Scene.id == scene_id).first()
+    if not sc:
+        raise not_found(f"scene {scene_id}")
+    if body.title is not None:
+        sc.title = body.title
+    if body.position is not None and body.position != sc.position:
+        other = (
+            db.query(Scene)
+            .filter(Scene.project_id == sc.project_id, Scene.position == body.position)
+            .first()
+        )
+        if other:
+            other.position = sc.position
+        sc.position = body.position
+    db.commit()
+    db.refresh(sc)
+    return SceneResponse.from_orm(sc)
+
+
+@router.delete("/v1/scenes/{scene_id}")
+async def delete_scene(scene_id: str, db: Session = Depends(get_db)) -> dict:
+    """Delete a chapter and its blocks/takes (FK cascade)."""
+    sc = db.query(Scene).filter(Scene.id == scene_id).first()
+    if not sc:
+        raise not_found(f"scene {scene_id}")
+    db.delete(sc)
+    db.commit()
+    return {"deleted": True, "scene_id": scene_id}
+
+
 @router.get("/v1/scenes/{scene_id}/blocks", response_model=list[BlockResponse])
 async def list_blocks(scene_id: str, db: Session = Depends(get_db)) -> list[BlockResponse]:
     if not db.query(Scene).filter(Scene.id == scene_id).first():

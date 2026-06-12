@@ -333,12 +333,17 @@ const previewWarnings = computed(() => preview.value?.warnings || []);
       </div>
       <footer class="im-footer">
         <JvButton variant="ghost" @click="emit('close')">Cancel</JvButton>
+        <!-- Dry-run button retired (user: "doesn't do anything") — the
+             preview auto-runs the moment a file lands; this re-scan stays
+             for after changing the source format. -->
         <JvButton
-          variant="secondary"
+          v-if="preview"
+          variant="ghost"
           :loading="previewing"
           :disabled="!canPreview"
+          title="Re-scan the file with the current source format"
           @click="doPreview"
-        >Dry run</JvButton>
+        >↻ Re-scan</JvButton>
         <JvButton
           variant="primary"
           :loading="committing"
