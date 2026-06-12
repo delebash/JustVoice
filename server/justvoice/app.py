@@ -79,11 +79,12 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     init_db(data_dir)
 
     # Built-in effect presets (Robotic / Radio / Echo Chamber / Deep Voice)
-    # — idempotent; parity-audit fix (the is_builtin plumbing existed but
-    # nothing seeded the rows).
-    from .database.seed import seed_builtin_effect_presets
+    # + render presets (Narration / Dramatic Dialogue / Quiet Reflection /
+    # Action, task #88) — idempotent on every boot.
+    from .database.seed import seed_builtin_effect_presets, seed_builtin_render_presets
 
     seed_builtin_effect_presets()
+    seed_builtin_render_presets()
 
     state = AppState(data_dir)
     set_state(state)

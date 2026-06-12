@@ -120,3 +120,93 @@ def seed_builtin_effect_presets() -> None:
         db.rollback()
     finally:
         db.close()
+
+
+# ── Built-in render presets (task #88) ────────────────────────────────────
+#
+# The 4 delivery styles the Studio Render tab's per-chapter "Preset:"
+# dropdown was designed around (docs/decisions/discussed-features-inventory.md).
+# Global scope, NO voice binding — a preset is HOW a render sounds; WHO
+# speaks comes from the block's persona. `instruct` is consumed by engines
+# that declare supports_instruct_freeform and ignored by the rest; the
+# numeric knobs work everywhere.
+
+BUILTIN_RENDER_PRESETS: list[dict] = [
+    {
+        "name": "Narration",
+        "description": "Even, steady long-form narration — the default audiobook voice.",
+        "delivery": {
+            "speed": 1.0,
+            "pause_after": 300,
+            "instruct": "Calm, steady audiobook narration. Even pacing, clear diction, no theatrics.",
+        },
+    },
+    {
+        "name": "Dramatic Dialogue",
+        "description": "Heightened, emotional character dialogue.",
+        "delivery": {
+            "speed": 1.03,
+            "pause_before": 150,
+            "instruct": "Expressive, emotionally charged dialogue. Vary intensity with the line; let tension show.",
+        },
+    },
+    {
+        "name": "Quiet Reflection",
+        "description": "Soft, slow, introspective passages.",
+        "delivery": {
+            "speed": 0.94,
+            "gain_db": -1.0,
+            "pause_after": 500,
+            "instruct": "Soft, intimate, introspective. Slow down, lower the energy, leave room around sentences.",
+        },
+    },
+    {
+        "name": "Action",
+        "description": "Fast, urgent sequences — tight pauses, forward drive.",
+        "delivery": {
+            "speed": 1.08,
+            "pause_after": 120,
+            "instruct": "Urgent and propulsive. Quick pacing, clipped pauses, momentum from line to line.",
+        },
+    },
+]
+
+
+def seed_builtin_render_presets() -> None:
+    """Insert any missing built-in render presets (global, delivery-only).
+    Reseed-by-name on every boot, mirroring the effect-preset behavior."""
+    from . import session as _db_session
+    from .models import RenderPreset
+
+    if _db_session.SessionLocal is None:
+        return
+    db = _db_session.SessionLocal()
+    try:
+        for preset in BUILTIN_RENDER_PRESETS:
+            existing = (
+                db.query(RenderPreset)
+                .filter(
+                    RenderPreset.name == preset["name"],
+                    RenderPreset.project_id.is_(None),
+                )
+                .first()
+            )
+            if existing is not None:
+                continue
+            db.add(
+                RenderPreset(
+                    name=preset["name"],
+                    project_id=None,
+                    voice_id=None,
+                    delivery_json=json.dumps(preset["delivery"]),
+                    lexicons_json="[]",
+                    description=preset["description"],
+                    is_builtin=True,
+                )
+            )
+        db.commit()
+    except Exception as e:
+        log.warning("builtin render-preset seed failed: %s", e)
+        db.rollback()
+    finally:
+        db.close()

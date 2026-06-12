@@ -60,6 +60,15 @@ function personaName(id) {
   return personas.value.find((p) => p.id === id)?.name || id || "—";
 }
 
+function deliveryPills(p) {
+  // Compact read-only summary of the delivery payload (edit via Render
+  // Lab in v1). `instruct` is prose — truncate it.
+  return Object.entries(p.delivery || {}).map(([k, v]) => {
+    const s = String(v);
+    return `${k}: ${s.length > 38 ? s.slice(0, 38) + "…" : s}`;
+  });
+}
+
 async function createPreset() {
   // Native prompt() is banned (project_gotchas) AND returns null in the
   // Tauri webview — which is why creates silently never saved.
@@ -69,17 +78,15 @@ async function createPreset() {
     placeholder: "e.g. Dramatic Dialogue",
   }))?.trim();
   if (!name) return;
-  if (!personas.value.length) {
-    pushToast({ message: "Create a persona first.", kind: "info" });
-    return;
-  }
   try {
+    // Delivery-only by design — a preset is HOW a render sounds; the
+    // voice binding is optional and can be picked on the card after.
     await api.request("/v1/presets", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name,
-        voice_id: personas.value[0].id,
+        voice_id: null,
         delivery: {},
         effects_chain: [],
         master: null,
@@ -180,6 +187,7 @@ onMounted(refresh);
               :value="p.name"
               @change="updateField(p, 'name', $event.target.value)"
             />
+            <span v-if="p.is_builtin" class="jv-pill jv-pill--ghost" title="Shipped with JustVoice — editable like any preset">built-in</span>
             <button
               type="button"
               class="jv-btn jv-btn--danger-outline jv-btn--sm"
@@ -191,9 +199,11 @@ onMounted(refresh);
             <label>Voice</label>
             <select
               class="jv-input jv-input--sm jv-w-name"
-              :value="p.voice_id"
+              :value="p.voice_id || ''"
               @change="updateField(p, 'voice_id', $event.target.value)"
             >
+              <!-- "" = delivery-only; the server clears the binding. -->
+              <option value="">— none (delivery only) —</option>
               <option v-for="ps in personas" :key="ps.id" :value="ps.id">{{ ps.name }}</option>
             </select>
           </div>
@@ -207,6 +217,14 @@ onMounted(refresh);
             >
               <option v-for="m in MASTER_TARGETS" :key="m.value" :value="m.value">{{ m.label }}</option>
             </select>
+          </div>
+
+          <div class="jv-form-row jv-form-row--stack">
+            <span class="jv-form-row__label">Delivery</span>
+            <div class="render-presets-view__chain">
+              <span v-for="(d, i) in deliveryPills(p)" :key="i" class="jv-pill jv-pill--ghost">{{ d }}</span>
+              <span v-if="!deliveryPills(p).length" class="jv-muted">(engine defaults)</span>
+            </div>
           </div>
 
           <div class="jv-form-row jv-form-row--stack">

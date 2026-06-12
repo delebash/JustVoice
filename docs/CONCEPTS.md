@@ -155,6 +155,24 @@ collision is confusing. Lean: rename mastering presets to **targets** (ACX
 target, podcast target); "preset" stays with the render-preset library, and
 "preset voice" reads as a plain adjective.
 
+### Render preset vs Persona (user question, 2026-06-12)
+
+Both carry a delivery dict + an effects chain, which makes them LOOK
+merged. They are deliberately separate layers of the same cascade:
+
+- **Persona = WHO speaks.** Tier-2 *baseline*: "Mara always sounds like
+  this" — her voice, her default delivery, her signature effects (ghost =
+  whisper + reverb). Travels with the character across projects.
+- **Render preset = HOW this render sounds.** Tier-3 *overlay*: "this
+  chapter is Quiet Reflection" — applied on top of whoever speaks, per
+  render job. Since 2026-06-12 the `voice_id` binding is **nullable**:
+  presets are delivery-only styles by default (the 4 seeded built-ins —
+  Narration / Dramatic Dialogue / Quiet Reflection / Action — bind no
+  persona), and binding a persona to a preset is the optional case, not
+  the required one. This is what un-blurs the two concepts: forcing a
+  persona binding (the old NOT NULL) was the design flaw that made a
+  preset read as "persona plus extras".
+
 ## 8. Generic "paste some text" use → the Plain-text kind (thin alias)
 
 Question raised 2026-06-11: do we need a kind for "I just have pieces of

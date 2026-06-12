@@ -17,8 +17,8 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from ..database import RenderPreset, get_db
-from ..errors import not_found, conflict
+from ..database import Persona, RenderPreset, get_db
+from ..errors import not_found, conflict, bad_request
 
 
 router = APIRouter(tags=["presets"])
@@ -31,7 +31,10 @@ class RenderPresetResponse(BaseModel):
     id: str
     name: str
     project_id: Optional[str]
-    voice_id: str
+    # Optional persona binding — null means "delivery-only style", the
+    # block/request supplies the voice at render time.
+    voice_id: Optional[str]
+    is_builtin: bool = False
     delivery: dict
     effects_chain: list[dict]
     master: Optional[MasterTarget]
@@ -56,6 +59,7 @@ class RenderPresetResponse(BaseModel):
             name=row.name,
             project_id=row.project_id,
             voice_id=row.voice_id,
+            is_builtin=bool(row.is_builtin),
             delivery=json.loads(row.delivery_json or "{}"),
             effects_chain=chain,
             master=row.master,  # type: ignore
@@ -74,7 +78,7 @@ class RenderPresetList(BaseModel):
 
 class CreateRenderPresetRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
-    voice_id: str
+    voice_id: Optional[str] = None
     delivery: dict = Field(default_factory=dict)
     effects_chain: list[dict] = Field(default_factory=list)
     master: Optional[MasterTarget] = None
@@ -95,6 +99,19 @@ class UpdateRenderPresetRequest(BaseModel):
     seed: Optional[int] = None
     cache_scope: Optional[str] = None
     description: Optional[str] = None
+
+
+def _check_voice(voice_id: Optional[str], db: Session) -> None:
+    """Friendly 400 instead of a raw FOREIGN KEY IntegrityError 500
+    (user-hit 2026-06-12 — persona file-store/DB split-brain made the UI
+    send a persona id the personas table didn't have)."""
+    if not voice_id:
+        return
+    if not db.query(Persona).filter(Persona.id == voice_id).first():
+        raise bad_request(
+            f"voice_id {voice_id!r} is not a known persona — "
+            "leave it empty for a delivery-only preset"
+        )
 
 
 @router.get("/v1/presets", response_model=RenderPresetList)
@@ -123,10 +140,11 @@ async def create_preset(
     if existing:
         scope = f"project {body.project_id}" if body.project_id else "global"
         raise conflict(f"preset name '{body.name}' already exists in {scope}")
+    _check_voice(body.voice_id, db)
     preset = RenderPreset(
         name=body.name,
         project_id=body.project_id,
-        voice_id=body.voice_id,
+        voice_id=body.voice_id or None,
         delivery_json=json.dumps(body.delivery),
         effects_chain=json.dumps(body.effects_chain) if body.effects_chain else None,
         master=body.master,
@@ -151,7 +169,11 @@ async def update_preset(
     if body.name is not None:
         preset.name = body.name
     if body.voice_id is not None:
-        preset.voice_id = body.voice_id
+        # "" clears the binding back to delivery-only (JSON null means
+        # "field not sent" in the PATCH shape, so empty-string is the
+        # explicit clear signal).
+        _check_voice(body.voice_id, db)
+        preset.voice_id = body.voice_id or None
     if body.delivery is not None:
         preset.delivery_json = json.dumps(body.delivery)
     if body.effects_chain is not None:

@@ -103,9 +103,10 @@ async def factory_reset() -> FactoryResetResponse:
         db_session.SessionLocal = None
         db_session._db_path = None
         db_session.init_db(data_dir)
-        from ..database.seed import seed_builtin_effect_presets
+        from ..database.seed import seed_builtin_effect_presets, seed_builtin_render_presets
         if file_recreated:
             seed_builtin_effect_presets()
+            seed_builtin_render_presets()
             cleared = len(Base.metadata.tables)
         else:
             log.warning("factory reset: DB file locked — dropping tables in place instead")
@@ -125,8 +126,9 @@ async def factory_reset() -> FactoryResetResponse:
             conn.commit()
         Base.metadata.create_all(bind=bind)
         run_migrations(bind)
-        from ..database.seed import seed_builtin_effect_presets
+        from ..database.seed import seed_builtin_effect_presets, seed_builtin_render_presets
         seed_builtin_effect_presets()
+        seed_builtin_render_presets()
 
     # 2. Render cache — memory + disk.
     cache = getattr(state, "_render_cache", None)

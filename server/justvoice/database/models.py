@@ -501,7 +501,13 @@ class RenderPreset(Base):
     # After Slice 4 of the Profile-kill rollout the preset binds to a
     # Persona, not the dropped VoiceProfile. ondelete RESTRICT prevents
     # deleting a Persona that has render presets bound to it.
-    voice_id = Column(String, ForeignKey("personas.id", ondelete="RESTRICT"), nullable=False)
+    # NULLABLE (2026-06-12): a preset is a reusable delivery/effects/master
+    # STYLE — the voice binding is optional. Delivery-only presets (incl.
+    # the 4 built-ins) carry no persona; the block/request supplies the
+    # voice at render time. This is what keeps Preset distinct from
+    # Persona: persona = WHO speaks (T2 baseline), preset = HOW this
+    # render sounds (T3 overlay).
+    voice_id = Column(String, ForeignKey("personas.id", ondelete="RESTRICT"), nullable=True)
     # JSON: Delivery shape
     delivery_json = Column(Text, nullable=False, default="{}")
     # Per-preset effects chain (Slice 6) — overlays the persona's chain
@@ -514,6 +520,10 @@ class RenderPreset(Base):
     seed = Column(Integer, nullable=True)
     cache_scope = Column(String, nullable=False, default="default")
     description = Column(Text, nullable=True)
+    # Seeded by database/seed.py (Narration / Dramatic Dialogue / Quiet
+    # Reflection / Action — task #88). Built-ins are editable; the flag
+    # only drives the UI badge + reseed-if-missing on boot.
+    is_builtin = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 

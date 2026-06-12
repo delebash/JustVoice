@@ -52,6 +52,7 @@ def run_migrations(engine) -> None:
     _migrate_personas_absorb_profile_fields(engine, inspector, tables)
     _migrate_drop_voice_profile_tables(engine, inspector, tables)
     _migrate_render_presets_effects_chain(engine, inspector, tables)
+    _migrate_render_presets_voice_nullable(engine, inspector, tables)
     _migrate_blocks_extraction_telemetry(engine, inspector, tables)
     _migrate_mcp_bindings_persona(engine, inspector, tables)
 
@@ -170,6 +171,83 @@ def _migrate_render_presets_effects_chain(engine, inspector, tables: set[str]) -
     columns = _get_columns(inspector, "render_presets")
     if "effects_chain" not in columns:
         _add_column(engine, "render_presets", "effects_chain TEXT", "effects_chain")
+
+
+def _migrate_render_presets_voice_nullable(engine, inspector, tables: set[str]) -> None:
+    """Relax render_presets.voice_id NOT NULL + add is_builtin.
+
+    User-hit 2026-06-12: creating a preset 500'd with a FOREIGN KEY
+    IntegrityError because the UI had to invent a persona binding just to
+    satisfy NOT NULL. Design: a preset is a delivery/effects/master STYLE;
+    the voice binding is optional (the 4 built-in seeds carry none).
+
+    SQLite can't ALTER a column to drop NOT NULL — this is the documented
+    12-step rebuild: create new-shape table under a temp name, copy, drop
+    old (takes its indexes with it), rename, recreate the unique index.
+    """
+    if "render_presets" not in tables:
+        return
+    columns = _get_columns(inspector, "render_presets")
+    if "is_builtin" not in columns:
+        _add_column(
+            engine,
+            "render_presets",
+            "is_builtin BOOLEAN NOT NULL DEFAULT 0",
+            "is_builtin",
+        )
+    voice_col = next(
+        (c for c in inspector.get_columns("render_presets") if c["name"] == "voice_id"),
+        None,
+    )
+    if voice_col is None or voice_col.get("nullable", True):
+        return  # already new-shape (fresh DBs come from metadata.create_all)
+
+    cols = (
+        "id, name, project_id, voice_id, delivery_json, effects_chain, "
+        "master, lexicons_json, seed, cache_scope, description, is_builtin, "
+        "created_at, updated_at"
+    )
+    raw = engine.raw_connection()
+    try:
+        cur = raw.cursor()
+        cur.execute("PRAGMA foreign_keys=OFF")
+        cur.execute(
+            """
+            CREATE TABLE render_presets_new (
+                id VARCHAR NOT NULL PRIMARY KEY,
+                name VARCHAR NOT NULL,
+                project_id VARCHAR REFERENCES projects (id) ON DELETE CASCADE,
+                voice_id VARCHAR REFERENCES personas (id) ON DELETE RESTRICT,
+                delivery_json TEXT NOT NULL,
+                effects_chain TEXT,
+                master VARCHAR,
+                lexicons_json TEXT NOT NULL,
+                seed INTEGER,
+                cache_scope VARCHAR NOT NULL,
+                description TEXT,
+                is_builtin BOOLEAN NOT NULL DEFAULT 0,
+                created_at DATETIME,
+                updated_at DATETIME
+            )
+            """
+        )
+        cur.execute(
+            f"INSERT INTO render_presets_new ({cols}) SELECT {cols} FROM render_presets"
+        )
+        cur.execute("DROP TABLE render_presets")
+        cur.execute("ALTER TABLE render_presets_new RENAME TO render_presets")
+        cur.execute(
+            "CREATE UNIQUE INDEX ix_render_presets_unique_name_per_project "
+            "ON render_presets (project_id, name)"
+        )
+        cur.execute("PRAGMA foreign_keys=ON")
+        raw.commit()
+        logger.info("Rebuilt render_presets — voice_id now nullable")
+    except Exception:
+        raw.rollback()
+        raise
+    finally:
+        raw.close()
 
 
 def _migrate_drop_voice_profile_tables(engine, inspector, tables: set[str]) -> None:

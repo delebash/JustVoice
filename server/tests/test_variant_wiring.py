@@ -114,3 +114,87 @@ def test_new_engine_kinds_discovered() -> None:
     kinds = {k: m.kind for k, m in discover_engines().items()}
     assert kinds.get("whisper") == "stt"
     assert kinds.get("qwen3-llm") == "llm"
+
+
+# ─── current_variant_id recording (user-hit 2026-06-12) ────────────────
+# Loading via the Voices ask-before-load path passes variant=None; the
+# manager must record the RESOLVED default variant id, never None/"auto",
+# or the Engines page can't tell which model row is loaded (both rows
+# said "Load model" while the info box said loaded).
+
+
+class _FakeResp:
+    def __init__(self, payload):
+        self.status_code = 200
+        self._payload = payload
+        self.text = ""
+
+    def json(self):
+        return self._payload
+
+
+class _FakeProc:
+    def __init__(self, manifest):
+        self.manifest = manifest
+
+    def spawn(self):
+        pass
+
+    def is_alive(self):
+        return True
+
+    def terminate(self):
+        pass
+
+    def post(self, path, json=None):
+        return _FakeResp({"ok": True})
+
+    def get(self, path):
+        return _FakeResp({"voices": []})
+
+
+class _FakeManifest:
+    id = "fake-tts"
+    kind = "tts"
+    isolation = "shared"
+    is_installed = True
+    default_variant_id = "fake-default-v1"
+
+
+def _fake_manager(monkeypatch):
+    from justvoice.engines import manager as mgr_mod
+
+    monkeypatch.setattr(mgr_mod, "EngineProcess", _FakeProc)
+    monkeypatch.setattr(mgr_mod, "shared_venv_exists", lambda: True)
+    mgr = mgr_mod.EngineManager()
+    mgr._manifests["fake-tts"] = _FakeManifest()
+    return mgr
+
+
+def test_load_without_variant_records_default(monkeypatch) -> None:
+    mgr = _fake_manager(monkeypatch)
+    mgr.load("fake-tts", device="auto")  # the voice_preview_api call shape
+    assert mgr.current_variant_id("fake-tts") == "fake-default-v1"
+
+
+def test_load_with_auto_variant_records_default(monkeypatch) -> None:
+    mgr = _fake_manager(monkeypatch)
+    mgr.load("fake-tts", device="auto", variant="auto")
+    assert mgr.current_variant_id("fake-tts") == "fake-default-v1"
+
+
+def test_load_with_explicit_variant_records_it(monkeypatch) -> None:
+    mgr = _fake_manager(monkeypatch)
+    mgr.load("fake-tts", device="auto", variant="fake-other-v2")
+    assert mgr.current_variant_id("fake-tts") == "fake-other-v2"
+
+
+def test_already_loaded_reload_keeps_resolved_variant(monkeypatch) -> None:
+    mgr = _fake_manager(monkeypatch)
+    mgr.load("fake-tts", device="auto", variant="fake-other-v2")
+    # Re-load with no variant (Voices preview path) must NOT clobber the
+    # explicit variant back to default, and must never store None.
+    mgr.load("fake-tts", device="auto")
+    assert mgr.current_variant_id("fake-tts") == "fake-other-v2"
+    mgr.load("fake-tts", device="auto", variant="fake-default-v1")
+    assert mgr.current_variant_id("fake-tts") == "fake-default-v1"
