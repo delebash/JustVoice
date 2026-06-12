@@ -75,5 +75,8 @@ MODELS = [
 # dropdown can dispatch — there's nothing to choose between, but the user
 # needs SOMETHING to click. Voice cloning supplements this via stored voices.
 STATIC_VOICES = [
-    {"id": "default", "name": "Dia (default)", "language": "en", "gender": ""},
+    # Named so it reads as a VOICE — "Dia (default)" made users think Dia
+    # was the default engine (user-hit 2026-06-12). The id stays
+    # "default" so existing persona/voice references keep working.
+    {"id": "default", "name": "Dia stock voice", "language": "en", "gender": ""},
 ]

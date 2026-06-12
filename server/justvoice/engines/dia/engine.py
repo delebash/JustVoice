@@ -76,7 +76,9 @@ class Dia(EmbeddedEngine):
         # Single default speaker. Multi-speaker happens via [S1]/[S2] tags
         # the user writes inside the text. Voice cloning is supported via
         # the host's stored-voice flow (audio_prompt_path).
-        return [PresetVoice(id="default", name="Dia (default)", language="en", gender="")]
+        # Name kept in lock-step with manifest STATIC_VOICES ("Dia stock
+        # voice" — the old "Dia (default)" read as a default-engine setting).
+        return [PresetVoice(id="default", name="Dia stock voice", language="en", gender="")]
 
     def synth(self, req: SynthRequest) -> SynthOutput:
         if self.model is None or self.processor is None:

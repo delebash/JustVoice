@@ -126,12 +126,13 @@ async function createBlank() {
   });
   if (!name) return;
   try {
-    // voice_id is optional server-side — the character can exist before
-    // a voice is cast (empty library used to dead-end creation here).
+    // No silent voice preselect — picking catalog[0] made "Dia (default)"
+    // look like a default setting (user-hit 2026-06-12). The editor's
+    // "— no voice yet (cast later) —" makes the choice explicit.
     const created = await api.request("/v1/personas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, voice_id: voices.value[0]?.id ?? null, default_delivery: {} }),
+      body: JSON.stringify({ name, voice_id: null, default_delivery: {} }),
     });
     await loadAll();
     selectedId.value = created.id;
@@ -283,7 +284,7 @@ function deliveryChipValue(key, value) {
 function listMeta(p) {
   const bits = [];
   const v = voices.value.find((x) => x.id === p.voice_id);
-  if (v?.name) bits.push(v.name);
+  bits.push(v?.name || (p.voice_id ? p.voice_id : "no voice yet"));
   if (p.bio) bits.push(p.bio.slice(0, 64) + (p.bio.length > 64 ? "…" : ""));
   return bits.join(" · ") || "—";
 }

@@ -140,6 +140,25 @@ const engineFilterOptions = computed(() => {
 
 const hiddenCount = computed(() => (voices.value || []).filter((v) => hiddenIds.value.has(v.id)).length);
 
+// Currently loaded TTS engine — surfaced in the toolbar (user ask: the
+// Voices page should say which engine previews will hit).
+const loadedTtsEngine = computed(() =>
+  (engines.value || []).find((e) => e.status === "loaded" && (e.kind === "tts" || !e.kind)) || null
+);
+
+// LOCAL vs ONLINE badge per voice (user concern: picking voices without
+// realizing some load big local engines and some bill an online API).
+const engineBackends = computed(() => {
+  const m = {};
+  for (const e of engines.value || []) m[e.id] = e.backend || "";
+  return m;
+});
+function voiceLocality(v) {
+  const backend = engineBackends.value[v.engine];
+  if (backend === undefined) return null; // orphan — already tagged
+  return backend === "managed" ? "local" : "online";
+}
+
 const filteredVoices = computed(() => {
   let list = voices.value || [];
   if (!showHidden.value) list = list.filter((v) => !hiddenIds.value.has(v.id));
@@ -538,9 +557,17 @@ function blendWithVoice() {
       :model-value="engineFilter"
       :options="engineFilterOptions"
       title="Show only voices from one engine"
-      style="min-width: 170px"
+      width="id"
       @update:model-value="setEngineFilter"
     />
+    <a
+      class="jv-pill"
+      :class="loadedTtsEngine ? 'jv-pill--green' : 'jv-pill--ghost'"
+      href="#engines"
+      :title="loadedTtsEngine
+        ? `${loadedTtsEngine.name || loadedTtsEngine.id} is loaded — previews play instantly. Click to manage engines.`
+        : 'No TTS engine loaded — the first preview will offer to load one. Click to manage engines.'"
+    >{{ loadedTtsEngine ? `● ${loadedTtsEngine.name || loadedTtsEngine.id} loaded` : "○ no engine loaded" }}</a>
     <button
       v-if="hiddenCount"
       type="button"
@@ -634,7 +661,19 @@ function blendWithVoice() {
             >{{ (autoDetectGender(v) || "?").charAt(0).toUpperCase() }}</button>
           </td>
           <td><JvTag :variant="voiceTypeVariant(v.source)" :label="v.source" /></td>
-          <td><span class="jv-mono jv-muted">{{ v.engine }}</span></td>
+          <td>
+            <span class="jv-mono jv-muted">{{ v.engine }}</span>
+            <span
+              v-if="voiceLocality(v) === 'local'"
+              class="voices-view__locality voices-view__locality--local"
+              title="Runs on this machine — no usage cost; loads the engine into RAM/VRAM on first use"
+            >LOCAL</span>
+            <span
+              v-else-if="voiceLocality(v) === 'online'"
+              class="voices-view__locality voices-view__locality--online"
+              title="External provider — needs network and may bill per character/minute"
+            >ONLINE · METERED</span>
+          </td>
           <td class="jv-muted">{{ v.language || "en" }}</td>
           <td>{{ v.sample_count ?? (v.source === "preset" ? "—" : 0) }}</td>
           <td>{{ v.generation_count ?? 0 }}</td>
@@ -946,6 +985,23 @@ function blendWithVoice() {
   gap: 12px;
   flex-wrap: wrap;
   margin-bottom: 12px;
+}
+.voices-view__locality {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 6px;
+  vertical-align: 1px;
+}
+.voices-view__locality--local {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+}
+.voices-view__locality--online {
+  color: var(--warn-ink);
+  background: var(--warn-bg);
 }
 .voices-view__chips {
   display: inline-flex;
