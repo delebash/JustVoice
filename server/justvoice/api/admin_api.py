@@ -85,6 +85,7 @@ async def factory_reset() -> FactoryResetResponse:
     # tables when the DB isn't the module's file-backed one (tests).
     cleared = 0
     db_path = db_session._db_path
+    file_recreated = False
     if db_path is not None and db_session.engine is not None:
         db_session.engine.dispose()
         data_dir = db_path.parent
@@ -94,14 +95,21 @@ async def factory_reset() -> FactoryResetResponse:
                 p.unlink(missing_ok=True)
             except OSError as e:
                 log.warning("factory reset: could not delete %s: %s", p, e)
+        # Windows can hold the file open across dispose() — only count
+        # this path as done when the file is actually gone; otherwise
+        # fall through to dropping tables in place.
+        file_recreated = not db_path.exists()
         db_session.engine = None
         db_session.SessionLocal = None
         db_session._db_path = None
         db_session.init_db(data_dir)
         from ..database.seed import seed_builtin_effect_presets
-        seed_builtin_effect_presets()
-        cleared = len(Base.metadata.sorted_tables)
-    elif db_session.SessionLocal is not None:
+        if file_recreated:
+            seed_builtin_effect_presets()
+            cleared = len(Base.metadata.sorted_tables)
+        else:
+            log.warning("factory reset: DB file locked — dropping tables in place instead")
+    if not file_recreated and db_session.SessionLocal is not None:
         factory = db_session.SessionLocal
         _s = factory()
         try:
@@ -117,6 +125,8 @@ async def factory_reset() -> FactoryResetResponse:
             conn.commit()
         Base.metadata.create_all(bind=bind)
         run_migrations(bind)
+        from ..database.seed import seed_builtin_effect_presets
+        seed_builtin_effect_presets()
 
     # 2. Render cache — memory + disk.
     cache = getattr(state, "_render_cache", None)
