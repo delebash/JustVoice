@@ -170,6 +170,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(capture_readiness_api.router)
     app.include_router(captures_api.router)
     app.include_router(admin_api.router)
+    admin_api.install_log_ring()
     app.include_router(sse_streams_api.router)
     app.include_router(projects_api.router)
 

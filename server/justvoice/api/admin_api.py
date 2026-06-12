@@ -24,6 +24,47 @@ log = logging.getLogger(__name__)
 router = APIRouter(tags=["admin"])
 
 
+# ── Log ring (Settings → Logs preview) ───────────────────────────────
+# The server logs to stdout; nothing on disk to tail. A bounded ring
+# handler on the root logger keeps the last N lines for the UI.
+class _RingHandler(logging.Handler):
+    def __init__(self, capacity: int = 500):
+        super().__init__()
+        self.capacity = capacity
+        self.lines: list[str] = []
+        self.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            self.lines.append(self.format(record))
+            if len(self.lines) > self.capacity:
+                del self.lines[: len(self.lines) - self.capacity]
+        except Exception:  # noqa: BLE001 — logging must never raise
+            pass
+
+
+_ring = _RingHandler()
+
+
+def install_log_ring() -> None:
+    """Idempotent — called from create_app()."""
+    root = logging.getLogger()
+    if _ring not in root.handlers:
+        root.addHandler(_ring)
+
+
+class LogTailResponse(BaseModel):
+    text: str
+    lines: int
+
+
+@router.get("/v1/logs/tail", response_model=LogTailResponse)
+async def logs_tail(lines: int = 80) -> LogTailResponse:
+    lines = max(1, min(lines, _ring.capacity))
+    tail = _ring.lines[-lines:]
+    return LogTailResponse(text="\n".join(tail), lines=len(tail))
+
+
 class FactoryResetResponse(BaseModel):
     reset: bool
     tables_cleared: int

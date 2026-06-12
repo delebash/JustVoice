@@ -137,7 +137,7 @@ async function pruneUnfavorited() {
 
 async function deleteEntry(id) {
   try {
-    await api.request(`/v1/cache/entries/${encodeURIComponent(id)}`, { method: "DELETE" });
+    await api.request(`/v1/generations/${encodeURIComponent(id)}`, { method: "DELETE" });
     recent.value = recent.value.filter((r) => r.id !== id);
     await loadStats();
   } catch (e) {

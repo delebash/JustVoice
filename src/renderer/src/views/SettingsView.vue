@@ -762,7 +762,7 @@ async function clearProjectCorrections(projectId) {
 // ── GPU info (task #91) ──────────────────────────────────────────────
 const gpuInfo = ref(null);
 async function loadGpuInfo() {
-  const r = await api.safeRequest("/v1/system", null);
+  const r = await api.safeRequest("/v1/system/info", null);
   if (!r) return;
   const runtimes = Object.entries(r.runtimes || {})
     .filter(([, ok]) => ok)
@@ -771,7 +771,7 @@ async function loadGpuInfo() {
   gpuInfo.value = { active_backend: active, runtimes, gpus: r.gpus || [] };
 }
 
-// VRAM math for GpuInfoCard. used/total come from /v1/system; both null means
+// VRAM math for GpuInfoCard. used/total come from /v1/system/info; both null means
 // no GPU detected or driver query failed — fall back to "—" in the UI.
 const gpuVramTotalGB = computed(() => {
   const mb = gpuInfo.value?.gpus?.[0]?.vram_mb;
