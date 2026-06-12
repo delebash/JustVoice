@@ -80,8 +80,8 @@ const instructStatus = computed(() => {
   const eng = engines.value.find((e) => e.id === voice.engine);
   const supports = (eng?.capabilities || []).includes("instruct_field");
   return supports
-    ? { ok: true, text: `✓ ${eng?.name || voice.engine} reads this as its instruct prompt at render time.` }
-    : { ok: false, text: `✗ ${eng?.name || voice.engine} has no instruct field — this text only guides Smart-assign, not the audio.` };
+    ? { ok: true, text: `✓ ${eng?.name || voice.engine} takes direction — it performs this text when rendering.` }
+    : { ok: false, text: `✗ ${eng?.name || voice.engine} doesn't take direction — this text only guides Smart-assign, not the audio.` };
 });
 
 async function loadAll() {

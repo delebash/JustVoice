@@ -1607,8 +1607,8 @@ watch(selectedProjectId, (id) => {
                     <span
                       v-if="instructEngineIds.has(v.engine)"
                       class="studio__vrow-instruct"
-                      title="This engine reads the persona's Personality text as a delivery instruction at render time"
-                    >instruct</span>
+                      title="This engine performs direction — it reads the persona's Personality text and per-line ＋ direction notes when rendering"
+                    >takes direction</span>
                     <span
                       v-if="voiceLocality(v) === 'local'"
                       class="jv-locality jv-locality--local"
