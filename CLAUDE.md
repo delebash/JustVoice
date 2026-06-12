@@ -140,6 +140,13 @@ Operating tempo, mandatory:
   Append them to the queue plan doc and keep working the current item.
   Each unplanned jump costs real money and time. Only an explicit
   "do this one now" breaks queue order.
+- **The user's defect list is the trigger, not the scope** (user catch
+  2026-06-12: Speaker Lab redesign shipped with the Cast pane still
+  floating unstyled because only the *named* defects got redesigned).
+  When an item says "redesign/fix view X", done means the WHOLE view
+  passes the RULE #1 conformance checklist — run the checklist against
+  your own output before calling the item complete. If the user has to
+  point at a second spot on the same surface, the item wasn't done.
 
 **Failure modes from prior sessions** (signals you missed the relevant memory): proposing Rust anywhere, Docker, asking permission, using native dialogs, hallucinating file paths, re-investigating decisions already made, building a UI element without naming its precedent (RULE #1), batching/skimming through a punch list instead of single-item full reads (RULE #2). If you catch yourself about to do any of these, that's the cue to load the matching memory file.
 
