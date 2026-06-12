@@ -880,9 +880,8 @@ onMounted(() => {
 
 <style scoped>
 .books {
-  display: grid;
-  grid-template-columns: 360px 1fr;
-  height: 100%;
+  display: flex;
+  flex-direction: column;
   gap: 0;
 }
 
@@ -899,10 +898,7 @@ onMounted(() => {
   gap: 8px;
 }
 
-.books__detail {
-  padding: 24px 32px;
-  overflow-y: auto;
-}
+.books__detail { min-width: 0; }
 
 .books__detail-empty {
   padding: 40px;
