@@ -333,6 +333,10 @@ async function regenerateBlock(block) {
   }
 }
 
+function goTimeline() {
+  window.location.hash = "#stories";
+}
+
 // ── Inline block text editing (user ask 2026-06-12: edit the chapter
 // in place — open/edit was read-only). PATCH /v1/blocks/{id} carries
 // text; the render cache keys on text, so only the edited line
@@ -565,7 +569,10 @@ async function loadChapterList() {
       const res = await projectsService.listBlocks(sc.id);
       const blocks = res?.blocks || res || [];
       const words = blocks.reduce((n, b) => n + String(b.text || "").split(/\s+/).filter(Boolean).length, 0);
-      const attributed = blocks.length > 0 && blocks.every((b) => !!b.persona_id);
+      // Marker blocks (podcast music/ad direction lines) are
+      // legitimately speaker-less — attribution only judges speech.
+      const speech = blocks.filter((b) => !b.metadata?.marker);
+      const attributed = speech.length > 0 && speech.every((b) => !!b.persona_id);
       return [sc.id, { words, blocks: blocks.length, attributed }];
     } catch { return [sc.id, { words: 0, blocks: 0, attributed: false }]; }
   }));
@@ -928,6 +935,17 @@ async function savePastedText() {
     <!-- ── Back to the chapter list (detail mode) ─────────────────────── -->
     <div v-if="viewMode === 'detail' && selectedProjectId" class="chapter-view__backbar">
       <JvButton variant="ghost" size="sm" :label="`← All ${copy.chapter.plural.toLowerCase()}`" @click="backToList" />
+      <span class="jv-spacer" />
+      <!-- Podcast journey (mock): rendered segments land on the Timeline
+           — music bed + stingers get arranged there. -->
+      <JvButton
+        v-if="selectedProjectRec?.project_type === 'podcast'"
+        variant="secondary"
+        size="sm"
+        label="Open Timeline ➜"
+        title="Arrange rendered segments with music beds and stingers on the multi-track Timeline"
+        @click="goTimeline"
+      />
     </div>
 
     <!-- ── No blocks yet ──────────────────────────────────────────────── -->
@@ -957,7 +975,13 @@ async function savePastedText() {
         <div class="chapter-view__block-header">
           <span class="chapter-view__block-num">{{ block.position + 1 }}</span>
           <span v-if="block.persona_id" class="jv-pill jv-pill--green">{{ personaName(block.persona_id) }}</span>
+          <span
+            v-else-if="block.metadata?.marker"
+            class="jv-pill jv-pill--ghost"
+            title="Music / ad direction line from the import — no speaker, renders as silence or gets replaced on the Timeline"
+          >♪ marker</span>
           <button
+            v-if="!block.metadata?.marker"
             type="button"
             class="jv-pill chapter__direction"
             :class="block.direction ? 'jv-pill--warn' : 'jv-pill--ghost'"
@@ -980,7 +1004,7 @@ async function savePastedText() {
         </div>
 
         <!-- Block text — read view, or in-place editor. -->
-        <p v-if="editingBlockId !== block.id" class="chapter-view__block-text"><template v-for="(part, pi) in tagParts(block.text)" :key="pi"><span v-if="part.tag" class="chapter__tag">{{ part.text }}</span><template v-else>{{ part.text }}</template></template></p>
+        <p v-if="editingBlockId !== block.id" class="chapter-view__block-text" :class="{ 'chapter-view__block-text--marker': block.metadata?.marker }"><template v-for="(part, pi) in tagParts(block.text)" :key="pi"><span v-if="part.tag" class="chapter__tag">{{ part.text }}</span><template v-else>{{ part.text }}</template></template></p>
         <div v-else class="chapter-view__block-edit">
           <textarea v-model="editingText" class="jv-input jv-input--full" rows="4" @keydown.escape="editingBlockId = null" />
           <div class="chapter-view__block-edit-actions">
@@ -1290,6 +1314,12 @@ async function savePastedText() {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   min-width: 20px;
+}
+
+.chapter-view__block-text--marker {
+  color: var(--ink-3);
+  font-style: italic;
+  background: transparent;
 }
 
 .chapter-view__block-edit { display: flex; flex-direction: column; gap: 8px; }
