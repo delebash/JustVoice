@@ -102,3 +102,51 @@ def test_factory_reset_clears_file_stores(tmp_db, tmp_path, monkeypatch):  # noq
     # In-memory store was re-instantiated empty AND the files are gone.
     assert state.personas.list() == []
     assert not list((data_dir / "personas").glob("*.json"))
+
+
+def test_factory_reset_unloads_engines(tmp_db, monkeypatch):  # noqa: F811
+    """A fresh install has no engine resident — reset must unload the
+    managed slots and drop runtime-registered external providers
+    (user-hit 2026-06-12: engine still showed loaded after reset)."""
+    from justvoice.engines import manager as manager_mod
+    from justvoice.engines.registry import EngineRegistry
+
+    session_factory, _engine = tmp_db
+    monkeypatch.setattr(admin_api.db_session, "SessionLocal", session_factory)
+    monkeypatch.setattr(admin_api.db_session, "_db_path", None)
+    monkeypatch.setattr(admin_api.db_session, "engine", None)
+
+    unloaded = []
+
+    class _StubManager:
+        def unload(self, kind=None):
+            unloaded.append(kind)
+            return {"previous_engine": "kokoro"}
+
+    monkeypatch.setattr(manager_mod, "get_manager", lambda: _StubManager())
+
+    class _FakeBackend:
+        meta = SimpleNamespace(engine_id="ext-tts", display_name="Ext", backend="openai")
+        unload_called = False
+
+        def ready(self):
+            return True
+
+        def unload(self):
+            self.unload_called = True
+
+    backend = _FakeBackend()
+    registry = EngineRegistry()
+    registry.register(backend)
+    registry.set_current("ext-tts")
+
+    state = SimpleNamespace(settings=_SettingsStore(), engines=registry)
+    monkeypatch.setattr(admin_api, "get_state", lambda: state)
+
+    asyncio.run(admin_api.factory_reset())
+
+    assert unloaded == [None]  # all managed slots unloaded
+    assert backend.unload_called
+    assert state.engines is not registry  # fresh, empty registry
+    assert state.engines.registered_ids() == []
+    assert state.engines.current() is None

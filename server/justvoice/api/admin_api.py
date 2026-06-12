@@ -174,7 +174,32 @@ async def factory_reset() -> FactoryResetResponse:
         state.projects = ProjectStore(state_data_dir)
         state.training = TrainingRegistry(state_data_dir)
 
-    # 3. Render cache — memory + disk.
+    # 3. Engines — a fresh install has nothing resident. Unload every
+    # managed engine slot (also clears the recorded variants) and drop
+    # runtime-registered external providers; their config just got reset
+    # so a fresh registry matches what the next boot would build.
+    # Downloaded model files stay (multi-GB, by design).
+    try:
+        from ..engines.manager import get_manager
+
+        get_manager().unload()
+    except Exception as e:  # noqa: BLE001 — reset keeps going
+        log.warning("factory reset: managed-engine unload failed: %s", e)
+    try:
+        from ..engines.registry import EngineRegistry
+
+        registry = getattr(state, "engines", None)
+        if registry is not None:
+            for engine in registry.all():
+                try:
+                    engine.unload()
+                except Exception:  # noqa: BLE001 — best-effort per engine
+                    pass
+            state.engines = EngineRegistry()
+    except Exception as e:  # noqa: BLE001 — reset keeps going
+        log.warning("factory reset: engine-registry reset failed: %s", e)
+
+    # 4. Render cache — memory + disk.
     cache = getattr(state, "_render_cache", None)
     if cache is not None:
         try:
@@ -182,7 +207,7 @@ async def factory_reset() -> FactoryResetResponse:
         except Exception as e:
             log.warning("factory reset: cache clear failed: %s", e)
 
-    # 4. Settings to defaults; the live server section survives so the
+    # 5. Settings to defaults; the live server section survives so the
     #    instance stays reachable on its current host/port.
     current = state.settings.get()
     state.settings.set(Settings(server=current.server))
