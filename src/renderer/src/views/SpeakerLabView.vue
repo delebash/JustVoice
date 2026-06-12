@@ -55,7 +55,6 @@ function defaultSystemFor(tierName) {
   const spec = tierSpec(tierName);
   return extractionConfig.value?.system_prompts?.[spec?.system_key || "guided"] || "";
 }
-function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
 const resolvedProviderName = computed(() => {
   const id = extractionConfig.value?.resolved_provider_id;
@@ -72,7 +71,7 @@ function effectiveDefaultModel(col) {
     || "";
 }
 function effectiveTier(col) {
-  return col.tier || col.autoTier || extractionConfig.value?.resolved_tier || "guided";
+  return col.tier || extractionConfig.value?.resolved_tier || "guided";
 }
 function systemEdited(col) {
   return col.systemPrompt.trim() !== defaultSystemFor(effectiveTier(col)).trim();
@@ -91,18 +90,24 @@ function applyTier(col, tierName) {
   if (spec) col.confidenceFloor = spec.confidence_floor;
 }
 function setTier(col, tierName) {
-  col.tier = tierName; // "" = auto-classify from the model
-  if (tierName) applyTier(col, tierName);
-  else reclassify(col);
+  // User click = explicit override; the classifier stops moving the
+  // selection for this column (JustWrite grammar: no "Auto" button —
+  // auto-detection just SELECTS a pill, clicking another overrides).
+  col.tier = tierName;
+  col.tierSource = "user";
+  applyTier(col, tierName);
 }
 
 // Auto tier: the server's classifier is the source of truth — ask it
 // for the column's effective model and reflect its pick.
 async function reclassify(col) {
+  // Only moves the selection while the tier is still auto-derived;
+  // a user-picked tier stays put across model changes.
+  if (col.tierSource === "user") return;
   const model = col.model.trim() || effectiveDefaultModel(col);
   if (!model) {
-    col.autoTier = extractionConfig.value?.resolved_tier || null;
-    if (!col.tier) applyTier(col, col.autoTier);
+    col.tier = extractionConfig.value?.resolved_tier || "guided";
+    applyTier(col, col.tier);
     return;
   }
   try {
@@ -111,8 +116,8 @@ async function reclassify(col) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ model }),
     });
-    col.autoTier = r?.tier || null;
-    if (!col.tier && r) {
+    if (r?.tier) {
+      col.tier = r.tier;
       col.systemPrompt = extractionConfig.value?.system_prompts?.[r.system_key] || col.systemPrompt;
       col.confidenceFloor = r.confidence_floor;
     }
@@ -138,11 +143,11 @@ function resetColumn(col) {
   col.providerId = "";
   col.model = "";
   col.temperature = "";
-  col.tier = "";
+  col.tierSource = "auto";
+  col.tier = extractionConfig.value?.resolved_tier || "guided";
   col.presetName = "";
   col.userPrompt = extractionConfig.value?.user_template || "";
-  col.autoTier = extractionConfig.value?.resolved_tier || null;
-  applyTier(col, "");
+  applyTier(col, col.tier);
 }
 
 const text = ref("");
@@ -191,8 +196,8 @@ function newColumn() {
   const tag = String.fromCharCode(65 + columns.length);
   return {
     label: `Run ${tag}`,
-    tier: "",            // "" = auto-classify from the model
-    autoTier: null,      // server classifier's pick when tier = auto
+    tier: "guided",      // concrete; the classifier moves it while auto
+    tierSource: "auto",  // "auto" (classifier-driven) | "user" (override)
     providerId: "",      // "" = the feature's resolved route
     model: "",           // "" = the provider's default model
     temperature: "",     // "" = pipeline default (0.2)
@@ -340,6 +345,7 @@ async function runColumn(col) {
 function columnConfig(col) {
   return {
     tier: col.tier,
+    tierSource: col.tierSource,
     providerId: col.providerId,
     model: col.model,
     temperature: col.temperature,
@@ -380,10 +386,14 @@ function loadPreset(col, name) {
   if (!p) return;
   Object.assign(col, p.config);
   // Older presets predate the prompt-truth fields — fill the gaps so
-  // the textareas never show stale emptiness.
+  // the textareas never show stale emptiness; tier:"" (old auto) goes
+  // back to classifier-driven.
+  if (!col.tier) { col.tierSource = "auto"; col.tier = extractionConfig.value?.resolved_tier || "guided"; }
+  if (!col.tierSource) col.tierSource = "user";
   if (!col.userPrompt) col.userPrompt = extractionConfig.value?.user_template || "";
   if (!col.systemPrompt) applyTier(col, col.tier);
   if (col.providerId) loadModelsFor(col.providerId);
+  reclassify(col);
 }
 
 function deletePreset(col) {
@@ -505,7 +515,7 @@ onMounted(async () => {
       <div class="jv-pane-card__h">
         <span class="jv-eyebrow">Input passage</span>
         <span class="jv-spacer" />
-        <span class="jv-muted splab__stats">{{ inputStats || "Paste a few chapters, or load one from a project." }}</span>
+        <span v-if="inputStats" class="jv-muted splab__stats">{{ inputStats }}</span>
       </div>
       <div class="splab__input-toolbar">
         <select v-model="selectedProjectId" class="jv-input splab__input-select" title="Optional — load a chapter from a project" @change="loadScenes">
@@ -530,8 +540,7 @@ onMounted(async () => {
     <section class="jv-card jv-pane-card">
       <div class="jv-pane-card__h">
         <span class="jv-eyebrow">Cast</span>
-        <span class="jv-spacer" />
-        <span class="jv-muted splab__stats">{{ characters.length ? `${characters.length} character${characters.length === 1 ? "" : "s"}` : "empty" }}</span>
+        <span class="jv-muted splab__stats">· {{ characters.length ? `${characters.length} character${characters.length === 1 ? "" : "s"}` : "empty" }}</span>
       </div>
       <p class="jv-muted jv-pane-card__hint">
         The model only attributes dialogue to ids on this list (rule 2 of the system prompt below) —
@@ -547,7 +556,7 @@ onMounted(async () => {
       <div class="splab__add-cast">
         <input v-model="newCharName" class="jv-input jv-w-name" placeholder="Character name" @keydown.enter="addCharacter" />
         <input v-model="newCharAliases" class="jv-input jv-w-name" placeholder="Aliases (comma-separated, optional)" @keydown.enter="addCharacter" />
-        <JvButton variant="ghost" size="sm" label="＋ Add" @click="addCharacter" />
+        <JvButton variant="secondary" size="sm" label="＋ Add" @click="addCharacter" />
       </div>
     </section>
 
@@ -560,7 +569,6 @@ onMounted(async () => {
         <article v-for="(col, i) in columns" :key="i" class="jv-card splab__column">
           <header class="splab__column-h">
             <input v-model="col.label" class="jv-input jv-input--sm splab__column-name" title="Run name" />
-            <span class="jv-spacer" />
             <JvButton variant="primary" size="sm" :loading="col.busy" :disabled="col.busy" label="▶ Run" @click="runColumn(col)" />
             <button v-if="columns.length > 1" type="button" class="jv-btn jv-btn--ghost jv-btn--sm" title="Remove this column" @click="removeColumn(i)">🗑 Delete column</button>
           </header>
@@ -569,7 +577,7 @@ onMounted(async () => {
                PRODUCTION badge, promote/save actions on one line. -->
           <div class="splab__presets">
             <span class="jv-eyebrow">Presets</span>
-            <select :value="col.presetName" class="jv-input jv-input--sm jv-w-name" title="Load a saved configuration" @change="loadPreset(col, $event.target.value)">
+            <select :value="col.presetName" class="jv-input jv-input--sm splab__preset-select" title="Load a saved configuration" @change="loadPreset(col, $event.target.value)">
               <option value="">— defaults —</option>
               <option v-for="p in presets" :key="p.name" :value="p.name">{{ p.name }}</option>
             </select>
@@ -579,7 +587,6 @@ onMounted(async () => {
               class="jv-pill jv-pill--green splab__prod"
               :title="`Studio · Script currently runs '${productionCfg.name}' (${productionCfg.model || 'route default'}). Revert in Settings → AI features.`"
             >✓ PRODUCTION · {{ productionCfg.name }}</span>
-            <span class="jv-spacer" />
             <JvButton variant="secondary" size="sm" label="✓ Use as production" title="Freeze this column — model AND prompts — as Studio · Script's attribution method" @click="useAsProduction(col)" />
             <JvButton variant="secondary" size="sm" label="＋ Save as" title="Save this column's tweaks as a named preset" @click="savePreset(col)" />
           </div>
@@ -600,7 +607,7 @@ onMounted(async () => {
           <div class="splab__knobrow">
             <select
               v-model="col.providerId"
-              class="jv-input jv-input--sm jv-w-name"
+              class="jv-input jv-input--sm splab__route-half"
               title="Route this run through a specific LLM provider"
               @change="onProviderChange(col)"
             >
@@ -610,7 +617,7 @@ onMounted(async () => {
             <input
               v-model="col.model"
               :list="`splab-models-${i}`"
-              class="jv-input jv-input--sm jv-w-name splab__model"
+              class="jv-input jv-input--sm splab__route-half splab__model"
               :placeholder="`(provider default — ${effectiveDefaultModel(col) || 'none'})`"
               title="Override the provider's default model; the tier re-derives from it"
               @change="reclassify(col)"
@@ -622,7 +629,6 @@ onMounted(async () => {
               <span>temp</span>
               <input v-model="col.temperature" class="jv-input jv-input--sm splab__temp" placeholder="0.2" title="Sampling temperature" />
             </label>
-            <span class="jv-spacer" />
             <JvButton variant="ghost" size="sm" label="↺ Reset" title="Back to the route's resolved configuration — provider, model, tier, prompts, floor" @click="resetColumn(col)" />
           </div>
 
@@ -630,13 +636,6 @@ onMounted(async () => {
           <div class="splab__column-knobs">
             <span class="jv-eyebrow">Tier</span>
             <div class="splab__tierseg">
-              <button
-                type="button"
-                class="jv-pill"
-                :class="col.tier === '' ? 'jv-pill--solid' : 'jv-pill--ghost'"
-                title="Classify from the selected model"
-                @click="setTier(col, '')"
-              >Auto{{ col.tier === '' && col.autoTier ? ` → ${cap(col.autoTier)}` : '' }}</button>
               <button
                 v-for="t in extractionConfig?.tiers || []"
                 :key="t.name"
@@ -647,6 +646,7 @@ onMounted(async () => {
                 @click="setTier(col, t.name)"
               >{{ t.label }}</button>
             </div>
+            <span class="jv-muted splab__tiersrc">{{ col.tierSource === 'auto' ? 'auto-picked from the model' : 'your override' }}</span>
             <span class="splab__knob" title="Pre-LLM: 'Tom said' anchors the adjacent quote at confidence 1.0">
               <JvToggle v-model="col.propagate" aria-label="Anchor propagation" />
               <span>Anchor propagation (pre-LLM)</span>
@@ -748,11 +748,14 @@ onMounted(async () => {
 .splab__columns--single { grid-template-columns: 1fr; }
 .splab__column { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
 .splab__column-h { display: flex; align-items: center; gap: 8px; }
-.splab__column-name { max-width: 150px; font-weight: 600; }
+.splab__column-name { flex: 1; min-width: 120px; font-weight: 600; }
 
 
 .splab__presets { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .splab__prod { font-size: 10px; white-space: nowrap; }
+.splab__preset-select { flex: 1; min-width: 200px; }
+.splab__route-half { flex: 1; min-width: 220px; }
+.splab__tiersrc { font-size: 11px; }
 .splab__pipeline-note { font-size: 12px; line-height: 1.6; }
 .splab__knobrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .splab__model { font-family: var(--font-mono); font-size: 12px; }
