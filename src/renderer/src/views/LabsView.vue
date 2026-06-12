@@ -1,7 +1,8 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!--
   LabsView — the Tools lane collapsed into one Settings-style tabbed
-  view (user decision 2026-06-12): Compare · Train · Speaker · Render ·
+  view (user decision 2026-06-12, SAME tab strip as Settings —
+  .jv-subnav): Compare · Train · Speaker · Render ·
   Audio. Legacy hashes (#compare/#train/#speakerlab/#renderlab/#audio)
   redirect here with jv.labs.sub carrying the target tab. Only the
   active tab mounts (dynamic component), so each lab's fetches run on
@@ -41,15 +42,14 @@ onMounted(() => {
 
 <template>
   <div class="labs">
-    <div class="labs__subnav">
-      <button
+    <div class="jv-subnav">
+      <a
         v-for="s in SUBS"
         :key="s.id"
-        type="button"
-        class="jv-pill"
-        :class="activeSub === s.id ? 'jv-pill--solid' : 'jv-pill--ghost'"
+        class="jv-subnav__tab"
+        :class="{ 'jv-subnav__tab--active': activeSub === s.id }"
         @click="activeSub = s.id"
-      >{{ s.label }}</button>
+      >{{ s.label }}</a>
     </div>
     <component :is="activeComponent" />
   </div>
@@ -57,5 +57,4 @@ onMounted(() => {
 
 <style scoped>
 .labs { display: flex; flex-direction: column; }
-.labs__subnav { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
 </style>

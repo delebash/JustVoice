@@ -212,6 +212,32 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   overflow-x: hidden;
   scrollbar-width: thin;
 }
+/* Canonical sub-tab strip — Settings + Labs (and any future tabbed
+   view) share this. One tab style, no per-view bubbles. */
+.jv-subnav {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.jv-subnav__tab {
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--ink-2);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  text-decoration: none;
+  user-select: none;
+}
+.jv-subnav__tab:hover { color: var(--ink); }
+.jv-subnav__tab--active {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+  font-weight: 500;
+}
+
 /* Flex children shrink by default inside an overflow container — at
    short viewports the nav items were getting SQUASHED + cut off instead
    of scrolling, and the squash amount changed per view (scrollbar

@@ -1134,12 +1134,12 @@ onMounted(() => {
     </p>
 
     <!-- ── Sub-nav (matches preview HTML §13). ────────────────────────── -->
-    <div class="settings-subnav">
+    <div class="jv-subnav">
       <a
         v-for="s in SUBS"
         :key="s.id"
-        class="settings-subnav__tab"
-        :class="{ 'settings-subnav__tab--active': activeSub === s.id }"
+        class="jv-subnav__tab"
+        :class="{ 'jv-subnav__tab--active': activeSub === s.id }"
         @click="activeSub = s.id"
       >{{ s.label }}</a>
     </div>
@@ -2534,30 +2534,6 @@ onMounted(() => {
 
 <style scoped>
 /* Sub-nav — tab strip at top of Settings (matches preview HTML §13). */
-.settings-subnav {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--line);
-}
-.settings-subnav__tab {
-  padding: 8px 14px;
-  font-size: 12px;
-  color: var(--ink-2);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  cursor: pointer;
-  text-decoration: none;
-  user-select: none;
-}
-.settings-subnav__tab:hover { color: var(--ink); }
-.settings-subnav__tab--active {
-  color: var(--ink);
-  border-bottom-color: var(--accent);
-  font-weight: 500;
-}
-
 .settings-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

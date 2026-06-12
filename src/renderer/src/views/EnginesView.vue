@@ -35,7 +35,15 @@ import RecommendCard from "../components/RecommendCard.vue";
 const api = useApi();
 const tasks = useRenderTasks();
 
-const engines = ref([]);
+// Seed from the last fetch so revisiting Engines doesn't flash the
+// "no engines" banner before the list arrives (user-hit 2026-06-12).
+const ENGINES_CACHE_KEY = "jv.engines.lastList";
+function _cachedEngines() {
+  try { return JSON.parse(window.sessionStorage?.getItem(ENGINES_CACHE_KEY) || "[]"); }
+  catch { return []; }
+}
+const engines = ref(_cachedEngines());
+const enginesLoaded = ref(engines.value.length > 0);
 const system = ref(null);
 const busy = reactive({});  // {engineId: "install" | "load" | "unload" | "uninstall" | null}
 
@@ -304,6 +312,8 @@ function pct(p) {
 async function refresh() {
   const e = await api.safeRequest("/v1/engines", { engines: [] });
   engines.value = e?.engines ?? [];
+  enginesLoaded.value = true;
+  try { window.sessionStorage?.setItem(ENGINES_CACHE_KEY, JSON.stringify(engines.value)); } catch { /* ignore */ }
   // If the active kind has no engines, snap to the first kind that does.
   if (!visibleEngines.value.length && availableKinds.value.length) {
     activeKind.value = availableKinds.value[0];
@@ -905,7 +915,7 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
       </div>
     </div>
 
-    <p v-if="!engines.length" class="jv-banner jv-banner--warn">
+    <p v-if="enginesLoaded && !engines.length" class="jv-banner jv-banner--warn">
       No engines listed — the Python server may not be running. Check <a href="#settings">Settings → Connection</a>.
     </p>
 
