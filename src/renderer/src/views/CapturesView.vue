@@ -159,7 +159,7 @@ onMounted(() => {
           </span>
           <label class="jv-chip-card captures__autopaste">
             🤖 Auto-paste
-            <input type="checkbox" checked />
+            <input type="checkbox" class="jv-check" checked />
           </label>
         </div>
       </section>

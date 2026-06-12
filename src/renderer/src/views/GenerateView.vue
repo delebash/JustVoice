@@ -691,7 +691,7 @@ onMounted(async () => {
       <div class="jv-chip-card">🎛️ Effects: <strong>none</strong> <span class="muted">▾</span></div>
       <label class="jv-chip-card">
         🔁 Autoplay
-        <input type="checkbox" v-model="autoplay" />
+        <input type="checkbox" class="jv-check" v-model="autoplay" />
       </label>
       <span class="jv-spacer" />
       <JvButton

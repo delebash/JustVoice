@@ -336,13 +336,13 @@ async function onSave() {
       <div class="pf-f">
         <label title="Self-hosted = runs on your machine or network — free and private. Lists under Local; its voices badge as self-hosted, not online·metered.">Where it runs</label>
         <label style="display:flex;align-items:center;gap:6px;font-weight:400;text-transform:none;letter-spacing:0">
-          <input type="checkbox" v-model="draft.self_hosted" />
+          <input type="checkbox" class="jv-check" v-model="draft.self_hosted" />
           <span>self-hosted (my machine / network — free)</span>
         </label>
       </div>
       <div class="pf-caps">
-        <label title="Chat + embeddings — compose, rewrite, speaker extraction, refinement"><input type="checkbox" v-model="capLLM" /> <span class="pf-cap llm">LLM</span></label>
-        <label title="Voice synthesis via /v1/audio/speech"><input type="checkbox" v-model="capTTS" /> <span class="pf-cap tts">TTS</span></label>
+        <label title="Chat + embeddings — compose, rewrite, speaker extraction, refinement"><input type="checkbox" class="jv-check" v-model="capLLM" /> <span class="pf-cap llm">LLM</span></label>
+        <label title="Voice synthesis via /v1/audio/speech"><input type="checkbox" class="jv-check" v-model="capTTS" /> <span class="pf-cap tts">TTS</span></label>
       </div>
     </div>
 

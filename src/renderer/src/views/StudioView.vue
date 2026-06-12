@@ -1819,7 +1819,7 @@ watch(selectedProjectId, (id) => {
               <tr>
                 <td class="studio__render-check">
                   <input
-                    type="checkbox"
+                    type="checkbox" class="jv-check"
                     :checked="!!sceneSelectedForRender[s.id]"
                     @change="sceneSelectedForRender = { ...sceneSelectedForRender, [s.id]: $event.target.checked }"
                   />

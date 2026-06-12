@@ -11,8 +11,11 @@ const emit = defineEmits(["update:modelValue"]);
 
 <template>
   <label class="jv-checkbox" :class="{ 'is-disabled': disabled }">
+    <!-- .jv-check = the canonical styled box (native checkboxes render
+         oversized + OS-coloured on Windows WebView2). -->
     <input
       type="checkbox"
+      class="jv-check"
       :checked="modelValue"
       :disabled="disabled"
       :id="id"

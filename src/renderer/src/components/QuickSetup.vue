@@ -413,7 +413,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
             <ul class="quick-setup__engines">
               <li v-for="id in recipe.ttsEngineIds" :key="id" class="quick-setup__engine-row">
                 <input
-                  type="checkbox"
+                  type="checkbox" class="jv-check"
                   :checked="!deselectedEngineIds.has(id)"
                   :disabled="enginesAlreadyInstalled.some((e) => e.id === id)"
                   :title="enginesAlreadyInstalled.some((e) => e.id === id) ? 'Already on disk' : 'Uncheck to skip this engine'"

@@ -676,7 +676,7 @@ onMounted(() => {
             >
               <label style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer;">
                 <input
-                  type="checkbox"
+                  type="checkbox" class="jv-check"
                   :checked="addCastSelection.has(p.id)"
                   @change="toggleAddCast(p.id)"
                 />

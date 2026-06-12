@@ -260,7 +260,7 @@ onMounted(() => {
                 <span>{{ p.label }}</span>
                 <input
                   v-if="p.type === 'boolean'"
-                  type="checkbox"
+                  type="checkbox" class="jv-check"
                   :checked="!!ef.params?.[p.key]"
                   @change="setParam(i, p.key, $event.target.checked)"
                 />

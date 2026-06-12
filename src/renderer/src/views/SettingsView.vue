@@ -1192,7 +1192,7 @@ onMounted(() => {
           <button type="button" class="jv-btn jv-btn--danger-outline jv-btn--sm" title="As-new install: all content + settings to defaults. Engine model downloads stay. Type RESET to confirm." @click="factoryReset">☢ Factory reset…</button>
           <button type="button" class="jv-btn jv-btn--danger-outline jv-btn--sm" :disabled="wipeBusy" @click="deleteAllProjects">🗑 Delete ALL projects…</button>
           <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer">
-            <input type="checkbox" v-model="deletePersonasToo" style="accent-color:var(--accent)" /> also delete all personas
+            <input type="checkbox" class="jv-check" v-model="deletePersonasToo" /> also delete all personas
           </label>
         </div>
       </div>
@@ -1320,7 +1320,7 @@ onMounted(() => {
         </p>
         <div class="setting-row">
           <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px">
-            <input v-model="backupIncludeAudio" type="checkbox" />
+            <input v-model="backupIncludeAudio" type="checkbox" class="jv-check" />
             Include audio blobs (bigger, but a complete machine migration)
           </label>
         </div>
