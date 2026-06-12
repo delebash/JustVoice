@@ -3,7 +3,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { confirmDialog } from "../services/dialog.js";
+import { confirmDialog, promptDialog } from "../services/dialog.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { projectsService } from "../services/projects.js";
 import JvButton from "../components/jv/JvButton.vue";
@@ -66,6 +66,27 @@ async function resetUiState() {
   } catch { /* ignore */ }
   window.location.hash = "#overview";
   window.location.reload();
+}
+
+// Tier 3: factory reset — as-new install (testing).
+async function factoryReset() {
+  const typed = await promptDialog({
+    title: "Factory reset — everything goes",
+    message: "Deletes ALL projects, personas, voices, lexicons, captures, history, and the render cache, and resets every setting to defaults. Engine model downloads stay on disk. Type RESET to confirm.",
+    placeholder: "RESET",
+  });
+  if (typed !== "RESET") {
+    if (typed != null) pushToast({ kind: "info", title: "Not reset", description: "Confirmation text didn't match." });
+    return;
+  }
+  try {
+    await api.request("/v1/admin/factory-reset", { method: "POST" });
+    try { window.localStorage?.clear(); window.sessionStorage?.clear(); } catch { /* ignore */ }
+    window.location.hash = "#overview";
+    window.location.reload();
+  } catch (e) {
+    pushToast({ kind: "error", title: "Factory reset failed", description: String(e?.message ?? e) });
+  }
 }
 
 // Tier 2: wipe every project (and optionally the personas) — the
@@ -1155,6 +1176,7 @@ onMounted(() => {
           <span class="jv-muted" style="font-size:11.5px">fresh-install behavior, zero data loss</span>
         </div>
         <div style="display:flex; align-items:center; gap:10px; margin-top:10px">
+          <button type="button" class="jv-btn jv-btn--danger-outline jv-btn--sm" title="As-new install: all content + settings to defaults. Engine model downloads stay. Type RESET to confirm." @click="factoryReset">☢ Factory reset…</button>
           <button type="button" class="jv-btn jv-btn--danger-outline jv-btn--sm" :disabled="wipeBusy" @click="deleteAllProjects">🗑 Delete ALL projects…</button>
           <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer">
             <input type="checkbox" v-model="deletePersonasToo" style="accent-color:var(--accent)" /> also delete all personas

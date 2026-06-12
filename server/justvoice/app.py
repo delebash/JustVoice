@@ -19,6 +19,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from .api import (
+    admin_api,
     active_tasks_api,
     analyzer_api,
     backup_api,
@@ -168,6 +169,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(active_tasks_api.router)
     app.include_router(capture_readiness_api.router)
     app.include_router(captures_api.router)
+    app.include_router(admin_api.router)
     app.include_router(sse_streams_api.router)
     app.include_router(projects_api.router)
 
