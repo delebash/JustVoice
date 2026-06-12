@@ -231,13 +231,22 @@ const stateLedeOverride = computed(() => {
   if (!health.value) return null;
   const hasEngine = !!health.value.current_engine;
 
-  const firstRender = "No engine in memory — your first render sets one up automatically (Kokoro, ~310 MB one-time download). Prefer another engine? Pick it in Engines.";
   if ((v === "generate" || v === "studio" || v === "chapter") && !hasEngine) {
-    return firstRender;
+    return {
+      text: "No engine in memory — your first render sets one up automatically (Kokoro, ~310 MB one-time download). Prefer another engine?",
+      linkLabel: "Pick it in Engines",
+      linkHash: "#engines",
+    };
   }
   return null;
 });
-const effectiveLede = computed(() => stateLedeOverride.value || currentView.value?.lede || "");
+// Normalized lede shape: { text, linkLabel?, linkHash? }. Static view
+// ledes stay plain strings in VIEWS; state overrides may carry a link.
+const effectiveLede = computed(() => {
+  if (stateLedeOverride.value) return stateLedeOverride.value;
+  const s = currentView.value?.lede || "";
+  return s ? { text: s } : null;
+});
 
 // Sidebar gating by onboarding primary use case (plan locked decision #7).
 // Universal tabs (no `visibleFor`) always render; conditional tabs only
@@ -551,7 +560,12 @@ onMounted(async () => {
           <span class="jv-boot-banner__spinner" />
           <span>Server starting… The Python sidecar is spinning up. Engine and voice catalogues will populate when it's ready.</span>
         </div>
-        <p v-if="effectiveLede" class="jv-content__lede">{{ effectiveLede }}</p>
+        <p v-if="effectiveLede" class="jv-content__lede">
+          {{ effectiveLede.text }}
+          <template v-if="effectiveLede.linkLabel">
+            <a :href="effectiveLede.linkHash">{{ effectiveLede.linkLabel }}</a>.
+          </template>
+        </p>
         <TaskStrip v-for="task in tasks.running" :key="task.id" :task="task" />
         <component :is="currentView?.component" />
       </div>
