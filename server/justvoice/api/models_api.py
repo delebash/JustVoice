@@ -54,14 +54,11 @@ async def delete_model(id: str, variant_id: str) -> dict:
     """Delete one model's weights from the HF cache (Engines redesign:
     the per-model 'Delete model' verb). Engine + other variants stay."""
     import shutil
-    from pathlib import Path
-
-    from huggingface_hub import constants as hf_constants
 
     from ..engines.manager import get_manager
     from ..engines.model_catalog import models_for
     from ..errors import not_found
-    from ..hf_cache import is_hf_repo_cached, repo_from_url
+    from ..hf_cache import hf_cache_dir, is_hf_repo_cached, repo_from_url
 
     variant = next((v for v in models_for(id) if v.id == variant_id), None)
     if variant is None:
@@ -80,7 +77,7 @@ async def delete_model(id: str, variant_id: str) -> dict:
         return {"deleted": True, "engine_id": id, "variant_id": variant_id, "path": str(mdir)}
     if not is_hf_repo_cached(repo):
         raise not_found(f"{repo} has no weights in the local cache")
-    repo_dir = Path(hf_constants.HF_HUB_CACHE) / ("models--" + repo.replace("/", "--"))
+    repo_dir = hf_cache_dir() / ("models--" + repo.replace("/", "--"))
     shutil.rmtree(repo_dir, ignore_errors=True)
     return {"deleted": True, "engine_id": id, "variant_id": variant_id, "repo": repo}
 

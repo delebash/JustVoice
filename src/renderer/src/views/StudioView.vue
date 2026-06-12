@@ -25,6 +25,7 @@ import { useActiveProject } from "../stores/activeProject.js";
 import JvButton from "../components/jv/JvButton.vue";
 import VoiceParamsModal from "../components/VoiceParamsModal.vue";
 import EmptyState from "../components/EmptyState.vue";
+import ExportPanel from "../components/ExportPanel.vue";
 import { confirmDialog } from "../services/dialog.js";
 
 const api = useApi();
@@ -206,14 +207,20 @@ const isGameProject = computed(() => selectedProject.value?.project_type === "ga
 
 const visibleTabs = computed(() => {
   const isGame = selectedProject.value?.project_type === "game_voicelines";
-  const keys = isGame ? ["cast", "render"] : ["cast", "script", "render"];
-  const names = { cast: "Cast", script: "Script", render: "Render" };
+  const keys = isGame ? ["cast", "render", "export"] : ["cast", "script", "render", "export"];
+  const names = { cast: "Cast", script: "Script", render: "Render", export: "Export" };
   return keys.map((key, i) => ({ key, label: `${i + 1} · ${names[key]}` }));
 });
 
 const selectedProject = computed(() =>
   projects.value.find((p) => p.id === selectedProjectId.value) || null,
 );
+
+const stepIndex = computed(() => visibleTabs.value.findIndex((t) => t.key === tab.value));
+function stepBy(delta) {
+  const next = visibleTabs.value[stepIndex.value + delta];
+  if (next) tab.value = next.key;
+}
 
 watch([selectedProject, () => tab.value], () => {
   if (tab.value === "script" && !visibleTabs.value.some((t) => t.key === "script")) {
@@ -271,9 +278,21 @@ const hiddenVoiceIds = computed(() => {
   try { return new Set(JSON.parse(localStorage.getItem("jv.voices.hidden") || "[]")); }
   catch { return new Set(); }
 });
+const engineMetaById = computed(() => {
+  const m = {};
+  for (const e of engines.value || []) m[e.id] = e;
+  return m;
+});
 const filteredVoices = computed(() => {
   const q = voiceSearchQuery.value.trim().toLowerCase();
   return voices.value
+    .filter((v) => {
+      // Voices of not-installed isolated engines can't audition — keep
+      // them out of the cast library entirely (they live on Voices with
+      // a NEEDS INSTALL tag).
+      const e = engineMetaById.value[v.engine];
+      return !(e && e.isolation === "venv" && e.status === "not_installed");
+    })
     .filter((v) => !hiddenVoiceIds.value.has(v.id) || castAsByVoiceId.value[v.id])
     .filter((v) => !voiceEngineFilter.value || v.engine === voiceEngineFilter.value)
     .filter((v) => !q || (v.name || "").toLowerCase().includes(q) || (v.id || "").toLowerCase().includes(q) || (v.tone || "").toLowerCase().includes(q));
@@ -1192,9 +1211,14 @@ watch(selectedProjectId, (id) => {
         type="button"
         class="jv-pill studio__step"
         :class="{ 'studio__step--active': tab === t.key }"
-        :title="t.key === 'cast' ? 'Map people to voices' : t.key === 'script' ? 'Who speaks each line' : 'Batch render + mastering'"
+        :title="t.key === 'cast' ? 'Map people to voices' : t.key === 'script' ? 'Who speaks each line' : t.key === 'render' ? 'Batch render + mastering' : 'Package + ACX checklist'"
         @click="tab = t.key"
       >{{ t.label }}</button>
+      <!-- Structured workflow gets ← / ➜ (user ask 2026-06-12). -->
+      <span class="studio__stepnav">
+        <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" :disabled="stepIndex <= 0" title="Previous step" @click="stepBy(-1)">←</button>
+        <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" :disabled="stepIndex >= visibleTabs.length - 1" title="Next step" @click="stepBy(1)">Next ➜</button>
+      </span>
       <template v-if="tab === 'script' && selectedProject">
         <span class="jv-spacer" />
         <select v-model="selectedSceneId" class="jv-input jv-input--sm studio__script-select">
@@ -1279,8 +1303,8 @@ watch(selectedProjectId, (id) => {
           <p class="jv-muted">
             Two ways in: run <a href="#studio" @click.prevent="tab = 'script'">2 · Script</a> on a
             {{ copy.chapter.singular.toLowerCase() }} — discovered speakers arrive here as personas —
-            or add existing <a href="#personas">Personas</a> to this {{ copy.book.singular.toLowerCase() }}
-            from <a href="#books">{{ copy.book.plural }}</a>.
+            or <a href="#studio" @click.prevent="addPersonaOpen = true">add existing personas</a>
+            to this {{ copy.book.singular.toLowerCase() }}.
           </p>
         </div>
         <table v-else-if="isGameProject" class="jv-table studio__npc-table">
@@ -1754,6 +1778,14 @@ watch(selectedProjectId, (id) => {
       </template>
     </section>
 
+    <!-- ── Export tab — package + ACX checklist (mock export screen) ── -->
+    <section v-if="tab === 'export'" class="studio__exportstep">
+      <div v-if="!selectedProject" class="jv-banner">
+        Pick a {{ copy.book.singular.toLowerCase() }} above to package it.
+      </div>
+      <ExportPanel v-else :project="selectedProject" :scenes="scenes" />
+    </section>
+
     <!-- Voice params modal — Tier-2 voice tuning. -->
     <VoiceParamsModal
       v-if="tuningVoice"
@@ -1879,6 +1911,7 @@ watch(selectedProjectId, (id) => {
 .studio__project-select { flex: 1 1 260px; max-width: var(--w-path); }
 
 .studio__steps { display: flex; gap: 8px; align-items: center; }
+.studio__stepnav { display: inline-flex; gap: 4px; margin-left: 4px; }
 .studio__step {
   appearance: none;
   font: inherit;

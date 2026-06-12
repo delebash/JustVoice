@@ -266,6 +266,12 @@ async def preview_existing_voice(voice_id: str, auto_load: bool = False) -> Resp
     # 2. Static voice of an installed-but-not-loaded managed engine.
     static_owner = _find_static_voice_owner(voice_id)
     if static_owner is not None:
+        m = mgr.get_manifest(static_owner)
+        if m is not None and m.isolation == "venv" and not m.is_installed:
+            # Isolated engine with no venv yet — a raw 500 told the user
+            # nothing (user-hit: Dia preview). The UI maps this marker
+            # to an "install it in Engines" dialog.
+            raise conflict(f"engine_not_installed:{static_owner}")
         if mgr.current_id() != static_owner:
             if not auto_load:
                 raise conflict(f"engine_not_loaded:{static_owner}")

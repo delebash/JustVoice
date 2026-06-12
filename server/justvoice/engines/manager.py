@@ -1197,7 +1197,7 @@ class EngineManager:
                     return prior.get("/voices").json()
 
                 if progress:
-                    progress("spawning", f"spawning {engine_id} subprocess")
+                    progress("loading", f"loading {engine_id}…")
                 proc = EngineProcess(m)
                 proc.spawn()
                 self._loaded[target_kind] = proc

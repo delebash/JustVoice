@@ -146,7 +146,7 @@ async function saveAsPreset() {
     });
     saveAsName.value = "";
     await loadPresetsIfNeeded();
-    pushToast({ message: `Saved as preset "${name}".`, kind: "success" });
+    pushToast({ message: `Saved "${name}" to the Effects page (chain presets — not Render Presets).`, kind: "success", duration: 6000 });
   } catch (e) {
     pushToast({
       message: `Save preset failed: ${e?.message || e}`,
@@ -208,7 +208,7 @@ onMounted(() => {
             <span v-if="p.is_builtin" class="jv-pill jv-pill--ghost">built-in</span>
             <span class="jv-muted">{{ (p.chain || []).length }} effect{{ (p.chain || []).length === 1 ? '' : 's' }}</span>
           </button>
-          <p v-if="!presets.length" class="jv-muted">No saved presets yet. Build a chain below and click "Save as preset".</p>
+          <p v-if="!presets.length" class="jv-muted">No saved chains yet. Build one below and click "Save chain to Effects library".</p>
         </div>
 
         <div class="jv-divider" />
@@ -311,7 +311,7 @@ onMounted(() => {
           <JvButton
             variant="ghost"
             size="sm"
-            label="Save chain as preset"
+            label="Save chain to Effects library"
             :disabled="!saveAsName.trim() || !chain.length"
             @click="saveAsPreset"
           />

@@ -137,6 +137,7 @@ onMounted(refresh);
       </p>
 
       <div class="effects-view__toolbar">
+        <span class="jv-spacer" />
         <JvButton variant="primary" size="sm" label="+ New chain preset" @click="startCreate" />
       </div>
 
@@ -197,7 +198,7 @@ onMounted(refresh);
 .effects-view { padding: 0; }
 .effects-view__lede { font-size: 13px; max-width: 720px; margin: 8px 0 14px; }
 
-.effects-view__toolbar { margin-bottom: 16px; }
+.effects-view__toolbar { margin-bottom: 16px; display: flex; }
 
 .effects-view__empty { padding: 40px 0; font-size: 13px; text-align: center; }
 

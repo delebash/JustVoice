@@ -159,6 +159,19 @@ function voiceLocality(v) {
   return backend === "managed" ? "local" : "online";
 }
 
+// Isolated engines with no venv yet (Dia, MOSS) — their static voices
+// can't preview until Install runs in Engines. Tag + sort last so they
+// never read as "the default voice" (user-hit: Dia listed first).
+const engineMeta = computed(() => {
+  const m = {};
+  for (const e of engines.value || []) m[e.id] = e;
+  return m;
+});
+function needsInstall(v) {
+  const e = engineMeta.value[v.engine];
+  return !!e && e.isolation === "venv" && e.status === "not_installed";
+}
+
 const filteredVoices = computed(() => {
   let list = voices.value || [];
   if (!showHidden.value) list = list.filter((v) => !hiddenIds.value.has(v.id));
@@ -168,7 +181,8 @@ const filteredVoices = computed(() => {
     const q = search.value.trim().toLowerCase();
     list = list.filter((v) => (v.name || "").toLowerCase().includes(q) || (v.id || "").toLowerCase().includes(q));
   }
-  return list;
+  // Needs-install voices sink to the bottom — never first-in-list.
+  return [...list].sort((a, b) => needsInstall(a) - needsInstall(b));
 });
 
 const typeCounts = computed(() => {
@@ -198,6 +212,16 @@ async function previewVoice(v) {
     try {
       blob = await api.request(`/v1/voices/${v.id}/preview?auto_load=${always}`, { method: "POST" });
     } catch (e) {
+      const mi = String(e?.message || "").match(/engine_not_installed:([\w.-]+)/);
+      if (mi) {
+        const ok = await confirmDialog({
+          title: `Install ${mi[1]} first`,
+          message: `"${v.name}" belongs to the ${mi[1]} engine, which isn't installed yet (isolated engines need their own venv built once). Open Engines to install it?`,
+          confirmLabel: "Open Engines",
+        });
+        if (ok) window.location.hash = "#engines";
+        return;
+      }
       const m = String(e?.message || "").match(/engine_not_loaded:([\w.-]+)/);
       if (!m) throw e;
       const engineId = m[1];
@@ -687,6 +711,11 @@ function blendWithVoice() {
               class="voices-view__locality voices-view__locality--online"
               title="External provider — needs network and may bill per character/minute"
             >ONLINE · METERED</span>
+            <span
+              v-if="needsInstall(v)"
+              class="voices-view__locality voices-view__locality--online"
+              :title="`${v.engine} is an isolated engine with no venv yet — Install it in Engines before this voice can play`"
+            >NEEDS INSTALL</span>
           </td>
           <td class="jv-muted">{{ v.language || "en" }}</td>
           <td>{{ v.sample_count ?? (v.source === "preset" ? "—" : 0) }}</td>

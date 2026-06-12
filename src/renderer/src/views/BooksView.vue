@@ -253,7 +253,7 @@ async function patchProject(body) {
   try {
     await projectsService.update(p.id, body);
     await refresh();
-    pushToast({ kind: "success", title: "Saved" });
+    flashSaved();
   } catch (e) {
     pushToast({ kind: "error", title: "Save failed", description: String(e?.message ?? e) });
   }
@@ -272,63 +272,6 @@ function commitMeta(field, value) {
 
 function commitMastering(v) {
   patchProject({ mastering_preset: v || null });
-}
-
-// Action stubs — wire to real endpoints when those land. Each shows a
-// toast so the operator gets feedback; the click target itself is the
-// real UX win (no missing button).
-async function renderAllChapters() {
-  const p = selectedProject.value;
-  if (!p) return;
-  pushToast({ kind: "info", title: "Render queued", description: `Rendering ${scenes.value.length} ${copy.chapter.plural.toLowerCase()} for ${p.name}.` });
-}
-async function exportM4B() {
-  if (selectedProject.value) exportM4b(selectedProject.value);
-}
-async function downloadQcReport() {
-  if (selectedProject.value) runQc(selectedProject.value);
-}
-async function exportM4b(p) {
-  pushToast({ kind: "info", title: "Export M4B", description: "Rendering chapters + muxing — this renders anything not cached." });
-  try {
-    const blob = await api.requestBlob("POST", `/v1/projects/${p.id}/export_m4b`);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${(p.name || "book").replace(/[^\w.-]+/g, "_")}.m4b`;
-    a.click();
-    URL.revokeObjectURL(url);
-    pushToast({ kind: "success", title: "M4B exported" });
-  } catch (e) {
-    pushToast({ kind: "error", title: "Export failed", description: String(e?.message ?? e) });
-  }
-}
-
-const qcReport = ref(null); // { project_id, chapters: [...], all_ok, limits }
-const showNotes = ref(null); // { project_id, markdown }
-async function generateShowNotes() {
-  const p = selectedProject.value;
-  if (!p) return;
-  pushToast({ kind: "info", title: "Show notes", description: "Drafting from the episode segments…" });
-  try {
-    showNotes.value = await api.request(`/v1/projects/${p.id}/show-notes`, { method: "POST" });
-  } catch (e) {
-    pushToast({
-      kind: "error",
-      title: "Show notes failed",
-      description: String(e?.message ?? e).includes("501")
-        ? "No LLM provider pinned — connect one in Engines → LLM, then pin show_notes in Settings → AI features."
-        : String(e?.message ?? e),
-    });
-  }
-}
-async function runQc(p) {
-  pushToast({ kind: "info", title: "QC report", description: "Rendering + measuring chapters (cache-served when unchanged)…" });
-  try {
-    qcReport.value = await api.request(`/v1/projects/${p.id}/qc`);
-  } catch (e) {
-    pushToast({ kind: "error", title: "QC failed", description: String(e?.message ?? e) });
-  }
 }
 
 async function deleteProject() {
@@ -441,41 +384,6 @@ function onCreateFromImport() {
   showImport.value = true;
 }
 
-function toggleSceneSelect(id) {
-  const next = new Set(selectedSceneIds.value);
-  if (next.has(id)) next.delete(id); else next.add(id);
-  selectedSceneIds.value = next;
-}
-function toggleSelectAll(checked) {
-  selectedSceneIds.value = checked ? new Set(scenes.value.map((s) => s.id)) : new Set();
-}
-function clearSelection() {
-  selectedSceneIds.value = new Set();
-}
-const selectedSceneCount = computed(() => selectedSceneIds.value.size);
-const selectedSceneTitles = computed(() =>
-  scenes.value
-    .filter((s) => selectedSceneIds.value.has(s.id))
-    .map((s) => s.title ?? `#${s.position}`)
-    .join(" · "),
-);
-const allScenesSelected = computed(
-  () => scenes.value.length > 0 && selectedSceneIds.value.size === scenes.value.length,
-);
-
-async function renderSelected() {
-  const ids = Array.from(selectedSceneIds.value);
-  if (!ids.length) return;
-  pushToast({ kind: "info", title: `Render queued (${ids.length})`, description: `Rendering ${ids.length} ${copy.chapter.plural.toLowerCase()} in sequence.` });
-}
-async function remasterSelected() {
-  const ids = Array.from(selectedSceneIds.value);
-  if (!ids.length) return;
-  pushToast({ kind: "info", title: `Re-master queued (${ids.length})`, description: "Skips TTS — runs mastering pass on existing takes." });
-}
-async function exportSelectedZip() {
-  pushToast({ kind: "info", title: "Export ZIP", description: `Bundling ${selectedSceneIds.value.size} ${copy.chapter.plural.toLowerCase()} as ZIP.` });
-}
 
 function sceneStatusPill(scene) {
   const blocks = scene.block_count ?? 0;
@@ -570,6 +478,10 @@ onMounted(() => {
             <span v-if="selectedProject.imported_from" class="jv-pill jv-pill--ghost">imported_from = {{ selectedProject.imported_from }}</span>
           </header>
 
+          <div class="books__autosave jv-muted">
+            Changes save automatically
+            <span v-if="savedFlash" class="jv-pill jv-pill--green">Saved ✓</span>
+          </div>
           <div class="books__fields">
             <label class="books__field">
               <span>Title</span>
@@ -662,54 +574,12 @@ onMounted(() => {
 
           <div class="jv-divider" />
 
+          <!-- Render + export live on Studio (4 · Export) — Projects is
+               the library (user decision 2026-06-12). -->
           <div class="books__actions">
-            <JvButton variant="primary" label="▶ Render all chapters" @click="renderAllChapters" />
-            <JvButton variant="secondary" label="Export M4B" title="Render all chapters (cache-served when unchanged) and download one .m4b with chapter markers" @click="exportM4B" />
-            <JvButton variant="secondary" label="QC report" @click="downloadQcReport" />
-            <JvButton v-if="selectedProject?.project_type === 'podcast'" variant="secondary" label="📝 Show notes" title="Draft episode show notes from the segments (LLM)" @click="generateShowNotes" />
-            <JvButton variant="secondary" label="Export ZIP" @click="exportProject(selectedProject.id)" />
+            <JvButton variant="primary" label="Open in Studio ➜" title="Cast → Script → Render → Export" @click="openInStudio" />
             <span class="books__spacer" />
             <button class="jv-btn jv-btn--danger-outline jv-btn--sm" type="button" @click="deleteProject">Delete project</button>
-          </div>
-
-          <!-- Show notes (POST /v1/projects/{id}/show-notes) -->
-          <div v-if="showNotes && showNotes.project_id === selectedProject.id" class="books__qc">
-            <div class="books__qc-head">
-              <strong>Show notes</strong>
-              <span class="jv-spacer" />
-              <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" title="Copy markdown" @click="navigator.clipboard?.writeText(showNotes.markdown)">⧉ Copy</button>
-              <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" @click="showNotes = null">✕</button>
-            </div>
-            <pre class="books__notes">{{ showNotes.markdown }}</pre>
-          </div>
-
-          <!-- ACX QC report (GET /v1/projects/{id}/qc) -->
-          <div v-if="qcReport && qcReport.project_id === selectedProject.id" class="books__qc">
-            <div class="books__qc-head">
-              <strong>ACX QC</strong>
-              <span class="jv-pill" :class="qcReport.all_ok ? 'jv-pill--green' : 'jv-pill--warn'">
-                {{ qcReport.all_ok ? "✓ all chapters pass" : "issues found" }}
-              </span>
-              <span class="jv-muted books__qc-limits">
-                RMS {{ qcReport.limits.rms_min_db }}…{{ qcReport.limits.rms_max_db }} dB · peak ≤ {{ qcReport.limits.peak_max_db }} dB
-              </span>
-              <span class="jv-spacer" />
-              <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" @click="qcReport = null">✕</button>
-            </div>
-            <table class="jv-table">
-              <thead><tr><th>Chapter</th><th>Duration</th><th>RMS</th><th>Peak</th><th>Check</th></tr></thead>
-              <tbody>
-                <tr v-for="c in qcReport.chapters" :key="c.scene_id">
-                  <td><strong>{{ c.title }}</strong></td>
-                  <td class="jv-mono">{{ c.duration_s }}s</td>
-                  <td class="jv-mono" :class="{ 'books__qc-bad': !c.rms_ok }">{{ c.rms_dbfs }} dB</td>
-                  <td class="jv-mono" :class="{ 'books__qc-bad': !c.peak_ok }">{{ c.peak_dbfs }} dB</td>
-                  <td>
-                    <span class="jv-pill" :class="c.ok ? 'jv-pill--green' : 'jv-pill--warn'">{{ c.ok ? "✓ pass" : "✗ check" }}</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
           </div>
 
           <div class="jv-divider" />
@@ -719,39 +589,6 @@ onMounted(() => {
           <div v-if="scenesLoading" class="jv-muted" style="padding: 8px 0">Loading chapters…</div>
 
           <template v-else>
-            <div class="books__bulk-bar" :class="{ 'books__bulk-bar--active': selectedSceneCount > 0 }">
-              <label class="jv-checkbox">
-                <input
-                  type="checkbox"
-                  :checked="allScenesSelected"
-                  @change="(ev) => toggleSelectAll(ev.target.checked)"
-                />
-                <span>Select all</span>
-              </label>
-              <span class="jv-muted books__bulk-sep">·</span>
-              <span v-if="selectedSceneCount" class="books__bulk-count">
-                <strong>{{ selectedSceneCount }}</strong> of {{ scenes.length }} selected · <strong>{{ selectedSceneTitles }}</strong>
-              </span>
-              <span v-else class="jv-muted books__bulk-hint">Tick rows to enable bulk actions.</span>
-              <span class="books__spacer" />
-              <button
-                class="jv-btn jv-btn--primary jv-btn--sm"
-                :disabled="!selectedSceneCount"
-                @click="renderSelected"
-              >▶ Render selected ({{ selectedSceneCount }})</button>
-              <button
-                class="jv-btn jv-btn--secondary jv-btn--sm"
-                :disabled="!selectedSceneCount"
-                @click="remasterSelected"
-              >↻ Re-master selected</button>
-              <button
-                class="jv-btn jv-btn--secondary jv-btn--sm"
-                :disabled="!selectedSceneCount"
-                @click="exportSelectedZip"
-              >⬇ Export selected as ZIP</button>
-              <button class="jv-btn jv-btn--ghost jv-btn--sm" @click="clearSelection">Clear</button>
-            </div>
-
             <table class="books__table">
               <thead>
                 <tr>
@@ -775,13 +612,7 @@ onMounted(() => {
                   :key="s.id"
                   :class="{ 'books__table-row--selected': selectedSceneIds.has(s.id) }"
                 >
-                  <td>
-                    <input
-                      type="checkbox"
-                      :checked="selectedSceneIds.has(s.id)"
-                      @change="toggleSceneSelect(s.id)"
-                    />
-                  </td>
+                  <td></td>
                   <td>{{ s.position }}</td>
                   <td><strong>{{ s.title ?? `Chapter ${s.position}` }}</strong></td>
                   <td>{{ s.block_count ?? 0 }}</td>
@@ -790,20 +621,12 @@ onMounted(() => {
                     <span class="jv-pill" :class="sceneStatusPill(s).cls">{{ sceneStatusPill(s).label }}</span>
                   </td>
                   <td class="books__row-actions">
-                    <button class="jv-btn jv-btn--ghost jv-btn--sm" title="Play chapter">▶</button>
                     <button class="jv-btn jv-btn--ghost jv-btn--sm" title="Open in Chapter view">Open</button>
-                    <button class="jv-btn jv-btn--ghost jv-btn--sm" title="Re-render (creates new takes per block)">↻</button>
-                    <button class="jv-btn jv-btn--ghost jv-btn--sm" title="Re-master only (skip re-render)">⚙</button>
                   </td>
                 </tr>
               </tbody>
             </table>
 
-            <p v-if="scenes.length" class="books__table-help jv-muted">
-              Per-row <strong>▶</strong> plays the rendered chapter. <strong>↻</strong> re-renders (creates new takes per block, source-lineage preserved).
-              <strong>⚙</strong> re-masters only — skips TTS, re-runs the mastering pass on existing takes (fast).
-              Each in-flight render emits SSE progress on <code>/v1/generate/{id}/status</code> and can be cancelled per-row.
-            </p>
           </template>
         </div>
       </template>
@@ -879,6 +702,8 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.books__autosave { display: flex; align-items: center; gap: 8px; font-size: 11.5px; margin-bottom: 6px; min-height: 22px; }
+
 .books {
   display: flex;
   flex-direction: column;

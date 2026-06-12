@@ -458,74 +458,14 @@ watch(selectedProjectId, (id) => {
 // Package card + ACX checklist. The checklist shows only what the
 // server actually measures (/v1/projects/{id}/qc: per-chapter RMS +
 // peak); unmeasured spec items render as "not checked" — no fake ✓.
-const exportOpen = ref(false);
-const exportQc = ref(null);
-const exportQcBusy = ref(false);
-const exportBusy = ref("");
 
 const selectedProjectRec = computed(() =>
   projects.value.find((p) => p.id === selectedProjectId.value) || null,
 );
 
-async function runExportQc() {
-  if (!selectedProjectId.value || exportQcBusy.value) return;
-  exportQcBusy.value = true;
-  exportQc.value = null;
-  try {
-    exportQc.value = await api.request(`/v1/projects/${selectedProjectId.value}/qc`);
-  } catch (e) {
-    pushToast({ message: `QC failed: ${e?.message || e}`, kind: "error", duration: 7000 });
-  } finally {
-    exportQcBusy.value = false;
-  }
-}
-
-const qcDurationLabel = computed(() => {
-  const total = (exportQc.value?.chapters || []).reduce((s, c) => s + (c.duration_s || 0), 0);
-  if (!total) return "";
-  const h = Math.floor(total / 3600), m = Math.round((total % 3600) / 60);
-  return h ? `${h} h ${String(m).padStart(2, "0")} m` : `${m} m`;
-});
-
-function saveBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-async function exportM4B() {
-  const p = selectedProjectRec.value;
-  if (!p || exportBusy.value) return;
-  exportBusy.value = "m4b";
-  pushToast({ message: "Export M4B — rendering anything not cached, then muxing chapters…", kind: "info" });
-  try {
-    const blob = await api.requestBlob("POST", `/v1/projects/${p.id}/export_m4b`);
-    saveBlob(blob, `${(p.name || "book").replace(/[^\w.-]+/g, "_")}.m4b`);
-    pushToast({ message: "M4B exported.", kind: "success" });
-  } catch (e) {
-    pushToast({ message: `Export failed: ${e?.message || e}`, kind: "error", duration: 7000 });
-  } finally {
-    exportBusy.value = "";
-  }
-}
-
-async function exportChapterWavs() {
-  const p = selectedProjectRec.value;
-  if (!p || exportBusy.value) return;
-  exportBusy.value = "zip";
-  pushToast({ message: "Packaging per-chapter audio…", kind: "info" });
-  try {
-    const blob = await projectsService.exportZip(p.id, { includeAudio: true, includeMasters: true });
-    saveBlob(blob, `${(p.name || "book").replace(/[^\w.-]+/g, "_")}.zip`);
-    pushToast({ message: "Chapter package exported.", kind: "success" });
-  } catch (e) {
-    pushToast({ message: `Export failed: ${e?.message || e}`, kind: "error", duration: 7000 });
-  } finally {
-    exportBusy.value = "";
-  }
+function goStudioExport() {
+  try { window.sessionStorage?.setItem("jv.studio.tab", "export"); } catch { /* ignore */ }
+  window.location.hash = "#studio";
 }
 
 // ── Fix-it loop entry (journeys fixit journey) ────────────────────────
@@ -789,63 +729,11 @@ async function savePastedText() {
         <JvButton
           variant="secondary"
           size="sm"
-          :label="exportOpen ? '✕ Close export' : '⬇ Export'"
+          label="⬇ Export"
           :disabled="!selectedProjectId"
-          title="Package the whole project — M4B with chapter markers, per-chapter audio, ACX checklist"
-          @click="exportOpen = !exportOpen; exportOpen && !exportQc && runExportQc()"
+          title="Package the whole project — opens Studio · 4 Export (M4B, chapter audio, ACX checklist)"
+          @click="goStudioExport"
         />
-      </div>
-    </div>
-
-    <!-- ── Export panel (package + ACX checklist) ─────────────────────── -->
-    <div v-if="exportOpen && selectedProjectRec" class="chapter-view__export">
-      <div class="jv-card chapter-view__export-card">
-        <div class="chapter-view__export-h">
-          <strong>{{ copy.book.singular }} package</strong>
-          <span class="jv-pill" :class="exportQc?.all_ok ? 'jv-pill--green' : 'jv-pill--ghost'">{{ exportQc?.all_ok ? "ready" : "unchecked" }}</span>
-        </div>
-        <div class="chapter-view__export-id">
-          <span class="chapter-view__export-portrait">{{ (selectedProjectRec.name || "?").slice(0, 1).toUpperCase() }}</span>
-          <div>
-            <div class="chapter-view__export-name">{{ selectedProjectRec.name }}</div>
-            <div class="jv-muted" style="font-size:12px">
-              {{ scenes.length }} {{ copy.chapter.plural.toLowerCase() }}<template v-if="qcDurationLabel"> · {{ qcDurationLabel }}</template>
-            </div>
-          </div>
-        </div>
-        <div class="chapter-view__sum-row"><span>Format</span><b>M4B (AAC) · chapter markers from {{ copy.chapter.singular.toLowerCase() }} titles</b></div>
-        <div class="chapter-view__sum-row"><span>Also export</span><b>per-{{ copy.chapter.singular.toLowerCase() }} WAV + masters (zip)</b></div>
-        <div class="chapter-view__sum-row"><span>Master</span><b>{{ selectedProjectRec.mastering_preset || (selectedProjectRec.project_type === "audiobook" ? "ACX −20 LUFS" : "default") }}</b></div>
-        <div class="chapter-view__export-actions">
-          <JvButton variant="primary" :loading="exportBusy === 'm4b'" :disabled="!!exportBusy" label="⬇ Export M4B" @click="exportM4B" />
-          <JvButton variant="secondary" :loading="exportBusy === 'zip'" :disabled="!!exportBusy" :label="`⬇ ${copy.chapter.singular} WAVs (zip)`" @click="exportChapterWavs" />
-        </div>
-      </div>
-
-      <div class="jv-card chapter-view__export-card">
-        <div class="chapter-view__export-h">
-          <strong>ACX checklist</strong>
-          <span class="jv-spacer" />
-          <JvButton variant="ghost" size="sm" :loading="exportQcBusy" label="↻ Re-check" title="Render every chapter (cache-served when unchanged) and measure against the ACX limits" @click="runExportQc" />
-        </div>
-        <p v-if="exportQcBusy" class="jv-muted">Rendering + measuring {{ copy.chapter.plural.toLowerCase() }} — cached audio makes this fast…</p>
-        <template v-else-if="exportQc">
-          <ul class="chapter-view__ckl">
-            <li><span :class="exportQc.chapters.every(c => c.rms_ok) ? 'ok' : 'bad'">{{ exportQc.chapters.every(c => c.rms_ok) ? "✓" : "✗" }}</span>
-              RMS between −23 dB and −18 dB ({{ exportQc.chapters.filter(c => c.rms_ok).length }} of {{ exportQc.chapters.length }} {{ copy.chapter.plural.toLowerCase() }})</li>
-            <li><span :class="exportQc.chapters.every(c => c.peak_ok) ? 'ok' : 'bad'">{{ exportQc.chapters.every(c => c.peak_ok) ? "✓" : "✗" }}</span>
-              Peak ≤ −3 dB</li>
-            <li><span class="dim">○</span> Noise floor ≤ −60 dB RMS <span class="jv-muted">— not measured yet (needs room-tone analysis)</span></li>
-            <li><span class="dim">○</span> Room tone head/tail <span class="jv-muted">— not measured yet</span></li>
-            <li><span class="dim">○</span> Opening & closing credits <span class="jv-muted">— add as {{ copy.chapter.plural.toLowerCase() }}</span></li>
-          </ul>
-          <div class="jv-banner" :class="exportQc.all_ok ? 'jv-banner--info' : 'jv-banner--warn'" style="margin-top:10px;font-size:12px">
-            {{ exportQc.all_ok
-              ? "Measured checks pass. Mastering chain: project preset — duplicate under Render Presets to tweak."
-              : "Some chapters are out of spec — fix levels in Studio · Render, then re-check." }}
-          </div>
-        </template>
-        <p v-else class="jv-muted">Run the check to measure every {{ copy.chapter.singular.toLowerCase() }} against the ACX limits.</p>
       </div>
     </div>
 

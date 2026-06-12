@@ -196,7 +196,7 @@ onMounted(refresh);
           </header>
 
           <div class="jv-form-row">
-            <label>Voice</label>
+            <label>Persona</label>
             <select
               class="jv-input jv-input--sm jv-w-name"
               :value="p.voice_id || ''"

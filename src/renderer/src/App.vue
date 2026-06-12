@@ -27,15 +27,11 @@ import VoicesView from "./views/VoicesView.vue";
 // ProfilesView removed — Persona is the sole identity layer after the
 // Profile-kill (plan Q1). All voice config now lives directly on Persona.
 import StudioView from "./views/StudioView.vue";
-import SpeakerLabView from "./views/SpeakerLabView.vue";
 import LinesView from "./views/LinesView.vue";
-import RenderLabView from "./views/RenderLabView.vue";
-import CompareView from "./views/CompareView.vue";
-import TrainView from "./views/TrainView.vue";
 import PersonasView from "./views/PersonasView.vue";
 import LexiconsView from "./views/LexiconsView.vue";
 import EnginesView from "./views/EnginesView.vue";
-import AudioToolsView from "./views/AudioToolsView.vue";
+import LabsView from "./views/LabsView.vue";
 import SettingsView from "./views/SettingsView.vue";
 import CapturesView from "./views/CapturesView.vue";
 import StoriesView from "./views/StoriesView.vue";
@@ -59,15 +55,15 @@ const ALL_USE_CASES = ["audiobook", "game", "podcast", "dictation", "accessibili
 const VIEWS = [
   // ─── Workflow lane ─────────────────────────────────────────────────
   { id: "overview",  lane: "workflow", label: "Home",      icon: "🏠", lede: "", component: OverviewView },
-  { id: "studio",    lane: "workflow", label: "Studio",    icon: "🎬", lede: "Cast → Script → Render production environment. Three-tab flow for multi-character work. Cast assigns voices to characters; Script runs LLM speaker attribution (Phase 3 backend); Render batches the whole project.", component: StudioView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "books",     lane: "workflow", label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Imports from JustWrite via POST /v1/projects/import?source=justwrite.", component: BooksView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "chapter",   lane: "workflow", label: "Chapters",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved. Pinned floating generate bar at bottom.", component: ChapterView, visibleFor: ["audiobook", "podcast", "multiple", "unset"] },
   { id: "lines",     lane: "workflow", label: "Lines",      icon: "🎮", lede: "Every line of the game project — stable ids, characters, derived take status. Re-import the writers\u2019 next sheet (only changed lines go stale), re-render exactly those, export per-line WAVs + manifest.", component: LinesView, visibleFor: ["game", "multiple", "unset"] },
+  { id: "studio",    lane: "workflow", label: "Studio",    icon: "🎬", lede: "Cast → Script → Render production environment. Three-tab flow for multi-character work. Cast assigns voices to characters; Script runs LLM speaker attribution (Phase 3 backend); Render batches the whole project.", component: StudioView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "stories",   lane: "workflow", label: "Stories",   icon: "🎞️", lede: "Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.", component: StoriesView, visibleFor: ["game", "podcast", "multiple", "unset"] },
   { id: "generate",  lane: "workflow", label: "Generate",  icon: "📝", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it. Type / for paralinguistic tags.", component: GenerateView },
   { id: "captures",  lane: "workflow", label: "Captures",  icon: "🎚️", lede: "Dictation pill + global hotkey. Speak into any text field. Also captures audio for cloning sample collection.", component: CapturesView, visibleFor: ["dictation", "accessibility", "multiple", "unset"] },
 
   // ─── Library lane ──────────────────────────────────────────────────
-  { id: "books",     lane: "library", label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Imports from JustWrite via POST /v1/projects/import?source=justwrite.", component: BooksView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "voices",    lane: "library", label: "Voices",    icon: "🎙️", lede: "Voice library — cloned, preset (Kokoro 54 + Qwen 9), designed (text-prompt → voice), blended. Per-voice channel routing.", component: VoicesView },
   { id: "personas",  lane: "library", label: "Personas",  icon: "🎭", lede: "Characters. Each persona has a name, bio, voice, personality (TTS delivery instruction), default delivery, effects, lexicon override. Cross-project — one Mara across many books or quests. Filter by usage in the library list.", component: PersonasView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "lexicons",  lane: "library", label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Force \"Beauchamp\" → \"BEE-chum\", domain words → consistent phoneme-level pronunciation across a whole book. Per-character override.", component: LexiconsView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
@@ -76,11 +72,6 @@ const VIEWS = [
   { id: "engines",   lane: "library", label: "Engines",   icon: "🧠", lede: "Installed engine catalog. Install / load / unload models. Per-engine venv isolation (JustVoice advantage — install Chatterbox without breaking Kokoro).", component: EnginesView },
 
   // ─── Tools lane ────────────────────────────────────────────────────
-  { id: "compare",   lane: "tools", label: "Compare",   icon: "⚖️", lede: "A/B audio comparison. Side-by-side waveforms, peak/RMS/duration diff, sample-level RMSE, verdict. Bulk compare across takes for QC pass.", component: CompareView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "train",     lane: "tools", label: "Train",     icon: "🏋️", lede: "PEFT/LoRA-based fine-tuning. QC pipeline checks SNR / clipping / silence ratio per sample before accepting it.", component: TrainView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
-  { id: "speakerlab",lane: "tools", label: "Spk Lab",icon: "🔬", lede: "Speaker-extraction testbed. Paste any text, tune model + temperature + tier + prompts per column, race configurations side-by-side, and promote the winner to production. Same backend as Studio · Script.", component: SpeakerLabView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "renderlab", lane: "tools", label: "Render Lab", icon: "🧪", lede: "Voice parameter A/B matrix. Pick a voice + sample sentence + 1-2 parameter axes; render up to 16 cells in parallel (capped at 2 concurrent). Save any cell as a render preset.", component: RenderLabView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "audio",     lane: "tools", label: "Audio Tools", icon: "🔧", lede: "Stand-alone audio tools — analyze any 16-bit PCM WAV, or apply a mastering preset to a WAV without going through the chapter render pipeline. Useful for inspecting reference clips before cloning, or quickly mastering an external recording.", component: AudioToolsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
 
   // ─── Advanced lane (collapsed by default) ──────────────────────────
 
@@ -88,13 +79,13 @@ const VIEWS = [
   { id: "importreview", lane: "hidden", label: "Import", icon: "⬆", lede: "Review what was detected — pick the chapters to import, confirm, done. Nothing imports until you confirm.", component: ImportReviewView },
 
   // ─── Settings — pinned at the very bottom, always visible ──────────
+  { id: "labs",      lane: "pinned", label: "Labs",      icon: "🧪", lede: "", component: LabsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   { id: "settings",  lane: "pinned", label: "Settings",  icon: "⚙️", lede: "Every operator-tunable value. Per CLAUDE.md, no value is hardcoded — every knob lives in settings.json.", component: SettingsView },
 ];
 
 const LANES = [
   { id: "workflow", label: "Workflow" },
   { id: "library",  label: "Library" },
-  { id: "tools",    label: "Tools" },
 ];
 
 function isVisibleFor(viewEntry, useCase) {
@@ -300,6 +291,12 @@ function resolveInitialTab() {
     initialTabResolved = true;
     return;
   }
+  if (["compare", "train", "speakerlab", "renderlab", "audio"].includes(hashId)) {
+    try { window.sessionStorage?.setItem("jv.labs.sub", hashId); } catch { /* ignore */ }
+    view.value = "labs";
+    initialTabResolved = true;
+    return;
+  }
   // First run = the real question, "What are you making?" (user decision
   // 2026-06-12: no welcome quiz, no setup wizard — the kind picker opens,
   // creating the first project sets the workspace focus, and engines
@@ -351,10 +348,16 @@ watch(
 //   - Active view change writes the hash so deep-linking works.
 if (typeof window !== "undefined") {
   const LEGACY_SETTINGS_TABS = { cache: "cache", channels: "channels", webhooks: "webhooks" };
+  const LEGACY_LABS_TABS = ["compare", "train", "speakerlab", "renderlab", "audio"];
   const routeHash = (hashId) => {
     if (LEGACY_SETTINGS_TABS[hashId]) {
       try { window.sessionStorage?.setItem("jv.settings.sub", LEGACY_SETTINGS_TABS[hashId]); } catch { /* ignore */ }
       view.value = "settings";
+      return true;
+    }
+    if (LEGACY_LABS_TABS.includes(hashId)) {
+      try { window.sessionStorage?.setItem("jv.labs.sub", hashId); } catch { /* ignore */ }
+      view.value = "labs";
       return true;
     }
     return false;
