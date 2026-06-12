@@ -703,17 +703,17 @@ function blendWithVoice() {
             <span class="jv-mono jv-muted">{{ v.engine }}</span>
             <span
               v-if="voiceLocality(v) === 'local'"
-              class="voices-view__locality voices-view__locality--local"
+              class="jv-locality jv-locality--local"
               title="Runs on this machine — no usage cost; loads the engine into RAM/VRAM on first use"
             >LOCAL</span>
             <span
               v-else-if="voiceLocality(v) === 'online'"
-              class="voices-view__locality voices-view__locality--online"
+              class="jv-locality jv-locality--online"
               title="External provider — needs network and may bill per character/minute"
             >ONLINE · METERED</span>
             <span
               v-if="needsInstall(v)"
-              class="voices-view__locality voices-view__locality--online"
+              class="jv-locality jv-locality--online"
               :title="`${v.engine} is an isolated engine with no venv yet — Install it in Engines before this voice can play`"
             >NEEDS INSTALL</span>
           </td>
@@ -1028,23 +1028,6 @@ function blendWithVoice() {
   gap: 12px;
   flex-wrap: wrap;
   margin-bottom: 12px;
-}
-.voices-view__locality {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  border-radius: 4px;
-  padding: 1px 5px;
-  margin-left: 6px;
-  vertical-align: 1px;
-}
-.voices-view__locality--local {
-  color: var(--accent-ink);
-  background: var(--accent-soft);
-}
-.voices-view__locality--online {
-  color: var(--warn-ink);
-  background: var(--warn-bg);
 }
 .voices-view__chips {
   display: inline-flex;

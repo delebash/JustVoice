@@ -238,6 +238,28 @@ function stepBy(delta) {
 // Live step-card subtitles (item 2; design contract = the JustWrite
 // Audio Studio screenshots): honest counts only — no fake progress.
 const voicedCount = computed(() => projectPersonas.value.filter((p) => p.voice_id).length);
+
+// Cast-level engine notice (item 6 — closes the user's voices-and-
+// engine-loading concern at ASSIGN time, not just at preview): says
+// when the cast spans engines (render-time swapping) or uses metered
+// online voices.
+const castEngineNotice = computed(() => {
+  const assigned = projectPersonas.value
+    .filter((p) => p.voice_id)
+    .map((p) => voiceById(p.voice_id))
+    .filter(Boolean);
+  if (!assigned.length) return "";
+  const engines_ = [...new Set(assigned.map((v) => v.engine))];
+  const metered = assigned.filter((v) => voiceLocality(v) === "online").length;
+  const bits = [];
+  if (engines_.length > 1) {
+    bits.push(`this cast spans ${engines_.length} engines (${engines_.join(", ")}) — chapters will swap engines while rendering`);
+  }
+  if (metered) {
+    bits.push(`${metered} voice${metered === 1 ? "" : "s"} use${metered === 1 ? "s" : ""} an online provider — billed per use, text leaves this machine`);
+  }
+  return bits.join(" · ");
+});
 const renderedSceneCount = computed(() =>
   (cacheStats.value?.scenes || []).filter((sc) => sc.total > 0 && sc.cached === sc.total).length);
 const stepCards = computed(() => visibleTabs.value.map((t) => {
@@ -1406,6 +1428,9 @@ watch(selectedProjectId, (id) => {
             {{ projectPersonas.length - voicedCount }} unassigned
           </span>
         </div>
+        <div v-if="castEngineNotice" class="jv-banner jv-banner--warn" style="font-size:12px; margin-bottom:10px">
+          {{ castEngineNotice }}
+        </div>
         <div class="studio__cast-scroll">
         <div v-if="!projectPersonas.length" class="studio__cast-empty">
           <h4>No cast yet</h4>
@@ -1512,15 +1537,12 @@ watch(selectedProjectId, (id) => {
         <aside class="studio__voice-library">
           <div class="studio__voice-library-head">
             <h4 class="studio__voice-library-h">Voice library</h4>
-            <button
-              v-for="opt in voiceEngineOptions"
-              :key="opt.value"
-              type="button"
-              class="jv-pill studio__engine-pill"
-              :class="voiceEngineFilter === opt.value ? '' : 'jv-pill--ghost'"
-              :title="opt.value ? `Show only ${opt.value} voices` : 'Show every engine'"
-              @click="voiceEngineFilter = opt.value"
-            >{{ opt.pill }}</button>
+            <span class="jv-spacer" />
+            <!-- Same control as the Voices page toolbar (item 6 —
+                 consistency): engine DROPDOWN, not pills. -->
+            <select v-model="voiceEngineFilter" class="jv-input jv-input--sm" style="max-width: 180px" title="Show only voices from one engine">
+              <option v-for="opt in voiceEngineOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </select>
           </div>
 
           <template v-if="!voices.length">
@@ -1588,8 +1610,13 @@ watch(selectedProjectId, (id) => {
                       title="This engine reads the persona's Personality text as a delivery instruction at render time"
                     >instruct</span>
                     <span
-                      v-if="voiceLocality(v) === 'online'"
-                      class="studio__vrow-instruct studio__vrow-online"
+                      v-if="voiceLocality(v) === 'local'"
+                      class="jv-locality jv-locality--local"
+                      title="Runs on this machine — no usage cost; loads the engine into RAM/VRAM on first use"
+                    >local</span>
+                    <span
+                      v-else-if="voiceLocality(v) === 'online'"
+                      class="jv-locality jv-locality--online"
                       title="External provider — needs network and may bill per character/minute"
                     >online · metered</span>
                   </i>

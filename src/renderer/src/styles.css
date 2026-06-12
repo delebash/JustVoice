@@ -223,6 +223,22 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   margin-bottom: 14px;
 }
 
+/* Canonical locality badges — LOCAL / ONLINE·METERED / NEEDS INSTALL
+   on voice rows (Voices page + Studio library read the same truth). */
+.jv-locality {
+  font-size: 9px;
+  font-weight: 800;
+  font-style: normal;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 5px;
+  vertical-align: 1px;
+}
+.jv-locality--local { color: var(--accent-ink); background: var(--accent-soft); }
+.jv-locality--online { color: var(--warn-ink); background: var(--warn-bg); }
+
 /* Canonical step cards — numbered workflow steps with live subtitles
    (Studio Cast→Script→Render→Export; JustWrite Audio Studio reference). */
 .jv-stepcard {
