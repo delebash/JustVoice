@@ -113,6 +113,10 @@ Operating tempo, mandatory:
   to surface it for discussion instead of coding it.
 - Never interleave items to save time; never let "context is running
   out" justify skimming — the summary carries unfinished queues fine.
+- The user QCs the app as a whole and delivers BIG batches — that's
+  their style and it's welcome. The rule governs execution order, not
+  intake size: accept the whole list, record it as a repo plan, then
+  execute it one item at a time.
 
 **Failure modes from prior sessions** (signals you missed the relevant memory): proposing Rust anywhere, Docker, asking permission, using native dialogs, hallucinating file paths, re-investigating decisions already made, building a UI element without naming its precedent (RULE #1), batching/skimming through a punch list instead of single-item full reads (RULE #2). If you catch yourself about to do any of these, that's the cue to load the matching memory file.
 
