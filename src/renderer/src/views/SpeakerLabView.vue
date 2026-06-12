@@ -340,14 +340,8 @@ onMounted(() => {
 
 <template>
   <div class="splab">
-    <header class="splab__header">
-      <h2 class="splab__title">Speaker Lab</h2>
-      <p class="jv-muted splab__lede">
-        Speaker-extraction testbed. Paste any text — chapters optional — then tune the
-        run: model, temperature, tier, floors, and the system prompt. Add a column to
-        race a second configuration on the same input. Same backend as Studio · Script.
-      </p>
-    </header>
+    <!-- Tab title + explainer lede live in LabsView (one mechanism for
+         all five labs) — no per-view header here. -->
 
     <!-- ── Input pane ─────────────────────────────────────────────── -->
     <section class="jv-section">
@@ -487,9 +481,6 @@ onMounted(() => {
 
 <style scoped>
 .splab { padding: 0; display: flex; flex-direction: column; gap: 18px; }
-.splab__header { margin-bottom: 4px; }
-.splab__title { margin: 0; font-size: 22px; }
-.splab__lede { margin: 6px 0 0; font-size: 13px; max-width: 820px; }
 
 .splab__input-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .splab__input-select { width: var(--w-name); }

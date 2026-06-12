@@ -168,14 +168,8 @@ onMounted(loadVoices);
 
 <template>
   <div class="renderlab">
-    <header class="renderlab__header">
-      <h2 class="renderlab__title">Render Lab</h2>
-      <p class="jv-muted renderlab__lede">
-        A/B matrix harness for voice tuning. Pick a voice, 1-3 sample
-        sentences, and 1-2 parameter axes. Up to {{ MAX_CELLS }} cells,
-        capped at {{ MAX_CONCURRENCY }} concurrent renders.
-      </p>
-    </header>
+    <!-- Tab title + explainer lede live in LabsView (one mechanism for
+         all five labs) — no per-view header here. -->
 
     <section class="jv-section">
       <h3 class="jv-section__title">Source</h3>
@@ -246,9 +240,6 @@ onMounted(loadVoices);
 
 <style scoped>
 .renderlab { padding: 0; display: flex; flex-direction: column; gap: 18px; }
-.renderlab__header { margin-bottom: 4px; }
-.renderlab__title { margin: 0; font-size: 22px; }
-.renderlab__lede { margin: 6px 0 0; font-size: 13px; max-width: 760px; }
 
 .renderlab__form {
   display: grid;

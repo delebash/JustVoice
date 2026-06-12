@@ -129,7 +129,9 @@ justvoice.transcribe      {audio} → text</pre>
     </div>
 
     <header class="jv-section">
-      <h2 class="jv-section__title">Webhooks</h2>
+      <!-- h3 section title (Cache-view precedent) — the tab strip already
+           says "Webhooks", so the heading names the section's content. -->
+      <h3 class="jv-section__title">Webhook subscriptions</h3>
       <p class="jv-muted" style="margin-top: 4px; margin-bottom: 0;">
         Server-pushed HMAC-SHA256-signed notifications for async integration —
         wire renders into a build pipeline (game VO CI) or notify when a chapter

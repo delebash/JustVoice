@@ -95,8 +95,9 @@ onMounted(() => {
 
 <template>
   <div class="channels-view">
+    <!-- Tab strip already says "Channels" — explainer lede only, no
+         duplicate title (same treatment as the Labs sub-views). -->
     <header class="jv-section">
-      <h2 class="jv-section__title">Audio output channels</h2>
       <p class="jv-muted" style="margin-top: 4px; margin-bottom: 0;">Route specific voices to specific audio outputs. Multi-device broadcast supported (e.g. play through speakers AND OBS virtual mic).</p>
     </header>
 

@@ -10,11 +10,10 @@ Execution order: sweep fixes (S steps 1-3) first, then items 1-4.
    "Render block" button that never had a handler) — mock furniture.
    Removed bar + CSS + llmRewrite ref + lede promise. GlobalAudioPlayer
    (the take transport with ✕) is a different surface and stays.
-2. **"Pick it in Engines" → link** in the no-engine banner.
-3. **Labs tab explainers** — Compare / Train / Audio get an intro lede
-   like Speaker Lab's. Also normalize the duplicate sub-tab h2 titles
-   found in the sweep (RenderLab/SpeakerLab/Webhooks/AudioChannels
-   repeat their own tab name).
+2. ✅ **"Pick it in Engines" → link** in the no-engine lede — anchor renders, navigates to #engines.
+3. ✅ **Labs tab explainers** — per-tab lede in LabsView (one mechanism,
+   .jv-content__lede); SpeakerLab/RenderLab duplicate h2 headers removed;
+   Settings · Channels/Webhooks duplicate h2s normalized too.
 4. **Voice inspector → Train LoRA** opens Train with the voice
    preselected in its dropdown (parity with how "Blend with…" pre-fills
    the blend form). Currently: toast + bare #train navigation.
