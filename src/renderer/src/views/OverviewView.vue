@@ -17,7 +17,7 @@
   install, the real app has to drive a cold one to that state first.
 -->
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { useOnboarding } from "../stores/onboarding.js";
@@ -116,6 +116,45 @@ const continueStatus = computed(() => {
   if (render) bits.push(render.label);
   if (p.updated_at) bits.push(`last open ${fmtAgo(p.updated_at)}`);
   return bits.join(" · ");
+});
+
+// Mini workflow status for the Continue card — one cache-stats call +
+// one cast call for the single continue project (cheap; no per-scene
+// block walks on Home).
+const miniStatus = ref(null);  // { rendered, total, castTotal, castVoiced }
+async function loadMiniStatus() {
+  miniStatus.value = null;
+  const p = continueProject.value;
+  if (!p) return;
+  const out = { rendered: 0, total: 0, castTotal: 0, castVoiced: 0 };
+  try {
+    const cs = await api.request(`/v1/render/cache-stats?project_id=${p.id}`);
+    out.total = (cs?.scenes || []).length;
+    out.rendered = (cs?.scenes || []).filter((sc) => sc.total > 0 && sc.cached === sc.total).length;
+  } catch { /* zero-chapter projects 404 here — strip shows import-first */ }
+  try {
+    const c = await api.request(`/v1/projects/${p.id}/cast`);
+    const cast = c?.cast || [];
+    out.castTotal = cast.length;
+    const personas = await Promise.all(cast.slice(0, 16).map(async (x) => {
+      try { return await api.request(`/v1/personas/${x.persona_id}`); } catch { return null; }
+    }));
+    out.castVoiced = personas.filter((x) => x?.voice_id).length;
+  } catch { /* no cast yet */ }
+  miniStatus.value = out;
+}
+watch(continueProject, loadMiniStatus);
+
+const miniSteps = computed(() => {
+  const m = miniStatus.value;
+  const p = continueProject.value;
+  if (!m || !p) return [];
+  const n = p.scene_count ?? m.total;
+  return [
+    { label: `1 Import`, sub: n ? `${n} ${continueMeta.value.unit}` : "no text yet", done: n > 0 },
+    { label: `2 Cast`, sub: m.castTotal ? `${m.castVoiced}/${m.castTotal} voiced` : "—", done: m.castTotal > 0 && m.castVoiced === m.castTotal },
+    { label: `3 Render`, sub: n ? `${m.rendered}/${n} rendered` : "—", done: n > 0 && m.rendered === n },
+  ];
 });
 
 function resumeProject() {
@@ -265,14 +304,36 @@ onMounted(refresh);
 
     <RecommendCard />
 
+    <!-- Zero projects — the welcome hero IS row 1 (no modal ambush;
+         the auto-picker only fires on true first run). -->
+    <div v-if="health && !projects.length" class="jv-card home__hero">
+      <div class="home__eyebrow">Welcome to JustVoice</div>
+      <h2 class="home__hero-title">What are you making?</h2>
+      <p class="jv-muted home__hero-sub">Pick a kind — the whole app reshapes around it. Same voices, personas, and lexicons either way.</p>
+      <div class="home__hero-pills">
+        <button v-for="k in KIND_PILLS" :key="k.kind" type="button" class="jv-pill home__pill home__pill--hero"
+          :title="`Create a ${k.kind === 'game_voicelines' ? 'game dialogue' : k.kind} project`"
+          @click="startKind(k.kind)">{{ k.label }}</button>
+      </div>
+      <p class="jv-muted home__hero-foot">
+        …or <a href="#books">import a manuscript / CSV</a> · not making projects?
+        <a href="#captures">set up dictation</a>
+      </p>
+    </div>
+
     <!-- Row 1 — Continue + Start something -->
-    <div class="home__row home__row--top">
+    <div v-if="projects.length" class="home__row home__row--top">
       <div v-if="continueProject" class="jv-card home__continue">
         <div class="home__portrait" :title="continueMeta.label">{{ (continueProject.name || "?").slice(0, 1).toUpperCase() }}</div>
         <div class="home__continue-main">
           <div class="home__eyebrow">Continue</div>
           <div class="home__display">{{ continueProject.name }}</div>
           <div class="jv-muted home__substat">{{ continueStatus }}</div>
+          <div v-if="miniSteps.length" class="home__mini">
+            <span v-for="st in miniSteps" :key="st.label" class="home__mini-step" :class="{ 'home__mini-step--done': st.done }" :title="st.sub">
+              {{ st.done ? "✓" : "" }} {{ st.label }} <i>{{ st.sub }}</i>
+            </span>
+          </div>
         </div>
         <JvButton variant="primary" label="Resume ➜" title="Open this project's home base" @click="resumeProject" />
       </div>
@@ -420,4 +481,20 @@ onMounted(refresh);
 .home__next-cta { color: var(--accent-ink); font-weight: 600; }
 .home__hotkeys { font-size: 11.5px; }
 .home__hotkeys .jv-mono { font-size: 10.5px; background: var(--surface-3); padding: 1px 6px; border-radius: 4px; }
+
+.home__hero { padding: 26px 30px; margin: 0; text-align: left; }
+.home__hero-title { font-size: 24px; margin: 6px 0 4px; }
+.home__hero-sub { font-size: 13px; max-width: 560px; }
+.home__hero-pills { display: flex; gap: 10px; margin: 16px 0 12px; flex-wrap: wrap; }
+.home__pill--hero { font-size: 14px; padding: 10px 20px; }
+.home__hero-foot { font-size: 12px; }
+.home__mini { display: flex; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
+.home__mini-step {
+  font-size: 10.5px; font-weight: 700; color: var(--ink-3);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 2px 9px; background: var(--surface);
+}
+.home__mini-step i { font-style: normal; font-weight: 500; color: var(--ink-3); }
+.home__mini-step--done { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent-ink); }
+.home__mini-step--done i { color: var(--accent-ink); }
 </style>

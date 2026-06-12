@@ -12,7 +12,6 @@
 -->
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
-import ListPane from "../components/ListPane.vue";
 import JvButton from "../components/jv/JvButton.vue";
 import JvTag from "../components/jv/JvTag.vue";
 import EmptyState from "../components/EmptyState.vue";
@@ -95,12 +94,21 @@ const pendingCount = computed(() =>
 );
 
 const PROJECT_TYPES = [
-  { id: "all", label: "All projects" },
-  { id: "audiobook", label: "Audiobooks" },
-  { id: "game_voicelines", label: "Game voicelines" },
-  { id: "podcast", label: "Podcasts" },
-  { id: "custom", label: "Custom" },
+  { id: "all", label: "All" },
+  { id: "audiobook", label: "📖 Audiobooks" },
+  { id: "game_voicelines", label: "🎮 Games" },
+  { id: "podcast", label: "🎙️ Podcasts" },
+  { id: "custom", label: "📄 Text" },
 ];
+const KIND_ICON = { audiobook: "📖", game_voicelines: "🎮", podcast: "🎙️", custom: "📄" };
+
+function fmtAgo(iso) {
+  if (!iso) return "—";
+  const ago = Date.now() - new Date(iso).getTime();
+  if (ago < 3_600_000) return Math.max(1, Math.floor(ago / 60_000)) + " min";
+  if (ago < 86_400_000) return Math.floor(ago / 3_600_000) + " h";
+  return Math.floor(ago / 86_400_000) + " d";
+}
 
 const PROJECT_TYPE_LABEL = {
   audiobook: "Audiobook",
@@ -129,10 +137,7 @@ async function refresh() {
   try {
     const res = await projectsService.list();
     projects.value = res.projects ?? [];
-    if (!selectedId.value && projects.value.length > 0) {
-      const prefer = projects.value.find((p) => p.id === activeProject.id);
-      selectedId.value = (prefer || projects.value[0]).id;
-    }
+    // No auto-select — rows start collapsed; browsing is explicit.
   } catch (e) {
     pushToast({ kind: "error", title: "Failed to load projects", description: String(e?.message ?? e) });
   } finally {
@@ -497,81 +502,67 @@ onMounted(() => {
   } catch { /* ignore */ }
 });
 
-// Keep the app-wide active project (sidebar vocabulary, topbar chips,
-// Home resume card) in sync with this view's selection.
-watch(selectedId, (id) => {
-  const p = projects.value.find((x) => x.id === id);
-  if (p) activeProject.open(p);
-});
+// Browsing ≠ activating (user decision 2026-06-12): expanding a row to
+// peek at details must NOT re-tailor the whole app. Only Open ➜,
+// create, and import activate (landInHomeBase / openProjectHome).
 </script>
 
 <template>
   <div class="books">
-    <ListPane v-model:search-value="search" title="Projects" search-placeholder="Search by name…">
-      <template #actions>
-        <JvButton variant="secondary" size="sm" label="⬇ Import" title="Create a project from a file — EPUB, DOCX, CSV, markdown, JustWrite JSON" @click="showImport = true" />
-        <JvButton variant="primary" size="sm" label="+ New" @click="createBlank" />
-      </template>
+    <!-- Mock grid (user-approved 2026-06-12): toolbar + flat table; a
+         row click expands its detail card inline (provider-row pattern);
+         Open ➜ is the ONLY activation. -->
+    <div class="books__toolbar">
+      <input v-model="search" class="jv-input jv-input--sm books__search" placeholder="Search projects…" />
+      <button
+        v-for="t in PROJECT_TYPES"
+        :key="t.id"
+        class="jv-pill"
+        :class="projectTypeFilter === t.id ? 'jv-pill--solid' : 'jv-pill--ghost'"
+        @click="projectTypeFilter = t.id"
+      >{{ t.label }}</button>
+      <span class="jv-spacer" />
+      <JvButton variant="secondary" size="sm" label="⬇ Import" title="Create a project from a file — EPUB, DOCX, CSV, markdown, JustWrite JSON" @click="showImport = true" />
+      <JvButton variant="primary" size="sm" label="＋ New project" @click="createBlank" />
+    </div>
 
-      <div class="books__filter">
-        <button
-          v-for="t in PROJECT_TYPES"
-          :key="t.id"
-          class="jv-pill"
-          :class="projectTypeFilter === t.id ? 'jv-pill--solid' : 'jv-pill--ghost'"
-          @click="projectTypeFilter = t.id"
-        >
-          {{ t.label }}
-        </button>
-      </div>
+    <div v-if="loading" class="books__empty jv-muted">Loading…</div>
+    <EmptyState
+      v-else-if="filtered.length === 0 && !search && projectTypeFilter === 'all'"
+      icon="Sparkle"
+      :title="`No ${copy.book.plural.toLowerCase()} yet`"
+      :message="`Import from JustWrite, paste a manuscript chapter, or start blank. Studio walks you from cast → script → render.`"
+      action-label="+ Import…"
+      compact
+      @action="showImport = true"
+    />
+    <div v-else-if="filtered.length === 0" class="books__empty">
+      <p class="jv-muted">No {{ copy.book.plural.toLowerCase() }} match this filter.</p>
+    </div>
 
-      <div v-if="loading" class="books__empty jv-muted">Loading…</div>
-      <EmptyState
-        v-else-if="filtered.length === 0 && !search && projectTypeFilter === 'all'"
-        icon="Sparkle"
-        :title="`No ${copy.book.plural.toLowerCase()} yet`"
-        :message="`Import from JustWrite, paste a manuscript chapter, or start blank. Studio walks you from cast → script → render.`"
-        action-label="+ Import…"
-        compact
-        @action="showImport = true"
-      />
-      <div v-else-if="filtered.length === 0" class="books__empty">
-        <p class="jv-muted">No {{ copy.book.plural.toLowerCase() }} match this filter.</p>
-      </div>
-
-      <div
-        v-for="p in filtered"
-        :key="p.id"
-        class="jv-pane-list__item"
-        :class="{ 'jv-pane-list__item--active': p.id === selectedId }"
-        @click="selectedId = p.id"
-      >
-        <div class="books__item-row">
-          <JvTag :label="PROJECT_TYPE_LABEL[p.project_type] ?? p.project_type" />
-          <strong class="jv-ellipsis">{{ p.name }}</strong>
-        </div>
-        <span class="jv-pane-list__meta">
-          {{ p.scene_count }} {{ copy.chapter.plural.toLowerCase() }}
-          <button
-            type="button"
-            class="books__open"
-            :title="`Open in its home base — the sidebar reshapes to this kind`"
-            @click.stop="openProjectHome(p)"
-          >Open ➜</button>
-        </span>
-      </div>
-    </ListPane>
-
-    <div class="books__detail">
-      <div v-if="!selectedProject" class="books__detail-empty jv-card">
-        <p class="jv-muted">Select a {{ copy.book.singular.toLowerCase() }} on the left, or import one from JustWrite / a CSV / an SRT / Audacity labels / a JustVoice standard JSON.</p>
-        <div class="jv-btn-group" style="margin-top: 16px; justify-content: center;">
-          <JvButton variant="primary" label="+ Import…" @click="showImport = true" />
-          <JvButton variant="secondary" :label="`+ New blank ${copy.book.singular.toLowerCase()}`" @click="createBlank" />
-        </div>
-      </div>
-
-      <template v-else>
+    <table v-else class="jv-table books__grid">
+      <thead><tr>
+        <th>Project</th>
+        <th>Kind</th>
+        <th class="books__num">Structure</th>
+        <th class="books__num">Last opened</th>
+        <th></th>
+      </tr></thead>
+      <tbody>
+        <template v-for="p in filtered" :key="p.id">
+          <tr class="books__row" :class="{ 'books__row--open': p.id === selectedId }" :title="p.id === selectedId ? 'Collapse details' : 'Expand details — settings, cast, chapters, export'" @click="selectedId = p.id === selectedId ? null : p.id">
+            <td><strong>{{ p.name }}</strong></td>
+            <td>{{ KIND_ICON[p.project_type] || "📄" }} {{ PROJECT_TYPE_LABEL[p.project_type] ?? p.project_type }}</td>
+            <td class="books__num jv-muted">{{ p.scene_count }} {{ copy.chapter.plural.toLowerCase() }}</td>
+            <td class="books__num jv-muted">{{ fmtAgo(p.updated_at) }}</td>
+            <td class="books__row-actions">
+              <JvButton variant="ghost" size="sm" label="Open ➜" :title="`Make it the active project — the sidebar reshapes to ${PROJECT_TYPE_LABEL[p.project_type] || 'this kind'}`" @click.stop="openProjectHome(p)" />
+            </td>
+          </tr>
+          <tr v-if="p.id === selectedId" class="books__expand">
+            <td colspan="5" class="books__expand-cell">
+              <div class="books__detail">
+      <template v-if="selectedProject">
         <div class="jv-card books__detail-card">
           <header class="books__detail-header">
             <h2 class="books__detail-title">{{ selectedProject.name }}</h2>
@@ -816,7 +807,12 @@ watch(selectedId, (id) => {
           </template>
         </div>
       </template>
-    </div>
+              </div>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
 
     <!-- Multi-adapter import modal (justwrite / csv_lines / srt / audacity_labels / justvoice_standard / elevenlabs-stub). -->
     <ImportModal v-if="showImport" @close="showImport = false" @created="onImportCreated" />
@@ -1082,4 +1078,15 @@ watch(selectedId, (id) => {
   cursor: pointer; margin-left: 8px; padding: 0;
 }
 .books__open:hover { text-decoration: underline; }
+
+.books__toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.books__search { max-width: 260px; }
+.books__grid { margin: 0; }
+.books__num { text-align: right; }
+.books__row { cursor: pointer; }
+.books__row:hover td { background: var(--surface-2); }
+.books__row--open td { background: var(--accent-soft); }
+.books__row-actions { text-align: right; white-space: nowrap; }
+.books__expand-cell { padding: 0 !important; background: var(--surface-2); }
+.books__expand-cell .books__detail { padding: 14px 16px; }
 </style>

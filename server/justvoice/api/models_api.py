@@ -27,10 +27,25 @@ async def list_models(id: str) -> ModelsListResponse:
     # (Download vs Load/Delete). HF-cache probe; non-HF urls stay None.
     from ..hf_cache import is_hf_repo_cached, repo_from_url
 
+    manifest = get_manager().get_manifest(id)
     for v in variants:
         repo = repo_from_url(v.files[0].url) if v.files else None
         if repo:
             v.on_disk = is_hf_repo_cached(repo)
+        elif manifest is not None:
+            # Tarball-installed engines (Kokoro via sherpa-onnx release):
+            # weights live in the manifest's models_dir, not the HF
+            # cache. Probe the declared expected_files so the UI shows
+            # ⬇ Download vs Load/Delete truthfully (user-hit: Kokoro
+            # offered Load with nothing on disk).
+            try:
+                steps = manifest.model_install_steps
+                expected = [f for st in steps for f in (st.get("expected_files") or [])]
+                if expected:
+                    mdir = manifest.models_dir
+                    v.on_disk = mdir.exists() and all(any(mdir.rglob(f)) for f in expected)
+            except Exception:  # noqa: BLE001 — probe must never 500 the list
+                pass
     return ModelsListResponse(engine_id=id, variants=variants)
 
 
@@ -43,8 +58,9 @@ async def delete_model(id: str, variant_id: str) -> dict:
 
     from huggingface_hub import constants as hf_constants
 
+    from ..engines.manager import get_manager
     from ..engines.model_catalog import models_for
-    from ..errors import bad_request, not_found
+    from ..errors import not_found
     from ..hf_cache import is_hf_repo_cached, repo_from_url
 
     variant = next((v for v in models_for(id) if v.id == variant_id), None)
@@ -52,9 +68,16 @@ async def delete_model(id: str, variant_id: str) -> dict:
         raise not_found(f"variant {variant_id} on engine {id}")
     repo = repo_from_url(variant.files[0].url) if variant.files else None
     if not repo:
-        raise bad_request(
-            f"variant {variant_id} is not HF-distributed — uninstall the engine to remove its files"
-        )
+        # Tarball-installed engine (Kokoro): weights live in the
+        # manifest's models_dir, not the HF cache — delete that instead.
+        manifest = get_manager().get_manifest(id)
+        if manifest is None:
+            raise not_found(f"engine {id}")
+        mdir = manifest.models_dir
+        if not mdir.exists() or not any(mdir.iterdir()):
+            raise not_found(f"engine {id} has no downloaded model files")
+        shutil.rmtree(mdir, ignore_errors=True)
+        return {"deleted": True, "engine_id": id, "variant_id": variant_id, "path": str(mdir)}
     if not is_hf_repo_cached(repo):
         raise not_found(f"{repo} has no weights in the local cache")
     repo_dir = Path(hf_constants.HF_HUB_CACHE) / ("models--" + repo.replace("/", "--"))

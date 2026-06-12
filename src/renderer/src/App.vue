@@ -112,6 +112,44 @@ const KIND_STRUCT = {
 // sidebar follows what you're MAKING, not the install-time focus.
 const KIND_TO_USE_CASE = { audiobook: "audiobook", game: "game", podcast: "podcast", text: "multiple" };
 
+// ── Topbar project switcher (JustWrite-style) ────────────────────────
+const switcherOpen = ref(false);
+const switcherRef = ref(null);
+const switcherProjects = ref([]);
+const SWITCH_KIND_META = {
+  audiobook: { icon: "📖", label: "audiobook", home: "chapter" },
+  game_voicelines: { icon: "🎮", label: "game", home: "lines" },
+  podcast: { icon: "🎙️", label: "podcast", home: "chapter" },
+  custom: { icon: "📄", label: "text", home: "chapter" },
+};
+async function toggleSwitcher() {
+  switcherOpen.value = !switcherOpen.value;
+  if (!switcherOpen.value) return;
+  try {
+    const r = await api.request("/v1/projects");
+    switcherProjects.value = (r?.projects || [])
+      .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0))
+      .slice(0, 8);
+  } catch { switcherProjects.value = []; }
+}
+function switchProject(p) {
+  switcherOpen.value = false;
+  if (p.id === activeProject.id) return;
+  activeProject.open(p);
+  // Stay put when the current view survives the kind swap; otherwise
+  // land in the new kind's home base.
+  if (!visibleViews.value.some((v) => v.id === view.value)) {
+    view.value = SWITCH_KIND_META[p.project_type]?.home || "chapter";
+  }
+}
+if (typeof document !== "undefined") {
+  document.addEventListener("mousedown", (e) => {
+    if (switcherOpen.value && switcherRef.value && !switcherRef.value.contains(e.target)) {
+      switcherOpen.value = false;
+    }
+  });
+}
+
 // Map each view id → docs/<slug>.md for the topbar HelpTrigger.
 // Views without a dedicated doc fall back to getting-started.
 const HELP_SLUG_BY_VIEW = {
@@ -426,9 +464,29 @@ onMounted(async () => {
         <!-- Active-project chips (journeys topbar contract) — Project /
              Kind / Master. Click the project chip to jump to Projects. -->
         <template v-if="activeProject.id">
-          <button type="button" class="jv-topbar__proj" title="Active project — workflow surfaces target it. Click to switch projects." @click="view = 'books'">
-            <span class="jv-topbar__proj-k">Project</span><b>{{ activeProject.name }}</b>
-          </button>
+          <div class="jv-topbar__switcher" ref="switcherRef">
+            <button type="button" class="jv-topbar__proj" title="Active project — click to switch" @click="toggleSwitcher">
+              <span class="jv-topbar__proj-k">Project</span><b>{{ activeProject.name }}</b><span class="jv-topbar__proj-chev">▾</span>
+            </button>
+            <div v-if="switcherOpen" class="jv-topbar__menu">
+              <button
+                v-for="p in switcherProjects"
+                :key="p.id"
+                type="button"
+                class="jv-topbar__menu-item"
+                :class="{ 'jv-topbar__menu-item--current': p.id === activeProject.id }"
+                :title="`Switch — the sidebar re-tailors to ${SWITCH_KIND_META[p.project_type]?.label || 'this kind'}`"
+                @click="switchProject(p)"
+              >
+                <span>{{ SWITCH_KIND_META[p.project_type]?.icon || "📄" }}</span>
+                <span class="jv-topbar__menu-name">{{ p.name }}</span>
+                <span v-if="p.id === activeProject.id" class="jv-topbar__menu-check">✓</span>
+              </button>
+              <button type="button" class="jv-topbar__menu-item jv-topbar__menu-item--all" @click="switcherOpen = false; view = 'books'">
+                All projects ➜
+              </button>
+            </div>
+          </div>
           <span class="jv-topbar__proj" :title="`Project kind — decides the sidebar vocabulary and the export pipeline`">
             <span class="jv-topbar__proj-k">Kind</span><b>{{ activeProject.kindIcon }} {{ activeProject.kindLabel }}</b>
           </span>

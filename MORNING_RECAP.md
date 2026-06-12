@@ -5,6 +5,33 @@
 
 ---
 
+## 2026-06-12 (later) — 7-item UX batch (all user-approved)
+
+1. Home Continue card → mini workflow strip (Import/Cast/Render counts
+   from cache-stats + cast probes, continue-project only).
+2. Topbar project chip → SWITCHER dropdown (recent 8 by updated_at +
+   All projects ➜; stays put if current view survives the kind swap,
+   else lands in the new kind's home base).
+3. Zero-projects Home → welcome hero ("What are you making?" pills +
+   import/dictation links). Auto-picker stays first-run-only.
+4. Engine model-state TRUTH: models_api on_disk now probes tarball
+   engines via manifest.models_dir + expected_files (Kokoro showed
+   'Load' with nothing downloaded → now '⬇ Download 700 MB', verified
+   live); DELETE model handles tarball engines (rmtree models_dir, not
+   HF cache).
+5. Sidenav lane headers: contrast bump + accent underline (were
+   mistaken for buttons / invisible).
+6. Projects: browsing ≠ activating — selection watch + auto-select-
+   first REMOVED; only Open ➜ / create / import activate (selecting a
+   row used to silently re-tailor the whole app).
+7. Projects = mock GRID: toolbar (search + icon+text kind chips) +
+   flat table (Project | Kind | Structure | Last opened | Open ➜),
+   row click expands the old detail card INLINE (provider-row
+   pattern). ListPane master/detail retired here. Icon POLICY: icons
+   always paired with text for nouns; icon-only reserved for verbs
+   (▶ ✕ ⚙ ⬇). testdata/stillwater.epub committed as the shared
+   walkthrough fixture (original content).
+
 ## 2026-06-12 — onboarding redesign: work first, recommend in context
 
 User decision: no welcome quiz, no auto QuickSetup wizard. First run =
