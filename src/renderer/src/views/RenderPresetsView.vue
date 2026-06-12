@@ -16,7 +16,7 @@
     - Save / Delete
 -->
 <script setup>
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { promptDialog } from "../services/dialog.js";
@@ -69,6 +69,16 @@ function deliveryPills(p) {
   });
 }
 
+// Edit dialog (consolidated pattern 2026-06-12: table rows + one popup
+// with the full form). Fields commit per-change; Done closes.
+const editOpen = ref(false);
+const editingId = ref(null);
+const editing = computed(() => presets.value.find((x) => x.id === editingId.value) || null);
+function openEdit(p) {
+  editingId.value = p.id;
+  editOpen.value = true;
+}
+
 async function createPreset() {
   // Native prompt() is banned (project_gotchas) AND returns null in the
   // Tauri webview — which is why creates silently never saved.
@@ -95,6 +105,8 @@ async function createPreset() {
     });
     pushToast({ message: `Created "${name}".`, kind: "success" });
     await refresh();
+    const created = presets.value.find((x) => x.name === name);
+    if (created) openEdit(created);
   } catch (e) {
     pushToast({ message: `Create failed: ${e?.message || e}`, kind: "error" });
   }
@@ -178,68 +190,73 @@ onMounted(refresh);
         No render presets yet. Click <strong>+ New preset</strong> above.
       </div>
 
-      <div v-else class="jv-card-grid">
-        <article v-for="p in presets" :key="p.id" class="jv-card render-presets-view__card">
-          <header class="render-presets-view__card-h">
-            <input
-              type="text"
-              class="jv-input jv-input--sm jv-w-name"
-              :value="p.name"
-              @change="updateField(p, 'name', $event.target.value)"
-            />
-            <span v-if="p.is_builtin" class="jv-pill jv-pill--ghost" title="Shipped with JustVoice — editable like any preset">built-in</span>
-            <button
-              type="button"
-              class="jv-btn jv-btn--danger-outline jv-btn--sm"
-              @click="deletePreset(p)"
-            >Delete</button>
-          </header>
+      <table v-else class="jv-table">
+        <thead>
+          <tr><th>Name</th><th>Persona</th><th style="width:120px">Master target</th><th>Delivery</th><th style="width:90px"></th><th class="jv-table__actions" style="width:150px">Actions</th></tr>
+        </thead>
+        <tbody>
+          <tr v-for="p in presets" :key="p.id" class="render-presets-view__row" title="Click to edit" @click="openEdit(p)">
+            <td><strong>{{ p.name }}</strong></td>
+            <td class="jv-muted">{{ p.voice_id ? personaName(p.voice_id) : "— delivery only —" }}</td>
+            <td class="jv-muted">{{ p.master || "none" }}</td>
+            <td>
+              <span v-for="(d, i) in deliveryPills(p)" :key="i" class="jv-pill jv-pill--ghost" style="margin:1px 4px 1px 0">{{ d }}</span>
+              <span v-if="!deliveryPills(p).length" class="jv-muted">(engine defaults)</span>
+            </td>
+            <td><span v-if="p.is_builtin" class="jv-pill jv-pill--ghost">built-in</span></td>
+            <td class="jv-table__actions" @click.stop>
+              <JvButton variant="ghost" size="sm" label="Edit" @click="openEdit(p)" />
+              <button type="button" class="jv-btn jv-btn--danger-outline jv-btn--sm" @click="deletePreset(p)">Delete</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-          <div class="jv-form-row">
-            <label>Persona</label>
-            <select
-              class="jv-input jv-input--sm jv-w-name"
-              :value="p.voice_id || ''"
-              @change="updateField(p, 'voice_id', $event.target.value)"
-            >
-              <!-- "" = delivery-only; the server clears the binding. -->
+    <!-- Edit dialog — full form (consolidated pattern). -->
+    <div v-if="editOpen && editing" class="jv-overlay" @click.self="editOpen = false">
+      <div class="jv-modal" style="width: min(560px, calc(100vw - 32px));">
+        <header class="jv-modal__header">
+          <div class="jv-modal__titleblock">
+            <span class="jv-modal__eyebrow">Render preset</span>
+            <h3 class="jv-modal__title">{{ editing.name }}</h3>
+          </div>
+          <span v-if="editing.is_builtin" class="jv-pill jv-pill--ghost">built-in</span>
+          <button type="button" class="jv-modal__close" title="Close" @click="editOpen = false">✕</button>
+        </header>
+        <div class="jv-modal__body render-presets-view__form">
+          <label class="jv-form-row"><span>Name</span>
+            <input type="text" class="jv-input jv-input--sm" :value="editing.name" @change="updateField(editing, 'name', $event.target.value)" />
+          </label>
+          <label class="jv-form-row"><span>Persona</span>
+            <select class="jv-input jv-input--sm" :value="editing.voice_id || ''" @change="updateField(editing, 'voice_id', $event.target.value)">
               <option value="">— none (delivery only) —</option>
               <option v-for="ps in personas" :key="ps.id" :value="ps.id">{{ ps.name }}</option>
             </select>
-          </div>
-
-          <div class="jv-form-row">
-            <label>Master target</label>
-            <select
-              class="jv-input jv-input--sm jv-w-id"
-              :value="p.master || ''"
-              @change="updateField(p, 'master', $event.target.value || null)"
-            >
+          </label>
+          <label class="jv-form-row"><span>Master target</span>
+            <select class="jv-input jv-input--sm" :value="editing.master || ''" @change="updateField(editing, 'master', $event.target.value || null)">
               <option v-for="m in MASTER_TARGETS" :key="m.value" :value="m.value">{{ m.label }}</option>
             </select>
-          </div>
-
-          <div class="jv-form-row jv-form-row--stack">
-            <span class="jv-form-row__label">Delivery</span>
-            <div class="render-presets-view__chain">
-              <span v-for="(d, i) in deliveryPills(p)" :key="i" class="jv-pill jv-pill--ghost">{{ d }}</span>
-              <span v-if="!deliveryPills(p).length" class="jv-muted">(engine defaults)</span>
+          </label>
+          <div class="jv-form-row jv-form-row--stack"><span>Delivery</span>
+            <div>
+              <span v-for="(d, i) in deliveryPills(editing)" :key="i" class="jv-pill jv-pill--ghost" style="margin:1px 4px 1px 0">{{ d }}</span>
+              <span v-if="!deliveryPills(editing).length" class="jv-muted">(engine defaults — tune in Labs · Render and save from a cell)</span>
             </div>
           </div>
-
-          <div class="jv-form-row jv-form-row--stack">
-            <span class="jv-form-row__label">Effects chain</span>
-            <div class="render-presets-view__chain">
-              <span
-                v-for="(ef, i) in (p.effects_chain || [])"
-                :key="i"
-                class="jv-pill jv-pill--ghost"
-              >{{ ef.type }}</span>
-              <span v-if="!(p.effects_chain || []).length" class="jv-muted">(no effects)</span>
-              <JvButton variant="secondary" size="sm" :label="(p.effects_chain || []).length ? 'Edit chain' : 'Add chain'" @click="openChainEditor(p)" />
+          <div class="jv-form-row jv-form-row--stack"><span>Effects chain</span>
+            <div>
+              <span v-for="(ef, i) in (editing.effects_chain || [])" :key="i" class="jv-pill jv-pill--ghost" style="margin:1px 4px 1px 0">{{ ef.type }}</span>
+              <span v-if="!(editing.effects_chain || []).length" class="jv-muted">(no effects)</span>
+              <JvButton variant="secondary" size="sm" :label="(editing.effects_chain || []).length ? 'Edit chain' : 'Add chain'" @click="openChainEditor(editing)" />
             </div>
           </div>
-        </article>
+          <p class="jv-muted" style="font-size:11.5px; margin: 6px 0 0">Changes save automatically.</p>
+        </div>
+        <footer class="jv-dialog__footer">
+          <JvButton variant="primary" label="Done" @click="editOpen = false" />
+        </footer>
       </div>
     </div>
 
@@ -265,22 +282,11 @@ onMounted(refresh);
   font-size: 13px;
   text-align: center;
 }
-.render-presets-view__card {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px;
-}
-.render-presets-view__card-h {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.render-presets-view__card-h .jv-input { flex: 1; }
-.render-presets-view__chain {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
+.render-presets-view__row { cursor: pointer; }
+.render-presets-view__row:hover td { background: var(--surface-2); }
+.render-presets-view__form { display: flex; flex-direction: column; gap: 10px; }
+.render-presets-view__form .jv-form-row { display: flex; align-items: center; gap: 10px; }
+.render-presets-view__form .jv-form-row > span { width: 110px; flex: none; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-3); font-weight: 600; }
+.render-presets-view__form .jv-form-row .jv-input { flex: 1; }
+.render-presets-view__form .jv-form-row--stack { align-items: flex-start; }
 </style>

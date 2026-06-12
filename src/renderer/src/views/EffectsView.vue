@@ -147,40 +147,31 @@ onMounted(refresh);
         Or save a chain from a persona's effects editor.
       </div>
 
-      <div v-else class="effects-view__grid">
-        <article
-          v-for="p in presets"
-          :key="p.id"
-          class="jv-card effects-view__preset"
-        >
-          <header class="effects-view__preset-h">
-            <strong>{{ p.name }}</strong>
-            <span v-if="p.is_builtin" class="jv-pill jv-pill--ghost">built-in</span>
-            <span class="jv-pill jv-pill--ghost">
-              {{ (p.chain || []).length }} effect{{ (p.chain || []).length === 1 ? '' : 's' }}
-            </span>
-          </header>
-          <p v-if="p.description" class="jv-muted effects-view__desc">{{ p.description }}</p>
-          <ul class="effects-view__chain-pills">
-            <li
-              v-for="(ef, i) in (p.chain || [])"
-              :key="i"
-              class="effects-view__chain-pill"
-            >{{ ef.type }}</li>
-            <li v-if="!(p.chain || []).length" class="jv-muted">(empty chain)</li>
-          </ul>
-          <footer class="effects-view__preset-actions">
-            <span class="jv-spacer" />
-            <JvButton variant="secondary" size="sm" label="Edit" @click="startEdit(p)" />
-            <button
-              type="button"
-              class="jv-btn jv-btn--danger-outline jv-btn--sm"
-              :disabled="p.is_builtin"
-              @click="deletePreset(p)"
-            >Delete</button>
-          </footer>
-        </article>
-      </div>
+      <table v-else class="jv-table">
+        <thead>
+          <tr><th>Name</th><th>Chain</th><th style="width:90px">Effects</th><th style="width:90px"></th><th class="jv-table__actions" style="width:150px">Actions</th></tr>
+        </thead>
+        <tbody>
+          <tr v-for="p in presets" :key="p.id" class="effects-view__row" title="Click to edit" @click="startEdit(p)">
+            <td><strong>{{ p.name }}</strong><div v-if="p.description" class="jv-muted" style="font-size:11.5px">{{ p.description }}</div></td>
+            <td>
+              <span v-for="(ef, i) in (p.chain || [])" :key="i" class="effects-view__chain-pill">{{ ef.type }}</span>
+              <span v-if="!(p.chain || []).length" class="jv-muted">(empty chain)</span>
+            </td>
+            <td>{{ (p.chain || []).length }}</td>
+            <td><span v-if="p.is_builtin" class="jv-pill jv-pill--ghost">built-in</span></td>
+            <td class="jv-table__actions" @click.stop>
+              <JvButton variant="ghost" size="sm" label="Edit" @click="startEdit(p)" />
+              <button
+                type="button"
+                class="jv-btn jv-btn--danger-outline jv-btn--sm"
+                :disabled="p.is_builtin"
+                @click="deletePreset(p)"
+              >Delete</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- Modal — pre-loaded with the chain being edited (or empty for new). -->
@@ -202,34 +193,11 @@ onMounted(refresh);
 
 .effects-view__empty { padding: 40px 0; font-size: 13px; text-align: center; }
 
-.effects-view__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: var(--gap-grid);
-}
-
-.effects-view__preset {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 16px;
-}
-.effects-view__preset-h {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.effects-view__desc { font-size: 12.5px; margin: 0; }
-.effects-view__chain-pills {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
+.effects-view__row { cursor: pointer; }
+.effects-view__row:hover td { background: var(--surface-2); }
 .effects-view__chain-pill {
+  display: inline-block;
+  margin: 1px 4px 1px 0;
   background: var(--surface-2);
   border: 1px solid var(--border-soft);
   border-radius: 6px;
@@ -237,11 +205,5 @@ onMounted(refresh);
   font-size: 11.5px;
   font-family: var(--font-mono);
   color: var(--ink-2);
-}
-.effects-view__preset-actions {
-  display: flex;
-  gap: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border-soft);
 }
 </style>

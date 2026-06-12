@@ -315,8 +315,8 @@ onMounted(async () => {
 
 <template>
   <div class="lex">
-    <!-- ── Card grid (nothing selected) ─────────────────────────────── -->
-    <template v-if="!selected">
+    <!-- ── Table (consolidated pattern 2026-06-12) ─────────────────── -->
+    <template v-if="true">
       <div class="lex__toolbar">
         <span class="jv-muted">{{ lexicons.length }} dictionar{{ lexicons.length === 1 ? "y" : "ies" }} · applied before TTS</span>
         <span class="jv-spacer" />
@@ -334,35 +334,35 @@ onMounted(async () => {
         @action="createLexicon"
       />
 
-      <div v-else class="jv-card-grid">
-        <article
-          v-for="lx in lexicons"
-          :key="lx.id"
-          class="jv-card lex__card"
-          @click="selectedId = lx.id"
-        >
-          <header class="lex__card-h">
-            <strong>{{ lx.name }}</strong>
-            <span class="jv-pill" :class="scopeBadge(lx).cls">{{ scopeBadge(lx).label }}</span>
-          </header>
-          <div class="jv-muted lex__card-meta">
-            {{ (lx.entries || []).length }} entr{{ (lx.entries || []).length === 1 ? "y" : "ies" }}
-            <span v-if="scopedToName(lx)"> · {{ scopedToName(lx) }}</span>
-          </div>
-          <div class="lex__card-words">
-            <code v-for="(e, i) in (lx.entries || []).slice(0, 4)" :key="i" class="jv-mono">{{ e.grapheme }}</code>
-            <span v-if="(lx.entries || []).length > 4" class="jv-muted">+{{ (lx.entries || []).length - 4 }}</span>
-            <span v-if="!(lx.entries || []).length" class="jv-muted">(empty)</span>
-          </div>
-        </article>
-      </div>
+      <table v-else class="jv-table">
+        <thead>
+          <tr><th>Name</th><th style="width:130px">Scope</th><th style="width:90px">Entries</th><th>Words</th><th class="jv-table__actions" style="width:150px">Actions</th></tr>
+        </thead>
+        <tbody>
+          <tr v-for="lx in lexicons" :key="lx.id" class="lex__row" title="Click to edit" @click="selectedId = lx.id">
+            <td><strong>{{ lx.name }}</strong><div v-if="scopedToName(lx)" class="jv-muted" style="font-size:11.5px">{{ scopedToName(lx) }}</div></td>
+            <td><span class="jv-pill" :class="scopeBadge(lx).cls">{{ scopeBadge(lx).label }}</span></td>
+            <td>{{ (lx.entries || []).length }}</td>
+            <td>
+              <code v-for="(e, i) in (lx.entries || []).slice(0, 4)" :key="i" class="jv-mono lex__word">{{ e.grapheme }}</code>
+              <span v-if="(lx.entries || []).length > 4" class="jv-muted">+{{ (lx.entries || []).length - 4 }}</span>
+              <span v-if="!(lx.entries || []).length" class="jv-muted">(empty)</span>
+            </td>
+            <td class="jv-table__actions" @click.stop>
+              <JvButton variant="ghost" size="sm" label="Edit" @click="selectedId = lx.id" />
+              <button type="button" class="jv-btn jv-btn--danger-outline jv-btn--sm" @click="deleteLexicon(lx.id)">Delete</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </template>
 
-    <!-- ── Detail editor (drill-in) ──────────────────────────────────── -->
-    <section v-else class="lex__detail">
-      <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm lex__back" @click="selectedId = null">← All lexicons</button>
+    <!-- ── Editor dialog (consolidated pattern) ──────────────────────── -->
+    <div v-if="selected" class="jv-overlay" @click.self="selectedId = null">
+      <div class="jv-modal lex__modal">
+      <button type="button" class="jv-modal__close lex__close" title="Close" @click="selectedId = null">✕</button>
 
-      <div class="jv-card lex__editor">
+      <div class="lex__editor">
         <header class="lex__editor-h">
           <h2>{{ selected.name }}</h2>
           <span class="jv-pill" :class="scopeBadge(selected).cls">{{ scopeBadge(selected).label }}</span>
@@ -450,7 +450,8 @@ onMounted(async () => {
           >▶ Preview against text</button>
         </div>
       </div>
-    </section>
+      </div>
+    </div>
 
     <input ref="fileInput" type="file" accept=".justlex.json,application/json" style="display:none" @change="importFile" />
   </div>
@@ -468,22 +469,19 @@ onMounted(async () => {
 }
 .lex__empty { padding: 40px 0; font-size: 13px; text-align: center; }
 
-.lex__card { padding: 14px 16px; cursor: pointer; display: flex; flex-direction: column; gap: 8px; }
-.lex__card:hover { border-color: var(--accent-line); }
-.lex__card-h { display: flex; align-items: center; gap: 8px; }
-.lex__card-h strong { flex: 1; font-size: 14.5px; }
-.lex__card-meta { font-size: 11.5px; }
-.lex__card-words { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11.5px; align-items: center; }
-.lex__card-words code {
+.lex__row { cursor: pointer; }
+.lex__row:hover td { background: var(--surface-2); }
+.lex__word {
   background: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: 4px;
   padding: 1px 6px;
+  margin-right: 4px;
+  font-size: 11.5px;
 }
-
-.lex__back { align-self: flex-start; margin-bottom: 10px; }
-.lex__detail { display: flex; flex-direction: column; }
-.lex__editor { max-width: var(--shell-page); }
+.lex__modal { width: min(860px, calc(100vw - 32px)); max-height: 86vh; overflow-y: auto; position: relative; padding: 20px 22px; }
+.lex__close { position: absolute; top: 12px; right: 12px; }
+.lex__editor { }
 
 .lex__editor-h {
   display: flex;

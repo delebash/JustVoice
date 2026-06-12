@@ -185,6 +185,24 @@ async function savePersona() {
   }
 }
 
+async function removePersona(p) {
+  const ok = await confirmDialog({
+    title: "Delete persona?",
+    message: `"${p.name}" will be removed. Voice and lexicon are kept (only the binding is removed).`,
+    danger: true,
+    confirmLabel: "Delete",
+  });
+  if (!ok) return;
+  try {
+    await api.request(`/v1/personas/${p.id}`, { method: "DELETE" });
+    if (selectedId.value === p.id) selectedId.value = null;
+    await loadAll();
+    pushToast({ kind: "success", message: `${p.name} deleted.` });
+  } catch (e) {
+    pushToast({ kind: "error", message: `Delete failed: ${e?.message ?? e}` });
+  }
+}
+
 async function deletePersona() {
   if (!draft.value) return;
   const ok = await confirmDialog({
@@ -354,35 +372,34 @@ onMounted(loadAll);
       <div v-else-if="!filteredPersonas.length" class="personas__empty jv-muted">
         No personas match this filter.
       </div>
-      <div v-else class="jv-card-grid">
-        <article
-          v-for="p in filteredPersonas"
-          :key="p.id"
-          class="jv-card personas__card"
-          @click="selectedId = p.id"
-        >
-          <span class="personas__card-avatar" :style="{ background: colorFor(p.name) }">{{ (p.name || "?").charAt(0).toUpperCase() }}</span>
-          <div class="personas__card-main">
-            <div class="personas__card-row">
+      <table v-else class="jv-table">
+        <thead>
+          <tr><th>Persona</th><th>Voice</th><th style="width:110px">Used in</th><th class="jv-table__actions" style="width:150px">Actions</th></tr>
+        </thead>
+        <tbody>
+          <tr v-for="p in filteredPersonas" :key="p.id" class="personas__row" title="Click to edit" @click="selectedId = p.id">
+            <td>
+              <span class="personas__card-avatar personas__avatar-sm" :style="{ background: colorFor(p.name) }">{{ (p.name || "?").charAt(0).toUpperCase() }}</span>
               <strong>{{ p.name }}</strong>
-              <span
-                class="jv-pill"
-                :class="usageCount(p.id) > 0 ? 'jv-pill--green' : 'jv-pill--ghost'"
-              >
-                {{ usageCount(p.id) }} project{{ usageCount(p.id) === 1 ? '' : 's' }}
-              </span>
-            </div>
-            <div class="personas__card-meta jv-muted">{{ listMeta(p) }}</div>
-          </div>
-        </article>
-      </div>
+              <div v-if="p.bio" class="jv-muted" style="font-size:11.5px; margin-left:36px">{{ p.bio.slice(0, 70) }}{{ p.bio.length > 70 ? "…" : "" }}</div>
+            </td>
+            <td class="jv-muted">{{ voices.find((v) => v.id === p.voice_id)?.name || (p.voice_id || "no voice yet") }}</td>
+            <td><span class="jv-pill" :class="usageCount(p.id) > 0 ? 'jv-pill--green' : 'jv-pill--ghost'">{{ usageCount(p.id) }} project{{ usageCount(p.id) === 1 ? '' : 's' }}</span></td>
+            <td class="jv-table__actions" @click.stop>
+              <JvButton variant="ghost" size="sm" label="Edit" @click="selectedId = p.id" />
+              <button type="button" class="jv-btn jv-btn--danger-outline jv-btn--sm" @click="removePersona(p)">Delete</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </template>
 
-    <!-- ── Detail editor (drill-in) ──────────────────────────────────── -->
-    <section v-else class="personas__detail">
-      <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm personas__back" @click="selectedId = null">← All personas</button>
+    <!-- ── Editor dialog (consolidated pattern 2026-06-12) ───────────── -->
+    <div v-else class="jv-overlay" @click.self="selectedId = null">
+      <div class="jv-modal personas__modal">
+      <button type="button" class="jv-modal__close personas__close" title="Close" @click="selectedId = null">✕</button>
 
-      <div class="jv-card personas__editor">
+      <div class="personas__editor">
         <header class="personas__editor-h">
           <h2>{{ draft.name || "(unnamed)" }}</h2>
           <span v-if="dirty" class="jv-pill jv-pill--warn">Unsaved changes</span>
@@ -558,7 +575,8 @@ onMounted(loadAll);
           <button class="jv-btn jv-btn--danger-outline" type="button" @click="deletePersona">Delete</button>
         </div>
       </div>
-    </section>
+      </div>
+    </div>
 
     <!-- Effects chain editor — opens from the Effects chain row above. -->
     <EffectsChainEditorModal
@@ -628,12 +646,13 @@ onMounted(loadAll);
 .personas__card-row strong { flex: 1; font-size: 14.5px; }
 .personas__card-meta { font-size: 11.5px; margin-top: 3px; }
 
-.personas__back { align-self: flex-start; margin-bottom: 10px; }
-.personas__detail { display: flex; flex-direction: column; }
+.personas__row { cursor: pointer; }
+.personas__row:hover td { background: var(--surface-2); }
+.personas__avatar-sm { width: 26px; height: 26px; font-size: 12px; vertical-align: middle; margin-right: 8px; }
+.personas__modal { width: min(820px, calc(100vw - 32px)); max-height: 88vh; overflow-y: auto; position: relative; padding: 22px 24px; }
+.personas__close { position: absolute; top: 12px; right: 12px; }
 
-.personas__editor {
-  max-width: var(--shell-form);
-}
+.personas__editor { }
 .personas__editor-h {
   display: flex;
   align-items: center;

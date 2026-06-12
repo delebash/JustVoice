@@ -210,7 +210,14 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   gap: 3px;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-width: thin;
 }
+/* Flex children shrink by default inside an overflow container — at
+   short viewports the nav items were getting SQUASHED + cut off instead
+   of scrolling, and the squash amount changed per view (scrollbar
+   appearing/disappearing), which read as the nav "jumping"
+   (user-hit 2026-06-12, settings → labs). */
+.jv-sidebar > * { flex-shrink: 0; }
 .jv-sidebar__brand {
   width: 44px; height: 44px;
   border-radius: 10px;
@@ -247,7 +254,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.jv-sidebar__spacer { flex: 1; }
+.jv-sidebar__spacer { flex: 1 1 0; min-height: 8px; }
 .jv-sidebar__version { font-size: 10px; color: var(--ink-3); padding-bottom: 8px; }
 
 /* Lane headers (Workflow / Library / Tools / Advanced) — plan Q4. */
