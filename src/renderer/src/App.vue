@@ -22,6 +22,7 @@ import OverviewView from "./views/OverviewView.vue";
 import GenerateView from "./views/GenerateView.vue";
 import ChapterView from "./views/ChapterView.vue";
 import BooksView from "./views/BooksView.vue";
+import ImportReviewView from "./views/ImportReviewView.vue";
 import VoicesView from "./views/VoicesView.vue";
 // ProfilesView removed — Persona is the sole identity layer after the
 // Profile-kill (plan Q1). All voice config now lives directly on Persona.
@@ -82,6 +83,9 @@ const VIEWS = [
   { id: "audio",     lane: "tools", label: "Audio Tools", icon: "🔧", lede: "Stand-alone audio tools — analyze any 16-bit PCM WAV, or apply a mastering preset to a WAV without going through the chapter render pipeline. Useful for inspecting reference clips before cloning, or quickly mastering an external recording.", component: AudioToolsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
 
   // ─── Advanced lane (collapsed by default) ──────────────────────────
+
+  // Hidden route — not in any lane; reached from the import dialog.
+  { id: "importreview", lane: "hidden", label: "Import", icon: "⬆", lede: "Review what was detected — pick the chapters to import, confirm, done. Nothing imports until you confirm.", component: ImportReviewView },
 
   // ─── Settings — pinned at the very bottom, always visible ──────────
   { id: "settings",  lane: "pinned", label: "Settings",  icon: "⚙️", lede: "Every operator-tunable value. Per CLAUDE.md, no value is hardcoded — every knob lives in settings.json.", component: SettingsView },

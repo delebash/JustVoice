@@ -31,6 +31,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import JvButton from "../components/jv/JvButton.vue";
 import JvSelect from "../components/jv/JvSelect.vue";
 import { projectsService } from "../services/projects.js";
+import { setImportDraft } from "../stores/importDraft.js";
 import { pushToast } from "../services/toastBridge.js";
 
 const props = defineProps({
@@ -152,8 +153,17 @@ async function doPreview() {
       file: file.value,
       dryRun: true,
     });
-    preview.value = res.standard; // warnings render inline in the preview
-    excluded.value = new Set();   // checkboxes reset — everything included
+    // Hand off to the full-page review (user decision 2026-06-12: the
+    // picker stays small; the RESULTS are a regular in-app page).
+    setImportDraft({
+      file: file.value,
+      source: selectedSource.value,
+      standard: res.standard,
+      projectId: props.projectId || null,
+    });
+    emit("close");
+    window.location.hash = "#importreview";
+    return;
   } catch (e) {
     pushToast({ message: `Preview failed: ${e.message || e}`, kind: "error" });
   } finally {
@@ -318,59 +328,11 @@ const previewWarnings = computed(() => preview.value?.warnings || []);
         </label>
       </div>
 
-        <section v-if="summary" class="preview">
-          <div class="preview-title">Preview</div>
-          <dl>
-            <dt>Project</dt><dd>{{ summary.name }} <span class="muted">({{ summary.kind }})</span></dd>
-            <dt>Characters</dt><dd>{{ summary.characters || "found later, in Script" }}</dd>
-            <dt>Scenes</dt><dd>{{ summary.scenes }}</dd>
-            <dt>Lines</dt><dd>{{ summary.lines }}</dd>
-            <dt>Lexicon entries</dt><dd>{{ summary.lexicon }}</dd>
-          </dl>
-
-          <ul v-if="previewWarnings.length" class="preview-warnings">
-            <li v-for="(w, i) in previewWarnings" :key="i">⚠ {{ w }}</li>
-          </ul>
-
-          <table v-if="previewScenes.length" class="preview-scenes">
-            <thead>
-              <tr><th style="width:30px"></th><th>Detected structure</th><th>Lines</th><th>Words</th><th>Est. audio</th></tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in previewScenes" :key="row.key" :class="{ 'im-excluded': excluded.has(row.index) }">
-                <td><input type="checkbox" :checked="!excluded.has(row.index)" :title="excluded.has(row.index) ? 'Excluded — will not import' : 'Included'" @change="toggleScene(row.index)" /></td>
-                <td class="t">{{ row.title }}</td>
-                <td>{{ row.lines }}</td>
-                <td>{{ row.words.toLocaleString() }}</td>
-                <td>{{ row.est }}</td>
-              </tr>
-              <tr v-if="previewScenesOverflow">
-                <td class="t muted" colspan="5">… and {{ previewScenesOverflow }} more (always included — uncheckable rows are capped for display)</td>
-              </tr>
-            </tbody>
-          </table>
-        </section>
+      <p v-if="previewing" class="muted" style="margin-top:10px">Scanning the file…</p>
         </div>
       </div>
       <footer class="im-footer">
         <JvButton variant="ghost" @click="emit('close')">Cancel</JvButton>
-        <!-- Dry-run button retired (user: "doesn't do anything") — the
-             preview auto-runs the moment a file lands; this re-scan stays
-             for after changing the source format. -->
-        <JvButton
-          v-if="preview"
-          variant="ghost"
-          :loading="previewing"
-          :disabled="!canPreview"
-          title="Re-scan the file with the current source format"
-          @click="doPreview"
-        >↻ Re-scan</JvButton>
-        <JvButton
-          variant="primary"
-          :loading="committing"
-          :disabled="!canCommit"
-          @click="doCommit"
-        >{{ preview && includedCount ? `Import ${includedCount} ${includedCount === 1 ? "chapter" : "chapters"}` : "Import" }}</JvButton>
       </footer>
     </div>
   </div>
@@ -385,14 +347,13 @@ const previewWarnings = computed(() => preview.value?.warnings || []);
   padding: 24px;
 }
 .im-dialog {
-  background: var(--bg, #f6f5f1);
-  border-radius: 0;
-  width: 100%;
-  height: 100%;
-  max-height: none;
+  background: var(--surface, #fff);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+  width: min(560px, 100%);
+  max-height: 90vh;
   display: flex; flex-direction: column;
   overflow: hidden;
-  padding: 0 max(24px, calc((100% - 1100px) / 2));
 }
 .im-header {
   display: flex; align-items: flex-start; justify-content: space-between;
