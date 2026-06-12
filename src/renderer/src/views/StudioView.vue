@@ -235,6 +235,42 @@ function stepBy(delta) {
   if (next) tab.value = next.key;
 }
 
+// Live step-card subtitles (item 2; design contract = the JustWrite
+// Audio Studio screenshots): honest counts only — no fake progress.
+const voicedCount = computed(() => projectPersonas.value.filter((p) => p.voice_id).length);
+const renderedSceneCount = computed(() =>
+  (cacheStats.value?.scenes || []).filter((sc) => sc.total > 0 && sc.cached === sc.total).length);
+const stepCards = computed(() => visibleTabs.value.map((t) => {
+  let sub = "";
+  if (t.key === "cast") {
+    sub = projectPersonas.value.length
+      ? `${voicedCount.value}/${projectPersonas.value.length} voiced`
+      : "no cast yet";
+  } else if (t.key === "script") {
+    sub = "speaker analysis";
+  } else if (t.key === "render") {
+    sub = scenes.value.length
+      ? `${renderedSceneCount.value}/${scenes.value.length} rendered`
+      : `${copy.value.chapter.singular.toLowerCase()} audio`;
+  } else if (t.key === "export") {
+    sub = "M4B · WAVs · ACX";
+  }
+  return { ...t, sub };
+}));
+
+// Header engine chips (JustWrite reference): which engines power this
+// work, visible where you work. TTS = loaded tts engine; Script = the
+// loaded LLM. Both link out.
+const headerTts = computed(() =>
+  (engines.value || []).find((e) => e.status === "loaded" && (e.kind === "tts" || !e.kind)) || null);
+const headerLlm = computed(() =>
+  (engines.value || []).find((e) => e.status === "loaded" && e.kind === "llm") || null);
+
+// Wizard nav (canonical .jv-wizardnav — promoted to styles.css; reused
+// by Import review next): named targets, bottom-right of the step.
+const wizardPrev = computed(() => visibleTabs.value[stepIndex.value - 1] || null);
+const wizardNext = computed(() => visibleTabs.value[stepIndex.value + 1] || null);
+
 watch([selectedProject, () => tab.value], () => {
   if (tab.value === "script" && !visibleTabs.value.some((t) => t.key === "script")) {
     tab.value = "cast";
@@ -371,6 +407,26 @@ async function addPersonaToCast(p) {
     pushToast({ kind: "error", message: `Add failed: ${e?.message || e}` });
   } finally {
     addPersonaBusy.value = null;
+  }
+}
+
+// Remove one persona from this project's cast (item 2 / user-hit: add
+// existed, remove didn't). DELETE endpoint pre-existed; persona stays
+// in the library.
+async function removeFromCast(p) {
+  const ok = await confirmDialog({
+    title: `Remove ${p.name} from this cast?`,
+    message: "Only the project link is removed — the persona stays in your library.",
+    confirmLabel: "Remove",
+  });
+  if (!ok) return;
+  try {
+    await api.request(`/v1/projects/${selectedProjectId.value}/cast/${p.id}`, { method: "DELETE" });
+    if (selectedCharacterId.value === p.id) selectedCharacterId.value = null;
+    await loadProjectPersonas(selectedProjectId.value);
+    pushToast({ kind: "success", message: `${p.name} removed from the cast.` });
+  } catch (e) {
+    pushToast({ kind: "error", message: `Remove failed: ${e?.message || e}` });
   }
 }
 
@@ -1205,7 +1261,7 @@ onMounted(() => {
     const t = window.sessionStorage?.getItem("jv.studio.tab");
     if (t) {
       window.sessionStorage.removeItem("jv.studio.tab");
-      if (["cast", "script", "render"].includes(t)) tab.value = t;
+      if (["cast", "script", "render", "export"].includes(t)) tab.value = t;
     }
   } catch { /* ignore */ }
   loadAll();
@@ -1228,24 +1284,41 @@ watch(selectedProjectId, (id) => {
         <option v-for="o in projectOptions" :key="o.value || 'none'" :value="o.value">{{ o.label }}</option>
       </select>
       <span class="jv-spacer" />
+      <!-- Which engines power this work (JustWrite reference chips). -->
+      <a class="jv-pill" :class="headerTts ? 'jv-pill--green' : 'jv-pill--ghost'" href="#engines"
+         :title="headerTts ? `${headerTts.name || headerTts.id} is loaded — renders use it. Manage in Engines.` : 'No TTS engine loaded — the first render sets one up. Manage in Engines.'">
+        TTS · {{ headerTts ? (headerTts.name || headerTts.id) : "none" }}
+      </a>
+      <a class="jv-pill" :class="headerLlm ? 'jv-pill--green' : 'jv-pill--ghost'" href="#settings"
+         :title="headerLlm ? `${headerLlm.name || headerLlm.id} answers Script/Smart-assign. Routing in Settings → AI features.` : 'No local LLM loaded — Script/Smart-assign route per Settings → AI features.'">
+        Script · {{ headerLlm ? (headerLlm.name || headerLlm.id) : "AI features" }}
+      </a>
     </div>
+
+    <p class="studio__pagelede jv-muted">
+      Studio turns your {{ copy.book.singular.toLowerCase() }} into finished audio in
+      {{ visibleTabs.length }} steps — choose voices in <strong>Cast</strong><template
+      v-if="visibleTabs.some((t) => t.key === 'script')">, let the AI work out who speaks
+      each line in <strong>Script</strong></template>, generate audio in
+      <strong>Render</strong>, package in <strong>Export</strong>.
+    </p>
 
     <!-- ── Production steps (1 · Cast → 2 · Script → 3 · Render) ────── -->
     <div class="studio__steps">
+      <!-- Big step cards w/ live subtitles (JustWrite reference; new
+           canonical .jv-stepcard in styles.css — no app precedent existed). -->
       <button
-        v-for="t in visibleTabs"
+        v-for="t in stepCards"
         :key="t.key"
         type="button"
-        class="jv-pill studio__step"
-        :class="{ 'studio__step--active': tab === t.key }"
+        class="jv-stepcard"
+        :class="{ 'jv-stepcard--active': tab === t.key }"
         :title="t.key === 'cast' ? 'Map people to voices' : t.key === 'script' ? 'Who speaks each line' : t.key === 'render' ? 'Batch render + mastering' : 'Package + ACX checklist'"
         @click="tab = t.key"
-      >{{ t.label }}</button>
-      <!-- Structured workflow gets ← / ➜ (user ask 2026-06-12). -->
-      <span class="studio__stepnav">
-        <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" :disabled="stepIndex <= 0" title="Previous step" @click="stepBy(-1)">←</button>
-        <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" :disabled="stepIndex >= visibleTabs.length - 1" title="Next step" @click="stepBy(1)">Next ➜</button>
-      </span>
+      >
+        <span class="jv-stepcard__title">{{ t.label }}</span>
+        <span class="jv-stepcard__sub">{{ t.sub }}</span>
+      </button>
       <template v-if="tab === 'script' && selectedProject">
         <span class="jv-spacer" />
         <select v-model="selectedSceneId" class="jv-input jv-input--sm studio__script-select">
@@ -1325,6 +1398,15 @@ watch(selectedProjectId, (id) => {
           place. Smart-assign proposes the whole cast; override card by card.
         </p>
         <div class="studio__cast-cols">
+        <div class="jv-card studio__cast-card">
+        <div class="studio__cast-card-head">
+          <strong>Characters</strong>
+          <span class="jv-muted" v-if="projectPersonas.length">
+            {{ projectPersonas.length }} character{{ projectPersonas.length === 1 ? "" : "s" }} ·
+            {{ projectPersonas.length - voicedCount }} unassigned
+          </span>
+        </div>
+        <div class="studio__cast-scroll">
         <div v-if="!projectPersonas.length" class="studio__cast-empty">
           <h4>No cast yet</h4>
           <p class="jv-muted">
@@ -1359,6 +1441,7 @@ watch(selectedProjectId, (id) => {
               <td style="text-align:right;white-space:nowrap">
                 <button v-if="p.voice_id" type="button" class="studio__voice-action" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(p.voice_id))">▶</button>
                 <button v-if="p.voice_id" type="button" class="studio__voice-action" title="Tune voice parameters" @click.stop="openVoiceTuner(p)">⚙</button>
+                <button type="button" class="studio__voice-action" title="Remove from this cast — persona stays in the library" @click.stop="removeFromCast(p)">✕</button>
               </td>
             </tr>
           </tbody>
@@ -1372,6 +1455,7 @@ watch(selectedProjectId, (id) => {
             @click="selectedCharacterId = narratorPersona.id"
             title="The narrator carries the prose between quotes — pick your steadiest voice"
           >
+            <button type="button" class="studio__char-x" title="Remove from this cast — persona stays in the library" @click.stop="removeFromCast(narratorPersona)">✕</button>
             <span class="studio__char-portrait" :style="{ background: colorFor(narratorPersona.name) }">N</span>
             <div class="studio__char-main">
               <div class="studio__char-name-row">
@@ -1399,6 +1483,7 @@ watch(selectedProjectId, (id) => {
             :title="`Select, then click a voice in the library to cast ${p.name}`"
             @click="selectedCharacterId = p.id"
           >
+            <button type="button" class="studio__char-x" title="Remove from this cast — persona stays in the library" @click.stop="removeFromCast(p)">✕</button>
             <span class="studio__char-portrait" :style="{ background: colorFor(p.name) }">{{ (p.name || "?").charAt(0).toUpperCase() }}</span>
             <div class="studio__char-main">
               <strong class="studio__char-name">{{ p.name }}</strong>
@@ -1413,6 +1498,8 @@ watch(selectedProjectId, (id) => {
               <span v-else class="studio__char-unassigned">⚠ no voice assigned</span>
             </div>
           </article>
+        </div>
+        </div>
         </div>
 
         <!-- Voice library sidebar — JustWrite-pattern table per
@@ -1450,7 +1537,7 @@ watch(selectedProjectId, (id) => {
             <!-- Picking-for banner (mock: amber strip). -->
             <div class="studio__voice-picking" v-if="projectPersonas.length">
               <template v-if="selectedCharacter">
-                Picking for: <strong>{{ selectedCharacter.name }}</strong> — click a voice to assign
+                Picking voice for <strong>{{ selectedCharacter.name }}</strong> — click a voice to assign
               </template>
               <template v-else>
                 Select a character card, then click a voice to assign it.
@@ -1827,6 +1914,12 @@ watch(selectedProjectId, (id) => {
       @cancel="voiceParamsModalOpen = false; tuningVoice = null"
     />
 
+    <!-- Canonical wizard nav — named targets, bottom-right. -->
+    <div v-if="selectedProject" class="jv-wizardnav">
+      <JvButton v-if="wizardPrev" variant="secondary" size="sm" :label="`← ${wizardPrev.label}`" @click="tab = wizardPrev.key" />
+      <JvButton v-if="wizardNext" variant="primary" size="sm" :label="`Next: ${wizardNext.label} ➜`" @click="tab = wizardNext.key" />
+    </div>
+
     <!-- Add an existing library persona to the cast. -->
     <div v-if="addPersonaOpen" class="jv-overlay" @click.self="addPersonaOpen = false">
       <div class="jv-modal" style="width: min(520px, calc(100vw - 32px));">
@@ -1940,8 +2033,27 @@ watch(selectedProjectId, (id) => {
 }
 .studio__project-select { flex: 1 1 260px; max-width: var(--w-path); }
 
-.studio__steps { display: flex; gap: 8px; align-items: center; }
-.studio__stepnav { display: inline-flex; gap: 4px; margin-left: 4px; }
+.studio__steps { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.studio__pagelede { font-size: 12.5px; margin: 6px 0 10px; max-width: 880px; }
+.studio__cast-card { padding: 14px 16px; margin: 0; display: flex; flex-direction: column; min-height: 0; }
+.studio__cast-card-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.studio__cast-card-head strong { font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2); }
+.studio__cast-card-head .jv-muted { font-size: 12px; }
+.studio__cast-scroll { overflow-y: auto; max-height: 68vh; min-height: 0; }
+.studio__char-x {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 4px;
+  opacity: 0;
+}
+.studio__char-card:hover .studio__char-x { opacity: 1; }
+.studio__char-x:hover { color: var(--danger, #b04a3e); }
 .studio__step {
   appearance: none;
   font: inherit;
@@ -1992,6 +2104,7 @@ watch(selectedProjectId, (id) => {
 /* Compact horizontal card (mock .cast-card): portrait left, name/role/
    voice line right. Selected = accent ring; unassigned = dashed edge. */
 .studio__char-card {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 11px;
@@ -2037,7 +2150,7 @@ watch(selectedProjectId, (id) => {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 10px;
-  max-height: 76vh;
+  max-height: calc(68vh + 50px); /* matches the cast card incl. its head */
   overflow-y: auto;
 }
 .studio__voice-library-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
