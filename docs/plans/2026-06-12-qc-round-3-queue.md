@@ -4,6 +4,7 @@
 
 Sweep findings + plan delivered as text; user approved ("continue").
 Execution order: sweep fixes (S steps 1-3) first, then items 1-4.
+ALL ITEMS COMPLETE.
 
 1. ✅ **Voice preview bar at bottom — remove.** It was ChapterView's
    pinned floating generate bar (voice/engine/effects chips + a dead
@@ -14,9 +15,9 @@ Execution order: sweep fixes (S steps 1-3) first, then items 1-4.
 3. ✅ **Labs tab explainers** — per-tab lede in LabsView (one mechanism,
    .jv-content__lede); SpeakerLab/RenderLab duplicate h2 headers removed;
    Settings · Channels/Webhooks duplicate h2s normalized too.
-4. **Voice inspector → Train LoRA** opens Train with the voice
-   preselected in its dropdown (parity with how "Blend with…" pre-fills
-   the blend form). Currently: toast + bare #train navigation.
+4. ✅ **Voice inspector → Train LoRA** — jv.train.prefill sessionStorage
+   handoff (jv.generate.prefill precedent): Labs · Train opens with the
+   voice preselected as base voice, engine + output name prefilled.
 5. ✅ **Captures pane padding** — phantom 30px scroll. Root cause:
    `height: 100%` view roots inside .jv-content ignore the lede's
    ~30px. Canonical `.jv-fill` promoted to styles.css; Captures +

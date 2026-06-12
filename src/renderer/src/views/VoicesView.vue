@@ -574,7 +574,14 @@ function promoteFromCaptures() {
 }
 function trainLoraForVoice() {
   if (!inspectedVoice.value) return;
-  pushToast({ kind: "info", title: "🧪 Train LoRA", description: `Opens Train with ${inspectedVoice.value.name} pre-selected as the base voice.` });
+  // Same handoff shape as jv.generate.prefill (Captures → Generate):
+  // TrainView reads jv.train.prefill on mount and preselects the voice.
+  try {
+    window.sessionStorage?.setItem(
+      "jv.train.prefill",
+      JSON.stringify({ base_voice: inspectedVoice.value.id }),
+    );
+  } catch { /* ignore */ }
   window.location.hash = "#train";
 }
 // Item 12: per-voice reset — clears the two user tweaks that exist

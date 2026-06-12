@@ -203,6 +203,21 @@ function startPolling() {
 
 onMounted(async () => {
   await Promise.all([loadEngines(), loadVoices(), refreshTrainJobs()]);
+  // Voice-inspector "Train LoRA" handoff (jv.generate.prefill precedent):
+  // preselect the base voice + its engine, then consume the key.
+  try {
+    const raw = window.sessionStorage?.getItem("jv.train.prefill");
+    if (raw) {
+      window.sessionStorage.removeItem("jv.train.prefill");
+      const prefill = JSON.parse(raw);
+      const v = voices.value.find((x) => x.id === prefill?.base_voice);
+      if (v) {
+        trainBaseVoice.value = v.id;
+        if (!trainEngine.value) trainEngine.value = v.engine;
+        if (!trainName.value) trainName.value = `${v.name}-trained`;
+      }
+    }
+  } catch { /* ignore */ }
   startPolling();
 });
 
