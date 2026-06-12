@@ -264,9 +264,17 @@ const voiceEngineOptions = computed(() => {
 
 // Filtered + flattened voice list driving the Cast tab sidebar. Honors
 // engine filter + name search. Empty list → "no voices match" placeholder.
+// Voices hidden on the Voices page stay hidden here too (consistency,
+// user ask 2026-06-12) — EXCEPT voices already cast in this project,
+// which must stay visible or the cast state becomes unreadable.
+const hiddenVoiceIds = computed(() => {
+  try { return new Set(JSON.parse(localStorage.getItem("jv.voices.hidden") || "[]")); }
+  catch { return new Set(); }
+});
 const filteredVoices = computed(() => {
   const q = voiceSearchQuery.value.trim().toLowerCase();
   return voices.value
+    .filter((v) => !hiddenVoiceIds.value.has(v.id) || castAsByVoiceId.value[v.id])
     .filter((v) => !voiceEngineFilter.value || v.engine === voiceEngineFilter.value)
     .filter((v) => !q || (v.name || "").toLowerCase().includes(q) || (v.id || "").toLowerCase().includes(q) || (v.tone || "").toLowerCase().includes(q));
 });

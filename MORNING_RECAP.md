@@ -5,6 +5,79 @@
 
 ---
 
+## 2026-06-12 (evening) — punch-list bug+design tiers DONE (8 commits)
+
+Fix-it loop with the user testing live on Windows. All shipped + pushed
+(682c2cd → bcf85f9), gates green on every commit (ruff · 208 pytest ·
+vite build · live Playwright, zero JS errors).
+
+**Bugs killed (each verified live):**
+- Engines page couldn't show which model loaded via Voices: TWO root
+  causes — manager recorded literal "auto"/None (fixed 682c2cd), then
+  kokoro/dia/luxtts/moss/tada declare no DEFAULT_VARIANT_ID so the fix
+  recorded "" (fixed a800c00: `_resolved_default_variant` = manifest
+  default → sole variant → on-disk probe → catalog first; dia/tada/
+  luxtts/moss manifests now DECLARE the repo their engine.py hardcodes).
+  User confirmed fixed.
+- Preset create FK 500: render_presets.voice_id NOT NULL forced a
+  persona binding → nullable (SQLite table-rebuild migration), friendly
+  400 on unknown persona, 4 built-ins seeded (Narration / Dramatic
+  Dialogue / Quiet Reflection / Action — global, delivery-only,
+  is_builtin badge). Persona vs Preset distinction recorded in
+  CONCEPTS §7 (persona = WHO speaks T2; preset = HOW this render
+  sounds T3; optional voice binding is what un-blurs them).
+- Persona create 422 (voice_id null): voice_id optional end-to-end —
+  characters can exist before casting; render skips voice-less.
+- Factory reset left personas/voices/lexicons/projects/training/
+  generation-audio FILES alive (mid-Phase-1.5 file stores + in-memory
+  caches) → reset rmtrees the roots + re-instantiates stores + unloads
+  all engine slots + fresh EngineRegistry. User confirmed fixed.
+- Studio "book dropdown doesn't change anything": project switch kept
+  the OLD project's selectedSceneId → Script/Render frozen. Reset on
+  switch.
+- Native prompt() PURGED app-wide (returns null in Tauri webview —
+  every call site was a silently dead button): Effects create, Cache
+  prune-by-voice/engine (now select dialogs), Lexicons bulk TSV
+  (textarea dialog — AppDialog gained a textarea field type), Render
+  Lab save-as-preset (also sent wrong field names + voice id into the
+  persona FK — now delivery-only), Stories create.
+
+**Design tier (user's punch list, all shipped):**
+- Voices: compact engine filter (was full-width — jv-select is
+  width:100%), loaded-TTS chip (● kokoro loaded → #engines),
+  LOCAL / ONLINE·METERED badge per row, "Dia (default)" → "Dia stock
+  voice" (id unchanged) + persona create no longer silently picks
+  catalog[0].
+- Studio: ＋ Add persona modal on Cast (endpoint existed, affordance
+  didn't); inline analyze banner w/ spinner+Cancel; preview ▶ uses the
+  Voices ask-before-load contract (shared "Always auto-load" key);
+  instruct chips on capable voices; online·metered badges; hidden
+  voices (jv.voices.hidden) now hidden here too unless cast.
+- Personas editor: live Personality verdict per cast engine
+  (✓ reads instruct / ✗ ignores — only Smart-assign / no voice yet).
+  Hardcoded "(Qwen3-TTS, LuxTTS)" claim removed — LuxTTS manifest says
+  NO instruct.
+- Personas + Lexicons → CARD GRIDS (grid lands, card drills into
+  editor, ← back). Lexicon create = two-step dialog (name+scope →
+  book/persona picker).
+- Targets rename EXECUTED (CONCEPTS §7 resolved): "Active target",
+  "Apply a mastering target", "Mastering target", "Master target" —
+  UI copy only, API fields unchanged.
+- Chapter detail: ✎ Edit text inline per block (PATCH text; cache
+  keys on text → only edited line re-renders). "Voice for re-generate"
+  demoted out of the top bar — regen uses the block's cast persona
+  voice, uncast blocks ask inline.
+- Settings → Generation: "Default TTS engine"
+  (engines.default_tts_engine, default kokoro) — Voices create flows
+  prefer it when nothing is loaded.
+
+**Still pending:** Studio voice-library full layout rewrite to mirror
+Voices (badges/chips aligned only); import split-on selector
+(h1/h1+h2/page-breaks, adapter-level); parity ⬜ screens
+(docs/gui-parity/README.md); user-machine-only items (real engine
+loads/GPU, MCP smoke, Tauri hotkey, ffmpeg renders). Engines mock is
+at v7 — the v4 redlines plan is long complete.
+
 ## 2026-06-12 (later) — 7-item UX batch (all user-approved)
 
 1. Home Continue card → mini workflow strip (Import/Cast/Render counts
