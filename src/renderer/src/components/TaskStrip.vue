@@ -51,7 +51,7 @@ const status = computed(() => STATUS[props.task.status] || null);
     <span v-if="fresh && !isFinished" class="task-strip__stat" :data-fresh="fresh">
       <span class="task-strip__dot" />
       <template v-if="fresh === 'fresh'">live</template>
-      <template v-else-if="fresh === 'stalling'">stalling</template>
+      <template v-else-if="fresh === 'working'">working…</template>
       <template v-else>stuck</template>
     </span>
 
@@ -187,9 +187,9 @@ const status = computed(() => STATUS[props.task.status] || null);
   border-radius: 50%;
   background: var(--accent);
 }
-.task-strip__stat[data-fresh="stalling"] .task-strip__dot { background: var(--warn); animation: taskStripBlink 1.2s ease-in-out infinite; }
+.task-strip__stat[data-fresh="working"] .task-strip__dot { background: var(--accent); }
 .task-strip__stat[data-fresh="stuck"]    .task-strip__dot { background: var(--danger); animation: taskStripBlink 1.2s ease-in-out infinite; }
-.task-strip__stat[data-fresh="stalling"] { color: var(--warn-ink); opacity: 1; }
+.task-strip__stat[data-fresh="working"] { color: var(--ink-2); opacity: 1; }
 .task-strip__stat[data-fresh="stuck"]    { color: var(--danger-ink); opacity: 1; }
 @keyframes taskStripBlink {
   0%, 100% { opacity: 1; }

@@ -734,7 +734,7 @@ async function runQC() {
 }
 
 async function renderAll() {
-  selectAllUnrendered();
+  selectAllRenderable();
   await renderSelected();
 }
 
@@ -761,12 +761,26 @@ async function renderSelected() {
   }
 }
 
-function selectAllUnrendered() {
-  // Mark every scene with blocks as selected. (No "rendered" status
-  // surfaced via API yet — Render tab counts blocks as the proxy.)
+function selectAllRenderable() {
+  // Every scene with blocks — including rendered ones (those re-serve
+  // from cache). Used by ▶ Render all.
   const next = {};
   for (const s of scenes.value) {
     if (sceneBlockCounts.value[s.id]) next[s.id] = true;
+  }
+  sceneSelectedForRender.value = next;
+}
+
+function selectAllUnrendered() {
+  // Scenes with blocks that the render cache does NOT fully cover —
+  // the everyday selection (user ask: 'do you mean select all
+  // unrendered?' — yes, now it does).
+  const next = {};
+  for (const s of scenes.value) {
+    if (!sceneBlockCounts.value[s.id]) continue;
+    const cs = sceneCacheById.value[s.id];
+    const fullyRendered = cs && cs.total > 0 && cs.cached === cs.total;
+    if (!fullyRendered) next[s.id] = true;
   }
   sceneSelectedForRender.value = next;
 }
@@ -1622,7 +1636,8 @@ watch(selectedProjectId, (id) => {
       </div>
       <template v-else>
         <header class="studio__render-toolbar">
-          <JvButton variant="secondary" size="sm" label="Select all with blocks" @click="selectAllUnrendered" />
+          <JvButton variant="secondary" size="sm" label="Select unrendered" title="Select chapters the render cache doesn't fully cover" @click="selectAllUnrendered" />
+          <JvButton variant="ghost" size="sm" label="Select all" title="Every chapter with text — rendered ones re-serve from cache" @click="selectAllRenderable" />
           <span class="jv-muted">{{ selectedSceneCount() }} selected</span>
           <span class="jv-spacer" />
           <JvButton

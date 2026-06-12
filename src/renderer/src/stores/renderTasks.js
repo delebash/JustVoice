@@ -154,11 +154,20 @@ export const useRenderTasks = defineStore("renderTasks", () => {
     return Math.max(0, (end - task.startedAt) / 1000).toFixed(1);
   }
 
+  // Single-call kinds (extract / compose / load) are one long HTTP
+  // request with no incremental updates — silence is their normal
+  // working state, so their quiet window is minutes, not seconds
+  // (user-hit 2026-06-12: speaker identification said "stuck" while
+  // it was running fine).
+  const SINGLE_CALL_KINDS = new Set(["extract", "compose", "load"]);
   function freshness(task) {
     if (task.status !== "running") return null;
     const ago = now.value - task.lastUpdateAt;
+    if (SINGLE_CALL_KINDS.has(task.kind) || SINGLE_CALL_KINDS.has(task.feature)) {
+      return ago < 120000 ? "working" : "stuck";
+    }
     if (ago < 3000) return "fresh";
-    if (ago < 10000) return "stalling";
+    if (ago < 10000) return "working";
     return "stuck";
   }
 

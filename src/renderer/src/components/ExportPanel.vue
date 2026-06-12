@@ -10,7 +10,7 @@
   Props: project (ProjectResponse record) + scenes (list).
 -->
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { projectsService } from "../services/projects.js";
@@ -30,14 +30,21 @@ const exportQcBusy = ref(false);
 const exportBusy = ref("");
 const showNotes = ref(null);
 
+const qcError = ref("");
 async function runExportQc() {
   if (!props.project?.id || exportQcBusy.value) return;
   exportQcBusy.value = true;
   exportQc.value = null;
+  qcError.value = "";
   try {
     exportQc.value = await api.request(`/v1/projects/${props.project.id}/qc`);
   } catch (e) {
-    pushToast({ message: `QC failed: ${e?.message || e}`, kind: "error", duration: 7000 });
+    // A 400 here usually means nothing is renderable yet (no engine
+    // loaded / no rendered chapters) — say that, in place, instead of
+    // toasting a raw error (user-hit: QC exploded on opening Export).
+    qcError.value = String(e?.message || e).includes("400")
+      ? "Nothing to measure yet — load an engine and render at least one chapter, then re-check."
+      : `QC failed: ${e?.message || e}`;
   } finally {
     exportQcBusy.value = false;
   }
@@ -103,7 +110,8 @@ async function generateShowNotes() {
   }
 }
 
-onMounted(() => { if (!exportQc.value) runExportQc(); });
+// No auto-run (user-hit: opening Export fired QC and 400'd with no
+// engine). The checklist sits at "unchecked" until Re-check is clicked.
 </script>
 
 <template>
@@ -148,6 +156,7 @@ onMounted(() => { if (!exportQc.value) runExportQc(); });
         <JvButton variant="ghost" size="sm" :loading="exportQcBusy" label="↻ Re-check" title="Render every chapter (cache-served when unchanged) and measure RMS + peak against the ACX limits" @click="runExportQc" />
       </div>
       <p v-if="exportQcBusy" class="jv-muted">Rendering + measuring {{ copy.chapter.plural.toLowerCase() }} — cached audio makes this fast…</p>
+      <div v-else-if="qcError" class="jv-banner jv-banner--warn" style="font-size:12px">{{ qcError }}</div>
       <template v-else-if="exportQc">
         <ul class="exportp__ckl">
           <li><span :class="exportQc.chapters.every(c => c.rms_ok) ? 'ok' : 'bad'">{{ exportQc.chapters.every(c => c.rms_ok) ? "✓" : "✗" }}</span>

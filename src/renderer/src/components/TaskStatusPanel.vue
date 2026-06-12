@@ -119,7 +119,7 @@ const STATUS_ICON = {
             <div class="task-panel__stats">
               <span class="task-panel__stat" :data-fresh="tasks.freshness(t) || 'fresh'">
                 <span class="task-panel__dot" />
-                {{ tasks.freshness(t) === "stuck" ? "Stuck" : tasks.freshness(t) === "stalling" ? "Stalling" : "Live" }}
+                {{ tasks.freshness(t) === "stuck" ? "Stuck" : tasks.freshness(t) === "working" ? "Working…" : "Live" }}
               </span>
               <span class="task-panel__stat">{{ fmtElapsed(t) }}</span>
               <span v-for="(s, i) in tasks.stats(t)" :key="i" class="task-panel__stat">{{ s }}</span>
@@ -396,9 +396,9 @@ const STATUS_ICON = {
   background: var(--accent);
 }
 .task-panel__stat[data-fresh="fresh"]    .task-panel__dot { background: var(--accent); }
-.task-panel__stat[data-fresh="stalling"] .task-panel__dot { background: var(--warn); animation: taskPanelBlink 1.2s ease-in-out infinite; }
+.task-panel__stat[data-fresh="working"] .task-panel__dot { background: var(--accent); }
 .task-panel__stat[data-fresh="stuck"]    .task-panel__dot { background: var(--danger); animation: taskPanelBlink 1.2s ease-in-out infinite; }
-.task-panel__stat[data-fresh="stalling"] { color: var(--warn-ink); }
+.task-panel__stat[data-fresh="working"] { color: var(--ink-2); }
 .task-panel__stat[data-fresh="stuck"]    { color: var(--danger-ink); }
 @keyframes taskPanelBlink {
   0%, 100% { opacity: 1; }
