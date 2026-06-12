@@ -130,6 +130,19 @@ Every paragraph becomes one `line` with `character_id: null` — prose
 carries no speaker data. Speakers are discovered later by Script
 extraction and promoted to personas (see CONCEPTS.md §3).
 
+**Chapter-split strategy** — the import-review page's "Split on"
+selector (form field `split_on`, also accepted by the API directly):
+
+| Mode | Behavior |
+|---|---|
+| `auto` (default) | The per-format rules above. |
+| `h1` | Split only on level-1 headings. For EPUB the whole spine is merged first, then re-split at `<h1>` — fixes books that ship every chapter in one spine document. Deeper headings stay in the text. |
+| `h1_h2` | Split on level-1 AND level-2 headings (same merge for EPUB). |
+| `none` | No splitting — the whole book lands as one chapter. |
+
+Plain text has no heading levels: `h1`/`h1_h2` fall back to `auto` with
+a warning; `none` works. Changing the selector re-runs the dry run.
+
 ## <a id="import-podcast_markdown"></a>Podcast script (`podcast_markdown`)
 
 Speaker-labeled markdown/text — the podcast way-in. `SARAH:` /

@@ -14,7 +14,7 @@ import { ref, computed, onMounted } from "vue";
 import { pushToast } from "../services/toastBridge.js";
 import { projectsService } from "../services/projects.js";
 import { useActiveProject } from "../stores/activeProject.js";
-import { getImportDraft, clearImportDraft } from "../stores/importDraft.js";
+import { getImportDraft, clearImportDraft, updateImportStandard } from "../stores/importDraft.js";
 import JvButton from "../components/jv/JvButton.vue";
 
 const activeProject = useActiveProject();
@@ -26,6 +26,37 @@ onMounted(() => {
   draft.value = getImportDraft();
   if (!draft.value) window.location.hash = "#books";
 });
+
+// ── Chapter-split strategy (book_prose only) — changing it re-runs the
+// dry run server-side and replaces the detected structure.
+const SPLIT_OPTIONS = [
+  { value: "auto", label: "Auto (format default)" },
+  { value: "h1", label: "Chapter headings (H1)" },
+  { value: "h1_h2", label: "H1 + H2 headings" },
+  { value: "none", label: "Don't split — one chapter" },
+];
+const splitBusy = ref(false);
+const showSplit = computed(() => draft.value?.source === "book_prose");
+
+async function changeSplit(splitOn) {
+  if (!draft.value || splitBusy.value || splitOn === draft.value.splitOn) return;
+  splitBusy.value = true;
+  try {
+    const res = await projectsService.runImport({
+      source: draft.value.source,
+      file: draft.value.file,
+      dryRun: true,
+      splitOn,
+    });
+    updateImportStandard(res?.standard, splitOn);
+    draft.value = getImportDraft();
+    excluded.value = new Set(); // chapter indices changed — reset picks
+  } catch (e) {
+    pushToast({ kind: "error", title: "Re-split failed", description: String(e?.message ?? e) });
+  } finally {
+    splitBusy.value = false;
+  }
+}
 
 const WORDS_PER_MINUTE = 155;
 function estAudio(words) {
@@ -71,6 +102,7 @@ async function doImport() {
       dryRun: false,
       projectId: draft.value.projectId,
       includeScenes: excluded.value.size ? included.value.map((s) => s.index) : null,
+      splitOn: draft.value.splitOn,
     });
     const pid = res?.project_id || res?.standard?.project?.id;
     pushToast({ kind: "success", title: `Imported "${res?.standard?.project?.name || draft.value.file.name}"` });
@@ -115,7 +147,21 @@ function cancel() {
       <div class="jv-card imrev__card">
         <div class="imrev__cardhead">
           <strong>Detected structure</strong>
-          <span class="jv-pill jv-pill--green">{{ scenes.length }} chapters</span>
+          <span class="jv-pill jv-pill--green">{{ scenes.length }} chapter{{ scenes.length === 1 ? "" : "s" }}</span>
+          <span class="jv-spacer" />
+          <label v-if="showSplit" class="imrev__split">
+            <span class="jv-muted">Split on</span>
+            <select
+              class="jv-input jv-input--sm"
+              :value="draft.splitOn || 'auto'"
+              :disabled="splitBusy"
+              title="How chapters are detected — changing it re-reads the file"
+              @change="changeSplit($event.target.value)"
+            >
+              <option v-for="o in SPLIT_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
+            </select>
+            <span v-if="splitBusy" class="jv-boot-banner__spinner" />
+          </label>
         </div>
         <ul v-if="warnings.length" class="imrev__warnings">
           <li v-for="(w, i) in warnings" :key="i">⚠ {{ w }}</li>
@@ -171,6 +217,7 @@ function cancel() {
 @media (max-width: 980px) { .imrev__cols { grid-template-columns: 1fr; } }
 .imrev__card { padding: 14px 16px; margin: 0; }
 .imrev__cardhead { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.imrev__split { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
 .imrev__table { margin: 0; }
 .imrev__table .r { text-align: right; }
 .imrev__off td { opacity: 0.45; }

@@ -10,21 +10,24 @@ const draft = {
   source: "",        // adapter id
   standard: null,    // dry-run StandardImport
   projectId: null,   // update-in-place target (re-import)
+  splitOn: "auto",   // book_prose chapter-split strategy
 };
 
-export function setImportDraft({ file, source, standard, projectId = null }) {
+export function setImportDraft({ file, source, standard, projectId = null, splitOn = "auto" }) {
   draft.file = file;
   draft.source = source;
   draft.standard = standard;
   draft.projectId = projectId;
+  draft.splitOn = splitOn;
 }
 
 export function getImportDraft() {
   return draft.file && draft.standard ? { ...draft } : null;
 }
 
-export function updateImportStandard(standard) {
+export function updateImportStandard(standard, splitOn = null) {
   draft.standard = standard;
+  if (splitOn) draft.splitOn = splitOn;
 }
 
 export function clearImportDraft() {
@@ -32,4 +35,5 @@ export function clearImportDraft() {
   draft.source = "";
   draft.standard = null;
   draft.projectId = null;
+  draft.splitOn = "auto";
 }

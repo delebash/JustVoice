@@ -34,7 +34,7 @@ export const projectsService = {
   },
 
   /** Multi-adapter import. {source, file, dryRun?} -> ImportRunResponse. */
-  async runImport({ source, file, dryRun = false, projectId = null, includeScenes = null } = {}) {
+  async runImport({ source, file, dryRun = false, projectId = null, includeScenes = null, splitOn = null } = {}) {
     if (!source) throw new Error("runImport: source is required");
     if (!file) throw new Error("runImport: file is required");
     const form = new FormData();
@@ -45,6 +45,7 @@ export const projectsService = {
     if (Array.isArray(includeScenes)) {
       form.append("include_scenes", includeScenes.join(","));
     }
+    if (splitOn) form.append("split_on", splitOn);  // book_prose chapter-split strategy
     return withApi().postForm(`/v1/projects/import`, form);
   },
 

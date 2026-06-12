@@ -47,22 +47,38 @@ _BLOCK_TAGS = {"p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "blockquote"}
 _HEADING_TAGS = {"h1", "h2", "h3"}
 
 
-def parse(raw: bytes, *, filename: str | None = None) -> StandardImport:
+# Chapter-split strategies (import-review "Split chapters on" selector):
+#   auto  — format default: EPUB = one chapter per spine doc; DOCX =
+#           Heading 1-3 styles; MD = #/##/### ; TXT = "Chapter N" lines.
+#   h1    — split only on level-1 headings (EPUB re-splits the merged
+#           spine at <h1> — fixes single-spine-doc books).
+#   h1_h2 — split on level-1 AND level-2 headings.
+#   none  — no splitting: the whole book lands as one chapter.
+SPLIT_MODES = ("auto", "h1", "h1_h2", "none")
+
+
+def parse(
+    raw: bytes, *, filename: str | None = None, split_on: str = "auto"
+) -> StandardImport:
+    if split_on not in SPLIT_MODES:
+        raise bad_request(
+            f"book_prose import: unknown split_on {split_on!r}. Known: {', '.join(SPLIT_MODES)}"
+        )
     ext = _extension(filename)
     if raw[:2] == b"PK":
         names = _zip_names(raw)
         if "META-INF/container.xml" in names or ext == ".epub":
-            return _parse_epub(raw, filename)
+            return _parse_epub(raw, filename, split_on)
         if "word/document.xml" in names or ext == ".docx":
-            return _parse_docx(raw, filename)
+            return _parse_docx(raw, filename, split_on)
         raise bad_request("book_prose import: zip file is neither EPUB nor DOCX")
     try:
         text = raw.decode("utf-8-sig")
     except UnicodeDecodeError:
         raise bad_request("book_prose import: file is not UTF-8 text, EPUB, or DOCX") from None
     if ext in (".md", ".markdown") or _looks_like_markdown(text):
-        return _parse_markdown(text, filename)
-    return _parse_txt(text, filename)
+        return _parse_markdown(text, filename, split_on)
+    return _parse_txt(text, filename, split_on)
 
 
 # ── shared helpers ───────────────────────────────────────────────────
@@ -175,7 +191,9 @@ class _XhtmlBlocks(HTMLParser):
         if self._tag:
             text = re.sub(r"\s+", " ", "".join(self._buf)).strip()
             if text:
-                kind = "h" if self._tag in _HEADING_TAGS else "p"
+                # Headings keep their tag (h1/h2/h3) so split_on can
+                # distinguish levels; everything else is "p".
+                kind = self._tag if self._tag in _HEADING_TAGS else "p"
                 self.blocks.append((kind, text))
         self._tag, self._buf = None, []
 
@@ -191,7 +209,32 @@ def _xml_root(data: bytes, what: str) -> ET.Element:
         raise bad_request(f"book_prose import: malformed {what} ({e})") from None
 
 
-def _parse_epub(raw: bytes, filename: str | None) -> StandardImport:
+def _split_blocks(
+    blocks: list[tuple[str, str]], split_on: str
+) -> list[tuple[str | None, list[str]]]:
+    """Re-chapter a merged (kind, text) block stream by heading level.
+    Non-splitting headings (an h2 in h1 mode, h3 always) stay in the
+    text as plain paragraphs so nothing is silently dropped."""
+    if split_on == "none":
+        title = next((t for k, t in blocks if k in _HEADING_TAGS), None)
+        paragraphs = [t for k, t in blocks if k not in _HEADING_TAGS or t != title]
+        return [(title, paragraphs)] if paragraphs else []
+    levels = {"h1"} if split_on == "h1" else {"h1", "h2"}
+    chapters: list[tuple[str | None, list[str]]] = []
+    current: tuple[str | None, list[str]] | None = None
+    for k, t in blocks:
+        if k in levels:
+            current = (t, [])
+            chapters.append(current)
+        else:
+            if current is None:
+                current = (None, [])
+                chapters.append(current)
+            current[1].append(t)
+    return [c for c in chapters if c[1]]
+
+
+def _parse_epub(raw: bytes, filename: str | None, split_on: str = "auto") -> StandardImport:
     zf = zipfile.ZipFile(io.BytesIO(raw))
     container = _xml_root(zf.read("META-INF/container.xml"), "container.xml")
     rootfile = container.find(
@@ -219,6 +262,7 @@ def _parse_epub(raw: bytes, filename: str | None) -> StandardImport:
 
     warnings: list[str] = []
     chapters: list[tuple[str | None, list[str]]] = []
+    merged_blocks: list[tuple[str, str]] = []  # for non-auto split modes
     for itemref in opf.iter(f"{ns_opf}itemref"):
         href, media, props = manifest.get(itemref.get("idref", ""), ("", "", ""))
         if not href or "html" not in media:
@@ -234,13 +278,22 @@ def _parse_epub(raw: bytes, filename: str | None) -> StandardImport:
         extractor = _XhtmlBlocks()
         extractor.feed(doc.decode("utf-8", errors="replace"))
         extractor.close()
-        heading = next((t for k, t in extractor.blocks if k == "h"), None)
+        heading = next((t for k, t in extractor.blocks if k in _HEADING_TAGS), None)
         paragraphs = [t for k, t in extractor.blocks if k == "p"]
         words = sum(len(p.split()) for p in paragraphs)
         if not paragraphs or (heading is None and words < _FRONT_MATTER_MAX_WORDS):
             warnings.append(f"skipped front matter: {href}")
             continue
-        chapters.append((heading, paragraphs))
+        if split_on == "auto":
+            chapters.append((heading, paragraphs))
+        else:
+            merged_blocks.extend(extractor.blocks)
+
+    if split_on != "auto":
+        # Re-chapter the merged spine by heading level — fixes books that
+        # ship every chapter in one spine doc (auto would make 1 chapter)
+        # and books that split one chapter across many docs.
+        chapters = _split_blocks(merged_blocks, split_on)
 
     desc = f"by {creator}" if creator else None
     return _build(
@@ -256,7 +309,7 @@ def _parse_epub(raw: bytes, filename: str | None) -> StandardImport:
 # ── DOCX ─────────────────────────────────────────────────────────────
 
 
-def _parse_docx(raw: bytes, filename: str | None) -> StandardImport:
+def _parse_docx(raw: bytes, filename: str | None, split_on: str = "auto") -> StandardImport:
     zf = zipfile.ZipFile(io.BytesIO(raw))
     try:
         doc = _xml_root(zf.read("word/document.xml"), "word/document.xml")
@@ -271,6 +324,10 @@ def _parse_docx(raw: bytes, filename: str | None) -> StandardImport:
     except KeyError:
         pass
 
+    # Which heading STYLES start a new chapter (split_on selector).
+    split_levels = {
+        "auto": "[1-3]", "h1": "[1]", "h1_h2": "[1-2]", "none": None,
+    }[split_on]
     chapters: list[tuple[str | None, list[str]]] = []
     current: tuple[str | None, list[str]] | None = None
     for para in doc.iter(f"{ns}p"):
@@ -279,7 +336,10 @@ def _parse_docx(raw: bytes, filename: str | None) -> StandardImport:
         text = re.sub(r"\s+", " ", "".join(t.text or "" for t in para.iter(f"{ns}t"))).strip()
         if not text:
             continue
-        if re.match(r"(?i)^heading\s*[1-3]$|^h[1-3]$", style.replace("_", " ")):
+        is_split_heading = split_levels is not None and re.match(
+            rf"(?i)^heading\s*{split_levels}$|^h{split_levels}$", style.replace("_", " ")
+        )
+        if is_split_heading:
             current = (text, [])
             chapters.append(current)
         else:
@@ -314,7 +374,9 @@ def _split_paragraphs(body: str) -> list[str]:
     ]
 
 
-def _parse_markdown(text: str, filename: str | None) -> StandardImport:
+def _parse_markdown(text: str, filename: str | None, split_on: str = "auto") -> StandardImport:
+    # Max heading level that starts a new chapter; 0 = never split.
+    max_level = {"auto": 3, "h1": 1, "h1_h2": 2, "none": 0}[split_on]
     chapters: list[tuple[str | None, list[str]]] = []
     current_title: str | None = None
     buf: list[str] = []
@@ -325,13 +387,16 @@ def _parse_markdown(text: str, filename: str | None) -> StandardImport:
             chapters.append((current_title, paragraphs))
 
     for line in text.splitlines():
-        m = re.match(r"^(#{1,3})\s+(.*\S)\s*$", line)
-        if m:
+        m = re.match(r"^(#{1,3})\s+(.*\S)\s*$", line) if max_level else None
+        if m and len(m.group(1)) <= max_level:
             if buf or current_title is not None:
                 flush()
             current_title, buf = m.group(2), []
         else:
-            buf.append(line)
+            # Deeper headings (and all headings in "none" mode) stay in
+            # the text — strip the markdown marks so they read cleanly.
+            hm = re.match(r"^#{1,6}\s+(.*\S)\s*$", line)
+            buf.append(hm.group(1) if hm else line)
     flush()
 
     chapters = [c for c in chapters if c[1]]
@@ -350,7 +415,14 @@ _TXT_CHAPTER_RE = re.compile(
 )
 
 
-def _parse_txt(text: str, filename: str | None) -> StandardImport:
+def _parse_txt(text: str, filename: str | None, split_on: str = "auto") -> StandardImport:
+    # Plain text has no heading levels — h1/h1_h2 behave like auto
+    # ("Chapter N…" lines split); "none" keeps the whole file together.
+    warnings: list[str] = []
+    if split_on in ("h1", "h1_h2"):
+        warnings.append(
+            "plain text has no heading levels — split on 'Chapter N' lines (auto) applied"
+        )
     chapters: list[tuple[str | None, list[str]]] = []
     current_title: str | None = None
     buf: list[str] = []
@@ -361,7 +433,7 @@ def _parse_txt(text: str, filename: str | None) -> StandardImport:
             chapters.append((current_title, paragraphs))
 
     for line in text.splitlines():
-        if len(line) < 60 and _TXT_CHAPTER_RE.match(line):
+        if split_on != "none" and len(line) < 60 and _TXT_CHAPTER_RE.match(line):
             flush()
             current_title, buf = line.strip(), []
         else:
@@ -374,5 +446,5 @@ def _parse_txt(text: str, filename: str | None) -> StandardImport:
         description=None,
         chapters=chapters,
         source_prefix="txt",
-        warnings=[],
+        warnings=warnings,
     )

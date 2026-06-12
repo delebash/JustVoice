@@ -708,6 +708,10 @@ async def import_project(
     project_id: Optional[str] = Form(default=None),
     project_id_q: Optional[str] = Query(default=None, alias="project_id"),
     include_scenes: Optional[str] = Form(default=None),
+    # Chapter-split strategy (book_prose: auto | h1 | h1_h2 | none) —
+    # the import-review "Split chapters on" selector re-runs the dry
+    # run with this; adapters that don't take it ignore it.
+    split_on: Optional[str] = Form(default=None),
     db: Session = Depends(get_db),
 ) -> ImportRunResponse:
     """Run an import adapter.
@@ -743,7 +747,7 @@ async def import_project(
         if not raw:
             raise bad_request("import: no file uploaded and no raw request body")
 
-    standard = run_adapter(effective_source, raw, filename=filename)
+    standard = run_adapter(effective_source, raw, filename=filename, split_on=split_on)
 
     # Per-chapter include list (import-page checkboxes): comma-separated
     # scene indices from the dry-run preview. Unlisted scenes don't

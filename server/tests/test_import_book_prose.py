@@ -180,6 +180,90 @@ def test_txt_without_chapters_is_single_scene():
     assert len(out.scenes[0].lines) == 2
 
 
+# ── split_on (import-review "Split chapters on" selector) ───────────
+
+
+def test_markdown_split_h1_keeps_h2_in_text():
+    text = "# One\n\nPara a.\n\n## Two\n\nPara c.\n"
+    out = parse(text.encode(), filename="book.md", split_on="h1")
+    assert [s.title for s in out.scenes] == ["One"]
+    # the h2 line stays in the chapter as plain text, marks stripped
+    assert any(line.text == "Two" for line in out.scenes[0].lines)
+
+
+def test_markdown_split_none_is_one_chapter():
+    text = "# One\n\nPara a.\n\n# Two\n\nPara b.\n"
+    out = parse(text.encode(), filename="book.md", split_on="none")
+    assert len(out.scenes) == 1
+
+
+def test_epub_split_h1_rechapters_single_spine_doc():
+    # Whole book in ONE spine doc — auto yields 1 chapter, h1 re-splits.
+    doc = (
+        "<html><body>"
+        "<h1>The Lake House</h1><p>The lake held the fog all morning.</p>"
+        "<h1>Old Debts</h1><p>Edith poured the tea.</p>"
+        "</body></html>"
+    )
+    raw = _make_epub({"book.xhtml": doc})
+    auto = parse(raw, filename="one-doc.epub")
+    assert len(auto.scenes) == 1
+    out = parse(raw, filename="one-doc.epub", split_on="h1")
+    assert [s.title for s in out.scenes] == ["The Lake House", "Old Debts"]
+
+
+def test_epub_split_none_merges_spine_docs():
+    raw = _make_epub(
+        {
+            "ch1.xhtml": _xhtml("One", ["First chapter paragraph text."]),
+            "ch2.xhtml": _xhtml("Two", ["Second chapter paragraph text."]),
+        }
+    )
+    out = parse(raw, filename="book.epub", split_on="none")
+    assert len(out.scenes) == 1
+    texts = [line.text for line in out.scenes[0].lines]
+    assert "First chapter paragraph text." in texts
+    assert "Second chapter paragraph text." in texts
+
+
+def test_docx_split_h1_ignores_heading2():
+    raw = _make_docx(
+        [
+            ("Part One", "Heading1"),
+            ("Intro paragraph.", None),
+            ("Scene break", "Heading2"),
+            ("More paragraph.", None),
+        ],
+    )
+    auto = parse(raw, filename="d.docx")
+    assert len(auto.scenes) == 2  # auto splits on H1 + H2
+    out = parse(raw, filename="d.docx", split_on="h1")
+    assert [s.title for s in out.scenes] == ["Part One"]
+    assert any(line.text == "Scene break" for line in out.scenes[0].lines)
+
+
+def test_txt_split_none_keeps_chapter_lines_in_text():
+    text = "Chapter 1\n\nFirst paragraph.\n\nChapter 2\n\nSecond paragraph.\n"
+    out = parse(text.encode(), filename="book.txt", split_on="none")
+    assert len(out.scenes) == 1
+
+
+def test_unknown_split_mode_rejected():
+    with pytest.raises(ApiError):
+        parse(b"# T\n\nHello.", filename="t.md", split_on="pages")
+
+
+def test_registry_drops_split_on_for_adapters_without_it():
+    # csv_lines.parse has no split_on — run_adapter must filter it out.
+    out = run_adapter(
+        "csv_lines",
+        b"scene,character,text\nintro,NARRATOR,Hello there.\n",
+        filename="lines.csv",
+        split_on="h1",
+    )
+    assert out.scenes[0].lines[0].text == "Hello there."
+
+
 # ── errors + registry ────────────────────────────────────────────────
 
 

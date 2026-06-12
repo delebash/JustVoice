@@ -140,7 +140,7 @@ def get_adapter(source_id: str) -> Callable[..., StandardImport] | None:
 
 
 def run_adapter(
-    source_id: str, raw: bytes, *, filename: str | None = None
+    source_id: str, raw: bytes, *, filename: str | None = None, **options
 ) -> StandardImport:
     parser = get_adapter(source_id)
     if parser is None:
@@ -148,7 +148,15 @@ def run_adapter(
 
         known = ", ".join(_BY_ID.keys())
         raise bad_request(f"unknown import source '{source_id}'. Known: {known}")
-    return parser(raw, filename=filename)
+    if options:
+        # Adapter-specific options (e.g. book_prose split_on) — drop any
+        # the target adapter doesn't declare so callers can pass them
+        # uniformly without every adapter growing the parameter.
+        import inspect
+
+        accepted = inspect.signature(parser).parameters
+        options = {k: v for k, v in options.items() if k in accepted and v is not None}
+    return parser(raw, filename=filename, **options)
 
 
 __all__ = [
