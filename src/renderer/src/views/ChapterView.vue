@@ -467,6 +467,13 @@ function goStudioExport() {
   window.location.hash = "#studio";
 }
 
+// Empty-state CTA. Must live in script — `window` in a template
+// expression resolves to `_ctx.window` (undefined), which is how the
+// old inline handler silently did nothing.
+function goProjects() {
+  window.location.hash = "#books";
+}
+
 // ── Fix-it loop entry (journeys fixit journey) ────────────────────────
 // Flag a misread word on the line → Lexicons opens with it prefilled.
 // Uses the user's text selection when it's inside this block; otherwise
@@ -724,10 +731,10 @@ async function savePastedText() {
            block's cast persona voice; uncast blocks ask inline. -->
       <span class="jv-spacer" />
       <JvButton
+        v-if="selectedProjectId"
         variant="secondary"
         size="sm"
         label="⬇ Export"
-        :disabled="!selectedProjectId"
         title="Package the whole project — opens Studio · 4 Export (M4B, chapter audio, ACX checklist)"
         @click="goStudioExport"
       />
@@ -813,7 +820,7 @@ async function savePastedText() {
       :message="`Import a manuscript (JustWrite / CSV / SRT / Audacity labels / JustVoice JSON) or create a blank one to start.`"
       :action-label="`Open ${copy.book.plural}`"
       compact
-      @action="(typeof window !== 'undefined') && (window.location.hash = '#books')"
+      @action="goProjects"
     />
 
     <!-- ── Back to the chapter list (detail mode) ─────────────────────── -->
