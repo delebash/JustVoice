@@ -25,6 +25,7 @@ import { confirmDialog } from "../services/dialog.js";
 import { useCopy } from "../services/copy.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useOnboarding } from "../stores/onboarding.js";
+import { readSnapshot, writeSnapshot } from "../services/snapshot.js";
 
 const api = useApi();
 const activeProject = useActiveProject();
@@ -132,11 +133,13 @@ const RENDER_PRESETS = [
   { id: "final_ship",    label: "Final ship" },
 ];
 
+const PROJECTS_SNAPSHOT_KEY = "jv.books.snapshot";
 async function refresh() {
-  loading.value = true;
+  loading.value = !projects.value.length;
   try {
     const res = await projectsService.list();
     projects.value = res.projects ?? [];
+    writeSnapshot(PROJECTS_SNAPSHOT_KEY, projects.value);
     // No auto-select — rows start collapsed; browsing is explicit.
   } catch (e) {
     pushToast({ kind: "error", title: "Failed to load projects", description: String(e?.message ?? e) });
@@ -144,6 +147,9 @@ async function refresh() {
     loading.value = false;
   }
 }
+// Instant paint from the last visit (canonical snapshot pattern —
+// user-hit: "takes a second to list projects").
+projects.value = readSnapshot(PROJECTS_SNAPSHOT_KEY) || [];
 
 async function loadDetail(projectId) {
   if (!projectId) {

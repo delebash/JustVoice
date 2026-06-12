@@ -77,6 +77,7 @@ def _resolve_scene_to_lines(
 
         lines: list[ChapterLine] = []
         lexicon_ids: set[str] = set()
+        skipped = 0
 
         for block in blocks:
             if not block.text or not block.text.strip():
@@ -99,10 +100,12 @@ def _resolve_scene_to_lines(
                 # No persona / no voice → skip this block. Studio Cast
                 # tab is the place to bind voices; rendering silently
                 # skips unbound blocks rather than failing the chapter.
-                log.warning(
-                    "render_chapter: skipping block %s — no voice resolvable",
-                    block.id,
-                )
+                # DEBUG, not WARNING: this resolver also serves the
+                # read-only cache-stats probe, which Home/Studio hit on
+                # every visit — per-block WARNING spam there read as
+                # "the app renders when I click Home" (user-hit).
+                skipped += 1
+                log.debug("scene resolve: block %s has no voice — excluded", block.id)
                 continue
 
             merged = merge_delivery(
@@ -122,6 +125,11 @@ def _resolve_scene_to_lines(
                 )
             )
 
+        if skipped and lines:
+            log.info(
+                "scene %s: %d of %d blocks have no voice and were excluded",
+                scene_id, skipped, skipped + len(lines),
+            )
         if not lines:
             raise bad_request(
                 f"scene {scene_id} has blocks but none could be rendered "

@@ -215,11 +215,19 @@ async def list_projects(
     if project_type is not None:
         q = q.filter(Project.project_type == project_type)
     rows = q.order_by(Project.created_at.desc()).all()
+    # One GROUP BY instead of a COUNT query per project (N+1 — the list
+    # endpoint is on every view's load path; user-hit: "takes a second
+    # to list projects").
+    from sqlalchemy import func
+
+    counts = dict(
+        db.query(Scene.project_id, func.count(Scene.id))
+        .group_by(Scene.project_id)
+        .all()
+    )
     return ProjectList(
         projects=[
-            ProjectResponse.from_orm(
-                row, scene_count=db.query(Scene).filter(Scene.project_id == row.id).count()
-            )
+            ProjectResponse.from_orm(row, scene_count=counts.get(row.id, 0))
             for row in rows
         ]
     )
