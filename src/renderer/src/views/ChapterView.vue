@@ -191,7 +191,6 @@ const voiceOptions = computed(() =>
 
 // Default voice for re-generation.
 const regenVoice = ref("");
-const llmRewrite = ref(false);
 watch(availableVoices, (list) => {
   if (!regenVoice.value && list.length) regenVoice.value = list[0].id;
 });
@@ -1103,37 +1102,6 @@ async function savePastedText() {
       </div>
     </div>
 
-    <!-- ── Floating generate bar (preview lines 791-798) ──
-         Pinned at bottom of the chapter editor. Shows the active voice +
-         engine + effects + LLM-rewrite toggle. The lede above promises
-         this. "Render block" button is disabled until a block is selected;
-         once block-selection state exists (#87 follow-on) this renders the
-         active block. -->
-    <div v-if="viewMode === 'detail' && blocks.length" class="jv-floating chapter-view__generate-bar">
-      <div class="jv-chip-card">🎙️
-        <strong>{{ availableVoices.find((v) => v.id === regenVoice)?.name || regenVoice || "no voice" }}</strong>
-        <select v-model="regenVoice" :disabled="!availableVoices.length" class="chapter-view__chip-select">
-          <option v-for="o in voiceOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-        </select>
-      </div>
-      <div class="jv-chip-card">🧠
-        <strong>{{ currentEngine?.name || "no engine" }}</strong>
-      </div>
-      <div class="jv-chip-card">🎛️ Effects: <strong>none</strong> <span class="muted">▾</span></div>
-      <label class="jv-chip-card">
-        🎭 LLM rewrite
-        <input type="checkbox" v-model="llmRewrite" />
-      </label>
-      <span class="jv-spacer" />
-      <JvButton
-        variant="primary"
-        size="lg"
-        :disabled="!regenVoice"
-        label="▶ Render block"
-        title="Pick a block above to render. Per-block Regenerate buttons inline in the block list."
-      />
-    </div>
-
   </div>
   <LineageViewer
     :take-id="lineageTakeId"
@@ -1143,43 +1111,6 @@ async function savePastedText() {
 </template>
 
 <style scoped>
-.chapter-view {
-  /* .jv-content already pads 24/32/64 — the old root padding here doubled
-     it. Keep only extra clearance for the pinned floating generate bar. */
-  padding-bottom: 32px;
-}
-
-/* ── Floating generate bar at the bottom ───────────────────────────────── */
-.chapter-view__generate-bar {
-  position: fixed;
-  bottom: 16px;
-  left: 96px;
-  right: 16px;
-  z-index: 50;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
-  padding: 10px 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.chapter-view__chip-select {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  font-family: inherit;
-  font-size: inherit;
-  font-weight: 600;
-  color: var(--ink);
-  cursor: pointer;
-  margin-left: 6px;
-  width: 12px;
-  overflow: hidden;
-}
-
 /* ── Block card ──────────────────────────────────────────────────────────── */
 .chapter-view__block {
   margin-bottom: 16px;
