@@ -1065,7 +1065,17 @@ async function smartAssignCast() {
   }
 }
 
-onMounted(loadAll);
+onMounted(() => {
+  // Chapters workflow strip hands the target tab over (Cast/Script/Render).
+  try {
+    const t = window.sessionStorage?.getItem("jv.studio.tab");
+    if (t) {
+      window.sessionStorage.removeItem("jv.studio.tab");
+      if (["cast", "script", "render"].includes(t)) tab.value = t;
+    }
+  } catch { /* ignore */ }
+  loadAll();
+});
 
 // Keep the app-wide active project (sidebar vocabulary, topbar chips,
 // Home resume card) in sync with this view's selection.
@@ -1084,7 +1094,6 @@ watch(selectedProjectId, (id) => {
         <option v-for="o in projectOptions" :key="o.value || 'none'" :value="o.value">{{ o.label }}</option>
       </select>
       <span class="jv-spacer" />
-      <span v-if="selectedProject" class="jv-pill jv-pill--ghost">{{ selectedProject.project_type }}</span>
     </div>
 
     <!-- ── Production steps (1 · Cast → 2 · Script → 3 · Render) ────── -->

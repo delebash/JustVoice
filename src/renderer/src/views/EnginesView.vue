@@ -22,7 +22,7 @@
        expanded selection.
 -->
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
@@ -839,7 +839,13 @@ function rowDotClass(pr) {
 
 const sharedEngines = computed(() => engines.value.filter((e) => e.isolation !== "venv").length);
 
-onMounted(() => { refresh(); loadSystem(); loadProviders(); });
+onMounted(() => {
+  refresh(); loadSystem(); loadProviders();
+  // Loads can happen anywhere (Voices ask-before-load, first-render
+  // auto-load) — refresh so the per-variant Load/Unload verbs track.
+  window.addEventListener("jv:health-refresh", refresh);
+});
+onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
 </script>
 
 <template>

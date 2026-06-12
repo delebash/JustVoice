@@ -195,6 +195,8 @@ async function previewVoice(v) {
         kind: "success",
         action: { label: "Always auto-load", fn: () => localStorage.setItem(AUTOLOAD_KEY, "always") },
       });
+      // Topbar pill + Engines page track loads from anywhere.
+      window.dispatchEvent(new Event("jv:health-refresh"));
     }
     previewAudio.value = URL.createObjectURL(blob);
     const audio = new Audio(previewAudio.value);

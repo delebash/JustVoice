@@ -1155,9 +1155,14 @@ class EngineManager:
                     prior.terminate()
                     self._loaded.pop(target_kind, None)
                 elif prior and prior.manifest.id == engine_id and prior.is_alive():
-                    # Already loaded — just return current voices.
-                    if variant is not None:
+                    # Already loaded — just return current voices. Record the
+                    # RESOLVED variant: "auto"/None must map to the default
+                    # id or the Engines page can't tell which row is loaded
+                    # (user-hit: load via Voices → both rows said "Load").
+                    if variant not in (None, "", "auto"):
                         self._current_variants[engine_id] = variant
+                    elif engine_id not in self._current_variants:
+                        self._current_variants[engine_id] = m.default_variant_id or ""
                     return prior.get("/voices").json()
 
                 if progress:
@@ -1180,7 +1185,9 @@ class EngineManager:
                     self._loaded.pop(target_kind, None)
                 raise RuntimeError(f"engine load failed: {r.text}")
             with self._lock:
-                self._current_variants[engine_id] = variant or m.default_variant_id or ""
+                self._current_variants[engine_id] = (
+                    variant if variant not in (None, "", "auto") else (m.default_variant_id or "")
+                )
             if target_kind == "llm":
                 # A freshly installed+loaded local LLM should immediately
                 # serve features through the provider registry.

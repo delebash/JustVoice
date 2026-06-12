@@ -5,7 +5,7 @@ import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { useTakesStore } from "../stores/takes.js";
 import { pushToast } from "../services/toastBridge.js";
-import { promptDialog } from "../services/dialog.js";
+import { confirmDialog, promptDialog } from "../services/dialog.js";
 import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
 import { useUiContext } from "../stores/uiContext.js";
@@ -600,9 +600,9 @@ const workflowSteps = computed(() => {
   }).length;
   return [
     { label: "1 Import", sub: n ? `${n} ${copy.value.chapter.plural.toLowerCase()}` : "no text yet", done: n > 0, act: startImport },
-    { label: "2 Cast", sub: castStats.value.total ? `${castStats.value.voiced}/${castStats.value.total} voiced` : "no cast yet", done: castStats.value.total > 0 && castStats.value.voiced === castStats.value.total, act: () => goStudio() },
-    { label: "3 Script", sub: n ? `${attributed}/${n} attributed` : "—", done: n > 0 && attributed === n, act: () => goStudio() },
-    { label: "4 Render", sub: n ? `${cachedAll}/${n} rendered` : "—", done: n > 0 && cachedAll === n, act: () => goStudio() },
+    { label: "2 Cast", sub: castStats.value.total ? `${castStats.value.voiced}/${castStats.value.total} voiced` : "no cast yet", done: castStats.value.total > 0 && castStats.value.voiced === castStats.value.total, act: () => goStudio("cast") },
+    { label: "3 Script", sub: n ? `${attributed}/${n} attributed` : "—", done: n > 0 && attributed === n, act: () => goStudio("script") },
+    { label: "4 Render", sub: n ? `${cachedAll}/${n} rendered` : "—", done: n > 0 && cachedAll === n, act: () => goStudio("render") },
     { label: "5 Export", sub: "M4B · WAVs · ACX", done: false, act: () => { exportOpen.value = true; runExportQc(); } },
   ];
 });
@@ -610,7 +610,8 @@ function startImport() {
   try { window.sessionStorage?.setItem("jv.books.openImport", "1"); } catch { /* ignore */ }
   window.location.hash = "#books";
 }
-function goStudio() {
+function goStudio(tab) {
+  try { if (tab) window.sessionStorage?.setItem("jv.studio.tab", tab); } catch { /* ignore */ }
   window.location.hash = "#studio";
 }
 
@@ -632,18 +633,34 @@ async function deleteChapter(sc) {
     danger: true, confirmLabel: "Delete chapter",
   });
   if (!ok) return;
+  const before = scenes.value;
+  scenes.value = before.filter((x) => x.id !== sc.id);  // optimistic
   try {
     await api.request(`/v1/scenes/${sc.id}`, { method: "DELETE" });
-    await loadScenes(selectedProjectId.value); await loadChapterList();
-  } catch (e) { pushToast({ kind: "error", title: "Delete failed", description: String(e?.message ?? e) }); }
+    loadChapterList();  // stats refresh quietly, no row clearing
+  } catch (e) {
+    scenes.value = before;
+    pushToast({ kind: "error", title: "Delete failed", description: String(e?.message ?? e) });
+  }
 }
 async function moveChapter(sc, dir) {
   const target = sc.position + dir;
   if (target < 0 || target >= scenes.value.length) return;
+  // Optimistic swap — rows trade places instantly; the server PATCH
+  // confirms in the background (user-hit: refetch caused a flash).
+  const before = scenes.value;
+  const other = before.find((x) => x.position === target);
+  scenes.value = before.map((x) =>
+    x.id === sc.id ? { ...x, position: target }
+    : other && x.id === other.id ? { ...x, position: sc.position }
+    : x
+  ).sort((a, b) => a.position - b.position);
   try {
     await api.request(`/v1/scenes/${sc.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ position: target }) });
-    await loadScenes(selectedProjectId.value); await loadChapterList();
-  } catch (e) { pushToast({ kind: "error", title: "Reorder failed", description: String(e?.message ?? e) }); }
+  } catch (e) {
+    scenes.value = before;  // revert
+    pushToast({ kind: "error", title: "Reorder failed", description: String(e?.message ?? e) });
+  }
 }
 
 // Paste-text for an empty chapter: paragraphs → narrator-implied blocks.

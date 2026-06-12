@@ -19,6 +19,7 @@
 import { onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
+import { promptDialog } from "../services/dialog.js";
 import { confirmDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
@@ -60,7 +61,13 @@ function personaName(id) {
 }
 
 async function createPreset() {
-  const name = prompt("Name this render preset:");
+  // Native prompt() is banned (project_gotchas) AND returns null in the
+  // Tauri webview — which is why creates silently never saved.
+  const name = (await promptDialog({
+    title: "New render preset",
+    message: "Name this render preset:",
+    placeholder: "e.g. Dramatic Dialogue",
+  }))?.trim();
   if (!name) return;
   if (!personas.value.length) {
     pushToast({ message: "Create a persona first.", kind: "info" });
