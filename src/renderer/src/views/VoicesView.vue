@@ -577,6 +577,56 @@ function trainLoraForVoice() {
   pushToast({ kind: "info", title: "🧪 Train LoRA", description: `Opens Train with ${inspectedVoice.value.name} pre-selected as the base voice.` });
   window.location.hash = "#train";
 }
+// Item 12: per-voice reset — clears the two user tweaks that exist
+// (gender override + hidden). Tuned params live on PERSONAS, not
+// voices, so they're out of scope here by design.
+function voiceHasTweaks(v) {
+  if (!v) return false;
+  const presetOverride = v.source === "preset" && !!loadPresetGenderOverrides()[v.id];
+  return presetOverride || !!v.gender_user_override || hiddenIds.value.has(v.id);
+}
+async function resetVoice(v) {
+  if (!v) return;
+  if (v.source === "preset") {
+    savePresetGenderOverride(v.id, null);
+  } else if (v.gender_user_override) {
+    v.gender_user_override = null;
+    try {
+      await api.request(`/v1/voices/${v.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gender: "" }),
+      });
+    } catch (e) {
+      pushToast({ kind: "error", title: "Reset failed", description: String(e?.message ?? e) });
+      return;
+    }
+  }
+  if (hiddenIds.value.has(v.id)) toggleHidden(v);
+  voices.value = [...voices.value];
+  pushToast({ kind: "success", message: `${v.name} reset to defaults.` });
+}
+async function resetAllTweaks() {
+  const overrides = Object.keys(loadPresetGenderOverrides()).length;
+  const hidden = hiddenIds.value.size;
+  if (!overrides && !hidden) {
+    pushToast({ kind: "info", message: "Nothing to reset — no gender overrides or hidden voices." });
+    return;
+  }
+  const ok = await confirmDialog({
+    title: "Reset all voice tweaks?",
+    message: `Clears ${overrides} gender override${overrides === 1 ? "" : "s"} and unhides ${hidden} voice${hidden === 1 ? "" : "s"}. Cloned/designed voices themselves are untouched.`,
+    confirmLabel: "Reset all",
+    danger: true,
+  });
+  if (!ok) return;
+  try { localStorage.removeItem(PRESET_GENDER_KEY); } catch { /* ignore */ }
+  hiddenIds.value = new Set();
+  try { localStorage.setItem(HIDDEN_KEY, "[]"); } catch { /* ignore */ }
+  voices.value = [...voices.value];
+  pushToast({ kind: "success", message: "All voice tweaks reset." });
+}
+
 function blendWithVoice() {
   if (!inspectedVoice.value) return;
   blendSources.value = [
@@ -616,6 +666,12 @@ function blendWithVoice() {
       :title="showHidden ? 'Hide the hidden voices again' : 'Temporarily show voices you have hidden'"
       @click="showHidden = !showHidden"
     >🙈 hidden ({{ hiddenCount }})</button>
+    <button
+      type="button"
+      class="jv-pill jv-pill--ghost"
+      title="Clear every gender override and unhide all voices (confirmed first)"
+      @click="resetAllTweaks"
+    >↺ Reset all tweaks</button>
     <div class="voices-view__chips">
       <button
         v-for="f in TYPE_FILTERS"
@@ -676,11 +732,11 @@ function blendWithVoice() {
         </tr>
       </thead>
       <tbody>
+        <template v-for="v in filteredVoices" :key="v.id">
         <tr
-          v-for="v in filteredVoices"
-          :key="v.id"
           :class="{ 'row-orphan': orphanIds.includes(v.id), 'voices-view__row--inspected': inspectedId === v.id }"
-          @click="inspect(v)"
+          title="Double-click to inspect"
+          @dblclick="inspect(v)"
           style="cursor: pointer"
         >
           <td @click.stop>
@@ -750,24 +806,7 @@ function blendWithVoice() {
             />
           </td>
         </tr>
-      </tbody>
-    </table>
-    <EmptyState
-      v-else-if="voices.length === 0"
-      icon="Sparkle"
-      title="No voices registered"
-      message="Load an engine to see its preset voices, or clone a new voice from a reference WAV. JustVoice ships with 54 Kokoro presets out of the box."
-      action-label="Open Engines"
-      compact
-      @action="$router && $router.push?.('#engines'); window.location.hash = '#engines'"
-    />
-    <p v-else class="jv-muted" style="padding: 24px 0; text-align: center; font-style: italic;">
-      No voices match "{{ search }}" or filter "{{ typeFilter }}".
-    </p>
-  </div>
-
-  <!-- ── Inline inspector (preview parity §Voices voice-inspector card) ── -->
-  <div v-if="inspectedVoice" class="jv-card voices-view__inspector">
+        <tr v-if="inspectedId === v.id" :key="`exp-${v.id}`" class="voices-view__expand"><td colspan="12"><div class="voices-view__inspector">
     <header class="voices-view__inspector-h">
       <h3>Voice inspector — {{ inspectedVoice.name }}</h3>
       <span class="jv-spacer" />
@@ -781,48 +820,48 @@ function blendWithVoice() {
         @click="saveVoiceEdit"
       />
       <span v-else class="jv-pill jv-pill--ghost" title="Engine presets ship with the engine — clone or blend to make an editable copy">preset · read-only</span>
+      <JvButton
+        variant="secondary"
+        size="sm"
+        label="Reset to defaults"
+        :disabled="!voiceHasTweaks(inspectedVoice)"
+        :title="voiceHasTweaks(inspectedVoice) ? 'Clears the gender override and unhides this voice' : 'Nothing overridden on this voice'"
+        @click="resetVoice(inspectedVoice)"
+      />
       <JvButton variant="ghost" size="sm" label="Close" @click="inspectedId = null" />
     </header>
 
+    <p v-if="!inspectedEditable" class="jv-muted voices-view__readonly-note">
+      Shipped with the <strong>{{ inspectedVoice.engine }}</strong> engine — these facts aren't
+      editable. The <em>gender chip</em> on the row and <em>🙈 hide</em> are the two tweaks
+      preset voices take.
+    </p>
     <div class="voices-view__inspector-grid">
-      <label class="voices-view__field">
+      <!-- Item 10: read-only data renders as plain facts, never as
+           textboxes that look editable. Inputs only where edits persist. -->
+      <label v-if="inspectedEditable" class="voices-view__field">
         <span>Name</span>
-        <input v-if="inspectedEditable" class="jv-input" v-model="editDraft.name" title="Rename — every picker and persona link follows the id, so renaming is safe" />
-        <input v-else class="jv-input" :value="inspectedVoice.name" readonly title="Engine presets are read-only" />
+        <input class="jv-input" v-model="editDraft.name" title="Rename — every picker and persona link follows the id, so renaming is safe" />
       </label>
-      <label class="voices-view__field">
-        <span>Type</span>
-        <input class="jv-input" :value="inspectedVoice.source" readonly />
-      </label>
-      <label class="voices-view__field">
-        <span>Engine</span>
-        <input class="jv-input" :value="inspectedVoice.engine" readonly />
-      </label>
-      <label class="voices-view__field">
+      <div v-else class="voices-view__field"><span>Name</span><b class="voices-view__fact">{{ inspectedVoice.name }}</b></div>
+      <div class="voices-view__field"><span>Type</span><b class="voices-view__fact">{{ inspectedVoice.source }}</b></div>
+      <div class="voices-view__field"><span>Engine</span><b class="voices-view__fact">{{ inspectedVoice.engine }}</b></div>
+      <label v-if="inspectedEditable" class="voices-view__field">
         <span>Gender</span>
-        <select v-if="inspectedEditable" class="jv-input" v-model="editDraft.gender" title="Drives Smart-assign's gender matching">
+        <select class="jv-input" v-model="editDraft.gender" title="Drives Smart-assign's gender matching">
           <option value="">unspecified</option>
           <option value="female">female</option>
           <option value="male">male</option>
           <option value="neutral">neutral</option>
         </select>
-        <input v-else class="jv-input" :value="inspectedVoice.gender || '—'" readonly title="Engine presets are read-only — use the gender chip override in Studio's library" />
       </label>
-      <label class="voices-view__field">
+      <div v-else class="voices-view__field"><span>Gender</span><b class="voices-view__fact">{{ autoDetectGender(inspectedVoice) === "?" ? "—" : autoDetectGender(inspectedVoice) }}<span class="jv-muted" style="font-weight:400"> (chip on the row cycles it)</span></b></div>
+      <label v-if="inspectedEditable" class="voices-view__field">
         <span>Language</span>
-        <input v-if="inspectedEditable" class="jv-input" v-model="editDraft.language" title="BCP-47 code, e.g. en, en-GB, de" />
-        <input v-else class="jv-input" :value="inspectedVoice.language || 'en'" readonly />
+        <input class="jv-input" v-model="editDraft.language" title="BCP-47 code, e.g. en, en-GB, de" />
       </label>
-      <label class="voices-view__field">
-        <span>Persona link</span>
-        <select class="jv-input" disabled>
-          <option>(none)</option>
-        </select>
-      </label>
-      <label class="voices-view__field">
-        <span>Audio channel</span>
-        <input class="jv-input" :value="inspectedVoice.channel_id || 'Default'" readonly />
-      </label>
+      <div v-else class="voices-view__field"><span>Language</span><b class="voices-view__fact">{{ inspectedVoice.language || "en" }}</b></div>
+      <div class="voices-view__field"><span>Audio channel</span><b class="voices-view__fact">{{ inspectedVoice.channel_id || "Default" }}</b></div>
       <div class="voices-view__field voices-view__field--wide">
         <span>Default effect chain</span>
         <div class="voices-view__effects-row">
@@ -858,21 +897,44 @@ function blendWithVoice() {
       </tbody>
     </table>
     <p v-else class="jv-muted voices-view__samples-empty">
-      <span v-if="inspectedVoice.source === 'preset'">Preset voices have no reference samples — they're shipped with the engine.</span>
+      <span v-if="inspectedVoice.source === 'preset'">
+        Baked into the model — preset voices can never take a WAV or an in-app recording.
+        To make a voice from a recording, <a href="#voices" @click.prevent="openModal('clone')">clone one with Chatterbox</a>.
+      </span>
       <span v-else>No samples on this voice yet. Use the buttons below to add some.</span>
     </p>
 
     <div class="voices-view__sample-actions">
-      <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="pickSampleWav">+ Add WAV file</button>
-      <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="recordInApp">🎙️ Record in-app</button>
-      <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="promoteFromCaptures">↗ Promote from Captures</button>
+      <template v-if="inspectedEditable">
+        <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="pickSampleWav">+ Add WAV file</button>
+        <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="recordInApp">🎙️ Record in-app</button>
+        <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="promoteFromCaptures">↗ Promote from Captures</button>
+      </template>
       <span class="jv-spacer" />
       <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="trainLoraForVoice">🧪 Train LoRA</button>
       <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="blendWithVoice">🔀 Blend with…</button>
     </div>
 
     <input ref="sampleFileInput" type="file" accept="audio/*" style="display:none" @change="onSamplePicked" />
+  </div></td></tr>
+        </template>
+      </tbody>
+    </table>
+    <EmptyState
+      v-else-if="voices.length === 0"
+      icon="Sparkle"
+      title="No voices registered"
+      message="Load an engine to see its preset voices, or clone a new voice from a reference WAV. JustVoice ships with 54 Kokoro presets out of the box."
+      action-label="Open Engines"
+      compact
+      @action="$router && $router.push?.('#engines'); window.location.hash = '#engines'"
+    />
+    <p v-else class="jv-muted" style="padding: 24px 0; text-align: center; font-style: italic;">
+      No voices match "{{ search }}" or filter "{{ typeFilter }}".
+    </p>
   </div>
+
+  <!-- ── Inline inspector (preview parity §Voices voice-inspector card) ── -->
 
   <!-- ── Modal ───────────────────────────────────────────────────────── -->
   <div class="modal-overlay" v-if="modal" @click.self="modal = null">
@@ -1036,6 +1098,11 @@ function blendWithVoice() {
   flex-wrap: wrap;
   margin-bottom: 12px;
 }
+.voices-view__expand > td { background: var(--surface-2); padding: 14px 18px; }
+.voices-view__expand .voices-view__inspector { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.voices-view__fact { font-size: 13px; font-weight: 600; }
+.voices-view__readonly-note { font-size: 12px; margin: 0 0 10px; }
+
 .voices-view__chips {
   display: inline-flex;
   background: var(--surface-2);
