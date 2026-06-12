@@ -4,7 +4,7 @@
   aesthetic. `variant` encodes both role and visuals:
     primary    solid forest-green
     secondary  white card with hairline
-    ghost      no fill, no border, only on hover
+    ghost      quiet utility — thin border, muted ink (never borderless; user decree 2026-06-12)
     danger     solid oxblood
     danger-outline
     warn       solid gold

@@ -806,12 +806,15 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
   border-color: var(--line-strong);
 }
 .jv-btn--secondary:hover { background: var(--surface-2); filter: none; }
+/* Ghost = QUIET UTILITY, but never borderless — text-only buttons read
+   as unstyled (user decree 2026-06-12: "no ghost buttons"). Renders as
+   a lighter cousin of secondary: thin border, muted ink. */
 .jv-btn--ghost {
-  background: transparent;
-  color: var(--ink);
-  border: 0;
+  background: var(--surface);
+  color: var(--ink-2);
+  border-color: var(--line);
 }
-.jv-btn--ghost:hover { background: var(--surface-2); }
+.jv-btn--ghost:hover { background: var(--surface-2); border-color: var(--line-strong); filter: none; }
 .jv-btn--danger {
   background: var(--danger);
   border-color: var(--danger);

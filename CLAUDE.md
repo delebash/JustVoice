@@ -110,6 +110,15 @@ check these checked nothing):
    keys). If a knob's effect is invisible (e.g. a prompt resolved
    server-side), SHOW the resolved truth in the UI — never an empty
    box with a "defaults apply" placeholder (Speaker Lab lesson).
+6. NO borderless text-only buttons (user decree 2026-06-12: "no ghost
+   buttons"). The ghost variant renders as a thin-bordered quiet
+   utility; jv-pill --ghost is a chip SELECTION state, not a button,
+   and is exempt.
+7. Row grammar (JustWrite comparison, 2026-06-12): a row touches the
+   right edge only with an action cluster, and something must stretch
+   to meet it — never a fragment orphaned across a spacer. Don't
+   surface internal modes as buttons; let auto-detection move the
+   selection and show provenance as a muted note.
 
 ## ⛔ RULE #2 — RIGHT THE FIRST TIME (tempo)
 
