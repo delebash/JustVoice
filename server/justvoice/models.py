@@ -213,6 +213,11 @@ class ExternalEngineConfig(BaseModel):
     model: str = ""
     voices: list[str] = []
     response_format: str = "wav"
+    # Item 9 (2026-06-12): the user runs this server themselves
+    # (localhost/LAN) — free, private, no install. Lists under the
+    # LOCAL tab's kind section; voice badges show self-hosted instead
+    # of online·metered. Auto-detected from the URL, user-overridable.
+    self_hosted: bool = False
     # Phase 2 / Slice 5 — TTS provider type discriminator. Default
     # "openai-compat" matches the prior single-pattern behavior so
     # existing settings.engines.external entries keep working without
@@ -628,6 +633,9 @@ class EngineInfo(BaseModel):
     name: str
     description: str
     backend: str
+    # Runtime-registered providers the user hosts themselves (item 9) —
+    # drives LOCAL-tab placement + self-hosted voice badges.
+    self_hosted: bool = False
     capabilities: list[Feature] = []
     prerequisites: Prerequisites = Prerequisites()
     status: EngineStatus = "not_installed"

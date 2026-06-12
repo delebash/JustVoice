@@ -36,6 +36,20 @@ const props = defineProps({
 
 const emit = defineEmits(["save", "cancel", "delete"]);
 
+// Item 9: self-hosted auto-detect — localhost / loopback / RFC-1918 /
+// .local URLs default the toggle on; the user can override either way.
+import { watch as _watch } from "vue";
+function looksSelfHosted(url) {
+  return /^(https?:\/\/)?(localhost|127\.|0\.0\.0\.0|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.|[\w-]+\.local)/i.test(url || "");
+}
+let _selfHostedTouched = false;
+_watch(() => props.draft?.self_hosted, (v, oldV) => {
+  if (oldV !== undefined && v !== looksSelfHosted(props.draft?.base_url)) _selfHostedTouched = true;
+});
+_watch(() => props.draft?.base_url, (url) => {
+  if (!_selfHostedTouched && props.draft) props.draft.self_hosted = looksSelfHosted(url);
+});
+
 const api = useApi();
 const busy = ref(false);
 
@@ -318,6 +332,13 @@ async function onSave() {
       <div class="pf-f">
         <label>API key</label>
         <input type="password" v-model="draft.api_key" autocomplete="off" placeholder="sk-… (blank for local)" />
+      </div>
+      <div class="pf-f">
+        <label title="Self-hosted = runs on your machine or network — free and private. Lists under Local; its voices badge as self-hosted, not online·metered.">Where it runs</label>
+        <label style="display:flex;align-items:center;gap:6px;font-weight:400;text-transform:none;letter-spacing:0">
+          <input type="checkbox" v-model="draft.self_hosted" />
+          <span>self-hosted (my machine / network — free)</span>
+        </label>
       </div>
       <div class="pf-caps">
         <label title="Chat + embeddings — compose, rewrite, speaker extraction, refinement"><input type="checkbox" v-model="capLLM" /> <span class="pf-cap llm">LLM</span></label>

@@ -154,6 +154,8 @@ const engineBackends = computed(() => {
   return m;
 });
 function voiceLocality(v) {
+  const e = engineMeta.value[v.engine];
+  if (e?.self_hosted) return "self-hosted";
   const backend = engineBackends.value[v.engine];
   if (backend === undefined) return null; // orphan — already tagged
   return backend === "managed" ? "local" : "online";
@@ -706,6 +708,11 @@ function blendWithVoice() {
               class="jv-locality jv-locality--local"
               title="Runs on this machine — no usage cost; loads the engine into RAM/VRAM on first use"
             >LOCAL</span>
+            <span
+              v-else-if="voiceLocality(v) === 'self-hosted'"
+              class="jv-locality jv-locality--local"
+              title="An OpenAI-compatible server you run yourself — free and private"
+            >SELF-HOSTED</span>
             <span
               v-else-if="voiceLocality(v) === 'online'"
               class="jv-locality jv-locality--online"

@@ -143,7 +143,9 @@ async def list_engines() -> EnginesListResponse:
         seen.add(entry.id)
 
     # 3. Runtime-registered in-process engines (external OpenAI-compatible
-    #    servers). Not in any static catalog.
+    #    servers). Not in any static catalog. self_hosted comes from the
+    #    provider config (item 9) so badges + tab placement stay honest.
+    ext_cfg = {c.id: c for c in st.settings.get().engines.external}
     for engine in st.engines.all():
         eid = engine.meta.engine_id
         if eid in seen:
@@ -154,6 +156,7 @@ async def list_engines() -> EnginesListResponse:
                 name=engine.meta.display_name,
                 description=f"Runtime-registered engine (backend: {engine.meta.backend}). Not in the static catalog.",
                 backend=engine.meta.backend,
+                self_hosted=bool(getattr(ext_cfg.get(eid), "self_hosted", False)),
                 capabilities=[],
                 prerequisites=Prerequisites(),
                 status=compute_status(eid, True, engine.ready(), cur),

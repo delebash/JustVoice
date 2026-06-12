@@ -82,6 +82,14 @@ const ttsProviders = ref([]);
 const editingKey = ref("");  // "" | "new" | "<provider-id>"
 const draft = ref(null);
 
+// Item 9: self-hosted providers list under the LOCAL tab's matching
+// kind section (only TTS externals exist as a config store today;
+// LLM providers have their own detect-and-connect local flow).
+function selfHostedFor(kind) {
+  if (kind !== "tts") return [];
+  return ttsProviders.value.filter((p) => p.self_hosted);
+}
+
 const visibleProviders = computed(() => {
   if (activeKind.value === "llm") return llmProviders.value;
   if (activeKind.value === "tts") return ttsProviders.value;
@@ -114,6 +122,7 @@ async function loadProviders() {
       tts_model: p.model || "",
       voices: Array.isArray(p.voices) ? [...p.voices] : [],
       response_format: p.response_format || "wav",
+      self_hosted: !!p.self_hosted,
     }));
   } catch {
     ttsProviders.value = [];
@@ -144,6 +153,7 @@ function defaultDraft(kind) {
     tts_model: "",
     voices: [],
     response_format: "wav",
+    self_hosted: false,
   };
 }
 
@@ -218,6 +228,7 @@ async function saveProvider(payload) {
         model: payload.tts_model || "",
         voices: Array.isArray(payload.voices) ? payload.voices : [],
         response_format: payload.response_format || "wav",
+        self_hosted: !!payload.self_hosted,
       });
     }
     if (wantsTts || filtered.length !== externals.length) {
@@ -928,6 +939,23 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
         <span class="note" v-else>{{ sec.note }}</span>
       </div>
 
+      <!-- Self-hosted providers (item 9): the user runs these — they
+           belong under Local with their kind, provider verbs only. -->
+      <div v-for="pr in selfHostedFor(sec.id)" :key="`sh-${pr.id}`" class="ev-group">
+        <div class="ev-ghead" style="cursor:default">
+          <span class="chev" style="visibility:hidden">▶</span>
+          <span class="nm">{{ pr.name }}</span><span class="id">{{ pr.id }}</span>
+          <span class="ev-caps">
+            <span class="ev-cap" :class="sec.id">{{ sec.id.toUpperCase() }}</span>
+            <span class="ev-cap iso" title="OpenAI-compatible server you run yourself — free, private, nothing to install here">SELF-HOSTED</span>
+          </span>
+          <span class="desc">{{ pr.base_url }}</span>
+          <span class="gsum">
+            <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" title="Edit this provider (opens the provider form)" @click="topTab = 'online'; startEditProvider(pr)">Edit</button>
+          </span>
+        </div>
+      </div>
+
       <div v-if="!sec.engines.length && sec.id === 'embedding'" class="ev-empty">
         No local embedding engine yet — the engine slot exists and one is planned. Cloud embeddings work today via the <b>Online providers</b> tab.
       </div>
@@ -1038,7 +1066,7 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
 
     <!-- The header row stays visible while editing — the form expands
          beneath it as the card body (mock's .prov.editing). -->
-    <div v-for="pr in allProviders" :key="`${pr.kind}-${pr.id}`" class="ev-prov">
+    <div v-for="pr in allProviders" :key="`${pr.kind}-${pr.id}`" class="ev-prov" :class="{ 'ev-prov--selfhosted': pr.self_hosted }">
       <div class="ev-prow">
         <span class="ev-dot" :class="rowDotClass(pr)" :title="rowTest[pr.id]?.ok ? `Reachable · ${rowTest[pr.id].ms} ms` : (rowTest[pr.id]?.message || 'Click Test to check reachability')"></span>
         <div class="pmain">
