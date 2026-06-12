@@ -41,6 +41,10 @@ def test_factory_reset_survives_missing_table(tmp_db, monkeypatch):  # noqa: F81
     db.close()
 
     monkeypatch.setattr(admin_api.db_session, "SessionLocal", session_factory)
+    # Force the drop-tables fallback — the file-delete path targets the
+    # module's real DB, which other tests may have initialized.
+    monkeypatch.setattr(admin_api.db_session, "_db_path", None)
+    monkeypatch.setattr(admin_api.db_session, "engine", None)
     state = SimpleNamespace(settings=_SettingsStore())
     monkeypatch.setattr(admin_api, "get_state", lambda: state)
 
@@ -58,6 +62,8 @@ def test_factory_reset_survives_missing_table(tmp_db, monkeypatch):  # noqa: F81
 def test_factory_reset_preserves_server_section(tmp_db, monkeypatch):  # noqa: F811
     session_factory, _engine = tmp_db
     monkeypatch.setattr(admin_api.db_session, "SessionLocal", session_factory)
+    monkeypatch.setattr(admin_api.db_session, "_db_path", None)
+    monkeypatch.setattr(admin_api.db_session, "engine", None)
     store = _SettingsStore()
     s = store.get()
     s.server.port = 4242

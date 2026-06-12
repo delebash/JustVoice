@@ -33,7 +33,8 @@
     "cache": "Cache",
     "channels": "Channels",
     "webhooks": "Webhooks",
-    "settings": "Settings"
+    "settings": "Settings",
+    "lines": "Lines"
   },
   "lanes": {
     "workflow": "Workflow",

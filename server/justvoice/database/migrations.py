@@ -53,6 +53,7 @@ def run_migrations(engine) -> None:
     _migrate_drop_voice_profile_tables(engine, inspector, tables)
     _migrate_render_presets_effects_chain(engine, inspector, tables)
     _migrate_blocks_extraction_telemetry(engine, inspector, tables)
+    _migrate_mcp_bindings_persona(engine, inspector, tables)
 
 
 # ── helpers ───────────────────────────────────────────────────────────────
@@ -194,3 +195,21 @@ def _migrate_drop_voice_profile_tables(engine, inspector, tables: set[str]) -> N
                 conn.execute(text(f"DROP TABLE IF EXISTS {table}"))
                 logger.info("Dropped %s table (Slice 4 of Profile-kill)", table)
         conn.commit()
+
+
+def _migrate_mcp_bindings_persona(engine, inspector, tables: set[str]) -> None:
+    """mcp_bindings predating the Profile-kill lack persona_id (+ the
+    later default/telemetry columns). User-hit 2026-06-12: GET
+    /v1/mcp/bindings 500'd with 'no such column: mcp_bindings.persona_id'
+    on a DB created before Slice 4."""
+    if "mcp_bindings" not in tables:
+        return
+    columns = _get_columns(inspector, "mcp_bindings")
+    if "persona_id" not in columns:
+        _add_column(engine, "mcp_bindings", "persona_id VARCHAR", "persona_id")
+    if "default_personality" not in columns:
+        _add_column(engine, "mcp_bindings", "default_personality BOOLEAN DEFAULT 0", "default_personality")
+    if "default_engine" not in columns:
+        _add_column(engine, "mcp_bindings", "default_engine VARCHAR", "default_engine")
+    if "last_seen_at" not in columns:
+        _add_column(engine, "mcp_bindings", "last_seen_at DATETIME", "last_seen_at")

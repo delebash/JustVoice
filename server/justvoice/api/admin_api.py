@@ -13,11 +13,12 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 from pydantic import BaseModel
 
 from ..app_state import get_state
 from ..database import session as db_session
+from ..database.migrations import run_migrations
 from ..database.models import Base
 from ..models import Settings
 
@@ -76,34 +77,46 @@ class FactoryResetResponse(BaseModel):
 async def factory_reset() -> FactoryResetResponse:
     state = get_state()
 
-    # 1. Every DB table, children first (FK order). The ORM metadata can
-    # declare tables the live DB no longer has (e.g. legacy
-    # voice_profiles after the Profile-kill) — intersect with what's
-    # actually on disk, and never let one table abort the wipe
-    # (user-hit 2026-06-12: sqlite3.OperationalError no such table).
+    # 1. The database resets the way a fresh install creates it: delete
+    # the SQLite file and re-run init_db (create_all + migrations +
+    # seeds). Guarantees the post-reset schema is byte-identical to a
+    # new install — dropping tables in-place kept legacy drift alive
+    # (user-hit three times on 2026-06-12). Falls back to dropping
+    # tables when the DB isn't the module's file-backed one (tests).
     cleared = 0
-    skipped: list[str] = []
-    factory = db_session.SessionLocal
-    if factory is not None:
-        db = factory()
+    db_path = db_session._db_path
+    if db_path is not None and db_session.engine is not None:
+        db_session.engine.dispose()
+        data_dir = db_path.parent
+        for suffix in ("", "-wal", "-shm"):
+            p = db_path.parent / (db_path.name + suffix)
+            try:
+                p.unlink(missing_ok=True)
+            except OSError as e:
+                log.warning("factory reset: could not delete %s: %s", p, e)
+        db_session.engine = None
+        db_session.SessionLocal = None
+        db_session._db_path = None
+        db_session.init_db(data_dir)
+        from ..database.seed import seed_builtin_effect_presets
+        seed_builtin_effect_presets()
+        cleared = len(Base.metadata.sorted_tables)
+    elif db_session.SessionLocal is not None:
+        factory = db_session.SessionLocal
+        _s = factory()
         try:
-            existing = set(inspect(db.get_bind()).get_table_names())
-            for table in reversed(Base.metadata.sorted_tables):
-                if table.name not in existing:
-                    skipped.append(table.name)
-                    continue
-                try:
-                    db.execute(table.delete())
-                    cleared += 1
-                except Exception as e:
-                    db.rollback()
-                    skipped.append(table.name)
-                    log.warning("factory reset: could not clear %s: %s", table.name, e)
-            db.commit()
+            bind = _s.get_bind()
         finally:
-            db.close()
-    if skipped:
-        log.warning("factory reset: skipped tables: %s", ", ".join(skipped))
+            _s.close()
+        with bind.connect() as conn:
+            if bind.dialect.name == "sqlite":
+                conn.execute(text("PRAGMA foreign_keys=OFF"))
+            for name in inspect(bind).get_table_names():
+                conn.execute(text(f'DROP TABLE IF EXISTS "{name}"'))
+                cleared += 1
+            conn.commit()
+        Base.metadata.create_all(bind=bind)
+        run_migrations(bind)
 
     # 2. Render cache — memory + disk.
     cache = getattr(state, "_render_cache", None)

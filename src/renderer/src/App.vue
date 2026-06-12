@@ -210,6 +210,15 @@ const stateLedeOverride = computed(() => {
 const effectiveLede = computed(() => stateLedeOverride.value || currentView.value?.lede || "");
 const showWelcome = computed(() => onboarding.hydrated && !onboarding.shown);
 
+// Picking a use case flips onboarding.shown, which unmounts the wizard
+// via the v-if BEFORE its delayed close event fires — so @close never
+// reached onWelcomeClosed and QuickSetup silently never chained (user-
+// hit: "clicked Audiobook, nothing happened"). Drive the follow-up from
+// the store transition instead; @close stays as the dismiss path.
+watch(() => onboarding.shown, (now, was) => {
+  if (now && !was && onboarding.hydrated) onWelcomeClosed();
+});
+
 // Sidebar gating by onboarding primary use case (plan locked decision #7).
 // Universal tabs (no `visibleFor`) always render; conditional tabs only
 // appear when the user's use case is in the entry's allow-list. With a
