@@ -209,7 +209,7 @@ onMounted(refresh);
           </div>
 
           <div class="jv-form-row">
-            <label>Master</label>
+            <label>Master target</label>
             <select
               class="jv-input jv-input--sm jv-w-id"
               :value="p.master || ''"

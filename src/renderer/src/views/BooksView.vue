@@ -592,7 +592,7 @@ onMounted(() => {
             </label>
 
             <label class="books__field">
-              <span>Mastering preset</span>
+              <span>Mastering target</span>
               <select
                 class="jv-input jv-w-name"
                 :value="selectedProject.mastering_preset ?? ''"

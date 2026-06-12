@@ -149,11 +149,13 @@ Picking a kind at project creation sets:
 | **Render preset** | Tier 3 of the delivery cascade — bundles voice/master/effects-chain overrides for a render job. Cascade: **render preset (T3) > persona `default_delivery` (T2) > engine defaults (T1)**; T3-beats-T2 covered by `test_render_chapter_scene_mode.py`. | `/v1/presets` CRUD, `RenderPresetsView.vue`, `delivery_merge.py` |
 | **Preset voice** | A voice *type* (vs cloned/blended/trained): engine built-ins like Kokoro `af_heart`. | `VOICE_TYPES` in `models.py` |
 
-Design flag for Phase 4: users meet all three meanings ("preset voice" in
-the library, "Render Presets" in the sidebar, "ACX preset" on export) — the
-collision is confusing. Lean: rename mastering presets to **targets** (ACX
-target, podcast target); "preset" stays with the render-preset library, and
-"preset voice" reads as a plain adjective.
+Resolved 2026-06-12: mastering presets are **targets** in all UI copy
+(ACX target, podcast target) — Settings → Mastering "Active target",
+Audio Tools "Apply a mastering target", project meta "Mastering target",
+render-preset cards "Master target". "Preset" stays with the
+render-preset library, and "preset voice" reads as a plain adjective.
+API field names (`mastering_preset`, `master`) are unchanged — the
+rename is presentation-level only.
 
 ### Render preset vs Persona (user question, 2026-06-12)
 

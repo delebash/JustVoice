@@ -191,11 +191,20 @@ const settings = ref({
   mastering: {},
   training:  {},
   models:    {},
-  engines:   { kokoro: { model_dir_override: "" } },
+  engines:   { kokoro: { model_dir_override: "" }, default_tts_engine: "kokoro" },
   app:       { primary_use_case: "unset", secondary_use_cases: [], onboarding_shown: false },
   generation:{ max_chunk_chars: 800, crossfade_ms: 50, normalize_audio: true, autoplay_on_generate: true },
 });
 const serverReachable = ref(false);
+
+// TTS engine catalog — drives the default-engine select (Generation).
+const ttsEngines = ref([]);
+async function loadTtsEngines() {
+  try {
+    const r = await api.safeRequest("/v1/engines", { engines: [] });
+    ttsEngines.value = (r?.engines || []).filter((e) => (e.kind || "tts") === "tts");
+  } catch { ttsEngines.value = []; }
+}
 
 // ─── External engine probe state ────────────────────────────────────────
 const probe = ref(null);
@@ -443,6 +452,7 @@ const connectionStatus = computed(() => {
 });
 
 onMounted(refresh);
+onMounted(loadTtsEngines);
 
 // ── Sub-nav (matches preview HTML §13). ─────────────────────────────
 const SUBS = [
@@ -1700,6 +1710,26 @@ onMounted(() => {
           single-shot fast path with zero overhead — the chunker only kicks in when needed.
         </p>
 
+        <!-- Default TTS engine (user ask 2026-06-12) -->
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Default TTS engine</div>
+              <div class="setting-row__desc">
+                Which engine new-voice flows and first-render auto-setup prefer. Loading a
+                different engine from Voices or Engines still works — this only sets the default.
+              </div>
+            </div>
+            <select
+              class="jv-input jv-input--sm jv-w-name"
+              :value="settings.engines?.default_tts_engine || 'kokoro'"
+              @change="(ev) => { settings.engines.default_tts_engine = ev.target.value; saveDebounced(); }"
+            >
+              <option v-for="e in ttsEngines" :key="e.id" :value="e.id">{{ e.name || e.id }}</option>
+            </select>
+          </div>
+        </div>
+
         <!-- Max chunk chars slider -->
         <div class="setting-row">
           <div class="setting-row__head">
@@ -1875,13 +1905,17 @@ onMounted(() => {
     <div v-show="activeSub === 'mastering'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header" style="display: flex; align-items: center; gap: 10px">
-          <h3 class="jv-card__title" style="margin: 0">Active preset</h3>
+          <!-- "Target", not "preset" — CONCEPTS §7: three things were
+               called preset; loudness/peak/format specs are TARGETS
+               (ACX target, podcast target). "Preset" stays with the
+               render-preset library. -->
+          <h3 class="jv-card__title" style="margin: 0">Active target</h3>
           <span class="jv-spacer" />
           <span class="jv-pill jv-pill--green">{{ masterPresetLabel }}</span>
         </div>
         <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 14px">
-          The active mastering preset applies to every chapter render + standalone Audio Tools
-          master. Switch presets by clicking a chip. Custom lets you override individual knobs
+          The active mastering target applies to every chapter render + standalone Audio Tools
+          master. Switch targets by clicking a chip. Custom lets you override individual knobs
           below.
         </p>
 

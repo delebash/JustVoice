@@ -10,6 +10,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
+import { promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvInput from "../components/jv/JvInput.vue";
 
@@ -109,7 +110,12 @@ async function refresh() {
 }
 
 async function createStory() {
-  const name = prompt("Story name:");
+  // promptDialog — native prompt() is banned (null in the Tauri webview).
+  const name = (await promptDialog({
+    title: "New story",
+    message: "Name the story:",
+    placeholder: "e.g. Episode 12 — The Lighthouse",
+  }))?.trim();
   if (!name) return;
   try {
     const created = await api.request("/v1/stories", {

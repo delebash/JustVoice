@@ -294,6 +294,10 @@ class ProductionConfig(BaseModel):
 
 class EnginesSettings(BaseModel):
     kokoro: KokoroEngineSettings = KokoroEngineSettings()
+    # Preferred TTS engine for create flows + first-render auto-setup
+    # (user ask 2026-06-12: a default-engine setting instead of
+    # whichever-engine-happens-to-be-first). Engine id, e.g. "kokoro".
+    default_tts_engine: str = "kokoro"
     external: list[ExternalEngineConfig] = []
     # Phase 2 / Slice 3 — LLM provider registry. Each entry registers an
     # adapter at boot (server/justvoice/engines/llm/registry.py).

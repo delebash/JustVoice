@@ -11,6 +11,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
+import { promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 
 const api = useApi();
@@ -135,7 +136,15 @@ async function runAll() {
 }
 
 async function saveAsPreset(cell) {
-  const name = prompt(`Save preset name for ${cell.key}:`);
+  // Was triple-broken: native prompt() (banned — null in the Tauri
+  // webview), `delivery_json`/`lexicons_json` (the API takes `delivery`
+  // dicts), and a VOICE id in voice_id (which is a persona FK). Saves a
+  // delivery-only preset now — the lab tunes delivery, not casting.
+  const name = (await promptDialog({
+    title: "Save as render preset",
+    message: `Name the preset for ${cell.key}:`,
+    placeholder: "e.g. Narration — slow + warm",
+  }))?.trim();
   if (!name) return;
   try {
     await api.request("/v1/presets", {
@@ -143,9 +152,9 @@ async function saveAsPreset(cell) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name,
-        voice_id: selectedVoiceId.value,
-        delivery_json: JSON.stringify(cell.params),
-        lexicons_json: "[]",
+        voice_id: null,
+        delivery: cell.params || {},
+        lexicons: [],
       }),
     });
     pushToast({ message: `Saved "${name}" as render preset.`, kind: "success" });

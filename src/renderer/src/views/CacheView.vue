@@ -10,7 +10,7 @@
 import { computed, ref, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { confirmDialog } from "../services/dialog.js";
+import { confirmDialog, promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 
 const api = useApi();
@@ -95,8 +95,20 @@ async function pruneOlderThan(days) {
   }
 }
 async function pruneByVoice() {
-  const list = voices.value.map((v) => `${v.id} (${v.name})`).join("\n");
-  const id = prompt(`Voice id to prune:\n\nAvailable:\n${list}`);
+  // promptDialog with a select — the native prompt() it replaces is
+  // banned (returns null in the Tauri webview) and made users TYPE an id.
+  const picked = await promptDialog({
+    title: "Prune cache by voice",
+    fields: [{
+      key: "id",
+      label: "Voice",
+      type: "select",
+      defaultValue: voices.value[0]?.id ?? "",
+      options: voices.value.map((v) => ({ value: v.id, label: `${v.name} (${v.id})` })),
+    }],
+    confirmLabel: "Prune",
+  });
+  const id = picked?.id;
   if (!id) return;
   try {
     await api.request(`/v1/cache/clear?voice_id=${encodeURIComponent(id)}`, { method: "POST" });
@@ -107,8 +119,18 @@ async function pruneByVoice() {
   }
 }
 async function pruneByEngine() {
-  const list = engines.value.map((e) => `${e.id} (${e.name})`).join("\n");
-  const id = prompt(`Engine id to prune:\n\nAvailable:\n${list}`);
+  const picked = await promptDialog({
+    title: "Prune cache by engine",
+    fields: [{
+      key: "id",
+      label: "Engine",
+      type: "select",
+      defaultValue: engines.value[0]?.id ?? "",
+      options: engines.value.map((e) => ({ value: e.id, label: `${e.name} (${e.id})` })),
+    }],
+    confirmLabel: "Prune",
+  });
+  const id = picked?.id;
   if (!id) return;
   try {
     await api.request(`/v1/cache/clear?engine=${encodeURIComponent(id)}`, { method: "POST" });

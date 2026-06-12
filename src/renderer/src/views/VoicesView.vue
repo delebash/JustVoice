@@ -276,6 +276,7 @@ async function deleteVoice(id) {
 }
 
 onMounted(refresh);
+onMounted(loadSettingsDefault);
 
 // ── Modal state ──────────────────────────────────────────────────────────────
 
@@ -310,9 +311,22 @@ const BLEND_STRATEGIES = [
   { label: "Weighted sum", value: "weighted_sum" },
 ];
 
+// Settings → Generation "Default TTS engine" — preferred for create
+// flows; a loaded engine outranks it (no point spinning up a second).
+const settingsDefaultEngine = ref("");
+async function loadSettingsDefault() {
+  try {
+    const s = await api.safeRequest("/v1/settings", {});
+    settingsDefaultEngine.value = s?.engines?.default_tts_engine || "";
+  } catch { /* keep fallback */ }
+}
 const defaultEngine = computed(() => {
   const loaded = engines.value.find((e) => e.status === "loaded");
-  return loaded ? loaded.id : engines.value[0]?.id ?? "";
+  if (loaded) return loaded.id;
+  if (settingsDefaultEngine.value && engines.value.some((e) => e.id === settingsDefaultEngine.value)) {
+    return settingsDefaultEngine.value;
+  }
+  return engines.value[0]?.id ?? "";
 });
 
 const engineVoiceOptions = computed(() =>

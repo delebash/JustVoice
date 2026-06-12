@@ -96,9 +96,8 @@ async function loadAll() {
     lexicons.value = lRes?.lexicons ?? [];
     projects.value = prRes?.projects ?? [];
     usage.value    = uRes?.usage    ?? {};
-    if (!selectedId.value && personas.value.length) {
-      selectedId.value = personas.value[0].id;
-    }
+    // No auto-select: the card grid is the landing view; clicking a
+    // card drills into the editor (grid pattern, user decision 2026-06-12).
   } finally {
     loading.value = false;
   }
@@ -304,21 +303,25 @@ function listMeta(p) {
   return bits.join(" · ") || "—";
 }
 
+// Same avatar palette/hash as the Studio cast cards — one character,
+// one colour, everywhere.
+const AVATAR_COLORS = ["#3a7d63", "#7c5cbf", "#b3552e", "#2e7d8a", "#a8763e", "#947b2f", "#c98aa7", "#5b7a99", "#b04a3e"];
+function colorFor(name) {
+  let h = 0;
+  for (const c of String(name || "?")) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
 onMounted(loadAll);
 </script>
 
 <template>
   <div class="personas">
-    <aside class="personas__list">
-      <header class="personas__list-h">
-        <h3>Personas</h3>
-        <JvButton variant="primary" size="sm" label="+ New" @click="createBlank" />
-      </header>
-
-      <!-- Library-mode filter chips: All / Used / Unused / By project.
-           The "by project" chip reveals a project dropdown. Cross-project
-           Personas are the model — these chips help you find them. -->
-      <div class="personas__filter">
+    <!-- ── Card grid (nothing selected) ─────────────────────────────── -->
+    <template v-if="!draft">
+      <div class="personas__toolbar">
+        <!-- Library-mode filter chips: All / Used / Unused / By project.
+             Cross-project Personas are the model — these help find them. -->
         <button
           v-for="f in FILTERS"
           :key="f"
@@ -329,12 +332,14 @@ onMounted(loadAll);
         >{{ f === 'by-project' ? 'By project' : (f.charAt(0).toUpperCase() + f.slice(1)) }}</button>
         <select
           v-if="filter === 'by-project'"
-          class="jv-input personas__filter-select"
+          class="jv-input jv-input--sm jv-w-name"
           v-model="filterProjectId"
         >
           <option value="">— pick a project —</option>
           <option v-for="pr in projects" :key="pr.id" :value="pr.id">{{ pr.name }}</option>
         </select>
+        <span class="jv-spacer" />
+        <JvButton variant="primary" size="sm" label="+ New persona" @click="createBlank" />
       </div>
 
       <div v-if="loading" class="jv-muted personas__empty">Loading…</div>
@@ -344,38 +349,40 @@ onMounted(loadAll);
         title="No characters yet"
         message="A persona pairs a name + bio + voice + personality. Audiobook cast, game NPCs, podcast hosts all live here."
         action-label="+ Create your first persona"
-        compact
         @action="createBlank"
       />
       <div v-else-if="!filteredPersonas.length" class="personas__empty jv-muted">
         No personas match this filter.
       </div>
-      <div
-        v-for="p in filteredPersonas"
-        :key="p.id"
-        class="personas__item"
-        :class="{ 'personas__item--active': p.id === selectedId }"
-        @click="selectedId = p.id"
-      >
-        <div class="personas__item-row">
-          <div class="personas__item-name">{{ p.name }}</div>
-          <span
-            class="jv-pill"
-            :class="usageCount(p.id) > 0 ? 'jv-pill--green' : 'jv-pill--ghost'"
-          >
-            {{ usageCount(p.id) }} project{{ usageCount(p.id) === 1 ? '' : 's' }}
-          </span>
-        </div>
-        <div class="personas__item-meta jv-muted">{{ listMeta(p) }}</div>
+      <div v-else class="jv-card-grid">
+        <article
+          v-for="p in filteredPersonas"
+          :key="p.id"
+          class="jv-card personas__card"
+          @click="selectedId = p.id"
+        >
+          <span class="personas__card-avatar" :style="{ background: colorFor(p.name) }">{{ (p.name || "?").charAt(0).toUpperCase() }}</span>
+          <div class="personas__card-main">
+            <div class="personas__card-row">
+              <strong>{{ p.name }}</strong>
+              <span
+                class="jv-pill"
+                :class="usageCount(p.id) > 0 ? 'jv-pill--green' : 'jv-pill--ghost'"
+              >
+                {{ usageCount(p.id) }} project{{ usageCount(p.id) === 1 ? '' : 's' }}
+              </span>
+            </div>
+            <div class="personas__card-meta jv-muted">{{ listMeta(p) }}</div>
+          </div>
+        </article>
       </div>
-    </aside>
+    </template>
 
-    <section class="personas__detail">
-      <div v-if="!draft" class="jv-card personas__detail-empty">
-        <p class="jv-muted">Select a persona on the left, or create one with <strong>+ New</strong>.</p>
-      </div>
+    <!-- ── Detail editor (drill-in) ──────────────────────────────────── -->
+    <section v-else class="personas__detail">
+      <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm personas__back" @click="selectedId = null">← All personas</button>
 
-      <div v-else class="jv-card personas__editor">
+      <div class="jv-card personas__editor">
         <header class="personas__editor-h">
           <h2>{{ draft.name || "(unnamed)" }}</h2>
           <span v-if="dirty" class="jv-pill jv-pill--warn">Unsaved changes</span>
@@ -567,39 +574,16 @@ onMounted(loadAll);
 
 <style scoped>
 .personas {
-  display: grid;
-  grid-template-columns: 340px 1fr;
-  height: 100%;
-  gap: 0;
-}
-
-.personas__list {
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--line);
-  background: var(--surface);
-}
-.personas__list-h {
-  display: flex;
-  align-items: center;
-  padding: 14px 14px 10px;
-  gap: 8px;
-}
-.personas__list-h h3 {
-  margin: 0;
-  flex: 1;
-  font-size: 14px;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--ink-2);
 }
 
-.personas__filter {
+.personas__toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 0 14px 10px;
   align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
 }
 .personas__chip {
   font-size: 11px;
@@ -613,42 +597,39 @@ onMounted(loadAll);
   color: var(--surface);
   border-color: var(--accent);
 }
-.personas__filter-select {
-  flex: 1 1 100%;
-  margin-top: 6px;
-}
 
 .personas__empty {
-  padding: 24px 16px;
+  padding: 40px 0;
   font-size: 13px;
-}
-.personas__item {
-  padding: 10px 14px;
-  cursor: pointer;
-  border-left: 3px solid transparent;
-}
-.personas__item:hover { background: var(--surface-2); }
-.personas__item--active {
-  background: var(--accent-soft);
-  border-left-color: var(--accent);
-}
-.personas__item-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.personas__item-name { font-weight: 600; font-size: 14px; flex: 1; }
-.personas__item-meta { font-size: 11.5px; margin-top: 2px; }
-
-.personas__detail {
-  padding: 24px 32px;
-  overflow-y: auto;
-}
-
-.personas__detail-empty {
-  padding: 40px;
   text-align: center;
 }
+
+.personas__card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+.personas__card:hover { border-color: var(--accent-line); }
+.personas__card-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.personas__card-main { flex: 1; min-width: 0; }
+.personas__card-row { display: flex; align-items: center; gap: 8px; }
+.personas__card-row strong { flex: 1; font-size: 14.5px; }
+.personas__card-meta { font-size: 11.5px; margin-top: 3px; }
+
+.personas__back { align-self: flex-start; margin-bottom: 10px; }
+.personas__detail { display: flex; flex-direction: column; }
 
 .personas__editor {
   max-width: var(--shell-form);

@@ -1,17 +1,18 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!--
   LexiconsView — Pronunciation dictionaries.
-  Per preview Lexicons §:
-    • List on left with scope badge per item (book / reusable / persona-scoped)
-    • Detail pane with: ⬇ Import .justlex.json · ⬆ Export · scope row ·
-      Live preview text input · entries table (Word/Pronunciation/Format/Note)
-      · + Add entry · Bulk paste TSV · ▶ Preview against text
+
+  Grid of lexicon cards (user decision 2026-06-12: Personas/Lexicons/
+  Effects share the card-grid pattern); clicking a card drills into the
+  detail editor with: ⬇ Import .justlex.json · ⬆ Export · scope row ·
+  Live preview text input · entries table (Word/Pronunciation/Format)
+  · + Add entry · Bulk paste TSV · ▶ Preview against text
 -->
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { confirmDialog } from "../services/dialog.js";
+import { confirmDialog, promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import EmptyState from "../components/EmptyState.vue";
 
@@ -25,11 +26,6 @@ const loading = ref(false);
 
 const previewText = ref("");
 const previewResult = ref(""); // text after pronunciation rewrites — best-effort, client-side.
-
-const newName = ref("");
-const newScope = ref("global");
-const newProjectId = ref("");
-const newPersonaId = ref("");
 
 const newGrapheme = ref("");
 const newPhonemeIpa = ref("");
@@ -46,6 +42,16 @@ const scopeBadge = (lex) => {
   return { label: "reusable", cls: "jv-pill--ghost" };
 };
 
+function scopedToName(lex) {
+  if (lex.scope === "project" && lex.project_id) {
+    return projects.value.find((p) => p.id === lex.project_id)?.name || lex.project_id;
+  }
+  if (lex.scope === "persona" && lex.persona_id) {
+    return personas.value.find((p) => p.id === lex.persona_id)?.name || lex.persona_id;
+  }
+  return null;
+}
+
 const fileInput = ref(null);
 function chooseImportFile() { fileInput.value?.click(); }
 
@@ -60,28 +66,81 @@ async function refresh() {
     lexicons.value = lxRes?.lexicons ?? [];
     projects.value = pRes?.projects ?? [];
     personas.value = prRes?.personas ?? [];
-    if (!selectedId.value && lexicons.value.length) selectedId.value = lexicons.value[0].id;
   } finally {
     loading.value = false;
   }
 }
 
 async function createLexicon() {
-  if (!newName.value.trim()) return;
-  const body = {
-    name: newName.value.trim(),
-    entries: [],
-    scope: newScope.value,
-    project_id: newScope.value === "project" ? newProjectId.value || null : null,
-    persona_id: newScope.value === "persona" ? newPersonaId.value || null : null,
-  };
+  // Step 1: name + scope. Step 2 (only when scoped): pick the target.
+  const base = await promptDialog({
+    title: "New lexicon",
+    fields: [
+      { key: "name", label: "Name", placeholder: "e.g. Stillwater proper names" },
+      {
+        key: "scope",
+        label: "Scope",
+        type: "select",
+        defaultValue: "global",
+        options: [
+          { value: "global", label: "Reusable (global)" },
+          { value: "project", label: "Book-scoped (project)" },
+          { value: "persona", label: "Persona-scoped" },
+        ],
+      },
+    ],
+    confirmLabel: "Create",
+  });
+  if (!base?.name) return;
+  let projectId = null;
+  let personaId = null;
+  if (base.scope === "project") {
+    if (!projects.value.length) {
+      pushToast({ kind: "info", message: "No projects yet — creating as reusable instead." });
+      base.scope = "global";
+    } else {
+      const picked = await promptDialog({
+        title: "Scope to which book?",
+        fields: [{
+          key: "id", label: "Book", type: "select",
+          defaultValue: projects.value[0].id,
+          options: projects.value.map((p) => ({ value: p.id, label: p.name })),
+        }],
+        confirmLabel: "Create",
+      });
+      if (!picked) return;
+      projectId = picked.id;
+    }
+  } else if (base.scope === "persona") {
+    if (!personas.value.length) {
+      pushToast({ kind: "info", message: "No personas yet — creating as reusable instead." });
+      base.scope = "global";
+    } else {
+      const picked = await promptDialog({
+        title: "Scope to which persona?",
+        fields: [{
+          key: "id", label: "Persona", type: "select",
+          defaultValue: personas.value[0].id,
+          options: personas.value.map((p) => ({ value: p.id, label: p.name })),
+        }],
+        confirmLabel: "Create",
+      });
+      if (!picked) return;
+      personaId = picked.id;
+    }
+  }
   try {
     const created = await api.request("/v1/lexicons", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        name: base.name,
+        entries: [],
+        scope: base.scope,
+        project_id: projectId,
+        persona_id: personaId,
+      }),
     });
-    newName.value = "";
     await refresh();
     selectedId.value = created.id;
     pushToast({ kind: "success", title: "Lexicon created" });
@@ -132,10 +191,19 @@ async function appendEntry() {
 }
 
 async function bulkPasteTsv() {
-  const raw = prompt(
-    "Paste TSV (one entry per line, columns: word [TAB] pronunciation [TAB] format(ipa|phonetic) [TAB] note). Example:\nBeauchamp\t/ˈbiːtʃəm/\tipa\tfamily name",
-    "",
-  );
+  // Textarea dialog — native prompt() is banned (returns null in the
+  // Tauri webview) and was single-line anyway.
+  const raw = (await promptDialog({
+    title: "Bulk paste TSV",
+    fields: [{
+      key: "tsv",
+      label: "One entry per line: word [TAB] pronunciation [TAB] format(ipa|phonetic) [TAB] note",
+      type: "textarea",
+      rows: 8,
+      placeholder: "Beauchamp\t/ˈbiːtʃəm/\tipa\tfamily name",
+    }],
+    confirmLabel: "Add entries",
+  }))?.tsv;
   if (!raw || !selectedId.value) return;
   const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   let appended = 0, failed = 0;
@@ -231,6 +299,8 @@ onMounted(async () => {
       window.sessionStorage.removeItem("jv.lexicon.prefill");
       const { grapheme } = JSON.parse(raw);
       if (grapheme) {
+        // Drill straight into a lexicon so the Append form is on screen.
+        if (!selectedId.value && lexicons.value.length) selectedId.value = lexicons.value[0].id;
         newGrapheme.value = grapheme;
         pushToast({
           message: `Fixing “${grapheme}” — spell it how it should sound, test it, save. Only the lines containing it re-render; everything else stays cached.`,
@@ -245,73 +315,54 @@ onMounted(async () => {
 
 <template>
   <div class="lex">
-    <aside class="lex__list">
-      <header class="lex__list-h">
-        <h3>Lexicons</h3>
-        <JvButton variant="primary" size="sm" label="+ New" @click="newName = 'New lexicon'; createLexicon()" />
-      </header>
-      <div class="lex__list-meta jv-muted">{{ lexicons.length }} dictionaries</div>
+    <!-- ── Card grid (nothing selected) ─────────────────────────────── -->
+    <template v-if="!selected">
+      <div class="lex__toolbar">
+        <span class="jv-muted">{{ lexicons.length }} dictionar{{ lexicons.length === 1 ? "y" : "ies" }} · applied before TTS</span>
+        <span class="jv-spacer" />
+        <JvButton variant="secondary" size="sm" label="⬇ Import .justlex.json" @click="chooseImportFile" />
+        <JvButton variant="primary" size="sm" label="+ New lexicon" @click="createLexicon" />
+      </div>
 
-      <div v-if="loading" class="lex__empty jv-muted">Loading…</div>
+      <div v-if="loading" class="jv-muted lex__empty">Loading…</div>
       <EmptyState
         v-else-if="!lexicons.length"
         icon="Sparkle"
         title="No lexicons yet"
         message="Pronunciation dictionaries force domain words and proper names — Beauchamp → BEE-chum — to render consistently across a whole project."
         action-label="+ New lexicon"
-        compact
-        @action="newName = 'New lexicon'; createLexicon()"
+        @action="createLexicon"
       />
 
-      <div
-        v-for="lx in lexicons"
-        :key="lx.id"
-        class="lex__item"
-        :class="{ 'lex__item--active': selectedId === lx.id }"
-        @click="selectedId = lx.id"
-      >
-        <div class="lex__item-h">
-          <strong>{{ lx.name }}</strong>
-          <span class="jv-pill" :class="scopeBadge(lx).cls">{{ scopeBadge(lx).label }}</span>
-        </div>
-        <div class="lex__item-meta jv-muted">
-          {{ (lx.entries || []).length }} entries
-          <span v-if="lx.scope === 'project' && lx.project_id"> · scoped to <code>{{ lx.project_id }}</code></span>
-          <span v-if="lx.scope === 'persona' && lx.persona_id"> · scoped to <code>{{ lx.persona_id }}</code></span>
-        </div>
+      <div v-else class="jv-card-grid">
+        <article
+          v-for="lx in lexicons"
+          :key="lx.id"
+          class="jv-card lex__card"
+          @click="selectedId = lx.id"
+        >
+          <header class="lex__card-h">
+            <strong>{{ lx.name }}</strong>
+            <span class="jv-pill" :class="scopeBadge(lx).cls">{{ scopeBadge(lx).label }}</span>
+          </header>
+          <div class="jv-muted lex__card-meta">
+            {{ (lx.entries || []).length }} entr{{ (lx.entries || []).length === 1 ? "y" : "ies" }}
+            <span v-if="scopedToName(lx)"> · {{ scopedToName(lx) }}</span>
+          </div>
+          <div class="lex__card-words">
+            <code v-for="(e, i) in (lx.entries || []).slice(0, 4)" :key="i" class="jv-mono">{{ e.grapheme }}</code>
+            <span v-if="(lx.entries || []).length > 4" class="jv-muted">+{{ (lx.entries || []).length - 4 }}</span>
+            <span v-if="!(lx.entries || []).length" class="jv-muted">(empty)</span>
+          </div>
+        </article>
       </div>
+    </template>
 
-      <div class="jv-divider" />
+    <!-- ── Detail editor (drill-in) ──────────────────────────────────── -->
+    <section v-else class="lex__detail">
+      <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm lex__back" @click="selectedId = null">← All lexicons</button>
 
-      <div class="lex__new">
-        <h4 class="lex__new-h">+ New lexicon</h4>
-        <input class="jv-input" v-model="newName" placeholder="Lexicon name" />
-        <select class="jv-input" v-model="newScope">
-          <option value="global">Reusable (global)</option>
-          <option value="project">Book-scoped (project)</option>
-          <option value="persona">Persona-scoped</option>
-        </select>
-        <select v-if="newScope === 'project'" class="jv-input" v-model="newProjectId">
-          <option value="">— pick a project —</option>
-          <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
-        </select>
-        <select v-if="newScope === 'persona'" class="jv-input" v-model="newPersonaId">
-          <option value="">— pick a persona —</option>
-          <option v-for="p in personas" :key="p.id" :value="p.id">{{ p.name }}</option>
-        </select>
-        <JvButton variant="primary" size="sm" label="Create" @click="createLexicon" :disabled="!newName.trim()" />
-      </div>
-    </aside>
-
-    <section class="lex__detail">
-      <div v-if="!selected" class="jv-card lex__detail-empty">
-        <p class="jv-muted">Select a lexicon on the left, or import a <code>.justlex.json</code>.</p>
-        <div style="margin-top:14px">
-          <JvButton variant="secondary" label="⬇ Import .justlex.json" @click="chooseImportFile" />
-        </div>
-      </div>
-
-      <div v-else class="jv-card lex__editor">
+      <div class="jv-card lex__editor">
         <header class="lex__editor-h">
           <h2>{{ selected.name }}</h2>
           <span class="jv-pill" :class="scopeBadge(selected).cls">{{ scopeBadge(selected).label }}</span>
@@ -327,8 +378,8 @@ onMounted(async () => {
           <div class="lex__scope-row">
             <span class="jv-pill" :class="scopeBadge(selected).cls">{{ scopeBadge(selected).label }}</span>
             <span class="jv-pill jv-pill--ghost">applies before TTS</span>
-            <span v-if="selectedScope === 'project'" class="jv-pill jv-pill--ghost">project: {{ selected.project_id || '—' }}</span>
-            <span v-if="selectedScope === 'persona'" class="jv-pill jv-pill--ghost">persona: {{ selected.persona_id || '—' }}</span>
+            <span v-if="selectedScope === 'project'" class="jv-pill jv-pill--ghost">book: {{ scopedToName(selected) || "—" }}</span>
+            <span v-if="selectedScope === 'persona'" class="jv-pill jv-pill--ghost">persona: {{ scopedToName(selected) || "—" }}</span>
           </div>
         </div>
 
@@ -406,66 +457,32 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.lex {
-  display: grid;
-  grid-template-columns: 340px 1fr;
-  height: 100%;
-  gap: 0;
-}
+.lex { display: flex; flex-direction: column; }
 
-.lex__list {
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid var(--line);
-  background: var(--surface);
-  overflow-y: auto;
-}
-.lex__list-h {
+.lex__toolbar {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 14px 14px 4px;
+  margin-bottom: 14px;
+  font-size: 12.5px;
 }
-.lex__list-h h3 {
-  margin: 0;
-  flex: 1;
-  font-size: 14px;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--ink-2);
-}
-.lex__list-meta { padding: 0 14px 8px; font-size: 11.5px; }
-.lex__empty { padding: 16px; font-size: 13px; }
+.lex__empty { padding: 40px 0; font-size: 13px; text-align: center; }
 
-.lex__item {
-  padding: 10px 14px;
-  cursor: pointer;
-  border-left: 3px solid transparent;
+.lex__card { padding: 14px 16px; cursor: pointer; display: flex; flex-direction: column; gap: 8px; }
+.lex__card:hover { border-color: var(--accent-line); }
+.lex__card-h { display: flex; align-items: center; gap: 8px; }
+.lex__card-h strong { flex: 1; font-size: 14.5px; }
+.lex__card-meta { font-size: 11.5px; }
+.lex__card-words { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11.5px; align-items: center; }
+.lex__card-words code {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1px 6px;
 }
-.lex__item:hover { background: var(--surface-2); }
-.lex__item--active {
-  background: var(--accent-soft);
-  border-left-color: var(--accent);
-}
-.lex__item-h {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-}
-.lex__item-h strong { flex: 1; }
-.lex__item-meta { font-size: 11.5px; margin-top: 2px; }
 
-.lex__new {
-  padding: 8px 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.lex__new-h { margin: 4px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-3); }
-
-.lex__detail { padding: 24px 32px; overflow-y: auto; }
-.lex__detail-empty { padding: 40px; text-align: center; }
+.lex__back { align-self: flex-start; margin-bottom: 10px; }
+.lex__detail { display: flex; flex-direction: column; }
 .lex__editor { max-width: var(--shell-page); }
 
 .lex__editor-h {

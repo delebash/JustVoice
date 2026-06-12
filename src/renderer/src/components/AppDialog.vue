@@ -21,6 +21,7 @@ import Icon from "./Icon.vue";
 import JvButton from "./jv/JvButton.vue";
 import JvInput from "./jv/JvInput.vue";
 import JvSelect from "./jv/JvSelect.vue";
+import JvTextarea from "./jv/JvTextarea.vue";
 
 // Normalize the active dialog into a single shape the template reads.
 // Single-field prompts become a one-element `fields` list so the template
@@ -165,6 +166,15 @@ function onEnter(e, isLastField) {
                 :ref="el => captureFirst(el, i)"
                 v-model="values[f.key]"
                 :options="f.options || []"
+              />
+              <JvTextarea
+                v-else-if="f.type === 'textarea'"
+                :id="`jv-field-${f.key}`"
+                :ref="el => captureFirst(el, i)"
+                :placeholder="f.placeholder || ''"
+                :rows="f.rows || 6"
+                v-model="values[f.key]"
+                @keydown.escape.prevent="cancel"
               />
               <JvInput
                 v-else

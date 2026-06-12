@@ -203,9 +203,9 @@ onBeforeUnmount(revokeMastered);
 
     <!-- ── Master ── -->
     <section class="jv-card jv-section">
-      <h3 class="jv-section__title">Apply a mastering preset</h3>
+      <h3 class="jv-section__title">Apply a mastering target</h3>
       <p class="jv-muted" style="margin-bottom: 16px;">
-        Upload a WAV, pick a preset, get a mastered MP3/M4A back. Requires ffmpeg on the server. ACX
+        Upload a WAV, pick a target, get a mastered MP3/M4A back. Requires ffmpeg on the server. ACX
         targets audiobook spec (−23 LUFS, −3 dBTP, head/tail silence). YouTube outputs AAC.
       </p>
 

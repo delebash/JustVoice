@@ -16,7 +16,7 @@
 import { onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { confirmDialog } from "../services/dialog.js";
+import { confirmDialog, promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 
@@ -72,8 +72,13 @@ async function onEditorSaved(newChain) {
       });
     }
   } else {
-    // Create new — prompt for a name.
-    const name = prompt("Name this effect chain preset:");
+    // Create new — name it via our dialog (native prompt() is banned:
+    // it returns null in the Tauri webview, so creates silently died).
+    const name = (await promptDialog({
+      title: "New effect chain preset",
+      message: "Name this effect chain preset:",
+      placeholder: "e.g. Ghost — whisper + reverb",
+    }))?.trim();
     if (!name) {
       editorOpen.value = false;
       return;

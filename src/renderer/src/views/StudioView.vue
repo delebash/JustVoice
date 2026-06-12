@@ -367,6 +367,19 @@ const instructEngineIds = computed(() => new Set(
     .map((e) => e.id),
 ));
 
+// LOCAL vs ONLINE — same badge logic as the Voices page, so the cast
+// flow shows whether a voice bills an online API before it's assigned.
+const engineBackends = computed(() => {
+  const m = {};
+  for (const e of engines.value || []) m[e.id] = e.backend || "";
+  return m;
+});
+function voiceLocality(v) {
+  const backend = engineBackends.value[v.engine];
+  if (backend === undefined) return null;
+  return backend === "managed" ? "local" : "online";
+}
+
 const previewingVoiceId = ref(null);
 // Same ask-before-load contract as the Voices page (user-hit: Studio
 // play silently switched/loaded engines). Shares the Voices opt-in key
@@ -659,9 +672,9 @@ const sceneCacheById = computed(() => {
 const masterPill = computed(() => {
   const m = selectedProject.value?.mastering_preset;
   if (m === "acx" || (!m && selectedProject.value?.project_type === "audiobook")) {
-    return "ACX preset · −20 LUFS · peak −3 dB · noise floor −60 dB";
+    return "ACX target · −20 LUFS · peak −3 dB · noise floor −60 dB";
   }
-  return m ? `master · ${m}` : "no master preset";
+  return m ? `master · ${m}` : "no master target";
 });
 
 async function runQC() {
@@ -1428,6 +1441,11 @@ watch(selectedProjectId, (id) => {
                       class="studio__vrow-instruct"
                       title="This engine reads the persona's Personality text as a delivery instruction at render time"
                     >instruct</span>
+                    <span
+                      v-if="voiceLocality(v) === 'online'"
+                      class="studio__vrow-instruct studio__vrow-online"
+                      title="External provider — needs network and may bill per character/minute"
+                    >online · metered</span>
                   </i>
                 </span>
               </button>
@@ -2311,5 +2329,9 @@ watch(selectedProjectId, (id) => {
   padding: 1px 5px;
   margin-left: 5px;
   vertical-align: 1px;
+}
+.studio__vrow-online {
+  color: var(--warn-ink);
+  background: var(--warn-bg);
 }
 </style>

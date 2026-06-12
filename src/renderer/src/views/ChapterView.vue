@@ -31,9 +31,12 @@ const copy = useCopy();
 const projects = ref([]);
 const scenes = ref([]);
 const personasById = ref({});
+// Full persona records — regen resolves the block's cast voice from here.
+const personaRecords = ref([]);
 async function loadPersonas() {
   try {
     const r = await api.safeRequest("/v1/personas", { personas: [] });
+    personaRecords.value = r?.personas || [];
     personasById.value = Object.fromEntries((r?.personas || []).map((p) => [p.id, p.name]));
   } catch { /* tolerated */ }
 }
@@ -266,10 +269,36 @@ function audioUrl(take) {
 const regenBusy = ref(new Map());
 
 async function regenerateBlock(block) {
-  const voice = regenVoice.value;
+  // Voice resolution (regen demote, user decision 2026-06-12): the
+  // block's cast persona voice wins; only an uncast block asks. The
+  // old top-bar "Voice for re-generate" select silently overrode the
+  // cast and confused everyone.
+  let voice = null;
+  if (block.persona_id) {
+    voice = personaRecords.value.find((p) => p.id === block.persona_id)?.voice_id || null;
+  }
   if (!voice) {
-    pushToast({ message: "Select a voice before regenerating.", kind: "warn" });
-    return;
+    if (!availableVoices.value.length) {
+      pushToast({ message: "No voices available — add one in Voices first.", kind: "warn" });
+      return;
+    }
+    const picked = await promptDialog({
+      title: "Regenerate with which voice?",
+      message: block.persona_id
+        ? `${personaName(block.persona_id)} has no voice cast yet — pick one for this take.`
+        : "This line has no speaker cast — pick a voice for this take.",
+      fields: [{
+        key: "voice",
+        label: "Voice",
+        type: "select",
+        defaultValue: regenVoice.value || availableVoices.value[0].id,
+        options: availableVoices.value.map((v) => ({ value: v.id, label: `${v.name} — ${v.id}` })),
+      }],
+      confirmLabel: "Regenerate",
+    });
+    voice = picked?.voice;
+    if (!voice) return;
+    regenVoice.value = voice; // remember as the session fallback
   }
   regenBusy.value.set(block.id, true);
   const task = tasks.start({
@@ -301,6 +330,42 @@ async function regenerateBlock(block) {
     pushToast({ message: `Regen failed: ${e.message || e}`, kind: "error", duration: 6000 });
   } finally {
     regenBusy.value.set(block.id, false);
+  }
+}
+
+// ── Inline block text editing (user ask 2026-06-12: edit the chapter
+// in place — open/edit was read-only). PATCH /v1/blocks/{id} carries
+// text; the render cache keys on text, so only the edited line
+// re-renders next time. Existing takes keep the OLD text's audio.
+const editingBlockId = ref(null);
+const editingText = ref("");
+const editSaveBusy = ref(false);
+
+function startEditBlock(block) {
+  editingBlockId.value = block.id;
+  editingText.value = block.text;
+}
+
+async function saveBlockText(block) {
+  const text = editingText.value.trim();
+  if (!text || text === block.text) {
+    editingBlockId.value = null;
+    return;
+  }
+  editSaveBusy.value = true;
+  try {
+    await api.request(`/v1/blocks/${block.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    editingBlockId.value = null;
+    await loadBlocks(selectedSceneId.value);
+    pushToast({ message: "Line updated — the next render regenerates just this line; everything else stays cached.", kind: "success" });
+  } catch (e) {
+    pushToast({ message: `Save failed: ${e?.message || e}`, kind: "error", duration: 6000 });
+  } finally {
+    editSaveBusy.value = false;
   }
 }
 
@@ -711,14 +776,8 @@ async function savePastedText() {
             width="name"
           />
         </JvField>
-        <JvField label="Voice for re-generate" layout="inline">
-          <JvSelect
-            v-model="regenVoice"
-            :options="voiceOptions"
-            :disabled="availableVoices.length === 0"
-            width="name"
-          />
-        </JvField>
+        <!-- "Voice for re-generate" demoted (2026-06-12): regen uses the
+             block's cast persona voice; uncast blocks ask inline. -->
         <span class="jv-spacer" />
         <JvButton
           variant="secondary"
@@ -908,14 +967,28 @@ async function savePastedText() {
           <span class="jv-spacer" />
           <button
             type="button"
+            class="jv-pill jv-pill--ghost"
+            title="Edit this line's text in place — the next render regenerates only this line"
+            @click="startEditBlock(block)"
+          >✎ Edit text</button>
+          <button
+            type="button"
             class="jv-pill jv-pill--ghost chapter-view__fixit"
             title="Heard a mispronunciation in this line? Send the word to Lexicons — only lines containing it re-render."
             @click="flagPronunciation(block)"
           >🔤 Fix pronunciation</button>
         </div>
 
-        <!-- Block text (read-only) -->
-        <p class="chapter-view__block-text"><template v-for="(part, pi) in tagParts(block.text)" :key="pi"><span v-if="part.tag" class="chapter__tag">{{ part.text }}</span><template v-else>{{ part.text }}</template></template></p>
+        <!-- Block text — read view, or in-place editor. -->
+        <p v-if="editingBlockId !== block.id" class="chapter-view__block-text"><template v-for="(part, pi) in tagParts(block.text)" :key="pi"><span v-if="part.tag" class="chapter__tag">{{ part.text }}</span><template v-else>{{ part.text }}</template></template></p>
+        <div v-else class="chapter-view__block-edit">
+          <textarea v-model="editingText" class="jv-input jv-input--full" rows="4" @keydown.escape="editingBlockId = null" />
+          <div class="chapter-view__block-edit-actions">
+            <JvButton variant="primary" size="sm" label="Save" :loading="editSaveBusy" :disabled="editSaveBusy || !editingText.trim()" @click="saveBlockText(block)" />
+            <JvButton variant="ghost" size="sm" label="Cancel" @click="editingBlockId = null" />
+            <span class="jv-muted" style="font-size:11.5px">Existing takes keep the old audio; the next render uses this text.</span>
+          </div>
+        </div>
 
         <!-- Takes area -->
         <div v-if="takesStore.loaded.has(block.id)" class="chapter-view__takes">
@@ -1218,6 +1291,10 @@ async function savePastedText() {
   letter-spacing: 0.08em;
   min-width: 20px;
 }
+
+.chapter-view__block-edit { display: flex; flex-direction: column; gap: 8px; }
+.chapter-view__block-edit textarea { line-height: 1.6; font-size: 14px; resize: vertical; }
+.chapter-view__block-edit-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
 .chapter-view__block-text {
   color: var(--ink);
