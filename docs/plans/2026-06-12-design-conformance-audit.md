@@ -73,12 +73,17 @@ Speaker/Audio · Settings Mastering/Generation/Capture/MCP/GPU/
 Appearance/Cache/Channels(*)/Webhooks/Logs/Changelog/About.
 (*) = except the F2 checkbox instances listed above.
 
-## Fix queue (RULE #2 order, one item per commit)
+## Fix queue — ALL COMPLETE 2026-06-12
 
-1. **Render tab rebuild** (F1) — cards, JvField rows, width tokens,
-   toggles; whole-view checklist before done.
-2. **Canonical booleans** (F2) — promote `.jv-check` to styles.css,
-   then the 13-instance sweep (JvToggle for settings, .jv-check for
-   row selection).
-3. **Studio Cast shell + buttons** (F3).
-4. **Width-token pass** (F4) — Compare, Settings General/AI.
+0. ✅ Engines reusable patterns promoted (.jv-toptab/.jv-searchbar;
+   ev-chip stays scoped pending Phase 4 chip convergence) — c6923a4.
+1. ✅ Render tab rebuild (F1) + .jv-eyebrow/.jv-pane-card promoted,
+   SpeakerLab converted off its scoped copies — 261b841.
+2. ✅ Canonical .jv-check (F2): 12 raw instances + JvCheckbox's internal
+   input; all 16 views + every sub-tab verified zero unstyled — bc9ee48.
+3. ✅ .jv-rowact promoted (Chapters + Studio row actions, 178 buttons);
+   Studio project select → jv-w-name. Project bar's "naked" flag was a
+   probe heuristic miss (it has a proper shell); char-x / vrow-main
+   stay scoped as genuinely custom affordances — 20aea1d.
+4. ✅ Width tokens (F4): Compare labels → name, Settings role selects →
+   url, override-URL path→url — b21cde6.
