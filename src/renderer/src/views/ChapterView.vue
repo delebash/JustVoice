@@ -787,10 +787,10 @@ async function savePastedText() {
             <td><span class="jv-pill" :class="scriptState(sc.id).cls">{{ scriptState(sc.id).label }}</span></td>
             <td><span class="jv-pill" :class="renderState(sc.id).cls">{{ renderState(sc.id).label }}</span></td>
             <td style="text-align:right;white-space:nowrap">
-              <button type="button" class="chapter-view__act" title="Move up" @click.stop="moveChapter(sc, -1)">↑</button>
-              <button type="button" class="chapter-view__act" title="Move down" @click.stop="moveChapter(sc, 1)">↓</button>
-              <button type="button" class="chapter-view__act" title="Rename" @click.stop="renameChapter(sc)">✎</button>
-              <button type="button" class="chapter-view__act chapter-view__act--danger" title="Delete chapter" @click.stop="deleteChapter(sc)">✕</button>
+              <button type="button" class="jv-rowact" title="Move up" @click.stop="moveChapter(sc, -1)">↑</button>
+              <button type="button" class="jv-rowact" title="Move down" @click.stop="moveChapter(sc, 1)">↓</button>
+              <button type="button" class="jv-rowact" title="Rename" @click.stop="renameChapter(sc)">✎</button>
+              <button type="button" class="jv-rowact jv-rowact--danger" title="Delete chapter" @click.stop="deleteChapter(sc)">✕</button>
               <JvButton variant="ghost" size="sm" label="Open" @click.stop="openChapter(sc)" />
             </td>
           </tr>
@@ -1385,11 +1385,4 @@ async function savePastedText() {
 .chapter-view__no-chapters h4 { margin: 0 0 6px; font-size: 14px; }
 .chapter-view__no-chapters p { margin: 0; font-size: 12.5px; line-height: 1.6; max-width: 640px; }
 
-.chapter-view__act {
-  appearance: none; border: 1px solid var(--line); background: var(--surface);
-  border-radius: 6px; font: inherit; font-size: 11px; padding: 2px 7px;
-  cursor: pointer; color: var(--ink-2); margin-right: 3px;
-}
-.chapter-view__act:hover { border-color: var(--accent); color: var(--accent-ink); }
-.chapter-view__act--danger:hover { border-color: var(--danger); color: var(--danger); }
 </style>

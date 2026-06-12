@@ -1304,7 +1304,7 @@ watch(selectedProjectId, (id) => {
     <!-- ── Project picker ───────────────────────────────────────────── -->
     <div class="jv-section studio__project-bar">
       <label class="studio__project-label">{{ copy.book.singular }}:</label>
-      <select v-model="selectedProjectId" class="jv-input studio__project-select">
+      <select v-model="selectedProjectId" class="jv-input jv-w-name">
         <option v-for="o in projectOptions" :key="o.value || 'none'" :value="o.value">{{ o.label }}</option>
       </select>
       <span class="jv-spacer" />
@@ -1466,9 +1466,9 @@ watch(selectedProjectId, (id) => {
                 <span v-else class="studio__char-unassigned">⚠ no voice</span>
               </td>
               <td style="text-align:right;white-space:nowrap">
-                <button v-if="p.voice_id" type="button" class="studio__voice-action" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(p.voice_id))">▶</button>
-                <button v-if="p.voice_id" type="button" class="studio__voice-action" title="Tune voice parameters" @click.stop="openVoiceTuner(p)">⚙</button>
-                <button type="button" class="studio__voice-action" title="Remove from this cast — persona stays in the library" @click.stop="removeFromCast(p)">✕</button>
+                <button v-if="p.voice_id" type="button" class="jv-rowact" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(p.voice_id))">▶</button>
+                <button v-if="p.voice_id" type="button" class="jv-rowact" title="Tune voice parameters" @click.stop="openVoiceTuner(p)">⚙</button>
+                <button type="button" class="jv-rowact jv-rowact--danger" title="Remove from this cast — persona stays in the library" @click.stop="removeFromCast(p)">✕</button>
               </td>
             </tr>
           </tbody>
@@ -1494,8 +1494,8 @@ watch(selectedProjectId, (id) => {
                 <span class="studio__char-glyph" :style="{ background: colorFor(voiceById(narratorPersona.voice_id)?.name), color: '#fff' }">{{ (voiceById(narratorPersona.voice_id)?.name || "?").slice(0, 2) }}</span>
                 {{ voiceById(narratorPersona.voice_id)?.name || narratorPersona.voice_id }}
                 <span class="jv-muted">· {{ voiceById(narratorPersona.voice_id)?.engine || "" }}</span>
-                <button type="button" class="studio__voice-action" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(narratorPersona.voice_id))">▶</button>
-                <button type="button" class="studio__voice-action" title="Tune voice parameters" @click.stop="openVoiceTuner(narratorPersona)">⚙</button>
+                <button type="button" class="jv-rowact" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(narratorPersona.voice_id))">▶</button>
+                <button type="button" class="jv-rowact" title="Tune voice parameters" @click.stop="openVoiceTuner(narratorPersona)">⚙</button>
               </div>
               <span v-else class="studio__char-unassigned">⚠ no voice assigned</span>
             </div>
@@ -1519,8 +1519,8 @@ watch(selectedProjectId, (id) => {
                 <span class="studio__char-glyph" :style="{ background: colorFor(voiceById(p.voice_id)?.name), color: '#fff' }">{{ (voiceById(p.voice_id)?.name || "?").slice(0, 2) }}</span>
                 {{ voiceById(p.voice_id)?.name || p.voice_id }}
                 <span class="jv-muted">· {{ voiceById(p.voice_id)?.engine || "" }}</span>
-                <button type="button" class="studio__voice-action" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(p.voice_id))">▶</button>
-                <button type="button" class="studio__voice-action" title="Tune voice parameters" @click.stop="openVoiceTuner(p)">⚙</button>
+                <button type="button" class="jv-rowact" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(p.voice_id))">▶</button>
+                <button type="button" class="jv-rowact" title="Tune voice parameters" @click.stop="openVoiceTuner(p)">⚙</button>
               </div>
               <span v-else class="studio__char-unassigned">⚠ no voice assigned</span>
             </div>
@@ -1648,7 +1648,7 @@ watch(selectedProjectId, (id) => {
               <!-- Tune button (#I) — opens VoiceParamsModal for this voice -->
               <button
                 type="button"
-                class="studio__voice-action"
+                class="jv-rowact"
                 title="Tune voice parameters (speed, exaggeration, …)"
                 @click.stop="openVoiceTunerForLibraryVoice(v)"
               >⚙</button>
@@ -1656,7 +1656,7 @@ watch(selectedProjectId, (id) => {
               <!-- Preview button (#J) — calls /v1/generate with sample text -->
               <button
                 type="button"
-                class="studio__voice-action"
+                class="jv-rowact"
                 :disabled="previewingVoiceId === v.id"
                 :title="previewingVoiceId === v.id ? 'Generating preview…' : 'Preview this voice with a sample sentence'"
                 @click.stop="previewVoice(v)"
@@ -2065,7 +2065,6 @@ watch(selectedProjectId, (id) => {
   color: var(--ink-3);
   font-weight: 600;
 }
-.studio__project-select { flex: 1 1 260px; max-width: var(--w-path); }
 
 .studio__steps { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .studio__pagelede { font-size: 12.5px; margin: 6px 0 10px; max-width: 880px; }
@@ -2382,27 +2381,6 @@ watch(selectedProjectId, (id) => {
   white-space: nowrap;
 }
 
-.studio__voice-action {
-  appearance: none;
-  background: transparent;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  color: var(--ink-2);
-  cursor: pointer;
-  width: 26px;
-  height: 26px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  padding: 0;
-  flex-shrink: 0;
-}
-.studio__voice-action:hover:not(:disabled) {
-  background: var(--surface-2);
-  color: var(--ink);
-}
-.studio__voice-action:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Script tab ───────────────────────────────────────────────────── */
 .studio__script-toolbar {
