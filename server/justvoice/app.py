@@ -15,7 +15,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from .api import (
@@ -134,6 +134,20 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
+        )
+
+    # Unhandled exceptions normally bypass CORSMiddleware (the outermost
+    # ServerErrorMiddleware answers without ACAO headers), so browsers
+    # report every server 500 as "blocked by CORS" — wildly misleading
+    # (bit the user 2026-06-12). A catch-all handler returns a normal
+    # JSONResponse, which flows back through the middleware stack and
+    # gets its CORS headers; the browser then shows the real 500.
+    @app.exception_handler(Exception)
+    async def _unhandled(request, exc):  # noqa: ANN001
+        log.exception("unhandled error on %s %s", request.method, request.url.path)
+        return JSONResponse(
+            status_code=500,
+            content={"title": "Internal Server Error", "detail": str(exc)[:300]},
         )
 
     # Auth — after CORS so preflights succeed without a token
