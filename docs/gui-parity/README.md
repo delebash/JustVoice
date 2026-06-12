@@ -14,7 +14,7 @@ element-by-element — next pass.
 
 | Screen | Pair | Status | Notes |
 |---|---|---|---|
-| Nav — per-kind vocabulary | (verified live ×3 kinds) | ✅ | Chapters/Lines/Episodes+Timeline swap; lanes + Spk Lab label + tools order per mock |
+| Nav — per-kind vocabulary | (verified live ×3 kinds) | ✅ | Chapters/Lines/Episodes+Timeline swap; lanes + Spk Lab label per mock. Deviation (user-approved 2026-06-12): the Advanced lane is GONE — Effects/Presets live in Library, Render Lab/Audio Tools in Tools, Cache/Channels/Webhooks are Settings sub-tabs (#cache/#channels/#webhooks deep links redirect) |
 | Home (daily driver) | home-* | ✅ | judged earlier this pass; Continue/stat cards/tasks/engine/recent/hotkey |
 | Kind picker | (live click-through) | ✅ | preselect from Home pills verified |
 | Studio · Cast (audiobook) | studio-cast-* | ✅ | narrator spans, roles, colored portraits, library pills + amber banner + ✓ cast-as |

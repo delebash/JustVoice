@@ -35,15 +35,12 @@ import TrainView from "./views/TrainView.vue";
 import PersonasView from "./views/PersonasView.vue";
 import LexiconsView from "./views/LexiconsView.vue";
 import EnginesView from "./views/EnginesView.vue";
-import CacheView from "./views/CacheView.vue";
 import AudioToolsView from "./views/AudioToolsView.vue";
 import SettingsView from "./views/SettingsView.vue";
 import CapturesView from "./views/CapturesView.vue";
 import StoriesView from "./views/StoriesView.vue";
 import EffectsView from "./views/EffectsView.vue";
 import RenderPresetsView from "./views/RenderPresetsView.vue";
-import AudioChannelsView from "./views/AudioChannelsView.vue";
-import WebhooksView from "./views/WebhooksView.vue";
 
 // Per-view `visibleFor` declares which onboarding primary-use-case values
 // surface this tab in the sidebar. The full set is:
@@ -74,21 +71,18 @@ const VIEWS = [
   { id: "voices",    lane: "library", label: "Voices",    icon: "🎙️", lede: "Voice library — cloned, preset (Kokoro 54 + Qwen 9), designed (text-prompt → voice), blended. Per-voice channel routing.", component: VoicesView },
   { id: "personas",  lane: "library", label: "Personas",  icon: "🎭", lede: "Characters. Each persona has a name, bio, voice, personality (TTS delivery instruction), default delivery, effects, lexicon override. Cross-project — one Mara across many books or quests. Filter by usage in the library list.", component: PersonasView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "lexicons",  lane: "library", label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Force \"Beauchamp\" → \"BEE-chum\", domain words → consistent phoneme-level pronunciation across a whole book. Per-character override.", component: LexiconsView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "effects",   lane: "library", label: "Effects",   icon: "🎛️", lede: "Pedalboard-backed effects chain. Apply non-destructively — creates a new generation version that preserves the original. 8 types · 4 built-in presets + custom.", component: EffectsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "presets",   lane: "library", label: "Presets",   icon: "🎚️", lede: "Render presets — named bundles of voice + delivery + effects chain + master target. Studio Render binds one per scene to lock per-chapter or per-quest output consistency.", component: RenderPresetsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   { id: "engines",   lane: "library", label: "Engines",   icon: "🧠", lede: "Installed engine catalog. Install / load / unload models. Per-engine venv isolation (JustVoice advantage — install Chatterbox without breaking Kokoro).", component: EnginesView },
 
   // ─── Tools lane ────────────────────────────────────────────────────
   { id: "compare",   lane: "tools", label: "Compare",   icon: "⚖️", lede: "A/B audio comparison. Side-by-side waveforms, peak/RMS/duration diff, sample-level RMSE, verdict. Bulk compare across takes for QC pass.", component: CompareView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   { id: "train",     lane: "tools", label: "Train",     icon: "🏋️", lede: "PEFT/LoRA-based fine-tuning. QC pipeline checks SNR / clipping / silence ratio per sample before accepting it.", component: TrainView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "speakerlab",lane: "tools", label: "Spk Lab",icon: "🔬", lede: "Speaker-extraction testbed. Paste any text, tune model + temperature + tier + prompts per column, race configurations side-by-side, and promote the winner to production. Same backend as Studio · Script.", component: SpeakerLabView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "renderlab", lane: "tools", label: "Render Lab", icon: "🧪", lede: "Voice parameter A/B matrix. Pick a voice + sample sentence + 1-2 parameter axes; render up to 16 cells in parallel (capped at 2 concurrent). Save any cell as a render preset.", component: RenderLabView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "audio",     lane: "tools", label: "Audio Tools", icon: "🔧", lede: "Stand-alone audio tools — analyze any 16-bit PCM WAV, or apply a mastering preset to a WAV without going through the chapter render pipeline. Useful for inspecting reference clips before cloning, or quickly mastering an external recording.", component: AudioToolsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
 
   // ─── Advanced lane (collapsed by default) ──────────────────────────
-  { id: "renderlab", lane: "advanced", label: "Render Lab", icon: "🧪", lede: "Voice parameter A/B matrix. Pick a voice + sample sentence + 1-2 parameter axes; render up to 16 cells in parallel (capped at 2 concurrent). Save any cell as a render preset.", component: RenderLabView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "audio",     lane: "advanced", label: "Audio Tools", icon: "🔧", lede: "Stand-alone audio tools — analyze any 16-bit PCM WAV, or apply a mastering preset to a WAV without going through the chapter render pipeline. Useful for inspecting reference clips before cloning, or quickly mastering an external recording.", component: AudioToolsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "presets",   lane: "advanced", label: "Presets",   icon: "🎚️", lede: "Render presets — named bundles of voice + delivery + effects chain + master target. Studio Render binds one per scene to lock per-chapter or per-quest output consistency.", component: RenderPresetsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "effects",   lane: "advanced", label: "Effects",   icon: "🎛️", lede: "Pedalboard-backed effects chain. Apply non-destructively — creates a new generation version that preserves the original. 8 types · 4 built-in presets + custom.", component: EffectsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "cache",     lane: "advanced", label: "Cache",     icon: "💾", lede: "Disk-LRU render cache. Keyed on (engine, voice, lexicon hash, persona hash, text hash, effects hash). Engine prefix prevents cross-engine collisions.", component: CacheView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "channels",  lane: "advanced", label: "Channels",  icon: "🔊", lede: "Audio output channel configs. Route specific voices to specific OS audio devices — multi-monitor, OBS virtual mic, per-character podcast monitoring.", component: AudioChannelsView, visibleFor: ["podcast", "game", "multiple", "unset"] },
-  { id: "webhooks",  lane: "advanced", label: "Webhooks",  icon: "🔔", lede: "HMAC-SHA256-signed outbound event notifications. At-least-once delivery with exponential backoff (1s → 5s → 30s → 5min).", component: WebhooksView, visibleFor: ["game", "multiple", "unset"] },
 
   // ─── Settings — pinned at the very bottom, always visible ──────────
   { id: "settings",  lane: "pinned", label: "Settings",  icon: "⚙️", lede: "Every operator-tunable value. Per CLAUDE.md, no value is hardcoded — every knob lives in settings.json.", component: SettingsView },
@@ -98,18 +92,7 @@ const LANES = [
   { id: "workflow", label: "Workflow" },
   { id: "library",  label: "Library" },
   { id: "tools",    label: "Tools" },
-  { id: "advanced", label: "Advanced", collapsible: true },
 ];
-
-// Advanced lane collapses by default — persist the user's choice across
-// sessions via localStorage.
-const ADV_KEY = "jv.sidebar.advanced.expanded";
-const advancedExpanded = ref(
-  typeof window !== "undefined" && window.localStorage?.getItem(ADV_KEY) === "1",
-);
-watch(advancedExpanded, (v) => {
-  try { window.localStorage?.setItem(ADV_KEY, v ? "1" : "0"); } catch { /* ignore */ }
-});
 
 function isVisibleFor(viewEntry, useCase) {
   return !viewEntry.visibleFor || viewEntry.visibleFor.includes(useCase);
@@ -311,8 +294,18 @@ watch(
 //   - Hash change (back/forward, bookmarked URL) updates the active view.
 //   - Active view change writes the hash so deep-linking works.
 if (typeof window !== "undefined") {
+  const LEGACY_SETTINGS_TABS = { cache: "cache", channels: "channels", webhooks: "webhooks" };
+  const routeHash = (hashId) => {
+    if (LEGACY_SETTINGS_TABS[hashId]) {
+      try { window.sessionStorage?.setItem("jv.settings.sub", LEGACY_SETTINGS_TABS[hashId]); } catch { /* ignore */ }
+      view.value = "settings";
+      return true;
+    }
+    return false;
+  };
   window.addEventListener("hashchange", () => {
     const hashId = window.location.hash.replace(/^#/, "");
+    if (routeHash(hashId)) return;
     if (hashId && VIEWS.some((v) => v.id === hashId) && view.value !== hashId) {
       view.value = hashId;
     }
@@ -395,20 +388,10 @@ onMounted(async () => {
       <div class="jv-sidebar__brand" title="JustVoice">JV</div>
 
       <template v-for="lane in lanesWithViews" :key="lane.id">
-        <div class="jv-sidebar__lane-header" v-if="!lane.collapsible">
+        <div class="jv-sidebar__lane-header">
           {{ localizedLaneLabel(lane.id) }}
         </div>
-        <button
-          v-else
-          type="button"
-          class="jv-sidebar__lane-header jv-sidebar__lane-header--toggle"
-          @click="advancedExpanded = !advancedExpanded"
-          :aria-expanded="advancedExpanded"
-        >
-          <span>{{ localizedLaneLabel(lane.id) }}</span>
-          <span class="jv-sidebar__lane-chev">{{ advancedExpanded ? '▾' : '▸' }}</span>
-        </button>
-        <template v-if="!lane.collapsible || advancedExpanded">
+        <template>
           <a
             v-for="v in lane.views"
             :key="v.id"

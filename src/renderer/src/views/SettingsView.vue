@@ -4,6 +4,7 @@ import { ref, computed, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
+import { useRenderTasks } from "../stores/renderTasks.js";
 import { projectsService } from "../services/projects.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvInput from "../components/jv/JvInput.vue";
@@ -12,8 +13,12 @@ import JvCheckbox from "../components/jv/JvCheckbox.vue";
 import JvToggle from "../components/jv/JvToggle.vue";
 import JvField from "../components/jv/JvField.vue";
 import { useOnboarding } from "../stores/onboarding.js";
+import CacheView from "./CacheView.vue";
+import AudioChannelsView from "./AudioChannelsView.vue";
+import WebhooksView from "./WebhooksView.vue";
 
 const api = useApi();
+const tasks = useRenderTasks();
 
 // ── Workspace focus (primary use case) ──────────────────────────────
 // The welcome modal asks this once; this card is the only place to
@@ -36,6 +41,70 @@ async function setUseCase(id) {
 
 function rerunQuickSetup() {
   window.dispatchEvent(new Event("jv:quick-setup"));
+}
+
+// ── Testing / danger zone ─────────────────────────────────────────────
+// Tier 1: forget UI state so the app behaves like a fresh install
+// (welcome → QuickSetup → empty Home) without touching data.
+async function resetUiState() {
+  const ok = await confirmDialog({
+    title: "Reset UI state?",
+    message: "Forgets the active project and re-arms the welcome + Quick Setup wizards. No projects, voices, or settings data is touched. The app reloads.",
+    confirmLabel: "Reset UI",
+  });
+  if (!ok) return;
+  try {
+    await api.request("/v1/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ app: { onboarding_shown: false, primary_use_case: "unset" } }),
+    });
+  } catch { /* server flag is best-effort; local state still clears */ }
+  try {
+    for (const k of ["jv.activeProject", "jv.quickSetup.seen"]) window.localStorage?.removeItem(k);
+    window.sessionStorage?.clear();
+  } catch { /* ignore */ }
+  window.location.hash = "#overview";
+  window.location.reload();
+}
+
+// Tier 2: wipe every project (and optionally the personas) — the
+// workflow-testing reset. Voices, engines, providers, lexicons survive.
+const deletePersonasToo = ref(false);
+const wipeBusy = ref(false);
+async function deleteAllProjects() {
+  if (tasks.running.some((t) => t.status === "running")) {
+    pushToast({ kind: "info", title: "A task is running", description: "Wait for (or cancel) running renders before wiping projects." });
+    return;
+  }
+  const pr = await api.safeRequest("/v1/projects", { projects: [] });
+  const list = pr?.projects || [];
+  const pe = deletePersonasToo.value ? await api.safeRequest("/v1/personas", { personas: [] }) : { personas: [] };
+  const ok = await confirmDialog({
+    title: `Delete ALL ${list.length} projects?`,
+    message: `Every project, chapter, block, and take goes — permanently.${deletePersonasToo.value ? ` Also deletes all ${pe.personas.length} personas.` : " Personas, voices, engines, lexicons, and settings stay."}`,
+    danger: true,
+    confirmLabel: "Delete everything listed",
+  });
+  if (!ok) return;
+  wipeBusy.value = true;
+  let failed = 0;
+  try {
+    for (const p of list) {
+      try { await api.request(`/v1/projects/${p.id}`, { method: "DELETE" }); } catch { failed++; }
+    }
+    for (const per of pe.personas || []) {
+      try { await api.request(`/v1/personas/${per.id}`, { method: "DELETE" }); } catch { failed++; }
+    }
+    try { window.localStorage?.removeItem("jv.activeProject"); } catch { /* ignore */ }
+    pushToast({
+      kind: failed ? "error" : "success",
+      title: failed ? `Wipe finished with ${failed} failures` : "All projects deleted",
+      description: "Fresh slate — walk the workflow from ＋ New project.",
+    });
+  } finally {
+    wipeBusy.value = false;
+  }
 }
 
 // ── Backup & restore (GET /v1/backup, POST /v1/restore) ─────────────
@@ -361,11 +430,24 @@ const SUBS = [
   { id: "mcp",        label: "MCP server" },
   { id: "gpu",        label: "GPU" },
   { id: "appearance", label: "Appearance" },
+  { id: "cache",      label: "Cache" },
+  { id: "channels",   label: "Channels" },
+  { id: "webhooks",   label: "Webhooks" },
   { id: "logs",       label: "Logs" },
   { id: "changelog",  label: "Changelog" },
   { id: "about",      label: "About" },
 ];
 const activeSub = ref("general");
+
+// Deep links (#cache/#channels/#webhooks redirect here) hand the target
+// sub-tab over via sessionStorage.
+try {
+  const sub = window.sessionStorage?.getItem("jv.settings.sub");
+  if (sub) {
+    window.sessionStorage.removeItem("jv.settings.sub");
+    activeSub.value = sub;
+  }
+} catch { /* ignore */ }
 
 // ── Model roles — Quick / Accuracy (engines redesign 2026-06-11) ─────
 // Two plain-language roles; features inherit one unless pinned. The
@@ -1059,6 +1141,32 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- ─── General · Testing / danger zone ─── -->
+    <div v-show="activeSub === 'general'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">Testing / danger zone</h3></div>
+        <p class="jv-muted" style="font-size: 12.5px">
+          For walking the workflows from scratch. Tier 1 is safe; tier 2 deletes content.
+          Full factory reset stays manual — restore a backup zip or delete the data directory.
+        </p>
+        <div style="display:flex; align-items:center; gap:10px; margin-top:10px">
+          <JvButton variant="secondary" size="sm" label="↺ Reset UI state" title="Forget active project + re-arm welcome and Quick Setup. No data touched. Reloads." @click="resetUiState" />
+          <span class="jv-muted" style="font-size:11.5px">fresh-install behavior, zero data loss</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; margin-top:10px">
+          <button type="button" class="jv-btn jv-btn--danger-outline jv-btn--sm" :disabled="wipeBusy" @click="deleteAllProjects">🗑 Delete ALL projects…</button>
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer">
+            <input type="checkbox" v-model="deletePersonasToo" style="accent-color:var(--accent)" /> also delete all personas
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Cache / Channels / Webhooks (moved from the sidebar's Advanced lane) ─── -->
+    <div v-show="activeSub === 'cache'" class="jv-section"><CacheView /></div>
+    <div v-show="activeSub === 'channels'" class="jv-section"><AudioChannelsView /></div>
+    <div v-show="activeSub === 'webhooks'" class="jv-section"><WebhooksView /></div>
 
     <!-- ─── General · Connection ─── -->
     <!-- ─── General · API reference (task #96) ─── -->
