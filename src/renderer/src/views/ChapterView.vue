@@ -13,7 +13,6 @@ import { useActiveProject } from "../stores/activeProject.js";
 import JvButton from "../components/jv/JvButton.vue";
 import LineageViewer from "../components/LineageViewer.vue";
 import EmptyState from "../components/EmptyState.vue";
-import JvField from "../components/jv/JvField.vue";
 import JvSelect from "../components/jv/JvSelect.vue";
 import JvTag from "../components/jv/JvTag.vue";
 
@@ -701,40 +700,37 @@ async function savePastedText() {
 <template>
   <div class="chapter-view">
 
-    <!-- ── Project / scene selectors ───────────────────────────────────── -->
-    <div class="jv-section">
-      <h3 class="jv-section__title">{{ copy.chapter.singular }} view</h3>
-
-      <div class="jv-card chapter-view__selectors">
-        <JvField :label="copy.book.singular" layout="inline">
-          <JvSelect
-            v-model="selectedProjectId"
-            :options="projectOptions"
-            :placeholder="`Select a ${copy.book.singular.toLowerCase()}…`"
-            width="name"
-          />
-        </JvField>
-        <JvField :label="copy.chapter.singular" layout="inline">
-          <JvSelect
-            v-model="selectedSceneId"
-            :options="sceneOptions"
-            :disabled="!selectedProjectId || !scenes.length"
-            :placeholder="`Select a ${copy.chapter.singular.toLowerCase()}…`"
-            width="name"
-          />
-        </JvField>
-        <!-- "Voice for re-generate" demoted (2026-06-12): regen uses the
-             block's cast persona voice; uncast blocks ask inline. -->
-        <span class="jv-spacer" />
-        <JvButton
-          variant="secondary"
-          size="sm"
-          label="⬇ Export"
-          :disabled="!selectedProjectId"
-          title="Package the whole project — opens Studio · 4 Export (M4B, chapter audio, ACX checklist)"
-          @click="goStudioExport"
-        />
-      </div>
+    <!-- ── Project / scene pickers — canonical .jv-lib-toolbar (RULE #1
+         precedent: PersonasView's toolbar — data dropdowns inline,
+         spacer, actions rightmost). Replaces the old full-width
+         three-column selector card + duplicate "view" heading. -->
+    <div class="jv-lib-toolbar">
+      <JvSelect
+        v-model="selectedProjectId"
+        :options="projectOptions"
+        :placeholder="`Select a ${copy.book.singular.toLowerCase()}…`"
+        width="name"
+        :title="copy.book.singular"
+      />
+      <JvSelect
+        v-model="selectedSceneId"
+        :options="sceneOptions"
+        :disabled="!selectedProjectId || !scenes.length"
+        :placeholder="`Select a ${copy.chapter.singular.toLowerCase()}…`"
+        width="name"
+        :title="copy.chapter.singular"
+      />
+      <!-- "Voice for re-generate" demoted (2026-06-12): regen uses the
+           block's cast persona voice; uncast blocks ask inline. -->
+      <span class="jv-spacer" />
+      <JvButton
+        variant="secondary"
+        size="sm"
+        label="⬇ Export"
+        :disabled="!selectedProjectId"
+        title="Package the whole project — opens Studio · 4 Export (M4B, chapter audio, ACX checklist)"
+        @click="goStudioExport"
+      />
     </div>
 
     <!-- ── Chapters home base — per-chapter status table (mock step 3) ── -->
@@ -1141,8 +1137,9 @@ async function savePastedText() {
 
 <style scoped>
 .chapter-view {
-  padding: 24px 32px 64px;
-  padding-bottom: 96px; /* leave room above the pinned floating generate bar */
+  /* .jv-content already pads 24/32/64 — the old root padding here doubled
+     it. Keep only extra clearance for the pinned floating generate bar. */
+  padding-bottom: 32px;
 }
 
 /* ── Floating generate bar at the bottom ───────────────────────────────── */
@@ -1174,13 +1171,6 @@ async function savePastedText() {
   margin-left: 6px;
   width: 12px;
   overflow: hidden;
-}
-
-/* ── Selectors ───────────────────────────────────────────────────────────── */
-.chapter-view__selectors {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 16px;
 }
 
 /* ── Block card ──────────────────────────────────────────────────────────── */

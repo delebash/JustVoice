@@ -401,6 +401,12 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   font-weight: 600;
   letter-spacing: -0.015em;
   margin: 0;
+  /* One line, always: long breadcrumbs (chapter titles) truncate instead
+     of wrapping the whole topbar to a second line. */
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .jv-topbar__crumb-sep {
   margin: 0 8px;
@@ -432,6 +438,10 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   padding: 4px 10px;
   cursor: pointer;
   font-family: inherit;
+  /* Never wrap to a second line — the title's ellipsis absorbs the
+     squeeze instead (the topbar stays one line on every view). */
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .jv-topbar__status:hover {
   background: var(--surface-2);
@@ -483,6 +493,14 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 }
 button.jv-topbar__proj { cursor: pointer; }
 button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-ink); }
+.jv-topbar__proj b {
+  /* Long project names truncate inside the chip instead of pushing the
+     topbar into a wrap. */
+  max-width: 18ch;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .jv-topbar__proj-k {
   font-weight: 700;
   font-size: 10px;
@@ -540,6 +558,8 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
   height: 26px;
   padding: 0 12px;
   margin-left: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
   background: var(--accent-soft);
   border: 1px solid var(--accent-line);
   border-radius: var(--r-pill);
