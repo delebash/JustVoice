@@ -871,12 +871,12 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
 
 <template>
   <!-- Engines redesign — the free-vs-money split (preview/engines-redesign.html v7). -->
-  <div class="ev-tabs">
-    <button type="button" class="ev-tab" :class="{ on: topTab === 'local' }" @click="topTab = 'local'">
+  <div class="jv-toptabs">
+    <button type="button" class="jv-toptab" :class="{ on: topTab === 'local' }" @click="topTab = 'local'">
       <span class="t1">Local models</span>
       <span class="t2"><span class="free">FREE</span> · run on your machine · disk + VRAM</span>
     </button>
-    <button type="button" class="ev-tab" :class="{ on: topTab === 'online' }" @click="topTab = 'online'; cancelEdit()">
+    <button type="button" class="jv-toptab" :class="{ on: topTab === 'online' }" @click="topTab = 'online'; cancelEdit()">
       <span class="t1">Online providers</span>
       <span class="t2"><span class="paid">METERED</span> · your accounts · API key + URL</span>
     </button>
@@ -886,7 +886,7 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
   <div v-show="topTab === 'local'">
     <RecommendCard />
     <div class="ev-toprow">
-      <div class="ev-search">
+      <div class="jv-searchbar">
         🔍 <input v-model="q" placeholder="Search local models and engines…" title="Filters engines and models; matching groups auto-expand">
       </div>
       <div class="ev-chips">
@@ -1032,7 +1032,7 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
   <!-- ════ ONLINE PROVIDERS ════ -->
   <div v-show="topTab === 'online'">
     <div class="ev-toprow">
-      <div class="ev-search">🔍 <input v-model="qp" placeholder="Search providers…"></div>
+      <div class="jv-searchbar">🔍 <input v-model="qp" placeholder="Search providers…"></div>
       <div class="ev-chips">
         <button v-for="c in ['all','tts','llm','embedding']" :key="c" type="button" class="ev-chip" :class="{ on: capOnline === c }" @click="capOnline = c"
         >{{ c === 'all' ? 'All' : c === 'embedding' ? 'EMBED' : c.toUpperCase() }}</button>
@@ -1107,17 +1107,11 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
 
 <style scoped>
 /* ── Engines redesign (v7 contract) ─────────────────────────────────── */
-.ev-tabs{display:flex;gap:10px;border-bottom:2px solid var(--line);margin-bottom:16px}
-.ev-tab{display:flex;flex-direction:column;gap:1px;padding:10px 22px 12px;border:1px solid transparent;border-bottom:0;border-radius:10px 10px 0 0;cursor:pointer;background:transparent;font:inherit;text-align:left;margin-bottom:-2px}
-.ev-tab .t1{font-weight:700;font-size:14.5px;color:var(--ink-2)}
-.ev-tab .t2{font-size:11px;color:var(--ink-3)}
-.ev-tab.on{background:var(--surface);border-color:var(--line);border-bottom:2px solid var(--surface)}
-.ev-tab.on .t1{color:var(--ink)}
-.ev-tab.on .t2 .free{color:var(--accent-ink,#2c6049);font-weight:700}
-.ev-tab.on .t2 .paid{color:#b08a3e;font-weight:700}
 .ev-toprow{display:flex;gap:12px;align-items:center;margin-bottom:14px}
-.ev-search{flex:1;display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:0 14px}
-.ev-search input{flex:1;border:0;outline:0;font:inherit;font-size:13.5px;background:transparent;padding:11px 0}
+/* Filter chips — DELIBERATELY scoped, not promoted: the app already has
+   jv-pill --solid/--ghost filter chips (smaller). Converging the two
+   looks is a Phase 4 visual-direction call (mock-v7 approved this
+   size); promoting a second canonical chip would duplicate the job. */
 .ev-chips{display:flex;gap:6px}
 .ev-chip{font:inherit;font-size:11.5px;font-weight:700;letter-spacing:.04em;border:1px solid var(--line);border-radius:999px;padding:5px 13px;cursor:pointer;background:var(--surface);color:var(--ink-2)}
 .ev-chip.on{background:var(--accent);border-color:var(--accent);color:#fff}

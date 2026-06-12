@@ -223,6 +223,41 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   margin-bottom: 14px;
 }
 
+/* Canonical primary mode switch — folder-tab pair for a view's top-level
+   two-way split (born in Engines' approved mock v7: Local models /
+   Online providers). Title line = .t1, sub line = .t2; active = .on. */
+.jv-toptabs { display: flex; gap: 10px; border-bottom: 2px solid var(--line); margin-bottom: 16px; }
+.jv-toptab {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 10px 22px 12px;
+  border: 1px solid transparent; border-bottom: 0;
+  border-radius: 10px 10px 0 0;
+  cursor: pointer; background: transparent;
+  font: inherit; text-align: left; margin-bottom: -2px;
+}
+.jv-toptab .t1 { font-weight: 700; font-size: 14.5px; color: var(--ink-2); }
+.jv-toptab .t2 { font-size: 11px; color: var(--ink-3); }
+.jv-toptab.on { background: var(--surface); border-color: var(--line); border-bottom: 2px solid var(--surface); }
+.jv-toptab.on .t1 { color: var(--ink); }
+.jv-toptab.on .t2 .free { color: var(--accent-ink, #2c6049); font-weight: 700; }
+.jv-toptab.on .t2 .paid { color: #b08a3e; font-weight: 700; }
+
+/* Canonical search pill — bordered search field with a leading icon
+   slot (born in Engines mock v7). Width comes from the parent row. */
+.jv-searchbar {
+  flex: 1;
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0 14px;
+}
+.jv-searchbar input {
+  flex: 1; border: 0; outline: 0;
+  font: inherit; font-size: 13.5px;
+  background: transparent; padding: 11px 0;
+}
+
 /* Canonical locality badges — LOCAL / ONLINE·METERED / NEEDS INSTALL
    on voice rows (Voices page + Studio library read the same truth). */
 .jv-locality {
