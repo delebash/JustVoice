@@ -36,6 +36,10 @@ Confirm only for genuinely destructive ops (`git reset --hard`, force-push to ma
 
 **One exception**: UX design direction during Phase 4. The user explicitly said this is the only blocker — pause for visual-direction feedback before doing UX-redesign work that depends on it.
 
+### Rule #0.1 — ANNOUNCE BEFORE ACTING (added 2026-06-13, user-stated)
+
+Rule #0 means *don't block on approval* — it is NOT a license to silently start coding. Before starting any chunk of work (a fix, a new module, a refactor), state in chat WHAT you are about to do and WHY, **then** do it. Telling is not asking: no question mark, no waiting — a short declarative plan ("Fixing X by doing Y, then Z") immediately followed by the work. Violation shape caught 2026-06-13: jumping straight from investigation into writing new server modules with no stated plan.
+
 ## Session-start reading
 
 On a fresh session you'll already have:
