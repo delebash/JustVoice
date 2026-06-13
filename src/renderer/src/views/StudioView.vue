@@ -2071,11 +2071,21 @@ watch(selectedProjectId, (id) => {
 
 .studio__steps { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .studio__pagelede { font-size: 12.5px; margin: 6px 0 10px; max-width: 880px; }
-.studio__cast-card { padding: 14px 16px; margin: 0; display: flex; flex-direction: column; min-height: 0; }
+.studio__cast-card {
+  padding: 14px 16px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  /* S2: stretch to the row height set on .studio__cast-cols so the
+     Characters card and Voice library always match — even when empty. */
+  height: 100%;
+  overflow: hidden;
+}
 .studio__cast-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
 .studio__cast-card-head strong { font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2); }
 .studio__cast-card-head .jv-muted { font-size: 12px; }
-.studio__cast-scroll { overflow-y: auto; max-height: 68vh; min-height: 0; }
+.studio__cast-scroll { overflow-y: auto; min-height: 0; flex: 1 1 0; }
 .studio__char-x {
   position: absolute;
   top: 8px;
@@ -2108,9 +2118,17 @@ watch(selectedProjectId, (id) => {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr);
   gap: 14px;
-  align-items: start;
+  /* S2: row track gives both columns the same explicit height, and
+     align-items: stretch (grid default) makes Characters and Voice
+     library cards match — even when one is empty. */
+  grid-template-rows: min(72vh, 720px);
 }
-@media (max-width: 900px) { .studio__cast-cols { grid-template-columns: 1fr; } }
+@media (max-width: 900px) {
+  .studio__cast-cols {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+  }
+}
 .studio__cast-empty {
   border: 1px dashed var(--line-strong);
   border-radius: 10px;
@@ -2186,7 +2204,10 @@ watch(selectedProjectId, (id) => {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 10px;
-  max-height: calc(68vh + 50px); /* matches the cast card incl. its head */
+  /* S2: fills the cast-cols row track so it always matches the
+     Characters card height. Internal overflow scrolls within. */
+  height: 100%;
+  min-height: 0;
   overflow-y: auto;
 }
 .studio__voice-library-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
