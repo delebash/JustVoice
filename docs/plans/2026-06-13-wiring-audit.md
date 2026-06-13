@@ -217,6 +217,19 @@ sweep settles the import flow.
 - MCP tool handlers and the JustWrite-facing CONTRACT surface were not
   traced (different consumer, same method applies later).
 
+### W3 + W8 decisions (user, 2026-06-13)
+
+- **W3 → option (a)**: StoriesView gated honestly — truthful
+  empty-state card (no-engine-lede precedent), zero API calls, links to
+  Episodes + Studio. No throwaway /v1/stories CRUD; the Timeline plan
+  builds the real surface. Mock layout preserved in git history.
+- **W8 → keep everything**: all seven orphan routes stay. Captures/
+  transcribe are MCP/dictation-facing; personas/{id}/channels has a
+  working client since W6 (view wiring = GUI-sweep territory);
+  engines/setup + models/progress retire later as their own item
+  (engines/setup is referenced in a user-facing error string,
+  manager.py:795).
+
 ### Proposed fix order (queue for go — not started)
 
 1. W1 cache prune (data loss; port the bulk_delete honesty pattern or
