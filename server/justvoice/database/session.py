@@ -83,7 +83,64 @@ def init_db(data_dir: Optional[Path] = None) -> None:
     # Then ensure any net-new tables exist.
     Base.metadata.create_all(bind=engine)
 
+    # One-shot backfill: every audiobook/podcast project that pre-dates
+    # the builtin-Narrator landing gets one created retroactively so the
+    # Studio Cast view always opens with the slot populated.
+    _backfill_narrator_personas(engine)
+
     logger.info("Database: %s", _db_path)
+
+
+def _backfill_narrator_personas(eng) -> None:
+    """For every audiobook + podcast project without a linked Narrator
+    persona, create one and link it. Idempotent — safe to run on every
+    boot. New projects already get a narrator at create_project time."""
+    from .models import Persona, Project, ProjectPersona
+
+    with sessionmaker(autocommit=False, autoflush=False, bind=eng)() as db:
+        try:
+            projects = (
+                db.query(Project)
+                .filter(Project.project_type.in_(["audiobook", "podcast"]))
+                .all()
+            )
+            created = 0
+            for proj in projects:
+                has_narrator = (
+                    db.query(ProjectPersona)
+                    .join(Persona, Persona.id == ProjectPersona.persona_id)
+                    .filter(
+                        ProjectPersona.project_id == proj.id,
+                        Persona.name.ilike("narrator"),
+                    )
+                    .first()
+                )
+                if has_narrator:
+                    continue
+                narrator = Persona(
+                    name="Narrator",
+                    bio="The voice of everything that isn't spoken.",
+                    personality=(
+                        "Steady, clear, unhurried — carries the prose between dialogue."
+                    ),
+                    is_builtin=True,
+                )
+                db.add(narrator)
+                db.flush()
+                db.add(
+                    ProjectPersona(
+                        project_id=proj.id,
+                        persona_id=narrator.id,
+                        role_label="narrator",
+                    )
+                )
+                created += 1
+            if created:
+                db.commit()
+                logger.info("Backfilled %d narrator personas", created)
+        except Exception as e:  # noqa: BLE001 — boot must not die on this
+            logger.warning("Narrator backfill failed: %s", e)
+            db.rollback()
 
 
 def get_db() -> Session:

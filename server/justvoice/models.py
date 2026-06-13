@@ -541,6 +541,10 @@ class Persona(BaseModel):
     llm_model: str | None = None
     imported_from: str | None = None
     imported_id: str | None = None
+    # True for personas the project lifecycle auto-creates (Narrator on
+    # audiobook + podcast projects). The personas DELETE endpoint refuses
+    # to remove builtins; rename + voice reassignment still work.
+    is_builtin: bool = False
     created_at: datetime
     updated_at: datetime
 

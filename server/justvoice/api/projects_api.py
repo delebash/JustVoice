@@ -30,7 +30,11 @@ from ..database import (
     Persona,
     get_db,
 )
-from ..database.models import Lexicon as DbLexicon, LexiconEntry as DbLexiconEntry
+from ..database.models import (
+    Lexicon as DbLexicon,
+    LexiconEntry as DbLexiconEntry,
+    Persona as DbPersona,
+)
 from ..errors import not_found, bad_request
 from ..app_state import get_state
 from ._persona_helpers import ensure_project_persona
@@ -233,6 +237,11 @@ async def list_projects(
     )
 
 
+# Project kinds that get an auto-created Narrator persona. Game projects
+# (NPCs only) and custom projects don't — they have no single prose voice.
+_NARRATOR_KINDS = {"audiobook", "podcast"}
+
+
 @router.post("/v1/projects", response_model=ProjectResponse, status_code=201)
 async def create_project(
     body: CreateProjectRequest, db: Session = Depends(get_db)
@@ -246,6 +255,26 @@ async def create_project(
         mastering_preset=body.mastering_preset,
     )
     db.add(p)
+    db.flush()
+
+    # Auto-create a project-scoped builtin Narrator persona for prose-
+    # voice kinds. The persona is editable (rename / voice / personality)
+    # but DELETE is refused — see personas_api.delete_persona.
+    if body.project_type in _NARRATOR_KINDS:
+        narrator = DbPersona(
+            name="Narrator",
+            bio="The voice of everything that isn't spoken.",
+            personality="Steady, clear, unhurried — carries the prose between dialogue.",
+            is_builtin=True,
+        )
+        db.add(narrator)
+        db.flush()
+        db.add(
+            ProjectPersona(
+                project_id=p.id, persona_id=narrator.id, role_label="narrator"
+            )
+        )
+
     db.commit()
     db.refresh(p)
     return ProjectResponse.from_orm(p)

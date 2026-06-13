@@ -116,6 +116,10 @@ class Persona(Base):
     # Provenance — where did this persona come from?
     imported_from = Column(String, nullable=True)  # "justwrite" | "manual" | "unreal" | "voice_profile"
     imported_id = Column(String, nullable=True)  # foreign id in the source system
+    # Soft sentinel — auto-created by the project lifecycle (Narrator on
+    # audiobook + podcast). The personas API refuses DELETE on builtins;
+    # rename + voice reassignment still work.
+    is_builtin = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 

@@ -1424,7 +1424,16 @@ watch(selectedProjectId, (id) => {
             @click="selectedCharacterId = narratorPersona.id"
             title="The narrator carries the prose between quotes — pick your steadiest voice"
           >
-            <button type="button" class="studio__char-x" title="Remove from this cast — persona stays in the library" @click.stop="removeFromCast(narratorPersona)">✕</button>
+            <!-- Builtin Narrator (project-lifecycle owned) — the project
+                 always has one, so we hide the remove ✕. Rename + voice
+                 reassignment still work as normal. -->
+            <button
+              v-if="!narratorPersona.is_builtin"
+              type="button"
+              class="studio__char-x"
+              title="Remove from this cast — persona stays in the library"
+              @click.stop="removeFromCast(narratorPersona)"
+            >✕</button>
             <span class="studio__char-portrait" :style="{ background: colorFor(narratorPersona.name) }">N</span>
             <div class="studio__char-main">
               <div class="studio__char-name-row">

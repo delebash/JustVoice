@@ -50,6 +50,7 @@ def run_migrations(engine) -> None:
     _migrate_generations_ok_status_and_preset(engine, inspector, tables)
     _migrate_voice_profiles_personality(engine, inspector, tables)
     _migrate_personas_absorb_profile_fields(engine, inspector, tables)
+    _migrate_personas_is_builtin(engine, inspector, tables)
     _migrate_drop_voice_profile_tables(engine, inspector, tables)
     _migrate_render_presets_effects_chain(engine, inspector, tables)
     _migrate_render_presets_voice_nullable(engine, inspector, tables)
@@ -144,6 +145,25 @@ def _migrate_personas_absorb_profile_fields(engine, inspector, tables: set[str])
         _add_column(engine, "personas", "effects_chain TEXT", "effects_chain")
     if "imported_id" not in columns:
         _add_column(engine, "personas", "imported_id VARCHAR", "imported_id")
+
+
+def _migrate_personas_is_builtin(engine, inspector, tables: set[str]) -> None:
+    """Adds `is_builtin BOOLEAN NOT NULL DEFAULT 0` to personas — soft
+    sentinel for personas auto-created by the project lifecycle
+    (Narrator for audiobook + podcast projects). The personas DELETE
+    endpoint refuses to remove builtins; UI hides the ✕ affordance.
+    Existing personas default to false on backfill.
+    """
+    if "personas" not in tables:
+        return
+    columns = _get_columns(inspector, "personas")
+    if "is_builtin" not in columns:
+        _add_column(
+            engine,
+            "personas",
+            "is_builtin BOOLEAN NOT NULL DEFAULT 0",
+            "is_builtin",
+        )
 
 
 def _migrate_blocks_extraction_telemetry(engine, inspector, tables: set[str]) -> None:
