@@ -22,10 +22,10 @@ export const projectsService = {
     return withApi().post(`/v1/projects`, body);
   },
   update(id, body) {
-    return withApi().request("PATCH", `/v1/projects/${id}`, body);
+    return withApi().patch(`/v1/projects/${id}`, body);
   },
   remove(id) {
-    return withApi().request("DELETE", `/v1/projects/${id}`);
+    return withApi().del(`/v1/projects/${id}`);
   },
   /** Legacy JustWrite-shaped import — JSON body to ?source=justwrite. Kept
    *  so JustWrite's existing client doesn't break. New code uses runImport(). */
@@ -66,10 +66,10 @@ export const projectsService = {
     return withApi().post(`/v1/scenes/${sceneId}/blocks`, body);
   },
   updateBlock(blockId, body) {
-    return withApi().request("PATCH", `/v1/blocks/${blockId}`, body);
+    return withApi().patch(`/v1/blocks/${blockId}`, body);
   },
   removeBlock(blockId) {
-    return withApi().request("DELETE", `/v1/blocks/${blockId}`);
+    return withApi().del(`/v1/blocks/${blockId}`);
   },
   getCast(projectId) {
     return withApi().get(`/v1/projects/${projectId}/cast`);
@@ -78,7 +78,7 @@ export const projectsService = {
     return withApi().post(`/v1/projects/${projectId}/cast`, body);
   },
   removeFromCast(projectId, personaId) {
-    return withApi().request("DELETE", `/v1/projects/${projectId}/cast/${personaId}`);
+    return withApi().del(`/v1/projects/${projectId}/cast/${personaId}`);
   },
   exportZip(projectId, opts = {}) {
     const params = new URLSearchParams();
@@ -97,10 +97,10 @@ export const renderPresetsService = {
     return withApi().post(`/v1/presets`, body);
   },
   update(id, body) {
-    return withApi().request("PATCH", `/v1/presets/${id}`, body);
+    return withApi().patch(`/v1/presets/${id}`, body);
   },
   remove(id) {
-    return withApi().request("DELETE", `/v1/presets/${id}`);
+    return withApi().del(`/v1/presets/${id}`);
   },
 };
 
@@ -112,10 +112,10 @@ export const takesService = {
     return withApi().post(`/v1/takes/${takeId}/set_default`);
   },
   update(takeId, body) {
-    return withApi().request("PATCH", `/v1/takes/${takeId}`, body);
+    return withApi().patch(`/v1/takes/${takeId}`, body);
   },
   remove(takeId) {
-    return withApi().request("DELETE", `/v1/takes/${takeId}`);
+    return withApi().del(`/v1/takes/${takeId}`);
   },
 };
 
@@ -127,16 +127,18 @@ export const channelsService = {
     return withApi().post(`/v1/channels`, body);
   },
   update(id, body) {
-    return withApi().request("PATCH", `/v1/channels/${id}`, body);
+    return withApi().patch(`/v1/channels/${id}`, body);
   },
   remove(id) {
-    return withApi().request("DELETE", `/v1/channels/${id}`);
+    return withApi().del(`/v1/channels/${id}`);
   },
-  getProfileChannels(profileId) {
-    return withApi().get(`/v1/profiles/${profileId}/channels`);
+  // Persona↔channel routing. These hit /v1/personas/… — the old
+  // /v1/profiles/… spelling 404s post-persona-rename (wiring-audit W6).
+  getPersonaChannels(personaId) {
+    return withApi().get(`/v1/personas/${personaId}/channels`);
   },
-  setProfileChannels(profileId, channelIds) {
-    return withApi().request("PUT", `/v1/profiles/${profileId}/channels`, {
+  setPersonaChannels(personaId, channelIds) {
+    return withApi().put(`/v1/personas/${personaId}/channels`, {
       channel_ids: channelIds,
     });
   },
@@ -150,7 +152,7 @@ export const mcpBindingsService = {
     return withApi().post(`/v1/mcp/bindings`, body);
   },
   remove(clientId) {
-    return withApi().request("DELETE", `/v1/mcp/bindings/${clientId}`);
+    return withApi().del(`/v1/mcp/bindings/${clientId}`);
   },
 };
 
@@ -162,7 +164,7 @@ export const webhooksService = {
     return withApi().post(`/v1/webhooks`, body);
   },
   remove(id) {
-    return withApi().request("DELETE", `/v1/webhooks/${id}`);
+    return withApi().del(`/v1/webhooks/${id}`);
   },
   test(id) {
     return withApi().post(`/v1/webhooks/${id}/test`);
@@ -201,7 +203,7 @@ export const bulkDeleteService = {
       if (v != null) params.set(k, String(v));
     }
     params.set("confirm", String(confirm));
-    return withApi().request("DELETE", `/v1/generations?${params}`);
+    return withApi().del(`/v1/generations?${params}`);
   },
 };
 

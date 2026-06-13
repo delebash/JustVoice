@@ -55,6 +55,32 @@ export const useApi = defineStore("api", () => {
     });
   }
 
+  // patch/put/del exist so service modules never hand-roll the verb via
+  // request(method, path, …) — that 3-arg shape silently broke 15 methods
+  // in services/projects.js (wiring-audit W2: request() takes the PATH
+  // first, so the verb became the URL and every call threw client-side).
+  function patch(path, body, opts = {}) {
+    return request(path, {
+      ...opts,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
+      body: body != null ? JSON.stringify(body) : undefined,
+    });
+  }
+
+  function put(path, body, opts = {}) {
+    return request(path, {
+      ...opts,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
+      body: body != null ? JSON.stringify(body) : undefined,
+    });
+  }
+
+  function del(path, opts = {}) {
+    return request(path, { ...opts, method: "DELETE" });
+  }
+
   async function requestBlob(method, path, opts = {}) {
     const headers = { ...(opts.headers || {}) };
     if (token.value) headers.Authorization = `Bearer ${token.value}`;
@@ -105,6 +131,9 @@ export const useApi = defineStore("api", () => {
     safeRequest,
     get,
     post,
+    patch,
+    put,
+    del,
     requestBlob,
     postForm,
     isAuthed: computed(() => !!token.value),

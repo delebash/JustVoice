@@ -165,6 +165,16 @@ saves, prunes, factory reset…) silently never rendered. Fixed at the
 bridge with W1 (accept `title` as the text + pass `description` through
 to sonner) — one change makes all 80 sites work; no call-site edits.
 
+### W10 — scripts/e2e.mjs step 2 is stale (pre-existing, not fixed)
+
+The CSV-import step times out waiting for the ImportModal's footer
+"Import" button — reproduced identically on an unmodified HEAD build,
+so it pre-dates the wiring fixes. The modal flow evolved after the
+script's last update (ba0974a; split-on selector + review flow landed
+in cda44bb and later). Step 1 (20 views, zero JS errors) still passes
+and was used as the regression gate. Update the script when the GUI
+sweep settles the import flow.
+
 ### Seed items closed clean (re-verified on current code)
 
 - `POST /v1/voices/{id}/preview` — route EXISTS; VoicesView preview
