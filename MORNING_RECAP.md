@@ -61,11 +61,14 @@ button — provenance as muted note). Train — four meaning-groups (What
 to train / Reference samples / Sample quality gates / Run settings),
 styled file picker, jargon line replaced by live plain-English blocker.
 
-**Pending next:** user QC of tonight's batch · round-trip render leg +
-webhooks (user machine, needs TTS models) · Engines chip convergence
-(ev-chip vs jv-pill — reserved for Phase 4 visual direction) ·
-podcast Timeline editor (biggest parity gap, needs own plan) ·
-packaging/PyInstaller · Phase 5 engine flips (Chatterbox blend/train).
+**Pending next:** user QC of tonight's batch · **wiring audit**
+(GUI↔API honesty — method + seed list in
+docs/plans/2026-06-13-wiring-audit.md; findings first) · round-trip
+render leg + webhooks (user machine, needs TTS models) · Engines chip
+convergence (ev-chip vs jv-pill — reserved for Phase 4 visual
+direction) · podcast Timeline editor (biggest parity gap, needs own
+plan) · packaging/PyInstaller · Phase 5 engine flips (Chatterbox
+blend/train).
 
 ---
 
