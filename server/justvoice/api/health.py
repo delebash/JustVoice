@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from ..app_state import get_state
+from ..engines.manager import get_manager
 from ..models import EngineHealth, HealthResponse
 from ..version import API_VERSION, VERSION
 
@@ -23,10 +24,16 @@ async def get_health() -> HealthResponse:
         )
         for e in st.engines.all()
     ]
+    # The legacy in-process registry (st.engines) tracks "current" for
+    # backends registered at boot. The plugin EngineManager tracks the
+    # TTS slot's loaded engine independently — checking both keeps the
+    # topbar pill + state-lede honest no matter how the engine was
+    # loaded (manager.load() vs registry.set_current()).
+    current = get_manager().current_id() or st.engines.current()
     return HealthResponse(
         status="ok",
         version=VERSION,
         api_version=API_VERSION,
-        current_engine=st.engines.current(),
+        current_engine=current,
         engines=engines,
     )
