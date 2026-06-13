@@ -47,3 +47,150 @@ before believing it)
   projects_api include.)
 - Unused components (AddProviderModal.vue?) — verify unreferenced
   before deleting.
+
+## Findings ledger — 2026-06-13, verified on main @ 133c827
+
+Method actually run: route table dumped from the app factory (197
+routes) · every `/v1/` string literal in the renderer extracted and
+normalized (300 literals, incl. `${serverUrl}`-prefixed) · diffed both
+directions · every suspected-dead target curl-verified against a live
+headless server · param-honesty read on the destructive/filtered
+endpoints, worst one reproduced live. NO fixes applied — findings only.
+
+### W1 — CacheView filtered prunes DELETE THE ENTIRE CACHE (worst)
+
+`/v1/cache/clear` (cache_api.py:33) reads ONLY `scope`. CacheView sends
+`older_than_days` (CacheView.vue:90), `voice_id` (:114), `engine`
+(:136), `favorited=false` (:152) — all silently dropped, so every
+"filtered" prune falls through to `scope=None` = full wipe.
+**Live-reproduced**: seeded 2 cache entries in 2 scopes, POSTed
+`/v1/cache/clear?voice_id=nonexistent`, stats went 2 → 0. The
+seed-list suspicion was exactly right, and it's the destroys-data
+variant: prune-by-voice with zero matches still destroys everything.
+(`cache.clear(scope)` in cache.py:133 has no mtime / per-key filtering
+at all — `older_than_days` support does not exist server-side.)
+Contrast: `DELETE /v1/generations` (bulk_delete_api.py) is the HONEST
+pattern — filters actually applied, dry-run by default, requires
+confirm + ≥1 filter. The cache UI just doesn't use anything like it.
+
+### W2 — services/projects.js 3-arg `request()` class: 15 broken methods
+
+`useApi().request(path, opts)` takes the path FIRST (stores/api.js:24).
+Fifteen service methods call it `request("PATCH"|"PUT"|"DELETE", path,
+body)`, producing the URL `http://…:17494PATCH` — **unparseable, so
+fetch throws client-side before any request leaves** (reproduced in
+node against the live server: `Failed to parse URL`). Every affected
+affordance fails instantly with an error toast.
+
+Broken methods WITH live consumers (= dead buttons today):
+- `projectsService.update` / `.remove` → **BooksView project rename
+  (:260) + delete (:294)**
+- `webhooksService.remove` → **WebhooksView delete (:73)**
+- `channelsService.update` / `.remove` → **AudioChannelsView edit
+  save (:45) + delete (:74)**
+- `takesService.update` / `.remove` → **takes store relabelTake
+  (takes.js:108) + removeTake (:96)** → ChapterView take ✕ / relabel
+
+Broken methods with NO consumer (dead code — views that need these
+verbs call `api.request(path, {method})` directly, correctly, which is
+why past live verifications passed):
+`updateBlock`, `removeBlock`, `removeFromCast`,
+`renderPresetsService.update`/`.remove`, `channelsService.
+getProfileChannels`/`setProfileChannels` (ALSO stale-pathed, see W6),
+`mcpBindingsService.remove`, `bulkDeleteService.generations`.
+
+Note: `requestBlob("GET", path)` call sites are CORRECT — that helper
+genuinely takes method-first. Only `.request("VERB", …)` is broken.
+
+### W3 — StoriesView is entirely unbacked (podcast Timeline surface)
+
+No `/v1/stories` endpoints exist anywhere server-side (no stories
+router; live 404). StoriesView (387 lines) GETs on every refresh
+(:104 → error toast every visit) and POSTs on create (:121). Second
+latent bug in the same call: the create passes `body: {name}`
+un-stringified through raw `request()` (no JSON header, object body) —
+would break even with a route. DB has the `story_items` table but the
+API layer was never written. The Episodes/Timeline parity rows judged
+🟡 earlier were judged against a view that cannot load data.
+
+### W4 — SettingsView dead targets (2)
+
+- GPU card fetches `/v1/system` (:1055) — 404; real route is
+  `/v1/system/info` (used correctly by RecommendCard.vue:34 and
+  SettingsView:778's other card). Seed item confirmed.
+- Log download fetches `/v1/logs/download?hours=24` (:1069) — route
+  does not exist (only `/v1/logs/tail`). Also uses `api.request`, not
+  `requestBlob`, so even with a route it would return text, not a file.
+
+### W5 — API-reference table documents two nonexistent endpoints
+
+SettingsView API table: `POST /v1/chapters/render` (:1219) — real
+route is `POST /v1/render_chapter`; `GET /v1/profiles` (:1221) — gone
+post-persona-rename, real route `GET /v1/personas`. Seed item
+confirmed on current code.
+
+### W6 — Stale `/v1/profiles/{id}/channels` paths (post-persona-rename)
+
+channelsService.getProfileChannels (:136) and setProfileChannels
+(:139) hit `/v1/profiles/{id}/channels` — live 404. Real route
+`/v1/personas/{id}/channels` (GET,PUT) exists and works (live 200) and
+currently has ZERO UI consumers. setProfileChannels is double-broken
+(W2 signature + stale path). Persona↔channel binding has no working UI
+path at all.
+
+### W7 — Duplicate projects_api include
+
+`app.include_router(projects_api.router)` at app.py:183 AND app.py:195
+— all 24 projects routes registered twice. Harmless at runtime
+(FastAPI matches the first), pollutes OpenAPI. Seed item confirmed.
+
+### W8 — Routes with no UI consumer (record, don't delete)
+
+`/v1/captures/{id}/audio`, `/v1/captures/{id}/refine`,
+`/v1/captures/{id}/retranscribe`, `/v1/transcribe`,
+`/v1/personas/{id}/channels` (see W6), `/v1/engines/setup` (GET+POST),
+`/v1/models/progress/{id}`. Some are MCP-/dictation-facing by design
+(transcribe, captures audio); engines/setup and models/progress look
+superseded by `/v1/engines/{id}/install` + `/v1/jobs/{id}` (QuickSetup
+uses those). Decide keep-vs-retire per item at fix time.
+
+### Seed items closed clean (re-verified on current code)
+
+- `POST /v1/voices/{id}/preview` — route EXISTS; VoicesView preview
+  does not 404. Stale claim.
+- OverviewView — already uses `/v1/takes/recent`; the
+  `/v1/generations/recent` claim was stale.
+- Captures + logs routers registered (logs router lives in
+  admin_api.py). Stories router: see W3 — never existed.
+- AddProviderModal.vue — already deleted from the tree; only the
+  superseded-note in old recap bands mentions it. Nothing to do.
+- All 40 api modules' routers ARE include_router-ed (reverse trace
+  clean except the W7 duplicate).
+
+### Coverage limits (honest)
+
+- Wire-level verification only for W2 (node repro of the exact fetch
+  semantics + live server) — a click-through Playwright pass was not
+  run (chromium install failed in this container; the failure mode is
+  deterministic client-side URL parse, so click-level confirmation is
+  cosmetic).
+- Param-honesty was read+live-tested for the destructive class (cache
+  clear, bulk delete, factory reset loop, restore) — NOT yet for all
+  300 call sites; the generate/render param surfaces are unaudited.
+- MCP tool handlers and the JustWrite-facing CONTRACT surface were not
+  traced (different consumer, same method applies later).
+
+### Proposed fix order (queue for go — not started)
+
+1. W1 cache prune (data loss; port the bulk_delete honesty pattern or
+   add real filters to cache.clear)
+2. W2 signature class (one mechanical fix in projects.js; decide
+   whether unconsumed methods get fixed or deleted)
+3. W6 persona-channels path (ride along with W2 — same file)
+4. W4 SettingsView two dead targets
+5. W5 API-table copy fix
+6. W3 stories: decision needed — build the missing /v1/stories API or
+   gate/hide the view until the Timeline plan lands (it's the known
+   biggest parity gap; building it is its own plan, not a wiring fix)
+7. W7 duplicate include (one-line)
+8. W8 keep-vs-retire decisions
