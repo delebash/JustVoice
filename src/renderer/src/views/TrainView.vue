@@ -45,6 +45,15 @@ const TRAIN_METHODS = [
 const canSubmit = computed(
   () => trainEngine.value && trainName.value.trim() && samples.value.length > 0
 );
+// Plain-English reason the submit is disabled — replaces the old line of
+// API jargon (endpoint + status code + snake_case flag) next to the button.
+const submitBlocker = computed(() => {
+  if (!trainEngine.value) return "Pick a base engine first.";
+  if (!trainName.value.trim()) return "Name the new voice.";
+  if (!samples.value.length) return "Add at least one reference sample.";
+  return "";
+});
+const trainFileInput = ref(null);
 
 const ACTIVE_PHASES = new Set(["queued", "validating", "preparing", "running"]);
 
@@ -237,49 +246,40 @@ onUnmounted(() => {
         <h3 class="jv-card__title">Queue a fine-tune</h3>
       </div>
 
-      <div class="train-grid">
-        <JvField label="Voice profile (output name)" layout="block">
-          <JvInput v-model="trainName" placeholder="Old Crow-trained" width="name" />
-        </JvField>
-        <JvField label="Base engine" layout="block">
-          <JvSelect v-model="trainEngine" :options="engineOptions" placeholder="Pick an engine…" width="name" />
-        </JvField>
-        <JvField label="Method" layout="block">
-          <JvSelect v-model="trainMethod" :options="TRAIN_METHODS.map((m) => ({ label: m.label, value: m.id }))" width="name" />
-        </JvField>
-        <JvField label="Steps" layout="block">
-          <JvInput v-model.number="trainSteps" type="number" placeholder="5000" width="token" />
-        </JvField>
-        <JvField label="SNR threshold (dB)" layout="block">
-          <JvInput v-model.number="trainSnrThreshold" type="number" placeholder="30" width="token" />
-        </JvField>
-        <JvField label="Max clipping ratio" layout="block">
-          <JvInput v-model.number="trainClipRatio" type="number" step="0.001" placeholder="0.002" width="token" />
-        </JvField>
-        <JvField label="Max silence ratio" layout="block">
-          <JvInput v-model.number="trainSilenceRatio" type="number" step="0.01" placeholder="0.35" width="token" />
-        </JvField>
-        <JvField label="Concurrent jobs limit" layout="block">
-          <JvInput v-model.number="trainConcurrency" type="number" placeholder="1" width="token" />
-        </JvField>
-        <JvField label="Base voice (optional)" layout="block">
-          <JvSelect
-            v-model="trainBaseVoice"
-            :options="[{ label: '— none —', value: '' }, ...voiceOptions]"
-            width="name"
-          />
-        </JvField>
-        <JvField label="Learning rate (optional override)" layout="block">
-          <JvInput v-model="trainLearningRate" type="number" placeholder="engine default" width="token" />
-        </JvField>
+      <!-- Grouped by meaning (was an arbitrary two-column grid of
+           alternating concerns spread across the whole card). -->
+      <div class="train-group">
+        <span class="jv-eyebrow">What to train</span>
+        <div class="train-row">
+          <JvField label="New voice name" layout="block">
+            <JvInput v-model="trainName" placeholder="Old Crow-trained" width="name" />
+          </JvField>
+          <JvField label="Base engine" layout="block">
+            <JvSelect v-model="trainEngine" :options="engineOptions" placeholder="Pick an engine…" width="name" />
+          </JvField>
+          <JvField label="Method" layout="block">
+            <JvSelect v-model="trainMethod" :options="TRAIN_METHODS.map((m) => ({ label: m.label, value: m.id }))" width="name" />
+          </JvField>
+          <JvField label="Base voice (optional)" layout="block">
+            <JvSelect
+              v-model="trainBaseVoice"
+              :options="[{ label: '— none —', value: '' }, ...voiceOptions]"
+              width="name"
+            />
+          </JvField>
+        </div>
       </div>
 
-      <div class="jv-divider"></div>
-
-      <div>
-        <JvField label="Add reference samples (WAV + spoken transcript per sample)" layout="block">
-          <input type="file" accept="audio/*" multiple class="jv-file-input" @change="addTrainFile" />
-        </JvField>
+      <div class="train-group">
+        <span class="jv-eyebrow">Reference samples</span>
+        <p class="jv-muted train-group__hint">
+          WAV clips of the voice, with what's spoken in each. 5–30 minutes total works
+          best; transcripts are strongly recommended — engines that accept them train faster.
+        </p>
+        <input ref="trainFileInput" type="file" accept="audio/*" multiple style="display: none" @change="addTrainFile" />
+        <div>
+          <JvButton variant="secondary" size="sm" label="＋ Add WAV files…" @click="trainFileInput?.click()" />
+        </div>
 
         <table v-if="samples.length" class="jv-table" style="margin-top: 12px;">
           <thead>
@@ -302,10 +302,39 @@ onUnmounted(() => {
           </tbody>
         </table>
 
-        <p class="jv-muted" style="font-size: 12px; margin-top: 10px;">
-          5–30 min total works best. Transcripts strongly recommended (engines that accept them train faster). Server
-          runs pre-flight QC — bad SNR / clipped / too-silent samples are rejected before training kicks off.
+      </div>
+
+      <div class="train-group">
+        <span class="jv-eyebrow">Sample quality gates</span>
+        <p class="jv-muted train-group__hint">
+          Pre-flight QC — samples failing these are rejected before training starts.
         </p>
+        <div class="train-row">
+          <JvField label="SNR threshold (dB)" layout="block">
+            <JvInput v-model.number="trainSnrThreshold" type="number" placeholder="30" width="token" />
+          </JvField>
+          <JvField label="Max clipping ratio" layout="block">
+            <JvInput v-model.number="trainClipRatio" type="number" step="0.001" placeholder="0.002" width="token" />
+          </JvField>
+          <JvField label="Max silence ratio" layout="block">
+            <JvInput v-model.number="trainSilenceRatio" type="number" step="0.01" placeholder="0.35" width="token" />
+          </JvField>
+        </div>
+      </div>
+
+      <div class="train-group">
+        <span class="jv-eyebrow">Run settings</span>
+        <div class="train-row">
+          <JvField label="Steps" layout="block">
+            <JvInput v-model.number="trainSteps" type="number" placeholder="5000" width="token" />
+          </JvField>
+          <JvField label="Learning rate" layout="block">
+            <JvInput v-model="trainLearningRate" type="number" placeholder="engine default" width="token" />
+          </JvField>
+          <JvField label="Queue concurrency" layout="block">
+            <JvInput v-model.number="trainConcurrency" type="number" placeholder="1" width="token" />
+          </JvField>
+        </div>
       </div>
 
       <div class="jv-row" style="margin-top: 16px;">
@@ -318,7 +347,7 @@ onUnmounted(() => {
           {{ trainBusy ? "Queueing…" : "Queue training job" }}
         </JvButton>
         <span class="jv-muted" style="font-size: 12px;">
-          POST /v1/train → returns 202 with job_id. Engine must have <code class="jv-mono">supports_training</code> = true.
+          {{ submitBlocker || "Runs on the server — only engines that support training can be picked." }}
         </span>
       </div>
     </div>
@@ -393,12 +422,9 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.train-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 4px;
-}
+.train-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+.train-group__hint { font-size: 12px; margin: 0; max-width: 640px; }
+.train-row { display: flex; flex-wrap: wrap; gap: 10px 24px; }
 
 .jv-file-input {
   display: block;
