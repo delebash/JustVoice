@@ -1295,7 +1295,18 @@ watch(selectedProjectId, (id) => {
 </script>
 
 <template>
-  <div class="studio">
+  <div class="studio jv-fill">
+    <p class="studio__pagelede jv-muted">
+      <strong>Studio</strong> turns your written manuscript into a narrated
+      audiobook in three sequential steps — choose voices in
+      <strong>Cast</strong>, let the AI work out who speaks each line in
+      <strong>Script</strong>, then generate the audio chapter by chapter in
+      <strong>Render</strong>, package in <strong>Export</strong>. You can
+      write a whole novel without touching it; it exists for writers who want
+      to produce their own audiobook or hear their prose read aloud as a
+      revision tool.
+    </p>
+
     <!-- ── Project picker ───────────────────────────────────────────── -->
     <div class="jv-section studio__project-bar">
       <label class="studio__project-label">{{ copy.book.singular }}:</label>
@@ -1313,16 +1324,6 @@ watch(selectedProjectId, (id) => {
         Script · {{ headerLlm ? (headerLlm.name || headerLlm.id) : "AI features" }}
       </a>
     </div>
-
-    <p class="studio__pagelede jv-muted">
-      Studio turns your written manuscript into a narrated audiobook in three
-      sequential steps — choose voices in <strong>CAST</strong>, let the AI work
-      out who speaks each line in <strong>SCRIPT</strong>, then generate the
-      audio chapter by chapter in <strong>RENDER</strong>, package in
-      <strong>EXPORT</strong>. You can write a whole novel without touching it;
-      it exists for writers who want to produce their own audiobook or hear
-      their prose read aloud as a revision tool.
-    </p>
 
     <!-- ── Production steps (1 · Cast → 2 · Script → 3 · Render) ────── -->
     <div class="studio__steps">
@@ -2104,15 +2105,25 @@ watch(selectedProjectId, (id) => {
   font-weight: 600;
 }
 
-.studio__cast { display: flex; flex-direction: column; gap: 12px; }
+.studio__cast {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* F4: cast section is the tab's "grow" child within .studio.jv-fill,
+     so only the inner cards scroll — the page itself doesn't. */
+  flex: 1 1 0;
+  min-height: 0;
+}
 .studio__cast-cols {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr);
   gap: 14px;
-  /* S2: row track gives both columns the same explicit height, and
-     align-items: stretch (grid default) makes Characters and Voice
-     library cards match — even when one is empty. */
-  grid-template-rows: min(72vh, 720px);
+  /* S2 + F4: row fills the .studio__cast leftover height, and grid's
+     default align-items:stretch makes Characters and Voice library
+     cards always match — even when one is empty. */
+  grid-template-rows: minmax(0, 1fr);
+  flex: 1 1 0;
+  min-height: 0;
 }
 @media (max-width: 900px) {
   .studio__cast-cols {
