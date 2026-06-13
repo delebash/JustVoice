@@ -2066,7 +2066,7 @@ watch(selectedProjectId, (id) => {
 }
 
 .studio__steps { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.studio__pagelede { font-size: 12.5px; margin: 6px 0 10px; max-width: 880px; }
+.studio__pagelede { font-size: 12.5px; margin: 6px 0 10px; }
 /* V3: cast-card is now a column INSIDE the shared outer jv-card —
    no border, no background, no own card chrome. */
 .studio__cast-card {
