@@ -182,3 +182,109 @@ and its own flaws (e.g. its giant preset dropdown) don't transfer.
 **Honesty:** record false positives and deliberate exceptions so they
 stop re-flagging; state coverage limits explicitly (what the container
 can't exercise; Windows WebView2 rendering needs the user's machine).
+
+
+## Full GUI judgment sweep — findings (2026-06-13)
+
+First run of the canonical two-pass method across the whole app since
+the ⚠ CORRECTION. Method actually executed: real data seeded (Stillwater
+EPUB → audiobook, CSV → game "quest", markdown → "episode"; 7 personas,
+1 lexicon, 4 built-in presets, a cast assignment), then a Playwright
+probe at 1920px over 23 views + Settings' 15 sub-tabs + the modal layer,
+fullPage screenshots READ one by one (not measured). Zero JS errors on
+any surface. Findings land here; FIXES AWAIT THE USER'S GO.
+
+### G-findings (ranked)
+
+**G1 — ChapterView: no-takes block points at a button that isn't there
+(control semantics, real dead-end).** A block with zero takes renders
+"No takes yet — click Regenerate to create the first one."
+(ChapterView.vue:913) but the Regenerate button lives inside the
+`v-else` takes-exist branch (ChapterView.vue:1039) — so in the empty
+state there is NO Regenerate/Generate affordance at all. The first
+render of any block is unreachable from this view. Worst finding:
+it's a broken core path, not cosmetics. Fix = surface a
+Generate/Regenerate control (or route to it) in the no-takes state.
+
+**G2 — Projects lede leaks API jargon (checklist rule 5).** "Multi-use
+Project library. … Imports from JustWrite via POST
+/v1/projects/import?source=justwrite." The endpoint path is internal —
+users don't speak HTTP. Trim to the human sentence.
+
+**G3 — Settings lede leaks internal filenames (checklist rule 5).**
+"Every operator-tunable value. Per CLAUDE.md, no value is hardcoded —
+every knob lives in settings.json." `CLAUDE.md` is an agent-instructions
+file the user never sees; `settings.json` is an implementation detail.
+(Distinct from the Settings → About API-reference TABLE, which documents
+endpoints on purpose — that's correct and stays.)
+
+**G4 — ProviderForm: two bare unstyled `<select>` (control
+consistency).** `provider_type` (ProviderForm.vue:360) and
+`response_format` (:442) are raw `<select>` with NO class — they render
+as OS-native dropdown chrome (visible in the screenshot as the only
+control on the page not matching the design). The app's two accepted
+styled patterns are JvSelect (8 files) and `<select class="jv-input">`
+(22 instances); these two are the only ones outside both. Worst on
+Windows WebView2. Fix = give them `jv-input`(+width token) or JvSelect.
+NB: ProviderForm's checkboxes ARE `.jv-check` (self_hosted/LLM/TTS) —
+the bc9ee48 sweep held; not a finding.
+
+**G5 — Modal header convention split (minor consistency).** Two shells
+coexist: AppModal renders eyebrow + title + ×-top-right (Import,
+EffectsChainEditor — clean), while AppDialog/promptDialog renders a
+bare title with the × on its own line below it, left-aligned
+(lexicon-create, prune-by-voice). The below-title left × reads as
+awkward next to the AppModal pattern. Judgment call: align AppDialog's
+close affordance to the top-right, or accept as the dialog-vs-modal
+distinction. Lowest priority.
+
+### Verified clean this pass (judged, pass the checklist)
+
+ImportReview (first-ever render — styled `.jv-check`, primary "Import N
+chapter →" at the end in reading order, honest "nothing imports until
+you confirm" copy) · Import modal · Lexicon-create modal · Prune-by-
+voice dialog (W1 dry-run flow confirmed in UI) · EffectsChainEditor
+modal · QuickSetup modal · Persona-create modal · Generate (delivery
+overlay, honest disabled-with-reason on Pitch + Delivery-direction) ·
+Studio Cast (two-pane, game NPC table) · Chapter detail except G1 ·
+Generate prose textarea · all 15 Settings sub-tabs (mechanically clean;
+ledes G2/G3 aside) · Stories (now the W3 honest gate).
+
+### False positives / recorded exceptions (do not re-flag)
+
+- Generate SPEED/PITCH/GAIN/TEMPERATURE "wide inputs" = range sliders;
+  full-column is correct.
+- Studio Cast voice-library search (614px) = search over a list; wide
+  is acceptable (resweep nuance).
+- `jv-pill` / `jv-toggle` / `jv-stepcard` / `usecase-chip` /
+  `chapter-view__flow-step` / `ev-chip` / `studio__char-x` /
+  `studio__vrow-main` flagged by the probe's "button without literal
+  jv-btn class" heuristic = all legitimate styled component classes or
+  already-recorded exceptions (F3/F5). The heuristic over-reports;
+  these are not off-canonical buttons.
+- `<select class="jv-input">` (22) vs JvSelect (8) = two accepted styled
+  conventions, not a defect (only the G4 BARE selects deviate).
+- Settings → About API-reference table showing `/v1/...` = intentional
+  API documentation, not lede jargon.
+
+### Coverage limits (honest — needs the user's machine)
+
+- Voice Clone/Design/Blend modals NOT exercised: Clone is correctly
+  disabled without Chatterbox loaded, Design/Blend sit behind a
+  collapsed "Other ways to add a voice" details — no TTS models in the
+  container. Their internals are unjudged this pass.
+- Data states requiring real renders/GPU unjudged: populated take
+  navigators, loaded-engine delivery controls, running train jobs,
+  render-results tables. Seeded projects/personas/lexicons exercised
+  the structural states; audio-bearing states did not.
+- Studio Script step didn't open under the probe (selector timeout) —
+  Cast + Render judged, Script not.
+- Windows WebView2 native rendering (where G4's bare selects look worst)
+  reproduced only approximately under Linux chromium.
+
+### Proposed fix order (queue for go — not started)
+
+1. G1 ChapterView no-takes affordance (broken core path)
+2. G4 ProviderForm two bare selects (one-line each)
+3. G2 + G3 lede de-jargon (Projects, Settings — copy only)
+4. G5 modal header alignment (only if you want it unified)
