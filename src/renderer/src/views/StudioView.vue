@@ -238,6 +238,16 @@ function stepBy(delta) {
 // Live step-card subtitles (item 2; design contract = the JustWrite
 // Audio Studio screenshots): honest counts only — no fake progress.
 const voicedCount = computed(() => projectPersonas.value.filter((p) => p.voice_id).length);
+// Counts shown in the Characters / NPCs section head — narrator is
+// surfaced separately above, so we count characterPersonas for
+// non-game projects and projectPersonas for game projects (no narrator).
+const charactersListLength = computed(() =>
+  isGameProject.value ? projectPersonas.value.length : characterPersonas.value.length,
+);
+const charactersUnassigned = computed(() => {
+  const list = isGameProject.value ? projectPersonas.value : characterPersonas.value;
+  return list.filter((p) => !p.voice_id).length;
+});
 
 // Cast-level engine notice (item 6 — closes the user's voices-and-
 // engine-loading concern at ASSIGN time, not just at preview): says
@@ -1389,18 +1399,53 @@ watch(selectedProjectId, (id) => {
       </div>
 
       <template v-else>
-        <p class="studio__lede">
-          <strong>Cast</strong> maps people to voices: <strong>select a card → click a voice</strong>
-          in the library; click the assigned voice again to unassign. ▶ auditions any voice in
-          place. Smart-assign proposes the whole cast; override card by card.
-        </p>
         <div class="studio__cast-cols jv-card">
         <div class="studio__cast-card">
+
+        <!-- NARRATOR section (JustWrite Audio Studio reference): eyebrow,
+             headline, intent paragraph (smart-assign + cast-maps guidance
+             combined), then the narrator persona row. -->
+        <section v-if="narratorPersona && !isGameProject" class="studio__narrator-section">
+          <span class="jv-eyebrow">NARRATOR</span>
+          <h3 class="studio__narrator-h">The voice of everything that isn't spoken</h3>
+          <p class="studio__narrator-desc jv-muted">
+            <strong>Smart-assign</strong> asks your LLM to match each character's
+            name and role against the available voices and propose an initial
+            cast. <strong>Cast</strong> maps people to voices: select a card →
+            click a voice in the library; click the assigned voice again to
+            unassign. ▶ auditions any voice in place.
+          </p>
+          <article
+            class="jv-card studio__char-card studio__char-card--narrator"
+            :class="{ 'studio__char-card--selected': selectedCharacterId === narratorPersona.id }"
+            @click="selectedCharacterId = narratorPersona.id"
+            title="The narrator carries the prose between quotes — pick your steadiest voice"
+          >
+            <button type="button" class="studio__char-x" title="Remove from this cast — persona stays in the library" @click.stop="removeFromCast(narratorPersona)">✕</button>
+            <span class="studio__char-portrait" :style="{ background: colorFor(narratorPersona.name) }">N</span>
+            <div class="studio__char-main">
+              <div class="studio__char-name-row">
+                <strong class="studio__char-name">{{ narratorPersona.name }}</strong>
+                <span class="jv-pill jv-pill--green">main</span>
+              </div>
+              <div class="studio__char-role jv-muted">{{ personaRole(narratorPersona) || "carries the narration" }}</div>
+              <div v-if="narratorPersona.voice_id" class="studio__char-voice">
+                <span class="studio__char-glyph" :style="{ background: colorFor(voiceById(narratorPersona.voice_id)?.name), color: '#fff' }">{{ (voiceById(narratorPersona.voice_id)?.name || "?").slice(0, 2) }}</span>
+                {{ voiceById(narratorPersona.voice_id)?.name || narratorPersona.voice_id }}
+                <span class="jv-muted">· {{ voiceById(narratorPersona.voice_id)?.engine || "" }}</span>
+                <button type="button" class="jv-rowact" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(narratorPersona.voice_id))">▶</button>
+                <button type="button" class="jv-rowact" title="Tune voice parameters" @click.stop="openVoiceTuner(narratorPersona)">⚙</button>
+              </div>
+              <span v-else class="studio__char-unassigned">⚠ no voice assigned</span>
+            </div>
+          </article>
+        </section>
+
         <div class="studio__cast-card-head">
-          <strong>Characters</strong>
-          <span class="jv-muted" v-if="projectPersonas.length">
-            {{ projectPersonas.length }} character{{ projectPersonas.length === 1 ? "" : "s" }} ·
-            {{ projectPersonas.length - voicedCount }} unassigned
+          <span class="jv-eyebrow">{{ isGameProject ? "NPCS" : "CHARACTERS" }}</span>
+          <span class="jv-muted" v-if="charactersListLength">
+            {{ charactersListLength }} {{ isGameProject ? "NPC" : "character" }}{{ charactersListLength === 1 ? "" : "s" }} ·
+            {{ charactersUnassigned }} unassigned
           </span>
           <span class="jv-spacer" />
           <!-- S1: Cast actions live inside the card they act on
@@ -1435,8 +1480,8 @@ watch(selectedProjectId, (id) => {
           {{ castEngineNotice }}
         </div>
         <div class="studio__cast-scroll">
-        <div v-if="!projectPersonas.length" class="studio__cast-empty">
-          <h4>No cast yet</h4>
+        <div v-if="!charactersListLength" class="studio__cast-empty">
+          <h4>{{ isGameProject ? "No NPCs yet" : "No characters yet" }}</h4>
           <p class="jv-muted">
             Two ways in: run <a href="#studio" @click.prevent="tab = 'script'">2 · Script</a> on a
             {{ copy.chapter.singular.toLowerCase() }} — discovered speakers arrive here as personas —
@@ -1475,34 +1520,8 @@ watch(selectedProjectId, (id) => {
           </tbody>
         </table>
         <div v-else class="studio__cast-grid">
-          <!-- Narrator card -->
-          <article
-            v-if="narratorPersona"
-            class="jv-card studio__char-card studio__char-card--narrator"
-            :class="{ 'studio__char-card--selected': selectedCharacterId === narratorPersona.id }"
-            @click="selectedCharacterId = narratorPersona.id"
-            title="The narrator carries the prose between quotes — pick your steadiest voice"
-          >
-            <button type="button" class="studio__char-x" title="Remove from this cast — persona stays in the library" @click.stop="removeFromCast(narratorPersona)">✕</button>
-            <span class="studio__char-portrait" :style="{ background: colorFor(narratorPersona.name) }">N</span>
-            <div class="studio__char-main">
-              <div class="studio__char-name-row">
-                <strong class="studio__char-name">{{ narratorPersona.name }}</strong>
-                <span class="jv-pill jv-pill--green">main</span>
-              </div>
-              <div class="studio__char-role jv-muted">{{ personaRole(narratorPersona) || "carries the narration" }}</div>
-              <div v-if="narratorPersona.voice_id" class="studio__char-voice">
-                <span class="studio__char-glyph" :style="{ background: colorFor(voiceById(narratorPersona.voice_id)?.name), color: '#fff' }">{{ (voiceById(narratorPersona.voice_id)?.name || "?").slice(0, 2) }}</span>
-                {{ voiceById(narratorPersona.voice_id)?.name || narratorPersona.voice_id }}
-                <span class="jv-muted">· {{ voiceById(narratorPersona.voice_id)?.engine || "" }}</span>
-                <button type="button" class="jv-rowact" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(narratorPersona.voice_id))">▶</button>
-                <button type="button" class="jv-rowact" title="Tune voice parameters" @click.stop="openVoiceTuner(narratorPersona)">⚙</button>
-              </div>
-              <span v-else class="studio__char-unassigned">⚠ no voice assigned</span>
-            </div>
-          </article>
-
-          <!-- Character cards -->
+          <!-- Character cards — narrator now lives in its own
+               .studio__narrator-section above (JustWrite reference). -->
           <article
             v-for="p in characterPersonas"
             :key="p.id"
@@ -2085,6 +2104,31 @@ watch(selectedProjectId, (id) => {
 .studio__cast-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
 .studio__cast-card-head strong { font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2); }
 .studio__cast-card-head .jv-muted { font-size: 12px; }
+
+/* Narrator section (JustWrite Audio Studio reference): eyebrow,
+   headline, intent paragraph, narrator persona row. Sits above the
+   Characters head inside the shared cast card's left column. */
+.studio__narrator-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.studio__narrator-h {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.3;
+}
+.studio__narrator-desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.studio__narrator-desc strong { color: var(--ink); font-weight: 600; }
 .studio__cast-scroll { overflow-y: auto; min-height: 0; flex: 1 1 0; }
 .studio__char-x {
   position: absolute;
