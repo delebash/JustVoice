@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from "vue";
+import { ref, onMounted, onActivated, onDeactivated, onUnmounted, computed } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
@@ -209,6 +209,11 @@ function startPolling() {
     }
   }, 2000);
 }
+function stopPolling() {
+  if (!pollInterval) return;
+  clearInterval(pollInterval);
+  pollInterval = null;
+}
 
 onMounted(async () => {
   await Promise.all([loadEngines(), loadVoices(), refreshTrainJobs()]);
@@ -227,15 +232,16 @@ onMounted(async () => {
       }
     }
   } catch { /* ignore */ }
-  startPolling();
 });
 
-onUnmounted(() => {
-  if (pollInterval) {
-    clearInterval(pollInterval);
-    pollInterval = null;
-  }
-});
+// Polling is bound to view-activation, not mount, because <KeepAlive>
+// keeps the view alive across navigation. onMounted/onUnmounted run
+// once per app lifetime; onActivated/onDeactivated run on every
+// view switch. Without this, the 2s poll would keep hitting the
+// server forever after the first visit.
+onActivated(startPolling);
+onDeactivated(stopPolling);
+onUnmounted(stopPolling);
 </script>
 
 <template>
