@@ -288,11 +288,6 @@ const headerTts = computed(() =>
 const headerLlm = computed(() =>
   (engines.value || []).find((e) => e.status === "loaded" && e.kind === "llm") || null);
 
-// Wizard nav (canonical .jv-wizardnav — promoted to styles.css; reused
-// by Import review next): named targets, bottom-right of the step.
-const wizardPrev = computed(() => visibleTabs.value[stepIndex.value - 1] || null);
-const wizardNext = computed(() => visibleTabs.value[stepIndex.value + 1] || null);
-
 watch([selectedProject, () => tab.value], () => {
   if (tab.value === "script" && !visibleTabs.value.some((t) => t.key === "script")) {
     tab.value = "cast";
@@ -1952,12 +1947,6 @@ watch(selectedProjectId, (id) => {
       @save="onVoiceParamsSaved"
       @cancel="voiceParamsModalOpen = false; tuningVoice = null"
     />
-
-    <!-- Canonical wizard nav — named targets, bottom-right. -->
-    <div v-if="selectedProject" class="jv-wizardnav">
-      <JvButton v-if="wizardPrev" variant="secondary" size="sm" :label="`← ${wizardPrev.label}`" @click="tab = wizardPrev.key" />
-      <JvButton v-if="wizardNext" variant="primary" size="sm" :label="`Next: ${wizardNext.label} ➜`" @click="tab = wizardNext.key" />
-    </div>
 
     <!-- Add an existing library persona to the cast. -->
     <div v-if="addPersonaOpen" class="jv-overlay" @click.self="addPersonaOpen = false">
