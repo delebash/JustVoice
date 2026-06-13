@@ -55,7 +55,7 @@ const ALL_USE_CASES = ["audiobook", "game", "podcast", "dictation", "accessibili
 const VIEWS = [
   // ─── Workflow lane ─────────────────────────────────────────────────
   { id: "overview",  lane: "workflow", label: "Home",      icon: "🏠", lede: "", component: OverviewView },
-  { id: "books",     lane: "workflow", label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Imports from JustWrite via POST /v1/projects/import?source=justwrite.", component: BooksView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "books",     lane: "workflow", label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Import manuscripts from JustWrite, or scripts and audio from other tools.", component: BooksView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "chapter",   lane: "workflow", label: "Chapters",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved.", component: ChapterView, visibleFor: ["audiobook", "podcast", "multiple", "unset"] },
   { id: "lines",     lane: "workflow", label: "Lines",      icon: "🎮", lede: "Every line of the game project — stable ids, characters, derived take status. Re-import the writers\u2019 next sheet (only changed lines go stale), re-render exactly those, export per-line WAVs + manifest.", component: LinesView, visibleFor: ["game", "multiple", "unset"] },
   { id: "studio",    lane: "workflow", label: "Studio",    icon: "🎬", lede: "Cast → Script → Render production environment. Three-tab flow for multi-character work. Cast assigns voices to characters; Script runs LLM speaker attribution (Phase 3 backend); Render batches the whole project.", component: StudioView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
@@ -83,7 +83,7 @@ const VIEWS = [
 
   // ─── Settings — pinned at the very bottom, always visible ──────────
   { id: "labs",      lane: "pinned", label: "Labs",      icon: "🧪", lede: "", component: LabsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "settings",  lane: "pinned", label: "Settings",  icon: "⚙️", lede: "Every operator-tunable value. Per CLAUDE.md, no value is hardcoded — every knob lives in settings.json.", component: SettingsView },
+  { id: "settings",  lane: "pinned", label: "Settings",  icon: "⚙️", lede: "Every tunable setting in one place — nothing is hardcoded, so you can adjust how JustVoice behaves without editing files by hand.", component: SettingsView },
 ];
 
 const LANES = [

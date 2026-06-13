@@ -291,5 +291,8 @@ ledes G2/G3 aside) · Stories (now the W3 honest gate).
    now `class="jv-input jv-w-name"` (the 22-instance inline convention);
    scoped `.pf-row select` override dropped so the canonical box governs.
    Live-verified: zero bare selects in the form.
-3. G2 + G3 lede de-jargon (Projects, Settings — copy only)
+3. ✅ G2 + G3 lede de-jargon — Projects lede drops the POST /v1/... path
+   ("Import manuscripts from JustWrite, or scripts and audio from other
+   tools."); Settings lede drops CLAUDE.md/settings.json ("Every tunable
+   setting in one place — nothing is hardcoded…"). Live-verified absent.
 4. G5 modal header alignment (only if you want it unified)
