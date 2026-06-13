@@ -1404,8 +1404,10 @@ watch(selectedProjectId, (id) => {
 
         <!-- NARRATOR section (JustWrite Audio Studio reference): eyebrow,
              headline, intent paragraph (smart-assign + cast-maps guidance
-             combined), then the narrator persona row. -->
-        <section v-if="narratorPersona && !isGameProject" class="studio__narrator-section">
+             combined), then the narrator persona row. Shows for any
+             non-game project — when there's no narrator persona yet a
+             placeholder slot invites the user to add one. -->
+        <section v-if="!isGameProject" class="studio__narrator-section">
           <span class="jv-eyebrow">NARRATOR</span>
           <h3 class="studio__narrator-h">The voice of everything that isn't spoken</h3>
           <p class="studio__narrator-desc jv-muted">
@@ -1416,6 +1418,7 @@ watch(selectedProjectId, (id) => {
             unassign. ▶ auditions any voice in place.
           </p>
           <article
+            v-if="narratorPersona"
             class="jv-card studio__char-card studio__char-card--narrator"
             :class="{ 'studio__char-card--selected': selectedCharacterId === narratorPersona.id }"
             @click="selectedCharacterId = narratorPersona.id"
@@ -1439,6 +1442,19 @@ watch(selectedProjectId, (id) => {
               <span v-else class="studio__char-unassigned">⚠ no voice assigned</span>
             </div>
           </article>
+          <button
+            v-else
+            type="button"
+            class="studio__narrator-empty"
+            title="Add a Narrator persona to this project — pick one from your library"
+            @click="addPersonaOpen = true"
+          >
+            <span class="studio__char-portrait" :style="{ background: 'var(--surface-3)' }">N</span>
+            <span class="studio__narrator-empty-text">
+              <strong>No narrator yet</strong>
+              <span class="jv-muted">＋ Add a Narrator persona from your library</span>
+            </span>
+          </button>
         </section>
 
         <div class="studio__cast-card-head">
@@ -2129,6 +2145,23 @@ watch(selectedProjectId, (id) => {
   line-height: 1.55;
 }
 .studio__narrator-desc strong { color: var(--ink); font-weight: 600; }
+.studio__narrator-empty {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 14px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+}
+.studio__narrator-empty:hover { border-color: var(--accent); background: var(--accent-soft); }
+.studio__narrator-empty-text { display: flex; flex-direction: column; gap: 2px; }
+.studio__narrator-empty-text strong { font-size: 13.5px; font-weight: 600; }
+.studio__narrator-empty-text .jv-muted { font-size: 12px; }
 .studio__cast-scroll { overflow-y: auto; min-height: 0; flex: 1 1 0; }
 .studio__char-x {
   position: absolute;
@@ -2261,9 +2294,11 @@ watch(selectedProjectId, (id) => {
 
 .studio__voice-library {
   /* V3: pane inside the shared .studio__cast-cols.jv-card — no own
-     card chrome (border / bg / radius set on the wrapper). */
+     card chrome (border / bg / radius set on the wrapper).
+     V5: tint the voice-library pane (surface-2) so it reads distinct
+     from the white Cast pane on the left — JustWrite-style contrast. */
   padding: 14px;
-  background: transparent;
+  background: var(--surface-2);
   border: 0;
   border-radius: 0;
   /* S2: fills the cast-cols row track so it always matches the
