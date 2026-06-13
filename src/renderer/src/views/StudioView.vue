@@ -1320,11 +1320,13 @@ watch(selectedProjectId, (id) => {
     </div>
 
     <p class="studio__pagelede jv-muted">
-      Studio turns your {{ copy.book.singular.toLowerCase() }} into finished audio in
-      {{ visibleTabs.length }} steps — choose voices in <strong>Cast</strong><template
-      v-if="visibleTabs.some((t) => t.key === 'script')">, let the AI work out who speaks
-      each line in <strong>Script</strong></template>, generate audio in
-      <strong>Render</strong>, package in <strong>Export</strong>.
+      Studio turns your written manuscript into a narrated audiobook in three
+      sequential steps — choose voices in <strong>CAST</strong>, let the AI work
+      out who speaks each line in <strong>SCRIPT</strong>, then generate the
+      audio chapter by chapter in <strong>RENDER</strong>, package in
+      <strong>EXPORT</strong>. You can write a whole novel without touching it;
+      it exists for writers who want to produce their own audiobook or hear
+      their prose read aloud as a revision tool.
     </p>
 
     <!-- ── Production steps (1 · Cast → 2 · Script → 3 · Render) ────── -->
