@@ -114,11 +114,18 @@ check these checked nothing):
    buttons"). The ghost variant renders as a thin-bordered quiet
    utility; jv-pill --ghost is a chip SELECTION state, not a button,
    and is exempt.
-7. Row grammar (JustWrite comparison, 2026-06-12): a row touches the
-   right edge only with an action cluster, and something must stretch
-   to meet it — never a fragment orphaned across a spacer. Don't
-   surface internal modes as buttons; let auto-detection move the
-   selection and show provenance as a muted note.
+7. Layout grammar (rewritten 2026-06-12 after the copy-JustWrite
+   correction — "you just decided to copy instead of think"): size
+   every control to its content and let rows END where content ends —
+   never inflate a field to "use" the width; dead space right of
+   well-sized controls is not a defect. Group controls by what they
+   act on (preset actions live beside the preset dropdown). Put the
+   primary action where the eye lands when the user finishes — the end
+   of the form, above its results — not flung to a far edge. Never
+   orphan a fragment across a spacer. Don't surface internal modes as
+   buttons; let auto-detection move the selection and show provenance
+   as a muted note. References (incl. JustWrite) are for extracting
+   PRINCIPLES — copying a reference's layout inherits its flaws.
 
 ## ⛔ RULE #2 — RIGHT THE FIRST TIME (tempo)
 
