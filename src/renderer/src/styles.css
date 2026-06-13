@@ -1503,9 +1503,11 @@ p.note,
   overflow: hidden;
   animation: jvModalIn 0.16s ease-out;
 }
-.jv-dialog__header { padding: 18px 22px 6px; }
+/* Header is a row: title left, close top-right — matches .jv-modal__header
+   (G5: the close used to fall below the title, left-aligned). */
+.jv-dialog__header { padding: 18px 22px 6px; display: flex; align-items: flex-start; gap: 12px; }
 .jv-dialog__title { font-size: 15px; font-weight: 600; margin: 0; }
-.jv-dialog__titleblock { display: flex; flex-direction: column; gap: 4px; }
+.jv-dialog__titleblock { flex: 1; display: flex; flex-direction: column; gap: 4px; }
 .jv-dialog__body { padding: 6px 22px 18px; }
 .jv-dialog__message { color: var(--ink-2); font-size: 13px; line-height: 1.5; margin: 0; }
 .jv-dialog__field { margin-top: 12px; }
@@ -1533,7 +1535,12 @@ p.note,
   cursor: pointer;
   width: 28px; height: 28px;
   border-radius: 6px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
+.jv-dialog__close:hover { background: var(--surface-2); color: var(--ink); }
 
 /* Help drawer (slide-in side panel for per-feature docs) */
 .jv-help-drawer__overlay {

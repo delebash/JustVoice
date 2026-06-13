@@ -295,4 +295,11 @@ ledes G2/G3 aside) · Stories (now the W3 honest gate).
    ("Import manuscripts from JustWrite, or scripts and audio from other
    tools."); Settings lede drops CLAUDE.md/settings.json ("Every tunable
    setting in one place — nothing is hardcoded…"). Live-verified absent.
-4. G5 modal header alignment (only if you want it unified)
+4. ✅ G5 modal header alignment — AppDialog header is now a flex row
+   (title left, close top-right) matching .jv-modal__header; the close
+   no longer drops below the title. Live-verified geometry.
+
+**GUI fix queue COMPLETE (2026-06-13).** All five G-findings shipped,
+one commit each, each live-verified. Spot-verify remains for the
+data-state surfaces the container couldn't exercise (render results,
+loaded-engine controls) — those need the user's machine.
