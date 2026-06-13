@@ -1394,8 +1394,8 @@ watch(selectedProjectId, (id) => {
           in the library; click the assigned voice again to unassign. ▶ auditions any voice in
           place. Smart-assign proposes the whole cast; override card by card.
         </p>
-        <div class="studio__cast-cols">
-        <div class="jv-card studio__cast-card">
+        <div class="studio__cast-cols jv-card">
+        <div class="studio__cast-card">
         <div class="studio__cast-card-head">
           <strong>Characters</strong>
           <span class="jv-muted" v-if="projectPersonas.length">
@@ -2067,16 +2067,20 @@ watch(selectedProjectId, (id) => {
 
 .studio__steps { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .studio__pagelede { font-size: 12.5px; margin: 6px 0 10px; max-width: 880px; }
+/* V3: cast-card is now a column INSIDE the shared outer jv-card —
+   no border, no background, no own card chrome. */
 .studio__cast-card {
   padding: 14px 16px;
   margin: 0;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  /* S2: stretch to the row height set on .studio__cast-cols so the
-     Characters card and Voice library always match — even when empty. */
   height: 100%;
   overflow: hidden;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 .studio__cast-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
 .studio__cast-card-head strong { font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2); }
@@ -2121,14 +2125,20 @@ watch(selectedProjectId, (id) => {
 .studio__cast-cols {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr);
-  gap: 14px;
+  /* V3: shared outer .jv-card — the two columns sit inside it with a
+     hairline divider, no per-column card chrome. */
+  gap: 0;
+  padding: 0;
   /* S2 + F4: row fills the .studio__cast leftover height, and grid's
      default align-items:stretch makes Characters and Voice library
-     cards always match — even when one is empty. */
+     panes always match — even when one is empty. */
   grid-template-rows: minmax(0, 1fr);
   flex: 1 1 0;
   min-height: 0;
+  overflow: hidden;
 }
+/* Hairline between the two panes inside the shared card. */
+.studio__cast-cols > .studio__voice-library { border-left: 1px solid var(--line); }
 @media (max-width: 900px) {
   .studio__cast-cols {
     grid-template-columns: 1fr;
@@ -2206,12 +2216,14 @@ watch(selectedProjectId, (id) => {
 .studio__char-unassigned { font-size: 11.5px; color: var(--warn-ink); display: inline-block; margin-top: 4px; }
 
 .studio__voice-library {
+  /* V3: pane inside the shared .studio__cast-cols.jv-card — no own
+     card chrome (border / bg / radius set on the wrapper). */
   padding: 14px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   /* S2: fills the cast-cols row track so it always matches the
-     Characters card height.
+     Characters pane height.
      V2: aside is a flex column — head + picking banner + search stay
      pinned; only the inner .studio__voice-rows scroller moves. */
   height: 100%;
@@ -2225,6 +2237,13 @@ watch(selectedProjectId, (id) => {
   min-height: 0;
   overflow-y: auto;
 }
+/* V3: seamless scroll — hide the scrollbars on both inner scrollers
+   so the panes look like one continuous card. Mouse-wheel /
+   touch-pad / keyboard scrolling all still work. */
+.studio__cast-scroll,
+.studio__voice-rows { scrollbar-width: none; }
+.studio__cast-scroll::-webkit-scrollbar,
+.studio__voice-rows::-webkit-scrollbar { width: 0; height: 0; }
 .studio__voice-library-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 .studio__voice-library-head .studio__voice-library-h { margin: 0 6px 0 0; }
 .studio__engine-pill { cursor: pointer; font-size: 11px; }
