@@ -357,7 +357,7 @@ async function onSave() {
     <div class="pf-row" v-if="showLlmFields()">
       <div class="pf-f">
         <label title="The wire format the adapter uses. openai-compat covers OpenAI-compatible local servers, DeepSeek, OpenRouter; ollama uses /api/chat for reasoning support.">API format</label>
-        <select v-model="draft.provider_type">
+        <select v-model="draft.provider_type" class="jv-input jv-w-name">
           <option value="anthropic">Anthropic</option>
           <option value="openai">OpenAI</option>
           <option value="openai-compat">OpenAI-compatible</option>
@@ -439,7 +439,7 @@ async function onSave() {
       />
       <div class="pf-f">
         <label>Response format</label>
-        <select v-model="draft.response_format">
+        <select v-model="draft.response_format" class="jv-input jv-w-name">
           <option value="wav">wav (recommended)</option>
           <option value="mp3">mp3</option>
           <option value="pcm">pcm</option>
@@ -518,14 +518,13 @@ async function onSave() {
 }
 .pf-f .pf-opt { text-transform: none; letter-spacing: 0; }
 .pf-row input[type="text"],
-.pf-row input[type="password"],
-.pf-row select {
+.pf-row input[type="password"] {
   font: inherit; font-size: 13px;
   border: 1px solid var(--line); border-radius: 7px;
   padding: 8px 11px; width: 240px;
   background: var(--surface); color: var(--ink);
 }
-.pf-row select { width: auto; min-width: 170px; }
+/* selects use the canonical .jv-input box (G4) — no scoped override */
 .pf-wide input { width: 340px; }
 
 /* Model combobox affordance — caret over the input, hint line under. */

@@ -287,6 +287,9 @@ ledes G2/G3 aside) · Stories (now the W3 honest gate).
 1. ✅ G1 ChapterView no-takes affordance — empty state now renders a
    primary "▶ Generate first take" button (reuses regenerateBlock,
    which resolves the cast voice or asks) + honest hint. Live-verified.
-2. G4 ProviderForm two bare selects (one-line each)
+2. ✅ G4 ProviderForm two bare selects — provider_type + response_format
+   now `class="jv-input jv-w-name"` (the 22-instance inline convention);
+   scoped `.pf-row select` override dropped so the canonical box governs.
+   Live-verified: zero bare selects in the form.
 3. G2 + G3 lede de-jargon (Projects, Settings — copy only)
 4. G5 modal header alignment (only if you want it unified)
