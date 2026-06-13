@@ -5,6 +5,74 @@
 
 ---
 
+## 2026-06-13 (remote session) — wiring audit + full GUI judgment sweep, both fixed, MERGED TO MAIN
+
+Branch `claude/busy-davinci-7okyr4`, fast-forwarded into **main** at the
+end (13 commits). Gates green every commit (ruff · 238 pytest · vite
+build · live Playwright/curl, zero JS errors). Sequence followed:
+findings-first ledger → fixes on explicit go, one item per commit.
+
+**Wiring audit (GUI↔API honesty — `docs/plans/2026-06-13-wiring-audit.md`).**
+Ledger of W1–W10, all live-verified. Fixed:
+- **W1** — filtered cache prunes were wiping the WHOLE cache (reproduced):
+  `/v1/cache/clear` now honors only scope + `older_than_days` (mtime) and
+  400s on identity filters; by-voice/by-engine/unfavorited repoint to
+  `DELETE /v1/generations` (gained engine+favorited filters, persona-aware
+  voice match) with its dry-run count shown in the confirm dialog.
+- **W9** (found mid-W1) — `pushToast` dropped `{title,description}`; ~80
+  call sites in 16 views had INVISIBLE toasts. Fixed at the bridge.
+- **W2+W6** — 15 `services/projects.js` methods called `request("VERB",
+  path, body)` against a `request(path,opts)` signature → unparseable URL,
+  threw client-side. Dead buttons restored (Books rename/delete, Webhooks
+  delete, AudioChannels edit/delete, take delete/relabel). Store gained
+  `patch/put/del` helpers. Channel paths `/v1/profiles`→`/v1/personas`.
+- **W4** — `GET /v1/logs/download` now exists; **USER DECISION**: file-
+  backed logging added (RotatingFileHandler at `{data_dir}/logs/
+  justvoice.log`, registered at boot beside the ring — the ring dies with
+  the process, a crash/boot-hang is when logs are needed). `data_dir`
+  exposed in `/v1/system/info`; Open-log-file points at the real file.
+- **W5** — API-reference table fixed (`/v1/render_chapter`, `/v1/personas`).
+- **W7** — duplicate `projects_api` include dropped (routes 201→177).
+- **W3** (user: gate) — StoriesView called nonexistent `/v1/stories`;
+  replaced with an honest "Timeline isn't built yet" card (no-engine-lede
+  precedent) linking to Episodes + Studio. Real Timeline = its own plan.
+- **W8** (user: keep all) — 7 orphan routes retained; `engines/setup` +
+  `models/progress` retire later as their own item.
+- W10 (recorded, not fixed) — `scripts/e2e.mjs` step 2 (CSV import) is
+  stale at HEAD; needs updating to the current ImportModal flow.
+- NOT done: param-honesty for `/v1/generate` + `/v1/render_chapter` (only
+  the destructive endpoints were audited).
+
+**Full GUI judgment sweep (`docs/plans/2026-06-12-design-conformance-audit.md`
+§Full GUI judgment sweep).** FIRST whole-app run of the canonical two-pass
+method since the ⚠ CORRECTION (prior "clean" was probe-level only). Real
+data seeded (Stillwater/quest/episode projects + personas/lexicon/presets),
+23 views + 15 Settings sub-tabs + the modal layer screenshot-judged, zero
+JS errors. G1–G5 all fixed:
+- **G1** — ChapterView no-takes block referenced a Regenerate button that
+  only rendered when takes existed → no first-render path. Added "▶
+  Generate first take" (reuses `regenerateBlock`).
+- **G4** — ProviderForm's two BARE `<select>` (provider_type,
+  response_format) → `class="jv-input jv-w-name"` (the 22-instance inline
+  convention); scoped override dropped.
+- **G2+G3** — Projects + Settings ledes de-jargoned (no more `/v1/...`
+  path, `CLAUDE.md`, `settings.json`).
+- **G5** — AppDialog close moved to top-right on the title row, matching
+  AppModal.
+- Coverage limits (need user's machine): Clone/Design/Blend modals (need
+  Chatterbox loaded), render-results/loaded-engine/train-job data states,
+  Windows WebView2 native rendering.
+
+**Pending next:** user QC of this batch · **generate/render param-honesty**
+(the one unfinished audit thread) · spot-verify the GUI data-state surfaces
+on a machine with models · podcast **Timeline editor** (biggest parity gap,
+needs its own plan — W3 just gated the placeholder) · JustWrite round-trip
+render leg + webhooks (needs TTS models) · Engines chip convergence
+(ev-chip vs jv-pill, Phase 4) · packaging/PyInstaller · Phase 5 engine
+flips (Chatterbox blend/train).
+
+---
+
 ## 2026-06-12 late → 2026-06-13 (remote session) — QC round 3 + conformance audit + Speaker/Train redesign + JustWrite handshake
 
 All pushed on `claude/nice-franklin-dzisd5` (BOTH repos — justvoice AND
