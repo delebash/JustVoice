@@ -24,7 +24,7 @@
  *   - "chunks" = audio frames for streaming engines; otherwise unused
  */
 import { defineStore } from "pinia";
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 
 const HISTORY_CAP = 50;
 const AUTO_DISMISS_MS = {
@@ -38,7 +38,24 @@ export const useRenderTasks = defineStore("renderTasks", () => {
   const history = ref([]);  // dismissed (capped)
   const panelOpen = ref(false);  // right-side status panel visibility
   const now = ref(Date.now());
-  setInterval(() => { now.value = Date.now(); }, 100);
+  // 10Hz reactive tick drives elapsed-time UI on running tasks. Only run
+  // while there's an active task — without this gate it fires forever
+  // and invalidates every computed/watch that touches `now`, even when
+  // nothing's rendering.
+  let nowTimer = null;
+  function startNowTick() {
+    if (nowTimer) return;
+    nowTimer = setInterval(() => { now.value = Date.now(); }, 100);
+  }
+  function stopNowTick() {
+    if (!nowTimer) return;
+    clearInterval(nowTimer);
+    nowTimer = null;
+  }
+  watch(
+    () => running.value.length,
+    (n) => { n > 0 ? startNowTick() : stopNowTick(); },
+  );
 
   // Pending auto-dismiss timers keyed by task id — used so we can
   // cancel a scheduled dismiss if the user clicks ✕ first.

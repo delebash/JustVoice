@@ -10,11 +10,7 @@
 -->
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import { storeToRefs } from "pinia";
 import { useApi } from "../stores/api.js";
-import { useLexiconsCache } from "../stores/lexiconsCache.js";
-import { usePersonasCache } from "../stores/personasCache.js";
-import { useProjectsCache } from "../stores/projectsCache.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
@@ -23,13 +19,7 @@ import EmptyState from "../components/EmptyState.vue";
 
 const api = useApi();
 
-const lexiconsCache = useLexiconsCache();
-const personasCache = usePersonasCache();
-const projectsCache = useProjectsCache();
-const { data: lexicons, showLoading: loading } = storeToRefs(lexiconsCache);
-const { data: personas } = storeToRefs(personasCache);
-const { data: projects } = storeToRefs(projectsCache);
-
+const lexicons = ref([]);
 const search = ref("");
 const SCOPE_FILTERS = [["all", "All"], ["global", "Reusable"], ["project", "Book"], ["persona", "Persona"]];
 const scopeFilter = ref("all");
@@ -42,7 +32,10 @@ const filteredLexicons = computed(() => {
     (l.entries || []).some((e) => (e.grapheme || "").toLowerCase().includes(q)));
   return list;
 });
+const projects = ref([]);
+const personas = ref([]);
 const selectedId = ref(null);
+const loading = ref(false);
 
 const previewText = ref("");
 const previewResult = ref(""); // text after pronunciation rewrites — best-effort, client-side.
@@ -75,15 +68,20 @@ function scopedToName(lex) {
 const fileInput = ref(null);
 function chooseImportFile() { fileInput.value?.click(); }
 
-// Force-refresh all three caches (used after mutations). Navigations
-// go through `refreshIfStale()` so unchanged data isn't re-fetched
-// on every mount.
 async function refresh() {
-  await Promise.all([
-    lexiconsCache.refresh().catch(() => {}),
-    projectsCache.refresh().catch(() => {}),
-    personasCache.refresh().catch(() => {}),
-  ]);
+  loading.value = true;
+  try {
+    const [lxRes, pRes, prRes] = await Promise.all([
+      api.safeRequest("/v1/lexicons", { lexicons: [] }),
+      api.safeRequest("/v1/projects", { projects: [] }),
+      api.safeRequest("/v1/personas", { personas: [] }),
+    ]);
+    lexicons.value = lxRes?.lexicons ?? [];
+    projects.value = pRes?.projects ?? [];
+    personas.value = prRes?.personas ?? [];
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function createLexicon() {
@@ -305,12 +303,7 @@ function runPreview() {
 }
 
 onMounted(async () => {
-  // SWR: paint cached lists immediately, background-fetch only when stale.
-  await Promise.all([
-    lexiconsCache.refreshIfStale(),
-    projectsCache.refreshIfStale(),
-    personasCache.refreshIfStale(),
-  ]);
+  await refresh();
   // Fix-it loop handoff (journeys fixit journey): Chapters/Studio flag a
   // misread word → it arrives here prefilled, ready for a pronunciation.
   try {

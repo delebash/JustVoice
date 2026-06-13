@@ -419,11 +419,15 @@ onMounted(async () => {
   } else {
     clearInterval(tick);
   }
-  // Steady poll AFTER boot — without it the header engine pill freezes at
-  // its boot value ("No engine") even after the user loads one.
-  setInterval(refresh, 5000);
+  // Refresh on tab return to foreground — covers the case where the user
+  // changed engine state from another window/CLI while we were inactive.
+  // The 5s background poll this replaces was hitting /v1/health every
+  // 5 seconds for the lifetime of the page, even when nothing changed.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") refresh();
+  });
   // Instant refresh when a view knows state changed (EnginesView after
-  // load/unload dispatches this).
+  // load/unload dispatches this). This is the primary path now.
   window.addEventListener("jv:health-refresh", refresh);
   // Re-run the QuickSetup wizard on demand (Settings → General, Home).
   window.addEventListener("jv:quick-setup", () => { showQuickSetup.value = true; });
@@ -567,7 +571,9 @@ onMounted(async () => {
           </template>
         </p>
         <TaskStrip v-for="task in tasks.running" :key="task.id" :task="task" />
-        <component :is="currentView?.component" />
+        <KeepAlive>
+          <component :is="currentView?.component" :key="currentView?.id" />
+        </KeepAlive>
       </div>
     </main>
 

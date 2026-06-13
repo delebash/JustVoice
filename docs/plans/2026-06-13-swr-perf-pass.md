@@ -1,125 +1,115 @@
-# SWR perf pass — 2026-06-13
+# Slowness root-cause pass — 2026-06-13
 
-**Status:** Phase 1 shipped on `claude/dreamy-rubin-91lsr3` (commits
-ba406d3 → f447fd4). Phase 2 audit complete, fixes pending.
+**Status:** SUPERSEDES the SWR work from earlier in the day. Phase A
+(real root-cause fixes) shipped on `claude/dreamy-rubin-91lsr3`;
+Phase B (delete the SWR infrastructure) shipped in the same series.
 
-## Why
+## Why this exists
 
-User catch, 2026-06-13: *"this app is slow it keeps checking for
-things, every time i switch to project view i see loading msg for 1
-sec even when no projects."*
+User catch: *"this app is slow it keeps checking for things, every time
+i switch to project view i see loading msg for 1 sec even when no
+projects."*
 
-Root cause: every list-view did `onMounted(refresh)` with no
-in-memory cache, and the loading flag flipped true on every cold
-fetch — including empty-result responses, so the user saw the worst
-possible UX (a "Loading…" skeleton that appears and disappears under
-a second).
+A first pass treated this as a stale-data problem and shipped an SWR
+cache layer (`_swrFactory.js` + 5 per-resource caches, with 4 views
+migrated). The user pushed back: *"I am worried we are putting in a
+fix that masks the real problem of the slowness, can you do a deep
+dive on the slowness everything should be responsive without special
+cache."*
 
-## Phase 1 — SHIPPED
+The deep dive proved them right.
 
-Three commits:
+## Measurement
 
-- **dd49c06** — Revert `071a65c` (which re-fetched `/v1/health` on
-  every view switch as overcorrection for a stale-lede edge case).
-  Health stays one boot fetch + the existing `jv:health-refresh`
-  pub/sub. On-demand checks (preview voice → 409 → ask-to-load
-  dialog) already gate everything that matters.
-- **c93cc1f** — New `stores/projectsCache.js` (SWR for `/v1/projects`).
-  BooksView migrated.
-- **f447fd4** — Extracted the SWR pattern into `stores/_swrFactory.js`.
-  Refactored `projectsCache` onto it. New caches for **voices**,
-  **engines**, **personas**, **lexicons**. VoicesView, PersonasView,
-  LexiconsView migrated.
+`justvoice-server serve` on a fresh boot, empty DB, headless container.
+Sub-10ms cold, sub-3ms warm, on every endpoint the user lists hit:
 
-### SWR semantics (factory contract)
-
-`defineSwrStore({ id, snapshotKey, fetcher, emptyValue })` returns a
-Pinia store hook with:
-
-- Cold paint from `sessionStorage[snapshotKey]` — no blank screen on
-  remount.
-- `refreshIfStale(maxAgeMs = 10_000)` — onMounted's default. Skips if
-  a fetch landed in the SWR window; otherwise fetches in the
-  background while the cached value keeps rendering.
-- `refresh()` — force fetch, used after mutations.
-- `invalidate()` — drops `lastFetchedAt` so the next `refreshIfStale`
-  re-fetches.
-- `showLoading` getter — true ONLY when (a) a fetch is in flight,
-  (b) data is empty, (c) the fetch has been pending ≥250ms, AND (d)
-  the store hasn't been initialized yet this session. Empty-after-
-  fetch is a cached state — switching back doesn't re-fetch.
-
-### Verified Phase 1 gates
-
-- `ruff check server/` — clean.
-- `pytest server/tests/` — 247 passed (up from 238 on the prior
-  audit-recap commit; new SWR work added no python tests but didn't
-  break any).
-- `npm run build:vite` — clean (only the pre-existing vueuse
-  `INVALID_ANNOTATION` warnings, unrelated to SWR).
-- Live `curl` against `justvoice-server serve` on all five SWR
-  endpoints — `/v1/projects`, `/v1/voices`, `/v1/engines`,
-  `/v1/personas`, `/v1/lexicons` — all return the documented
-  `{key: array}` envelope the fetchers expect.
-- Playwright DOM smoke — NOT RUN. Network policy blocks the
-  Chromium download (`npx playwright install chromium` fails).
-  Verification limited to build + curl + import-graph.
-
-## Phase 2 — AUDIT FINDINGS (not yet migrated)
-
-Strong SWR candidates from a grep of `onMounted` against the five
-cached endpoints + the projects list. Listed by view, with the
-endpoints they re-fetch every mount. All would dedupe against the
-existing caches with zero new fetcher code — just swap
-`api.safeRequest(...)` for `cache.refreshIfStale(); cache.data`.
-
-| View | Endpoints currently fetched on every mount | Notes |
+| Endpoint | Cold | Warm |
 |---|---|---|
-| **OverviewView** | engines · voices · personas · projects · lexicons · captures?limit=1 · cache/stats · takes/recent?limit=4 · engines/current | **Biggest win.** Home/Overview is the most-revisited view; ALL five caches plus three uncached. Pair with new caches for `cache/stats` and `takes/recent` later. |
-| **StudioView** | projects · personas · voices · engines | Plus project-scoped `cast` (not cacheable). |
-| **GenerateView** | voices · personas · engines/current · engines/capabilities · takes/recent | First-time-Generate is one of the slowest cold mounts. |
-| **ChapterView** | projects · personas · voices | Plus project-scoped data. |
-| **SettingsView** | projects · personas · engines | Danger-zone counts; provider list. |
-| **SpeakerLabView** | projects | Plus scenes (project-scoped). |
-| **CompareView** | projects | Plus per-project scenes. |
-| **LinesView** | projects | Plus per-project lines. |
-| **RenderLabView** | voices | Trivial swap. |
-| **RenderPresetsView** | personas | Trivial swap. |
-| **CacheView** | voices · engines | Read-only inputs to scope dropdowns. |
+| `/v1/health` | 4.9ms | 1.8ms |
+| `/v1/projects` | 8.5ms | 3.5ms |
+| `/v1/voices` (75-voice catalog) | 3.0ms | 1.9ms |
+| `/v1/engines` (9 engines) | 4.0ms | 2.1ms |
+| `/v1/personas` | 4.2ms | 2.0ms |
+| `/v1/lexicons` | 3.3ms | 1.7ms |
 
-### Views intentionally NOT migrated
+**The API server is not slow.** The 1-second flash was renderer-side.
 
-- **EnginesView** — owns the status-polling loop (install / load
-  progress). The cache exists for the OTHER views; EnginesView itself
-  remains the source of truth and dispatches `jv:health-refresh`
-  after mutations. Documented in `enginesCache.js`.
-- **CapturesView, WebhooksView, AudioChannelsView, EffectsView,
-  TrainView, LabsView, ImportReviewView** — own unique resources not
-  in the five-cache set, OR shell-only views.
+## Real root causes
 
-### Phase 2 execution plan
+1. **No `<KeepAlive>` on `<component :is>`** (`App.vue:570`). Every nav
+   between views fully unmounts the previous component, throwing away
+   its local refs. The next visit starts blank, runs `onMounted`, and
+   shows "Loading…" until a 3ms fetch resolves. Pre-SWR BooksView even
+   set `loading.value = !projects.value.length` — guaranteed true on a
+   fresh mount.
+2. **Forever 5-second `/v1/health` poll** (`App.vue:424`,
+   `setInterval(refresh, 5000)`). Hit the server every 5s for the
+   lifetime of the page so the header engine pill stayed live. The
+   existing `jv:health-refresh` pub/sub already covered every in-app
+   state change.
+3. **10Hz reactive tick** (`renderTasks.js:41`,
+   `setInterval(() => { now.value = Date.now() }, 100)`). Drove
+   elapsed-time UI on running tasks but fired ALWAYS, invalidating
+   every computed/watch that touched `now`, even with zero tasks.
+4. **Loading-flash UX**. Even after #1, a fast first-visit fetch
+   briefly shows "Loading…" and disappears under 100ms — worse UX
+   than no spinner. (Genuine, but tiny; see §"What we kept" below.)
 
-Per RULE #2 (one item, full read, verify, commit; don't batch):
+## Phase A — root-cause fixes (SHIPPED)
 
-1. **OverviewView** — biggest payoff, hits all five caches at once.
-   Also seed two new caches (`cacheStatsCache`,
-   `recentTakesCache`) that GenerateView and Home both want.
-2. **StudioView** — second-most-used.
-3. **GenerateView** — first-time-Generate cold-mount latency.
-4. **ChapterView** — high-frequency view.
-5. **SettingsView** — once per session, but cheap.
-6. The four single-endpoint views in one commit each
-   (SpeakerLab, Compare, Lines, RenderLab, RenderPresets, CacheView).
+- `App.vue:570` → wrap the view in `<KeepAlive>` with a per-view
+  `:key`. Views stay mounted; local `projects = ref([])`, watchers,
+  scroll position, all preserved across navigation.
+- `App.vue:424` → drop `setInterval(refresh, 5000)`. Add
+  `document.addEventListener("visibilitychange", refreshIfVisible)`
+  so we refresh ONLY when the tab returns to foreground. The
+  `jv:health-refresh` pub/sub stays as the primary path.
+- `renderTasks.js:41` → tick now gated on
+  `watch(() => running.value.length, n => n>0 ? start : stop)`.
+  Zero tasks = zero ticks.
 
-Each migration must also force-refresh through the cache on the
-view's own mutation paths (delete, rename, etc.) — same pattern
-already used in BooksView / VoicesView / PersonasView / LexiconsView.
+## Phase B — delete the SWR infrastructure (SHIPPED)
 
-### Post-mutation cross-cache invalidation (Phase 2 caveat)
+Reverted commits `c93cc1f` (projectsCache + BooksView migration) and
+`f447fd4` (_swrFactory + 4 more caches + 3 view migrations). With
+keep-alive, the views' own local refs survive navigation — no Pinia
+caching needed. Deleted files:
 
-Phase 1 caches each handle their OWN mutations. Phase 2 views often
-mutate one resource and care about another (Studio assigns a voice
-to a persona; Generate composes a new persona). Decide per view
-whether to call `otherCache.invalidate()` or `otherCache.refresh()`
-after the mutation. Default: `invalidate()` — the next visit to that
-resource's view re-fetches on its own.
+- `stores/_swrFactory.js`
+- `stores/projectsCache.js`
+- `stores/voicesCache.js`
+- `stores/enginesCache.js`
+- `stores/personasCache.js`
+- `stores/lexiconsCache.js`
+
+`BooksView.vue`, `VoicesView.vue`, `PersonasView.vue`,
+`LexiconsView.vue` restored to direct `services/api` calls.
+
+## What we kept
+
+The dd49c06 revert of 071a65c (the health-on-every-view-switch
+overcorrection) **stays** — it was independent of the SWR work and is
+still the right call. Health refresh is now: boot fetch +
+`jv:health-refresh` pub/sub + visibilitychange.
+
+## Verification
+
+- `ruff check server/` clean.
+- `pytest server/tests/` — 247 passed.
+- `npm run build:vite` clean (only pre-existing vueuse `INVALID_ANNOTATION`).
+- Live curl on `/v1/health`, `/v1/projects`, `/v1/voices`,
+  `/v1/engines`, `/v1/personas`, `/v1/lexicons` — all sub-10ms.
+- Playwright DOM smoke NOT run — network policy blocks the Chromium
+  download in this container.
+
+## What was NOT done (still pending user QC)
+
+- The Phase 2 audit candidate list (OverviewView, StudioView,
+  GenerateView, ChapterView, etc.) is now MOOT — keep-alive solves the
+  underlying problem for every view at once. No per-view migration
+  needed.
+- A 250ms `useDelayedLoading` composable would still help on
+  legitimately slow fetches (model warm-up, network hiccup). NOT yet
+  added — only worth doing if the user reports a flash on a real-world
+  surface after keep-alive ships.

@@ -14,13 +14,7 @@
 -->
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
-import { storeToRefs } from "pinia";
 import { useApi } from "../stores/api.js";
-import { useVoicesCache } from "../stores/voicesCache.js";
-import { useEnginesCache } from "../stores/enginesCache.js";
-import { usePersonasCache } from "../stores/personasCache.js";
-import { useLexiconsCache } from "../stores/lexiconsCache.js";
-import { useProjectsCache } from "../stores/projectsCache.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
@@ -30,19 +24,14 @@ import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 
 const api = useApi();
 
-const personasCache = usePersonasCache();
-const voicesCache = useVoicesCache();
-const enginesCache = useEnginesCache();
-const lexiconsCache = useLexiconsCache();
-const projectsCache = useProjectsCache();
-const { data: personas, showLoading: loading } = storeToRefs(personasCache);
-const { data: voices } = storeToRefs(voicesCache);
-const { data: engines } = storeToRefs(enginesCache);
-const { data: lexicons } = storeToRefs(lexiconsCache);
-const { data: projects } = storeToRefs(projectsCache);
-
+const personas = ref([]);
+const voices = ref([]);
+const engines = ref([]);
+const lexicons = ref([]);
+const projects = ref([]);
 const usage = ref({});  // { persona_id: [{project_id, project_name}, ...] }
 const selectedId = ref(null);
+const loading = ref(false);
 
 const FILTERS = ["all", "used", "unused", "by-project"];
 const filter = ref("all");
@@ -95,25 +84,28 @@ const instructStatus = computed(() => {
     : { ok: false, text: `✗ ${eng?.name || voice.engine} doesn't take direction — this text only guides Smart-assign, not the audio.` };
 });
 
-async function loadAll({ force = false } = {}) {
-  // SWR caches handle de-duplication + the 250ms loading-flash gate.
-  // `force=true` for post-mutation refreshes; default is the
-  // navigation-friendly stale-window check.
-  const mode = force ? "refresh" : "refreshIfStale";
-  await Promise.all([
-    personasCache[mode]().catch(() => {}),
-    voicesCache[mode]().catch(() => {}),
-    enginesCache[mode]().catch(() => {}),
-    lexiconsCache[mode]().catch(() => {}),
-    projectsCache[mode]().catch(() => {}),
-  ]);
-  // Usage isn't cached — it's persona-specific and used only here.
+async function loadAll() {
+  loading.value = true;
   try {
-    const uRes = await api.safeRequest("/v1/personas/usage", { usage: {} });
-    usage.value = uRes?.usage ?? {};
-  } catch { /* keep prior value */ }
-  // No auto-select: the card grid is the landing view; clicking a
-  // card drills into the editor (grid pattern, user decision 2026-06-12).
+    const [pRes, vRes, eRes, lRes, prRes, uRes] = await Promise.all([
+      api.safeRequest("/v1/personas",       { personas: [] }),
+      api.safeRequest("/v1/voices",         { voices: [] }),
+      api.safeRequest("/v1/engines",        { engines: [] }),
+      api.safeRequest("/v1/lexicons",       { lexicons: [] }),
+      api.safeRequest("/v1/projects",       { projects: [] }),
+      api.safeRequest("/v1/personas/usage", { usage: {} }),
+    ]);
+    personas.value = pRes?.personas ?? [];
+    voices.value   = vRes?.voices   ?? [];
+    engines.value  = eRes?.engines  ?? [];
+    lexicons.value = lRes?.lexicons ?? [];
+    projects.value = prRes?.projects ?? [];
+    usage.value    = uRes?.usage    ?? {};
+    // No auto-select: the card grid is the landing view; clicking a
+    // card drills into the editor (grid pattern, user decision 2026-06-12).
+  } finally {
+    loading.value = false;
+  }
 }
 
 function bufferFor(persona) {
@@ -161,7 +153,7 @@ async function createBlank() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, voice_id: null, default_delivery: {} }),
     });
-    await loadAll({ force: true });
+    await loadAll();
     selectedId.value = created.id;
   } catch (e) {
     pushToast({ kind: "error", title: "Failed to create persona", description: String(e?.message ?? e) });
@@ -190,7 +182,7 @@ async function savePersona() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    await loadAll({ force: true });
+    await loadAll();
     dirty.value = false;
     pushToast({ kind: "success", title: "Persona saved" });
   } catch (e) {
@@ -209,7 +201,7 @@ async function removePersona(p) {
   try {
     await api.request(`/v1/personas/${p.id}`, { method: "DELETE" });
     if (selectedId.value === p.id) selectedId.value = null;
-    await loadAll({ force: true });
+    await loadAll();
     pushToast({ kind: "success", message: `${p.name} deleted.` });
   } catch (e) {
     pushToast({ kind: "error", message: `Delete failed: ${e?.message ?? e}` });
@@ -234,7 +226,7 @@ async function deletePersona() {
   try {
     await api.request(`/v1/personas/${snapshot.id}`, { method: "DELETE" });
     selectedId.value = null;
-    await loadAll({ force: true });
+    await loadAll();
     pushToast({
       kind: "success",
       message: `${personaName} deleted.`,
@@ -260,7 +252,7 @@ async function deletePersona() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(body),
             });
-            await loadAll({ force: true });
+            await loadAll();
             selectedId.value = restored?.id || snapshot.id;
             pushToast({ kind: "success", message: `${personaName} restored.` });
           } catch (e) {
@@ -343,7 +335,7 @@ function colorFor(name) {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
-onMounted(() => loadAll());
+onMounted(loadAll);
 </script>
 
 <template>
