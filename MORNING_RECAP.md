@@ -5,6 +5,70 @@
 
 ---
 
+## 2026-06-12 late → 2026-06-13 (remote session) — QC round 3 + conformance audit + Speaker/Train redesign + JustWrite handshake
+
+All pushed on `claude/nice-franklin-dzisd5` (BOTH repos — justvoice AND
+justwrite-app). Gates green every commit (ruff · 223 pytest · vite
+build · live Playwright, zero JS errors). HEAD: 6765167.
+
+**QC round 3 (docs/plans/2026-06-12-qc-round-3-queue.md, ALL DONE):**
+phantom-scroll fix via canonical `.jv-fill` (b6cfcad) · Chapters
+one-line topbar + `.jv-lib-toolbar` selectors + dead Open-Projects CTA
+(`window` is undefined in template expressions!) (2b6fd9a, 67dd4a2) ·
+floating generate bar removed — it was mock furniture w/ a handler-less
+Render button (04f7853) · no-engine lede links to Engines (b566602) ·
+per-tab Labs ledes, duplicate sub-tab h2s removed (9068177) · Train
+LoRA → jv.train.prefill handoff preselects voice (74c666a).
+
+**JustWrite round-trip slice 1 (docs/plans/2026-06-12-justwrite-roundtrip-slice1.md):**
+justwrite-app 4fd1b2d adds Export → JustVoice card +
+services/export/justvoice.js (builds justwrite/v1 doc from project +
+Script attributions, POSTs /v1/projects/import?source=justwrite).
+Verified live in-container: tutorial book → 13 scenes / 88 persona-
+bound blocks / 13 personas. Pending legs: render (needs models),
+webhook notify-back, sidecar spawn.
+
+**Speaker Lab truth redesign (b6a353c):** GET /v1/extraction/config
+serves tier registry + REAL prompt bodies + user template + resolved
+route; analyze-text gains provider_id / user_prompt / confidence_floor;
+dispatch.chat gains provider_override. UI shows exactly what the
+pipeline sends (prompts populated, edited-chip + reset, provider/model
+dropdowns, no "pin" jargon). Backend was always correct — the UI hid it.
+
+**Whole-app conformance audit + fixes (docs/plans/2026-06-12-design-conformance-audit.md, queue COMPLETE):**
+.jv-toptab/.jv-searchbar promoted from Engines (c6923a4) · Render Lab
+rebuild + .jv-eyebrow/.jv-pane-card canonical (261b841) · canonical
+input.jv-check, 12 raw checkboxes + JvCheckbox internals (bc9ee48) ·
+.jv-rowact (Chapters+Studio row actions, 178 buttons) (20aea1d) ·
+width-token pass (b21cde6) · resweep vs new rules (72436de).
+
+**USER DECREES (now CLAUDE.md checklist rules 6-7 — read them):**
+- NO ghost (borderless) buttons — variant restyled outlined at token
+  level (55f639a).
+- Layout grammar: size controls to content, rows END where content
+  ends (never stretch to fill), group controls by what they act on,
+  primary action at the END of the form in reading order. References
+  (JustWrite) are for PRINCIPLES, not copying — "you just decided to
+  copy instead of think" (rule 7 rewritten, 6765167).
+- Questions are QUESTIONS: when the user asks "what do you think" /
+  "what is X", the deliverable is the answer — do NOT code until an
+  explicit "go"/"do it"/"start coding". Three stop-corrections tonight.
+
+**Speaker/Train final form (c3867d1, c3033ab):** Speaker — compact
+run-name, preset actions grouped beside the dropdown, Run at the end of
+config above results, tier pills w/ classifier-moved selection (NO Auto
+button — provenance as muted note). Train — four meaning-groups (What
+to train / Reference samples / Sample quality gates / Run settings),
+styled file picker, jargon line replaced by live plain-English blocker.
+
+**Pending next:** user QC of tonight's batch · round-trip render leg +
+webhooks (user machine, needs TTS models) · Engines chip convergence
+(ev-chip vs jv-pill — reserved for Phase 4 visual direction) ·
+podcast Timeline editor (biggest parity gap, needs own plan) ·
+packaging/PyInstaller · Phase 5 engine flips (Chatterbox blend/train).
+
+---
+
 ## 2026-06-12 (evening) — punch-list bug+design tiers DONE (8 commits)
 
 Fix-it loop with the user testing live on Windows. All shipped + pushed
