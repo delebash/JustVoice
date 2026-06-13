@@ -1379,34 +1379,9 @@ watch(selectedProjectId, (id) => {
           @click="renderAll"
         />
       </template>
-      <template v-if="tab === 'cast' && selectedProject">
-        <span class="jv-spacer" />
-        <JvButton
-          variant="secondary"
-          size="sm"
-          label="＋ Add persona"
-          title="Add an existing library persona to this cast"
-          @click="addPersonaOpen = true"
-        />
-        <JvButton
-          variant="secondary"
-          size="sm"
-          label="✕ Clear cast"
-          :loading="clearCastBusy"
-          :disabled="clearCastBusy || !projectPersonas.some((p) => p.voice_id)"
-          title="Unassign every voice — personas stay"
-          @click="clearCast"
-        />
-        <JvButton
-          variant="primary"
-          size="sm"
-          label="✨ Smart-assign"
-          :loading="smartAssignBusy"
-          :disabled="smartAssignBusy"
-          title="LLM proposes a voice per character from bios + gender hints"
-          @click="smartAssignCast"
-        />
-      </template>
+      <!-- Cast-tab actions moved inside the Characters card head (S1) so
+           they act on the same surface they affect, matching the
+           JustWrite Audio Studio reference. -->
     </div>
 
     <!-- ── Cast tab ─────────────────────────────────────────────────── -->
@@ -1429,6 +1404,34 @@ watch(selectedProjectId, (id) => {
             {{ projectPersonas.length }} character{{ projectPersonas.length === 1 ? "" : "s" }} ·
             {{ projectPersonas.length - voicedCount }} unassigned
           </span>
+          <span class="jv-spacer" />
+          <!-- S1: Cast actions live inside the card they act on
+               (JustWrite Audio Studio reference). -->
+          <JvButton
+            variant="secondary"
+            size="sm"
+            label="＋ Add persona"
+            title="Add an existing library persona to this cast"
+            @click="addPersonaOpen = true"
+          />
+          <JvButton
+            variant="secondary"
+            size="sm"
+            label="✕ Clear cast"
+            :loading="clearCastBusy"
+            :disabled="clearCastBusy || !projectPersonas.some((p) => p.voice_id)"
+            title="Unassign every voice — personas stay"
+            @click="clearCast"
+          />
+          <JvButton
+            variant="primary"
+            size="sm"
+            label="✨ Smart-assign"
+            :loading="smartAssignBusy"
+            :disabled="smartAssignBusy"
+            title="LLM proposes a voice per character from bios + gender hints"
+            @click="smartAssignCast"
+          />
         </div>
         <div v-if="castEngineNotice" class="jv-banner jv-banner--warn" style="font-size:12px; margin-bottom:10px">
           {{ castEngineNotice }}
@@ -2069,7 +2072,7 @@ watch(selectedProjectId, (id) => {
 .studio__steps { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .studio__pagelede { font-size: 12.5px; margin: 6px 0 10px; max-width: 880px; }
 .studio__cast-card { padding: 14px 16px; margin: 0; display: flex; flex-direction: column; min-height: 0; }
-.studio__cast-card-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.studio__cast-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
 .studio__cast-card-head strong { font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2); }
 .studio__cast-card-head .jv-muted { font-size: 12px; }
 .studio__cast-scroll { overflow-y: auto; max-height: 68vh; min-height: 0; }
