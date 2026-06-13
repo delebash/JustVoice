@@ -168,7 +168,7 @@ Operating tempo, mandatory:
   your own output before calling the item complete. If the user has to
   point at a second spot on the same surface, the item wasn't done.
 
-**Failure modes from prior sessions** (signals you missed the relevant memory): proposing Rust anywhere, Docker, asking permission, using native dialogs, hallucinating file paths, re-investigating decisions already made, building a UI element without naming its precedent (RULE #1), batching/skimming through a punch list instead of single-item full reads (RULE #2). If you catch yourself about to do any of these, that's the cue to load the matching memory file.
+**Failure modes from prior sessions** (signals you missed the relevant memory): proposing Rust anywhere, Docker, asking permission, using native dialogs, hallucinating file paths, re-investigating decisions already made, building a UI element without naming its precedent (RULE #1), batching/skimming through a punch list instead of single-item full reads (RULE #2), **masking a performance symptom with a cache/workaround before measuring the actual cost** (2026-06-13: shipped an SWR Pinia-cache layer for a "1s loading flash" without first checking that the API server was sub-10ms; the real causes were no `<KeepAlive>`, a 5s `/v1/health` poll, and a 10Hz reactive tick — all renderer-side, all addressable directly). If you catch yourself about to do any of these, that's the cue to load the matching memory file.
 
 ## Architecture
 
