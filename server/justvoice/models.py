@@ -926,6 +926,20 @@ class Delivery(BaseModel):
     pause_after: int | None = None
     gain_db: float | None = None
     instruct: str | None = None
+    # `style_prompt` is the consistent voice-character field (Qwen3's
+    # "this character speaks like X"). Distinct from `instruct`, which
+    # shapes per-line delivery. UI surfaces both as separate textareas.
+    style_prompt: str | None = None
+    # Sampling temperature. Engines that support it (Chatterbox,
+    # Qwen3 talker) read `delivery.temperature` directly. Engines
+    # that don't (Kokoro, etc.) ignore it.
+    temperature: float | None = None
+    # Per-render RNG seed. Top-level GenerateRequest.seed remains the
+    # canonical field; this delivery-level seed is honored so the UI
+    # can send a single Delivery object without splitting fields.
+    # generate_api / render_core resolve precedence: delivery.seed
+    # wins over req.seed (a deliberate override).
+    seed: int | None = None
     engine: dict[str, Any] | None = None
 
 

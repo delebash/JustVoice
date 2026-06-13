@@ -306,14 +306,26 @@ async function regenerateBlock(block) {
     onCancel: () => {},
   });
   try {
-    // Render the block text as a single line.
+    // Regen inherits the project's default lexicon so pronunciation
+    // overrides for this chapter don't silently drop on a re-roll.
+    // preset_id is NOT inherited automatically — project.metadata
+    // .render_preset is a UI enum, not a render_presets.id, and the
+    // last-used preset isn't persisted on the block or scene. If
+    // preset inheritance becomes a need, plumb it from the block's
+    // most recent Generation.preset_id (server-side join, since
+    // TakeResponse currently only exposes generation_id).
+    const body = {
+      lines: [{ voice, text: block.text }],
+      between_lines: { silence_ms: 0 },
+    };
+    const project = selectedProjectRec.value;
+    if (project?.default_lexicon_id) {
+      body.lexicons = [project.default_lexicon_id];
+    }
     const blob = await api.request("/v1/render_chapter", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        lines: [{ voice, text: block.text }],
-        between_lines: { silence_ms: 0 },
-      }),
+      body: JSON.stringify(body),
     });
     tasks.update(task.id, { meta: { bytesOut: blob.size } });
     tasks.finish(task.id);

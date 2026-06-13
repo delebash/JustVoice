@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import sys as _sys
 from pathlib import Path as _P
+from typing import Any
 
 _sys.path.insert(0, str(_P(__file__).resolve().parent))
 
@@ -146,6 +147,17 @@ class Qwen3(EmbeddedEngine):
         delivery = req.delivery or {}
         engine_overrides = delivery.get("engine") or {}
         instruct = delivery.get("instruct") or engine_overrides.get("instruct")
+        # Qwen3 only has ONE upstream "instruct" slot, but the UI
+        # surfaces two distinct fields: `style_prompt` (consistent
+        # voice character) and `instruct` (this line's delivery
+        # direction). Merge them — style_prompt sets the voice, instruct
+        # shapes the line. Comma-separated so the model reads them as
+        # a single natural-language instruction.
+        style_prompt = delivery.get("style_prompt") or engine_overrides.get("style_prompt")
+        if style_prompt and instruct:
+            instruct = f"{style_prompt}. {instruct}"
+        elif style_prompt:
+            instruct = style_prompt
         bcp = (req.language or "en").split("-")[0].lower()
         language = _LANG_NAME.get(bcp, "auto")
 
@@ -154,6 +166,24 @@ class Qwen3(EmbeddedEngine):
             if self._device == "cuda" and torch.cuda.is_available():
                 torch.cuda.manual_seed_all(req.seed)
 
+        # Per upstream qwen-tts docs, generate_custom_voice /
+        # generate_voice_clone forward any HuggingFace `model.generate`
+        # kwargs (max_new_tokens, top_p, top_k, temperature, …).
+        # Map JustVoice's UI surface:
+        #   delivery.temperature          → HF temperature (primary slider)
+        #   delivery.engine.talker_*      → HF temperature/top_k/top_p
+        #                                    (the manifest's alias names)
+        # delivery.temperature wins when both are set.
+        hf_kwargs: dict[str, Any] = {}
+        if delivery.get("temperature") is not None:
+            hf_kwargs["temperature"] = float(delivery["temperature"])
+        elif engine_overrides.get("talker_temperature") is not None:
+            hf_kwargs["temperature"] = float(engine_overrides["talker_temperature"])
+        if engine_overrides.get("talker_top_k") is not None:
+            hf_kwargs["top_k"] = int(engine_overrides["talker_top_k"])
+        if engine_overrides.get("talker_top_p") is not None:
+            hf_kwargs["top_p"] = float(engine_overrides["talker_top_p"])
+
         # Two paths: cloning (ref WAV passed via audio_prompt_path) vs. preset.
         # Both return (list[np.ndarray], sample_rate) per the real package surface.
         if req.audio_prompt_path:
@@ -161,6 +191,7 @@ class Qwen3(EmbeddedEngine):
                 req.text,
                 language=language,
                 ref_audio=req.audio_prompt_path,
+                **hf_kwargs,
             )
         elif self._is_base:
             raise RuntimeError(
@@ -174,6 +205,7 @@ class Qwen3(EmbeddedEngine):
                 speaker=req.voice_id,
                 language=language,
                 instruct=instruct or "",
+                **hf_kwargs,
             )
 
         if not arrays:

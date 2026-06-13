@@ -159,11 +159,20 @@ class Chatterbox(EmbeddedEngine):
         # Engine-specific overrides come in through req.delivery.engine.
         delivery = req.delivery or {}
         engine_overrides = delivery.get("engine") or {}
+        # Top-level delivery.temperature is the UI's authoritative path
+        # (the Generate slider). Wins over delivery.engine.temperature
+        # which only exists as a legacy escape hatch.
+        delivery_temperature = delivery.get("temperature")
 
         if req.seed is not None:
             torch.manual_seed(req.seed)
             if self._device == "cuda" and torch.cuda.is_available():
                 torch.cuda.manual_seed_all(req.seed)
+
+        def _temperature(default: float) -> float:
+            if delivery_temperature is not None:
+                return float(delivery_temperature)
+            return float(engine_overrides.get("temperature", default))
 
         if self._is_turbo:
             # Turbo is English-only and takes no language_id / exaggeration /
@@ -171,7 +180,7 @@ class Chatterbox(EmbeddedEngine):
             wav = self.model.generate(
                 req.text,
                 audio_prompt_path=ref_audio,
-                temperature=float(engine_overrides.get("temperature", 0.8)),
+                temperature=_temperature(0.8),
                 top_k=1000,
                 top_p=0.95,
                 repetition_penalty=float(engine_overrides.get("repetition_penalty", 1.2)),
@@ -183,7 +192,7 @@ class Chatterbox(EmbeddedEngine):
                 audio_prompt_path=ref_audio,
                 exaggeration=float(engine_overrides.get("exaggeration", defaults["exaggeration"])),
                 cfg_weight=float(engine_overrides.get("cfg_weight", defaults["cfg_weight"])),
-                temperature=float(engine_overrides.get("temperature", defaults["temperature"])),
+                temperature=_temperature(defaults["temperature"]),
                 repetition_penalty=float(engine_overrides.get("repetition_penalty", defaults["repetition_penalty"])),
             )
 

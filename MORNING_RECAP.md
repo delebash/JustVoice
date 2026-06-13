@@ -5,6 +5,79 @@
 
 ---
 
+## 2026-06-13 (remote session, dreamy-rubin) — KeepAlive side-effect fix + param-honesty audit (Generate dead knobs found, ChapterView regen scope decided)
+
+Branch `claude/dreamy-rubin-91lsr3`. Continuation of the slowness
+session below.
+
+**KeepAlive side-effects audit (`5a7c2d7`).** After 1e846bd wrapped
+`<component :is>` in `<KeepAlive>`, views never unmount between
+navigations. Audited every view with timers/listeners; only TrainView
+was a real regression — its 2s status poll was started in onMounted
+and cleared in onUnmounted, so once opened it would poll forever.
+Fixed: `onActivated(startPolling)` + `onDeactivated(stopPolling)`,
+`onUnmounted` kept as safety net. EnginesView's `jv:health-refresh`
+listener is harmless under KeepAlive (fires only on dispatched
+events). AudioToolsView revokes blob URLs before each new mastering
+pass, so the unmount cleanup wasn't load-bearing. ImportModal is a
+`v-if` child of parent views, not a kept-alive tab. DictateWindow is
+a component, not a view.
+
+**Param-honesty audit (Generate + render_chapter, partial — see
+`docs/plans/2026-06-13-param-honesty-audit.md`).** User asked for
+the audit thread the wiring audit (W1–W10) deliberately left out.
+
+Three CONFIRMED DEAD KNOBS in GenerateView — the UI renders the
+control, the user can interact, but Pydantic silently drops the
+field because UI puts it at the wrong path AND the `Delivery` model
+has no `extra="allow"`:
+
+1. Temperature slider → sent as `delivery.temperature`; model has
+   no such field; Chatterbox reads `delivery.engine.temperature`
+   which the UI never populates. Slider does nothing.
+2. Style-prompt textarea → sent as `delivery.style_prompt`; model
+   has no such field. Qwen3 declares `supports_style_prompt=True`
+   but its adapter only reads `instruct`. Double-dead.
+3. Seed input → sent as `delivery.seed`; the `seed` field is at
+   GenerateRequest TOP LEVEL, not inside Delivery. Every render is
+   non-deterministic regardless of what you type.
+
+**User decision (2026-06-13): keep all three UI controls. Fix the
+SERVER to accept what UI sends.** Don't move the UI to match server.
+
+**ChapterView regen — decided scope.** Current `ChapterView.vue:310`
+sends `{ lines:[{voice,text}], between_lines:{silence_ms:0} }` —
+no `preset_id`, no `lexicons`. Regen silently diverges from the rest
+of the chapter (skips project preset + lexicons). User decision
+(2026-06-13): **no per-block UI control panel.** Mastering / preset
+/ lexicons / per-block delivery / seed are all project-scope; per-
+block overrides silently break consistency. Instead, fix the REQUEST
+to inherit project's `preset_id` + `lexicons` automatically. Keep
+regen as one button (with the existing voice-picker fallback for
+uncast lines, ChapterView.vue:283).
+
+**Queue ALL SHIPPED:** A: regen inherits project's
+`default_lexicon_id` (preset_id deliberately not — project metadata
+stores a UI enum, not a render_presets.id; would require server-side
+join on the block's latest Generation.preset_id, deferred) ·
+B: Delivery model accepts `temperature`, `seed`, `style_prompt` ·
+C: generate_api.py — `delivery.seed` wins over `req.seed` in
+effective-seed resolution · D: Chatterbox reads `delivery
+.temperature` first, falls back to `delivery.engine.temperature` ·
+E: Qwen3 merges `style_prompt` with `instruct` into one
+natural-language directive · F: Qwen3 forwards
+`delivery.temperature` + `talker_temperature`/`talker_top_k`/
+`talker_top_p` to upstream's HF `model.generate` kwargs (verified
+via Context7/WebFetch that `generate_custom_voice` accepts
+HuggingFace generation kwargs). All three Generate-side dead knobs
+now WORK end-to-end for Chatterbox + Qwen3; engines without those
+knobs (Kokoro, etc.) ignore them as before.
+
+Not in this queue: RenderLab + scene-mode `/v1/render_chapter` still
+unaudited.
+
+---
+
 ## 2026-06-13 (remote session, dreamy-rubin) — slowness root-caused, SWR work reverted, keep-alive + poll-removal shipped
 
 Branch `claude/dreamy-rubin-91lsr3`, **NOT yet merged to main**.

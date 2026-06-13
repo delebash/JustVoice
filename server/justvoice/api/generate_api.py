@@ -260,9 +260,15 @@ async def _generate_via_manager(
         }
         return mgr.synth(engine_id, body)
 
+    # Seed resolution: delivery.seed (the UI's authoritative location
+    # since it lives next to other per-render knobs) overrides the
+    # top-level req.seed. Either path produces the same per-chunk
+    # seed math below.
+    effective_seed = delivery.get("seed") if delivery.get("seed") is not None else req.seed
+
     try:
         if len(req.text) <= max_chunk_chars:
-            audio_bytes, meta = _synth_one(req.text, req.seed)
+            audio_bytes, meta = _synth_one(req.text, effective_seed)
             if not meta.get("is_wav_container"):
                 sr = meta.get("sample_rate") or 24000
                 channels = meta.get("channels") or 1
@@ -278,7 +284,7 @@ async def _generate_via_manager(
         for i, piece in enumerate(chunks):
             # Vary seed per chunk to avoid correlated RNG artefacts while
             # staying deterministic for (text, seed) reproducibility.
-            chunk_seed = (req.seed + i) if req.seed is not None else None
+            chunk_seed = (effective_seed + i) if effective_seed is not None else None
             audio_bytes, meta = _synth_one(piece, chunk_seed)
             sample_rate = meta.get("sample_rate") or sample_rate
             channels = meta.get("channels") or channels
