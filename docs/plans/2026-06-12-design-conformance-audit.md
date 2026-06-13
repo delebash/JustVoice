@@ -112,3 +112,46 @@ all 19 surfaces at 1920px against the new rules:
 - **Control semantics**: the Auto-pill and +Add classes were fixed in
   814c233; the remaining semantics layer is inherently per-surface
   judgment and stays a standing QC lens rather than a one-shot pass.
+
+
+## Sweep method (canonical — use this verbatim for the next sweep)
+
+Two passes; neither alone counts. Findings land in this doc FIRST,
+fixes execute only on the user's go, one surface per commit, each
+ending with the whole-view checklist run against the new output.
+Questions from the user during a sweep get answers, not edits.
+
+**Pass 1 — mechanical (automatable probe + greps):**
+native checkboxes/controls (INCLUDING inside modals) · width-token
+violations (>content class, flex-stretch on non-prose) · buttons off
+canonical classes · borderless-render regression (ghost decree) ·
+controls outside card/table/toolbar shells · jargon greps in
+user-facing strings ("pin", endpoint paths, HTTP codes, snake_case
+keys) · zero JS errors per surface.
+
+**Pass 2 — judgment (screenshot per surface, READ, not measured):**
+layout grammar per checklist rule 7 (content-sized, rows end, grouped
+by what controls act on, primary action in reading order — flag BOTH
+stretch-to-fill and orphaned fragments) · control semantics (does the
+control say what it does: internal modes as buttons, wrong intent for
+the role, disabled states without a why, invisible defaults instead of
+resolved truth) · copy read aloud once (duplication, double-named
+fields, placeholder/hint overlap).
+
+**Coverage that prior sweeps skipped — mandatory:**
+the modal layer (Clone/Design/Blend, EffectsChainEditorModal,
+ProviderForm inline edit, QuickSetup, ImportModal) · ImportReview via a
+real dry-run import · data-dependent states (engine loaded, render
+results present, train jobs running, populated history) — empty-state
+screenshots certify nothing about working states.
+
+**Do NOT:**
+re-audit closed findings (spot-verify only) · re-flag recorded
+exceptions (Engines ev-chip = Phase 4; char-x/vrow-main custom
+affordances; prose textareas full width; Home full-row-link CTA) ·
+copy any reference layout — JustWrite is consulted for PRINCIPLES only
+and its own flaws (e.g. its giant preset dropdown) don't transfer.
+
+**Honesty:** record false positives and deliberate exceptions so they
+stop re-flagging; state coverage limits explicitly (what the container
+can't exercise; Windows WebView2 rendering needs the user's machine).
