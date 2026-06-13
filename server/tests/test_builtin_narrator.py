@@ -97,6 +97,50 @@ def test_user_created_persona_still_deletable(client):
     assert r.status_code == 200, r.text
 
 
+def test_ensure_narrator_endpoint_is_idempotent(client):
+    """POST /v1/projects/{id}/narrator creates one on first call, no-ops
+    on second call. Used by the Studio Cast "+ Add Narrator" placeholder
+    so projects that missed the init-time backfill still get one without
+    a server restart."""
+    pid = _create_project(client, "Book", "audiobook")
+    # The create_project path already adds a narrator — calling ensure
+    # should leave the cast unchanged.
+    r1 = client.post(f"/v1/projects/{pid}/narrator")
+    assert r1.status_code == 201, r1.text
+    cast1 = r1.json()["cast"]
+    narrators = [c for c in cast1 if c.get("role_label") == "narrator"]
+    assert len(narrators) == 1
+
+    # Second call: still exactly one.
+    r2 = client.post(f"/v1/projects/{pid}/narrator")
+    assert r2.status_code == 201, r2.text
+    narrators2 = [
+        c for c in r2.json()["cast"] if c.get("role_label") == "narrator"
+    ]
+    assert len(narrators2) == 1
+    assert narrators[0]["persona_id"] == narrators2[0]["persona_id"]
+
+
+def test_ensure_narrator_creates_on_pre_feature_project(client, tmp_path):
+    """Simulate a project that pre-dates the feature: delete the
+    auto-created narrator, then call ensure — it should re-create."""
+    pid = _create_project(client, "Book", "audiobook")
+    narrator = next(
+        p for p in _project_personas(client, pid) if p["name"].lower() == "narrator"
+    )
+    # Detach (builtin protects DELETE persona, but cast-detach is allowed)
+    r = client.delete(f"/v1/projects/{pid}/cast/{narrator['id']}")
+    assert r.status_code == 200, r.text
+    assert not [
+        c for c in client.get(f"/v1/projects/{pid}/cast").json()["cast"]
+        if c.get("role_label") == "narrator"
+    ]
+    # Ensure brings one back.
+    r = client.post(f"/v1/projects/{pid}/narrator")
+    assert r.status_code == 201
+    assert [c for c in r.json()["cast"] if c.get("role_label") == "narrator"]
+
+
 def test_narrator_is_renameable_and_voice_reassignable(client):
     """Builtin protection only blocks DELETE — rename + voice still work."""
     pid = _create_project(client, "Book", "audiobook")

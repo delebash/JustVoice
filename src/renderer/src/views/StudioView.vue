@@ -437,6 +437,27 @@ async function addPersonaToCast(p) {
   }
 }
 
+// Idempotent backend call — creates a builtin Narrator persona for
+// this project + adds it to the cast. Used by the empty-state slot in
+// the Narrator section so pre-feature projects don't need a server
+// restart for the init-time backfill to land.
+const creatingNarrator = ref(false);
+async function createBuiltinNarrator() {
+  if (!selectedProjectId.value || creatingNarrator.value) return;
+  creatingNarrator.value = true;
+  try {
+    await api.request(`/v1/projects/${selectedProjectId.value}/narrator`, {
+      method: "POST",
+    });
+    await loadProjectPersonas(selectedProjectId.value);
+    pushToast({ kind: "success", message: "Narrator added to the cast." });
+  } catch (e) {
+    pushToast({ kind: "error", message: `Add Narrator failed: ${e?.message || e}` });
+  } finally {
+    creatingNarrator.value = false;
+  }
+}
+
 // Remove one persona from this project's cast (item 2 / user-hit: add
 // existed, remove didn't). DELETE endpoint pre-existed; persona stays
 // in the library.
@@ -1455,13 +1476,14 @@ watch(selectedProjectId, (id) => {
             v-else
             type="button"
             class="studio__narrator-empty"
-            title="Add a Narrator persona to this project — pick one from your library"
-            @click="addPersonaOpen = true"
+            :disabled="creatingNarrator"
+            title="Create the project's builtin Narrator persona and add it to the cast"
+            @click="createBuiltinNarrator"
           >
             <span class="studio__char-portrait" :style="{ background: 'var(--surface-3)' }">N</span>
             <span class="studio__narrator-empty-text">
-              <strong>No narrator yet</strong>
-              <span class="jv-muted">＋ Add a Narrator persona from your library</span>
+              <strong>{{ creatingNarrator ? "Adding Narrator…" : "Add Narrator" }}</strong>
+              <span class="jv-muted">Creates the project's builtin Narrator persona — voice is assigned below.</span>
             </span>
           </button>
         </section>

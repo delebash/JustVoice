@@ -546,6 +546,56 @@ async def assign_to_cast(
     return await get_cast(project_id, db)
 
 
+@router.post(
+    "/v1/projects/{project_id}/narrator",
+    response_model=CastResponse,
+    status_code=201,
+)
+async def ensure_narrator(
+    project_id: str, db: Session = Depends(get_db)
+) -> CastResponse:
+    """Idempotent: create a builtin Narrator persona for this project
+    and link it to the cast. Returns the project's cast. If a narrator
+    is already linked, returns the existing cast unchanged.
+
+    UI uses this from the Studio Cast "+ Add Narrator" placeholder so
+    pre-feature projects don't need a server restart for the backfill
+    to land.
+    """
+    p = db.query(Project).filter(Project.id == project_id).first()
+    if not p:
+        raise not_found(f"project {project_id}")
+    existing = (
+        db.query(ProjectPersona)
+        .join(DbPersona, DbPersona.id == ProjectPersona.persona_id)
+        .filter(
+            ProjectPersona.project_id == project_id,
+            DbPersona.name.ilike("narrator"),
+        )
+        .first()
+    )
+    if existing is None:
+        narrator = DbPersona(
+            name="Narrator",
+            bio="The voice of everything that isn't spoken.",
+            personality=(
+                "Steady, clear, unhurried — carries the prose between dialogue."
+            ),
+            is_builtin=True,
+        )
+        db.add(narrator)
+        db.flush()
+        db.add(
+            ProjectPersona(
+                project_id=project_id,
+                persona_id=narrator.id,
+                role_label="narrator",
+            )
+        )
+        db.commit()
+    return await get_cast(project_id, db)
+
+
 @router.delete("/v1/projects/{project_id}/cast/{persona_id}")
 async def remove_from_cast(
     project_id: str, persona_id: str, db: Session = Depends(get_db)
