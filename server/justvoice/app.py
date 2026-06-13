@@ -193,7 +193,8 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     admin_api.install_log_ring()
     admin_api.install_file_log(data_dir)
     app.include_router(sse_streams_api.router)
-    app.include_router(projects_api.router)
+    # (projects_api is included once, in the Phase-5 block above — it was
+    # registered twice until the 2026-06-13 wiring audit, W7.)
 
     # Phase 4a addendum (gap-decision workflow v1.0 endpoints)
     app.include_router(webhooks_api.router)
