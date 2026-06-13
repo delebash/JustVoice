@@ -282,9 +282,11 @@ ledes G2/G3 aside) · Stories (now the W3 honest gate).
 - Windows WebView2 native rendering (where G4's bare selects look worst)
   reproduced only approximately under Linux chromium.
 
-### Proposed fix order (queue for go — not started)
+### Fix queue (executing on user go, 2026-06-13)
 
-1. G1 ChapterView no-takes affordance (broken core path)
+1. ✅ G1 ChapterView no-takes affordance — empty state now renders a
+   primary "▶ Generate first take" button (reuses regenerateBlock,
+   which resolves the cast voice or asks) + honest hint. Live-verified.
 2. G4 ProviderForm two bare selects (one-line each)
 3. G2 + G3 lede de-jargon (Projects, Settings — copy only)
 4. G5 modal header alignment (only if you want it unified)

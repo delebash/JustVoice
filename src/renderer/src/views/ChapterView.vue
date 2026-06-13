@@ -910,7 +910,20 @@ async function savePastedText() {
             v-if="getBlockTakes(block.id).length === 0"
             class="chapter-view__no-takes"
           >
-            No takes yet — click Regenerate to create the first one.
+            <!-- First-render affordance (G1): the Regenerate button below
+                 only exists once takes do, so the empty state used to name
+                 an action with no button. Same handler — it resolves the
+                 cast voice (or asks) and renders the first take. -->
+            <JvButton
+              variant="primary"
+              size="sm"
+              label="▶ Generate first take"
+              :loading="regenBusy.get(block.id)"
+              @click="regenerateBlock(block)"
+            />
+            <span class="jv-muted" style="font-size:12px">
+              No takes yet — generate this {{ copy.line.singular }} to hear it.
+            </span>
           </div>
 
           <template v-else>
@@ -1166,9 +1179,11 @@ async function savePastedText() {
 }
 
 .chapter-view__no-takes {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   color: var(--ink-3);
   font-size: 13px;
-  font-style: italic;
   padding: 4px 0;
 }
 
