@@ -98,7 +98,11 @@ row-click→full-form dialog (library CRUD) · `confirmDialog`/
 
 **Design-conformance checklist** (born 2026-06-12 after a
 geometry-only "sweep" missed control-level slop — a sweep that doesn't
-check these checked nothing):
+check these checked nothing). When asked to SWEEP the app, use the
+canonical method verbatim:
+`docs/plans/2026-06-12-design-conformance-audit.md` §Sweep method
+(two passes incl. screenshot judgment, modal/data-state coverage,
+recorded-exceptions ledger, findings before fixes):
 1. Booleans → `JvToggle`/styled control, never a native checkbox.
 2. Inputs/selects sized by content-typed width tokens (`jv-w-name` /
    `jv-w-id` / `jv-w-token` / `--w-*`) — never full-width stretch
