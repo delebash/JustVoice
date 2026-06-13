@@ -569,7 +569,7 @@ onMounted(async () => {
         <article v-for="(col, i) in columns" :key="i" class="jv-card splab__column">
           <header class="splab__column-h">
             <input v-model="col.label" class="jv-input jv-input--sm splab__column-name" title="Run name" />
-            <JvButton variant="primary" size="sm" :loading="col.busy" :disabled="col.busy" label="▶ Run" @click="runColumn(col)" />
+            <span class="jv-spacer" />
             <button v-if="columns.length > 1" type="button" class="jv-btn jv-btn--ghost jv-btn--sm" title="Remove this column" @click="removeColumn(i)">🗑 Delete column</button>
           </header>
 
@@ -577,18 +577,18 @@ onMounted(async () => {
                PRODUCTION badge, promote/save actions on one line. -->
           <div class="splab__presets">
             <span class="jv-eyebrow">Presets</span>
-            <select :value="col.presetName" class="jv-input jv-input--sm splab__preset-select" title="Load a saved configuration" @change="loadPreset(col, $event.target.value)">
+            <select :value="col.presetName" class="jv-input jv-input--sm jv-w-name" title="Load a saved configuration" @change="loadPreset(col, $event.target.value)">
               <option value="">— defaults —</option>
               <option v-for="p in presets" :key="p.name" :value="p.name">{{ p.name }}</option>
             </select>
             <JvButton v-if="col.presetName" variant="ghost" size="sm" label="🗑" title="Delete this preset" @click="deletePreset(col)" />
+            <JvButton variant="secondary" size="sm" label="＋ Save as" title="Save this column's tweaks as a named preset" @click="savePreset(col)" />
+            <JvButton variant="secondary" size="sm" label="✓ Use as production" title="Freeze this column — model AND prompts — as Studio · Script's attribution method" @click="useAsProduction(col)" />
             <span
               v-if="productionCfg"
               class="jv-pill jv-pill--green splab__prod"
               :title="`Studio · Script currently runs '${productionCfg.name}' (${productionCfg.model || 'route default'}). Revert in Settings → AI features.`"
             >✓ PRODUCTION · {{ productionCfg.name }}</span>
-            <JvButton variant="secondary" size="sm" label="✓ Use as production" title="Freeze this column — model AND prompts — as Studio · Script's attribution method" @click="useAsProduction(col)" />
-            <JvButton variant="secondary" size="sm" label="＋ Save as" title="Save this column's tweaks as a named preset" @click="savePreset(col)" />
           </div>
 
           <!-- Pipeline explainer (JustWrite parity banner) -->
@@ -607,7 +607,7 @@ onMounted(async () => {
           <div class="splab__knobrow">
             <select
               v-model="col.providerId"
-              class="jv-input jv-input--sm splab__route-half"
+              class="jv-input jv-input--sm jv-w-name"
               title="Route this run through a specific LLM provider"
               @change="onProviderChange(col)"
             >
@@ -617,7 +617,7 @@ onMounted(async () => {
             <input
               v-model="col.model"
               :list="`splab-models-${i}`"
-              class="jv-input jv-input--sm splab__route-half splab__model"
+              class="jv-input jv-input--sm jv-w-name splab__model"
               :placeholder="`(provider default — ${effectiveDefaultModel(col) || 'none'})`"
               title="Override the provider's default model; the tier re-derives from it"
               @change="reclassify(col)"
@@ -689,6 +689,11 @@ onMounted(async () => {
             <textarea v-model="col.userPrompt" class="jv-input jv-input--full splab__prompt-text splab__prompt-text--user" />
           </div>
 
+          <div class="splab__runrow">
+            <JvButton variant="primary" :loading="col.busy" :disabled="col.busy" label="▶ Run" @click="runColumn(col)" />
+            <span v-if="!text.trim()" class="jv-muted splab__runhint">Paste or load a passage above first.</span>
+          </div>
+
           <p v-if="col.error" class="splab__error">{{ col.error }}</p>
 
           <!-- Results — Raw / Parsed under THIS column -->
@@ -748,14 +753,14 @@ onMounted(async () => {
 .splab__columns--single { grid-template-columns: 1fr; }
 .splab__column { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
 .splab__column-h { display: flex; align-items: center; gap: 8px; }
-.splab__column-name { flex: 1; min-width: 120px; font-weight: 600; }
+.splab__column-name { width: var(--w-id); font-weight: 600; }
 
 
 .splab__presets { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .splab__prod { font-size: 10px; white-space: nowrap; }
-.splab__preset-select { flex: 1; min-width: 200px; }
-.splab__route-half { flex: 1; min-width: 220px; }
 .splab__tiersrc { font-size: 11px; }
+.splab__runrow { display: flex; align-items: center; gap: 10px; }
+.splab__runhint { font-size: 12px; }
 .splab__pipeline-note { font-size: 12px; line-height: 1.6; }
 .splab__knobrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .splab__model { font-family: var(--font-mono); font-size: 12px; }
