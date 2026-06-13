@@ -647,6 +647,10 @@ function blendWithVoice() {
 </script>
 
 <template>
+  <!-- Single-root .jv-fill so the page itself doesn't scroll — only the
+       voice catalog list scrolls within its own container. Toolbar +
+       banner + add-more details stay pinned at the top of the pane. -->
+  <div class="voices-view jv-fill">
   <!-- ── Toolbar: search + type filter + + Clone primary action ─────────── -->
   <div class="voices-view__toolbar">
     <JvInput v-model="search" placeholder="Search voices…" width="name" title="Filter by name or id" />
@@ -719,8 +723,8 @@ function blendWithVoice() {
     </p>
   </details>
 
-  <!-- ── Voice catalog table ──────────────────────────────────────────── -->
-  <div class="jv-section" style="margin-top: 14px">
+  <!-- ── Voice catalog table — owns its own scroll lane ───────────────── -->
+  <div class="voices-view__list">
     <table v-if="filteredVoices.length" class="jv-table voices-view__table">
       <thead>
         <tr>
@@ -942,6 +946,7 @@ function blendWithVoice() {
   </div>
 
   <!-- ── Inline inspector (preview parity §Voices voice-inspector card) ── -->
+  </div><!-- /.voices-view.jv-fill — page-scroll-free pane ends here -->
 
   <!-- ── Modal ───────────────────────────────────────────────────────── -->
   <div class="modal-overlay" v-if="modal" @click.self="modal = null">
@@ -1095,6 +1100,21 @@ function blendWithVoice() {
   font-size: 13px;
   color: var(--ink-2);
   margin-top: 4px;
+}
+
+/* Root pane — flex column. Toolbar/banner/details stay pinned, the
+   catalog list scroller (.voices-view__list) takes the leftover height
+   so the OUTER .jv-content never scrolls when the catalog is long. */
+.voices-view {
+  display: flex;
+  flex-direction: column;
+}
+.voices-view__list {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  margin-top: 14px;
 }
 
 /* Toolbar — search + type filter chips + + Clone primary action. */
