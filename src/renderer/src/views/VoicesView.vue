@@ -1,7 +1,11 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup>
 import { ref, onMounted, computed } from "vue";
+import { storeToRefs } from "pinia";
 import { useApi } from "../stores/api.js";
+import { useVoicesCache } from "../stores/voicesCache.js";
+import { useEnginesCache } from "../stores/enginesCache.js";
+import { usePersonasCache } from "../stores/personasCache.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
@@ -13,8 +17,12 @@ import JvField from "../components/jv/JvField.vue";
 import EmptyState from "../components/EmptyState.vue";
 
 const api = useApi();
-const voices = ref([]);
-const engines = ref([]);
+const voicesCache = useVoicesCache();
+const enginesCache = useEnginesCache();
+const personasCacheStore = usePersonasCache();
+const { data: voices } = storeToRefs(voicesCache);
+const { data: engines } = storeToRefs(enginesCache);
+const { data: personas } = storeToRefs(personasCacheStore);
 
 // ── Gender auto-detect + click-cycle override (lift #85). ─────────────
 //
@@ -253,23 +261,19 @@ async function previewVoice(v) {
   }
 }
 
+// Force-refresh all three caches (used after mutations). Navigations
+// go through `refreshIfStale()` on each cache so unchanged data isn't
+// re-fetched on every mount.
 async function refresh() {
-  try {
-    const v = await api.request("/v1/voices");
-    voices.value = v?.voices ?? [];
-  } catch { voices.value = []; }
-  try {
-    const e = await api.request("/v1/engines");
-    engines.value = e?.engines ?? [];
-  } catch { engines.value = []; }
-  try {
-    const p = await api.request("/v1/personas");
-    personas.value = p?.personas ?? [];
-  } catch { personas.value = []; }
+  await Promise.all([
+    voicesCache.refresh().catch(() => {}),
+    enginesCache.refresh().catch(() => {}),
+    personasCacheStore.refresh().catch(() => {}),
+  ]);
 }
 
 // ── "Cast as" — which personas a voice backs (CONCEPTS §2). ──────────
-const personas = ref([]);
+// `personas` comes from the personasCache (storeToRefs at the top).
 const castAsByVoice = computed(() => {
   const map = {};
   for (const p of personas.value) {
@@ -301,7 +305,13 @@ async function deleteVoice(id) {
   }
 }
 
-onMounted(refresh);
+onMounted(() => {
+  // SWR: cached values render immediately; each cache silently
+  // re-fetches in the background only if older than its stale window.
+  voicesCache.refreshIfStale();
+  enginesCache.refreshIfStale();
+  personasCacheStore.refreshIfStale();
+});
 onMounted(loadSettingsDefault);
 
 // ── Modal state ──────────────────────────────────────────────────────────────

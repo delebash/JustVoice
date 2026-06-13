@@ -35,7 +35,7 @@ const projectsCache = useProjectsCache();
 // SWR-cached list — survives view unmount, instant-paints on revisit,
 // and the `showLoading` getter only flips true when there's nothing to
 // show AND the fetch has been pending ≥250ms (sub-perceptual flash kill).
-const { projects, showLoading: loading } = storeToRefs(projectsCache);
+const { data: projects, showLoading: loading } = storeToRefs(projectsCache);
 
 const copy = useCopy();
 
