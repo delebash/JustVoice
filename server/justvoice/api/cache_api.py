@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from ..app_state import get_state
 from ..database.models import Generation
 from ..database.session import get_db
+from ..errors import bad_request
 from ..models import CacheStats
 
 router = APIRouter(tags=["cache"])
@@ -31,12 +32,47 @@ async def get_stats() -> CacheStats:
 
 
 @router.post("/v1/cache/clear")
-async def clear_cache(scope: str | None = None) -> dict:
+async def clear_cache(
+    scope: str | None = None,
+    older_than_days: float | None = None,
+    voice_id: str | None = None,
+    engine: str | None = None,
+    favorited: str | None = None,
+) -> dict:
+    """Clear cached renders, optionally limited by scope and/or age.
+
+    Cache entries are hash-keyed, so scope + age are the only filters the
+    cache layer can honor. voice_id / engine / favorited are DECLARED here
+    purely to reject them loudly: before 2026-06-13 they were silently
+    dropped, which turned every filtered prune into a full wipe.
+    Voice/engine/favorite pruning operates on DELETE /v1/generations.
+    """
+    unsupported = {
+        k: v
+        for k, v in {
+            "voice_id": voice_id,
+            "engine": engine,
+            "favorited": favorited,
+        }.items()
+        if v is not None
+    }
+    if unsupported:
+        raise bad_request(
+            f"Unsupported cache filter(s) {sorted(unsupported)}: cache entries "
+            "are hash-keyed and carry no voice/engine/favorite identity. "
+            "Use DELETE /v1/generations with these filters instead."
+        )
     st = get_state()
     cache = getattr(st, "_render_cache", None)
+    removed = 0
     if cache is not None:
-        cache.clear(scope)
-    return {"cleared": True, "scope": scope}
+        removed = cache.clear(scope, older_than_days=older_than_days)
+    return {
+        "cleared": True,
+        "scope": scope,
+        "older_than_days": older_than_days,
+        "removed": removed,
+    }
 
 
 class RecentCacheEntry(BaseModel):

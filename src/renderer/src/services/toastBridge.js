@@ -19,10 +19,16 @@ import { toast } from "vue-sonner";
 // legacy positional `ms` arg is still honored as a fallback. Before this,
 // both kind and duration were silently dropped and every toast looked the
 // same — error toasts were indistinguishable from successes.
-export function pushToast({ message, kind, action, duration } = {}, ms) {
-  if (!message) return;
+// `title` + `description` are accepted alongside `message` because ~80
+// call sites across 16 views pass that shape — `if (!message) return`
+// was silently swallowing every one of their toasts (wiring-audit W9,
+// 2026-06-13). Sonner takes `description` natively.
+export function pushToast({ message, title, description, kind, action, duration } = {}, ms) {
+  const text = message ?? title;
+  if (!text) return;
   const opts = {
     duration: duration ?? ms ?? 6000,
+    description,
     action: action ? { label: action.label, onClick: action.fn } : undefined,
   };
   const fn =
@@ -35,7 +41,7 @@ export function pushToast({ message, kind, action, duration } = {}, ms) {
           : kind === "info"
             ? toast.info
             : toast;
-  fn(message, opts);
+  fn(text, opts);
 }
 
 // Dismiss any visible toast (the old dismissToast cleared the single slot).

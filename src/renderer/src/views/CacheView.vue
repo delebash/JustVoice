@@ -1,10 +1,11 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!--
   CacheView — disk-LRU render cache stats + granular prune actions.
-  Preview parity: 4 prune buttons (by-date / by-voice / by-engine /
-  unfavorited) sit above the existing by-scope table. Destructive
-  actions confirm via prompt; the backend filter params land per the
-  `/v1/cache/clear` server-side dispatch.
+  Two storage layers, two prune routes (wiring-audit W1, 2026-06-13):
+  cache bins are hash-keyed so /v1/cache/clear honors ONLY scope + age
+  (and 400s on identity filters); by-voice / by-engine / unfavorited
+  operate on generations via DELETE /v1/generations, whose dry-run
+  default lets the confirm dialog show the real count before deleting.
 -->
 <script setup>
 import { computed, ref, onMounted } from "vue";
@@ -81,15 +82,40 @@ async function purgeScope(scope) {
 async function pruneOlderThan(days) {
   const ok = await confirmDialog({
     title: `Prune entries older than ${days} days?`,
-    message: "Recent entries (last 30 days) are kept. This cannot be undone.",
+    message: `Recent entries (last ${days} days) are kept. This cannot be undone.`,
     danger: true,
     confirmLabel: "Prune",
   });
   if (!ok) return;
   try {
-    await api.request(`/v1/cache/clear?older_than_days=${days}`, { method: "POST" });
+    const r = await api.request(`/v1/cache/clear?older_than_days=${days}`, { method: "POST" });
     await loadStats();
-    pushToast({ kind: "success", title: `Pruned entries older than ${days} days` });
+    pushToast({ kind: "success", title: `Pruned ${r?.removed ?? 0} entries older than ${days} days` });
+  } catch (e) {
+    pushToast({ kind: "error", title: "Prune failed", description: String(e?.message ?? e) });
+  }
+}
+
+// Generation-level prunes. DELETE /v1/generations is dry-run by default,
+// so the confirm dialog shows the real count + size before anything dies.
+async function pruneGenerations(query, label) {
+  try {
+    const dry = await api.request(`/v1/generations?${query}`, { method: "DELETE" });
+    if (!dry?.deleted_count) {
+      pushToast({ kind: "info", title: `Nothing to prune for ${label}` });
+      return;
+    }
+    const ok = await confirmDialog({
+      title: `Prune ${label}?`,
+      message: `Removes ${dry.deleted_count} renders (${fmtMB(dry.freed_bytes || 0)} MB of audio). Cannot be undone.`,
+      danger: true,
+      confirmLabel: "Prune",
+    });
+    if (!ok) return;
+    const r = await api.request(`/v1/generations?${query}&confirm=true`, { method: "DELETE" });
+    await loadStats();
+    await loadPickers();
+    pushToast({ kind: "success", title: `Pruned ${r?.deleted_count ?? 0} renders (${label})` });
   } catch (e) {
     pushToast({ kind: "error", title: "Prune failed", description: String(e?.message ?? e) });
   }
@@ -98,7 +124,7 @@ async function pruneByVoice() {
   // promptDialog with a select — the native prompt() it replaces is
   // banned (returns null in the Tauri webview) and made users TYPE an id.
   const picked = await promptDialog({
-    title: "Prune cache by voice",
+    title: "Prune renders by voice",
     fields: [{
       key: "id",
       label: "Voice",
@@ -106,21 +132,16 @@ async function pruneByVoice() {
       defaultValue: voices.value[0]?.id ?? "",
       options: voices.value.map((v) => ({ value: v.id, label: `${v.name} (${v.id})` })),
     }],
-    confirmLabel: "Prune",
+    confirmLabel: "Continue",
   });
   const id = picked?.id;
   if (!id) return;
-  try {
-    await api.request(`/v1/cache/clear?voice_id=${encodeURIComponent(id)}`, { method: "POST" });
-    await loadStats();
-    pushToast({ kind: "success", title: `Pruned voice "${id}"` });
-  } catch (e) {
-    pushToast({ kind: "error", title: "Prune failed", description: String(e?.message ?? e) });
-  }
+  const name = voices.value.find((v) => v.id === id)?.name ?? id;
+  await pruneGenerations(`voice_id=${encodeURIComponent(id)}`, `voice "${name}"`);
 }
 async function pruneByEngine() {
   const picked = await promptDialog({
-    title: "Prune cache by engine",
+    title: "Prune renders by engine",
     fields: [{
       key: "id",
       label: "Engine",
@@ -128,33 +149,15 @@ async function pruneByEngine() {
       defaultValue: engines.value[0]?.id ?? "",
       options: engines.value.map((e) => ({ value: e.id, label: `${e.name} (${e.id})` })),
     }],
-    confirmLabel: "Prune",
+    confirmLabel: "Continue",
   });
   const id = picked?.id;
   if (!id) return;
-  try {
-    await api.request(`/v1/cache/clear?engine=${encodeURIComponent(id)}`, { method: "POST" });
-    await loadStats();
-    pushToast({ kind: "success", title: `Pruned engine "${id}"` });
-  } catch (e) {
-    pushToast({ kind: "error", title: "Prune failed", description: String(e?.message ?? e) });
-  }
+  const name = engines.value.find((e) => e.id === id)?.name ?? id;
+  await pruneGenerations(`engine=${encodeURIComponent(id)}`, `engine "${name}"`);
 }
 async function pruneUnfavorited() {
-  const ok = await confirmDialog({
-    title: "Prune unfavorited?",
-    message: "Removes all cached renders not pinned as favorites. Favorited entries (★) are preserved.",
-    danger: true,
-    confirmLabel: "Prune unfavorited",
-  });
-  if (!ok) return;
-  try {
-    await api.request(`/v1/cache/clear?favorited=false`, { method: "POST" });
-    await loadStats();
-    pushToast({ kind: "success", title: "Pruned unfavorited entries" });
-  } catch (e) {
-    pushToast({ kind: "error", title: "Prune failed", description: String(e?.message ?? e) });
-  }
+  await pruneGenerations("favorited=false", "unfavorited renders");
 }
 
 async function deleteEntry(id) {
@@ -219,7 +222,7 @@ onMounted(async () => {
         <JvButton variant="danger-outline" :label="`Clear all (${totalSizeGb} GB · ${totalEntries} entries)`" @click="purgeAll" />
       </div>
       <p class="jv-muted cache-view__actions-hint">
-        All destructive actions require confirmation. Filtered prune uses the <code>/v1/cache/clear</code> endpoint with <code>older_than_days</code> / <code>voice_id</code> / <code>engine</code> / <code>favorited</code> query params.
+        Every action asks for confirmation first and shows exactly how many renders it will remove. Favorited (★) renders are never touched by "Prune unfavorited".
       </p>
     </section>
 

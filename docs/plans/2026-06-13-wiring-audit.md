@@ -154,6 +154,17 @@ path at all.
 superseded by `/v1/engines/{id}/install` + `/v1/jobs/{id}` (QuickSetup
 uses those). Decide keep-vs-retire per item at fix time.
 
+### W9 — pushToast title/description silently swallowed app-wide
+(found 2026-06-13 while fixing W1 — CacheView's prune feedback never
+displayed)
+
+`pushToast({ message, … })` (toastBridge.js) bailed on `!message`, but
+~80 call sites across 16 views pass `{ title, description }` — every
+one of those toasts (success AND error feedback for deletes, imports,
+saves, prunes, factory reset…) silently never rendered. Fixed at the
+bridge with W1 (accept `title` as the text + pass `description` through
+to sonner) — one change makes all 80 sites work; no call-site edits.
+
 ### Seed items closed clean (re-verified on current code)
 
 - `POST /v1/voices/{id}/preview` — route EXISTS; VoicesView preview

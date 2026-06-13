@@ -13,9 +13,10 @@ from typing import Optional, Literal
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from ..database import Generation, get_db
+from ..database import Generation, Persona, get_db
 from ..errors import bad_request
 
 
@@ -34,6 +35,8 @@ class BulkDeleteResult(BaseModel):
 @router.delete("/v1/generations", response_model=BulkDeleteResult)
 async def bulk_delete_generations(
     voice_id: Optional[str] = None,
+    engine: Optional[str] = None,
+    favorited: Optional[bool] = None,
     scope: Optional[str] = None,
     status: Optional[OkStatus] = None,
     older_than: Optional[datetime] = None,
@@ -49,17 +52,33 @@ async def bulk_delete_generations(
     count WITHOUT deleting; pass confirm=true to actually delete.
     """
     filters_present = any(
-        v is not None for v in (voice_id, scope, status, older_than, chapter_id, project_id)
+        v is not None
+        for v in (voice_id, engine, favorited, scope, status, older_than, chapter_id, project_id)
     )
     if not filters_present:
         raise bad_request(
             "At least one filter required to prevent accidental nuke-all. "
-            "Use voice_id / scope / status / older_than / chapter_id / project_id."
+            "Use voice_id / engine / favorited / scope / status / older_than / "
+            "chapter_id / project_id."
         )
 
     q = db.query(Generation)
     if voice_id is not None:
-        q = q.filter(Generation.profile_id == voice_id)
+        # A generation knows its voice two ways: legacy rows wrote the voice
+        # id into profile_id verbatim; persona-era rows carry persona_id and
+        # the persona binds the voice. Match both or the filter silently
+        # misses everything written since the persona flip.
+        persona_ids = db.query(Persona.id).filter(Persona.voice_id == voice_id)
+        q = q.filter(
+            or_(
+                Generation.profile_id == voice_id,
+                Generation.persona_id.in_(persona_ids),
+            )
+        )
+    if engine is not None:
+        q = q.filter(Generation.engine == engine)
+    if favorited is not None:
+        q = q.filter(Generation.is_favorited == favorited)
     # scope is the cache_scope from the old storage layer; not in ORM yet —
     # accept it as a no-op for forward compat with the docs.
     if status is not None:

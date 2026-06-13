@@ -10,6 +10,7 @@ import hashlib
 import logging
 import struct
 import threading
+import time
 from collections import OrderedDict
 from pathlib import Path
 
@@ -130,30 +131,51 @@ class RenderCache:
             if len(self._memory) > self._max_memory_entries:
                 self._memory.popitem(last=False)
 
-    def clear(self, scope: str | None = None) -> None:
+    def clear(
+        self, scope: str | None = None, older_than_days: float | None = None
+    ) -> int:
+        """Delete cached entries. Returns the number of files removed.
+
+        `scope` limits deletion to one scope directory; `older_than_days`
+        limits it to files whose mtime is older than the cutoff. Entries
+        are hash-keyed, so age and scope are the ONLY filters the cache
+        can honor — voice/engine/favorite pruning lives on the
+        generations layer (DELETE /v1/generations).
+        """
+        cutoff = (
+            time.time() - older_than_days * 86400.0
+            if older_than_days is not None
+            else None
+        )
+        removed = 0
         with self._lock:
             if scope is None:
-                for child in self._root.iterdir():
-                    if child.is_dir():
-                        for f in child.glob("*.bin"):
-                            f.unlink(missing_ok=True)
-                        try:
-                            child.rmdir()
-                        except OSError:
-                            pass
-                self._memory.clear()
+                dirs = [c for c in self._root.iterdir() if c.is_dir()]
             else:
                 d = self._root / scope
-                if d.exists():
-                    for f in d.glob("*.bin"):
-                        f.unlink(missing_ok=True)
-                    try:
-                        d.rmdir()
-                    except OSError:
-                        pass
-                self._memory = OrderedDict(
-                    (k, v) for k, v in self._memory.items() if k[0] != scope
-                )
+                dirs = [d] if d.exists() else []
+            for child in dirs:
+                for f in child.glob("*.bin"):
+                    if cutoff is not None:
+                        try:
+                            if f.stat().st_mtime >= cutoff:
+                                continue
+                        except OSError:
+                            continue
+                    f.unlink(missing_ok=True)
+                    removed += 1
+                try:
+                    child.rmdir()  # only succeeds if now empty
+                except OSError:
+                    pass
+            # Drop memory entries whose backing file is gone (put() always
+            # writes disk first, so disk is the source of truth here).
+            self._memory = OrderedDict(
+                (k, v)
+                for k, v in self._memory.items()
+                if self._path(k[0], k[1]).exists()
+            )
+        return removed
 
     def stats(self) -> CacheStats:
         scopes: dict[str, ScopeStats] = {}
