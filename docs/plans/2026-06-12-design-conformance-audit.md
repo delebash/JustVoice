@@ -114,6 +114,33 @@ all 19 surfaces at 1920px against the new rules:
   judgment and stays a standing QC lens rather than a one-shot pass.
 
 
+## ⚠ CORRECTION (2026-06-13) — what the resweep did and did NOT certify
+
+User catch ("the full resweep is not done... we never resweeped the
+whole app, did we?"). The resweep section above OVERSTATES. Precisely:
+
+- The resweep was PROBE-LEVEL only: spacer-orphan detection + shell
+  widths via DOM measurement. "Row grammar clean everywhere" means
+  "no spacer-orphans" — nothing more.
+- It ran against the PRE-CORRECTION rule 7 (the stretch-to-meet
+  version, later rewritten in 6765167 after the copy-vs-think
+  correction). It never checked stretch-to-fill, grouping by
+  relatedness, primary-action placement, control semantics, or copy.
+- The canonical method below (screenshot judgment pass, modal +
+  data-state coverage) has only ever been applied to TWO pages:
+  Speaker (c3867d1) and Train (c3033ab). Spot-verify those; every
+  other surface, all modals, ImportReview, and all data-dependent
+  states have NEVER been read against the final standard.
+
+**Therefore: the FULL GUI sweep per the canonical method is still
+PENDING.** What is genuinely complete is the mechanical layer (rules
+1-6 probes: checkboxes, width tokens, button classes, naked controls,
+ghost restyle) at the empty-state level. Sequence agreed with the user
+2026-06-13: wiring audit (docs/plans/2026-06-13-wiring-audit.md) first
+— its fixes may add/remove affordances — then the full judgment sweep
+below across all surfaces. The user's QC batches outrank both when
+they arrive.
+
 ## Sweep method (canonical — use this verbatim for the next sweep)
 
 Two passes; neither alone counts. Findings land in this doc FIRST,

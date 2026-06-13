@@ -63,7 +63,11 @@ styled file picker, jargon line replaced by live plain-English blocker.
 
 **Pending next:** user QC of tonight's batch · **wiring audit**
 (GUI↔API honesty — method + seed list in
-docs/plans/2026-06-13-wiring-audit.md; findings first) · round-trip
+docs/plans/2026-06-13-wiring-audit.md; findings first) · **FULL GUI
+judgment sweep** (canonical method in the audit doc — only Speaker +
+Train ever held to the final standard; the resweep was probe-level
+against the pre-correction rule 7, see the ⚠ CORRECTION section;
+runs AFTER the wiring audit) · round-trip
 render leg + webhooks (user machine, needs TTS models) · Engines chip
 convergence (ev-chip vs jv-pill — reserved for Phase 4 visual
 direction) · podcast Timeline editor (biggest parity gap, needs own
