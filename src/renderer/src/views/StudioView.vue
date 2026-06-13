@@ -1581,6 +1581,9 @@ watch(selectedProjectId, (id) => {
               <span class="studio__voice-search-count jv-muted">{{ filteredVoices.length }}</span>
             </div>
 
+            <!-- V2: only the voice rows scroll — header/picking/search
+                 stay pinned at the top of the aside. -->
+            <div class="studio__voice-rows">
             <!-- Empty-filter state (#L). -->
             <div v-if="!filteredVoices.length" class="jv-muted studio__voice-empty">
               No voices match this filter.
@@ -1666,6 +1669,7 @@ watch(selectedProjectId, (id) => {
             <p class="studio__voice-foot jv-muted">
               Assigned voices show who they're cast as. One voice can play multiple minor characters.
             </p>
+            </div><!-- /.studio__voice-rows -->
           </template>
         </aside>
         </div>
@@ -2207,8 +2211,17 @@ watch(selectedProjectId, (id) => {
   border: 1px solid var(--line);
   border-radius: 10px;
   /* S2: fills the cast-cols row track so it always matches the
-     Characters card height. Internal overflow scrolls within. */
+     Characters card height.
+     V2: aside is a flex column — head + picking banner + search stay
+     pinned; only the inner .studio__voice-rows scroller moves. */
   height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.studio__voice-rows {
+  flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
 }
