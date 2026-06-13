@@ -1046,11 +1046,28 @@ async function loadLogsPreview() {
   if (r?.text) logsPreview.value = r.text;
   else logsPreview.value = "(no recent log lines — server may be offline or logging not yet wired)";
 }
-// "Open log file" removed (wiring-audit W4): the server keeps logs only
-// in an in-memory ring — the ${data_dir}/logs/justvoice.log path the old
-// handler opened has never existed on any install (and it located it via
-// /v1/system, a route that 404s). Download covers the real capability;
-// revisit if file logging ever lands server-side.
+// "Open log file" opens the on-disk rotating log (user decision
+// 2026-06-13, W4 revision: the ring dies with the process — a crash or
+// boot hang is exactly when logs are needed, so the server now writes
+// {data_dir}/logs/justvoice.log and exposes data_dir in system info).
+async function openLogFile() {
+  const tauri = typeof window !== "undefined" ? window.__TAURI__ : null;
+  if (!tauri?.shell?.open) {
+    pushToast({ message: "Open in OS file explorer requires the desktop app.", kind: "warning" });
+    return;
+  }
+  const r = await api.safeRequest("/v1/system/info", null);
+  const logPath = r?.data_dir ? `${r.data_dir}/logs/justvoice.log` : null;
+  if (!logPath) {
+    pushToast({ message: "Couldn't locate the log file — check the server is running.", kind: "error" });
+    return;
+  }
+  try {
+    await tauri.shell.open(logPath);
+  } catch (e) {
+    pushToast({ message: `Couldn't open log: ${e?.message || e}`, kind: "error" });
+  }
+}
 async function downloadRecentLogs() {
   try {
     // requestBlob, not request() — the response is text/plain and
@@ -2412,6 +2429,7 @@ onMounted(() => {
           inspecting auth attempts. Live tail is read from <code class="jv-mono">~/.justvoice/logs/</code>.
         </p>
         <div class="jv-row" style="gap: 8px; margin-bottom: 14px">
+          <JvButton variant="secondary" size="sm" label="📂 Open log file" @click="openLogFile" />
           <JvButton variant="secondary" size="sm" label="📥 Download recent logs" @click="downloadRecentLogs" />
           <JvButton variant="secondary" size="sm" label="📋 Copy last 100 lines" @click="copyRecentLogs" />
         </div>

@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 from fastapi import APIRouter
 from fastapi.responses import PlainTextResponse
@@ -58,6 +60,47 @@ def install_log_ring() -> None:
     root = logging.getLogger()
     if _ring not in root.handlers:
         root.addHandler(_ring)
+
+
+# ── File log (user decision 2026-06-13, wiring-audit W4 revision) ────
+# The ring dies with the process; a crash or boot hang is exactly when
+# logs are needed (this project's history: Windows spawn loops, boot
+# failures). A rotating file at {data_dir}/logs/justvoice.log survives.
+_file_handler: logging.Handler | None = None
+
+
+def install_file_log(data_dir) -> Path | None:
+    """Rotating file handler at {data_dir}/logs/justvoice.log.
+
+    Idempotent per data_dir; if called with a DIFFERENT data_dir (tests
+    create several apps per process), the old handler is closed and
+    replaced so records land in the current app's tree. Returns the log
+    path, or None when the directory isn't writable (never fatal — the
+    ring still works).
+    """
+    global _file_handler
+    log_path = Path(data_dir) / "logs" / "justvoice.log"
+    root = logging.getLogger()
+    if _file_handler is not None:
+        if getattr(_file_handler, "baseFilename", None) == str(log_path):
+            return log_path
+        root.removeHandler(_file_handler)
+        _file_handler.close()
+        _file_handler = None
+    try:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        handler = RotatingFileHandler(
+            log_path, maxBytes=2_000_000, backupCount=3, encoding="utf-8"
+        )
+    except OSError:
+        log.warning("file log unavailable at %s — ring only", log_path)
+        return None
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    )
+    root.addHandler(handler)
+    _file_handler = handler
+    return log_path
 
 
 class LogTailResponse(BaseModel):

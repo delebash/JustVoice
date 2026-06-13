@@ -41,3 +41,21 @@ def test_download_matches_tail_content(client):
 
     assert "tail-parity-marker" in tail
     assert tail == download
+
+
+def test_file_log_written_at_data_dir(client, tmp_path):
+    """W4 revision (user decision 2026-06-13): a rotating file log at
+    {data_dir}/logs/justvoice.log survives the process — the ring dies
+    with a crash, which is exactly when logs are needed."""
+    logging.getLogger("justvoice.test").warning("file-log-marker")
+
+    log_file = tmp_path / "logs" / "justvoice.log"
+    assert log_file.is_file()
+    assert "file-log-marker" in log_file.read_text(encoding="utf-8")
+
+
+def test_system_info_exposes_data_dir(client, tmp_path):
+    """Open-log-file in the desktop shell locates the file through
+    /v1/system/info's data_dir."""
+    r = client.get("/v1/system/info").json()
+    assert r["data_dir"] == str(tmp_path)

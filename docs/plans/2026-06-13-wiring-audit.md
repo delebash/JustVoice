@@ -120,8 +120,15 @@ API layer was never written. The Episodes/Timeline parity rows judged
   (:1055) is in `openLogFile`, fetching `data_dir` to open
   `${data_dir}/logs/justvoice.log` — a file that has NEVER existed
   (the server has no file logging; only the 500-line in-memory ring).
-  The affordance is fiction end to end → removed, noted for revisit if
-  file logging ever lands. Seed item's GPU suspicion: cleared.
+  The affordance was fiction end to end. USER DECISION (2026-06-13,
+  reversing my unilateral removal — trade-off forks get surfaced as
+  options + recommendation, not decided): BACK it instead. The server
+  now writes a rotating file log at {data_dir}/logs/justvoice.log
+  (registered at boot beside the ring — the ring dies with the process
+  and a crash/boot hang is exactly when logs are needed; cf. the
+  Windows spawn-loop history), /v1/system/info exposes data_dir, and
+  the Open-log-file button points at the real file.
+  Seed item's GPU suspicion: cleared.
 - Log download fetches `/v1/logs/download?hours=24` (:1069) — route
   did not exist (only `/v1/logs/tail`). Also used `api.request`, not
   `requestBlob`, so even with a route it would have returned text, not

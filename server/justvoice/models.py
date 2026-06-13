@@ -51,6 +51,9 @@ class SystemInfo(BaseModel):
         description="Detected runtime availability: cuda / metal / coreml / directml / rocm / mlx / cpu",
     )
     ffmpeg: dict[str, Any] | None = None
+    # Server's data directory — lets the desktop shell open on-disk
+    # artifacts (the rotating log file) at their real location.
+    data_dir: str | None = None
 
 
 # ─── Settings ───────────────────────────────────────────────────────────
