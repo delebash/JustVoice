@@ -5,7 +5,65 @@
 
 ---
 
-## 2026-06-13 (remote session) — wiring audit + full GUI judgment sweep, both fixed, MERGED TO MAIN
+## 2026-06-13 (remote session, dreamy-rubin) — SWR perf pass shipped, Phase 2 audit queued
+
+Branch `claude/dreamy-rubin-91lsr3`, **NOT yet merged to main**. 18
+commits beyond main, last three are the SWR work. Gates verified
+this morning by a follow-up session: `ruff check server/` clean ·
+`pytest server/tests/` 247 passed · `npm run build:vite` clean
+(only the pre-existing vueuse `INVALID_ANNOTATION` warnings) · live
+`curl` against `justvoice-server serve` on all five SWR endpoints
+returns the documented envelopes. Playwright DOM smoke NOT RUN —
+network policy blocks the Chromium download in this container.
+
+**SWR perf pass (Phase 1, SHIPPED — `docs/plans/2026-06-13-swr-perf-pass.md`).**
+
+Trigger: user catch *"this app is slow it keeps checking for things,
+every time i switch to project view i see loading msg for 1 sec even
+when no projects."* Root cause: every list-view did
+`onMounted(refresh)` with no in-memory cache, and the loading flag
+flipped true on every cold fetch (including empty-result responses).
+
+- **dd49c06** — Revert `071a65c` (which re-fetched `/v1/health` on
+  every view switch as overcorrection for a stale-lede edge case).
+  Health is one boot fetch + the existing `jv:health-refresh`
+  pub/sub. On-demand checks already gate everything that matters.
+- **c93cc1f** — `stores/projectsCache.js`, BooksView migrated.
+- **f447fd4** — Extracted into `stores/_swrFactory.js`
+  (`defineSwrStore({id, snapshotKey, fetcher, emptyValue})`).
+  Refactored `projectsCache` onto it. Added caches for **voices**,
+  **engines**, **personas**, **lexicons**. VoicesView, PersonasView,
+  LexiconsView migrated.
+
+Factory contract: cold paint from `sessionStorage`,
+`refreshIfStale(maxAgeMs=10s)` is onMounted's default, `refresh()`
+for post-mutation, `invalidate()` to drop the timestamp,
+`showLoading` getter true ONLY when (fetch pending) AND (data empty)
+AND (≥250ms elapsed) AND (not yet initialized this session).
+
+**Phase 2 — AUDIT FINDINGS (NOT migrated, queued in the plan doc).**
+Strong SWR candidates from a grep of `onMounted` against the five
+cached endpoints + projects: OverviewView (engines·voices·personas·
+projects·lexicons — the biggest win), StudioView, GenerateView,
+ChapterView, SettingsView, SpeakerLabView, CompareView, LinesView,
+RenderLabView, RenderPresetsView, CacheView. Migration order, post-
+mutation invalidation strategy, and per-view notes in the plan doc.
+
+**Intentionally NOT migrated:** EnginesView (owns the status-polling
+loop and dispatches `jv:health-refresh` — the cache exists for OTHER
+views). CapturesView / WebhooksView / AudioChannelsView / EffectsView
+/ TrainView / LabsView / ImportReviewView use own resources not in
+the five-cache set, or are shell-only.
+
+**Pending next:** Phase 2 migrations one-at-a-time per RULE #2 ·
+merge `claude/dreamy-rubin-91lsr3` into main once user QCs the
+Phase 1 surfaces on their machine · pick up the prior session's
+pending items below (Timeline editor, generate/render param-honesty,
+JustWrite round-trip render leg).
+
+---
+
+## 2026-06-13 (remote session, busy-davinci) — wiring audit + full GUI judgment sweep, both fixed, MERGED TO MAIN
 
 Branch `claude/busy-davinci-7okyr4`, fast-forwarded into **main** at the
 end (13 commits). Gates green every commit (ruff · 238 pytest · vite
