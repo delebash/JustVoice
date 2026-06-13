@@ -25,19 +25,23 @@ import { confirmDialog } from "../services/dialog.js";
 import { useCopy } from "../services/copy.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useOnboarding } from "../stores/onboarding.js";
-import { readSnapshot, writeSnapshot } from "../services/snapshot.js";
+import { useProjectsCache } from "../stores/projectsCache.js";
+import { storeToRefs } from "pinia";
 
 const api = useApi();
 const activeProject = useActiveProject();
 const onboarding = useOnboarding();
+const projectsCache = useProjectsCache();
+// SWR-cached list — survives view unmount, instant-paints on revisit,
+// and the `showLoading` getter only flips true when there's nothing to
+// show AND the fetch has been pending ≥250ms (sub-perceptual flash kill).
+const { projects, showLoading: loading } = storeToRefs(projectsCache);
 
 const copy = useCopy();
 
-const projects = ref([]);
 const selectedId = ref(null);
 const search = ref("");
 const projectTypeFilter = ref("all");
-const loading = ref(false);
 const showImport = ref(false);
 const showNewProject = ref(false);
 const newProjectKind = ref("");
@@ -133,23 +137,18 @@ const RENDER_PRESETS = [
   { id: "final_ship",    label: "Final ship" },
 ];
 
-const PROJECTS_SNAPSHOT_KEY = "jv.books.snapshot";
+// Mutations (create / delete / update) call `refresh()` to force a
+// re-fetch; navigations use `refreshIfStale()` to revalidate in the
+// background only if the cache window has expired. The store also paints
+// instantly from the last visit's snapshot (constructor reads localStorage).
 async function refresh() {
-  loading.value = !projects.value.length;
   try {
-    const res = await projectsService.list();
-    projects.value = res.projects ?? [];
-    writeSnapshot(PROJECTS_SNAPSHOT_KEY, projects.value);
+    await projectsCache.refresh();
     // No auto-select — rows start collapsed; browsing is explicit.
   } catch (e) {
     pushToast({ kind: "error", title: "Failed to load projects", description: String(e?.message ?? e) });
-  } finally {
-    loading.value = false;
   }
 }
-// Instant paint from the last visit (canonical snapshot pattern —
-// user-hit: "takes a second to list projects").
-projects.value = readSnapshot(PROJECTS_SNAPSHOT_KEY) || [];
 
 async function loadDetail(projectId) {
   if (!projectId) {
@@ -399,7 +398,8 @@ function sceneStatusPill(scene) {
 }
 
 onMounted(() => {
-  refresh();
+  // SWR: paint the cache immediately, fetch in background only if stale.
+  projectsCache.refreshIfStale();
   // Home's Start-something pills hand a kind over via sessionStorage —
   // consume it once and open the kind picker preselected.
   try {
