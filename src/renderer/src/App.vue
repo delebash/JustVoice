@@ -389,13 +389,6 @@ watch(view, (v) => {
   // Clear stale breadcrumb segments when navigating between top-level
   // views — the new view repopulates them on mount if it has context.
   uiContext.clear();
-  // Re-fetch health on view switch so the state-lede + topbar engine
-  // pill always reflect the CURRENT engine slot. Without this the
-  // health snapshot is taken at boot and never updated unless an
-  // engine-loading view (Engines / Voices) fires jv:health-refresh —
-  // loading via MCP / Quick Setup / a CLI then opening Studio leaves
-  // the user staring at "No engine in memory" forever.
-  refresh();
 });
 
 // QuickSetup is opt-in only (Settings → General → Run Quick Setup, via
