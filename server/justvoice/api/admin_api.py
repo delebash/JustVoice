@@ -14,8 +14,10 @@ remove via Engines).
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 
 from fastapi import APIRouter
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import inspect, text
 from pydantic import BaseModel
 
@@ -68,6 +70,24 @@ async def logs_tail(lines: int = 80) -> LogTailResponse:
     lines = max(1, min(lines, _ring.capacity))
     tail = _ring.lines[-lines:]
     return LogTailResponse(text="\n".join(tail), lines=len(tail))
+
+
+@router.get("/v1/logs/download")
+async def logs_download() -> PlainTextResponse:
+    """The full in-memory log ring as a downloadable text file.
+
+    The ring (last 500 lines) is the ONLY log store — there is no file
+    logging — so this serves everything it has and takes no time-window
+    param (wiring-audit W4: the UI used to request ?hours=24 from a
+    route that didn't exist).
+    """
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return PlainTextResponse(
+        "\n".join(_ring.lines),
+        headers={
+            "Content-Disposition": f'attachment; filename="justvoice-logs-{stamp}.txt"'
+        },
+    )
 
 
 class FactoryResetResponse(BaseModel):

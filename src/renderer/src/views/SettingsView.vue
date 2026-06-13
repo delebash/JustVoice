@@ -1046,35 +1046,22 @@ async function loadLogsPreview() {
   if (r?.text) logsPreview.value = r.text;
   else logsPreview.value = "(no recent log lines — server may be offline or logging not yet wired)";
 }
-async function openLogFile() {
-  const tauri = typeof window !== "undefined" ? window.__TAURI__ : null;
-  if (!tauri?.shell?.open) {
-    pushToast({ message: "Open in OS file explorer requires Tauri.", kind: "warning" });
-    return;
-  }
-  const r = await api.safeRequest("/v1/system", null);
-  const logPath = r?.data_dir ? `${r.data_dir}/logs/justvoice.log` : null;
-  if (!logPath) {
-    pushToast({ message: "Couldn't locate log path. Check the server is running.", kind: "error" });
-    return;
-  }
-  try {
-    await tauri.shell.open(logPath);
-  } catch (e) {
-    pushToast({ message: `Couldn't open log: ${e?.message || e}`, kind: "error" });
-  }
-}
+// "Open log file" removed (wiring-audit W4): the server keeps logs only
+// in an in-memory ring — the ${data_dir}/logs/justvoice.log path the old
+// handler opened has never existed on any install (and it located it via
+// /v1/system, a route that 404s). Download covers the real capability;
+// revisit if file logging ever lands server-side.
 async function downloadRecentLogs() {
   try {
-    const blob = await api.request("/v1/logs/download?hours=24");
-    if (blob instanceof Blob) {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `justvoice-logs-${new Date().toISOString().slice(0, 10)}.txt`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }
+    // requestBlob, not request() — the response is text/plain and
+    // request() would hand back a string the anchor can't download.
+    const blob = await api.requestBlob("GET", "/v1/logs/download");
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `justvoice-logs-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   } catch (e) {
     pushToast({ message: `Log download failed: ${e?.message || e}`, kind: "error" });
   }
@@ -1082,7 +1069,7 @@ async function downloadRecentLogs() {
 async function copyRecentLogs() {
   try {
     await navigator.clipboard.writeText(logsPreview.value || "");
-    pushToast({ message: "Last 100 lines copied.", duration: 2000 });
+    pushToast({ message: "Recent log lines copied.", duration: 2000 });
   } catch {
     pushToast({ message: "Clipboard unavailable.", kind: "warning" });
   }
@@ -2425,8 +2412,7 @@ onMounted(() => {
           inspecting auth attempts. Live tail is read from <code class="jv-mono">~/.justvoice/logs/</code>.
         </p>
         <div class="jv-row" style="gap: 8px; margin-bottom: 14px">
-          <JvButton variant="secondary" size="sm" label="📂 Open log file" @click="openLogFile" />
-          <JvButton variant="secondary" size="sm" label="📥 Download last 24h" @click="downloadRecentLogs" />
+          <JvButton variant="secondary" size="sm" label="📥 Download recent logs" @click="downloadRecentLogs" />
           <JvButton variant="secondary" size="sm" label="📋 Copy last 100 lines" @click="copyRecentLogs" />
         </div>
         <pre class="jv-code-block" style="max-height: 280px; overflow: auto; margin: 0">{{ logsPreview }}</pre>

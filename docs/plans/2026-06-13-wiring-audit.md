@@ -115,12 +115,21 @@ API layer was never written. The Episodes/Timeline parity rows judged
 
 ### W4 — SettingsView dead targets (2)
 
-- GPU card fetches `/v1/system` (:1055) — 404; real route is
-  `/v1/system/info` (used correctly by RecommendCard.vue:34 and
-  SettingsView:778's other card). Seed item confirmed.
+- ~~GPU card~~ CORRECTED at fix time: the GPU card (loadGpuInfo, :778)
+  already uses `/v1/system/info` correctly. The dead `/v1/system` call
+  (:1055) is in `openLogFile`, fetching `data_dir` to open
+  `${data_dir}/logs/justvoice.log` — a file that has NEVER existed
+  (the server has no file logging; only the 500-line in-memory ring).
+  The affordance is fiction end to end → removed, noted for revisit if
+  file logging ever lands. Seed item's GPU suspicion: cleared.
 - Log download fetches `/v1/logs/download?hours=24` (:1069) — route
-  does not exist (only `/v1/logs/tail`). Also uses `api.request`, not
-  `requestBlob`, so even with a route it would return text, not a file.
+  did not exist (only `/v1/logs/tail`). Also used `api.request`, not
+  `requestBlob`, so even with a route it would have returned text, not
+  a file, and the `instanceof Blob` guard would have silently dropped
+  it. Fixed: new GET /v1/logs/download serves the full ring as an
+  attachment (no `hours` param — the ring is the only store, a time
+  window would be a lie); UI uses requestBlob; button copy de-lied
+  ("Download last 24h" → "Download recent logs").
 
 ### W5 — API-reference table documents two nonexistent endpoints
 
