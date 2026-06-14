@@ -18,7 +18,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
-import { useUiContext } from "../stores/uiContext.js";
+import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { useCopy } from "../services/copy.js";
 import { pushToast } from "../services/toastBridge.js";
 import { useActiveProject } from "../stores/activeProject.js";
@@ -36,7 +36,6 @@ const api = useApi();
 const activeProject = useActiveProject();
 const tasks = useRenderTasks();
 const audioPlayer = useAudioPlayer();
-const uiContext = useUiContext();
 const copy = useCopy();
 
 // Shared lists from stores (single source of truth). loadAll() reloads
@@ -645,21 +644,16 @@ watch(selectedProjectId, (id) => {
 }, { immediate: true });
 watch(personas, () => loadProjectPersonas(selectedProjectId.value));
 
-// Publish breadcrumb segments to the topbar (plan Q7 Slice 1):
-//   Studio › [Project name] › [Tab label]
-// Cleared automatically by App.vue when the user switches top-level
-// views. Updates as the project picker / tab changes.
-function publishCrumbs() {
+// Breadcrumb: Studio › [Project] › [Tab]. Owned only while this view is
+// active (X-1: KeepAlive-cached views must not re-publish a stale crumb
+// when a shared store reloads elsewhere).
+const { publish: publishCrumbs } = usePageCrumbs(() => {
   const segments = [];
   const project = selectedProject.value;
-  if (project) {
-    segments.push({ label: project.name, href: "#books" });
-  }
-  if (tab.value) {
-    segments.push({ label: TAB_LABELS.value[tab.value] || tab.value });
-  }
-  uiContext.set(segments);
-}
+  if (project) segments.push({ label: project.name, href: "#books" });
+  if (tab.value) segments.push({ label: TAB_LABELS.value[tab.value] || tab.value });
+  return segments;
+});
 watch([() => selectedProject.value?.name, tab, TAB_LABELS], publishCrumbs, { immediate: true });
 
 async function loadScenesForProject(projectId) {

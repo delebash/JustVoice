@@ -8,7 +8,7 @@ import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
 import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
-import { useUiContext } from "../stores/uiContext.js";
+import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -151,16 +151,17 @@ watch(projects, (list) => {
   }
 }, { immediate: true });
 
-// Breadcrumb publishing — Chapter › [Project] › [Scene]
-const uiContext = useUiContext();
-function publishCrumbs() {
+// Breadcrumb publishing — Chapter › [Project] › [Scene]. Owned only
+// while this view is active (X-1: KeepAlive-cached views must not
+// re-publish a stale crumb when a shared store reloads elsewhere).
+const { publish: publishCrumbs } = usePageCrumbs(() => {
   const segments = [];
   const project = projects.value.find((p) => p.id === selectedProjectId.value);
   if (project) segments.push({ label: project.name, href: "#books" });
   const scene = scenes.value.find((s) => s.id === selectedSceneId.value);
   if (scene) segments.push({ label: scene.title || `Chapter ${scene.position + 1}` });
-  uiContext.set(segments);
-}
+  return segments;
+});
 watch([selectedProjectId, selectedSceneId, projects, scenes], publishCrumbs);
 
 // Warm the shared stores (idempotent — first view to need each loads

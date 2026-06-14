@@ -15,7 +15,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import JvButton from "../components/jv/JvButton.vue";
 import JvTag from "../components/jv/JvTag.vue";
 import EmptyState from "../components/EmptyState.vue";
-import { useUiContext } from "../stores/uiContext.js";
+import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import ImportModal from "./ImportModal.vue";
 import NewProjectModal from "../components/NewProjectModal.vue";
 import { projectsService } from "../services/projects.js";
@@ -236,14 +236,19 @@ const personasAvailableForCast = computed(() => {
   return allPersonas.value.filter((p) => !castIds.has(p.id));
 });
 
-const uiContext = useUiContext();
+// Breadcrumb = [selected project], owned only while this view is active
+// (X-1: KeepAlive-cached views must not leak a stale crumb).
+const { publish: publishCrumbs } = usePageCrumbs(() => {
+  const p = selectedProject.value;
+  return p ? [{ label: p.name }] : [];
+});
 
 watch(selectedProject, (p) => {
   if (!p) {
     editAuthor.value = "";
     editRenderPreset.value = "";
     editWebhookUrl.value = "";
-    uiContext.clear();
+    publishCrumbs();
     return;
   }
   const meta = projectMeta.value;
@@ -251,7 +256,7 @@ watch(selectedProject, (p) => {
   editRenderPreset.value = meta.render_preset ?? "default";
   editWebhookUrl.value = meta.webhook_url ?? "";
   loadDetail(p.id);
-  uiContext.set([{ label: p.name }]);
+  publishCrumbs();
 }, { immediate: true });
 
 async function patchProject(body) {
