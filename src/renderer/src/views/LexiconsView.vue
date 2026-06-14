@@ -2,14 +2,15 @@
 <!--
   LexiconsView — Pronunciation dictionaries.
 
-  Grid of lexicon cards (user decision 2026-06-12: Personas/Lexicons/
-  Effects share the card-grid pattern); clicking a card drills into the
-  detail editor with: ⬇ Import .justlex.json · ⬆ Export · scope row ·
-  Live preview text input · entries table (Word/Pronunciation/Format)
-  · + Add entry · Bulk paste TSV · ▶ Preview against text
+  Library list (jv-lib-toolbar + jv-table); clicking a row opens ONE editor
+  dialog. The dialog edits a working DRAFT (name + scope + entries) and
+  commits on Save / discards on Cancel (save-pattern ruling 2026-06-14) —
+  consistent with Personas + Render presets. "+ New lexicon" opens the same
+  dialog directly on a blank draft (no prompt-then-popup). Canonical
+  jv-overlay/jv-modal shell so the close ✕ never overlaps Import/Export.
 -->
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
@@ -22,16 +23,21 @@ import { usePersonasStore } from "../stores/personas.js";
 
 const api = useApi();
 
-// lexicons / projects / personas from shared stores. Mutations here
-// call refresh() → store.reload() so consumers (Personas, Overview)
+// lexicons / projects / personas from shared stores. Save commits via the
+// API then refresh() → store.reload() so consumers (Personas, Overview)
 // reflect the change.
 const lexiconsStore = useLexiconsStore();
 const projectsStore = useProjectsStore();
 const personasStore = usePersonasStore();
 const lexicons = computed(() => lexiconsStore.items);
+const projects = computed(() => projectsStore.items);
+const personas = computed(() => personasStore.items);
+
 const search = ref("");
 const SCOPE_FILTERS = [["all", "All"], ["global", "Reusable"], ["project", "Book"], ["persona", "Persona"]];
 const scopeFilter = ref("all");
+const loading = ref(false);
+
 const filteredLexicons = computed(() => {
   let list = lexicons.value;
   if (scopeFilter.value !== "all") list = list.filter((l) => (l.scope || "global") === scopeFilter.value);
@@ -41,22 +47,6 @@ const filteredLexicons = computed(() => {
     (l.entries || []).some((e) => (e.grapheme || "").toLowerCase().includes(q)));
   return list;
 });
-const projects = computed(() => projectsStore.items);
-const personas = computed(() => personasStore.items);
-const selectedId = ref(null);
-const loading = ref(false);
-
-const previewText = ref("");
-const previewResult = ref(""); // text after pronunciation rewrites — best-effort, client-side.
-
-const newGrapheme = ref("");
-const newPhonemeIpa = ref("");
-const newAlias = ref("");
-// When set, the entry form is EDITING the entry at this index (vs adding).
-const editingEntryIndex = ref(null);
-
-const selected = computed(() => lexicons.value.find((l) => l.id === selectedId.value) ?? null);
-const selectedScope = computed(() => selected.value?.scope ?? "global");
 
 const scopeBadge = (lex) => {
   const s = lex?.scope ?? "global";
@@ -66,17 +56,41 @@ const scopeBadge = (lex) => {
 };
 
 function scopedToName(lex) {
-  if (lex.scope === "project" && lex.project_id) {
+  if (lex?.scope === "project" && lex.project_id) {
     return projects.value.find((p) => p.id === lex.project_id)?.name || lex.project_id;
   }
-  if (lex.scope === "persona" && lex.persona_id) {
+  if (lex?.scope === "persona" && lex.persona_id) {
     return personas.value.find((p) => p.id === lex.persona_id)?.name || lex.persona_id;
   }
   return null;
 }
 
-const fileInput = ref(null);
-function chooseImportFile() { fileInput.value?.click(); }
+// ── Dialog state — one editor for create AND edit, over a draft ────────
+const dialogOpen = ref(false);
+const creating = ref(false);
+const editingId = ref(null);   // null while creating
+const draft = ref(null);        // { name, scope, project_id, persona_id, entries: [] }
+const nameInputEl = ref(null);
+
+// Entry sub-form (operates on draft.entries — no API until Save).
+const newGrapheme = ref("");
+const newPhonemeIpa = ref("");
+const newAlias = ref("");
+const editingEntryIndex = ref(null);
+
+// Live preview (client-side, against the draft's entries).
+const previewText = ref("");
+const previewResult = ref("");
+
+const SCOPE_OPTIONS = [
+  { value: "global", label: "Reusable (global)" },
+  { value: "project", label: "Book-scoped (project)" },
+  { value: "persona", label: "Persona-scoped" },
+];
+
+function blankDraft() {
+  return { name: "", scope: "global", project_id: null, persona_id: null, entries: [] };
+}
 
 async function refresh() {
   loading.value = true;
@@ -91,81 +105,93 @@ async function refresh() {
   }
 }
 
-async function createLexicon() {
-  // Step 1: name + scope. Step 2 (only when scoped): pick the target.
-  const base = await promptDialog({
-    title: "New lexicon",
-    fields: [
-      { key: "name", label: "Name", placeholder: "e.g. Stillwater proper names" },
-      {
-        key: "scope",
-        label: "Scope",
-        type: "select",
-        defaultValue: "global",
-        options: [
-          { value: "global", label: "Reusable (global)" },
-          { value: "project", label: "Book-scoped (project)" },
-          { value: "persona", label: "Persona-scoped" },
-        ],
-      },
-    ],
-    confirmLabel: "Create",
-  });
-  if (!base?.name) return;
-  let projectId = null;
-  let personaId = null;
-  if (base.scope === "project") {
-    if (!projects.value.length) {
-      pushToast({ kind: "info", message: "No projects yet — creating as reusable instead." });
-      base.scope = "global";
-    } else {
-      const picked = await promptDialog({
-        title: "Scope to which book?",
-        fields: [{
-          key: "id", label: "Book", type: "select",
-          defaultValue: projects.value[0].id,
-          options: projects.value.map((p) => ({ value: p.id, label: p.name })),
-        }],
-        confirmLabel: "Create",
-      });
-      if (!picked) return;
-      projectId = picked.id;
-    }
-  } else if (base.scope === "persona") {
-    if (!personas.value.length) {
-      pushToast({ kind: "info", message: "No personas yet — creating as reusable instead." });
-      base.scope = "global";
-    } else {
-      const picked = await promptDialog({
-        title: "Scope to which persona?",
-        fields: [{
-          key: "id", label: "Persona", type: "select",
-          defaultValue: personas.value[0].id,
-          options: personas.value.map((p) => ({ value: p.id, label: p.name })),
-        }],
-        confirmLabel: "Create",
-      });
-      if (!picked) return;
-      personaId = picked.id;
-    }
+function resetEntryForm() {
+  editingEntryIndex.value = null;
+  newGrapheme.value = "";
+  newPhonemeIpa.value = "";
+  newAlias.value = "";
+}
+
+function resetPreview() {
+  previewText.value = "";
+  previewResult.value = "";
+}
+
+function openEdit(lex) {
+  creating.value = false;
+  editingId.value = lex.id;
+  draft.value = {
+    name: lex.name ?? "",
+    scope: lex.scope ?? "global",
+    project_id: lex.project_id ?? null,
+    persona_id: lex.persona_id ?? null,
+    entries: JSON.parse(JSON.stringify(lex.entries ?? [])),
+  };
+  resetEntryForm();
+  resetPreview();
+  dialogOpen.value = true;
+}
+
+// Open the editor DIRECTLY on a blank draft — name + scope live IN the
+// dialog, Save commits the create. Replaces the old prompt-then-popup
+// (and its second scope-target prompt).
+function createLexicon() {
+  creating.value = true;
+  editingId.value = null;
+  draft.value = blankDraft();
+  resetEntryForm();
+  resetPreview();
+  dialogOpen.value = true;
+  nextTick(() => nameInputEl.value?.focus());
+}
+
+function closeDialog() {
+  dialogOpen.value = false;
+  creating.value = false;
+  editingId.value = null;
+  draft.value = null;
+  resetEntryForm();
+  resetPreview();
+}
+
+const canSave = computed(() => !!draft.value?.name.trim());
+
+async function saveDialog() {
+  if (!draft.value) return;
+  if (!draft.value.name.trim()) {
+    pushToast({ kind: "info", title: "Name the lexicon first" });
+    return;
   }
+  // Normalize scope target: only the matching id is sent.
+  const scope = draft.value.scope || "global";
+  const body = {
+    name: draft.value.name.trim(),
+    entries: draft.value.entries || [],
+    scope,
+    project_id: scope === "project" ? draft.value.project_id || null : null,
+    persona_id: scope === "persona" ? draft.value.persona_id || null : null,
+  };
   try {
-    const created = await api.request("/v1/lexicons", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: base.name,
-        entries: [],
-        scope: base.scope,
-        project_id: projectId,
-        persona_id: personaId,
-      }),
-    });
+    if (creating.value) {
+      await api.request("/v1/lexicons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    } else {
+      // PUT replaces entries + name (scope is fixed after create).
+      await api.request(`/v1/lexicons/${editingId.value}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    }
+    const wasCreating = creating.value;
     await refresh();
-    selectedId.value = created.id;
-    pushToast({ kind: "success", title: "Lexicon created" });
+    closeDialog();
+    pushToast({ kind: "success", title: wasCreating ? "Lexicon created" : "Lexicon saved" });
   } catch (e) {
-    pushToast({ kind: "error", title: "Create failed", description: String(e?.message ?? e) });
+    pushToast({ kind: "error", title: "Save failed", description: String(e?.message ?? e) });
   }
 }
 
@@ -180,7 +206,7 @@ async function deleteLexicon(id) {
   if (!ok) return;
   try {
     await api.request(`/v1/lexicons/${id}`, { method: "DELETE" });
-    if (selectedId.value === id) selectedId.value = null;
+    if (editingId.value === id) closeDialog();
     await refresh();
     pushToast({ kind: "success", title: "Lexicon deleted" });
   } catch (e) {
@@ -188,13 +214,7 @@ async function deleteLexicon(id) {
   }
 }
 
-function resetEntryForm() {
-  editingEntryIndex.value = null;
-  newGrapheme.value = "";
-  newPhonemeIpa.value = "";
-  newAlias.value = "";
-}
-
+// ── Entry ops — all mutate the DRAFT; nothing persists until Save. ─────
 function buildEntry() {
   const entry = { grapheme: newGrapheme.value.trim() };
   if (newPhonemeIpa.value.trim()) entry.phoneme_ipa = newPhonemeIpa.value.trim();
@@ -202,51 +222,15 @@ function buildEntry() {
   return entry;
 }
 
-// PUT the whole lexicon (entries + name). The server's PUT replaces the
-// entry list wholesale, so per-entry edit/delete + rename all route here
-// with the FULL current entry set (minus/with the one change).
-async function putLexicon(entries, successTitle, nameOverride) {
-  if (!selectedId.value || !selected.value) return;
-  try {
-    await api.request(`/v1/lexicons/${selectedId.value}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: (nameOverride ?? selected.value.name) || selected.value.name,
-        entries,
-        scope: selected.value.scope || "global",
-      }),
-    });
-    await refresh();
-    if (successTitle) pushToast({ kind: "success", title: successTitle });
-  } catch (e) {
-    pushToast({ kind: "error", title: "Save failed", description: String(e?.message ?? e) });
-  }
-}
-
-// Add a new entry (atomic append) OR commit an edit (full PUT replace).
-async function saveEntry() {
-  if (!selectedId.value || !newGrapheme.value.trim()) return;
+function saveEntry() {
+  if (!draft.value || !newGrapheme.value.trim()) return;
   const entry = buildEntry();
   if (editingEntryIndex.value != null) {
-    const entries = [...(selected.value?.entries || [])];
-    entries[editingEntryIndex.value] = entry;
-    await putLexicon(entries, "Entry updated");
-    resetEntryForm();
-    return;
+    draft.value.entries.splice(editingEntryIndex.value, 1, entry);
+  } else {
+    draft.value.entries.push(entry);
   }
-  try {
-    await api.request(`/v1/lexicons/${selectedId.value}/entries`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(entry),
-    });
-    resetEntryForm();
-    await refresh();
-    pushToast({ kind: "success", title: "Entry added" });
-  } catch (e) {
-    pushToast({ kind: "error", title: "Add failed", description: String(e?.message ?? e) });
-  }
+  resetEntryForm();
 }
 
 function startEditEntry(entry, index) {
@@ -256,106 +240,115 @@ function startEditEntry(entry, index) {
   newAlias.value = entry.alias || "";
 }
 
-async function deleteEntry(index) {
-  const entries = (selected.value?.entries || []).filter((_, i) => i !== index);
-  await putLexicon(entries, "Entry removed");
+function deleteEntry(index) {
+  if (!draft.value) return;
+  draft.value.entries.splice(index, 1);
   if (editingEntryIndex.value === index) resetEntryForm();
 }
 
-async function renameLexicon(ev) {
-  const newName = (ev.target.value || "").trim();
-  if (!newName || !selected.value || newName === selected.value.name) return;
-  await putLexicon(selected.value.entries || [], "Lexicon renamed", newName);
-}
-
 async function bulkPasteTsv() {
-  // Textarea dialog — native prompt() is banned (returns null in the
-  // Tauri webview) and was single-line anyway.
   const raw = (await promptDialog({
     title: "Bulk paste TSV",
     fields: [{
       key: "tsv",
-      label: "One entry per line: word [TAB] pronunciation [TAB] format(ipa|phonetic) [TAB] note",
+      label: "One entry per line: word [TAB] pronunciation [TAB] format(ipa|phonetic)",
       type: "textarea",
       rows: 8,
-      placeholder: "Beauchamp\t/ˈbiːtʃəm/\tipa\tfamily name",
+      placeholder: "Beauchamp\t/ˈbiːtʃəm/\tipa",
     }],
     confirmLabel: "Add entries",
   }))?.tsv;
-  if (!raw || !selectedId.value) return;
+  if (!raw || !draft.value) return;
   const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  let appended = 0, failed = 0;
+  let added = 0;
   for (const line of lines) {
     const parts = line.split("\t");
     const grapheme = parts[0]?.trim();
     const pron = parts[1]?.trim();
     const fmt = (parts[2] || "phonetic").trim().toLowerCase();
-    if (!grapheme || !pron) { failed++; continue; }
+    if (!grapheme || !pron) continue;
     const entry = { grapheme };
     if (fmt === "ipa") entry.phoneme_ipa = pron; else entry.alias = pron;
-    try {
-      await api.request(`/v1/lexicons/${selectedId.value}/entries`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(entry),
-      });
-      appended++;
-    } catch { failed++; }
+    draft.value.entries.push(entry);
+    added++;
   }
-  await refresh();
-  pushToast({
-    kind: failed ? "warn" : "success",
-    title: `Bulk paste: ${appended} added${failed ? `, ${failed} failed` : ""}`,
-  });
+  pushToast({ kind: "success", title: `${added} entries added to the draft — Save to keep them` });
 }
 
-async function importFile(ev) {
+// ── Import / Export ───────────────────────────────────────────────────
+// Library toolbar Import → opens the editor on a NEW draft prefilled from
+// the file. In-dialog Import → merges the file's entries into the open draft.
+const fileInputNew = ref(null);
+const fileInputMerge = ref(null);
+function chooseImportNew() { fileInputNew.value?.click(); }
+function chooseImportMerge() { fileInputMerge.value?.click(); }
+
+async function importNewFromFile(ev) {
   const file = ev.target.files?.[0];
+  ev.target.value = "";
   if (!file) return;
   try {
-    const text = await file.text();
-    const parsed = JSON.parse(text);
-    const body = {
+    const parsed = JSON.parse(await file.text());
+    creating.value = true;
+    editingId.value = null;
+    draft.value = {
       name: parsed.name || file.name.replace(/\.justlex\.json$/i, ""),
-      entries: parsed.entries || [],
       scope: parsed.scope || "global",
+      project_id: parsed.project_id || null,
+      persona_id: parsed.persona_id || null,
+      entries: Array.isArray(parsed.entries) ? parsed.entries : [],
     };
-    const created = await api.request("/v1/lexicons", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    await refresh();
-    selectedId.value = created.id;
-    pushToast({ kind: "success", title: `Imported ${body.entries.length} entries from ${file.name}` });
+    resetEntryForm();
+    resetPreview();
+    dialogOpen.value = true;
+    pushToast({ kind: "info", title: `Loaded ${draft.value.entries.length} entries — review and Save` });
   } catch (e) {
     pushToast({ kind: "error", title: "Import failed", description: String(e?.message ?? e) });
-  } finally {
-    ev.target.value = "";
+  }
+}
+
+async function importIntoDraft(ev) {
+  const file = ev.target.files?.[0];
+  ev.target.value = "";
+  if (!file || !draft.value) return;
+  try {
+    const parsed = JSON.parse(await file.text());
+    const incoming = Array.isArray(parsed.entries) ? parsed.entries : [];
+    draft.value.entries.push(...incoming);
+    if (!draft.value.name && parsed.name) draft.value.name = parsed.name;
+    pushToast({ kind: "success", title: `Merged ${incoming.length} entries into the draft — Save to keep` });
+  } catch (e) {
+    pushToast({ kind: "error", title: "Import failed", description: String(e?.message ?? e) });
   }
 }
 
 function exportLexicon() {
-  if (!selected.value) return;
-  const blob = new Blob([JSON.stringify(selected.value, null, 2)], { type: "application/json" });
+  if (!draft.value) return;
+  const out = {
+    name: draft.value.name,
+    scope: draft.value.scope,
+    project_id: draft.value.project_id,
+    persona_id: draft.value.persona_id,
+    entries: draft.value.entries,
+  };
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${(selected.value.name || "lexicon").replace(/\W+/g, "-")}.justlex.json`;
+  a.download = `${(draft.value.name || "lexicon").replace(/\W+/g, "-")}.justlex.json`;
   a.click();
   URL.revokeObjectURL(url);
   pushToast({ kind: "success", title: "Lexicon exported" });
 }
 
 // Client-side preview — best-effort longest-match grapheme replacement
-// using `alias` (phonetic) where available, IPA otherwise. Real-rendering
-// preview will go through /v1/lexicons/{id}/preview when that lands.
+// against the DRAFT entries.
 function runPreview() {
-  if (!selected.value || !previewText.value) {
+  if (!draft.value || !previewText.value) {
     previewResult.value = "";
     return;
   }
-  const entries = [...(selected.value.entries || [])].sort((a, b) => b.grapheme.length - a.grapheme.length);
+  const entries = [...(draft.value.entries || [])].sort((a, b) => (b.grapheme?.length || 0) - (a.grapheme?.length || 0));
   let out = previewText.value;
   for (const e of entries) {
     if (!e.grapheme) continue;
@@ -369,19 +362,20 @@ function runPreview() {
 
 onMounted(async () => {
   await refresh();
-  // Fix-it loop handoff (journeys fixit journey): Chapters/Studio flag a
-  // misread word → it arrives here prefilled, ready for a pronunciation.
+  // Fix-it loop handoff: Chapters/Studio flag a misread word → arrives
+  // here prefilled. Open the first lexicon (or a new draft) with the
+  // grapheme seeded into the entry form, ready for a pronunciation.
   try {
     const raw = window.sessionStorage?.getItem("jv.lexicon.prefill");
     if (raw) {
       window.sessionStorage.removeItem("jv.lexicon.prefill");
       const { grapheme } = JSON.parse(raw);
       if (grapheme) {
-        // Drill straight into a lexicon so the Append form is on screen.
-        if (!selectedId.value && lexicons.value.length) selectedId.value = lexicons.value[0].id;
+        if (lexicons.value.length) openEdit(lexicons.value[0]);
+        else createLexicon();
         newGrapheme.value = grapheme;
         pushToast({
-          message: `Fixing “${grapheme}” — spell it how it should sound, test it, save. Only the lines containing it re-render; everything else stays cached.`,
+          message: `Fixing “${grapheme}” — spell it how it should sound, add it, then Save.`,
           kind: "info",
           duration: 8000,
         });
@@ -393,164 +387,171 @@ onMounted(async () => {
 
 <template>
   <div class="lex">
-    <!-- ── Table (consolidated pattern 2026-06-12) ─────────────────── -->
-    <template v-if="true">
-      <div class="jv-lib-toolbar">
-        <JvInput v-model="search" placeholder="Search lexicons + words…" size="sm" width="name" />
-        <div style="display:inline-flex;gap:4px">
-          <button v-for="f in SCOPE_FILTERS" :key="f[0]" type="button" class="jv-pill" :class="scopeFilter === f[0] ? 'jv-pill--solid' : 'jv-pill--ghost'" @click="scopeFilter = f[0]">{{ f[1] }}</button>
-        </div>
-        <span class="jv-spacer" />
-        <JvButton variant="secondary" size="sm" label="⬇ Import .justlex.json" @click="chooseImportFile" />
-        <JvButton variant="primary" size="sm" label="+ New lexicon" @click="createLexicon" />
+    <!-- ── Library ─────────────────────────────────────────────────── -->
+    <div class="jv-lib-toolbar">
+      <JvInput v-model="search" placeholder="Search lexicons + words…" size="sm" width="name" />
+      <div style="display:inline-flex;gap:4px">
+        <button v-for="f in SCOPE_FILTERS" :key="f[0]" type="button" class="jv-pill" :class="scopeFilter === f[0] ? 'jv-pill--solid' : 'jv-pill--ghost'" @click="scopeFilter = f[0]">{{ f[1] }}</button>
       </div>
+      <span class="jv-spacer" />
+      <JvButton variant="secondary" size="sm" label="⬇ Import .justlex.json" @click="chooseImportNew" />
+      <JvButton variant="primary" size="sm" label="+ New lexicon" @click="createLexicon" />
+    </div>
 
-      <div v-if="loading" class="jv-muted lex__empty">Loading…</div>
-      <EmptyState
-        v-else-if="!lexicons.length"
-        icon="Sparkle"
-        title="No lexicons yet"
-        message="Pronunciation dictionaries force domain words and proper names — Beauchamp → BEE-chum — to render consistently across a whole project."
-        action-label="+ New lexicon"
-        @action="createLexicon"
-      />
+    <div v-if="loading" class="jv-muted lex__empty">Loading…</div>
+    <EmptyState
+      v-else-if="!lexicons.length"
+      icon="Sparkle"
+      title="No lexicons yet"
+      message="Pronunciation dictionaries force domain words and proper names — Beauchamp → BEE-chum — to render consistently across a whole project."
+      action-label="+ New lexicon"
+      @action="createLexicon"
+    />
 
-      <table v-else class="jv-table">
-        <thead>
-          <tr><th>Name</th><th style="width:130px">Scope</th><th style="width:90px">Entries</th><th>Words</th><th class="jv-table__actions" style="width:150px">Actions</th></tr>
-        </thead>
-        <tbody>
-          <tr v-for="lx in filteredLexicons" :key="lx.id" class="lex__row" title="Click to edit" @click="selectedId = lx.id">
-            <td><strong>{{ lx.name }}</strong><div v-if="scopedToName(lx)" class="jv-muted" style="font-size:11.5px">{{ scopedToName(lx) }}</div></td>
-            <td><span class="jv-pill" :class="scopeBadge(lx).cls">{{ scopeBadge(lx).label }}</span></td>
-            <td>{{ (lx.entries || []).length }}</td>
-            <td>
-              <code v-for="(e, i) in (lx.entries || []).slice(0, 4)" :key="i" class="jv-mono lex__word">{{ e.grapheme }}</code>
-              <span v-if="(lx.entries || []).length > 4" class="jv-muted">+{{ (lx.entries || []).length - 4 }}</span>
-              <span v-if="!(lx.entries || []).length" class="jv-muted">(empty)</span>
-            </td>
-            <td class="jv-table__actions" @click.stop>
-              <JvButton variant="ghost" size="sm" label="Edit" @click="selectedId = lx.id" />
-              <button type="button" class="jv-btn jv-btn--danger-outline jv-btn--sm" @click="deleteLexicon(lx.id)">Delete</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </template>
+    <table v-else class="jv-table">
+      <thead>
+        <tr><th>Name</th><th style="width:130px">Scope</th><th style="width:90px">Entries</th><th>Words</th><th class="jv-table__actions" style="width:150px">Actions</th></tr>
+      </thead>
+      <tbody>
+        <tr v-for="lx in filteredLexicons" :key="lx.id" class="lex__row" title="Click to edit" @click="openEdit(lx)">
+          <td><strong>{{ lx.name }}</strong><div v-if="scopedToName(lx)" class="jv-muted" style="font-size:11.5px">{{ scopedToName(lx) }}</div></td>
+          <td><span class="jv-pill" :class="scopeBadge(lx).cls">{{ scopeBadge(lx).label }}</span></td>
+          <td>{{ (lx.entries || []).length }}</td>
+          <td>
+            <code v-for="(e, i) in (lx.entries || []).slice(0, 4)" :key="i" class="jv-mono lex__word">{{ e.grapheme }}</code>
+            <span v-if="(lx.entries || []).length > 4" class="jv-muted">+{{ (lx.entries || []).length - 4 }}</span>
+            <span v-if="!(lx.entries || []).length" class="jv-muted">(empty)</span>
+          </td>
+          <td class="jv-table__actions" @click.stop>
+            <JvButton variant="ghost" size="sm" label="Edit" @click="openEdit(lx)" />
+            <button type="button" class="jv-btn jv-btn--danger-outline jv-btn--sm" @click="deleteLexicon(lx.id)">Delete</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
 
-    <!-- ── Editor dialog (consolidated pattern) ──────────────────────── -->
-    <div v-if="selected" class="jv-overlay" @click.self="selectedId = null">
+    <!-- ── Editor dialog — draft + Save/Cancel (canonical shell) ────── -->
+    <div v-if="dialogOpen && draft" class="jv-overlay" @click.self="closeDialog">
       <div class="jv-modal lex__modal">
-      <button type="button" class="jv-modal__close lex__close" title="Close" @click="selectedId = null">✕</button>
-
-      <div class="lex__editor">
-        <header class="lex__editor-h">
-          <input
-            class="jv-input jv-w-name lex__name"
-            :value="selected.name"
-            title="Rename this lexicon"
-            aria-label="Lexicon name"
-            @change="renameLexicon"
-          />
-          <span class="jv-pill" :class="scopeBadge(selected).cls">{{ scopeBadge(selected).label }}</span>
-          <span class="jv-muted lex__editor-count">{{ (selected.entries || []).length }} entries · applied before TTS</span>
-          <span class="lex__spacer" />
-          <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="chooseImportFile">⬇ Import .justlex.json</button>
-          <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="exportLexicon">⬆ Export</button>
+        <header class="jv-modal__header">
+          <div class="jv-modal__titleblock">
+            <span class="jv-modal__eyebrow">{{ creating ? "New lexicon" : "Lexicon" }}</span>
+            <h3 class="jv-modal__title">{{ draft.name || "Untitled lexicon" }}</h3>
+          </div>
+          <button type="button" class="jv-modal__close" title="Cancel" @click="closeDialog">✕</button>
         </header>
 
-        <div class="lex__field">
-          <label>Scope</label>
-          <div class="lex__scope-row">
-            <span class="jv-pill" :class="scopeBadge(selected).cls">{{ scopeBadge(selected).label }}</span>
-            <span class="jv-pill jv-pill--ghost">applies before TTS</span>
-            <span v-if="selectedScope === 'project'" class="jv-pill jv-pill--ghost">book: {{ scopedToName(selected) || "—" }}</span>
-            <span v-if="selectedScope === 'persona'" class="jv-pill jv-pill--ghost">persona: {{ scopedToName(selected) || "—" }}</span>
+        <div class="jv-modal__body">
+          <div class="lex__field">
+            <label>Name</label>
+            <input ref="nameInputEl" class="jv-input jv-w-name" v-model="draft.name" placeholder="e.g. Stillwater proper names" @keydown.enter.prevent />
+          </div>
+
+          <div class="lex__field">
+            <label>Scope</label>
+            <!-- Editable only at create — scope is fixed once a lexicon exists. -->
+            <div v-if="creating" class="lex__scope-row">
+              <select class="jv-input jv-w-name" v-model="draft.scope">
+                <option v-for="o in SCOPE_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
+              </select>
+              <select v-if="draft.scope === 'project'" class="jv-input jv-w-name" v-model="draft.project_id">
+                <option :value="null">— pick a book —</option>
+                <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+              </select>
+              <select v-if="draft.scope === 'persona'" class="jv-input jv-w-name" v-model="draft.persona_id">
+                <option :value="null">— pick a persona —</option>
+                <option v-for="p in personas" :key="p.id" :value="p.id">{{ p.name }}</option>
+              </select>
+            </div>
+            <div v-else class="lex__scope-row">
+              <span class="jv-pill" :class="scopeBadge(draft).cls">{{ scopeBadge(draft).label }}</span>
+              <span class="jv-pill jv-pill--ghost">applies before TTS</span>
+              <span v-if="draft.scope === 'project'" class="jv-pill jv-pill--ghost">book: {{ scopedToName(draft) || "—" }}</span>
+              <span v-if="draft.scope === 'persona'" class="jv-pill jv-pill--ghost">persona: {{ scopedToName(draft) || "—" }}</span>
+            </div>
+          </div>
+
+          <div class="lex__field">
+            <label>Live preview text</label>
+            <input
+              class="jv-input jv-w-prose"
+              v-model="previewText"
+              placeholder="Beauchamp arrived in Stillwater on the NYPD ferry. — Worcestershire sauce on his cuff."
+            />
+            <p v-if="previewResult" class="lex__preview-out">{{ previewResult }}</p>
+          </div>
+
+          <table v-if="draft.entries.length" class="lex__table">
+            <thead>
+              <tr>
+                <th>Word</th>
+                <th>Pronunciation (IPA or phonetic)</th>
+                <th style="width:90px">Format</th>
+                <th style="width:150px" class="right"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(e, i) in draft.entries" :key="i" :class="{ 'lex__row--editing': editingEntryIndex === i }">
+                <td><strong>{{ e.grapheme }}</strong></td>
+                <td><code class="jv-mono">{{ e.phoneme_ipa || e.alias || "—" }}</code></td>
+                <td>{{ e.phoneme_ipa ? "IPA" : "phonetic" }}</td>
+                <td class="right lex__entry-actions">
+                  <button class="jv-btn jv-btn--ghost jv-btn--sm" title="Edit this entry in the form below" @click="startEditEntry(e, i)">Edit</button>
+                  <button class="jv-btn jv-btn--danger-outline jv-btn--sm" title="Remove this entry" @click="deleteEntry(i)">Delete</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p v-else class="jv-muted" style="padding: 12px 0; font-style: italic;">
+            No entries yet — add one below, bulk-paste, or merge a <code>.justlex.json</code>.
+          </p>
+
+          <div class="jv-divider" />
+
+          <h4 class="lex__sub-h">{{ editingEntryIndex != null ? "Edit entry" : "Add entry" }}</h4>
+          <div class="lex__entry-grid">
+            <label class="lex__field">
+              <span>Grapheme (as written)</span>
+              <input class="jv-input jv-w-name" v-model="newGrapheme" placeholder="Beauchamp" @keydown.enter="saveEntry" />
+            </label>
+            <label class="lex__field">
+              <span>Phoneme IPA</span>
+              <input class="jv-input jv-w-name" v-model="newPhonemeIpa" placeholder="/ˈbiːtʃəm/" @keydown.enter="saveEntry" />
+            </label>
+            <label class="lex__field">
+              <span>Alias (phonetic — engine reads this)</span>
+              <input class="jv-input jv-w-name" v-model="newAlias" placeholder="bee-chum" @keydown.enter="saveEntry" />
+            </label>
+          </div>
+
+          <div class="lex__actions">
+            <JvButton variant="secondary" size="sm" :label="editingEntryIndex != null ? 'Update entry' : '+ Add entry'" @click="saveEntry" :disabled="!newGrapheme.trim() || (!newPhonemeIpa.trim() && !newAlias.trim())" />
+            <JvButton v-if="editingEntryIndex != null" variant="ghost" size="sm" label="Cancel edit" @click="resetEntryForm" />
+            <button v-else type="button" class="jv-btn jv-btn--secondary jv-btn--sm" @click="bulkPasteTsv">Bulk paste TSV</button>
+            <button type="button" class="jv-btn jv-btn--secondary jv-btn--sm" @click="runPreview" :disabled="!previewText.trim()">▶ Preview against text</button>
+            <span class="lex__spacer" />
+            <button type="button" class="jv-btn jv-btn--secondary jv-btn--sm" @click="chooseImportMerge">⬇ Merge file</button>
+            <button type="button" class="jv-btn jv-btn--secondary jv-btn--sm" @click="exportLexicon">⬆ Export</button>
           </div>
         </div>
 
-        <div class="lex__field">
-          <label>Live preview text</label>
-          <input
-            class="jv-input jv-w-prose"
-            v-model="previewText"
-            placeholder="Beauchamp arrived in Stillwater on the NYPD ferry. — Worcestershire sauce on his cuff."
-          />
-          <p v-if="previewResult" class="lex__preview-out">{{ previewResult }}</p>
-        </div>
-
-        <table v-if="(selected.entries || []).length" class="lex__table">
-          <thead>
-            <tr>
-              <th>Word</th>
-              <th>Pronunciation (IPA or phonetic)</th>
-              <th style="width:90px">Format</th>
-              <th style="width:150px" class="right"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(e, i) in selected.entries" :key="i" :class="{ 'lex__row--editing': editingEntryIndex === i }">
-              <td><strong>{{ e.grapheme }}</strong></td>
-              <td><code class="jv-mono">{{ e.phoneme_ipa || e.alias || "—" }}</code></td>
-              <td>{{ e.phoneme_ipa ? "IPA" : "phonetic" }}</td>
-              <td class="right lex__entry-actions">
-                <button class="jv-btn jv-btn--ghost jv-btn--sm" title="Edit this entry in the form below" @click="startEditEntry(e, i)">Edit</button>
-                <button class="jv-btn jv-btn--danger-outline jv-btn--sm" title="Delete this entry" @click="deleteEntry(i)">Delete</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <p v-else class="jv-muted" style="padding: 12px 0; font-style: italic;">
-          No entries yet — add one below or import a <code>.justlex.json</code>.
-        </p>
-
-        <div class="jv-divider" />
-
-        <h4 class="lex__sub-h">{{ editingEntryIndex != null ? "Edit entry" : "Add entry" }}</h4>
-        <div class="lex__entry-grid">
-          <label class="lex__field">
-            <span>Grapheme (as written)</span>
-            <input class="jv-input jv-w-name" v-model="newGrapheme" placeholder="Beauchamp" @keydown.enter="saveEntry" />
-          </label>
-          <label class="lex__field">
-            <span>Phoneme IPA</span>
-            <input class="jv-input jv-w-name" v-model="newPhonemeIpa" placeholder="/ˈbiːtʃəm/" @keydown.enter="saveEntry" />
-          </label>
-          <label class="lex__field">
-            <span>Alias (phonetic — engine reads this)</span>
-            <input class="jv-input jv-w-name" v-model="newAlias" placeholder="bee-chum" @keydown.enter="saveEntry" />
-          </label>
-        </div>
-
-        <div class="lex__actions">
-          <JvButton variant="primary" :label="editingEntryIndex != null ? 'Update entry' : '+ Add entry'" @click="saveEntry" :disabled="!newGrapheme.trim() || (!newPhonemeIpa.trim() && !newAlias.trim())" />
-          <JvButton v-if="editingEntryIndex != null" variant="secondary" size="sm" label="Cancel edit" @click="resetEntryForm" />
-          <button v-else class="jv-btn jv-btn--ghost jv-btn--sm" @click="bulkPasteTsv">Bulk paste TSV</button>
-          <span class="lex__spacer" />
-          <button
-            class="jv-btn jv-btn--secondary jv-btn--sm"
-            @click="runPreview"
-            :disabled="!previewText.trim()"
-          >▶ Preview against text</button>
-        </div>
-      </div>
+        <footer class="jv-modal__footer">
+          <span class="jv-muted lex__count">{{ draft.entries.length }} entr{{ draft.entries.length === 1 ? "y" : "ies" }}</span>
+          <span class="jv-spacer" />
+          <JvButton variant="secondary" label="Cancel" @click="closeDialog" />
+          <JvButton variant="primary" label="Save" :disabled="!canSave" @click="saveDialog" />
+        </footer>
       </div>
     </div>
 
-    <input ref="fileInput" type="file" accept=".justlex.json,application/json" style="display:none" @change="importFile" />
+    <input ref="fileInputNew" type="file" accept=".justlex.json,application/json" style="display:none" @change="importNewFromFile" />
+    <input ref="fileInputMerge" type="file" accept=".justlex.json,application/json" style="display:none" @change="importIntoDraft" />
   </div>
 </template>
 
 <style scoped>
 .lex { display: flex; flex-direction: column; }
 
-.lex__toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
-  font-size: 12.5px;
-}
 .lex__empty { padding: 40px 0; font-size: 13px; text-align: center; }
 
 .lex__row { cursor: pointer; }
@@ -563,20 +564,9 @@ onMounted(async () => {
   margin-right: 4px;
   font-size: 11.5px;
 }
-.lex__modal { width: min(860px, calc(100vw - 32px)); max-height: 86vh; overflow-y: auto; position: relative; padding: 20px 22px; }
-.lex__close { position: absolute; top: 12px; right: 12px; }
-.lex__editor { }
 
-.lex__editor-h {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
-  flex-wrap: wrap;
-}
-.lex__editor-h h2 { margin: 0; font-size: 22px; }
-.lex__name { font-size: 18px; font-weight: 600; }
-.lex__editor-count { font-size: 12px; }
+.lex__modal { width: min(860px, calc(100vw - 32px)); }
+.lex__count { font-size: 12px; }
 .lex__spacer { flex: 1; }
 .lex__entry-actions { white-space: nowrap; }
 .lex__entry-actions > * + * { margin-left: 4px; }

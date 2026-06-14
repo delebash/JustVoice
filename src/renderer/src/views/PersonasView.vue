@@ -410,11 +410,11 @@ onMounted(loadAll);
     <!-- ── Editor dialog (consolidated pattern 2026-06-12) ───────────── -->
     <div v-else class="jv-overlay" @click.self="closeEditor">
       <div class="jv-modal personas__modal">
-      <button type="button" class="jv-modal__close personas__close" title="Close" @click="closeEditor">✕</button>
-
-      <div class="personas__editor">
-        <header class="personas__editor-h">
-          <h2>{{ draft.name || "(unnamed)" }}</h2>
+        <header class="jv-modal__header">
+          <div class="jv-modal__titleblock">
+            <span class="jv-modal__eyebrow">{{ creating ? "New persona" : "Persona" }}</span>
+            <h3 class="jv-modal__title">{{ draft.name || "(unnamed)" }}</h3>
+          </div>
           <span v-if="dirty" class="jv-pill jv-pill--warn">Unsaved changes</span>
           <span v-if="selectedPersona?.imported_from" class="jv-pill jv-pill--ghost">
             imported from {{ selectedPersona.imported_from }}
@@ -425,8 +425,10 @@ onMounted(loadAll);
           >
             Used in {{ usageCount(draft.id) }} project{{ usageCount(draft.id) === 1 ? '' : 's' }}
           </span>
+          <button type="button" class="jv-modal__close" title="Close" @click="closeEditor">✕</button>
         </header>
 
+      <div class="jv-modal__body">
         <div class="personas__grid">
           <label class="personas__field">
             <span>Name</span>
@@ -580,16 +582,15 @@ onMounted(loadAll);
           </table>
         </section>
 
-        <div class="jv-divider" />
+      </div><!-- /.jv-modal__body -->
 
-        <!-- Dialog footer = Save + Cancel (G-PERSONA-4). Delete lives on
-             each list row, not here, so it's never a neighbour to Save. -->
-        <div class="personas__actions">
-          <span class="personas__spacer" />
-          <JvButton variant="secondary" label="Cancel" @click="closeEditor" />
-          <JvButton variant="primary" label="Save" :disabled="!dirty" @click="savePersona" />
-        </div>
-      </div>
+      <!-- Dialog footer = Save + Cancel (G-PERSONA-4). Delete lives on
+           each list row, not here, so it's never a neighbour to Save. -->
+      <footer class="jv-modal__footer">
+        <span class="jv-spacer" />
+        <JvButton variant="secondary" label="Cancel" @click="closeEditor" />
+        <JvButton variant="primary" label="Save" :disabled="!dirty" @click="savePersona" />
+      </footer>
       </div>
     </div>
 
@@ -657,18 +658,7 @@ onMounted(loadAll);
 .personas__row { cursor: pointer; }
 .personas__row:hover td { background: var(--surface-2); }
 .personas__avatar-sm { width: 26px; height: 26px; font-size: 12px; vertical-align: middle; margin-right: 8px; }
-.personas__modal { width: min(820px, calc(100vw - 32px)); max-height: 88vh; overflow-y: auto; position: relative; padding: 22px 24px; }
-.personas__close { position: absolute; top: 12px; right: 12px; }
-
-.personas__editor { }
-.personas__editor-h {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-.personas__editor-h h2 { margin: 0; font-size: 22px; }
+.personas__modal { width: min(820px, calc(100vw - 32px)); }
 
 .personas__grid {
   display: grid;
@@ -706,10 +696,4 @@ onMounted(loadAll);
 }
 .personas__chip-display { font-size: 13px; }
 
-.personas__actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.personas__spacer { flex: 1; }
 </style>

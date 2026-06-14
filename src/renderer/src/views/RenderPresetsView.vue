@@ -16,10 +16,9 @@
     - Save / Delete
 -->
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { promptDialog } from "../services/dialog.js";
 import { confirmDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvInput from "../components/jv/JvInput.vue";
@@ -81,7 +80,7 @@ function personaName(id) {
 function deliveryPills(p) {
   // Compact read-only summary of the delivery payload (edit via Render
   // Lab in v1). `instruct` is prose — truncate it.
-  return Object.entries(p.delivery || {}).map(([k, v]) => {
+  return Object.entries((p && p.delivery) || {}).map(([k, v]) => {
     const s = String(v);
     return `${k}: ${s.length > 38 ? s.slice(0, 38) + "…" : s}`;
   });
@@ -92,11 +91,16 @@ function deliveryPills(p) {
 // edits a working DRAFT and commits on Save / discards on Cancel — no
 // per-field auto-save. Built-in presets are read-only (view, not edit).
 const editOpen = ref(false);
-const editingId = ref(null);
+const editingId = ref(null);   // null while creating a new preset
+const creating = ref(false);
 const editDraft = ref(null);  // working copy; null when closed
+const nameInputEl = ref(null);  // autofocus target on create
 const editing = computed(() => presets.value.find((x) => x.id === editingId.value) || null);
-const editIsBuiltin = computed(() => !!editing.value?.is_builtin);
+const editIsBuiltin = computed(() => !creating.value && !!editing.value?.is_builtin);
+const dialogTitle = computed(() => creating.value ? "New render preset" : (editing.value?.name || ""));
+
 function openEdit(p) {
+  creating.value = false;
   editingId.value = p.id;
   editDraft.value = {
     name: p.name ?? "",
@@ -106,62 +110,61 @@ function openEdit(p) {
   };
   editOpen.value = true;
 }
+// Open the editor DIRECTLY on a blank draft — no name prompt first
+// (consistent with Personas; the old prompt-then-popup was the
+// G-PERSONA-1 anti-pattern repeated here). Save commits the create.
+function createPreset() {
+  creating.value = true;
+  editingId.value = null;
+  editDraft.value = { name: "", voice_id: "", master: "", effects_chain: [] };
+  editOpen.value = true;
+  nextTick(() => nameInputEl.value?.focus());
+}
 function closeEdit() {
   editOpen.value = false;
   editingId.value = null;
+  creating.value = false;
   editDraft.value = null;
 }
 async function saveEdit() {
-  if (!editingId.value || !editDraft.value || editIsBuiltin.value) return;
+  if (!editDraft.value || editIsBuiltin.value) return;
+  if (!editDraft.value.name.trim()) {
+    pushToast({ message: "Name the preset first.", kind: "info" });
+    return;
+  }
   try {
-    await api.request(`/v1/presets/${editingId.value}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: editDraft.value.name,
-        voice_id: editDraft.value.voice_id || null,
-        master: editDraft.value.master || null,
-        effects_chain: editDraft.value.effects_chain || [],
-      }),
-    });
+    if (creating.value) {
+      await api.request("/v1/presets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editDraft.value.name.trim(),
+          voice_id: editDraft.value.voice_id || null,
+          delivery: {},
+          effects_chain: editDraft.value.effects_chain || [],
+          master: editDraft.value.master || null,
+          lexicons: [],
+        }),
+      });
+    } else {
+      if (!editingId.value) return;
+      await api.request(`/v1/presets/${editingId.value}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editDraft.value.name,
+          voice_id: editDraft.value.voice_id || null,
+          master: editDraft.value.master || null,
+          effects_chain: editDraft.value.effects_chain || [],
+        }),
+      });
+    }
     await refresh();
+    const wasCreating = creating.value;
     closeEdit();
-    pushToast({ message: "Preset saved.", kind: "success" });
+    pushToast({ message: wasCreating ? "Preset created." : "Preset saved.", kind: "success" });
   } catch (e) {
     pushToast({ message: `Save failed: ${e?.message || e}`, kind: "error" });
-  }
-}
-
-async function createPreset() {
-  // Native prompt() is banned (project_gotchas) AND returns null in the
-  // Tauri webview — which is why creates silently never saved.
-  const name = (await promptDialog({
-    title: "New render preset",
-    message: "Name this render preset:",
-    placeholder: "e.g. Dramatic Dialogue",
-  }))?.trim();
-  if (!name) return;
-  try {
-    // Delivery-only by design — a preset is HOW a render sounds; the
-    // voice binding is optional and can be picked on the card after.
-    await api.request("/v1/presets", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        voice_id: null,
-        delivery: {},
-        effects_chain: [],
-        master: null,
-        lexicons: [],
-      }),
-    });
-    pushToast({ message: `Created "${name}".`, kind: "success" });
-    await refresh();
-    const created = presets.value.find((x) => x.name === name);
-    if (created) openEdit(created);
-  } catch (e) {
-    pushToast({ message: `Create failed: ${e?.message || e}`, kind: "error" });
   }
 }
 
@@ -253,19 +256,19 @@ onMounted(refresh);
     <!-- Edit dialog — full form. Edits a working draft; Save commits,
          Cancel discards (save-pattern ruling 2026-06-14). Built-ins are
          read-only. -->
-    <div v-if="editOpen && editDraft && editing" class="jv-overlay" @click.self="closeEdit">
+    <div v-if="editOpen && editDraft" class="jv-overlay" @click.self="closeEdit">
       <div class="jv-modal" style="width: min(560px, calc(100vw - 32px));">
         <header class="jv-modal__header">
           <div class="jv-modal__titleblock">
             <span class="jv-modal__eyebrow">Render preset</span>
-            <h3 class="jv-modal__title">{{ editing.name }}</h3>
+            <h3 class="jv-modal__title">{{ dialogTitle }}</h3>
           </div>
           <span v-if="editIsBuiltin" class="jv-pill jv-pill--ghost">built-in · read-only</span>
           <button type="button" class="jv-modal__close" title="Close" @click="closeEdit">✕</button>
         </header>
         <div class="jv-modal__body render-presets-view__form">
           <label class="jv-form-row"><span>Name</span>
-            <input type="text" class="jv-input jv-input--sm" v-model="editDraft.name" :disabled="editIsBuiltin" />
+            <input ref="nameInputEl" type="text" class="jv-input jv-input--sm" v-model="editDraft.name" :disabled="editIsBuiltin" placeholder="e.g. Dramatic Dialogue" />
           </label>
           <label class="jv-form-row"><span>Persona</span>
             <select class="jv-input jv-input--sm" v-model="editDraft.voice_id" :disabled="editIsBuiltin">
