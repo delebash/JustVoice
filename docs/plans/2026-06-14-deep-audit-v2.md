@@ -399,3 +399,60 @@ NEXT: views one-by-one (full read each), then stores/services, then SERVER.
     find-by-name opens the wrong row if two presets share a name.
   - **P3 · raw `jv-btn--danger-outline` Delete vs JvButton Edit** (same-row
     inconsistency, recurring class).
+
+## views batch C (ImportModal, Compare, Captures, Train)
+- **ImportModal.vue — ⚠ X-5 shell + P3 dead code.** Picker dialog: live
+  adapter list, smart adapter auto-pick (extension + content sniff —
+  podcast-vs-book by speaker-label regex), drag-drop, dry-run → hand-off to
+  the full-page ImportReviewView (correct per the 2026-06-12 decision).
+  - X-5: scoped `.im-overlay`/`.im-dialog`/`.im-header`/`.im-footer`/
+    `.im-close` modal shell, NOT canonical jv-overlay/jv-modal. The header
+    comment blames AppModal's vue-i18n dep — but that only argues against
+    the COMPONENT; the dependency-free jv-overlay/jv-modal CSS classes
+    should still be used. Same X-5 class as NewProjectModal/VoicesView/
+    ChordPicker/LineageViewer.
+  - P3 dead code: the flow now hands off to the page, so a large block is
+    UNUSED — `preview` ref, `doCommit`, `summary`, `previewScenes`,
+    `previewScenesOverflow`, `previewWarnings`, `includedIndices`,
+    `toggleScene`, `includedCount`, `excluded`, `canCommit`, `estAudio`,
+    `WORDS_PER_MINUTE`, `SCENE_ROW_CAP` + ~40 lines of scoped `.preview*`
+    CSS. The `created` emit (doCommit) is now UNREACHABLE from the template,
+    so LinesView's `@created="onReimported"` never fires (re-import
+    completes via ImportReviewView instead — works, but the handler is dead).
+- **CompareView.vue — ✗ P2 FAKE AFFORDANCES.** The core A/B compare is
+  REAL (reads both WAVs → base64 → POST /v1/compare → deltas grid + verdict
+  + full table). BUT two prominent buttons are FAKE — they only fire a
+  describe-what-it-would-do toast and do nothing:
+  - **`refreshFromCurrentTakes()`** ("↻ Refresh from current takes") — toast
+    only: "Pulls A=current default take, B=previous take… (GET /v1/takes/
+    {block_id})". No fetch.
+  - **`runBulkQc()`** ("Run QC pass" + the whole Bulk QC card: project/
+    chapter/block selectors) — toast only: "QC pass queued… verdicts will
+    land in the report below". No API call, nothing populates. The hint
+    copy describes per-pair Compare runs + webhook triggers that don't
+    exist. This LIES about state — user clicks, sees "queued", nothing
+    happens. P3: Choose A/B/Refresh are raw jv-btn (Run analysis is JvButton).
+- **CapturesView.vue — ✗ P2 MOSTLY MOCK.** Real underneath: captures list
+  (GET /v1/captures), togglePin (PATCH), speakAgain (prefills Generate),
+  search/filter, detail pane, readiness banner. But the prominent controls
+  are FAKE:
+  - **"Record"/"Stop" button** — startRecording animates a local timer;
+    stopRecording runs a hard-coded setTimeout theater (transcribing→
+    refining→completed→rest) with NO audio capture and NO API call, then
+    refresh() hoping a capture appeared. Real capture only happens via the
+    dictation hotkey / Tauri window. The in-page Record button does nothing.
+  - **Hotkeys card** — both "Change" buttons have no @click; Source "Default
+    mic ▾" + Capture language "auto ▾" carets imply dropdowns but are
+    static text; Auto-paste is a native `<input type=checkbox checked>` with
+    NO v-model (inert). The entire card is a non-functional mock.
+  - P3: "Live capture pill" card shows 4 static example pills as a legend
+    (acceptable as a preview, but reads as live).
+- **TrainView.vue — ✓ CLEAN (reference-grade).** Fully canonical (JvField/
+  JvInput/JvSelect/JvTag/JvButton, jv-card/jv-section/jv-table/jv-eyebrow,
+  width tokens name/token), confirmDialog cancel. Behavior solid: shared
+  stores, file→b64 samples w/ transcripts, QC gates, correct payload,
+  polling bound to onActivated/onDeactivated (KeepAlive-aware — NOT
+  onMounted; the right pattern), plain-English submitBlocker (anti-jargon,
+  RULE #1 item 5), voice-inspector prefill handoff. Inline form-card with
+  explicit "Queue training job" submit is correct (action, not field-edit).
+  Trivial: `.jv-file-input` CSS is unused. This is how a view should look.
