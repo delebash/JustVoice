@@ -469,7 +469,7 @@ onMounted(() => {
     <!-- Mock grid (user-approved 2026-06-12): toolbar + flat table; a
          row click expands its detail card inline (provider-row pattern);
          Open ➜ is the ONLY activation. -->
-    <div class="books__toolbar">
+    <div class="jv-lib-toolbar">
       <input v-model="search" class="jv-input jv-input--sm books__search" placeholder="Search projects…" />
       <button
         v-for="t in PROJECT_TYPES"
@@ -949,7 +949,6 @@ onMounted(() => {
 }
 .books__open:hover { text-decoration: underline; }
 
-.books__toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
 .books__search { max-width: 260px; }
 .books__grid { margin: 0; }
 .books__num { text-align: right; }

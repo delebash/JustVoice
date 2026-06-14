@@ -185,7 +185,7 @@ watch(selectedProjectId, (id) => {
 
 <template>
   <div class="lines">
-    <div class="lines__toolbar">
+    <div class="jv-lib-toolbar lines__toolbar">
       <select v-model="selectedProjectId" class="jv-input lines__project" title="Game projects" @change="loadLines">
         <option v-if="!gameProjects.length" :value="null">— no game projects —</option>
         <option v-for="p in gameProjects" :key="p.id" :value="p.id">{{ p.name }}</option>
@@ -257,7 +257,9 @@ watch(selectedProjectId, (id) => {
 
 <style scoped>
 .lines { display: flex; flex-direction: column; gap: 12px; }
-.lines__toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* Canonical .jv-lib-toolbar; the .lines container already provides the
+   row gap, so drop the toolbar's own margin-bottom to avoid double space. */
+.lines__toolbar { margin-bottom: 0; }
 .lines__project { max-width: 260px; }
 .lines__search { max-width: 260px; }
 .lines__chips { display: inline-flex; gap: 4px; }

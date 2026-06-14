@@ -1,19 +1,17 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup>
-// Multi-adapter import modal.
+// Multi-adapter import PICKER.
 //
-// Self-contained dialog. Lets the operator:
-//   1. Pick a source format from the live adapter list
-//      (GET /v1/projects/import/adapters)
-//   2. Drop or browse for a file
-//   3. Run a dry-run preview (committed=false) — shows project / scenes /
-//      lines summary so the operator can sanity-check before committing
-//   4. Commit — calls the same endpoint with dry_run=false and emits
-//      `created` with the resulting ProjectRecord, then closes.
+// Small dialog: pick a source format from the live adapter list
+// (GET /v1/projects/import/adapters), drop/browse a file, then run a
+// dry-run. The dry-run hands off to the full-page ImportReviewView
+// (via setImportDraft + #importreview) which shows the detected
+// structure and commits — the modal itself never previews or commits
+// in place (user decision 2026-06-12: picker stays small, results are a
+// regular page).
 //
 // Emits:
-//   close   — closing without committing (cancel / Esc)
-//   created — `{ project_id, name, kind }` after a successful commit
+//   close — closing / cancel / Esc / after a successful dry-run handoff
 //
 // Renders on the canonical jv-overlay/jv-modal shell (RULE #1) — same
 // CSS the rest of the app's modals use, so there's no scoped one-off to
@@ -39,7 +37,7 @@ const props = defineProps({
   projectId: { type: String, default: null },
 });
 
-const emit = defineEmits(["close", "created"]);
+const emit = defineEmits(["close"]);
 
 const adapters = ref([]);          // [{ id, label, description, file_extensions, implemented, docs_anchor }]
 const selectedSource = ref("");
@@ -48,8 +46,6 @@ const filename = ref("");
 const isDragging = ref(false);
 const loadingAdapters = ref(true);
 const previewing = ref(false);
-const committing = ref(false);
-const preview = ref(null);          // last dry_run StandardImport
 
 const selectedAdapter = computed(() =>
   adapters.value.find((a) => a.id === selectedSource.value) || null
@@ -63,7 +59,6 @@ const adapterOptions = computed(() =>
 const canPreview = computed(
   () => !!file.value && !!selectedSource.value && selectedAdapter.value?.implemented
 );
-const canCommit = computed(() => canPreview.value && !committing.value);
 
 const helpKey = computed(() => selectedAdapter.value?.docs_anchor || null);
 const helpHref = computed(() =>
@@ -71,9 +66,7 @@ const helpHref = computed(() =>
 );
 
 function onKey(e) {
-  if (e.key === "Escape" && !committing.value) {
-    emit("close");
-  }
+  if (e.key === "Escape") emit("close");
 }
 
 onMounted(async () => {
@@ -122,7 +115,6 @@ async function adapterForFile(f) {
 async function acceptFile(f) {
   file.value = f;
   filename.value = f.name;
-  preview.value = null;
   const match = await adapterForFile(f);
   if (match) selectedSource.value = match.id;
   // Dry-run immediately — the preview IS the import experience; the
@@ -145,7 +137,6 @@ function onDrop(e) {
 async function doPreview() {
   if (!canPreview.value) return;
   previewing.value = true;
-  preview.value = null;
   try {
     const res = await projectsService.runImport({
       source: selectedSource.value,
@@ -169,98 +160,6 @@ async function doPreview() {
     previewing.value = false;
   }
 }
-
-function includedIndices() {
-  const n = preview.value?.scenes?.length || 0;
-  return Array.from({ length: n }, (_, i) => i).filter((i) => !excluded.value.has(i));
-}
-
-async function doCommit() {
-  if (!canCommit.value) return;
-  committing.value = true;
-  try {
-    const res = await projectsService.runImport({
-      source: selectedSource.value,
-      file: file.value,
-      dryRun: false,
-      includeScenes: excluded.value.size ? includedIndices() : null,
-      projectId: props.projectId,
-    });
-    pushToast({
-      message: `Imported "${res.standard?.project?.name || "project"}"`,
-      kind: "success",
-    });
-    emit("created", {
-      project_id: res.project_id,
-      name: res.standard?.project?.name,
-      kind: res.standard?.project?.kind,
-    });
-    emit("close");
-  } catch (e) {
-    pushToast({ message: `Import failed: ${e.message || e}`, kind: "error" });
-  } finally {
-    committing.value = false;
-  }
-}
-
-const summary = computed(() => {
-  const s = preview.value;
-  if (!s) return null;
-  const lineCount = (s.scenes || []).reduce((acc, sc) => acc + (sc.lines?.length || 0), 0);
-  return {
-    name: s.project?.name,
-    kind: s.project?.kind,
-    characters: s.characters?.length || 0,
-    scenes: s.scenes?.length || 0,
-    lines: lineCount,
-    lexicon: s.lexicon_entries?.length || 0,
-  };
-});
-
-const WORDS_PER_MINUTE = 155; // narration pace for the est-audio column
-
-function estAudio(words) {
-  if (!words) return "—";
-  const min = words / WORDS_PER_MINUTE;
-  return min < 1 ? "<1 min" : `~${Math.round(min)} min`;
-}
-
-const SCENE_ROW_CAP = 12;
-
-// Per-chapter rows for the dry-run table (title · lines · words · est audio).
-// Per-chapter include checkboxes (mock import screen): excluded indices
-// are dropped server-side via include_scenes on commit.
-const excluded = ref(new Set());
-function toggleScene(i) {
-  const next = new Set(excluded.value);
-  if (next.has(i)) next.delete(i); else next.add(i);
-  excluded.value = next;
-}
-const includedCount = computed(() =>
-  (preview.value?.scenes?.length || 0) - excluded.value.size
-);
-
-const previewScenes = computed(() => {
-  const scenes = preview.value?.scenes || [];
-  return scenes.slice(0, SCENE_ROW_CAP).map((sc, i) => {
-    const words = (sc.lines || []).reduce(
-      (acc, l) => acc + (l.text ? l.text.split(/\s+/).length : 0),
-      0
-    );
-    return {
-      key: sc.id || i,
-      index: i,
-      title: sc.title || `Scene ${i + 1}`,
-      lines: sc.lines?.length || 0,
-      words,
-      est: estAudio(words),
-    };
-  });
-});
-const previewScenesOverflow = computed(() =>
-  Math.max(0, (preview.value?.scenes?.length || 0) - SCENE_ROW_CAP)
-);
-const previewWarnings = computed(() => preview.value?.warnings || []);
 </script>
 
 <template>
@@ -361,26 +260,4 @@ const previewWarnings = computed(() => preview.value?.warnings || []);
 .drop-inner { display: block; cursor: pointer; }
 .drop-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
 .hidden-input { display: none; }
-
-.preview { border: 1px solid var(--line, #e3e1dc); border-radius: 8px; padding: 12px 14px; }
-.preview-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 8px; }
-.preview dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; }
-.preview dt { color: var(--muted); font-size: 12px; }
-.preview dd { margin: 0; font-size: 13px; }
-.preview-warnings {
-  margin: 10px 0 0; padding: 8px 12px; list-style: none;
-  background: var(--warn-bg, #fff8e3); border: 1px solid var(--warn-line, #e6cd84);
-  border-radius: 6px; font-size: 12px; color: var(--warn-ink, #8a6a1f);
-}
-.preview-warnings li + li { margin-top: 3px; }
-.preview-scenes { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px; }
-.preview-scenes th {
-  text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em;
-  color: var(--muted); padding: 4px 8px; border-bottom: 1px solid var(--line, #e3e1dc);
-}
-.preview-scenes td { padding: 5px 8px; border-bottom: 1px dashed var(--line, #e3e1dc); }
-.preview-scenes tr:last-child td { border-bottom: 0; }
-.preview-scenes td.t { max-width: 0; width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.im-excluded td { opacity: 0.45; }
-.im-excluded .t { text-decoration: line-through; }
 </style>
