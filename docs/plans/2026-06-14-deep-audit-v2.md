@@ -561,3 +561,26 @@ NEXT: views one-by-one (full read each), then stores/services, then SERVER.
   `jv-toptab`/`jv-searchbar` classes are the approved engines-redesign-v7
   contract. Native checkboxes come via ProviderForm (G-CORE-2, deferred).
   No `--border-soft` here. Reference example for a large, stateful view.
+
+## views batch G (Voices)
+- **VoicesView.vue — ✗ P2 fake inspector affordances + ⚠ X-5 modal.** Core
+  is REAL and solid: gender auto-detect + click-cycle override (preset
+  overrides → localStorage, stored → PATCH), type/engine/search filters,
+  hide built-ins, preview, delete (confirmDialog), inspect, per-voice +
+  all-tweaks reset, the Clone/Design/Import/Blend creator (real submit,
+  file→b64, weights), blend-with-voice prefill, train-LoRA handoff (real
+  sessionStorage prefill → #train), shared stores. BUT the voice-inspector
+  "add samples" group has FAKE affordances:
+  - **P2 · `onSamplePicked`** (563-567) picks a WAV and toasts "Uploading
+    {file} → /v1/voices/{id}/samples" but NEVER POSTs anything. "+ Add WAV"
+    claims it uploaded; nothing happens.
+  - **P2 · `recordInApp`** (569-571) is a toast-only stub: "MediaRecorder
+    will open … Lands with the recorder component." Not built.
+  - **P3 · `promoteFromCaptures`** (573-575) navigates to #captures (real)
+    but the promised "→ Sample" attach lands in the fake onSamplePicked.
+  - **⚠ X-5 · the Clone/Design/Import/Blend modal** uses a non-canonical
+    `.modal-overlay`/`.modal`/`.modal-head`/`.modal-body`/`.modal-footer`
+    scoped shell (NOT jv-overlay/jv-modal), and has a DOUBLE close — header
+    "Close" (957) AND footer "Cancel" (1046) both `modal = null`. The modal
+    otherwise uses canonical JvField/JvInput/JvSelect/JvTextarea + Save+
+    Cancel footer correctly. Sizing tokens were fixed in a prior session.
