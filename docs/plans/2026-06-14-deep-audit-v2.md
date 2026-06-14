@@ -616,3 +616,23 @@ NEXT: views one-by-one (full read each), then stores/services, then SERVER.
   to the honestly-gated #stories. Only external blemish: it renders
   LineageViewer, whose scoped `.lineage-*` modal shell is the X-5 finding
   recorded against that component (not against this view).
+
+## views batch J (Settings) — corrects the v1 "god component" framing
+- **SettingsView.vue — ✓ CLEAN (B-CORE-1 NOT upheld as a defect).** 2605
+  lines, but it IS a properly tabbed surface: 14 canonical `jv-subnav` tabs
+  (General/AI features/Mastering/Generation/Capture/MCP/GPU/Appearance/Cache/
+  Channels/Webhooks/Logs/Changelog/About), and the three heaviest sub-areas
+  are ALREADY delegated to their own components (CacheView/AudioChannelsView/
+  WebhooksView). Every function is REAL — update checker (check/download/
+  restart-install), backup download + restore, MCP bindings CRUD + default
+  voice, AI feature pins + roles + production-configs (with revert), GPU info,
+  appearance knobs, logs preview/open/download/copy, external-engine register/
+  test, danger zone (reset-UI / wipe-projects / factory-reset with typed
+  RESET confirm). No fake affordances, no toast-only stubs (verified). Uses
+  JvCheckbox/JvToggle ×11 (canonical), JvField/JvSelect; only 2 native
+  checkboxes (deletePersonasToo, backupIncludeAudio — G-CORE-2 deferred); no
+  `--border-soft`, no non-canonical modal shells. **The user was right to
+  push back on the v1 "god component" call** — it's a tabbed menu, not a
+  defect. Remaining note is maintainability-only (P3, NOT a bug): the 11
+  inline tabs COULD each be extracted into their own component the way Cache/
+  Channels/Webhooks already are; optional refactor, no behavioral impact.
