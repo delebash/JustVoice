@@ -5,6 +5,74 @@
 
 ---
 
+## 2026-06-14 (afternoon, busy-rubin) — engines Download/Load contract + inline progress + source overrides (plan steps 1-7)
+
+User-reported bugs ("chatterbox install instantly with no download, kokoro
+progress hangs, both variants say Downloading when only one is, button stays
+Download until refresh, can we have a proper progress bar with cancel — same
+for engine install") + the GUI must let the operator change a download URL
+without editing code. Plan:
+`docs/plans/2026-06-14-engines-download-contract.md`.
+
+**Shipped (8f9df59, 077ab8a, 1004c57, 86ee64c, fce24f9):**
+
+- **S0 — operator-overridable sources** (commit 8f9df59): new pydantic
+  `EngineModelSourceOverride` + `EngineOverrides` on `EnginesSettings`. REST:
+  `GET/PUT/DELETE /v1/engines/{id}/sources[/{variant}]` w/ catalog-shaped
+  variant ids (slug, no slashes) and manifest|override provenance.
+  `resolve_source(engine, variant)` is the single point S1 reads.
+- **S1 — unified prefetch worker** (077ab8a): `installer.spawn_prefetch`
+  — one thread/job pattern, two strategies behind it: HF
+  `snapshot_download` (chatterbox + 7 other HF engines) wrapped in a
+  tqdm-shaped reporter that pushes bytes into job state and polls cancel
+  in `update()`; URL stream (kokoro) reuses `_stream_download` +
+  `_extract_tar_bz2`. Partial dir cleaned on cancel. The catalog's
+  `huggingface.co/.../resolve/<rev>/...` URLs are auto-promoted to
+  `hf_repo + revision` so the worker fetches the whole repo.
+- **C1 + C2 — per-(engine,variant) state + refresh invalidation**
+  (1004c57): renderer state moved to composite key
+  `${engineId}/${variantId}` for per-variant ops; engine-wide ops keep
+  the engine key. `install/load/uninstall` now `delete variants[engine.id]`
+  before `refresh()` so on_disk + verb update without a page reload.
+  Verified 5/5 in `scripts/verify-engines-c1c2.mjs`.
+- **S2 — cancel + cleanup** (86ee64c): wire = `DELETE /v1/jobs/{id}`
+  (existing). The S1 worker raises `_Cancelled` and rmtree's the partial
+  target. New test exercises the full path.
+- **C3 — big inline progress strip** (86ee64c): tiny embedded mini-bar
+  gone. New canonical `.jv-install-strip` in `styles.css` — title,
+  phase pill, MB done / total, EWMA-smoothed rate + ETA, 10px bar
+  (indeterminate stripes for connecting/extracting), current file, and
+  a real Cancel button. Renders inside `.ev-gbody` next to the model
+  row it belongs to — one strip per in-flight op. Verified 8/8 in
+  `scripts/verify-engines-c3.mjs`.
+- **C4 — per-row Source override pill** (fce24f9): each model row shows
+  `Source · <host> ▾`; click opens a canonical jv-overlay/jv-modal with
+  a HF / URL toggle, repo + revision fields, manifest default block,
+  and Save / Reset-to-default. Provenance drives pill styling (muted vs
+  accent). Verified 12/12 in `scripts/verify-engines-c4.mjs`.
+
+**Verification (no "build only" — every step has a Playwright suite):**
+- Server: ruff clean; pytest 257 passed (10 new for S0/S1/S2).
+- Renderer: `scripts/verify-engines-c1c2.mjs` 5/5 · `verify-engines-c3.mjs`
+  8/8 · `verify-engines-c4.mjs` 12/12. All committed; run with
+  `JV_BASE=... node scripts/verify-engines-*.mjs`.
+- Regression: `verify-dialogs.mjs` 31/31 · `verify-no-fakes.mjs` 16/16
+  (against a fresh server — the earlier "preset Save failed" was test-data
+  pollution from running the suites against an already-dirty data dir,
+  not a regression).
+
+**Caveat to fix next:** S0/S1's prefetch lands weights in the engine's
+`models_dir/{variant_id}/`, but the existing `engine.load()` for HF
+engines (Chatterbox + 7 more) still calls `from_pretrained()` which reads
+the **HF cache**, not our models_dir. So a successful prefetch will fix
+the UI ("downloads to disk with progress + cancel") but `engine.load()`
+will still hit HF cache on first load. The proper fix is to make the
+prefetch land into the HF cache layout (or change engine.load to read
+from our path). Plan calls this out — track as a follow-up before merging
+to main.
+
+---
+
 ## 2026-06-14 (midday, busy-rubin) — FIX: Home-flash on hard refresh (init-order/routing)
 
 User-reported, real architectural bug: hard-refresh on ANY non-Home page
