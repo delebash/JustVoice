@@ -58,11 +58,41 @@ const tc = await toastCount();
 check("Captures: no fake toast present", tc === 0, `toasts=${tc}`);
 await page.screenshot({ path: `${SHOTS}/comingsoon-captures.png` });
 
-// ── Voices (smoke — list renders, no JS errors; inspector buttons are
-//    static-disabled, covered by markup) ──
+// ── Voices — seed an editable (designed) voice so the inspector's
+//    sample-collection buttons render, then assert they're disabled. ──
+const made = await page.evaluate(async (b) => {
+  const r = await fetch(b + "/v1/voices/design", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ engine: "chatterbox", name: "Verify Editable Voice", prompt: "a calm narrator" }),
+  });
+  return r.ok ? (await r.json()) : null;
+}, BASE);
+check("Voices: seeded an editable voice via /v1/voices/design", !!made, made ? made.id : "POST failed");
 await go("#voices");
 check("Voices: page renders", (await page.locator(".voices-view, .jv-fill").count()) >= 1);
+// Narrow to the one Designed voice so its ⚙ is unambiguous (the first
+// ⚙ overall is a preset → read-only, no sample buttons).
+await page.locator("button", { hasText: /^Designed/ }).first().click();
+await page.waitForTimeout(400);
+await page.locator("button", { hasText: "⚙" }).first().click();
+await page.waitForTimeout(500);
 await page.screenshot({ path: `${SHOTS}/comingsoon-voices.png` });
+const addWav = page.locator("button", { hasText: /Add WAV file/ });
+const recordInApp = page.locator("button", { hasText: /Record in-app/ });
+const promote = page.locator("button", { hasText: /Promote from Captures/ });
+check("Voices: inspector shows the sample buttons", (await addWav.count()) === 1 && (await recordInApp.count()) === 1 && (await promote.count()) === 1,
+  `addWav=${await addWav.count()} rec=${await recordInApp.count()} promote=${await promote.count()}`);
+check("Voices: 'Add WAV file' disabled", (await addWav.count()) === 1 && (await addWav.first().isDisabled()));
+check("Voices: 'Record in-app' disabled", (await recordInApp.count()) === 1 && (await recordInApp.first().isDisabled()));
+check("Voices: 'Promote from Captures' disabled", (await promote.count()) === 1 && (await promote.first().isDisabled()));
+
+// ── Overview — the Captures stat must render a real number (the
+//    capturesTotal ref-bag fix; no NaN/undefined). ──
+await go("#overview");
+const capStat = page.locator(".home__stat", { hasText: "Captures" }).locator(".home__display--num");
+const capVal = (await capStat.count()) ? (await capStat.first().innerText()).trim() : "";
+check("Overview: Captures stat renders a number", /^\d+$/.test(capVal), `value="${capVal}"`);
+await page.screenshot({ path: `${SHOTS}/comingsoon-overview.png` });
 
 check("No JS/console errors", errors.length === 0, errors.slice(0, 3).join(" | "));
 

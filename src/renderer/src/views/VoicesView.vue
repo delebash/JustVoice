@@ -899,7 +899,7 @@ function blendWithVoice() {
         Baked into the model — preset voices can never take a WAV or an in-app recording.
         To make a voice from a recording, <a href="#voices" @click.prevent="openModal('clone')">clone one with Chatterbox</a>.
       </span>
-      <span v-else>No samples on this voice yet. Use the buttons below to add some.</span>
+      <span v-else>No samples on this voice yet — sample collection (add WAV / record / promote) is coming soon.</span>
     </p>
 
     <div class="voices-view__sample-actions">

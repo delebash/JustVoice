@@ -54,6 +54,9 @@ const personas = computed(() => personasStore.items);
 const projects = computed(() => projectsStore.items);
 const lexicons = computed(() => lexiconsStore.items);
 const captures = ref([]);
+// Total-count is its own ref (was bolted onto the captures ref object as a
+// non-reactive `.totalCount`, which didn't update the stat from the snapshot).
+const capturesTotal = ref(null);
 const stats = ref(null);
 const recentGenerations = ref([]);
 const loadedEngine = ref(null);
@@ -81,7 +84,7 @@ function hydrateFromSnapshot() {
     if (!snap) return;
     // The five lists now come from stores; only the non-list dashboard
     // fields are hydrated from the snapshot.
-    captures.totalCount = snap.capturesTotal ?? null;
+    capturesTotal.value = snap.capturesTotal ?? null;
     stats.value = snap.stats ?? null;
     recentGenerations.value = snap.recentGenerations || [];
     loadedEngine.value = snap.loadedEngine ?? null;
@@ -95,7 +98,7 @@ function hydrateFromSnapshot() {
 function writeSnapshot() {
   try {
     window.sessionStorage?.setItem(HOME_CACHE_KEY, JSON.stringify({
-      capturesTotal: captures.totalCount ?? null,
+      capturesTotal: capturesTotal.value ?? null,
       stats: stats.value,
       recentGenerations: recentGenerations.value,
       loadedEngine: loadedEngine.value,
@@ -125,7 +128,7 @@ async function refresh() {
   ]);
   health.value = h;
   captures.value = ca.captures || [];
-  captures.totalCount = ca.total ?? (ca.captures?.length ?? null);
+  capturesTotal.value = ca.total ?? (ca.captures?.length ?? null);
   stats.value = s;
   recentGenerations.value = g.takes || [];
   loadedEngine.value = ce.engine || null;
@@ -249,7 +252,7 @@ const cacheSub = computed(() => {
   }
   return bits.join(" · ") || "—";
 });
-const captureCount = computed(() => captures.totalCount ?? captures.value.length ?? 0);
+const captureCount = computed(() => capturesTotal.value ?? captures.value.length ?? 0);
 
 const statCards = computed(() => [
   { label: "Projects", value: projects.value.length, sub: projectKindCount.value ? `${projectKindCount.value} kind${projectKindCount.value === 1 ? "" : "s"}` : "create one to start", href: "#books" },
