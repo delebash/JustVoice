@@ -87,7 +87,25 @@ widespread bad authoring.)
 
 # TRACK C — Server code findings
 
-_(populated after client tracks)_
+- **[C-CORE-1] P2 · `projects_api.py` is a fat router** (1280 lines, 25
+  endpoints) mixing six concerns: project CRUD · scene CRUD · block
+  CRUD · cast · import (adapters/import) · qc/export/lines/demo/
+  show-notes. Routes like `/v1/scenes/{id}` and `/v1/blocks/{id}` aren't
+  even project-scoped paths but live here. Split: `scenes_api.py`,
+  `blocks_api.py` at minimum (export already has its own module). Lower
+  risk than client decomposition — moving route handlers between
+  routers, same paths, covered by pytest (247 tests).
+- **[C-CORE-2] P3 · `models.py` monolith** (1145 lines — every request/
+  response model). Optional split by domain (`models/projects.py`, …).
+  Low priority; it's cohesive, just large.
+- **[C-CORE-3] P2 · Error-handling consistency — NEEDS PER-ENDPOINT
+  READ.** Raw signal: `projects_api.py` raises HTTPException only 2× across
+  25 routes; `voices_api.py` and `lexicons_api.py` raise 0×. Either these
+  genuinely can't 404/400, or missing-resource cases silently return
+  200/empty (a real defect class — the wiring audit found adjacent
+  issues). Flagged for a focused pass: for each GET/PATCH/DELETE by id,
+  confirm a missing id returns 404, not 200. Do NOT assume either way.
+- _(more per-module findings below after the per-endpoint pass)_
 
 ---
 
