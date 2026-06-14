@@ -65,21 +65,25 @@ widespread bad authoring.)
 
 # TRACK B — Client code findings
 
-- **[B-CORE-1] P2 · God components.** SFC line counts: StudioView 2708,
-  SettingsView 2605, ChapterView 1426, GenerateView 1279, VoicesView
-  1272, EnginesView 1191. The top two are the worst — a single SFC
-  holding many tabs/sections inline:
-    - SettingsView (2605) = 14 sub-tabs (General/AI features/Mastering/
-      Generation/Capture/MCP/GPU/Appearance/Cache/Channels/Webhooks/
-      Logs/Changelog/About) inline. Decompose: one component per
-      sub-tab (`settings/GeneralSettings.vue` …), SettingsView becomes
-      the `.jv-subnav` shell.
-    - StudioView (2708) = Cast/Script/Render/Export tabs inline (6
-      `v-if="tab===…"` blocks). Decompose: `studio/CastTab.vue` etc.
-  Lower-risk than it sounds — extraction is mechanical (move template +
-  its script slice + props/emits). Big maintainability win; also makes
-  KeepAlive cheaper. **Phase this carefully, one tab at a time, each
-  verified via smoke.mjs.**
+- **[B-CORE-1] P2 · God components — code structure, NOT the tab UX
+  (the right pattern already exists in-file; most tabs don't follow
+  it).** SFC line counts: StudioView 2708, SettingsView 2605,
+  ChapterView 1426, GenerateView 1279, VoicesView 1272, EnginesView
+  1191.
+    - SettingsView (2605 = 1137 script + ~1160 template): tab menu is
+      fine (`.jv-subnav` + `activeSub`). But only **3 of 14 tabs
+      delegate to components** — `cache`→`<CacheView/>`,
+      `channels`→`<AudioChannelsView/>`, `webhooks`→`<WebhooksView/>`
+      (one-liners). The other ~11 (general/ai/mastering/generation/
+      capture/mcp/gpu/appearance/logs/changelog/about) are inline. Fix:
+      make the 11 follow the 3 — `settings/MasteringSettings.vue` etc.;
+      SettingsView becomes the thin shell. NOT a UX change.
+    - StudioView (2708): Cast/Script/Render/Export tabs inline (6
+      `v-if="tab===…"`). Decompose: `studio/CastTab.vue` etc.
+  Why P2 (your call): nothing's broken; it's maintainability/edit-safety
+  + KeepAlive holds the whole file mounted. Extraction is mechanical
+  (move template slice + its script + props/emits). **Phase carefully,
+  one tab at a time, each verified via smoke.mjs.**
 - **[B-CORE-2] P3 · Dead files.** `components/Combobox.vue` and
   `components/ListPane.vue` have zero importers (verified incl. dynamic
   refs). Delete. (AddProviderModal from the old recap is already gone.)
@@ -87,14 +91,21 @@ widespread bad authoring.)
 
 # TRACK C — Server code findings
 
-- **[C-CORE-1] P2 · `projects_api.py` is a fat router** (1280 lines, 25
-  endpoints) mixing six concerns: project CRUD · scene CRUD · block
-  CRUD · cast · import (adapters/import) · qc/export/lines/demo/
-  show-notes. Routes like `/v1/scenes/{id}` and `/v1/blocks/{id}` aren't
-  even project-scoped paths but live here. Split: `scenes_api.py`,
-  `blocks_api.py` at minimum (export already has its own module). Lower
-  risk than client decomposition — moving route handlers between
-  routers, same paths, covered by pytest (247 tests).
+- **[C-CORE-1] P2 · `projects_api.py` fat router — same shape as
+  B-CORE-1 (the right pattern already exists; one file violates it).**
+  The API layer ALREADY uses single-concern routers everywhere:
+  personas_api, voices_api, lexicons_api, takes_api, effect_presets_api,
+  render_presets_api, captures_api, project_export_api. `projects_api.py`
+  (1280 lines, 25 endpoints) is the lone outlier, bundling 6+ concerns:
+  scene CRUD, block CRUD (note `/v1/scenes/{id}` and `/v1/blocks/{id}`
+  aren't even project-scoped paths but live here), cast, import, qc,
+  lines, show-notes. Fix: extract `scenes_api.py` + `blocks_api.py`
+  (and optionally cast/import) — same single-concern pattern the other
+  ~8 modules already follow. Same paths, covered by pytest (247).
+  - **[C-2] P3 · export split-brain.** `export_m4b`/`export_voicelines`
+    live INSIDE projects_api even though `project_export_api.py` exists
+    as a separate module. Consolidate export into project_export_api
+    when scenes/blocks are extracted.
 - **[C-CORE-2] P3 · `models.py` monolith** (1145 lines — every request/
   response model). Optional split by domain (`models/projects.py`, …).
   Low priority; it's cohesive, just large.
