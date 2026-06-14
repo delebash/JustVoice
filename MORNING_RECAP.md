@@ -57,11 +57,24 @@ Commits: 878d729 (projects vertical) · 7ff37fa (import-review fix) ·
 8c14535 (mutator views) · 8b94188 (consumer views, P4 complete).
 Plan: `docs/plans/2026-06-13-data-layer-rebuild.md`.
 
-**Pending / known:** (1) the redundant "No engine in memory" lede on
-generate/studio/chapter came back with the rollback — small, separate.
-(2) The /tmp verify scripts should be promoted to scripts/ if we want
-them kept (container is ephemeral). (3) Param-honesty work (Generate
-dead knobs, regen lexicon inheritance) is in 181c111 and intact.
+**Close-out (done after P4):**
+- **Harness promoted to `scripts/smoke.mjs`** (committed) — drives the
+  real renderer headless against a running server, asserts all 14 views
+  render with zero JS errors, exits non-zero on failure. Auto-finds
+  Chromium (`/opt/pw-browsers/...` or the PW cache; `JV_CHROME`/`JV_BASE`
+  env overrides). Run: start server → `npm run build:vite` →
+  `node scripts/smoke.mjs`. Replaces the stale `scripts/e2e.mjs`.
+- **"No engine in memory" lede removed** — `App.vue` `stateLedeOverride`
+  is now a no-op (the case is surfaced by Overview's card / Studio pill /
+  Generate banner / Chapters regen prompt). Verified gone on
+  chapter/generate/studio via harness.
+
+**Still pending:** param-honesty part 2 (RenderLab + scene-mode
+render_chapter + reverse direction — server params with no UI control) ·
+podcast Timeline editor (biggest feature gap) · JustWrite round-trip
+render leg + webhooks (needs TTS models) · packaging/PyInstaller. The
+Generate dead-knob + regen-lexicon param-honesty work from 181c111 is
+intact.
 
 ---
 

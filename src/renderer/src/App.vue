@@ -214,32 +214,13 @@ function localizedLaneLabel(laneId) {
 const currentView = computed(() => VIEWS.find((v) => v.id === view.value));
 const currentHelpSlug = computed(() => HELP_SLUG_BY_VIEW[view.value] || "getting-started");
 
-// State-aware lede override (plan Q4 / Slice 1). When a view's
-// preconditions aren't met, swap the static lede for a concrete
-// next-action prompt that points the user where they need to go. The
-// static lede acts as a fallback once the view is in a usable state.
-const stateLedeOverride = computed(() => {
-  // We don't load engine / project / persona state at the App level —
-  // each view owns its own data. For the lede we infer state from a
-  // few signals that ARE available here: health (server up) and the
-  // last engine load that flowed through the api store.
-  const v = view.value;
-  // `current_engine` is the engine_id of the currently-loaded TTS slot
-  // (post Phase 2 / Slice 1 per-kind slots). Null = no engine OR server
-  // offline; the topbar Offline indicator owns the offline messaging,
-  // so we skip the lede override when health is null entirely.
-  if (!health.value) return null;
-  const hasEngine = !!health.value.current_engine;
-
-  if ((v === "generate" || v === "studio" || v === "chapter") && !hasEngine) {
-    return {
-      text: "No engine in memory — your first render sets one up automatically (Kokoro, ~310 MB one-time download). Prefer another engine?",
-      linkLabel: "Pick it in Engines",
-      linkHash: "#engines",
-    };
-  }
-  return null;
-});
+// State-aware lede override. Currently a no-op — the no-engine case is
+// already surfaced where it matters (Overview's engine card, Studio's
+// header pill, Generate's inline banner, Chapters' regen-time prompt),
+// so the old "No engine in memory…" lede that fired across generate/
+// studio/chapter was redundant and noisy (user feedback 2026-06-13).
+// Kept as the hook for any future per-view state lede.
+const stateLedeOverride = computed(() => null);
 // Normalized lede shape: { text, linkLabel?, linkHash? }. Static view
 // ledes stay plain strings in VIEWS; state overrides may carry a link.
 const effectiveLede = computed(() => {

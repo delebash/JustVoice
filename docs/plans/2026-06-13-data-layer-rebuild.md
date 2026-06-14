@@ -83,12 +83,21 @@ init added only if observed necessary — not preemptively.
 - **P5** Full regression: ruff · pytest · vite build · harness sweep of
   every view for JS errors + data presence.
 
-## Verification harness (established this session)
+## Status: COMPLETE (all P1–P5 shipped + verified)
+
+Commits: 878d729 (projects vertical) · 7ff37fa (import-review fix) ·
+8c14535 (mutator views) · 8b94188 (consumer views) · plus close-out
+(scripts/smoke.mjs harness + no-engine-lede removal). Verified end-to-end
+via headless Chromium: epub import → Chapters, persona create →
+Generate/Studio propagation, 14-tab smoke sweep zero JS errors.
+
+## Verification harness (PROMOTED to scripts/smoke.mjs)
 
 - Playwright 1.60 installed; CDN blocked, but a usable Chromium exists at
   `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
 - Server serves the SPA at `/`; renderer uses `window.location.origin`
   for the API, so same-origin works.
-- Launch: `chromium.launch({ executablePath: EXE, args: ['--no-sandbox'] })`.
-- Reusable scripts: /tmp/harness.mjs (load+errors+shot), /tmp/repro.mjs
-  (the staleness reproduction). Will be promoted to scripts/ if kept.
+- `scripts/smoke.mjs` (committed) is the permanent regression harness:
+  auto-finds Chromium, sweeps all 14 views, exits non-zero on any JS
+  error. Run: start server → `npm run build:vite` → `node scripts/smoke.mjs`.
+  `JV_BASE` / `JV_CHROME` env overrides. Replaces the stale e2e.mjs.
