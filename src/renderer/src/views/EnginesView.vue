@@ -422,6 +422,103 @@ async function cancelProgressRow(row) {
   }
 }
 
+// ── C4: per-row source override ────────────────────────────────────
+// Per-(engine,variant) operator override surfaced from S0.
+//   sources[engineId] = { [variantId]: VariantSource | undefined }
+//   the "VariantSource" shape comes straight from GET /sources.
+// The model row shows a small `Source ▾` link that opens a dialog
+// (canonical jv-overlay/jv-modal) with one URL / hf-repo + revision
+// editor and a "Reset to default" link. Saves go through PUT
+// /v1/engines/{id}/sources/{variant}; delete reverts to manifest.
+const sources = reactive({});  // engineId -> {variantId -> entry}
+const sourceDialog = ref(null);  // { engine, variant, draft, base, saving }
+
+async function loadSources(engineId) {
+  if (sources[engineId]) return;
+  try {
+    const r = await api.safeRequest(`/v1/engines/${engineId}/sources`, { variants: [] });
+    const byId = {};
+    for (const v of r?.variants || []) byId[v.variant_id] = v;
+    sources[engineId] = byId;
+  } catch { sources[engineId] = {}; }
+}
+
+function sourceFor(engineId, variantId) {
+  return sources[engineId]?.[variantId] || null;
+}
+
+function sourceHostLabel(engineId, variantId) {
+  const s = sourceFor(engineId, variantId);
+  if (!s) return "";
+  if (s.hf_repo) return s.provenance === "override" ? `hf: ${s.hf_repo}` : `hf · ${s.hf_repo.split("/")[0]}`;
+  if (s.url) {
+    try { return s.provenance === "override" ? `url · ${new URL(s.url).hostname}` : new URL(s.url).hostname; }
+    catch { return "url"; }
+  }
+  return "unconfigured";
+}
+
+function openSourceDialog(engineId, variantId) {
+  const s = sourceFor(engineId, variantId) || { url: null, hf_repo: null, hf_revision: null };
+  sourceDialog.value = {
+    engine: engineId,
+    variant: variantId,
+    base: s,
+    draft: {
+      mode: s.hf_repo ? "hf" : (s.url ? "url" : "hf"),
+      url: s.url || "",
+      hf_repo: s.hf_repo || "",
+      hf_revision: s.hf_revision || "",
+    },
+    saving: false,
+  };
+}
+
+function closeSourceDialog() { sourceDialog.value = null; }
+
+async function saveSourceDialog() {
+  const d = sourceDialog.value;
+  if (!d) return;
+  const body = d.draft.mode === "hf"
+    ? { hf_repo: d.draft.hf_repo.trim() || null, hf_revision: d.draft.hf_revision.trim() || null, url: null }
+    : { url: d.draft.url.trim() || null, hf_repo: null, hf_revision: null };
+  if (!(body.url || body.hf_repo)) {
+    pushToast({ message: "Fill in a URL or an HF repo.", kind: "info" });
+    return;
+  }
+  d.saving = true;
+  try {
+    const updated = await api.request(`/v1/engines/${d.engine}/sources/${encodeURIComponent(d.variant)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!sources[d.engine]) sources[d.engine] = {};
+    sources[d.engine][d.variant] = updated;
+    pushToast({ message: "Source override saved. Next Download uses it.", kind: "success" });
+    closeSourceDialog();
+  } catch (e) {
+    pushToast({ message: `Save failed: ${e?.message || e}`, kind: "error" });
+  } finally {
+    d.saving = false;
+  }
+}
+
+async function resetSourceDialog() {
+  const d = sourceDialog.value;
+  if (!d) return;
+  try {
+    const updated = await api.request(`/v1/engines/${d.engine}/sources/${encodeURIComponent(d.variant)}`, {
+      method: "DELETE",
+    });
+    if (sources[d.engine]) sources[d.engine][d.variant] = updated;
+    pushToast({ message: "Reverted to manifest default.", kind: "info" });
+    closeSourceDialog();
+  } catch (e) {
+    pushToast({ message: `Reset failed: ${e?.message || e}`, kind: "error" });
+  }
+}
+
 async function refresh() {
   const e = await api.safeRequest("/v1/engines", { engines: [] });
   engines.value = e?.engines ?? [];
@@ -443,6 +540,10 @@ async function refresh() {
         ]);
         variants[eng.id] = { variants: models.variants || [], recommended };
       } catch { /* tolerated */ }
+      // C4: source overrides for this engine's variants — keyed by
+      // variant id. Tolerated failure (older servers without S0 just
+      // return 404; the Source pill simply doesn't render).
+      try { delete sources[eng.id]; await loadSources(eng.id); } catch { /* ignore */ }
       // Default the dropdown to the loaded variant > default_variant_id > first.
       if (selectedVariants[eng.id] === undefined) {
         const list = variants[eng.id]?.variants || [];
@@ -1116,6 +1217,16 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
             <span class="vn">{{ v.name }}</span>
             <span class="vmeta">{{ fmtDisk(v.size_mb) }}<span v-if="v.vram_mb"> · {{ fmtDisk(v.vram_mb) }} VRAM</span></span>
             <span class="vdesc" :title="v.description">{{ v.description }}</span>
+            <!-- C4: per-variant Source override pill. Shows the effective
+                 host + provenance and opens the editor on click. -->
+            <button
+              v-if="sourceFor(e.id, v.id)"
+              type="button"
+              class="ev-source-pill"
+              :class="{ 'ev-source-pill--override': sourceFor(e.id, v.id).provenance === 'override' }"
+              :title="sourceFor(e.id, v.id).provenance === 'override' ? 'Operator override — click to edit or reset' : 'Manifest default — click to override'"
+              @click="openSourceDialog(e.id, v.id)"
+            >Source · {{ sourceHostLabel(e.id, v.id) }} <span class="ev-source-pill__caret">▾</span></button>
             <span class="right">
               <span v-if="modelLoaded(e, v)" class="ev-badge loaded">● Loaded</span>
               <JvButton v-if="modelLoaded(e, v)" variant="ghost" size="sm" label="Unload model" title="Free the slot — weights stay on disk" @click="unload(e)" />
@@ -1272,6 +1383,59 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
     </div>
     <p v-if="!allProviders.length" class="jv-muted" style="margin-top:14px">No providers yet — click “+ Add provider”.</p>
   </div>
+
+  <!-- C4: Source override dialog (canonical jv-overlay/jv-modal). One
+       URL or HF repo per variant; the saved value applies to the next
+       Download. Reset to default removes the override (DELETE /sources). -->
+  <div v-if="sourceDialog" class="jv-overlay" @click.self="closeSourceDialog">
+    <div class="jv-modal" style="width: min(560px, calc(100vw - 32px));">
+      <header class="jv-modal__header">
+        <div class="jv-modal__titleblock">
+          <span class="jv-modal__eyebrow">Download source</span>
+          <h3 class="jv-modal__title">{{ variantNameFor(sourceDialog.engine, sourceDialog.variant) }}</h3>
+        </div>
+        <span class="jv-pill jv-pill--ghost">{{ sourceDialog.base.provenance || 'manifest' }}</span>
+        <button type="button" class="jv-modal__close" title="Close" @click="closeSourceDialog">✕</button>
+      </header>
+      <div class="jv-modal__body" style="display:flex;flex-direction:column;gap:14px">
+        <p class="jv-muted" style="font-size:12.5px;margin:0">
+          By default the model is fetched from the URL or HF repo encoded in the engine's catalog. If that source moves or you want to point at a fork, override it here — the change applies to the next Download.
+        </p>
+        <div style="display:flex;gap:6px">
+          <button type="button" class="jv-pill" :class="sourceDialog.draft.mode === 'hf' ? 'jv-pill--solid' : 'jv-pill--ghost'" @click="sourceDialog.draft.mode = 'hf'">HuggingFace repo</button>
+          <button type="button" class="jv-pill" :class="sourceDialog.draft.mode === 'url' ? 'jv-pill--solid' : 'jv-pill--ghost'" @click="sourceDialog.draft.mode = 'url'">Direct URL</button>
+        </div>
+        <template v-if="sourceDialog.draft.mode === 'hf'">
+          <label style="display:flex;flex-direction:column;gap:4px">
+            <span class="jv-eyebrow">Repo (owner/name)</span>
+            <input class="jv-input jv-w-name" v-model="sourceDialog.draft.hf_repo" placeholder="ResembleAI/chatterbox" />
+          </label>
+          <label style="display:flex;flex-direction:column;gap:4px">
+            <span class="jv-eyebrow">Revision <span class="jv-muted" style="font-weight:400;text-transform:none;letter-spacing:0">(optional — commit, tag, or branch)</span></span>
+            <input class="jv-input jv-w-id" v-model="sourceDialog.draft.hf_revision" placeholder="main" />
+          </label>
+        </template>
+        <template v-else>
+          <label style="display:flex;flex-direction:column;gap:4px">
+            <span class="jv-eyebrow">URL</span>
+            <input class="jv-input jv-input--full" v-model="sourceDialog.draft.url" placeholder="https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2" />
+            <span class="jv-muted" style="font-size:11.5px">Single-file archive (.tar.bz2 / .tar.gz) or any direct download.</span>
+          </label>
+        </template>
+        <div v-if="sourceDialog.base.url || sourceDialog.base.hf_repo" class="jv-muted" style="font-size:11.5px;border-top:1px dashed var(--line);padding-top:10px">
+          <strong>Manifest default:</strong>
+          <code v-if="sourceDialog.base.hf_repo" class="jv-mono">{{ sourceDialog.base.hf_repo }}{{ sourceDialog.base.hf_revision ? ' @ ' + sourceDialog.base.hf_revision : '' }}</code>
+          <code v-else class="jv-mono">{{ sourceDialog.base.url }}</code>
+        </div>
+      </div>
+      <footer class="jv-modal__footer">
+        <JvButton v-if="sourceDialog.base.provenance === 'override'" variant="ghost" label="Reset to default" @click="resetSourceDialog" />
+        <span class="jv-spacer" />
+        <JvButton variant="secondary" label="Cancel" @click="closeSourceDialog" />
+        <JvButton variant="primary" label="Save override" :loading="sourceDialog.saving" @click="saveSourceDialog" />
+      </footer>
+    </div>
+  </div>
 </template>
 
 
@@ -1333,6 +1497,21 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
 .ev-model .vmeta{font-size:11.5px;color:var(--ink-3);min-width:150px}
 .ev-model .vdesc{font-size:12px;color:var(--ink-2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ev-model .right{margin-left:auto;display:flex;gap:8px;align-items:center;flex:none}
+/* C4: per-row Source override pill — quiet utility next to the description.
+   Lives BEFORE .right so it sits inline with the other meta. */
+.ev-source-pill{
+  font:inherit;font-size:10.5px;line-height:1.2;
+  background:var(--surface);border:1px solid var(--line);border-radius:999px;
+  padding:2px 9px;color:var(--ink-3);cursor:pointer;white-space:nowrap;
+  display:inline-flex;align-items:center;gap:4px;
+}
+.ev-source-pill:hover{border-color:var(--accent-line,#b8d2c3);color:var(--ink-2)}
+.ev-source-pill--override{
+  border-color:var(--accent-line,#b8d2c3);
+  background:var(--accent-soft,#e8f0eb);
+  color:var(--accent-ink,#2c6049);font-weight:600;
+}
+.ev-source-pill__caret{font-size:8px}
 .ev-fit{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
 .ev-fit.ok{background:#4d9b6d}
 .ev-fit.tight{background:#d9a23c}
