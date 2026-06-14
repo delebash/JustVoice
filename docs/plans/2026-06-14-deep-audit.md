@@ -5,6 +5,29 @@ ledger. Three tracks: **A. GUI/UX**, **B. Client code**, **C. Server
 code**. Built incrementally and committed as each view/module is
 audited (compaction-proof).
 
+## DESIGN DECISION — save patterns (USER RULING 2026-06-14)
+
+The app is already mostly auto-save (Books metadata on blur, Render
+Presets per-field, Settings toggles via `saveDebounced`); Personas/
+Voices are the explicit-Save holdouts. Ruling that resolves the
+inconsistency:
+
+- **Inline / in-page edits → auto-save.** Settings rows, project
+  metadata, per-field voice/preset edits. Text saves on blur (debounced),
+  toggles/selects on change. Needs: shared debounced-save helper, a quiet
+  "Saved ✓" indicator, validate-before-save, and revert-on-error.
+- **Modal / dialog editors → explicit Save + Cancel.** (USER: "it's a
+  dialog box, more natural to have a Save button than just a Close
+  button.") A dialog keeps its conventional footer: **Save** (persist +
+  close on success) and **Cancel** (discard + close). An auto-save dialog
+  with only an X is the wrong affordance. This SUPERSEDES my earlier
+  "auto-save dissolves G-PERSONA-2" note — wrong; the dialog keeps Save,
+  it just must close on success.
+- **Destructive/expensive → explicit confirm** (delete, factory reset,
+  engine load). Unchanged.
+- **Rollout: view-by-view, never big-bang** (USER). Fold into per-view
+  cleanup; each conversion verified via smoke.mjs.
+
 ## Method
 
 - GUI findings are evidence-based: each cites a screenshot captured via
@@ -266,7 +289,16 @@ GUI / UX:
 - **[G-PERSONA-2] P2 · Save doesn't close the editor.** `savePersona()`
   (~PersonasView.vue:savePersona) does loadAll + dirty=false + toast but
   never `selectedId.value = null`. Editor stays open after save. Fix:
-  close on successful save. (User-reported.)
+  close on successful save. (User-reported.) Per the dialog ruling above
+  the Persona editor stays an explicit Save/Cancel dialog — Save just
+  must close on success.
+- **[G-PERSONA-4] P2 · Dialog footer is Save + Delete; should be Save +
+  Cancel** (USER 2026-06-14). The editor is a modal; its footer pairs a
+  primary Save with a Delete (PersonasView.vue:591-592). Delete already
+  lives on each list row (Edit/Delete per row, seen in aud-PERSONAS), so
+  in the dialog it's both redundant and a dangerous neighbor to Save.
+  Fix: footer = **Save + Cancel** (Cancel discards + closes). Keep
+  Delete on the row only.
 - **[G-PERSONA-3] P3 · Persona table column sizing + action alignment.**
   The PERSONA column stretches ~half the viewport with dead space; the
   ACTIONS header is not above its Edit/Delete buttons (buttons flung to
