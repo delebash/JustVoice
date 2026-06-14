@@ -25,7 +25,8 @@ import { confirmDialog } from "../services/dialog.js";
 import { useCopy } from "../services/copy.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useOnboarding } from "../stores/onboarding.js";
-import { readSnapshot, writeSnapshot } from "../services/snapshot.js";
+import { useProjectsStore } from "../stores/projects.js";
+import { usePersonasStore } from "../stores/personas.js";
 
 const api = useApi();
 const activeProject = useActiveProject();
@@ -33,11 +34,19 @@ const onboarding = useOnboarding();
 
 const copy = useCopy();
 
-const projects = ref([]);
+// Projects + personas come from shared stores (single source of truth).
+// No private copy, no snapshot — the store IS the cache, and every
+// mutation here calls store.reload() so other views (Chapters, Studio)
+// reflect the change immediately.
+const projectsStore = useProjectsStore();
+const personasStore = usePersonasStore();
+const projects = computed(() => projectsStore.items);
+const allPersonas = computed(() => personasStore.items);
+
 const selectedId = ref(null);
 const search = ref("");
 const projectTypeFilter = ref("all");
-const loading = ref(false);
+const loading = computed(() => !projectsStore.loaded);
 const showImport = ref(false);
 const showNewProject = ref(false);
 const newProjectKind = ref("");
@@ -45,7 +54,6 @@ const newProjectKind = ref("");
 const scenes = ref([]);
 const scenesLoading = ref(false);
 const cast = ref([]);
-const allPersonas = ref([]);
 const selectedSceneIds = ref(new Set());
 
 // Add-personas-to-project modal state.
@@ -133,23 +141,16 @@ const RENDER_PRESETS = [
   { id: "final_ship",    label: "Final ship" },
 ];
 
-const PROJECTS_SNAPSHOT_KEY = "jv.books.snapshot";
+// Refresh the shared projects store. Called after every mutation here
+// (create/import/update/delete) so all consumers — Chapters, Studio,
+// etc. — reflect the change. The sub-10ms server makes reload free.
 async function refresh() {
-  loading.value = !projects.value.length;
   try {
-    const res = await projectsService.list();
-    projects.value = res.projects ?? [];
-    writeSnapshot(PROJECTS_SNAPSHOT_KEY, projects.value);
-    // No auto-select — rows start collapsed; browsing is explicit.
+    await projectsStore.reload();
   } catch (e) {
     pushToast({ kind: "error", title: "Failed to load projects", description: String(e?.message ?? e) });
-  } finally {
-    loading.value = false;
   }
 }
-// Instant paint from the last visit (canonical snapshot pattern —
-// user-hit: "takes a second to list projects").
-projects.value = readSnapshot(PROJECTS_SNAPSHOT_KEY) || [];
 
 async function loadDetail(projectId) {
   if (!projectId) {
@@ -161,14 +162,14 @@ async function loadDetail(projectId) {
   scenesLoading.value = true;
   selectedSceneIds.value = new Set();
   try {
-    const [sceneRes, castRes, personasRes] = await Promise.all([
+    // Personas come from the shared store; only scenes + cast are
+    // per-project sub-resources fetched here.
+    const [sceneRes, castRes] = await Promise.all([
       projectsService.listScenes(projectId).catch(() => []),
       projectsService.getCast(projectId).catch(() => ({ cast: [] })),
-      api.safeRequest("/v1/personas", { personas: [] }),
     ]);
     scenes.value = Array.isArray(sceneRes) ? sceneRes : (sceneRes?.scenes ?? []);
     cast.value = castRes?.cast ?? [];
-    allPersonas.value = personasRes?.personas ?? [];
   } catch (e) {
     pushToast({ kind: "error", title: "Failed to load project detail", description: String(e?.message ?? e) });
   } finally {
@@ -399,7 +400,10 @@ function sceneStatusPill(scene) {
 }
 
 onMounted(() => {
-  refresh();
+  // Warm the shared stores (idempotent). projects feeds the list;
+  // personas feeds the cast detail pane.
+  projectsStore.ensureLoaded();
+  personasStore.ensureLoaded();
   // Home's Start-something pills hand a kind over via sessionStorage —
   // consume it once and open the kind picker preselected.
   try {

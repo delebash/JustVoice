@@ -1,0 +1,43 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// Voices store — single source of truth for the voice catalog. See
+// stores/projects.js + docs/plans/2026-06-13-data-layer-rebuild.md.
+//
+// Voices change when engines load/unload (an engine brings its preset
+// voices online), so the store reloads on the `jv:health-refresh`
+// event that EnginesView/MCP dispatch after a load/unload.
+
+import { defineStore } from "pinia";
+import { ref } from "vue";
+
+import { useApi } from "./api.js";
+
+export const useVoicesStore = defineStore("voices", () => {
+  const items = ref([]);
+  const loaded = ref(false);
+  let _inflight = null;
+  let _listening = false;
+
+  async function reload() {
+    const r = await useApi().safeRequest("/v1/voices", { voices: [] });
+    items.value = r?.voices ?? [];
+    loaded.value = true;
+    return items.value;
+  }
+
+  function ensureLoaded() {
+    if (!_listening) {
+      window.addEventListener("jv:health-refresh", () => { void reload(); });
+      _listening = true;
+    }
+    if (loaded.value) return Promise.resolve(items.value);
+    if (!_inflight) _inflight = reload().finally(() => { _inflight = null; });
+    return _inflight;
+  }
+
+  function byId(id) {
+    return items.value.find((v) => v.id === id) || null;
+  }
+
+  return { items, loaded, reload, ensureLoaded, byId };
+});

@@ -10,6 +10,9 @@ import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
 import { useUiContext } from "../stores/uiContext.js";
 import { useActiveProject } from "../stores/activeProject.js";
+import { useProjectsStore } from "../stores/projects.js";
+import { usePersonasStore } from "../stores/personas.js";
+import { useVoicesStore } from "../stores/voices.js";
 import JvButton from "../components/jv/JvButton.vue";
 import LineageViewer from "../components/LineageViewer.vue";
 import EmptyState from "../components/EmptyState.vue";
@@ -27,18 +30,20 @@ const copy = useCopy();
 
 // ── Project / scene / block selection ──────────────────────────────────────
 
-const projects = ref([]);
+// Projects, personas and voices come from shared stores (the single
+// source of truth). This view holds NO private copy — when an import
+// or any other view mutates the list and calls store.reload(), this
+// view's reactive bindings update even while KeepAlive-cached.
+const projectsStore = useProjectsStore();
+const personasStore = usePersonasStore();
+const voicesStore = useVoicesStore();
+const projects = computed(() => projectsStore.items);
 const scenes = ref([]);
-const personasById = ref({});
 // Full persona records — regen resolves the block's cast voice from here.
-const personaRecords = ref([]);
-async function loadPersonas() {
-  try {
-    const r = await api.safeRequest("/v1/personas", { personas: [] });
-    personaRecords.value = r?.personas || [];
-    personasById.value = Object.fromEntries((r?.personas || []).map((p) => [p.id, p.name]));
-  } catch { /* tolerated */ }
-}
+const personaRecords = computed(() => personasStore.items);
+const personasById = computed(() =>
+  Object.fromEntries(personasStore.items.map((p) => [p.id, p.name])),
+);
 async function editDirection(block) {
   const value = await promptDialog({
     title: "Performance note",
@@ -96,19 +101,6 @@ const sceneOptions = computed(() =>
       }))
 );
 
-async function loadProjects() {
-  try {
-    const res = await projectsService.list();
-    projects.value = res.projects || [];
-    if (projects.value.length && !selectedProjectId.value) {
-      const prefer = projects.value.find((p) => p.id === activeProject.id);
-      selectedProjectId.value = (prefer || projects.value[0]).id;
-    }
-  } catch (e) {
-    pushToast({ message: `Failed to load projects: ${e.message || e}`, kind: "error" });
-  }
-}
-
 async function loadScenes(projectId) {
   scenes.value = [];
   blocks.value = [];
@@ -146,6 +138,19 @@ async function loadBlocks(sceneId) {
 watch(selectedProjectId, (id) => loadScenes(id));
 watch(selectedSceneId, (id) => loadBlocks(id));
 
+// Auto-select the active or first project. Registered AFTER the
+// selectedProjectId→loadScenes watch above so that when this sets
+// selectedProjectId (including the immediate fire for an already-warm
+// store), the scenes watcher is live and loads scenes. `immediate`
+// covers both timings: store already loaded (fires now) and store
+// loads later via ensureLoaded (fires on the change).
+watch(projects, (list) => {
+  if (list.length && !selectedProjectId.value) {
+    const prefer = list.find((p) => p.id === activeProject.id);
+    selectedProjectId.value = (prefer || list[0]).id;
+  }
+}, { immediate: true });
+
 // Breadcrumb publishing — Chapter › [Project] › [Scene]
 const uiContext = useUiContext();
 function publishCrumbs() {
@@ -158,25 +163,31 @@ function publishCrumbs() {
 }
 watch([selectedProjectId, selectedSceneId, projects, scenes], publishCrumbs);
 
-onMounted(() => { loadProjects(); loadPersonas(); });
+// Warm the shared stores (idempotent — first view to need each loads
+// it once, the rest are no-ops). Reads above are reactive against the
+// store, so a later load or a cross-view mutation+reload updates this
+// view even while KeepAlive-cached.
+onMounted(() => {
+  projectsStore.ensureLoaded();
+  personasStore.ensureLoaded();
+  voicesStore.ensureLoaded();
+  refreshCurrentEngine();
+});
 
 // ── Voices (for re-generation) ─────────────────────────────────────────────
 
-const voices = ref([]);
+const voices = computed(() => voicesStore.items);
 const currentEngine = ref(null);
 
-async function refreshVoices() {
+// currentEngine is a single record (not a list), so it stays a small
+// per-view fetch. Refreshed on engine load/unload via jv:health-refresh.
+async function refreshCurrentEngine() {
   try {
-    const [v, cur] = await Promise.all([
-      api.request("/v1/voices"),
-      api.request("/v1/engines/current").catch(() => ({ engine: null })),
-    ]);
-    voices.value = v.voices || [];
+    const cur = await api.safeRequest("/v1/engines/current", { engine: null });
     currentEngine.value = cur?.engine || null;
-  } catch (_) {}
+  } catch { /* tolerated */ }
 }
-
-onMounted(refreshVoices);
+window.addEventListener("jv:health-refresh", refreshCurrentEngine);
 
 const availableVoices = computed(() => {
   if (!currentEngine.value) return [];
