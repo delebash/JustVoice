@@ -599,3 +599,20 @@ NEXT: views one-by-one (full read each), then stores/services, then SERVER.
   G-CORE-2 deferred); `--border-soft` at line 1268 (X-6); the line-34 comment
   "history stubbed until /v1/takes/recent lands (#87)" is STALE — refreshVoices
   fetches it live (and Overview uses the same endpoint).
+
+## views batch I (Chapter)
+- **ChapterView.vue — ✓ CLEAN.** Take/block workbench. All real: regenerate
+  block with correct voice resolution (cast persona voice wins; only an
+  uncast block prompts — the old silent top-bar override is gone), inline
+  block-text editing via PATCH (cache-aware — only the edited line re-renders),
+  take management (promote-to-default, delete with confirm, A/B compare,
+  lineage via LineageViewer), performance-note direction edit, flag-
+  pronunciation handoff to Lexicons, chapter-list CRUD (add/rename/delete/
+  move via promptDialog/confirmDialog — no native dialogs), paste-text →
+  blocks. Shared stores (projects/personas/voices) — no private copy, so
+  imports reflect even while KeepAlive-cached. Breadcrumb via usePageCrumbs
+  (X-1 leak fix). Canonical JvSelect/JvButton/JvTag/EmptyState; NO native
+  checkboxes, NO `--border-soft`, NO fake affordances. goTimeline navigates
+  to the honestly-gated #stories. Only external blemish: it renders
+  LineageViewer, whose scoped `.lineage-*` modal shell is the X-5 finding
+  recorded against that component (not against this view).
