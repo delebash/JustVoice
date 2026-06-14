@@ -185,7 +185,28 @@ const DEFAULT_TAB_BY_USE_CASE = {
   unset:         "overview",
 };
 
-const view = ref("overview");
+// Resolve the initial view SYNCHRONOUSLY from the URL hash so a hard
+// refresh on e.g. #books paints Projects on the FIRST frame — not Home.
+// (Bug: `view` defaulted to "overview" and the bookmarked hash was only
+// applied by resolveInitialTab(), which waits for onboarding.hydrate()'s
+// async /v1/settings round-trip — flashing Home before the real page.
+// Only the no-hash DEFAULT still waits for onboarding; an explicit hash
+// never needs it.)
+function initialViewFromHash() {
+  const hashId = (typeof window !== "undefined" && window.location.hash.replace(/^#/, "")) || "";
+  if (hashId && VIEWS.some((v) => v.id === hashId)) return hashId;
+  if (["cache", "channels", "webhooks"].includes(hashId)) {
+    try { window.sessionStorage?.setItem("jv.settings.sub", hashId); } catch { /* ignore */ }
+    return "settings";
+  }
+  if (["compare", "train", "speakerlab", "renderlab", "audio"].includes(hashId)) {
+    try { window.sessionStorage?.setItem("jv.labs.sub", hashId); } catch { /* ignore */ }
+    return "labs";
+  }
+  return null;
+}
+const _initialHashView = initialViewFromHash();
+const view = ref(_initialHashView || "overview");
 const health = ref(null);
 const api = useApi();
 const tasks = useRenderTasks();
@@ -193,7 +214,9 @@ const onboarding = useOnboarding();
 const activeProject = useActiveProject();
 const uiContext = useUiContext();
 const { t } = useI18n();
-let initialTabResolved = false;
+// An explicit hash is authoritative — mark resolved so the post-hydrate
+// watch/resolveInitialTab don't override the bookmarked page.
+let initialTabResolved = !!_initialHashView;
 
 // Localized sidebar labels — proves the i18n scaffold is live. VIEWS
 // holds the English defaults so the data lookup stays static; this
