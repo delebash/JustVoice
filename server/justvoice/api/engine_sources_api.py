@@ -75,21 +75,43 @@ def _catalog_variant(engine_id: str, variant_id: str) -> ModelVariant | None:
     return None
 
 
+def _hf_from_url(url: str | None) -> tuple[str | None, str | None]:
+    """Recognise a huggingface.co URL and pull out (repo_id, revision).
+
+    Catalog entries store direct file URLs like
+        https://huggingface.co/<owner>/<repo>/resolve/<rev>/<path...>
+    The unified Download contract wants to fetch the WHOLE repo
+    (snapshot_download), not just one file, so we promote any
+    huggingface.co URL to an hf_repo for downstream resolution.
+    """
+    if not url:
+        return None, None
+    import re
+
+    m = re.match(
+        r"https?://huggingface\.co/([^/]+)/([^/]+)/resolve/([^/]+)(?:/.*)?$", url
+    )
+    if not m:
+        return None, None
+    owner, repo, rev = m.group(1), m.group(2), m.group(3)
+    return f"{owner}/{repo}", (rev if rev not in ("main", "master") else None)
+
+
 def _default_source_for(variant: ModelVariant) -> dict[str, Any]:
     """Pull the canonical default URL / HF repo from a catalog entry.
 
-    Convention: HF-distributed engines store files at huggingface.co URLs
-    (the catalog already encodes this). URL-tarball engines (kokoro)
-    point at github.com release assets. We surface URL as the primary
-    field; the HF case will reconstruct repo+revision in the prefetch
-    worker (S1) from the URL prefix when it makes sense, but for the
-    operator-facing surface a URL is the universal representation.
+    Catalog entries store direct file URLs. For huggingface.co URLs we
+    surface BOTH the URL (operator-readable) AND the derived hf_repo +
+    revision (so the worker uses snapshot_download to pull the whole
+    repo, not a single file). URL-tarball engines (kokoro → github.com)
+    just surface the URL.
     """
     url = variant.files[0].url if variant.files else None
+    hf_repo, hf_revision = _hf_from_url(url)
     return {
         "url": url,
-        "hf_repo": None,
-        "hf_revision": None,
+        "hf_repo": hf_repo,
+        "hf_revision": hf_revision,
         "size_mb": variant.size_mb,
         "name": variant.name,
     }
