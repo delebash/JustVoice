@@ -5,6 +5,54 @@
 
 ---
 
+## 2026-06-14 (later afternoon, busy-rubin) — engines progress accuracy: smooth bar through download + extract
+
+User-reported (with screenshot of Kokoro v0.19 mid-fetch): EXTRACTING-MODEL
+shown with a fake static bar and no MB / MB·s / ETA. Plan:
+`docs/plans/2026-06-14-engines-progress-accuracy.md` — locked rulings:
+**one smooth bar through download AND extract** + **sweep ALL progress
+code paths**.
+
+**Shipped (commits 7e36380, 57123ad):**
+- Server `installer.py`:
+  - `_estimate_archive_unpacked(archive, name)`: sums every `TarInfo.size`
+    — the honest extract-work total.
+  - `_extract_tar_bz2` extracts member-by-member with an `on_member(size)`
+    callback (advances `bytes_downloaded`) and `cancel_check()` polled
+    between members (so abort mid-extract stops within one file).
+  - `_url_stream_to` (S1 kokoro path) AND `_run_install` (legacy
+    spawn_install): after download finishes, re-anchor `bytes_total =
+    downloaded + unpacked`, then tick `bytes_downloaded` through extract.
+    Bar moves 0 → 100% across both phases against one unit; never resets.
+  - HF `snapshot_download` path unchanged (no extract; units already right).
+- Renderer `EnginesView.vue` + `styles.css`:
+  - Strip bar: `bytes_total > 0` → real `pct()` width; `bytes_total === 0`
+    → `data-indeterminate="true"`, full-width with stripe animation.
+    No more fake 35% placeholder.
+  - Stripe CSS now keyed on `data-indeterminate`, NOT on specific phases.
+    Extract with a known total no longer hides motion under stripes.
+  - Byte-less phases (pip etc.) show "working…" so the user always has
+    a signal alongside the stripes.
+
+**Verification (Playwright + pytest, every claim asserted):**
+- Server: 260 pytest pass (3 new) — incl. `test_url_path_progress
+  _advances_through_extract` which builds a real tarball, captures every
+  job_update, and proves: final `bytes_total = download + sum(member
+  sizes)`, final hits 100% exactly, sequence is monotonic, AND extract
+  advances PAST the download point (the user's freeze is gone).
+- `scripts/verify-engines-progress.mjs` 9/9: bar shows real % at 40 MB
+  / 100 MB (no 35-fake); not indeterminate when total is known; extract
+  at 100/160 MB renders ~62.5% (not stuck at 40); bar advances 62.9% →
+  80.9% during extract (no freeze); indeterminate phase correctly shows
+  stripes + "working…" + no fake numbers.
+- Regressions: `verify-engines-c1c2` 5/5, `verify-engines-c3` 8/8,
+  `verify-engines-c4` 12/12, `verify-no-fakes` 16/16 still green.
+
+Screenshot delivered (`progress-extract-moving.png`) shows the strip mid-
+extract at ~80% with the real "130 / 160 MB" counter and Cancel button.
+
+---
+
 ## 2026-06-14 (afternoon, busy-rubin) — engines Download/Load contract + inline progress + source overrides (plan steps 1-7)
 
 User-reported bugs ("chatterbox install instantly with no download, kokoro
