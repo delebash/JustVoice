@@ -52,7 +52,8 @@ const previewResult = ref(""); // text after pronunciation rewrites — best-eff
 const newGrapheme = ref("");
 const newPhonemeIpa = ref("");
 const newAlias = ref("");
-const newNote = ref("");
+// When set, the entry form is EDITING the entry at this index (vs adding).
+const editingEntryIndex = ref(null);
 
 const selected = computed(() => lexicons.value.find((l) => l.id === selectedId.value) ?? null);
 const selectedScope = computed(() => selected.value?.scope ?? "global");
@@ -187,26 +188,84 @@ async function deleteLexicon(id) {
   }
 }
 
-async function appendEntry() {
-  if (!selectedId.value || !newGrapheme.value.trim()) return;
+function resetEntryForm() {
+  editingEntryIndex.value = null;
+  newGrapheme.value = "";
+  newPhonemeIpa.value = "";
+  newAlias.value = "";
+}
+
+function buildEntry() {
   const entry = { grapheme: newGrapheme.value.trim() };
   if (newPhonemeIpa.value.trim()) entry.phoneme_ipa = newPhonemeIpa.value.trim();
   if (newAlias.value.trim()) entry.alias = newAlias.value.trim();
+  return entry;
+}
+
+// PUT the whole lexicon (entries + name). The server's PUT replaces the
+// entry list wholesale, so per-entry edit/delete + rename all route here
+// with the FULL current entry set (minus/with the one change).
+async function putLexicon(entries, successTitle, nameOverride) {
+  if (!selectedId.value || !selected.value) return;
+  try {
+    await api.request(`/v1/lexicons/${selectedId.value}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: (nameOverride ?? selected.value.name) || selected.value.name,
+        entries,
+        scope: selected.value.scope || "global",
+      }),
+    });
+    await refresh();
+    if (successTitle) pushToast({ kind: "success", title: successTitle });
+  } catch (e) {
+    pushToast({ kind: "error", title: "Save failed", description: String(e?.message ?? e) });
+  }
+}
+
+// Add a new entry (atomic append) OR commit an edit (full PUT replace).
+async function saveEntry() {
+  if (!selectedId.value || !newGrapheme.value.trim()) return;
+  const entry = buildEntry();
+  if (editingEntryIndex.value != null) {
+    const entries = [...(selected.value?.entries || [])];
+    entries[editingEntryIndex.value] = entry;
+    await putLexicon(entries, "Entry updated");
+    resetEntryForm();
+    return;
+  }
   try {
     await api.request(`/v1/lexicons/${selectedId.value}/entries`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(entry),
     });
-    newGrapheme.value = "";
-    newPhonemeIpa.value = "";
-    newAlias.value = "";
-    newNote.value = "";
+    resetEntryForm();
     await refresh();
-    pushToast({ kind: "success", title: "Entry appended" });
+    pushToast({ kind: "success", title: "Entry added" });
   } catch (e) {
-    pushToast({ kind: "error", title: "Append failed", description: String(e?.message ?? e) });
+    pushToast({ kind: "error", title: "Add failed", description: String(e?.message ?? e) });
   }
+}
+
+function startEditEntry(entry, index) {
+  editingEntryIndex.value = index;
+  newGrapheme.value = entry.grapheme || "";
+  newPhonemeIpa.value = entry.phoneme_ipa || "";
+  newAlias.value = entry.alias || "";
+}
+
+async function deleteEntry(index) {
+  const entries = (selected.value?.entries || []).filter((_, i) => i !== index);
+  await putLexicon(entries, "Entry removed");
+  if (editingEntryIndex.value === index) resetEntryForm();
+}
+
+async function renameLexicon(ev) {
+  const newName = (ev.target.value || "").trim();
+  if (!newName || !selected.value || newName === selected.value.name) return;
+  await putLexicon(selected.value.entries || [], "Lexicon renamed", newName);
 }
 
 async function bulkPasteTsv() {
@@ -386,13 +445,18 @@ onMounted(async () => {
 
       <div class="lex__editor">
         <header class="lex__editor-h">
-          <h2>{{ selected.name }}</h2>
+          <input
+            class="jv-input jv-w-name lex__name"
+            :value="selected.name"
+            title="Rename this lexicon"
+            aria-label="Lexicon name"
+            @change="renameLexicon"
+          />
           <span class="jv-pill" :class="scopeBadge(selected).cls">{{ scopeBadge(selected).label }}</span>
           <span class="jv-muted lex__editor-count">{{ (selected.entries || []).length }} entries · applied before TTS</span>
           <span class="lex__spacer" />
           <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="chooseImportFile">⬇ Import .justlex.json</button>
           <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="exportLexicon">⬆ Export</button>
-          <button class="jv-btn jv-btn--danger-outline jv-btn--sm" @click="deleteLexicon(selected.id)">Delete</button>
         </header>
 
         <div class="lex__field">
@@ -421,16 +485,17 @@ onMounted(async () => {
               <th>Word</th>
               <th>Pronunciation (IPA or phonetic)</th>
               <th style="width:90px">Format</th>
-              <th style="width:80px" class="right"></th>
+              <th style="width:150px" class="right"></th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(e, i) in selected.entries" :key="i">
+            <tr v-for="(e, i) in selected.entries" :key="i" :class="{ 'lex__row--editing': editingEntryIndex === i }">
               <td><strong>{{ e.grapheme }}</strong></td>
               <td><code class="jv-mono">{{ e.phoneme_ipa || e.alias || "—" }}</code></td>
               <td>{{ e.phoneme_ipa ? "IPA" : "phonetic" }}</td>
-              <td class="right">
-                <button class="jv-btn jv-btn--ghost jv-btn--sm" disabled title="Inline edit lands in #103.1">Edit</button>
+              <td class="right lex__entry-actions">
+                <button class="jv-btn jv-btn--ghost jv-btn--sm" title="Edit this entry in the form below" @click="startEditEntry(e, i)">Edit</button>
+                <button class="jv-btn jv-btn--danger-outline jv-btn--sm" title="Delete this entry" @click="deleteEntry(i)">Delete</button>
               </td>
             </tr>
           </tbody>
@@ -441,29 +506,26 @@ onMounted(async () => {
 
         <div class="jv-divider" />
 
-        <h4 class="lex__sub-h">Append entry</h4>
+        <h4 class="lex__sub-h">{{ editingEntryIndex != null ? "Edit entry" : "Add entry" }}</h4>
         <div class="lex__entry-grid">
           <label class="lex__field">
             <span>Grapheme (as written)</span>
-            <input class="jv-input jv-w-name" v-model="newGrapheme" placeholder="Beauchamp" @keydown.enter="appendEntry" />
+            <input class="jv-input jv-w-name" v-model="newGrapheme" placeholder="Beauchamp" @keydown.enter="saveEntry" />
           </label>
           <label class="lex__field">
             <span>Phoneme IPA</span>
-            <input class="jv-input jv-w-name" v-model="newPhonemeIpa" placeholder="/ˈbiːtʃəm/" @keydown.enter="appendEntry" />
+            <input class="jv-input jv-w-name" v-model="newPhonemeIpa" placeholder="/ˈbiːtʃəm/" @keydown.enter="saveEntry" />
           </label>
           <label class="lex__field">
             <span>Alias (phonetic — engine reads this)</span>
-            <input class="jv-input jv-w-name" v-model="newAlias" placeholder="bee-chum" @keydown.enter="appendEntry" />
-          </label>
-          <label class="lex__field">
-            <span>Note (optional)</span>
-            <input class="jv-input jv-w-name" v-model="newNote" placeholder="family name in Ch.3" />
+            <input class="jv-input jv-w-name" v-model="newAlias" placeholder="bee-chum" @keydown.enter="saveEntry" />
           </label>
         </div>
 
         <div class="lex__actions">
-          <JvButton variant="primary" label="+ Add entry" @click="appendEntry" :disabled="!newGrapheme.trim() || (!newPhonemeIpa.trim() && !newAlias.trim())" />
-          <button class="jv-btn jv-btn--ghost jv-btn--sm" @click="bulkPasteTsv">Bulk paste TSV</button>
+          <JvButton variant="primary" :label="editingEntryIndex != null ? 'Update entry' : '+ Add entry'" @click="saveEntry" :disabled="!newGrapheme.trim() || (!newPhonemeIpa.trim() && !newAlias.trim())" />
+          <JvButton v-if="editingEntryIndex != null" variant="secondary" size="sm" label="Cancel edit" @click="resetEntryForm" />
+          <button v-else class="jv-btn jv-btn--ghost jv-btn--sm" @click="bulkPasteTsv">Bulk paste TSV</button>
           <span class="lex__spacer" />
           <button
             class="jv-btn jv-btn--secondary jv-btn--sm"
@@ -513,8 +575,12 @@ onMounted(async () => {
   flex-wrap: wrap;
 }
 .lex__editor-h h2 { margin: 0; font-size: 22px; }
+.lex__name { font-size: 18px; font-weight: 600; }
 .lex__editor-count { font-size: 12px; }
 .lex__spacer { flex: 1; }
+.lex__entry-actions { white-space: nowrap; }
+.lex__entry-actions > * + * { margin-left: 4px; }
+.lex__row--editing td { background: var(--accent-soft); }
 
 .lex__field {
   display: flex;

@@ -212,8 +212,14 @@ class LexiconStore:
                 db.close()
             return lex
 
-    def update(self, id: str, entries: list[LexiconEntry]) -> Lexicon | None:
-        """Replace the entry list wholesale (the API's PUT semantics)."""
+    def update(
+        self, id: str, entries: list[LexiconEntry], name: str | None = None
+    ) -> Lexicon | None:
+        """Replace the entry list wholesale (the API's PUT semantics).
+
+        `name`, when given, also renames the lexicon — so the editor's
+        rename + per-entry edit/delete both route through one PUT.
+        """
         from ..database.models import Lexicon as DBLexicon
         from ..database.models import LexiconEntry as DBEntry
 
@@ -225,6 +231,8 @@ class LexiconStore:
                 row = db.query(DBLexicon).filter(DBLexicon.id == id).first()
                 if row is None:
                     return None
+                if name is not None and name.strip():
+                    row.name = name.strip()
                 db.query(DBEntry).filter(DBEntry.lexicon_id == id).delete()
                 for e in entries:
                     db.add(DBEntry(lexicon_id=id, **_entry_to_row_fields(e)))

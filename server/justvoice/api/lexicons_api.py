@@ -38,7 +38,7 @@ async def get_lexicon(id: str) -> Lexicon:
 
 @router.put("/v1/lexicons/{id}", response_model=Lexicon)
 async def update_lexicon(id: str, body: CreateLexiconRequest) -> Lexicon:
-    lex = get_state().lexicons.update(id, body.entries)
+    lex = get_state().lexicons.update(id, body.entries, name=body.name)
     if not lex:
         raise not_found(f"lexicon {id}")
     return lex
