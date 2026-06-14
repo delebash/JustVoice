@@ -867,6 +867,13 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
   line-height: 1.4;
   transition: border-color 0.12s, box-shadow 0.12s;
 }
+/* Default cap so an untagged single-line input/select sizes to a normal
+   field instead of bleeding full-width (RULE #1 #2 — "size to content,
+   never full-width unless prose"). Placed BEFORE the width tokens +
+   --full below so those override it by source order. Textareas are
+   intentionally excluded — prose is the explicit full-width exception. */
+.jv-input,
+.jv-select { max-width: var(--w-name); }
 .jv-input--full,
 .jv-textarea--full,
 .jv-select--full { max-width: none; }
