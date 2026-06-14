@@ -456,3 +456,50 @@ NEXT: views one-by-one (full read each), then stores/services, then SERVER.
   RULE #1 item 5), voice-inspector prefill handoff. Inline form-card with
   explicit "Queue training job" submit is correct (action, not field-edit).
   Trivial: `.jv-file-input` CSS is unused. This is how a view should look.
+
+## views batch D (Overview/Home, Personas re-verify, Lexicons full)
+- **OverviewView.vue (Home) — ✓ MOSTLY CLEAN + P3.** Daily driver. Snapshot
+  hydrate → instant paint, then silent live refresh (the perf pattern);
+  five shared stores; continueProject + cheap miniStatus (no per-persona
+  fan-out — the documented Home-fill perf fix); stat cards, live tasks,
+  loaded-engine w/ VRAM, recent-gen playback, honest empty states + cold-
+  install next-step banner. No fake affordances. **P3 BUG:** `captures` is a
+  `ref([])` but the code stores the total as `captures.totalCount = …` — a
+  non-reactive property bolted onto the ref WRAPPER (not `.value`). It
+  mostly works because line 127-128 set `.value` (reactive) and
+  `.totalCount` (non-reactive) together, but `hydrateFromSnapshot` sets only
+  `.totalCount`, so the captures stat won't reactively update from the
+  snapshot. Should be its own ref. P3: many raw `jv-btn--ghost` icon/link
+  buttons (acceptable — bordered ghost / icons).
+- **PersonasView.vue — ✓ FIXED (re-verified) + P3.** All G-PERSONA fixes
+  present and correct: createBlank opens the editor directly on a blank
+  draft (no prompt, no premature POST) + name autofocus (G-PERSONA-1);
+  savePersona POST/PUT then closeEditor on success (G-PERSONA-2); footer =
+  Save+Cancel with `:disabled="!dirty"` against a draft BUFFER (matches the
+  save-pattern ruling for modals — commit on Save, discard on Cancel);
+  Delete on each row, not the footer (G-PERSONA-4); removePersona unified
+  with Undo; shared stores reload propagates. Live instruct-capability
+  verdict per engine (anti-jargon honesty). P3: `--border-soft` in
+  `.personas__chip` → X-6. P3: the "+ Edit" delivery button only fires a
+  toast pointing to Generate (doesn't edit in place — a redirect masquerading
+  as an editor button; honestly labeled but slightly misleading). P3: filter
+  chips use `.personas__chip` (jv-chip-card) while every sibling library
+  view uses `jv-pill --solid/--ghost` filter chips — inconsistent precedent.
+- **LexiconsView.vue — ✗ DEFECTS (confirms + extends the dialog verdict).**
+  List/toolbar are clean: canonical jv-lib-toolbar / jv-table / jv-pill
+  filter chips / EmptyState, shared stores, fix-it prefill handoff, multi-
+  step create (name+scope → target). Dialog defects:
+  - **P2 · entries append-only.** The entries table row (428-435) has ONLY
+    a DISABLED "Edit" (`title="Inline edit lands in #103.1"`) and NO per-
+    entry delete. You can add a pronunciation but never fix or remove one.
+  - **P2 · Delete duplicated + destructive-prominent.** A `jv-btn--danger-
+    outline` Delete sits in the dialog HEADER (395) AND on the table row
+    (375). Per the ruling Delete belongs on the row, not the editor header.
+  - **P3 · dead "Note (optional)" field.** `newNote` is bound (460) and
+    cleared on append (204), but `appendEntry` (192-194) NEVER includes it
+    in the POST body — typing a note does nothing. Pure dead input.
+  - **P3 · can't rename a lexicon** — the dialog has no name field (only the
+    h2 display). Create-time name is permanent from the UI.
+  - **P3 · header uses raw `jv-btn` buttons** (Import/Export/Delete) vs the
+    JvButton "+ Add entry". Append is atomic (per-entry POST) with no save
+    signal — the "+ Add entry" primary is the only commit cue.
