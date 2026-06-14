@@ -503,3 +503,42 @@ NEXT: views one-by-one (full read each), then stores/services, then SERVER.
   - **P3 · header uses raw `jv-btn` buttons** (Import/Export/Delete) vs the
     JvButton "+ Add entry". Append is atomic (per-entry POST) with no save
     signal — the "+ Add entry" primary is the only commit cue.
+
+## views batch E (SpeakerLab, Books)
+- **SpeakerLabView.vue — ✓ CLEAN (reference-grade truth surface).** The view
+  the user redlined ("a lab that hides its pipeline can't be trusted") is now
+  exemplary: the textareas show the REAL prompt bodies from /v1/extraction/
+  config (not placeholders); runs hit the SAME endpoint Studio·Script uses
+  (/v1/extraction/analyze-text) so lab and production can't drift; prompts
+  ship as overrides ONLY when edited away from the displayed default (what
+  you see is what runs); multi-column A/B race (cap 4); tier auto-classify
+  with user override following the no-Auto-button grammar; localStorage
+  presets; "Use as production" writes production-config + keeps the pin in
+  sync; task tracking w/ abort; honest 501 hint. JvToggle for booleans
+  (canonical). Cast pane is properly carded (the earlier "floating unstyled
+  Cast pane" defect is resolved). P3 only: `--border-soft` in a chip-fallback
+  (X-6, low impact); raw `jv-btn--ghost` icon buttons mixed with JvButton.
+- **BooksView.vue — ✗ P2 BUGS (undefined references — VERIFIED by grep).**
+  Project library + inline-expand detail pane. The data layer is right
+  (shared projectsStore/personasStore, reload propagates, browsing ≠
+  activating). The detail pane uses inline auto-save-on-change for metadata
+  (matches the save-pattern ruling for in-page edits). BUT three template/
+  handler references are UNDEFINED (confirmed: 0 definitions each):
+  - **P2 · `flashSaved()` is undefined but CALLED in patchProject (line
+    268), AFTER a successful update()+refresh().** It throws ReferenceError
+    INSIDE the try, so the catch fires a false **"Save failed"** toast on
+    EVERY successful metadata edit (Title/Author/Mastering/Render-preset/
+    Webhook). Data persists; the UI lies that it failed. Borderline P1 — it
+    makes the whole detail editor read as broken.
+  - **P2 · `savedFlash` is undefined** but bound `v-if="savedFlash"` (line
+    498) — the "Saved ✓" confirmation pill therefore NEVER shows. Combined
+    with the false-failure toast, the autosave feedback is fully inverted.
+  - **P2 · `openInStudio` is undefined** but wired to the primary detail
+    action `@click="openInStudio"` (line 595, "Open in Studio ➜") — clicking
+    throws ReferenceError; the main CTA of the detail pane is dead.
+  - **P3 · chapters subtable "Open" button (639)** has no @click — inert.
+  - **P3 · native checkbox** in the add-cast modal (G-CORE-2, deferred);
+    scoped `.books__toolbar` reproduces jv-lib-toolbar (should adopt it).
+  Fix: add a `savedFlash` ref + `flashSaved()` that sets it true then clears
+  on a timer; add `openInStudio()` (activeProject.open + hash="#studio");
+  wire the chapter-row Open.
