@@ -800,3 +800,37 @@ P3 / design-ruling:
 9. **X-5 modal shells** → jv-overlay/jv-modal: NewProjectModal, VoicesView,
    ImportModal (its vue-i18n excuse is false), ChordPicker, LineageViewer.
 DEFERRED (user ruling): G-CORE-2 native-checkbox → JvCheckbox migration.
+
+═══════════════════════════════════════════════════════════════════════
+# ◆ FIXES APPLIED (2026-06-14, follow-up pass — items 1-3, 5-7)
+═══════════════════════════════════════════════════════════════════════
+User authorized "do 1-3 and 5-7" (item 4 — the Voices/Compare/Captures
+fakes — deferred pending a wire-vs-hide decision per affordance).
+
+DONE:
+1. ✅ Books — defined savedFlash + flashSaved() (kills the false "Save
+   failed" on every metadata edit; "Saved ✓" now shows); added
+   openInStudio(); wired the chapters-row "Open" via a jv.chapter.sceneId
+   hand-off ChapterView now consumes.
+2. ✅ X-6 — defined --border-soft as a per-theme alias of --line in
+   styles.css :root (light + dark). The 7 affected files now render their
+   soft borders.
+3. ✅ ExportPanel — show-notes Copy moved off the inline navigator call
+   into copyShowNotes().
+5. ✅ RenderPresets dialog — draft + Save/Cancel (no per-field auto-save);
+   built-ins read-only (fields disabled, footer = Close, Edit-chain
+   hidden, table Delete disabled + guarded).
+6. ✅ Lexicons dialog — per-entry Edit/Delete + rename (server
+   storage.update() extended to apply name via the existing PUT); dead
+   "Note" field removed; header Delete removed (stays on the library row).
+7. ✅ X-5 — ChordPicker, LineageViewer, NewProjectModal, VoicesView,
+   ImportModal migrated to jv-overlay/jv-modal; NewProjectModal's
+   borderless .np-import buttons → links; VoicesView double-close removed.
+
+VERIFICATION: renderer `npm run build:vite` clean; server `ruff check` +
+full `pytest` (247 passed). Commits fd608c6, 1491901, 3882d54, eb5c29d.
+
+STILL OPEN: item 4 (fake affordances — needs wire-vs-hide call); P3
+polish (raw-button-vs-JvButton inconsistencies, scoped lib-toolbars on
+Lines/Books, Compare/Captures decision); DEFERRED G-CORE-2 checkbox
+migration.
