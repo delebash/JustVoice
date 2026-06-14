@@ -228,17 +228,17 @@ G-CORE-2 (control type per context) is already correct under the ruling.
 
 ## Dialog / editor lifecycle (cross-cutting, needs per-handler pass)
 
-- **[X-3] P2 · Inconsistent editor-close behavior on save/create.**
-  Confirmed: PersonasView `savePersona` doesn't close (G-PERSONA-2);
-  LexiconsView `createLexicon` opens the editor after create (same
-  create→open shape as Persona, X-2). AudioChannelsView/RenderPresets/
-  Studio vary. The whole set needs one focused pass: every save should
-  close (or stay open intentionally + show saved state), every create
-  should land you in a consistent place. Enumerated handlers to check:
-  AudioChannelsView.save, BooksView.commitAddCast, ChapterView.
-  saveBlockText/savePastedText, EnginesView.saveProvider, LexiconsView.
-  createLexicon, PersonasView.createBlank/savePersona, RenderPresetsView.
-  createPreset, StudioView.createBuiltinNarrator.
+- **[X-3] P2 · Editor-close-on-save — PASS DONE (read each handler).**
+  Result: the issue is NOT widespread. **Only `PersonasView.savePersona`
+  is genuinely broken** (no close — G-PERSONA-2). Verified-correct:
+  `AudioChannelsView.save` (resets `editing` to blank → collapses),
+  `ChapterView.saveBlockText` (`editingBlockId=null`),
+  `RenderPresetsView.onChainSaved` (`editorOpen=false`, both branches),
+  `BooksView.commitAddCast` (closes `addCastOpen`). Create-flows
+  (`createBlank`/`createLexicon`) open the editor by design — that's the
+  X-2 "create pattern" concern, not a close bug. (An automated
+  gate-name heuristic gave several false positives; corrected by reading
+  each handler.) **Net: X-3 reduces to the single G-PERSONA-2 fix.**
 
 ## PersonasView  (screenshot: aud-PERSONAS)
 
