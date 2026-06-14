@@ -949,15 +949,18 @@ function blendWithVoice() {
   </div><!-- /.voices-view.jv-fill — page-scroll-free pane ends here -->
 
   <!-- ── Modal ───────────────────────────────────────────────────────── -->
-  <div class="modal-overlay" v-if="modal" @click.self="modal = null">
-    <div class="modal">
+  <div class="jv-overlay" v-if="modal" @click.self="modal = null">
+    <div class="jv-modal voices-modal">
 
-      <div class="modal-head">
-        <span class="modal-title">{{ modalTitle }}</span>
-        <JvButton variant="ghost" size="sm" @click="modal = null">Close</JvButton>
-      </div>
+      <header class="jv-modal__header">
+        <div class="jv-modal__titleblock">
+          <span class="jv-modal__eyebrow">Voice</span>
+          <h3 class="jv-modal__title">{{ modalTitle }}</h3>
+        </div>
+        <button type="button" class="jv-modal__close" title="Cancel" @click="modal = null">✕</button>
+      </header>
 
-      <div class="modal-body">
+      <div class="jv-modal__body">
 
         <!-- Engine + Name (all modes) -->
         <div class="jv-row" style="align-items: flex-end;">
@@ -1040,14 +1043,14 @@ function blendWithVoice() {
           </div>
         </template>
 
-      </div><!-- /.modal-body -->
+      </div><!-- /.jv-modal__body -->
 
-      <div class="modal-footer">
-        <JvButton variant="ghost" @click="modal = null">Cancel</JvButton>
+      <footer class="jv-modal__footer">
+        <JvButton variant="secondary" @click="modal = null">Cancel</JvButton>
         <JvButton variant="primary" :disabled="busy || !valid" :loading="busy" @click="submit">
           {{ busy ? busyLabel : submitLabel }}
         </JvButton>
-      </div>
+      </footer>
 
     </div>
   </div>
@@ -1056,43 +1059,8 @@ function blendWithVoice() {
 <style scoped>
 .row-orphan { opacity: 0.7; }
 
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 200;
-}
-.modal {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--r-xl);
-  width: min(620px, 92vw);
-  max-height: 88vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: var(--shadow-3);
-  overflow: hidden;
-}
-.modal-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 22px;
-  border-bottom: 1px solid var(--line);
-}
-.modal-title { font-size: 14px; font-weight: 600; color: var(--ink); }
-.modal-body { padding: 20px 22px; overflow-y: auto; flex: 1; }
-.modal-footer {
-  padding: 14px 22px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  border-top: 1px solid var(--line);
-}
+/* Modal — canonical jv-overlay/jv-modal shell; only width is local. */
+.voices-modal { width: min(620px, 92vw); }
 
 /* File input inherits basic styling */
 .jv-file-input {

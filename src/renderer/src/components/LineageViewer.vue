@@ -62,13 +62,17 @@ function fmtDate(iso) {
 </script>
 
 <template>
-  <div v-if="open" class="lineage-backdrop" @click.self="emit('close')">
-    <div class="lineage-modal jv-card">
-      <div class="lineage-header">
-        <h3>Take lineage</h3>
-        <JvButton variant="ghost" size="sm" label="✕" @click="emit('close')" />
-      </div>
+  <div v-if="open" class="jv-overlay" @click.self="emit('close')">
+    <div class="jv-modal lineage-modal">
+      <header class="jv-modal__header">
+        <div class="jv-modal__titleblock">
+          <span class="jv-modal__eyebrow">Take history</span>
+          <h3 class="jv-modal__title">Take lineage</h3>
+        </div>
+        <button type="button" class="jv-modal__close" title="Close" @click="emit('close')">✕</button>
+      </header>
 
+      <div class="jv-modal__body">
       <p v-if="loading" class="jv-muted">Loading chain…</p>
       <p v-else-if="error" class="jv-banner jv-banner--danger">{{ error }}</p>
       <p v-else-if="!chain.length" class="jv-muted">No lineage found for this take.</p>
@@ -102,29 +106,13 @@ function fmtDate(iso) {
           </div>
         </div>
       </div>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.lineage-backdrop {
-  position: fixed; inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  z-index: 8100;
-  display: flex; align-items: center; justify-content: center;
-  padding: 24px;
-}
-.lineage-modal {
-  width: min(540px, 100%);
-  max-height: 80vh;
-  overflow-y: auto;
-  padding: 20px 24px;
-}
-.lineage-header {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 12px;
-}
-.lineage-header h3 { margin: 0; }
+.lineage-modal { width: min(540px, calc(100vw - 32px)); }
 
 .lineage-chain { display: flex; flex-direction: column; }
 .lineage-node { display: flex; gap: 12px; padding: 8px 0; }
@@ -145,7 +133,7 @@ function fmtDate(iso) {
 .lineage-node__line {
   flex: 1;
   width: 2px;
-  background: var(--border);
+  background: var(--line);
   margin-top: 4px;
 }
 .lineage-node__body { flex: 1; }

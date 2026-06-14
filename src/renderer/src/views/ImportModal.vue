@@ -15,12 +15,11 @@
 //   close   — closing without committing (cancel / Esc)
 //   created — `{ project_id, name, kind }` after a successful commit
 //
-// We could have wrapped components/AppModal.vue here, but AppModal pulls
-// in vue-i18n which the project doesn't currently install — so we render
-// a minimal modal shell inline (Reka UI's Dialog primitives are already
-// available, but keeping this dependency-free reduces churn). Once
-// vue-i18n lands in package.json this can be flipped to `<AppModal>`
-// with no API change for callers.
+// Renders on the canonical jv-overlay/jv-modal shell (RULE #1) — same
+// CSS the rest of the app's modals use, so there's no scoped one-off to
+// drift. (It could alternatively wrap components/AppModal.vue; that's a
+// later call. The earlier "vue-i18n isn't installed" note was wrong —
+// it is, and main.js registers it — so nothing blocked using the shell.)
 //
 // Help link: each adapter exposes a `docs_anchor` (e.g. "import-justwrite").
 // We surface it through `data-help-key` on the "What is this format?" link
@@ -265,16 +264,16 @@ const previewWarnings = computed(() => preview.value?.warnings || []);
 </script>
 
 <template>
-  <div class="im-overlay" @click.self="emit('close')" role="dialog" aria-modal="true" aria-labelledby="im-title">
-    <div class="im-dialog">
-      <header class="im-header">
-        <div class="im-titleblock">
-          <div class="im-eyebrow">Import</div>
-          <div id="im-title" class="im-title">{{ props.projectId ? "Re-import — update in place" : "Import a project" }}</div>
+  <div class="jv-overlay" @click.self="emit('close')" role="dialog" aria-modal="true" aria-labelledby="im-title">
+    <div class="jv-modal im-modal">
+      <header class="jv-modal__header">
+        <div class="jv-modal__titleblock">
+          <span class="jv-modal__eyebrow">Import</span>
+          <h3 id="im-title" class="jv-modal__title">{{ props.projectId ? "Re-import — update in place" : "Import a project" }}</h3>
         </div>
-        <button type="button" class="im-close" aria-label="Close" @click="emit('close')">&times;</button>
+        <button type="button" class="jv-modal__close" aria-label="Close" @click="emit('close')">✕</button>
       </header>
-      <div class="im-body">
+      <div class="jv-modal__body">
         <div class="import-grid">
       <label class="field">
         <span class="lbl">Source format</span>
@@ -331,48 +330,15 @@ const previewWarnings = computed(() => preview.value?.warnings || []);
       <p v-if="previewing" class="muted" style="margin-top:10px">Scanning the file…</p>
         </div>
       </div>
-      <footer class="im-footer">
-        <JvButton variant="ghost" @click="emit('close')">Cancel</JvButton>
+      <footer class="jv-modal__footer">
+        <JvButton variant="secondary" @click="emit('close')">Cancel</JvButton>
       </footer>
     </div>
   </div>
 </template>
 
 <style scoped>
-.im-overlay {
-  position: fixed; inset: 0;
-  background: rgba(20, 20, 18, 0.45);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 1000;
-  padding: 24px;
-}
-.im-dialog {
-  background: var(--surface, #fff);
-  border-radius: 12px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
-  width: min(560px, 100%);
-  max-height: 90vh;
-  display: flex; flex-direction: column;
-  overflow: hidden;
-}
-.im-header {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  padding: 16px 20px; border-bottom: 1px solid var(--line, #e3e1dc);
-}
-.im-titleblock { display: flex; flex-direction: column; gap: 2px; }
-.im-eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted, #7c7a72); }
-.im-title { font-size: 18px; font-weight: 600; }
-.im-close {
-  background: transparent; border: 0;
-  font-size: 22px; line-height: 1; color: var(--muted, #7c7a72);
-  cursor: pointer; padding: 4px 8px;
-}
-.im-body { padding: 16px 20px; overflow-y: auto; }
-.im-footer {
-  display: flex; justify-content: flex-end; gap: 8px;
-  padding: 12px 20px; border-top: 1px solid var(--line, #e3e1dc);
-  background: var(--bg, #faf9f5);
-}
+.im-modal { width: min(560px, calc(100vw - 32px)); }
 
 .import-grid { display: flex; flex-direction: column; gap: 18px; }
 .field { display: flex; flex-direction: column; gap: 6px; }

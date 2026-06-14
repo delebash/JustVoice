@@ -14,6 +14,7 @@
 -->
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
+import JvButton from './jv/JvButton.vue';
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -118,54 +119,44 @@ function onSave() {
 </script>
 
 <template>
-  <div v-if="open" class="chord-picker__backdrop" @click.self="emit('cancel')">
-    <div class="chord-picker">
-      <h3 class="chord-picker__title">{{ title }}</h3>
-      <p class="chord-picker__description">{{ description }}</p>
+  <div v-if="open" class="jv-overlay" @click.self="emit('cancel')">
+    <div class="jv-modal chord-picker">
+      <header class="jv-modal__header">
+        <div class="jv-modal__titleblock">
+          <span class="jv-modal__eyebrow">Keyboard chord</span>
+          <h3 class="jv-modal__title">{{ title }}</h3>
+        </div>
+        <button type="button" class="jv-modal__close" title="Cancel" @click="emit('cancel')">✕</button>
+      </header>
 
-      <div
-        ref="captureEl"
-        class="chord-picker__capture"
-        tabindex="0"
-        @blur="captureEl?.focus()"
-        aria-label="Press the keys for your chord"
-      >
-        <span v-if="captured.length === 0" class="chord-picker__placeholder">Press a key…</span>
-        <span v-for="k in captured" :key="k" class="chord-picker__key">{{ k }}</span>
+      <div class="jv-modal__body">
+        <p class="chord-picker__description">{{ description }}</p>
+
+        <div
+          ref="captureEl"
+          class="chord-picker__capture"
+          tabindex="0"
+          @blur="captureEl?.focus()"
+          aria-label="Press the keys for your chord"
+        >
+          <span v-if="captured.length === 0" class="chord-picker__placeholder">Press a key…</span>
+          <span v-for="k in captured" :key="k" class="chord-picker__key">{{ k }}</span>
+        </div>
+
+        <p v-if="unsupported" class="chord-picker__unsupported">Key "{{ unsupported }}" can't be used.</p>
       </div>
 
-      <p v-if="unsupported" class="chord-picker__unsupported">Key "{{ unsupported }}" can't be used.</p>
-
-      <div class="chord-picker__actions">
-        <button class="btn btn--ghost" @click="emit('cancel')">Cancel</button>
-        <button class="btn btn--primary" :disabled="captured.length === 0" @click="onSave">Save chord</button>
-      </div>
+      <footer class="jv-modal__footer">
+        <span class="jv-spacer" />
+        <JvButton variant="secondary" label="Cancel" @click="emit('cancel')" />
+        <JvButton variant="primary" label="Save chord" :disabled="captured.length === 0" @click="onSave" />
+      </footer>
     </div>
   </div>
 </template>
 
 <style scoped>
-.chord-picker__backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-.chord-picker {
-  background: var(--surface, #fff);
-  border-radius: 8px;
-  padding: 24px;
-  width: 480px;
-  max-width: 92vw;
-}
-.chord-picker__title {
-  margin: 0 0 8px;
-  font-size: 18px;
-  font-weight: 600;
-}
+.chord-picker { width: min(480px, 92vw); }
 .chord-picker__description {
   margin: 0 0 16px;
   font-size: 13px;
@@ -206,33 +197,5 @@ function onSave() {
   margin: 12px 0 0;
   color: var(--danger, #a8442e);
   font-size: 12px;
-}
-.chord-picker__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
-}
-.btn {
-  height: 32px;
-  padding: 0 16px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  border: 1px solid var(--line-strong, #cfccc4);
-}
-.btn--ghost {
-  background: var(--surface-2, #fbfaf7);
-  color: inherit;
-}
-.btn--primary {
-  background: var(--accent, #3a7d63);
-  color: #fff;
-  border-color: var(--accent, #3a7d63);
-}
-.btn--primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 </style>
