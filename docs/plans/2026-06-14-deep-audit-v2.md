@@ -542,3 +542,22 @@ NEXT: views one-by-one (full read each), then stores/services, then SERVER.
   Fix: add a `savedFlash` ref + `flashSaved()` that sets it true then clears
   on a timer; add `openInStudio()` (activeProject.open + hash="#studio");
   wire the chapter-row Open.
+
+## views batch F (Engines)
+- **EnginesView.vue — ✓ CLEAN (complex, honest).** The v7 redesign (Local
+  models vs Online providers split). Local: hardware card, "Loaded now"
+  rail with per-kind Unload, capability sections (TTS/STT/LLM/Embeddings),
+  per-MODEL verbs driven by variant-level state (Load/Unload/Download/
+  Delete model), hardware-fit dots (ok/tight/no vs detected VRAM), install
+  + load with job polling AND cancel/abort, uninstall with optional pip-dep
+  removal. Online: provider rows merged across TWO stores (llm-providers +
+  settings.engines.external) into one row per id with combined capability
+  chips (the OpenAI "both" case), per-row Test that really pings/probes and
+  recolors the status dot, ProviderForm inline editor. EVERY affordance does
+  real work — no mocks. Honest cost note ("text leaves this machine") +
+  free/private framing. Conformance: `.ev-chip` filter chips are a DOCUMENTED
+  scoped exception (lines 1111-1114: mock-v7-approved size; converging with
+  jv-pill is a Phase-4 call) — recorded, not a defect. Other `ev-*`/
+  `jv-toptab`/`jv-searchbar` classes are the approved engines-redesign-v7
+  contract. Native checkboxes come via ProviderForm (G-CORE-2, deferred).
+  No `--border-soft` here. Reference example for a large, stateful view.
