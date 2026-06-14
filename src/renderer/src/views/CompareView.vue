@@ -106,9 +106,9 @@ function verdictVariant(v) {
   <div class="cmp">
     <!-- Top action row -->
     <div class="cmp__toolbar">
-      <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="pickA">📂 Choose A</button>
-      <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="pickB">📂 Choose B</button>
-      <button class="jv-btn jv-btn--secondary jv-btn--sm" disabled title="Coming soon — will pull A = current take, B = previous take from a chapter block">↻ Refresh from takes (soon)</button>
+      <JvButton variant="secondary" size="sm" label="📂 Choose A" @click="pickA" />
+      <JvButton variant="secondary" size="sm" label="📂 Choose B" @click="pickB" />
+      <JvButton variant="secondary" size="sm" label="↻ Refresh from takes (soon)" :disabled="true" title="Coming soon — will pull A = current take, B = previous take from a chapter block" />
       <span class="jv-spacer" />
       <JvButton
         variant="primary"

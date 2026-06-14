@@ -865,7 +865,7 @@ function blendWithVoice() {
         <div class="voices-view__effects-row">
           <span v-if="!(inspectedVoice.default_effects?.length)" class="jv-muted">(none)</span>
           <span v-for="fx in (inspectedVoice.default_effects || [])" :key="fx" class="jv-pill jv-pill--ghost">{{ fx }}</span>
-          <button class="jv-btn jv-btn--ghost jv-btn--sm" type="button" disabled title="Per-voice default effect chain editing lands with the Effects integration">+ Add</button>
+          <JvButton variant="ghost" size="sm" :disabled="true" title="Per-voice default effect chain editing lands with the Effects integration" label="+ Add" />
         </div>
       </div>
     </div>
@@ -888,8 +888,8 @@ function blendWithVoice() {
           <td>{{ s.snr }}</td>
           <td class="jv-muted">{{ s.transcript }}</td>
           <td class="right">
-            <button class="jv-btn jv-btn--ghost jv-btn--sm" disabled title="Sample playback lands with /v1/voices/{id}/samples">▶</button>
-            <button class="jv-btn jv-btn--ghost jv-btn--sm" disabled title="Sample delete lands with /v1/voices/{id}/samples">✕</button>
+            <JvButton variant="ghost" size="sm" :disabled="true" title="Sample playback lands with /v1/voices/{id}/samples" label="▶" />
+            <JvButton variant="ghost" size="sm" :disabled="true" title="Sample delete lands with /v1/voices/{id}/samples" label="✕" />
           </td>
         </tr>
       </tbody>
@@ -906,13 +906,13 @@ function blendWithVoice() {
       <template v-if="inspectedEditable">
         <!-- Sample-collection flow isn't built yet — disabled so the UI
              doesn't claim an upload/record that never happens. -->
-        <button class="jv-btn jv-btn--secondary jv-btn--sm" disabled title="Coming soon — attach a WAV as a cloning sample">+ Add WAV file (soon)</button>
-        <button class="jv-btn jv-btn--secondary jv-btn--sm" disabled title="Coming soon — in-app recorder with auto-trim + level meter">🎙️ Record in-app (soon)</button>
-        <button class="jv-btn jv-btn--secondary jv-btn--sm" disabled title="Coming soon — promote a capture into this voice's samples">↗ Promote from Captures (soon)</button>
+        <JvButton variant="secondary" size="sm" :disabled="true" title="Coming soon — attach a WAV as a cloning sample" label="+ Add WAV file (soon)" />
+        <JvButton variant="secondary" size="sm" :disabled="true" title="Coming soon — in-app recorder with auto-trim + level meter" label="🎙️ Record in-app (soon)" />
+        <JvButton variant="secondary" size="sm" :disabled="true" title="Coming soon — promote a capture into this voice's samples" label="↗ Promote from Captures (soon)" />
       </template>
       <span class="jv-spacer" />
-      <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="trainLoraForVoice">🧪 Train LoRA</button>
-      <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="blendWithVoice">🔀 Blend with…</button>
+      <JvButton variant="secondary" size="sm" label="🧪 Train LoRA" @click="trainLoraForVoice" />
+      <JvButton variant="secondary" size="sm" label="🔀 Blend with…" @click="blendWithVoice" />
     </div>
   </div></td></tr>
         </template>

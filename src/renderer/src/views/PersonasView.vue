@@ -400,7 +400,7 @@ onMounted(loadAll);
             <td><span class="jv-pill" :class="usageCount(p.id) > 0 ? 'jv-pill--green' : 'jv-pill--ghost'">{{ usageCount(p.id) }} project{{ usageCount(p.id) === 1 ? '' : 's' }}</span></td>
             <td class="jv-table__actions" @click.stop>
               <JvButton variant="ghost" size="sm" label="Edit" @click="selectedId = p.id" />
-              <button type="button" class="jv-btn jv-btn--danger-outline jv-btn--sm" @click="removePersona(p)">Delete</button>
+              <JvButton variant="danger-outline" size="sm" label="Delete" @click="removePersona(p)" />
             </td>
           </tr>
         </tbody>
@@ -519,11 +519,7 @@ onMounted(loadAll);
               >
                 {{ deliveryChipLabel(key) }}: <strong>{{ deliveryChipValue(key, value) }}</strong>
               </span>
-              <button
-                class="jv-btn jv-btn--ghost jv-btn--sm"
-                type="button"
-                @click="openDeliveryHint"
-              >+ Edit</button>
+              <JvButton variant="ghost" size="sm" label="+ Edit" @click="openDeliveryHint" />
             </div>
           </div>
 
@@ -540,11 +536,7 @@ onMounted(loadAll);
               >
                 {{ ef.type || '?' }}
               </span>
-              <button
-                class="jv-btn jv-btn--ghost jv-btn--sm"
-                type="button"
-                @click="openEffectsEditor"
-              >+ Edit chain</button>
+              <JvButton variant="ghost" size="sm" label="+ Edit chain" @click="openEffectsEditor" />
             </div>
           </div>
         </div>

@@ -1202,8 +1202,8 @@ onMounted(() => {
           <span class="jv-muted" style="font-size:11.5px">fresh-install behavior, zero data loss</span>
         </div>
         <div style="display:flex; align-items:center; gap:10px; margin-top:10px">
-          <button type="button" class="jv-btn jv-btn--danger-outline jv-btn--sm" title="As-new install: all content + settings to defaults. Engine model downloads stay. Type RESET to confirm." @click="factoryReset">☢ Factory reset…</button>
-          <button type="button" class="jv-btn jv-btn--danger-outline jv-btn--sm" :disabled="wipeBusy" @click="deleteAllProjects">🗑 Delete ALL projects…</button>
+          <JvButton variant="danger-outline" size="sm" label="☢ Factory reset…" title="As-new install: all content + settings to defaults. Engine model downloads stay. Type RESET to confirm." @click="factoryReset" />
+          <JvButton variant="danger-outline" size="sm" label="🗑 Delete ALL projects…" :disabled="wipeBusy" @click="deleteAllProjects" />
           <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer">
             <input type="checkbox" class="jv-check" v-model="deletePersonasToo" /> also delete all personas
           </label>
@@ -1608,12 +1608,11 @@ onMounted(() => {
                 </span>
               </td>
               <td>
-                <button
-                  type="button"
-                  class="jv-btn jv-btn--ghost jv-btn--sm"
+                <JvButton
+                  variant="ghost" size="sm" label="Clear all"
                   :disabled="!correctionsCounts[p.id]"
                   @click="clearProjectCorrections(p.id)"
-                >Clear all</button>
+                />
               </td>
             </tr>
           </tbody>

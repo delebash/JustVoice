@@ -591,13 +591,14 @@ onMounted(() => {
                     @click="removeCast(c.persona_id)"
                   >✕</button>
                 </span>
-                <button
-                  class="jv-btn jv-btn--ghost jv-btn--sm"
-                  type="button"
-                  @click="openAddCast"
+                <JvButton
+                  variant="ghost"
+                  size="sm"
+                  label="+ Add personas"
                   :disabled="!personasAvailableForCast.length"
                   :title="personasAvailableForCast.length ? 'Add personas from your global library' : 'Every persona is already in this project'"
-                >+ Add personas</button>
+                  @click="openAddCast"
+                />
               </div>
             </div>
 
@@ -628,7 +629,7 @@ onMounted(() => {
           <div class="books__actions">
             <JvButton variant="primary" label="Open in Studio ➜" title="Cast → Script → Render → Export" @click="openInStudio" />
             <span class="books__spacer" />
-            <button class="jv-btn jv-btn--danger-outline jv-btn--sm" type="button" @click="deleteProject">Delete project</button>
+            <JvButton variant="danger-outline" size="sm" label="Delete project" @click="deleteProject" />
           </div>
 
           <div class="jv-divider" />
@@ -670,7 +671,7 @@ onMounted(() => {
                     <span class="jv-pill" :class="sceneStatusPill(s).cls">{{ sceneStatusPill(s).label }}</span>
                   </td>
                   <td class="books__row-actions">
-                    <button class="jv-btn jv-btn--ghost jv-btn--sm" title="Open in Chapter view" @click="openChapterInView(s)">Open</button>
+                    <JvButton variant="ghost" size="sm" label="Open" title="Open in Chapter view" @click="openChapterInView(s)" />
                   </td>
                 </tr>
               </tbody>

@@ -951,7 +951,7 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
           </span>
           <span class="desc">{{ pr.base_url }}</span>
           <span class="gsum">
-            <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" title="Edit this provider (opens the provider form)" @click="topTab = 'online'; startEditProvider(pr)">Edit</button>
+            <JvButton variant="ghost" size="sm" label="Edit" title="Edit this provider (opens the provider form)" @click="topTab = 'online'; startEditProvider(pr)" />
           </span>
         </div>
       </div>

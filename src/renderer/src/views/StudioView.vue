@@ -1960,25 +1960,22 @@ watch(selectedProjectId, (id) => {
                     <span v-if="taskForScene(s.id).error" class="jv-muted" style="color: var(--danger); font-size: 11.5px;">
                       {{ taskForScene(s.id).error }}
                     </span>
-                    <button
+                    <JvButton
                       v-if="taskForScene(s.id).status === 'running'"
-                      type="button"
-                      class="jv-btn jv-btn--danger-outline jv-btn--sm"
+                      variant="danger-outline" size="sm" label="Cancel"
                       @click="taskForScene(s.id).onCancel?.()"
-                    >Cancel</button>
-                    <button
+                    />
+                    <JvButton
                       v-if="taskForScene(s.id).status === 'failed' || taskForScene(s.id).status === 'cancelled'"
-                      type="button"
-                      class="jv-btn jv-btn--secondary jv-btn--sm"
+                      variant="secondary" size="sm" label="↻ Retry"
                       @click="renderScene(s)"
-                    >↻ Retry</button>
-                    <button
+                    />
+                    <JvButton
                       v-if="taskForScene(s.id).status === 'completed' && taskForScene(s.id).result?.url"
-                      type="button"
-                      class="jv-btn jv-btn--ghost jv-btn--sm"
+                      variant="ghost" size="sm" label="▶ Play"
                       title="Play in global audio player"
                       @click="audioPlayer.play({ url: taskForScene(s.id).result.url, title: s.title || 'Scene', subtitle: selectedProject?.name || '' })"
-                    >▶ Play</button>
+                    />
                     <a
                       v-if="taskForScene(s.id).status === 'completed' && taskForScene(s.id).result?.url"
                       :href="taskForScene(s.id).result.url"
@@ -1986,12 +1983,11 @@ watch(selectedProjectId, (id) => {
                       class="jv-btn jv-btn--ghost jv-btn--sm"
                       title="Download WAV"
                     >⬇ Download</a>
-                    <button
+                    <JvButton
                       v-if="taskForScene(s.id).status !== 'running'"
-                      type="button"
-                      class="jv-btn jv-btn--ghost jv-btn--sm"
+                      variant="ghost" size="sm" label="✕"
                       @click="tasks.dismiss(taskForScene(s.id).id)"
-                    >✕</button>
+                    />
                   </div>
                 </td>
               </tr>

@@ -119,14 +119,14 @@ onMounted(() => {
             <strong>
               <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">V</span>
             </strong>
-            <button class="jv-btn jv-btn--ghost jv-btn--sm" type="button" disabled title="Rebinding the hotkey is coming soon">Change</button>
+            <JvButton variant="ghost" size="sm" :disabled="true" title="Rebinding the hotkey is coming soon" label="Change" />
           </span>
           <span class="jv-chip-card">
             🎙️ Toggle:
             <strong>
               <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">D</span>
             </strong>
-            <button class="jv-btn jv-btn--ghost jv-btn--sm" type="button" disabled title="Rebinding the hotkey is coming soon">Change</button>
+            <JvButton variant="ghost" size="sm" :disabled="true" title="Rebinding the hotkey is coming soon" label="Change" />
           </span>
           <span class="jv-chip-card">
             🔉 Source: <strong>Default mic</strong>

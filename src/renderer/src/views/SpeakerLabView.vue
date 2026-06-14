@@ -551,7 +551,7 @@ onMounted(async () => {
         <li v-for="(c, i) in characters" :key="c.id">
           <strong>{{ c.name }}</strong>
           <span v-if="c.aliases.length" class="jv-muted">aliases: {{ c.aliases.join(", ") }}</span>
-          <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" title="Remove from cast" @click="removeCharacter(i)">✕</button>
+          <JvButton variant="ghost" size="sm" label="✕" title="Remove from cast" @click="removeCharacter(i)" />
         </li>
       </ul>
       <div class="splab__add-cast">
@@ -571,7 +571,7 @@ onMounted(async () => {
           <header class="splab__column-h">
             <input v-model="col.label" class="jv-input jv-input--sm splab__column-name" title="Run name" />
             <span class="jv-spacer" />
-            <button v-if="columns.length > 1" type="button" class="jv-btn jv-btn--ghost jv-btn--sm" title="Remove this column" @click="removeColumn(i)">🗑 Delete column</button>
+            <JvButton v-if="columns.length > 1" variant="ghost" size="sm" label="🗑 Delete column" title="Remove this column" @click="removeColumn(i)" />
           </header>
 
           <!-- Presets row — JustWrite Speaker Lab parity: dropdown,
@@ -671,7 +671,7 @@ onMounted(async () => {
               <em class="jv-muted">— exactly what the model receives; resolved from the tier</em>
               <template v-if="systemEdited(col)">
                 <span class="jv-pill jv-pill--ghost splab__edited">edited</span>
-                <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" title="Restore this tier's default body" @click="applyTier(col, col.tier)">↺ Tier default</button>
+                <JvButton variant="ghost" size="sm" label="↺ Tier default" title="Restore this tier's default body" @click="applyTier(col, col.tier)" />
               </template>
             </span>
             <textarea v-model="col.systemPrompt" class="jv-input jv-input--full splab__prompt-text" />
@@ -684,7 +684,7 @@ onMounted(async () => {
               <em class="jv-muted">— template · <code>{characters}</code>, <code>{corrections}</code>, <code>{paragraphs}</code> fill in server-side</em>
               <template v-if="userEdited(col)">
                 <span class="jv-pill jv-pill--ghost splab__edited">edited</span>
-                <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" title="Restore the default template" @click="col.userPrompt = extractionConfig?.user_template || ''">↺ Default</button>
+                <JvButton variant="ghost" size="sm" label="↺ Default" title="Restore the default template" @click="col.userPrompt = extractionConfig?.user_template || ''" />
               </template>
             </span>
             <textarea v-model="col.userPrompt" class="jv-input jv-input--full splab__prompt-text splab__prompt-text--user" />

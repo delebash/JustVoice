@@ -420,7 +420,7 @@ onMounted(() => {
           <span class="home__eyebrow">Active tasks</span>
           <span v-if="liveTasks.length" class="jv-pill jv-pill--warn">{{ liveTasks.length }} in flight</span>
           <span class="jv-spacer" />
-          <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" data-task-panel-toggle @click="tasks.togglePanel()">open panel ➜</button>
+          <JvButton variant="ghost" size="sm" label="open panel ➜" data-task-panel-toggle @click="tasks.togglePanel()" />
         </div>
         <p v-if="!liveTasks.length" class="jv-muted home__empty">Nothing running. Renders, script analysis, and clones show up here with live progress.</p>
         <div v-for="t in liveTasks" :key="t.id" class="home__task">
@@ -428,7 +428,7 @@ onMounted(() => {
           <strong class="home__task-label">{{ t.label }}</strong>
           <span class="jv-muted home__task-stats">{{ t.statsFn ? t.statsFn(t) : "" }}</span>
           <div class="home__prog"><div class="home__prog-fill" :style="{ width: (t.percent ?? 30) + '%' }" /></div>
-          <button v-if="t.onCancel" type="button" class="jv-btn jv-btn--ghost jv-btn--sm home__task-x" title="Cancel" @click="cancelTask(t)">✕</button>
+          <JvButton v-if="t.onCancel" variant="ghost" size="sm" class="home__task-x" label="✕" title="Cancel" @click="cancelTask(t)" />
         </div>
       </div>
 
@@ -466,7 +466,7 @@ onMounted(() => {
       </div>
       <p v-if="!recentGenerations.length" class="jv-muted home__empty">Render something — your latest takes land here for one-click replay.</p>
       <div v-for="g in recentGenerations" :key="g.id" class="home__gen">
-        <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" title="Play" @click="playGen(g)">▶</button>
+        <JvButton variant="ghost" size="sm" label="▶" title="Play" @click="playGen(g)" />
         <span class="home__gen-text">{{ g.text || "—" }}</span>
         <span class="jv-muted home__gen-who">{{ g.voice || "?" }}</span>
         <span class="jv-mono jv-muted home__gen-meta">{{ g.take ? g.take + " · " : "" }}{{ fmtAgo(g.when) }}</span>

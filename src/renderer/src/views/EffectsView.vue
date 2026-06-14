@@ -182,12 +182,7 @@ onMounted(refresh);
             <td><span v-if="p.is_builtin" class="jv-pill jv-pill--ghost">built-in</span></td>
             <td class="jv-table__actions" @click.stop>
               <JvButton variant="ghost" size="sm" label="Edit" @click="startEdit(p)" />
-              <button
-                type="button"
-                class="jv-btn jv-btn--danger-outline jv-btn--sm"
-                :disabled="p.is_builtin"
-                @click="deletePreset(p)"
-              >Delete</button>
+              <JvButton variant="danger-outline" size="sm" label="Delete" :disabled="p.is_builtin" @click="deletePreset(p)" />
             </td>
           </tr>
         </tbody>

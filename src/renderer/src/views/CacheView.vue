@@ -216,10 +216,10 @@ onMounted(async () => {
     <section class="jv-card jv-section">
       <h3 class="jv-section__title">Actions</h3>
       <div class="cache-view__actions">
-        <button class="jv-btn jv-btn--secondary" @click="pruneOlderThan(30)">Prune &gt; 30 days</button>
-        <button class="jv-btn jv-btn--secondary" @click="pruneByVoice">Prune by voice…</button>
-        <button class="jv-btn jv-btn--secondary" @click="pruneByEngine">Prune by engine…</button>
-        <button class="jv-btn jv-btn--secondary" @click="pruneUnfavorited">Prune unfavorited</button>
+        <JvButton variant="secondary" label="Prune > 30 days" @click="pruneOlderThan(30)" />
+        <JvButton variant="secondary" label="Prune by voice…" @click="pruneByVoice" />
+        <JvButton variant="secondary" label="Prune by engine…" @click="pruneByEngine" />
+        <JvButton variant="secondary" label="Prune unfavorited" @click="pruneUnfavorited" />
         <span class="jv-spacer" />
         <JvButton variant="danger-outline" :label="`Clear all (${totalSizeGb} GB · ${totalEntries} entries)`" @click="purgeAll" />
       </div>
@@ -250,7 +250,7 @@ onMounted(async () => {
             <td>{{ fmtMB(r.size_bytes || 0) }} MB</td>
             <td>{{ fmtAge(r.created_at) }}</td>
             <td class="right">
-              <button class="jv-btn jv-btn--ghost jv-btn--sm" @click="deleteEntry(r.id)" title="Delete this entry">✕</button>
+              <JvButton variant="ghost" size="sm" label="✕" title="Delete this entry" @click="deleteEntry(r.id)" />
             </td>
           </tr>
         </tbody>

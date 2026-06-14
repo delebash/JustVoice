@@ -424,7 +424,7 @@ onMounted(async () => {
           </td>
           <td class="jv-table__actions" @click.stop>
             <JvButton variant="ghost" size="sm" label="Edit" @click="openEdit(lx)" />
-            <button type="button" class="jv-btn jv-btn--danger-outline jv-btn--sm" @click="deleteLexicon(lx.id)">Delete</button>
+            <JvButton variant="danger-outline" size="sm" label="Delete" @click="deleteLexicon(lx.id)" />
           </td>
         </tr>
       </tbody>
@@ -496,8 +496,8 @@ onMounted(async () => {
                 <td><code class="jv-mono">{{ e.phoneme_ipa || e.alias || "—" }}</code></td>
                 <td>{{ e.phoneme_ipa ? "IPA" : "phonetic" }}</td>
                 <td class="right lex__entry-actions">
-                  <button class="jv-btn jv-btn--ghost jv-btn--sm" title="Edit this entry in the form below" @click="startEditEntry(e, i)">Edit</button>
-                  <button class="jv-btn jv-btn--danger-outline jv-btn--sm" title="Remove this entry" @click="deleteEntry(i)">Delete</button>
+                  <JvButton variant="ghost" size="sm" label="Edit" title="Edit this entry in the form below" @click="startEditEntry(e, i)" />
+                  <JvButton variant="danger-outline" size="sm" label="Delete" title="Remove this entry" @click="deleteEntry(i)" />
                 </td>
               </tr>
             </tbody>
@@ -527,11 +527,11 @@ onMounted(async () => {
           <div class="lex__actions">
             <JvButton variant="secondary" size="sm" :label="editingEntryIndex != null ? 'Update entry' : '+ Add entry'" @click="saveEntry" :disabled="!newGrapheme.trim() || (!newPhonemeIpa.trim() && !newAlias.trim())" />
             <JvButton v-if="editingEntryIndex != null" variant="ghost" size="sm" label="Cancel edit" @click="resetEntryForm" />
-            <button v-else type="button" class="jv-btn jv-btn--secondary jv-btn--sm" @click="bulkPasteTsv">Bulk paste TSV</button>
-            <button type="button" class="jv-btn jv-btn--secondary jv-btn--sm" @click="runPreview" :disabled="!previewText.trim()">▶ Preview against text</button>
+            <JvButton v-else variant="secondary" size="sm" label="Bulk paste TSV" @click="bulkPasteTsv" />
+            <JvButton variant="secondary" size="sm" label="▶ Preview against text" :disabled="!previewText.trim()" @click="runPreview" />
             <span class="lex__spacer" />
-            <button type="button" class="jv-btn jv-btn--secondary jv-btn--sm" @click="chooseImportMerge">⬇ Merge file</button>
-            <button type="button" class="jv-btn jv-btn--secondary jv-btn--sm" @click="exportLexicon">⬆ Export</button>
+            <JvButton variant="secondary" size="sm" label="⬇ Merge file" @click="chooseImportMerge" />
+            <JvButton variant="secondary" size="sm" label="⬆ Export" @click="exportLexicon" />
           </div>
         </div>
 

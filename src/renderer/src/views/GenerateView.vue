@@ -665,14 +665,13 @@ onMounted(async () => {
     <!-- Persistent affordance for users who don't know the "/" shortcut.
          Opens the same SlashTagMenu programmatically. Visible only when
          the loaded engine has inline tags to offer. -->
-    <button
+    <JvButton
       v-if="engineCaps.inline_tags?.length"
-      type="button"
-      class="jv-btn jv-btn--ghost jv-btn--sm generate-view__tag-button"
+      variant="ghost" size="sm"
+      class="generate-view__tag-button"
+      label="🏷️ Insert tag…"
       @click="openTagMenu"
-    >
-      🏷️ Insert tag…
-    </button>
+    />
 
     <!-- Floating chip-card bar (matches preview HTML §1 mockup). -->
     <div class="jv-floating generate-view__floating">
@@ -983,9 +982,9 @@ onMounted(async () => {
             — attach via <a href="#personas">Personas</a>.
           </span>
           <span class="jv-spacer" />
-          <button
-            type="button"
-            class="jv-btn jv-btn--ghost jv-btn--sm"
+          <JvButton
+            variant="ghost" size="sm"
+            label="View applied entries"
             :disabled="!appliedLexiconCount"
             :title="appliedLexiconCount
               ? 'View matches against the current text'
@@ -993,7 +992,7 @@ onMounted(async () => {
                 ? 'Type text to see matching entries from this lexicon'
                 : 'Attach a lexicon via Personas first')"
             @click="showLexiconPreview = true"
-          >View applied entries</button>
+          />
         </div>
 
         <!-- Applied-entries preview modal — client-side match against
@@ -1028,7 +1027,7 @@ onMounted(async () => {
             </div>
             <footer class="jv-modal__footer">
               <span class="jv-spacer" />
-              <button type="button" class="jv-btn jv-btn--secondary" @click="showLexiconPreview = false">Close</button>
+              <JvButton variant="secondary" label="Close" @click="showLexiconPreview = false" />
             </footer>
           </div>
         </div>

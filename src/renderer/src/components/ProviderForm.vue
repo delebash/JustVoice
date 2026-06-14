@@ -476,12 +476,11 @@ async function onSave() {
         title="Ping + re-fetch models and voices"
         @click="doTest"
       />
-      <button
+      <JvButton
         v-if="editingKey !== 'new'"
-        type="button"
-        class="jv-btn jv-btn--danger-outline jv-btn--sm"
+        variant="danger-outline" size="sm" label="Remove provider"
         @click="emit('delete')"
-      >Remove provider</button>
+      />
       <JvButton variant="ghost" size="sm" label="Cancel" @click="emit('cancel')" />
       <JvButton variant="primary" size="sm" :loading="busy" :label="editingKey === 'new' ? 'Save provider' : 'Save'" @click="onSave" />
     </footer>

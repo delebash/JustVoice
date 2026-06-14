@@ -156,8 +156,8 @@ async function copyShowNotes() {
         <div class="exportp__h" style="margin-bottom:6px">
           <strong>Show notes</strong>
           <span class="jv-spacer" />
-          <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" title="Copy markdown" @click="copyShowNotes">⧉ Copy</button>
-          <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" @click="showNotes = null">✕</button>
+          <JvButton variant="ghost" size="sm" label="⧉ Copy" title="Copy markdown" @click="copyShowNotes" />
+          <JvButton variant="ghost" size="sm" label="✕" @click="showNotes = null" />
         </div>
         <pre class="exportp__notes-pre">{{ showNotes.markdown }}</pre>
       </div>

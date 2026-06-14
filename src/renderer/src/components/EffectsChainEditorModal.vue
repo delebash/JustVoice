@@ -187,13 +187,11 @@ onMounted(() => {
       <div class="jv-modal__body effects-modal__body">
         <!-- Preset picker — loads a saved chain wholesale -->
         <div class="effects-modal__row">
-          <button
-            type="button"
-            class="jv-btn jv-btn--ghost jv-btn--sm"
+          <JvButton
+            variant="ghost" size="sm"
+            :label="presetPickerOpen ? 'Hide presets' : 'Load from preset…'"
             @click="presetPickerOpen = !presetPickerOpen"
-          >
-            {{ presetPickerOpen ? "Hide presets" : "Load from preset…" }}
-          </button>
+          />
           <span class="jv-muted" v-if="presets.length">{{ presets.length }} saved</span>
         </div>
         <div v-if="presetPickerOpen" class="effects-modal__presets">
@@ -228,25 +226,9 @@ onMounted(() => {
               <strong>{{ specFor(ef.type)?.label || ef.type }}</strong>
               <span class="effects-modal__step">step {{ i + 1 }}</span>
               <span class="jv-spacer" />
-              <button
-                type="button"
-                class="jv-btn jv-btn--ghost jv-btn--sm"
-                :disabled="i === 0"
-                @click="move(i, -1)"
-                title="Move up"
-              >↑</button>
-              <button
-                type="button"
-                class="jv-btn jv-btn--ghost jv-btn--sm"
-                :disabled="i === chain.length - 1"
-                @click="move(i, 1)"
-                title="Move down"
-              >↓</button>
-              <button
-                type="button"
-                class="jv-btn jv-btn--danger-outline jv-btn--sm"
-                @click="removeAt(i)"
-              >Remove</button>
+              <JvButton variant="ghost" size="sm" label="↑" :disabled="i === 0" title="Move up" @click="move(i, -1)" />
+              <JvButton variant="ghost" size="sm" label="↓" :disabled="i === chain.length - 1" title="Move down" @click="move(i, 1)" />
+              <JvButton variant="danger-outline" size="sm" label="Remove" @click="removeAt(i)" />
             </div>
             <p v-if="specFor(ef.type)?.description" class="jv-muted effects-modal__desc">
               {{ specFor(ef.type).description }}
