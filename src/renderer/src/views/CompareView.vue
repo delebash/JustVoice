@@ -8,16 +8,14 @@
   Full deltas table kept inside a <details> for the long tail of numbers.
 -->
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvInput from "../components/jv/JvInput.vue";
 import JvTag from "../components/jv/JvTag.vue";
-import { useProjectsStore } from "../stores/projects.js";
 
 const api = useApi();
-const projectsStore = useProjectsStore();
 
 const fileA = ref(null);
 const fileB = ref(null);
@@ -25,13 +23,6 @@ const labelA = ref("");
 const labelB = ref("");
 const report = ref(null);
 const busy = ref(false);
-
-const projects = computed(() => projectsStore.items);
-const scenes = ref([]);
-const selectedProject = ref("");
-const selectedScene = ref("");
-const selectedBlock = ref("");
-const bulkBusy = ref(false);
 
 const inputA = ref(null);
 const inputB = ref(null);
@@ -80,48 +71,6 @@ async function compare() {
   }
 }
 
-async function refreshFromCurrentTakes() {
-  pushToast({
-    kind: "info",
-    title: "↻ Refresh from current takes",
-    description: "Pulls A=current default take, B=previous take for the active Chapter block (GET /v1/takes/{block_id}).",
-  });
-}
-
-async function runBulkQc() {
-  if (!selectedScene.value && !selectedBlock.value) {
-    pushToast({ kind: "warn", title: "Pick a scene or block first" });
-    return;
-  }
-  bulkBusy.value = true;
-  try {
-    pushToast({
-      kind: "info",
-      title: "QC pass queued",
-      description: `Comparing all takes for ${selectedScene.value || selectedBlock.value} — verdicts will land in the report below as they finish.`,
-    });
-  } finally {
-    bulkBusy.value = false;
-  }
-}
-
-async function loadBulkPickers() {
-  try {
-    await projectsStore.ensureLoaded();
-  } catch { /* fail silent — bulk row still renders */ }
-}
-
-async function loadScenes(projectId) {
-  scenes.value = [];
-  selectedScene.value = "";
-  selectedBlock.value = "";
-  if (!projectId) return;
-  try {
-    const list = await api.safeRequest(`/v1/projects/${projectId}/scenes`, []);
-    scenes.value = Array.isArray(list) ? list : list?.scenes || [];
-  } catch { /* fail silent */ }
-}
-
 function fmtDb(n) {
   if (n === null || n === undefined) return "—";
   if (!isFinite(n)) return n > 0 ? "∞" : "−∞";
@@ -151,8 +100,6 @@ function verdictVariant(v) {
   if (/different|unrelated/i.test(v)) return "danger";
   return "default";
 }
-
-onMounted(loadBulkPickers);
 </script>
 
 <template>
@@ -161,7 +108,7 @@ onMounted(loadBulkPickers);
     <div class="cmp__toolbar">
       <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="pickA">📂 Choose A</button>
       <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="pickB">📂 Choose B</button>
-      <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="refreshFromCurrentTakes">↻ Refresh from current takes</button>
+      <button class="jv-btn jv-btn--secondary jv-btn--sm" disabled title="Coming soon — will pull A = current take, B = previous take from a chapter block">↻ Refresh from takes (soon)</button>
       <span class="jv-spacer" />
       <JvButton
         variant="primary"
@@ -287,28 +234,14 @@ onMounted(loadBulkPickers);
       </details>
     </section>
 
-    <!-- Bulk QC card -->
+    <!-- Bulk QC card — planned, not built yet (don't pretend it works). -->
     <section class="cmp__section">
-      <h3 class="cmp__h">Bulk QC across takes</h3>
+      <h3 class="cmp__h">Bulk QC across takes <span class="jv-pill jv-pill--ghost">coming soon</span></h3>
       <div class="jv-card cmp__bulk-card">
-        <div class="cmp__bulk-row">
-          <span class="jv-muted">Compare all takes for:</span>
-          <select class="jv-input jv-w-name" v-model="selectedProject" @change="loadScenes(selectedProject)">
-            <option value="">— pick a project —</option>
-            <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
-          </select>
-          <select class="jv-input jv-w-name" v-model="selectedScene" :disabled="!scenes.length">
-            <option value="">— pick a chapter —</option>
-            <option v-for="s in scenes" :key="s.id" :value="s.id">
-              {{ s.title || `Chapter ${s.position}` }}
-            </option>
-          </select>
-          <input class="jv-input jv-w-id" v-model="selectedBlock" placeholder="Block id (optional)" />
-          <span class="jv-spacer" />
-          <JvButton variant="primary" size="sm" :loading="bulkBusy" label="Run QC pass" @click="runBulkQc" />
-        </div>
-        <p class="jv-muted cmp__bulk-hint">
-          Spawns a Compare run per (take_n, take_n+1) pair within the selected scope. Verdicts populate as runs finish — bad pairs trigger a webhook if one is configured.
+        <p class="jv-muted cmp__bulk-hint" style="margin:0">
+          Planned: pick a project / chapter and JustVoice spawns a Compare run per
+          (take_n, take_n+1) pair, flagging regressions automatically. Until then,
+          use the A/B comparison above for any two takes.
         </p>
       </div>
     </section>

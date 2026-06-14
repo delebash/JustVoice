@@ -9,7 +9,6 @@ import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { captureReadinessService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
-import CapturePill from "../components/CapturePill.vue";
 import JvButton from "../components/jv/JvButton.vue";
 import JvTag from "../components/jv/JvTag.vue";
 import JvInput from "../components/jv/JvInput.vue";
@@ -20,9 +19,6 @@ const captures = ref([]);
 const search = ref("");
 const selectedId = ref(null);
 const readiness = ref(null);
-const pillState = ref("rest");
-const elapsedMs = ref(0);
-const isRecording = ref(false);
 
 // All / Pinned / Today chips (parity: journeys mock) + search.
 const FILTERS = ["all", "pinned", "today"];
@@ -93,28 +89,9 @@ async function refreshReadiness() {
   }
 }
 
-function startRecording() {
-  isRecording.value = true;
-  pillState.value = "recording";
-  elapsedMs.value = 0;
-  const start = performance.now();
-  const tick = () => {
-    if (!isRecording.value) return;
-    elapsedMs.value = performance.now() - start;
-    requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
-}
-function stopRecording() {
-  isRecording.value = false;
-  pillState.value = "transcribing";
-  setTimeout(() => (pillState.value = "refining"), 1500);
-  setTimeout(() => {
-    pillState.value = "completed";
-    refresh();
-  }, 3000);
-  setTimeout(() => (pillState.value = "rest"), 5000);
-}
+// In-app record is not built yet (the Record button is disabled). Real
+// capture happens via the global dictation hotkey / the transparent
+// dictate Tauri window; this list reflects captures as they land.
 
 function fmtDuration(ms) {
   if (!ms) return "0:00";
@@ -135,37 +112,40 @@ onMounted(() => {
     <!-- ── Top band: hotkeys + animated pill preview (preview parity) ── -->
     <div class="captures__top">
       <section class="jv-card captures__hotkeys">
-        <h3 class="captures__band-h">Hotkeys</h3>
+        <h3 class="captures__band-h">Hotkeys <span class="jv-pill jv-pill--ghost">coming soon</span></h3>
         <div class="captures__hotkey-row">
           <span class="jv-chip-card">
             🎚️ Push-to-talk:
             <strong>
               <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">V</span>
             </strong>
-            <button class="jv-btn jv-btn--ghost jv-btn--sm" type="button">Change</button>
+            <button class="jv-btn jv-btn--ghost jv-btn--sm" type="button" disabled title="Rebinding the hotkey is coming soon">Change</button>
           </span>
           <span class="jv-chip-card">
             🎙️ Toggle:
             <strong>
               <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">D</span>
             </strong>
-            <button class="jv-btn jv-btn--ghost jv-btn--sm" type="button">Change</button>
+            <button class="jv-btn jv-btn--ghost jv-btn--sm" type="button" disabled title="Rebinding the hotkey is coming soon">Change</button>
           </span>
           <span class="jv-chip-card">
-            🔉 Source: <strong>Default mic</strong> <span class="caret">▾</span>
+            🔉 Source: <strong>Default mic</strong>
           </span>
           <span class="jv-chip-card">
-            🌐 Capture language: <strong>auto</strong> <span class="caret">▾</span>
+            🌐 Capture language: <strong>auto</strong>
           </span>
           <label class="jv-chip-card captures__autopaste">
             🤖 Auto-paste
-            <input type="checkbox" class="jv-check" checked />
+            <input type="checkbox" class="jv-check" checked disabled title="Configurable soon" />
           </label>
         </div>
+        <p class="jv-muted captures__pill-hint" style="margin-top:8px">
+          These defaults are shown for reference — configuring them in-app is coming soon.
+        </p>
       </section>
 
       <section class="jv-card captures__pill-preview">
-        <h3 class="captures__band-h">Live capture pill</h3>
+        <h3 class="captures__band-h">Capture pill states</h3>
         <div class="captures__pill-states">
           <span class="cap-pill cap-pill--recording">
             <span class="bars"><span></span><span></span><span></span><span></span><span></span></span>
@@ -186,10 +166,11 @@ onMounted(() => {
       <div class="captures__list-header">
         <span class="jv-section__title" style="margin:0;">Captures</span>
         <JvButton
-          :variant="isRecording ? 'danger' : 'primary'"
+          variant="primary"
           size="sm"
-          :label="isRecording ? 'Stop' : 'Record'"
-          @click="isRecording ? stopRecording() : startRecording()"
+          label="Record (soon)"
+          :disabled="true"
+          title="In-app record is coming soon — press your global dictation hotkey, or open the dictate window from the topbar, to capture now."
         />
       </div>
       <div class="captures__search">
@@ -222,7 +203,7 @@ onMounted(() => {
       </div>
 
       <p v-if="filtered.length === 0" class="captures__empty jv-muted">
-        No captures yet. Hit "Record" or press your dictation hotkey.
+        No captures yet. Press your global dictation hotkey, or open the dictate window from the topbar.
       </p>
 
       <div
@@ -255,9 +236,6 @@ onMounted(() => {
 
     <!-- ── Detail pane ──────────────────────────────────────────────── -->
     <div class="captures__detail jv-card">
-      <div class="captures__pill-row">
-        <CapturePill :state="pillState" :elapsed-ms="elapsedMs" @stop="stopRecording" />
-      </div>
       <div v-if="!selectedCapture" class="captures__detail-empty jv-muted">
         <p>Select a capture to inspect, or press the dictation hotkey to record.</p>
       </div>

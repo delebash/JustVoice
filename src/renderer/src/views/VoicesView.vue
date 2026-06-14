@@ -558,22 +558,9 @@ const inspectedSamples = computed(() => {
   }));
 });
 
-const sampleFileInput = ref(null);
-function pickSampleWav() { sampleFileInput.value?.click(); }
-async function onSamplePicked(ev) {
-  const file = ev.target.files?.[0];
-  if (!file || !inspectedVoice.value) return;
-  pushToast({ kind: "info", title: `+ Add WAV`, description: `Uploading ${file.name} → /v1/voices/${inspectedVoice.value.id}/samples.` });
-  ev.target.value = "";
-}
-function recordInApp() {
-  if (!inspectedVoice.value) return;
-  pushToast({ kind: "info", title: "🎙️ Record in-app", description: "Browser MediaRecorder will open with auto-trim + level meter. Lands with the recorder component." });
-}
-function promoteFromCaptures() {
-  pushToast({ kind: "info", title: "↗ Promote from Captures", description: "Switch to Captures and pick a clip — the “→ Sample” action attaches it to this voice." });
-  window.location.hash = "#captures";
-}
+// Sample-collection actions (Add WAV / Record / Promote from Captures)
+// are disabled in the inspector until the backend flow exists — no fake
+// "uploading…" toasts.
 function trainLoraForVoice() {
   if (!inspectedVoice.value) return;
   // Same handoff shape as jv.generate.prefill (Captures → Generate):
@@ -917,16 +904,16 @@ function blendWithVoice() {
 
     <div class="voices-view__sample-actions">
       <template v-if="inspectedEditable">
-        <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="pickSampleWav">+ Add WAV file</button>
-        <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="recordInApp">🎙️ Record in-app</button>
-        <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="promoteFromCaptures">↗ Promote from Captures</button>
+        <!-- Sample-collection flow isn't built yet — disabled so the UI
+             doesn't claim an upload/record that never happens. -->
+        <button class="jv-btn jv-btn--secondary jv-btn--sm" disabled title="Coming soon — attach a WAV as a cloning sample">+ Add WAV file (soon)</button>
+        <button class="jv-btn jv-btn--secondary jv-btn--sm" disabled title="Coming soon — in-app recorder with auto-trim + level meter">🎙️ Record in-app (soon)</button>
+        <button class="jv-btn jv-btn--secondary jv-btn--sm" disabled title="Coming soon — promote a capture into this voice's samples">↗ Promote from Captures (soon)</button>
       </template>
       <span class="jv-spacer" />
       <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="trainLoraForVoice">🧪 Train LoRA</button>
       <button class="jv-btn jv-btn--secondary jv-btn--sm" @click="blendWithVoice">🔀 Blend with…</button>
     </div>
-
-    <input ref="sampleFileInput" type="file" accept="audio/*" style="display:none" @change="onSamplePicked" />
   </div></td></tr>
         </template>
       </tbody>
