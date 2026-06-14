@@ -5,6 +5,74 @@
 
 ---
 
+## 2026-06-14 (remote session, busy-rubin) — DEEP AUDIT v2 (whole app, complete) + first fix pass
+
+**Branch: `claude/busy-rubin-sz9e4q`** (this session's required branch).
+`claude/dreamy-rubin-91lsr3` is kept pointing at the same HEAD. All commits
+are signed (the stop-hook flagged unsigned ones mid-session; re-signed via
+`git rebase --exec "git commit --amend --no-edit --reset-author -S"` — if
+the hook complains again, that's the fix).
+
+### The deep audit — DONE, and it's the trusted record
+`docs/plans/2026-06-14-deep-audit-v2.md` — a from-scratch, full-read audit
+of the WHOLE app. **It SUPERSEDES `2026-06-14-deep-audit.md` (v1), which is
+NOT trusted** (v1 mixed grep/screenshot proxies with deep reads and declared
+complete prematurely — it missed real bugs). The doc also carries a "what a
+real deep audit means" section (read it before auditing anything again).
+
+Coverage with written verdicts: **26 views · 26 components · 9 jv/ primitives
+· stores/services/composables/App/main/config · server (app wiring, render
+pipeline, 39 routers, core modules, 5 subpkgs)**. Method: read each file in
+full, simulate the flow, check conformance; verify-don't-guess (caught
+several false alarms). Server checked on the hard-rule lens (wiring +
+honesty): all 39 routers wired, auto-chunking (the canonical
+lifted-but-not-wired failure) is now imported AND invoked, no fake-data
+stubs. Server is healthy.
+
+### Defects the audit found (the fix queue lives at the BOTTOM of the audit doc)
+P1/P2 (verified bugs): Books (3 undefined refs → false "Save failed" every
+edit; dead CTAs) · Compare (Refresh-from-takes + Bulk QC are toast-only
+fakes) · Captures (Record button + Hotkeys card are non-functional mocks) ·
+Voices (onSamplePicked + recordInApp fake inspector actions) · ExportPanel
+(navigator in template throws) · X-6 (`--border-soft` undefined → 7 files'
+borders silently dropped). P3/ruling: RenderPresets dialog (auto-save) ·
+Lexicons dialog (append-only + dead Note + header Delete) · X-5 (5
+non-canonical modal shells). v1's "god component (Settings/Studio)" and
+"fat projects_api" framings were RETRACTED — they're cohesive, not defects.
+
+### Fixes APPLIED this session (user said "do 1-3 and 5-7"; item 4 deferred)
+- **Books**: added `savedFlash`/`flashSaved()` (kills the false "Save
+  failed"; shows "Saved ✓"), `openInStudio()`, wired chapters-row "Open"
+  via a `jv.chapter.sceneId` hand-off ChapterView now consumes.
+- **X-6**: `--border-soft` defined as a per-theme alias of `--line` in
+  `styles.css` :root (light + dark).
+- **ExportPanel**: show-notes Copy → `copyShowNotes()` setup method.
+- **RenderPresets dialog**: draft + Save/Cancel (no per-field auto-save);
+  built-ins read-only + delete-guarded (save-pattern ruling).
+- **Lexicons dialog**: per-entry Edit/Delete + rename (server
+  `storage.lexicons.update()` extended to apply `name` via the existing
+  PUT — one caller, backward-compatible); dead Note field removed; header
+  Delete removed (deletion stays on the library row).
+- **X-5**: ChordPicker, LineageViewer, NewProjectModal, VoicesView,
+  ImportModal → canonical `jv-overlay`/`jv-modal`; NewProjectModal
+  borderless buttons → links; VoicesView double-close removed.
+- Verified: `npm run build:vite` clean · `ruff check` clean · `pytest`
+  **247 passed**. Commits: fd608c6 · 1491901 · 3882d54 · eb5c29d · 2d70c39.
+
+### STILL OPEN (next session)
+- **Item 4 — needs a user wire-vs-hide call PER affordance** (do NOT just
+  pick): Voices `onSamplePicked` (POST the WAV to `/v1/voices/{id}/samples`)
+  + `recordInApp`; Compare `refreshFromCurrentTakes` + `runBulkQc`; Captures
+  Record button + Hotkeys card. Each is either build-the-backend or
+  gate-behind-"coming soon".
+- P3 polish: raw `jv-btn` vs `<JvButton>` inconsistencies; Lines/Books
+  scoped toolbars should adopt `.jv-lib-toolbar`; ImportModal dead preview
+  code; Overview `captures.totalCount` ref-bag.
+- DEFERRED by user ruling: the native-checkbox → `JvCheckbox` migration
+  (G-CORE-2) — ~10 surfaces; do NOT do it.
+
+---
+
 ## 2026-06-14 (remote session, dreamy-rubin) — DATA-LAYER REBUILD: shared stores as single source of truth (the real fix)
 
 Branch `claude/dreamy-rubin-91lsr3`. This supersedes the whole tangle of
