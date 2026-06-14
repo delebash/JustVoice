@@ -675,3 +675,44 @@ Personas/SpeakerLab/Studio + EffectsChainEditorModal. G-CORE-2 native
 checkboxes (deferred) recur across ~10 surfaces. X-5 non-canonical modal
 shells: NewProjectModal, VoicesView, ImportModal, ChordPicker, LineageViewer.
 NEXT: stores/services/composables/root, then SERVER (api ×39, core ×22).
+
+═══════════════════════════════════════════════════════════════════════
+# CLIENT INFRASTRUCTURE (stores / services / composables / root)
+═══════════════════════════════════════════════════════════════════════
+- **Shared stores (projects/voices/personas/lexicons/engines) — ✓ CLEAN.**
+  Identical rebuild pattern: `items` ref returned DIRECTLY (no
+  computed-wrapper that broke reactivity before), `loaded`, `_inflight`-
+  deduped `ensureLoaded()`, `reload()`, `byId()`. voices+engines also self-
+  reload on `jv:health-refresh` (listener added once via `_listening` guard;
+  singleton store so no leak). Matches the data-layer-rebuild plan exactly.
+- **stores/api.js — ✓ CLEAN.** fetch wrapper; content-type detection returns
+  Blob for `audio/*` (validates RenderLab), json/text otherwise; safeRequest
+  fallback; verb helpers (get/post/patch/put/del) — the W2 fix so services
+  never hand-roll the broken 3-arg request(method,path) shape; requestBlob/
+  postForm. Token + serverUrl persisted.
+- **stores/renderTasks.js — ✓ CLEAN.** Task lifecycle (running kept visible;
+  completed 5s / cancelled 3s auto-dismiss; failed never auto-dismisses).
+  **The 10Hz `now` tick is GATED on running.length > 0** (the documented
+  slowness fix — it no longer invalidates every now-touching computed
+  forever). cancel/retry/dismiss/history-cap.
+- **stores/takes.js — ✓ CLEAN** (per-block take versioning, navigate/promote/
+  remove/relabel/invalidate). **stores/activeProject.js — ✓ CLEAN**
+  (app-wide project slot, localStorage, kind mapping).
+- **composables/usePageCrumbs.js — ✓ CLEAN** (the X-1 breadcrumb-leak fix:
+  publish gated on onActivated/onDeactivated; re-verified).
+- **services/dialog.js — ✓ CLEAN** (imperative prompt/confirm replacing the
+  banned native dialogs; single-dialog, animation-safe deferred clear).
+- **App.vue — ✓ CLEAN.** View registry (lanes + visibleFor + per-kind nav
+  vocabulary), `<KeepAlive><component :is></KeepAlive>`, project switcher.
+  **Health is polled every 1.5s ONLY until the server is up, then stops and
+  listens for `jv:health-refresh`** — the perpetual 5s `/v1/health` poll that
+  caused the slowness was removed (documented at lines ~405-411). No native
+  checkboxes.
+- **main.js / config.js — ✓ CLEAN.** Dictate-window branch; bootStorage before
+  Pinia; same-origin-vs-loopback API resolution.
+  **NEW (strengthens X-5): ImportModal's comment claiming "AppModal pulls in
+  vue-i18n which the project doesn't currently install" is FALSE** — main.js
+  imports `./i18n` and `app.use(i18n)`, App.vue uses `useI18n`, and vue-i18n
+  is a dependency. So ImportModal's stated justification for its non-canonical
+  scoped shell is invalid; it can use AppModal / the jv-overlay+jv-modal
+  classes directly.
