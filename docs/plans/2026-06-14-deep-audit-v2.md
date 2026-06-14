@@ -358,3 +358,44 @@ NEXT: views one-by-one (full read each), then stores/services, then SERVER.
   canonical `.jv-lib-toolbar` (RULE #1). Filter chips are borderless but
   they're jv-pill selection chips (exempt). Raw jv-input select/search
   (acceptable). jv-pill--warn verified to exist.
+
+## views batch B (RenderLab, Cache, RenderPresets)
+- **RenderLabView.vue — ✓ CLEAN (X-6 only).** A/B matrix harness. Behavior
+  solid: voicesStore.ensureLoaded, matrix build (1-2 axes, cap 16),
+  concurrency-limited worker pool (cap 2), object-URL revocation before
+  re-run (no leaks), promptDialog naming (native prompt banned), JvToggle
+  for axis-enable (canonical boolean — NOT a native checkbox). VERIFY-DON'T-
+  GUESS: `api.request("/v1/generate")` returning a value passed to
+  createObjectURL looked like a bug, but api.js line 35 auto-returns
+  res.blob() for `audio/*` content-type — so it's CORRECT (false alarm).
+  Only blemish: `.renderlab__cell-actions` border-top uses var(--border-soft)
+  → X-6.
+- **CacheView.vue — ✓ MOSTLY CLEAN.** Excellent destructive-action
+  discipline: generation prunes are DRY-RUN first (DELETE /v1/generations
+  defaults dry-run) so the confirm dialog shows the REAL count + freed MB
+  before deleting; confirmDialog on every bulk action; promptDialog-with-
+  select for by-voice/by-engine (native prompt banned). Shared stores.
+  P3: the Actions row uses raw `jv-btn jv-btn--secondary` ×4 instead of
+  JvButton (the Clear-all beside them IS a JvButton — same-row
+  inconsistency). P3: the per-row recent-entry ✕ (`deleteEntry`) deletes
+  with NO confirm, while the hint copy claims "Every action asks for
+  confirmation" — copy overpromises for that one affordance.
+- **RenderPresetsView.vue — ✗ DEFECTS (confirms v1 carry-forward).**
+  Library + edit dialog. Canonical jv-lib-toolbar / jv-table / jv-overlay+
+  jv-modal / `jv-dialog__footer` (verified to exist). `editing` is a
+  computed off presets (NOT stale — re-confirmed). Defects:
+  - **P2 · the edit dialog auto-saves per field with only a "Done"
+    button — NO Cancel.** Each field's `@change` PATCHes immediately
+    ("Changes save automatically"). This VIOLATES the save-pattern ruling
+    (2026-06-14): modal/dialog editors get explicit **Save + Cancel**
+    against a working draft. This is THE dialog the ruling targets.
+  - **P2 · built-in presets are unprotected.** The table Delete button has
+    NO `:disabled="p.is_builtin"` (contrast EffectsView, which disables
+    delete for built-ins), and EVERY field in the dialog stays editable for
+    a built-in (only a "built-in" pill is shown). Built-ins can be edited
+    and deleted from the UI.
+  - **P3 · create is 2-step + fragile.** createPreset → promptDialog name →
+    POST → refresh → `presets.find(x => x.name === name)` → openEdit. The
+    find-by-name opens the wrong row if two presets share a name.
+  - **P3 · raw `jv-btn--danger-outline` Delete vs JvButton Edit** (same-row
+    inconsistency, recurring class).
