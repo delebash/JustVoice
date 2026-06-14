@@ -153,15 +153,25 @@ widespread bad authoring.)
         in place for the next author.
   **User decision needed** (a vs b). Recommend (a) — it fixes the class,
   not the instances, and aligns the default with the stated rule.
-- **[G-CORE-2] P3 · Two boolean controls coexist.** `JvToggle` (switch)
-  AND `.jv-check` (styled native checkbox, used in 12 places:
-  Generate/Import/Settings×2/Books/Captures/Studio/ProviderForm×3/
-  QuickSetup/EffectsChain). RULE #1 #1 says "JvToggle/styled control,
-  never a native checkbox" — `.jv-check` is a styled checkbox so it's
-  arguably compliant, but having two boolean idioms is a consistency
-  smell. **User decision:** is the split intentional (toggle = setting,
-  check = multi-select row) or should it unify? Not a bug; flagging for
-  a ruling.
+- **[G-CORE-2] (USER RULING 2026-06-14: keep semantic split, unify
+  implementation).** There are THREE boolean things:
+    - `JvToggle` (switch) — 10 uses, all genuine on/off *settings*
+      (SettingsView×7, SpeakerLab×2, RenderLab×1). Correct semantic.
+    - `JvCheckbox` component — used in 3 views (Settings/Webhooks/
+      AudioChannels). The intended component.
+    - raw `<input type="checkbox" class="jv-check">` — hand-rolled in
+      ~9 more sites (Generate, ImportReview, Settings×2, Books,
+      Captures, Studio, ProviderForm×3, QuickSetup, EffectsChain).
+  Ruling: **keep the toggle-vs-checkbox semantic split** (toggle = a
+  setting you flip; checkbox = select-a-row / inline option — correct
+  distinction, don't flatten). **Fixes:** (1) the `autoplay` concept is
+  split across both — `.jv-check` in GenerateView:700 but `JvToggle` in
+  SettingsView (`autoplay_on_generate`); resolve to one. (2) migrate
+  hand-rolled `<input class="jv-check">` → the `JvCheckbox` component so
+  there's one checkbox implementation. (Visual output is identical —
+  JvCheckbox wraps the same `.jv-check` box — so this is code-hygiene;
+  do the bulk migration during per-view cleanup / god-component
+  decomposition to keep blast radius small. Autoplay mismatch fixed now.)
 
 ---
 
@@ -193,6 +203,28 @@ findings above are the high-leverage set and don't depend on them.
 # Per-view audit log
 
 _(each view: screenshot reviewed + code read; GUI + client findings)_
+
+## G-CORE-2 execution decision (2026-06-14)
+
+After reading all hand-rolled `.jv-check` sites: each sits in **bespoke
+`<label>` markup** with context-specific inline styling (Generate
+toolbar chip; inline Settings rows with custom gap/font-size; QuickSetup
+/EffectsChain use `:checked`+`@change`, not `v-model`). Migrating them to
+`JvCheckbox` reworks each layout for **identical visual output** — pure
+hygiene, nonzero risk, no user-visible gain. **Decision: defer the
+component migration into per-view cleanup / god-component decomposition
+(B-CORE-1), where each markup is reworked anyway.** Doing it as a
+standalone 9-site sweep now is the wrong risk/reward. The visible part of
+G-CORE-2 (control type per context) is already correct under the ruling.
+
+- **[G-CORE-2b] P2 · autoplay setting is not wired.** GenerateView's
+  `autoplay` is a LOCAL ref (`ref(true)`, GenerateView.vue:81), a
+  per-session toolbar checkbox. It NEVER reads the persisted
+  `settings.generation.autoplay_on_generate` (SettingsView JvToggle).
+  They both default true so behaviour matches by luck, but flipping the
+  setting does nothing to Generate. Real defect = WIRING, not control
+  type. Fix: Generate initializes `autoplay` from the persisted setting
+  (and/or both bind the same source). Deferred with the per-view pass.
 
 ## Dialog / editor lifecycle (cross-cutting, needs per-handler pass)
 
