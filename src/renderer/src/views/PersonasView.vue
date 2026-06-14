@@ -13,10 +13,10 @@
   delivery overrides, effects, lexicon overrides. No Profile layer in between.
 -->
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch, nextTick } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { confirmDialog, promptDialog } from "../services/dialog.js";
+import { confirmDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvInput from "../components/jv/JvInput.vue";
 import EmptyState from "../components/EmptyState.vue";
@@ -44,6 +44,10 @@ const lexicons = computed(() => lexiconsStore.items);
 const projects = computed(() => projectsStore.items);
 const usage = ref({});  // { persona_id: [...] } — per-view, not shared
 const selectedId = ref(null);
+// `creating` opens the editor dialog for a brand-new (unsaved) persona —
+// one surface, not a prompt-then-dialog (G-PERSONA-1). Save commits it.
+const creating = ref(false);
+const nameInput = ref(null);  // autofocus target on open
 const loading = ref(false);
 
 const FILTERS = ["all", "used", "unused", "by-project"];
@@ -148,27 +152,31 @@ watch(selectedPersona, (p) => {
 
 function markDirty() { dirty.value = true; }
 
-async function createBlank() {
-  const name = await promptDialog({
-    title: "New persona",
-    message: "Name the character (e.g. Mara, Narrator).",
-    placeholder: "Persona name",
-  });
-  if (!name) return;
-  try {
-    // No silent voice preselect — picking catalog[0] made "Dia (default)"
-    // look like a default setting (user-hit 2026-06-12). The editor's
-    // "— no voice yet (cast later) —" makes the choice explicit.
-    const created = await api.request("/v1/personas", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, voice_id: null, default_delivery: {} }),
-    });
-    await loadAll();
-    selectedId.value = created.id;
-  } catch (e) {
-    pushToast({ kind: "error", title: "Failed to create persona", description: String(e?.message ?? e) });
-  }
+function blankDraft() {
+  return {
+    id: null, name: "", voice_id: "", language: "en", avatar_path: "",
+    bio: "", personality: "", engine_override: "", lexicon_id: "",
+    default_delivery: {}, effects_chain: [],
+    llm_rewrite_enabled: false, llm_model: "qwen-1.7b-local",
+  };
+}
+
+// Open the editor directly on a blank draft (no prompt, no premature
+// POST) and focus the name field. Save commits the create (G-PERSONA-1).
+function createBlank() {
+  draft.value = blankDraft();
+  dirty.value = false;
+  creating.value = true;
+  usageDetail.value = null;  // a new persona has no usage to show
+  nextTick(() => nameInput.value?.focus());
+}
+
+// Single close path for the editor dialog — used by Save (on success),
+// Cancel, the ✕, and backdrop click. Resets create state + draft.
+function closeEditor() {
+  creating.value = false;
+  selectedId.value = null;
+  draft.value = null;
 }
 
 async function savePersona() {
@@ -187,20 +195,31 @@ async function savePersona() {
     llm_rewrite_enabled: draft.value.llm_rewrite_enabled,
     llm_model: draft.value.llm_model || null,
   };
+  const isNew = creating.value;
   try {
-    await api.request(`/v1/personas/${draft.value.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    if (isNew) {
+      await api.request("/v1/personas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    } else {
+      await api.request(`/v1/personas/${draft.value.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    }
     await loadAll();
-    dirty.value = false;
-    pushToast({ kind: "success", title: "Persona saved" });
+    closeEditor();  // dialog Save closes on success (G-PERSONA-2)
+    pushToast({ kind: "success", title: isNew ? "Persona created" : "Persona saved" });
   } catch (e) {
     pushToast({ kind: "error", title: "Save failed", description: String(e?.message ?? e) });
   }
 }
 
+// Single delete path — called from each list row (Delete lives on the
+// row, NOT the editor footer, per G-PERSONA-4). Keeps the snapshot Undo.
 async function removePersona(p) {
   const ok = await confirmDialog({
     title: "Delete persona?",
@@ -209,34 +228,13 @@ async function removePersona(p) {
     confirmLabel: "Delete",
   });
   if (!ok) return;
-  try {
-    await api.request(`/v1/personas/${p.id}`, { method: "DELETE" });
-    if (selectedId.value === p.id) selectedId.value = null;
-    await loadAll();
-    pushToast({ kind: "success", message: `${p.name} deleted.` });
-  } catch (e) {
-    pushToast({ kind: "error", message: `Delete failed: ${e?.message ?? e}` });
-  }
-}
-
-async function deletePersona() {
-  if (!draft.value) return;
-  const ok = await confirmDialog({
-    title: "Delete persona?",
-    message: `"${draft.value.name}" will be removed. Voice and lexicon are kept (only the binding is removed).`,
-    danger: true,
-    confirmLabel: "Delete",
-  });
-  if (!ok) return;
-  // Save the persona's full shape so the Undo action can re-create it.
-  // The id may not be reusable (post-delete some backends accept it,
-  // others assign a new one); we hand the full body to /v1/personas
-  // POST and accept whatever id comes back.
-  const snapshot = { ...draft.value };
+  // Full shape captured so Undo can re-create. The id may not be
+  // reusable post-delete; we POST the body and accept the new id.
+  const snapshot = { ...p };
   const personaName = snapshot.name || "Persona";
   try {
     await api.request(`/v1/personas/${snapshot.id}`, { method: "DELETE" });
-    selectedId.value = null;
+    if (selectedId.value === snapshot.id) closeEditor();
     await loadAll();
     pushToast({
       kind: "success",
@@ -246,25 +244,23 @@ async function deletePersona() {
         label: "Undo",
         fn: async () => {
           try {
-            const body = {
-              name: snapshot.name,
-              voice_id: snapshot.voice_id,
-              bio: snapshot.bio,
-              personality: snapshot.personality,
-              language: snapshot.language,
-              avatar_path: snapshot.avatar_path,
-              default_delivery: snapshot.default_delivery || {},
-              effects_chain: snapshot.effects_chain || [],
-              lexicon_id: snapshot.lexicon_id,
-              engine_override: snapshot.engine_override,
-            };
-            const restored = await api.request("/v1/personas", {
+            await api.request("/v1/personas", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(body),
+              body: JSON.stringify({
+                name: snapshot.name,
+                voice_id: snapshot.voice_id,
+                bio: snapshot.bio,
+                personality: snapshot.personality,
+                language: snapshot.language,
+                avatar_path: snapshot.avatar_path,
+                default_delivery: snapshot.default_delivery || {},
+                effects_chain: snapshot.effects_chain || [],
+                lexicon_id: snapshot.lexicon_id,
+                engine_override: snapshot.engine_override,
+              }),
             });
             await loadAll();
-            selectedId.value = restored?.id || snapshot.id;
             pushToast({ kind: "success", message: `${personaName} restored.` });
           } catch (e) {
             pushToast({ kind: "error", message: `Undo failed: ${e?.message || e}` });
@@ -412,9 +408,9 @@ onMounted(loadAll);
     </template>
 
     <!-- ── Editor dialog (consolidated pattern 2026-06-12) ───────────── -->
-    <div v-else class="jv-overlay" @click.self="selectedId = null">
+    <div v-else class="jv-overlay" @click.self="closeEditor">
       <div class="jv-modal personas__modal">
-      <button type="button" class="jv-modal__close personas__close" title="Close" @click="selectedId = null">✕</button>
+      <button type="button" class="jv-modal__close personas__close" title="Close" @click="closeEditor">✕</button>
 
       <div class="personas__editor">
         <header class="personas__editor-h">
@@ -434,7 +430,7 @@ onMounted(loadAll);
         <div class="personas__grid">
           <label class="personas__field">
             <span>Name</span>
-            <input class="jv-input jv-w-name" v-model="draft.name" @input="markDirty" />
+            <input ref="nameInput" class="jv-input jv-w-name" v-model="draft.name" @input="markDirty" />
           </label>
 
           <label class="personas__field">
@@ -586,10 +582,12 @@ onMounted(loadAll);
 
         <div class="jv-divider" />
 
+        <!-- Dialog footer = Save + Cancel (G-PERSONA-4). Delete lives on
+             each list row, not here, so it's never a neighbour to Save. -->
         <div class="personas__actions">
           <span class="personas__spacer" />
+          <JvButton variant="secondary" label="Cancel" @click="closeEditor" />
           <JvButton variant="primary" label="Save" :disabled="!dirty" @click="savePersona" />
-          <button class="jv-btn jv-btn--danger-outline" type="button" @click="deletePersona">Delete</button>
         </div>
       </div>
       </div>
