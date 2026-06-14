@@ -457,7 +457,7 @@ onMounted(async () => {
           </label>
           <label class="lex__field">
             <span>Note (optional)</span>
-            <input class="jv-input" v-model="newNote" placeholder="family name in Ch.3" />
+            <input class="jv-input jv-w-name" v-model="newNote" placeholder="family name in Ch.3" />
           </label>
         </div>
 

@@ -348,3 +348,25 @@ Client code (Track B):
   + filters all in one SFC. The editor modal is a candidate to extract
   (`PersonaEditor.vue`). Assess after GUI fixes.
 - Note: data-layer already converted to stores this session (clean).
+
+## VoicesView — ✅ sizing done; auto-save deferred (2026-06-14)
+- Inspector inputs width-tokened: Name→jv-w-name, Gender(enum)→jv-w-id,
+  Language(BCP-47)→jv-w-token (was bare → 280 default; now content-sized).
+- The inspector is an INLINE edit with a "Save changes" button. Per the
+  save-pattern ruling inline edits should auto-save, but doing it right
+  needs the shared debounced-save + "Saved ✓" indicator + revert infra
+  (not built yet). DEFERRED — fold into the auto-save infra rollout
+  view-by-view; current explicit Save is correct in the meantime.
+- Clone/Design/Blend remain explicit modals (create flows → explicit
+  commit, correct per ruling).
+
+## LexiconsView — ✅ reviewed, minor sizing (2026-06-14)
+- Note entry input → jv-w-name (the other 3 entry fields already had it).
+- Editor dialog is correct as-is: it's atomic ENTRY MANAGEMENT (name set
+  at create, scope read-only, each entry add/delete is its own API call),
+  so "Close" is the right affordance — NOT Save/Cancel (unlike Persona,
+  which edits one entity). No interaction change needed.
+- createLexicon is a legitimate create dialog (promptDialog name+scope →
+  create → open editor to add entries), an explicit Create commit per the
+  ruling. (X-2 cross-flow create-pattern unification is still its own
+  broader item: Books=modal, Personas=open-editor, Lexicons=promptDialog.)

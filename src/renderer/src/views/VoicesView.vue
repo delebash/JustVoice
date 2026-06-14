@@ -852,14 +852,14 @@ function blendWithVoice() {
            textboxes that look editable. Inputs only where edits persist. -->
       <label v-if="inspectedEditable" class="voices-view__field">
         <span>Name</span>
-        <input class="jv-input" v-model="editDraft.name" title="Rename — every picker and persona link follows the id, so renaming is safe" />
+        <input class="jv-input jv-w-name" v-model="editDraft.name" title="Rename — every picker and persona link follows the id, so renaming is safe" />
       </label>
       <div v-else class="voices-view__field"><span>Name</span><b class="voices-view__fact">{{ inspectedVoice.name }}</b></div>
       <div class="voices-view__field"><span>Type</span><b class="voices-view__fact">{{ inspectedVoice.source }}</b></div>
       <div class="voices-view__field"><span>Engine</span><b class="voices-view__fact">{{ inspectedVoice.engine }}</b></div>
       <label v-if="inspectedEditable" class="voices-view__field">
         <span>Gender</span>
-        <select class="jv-input" v-model="editDraft.gender" title="Drives Smart-assign's gender matching">
+        <select class="jv-input jv-w-id" v-model="editDraft.gender" title="Drives Smart-assign's gender matching">
           <option value="">unspecified</option>
           <option value="female">female</option>
           <option value="male">male</option>
@@ -869,7 +869,7 @@ function blendWithVoice() {
       <div v-else class="voices-view__field"><span>Gender</span><b class="voices-view__fact">{{ autoDetectGender(inspectedVoice) === "?" ? "—" : autoDetectGender(inspectedVoice) }}<span class="jv-muted" style="font-weight:400"> (chip on the row cycles it)</span></b></div>
       <label v-if="inspectedEditable" class="voices-view__field">
         <span>Language</span>
-        <input class="jv-input" v-model="editDraft.language" title="BCP-47 code, e.g. en, en-GB, de" />
+        <input class="jv-input jv-w-token" v-model="editDraft.language" title="BCP-47 code, e.g. en, en-GB, de" />
       </label>
       <div v-else class="voices-view__field"><span>Language</span><b class="voices-view__fact">{{ inspectedVoice.language || "en" }}</b></div>
       <div class="voices-view__field"><span>Audio channel</span><b class="voices-view__fact">{{ inspectedVoice.channel_id || "Default" }}</b></div>
