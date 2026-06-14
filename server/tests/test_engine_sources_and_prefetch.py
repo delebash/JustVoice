@@ -13,7 +13,6 @@ the variant lookup uses the same code path the server does.
 
 from __future__ import annotations
 
-import tarfile
 import time
 from pathlib import Path
 from typing import Any
@@ -281,3 +280,51 @@ def test_prefetch_cancel_cleans_partials(client, app, monkeypatch):
 
     target = get_manager().get_manifest("chatterbox").models_dir / variant_id
     assert not target.exists() or not any(target.iterdir())
+
+
+def test_prefetch_cancel_via_http_endpoint(client, app, monkeypatch):
+    """End-to-end: DELETE /v1/jobs/{id} signals the cancel cooperatively,
+    the worker raises _Cancelled, and the partial dir is cleaned. This is
+    the wire path the renderer Cancel button will hit.
+    """
+    from justvoice.app_state import get_state
+    from justvoice import installer
+    from justvoice.engines.manager import get_manager
+
+    r0 = client.get("/v1/engines/chatterbox/sources").json()
+    variant_id = r0["variants"][0]["variant_id"]
+    client.put(
+        f"/v1/engines/chatterbox/sources/{variant_id}",
+        json={"url": "http://example.test/fake.bin"},
+    )
+
+    state = get_state()
+
+    def slow_stream(url, dest, on_progress, cancel_check=None):
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(b"z" * 1024)
+        on_progress(1024)
+        for _ in range(100):
+            if cancel_check and cancel_check():
+                raise installer._Cancelled()
+            time.sleep(0.02)
+        return "deadbeef"
+
+    monkeypatch.setattr(installer, "_stream_download", slow_stream)
+
+    job_id = installer.spawn_prefetch(state, "chatterbox", variant_id)
+    # Let the worker enter the slow-stream loop.
+    time.sleep(0.1)
+
+    # Hit the REST cancel endpoint the renderer will call.
+    resp = client.delete(f"/v1/jobs/{job_id}")
+    assert resp.status_code == 202
+    assert resp.json() == {"cancelled": job_id}
+
+    row = _wait_for_job(state, job_id, phase="failed", timeout=3.0)
+    assert "cancel" in (row.get("error") or "").lower()
+
+    target = get_manager().get_manifest("chatterbox").models_dir / variant_id
+    assert not target.exists() or not any(target.iterdir()), (
+        "partial dir should be removed after cancel"
+    )

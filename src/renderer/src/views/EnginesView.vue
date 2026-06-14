@@ -334,6 +334,94 @@ function pct(p) {
   return p.bytes_total > 0 ? Math.min(100, Math.round(100 * p.bytes_downloaded / p.bytes_total)) : 0;
 }
 
+// ── C3: inline install/download progress strip helpers ──────────────
+// fmtBytesMb / fmtRate / fmtEta — small monotype-friendly formatters
+// that feed the .jv-install-strip head row. fmtRate measures the byte
+// delta since the previous poll tick using a per-key WeakMap keyed on
+// the job state object itself, so the rate display always reflects
+// the latest server tick without recomputing every render.
+function fmtBytesMb(bytes) {
+  return (bytes / 1024 / 1024).toFixed(bytes < 1024 * 1024 ? 2 : 1);
+}
+const _rateHistory = new Map();  // key -> { lastBytes, lastAt, bps }
+function _rateFor(key, bytes) {
+  const now = performance.now();
+  const prev = _rateHistory.get(key);
+  if (!prev) {
+    _rateHistory.set(key, { lastBytes: bytes, lastAt: now, bps: 0 });
+    return 0;
+  }
+  const dt = (now - prev.lastAt) / 1000;
+  if (dt >= 0.5) {
+    const db = Math.max(0, bytes - prev.lastBytes);
+    const bps = db / dt;
+    // EWMA so it doesn't jitter wildly between polls.
+    const smooth = prev.bps ? (prev.bps * 0.6 + bps * 0.4) : bps;
+    _rateHistory.set(key, { lastBytes: bytes, lastAt: now, bps: smooth });
+    return smooth;
+  }
+  return prev.bps;
+}
+function fmtRate(bps) {
+  if (!bps || bps < 1024) return "";
+  if (bps < 1024 * 1024) return `${(bps / 1024).toFixed(0)} KB/s`;
+  return `${(bps / 1024 / 1024).toFixed(1)} MB/s`;
+}
+function fmtEta(p, bps) {
+  if (!bps || !p.bytes_total || p.bytes_downloaded >= p.bytes_total) return "";
+  const remaining = p.bytes_total - p.bytes_downloaded;
+  const sec = remaining / bps;
+  if (sec < 60) return `${Math.round(sec)}s left`;
+  if (sec < 3600) return `${Math.round(sec / 60)}m left`;
+  return `${(sec / 3600).toFixed(1)}h left`;
+}
+function progressKeyAndRate(p) {
+  // Key the rate history off the progress object itself so independent
+  // strips (multiple in-flight downloads for one engine) tick separately.
+  return _rateFor(p, p.bytes_downloaded || 0);
+}
+
+// All in-flight progress rows for one engine (engine-wide install +
+// every per-variant download). Lets the new template render the strip
+// ONCE per active operation, instead of conflating them in the header.
+function progressRowsFor(engineId) {
+  const out = [];
+  if (progress[engineId]) {
+    out.push({ key: engineId, jobId: installJobs[engineId] || null, variantId: null, value: progress[engineId] });
+  }
+  const prefix = engineId + "/";
+  for (const k of Object.keys(progress)) {
+    if (k.startsWith(prefix)) {
+      out.push({
+        key: k,
+        jobId: installJobs[k] || null,
+        variantId: k.slice(prefix.length),
+        value: progress[k],
+      });
+    }
+  }
+  return out;
+}
+
+// Variant id -> display name (for the strip title).
+function variantNameFor(engineId, variantId) {
+  const v = variantsFor(engineId).find((x) => x.id === variantId);
+  return v?.name || variantId || engineId;
+}
+
+// Cancel an in-flight install/download. Wired to the canonical
+// DELETE /v1/jobs/{job_id} which signals the cooperative cancel flag;
+// the prefetch worker raises _Cancelled and rmtree's the partial dir.
+async function cancelProgressRow(row) {
+  if (!row?.jobId) return;
+  try {
+    await api.request(`/v1/jobs/${row.jobId}`, { method: "DELETE" });
+    pushToast({ message: "Cancelled — partial files removed.", kind: "info", duration: 3500 });
+  } catch (e) {
+    pushToast({ message: `Cancel failed: ${e?.message || e}`, kind: "error" });
+  }
+}
+
 async function refresh() {
   const e = await api.safeRequest("/v1/engines", { engines: [] });
   engines.value = e?.engines ?? [];
@@ -1005,8 +1093,13 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
           </span>
           <span class="desc" :title="e.description">{{ e.description }}</span>
           <span class="gsum">
-            <span v-if="_anyProgressForEngine(e.id)" class="ev-progress"><i :style="_anyProgressForEngine(e.id).bytes_total > 0 ? { width: pct(_anyProgressForEngine(e.id)) + '%' } : { width: '30%' }" /></span>
-            <span v-if="_anyProgressForEngine(e.id)" class="meta">{{ (_anyProgressForEngine(e.id).phase || '').replaceAll('_', ' ') }}</span>
+            <!-- C3: the per-engine header strip is now intentionally
+                 minimal — the prominent progress UI is the big
+                 .jv-install-strip rendered INSIDE .ev-gbody below, next
+                 to the model row it belongs to. The header just
+                 surfaces a soft "active" indicator so collapsed groups
+                 stay discoverable when something's in flight. -->
+            <span v-if="_anyProgressForEngine(e.id)" class="meta">{{ (_anyProgressForEngine(e.id).phase || '').replaceAll('_', ' ') }} · click to expand</span>
             <span v-if="!_anyProgressForEngine(e.id) && engineNeedsInstall(e)" class="ev-badge none">engine not installed</span>
             <JvButton v-if="!_anyProgressForEngine(e.id) && engineNeedsInstall(e)" variant="primary" size="sm"
               :label="busy[_engineKey(e.id)] === 'install' ? 'Installing…' : 'Install engine'" :disabled="busy[_engineKey(e.id)] != null"
@@ -1039,6 +1132,48 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
                 title="Fetch the weights — nothing loads until you say so" @click="install(e, v.id)" />
             </span>
           </div>
+          <!-- C3: one big install/download progress strip per in-flight
+               operation on this engine. Engine-wide install renders a
+               strip titled with the engine name; per-variant downloads
+               render a strip per variant_id. Each carries phase + bytes
+               + rate + ETA + Cancel; failed strips show the error in
+               place of the file row. -->
+          <div
+            v-for="row in progressRowsFor(e.id)"
+            :key="row.key"
+            class="jv-install-strip"
+            :data-phase="row.value.phase"
+          >
+            <div class="jv-install-strip__head">
+              <span class="jv-install-strip__title">
+                {{ row.variantId ? variantNameFor(e.id, row.variantId) : (e.name || e.id) + ' · engine setup' }}
+              </span>
+              <span class="jv-install-strip__phase">{{ (row.value.phase || '').replaceAll('_', ' ') }}</span>
+              <template v-if="row.value.bytes_total > 0">
+                <span class="jv-install-strip__bytes">
+                  {{ fmtBytesMb(row.value.bytes_downloaded || 0) }} / {{ fmtBytesMb(row.value.bytes_total) }} MB
+                </span>
+                <span class="jv-install-strip__rate">
+                  <template v-if="fmtRate(progressKeyAndRate(row.value))">{{ fmtRate(progressKeyAndRate(row.value)) }}</template>
+                  <template v-if="fmtEta(row.value, progressKeyAndRate(row.value))"> · {{ fmtEta(row.value, progressKeyAndRate(row.value)) }}</template>
+                </span>
+              </template>
+              <span class="jv-spacer" />
+              <JvButton
+                v-if="row.value.phase !== 'completed' && row.value.phase !== 'failed' && row.jobId"
+                variant="danger-outline" size="sm" label="Cancel"
+                @click="cancelProgressRow(row)"
+              />
+            </div>
+            <div class="jv-install-strip__bar">
+              <i :style="{ width: (row.value.bytes_total > 0 ? pct(row.value) : 35) + '%' }" />
+            </div>
+            <div class="jv-install-strip__foot">
+              <span v-if="row.value.error" class="jv-install-strip__err">⚠ {{ row.value.error }}</span>
+              <span v-else-if="row.value.current_file" class="jv-install-strip__file">{{ row.value.current_file }}</span>
+            </div>
+          </div>
+
           <div class="ev-gfoot" v-if="e.isolation === 'venv' && e.status !== 'not_installed'">
             isolated venv
             <JvButton variant="ghost" size="sm" label="Uninstall engine" class="ev-danger" style="margin-left:auto"
@@ -1047,7 +1182,6 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
           <div class="ev-gfoot" v-else-if="e.isolation !== 'venv' && (e.status === 'installed' || e.status === 'loaded')">
             shared runtime · engine installed automatically
           </div>
-          <div v-if="_anyProgressForEngine(e.id)?.error" class="ev-error">{{ _anyProgressForEngine(e.id).error }}</div>
         </div>
       </div>
     </div>

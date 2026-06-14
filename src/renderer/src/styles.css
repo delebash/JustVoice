@@ -1287,6 +1287,107 @@ progress {
 .jv-banner--danger { border-left-color: var(--danger);   background: var(--danger-bg); color: var(--danger-ink); }
 .jv-banner--info   { border-left-color: var(--info-blue); background: #eef4fb; }
 
+/* =========================================================
+   .jv-install-strip — full-row progress block for engine setup +
+   per-variant model Download. Replaces the tiny embedded mini-bar in
+   the group header. Same shape works for any long-running install/
+   prefetch job; the row that owns the operation renders it inline.
+
+   Markup contract:
+     <div class="jv-install-strip" data-phase="downloading">
+       <div class="jv-install-strip__head">
+         <span class="jv-install-strip__title">Variant Name</span>
+         <span class="jv-install-strip__phase">downloading</span>
+         <span class="jv-install-strip__bytes">512 / 2800 MB</span>
+         <span class="jv-install-strip__rate">12.4 MB/s · 3m left</span>
+         <span class="jv-spacer" />
+         <button class="jv-install-strip__cancel">Cancel</button>
+       </div>
+       <div class="jv-install-strip__bar"><i style="width:18%"></i></div>
+       <div class="jv-install-strip__foot">
+         <span class="jv-install-strip__file">model.safetensors</span>
+         <!-- optional error -->
+         <span class="jv-install-strip__err">connection reset</span>
+       </div>
+     </div>
+   ========================================================= */
+.jv-install-strip {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px 14px;
+  margin: 6px 0;
+  background: var(--accent-soft, #e8f0eb);
+  border: 1px solid var(--accent-line, #b8d2c3);
+  border-radius: 10px;
+  font-size: 12.5px;
+}
+.jv-install-strip__head {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.jv-install-strip__title {
+  font-weight: 600; color: var(--accent-ink, #2c6049);
+}
+.jv-install-strip__phase {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em;
+  font-weight: 700; color: var(--accent-ink, #2c6049);
+  background: var(--surface); padding: 2px 7px; border-radius: 4px;
+  border: 1px solid var(--accent-line, #b8d2c3);
+}
+.jv-install-strip__bytes,
+.jv-install-strip__rate {
+  font-family: var(--font-mono, ui-monospace);
+  font-size: 11px; color: var(--ink-2, #4a4a4a);
+  font-variant-numeric: tabular-nums;
+}
+.jv-install-strip__bar {
+  height: 10px;
+  background: var(--surface);
+  border: 1px solid var(--accent-line, #b8d2c3);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.jv-install-strip__bar > i {
+  display: block; height: 100%;
+  background: var(--accent, #3a7d63);
+  border-radius: 999px;
+  transition: width 0.18s ease-out;
+}
+/* Indeterminate (bytes_total unknown) — animated diagonal stripes. */
+.jv-install-strip[data-phase="connecting"] .jv-install-strip__bar > i,
+.jv-install-strip[data-phase="extracting"] .jv-install-strip__bar > i {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--accent, #3a7d63),
+    var(--accent, #3a7d63) 12px,
+    color-mix(in srgb, var(--accent, #3a7d63) 60%, white) 12px,
+    color-mix(in srgb, var(--accent, #3a7d63) 60%, white) 24px
+  );
+  animation: jv-install-stripe 1s linear infinite;
+}
+@keyframes jv-install-stripe {
+  from { background-position: 0 0; }
+  to   { background-position: 36px 0; }
+}
+.jv-install-strip[data-phase="failed"] .jv-install-strip__bar > i {
+  background: var(--danger, #b04a3e);
+}
+.jv-install-strip__foot {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  font-size: 11px; color: var(--ink-3, #888);
+}
+.jv-install-strip__file {
+  font-family: var(--font-mono, ui-monospace);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 60ch; flex: 1; min-width: 0;
+}
+.jv-install-strip__err {
+  color: var(--danger, #b04a3e); font-weight: 600;
+}
+.jv-install-strip__source {
+  font-size: 10.5px; color: var(--ink-3, #888);
+  padding: 1px 6px; border: 1px solid var(--accent-line, #b8d2c3);
+  border-radius: 4px; background: var(--surface);
+}
+
 /* Borderless informational paragraph — quiet prose block with an
    inline chip ("info" / "warn" / "danger") prefixed via .tag-info etc.
    Matches preview/full-app-preview.html L168-173 (`p.note`). */
