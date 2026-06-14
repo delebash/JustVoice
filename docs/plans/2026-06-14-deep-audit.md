@@ -65,7 +65,25 @@ widespread bad authoring.)
 
 # TRACK B — Client code findings
 
-_(populated per view below)_
+- **[B-CORE-1] P2 · God components.** SFC line counts: StudioView 2708,
+  SettingsView 2605, ChapterView 1426, GenerateView 1279, VoicesView
+  1272, EnginesView 1191. The top two are the worst — a single SFC
+  holding many tabs/sections inline:
+    - SettingsView (2605) = 14 sub-tabs (General/AI features/Mastering/
+      Generation/Capture/MCP/GPU/Appearance/Cache/Channels/Webhooks/
+      Logs/Changelog/About) inline. Decompose: one component per
+      sub-tab (`settings/GeneralSettings.vue` …), SettingsView becomes
+      the `.jv-subnav` shell.
+    - StudioView (2708) = Cast/Script/Render/Export tabs inline (6
+      `v-if="tab===…"` blocks). Decompose: `studio/CastTab.vue` etc.
+  Lower-risk than it sounds — extraction is mechanical (move template +
+  its script slice + props/emits). Big maintainability win; also makes
+  KeepAlive cheaper. **Phase this carefully, one tab at a time, each
+  verified via smoke.mjs.**
+- **[B-CORE-2] P3 · Dead files.** `components/Combobox.vue` and
+  `components/ListPane.vue` have zero importers (verified incl. dynamic
+  refs). Delete. (AddProviderModal from the old recap is already gone.)
+- _(more per-view code findings below)_
 
 # TRACK C — Server code findings
 
