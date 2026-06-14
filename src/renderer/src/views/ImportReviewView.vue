@@ -14,10 +14,12 @@ import { ref, computed, onMounted } from "vue";
 import { pushToast } from "../services/toastBridge.js";
 import { projectsService } from "../services/projects.js";
 import { useActiveProject } from "../stores/activeProject.js";
+import { useProjectsStore } from "../stores/projects.js";
 import { getImportDraft, clearImportDraft, updateImportStandard } from "../stores/importDraft.js";
 import JvButton from "../components/jv/JvButton.vue";
 
 const activeProject = useActiveProject();
+const projectsStore = useProjectsStore();
 const draft = ref(null);
 const committing = ref(false);
 const excluded = ref(new Set());
@@ -107,10 +109,12 @@ async function doImport() {
     const pid = res?.project_id || res?.standard?.project?.id;
     pushToast({ kind: "success", title: `Imported "${res?.standard?.project?.name || draft.value.file.name}"` });
     clearImportDraft();
-    // Activate + land in the kind's home base (same as create).
+    // Reload the SHARED projects store so every consumer (Chapters,
+    // Studio, etc.) sees the new project — not just a local list. Then
+    // activate + land in the kind's home base (same as create).
     try {
-      const pr = await projectsService.list();
-      const rec = (pr?.projects || []).find((p) => p.id === pid);
+      await projectsStore.reload();
+      const rec = projectsStore.byId(pid);
       if (rec) {
         activeProject.open(rec);
         window.location.hash = rec.project_type === "game_voicelines" ? "#lines" : "#chapter";
