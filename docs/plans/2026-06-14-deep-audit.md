@@ -46,6 +46,23 @@ Severity: **P1** broken/blocks user · **P2** clear defect, not blocking
 
 _(populated per view below)_
 
+### G-CORE-1 instances (bare untokened inputs, per view)
+
+If we take root-fix (a) these resolve automatically; if (b), this is the
+worklist: ChapterView ×1 · ImportReviewView ×1 · LexiconsView ×1 ·
+RenderPresetsView ×4 · SettingsView ×1 · StudioView ×1 · VoicesView ×3.
+(~12 total. Modest — confirms it's the *default* that bites, not
+widespread bad authoring.)
+
+### Positive findings (conformance that's actually GOOD — don't touch)
+
+- **Buttons are clean.** Zero scoped one-off `.jv-btn--` variants
+  (grep). All buttons use `JvButton`/`jv-btn`/`jv-rowact`/`jv-pill`.
+  RULE #1 #4 satisfied. The `__actions` classes are flex-row containers,
+  not button one-offs.
+- **No native dialogs.** All `prompt(`/`confirm(` hits are ban-comments;
+  real flows use `promptDialog`/`confirmDialog`.
+
 # TRACK B — Client code findings
 
 _(populated per view below)_
