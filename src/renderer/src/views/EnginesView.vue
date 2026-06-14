@@ -45,14 +45,28 @@ function _cachedEngines() {
 const engines = ref(_cachedEngines());
 const enginesLoaded = ref(engines.value.length > 0);
 const system = ref(null);
-const busy = reactive({});  // {engineId: "install" | "load" | "unload" | "uninstall" | null}
-
-// Per-engine install/load progress phase events.
-// Shape: {[engineId]: {phase, bytes_downloaded, bytes_total, current_file, error, job_id}}
-const progress = reactive({});
-
-// In-flight install job ids so Cancel can target the right one.
-const installJobs = reactive({});  // {engineId: jobId}
+// State keyed by either `engineId` (for engine-wide ops: setup/unload/
+// uninstall) OR `engineId/variantId` (for per-variant Download/Load).
+// This is the C1 fix from docs/plans/2026-06-14-engines-download-contract
+// .md: a Chatterbox Multilingual download must NOT light up Chatterbox
+// Turbo as "Downloading", and the busy/progress maps were keyed only by
+// engine, so they did. The composite key is the operation's scope.
+const busy = reactive({});      // engineId | engineId/variantId -> verb
+const progress = reactive({});  // same key shape
+const installJobs = reactive({});  // same — Cancel targets the right job
+const _engineKey = (engineId) => engineId;
+const _variantKey = (engineId, variantId) => `${engineId}/${variantId}`;
+// Bridges the per-(engine,variant) progress map to the engine-level
+// header strip: returns the first in-flight progress row matching
+// this engine (engine-wide install OR any per-variant download).
+function _anyProgressForEngine(engineId) {
+  if (progress[engineId]) return progress[engineId];
+  const prefix = engineId + "/";
+  for (const k of Object.keys(progress)) {
+    if (k.startsWith(prefix)) return progress[k];
+  }
+  return null;
+}
 
 // Per-engine model variants:
 //   {[engineId]: {variants: [{id, name, size_mb, vram_mb, ...}], recommended: {would_oom: [...]}}}
@@ -388,57 +402,67 @@ function isOnDisk(engine, variantId) {
 function contextualAction(engine) {
   const variant = selectedVariantFor(engine);
   const variantId = variant?.id || null;
-  const isBusy = busy[engine.id] != null;
+  // engine-wide ops (venv setup, unload) read the engine key; per-variant
+  // ops (download/load a specific model) read the composite key so sibling
+  // variants aren't shown as busy.
+  const eKey = _engineKey(engine.id);
+  const vKey = variantId ? _variantKey(engine.id, variantId) : null;
+  const isBusy = busy[eKey] != null || (vKey && busy[vKey] != null);
 
-  // Loaded variant → Unload
+  // Loaded variant → Unload (engine-wide slot op)
   if (variantId && isLoadedVariant(engine, variantId)) {
     return {
       label: "Unload",
       variant: "secondary",
       action: () => unload(engine),
       disabled: isBusy,
-      busy: busy[engine.id] === "unload",
+      busy: busy[eKey] === "unload",
     };
   }
 
-  // Engine in isolated venv mode AND not yet installed → Install
+  // Engine in isolated venv mode AND not yet installed → Install (engine-wide)
   if (engine.isolation === "venv" && engine.status === "not_installed") {
     return {
-      label: busy[engine.id] === "install" ? "Installing…" : "Install",
+      label: busy[eKey] === "install" ? "Installing…" : "Install",
       variant: "primary",
       action: () => install(engine, variantId),
       disabled: isBusy,
-      busy: busy[engine.id] === "install",
+      busy: busy[eKey] === "install",
     };
   }
 
-  // Variant not on disk → Download (drives a model-only install for that variant)
+  // Variant not on disk → Download (per-variant)
   if (variantId && !isOnDisk(engine, variantId)) {
     return {
-      label: busy[engine.id] === "install" ? "Downloading…" : "Download",
+      label: vKey && busy[vKey] === "install" ? "Downloading…" : "Download",
       variant: "primary",
       action: () => install(engine, variantId),
       disabled: isBusy,
-      busy: busy[engine.id] === "install",
+      busy: !!vKey && busy[vKey] === "install",
     };
   }
 
-  // Variant on disk but not loaded → Load
+  // Variant on disk but not loaded → Load (per-variant)
   return {
-    label: busy[engine.id] === "load" ? "Loading…" : "Load",
+    label: vKey && busy[vKey] === "load" ? "Loading…" : "Load",
     variant: "primary",
     action: () => load(engine, variantId),
     disabled: isBusy || !variantId,
-    busy: busy[engine.id] === "load",
+    busy: !!vKey && busy[vKey] === "load",
   };
 }
 
 async function install(engine, variant) {
-  busy[engine.id] = "install";
-  progress[engine.id] = { phase: "connecting", bytes_downloaded: 0, bytes_total: 0, current_file: null, error: null };
+  // C1: when a variant is passed (per-variant Download), state is keyed
+  // by `${engine.id}/${variant}` so a Multilingual download doesn't also
+  // mark Turbo as Downloading. Engine-wide install (Setup venv) keeps
+  // the engine key.
+  const key = variant ? _variantKey(engine.id, variant) : _engineKey(engine.id);
+  busy[key] = "install";
+  progress[key] = { phase: "connecting", bytes_downloaded: 0, bytes_total: 0, current_file: null, error: null, variant_id: variant || null };
 
   const task = tasks.start({
-    label: `Installing · ${engine.id}`,
+    label: variant ? `Downloading · ${engine.id}/${variant}` : `Installing · ${engine.id}`,
     kind: "install",
     statsFn: (t) => {
       const s = [];
@@ -456,16 +480,17 @@ async function install(engine, variant) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(variant ? { model_variant: variant } : {}),
     });
-    installJobs[engine.id] = accepted.job_id;
+    installJobs[key] = accepted.job_id;
     while (true) {
       const job = await api.request(`/v1/jobs/${accepted.job_id}`);
       const pctVal = job.bytes_total > 0 ? Math.round(100 * (job.bytes_downloaded || 0) / job.bytes_total) : null;
-      progress[engine.id] = {
+      progress[key] = {
         phase: job.phase,
         bytes_downloaded: job.bytes_downloaded || 0,
         bytes_total: job.bytes_total || 0,
         current_file: job.current_file || null,
         error: job.error || null,
+        variant_id: variant || null,
       };
       tasks.update(task.id, {
         percent: pctVal,
@@ -473,8 +498,8 @@ async function install(engine, variant) {
       });
       if (job.phase === "completed") {
         tasks.finish(task.id);
-        pushToast({ message: `${engine.id} installed.`, kind: "success", duration: 4000 });
-        setTimeout(() => { delete progress[engine.id]; }, 2000);
+        pushToast({ message: variant ? `${engine.id}/${variant} downloaded.` : `${engine.id} installed.`, kind: "success", duration: 4000 });
+        setTimeout(() => { delete progress[key]; }, 2000);
         break;
       }
       if (job.phase === "failed") {
@@ -484,19 +509,26 @@ async function install(engine, variant) {
       }
       await new Promise((r) => setTimeout(r, 800));
     }
+    // C2: invalidate the cached variants so refresh() ACTUALLY re-reads
+    // them — refresh() short-circuits per engine if variants[eng.id] is
+    // already cached, so without this the per-variant on_disk + the
+    // contextual button stay stale until a full page reload.
+    delete variants[engine.id];
     await refresh();
   } catch (e) {
     tasks.fail(task.id, String(e.message || e));
     pushToast({ message: `Install failed: ${e.message || e}`, kind: "error", duration: 8000 });
-    progress[engine.id] = { phase: "failed", bytes_downloaded: 0, bytes_total: 0, current_file: null, error: String(e.message || e) };
+    progress[key] = { phase: "failed", bytes_downloaded: 0, bytes_total: 0, current_file: null, error: String(e.message || e), variant_id: variant || null };
   } finally {
-    busy[engine.id] = null;
-    delete installJobs[engine.id];
+    busy[key] = null;
+    delete installJobs[key];
   }
 }
 
 async function load(engine, variant) {
-  busy[engine.id] = "load";
+  // C1: Load is per-variant.
+  const key = variant ? _variantKey(engine.id, variant) : _engineKey(engine.id);
+  busy[key] = "load";
   const ctl = new AbortController();
   const task = tasks.start({
     label: `Loading · ${engine.name || engine.id}${variant ? ` (${variant})` : ""}`,
@@ -515,10 +547,7 @@ async function load(engine, variant) {
     onRetry: () => load(engine, variant),
   });
 
-  // Initialize the per-engine load progress so the inline track renders.
-  // The phase will get updated as the server emits events through
-  // load-progress (Phase 2 / Slice 1 — spawning → loading_weights → warming_up).
-  progress[engine.id] = { phase: "spawning", bytes_downloaded: 0, bytes_total: 0, current_file: null, error: null };
+  progress[key] = { phase: "spawning", bytes_downloaded: 0, bytes_total: 0, current_file: null, error: null, variant_id: variant || null };
 
   try {
     await api.request(`/v1/engines/${engine.id}/load`, {
@@ -528,23 +557,27 @@ async function load(engine, variant) {
       signal: ctl.signal,
     });
     window.dispatchEvent(new Event("jv:health-refresh"));
+    // C2: invalidate cached variants so refresh() reflects the loaded
+    // variant state (otherwise the row stays "Load" until page reload).
+    delete variants[engine.id];
     await refresh();
     tasks.finish(task.id);
     pushToast({ message: `${engine.name || engine.id} loaded.`, kind: "success", duration: 4500 });
-    delete progress[engine.id];
+    delete progress[key];
   } catch (e) {
     if (ctl.signal.aborted) return;
     const raw = String(e.message || e);
     tasks.fail(task.id, raw);
     pushToast({ message: `Load failed: ${raw}`, kind: "error", duration: 12000 });
-    progress[engine.id] = { phase: "failed", bytes_downloaded: 0, bytes_total: 0, current_file: null, error: raw };
+    progress[key] = { phase: "failed", bytes_downloaded: 0, bytes_total: 0, current_file: null, error: raw, variant_id: variant || null };
   } finally {
-    busy[engine.id] = null;
+    busy[key] = null;
   }
 }
 
 async function unload(engine) {
-  busy[engine.id] = "unload";
+  // Engine-wide slot op — keeps engine key.
+  busy[_engineKey(engine.id)] = "unload";
   try {
     // Pass kind so per-kind slot unload (Phase 2 / Slice 1) targets this
     // engine's slot specifically — leaves other kinds' loaded engines alone.
@@ -562,7 +595,7 @@ async function unload(engine) {
   } catch (e) {
     pushToast({ message: `Unload failed: ${e.message || e}`, kind: "error" });
   } finally {
-    busy[engine.id] = null;
+    busy[_engineKey(engine.id)] = null;
   }
 }
 
@@ -611,7 +644,7 @@ async function uninstall(engine) {
     if (!ok) return;
   }
 
-  busy[engine.id] = "uninstall";
+  busy[_engineKey(engine.id)] = "uninstall";
   try {
     let path;
     if (isExternal) {
@@ -621,6 +654,8 @@ async function uninstall(engine) {
       if (uninstallDeps) path += "?uninstall_deps=true";
     }
     await api.request(path, { method: "DELETE" });
+    // C2: drop cached variants so refresh() actually re-reads on-disk state.
+    delete variants[engine.id];
     await refresh();
     pushToast({
       message: `${engine.name || engine.id} ${isExternal ? "removed" : "uninstalled"}.`,
@@ -630,7 +665,7 @@ async function uninstall(engine) {
   } catch (e) {
     pushToast({ message: `${isExternal ? "Remove" : "Uninstall"} failed: ${e.message || e}`, kind: "error" });
   } finally {
-    busy[engine.id] = null;
+    busy[_engineKey(engine.id)] = null;
   }
 }
 
@@ -682,7 +717,7 @@ const sectionData = computed(() =>
 function isOpen(e) {
   if (expanded[e.id] !== undefined) return expanded[e.id];
   if (q.value.trim()) return true;                        // search auto-expands
-  return e.status === "loaded" || progress[e.id] != null; // smart defaults
+  return e.status === "loaded" || _anyProgressForEngine(e.id) != null; // smart defaults
 }
 function toggleOpen(e) { expanded[e.id] = !isOpen(e); }
 
@@ -970,15 +1005,15 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
           </span>
           <span class="desc" :title="e.description">{{ e.description }}</span>
           <span class="gsum">
-            <span v-if="progress[e.id]" class="ev-progress"><i :style="progress[e.id].bytes_total > 0 ? { width: pct(progress[e.id]) + '%' } : { width: '30%' }" /></span>
-            <span v-if="progress[e.id]" class="meta">{{ (progress[e.id].phase || '').replaceAll('_', ' ') }}</span>
-            <span v-if="!progress[e.id] && engineNeedsInstall(e)" class="ev-badge none">engine not installed</span>
-            <JvButton v-if="!progress[e.id] && engineNeedsInstall(e)" variant="primary" size="sm"
-              :label="busy[e.id] === 'install' ? 'Installing…' : 'Install engine'" :disabled="busy[e.id] != null"
+            <span v-if="_anyProgressForEngine(e.id)" class="ev-progress"><i :style="_anyProgressForEngine(e.id).bytes_total > 0 ? { width: pct(_anyProgressForEngine(e.id)) + '%' } : { width: '30%' }" /></span>
+            <span v-if="_anyProgressForEngine(e.id)" class="meta">{{ (_anyProgressForEngine(e.id).phase || '').replaceAll('_', ' ') }}</span>
+            <span v-if="!_anyProgressForEngine(e.id) && engineNeedsInstall(e)" class="ev-badge none">engine not installed</span>
+            <JvButton v-if="!_anyProgressForEngine(e.id) && engineNeedsInstall(e)" variant="primary" size="sm"
+              :label="busy[_engineKey(e.id)] === 'install' ? 'Installing…' : 'Install engine'" :disabled="busy[_engineKey(e.id)] != null"
               title="One-time: builds this engine's isolated venv. Models download separately afterwards."
               @click.stop="install(e, null)" />
-            <span v-if="!progress[e.id] && !engineNeedsInstall(e)" class="meta">{{ groupSummary(e) }}</span>
-            <span v-if="!progress[e.id] && !engineNeedsInstall(e) && loadedVariantName(e)" class="ldd">● {{ loadedVariantName(e) }} loaded</span>
+            <span v-if="!_anyProgressForEngine(e.id) && !engineNeedsInstall(e)" class="meta">{{ groupSummary(e) }}</span>
+            <span v-if="!_anyProgressForEngine(e.id) && !engineNeedsInstall(e) && loadedVariantName(e)" class="ldd">● {{ loadedVariantName(e) }} loaded</span>
           </span>
         </div>
 
@@ -993,13 +1028,14 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
               <JvButton v-if="modelLoaded(e, v)" variant="ghost" size="sm" label="Unload model" title="Free the slot — weights stay on disk" @click="unload(e)" />
               <JvButton v-if="modelLoaded(e, v)" variant="ghost" size="sm" label="Delete model" class="ev-danger" title="Delete the downloaded weights from disk" @click="deleteModel(e, v)" />
               <JvButton v-if="!modelLoaded(e, v) && modelOnDisk(e, v)" variant="primary" size="sm"
-                :label="busy[e.id] === 'load' ? 'Loading…' : 'Load model'" :disabled="busy[e.id] != null"
+                :label="busy[_variantKey(e.id, v.id)] === 'load' ? 'Loading…' : 'Load model'"
+                :disabled="busy[_variantKey(e.id, v.id)] != null || busy[_engineKey(e.id)] != null"
                 :title="`Load into the ${(e.kind || 'tts').toUpperCase()} slot`" @click="load(e, v.id)" />
               <JvButton v-if="!modelLoaded(e, v) && modelOnDisk(e, v) && v.on_disk === true" variant="ghost" size="sm" label="Delete model" class="ev-danger"
                 :title="`Delete the downloaded weights — frees ${fmtDisk(v.size_mb)}`" @click="deleteModel(e, v)" />
               <JvButton v-if="!modelLoaded(e, v) && !modelOnDisk(e, v)" variant="primary" size="sm"
-                :label="busy[e.id] === 'install' ? 'Downloading…' : `⬇ Download ${fmtDisk(v.size_mb)}`"
-                :disabled="busy[e.id] != null || engineNeedsInstall(e)"
+                :label="busy[_variantKey(e.id, v.id)] === 'install' ? 'Downloading…' : `⬇ Download ${fmtDisk(v.size_mb)}`"
+                :disabled="busy[_variantKey(e.id, v.id)] != null || busy[_engineKey(e.id)] != null || engineNeedsInstall(e)"
                 title="Fetch the weights — nothing loads until you say so" @click="install(e, v.id)" />
             </span>
           </div>
@@ -1011,7 +1047,7 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
           <div class="ev-gfoot" v-else-if="e.isolation !== 'venv' && (e.status === 'installed' || e.status === 'loaded')">
             shared runtime · engine installed automatically
           </div>
-          <div v-if="progress[e.id]?.error" class="ev-error">{{ progress[e.id].error }}</div>
+          <div v-if="_anyProgressForEngine(e.id)?.error" class="ev-error">{{ _anyProgressForEngine(e.id).error }}</div>
         </div>
       </div>
     </div>
