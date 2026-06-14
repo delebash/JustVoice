@@ -1269,6 +1269,9 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
                   <template v-if="fmtEta(row.value, progressKeyAndRate(row.value))"> · {{ fmtEta(row.value, progressKeyAndRate(row.value)) }}</template>
                 </span>
               </template>
+              <!-- R2: indeterminate phases (no bytes) still need a hint so
+                   the user isn't staring at striping with nothing else. -->
+              <span v-else class="jv-install-strip__rate">working…</span>
               <span class="jv-spacer" />
               <JvButton
                 v-if="row.value.phase !== 'completed' && row.value.phase !== 'failed' && row.jobId"
@@ -1276,8 +1279,12 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
                 @click="cancelProgressRow(row)"
               />
             </div>
-            <div class="jv-install-strip__bar">
-              <i :style="{ width: (row.value.bytes_total > 0 ? pct(row.value) : 35) + '%' }" />
+            <!-- R0+R1: bytes_total > 0 → real percentage; bytes_total
+                 === 0 → truly indeterminate (full-width animated stripes
+                 supplied by .jv-install-strip[data-indeterminate]). No
+                 more fake 35% placeholder that doesn't move. -->
+            <div class="jv-install-strip__bar" :data-indeterminate="row.value.bytes_total > 0 ? null : 'true'">
+              <i :style="row.value.bytes_total > 0 ? { width: pct(row.value) + '%' } : { width: '100%' }" />
             </div>
             <div class="jv-install-strip__foot">
               <span v-if="row.value.error" class="jv-install-strip__err">⚠ {{ row.value.error }}</span>

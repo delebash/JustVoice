@@ -402,8 +402,29 @@ def _run_install(
 
         # Extract or rename
         if _is_archive(file.target_path):
-            state.job_update(job_id, phase="extracting")
-            _extract_tar_bz2(partial_path, model_dir, file.target_path)
+            # A1+A2 from the progress-accuracy plan: smooth one bar
+            # through extract. bytes_total grows to include unpacked
+            # bytes; per-member callback advances the counter.
+            downloaded_bytes = partial_path.stat().st_size
+            unpacked = _estimate_archive_unpacked(partial_path, file.target_path)
+            base_total = cumulative + downloaded_bytes
+            state.job_update(
+                job_id,
+                phase="extracting",
+                bytes_downloaded=base_total,
+                bytes_total=(base_total + unpacked) if unpacked > 0 else 0,
+            )
+
+            def _on_member(size: int) -> None:
+                data = state.job_get(job_id) or {}
+                cur = int(data.get("bytes_downloaded") or 0)
+                state.job_update(job_id, bytes_downloaded=cur + size)
+
+            _extract_tar_bz2(
+                partial_path, model_dir, file.target_path,
+                on_member=_on_member if unpacked > 0 else None,
+                cancel_check=lambda: _is_cancelled(job_id),
+            )
             partial_path.unlink(missing_ok=True)
         else:
             partial_path.rename(target_path)
@@ -450,8 +471,41 @@ def _is_archive(name: str) -> bool:
     return n.endswith((".tar.bz2", ".tbz2", ".tar.gz", ".tgz"))
 
 
-def _extract_tar_bz2(archive: Path, dest: Path, original_name: str) -> None:
-    """Extract using the original filename for format detection (not the .partial suffix)."""
+def _estimate_archive_unpacked(archive: Path, original_name: str) -> int:
+    """Sum every TarInfo.size in the archive — the honest "total extract
+    bytes" number for the unified work-progress bar (docs/plans/
+    2026-06-14-engines-progress-accuracy.md). Returns 0 for unsupported
+    formats so the caller falls back to indeterminate-extract.
+    """
+    n = original_name.lower()
+    if n.endswith((".tar.bz2", ".tbz2")):
+        mode = "r:bz2"
+    elif n.endswith((".tar.gz", ".tgz")):
+        mode = "r:gz"
+    else:
+        return 0
+    try:
+        with tarfile.open(archive, mode) as tar:
+            return sum(int(m.size or 0) for m in tar.getmembers())
+    except Exception:
+        return 0
+
+
+def _extract_tar_bz2(
+    archive: Path,
+    dest: Path,
+    original_name: str,
+    on_member: Callable[[int], None] | None = None,
+    cancel_check: Callable[[], bool] | None = None,
+) -> None:
+    """Extract using the original filename for format detection (not the
+    .partial suffix).
+
+    `on_member(size_bytes)` fires after each TarInfo extract so the worker
+    can advance the unified bytes_downloaded counter through extract;
+    `cancel_check()` is polled between members so a cancel during extract
+    stops within one file rather than waiting for extractall() to finish.
+    """
     n = original_name.lower()
     if n.endswith((".tar.bz2", ".tbz2")):
         mode = "r:bz2"
@@ -460,7 +514,12 @@ def _extract_tar_bz2(archive: Path, dest: Path, original_name: str) -> None:
     else:
         raise RuntimeError(f"Unsupported archive format: {original_name}")
     with tarfile.open(archive, mode) as tar:
-        tar.extractall(dest)
+        for member in tar.getmembers():
+            if cancel_check is not None and cancel_check():
+                raise _Cancelled()
+            tar.extract(member, dest)
+            if on_member is not None:
+                on_member(int(member.size or 0))
 
 
 def _register_engine_after_install(
@@ -665,8 +724,34 @@ def _url_stream_to(
     )
 
     if _is_archive(filename):
-        state.job_update(job_id, phase="extracting", current_file=filename)
-        _extract_tar_bz2(partial, target_dir, filename)
+        # A1+A2 (docs/plans/2026-06-14-engines-progress-accuracy.md):
+        # one smooth bar through download AND extract. Discover the
+        # archive's unpacked size, then ANCHOR bytes_total at
+        # download_bytes + unpacked so the same unit ticks through
+        # both phases — bar continues moving instead of resetting.
+        downloaded_bytes = partial.stat().st_size
+        unpacked = _estimate_archive_unpacked(partial, filename)
+        state.job_update(
+            job_id,
+            phase="extracting",
+            current_file=filename,
+            bytes_downloaded=downloaded_bytes,
+            bytes_total=(downloaded_bytes + unpacked) if unpacked > 0 else 0,
+        )
+
+        # Per-member extract: each member.size adds to bytes_downloaded
+        # so the bar advances smoothly. cancel_check polled between
+        # members so an abort during extract stops within one file.
+        def _on_member(size: int) -> None:
+            data = state.job_get(job_id) or {}
+            cur = int(data.get("bytes_downloaded") or 0)
+            state.job_update(job_id, bytes_downloaded=cur + size)
+
+        _extract_tar_bz2(
+            partial, target_dir, filename,
+            on_member=_on_member if unpacked > 0 else None,
+            cancel_check=lambda: _is_cancelled(job_id),
+        )
         partial.unlink(missing_ok=True)
     else:
         partial.rename(final)

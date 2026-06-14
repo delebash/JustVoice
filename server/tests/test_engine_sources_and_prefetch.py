@@ -328,3 +328,143 @@ def test_prefetch_cancel_via_http_endpoint(client, app, monkeypatch):
     assert not target.exists() or not any(target.iterdir()), (
         "partial dir should be removed after cancel"
     )
+
+
+# ── A1+A2 from docs/plans/2026-06-14-engines-progress-accuracy.md ───
+# One smooth bar through download AND extract: bytes_total covers
+# downloaded + unpacked archive bytes; per-member extract advances
+# bytes_downloaded so the bar never freezes during extract.
+
+
+def _make_tarball(dir: Path, *, payload_files: list[tuple[str, int]]) -> Path:
+    """Create a small .tar.bz2 with the requested (name, byte_size) members."""
+    import io
+    import tarfile
+
+    archive = dir / "fake-archive.tar.bz2"
+    with tarfile.open(archive, "w:bz2") as tar:
+        for name, size in payload_files:
+            data = b"x" * size
+            info = tarfile.TarInfo(name=name)
+            info.size = size
+            tar.addfile(info, io.BytesIO(data))
+    return archive
+
+
+def test_estimate_archive_unpacked_sums_member_sizes(tmp_path):
+    from justvoice.installer import _estimate_archive_unpacked
+
+    archive = _make_tarball(tmp_path, payload_files=[
+        ("model.onnx", 4096),
+        ("tokens.txt", 256),
+        ("voices/spk_001.bin", 2048),
+    ])
+    assert _estimate_archive_unpacked(archive, "fake-archive.tar.bz2") == 4096 + 256 + 2048
+
+
+def test_extract_tar_bz2_fires_on_member_with_size_and_supports_cancel(tmp_path):
+    from justvoice.installer import _extract_tar_bz2, _Cancelled
+
+    archive = _make_tarball(tmp_path, payload_files=[
+        ("a.bin", 100),
+        ("b.bin", 200),
+        ("c.bin", 50),
+    ])
+    out = tmp_path / "out"
+    out.mkdir()
+    seen: list[int] = []
+    _extract_tar_bz2(archive, out, "fake-archive.tar.bz2", on_member=lambda n: seen.append(n))
+    assert seen == [100, 200, 50]
+    assert (out / "a.bin").read_bytes() == b"x" * 100
+
+    # Cancel mid-extract.
+    out2 = tmp_path / "out2"
+    out2.mkdir()
+    cancel_after = {"hits": 0}
+    def _cancel() -> bool:
+        cancel_after["hits"] += 1
+        return cancel_after["hits"] > 1
+    seen2: list[int] = []
+    with pytest.raises(_Cancelled):
+        _extract_tar_bz2(archive, out2, "fake-archive.tar.bz2",
+                         on_member=lambda n: seen2.append(n),
+                         cancel_check=_cancel)
+    # One member extracted before cancel kicked in.
+    assert seen2 == [100]
+
+
+def test_url_path_progress_advances_through_extract(client, app, monkeypatch, tmp_path):
+    """End-to-end: _url_stream_to should report monotonic bytes_downloaded
+    that ticks through BOTH download and extract phases against a unified
+    bytes_total = download + unpacked. Bar must not freeze when phase
+    flips to 'extracting'.
+    """
+    from justvoice.app_state import get_state
+    from justvoice import installer
+    from justvoice.engines.manager import get_manager
+
+    r0 = client.get("/v1/engines/chatterbox/sources").json()
+    variant_id = r0["variants"][0]["variant_id"]
+
+    # Real tarball — so unpacked = real sum of member sizes.
+    members = [("model.onnx", 4096), ("voices/v1.bin", 8192), ("tokens.txt", 256)]
+    fake_tar = _make_tarball(tmp_path, payload_files=members)
+    download_bytes = fake_tar.stat().st_size
+
+    # Override to a .tar.bz2 URL so _url_stream_to takes the archive path.
+    client.put(
+        f"/v1/engines/chatterbox/sources/{variant_id}",
+        json={"url": "http://example.test/fake.tar.bz2"},
+    )
+
+    # Stub _stream_download to copy the real tarball + report bytes.
+    def fake_stream(url, dest, on_progress, cancel_check=None):
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(fake_tar.read_bytes())
+        on_progress(download_bytes)
+        return "deadbeef"
+
+    monkeypatch.setattr(installer, "_stream_download", fake_stream)
+
+    # Capture every job_update so we can assert monotonic progress.
+    state = get_state()
+    history: list[dict] = []
+    real_update = state.job_update
+    def _capture(*args, **kw):
+        real_update(*args, **kw)
+        snap = state.job_get(args[0])
+        if snap:
+            history.append({k: snap.get(k) for k in ("phase", "bytes_downloaded", "bytes_total")})
+    monkeypatch.setattr(state, "job_update", _capture)
+
+    job_id = installer.spawn_prefetch(state, "chatterbox", variant_id)
+    row = _wait_for_job(state, job_id, phase="completed")
+    assert row["error"] in (None, "")
+
+    # Final bytes_total should equal download + sum(member sizes).
+    expected_unpacked = sum(s for _, s in members)
+    assert row["bytes_total"] == download_bytes + expected_unpacked
+    assert row["bytes_downloaded"] == row["bytes_total"], (
+        f"final progress must hit 100% — got {row['bytes_downloaded']}/{row['bytes_total']}"
+    )
+
+    # Monotonic — no backwards step.
+    seen = [h["bytes_downloaded"] or 0 for h in history if h.get("bytes_downloaded") is not None]
+    for i in range(1, len(seen)):
+        assert seen[i] >= seen[i - 1], f"bar moved backwards: {seen}"
+
+    # Extract phase MUST have at least one update where bytes_downloaded
+    # advances PAST the download point (the freeze the user reported).
+    extract_advances = [
+        h["bytes_downloaded"]
+        for h in history
+        if h.get("phase") == "extracting" and (h.get("bytes_downloaded") or 0) > download_bytes
+    ]
+    assert extract_advances, (
+        "bar did not advance during extract — bytes_downloaded stayed "
+        f"<= download size ({download_bytes}); history={history[-10:]}"
+    )
+
+    # And the file landed where the prefetch worker put it.
+    models_dir = get_manager().get_manifest("chatterbox").models_dir / variant_id
+    assert (models_dir / "model.onnx").exists()

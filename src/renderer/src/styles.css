@@ -1351,9 +1351,11 @@ progress {
   border-radius: 999px;
   transition: width 0.18s ease-out;
 }
-/* Indeterminate (bytes_total unknown) — animated diagonal stripes. */
-.jv-install-strip[data-phase="connecting"] .jv-install-strip__bar > i,
-.jv-install-strip[data-phase="extracting"] .jv-install-strip__bar > i {
+/* R1: animated diagonal stripes when bytes_total === 0 (truly
+   indeterminate — pip, venv setup, byte-less phases). Extract WITH a
+   known total now reports real bytes through the bar, so it's no
+   longer indeterminate just because the phase changed. */
+.jv-install-strip__bar[data-indeterminate="true"] > i {
   background: repeating-linear-gradient(
     45deg,
     var(--accent, #3a7d63),
