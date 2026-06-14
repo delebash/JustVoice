@@ -16,10 +16,19 @@ import { confirmDialog, promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvInput from "../components/jv/JvInput.vue";
 import EmptyState from "../components/EmptyState.vue";
+import { useLexiconsStore } from "../stores/lexicons.js";
+import { useProjectsStore } from "../stores/projects.js";
+import { usePersonasStore } from "../stores/personas.js";
 
 const api = useApi();
 
-const lexicons = ref([]);
+// lexicons / projects / personas from shared stores. Mutations here
+// call refresh() → store.reload() so consumers (Personas, Overview)
+// reflect the change.
+const lexiconsStore = useLexiconsStore();
+const projectsStore = useProjectsStore();
+const personasStore = usePersonasStore();
+const lexicons = computed(() => lexiconsStore.items);
 const search = ref("");
 const SCOPE_FILTERS = [["all", "All"], ["global", "Reusable"], ["project", "Book"], ["persona", "Persona"]];
 const scopeFilter = ref("all");
@@ -32,8 +41,8 @@ const filteredLexicons = computed(() => {
     (l.entries || []).some((e) => (e.grapheme || "").toLowerCase().includes(q)));
   return list;
 });
-const projects = ref([]);
-const personas = ref([]);
+const projects = computed(() => projectsStore.items);
+const personas = computed(() => personasStore.items);
 const selectedId = ref(null);
 const loading = ref(false);
 
@@ -71,14 +80,11 @@ function chooseImportFile() { fileInput.value?.click(); }
 async function refresh() {
   loading.value = true;
   try {
-    const [lxRes, pRes, prRes] = await Promise.all([
-      api.safeRequest("/v1/lexicons", { lexicons: [] }),
-      api.safeRequest("/v1/projects", { projects: [] }),
-      api.safeRequest("/v1/personas", { personas: [] }),
+    await Promise.all([
+      lexiconsStore.reload(),
+      projectsStore.reload(),
+      personasStore.reload(),
     ]);
-    lexicons.value = lxRes?.lexicons ?? [];
-    projects.value = pRes?.projects ?? [];
-    personas.value = prRes?.personas ?? [];
   } finally {
     loading.value = false;
   }

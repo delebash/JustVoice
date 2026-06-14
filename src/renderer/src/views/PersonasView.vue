@@ -21,15 +21,28 @@ import JvButton from "../components/jv/JvButton.vue";
 import JvInput from "../components/jv/JvInput.vue";
 import EmptyState from "../components/EmptyState.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
+import { usePersonasStore } from "../stores/personas.js";
+import { useVoicesStore } from "../stores/voices.js";
+import { useEnginesStore } from "../stores/engines.js";
+import { useLexiconsStore } from "../stores/lexicons.js";
+import { useProjectsStore } from "../stores/projects.js";
 
 const api = useApi();
 
-const personas = ref([]);
-const voices = ref([]);
-const engines = ref([]);
-const lexicons = ref([]);
-const projects = ref([]);
-const usage = ref({});  // { persona_id: [{project_id, project_name}, ...] }
+// All five lists come from shared stores (single source of truth).
+// Mutations here call loadAll() which reload()s the stores, so every
+// other view (Chapters, Studio, Generate, …) reflects the change.
+const personasStore = usePersonasStore();
+const voicesStore = useVoicesStore();
+const enginesStore = useEnginesStore();
+const lexiconsStore = useLexiconsStore();
+const projectsStore = useProjectsStore();
+const personas = computed(() => personasStore.items);
+const voices = computed(() => voicesStore.items);
+const engines = computed(() => enginesStore.items);
+const lexicons = computed(() => lexiconsStore.items);
+const projects = computed(() => projectsStore.items);
+const usage = ref({});  // { persona_id: [...] } — per-view, not shared
 const selectedId = ref(null);
 const loading = ref(false);
 
@@ -84,23 +97,21 @@ const instructStatus = computed(() => {
     : { ok: false, text: `✗ ${eng?.name || voice.engine} doesn't take direction — this text only guides Smart-assign, not the audio.` };
 });
 
+// Reload everything: the five shared stores + the per-view usage map.
+// Called on mount and after every persona mutation so the change
+// propagates to all consumers.
 async function loadAll() {
   loading.value = true;
   try {
-    const [pRes, vRes, eRes, lRes, prRes, uRes] = await Promise.all([
-      api.safeRequest("/v1/personas",       { personas: [] }),
-      api.safeRequest("/v1/voices",         { voices: [] }),
-      api.safeRequest("/v1/engines",        { engines: [] }),
-      api.safeRequest("/v1/lexicons",       { lexicons: [] }),
-      api.safeRequest("/v1/projects",       { projects: [] }),
+    const [, , , , , uRes] = await Promise.all([
+      personasStore.reload(),
+      voicesStore.reload(),
+      enginesStore.reload(),
+      lexiconsStore.reload(),
+      projectsStore.reload(),
       api.safeRequest("/v1/personas/usage", { usage: {} }),
     ]);
-    personas.value = pRes?.personas ?? [];
-    voices.value   = vRes?.voices   ?? [];
-    engines.value  = eRes?.engines  ?? [];
-    lexicons.value = lRes?.lexicons ?? [];
-    projects.value = prRes?.projects ?? [];
-    usage.value    = uRes?.usage    ?? {};
+    usage.value = uRes?.usage ?? {};
     // No auto-select: the card grid is the landing view; clicking a
     // card drills into the editor (grid pattern, user decision 2026-06-12).
   } finally {

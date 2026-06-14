@@ -11,10 +11,20 @@ import JvSelect from "../components/jv/JvSelect.vue";
 import JvTag from "../components/jv/JvTag.vue";
 import JvField from "../components/jv/JvField.vue";
 import EmptyState from "../components/EmptyState.vue";
+import { useVoicesStore } from "../stores/voices.js";
+import { useEnginesStore } from "../stores/engines.js";
+import { usePersonasStore } from "../stores/personas.js";
 
 const api = useApi();
-const voices = ref([]);
-const engines = ref([]);
+// voices / engines / personas come from shared stores. Mutations here
+// (clone/design/blend/delete/gender) call refresh() → store.reload(),
+// so other views update. Store items are deeply reactive, so in-place
+// edits (e.g. gender override) reflect without manual array rebuilds.
+const voicesStore = useVoicesStore();
+const enginesStore = useEnginesStore();
+const personasStore = usePersonasStore();
+const voices = computed(() => voicesStore.items);
+const engines = computed(() => enginesStore.items);
 
 // ── Gender auto-detect + click-cycle override (lift #85). ─────────────
 //
@@ -78,7 +88,6 @@ async function cycleGender(v) {
   const idx = GENDER_CYCLE.indexOf(cur);
   const next = GENDER_CYCLE[(idx + 1) % GENDER_CYCLE.length];
   v.gender_user_override = next || null;
-  voices.value = [...voices.value]; // force reactivity
   if (v.source === "preset") {
     savePresetGenderOverride(v.id, v.gender_user_override);
     return;
@@ -254,22 +263,15 @@ async function previewVoice(v) {
 }
 
 async function refresh() {
-  try {
-    const v = await api.request("/v1/voices");
-    voices.value = v?.voices ?? [];
-  } catch { voices.value = []; }
-  try {
-    const e = await api.request("/v1/engines");
-    engines.value = e?.engines ?? [];
-  } catch { engines.value = []; }
-  try {
-    const p = await api.request("/v1/personas");
-    personas.value = p?.personas ?? [];
-  } catch { personas.value = []; }
+  await Promise.all([
+    voicesStore.reload(),
+    enginesStore.reload(),
+    personasStore.reload(),
+  ]);
 }
 
 // ── "Cast as" — which personas a voice backs (CONCEPTS §2). ──────────
-const personas = ref([]);
+const personas = computed(() => personasStore.items);
 const castAsByVoice = computed(() => {
   const map = {};
   for (const p of personas.value) {
@@ -610,7 +612,6 @@ async function resetVoice(v) {
     }
   }
   if (hiddenIds.value.has(v.id)) toggleHidden(v);
-  voices.value = [...voices.value];
   pushToast({ kind: "success", message: `${v.name} reset to defaults.` });
 }
 async function resetAllTweaks() {
@@ -630,7 +631,6 @@ async function resetAllTweaks() {
   try { localStorage.removeItem(PRESET_GENDER_KEY); } catch { /* ignore */ }
   hiddenIds.value = new Set();
   try { localStorage.setItem(HIDDEN_KEY, "[]"); } catch { /* ignore */ }
-  voices.value = [...voices.value];
   pushToast({ kind: "success", message: "All voice tweaks reset." });
 }
 
