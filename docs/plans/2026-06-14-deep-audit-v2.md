@@ -584,3 +584,18 @@ NEXT: views one-by-one (full read each), then stores/services, then SERVER.
     "Close" (957) AND footer "Cancel" (1046) both `modal = null`. The modal
     otherwise uses canonical JvField/JvInput/JvSelect/JvTextarea + Save+
     Cancel footer correctly. Sizing tokens were fixed in a prior session.
+
+## views batch H (Generate)
+- **GenerateView.vue — ✓ CLEAN (capability-driven, honest) + P3.** The UI is
+  projected from the engine capability manifest (/v1/engines/capabilities):
+  knobs, inline-tag categories, native pitch range, style-prompt, temperature/
+  seed gating — no hardcoded per-engine assumptions. Delivery payload sends
+  ONLY non-default values (no noise). compose + rewrite hit real persona
+  endpoints with 501-HONEST errors ("wire an LLM provider"); rewrite is
+  preview-then-accept (manuscript never silently rewritten). generate() has
+  task tracking + abort + object-URL revoke; lexicon attach + client-side
+  applied-match preview. BOTH modals (lexicon preview, rewrite preview) use
+  canonical jv-overlay/jv-modal. P3: one native autoplay checkbox (`jv-check`,
+  G-CORE-2 deferred); `--border-soft` at line 1268 (X-6); the line-34 comment
+  "history stubbed until /v1/takes/recent lands (#87)" is STALE — refreshVoices
+  fetches it live (and Overview uses the same endpoint).
