@@ -5,6 +5,66 @@
 
 ---
 
+## 2026-06-14 (remote session, dreamy-rubin) — DATA-LAYER REBUILD: shared stores as single source of truth (the real fix)
+
+Branch `claude/dreamy-rubin-91lsr3`. This supersedes the whole tangle of
+FOUC/staleness patches from the prior session (which were rolled back to
+`181c111` first — see git history; the Suspense/computed-wrapper attempts
+all failed and were reverted).
+
+**Root cause (verified by reproduction, not assumed):** every view kept
+a PRIVATE copy of shared lists (`const projects = ref([])`) and fetched
+it itself in onMounted. 12 views held independent copies of the project
+list; a mutation in one never reached the others. KeepAlive froze each
+copy so even re-mount didn't refresh. → "import a book, doesn't show up
+until browser reload."
+
+**Architecture shipped:** five shared Pinia stores —
+`stores/{projects,voices,personas,lexicons,engines}.js`. Each: `items`
+ref (THE source of truth, returned DIRECTLY — no computed wrapper, that
+was the prior failure), `loaded`, `ensureLoaded()` (idempotent + inflight
+dedupe), `reload()`, `byId()`. voices/engines reload on `jv:health-refresh`.
+NO Suspense, NO async setup, NO Transition.
+
+Rule: **views read `computed(() => store.items)`; mutators call
+`store.reload()` after writing.** KeepAlive now only preserves ephemeral
+UI state — data freshness comes from store reactivity, so they stop
+fighting.
+
+Converted (all of them):
+- Readers+mutators: BooksView, ChapterView, ImportReviewView (import
+  commit → reload), PersonasView, VoicesView, LexiconsView, SettingsView
+  (delete-all → reload + activeProject.clear).
+- Pure consumers: StudioView, GenerateView, OverviewView, LinesView,
+  CompareView, SpeakerLabView, RenderLabView, RenderPresetsView,
+  CacheView, TrainView.
+- NOT converted by design: EnginesView (owns engine install/load polling,
+  dispatches jv:health-refresh that the stores listen to).
+
+**Verification harness established** (the thing missing all prior session):
+Playwright drives headless Chromium at `/opt/pw-browsers/chromium-1194/
+chrome-linux/chrome` (CDN blocked; this prebuilt binary works) against
+`justvoice-server serve` (serves SPA at `/`, same-origin API). Scripts in
+/tmp: harness/repro/verify/verify-import/verify-mutators/sweep/
+verify-propagation. VERIFIED end-to-end:
+- import stillwater.epub → Chapters shows it, both chapters, no reload.
+- create persona → propagates with no reload to Generate dropdown +
+  Studio add-cast picker (cached views, shared store).
+- smoke sweep of all 14 tabs: every one renders, ZERO JS errors.
+- build clean, ruff clean.
+
+Commits: 878d729 (projects vertical) · 7ff37fa (import-review fix) ·
+8c14535 (mutator views) · 8b94188 (consumer views, P4 complete).
+Plan: `docs/plans/2026-06-13-data-layer-rebuild.md`.
+
+**Pending / known:** (1) the redundant "No engine in memory" lede on
+generate/studio/chapter came back with the rollback — small, separate.
+(2) The /tmp verify scripts should be promoted to scripts/ if we want
+them kept (container is ephemeral). (3) Param-honesty work (Generate
+dead knobs, regen lexicon inheritance) is in 181c111 and intact.
+
+---
+
 ## 2026-06-13 (remote session, dreamy-rubin) — KeepAlive side-effect fix + param-honesty audit (Generate dead knobs found, ChapterView regen scope decided)
 
 Branch `claude/dreamy-rubin-91lsr3`. Continuation of the slowness
