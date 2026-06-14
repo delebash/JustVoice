@@ -305,3 +305,56 @@ VoiceParamsModal(✓ + reset-link ghost).
 checkbox + X-6 border-soft), NewProjectModal(scoped np-* shell + ghost
 imports), VoicesView modals(scoped modal-* shell + double-close).
 NEXT: views one-by-one (full read each), then stores/services, then SERVER.
+
+═══════════════════════════════════════════════════════════════════════
+# VIEWS SWEEP (full reads, one verdict per view)
+═══════════════════════════════════════════════════════════════════════
+
+## views batch A (6 smallest + Lines)
+- **StoriesView.vue — ✓ CLEAN (intentional placeholder).** Timeline is
+  gated (W3 decision): NO dead API calls (the old mock hit non-existent
+  /v1/stories and error-toasted every visit). Honest "not built yet" lede
+  card (jv-card/jv-fill) linking to where work happens today. Correct.
+- **LabsView.vue — ✓ CLEAN.** Tabbed lab container (Compare/Train/Speaker/
+  Render/Audio). Canonical jv-subnav, single shared lede mechanism (sub-
+  views must NOT hand-roll their own header — enforced here), only the
+  active tab mounts. Good precedent example. sessionStorage hand-off for
+  legacy hashes. No defects.
+- **AudioChannelsView.vue — ✓ CLEAN.** Fully canonical: jv-table, JvButton
+  (incl variant="danger-outline", verified to map jv-btn--danger-outline
+  which exists), JvInput/JvTextarea/JvCheckbox/JvField, confirmDialog for
+  delete. Edit→populates the inline editor-card form→Update; Add/Update +
+  Cancel. This is the canonical add/edit FORM-CARD pattern (not inline
+  field editing), so explicit submit is correct, not a save-pattern
+  violation. Tauri device list degrades gracefully on web. Reference-grade.
+- **EffectsView.vue — ⚠ P3.** Canonical jv-lib-toolbar (search + ownership
+  chips + spacer + "+ New" rightmost), jv-table row-click→EffectsChain
+  editor modal, confirmDialog delete, promptDialog naming (native prompt()
+  correctly banned). Notes: (1) create is editor-FIRST, name-on-save (the
+  reverse of Persona's old prompt-first anti-pattern; acceptable but
+  inconsistent with other create flows). (2) Delete is a raw `jv-btn
+  --danger-outline` while Edit is a JvButton — same-file inconsistency, P3.
+  (3) `.effects-view__chain-pill` uses `var(--border-soft)` → X-6.
+- **ImportReviewView.vue — ✓ MOSTLY CLEAN + checkbox class.** Dry-run
+  results PAGE (picker stays a dialog): re-split re-runs the server dry
+  run, per-chapter include/exclude, live summary + est-audio, honest
+  "speakers found later in Script". doImport RELOADS the shared
+  projectsStore then activates + lands in the kind's home base — this is
+  the import-reflection fix; RE-VERIFIED correct here. Native include/
+  exclude `<input type=checkbox class=jv-check>` → G-CORE-2 (deferred).
+- **WebhooksView.vue — ✓ CLEAN.** Canonical jv-table, JvButton (danger-
+  outline), confirmDialog delete, JvField/JvInput/JvCheckbox (events grid
+  uses the canonical JvCheckbox, NOT native — good). Inline add-form card
+  with Create/Cancel (form pattern, correct). copySecret() calls
+  navigator.clipboard in SETUP (real global, fine — contrast ExportPanel's
+  template bug). Secret-shown-once UX is correct. MCP info card pairs well.
+- **LinesView.vue — ⚠ P3.** Game-dev grid home base. Behavior solid:
+  shared projectsStore.ensureLoaded(), project selector, search, status
+  chips w/ live counts, derived take_status (none/rendered/stale), stale
+  re-render wired to the renderTasks store (cancel/retry/stats), per-line
+  render, export VO zip, re-import modal. P3: the toolbar is a scoped
+  `.lines__toolbar` that reproduces the jv-lib-toolbar shape (search +
+  chips + spacer + actions + a leading data-dropdown) — should adopt the
+  canonical `.jv-lib-toolbar` (RULE #1). Filter chips are borderless but
+  they're jv-pill selection chips (exempt). Raw jv-input select/search
+  (acceptable). jv-pill--warn verified to exist.
