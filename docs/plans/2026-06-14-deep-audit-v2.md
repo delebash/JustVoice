@@ -216,3 +216,92 @@ repeat it. READ THIS BEFORE AUDITING ANYTHING.
   SlashTagMenu, LineageViewer, ChordPicker, DictateWindow, ExportPanel,
   GlobalAudioPlayer, JvHelpDrawer, KeyboardCheatsheet, TaskStatusPanel,
   ProviderForm, QuickSetup.
+
+## components batch 3 (full reads — completes the 26-component sweep)
+- **AudioKeepAlive.vue — ✓ CLEAN.** voicebox-ported silent-audio loop that
+  keeps the OS audio device warm so first playback isn't clipped. No UI.
+- **RecommendCard.vue — ✓ CLEAN.** Contextual recommend banner; canonical
+  jv-card/jv-btn. No state lies.
+- **SlashTagMenu.vue — ✓ CLEAN.** Engine-aware inline paralinguistic-tag
+  menu (the `/` slash menu). Keyboard nav, filters by engine capability.
+- **ChordPicker.vue — ⚠ P3 conformance.** Live key-combo capture (voicebox
+  port). Correct behavior (peak-set capture, Esc/Tab pass-through, focus
+  trap on the capture box). BUT non-canonical: scoped `.chord-picker__
+  backdrop`/`.chord-picker` modal shell (NOT jv-overlay/jv-modal) AND
+  scoped `.btn/.btn--ghost/.btn--primary` buttons (NOT JvButton). X-5 class.
+- **GlobalAudioPlayer.vue — ⚠ P3.** Fixed bottom transport bar (unique
+  surface, no canonical precedent — scoped `gap-*` is acceptable). Play/
+  pause/close are icon-only buttons (icon exception, OK). Note: the
+  waveform is FAKE — `bars.map(() => Math.random())` re-randomized on every
+  `timeupdate` (~4 Hz); cosmetic only, documented as the voicebox AudioBars
+  approximation. Acceptable; flag only if a real peak-decoded waveform is
+  wanted later.
+- **JvHelpDrawer.vue — ✓ CLEAN.** Right-side help drawer on Reka UI Dialog
+  (focus trap/Esc/ARIA free). Renders docs/<slug>.md via marked; intra-doc
+  links stay in-drawer. Scoped `jv-help-drawer__*` OK (unique drawer, not a
+  center modal). Close is an icon ✕ (exception). JustWrite-ported, attributed.
+- **KeyboardCheatsheet.vue — ✓ CLEAN.** `?` overlay. Uses canonical
+  jv-overlay/jv-modal shell correctly — a good precedent example.
+- **DictateWindow.vue — ✓ CLEAN.** Floating transparent Tauri dictate
+  window (voicebox port). Agent-speak cycle wired (SSE status → play
+  /audio/{id}); user-dictation cycle deferred to Phase 6 (documented).
+  Timers/teardown all cleaned in dismissSpeak/onBeforeUnmount. No leaks.
+- **TaskStatusPanel.vue — ⚠ P3.** Right slide-in task panel (running +
+  recent history, cancel/retry/dismiss). Functional, unique namespace
+  (`task-panel__*`, fine). `.task-panel__action` (Cancel all / Clear) are
+  BORDERLESS text buttons (`border:0;background:transparent`) — RULE #1
+  item 6. `__hist-dismiss`/`__hist-retry` are icon buttons (exception).
+- **ExportPanel.vue — ✗ P2 BUG + ⚠ P3.** Mostly canonical (JvButton,
+  jv-card, jv-pill, jv-banner; honest ACX checklist — only measured items
+  get ✓/✗; QC no longer auto-fires). **BUG (P2): the show-notes "Copy"
+  button calls `navigator.clipboard?.writeText(...)` in the TEMPLATE.**
+  Vue's template global allowlist does NOT include `navigator`, so it
+  resolves to `_ctx.navigator` = undefined → `undefined.clipboard` THROWS
+  a TypeError on click. Only reachable for podcast projects (show-notes),
+  but it's a hard throw. Fix: move to a `copyNotes()` method in setup.
+  P3: two raw `jv-btn jv-btn--ghost jv-btn--sm` (Copy/✕) instead of JvButton.
+- **ProviderForm.vue — ⚠ P3 (documented exception) + native-checkbox class.**
+  Inline expanded-card provider editor (LLM/TTS). Behavior is solid:
+  presets, capability toggles, fetch models/voices, test-connection status,
+  auto-slug id, self-hosted auto-detect. Has explicit Save/Cancel — correct
+  (complex editor, dialog-like). Scoped `.pf-*` input styling (240/340px)
+  instead of jv-input is the APPROVED engines-redesign.html v7 mock
+  contract — recorded exception, not a defect. NATIVE checkboxes
+  (`jv-check`) for self_hosted/LLM/TTS caps → G-CORE-2 class (deferred).
+- **QuickSetup.vue — ✓ MOSTLY CLEAN + native-checkbox class.** Multi-step
+  wizard (detect→confirm→install→done): GPU probe, tier auto-pick + manual
+  override, per-engine install w/ job polling, feature-pin recipe writes,
+  local-LLM detect-and-connect, STT readiness. Canonical shell + JvButton
+  footers + jv-pill/jv-banner. Honest about deferred provider picker + no-
+  LLM-provider state. NATIVE checkboxes (`jv-check`) for engine opt-out →
+  G-CORE-2 class (deferred). `jv-input--sm`/`jv-pill--solid` verified to exist.
+
+## NEW SYSTEMIC FINDING — X-6: undefined `--border-soft` CSS token (P2)
+`var(--border-soft)` is used in 7 files but is **never defined** anywhere
+in the renderer (verified: 0 definitions, 7 usages):
+EffectsChainEditorModal.vue, EffectsView.vue, RenderLabView.vue,
+GenerateView.vue, PersonasView.vue, SpeakerLabView.vue, StudioView.vue.
+Where used as `border: 1px solid var(--border-soft)` (no fallback), the
+shorthand is invalid at computed-value time → the border STYLE falls to
+initial (`none`) → **no border renders at all**. Where used as
+`border-color: var(--border-soft)`, color falls to `currentColor`. Either
+way the intended soft divider is wrong/missing. Fix: define `--border-soft`
+in styles.css `:root` (alias to `--line`, the canonical soft divider), OR
+sweep the 7 files to use `var(--line)`. Single-token fix is lowest-risk.
+G-CORE-2 reminder: many components hand-roll native `<input type="checkbox"
+class="jv-check">` (ProviderForm, QuickSetup, EffectsChainEditorModal,
+VoiceParamsModal grids, …). JvCheckbox exists as the canonical wrapper; the
+migration is DEFERRED per user ruling — recorded as a class, not fixed now.
+
+## ◆ COMPONENT SWEEP COMPLETE — all 26 + 9 jv/ have written verdicts.
+Tally: jv/ ×9 ✓ · clean components: AppDialog, AppModal, Toast, EmptyState,
+Icon, Breadcrumb(used), PaneHeader(used), HelpTrigger, CapturePill,
+TaskStrip, AudioKeepAlive, RecommendCard, SlashTagMenu, JvHelpDrawer,
+KeyboardCheatsheet, DictateWindow, QuickSetup(✓+checkbox class).
+⚠ minor: ChordPicker(X-5 shell+btns), GlobalAudioPlayer(fake waveform),
+TaskStatusPanel(borderless btns), ProviderForm(mock-exception+checkbox),
+VoiceParamsModal(✓ + reset-link ghost).
+✗ defects: ExportPanel(navigator throw P2), EffectsChainEditorModal(native
+checkbox + X-6 border-soft), NewProjectModal(scoped np-* shell + ghost
+imports), VoicesView modals(scoped modal-* shell + double-close).
+NEXT: views one-by-one (full read each), then stores/services, then SERVER.
