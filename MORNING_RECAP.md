@@ -5,6 +5,40 @@
 
 ---
 
+## 2026-06-14 (morning, busy-rubin) — item 4 fakes gated "coming soon" + P3 (Overview); VERIFY ALL, not a subset
+
+User picked **hide-behind-"coming-soon"** for the 6 fake affordances, and
+hammered the meta-lesson again: **verifying a subset and rationalizing the
+rest is the trap** ("isnt that how we got in trouble last time?"). So every
+changed surface this session is behaviorally verified, not sampled.
+
+**Shipped (commits 5b5f1b9, 495b807):**
+- **Item 4 — fakes gated.** Disabled + "(soon)"/"coming soon" so the UI never
+  claims an action it can't do. Compare: Refresh-from-takes disabled, Bulk-QC
+  → coming-soon note (removed toast-only runBulkQc + dead selectors). Voices
+  inspector: Add-WAV / Record-in-app / Promote-from-Captures disabled (removed
+  fake onSamplePicked/recordInApp/promoteFromCaptures). Captures: in-app Record
+  disabled (real capture = global hotkey / dictate window), Hotkeys card marked
+  coming-soon (Change + auto-paste disabled, fake carets removed, record-theater
+  setTimeout code deleted). Cores (A/B compare, clone/design/blend, captures
+  list/pin/speak-again) untouched.
+- **P3 — Overview** `capturesTotal` is its own ref (was a non-reactive
+  `.totalCount` on the captures ref).
+- **Verification: `scripts/verify-no-fakes.mjs` (committed) — 16/16.** Covers
+  Compare + Captures + the Voices inspector (SEEDS an editable voice via
+  /v1/voices/design so the disabled sample-buttons are driven for real, not
+  "covered by markup") + Overview captures stat. Screenshots sent.
+
+**Remaining P3 (lower value / taste-or-risk — get direction before sweeping):**
+- ImportModal dead code: NOT removed — the template still references
+  `preview` (×12) + `excluded` (×2), so it's real template+script surgery
+  needing import-flow re-verification, not quick polish. Deferred.
+- Lines/Books scoped toolbars → `.jv-lib-toolbar` (near-identical class;
+  cosmetic consistency).
+- raw `jv-btn` vs `<JvButton>` micro-inconsistencies (cosmetic).
+
+---
+
 ## 2026-06-14 (late, busy-rubin) — LIBRARY DIALOGS unified + a STANDING Playwright check
 
 Follow-up after the user caught that the first fix pass left the *original*
