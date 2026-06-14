@@ -51,7 +51,6 @@ const filtered = computed(() => {
 });
 
 const editorOpen = ref(false);
-const editingPreset = ref(null);
 const editingChain = ref([]);
 
 const MASTER_TARGETS = [
@@ -89,13 +88,48 @@ function deliveryPills(p) {
 }
 
 // Edit dialog (consolidated pattern 2026-06-12: table rows + one popup
-// with the full form). Fields commit per-change; Done closes.
+// with the full form). Save-pattern ruling 2026-06-14: a modal editor
+// edits a working DRAFT and commits on Save / discards on Cancel — no
+// per-field auto-save. Built-in presets are read-only (view, not edit).
 const editOpen = ref(false);
 const editingId = ref(null);
+const editDraft = ref(null);  // working copy; null when closed
 const editing = computed(() => presets.value.find((x) => x.id === editingId.value) || null);
+const editIsBuiltin = computed(() => !!editing.value?.is_builtin);
 function openEdit(p) {
   editingId.value = p.id;
+  editDraft.value = {
+    name: p.name ?? "",
+    voice_id: p.voice_id ?? "",
+    master: p.master ?? "",
+    effects_chain: JSON.parse(JSON.stringify(p.effects_chain ?? [])),
+  };
   editOpen.value = true;
+}
+function closeEdit() {
+  editOpen.value = false;
+  editingId.value = null;
+  editDraft.value = null;
+}
+async function saveEdit() {
+  if (!editingId.value || !editDraft.value || editIsBuiltin.value) return;
+  try {
+    await api.request(`/v1/presets/${editingId.value}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: editDraft.value.name,
+        voice_id: editDraft.value.voice_id || null,
+        master: editDraft.value.master || null,
+        effects_chain: editDraft.value.effects_chain || [],
+      }),
+    });
+    await refresh();
+    closeEdit();
+    pushToast({ message: "Preset saved.", kind: "success" });
+  } catch (e) {
+    pushToast({ message: `Save failed: ${e?.message || e}`, kind: "error" });
+  }
 }
 
 async function createPreset() {
@@ -131,48 +165,23 @@ async function createPreset() {
   }
 }
 
-async function updateField(preset, field, value) {
-  try {
-    await api.request(`/v1/presets/${preset.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ [field]: value }),
-    });
-    await refresh();
-  } catch (e) {
-    pushToast({ message: `Save failed: ${e?.message || e}`, kind: "error" });
-  }
-}
-
-function openChainEditor(preset) {
-  editingPreset.value = preset;
-  editingChain.value = JSON.parse(JSON.stringify(preset.effects_chain || []));
+// The effects-chain editor edits the DRAFT's chain — it commits with the
+// rest of the form on Save (not a separate PATCH), so Cancel discards it
+// too.
+function openChainEditor() {
+  if (!editDraft.value || editIsBuiltin.value) return;
+  editingChain.value = JSON.parse(JSON.stringify(editDraft.value.effects_chain || []));
   editorOpen.value = true;
 }
 
-async function onChainSaved(newChain) {
-  if (!editingPreset.value) {
-    editorOpen.value = false;
-    return;
-  }
-  try {
-    await api.request(`/v1/presets/${editingPreset.value.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ effects_chain: newChain }),
-    });
-    pushToast({ message: `Updated "${editingPreset.value.name}" effects.`, kind: "success" });
-    await refresh();
-  } catch (e) {
-    pushToast({ message: `Update failed: ${e?.message || e}`, kind: "error" });
-  } finally {
-    editorOpen.value = false;
-    editingPreset.value = null;
-    editingChain.value = [];
-  }
+function onChainSaved(newChain) {
+  if (editDraft.value) editDraft.value.effects_chain = newChain;
+  editorOpen.value = false;
+  editingChain.value = [];
 }
 
 async function deletePreset(preset) {
+  if (preset.is_builtin) return;  // built-ins are not user-deletable
   const ok = await confirmDialog({
     title: `Delete "${preset.name}"?`,
     message: "The preset will be removed. Scenes that were using it lose their preset binding.",
@@ -234,36 +243,38 @@ onMounted(refresh);
             <td><span v-if="p.is_builtin" class="jv-pill jv-pill--ghost">built-in</span></td>
             <td class="jv-table__actions" @click.stop>
               <JvButton variant="ghost" size="sm" label="Edit" @click="openEdit(p)" />
-              <button type="button" class="jv-btn jv-btn--danger-outline jv-btn--sm" @click="deletePreset(p)">Delete</button>
+              <button type="button" class="jv-btn jv-btn--danger-outline jv-btn--sm" :disabled="p.is_builtin" :title="p.is_builtin ? 'Built-in presets can\'t be deleted' : 'Delete preset'" @click="deletePreset(p)">Delete</button>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <!-- Edit dialog — full form (consolidated pattern). -->
-    <div v-if="editOpen && editing" class="jv-overlay" @click.self="editOpen = false">
+    <!-- Edit dialog — full form. Edits a working draft; Save commits,
+         Cancel discards (save-pattern ruling 2026-06-14). Built-ins are
+         read-only. -->
+    <div v-if="editOpen && editDraft && editing" class="jv-overlay" @click.self="closeEdit">
       <div class="jv-modal" style="width: min(560px, calc(100vw - 32px));">
         <header class="jv-modal__header">
           <div class="jv-modal__titleblock">
             <span class="jv-modal__eyebrow">Render preset</span>
             <h3 class="jv-modal__title">{{ editing.name }}</h3>
           </div>
-          <span v-if="editing.is_builtin" class="jv-pill jv-pill--ghost">built-in</span>
-          <button type="button" class="jv-modal__close" title="Close" @click="editOpen = false">✕</button>
+          <span v-if="editIsBuiltin" class="jv-pill jv-pill--ghost">built-in · read-only</span>
+          <button type="button" class="jv-modal__close" title="Close" @click="closeEdit">✕</button>
         </header>
         <div class="jv-modal__body render-presets-view__form">
           <label class="jv-form-row"><span>Name</span>
-            <input type="text" class="jv-input jv-input--sm" :value="editing.name" @change="updateField(editing, 'name', $event.target.value)" />
+            <input type="text" class="jv-input jv-input--sm" v-model="editDraft.name" :disabled="editIsBuiltin" />
           </label>
           <label class="jv-form-row"><span>Persona</span>
-            <select class="jv-input jv-input--sm" :value="editing.voice_id || ''" @change="updateField(editing, 'voice_id', $event.target.value)">
+            <select class="jv-input jv-input--sm" v-model="editDraft.voice_id" :disabled="editIsBuiltin">
               <option value="">— none (delivery only) —</option>
               <option v-for="ps in personas" :key="ps.id" :value="ps.id">{{ ps.name }}</option>
             </select>
           </label>
           <label class="jv-form-row"><span>Master target</span>
-            <select class="jv-input jv-input--sm" :value="editing.master || ''" @change="updateField(editing, 'master', $event.target.value || null)">
+            <select class="jv-input jv-input--sm" v-model="editDraft.master" :disabled="editIsBuiltin">
               <option v-for="m in MASTER_TARGETS" :key="m.value" :value="m.value">{{ m.label }}</option>
             </select>
           </label>
@@ -275,15 +286,20 @@ onMounted(refresh);
           </div>
           <div class="jv-form-row jv-form-row--stack"><span>Effects chain</span>
             <div>
-              <span v-for="(ef, i) in (editing.effects_chain || [])" :key="i" class="jv-pill jv-pill--ghost" style="margin:1px 4px 1px 0">{{ ef.type }}</span>
-              <span v-if="!(editing.effects_chain || []).length" class="jv-muted">(no effects)</span>
-              <JvButton variant="secondary" size="sm" :label="(editing.effects_chain || []).length ? 'Edit chain' : 'Add chain'" @click="openChainEditor(editing)" />
+              <span v-for="(ef, i) in (editDraft.effects_chain || [])" :key="i" class="jv-pill jv-pill--ghost" style="margin:1px 4px 1px 0">{{ ef.type }}</span>
+              <span v-if="!(editDraft.effects_chain || []).length" class="jv-muted">(no effects)</span>
+              <JvButton v-if="!editIsBuiltin" variant="secondary" size="sm" :label="(editDraft.effects_chain || []).length ? 'Edit chain' : 'Add chain'" @click="openChainEditor" />
             </div>
           </div>
-          <p class="jv-muted" style="font-size:11.5px; margin: 6px 0 0">Changes save automatically.</p>
         </div>
         <footer class="jv-dialog__footer">
-          <JvButton variant="primary" label="Done" @click="editOpen = false" />
+          <template v-if="editIsBuiltin">
+            <JvButton variant="primary" label="Close" @click="closeEdit" />
+          </template>
+          <template v-else>
+            <JvButton variant="secondary" label="Cancel" @click="closeEdit" />
+            <JvButton variant="primary" label="Save" @click="saveEdit" />
+          </template>
         </footer>
       </div>
     </div>
@@ -291,7 +307,7 @@ onMounted(refresh);
     <EffectsChainEditorModal
       :open="editorOpen"
       v-model="editingChain"
-      :context-label="editingPreset?.name || 'Render preset'"
+      :context-label="editing?.name || 'Render preset'"
       @save="onChainSaved"
       @cancel="editorOpen = false"
     />
