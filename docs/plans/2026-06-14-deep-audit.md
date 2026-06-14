@@ -370,3 +370,68 @@ Client code (Track B):
   create → open editor to add entries), an explicit Create commit per the
   ruling. (X-2 cross-flow create-pattern unification is still its own
   broader item: Books=modal, Personas=open-editor, Lexicons=promptDialog.)
+
+---
+
+# DIALOG DEEP AUDIT (2026-06-14) — full read of every overlay, not grep
+
+Triggered by missing the Preset dialog twice. My earlier dialog pass was
+grep-based (jv-overlay/jv-modal + button labels) and was BOTH shallow
+and INCOMPLETE — a broad sweep (position:fixed / *-overlay / *-modal /
+role=dialog) finds surfaces the canonical-class grep can't:
+AppDialog, AppModal, ChordPicker, EffectsChainEditorModal,
+GlobalAudioPlayer, JvHelpDrawer, KeyboardCheatsheet, LineageViewer,
+NewProjectModal, QuickSetup, TaskStatusPanel, VoiceParamsModal, +
+BooksView/GenerateView/ImportModal/LexiconsView/PersonasView/
+RenderPresetsView/StudioView/VoicesView.
+
+Checklist per dialog: (1) create opens directly vs prompt-then-open;
+(2) save model — Save+Cancel (entity edit) / atomic-Close (sub-resource
+mgmt) / never auto-save-in-dialog-without-discard; (3) Save closes on
+success; (4) Cancel truly discards; (5) draft buffer vs live-object
+mutation; (6) Delete on row not beside Save; (7) read-only guards;
+(8) canonical jv-overlay/jv-modal shell; (9) input sizing.
+
+## Verdicts (deep-read)
+
+- **VoiceParamsModal — ✓ CORRECT.** Working copy `params={...modelValue}`
+  on open; commit on Save, discard on Cancel; Save+Cancel footer;
+  number inputs jv-w-token. Reference example of the right pattern.
+- **EffectsChainEditorModal — ✓ CORRECT** (minor). Deep-copies chain on
+  open (true draft isolation); Save+Cancel. Minor: one hand-rolled
+  `.jv-check` (G-CORE-2 deferred); `.param-num` width:100% could be token.
+- **PersonasView editor — ✓ FIXED** this session (open-direct create,
+  Save closes, Save+Cancel, Delete on row).
+- **RenderPresetsView dialog — ✗ BROKEN.** (a) auto-saves per field with
+  only "Done" — no discard/Cancel (violates dialog ruling); (b) 2-step
+  create (promptDialog name → openEdit); (c) built-in presets editable
+  with no guard (inputs not disabled for is_builtin). Fix: rebuild on the
+  Persona pattern (draft + Save/Cancel + open-direct create).
+- **NewProjectModal — ✗ non-canonical + ghost buttons.** Rolls its own
+  `np-overlay/np-dialog/np-*` shell (~60 lines scoped CSS) instead of
+  jv-overlay/jv-modal; `.np-import` are borderless text buttons (RULE #1
+  #6); scoped `.np-input` instead of jv-input. Create-emit pattern itself
+  is correct (caller owns POST). Fix: reshell on jv-modal; ghost→jv-btn.
+- **VoicesView Clone/Design/Blend/Import — ~OK pattern, ✗ shell.** Good:
+  Cancel + explicit submit (create=explicit commit), canonical
+  JvField/JvInput/JvSelect, blend weight width=token. Issues: rolls its
+  own `.modal-*` shell (non-canonical); DOUBLE close affordance (ghost
+  "Close" in header AND "Cancel" in footer).
+- **LexiconsView editor — mostly OK (atomic-mgmt).** Name set at create,
+  scope read-only, entries are atomic add/delete → "Close" is right (NOT
+  Save+Cancel). OPEN Q: header has a Delete (line 395) AND the row has a
+  Delete (line 375) — duplicate delete; per G-PERSONA-4 reasoning the
+  dialog Delete could go (row is enough). Minor.
+
+## Cross-cutting finding (NEW — grep could not see this)
+- **[X-5] P2 · Non-canonical modal shells.** NewProjectModal (np-*) and
+  VoicesView (modal-*) hand-roll overlay/modal CSS instead of the
+  canonical jv-overlay/jv-modal. Duplication + RULE #1 violation +
+  inconsistent close/footer behavior. Reshell both onto jv-modal.
+
+## Still to deep-read (this pass continues)
+AppModal + AppDialog (primitives — define the standard), QuickSetup
+(wizard), ImportModal (multi-step), ChordPicker, LineageViewer,
+BooksView add-cast modal, StudioView add-persona modal, GenerateView
+overlay (SlashTagMenu?), + panels GlobalAudioPlayer/TaskStatusPanel/
+JvHelpDrawer/KeyboardCheatsheet (lighter — not editors).
