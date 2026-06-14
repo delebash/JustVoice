@@ -86,6 +86,14 @@ const blocks = ref([]);
 const selectedProjectId = ref(null);
 const selectedSceneId = ref(null);
 
+// Scene hand-off from BooksView's chapters-subtable "Open" — read once at
+// setup so it's available when loadScenes() runs (after the store loads).
+let _pendingSceneId = null;
+try {
+  _pendingSceneId = window.sessionStorage?.getItem("jv.chapter.sceneId") || null;
+  if (_pendingSceneId) window.sessionStorage.removeItem("jv.chapter.sceneId");
+} catch { /* ignore */ }
+
 const projectOptions = computed(() =>
   projects.value.length === 0
     ? [{ label: "— no projects —", value: null }]
@@ -111,7 +119,10 @@ async function loadScenes(projectId) {
     // Endpoint returns a bare array (same shape fix as StudioView).
     scenes.value = Array.isArray(res) ? res : res?.scenes || [];
     if (scenes.value.length) {
-      selectedSceneId.value = scenes.value[0].id;
+      // Prefer a scene handed off from Books' "Open"; else the first.
+      const pending = _pendingSceneId && scenes.value.some((s) => s.id === _pendingSceneId);
+      selectedSceneId.value = pending ? _pendingSceneId : scenes.value[0].id;
+      _pendingSceneId = null;
     }
   } catch (e) {
     pushToast({ message: `Failed to load scenes: ${e.message || e}`, kind: "error" });

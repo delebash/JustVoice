@@ -38,6 +38,11 @@
 
   --line: #e3e1dc;
   --line-strong: #cfccc4;
+  /* --border-soft: legacy alias for --line. Several views/components
+     reference it (X-6 audit finding, 2026-06-14) — it was never defined,
+     so `border: 1px solid var(--border-soft)` silently rendered no border.
+     Aliased per-theme so it tracks the active --line. */
+  --border-soft: var(--line);
 
   --accent: #3a7d63;
   --accent-ink: #2c6049;
@@ -97,6 +102,7 @@
   --ink-3: #8a8780;
   --line: #353835;
   --line-strong: #4a4d49;
+  --border-soft: var(--line);
   --accent: #5fa882;
   --accent-soft: #1f3329;
   --accent-line: #2c4a3a;

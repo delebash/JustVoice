@@ -67,6 +67,19 @@ const editAuthor = ref("");
 const editRenderPreset = ref("");
 const editWebhookUrl = ref("");
 
+// Auto-save feedback for the inline detail-pane edits. patchProject()
+// calls flashSaved() after a successful PATCH; the "Saved ✓" pill in the
+// header shows for ~1.5s. (These were referenced by the template + the
+// patch helper but never defined — every successful edit fell into the
+// catch and toasted a false "Save failed".)
+const savedFlash = ref(false);
+let _savedFlashTimer = null;
+function flashSaved() {
+  savedFlash.value = true;
+  clearTimeout(_savedFlashTimer);
+  _savedFlashTimer = setTimeout(() => { savedFlash.value = false; }, 1500);
+}
+
 const filtered = computed(() => {
   let list = projects.value;
   if (projectTypeFilter.value !== "all") {
@@ -358,6 +371,27 @@ function openProjectHome(p) {
   window.location.hash = KIND_HOME[p.project_type] || "#chapter";
 }
 
+// Detail-pane primary CTA — open the selected project in Studio
+// (Cast → Script → Render → Export). (Was referenced by the template
+// but never defined, so the button threw on click.)
+function openInStudio() {
+  const p = selectedProject.value;
+  if (!p) return;
+  activeProject.open(p);
+  window.location.hash = "#studio";
+}
+
+// Chapters-subtable "Open" — land the clicked chapter in its kind's home
+// view (Chapter/Lines), pre-selecting THAT scene via a sessionStorage
+// hand-off that ChapterView consumes on mount.
+function openChapterInView(scene) {
+  const p = selectedProject.value;
+  if (!p) return;
+  try { window.sessionStorage?.setItem("jv.chapter.sceneId", scene.id); } catch { /* ignore */ }
+  activeProject.open(p);
+  window.location.hash = KIND_HOME[p.project_type] || "#chapter";
+}
+
 function createBlank() {
   // Kind picker modal — native prompt() dialogs are banned (project_gotchas).
   showNewProject.value = true;
@@ -636,7 +670,7 @@ onMounted(() => {
                     <span class="jv-pill" :class="sceneStatusPill(s).cls">{{ sceneStatusPill(s).label }}</span>
                   </td>
                   <td class="books__row-actions">
-                    <button class="jv-btn jv-btn--ghost jv-btn--sm" title="Open in Chapter view">Open</button>
+                    <button class="jv-btn jv-btn--ghost jv-btn--sm" title="Open in Chapter view" @click="openChapterInView(s)">Open</button>
                   </td>
                 </tr>
               </tbody>

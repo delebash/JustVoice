@@ -110,6 +110,20 @@ async function generateShowNotes() {
   }
 }
 
+// Copy the drafted show-notes markdown. `navigator` is NOT in Vue's
+// template global allowlist, so calling navigator.clipboard inline in the
+// template threw a TypeError on click — it has to live in setup scope.
+async function copyShowNotes() {
+  const md = showNotes.value?.markdown;
+  if (!md) return;
+  try {
+    await navigator.clipboard?.writeText(md);
+    pushToast({ message: "Show notes copied.", kind: "success", duration: 2000 });
+  } catch (e) {
+    pushToast({ message: `Copy failed: ${e?.message || e}`, kind: "error" });
+  }
+}
+
 // No auto-run (user-hit: opening Export fired QC and 400'd with no
 // engine). The checklist sits at "unchecked" until Re-check is clicked.
 </script>
@@ -142,7 +156,7 @@ async function generateShowNotes() {
         <div class="exportp__h" style="margin-bottom:6px">
           <strong>Show notes</strong>
           <span class="jv-spacer" />
-          <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" title="Copy markdown" @click="navigator.clipboard?.writeText(showNotes.markdown)">⧉ Copy</button>
+          <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" title="Copy markdown" @click="copyShowNotes">⧉ Copy</button>
           <button type="button" class="jv-btn jv-btn--ghost jv-btn--sm" @click="showNotes = null">✕</button>
         </div>
         <pre class="exportp__notes-pre">{{ showNotes.markdown }}</pre>
