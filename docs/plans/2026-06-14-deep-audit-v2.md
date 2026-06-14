@@ -149,3 +149,70 @@ width tokens · no-engine lede removed.
 **Next concrete step:** finish components batch (HelpTrigger…SlashTagMenu),
 then views one-by-one (full read each: data flow, dialog pattern, sizing,
 conformance), then stores/services, then server api, then server core.
+
+═══════════════════════════════════════════════════════════════════════
+# ◆◆◆ FOR A FUTURE SELF: what went wrong + what "deep" means ◆◆◆
+═══════════════════════════════════════════════════════════════════════
+
+The user lost trust in my v1 audit. Here is exactly why, so you don't
+repeat it. READ THIS BEFORE AUDITING ANYTHING.
+
+## What I did wrong (the failure modes)
+1. **Proxies instead of reading.** I used grep + screenshots + button-
+   label checks as stand-ins for understanding behavior. A grep for
+   `label="Save"` cannot tell you a dialog auto-saves with no Cancel, or
+   that entries are append-only. Behavior is only knowable by READING the
+   code and SIMULATING it.
+2. **Inconsistent depth.** I read PersonaView's dialog deeply and fixed
+   it, then gave Preset/Lexicon a glance and called them reviewed. So
+   whether a bug got found depended on which file I happened to study —
+   that makes the whole audit untrustworthy.
+3. **Declared "COMPLETE" after glancing.** I wrote "AUDIT COMPLETE — every
+   surface reviewed" having screenshotted, not studied. Premature.
+4. **The inventory itself was incomplete.** I enumerated dialogs by
+   grepping `jv-overlay|jv-modal` — which BY DEFINITION excludes the
+   non-canonical ones (NewProjectModal `np-*`, VoicesView `modal-*`). The
+   tool that builds the list must not pre-filter to the thing you're
+   checking for.
+5. **Found a pattern once, didn't propagate it.** The Persona dialog bugs
+   (2-step create, no-close, footer) are a CLASS. I fixed the instance
+   instead of turning it into a lens dragged across all 16 dialogs.
+6. **"It's fine" from shallow reasoning.** "Lexicon is atomic mgmt, Close
+   is correct" was technically-true and ignored the real UX: append-only
+   entries (can't edit/delete a pronunciation), Delete in the header, no
+   save signal. A clean verdict needs POSITIVE evidence from a full read,
+   not the absence of an obvious bug.
+7. **Optimized for breadth/speed over correctness.** Committing fast and
+   "covering" surfaces felt like progress; it wasn't.
+
+## What a real DEEP audit means (the standard — hold to it)
+- **Read every file IN FULL.** Never let grep/screenshot stand in for
+  comprehension of behavior.
+- **Simulate it.** For each surface: what does the user do → what state/
+  data results → where does it break, lie about state, mishandle an edge,
+  or race? Walk the unhappy paths, not just the happy one.
+- **Think in the USER's mental model**, not just technical correctness. A
+  dialog can be "technically atomic" and still be confusing/incomplete.
+- **Propagate every pattern.** A defect found once becomes a checklist
+  item applied to EVERY sibling before you move on.
+- **Build inventories by broad signal**, then read — don't pre-filter to
+  the canonical case you're hunting.
+- **Write the reasoning down per file** (verdict + specifics + line refs)
+  so the user can CHECK it. The audit's value is the evidence, not the
+  verdict.
+- **"Done" = every file in the Coverage checklist has a written verdict.**
+  Not "I looked around."
+- **Verify, don't guess.** Run the server, probe the endpoint, read the
+  computed — confirm before asserting (this caught several false alarms:
+  error-handling 404s, the `editing` computed not being stale).
+
+## components batch 2 (full reads)
+- HelpTrigger ✓ clean (? button → opens help drawer).
+- CapturePill ✓ clean (voicebox-ported dictation pill; attribution hdr ok).
+- TaskStrip ✓ clean (running/finished task strip; Details/Cancel/Retry/✕).
+- Dead-check CORRECTION: Breadcrumb (3 importers) + PaneHeader (1) are
+  USED, NOT dead. (Verified — my "likely dead" suspicion was wrong.)
+- STILL PENDING (truncated, re-read): AudioKeepAlive, RecommendCard,
+  SlashTagMenu, LineageViewer, ChordPicker, DictateWindow, ExportPanel,
+  GlobalAudioPlayer, JvHelpDrawer, KeyboardCheatsheet, TaskStatusPanel,
+  ProviderForm, QuickSetup.
