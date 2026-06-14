@@ -98,13 +98,17 @@ widespread bad authoring.)
 - **[C-CORE-2] P3 · `models.py` monolith** (1145 lines — every request/
   response model). Optional split by domain (`models/projects.py`, …).
   Low priority; it's cohesive, just large.
-- **[C-CORE-3] P2 · Error-handling consistency — NEEDS PER-ENDPOINT
-  READ.** Raw signal: `projects_api.py` raises HTTPException only 2× across
-  25 routes; `voices_api.py` and `lexicons_api.py` raise 0×. Either these
-  genuinely can't 404/400, or missing-resource cases silently return
-  200/empty (a real defect class — the wiring audit found adjacent
-  issues). Flagged for a focused pass: for each GET/PATCH/DELETE by id,
-  confirm a missing id returns 404, not 200. Do NOT assume either way.
+- **[C-CORE-3] RESOLVED — NOT a defect (live-probe verified).** Hit
+  every by-id endpoint with a bogus id against the running server:
+  GET `projects/personas/lexicons/voices/presets/scenes·blocks/cast`
+  → all **404**; DELETE `personas/lexicons/projects/voices` → all
+  **404**. So despite `voices_api`/`lexicons_api` having 0 raw
+  `raise HTTPException`, they 404 correctly (via another mechanism). The
+  low-count signal was misleading; error handling is sound. The earlier
+  "might silently 200" worry was a false alarm — corrected by probing.
+  - **[C-1] P3 (minor) · update-verb inconsistency.** `PATCH /v1/personas/
+    {id}` → 405; personas update via **PUT**, while projects/blocks/scenes
+    use **PATCH**. Harmless but inconsistent REST. Align to PATCH later.
 - _(more per-module findings below after the per-endpoint pass)_
 
 ---
