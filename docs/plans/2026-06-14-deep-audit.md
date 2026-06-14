@@ -165,9 +165,48 @@ widespread bad authoring.)
 
 ---
 
+# Coverage map — enumerated vs pending
+
+**Enumerated (this pass):** all systemic findings across the 3 tracks
+(G-CORE-1/2, B-CORE-1/2, C-CORE-1/2/3, X-1/2/3), PersonasView full,
+objective sweeps (untokened inputs per view, scoped buttons=clean,
+native dialogs=none, god-component sizes, dead files, fat routers,
+error-handling raw counts), screenshot review of Home/Projects/Chapters/
+Studio/Generate/Voices/Settings/Personas (+remaining 6 captured).
+
+**Pending focused passes (detail-gathering, not yet enumerated):**
+1. Per-handler dialog-lifecycle (X-3) — read each of the 9 listed
+   handlers, mark close-on-save correctness.
+2. Per-endpoint error-handling (C-CORE-3) — for each GET/PATCH/DELETE
+   by id, confirm missing id → 404 not 200. ~40 endpoints.
+3. Settings' 14 sub-tabs — individual layout/sizing/flow review
+   (AI features / ProviderForm most likely to hold sizing issues).
+4. Remaining views' layout detail: Effects, Presets, Engines, Captures,
+   Labs sub-views (SpeakerLab/RenderLab/Compare/Train), Lines, Stories,
+   AudioTools, Cache, Channels, Webhooks, ImportReview.
+5. Per-view client-code smells beyond god-components (duplication,
+   prop-drilling) for the views not yet read in full.
+
+These are bounded; each can be a committed sub-pass. The systemic
+findings above are the high-leverage set and don't depend on them.
+
 # Per-view audit log
 
 _(each view: screenshot reviewed + code read; GUI + client findings)_
+
+## Dialog / editor lifecycle (cross-cutting, needs per-handler pass)
+
+- **[X-3] P2 · Inconsistent editor-close behavior on save/create.**
+  Confirmed: PersonasView `savePersona` doesn't close (G-PERSONA-2);
+  LexiconsView `createLexicon` opens the editor after create (same
+  create→open shape as Persona, X-2). AudioChannelsView/RenderPresets/
+  Studio vary. The whole set needs one focused pass: every save should
+  close (or stay open intentionally + show saved state), every create
+  should land you in a consistent place. Enumerated handlers to check:
+  AudioChannelsView.save, BooksView.commitAddCast, ChapterView.
+  saveBlockText/savePastedText, EnginesView.saveProvider, LexiconsView.
+  createLexicon, PersonasView.createBlank/savePersona, RenderPresetsView.
+  createPreset, StudioView.createBuiltinNarrator.
 
 ## PersonasView  (screenshot: aud-PERSONAS)
 
