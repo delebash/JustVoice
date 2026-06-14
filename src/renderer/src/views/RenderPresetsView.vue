@@ -24,11 +24,13 @@ import { confirmDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvInput from "../components/jv/JvInput.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
+import { usePersonasStore } from "../stores/personas.js";
 
 const api = useApi();
+const personasStore = usePersonasStore();
 
 const presets = ref([]);
-const personas = ref([]);
+const personas = computed(() => personasStore.items);
 const loading = ref(false);
 
 // Canonical library toolbar (2026-06-12): search + binding chips +
@@ -63,12 +65,11 @@ const MASTER_TARGETS = [
 async function refresh() {
   loading.value = true;
   try {
-    const [pr, p] = await Promise.all([
+    const [pr] = await Promise.all([
       api.safeRequest("/v1/presets", { presets: [] }),
-      api.safeRequest("/v1/personas", { personas: [] }),
+      personasStore.ensureLoaded(),
     ]);
     presets.value = pr?.presets ?? [];
-    personas.value = p?.personas ?? [];
   } finally {
     loading.value = false;
   }

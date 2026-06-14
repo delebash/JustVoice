@@ -14,10 +14,12 @@ import { pushToast } from "../services/toastBridge.js";
 import { promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvToggle from "../components/jv/JvToggle.vue";
+import { useVoicesStore } from "../stores/voices.js";
 
 const api = useApi();
+const voicesStore = useVoicesStore();
 
-const voices = ref([]);
+const voices = computed(() => voicesStore.items);
 const selectedVoiceId = ref("");
 const sampleText = ref(
   "The night was thick with fog, and the lanterns barely caught the cobblestones."
@@ -47,8 +49,7 @@ function parseValues(str) {
 }
 
 async function loadVoices() {
-  const r = await api.safeRequest("/v1/voices", { voices: [] });
-  voices.value = r?.voices || [];
+  await voicesStore.ensureLoaded();
   if (!selectedVoiceId.value && voices.value.length) {
     selectedVoiceId.value = voices.value[0].id;
   }

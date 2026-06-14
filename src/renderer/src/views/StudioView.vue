@@ -22,6 +22,10 @@ import { useUiContext } from "../stores/uiContext.js";
 import { useCopy } from "../services/copy.js";
 import { pushToast } from "../services/toastBridge.js";
 import { useActiveProject } from "../stores/activeProject.js";
+import { useProjectsStore } from "../stores/projects.js";
+import { usePersonasStore } from "../stores/personas.js";
+import { useVoicesStore } from "../stores/voices.js";
+import { useEnginesStore } from "../stores/engines.js";
 import JvButton from "../components/jv/JvButton.vue";
 import VoiceParamsModal from "../components/VoiceParamsModal.vue";
 import EmptyState from "../components/EmptyState.vue";
@@ -35,11 +39,18 @@ const audioPlayer = useAudioPlayer();
 const uiContext = useUiContext();
 const copy = useCopy();
 
-const projects = ref([]);
+// Shared lists from stores (single source of truth). loadAll() reloads
+// them; a mutation in any other view that reload()s a store updates
+// this view too (it reads the same store object).
+const projectsStore = useProjectsStore();
+const personasStore = usePersonasStore();
+const voicesStore = useVoicesStore();
+const enginesStore = useEnginesStore();
+const projects = computed(() => projectsStore.items);
+const personas = computed(() => personasStore.items);
+const voices = computed(() => voicesStore.items);
+const engines = computed(() => enginesStore.items);
 const selectedProjectId = ref(null);
-const personas = ref([]);
-const voices = ref([]);
-const engines = ref([]);
 const tab = ref("cast");
 const loading = ref(false);
 
@@ -594,16 +605,12 @@ function openVoiceTunerForLibraryVoice(voice) {
 async function loadAll() {
   loading.value = true;
   try {
-    const [pr, p, v, e] = await Promise.all([
-      api.safeRequest("/v1/projects", { projects: [] }),
-      api.safeRequest("/v1/personas", { personas: [] }),
-      api.safeRequest("/v1/voices", { voices: [] }),
-      api.safeRequest("/v1/engines", { engines: [] }),
+    await Promise.all([
+      projectsStore.reload(),
+      personasStore.reload(),
+      voicesStore.reload(),
+      enginesStore.reload(),
     ]);
-    projects.value = pr?.projects ?? [];
-    personas.value = p?.personas ?? [];
-    voices.value = v?.voices ?? [];
-    engines.value = e?.engines ?? [];
     // Default to the first audiobook/game/podcast project.
     if (!selectedProjectId.value && projects.value.length) {
       const prefer = projects.value.find((p) => p.id === activeProject.id);

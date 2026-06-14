@@ -15,14 +15,16 @@ import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
 import { useActiveProject } from "../stores/activeProject.js";
+import { useProjectsStore } from "../stores/projects.js";
 import JvButton from "../components/jv/JvButton.vue";
 import ImportModal from "./ImportModal.vue";
 
 const api = useApi();
 const activeProject = useActiveProject();
+const projectsStore = useProjectsStore();
 const tasks = useRenderTasks();
 
-const projects = ref([]);
+const projects = computed(() => projectsStore.items);
 const selectedProjectId = ref(null);
 const lines = ref([]);
 const counts = ref({ none: 0, rendered: 0, stale: 0 });
@@ -72,8 +74,7 @@ const staleLines = computed(() => lines.value.filter((l) => l.take_status === "s
 
 async function loadProjects() {
   try {
-    const r = await api.safeRequest("/v1/projects", { projects: [] });
-    projects.value = r?.projects || [];
+    await projectsStore.ensureLoaded();
     if (!selectedProjectId.value && gameProjects.value.length) {
       const prefer = gameProjects.value.find((p) => p.id === activeProject.id);
       selectedProjectId.value = (prefer || gameProjects.value[0]).id;

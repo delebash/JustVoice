@@ -9,12 +9,16 @@ import JvInput from "../components/jv/JvInput.vue";
 import JvSelect from "../components/jv/JvSelect.vue";
 import JvTag from "../components/jv/JvTag.vue";
 import JvField from "../components/jv/JvField.vue";
+import { useEnginesStore } from "../stores/engines.js";
+import { useVoicesStore } from "../stores/voices.js";
 
 const api = useApi();
+const enginesStore = useEnginesStore();
+const voicesStore = useVoicesStore();
 
 // ── data ──────────────────────────────────────────────────────────────────────
-const engines = ref([]);
-const voices = ref([]);
+const engines = computed(() => enginesStore.items);
+const voices = computed(() => voicesStore.items);
 const trainJobs = ref([]);
 
 // ── form state ────────────────────────────────────────────────────────────────
@@ -82,8 +86,7 @@ function fileToB64(file) {
 // ── API actions ───────────────────────────────────────────────────────────────
 async function loadEngines() {
   try {
-    const e = await api.request("/v1/engines");
-    engines.value = e.engines || [];
+    await enginesStore.ensureLoaded();
   } catch (e) {
     pushToast({ message: `Failed to load engines: ${e.message || e}`, kind: "error" });
   }
@@ -91,8 +94,7 @@ async function loadEngines() {
 
 async function loadVoices() {
   try {
-    const v = await api.request("/v1/voices");
-    voices.value = v.voices || [];
+    await voicesStore.ensureLoaded();
   } catch (_) {
     // voices are optional — silently ignore
   }

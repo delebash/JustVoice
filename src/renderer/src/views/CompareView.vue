@@ -14,8 +14,10 @@ import { pushToast } from "../services/toastBridge.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvInput from "../components/jv/JvInput.vue";
 import JvTag from "../components/jv/JvTag.vue";
+import { useProjectsStore } from "../stores/projects.js";
 
 const api = useApi();
+const projectsStore = useProjectsStore();
 
 const fileA = ref(null);
 const fileB = ref(null);
@@ -24,7 +26,7 @@ const labelB = ref("");
 const report = ref(null);
 const busy = ref(false);
 
-const projects = ref([]);
+const projects = computed(() => projectsStore.items);
 const scenes = ref([]);
 const selectedProject = ref("");
 const selectedScene = ref("");
@@ -105,8 +107,7 @@ async function runBulkQc() {
 
 async function loadBulkPickers() {
   try {
-    const p = await api.safeRequest("/v1/projects", { projects: [] });
-    projects.value = p?.projects ?? [];
+    await projectsStore.ensureLoaded();
   } catch { /* fail silent — bulk row still renders */ }
 }
 

@@ -21,9 +21,11 @@ import { pushToast } from "../services/toastBridge.js";
 import { promptDialog, confirmDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvToggle from "../components/jv/JvToggle.vue";
+import { useProjectsStore } from "../stores/projects.js";
 
 const api = useApi();
 const tasks = useRenderTasks();
+const projectsStore = useProjectsStore();
 
 // ── Lab truth surface ────────────────────────────────────────────────
 // GET /v1/extraction/config returns the tier registry, the REAL prompt
@@ -154,7 +156,7 @@ const text = ref("");
 const characters = ref([]);  // [{id, name, aliases}]
 const newCharName = ref("");
 const newCharAliases = ref("");
-const projects = ref([]);
+const projects = computed(() => projectsStore.items);
 const scenes = ref([]);
 const loadingScene = ref(false);
 const selectedProjectId = ref(null);
@@ -249,8 +251,7 @@ function removeCharacter(idx) {
 
 async function loadProjects() {
   try {
-    const r = await api.safeRequest("/v1/projects", { projects: [] });
-    projects.value = r?.projects || [];
+    await projectsStore.ensureLoaded();
   } catch (_) { /* tolerated */ }
 }
 async function loadScenes() {

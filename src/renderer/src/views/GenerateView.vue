@@ -11,12 +11,18 @@ import JvField from "../components/jv/JvField.vue";
 import JvTextarea from "../components/jv/JvTextarea.vue";
 import JvInput from "../components/jv/JvInput.vue";
 import SlashTagMenu from "../components/SlashTagMenu.vue";
+import { useVoicesStore } from "../stores/voices.js";
+import { usePersonasStore } from "../stores/personas.js";
 
 const api = useApi();
 const tasks = useRenderTasks();
 const audioPlayer = useAudioPlayer();
+// voices + personas from shared stores; engines/current + capabilities
+// are single-record/map fetches that stay local.
+const voicesStore = useVoicesStore();
+const personasStore = usePersonasStore();
 
-const voices = ref([]);
+const voices = computed(() => voicesStore.items);
 const currentEngine = ref(null);
 const voice = ref("");
 // Empty so the placeholder hint is visible on first open.
@@ -29,7 +35,7 @@ const history = ref([]);
 // Voice profiles — profile selection layer on top of the voice-keyed
 // generate flow. Profile selection enables Compose + per-profile
 // effects_chain pre-fill + persona-rewrite gating.
-const personas = ref([]);
+const personas = computed(() => personasStore.items);
 const selectedPersonaId = ref("");
 const composeBusy = ref(false);
 const rewriteBusy = ref(false);
@@ -291,18 +297,18 @@ const deliveryDirectionPlaceholder =
 
 async function refreshVoices() {
   try {
-    const [v, cur, h, caps, pers] = await Promise.all([
-      api.safeRequest("/v1/voices", { voices: [] }),
+    // voices + personas via shared stores; the rest are this view's own
+    // single-record/map fetches.
+    const [, , cur, h, caps] = await Promise.all([
+      voicesStore.reload(),
+      personasStore.reload(),
       api.safeRequest("/v1/engines/current", { engine: null }),
       api.safeRequest("/v1/takes/recent", { takes: [] }),
       api.safeRequest("/v1/engines/capabilities", { engines: {} }),
-      api.safeRequest("/v1/personas", { personas: [] }),
     ]);
-    voices.value = v?.voices || [];
     currentEngine.value = cur?.engine || null;
     history.value = (h?.takes || []).slice(0, 10);
     capabilityMap.value = caps?.engines || {};
-    personas.value = pers?.personas || [];
     const stillValid = availableVoices.value.some((x) => x.id === voice.value);
     if (!stillValid) voice.value = availableVoices.value[0]?.id || "";
   } catch (_) {}

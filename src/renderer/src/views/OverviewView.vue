@@ -22,6 +22,11 @@ import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { useOnboarding } from "../stores/onboarding.js";
 import { useActiveProject } from "../stores/activeProject.js";
+import { useProjectsStore } from "../stores/projects.js";
+import { usePersonasStore } from "../stores/personas.js";
+import { useVoicesStore } from "../stores/voices.js";
+import { useLexiconsStore } from "../stores/lexicons.js";
+import { useEnginesStore } from "../stores/engines.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast } from "../services/toastBridge.js";
 import JvButton from "../components/jv/JvButton.vue";
@@ -34,11 +39,20 @@ const activeProject = useActiveProject();
 const audioPlayer = useAudioPlayer();
 
 const health = ref(null);
-const engines = ref([]);
-const voices = ref([]);
-const personas = ref([]);
-const projects = ref([]);
-const lexicons = ref([]);
+// The five shared lists come from stores (single source of truth);
+// their own caching replaces the snapshot for these fields. The
+// non-list dashboard data (captures/stats/recent/system/settings)
+// keeps the snapshot for instant paint.
+const projectsStore = useProjectsStore();
+const personasStore = usePersonasStore();
+const voicesStore = useVoicesStore();
+const lexiconsStore = useLexiconsStore();
+const enginesStore = useEnginesStore();
+const engines = computed(() => enginesStore.items);
+const voices = computed(() => voicesStore.items);
+const personas = computed(() => personasStore.items);
+const projects = computed(() => projectsStore.items);
+const lexicons = computed(() => lexiconsStore.items);
 const captures = ref([]);
 const stats = ref(null);
 const recentGenerations = ref([]);
@@ -65,11 +79,8 @@ function hydrateFromSnapshot() {
   try {
     const snap = JSON.parse(window.sessionStorage?.getItem(HOME_CACHE_KEY) || "null");
     if (!snap) return;
-    engines.value = snap.engines || [];
-    voices.value = snap.voices || [];
-    personas.value = snap.personas || [];
-    projects.value = snap.projects || [];
-    lexicons.value = snap.lexicons || [];
+    // The five lists now come from stores; only the non-list dashboard
+    // fields are hydrated from the snapshot.
     captures.totalCount = snap.capturesTotal ?? null;
     stats.value = snap.stats ?? null;
     recentGenerations.value = snap.recentGenerations || [];
@@ -84,11 +95,6 @@ function hydrateFromSnapshot() {
 function writeSnapshot() {
   try {
     window.sessionStorage?.setItem(HOME_CACHE_KEY, JSON.stringify({
-      engines: engines.value,
-      voices: voices.value,
-      personas: personas.value,
-      projects: projects.value,
-      lexicons: lexicons.value,
       capturesTotal: captures.totalCount ?? null,
       stats: stats.value,
       recentGenerations: recentGenerations.value,
@@ -102,13 +108,14 @@ function writeSnapshot() {
 }
 
 async function refresh() {
-  const [h, e, v, p, pr, lx, ca, s, g, ce, sy, st] = await Promise.all([
+  // Five shared lists via stores; the rest are this view's own fetches.
+  const [h, , , , , , ca, s, g, ce, sy, st] = await Promise.all([
     safeRequest("/v1/health", null),
-    safeRequest("/v1/engines", { engines: [] }),
-    safeRequest("/v1/voices", { voices: [] }),
-    safeRequest("/v1/personas", { personas: [] }),
-    safeRequest("/v1/projects", { projects: [] }),
-    safeRequest("/v1/lexicons", { lexicons: [] }),
+    enginesStore.reload(),
+    voicesStore.reload(),
+    personasStore.reload(),
+    projectsStore.reload(),
+    lexiconsStore.reload(),
     safeRequest("/v1/captures?limit=1", { captures: [], total: null }),
     safeRequest("/v1/cache/stats", null),
     safeRequest("/v1/takes/recent?limit=4", { takes: [] }),
@@ -117,11 +124,6 @@ async function refresh() {
     safeRequest("/v1/settings", null),
   ]);
   health.value = h;
-  engines.value = e.engines || [];
-  voices.value = v.voices || [];
-  personas.value = p.personas || [];
-  projects.value = pr.projects || [];
-  lexicons.value = lx.lexicons || [];
   captures.value = ca.captures || [];
   captures.totalCount = ca.total ?? (ca.captures?.length ?? null);
   stats.value = s;

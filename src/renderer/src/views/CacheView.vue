@@ -13,11 +13,15 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
 import JvButton from "../components/jv/JvButton.vue";
+import { useVoicesStore } from "../stores/voices.js";
+import { useEnginesStore } from "../stores/engines.js";
 
 const api = useApi();
+const voicesStore = useVoicesStore();
+const enginesStore = useEnginesStore();
 const stats = ref(null);
-const voices = ref([]);
-const engines = ref([]);
+const voices = computed(() => voicesStore.items);
+const engines = computed(() => enginesStore.items);
 const recent = ref([]);
 
 function fmtMB(bytes) {
@@ -43,10 +47,8 @@ async function loadStats() {
 }
 async function loadPickers() {
   try {
-    const v = await api.safeRequest("/v1/voices", { voices: [] });
-    voices.value = v?.voices ?? [];
-    const e = await api.safeRequest("/v1/engines", { engines: [] });
-    engines.value = e?.engines ?? [];
+    await voicesStore.ensureLoaded();
+    await enginesStore.ensureLoaded();
     const r = await api.safeRequest("/v1/cache/recent", { entries: [] });
     recent.value = r?.entries ?? [];
   } catch { /* fail silent */ }

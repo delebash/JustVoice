@@ -13,11 +13,17 @@ import JvCheckbox from "../components/jv/JvCheckbox.vue";
 import JvToggle from "../components/jv/JvToggle.vue";
 import JvField from "../components/jv/JvField.vue";
 import { useOnboarding } from "../stores/onboarding.js";
+import { useProjectsStore } from "../stores/projects.js";
+import { usePersonasStore } from "../stores/personas.js";
+import { useActiveProject } from "../stores/activeProject.js";
 import CacheView from "./CacheView.vue";
 import AudioChannelsView from "./AudioChannelsView.vue";
 import WebhooksView from "./WebhooksView.vue";
 
 const api = useApi();
+const projectsStore = useProjectsStore();
+const personasStore = usePersonasStore();
+const activeProjectStore = useActiveProject();
 const tasks = useRenderTasks();
 
 // ── Workspace focus (primary use case) ──────────────────────────────
@@ -120,7 +126,10 @@ async function deleteAllProjects() {
     for (const per of pe.personas || []) {
       try { await api.request(`/v1/personas/${per.id}`, { method: "DELETE" }); } catch { failed++; }
     }
-    try { window.localStorage?.removeItem("jv.activeProject"); } catch { /* ignore */ }
+    activeProjectStore.clear();
+    // Reload the shared stores so every view reflects the wipe.
+    await projectsStore.reload();
+    if (deletePersonasToo.value) await personasStore.reload();
     pushToast({
       kind: failed ? "error" : "success",
       title: failed ? `Wipe finished with ${failed} failures` : "All projects deleted",
