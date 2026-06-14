@@ -1187,12 +1187,15 @@ progress {
 .jv-table tbody tr:hover td { background: var(--surface-2); }
 .jv-table .right { text-align: right; }
 .jv-table__actions {
+  /* Stay a real table-cell — `display:flex` here pulls the <th>/<td>
+     out of the column model so header + buttons size independently and
+     the header stops aligning over the buttons (G-PERSONA-3). Right-
+     align inline children instead; they share the column width. */
   text-align: right;
   white-space: nowrap;
-  display: flex;
-  justify-content: flex-end;
-  gap: 4px;
+  vertical-align: middle;
 }
+.jv-table__actions > * + * { margin-left: 4px; }
 .jv-table__empty {
   padding: 24px 0;
   text-align: center;

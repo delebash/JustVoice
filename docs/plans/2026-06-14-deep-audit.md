@@ -314,7 +314,7 @@ G-CORE-2 (control type per context) is already correct under the ruling.
   gate-name heuristic gave several false positives; corrected by reading
   each handler.) **Net: X-3 reduces to the single G-PERSONA-2 fix.**
 
-## PersonasView  (screenshot: aud-PERSONAS)
+## PersonasView  (screenshot: aud-PERSONAS) — ✅ ALL FIXED (0cc0f0c + jv-table align)
 
 GUI / UX:
 - **[G-PERSONA-1] P2 · 2-step create.** `createBlank()` (PersonasView
