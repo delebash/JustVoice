@@ -57,8 +57,14 @@ changed surface this session is behaviorally verified, not sampled.
   created).
 - Lines/Books toolbars → canonical `.jv-lib-toolbar` (verified, screenshots).
 
-**Remaining P3 (cosmetic, low value):**
-- raw `jv-btn` vs `<JvButton>` micro-inconsistencies across a few views.
+**P3 button sweep — DONE (commit 08052bf):** every raw `<button class="jv-btn">`
+across 15 views + 3 components → `<JvButton>` (zero visual change; same
+classes). Left `<label class=jv-btn>` file-pickers + `<a class=jv-btn>` link-
+buttons raw on purpose (not buttons). Verified: 0 raw button-elements remain,
+both suites still green (31/31 + 16/16), Cache visually confirmed.
+
+**P3 fully complete. Audit fix queue drained** — only open item is whether
+to wire the "coming soon" features for real or build the Timeline (Stories).
 
 ---
 
