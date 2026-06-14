@@ -29,13 +29,17 @@ changed surface this session is behaviorally verified, not sampled.
   /v1/voices/design so the disabled sample-buttons are driven for real, not
   "covered by markup") + Overview captures stat. Screenshots sent.
 
-**Remaining P3 (lower value / taste-or-risk — get direction before sweeping):**
-- ImportModal dead code: NOT removed — the template still references
-  `preview` (×12) + `excluded` (×2), so it's real template+script surgery
-  needing import-flow re-verification, not quick polish. Deferred.
-- Lines/Books scoped toolbars → `.jv-lib-toolbar` (near-identical class;
-  cosmetic consistency).
-- raw `jv-btn` vs `<JvButton>` micro-inconsistencies (cosmetic).
+**P3 done (commit 9bc5c5d):**
+- ImportModal dead code REMOVED. (My "12 template refs" was a bad grep
+  over the <style> block; the template referenced none of it.) The in-
+  modal preview/commit block was unreachable since doPreview() hands off
+  to ImportReviewView. Verified import end-to-end still works (7/7
+  Playwright: upload .md → #importreview → 2 chapters → commit → project
+  created).
+- Lines/Books toolbars → canonical `.jv-lib-toolbar` (verified, screenshots).
+
+**Remaining P3 (cosmetic, low value):**
+- raw `jv-btn` vs `<JvButton>` micro-inconsistencies across a few views.
 
 ---
 
