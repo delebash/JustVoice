@@ -5,6 +5,45 @@
 
 ---
 
+## 2026-06-14 (late, busy-rubin) — LIBRARY DIALOGS unified + a STANDING Playwright check
+
+Follow-up after the user caught that the first fix pass left the *original*
+defects: create still **prompted for a name then popped the editor** (the
+G-PERSONA-1 anti-pattern), Lexicon used **2 prompt modals**, and its floating
+✕ **overlapped Import/Export**. Root lesson the user hammered: I verify with
+"it builds / pytest" then stop — I must drive the **real UI with Playwright,
+every time**, not 1-2 spot checks.
+
+**Shipped (commit d9118cb):** Personas / Render presets / Lexicons now share
+ONE dialog pattern —
+- **create opens the editor DIRECTLY** on a blank draft (no prompt-first);
+  Save commits (POST) / Cancel discards.
+- **canonical `jv-modal__header`** (eyebrow + name + ✕ in its own slot) — the
+  floating-✕-over-Import/Export overlap is gone (Lexicon Import/Export moved
+  to a body action row: "⬇ Merge file / ⬆ Export").
+- **draft + Save/Cancel** everywhere. Lexicon got a FULL draft rework: entries
+  are added/edited/deleted in the draft and committed on Save (replaced the
+  atomic per-add from the earlier pass — this is the "save button" the user
+  wanted). Scope/target are picked in the create dialog.
+
+**THE PROCESS CHANGE (hold to this):** `scripts/verify-dialogs.mjs` is a
+COMMITTED Playwright suite that drives these dialogs end-to-end + saves
+screenshots. Run it for any dialog change BEFORE claiming done:
+```
+cd server && JUSTVOICE_DATA_DIR=/tmp/jv-v$(date +%s) justvoice-server serve --host 127.0.0.1 --port 8751 &
+JV_BASE=http://127.0.0.1:8751 node scripts/verify-dialogs.mjs   # 31/31 must pass
+```
+Last run: **31/31** — create-directly, Cancel-discards, Save-persists, draft
+entries (not on server until Save), per-entry delete discard-vs-persist,
+rename, built-in read-only, ✕-not-overlapping-Export. Screenshots were sent
+to the user. Do NOT regress to build-only verification.
+
+(Note: pkill in a compound Bash line returns 144 and tears down the launcher;
+start test servers on a unique port + fresh JUSTVOICE_DATA_DIR instead of
+killing/wiping.)
+
+---
+
 ## 2026-06-14 (remote session, busy-rubin) — DEEP AUDIT v2 (whole app, complete) + first fix pass
 
 **Branch: `claude/busy-rubin-sz9e4q`** (this session's required branch).
