@@ -716,3 +716,87 @@ NEXT: stores/services/composables/root, then SERVER (api ×39, core ×22).
   is a dependency. So ImportModal's stated justification for its non-canonical
   scoped shell is invalid; it can use AppModal / the jv-overlay+jv-modal
   classes directly.
+
+═══════════════════════════════════════════════════════════════════════
+# SERVER (api ×39 · core ×22 · engines/storage/audio/database/mcp)
+═══════════════════════════════════════════════════════════════════════
+Audit lens per the ⛔ feedback_upstream_audit_hard_rule: WIRING (is each
+module imported AND invoked by its consumer — the documented failure mode
+is "lifted-but-not-wired"), CORRECTNESS, and HONESTY (no fake-data stubs).
+app.py + render_core.py read in full; the rest verified systematically on
+those three dimensions (route-wiring diff, invocation checks, orphan scan,
+server-wide stub scan, route maps, subpkg structure).
+
+- **app.py — ✓ CLEAN.** create_app boots DB (idempotent init + seed +
+  Profile→Persona migration), registers existing/external/LLM engines,
+  mounts ALL 39 routers, error envelope BEFORE CORS (the documented
+  Starlette-ordering fix), MCP mounted before the SPA catch-all with a
+  graceful ImportError fallback, shutdown hook kills managed subprocesses.
+  Documents the W7 double-registration fix.
+- **WIRING — ✓ NO orphans.** Diffed all 40 api/*.py against app.py: every
+  router is `include_router`'d; the only non-registered file is
+  `_persona_helpers.py` (an underscore shared helper, correctly imported by
+  personas_api + extraction_api, not a router). Every core module is imported
+  by ≥1 consumer (delivery ×20, cache ×22, … export_audiobook ×1, hf_cache
+  ×1 — all wired).
+- **AUTO-CHUNKING (the canonical historical failure) — ✓ FIXED + INVOKED.**
+  audio/chunked.py is imported by BOTH render_core.py (line 24) AND
+  generate_api.py (line 22), and genuinely CALLED (split_text_into_chunks /
+  concatenate_audio_chunks / _chunking_params / _samples_from_chunk_bytes) —
+  not just imported. The "landed but never wired into generate" failure that
+  motivated the hard rule is closed.
+- **HONESTY — ✓ no fake-data stubs.** Server-wide scan: every
+  NotImplementedError is legitimate (engines/base.py optional-method default;
+  local_managed non-streaming; app.py edge-tts deferred-adapter). Documented
+  patterns, not fakes: elevenlabs "models hardcoded" (the provider has no
+  /models endpoint), tada/dac_shim "fake dac.nn.layers" (a real dependency
+  shim). No TODO/FIXME/HACK littering.
+- **render_core.py — ✓ CLEAN.** Single-source per-line pipeline (cache →
+  lexicon → engine auto-load → synth → gain-db → cache; chunked for long
+  text) used by BOTH /v1/generate and /v1/render_chapter. Voice→engine
+  resolution checks 3 sources incl. manifest static_voices (the preset-
+  before-load fix).
+- **Subpkgs — ✓ structured per CLAUDE.md.** engines/ = managed plugin dirs
+  (kokoro/chatterbox/dia/tada/qwen3/luxtts/moss_tts/qwen3_llm/whisper) +
+  base/manager/registry/catalog/capability_details + tts_providers + llm.
+  storage/ = atomic + per-entity stores. audio/ = analyzer/chunked/effects/
+  wav. database/ = migrations/models/seed/session/migrate_profiles. mcp/ =
+  context/resolve/server/tools.
+- **C-CORE-1 (fat projects_api, 1280 lines) — maintainability NOTE, not a
+  defect.** Cohesive project-domain CRUD (projects/scenes/blocks/cast +
+  import + QC + export); all endpoints real. Could split import/export out
+  (project_export_api already exists), but no behavioral problem — same
+  conclusion as the Settings/Studio "god component" retraction.
+
+═══════════════════════════════════════════════════════════════════════
+# ◆◆◆ AUDIT COMPLETE — every file area has a written verdict ◆◆◆
+═══════════════════════════════════════════════════════════════════════
+Coverage: 26 views ✓ · 26 components + 9 jv/ primitives ✓ · stores/services/
+composables/root ✓ · server (app wiring, render pipeline, 39 routers, core
+modules, 5 subpkgs) ✓.
+
+## The fix queue (ranked) — for a follow-up session, NOT done here
+(user asked for the AUDIT to the end; fixes are a separate pass)
+P1/P2 BUGS (data or UX broken):
+1. **Books** — 3 undefined refs: add `savedFlash` ref + `flashSaved()`
+   (stops the false "Save failed" on every edit + shows "Saved ✓"); add
+   `openInStudio()`; wire the chapter-row Open. (VERIFIED bugs.)
+2. **Compare** — Refresh-from-current-takes + Bulk QC are toast-only fakes;
+   either implement (GET /v1/takes + per-pair /v1/compare) or remove the
+   affordances so they don't lie.
+3. **Captures** — Record button + Hotkeys card are non-functional mocks;
+   gate behind "coming soon" or wire to the real capture flow.
+4. **Voices** — onSamplePicked (POST the WAV to /v1/voices/{id}/samples) +
+   recordInApp are fake inspector actions.
+5. **ExportPanel** — show-notes Copy uses `navigator` in the template
+   (throws); move to a setup method.
+6. **X-6** — define `--border-soft` in styles.css :root (alias --line), OR
+   sweep the 7 files to var(--line). One-line fix kills 7 missing borders.
+P3 / design-ruling:
+7. **RenderPresets dialog** — convert auto-save→Save+Cancel (the ruling);
+   disable Delete + guard fields for built-ins.
+8. **Lexicons dialog** — per-entry edit/delete; drop the dead Note field or
+   persist it; move/remove the header Delete; allow rename.
+9. **X-5 modal shells** → jv-overlay/jv-modal: NewProjectModal, VoicesView,
+   ImportModal (its vue-i18n excuse is false), ChordPicker, LineageViewer.
+DEFERRED (user ruling): G-CORE-2 native-checkbox → JvCheckbox migration.
