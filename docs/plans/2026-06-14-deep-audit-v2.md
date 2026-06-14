@@ -636,3 +636,42 @@ NEXT: views one-by-one (full read each), then stores/services, then SERVER.
   defect. Remaining note is maintainability-only (P3, NOT a bug): the 11
   inline tabs COULD each be extracted into their own component the way Cache/
   Channels/Webhooks already are; optional refactor, no behavioral impact.
+
+## views batch K (Studio) — last view; corrects v1 "god component (Studio)"
+- **StudioView.vue — ✓ CLEAN.** 2702 lines, the Cast→Script→Render→Export
+  production workbench (numbered `jv-stepcard` workflow strip — a deliberate
+  stepper, distinct from a settings tab strip, so not a jv-subnav miss). All
+  four tabs are REAL: Cast (voice library w/ engine filter + search + gender
+  click-cycle override + assign + VoiceParamsModal tuning + smart-assign),
+  Script (analyze text → discovered-speaker promotion, same backend as
+  SpeakerLab), Render (select unrendered/all, cache-coverage banner, per-
+  scene preset + render with progress strips + cancel, ACX QC, LLM preset
+  suggest, render gate), Export (delegates to ExportPanel). 47 functions, no
+  toast-only stubs, no TODO/mock stubs (the "mock" strings are design-source
+  comments + empty-state placeholders). Shared stores; usePageCrumbs
+  breadcrumb. P3: 1 native checkbox (render-row selector, G-CORE-2 deferred);
+  3 `--border-soft` (X-6); large-file maintainability (could split the four
+  tabs into components) — NOT a defect. Renders ExportPanel (carries the P2
+  navigator-clipboard bug recorded against that component). The v1 "god
+  component (Studio 2708)" framing is a maintainability note, not a defect.
+
+═══════════════════════════════════════════════════════════════════════
+# ◆ VIEWS SWEEP COMPLETE — all 26 views have written verdicts.
+═══════════════════════════════════════════════════════════════════════
+✗ DEFECTS (need fixes): RenderPresets (auto-save dialog + built-ins
+unprotected) · Lexicons (append-only entries, header Delete dup, dead Note
+field, no rename) · Compare (Refresh-from-takes + Bulk QC are fake/toast-
+only) · Captures (Record button + Hotkeys card are non-functional mocks) ·
+Books (3 VERIFIED undefined refs: flashSaved → false "Save failed" on every
+edit, savedFlash → "Saved" never shows, openInStudio → dead CTA) · Voices
+(onSamplePicked + recordInApp fake inspector actions; X-5 modal shell).
+⚠ MINOR: ImportModal (X-5 shell + dead code) · Effects/Lines (scoped toolbar,
+raw delete btn) · Overview (captures.totalCount ref-bag) · Personas (+Edit
+toast redirect, non-jv-pill chips) · Cache (raw buttons, per-row no-confirm).
+✓ CLEAN: Stories, Labs, AudioChannels, ImportReview, Webhooks, RenderLab,
+Train, SpeakerLab, Engines, Generate, Chapter, Settings, Studio.
+Cross-cutting: X-6 (--border-soft undefined) hits Effects/RenderLab/Generate/
+Personas/SpeakerLab/Studio + EffectsChainEditorModal. G-CORE-2 native
+checkboxes (deferred) recur across ~10 surfaces. X-5 non-canonical modal
+shells: NewProjectModal, VoicesView, ImportModal, ChordPicker, LineageViewer.
+NEXT: stores/services/composables/root, then SERVER (api ×39, core ×22).
