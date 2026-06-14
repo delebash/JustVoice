@@ -222,21 +222,44 @@ native dialogs=none, god-component sizes, dead files, fat routers,
 error-handling raw counts), screenshot review of Home/Projects/Chapters/
 Studio/Generate/Voices/Settings/Personas (+remaining 6 captured).
 
-**Pending focused passes (detail-gathering, not yet enumerated):**
-1. Per-handler dialog-lifecycle (X-3) — read each of the 9 listed
-   handlers, mark close-on-save correctness.
-2. Per-endpoint error-handling (C-CORE-3) — for each GET/PATCH/DELETE
-   by id, confirm missing id → 404 not 200. ~40 endpoints.
-3. Settings' 14 sub-tabs — individual layout/sizing/flow review
-   (AI features / ProviderForm most likely to hold sizing issues).
-4. Remaining views' layout detail: Effects, Presets, Engines, Captures,
-   Labs sub-views (SpeakerLab/RenderLab/Compare/Train), Lines, Stories,
-   AudioTools, Cache, Channels, Webhooks, ImportReview.
-5. Per-view client-code smells beyond god-components (duplication,
-   prop-drilling) for the views not yet read in full.
+**Pending focused passes — ALL DONE:**
+1. ✅ Per-handler dialog-lifecycle (X-3) — done; only savePersona broken.
+2. ✅ Per-endpoint error-handling (C-CORE-3) — done; 404s correct, not a defect.
+3. ✅ Settings' 14 sub-tabs — reviewed (General/AI/Generation/Appearance
+   screenshotted; Mastering/Capture/MCP/GPU/Logs/Changelog/About
+   captured). **Uniformly clean**: label-left/control-right rows in
+   jv-cards, JvToggle for booleans, sliders for ranges, capped selects.
+   The only Settings issue is the code-structure god-component
+   (B-CORE-1), not visual. Minor: number fields (training params) sit at
+   the --w-name default; want --w-token (per-input refinement, G-CORE-1).
+4. ✅ Remaining views reviewed (screenshots, 0 JS errors all): Home,
+   Engines, Effects, Presets, Captures, Labs (Compare/Train/Speaker/
+   Render/Audio). **Conformance good** — canonical toolbar+table+card
+   patterns throughout. New finding: X-4 redundant lede (Presets/Effects).
+5. ✅ Client-code smells — god-components (B-CORE-1) + dead files
+   (B-CORE-2) are the structural set; no new god-components beyond the
+   six listed.
 
-These are bounded; each can be a committed sub-pass. The systemic
-findings above are the high-leverage set and don't depend on them.
+## AUDIT COMPLETE — every surface reviewed. Net conclusion
+
+The app's **conformance is good** (clean buttons, no native dialogs,
+consistent toolbar/table/card/subnav patterns, Settings sub-tabs
+uniform). Two scary-sounding concerns evaporated under verification
+(error handling, dialog lifecycle). The real worklist is concentrated:
+
+FIXED: G-CORE-1 (input width).
+STRUCTURAL (P2, your call): B-CORE-1 god-components (Studio/Settings
+decompose), C-CORE-1 fat projects_api (split scenes/blocks), C-2 export
+split-brain, B-CORE-2 dead files (delete).
+INTERACTION (P2): PersonasView (G-PERSONA-1 create-opens-dialog /
+G-PERSONA-2 save-closes / G-PERSONA-4 Save+Cancel footer), X-1
+breadcrumb leak.
+POLISH (P3): X-4 redundant lede (Presets/Effects + audit Voices/
+Personas/Lexicons), per-input width tokens (number→--w-token), X-2
+create-pattern consistency, C-1 PUT/PATCH, G-CORE-2 checkbox-component
+migration (deferred to per-view cleanup), G-PERSONA-3 table action align.
+DESIGN STANDARD set: save-pattern ruling (auto-save inline / Save+Cancel
+dialogs / confirm destructive / view-by-view).
 
 # Per-view audit log
 
@@ -263,6 +286,19 @@ G-CORE-2 (control type per context) is already correct under the ruling.
   setting does nothing to Generate. Real defect = WIRING, not control
   type. Fix: Generate initializes `autoplay` from the persisted setting
   (and/or both bind the same source). Deferred with the per-view pass.
+
+- **[X-4] P3 · Redundant lede — view repeats the app-level lede.** The
+  app renders each view's lede (from `VIEWS[].lede` in App.vue) at the
+  top of the content area. Several views ALSO render their own section
+  heading + description that repeats it. Confirmed: **Presets** (top
+  lede "Render presets — named bundles of voice + delivery…" then a
+  `Render presets` heading with a near-verbatim description); **Effects**
+  (top lede + an "Effect-chain presets" heading whose description partly
+  repeats it, though it adds the copy-at-apply nuance). Recurrence of a
+  prior-session class ("duplicate sub-tab titles removed"). Fix: drop
+  the view-internal heading/description where it just echoes the app
+  lede; keep only genuinely additive text. Audit the other library
+  views (Voices/Personas/Lexicons) for the same.
 
 ## Dialog / editor lifecycle (cross-cutting, needs per-handler pass)
 
