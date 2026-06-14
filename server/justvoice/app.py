@@ -36,6 +36,7 @@ from .api import (
     llm_roles_api,
     preset_suggest_api,
     smart_assign_api,
+    engine_sources_api,
     engines_models_api,
     external_api,
     generate_api,
@@ -173,6 +174,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(engines_api.router)
     app.include_router(models_api.router)
     app.include_router(engines_models_api.router)
+    app.include_router(engine_sources_api.router)
     app.include_router(generate_api.router)
     app.include_router(render_chapter_api.router)
     app.include_router(analyzer_api.router)

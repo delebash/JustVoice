@@ -208,6 +208,34 @@ class KokoroEngineSettings(BaseModel):
     model_dir_override: str | None = None
 
 
+class EngineModelSourceOverride(BaseModel):
+    """Operator-provided source for one engine model variant.
+
+    Per CLAUDE.md "no hardcoded operator-tunable values": engine model
+    URLs / HF repos live in each engine's manifest.MODELS as defaults,
+    but the operator can override them per (engine, variant) here without
+    editing code. The prefetch worker resolves the source as:
+      override.url || override.hf_repo+revision || manifest default.
+    """
+
+    url: str | None = None           # URL-tarball engines (kokoro, …)
+    hf_repo: str | None = None       # HF-snapshot engines (chatterbox, …)
+    hf_revision: str | None = None   # pin a commit / tag
+
+
+class EngineOverrides(BaseModel):
+    """Per-engine operator overrides (download sources + the legacy
+    kokoro model_dir override). Keyed by variant id in `sources`.
+
+    EnginesSettings.engine_overrides maps engine_id -> EngineOverrides;
+    settings.engines.kokoro.model_dir_override stays where it is for
+    backward compat (no migration cost — the kokoro adapter already
+    reads it from there).
+    """
+
+    sources: dict[str, EngineModelSourceOverride] = {}
+
+
 class ExternalEngineConfig(BaseModel):
     id: str
     name: str
@@ -302,6 +330,9 @@ class ProductionConfig(BaseModel):
 
 class EnginesSettings(BaseModel):
     kokoro: KokoroEngineSettings = KokoroEngineSettings()
+    # Per-engine operator overrides — engine_id -> overrides. Today only
+    # holds per-variant download sources; see EngineOverrides.
+    engine_overrides: dict[str, EngineOverrides] = {}
     # Preferred TTS engine for create flows + first-render auto-setup
     # (user ask 2026-06-12: a default-engine setting instead of
     # whichever-engine-happens-to-be-first). Engine id, e.g. "kokoro".
