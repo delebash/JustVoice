@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-06-14 (midday, busy-rubin) — FIX: Home-flash on hard refresh (init-order/routing)
+
+User-reported, real architectural bug: hard-refresh on ANY non-Home page
+flashed Home then jumped to the selected view. **Cause:** App.vue's `view`
+defaulted to "overview" and the URL hash was only applied by
+resolveInitialTab(), gated behind `onboarding.hydrated` — which waits for
+onboarding.hydrate()'s async GET /v1/settings. First frame always painted
+Home until that fetch resolved. **Fix (commit 163cb12):**
+`initialViewFromHash()` computes `view` synchronously from
+window.location.hash at setup (explicit views + legacy #cache/#compare
+deep-links), and sets `initialTabResolved` so the post-hydrate watch never
+overrides an explicit hash. No-hash root still defers to onboarding (Home
+is the real default there). Verified deterministically (Playwright with
+/v1/settings delayed to widen the window): #books sequence "--BBBB…" (Home
+NEVER mounts; was "HHHH…B"), #voices clean, root "/" still Home. General
+fix — covers every view, not just #books.
+
+---
+
 ## 2026-06-14 (morning, busy-rubin) — item 4 fakes gated "coming soon" + P3 (Overview); VERIFY ALL, not a subset
 
 User picked **hide-behind-"coming-soon"** for the 6 fake affordances, and
