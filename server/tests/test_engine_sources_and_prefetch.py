@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import requests
 from fastapi.testclient import TestClient
 
 
@@ -198,53 +199,93 @@ def test_prefetch_url_path_streams_and_completes(client, app, monkeypatch, tmp_p
     assert (models_dir / "fake-model.bin").exists()
 
 
-def test_prefetch_hf_path_completes_via_mocked_snapshot(client, app, monkeypatch):
-    """HF-source variant: snapshot_download is mocked to a no-op (the real
-    one is a multi-MB network round-trip). Worker should reach 'completed'.
+def test_prefetch_hf_path_uses_plain_https_no_hub_dep(client, app, monkeypatch, tmp_path):
+    """User directive 2026-06-15 ("rip hugging face dep"): the prefetch
+    worker for HF sources MUST NOT import huggingface_hub. It talks to
+    HF Hub's public HTTP API directly and writes the canonical cache
+    layout (refs/<rev>, blobs/<oid>, snapshots/<sha>/<path>) so engine
+    subprocesses' from_pretrained() finds the weights.
 
-    `huggingface_hub` may not be installed in this test environment (it's a
-    runtime dep for HF-distributed engines, not a test dep). We inject a
-    stub module into sys.modules so the inner `from huggingface_hub import
-    snapshot_download` resolves to our fake without needing the real wheel.
+    We mock the three HTTP endpoints (revision, tree, resolve) plus
+    _stream_download, then assert the layout the worker produced on
+    disk matches the HF cache shape.
     """
     import sys
-    import types
 
     from justvoice.app_state import get_state
     from justvoice import installer
 
+    # Make sure huggingface_hub isn't accidentally importable in the
+    # test process — the worker must not need it.
+    monkeypatch.setitem(sys.modules, "huggingface_hub", None)
+
     r0 = client.get("/v1/engines/chatterbox/sources").json()
-    variant_id = r0["variants"][1]["variant_id"]  # second variant, untouched
+    variant_id = r0["variants"][1]["variant_id"]
+    # Pin the cache root to tmp_path so the test doesn't write to ~/.cache
+    monkeypatch.setenv("HF_HUB_CACHE", str(tmp_path / "hf"))
 
-    # One-button fix (2026-06-15-engines-one-button.md): _hf_snapshot_to
-    # no longer passes local_dir — snapshot_download writes to the default
-    # HF cache so the engine's from_pretrained() finds it. The kwargs we
-    # accept here document the new contract.
-    captured_kwargs: dict = {}
+    # Mock the three HF Hub HTTP endpoints.
+    class _FakeResp:
+        def __init__(self, json_data):
+            self._json = json_data
+        def raise_for_status(self): pass
+        def json(self): return self._json
 
-    def fake_snapshot(*, repo_id, revision, tqdm_class, **kwargs):  # noqa: ARG001
-        captured_kwargs.update(repo_id=repo_id, revision=revision, **kwargs)
-        # Touch the reporter so its update path is exercised at least once.
-        rep = tqdm_class(total=1024, desc=repo_id)
-        rep.update(1024)
-        rep.close()
+    fake_tree = [
+        {"type": "file", "path": "config.json", "oid": "git0000config", "size": 42},
+        {"type": "file", "path": "model.safetensors",
+         "oid": "git00000model", "size": 1024,
+         "lfs": {"oid": "lfssha256weights", "size": 1024}},
+        {"type": "file", "path": "tokenizer/vocab.json", "oid": "git0000vocab", "size": 17},
+        {"type": "directory", "path": "tokenizer"},  # filtered out
+    ]
+    real_get = requests.get
+    def fake_get(url, **kw):
+        if "/revision/" in url:
+            return _FakeResp({"sha": "commit0000sha"})
+        if "/tree/" in url:
+            return _FakeResp(fake_tree)
+        return real_get(url, **kw)
+    import requests as _requests
+    monkeypatch.setattr(_requests, "get", fake_get)
+    monkeypatch.setattr(installer, "requests", _requests)
 
-    stub = types.ModuleType("huggingface_hub")
-    stub.snapshot_download = fake_snapshot  # type: ignore[attr-defined]
-    monkeypatch.setitem(sys.modules, "huggingface_hub", stub)
+    # Stub _stream_download to write the file size in dummy bytes.
+    def fake_stream(url, dest, on_progress, cancel_check=None):
+        # Echo size from the URL's filename (we control the fake tree).
+        name = url.rsplit("/", 1)[-1]
+        size = next((e.get("size", 0) for e in fake_tree if e.get("path", "").endswith(name)), 0)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(b"x" * int(size))
+        on_progress(int(size))
+        return "deadbeef"
+
+    monkeypatch.setattr(installer, "_stream_download", fake_stream)
 
     state = get_state()
     job_id = installer.spawn_prefetch(state, "chatterbox", variant_id)
     row = _wait_for_job(state, job_id, phase="completed")
     assert row["error"] in (None, "")
 
-    # The one-button contract: we MUST NOT redirect snapshot_download to
-    # a custom local_dir — weights have to land in HF cache so the
-    # engine's from_pretrained() finds them.
-    assert "local_dir" not in captured_kwargs, (
-        "_hf_snapshot_to should let snapshot_download write to its default "
-        "HF cache — passing local_dir reintroduces the cache-path mismatch."
-    )
+    # Verify the cache layout the worker produced.
+    repo_dir = tmp_path / "hf" / "models--ResembleAI--chatterbox-turbo"
+    # Chatterbox-turbo is variant 1's hf_repo — confirm from the source.
+    if not repo_dir.exists():
+        # Other repo name. Find what was written.
+        cands = list((tmp_path / "hf").glob("models--*"))
+        assert cands, "no HF cache dir written"
+        repo_dir = cands[0]
+
+    assert (repo_dir / "refs" / "main").read_text() == "commit0000sha"
+    # blobs/ should have one entry per file, named by lfs.oid OR git oid
+    blobs = list((repo_dir / "blobs").iterdir())
+    assert {b.name for b in blobs} == {"git0000config", "lfssha256weights", "git0000vocab"}
+    # snapshots/<sha>/<path> should resolve (via symlink or copy) to a
+    # file of the right size — that's what from_pretrained() will read.
+    snap = repo_dir / "snapshots" / "commit0000sha"
+    assert (snap / "config.json").stat().st_size == 42
+    assert (snap / "model.safetensors").stat().st_size == 1024
+    assert (snap / "tokenizer" / "vocab.json").stat().st_size == 17
 
 
 def test_prefetch_cancel_cleans_partials(client, app, monkeypatch):

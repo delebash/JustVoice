@@ -26,22 +26,19 @@ def repo_from_url(url: str) -> str | None:
 
 
 def hf_cache_dir() -> Path:
-    """The HF hub cache root WITHOUT importing huggingface_hub — the lib
-    is an engine-venv dependency, not a server one (user-hit: Delete
-    model 500'd with "No module named 'huggingface_hub'"). Resolution
-    order matches the lib's documented behavior."""
-    try:
-        from huggingface_hub import constants as hf_constants
-
-        return Path(hf_constants.HF_HUB_CACHE)
-    except Exception:
-        env = os.environ.get("HF_HUB_CACHE")
-        if env:
-            return Path(env)
-        home = os.environ.get("HF_HOME")
-        if home:
-            return Path(home) / "hub"
-        return Path.home() / ".cache" / "huggingface" / "hub"
+    """The HF hub cache root, computed WITHOUT importing huggingface_hub
+    (user directive 2026-06-15: rip the dep — server-side HF fetch is
+    plain HTTPS, see installer._hf_snapshot_to). Resolution order matches
+    the documented huggingface_hub behavior:
+        HF_HUB_CACHE → $HF_HOME/hub → ~/.cache/huggingface/hub
+    """
+    env = os.environ.get("HF_HUB_CACHE")
+    if env:
+        return Path(env)
+    home = os.environ.get("HF_HOME")
+    if home:
+        return Path(home) / "hub"
+    return Path.home() / ".cache" / "huggingface" / "hub"
 
 
 def is_hf_repo_cached(hf_repo: str) -> bool:

@@ -15,6 +15,7 @@ import hashlib
 import importlib
 import importlib.util
 import logging
+import os
 import re
 import shutil
 import subprocess
@@ -634,79 +635,131 @@ def _hf_snapshot_to(
     revision: str | None,
     target_dir: Path,  # noqa: ARG001 — kept in signature for caller symmetry
 ) -> None:
-    """Pull an HF repo into the HuggingFace cache with byte-accurate
-    progress + cancel.
+    """Stream a HuggingFace repo into the local HF cache via plain HTTPS.
 
-    One-button fix (docs/plans/2026-06-15-engines-one-button.md): the
-    HF cache (`~/.cache/huggingface/hub/models--<owner>--<repo>/...`)
-    is the destination the engine's `from_pretrained()` reads from —
-    so writing weights anywhere else means engine.load() re-downloads
-    them on first use. We let `snapshot_download` use its default
-    cache location and `target_dir` becomes informational only (the
-    `prefetch_complete` probe still uses `hf_cache.is_hf_repo_cached`).
+    User directive 2026-06-15 ("rip hugging face dep"): the server no
+    longer imports `huggingface_hub`. We talk to HF Hub's public HTTP
+    API directly — same auth-free URLs the library would hit — and write
+    files into the canonical cache layout so the engine subprocess's
+    `from_pretrained(repo_id)` finds them naturally.
 
-    huggingface_hub.snapshot_download accepts a custom `tqdm_class` —
-    we plug a callable that mirrors tqdm's update/n/total surface into
-    job_state and polls _is_cancelled between updates.
+    HF Hub API used (no auth needed for public repos):
+        GET /api/models/{repo}/revision/{rev}      → commit sha
+        GET /api/models/{repo}/tree/{rev}?recursive=true → file listing
+        GET /{repo}/resolve/{rev}/{path}           → file content
+
+    Cache layout written:
+        <hf_cache>/models--<owner>--<name>/
+          refs/<rev>           text file containing commit_sha
+          blobs/<oid>          actual file content (one blob per file)
+          snapshots/<sha>/<path>  symlink (or copy on Windows w/o symlink
+                                   privilege) to ../../blobs/<oid>
+
+    The `oid` is the LFS sha256 for LFS files (most weights) and the git
+    blob sha-1 for small text files. `try_to_load_from_cache` (the lib's
+    standard probe) treats either as valid.
     """
-    try:
-        from huggingface_hub import snapshot_download
-    except ImportError as e:
-        raise RuntimeError(
-            "huggingface_hub is required for HF-distributed engines but isn't "
-            "available in this Python environment"
-        ) from e
+    revision = revision or "main"
+    api_base = "https://huggingface.co"
 
-    state.job_update(job_id, phase="downloading", current_file=repo_id)
-
-    # tqdm-shaped reporter — snapshot_download instantiates it per file,
-    # so we accumulate total bytes across files in the shared closure.
-    cumulative = {"bytes": 0}
-
-    class _Reporter:  # mimics tqdm just enough for snapshot_download
-        def __init__(self, *_args, total: int | None = None, desc: str | None = None, **_kwargs):
-            self.total = total or 0
-            self.n = 0
-            self.desc = desc or repo_id
-            state.job_update(job_id, current_file=str(self.desc)[:200])
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_exc):
-            cumulative["bytes"] += self.n
-            return False
-
-        def update(self, n: int = 1) -> None:
-            if _is_cancelled(job_id):
-                raise _Cancelled()
-            self.n += n
-            state.job_update(
-                job_id,
-                phase="downloading",
-                bytes_downloaded=cumulative["bytes"] + self.n,
-            )
-
-        def close(self) -> None:
-            cumulative["bytes"] += self.n
-
-        # snapshot_download sometimes sets these directly
-        def set_description(self, desc: str, refresh: bool = True) -> None:  # noqa: ARG002
-            self.desc = desc
-            state.job_update(job_id, current_file=str(desc)[:200])
-
-        def reset(self, total: int | None = None) -> None:
-            self.total = total or 0
-            self.n = 0
-
+    # 1. Resolve revision → commit_sha + repo tree. The dedicated revision
+    #    endpoint returns the sha for the symbolic ref ("main", "v1.2",
+    #    a commit, …); the tree endpoint then lists every file at that
+    #    revision. recursive=true descends into subdirs in one call.
+    state.job_update(job_id, phase="connecting", current_file=repo_id)
+    info = requests.get(f"{api_base}/api/models/{repo_id}/revision/{revision}", timeout=30)
+    info.raise_for_status()
+    commit_sha = info.json()["sha"]
     if _is_cancelled(job_id):
         raise _Cancelled()
-
-    snapshot_download(
-        repo_id=repo_id,
-        revision=revision,
-        tqdm_class=_Reporter,
+    tree_resp = requests.get(
+        f"{api_base}/api/models/{repo_id}/tree/{revision}",
+        params={"recursive": "true"},
+        timeout=30,
     )
+    tree_resp.raise_for_status()
+    entries = [e for e in tree_resp.json() if e.get("type") == "file"]
+
+    # 2. Pre-compute total bytes so the bar has a denominator. LFS files
+    #    expose true size via entry.lfs.size; non-LFS via entry.size.
+    total_bytes = sum(
+        int((e.get("lfs") or {}).get("size") or e.get("size") or 0)
+        for e in entries
+    )
+
+    # 3. Build the cache layout directories.
+    cache_root = _hf_cache_root()
+    repo_dir = cache_root / ("models--" + repo_id.replace("/", "--"))
+    blobs_dir = repo_dir / "blobs"
+    snapshot_dir = repo_dir / "snapshots" / commit_sha
+    refs_dir = repo_dir / "refs"
+    blobs_dir.mkdir(parents=True, exist_ok=True)
+    snapshot_dir.mkdir(parents=True, exist_ok=True)
+    refs_dir.mkdir(parents=True, exist_ok=True)
+
+    state.job_update(
+        job_id, phase="downloading", bytes_total=total_bytes,
+        bytes_downloaded=0, current_file=repo_id,
+    )
+
+    cumulative = 0
+    for entry in entries:
+        if _is_cancelled(job_id):
+            raise _Cancelled()
+        path = entry["path"]
+        lfs = entry.get("lfs") or {}
+        # Blob filename = LFS sha256 (preferred for weights) or git oid.
+        oid = lfs.get("oid") or entry["oid"]
+        size = int(lfs.get("size") or entry.get("size") or 0)
+        blob = blobs_dir / oid
+        snapshot_file = snapshot_dir / path
+        snapshot_file.parent.mkdir(parents=True, exist_ok=True)
+
+        if not blob.exists() or blob.stat().st_size != size:
+            # If a previous attempt left a partial of a different size,
+            # re-stream over it. _stream_download truncates the dest.
+            file_url = f"{api_base}/{repo_id}/resolve/{revision}/{path}"
+            state.job_update(job_id, current_file=path)
+            base = cumulative
+            _stream_download(
+                file_url, blob,
+                on_progress=lambda n, _base=base: state.job_update(
+                    job_id, bytes_downloaded=_base + n,
+                ),
+                cancel_check=lambda: _is_cancelled(job_id),
+            )
+
+        # Link snapshot/<path> → blob. Relative symlink so the cache dir
+        # is movable; on Windows without symlink privilege we fall back
+        # to a copy (huggingface_hub does the same).
+        if not snapshot_file.exists():
+            try:
+                rel_blob = os.path.relpath(blob, snapshot_file.parent)
+                snapshot_file.symlink_to(rel_blob)
+            except (OSError, NotImplementedError):
+                shutil.copy2(blob, snapshot_file)
+
+        cumulative += size
+        state.job_update(job_id, bytes_downloaded=cumulative)
+
+    # 4. Pin the snapshot under refs/<revision> so the lib's resolver
+    #    can map "main" → commit_sha next time it probes the cache.
+    (refs_dir / revision).write_text(commit_sha)
+
+
+def _hf_cache_root() -> Path:
+    """HF hub cache root — matches huggingface_hub's resolution order
+    (HF_HUB_CACHE → $HF_HOME/hub → ~/.cache/huggingface/hub) without
+    importing the library. Mirrors hf_cache.hf_cache_dir; kept local
+    so installer doesn't pull the hf_cache module's other helpers.
+    """
+    env = os.environ.get("HF_HUB_CACHE")
+    if env:
+        return Path(env)
+    home = os.environ.get("HF_HOME")
+    if home:
+        return Path(home) / "hub"
+    return Path.home() / ".cache" / "huggingface" / "hub"
 
 
 def _url_stream_to(
