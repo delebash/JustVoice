@@ -216,9 +216,14 @@ def test_prefetch_hf_path_completes_via_mocked_snapshot(client, app, monkeypatch
     r0 = client.get("/v1/engines/chatterbox/sources").json()
     variant_id = r0["variants"][1]["variant_id"]  # second variant, untouched
 
-    def fake_snapshot(*, repo_id, revision, local_dir, local_dir_use_symlinks, tqdm_class):  # noqa: ARG001
-        Path(local_dir).mkdir(parents=True, exist_ok=True)
-        (Path(local_dir) / "config.json").write_text("{}")
+    # One-button fix (2026-06-15-engines-one-button.md): _hf_snapshot_to
+    # no longer passes local_dir — snapshot_download writes to the default
+    # HF cache so the engine's from_pretrained() finds it. The kwargs we
+    # accept here document the new contract.
+    captured_kwargs: dict = {}
+
+    def fake_snapshot(*, repo_id, revision, tqdm_class, **kwargs):  # noqa: ARG001
+        captured_kwargs.update(repo_id=repo_id, revision=revision, **kwargs)
         # Touch the reporter so its update path is exercised at least once.
         rep = tqdm_class(total=1024, desc=repo_id)
         rep.update(1024)
@@ -232,6 +237,14 @@ def test_prefetch_hf_path_completes_via_mocked_snapshot(client, app, monkeypatch
     job_id = installer.spawn_prefetch(state, "chatterbox", variant_id)
     row = _wait_for_job(state, job_id, phase="completed")
     assert row["error"] in (None, "")
+
+    # The one-button contract: we MUST NOT redirect snapshot_download to
+    # a custom local_dir — weights have to land in HF cache so the
+    # engine's from_pretrained() finds them.
+    assert "local_dir" not in captured_kwargs, (
+        "_hf_snapshot_to should let snapshot_download write to its default "
+        "HF cache — passing local_dir reintroduces the cache-path mismatch."
+    )
 
 
 def test_prefetch_cancel_cleans_partials(client, app, monkeypatch):

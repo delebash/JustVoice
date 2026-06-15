@@ -592,21 +592,30 @@ def spawn_prefetch(
     )
 
     def worker() -> None:
+        # One-button fix: HF source → snapshot_download into HF cache (no
+        # target_dir mkdir, no partial cleanup of our models_dir on cancel).
+        # URL source → models_dir/{variant_id} (kokoro path; unchanged).
+        is_hf = bool(source.get("hf_repo"))
         target_dir = manifest.models_dir / variant_id
         try:
-            target_dir.mkdir(parents=True, exist_ok=True)
-            if source.get("hf_repo"):
+            if is_hf:
                 _hf_snapshot_to(state, job_id, source["hf_repo"], source.get("hf_revision"), target_dir)
             else:
+                target_dir.mkdir(parents=True, exist_ok=True)
                 _url_stream_to(state, job_id, source["url"], target_dir, variant)
             state.job_update(job_id, phase="completed")
             state.job_append_log(job_id, "[completed] prefetch finished")
         except _Cancelled:
             log.info("prefetch cancelled for %s/%s", engine_id, variant_id)
             state.job_update(job_id, phase="failed", error="cancelled by user")
-            # Clean partial weights so the next attempt starts fresh and the
-            # on-disk check doesn't lie about completeness.
-            shutil.rmtree(target_dir, ignore_errors=True)
+            if is_hf:
+                # huggingface_hub leaves partial blobs in its cache; the
+                # next pull resumes them by hash. No-op cleanup is honest;
+                # rmtreeing the whole HF cache would punish other repos.
+                state.job_append_log(job_id, "[cancelled] HF cache partial blobs left for resume")
+            else:
+                # URL path: partials live in target_dir, safe to wipe.
+                shutil.rmtree(target_dir, ignore_errors=True)
         except Exception as e:
             log.exception("prefetch failed for %s/%s", engine_id, variant_id)
             state.job_update(job_id, phase="failed", error=str(e))
@@ -623,9 +632,18 @@ def _hf_snapshot_to(
     job_id: str,
     repo_id: str,
     revision: str | None,
-    target_dir: Path,
+    target_dir: Path,  # noqa: ARG001 — kept in signature for caller symmetry
 ) -> None:
-    """Pull an HF repo into target_dir with byte-accurate progress + cancel.
+    """Pull an HF repo into the HuggingFace cache with byte-accurate
+    progress + cancel.
+
+    One-button fix (docs/plans/2026-06-15-engines-one-button.md): the
+    HF cache (`~/.cache/huggingface/hub/models--<owner>--<repo>/...`)
+    is the destination the engine's `from_pretrained()` reads from —
+    so writing weights anywhere else means engine.load() re-downloads
+    them on first use. We let `snapshot_download` use its default
+    cache location and `target_dir` becomes informational only (the
+    `prefetch_complete` probe still uses `hf_cache.is_hf_repo_cached`).
 
     huggingface_hub.snapshot_download accepts a custom `tqdm_class` —
     we plug a callable that mirrors tqdm's update/n/total surface into
@@ -687,8 +705,6 @@ def _hf_snapshot_to(
     snapshot_download(
         repo_id=repo_id,
         revision=revision,
-        local_dir=str(target_dir),
-        local_dir_use_symlinks=False,
         tqdm_class=_Reporter,
     )
 
