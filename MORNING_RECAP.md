@@ -5,6 +5,65 @@
 
 ---
 
+## 2026-06-15 (busy-rubin) — Engines: collapse to one-button install (Ollama-style)
+
+User question after the prior download-contract work: "are we
+overcomplicating it like with Ollama?" — yes. Decision locked: do
+**option 1** from the three I laid out — collapse Download + Load into
+one button per row, drop the C4 Source pill from the UI, AND fix the
+architectural rot where prefetch wrote to `models_dir/{variant_id}/`
+but engine `from_pretrained()` reads the HF cache. Plan:
+`docs/plans/2026-06-15-engines-one-button.md`.
+
+**Shipped (commits 7f5c83c, c1d5c11, bf84305, 2d369ba):**
+
+- **Server fix #1** (c1d5c11): `_hf_snapshot_to` drops `local_dir=` and
+  `local_dir_use_symlinks=` so `snapshot_download` writes to the default
+  HF cache (`~/.cache/huggingface/hub/models--<owner>--<repo>/...`).
+  The engine's `from_pretrained()` finds weights there on first import
+  — no more re-download at Load time. The `spawn_prefetch` worker also
+  stops `mkdir`ing `models_dir/{variant_id}/` for HF sources and the
+  cancel path leaves HF partial blobs in the cache (snapshot_download
+  resumes by hash; rmtreeing HF cache would punish other repos). URL
+  path (kokoro tarball) unchanged.
+- **Server fix #2** (bf84305): `POST /v1/engines/{id}/install` with a
+  `model_variant` now routes to `spawn_prefetch` (real download), not
+  `spawn_managed_install` (venv only). For shared HF engines like
+  Chatterbox that have no `model_install_steps`, the old route was a
+  no-op for model files — clicking Download returned 202 immediately
+  without fetching anything. Without a variant the install still goes
+  to `spawn_managed_install` (the legit "Install engine" path for
+  isolated-venv engines like Dia / MOSS).
+- **Renderer collapse** (2d369ba): one primary button per model row,
+  shape "⬇ Load (1.5 GB)" when weights aren't on disk, "Load model"
+  when they are, "Loaded" + Unload + Delete when loaded. Clicking the
+  merged button orchestrates POST /install → poll job → POST /load
+  in one busy window, with the existing C3 strip showing phase + bytes
+  + rate + ETA + Cancel throughout. Sibling variant unaffected (C1
+  still holds). Removed the C4 Source ▾ pill from the UI; endpoints
+  stay live as a settings escape hatch.
+
+**Verification (every claim asserted):**
+- Server pytest 260 passed; the HF-cache contract has a regression
+  guard test: `test_prefetch_hf_path_completes_via_mocked_snapshot`
+  asserts `snapshot_download` MUST NOT receive `local_dir=`.
+- `scripts/verify-engines-onebutton.mjs` (new, 7/7): single primary
+  button per row, no Source pill anywhere, /install fires BEFORE
+  /load (verified via route capture), strip mounts during the merged
+  op, sibling variant stays "Load" while one variant downloads.
+- `scripts/verify-engines-c3.mjs` 8/8, `verify-engines-progress.mjs`
+  9/9, `verify-no-fakes.mjs` 16/16 — all green.
+- Renderer builds clean.
+
+**Removed:** `scripts/verify-engines-c1c2.mjs` and `verify-engines-c4.mjs`
+(testing surfaces that are intentionally gone — the C1 assertion is
+preserved in the new onebutton suite).
+
+The architectural rot ("downloaded but loaded re-downloads") that the
+previous recap called out as a follow-up — is now fixed.
+
+---
+
 ## 2026-06-14 (later afternoon, busy-rubin) — engines progress accuracy: smooth bar through download + extract
 
 User-reported (with screenshot of Kokoro v0.19 mid-fetch): EXTRACTING-MODEL
