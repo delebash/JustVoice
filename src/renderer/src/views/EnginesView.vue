@@ -717,14 +717,14 @@ async function load(engine, variant) {
         await new Promise((r) => setTimeout(r, 600));
       }
       // Drop the variants cache so the next refresh() reads on_disk
-      // truthfully (the next phase, load, is about to flip to spawning).
+      // truthfully (the next phase, load, is about to flip to loading).
       delete variants[engine.id];
     }
 
     // Phase B: load the engine. Same call as before — server brings
     // the variant up; spawn the subprocess, load weights, warm up.
     busy[key] = "load";
-    progress[key] = { phase: "spawning", bytes_downloaded: 0, bytes_total: 0, current_file: null, error: null, variant_id: variant };
+    progress[key] = { phase: "loading", bytes_downloaded: 0, bytes_total: 0, current_file: null, error: null, variant_id: variant };
     await api.request(`/v1/engines/${engine.id}/load`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1209,7 +1209,6 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
             <span class="vdesc" :title="v.description">{{ v.description }}</span>
             <span class="right">
               <span v-if="modelLoaded(e, v)" class="ev-badge loaded">● Loaded</span>
-              <span v-else-if="modelOnDisk(e, v)" class="ev-badge ready" title="Weights are downloaded; click Load to bring it into memory">Ready</span>
               <JvButton v-if="modelLoaded(e, v)" variant="ghost" size="sm" label="Unload model"
                 title="Free the slot — weights stay on disk" @click="unload(e)" />
               <JvButton v-if="modelLoaded(e, v) || (modelOnDisk(e, v) && v.on_disk === true)" variant="ghost" size="sm"
@@ -1429,7 +1428,6 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
 .ev-cap.iso{border-color:#d8c8e8;background:#f1eaf8;color:#6a4a8c}
 .ev-badge{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:4px 11px;border-radius:999px}
 .ev-badge.loaded{background:var(--accent);color:#fff}
-.ev-badge.ready{background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049);border:1px solid var(--accent-line,#b8d2c3)}
 .ev-badge.none{border:1px dashed var(--line-strong,#cfccc4);color:var(--ink-3)}
 .ev-gbody{border-top:1px solid var(--line)}
 .ev-model{display:flex;align-items:center;gap:12px;padding:10px 16px 10px 37px;border-bottom:1px solid var(--line)}
