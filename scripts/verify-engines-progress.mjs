@@ -50,8 +50,9 @@ await page.waitForTimeout(900);
 const head = page.locator(".ev-ghead", { hasText: "chatterbox" }).first();
 await head.click(); await page.waitForTimeout(400);
 
-const downloads = page.locator(".ev-model:has(.vn) >> text=/Download/");
-await downloads.nth(0).click();
+// Post-2026-06-15 (one-button): the action button reads "Load" now.
+const loadBtns = page.locator(".ev-model:has(.vn) >> text=/Load/");
+await loadBtns.nth(0).click();
 await page.waitForTimeout(900);
 
 const strip = page.locator(".jv-install-strip").first();

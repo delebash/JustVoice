@@ -422,102 +422,12 @@ async function cancelProgressRow(row) {
   }
 }
 
-// ── C4: per-row source override ────────────────────────────────────
-// Per-(engine,variant) operator override surfaced from S0.
-//   sources[engineId] = { [variantId]: VariantSource | undefined }
-//   the "VariantSource" shape comes straight from GET /sources.
-// The model row shows a small `Source ▾` link that opens a dialog
-// (canonical jv-overlay/jv-modal) with one URL / hf-repo + revision
-// editor and a "Reset to default" link. Saves go through PUT
-// /v1/engines/{id}/sources/{variant}; delete reverts to manifest.
-const sources = reactive({});  // engineId -> {variantId -> entry}
-const sourceDialog = ref(null);  // { engine, variant, draft, base, saving }
-
-async function loadSources(engineId) {
-  if (sources[engineId]) return;
-  try {
-    const r = await api.safeRequest(`/v1/engines/${engineId}/sources`, { variants: [] });
-    const byId = {};
-    for (const v of r?.variants || []) byId[v.variant_id] = v;
-    sources[engineId] = byId;
-  } catch { sources[engineId] = {}; }
-}
-
-function sourceFor(engineId, variantId) {
-  return sources[engineId]?.[variantId] || null;
-}
-
-function sourceHostLabel(engineId, variantId) {
-  const s = sourceFor(engineId, variantId);
-  if (!s) return "";
-  if (s.hf_repo) return s.provenance === "override" ? `hf: ${s.hf_repo}` : `hf · ${s.hf_repo.split("/")[0]}`;
-  if (s.url) {
-    try { return s.provenance === "override" ? `url · ${new URL(s.url).hostname}` : new URL(s.url).hostname; }
-    catch { return "url"; }
-  }
-  return "unconfigured";
-}
-
-function openSourceDialog(engineId, variantId) {
-  const s = sourceFor(engineId, variantId) || { url: null, hf_repo: null, hf_revision: null };
-  sourceDialog.value = {
-    engine: engineId,
-    variant: variantId,
-    base: s,
-    draft: {
-      mode: s.hf_repo ? "hf" : (s.url ? "url" : "hf"),
-      url: s.url || "",
-      hf_repo: s.hf_repo || "",
-      hf_revision: s.hf_revision || "",
-    },
-    saving: false,
-  };
-}
-
-function closeSourceDialog() { sourceDialog.value = null; }
-
-async function saveSourceDialog() {
-  const d = sourceDialog.value;
-  if (!d) return;
-  const body = d.draft.mode === "hf"
-    ? { hf_repo: d.draft.hf_repo.trim() || null, hf_revision: d.draft.hf_revision.trim() || null, url: null }
-    : { url: d.draft.url.trim() || null, hf_repo: null, hf_revision: null };
-  if (!(body.url || body.hf_repo)) {
-    pushToast({ message: "Fill in a URL or an HF repo.", kind: "info" });
-    return;
-  }
-  d.saving = true;
-  try {
-    const updated = await api.request(`/v1/engines/${d.engine}/sources/${encodeURIComponent(d.variant)}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!sources[d.engine]) sources[d.engine] = {};
-    sources[d.engine][d.variant] = updated;
-    pushToast({ message: "Source override saved. Next Download uses it.", kind: "success" });
-    closeSourceDialog();
-  } catch (e) {
-    pushToast({ message: `Save failed: ${e?.message || e}`, kind: "error" });
-  } finally {
-    d.saving = false;
-  }
-}
-
-async function resetSourceDialog() {
-  const d = sourceDialog.value;
-  if (!d) return;
-  try {
-    const updated = await api.request(`/v1/engines/${d.engine}/sources/${encodeURIComponent(d.variant)}`, {
-      method: "DELETE",
-    });
-    if (sources[d.engine]) sources[d.engine][d.variant] = updated;
-    pushToast({ message: "Reverted to manifest default.", kind: "info" });
-    closeSourceDialog();
-  } catch (e) {
-    pushToast({ message: `Reset failed: ${e?.message || e}`, kind: "error" });
-  }
-}
+// Note: the per-row Source override pill (C4) and its dialog were
+// removed 2026-06-15 as part of the Ollama-style one-button collapse
+// (docs/plans/2026-06-15-engines-one-button.md). The endpoints at
+// /v1/engines/{id}/sources are still live as a settings escape hatch
+// for the rare URL-shift case — restore the surface here if we ever
+// need it back.
 
 async function refresh() {
   const e = await api.safeRequest("/v1/engines", { engines: [] });
@@ -540,10 +450,6 @@ async function refresh() {
         ]);
         variants[eng.id] = { variants: models.variants || [], recommended };
       } catch { /* tolerated */ }
-      // C4: source overrides for this engine's variants — keyed by
-      // variant id. Tolerated failure (older servers without S0 just
-      // return 404; the Source pill simply doesn't render).
-      try { delete sources[eng.id]; await loadSources(eng.id); } catch { /* ignore */ }
       // Default the dropdown to the loaded variant > default_variant_id > first.
       if (selectedVariants[eng.id] === undefined) {
         const list = variants[eng.id]?.variants || [];
@@ -714,10 +620,24 @@ async function install(engine, variant) {
   }
 }
 
+// Button label for the single Load button.
+// - On disk + loading in progress → "Loading…"
+// - On disk + idle → "Load model"
+// - Not on disk + downloading in progress → "Downloading…"
+// - Not on disk + idle → "⬇ Load (1.5 GB)" — Ollama-style verb showing
+//   the user this click also fetches.
+function loadButtonLabel(engine, variant) {
+  const key = _variantKey(engine.id, variant.id);
+  const verb = busy[key];
+  if (verb === "load") return "Loading…";
+  if (verb === "install") return "Downloading…";
+  if (modelOnDisk(engine, variant)) return "Load model";
+  return `⬇ Load (${fmtDisk(variant.size_mb)})`;
+}
+
 async function load(engine, variant) {
-  // C1: Load is per-variant.
+  // Per-variant key.
   const key = variant ? _variantKey(engine.id, variant) : _engineKey(engine.id);
-  busy[key] = "load";
   const ctl = new AbortController();
   const task = tasks.start({
     label: `Loading · ${engine.name || engine.id}${variant ? ` (${variant})` : ""}`,
@@ -725,9 +645,18 @@ async function load(engine, variant) {
     statsFn: (t) => {
       const out = [];
       if (t.meta?.phase) out.push(t.meta.phase);
+      if (t.meta?.bytesTotal > 0) {
+        out.push(`${(t.meta.bytesDl / 1048576).toFixed(1)} / ${(t.meta.bytesTotal / 1048576).toFixed(1)} MB`);
+      }
       return out;
     },
     onCancel: async () => {
+      // Cancel the download job if there is one, OR the load if we're
+      // past download. Best-effort either way.
+      const inflight = installJobs[key];
+      if (inflight) {
+        try { await api.request(`/v1/jobs/${inflight}`, { method: "DELETE" }); } catch (_) { /* */ }
+      }
       try {
         await fetch(`${api.serverUrl}/v1/engines/${engine.id}/cancel-load`, { method: "POST" });
       } catch (_) { /* best-effort */ }
@@ -736,9 +665,58 @@ async function load(engine, variant) {
     onRetry: () => load(engine, variant),
   });
 
-  progress[key] = { phase: "spawning", bytes_downloaded: 0, bytes_total: 0, current_file: null, error: null, variant_id: variant || null };
-
   try {
+    // Phase A: prefetch if weights aren't on disk yet (the Ollama
+    // semantic — one click does pull + run). We rely on the per-variant
+    // `on_disk` flag the server already computes in /v1/engines/{id}/models.
+    const v = variantsFor(engine.id).find((x) => x.id === variant);
+    const needsDownload = !modelOnDisk(engine, v || { id: variant });
+    if (needsDownload) {
+      busy[key] = "install";
+      progress[key] = { phase: "connecting", bytes_downloaded: 0, bytes_total: 0, current_file: null, error: null, variant_id: variant };
+      const accepted = await api.request(`/v1/engines/${engine.id}/install`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model_variant: variant }),
+      });
+      installJobs[key] = accepted.job_id;
+      // Poll until completed or failed; same shape as the previous
+      // install() flow, but inline so we never break out of the busy
+      // window between download and load.
+      while (true) {
+        const job = await api.request(`/v1/jobs/${accepted.job_id}`);
+        const pctVal = job.bytes_total > 0 ? Math.round(100 * (job.bytes_downloaded || 0) / job.bytes_total) : null;
+        progress[key] = {
+          phase: job.phase,
+          bytes_downloaded: job.bytes_downloaded || 0,
+          bytes_total: job.bytes_total || 0,
+          current_file: job.current_file || null,
+          error: job.error || null,
+          variant_id: variant,
+        };
+        tasks.update(task.id, {
+          percent: pctVal,
+          meta: { phase: job.phase, bytesDl: job.bytes_downloaded || 0, bytesTotal: job.bytes_total || 0 },
+        });
+        if (job.phase === "completed") {
+          delete installJobs[key];
+          break;
+        }
+        if (job.phase === "failed") {
+          delete installJobs[key];
+          throw new Error(job.error || "download failed");
+        }
+        await new Promise((r) => setTimeout(r, 600));
+      }
+      // Drop the variants cache so the next refresh() reads on_disk
+      // truthfully (the next phase, load, is about to flip to spawning).
+      delete variants[engine.id];
+    }
+
+    // Phase B: load the engine. Same call as before — server brings
+    // the variant up; spawn the subprocess, load weights, warm up.
+    busy[key] = "load";
+    progress[key] = { phase: "spawning", bytes_downloaded: 0, bytes_total: 0, current_file: null, error: null, variant_id: variant };
     await api.request(`/v1/engines/${engine.id}/load`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -746,8 +724,6 @@ async function load(engine, variant) {
       signal: ctl.signal,
     });
     window.dispatchEvent(new Event("jv:health-refresh"));
-    // C2: invalidate cached variants so refresh() reflects the loaded
-    // variant state (otherwise the row stays "Load" until page reload).
     delete variants[engine.id];
     await refresh();
     tasks.finish(task.id);
@@ -761,6 +737,7 @@ async function load(engine, variant) {
     progress[key] = { phase: "failed", bytes_downloaded: 0, bytes_total: 0, current_file: null, error: raw, variant_id: variant || null };
   } finally {
     busy[key] = null;
+    delete installJobs[key];
   }
 }
 
@@ -1212,35 +1189,30 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
         </div>
 
         <div class="ev-gbody" v-if="isOpen(e)">
+          <!-- One-button row (docs/plans/2026-06-15-engines-one-button.md):
+               Ollama-style. The action button is ALWAYS "Load model" — if
+               weights aren't on disk the load() handler kicks the prefetch
+               first, polls the job, then continues to load, all under one
+               click. The C3 progress strip below shows phase + bytes. -->
           <div v-for="v in variantsFor(e.id)" :key="v.id" class="ev-model" :class="{ dim: engineNeedsInstall(e) }">
             <span v-if="fitFor(v)" class="ev-fit" :class="fitFor(v)" :title="FIT_TITLES[fitFor(v)]"></span>
             <span class="vn">{{ v.name }}</span>
             <span class="vmeta">{{ fmtDisk(v.size_mb) }}<span v-if="v.vram_mb"> · {{ fmtDisk(v.vram_mb) }} VRAM</span></span>
             <span class="vdesc" :title="v.description">{{ v.description }}</span>
-            <!-- C4: per-variant Source override pill. Shows the effective
-                 host + provenance and opens the editor on click. -->
-            <button
-              v-if="sourceFor(e.id, v.id)"
-              type="button"
-              class="ev-source-pill"
-              :class="{ 'ev-source-pill--override': sourceFor(e.id, v.id).provenance === 'override' }"
-              :title="sourceFor(e.id, v.id).provenance === 'override' ? 'Operator override — click to edit or reset' : 'Manifest default — click to override'"
-              @click="openSourceDialog(e.id, v.id)"
-            >Source · {{ sourceHostLabel(e.id, v.id) }} <span class="ev-source-pill__caret">▾</span></button>
             <span class="right">
               <span v-if="modelLoaded(e, v)" class="ev-badge loaded">● Loaded</span>
-              <JvButton v-if="modelLoaded(e, v)" variant="ghost" size="sm" label="Unload model" title="Free the slot — weights stay on disk" @click="unload(e)" />
-              <JvButton v-if="modelLoaded(e, v)" variant="ghost" size="sm" label="Delete model" class="ev-danger" title="Delete the downloaded weights from disk" @click="deleteModel(e, v)" />
-              <JvButton v-if="!modelLoaded(e, v) && modelOnDisk(e, v)" variant="primary" size="sm"
-                :label="busy[_variantKey(e.id, v.id)] === 'load' ? 'Loading…' : 'Load model'"
-                :disabled="busy[_variantKey(e.id, v.id)] != null || busy[_engineKey(e.id)] != null"
-                :title="`Load into the ${(e.kind || 'tts').toUpperCase()} slot`" @click="load(e, v.id)" />
-              <JvButton v-if="!modelLoaded(e, v) && modelOnDisk(e, v) && v.on_disk === true" variant="ghost" size="sm" label="Delete model" class="ev-danger"
-                :title="`Delete the downloaded weights — frees ${fmtDisk(v.size_mb)}`" @click="deleteModel(e, v)" />
-              <JvButton v-if="!modelLoaded(e, v) && !modelOnDisk(e, v)" variant="primary" size="sm"
-                :label="busy[_variantKey(e.id, v.id)] === 'install' ? 'Downloading…' : `⬇ Download ${fmtDisk(v.size_mb)}`"
+              <span v-else-if="modelOnDisk(e, v)" class="ev-badge ready" title="Weights are downloaded; click Load to bring it into memory">Ready</span>
+              <JvButton v-if="modelLoaded(e, v)" variant="ghost" size="sm" label="Unload model"
+                title="Free the slot — weights stay on disk" @click="unload(e)" />
+              <JvButton v-if="modelLoaded(e, v) || (modelOnDisk(e, v) && v.on_disk === true)" variant="ghost" size="sm"
+                label="Delete model" class="ev-danger"
+                :title="`Delete the downloaded weights — frees ${fmtDisk(v.size_mb)}`"
+                @click="deleteModel(e, v)" />
+              <JvButton v-if="!modelLoaded(e, v)" variant="primary" size="sm"
+                :label="loadButtonLabel(e, v)"
                 :disabled="busy[_variantKey(e.id, v.id)] != null || busy[_engineKey(e.id)] != null || engineNeedsInstall(e)"
-                title="Fetch the weights — nothing loads until you say so" @click="install(e, v.id)" />
+                :title="modelOnDisk(e, v) ? `Load into the ${(e.kind || 'tts').toUpperCase()} slot` : `Download (${fmtDisk(v.size_mb)}) and load — one step`"
+                @click="load(e, v.id)" />
             </span>
           </div>
           <!-- C3: one big install/download progress strip per in-flight
@@ -1390,59 +1362,6 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
     </div>
     <p v-if="!allProviders.length" class="jv-muted" style="margin-top:14px">No providers yet — click “+ Add provider”.</p>
   </div>
-
-  <!-- C4: Source override dialog (canonical jv-overlay/jv-modal). One
-       URL or HF repo per variant; the saved value applies to the next
-       Download. Reset to default removes the override (DELETE /sources). -->
-  <div v-if="sourceDialog" class="jv-overlay" @click.self="closeSourceDialog">
-    <div class="jv-modal" style="width: min(560px, calc(100vw - 32px));">
-      <header class="jv-modal__header">
-        <div class="jv-modal__titleblock">
-          <span class="jv-modal__eyebrow">Download source</span>
-          <h3 class="jv-modal__title">{{ variantNameFor(sourceDialog.engine, sourceDialog.variant) }}</h3>
-        </div>
-        <span class="jv-pill jv-pill--ghost">{{ sourceDialog.base.provenance || 'manifest' }}</span>
-        <button type="button" class="jv-modal__close" title="Close" @click="closeSourceDialog">✕</button>
-      </header>
-      <div class="jv-modal__body" style="display:flex;flex-direction:column;gap:14px">
-        <p class="jv-muted" style="font-size:12.5px;margin:0">
-          By default the model is fetched from the URL or HF repo encoded in the engine's catalog. If that source moves or you want to point at a fork, override it here — the change applies to the next Download.
-        </p>
-        <div style="display:flex;gap:6px">
-          <button type="button" class="jv-pill" :class="sourceDialog.draft.mode === 'hf' ? 'jv-pill--solid' : 'jv-pill--ghost'" @click="sourceDialog.draft.mode = 'hf'">HuggingFace repo</button>
-          <button type="button" class="jv-pill" :class="sourceDialog.draft.mode === 'url' ? 'jv-pill--solid' : 'jv-pill--ghost'" @click="sourceDialog.draft.mode = 'url'">Direct URL</button>
-        </div>
-        <template v-if="sourceDialog.draft.mode === 'hf'">
-          <label style="display:flex;flex-direction:column;gap:4px">
-            <span class="jv-eyebrow">Repo (owner/name)</span>
-            <input class="jv-input jv-w-name" v-model="sourceDialog.draft.hf_repo" placeholder="ResembleAI/chatterbox" />
-          </label>
-          <label style="display:flex;flex-direction:column;gap:4px">
-            <span class="jv-eyebrow">Revision <span class="jv-muted" style="font-weight:400;text-transform:none;letter-spacing:0">(optional — commit, tag, or branch)</span></span>
-            <input class="jv-input jv-w-id" v-model="sourceDialog.draft.hf_revision" placeholder="main" />
-          </label>
-        </template>
-        <template v-else>
-          <label style="display:flex;flex-direction:column;gap:4px">
-            <span class="jv-eyebrow">URL</span>
-            <input class="jv-input jv-input--full" v-model="sourceDialog.draft.url" placeholder="https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2" />
-            <span class="jv-muted" style="font-size:11.5px">Single-file archive (.tar.bz2 / .tar.gz) or any direct download.</span>
-          </label>
-        </template>
-        <div v-if="sourceDialog.base.url || sourceDialog.base.hf_repo" class="jv-muted" style="font-size:11.5px;border-top:1px dashed var(--line);padding-top:10px">
-          <strong>Manifest default:</strong>
-          <code v-if="sourceDialog.base.hf_repo" class="jv-mono">{{ sourceDialog.base.hf_repo }}{{ sourceDialog.base.hf_revision ? ' @ ' + sourceDialog.base.hf_revision : '' }}</code>
-          <code v-else class="jv-mono">{{ sourceDialog.base.url }}</code>
-        </div>
-      </div>
-      <footer class="jv-modal__footer">
-        <JvButton v-if="sourceDialog.base.provenance === 'override'" variant="ghost" label="Reset to default" @click="resetSourceDialog" />
-        <span class="jv-spacer" />
-        <JvButton variant="secondary" label="Cancel" @click="closeSourceDialog" />
-        <JvButton variant="primary" label="Save override" :loading="sourceDialog.saving" @click="saveSourceDialog" />
-      </footer>
-    </div>
-  </div>
 </template>
 
 
@@ -1494,6 +1413,7 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
 .ev-cap.iso{border-color:#d8c8e8;background:#f1eaf8;color:#6a4a8c}
 .ev-badge{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:4px 11px;border-radius:999px}
 .ev-badge.loaded{background:var(--accent);color:#fff}
+.ev-badge.ready{background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049);border:1px solid var(--accent-line,#b8d2c3)}
 .ev-badge.none{border:1px dashed var(--line-strong,#cfccc4);color:var(--ink-3)}
 .ev-gbody{border-top:1px solid var(--line)}
 .ev-model{display:flex;align-items:center;gap:12px;padding:10px 16px 10px 37px;border-bottom:1px solid var(--line)}
@@ -1504,21 +1424,6 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
 .ev-model .vmeta{font-size:11.5px;color:var(--ink-3);min-width:150px}
 .ev-model .vdesc{font-size:12px;color:var(--ink-2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ev-model .right{margin-left:auto;display:flex;gap:8px;align-items:center;flex:none}
-/* C4: per-row Source override pill — quiet utility next to the description.
-   Lives BEFORE .right so it sits inline with the other meta. */
-.ev-source-pill{
-  font:inherit;font-size:10.5px;line-height:1.2;
-  background:var(--surface);border:1px solid var(--line);border-radius:999px;
-  padding:2px 9px;color:var(--ink-3);cursor:pointer;white-space:nowrap;
-  display:inline-flex;align-items:center;gap:4px;
-}
-.ev-source-pill:hover{border-color:var(--accent-line,#b8d2c3);color:var(--ink-2)}
-.ev-source-pill--override{
-  border-color:var(--accent-line,#b8d2c3);
-  background:var(--accent-soft,#e8f0eb);
-  color:var(--accent-ink,#2c6049);font-weight:600;
-}
-.ev-source-pill__caret{font-size:8px}
 .ev-fit{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
 .ev-fit.ok{background:#4d9b6d}
 .ev-fit.tight{background:#d9a23c}
