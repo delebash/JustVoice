@@ -422,6 +422,14 @@ async function cancelProgressRow(row) {
   }
 }
 
+// Clear a terminal (completed/failed) strip from the UI. The job stays
+// in the server's history; this is purely a renderer-side dismiss.
+function dismissProgressRow(row) {
+  if (!row?.key) return;
+  delete progress[row.key];
+  delete installJobs[row.key];
+}
+
 // Note: the per-row Source override pill (C4) and its dialog were
 // removed 2026-06-15 as part of the Ollama-style one-button collapse
 // (docs/plans/2026-06-15-engines-one-button.md). The endpoints at
@@ -1245,10 +1253,18 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
                    the user isn't staring at striping with nothing else. -->
               <span v-else class="jv-install-strip__rate">working…</span>
               <span class="jv-spacer" />
+              <!-- In flight → Cancel; terminal → Dismiss (clears the strip).
+                   Without Dismiss the user was stuck staring at a FAILED
+                   block they couldn't remove (user-reported 2026-06-15). -->
               <JvButton
                 v-if="row.value.phase !== 'completed' && row.value.phase !== 'failed' && row.jobId"
                 variant="danger-outline" size="sm" label="Cancel"
                 @click="cancelProgressRow(row)"
+              />
+              <JvButton
+                v-else-if="row.value.phase === 'failed' || row.value.phase === 'completed'"
+                variant="ghost" size="sm" label="Dismiss"
+                @click="dismissProgressRow(row)"
               />
             </div>
             <!-- R0+R1: bytes_total > 0 → real percentage; bytes_total
