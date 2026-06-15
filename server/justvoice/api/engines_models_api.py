@@ -23,6 +23,7 @@ from ..installer import (
     pip_uninstall_engine_deps,
     spawn_install,
     spawn_managed_install,
+    spawn_prefetch,
     spawn_shared_venv_setup,
     uninstall_engine,
 )
@@ -49,13 +50,31 @@ def _is_managed(engine_id: str) -> bool:
 async def install_engine(id: str, req: InstallRequest) -> InstallResponse:
     """Install model files + Python deps for the engine.
 
-    Managed engines (have a `manifest.py`) get the new uv-based venv +
-    declarative install pipeline. Legacy engines (only external-openai-tts
-    has any registry presence now) raise — there's nothing to install.
+    Routing (one-button fix, docs/plans/2026-06-15-engines-one-button.md):
+    - Managed engine + `model_variant` given → spawn_prefetch. Real model
+      download with progress, HF cache for HF engines, models_dir for
+      URL-tarball engines.
+    - Managed engine + no `model_variant` → spawn_managed_install. Venv
+      build only (isolated engines like Dia/MOSS). Models download via
+      a second /install call once the engine row exposes its variants.
+    - Legacy in-process path → spawn_install with chosen variant.
+
+    The OLD path always ran spawn_managed_install, which for shared HF
+    engines (Chatterbox, etc.) is a no-op for model files — the engine
+    then silently re-downloaded at Load time. That's the bug this fix
+    closes.
     """
     st = get_state()
 
     if _is_managed(id):
+        if req.model_variant:
+            try:
+                job_id = spawn_prefetch(st, id, req.model_variant)
+            except ValueError as e:
+                raise not_found(str(e))
+            return InstallResponse(engine_id=id, model_variant=req.model_variant, job_id=job_id)
+        # Engine-wide setup (venv build) for isolated engines that need
+        # pip deps before any model fetch can run.
         job_id = spawn_managed_install(st, id)
         return InstallResponse(engine_id=id, model_variant="managed", job_id=job_id)
 
