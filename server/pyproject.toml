@@ -77,6 +77,10 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 include = ["justvoice*"]
 
+[tool.setuptools.package-data]
+# Ship bundled data files (read at runtime via Path(__file__)) in wheels.
+"justvoice.llm_runner" = ["runner-manifest.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
