@@ -22,16 +22,23 @@ prebuilt (detection only, no toolkit). See §2.
   P1.1 (manifest schema + loader + mountable router) + P1.2 (binary
   acquisition: detect→select→download→unpack) done. 11/11 tests pass,
   ruff clean. Self-contained (own `hardware.py` + `download.py`).
-- ⚠️ **Not yet pushed to GitHub.** The new repo needs to be created in
-  `delebash` (private). This session is scoped to push only to
-  delebash/{justvoice,justwrite-app,voicebox}; creating/pushing
-  `just-llm-runner` likely needs the user to create the empty repo (or
-  expand scope). Until pushed, JustVoice keeps its in-tree copy.
+- ⚠️ **Not pushed to its own GitHub repo.** `delebash/just-llm-runner`
+  exists (private, EMPTY). This session's git proxy is allow-listed to
+  `delebash/{justvoice,justwrite-app,voicebox}` only → pushing/cloning
+  `just-llm-runner` returns "repository not authorized" (an AUTH/scope
+  block, not connectivity — cloning can't work around it). To publish:
+  add `just-llm-runner` to the session's allowed repos, OR push from your
+  machine (a tarball with the commit+remote was delivered in chat).
+- ✅ **Durability for a new session**: the full package source is
+  snapshotted into THIS repo at `docs/plans/just-llm-runner-snapshot/`
+  (see its SNAPSHOT-README.md). A fresh session has the complete code
+  there even though the standalone repo is empty. Delete that snapshot
+  once the standalone repo is populated.
 - JustVoice still has the PRE-EXTRACTION copy at `server/justvoice/
-  llm_runner/` (committed earlier: dfd2283 P1.1, cf3ca91 P1.2). It stays
-  until `just-llm-runner` is pushed and JustVoice is switched to consume
-  it as a git-dep (then delete the in-tree copy + repoint imports
-  `from justvoice.llm_runner` → `from llm_runner`).
+  llm_runner/` (committed dfd2283 P1.1, cf3ca91 P1.2). It stays until
+  `just-llm-runner` is published and JustVoice is switched to consume it
+  (then delete the in-tree copy + repoint `api/llm_runner_api.py` import
+  `from justvoice.llm_runner` → `from llm_runner` + add the git-dep).
 
 **Next steps:**
 1. Push `just-llm-runner` to a private `delebash/just-llm-runner` repo.
