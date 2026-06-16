@@ -21,6 +21,12 @@ should be able to read this and continue without re-deriving anything.
 - Wants to **remove audio (speaker/cast/render/TTS) from JustWrite** —
   that is JustVoice's job — but is unsure what voice code is still in
   JustWrite and whether everything was migrated.
+- **HARD REQUIREMENT (2026-06-16): both apps are one-click installer / exe,
+  cross-platform; the user installs NOTHING** — no Python, no Ollama, no
+  CUDA toolkit. Everything ships with the product (or is auto-downloaded by
+  the app on first run — the *user* still installs nothing). This is why the
+  runner is NOT a shared Python package (would force Python into JustWrite);
+  see §2.2.
 - **Field shape decision: camelCase** (chosen 2026-06-16).
 - **Shell decision: keep Tauri** (chosen 2026-06-16). User values Tauri's
   lightness for cross-platform desktop; Electron/Node rejected (≈150MB
@@ -81,45 +87,74 @@ OpenAI-compatible clients, so the "talk to it" layer is already standard.
 
 ---
 
-## 2. Architecture decision (REVISED 2026-06-16: shared Python backend, not Rust crate)
+## 2. Architecture decision (REVISED twice 2026-06-16 — see 2.2)
 
-### 2.1 Shells stay Tauri; the shared code is a Python package
+Decision history (so a new session understands the reversals — each was
+driven by a NEW user constraint, not churn):
+1. First leaned "recommend Ollama / share a spec" → user: don't duplicate
+   detection logic → moved to shared code.
+2. Then "shared Rust crate" → headless + shares-more → "shared Python
+   package."
+3. Then user hard requirement: **one-click/exe, zero install, NO Python
+   bundled in JustWrite** → a shared *Python* package would force Python
+   into JustWrite → FINAL: share the **manifest (data) + Vue UI**, runner
+   is **per-app** (Python in JustVoice, Rust in JustWrite's Tauri shell).
 
-Both apps keep their **Tauri** shells (lite cross-platform, pure plumbing:
-spawn the Python sidecar, host the Vue webview). The shell is NOT where
-sharing happens. The shared, drift-prone logic — the LLM runner AND the
-full provider registry (anthropic/openai/ollama adapters, feature pins,
-tiers, usage ledger) — is **already Python in JustVoice**, so it becomes a
-**shared Python package** both apps mount. The earlier "shared Rust crate"
-idea is **DROPPED** (superseded): Rust isn't faster for a supervisor/proxy
-(work is waiting on llama-server/disk/network), and a Python package shares
-*more* (the whole provider stack, not just spawn) and works headless.
+### 2.1 Shells stay Tauri; the shared thing is the manifest + UI
 
-### 2.2 Runner = shared Python package; both apps mount it
+Both apps keep **Tauri** (lite cross-platform; bundler emits the one-click
+installers: msi/exe, dmg/app, deb/AppImage). The shell is not where sharing
+happens. The shared, drift-prone DATA — llama.cpp version, binary assets,
+model catalog, flag presets, VRAM recipes — lives in `runner-manifest.json`
+(camelCase). The runner LOGIC is small + stable and lives per-app (§2.2).
+Both "shared Rust crate" and "shared Python package" ideas are **DROPPED**
+(see history above): the former because Rust isn't faster for a
+supervisor + headless; the latter because it forces Python into JustWrite.
 
-JustVoice runs **headless** (`justvoice-server serve`), and attribution /
-rewrite run server-side, so the runner must be manageable from the Python
-server. Resolution:
+### 2.2 Runner per app — NO Python in JustWrite (hard one-click/zero-install req)
 
-- **Shared Python package** `llm-runner` (FastAPI-mountable router + runner
-  logic + provider registry + manifest reader).
-- **JustVoice**: existing heavy Python server mounts the router — trivial.
-- **JustWrite**: gains a **light Python sidecar** (FastAPI + the shared
-  package) — **no ML deps** (no torch/transformers/sherpa-onnx; those are
-  JustVoice's TTS engines). Just the runner + providers → small, packageable.
-  This is the same Tauri-spawns-Python-sidecar pattern JustVoice already
-  ships, so it's proven.
-- **Both** read the shared `runner-manifest.json` (camelCase) — the volatile
-  data (binary versions, models, flags, VRAM recipes) that must never drift.
-- Cost: JustWrite's bundle gains a Python interpreter (tens of MB). Accepted.
+Hard product requirement (user 2026-06-16): **both apps = one-click
+installer / exe, cross-platform, the user installs NOTHING** (no Python, no
+Ollama, no CUDA toolkit). `llama-server` + GGUF are downloaded by the app on
+first run (user still installs nothing); only the NVIDIA *driver* is a
+prereq, same as everything.
 
-### 2.3 UI — shared Vue lib over an IDENTICAL REST API
+This means a shared *Python* runner package is WRONG — it would force a
+Python interpreter into JustWrite's bundle. Resolution:
 
-- **Shared Vue `llm-ui` component library**: provider-config form, model
-  browser/download, runner status, quick-setup, usage view.
-- Because both apps expose the **same REST API** (from the shared Python
-  router), the earlier "provider-backend adapter per app" problem
-  **disappears** — `llm-ui` talks to one API shape in both apps.
+- **JustVoice runner = Python**, in the existing server. JustVoice bundles
+  Python anyway (ML stack) and runs **headless** (no Tauri), so Python is
+  correct + reuses engine-manager/prefetch/registry/one-button UI. (P1.x,
+  building now.)
+- **JustWrite runner = its existing Tauri *Rust* shell** — natively detects
+  hardware, downloads the llama.cpp binary + GGUF, spawns `llama-server`,
+  reading the shared `runner-manifest.json`. **No Python in JustWrite.**
+  Native, lite, one-click.
+- Both read the shared **`runner-manifest.json`** — the volatile data that
+  drifts (versions, models, flags, binaries). Only ~150 lines of stable
+  "read manifest → detect → download → spawn" orchestration is per-app
+  (Python in JV, Rust in JW).
+
+NOTE: JustVoice's production Python-sidecar bundling is NOT yet wired in
+`src-tauri/tauri.conf.json` (no externalBin/resources). That's a separate
+packaging task (PyInstaller/PyOxidizer → Tauri sidecar) required to hit
+the one-click goal for JustVoice itself.
+
+### 2.2a Escape hatch (only if per-app duplication bites)
+A standalone native **Rust runner binary** both apps spawn (works headless;
+zero Python in JustWrite; true shared code). Costs a new component +
+distribution (incl. for headless `pip`). Don't build unless the thin
+per-app duplication proves painful.
+
+### 2.3 What is SHARED vs per-app
+
+- **Shared**: `runner-manifest.json` (data) + Vue `llm-ui` + the REST shape.
+  NOT a shared Python code package (would force Python into JustWrite).
+- **Per-app**: the ~150-line runner orchestration (JV Python / JW Rust) and
+  the provider registry (JV Python / JW JS) — both thin OpenAI-compat
+  clients pointing at the same local `llama-server` + remote providers.
+- "Features match" is achieved via the shared manifest + shared `llm-ui`,
+  not via shared backend code.
 
 ### 2.4 The built-in runner is just another provider
 
@@ -277,18 +312,29 @@ a provider-backend adapter.
 - Normalize provider shape to camelCase across both apps.
 
 ### Phase 3 — JustWrite
-- Add the light Python sidecar (Tauri spawns it, same pattern as JustVoice)
-  mounting the shared `llm-runner` package → identical REST API.
-- Adopt `llm-ui`. Remove audio (§4.1) AFTER resolving gaps (§4.2). Keep §4.3.
+- Implement the runner in JustWrite's **Tauri Rust shell** (NO Python):
+  read the shared `runner-manifest.json`, detect HW, download the llama.cpp
+  binary + GGUF, spawn `llama-server`. Point JustWrite's existing JS
+  provider layer at the local endpoint.
+- Adopt the shared `llm-ui` + `runner-manifest.json`. Remove audio (§4.1)
+  AFTER resolving gaps (§4.2). Keep §4.3.
 
 ---
 
 ## 7. Open decisions
-- **Cross-repo sharing mechanism** for the shared Python `llm-runner`
-  package + the Vue `llm-ui` lib + `runner-manifest.json` (git submodule /
-  published package / monorepo workspace). Decide before Phase 2/3 wiring.
-- (RESOLVED 2026-06-16) Shells stay Tauri; runner is a shared Python
-  package, not a Rust crate; JustWrite gets a light Python sidecar.
+- **Cross-repo sharing mechanism** for `runner-manifest.json` + the Vue
+  `llm-ui` lib (git submodule / published package / monorepo workspace).
+  Decide before Phase 2/3 wiring. (Only DATA + UI are shared now, not a
+  code package — smaller surface.)
+- **JustVoice production packaging**: wire the Python sidecar into
+  `tauri.conf.json` (externalBin via PyInstaller/PyOxidizer) to hit the
+  one-click goal. Currently NOT configured.
+- (RESOLVED 2026-06-16) Shells stay Tauri. Runner is per-app (Python in
+  JustVoice, Rust in JustWrite's shell), NOT a shared Rust crate and NOT a
+  shared Python package (the latter would force Python into JustWrite,
+  violating the one-click/zero-install requirement). Shared = manifest
+  (data) + Vue `llm-ui` + REST shape. Escape hatch if duplication bites:
+  a standalone native Rust runner binary both apps spawn (§2.2a).
 
 ---
 
