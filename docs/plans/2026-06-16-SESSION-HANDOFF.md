@@ -10,6 +10,60 @@ plans live in the linked `docs/plans/*` files; this is the index + status.
    (STATUS section first).
 3. This file — the full outstanding checklist across all threads.
 
+## First 30 minutes — do this exactly
+1. Read the three docs above in order.
+2. **Check publish status of `delebash/just-llm-runner`**:
+   `git ls-remote https://github.com/delebash/just-llm-runner.git 2>&1`
+   - If repo is empty → ask the user: "did you push the tarball, or should I
+     try pushing now?" If session scope now includes the repo, push from
+     the in-repo snapshot:
+     ```bash
+     cp -r docs/plans/just-llm-runner-snapshot ~/just-llm-runner
+     cd ~/just-llm-runner && git init && git add -A
+     git commit -m "init from snapshot" -S
+     git remote add origin <session-proxy-url>/delebash/just-llm-runner
+     git push -u origin main
+     ```
+   - If the repo is populated → proceed to step 3.
+3. **JustVoice switchover** (only after the standalone repo exists):
+   ```bash
+   cd /home/user/JustVoice/server
+   rm -rf justvoice/llm_runner tests/test_llm_runner_manifest.py tests/test_llm_runner_binary.py
+   # repoint the API router import:
+   sed -i 's|from ..llm_runner|from llm_runner|' justvoice/api/llm_runner_api.py
+   # add the git-dep (pin a SHA when there's one):
+   #   in pyproject.toml dependencies: "llm-runner @ git+https://github.com/delebash/just-llm-runner.git@main"
+   pip install -e .
+   ruff check . && python -m pytest -q
+   ```
+4. Then continue at **P1.3 — GGUF model download** (see Thread 1 below).
+
+## Decision-replay (so a new session doesn't re-litigate)
+- **Why not "just recommend Ollama"?** User wants zero external install
+  (one-click), and Ollama hides the per-flag tuning we need
+  (`--n-cpu-moe`, MTP, KV-quant). We support Ollama AS a provider
+  alongside the built-in runner, not instead of it.
+- **Why not a shared Rust crate?** Tried; user values "easiest to maintain
+  + one-click." JustVoice already needs Python (STT/TTS); a Python core
+  shares the most (runner + full provider registry + manifest) without
+  forcing a second language. Rust = thin shell plumbing only.
+- **Why not pywebview + PyInstaller everywhere (drop Rust)?** Considered.
+  Tauri's first-party signed auto-updater + mature msi/dmg/deb packaging +
+  the fact that both apps already WORK on Tauri outweighs the
+  one-language win. Don't rewrite working shells.
+- **Why not Electron?** ~150MB Chromium+Node bundle, memory, slow start.
+- **Why share via a private git-dep, not pip/npm publish?** The core isn't
+  an independent product. Internal libs over git deps satisfy both apps
+  with zero registry overhead. End users never install it (frozen into
+  the bundle via PyInstaller → Tauri sidecar).
+- **Why MoE candidate (Qwen3.6-35B-A3B), not dense 14B/8B?** User verified
+  8B fails attribution and dense-14B is slow on 8GB. MoE's `--n-cpu-moe`
+  offload lets a "bigger" model run faster on low VRAM (only ~3.6B active
+  params/token). It's a CANDIDATE — P1.6 benchmark picks the actual model.
+- **Why camelCase?** User decision 2026-06-16. The shared UI lives in
+  Vue + the manifest is data-the-UI-reads; one shape across the wire and
+  in the JSON keeps things mechanical.
+
 ---
 
 ## THREAD 1 — Built-in LLM runner (`just-llm-runner`)  ← PRIMARY ACTIVE
@@ -47,23 +101,63 @@ one-click via **PyInstaller → Tauri sidecar**.
   /cf3ca91) + its tests; repoint `server/justvoice/api/llm_runner_api.py`
   import `from justvoice.llm_runner` → `from llm_runner`; add the git-dep
   to `server/pyproject.toml`. Then re-run pytest.
-- [ ] **P1.3 — GGUF model download.** Add to the package: resolve actual
-  filenames from the HF tree by `quant` (HF Hub API `/api/models/{repo}/
-  tree`), download the GGUF (+ `mmproj` sidecar if the model needs one) via
-  `download.py` into the HF cache layout (so llama.cpp finds it). Progress
-  + cancel. (JustVoice already has a plain-HTTPS HF fetcher in installer.py
-  to mirror — but the package must be self-contained.)
-- [ ] **P1.4 — spawn `llama-server` + VRAM-fit.** Compute `-ngl` /
-  `--n-cpu-moe` from detected VRAM + model layer bytes + post-quant KV
-  bytes (manifest `vramFit.safetyMarginMb`); compose flags from
-  `flagPresets.base` (+ `mtp` for MTP GGUFs); **probe-and-back-off** on OOM
-  (retry fewer GPU layers / smaller ctx, remember working config); lifecycle
-  (health / stop / cancel). Expose all knobs as overridable settings.
-- [ ] **P1.5 — register provider.** Add `local-llamacpp` (OpenAI-compat)
-  to JustVoice's LLM registry pointing at the spawned llama-server →
-  attribution/rewrite/dictation route to it. **Demote** the transformers
-  `qwen3-llm` engine to the no-GPU tiny fallback; **drop its 4B variant**
-  (worst trade — heavy VRAM, unquantized).
+- [ ] **P1.3 — GGUF model download.** Working reference already exists in
+  JustVoice at `server/justvoice/installer.py::_hf_snapshot_to` (line ~660;
+  see commit 037f474 — the `huggingface_hub`-dep rip). Port the same logic
+  into `just-llm-runner/llm_runner/models.py` (new file).
+  Endpoints to call (no auth for public repos):
+  ```
+  GET https://huggingface.co/api/models/{repo}/revision/{rev}  → commit sha
+  GET https://huggingface.co/api/models/{repo}/tree/{rev}?recursive=true
+       → file list (filter by `quant` substring + ".gguf"; also pull
+         mmproj-*.gguf if manifest entry.mmproj is set)
+  GET https://huggingface.co/{repo}/resolve/{rev}/{path}       → file bytes
+  ```
+  HF cache layout the worker writes (so llama.cpp finds files):
+  ```
+  ~/.cache/huggingface/hub/models--<owner>--<repo>/
+    refs/<rev>            # text: commit sha
+    blobs/<oid>           # actual file
+    snapshots/<sha>/<path>  # relative symlink → ../../blobs/<oid>
+                             # (copy fallback on Windows w/o symlink priv)
+  ```
+  Resolve cache root from env: `HF_HUB_CACHE` → `$HF_HOME/hub` →
+  `~/.cache/huggingface/hub`. Reuse `download.stream_download`.
+  Expose `select_files(repo, quant, mmproj)` + `acquire_model(repo, quant)`
+  → returns the snapshot dir path llama.cpp loads from.
+- [ ] **P1.4 — spawn `llama-server` + VRAM-fit.**
+  **VRAM-fit formula** (in `runner.py` new file):
+  ```
+  layerBytes  = totalParamBytes / nLayers                     # from GGUF header
+  activeKvMb  = ctxLen * nLayers * dim * 2 * (4 if cache_type_k=="q8_0" else 2) / 1e6
+  budgetMb    = detectedVramMb − vramFit.safetyMarginMb       # manifest
+  nGpuLayers  = min(nLayers, max(0, floor((budgetMb − activeKvMb) / layerBytes)))
+  # for MoE models, prefer offloading expert layers to CPU:
+  nCpuMoe     = max(0, nMoeLayers − nGpuLayers)
+  ```
+  Compose: `flagPresets.base + (flagPresets.mtp if model.mtp) +
+  ["--n-gpu-layers", str(nGpuLayers), "--n-cpu-moe", str(nCpuMoe),
+   "-m", <gguf_path>, "--port", str(port), "--host", "127.0.0.1"]`.
+  **Probe-and-back-off**: spawn → wait ≤30s for `/health` 200 OR exit. If
+  CUDA OOM in stderr or non-zero exit, retry with `nGpuLayers -= 4`
+  (minimum 0). Cache the working `(model_id, nGpuLayers, nCpuMoe, ctx)`
+  triple in `cache_root/llamacpp/working-configs.json` so subsequent
+  loads skip probing.
+  Lifecycle: `Runner.start(model_id) -> Runner`, `.stop()`, `.url`,
+  `.health()`, `.is_alive()`. All knobs overridable via settings (passed
+  in as `Overrides{nGpuLayers, nCpuMoe, ctx, extraFlags}`).
+- [ ] **P1.5 — register provider + demote built-in qwen3-llm.**
+  In `server/justvoice/engines/llm/`:
+  - Add adapter `local_llamacpp.py` (~50 lines: OpenAI-compat client
+    pointing at `http://127.0.0.1:<port>/v1`, started by the runner).
+  - Register `"local-llamacpp"` provider type in `registry.py` `construct()`.
+  - In `server/justvoice/engines/model_catalog.py::_qwen3_llm_variants`:
+    delete the 4B row (`("qwen3-llm-4b", ..., 8000, 9000, 85, ...)`).
+    Keep 0.6B/1.7B as fallbacks.
+  - In `manifest.py` for qwen3_llm, mark `REQUIREMENTS["preferred"]=False`
+    or similar so it's not the auto-recommend.
+  - Wire `feature_pins` for `speakerAttribution` to default to
+    `local-llamacpp` when present.
 - [ ] **P1.6 — verify (the proof).** Benchmark a MoE candidate (e.g.
   `unsloth/Qwen3.6-35B-A3B-MTP-GGUF` UD-Q4_K_XL, `--n-cpu-moe`) vs dense-14B
   on the user's REAL speaker-attribution cases. User data so far: 8B fails
@@ -138,9 +232,38 @@ one-click via **PyInstaller → Tauri sidecar**.
 - [ ] **Phase 3 — JustWrite** consumes the package as a Python sidecar
   (Tauri externalBin), adopts `llm-ui`.
 - [ ] **Packaging (one-click): wire PyInstaller → Tauri sidecar.**
-  JustVoice's heavy ML freeze (torch/CUDA, GBs) is UNSOLVED and NOT wired
-  in `src-tauri/tauri.conf.json` (no externalBin). JustWrite's core sidecar
-  is light (~tens of MB). Per-OS CI matrix; code-signing to avoid AV flags.
+  Two-bundle architecture:
+  | App        | Bundle             | Source                       | Size est. |
+  |---|---|---|---|
+  | JustVoice  | `justvoice-server` | `server/` (full ML server)   | 2–4 GB (torch + CUDA + sherpa-onnx)
+  | JustWrite  | `llm-runner-sidecar`| `just-llm-runner/` only      | 30–60 MB |
+  Tauri externalBin naming requires the target triple appended:
+  ```json
+  // src-tauri/tauri.conf.json
+  "bundle": { "externalBin": ["binaries/justvoice-server"] }
+  // CI produces: binaries/justvoice-server-x86_64-pc-windows-msvc.exe,
+  // binaries/justvoice-server-aarch64-apple-darwin, etc.
+  ```
+  PyInstaller spec per OS:
+  ```bash
+  pyinstaller --onefile --name justvoice-server \
+    --hidden-import sherpa_onnx --hidden-import torch \
+    --collect-data torch --add-binary "<cuda.dll>:." \
+    server/justvoice/cli.py
+  ```
+  **Known issues (verified gotchas, not speculation):**
+  - Windows: onefile exes trip Windows Defender — must code-sign (EV cert)
+    OR ship as onedir (folder install, no AV scan).
+  - macOS: must notarize OR users get "developer unidentified" block.
+  - torch wheels include MASSIVE optional deps (~3GB); use
+    `--exclude-module torchvision --exclude-module torchaudio` if unused.
+  - CUDA: bundled cudart.dll/.so is per-CUDA-version; ship CUDA-12 and
+    CUDA-13 variants (matches the llama.cpp asset matrix).
+  - Linux: `.deb`/`.AppImage` from Tauri; appimage needs `--no-strip` for
+    Python extensions or it segfaults.
+  Per-OS CI matrix (GitHub Actions): `windows-latest`, `macos-14` (arm64),
+  `ubuntu-latest`. Build llama.cpp asset is NOT bundled (downloaded at
+  first run from the manifest's pinned build).
 
 **llama.cpp perf knobs (research done — apply in P1.4):** MoE offload
 `--n-cpu-moe`; MTP `--spec-type draft-mtp --spec-draft-n-max 3` (needs
@@ -163,9 +286,19 @@ JustVoice owns audio; remove it from JustWrite. Full audit in chat +
   `voicebox.js`/`tts.js`/`voiceGender.js`; components `RenderLabPanel.vue`,
   `RenderPresetsCard.vue`, `VoiceParamsModal.vue`. **Keep**
   `services/export/justvoice.js` (the JustVoice handoff).
-- [ ] **Resolve gaps FIRST (NOT in JustVoice yet):** Edge TTS (msedge-tts —
-  JustVoice marks it *deferred*) and Web Speech (absent in JustVoice). Decide
-  if either must land in JustVoice before deleting from JustWrite.
+- [ ] **Resolve gaps FIRST (NOT in JustVoice yet):**
+  - **Edge TTS** (Microsoft Edge "Read Aloud"): JustWrite calls it through
+    a Rust crate via Tauri bridge — see `services/tts.js` "special-case
+    providers wired through the Tauri bridge (currently: Microsoft Edge
+    "Read Aloud" via the msedge-tts Rust crate)." The Rust IPC lives in
+    `src-tauri/src/lib.rs`. JustVoice's stub: `engines/tts_providers/`
+    (the `edge-tts` entry is marked deferred — "needs Tauri-side msedge-
+    tts wiring"). **Decision needed**: port the msedge-tts Rust binding
+    to JustVoice's Tauri shell, OR drop Edge TTS support.
+  - **Web Speech** (browser realtime preview): JustWrite has it as a
+    `realtimeOnly` provider in `services/webSpeech.js`. **Decision needed**:
+    JustVoice has none — port (it's pure browser-side, no Rust needed),
+    OR drop realtime preview.
 - [ ] **DO NOT remove** (authorial-voice WRITING features, no audio):
   `services/voiceFingerprint.js`, `services/analysis/voiceDrift.js`.
 
@@ -234,10 +367,28 @@ HTTPS + writes the cache layout itself). Plans: `2026-06-14-engines-
 download-contract.md`, `-progress-accuracy.md`, `2026-06-15-engines-one-
 button.md`.
 
-- [ ] **USER VERIFICATION:** confirm Qwen3 (and other HF engines) download
-  + load works on the user's Windows box with the plain-HTTPS fetcher (the
-  original "huggingface_hub is required" / "_Reporter get_lock" errors that
-  drove the rip). Not yet confirmed live by the user.
+- [ ] **USER VERIFICATION on real hardware.**
+  **Repro steps:**
+  1. Pull/build current main on the user's Win10 box (RTX 2070 SUPER).
+  2. Start the server: `cd server && pip install -e .[kokoro] &&
+     justvoice-server serve`.
+  3. Open the desktop app → Engines tab.
+  4. Click "Load" on a Qwen3 row (HF-distributed engine).
+  **Previous symptoms (now expected to be GONE):**
+  - "huggingface_hub is required for HF-distributed engines but isn't
+    available in this Python environment" → fixed by 037f474 (rip the
+    dep, stream via plain HTTPS, write HF cache layout ourselves).
+  - "type object '_Reporter' has no attribute 'get_lock'" → moot; the
+    tqdm-shaped reporter is gone with the dep.
+  - FAILED strip stuck with no dismiss → fixed by f3189e0 (Dismiss button).
+  **Success criteria:**
+  - Download progress strip shows real bytes + MB/s + ETA, smooth across
+    download → extract phases (no freeze at extracting-model).
+  - Files land in `~/.cache/huggingface/hub/models--<owner>--<repo>/` with
+    correct refs/blobs/snapshots layout (`huggingface_hub.try_to_load_from
+    _cache` finds the config.json once it's published — not testable
+    without the dep, but the on-disk shape is the contract).
+  - Load completes; first generation succeeds.
 
 ---
 
