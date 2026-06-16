@@ -16,7 +16,15 @@ acquisition (P1.2), model download (P1.3), spawn + VRAM-fit (P1.4), and
 provider registration (P1.5).
 """
 
+from .binary import acquire_binary, acquired_server_exe, binary_dir, select_binary
 from .manifest import load_manifest
 from .schema import RunnerManifest
 
-__all__ = ["load_manifest", "RunnerManifest"]
+__all__ = [
+    "load_manifest",
+    "RunnerManifest",
+    "select_binary",
+    "acquire_binary",
+    "acquired_server_exe",
+    "binary_dir",
+]
