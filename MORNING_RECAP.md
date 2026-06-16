@@ -5,6 +5,31 @@
 
 ---
 
+## ⮕ ACTIVE WORK — read first (2026-06-16)
+
+**Master outstanding checklist: `docs/plans/2026-06-16-SESSION-HANDOFF.md`.**
+It indexes every in-flight thread across JustVoice + JustWrite. The big
+active thread is the **built-in LLM runner** (`docs/plans/2026-06-16-
+builtin-llm-runner.md`, read its STATUS section first).
+
+Quick state:
+- `just-llm-runner` shared Python package (P1.1 + P1.2) is BUILT + tested
+  (11/11) but lives only as a **snapshot** at `docs/plans/just-llm-runner-
+  snapshot/` + a chat tarball — the standalone repo `delebash/just-llm-
+  runner` exists but is EMPTY (this session's git proxy can't push to it;
+  scope = justvoice/justwrite-app/voicebox only).
+- Decisions locked: Tauri both apps · shared Python core in own private
+  repo (git-dep, not published) · JustWrite gets a light Python sidecar ·
+  camelCase · CUDA bundled in llama.cpp (no toolkit) · one-click via
+  PyInstaller→Tauri sidecar.
+- Next: publish the repo → switch JustVoice to consume it → P1.3 (GGUF
+  download) → P1.4 (spawn + VRAM-fit) → P1.5 (provider) → P1.6 (benchmark).
+- Also outstanding: JustWrite audio removal (audit done), cross-app
+  AI-provider camelCase normalization (audit done), and USER to verify
+  Qwen download/load on their Windows box after the huggingface_hub rip.
+
+---
+
 ## 2026-06-15 (busy-rubin) — Engines: collapse to one-button install (Ollama-style)
 
 User question after the prior download-contract work: "are we
