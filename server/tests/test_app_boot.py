@@ -11,10 +11,24 @@ import pytest
 
 
 def _route_paths(app) -> set[str]:
-    paths = set()
+    """All registered API paths, robust across FastAPI versions.
+
+    FastAPI >=0.137 wraps ``include_router`` results in opaque
+    ``_IncludedRouter`` objects with no flat ``.path``, so iterating
+    ``app.routes`` alone misses the whole /v1 surface. The OpenAPI schema is
+    the version-stable public source of registered paths; union it with any
+    directly-exposed ``.path``s (older FastAPI flattened included routers into
+    ``APIRoute`` objects).
+    """
+    paths: set[str] = set()
+    try:
+        paths.update(app.openapi().get("paths", {}).keys())
+    except Exception:  # noqa: BLE001 — fall back to route introspection
+        pass
     for r in app.routes:
-        if hasattr(r, "path"):
-            paths.add(r.path)
+        p = getattr(r, "path", None)
+        if isinstance(p, str):
+            paths.add(p)
     return paths
 
 
