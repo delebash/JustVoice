@@ -38,11 +38,18 @@ should be able to read this and continue without re-deriving anything.
 - **For an 8GB card the dominant factor is model fit, not runtime.** A dense
   14B (~8.1GB Q4) does not fit 8GB → partial CPU offload → ~5–10 tok/s.
   An 8B fits fully (~40 tok/s) but the user proved 8B fails attribution.
-- **The real answer is a MoE model, not a dense one**: **Qwen3.6-35B-A3B**
-  (35B total, ~3.6B active/token). More capable than dense-14B AND faster
-  on low VRAM via `--n-cpu-moe` (offload idle experts to RAM; only ~3.6B
-  compute per token). Independently verified ~30 tps on 6GB; the source
-  video hit 17 tps on a GTX 1060 6GB. The user has 8GB → expect better.
+- **A MoE model is a strong CANDIDATE, not a mandate.** Qwen3.6-35B-A3B
+  (35B total, ~3.6B active/token) was the *illustrative example* that
+  MoE + `--n-cpu-moe` offload lets modest VRAM punch above its weight
+  (idle experts offloaded to RAM; only ~3.6B compute/token; ~30 tps on
+  6GB verified, 17 tps on a GTX 1060). The PRINCIPLE is what matters, not
+  this exact model — the attribution model is chosen by BENCHMARK on real
+  cases, from the tiered catalog (§5), NOT pre-decided as 35B.
+- **All GGUFs are pulled from HuggingFace.** "Unsloth" is an HF org
+  (`huggingface.co/unsloth/...`), known for dynamic "UD-" quants + MTP
+  GGUFs; `Qwen` (official) and `bartowski` are alternatives. The manifest
+  stores `hfRepo` + `quant`; the runner resolves filenames from the HF
+  tree at download time (no hardcoded/fabricated filenames).
 - **Flags that matter (all MAINLINE llama.cpp):**
   - `-ngl 999` (all layers to GPU, back off on OOM)
   - `--n-cpu-moe N` (offload N expert layers to CPU RAM — the MoE lever)
@@ -211,20 +218,26 @@ a provider-backend adapter.
       { "platform": "linux",   "gpu": "cuda12", "source": "docker", "image": "ghcr.io/ggml-org/llama.cpp:server-cuda12-b9644", ... }
     ]
   },
+  // Tiered catalog — span CPU/tiny → low-VRAM-MoE → mid → high. The actual
+  // attribution pick is benchmark-driven, not pre-decided. hfRepo + quant;
+  // the runner resolves real filenames from the HF tree at download time.
+  // "Unsloth" repos are HuggingFace orgs; Qwen/bartowski are alternatives.
   "models": [
     {
       "id": "qwen3.6-35b-a3b-mtp",
       "name": "Qwen3.6 35B-A3B (MTP)",
-      "role": "attribution",                 // flagship for speaker attribution
+      "tier": "low-vram-moe",                 // MoE offload → big model on small card
+      "candidateFor": ["attribution"],         // candidate, validated by benchmark
       "hfRepo": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF",
-      "files": ["Qwen3.6-35B-A3B-MTP-UD-Q4_K_S.gguf"],
-      "mmproj": null,                          // set if a sidecar is required
+      "quant": "UD-Q4_K_XL",                   // verified-available variant
+      "mmproj": null,                          // MTP variant doesn't use mmproj
       "totalParams": "35B", "activeParams": "3.6B",
       "mtp": true,
       "minRamMb": 24000,
-      "recommendedFor": { "minVramMb": 6000 } // MoE offload makes this viable low
+      "recommendedFor": { "minVramMb": 6000 }
     }
-    // smaller dense fallbacks for no-GPU / tiny setups...
+    // + dense small (CPU/tiny), dense mid (12-16GB full-GPU), and other MoE
+    //   options. Catalog is data — extend without code changes.
   ],
   "flagPresets": {
     "base":  ["-ngl", "999", "--flash-attn", "on", "--cache-type-k", "q8_0", "--cache-type-v", "q8_0", "--mlock"],
