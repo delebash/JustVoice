@@ -71,8 +71,70 @@ one-click via **PyInstaller → Tauri sidecar**.
   mandate — the model is chosen by this benchmark.
 - [ ] **Phase 2 — shared Vue `llm-ui`** + camelCase provider-shape
   normalization (see Thread 3). Lives in the same `just-llm-runner` repo
-  (npm, git-dep). Extract provider form / model browser / quick-setup /
-  usage from both apps' existing UIs.
+  (npm, git-dep). Detailed below; see Thread 3 for the cross-app
+  normalization checklist that pairs with it.
+
+  **Repo layout** (when the Python core is published):
+  ```
+  just-llm-runner/                # the GitHub repo
+    llm_runner/                   # Python package (DONE)
+    ui/                           # Vue package — TO BUILD
+      package.json                # name: "@delebash/llm-ui" (private),
+                                  # build: vite library mode → dist/
+      src/
+        components/               # the extracted components
+        composables/              # useProviders / useModels / useRunner
+        adapters/                 # provider-backend adapter (see below)
+        styles.css                # tokens needed by the lib
+    runner-manifest.json          # shared by both sub-packages
+  ```
+  Consumed as a git dep: `"@delebash/llm-ui": "github:delebash/just-llm-runner#v0.2.0&path:/ui"`
+  (or pin a SHA; submodule is the fallback if path-deps don't work).
+
+  **Provider-backend adapter contract** — the UI never calls fetch
+  directly; it gets an object that satisfies:
+  ```ts
+  interface ProviderBackend {
+    listProviders(): Promise<Provider[]>;
+    addProvider(p: ProviderDraft): Promise<Provider>;
+    updateProvider(id, patch): Promise<Provider>;
+    removeProvider(id): Promise<void>;
+    ping(id): Promise<{ok, message, ms, modelsCount?}>;
+    fetchModels(id): Promise<ModelEntry[]>;
+    detectLocal(): Promise<DetectedLocalProvider[]>;
+    classifyTier(modelId): Promise<TierKey>;
+    usage(): Promise<UsageLedger>;
+    featurePins(): Promise<FeaturePin[]>;
+    setFeaturePin(feature, pin): Promise<void>;
+  }
+  ```
+  - JustVoice supplies a REST adapter (calls `/v1/llm-providers/*`).
+  - JustWrite supplies a Pinia-store adapter (calls its existing
+    `OpenAICompatClient` directly).
+  - Same components, both apps, no forks.
+
+  **Components to extract (with current source paths so the move is
+  mechanical, not exploratory):**
+
+  | Component (in llm-ui) | JustVoice source                                 | JustWrite source                                 |
+  |---|---|---|
+  | `LlmProviderForm`     | `src/renderer/src/components/ProviderForm.vue`   | `src/renderer/src/views/SettingsProviderForm.vue` |
+  | `LlmModelPicker`      | (in ProviderForm; split out)                     | `src/renderer/src/components/ModelPicker.vue`     |
+  | `LlmProviderSelect`   | inline in views                                  | `src/renderer/src/components/ProviderSelect.vue`  |
+  | `LlmQuickSetup`       | `src/renderer/src/components/QuickSetup.vue`     | `src/renderer/src/services/quickSetupPresets.js` (+ wizard UI) |
+  | `LlmRecommendCard`    | `src/renderer/src/components/RecommendCard.vue`  | `src/renderer/src/stores/hardwarePresets.js` (data) |
+  | `LlmUsageView`        | `src/renderer/src/views/SettingsView.vue` (AI Usage tab) | `src/renderer/src/stores/ai.js` recordUsage/MODEL_PRICING |
+  | `LlmRunnerStatus` (new)| n/a — built fresh on the new runner endpoints   | n/a                                              |
+  | `LlmDownloadStrip`    | `src/renderer/src/views/EnginesView.vue` `.jv-install-strip` | reuse the same class |
+
+  **Phasing** (RULE #2 single-item):
+  1. Stand up `ui/` skeleton in the published repo (package.json, vite
+     lib config, styles passthrough, the adapter interface).
+  2. Migrate ONE component (start with `LlmProviderForm` — biggest, most
+     mature in JustVoice). Wire JustVoice to consume it via REST adapter.
+  3. Migrate the rest one at a time, JustVoice first each time.
+  4. Stand up JustWrite's Pinia adapter; wire JustWrite to the same lib.
+  5. Delete the now-duplicated source in each app.
 - [ ] **Phase 3 — JustWrite** consumes the package as a Python sidecar
   (Tauri externalBin), adopts `llm-ui`.
 - [ ] **Packaging (one-click): wire PyInstaller → Tauri sidecar.**
@@ -114,19 +176,50 @@ JustVoice owns audio; remove it from JustWrite. Full audit in chat +
 Both apps have near-identical provider management (CRUD, fetch-models,
 ping, detect-local, quick-setup, tiers, usage ledger, feature pins). JV is
 server-side (Python REST); JW is client-side (Pinia/JS). Shared `llm-ui`
-bridges via a provider-backend adapter.
+(Thread 1 Phase 2) bridges via a provider-backend adapter — this thread
+locks the data shapes the adapter exposes.
 
-- [ ] Normalize provider shape to **camelCase** across both (JW already
-  camelCase; JV `models.py` LLMProviderConfig is snake_case → camelCase or
-  aliases). Target shape: `{id,name,providerType,baseUrl,apiKey,
-  defaultModel,embeddingModel,timeoutSeconds,builtIn,extra}`.
-- [ ] **Drop TTS from JW's provider model** (`kind: tts|both`, `ttsModel`,
-  `ttsVoices`, ElevenLabs/Speechify/Voicebox clients) — audio → JustVoice.
-- [ ] **Seed same default providers in both** + add `local-llamacpp` as the
-  recommended local default. (JW seeds 6; JV seeds none.)
-- [ ] Unify feature-pins model; unify usage ledger.
-- [ ] **Fix stale data:** JW `stores/ai.js` `MODEL_PRICING` has
-  `claude-opus-4-7`, missing `claude-opus-4-8`.
+**Target shared shape (camelCase, LLM+embedding only):**
+```ts
+Provider = { id, name, providerType, baseUrl, apiKey, defaultModel,
+             embeddingModel, timeoutSeconds, builtIn, extra }
+FeaturePin = { feature, providerId, model }
+UsageRow   = { ts, feature, providerId, model, promptTokens,
+               completionTokens, cost }
+```
+
+**Field-shape diff to close:**
+- JustWrite already camelCase (`chatModel`/`baseUrl`) — but carries TTS
+  fields (`kind: tts|both`, `ttsModel`, `ttsVoices`) to be dropped.
+- JustVoice `models.py LLMProviderConfig` is snake_case (`provider_type`,
+  `base_url`, `default_model`, `embedding_model`, `timeout_seconds`). Two
+  options: full rename, OR add Pydantic alias-generator (`to_camel`,
+  `populate_by_name=True`) — same pattern the new `llm_runner` package
+  uses. Prefer aliasing first (non-breaking), full rename in a follow-up.
+
+**Checklist:**
+- [ ] JustVoice: add camelCase aliases to `LLMProviderConfig` +
+  `FeaturePinConfig` + usage payloads (alias-generator pattern); set
+  `response_model_by_alias=True` on the related endpoints.
+- [ ] JustWrite: drop TTS-in-provider model. Remove `kind: tts|both`,
+  `ttsModel`, `ttsVoices` from `DEFAULT_PROVIDERS` (`domain/seed.js`) and
+  the `ai` store. Migrate existing user data (split TTS providers into
+  audio handed off to JustVoice).
+- [ ] **Seeded defaults — make both match:** 7 entries =
+  `openai-compat-local` (Ollama/LM Studio), `openai`, `claude`, `gemini`,
+  `deepseek`, `openrouter`, **`local-llamacpp`** (the new built-in,
+  recommended-local default). JV currently seeds none; JW seeds 6.
+- [ ] **Feature pins**: unify shape across apps (id-by-feature; JV's
+  `feature_pins` list + `llm_roles` collapses to JW's
+  `{ feature: pin }` map or vice-versa — pick one).
+- [ ] **Usage ledger**: unify. JV has `/v1/ai-usage`; JW has client-side
+  `MODEL_PRICING` + `recordUsage`. Decide canonical home (recommend:
+  server-side for JV, client-side IDB for JW; both expose the same shape
+  to the shared `LlmUsageView`).
+- [ ] **Fix stale data**: JW `stores/ai.js` `MODEL_PRICING` has
+  `claude-opus-4-7`, missing `claude-opus-4-8`. Move pricing into the
+  `runner-manifest.json` so it's data-not-code in BOTH apps?
+  (decide — possibly out of scope for v0).
 
 ---
 
