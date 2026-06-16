@@ -34,6 +34,14 @@ dependencies = [
     # justvoice.speak / list_voices / list_personas at /mcp. Same major
     # pin as upstream voicebox.
     "fastmcp>=3.0,<4.0",
+    # Shared local-LLM runner core (hardware detection, llama.cpp binary
+    # acquisition, GGUF download, llama-server spawn + VRAM-fit). Its own
+    # private repo, consumed as a PINNED git dependency (frozen into the
+    # bundle via PyInstaller; NOT published to PyPI). Dev uses an editable
+    # path install (`pip install -e ../just-llm-runner`), which takes
+    # precedence over this pin. See docs/plans/2026-06-16-builtin-llm-runner.md.
+    # Pinned to a commit SHA (no release tag yet); bump when just-llm-runner advances.
+    "llm-runner @ git+https://github.com/delebash/just-llm-runner.git@5dff3295c1d5e2656164fbfa1f8687626a106b29",
 ]
 
 [project.optional-dependencies]
@@ -76,10 +84,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["justvoice*"]
-
-[tool.setuptools.package-data]
-# Ship bundled data files (read at runtime via Path(__file__)) in wheels.
-"justvoice.llm_runner" = ["runner-manifest.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

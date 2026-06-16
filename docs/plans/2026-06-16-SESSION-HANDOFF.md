@@ -11,32 +11,29 @@ plans live in the linked `docs/plans/*` files; this is the index + status.
 3. This file — the full outstanding checklist across all threads.
 
 ## First 30 minutes — do this exactly
-1. Read the three docs above in order.
-2. **Check publish status of `delebash/just-llm-runner`**:
-   `git ls-remote https://github.com/delebash/just-llm-runner.git 2>&1`
-   - If repo is empty → ask the user: "did you push the tarball, or should I
-     try pushing now?" If session scope now includes the repo, push from
-     the in-repo snapshot:
-     ```bash
-     cp -r docs/plans/just-llm-runner-snapshot ~/just-llm-runner
-     cd ~/just-llm-runner && git init && git add -A
-     git commit -m "init from snapshot" -S
-     git remote add origin <session-proxy-url>/delebash/just-llm-runner
-     git push -u origin main
-     ```
-   - If the repo is populated → proceed to step 3.
-3. **JustVoice switchover** (only after the standalone repo exists):
+**Publish + JustVoice switchover are DONE (2026-06-16, admiring-galileo).**
+The repo is published + in scope; JustVoice consumes the package. So:
+1. Read the three docs above in order (Thread 1 STATUS in the builtin-llm-
+   runner plan reflects the switchover).
+2. **Set up the env** (fresh container — JustVoice deps + editable package):
    ```bash
-   cd /home/user/JustVoice/server
-   rm -rf justvoice/llm_runner tests/test_llm_runner_manifest.py tests/test_llm_runner_binary.py
-   # repoint the API router import:
-   sed -i 's|from ..llm_runner|from llm_runner|' justvoice/api/llm_runner_api.py
-   # add the git-dep (pin a SHA when there's one):
-   #   in pyproject.toml dependencies: "llm-runner @ git+https://github.com/delebash/just-llm-runner.git@main"
-   pip install -e .
-   ruff check . && python -m pytest -q
+   pip install -e /home/user/just-llm-runner            # the package (editable)
+   pip install -e "/home/user/JustVoice/server[dev]" --no-deps  # justvoice itself
+   # then its runtime deps (the git-dep in pyproject would force a GitHub
+   # fetch, so install deps by name; skip fastmcp — it conflicts with the
+   # debian-managed PyJWT and is boot-optional):
+   pip install "uvicorn[standard]" httpx numpy platformdirs typer rich psutil \
+     sqlalchemy python-multipart pyloudnorm pedalboard pytest pytest-asyncio
+   cd /home/user/JustVoice/server && ruff check . && python -m pytest -q
    ```
-4. Then continue at **P1.3 — GGUF model download** (see Thread 1 below).
+   Expected: 257+/262 pass. Known container-only non-passers: 4 ×
+   `test_mcp_server` (fastmcp absent) + (until fixed) `test_app_boot`
+   `_route_paths` under FastAPI ≥0.137.
+3. **Next action: P1.3 — GGUF model download** (Thread 1 below). New file
+   `just-llm-runner/llm_runner/models.py`; port `installer.py::_hf_snapshot_to`.
+   Edit the package at `/home/user/just-llm-runner` (editable → JustVoice
+   picks it up live); push it; bump the JustVoice git-dep SHA in
+   `server/pyproject.toml`.
 
 ## Decision-replay (so a new session doesn't re-litigate)
 - **Why not "just recommend Ollama"?** User wants zero external install
@@ -69,8 +66,8 @@ plans live in the linked `docs/plans/*` files; this is the index + status.
 ## THREAD 1 — Built-in LLM runner (`just-llm-runner`)  ← PRIMARY ACTIVE
 
 Full plan: `docs/plans/2026-06-16-builtin-llm-runner.md`.
-Source snapshot: `docs/plans/just-llm-runner-snapshot/` (durability copy;
-delete once the standalone repo is populated).
+Source snapshot: REMOVED 2026-06-16 — the standalone repo is published, so
+the `docs/plans/just-llm-runner-snapshot/` durability copy was deleted.
 
 **Locked decisions:** keep Tauri (both apps); shared **Python** core in its
 own **private repo `delebash/just-llm-runner`**, consumed as a **git
@@ -89,18 +86,16 @@ one-click via **PyInstaller → Tauri sidecar**.
   raises (later item).
 
 **OUTSTANDING:**
-- [ ] **PUBLISH the repo.** `delebash/just-llm-runner` exists but is EMPTY.
-  This session's git proxy allow-lists only justvoice/justwrite-app/
-  voicebox, so pushing it returns "repository not authorized." Unblock:
-  add `just-llm-runner` to the session's allowed repos (then push from a
-  session), OR push the chat tarball from the user's machine
-  (`git remote set-url origin https://github.com/delebash/just-llm-runner.git
-  && git push -u origin main`).
-- [ ] **Switch JustVoice to consume the package.** Delete in-tree
-  `server/justvoice/llm_runner/` (pre-extraction copy, commits dfd2283
-  /cf3ca91) + its tests; repoint `server/justvoice/api/llm_runner_api.py`
-  import `from justvoice.llm_runner` → `from llm_runner`; add the git-dep
-  to `server/pyproject.toml`. Then re-run pytest.
+- [x] **PUBLISH the repo.** DONE — `delebash/just-llm-runner` is populated
+  (origin/main @ `5dff329`) and in this session's repo scope.
+- [x] **Switch JustVoice to consume the package.** DONE (2026-06-16,
+  admiring-galileo). `app.py` mounts the package's shared `router` directly
+  (`from llm_runner import router`) instead of the deleted JustVoice shim —
+  gaining `/v1/llm-runner/hardware`. In-tree `server/justvoice/llm_runner/`
+  + shim + the two in-tree unit tests deleted; added integration test
+  `server/tests/test_llm_runner_mount.py`; `server/pyproject.toml` declares
+  the git-dep pinned to SHA `5dff3295…` (dev uses editable). See the
+  builtin-llm-runner plan STATUS for the full record.
 - [ ] **P1.3 — GGUF model download.** Working reference already exists in
   JustVoice at `server/justvoice/installer.py::_hf_snapshot_to` (line ~660;
   see commit 037f474 — the `huggingface_hub`-dep rip). Port the same logic

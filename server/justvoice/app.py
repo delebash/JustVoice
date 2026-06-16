@@ -18,6 +18,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
+# Shared local-LLM runner core — its own repo `just-llm-runner`, consumed as
+# a git dependency (editable/path install in dev). Provides the mountable
+# /v1/llm-runner/* router (manifest + detected hardware). Both apps mount the
+# SAME router. See docs/plans/2026-06-16-builtin-llm-runner.md.
+from llm_runner import router as llm_runner_router
+
 from .api import (
     admin_api,
     active_tasks_api,
@@ -41,7 +47,6 @@ from .api import (
     external_api,
     generate_api,
     health,
-    llm_runner_api,
     lexicons_api,
     master_api,
     mcp_bindings_api,
@@ -176,7 +181,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(models_api.router)
     app.include_router(engines_models_api.router)
     app.include_router(engine_sources_api.router)
-    app.include_router(llm_runner_api.router)
+    app.include_router(llm_runner_router)
     app.include_router(generate_api.router)
     app.include_router(render_chapter_api.router)
     app.include_router(analyzer_api.router)

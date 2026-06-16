@@ -17,35 +17,47 @@ Vue `llm-ui` later. camelCase wire shape. CUDA bundled in the llama.cpp
 prebuilt (detection only, no toolkit). See §2.
 
 **Code state:**
-- `just-llm-runner` package built + tested **locally** at
-  `/home/user/just-llm-runner` (git repo, branch `master`, commit local).
-  P1.1 (manifest schema + loader + mountable router) + P1.2 (binary
-  acquisition: detect→select→download→unpack) done. 11/11 tests pass,
-  ruff clean. Self-contained (own `hardware.py` + `download.py`).
-- ⚠️ **Not pushed to its own GitHub repo.** `delebash/just-llm-runner`
-  exists (private, EMPTY). This session's git proxy is allow-listed to
-  `delebash/{justvoice,justwrite-app,voicebox}` only → pushing/cloning
-  `just-llm-runner` returns "repository not authorized" (an AUTH/scope
-  block, not connectivity — cloning can't work around it). To publish:
-  add `just-llm-runner` to the session's allowed repos, OR push from your
-  machine (a tarball with the commit+remote was delivered in chat).
-- ✅ **Durability for a new session**: the full package source is
-  snapshotted into THIS repo at `docs/plans/just-llm-runner-snapshot/`
-  (see its SNAPSHOT-README.md). A fresh session has the complete code
-  there even though the standalone repo is empty. Delete that snapshot
-  once the standalone repo is populated.
-- JustVoice still has the PRE-EXTRACTION copy at `server/justvoice/
-  llm_runner/` (committed dfd2283 P1.1, cf3ca91 P1.2). It stays until
-  `just-llm-runner` is published and JustVoice is switched to consume it
-  (then delete the in-tree copy + repoint `api/llm_runner_api.py` import
-  `from justvoice.llm_runner` → `from llm_runner` + add the git-dep).
+- ✅ **PUBLISHED.** `delebash/just-llm-runner` is populated (origin/main
+  @ `5dff329`) and IN this session's repo scope. The package (P1.1 manifest
+  schema + loader + mountable router; P1.2 binary acquisition
+  detect→select→download→unpack) is self-contained (own `hardware.py` +
+  `download.py` + `api.py`). Cloned locally at `/home/user/just-llm-runner`.
+- ✅ **SWITCHOVER DONE (2026-06-16, admiring-galileo).** JustVoice now
+  consumes the external package:
+  - `server/justvoice/app.py` mounts the package's shared router directly:
+    `from llm_runner import router as llm_runner_router` →
+    `app.include_router(llm_runner_router)`. This is the package's intended
+    surface ("both apps mount this router") and **gains `/v1/llm-runner/
+    hardware`** (the in-tree shim only served `/manifest`).
+  - Deleted: in-tree `server/justvoice/llm_runner/`, the JustVoice shim
+    `server/justvoice/api/llm_runner_api.py`, and the two in-tree unit
+    tests (`test_llm_runner_{manifest,binary}.py` — they patched
+    `justvoice.installer`/`SystemInfo`, which the self-contained package no
+    longer uses; those unit tests live in the just-llm-runner repo now).
+  - Added `server/tests/test_llm_runner_mount.py` — a JustVoice-level
+    integration test (router mounted; `/manifest` + `/hardware` serve
+    camelCase via `create_app`).
+  - `server/pyproject.toml`: dropped the dead `justvoice.llm_runner`
+    package-data; added the git-dep, pinned to the SHA (no tag yet):
+    `llm-runner @ git+https://github.com/delebash/just-llm-runner.git@5dff3295…`.
+    **Dev uses an editable install** (`pip install -e ../just-llm-runner`),
+    which takes precedence over the pin.
+  - **Snapshot deleted**: `docs/plans/just-llm-runner-snapshot/` removed
+    (its durability purpose is served now that the standalone repo exists).
+  - Verify: ruff clean; `test_llm_runner_mount.py` passes; 257/262 suite
+    pass. The 5 non-passers are container-env-only (4 = `fastmcp` not
+    installed; 1 = `test_app_boot._route_paths` predates FastAPI 0.137's
+    `_IncludedRouter`) — none caused by the switchover.
 
 **Next steps:**
-1. Push `just-llm-runner` to a private `delebash/just-llm-runner` repo.
-2. Switch JustVoice to consume it (git-dep / editable), delete in-tree
-   copy, repoint `api/llm_runner_api.py` import + tests.
-3. P1.3 model download (GGUF + mmproj via the package's download.py,
-   resolving files from the HF tree by `quant`).
+1. ✅ ~~Push `just-llm-runner`~~ — DONE (published, in scope).
+2. ✅ ~~Switch JustVoice to consume it~~ — DONE (see above).
+3. **P1.3 model download** ← NEXT. New file `llm_runner/models.py` in the
+   standalone package: resolve GGUF (+ mmproj) filenames from the HF tree
+   by `quant`, stream into the HF cache layout. Port the working logic from
+   JustVoice `server/justvoice/installer.py::_hf_snapshot_to` (~line 660,
+   commit 037f474). See SESSION-HANDOFF Thread 1 for the exact HF endpoints
+   + cache layout. Bump the JustVoice git-dep SHA after pushing.
 4. P1.4 spawn `llama-server` + VRAM-fit (compute -ngl/--n-cpu-moe from
    detected VRAM + manifest flagPresets) + probe-and-back-off.
 5. P1.5 register `local-llamacpp` provider; demote transformers qwen3-llm.
