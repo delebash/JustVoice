@@ -59,12 +59,20 @@ prebuilt (detection only, no toolkit). See §2.
    (blobs/snapshots/refs) llama.cpp loads from, idempotent. 5 tests (16
    total). Pushed to just-llm-runner @ `fdf1ebe`; JustVoice git-dep pin
    bumped to it.
-4. **P1.4 spawn `llama-server` + VRAM-fit** ← NEXT. New `llm_runner/runner.py`:
-   compute -ngl/--n-cpu-moe from detected VRAM + manifest `flagPresets`;
-   probe-and-back-off on OOM; lifecycle (start/stop/health/url); cache the
-   working config. VRAM-fit formula + flag composition: SESSION-HANDOFF
-   Thread 1.
-5. P1.5 register `local-llamacpp` provider; demote transformers qwen3-llm.
+4. ✅ ~~P1.4 spawn `llama-server` + VRAM-fit~~ — DONE (2026-06-16,
+   just-llm-runner @ `95e001e`). `gguf.py` (header reader) + `runner.py`:
+   `compute_fit` (-ngl/--n-cpu-moe from detected VRAM + KV reserve; corrected
+   the sketch's inverted q8_0 KV-byte constant), `compose_flags` (manifest
+   presets + MTP), `start_runner`/`Runner` (spawn → /health → shed GPU layers
+   on CUDA OOM and retry; start/stop/health/url). 12 tests, all mocked.
+   **Deferred sub-item:** persistent working-config cache
+   (`working-configs.json`) — back-off currently re-probes on each start;
+   cheap to add when there's real hardware to validate against.
+5. **P1.5 register `local-llamacpp` provider** ← NEXT (in JustVoice, not the
+   package): adapter `engines/llm/local_llamacpp.py` (OpenAI-compat client at
+   the spawned server's `/v1`), register `"local-llamacpp"` in `registry.py`,
+   demote `qwen3-llm` (drop the 4B variant, mark not-preferred), default the
+   `speakerAttribution` feature-pin to it. See SESSION-HANDOFF Thread 1.
 
 ---
 

@@ -29,11 +29,12 @@ The repo is published + in scope; JustVoice consumes the package. So:
    Expected: 257+/262 pass. Known container-only non-passers: 4 ×
    `test_mcp_server` (fastmcp absent) + (until fixed) `test_app_boot`
    `_route_paths` under FastAPI ≥0.137.
-3. **Next action: P1.4 — spawn `llama-server` + VRAM-fit** (Thread 1 below).
-   New `just-llm-runner/llm_runner/runner.py`. P1.3 (GGUF download) is DONE
-   (`models.py` @ just-llm-runner `fdf1ebe`; JustVoice pin bumped). Edit the
-   package at `/home/user/just-llm-runner` (editable → JustVoice picks it up
-   live); after changes, push it + bump the JustVoice git-dep SHA in
+3. **Next action: P1.5 — register `local-llamacpp` provider** (Thread 1
+   below) — this one is in JustVoice (`server/justvoice/engines/llm/`), NOT
+   the package. P1.3 (GGUF download) + P1.4 (VRAM-fit + spawn) are DONE
+   (`models.py`/`gguf.py`/`runner.py` @ just-llm-runner `95e001e`; JustVoice
+   pin bumped). For package changes: edit `/home/user/just-llm-runner`
+   (editable → JustVoice picks it up live), push, bump the git-dep SHA in
    `server/pyproject.toml`.
 
 ## Decision-replay (so a new session doesn't re-litigate)
@@ -124,7 +125,12 @@ one-click via **PyInstaller → Tauri sidecar**.
   `~/.cache/huggingface/hub`. Reuse `download.stream_download`.
   Expose `select_files(repo, quant, mmproj)` + `acquire_model(repo, quant)`
   → returns the snapshot dir path llama.cpp loads from.
-- [ ] **P1.4 — spawn `llama-server` + VRAM-fit.**
+- [x] **P1.4 — spawn `llama-server` + VRAM-fit.** DONE (2026-06-16,
+  just-llm-runner @ `95e001e`) — `gguf.py` + `runner.py`
+  (`compute_fit`/`compose_flags`/`start_runner`/`Runner`), 12 tests, all
+  mocked. Built to the spec below; corrected the inverted q8_0 KV-byte
+  constant; persistent working-config cache deferred (back-off re-probes per
+  start — cheap to add with real hardware).
   **VRAM-fit formula** (in `runner.py` new file):
   ```
   layerBytes  = totalParamBytes / nLayers                     # from GGUF header
