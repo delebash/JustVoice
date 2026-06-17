@@ -75,8 +75,16 @@ interface ProviderBackend {
 - [ ] **T3.6 — drop TTS from JW provider model** (`kind:tts|both`, `ttsModel`,
   `ttsVoices`). GATED on Thread 2's Edge/Web-Speech decision (don't break JW
   TTS before the gap is resolved).
-- [ ] **T3.7 — (optional, later) flip JV server to camelCase** once only the
-  adapter consumes it (Pydantic alias-generator on response models + tests).
+- [x] **T3.7 — JV camelCase wire aliases (non-breaking half)** — DONE.
+  `LLMProviderConfig` + `FeaturePinConfig` carry `alias_generator=to_camel` +
+  `populate_by_name=True`: the API now ACCEPTS snake AND camel input and CAN
+  emit camel via `by_alias`. The settings routes pin
+  `response_model_by_alias=False`, so `/v1/settings` still EMITS snake
+  (renderer unaffected; net emission change = zero) and `settings.json`
+  persistence stays snake. Tests: `test_camel_aliases.py` (4). The full
+  emission flip (`response_model_by_alias=True` on the provider/pin endpoints)
+  is deferred to the renderer's llm-ui adoption — flipping now breaks the live
+  snake-reading UI and isn't verifiable in-container.
 
 ## Phase 2 queue (after the contract + adapters exist)
 - [ ] **P2.2 — migrate `LlmProviderForm`** first (JustVoice
@@ -89,9 +97,15 @@ interface ProviderBackend {
 - [ ] **P2.5 — delete the now-duplicated per-app source.**
 
 ## Status
-T3.1 (contract) + T3.2 (pricing) DONE — see SHAs above. The shared camelCase
-contract now exists, so both threads can proceed. Next in-container item:
-T3.3 (JustVoice REST adapter — plain JS, verifiable with a mocked-fetch node
-test). The Phase-2 component migration (P2.2+) needs the full Vue toolchain
-installed in `ui/` + a live-app run to verify — best done as a focused pass
-on a machine running both apps.
+DONE this session: T3.1 (contract), T3.2 (JW pricing), T3.3 (JV REST adapter),
+T3.5 JW half (seed local-llamacpp), T3.7 non-breaking half (JV camelCase
+aliases, emission still snake). Remaining:
+- **T3.4** — JustWrite Pinia adapter for `ProviderBackend` (over its
+  `OpenAICompatClient` / `ai` store). In-container-verifiable like T3.3.
+- **T3.5 JV half** — suggested-providers catalog (not active-registry seeding;
+  see the T3.5 note) + `local-llamacpp` active seeding, gated on P1.5b.
+- **T3.6** — drop TTS from JW's provider model. GATED on Thread 2's Edge/
+  Web-Speech decision.
+- **T3.7 emission flip** — deferred to the renderer's llm-ui adoption.
+- **Phase 2 P2.2+** — extract/migrate components (LlmProviderForm first); needs
+  the full Vue toolchain in `ui/` + a live-app run to verify (the QC loop).

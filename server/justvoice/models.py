@@ -13,7 +13,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
 
 # ─── Common / system ────────────────────────────────────────────────────
 
@@ -265,7 +266,16 @@ class LLMProviderConfig(BaseModel):
     gemini / ollama / deepseek / openrouter) handles the dispatch.
     `base_url` defaults are baked into the adapter; setting it here
     overrides (used for self-hosted Ollama or proxy endpoints).
+
+    Wire shape (Thread 3): camelCase aliases so the API ACCEPTS both snake_case
+    (legacy) and camelCase (the shared llm-ui contract) on input;
+    `populate_by_name` keeps snake construction + settings.json persistence
+    working. Existing endpoints still EMIT snake — the settings routes pin
+    `response_model_by_alias=False`. The emission flip is deferred to the
+    renderer's llm-ui adoption (docs/plans/2026-06-16-thread3-phase2-llm-ui.md).
     """
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     id: str
     name: str
@@ -284,7 +294,12 @@ class FeaturePinConfig(BaseModel):
     Looked up at dispatch time by feature key (compose / persona_rewrite /
     speaker_attribution / render_preset_suggest / smart_assign). The QuickSetup
     wizard pre-fills these based on the hardware tier preset.
+
+    camelCase aliases (Thread 3): accepts snake + camel on input via
+    `populate_by_name`; settings routes still emit snake.
     """
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     feature: str  # "compose" | "persona_rewrite" | "speaker_attribution" | "render_preset_suggest" | "smart_assign" | "refine" | ...
     provider_id: str = ""
