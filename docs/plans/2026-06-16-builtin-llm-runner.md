@@ -52,14 +52,18 @@ prebuilt (detection only, no toolkit). See §2.
 **Next steps:**
 1. ✅ ~~Push `just-llm-runner`~~ — DONE (published, in scope).
 2. ✅ ~~Switch JustVoice to consume it~~ — DONE (see above).
-3. **P1.3 model download** ← NEXT. New file `llm_runner/models.py` in the
-   standalone package: resolve GGUF (+ mmproj) filenames from the HF tree
-   by `quant`, stream into the HF cache layout. Port the working logic from
-   JustVoice `server/justvoice/installer.py::_hf_snapshot_to` (~line 660,
-   commit 037f474). See SESSION-HANDOFF Thread 1 for the exact HF endpoints
-   + cache layout. Bump the JustVoice git-dep SHA after pushing.
-4. P1.4 spawn `llama-server` + VRAM-fit (compute -ngl/--n-cpu-moe from
-   detected VRAM + manifest flagPresets) + probe-and-back-off.
+3. ✅ ~~P1.3 model download~~ — DONE (2026-06-16, admiring-galileo).
+   `just-llm-runner/llm_runner/models.py`: `select_files(repo, quant, mmproj)`
+   resolves real GGUF filenames from the HF tree (grabs shards + mmproj);
+   `acquire_model(...)` streams them into the HF cache layout
+   (blobs/snapshots/refs) llama.cpp loads from, idempotent. 5 tests (16
+   total). Pushed to just-llm-runner @ `fdf1ebe`; JustVoice git-dep pin
+   bumped to it.
+4. **P1.4 spawn `llama-server` + VRAM-fit** ← NEXT. New `llm_runner/runner.py`:
+   compute -ngl/--n-cpu-moe from detected VRAM + manifest `flagPresets`;
+   probe-and-back-off on OOM; lifecycle (start/stop/health/url); cache the
+   working config. VRAM-fit formula + flag composition: SESSION-HANDOFF
+   Thread 1.
 5. P1.5 register `local-llamacpp` provider; demote transformers qwen3-llm.
 
 ---

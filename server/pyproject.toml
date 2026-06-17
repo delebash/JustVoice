@@ -41,7 +41,7 @@ dependencies = [
     # path install (`pip install -e ../just-llm-runner`), which takes
     # precedence over this pin. See docs/plans/2026-06-16-builtin-llm-runner.md.
     # Pinned to a commit SHA (no release tag yet); bump when just-llm-runner advances.
-    "llm-runner @ git+https://github.com/delebash/just-llm-runner.git@5dff3295c1d5e2656164fbfa1f8687626a106b29",
+    "llm-runner @ git+https://github.com/delebash/just-llm-runner.git@fdf1ebe64ad0732f53017167fcf2a390c7df7499",
 ]
 
 [project.optional-dependencies]

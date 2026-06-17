@@ -29,10 +29,11 @@ The repo is published + in scope; JustVoice consumes the package. So:
    Expected: 257+/262 pass. Known container-only non-passers: 4 ×
    `test_mcp_server` (fastmcp absent) + (until fixed) `test_app_boot`
    `_route_paths` under FastAPI ≥0.137.
-3. **Next action: P1.3 — GGUF model download** (Thread 1 below). New file
-   `just-llm-runner/llm_runner/models.py`; port `installer.py::_hf_snapshot_to`.
-   Edit the package at `/home/user/just-llm-runner` (editable → JustVoice
-   picks it up live); push it; bump the JustVoice git-dep SHA in
+3. **Next action: P1.4 — spawn `llama-server` + VRAM-fit** (Thread 1 below).
+   New `just-llm-runner/llm_runner/runner.py`. P1.3 (GGUF download) is DONE
+   (`models.py` @ just-llm-runner `fdf1ebe`; JustVoice pin bumped). Edit the
+   package at `/home/user/just-llm-runner` (editable → JustVoice picks it up
+   live); after changes, push it + bump the JustVoice git-dep SHA in
    `server/pyproject.toml`.
 
 ## Decision-replay (so a new session doesn't re-litigate)
@@ -96,10 +97,13 @@ one-click via **PyInstaller → Tauri sidecar**.
   `server/tests/test_llm_runner_mount.py`; `server/pyproject.toml` declares
   the git-dep pinned to SHA `5dff3295…` (dev uses editable). See the
   builtin-llm-runner plan STATUS for the full record.
-- [ ] **P1.3 — GGUF model download.** Working reference already exists in
-  JustVoice at `server/justvoice/installer.py::_hf_snapshot_to` (line ~660;
-  see commit 037f474 — the `huggingface_hub`-dep rip). Port the same logic
-  into `just-llm-runner/llm_runner/models.py` (new file).
+- [x] **P1.3 — GGUF model download.** DONE (2026-06-16, just-llm-runner
+  @ `fdf1ebe`) — implemented in `llm_runner/models.py` as
+  `select_files(repo, quant, mmproj)` + `acquire_model(...)`; 5 tests;
+  JustVoice git-dep pin bumped. Built to the spec below (reference:
+  `server/justvoice/installer.py::_hf_snapshot_to`, line ~660;
+  see commit 037f474 — the `huggingface_hub`-dep rip). Ported the logic
+  into `just-llm-runner/llm_runner/models.py`, narrowed to files by quant.
   Endpoints to call (no auth for public repos):
   ```
   GET https://huggingface.co/api/models/{repo}/revision/{rev}  → commit sha
