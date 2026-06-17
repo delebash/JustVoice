@@ -47,15 +47,16 @@ interface ProviderBackend {
 ```
 
 ## Thread 3 queue
-- [ ] **T3.1 — `llm-ui` package skeleton + locked contract** (Phase 2 step 1
-  merged here — it IS the shape lock). `just-llm-runner/ui/`: package.json
-  (`@delebash/llm-ui`, vite lib), tsconfig, vite.config.ts, `src/types.ts`,
-  `src/adapters/ProviderBackend.ts`, `src/index.ts`. tsc-verified. ← FIRST
-- [ ] **T3.2 — JustWrite pricing fix.** `stores/ai.js MODEL_PRICING`:
-  `claude-opus-4-7` → `claude-opus-4-8` (+ keep 4-7 if still offered). Safe data fix.
+- [x] **T3.1 — `llm-ui` package skeleton + locked contract** — DONE
+  (just-llm-runner `e2c9da5`). `ui/` package (`@delebash/llm-ui`, vite lib),
+  `src/types.ts` (camelCase contract), `src/adapters/ProviderBackend.ts`,
+  `src/index.ts`. tsc-verified.
+- [x] **T3.2 — JustWrite pricing fix** — DONE (justwrite-app `7390cfe`).
+  Corrected `claude-opus-4-7` (was wrongly 15/75 → 5/25), added
+  `claude-opus-4-8` (5/25) + `claude-fable-5` (10/50); verified via claude-api.
 - [ ] **T3.3 — JustVoice REST adapter** for `ProviderBackend` (translates the
   existing snake_case `/v1/llm-providers*` + `/v1/ai-usage` + feature_pins ↔
-  camelCase). Lives app-side (`src/renderer/src/services/llmBackend.js`).
+  camelCase). Lives app-side (`src/renderer/src/services/llmBackend.js`). ← NEXT
 - [ ] **T3.4 — JustWrite Pinia adapter** for `ProviderBackend` over its `ai`
   store / `OpenAICompatClient`.
 - [ ] **T3.5 — seed same defaults both apps** incl. `local-llamacpp`
@@ -77,4 +78,9 @@ interface ProviderBackend {
 - [ ] **P2.5 — delete the now-duplicated per-app source.**
 
 ## Status
-T3.1 in progress (this session).
+T3.1 (contract) + T3.2 (pricing) DONE — see SHAs above. The shared camelCase
+contract now exists, so both threads can proceed. Next in-container item:
+T3.3 (JustVoice REST adapter — plain JS, verifiable with a mocked-fetch node
+test). The Phase-2 component migration (P2.2+) needs the full Vue toolchain
+installed in `ui/` + a live-app run to verify — best done as a focused pass
+on a machine running both apps.
