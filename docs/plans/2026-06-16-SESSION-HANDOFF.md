@@ -29,13 +29,15 @@ The repo is published + in scope; JustVoice consumes the package. So:
    Expected: 257+/262 pass. Known container-only non-passers: 4 ×
    `test_mcp_server` (fastmcp absent) + (until fixed) `test_app_boot`
    `_route_paths` under FastAPI ≥0.137.
-3. **Next action: P1.5 — register `local-llamacpp` provider** (Thread 1
-   below) — this one is in JustVoice (`server/justvoice/engines/llm/`), NOT
-   the package. P1.3 (GGUF download) + P1.4 (VRAM-fit + spawn) are DONE
-   (`models.py`/`gguf.py`/`runner.py` @ just-llm-runner `95e001e`; JustVoice
-   pin bumped). For package changes: edit `/home/user/just-llm-runner`
-   (editable → JustVoice picks it up live), push, bump the git-dep SHA in
-   `server/pyproject.toml`.
+3. **Next action: P1.5b auto-spawn orchestration + P1.6 benchmark — both
+   HARDWARE-GATED** (need the user's GPU + multi-GB downloads). P1.1–P1.5 are
+   DONE: the package (binary/model/gguf/runner) @ just-llm-runner `95e001e`,
+   and JustVoice registers `local-llamacpp` as a provider + prefers it for
+   attribution. What remains is the glue that auto-boots llama-server (P1.2+
+   P1.3+P1.4) and registers a live adapter — build + validate it together
+   with the P1.6 benchmark on the real box, not blind in the container. For
+   package changes: edit `/home/user/just-llm-runner` (editable → JustVoice
+   live), push, bump the git-dep SHA in `server/pyproject.toml`.
 
 ## Decision-replay (so a new session doesn't re-litigate)
 - **Why not "just recommend Ollama"?** User wants zero external install
@@ -151,18 +153,24 @@ one-click via **PyInstaller → Tauri sidecar**.
   Lifecycle: `Runner.start(model_id) -> Runner`, `.stop()`, `.url`,
   `.health()`, `.is_alive()`. All knobs overridable via settings (passed
   in as `Overrides{nGpuLayers, nCpuMoe, ctx, extraFlags}`).
-- [ ] **P1.5 — register provider + demote built-in qwen3-llm.**
-  In `server/justvoice/engines/llm/`:
-  - Add adapter `local_llamacpp.py` (~50 lines: OpenAI-compat client
-    pointing at `http://127.0.0.1:<port>/v1`, started by the runner).
-  - Register `"local-llamacpp"` provider type in `registry.py` `construct()`.
-  - In `server/justvoice/engines/model_catalog.py::_qwen3_llm_variants`:
-    delete the 4B row (`("qwen3-llm-4b", ..., 8000, 9000, 85, ...)`).
-    Keep 0.6B/1.7B as fallbacks.
-  - In `manifest.py` for qwen3_llm, mark `REQUIREMENTS["preferred"]=False`
-    or similar so it's not the auto-recommend.
-  - Wire `feature_pins` for `speakerAttribution` to default to
-    `local-llamacpp` when present.
+- [x] **P1.5 — register provider + demote built-in qwen3-llm.** DONE
+  (2026-06-16, JustVoice). What landed:
+  - `local-llamacpp` is an OpenAI-compat provider type — added to
+    `registry.py::construct()` + `openai_compat.py PROVIDER_DEFAULTS`
+    (`127.0.0.1:8080/v1`). Reused `OpenAICompatAdapter` (it already speaks
+    llama.cpp's server) — no redundant `local_llamacpp.py`.
+  - 4B variant dropped from `model_catalog._qwen3_llm_variants`, manifest
+    `MODELS`, AND `qwen3_llm/engine.py::QWEN_LLM_VARIANT_REPOS` (the variant-
+    wiring test guards that these three stay in lockstep).
+  - "Not the auto-recommend" was done in the REAL mechanism, not a dead
+    `REQUIREMENTS["preferred"]` flag (nothing reads that): `llm_roles_api
+    ._candidates/best` now classify `local-llamacpp` as local and rank it
+    above the qwen3 fallback.
+  - `dispatch.resolve_pin` defaults `speaker_attribution` to `local-llamacpp`
+    when registered (no pin/role configured) — before the first-adapter
+    fallback. 4 tests in `test_local_llamacpp.py`.
+  - REMAINING (P1.5b, hardware-gated): the auto-spawn lifecycle that makes
+    `local-llamacpp` register itself by booting llama-server. See First-30-min.
 - [ ] **P1.6 — verify (the proof).** Benchmark a MoE candidate (e.g.
   `unsloth/Qwen3.6-35B-A3B-MTP-GGUF` UD-Q4_K_XL, `--n-cpu-moe`) vs dense-14B
   on the user's REAL speaker-attribution cases. User data so far: 8B fails

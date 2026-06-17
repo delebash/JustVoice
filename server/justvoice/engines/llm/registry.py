@@ -78,7 +78,7 @@ def construct(cfg: "LLMProviderConfig") -> "LLMAdapter":
             default_model=cfg.default_model,
             timeout_seconds=cfg.timeout_seconds,
         )
-    if pt in ("openai", "openai-compat", "deepseek", "openrouter"):
+    if pt in ("openai", "openai-compat", "deepseek", "openrouter", "local-llamacpp"):
         from .openai_compat import OpenAICompatAdapter
 
         return OpenAICompatAdapter(

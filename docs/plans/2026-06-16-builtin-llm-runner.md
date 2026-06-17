@@ -68,11 +68,23 @@ prebuilt (detection only, no toolkit). See §2.
    **Deferred sub-item:** persistent working-config cache
    (`working-configs.json`) — back-off currently re-probes on each start;
    cheap to add when there's real hardware to validate against.
-5. **P1.5 register `local-llamacpp` provider** ← NEXT (in JustVoice, not the
-   package): adapter `engines/llm/local_llamacpp.py` (OpenAI-compat client at
-   the spawned server's `/v1`), register `"local-llamacpp"` in `registry.py`,
-   demote `qwen3-llm` (drop the 4B variant, mark not-preferred), default the
-   `speakerAttribution` feature-pin to it. See SESSION-HANDOFF Thread 1.
+5. ✅ ~~P1.5 register `local-llamacpp` provider + demote qwen3-llm~~ — DONE
+   (2026-06-16, JustVoice). `local-llamacpp` is now an OpenAI-compat provider
+   type (reused `OpenAICompatAdapter` — it already speaks llama.cpp's server —
+   instead of a redundant new adapter file), default base `127.0.0.1:8080/v1`.
+   qwen3-llm demoted: 4B variant dropped (catalog + manifest + engine map),
+   reframed as the lightweight fallback. Dispatch defaults `speaker_attribution`
+   to `local-llamacpp` when registered; role recommendations classify it local
+   and rank it above the qwen3 fallback. 4 tests; suite green.
+6. **P1.5b — auto-spawn orchestration** ← NEXT, but HARDWARE-GATED. Glue that
+   ties P1.2 (acquire_binary) + P1.3 (acquire_model) + P1.4 (compute_fit /
+   start_runner) into a lifecycle that boots llama-server on first use and
+   registers a live `local-llamacpp` adapter at its URL (default_model = the
+   loaded GGUF). NOT written yet — it can only be validated with a real GPU +
+   multi-GB downloads, so it's built+validated WITH P1.6 (writing it blind in
+   the container would invite rework — RULE #2).
+7. **P1.6 — benchmark (the proof).** MoE candidate vs dense-14B on the user's
+   real attribution cases, on the user's GPU. Chooses the actual model.
 
 ---
 

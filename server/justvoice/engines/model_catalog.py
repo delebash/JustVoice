@@ -76,14 +76,15 @@ def _whisper_variants() -> list[ModelVariant]:
 
 
 def _qwen3_llm_variants() -> list[ModelVariant]:
-    # Three sizes matching upstream voicebox's Language Models section.
+    # Lightweight CPU/low-VRAM fallback sizes. The built-in llama.cpp runner
+    # (local-llamacpp provider) is the primary local LLM for heavier work
+    # like speaker attribution; the 4B transformers variant was dropped
+    # (worst trade — heavy VRAM, unquantized) when the runner landed.
     sizes = [
         ("qwen3-llm-0.6b", "Qwen3 0.6B", "Qwen/Qwen3-0.6B", 1400, 1500, 60,
          "Very fast — live transcript refinement. Recommended default."),
         ("qwen3-llm-1.7b", "Qwen3 1.7B", "Qwen/Qwen3-1.7B", 3500, 4000, 75,
          "Better self-correction handling and technical vocabulary."),
-        ("qwen3-llm-4b", "Qwen3 4B", "Qwen/Qwen3-4B", 8000, 9000, 85,
-         "Subtlest rewrites; needs a mid-range GPU."),
     ]
     return [
         ModelVariant(

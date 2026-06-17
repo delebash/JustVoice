@@ -42,6 +42,13 @@ PROVIDER_DEFAULTS = {
         "base_url": "https://openrouter.ai/api/v1",
         "default_model": "openai/gpt-4o-mini",
     },
+    "local-llamacpp": {
+        # The built-in llama.cpp runner spawns llama-server on loopback
+        # (default port 8080). default_model is empty — the model is whatever
+        # GGUF the runner loaded; llama-server accepts any model id.
+        "base_url": "http://127.0.0.1:8080/v1",
+        "default_model": "",
+    },
 }
 
 

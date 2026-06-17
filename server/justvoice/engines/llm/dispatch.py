@@ -46,6 +46,15 @@ DEFAULT_FEATURE_ROLES: dict[str, str] = {
 }
 
 
+# The built-in llama.cpp runner. When it's registered and a target feature has
+# no production config / pin / role configured, prefer it over the generic
+# first-adapter fallback — it's the recommended local default for the
+# accuracy-critical, privacy-sensitive work the runner exists for (speaker
+# attribution). Other features keep the plain first-adapter fallback.
+LOCAL_RUNNER_PROVIDER_ID = "local-llamacpp"
+_PREFER_LOCAL_RUNNER: set[str] = {"speaker_attribution"}
+
+
 def _resolve_role(settings, role: str) -> tuple[LLMAdapter, str] | None:
     """Map a role name to (adapter, model) via settings.engines.llm_roles."""
     roles = getattr(settings.engines, "llm_roles", None)
@@ -100,6 +109,12 @@ def resolve_pin(settings, feature: str) -> tuple[LLMAdapter, str, str | None]:
             resolved = _resolve_role(settings, default_role)
             if resolved is not None:
                 return resolved[0], resolved[1], None
+        # Built-in local runner is the smart default for its target features
+        # (e.g. attribution) when nothing more specific is configured.
+        if feature in _PREFER_LOCAL_RUNNER:
+            local = get_llm_registry().get(LOCAL_RUNNER_PROVIDER_ID)
+            if local is not None:
+                return local, local.default_model, None
         # No pin set yet — fall back to the first registered LLM if any.
         # Better UX than 501 in the "user added one Claude key but didn't
         # configure pins" common case.

@@ -48,7 +48,7 @@ def _candidates() -> list[RoleCandidate]:
             continue
         tier = spec_for(model, None)
         quickish = tier.name in ("guided", "direct")
-        local = adapter.provider_type in ("local", "ollama", "openai-compat")
+        local = adapter.provider_type in ("local", "ollama", "openai-compat", "local-llamacpp")
         out.append(
             RoleCandidate(
                 provider_id=adapter.provider_id,
@@ -68,8 +68,9 @@ async def role_recommendations() -> RoleRecommendations:
 
     def best(speed: str) -> RoleCandidate | None:
         pool = [c for c in cands if c.speed_class == speed]
-        # local first (free + private), then registry order
-        pool.sort(key=lambda c: (not c.local,))
+        # local first (free + private); among locals the built-in llama.cpp
+        # runner outranks the lightweight qwen3 fallback, then registry order.
+        pool.sort(key=lambda c: (not c.local, c.provider_id != "local-llamacpp"))
         if pool:
             return pool[0]
         # fall back across classes rather than recommending nothing

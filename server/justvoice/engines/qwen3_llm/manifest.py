@@ -1,8 +1,10 @@
 """Manifest for Qwen3 LLM — bundled local language model (parity gap G1).
 
-Three sizes matching upstream voicebox: 0.6B / 1.7B / 4B. Powers dictation
-transcript refinement and persona Compose/Rewrite with zero external
-setup — registered as the "local-qwen3" provider in the LLM registry.
+Lightweight CPU/low-VRAM fallback (0.6B / 1.7B). Powers dictation transcript
+refinement and persona Compose/Rewrite with zero external setup — registered
+as the "local-qwen3" provider. The built-in llama.cpp runner (local-llamacpp)
+is the primary local LLM for heavier work like speaker attribution; the 4B
+transformers variant was dropped (worst trade — heavy VRAM, unquantized).
 """
 
 ID = "qwen3-llm"
@@ -11,8 +13,9 @@ KIND = "llm"
 DESCRIPTION = (
     "Alibaba's open-weight chat LLM, run locally. Cleans up dictation "
     "transcripts (filler removal, self-corrections, punctuation) and powers "
-    "persona Compose/Rewrite without an external provider. 0.6B is fast "
-    "enough for live refinement; 4B handles subtle corrections better."
+    "persona Compose/Rewrite without an external provider. A lightweight "
+    "fallback — the built-in llama.cpp runner is the primary local LLM for "
+    "heavier work like attribution."
 )
 LICENSE = "Apache-2.0"
 
@@ -42,7 +45,6 @@ INSTALL = [
 MODELS = [
     {"hf_repo": "Qwen/Qwen3-0.6B", "size_mb": 1400},
     {"hf_repo": "Qwen/Qwen3-1.7B", "size_mb": 3500},
-    {"hf_repo": "Qwen/Qwen3-4B", "size_mb": 8000},
 ]
 
 DEFAULT_VARIANT_ID = "qwen3-llm-0.6b"

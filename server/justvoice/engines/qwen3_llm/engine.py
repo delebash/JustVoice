@@ -35,7 +35,6 @@ log = logging.getLogger("justvoice.engines.qwen3_llm")
 QWEN_LLM_VARIANT_REPOS = {
     "qwen3-llm-0.6b": "Qwen/Qwen3-0.6B",
     "qwen3-llm-1.7b": "Qwen/Qwen3-1.7B",
-    "qwen3-llm-4b": "Qwen/Qwen3-4B",
 }
 DEFAULT_VARIANT = "qwen3-llm-0.6b"
 
