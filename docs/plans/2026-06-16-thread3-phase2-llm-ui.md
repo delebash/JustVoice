@@ -61,8 +61,17 @@ interface ProviderBackend {
   `scripts/verify-llm-backend.mjs` (11 mocked-fetch checks, no app/build).
 - [ ] **T3.4 — JustWrite Pinia adapter** for `ProviderBackend` over its `ai`
   store / `OpenAICompatClient`.
-- [ ] **T3.5 — seed same defaults both apps** incl. `local-llamacpp`
-  (recommended local). JV seeds none today; JW seeds 6 (drop TTS fields).
+- [~] **T3.5 — seed same defaults.** JustWrite: DONE — added `local-llamacpp`
+  (recommended local default) to `DEFAULT_PROVIDERS` (now 7). JustVoice:
+  deliberately NOT seeded into the active registry. Finding: JV's
+  `engines.llm[]` is the *registered* set (each entry is constructed +
+  registered at boot), unlike JW's DEFAULT_PROVIDERS which are *templates* the
+  user activates. Seeding it would (a) replace the clean no-pin 501 "add a
+  provider" UX with confusing 401s from `adapters[0]`, and (b) seeding
+  `local-llamacpp` active would route `speaker_attribution` (P1.5 dispatch
+  default) to a dead `127.0.0.1:8080` until P1.5b auto-spawn exists. JV parity
+  needs a *suggested-providers catalog* (UI offers to add), separate from the
+  active `llm[]` — follow-on; `local-llamacpp` seeding waits for P1.5b.
 - [ ] **T3.6 — drop TTS from JW provider model** (`kind:tts|both`, `ttsModel`,
   `ttsVoices`). GATED on Thread 2's Edge/Web-Speech decision (don't break JW
   TTS before the gap is resolved).
