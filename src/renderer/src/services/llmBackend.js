@@ -1,0 +1,121 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// JustVoice REST adapter for the shared `@delebash/llm-ui` ProviderBackend
+// contract (Thread 3 / T3.3). The shared UI components call these methods and
+// NEVER touch fetch directly. This adapter translates between the server's
+// snake_case `/v1/llm-providers*` + `/v1/feature-pins` + `/v1/ai-usage` shapes
+// and the contract's camelCase shapes.
+//
+// Why an adapter (not a server camelCase flip): JustVoice's current renderer
+// still consumes these endpoints as snake_case, so flipping the API would
+// break the live UI before Phase 2 migrates it. The translation lives here at
+// the boundary. See docs/plans/2026-06-16-thread3-phase2-llm-ui.md.
+//
+// `api` is the Pinia api store ({ get, post, patch, put, del } over request).
+// Inject a stub with the same surface to unit-test (scripts/verify-llm-backend.mjs).
+
+function providerFromApi(p) {
+  return {
+    id: p.id,
+    name: p.name,
+    providerType: p.provider_type,
+    baseUrl: p.base_url || "",
+    defaultModel: p.default_model || "",
+    embeddingModel: p.embedding_model || "",
+    timeoutSeconds: p.timeout_seconds,
+    hasApiKey: !!p.has_api_key,
+    registered: !!p.registered,
+  };
+}
+
+// camelCase ProviderDraft -> the server's UpsertLLMProviderRequest (snake_case).
+// The server upsert requires id/name/providerType; optional fields are only
+// sent when present so a partial patch doesn't clobber with empty strings.
+function providerToApi(d) {
+  const body = { id: d.id, name: d.name, provider_type: d.providerType };
+  if (d.baseUrl !== undefined) body.base_url = d.baseUrl;
+  if (d.apiKey !== undefined) body.api_key = d.apiKey;
+  if (d.defaultModel !== undefined) body.default_model = d.defaultModel;
+  if (d.embeddingModel !== undefined) body.embedding_model = d.embeddingModel;
+  if (d.timeoutSeconds !== undefined) body.timeout_seconds = d.timeoutSeconds;
+  return body;
+}
+
+function modelFromApi(m) {
+  // /v1/llm-providers/{id}/models returns a bare string list today; tolerate
+  // an object form too so a richer server response Just Works.
+  return typeof m === "string" ? { id: m } : { id: m.id, label: m.label, tier: m.tier };
+}
+
+export function createJustVoiceBackend(api) {
+  const enc = encodeURIComponent;
+  return {
+    async listProviders() {
+      const r = await api.get("/v1/llm-providers");
+      return (r.providers || []).map(providerFromApi);
+    },
+    async addProvider(draft) {
+      return providerFromApi(await api.post("/v1/llm-providers", providerToApi(draft)));
+    },
+    async updateProvider(id, patch) {
+      // Server PATCH is a full upsert (id immutable) — callers pass the merged
+      // draft, not a sparse patch.
+      return providerFromApi(
+        await api.patch(`/v1/llm-providers/${enc(id)}`, providerToApi({ id, ...patch })),
+      );
+    },
+    async removeProvider(id) {
+      await api.del(`/v1/llm-providers/${enc(id)}`);
+    },
+    async ping(id) {
+      const r = await api.post(`/v1/llm-providers/${enc(id)}/ping`);
+      return { ok: !!r.ok, message: r.error || undefined };
+    },
+    async fetchModels(id) {
+      const r = await api.get(`/v1/llm-providers/${enc(id)}/models`);
+      return (r.models || []).map(modelFromApi);
+    },
+    async detectLocal() {
+      const r = await api.get("/v1/llm-providers/detect-local");
+      return (r.detected || []).map((d) => ({
+        providerType: d.provider_type,
+        name: d.name,
+        baseUrl: d.base_url,
+        models: d.models || [],
+        alreadyRegistered: !!d.already_registered,
+      }));
+    },
+    async classifyTier(modelId) {
+      const r = await api.post("/v1/llm-providers/classify-tier", { model: modelId });
+      return r.tier;
+    },
+    async usage() {
+      // The server ledger records model (not provider id), so providerId is
+      // left empty; cost is omitted (JustVoice has no server-side price table).
+      const r = await api.get("/v1/ai-usage");
+      return (r.recent || []).map((e) => ({
+        ts: Math.round((e.at || 0) * 1000),
+        feature: e.feature,
+        providerId: "",
+        model: e.model || "",
+        promptTokens: e.prompt_tokens || 0,
+        completionTokens: e.completion_tokens || 0,
+      }));
+    },
+    async featurePins() {
+      const r = await api.get("/v1/feature-pins");
+      return (r.pins || []).map((p) => ({
+        feature: p.feature,
+        providerId: p.provider_id,
+        model: p.model || undefined,
+      }));
+    },
+    async setFeaturePin(feature, pin) {
+      await api.put("/v1/feature-pins", {
+        feature,
+        provider_id: pin.providerId,
+        model: pin.model || "",
+      });
+    },
+  };
+}

@@ -54,9 +54,11 @@ interface ProviderBackend {
 - [x] **T3.2 — JustWrite pricing fix** — DONE (justwrite-app `7390cfe`).
   Corrected `claude-opus-4-7` (was wrongly 15/75 → 5/25), added
   `claude-opus-4-8` (5/25) + `claude-fable-5` (10/50); verified via claude-api.
-- [ ] **T3.3 — JustVoice REST adapter** for `ProviderBackend` (translates the
-  existing snake_case `/v1/llm-providers*` + `/v1/ai-usage` + feature_pins ↔
-  camelCase). Lives app-side (`src/renderer/src/services/llmBackend.js`). ← NEXT
+- [x] **T3.3 — JustVoice REST adapter** — DONE (`services/llmBackend.js`).
+  `createJustVoiceBackend(api)` implements `ProviderBackend` over the
+  snake_case `/v1/llm-providers*` + `/v1/feature-pins` + `/v1/ai-usage`
+  endpoints, mapping to/from the camelCase contract. Verified by
+  `scripts/verify-llm-backend.mjs` (11 mocked-fetch checks, no app/build).
 - [ ] **T3.4 — JustWrite Pinia adapter** for `ProviderBackend` over its `ai`
   store / `OpenAICompatClient`.
 - [ ] **T3.5 — seed same defaults both apps** incl. `local-llamacpp`
