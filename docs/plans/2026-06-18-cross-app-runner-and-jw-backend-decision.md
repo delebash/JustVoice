@@ -37,7 +37,7 @@ client-side); it's the sum that decides it.
 **Eyes-open costs:** substantial data-layer rewrite (undo/redo, coalescing,
 trash, images, snapshot model) — keep interactive state (editor, undo
 stack) client-side, SQLite as the durable layer with debounced/incremental
-writes; JW gains a critical-path backend (won't open if the sidecar fails);
+writes; JW gains a critical-path backend (won't open if the main API server fails);
 the browser-only `dev:vite` path now needs the server. This is a large,
 multi-phase migration — scope it as its own plan before execution. Decision
 recorded; implementation not started.
