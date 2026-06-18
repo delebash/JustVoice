@@ -5,6 +5,43 @@ Records a design discussion and the **approved** direction. Partially
 supersedes `2026-06-16-builtin-llm-runner.md` (see end). Android is a
 **"maybe"**, so we take the lighter path with a clear upgrade trigger.
 
+> **⚠️ AMENDED 2026-06-18 (later) — superseded by §AMENDMENT below.** The
+> upgrade trigger is now met: JW **moves to server mode** (full symmetry
+> adopted). The deferral in decisions **2, 3, and 7** is LIFTED. Read the
+> amendment first; the original "lighter path" decision is retained below
+> as history + the rationale for the seam choices that keep this migration
+> localized.
+
+---
+
+## AMENDMENT 2026-06-18 (later) — JW moves to SERVER mode (full symmetry ADOPTED)
+
+**Trigger met.** The user confirmed manuscripts will grow large. The
+cumulative case (RAG vector index + the whole-snapshot IndexedDB
+persistence ceiling + JW's queryable data: notes/search/worldbuilding/
+story-bible + Android-readiness) justifies the move now. RAG scale *alone*
+is a softer trigger (a single manuscript's ~1–2k vectors are fine
+client-side); it's the sum that decides it.
+
+**New shape — both apps identical: Tauri + Vue + FastAPI + SQLite.**
+- **Runner imported in-process by BOTH** apps (JW drops the lazy sidecar).
+- **JW data: IndexedDB → SQLite.** RAG vectors → server-side SQLite vector
+  store (e.g. `sqlite-vec`) with hybrid search. Documents/notes/
+  worldbuilding/etc. → SQLite rows.
+- **`llm-ui` adapter for JW flips** Pinia/IndexedDB → REST against JW's
+  server (localized to the adapter seam — not a UI rewrite).
+- **camelCase wire** applies to JW's new API too.
+- **JW reuses JV's spawn + health-check + supervise** Rust-shell pattern
+  (now shared shell code), with a graceful "backend starting/failed" state.
+
+**Eyes-open costs:** substantial data-layer rewrite (undo/redo, coalescing,
+trash, images, snapshot model) — keep interactive state (editor, undo
+stack) client-side, SQLite as the durable layer with debounced/incremental
+writes; JW gains a critical-path backend (won't open if the sidecar fails);
+the browser-only `dev:vite` path now needs the server. This is a large,
+multi-phase migration — scope it as its own plan before execution. Decision
+recorded; implementation not started.
+
 ---
 
 ## Decision (approved)
