@@ -5,6 +5,18 @@ This doc is the single source of truth for the built-in local LLM runner
 and the shared AI-provider/LLM UX across both products. A fresh session
 should be able to read this and continue without re-deriving anything.
 
+> **⚠️ UPDATED 2026-06-18 — partially superseded.** The cross-app runner
+> *language* and the JW *backend* decisions in this doc are revised by
+> `docs/plans/2026-06-18-cross-app-runner-and-jw-backend-decision.md`
+> (read that first). In short: the runner is a **shared Python package**
+> (NOT Rust); **JV imports it in-process, JW runs it as a *lazy*
+> sidecar**; **JW stays client-side** (no Python server yet — full
+> Python+SQLite server deferred until Android/multi-client). The
+> "Rust in JW" text (§6 Phase 3, §7) is **dropped** — that resolves this
+> doc's top-STATUS-vs-§6/§7 contradiction. The research (§1/§5), the
+> `local-llamacpp` provider (§2.5), and the voice-migration audit (§4)
+> remain valid.
+
 ---
 
 ## STATUS (2026-06-16, busy-rubin) — read this first
