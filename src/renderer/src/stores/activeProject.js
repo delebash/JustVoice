@@ -5,11 +5,10 @@
 // the topbar shows Project/Kind/Master chips, and Home's Continue card
 // resumes it). Views that open or select a project call `open(p)` with
 // the /v1/projects record; App.vue and Home read it. Persists across
-// reloads via localStorage.
+// reloads server-side via /v1/prefs (key: `activeProject`).
 
 import { defineStore } from "pinia";
-
-const KEY = "jv.activeProject";
+import { readPref, writePref } from "../services/prefs.js";
 
 // project_type (API) → nav kind (journeys KIND_NAV vocabulary).
 const KIND_BY_TYPE = {
@@ -27,11 +26,8 @@ const KIND_META = {
 };
 
 function load() {
-  try {
-    return JSON.parse(window.localStorage?.getItem(KEY) || "null") || {};
-  } catch {
-    return {};
-  }
+  const p = readPref("activeProject", {});
+  return p && typeof p === "object" ? p : {};
 }
 
 export const useActiveProject = defineStore("activeProject", {
@@ -69,12 +65,10 @@ export const useActiveProject = defineStore("activeProject", {
       this._persist();
     },
     _persist() {
-      try {
-        window.localStorage?.setItem(KEY, JSON.stringify({
-          id: this.id, name: this.name, projectType: this.projectType,
-          master: this.master, openedAt: this.openedAt,
-        }));
-      } catch { /* ignore */ }
+      writePref("activeProject", {
+        id: this.id, name: this.name, projectType: this.projectType,
+        master: this.master, openedAt: this.openedAt,
+      });
     },
   },
 });

@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /**
  * uiStore — theme + dialog open-state + currently-selected entity ids.
- * Persisted to localStorage (key: justvoice-ui). Partial-persist: only
+ * Persisted server-side via /v1/prefs (key: `ui`). Partial-persist: only
  * `theme` + `selectedProfileId` survive a reload.
  */
 import { defineStore } from "pinia";
 import { ref, watch } from "vue";
-
-const STORAGE_KEY = "justvoice-ui";
+import { readPref, writePref } from "../services/prefs.js";
 
 function resolveTheme(theme) {
   if (theme !== "system") return theme;
@@ -21,13 +20,8 @@ function applyTheme(theme) {
 }
 
 function loadInitial() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {
-    /* */
-  }
-  return {};
+  const p = readPref("ui", {});
+  return p && typeof p === "object" ? p : {};
 }
 
 export const useUIStore = defineStore("ui", () => {
@@ -86,17 +80,7 @@ export const useUIStore = defineStore("ui", () => {
   }
 
   watch([theme, selectedProfileId], () => {
-    try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          theme: theme.value,
-          selectedProfileId: selectedProfileId.value,
-        }),
-      );
-    } catch {
-      /* */
-    }
+    writePref("ui", { theme: theme.value, selectedProfileId: selectedProfileId.value });
   });
 
   return {

@@ -2326,7 +2326,7 @@ onMounted(() => {
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">Appearance</h3></div>
         <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 6px">
-          Visual and locale preferences. Persisted in browser localStorage; no server round-trip.
+          Visual and locale preferences. Saved to this server (renderer prefs), so they follow you to any client.
         </p>
 
         <div class="setting-row">

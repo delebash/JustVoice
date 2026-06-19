@@ -67,7 +67,7 @@ config.
 ## Status: COMPLETE
 
 - **Slice 1 ✓** — `prefs` table + `/v1/prefs`; `services/prefs.js` (reactive,
-  booted before mount); 7 prefs migrated across SettingsView / StudioView /
+  booted before mount); 7 view prefs migrated across SettingsView / StudioView /
   VoicesView / SpeakerLabView (incl. a `voicesEngineFilter` the survey missed).
 - **Slice 2 ✓** — `SettingsRow` singleton; `SettingsStore` reads/writes SQLite,
   imports + retires a legacy `settings.json` on first load. Verified safe: no
@@ -75,3 +75,22 @@ config.
   settings; old backups still restore via the legacy-seed path), `admin_api`
   factory-reset (`settings.set()`), and `cli` need no behavior change. CLAUDE.md
   storage lines + module docstrings updated. 275 pytest, ruff, build:vite green.
+- **Slice 3 ✓ (final-audit catch)** — slice 1 scoped to *views* and missed
+  durable state in Pinia **stores**. The mandatory end-audit found it:
+  `stores/ui.js` (theme + selectedProfileId), `stores/activeProject.js` (the
+  active-project slot), and `RecommendCard` (dismiss flag) → `/v1/prefs`. Deleted
+  `stores/audioChannel.js` — a **dead** store (no importers; AudioChannelsView
+  uses `/v1/channels` directly). Confirmed `stores/onboarding.js` already
+  server-side (PATCHes `/v1/settings`).
+
+## Intentionally client-side (NOT migrated — verified)
+
+Bootstrap/shell config a thin client legitimately keeps locally (it can't fetch
+the server's own address from the server, and some gate the server/shell):
+`jt:server` / `jt:token` (api.js, prefs.js); `stores/server.js`
+(`justvoice-server`: serverUrl, mode, keepServerRunningOnClose, customModelsDir);
+SettingsView `keep_server_running` / `allow_network_access` (mirrors
+`settings.server.host`) / `updater_channel` / `capture_settings` (Rust hotkey
+monitor). `sessionStorage` (`jv.*`) is ephemeral nav handoff. All `justvoice-ui`
+/ `jv.activeProject` / `jv.recommend.dismissed` / `justvoice-audio-channels`
+durable state is gone from the client.
