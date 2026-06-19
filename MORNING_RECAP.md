@@ -5,28 +5,60 @@
 
 ---
 
-## ⮕ ACTIVE WORK — read first (2026-06-16)
+## ⮕ ACTIVE WORK — read first (2026-06-19)
+
+**Everything remaining is gated on the user (hardware / UX / on-box verify) —
+there is no clean autonomous coding task in flight.** Detail per thread:
+
+- **Storage rewrite — DONE, both apps** (2026-06-18/19, admiring-galileo).
+  JustWrite is fully off kv/IndexedDB/localStorage — every datum is a typed SQL
+  resource over a typed API (plan: JW `docs/plans/2026-06-18-unified-storage-no-idb.md`).
+  JustVoice: dead `idb-keyval` removed; renderer content prefs → `/v1/prefs`
+  (new `prefs` table); `settings.json` folded into a SQLite `settings` row;
+  renderer stores (ui/activeProject) + RecommendCard moved server-side (plan:
+  JV `docs/plans/2026-06-19-jv-prefs-to-sql.md`). What stays client-side in JV
+  by design: the server address/token + device-local shell config
+  (keep_server_running, updater_channel, capture_settings) + ephemeral
+  sessionStorage. `allow_network_access` now derived from `settings.server.host`.
+- **Built-in LLM runner** (`docs/plans/2026-06-16-builtin-llm-runner.md`) —
+  the 2026-06-16 "publish next" steps are DONE. `delebash/just-llm-runner` is
+  published (in this session's scope, cloned at `/home/user/just-llm-runner`);
+  JustVoice consumes it (mounts `llm_runner.router`); P1.1–P1.5 + runner
+  lifecycle endpoints + the `ui/` llm-ui skeleton are all committed/pushed.
+  **Remaining is HARDWARE-GATED**: P1.5b auto-spawn orchestration + P1.6
+  benchmark + the deferred working-config cache — must be built+validated on
+  the user's real GPU (writing them blind in the container invites rework,
+  RULE #2).
+- **Shared `llm-ui` adoption** — UX-GATED (the one explicit blocker per
+  CLAUDE.md; the package skeleton + ProviderBackend contract exist).
+- **USER, on your Windows box**: verify Engines download/load (Thread 4) and
+  the Qwen GGUF download/load before P1.6.
+
+> The 2026-06-16 block below is retained for context; the items it lists as
+> "next" (publish / switchover / P1.3–P1.5) are all DONE — see above.
+
+---
+
+## ⮕ ACTIVE WORK (2026-06-16)
 
 **Master outstanding checklist: `docs/plans/2026-06-16-SESSION-HANDOFF.md`.**
 It indexes every in-flight thread across JustVoice + JustWrite. The big
 active thread is the **built-in LLM runner** (`docs/plans/2026-06-16-
 builtin-llm-runner.md`, read its STATUS section first).
 
-Quick state:
+Quick state (SUPERSEDED — see the 2026-06-19 block above):
 - `just-llm-runner` shared Python package (P1.1 + P1.2) is BUILT + tested
-  (11/11) but lives only as a **snapshot** at `docs/plans/just-llm-runner-
-  snapshot/` + a chat tarball — the standalone repo `delebash/just-llm-
-  runner` exists but is EMPTY (this session's git proxy can't push to it;
-  scope = justvoice/justwrite-app/voicebox only).
+  (11/11) ~~but lives only as a snapshot~~ — now PUBLISHED to
+  `delebash/just-llm-runner` (in scope this session).
 - Decisions locked: Tauri both apps · shared Python core in own private
   repo (git-dep, not published) · JustWrite gets a light Python sidecar ·
   camelCase · CUDA bundled in llama.cpp (no toolkit) · one-click via
   PyInstaller→Tauri sidecar.
-- Next: publish the repo → switch JustVoice to consume it → P1.3 (GGUF
-  download) → P1.4 (spawn + VRAM-fit) → P1.5 (provider) → P1.6 (benchmark).
-- Also outstanding: JustWrite audio removal (audit done), cross-app
-  AI-provider camelCase normalization (audit done), and USER to verify
-  Qwen download/load on their Windows box after the huggingface_hub rip.
+- ~~Next: publish the repo → switch JustVoice to consume it → P1.3 → P1.4
+  → P1.5 → P1.6.~~ All DONE through P1.5 + lifecycle; P1.5b/P1.6 hardware-gated.
+- Also outstanding: JustWrite audio removal (DONE — JW is writing-only),
+  cross-app AI-provider camelCase normalization (DONE — JV aliases + JW
+  storage rewrite), and USER to verify Qwen download/load on Windows.
 
 ---
 
