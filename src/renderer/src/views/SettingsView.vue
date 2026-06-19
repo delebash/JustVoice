@@ -362,6 +362,9 @@ async function refresh() {
       // don't blank out fields the server didn't return.
       settings.value = { ...settings.value, ...live };
       serverReachable.value = true;
+      // The network-access toggle is derived from the server's bind host
+      // (the source of truth), not a separate client-side flag.
+      allowNetworkAccess.value = settings.value?.server?.host === "0.0.0.0";
     }
   } catch {
     serverReachable.value = false;
@@ -412,13 +415,11 @@ function saveDebounced() {
 const keepServerRunning = ref(true);
 const allowNetworkAccess = ref(false);
 const KEEP_RUNNING_KEY = "justvoice:keep_server_running";
-const NETWORK_ACCESS_KEY = "justvoice:allow_network_access";
 try {
   const k = localStorage.getItem(KEEP_RUNNING_KEY);
   if (k !== null) keepServerRunning.value = k === "true";
-  const n = localStorage.getItem(NETWORK_ACCESS_KEY);
-  if (n !== null) allowNetworkAccess.value = n === "true";
 } catch {}
+// allowNetworkAccess is derived from settings.server.host in refresh().
 
 async function onKeepServerRunningChange() {
   try { localStorage.setItem(KEEP_RUNNING_KEY, String(keepServerRunning.value)); } catch {}
@@ -439,8 +440,7 @@ async function onKeepServerRunningChange() {
 }
 
 async function onNetworkAccessChange() {
-  try { localStorage.setItem(NETWORK_ACCESS_KEY, String(allowNetworkAccess.value)); } catch {}
-  // Flip the bind host immediately; restart required.
+  // Flip the bind host immediately (the source of truth); restart required.
   if (settings.value?.server) {
     settings.value.server.host = allowNetworkAccess.value ? "0.0.0.0" : "127.0.0.1";
   }
