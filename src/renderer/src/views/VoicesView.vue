@@ -4,6 +4,7 @@ import { ref, onMounted, computed } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
+import { readPref, writePref } from "../services/prefs.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvInput from "../components/jv/JvInput.vue";
 import JvTextarea from "../components/jv/JvTextarea.vue";
@@ -69,18 +70,16 @@ function autoDetectGender(v) {
 const GENDER_CYCLE = ["?", "F", "M", "N", ""];
 
 // Preset voices ship with the engine — no stored record to PATCH, so
-// their overrides persist in localStorage. Stored voices persist via
-// PATCH /v1/voices/{id}.
-const PRESET_GENDER_KEY = "justvoice.presetGenderOverrides";
+// their overrides persist in the server-backed renderer prefs. Stored
+// voices persist via PATCH /v1/voices/{id}.
 function loadPresetGenderOverrides() {
-  try { return JSON.parse(localStorage.getItem(PRESET_GENDER_KEY)) || {}; } catch { return {}; }
+  const m = readPref("presetGenderOverrides", {});
+  return m && typeof m === "object" ? m : {};
 }
 function savePresetGenderOverride(id, gender) {
-  try {
-    const map = loadPresetGenderOverrides();
-    if (gender) map[id] = gender; else delete map[id];
-    localStorage.setItem(PRESET_GENDER_KEY, JSON.stringify(map));
-  } catch { /* storage unavailable — override stays session-local */ }
+  const map = { ...loadPresetGenderOverrides() };
+  if (gender) map[id] = gender; else delete map[id];
+  writePref("presetGenderOverrides", map);
 }
 
 async function cycleGender(v) {
@@ -120,23 +119,24 @@ const TYPE_FILTERS = [
 ];
 
 // Hidden built-in voices — presets can't be deleted, but they can be
-// tucked away (user request 2026-06-11). Persisted per machine.
-const HIDDEN_KEY = "jv.voices.hidden";
+// tucked away (user request 2026-06-11). Server-backed renderer pref.
 const hiddenIds = ref(new Set());
-try { hiddenIds.value = new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) || "[]")); } catch { hiddenIds.value = new Set(); }
+{
+  const _h = readPref("hiddenVoices", []);
+  hiddenIds.value = new Set(Array.isArray(_h) ? _h : []);
+}
 const showHidden = ref(false);
 function toggleHidden(v) {
   const next = new Set(hiddenIds.value);
   if (next.has(v.id)) next.delete(v.id); else next.add(v.id);
   hiddenIds.value = next;
-  try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...next])); } catch { /* ignore */ }
+  writePref("hiddenVoices", [...next]);
 }
 
-const ENGINE_FILTER_KEY = "jv.voices.engineFilter";
-const engineFilter = ref(localStorage.getItem(ENGINE_FILTER_KEY) || "all");
+const engineFilter = ref(readPref("voicesEngineFilter", "all"));
 function setEngineFilter(id) {
   engineFilter.value = id;
-  localStorage.setItem(ENGINE_FILTER_KEY, id);
+  writePref("voicesEngineFilter", id);
 }
 const engineFilterOptions = computed(() => {
   const counts = {};
@@ -209,7 +209,6 @@ const chatterboxLoaded = computed(() => (engines.value || []).some((e) => e?.id?
 // ── Voice preview (LRU-cached on backend). ──────────────────────────
 const previewAudio = ref(null);
 const previewingId = ref(null);
-const AUTOLOAD_KEY = "jv.voices.autoLoadEngine"; // "always" | unset (ask)
 
 async function previewVoice(v) {
   previewingId.value = v.id;
@@ -218,7 +217,7 @@ async function previewVoice(v) {
     previewAudio.value = null;
   }
   try {
-    const always = localStorage.getItem(AUTOLOAD_KEY) === "always";
+    const always = readPref("autoLoadEngine") === "always";
     let blob;
     try {
       blob = await api.request(`/v1/voices/${v.id}/preview?auto_load=${always}`, { method: "POST" });
@@ -247,7 +246,7 @@ async function previewVoice(v) {
       pushToast({
         message: `${engineId} loaded.`,
         kind: "success",
-        action: { label: "Always auto-load", fn: () => localStorage.setItem(AUTOLOAD_KEY, "always") },
+        action: { label: "Always auto-load", fn: () => writePref("autoLoadEngine", "always") },
       });
       // Topbar pill + Engines page track loads from anywhere.
       window.dispatchEvent(new Event("jv:health-refresh"));
@@ -615,9 +614,9 @@ async function resetAllTweaks() {
     danger: true,
   });
   if (!ok) return;
-  try { localStorage.removeItem(PRESET_GENDER_KEY); } catch { /* ignore */ }
+  writePref("presetGenderOverrides", {});
   hiddenIds.value = new Set();
-  try { localStorage.setItem(HIDDEN_KEY, "[]"); } catch { /* ignore */ }
+  writePref("hiddenVoices", []);
   pushToast({ kind: "success", message: "All voice tweaks reset." });
 }
 

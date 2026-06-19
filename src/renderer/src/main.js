@@ -4,6 +4,7 @@ import { createPinia } from "pinia";
 import App from "./App.vue";
 import DictateWindow from "./components/DictateWindow.vue";
 import { tooltipDirective } from "./services/tooltip.js";
+import { bootPrefs } from "./services/prefs.js";
 import { i18n } from "./i18n/index.js";
 import "./styles.css";
 
@@ -12,7 +13,7 @@ function isDictateView() {
   return new URLSearchParams(window.location.search).get("view") === "dictate";
 }
 
-function boot() {
+async function boot() {
   // The dictate window runs in a separate Tauri webview that must skip the
   // main shell + server bootstrap (the main window owns those) and render
   // only the floating recording pill. URL?view=dictate triggers this branch.
@@ -22,6 +23,10 @@ function boot() {
     app.mount("#app");
     return;
   }
+
+  // Pull renderer prefs (appearance, hidden voices, …) off the server into a
+  // reactive cache BEFORE mount so views read populated data synchronously.
+  await bootPrefs();
 
   const app = createApp(App);
   app.use(createPinia());

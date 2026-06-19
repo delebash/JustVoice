@@ -49,6 +49,8 @@ from .models import (
     TrainingJob,
     # Speaker-attribution correction memory (Phase 5)
     SpeakerCorrection,
+    # Renderer UI preferences (key/value; replaces the renderer's localStorage)
+    Pref,
 )
 
 __all__ = [
@@ -80,4 +82,5 @@ __all__ = [
     "Webhook",
     "TrainingJob",
     "SpeakerCorrection",
+    "Pref",
 ]

@@ -632,3 +632,18 @@ class TrainingJob(Base):
     started_at = Column(DateTime, nullable=True)
     finished_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=_utcnow)
+
+
+class Pref(Base):
+    """One renderer UI preference — a key/value JSON pair the Vue app reads on
+    boot and writes on change (appearance, hidden-voice lists, per-voice gender
+    overrides, speaker-lab presets, autoload). Distinct from `settings.json`
+    (typed operator/server config): these are free-form renderer prefs, written
+    wholesale per key so map/list entries can be DELETED — which the settings
+    deep-merge can't express. Replaces the renderer's `localStorage` so a thin
+    client reads them from the server too."""
+
+    __tablename__ = "prefs"
+
+    key = Column(String, primary_key=True)
+    value = Column(Text, nullable=False, default="null")  # JSON value

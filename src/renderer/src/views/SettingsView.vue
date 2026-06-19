@@ -6,6 +6,7 @@ import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { projectsService } from "../services/projects.js";
+import { readPref, writePref } from "../services/prefs.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvInput from "../components/jv/JvInput.vue";
 import JvSelect from "../components/jv/JvSelect.vue";
@@ -894,7 +895,6 @@ async function restartAndInstall() {
 }
 
 // ── Appearance (task #93) ────────────────────────────────────────────
-const APPEARANCE_KEY = "justvoice:appearance";
 const appearance = ref({
   theme: "auto",
   density: "default",
@@ -1101,10 +1101,8 @@ async function copyRecentLogs() {
   }
 }
 function loadAppearance() {
-  try {
-    const raw = localStorage.getItem(APPEARANCE_KEY);
-    if (raw) Object.assign(appearance.value, JSON.parse(raw));
-  } catch {}
+  const saved = readPref("appearance");
+  if (saved && typeof saved === "object") Object.assign(appearance.value, saved);
   applyAppearance();
 }
 function applyAppearance() {
@@ -1119,9 +1117,7 @@ function applyAppearance() {
   // Accent hue — overrides the green accent across the app.
   root.style.setProperty("--accent-hue", String(appearance.value.accentHue));
   // Persist.
-  try {
-    localStorage.setItem(APPEARANCE_KEY, JSON.stringify(appearance.value));
-  } catch {}
+  writePref("appearance", appearance.value);
 }
 
 onMounted(() => {
