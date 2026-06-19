@@ -81,8 +81,8 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     data_dir = data_dir or default_data_dir()
 
     # Phase 1.5: SQLite is the primary persistence layer. init_db() runs
-    # idempotent migrations + creates net-new tables. settings.json stays
-    # as the only atomic-JSON store (per CLAUDE.md scope-down).
+    # idempotent migrations + creates net-new tables. settings.json has been
+    # folded into the `settings` table (SettingsStore imports any legacy file).
     from .database import init_db
     init_db(data_dir)
 

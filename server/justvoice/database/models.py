@@ -6,8 +6,8 @@
 # Original copyright (c) the voicebox authors.
 """ORM model definitions for the JustVoice SQLite database.
 
-Schema is the implementation of DESIGN_FREEZE.md §4. Every entity except
-user-editable preferences (settings.json) lives here.
+Schema is the implementation of DESIGN_FREEZE.md §4. Every entity lives here,
+including operator settings (folded from settings.json) and renderer prefs.
 
 Convention:
 - Primary keys are UUID4 strings — easier to debug than autoincrement
@@ -647,3 +647,15 @@ class Pref(Base):
 
     key = Column(String, primary_key=True)
     value = Column(Text, nullable=False, default="null")  # JSON value
+
+
+class SettingsRow(Base):
+    """Singleton row holding the typed operator/server `Settings` tree as JSON
+    (Phase 1.5: the legacy `settings.json` folded into SQLite — one backend).
+    Shape is `server/justvoice/models.py::Settings`; `SettingsStore` reads/writes
+    this row and imports an existing `settings.json` once on first load."""
+
+    __tablename__ = "settings"
+
+    id = Column(String, primary_key=True, default="singleton")
+    data = Column(Text, nullable=False, default="{}")  # JSON of Settings.model_dump()

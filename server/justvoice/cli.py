@@ -56,7 +56,7 @@ def serve(
 
 @app.command(name="default-settings")
 def default_settings():
-    """Print the seed settings.json."""
+    """Print the seed settings (defaults)."""
     typer.echo(json.dumps(Settings().model_dump(), indent=2, default=str))
 
 

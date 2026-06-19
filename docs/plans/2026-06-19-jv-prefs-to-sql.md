@@ -63,3 +63,15 @@ config.
 1. Server `prefs` table + `/v1/prefs` + test → renderer `prefs.js` + `bootPrefs`
    → migrate the 4 views. (Verify: pytest + ruff + build:vite.)
 2. `SettingsStore` persistence: settings.json → SQLite singleton (+ seed). Test.
+
+## Status: COMPLETE
+
+- **Slice 1 ✓** — `prefs` table + `/v1/prefs`; `services/prefs.js` (reactive,
+  booted before mount); 7 prefs migrated across SettingsView / StudioView /
+  VoicesView / SpeakerLabView (incl. a `voicesEngineFilter` the survey missed).
+- **Slice 2 ✓** — `SettingsRow` singleton; `SettingsStore` reads/writes SQLite,
+  imports + retires a legacy `settings.json` on first load. Verified safe: no
+  Rust reads it; `backup_api` (dead `settings.json` zip removed — DB carries
+  settings; old backups still restore via the legacy-seed path), `admin_api`
+  factory-reset (`settings.set()`), and `cli` need no behavior change. CLAUDE.md
+  storage lines + module docstrings updated. 275 pytest, ruff, build:vite green.

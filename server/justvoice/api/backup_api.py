@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """/v1/backup + /v1/restore — disaster recovery + machine migration.
 
-Stream-zipped so 50 GB backups don't load into RAM. Includes settings.json,
-the full SQLite DB, and (optionally) all audio blobs + voice embeddings +
+Stream-zipped so 50 GB backups don't load into RAM. Includes the full SQLite DB
+(settings live in it now) and (optionally) all audio blobs + voice embeddings +
 training adapters.
 
 See DESIGN_FREEZE.md §5 backup+restore workflow.
@@ -67,12 +67,9 @@ def _iter_backup_zip(include_generations: bool) -> bytes:
         }
         zf.writestr("manifest.json", json.dumps(manifest, indent=2))
 
-        # settings.json
-        settings_path = data_dir / "settings.json"
-        if settings_path.is_file():
-            zf.write(settings_path, "settings.json")
-
-        # SQLite DB
+        # SQLite DB (settings live here now — the legacy settings.json is gone).
+        # extractall still restores a settings.json from an old pre-fold backup;
+        # SettingsStore imports it on next boot.
         if db_path and db_path.is_file():
             zf.write(db_path, "db/justvoice.sqlite")
 

@@ -185,7 +185,7 @@ Three layers:
 | Concern | Layer |
 |---|---|
 | TTS model loading + inference | `server/justvoice/engines/<engine>/` (manifest.py + engine.py per engine) |
-| Storage (settings, voices, profiles, projects, chapters, takes, generations, lexicons, personas, story_items) | `server/justvoice/storage/` (SQLite via SQLAlchemy + atomic JSON for `settings.json` only) |
+| Storage (settings, voices, profiles, projects, chapters, takes, generations, lexicons, personas, story_items, renderer prefs) | `server/justvoice/storage/` + `database/` (SQLite via SQLAlchemy — settings + prefs folded in; no atomic-JSON store) |
 | Render orchestration + cache | `server/justvoice/render_core.py` + `server/justvoice/api/render_chapter_api.py` |
 | Audio analyzer + WAV math + mastering | `server/justvoice/audio/` + `server/justvoice/mastering.py` |
 | API endpoints | `server/justvoice/api/<area>_api.py` |
@@ -199,10 +199,10 @@ Three layers:
 - **Python**: ruff for lint, pytest for tests. Run `ruff check` + `pytest` before committing.
 - **Vue**: prefer single-file components. **Mercury (the legacy-gui look: cream, sharp corners, oxblood) is already gone** — `styles.css` was rebuilt from `preview/full-app-preview.html` (warm paper, white cards, green accent, rounded). The Phase 4 design pass decides whether that working system becomes the final multi-use identity or gets evolved (see `project_final_architecture`). No CSS framework — `styles.css` carries the canonical design tokens.
 - **Rust** (Tauri shell): keep minimal. If you find yourself writing business logic in Rust, move it to Python.
-- **No hardcoded operator-tunable values** — every knob lives in `settings.json` + reachable via `PATCH /v1/settings`.
+- **No hardcoded operator-tunable values** — every knob lives in settings (SQLite, via `SettingsStore`) + reachable via `PATCH /v1/settings`.
 - **All commits**: ruff + pytest pass.
 - **Cross-language API stability**: Pydantic models in `server/justvoice/models.py` are the source of truth. The Vue client uses fetch directly against the OpenAPI shape. The CONTRACT.md endpoint list is the JustWrite-facing surface.
-- **Storage**: SQLite (via SQLAlchemy) is the primary persistence layer for everything except user-editable preferences. `settings.json` is the ONLY remaining atomic-JSON store. The migration from atomic JSON to SQLite happens in Phase 1.5.
+- **Storage**: SQLite (via SQLAlchemy) is the persistence layer for everything. `settings.json` was folded into the `settings` table and renderer UI prefs into `prefs` (the 2026-06-19 storage rewrite — `SettingsStore` imports any legacy `settings.json` once); there is no atomic-JSON or renderer-side store left.
 - **Licensing**: every file gets an SPDX-License-Identifier header. Files lifted from an upstream MIT codebase get a full attribution block referencing `voicebox-pin.txt`. See `project_licensing_attribution` memory for templates and CI guards.
 
 ## How to run

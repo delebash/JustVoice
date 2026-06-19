@@ -1,24 +1,32 @@
-"""Settings storage — single JSON file with atomic write + patch.
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Settings storage — the typed operator/server config, in SQLite.
 
-Same on-disk layout as the Rust core's SettingsStore — settings.json
-lives at ``$DATA_DIR/settings.json``. Existing JustVoice data dirs
-transfer with no migration.
+Phase 1.5: folded off the legacy atomic `settings.json` into a singleton row of
+the `settings` table — SQLite is now the one backend. The typed `Settings` model,
+the GET/PUT/PATCH `/v1/settings` API, the deep-merge, and the restart-required
+logic are unchanged; only persistence moved. On first load an existing
+`settings.json` is imported once and then removed, so existing installs (and
+restored pre-fold backups) don't lose config.
 
-Corrupt files fall back to defaults with a logger warning; the
-server keeps running.
+Corrupt rows/files fall back to defaults with a logger warning; the server
+keeps running.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 from threading import Lock
 
+from ..database import session as _db
+from ..database.models import SettingsRow
 from ..models import Settings, SettingsPatch
 from ..paths import settings_path
-from .atomic import atomic_write_json
 
 log = logging.getLogger(__name__)
+
+_ROW_ID = "singleton"
 
 
 def _deep_merge(base: dict, update: dict) -> None:
@@ -32,38 +40,85 @@ def _deep_merge(base: dict, update: dict) -> None:
 
 
 class SettingsStore:
-    """Thread-safe in-memory + disk-backed settings store."""
+    """Thread-safe in-memory + SQLite-backed settings store."""
 
     def __init__(self, data_dir: Path):
-        self._path = settings_path(data_dir)
+        # Legacy atomic-JSON path — read once to seed the row, then retired.
+        self._legacy_path = settings_path(data_dir)
         self._lock = Lock()
         self._current = self._load()
 
-    def _load(self) -> Settings:
-        if not self._path.exists():
-            seed = Settings()
-            atomic_write_json(self._path, seed.model_dump())
-            return seed
-        try:
-            text = self._path.read_text(encoding="utf-8")
-            import json
+    # ── SQLite plumbing ──────────────────────────────────────────────
+    def _session(self):
+        if _db.SessionLocal is None:
+            raise RuntimeError("Database not initialized — call init_db() during boot")
+        return _db.SessionLocal()
 
-            return Settings.model_validate(json.loads(text))
-        except Exception as e:
-            log.warning(
-                "settings.json failed to parse (path=%s, error=%s); using defaults",
-                self._path,
-                e,
-            )
+    def _read_row(self, db) -> Settings | None:
+        row = db.get(SettingsRow, _ROW_ID)
+        if row is None:
+            return None
+        try:
+            return Settings.model_validate(json.loads(row.data))
+        except Exception as e:  # noqa: BLE001 — corrupt row must not kill boot
+            log.warning("settings row failed to parse (error=%s); using defaults", e)
             return Settings()
 
+    def _write_row(self, db, settings: Settings) -> None:
+        payload = json.dumps(settings.model_dump())
+        row = db.get(SettingsRow, _ROW_ID)
+        if row is None:
+            db.add(SettingsRow(id=_ROW_ID, data=payload))
+        else:
+            row.data = payload
+        db.commit()
+
+    def _load(self) -> Settings:
+        db = self._session()
+        try:
+            current = self._read_row(db)
+            if current is not None:
+                return current
+            # No row yet — seed once from a legacy settings.json (existing
+            # install or a restored pre-fold backup) or defaults, persist it,
+            # then retire the file so the DB is the sole source.
+            seed = self._load_legacy() or Settings()
+            self._write_row(db, seed)
+        finally:
+            db.close()
+        self._retire_legacy()
+        return seed
+
+    def _load_legacy(self) -> Settings | None:
+        if not self._legacy_path.exists():
+            return None
+        try:
+            data = json.loads(self._legacy_path.read_text(encoding="utf-8"))
+            log.info("Migrating settings.json → SQLite (path=%s)", self._legacy_path)
+            return Settings.model_validate(data)
+        except Exception as e:  # noqa: BLE001
+            log.warning("settings.json failed to parse (error=%s); using defaults", e)
+            return None
+
+    def _retire_legacy(self) -> None:
+        try:
+            if self._legacy_path.exists():
+                self._legacy_path.unlink()
+        except OSError as e:
+            log.warning("couldn't remove migrated settings.json: %s", e)
+
+    # ── Public API (unchanged shape) ─────────────────────────────────
     def get(self) -> Settings:
         with self._lock:
             return self._current.model_copy(deep=True)
 
     def set(self, new: Settings) -> Settings:
         with self._lock:
-            atomic_write_json(self._path, new.model_dump())
+            db = self._session()
+            try:
+                self._write_row(db, new)
+            finally:
+                db.close()
             self._current = new
             return self._current.model_copy(deep=True)
 
@@ -82,7 +137,11 @@ class SettingsStore:
             update = patch.model_dump(exclude_unset=True, exclude_none=True)
             _deep_merge(base, update)
             new = Settings.model_validate(base)
-            atomic_write_json(self._path, new.model_dump())
+            db = self._session()
+            try:
+                self._write_row(db, new)
+            finally:
+                db.close()
             restart_required = self._restart_required(self._current, new)
             self._current = new
             return self._current.model_copy(deep=True), restart_required
