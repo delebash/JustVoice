@@ -117,40 +117,54 @@ Return JSON: [{ "line", "speaker", "confidence" }].</textarea>
  <div class="applybar"><div class="w">Selected: <b>Built-in runner ▸ qwen3-4b</b> — free, 12/12, your edited prompt + temp 0.2.</div><span style="flex:1"></span><button class="btn sm">Save as named preset</button><button class="btn primary">Apply to route → default for “Speaker attribution”</button></div>
  <p class="note">“Apply” writes a production config (model + settings + prompts) — the route's default; shows a <span class="mono">CONFIG</span> tag on Features. LLM action: settings = sampling, compare = text output.</p>`;}
 
-// ── TTS action lab (same framework; settings = engine knobs, compare = audio) ──
+// ── TTS action lab (same framework; per-voice settings adapt to the engine; + render/batch layer) ──
+// Per-voice settings branch by engine paradigm (Alexandria reference): Chatterbox = numeric
+// knobs; Qwen3-TTS = instruct/style text (no knobs); Kokoro = preset voice + speed only.
+function ttsVoiceSettings(eng){
+ const head='<div class="lab-h" style="display:flex;align-items:center;justify-content:space-between">Per-voice settings <button class="btn sm" style="padding:2px 8px">↺ Reset to defaults</button></div>';
+ if(eng==='qwen3') return head+'<div class="grphead">Qwen3-TTS · instruct-driven</div>'+
+   '<label class="t">Character style (instruct)</label><textarea>Warm, calm narrator; measured pace; subtle gravitas; never theatrical.</textarea>'+
+   '<div class="muted" style="font-size:10.5px">No numeric knobs — Qwen3-TTS is steered by this style instruct, prepended to every line.</div>'+
+   '<div class="settings" style="margin-top:8px"><div class="set"><label>Speed</label><div class="rng"><input type="range" min="0.5" max="1.5" step="0.05" value="1.0"><span class="v">1.0×</span></div></div><div class="set"><label>Seed</label><input type="number" placeholder="random"></div></div>';
+ if(eng==='kokoro') return head+'<div class="grphead">Kokoro · preset voices</div>'+
+   '<div class="settings"><div class="set"><label>Speed</label><div class="rng"><input type="range" min="0.5" max="1.5" step="0.05" value="1.0"><span class="v">1.0×</span></div></div></div>'+
+   '<div class="muted" style="font-size:10.5px">Fixed preset voices — only speed is adjustable.</div>';
+ return head+'<div class="grphead">Chatterbox · knob-driven</div>'+
+   '<div class="settings"><div class="set"><label>Exaggeration</label><div class="rng"><input type="range" min="0" max="1" step="0.05" value="0.5"><span class="v">0.50</span></div></div><div class="set"><label>CFG weight</label><div class="rng"><input type="range" min="0" max="1" step="0.05" value="0.5"><span class="v">0.50</span></div></div><div class="set"><label>Temperature</label><div class="rng"><input type="range" min="0" max="1.5" step="0.05" value="0.8"><span class="v">0.80</span></div></div><div class="set"><label>Speed</label><div class="rng"><input type="range" min="0.5" max="1.5" step="0.05" value="1.0"><span class="v">1.0×</span></div></div><div class="set"><label>Repetition penalty</label><input type="number" value="1.2" step="0.05"></div><div class="set"><label>Seed</label><input type="number" placeholder="random"></div></div>';
+}
 function ttsLab(){return `<div class="lab">
  <div class="panel"><h3>Config</h3>
    <div class="lab-h">Sample text</div><textarea>The eastern pass was wrong, and she knew it the moment her finger traced the ridge — every line drawn from a memory she could not have had.</textarea>
-   <div class="lab-h">Voice</div>
-   <div class="sample">🎙 <select style="flex:1"><option selected>Chatterbox ▸ Elen (cloned)</option><option>Kokoro ▸ af_bella</option><option>Dia ▸ Narrator-2</option></select></div>
-   <div class="lab-h" style="display:flex;align-items:center;justify-content:space-between">Engine settings sent to the model <button class="btn sm" style="padding:2px 8px">↺ Reset to defaults</button></div>
-   <div class="settings">
-     <div class="set"><label>Exaggeration</label><div class="rng"><input type="range" min="0" max="1" step="0.05" value="0.5"><span class="v">0.50</span></div></div>
-     <div class="set"><label>CFG weight</label><div class="rng"><input type="range" min="0" max="1" step="0.05" value="0.5"><span class="v">0.50</span></div></div>
-     <div class="set"><label>Temperature</label><div class="rng"><input type="range" min="0" max="1.5" step="0.05" value="0.8"><span class="v">0.80</span></div></div>
-     <div class="set"><label>Speed</label><div class="rng"><input type="range" min="0.5" max="1.5" step="0.05" value="1.0"><span class="v">1.0×</span></div></div>
-     <div class="set"><label>Repetition penalty</label><input type="number" value="1.2" step="0.05"></div>
-     <div class="set"><label>Seed</label><input type="number" placeholder="random"></div>
-   </div>
-   <p class="note" style="margin-top:14px">Engine knobs vary by engine — Chatterbox shows exaggeration / cfg-weight; Kokoro shows speed only; an engine with a <i>style prompt</i> (e.g. Qwen3-TTS) shows a prompt box here instead. The Lab reads them from the engine's capability surface.</p>
+   <div class="lab-h">Voice / engine</div>
+   <div class="sample">🎙 <select id="ttsvoice" style="flex:1" onchange="ttsVoiceChange()"><option value="chatterbox" selected>Chatterbox ▸ Elen (cloned) — knob-driven</option><option value="qwen3">Qwen3-TTS ▸ Narrator — instruct-driven</option><option value="kokoro">Kokoro ▸ af_bella — preset voice</option></select></div>
+   <div id="voicesettings"></div>
+   <details class="adv"><summary>Render &amp; batch ▾</summary>
+     <div class="settings" style="margin-top:6px"><div class="set"><label>Device</label><input type="text" value="auto"></div><div class="set"><label>Parallel workers</label><input type="number" value="2"></div><div class="set"><label>Compile codec</label><span class="toggle" style="background:var(--line-strong)"><i style="left:2px"></i></span></div><div class="set"><label>Sub-batching</label><span class="toggle"><i></i></span></div><div class="set"><label>Min sub-batch</label><input type="number" value="4"></div><div class="set"><label>Length ratio</label><input type="number" value="5"></div><div class="set"><label>Max items/batch</label><input type="number" value="0"></div><div class="set"><label>Batch seed</label><input type="number" placeholder="-1 random"></div></div>
+     <div class="muted" style="font-size:10.5px;margin-top:4px">Max items/batch <b>0 = auto from VRAM</b>. Render-pipeline settings (how the job batches), separate from the per-voice settings above.</div></details>
+   <details class="adv"><summary>Merge timing ▾</summary>
+     <div class="settings" style="margin-top:6px"><div class="set"><label>Speaker-change pause (ms)</label><input type="number" value="500"></div><div class="set"><label>Same-speaker pause (ms)</label><input type="number" value="250"></div></div>
+     <div class="muted" style="font-size:10.5px;margin-top:4px">Silence inserted when stitching lines on merge.</div></details>
+   <p class="note" style="margin-top:12px">Two layers: <b>per-voice</b> (adapts to the engine — Chatterbox knobs vs Qwen3-TTS style instruct vs Kokoro speed-only) and <b>render/batch + merge</b> (collapsibles). Read from the engine's capability surface (Alexandria-style).</p>
  </div>
  <div><div class="cmp-head"><h3 style="font-family:var(--font-serif);font-size:15px;margin:0">Compare candidates</h3><span class="muted" style="font-size:12px">same text · different voice / settings</span><span class="run"><button class="btn primary sm">▶ Render all</button></span></div>
    <div class="cols">
      <div class="col win"><div class="ch"><input type="radio" name="w" checked><select><option selected>Chatterbox ▸ Elen · exaggeration 0.5</option></select><span class="tagm free">LOCAL</span></div>
        <div class="out"><div class="player"><button class="play">▶</button><div class="wave">${bars(7)}</div><span class="dur">0:09</span></div><div class="kv">exaggeration <b>0.50</b> · cfg <b>0.50</b> · temp <b>0.80</b> · speed <b>1.0×</b></div></div>
        <div class="cf"><span class="m">warm, even — matches the narration baseline</span><span style="margin-left:auto" class="m">3.1 s render</span></div></div>
-     <div class="col"><div class="ch"><input type="radio" name="w"><select><option selected>Chatterbox ▸ Elen · exaggeration 0.8</option></select><span class="tagm free">LOCAL</span></div>
-       <div class="out"><div class="player"><button class="play">▶</button><div class="wave">${bars(31)}</div><span class="dur">0:10</span></div><div class="kv">exaggeration <b>0.80</b> · cfg <b>0.40</b> · temp <b>0.90</b> · speed <b>1.0×</b></div></div>
-       <div class="cf"><span class="m">more dramatic — good for dialogue, heavy for narration</span><span style="margin-left:auto" class="m">3.0 s render</span></div></div>
+     <div class="col"><div class="ch"><input type="radio" name="w"><select><option selected>Qwen3-TTS ▸ Narrator · "warm, calm"</option></select><span class="tagm free">LOCAL</span></div>
+       <div class="out"><div class="player"><button class="play">▶</button><div class="wave">${bars(31)}</div><span class="dur">0:10</span></div><div class="kv">instruct: <b>warm, calm narrator</b> · speed <b>1.0×</b></div></div>
+       <div class="cf"><span class="m">smoother prosody — instruct-steered, no knobs</span><span style="margin-left:auto" class="m">3.4 s render</span></div></div>
    </div>
    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:14px"><div class="addcol">+ Add a voice / settings column</div><div></div></div>
  </div></div>
  <div class="applybar"><div class="w">Selected: <b>Chatterbox ▸ Elen · exaggeration 0.5</b> — the calmer take.</div><span style="flex:1"></span><button class="btn sm">Save as named preset</button><button class="btn primary">Apply to route → default for “Narration render”</button></div>
- <p class="note">Identical framework, identical Apply — only the settings schema (engine knobs vs LLM sampling) and the rendered output (audio vs text) differ. TTS is JustVoice-only; the Lab shell/compare/Apply are the shared code.</p>`;}
+ <p class="note">Identical framework, identical Apply — only the settings schema (per-engine knobs/instruct + render-batch vs LLM sampling) and the rendered output (audio vs text) differ. TTS is JustVoice-only; the Lab shell/compare/Apply are shared code.</p>`;}
 
+function wireRng(){document.querySelectorAll('.set .rng input').forEach(r=>{const v=r.parentElement.querySelector('.v');if(!v)return;const u=v.textContent.includes('×')?'×':'';r.oninput=()=>v.textContent=parseFloat(r.value).toFixed(u?1:2)+u;});}
+function ttsVoiceChange(){const e=document.getElementById('ttsvoice');const eng=e?e.value:'chatterbox';document.getElementById('voicesettings').innerHTML=ttsVoiceSettings(eng);wireRng();}
 const ACT={attribution:{type:'llm',f:llmLab},entities:{type:'llm',f:llmLab},rewrite:{type:'llm',f:llmLab},narration:{type:'tts',f:ttsLab},dialogue:{type:'tts',f:ttsLab}};
 function render(a){const A=ACT[a]||ACT.attribution;document.getElementById('asel').value=a;document.getElementById('labroot').innerHTML=A.f();
  document.getElementById('typebadge').innerHTML=A.type==='tts'?'<span class="ttsbadge">TTS ACTION</span>':'<span class="llmbadge">LLM ACTION</span>';
- document.querySelectorAll('.set .rng input').forEach(r=>{const v=r.parentElement.querySelector('.v');const u=v.textContent.includes('×')?'×':'';r.oninput=()=>v.textContent=parseFloat(r.value).toFixed(u?1:2)+u;});}
+ if(A.type==='tts')ttsVoiceChange(); wireRng();}
 render('attribution');
 </script></body></html>
