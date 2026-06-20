@@ -170,6 +170,30 @@ Operating tempo, mandatory:
 
 **Failure modes from prior sessions** (signals you missed the relevant memory): proposing Rust anywhere, Docker, asking permission, using native dialogs, hallucinating file paths, re-investigating decisions already made, building a UI element without naming its precedent (RULE #1), batching/skimming through a punch list instead of single-item full reads (RULE #2), **masking a performance symptom with a cache/workaround before measuring the actual cost** (2026-06-13: shipped an SWR Pinia-cache layer for a "1s loading flash" without first checking that the API server was sub-10ms; the real causes were no `<KeepAlive>`, a 5s `/v1/health` poll, and a 10Hz reactive tick — all renderer-side, all addressable directly). If you catch yourself about to do any of these, that's the cue to load the matching memory file.
 
+## Shared app standard + JustVoice specifics
+
+JustVoice follows the shared **Vue 3 + Tauri 2 app standard** in the global
+`~/.claude/CLAUDE.md` (folder layout · `tokens.css`+`styles.css` · vue-router ·
+origin-aware `services/serverApi.js` + `VITE_SERVER_URL` · per-domain Pinia
+stores · `services/appearance.js` · Biome · server-side seed · connection-gate
+boot). Don't restate that here — this section is JustVoice-specific only. Sibling
+app: JustWrite. When a surface exists in both, they must match unless a
+documented reason below says otherwise.
+
+**JustVoice's justified differences:** larger renderer/server + native `lib.rs`
+modules (engines, audio, dictation); dev port **1430** (HMR 1431); a few stores
+are domain-rich (engines, takes, generation) — that's scope, not drift.
+
+**Deviations still to migrate to the standard** (ordered plan + full audit:
+`docs/plans/2026-06-20-cross-app-convergence.md`):
+- adopt **vue-router** (drop the hand-rolled `hashchange` + `<component :is>`;
+  lazy-load views);
+- rename `components/jv/` → `components/ui/`;
+- split `styles.css` into `tokens.css` + `styles.css`;
+- move the fetch wrapper out of the `api` store into `services/serverApi.js`;
+- extract theming from the `ui` store into `services/appearance.js`;
+- add `biome.json`.
+
 ## Architecture
 
 Three layers:
