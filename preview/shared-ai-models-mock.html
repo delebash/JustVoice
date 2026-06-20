@@ -123,11 +123,11 @@ table.routes{width:100%;border-collapse:collapse;margin-top:12px}.routes th{text
   <!-- BUILT-IN RUNNER — the one Download&Run provider; body = GGUF catalog (no URL/key form) -->
   <div class="prov">
     <div class="phead"><span class="dot"></span>
-      <div class="pmid"><span class="pn">Built-in runner</span> <span class="pid">local-llamacpp</span> <span class="caps"><span class="cap llm">LLM</span></span>
-        <div class="psum muted">built in · downloads &amp; runs GGUF on your hardware · <b>qwen3-4b running</b> · 1 of 8 downloaded</div></div>
+      <div class="pmid"><span class="pn">Local engine</span> <span class="pid">built-in · llama.cpp</span> <span class="caps"><span class="cap llm">LLM</span></span>
+        <div class="psum muted">built in · downloads &amp; runs GGUF models on your hardware · <b>qwen3-4b running</b> · 1 of 8 downloaded</div></div>
       <span class="pright"><button class="btn sm" onclick="tb('r')">Manage models</button></span></div>
     <div class="pbody" id="b-r" style="display:none"><div class="cat">
-      <div class="kind-label">⬇ Download &amp; run — the built-in runner is the only provider you download models for; Fit uses your hardware (top)</div>
+      <div class="kind-label">⬇ Download &amp; run — the Local engine is the only provider you download models for; Fit uses your hardware (top)</div>
       <div class="mrow"><span class="fit ok">Fits <span class="s">92</span></span><span class="mn">Qwen3 4B Instruct</span><span class="mm">2.4 GB · Q4_K_M</span><span class="md">Recommended default for this card.</span><span class="pill run">RUNNING</span><button class="btn sm">Stop</button></div>
       <div class="mrow"><span class="fit ok">Fits <span class="s">88</span></span><span class="mn">Qwen3 14B</span><span class="mm">8.2 GB · Q4_K_M</span><span class="md">Higher accuracy · ~9.4 GB VRAM.</span><button class="btn primary sm">⬇ Download &amp; run</button></div>
       <div class="mrow"><span class="fit tight">Tight <span class="s">61</span></span><span class="mn">Gemma 3 27B</span><span class="mm">16 GB · Q4_K_M</span><span class="md">Runs with CPU spillover — slower.</span><button class="btn primary sm">⬇ Download &amp; run</button></div>
@@ -137,7 +137,7 @@ table.routes{width:100%;border-collapse:collapse;margin-top:12px}.routes th{text
 
   <!-- OLLAMA — uses the SAME form on Edit; the Combobox fetches installed models -->
   <div class="prov">
-    <div class="phead"><span class="dot"></span>
+    <div class="phead" id="head-o"><span class="dot"></span>
       <div class="pmid"><span class="pn">Ollama (this PC)</span> <span class="pid">ollama-local</span> <span class="caps"><span class="cap llm">LLM</span><span class="cap emb">EMBED</span></span>
         <div class="psum muted">localhost:11434 · chat qwen3:14b · embed nomic-embed-text · no key — free</div></div>
       <span class="pright"><button class="btn sm">Test</button><button class="btn sm" onclick="edit('o')">Edit</button></span></div>
@@ -147,21 +147,21 @@ table.routes{width:100%;border-collapse:collapse;margin-top:12px}.routes th{text
   <div class="psplit"><span class="paid">CLOUD · METERED</span> your account — API key + URL · billed by the provider</div>
 
   <div class="prov">
-    <div class="phead"><span class="dot"></span>
+    <div class="phead" id="head-c"><span class="dot"></span>
       <div class="pmid"><span class="pn">OpenAI</span> <span class="pid">openai</span> <span class="caps"><span class="cap llm">LLM</span><span class="cap emb">EMBED</span></span>
         <div class="psum muted">api.openai.com/v1 · chat gpt-4o-mini · embed text-embedding-3-small · key set</div></div>
       <span class="pright"><button class="btn sm">Test</button><button class="btn sm" onclick="edit('c')">Edit</button></span></div>
     <div class="pbody" id="b-c" style="display:none"></div>
   </div>
   <div class="prov">
-    <div class="phead"><span class="dot off"></span>
+    <div class="phead" id="head-a"><span class="dot off"></span>
       <div class="pmid"><span class="pn">Anthropic</span> <span class="pid">anthropic</span> <span class="caps"><span class="cap llm">LLM</span></span>
         <div class="psum muted">api.anthropic.com · chat claude-haiku-4-5 · no key</div></div>
       <span class="pright"><button class="btn sm">Test</button><button class="btn sm" onclick="edit('a')">Edit</button></span></div>
     <div class="pbody" id="b-a" style="display:none"></div>
   </div>
 
-  <p class="note">Add &amp; Edit use the <b>same</b> inline form (JustWrite's <span class="mono">SettingsProviderForm</span>) with one <b>Combobox</b> model picker (free-text + Fetch) — consistent everywhere. The built-in runner is the only Download&amp;Run provider; everyone else fetches a model list. GPU info is a top strip.</p>
+  <p class="note">Add &amp; Edit use the <b>same</b> inline form — it <b>replaces</b> the read row (one Test, in the form; no duplicate). One <b>Combobox</b> model picker (free-text + Fetch) everywhere. The <b>Local engine</b> is the only Download&amp;Run provider; everyone else fetches a model list. GPU info is a top strip.</p>
 </div>
 
 <!-- ══ FEATURES ══ -->
@@ -228,9 +228,11 @@ function preset(k,p){const map={Ollama:["http://localhost:11434","ollama",true],
  const[url,fmt,local]=map[p]||map.Custom;const slot=document.getElementById('addslot');slot.innerHTML='<div class="prov"><div class="phead" style="padding:10px 16px"><span class="dot off"></span><div class="pmid"><span class="pn" style="color:var(--ink-3)">New provider · '+p+'</span></div></div>'+formHTML('new',{id:"",name:p==='Custom'?"":p,url,key:"",fmt,chat:"",emb:"",local,models:[]})+'</div>';}
 
 function tb(k){const b=document.getElementById('b-'+k);b.style.display=b.style.display==='none'?'':'none';}
-function edit(k){const b=document.getElementById('b-'+k);if(b.innerHTML.trim()){b.innerHTML='';b.style.display='none';return;}b.innerHTML=formHTML(k,PROV[k]);b.style.display='';}
+function edit(k){const b=document.getElementById('b-'+k),h=document.getElementById('head-'+k);
+ if(b.innerHTML.trim()){b.innerHTML='';b.style.display='none';h.style.display='';return;}
+ b.innerHTML=formHTML(k,PROV[k]);b.style.display='';h.style.display='none';} // form REPLACES the read row → only the form's Test connection shows (no duplicate)
 function addProv(){const s=document.getElementById('addslot');if(s.innerHTML.trim()){s.innerHTML='';return;}s.innerHTML='<div class="prov"><div class="phead" style="padding:10px 16px"><span class="dot off"></span><div class="pmid"><span class="pn" style="color:var(--ink-3)">New provider</span></div></div>'+formHTML('new',PROV.new)+'</div>';s.scrollIntoView({behavior:'smooth'});}
-function closeForm(k){if(k==='new'){document.getElementById('addslot').innerHTML='';}else{const b=document.getElementById('b-'+k);b.innerHTML='';b.style.display='none';}}
+function closeForm(k){if(k==='new'){document.getElementById('addslot').innerHTML='';}else{const b=document.getElementById('b-'+k);b.innerHTML='';b.style.display='none';document.getElementById('head-'+k).style.display='';}}
 
 // features (unchanged)
 const CAT={jv:{brand:"JustVoice",busy:["Compose","· 1,733 calls"],rows:[
