@@ -12,8 +12,8 @@ import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { promptDialog } from "../services/dialog.js";
-import JvButton from "../components/jv/JvButton.vue";
-import JvToggle from "../components/jv/JvToggle.vue";
+import JvButton from "../components/ui/JvButton.vue";
+import JvToggle from "../components/ui/JvToggle.vue";
 import { useVoicesStore } from "../stores/voices.js";
 
 const api = useApi();

@@ -27,7 +27,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import JvButton from "./jv/JvButton.vue";
+import JvButton from "./ui/JvButton.vue";
 
 const emit = defineEmits(["close"]);
 

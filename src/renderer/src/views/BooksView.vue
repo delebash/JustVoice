@@ -12,8 +12,8 @@
 -->
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
-import JvButton from "../components/jv/JvButton.vue";
-import JvTag from "../components/jv/JvTag.vue";
+import JvButton from "../components/ui/JvButton.vue";
+import JvTag from "../components/ui/JvTag.vue";
 import EmptyState from "../components/EmptyState.vue";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import ImportModal from "./ImportModal.vue";

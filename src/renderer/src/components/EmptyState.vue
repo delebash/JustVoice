@@ -6,7 +6,7 @@
 -->
 <script setup>
 import Icon from "./Icon.vue";
-import JvButton from "./jv/JvButton.vue";
+import JvButton from "./ui/JvButton.vue";
 
 defineProps({
   icon:        { type: String, default: "Sparkle" },

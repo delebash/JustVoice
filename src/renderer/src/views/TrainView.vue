@@ -4,11 +4,11 @@ import { ref, onMounted, onActivated, onDeactivated, onUnmounted, computed } fro
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import JvButton from "../components/jv/JvButton.vue";
-import JvInput from "../components/jv/JvInput.vue";
-import JvSelect from "../components/jv/JvSelect.vue";
-import JvTag from "../components/jv/JvTag.vue";
-import JvField from "../components/jv/JvField.vue";
+import JvButton from "../components/ui/JvButton.vue";
+import JvInput from "../components/ui/JvInput.vue";
+import JvSelect from "../components/ui/JvSelect.vue";
+import JvTag from "../components/ui/JvTag.vue";
+import JvField from "../components/ui/JvField.vue";
 import { useEnginesStore } from "../stores/engines.js";
 import { useVoicesStore } from "../stores/voices.js";
 

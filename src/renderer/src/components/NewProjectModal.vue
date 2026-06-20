@@ -12,7 +12,7 @@
 //   import  — user chose to create from a file instead (caller opens ImportModal)
 
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import JvButton from "./jv/JvButton.vue";
+import JvButton from "./ui/JvButton.vue";
 
 const props = defineProps({
   // Preselect a kind (Home's Start-something pills hand this over).

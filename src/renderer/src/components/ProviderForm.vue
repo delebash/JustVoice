@@ -25,7 +25,7 @@
 import { computed, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import JvButton from "./jv/JvButton.vue";
+import JvButton from "./ui/JvButton.vue";
 
 const props = defineProps({
   // The provider being edited. For new providers, pass an empty shape.

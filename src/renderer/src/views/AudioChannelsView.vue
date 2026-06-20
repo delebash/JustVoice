@@ -11,11 +11,11 @@ import { onMounted, ref } from "vue";
 import { channelsService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import JvButton from "../components/jv/JvButton.vue";
-import JvInput from "../components/jv/JvInput.vue";
-import JvTextarea from "../components/jv/JvTextarea.vue";
-import JvCheckbox from "../components/jv/JvCheckbox.vue";
-import JvField from "../components/jv/JvField.vue";
+import JvButton from "../components/ui/JvButton.vue";
+import JvInput from "../components/ui/JvInput.vue";
+import JvTextarea from "../components/ui/JvTextarea.vue";
+import JvCheckbox from "../components/ui/JvCheckbox.vue";
+import JvField from "../components/ui/JvField.vue";
 
 const channels = ref([]);
 const editing = ref({ id: null, name: "", device_ids: [], is_default: false });

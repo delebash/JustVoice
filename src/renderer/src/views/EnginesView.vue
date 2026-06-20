@@ -27,8 +27,8 @@ import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
-import JvButton from "../components/jv/JvButton.vue";
-import JvTag from "../components/jv/JvTag.vue";
+import JvButton from "../components/ui/JvButton.vue";
+import JvTag from "../components/ui/JvTag.vue";
 import ProviderForm from "../components/ProviderForm.vue";
 import RecommendCard from "../components/RecommendCard.vue";
 

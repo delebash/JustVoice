@@ -14,7 +14,7 @@
 -->
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
-import JvButton from './jv/JvButton.vue';
+import JvButton from './ui/JvButton.vue';
 
 const props = defineProps({
   open: { type: Boolean, default: false },

@@ -25,8 +25,8 @@
 // links to docs/import-formats.md#<anchor>.
 
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import JvButton from "../components/jv/JvButton.vue";
-import JvSelect from "../components/jv/JvSelect.vue";
+import JvButton from "../components/ui/JvButton.vue";
+import JvSelect from "../components/ui/JvSelect.vue";
 import { projectsService } from "../services/projects.js";
 import { setImportDraft } from "../stores/importDraft.js";
 import { pushToast } from "../services/toastBridge.js";

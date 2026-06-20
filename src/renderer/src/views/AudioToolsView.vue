@@ -3,10 +3,10 @@
 import { ref, computed, onBeforeUnmount } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import JvButton from "../components/jv/JvButton.vue";
-import JvInput from "../components/jv/JvInput.vue";
-import JvSelect from "../components/jv/JvSelect.vue";
-import JvField from "../components/jv/JvField.vue";
+import JvButton from "../components/ui/JvButton.vue";
+import JvInput from "../components/ui/JvInput.vue";
+import JvSelect from "../components/ui/JvSelect.vue";
+import JvField from "../components/ui/JvField.vue";
 
 const api = useApi();
 

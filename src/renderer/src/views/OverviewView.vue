@@ -29,7 +29,7 @@ import { useLexiconsStore } from "../stores/lexicons.js";
 import { useEnginesStore } from "../stores/engines.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast } from "../services/toastBridge.js";
-import JvButton from "../components/jv/JvButton.vue";
+import JvButton from "../components/ui/JvButton.vue";
 import RecommendCard from "../components/RecommendCard.vue";
 
 const onboarding = useOnboarding();

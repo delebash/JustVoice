@@ -10,7 +10,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import JvButton from "./jv/JvButton.vue";
+import JvButton from "./ui/JvButton.vue";
 
 const props = defineProps({
   open: { type: Boolean, required: true },

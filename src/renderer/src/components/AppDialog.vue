@@ -18,10 +18,10 @@ import {
   DialogClose,
 } from "reka-ui";
 import Icon from "./Icon.vue";
-import JvButton from "./jv/JvButton.vue";
-import JvInput from "./jv/JvInput.vue";
-import JvSelect from "./jv/JvSelect.vue";
-import JvTextarea from "./jv/JvTextarea.vue";
+import JvButton from "./ui/JvButton.vue";
+import JvInput from "./ui/JvInput.vue";
+import JvSelect from "./ui/JvSelect.vue";
+import JvTextarea from "./ui/JvTextarea.vue";
 
 // Normalize the active dialog into a single shape the template reads.
 // Single-field prompts become a one-element `fields` list so the template

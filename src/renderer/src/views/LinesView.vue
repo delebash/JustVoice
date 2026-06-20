@@ -16,7 +16,7 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
-import JvButton from "../components/jv/JvButton.vue";
+import JvButton from "../components/ui/JvButton.vue";
 import ImportModal from "./ImportModal.vue";
 
 const api = useApi();

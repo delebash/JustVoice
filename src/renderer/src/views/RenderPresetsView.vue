@@ -20,8 +20,8 @@ import { computed, nextTick, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import JvButton from "../components/jv/JvButton.vue";
-import JvInput from "../components/jv/JvInput.vue";
+import JvButton from "../components/ui/JvButton.vue";
+import JvInput from "../components/ui/JvInput.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import { usePersonasStore } from "../stores/personas.js";
 

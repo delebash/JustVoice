@@ -15,7 +15,7 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
-import JvButton from "./jv/JvButton.vue";
+import JvButton from "./ui/JvButton.vue";
 
 const props = defineProps({
   project: { type: Object, required: true },

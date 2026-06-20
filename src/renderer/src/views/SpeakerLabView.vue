@@ -20,8 +20,8 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
 import { promptDialog, confirmDialog } from "../services/dialog.js";
 import { readPref, writePref } from "../services/prefs.js";
-import JvButton from "../components/jv/JvButton.vue";
-import JvToggle from "../components/jv/JvToggle.vue";
+import JvButton from "../components/ui/JvButton.vue";
+import JvToggle from "../components/ui/JvToggle.vue";
 import { useProjectsStore } from "../stores/projects.js";
 
 const api = useApi();

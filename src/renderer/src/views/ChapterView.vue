@@ -13,11 +13,11 @@ import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
-import JvButton from "../components/jv/JvButton.vue";
+import JvButton from "../components/ui/JvButton.vue";
 import LineageViewer from "../components/LineageViewer.vue";
 import EmptyState from "../components/EmptyState.vue";
-import JvSelect from "../components/jv/JvSelect.vue";
-import JvTag from "../components/jv/JvTag.vue";
+import JvSelect from "../components/ui/JvSelect.vue";
+import JvTag from "../components/ui/JvTag.vue";
 
 const api = useApi();
 const activeProject = useActiveProject();

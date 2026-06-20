@@ -9,10 +9,10 @@ import { onMounted, ref } from "vue";
 import { webhooksService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import JvButton from "../components/jv/JvButton.vue";
-import JvInput from "../components/jv/JvInput.vue";
-import JvField from "../components/jv/JvField.vue";
-import JvCheckbox from "../components/jv/JvCheckbox.vue";
+import JvButton from "../components/ui/JvButton.vue";
+import JvInput from "../components/ui/JvInput.vue";
+import JvField from "../components/ui/JvField.vue";
+import JvCheckbox from "../components/ui/JvCheckbox.vue";
 
 const EVENT_OPTIONS = [
   "render.completed",

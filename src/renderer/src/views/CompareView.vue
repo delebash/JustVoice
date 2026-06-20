@@ -11,9 +11,9 @@
 import { computed, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import JvButton from "../components/jv/JvButton.vue";
-import JvInput from "../components/jv/JvInput.vue";
-import JvTag from "../components/jv/JvTag.vue";
+import JvButton from "../components/ui/JvButton.vue";
+import JvInput from "../components/ui/JvInput.vue";
+import JvTag from "../components/ui/JvTag.vue";
 
 const api = useApi();
 

@@ -12,7 +12,7 @@
 import { ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
-import JvButton from "./jv/JvButton.vue";
+import JvButton from "./ui/JvButton.vue";
 
 const props = defineProps({
   takeId: { type: String, default: null },
