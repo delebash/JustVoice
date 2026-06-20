@@ -160,7 +160,7 @@ table.routes{width:100%;border-collapse:collapse;margin-top:12px}.routes th{text
     </div></div>
   <div class="card"><div class="cardhead"><h3>Feature routing</h3><span class="right xlink">expand a row to tune prompts &amp; settings ▾</span></div>
     <p class="sub">Each feature inherits a role or overrides to a <b>provider ▸ model</b>. <b>✎ tune</b> edits prompts + settings inline; the Lab compares models.</p>
-    <table class="routes"><thead><tr><th style="width:32%">Feature</th><th style="width:28%">Uses</th><th>Resolves to</th><th></th></tr></thead><tbody id="routebody"></tbody></table>
+    <table class="routes"><thead><tr><th style="width:30%">Feature</th><th style="width:25%">Provider</th><th style="width:27%">Model</th><th></th></tr></thead><tbody id="routebody"></tbody></table>
   </div>
 </div>
 
@@ -251,7 +251,7 @@ function closeForm(k){if(k==='new'){document.getElementById('addslot').innerHTML
 // features
 const CAT={jv:{brand:"JustVoice",busy:["Compose","· 1,733 calls"],rows:[
  ["Speaker attribution","Studio → Script: who says each line","Inherit · Accuracy","qwen3:14b · Ollama","14b-twopass-v3"],
- ["Smart-assign voices","Studio → Cast: match characters to voices","Inherit · Accuracy","qwen3:14b · Ollama",""],
+ ["Smart-assign voices","Studio → Cast: match characters to voices","OpenAI ▸ gpt-4o","gpt-4o · OpenAI",""],
  ["Render-preset suggest","Generate: pick a mastering preset","Inherit · Accuracy","qwen3:14b · Ollama",""],
  ["Persona rewrite","Generate: restate a line in the persona's voice","Inherit · Quick","Local engine · qwen3-4b",""],
  ["Compose","Generate: a fresh in-character line","Inherit · Quick","Local engine · qwen3-4b",""],
@@ -269,9 +269,17 @@ const CAT={jv:{brand:"JustVoice",busy:["Compose","· 1,733 calls"],rows:[
  ["Resume briefing","Home: \"Previously on your novel\"","Inherit · Quick","Local engine · qwen3-4b",""]]}};
 const EX={"Speaker attribution":["You attribute every line of dialogue to the character who speaks it. Use only the provided cast; never invent speakers.","Chapter:\n{{chapter_text}}\n\nReturn JSON: [{line, speaker, confidence}]."],
  "Critique":["You are a sharp, honest fiction editor giving line-level notes on one chapter.","{{chapter_text}}\n\nReturn JSON: {notes:[{type, quote, note}]}."]};
-function frow(r,i){const[n,d,u,res,cfg]=r;const opts=['Inherit · Quick','Inherit · Accuracy','Local engine ▸ qwen3-4b','Ollama ▸ qwen3:14b','Anthropic ▸ claude-sonnet-4-6','OpenAI ▸ gpt-4o'].map(o=>`<option${o===u?' selected':''}>${o}</option>`).join('');
+function frow(r,i){const[n,d,u,res,cfg]=r;
+ const inherit=u.startsWith('Inherit');
+ const prov=inherit?u:u.split(' ▸ ')[0];
+ const mdl=inherit?'':(u.split(' ▸ ')[1]||'');
+ const provOpts=['Inherit · Quick','Inherit · Accuracy','Local engine','Ollama','OpenAI','Anthropic'].map(o=>`<option${o===prov?' selected':''}>${o}</option>`).join('');
+ // Model = a per-feature OVERRIDE; defaults to "(provider default)" — doesn't change the saved connection default. Inherit rows follow the role.
+ const modelCell=inherit
+   ? `<select disabled><option>follows the role · ${res}</option></select>`
+   : `<select>${['(provider default)',mdl,'gpt-4o-mini','gpt-4o','claude-sonnet-4-6','qwen3:14b'].filter((v,ix,a)=>v&&a.indexOf(v)===ix).map(o=>`<option${o===mdl?' selected':''}>${o}</option>`).join('')}</select>`;
  const tag=cfg?`<span class="cfgtag">CONFIG: ${cfg}</span> `:'';const ex=EX[n]||["You are a helpful assistant for this feature.","{{input}}"];
- return `<tr><td><div class="fname">${n}</div><div class="fdesc">${d}</div></td><td><select>${opts}</select></td><td class="resolved">${res}</td><td>${tag}<span class="exp" onclick="tog(${i})">✎ tune</span></td></tr>
+ return `<tr><td><div class="fname">${n}</div><div class="fdesc">${d}</div></td><td><select>${provOpts}</select></td><td>${modelCell}</td><td>${tag}<span class="exp" onclick="tog(${i})">✎ tune</span></td></tr>
  <tr id="ed${i}" style="display:none"><td colspan="4"><div class="editor"><div class="grphead">Settings <span class="muted" style="text-transform:none;font-weight:400">— common here; full set + compare in the Lab</span></div>
    <div class="settings"><div class="set"><label>Temperature</label><input type="number" value="0.3" step="0.1"></div><div class="set"><label>Max tokens</label><input type="number" value="1024"></div><div class="set"><label>Reasoning</label><span class="toggle"><i></i></span></div></div>
    <label class="t">System prompt</label><textarea>${ex[0]}</textarea><label class="t">User prompt template</label><textarea>${ex[1]}</textarea>
