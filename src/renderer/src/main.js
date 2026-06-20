@@ -4,7 +4,7 @@ import { createPinia } from "pinia";
 import App from "./App.vue";
 import DictateWindow from "./components/DictateWindow.vue";
 import { tooltipDirective } from "./services/tooltip.js";
-import { bootPrefs } from "./services/prefs.js";
+import { bootPrefs, ensureActiveProjectDefault } from "./services/prefs.js";
 import { i18n } from "./i18n/index.js";
 import "./styles.css";
 
@@ -27,6 +27,10 @@ async function boot() {
   // Pull renderer prefs (appearance, hidden voices, …) off the server into a
   // reactive cache BEFORE mount so views read populated data synchronously.
   await bootPrefs();
+  // If no project is "open" yet, default the active slot to the most-recent so
+  // the kind-driven sidebar is consistent from the first paint (not just after
+  // you click into a project). Server-derived; no localStorage.
+  await ensureActiveProjectDefault();
 
   const app = createApp(App);
   app.use(createPinia());

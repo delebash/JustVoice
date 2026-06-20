@@ -65,6 +65,29 @@ export function writePref(key, value) {
   _timers.set(key, setTimeout(() => { _timers.delete(key); _patch({ [key]: value }); }, PATCH_DEBOUNCE_MS));
 }
 
+/** Boot-time default for the active-project slot: if no project is "open" yet
+ *  (no `activeProject` pref), point it at the most-recently-updated project so
+ *  the kind-driven sidebar reflects your work on launch — the same restore JW
+ *  does. Server-derived (GET /v1/projects), no localStorage. Awaited after
+ *  bootPrefs(), before mount. */
+export async function ensureActiveProjectDefault() {
+  if (readPref("activeProject")?.id) return; // a project is already the active slot
+  try {
+    const res = await fetch(base() + "/v1/projects", { headers: authHeaders() });
+    if (!res.ok) return;
+    const data = await res.json();
+    const list = (data.projects || []).slice()
+      .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
+    const p = list[0];
+    if (p) writePref("activeProject", {
+      id: p.id, name: p.name || p.id, projectType: p.project_type || "",
+      master: p.mastering_preset || "", openedAt: Date.now(),
+    });
+  } catch (err) {
+    console.error("ensureActiveProjectDefault failed:", err);
+  }
+}
+
 /** Flush pending debounced writes immediately (e.g. before unload). */
 export function flushPrefs() {
   const keys = [..._timers.keys()];
