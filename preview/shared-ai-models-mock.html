@@ -1,19 +1,23 @@
 <!DOCTYPE html>
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!--
-  Shared AI "Models" area — mock v3 (rev 2 after UX feedback).
-  Fixes from v2:
-   · Add/Edit REUSES JustWrite's SettingsProviderForm pattern verbatim — one
-     grid form, inline as the provider row body, SAME for add + edit; ONE
-     consistent Combobox (free-text + fetched list + Fetch) for model pick
-     (no select-here / text-input-there inconsistency). It WORKS (toggles).
-   · Removed the separate static "Add provider" card.
-   · GPU/hardware info moved to a top strip (general info, not under the runner).
-  Built-in runner stays the one Download&Run provider (its body = the GGUF
-  catalog with Fit); cloud/Ollama use the form (Combobox fetches /models or
-  /api/tags). Plan: docs/plans/2026-06-20-shared-ai-stack-plan.md
+  Shared AI "Models" area — mock v4 (rev 3 after UX feedback).
+  Fixes from v3:
+   · Rows are a normal grid — Edit + Delete only (Test moved into the form; no
+     duplicate). Built-in is pre-added so it has no Delete.
+   · The bundled llama.cpp ("Local engine") is treated EXACTLY like any other
+     local OpenAI provider (Ollama, LM Studio): no special "catalog" paradigm —
+     every local provider's Edit form has the SAME Models section (list + status
+     + Fit + load/download). The built-in is just pre-added.
+   · Add/Edit form gains a "Where it runs" Local/Online selector (drives the
+     group + whether a key is needed), and the API-format field is restored
+     (OpenAI-compatible / Ollama-native — the native format is what lets us send
+     think:true/false for Ollama reasoning models; verified still native-only).
+   · Tier removed from the form (auto-detected; tuned per action in the Lab —
+     near-moot for online models anyway).
+  Plan: docs/plans/2026-06-20-shared-ai-stack-plan.md
 -->
-<html lang="en"><head><meta charset="utf-8"><title>Shared AI · Models — mock v3</title>
+<html lang="en"><head><meta charset="utf-8"><title>Shared AI · Models — mock v4</title>
 <style>
 :root{--bg:#f6f5f1;--surface:#fff;--surface-2:#fbfaf7;--surface-3:#f3f1ec;--ink:#1a1a1a;--ink-2:#4a4a4a;--ink-3:#888;
 --line:#e3e1dc;--line-strong:#cfccc4;--accent:#3a7d63;--accent-ink:#2c6049;--accent-soft:#e8f0eb;--accent-line:#b8d2c3;
@@ -28,7 +32,6 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
 .shared{font-size:11px;color:var(--violet);background:var(--violet-soft);border:1px solid var(--violet-line);border-radius:999px;padding:3px 10px;font-weight:700}
 .apptog{margin-left:auto;display:flex;border:1px solid var(--line-strong);border-radius:999px;overflow:hidden}
 .apptog button{font:inherit;font-size:12px;font-weight:700;border:0;background:var(--surface);color:var(--ink-2);padding:6px 14px;cursor:pointer}.apptog button.on{background:var(--accent);color:#fff}
-/* top hardware strip — general info */
 .hwtop{display:flex;gap:26px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 18px;margin-top:12px;font-size:12.5px}
 .hwtop .k{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3)}
 .subnav{display:flex;gap:4px;margin-top:14px;border-bottom:1px solid var(--line)}
@@ -38,7 +41,7 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
 .sec-h h2{font-family:var(--font-serif);font-size:17px;margin:0;font-weight:600}.sec-h .count{font-size:12px;color:var(--ink-3)}.sec-h .right{margin-left:auto}
 .btn{font:inherit;font-size:12.5px;font-weight:600;border-radius:7px;padding:7px 14px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink-2)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn.primary:hover{background:var(--accent-ink)}
-.btn.ghost{background:transparent}.btn.sm{font-size:11.5px;padding:4px 10px}.btn:hover{border-color:var(--line-strong)}
+.btn.ghost{background:transparent}.btn.sm{font-size:11.5px;padding:4px 10px}.btn.danger{color:var(--red);border-color:#e3b6ac}.btn:hover{border-color:var(--line-strong)}
 .note{font-size:11.5px;color:var(--ink-3);margin-top:8px;font-style:italic}
 .psplit{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:16px 0 8px;display:flex;align-items:center;gap:8px}
 .psplit .free{color:var(--accent-ink);background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:999px;padding:1px 8px}
@@ -51,38 +54,32 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
 .cap.llm{border-color:var(--gold-line);background:var(--gold-soft);color:var(--gold)}.cap.emb{border-color:var(--blue-line);background:var(--blue-soft);color:var(--blue)}
 .pmid{flex:1;min-width:0}.psum{font-size:11.5px;color:var(--ink-2)}.pright{display:flex;gap:8px;flex:none}
 .pbody{border-top:1px solid var(--line);padding:0}
-/* runner download catalog */
-.cat{background:var(--surface-2);padding:12px 16px}
-.kind-label{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
-.mrow{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 12px;margin-top:6px}
-.mrow .mn{font-weight:600;min-width:150px}.mrow .mm{font-size:11px;color:var(--ink-3);min-width:130px}.mrow .md{font-size:11.5px;color:var(--ink-2);flex:1;min-width:0}
-.fit{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;border:1px solid;flex:none}.fit .s{font-family:var(--font-mono)}
+/* model list (same for every local provider) */
+.kind-label{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);margin:14px 0 6px}
+.mrow{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 11px;margin-top:6px}
+.mrow .mn{font-weight:600;min-width:160px}.mrow .mm{font-size:11px;color:var(--ink-3);min-width:90px}.mrow .right{margin-left:auto;display:flex;gap:6px;align-items:center}
+.fit{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;border:1px solid;flex:none}.fit .s{font-family:var(--font-mono)}
 .fit.ok{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-ink)}.fit.tight{background:var(--gold-soft);border-color:var(--gold-line);color:var(--gold)}.fit.no{background:#f7e7e4;border-color:#e3b6ac;color:var(--red)}
-.pill{font-size:10px;font-weight:700;border-radius:999px;padding:2px 9px}.pill.run{background:var(--accent);color:#fff}
-/* PROVIDER FORM — reused from JW SettingsProviderForm (grid 120|1fr, accent card) -->*/
+.pill{font-size:10px;font-weight:700;border-radius:999px;padding:2px 9px}.pill.run{background:var(--accent);color:#fff}.pill.disk{background:var(--surface-3);color:var(--ink-2);border:1px solid var(--line)}
+.inl{display:flex;gap:8px;align-items:center;margin-top:8px}.inl input{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:7px 10px;background:var(--surface);width:230px}
+/* provider form */
 .pform{padding:14px 16px;border-top:1px solid var(--line);background:var(--accent-soft)}
-.fgrid{display:grid;grid-template-columns:120px minmax(0,1fr);gap:9px 12px;font-size:12.5px;align-items:center}
+.fgrid{display:grid;grid-template-columns:120px minmax(0,1fr);gap:10px 12px;font-size:12.5px;align-items:center}
 .fgrid .lbl{color:var(--ink-2);font-size:11.5px}
-.fgrid input.x,.fgrid select.x{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:var(--surface);width:100%;box-sizing:border-box}
-.fgrid input.x[readonly]{background:var(--surface-3);color:var(--ink-3)}
+.fgrid input.x{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:var(--surface);width:100%;box-sizing:border-box}
 .pfoot{display:flex;gap:8px;margin-top:14px;align-items:center}
-.fhint{font-size:11px;color:var(--accent-ink);margin-top:3px}
+.fhint{font-size:11px;color:var(--accent-ink);margin-top:3px}.fhint2{font-size:11px;color:var(--ink-3);margin-top:4px}
 .presets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
 .presets button{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:999px;padding:5px 12px;background:var(--surface);color:var(--ink-2);cursor:pointer}
 .presets button:hover{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft)}
 .stat{font-size:11.5px;color:var(--ink-3);display:flex;gap:6px;align-items:center}
-.fhint2{font-size:11px;color:var(--ink-3);margin-top:10px;font-style:italic}
-/* combobox — the ONE model picker, used for chat + embedding everywhere */
-.cbwrap{display:flex;gap:6px;align-items:stretch}
-.cb{position:relative;flex:1}
+.cbwrap{display:flex;gap:6px;align-items:stretch}.cb{position:relative;flex:1}
 .cb .cb-in{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:7px 28px 7px 9px;background:var(--surface);width:100%;box-sizing:border-box}
 .cb .cb-chev{position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--ink-3);cursor:pointer;font-size:11px}
 .cb-list{position:absolute;top:100%;left:0;right:0;z-index:5;background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;box-shadow:0 8px 24px rgba(20,22,24,.12);margin-top:3px;max-height:190px;overflow:auto}
-.cb-list div{padding:7px 10px;cursor:pointer;font-size:12.5px;border-bottom:1px solid var(--line)}.cb-list div:last-child{border-bottom:0}.cb-list div:hover{background:var(--accent-soft)}
-.cb-list .q{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3)}
+.cb-list div{padding:7px 10px;cursor:pointer;font-size:12.5px;border-bottom:1px solid var(--line)}.cb-list div:last-child{border-bottom:0}.cb-list div:hover{background:var(--accent-soft)}.cb-list .q{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3)}
 .seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:7px;overflow:hidden}
-.seg button{font:inherit;font-size:11.5px;border:0;background:var(--surface);color:var(--ink-2);padding:4px 12px;cursor:pointer;border-right:1px solid var(--line)}.seg button:last-child{border-right:0}.seg button.on{background:var(--accent);color:#fff}
-/* features (unchanged from v2) */
+.seg button{font:inherit;font-size:11.5px;border:0;background:var(--surface);color:var(--ink-2);padding:5px 12px;cursor:pointer;border-right:1px solid var(--line)}.seg button:last-child{border-right:0}.seg button.on{background:var(--accent);color:#fff}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 3px rgba(20,22,24,.05);padding:18px 20px;margin-top:14px}
 .card h3{font-family:var(--font-serif);font-size:16px;margin:0}.card .sub{font-size:12.5px;color:var(--ink-2);margin:4px 0 0}.cardhead{display:flex;align-items:baseline;gap:10px}.cardhead .right{margin-left:auto}.xlink{font-size:12px;color:var(--accent-ink);text-decoration:underline;cursor:pointer}
 .roles{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}.role{border:1px solid var(--line);border-radius:10px;padding:13px 16px;background:var(--surface-2)}
@@ -104,7 +101,6 @@ table.routes{width:100%;border-collapse:collapse;margin-top:12px}.routes th{text
 <div class="apptog"><button class="on" id="tg-jv" onclick="setApp('jv')">JustVoice</button><button id="tg-jw" onclick="setApp('jw')">JustWrite</button></div></div>
 <h1>Models</h1>
 <p class="lede">Connect AI providers (free local or metered cloud), manage each provider's models, route features, watch cost. <b>Same code in both apps</b> — only the feature catalog differs (toggle above).</p>
-<!-- GPU info — top strip, general (not under the runner) -->
 <div class="hwtop"><span class="muted" style="font-size:11px;font-weight:700">YOUR HARDWARE</span>
   <div><span class="k">GPU</span> <b>RTX 4070</b> · 12 GB VRAM</div><div><span class="k">RAM</span> <b>32 GB</b></div><div><span class="k">Accel</span> <b>CUDA 12</b></div>
   <span class="muted" style="margin-left:auto;font-size:11.5px">drives the Fit scores below</span></div>
@@ -113,55 +109,35 @@ table.routes{width:100%;border-collapse:collapse;margin-top:12px}.routes th{text
 
 <!-- ══ PROVIDERS & MODELS ══ -->
 <div class="tab on" id="tab-providers">
-  <div class="sec-h"><h2>Providers &amp; models</h2><span class="count">Edit a provider to set its URL/key + pick its model — same form for add &amp; edit</span>
+  <div class="sec-h"><h2>Providers &amp; models</h2><span class="count">a normal grid — Edit / Delete per row; manage models inside Edit (local providers)</span>
     <span class="right"><button class="btn primary sm" onclick="addProv()">+ Add provider</button></span></div>
-
   <div id="addslot"></div>
 
-  <div class="psplit"><span class="free">LOCAL · FREE</span> on your machine — no key, nothing leaves the device</div>
-
-  <!-- BUILT-IN RUNNER — the one Download&Run provider; body = GGUF catalog (no URL/key form) -->
-  <div class="prov">
-    <div class="phead"><span class="dot"></span>
+  <div class="psplit"><span class="free">LOCAL · FREE</span> on your machine — no key, nothing leaves the device · all managed the same way</div>
+  <div class="prov"><div class="phead" id="head-r"><span class="dot"></span>
       <div class="pmid"><span class="pn">Local engine</span> <span class="pid">built-in · llama.cpp</span> <span class="caps"><span class="cap llm">LLM</span></span>
-        <div class="psum muted">built in · downloads &amp; runs GGUF models on your hardware · <b>qwen3-4b running</b> · 1 of 8 downloaded</div></div>
-      <span class="pright"><button class="btn sm" onclick="tb('r')">Manage models</button></span></div>
-    <div class="pbody" id="b-r" style="display:none"><div class="cat">
-      <div class="kind-label">⬇ Download &amp; run — the Local engine is the only provider you download models for; Fit uses your hardware (top)</div>
-      <div class="mrow"><span class="fit ok">Fits <span class="s">92</span></span><span class="mn">Qwen3 4B Instruct</span><span class="mm">2.4 GB · Q4_K_M</span><span class="md">Recommended default for this card.</span><span class="pill run">RUNNING</span><button class="btn sm">Stop</button></div>
-      <div class="mrow"><span class="fit ok">Fits <span class="s">88</span></span><span class="mn">Qwen3 14B</span><span class="mm">8.2 GB · Q4_K_M</span><span class="md">Higher accuracy · ~9.4 GB VRAM.</span><button class="btn primary sm">⬇ Download &amp; run</button></div>
-      <div class="mrow"><span class="fit tight">Tight <span class="s">61</span></span><span class="mn">Gemma 3 27B</span><span class="mm">16 GB · Q4_K_M</span><span class="md">Runs with CPU spillover — slower.</span><button class="btn primary sm">⬇ Download &amp; run</button></div>
-      <div class="mrow"><span class="fit no">Won't fit <span class="s">—</span></span><span class="mn">Llama 3.3 70B</span><span class="mm">40 GB · Q4_K_M</span><span class="md">Exceeds 12 GB — use a cloud provider.</span><button class="btn sm" disabled>Too large</button></div>
-    </div></div>
-  </div>
-
-  <!-- OLLAMA — uses the SAME form on Edit; the Combobox fetches installed models -->
-  <div class="prov">
-    <div class="phead" id="head-o"><span class="dot"></span>
+        <div class="psum muted">localhost:8080 · chat qwen3-4b · 2 models · built-in (pre-added)</div></div>
+      <span class="pright"><button class="btn sm" onclick="edit('r')">Edit</button></span></div>
+    <div class="pbody" id="b-r" style="display:none"></div></div>
+  <div class="prov"><div class="phead" id="head-o"><span class="dot"></span>
       <div class="pmid"><span class="pn">Ollama (this PC)</span> <span class="pid">ollama-local</span> <span class="caps"><span class="cap llm">LLM</span><span class="cap emb">EMBED</span></span>
-        <div class="psum muted">localhost:11434 · chat qwen3:14b · embed nomic-embed-text · no key — free</div></div>
-      <span class="pright"><button class="btn sm">Test</button><button class="btn sm" onclick="edit('o')">Edit</button></span></div>
-    <div class="pbody" id="b-o" style="display:none"></div>
-  </div>
+        <div class="psum muted">localhost:11434 · chat qwen3:14b · 3 models · no key</div></div>
+      <span class="pright"><button class="btn sm" onclick="edit('o')">Edit</button><button class="btn sm danger">Delete</button></span></div>
+    <div class="pbody" id="b-o" style="display:none"></div></div>
 
   <div class="psplit"><span class="paid">CLOUD · METERED</span> your account — API key + URL · billed by the provider</div>
-
-  <div class="prov">
-    <div class="phead" id="head-c"><span class="dot"></span>
+  <div class="prov"><div class="phead" id="head-c"><span class="dot"></span>
       <div class="pmid"><span class="pn">OpenAI</span> <span class="pid">openai</span> <span class="caps"><span class="cap llm">LLM</span><span class="cap emb">EMBED</span></span>
-        <div class="psum muted">api.openai.com/v1 · chat gpt-4o-mini · embed text-embedding-3-small · key set</div></div>
-      <span class="pright"><button class="btn sm">Test</button><button class="btn sm" onclick="edit('c')">Edit</button></span></div>
-    <div class="pbody" id="b-c" style="display:none"></div>
-  </div>
-  <div class="prov">
-    <div class="phead" id="head-a"><span class="dot off"></span>
+        <div class="psum muted">api.openai.com/v1 · chat gpt-4o-mini · key set</div></div>
+      <span class="pright"><button class="btn sm" onclick="edit('c')">Edit</button><button class="btn sm danger">Delete</button></span></div>
+    <div class="pbody" id="b-c" style="display:none"></div></div>
+  <div class="prov"><div class="phead" id="head-a"><span class="dot off"></span>
       <div class="pmid"><span class="pn">Anthropic</span> <span class="pid">anthropic</span> <span class="caps"><span class="cap llm">LLM</span></span>
         <div class="psum muted">api.anthropic.com · chat claude-haiku-4-5 · no key</div></div>
-      <span class="pright"><button class="btn sm">Test</button><button class="btn sm" onclick="edit('a')">Edit</button></span></div>
-    <div class="pbody" id="b-a" style="display:none"></div>
-  </div>
+      <span class="pright"><button class="btn sm" onclick="edit('a')">Edit</button><button class="btn sm danger">Delete</button></span></div>
+    <div class="pbody" id="b-a" style="display:none"></div></div>
 
-  <p class="note">Add &amp; Edit use the <b>same</b> inline form — it <b>replaces</b> the read row (one Test, in the form; no duplicate). One <b>Combobox</b> model picker (free-text + Fetch) everywhere. The <b>Local engine</b> is the only Download&amp;Run provider; everyone else fetches a model list. GPU info is a top strip.</p>
+  <p class="note">Normal grid: <b>Edit + Delete</b> per row (Test lives in the form). <b>Every local provider is the same</b> — Ollama, LM Studio, and the bundled <b>Local engine</b> all manage models the same way inside Edit (list · status · Fit · load/download). The built-in is just pre-added (no Delete). Cloud providers fetch a model list; nothing to download.</p>
 </div>
 
 <!-- ══ FEATURES ══ -->
@@ -171,7 +147,7 @@ table.routes{width:100%;border-collapse:collapse;margin-top:12px}.routes th{text
     <p class="sub">Two jobs, two models — each is a <b>provider ▸ model</b> pick.</p>
     <div class="roles">
       <div class="role"><div class="rname"><span class="rolechip quick">QUICK</span> Quick model</div><div class="rdesc">Sub-second · interactive.</div>
-        <div class="twostep"><select class="pp"><option selected>Built-in runner</option><option>Ollama</option><option>OpenAI</option></select><select class="mm"><option selected>qwen3-4b-instruct · free</option></select></div></div>
+        <div class="twostep"><select class="pp"><option selected>Local engine</option><option>Ollama</option><option>OpenAI</option></select><select class="mm"><option selected>qwen3-4b-instruct · free</option></select></div></div>
       <div class="role"><div class="rname"><span class="rolechip acc">ACCURACY</span> Accuracy model</div><div class="rdesc">Async · accuracy-critical.</div>
         <div class="twostep"><select class="pp"><option selected>Ollama</option><option>Anthropic</option></select><select class="mm"><option selected>qwen3:14b · free</option></select></div></div>
     </div></div>
@@ -189,80 +165,99 @@ table.routes{width:100%;border-collapse:collapse;margin-top:12px}.routes th{text
 
 </div>
 <script>
-// provider data (mock)
+// provider data — local providers carry a rich model list (same shape for all);
+// cloud providers carry a fetched-name list for the Combobox only.
 const PROV={
- o:{id:"ollama-local",name:"Ollama (this PC)",url:"http://localhost:11434",key:"",fmt:"ollama",chat:"qwen3:14b",emb:"nomic-embed-text",local:true,
-    models:[["qwen3:14b","Q4_K_M"],["qwen3:8b","Q4_K_M"],["nomic-embed-text","F16"]]},
- c:{id:"openai",name:"OpenAI",url:"https://api.openai.com/v1",key:"sk-•••••••",fmt:"openai-compat",chat:"gpt-4o-mini",emb:"text-embedding-3-small",local:false,
-    models:[["gpt-4o-mini",""],["gpt-4o",""],["gpt-4.1",""],["o3",""],["text-embedding-3-small",""],["text-embedding-3-large",""]]},
- a:{id:"anthropic",name:"Anthropic",url:"https://api.anthropic.com",key:"",fmt:"openai-compat",chat:"claude-haiku-4-5",emb:"",local:false,
-    models:[["claude-haiku-4-5",""],["claude-sonnet-4-6",""],["claude-opus-4-8",""]]},
- new:{id:"",name:"",url:"",key:"",fmt:"openai-compat",chat:"",emb:"",local:false,models:[]}};
+ r:{name:"Local engine",pid:"built-in · llama.cpp",url:"http://localhost:8080/v1",key:"",fmt:"openai-compat",local:true,builtin:true,chat:"qwen3-4b-instruct",emb:"",
+    models:[{id:"qwen3-4b-instruct",size:"2.4 GB",lvl:"ok",fit:92,status:"loaded"},{id:"qwen3-14b",size:"8.2 GB",lvl:"ok",fit:88,status:"disk"},{id:"gemma3-27b",size:"16 GB",lvl:"tight",fit:61,status:"available"}]},
+ o:{name:"Ollama (this PC)",pid:"ollama-local",url:"http://localhost:11434",key:"",fmt:"ollama",local:true,chat:"qwen3:14b",emb:"nomic-embed-text",
+    models:[{id:"qwen3:14b",size:"9.3 GB",lvl:"ok",fit:88,status:"loaded"},{id:"qwen3:8b",size:"5.0 GB",lvl:"ok",fit:94,status:"disk"},{id:"nomic-embed-text",size:"274 MB",lvl:"ok",fit:99,status:"disk",emb:true}]},
+ c:{name:"OpenAI",pid:"openai",url:"https://api.openai.com/v1",key:"sk-•••••••",fmt:"openai-compat",local:false,chat:"gpt-4o-mini",emb:"text-embedding-3-small",
+    models:[{id:"gpt-4o-mini"},{id:"gpt-4o"},{id:"gpt-4.1"},{id:"o3"},{id:"text-embedding-3-small",emb:true},{id:"text-embedding-3-large",emb:true}]},
+ a:{name:"Anthropic",pid:"anthropic",url:"https://api.anthropic.com/v1",key:"",fmt:"openai-compat",local:false,chat:"claude-haiku-4-5",emb:"",
+    models:[{id:"claude-haiku-4-5"},{id:"claude-sonnet-4-6"},{id:"claude-opus-4-8"}]},
+ new:{name:"",pid:"",url:"",key:"",fmt:"openai-compat",local:false,chat:"",emb:"",models:[]}};
 
-function cb(key,val,items,ph){ // the ONE consistent model picker
- const list=items.map(([m,q])=>`<div onclick="cbpick('${key}','${m}')">${m}${q?` <span class="q">· ${q}</span>`:""}</div>`).join("");
+function cb(key,val,items,ph){ // the ONE consistent model picker (chat + embedding)
+ const list=items.map(m=>`<div onclick="cbpick('${key}','${m.id}')">${m.id}${m.size?` <span class="q">· ${m.size}</span>`:""}</div>`).join("");
  const fetched=items.length?`<div class="fhint">✓ fetched — ${items.length} models · type to filter or ▾ to pick</div>`:"";
  return `<div class="cbwrap"><div class="cb"><input class="cb-in" id="cbi-${key}" value="${val||""}" placeholder="${ph}"><span class="cb-chev" onclick="cblist('${key}')">▾</span>
    <div class="cb-list" id="cbl-${key}" style="display:none">${list||'<div class="muted" style="padding:8px 10px">No models yet — Fetch first</div>'}</div></div>
    <button class="btn sm" onclick="cblist('${key}')">↻ Fetch</button></div>${fetched}`;}
 function cblist(k){const e=document.getElementById('cbl-'+k);e.style.display=e.style.display==='none'?'':'none';}
 function cbpick(k,m){document.getElementById('cbi-'+k).value=m;document.getElementById('cbl-'+k).style.display='none';}
+function segpick(btn){[...btn.parentElement.children].forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+
+// Models section — IDENTICAL for every local provider (Ollama, LM Studio, built-in)
+function modelsSection(d){
+ const row=(m)=>{
+   const fit=m.fit?`<span class="fit ${m.lvl}">${m.lvl==='tight'?'Tight':m.lvl==='no'?"Won't fit":'Fits'} <span class="s">${m.fit}</span></span>`:'';
+   let st='',act='';
+   if(m.status==='loaded'){st='<span class="pill run">● loaded</span>';act='<button class="btn sm">Unload</button>';}
+   else if(m.status==='disk'){st='<span class="pill disk">on disk</span>';act='<button class="btn sm">Load</button>';}
+   else {st='<span class="muted" style="font-size:11px">not downloaded</span>';act='<button class="btn primary sm">⬇ Download</button>';}
+   return `<div class="mrow">${fit}<span class="mn">${m.id}</span><span class="mm">${m.size||''}</span><span class="right">${st}${act}</span></div>`;};
+ const ph=d.fmt==='ollama'?'qwen3:32b  (ollama pull)':'unsloth/Qwen3-14B-GGUF:Q4_K_M  (hf)';
+ return `<div class="kind-label">Models on this provider — same for any local provider; Fit uses your hardware (top); models auto-load on first use</div>
+   ${d.models.map(row).join('')}
+   <div class="inl"><span class="muted" style="font-size:12px">Download a model:</span><input placeholder="${ph}"><button class="btn sm">Download</button></div>`;}
 
 function formHTML(k,d){const editing=k!=='new';
- const presets=editing?'':`<div class="kind-label">Start from a known provider — fills the URL + format</div>
-   <div class="presets">${['Ollama','LM Studio','OpenAI','Anthropic','OpenRouter','Custom'].map(p=>`<button onclick="preset('${k}','${p}')">${p}</button>`).join('')}</div>`;
- const keyrow=d.local
-   ?`<span class="lbl">API key</span><span class="muted" style="font-size:11.5px">— not needed for a local provider</span>`
-   :`<span class="lbl">API key</span><input class="x" type="password" value="${d.key}" placeholder="sk-…">`;
+ const presets=editing?'':`<div class="kind-label" style="margin-top:0">Start from a known provider — fills URL · format · where-it-runs</div>
+   <div class="presets">${['Local engine','Ollama','LM Studio','OpenAI','Anthropic','OpenRouter','Custom'].map(p=>`<button onclick="preset('${k}','${p}')">${p}</button>`).join('')}</div>`;
+ const whereSeg=`<span class="seg"><button class="${d.local?'on':''}" onclick="segpick(this);keyToggle('${k}',1)">Local · free</button><button class="${d.local?'':'on'}" onclick="segpick(this);keyToggle('${k}',0)">Online · metered</button></span>`;
+ const fmtSeg=`<span class="seg"><button class="${d.fmt!=='ollama'?'on':''}" onclick="segpick(this)">OpenAI-compatible</button><button class="${d.fmt==='ollama'?'on':''}" onclick="segpick(this)">Ollama native</button></span>`;
  return `<div class="pform">${presets}<div class="fgrid">
+   <span class="lbl">Where it runs</span><div>${whereSeg}</div>
    <span class="lbl">Name</span><input class="x" value="${d.name}" placeholder="My provider">
    <span class="lbl">Base URL</span><input class="x" value="${d.url}" placeholder="http://localhost:11434/v1">
-   ${keyrow}
-   <span class="lbl">Chat model</span><div>${cb('chat-'+k,d.chat,d.models.filter(m=>!/embed/.test(m[0])),'Fetch or type a model id')}</div>
-   <span class="lbl">Embedding model <span class="muted">optional</span></span><div>${cb('emb-'+k,d.emb,d.models.filter(m=>/embed/.test(m[0])),'leave blank if not used')}</div>
+   <span class="lbl">API key</span><div id="keycell-${k}">${d.local?'<span class="muted" style="font-size:11.5px">— not needed for a local provider</span>':`<input class="x" type="password" value="${d.key}" placeholder="sk-…">`}</div>
+   <span class="lbl">API format</span><div>${fmtSeg}<div class="fhint2"><b>Ollama native</b> is only for an Ollama daemon — the one provider that needs its native <span class="mono">/api/chat</span> to toggle reasoning. <b>llama.cpp &amp; cloud control reasoning via request params</b> on the OpenAI-compatible endpoint (llama.cpp <span class="mono">chat_template_kwargs.enable_thinking</span> / <span class="mono">reasoning_format</span>; OpenAI <span class="mono">reasoning_effort</span>; Anthropic <span class="mono">thinking</span>) — you just set <b>Enable thinking</b> in the Lab and the adapter maps it. So: OpenAI-compatible for everything except an Ollama daemon.</div></div>
+   <span class="lbl">Chat model</span><div>${cb('chat-'+k,d.chat,d.models.filter(m=>!m.emb),'Fetch or type a model id')}</div>
+   <span class="lbl">Embedding model <span class="muted">optional</span></span><div>${cb('emb-'+k,d.emb,d.models.filter(m=>m.emb),'leave blank if not used')}</div>
  </div>
+ ${d.local?modelsSection(d):''}
  <div class="pfoot"><span class="stat"><span class="dot off"></span> not tested</span><span style="flex:1"></span>
-   <button class="btn sm">Test connection</button><button class="btn ghost sm" onclick="closeForm('${k}')">Cancel</button><button class="btn primary sm" onclick="closeForm('${k}')">Save provider</button></div>
- <div class="fhint2">No ID field — auto-slugged from the name (features reference it internally). Model <b>tier</b> is auto-detected from the model; fine-tune it in the action's <b>Lab</b>, not here — no jargon in the provider form.</div></div>`;}
-function preset(k,p){const map={Ollama:["http://localhost:11434","ollama",true],"LM Studio":["http://localhost:1234/v1","openai-compat",true],OpenAI:["https://api.openai.com/v1","openai-compat",false],Anthropic:["https://api.anthropic.com","openai-compat",false],OpenRouter:["https://openrouter.ai/api/v1","openai-compat",false],Custom:["","openai-compat",false]};
- const[url,fmt,local]=map[p]||map.Custom;const slot=document.getElementById('addslot');slot.innerHTML='<div class="prov"><div class="phead" style="padding:10px 16px"><span class="dot off"></span><div class="pmid"><span class="pn" style="color:var(--ink-3)">New provider · '+p+'</span></div></div>'+formHTML('new',{id:"",name:p==='Custom'?"":p,url,key:"",fmt,chat:"",emb:"",local,models:[]})+'</div>';}
+   <button class="btn sm">Test connection</button>${editing&&!d.builtin?'<button class="btn sm danger">Delete</button>':''}<button class="btn ghost sm" onclick="closeForm('${k}')">Cancel</button><button class="btn primary sm" onclick="closeForm('${k}')">Save provider</button></div>
+ <div class="fhint2" style="margin-top:10px;font-style:italic">No ID field (auto-slug from name). No tier — auto-detected per model and tuned per action in the Lab (near-moot for online models).</div></div>`;}
+function keyToggle(k,isLocal){const c=document.getElementById('keycell-'+k);if(c)c.innerHTML=isLocal?'<span class="muted" style="font-size:11.5px">— not needed for a local provider</span>':'<input class="x" type="password" placeholder="sk-…">';}
+function preset(k,p){const map={"Local engine":["http://localhost:8080/v1","openai-compat",true],Ollama:["http://localhost:11434","ollama",true],"LM Studio":["http://localhost:1234/v1","openai-compat",true],OpenAI:["https://api.openai.com/v1","openai-compat",false],Anthropic:["https://api.anthropic.com/v1","openai-compat",false],OpenRouter:["https://openrouter.ai/api/v1","openai-compat",false],Custom:["","openai-compat",false]};
+ const[url,fmt,local]=map[p]||map.Custom;document.getElementById('addslot').innerHTML='<div class="prov"><div class="phead" style="padding:10px 16px"><span class="dot off"></span><div class="pmid"><span class="pn" style="color:var(--ink-3)">New provider · '+p+'</span></div></div>'+formHTML('new',{name:p==='Custom'?"":p,pid:"",url,key:"",fmt,local,chat:"",emb:"",models:[]})+'</div>';}
 
-function tb(k){const b=document.getElementById('b-'+k);b.style.display=b.style.display==='none'?'':'none';}
 function edit(k){const b=document.getElementById('b-'+k),h=document.getElementById('head-'+k);
  if(b.innerHTML.trim()){b.innerHTML='';b.style.display='none';h.style.display='';return;}
- b.innerHTML=formHTML(k,PROV[k]);b.style.display='';h.style.display='none';} // form REPLACES the read row → only the form's Test connection shows (no duplicate)
+ b.innerHTML=formHTML(k,PROV[k]);b.style.display='';h.style.display='none';} // form REPLACES the read row (no duplicate Test)
 function addProv(){const s=document.getElementById('addslot');if(s.innerHTML.trim()){s.innerHTML='';return;}s.innerHTML='<div class="prov"><div class="phead" style="padding:10px 16px"><span class="dot off"></span><div class="pmid"><span class="pn" style="color:var(--ink-3)">New provider</span></div></div>'+formHTML('new',PROV.new)+'</div>';s.scrollIntoView({behavior:'smooth'});}
 function closeForm(k){if(k==='new'){document.getElementById('addslot').innerHTML='';}else{const b=document.getElementById('b-'+k);b.innerHTML='';b.style.display='none';document.getElementById('head-'+k).style.display='';}}
 
-// features (unchanged)
+// features
 const CAT={jv:{brand:"JustVoice",busy:["Compose","· 1,733 calls"],rows:[
  ["Speaker attribution","Studio → Script: who says each line","Inherit · Accuracy","qwen3:14b · Ollama","14b-twopass-v3"],
  ["Smart-assign voices","Studio → Cast: match characters to voices","Inherit · Accuracy","qwen3:14b · Ollama",""],
  ["Render-preset suggest","Generate: pick a mastering preset","Inherit · Accuracy","qwen3:14b · Ollama",""],
- ["Persona rewrite","Generate: restate a line in the persona's voice","Inherit · Quick","runner · qwen3-4b",""],
- ["Compose","Generate: a fresh in-character line","Inherit · Quick","runner · qwen3-4b",""],
+ ["Persona rewrite","Generate: restate a line in the persona's voice","Inherit · Quick","Local engine · qwen3-4b",""],
+ ["Compose","Generate: a fresh in-character line","Inherit · Quick","Local engine · qwen3-4b",""],
  ["Show notes","Projects: episode summary + chapters","Inherit · Accuracy","qwen3:14b · Ollama",""],
- ["Dictation cleanup","Captures: raw speech → clean text","Inherit · Quick","runner · qwen3-4b",""],
- ["Voice-gender guess","Voices: label unknown fetched voices","Inherit · Quick","runner · qwen3-4b",""]]},
+ ["Dictation cleanup","Captures: raw speech → clean text","Inherit · Quick","Local engine · qwen3-4b",""],
+ ["Voice-gender guess","Voices: label unknown fetched voices","Inherit · Quick","Local engine · qwen3-4b",""]]},
  jw:{brand:"JustWrite",busy:["Critique","· 612 calls"],rows:[
  ["Critique","Per-chapter line notes + structural pass","Inherit · Accuracy","claude-sonnet-4-6 · Anthropic","critique-strict-v2"],
  ["Plot-hole audit","Whole-book continuity scan","Inherit · Accuracy","qwen3:14b · Ollama",""],
  ["Entity sweep","Find new characters / locations / objects","Inherit · Accuracy","qwen3:14b · Ollama",""],
- ["Writer actions","Scene strip: Rewrite · Expand · Tighten","Inherit · Quick","runner · qwen3-4b",""],
- ["Brainstorm","Name / title / freeform ideas","Inherit · Quick","runner · qwen3-4b",""],
+ ["Writer actions","Scene strip: Rewrite · Expand · Tighten","Inherit · Quick","Local engine · qwen3-4b",""],
+ ["Brainstorm","Name / title / freeform ideas","Inherit · Quick","Local engine · qwen3-4b",""],
  ["Reverse outline","Read the draft → the act structure","Inherit · Accuracy","qwen3:14b · Ollama",""],
  ["Manuscript chat","\"Ask the book\" — RAG Q&A","Inherit · Accuracy","claude-sonnet-4-6 · Anthropic",""],
- ["Resume briefing","Home: \"Previously on your novel\"","Inherit · Quick","runner · qwen3-4b",""]]}};
+ ["Resume briefing","Home: \"Previously on your novel\"","Inherit · Quick","Local engine · qwen3-4b",""]]}};
 const EX={"Speaker attribution":["You attribute every line of dialogue to the character who speaks it. Use only the provided cast; never invent speakers.","Chapter:\n{{chapter_text}}\n\nReturn JSON: [{line, speaker, confidence}]."],
  "Critique":["You are a sharp, honest fiction editor giving line-level notes on one chapter.","{{chapter_text}}\n\nReturn JSON: {notes:[{type, quote, note}]}."]};
-function frow(r,i){const[n,d,u,res,cfg]=r;const opts=['Inherit · Quick','Inherit · Accuracy','Built-in runner ▸ qwen3-4b','Ollama ▸ qwen3:14b','Anthropic ▸ claude-sonnet-4-6','OpenAI ▸ gpt-4o'].map(o=>`<option${o===u?' selected':''}>${o}</option>`).join('');
+function frow(r,i){const[n,d,u,res,cfg]=r;const opts=['Inherit · Quick','Inherit · Accuracy','Local engine ▸ qwen3-4b','Ollama ▸ qwen3:14b','Anthropic ▸ claude-sonnet-4-6','OpenAI ▸ gpt-4o'].map(o=>`<option${o===u?' selected':''}>${o}</option>`).join('');
  const tag=cfg?`<span class="cfgtag">CONFIG: ${cfg}</span> `:'';const ex=EX[n]||["You are a helpful assistant for this feature.","{{input}}"];
  return `<tr><td><div class="fname">${n}</div><div class="fdesc">${d}</div></td><td><select>${opts}</select></td><td class="resolved">${res}</td><td>${tag}<span class="exp" onclick="tog(${i})">✎ tune</span></td></tr>
- <tr id="ed${i}" style="display:none"><td colspan="4"><div class="editor"><div class="grphead">Settings</div>
+ <tr id="ed${i}" style="display:none"><td colspan="4"><div class="editor"><div class="grphead">Settings <span class="muted" style="text-transform:none;font-weight:400">— common here; full set + compare in the Lab</span></div>
    <div class="settings"><div class="set"><label>Temperature</label><input type="number" value="0.3" step="0.1"></div><div class="set"><label>Max tokens</label><input type="number" value="1024"></div><div class="set"><label>Reasoning</label><span class="toggle"><i></i></span></div></div>
-   <details class="adv"><summary>Advanced sampling ▾</summary><div class="settings" style="margin-top:8px"><div class="set"><label>Top-P</label><input type="number" value="0.9" step="0.05"></div><div class="set"><label>Top-K</label><input type="number" value="40"></div><div class="set"><label>Repeat penalty</label><input type="number" value="1.05" step="0.05"></div></div></details>
    <label class="t">System prompt</label><textarea>${ex[0]}</textarea><label class="t">User prompt template</label><textarea>${ex[1]}</textarea>
-   <div class="efoot"><button class="btn primary sm">Save as production config</button><button class="btn sm">Open in Lab — compare models ↗</button><button class="btn sm">Reset</button></div></div></td></tr>`;}
+   <div class="efoot"><button class="btn primary sm">Save as production config</button><button class="btn sm">Open in Lab — full settings + compare ↗</button><button class="btn sm">Reset</button></div></div></td></tr>`;}
 function render(a){document.getElementById('routebody').innerHTML=CAT[a].rows.map(frow).join('')}
 function tog(i){const e=document.getElementById('ed'+i);e.style.display=e.style.display==='none'?'':'none'}
 function setTab(t){document.querySelectorAll('.subnav a').forEach(a=>a.classList.toggle('on',a.dataset.tab===t));document.querySelectorAll('.tab').forEach(d=>d.classList.toggle('on',d.id==='tab-'+t))}
