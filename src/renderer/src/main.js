@@ -8,6 +8,7 @@ import { tooltipDirective } from "./services/tooltip.js";
 import { checkServer } from "./services/connection.js";
 import { bootPrefs, ensureActiveProjectDefault } from "./services/prefs.js";
 import { i18n } from "./i18n/index.js";
+import "./tokens.css";
 import "./styles.css";
 
 function isDictateView() {

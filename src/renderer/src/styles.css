@@ -23,90 +23,11 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
 /* =========================================================
-   1. Design tokens (preview/full-app-preview.html L11-25)
+   1. Design tokens → tokens.css
+   The :root design tokens (+ [data-theme] overrides) live in tokens.css,
+   imported before this file (see main.js). App standard: tokens.css = tokens
+   only; this file = reset/base + canonical jv- primitives.
    ========================================================= */
-
-:root {
-  --bg: #f6f5f1;
-  --surface: #fff;
-  --surface-2: #fbfaf7;
-  --surface-3: #f3f1ec;
-
-  --ink: #1a1a1a;
-  --ink-2: #4a4a4a;
-  --ink-3: #888;
-
-  --line: #e3e1dc;
-  --line-strong: #cfccc4;
-  /* --border-soft: legacy alias for --line. Several views/components
-     reference it (X-6 audit finding, 2026-06-14) — it was never defined,
-     so `border: 1px solid var(--border-soft)` silently rendered no border.
-     Aliased per-theme so it tracks the active --line. */
-  --border-soft: var(--line);
-
-  --accent: #3a7d63;
-  --accent-ink: #2c6049;
-  --accent-soft: #e8f0eb;
-  --accent-line: #b8d2c3;
-
-  --warn: #c89a3a;
-  --warn-bg: #fff8e3;
-  --warn-ink: #8a6a1f;
-  --warn-line: #e6cd84;
-
-  --danger: #a8442e;
-  --danger-bg: #fbecea;
-  --danger-ink: #7a2f1f;
-  --danger-line: #e3b6ac;
-
-  --info-blue: #2f74b5;
-  --jtorig: #7a3aa6;
-  --combined: #b86b1f;
-
-  --r-card: 8px;
-  --r-control: 6px;
-  --r-pill: 999px;
-
-  --shadow-1: 0 1px 2px rgba(20, 22, 24, 0.04);
-  --shadow-2: 0 4px 12px rgba(20, 22, 24, 0.06);
-  --shadow-3: 0 8px 24px rgba(20, 22, 24, 0.08);
-
-  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
-
-  /* Content-typed control widths — pick by what fits in the field, not by container.
-     Replaces "everything stretches to 100%" with width-by-information-content. */
-  --w-token: 110px;  /* port, version, 4-digit count, ratio */
-  --w-id:    180px;  /* short ID, model slug, enum select */
-  --w-name:  280px;  /* display name, file name, title */
-  --w-url:   360px;  /* URL, API key, token */
-  --w-path:  480px;  /* file/folder path */
-  --w-prose: 640px;  /* description, hint paragraph */
-  --w-edit:  880px;  /* manuscript reading width */
-
-  /* Per-surface page shells (plan Q6). Every view's top-level max-width
-     comes from one of these two — not an ad-hoc pixel value. */
-  --shell-form: 880px;   /* form-first pages — single-column editor/settings panes */
-  --shell-page: 1100px;  /* default page shell — tables, master-detail, QC grids */
-
-  --gap-grid: 16px;  /* canonical card-grid gap */
-}
-
-[data-theme="dark"] {
-  --bg: #1a1c1a;
-  --surface: #232624;
-  --surface-2: #1e211f;
-  --surface-3: #2a2e2c;
-  --ink: #f0eee8;
-  --ink-2: #c5c2bb;
-  --ink-3: #8a8780;
-  --line: #353835;
-  --line-strong: #4a4d49;
-  --border-soft: var(--line);
-  --accent: #5fa882;
-  --accent-soft: #1f3329;
-  --accent-line: #2c4a3a;
-}
 
 /* =========================================================
    1.5. Reset + base typography
