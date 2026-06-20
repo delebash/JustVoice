@@ -227,8 +227,8 @@ const KIND_PILLS = [
 function startKind(kind) {
   // Projects view consumes this on mount and opens the create flow with
   // the kind preselected (journeys kind-picker step).
-  try { window.sessionStorage?.setItem("jv.books.createKind", kind || ""); } catch { /* ignore */ }
-  window.location.hash = "#books";
+  try { window.sessionStorage?.setItem("jv.projects.createKind", kind || ""); } catch { /* ignore */ }
+  window.location.hash = "#projects";
 }
 
 // ── Stat cards ────────────────────────────────────────────────────────
@@ -255,7 +255,7 @@ const cacheSub = computed(() => {
 const captureCount = computed(() => capturesTotal.value ?? captures.value.length ?? 0);
 
 const statCards = computed(() => [
-  { label: "Projects", value: projects.value.length, sub: projectKindCount.value ? `${projectKindCount.value} kind${projectKindCount.value === 1 ? "" : "s"}` : "create one to start", href: "#books" },
+  { label: "Projects", value: projects.value.length, sub: projectKindCount.value ? `${projectKindCount.value} kind${projectKindCount.value === 1 ? "" : "s"}` : "create one to start", href: "#projects" },
   { label: "Voices", value: voices.value.length, sub: `across ${new Set(voices.value.map((v) => v.engine || "?")).size} engines`, href: "#voices" },
   { label: "Personas", value: personas.value.length, sub: "cross-project characters", href: "#personas" },
   { label: "Lexicons", value: lexicons.value.length, sub: `${lexiconEntries.value} entries`, href: "#lexicons" },
@@ -335,7 +335,7 @@ const nextStep = computed(() => {
     return { title: "Load your first engine", body: "Kokoro runs on CPU in realtime — a good first pick.", href: "#engines", cta: "Open Engines" };
   }
   if (health.value && !projects.value.length) {
-    return { title: "Create your first project", body: "Pick what you're making — the whole app reshapes around it.", href: "#books", cta: "Open Projects" };
+    return { title: "Create your first project", body: "Pick what you're making — the whole app reshapes around it.", href: "#projects", cta: "Open Projects" };
   }
   return null;
 });
@@ -372,7 +372,7 @@ onMounted(() => {
           @click="startKind(k.kind)">{{ k.label }}</button>
       </div>
       <p class="jv-muted home__hero-foot">
-        …or <a href="#books">import a manuscript / CSV</a> · not making projects?
+        …or <a href="#projects">import a manuscript / CSV</a> · not making projects?
         <a href="#captures">set up dictation</a>
       </p>
     </div>

@@ -6,7 +6,7 @@
 // topbar in App.vue reads it and renders the breadcrumb.
 //
 // Each segment is { label, href? }. The href is the navigation target
-// when the user clicks the segment (commonly "#books" to jump back to
+// when the user clicks the segment (commonly "#projects" to jump back to
 // the project list). The first segment is implicit (the view label
 // itself — provided by App's currentView.label), so views only push
 // the deeper context.

@@ -642,7 +642,7 @@ watch(personas, () => loadProjectPersonas(selectedProjectId.value));
 const { publish: publishCrumbs } = usePageCrumbs(() => {
   const segments = [];
   const project = selectedProject.value;
-  if (project) segments.push({ label: project.name, href: "#books" });
+  if (project) segments.push({ label: project.name, href: "#projects" });
   if (tab.value) segments.push({ label: TAB_LABELS.value[tab.value] || tab.value });
   return segments;
 });

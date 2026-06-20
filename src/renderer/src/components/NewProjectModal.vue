@@ -4,7 +4,7 @@
 //
 // Picking a kind sets the sidebar vocabulary, Studio steps, mastering
 // target, and export surface for the project. Replaces the old native
-// prompt() pair in BooksView (native dialogs are banned — project_gotchas).
+// prompt() pair in ProjectsView (native dialogs are banned — project_gotchas).
 //
 // Emits:
 //   close   — cancel / Esc

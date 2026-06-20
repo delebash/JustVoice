@@ -11,7 +11,7 @@ const routes = [
 
   // ── Workflow ──────────────────────────────────────────────────────
   { path: "/overview", name: "overview", component: () => import("../views/OverviewView.vue") },
-  { path: "/books", name: "books", component: () => import("../views/BooksView.vue") },
+  { path: "/projects", name: "projects", component: () => import("../views/ProjectsView.vue") },
   { path: "/chapter", name: "chapter", component: () => import("../views/ChapterView.vue") },
   { path: "/lines", name: "lines", component: () => import("../views/LinesView.vue") },
   { path: "/studio", name: "studio", component: () => import("../views/StudioView.vue") },

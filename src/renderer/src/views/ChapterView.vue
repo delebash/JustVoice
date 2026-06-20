@@ -87,7 +87,7 @@ const blocks = ref([]);
 const selectedProjectId = ref(null);
 const selectedSceneId = ref(null);
 
-// Scene hand-off from BooksView's chapters-subtable "Open" — read once at
+// Scene hand-off from ProjectsView's chapters-subtable "Open" — read once at
 // setup so it's available when loadScenes() runs (after the store loads).
 let _pendingSceneId = null;
 try {
@@ -169,7 +169,7 @@ watch(projects, (list) => {
 const { publish: publishCrumbs } = usePageCrumbs(() => {
   const segments = [];
   const project = projects.value.find((p) => p.id === selectedProjectId.value);
-  if (project) segments.push({ label: project.name, href: "#books" });
+  if (project) segments.push({ label: project.name, href: "#projects" });
   const scene = scenes.value.find((s) => s.id === selectedSceneId.value);
   if (scene) segments.push({ label: scene.title || `Chapter ${scene.position + 1}` });
   return segments;
@@ -506,7 +506,7 @@ function goStudioExport() {
 // expression resolves to `_ctx.window` (undefined), which is how the
 // old inline handler silently did nothing.
 function goProjects() {
-  window.location.hash = "#books";
+  window.location.hash = "#projects";
 }
 
 // ── Fix-it loop entry (journeys fixit journey) ────────────────────────
@@ -660,8 +660,8 @@ const workflowSteps = computed(() => {
   ];
 });
 function startImport() {
-  try { window.sessionStorage?.setItem("jv.books.openImport", "1"); } catch { /* ignore */ }
-  window.location.hash = "#books";
+  try { window.sessionStorage?.setItem("jv.projects.openImport", "1"); } catch { /* ignore */ }
+  window.location.hash = "#projects";
 }
 function goStudio(tab) {
   try { if (tab) window.sessionStorage?.setItem("jv.studio.tab", tab); } catch { /* ignore */ }

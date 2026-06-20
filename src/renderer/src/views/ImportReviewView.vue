@@ -26,7 +26,7 @@ const excluded = ref(new Set());
 
 onMounted(() => {
   draft.value = getImportDraft();
-  if (!draft.value) window.location.hash = "#books";
+  if (!draft.value) window.location.hash = "#projects";
 });
 
 // ── Chapter-split strategy (book_prose only) — changing it re-runs the
@@ -121,7 +121,7 @@ async function doImport() {
         return;
       }
     } catch { /* fall through */ }
-    window.location.hash = "#books";
+    window.location.hash = "#projects";
   } catch (e) {
     pushToast({ kind: "error", title: "Import failed", description: String(e?.message ?? e) });
   } finally {
@@ -131,7 +131,7 @@ async function doImport() {
 
 function cancel() {
   clearImportDraft();
-  window.location.hash = "#books";
+  window.location.hash = "#projects";
 }
 </script>
 

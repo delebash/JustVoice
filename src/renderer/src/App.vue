@@ -40,7 +40,7 @@ const ALL_USE_CASES = ["audiobook", "game", "podcast", "dictation", "accessibili
 const VIEWS = [
   // ─── Workflow lane ─────────────────────────────────────────────────
   { id: "overview",  lane: "workflow", label: "Home",      icon: "🏠", lede: "" },
-  { id: "books",     lane: "workflow", label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Import manuscripts from JustWrite, or scripts and audio from other tools.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "projects",  lane: "workflow", label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Import manuscripts from JustWrite, or scripts and audio from other tools.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "chapter",   lane: "workflow", label: "Chapters",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved.", visibleFor: ["audiobook", "podcast", "multiple", "unset"] },
   { id: "lines",     lane: "workflow", label: "Lines",      icon: "🎮", lede: "Every line of the game project — stable ids, characters, derived take status. Re-import the writers\u2019 next sheet (only changed lines go stale), re-render exactly those, export per-line WAVs + manifest.", visibleFor: ["game", "multiple", "unset"] },
   { id: "studio",    lane: "workflow", label: "Studio",    icon: "🎬", lede: "Cast → Script → Render production environment. Three-tab flow for multi-character work. Cast assigns voices to characters; Script runs LLM speaker attribution (Phase 3 backend); Render batches the whole project.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
@@ -138,7 +138,7 @@ if (typeof document !== "undefined") {
 const HELP_SLUG_BY_VIEW = {
   overview: "getting-started",
   generate: "generate",
-  books:    "core-concepts",
+  projects: "core-concepts",
   stories:  "stories",
   chapter:  "take-versioning",
   voices:   "voices",
@@ -253,9 +253,9 @@ function resolveInitialTab() {
   // open the kind picker ("What are you making?") on Projects instead of Home
   // (user decision 2026-06-12: no welcome quiz — the kind picker IS onboarding).
   if (!onboarding.shown && !initialDeepLink) {
-    try { window.sessionStorage?.setItem("jv.books.createKind", ""); } catch { /* ignore */ }
+    try { window.sessionStorage?.setItem("jv.projects.createKind", ""); } catch { /* ignore */ }
     onboarding.dismiss();
-    router.replace("/books");
+    router.replace("/projects");
   }
 }
 
@@ -416,7 +416,7 @@ onMounted(async () => {
                 <span class="jv-topbar__menu-name">{{ p.name }}</span>
                 <span v-if="p.id === activeProject.id" class="jv-topbar__menu-check">✓</span>
               </button>
-              <button type="button" class="jv-topbar__menu-item jv-topbar__menu-item--all" @click="switcherOpen = false; goView('books')">
+              <button type="button" class="jv-topbar__menu-item jv-topbar__menu-item--all" @click="switcherOpen = false; goView('projects')">
                 All projects ➜
               </button>
             </div>

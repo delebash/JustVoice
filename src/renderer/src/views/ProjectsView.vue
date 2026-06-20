@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!--
-  BooksView — multi-use Project list (audiobooks + game-voicelines + podcasts +
+  ProjectsView — multi-use Project list (audiobooks + game-voicelines + podcasts +
   custom). Project is the use-case-generalized entity per DESIGN_FREEZE §4.4.
   Audiobook = chapters + paragraphs; game = dialogue trees + NPC lines;
   podcast = episodes + segments. Same data model, different export pipeline.
@@ -446,13 +446,13 @@ onMounted(() => {
   // Home's Start-something pills hand a kind over via sessionStorage —
   // consume it once and open the kind picker preselected.
   try {
-    if (window.sessionStorage?.getItem("jv.books.openImport")) {
-      window.sessionStorage.removeItem("jv.books.openImport");
+    if (window.sessionStorage?.getItem("jv.projects.openImport")) {
+      window.sessionStorage.removeItem("jv.projects.openImport");
       showImport.value = true;
     }
-    const k = window.sessionStorage?.getItem("jv.books.createKind");
+    const k = window.sessionStorage?.getItem("jv.projects.createKind");
     if (k !== null) {
-      window.sessionStorage.removeItem("jv.books.createKind");
+      window.sessionStorage.removeItem("jv.projects.createKind");
       newProjectKind.value = k || "";
       showNewProject.value = true;
     }
@@ -465,12 +465,12 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="books">
+  <div class="projects">
     <!-- Mock grid (user-approved 2026-06-12): toolbar + flat table; a
          row click expands its detail card inline (provider-row pattern);
          Open ➜ is the ONLY activation. -->
     <div class="jv-lib-toolbar">
-      <input v-model="search" class="jv-input jv-input--sm books__search" placeholder="Search projects…" />
+      <input v-model="search" class="jv-input jv-input--sm projects__search" placeholder="Search projects…" />
       <button
         v-for="t in PROJECT_TYPES"
         :key="t.id"
@@ -483,7 +483,7 @@ onMounted(() => {
       <JvButton variant="primary" size="sm" label="＋ New project" @click="createBlank" />
     </div>
 
-    <div v-if="loading" class="books__empty jv-muted">Loading…</div>
+    <div v-if="loading" class="projects__empty jv-muted">Loading…</div>
     <EmptyState
       v-else-if="filtered.length === 0 && !search && projectTypeFilter === 'all'"
       icon="Sparkle"
@@ -493,46 +493,46 @@ onMounted(() => {
       compact
       @action="showImport = true"
     />
-    <div v-else-if="filtered.length === 0" class="books__empty">
+    <div v-else-if="filtered.length === 0" class="projects__empty">
       <p class="jv-muted">No {{ copy.book.plural.toLowerCase() }} match this filter.</p>
     </div>
 
-    <table v-else class="jv-table books__grid">
+    <table v-else class="jv-table projects__grid">
       <thead><tr>
         <th>Project</th>
         <th>Kind</th>
-        <th class="books__num">Structure</th>
-        <th class="books__num">Last opened</th>
+        <th class="projects__num">Structure</th>
+        <th class="projects__num">Last opened</th>
         <th></th>
       </tr></thead>
       <tbody>
         <template v-for="p in filtered" :key="p.id">
-          <tr class="books__row" :class="{ 'books__row--open': p.id === selectedId }" :title="p.id === selectedId ? 'Collapse details' : 'Expand details — settings, cast, chapters, export'" @click="selectedId = p.id === selectedId ? null : p.id">
+          <tr class="projects__row" :class="{ 'projects__row--open': p.id === selectedId }" :title="p.id === selectedId ? 'Collapse details' : 'Expand details — settings, cast, chapters, export'" @click="selectedId = p.id === selectedId ? null : p.id">
             <td><strong>{{ p.name }}</strong></td>
             <td>{{ KIND_ICON[p.project_type] || "📄" }} {{ PROJECT_TYPE_LABEL[p.project_type] ?? p.project_type }}</td>
-            <td class="books__num jv-muted">{{ p.scene_count }} {{ copy.chapter.plural.toLowerCase() }}</td>
-            <td class="books__num jv-muted">{{ fmtAgo(p.updated_at) }}</td>
-            <td class="books__row-actions">
+            <td class="projects__num jv-muted">{{ p.scene_count }} {{ copy.chapter.plural.toLowerCase() }}</td>
+            <td class="projects__num jv-muted">{{ fmtAgo(p.updated_at) }}</td>
+            <td class="projects__row-actions">
               <JvButton variant="ghost" size="sm" label="Open ➜" :title="`Make it the active project — the sidebar reshapes to ${PROJECT_TYPE_LABEL[p.project_type] || 'this kind'}`" @click.stop="openProjectHome(p)" />
             </td>
           </tr>
-          <tr v-if="p.id === selectedId" class="books__expand">
-            <td colspan="5" class="books__expand-cell">
-              <div class="books__detail">
+          <tr v-if="p.id === selectedId" class="projects__expand">
+            <td colspan="5" class="projects__expand-cell">
+              <div class="projects__detail">
       <template v-if="selectedProject">
-        <div class="jv-card books__detail-card">
-          <header class="books__detail-header">
-            <h2 class="books__detail-title">{{ selectedProject.name }}</h2>
+        <div class="jv-card projects__detail-card">
+          <header class="projects__detail-header">
+            <h2 class="projects__detail-title">{{ selectedProject.name }}</h2>
             <JvTag :label="PROJECT_TYPE_LABEL[selectedProject.project_type] ?? selectedProject.project_type" />
             <span v-if="selectedProject.imported_from" class="jv-pill jv-pill--ghost">imported_from = {{ selectedProject.imported_from }}</span>
           </header>
 
-          <div class="books__autosave jv-muted">
+          <div class="projects__autosave jv-muted">
             Changes save automatically
             <span v-if="savedFlash" class="jv-pill jv-pill--green">Saved ✓</span>
           </div>
-          <div class="books__fields">
-            <label class="books__field">
+          <div class="projects__fields">
+            <label class="projects__field">
               <span>Title</span>
               <input
                 class="jv-input jv-w-name"
@@ -542,7 +542,7 @@ onMounted(() => {
               />
             </label>
 
-            <label class="books__field">
+            <label class="projects__field">
               <span>Author</span>
               <input
                 class="jv-input jv-w-name"
@@ -552,7 +552,7 @@ onMounted(() => {
               />
             </label>
 
-            <label class="books__field">
+            <label class="projects__field">
               <span>Mastering target</span>
               <select
                 class="jv-input jv-w-name"
@@ -563,7 +563,7 @@ onMounted(() => {
               </select>
             </label>
 
-            <label class="books__field">
+            <label class="projects__field">
               <span>Render preset</span>
               <select
                 class="jv-input jv-w-name"
@@ -574,19 +574,19 @@ onMounted(() => {
               </select>
             </label>
 
-            <div class="books__field books__field--wide">
+            <div class="projects__field projects__field--wide">
               <span>Cast</span>
-              <div class="books__cast-row">
+              <div class="projects__cast-row">
                 <span v-if="!cast.length" class="jv-muted">No cast assigned yet.</span>
                 <span
                   v-for="c in cast"
                   :key="c.persona_id"
-                  class="jv-pill jv-pill--ghost books__cast-pill"
+                  class="jv-pill jv-pill--ghost projects__cast-pill"
                 >
                   {{ c.persona_name ?? c.role_label ?? c.persona_id }}
                   <button
                     type="button"
-                    class="books__cast-pill-x"
+                    class="projects__cast-pill-x"
                     title="Remove from project"
                     @click="removeCast(c.persona_id)"
                   >✕</button>
@@ -602,16 +602,16 @@ onMounted(() => {
               </div>
             </div>
 
-            <div class="books__field books__field--wide">
+            <div class="projects__field projects__field--wide">
               <span>Status</span>
-              <div class="books__status-row">
+              <div class="projects__status-row">
                 <span class="jv-pill jv-pill--green">{{ renderedCount }} {{ copy.chapter.plural.toLowerCase() }} rendered</span>
                 <span class="jv-pill jv-pill--warn" v-if="pendingCount">{{ pendingCount }} pending</span>
                 <span class="jv-pill jv-pill--ghost" v-if="selectedProject.mastering_preset">ACX QC: pending</span>
               </div>
             </div>
 
-            <label class="books__field books__field--wide">
+            <label class="projects__field projects__field--wide">
               <span>Webhook on complete</span>
               <input
                 class="jv-input jv-w-url"
@@ -626,20 +626,20 @@ onMounted(() => {
 
           <!-- Render + export live on Studio (4 · Export) — Projects is
                the library (user decision 2026-06-12). -->
-          <div class="books__actions">
+          <div class="projects__actions">
             <JvButton variant="primary" label="Open in Studio ➜" title="Cast → Script → Render → Export" @click="openInStudio" />
-            <span class="books__spacer" />
+            <span class="projects__spacer" />
             <JvButton variant="danger-outline" size="sm" label="Delete project" @click="deleteProject" />
           </div>
 
           <div class="jv-divider" />
 
-          <h4 class="books__chapters-h">{{ copy.chapter.plural }}</h4>
+          <h4 class="projects__chapters-h">{{ copy.chapter.plural }}</h4>
 
           <div v-if="scenesLoading" class="jv-muted" style="padding: 8px 0">Loading chapters…</div>
 
           <template v-else>
-            <table class="books__table">
+            <table class="projects__table">
               <thead>
                 <tr>
                   <th style="width:24px"></th>
@@ -660,7 +660,7 @@ onMounted(() => {
                 <tr
                   v-for="s in scenes"
                   :key="s.id"
-                  :class="{ 'books__table-row--selected': selectedSceneIds.has(s.id) }"
+                  :class="{ 'projects__table-row--selected': selectedSceneIds.has(s.id) }"
                 >
                   <td></td>
                   <td>{{ s.position }}</td>
@@ -670,7 +670,7 @@ onMounted(() => {
                   <td>
                     <span class="jv-pill" :class="sceneStatusPill(s).cls">{{ sceneStatusPill(s).label }}</span>
                   </td>
-                  <td class="books__row-actions">
+                  <td class="projects__row-actions">
                     <JvButton variant="ghost" size="sm" label="Open" title="Open in Chapter view" @click="openChapterInView(s)" />
                   </td>
                 </tr>
@@ -752,83 +752,83 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.books__autosave { display: flex; align-items: center; gap: 8px; font-size: 11.5px; margin-bottom: 6px; min-height: 22px; }
+.projects__autosave { display: flex; align-items: center; gap: 8px; font-size: 11.5px; margin-bottom: 6px; min-height: 22px; }
 
-.books {
+.projects {
   display: flex;
   flex-direction: column;
   gap: 0;
 }
 
-.books__filter {
+.projects__filter {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   padding: 0 12px 12px;
 }
 
-.books__item-row {
+.projects__item-row {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.books__detail { min-width: 0; }
+.projects__detail { min-width: 0; }
 
-.books__detail-empty {
+.projects__detail-empty {
   padding: 40px;
   text-align: center;
 }
 
-.books__detail-card {
+.projects__detail-card {
   max-width: var(--shell-page);
 }
 
-.books__detail-header {
+.projects__detail-header {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
   margin-bottom: 14px;
 }
-.books__detail-title {
+.projects__detail-title {
   margin: 0;
   font-size: 22px;
   letter-spacing: -0.01em;
 }
 
-.books__fields {
+.projects__fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px 24px;
   margin: 8px 0 18px;
 }
-.books__field {
+.projects__field {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
-.books__field > span {
+.projects__field > span {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--ink-3);
   font-weight: 600;
 }
-.books__field--wide {
+.projects__field--wide {
   grid-column: 1 / -1;
 }
 
-.books__cast-row,
-.books__status-row {
+.projects__cast-row,
+.projects__status-row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
   min-height: 32px;
 }
-.books__cast-pill { display: inline-flex; align-items: center; gap: 4px; }
-.books__cast-pill-x {
+.projects__cast-pill { display: inline-flex; align-items: center; gap: 4px; }
+.projects__cast-pill-x {
   appearance: none;
   background: transparent;
   border: 0;
@@ -840,20 +840,20 @@ onMounted(() => {
   line-height: 1;
   opacity: 0.6;
 }
-.books__cast-pill-x:hover { opacity: 1; color: var(--danger); }
+.projects__cast-pill-x:hover { opacity: 1; color: var(--danger); }
 
-.books__actions {
+.projects__actions {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
   margin: 4px 0;
 }
-.books__spacer {
+.projects__spacer {
   flex: 1;
 }
 
-.books__chapters-h {
+.projects__chapters-h {
   margin: 0 0 10px;
   font-size: 14px;
   letter-spacing: 0.02em;
@@ -861,7 +861,7 @@ onMounted(() => {
   color: var(--ink-2);
 }
 
-.books__bulk-bar {
+.projects__bulk-bar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -873,24 +873,24 @@ onMounted(() => {
   border-radius: 6px;
   transition: border-color 0.15s ease;
 }
-.books__bulk-bar--active {
+.projects__bulk-bar--active {
   border-color: var(--accent);
   background: var(--accent-soft);
 }
-.books__bulk-sep,
-.books__bulk-hint {
+.projects__bulk-sep,
+.projects__bulk-hint {
   font-size: 12px;
 }
-.books__bulk-count {
+.projects__bulk-count {
   font-size: 12px;
 }
 
-.books__table {
+.projects__table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
-.books__table thead th {
+.projects__table thead th {
   text-align: left;
   font-weight: 600;
   font-size: 11px;
@@ -900,27 +900,27 @@ onMounted(() => {
   padding: 8px 6px;
   border-bottom: 1px solid var(--line);
 }
-.books__table thead th.right { text-align: right; }
-.books__table tbody td {
+.projects__table thead th.right { text-align: right; }
+.projects__table tbody td {
   padding: 8px 6px;
   border-bottom: 1px solid var(--line-soft);
   vertical-align: middle;
 }
-.books__table-row--selected {
+.projects__table-row--selected {
   background: var(--accent-soft);
 }
-.books__row-actions {
+.projects__row-actions {
   display: flex;
   justify-content: flex-end;
   gap: 4px;
 }
 
-.books__table-help {
+.projects__table-help {
   font-size: 11.5px;
   margin-top: 8px;
 }
 
-.books__empty {
+.projects__empty {
   padding: 32px;
   text-align: center;
 }
@@ -933,30 +933,30 @@ onMounted(() => {
   font-size: 13px;
   cursor: pointer;
 }
-.books__qc { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
-.books__qc-head { display: flex; align-items: center; gap: 10px; }
-.books__qc-limits { font-size: 11.5px; }
-.books__qc-bad { color: var(--danger, #a8442e); font-weight: 600; }
-.books__notes {
+.projects__qc { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.projects__qc-head { display: flex; align-items: center; gap: 10px; }
+.projects__qc-limits { font-size: 11.5px; }
+.projects__qc-bad { color: var(--danger, #a8442e); font-weight: 600; }
+.projects__notes {
   margin: 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px;
   background: var(--surface-2); font-size: 12.5px; line-height: 1.6;
   white-space: pre-wrap; max-height: 360px; overflow-y: auto;
 }
 
-.books__open {
+.projects__open {
   appearance: none; border: 0; background: transparent;
   color: var(--accent-ink); font: inherit; font-size: 11px; font-weight: 600;
   cursor: pointer; margin-left: 8px; padding: 0;
 }
-.books__open:hover { text-decoration: underline; }
+.projects__open:hover { text-decoration: underline; }
 
-.books__search { max-width: 260px; }
-.books__grid { margin: 0; }
-.books__num { text-align: right; }
-.books__row { cursor: pointer; }
-.books__row:hover td { background: var(--surface-2); }
-.books__row--open td { background: var(--accent-soft); }
-.books__row-actions { text-align: right; white-space: nowrap; }
-.books__expand-cell { padding: 0 !important; background: var(--surface-2); }
-.books__expand-cell .books__detail { padding: 14px 16px; }
+.projects__search { max-width: 260px; }
+.projects__grid { margin: 0; }
+.projects__num { text-align: right; }
+.projects__row { cursor: pointer; }
+.projects__row:hover td { background: var(--surface-2); }
+.projects__row--open td { background: var(--accent-soft); }
+.projects__row-actions { text-align: right; white-space: nowrap; }
+.projects__expand-cell { padding: 0 !important; background: var(--surface-2); }
+.projects__expand-cell .projects__detail { padding: 14px 16px; }
 </style>
