@@ -6,7 +6,7 @@
   tier, anchor propagation, confidence floor, editable system prompt)
   with its own results filling in beneath it (Raw / Parsed tabs).
   "＋ Add column" races a second config against the same input; no
-  Run-all — each column runs itself. Presets save/load locally;
+  Run-all — each column runs itself. Presets save/load server-side;
   "Use as production" writes the speaker_attribution feature pin so
   Studio · Script uses the tuned combination from then on.
 
@@ -19,6 +19,7 @@ import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
 import { promptDialog, confirmDialog } from "../services/dialog.js";
+import { readPref, writePref } from "../services/prefs.js";
 import JvButton from "../components/jv/JvButton.vue";
 import JvToggle from "../components/jv/JvToggle.vue";
 import { useProjectsStore } from "../stores/projects.js";
@@ -165,11 +166,11 @@ const selectedSceneId = ref(null);
 const columns = reactive([]);
 const MAX_COLUMNS = 4;
 
-const PRESETS_KEY = "jv.splab.presets";
-const presets = ref([]);  // [{name, config}]
-try { presets.value = JSON.parse(localStorage.getItem(PRESETS_KEY) || "[]"); } catch { presets.value = []; }
+const presets = ref([]);  // [{name, config}] — server-backed renderer pref
+const _loadedPresets = readPref("speakerLabPresets", []);
+presets.value = Array.isArray(_loadedPresets) ? _loadedPresets : [];
 function persistPresets() {
-  try { localStorage.setItem(PRESETS_KEY, JSON.stringify(presets.value)); } catch { /* ignore */ }
+  writePref("speakerLabPresets", presets.value);
 }
 
 const SAMPLE_TEXT = `Mara stood at the rail. The fog clawed at her ankles.

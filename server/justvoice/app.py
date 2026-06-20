@@ -40,6 +40,7 @@ from .api import (
     feature_pins_api,
     llm_providers_api,
     llm_roles_api,
+    prefs_api,
     preset_suggest_api,
     smart_assign_api,
     engine_sources_api,
@@ -80,8 +81,8 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     data_dir = data_dir or default_data_dir()
 
     # Phase 1.5: SQLite is the primary persistence layer. init_db() runs
-    # idempotent migrations + creates net-new tables. settings.json stays
-    # as the only atomic-JSON store (per CLAUDE.md scope-down).
+    # idempotent migrations + creates net-new tables. settings.json has been
+    # folded into the `settings` table (SettingsStore imports any legacy file).
     from .database import init_db
     init_db(data_dir)
 
@@ -216,6 +217,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(llm_providers_api.router)
     app.include_router(llm_roles_api.router)
     app.include_router(feature_pins_api.router)
+    app.include_router(prefs_api.router)
     app.include_router(extraction_api.router)
     app.include_router(smart_assign_api.router)
     app.include_router(preset_suggest_api.router)

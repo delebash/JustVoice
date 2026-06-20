@@ -20,6 +20,7 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { useCopy } from "../services/copy.js";
+import { readPref, writePref } from "../services/prefs.js";
 import { pushToast } from "../services/toastBridge.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
@@ -60,32 +61,23 @@ const smartAssignBusy = ref(false);
 
 // JustWrite-style voice library filter: engine selector + name search.
 // "" = all engines. Defaults to the currently-loaded TTS engine when one
-// is up (set by the engines load below). Persists in localStorage so the
+// is up (set by the engines load below). Server-backed renderer pref so the
 // user's pick survives reloads.
-const VOICE_ENGINE_KEY = "jv.studio.cast.engineFilter";
-const voiceEngineFilter = ref(
-  (typeof window !== "undefined" && window.localStorage?.getItem(VOICE_ENGINE_KEY)) || "",
-);
-watch(voiceEngineFilter, (v) => {
-  try { window.localStorage?.setItem(VOICE_ENGINE_KEY, v || ""); } catch { /* ignore */ }
-});
+const voiceEngineFilter = ref(readPref("studioVoiceEngineFilter", ""));
+watch(voiceEngineFilter, (v) => { writePref("studioVoiceEngineFilter", v || ""); });
 const voiceSearchQuery = ref("");
 
 // Gender overrides — local-only per-voice gender hint that the user
 // click-cycles (engine label → female → male → neutral → engine label).
 // Smart-assign reads from voice.gender; this overlay lets the user fix
-// the hint without editing the engine's manifest. Persists in
-// localStorage so the override survives reloads.
-const GENDER_OVERRIDE_KEY = "jv.studio.voiceGenderOverrides";
+// the hint without editing the engine's manifest. Server-backed renderer pref
+// so the override survives reloads.
 const GENDER_CYCLE = ["female", "male", "neutral", ""];
-const voiceGenderOverrides = ref({});
-try {
-  const raw = typeof window !== "undefined" ? window.localStorage?.getItem(GENDER_OVERRIDE_KEY) : null;
-  if (raw) voiceGenderOverrides.value = JSON.parse(raw);
-} catch { /* ignore */ }
-watch(voiceGenderOverrides, (v) => {
-  try { window.localStorage?.setItem(GENDER_OVERRIDE_KEY, JSON.stringify(v)); } catch { /* ignore */ }
-}, { deep: true });
+const _loadedGenderOverrides = readPref("voiceGenderOverrides", {});
+const voiceGenderOverrides = ref(
+  _loadedGenderOverrides && typeof _loadedGenderOverrides === "object" ? _loadedGenderOverrides : {},
+);
+watch(voiceGenderOverrides, (v) => { writePref("voiceGenderOverrides", v); }, { deep: true });
 
 function displayedGender(voice) {
   if (Object.prototype.hasOwnProperty.call(voiceGenderOverrides.value, voice.id)) {
@@ -361,8 +353,8 @@ const voiceEngineOptions = computed(() => {
 // user ask 2026-06-12) — EXCEPT voices already cast in this project,
 // which must stay visible or the cast state becomes unreadable.
 const hiddenVoiceIds = computed(() => {
-  try { return new Set(JSON.parse(localStorage.getItem("jv.voices.hidden") || "[]")); }
-  catch { return new Set(); }
+  const h = readPref("hiddenVoices", []);
+  return new Set(Array.isArray(h) ? h : []);
 });
 const engineMetaById = computed(() => {
   const m = {};
@@ -538,14 +530,13 @@ function voiceLocality(v) {
 
 const previewingVoiceId = ref(null);
 // Same ask-before-load contract as the Voices page (user-hit: Studio
-// play silently switched/loaded engines). Shares the Voices opt-in key
+// play silently switched/loaded engines). Shares the Voices opt-in pref
 // so "Always auto-load" applies app-wide.
-const AUTOLOAD_KEY = "jv.voices.autoLoadEngine"; // "always" | unset (ask)
 async function previewVoice(voice) {
   if (!voice || previewingVoiceId.value) return;
   previewingVoiceId.value = voice.id;
   try {
-    const always = localStorage.getItem(AUTOLOAD_KEY) === "always";
+    const always = readPref("autoLoadEngine") === "always";
     let blob;
     try {
       blob = await api.request(`/v1/voices/${voice.id}/preview?auto_load=${always}`, { method: "POST" });
@@ -564,7 +555,7 @@ async function previewVoice(voice) {
       pushToast({
         message: `${engineId} loaded.`,
         kind: "success",
-        action: { label: "Always auto-load", fn: () => localStorage.setItem(AUTOLOAD_KEY, "always") },
+        action: { label: "Always auto-load", fn: () => writePref("autoLoadEngine", "always") },
       });
       // Topbar pill + Engines page track loads from anywhere.
       window.dispatchEvent(new Event("jv:health-refresh"));

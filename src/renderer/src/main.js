@@ -4,7 +4,7 @@ import { createPinia } from "pinia";
 import App from "./App.vue";
 import DictateWindow from "./components/DictateWindow.vue";
 import { tooltipDirective } from "./services/tooltip.js";
-import { bootStorage } from "./services/storage.js";
+import { bootPrefs } from "./services/prefs.js";
 import { i18n } from "./i18n/index.js";
 import "./styles.css";
 
@@ -24,9 +24,9 @@ async function boot() {
     return;
   }
 
-  // Main shell — hydrate persistent UI state from IDB BEFORE Pinia stores
-  // read from it. bootStorage() is idempotent — safe to call multiple times.
-  await bootStorage();
+  // Pull renderer prefs (appearance, hidden voices, …) off the server into a
+  // reactive cache BEFORE mount so views read populated data synchronously.
+  await bootPrefs();
 
   const app = createApp(App);
   app.use(createPinia());

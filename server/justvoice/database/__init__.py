@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """SQLite via SQLAlchemy — primary persistence layer.
 
-Per DESIGN_FREEZE.md §4, every entity except user-editable preferences lives
-here. `settings.json` is the ONLY remaining atomic-JSON store.
+Per DESIGN_FREEZE.md §4, every entity lives here. `settings.json` was folded
+into the `settings` table and renderer prefs into `prefs` (the storage rewrite,
+docs/plans/2026-06-19-jv-prefs-to-sql.md) — no atomic-JSON or client-side store
+remains.
 
 Migration pattern is hand-rolled idempotent column-existence checks
 (MIT-lifted; per-file attribution in `migrations.py` header). No Alembic;
@@ -49,6 +51,10 @@ from .models import (
     TrainingJob,
     # Speaker-attribution correction memory (Phase 5)
     SpeakerCorrection,
+    # Renderer UI preferences (key/value; replaces the renderer's localStorage)
+    Pref,
+    # Operator/server settings (singleton; replaces the legacy settings.json)
+    SettingsRow,
 )
 
 __all__ = [
@@ -80,4 +86,6 @@ __all__ = [
     "Webhook",
     "TrainingJob",
     "SpeakerCorrection",
+    "Pref",
+    "SettingsRow",
 ]

@@ -15,14 +15,12 @@
 import { ref, computed, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
+import { readPref, writePref } from "../services/prefs.js";
 import JvButton from "./jv/JvButton.vue";
 
 const api = useApi();
-const DISMISS_KEY = "jv.recommend.dismissed";
 
-const dismissed = ref(
-  typeof window !== "undefined" && window.localStorage?.getItem(DISMISS_KEY) === "1",
-);
+const dismissed = ref(readPref("recommendDismissed", false) === true);
 const gpu = ref(null);
 const engines = ref([]);
 const detectedLocal = ref([]);
@@ -60,7 +58,7 @@ const visible = computed(() =>
 
 function dismiss() {
   dismissed.value = true;
-  try { window.localStorage?.setItem(DISMISS_KEY, "1"); } catch { /* ignore */ }
+  writePref("recommendDismissed", true);
 }
 
 async function connect(d) {

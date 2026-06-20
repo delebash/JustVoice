@@ -5,7 +5,7 @@ Deletes every DB row (projects, scenes, blocks, takes, generations,
 captures, bindings, …) AND the file-backed stores (personas, voices,
 lexicons, project JSON, training jobs, generation audio — mid-Phase-1.5
 these still live as files, so the DB wipe alone left them alive),
-clears the render cache, and resets settings.json to defaults — keeping
+clears the render cache, and resets settings to defaults — keeping
 only the server host/port section so the running instance stays
 reachable. Downloaded engine models on disk are NOT deleted (multi-GB;
 remove via Engines).
