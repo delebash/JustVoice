@@ -2,8 +2,10 @@
 import { createApp } from "vue";
 import { createPinia } from "pinia";
 import App from "./App.vue";
+import ConnectionError from "./components/ConnectionError.vue";
 import DictateWindow from "./components/DictateWindow.vue";
 import { tooltipDirective } from "./services/tooltip.js";
+import { checkServer } from "./services/connection.js";
 import { bootPrefs, ensureActiveProjectDefault } from "./services/prefs.js";
 import { i18n } from "./i18n/index.js";
 import "./styles.css";
@@ -21,6 +23,14 @@ async function boot() {
     const app = createApp(DictateWindow);
     app.use(createPinia());
     app.mount("#app");
+    return;
+  }
+
+  // Thin-client guard: all data lives in the server. If it's unreachable, mount
+  // a connection-error screen instead of booting the app with empty/default
+  // state (which looks broken and silently fails to save).
+  if (!(await checkServer())) {
+    createApp(ConnectionError).mount("#app");
     return;
   }
 
