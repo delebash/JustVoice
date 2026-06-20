@@ -316,9 +316,9 @@ function fmtAgo(iso) {
   if (!iso) return "—";
   const ago = Date.now() - new Date(iso).getTime();
   if (ago < 60_000) return "just now";
-  if (ago < 3_600_000) return Math.floor(ago / 60_000) + " min";
-  if (ago < 86_400_000) return Math.floor(ago / 3_600_000) + " h";
-  return Math.floor(ago / 86_400_000) + " d";
+  if (ago < 3_600_000) return `${Math.floor(ago / 60_000)} min`;
+  if (ago < 86_400_000) return `${Math.floor(ago / 3_600_000)} h`;
+  return `${Math.floor(ago / 86_400_000)} d`;
 }
 
 // ── Hotkey banner ─────────────────────────────────────────────────────

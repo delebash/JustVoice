@@ -96,7 +96,7 @@ async function emitTauri(event, payload) {
 }
 
 function startSpeakPlayback(generationId) {
-  const url = api.serverUrl + "/audio/" + generationId;
+  const url = `${api.serverUrl}/audio/${generationId}`;
   const audio = new Audio(url);
   audio.onended = () => dismissSpeak();
   audio.onerror = () => dismissSpeak();
@@ -134,7 +134,7 @@ async function onSpeakStart(eventPayload) {
 
   // Subscribe to this one generation's status. When it completes, the
   // /audio/{id} endpoint will serve the WAV we need to play.
-  const source = new EventSource(api.serverUrl + "/v1/generate/" + id + "/status");
+  const source = new EventSource(`${api.serverUrl}/v1/generate/${id}/status`);
   statusSource = source;
 
   // Stuck-cap: 60s without ever hearing back from the backend.

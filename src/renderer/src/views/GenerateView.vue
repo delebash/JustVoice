@@ -45,7 +45,7 @@ const selectedPersona = computed(() =>
   personas.value.find((p) => p.id === selectedPersonaId.value) || null,
 );
 const hasPersonality = computed(() =>
-  !!(selectedPersona.value?.personality && selectedPersona.value.personality.trim()),
+  !!(selectedPersona.value?.personality?.trim()),
 );
 const personaOptions = computed(() => [
   { label: "— no persona —", value: "" },
@@ -217,7 +217,7 @@ watch(selectedPersona, async (p) => {
   try {
     const lex = await api.safeRequest(`/v1/lexicons/${lexId}`, null);
     if (mySeq !== lexiconFetchSeq) return;
-    attachedLexicon.value = lex && lex.id ? lex : null;
+    attachedLexicon.value = lex?.id ? lex : null;
   } catch {
     if (mySeq === lexiconFetchSeq) attachedLexicon.value = null;
   }
@@ -601,7 +601,7 @@ function onSlashInsert({ rendered, placement }) {
       inserted = beforeSlash + afterCaret;
       newCaret = slashStart.value;
     } else {
-      inserted = rendered + " " + beforeSlash + afterCaret;
+      inserted = `${rendered} ${beforeSlash}${afterCaret}`;
       newCaret = slashStart.value + rendered.length + 1;
     }
   } else {

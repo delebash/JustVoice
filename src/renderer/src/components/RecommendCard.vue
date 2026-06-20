@@ -48,7 +48,7 @@ onMounted(async () => {
 const engineSuggestion = computed(() => {
   if (!gpu.value) return null;
   const cb = engines.value.find((e) => e.id === "chatterbox");
-  if (!cb || cb.status !== "not_installed") return null;
+  if (cb?.status !== "not_installed") return null;
   return cb;
 });
 

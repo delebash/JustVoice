@@ -33,7 +33,7 @@ const PATCH_DEBOUNCE_MS = 150;
  *  populated data. Resilient: boots empty (defaults) on failure. */
 export async function bootPrefs() {
   try {
-    const res = await fetch(base() + "/v1/prefs", { headers: authHeaders() });
+    const res = await fetch(`${base()}/v1/prefs`, { headers: authHeaders() });
     if (res.ok) {
       const doc = await res.json();
       if (doc && typeof doc === "object") Object.assign(_doc, doc);
@@ -49,7 +49,7 @@ export function readPref(key, fallback = undefined) {
 }
 
 function _patch(body) {
-  return fetch(base() + "/v1/prefs", {
+  return fetch(`${base()}/v1/prefs`, {
     method: "PATCH",
     headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(body),
@@ -73,7 +73,7 @@ export function writePref(key, value) {
 export async function ensureActiveProjectDefault() {
   if (readPref("activeProject")?.id) return; // a project is already the active slot
   try {
-    const res = await fetch(base() + "/v1/projects", { headers: authHeaders() });
+    const res = await fetch(`${base()}/v1/projects`, { headers: authHeaders() });
     if (!res.ok) return;
     const data = await res.json();
     const list = (data.projects || []).slice()

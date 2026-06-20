@@ -127,9 +127,9 @@ const KIND_ICON = { audiobook: "📖", game_voicelines: "🎮", podcast: "🎙�
 function fmtAgo(iso) {
   if (!iso) return "—";
   const ago = Date.now() - new Date(iso).getTime();
-  if (ago < 3_600_000) return Math.max(1, Math.floor(ago / 60_000)) + " min";
-  if (ago < 86_400_000) return Math.floor(ago / 3_600_000) + " h";
-  return Math.floor(ago / 86_400_000) + " d";
+  if (ago < 3_600_000) return `${Math.max(1, Math.floor(ago / 60_000))} min`;
+  if (ago < 86_400_000) return `${Math.floor(ago / 3_600_000)} h`;
+  return `${Math.floor(ago / 86_400_000)} d`;
 }
 
 const PROJECT_TYPE_LABEL = {

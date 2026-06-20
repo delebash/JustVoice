@@ -162,7 +162,7 @@ const HELP_SLUG_BY_VIEW = {
 const router = useRouter();
 const route = useRoute();
 const view = computed(() => route.name || "overview");
-function goView(id) { if (id && route.name !== id) router.push("/" + id); }
+function goView(id) { if (id && route.name !== id) router.push(`/${id}`); }
 
 const health = ref(null);
 const api = useApi();

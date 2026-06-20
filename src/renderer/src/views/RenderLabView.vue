@@ -45,7 +45,7 @@ function parseValues(str) {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean)
-    .map((s) => (isNaN(Number(s)) ? s : Number(s)));
+    .map((s) => (Number.isNaN(Number(s)) ? s : Number(s)));
 }
 
 async function loadVoices() {

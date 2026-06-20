@@ -12,7 +12,7 @@ import { SERVER_URL } from "../config.js";
 export async function checkServer({ tries = 8, delayMs = 500 } = {}) {
   const token = (typeof localStorage !== "undefined" && localStorage.getItem("jt:token")) || "";
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const url = SERVER_URL.replace(/\/$/, "") + "/v1/health";
+  const url = `${SERVER_URL.replace(/\/$/, "")}/v1/health`;
   for (let i = 0; i < tries; i++) {
     try {
       const res = await fetch(url, { headers, cache: "no-store" });

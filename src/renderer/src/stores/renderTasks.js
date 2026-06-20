@@ -147,7 +147,7 @@ export const useRenderTasks = defineStore("renderTasks", () => {
   // and dismisses the old task — the retry creates its own new task.
   function retry(id) {
     const task = running.value.find((t) => t.id === id) || history.value.find((t) => t.id === id);
-    if (!task || !task.onRetry || task.status === "running") return;
+    if (!task?.onRetry || task.status === "running") return;
     try { task.onRetry(); } catch (_) { /* user code */ }
     dismiss(id);
   }

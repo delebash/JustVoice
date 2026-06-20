@@ -275,7 +275,8 @@ const castAsByVoice = computed(() => {
   const map = {};
   for (const p of personas.value) {
     if (!p.voice_id) continue;
-    (map[p.voice_id] ||= []).push(p.name);
+    map[p.voice_id] ||= [];
+    map[p.voice_id].push(p.name);
   }
   return map;
 });

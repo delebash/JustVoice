@@ -61,7 +61,7 @@ const _variantKey = (engineId, variantId) => `${engineId}/${variantId}`;
 // this engine (engine-wide install OR any per-variant download).
 function _anyProgressForEngine(engineId) {
   if (progress[engineId]) return progress[engineId];
-  const prefix = engineId + "/";
+  const prefix = `${engineId}/`;
   for (const k of Object.keys(progress)) {
     if (k.startsWith(prefix)) return progress[k];
   }
@@ -314,7 +314,8 @@ const enginesByKind = computed(() => {
   const out = { tts: [], llm: [], embedding: [] };
   for (const e of engines.value) {
     const k = e.kind || "tts";
-    (out[k] = out[k] || []).push(e);
+    out[k] = out[k] || [];
+    out[k].push(e);
   }
   return out;
 });
@@ -327,7 +328,7 @@ const visibleEngines = computed(() => enginesByKind.value[activeKind.value] || [
 
 function fmtDisk(mb) {
   if (mb == null) return "—";
-  return mb >= 1024 ? (mb / 1024).toFixed(1) + " GB" : mb + " MB";
+  return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb} MB`;
 }
 
 function pct(p) {
@@ -389,7 +390,7 @@ function progressRowsFor(engineId) {
   if (progress[engineId]) {
     out.push({ key: engineId, jobId: installJobs[engineId] || null, variantId: null, value: progress[engineId] });
   }
-  const prefix = engineId + "/";
+  const prefix = `${engineId}/`;
   for (const k of Object.keys(progress)) {
     if (k.startsWith(prefix)) {
       out.push({
@@ -463,7 +464,7 @@ async function refresh() {
         const list = variants[eng.id]?.variants || [];
         selectedVariants[eng.id] = eng.current_variant_id
           || eng.default_variant_id
-          || (list[0] && list[0].id)
+          || (list[0]?.id)
           || "";
       }
     }),

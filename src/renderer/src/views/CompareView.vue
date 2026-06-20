@@ -73,13 +73,13 @@ async function compare() {
 
 function fmtDb(n) {
   if (n === null || n === undefined) return "—";
-  if (!isFinite(n)) return n > 0 ? "∞" : "−∞";
-  return (n >= 0 ? "+" : "") + n.toFixed(2) + " dB";
+  if (!Number.isFinite(n)) return n > 0 ? "∞" : "−∞";
+  return `${(n >= 0 ? "+" : "") + n.toFixed(2)} dB`;
 }
 
 function fmtSec(n) {
   if (n === null || n === undefined) return "—";
-  return (n >= 0 ? "+" : "") + Number(n).toFixed(2) + "s";
+  return `${(n >= 0 ? "+" : "") + Number(n).toFixed(2)}s`;
 }
 
 function fileSummary(file, side) {

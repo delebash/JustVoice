@@ -80,9 +80,9 @@ function personaName(id) {
 function deliveryPills(p) {
   // Compact read-only summary of the delivery payload (edit via Render
   // Lab in v1). `instruct` is prose — truncate it.
-  return Object.entries((p && p.delivery) || {}).map(([k, v]) => {
+  return Object.entries((p?.delivery) || {}).map(([k, v]) => {
     const s = String(v);
-    return `${k}: ${s.length > 38 ? s.slice(0, 38) + "…" : s}`;
+    return `${k}: ${s.length > 38 ? `${s.slice(0, 38)}…` : s}`;
   });
 }
 

@@ -73,11 +73,12 @@ function tagParts(text) {
   const out = [];
   let last = 0;
   const re = /\[(\w[\w -]{0,24})\]/g;
-  let m;
-  while ((m = re.exec(text || "")) !== null) {
+  let m = re.exec(text || "");
+  while (m !== null) {
     if (m.index > last) out.push({ tag: false, text: text.slice(last, m.index) });
     out.push({ tag: true, text: m[0] });
     last = m.index + m[0].length;
+    m = re.exec(text || "");
   }
   if (last < (text || "").length) out.push({ tag: false, text: text.slice(last) });
   return out.length ? out : [{ tag: false, text: text || "" }];
@@ -572,14 +573,14 @@ function estAudio(words) {
 }
 function scriptState(id) {
   const st = sceneStats.value[id];
-  if (!st || !st.blocks) return { cls: "jv-pill--ghost", label: "not analyzed" };
+  if (!st?.blocks) return { cls: "jv-pill--ghost", label: "not analyzed" };
   return st.attributed
     ? { cls: "jv-pill--green", label: "attributed" }
     : { cls: "jv-pill--warn", label: "unassigned speakers" };
 }
 function renderState(id) {
   const c = sceneCache.value[id];
-  if (!c || !c.total) return { cls: "jv-pill--ghost", label: "—" };
+  if (!c?.total) return { cls: "jv-pill--ghost", label: "—" };
   if (c.cached === c.total) return { cls: "jv-pill--green", label: "✓ cached" };
   if (c.cached > 0) return { cls: "jv-pill--accent", label: `${c.cached}/${c.total} cached` };
   return { cls: "jv-pill--ghost", label: "—" };

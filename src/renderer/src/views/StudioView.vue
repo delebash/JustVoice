@@ -333,7 +333,8 @@ const voiceLibraryByEngine = computed(() => {
   const out = {};
   for (const v of voices.value) {
     const k = v.engine || "other";
-    (out[k] = out[k] || []).push(v);
+    out[k] = out[k] || [];
+    out[k].push(v);
   }
   return out;
 });

@@ -113,17 +113,17 @@ function downloadMastered() {
 
 function fmtDb(n) {
   if (n === null || n === undefined) return "—";
-  if (!isFinite(n)) return n > 0 ? "∞" : "−∞";
-  return (n >= 0 ? "+" : "") + n.toFixed(2) + " dB";
+  if (!Number.isFinite(n)) return n > 0 ? "∞" : "−∞";
+  return `${(n >= 0 ? "+" : "") + n.toFixed(2)} dB`;
 }
 
 function fmtKB(n) {
-  return (n / 1024).toFixed(1) + " KB";
+  return `${(n / 1024).toFixed(1)} KB`;
 }
 
 function fmtPct(n) {
   if (n === null || n === undefined) return "—";
-  return (n * 100).toFixed(2) + "%";
+  return `${(n * 100).toFixed(2)}%`;
 }
 
 onBeforeUnmount(revokeMastered);

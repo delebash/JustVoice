@@ -35,7 +35,7 @@ export const useTakesStore = defineStore("takes", () => {
       // If no active take is set yet, default to the server's default_take_id,
       // then to the first take, then leave null.
       if (!activeTakeIds.value.has(blockId)) {
-        const defaultId = res.default_take_id || (res.takes && res.takes[0]?.id) || null;
+        const defaultId = res.default_take_id || (res.takes?.[0]?.id) || null;
         activeTakeIds.value.set(blockId, defaultId);
       }
     } finally {
