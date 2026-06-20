@@ -52,9 +52,15 @@ export const useRenderTasks = defineStore("renderTasks", () => {
     clearInterval(nowTimer);
     nowTimer = null;
   }
+  // Gate on tasks that are actually RUNNING — NOT running.value.length, which
+  // also counts finished-but-still-visible tasks. A failed task never
+  // auto-dismisses (AUTO_DISMISS_MS.failed = null), so length-gating left the
+  // 100ms tick firing forever while a failed strip lingered — the exact churn
+  // the gate is meant to prevent. finishedAt is fixed, so finished tasks don't
+  // need the tick; only running ones (elapsedSeconds/freshness) do.
   watch(
-    () => running.value.length,
-    (n) => { n > 0 ? startNowTick() : stopNowTick(); },
+    () => running.value.some((t) => t.status === "running"),
+    (active) => { active ? startNowTick() : stopNowTick(); },
   );
 
   // Pending auto-dismiss timers keyed by task id — used so we can
