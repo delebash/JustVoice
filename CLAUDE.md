@@ -194,6 +194,22 @@ is now a thin reactive façade), moved theming into `services/appearance.js`, an
 added `biome.json`. Both apps are Biome-green on 2.5.0 with a byte-identical
 shared config.
 
+### ⛔ LLM-stack convergence (2026-06-20, user directive — global RULE #7)
+
+JustVoice and JustWrite must run the **SAME LLM stack — same Python, same client
+views.** Shared code lives in `just-llm-runner` (providers online/local-free/
+paid, the local runner download/load/spawn, feature dispatch/execution,
+per-feature config **incl. editable system+user prompts**, model roles, usage) +
+`@delebash/llm-ui` (the client views), mounted/imported by BOTH apps. The ONLY
+legitimate differences are JustVoice's **TTS** side and each app's **feature
+catalog** (domain prompts on the same dispatch). It is **NOT** a per-app adapter/
+shim bridging two servers (that approach is superseded). Both apps run headless
+(`*-server serve`) and both already mount `llm_runner.router` — so nothing about
+headless or use-case justifies LLM-architecture divergence. Grounded
+current-state + target + sequence:
+`docs/plans/2026-06-20-engines-llmui-cutover-boundary.md` (Decision 3). Any LLM
+divergence must be proven file-by-file (RULE #7), never asserted.
+
 ## Architecture
 
 Three layers:
