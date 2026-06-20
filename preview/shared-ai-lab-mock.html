@@ -40,6 +40,8 @@ select,input[type=number],input[type=text]{font:inherit;font-size:12.5px;border:
 .set .rng{display:flex;align-items:center;gap:6px}.set .rng input{flex:1}.set .rng .v{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);min-width:26px;text-align:right}
 .toggle{position:relative;width:34px;height:19px;border-radius:999px;background:var(--accent);display:inline-block}.toggle i{position:absolute;top:2px;left:17px;width:15px;height:15px;border-radius:50%;background:#fff}
 .adv summary{cursor:pointer;font-size:11.5px;color:var(--accent-ink);margin-top:10px}
+.grphead{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);margin:12px 0 6px}
+.set input[type=text]{width:100%;box-sizing:border-box}
 .sample{display:flex;gap:8px;align-items:center;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12.5px}
 .cmp-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}.cmp-head .run{margin-left:auto}
 .cols{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
@@ -86,10 +88,20 @@ Chapter:
 {{chapter_text}}
 
 Return JSON: [{ "line", "speaker", "confidence" }].</textarea>
-   <div class="lab-h">Settings sent to the model</div>
-   <div class="settings"><div class="set"><label>Temperature</label><input type="number" value="0.2" step="0.1"></div><div class="set"><label>Max tokens</label><input type="number" value="2048"></div>
-     <div class="set"><label>Reasoning (think)</label><span class="toggle"><i></i></span></div><div class="set"><label>Confidence floor</label><input type="number" value="0.5" step="0.05"></div></div>
-   <details class="adv"><summary>Advanced sampling ▾</summary><div class="settings" style="margin-top:8px"><div class="set"><label>Top-P</label><input type="number" value="0.9" step="0.05"></div><div class="set"><label>Top-K</label><input type="number" value="40"></div><div class="set"><label>Repeat penalty</label><input type="number" value="1.05" step="0.05"></div><div class="set"><label>Seed</label><input type="number" placeholder="random"></div></div></details>
+   <div class="lab-h" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">Settings sent to the model <button class="btn sm" style="padding:2px 8px">↺ Reset to defaults</button></div>
+   <div class="muted" style="font-size:11px;margin:-2px 0 8px">Per provider — the <b>Local engine</b> exposes llama.cpp's full set; cloud shows only what it supports (temp · max tokens · top-p · presence/frequency · stop · seed). Predefined defaults shown — tune any, or reset.</div>
+   <div class="grphead">Sampling</div>
+   <div class="settings"><div class="set"><label>Temperature</label><input type="number" value="0.2" step="0.1"></div><div class="set"><label>Top-K</label><input type="number" value="40"></div><div class="set"><label>Top-P</label><input type="number" value="0.95" step="0.05"></div><div class="set"><label>Min-P</label><input type="number" value="0.05" step="0.05"></div></div>
+   <details class="adv"><summary>more sampling ▾</summary><div class="settings" style="margin-top:6px"><div class="set"><label>Dyn-temp range</label><input type="number" value="0"></div><div class="set"><label>Dyn-temp exp</label><input type="number" value="1"></div><div class="set"><label>XTC probability</label><input type="number" value="0"></div><div class="set"><label>XTC threshold</label><input type="number" value="0.1"></div><div class="set"><label>Typical-P</label><input type="number" value="1"></div><div class="set"><label>Sampler order</label><input type="text" value="top_k·typ_p·top_p·min_p·temp"></div></div></details>
+   <div class="grphead">Penalties</div>
+   <div class="settings"><div class="set"><label>Repeat last N</label><input type="number" value="64"></div><div class="set"><label>Repeat penalty</label><input type="number" value="1.0" step="0.05"></div><div class="set"><label>Presence</label><input type="number" value="0" step="0.1"></div><div class="set"><label>Frequency</label><input type="number" value="0" step="0.1"></div></div>
+   <details class="adv"><summary>DRY ▾</summary><div class="settings" style="margin-top:6px"><div class="set"><label>DRY multiplier</label><input type="number" value="0"></div><div class="set"><label>DRY base</label><input type="number" value="1.75"></div><div class="set"><label>DRY allowed len</label><input type="number" value="2"></div><div class="set"><label>DRY penalty last N</label><input type="number" value="-1"></div></div></details>
+   <div class="grphead">Reasoning &amp; output</div>
+   <div class="settings"><div class="set"><label>Enable thinking</label><span class="toggle"><i></i></span></div><div class="set"><label>Exclude reasoning from ctx</label><span class="toggle" style="background:var(--line-strong)"><i style="left:2px"></i></span></div><div class="set"><label>Max tokens</label><input type="number" value="2048"></div><div class="set"><label>Seed</label><input type="number" placeholder="random"></div></div>
+   <details class="adv"><summary>Custom JSON (pass-through) ▾</summary><textarea style="margin-top:6px;min-height:42px" placeholder='{ "grammar": "…", "logit_bias": [] }'></textarea><div class="muted" style="font-size:10.5px">Any param we don't surface — sent straight to the API (matches llama.cpp's Custom JSON escape hatch).</div></details>
+   <div class="grphead">Feature option</div>
+   <div class="settings"><div class="set"><label>Confidence floor</label><input type="number" value="0.5" step="0.05"></div></div>
+   <div class="muted" style="font-size:10.5px;margin-top:3px">app-level (speaker attribution) — not a model param</div>
  </div>
  <div><div class="cmp-head"><h3 style="font-family:var(--font-serif);font-size:15px;margin:0">Compare candidates</h3><span class="muted" style="font-size:12px">same prompt + settings · different model</span><span class="run"><button class="btn primary sm">▶ Run all</button> <span class="muted" style="font-size:11px"><span class="kbd">⌘↵</span></span></span></div>
    <div class="cols">
@@ -111,7 +123,7 @@ function ttsLab(){return `<div class="lab">
    <div class="lab-h">Sample text</div><textarea>The eastern pass was wrong, and she knew it the moment her finger traced the ridge — every line drawn from a memory she could not have had.</textarea>
    <div class="lab-h">Voice</div>
    <div class="sample">🎙 <select style="flex:1"><option selected>Chatterbox ▸ Elen (cloned)</option><option>Kokoro ▸ af_bella</option><option>Dia ▸ Narrator-2</option></select></div>
-   <div class="lab-h">Engine settings sent to the model</div>
+   <div class="lab-h" style="display:flex;align-items:center;justify-content:space-between">Engine settings sent to the model <button class="btn sm" style="padding:2px 8px">↺ Reset to defaults</button></div>
    <div class="settings">
      <div class="set"><label>Exaggeration</label><div class="rng"><input type="range" min="0" max="1" step="0.05" value="0.5"><span class="v">0.50</span></div></div>
      <div class="set"><label>CFG weight</label><div class="rng"><input type="range" min="0" max="1" step="0.05" value="0.5"><span class="v">0.50</span></div></div>
