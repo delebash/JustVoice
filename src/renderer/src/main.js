@@ -8,6 +8,7 @@ import { tooltipDirective } from "./services/tooltip.js";
 import { checkServer } from "./services/connection.js";
 import { bootPrefs, ensureActiveProjectDefault } from "./services/prefs.js";
 import { i18n } from "./i18n/index.js";
+import router from "./router/index.js";
 import "./tokens.css";
 import "./styles.css";
 
@@ -45,8 +46,12 @@ async function boot() {
 
   const app = createApp(App);
   app.use(createPinia());
+  app.use(router);
   app.use(i18n);
   app.directive("tooltip", tooltipDirective);
+  // Resolve the initial (lazy) route before mount so the first paint is the
+  // real view, not an empty router-view.
+  await router.isReady();
   app.mount("#app");
 }
 

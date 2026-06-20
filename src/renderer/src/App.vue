@@ -1,6 +1,8 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <script setup>
 import { ref, onMounted, computed, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { initialDeepLink } from "./router/index.js";
 import { useI18n } from "vue-i18n";
 import { useApi } from "./stores/api.js";
 import { useRenderTasks } from "./stores/renderTasks.js";
@@ -18,25 +20,8 @@ import JvHelpDrawer from "./components/JvHelpDrawer.vue";
 import HelpTrigger from "./components/HelpTrigger.vue";
 import GlobalAudioPlayer from "./components/GlobalAudioPlayer.vue";
 
-import OverviewView from "./views/OverviewView.vue";
-import GenerateView from "./views/GenerateView.vue";
-import ChapterView from "./views/ChapterView.vue";
-import BooksView from "./views/BooksView.vue";
-import ImportReviewView from "./views/ImportReviewView.vue";
-import VoicesView from "./views/VoicesView.vue";
-// ProfilesView removed — Persona is the sole identity layer after the
-// Profile-kill (plan Q1). All voice config now lives directly on Persona.
-import StudioView from "./views/StudioView.vue";
-import LinesView from "./views/LinesView.vue";
-import PersonasView from "./views/PersonasView.vue";
-import LexiconsView from "./views/LexiconsView.vue";
-import EnginesView from "./views/EnginesView.vue";
-import LabsView from "./views/LabsView.vue";
-import SettingsView from "./views/SettingsView.vue";
-import CapturesView from "./views/CapturesView.vue";
-import StoriesView from "./views/StoriesView.vue";
-import EffectsView from "./views/EffectsView.vue";
-import RenderPresetsView from "./views/RenderPresetsView.vue";
+// View components are lazy-loaded by the router (router/index.js); App.vue holds
+// only the sidebar metadata (VIEWS) keyed by route name.
 
 // Per-view `visibleFor` declares which onboarding primary-use-case values
 // surface this tab in the sidebar. The full set is:
@@ -54,36 +39,36 @@ import RenderPresetsView from "./views/RenderPresetsView.vue";
 const ALL_USE_CASES = ["audiobook", "game", "podcast", "dictation", "accessibility", "multiple", "unset"];
 const VIEWS = [
   // ─── Workflow lane ─────────────────────────────────────────────────
-  { id: "overview",  lane: "workflow", label: "Home",      icon: "🏠", lede: "", component: OverviewView },
-  { id: "books",     lane: "workflow", label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Import manuscripts from JustWrite, or scripts and audio from other tools.", component: BooksView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
-  { id: "chapter",   lane: "workflow", label: "Chapters",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved.", component: ChapterView, visibleFor: ["audiobook", "podcast", "multiple", "unset"] },
-  { id: "lines",     lane: "workflow", label: "Lines",      icon: "🎮", lede: "Every line of the game project — stable ids, characters, derived take status. Re-import the writers\u2019 next sheet (only changed lines go stale), re-render exactly those, export per-line WAVs + manifest.", component: LinesView, visibleFor: ["game", "multiple", "unset"] },
-  { id: "studio",    lane: "workflow", label: "Studio",    icon: "🎬", lede: "Cast → Script → Render production environment. Three-tab flow for multi-character work. Cast assigns voices to characters; Script runs LLM speaker attribution (Phase 3 backend); Render batches the whole project.", component: StudioView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
-  { id: "stories",   lane: "workflow", label: "Stories",   icon: "🎞️", lede: "Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.", component: StoriesView, visibleFor: ["game", "podcast", "multiple", "unset"] },
-  { id: "generate",  lane: "workflow", label: "Generate",  icon: "📝", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it. Type / for paralinguistic tags.", component: GenerateView },
+  { id: "overview",  lane: "workflow", label: "Home",      icon: "🏠", lede: "" },
+  { id: "books",     lane: "workflow", label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Import manuscripts from JustWrite, or scripts and audio from other tools.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "chapter",   lane: "workflow", label: "Chapters",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved.", visibleFor: ["audiobook", "podcast", "multiple", "unset"] },
+  { id: "lines",     lane: "workflow", label: "Lines",      icon: "🎮", lede: "Every line of the game project — stable ids, characters, derived take status. Re-import the writers\u2019 next sheet (only changed lines go stale), re-render exactly those, export per-line WAVs + manifest.", visibleFor: ["game", "multiple", "unset"] },
+  { id: "studio",    lane: "workflow", label: "Studio",    icon: "🎬", lede: "Cast → Script → Render production environment. Three-tab flow for multi-character work. Cast assigns voices to characters; Script runs LLM speaker attribution (Phase 3 backend); Render batches the whole project.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "stories",   lane: "workflow", label: "Stories",   icon: "🎞️", lede: "Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.", visibleFor: ["game", "podcast", "multiple", "unset"] },
+  { id: "generate",  lane: "workflow", label: "Generate",  icon: "📝", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it. Type / for paralinguistic tags." },
   // Always visible (queue item 11): dictation is a cross-cutting utility
   // for all five audiences — the focus gate made it vanish the moment an
   // audiobook project set workspace focus (user: "where is that?").
-  { id: "captures",  lane: "workflow", label: "Captures",  icon: "🎚️", lede: "Dictation pill + global hotkey. Speak into any text field. Also captures audio for cloning sample collection.", component: CapturesView },
+  { id: "captures",  lane: "workflow", label: "Captures",  icon: "🎚️", lede: "Dictation pill + global hotkey. Speak into any text field. Also captures audio for cloning sample collection." },
 
   // ─── Library lane ──────────────────────────────────────────────────
-  { id: "voices",    lane: "library", label: "Voices",    icon: "🎙️", lede: "Voice library — cloned, preset (Kokoro 54 + Qwen 9), designed (text-prompt → voice), blended. Per-voice channel routing.", component: VoicesView },
-  { id: "personas",  lane: "library", label: "Personas",  icon: "🎭", lede: "Characters. Each persona has a name, bio, voice, personality (TTS delivery instruction), default delivery, effects, lexicon override. Cross-project — one Mara across many books or quests. Filter by usage in the library list.", component: PersonasView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
-  { id: "lexicons",  lane: "library", label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Force \"Beauchamp\" → \"BEE-chum\", domain words → consistent phoneme-level pronunciation across a whole book. Per-character override.", component: LexiconsView, visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
-  { id: "effects",   lane: "library", label: "Effects",   icon: "🎛️", lede: "Pedalboard-backed effects chain. Apply non-destructively — creates a new generation version that preserves the original. 8 types · 4 built-in presets + custom.", component: EffectsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "presets",   lane: "library", label: "Presets",   icon: "🎚️", lede: "Render presets — named bundles of voice + delivery + effects chain + master target. Studio Render binds one per scene to lock per-chapter or per-quest output consistency.", component: RenderPresetsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "engines",   lane: "library", label: "Engines",   icon: "🧠", lede: "Installed engine catalog. Install / load / unload models. Per-engine venv isolation (JustVoice advantage — install Chatterbox without breaking Kokoro).", component: EnginesView },
+  { id: "voices",    lane: "library", label: "Voices",    icon: "🎙️", lede: "Voice library — cloned, preset (Kokoro 54 + Qwen 9), designed (text-prompt → voice), blended. Per-voice channel routing." },
+  { id: "personas",  lane: "library", label: "Personas",  icon: "🎭", lede: "Characters. Each persona has a name, bio, voice, personality (TTS delivery instruction), default delivery, effects, lexicon override. Cross-project — one Mara across many books or quests. Filter by usage in the library list.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "lexicons",  lane: "library", label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Force \"Beauchamp\" → \"BEE-chum\", domain words → consistent phoneme-level pronunciation across a whole book. Per-character override.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "effects",   lane: "library", label: "Effects",   icon: "🎛️", lede: "Pedalboard-backed effects chain. Apply non-destructively — creates a new generation version that preserves the original. 8 types · 4 built-in presets + custom.", visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "presets",   lane: "library", label: "Presets",   icon: "🎚️", lede: "Render presets — named bundles of voice + delivery + effects chain + master target. Studio Render binds one per scene to lock per-chapter or per-quest output consistency.", visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "engines",   lane: "library", label: "Engines",   icon: "🧠", lede: "Installed engine catalog. Install / load / unload models. Per-engine venv isolation (JustVoice advantage — install Chatterbox without breaking Kokoro)." },
 
   // ─── Tools lane ────────────────────────────────────────────────────
 
   // ─── Advanced lane (collapsed by default) ──────────────────────────
 
   // Hidden route — not in any lane; reached from the import dialog.
-  { id: "importreview", lane: "hidden", label: "Import", icon: "⬆", lede: "Review what was detected — pick the chapters to import, confirm, done. Nothing imports until you confirm.", component: ImportReviewView },
+  { id: "importreview", lane: "hidden", label: "Import", icon: "⬆", lede: "Review what was detected — pick the chapters to import, confirm, done. Nothing imports until you confirm." },
 
   // ─── Settings — pinned at the very bottom, always visible ──────────
-  { id: "labs",      lane: "pinned", label: "Labs",      icon: "🧪", lede: "", component: LabsView, visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "settings",  lane: "pinned", label: "Settings",  icon: "⚙️", lede: "Every tunable setting in one place — nothing is hardcoded, so you can adjust how JustVoice behaves without editing files by hand.", component: SettingsView },
+  { id: "labs",      lane: "pinned", label: "Labs",      icon: "🧪", lede: "", visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
+  { id: "settings",  lane: "pinned", label: "Settings",  icon: "⚙️", lede: "Every tunable setting in one place — nothing is hardcoded, so you can adjust how JustVoice behaves without editing files by hand." },
 ];
 
 const LANES = [
@@ -137,7 +122,7 @@ function switchProject(p) {
   // Stay put when the current view survives the kind swap; otherwise
   // land in the new kind's home base.
   if (!visibleViews.value.some((v) => v.id === view.value)) {
-    view.value = SWITCH_KIND_META[p.project_type]?.home || "chapter";
+    goView(SWITCH_KIND_META[p.project_type]?.home || "chapter");
   }
 }
 if (typeof document !== "undefined") {
@@ -171,42 +156,14 @@ const HELP_SLUG_BY_VIEW = {
   settings: "getting-started",
 };
 
-// Every use case launches on Home — the journeys contract makes it the
-// daily driver ("resume where you left off, catalogue at a glance, live
-// tasks, loaded engine, recent generations"). Explicit hash deep-links
-// still win in resolveInitialTab.
-const DEFAULT_TAB_BY_USE_CASE = {
-  audiobook:     "overview",
-  game:          "overview",
-  podcast:       "overview",
-  dictation:     "overview",
-  accessibility: "overview",
-  multiple:      "overview",
-  unset:         "overview",
-};
+// Routing is vue-router (router/index.js): the active view is the route name,
+// goView() navigates, and the router owns hash sync + the legacy sub-tab
+// redirects. App.vue only decides which routes SHOW in the sidebar.
+const router = useRouter();
+const route = useRoute();
+const view = computed(() => route.name || "overview");
+function goView(id) { if (id && route.name !== id) router.push("/" + id); }
 
-// Resolve the initial view SYNCHRONOUSLY from the URL hash so a hard
-// refresh on e.g. #books paints Projects on the FIRST frame — not Home.
-// (Bug: `view` defaulted to "overview" and the bookmarked hash was only
-// applied by resolveInitialTab(), which waits for onboarding.hydrate()'s
-// async /v1/settings round-trip — flashing Home before the real page.
-// Only the no-hash DEFAULT still waits for onboarding; an explicit hash
-// never needs it.)
-function initialViewFromHash() {
-  const hashId = (typeof window !== "undefined" && window.location.hash.replace(/^#/, "")) || "";
-  if (hashId && VIEWS.some((v) => v.id === hashId)) return hashId;
-  if (["cache", "channels", "webhooks"].includes(hashId)) {
-    try { window.sessionStorage?.setItem("jv.settings.sub", hashId); } catch { /* ignore */ }
-    return "settings";
-  }
-  if (["compare", "train", "speakerlab", "renderlab", "audio"].includes(hashId)) {
-    try { window.sessionStorage?.setItem("jv.labs.sub", hashId); } catch { /* ignore */ }
-    return "labs";
-  }
-  return null;
-}
-const _initialHashView = initialViewFromHash();
-const view = ref(_initialHashView || "overview");
 const health = ref(null);
 const api = useApi();
 const tasks = useRenderTasks();
@@ -214,9 +171,10 @@ const onboarding = useOnboarding();
 const activeProject = useActiveProject();
 const uiContext = useUiContext();
 const { t } = useI18n();
-// An explicit hash is authoritative — mark resolved so the post-hydrate
-// watch/resolveInitialTab don't override the bookmarked page.
-let initialTabResolved = !!_initialHashView;
+// initialDeepLink is non-empty only for a real bookmarked route — the "/"
+// default redirects to /overview, so first-run logic uses it to tell "user
+// chose overview" from "defaulted there".
+let initialTabResolved = !!initialDeepLink;
 
 // Localized sidebar labels — proves the i18n scaffold is live. VIEWS
 // holds the English defaults so the data lookup stays static; this
@@ -289,45 +247,16 @@ const pinnedViews = computed(() =>
 
 function resolveInitialTab() {
   if (initialTabResolved) return;
-  // Don't override an explicit hash route — power users land where they
-  // bookmarked. `#voices` / `#chapter` etc. all win over the default.
-  const hash = (typeof window !== "undefined" && window.location.hash) || "";
-  const hashId = hash.replace(/^#/, "");
-  if (hashId && VIEWS.some((v) => v.id === hashId)) {
-    view.value = hashId;
-    initialTabResolved = true;
-    return;
-  }
-  // Legacy Settings sub-tab deep links (#cache/#channels/#webhooks) —
-  // only the hashchange listener handled these, so a COLD load of the
-  // URL fell through to Home (user-hit: parity capture landed wrong).
-  if (["cache", "channels", "webhooks"].includes(hashId)) {
-    try { window.sessionStorage?.setItem("jv.settings.sub", hashId); } catch { /* ignore */ }
-    view.value = "settings";
-    initialTabResolved = true;
-    return;
-  }
-  if (["compare", "train", "speakerlab", "renderlab", "audio"].includes(hashId)) {
-    try { window.sessionStorage?.setItem("jv.labs.sub", hashId); } catch { /* ignore */ }
-    view.value = "labs";
-    initialTabResolved = true;
-    return;
-  }
-  // First run = the real question, "What are you making?" (user decision
-  // 2026-06-12: no welcome quiz, no setup wizard — the kind picker opens,
-  // creating the first project sets the workspace focus, and engines
-  // install themselves on first render). One-shot: offering it marks
-  // onboarding shown whether or not a project gets created.
-  if (!onboarding.shown) {
-    try { window.sessionStorage?.setItem("jv.books.createKind", ""); } catch { /* ignore */ }
-    view.value = "books";
-    initialTabResolved = true;
-    onboarding.dismiss();
-    return;
-  }
-  const tab = DEFAULT_TAB_BY_USE_CASE[onboarding.primaryUseCase] || "overview";
-  view.value = tab;
   initialTabResolved = true;
+  // The router already placed us on the URL's route and handled legacy sub-tab
+  // + bookmarked deep-links. Only first-run is left: with no explicit deep-link,
+  // open the kind picker ("What are you making?") on Projects instead of Home
+  // (user decision 2026-06-12: no welcome quiz — the kind picker IS onboarding).
+  if (!onboarding.shown && !initialDeepLink) {
+    try { window.sessionStorage?.setItem("jv.books.createKind", ""); } catch { /* ignore */ }
+    onboarding.dismiss();
+    router.replace("/books");
+  }
 }
 
 async function refresh() {
@@ -359,41 +288,10 @@ watch(
   { immediate: true },
 );
 
-// Hash routing: keep the URL in sync both directions.
-//   - Hash change (back/forward, bookmarked URL) updates the active view.
-//   - Active view change writes the hash so deep-linking works.
-if (typeof window !== "undefined") {
-  const LEGACY_SETTINGS_TABS = { cache: "cache", channels: "channels", webhooks: "webhooks" };
-  const LEGACY_LABS_TABS = ["compare", "train", "speakerlab", "renderlab", "audio"];
-  const routeHash = (hashId) => {
-    if (LEGACY_SETTINGS_TABS[hashId]) {
-      try { window.sessionStorage?.setItem("jv.settings.sub", LEGACY_SETTINGS_TABS[hashId]); } catch { /* ignore */ }
-      view.value = "settings";
-      return true;
-    }
-    if (LEGACY_LABS_TABS.includes(hashId)) {
-      try { window.sessionStorage?.setItem("jv.labs.sub", hashId); } catch { /* ignore */ }
-      view.value = "labs";
-      return true;
-    }
-    return false;
-  };
-  window.addEventListener("hashchange", () => {
-    const hashId = window.location.hash.replace(/^#/, "");
-    if (routeHash(hashId)) return;
-    if (hashId && VIEWS.some((v) => v.id === hashId) && view.value !== hashId) {
-      view.value = hashId;
-    }
-  });
-}
-watch(view, (v) => {
-  if (typeof window !== "undefined" && v && window.location.hash.replace(/^#/, "") !== v) {
-    window.history.replaceState(null, "", "#" + v);
-  }
-  // Clear stale breadcrumb segments when navigating between top-level
-  // views — the new view repopulates them on mount if it has context.
-  uiContext.clear();
-});
+// The router owns URL sync, back/forward, and deep-links now. On every route
+// change, clear stale breadcrumb segments — the new view repopulates them on
+// mount if it has context.
+watch(() => route.name, () => { uiContext.clear(); });
 
 // QuickSetup is opt-in only (Settings → General → Run Quick Setup, via
 // the jv:quick-setup event). Its first-run role moved to the kind
@@ -457,7 +355,7 @@ onMounted(async () => {
           class="jv-sidebar__nav"
           :class="{ 'jv-sidebar__nav--active': view === v.id }"
           :title="navLabel(v)"
-          @click="view = v.id"
+          @click="goView(v.id)"
         >
           <span class="jv-sidebar__icon">{{ v.icon || '·' }}</span>
           <span class="jv-sidebar__label">{{ navLabel(v) }}</span>
@@ -473,7 +371,7 @@ onMounted(async () => {
         class="jv-sidebar__nav"
         :class="{ 'jv-sidebar__nav--active': view === v.id }"
         :title="v.label"
-        @click="view = v.id"
+        @click="goView(v.id)"
       >
         <span class="jv-sidebar__icon">{{ v.icon || '·' }}</span>
         <span class="jv-sidebar__label">{{ v.label }}</span>
@@ -518,7 +416,7 @@ onMounted(async () => {
                 <span class="jv-topbar__menu-name">{{ p.name }}</span>
                 <span v-if="p.id === activeProject.id" class="jv-topbar__menu-check">✓</span>
               </button>
-              <button type="button" class="jv-topbar__menu-item jv-topbar__menu-item--all" @click="switcherOpen = false; view = 'books'">
+              <button type="button" class="jv-topbar__menu-item jv-topbar__menu-item--all" @click="switcherOpen = false; goView('books')">
                 All projects ➜
               </button>
             </div>
@@ -539,7 +437,7 @@ onMounted(async () => {
           class="jv-topbar__engine-pill"
           :class="{ 'jv-topbar__engine-pill--empty': !health.current_engine }"
           :title="health.current_engine ? `Loaded: ${health.current_engine}. Click to manage engines.` : 'No engine loaded. Click to load one.'"
-          @click="view = 'engines'"
+          @click="goView('engines')"
         >
           <span class="jv-topbar__engine-icon">🧠</span>
           {{ health.current_engine || "No engine" }}
@@ -575,9 +473,11 @@ onMounted(async () => {
           </template>
         </p>
         <TaskStrip v-for="task in tasks.running" :key="task.id" :task="task" />
-        <KeepAlive>
-          <component :is="currentView?.component" :key="currentView?.id" />
-        </KeepAlive>
+        <router-view v-slot="{ Component }">
+          <KeepAlive>
+            <component :is="Component" :key="route.name" />
+          </KeepAlive>
+        </router-view>
       </div>
     </main>
 
