@@ -69,7 +69,7 @@ select,input[type=number],input[type=text]{font:inherit;font-size:12.5px;border:
   <optgroup label="LLM actions"><option value="attribution" selected>Speaker attribution</option><option value="entities">Entity extraction (objects / locations)</option><option value="rewrite">Rewrite in character</option></optgroup>
   <optgroup label="TTS actions"><option value="narration">Narration render</option><option value="dialogue">Dialogue render</option></optgroup>
 </select> <span id="typebadge"></span></h1>
-<p class="lede">Tune <b>one action</b>, compare candidates side-by-side on real input, then <b>Apply</b> → it becomes this action's default on the route. Same Lab for LLM and TTS — switch the action above to see it adapt (LLM = prompt + sampling; TTS = voice + engine knobs).</p>
+<p class="lede">Tune one action — prompt + settings — compare candidates side-by-side on real input, then Apply to make it this action's default.</p>
 
 <div id="labroot"></div>
 
@@ -88,8 +88,10 @@ Chapter:
 {{chapter_text}}
 
 Return JSON: [{ "line", "speaker", "confidence" }].</textarea>
-   <div class="lab-h" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">Settings sent to the model <button class="btn sm" style="padding:2px 8px">↺ Reset to defaults</button></div>
-   <div class="muted" style="font-size:11px;margin:-2px 0 8px">Per provider — the <b>Local engine</b> exposes llama.cpp's full set; cloud shows only what it supports (temp · max tokens · top-p · presence/frequency · stop · seed). Predefined defaults shown — tune any, or reset.</div>
+   <div class="muted" style="font-size:10.5px;margin-top:3px">Variables: <span class="mono">{{cast}}</span> <span class="mono">{{chapter_text}}</span> — filled at run time · <span style="color:var(--accent-ink)">↺ reset prompt</span></div>
+   <div style="margin-top:8px;display:flex;align-items:center;gap:8px"><button class="btn sm" style="padding:3px 10px">+ Add review pass</button><span class="muted" style="font-size:10.5px">optional second prompt that reviews the output</span></div>
+   <div class="lab-h" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;margin-top:14px">Settings sent to the model <button class="btn sm" style="padding:2px 8px">↺ Reset to defaults</button></div>
+   <div class="muted" style="font-size:11px;margin:-2px 0 8px">Cloud providers show only the settings they support. Defaults shown — tune or reset.</div>
    <div class="grphead">Sampling</div>
    <div class="settings"><div class="set"><label>Temperature</label><input type="number" value="0.2" step="0.1"></div><div class="set"><label>Top-K</label><input type="number" value="40"></div><div class="set"><label>Top-P</label><input type="number" value="0.95" step="0.05"></div><div class="set"><label>Min-P</label><input type="number" value="0.05" step="0.05"></div></div>
    <details class="adv"><summary>more sampling ▾</summary><div class="settings" style="margin-top:6px"><div class="set"><label>Dyn-temp range</label><input type="number" value="0"></div><div class="set"><label>Dyn-temp exp</label><input type="number" value="1"></div><div class="set"><label>XTC probability</label><input type="number" value="0"></div><div class="set"><label>XTC threshold</label><input type="number" value="0.1"></div><div class="set"><label>Typical-P</label><input type="number" value="1"></div><div class="set"><label>Sampler order</label><input type="text" value="top_k·typ_p·top_p·min_p·temp"></div></div></details>
@@ -98,7 +100,7 @@ Return JSON: [{ "line", "speaker", "confidence" }].</textarea>
    <details class="adv"><summary>DRY ▾</summary><div class="settings" style="margin-top:6px"><div class="set"><label>DRY multiplier</label><input type="number" value="0"></div><div class="set"><label>DRY base</label><input type="number" value="1.75"></div><div class="set"><label>DRY allowed len</label><input type="number" value="2"></div><div class="set"><label>DRY penalty last N</label><input type="number" value="-1"></div></div></details>
    <div class="grphead">Reasoning &amp; output</div>
    <div class="settings"><div class="set"><label>Enable thinking</label><span class="toggle"><i></i></span></div><div class="set"><label>Exclude reasoning from ctx</label><span class="toggle" style="background:var(--line-strong)"><i style="left:2px"></i></span></div><div class="set"><label>Max tokens</label><input type="number" value="2048"></div><div class="set"><label>Seed</label><input type="number" placeholder="random"></div></div>
-   <details class="adv"><summary>Custom JSON (pass-through) ▾</summary><textarea style="margin-top:6px;min-height:42px" placeholder='{ "grammar": "…", "logit_bias": [] }'></textarea><div class="muted" style="font-size:10.5px">Any param we don't surface — sent straight to the API (matches llama.cpp's Custom JSON escape hatch).</div></details>
+   <details class="adv"><summary>Custom JSON (pass-through) ▾</summary><textarea style="margin-top:6px;min-height:42px" placeholder='{ "grammar": "…", "logit_bias": [] }'></textarea><div class="muted" style="font-size:10.5px">Any param we don't surface — sent straight to the API.</div></details>
    <div class="grphead">Feature option</div>
    <div class="settings"><div class="set"><label>Confidence floor</label><input type="number" value="0.5" step="0.05"></div></div>
    <div class="muted" style="font-size:10.5px;margin-top:3px">app-level (speaker attribution) — not a model param</div>
@@ -114,8 +116,7 @@ Return JSON: [{ "line", "speaker", "confidence" }].</textarea>
    </div>
    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:14px"><div class="addcol">+ Add a model column</div><div></div></div>
  </div></div>
- <div class="applybar"><div class="w">Selected: <b>Built-in runner ▸ qwen3-4b</b> — free, 12/12, your edited prompt + temp 0.2.</div><span style="flex:1"></span><button class="btn sm">Save as named preset</button><button class="btn primary">Apply to route → default for “Speaker attribution”</button></div>
- <p class="note">“Apply” writes a production config (model + settings + prompts) — the route's default; shows a <span class="mono">CONFIG</span> tag on Features. LLM action: settings = sampling, compare = text output.</p>`;}
+ <div class="applybar"><div class="w">Selected: <b>Built-in runner ▸ qwen3-4b</b> — free, 12/12, your edited prompt + temp 0.2.</div><span style="flex:1"></span><button class="btn sm">Save as named preset</button><button class="btn primary">Apply to route → default for “Speaker attribution”</button></div>`;}
 
 // ── TTS action lab (same framework; per-voice settings adapt to the engine; + render/batch layer) ──
 // Per-voice settings branch by engine paradigm (Alexandria reference): Chatterbox = numeric
@@ -140,11 +141,10 @@ function ttsLab(){return `<div class="lab">
    <div id="voicesettings"></div>
    <details class="adv"><summary>Render &amp; batch ▾</summary>
      <div class="settings" style="margin-top:6px"><div class="set"><label>Device</label><input type="text" value="auto"></div><div class="set"><label>Parallel workers</label><input type="number" value="2"></div><div class="set"><label>Compile codec</label><span class="toggle" style="background:var(--line-strong)"><i style="left:2px"></i></span></div><div class="set"><label>Sub-batching</label><span class="toggle"><i></i></span></div><div class="set"><label>Min sub-batch</label><input type="number" value="4"></div><div class="set"><label>Length ratio</label><input type="number" value="5"></div><div class="set"><label>Max items/batch</label><input type="number" value="0"></div><div class="set"><label>Batch seed</label><input type="number" placeholder="-1 random"></div></div>
-     <div class="muted" style="font-size:10.5px;margin-top:4px">Max items/batch <b>0 = auto from VRAM</b>. Render-pipeline settings (how the job batches), separate from the per-voice settings above.</div></details>
+     <div class="muted" style="font-size:10.5px;margin-top:4px">Max items/batch <b>0 = auto from VRAM</b>.</div></details>
    <details class="adv"><summary>Merge timing ▾</summary>
      <div class="settings" style="margin-top:6px"><div class="set"><label>Speaker-change pause (ms)</label><input type="number" value="500"></div><div class="set"><label>Same-speaker pause (ms)</label><input type="number" value="250"></div></div>
      <div class="muted" style="font-size:10.5px;margin-top:4px">Silence inserted when stitching lines on merge.</div></details>
-   <p class="note" style="margin-top:12px">Two layers: <b>per-voice</b> (adapts to the engine — Chatterbox knobs vs Qwen3-TTS style instruct vs Kokoro speed-only) and <b>render/batch + merge</b> (collapsibles). Read from the engine's capability surface (Alexandria-style).</p>
  </div>
  <div><div class="cmp-head"><h3 style="font-family:var(--font-serif);font-size:15px;margin:0">Compare candidates</h3><span class="muted" style="font-size:12px">same text · different voice / settings</span><span class="run"><button class="btn primary sm">▶ Render all</button></span></div>
    <div class="cols">
@@ -157,8 +157,7 @@ function ttsLab(){return `<div class="lab">
    </div>
    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:14px"><div class="addcol">+ Add a voice / settings column</div><div></div></div>
  </div></div>
- <div class="applybar"><div class="w">Selected: <b>Chatterbox ▸ Elen · exaggeration 0.5</b> — the calmer take.</div><span style="flex:1"></span><button class="btn sm">Save as named preset</button><button class="btn primary">Apply to route → default for “Narration render”</button></div>
- <p class="note">Identical framework, identical Apply — only the settings schema (per-engine knobs/instruct + render-batch vs LLM sampling) and the rendered output (audio vs text) differ. TTS is JustVoice-only; the Lab shell/compare/Apply are shared code.</p>`;}
+ <div class="applybar"><div class="w">Selected: <b>Chatterbox ▸ Elen · exaggeration 0.5</b> — the calmer take.</div><span style="flex:1"></span><button class="btn sm">Save as named preset</button><button class="btn primary">Apply to route → default for “Narration render”</button></div>`;}
 
 function wireRng(){document.querySelectorAll('.set .rng input').forEach(r=>{const v=r.parentElement.querySelector('.v');if(!v)return;const u=v.textContent.includes('×')?'×':'';r.oninput=()=>v.textContent=parseFloat(r.value).toFixed(u?1:2)+u;});}
 function ttsVoiceChange(){const e=document.getElementById('ttsvoice');const eng=e?e.value:'chatterbox';document.getElementById('voicesettings').innerHTML=ttsVoiceSettings(eng);wireRng();}

@@ -100,7 +100,7 @@ table.routes{width:100%;border-collapse:collapse;margin-top:12px}.routes th{text
 <div class="topbar"><span class="brand" id="brand">JustVoice</span><span class="shared">shared · @delebash/llm-ui</span>
 <div class="apptog"><button class="on" id="tg-jv" onclick="setApp('jv')">JustVoice</button><button id="tg-jw" onclick="setApp('jw')">JustWrite</button></div></div>
 <h1>Models</h1>
-<p class="lede">Connect AI providers (free local or metered cloud), manage each provider's models, route features, watch cost. <b>Same code in both apps</b> — only the feature catalog differs (toggle above).</p>
+<p class="lede">Connect AI providers — free local or metered cloud — and manage which models power each feature.</p>
 <div class="hwtop"><span class="muted" style="font-size:11px;font-weight:700">YOUR HARDWARE</span>
   <div><span class="k">GPU</span> <b>RTX 4070</b> · 12 GB VRAM</div><div><span class="k">RAM</span> <b>32 GB</b></div><div><span class="k">Accel</span> <b>CUDA 12</b></div>
   <span class="muted" style="margin-left:auto;font-size:11.5px">drives the Fit scores below</span></div>
@@ -109,11 +109,11 @@ table.routes{width:100%;border-collapse:collapse;margin-top:12px}.routes th{text
 
 <!-- ══ PROVIDERS & MODELS ══ -->
 <div class="tab on" id="tab-providers">
-  <div class="sec-h"><h2>Providers &amp; models</h2><span class="count">a normal grid — Edit / Delete per row; manage models inside Edit (local providers)</span>
+  <div class="sec-h"><h2>Providers &amp; models</h2>
     <span class="right"><button class="btn primary sm" onclick="addProv()">+ Add provider</button></span></div>
   <div id="addslot"></div>
 
-  <div class="psplit"><span class="free">LOCAL · FREE</span> on your machine — no key, nothing leaves the device · all managed the same way</div>
+  <div class="psplit"><span class="free">LOCAL · FREE</span> on your machine — no key, nothing leaves the device</div>
   <div class="prov"><div class="phead" id="head-r"><span class="dot"></span>
       <div class="pmid"><span class="pn">Local engine</span> <span class="pid">built-in · llama.cpp</span> <span class="caps"><span class="cap llm">LLM</span></span>
         <div class="psum muted">localhost:8080 · chat qwen3-4b · 2 models · built-in (pre-added)</div></div>
@@ -137,12 +137,11 @@ table.routes{width:100%;border-collapse:collapse;margin-top:12px}.routes th{text
       <span class="pright"><button class="btn sm" onclick="edit('a')">Edit</button><button class="btn sm danger">Delete</button></span></div>
     <div class="pbody" id="b-a" style="display:none"></div></div>
 
-  <p class="note">Normal grid: <b>Edit + Delete</b> per row (Test lives in the form). <b>Every local provider is the same</b> — Ollama, LM Studio, and the bundled <b>Local engine</b> all manage models the same way inside Edit (list · status · Fit · load/download). The built-in is just pre-added (no Delete). Cloud providers fetch a model list; nothing to download.</p>
 </div>
 
 <!-- ══ FEATURES ══ -->
 <div class="tab" id="tab-features">
-  <div class="sec-h"><h2>Features</h2><span class="count" id="featcount">8 features · this app's catalog</span></div>
+  <div class="sec-h"><h2>Features</h2><span class="count" id="featcount">8 features</span></div>
   <div class="card"><div class="cardhead"><h3>Model roles</h3><span class="right muted" style="font-size:12px">optional — a feature inherits a role, or picks its own provider▸model</span></div>
     <p class="sub">Two jobs, two models — each is a <b>provider ▸ model</b> pick.</p>
     <div class="roles">
@@ -198,7 +197,7 @@ function modelsSection(d){
    else {st='<span class="muted" style="font-size:11px">not downloaded</span>';act='<button class="btn primary sm">⬇ Download</button>';}
    return `<div class="mrow">${fit}<span class="mn">${m.id}</span><span class="mm">${m.size||''}</span><span class="right">${st}${act}</span></div>`;};
  const ph=d.fmt==='ollama'?'qwen3:32b  (ollama pull)':'unsloth/Qwen3-14B-GGUF:Q4_K_M  (hf)';
- return `<div class="kind-label">Models on this provider — same for any local provider; Fit uses your hardware (top); models auto-load on first use</div>
+ return `<div class="kind-label">Models · Fit is for your hardware · auto-loads on first use</div>
    ${d.models.map(row).join('')}
    <div class="inl"><span class="muted" style="font-size:12px">Download a model:</span><input placeholder="${ph}"><button class="btn sm">Download</button></div>`;}
 
@@ -212,14 +211,14 @@ function formHTML(k,d){const editing=k!=='new';
    <span class="lbl">Name</span><input class="x" value="${d.name}" placeholder="My provider">
    <span class="lbl">Base URL</span><input class="x" value="${d.url}" placeholder="http://localhost:11434/v1">
    <span class="lbl">API key</span><div id="keycell-${k}">${d.local?'<span class="muted" style="font-size:11.5px">— not needed for a local provider</span>':`<input class="x" type="password" value="${d.key}" placeholder="sk-…">`}</div>
-   <span class="lbl">API format</span><div>${fmtSeg}<div class="fhint2"><b>Ollama native</b> is only for an Ollama daemon — the one provider that needs its native <span class="mono">/api/chat</span> to toggle reasoning. <b>llama.cpp &amp; cloud control reasoning via request params</b> on the OpenAI-compatible endpoint (llama.cpp <span class="mono">chat_template_kwargs.enable_thinking</span> / <span class="mono">reasoning_format</span>; OpenAI <span class="mono">reasoning_effort</span>; Anthropic <span class="mono">thinking</span>) — you just set <b>Enable thinking</b> in the Lab and the adapter maps it. So: OpenAI-compatible for everything except an Ollama daemon.</div></div>
-   <span class="lbl">Chat model</span><div>${cb('chat-'+k,d.chat,d.models.filter(m=>!m.emb),'Fetch or type a model id')}</div>
+   <span class="lbl">API format</span><div>${fmtSeg}<div class="fhint2"><b>Ollama native</b> — only for an Ollama daemon (lets you turn reasoning on/off). Otherwise OpenAI-compatible.</div></div>
+   <span class="lbl">Default chat model</span><div>${cb('chat-'+k,d.chat,d.models.filter(m=>!m.emb),'Fetch or type a model id')}<div class="fhint2">The provider's default — switch it per feature in Features, or in chat.</div></div>
    <span class="lbl">Embedding model <span class="muted">optional</span></span><div>${cb('emb-'+k,d.emb,d.models.filter(m=>m.emb),'leave blank if not used')}</div>
  </div>
  ${d.local?modelsSection(d):''}
  <div class="pfoot"><span class="stat"><span class="dot off"></span> not tested</span><span style="flex:1"></span>
    <button class="btn sm">Test connection</button>${editing&&!d.builtin?'<button class="btn sm danger">Delete</button>':''}<button class="btn ghost sm" onclick="closeForm('${k}')">Cancel</button><button class="btn primary sm" onclick="closeForm('${k}')">Save provider</button></div>
- <div class="fhint2" style="margin-top:10px;font-style:italic">No ID field (auto-slug from name). No tier — auto-detected per model and tuned per action in the Lab (near-moot for online models).</div></div>`;}
+</div>`;}
 function keyToggle(k,isLocal){const c=document.getElementById('keycell-'+k);if(c)c.innerHTML=isLocal?'<span class="muted" style="font-size:11.5px">— not needed for a local provider</span>':'<input class="x" type="password" placeholder="sk-…">';}
 function preset(k,p){const map={"Local engine":["http://localhost:8080/v1","openai-compat",true],Ollama:["http://localhost:11434","ollama",true],"LM Studio":["http://localhost:1234/v1","openai-compat",true],OpenAI:["https://api.openai.com/v1","openai-compat",false],Anthropic:["https://api.anthropic.com/v1","openai-compat",false],OpenRouter:["https://openrouter.ai/api/v1","openai-compat",false],Custom:["","openai-compat",false]};
  const[url,fmt,local]=map[p]||map.Custom;document.getElementById('addslot').innerHTML='<div class="prov"><div class="phead" style="padding:10px 16px"><span class="dot off"></span><div class="pmid"><span class="pn" style="color:var(--ink-3)">New provider · '+p+'</span></div></div>'+formHTML('new',{name:p==='Custom'?"":p,pid:"",url,key:"",fmt,local,chat:"",emb:"",models:[]})+'</div>';}
@@ -261,6 +260,6 @@ function frow(r,i){const[n,d,u,res,cfg]=r;const opts=['Inherit · Quick','Inheri
 function render(a){document.getElementById('routebody').innerHTML=CAT[a].rows.map(frow).join('')}
 function tog(i){const e=document.getElementById('ed'+i);e.style.display=e.style.display==='none'?'':'none'}
 function setTab(t){document.querySelectorAll('.subnav a').forEach(a=>a.classList.toggle('on',a.dataset.tab===t));document.querySelectorAll('.tab').forEach(d=>d.classList.toggle('on',d.id==='tab-'+t))}
-function setApp(a){document.getElementById('tg-jv').classList.toggle('on',a==='jv');document.getElementById('tg-jw').classList.toggle('on',a==='jw');document.getElementById('brand').textContent=CAT[a].brand;document.getElementById('featcount').textContent=CAT[a].rows.length+" features · this app's catalog";document.getElementById('busyfeat').textContent=CAT[a].busy[0];document.getElementById('busymeta').textContent=CAT[a].busy[1];render(a)}
+function setApp(a){document.getElementById('tg-jv').classList.toggle('on',a==='jv');document.getElementById('tg-jw').classList.toggle('on',a==='jw');document.getElementById('brand').textContent=CAT[a].brand;document.getElementById('featcount').textContent=CAT[a].rows.length+" features";document.getElementById('busyfeat').textContent=CAT[a].busy[0];document.getElementById('busymeta').textContent=CAT[a].busy[1];render(a)}
 render('jv');
 </script></body></html>
