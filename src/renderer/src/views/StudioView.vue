@@ -739,10 +739,10 @@ async function renderScene(scene) {
     kind: "chapter",
     feature: "render-scene",
     label: `${scene.title || copy.value.chapter.singular} → ${copy.value.chapter.singular.toLowerCase()} render`,
-    onCancel: () => {
-      abortController.abort();
-      tasks.cancel(task.id);
-    },
+    // Only tear down the operation here — the store's cancel() does the
+    // state transition AFTER calling this. (Calling tasks.cancel(task.id)
+    // here recursed cancel→onCancel→cancel until the stack overflowed.)
+    onCancel: () => abortController.abort(),
     onRetry: () => renderScene(scene),
     meta: { sceneId: scene.id, projectId: selectedProjectId.value },
   });
@@ -1012,8 +1012,11 @@ async function runDiscoverSpeakers() {
     tasks.finish(t.id);
   } catch (e) {
     // Identification is best-effort sugar on top of analyze — a 501
-    // (no LLM) just means no banner; don't leave a sticky failed task.
-    tasks.dismiss(t.id);
+    // (no LLM) just means no banner; don't leave a sticky task. finish()
+    // (not dismiss, which no-ops on a still-"running" task and would
+    // orphan it in the strip + keep the elapsed tick alive) marks it done
+    // so it auto-dismisses.
+    tasks.finish(t.id);
   }
 }
 
