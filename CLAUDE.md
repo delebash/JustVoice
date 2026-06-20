@@ -184,15 +184,15 @@ documented reason below says otherwise.
 modules (engines, audio, dictation); dev port **1430** (HMR 1431); a few stores
 are domain-rich (engines, takes, generation) — that's scope, not drift.
 
-**Deviations still to migrate to the standard** (ordered plan + full audit:
-`docs/plans/2026-06-20-cross-app-convergence.md`):
-- adopt **vue-router** (drop the hand-rolled `hashchange` + `<component :is>`;
-  lazy-load views);
-- rename `components/jv/` → `components/ui/`;
-- split `styles.css` into `tokens.css` + `styles.css`;
-- move the fetch wrapper out of the `api` store into `services/serverApi.js`;
-- extract theming from the `ui` store into `services/appearance.js`;
-- add `biome.json`.
+**Cross-app convergence** (audit + ordered plan:
+`docs/plans/2026-06-20-cross-app-convergence.md`) is **complete**: adopted
+vue-router with lazy routes (replacing the hand-rolled `hashchange` +
+`<component :is>`), renamed `components/jv/` → `components/ui/`, split
+`styles.css` into `tokens.css` + `styles.css` at the renderer root, extracted
+the fetch wrapper from the `api` store into `services/serverApi.js` (the store
+is now a thin reactive façade), moved theming into `services/appearance.js`, and
+added `biome.json`. Both apps are Biome-green on 2.5.0 with a byte-identical
+shared config.
 
 ## Architecture
 

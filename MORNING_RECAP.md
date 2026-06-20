@@ -1319,7 +1319,7 @@ Ported from voicebox commit `b35b90961d5bc83a8b4e96e8b6ccde2a03152ff9` (MIT) und
 | What to do next / priority order | `project_next_steps.md` |
 | `/v1/voices/blend` or `/v1/train` or engine blend/train methods | `project_phase5_engine_flips.md` |
 | Finding a file path in the repo | `reference_repo_layout.md` |
-| Building a new UI component or token | (justvoice.css + `components/jv/` are now the source of truth; legacy `reference_justwrite_components` is stale) |
+| Building a new UI component or token | (`tokens.css`/`styles.css` at the renderer root + `components/ui/` are the source of truth; legacy `reference_justwrite_components` is stale) |
 | Legacy Rust repo reference | `reference_legacy_repo.md` |
 | Operator-tunable training settings | `reference_settings_training.md` |
 | About to write a question or non-terse closer | `feedback_user_preferences.md` |
