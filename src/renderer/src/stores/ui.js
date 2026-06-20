@@ -7,17 +7,7 @@
 import { defineStore } from "pinia";
 import { ref, watch } from "vue";
 import { readPref, writePref } from "../services/prefs.js";
-
-function resolveTheme(theme) {
-  if (theme !== "system") return theme;
-  if (typeof window === "undefined") return "dark";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
-
-function applyTheme(theme) {
-  if (typeof document === "undefined") return;
-  document.documentElement.classList.toggle("dark", resolveTheme(theme) === "dark");
-}
+import { applyTheme, watchSystemTheme } from "../services/appearance.js";
 
 function loadInitial() {
   const p = readPref("ui", {});
@@ -72,12 +62,8 @@ export const useUIStore = defineStore("ui", () => {
   // Apply theme on store init.
   applyTheme(theme.value);
 
-  // Watch the system theme preference; re-apply when in "system" mode.
-  if (typeof window !== "undefined") {
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-      if (theme.value === "system") applyTheme("system");
-    });
-  }
+  // Re-apply when the OS preference flips, while following "system".
+  watchSystemTheme(() => theme.value === "system");
 
   watch([theme, selectedProfileId], () => {
     writePref("ui", { theme: theme.value, selectedProfileId: selectedProfileId.value });
