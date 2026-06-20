@@ -122,16 +122,19 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
       </div>
 
       <div class="np-alts">
-        <a href="#" class="np-link" @click.prevent="emit('import')">
-          …or create from a file (EPUB, DOCX, CSV, markdown)
-        </a>
-        <a
+        <span class="np-alts__lead">Or start from —</span>
+        <JvButton variant="ghost" size="sm" title="Import EPUB, DOCX, CSV, or markdown" @click="emit('import')">
+          <template #icon>📄</template>a file
+        </JvButton>
+        <JvButton
           v-if="selected !== 'custom'"
-          href="#"
-          class="np-link"
+          variant="ghost"
+          size="sm"
           :title="`Seed a small ${KINDS.find(k => k.id === selected)?.label} project you can safely explore`"
-          @click.prevent="emit('demo', selected)"
-        >…or load a demo project</a>
+          @click="emit('demo', selected)"
+        >
+          <template #icon>✨</template>a demo project
+        </JvButton>
       </div>
 
       <p class="np-focus-only">
@@ -180,11 +183,18 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
   border-top: 1px solid var(--line, #e3e1dc); padding-top: 7px; margin-top: auto;
 }
 .np-name-input { flex: 0 1 320px; }
-.np-alts { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 14px; }
-.np-link {
-  font-size: 12px; color: var(--accent-ink, #2c6049); text-decoration: underline;
-  cursor: pointer;
+/* Alternatives to picking a kind. Set off from the card grid by a hairline so
+   the zone reads as a deliberate "or start another way" rather than two links
+   floating under the cards. Ghost buttons (thin-bordered quiet utilities)
+   replace the old underlined <a>s, which read as unstyled text and could wrap
+   mid-phrase when squeezed. The lead-in + short labels read as one sentence:
+   "Or start from — [a file] [a demo project]". */
+.np-alts {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  margin-top: 16px; padding-top: 14px;
+  border-top: 1px solid var(--line, #e3e1dc);
 }
+.np-alts__lead { font-size: 12px; color: var(--muted, #888); }
 
 @media (max-width: 860px) {
   .np-grid { grid-template-columns: repeat(2, 1fr); }
