@@ -27,7 +27,7 @@ export function url(path) {
   return base().replace(/\/$/, "") + path;
 }
 
-export async function request(path, opts = {}) {
+async function _doRequest(path, opts) {
   const headers = { ...(opts.headers || {}) };
   const tok = authToken();
   if (tok) headers.Authorization = `Bearer ${tok}`;
@@ -45,6 +45,26 @@ export async function request(path, opts = {}) {
     lastError.value = String(e.message || e);
     throw e;
   }
+}
+
+// In-flight GET dedupe. Boot fires several stores/components fetching the same
+// endpoint (engines, settings, health, projects…) in the same tick; without
+// this each one opens its own request. Collapse concurrent identical GETs onto
+// one in-flight promise (GETs are idempotent), cleared when it settles — so a
+// later read still re-fetches. Cuts redundant boot traffic; non-GETs untouched.
+const _inflight = new Map();
+
+export function request(path, opts = {}) {
+  const method = (opts.method || "GET").toUpperCase();
+  if (method !== "GET") return _doRequest(path, opts);
+  const key = url(path);
+  const hit = _inflight.get(key);
+  if (hit) return hit;
+  const p = _doRequest(path, opts);
+  _inflight.set(key, p);
+  const clear = () => _inflight.delete(key);
+  p.then(clear, clear); // settle-cleanup; callers still see p's result/rejection
+  return p;
 }
 
 // Convenience verbs used by service modules. Path is always the FIRST arg —

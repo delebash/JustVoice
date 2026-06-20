@@ -9,33 +9,43 @@
 // In-app help docs loader.
 //
 // docs/*.md and docs/toc.json live at the repo root (one level above
-// the vite root, `src/renderer/`). Both are bundled at build time —
-// markdown via import.meta.glob as raw strings, the TOC as a plain
-// JSON import.
+// the vite root, `src/renderer/`). The TOC is a small JSON import; the
+// markdown is loaded LAZILY (import.meta.glob without `eager`) — a doc's
+// content is fetched only when its Help drawer opens, not bundled into /
+// fetched on the boot path. Loaded docs are cached for the session.
 
 import HELP_TOC_DATA from "../../../../docs/toc.json";
 
-const modules = import.meta.glob("../../../../docs/*.md", {
-  eager: true,
+const loaders = import.meta.glob("../../../../docs/*.md", {
   query: "?raw",
   import: "default",
 });
 
-const DOCS = {};
-for (const path in modules) {
+// slug → () => Promise<rawMarkdown>
+const DOC_LOADERS = {};
+for (const path in loaders) {
   const slug = path.split("/").pop().replace(/\.md$/, "");
   const key = slug === "README" ? "index" : slug;
-  DOCS[key] = modules[path];
+  DOC_LOADERS[key] = loaders[path];
 }
+
+const _cache = {};
 
 export const HELP_TOC = HELP_TOC_DATA;
 
-export function getDoc(slug) {
-  return DOCS[slug || "index"] || null;
+// Async: loads (and caches) a doc's markdown on demand. Returns null if absent.
+export async function loadDoc(slug) {
+  const key = slug || "index";
+  if (key in _cache) return _cache[key];
+  const loader = DOC_LOADERS[key];
+  if (!loader) return null;
+  const raw = await loader();
+  _cache[key] = raw;
+  return raw;
 }
 
 export function hasDoc(slug) {
-  return Boolean(DOCS[slug || "index"]);
+  return Boolean(DOC_LOADERS[slug || "index"]);
 }
 
 export function titleForSlug(slug) {

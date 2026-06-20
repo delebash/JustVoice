@@ -26,7 +26,7 @@ import {
   DialogClose,
 } from "reka-ui";
 import { useUIStore } from "../stores/ui.js";
-import { getDoc, hasDoc, titleForSlug } from "../services/helpDocs.js";
+import { loadDoc, hasDoc, titleForSlug } from "../services/helpDocs.js";
 import { renderHelpMarkdown } from "../services/helpMarkdown.js";
 
 const ui = useUIStore();
@@ -38,16 +38,18 @@ const open = computed({
 
 const slug = computed(() => ui.helpDrawerSlug || "");
 const title = computed(() => titleForSlug(slug.value));
-const rawDoc = computed(() => getDoc(slug.value));
+const rawDoc = ref(null);
 const renderedHtml = computed(() => renderHelpMarkdown(rawDoc.value));
 const exists = computed(() => hasDoc(slug.value));
 
 const contentEl = ref(null);
 
-watch(slug, async () => {
+// Load the doc lazily when the drawer opens / navigates (not at app boot).
+watch(slug, async (s) => {
+  rawDoc.value = s ? await loadDoc(s) : null;
   await nextTick();
   contentEl.value?.scrollTo({ top: 0, behavior: "auto" });
-});
+}, { immediate: true });
 
 function onContentClick(e) {
   const a = e.target.closest("a[data-help-link]");
