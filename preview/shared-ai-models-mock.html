@@ -61,7 +61,15 @@ h1{font-family:var(--font-serif);font-size:24px;margin:0}
 .fit{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;border:1px solid;flex:none}.fit .s{font-family:var(--font-mono)}
 .fit.ok{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-ink)}.fit.tight{background:var(--gold-soft);border-color:var(--gold-line);color:var(--gold)}.fit.no{background:#f7e7e4;border-color:#e3b6ac;color:var(--red)}
 .pill{font-size:10px;font-weight:700;border-radius:999px;padding:2px 9px}.pill.run{background:var(--accent);color:#fff}.pill.disk{background:var(--surface-3);color:var(--ink-2);border:1px solid var(--line)}
-.inl{display:flex;gap:8px;align-items:center;margin-top:8px}.inl input{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:7px 10px;background:var(--surface);width:230px}
+.inl{display:flex;gap:8px;align-items:center;margin-top:8px}.inl input{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:7px 10px;background:var(--surface);width:280px}
+.mgrid-wrap{max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-top:6px;background:var(--surface)}
+.mgrid{width:100%;border-collapse:collapse;font-size:12.5px}
+.mgrid th{position:sticky;top:0;z-index:1;background:var(--surface-2);text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);font-weight:700;padding:7px 10px;border-bottom:1px solid var(--line)}
+.mgrid td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+.mgrid tr:last-child td{border-bottom:0}.mgrid .mn{font-weight:600}.mgrid .mm{color:var(--ink-3)}
+.mgrid .actc{text-align:right;white-space:nowrap}.mgrid .actc .btn{margin-left:5px}
+.seg.locked{opacity:.6}.seg.locked button{cursor:default}
+.hflink{color:var(--accent-ink);text-decoration:underline}
 /* provider form */
 .pform{padding:14px 16px;border-top:1px solid var(--line);background:var(--accent-soft)}
 .fgrid{display:grid;grid-template-columns:120px minmax(0,1fr);gap:10px 12px;font-size:12.5px;align-items:center}
@@ -168,7 +176,7 @@ table.routes{width:100%;border-collapse:collapse;margin-top:12px}.routes th{text
 // cloud providers carry a fetched-name list for the Combobox only.
 const PROV={
  r:{name:"Local engine",pid:"built-in · llama.cpp",url:"http://localhost:8080/v1",key:"",fmt:"openai-compat",local:true,builtin:true,chat:"qwen3-4b-instruct",emb:"",
-    models:[{id:"qwen3-4b-instruct",size:"2.4 GB",lvl:"ok",fit:92,status:"loaded"},{id:"qwen3-14b",size:"8.2 GB",lvl:"ok",fit:88,status:"disk"},{id:"gemma3-27b",size:"16 GB",lvl:"tight",fit:61,status:"available"}]},
+    models:[{id:"qwen3-4b-instruct",size:"2.4 GB",lvl:"ok",fit:92,status:"loaded"},{id:"qwen3-14b",size:"8.2 GB",lvl:"ok",fit:88,status:"disk"},{id:"llama3.1-8b",size:"4.9 GB",lvl:"ok",fit:90,status:"disk"},{id:"phi-4-14b",size:"8.4 GB",lvl:"ok",fit:86,status:"available"},{id:"gemma3-27b",size:"16 GB",lvl:"tight",fit:61,status:"available"},{id:"qwen3-32b",size:"19 GB",lvl:"tight",fit:54,status:"available"},{id:"llama3.3-70b",size:"40 GB",lvl:"no",status:"available"}]},
  o:{name:"Ollama (this PC)",pid:"ollama-local",url:"http://localhost:11434",key:"",fmt:"ollama",local:true,chat:"qwen3:14b",emb:"nomic-embed-text",
     models:[{id:"qwen3:14b",size:"9.3 GB",lvl:"ok",fit:88,status:"loaded"},{id:"qwen3:8b",size:"5.0 GB",lvl:"ok",fit:94,status:"disk"},{id:"nomic-embed-text",size:"274 MB",lvl:"ok",fit:99,status:"disk",emb:true}]},
  c:{name:"OpenAI",pid:"openai",url:"https://api.openai.com/v1",key:"sk-•••••••",fmt:"openai-compat",local:false,chat:"gpt-4o-mini",emb:"text-embedding-3-small",
@@ -189,23 +197,34 @@ function segpick(btn){[...btn.parentElement.children].forEach(b=>b.classList.rem
 
 // Models section — IDENTICAL for every local provider (Ollama, LM Studio, built-in)
 function modelsSection(d){
+ const isHF=d.fmt!=='ollama'; // llama.cpp / LM Studio = HF GGUF; Ollama = its own library
  const row=(m)=>{
-   const fit=m.fit?`<span class="fit ${m.lvl}">${m.lvl==='tight'?'Tight':m.lvl==='no'?"Won't fit":'Fits'} <span class="s">${m.fit}</span></span>`:'';
-   let st='',act='';
-   if(m.status==='loaded'){st='<span class="pill run">● loaded</span>';act='<button class="btn sm">Unload</button>';}
-   else if(m.status==='disk'){st='<span class="pill disk">on disk</span>';act='<button class="btn sm">Load</button>';}
-   else {st='<span class="muted" style="font-size:11px">not downloaded</span>';act='<button class="btn primary sm">⬇ Download</button>';}
-   return `<div class="mrow">${fit}<span class="mn">${m.id}</span><span class="mm">${m.size||''}</span><span class="right">${st}${act}</span></div>`;};
- const ph=d.fmt==='ollama'?'qwen3:32b  (ollama pull)':'unsloth/Qwen3-14B-GGUF:Q4_K_M  (hf)';
+   const lbl=m.lvl==='tight'?'Tight':m.lvl==='no'?"Won't fit":'Fits';
+   const fit=m.lvl?`<span class="fit ${m.lvl}">${lbl}${m.fit?` <span class="s">${m.fit}</span>`:''}</span>`:'';
+   let st,act;
+   if(m.status==='loaded'){st='<span class="pill run">● loaded</span>';act='<button class="btn sm">Unload</button><button class="btn sm danger">Delete</button>';}
+   else if(m.status==='disk'){st='<span class="pill disk">on disk</span>';act='<button class="btn sm">Load</button><button class="btn sm danger">Delete</button>';}
+   else if(m.lvl==='no'){st='<span class="muted" style="font-size:11px">not downloaded</span>';act='<button class="btn sm" disabled>Too large</button>';}
+   else{st='<span class="muted" style="font-size:11px">not downloaded</span>';act='<button class="btn primary sm">⬇ Download</button>';}
+   return `<tr><td class="mn">${m.id}</td><td class="mm">${m.size||'—'}</td><td>${fit}</td><td>${st}</td><td class="actc">${act}</td></tr>`;};
+ const dl=isHF
+   ?`Download from <a class="hflink" href="https://huggingface.co/models?library=gguf" target="_blank" rel="noopener">Hugging Face ↗</a> — the open hub for AI models; the engine runs <b>GGUF</b> files from it. Paste a <span class="mono">repo:quant</span>:`
+   :`Pull from the <a class="hflink" href="https://ollama.com/library" target="_blank" rel="noopener">Ollama library ↗</a> — paste a model <span class="mono">tag</span>:`;
+ const ph=isHF?'unsloth/Qwen3-14B-GGUF:Q4_K_M':'qwen3:32b';
  return `<div class="kind-label">Models · Fit is for your hardware · auto-loads on first use</div>
-   ${d.models.map(row).join('')}
-   <div class="inl"><span class="muted" style="font-size:12px">Download a model:</span><input placeholder="${ph}"><button class="btn sm">Download</button></div>`;}
+   <div class="mgrid-wrap"><table class="mgrid"><thead><tr><th>Model</th><th>Size</th><th>Fit</th><th>Status</th><th></th></tr></thead><tbody>${d.models.map(row).join('')}</tbody></table></div>
+   <div class="inl" style="flex-wrap:wrap"><span class="muted" style="font-size:11.5px;flex-basis:100%;margin-bottom:2px">${dl}</span><input placeholder="${ph}"><button class="btn sm">${isHF?'⬇ Download':'Pull'}</button></div>`;}
 
 function formHTML(k,d){const editing=k!=='new';
  const presets=editing?'':`<div class="kind-label" style="margin-top:0">Start from a known provider — fills URL · format · where-it-runs</div>
    <div class="presets">${['Local engine','Ollama','LM Studio','OpenAI','Anthropic','OpenRouter','Custom'].map(p=>`<button onclick="preset('${k}','${p}')">${p}</button>`).join('')}</div>`;
- const whereSeg=`<span class="seg"><button class="${d.local?'on':''}" onclick="segpick(this);keyToggle('${k}',1)">Local · free</button><button class="${d.local?'':'on'}" onclick="segpick(this);keyToggle('${k}',0)">Online · metered</button></span>`;
- const fmtSeg=`<span class="seg"><button class="${d.fmt!=='ollama'?'on':''}" onclick="segpick(this)">OpenAI-compatible</button><button class="${d.fmt==='ollama'?'on':''}" onclick="segpick(this)">Ollama native</button></span>`;
+ const lock=d.builtin; // built-in Local engine: where-it-runs + API format are known → locked
+ const whereSeg=lock
+   ?`<span class="seg locked"><button class="on">Local · free</button></span> <span class="muted" style="font-size:11px">fixed · built-in</span>`
+   :`<span class="seg"><button class="${d.local?'on':''}" onclick="segpick(this);keyToggle('${k}',1)">Local · free</button><button class="${d.local?'':'on'}" onclick="segpick(this);keyToggle('${k}',0)">Online · metered</button></span>`;
+ const fmtSeg=lock
+   ?`<span class="seg locked"><button class="on">OpenAI-compatible</button></span> <span class="muted" style="font-size:11px">fixed · built-in (llama.cpp)</span>`
+   :`<span class="seg"><button class="${d.fmt!=='ollama'?'on':''}" onclick="segpick(this)">OpenAI-compatible</button><button class="${d.fmt==='ollama'?'on':''}" onclick="segpick(this)">Ollama native</button></span>`;
  return `<div class="pform">${presets}<div class="fgrid">
    <span class="lbl">Where it runs</span><div>${whereSeg}</div>
    <span class="lbl">Name</span><input class="x" value="${d.name}" placeholder="My provider">
