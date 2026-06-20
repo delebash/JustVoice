@@ -1,241 +1,238 @@
 <!DOCTYPE html>
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!--
-  Shared AI "Models" area — mock v2 (rev after UX feedback).
-  Fixes from v1: model management is PER-PROVIDER and varies by type
-  (built-in runner = download GGUF + Fit; Ollama = list installed + pull;
-  cloud = fetch list, pick default — no download). Adds the Add/Edit
-  provider form (type-adaptive). Roles are grounded in provider▸model.
-  The feature editor exposes the real settings (temperature, max tokens,
-  reasoning) + advanced sampling (top-p/top-k/repeat/ctx/stop), not just
-  temperature. Lab (side-by-side compare) is a separate mock.
-  Plan: docs/plans/2026-06-20-shared-ai-stack-plan.md
+  Shared AI "Models" area — mock v3 (rev 2 after UX feedback).
+  Fixes from v2:
+   · Add/Edit REUSES JustWrite's SettingsProviderForm pattern verbatim — one
+     grid form, inline as the provider row body, SAME for add + edit; ONE
+     consistent Combobox (free-text + fetched list + Fetch) for model pick
+     (no select-here / text-input-there inconsistency). It WORKS (toggles).
+   · Removed the separate static "Add provider" card.
+   · GPU/hardware info moved to a top strip (general info, not under the runner).
+  Built-in runner stays the one Download&Run provider (its body = the GGUF
+  catalog with Fit); cloud/Ollama use the form (Combobox fetches /models or
+  /api/tags). Plan: docs/plans/2026-06-20-shared-ai-stack-plan.md
 -->
-<html lang="en"><head><meta charset="utf-8"><title>Shared AI · Models — mock v2</title>
+<html lang="en"><head><meta charset="utf-8"><title>Shared AI · Models — mock v3</title>
 <style>
 :root{--bg:#f6f5f1;--surface:#fff;--surface-2:#fbfaf7;--surface-3:#f3f1ec;--ink:#1a1a1a;--ink-2:#4a4a4a;--ink-3:#888;
 --line:#e3e1dc;--line-strong:#cfccc4;--accent:#3a7d63;--accent-ink:#2c6049;--accent-soft:#e8f0eb;--accent-line:#b8d2c3;
---gold:#b08a3e;--gold-soft:#f5edda;--gold-line:#e2d2b0;--red:#b04a3e;--red-soft:#f7e7e4;--blue:#2f74b5;--blue-soft:#eaf0f8;--blue-line:#c8d4e8;
+--gold:#b08a3e;--gold-soft:#f5edda;--gold-line:#e2d2b0;--red:#b04a3e;--blue:#2f74b5;--blue-soft:#eaf0f8;--blue-line:#c8d4e8;
 --violet:#6a4a8c;--violet-soft:#f1eaf8;--violet-line:#d8c8e8;
 --font-ui:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;--font-serif:Georgia,serif;--font-mono:"SF Mono",Consolas,Menlo,monospace;}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-ui);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
 .page{max-width:1180px;margin:0 auto;padding:22px 32px 90px}
 h1{font-family:var(--font-serif);font-size:24px;margin:0}
-.lede{color:var(--ink-2);font-size:13px;margin:4px 0 0;max-width:860px}
-.mono{font-family:var(--font-mono)} .muted{color:var(--ink-3)}
-.topbar{display:flex;align-items:center;gap:12px;margin-bottom:16px}
-.brand{font-weight:800;font-size:15px} .shared{font-size:11px;color:var(--violet);background:var(--violet-soft);border:1px solid var(--violet-line);border-radius:999px;padding:3px 10px;font-weight:700}
+.lede{color:var(--ink-2);font-size:13px;margin:4px 0 0;max-width:860px}.mono{font-family:var(--font-mono)}.muted{color:var(--ink-3)}
+.topbar{display:flex;align-items:center;gap:12px;margin-bottom:16px}.brand{font-weight:800;font-size:15px}
+.shared{font-size:11px;color:var(--violet);background:var(--violet-soft);border:1px solid var(--violet-line);border-radius:999px;padding:3px 10px;font-weight:700}
 .apptog{margin-left:auto;display:flex;border:1px solid var(--line-strong);border-radius:999px;overflow:hidden}
-.apptog button{font:inherit;font-size:12px;font-weight:700;border:0;background:var(--surface);color:var(--ink-2);padding:6px 14px;cursor:pointer}
-.apptog button.on{background:var(--accent);color:#fff}
-.subnav{display:flex;gap:4px;margin-top:6px;border-bottom:1px solid var(--line)}
-.subnav a{padding:9px 16px;font-size:12.5px;color:var(--ink-2);border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;font-weight:600}
-.subnav a.on{color:var(--ink);border-bottom-color:var(--accent)}
+.apptog button{font:inherit;font-size:12px;font-weight:700;border:0;background:var(--surface);color:var(--ink-2);padding:6px 14px;cursor:pointer}.apptog button.on{background:var(--accent);color:#fff}
+/* top hardware strip — general info */
+.hwtop{display:flex;gap:26px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 18px;margin-top:12px;font-size:12.5px}
+.hwtop .k{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3)}
+.subnav{display:flex;gap:4px;margin-top:14px;border-bottom:1px solid var(--line)}
+.subnav a{padding:9px 16px;font-size:12.5px;color:var(--ink-2);border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;font-weight:600}.subnav a.on{color:var(--ink);border-bottom-color:var(--accent)}
 .tab{display:none}.tab.on{display:block}
-.sec-h{display:flex;align-items:baseline;gap:10px;margin:20px 0 0;padding-bottom:8px;border-bottom:2px solid var(--line)}
+.sec-h{display:flex;align-items:baseline;gap:10px;margin:18px 0 0;padding-bottom:8px;border-bottom:2px solid var(--line)}
 .sec-h h2{font-family:var(--font-serif);font-size:17px;margin:0;font-weight:600}.sec-h .count{font-size:12px;color:var(--ink-3)}.sec-h .right{margin-left:auto}
 .btn{font:inherit;font-size:12.5px;font-weight:600;border-radius:7px;padding:7px 14px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink-2)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn.primary:hover{background:var(--accent-ink)}
-.btn.sm{font-size:11.5px;padding:4px 10px}.btn:hover{border-color:var(--line-strong)}
+.btn.ghost{background:transparent}.btn.sm{font-size:11.5px;padding:4px 10px}.btn:hover{border-color:var(--line-strong)}
 .note{font-size:11.5px;color:var(--ink-3);margin-top:8px;font-style:italic}
 .psplit{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:16px 0 8px;display:flex;align-items:center;gap:8px}
 .psplit .free{color:var(--accent-ink);background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:999px;padding:1px 8px}
 .psplit .paid{color:var(--gold);background:var(--gold-soft);border:1px solid var(--gold-line);border-radius:999px;padding:1px 8px}
 .prov{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-top:8px;overflow:hidden}
-.phead{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer}
-.phead:hover{background:var(--surface-2)}
-.chev{color:var(--ink-3);font-size:10px;transition:transform .15s}.chev.open{transform:rotate(90deg)}
+.phead{display:flex;align-items:center;gap:12px;padding:12px 16px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none}.dot.off{background:var(--line-strong)}
 .pn{font-weight:700}.pid{font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
-.caps{display:inline-flex;gap:4px;margin-left:2px}
-.cap{font-size:9px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:999px;border:1px solid var(--line-strong);color:var(--ink-2);background:var(--surface)}
+.caps{display:inline-flex;gap:4px;margin-left:2px}.cap{font-size:9px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:999px;border:1px solid var(--line-strong);color:var(--ink-2);background:var(--surface)}
 .cap.llm{border-color:var(--gold-line);background:var(--gold-soft);color:var(--gold)}.cap.emb{border-color:var(--blue-line);background:var(--blue-soft);color:var(--blue)}
 .pmid{flex:1;min-width:0}.psum{font-size:11.5px;color:var(--ink-2)}.pright{display:flex;gap:8px;flex:none}
-.pbody{border-top:1px solid var(--line);background:var(--surface-2);padding:14px 16px}
+.pbody{border-top:1px solid var(--line);padding:0}
+/* runner download catalog */
+.cat{background:var(--surface-2);padding:12px 16px}
 .kind-label{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
-/* model rows (download / installed / fetched) */
-.hw{display:flex;gap:22px;align-items:center;background:var(--surface);border:1px solid var(--accent-line);border-radius:8px;padding:9px 14px;margin-bottom:10px;font-size:12px}
-.hw .k{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3)}
 .mrow{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 12px;margin-top:6px}
-.mrow .mn{font-weight:600;min-width:150px}.mrow .mm{font-size:11px;color:var(--ink-3);min-width:140px}.mrow .md{font-size:11.5px;color:var(--ink-2);flex:1;min-width:0}
-.fit{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;border:1px solid;flex:none}
-.fit .s{font-family:var(--font-mono)}
-.fit.ok{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-ink)}.fit.tight{background:var(--gold-soft);border-color:var(--gold-line);color:var(--gold)}.fit.no{background:var(--red-soft);border-color:#e3b6ac;color:var(--red)}
-.pill{font-size:10px;font-weight:700;border-radius:999px;padding:2px 9px}.pill.run{background:var(--accent);color:#fff}.pill.disk{background:var(--surface-3);color:var(--ink-2);border:1px solid var(--line)}
-.inl{display:flex;gap:8px;align-items:center;margin-top:8px}
-.inl input{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:7px 10px;background:var(--surface)}
-.fld input,.fld select{font:inherit;font-size:13px;border:1px solid var(--line);border-radius:7px;padding:8px 10px;background:var(--surface)}
-/* add/edit form */
-.modal{background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;box-shadow:0 12px 40px rgba(20,22,24,.16);padding:20px 22px;margin-top:14px;max-width:680px}
-.modal h3{font-family:var(--font-serif);font-size:17px;margin:0 0 2px}
-.frow{display:flex;gap:14px;margin-top:12px;flex-wrap:wrap}
-.fld{display:flex;flex-direction:column;gap:4px}.fld label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3)}
-.fld.grow{flex:1;min-width:160px}.fld input{width:100%;box-sizing:border-box}
-.typebar{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
-.typebar button{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:999px;padding:5px 12px;background:var(--surface);color:var(--ink-2);cursor:pointer}
-.typebar button.on{background:var(--accent);border-color:var(--accent);color:#fff}
-.capsel{display:flex;gap:14px;align-items:center;margin-top:6px;font-size:13px}
-.hintband{margin-top:12px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);font-size:11.5px;line-height:1.5}
-.foot{display:flex;gap:8px;align-items:center;margin-top:16px}
+.mrow .mn{font-weight:600;min-width:150px}.mrow .mm{font-size:11px;color:var(--ink-3);min-width:130px}.mrow .md{font-size:11.5px;color:var(--ink-2);flex:1;min-width:0}
+.fit{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;border:1px solid;flex:none}.fit .s{font-family:var(--font-mono)}
+.fit.ok{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-ink)}.fit.tight{background:var(--gold-soft);border-color:var(--gold-line);color:var(--gold)}.fit.no{background:#f7e7e4;border-color:#e3b6ac;color:var(--red)}
+.pill{font-size:10px;font-weight:700;border-radius:999px;padding:2px 9px}.pill.run{background:var(--accent);color:#fff}
+/* PROVIDER FORM — reused from JW SettingsProviderForm (grid 120|1fr, accent card) -->*/
+.pform{padding:14px 16px;border-top:1px solid var(--line);background:var(--accent-soft)}
+.fgrid{display:grid;grid-template-columns:120px minmax(0,1fr);gap:9px 12px;font-size:12.5px;align-items:center}
+.fgrid .lbl{color:var(--ink-2);font-size:11.5px}
+.fgrid input.x,.fgrid select.x{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:var(--surface);width:100%;box-sizing:border-box}
+.fgrid input.x[readonly]{background:var(--surface-3);color:var(--ink-3)}
+.pfoot{display:flex;gap:8px;margin-top:14px;align-items:center}
+.fhint{font-size:11px;color:var(--accent-ink);margin-top:3px}
+.presets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.presets button{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:999px;padding:5px 12px;background:var(--surface);color:var(--ink-2);cursor:pointer}
+.presets button:hover{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft)}
 .stat{font-size:11.5px;color:var(--ink-3);display:flex;gap:6px;align-items:center}
-/* roles + routing */
-.roles{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}
-.role{border:1px solid var(--line);border-radius:10px;padding:13px 16px;background:var(--surface-2)}
-.role .rname{font-weight:700;font-size:13px;display:flex;gap:8px;align-items:center}.role .rdesc{font-size:11.5px;color:var(--ink-2);margin:3px 0 9px}
-.role .twostep{display:flex;gap:8px}.role select{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:var(--surface)}
-.role .pp{flex:none;min-width:135px}.role .mm{flex:1}
-.rolechip{font-size:9.5px;font-weight:700;border-radius:999px;padding:2px 9px}.rolechip.quick{background:var(--accent-soft);color:var(--accent-ink);border:1px solid var(--accent-line)}.rolechip.acc{background:var(--gold-soft);color:var(--gold);border:1px solid var(--gold-line)}
-table.routes{width:100%;border-collapse:collapse;margin-top:12px}
-.routes th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);font-weight:700;padding:8px 10px;border-bottom:2px solid var(--line)}
-.routes td{padding:10px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:middle}.routes .fname{font-weight:600}.routes .fdesc{font-size:11.5px;color:var(--ink-3)}
-.routes select{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:6px 9px;background:var(--surface);min-width:230px}
-.routes .resolved{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-2)}
-.cfgtag{font-size:10px;font-weight:700;color:var(--violet);background:var(--violet-soft);border:1px solid var(--violet-line);border-radius:999px;padding:2px 8px}
-.exp{cursor:pointer;color:var(--ink-3);font-size:11px}.exp:hover{color:var(--accent-ink)}
-.editor{background:var(--surface-2);border:1px dashed var(--line-strong);border-radius:10px;padding:14px 16px;margin:2px 0 6px}
-.grp{margin-top:6px}.grphead{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);margin:10px 0 6px}
-.settings{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 16px}
-.set{display:flex;flex-direction:column;gap:3px}.set label{font-size:11px;color:var(--ink-2)}.set .v{font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
-.set input[type=number],.set input[type=text]{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:6px;padding:5px 8px;background:var(--surface);width:90px}
-.adv summary{cursor:pointer;font-size:11.5px;color:var(--accent-ink);margin-top:8px}
-.editor label.t{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);display:block;margin:10px 0 4px}
-.editor textarea{font:inherit;font-size:12.5px;width:100%;border:1px solid var(--line);border-radius:7px;padding:8px 10px;background:var(--surface);resize:vertical;min-height:50px;box-sizing:border-box}
-.efoot{display:flex;gap:8px;align-items:center;margin-top:12px}
-.usage{display:flex;gap:30px;margin-top:12px;flex-wrap:wrap}.usage .u{font-size:13px}.usage .u b{display:block;font-size:18px}.usage .u small{color:var(--ink-3)}
-.toggle{position:relative;width:34px;height:19px;border-radius:999px;background:var(--accent);display:inline-block;vertical-align:middle}
-.toggle i{position:absolute;top:2px;left:17px;width:15px;height:15px;border-radius:50%;background:#fff}
+.fhint2{font-size:11px;color:var(--ink-3);margin-top:10px;font-style:italic}
+/* combobox — the ONE model picker, used for chat + embedding everywhere */
+.cbwrap{display:flex;gap:6px;align-items:stretch}
+.cb{position:relative;flex:1}
+.cb .cb-in{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:7px 28px 7px 9px;background:var(--surface);width:100%;box-sizing:border-box}
+.cb .cb-chev{position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--ink-3);cursor:pointer;font-size:11px}
+.cb-list{position:absolute;top:100%;left:0;right:0;z-index:5;background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;box-shadow:0 8px 24px rgba(20,22,24,.12);margin-top:3px;max-height:190px;overflow:auto}
+.cb-list div{padding:7px 10px;cursor:pointer;font-size:12.5px;border-bottom:1px solid var(--line)}.cb-list div:last-child{border-bottom:0}.cb-list div:hover{background:var(--accent-soft)}
+.cb-list .q{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3)}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:7px;overflow:hidden}
+.seg button{font:inherit;font-size:11.5px;border:0;background:var(--surface);color:var(--ink-2);padding:4px 12px;cursor:pointer;border-right:1px solid var(--line)}.seg button:last-child{border-right:0}.seg button.on{background:var(--accent);color:#fff}
+/* features (unchanged from v2) */
 .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 3px rgba(20,22,24,.05);padding:18px 20px;margin-top:14px}
-.card h3{font-family:var(--font-serif);font-size:16px;margin:0}.card .sub{font-size:12.5px;color:var(--ink-2);margin:4px 0 0}.cardhead{display:flex;align-items:baseline;gap:10px}.cardhead .right{margin-left:auto}
-.xlink{font-size:12px;color:var(--accent-ink);text-decoration:underline;cursor:pointer}
+.card h3{font-family:var(--font-serif);font-size:16px;margin:0}.card .sub{font-size:12.5px;color:var(--ink-2);margin:4px 0 0}.cardhead{display:flex;align-items:baseline;gap:10px}.cardhead .right{margin-left:auto}.xlink{font-size:12px;color:var(--accent-ink);text-decoration:underline;cursor:pointer}
+.roles{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}.role{border:1px solid var(--line);border-radius:10px;padding:13px 16px;background:var(--surface-2)}
+.role .rname{font-weight:700;font-size:13px;display:flex;gap:8px;align-items:center}.role .rdesc{font-size:11.5px;color:var(--ink-2);margin:3px 0 9px}
+.role .twostep{display:flex;gap:8px}.role select{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:var(--surface)}.role .pp{flex:none;min-width:135px}.role .mm{flex:1}
+.rolechip{font-size:9.5px;font-weight:700;border-radius:999px;padding:2px 9px}.rolechip.quick{background:var(--accent-soft);color:var(--accent-ink);border:1px solid var(--accent-line)}.rolechip.acc{background:var(--gold-soft);color:var(--gold);border:1px solid var(--gold-line)}
+table.routes{width:100%;border-collapse:collapse;margin-top:12px}.routes th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);font-weight:700;padding:8px 10px;border-bottom:2px solid var(--line)}
+.routes td{padding:10px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:middle}.routes .fname{font-weight:600}.routes .fdesc{font-size:11.5px;color:var(--ink-3)}
+.routes select{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:6px 9px;background:var(--surface);min-width:230px}.routes .resolved{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-2)}
+.cfgtag{font-size:10px;font-weight:700;color:var(--violet);background:var(--violet-soft);border:1px solid var(--violet-line);border-radius:999px;padding:2px 8px}.exp{cursor:pointer;color:var(--ink-3);font-size:11px}.exp:hover{color:var(--accent-ink)}
+.editor{background:var(--surface-2);border:1px dashed var(--line-strong);border-radius:10px;padding:14px 16px;margin:2px 0 6px}.grphead{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);margin:10px 0 6px}
+.settings{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 16px}.set{display:flex;flex-direction:column;gap:3px}.set label{font-size:11px;color:var(--ink-2)}.set input{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:6px;padding:5px 8px;background:var(--surface);width:90px}
+.adv summary{cursor:pointer;font-size:11.5px;color:var(--accent-ink);margin-top:8px}.editor label.t{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);display:block;margin:10px 0 4px}.editor textarea{font:inherit;font-size:12.5px;width:100%;border:1px solid var(--line);border-radius:7px;padding:8px 10px;background:var(--surface);resize:vertical;min-height:50px;box-sizing:border-box}.efoot{display:flex;gap:8px;align-items:center;margin-top:12px}
+.toggle{position:relative;width:34px;height:19px;border-radius:999px;background:var(--accent);display:inline-block}.toggle i{position:absolute;top:2px;left:17px;width:15px;height:15px;border-radius:50%;background:#fff}
+.usage{display:flex;gap:30px;margin-top:12px;flex-wrap:wrap}.usage .u{font-size:13px}.usage .u b{display:block;font-size:18px}.usage .u small{color:var(--ink-3)}
 </style></head><body><div class="page">
 
 <div class="topbar"><span class="brand" id="brand">JustVoice</span><span class="shared">shared · @delebash/llm-ui</span>
 <div class="apptog"><button class="on" id="tg-jv" onclick="setApp('jv')">JustVoice</button><button id="tg-jw" onclick="setApp('jw')">JustWrite</button></div></div>
 <h1>Models</h1>
-<p class="lede">Connect AI providers (free local or metered cloud), manage each provider's models in place, route features, and watch cost. <b>Same code in both apps</b> — only the feature catalog differs (toggle above).</p>
+<p class="lede">Connect AI providers (free local or metered cloud), manage each provider's models, route features, watch cost. <b>Same code in both apps</b> — only the feature catalog differs (toggle above).</p>
+<!-- GPU info — top strip, general (not under the runner) -->
+<div class="hwtop"><span class="muted" style="font-size:11px;font-weight:700">YOUR HARDWARE</span>
+  <div><span class="k">GPU</span> <b>RTX 4070</b> · 12 GB VRAM</div><div><span class="k">RAM</span> <b>32 GB</b></div><div><span class="k">Accel</span> <b>CUDA 12</b></div>
+  <span class="muted" style="margin-left:auto;font-size:11.5px">drives the Fit scores below</span></div>
+
 <div class="subnav"><a class="on" data-tab="providers" onclick="setTab('providers')">Providers &amp; models</a><a data-tab="features" onclick="setTab('features')">Features</a><a data-tab="usage" onclick="setTab('usage')">Usage</a></div>
 
 <!-- ══ PROVIDERS & MODELS ══ -->
 <div class="tab on" id="tab-providers">
-  <div class="sec-h"><h2>Providers &amp; models</h2><span class="count">model management is per provider — download for the built-in runner, fetch/list for the rest</span>
-    <span class="right"><button class="btn primary sm" onclick="document.getElementById('addform').scrollIntoView({behavior:'smooth'})">+ Add provider</button></span></div>
+  <div class="sec-h"><h2>Providers &amp; models</h2><span class="count">Edit a provider to set its URL/key + pick its model — same form for add &amp; edit</span>
+    <span class="right"><button class="btn primary sm" onclick="addProv()">+ Add provider</button></span></div>
+
+  <div id="addslot"></div>
 
   <div class="psplit"><span class="free">LOCAL · FREE</span> on your machine — no key, nothing leaves the device</div>
 
-  <!-- BUILT-IN RUNNER: the only provider you DOWNLOAD models for -->
+  <!-- BUILT-IN RUNNER — the one Download&Run provider; body = GGUF catalog (no URL/key form) -->
   <div class="prov">
-    <div class="phead" onclick="exp('r')"><span class="chev open" id="chev-r">▶</span><span class="dot"></span>
+    <div class="phead"><span class="dot"></span>
       <div class="pmid"><span class="pn">Built-in runner</span> <span class="pid">local-llamacpp</span> <span class="caps"><span class="cap llm">LLM</span></span>
-        <div class="psum muted">downloads &amp; runs GGUF models on your hardware · <b>qwen3-4b running</b> · 1 of 8 downloaded</div></div>
-      <span class="pright"><button class="btn sm">Restart</button></span></div>
-    <div class="pbody" id="body-r">
-      <div class="kind-label">⬇ Download &amp; run — models live on disk; Fit is computed for your card</div>
-      <div class="hw"><div><div class="k">GPU</div><b>RTX 4070</b> · 12 GB</div><div><div class="k">RAM</div><b>32 GB</b></div><div><div class="k">Accel</div><b>CUDA 12</b></div></div>
-      <div class="mrow"><span class="fit ok">Fits <span class="s">92</span></span><span class="mn">Qwen3 4B Instruct</span><span class="mm">2.4 GB · Q4_K_M</span><span class="md">Recommended default for this card.</span><span class="pill run">RUNNING</span><button class="btn sm">Stop</button><button class="btn sm">Delete</button></div>
-      <div class="mrow"><span class="fit ok">Fits <span class="s">88</span></span><span class="mn">Qwen3 14B</span><span class="mm">8.2 GB · Q4_K_M</span><span class="md">Higher accuracy · ~9.4 GB VRAM, 2.6 GB headroom.</span><button class="btn primary sm">⬇ Download &amp; run</button></div>
+        <div class="psum muted">built in · downloads &amp; runs GGUF on your hardware · <b>qwen3-4b running</b> · 1 of 8 downloaded</div></div>
+      <span class="pright"><button class="btn sm" onclick="tb('r')">Manage models</button></span></div>
+    <div class="pbody" id="b-r" style="display:none"><div class="cat">
+      <div class="kind-label">⬇ Download &amp; run — the built-in runner is the only provider you download models for; Fit uses your hardware (top)</div>
+      <div class="mrow"><span class="fit ok">Fits <span class="s">92</span></span><span class="mn">Qwen3 4B Instruct</span><span class="mm">2.4 GB · Q4_K_M</span><span class="md">Recommended default for this card.</span><span class="pill run">RUNNING</span><button class="btn sm">Stop</button></div>
+      <div class="mrow"><span class="fit ok">Fits <span class="s">88</span></span><span class="mn">Qwen3 14B</span><span class="mm">8.2 GB · Q4_K_M</span><span class="md">Higher accuracy · ~9.4 GB VRAM.</span><button class="btn primary sm">⬇ Download &amp; run</button></div>
       <div class="mrow"><span class="fit tight">Tight <span class="s">61</span></span><span class="mn">Gemma 3 27B</span><span class="mm">16 GB · Q4_K_M</span><span class="md">Runs with CPU spillover — slower.</span><button class="btn primary sm">⬇ Download &amp; run</button></div>
-      <div class="mrow"><span class="fit no">Won't fit <span class="s">—</span></span><span class="mn">Llama 3.3 70B</span><span class="mm">40 GB · Q4_K_M</span><span class="md">Exceeds 12 GB even with offload — use a cloud provider.</span><button class="btn sm" disabled>Too large</button></div>
-    </div>
+      <div class="mrow"><span class="fit no">Won't fit <span class="s">—</span></span><span class="mn">Llama 3.3 70B</span><span class="mm">40 GB · Q4_K_M</span><span class="md">Exceeds 12 GB — use a cloud provider.</span><button class="btn sm" disabled>Too large</button></div>
+    </div></div>
   </div>
 
-  <!-- OLLAMA: list installed (api/tags) + pull -->
+  <!-- OLLAMA — uses the SAME form on Edit; the Combobox fetches installed models -->
   <div class="prov">
-    <div class="phead" onclick="exp('o')"><span class="chev" id="chev-o">▶</span><span class="dot"></span>
+    <div class="phead"><span class="dot"></span>
       <div class="pmid"><span class="pn">Ollama (this PC)</span> <span class="pid">ollama-local</span> <span class="caps"><span class="cap llm">LLM</span><span class="cap emb">EMBED</span></span>
-        <div class="psum muted">localhost:11434 · 6 models installed · no key — free</div></div>
-      <span class="pright"><button class="btn sm">Test</button><button class="btn sm">Edit</button></span></div>
-    <div class="pbody" id="body-o" style="display:none">
-      <div class="kind-label">Installed models — listed live from Ollama's <span class="mono">/api/tags</span> (Ollama manages its own downloads)</div>
-      <div class="mrow"><span class="mn">qwen3:14b</span><span class="mm">9.3 GB · Q4_K_M</span><span class="md">default chat model</span><span class="pill disk">installed</span></div>
-      <div class="mrow"><span class="mn">qwen3:8b</span><span class="mm">5.0 GB</span><span class="md md">faster, less accurate</span><span class="pill disk">installed</span></div>
-      <div class="mrow"><span class="mn">nomic-embed-text</span><span class="mm">274 MB</span><span class="md">embeddings</span><span class="pill disk">installed</span></div>
-      <div class="inl"><span class="muted" style="font-size:12px">Pull a model:</span><input placeholder="e.g. qwen3:32b" style="width:200px"><button class="btn sm">Pull</button><span class="muted" style="font-size:11px">runs <span class="mono">ollama pull</span> on the daemon</span></div>
-    </div>
+        <div class="psum muted">localhost:11434 · chat qwen3:14b · embed nomic-embed-text · no key — free</div></div>
+      <span class="pright"><button class="btn sm">Test</button><button class="btn sm" onclick="edit('o')">Edit</button></span></div>
+    <div class="pbody" id="b-o" style="display:none"></div>
   </div>
 
   <div class="psplit"><span class="paid">CLOUD · METERED</span> your account — API key + URL · billed by the provider</div>
 
-  <!-- CLOUD: fetch list (/models), pick default, NO download -->
   <div class="prov">
-    <div class="phead" onclick="exp('c')"><span class="chev" id="chev-c">▶</span><span class="dot"></span>
+    <div class="phead"><span class="dot"></span>
       <div class="pmid"><span class="pn">OpenAI</span> <span class="pid">openai</span> <span class="caps"><span class="cap llm">LLM</span><span class="cap emb">EMBED</span></span>
-        <div class="psum muted">api.openai.com/v1 · key set · default gpt-4o-mini</div></div>
-      <span class="pright"><button class="btn sm">Test</button><button class="btn sm">Edit</button></span></div>
-    <div class="pbody" id="body-c" style="display:none">
-      <div class="kind-label">Available models — fetched from the provider's <span class="mono">/models</span> (nothing to download; pick your defaults)</div>
-      <div class="frow"><div class="fld"><label>Default chat model</label><select><option selected>gpt-4o-mini</option><option>gpt-4o</option><option>gpt-4.1</option><option>o3</option></select></div>
-        <div class="fld"><label>Default embedding model</label><select><option selected>text-embedding-3-small</option><option>text-embedding-3-large</option></select></div>
-        <div class="fld" style="justify-content:flex-end"><button class="btn sm">↻ Fetch models</button></div></div>
-      <div class="muted" style="font-size:11.5px;margin-top:8px">14 models reported · last fetched 2 min ago</div>
-    </div>
+        <div class="psum muted">api.openai.com/v1 · chat gpt-4o-mini · embed text-embedding-3-small · key set</div></div>
+      <span class="pright"><button class="btn sm">Test</button><button class="btn sm" onclick="edit('c')">Edit</button></span></div>
+    <div class="pbody" id="b-c" style="display:none"></div>
   </div>
-  <div class="prov"><div class="phead" onclick="exp('a')"><span class="chev" id="chev-a">▶</span><span class="dot off"></span>
+  <div class="prov">
+    <div class="phead"><span class="dot off"></span>
       <div class="pmid"><span class="pn">Anthropic</span> <span class="pid">anthropic</span> <span class="caps"><span class="cap llm">LLM</span></span>
-        <div class="psum muted">api.anthropic.com · no key · curated model list (no public /models endpoint)</div></div>
-      <span class="pright"><button class="btn sm">Test</button><button class="btn sm">Edit</button></span></div>
-    <div class="pbody" id="body-a" style="display:none"><div class="kind-label">Models — curated list (Anthropic has no /models endpoint)</div>
-      <div class="frow"><div class="fld"><label>Default chat model</label><select><option selected>claude-haiku-4-5</option><option>claude-sonnet-4-6</option><option>claude-opus-4-8</option></select></div></div></div>
+        <div class="psum muted">api.anthropic.com · chat claude-haiku-4-5 · no key</div></div>
+      <span class="pright"><button class="btn sm">Test</button><button class="btn sm" onclick="edit('a')">Edit</button></span></div>
+    <div class="pbody" id="b-a" style="display:none"></div>
   </div>
 
-  <!-- ADD / EDIT PROVIDER FORM (type-adaptive) -->
-  <div class="sec-h" id="addform"><h2>Add provider</h2><span class="count">the form adapts to the type — local needs no key; the built-in runner needs nothing</span></div>
-  <div class="modal">
-    <h3>Connect a provider</h3>
-    <div class="typebar">
-      <button onclick="ptype('runner')" id="pt-runner">Built-in runner</button>
-      <button class="on" onclick="ptype('cloud')" id="pt-cloud">OpenAI</button>
-      <button onclick="ptype('cloud')">Anthropic</button>
-      <button onclick="ptype('local')">Ollama</button>
-      <button onclick="ptype('local')">LM Studio</button>
-      <button onclick="ptype('cloud')">OpenAI-compatible</button>
-    </div>
-    <div id="form-runner" style="display:none"><div class="hintband">✓ The built-in runner is already available — nothing to configure. Pick models to download on the <b>Built-in runner</b> card above. Free, private, runs on your hardware.</div></div>
-    <div id="form-std">
-      <div class="frow"><div class="fld grow"><label>Name</label><input value="OpenAI"></div>
-        <div class="fld grow"><label>Base URL</label><input value="https://api.openai.com/v1"></div>
-        <div class="fld grow" id="keyfld"><label>API key</label><input type="password" placeholder="sk-…  (blank for local)"></div></div>
-      <div class="capsel"><label><input type="checkbox" checked> <span class="cap llm">LLM</span></label><label><input type="checkbox"> <span class="cap emb">EMBED</span></label>
-        <span class="muted" style="font-size:11.5px;margin-left:6px">what this provider can do</span></div>
-      <div class="frow"><div class="fld grow"><label>Chat model <span class="muted">— ↻ Fetch to list</span></label><input value="gpt-4o-mini" placeholder="fetch or type a model id"></div>
-        <div class="fld grow"><label>Embedding model <span class="muted">optional</span></label><input placeholder="text-embedding-3-small"></div>
-        <div class="fld" style="justify-content:flex-end"><button class="btn sm">↻ Fetch models</button></div></div>
-      <div class="hintband" id="hint">💳 <b>OpenAI</b> — get a key at platform.openai.com. Billed per token; your text leaves this machine. <span class="muted">(Ollama / LM Studio: just a URL, no key — the key field hides.)</span></div>
-      <div class="foot"><span class="stat"><span class="dot off"></span> not tested</span><span style="flex:1"></span>
-        <button class="btn sm">Test connection</button><button class="btn sm">Cancel</button><button class="btn primary sm">Save provider</button></div>
-    </div>
-  </div>
-  <p class="note">Answers the v1 confusion: each provider shows <b>its own</b> model management — the built-in runner is the only one with Download&amp;Run (+ Fit); Ollama lists installed (+ pull); cloud fetches a list and you pick defaults. The Add form hides the key/URL for local types.</p>
+  <p class="note">Add &amp; Edit use the <b>same</b> inline form (JustWrite's <span class="mono">SettingsProviderForm</span>) with one <b>Combobox</b> model picker (free-text + Fetch) — consistent everywhere. The built-in runner is the only Download&amp;Run provider; everyone else fetches a model list. GPU info is a top strip.</p>
 </div>
 
 <!-- ══ FEATURES ══ -->
 <div class="tab" id="tab-features">
   <div class="sec-h"><h2>Features</h2><span class="count" id="featcount">8 features · this app's catalog</span></div>
-  <div class="card"><div class="cardhead"><h3>Model roles</h3><span class="right muted" style="font-size:12px">optional — a feature can inherit a role, or pick its own provider▸model below</span></div>
-    <p class="sub">Two jobs, two models — each is a <b>provider ▸ model</b> pick (so it's always clear what runs). Set these once; features default to them.</p>
+  <div class="card"><div class="cardhead"><h3>Model roles</h3><span class="right muted" style="font-size:12px">optional — a feature inherits a role, or picks its own provider▸model</span></div>
+    <p class="sub">Two jobs, two models — each is a <b>provider ▸ model</b> pick.</p>
     <div class="roles">
-      <div class="role"><div class="rname"><span class="rolechip quick">QUICK</span> Quick model</div><div class="rdesc">Sub-second · interactive features.</div>
-        <div class="twostep"><select class="pp"><option selected>Built-in runner</option><option>Ollama</option><option>OpenAI</option></select><select class="mm"><option selected>qwen3-4b-instruct · free</option><option>qwen3:8b</option></select></div></div>
-      <div class="role"><div class="rname"><span class="rolechip acc">ACCURACY</span> Accuracy model</div><div class="rdesc">Takes its time · async, accuracy-critical.</div>
-        <div class="twostep"><select class="pp"><option selected>Ollama</option><option>Anthropic</option><option>OpenAI</option></select><select class="mm"><option selected>qwen3:14b · free</option><option>claude-sonnet-4-6 · metered</option></select></div></div>
+      <div class="role"><div class="rname"><span class="rolechip quick">QUICK</span> Quick model</div><div class="rdesc">Sub-second · interactive.</div>
+        <div class="twostep"><select class="pp"><option selected>Built-in runner</option><option>Ollama</option><option>OpenAI</option></select><select class="mm"><option selected>qwen3-4b-instruct · free</option></select></div></div>
+      <div class="role"><div class="rname"><span class="rolechip acc">ACCURACY</span> Accuracy model</div><div class="rdesc">Async · accuracy-critical.</div>
+        <div class="twostep"><select class="pp"><option selected>Ollama</option><option>Anthropic</option></select><select class="mm"><option selected>qwen3:14b · free</option></select></div></div>
     </div></div>
-  <div class="card"><div class="cardhead"><h3>Feature routing</h3><span class="right xlink">expand a row to edit prompts &amp; settings ▾</span></div>
-    <p class="sub">Each feature inherits a role or overrides to a specific <b>provider ▸ model</b>. Click <b>✎ tune</b> to edit prompts + settings inline, or open the Lab to compare models.</p>
-    <table class="routes"><thead><tr><th style="width:32%">Feature</th><th style="width:28%">Uses</th><th>Resolves to</th><th></th></tr></thead>
-      <tbody id="routebody"></tbody></table>
-    <p class="note">Decision 2 — roles optional. Settings are real: temperature · max tokens · reasoning today (adapter-plumbed), with top-p/top-k/repeat/ctx/stop as Advanced once the shared adapter plumbs them. Prompts edit inline; the Lab adds side-by-side compare.</p>
+  <div class="card"><div class="cardhead"><h3>Feature routing</h3><span class="right xlink">expand a row to tune prompts &amp; settings ▾</span></div>
+    <p class="sub">Each feature inherits a role or overrides to a <b>provider ▸ model</b>. <b>✎ tune</b> edits prompts + settings inline; the Lab compares models.</p>
+    <table class="routes"><thead><tr><th style="width:32%">Feature</th><th style="width:28%">Uses</th><th>Resolves to</th><th></th></tr></thead><tbody id="routebody"></tbody></table>
   </div>
 </div>
 
 <!-- ══ USAGE ══ -->
 <div class="tab" id="tab-usage">
-  <div class="sec-h"><h2>Usage</h2><span class="count">tokens + cost · per feature and provider</span></div>
-  <div class="card"><div class="usage">
-    <div class="u"><b>2,418</b>calls this month <small>· 91% local (free)</small></div><div class="u"><b>1.2 M</b>tokens local <small>· $0.00</small></div>
-    <div class="u"><b>104 k</b>tokens cloud <small>· ≈ $0.62</small></div><div class="u"><b id="busyfeat">Compose</b>busiest <small id="busymeta">· 1,733 calls</small></div></div></div>
+  <div class="sec-h"><h2>Usage</h2><span class="count">tokens + cost</span></div>
+  <div class="card"><div class="usage"><div class="u"><b>2,418</b>calls this month <small>· 91% local (free)</small></div><div class="u"><b>1.2 M</b>tokens local <small>· $0.00</small></div><div class="u"><b>104 k</b>tokens cloud <small>· ≈ $0.62</small></div><div class="u"><b id="busyfeat">Compose</b>busiest <small id="busymeta">· 1,733 calls</small></div></div></div>
 </div>
 
 </div>
 <script>
+// provider data (mock)
+const PROV={
+ o:{id:"ollama-local",name:"Ollama (this PC)",url:"http://localhost:11434",key:"",fmt:"ollama",chat:"qwen3:14b",emb:"nomic-embed-text",local:true,
+    models:[["qwen3:14b","Q4_K_M"],["qwen3:8b","Q4_K_M"],["nomic-embed-text","F16"]]},
+ c:{id:"openai",name:"OpenAI",url:"https://api.openai.com/v1",key:"sk-•••••••",fmt:"openai-compat",chat:"gpt-4o-mini",emb:"text-embedding-3-small",local:false,
+    models:[["gpt-4o-mini",""],["gpt-4o",""],["gpt-4.1",""],["o3",""],["text-embedding-3-small",""],["text-embedding-3-large",""]]},
+ a:{id:"anthropic",name:"Anthropic",url:"https://api.anthropic.com",key:"",fmt:"openai-compat",chat:"claude-haiku-4-5",emb:"",local:false,
+    models:[["claude-haiku-4-5",""],["claude-sonnet-4-6",""],["claude-opus-4-8",""]]},
+ new:{id:"",name:"",url:"",key:"",fmt:"openai-compat",chat:"",emb:"",local:false,models:[]}};
+
+function cb(key,val,items,ph){ // the ONE consistent model picker
+ const list=items.map(([m,q])=>`<div onclick="cbpick('${key}','${m}')">${m}${q?` <span class="q">· ${q}</span>`:""}</div>`).join("");
+ const fetched=items.length?`<div class="fhint">✓ fetched — ${items.length} models · type to filter or ▾ to pick</div>`:"";
+ return `<div class="cbwrap"><div class="cb"><input class="cb-in" id="cbi-${key}" value="${val||""}" placeholder="${ph}"><span class="cb-chev" onclick="cblist('${key}')">▾</span>
+   <div class="cb-list" id="cbl-${key}" style="display:none">${list||'<div class="muted" style="padding:8px 10px">No models yet — Fetch first</div>'}</div></div>
+   <button class="btn sm" onclick="cblist('${key}')">↻ Fetch</button></div>${fetched}`;}
+function cblist(k){const e=document.getElementById('cbl-'+k);e.style.display=e.style.display==='none'?'':'none';}
+function cbpick(k,m){document.getElementById('cbi-'+k).value=m;document.getElementById('cbl-'+k).style.display='none';}
+
+function formHTML(k,d){const editing=k!=='new';
+ const presets=editing?'':`<div class="kind-label">Start from a known provider — fills the URL + format</div>
+   <div class="presets">${['Ollama','LM Studio','OpenAI','Anthropic','OpenRouter','Custom'].map(p=>`<button onclick="preset('${k}','${p}')">${p}</button>`).join('')}</div>`;
+ const keyrow=d.local
+   ?`<span class="lbl">API key</span><span class="muted" style="font-size:11.5px">— not needed for a local provider</span>`
+   :`<span class="lbl">API key</span><input class="x" type="password" value="${d.key}" placeholder="sk-…">`;
+ return `<div class="pform">${presets}<div class="fgrid">
+   <span class="lbl">Name</span><input class="x" value="${d.name}" placeholder="My provider">
+   <span class="lbl">Base URL</span><input class="x" value="${d.url}" placeholder="http://localhost:11434/v1">
+   ${keyrow}
+   <span class="lbl">Chat model</span><div>${cb('chat-'+k,d.chat,d.models.filter(m=>!/embed/.test(m[0])),'Fetch or type a model id')}</div>
+   <span class="lbl">Embedding model <span class="muted">optional</span></span><div>${cb('emb-'+k,d.emb,d.models.filter(m=>/embed/.test(m[0])),'leave blank if not used')}</div>
+ </div>
+ <div class="pfoot"><span class="stat"><span class="dot off"></span> not tested</span><span style="flex:1"></span>
+   <button class="btn sm">Test connection</button><button class="btn ghost sm" onclick="closeForm('${k}')">Cancel</button><button class="btn primary sm" onclick="closeForm('${k}')">Save provider</button></div>
+ <div class="fhint2">No ID field — auto-slugged from the name (features reference it internally). Model <b>tier</b> is auto-detected from the model; fine-tune it in the action's <b>Lab</b>, not here — no jargon in the provider form.</div></div>`;}
+function preset(k,p){const map={Ollama:["http://localhost:11434","ollama",true],"LM Studio":["http://localhost:1234/v1","openai-compat",true],OpenAI:["https://api.openai.com/v1","openai-compat",false],Anthropic:["https://api.anthropic.com","openai-compat",false],OpenRouter:["https://openrouter.ai/api/v1","openai-compat",false],Custom:["","openai-compat",false]};
+ const[url,fmt,local]=map[p]||map.Custom;const slot=document.getElementById('addslot');slot.innerHTML='<div class="prov"><div class="phead" style="padding:10px 16px"><span class="dot off"></span><div class="pmid"><span class="pn" style="color:var(--ink-3)">New provider · '+p+'</span></div></div>'+formHTML('new',{id:"",name:p==='Custom'?"":p,url,key:"",fmt,chat:"",emb:"",local,models:[]})+'</div>';}
+
+function tb(k){const b=document.getElementById('b-'+k);b.style.display=b.style.display==='none'?'':'none';}
+function edit(k){const b=document.getElementById('b-'+k);if(b.innerHTML.trim()){b.innerHTML='';b.style.display='none';return;}b.innerHTML=formHTML(k,PROV[k]);b.style.display='';}
+function addProv(){const s=document.getElementById('addslot');if(s.innerHTML.trim()){s.innerHTML='';return;}s.innerHTML='<div class="prov"><div class="phead" style="padding:10px 16px"><span class="dot off"></span><div class="pmid"><span class="pn" style="color:var(--ink-3)">New provider</span></div></div>'+formHTML('new',PROV.new)+'</div>';s.scrollIntoView({behavior:'smooth'});}
+function closeForm(k){if(k==='new'){document.getElementById('addslot').innerHTML='';}else{const b=document.getElementById('b-'+k);b.innerHTML='';b.style.display='none';}}
+
+// features (unchanged)
 const CAT={jv:{brand:"JustVoice",busy:["Compose","· 1,733 calls"],rows:[
  ["Speaker attribution","Studio → Script: who says each line","Inherit · Accuracy","qwen3:14b · Ollama","14b-twopass-v3"],
  ["Smart-assign voices","Studio → Cast: match characters to voices","Inherit · Accuracy","qwen3:14b · Ollama",""],
@@ -255,42 +252,18 @@ const CAT={jv:{brand:"JustVoice",busy:["Compose","· 1,733 calls"],rows:[
  ["Manuscript chat","\"Ask the book\" — RAG Q&A","Inherit · Accuracy","claude-sonnet-4-6 · Anthropic",""],
  ["Resume briefing","Home: \"Previously on your novel\"","Inherit · Quick","runner · qwen3-4b",""]]}};
 const EX={"Speaker attribution":["You attribute every line of dialogue to the character who speaks it. Use only the provided cast; never invent speakers.","Chapter:\n{{chapter_text}}\n\nReturn JSON: [{line, speaker, confidence}]."],
- "Critique":["You are a sharp, honest fiction editor giving line-level notes on one chapter. Flag tells, weak verbs, pacing.","{{chapter_text}}\n\nReturn JSON: {notes:[{type, quote, note}]}."]};
-function row(r,i){const[n,d,u,res,cfg]=r;
- const opts=['Inherit · Quick','Inherit · Accuracy','Built-in runner ▸ qwen3-4b','Ollama ▸ qwen3:14b','Anthropic ▸ claude-sonnet-4-6','OpenAI ▸ gpt-4o'].map(o=>`<option${o===u?' selected':''}>${o}</option>`).join('');
- const tag=cfg?`<span class="cfgtag">CONFIG: ${cfg}</span> `:'';const ex=EX[n]||["You are a helpful assistant for this feature. (Default — auto-matched to the model size when not edited.)","{{input}}"];
+ "Critique":["You are a sharp, honest fiction editor giving line-level notes on one chapter.","{{chapter_text}}\n\nReturn JSON: {notes:[{type, quote, note}]}."]};
+function frow(r,i){const[n,d,u,res,cfg]=r;const opts=['Inherit · Quick','Inherit · Accuracy','Built-in runner ▸ qwen3-4b','Ollama ▸ qwen3:14b','Anthropic ▸ claude-sonnet-4-6','OpenAI ▸ gpt-4o'].map(o=>`<option${o===u?' selected':''}>${o}</option>`).join('');
+ const tag=cfg?`<span class="cfgtag">CONFIG: ${cfg}</span> `:'';const ex=EX[n]||["You are a helpful assistant for this feature.","{{input}}"];
  return `<tr><td><div class="fname">${n}</div><div class="fdesc">${d}</div></td><td><select>${opts}</select></td><td class="resolved">${res}</td><td>${tag}<span class="exp" onclick="tog(${i})">✎ tune</span></td></tr>
- <tr id="ed${i}" style="display:none"><td colspan="4"><div class="editor">
-   <div class="grphead">Model</div><select style="font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:6px 9px;min-width:260px">${opts}</select>
-   <div class="grphead">Settings</div>
-   <div class="settings">
-     <div class="set"><label>Temperature</label><input type="number" value="0.3" step="0.1" min="0" max="2"></div>
-     <div class="set"><label>Max output tokens</label><input type="number" value="1024"></div>
-     <div class="set"><label>Reasoning (think)</label><span class="toggle"><i></i></span></div>
-   </div>
-   <details class="adv"><summary>Advanced sampling ▾</summary><div class="settings" style="margin-top:8px">
-     <div class="set"><label>Top-P</label><input type="number" value="0.9" step="0.05"></div>
-     <div class="set"><label>Top-K</label><input type="number" value="40"></div>
-     <div class="set"><label>Repeat penalty</label><input type="number" value="1.05" step="0.05"></div>
-     <div class="set"><label>Context length</label><input type="number" value="8192"></div>
-     <div class="set"><label>Stop sequences</label><input type="text" placeholder="\\n\\n, END"></div>
-     <div class="set"><label>Seed</label><input type="number" placeholder="random"></div>
-   </div><div class="muted" style="font-size:11px;margin-top:6px">Passed through to the provider; not every provider honors every field (e.g. Anthropic ignores top-k).</div></details>
-   <label class="t">System prompt</label><textarea>${ex[0]}</textarea>
-   <label class="t">User prompt template</label><textarea>${ex[1]}</textarea>
-   <div class="efoot"><button class="btn primary sm">Save as production config</button><button class="btn sm">Open in Lab — compare models ↗</button><button class="btn sm">Reset to default</button>
-     <span class="muted" style="font-size:11px;margin-left:auto">{{tokens}} fill at run time from the chapter / selection.</span></div>
- </div></td></tr>`;}
-function render(a){document.getElementById('routebody').innerHTML=CAT[a].rows.map(row).join('')}
+ <tr id="ed${i}" style="display:none"><td colspan="4"><div class="editor"><div class="grphead">Settings</div>
+   <div class="settings"><div class="set"><label>Temperature</label><input type="number" value="0.3" step="0.1"></div><div class="set"><label>Max tokens</label><input type="number" value="1024"></div><div class="set"><label>Reasoning</label><span class="toggle"><i></i></span></div></div>
+   <details class="adv"><summary>Advanced sampling ▾</summary><div class="settings" style="margin-top:8px"><div class="set"><label>Top-P</label><input type="number" value="0.9" step="0.05"></div><div class="set"><label>Top-K</label><input type="number" value="40"></div><div class="set"><label>Repeat penalty</label><input type="number" value="1.05" step="0.05"></div></div></details>
+   <label class="t">System prompt</label><textarea>${ex[0]}</textarea><label class="t">User prompt template</label><textarea>${ex[1]}</textarea>
+   <div class="efoot"><button class="btn primary sm">Save as production config</button><button class="btn sm">Open in Lab — compare models ↗</button><button class="btn sm">Reset</button></div></div></td></tr>`;}
+function render(a){document.getElementById('routebody').innerHTML=CAT[a].rows.map(frow).join('')}
 function tog(i){const e=document.getElementById('ed'+i);e.style.display=e.style.display==='none'?'':'none'}
-function exp(k){const b=document.getElementById('body-'+k),c=document.getElementById('chev-'+k);const o=b.style.display==='none';b.style.display=o?'':'none';c.classList.toggle('open',o)}
 function setTab(t){document.querySelectorAll('.subnav a').forEach(a=>a.classList.toggle('on',a.dataset.tab===t));document.querySelectorAll('.tab').forEach(d=>d.classList.toggle('on',d.id==='tab-'+t))}
-function ptype(t){document.getElementById('form-runner').style.display=t==='runner'?'':'none';document.getElementById('form-std').style.display=t==='runner'?'none':'';
- document.getElementById('keyfld').style.display=t==='local'?'none':'';
- document.getElementById('hint').innerHTML=t==='local'?'🖥 <b>Local server</b> (Ollama / LM Studio) — just a URL, no key. Free &amp; private; you manage its models in its own app.':'💳 Cloud — get a key from the provider. Billed per token; your text leaves this machine.';
- document.querySelectorAll('.typebar button').forEach(b=>b.classList.remove('on'));event&&event.target.classList.add('on')}
-function setApp(a){document.getElementById('tg-jv').classList.toggle('on',a==='jv');document.getElementById('tg-jw').classList.toggle('on',a==='jw');
- document.getElementById('brand').textContent=CAT[a].brand;document.getElementById('featcount').textContent=CAT[a].rows.length+" features · this app's catalog";
- document.getElementById('busyfeat').textContent=CAT[a].busy[0];document.getElementById('busymeta').textContent=CAT[a].busy[1];render(a)}
+function setApp(a){document.getElementById('tg-jv').classList.toggle('on',a==='jv');document.getElementById('tg-jw').classList.toggle('on',a==='jw');document.getElementById('brand').textContent=CAT[a].brand;document.getElementById('featcount').textContent=CAT[a].rows.length+" features · this app's catalog";document.getElementById('busyfeat').textContent=CAT[a].busy[0];document.getElementById('busymeta').textContent=CAT[a].busy[1];render(a)}
 render('jv');
 </script></body></html>
