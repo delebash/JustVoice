@@ -1,382 +1,296 @@
 <!DOCTYPE html>
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!--
-  Shared AI "Models" area — clickable mock v1 for the convergence plan
-  (docs/plans/2026-06-20-shared-ai-stack-plan.md). This is the SAME view both
-  apps render from @delebash/llm-ui; the app toggle (top-right) swaps only the
-  feature CATALOG (per-app data) to prove "same routing code, different rows".
-
-  Shows the approved decisions:
-    · top-level "Models" area, 4 sub-tabs: Providers · Local models · Features · Usage
-    · Providers: one list, Local·free / Cloud·metered split  (base = JW)
-    · Local models: runner catalog → Download & Run + richer hardware FIT score
-    · Features: JW's flat routing table  + JV's optional Quick/Accuracy roles
-      + inline per-feature prompt edit (expand a row)  + Lab promote
-    · Usage ledger
-  Only TTS (JV) + the feature catalog differ; everything here is shared code.
+  Shared AI "Models" area — mock v2 (rev after UX feedback).
+  Fixes from v1: model management is PER-PROVIDER and varies by type
+  (built-in runner = download GGUF + Fit; Ollama = list installed + pull;
+  cloud = fetch list, pick default — no download). Adds the Add/Edit
+  provider form (type-adaptive). Roles are grounded in provider▸model.
+  The feature editor exposes the real settings (temperature, max tokens,
+  reasoning) + advanced sampling (top-p/top-k/repeat/ctx/stop), not just
+  temperature. Lab (side-by-side compare) is a separate mock.
+  Plan: docs/plans/2026-06-20-shared-ai-stack-plan.md
 -->
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>Shared AI · Models — mock</title>
+<html lang="en"><head><meta charset="utf-8"><title>Shared AI · Models — mock v2</title>
 <style>
-:root{
-  --bg:#f6f5f1;--surface:#fff;--surface-2:#fbfaf7;--surface-3:#f3f1ec;
-  --ink:#1a1a1a;--ink-2:#4a4a4a;--ink-3:#888;
-  --line:#e3e1dc;--line-strong:#cfccc4;
-  --accent:#3a7d63;--accent-ink:#2c6049;--accent-soft:#e8f0eb;--accent-line:#b8d2c3;
-  --gold:#b08a3e;--gold-soft:#f5edda;--gold-line:#e2d2b0;
-  --red:#b04a3e;--red-soft:#f7e7e4;
-  --blue:#2f74b5;--blue-soft:#eaf0f8;--blue-line:#c8d4e8;
-  --violet:#6a4a8c;--violet-soft:#f1eaf8;--violet-line:#d8c8e8;
-  --font-ui:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  --font-serif:Georgia,"Times New Roman",serif;
-  --font-mono:"SF Mono",Consolas,Menlo,monospace;
-}
+:root{--bg:#f6f5f1;--surface:#fff;--surface-2:#fbfaf7;--surface-3:#f3f1ec;--ink:#1a1a1a;--ink-2:#4a4a4a;--ink-3:#888;
+--line:#e3e1dc;--line-strong:#cfccc4;--accent:#3a7d63;--accent-ink:#2c6049;--accent-soft:#e8f0eb;--accent-line:#b8d2c3;
+--gold:#b08a3e;--gold-soft:#f5edda;--gold-line:#e2d2b0;--red:#b04a3e;--red-soft:#f7e7e4;--blue:#2f74b5;--blue-soft:#eaf0f8;--blue-line:#c8d4e8;
+--violet:#6a4a8c;--violet-soft:#f1eaf8;--violet-line:#d8c8e8;
+--font-ui:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;--font-serif:Georgia,serif;--font-mono:"SF Mono",Consolas,Menlo,monospace;}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-ui);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
 .page{max-width:1180px;margin:0 auto;padding:22px 32px 90px}
 h1{font-family:var(--font-serif);font-size:24px;margin:0}
-.lede{color:var(--ink-2);font-size:13px;margin:4px 0 0;max-width:820px}
-.mono{font-family:var(--font-mono)}
-.muted{color:var(--ink-3)}
-
-/* top bar — product + shared badge + app toggle */
+.lede{color:var(--ink-2);font-size:13px;margin:4px 0 0;max-width:860px}
+.mono{font-family:var(--font-mono)} .muted{color:var(--ink-3)}
 .topbar{display:flex;align-items:center;gap:12px;margin-bottom:16px}
-.brand{font-weight:800;font-size:15px;letter-spacing:.01em}
-.shared{font-size:11px;color:var(--violet);background:var(--violet-soft);border:1px solid var(--violet-line);border-radius:999px;padding:3px 10px;font-weight:700}
+.brand{font-weight:800;font-size:15px} .shared{font-size:11px;color:var(--violet);background:var(--violet-soft);border:1px solid var(--violet-line);border-radius:999px;padding:3px 10px;font-weight:700}
 .apptog{margin-left:auto;display:flex;border:1px solid var(--line-strong);border-radius:999px;overflow:hidden}
 .apptog button{font:inherit;font-size:12px;font-weight:700;border:0;background:var(--surface);color:var(--ink-2);padding:6px 14px;cursor:pointer}
 .apptog button.on{background:var(--accent);color:#fff}
-
-.subnav{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;border-bottom:1px solid var(--line)}
+.subnav{display:flex;gap:4px;margin-top:6px;border-bottom:1px solid var(--line)}
 .subnav a{padding:9px 16px;font-size:12.5px;color:var(--ink-2);border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;font-weight:600}
 .subnav a.on{color:var(--ink);border-bottom-color:var(--accent)}
-
-.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 3px rgba(20,22,24,.05);padding:18px 20px;margin-top:16px}
-.card h3{font-family:var(--font-serif);font-size:16px;margin:0}
-.card .sub{font-size:12.5px;color:var(--ink-2);margin:4px 0 0;max-width:820px}
-.cardhead{display:flex;align-items:baseline;gap:10px}
-.cardhead .right{margin-left:auto}
-.xlink{font-size:12px;color:var(--accent-ink);text-decoration:underline;cursor:pointer;white-space:nowrap}
-.note{font-size:11.5px;color:var(--ink-3);margin-top:6px;font-style:italic}
-
+.tab{display:none}.tab.on{display:block}
+.sec-h{display:flex;align-items:baseline;gap:10px;margin:20px 0 0;padding-bottom:8px;border-bottom:2px solid var(--line)}
+.sec-h h2{font-family:var(--font-serif);font-size:17px;margin:0;font-weight:600}.sec-h .count{font-size:12px;color:var(--ink-3)}.sec-h .right{margin-left:auto}
 .btn{font:inherit;font-size:12.5px;font-weight:600;border-radius:7px;padding:7px 14px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink-2)}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-.btn.primary:hover{background:var(--accent-ink)}
-.btn.sm{font-size:11.5px;padding:4px 10px}
-.btn:hover{border-color:var(--line-strong)}
-
-.tab{display:none}
-.tab.on{display:block}
-
-/* section header (within a tab) */
-.sec-h{display:flex;align-items:baseline;gap:10px;margin:22px 0 0;padding-bottom:8px;border-bottom:2px solid var(--line)}
-.sec-h h2{font-family:var(--font-serif);font-size:17px;margin:0;font-weight:600}
-.sec-h .count{font-size:12px;color:var(--ink-3)}
-.sec-h .right{margin-left:auto}
-
-/* ── PROVIDERS ── */
-.psplit{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:18px 0 8px;display:flex;align-items:center;gap:8px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn.primary:hover{background:var(--accent-ink)}
+.btn.sm{font-size:11.5px;padding:4px 10px}.btn:hover{border-color:var(--line-strong)}
+.note{font-size:11.5px;color:var(--ink-3);margin-top:8px;font-style:italic}
+.psplit{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:16px 0 8px;display:flex;align-items:center;gap:8px}
 .psplit .free{color:var(--accent-ink);background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:999px;padding:1px 8px}
 .psplit .paid{color:var(--gold);background:var(--gold-soft);border:1px solid var(--gold-line);border-radius:999px;padding:1px 8px}
-.prov{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-top:8px}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none}
-.dot.off{background:var(--line-strong)} .dot.err{background:var(--red)}
-.prov .pn{font-weight:700} .prov .pid{font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
-.caps{display:inline-flex;gap:4px;margin-left:4px}
+.prov{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-top:8px;overflow:hidden}
+.phead{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer}
+.phead:hover{background:var(--surface-2)}
+.chev{color:var(--ink-3);font-size:10px;transition:transform .15s}.chev.open{transform:rotate(90deg)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none}.dot.off{background:var(--line-strong)}
+.pn{font-weight:700}.pid{font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
+.caps{display:inline-flex;gap:4px;margin-left:2px}
 .cap{font-size:9px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:999px;border:1px solid var(--line-strong);color:var(--ink-2);background:var(--surface)}
-.cap.llm{border-color:var(--gold-line);background:var(--gold-soft);color:var(--gold)}
-.cap.emb{border-color:var(--blue-line);background:var(--blue-soft);color:var(--blue)}
-.prov .purl{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);margin-left:6px}
-.prov .pmid{flex:1;min-width:0}
-.prov .psum{font-size:11.5px;color:var(--ink-2)}
-.prov .pright{display:flex;gap:8px;flex:none}
-
-/* ── LOCAL MODELS (runner) ── */
-.hw{display:flex;gap:24px;align-items:center;background:var(--surface);border:1px solid var(--accent-line);border-radius:10px;padding:11px 18px;margin-top:8px;font-size:12.5px}
-.hw .k{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3)}
-.mcard{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:13px 16px;margin-top:8px}
-.mcard .mn{font-weight:700;font-size:14px;min-width:150px}
-.mcard .mmeta{font-size:11.5px;color:var(--ink-3);min-width:150px}
-.mcard .mdesc{font-size:12px;color:var(--ink-2);flex:1;min-width:0}
-.fit{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:3px 11px;font-size:11.5px;font-weight:700;border:1px solid}
-.fit .score{font-family:var(--font-mono)}
-.fit.ok{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-ink)}
-.fit.tight{background:var(--gold-soft);border-color:var(--gold-line);color:var(--gold)}
-.fit.no{background:var(--red-soft);border-color:#e3b6ac;color:var(--red)}
-.fit .bd{font-weight:400;color:var(--ink-3);font-size:10.5px}
-
-/* ── FEATURES: roles + routing ── */
+.cap.llm{border-color:var(--gold-line);background:var(--gold-soft);color:var(--gold)}.cap.emb{border-color:var(--blue-line);background:var(--blue-soft);color:var(--blue)}
+.pmid{flex:1;min-width:0}.psum{font-size:11.5px;color:var(--ink-2)}.pright{display:flex;gap:8px;flex:none}
+.pbody{border-top:1px solid var(--line);background:var(--surface-2);padding:14px 16px}
+.kind-label{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+/* model rows (download / installed / fetched) */
+.hw{display:flex;gap:22px;align-items:center;background:var(--surface);border:1px solid var(--accent-line);border-radius:8px;padding:9px 14px;margin-bottom:10px;font-size:12px}
+.hw .k{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3)}
+.mrow{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 12px;margin-top:6px}
+.mrow .mn{font-weight:600;min-width:150px}.mrow .mm{font-size:11px;color:var(--ink-3);min-width:140px}.mrow .md{font-size:11.5px;color:var(--ink-2);flex:1;min-width:0}
+.fit{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;border:1px solid;flex:none}
+.fit .s{font-family:var(--font-mono)}
+.fit.ok{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-ink)}.fit.tight{background:var(--gold-soft);border-color:var(--gold-line);color:var(--gold)}.fit.no{background:var(--red-soft);border-color:#e3b6ac;color:var(--red)}
+.pill{font-size:10px;font-weight:700;border-radius:999px;padding:2px 9px}.pill.run{background:var(--accent);color:#fff}.pill.disk{background:var(--surface-3);color:var(--ink-2);border:1px solid var(--line)}
+.inl{display:flex;gap:8px;align-items:center;margin-top:8px}
+.inl input{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:7px 10px;background:var(--surface)}
+.fld input,.fld select{font:inherit;font-size:13px;border:1px solid var(--line);border-radius:7px;padding:8px 10px;background:var(--surface)}
+/* add/edit form */
+.modal{background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;box-shadow:0 12px 40px rgba(20,22,24,.16);padding:20px 22px;margin-top:14px;max-width:680px}
+.modal h3{font-family:var(--font-serif);font-size:17px;margin:0 0 2px}
+.frow{display:flex;gap:14px;margin-top:12px;flex-wrap:wrap}
+.fld{display:flex;flex-direction:column;gap:4px}.fld label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3)}
+.fld.grow{flex:1;min-width:160px}.fld input{width:100%;box-sizing:border-box}
+.typebar{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.typebar button{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:999px;padding:5px 12px;background:var(--surface);color:var(--ink-2);cursor:pointer}
+.typebar button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.capsel{display:flex;gap:14px;align-items:center;margin-top:6px;font-size:13px}
+.hintband{margin-top:12px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);font-size:11.5px;line-height:1.5}
+.foot{display:flex;gap:8px;align-items:center;margin-top:16px}
+.stat{font-size:11.5px;color:var(--ink-3);display:flex;gap:6px;align-items:center}
+/* roles + routing */
 .roles{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}
 .role{border:1px solid var(--line);border-radius:10px;padding:13px 16px;background:var(--surface-2)}
-.role .rname{font-weight:700;font-size:13px;display:flex;gap:8px;align-items:center}
-.role .rdesc{font-size:11.5px;color:var(--ink-2);margin:3px 0 9px}
-.role select{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:7px 10px;background:var(--surface);width:100%}
-.rolechip{font-size:9.5px;font-weight:700;letter-spacing:.04em;border-radius:999px;padding:2px 9px}
-.rolechip.quick{background:var(--accent-soft);color:var(--accent-ink);border:1px solid var(--accent-line)}
-.rolechip.acc{background:var(--gold-soft);color:var(--gold);border:1px solid var(--gold-line)}
-
+.role .rname{font-weight:700;font-size:13px;display:flex;gap:8px;align-items:center}.role .rdesc{font-size:11.5px;color:var(--ink-2);margin:3px 0 9px}
+.role .twostep{display:flex;gap:8px}.role select{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:var(--surface)}
+.role .pp{flex:none;min-width:135px}.role .mm{flex:1}
+.rolechip{font-size:9.5px;font-weight:700;border-radius:999px;padding:2px 9px}.rolechip.quick{background:var(--accent-soft);color:var(--accent-ink);border:1px solid var(--accent-line)}.rolechip.acc{background:var(--gold-soft);color:var(--gold);border:1px solid var(--gold-line)}
 table.routes{width:100%;border-collapse:collapse;margin-top:12px}
 .routes th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);font-weight:700;padding:8px 10px;border-bottom:2px solid var(--line)}
-.routes td{padding:10px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:middle}
-.routes .fname{font-weight:600}
-.routes .fdesc{font-size:11.5px;color:var(--ink-3)}
-.routes select{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:6px 9px;background:var(--surface);min-width:215px}
+.routes td{padding:10px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:middle}.routes .fname{font-weight:600}.routes .fdesc{font-size:11.5px;color:var(--ink-3)}
+.routes select{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:6px 9px;background:var(--surface);min-width:230px}
 .routes .resolved{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-2)}
 .cfgtag{font-size:10px;font-weight:700;color:var(--violet);background:var(--violet-soft);border:1px solid var(--violet-line);border-radius:999px;padding:2px 8px}
-.exp{cursor:pointer;color:var(--ink-3);font-size:11px;user-select:none}
-.exp:hover{color:var(--accent-ink)}
+.exp{cursor:pointer;color:var(--ink-3);font-size:11px}.exp:hover{color:var(--accent-ink)}
 .editor{background:var(--surface-2);border:1px dashed var(--line-strong);border-radius:10px;padding:14px 16px;margin:2px 0 6px}
-.editor .erow{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
-.editor label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);display:block;margin-bottom:4px}
-.editor textarea{font:inherit;font-size:12.5px;width:100%;border:1px solid var(--line);border-radius:7px;padding:8px 10px;background:var(--surface);resize:vertical;min-height:54px;box-sizing:border-box}
-.editor .efield{margin-top:10px}
-.editor .efoot{display:flex;gap:8px;align-items:center;margin-top:12px}
-.tempwrap{display:flex;align-items:center;gap:8px;font-size:12px}
+.grp{margin-top:6px}.grphead{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);margin:10px 0 6px}
+.settings{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 16px}
+.set{display:flex;flex-direction:column;gap:3px}.set label{font-size:11px;color:var(--ink-2)}.set .v{font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
+.set input[type=number],.set input[type=text]{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:6px;padding:5px 8px;background:var(--surface);width:90px}
+.adv summary{cursor:pointer;font-size:11.5px;color:var(--accent-ink);margin-top:8px}
+.editor label.t{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);display:block;margin:10px 0 4px}
+.editor textarea{font:inherit;font-size:12.5px;width:100%;border:1px solid var(--line);border-radius:7px;padding:8px 10px;background:var(--surface);resize:vertical;min-height:50px;box-sizing:border-box}
+.efoot{display:flex;gap:8px;align-items:center;margin-top:12px}
+.usage{display:flex;gap:30px;margin-top:12px;flex-wrap:wrap}.usage .u{font-size:13px}.usage .u b{display:block;font-size:18px}.usage .u small{color:var(--ink-3)}
+.toggle{position:relative;width:34px;height:19px;border-radius:999px;background:var(--accent);display:inline-block;vertical-align:middle}
+.toggle i{position:absolute;top:2px;left:17px;width:15px;height:15px;border-radius:50%;background:#fff}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 3px rgba(20,22,24,.05);padding:18px 20px;margin-top:14px}
+.card h3{font-family:var(--font-serif);font-size:16px;margin:0}.card .sub{font-size:12.5px;color:var(--ink-2);margin:4px 0 0}.cardhead{display:flex;align-items:baseline;gap:10px}.cardhead .right{margin-left:auto}
+.xlink{font-size:12px;color:var(--accent-ink);text-decoration:underline;cursor:pointer}
+</style></head><body><div class="page">
 
-/* usage */
-.usage{display:flex;gap:30px;margin-top:12px;flex-wrap:wrap}
-.usage .u{font-size:13px}
-.usage .u b{display:block;font-size:18px}
-.usage .u small{color:var(--ink-3)}
-.bar{height:8px;border-radius:4px;background:var(--surface-3);overflow:hidden;margin-top:14px;display:flex}
-.bar i{display:block;height:100%}
-</style>
-</head>
-<body>
-<div class="page">
+<div class="topbar"><span class="brand" id="brand">JustVoice</span><span class="shared">shared · @delebash/llm-ui</span>
+<div class="apptog"><button class="on" id="tg-jv" onclick="setApp('jv')">JustVoice</button><button id="tg-jw" onclick="setApp('jw')">JustWrite</button></div></div>
+<h1>Models</h1>
+<p class="lede">Connect AI providers (free local or metered cloud), manage each provider's models in place, route features, and watch cost. <b>Same code in both apps</b> — only the feature catalog differs (toggle above).</p>
+<div class="subnav"><a class="on" data-tab="providers" onclick="setTab('providers')">Providers &amp; models</a><a data-tab="features" onclick="setTab('features')">Features</a><a data-tab="usage" onclick="setTab('usage')">Usage</a></div>
 
-  <div class="topbar">
-    <span class="brand" id="brand">JustVoice</span>
-    <span class="shared">shared · @delebash/llm-ui</span>
-    <div class="apptog">
-      <button class="on" id="tg-jv" onclick="setApp('jv')">JustVoice</button>
-      <button id="tg-jw" onclick="setApp('jw')">JustWrite</button>
+<!-- ══ PROVIDERS & MODELS ══ -->
+<div class="tab on" id="tab-providers">
+  <div class="sec-h"><h2>Providers &amp; models</h2><span class="count">model management is per provider — download for the built-in runner, fetch/list for the rest</span>
+    <span class="right"><button class="btn primary sm" onclick="document.getElementById('addform').scrollIntoView({behavior:'smooth'})">+ Add provider</button></span></div>
+
+  <div class="psplit"><span class="free">LOCAL · FREE</span> on your machine — no key, nothing leaves the device</div>
+
+  <!-- BUILT-IN RUNNER: the only provider you DOWNLOAD models for -->
+  <div class="prov">
+    <div class="phead" onclick="exp('r')"><span class="chev open" id="chev-r">▶</span><span class="dot"></span>
+      <div class="pmid"><span class="pn">Built-in runner</span> <span class="pid">local-llamacpp</span> <span class="caps"><span class="cap llm">LLM</span></span>
+        <div class="psum muted">downloads &amp; runs GGUF models on your hardware · <b>qwen3-4b running</b> · 1 of 8 downloaded</div></div>
+      <span class="pright"><button class="btn sm">Restart</button></span></div>
+    <div class="pbody" id="body-r">
+      <div class="kind-label">⬇ Download &amp; run — models live on disk; Fit is computed for your card</div>
+      <div class="hw"><div><div class="k">GPU</div><b>RTX 4070</b> · 12 GB</div><div><div class="k">RAM</div><b>32 GB</b></div><div><div class="k">Accel</div><b>CUDA 12</b></div></div>
+      <div class="mrow"><span class="fit ok">Fits <span class="s">92</span></span><span class="mn">Qwen3 4B Instruct</span><span class="mm">2.4 GB · Q4_K_M</span><span class="md">Recommended default for this card.</span><span class="pill run">RUNNING</span><button class="btn sm">Stop</button><button class="btn sm">Delete</button></div>
+      <div class="mrow"><span class="fit ok">Fits <span class="s">88</span></span><span class="mn">Qwen3 14B</span><span class="mm">8.2 GB · Q4_K_M</span><span class="md">Higher accuracy · ~9.4 GB VRAM, 2.6 GB headroom.</span><button class="btn primary sm">⬇ Download &amp; run</button></div>
+      <div class="mrow"><span class="fit tight">Tight <span class="s">61</span></span><span class="mn">Gemma 3 27B</span><span class="mm">16 GB · Q4_K_M</span><span class="md">Runs with CPU spillover — slower.</span><button class="btn primary sm">⬇ Download &amp; run</button></div>
+      <div class="mrow"><span class="fit no">Won't fit <span class="s">—</span></span><span class="mn">Llama 3.3 70B</span><span class="mm">40 GB · Q4_K_M</span><span class="md">Exceeds 12 GB even with offload — use a cloud provider.</span><button class="btn sm" disabled>Too large</button></div>
     </div>
   </div>
 
-  <h1>Models</h1>
-  <p class="lede">One place for AI — the providers you connect, the local models you run, which model answers each feature, and what it costs. <b>Identical code in both apps</b> (this top-level area lives beside Voices in JustVoice). The app toggle above changes only the <b>feature catalog</b> — same routing, different rows.</p>
-
-  <div class="subnav">
-    <a class="on" data-tab="providers" onclick="setTab('providers')">Providers</a>
-    <a data-tab="local" onclick="setTab('local')">Local models</a>
-    <a data-tab="features" onclick="setTab('features')">Features</a>
-    <a data-tab="usage" onclick="setTab('usage')">Usage</a>
-  </div>
-
-  <!-- ══ PROVIDERS ══ -->
-  <div class="tab on" id="tab-providers">
-    <div class="sec-h"><h2>Providers</h2><span class="count">one list · free local + metered cloud</span>
-      <span class="right"><button class="btn primary sm">+ Add provider</button></span></div>
-
-    <div class="psplit"><span class="free">LOCAL · FREE</span> runs on your machine — no key, nothing leaves the device</div>
-    <div class="prov">
-      <span class="dot"></span>
-      <div class="pmid"><span class="pn">Built-in runner</span><span class="pid">local-llamacpp</span>
-        <span class="caps"><span class="cap llm">LLM</span></span>
-        <span class="purl">llama-server · 127.0.0.1:8080</span>
-        <div class="psum muted">qwen3-4b-instruct (Q4_K_M) loaded · manage models on the Local models tab</div></div>
-      <div class="pright"><button class="btn sm">Test</button><button class="btn sm">Edit</button></div>
-    </div>
-    <div class="prov">
-      <span class="dot"></span>
-      <div class="pmid"><span class="pn">Ollama (this PC)</span><span class="pid">ollama-local</span>
-        <span class="caps"><span class="cap llm">LLM</span><span class="cap emb">EMBED</span></span>
-        <span class="purl">localhost:11434</span>
-        <div class="psum muted">chat: qwen3:14b · embed: nomic-embed-text · 6 models · no key — free</div></div>
-      <div class="pright"><button class="btn sm">Test</button><button class="btn sm">Edit</button></div>
-    </div>
-
-    <div class="psplit"><span class="paid">CLOUD · METERED</span> your accounts — API key + URL · billed by the provider · text leaves this machine</div>
-    <div class="prov">
-      <span class="dot"></span>
-      <div class="pmid"><span class="pn">Anthropic</span><span class="pid">anthropic</span>
-        <span class="caps"><span class="cap llm">LLM</span></span>
-        <span class="purl">api.anthropic.com</span>
-        <div class="psum muted">chat: claude-haiku-4-5 · key set</div></div>
-      <div class="pright"><button class="btn sm">Test</button><button class="btn sm">Edit</button></div>
-    </div>
-    <div class="prov">
-      <span class="dot off"></span>
-      <div class="pmid"><span class="pn">OpenAI</span><span class="pid">openai</span>
-        <span class="caps"><span class="cap llm">LLM</span><span class="cap emb">EMBED</span></span>
-        <span class="purl">api.openai.com/v1</span>
-        <div class="psum muted">chat: gpt-4o-mini · embed: text-embedding-3-small · no key</div></div>
-      <div class="pright"><button class="btn sm">Test</button><button class="btn sm">Edit</button></div>
-    </div>
-    <p class="note">Decision 1 — this whole area is a top-level "Models" nav entry in both apps (in JustVoice it sits beside Voices/Engines). Providers, model rows, the form, and this local/cloud split are shared components.</p>
-  </div>
-
-  <!-- ══ LOCAL MODELS ══ -->
-  <div class="tab" id="tab-local">
-    <div class="sec-h"><h2>Local models</h2><span class="count">free · run on your machine via the built-in runner</span></div>
-    <div class="hw">
-      <div><div class="k">GPU</div><b>RTX 4070</b> · 12 GB VRAM</div>
-      <div><div class="k">RAM</div><b>32 GB</b></div>
-      <div><div class="k">Acceleration</div><b>CUDA 12</b></div>
-      <div class="muted" style="margin-left:auto">Fit scores below are computed for this hardware (VRAM headroom · speed · context · quality)</div>
-    </div>
-
-    <div class="mcard">
-      <span class="fit ok"><span>Fits</span><span class="score">92</span></span>
-      <span class="mn">Qwen3 4B Instruct</span>
-      <span class="mmeta">2.4 GB · Q4_K_M · ~3.1 GB VRAM</span>
-      <span class="mdesc">Loaded now — the recommended default for this card. Fast, strong instruction following.</span>
-      <button class="btn sm">Unload</button><button class="btn sm">Delete</button>
-    </div>
-    <div class="mcard">
-      <span class="fit ok"><span>Fits</span><span class="score">88</span></span>
-      <span class="mn">Qwen3 14B</span>
-      <span class="mmeta">8.2 GB · Q4_K_M · ~9.4 GB VRAM</span>
-      <span class="mdesc">Higher accuracy for async features. Leaves ~2.6 GB headroom. <span class="bd">28/40 layers on GPU at 8k ctx</span></span>
-      <button class="btn primary sm">⬇ Download &amp; Run</button>
-    </div>
-    <div class="mcard">
-      <span class="fit tight" title="Tight — close other models first">⚠ Tight <span class="score">61</span></span>
-      <span class="mn">Gemma 3 27B</span>
-      <span class="mmeta">16 GB · Q4_K_M · ~14 GB VRAM</span>
-      <span class="mdesc">Runs with CPU spillover — slower. Free a slot or accept reduced speed.</span>
-      <button class="btn primary sm">⬇ Download &amp; Run</button>
-    </div>
-    <div class="mcard">
-      <span class="fit no">✕ Won't fit <span class="score">—</span></span>
-      <span class="mn">Llama 3.3 70B</span>
-      <span class="mmeta">40 GB · Q4_K_M · ~42 GB VRAM</span>
-      <span class="mdesc">Exceeds 12 GB by a wide margin even with offload. Use a cloud provider instead.</span>
-      <button class="btn sm" disabled>Too large</button>
-    </div>
-    <p class="note">Decision 3 — adopted the richer <b>Fit score</b> (0–100, hardware-aware incl. KV-cache + MoE) over a plain dot. One-click "Download &amp; Run" + the progress strip are the shared download component (the TTS side reuses the same strip).</p>
-  </div>
-
-  <!-- ══ FEATURES ══ -->
-  <div class="tab" id="tab-features">
-    <div class="sec-h"><h2>Features</h2><span class="count" id="featcount">8 features · this app's catalog</span></div>
-
-    <!-- roles (optional inherit target) -->
-    <div class="card">
-      <div class="cardhead"><h3>Model roles</h3><span class="right muted" style="font-size:12px">optional — a feature can inherit a role instead of naming a model</span></div>
-      <p class="sub">Two jobs, two models. Casual users set these once; every feature defaults to one of them. Power users override per feature below.</p>
-      <div class="roles">
-        <div class="role"><div class="rname"><span class="rolechip quick">QUICK</span> Quick model</div>
-          <div class="rdesc">Sub-second · interactive features.</div>
-          <select><option selected>Qwen3 4B (local) — free · instant</option><option>gpt-4o-mini — OpenAI · metered</option></select></div>
-        <div class="role"><div class="rname"><span class="rolechip acc">ACCURACY</span> Accuracy model</div>
-          <div class="rdesc">Takes its time · async, accuracy-critical features.</div>
-          <select><option selected>qwen3:14b — Ollama · free</option><option>claude-sonnet-4-6 — Anthropic · metered</option></select></div>
-      </div>
-    </div>
-
-    <!-- routing table (JW's flat base) + inline prompt edit -->
-    <div class="card">
-      <div class="cardhead"><h3>Feature routing</h3>
-        <span class="right xlink">expand a row to edit its prompts ▾</span></div>
-      <p class="sub">Every AI feature, and what answers it. <b>Inherit</b> follows a role; override any row to a specific provider + model. Click <b>✎ prompts</b> to edit that feature's system &amp; user prompt inline (or open the Lab to tune + test).</p>
-      <table class="routes">
-        <thead><tr><th style="width:34%">Feature</th><th style="width:26%">Uses</th><th>Resolves to</th><th></th></tr></thead>
-        <tbody id="routebody"><!-- filled by JS per app catalog --></tbody>
-      </table>
-      <p class="note">Decision 2 — roles kept as an <b>optional</b> inherit target (not required). Decision — prompt editing is <b>inline per row</b> (expand) <b>plus</b> a Lab for tune→test→promote. The rows come from this app's catalog; the table + editor + Lab are shared code.</p>
+  <!-- OLLAMA: list installed (api/tags) + pull -->
+  <div class="prov">
+    <div class="phead" onclick="exp('o')"><span class="chev" id="chev-o">▶</span><span class="dot"></span>
+      <div class="pmid"><span class="pn">Ollama (this PC)</span> <span class="pid">ollama-local</span> <span class="caps"><span class="cap llm">LLM</span><span class="cap emb">EMBED</span></span>
+        <div class="psum muted">localhost:11434 · 6 models installed · no key — free</div></div>
+      <span class="pright"><button class="btn sm">Test</button><button class="btn sm">Edit</button></span></div>
+    <div class="pbody" id="body-o" style="display:none">
+      <div class="kind-label">Installed models — listed live from Ollama's <span class="mono">/api/tags</span> (Ollama manages its own downloads)</div>
+      <div class="mrow"><span class="mn">qwen3:14b</span><span class="mm">9.3 GB · Q4_K_M</span><span class="md">default chat model</span><span class="pill disk">installed</span></div>
+      <div class="mrow"><span class="mn">qwen3:8b</span><span class="mm">5.0 GB</span><span class="md md">faster, less accurate</span><span class="pill disk">installed</span></div>
+      <div class="mrow"><span class="mn">nomic-embed-text</span><span class="mm">274 MB</span><span class="md">embeddings</span><span class="pill disk">installed</span></div>
+      <div class="inl"><span class="muted" style="font-size:12px">Pull a model:</span><input placeholder="e.g. qwen3:32b" style="width:200px"><button class="btn sm">Pull</button><span class="muted" style="font-size:11px">runs <span class="mono">ollama pull</span> on the daemon</span></div>
     </div>
   </div>
 
-  <!-- ══ USAGE ══ -->
-  <div class="tab" id="tab-usage">
-    <div class="sec-h"><h2>Usage</h2><span class="count">tokens + cost · per feature and provider</span></div>
-    <div class="card">
-      <div class="usage">
-        <div class="u"><b>2,418</b>calls this month <small>· 91% local (free)</small></div>
-        <div class="u"><b>1.2 M</b>tokens local <small>· $0.00</small></div>
-        <div class="u"><b>104 k</b>tokens cloud <small>· ≈ $0.62</small></div>
-        <div class="u"><b id="busyfeat">Compose</b>busiest feature <small id="busymeta">· 1,733 calls · Quick</small></div>
-      </div>
-      <div class="bar">
-        <i style="width:91%;background:var(--accent)" title="local · free"></i>
-        <i style="width:9%;background:var(--gold)" title="cloud · metered"></i>
-      </div>
-      <p class="note">Shared ledger — the same byFeature / byProvider breakdown in both apps (one endpoint, not two names).</p>
+  <div class="psplit"><span class="paid">CLOUD · METERED</span> your account — API key + URL · billed by the provider</div>
+
+  <!-- CLOUD: fetch list (/models), pick default, NO download -->
+  <div class="prov">
+    <div class="phead" onclick="exp('c')"><span class="chev" id="chev-c">▶</span><span class="dot"></span>
+      <div class="pmid"><span class="pn">OpenAI</span> <span class="pid">openai</span> <span class="caps"><span class="cap llm">LLM</span><span class="cap emb">EMBED</span></span>
+        <div class="psum muted">api.openai.com/v1 · key set · default gpt-4o-mini</div></div>
+      <span class="pright"><button class="btn sm">Test</button><button class="btn sm">Edit</button></span></div>
+    <div class="pbody" id="body-c" style="display:none">
+      <div class="kind-label">Available models — fetched from the provider's <span class="mono">/models</span> (nothing to download; pick your defaults)</div>
+      <div class="frow"><div class="fld"><label>Default chat model</label><select><option selected>gpt-4o-mini</option><option>gpt-4o</option><option>gpt-4.1</option><option>o3</option></select></div>
+        <div class="fld"><label>Default embedding model</label><select><option selected>text-embedding-3-small</option><option>text-embedding-3-large</option></select></div>
+        <div class="fld" style="justify-content:flex-end"><button class="btn sm">↻ Fetch models</button></div></div>
+      <div class="muted" style="font-size:11.5px;margin-top:8px">14 models reported · last fetched 2 min ago</div>
     </div>
   </div>
+  <div class="prov"><div class="phead" onclick="exp('a')"><span class="chev" id="chev-a">▶</span><span class="dot off"></span>
+      <div class="pmid"><span class="pn">Anthropic</span> <span class="pid">anthropic</span> <span class="caps"><span class="cap llm">LLM</span></span>
+        <div class="psum muted">api.anthropic.com · no key · curated model list (no public /models endpoint)</div></div>
+      <span class="pright"><button class="btn sm">Test</button><button class="btn sm">Edit</button></span></div>
+    <div class="pbody" id="body-a" style="display:none"><div class="kind-label">Models — curated list (Anthropic has no /models endpoint)</div>
+      <div class="frow"><div class="fld"><label>Default chat model</label><select><option selected>claude-haiku-4-5</option><option>claude-sonnet-4-6</option><option>claude-opus-4-8</option></select></div></div></div>
+  </div>
 
+  <!-- ADD / EDIT PROVIDER FORM (type-adaptive) -->
+  <div class="sec-h" id="addform"><h2>Add provider</h2><span class="count">the form adapts to the type — local needs no key; the built-in runner needs nothing</span></div>
+  <div class="modal">
+    <h3>Connect a provider</h3>
+    <div class="typebar">
+      <button onclick="ptype('runner')" id="pt-runner">Built-in runner</button>
+      <button class="on" onclick="ptype('cloud')" id="pt-cloud">OpenAI</button>
+      <button onclick="ptype('cloud')">Anthropic</button>
+      <button onclick="ptype('local')">Ollama</button>
+      <button onclick="ptype('local')">LM Studio</button>
+      <button onclick="ptype('cloud')">OpenAI-compatible</button>
+    </div>
+    <div id="form-runner" style="display:none"><div class="hintband">✓ The built-in runner is already available — nothing to configure. Pick models to download on the <b>Built-in runner</b> card above. Free, private, runs on your hardware.</div></div>
+    <div id="form-std">
+      <div class="frow"><div class="fld grow"><label>Name</label><input value="OpenAI"></div>
+        <div class="fld grow"><label>Base URL</label><input value="https://api.openai.com/v1"></div>
+        <div class="fld grow" id="keyfld"><label>API key</label><input type="password" placeholder="sk-…  (blank for local)"></div></div>
+      <div class="capsel"><label><input type="checkbox" checked> <span class="cap llm">LLM</span></label><label><input type="checkbox"> <span class="cap emb">EMBED</span></label>
+        <span class="muted" style="font-size:11.5px;margin-left:6px">what this provider can do</span></div>
+      <div class="frow"><div class="fld grow"><label>Chat model <span class="muted">— ↻ Fetch to list</span></label><input value="gpt-4o-mini" placeholder="fetch or type a model id"></div>
+        <div class="fld grow"><label>Embedding model <span class="muted">optional</span></label><input placeholder="text-embedding-3-small"></div>
+        <div class="fld" style="justify-content:flex-end"><button class="btn sm">↻ Fetch models</button></div></div>
+      <div class="hintband" id="hint">💳 <b>OpenAI</b> — get a key at platform.openai.com. Billed per token; your text leaves this machine. <span class="muted">(Ollama / LM Studio: just a URL, no key — the key field hides.)</span></div>
+      <div class="foot"><span class="stat"><span class="dot off"></span> not tested</span><span style="flex:1"></span>
+        <button class="btn sm">Test connection</button><button class="btn sm">Cancel</button><button class="btn primary sm">Save provider</button></div>
+    </div>
+  </div>
+  <p class="note">Answers the v1 confusion: each provider shows <b>its own</b> model management — the built-in runner is the only one with Download&amp;Run (+ Fit); Ollama lists installed (+ pull); cloud fetches a list and you pick defaults. The Add form hides the key/URL for local types.</p>
 </div>
 
+<!-- ══ FEATURES ══ -->
+<div class="tab" id="tab-features">
+  <div class="sec-h"><h2>Features</h2><span class="count" id="featcount">8 features · this app's catalog</span></div>
+  <div class="card"><div class="cardhead"><h3>Model roles</h3><span class="right muted" style="font-size:12px">optional — a feature can inherit a role, or pick its own provider▸model below</span></div>
+    <p class="sub">Two jobs, two models — each is a <b>provider ▸ model</b> pick (so it's always clear what runs). Set these once; features default to them.</p>
+    <div class="roles">
+      <div class="role"><div class="rname"><span class="rolechip quick">QUICK</span> Quick model</div><div class="rdesc">Sub-second · interactive features.</div>
+        <div class="twostep"><select class="pp"><option selected>Built-in runner</option><option>Ollama</option><option>OpenAI</option></select><select class="mm"><option selected>qwen3-4b-instruct · free</option><option>qwen3:8b</option></select></div></div>
+      <div class="role"><div class="rname"><span class="rolechip acc">ACCURACY</span> Accuracy model</div><div class="rdesc">Takes its time · async, accuracy-critical.</div>
+        <div class="twostep"><select class="pp"><option selected>Ollama</option><option>Anthropic</option><option>OpenAI</option></select><select class="mm"><option selected>qwen3:14b · free</option><option>claude-sonnet-4-6 · metered</option></select></div></div>
+    </div></div>
+  <div class="card"><div class="cardhead"><h3>Feature routing</h3><span class="right xlink">expand a row to edit prompts &amp; settings ▾</span></div>
+    <p class="sub">Each feature inherits a role or overrides to a specific <b>provider ▸ model</b>. Click <b>✎ tune</b> to edit prompts + settings inline, or open the Lab to compare models.</p>
+    <table class="routes"><thead><tr><th style="width:32%">Feature</th><th style="width:28%">Uses</th><th>Resolves to</th><th></th></tr></thead>
+      <tbody id="routebody"></tbody></table>
+    <p class="note">Decision 2 — roles optional. Settings are real: temperature · max tokens · reasoning today (adapter-plumbed), with top-p/top-k/repeat/ctx/stop as Advanced once the shared adapter plumbs them. Prompts edit inline; the Lab adds side-by-side compare.</p>
+  </div>
+</div>
+
+<!-- ══ USAGE ══ -->
+<div class="tab" id="tab-usage">
+  <div class="sec-h"><h2>Usage</h2><span class="count">tokens + cost · per feature and provider</span></div>
+  <div class="card"><div class="usage">
+    <div class="u"><b>2,418</b>calls this month <small>· 91% local (free)</small></div><div class="u"><b>1.2 M</b>tokens local <small>· $0.00</small></div>
+    <div class="u"><b>104 k</b>tokens cloud <small>· ≈ $0.62</small></div><div class="u"><b id="busyfeat">Compose</b>busiest <small id="busymeta">· 1,733 calls</small></div></div></div>
+</div>
+
+</div>
 <script>
-// ── Per-app feature CATALOG (the only per-app data; the table code is shared) ──
-const CATALOGS = {
-  jv: { brand:"JustVoice", busy:["Compose","· 1,733 calls · Quick"], rows:[
-    ["Speaker attribution","Studio → Script: who says each line","Inherit · Accuracy","qwen3:14b · Ollama","14b-twopass-v3"],
-    ["Smart-assign voices","Studio → Cast: match characters to voices","Inherit · Accuracy","qwen3:14b · Ollama",""],
-    ["Render-preset suggest","Generate: pick a mastering preset from the text","Inherit · Accuracy","qwen3:14b · Ollama",""],
-    ["Persona rewrite","Generate: restate a line in the persona's voice","Inherit · Quick","Qwen3 4B · local",""],
-    ["Compose","Generate: a fresh in-character line","Inherit · Quick","Qwen3 4B · local",""],
-    ["Show notes","Projects: episode summary + chapters","Inherit · Accuracy","qwen3:14b · Ollama",""],
-    ["Dictation cleanup","Captures: raw speech → clean text","Inherit · Quick","Qwen3 4B · local",""],
-    ["Voice-gender guess","Voices: label unknown fetched voices","Inherit · Quick","Qwen3 4B · local",""],
-  ]},
-  jw: { brand:"JustWrite", busy:["Critique","· 612 calls · Accuracy"], rows:[
-    ["Critique","Per-chapter line notes + structural pass","Inherit · Accuracy","claude-sonnet-4-6 · Anthropic","critique-strict-v2"],
-    ["Plot-hole audit","Whole-book continuity scan","Inherit · Accuracy","qwen3:14b · Ollama",""],
-    ["Entity sweep","Find new characters / locations / objects","Inherit · Accuracy","qwen3:14b · Ollama",""],
-    ["Writer actions","Scene strip: Rewrite · Expand · Tighten · Continue","Inherit · Quick","Qwen3 4B · local",""],
-    ["Brainstorm","Name / title / freeform idea generation","Inherit · Quick","Qwen3 4B · local",""],
-    ["Reverse outline","Read the draft → the act structure it has","Inherit · Accuracy","qwen3:14b · Ollama",""],
-    ["Manuscript chat","\"Ask the book\" — RAG Q&A over the manuscript","Inherit · Accuracy","claude-sonnet-4-6 · Anthropic",""],
-    ["Resume briefing","Home: \"Previously on your novel\"","Inherit · Quick","Qwen3 4B · local",""],
-  ]},
-};
-
-const EXAMPLE_PROMPTS = {
-  "Speaker attribution":["You attribute every line of dialogue in a chapter to the character who speaks it. Use only the provided cast. Never invent speakers.","Chapter:\n{{chapter_text}}\n\nReturn JSON: [{line, speaker, confidence}]."],
-  "Critique":["You are a sharp, honest fiction editor giving line-level notes on a single chapter. Flag tells, weak verbs, pacing.","{{chapter_text}}\n\nReturn JSON: {notes:[{type, quote, note}]}."],
-};
-
-function rowHTML(r, i){
-  const [name,desc,uses,resolved,cfg] = r;
-  const opts = ['Inherit · Quick','Inherit · Accuracy','Built-in runner · qwen3-4b','Ollama · qwen3:14b','Anthropic · claude-sonnet-4-6','OpenAI · gpt-4o']
-    .map(o=>`<option${o===uses?' selected':''}>${o}</option>`).join('');
-  const tag = cfg?`<span class="cfgtag" title="A promoted Lab config wins for this feature">CONFIG: ${cfg}</span>`:'';
-  const ex = EXAMPLE_PROMPTS[name] || ["You are a helpful assistant for this feature. (Default — auto-matched to the model's size when not edited.)","{{input}}"];
-  return `<tr>
-    <td><div class="fname">${name}</div><div class="fdesc">${desc}</div></td>
-    <td><select>${opts}</select></td>
-    <td class="resolved">${resolved}</td>
-    <td>${tag} <span class="exp" onclick="toggle(${i})">✎ prompts</span></td>
-  </tr>
-  <tr id="ed${i}" style="display:none"><td colspan="4">
-    <div class="editor">
-      <div class="erow">
-        <div class="tempwrap"><label style="margin:0">Temperature</label><input type="range" min="0" max="1" step="0.1" value="0.3"><span class="mono">0.3</span></div>
-        <span class="muted" style="font-size:11.5px">Role: <b>${uses}</b> · saving here creates a production config (wins over the role).</span>
-      </div>
-      <div class="efield"><label>System prompt</label><textarea>${ex[0]}</textarea></div>
-      <div class="efield"><label>User prompt template</label><textarea>${ex[1]}</textarea></div>
-      <div class="efoot">
-        <button class="btn primary sm">Save as production config</button>
-        <button class="btn sm">Open in Lab — tune &amp; test ↗</button>
-        <button class="btn sm">Reset to default</button>
-        <span class="muted" style="font-size:11px;margin-left:auto">{{tokens}} are filled at run time from the chapter / selection.</span>
-      </div>
-    </div>
-  </td></tr>`;
-}
-function renderRows(app){
-  document.getElementById('routebody').innerHTML = CATALOGS[app].rows.map(rowHTML).join('');
-}
-function toggle(i){ const e=document.getElementById('ed'+i); e.style.display = e.style.display==='none'?'':'none'; }
-function setTab(t){
-  document.querySelectorAll('.subnav a').forEach(a=>a.classList.toggle('on',a.dataset.tab===t));
-  document.querySelectorAll('.tab').forEach(d=>d.classList.toggle('on',d.id==='tab-'+t));
-}
-function setApp(app){
-  document.getElementById('tg-jv').classList.toggle('on',app==='jv');
-  document.getElementById('tg-jw').classList.toggle('on',app==='jw');
-  document.getElementById('brand').textContent = CATALOGS[app].brand;
-  document.getElementById('featcount').textContent = CATALOGS[app].rows.length+' features · this app’s catalog';
-  document.getElementById('busyfeat').textContent = CATALOGS[app].busy[0];
-  document.getElementById('busymeta').textContent = CATALOGS[app].busy[1];
-  renderRows(app);
-}
-renderRows('jv');
-</script>
-</body>
-</html>
+const CAT={jv:{brand:"JustVoice",busy:["Compose","· 1,733 calls"],rows:[
+ ["Speaker attribution","Studio → Script: who says each line","Inherit · Accuracy","qwen3:14b · Ollama","14b-twopass-v3"],
+ ["Smart-assign voices","Studio → Cast: match characters to voices","Inherit · Accuracy","qwen3:14b · Ollama",""],
+ ["Render-preset suggest","Generate: pick a mastering preset","Inherit · Accuracy","qwen3:14b · Ollama",""],
+ ["Persona rewrite","Generate: restate a line in the persona's voice","Inherit · Quick","runner · qwen3-4b",""],
+ ["Compose","Generate: a fresh in-character line","Inherit · Quick","runner · qwen3-4b",""],
+ ["Show notes","Projects: episode summary + chapters","Inherit · Accuracy","qwen3:14b · Ollama",""],
+ ["Dictation cleanup","Captures: raw speech → clean text","Inherit · Quick","runner · qwen3-4b",""],
+ ["Voice-gender guess","Voices: label unknown fetched voices","Inherit · Quick","runner · qwen3-4b",""]]},
+ jw:{brand:"JustWrite",busy:["Critique","· 612 calls"],rows:[
+ ["Critique","Per-chapter line notes + structural pass","Inherit · Accuracy","claude-sonnet-4-6 · Anthropic","critique-strict-v2"],
+ ["Plot-hole audit","Whole-book continuity scan","Inherit · Accuracy","qwen3:14b · Ollama",""],
+ ["Entity sweep","Find new characters / locations / objects","Inherit · Accuracy","qwen3:14b · Ollama",""],
+ ["Writer actions","Scene strip: Rewrite · Expand · Tighten","Inherit · Quick","runner · qwen3-4b",""],
+ ["Brainstorm","Name / title / freeform ideas","Inherit · Quick","runner · qwen3-4b",""],
+ ["Reverse outline","Read the draft → the act structure","Inherit · Accuracy","qwen3:14b · Ollama",""],
+ ["Manuscript chat","\"Ask the book\" — RAG Q&A","Inherit · Accuracy","claude-sonnet-4-6 · Anthropic",""],
+ ["Resume briefing","Home: \"Previously on your novel\"","Inherit · Quick","runner · qwen3-4b",""]]}};
+const EX={"Speaker attribution":["You attribute every line of dialogue to the character who speaks it. Use only the provided cast; never invent speakers.","Chapter:\n{{chapter_text}}\n\nReturn JSON: [{line, speaker, confidence}]."],
+ "Critique":["You are a sharp, honest fiction editor giving line-level notes on one chapter. Flag tells, weak verbs, pacing.","{{chapter_text}}\n\nReturn JSON: {notes:[{type, quote, note}]}."]};
+function row(r,i){const[n,d,u,res,cfg]=r;
+ const opts=['Inherit · Quick','Inherit · Accuracy','Built-in runner ▸ qwen3-4b','Ollama ▸ qwen3:14b','Anthropic ▸ claude-sonnet-4-6','OpenAI ▸ gpt-4o'].map(o=>`<option${o===u?' selected':''}>${o}</option>`).join('');
+ const tag=cfg?`<span class="cfgtag">CONFIG: ${cfg}</span> `:'';const ex=EX[n]||["You are a helpful assistant for this feature. (Default — auto-matched to the model size when not edited.)","{{input}}"];
+ return `<tr><td><div class="fname">${n}</div><div class="fdesc">${d}</div></td><td><select>${opts}</select></td><td class="resolved">${res}</td><td>${tag}<span class="exp" onclick="tog(${i})">✎ tune</span></td></tr>
+ <tr id="ed${i}" style="display:none"><td colspan="4"><div class="editor">
+   <div class="grphead">Model</div><select style="font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:6px 9px;min-width:260px">${opts}</select>
+   <div class="grphead">Settings</div>
+   <div class="settings">
+     <div class="set"><label>Temperature</label><input type="number" value="0.3" step="0.1" min="0" max="2"></div>
+     <div class="set"><label>Max output tokens</label><input type="number" value="1024"></div>
+     <div class="set"><label>Reasoning (think)</label><span class="toggle"><i></i></span></div>
+   </div>
+   <details class="adv"><summary>Advanced sampling ▾</summary><div class="settings" style="margin-top:8px">
+     <div class="set"><label>Top-P</label><input type="number" value="0.9" step="0.05"></div>
+     <div class="set"><label>Top-K</label><input type="number" value="40"></div>
+     <div class="set"><label>Repeat penalty</label><input type="number" value="1.05" step="0.05"></div>
+     <div class="set"><label>Context length</label><input type="number" value="8192"></div>
+     <div class="set"><label>Stop sequences</label><input type="text" placeholder="\\n\\n, END"></div>
+     <div class="set"><label>Seed</label><input type="number" placeholder="random"></div>
+   </div><div class="muted" style="font-size:11px;margin-top:6px">Passed through to the provider; not every provider honors every field (e.g. Anthropic ignores top-k).</div></details>
+   <label class="t">System prompt</label><textarea>${ex[0]}</textarea>
+   <label class="t">User prompt template</label><textarea>${ex[1]}</textarea>
+   <div class="efoot"><button class="btn primary sm">Save as production config</button><button class="btn sm">Open in Lab — compare models ↗</button><button class="btn sm">Reset to default</button>
+     <span class="muted" style="font-size:11px;margin-left:auto">{{tokens}} fill at run time from the chapter / selection.</span></div>
+ </div></td></tr>`;}
+function render(a){document.getElementById('routebody').innerHTML=CAT[a].rows.map(row).join('')}
+function tog(i){const e=document.getElementById('ed'+i);e.style.display=e.style.display==='none'?'':'none'}
+function exp(k){const b=document.getElementById('body-'+k),c=document.getElementById('chev-'+k);const o=b.style.display==='none';b.style.display=o?'':'none';c.classList.toggle('open',o)}
+function setTab(t){document.querySelectorAll('.subnav a').forEach(a=>a.classList.toggle('on',a.dataset.tab===t));document.querySelectorAll('.tab').forEach(d=>d.classList.toggle('on',d.id==='tab-'+t))}
+function ptype(t){document.getElementById('form-runner').style.display=t==='runner'?'':'none';document.getElementById('form-std').style.display=t==='runner'?'none':'';
+ document.getElementById('keyfld').style.display=t==='local'?'none':'';
+ document.getElementById('hint').innerHTML=t==='local'?'🖥 <b>Local server</b> (Ollama / LM Studio) — just a URL, no key. Free &amp; private; you manage its models in its own app.':'💳 Cloud — get a key from the provider. Billed per token; your text leaves this machine.';
+ document.querySelectorAll('.typebar button').forEach(b=>b.classList.remove('on'));event&&event.target.classList.add('on')}
+function setApp(a){document.getElementById('tg-jv').classList.toggle('on',a==='jv');document.getElementById('tg-jw').classList.toggle('on',a==='jw');
+ document.getElementById('brand').textContent=CAT[a].brand;document.getElementById('featcount').textContent=CAT[a].rows.length+" features · this app's catalog";
+ document.getElementById('busyfeat').textContent=CAT[a].busy[0];document.getElementById('busymeta').textContent=CAT[a].busy[1];render(a)}
+render('jv');
+</script></body></html>
