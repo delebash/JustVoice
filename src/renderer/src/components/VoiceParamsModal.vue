@@ -101,7 +101,7 @@ function clearParam(key) {
 }
 
 function isOverride(key) {
-  return Object.prototype.hasOwnProperty.call(params.value, key);
+  return  Object.hasOwn(params.value, key);
 }
 
 function onSave() {

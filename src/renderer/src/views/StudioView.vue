@@ -80,7 +80,7 @@ const voiceGenderOverrides = ref(
 watch(voiceGenderOverrides, (v) => { writePref("voiceGenderOverrides", v); }, { deep: true });
 
 function displayedGender(voice) {
-  if (Object.prototype.hasOwnProperty.call(voiceGenderOverrides.value, voice.id)) {
+  if (Object.hasOwn(voiceGenderOverrides.value, voice.id)) {
     return voiceGenderOverrides.value[voice.id];
   }
   return voice.gender || "";
