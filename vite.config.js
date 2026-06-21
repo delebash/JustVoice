@@ -16,6 +16,8 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "src/renderer/src"),
       "@renderer": path.resolve(__dirname, "src/renderer/src"),
+      // Shared LLM UI package — aliased to its src for the dev/HMR loop.
+      "@delebash/llm-ui": path.resolve(__dirname, "../just-llm-runner/ui/src"),
     },
   },
   server: {
@@ -24,6 +26,8 @@ export default defineConfig({
     strictPort: true,
     // Tauri picks up HMR changes via the dev server.
     hmr: { port: 1431 },
+    // Allow serving the aliased shared @delebash/llm-ui package (sibling repo).
+    fs: { allow: [path.resolve(__dirname, "src/renderer"), path.resolve(__dirname, "../just-llm-runner/ui")] },
   },
   build: {
     outDir: path.resolve(__dirname, "dist"),
