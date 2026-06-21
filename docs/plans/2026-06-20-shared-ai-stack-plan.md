@@ -315,18 +315,21 @@ the weak half with cited reasoning; never blind-clone, never reinvent.
   `local_managed.py`. 275/275 JV tests pass (only the unrelated pre-existing
   `fastmcp`-missing 4 fail); ruff green.
 
-**Grounded JW survey (2026-06-21, file:line) — why JW is a larger migration:**
-JW's server LLM model is a *different paradigm* from JV's, so adoption is not a
-copy of Unit 2:
-- Providers live in a **SQLite `LlmProvider` table** (`models.py:502`) as
-  camelCase JSON blobs (baseUrl/apiKey/chatModel/kind), bulk GET/PUT
-  (`api/llm_providers.py`) — NOT `settings.engines.llm`.
-- The server is an **async streaming proxy** (`api/llm.py`, `httpx.AsyncClient`):
-  renderer sends a provider id + OpenAI-shaped body, server injects the key and
-  forwards/streams; hand-rolls the Ollama `/api/chat` translation.
-- **All ~24 features run client-side** (`services/analysis/*`); there are **no
-  server-side feature pins / roles / production-configs** (only client prefs).
-- JW already mounts `llm_runner.router` (the local runner) — same as JV.
+**Deep audit — JW server vs JV server (2026-06-21, file-by-file).** Correction of
+an earlier shallow note that called JW a "different paradigm" — WRONG. The server
+**infrastructure is converged** (the 06-18 migration): both are FastAPI + SQLite +
+SQLAlchemy, both mount `llm_runner_router`, both persist projects/settings/sessions
+server-side. What still differs is only the **LLM feature layer** (the pending
+RULE #7 work), and the convergence is *not* "make JW like JV" — two of JW's choices
+are **better** and JV should adopt them:
+
+| Concern | JW (file:line) | JV (file:line) | Converge toward |
+|---|---|---|---|
+| Provider storage | `LlmProvider` table, bulk GET/PUT (`api/llm_providers.py:29-48`, `models.py:502`) | `settings.engines.llm` + live adapter registry + REST CRUD (`api/llm_providers_api.py`) | **JW's queryable table** (mobile-ready) + JV's registry sync |
+| LLM call path | async streaming proxy, renderer-driven (`api/llm.py:125,151,175`) | server-side dispatch feature→provider→chat (`llm_runner.llm.dispatch`) | JV's server-side dispatch (headless) + keep JW's async streaming |
+| Feature execution | client-side `services/analysis/*` | server-side (`extraction_api`/`personas_api` via `dispatch.chat`) | JV's server-side (core gap) |
+| Pins/roles/prompts | none server-side (client prefs) | `FeaturePinConfig`/`LLMRolesSettings`/`ProductionConfig` | JV's shared config models |
+| Usage ledger | **DB table, SQL aggregates, persistent** (`api/llm_usage.py:62-123`) | **in-memory, capped 200** (`llm_runner/llm/usage.py:18`) | **JW's persistent DB ledger** — shared ledger gains a host persistence sink; **JV changes too** |
 
 **Keystone for JW + the UI — shared mountable router behind a storage Protocol.**
 JV's `llm_providers_api.py` is CRUD over `settings.engines.llm` + shared registry,
