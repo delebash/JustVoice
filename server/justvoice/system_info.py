@@ -1,7 +1,7 @@
 """Cross-platform system detection — CPU / RAM / GPU + runtime availability.
 
 Hardware primitives (GPU name/VRAM/driver, RAM, CPU cores) come from the
-shared runner's single hardware authority — `llm_runner.hardware.detect()`
+shared runner's single hardware authority — `llm_runner.runner.hardware.detect()`
 — so JustVoice and the LLM runner never run two divergent `nvidia-smi`
 probes. This module adds only the JustVoice-specific extras the runner does
 not model: the full OS string, CPU name, ffmpeg availability, and the
@@ -15,7 +15,7 @@ import shutil
 import subprocess
 import sys
 
-from llm_runner.hardware import detect as _detect_hardware
+from llm_runner.runner.hardware import detect as _detect_hardware
 
 from .models import GpuInfo, SystemInfo
 

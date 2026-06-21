@@ -1,11 +1,11 @@
 """system_info.detect() delegates hardware primitives to the shared runner.
 
 Guards the single-hardware-authority contract: GPU/VRAM/RAM/cores must come
-from `llm_runner.hardware.detect()`, not a second in-tree nvidia-smi probe.
+from `llm_runner.runner.hardware.detect()`, not a second in-tree nvidia-smi probe.
 """
 
-from llm_runner.schema import GpuInfo as RunnerGpuInfo
-from llm_runner.schema import HardwareInfo
+from llm_runner.runner.schema import GpuInfo as RunnerGpuInfo
+from llm_runner.runner.schema import HardwareInfo
 
 from justvoice import system_info
 
