@@ -207,8 +207,22 @@ shim bridging two servers (that approach is superseded). Both apps run headless
 (`*-server serve`) and both already mount `llm_runner.router` — so nothing about
 headless or use-case justifies LLM-architecture divergence. Grounded
 current-state + target + sequence:
-`docs/plans/2026-06-20-engines-llmui-cutover-boundary.md` (Decision 3). Any LLM
-divergence must be proven file-by-file (RULE #7), never asserted.
+`docs/plans/2026-06-20-engines-llmui-cutover-boundary.md` (Decision 3).
+
+**Feature-prompt architecture (decided 2026-06-21 —
+`docs/plans/2026-06-21-feature-prompts-db-seed.md`):** designed **headless-first**.
+Prompt text (system + user-prompt template) lives in the **DB**, seeded by the
+seed file like `DEFAULT_PROVIDERS` and **Lab-editable** — **never hardcoded in app
+code, no runtime fallback**. ONE generic feature endpoint (`/v1/ai/run` +
+`/v1/ai/stream`) takes `{feature, data/ids}` and returns a **structured result**;
+the **server** loads the prompt from the DB, runs the feature's assembly
+(per-feature = input contract + context-gathering from the project DB +
+template-fill + result-parse), calls the LLM via the gateway, and parses the
+result. The caller (GUI or headless) sends only the inputs it owns (live editor
+text, or ids); everything derived from stored data is server-side. `features.py`
+holds assembly **logic, not prompt text**.
+
+Any LLM divergence must be proven file-by-file (RULE #7), never asserted.
 
 ## Architecture
 
