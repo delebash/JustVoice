@@ -103,6 +103,23 @@ table.routes{width:100%;border-collapse:collapse;margin-top:12px}.routes th{text
 .adv summary{cursor:pointer;font-size:11.5px;color:var(--accent-ink);margin-top:8px}.editor label.t{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);display:block;margin:10px 0 4px}.editor textarea{font:inherit;font-size:12.5px;width:100%;border:1px solid var(--line);border-radius:7px;padding:8px 10px;background:var(--surface);resize:vertical;min-height:50px;box-sizing:border-box}.efoot{display:flex;gap:8px;align-items:center;margin-top:12px}
 .toggle{position:relative;width:34px;height:19px;border-radius:999px;background:var(--accent);display:inline-block}.toggle i{position:absolute;top:2px;left:17px;width:15px;height:15px;border-radius:50%;background:#fff}
 .usage{display:flex;gap:30px;margin-top:12px;flex-wrap:wrap}.usage .u{font-size:13px}.usage .u b{display:block;font-size:18px}.usage .u small{color:var(--ink-3)}
+/* role badges on provider rows */
+.rbadge{font-size:9px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:999px;border:1px solid var(--accent-line);background:var(--accent-soft);color:var(--accent-ink);margin-left:4px}
+.rbadge.emb{border-color:var(--blue-line);background:var(--blue-soft);color:var(--blue)}
+.toggle.off{background:var(--line-strong)}.toggle.off i{left:2px}
+/* quick-setup wizard */
+.wiz{margin-top:12px;border-top:1px dashed var(--line-strong);padding-top:6px}
+.wstep{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line)}.wstep:last-of-type{border-bottom:0}
+.wstep .num{flex:none;width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.wstep .wb{flex:1}.wstep .wt{font-weight:600;font-size:12.5px}.wstep .wd{font-size:11.5px;color:var(--ink-2);margin-top:2px}
+.wpick{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:3px 8px;font-size:11.5px;margin:4px 5px 0 0}
+.wsum{font-size:12px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:9px 12px;margin-top:10px}
+/* hardware presets */
+.preset-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;margin-top:6px;background:var(--surface)}
+.preset-row .pn{font-weight:600}.preset-row .recipe{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3);margin-top:1px}.preset-row .right{margin-left:auto;display:flex;gap:6px}
+.preset-row.active{border-color:var(--accent-line);background:var(--accent-soft)}
+.tip{font-size:12px;color:var(--accent-ink);background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:8px;padding:8px 12px;margin-top:10px}
+.dflt select{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:6px 9px;background:var(--surface);min-width:230px}
 </style></head><body><div class="page">
 
 <div class="topbar"><span class="brand" id="brand">JustVoice</span><span class="shared">shared · @delebash/llm-ui</span>
@@ -121,14 +138,49 @@ table.routes{width:100%;border-collapse:collapse;margin-top:12px}.routes th{text
     <span class="right"><button class="btn primary sm" onclick="addProv()">+ Add provider</button></span></div>
   <div id="addslot"></div>
 
+  <!-- Quick Setup — lift JW's wizard, recommend by LIVE Fit (improvement over JW's static GB tiers) -->
+  <div class="card" id="setupcard">
+    <div class="cardhead"><h3>Quick Setup</h3>
+      <span class="right"><button class="btn primary sm" onclick="toggleWiz()" id="wizbtn">Recommend for my hardware ▾</button></span></div>
+    <p class="sub">One click reads your GPU and picks free local models that fit, sets your Quick / Accuracy routing, and (optionally) adds a cloud key for heavy passes.</p>
+    <div class="tip" id="startertip"></div>
+    <div id="wiz" class="wiz" style="display:none">
+      <div class="wstep"><span class="num">1</span><div class="wb"><div class="wt">Detected hardware</div><div class="wd">RTX 4070 · 12 GB VRAM · 32 GB RAM · CUDA 12</div></div></div>
+      <div class="wstep"><span class="num">2</span><div class="wb"><div class="wt">Recommended local models — by Fit on this GPU</div>
+        <div class="wd"><span class="wpick"><span class="fit ok">Fits <span class="s">92</span></span> qwen3-4b-instruct · 2.4 GB <span class="muted">→ Quick</span></span>
+          <span class="wpick"><span class="fit ok">Fits <span class="s">88</span></span> qwen3-14b · 8.2 GB <span class="muted">→ Accuracy</span></span></div></div></div>
+      <div class="wstep"><span class="num">3</span><div class="wb"><div class="wt">Optional cloud (heavy QC / final passes)</div>
+        <div class="wd"><span class="wpick">＋ add OpenAI / Anthropic key</span> <span class="muted">— skip to stay 100% local &amp; free</span></div></div></div>
+      <div class="wstep"><span class="num">4</span><div class="wb"><div class="wt">Download</div><div class="wd">2 models · <b>10.6 GB</b> total — pulled from Hugging Face on Apply</div></div></div>
+      <div class="wstep"><span class="num">5</span><div class="wb"><div class="wt">Routing preview</div><div class="wd mono">Quick → qwen3-4b · Accuracy → qwen3-14b · cloud features → off</div></div></div>
+      <div class="wsum">Everything runs free on your machine. Re-run any time after a hardware change — it re-scores Fit.
+        <div style="margin-top:9px;display:flex;gap:8px"><button class="btn primary sm">Apply setup</button><button class="btn ghost sm" onclick="toggleWiz()">Cancel</button></div></div>
+    </div>
+  </div>
+
+  <!-- Hardware presets — Decision 18: Fit-driven primary, but Add/Edit/Delete kept (user: "want the option to change add/edit manually just in case") -->
+  <div class="card">
+    <div class="cardhead"><h3>Hardware presets</h3>
+      <span class="right"><button class="btn sm" onclick="addPreset()">+ Add preset</button></span></div>
+    <p class="sub">Auto-detect by Fit is the default. Saved presets are manual overrides — hand-pin models + routing for a specific rig (offline, a second machine, or when you know exactly what you want).</p>
+    <div id="presetlist">
+      <div class="preset-row active"><div><span class="pn">This machine — RTX 4070 · 12 GB</span> <span class="rbadge">AUTO · ACTIVE</span><div class="recipe">quick=local·4B · accuracy=local·14B · heavy=cloud-if-set</div></div>
+        <span class="right"><span class="muted" style="font-size:11px;align-self:center">re-scored by Fit</span></span></div>
+      <div class="preset-row"><div><span class="pn">Laptop — 8 GB</span><div class="recipe">quick=local·4B · accuracy=local·8B · heavy=cloud</div></div>
+        <span class="right"><button class="btn sm">Use</button><button class="btn sm">Edit</button><button class="btn sm danger" onclick="this.closest('.preset-row').remove()">Delete</button></span></div>
+      <div class="preset-row"><div><span class="pn">Workstation — 24 GB</span><div class="recipe">quick=local·8B · accuracy=local·32B · heavy=local·32B</div></div>
+        <span class="right"><button class="btn sm">Use</button><button class="btn sm">Edit</button><button class="btn sm danger" onclick="this.closest('.preset-row').remove()">Delete</button></span></div>
+    </div>
+  </div>
+
   <div class="psplit"><span class="free">LOCAL · FREE</span> on your machine — no key, nothing leaves the device</div>
   <div class="prov"><div class="phead" id="head-r"><span class="dot"></span>
-      <div class="pmid"><span class="pn">Local engine</span> <span class="pid">built-in · llama.cpp</span> <span class="caps"><span class="cap llm">LLM</span></span>
-        <div class="psum muted">localhost:8080 · chat qwen3-4b · 2 models · built-in (pre-added)</div></div>
+      <div class="pmid"><span class="pn">Local engine</span> <span class="pid">built-in · llama.cpp</span> <span class="caps"><span class="cap llm">LLM</span></span><span class="rbadge">DEFAULT LLM</span>
+        <div class="psum muted">localhost:8080 · chat qwen3-4b · 3 on disk · 7 in catalog · built-in</div></div>
       <span class="pright"><button class="btn sm" onclick="edit('r')">Edit</button></span></div>
     <div class="pbody" id="b-r" style="display:none"></div></div>
   <div class="prov"><div class="phead" id="head-o"><span class="dot"></span>
-      <div class="pmid"><span class="pn">Ollama (this PC)</span> <span class="pid">ollama-local</span> <span class="caps"><span class="cap llm">LLM</span><span class="cap emb">EMBED</span></span>
+      <div class="pmid"><span class="pn">Ollama (this PC)</span> <span class="pid">ollama-local</span> <span class="caps"><span class="cap llm">LLM</span><span class="cap emb">EMBED</span></span><span class="rbadge emb">DEFAULT EMBED</span>
         <div class="psum muted">localhost:11434 · chat qwen3:14b · 3 models · no key</div></div>
       <span class="pright"><button class="btn sm" onclick="edit('o')">Edit</button><button class="btn sm danger">Delete</button></span></div>
     <div class="pbody" id="b-o" style="display:none"></div></div>
@@ -150,6 +202,8 @@ table.routes{width:100%;border-collapse:collapse;margin-top:12px}.routes th{text
 <!-- ══ FEATURES ══ -->
 <div class="tab" id="tab-features">
   <div class="sec-h"><h2>Features</h2><span class="count" id="featcount">8 features</span></div>
+  <div class="card"><div class="cardhead"><h3>Routing &amp; cost defaults</h3><span class="right muted" style="font-size:12px">what "Inherit default" resolves to</span></div>
+    <div class="fgrid dflt" id="defaultsbody" style="margin-top:12px"></div></div>
   <div class="card"><div class="cardhead"><h3>Model roles</h3><span class="right muted" style="font-size:12px">optional — a feature inherits a role, or picks its own provider▸model</span></div>
     <p class="sub">Two jobs, two models — each is a <b>provider ▸ model</b> pick.</p>
     <div class="roles">
@@ -159,8 +213,8 @@ table.routes{width:100%;border-collapse:collapse;margin-top:12px}.routes th{text
         <div class="twostep"><select class="pp"><option selected>Ollama</option><option>Anthropic</option></select><select class="mm"><option selected>qwen3:14b · free</option></select></div></div>
     </div></div>
   <div class="card"><div class="cardhead"><h3>Feature routing</h3><span class="right xlink">expand a row to tune prompts &amp; settings ▾</span></div>
-    <p class="sub">Each feature inherits a role or overrides to a <b>provider ▸ model</b>. <b>✎ tune</b> edits prompts + settings inline; the Lab compares models.</p>
-    <table class="routes"><thead><tr><th style="width:30%">Feature</th><th style="width:25%">Provider</th><th style="width:27%">Model</th><th></th></tr></thead><tbody id="routebody"></tbody></table>
+    <p class="sub">Each feature picks a <b>provider ▸ model</b> (or inherits a role) and an <b>active config</b>. <b>✎ tune</b> edits prompts + settings inline; the Lab compares models and saves new named configs.</p>
+    <table class="routes"><thead><tr><th style="width:24%">Feature</th><th style="width:18%">Provider</th><th style="width:19%">Model</th><th style="width:21%">Active config</th><th></th></tr></thead><tbody id="routebody"></tbody></table>
   </div>
 </div>
 
@@ -249,7 +303,9 @@ function addProv(){const s=document.getElementById('addslot');if(s.innerHTML.tri
 function closeForm(k){if(k==='new'){document.getElementById('addslot').innerHTML='';}else{const b=document.getElementById('b-'+k);b.innerHTML='';b.style.display='none';document.getElementById('head-'+k).style.display='';}}
 
 // features
-const CAT={jv:{brand:"JustVoice",busy:["Compose","· 1,733 calls"],rows:[
+const CAT={jv:{brand:"JustVoice",busy:["Compose","· 1,733 calls"],
+ starter:"Audiobook starter — a local 14B nails speaker attribution; add a cloud key only for final QC.",
+ tog:{label:"Guess voice gender for fetched voices",on:true},rows:[
  ["Speaker attribution","Studio → Script: who says each line","Inherit · Accuracy","qwen3:14b · Ollama","14b-twopass-v3"],
  ["Smart-assign voices","Studio → Cast: match characters to voices","OpenAI ▸ gpt-4o","gpt-4o · OpenAI",""],
  ["Render-preset suggest","Generate: pick a mastering preset","Inherit · Accuracy","qwen3:14b · Ollama",""],
@@ -258,7 +314,9 @@ const CAT={jv:{brand:"JustVoice",busy:["Compose","· 1,733 calls"],rows:[
  ["Show notes","Projects: episode summary + chapters","Inherit · Accuracy","qwen3:14b · Ollama",""],
  ["Dictation cleanup","Captures: raw speech → clean text","Inherit · Quick","Local engine · qwen3-4b",""],
  ["Voice-gender guess","Voices: label unknown fetched voices","Inherit · Quick","Local engine · qwen3-4b",""]]},
- jw:{brand:"JustWrite",busy:["Critique","· 612 calls"],rows:[
+ jw:{brand:"JustWrite",busy:["Critique","· 612 calls"],
+ starter:"Writing starter — keep Critique on a strong cloud model; drafting + quick edits on fast local.",
+ tog:{label:"Auto-rebuild RAG index after big edits",on:true},rows:[
  ["Critique","Per-chapter line notes + structural pass","Inherit · Accuracy","claude-sonnet-4-6 · Anthropic","critique-strict-v2"],
  ["Plot-hole audit","Whole-book continuity scan","Inherit · Accuracy","qwen3:14b · Ollama",""],
  ["Entity sweep","Find new characters / locations / objects","Inherit · Accuracy","qwen3:14b · Ollama",""],
@@ -278,14 +336,28 @@ function frow(r,i){const[n,d,u,res,cfg]=r;
  const modelCell=inherit
    ? `<select disabled><option>follows the role · ${res}</option></select>`
    : `<select>${['(provider default)',mdl,'gpt-4o-mini','gpt-4o','claude-sonnet-4-6','qwen3:14b'].filter((v,ix,a)=>v&&a.indexOf(v)===ix).map(o=>`<option${o===mdl?' selected':''}>${o}</option>`).join('')}</select>`;
- const tag=cfg?`<span class="cfgtag">CONFIG: ${cfg}</span> `:'';const ex=EX[n]||["You are a helpful assistant for this feature.","{{input}}"];
- return `<tr><td><div class="fname">${n}</div><div class="fdesc">${d}</div></td><td><select>${provOpts}</select></td><td>${modelCell}</td><td>${tag}<span class="exp" onclick="tog(${i})">✎ tune</span></td></tr>
- <tr id="ed${i}" style="display:none"><td colspan="4"><div class="editor"><div class="grphead">Settings <span class="muted" style="text-transform:none;font-weight:400">— common here; full set + compare in the Lab</span></div>
+ // Active production config — Decision 17: Default (tier-resolved) + any saved named configs; tune/save in the Lab.
+ const active=cfg||'Default (tier-resolved)';
+ const cfgOpts=cfg?['Default (tier-resolved)',cfg]:['Default (tier-resolved)'];
+ const cfgCell=`<select class="${cfg?'':'muted'}">${cfgOpts.map(o=>`<option${o===active?' selected':''}>${o}</option>`).join('')}</select>`;
+ const ex=EX[n]||["You are a helpful assistant for this feature.","{{input}}"];
+ return `<tr><td><div class="fname">${n}</div><div class="fdesc">${d}</div></td><td><select>${provOpts}</select></td><td>${modelCell}</td><td>${cfgCell}</td><td><span class="exp" onclick="tog(${i})">✎ tune</span></td></tr>
+ <tr id="ed${i}" style="display:none"><td colspan="5"><div class="editor"><div class="grphead">Active config: <b>${active}</b> <span class="muted" style="text-transform:none;font-weight:400">— edit + save as a new named config, or tune the full set in the Lab</span></div>
    <div class="settings"><div class="set"><label>Temperature</label><input type="number" value="0.3" step="0.1"></div><div class="set"><label>Max tokens</label><input type="number" value="1024"></div><div class="set"><label>Reasoning</label><span class="toggle"><i></i></span></div></div>
    <label class="t">System prompt</label><textarea>${ex[0]}</textarea><label class="t">User prompt template</label><textarea>${ex[1]}</textarea>
-   <div class="efoot"><button class="btn primary sm">Save as production config</button><button class="btn sm">Open in Lab — full settings + compare ↗</button><button class="btn sm">Reset</button></div></div></td></tr>`;}
-function render(a){document.getElementById('routebody').innerHTML=CAT[a].rows.map(frow).join('')}
+   <div class="efoot"><input placeholder="config name — e.g. 14b-twopass" value="${cfg||''}" style="font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:6px;padding:5px 8px;background:var(--surface);width:200px"><button class="btn primary sm">Save &amp; activate</button><button class="btn sm">Open in Lab — full settings + compare ↗</button><button class="btn sm">Reset to default</button></div></div></td></tr>`;}
+function render(a){
+ document.getElementById('routebody').innerHTML=CAT[a].rows.map(frow).join('');
+ document.getElementById('startertip').textContent=CAT[a].starter;
+ const t=CAT[a].tog;
+ document.getElementById('defaultsbody').innerHTML=
+   `<span class="lbl">Default LLM</span><div><select><option selected>Local engine ▸ qwen3-4b-instruct</option><option>Ollama ▸ qwen3:14b</option><option>OpenAI ▸ gpt-4o-mini</option></select> <span class="muted" style="font-size:11px">free · on-device</span></div>`+
+   `<span class="lbl">Default embedding</span><div><select><option selected>Ollama ▸ nomic-embed-text</option><option>OpenAI ▸ text-embedding-3-small</option></select> <span class="muted" style="font-size:11px">free · on-device</span></div>`+
+   `<span class="lbl">${t.label}</span><div><span class="toggle${t.on?'':' off'}"><i></i></span></div>`+
+   `<span class="lbl">Show 3 variations</span><div><span class="toggle off"><i></i></span> <span class="muted" style="font-size:11px">— on every AI action, to compare in place</span></div>`;}
 function tog(i){const e=document.getElementById('ed'+i);e.style.display=e.style.display==='none'?'':'none'}
+function toggleWiz(){const w=document.getElementById('wiz'),b=document.getElementById('wizbtn'),open=w.style.display==='none';w.style.display=open?'':'none';b.textContent=open?'Recommend for my hardware ▴':'Recommend for my hardware ▾';}
+function addPreset(){const l=document.getElementById('presetlist');const r=document.createElement('div');r.className='preset-row';r.innerHTML='<div><input value="New preset" style="font:inherit;font-weight:600;border:1px solid var(--line);border-radius:6px;padding:3px 7px;width:180px"><div class="recipe">quick=local·4B · accuracy=local·14B · heavy=cloud</div></div><span class="right"><button class="btn sm">Use</button><button class="btn sm">Edit</button><button class="btn sm danger" onclick="this.closest(\'.preset-row\').remove()">Delete</button></span>';l.appendChild(r);}
 function setTab(t){document.querySelectorAll('.subnav a').forEach(a=>a.classList.toggle('on',a.dataset.tab===t));document.querySelectorAll('.tab').forEach(d=>d.classList.toggle('on',d.id==='tab-'+t))}
 function setApp(a){document.getElementById('tg-jv').classList.toggle('on',a==='jv');document.getElementById('tg-jw').classList.toggle('on',a==='jw');document.getElementById('brand').textContent=CAT[a].brand;document.getElementById('featcount').textContent=CAT[a].rows.length+" features";document.getElementById('busyfeat').textContent=CAT[a].busy[0];document.getElementById('busymeta').textContent=CAT[a].busy[1];render(a)}
 render('jv');
