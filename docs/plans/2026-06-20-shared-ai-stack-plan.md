@@ -365,14 +365,21 @@ needed).
   it via `engines/llm/provider_store.py` (SettingsProviderStore). Plus the schema
   de-dup (JV's `models.py` imports the 5 config models from the shared package).
   **JV is now fully on the shared backend + shared routers.** 275/275 + CRUD smoke.
-- **(3c) JW adopts the shared provider router — server AND renderer** (not
-  server-only; flagged 2026-06-21): JW server adds a `ProviderStore` over its
-  `LlmProvider` table + registers providers into the shared registry at boot;
-  **replaces** `api/llm_providers.py` (bulk GET/PUT) with the shared router →
-  the JW **renderer** `ai` store must switch from whole-list bulk-PUT to
-  per-provider create/update/delete (matching JV + `@delebash/llm-ui`). Verify via
-  `npm run build` (JW has no renderer unit gate). This is the JW-side cascade to
-  do carefully, not rush.
+- ✅ **(2.5) DONE** — camelCase-native schema rewrite (just-llm-runner `1523b53`,
+  JV `f350b24`): the shared LLM config models dropped pydantic aliases — ONE field
+  name across Python + JSON + JS (`providerType`/`baseUrl`/`apiKey`/`defaultModel`/
+  …), plus a JV settings snake→camel migration. just-llm-runner 48 + JV 277 pass.
+- ✅ **(3c) DONE** — JW adopts the shared provider router, server AND renderer.
+  Server: `justwrite_server/llm/provider_store.py` (`LlmProviderStore` over the
+  `LlmProvider` table; writes a superset `data` blob so the gateway keeps working;
+  providerType derived behavior-preservingly — claude/gemini stay openai-compat
+  pending native-adapter verification, Decision 20), mounts `make_provider_router`
+  + the shared `api.py`, registers providers at boot in `seed.py`; deleted
+  `api/llm_providers.py` (bulk GET/PUT). Renderer: `providerBackend.js` →
+  per-provider CRUD; the `ai` store + form + all 13 consumers moved to the shared
+  camelCase shape (chatModel→defaultModel, hasApiKey, provider-type selector);
+  `quickSetupTier` moved to an ai-prefs `quickSetupTiers` map. **76 server tests
+  pass; `npm run build:vite` green; Biome clean on all 13 files.**
 - **(3d)** JW feature-by-feature dispatch migration (`services/analysis/*` →
   shared server-side dispatch); the async proxy stays until the last consumer
   moves, then is deleted. Adopt **JW's persistent DB usage** into the shared
@@ -502,6 +509,48 @@ needed).
     homes (TTS Lab = home 3 with a TTS schema; per-voice defaults + import policy =
     home 4 in JV's Voices).
 
+20. **Provider model — native built-in adapters + OpenAI-compatible + a
+    provider-type selector** (✅ user, 2026-06-21: *"keep what jv has and bring
+    everything else over as openai, make the distinction that antrhopic, gemini
+    are built in adapters vs open ai, so i guess we have a type selector when
+    adding new ai, or will we need more than one gemin adapter setting or
+    anthropic settings?"*). Resolves the adapter set + the add-provider UX.
+    - **Built-in (native) adapters = `anthropic`, `gemini`, `ollama`** (+ the
+      bundled **Local engine**, its own type, Decisions 5/10/11). These hit each
+      provider's *native* endpoint and are the place to map provider-specific
+      params the generic path can't portably express.
+    - **`openai-compatible` = everything else** — the OpenAI cloud itself (its
+      API *is* the standard, so no separate native adapter), plus DeepSeek,
+      OpenRouter, Mistral, Groq, LM Studio, llama.cpp, and any other
+      OpenAI-shaped endpoint.
+    - **A `providerType` selector on Add** picks the adapter. This **extends
+      Decision 14's** 2-way "API format" (OpenAI-compatible / Ollama-native)
+      into the full list: **OpenAI-compatible · Anthropic · Gemini · Ollama ·
+      Local engine**. ("Where it runs" Local/Online still drives the group + key
+      visibility; provider type drives the adapter + which Lab params show.)
+    - **One entry per type** (the user's question, answered): you do **not** add
+      "Gemini Pro" and "Gemini Flash" as two providers — add **one** Gemini entry
+      and **route** features to different Gemini models via feature pins / roles /
+      the per-feature model picker (Decisions 6 + 14). The model is a routing
+      choice, never a reason to clone a provider. (Nuance: `openai-compatible`
+      and `ollama` MAY have several entries when they point at **different base
+      URLs / keys** — e.g. two self-hosted endpoints; the cloud natives
+      Anthropic/Gemini are effectively one each since they share one endpoint+key.)
+    - **What native actually buys us (honest, the user's "what features do we use
+      that native provides over openai?"):** *Ollama* native (`/api/chat`) is
+      **required and exercised today** — its `/v1` OpenAI-compat endpoint can't
+      toggle reasoning (`think`), per Decision 15 (verified). *Anthropic/Gemini*
+      native adapters exist as the **mapping point** for each provider's native
+      request surface (Anthropic `thinking`, Gemini thinking/safety config,
+      prompt caching) — but **current wire-up is a TODO to re-verify against the
+      settled adapter files** (a prior read found the cloud-native adapters take
+      `think` but fall back to plain chat; those files are being rewritten by the
+      camelCase pass, so confirm post-rewrite before claiming the mapping is
+      live). Forward plan = wire Anthropic `thinking` / Gemini config into their
+      native adapters so the single "Enable thinking" control (Decision 15) maps
+      correctly per provider; until then cloud reasoning rides OpenAI-compat body
+      params (`reasoning_effort` etc.) on the openai-compat path.
+
 ## UI copy — harvested from the apps (source of truth — reuse verbatim in `@delebash/llm-ui`)
 
 The descriptive microcopy below is **copied from the working apps, not invented.**
@@ -602,3 +651,93 @@ tier) on the shared dispatch. Grounded from `src/renderer/src/services/` (2026-0
 JV's feature catalog (for symmetry, already server-side): compose, refine,
 persona_rewrite, voice_gender, speaker_attribution, smart_assign, show_notes,
 render_preset_suggest (`dispatch.py` `DEFAULT_FEATURE_ROLES`).
+
+### 3d migration seam — grounded `services/analysis/*` (read 2026-06-21, file:line)
+
+The whole client-side feature layer funnels through **one** function — moving it
+server-side is a focused lift, not 24 rewrites:
+
+- **The seam:** `services/aiStream.js:68-159` `runAiStream({ feature, messages,
+  temperature, extra:{think}, … })`. It resolves provider via
+  `stores/ai.js:181-188 providerForFeature(feature)`, model via `:192-194
+  modelForFeature(feature)` (falls back to the provider's `chatModel`), the
+  `think` default via `:199-202 resolveTier(model)`, then streams through
+  `OpenAICompatClient.chatStream` and records usage (`:143-152`). **Each feature's
+  SYSTEM prompt is a hardcoded JS constant** in its file (e.g.
+  `critique.js:27 CRITIQUE_SYSTEM`, `:93 STRUCTURE_SYSTEM`) — 3d moves these
+  server-side and makes them editable (Decision 16).
+
+- ⚠️ **Routing key ≠ filename** (the gotcha that will bite 3d): the `feature` key
+  passed to `runAiStream` — which is what pins/roles/usage key on, and what the
+  server catalog keys must become — is **not** the file or function name:
+
+  | Routing key (`feature:`) | Client file:line | temp | output |
+  |---|---|---|---|
+  | `critique` | `critique.js:56` (runCritique) + `:125` (runStructuralAnalysis, `usageFeature:"structural-analysis"`) | 0.4 / 0.2 | JSON |
+  | `entitySweep` | `entityExtraction.js:98` (extractEntities, `usageFeature:"entity-extraction"`) | 0.2 | JSON |
+  | `foreshadowing` | `threadExtraction.js:103` (extractThreads) | 0.3 | JSON |
+  | `plotHoles` | `plotHoleScan.js:174` (scanPlotHoles) | 0.3 | JSON |
+  | `marketingPack` | `marketingPack.js:144` | 0.5 | JSON |
+  | `reverseOutline` | `reverseOutline.js:145` | 0.3 | JSON |
+  | `voiceDrift` | `voiceDrift.js:284` (explainVoiceDrift) | 0.4 | JSON |
+  | `beatSheet` | `beatSheet.js:200` | 0.3 | JSON |
+  | `readerKnowledge` | `readerKnowledge.js:172` (analyseChapterKnowledge) | 0.3 | JSON |
+  | `relationshipArc` | `relationshipArc.js:179` | 0.3 | JSON |
+  | `characterAudit` | `characterAudit.js:188` (auditCharacter) | 0.3 | JSON |
+  | `multiReader` | `multiReaderCritique.js:119` (`usageFeature:"panel:<key>"`) | 0.55 | JSON |
+
+- **Shape findings that shape the shared dispatch:** every analysis feature passes
+  `extra:{think:false}` and parses the result with `parseJsonLoose` (`llmText.js`)
+  — i.e. they are **non-streaming JSON** calls with reasoning OFF. So the shared
+  server-side dispatch must support **(a)** a JSON/non-streaming completion path
+  (not only token streaming), **(b)** a **per-feature `think` default** (these
+  default OFF; generative writer actions default ON), and **(c)** a per-feature
+  `temperature` default. These belong in each feature's **Default production
+  config** (Decision 17), not hardcoded.
+
+- **Orchestrators (no own key — call the above):** `entitySweep.js:90
+  scanAllChapters` (→entitySweep), `foreshadowingScan.js:86 scanForDanglingThreads`
+  (→foreshadowing/extractThreads), `tensionSweep.js:16 sweepStoryTension`
+  (→critique/runStructuralAnalysis), `readerKnowledge.js:241 scanReaderKnowledge`
+  (→readerKnowledge), `characterAudit.js:238 auditAllCharacters` (→characterAudit).
+  These stay **client-side** (they're map/reduce loops over chapters); only the
+  inner per-chapter LLM call moves server-side.
+
+- **Deterministic — NOT LLM, stay client-side, excluded from migration:**
+  `aiTellScanner.js:138 scanAiTells`, `styleMetrics.js` (chapter/book metrics),
+  `voiceDrift.js:92 computeVoiceDrift` (the numeric drift; only its
+  `explainVoiceDrift` narration is LLM).
+
+### 3c + 3d host-sink — grounded JW server shapes (read 2026-06-21, file:line)
+
+What 3c (JW adopts the shared provider router) and 3d's host-sink need, verified
+so both execute the instant the camelCase pass settles the wire shape:
+
+- **JW provider table** (`api/llm_providers.py:29-48`, model `models.py` `LlmProvider`):
+  columns `id`, `name`, `kind`, `built_in`, `position`, **`data`** (the full
+  provider JSON blob — camelCase: `id/name/kind/builtIn/baseUrl/apiKey/chatModel/
+  embeddingModel/quickSetupTier`, per `stores/ai.js:280-298`). GET returns
+  `{providers:[json.loads(data)…]}` ordered by `position`; PUT is **bulk replace**
+  (delete-all + re-insert). ⇒ **JW's `ProviderStore`** (`list/get/add/replace/
+  remove(LLMProviderConfig)`) maps blob↔`LLMProviderConfig` (after the rewrite,
+  camel→camel: `kind`+`runner`→`providerType`, `chatModel`→`defaultModel`,
+  `baseUrl/apiKey/embeddingModel` pass through; keep `position` for ordering).
+  Replacing bulk PUT with the shared per-provider router means the JW **renderer**
+  drops `providerBackend.js`'s debounced bulk PUT (`:43-57`) for per-provider
+  create/update/delete (matches JV + `@delebash/llm-ui`).
+
+- **JW usage ledger** (`api/llm_usage.py`): persistent `LlmUsage` rows + **SQL
+  aggregate totals** (overall + `byFeature`/`byProvider`, `:62-88`) — wire is
+  camelCase (`providerId/promptTokens/completionTokens`). ⚠️ **Path mismatch:** JW
+  serves **`/v1/llm-usage`**; the shared storage-free router serves **`/v1/ai-usage`**
+  over the in-memory ledger (`llm_runner/llm/api.py`). Converge on one path
+  (`/v1/ai-usage`) → JW `services/usageApi.js` updates its path.
+
+- **Host-sink design (the audit's "shared ledger gains a persistence sink"):** the
+  shared `usage.py` ledger is in-memory (cap 200); JW's is DB-persistent. Add a
+  **`UsageSink` Protocol** (`record(row)` · `recent(limit)` · `totals()` · `clear()`)
+  the shared `api.py` usage routes call instead of the module-global deque. JW
+  implements it over `LlmUsage` (reusing the SQL aggregates); JV gets a default
+  in-memory sink (or its own table later). Real work at a genuine boundary —
+  RULE #8 allows it (not a forwarding shim). **JV's ledger changes too** (audit
+  finding) — both apps adopt the sink seam.
