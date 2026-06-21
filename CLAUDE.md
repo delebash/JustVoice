@@ -237,6 +237,15 @@ Three layers:
 ## Project rules
 
 - **Python**: ruff for lint, pytest for tests. Run `ruff check` + `pytest` before committing.
+- **Renderer gate — the Playwright headless smoke, and it RUNS in this dev
+  container** (recurring wrong claim is "no renderer gate / not runnable here" —
+  false; run it). Boot `justvoice-server serve --host 127.0.0.1 --port 8741`
+  (background) + `npm run build:vite`, then `node scripts/smoke.mjs` — it drives
+  headless Chromium over every view and asserts ZERO JS errors. Chromium is
+  prebuilt at `/opt/pw-browsers` (the script auto-finds it; override with
+  `JV_CHROME`; base URL via `JV_BASE`). `scripts/smoke_gui.mjs` screenshots tabs.
+  **Run the smoke to verify any renderer/GUI change.** (`e2e/` tauri-driver
+  drives the built binary — packaged-app check, not the quick gate.)
 - **Vue**: prefer single-file components. **Mercury (the legacy-gui look: cream, sharp corners, oxblood) is already gone** — `styles.css` was rebuilt from `preview/full-app-preview.html` (warm paper, white cards, green accent, rounded). The Phase 4 design pass decides whether that working system becomes the final multi-use identity or gets evolved (see `project_final_architecture`). No CSS framework — `styles.css` carries the canonical design tokens.
 - **Rust** (Tauri shell): keep minimal. If you find yourself writing business logic in Rust, move it to Python.
 - **No hardcoded operator-tunable values** — every knob lives in settings (SQLite, via `SettingsStore`) + reachable via `PATCH /v1/settings`.
