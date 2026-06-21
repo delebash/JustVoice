@@ -1,5 +1,7 @@
 # Thread 3 (AI-provider standardization) + Phase 2 (shared Vue `llm-ui`)
 
+> ⚠️ **SUPERSEDED** by `docs/plans/2026-06-20-shared-ai-stack-plan.md` (the authoritative AI-stack plan, which folds in the cutover tables). Kept for history.
+
 **Authored 2026-06-16 (admiring-galileo).** Executes SESSION-HANDOFF Threads 3
 + Phase 2 together (they're intertwined: Thread 3 locks the shapes the
 `llm-ui` adapter exposes). Single-item queue (RULE #2).

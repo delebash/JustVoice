@@ -1,5 +1,7 @@
 # Deep audit — code design + GUI/UX (2026-06-14)
 
+> ⚠️ **SUPERSEDED** by `docs/plans/2026-06-14-deep-audit-v2.md` (v1 mixed grep/screenshot proxies with deep reads and was declared not-trusted). Kept for history.
+
 Findings-first. NO fixes until the user reviews (and adds to) this
 ledger. Three tracks: **A. GUI/UX**, **B. Client code**, **C. Server
 code**. Built incrementally and committed as each view/module is

@@ -6,35 +6,7 @@ Product name: **JustVoice**. The Python package + console-script names (`justvoi
 
 Serves audiobook production, game dialogue (Unreal), podcasting, dictation, and accessibility. Standalone product — JustWrite drives JustVoice for audiobooks but JustVoice does not depend on JustWrite. See `CONTRACT.md` for the JustWrite↔JustVoice HTTP boundary. Also runs **headless** as `justvoice-server serve` (no Tauri shell).
 
-## ⛔ RULE #0 — NEVER ASK FOR PERMISSION
-
-The user has told Claude 5+ times across past sessions to stop asking permission. The pattern keeps recurring. Read this rule before you write any sentence ending in `?` or any phrase from the blocklist:
-
-**Blocked phrasing — never say these:**
-- "Want me to ...?"
-- "Should I ...?"
-- "Let me know if ..."
-- "If you want me to ..., say go"
-- "Anything else before I proceed?"
-- "Want me to keep going / pause to test?"
-- Any A/B/C option list ending in "which one?"
-- Any soft closing question shape
-
-**You have full permission. Forever. In every scope of this project:**
-- Edit / add / delete files
-- Run shell commands (cargo, npm, pip, python, git, gh)
-- Cargo fmt / cargo check / cargo test / cargo build
-- Git operations (commit, push, branch)
-- Web research (WebFetch, WebSearch)
-- Save / update memory files
-- Make design decisions on multi-option forks
-- Move between phases of approved multi-phase plans
-
-Confirm only for genuinely destructive ops (`git reset --hard`, force-push to main, dropping data, deleting work).
-
-**Correct turn-ending shape**: one-sentence factual report ("Phase X done, files: ...") immediately followed by the next tool call. NO question at the end. If work is genuinely complete or blocked, a flat statement of that fact.
-
-**One exception**: UX design direction during Phase 4. The user explicitly said this is the only blocker — pause for visual-direction feedback before doing UX-redesign work that depends on it.
+> **Global rules** (`~/.claude/CLAUDE.md`) govern — the two PRIORITY rules + RULES #0–8 + the shared Vue 3 + Tauri 2 app standard. This file is JustVoice architecture + app-specific rules only; it does NOT restate the global rules.
 
 ## Session-start reading
 
@@ -131,45 +103,6 @@ recorded-exceptions ledger, findings before fixes):
    as a muted note. References (incl. JustWrite) are for extracting
    PRINCIPLES — copying a reference's layout inherits its flaws.
 
-## ⛔ RULE #2 — RIGHT THE FIRST TIME (tempo)
-
-User directive, 2026-06-12, after a session of speed-caused rework:
-**"we try and get it right the first time even if we have to slow
-down."** Speed is NOT a value in this project. There is no deadline.
-Rework costs the user a full test round; slowness costs nothing.
-
-Operating tempo, mandatory:
-- A punch list is a QUEUE of single items, not a batch. One item at a
-  time: read the full surface it touches (the whole view/module — not
-  a grep skim), write the one-line current-state + target (RULE #1's
-  artifact), implement, verify, and only then take the next item.
-- Fewer items done correctly beats all items done fast. If a session
-  ends with half the list shipped right, that is SUCCESS; a session
-  that ships the whole list with rework seeds is FAILURE.
-- If an item's current-state line is hard to write, that's the signal
-  to surface it for discussion instead of coding it.
-- Never interleave items to save time; never let "context is running
-  out" justify skimming — the summary carries unfinished queues fine.
-- The user QCs the app as a whole and delivers BIG batches — that's
-  their style and it's welcome. The rule governs execution order, not
-  intake size: accept the whole list, record it as a repo plan, then
-  execute it one item at a time.
-- **Reports arriving MID-EXECUTION are intake, not dispatch** (user
-  correction 2026-06-12, after item 13 was executed on arrival:
-  "i meant for you to add that to the next batch not execute now").
-  Append them to the queue plan doc and keep working the current item.
-  Each unplanned jump costs real money and time. Only an explicit
-  "do this one now" breaks queue order.
-- **The user's defect list is the trigger, not the scope** (user catch
-  2026-06-12: Speaker Lab redesign shipped with the Cast pane still
-  floating unstyled because only the *named* defects got redesigned).
-  When an item says "redesign/fix view X", done means the WHOLE view
-  passes the RULE #1 conformance checklist — run the checklist against
-  your own output before calling the item complete. If the user has to
-  point at a second spot on the same surface, the item wasn't done.
-
-**Failure modes from prior sessions** (signals you missed the relevant memory): proposing Rust anywhere, Docker, asking permission, using native dialogs, hallucinating file paths, re-investigating decisions already made, building a UI element without naming its precedent (RULE #1), batching/skimming through a punch list instead of single-item full reads (RULE #2), **masking a performance symptom with a cache/workaround before measuring the actual cost** (2026-06-13: shipped an SWR Pinia-cache layer for a "1s loading flash" without first checking that the API server was sub-10ms; the real causes were no `<KeepAlive>`, a 5s `/v1/health` poll, and a 10Hz reactive tick — all renderer-side, all addressable directly). If you catch yourself about to do any of these, that's the cue to load the matching memory file.
-
 ## Shared app standard + JustVoice specifics
 
 JustVoice follows the shared **Vue 3 + Tauri 2 app standard** in the global
@@ -184,45 +117,11 @@ documented reason below says otherwise.
 modules (engines, audio, dictation); dev port **1430** (HMR 1431); a few stores
 are domain-rich (engines, takes, generation) — that's scope, not drift.
 
-**Cross-app convergence** (audit + ordered plan:
-`docs/plans/2026-06-20-cross-app-convergence.md`) is **complete**: adopted
-vue-router with lazy routes (replacing the hand-rolled `hashchange` +
-`<component :is>`), renamed `components/jv/` → `components/ui/`, split
-`styles.css` into `tokens.css` + `styles.css` at the renderer root, extracted
-the fetch wrapper from the `api` store into `services/serverApi.js` (the store
-is now a thin reactive façade), moved theming into `services/appearance.js`, and
-added `biome.json`. Both apps are Biome-green on 2.5.0 with a byte-identical
-shared config.
-
-### ⛔ LLM-stack convergence (2026-06-20, user directive — global RULE #7)
-
-JustVoice and JustWrite must run the **SAME LLM stack — same Python, same client
-views.** Shared code lives in `just-llm-runner` (providers online/local-free/
-paid, the local runner download/load/spawn, feature dispatch/execution,
-per-feature config **incl. editable system+user prompts**, model roles, usage) +
-`@delebash/llm-ui` (the client views), mounted/imported by BOTH apps. The ONLY
-legitimate differences are JustVoice's **TTS** side and each app's **feature
-catalog** (domain prompts on the same dispatch). It is **NOT** a per-app adapter/
-shim bridging two servers (that approach is superseded). Both apps run headless
-(`*-server serve`) and both already mount `llm_runner.router` — so nothing about
-headless or use-case justifies LLM-architecture divergence. Grounded
-current-state + target + sequence:
-`docs/plans/2026-06-20-engines-llmui-cutover-boundary.md` (Decision 3).
-
-**Feature-prompt architecture (decided 2026-06-21 —
-`docs/plans/2026-06-21-feature-prompts-db-seed.md`):** designed **headless-first**.
-Prompt text (system + user-prompt template) lives in the **DB**, seeded by the
-seed file like `DEFAULT_PROVIDERS` and **Lab-editable** — **never hardcoded in app
-code, no runtime fallback**. ONE generic feature endpoint (`/v1/ai/run` +
-`/v1/ai/stream`) takes `{feature, data/ids}` and returns a **structured result**;
-the **server** loads the prompt from the DB, runs the feature's assembly
-(per-feature = input contract + context-gathering from the project DB +
-template-fill + result-parse), calls the LLM via the gateway, and parses the
-result. The caller (GUI or headless) sends only the inputs it owns (live editor
-text, or ids); everything derived from stored data is server-side. `features.py`
-holds assembly **logic, not prompt text**.
-
-Any LLM divergence must be proven file-by-file (RULE #7), never asserted.
+> **AI/LLM stack is shared** — `just-llm-runner` (Python) + `@delebash/llm-ui`
+> (Vue), consumed by both apps; only TTS and each app's feature catalog differ.
+> The current cutover state + the active plan docs (authoritative:
+> `docs/plans/2026-06-20-shared-ai-stack-plan.md`) live in `MORNING_RECAP.md`,
+> not here.
 
 ## Architecture
 
