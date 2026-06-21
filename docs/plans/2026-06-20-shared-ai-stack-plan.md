@@ -297,6 +297,71 @@ the weak half with cited reasoning; never blind-clone, never reinvent.
    model download **reuses** the shared `DownloadStrip`.
 5. **Delete** the now-duplicated per-app code (no leftover forks).
 
+## Execution status + grounded detail (2026-06-21)
+
+**Done + verified (committed, pushed):**
+- **Unit 1 — shared `llm_runner/llm/`** (`just-llm-runner`): the AI backend spine
+  lifted from JV — contract (`base.py`), 4 adapters (openai_compat/ollama/
+  anthropic/gemini), `tiers.py`, `usage.py`, `registry.py`, `schema.py` (the
+  config models + an `LLMConfig` container), `dispatch.py` (refactored to take
+  `LLMConfig`, not any app's settings). Precedence unchanged: production-config →
+  pin → role → default-role → prefer-local → first. 10 new tests; 43/43 pytest;
+  ruff green.
+- **Unit 2 — JV adopted it, NO shims** (RULE #8): JV's `engines/llm/` deleted the
+  4 duplicate adapters + the 5 forwarding modules (base/tiers/usage/registry/
+  dispatch); every call site imports `llm_runner.llm` directly. JV keeps only
+  `engines/llm/config.py` (JV's feature catalog `DEFAULT_FEATURE_ROLES` +
+  prefer-local set + `llm_config(settings)` mapping JV settings→`LLMConfig`) and
+  `local_managed.py`. 275/275 JV tests pass (only the unrelated pre-existing
+  `fastmcp`-missing 4 fail); ruff green.
+
+**Grounded JW survey (2026-06-21, file:line) — why JW is a larger migration:**
+JW's server LLM model is a *different paradigm* from JV's, so adoption is not a
+copy of Unit 2:
+- Providers live in a **SQLite `LlmProvider` table** (`models.py:502`) as
+  camelCase JSON blobs (baseUrl/apiKey/chatModel/kind), bulk GET/PUT
+  (`api/llm_providers.py`) — NOT `settings.engines.llm`.
+- The server is an **async streaming proxy** (`api/llm.py`, `httpx.AsyncClient`):
+  renderer sends a provider id + OpenAI-shaped body, server injects the key and
+  forwards/streams; hand-rolls the Ollama `/api/chat` translation.
+- **All ~24 features run client-side** (`services/analysis/*`); there are **no
+  server-side feature pins / roles / production-configs** (only client prefs).
+- JW already mounts `llm_runner.router` (the local runner) — same as JV.
+
+**Keystone for JW + the UI — shared mountable router behind a storage Protocol.**
+JV's `llm_providers_api.py` is CRUD over `settings.engines.llm` + shared registry,
+plus storage-free `ping`/`models`/`classify-tier`/`detect-local`/`ai-usage`. To
+make it shared by BOTH apps without a per-app fork, the shared package gains a
+**router factory** `make_llm_router(get_store, ...)` where `ProviderStore` is a
+host-supplied persistence boundary (real work — RULE #8 allows it):
+`list/get/add/update/remove(LLMProviderConfig)`. JV implements it over
+`settings.engines.llm`; JW over its `LlmProvider` table. Both mount the same
+router → identical `/v1/llm-providers*` + usage endpoints → **the per-app
+`ProviderBackend` client adapter can then be deleted** (the UI calls the same
+endpoints in both apps). The storage-free endpoints (classify-tier, ai-usage over
+the shared ledger, ping/models over the shared registry) move first (no Protocol
+needed).
+
+**JW decisions to make before/within the migration (not yet resolved):**
+- **Persistence model:** JW persists usage in its DB; the shared ledger is
+  in-memory. Decide: shared ledger gains optional persistence (a host-supplied
+  sink), or JW keeps DB usage and only adopts the shared *dispatch/registry*.
+- **Provider storage shape:** map JW's `LlmProvider` JSON blob ↔ shared
+  `LLMProviderConfig` (provider_type ← `kind`/`runner`); one mapping in JW's store
+  impl.
+- **Feature migration order (incremental, per RULE #2):** move client-side
+  `services/analysis/*` features onto the shared server-side dispatch one at a
+  time, each gaining editable prompts + rich pins + roles; the async proxy stays
+  until the last consumer is migrated, then is deleted.
+
+**Sequenced next units:** (3a) shared storage-free router slice (classify-tier/
+usage/ping/models) + JV mounts it; (3b) `ProviderStore` Protocol + shared
+provider-CRUD router + JV mounts (de-dup `llm_providers_api`); (3c) JW implements
+`ProviderStore` over `LlmProvider` + mounts the shared router; (3d) JW
+feature-by-feature dispatch migration; (4) `@delebash/llm-ui` against the now-
+identical endpoints, delete `ProviderBackend`; (5) delete dead per-app code.
+
+
 ## Decisions — RESOLVED (user, 2026-06-20)
 
 1. **i18n** — ✅ vue-i18n in both (standard; JV adopts it). Not a per-app choice.

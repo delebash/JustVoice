@@ -183,6 +183,12 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(engines_models_api.router)
     app.include_router(engine_sources_api.router)
     app.include_router(llm_runner_router)
+    # Shared storage-free LLM endpoints (classify-tier / ai-usage / ping /
+    # models) — the same router JustWrite will mount. Provider CRUD stays in
+    # llm_providers_api (it reads/writes JV settings).
+    from llm_runner.llm.api import router as llm_shared_api_router
+
+    app.include_router(llm_shared_api_router)
     app.include_router(generate_api.router)
     app.include_router(render_chapter_api.router)
     app.include_router(analyzer_api.router)
