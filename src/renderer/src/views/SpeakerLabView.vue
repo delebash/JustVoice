@@ -69,7 +69,7 @@ function providerById(id) {
   return llmProviders.value.find((p) => p.id === id) || null;
 }
 function effectiveDefaultModel(col) {
-  return providerById(col.providerId)?.default_model
+  return providerById(col.providerId)?.defaultModel
     || extractionConfig.value?.resolved_model
     || "";
 }
@@ -308,11 +308,11 @@ async function runColumn(col) {
       tier: col.tier || null,
       propagate: col.propagate,
       use_floor: col.use_floor,
-      provider_id: col.providerId || null,
+      providerId: col.providerId || null,
       model: col.model.trim() || null,
       temperature: col.temperature === "" ? null : Number(col.temperature),
-      system_prompt: systemEdited(col) ? col.systemPrompt : null,
-      user_prompt: userEdited(col) ? col.userPrompt : null,
+      systemPrompt: systemEdited(col) ? col.systemPrompt : null,
+      userPrompt: userEdited(col) ? col.userPrompt : null,
       confidence_floor:
         col.use_floor && col.confidenceFloor !== "" && col.confidenceFloor != null
           ? Number(col.confidenceFloor)
@@ -414,7 +414,7 @@ async function useAsProduction(col) {
     try {
       const pins = await api.request("/v1/feature-pins");
       const current = (pins?.pins || []).find((p) => p.feature === "speaker_attribution");
-      providerId = current?.provider_id || null;
+      providerId = current?.providerId || null;
       pinModel = current?.model || "";
     } catch { /* fall through to the warning below */ }
   }
@@ -443,12 +443,12 @@ async function useAsProduction(col) {
       body: JSON.stringify({
         feature: "speaker_attribution",
         name: col.presetName || `${model}${col.tier ? `-${col.tier}` : ""} · lab`,
-        provider_id: providerId,
+        providerId,
         model,
         tier: col.tier || null,
         temperature: col.temperature === "" ? null : Number(col.temperature),
-        system_prompt: systemEdited(col) ? col.systemPrompt : null,
-        user_prompt: userEdited(col) ? col.userPrompt : null,
+        systemPrompt: systemEdited(col) ? col.systemPrompt : null,
+        userPrompt: userEdited(col) ? col.userPrompt : null,
         source: "speaker_lab",
       }),
     });
@@ -458,7 +458,7 @@ async function useAsProduction(col) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         feature: "speaker_attribution",
-        provider_id: providerId,
+        providerId,
         model,
         tier: col.tier || null,
       }),

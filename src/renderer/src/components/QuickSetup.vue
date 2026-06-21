@@ -278,7 +278,7 @@ async function applyFeaturePins() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           feature,
-          provider_id: providerId,
+          providerId,
           model: "",
           tier: spec.tier,
         }),
@@ -292,7 +292,7 @@ async function applyFeaturePins() {
 
 // ── Optional helpers — local LLM detect-and-connect + STT readiness ──
 // (CONCEPTS §10: connect, don't bundle; skipping costs named features.)
-const detectedLocal = ref([]);  // [{provider_type, name, base_url, models, already_registered}]
+const detectedLocal = ref([]);  // [{providerType, name, baseUrl, models, alreadyRegistered}]
 const sttReadiness = ref(null); // {ready, display_name, size_mb}
 const connectingLocal = ref("");
 
@@ -308,19 +308,19 @@ async function probeHelpers() {
 }
 
 async function connectLocal(d) {
-  connectingLocal.value = d.base_url;
+  connectingLocal.value = d.baseUrl;
   try {
     await api.request("/v1/llm-providers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        id: d.provider_type === "ollama" ? "ollama-local" : "lmstudio-local",
+        id: d.providerType === "ollama" ? "ollama-local" : "lmstudio-local",
         name: d.name,
-        provider_type: d.provider_type,
-        base_url: d.base_url,
-        api_key: null,
-        default_model: d.models[0] || "",
-        timeout_seconds: 120,
+        providerType: d.providerType,
+        baseUrl: d.baseUrl,
+        apiKey: null,
+        defaultModel: d.models[0] || "",
+        timeoutSeconds: 120,
       }),
     });
     pushToast({ message: `${d.name} connected — feature pins can route to it.`, kind: "success" });
@@ -450,13 +450,13 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
               Skip either — the features that need them wait quietly until you connect one.
             </p>
             <ul class="quick-setup__helpers">
-              <li v-for="d in detectedLocal" :key="d.base_url">
+              <li v-for="d in detectedLocal" :key="d.baseUrl">
                 <span class="quick-setup__helper-ic">🧠</span>
                 <span class="quick-setup__helper-name"><strong>{{ d.name }} detected</strong>
                   <span v-if="d.models.length" class="jv-muted"> · {{ d.models[0] }}{{ d.models.length > 1 ? ` +${d.models.length - 1}` : "" }}</span>
                 </span>
-                <span v-if="d.already_registered" class="jv-pill jv-pill--green">connected</span>
-                <JvButton v-else size="sm" variant="secondary" :loading="connectingLocal === d.base_url" label="Connect" :title="`Register ${d.name} as an LLM provider`" @click="connectLocal(d)" />
+                <span v-if="d.alreadyRegistered" class="jv-pill jv-pill--green">connected</span>
+                <JvButton v-else size="sm" variant="secondary" :loading="connectingLocal === d.baseUrl" label="Connect" :title="`Register ${d.name} as an LLM provider`" @click="connectLocal(d)" />
               </li>
               <li v-if="!detectedLocal.length">
                 <span class="quick-setup__helper-ic">🧠</span>

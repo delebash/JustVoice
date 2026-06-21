@@ -2,14 +2,13 @@
 //
 // JustVoice REST adapter for the shared `@delebash/llm-ui` ProviderBackend
 // contract (Thread 3 / T3.3). The shared UI components call these methods and
-// NEVER touch fetch directly. This adapter translates between the server's
-// snake_case `/v1/llm-providers*` + `/v1/feature-pins` + `/v1/ai-usage` shapes
-// and the contract's camelCase shapes.
+// NEVER touch fetch directly.
 //
-// Why an adapter (not a server camelCase flip): JustVoice's current renderer
-// still consumes these endpoints as snake_case, so flipping the API would
-// break the live UI before Phase 2 migrates it. The translation lives here at
-// the boundary. See docs/plans/2026-06-16-thread3-phase2-llm-ui.md.
+// As of 2026-06-21 the server's LLM-config wire is camelCase-NATIVE (the shared
+// llm_runner schema dropped its snake_case aliases — one name per field), so
+// these shapes already MATCH the `@delebash/llm-ui` camelCase contract. The
+// mapping below is now an explicit identity pass-through (no snake↔camel
+// translation), kept as the single, documented boundary the shared UI calls.
 //
 // `api` is the Pinia api store ({ get, post, patch, put, del } over request).
 // Inject a stub with the same surface to unit-test (scripts/verify-llm-backend.mjs).
@@ -18,26 +17,26 @@ function providerFromApi(p) {
   return {
     id: p.id,
     name: p.name,
-    providerType: p.provider_type,
-    baseUrl: p.base_url || "",
-    defaultModel: p.default_model || "",
-    embeddingModel: p.embedding_model || "",
-    timeoutSeconds: p.timeout_seconds,
-    hasApiKey: !!p.has_api_key,
+    providerType: p.providerType,
+    baseUrl: p.baseUrl || "",
+    defaultModel: p.defaultModel || "",
+    embeddingModel: p.embeddingModel || "",
+    timeoutSeconds: p.timeoutSeconds,
+    hasApiKey: !!p.hasApiKey,
     registered: !!p.registered,
   };
 }
 
-// camelCase ProviderDraft -> the server's UpsertLLMProviderRequest (snake_case).
+// ProviderDraft -> the server's UpsertLLMProviderRequest (both camelCase).
 // The server upsert requires id/name/providerType; optional fields are only
 // sent when present so a partial patch doesn't clobber with empty strings.
 function providerToApi(d) {
-  const body = { id: d.id, name: d.name, provider_type: d.providerType };
-  if (d.baseUrl !== undefined) body.base_url = d.baseUrl;
-  if (d.apiKey !== undefined) body.api_key = d.apiKey;
-  if (d.defaultModel !== undefined) body.default_model = d.defaultModel;
-  if (d.embeddingModel !== undefined) body.embedding_model = d.embeddingModel;
-  if (d.timeoutSeconds !== undefined) body.timeout_seconds = d.timeoutSeconds;
+  const body = { id: d.id, name: d.name, providerType: d.providerType };
+  if (d.baseUrl !== undefined) body.baseUrl = d.baseUrl;
+  if (d.apiKey !== undefined) body.apiKey = d.apiKey;
+  if (d.defaultModel !== undefined) body.defaultModel = d.defaultModel;
+  if (d.embeddingModel !== undefined) body.embeddingModel = d.embeddingModel;
+  if (d.timeoutSeconds !== undefined) body.timeoutSeconds = d.timeoutSeconds;
   return body;
 }
 
@@ -78,11 +77,11 @@ export function createJustVoiceBackend(api) {
     async detectLocal() {
       const r = await api.get("/v1/llm-providers/detect-local");
       return (r.detected || []).map((d) => ({
-        providerType: d.provider_type,
+        providerType: d.providerType,
         name: d.name,
-        baseUrl: d.base_url,
+        baseUrl: d.baseUrl,
         models: d.models || [],
-        alreadyRegistered: !!d.already_registered,
+        alreadyRegistered: !!d.alreadyRegistered,
       }));
     },
     async classifyTier(modelId) {
@@ -106,14 +105,14 @@ export function createJustVoiceBackend(api) {
       const r = await api.get("/v1/feature-pins");
       return (r.pins || []).map((p) => ({
         feature: p.feature,
-        providerId: p.provider_id,
+        providerId: p.providerId,
         model: p.model || undefined,
       }));
     },
     async setFeaturePin(feature, pin) {
       await api.put("/v1/feature-pins", {
         feature,
-        provider_id: pin.providerId,
+        providerId: pin.providerId,
         model: pin.model || "",
       });
     },

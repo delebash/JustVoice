@@ -24,17 +24,17 @@ router = APIRouter(tags=["llm-roles"])
 
 
 class RoleCandidate(BaseModel):
-    provider_id: str
+    providerId: str
     model: str
     label: str  # human line for the dropdown
-    speed_class: str  # "quick" | "accuracy"
+    speedClass: str  # "quick" | "accuracy"
     local: bool
 
 
 class RoleRecommendations(BaseModel):
     candidates: list[RoleCandidate]
-    recommended_quick: RoleCandidate | None
-    recommended_accuracy: RoleCandidate | None
+    recommendedQuick: RoleCandidate | None
+    recommendedAccuracy: RoleCandidate | None
 
 
 def _candidates() -> list[RoleCandidate]:
@@ -51,11 +51,11 @@ def _candidates() -> list[RoleCandidate]:
         local = adapter.provider_type in ("local", "ollama", "openai-compat", "local-llamacpp")
         out.append(
             RoleCandidate(
-                provider_id=adapter.provider_id,
+                providerId=adapter.provider_id,
                 model=model,
                 label=f"{model} — {adapter.provider_id}"
                 + (" · local" if local else " · metered"),
-                speed_class="quick" if quickish else "accuracy",
+                speedClass="quick" if quickish else "accuracy",
                 local=local,
             )
         )
@@ -67,10 +67,10 @@ async def role_recommendations() -> RoleRecommendations:
     cands = _candidates()
 
     def best(speed: str) -> RoleCandidate | None:
-        pool = [c for c in cands if c.speed_class == speed]
+        pool = [c for c in cands if c.speedClass == speed]
         # local first (free + private); among locals the built-in llama.cpp
         # runner outranks the lightweight qwen3 fallback, then registry order.
-        pool.sort(key=lambda c: (not c.local, c.provider_id != "local-llamacpp"))
+        pool.sort(key=lambda c: (not c.local, c.providerId != "local-llamacpp"))
         if pool:
             return pool[0]
         # fall back across classes rather than recommending nothing
@@ -78,8 +78,8 @@ async def role_recommendations() -> RoleRecommendations:
 
     return RoleRecommendations(
         candidates=cands,
-        recommended_quick=best("quick"),
-        recommended_accuracy=best("accuracy"),
+        recommendedQuick=best("quick"),
+        recommendedAccuracy=best("accuracy"),
     )
 
 
@@ -90,7 +90,6 @@ class ProductionConfigList(BaseModel):
 @router.get(
     "/v1/production-configs",
     response_model=ProductionConfigList,
-    response_model_by_alias=False,  # emit snake — shared schema carries camel aliases
 )
 async def list_production_configs() -> ProductionConfigList:
     settings = get_state().settings.get()
@@ -101,14 +100,13 @@ async def list_production_configs() -> ProductionConfigList:
     "/v1/production-configs",
     response_model=ProductionConfig,
     status_code=201,
-    response_model_by_alias=False,  # emit snake — shared schema carries camel aliases
 )
 async def upsert_production_config(body: ProductionConfig) -> ProductionConfig:
     """Speaker Lab 'Use as production' — freezes model + prompts for a
     feature. One active config per feature; posting replaces it."""
     state = get_state()
     settings = state.settings.get()
-    body.promoted_at = body.promoted_at or datetime.now(timezone.utc).isoformat()
+    body.promotedAt = body.promotedAt or datetime.now(timezone.utc).isoformat()
     settings.engines.production_configs = [
         c for c in settings.engines.production_configs if c.feature != body.feature
     ] + [body]

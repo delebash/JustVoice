@@ -28,6 +28,82 @@ log = logging.getLogger(__name__)
 
 _ROW_ID = "singleton"
 
+# ── Legacy LLM-config camelCase migration ────────────────────────────────
+# The shared LLM-config models (llm_runner.llm.schema: LLMProviderConfig /
+# FeaturePinConfig / LLMRoleTarget / ProductionConfig) became camelCase-NATIVE
+# on 2026-06-21 — the Python field IS the JSON key, with NO snake_case aliases
+# and no populate_by_name. Settings persisted before that date stored these
+# sections (engines.llm[] / feature_pins[] / llm_roles / production_configs[])
+# with snake_case keys via the old `model_dump()`. Loading that snake data into
+# the camel-native models would silently DROP the renamed fields (a provider
+# would lose its base_url / api_key / default_model, etc.). This one-time,
+# idempotent migration renames the known snake keys to camelCase for exactly
+# those LLM sections before validation. Already-camel data passes through
+# untouched (the snake keys simply aren't present). Other settings sections
+# (engines.external[] = TTS, etc.) keep their snake fields and are left alone.
+
+# Per-section snake→camel rename maps. Only these keys are renamed; anything
+# else in a row is preserved verbatim.
+_LLM_PROVIDER_RENAMES = {
+    "provider_type": "providerType",
+    "base_url": "baseUrl",
+    "api_key": "apiKey",
+    "default_model": "defaultModel",
+    "embedding_model": "embeddingModel",
+    "timeout_seconds": "timeoutSeconds",
+}
+_FEATURE_PIN_RENAMES = {"provider_id": "providerId"}
+_ROLE_TARGET_RENAMES = {"provider_id": "providerId"}
+_PRODUCTION_CONFIG_RENAMES = {
+    "provider_id": "providerId",
+    "system_prompt": "systemPrompt",
+    "user_prompt": "userPrompt",
+    "promoted_at": "promotedAt",
+}
+
+
+def _rename_keys(obj: dict, renames: dict[str, str]) -> None:
+    """Rename `obj`'s keys per `renames`, in place. Idempotent — a key that's
+    already the camel target (and has no snake source) is left as-is. If both
+    the snake source and the camel target somehow coexist, the existing camel
+    value wins (already-migrated data isn't clobbered)."""
+    for snake, camel in renames.items():
+        if snake in obj:
+            if camel not in obj:
+                obj[camel] = obj[snake]
+            del obj[snake]
+
+
+def _migrate_llm_camel(data: dict) -> dict:
+    """Rename legacy snake_case LLM-config keys to camelCase in a settings
+    dict (mutates + returns it). Tolerant of missing/oddly-typed sections —
+    a malformed legacy row must never raise here (the caller already guards
+    against parse failures, but this stays defensive)."""
+    engines = data.get("engines")
+    if not isinstance(engines, dict):
+        return data
+
+    for prov in engines.get("llm") or []:
+        if isinstance(prov, dict):
+            _rename_keys(prov, _LLM_PROVIDER_RENAMES)
+
+    for pin in engines.get("feature_pins") or []:
+        if isinstance(pin, dict):
+            _rename_keys(pin, _FEATURE_PIN_RENAMES)
+
+    roles = engines.get("llm_roles")
+    if isinstance(roles, dict):
+        for key in ("quick", "accuracy"):
+            target = roles.get(key)
+            if isinstance(target, dict):
+                _rename_keys(target, _ROLE_TARGET_RENAMES)
+
+    for cfg in engines.get("production_configs") or []:
+        if isinstance(cfg, dict):
+            _rename_keys(cfg, _PRODUCTION_CONFIG_RENAMES)
+
+    return data
+
 
 def _deep_merge(base: dict, update: dict) -> None:
     """Recursively merge `update` into `base`. Dicts merge; everything
@@ -59,7 +135,7 @@ class SettingsStore:
         if row is None:
             return None
         try:
-            return Settings.model_validate(json.loads(row.data))
+            return Settings.model_validate(_migrate_llm_camel(json.loads(row.data)))
         except Exception as e:  # noqa: BLE001 — corrupt row must not kill boot
             log.warning("settings row failed to parse (error=%s); using defaults", e)
             return Settings()
@@ -95,7 +171,7 @@ class SettingsStore:
         try:
             data = json.loads(self._legacy_path.read_text(encoding="utf-8"))
             log.info("Migrating settings.json → SQLite (path=%s)", self._legacy_path)
-            return Settings.model_validate(data)
+            return Settings.model_validate(_migrate_llm_camel(data))
         except Exception as e:  # noqa: BLE001
             log.warning("settings.json failed to parse (error=%s); using defaults", e)
             return None

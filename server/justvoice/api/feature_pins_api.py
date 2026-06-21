@@ -78,7 +78,7 @@ class FeatureCatalogEntry(BaseModel):
 
 class FeaturePinResponse(BaseModel):
     feature: str
-    provider_id: str
+    providerId: str
     model: str = ""
     tier: str | None = None
 
@@ -90,7 +90,7 @@ class FeaturePinListResponse(BaseModel):
 
 class UpsertFeaturePinRequest(BaseModel):
     feature: str = Field(..., min_length=1, max_length=80)
-    provider_id: str = Field(..., min_length=1, max_length=80)
+    providerId: str = Field(..., min_length=1, max_length=80)
     model: str = ""
     tier: str | None = None
 
@@ -101,7 +101,7 @@ async def list_feature_pins() -> FeaturePinListResponse:
     pins = [
         FeaturePinResponse(
             feature=p.feature,
-            provider_id=p.provider_id,
+            providerId=p.providerId,
             model=p.model,
             tier=p.tier,
         )
@@ -115,9 +115,9 @@ async def list_feature_pins() -> FeaturePinListResponse:
 async def upsert_feature_pin(body: UpsertFeaturePinRequest) -> FeaturePinResponse:
     """Set (or update) the pin for `body.feature`. Idempotent — repeated
     PUTs with the same feature key overwrite the prior pin."""
-    if get_llm_registry().get(body.provider_id) is None:
+    if get_llm_registry().get(body.providerId) is None:
         raise not_found(
-            f"LLM provider {body.provider_id!r} is not registered. Add it "
+            f"LLM provider {body.providerId!r} is not registered. Add it "
             f"in EnginesView's LLM tab first."
         )
     state = get_state()
@@ -128,7 +128,7 @@ async def upsert_feature_pin(body: UpsertFeaturePinRequest) -> FeaturePinRespons
     ]
     pin = FeaturePinConfig(
         feature=body.feature,
-        provider_id=body.provider_id,
+        providerId=body.providerId,
         model=body.model,
         tier=body.tier,
     )
@@ -136,7 +136,7 @@ async def upsert_feature_pin(body: UpsertFeaturePinRequest) -> FeaturePinRespons
     state.settings.set(settings)
     return FeaturePinResponse(
         feature=pin.feature,
-        provider_id=pin.provider_id,
+        providerId=pin.providerId,
         model=pin.model,
         tier=pin.tier,
     )

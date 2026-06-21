@@ -140,7 +140,7 @@ def test_analyze_text_threads_model_temp_prompt_overrides(client, monkeypatch):
             "characters": [{"id": "mara", "name": "Mara"}],
             "model": "qwen3:14b",
             "temperature": 0.05,
-            "system_prompt": "CUSTOM PROMPT BODY",
+            "systemPrompt": "CUSTOM PROMPT BODY",
         },
     )
     assert r.status_code == 200, r.text
@@ -172,9 +172,9 @@ def test_detect_local_llm_providers(client, monkeypatch):
     assert r.status_code == 200, r.text
     det = r.json()["detected"]
     assert len(det) == 1
-    assert det[0]["provider_type"] == "ollama"
+    assert det[0]["providerType"] == "ollama"
     assert "qwen3:14b" in det[0]["models"]
-    assert det[0]["already_registered"] is False
+    assert det[0]["alreadyRegistered"] is False
 
 
 # ── AI usage ledger ──────────────────────────────────────────────────

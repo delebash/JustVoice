@@ -154,8 +154,8 @@ async def analyze_scene_endpoint(
         use_floor=body.use_floor,
         model=(cfg.model or None) if cfg else None,
         temperature=cfg.temperature if cfg else None,
-        system_prompt=cfg.system_prompt if cfg else None,
-        user_prompt=cfg.user_prompt if cfg else None,
+        system_prompt=cfg.systemPrompt if cfg else None,
+        user_prompt=cfg.userPrompt if cfg else None,
     )
 
     try:
@@ -197,12 +197,13 @@ class AnalyzeTextRequest(BaseModel):
     tier: str | None = None
     propagate: bool = True
     use_floor: bool = True
-    # Speaker Lab per-column overrides (None = pin/tier defaults).
-    provider_id: str | None = None
+    # Speaker Lab per-column overrides (None = pin/tier defaults). camelCase
+    # to match the shared LLM-config contract the renderer sends.
+    providerId: str | None = None
     model: str | None = None
     temperature: float | None = None
-    system_prompt: str | None = None
-    user_prompt: str | None = None
+    systemPrompt: str | None = None
+    userPrompt: str | None = None
     confidence_floor: float | None = None
 
 
@@ -225,10 +226,10 @@ async def analyze_text_endpoint(body: AnalyzeTextRequest) -> AnalyzeSceneRespons
         use_floor=body.use_floor,
         model=body.model,
         temperature=body.temperature,
-        system_prompt=body.system_prompt,
-        user_prompt=body.user_prompt,
+        system_prompt=body.systemPrompt,
+        user_prompt=body.userPrompt,
         confidence_floor=body.confidence_floor,
-        provider_id=body.provider_id,
+        provider_id=body.providerId,
     )
     try:
         raw_out: dict = {}

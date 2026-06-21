@@ -55,8 +55,8 @@ def test_dispatch_precedence_role_then_config(app_state) -> None:
 
     # 4. DEFAULT_FEATURE_ROLES: speaker_attribution -> accuracy role
     settings.engines.llm_roles = LLMRolesSettings(
-        quick=LLMRoleTarget(provider_id="prov-fast", model="qwen3:0.6b"),
-        accuracy=LLMRoleTarget(provider_id="prov-big", model="qwen3:14b"),
+        quick=LLMRoleTarget(providerId="prov-fast", model="qwen3:0.6b"),
+        accuracy=LLMRoleTarget(providerId="prov-big", model="qwen3:14b"),
     )
     state.settings.set(settings)
     adapter, model, _tier = resolve_pin(llm_config(settings), "speaker_attribution")
@@ -73,7 +73,7 @@ def test_dispatch_precedence_role_then_config(app_state) -> None:
 
     # 2. explicit pin beats role
     settings.engines.feature_pins = [
-        FeaturePinConfig(feature="speaker_attribution", provider_id="prov-big", model="qwen3:8b")
+        FeaturePinConfig(feature="speaker_attribution", providerId="prov-big", model="qwen3:8b")
     ]
     adapter, model, _ = resolve_pin(llm_config(settings), "speaker_attribution")
     assert (adapter.provider_id, model) == ("prov-big", "qwen3:8b")
@@ -82,8 +82,8 @@ def test_dispatch_precedence_role_then_config(app_state) -> None:
     settings.engines.production_configs = [
         ProductionConfig(
             feature="speaker_attribution", name="14b-twopass-v3",
-            provider_id="prov-big", model="qwen3:14b", temperature=0.3,
-            system_prompt="SYS", user_prompt="USR",
+            providerId="prov-big", model="qwen3:14b", temperature=0.3,
+            systemPrompt="SYS", userPrompt="USR",
         )
     ]
     adapter, model, _ = resolve_pin(llm_config(settings), "speaker_attribution")
@@ -94,11 +94,11 @@ def test_production_config_endpoints(app_state) -> None:
     client = TestClient(app_state, raise_server_exceptions=False)
     body = {
         "feature": "speaker_attribution", "name": "lab-col-b",
-        "provider_id": "prov-big", "model": "qwen3:14b",
-        "temperature": 0.3, "system_prompt": "S", "user_prompt": "U",
+        "providerId": "prov-big", "model": "qwen3:14b",
+        "temperature": 0.3, "systemPrompt": "S", "userPrompt": "U",
     }
     r = client.post("/v1/production-configs", json=body)
-    assert r.status_code == 201 and r.json()["promoted_at"]
+    assert r.status_code == 201 and r.json()["promotedAt"]
     assert len(client.get("/v1/production-configs").json()["configs"]) == 1
     # replace, not append
     client.post("/v1/production-configs", json={**body, "name": "v2"})
@@ -112,9 +112,9 @@ def test_production_config_endpoints(app_state) -> None:
 def test_role_recommendations(app_state) -> None:
     client = TestClient(app_state, raise_server_exceptions=False)
     r = client.get("/v1/llm-roles/recommendations").json()
-    assert r["recommended_quick"] and r["recommended_accuracy"]
-    assert r["recommended_quick"]["model"] == "qwen3:0.6b"
-    assert r["recommended_accuracy"]["model"] == "qwen3:14b"
+    assert r["recommendedQuick"] and r["recommendedAccuracy"]
+    assert r["recommendedQuick"]["model"] == "qwen3:0.6b"
+    assert r["recommendedAccuracy"]["model"] == "qwen3:14b"
 
 
 def test_manifest_kinds_and_on_disk(app_state) -> None:

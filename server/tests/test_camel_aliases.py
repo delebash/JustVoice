@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""T3.7 — camelCase wire aliases on LLMProviderConfig / FeaturePinConfig.
+"""camelCase-NATIVE LLM-config contract (2026-06-21 AI-stack convergence).
 
-The models ACCEPT both snake_case (legacy) and camelCase (shared llm-ui
-contract) on input and CAN emit camelCase via by_alias — but the settings
-routes must keep EMITTING snake_case so the current renderer (which reads
-engines.llm[].provider_type etc. in snake) is unaffected. These tests lock
-both halves: the new capability AND the non-breaking emission.
+The shared LLM-config models (LLMProviderConfig / FeaturePinConfig /
+LLMRoleTarget / ProductionConfig) have ONE name per field — camelCase — with
+NO snake_case aliases and no populate_by_name. The Python attribute == the
+JSON key == the JS renderer key. These tests lock that single-name contract:
+the field is camel on the model, camel on the wire (/v1/settings emits it
+natively), snake_case is REJECTED on input, and the one-time legacy-snake
+settings migration upgrades pre-existing rows.
 """
 
 from __future__ import annotations
@@ -14,36 +16,37 @@ import pytest
 from fastapi.testclient import TestClient
 
 
-def test_provider_config_accepts_both_forms_and_persists_snake():
+def test_provider_config_is_camel_native():
     from justvoice.models import LLMProviderConfig
 
-    # camelCase input (the shared contract shape) parses
-    camel = LLMProviderConfig.model_validate(
+    # camelCase input (the only accepted shape) parses into camel attributes.
+    cfg = LLMProviderConfig.model_validate(
         {"id": "p", "name": "P", "providerType": "openai", "baseUrl": "u", "defaultModel": "m"}
     )
-    assert camel.provider_type == "openai"
-    assert camel.base_url == "u"
-    assert camel.default_model == "m"
+    assert cfg.providerType == "openai"
+    assert cfg.baseUrl == "u"
+    assert cfg.defaultModel == "m"
 
-    # snake construction still works (populate_by_name)
-    snake = LLMProviderConfig(id="p", name="P", provider_type="openai", base_url="u")
-    assert snake.provider_type == "openai"
+    # The dump is camel — the single name, no alias layer.
+    d = cfg.model_dump()
+    assert d["providerType"] == "openai" and d["baseUrl"] == "u"
+    assert "provider_type" not in d and "base_url" not in d
 
-    # default dump is snake (settings.json persistence unchanged) ...
-    d = snake.model_dump()
-    assert "provider_type" in d and "providerType" not in d
-    # ... and by_alias dump is camel (capability the shared UI can opt into)
-    da = snake.model_dump(by_alias=True)
-    assert da["providerType"] == "openai" and da["baseUrl"] == "u"
+    # snake_case kwargs are NOT valid field names anymore — they land in no
+    # field (and required `providerType` is then missing → ValidationError).
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        LLMProviderConfig(id="p", name="P", provider_type="openai")  # type: ignore[call-arg]
 
 
-def test_feature_pin_config_camel_roundtrip():
+def test_feature_pin_config_is_camel_native():
     from justvoice.models import FeaturePinConfig
 
     p = FeaturePinConfig.model_validate({"feature": "compose", "providerId": "x", "model": "m"})
-    assert p.provider_id == "x"
-    assert "provider_id" in p.model_dump()
-    assert p.model_dump(by_alias=True)["providerId"] == "x"
+    assert p.providerId == "x"
+    d = p.model_dump()
+    assert d["providerId"] == "x" and "provider_id" not in d
 
 
 @pytest.fixture
@@ -53,32 +56,116 @@ def client(tmp_path):
     return TestClient(create_app(data_dir=tmp_path))
 
 
-def test_settings_get_still_emits_snake_for_providers(client):
-    # Renderer-safety guarantee: /v1/settings must keep emitting snake_case
-    # for the nested provider entries despite the model aliases. Seed via
+def test_settings_emits_camel_for_providers(client):
+    # /v1/settings emits the nested provider entries in camelCase natively
+    # (no response_model_by_alias needed — there are no aliases). Seed via
     # PATCH (writes settings only) — NOT POST /v1/llm-providers, which would
     # register into the process-global registry singleton and leak into other
     # tests' "no LLM configured" expectations.
     r = client.patch(
         "/v1/settings",
         json={"engines": {"llm": [
-            {"id": "op", "name": "OpenAI", "provider_type": "openai-compat", "base_url": "http://x/v1"}
+            {"id": "op", "name": "OpenAI", "providerType": "openai-compat", "baseUrl": "http://x/v1"}
         ]}},
     )
     assert r.status_code == 200
     llm = client.get("/v1/settings").json()["engines"]["llm"]
-    assert llm and "provider_type" in llm[0] and "providerType" not in llm[0]
+    assert llm and llm[0]["providerType"] == "openai-compat" and llm[0]["baseUrl"] == "http://x/v1"
+    assert "provider_type" not in llm[0] and "base_url" not in llm[0]
 
 
-def test_settings_patch_accepts_camelcase_provider(client):
-    # New capability: the API now accepts a camelCase provider entry on input,
-    # and round-trips it back as snake (persistence unchanged).
+def test_settings_patch_rejects_snake_provider(client):
+    # snake_case provider keys are no longer accepted: the required camel
+    # `providerType` is absent → 422 (and nothing is persisted).
     body = {"engines": {"llm": [
-        {"id": "c", "name": "C", "providerType": "openai-compat", "baseUrl": "http://y/v1"}
+        {"id": "c", "name": "C", "provider_type": "openai-compat", "base_url": "http://y/v1"}
     ]}}
     r = client.patch("/v1/settings", json=body)
-    assert r.status_code == 200
-    llm = {p["id"]: p for p in client.get("/v1/settings").json()["engines"]["llm"]}
-    assert "c" in llm
-    assert llm["c"]["provider_type"] == "openai-compat"
-    assert llm["c"]["base_url"] == "http://y/v1"
+    assert r.status_code == 422
+    assert client.get("/v1/settings").json()["engines"]["llm"] == []
+
+
+def test_legacy_snake_settings_row_is_migrated(tmp_path):
+    # A pre-2026-06-21 SQLite settings row stored the LLM sections in
+    # snake_case. Loading it must rename those keys to camelCase so no field
+    # is dropped (a provider keeps its baseUrl / apiKey / defaultModel, the
+    # roles keep providerId, the production config keeps systemPrompt, etc.).
+    import json
+
+    from justvoice.database import session as _db
+    from justvoice.database.models import SettingsRow
+    from justvoice.storage.settings_store import SettingsStore
+
+    # Initialise the DB the same way the app boot does.
+    from justvoice.app import create_app
+
+    create_app(data_dir=tmp_path)
+
+    legacy = {
+        "engines": {
+            "llm": [{
+                "id": "ollama-pc", "name": "Ollama",
+                "provider_type": "ollama", "base_url": "http://localhost:11434",
+                "api_key": "k", "default_model": "qwen3:8b",
+                "embedding_model": "nomic-embed-text", "timeout_seconds": 90,
+            }],
+            "feature_pins": [{"feature": "compose", "provider_id": "ollama-pc", "model": "m"}],
+            "llm_roles": {
+                "quick": {"provider_id": "ollama-pc", "model": "qwen3:0.6b"},
+                "accuracy": {"provider_id": "ollama-pc", "model": "qwen3:14b"},
+            },
+            "production_configs": [{
+                "feature": "speaker_attribution", "name": "v3", "provider_id": "ollama-pc",
+                "model": "qwen3:14b", "system_prompt": "SYS", "user_prompt": "USR",
+                "promoted_at": "2026-01-01T00:00:00Z",
+            }],
+        }
+    }
+    db = _db.SessionLocal()
+    try:
+        row = db.get(SettingsRow, "singleton")
+        row.data = json.dumps(legacy)
+        db.commit()
+    finally:
+        db.close()
+
+    # Re-load through a fresh store → migration runs in _read_row.
+    s = SettingsStore(tmp_path).get()
+    prov = s.engines.llm[0]
+    assert prov.providerType == "ollama"
+    assert prov.baseUrl == "http://localhost:11434"
+    assert prov.apiKey == "k"
+    assert prov.defaultModel == "qwen3:8b"
+    assert prov.embeddingModel == "nomic-embed-text"
+    assert prov.timeoutSeconds == 90
+    assert s.engines.feature_pins[0].providerId == "ollama-pc"
+    assert s.engines.llm_roles.quick.providerId == "ollama-pc"
+    assert s.engines.llm_roles.accuracy.providerId == "ollama-pc"
+    pc = s.engines.production_configs[0]
+    assert pc.providerId == "ollama-pc"
+    assert pc.systemPrompt == "SYS"
+    assert pc.userPrompt == "USR"
+    assert pc.promotedAt == "2026-01-01T00:00:00Z"
+
+
+def test_migration_is_idempotent_on_camel_data(tmp_path):
+    # Already-camel data must pass through the migration untouched.
+    from justvoice.storage.settings_store import _migrate_llm_camel
+
+    camel = {
+        "engines": {
+            "llm": [{"id": "p", "providerType": "openai", "baseUrl": "u"}],
+            "llm_roles": {"quick": {"providerId": "p", "model": "m"}},
+        }
+    }
+    out = _migrate_llm_camel(json_roundtrip(camel))
+    assert out["engines"]["llm"][0]["providerType"] == "openai"
+    assert out["engines"]["llm"][0]["baseUrl"] == "u"
+    assert "provider_type" not in out["engines"]["llm"][0]
+    assert out["engines"]["llm_roles"]["quick"]["providerId"] == "p"
+
+
+def json_roundtrip(obj):
+    import json
+
+    return json.loads(json.dumps(obj))

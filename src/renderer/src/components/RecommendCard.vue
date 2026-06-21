@@ -38,7 +38,7 @@ onMounted(async () => {
   } catch { /* ignore */ }
   try {
     const r = await api.request("/v1/llm-providers/detect-local");
-    detectedLocal.value = (r?.detected || []).filter((d) => !d.already_registered);
+    detectedLocal.value = (r?.detected || []).filter((d) => !d.alreadyRegistered);
   } catch { /* ignore */ }
 });
 
@@ -62,21 +62,21 @@ function dismiss() {
 }
 
 async function connect(d) {
-  connecting.value = d.base_url;
+  connecting.value = d.baseUrl;
   try {
     await api.request("/v1/llm-providers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        id: d.provider_type === "ollama" ? "ollama-local" : "lmstudio-local",
+        id: d.providerType === "ollama" ? "ollama-local" : "lmstudio-local",
         name: d.name,
-        provider_type: d.provider_type,
-        base_url: d.base_url,
-        api_key: null,
-        default_model: d.models?.[0] || "",
+        providerType: d.providerType,
+        baseUrl: d.baseUrl,
+        apiKey: null,
+        defaultModel: d.models?.[0] || "",
       }),
     });
-    detectedLocal.value = detectedLocal.value.filter((x) => x.base_url !== d.base_url);
+    detectedLocal.value = detectedLocal.value.filter((x) => x.baseUrl !== d.baseUrl);
     pushToast({ kind: "success", title: `${d.name} connected`, description: "Script attribution, Smart-assign, and Compose are now live." });
   } catch (e) {
     pushToast({ kind: "error", title: "Connect failed", description: String(e?.message ?? e) });
@@ -105,14 +105,14 @@ function openEngines() {
       </span>
       <JvButton variant="secondary" size="sm" label="Open Engines ➜" title="Install from the Engines page — size and progress shown there" @click="openEngines" />
     </div>
-    <div v-for="d in detectedLocal" :key="d.base_url" class="recommend__row">
+    <div v-for="d in detectedLocal" :key="d.baseUrl" class="recommend__row">
       <span class="recommend__ic">🧠</span>
       <span class="recommend__text">
         <strong>{{ d.name }} detected</strong>
         <template v-if="d.models?.length"> · {{ d.models[0] }}{{ d.models.length > 1 ? ` +${d.models.length - 1}` : "" }}</template>
         — connect it and Script attributes speakers automatically.
       </span>
-      <JvButton variant="secondary" size="sm" label="Connect" :loading="connecting === d.base_url" @click="connect(d)" />
+      <JvButton variant="secondary" size="sm" label="Connect" :loading="connecting === d.baseUrl" @click="connect(d)" />
     </div>
   </div>
 </template>

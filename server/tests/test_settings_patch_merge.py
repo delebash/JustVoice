@@ -29,10 +29,10 @@ def test_patch_engines_external_preserves_llm_providers(tmp_path) -> None:
         LLMProviderConfig(
             id="ollama-pc",
             name="Ollama",
-            provider_type="ollama",
-            base_url="http://localhost:11434",
-            default_model="qwen3:8b",
-            embedding_model="nomic-embed-text",
+            providerType="ollama",
+            baseUrl="http://localhost:11434",
+            defaultModel="qwen3:8b",
+            embeddingModel="nomic-embed-text",
         )
     )
     store.set(s)
@@ -56,7 +56,7 @@ def test_patch_engines_external_preserves_llm_providers(tmp_path) -> None:
     assert [e.id for e in new.engines.external] == ["elevenlabs"]
     # The llm list must survive the sibling-key patch.
     assert [p.id for p in new.engines.llm] == ["ollama-pc"]
-    assert new.engines.llm[0].embedding_model == "nomic-embed-text"
+    assert new.engines.llm[0].embeddingModel == "nomic-embed-text"
 
 
 def test_patch_lists_replace_wholesale(tmp_path) -> None:

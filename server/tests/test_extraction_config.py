@@ -125,7 +125,7 @@ def test_provider_override_routes_call(app, monkeypatch) -> None:
         json={
             "text": '"Hello," Mara said.',
             "characters": CAST,
-            "provider_id": "prov-cloud",
+            "providerId": "prov-cloud",
         },
     )
     assert r.status_code == 200
@@ -150,7 +150,7 @@ def test_user_prompt_and_floor_overrides(app, monkeypatch) -> None:
             "characters": CAST,
             "tier": "direct",
             "propagate": False,
-            "user_prompt": "CAST:\n{characters}\nBODY:\n{paragraphs}",
+            "userPrompt": "CAST:\n{characters}\nBODY:\n{paragraphs}",
             "confidence_floor": 0.65,
         },
     )

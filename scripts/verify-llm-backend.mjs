@@ -2,7 +2,10 @@
 //
 // Verify services/llmBackend.js — the JustVoice ProviderBackend adapter
 // (Thread 3 / T3.3). No app or build needed: inject a stub `api` and assert
-// the snake_case<->camelCase mapping both directions.
+// the mapping both directions. As of 2026-06-21 the server LLM-config wire is
+// camelCase-NATIVE (no snake aliases), so provider / feature-pin / detect-local
+// shapes are camelCase on BOTH sides (the usage ledger stays snake — out of
+// the camelCase rewrite scope).
 //   node scripts/verify-llm-backend.mjs
 import assert from "node:assert/strict";
 
@@ -20,13 +23,13 @@ function makeApi(handler) {
 let checks = 0;
 const check = async (name, fn) => { await fn(); checks++; };
 
-// listProviders: server snake -> contract camel
+// listProviders: server camel -> contract camel (identity)
 await check("listProviders", async () => {
   const { api } = makeApi(() => ({
     providers: [{
-      id: "p1", name: "OpenAI", provider_type: "openai", base_url: "https://x/v1",
-      default_model: "gpt", embedding_model: "emb", has_api_key: true, registered: true,
-      timeout_seconds: 60,
+      id: "p1", name: "OpenAI", providerType: "openai", baseUrl: "https://x/v1",
+      defaultModel: "gpt", embeddingModel: "emb", hasApiKey: true, registered: true,
+      timeoutSeconds: 60,
     }],
   }));
   const list = await createJustVoiceBackend(api).listProviders();
@@ -36,11 +39,11 @@ await check("listProviders", async () => {
   }]);
 });
 
-// addProvider: contract draft (camel) -> server upsert (snake), only-present fields
+// addProvider: contract draft (camel) -> server upsert (camel), only-present fields
 await check("addProvider", async () => {
   const { calls, api } = makeApi(() => ({
-    id: "p2", name: "Local", provider_type: "local-llamacpp", base_url: "", default_model: "",
-    embedding_model: "", has_api_key: false, registered: true, timeout_seconds: 60,
+    id: "p2", name: "Local", providerType: "local-llamacpp", baseUrl: "", defaultModel: "",
+    embeddingModel: "", hasApiKey: false, registered: true, timeoutSeconds: 60,
   }));
   const r = await createJustVoiceBackend(api).addProvider({
     id: "p2", name: "Local", providerType: "local-llamacpp",
@@ -49,21 +52,21 @@ await check("addProvider", async () => {
   assert.equal(calls[0].method, "POST");
   assert.equal(calls[0].path, "/v1/llm-providers");
   assert.deepEqual(calls[0].body, {
-    id: "p2", name: "Local", provider_type: "local-llamacpp",
-    base_url: "http://127.0.0.1:8080/v1", api_key: "k",
+    id: "p2", name: "Local", providerType: "local-llamacpp",
+    baseUrl: "http://127.0.0.1:8080/v1", apiKey: "k",
   });
   assert.equal(r.providerType, "local-llamacpp");
 });
 
 await check("updateProvider", async () => {
   const { calls, api } = makeApi(() => ({
-    id: "p1", name: "X", provider_type: "openai", base_url: "", default_model: "",
-    embedding_model: "", has_api_key: true, registered: true, timeout_seconds: 60,
+    id: "p1", name: "X", providerType: "openai", baseUrl: "", defaultModel: "",
+    embeddingModel: "", hasApiKey: true, registered: true, timeoutSeconds: 60,
   }));
   await createJustVoiceBackend(api).updateProvider("p1", { name: "X", providerType: "openai", apiKey: "" });
   assert.equal(calls[0].method, "PATCH");
   assert.equal(calls[0].path, "/v1/llm-providers/p1");
-  assert.deepEqual(calls[0].body, { id: "p1", name: "X", provider_type: "openai", api_key: "" });
+  assert.deepEqual(calls[0].body, { id: "p1", name: "X", providerType: "openai", apiKey: "" });
 });
 
 await check("removeProvider", async () => {
@@ -88,7 +91,7 @@ await check("fetchModels (string + object forms)", async () => {
 
 await check("detectLocal", async () => {
   const { api } = makeApi(() => ({
-    detected: [{ provider_type: "ollama", name: "Ollama", base_url: "http://127.0.0.1:11434", models: ["llama"], already_registered: false }],
+    detected: [{ providerType: "ollama", name: "Ollama", baseUrl: "http://127.0.0.1:11434", models: ["llama"], alreadyRegistered: false }],
   }));
   const r = await createJustVoiceBackend(api).detectLocal();
   assert.deepEqual(r, [{ providerType: "ollama", name: "Ollama", baseUrl: "http://127.0.0.1:11434", models: ["llama"], alreadyRegistered: false }]);
@@ -109,7 +112,7 @@ await check("usage (ledger.recent -> UsageRow)", async () => {
 });
 
 await check("featurePins", async () => {
-  const { api } = makeApi(() => ({ pins: [{ feature: "compose", provider_id: "p1", model: "gpt", tier: null }], catalog: [] }));
+  const { api } = makeApi(() => ({ pins: [{ feature: "compose", providerId: "p1", model: "gpt", tier: null }], catalog: [] }));
   const r = await createJustVoiceBackend(api).featurePins();
   assert.deepEqual(r, [{ feature: "compose", providerId: "p1", model: "gpt" }]);
 });
@@ -119,7 +122,7 @@ await check("setFeaturePin", async () => {
   await createJustVoiceBackend(api).setFeaturePin("speaker_attribution", { providerId: "local-llamacpp", model: "qwen" });
   assert.equal(calls[0].method, "PUT");
   assert.equal(calls[0].path, "/v1/feature-pins");
-  assert.deepEqual(calls[0].body, { feature: "speaker_attribution", provider_id: "local-llamacpp", model: "qwen" });
+  assert.deepEqual(calls[0].body, { feature: "speaker_attribution", providerId: "local-llamacpp", model: "qwen" });
 });
 
 console.log(`verify-llm-backend: ${checks} checks passed`);

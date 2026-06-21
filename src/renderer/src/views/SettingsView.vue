@@ -512,11 +512,11 @@ async function loadRoles() {
 }
 function roleValue(role) {
   const t = roles.value[role];
-  return t ? `${t.provider_id}::${t.model}` : "";
+  return t ? `${t.providerId}::${t.model}` : "";
 }
 async function setRole(role, packed) {
-  const [provider_id, model] = (packed || "::").split("::");
-  const next = { ...roles.value, [role]: provider_id ? { provider_id, model } : null };
+  const [providerId, model] = (packed || "::").split("::");
+  const next = { ...roles.value, [role]: providerId ? { providerId, model } : null };
   try {
     await api.request("/v1/settings", {
       method: "PATCH",
@@ -530,10 +530,10 @@ async function setRole(role, packed) {
   }
 }
 function acceptRecommendedRoles() {
-  const q = roleRecs.value?.recommended_quick;
-  const a = roleRecs.value?.recommended_accuracy;
-  if (q) setRole("quick", `${q.provider_id}::${q.model}`);
-  if (a) setRole("accuracy", `${a.provider_id}::${a.model}`);
+  const q = roleRecs.value?.recommendedQuick;
+  const a = roleRecs.value?.recommendedAccuracy;
+  if (q) setRole("quick", `${q.providerId}::${q.model}`);
+  if (a) setRole("accuracy", `${a.providerId}::${a.model}`);
 }
 
 // ── Production configs (Speaker Lab promote → here) ─────────────────
@@ -580,14 +580,14 @@ const routeRows = computed(() => {
 });
 function routeValue(key) {
   const pin = pinForFeature(key);
-  if (pin?.provider_id) return `prov::${pin.provider_id}`;
+  if (pin?.providerId) return `prov::${pin.providerId}`;
   if (pin?.role) return `inherit-${pin.role}`;
   return `inherit-${DEFAULT_ROLES[key] || "accuracy"}`;
 }
 async function setRoute(key, value) {
   let body;
-  if (value.startsWith("prov::")) body = { feature: key, provider_id: value.slice(6), model: "" };
-  else body = { feature: key, provider_id: "", model: "", role: value.replace("inherit-", "") };
+  if (value.startsWith("prov::")) body = { feature: key, providerId: value.slice(6), model: "" };
+  else body = { feature: key, providerId: "", model: "", role: value.replace("inherit-", "") };
   try {
     await api.request("/v1/feature-pins", {
       method: "PUT",
@@ -601,17 +601,17 @@ async function setRoute(key, value) {
 }
 function resolveRoute(key) {
   const cfg = configFor(key);
-  if (cfg) return `${cfg.model || "?"} · ${cfg.provider_id} (config)`;
+  if (cfg) return `${cfg.model || "?"} · ${cfg.providerId} (config)`;
   const pin = pinForFeature(key);
-  if (pin?.provider_id) {
-    const pr = aiProviders.value.find((x) => x.id === pin.provider_id);
-    return `${pin.model || pr?.default_model || "default"} · ${pr?.name || pin.provider_id}`;
+  if (pin?.providerId) {
+    const pr = aiProviders.value.find((x) => x.id === pin.providerId);
+    return `${pin.model || pr?.defaultModel || "default"} · ${pr?.name || pin.providerId}`;
   }
   const role = pin?.role || DEFAULT_ROLES[key] || "accuracy";
   const t = roles.value[role];
-  if (t?.provider_id) return `${t.model || "default"} · ${t.provider_id} (${role})`;
+  if (t?.providerId) return `${t.model || "default"} · ${t.providerId} (${role})`;
   const fb = fallbackProvider.value;
-  return fb ? `${fb.default_model || "default"} · ${fb.name || fb.id} (fallback)` : "— set a role above";
+  return fb ? `${fb.defaultModel || "default"} · ${fb.name || fb.id} (fallback)` : "— set a role above";
 }
 
 // ── Nudge banner — provider saved on Engines hands off here ─────────
@@ -628,7 +628,7 @@ function dismissNudge() {
 }
 async function acceptNudge(role) {
   if (!nudge.value) return;
-  await setRole(role, `${nudge.value.provider_id}::${nudge.value.model || ""}`);
+  await setRole(role, `${nudge.value.providerId}::${nudge.value.model || ""}`);
   dismissNudge();
 }
 
@@ -718,7 +718,7 @@ async function savePin(feature, providerId, model, tier) {
     await api.request("/v1/feature-pins", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ feature, provider_id: providerId, model: model || "", tier: tier || null }),
+      body: JSON.stringify({ feature, providerId, model: model || "", tier: tier || null }),
     });
     await loadAiPanel();
     pushToast({ message: `${feature} pinned to ${providerLabel(providerId)}.`, kind: "success" });
@@ -1452,7 +1452,7 @@ onMounted(() => {
     <!-- ─── AI · nudge banner (Engines provider-save hands off here) ─── -->
     <div v-show="activeSub === 'ai'" class="jv-section" v-if="nudge">
       <div class="ai-nudge">
-        💡 You just connected <b>{{ nudge.name || nudge.provider_id }}</b><span v-if="nudge.model"> with <span class="jv-mono">{{ nudge.model }}</span></span>.
+        💡 You just connected <b>{{ nudge.name || nudge.providerId }}</b><span v-if="nudge.model"> with <span class="jv-mono">{{ nudge.model }}</span></span>.
         Use it as one of your model roles?
         <span class="jv-spacer" />
         <JvButton variant="primary" size="sm" label="Use for Accuracy" title="Speaker extraction, smart-assign, show notes run on it" @click="acceptNudge('accuracy')" />
@@ -1467,7 +1467,7 @@ onMounted(() => {
         <div class="jv-card__header" style="display:flex;align-items:center;gap:10px">
           <h3 class="jv-card__title" style="margin:0">Model roles</h3>
           <span class="jv-spacer" />
-          <JvButton v-if="roleRecs?.recommended_quick || roleRecs?.recommended_accuracy" variant="secondary" size="sm"
+          <JvButton v-if="roleRecs?.recommendedQuick || roleRecs?.recommendedAccuracy" variant="secondary" size="sm"
             label="Use recommended" title="Apply the app's hardware-aware picks for both roles" @click="acceptRecommendedRoles" />
           <a href="#engines" class="jv-muted" style="font-size:12px;text-decoration:underline" title="Connect providers / download local models">manage engines →</a>
         </div>
@@ -1481,9 +1481,9 @@ onMounted(() => {
             <div class="ai-role__sel">
               <select class="jv-input jv-w-url" :value="roleValue('quick')" @change="setRole('quick', $event.target.value)">
                 <option value="">(not set — features fall back to the first provider)</option>
-                <option v-for="c in roleRecs?.candidates || []" :key="`q-${c.provider_id}-${c.model}`" :value="`${c.provider_id}::${c.model}`">{{ c.label }}</option>
+                <option v-for="c in roleRecs?.candidates || []" :key="`q-${c.providerId}-${c.model}`" :value="`${c.providerId}::${c.model}`">{{ c.label }}</option>
               </select>
-              <span v-if="roleRecs?.recommended_quick" class="ai-rec" :title="`Best speed of what's installed: ${roleRecs.recommended_quick.label}`">RECOMMENDED: {{ roleRecs.recommended_quick.model }}</span>
+              <span v-if="roleRecs?.recommendedQuick" class="ai-rec" :title="`Best speed of what's installed: ${roleRecs.recommendedQuick.label}`">RECOMMENDED: {{ roleRecs.recommendedQuick.model }}</span>
             </div>
             <div class="ai-role__hint">A local small model keeps dictation cleanup free and instant — cloud models here bill on every sentence you speak.</div>
           </div>
@@ -1493,9 +1493,9 @@ onMounted(() => {
             <div class="ai-role__sel">
               <select class="jv-input jv-w-url" :value="roleValue('accuracy')" @change="setRole('accuracy', $event.target.value)">
                 <option value="">(not set — features fall back to the first provider)</option>
-                <option v-for="c in roleRecs?.candidates || []" :key="`a-${c.provider_id}-${c.model}`" :value="`${c.provider_id}::${c.model}`">{{ c.label }}</option>
+                <option v-for="c in roleRecs?.candidates || []" :key="`a-${c.providerId}-${c.model}`" :value="`${c.providerId}::${c.model}`">{{ c.label }}</option>
               </select>
-              <span v-if="roleRecs?.recommended_accuracy" class="ai-rec" :title="`Biggest model you can run: ${roleRecs.recommended_accuracy.label}`">RECOMMENDED: {{ roleRecs.recommended_accuracy.model }}</span>
+              <span v-if="roleRecs?.recommendedAccuracy" class="ai-rec" :title="`Biggest model you can run: ${roleRecs.recommendedAccuracy.label}`">RECOMMENDED: {{ roleRecs.recommendedAccuracy.model }}</span>
             </div>
             <div class="ai-role__hint">These features run inside async jobs — a few extra seconds buys attribution quality you'll hear in the casting.</div>
           </div>
@@ -1520,7 +1520,7 @@ onMounted(() => {
             <span v-if="configFor(f.key)" class="jv-pill jv-pill--violet" style="margin-left:6px">FROM SPEAKER LAB</span>
           </span>
           <span v-if="configFor(f.key)" class="jv-mono jv-muted" style="font-size:11px">
-            {{ configFor(f.key).model }}<span v-if="configFor(f.key).temperature != null"> · temp {{ configFor(f.key).temperature }}</span><span v-if="configFor(f.key).system_prompt"> · custom prompts</span>
+            {{ configFor(f.key).model }}<span v-if="configFor(f.key).temperature != null"> · temp {{ configFor(f.key).temperature }}</span><span v-if="configFor(f.key).systemPrompt"> · custom prompts</span>
           </span>
           <span class="jv-spacer" />
           <JvButton v-if="f.hasLab" variant="ghost" size="sm" label="Open in Speaker Lab" title="Retune the prompts and re-promote" @click="goHash(f.lab)" />
@@ -1571,7 +1571,7 @@ onMounted(() => {
                 <select class="jv-input jv-input--sm" style="min-width:200px" :value="routeValue(f.key)" @change="setRoute(f.key, $event.target.value)">
                   <option value="inherit-quick">Inherit · Quick{{ f.defaultRole === 'quick' ? ' (default)' : '' }}</option>
                   <option value="inherit-accuracy">Inherit · Accuracy{{ f.defaultRole === 'accuracy' ? ' (default)' : '' }}</option>
-                  <option v-for="pr in aiProviders" :key="pr.id" :value="`prov::${pr.id}`">{{ pr.name || pr.id }} · {{ pr.default_model || 'default model' }}</option>
+                  <option v-for="pr in aiProviders" :key="pr.id" :value="`prov::${pr.id}`">{{ pr.name || pr.id }} · {{ pr.defaultModel || 'default model' }}</option>
                 </select>
               </td>
               <td><span class="jv-mono" style="font-size:11.5px">{{ resolveRoute(f.key) }}</span></td>

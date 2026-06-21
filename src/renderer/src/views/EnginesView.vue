@@ -124,15 +124,20 @@ async function loadProviders() {
   try {
     const s = await api.safeRequest("/v1/settings", null);
     const list = s?.engines?.external || [];
+    // TTS externals persist in settings.engines.external (ExternalEngineConfig)
+    // which stays snake_case on the wire — normalise to the same camelCase keys
+    // the LLM provider rows use so allProviders can merge the two uniformly.
+    // The snake↔camel translation for TTS lives only at this read boundary and
+    // the matching write boundary in saveProvider().
     ttsProviders.value = list.map((p) => ({
       id: p.id,
       name: p.name || p.id,
       kind: "tts",
-      provider_type: p.provider_type || "openai-compat",
-      base_url: p.base_url || "",
-      api_key: "",  // never echoed back; treat empty == "leave existing"
-      has_api_key: !!p.api_key,
-      default_model: "",
+      providerType: p.provider_type || "openai-compat",
+      baseUrl: p.base_url || "",
+      apiKey: "",  // never echoed back; treat empty == "leave existing"
+      hasApiKey: !!p.api_key,
+      defaultModel: "",
       tts_model: p.model || "",
       voices: Array.isArray(p.voices) ? [...p.voices] : [],
       response_format: p.response_format || "wav",
@@ -149,11 +154,11 @@ function defaultDraft(kind) {
       id: "",
       name: "",
       kind: "llm",
-      provider_type: "anthropic",
-      base_url: "https://api.anthropic.com",
-      api_key: "",
-      default_model: "claude-haiku-4-5",
-      embedding_model: "",
+      providerType: "anthropic",
+      baseUrl: "https://api.anthropic.com",
+      apiKey: "",
+      defaultModel: "claude-haiku-4-5",
+      embeddingModel: "",
       pinned_tier: "",
     };
   }
@@ -161,9 +166,9 @@ function defaultDraft(kind) {
     id: "",
     name: "",
     kind: "tts",
-    provider_type: "openai-compat",
-    base_url: "",
-    api_key: "",
+    providerType: "openai-compat",
+    baseUrl: "",
+    apiKey: "",
     tts_model: "",
     voices: [],
     response_format: "wav",
@@ -197,12 +202,12 @@ async function saveProvider(payload) {
       const body = {
         id: payload.id,
         name: payload.name,
-        provider_type: payload.provider_type,
-        base_url: payload.base_url || "",
-        api_key: payload.api_key || (llmExists ? "" : null),  // "" = keep existing key
-        default_model: payload.default_model || "",
-        embedding_model: payload.embedding_model || "",
-        timeout_seconds: payload.timeout_seconds || 60,
+        providerType: payload.providerType,
+        baseUrl: payload.baseUrl || "",
+        apiKey: payload.apiKey || (llmExists ? "" : null),  // "" = keep existing key
+        defaultModel: payload.defaultModel || "",
+        embeddingModel: payload.embeddingModel || "",
+        timeoutSeconds: payload.timeoutSeconds || 60,
       };
       if (llmExists) {
         await api.request(`/v1/llm-providers/${payload.id}`, {
@@ -227,17 +232,20 @@ async function saveProvider(payload) {
     const externals = [...(current?.engines?.external || [])];
     const filtered = externals.filter((e) => e.id !== payload.id);
     if (wantsTts) {
-      // When editing existing and api_key is blank, preserve the old one.
-      let apiKey = payload.api_key || null;
-      if (!payload.api_key) {
+      // TTS externals persist as snake_case ExternalEngineConfig — convert the
+      // camelCase draft back to snake at this write boundary. When editing an
+      // existing entry and the key is blank, preserve the old one (the raw
+      // settings list is snake, so prev.api_key is read as snake).
+      let apiKey = payload.apiKey || null;
+      if (!payload.apiKey) {
         const prev = externals.find((e) => e.id === payload.id);
         if (prev?.api_key) apiKey = prev.api_key;
       }
       filtered.push({
         id: payload.id,
         name: payload.name || payload.id,
-        provider_type: payload.provider_type === "openai" ? "openai-compat" : (payload.provider_type || "openai-compat"),
-        base_url: payload.base_url || "",
+        provider_type: payload.providerType === "openai" ? "openai-compat" : (payload.providerType || "openai-compat"),
+        base_url: payload.baseUrl || "",
         api_key: apiKey,
         model: payload.tts_model || "",
         voices: Array.isArray(payload.voices) ? payload.voices : [],
@@ -993,7 +1001,7 @@ const allProviders = computed(() => {
     byId.set(pr.id, {
       ...pr,
       kind: "llm",
-      caps: pr.embedding_model ? ["llm", "embedding"] : ["llm"],
+      caps: pr.embeddingModel ? ["llm", "embedding"] : ["llm"],
       online: !!pr.registered,
     });
   }
@@ -1007,7 +1015,7 @@ const allProviders = computed(() => {
         tts_model: pr.tts_model,
         voices: pr.voices,
         response_format: pr.response_format,
-        has_api_key: prev.has_api_key || pr.has_api_key,
+        hasApiKey: prev.hasApiKey || pr.hasApiKey,
       });
     } else {
       byId.set(pr.id, { ...pr, kind: "tts", caps: ["tts"], online: false });
@@ -1016,19 +1024,19 @@ const allProviders = computed(() => {
   const rows = [];
   for (const r of byId.values()) {
     const bits = [];
-    if (r.caps.includes("llm")) bits.push(`chat: ${r.default_model || "—"}`);
-    if (r.embedding_model) bits.push(`embed: ${r.embedding_model}`);
+    if (r.caps.includes("llm")) bits.push(`chat: ${r.defaultModel || "—"}`);
+    if (r.embeddingModel) bits.push(`embed: ${r.embeddingModel}`);
     if (r.caps.includes("tts")) {
       bits.push(`tts: ${r.tts_model || "—"}`);
       if (Array.isArray(r.voices) && r.voices.length) bits.push(`${r.voices.length} voices`);
     }
-    const local = /localhost|127\.0\.0\.1/.test(r.base_url || "");
-    bits.push(r.has_api_key ? "key set" : (local ? "no key — self-hosted, free" : "no key"));
+    const local = /localhost|127\.0\.0\.1/.test(r.baseUrl || "");
+    bits.push(r.hasApiKey ? "key set" : (local ? "no key — self-hosted, free" : "no key"));
     rows.push({ ...r, msum: bits.join(" · ") });
   }
   return rows.filter((r) => {
     if (capOnline.value !== "all" && !r.caps.includes(capOnline.value)) return false;
-    const blob = `${r.name} ${r.id} ${r.base_url || ""} ${r.msum}`.toLowerCase();
+    const blob = `${r.name} ${r.id} ${r.baseUrl || ""} ${r.msum}`.toLowerCase();
     if (qp.value.trim() && !blob.includes(qp.value.trim().toLowerCase())) return false;
     return true;
   });
@@ -1049,7 +1057,9 @@ async function testProviderRow(pr) {
       const r = await api.request("/v1/engines/external/probe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ base_url: pr.base_url, api_key: null }),
+        // probe is the snake_case ExternalEngineConfig probe wire; read the
+        // row's camelCase baseUrl and send it as snake.
+        body: JSON.stringify({ base_url: pr.baseUrl, api_key: null }),
       });
       rowTest[pr.id] = r ? { ok: true, ms: ms() } : { ok: false, message: "probe failed" };
     }
@@ -1065,7 +1075,7 @@ async function testProviderRow(pr) {
 function rowDotClass(pr) {
   const t = rowTest[pr.id];
   if (t && !t.busy) return t.ok ? "" : "err";
-  return (pr.has_api_key || pr.online || /localhost|127\.0\.0\.1/.test(pr.base_url || "")) ? "" : "off";
+  return (pr.hasApiKey || pr.online || /localhost|127\.0\.0\.1/.test(pr.baseUrl || "")) ? "" : "off";
 }
 
 const sharedEngines = computed(() => engines.value.filter((e) => e.isolation !== "venv").length);
@@ -1159,7 +1169,7 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
             <span class="ev-cap" :class="sec.id">{{ sec.id.toUpperCase() }}</span>
             <span class="ev-cap iso" title="OpenAI-compatible server you run yourself — free, private, nothing to install here">SELF-HOSTED</span>
           </span>
-          <span class="desc">{{ pr.base_url }}</span>
+          <span class="desc">{{ pr.baseUrl }}</span>
           <span class="gsum">
             <JvButton variant="ghost" size="sm" label="Edit" title="Edit this provider (opens the provider form)" @click="topTab = 'online'; startEditProvider(pr)" />
           </span>
@@ -1350,7 +1360,7 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
           <span class="ev-caps" style="display:inline-flex;margin-left:6px">
             <span v-for="c in pr.caps" :key="c" class="ev-cap" :class="c">{{ c === 'embedding' ? 'EMBED' : c.toUpperCase() }}</span>
           </span>
-          <span class="url">{{ pr.base_url || '—' }}</span>
+          <span class="url">{{ pr.baseUrl || '—' }}</span>
           <span class="msum">{{ pr.msum }}</span>
         </div>
         <span class="right">

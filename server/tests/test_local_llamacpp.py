@@ -35,7 +35,7 @@ def test_construct_local_llamacpp_points_at_loopback():
 
     adapter = construct(
         LLMProviderConfig(id="local-llamacpp", name="Local llama.cpp",
-                          provider_type="local-llamacpp")
+                          providerType="local-llamacpp")
     )
     assert adapter.provider_type == "local-llamacpp"
     # empty base_url resolves to the loopback llama-server (OpenAI-compat /v1)
@@ -91,6 +91,6 @@ def test_recommendations_rank_local_runner_first(app_clean_registry):
     body = TestClient(app, raise_server_exceptions=False).get(
         "/v1/llm-roles/recommendations"
     ).json()
-    cand = {c["provider_id"]: c for c in body["candidates"]}
+    cand = {c["providerId"]: c for c in body["candidates"]}
     assert cand["local-llamacpp"]["local"] is True  # classified local, not metered
-    assert body["recommended_accuracy"]["provider_id"] == "local-llamacpp"
+    assert body["recommendedAccuracy"]["providerId"] == "local-llamacpp"

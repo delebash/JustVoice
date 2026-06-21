@@ -44,9 +44,9 @@ function looksSelfHosted(url) {
 }
 let _selfHostedTouched = false;
 _watch(() => props.draft?.self_hosted, (v, oldV) => {
-  if (oldV !== undefined && v !== looksSelfHosted(props.draft?.base_url)) _selfHostedTouched = true;
+  if (oldV !== undefined && v !== looksSelfHosted(props.draft?.baseUrl)) _selfHostedTouched = true;
 });
-_watch(() => props.draft?.base_url, (url) => {
+_watch(() => props.draft?.baseUrl, (url) => {
   if (!_selfHostedTouched && props.draft) props.draft.self_hosted = looksSelfHosted(url);
 });
 
@@ -68,8 +68,8 @@ function applyPreset(pr) {
   activePreset.value = pr.id;
   if (pr.id !== "custom") {
     props.draft.name = props.draft.name || pr.label;
-    props.draft.base_url = pr.url;
-    props.draft.provider_type = pr.type;
+    props.draft.baseUrl = pr.url;
+    props.draft.providerType = pr.type;
   }
   props.draft.kind = pr.kind;
 }
@@ -113,7 +113,7 @@ const PROVIDER_HINTS = {
   "openai-compat": { url: "https://platform.openai.com/docs/api-reference/audio/createSpeech", label: "OpenAI-compatible spec", note: "Any server speaking POST /v1/audio/speech. Point baseUrl at the server root." },
 };
 
-const hint = computed(() => PROVIDER_HINTS[props.draft?.provider_type] || PROVIDER_HINTS[props.draft?.id] || null);
+const hint = computed(() => PROVIDER_HINTS[props.draft?.providerType] || PROVIDER_HINTS[props.draft?.id] || null);
 
 function openHint() {
   if (!hint.value?.url) return;
@@ -167,7 +167,7 @@ async function fetchModels() {
         modelsError.value = r?.error || "Provider returned no models.";
       }
     } else {
-      if (!props.draft.base_url) {
+      if (!props.draft.baseUrl) {
         modelsError.value = "Set a base URL first.";
         return;
       }
@@ -188,12 +188,14 @@ const voicesLoading = ref(false);
 const voicesError = ref("");
 
 async function probe() {
+  // The external-engine probe wire is the snake_case ProbeRequest; read the
+  // camelCase draft and send it as snake.
   return api.request("/v1/engines/external/probe", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      base_url: props.draft.base_url,
-      api_key: props.draft.api_key || null,
+      base_url: props.draft.baseUrl,
+      api_key: props.draft.apiKey || null,
     }),
   });
 }
@@ -203,7 +205,7 @@ async function fetchVoices() {
   voicesLoading.value = true;
   fetchedVoices.value = [];
   try {
-    if (!props.draft.base_url) {
+    if (!props.draft.baseUrl) {
       voicesError.value = "Set a base URL first.";
       return;
     }
@@ -253,7 +255,7 @@ async function doTest() {
         : { ok: false, message: r?.error || "not reachable" };
       if (r?.ok) fetchModels();
     } else {
-      if (!props.draft.base_url) {
+      if (!props.draft.baseUrl) {
         test.value = { ok: false, message: "set a base URL first" };
         return;
       }
@@ -281,7 +283,7 @@ async function doTest() {
 const statusText = computed(() => {
   if (testBusy.value) return "testing…";
   if (!test.value) {
-    return props.draft?.api_key || props.draft?.base_url ? "not tested" : "not tested — key missing";
+    return props.draft?.apiKey || props.draft?.baseUrl ? "not tested" : "not tested — key missing";
   }
   if (!test.value.ok) return `unreachable — ${test.value.message}`;
   const bits = ["reachable"];
@@ -327,11 +329,11 @@ async function onSave() {
       </div>
       <div class="pf-f pf-wide">
         <label>Base URL</label>
-        <input type="text" v-model="draft.base_url" placeholder="https://…" />
+        <input type="text" v-model="draft.baseUrl" placeholder="https://…" />
       </div>
       <div class="pf-f">
         <label>API key</label>
-        <input type="password" v-model="draft.api_key" autocomplete="off" placeholder="sk-… (blank for local)" />
+        <input type="password" v-model="draft.apiKey" autocomplete="off" placeholder="sk-… (blank for local)" />
       </div>
       <div class="pf-f">
         <label title="Self-hosted = runs on your machine or network — free and private. Lists under Local; its voices badge as self-hosted, not online·metered.">Where it runs</label>
@@ -357,7 +359,7 @@ async function onSave() {
     <div class="pf-row" v-if="showLlmFields()">
       <div class="pf-f">
         <label title="The wire format the adapter uses. openai-compat covers OpenAI-compatible local servers, DeepSeek, OpenRouter; ollama uses /api/chat for reasoning support.">API format</label>
-        <select v-model="draft.provider_type" class="jv-input jv-w-name">
+        <select v-model="draft.providerType" class="jv-input jv-w-name">
           <option value="anthropic">Anthropic</option>
           <option value="openai">OpenAI</option>
           <option value="openai-compat">OpenAI-compatible</option>
@@ -370,7 +372,7 @@ async function onSave() {
       <div class="pf-f">
         <label>Chat model</label>
         <span class="pf-pick">
-          <input type="text" v-model="draft.default_model" placeholder="e.g. claude-haiku-4-5" list="pf-chat-models" />
+          <input type="text" v-model="draft.defaultModel" placeholder="e.g. claude-haiku-4-5" list="pf-chat-models" />
           <span class="pf-caret" title="Pick from the models this provider's API reports">▾</span>
         </span>
         <datalist id="pf-chat-models">
@@ -384,7 +386,7 @@ async function onSave() {
         variant="secondary"
         size="sm"
         :loading="modelsLoading"
-        :disabled="modelsLoading || (editingKey === 'new' && !draft.base_url)"
+        :disabled="modelsLoading || (editingKey === 'new' && !draft.baseUrl)"
         :label="fetchedModels.length ? '⟳ Refresh' : '⟳ Fetch models'"
         title="Re-query the provider's model list"
         @click="fetchModels"
@@ -392,7 +394,7 @@ async function onSave() {
       <div class="pf-f">
         <label>Embedding model <span class="pf-opt">optional</span></label>
         <span class="pf-pick">
-          <input type="text" v-model="draft.embedding_model" placeholder="text-embedding-3-small" list="pf-embed-models" />
+          <input type="text" v-model="draft.embeddingModel" placeholder="text-embedding-3-small" list="pf-embed-models" />
           <span class="pf-caret">▾</span>
         </span>
         <datalist id="pf-embed-models">
@@ -432,7 +434,7 @@ async function onSave() {
         variant="secondary"
         size="sm"
         :loading="voicesLoading"
-        :disabled="voicesLoading || !draft.base_url"
+        :disabled="voicesLoading || !draft.baseUrl"
         :label="fetchedVoices.length ? '⟳ Refresh' : '⟳ Fetch voices'"
         title="Query the provider's /v1/audio/voices"
         @click="fetchVoices"
