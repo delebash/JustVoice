@@ -120,12 +120,17 @@ table.routes{width:100%;border-collapse:collapse;margin-top:12px}.routes th{text
 .preset-row.active{border-color:var(--accent-line);background:var(--accent-soft)}
 .tip{font-size:12px;color:var(--accent-ink);background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:8px;padding:8px 12px;margin-top:10px}
 .dflt select{font:inherit;font-size:12.5px;border:1px solid var(--line);border-radius:7px;padding:6px 9px;background:var(--surface);min-width:230px}
+.boundary{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.5;color:var(--ink-2);background:var(--violet-soft);border:1px solid var(--violet-line);border-radius:9px;padding:10px 14px;margin-top:12px}
+.boundary b{color:var(--ink)}.boundary .ic{color:var(--violet);font-size:13px;flex:none;margin-top:1px}
+.appnote{grid-column:1/-1;border-top:1px solid var(--line);margin-top:6px;padding-top:11px;display:flex;gap:9px;align-items:flex-start;font-size:11.5px;color:var(--ink-2)}
+.appnote .ic{color:var(--gold);flex:none}
 </style></head><body><div class="page">
 
 <div class="topbar"><span class="brand" id="brand">JustVoice</span><span class="shared">shared · @delebash/llm-ui</span>
 <div class="apptog"><button class="on" id="tg-jv" onclick="setApp('jv')">JustVoice</button><button id="tg-jw" onclick="setApp('jw')">JustWrite</button></div></div>
 <h1>Models</h1>
 <p class="lede">Connect AI providers — free local or metered cloud — and manage which models power each feature.</p>
+<div class="boundary"><span class="ic">🧩</span><div><b>One shared UI</b> (@delebash/llm-ui): Providers &amp; models, Features routing, roles, defaults, Usage and the Lab are <b>identical in both apps</b> — only the <b>Features list</b> (and TTS, in JustVoice) is per-app data. The <b>tons of per-action knobs &amp; prompts live in each action's Lab</b>, saved as a production config — never a wall of global settings. <b>App-domain policies</b> (when to auto-run a feature, library defaults) live in that app's own settings, not here.</div></div>
 <div class="hwtop"><span class="muted" style="font-size:11px;font-weight:700">YOUR HARDWARE</span>
   <div><span class="k">GPU</span> <b>RTX 4070</b> · 12 GB VRAM</div><div><span class="k">RAM</span> <b>32 GB</b></div><div><span class="k">Accel</span> <b>CUDA 12</b></div>
   <span class="muted" style="margin-left:auto;font-size:11.5px">drives the Fit scores below</span></div>
@@ -151,9 +156,9 @@ table.routes{width:100%;border-collapse:collapse;margin-top:12px}.routes th{text
           <span class="wpick"><span class="fit ok">Fits <span class="s">88</span></span> qwen3-14b · 8.2 GB <span class="muted">→ Accuracy</span></span></div></div></div>
       <div class="wstep"><span class="num">3</span><div class="wb"><div class="wt">Optional cloud (heavy QC / final passes)</div>
         <div class="wd"><span class="wpick">＋ add OpenAI / Anthropic key</span> <span class="muted">— skip to stay 100% local &amp; free</span></div></div></div>
-      <div class="wstep"><span class="num">4</span><div class="wb"><div class="wt">Download</div><div class="wd">2 models · <b>10.6 GB</b> total — pulled from Hugging Face on Apply</div></div></div>
-      <div class="wstep"><span class="num">5</span><div class="wb"><div class="wt">Routing preview</div><div class="wd mono">Quick → qwen3-4b · Accuracy → qwen3-14b · cloud features → off</div></div></div>
-      <div class="wsum">Everything runs free on your machine. Re-run any time after a hardware change — it re-scores Fit.
+      <div class="wstep"><span class="num">4</span><div class="wb"><div class="wt">Download</div><div class="wd">2 models · <b>10.6 GB</b> total — pulled from Hugging Face on Apply. Pulls run sequentially; you can cancel mid-way.</div></div></div>
+      <div class="wstep"><span class="num">5</span><div class="wb"><div class="wt">Routing preview</div><div class="wd"><span class="mono">Quick → qwen3-4b · Accuracy → qwen3-14b · cloud features → off</span> — the default for everything not overridden below.</div></div></div>
+      <div class="wsum">Everything runs free on your machine. Fine-tune any feature in Feature routing afterward, and re-run this any time after a hardware change — it re-scores Fit.
         <div style="margin-top:9px;display:flex;gap:8px"><button class="btn primary sm">Apply setup</button><button class="btn ghost sm" onclick="toggleWiz()">Cancel</button></div></div>
     </div>
   </div>
@@ -205,7 +210,7 @@ table.routes{width:100%;border-collapse:collapse;margin-top:12px}.routes th{text
   <div class="card"><div class="cardhead"><h3>Routing &amp; cost defaults</h3><span class="right muted" style="font-size:12px">what "Inherit default" resolves to</span></div>
     <div class="fgrid dflt" id="defaultsbody" style="margin-top:12px"></div></div>
   <div class="card"><div class="cardhead"><h3>Model roles</h3><span class="right muted" style="font-size:12px">optional — a feature inherits a role, or picks its own provider▸model</span></div>
-    <p class="sub">Two jobs, two models — each is a <b>provider ▸ model</b> pick.</p>
+    <p class="sub">Set two go-to models — a fast <b>Quick</b> one and a careful <b>Accuracy</b> one. Features below choose <b>Inherit · Quick/Accuracy</b> to use them, so you retune in one place.</p>
     <div class="roles">
       <div class="role"><div class="rname"><span class="rolechip quick">QUICK</span> Quick model</div><div class="rdesc">Sub-second · interactive.</div>
         <div class="twostep"><select class="pp"><option selected>Local engine</option><option>Ollama</option><option>OpenAI</option></select><select class="mm"><option selected>qwen3-4b-instruct · free</option></select></div></div>
@@ -265,7 +270,7 @@ function modelsSection(d){
    ?`Download from <a class="hflink" href="https://huggingface.co/models?library=gguf" target="_blank" rel="noopener">Hugging Face ↗</a> — the open hub for AI models; the engine runs <b>GGUF</b> files from it. Paste a <span class="mono">repo:quant</span>:`
    :`Pull from the <a class="hflink" href="https://ollama.com/library" target="_blank" rel="noopener">Ollama library ↗</a> — paste a model <span class="mono">tag</span>:`;
  const ph=isHF?'unsloth/Qwen3-14B-GGUF:Q4_K_M':'qwen3:32b';
- return `<div class="kind-label">Models · Fit is for your hardware · auto-loads on first use</div>
+ return `<div class="kind-label">Models — Fit scores how well a model runs on your GPU (higher is better) · downloaded models load on first use</div>
    <div class="mgrid-wrap"><table class="mgrid"><thead><tr><th>Model</th><th>Size</th><th>Fit</th><th>Status</th><th></th></tr></thead><tbody>${d.models.map(row).join('')}</tbody></table></div>
    <div class="inl" style="flex-wrap:wrap"><span class="muted" style="font-size:11.5px;flex-basis:100%;margin-bottom:2px">${dl}</span><input placeholder="${ph}"><button class="btn sm">${isHF?'⬇ Download':'Pull'}</button></div>`;}
 
@@ -275,7 +280,7 @@ function formHTML(k,d){const editing=k!=='new';
  const lock=d.builtin; // built-in Local engine: where-it-runs + API format are known → locked
  const whereSeg=lock
    ?`<span class="seg locked"><button class="on">Local · free</button></span> <span class="muted" style="font-size:11px">fixed · built-in</span>`
-   :`<span class="seg"><button class="${d.local?'on':''}" onclick="segpick(this);keyToggle('${k}',1)">Local · free</button><button class="${d.local?'':'on'}" onclick="segpick(this);keyToggle('${k}',0)">Online · metered</button></span>`;
+   :`<span class="seg"><button class="${d.local?'on':''}" onclick="segpick(this);keyToggle('${k}',1)">Local · free</button><button class="${d.local?'':'on'}" onclick="segpick(this);keyToggle('${k}',0)">Online · metered</button></span><div class="fhint2">Local = runs on this machine, no key. Online = your metered cloud account — sorts it into the right group.</div>`;
  const fmtSeg=lock
    ?`<span class="seg locked"><button class="on">OpenAI-compatible</button></span> <span class="muted" style="font-size:11px">fixed · built-in (llama.cpp)</span>`
    :`<span class="seg"><button class="${d.fmt!=='ollama'?'on':''}" onclick="segpick(this)">OpenAI-compatible</button><button class="${d.fmt==='ollama'?'on':''}" onclick="segpick(this)">Ollama native</button></span>`;
@@ -284,9 +289,9 @@ function formHTML(k,d){const editing=k!=='new';
    <span class="lbl">Name</span><input class="x" value="${d.name}" placeholder="My provider">
    <span class="lbl">Base URL</span><input class="x" value="${d.url}" placeholder="http://localhost:11434/v1">
    <span class="lbl">API key</span><div id="keycell-${k}">${d.local?'<span class="muted" style="font-size:11.5px">— not needed for a local provider</span>':`<input class="x" type="password" value="${d.key}" placeholder="sk-…">`}</div>
-   <span class="lbl">API format</span><div>${fmtSeg}<div class="fhint2"><b>Ollama native</b> — only for an Ollama daemon (lets you turn reasoning on/off). Otherwise OpenAI-compatible.</div></div>
+   <span class="lbl">API format</span><div>${fmtSeg}<div class="fhint2"><b>OpenAI-compatible</b> covers almost everything — OpenAI, Anthropic, Google, OpenRouter, DeepSeek, LM Studio, llama.cpp, vLLM (anything exposing <span class="mono">/v1/chat/completions</span>). Pick <b>Ollama native</b> only for an Ollama daemon — its <span class="mono">/api/chat</span> is the only path that honors <span class="mono">think:false</span> (reasoning on/off).</div></div>
    <span class="lbl">Default chat model</span><div>${cb('chat-'+k,d.chat,d.models.filter(m=>!m.emb),'Fetch or type a model id')}<div class="fhint2">The provider's default — switch it per feature in Features, or in chat.</div></div>
-   <span class="lbl">Embedding model <span class="muted">optional</span></span><div>${cb('emb-'+k,d.emb,d.models.filter(m=>m.emb),'leave blank if not used')}</div>
+   <span class="lbl">Embedding model <span class="muted">optional</span></span><div>${cb('emb-'+k,d.emb,d.models.filter(m=>m.emb),'leave blank if not used')}<div class="fhint2">Fills the RAG / semantic-search index. Leave blank if this isn't your embedding provider. OpenAI: <span class="mono">text-embedding-3-small</span> · Ollama: <span class="mono">nomic-embed-text</span> · Anthropic / Google / OpenRouter don't expose embeddings.</div></div>
  </div>
  ${d.local?modelsSection(d):''}
  <div class="pfoot"><span class="stat"><span class="dot off"></span> not tested</span><span style="flex:1"></span>
@@ -303,28 +308,45 @@ function addProv(){const s=document.getElementById('addslot');if(s.innerHTML.tri
 function closeForm(k){if(k==='new'){document.getElementById('addslot').innerHTML='';}else{const b=document.getElementById('b-'+k);b.innerHTML='';b.style.display='none';document.getElementById('head-'+k).style.display='';}}
 
 // features
+// Feature descriptions are COPIED from the real apps (not invented):
+//   JV  → server feature_pins_api.py FEATURE_CATALOG + renderer SettingsView EXTRA_FEATURES (refine/voice_gender)
+//   JW  → renderer SettingsView.vue AI_FEATURES hints (:75-95)
 const CAT={jv:{brand:"JustVoice",busy:["Compose","· 1,733 calls"],
  starter:"Audiobook starter — a local 14B nails speaker attribution; add a cloud key only for final QC.",
- tog:{label:"Guess voice gender for fetched voices",on:true},rows:[
- ["Speaker attribution","Studio → Script: who says each line","Inherit · Accuracy","qwen3:14b · Ollama","14b-twopass-v3"],
- ["Smart-assign voices","Studio → Cast: match characters to voices","OpenAI ▸ gpt-4o","gpt-4o · OpenAI",""],
- ["Render-preset suggest","Generate: pick a mastering preset","Inherit · Accuracy","qwen3:14b · Ollama",""],
- ["Persona rewrite","Generate: restate a line in the persona's voice","Inherit · Quick","Local engine · qwen3-4b",""],
- ["Compose","Generate: a fresh in-character line","Inherit · Quick","Local engine · qwen3-4b",""],
- ["Show notes","Projects: episode summary + chapters","Inherit · Accuracy","qwen3:14b · Ollama",""],
- ["Dictation cleanup","Captures: raw speech → clean text","Inherit · Quick","Local engine · qwen3-4b",""],
- ["Voice-gender guess","Voices: label unknown fetched voices","Inherit · Quick","Local engine · qwen3-4b",""]]},
+ appNote:"App-specific (lives in JustVoice, not this shared area): voice-gender <b>auto-labeling on import</b> + per-voice defaults live in the <b>Voices</b> library; per-voice & render knobs live in the <b>TTS Lab</b>. They're app behavior, not LLM wiring.",
+ genActions:"Compose · Persona rewrite",rows:[
+ ["Speaker attribution","Extracts who-said-what from prose — the Studio Script tab's Analyze action.","Inherit · Accuracy","qwen3:14b · Ollama","14b-twopass-v3"],
+ ["Smart-assign","Matches characters to voices by age / gender / tone / accent — the Studio Cast tab's Smart-assign button.","OpenAI ▸ gpt-4o","gpt-4o · OpenAI",""],
+ ["Render preset suggest","Classifies chapter tone and picks the matching render preset — the Studio Render tab's Suggest button.","Inherit · Accuracy","qwen3:14b · Ollama",""],
+ ["Persona rewrite","Rewrites the current text in the persona's character voice for preview-then-accept — the Generate view's ✏️ Rewrite button.","Inherit · Quick","Local engine · qwen3-4b",""],
+ ["Compose","Writes a fresh in-character line from a persona's personality prompt — the Generate view's 🎲 Compose button.","Inherit · Quick","Local engine · qwen3-4b",""],
+ ["Show notes","Drafts episode show notes — summary + chapter list with speakers — from the project's segments. Drives the podcast Export surface.","Inherit · Accuracy","qwen3:14b · Ollama",""],
+ ["Dictation cleanup","Captures: raw speech → clean text before paste — filler removal, self-corrections, punctuation.","Inherit · Quick","Local engine · qwen3-4b",""],
+ ["Voice gender guess","Voices: labels fetched voices the built-in dictionary doesn't recognise, so casting filters & Smart-assign can match by gender.","Inherit · Quick","Local engine · qwen3-4b",""]]},
  jw:{brand:"JustWrite",busy:["Critique","· 612 calls"],
  starter:"Writing starter — keep Critique on a strong cloud model; drafting + quick edits on fast local.",
- tog:{label:"Auto-rebuild RAG index after big edits",on:true},rows:[
- ["Critique","Per-chapter line notes + structural pass","Inherit · Accuracy","claude-sonnet-4-6 · Anthropic","critique-strict-v2"],
- ["Plot-hole audit","Whole-book continuity scan","Inherit · Accuracy","qwen3:14b · Ollama",""],
- ["Entity sweep","Find new characters / locations / objects","Inherit · Accuracy","qwen3:14b · Ollama",""],
- ["Writer actions","Scene strip: Rewrite · Expand · Tighten","Inherit · Quick","Local engine · qwen3-4b",""],
- ["Brainstorm","Name / title / freeform ideas","Inherit · Quick","Local engine · qwen3-4b",""],
- ["Reverse outline","Read the draft → the act structure","Inherit · Accuracy","qwen3:14b · Ollama",""],
- ["Manuscript chat","\"Ask the book\" — RAG Q&A","Inherit · Accuracy","claude-sonnet-4-6 · Anthropic",""],
- ["Resume briefing","Home: \"Previously on your novel\"","Inherit · Quick","Local engine · qwen3-4b",""]]}};
+ appNote:"App-specific (lives in JustWrite, not this shared area): <b>Auto-rebuild RAG</b> — re-embed scenes ~1 min after edits — lives in <b>Manuscript / Chat</b> settings. It's app behavior (when to run a feature), not LLM wiring.",
+ genActions:"Continue · Describe · line edit · Continue with direction",rows:[
+ ["Critique","The Critique modal — line-level notes (flags / suggestions / observations) and the structural pass (tension, hook, pacing, ending).","Anthropic ▸ claude-sonnet-4-6","claude-sonnet-4-6 · Anthropic","critique-strict-v2"],
+ ["Manuscript chat","“Ask the book” — RAG question/answer mode in the chat panel.","Anthropic ▸ claude-sonnet-4-6","claude-sonnet-4-6 · Anthropic",""],
+ ["Plot-hole audit","Whole-book continuity scan for contradictions, timeline issues, and character-knowledge errors.","Anthropic ▸ claude-sonnet-4-6","claude-sonnet-4-6 · Anthropic",""],
+ ["Reverse outline","Reads the whole draft and produces the act structure the book actually has — plot points, act breaks, per-chapter beats.","Anthropic ▸ claude-sonnet-4-6","claude-sonnet-4-6 · Anthropic",""],
+ ["Multi-reader panel","Four distinct reader personas (genre reader / literary critic / agent intern / book-club reader) react to a chapter in parallel.","Anthropic ▸ claude-sonnet-4-6","claude-sonnet-4-6 · Anthropic",""],
+ ["Marketing pack","Logline, back-cover blurbs, synopsis, and elevator pitch for querying and pitching.","Anthropic ▸ claude-sonnet-4-6","claude-sonnet-4-6 · Anthropic",""],
+ ["Entity sweep","Scans chapters for new characters / locations / objects.","Inherit · Quick","Local engine · qwen3-4b",""],
+ ["Writer actions","The AI dropdown in each scene's strip — Rewrite, Expand, Tighten, Continue, Describe, plus all Line edits.","Inherit · Quick","Local engine · qwen3-4b",""],
+ ["Brainstorm","The Brainstorm view — name / title / freeform idea generation with thumbs-up steering.","Inherit · Quick","Local engine · qwen3-4b",""],
+ ["Resume briefing","Generates the Home “Previously on your novel” recap card.","Inherit · Quick","Local engine · qwen3-4b",""],
+ ["Session recap","End-of-day “Wrap up session” recap + open-thread suggestions.","Inherit · Quick","Local engine · qwen3-4b",""],
+ ["Unstuck moves","The AI dropdown's “Unstuck — five ways out” diagnostic that proposes goal shift / interrupt / setting / reveal / time cut.","Inherit · Quick","Local engine · qwen3-4b",""],
+ ["Sensory research","The AI dropdown's “Research feel…” modal — structured sensory pack for a selected subject.","Inherit · Quick","Local engine · qwen3-4b",""],
+ ["Foreshadowing scan","Whole-book scan for setups that may not have paid off.","Inherit · Accuracy","qwen3:14b · Ollama",""],
+ ["Reader knowledge","Tracks dramatic irony — what the reader knows vs. what the POV character knows, chapter by chapter.","Inherit · Accuracy","qwen3:14b · Ollama",""],
+ ["Voice drift explainer","Diagnoses what shifted between an outlier chapter and the writer's baseline voice in the Analysis dashboard.","Inherit · Accuracy","qwen3:14b · Ollama",""],
+ ["Character audit","Per-character consistency audit (profile + their scenes → flagged actions) on the Characters view.","Inherit · Accuracy","qwen3:14b · Ollama",""],
+ ["Beat sheet overlay","Maps your draft to Save the Cat, Hero's Journey, or 7-Point Story Structure beats.","Inherit · Accuracy","qwen3:14b · Ollama",""],
+ ["Character chat","The chat panel's “Talk to a character” mode — first-person, in-voice answers from your cast.","Inherit · Accuracy","qwen3:14b · Ollama",""],
+ ["Relationship arc","Chapter-by-chapter warmth / tension / power tracking for a pair of characters.","Inherit · Accuracy","qwen3:14b · Ollama",""]]}};
 const EX={"Speaker attribution":["You attribute every line of dialogue to the character who speaks it. Use only the provided cast; never invent speakers.","Chapter:\n{{chapter_text}}\n\nReturn JSON: [{line, speaker, confidence}]."],
  "Critique":["You are a sharp, honest fiction editor giving line-level notes on one chapter.","{{chapter_text}}\n\nReturn JSON: {notes:[{type, quote, note}]}."]};
 function frow(r,i){const[n,d,u,res,cfg]=r;
@@ -349,12 +371,14 @@ function frow(r,i){const[n,d,u,res,cfg]=r;
 function render(a){
  document.getElementById('routebody').innerHTML=CAT[a].rows.map(frow).join('');
  document.getElementById('startertip').textContent=CAT[a].starter;
- const t=CAT[a].tog;
  document.getElementById('defaultsbody').innerHTML=
    `<span class="lbl">Default LLM</span><div><select><option selected>Local engine ▸ qwen3-4b-instruct</option><option>Ollama ▸ qwen3:14b</option><option>OpenAI ▸ gpt-4o-mini</option></select> <span class="muted" style="font-size:11px">free · on-device</span></div>`+
-   `<span class="lbl">Default embedding</span><div><select><option selected>Ollama ▸ nomic-embed-text</option><option>OpenAI ▸ text-embedding-3-small</option></select> <span class="muted" style="font-size:11px">free · on-device</span></div>`+
-   `<span class="lbl">${t.label}</span><div><span class="toggle${t.on?'':' off'}"><i></i></span></div>`+
-   `<span class="lbl">Show 3 variations</span><div><span class="toggle off"><i></i></span> <span class="muted" style="font-size:11px">— on every AI action, to compare in place</span></div>`;}
+   `<span class="lbl">Default embedding</span><div><select><option selected>Ollama ▸ nomic-embed-text</option><option>OpenAI ▸ text-embedding-3-small</option></select> <span class="muted" style="font-size:11px">turns text into vectors for search / RAG</span></div>`+
+   `<div style="grid-column:1/-1;border-top:1px solid var(--line);margin-top:6px;padding-top:12px;display:flex;gap:11px;align-items:flex-start">
+      <span class="toggle off" style="flex:none;margin-top:1px"><i></i></span>
+      <div><div style="font-weight:600;font-size:12.5px">3-alternative drafting <span class="muted" style="font-weight:400">· off by default · a generation mode of the shared dispatch</span></div>
+      <div class="muted" style="font-size:11.5px;margin-top:2px;max-width:760px">Generative actions (<b>${CAT[a].genActions}</b>) run <b>three takes at once</b> at temperatures 0.55 / 0.7 / 0.95 (conservative ↔ inventive) — keep the one that reads best, the other two are discarded. <b>Triples cloud token cost; free on local</b>, so it's off by default. Shift-click any AI action to do it once without turning this on.</div></div></div>`+
+   `<div class="appnote"><span class="ic">▸</span><div>${CAT[a].appNote}</div></div>`;}
 function tog(i){const e=document.getElementById('ed'+i);e.style.display=e.style.display==='none'?'':'none'}
 function toggleWiz(){const w=document.getElementById('wiz'),b=document.getElementById('wizbtn'),open=w.style.display==='none';w.style.display=open?'':'none';b.textContent=open?'Recommend for my hardware ▴':'Recommend for my hardware ▾';}
 function addPreset(){const l=document.getElementById('presetlist');const r=document.createElement('div');r.className='preset-row';r.innerHTML='<div><input value="New preset" style="font:inherit;font-weight:600;border:1px solid var(--line);border-radius:6px;padding:3px 7px;width:180px"><div class="recipe">quick=local·4B · accuracy=local·14B · heavy=cloud</div></div><span class="right"><button class="btn sm">Use</button><button class="btn sm">Edit</button><button class="btn sm danger" onclick="this.closest(\'.preset-row\').remove()">Delete</button></span>';l.appendChild(r);}
