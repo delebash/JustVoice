@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import logging
 
+from ..extraction.identify import IDENTIFY_SYSTEM as _IDENTIFY_SYSTEM
 from ..extraction.prompts import (
     DIRECT_SYSTEM as _ATTR_DIRECT_SYSTEM,
     GUIDED_SYSTEM as _ATTR_GUIDED_SYSTEM,
@@ -288,6 +289,13 @@ DEFAULT_FEATURE_PROMPTS: list[dict] = [
     {
         "key": "speaker_attribution.direct", "feature": "speaker_attribution",
         "system": _ATTR_DIRECT_SYSTEM, "user_template": _ATTR_USER_TEMPLATE,
+        "temperature": 0.2, "think": False,
+    },
+    {
+        # Identification has its own system prompt but routes through the
+        # speaker_attribution feature for provider/tier resolution.
+        "key": "identify", "feature": "speaker_attribution",
+        "system": _IDENTIFY_SYSTEM, "user_template": "",
         "temperature": 0.2, "think": False,
     },
 ]

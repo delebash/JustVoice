@@ -57,6 +57,7 @@ def test_extraction_prompts_seeded(tmp_path):
     c = TestClient(create_app(data_dir=tmp_path))
     by_key = {p["key"]: p for p in c.get("/v1/ai/prompts").json()["prompts"]}
     assert "speaker_attribution.guided" in by_key and "speaker_attribution.direct" in by_key
+    assert "identify" in by_key and "casting assistant" in by_key["identify"]["system"]
     g, d = by_key["speaker_attribution.guided"], by_key["speaker_attribution.direct"]
     assert "attribute dialogue" in g["system"] and "WORKED EXAMPLES" in g["system"]
     assert "attribute dialogue" in d["system"] and "WORKED EXAMPLES" not in d["system"]

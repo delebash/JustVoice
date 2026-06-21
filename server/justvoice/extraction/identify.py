@@ -108,11 +108,14 @@ def identify_speakers(
         + "\n\nManuscript text:\n"
         + text
     )
+    from ..engines.llm.prompt_store import get_prompt_store
+
+    _prompt = get_prompt_store().get("identify")
     resp = chat_fn(
         config=llm_config(settings),
         feature="speaker_attribution",
         messages=[LLMMessage(role="user", content=user)],
-        system=IDENTIFY_SYSTEM,
-        temperature=0.2,
+        system=(_prompt.system if _prompt else ""),
+        temperature=(_prompt.temperature if _prompt else 0.2),
     )
     return parse_candidates(getattr(resp, "content", str(resp)), known_names)
