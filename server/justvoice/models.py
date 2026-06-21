@@ -13,8 +13,20 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
-from pydantic.alias_generators import to_camel
+from pydantic import BaseModel, Field
+
+# LLM provider / feature-pin / role / production-config models are the
+# SHARED contract — single-sourced in llm_runner.llm.schema (2026-06-21
+# AI-stack convergence) and reused here so JV settings + the shared dispatch
+# never drift. (Previously duplicated verbatim in this file.) LLMRoleTarget is
+# re-exported for justvoice.models consumers (tests, settings) — hence noqa.
+from llm_runner.llm.schema import (  # noqa: F401
+    FeaturePinConfig,
+    LLMProviderConfig,
+    LLMRolesSettings,
+    LLMRoleTarget,
+    ProductionConfig,
+)
 
 # ─── Common / system ────────────────────────────────────────────────────
 
@@ -256,91 +268,6 @@ class ExternalEngineConfig(BaseModel):
     # edits. New types: elevenlabs / speechify / speechmatics / openai-tts /
     # edge-tts (Edge TTS deferred — needs Tauri-side msedge-tts wiring).
     provider_type: str = "openai-compat"
-
-
-class LLMProviderConfig(BaseModel):
-    """Phase 2 / Slice 3 — registered LLM provider entry.
-
-    Mirrors JustWrite's per-provider settings shape. `provider_type`
-    discriminates which adapter (anthropic / openai / openai-compat /
-    gemini / ollama / deepseek / openrouter) handles the dispatch.
-    `base_url` defaults are baked into the adapter; setting it here
-    overrides (used for self-hosted Ollama or proxy endpoints).
-
-    Wire shape (Thread 3): camelCase aliases so the API ACCEPTS both snake_case
-    (legacy) and camelCase (the shared llm-ui contract) on input;
-    `populate_by_name` keeps snake construction + settings.json persistence
-    working. Existing endpoints still EMIT snake — the settings routes pin
-    `response_model_by_alias=False`. The emission flip is deferred to the
-    renderer's llm-ui adoption (docs/plans/2026-06-16-thread3-phase2-llm-ui.md).
-    """
-
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-
-    id: str
-    name: str
-    provider_type: str  # "anthropic" | "openai" | "openai-compat" | "gemini" | "ollama" | "deepseek" | "openrouter"
-    base_url: str = ""
-    api_key: str | None = None
-    default_model: str = ""
-    embedding_model: str = ""  # optional — provider doubles as the EMBED source
-    timeout_seconds: int = 60
-    extra: dict[str, str] = {}  # provider-specific extras (org id, region, etc.)
-
-
-class FeaturePinConfig(BaseModel):
-    """Phase 2 / Slice 7 — which provider+model handles each LLM feature.
-
-    Looked up at dispatch time by feature key (compose / persona_rewrite /
-    speaker_attribution / render_preset_suggest / smart_assign). The QuickSetup
-    wizard pre-fills these based on the hardware tier preset.
-
-    camelCase aliases (Thread 3): accepts snake + camel on input via
-    `populate_by_name`; settings routes still emit snake.
-    """
-
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-
-    feature: str  # "compose" | "persona_rewrite" | "speaker_attribution" | "render_preset_suggest" | "smart_assign" | "refine" | ...
-    provider_id: str = ""
-    model: str = ""
-    tier: str | None = None  # "guided" | "direct" | "reasoned" — null = use auto-classify
-    # Inherit a model role instead of naming provider+model directly.
-    # "quick" | "accuracy" | None. Explicit provider_id/model win over role.
-    role: str | None = None
-
-
-class LLMRoleTarget(BaseModel):
-    """One half of the Quick/Accuracy pair (Settings → AI features)."""
-
-    provider_id: str
-    model: str = ""
-
-
-class LLMRolesSettings(BaseModel):
-    """The two plain-language model roles. Features inherit one of these
-    unless pinned to something specific. Recommended (never hardcoded)
-    by GET /v1/llm-roles/recommendations."""
-
-    quick: LLMRoleTarget | None = None
-    accuracy: LLMRoleTarget | None = None
-
-
-class ProductionConfig(BaseModel):
-    """A feature frozen exactly as tuned in its Lab — model AND prompts.
-    The active config beats pins and roles (precedence step 1). One per
-    feature; deleting it reverts the feature to Default (tier-resolved)."""
-
-    feature: str
-    name: str
-    provider_id: str
-    model: str = ""
-    tier: str | None = None
-    temperature: float | None = None
-    system_prompt: str | None = None
-    user_prompt: str | None = None
-    promoted_at: str | None = None  # ISO timestamp
-    source: str = "speaker_lab"
 
 
 class EnginesSettings(BaseModel):

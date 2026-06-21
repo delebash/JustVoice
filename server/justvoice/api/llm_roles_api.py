@@ -87,13 +87,22 @@ class ProductionConfigList(BaseModel):
     configs: list[ProductionConfig]
 
 
-@router.get("/v1/production-configs", response_model=ProductionConfigList)
+@router.get(
+    "/v1/production-configs",
+    response_model=ProductionConfigList,
+    response_model_by_alias=False,  # emit snake — shared schema carries camel aliases
+)
 async def list_production_configs() -> ProductionConfigList:
     settings = get_state().settings.get()
     return ProductionConfigList(configs=settings.engines.production_configs)
 
 
-@router.post("/v1/production-configs", response_model=ProductionConfig, status_code=201)
+@router.post(
+    "/v1/production-configs",
+    response_model=ProductionConfig,
+    status_code=201,
+    response_model_by_alias=False,  # emit snake — shared schema carries camel aliases
+)
 async def upsert_production_config(body: ProductionConfig) -> ProductionConfig:
     """Speaker Lab 'Use as production' — freezes model + prompts for a
     feature. One active config per feature; posting replaces it."""
