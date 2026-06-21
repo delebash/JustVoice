@@ -1217,21 +1217,6 @@ class ShowNotesResponse(BaseModel):
     markdown: str
 
 
-SHOW_NOTES_SYSTEM = """You write podcast show notes. Given a transcript-style
-script (segments with speaker names), produce concise markdown:
-
-## Episode summary
-2-3 sentences.
-
-## Chapters
-- One bullet per segment/topic, naming who speaks.
-
-## Pull quotes
-2 short verbatim quotes, attributed.
-
-Return ONLY the markdown."""
-
-
 @router.post("/v1/projects/{project_id}/show-notes", response_model=ShowNotesResponse)
 async def project_show_notes(
     project_id: str, db: Session = Depends(get_db)
@@ -1243,6 +1228,7 @@ async def project_show_notes(
     from llm_runner.llm import LLMMessage, LLMNotConfiguredError
     from llm_runner.llm.dispatch import chat
     from ..engines.llm.config import llm_config
+    from ..engines.llm.prompt_store import get_prompt_store
 
     project = db.query(Project).filter(Project.id == project_id).first()
     if project is None:
@@ -1266,14 +1252,17 @@ async def project_show_notes(
     if not script.strip():
         raise bad_request("project has no segments to summarize")
 
+    prompt = get_prompt_store().get("show_notes")
+    if prompt is None:
+        raise HTTPException(status_code=500, detail="show_notes prompt not seeded")
     settings = get_state().settings.get()
     try:
         resp = chat(
             config=llm_config(settings),
             feature="show_notes",
             messages=[LLMMessage(role="user", content=script[:24000])],
-            system=SHOW_NOTES_SYSTEM,
-            temperature=0.4,
+            system=prompt.system,
+            temperature=prompt.temperature,
         )
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))

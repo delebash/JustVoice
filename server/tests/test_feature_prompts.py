@@ -15,7 +15,7 @@ def test_prompts_seeded_and_editable(tmp_path):
     assert r.status_code == 200, r.text
     by_key = {p["key"]: p for p in r.json()["prompts"]}
     # The one-shot features migrated this increment.
-    assert "smart_assign" in by_key and "render_preset_suggest" in by_key
+    assert "smart_assign" in by_key and "render_preset_suggest" in by_key and "show_notes" in by_key
     assert "casting director" in by_key["smart_assign"]["system"]
     assert by_key["smart_assign"]["builtIn"] is True
 
@@ -43,7 +43,8 @@ def test_reset_and_get_unknown(tmp_path):
 def test_endpoints_have_no_hardcoded_system_constant():
     # The migrated endpoints must not carry a SYSTEM_PROMPT constant anymore —
     # the prompt comes from the DB store.
-    from justvoice.api import preset_suggest_api, smart_assign_api
+    from justvoice.api import preset_suggest_api, projects_api, smart_assign_api
 
     assert not hasattr(smart_assign_api, "SYSTEM_PROMPT")
     assert not hasattr(preset_suggest_api, "SYSTEM_PROMPT")
+    assert not hasattr(projects_api, "SHOW_NOTES_SYSTEM")

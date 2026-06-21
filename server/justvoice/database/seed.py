@@ -244,6 +244,20 @@ Rules:
   - Reply with the JSON object only. No prose, no preamble.
 """
 
+_SHOW_NOTES_SYSTEM = """You write podcast show notes. Given a transcript-style
+script (segments with speaker names), produce concise markdown:
+
+## Episode summary
+2-3 sentences.
+
+## Chapters
+- One bullet per segment/topic, naming who speaks.
+
+## Pull quotes
+2 short verbatim quotes, attributed.
+
+Return ONLY the markdown."""
+
 DEFAULT_FEATURE_PROMPTS: list[dict] = [
     {
         "key": "smart_assign", "feature": "smart_assign",
@@ -254,6 +268,11 @@ DEFAULT_FEATURE_PROMPTS: list[dict] = [
         "key": "render_preset_suggest", "feature": "render_preset_suggest",
         "system": _PRESET_SUGGEST_SYSTEM, "user_template": "",
         "temperature": 0.0, "think": False,
+    },
+    {
+        "key": "show_notes", "feature": "show_notes",
+        "system": _SHOW_NOTES_SYSTEM, "user_template": "",
+        "temperature": 0.4, "think": False,
     },
 ]
 
