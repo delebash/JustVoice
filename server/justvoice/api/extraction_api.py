@@ -298,7 +298,11 @@ class ExtractionConfigResponse(BaseModel):
 async def extraction_config() -> ExtractionConfigResponse:
     from llm_runner.llm.dispatch import resolve_pin
     from llm_runner.llm import TIERS
-    from ..extraction.prompts import DIRECT_SYSTEM, GUIDED_SYSTEM, USER_TEMPLATE
+    from ..engines.llm.prompt_store import get_prompt_store
+
+    _store = get_prompt_store()
+    _guided = _store.get("speaker_attribution.guided")
+    _direct = _store.get("speaker_attribution.direct")
 
     provider_id = model = tier_name = None
     settings = get_state().settings.get()
@@ -322,8 +326,11 @@ async def extraction_config() -> ExtractionConfigResponse:
             )
             for t in TIERS.values()
         ],
-        system_prompts={"guided": GUIDED_SYSTEM, "direct": DIRECT_SYSTEM},
-        user_template=USER_TEMPLATE,
+        system_prompts={
+            "guided": _guided.system if _guided else "",
+            "direct": _direct.system if _direct else "",
+        },
+        user_template=_guided.user_template if _guided else "",
         resolved_provider_id=provider_id,
         resolved_model=model,
         resolved_tier=tier_name,

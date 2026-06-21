@@ -88,11 +88,6 @@ Return only the JSON array, one entry per [D#] in the order they appear.
 """
 
 
-def system_for(tier_system_key: str) -> str:
-    """`tier_system_key` is the TierSpec.system_key — "guided" or "direct"."""
-    return GUIDED_SYSTEM if tier_system_key == "guided" else DIRECT_SYSTEM
-
-
 def format_characters(characters: list[dict]) -> str:
     """One line per character: `- id="c_mara", name="Mara", role=..., gender=...`"""
     lines: list[str] = []

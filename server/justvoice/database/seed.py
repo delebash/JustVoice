@@ -16,6 +16,12 @@ from __future__ import annotations
 import json
 import logging
 
+from ..extraction.prompts import (
+    DIRECT_SYSTEM as _ATTR_DIRECT_SYSTEM,
+    GUIDED_SYSTEM as _ATTR_GUIDED_SYSTEM,
+    USER_TEMPLATE as _ATTR_USER_TEMPLATE,
+)
+
 log = logging.getLogger(__name__)
 
 BUILTIN_EFFECT_PRESETS: list[dict] = [
@@ -273,6 +279,16 @@ DEFAULT_FEATURE_PROMPTS: list[dict] = [
         "key": "show_notes", "feature": "show_notes",
         "system": _SHOW_NOTES_SYSTEM, "user_template": "",
         "temperature": 0.4, "think": False,
+    },
+    {
+        "key": "speaker_attribution.guided", "feature": "speaker_attribution",
+        "system": _ATTR_GUIDED_SYSTEM, "user_template": _ATTR_USER_TEMPLATE,
+        "temperature": 0.2, "think": False,
+    },
+    {
+        "key": "speaker_attribution.direct", "feature": "speaker_attribution",
+        "system": _ATTR_DIRECT_SYSTEM, "user_template": _ATTR_USER_TEMPLATE,
+        "temperature": 0.2, "think": False,
     },
 ]
 

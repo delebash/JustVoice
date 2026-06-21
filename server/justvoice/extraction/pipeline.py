@@ -28,9 +28,8 @@ from .prompts import (
     format_characters,
     format_corrections,
     format_paragraphs,
-    system_for,
-    USER_TEMPLATE,
 )
+from ..engines.llm.prompt_store import get_prompt_store
 from .segmentation import segment_paragraphs, split_into_paragraphs
 
 log = logging.getLogger(__name__)
@@ -141,11 +140,14 @@ def analyze_scene(
 
         tier = TIERS[request.tier]
 
-    system = request.system_prompt or system_for(tier.system_key)
+    # Tier-specific prompt comes from the DB (Lab-editable), keyed
+    # speaker_attribution.<guided|direct>; the request can override per-call.
+    attr = get_prompt_store().get(f"speaker_attribution.{tier.system_key}")
+    system = request.system_prompt or (attr.system if attr else "")
     # Token replacement instead of str.format so a user-edited template
     # with stray braces can't raise KeyError mid-pipeline.
     user = (
-        (request.user_prompt or USER_TEMPLATE)
+        (request.user_prompt or (attr.user_template if attr else ""))
         .replace("{characters}", format_characters(request.characters))
         .replace("{corrections}", format_corrections(request.corrections))
         .replace("{paragraphs}", format_paragraphs(segments))

@@ -48,3 +48,31 @@ def test_endpoints_have_no_hardcoded_system_constant():
     assert not hasattr(smart_assign_api, "SYSTEM_PROMPT")
     assert not hasattr(preset_suggest_api, "SYSTEM_PROMPT")
     assert not hasattr(projects_api, "SHOW_NOTES_SYSTEM")
+
+
+def test_extraction_prompts_seeded(tmp_path):
+    # The speaker-attribution pipeline + /v1/extraction/config read tier-specific
+    # prompts from the DB (speaker_attribution.guided/.direct). The old in-code
+    # selector system_for() is gone.
+    c = TestClient(create_app(data_dir=tmp_path))
+    by_key = {p["key"]: p for p in c.get("/v1/ai/prompts").json()["prompts"]}
+    assert "speaker_attribution.guided" in by_key and "speaker_attribution.direct" in by_key
+    g, d = by_key["speaker_attribution.guided"], by_key["speaker_attribution.direct"]
+    assert "attribute dialogue" in g["system"] and "WORKED EXAMPLES" in g["system"]
+    assert "attribute dialogue" in d["system"] and "WORKED EXAMPLES" not in d["system"]
+    assert "{characters}" in g["userTemplate"] and "{paragraphs}" in g["userTemplate"]
+    assert g["feature"] == "speaker_attribution" and g["builtIn"] is True
+
+    from justvoice.extraction import prompts as _p
+    assert not hasattr(_p, "system_for")
+
+
+def test_extraction_config_serves_db_prompts(tmp_path):
+    # The Speaker Lab's config endpoint now sources its prompt bodies from the DB.
+    c = TestClient(create_app(data_dir=tmp_path))
+    r = c.get("/v1/extraction/config")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert "WORKED EXAMPLES" in body["system_prompts"]["guided"]
+    assert "WORKED EXAMPLES" not in body["system_prompts"]["direct"]
+    assert "{paragraphs}" in body["user_template"]
