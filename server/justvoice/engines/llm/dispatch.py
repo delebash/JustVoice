@@ -1,39 +1,26 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Feature-pin → provider dispatch.
+"""Compat bridge — feature dispatch now lives in the shared
+`llm_runner.llm.dispatch` (2026-06-21 AI-stack convergence). The shared
+dispatch takes an `LLMConfig`; this module keeps JustVoice's existing
+`(settings, feature)` call signatures and builds the `LLMConfig` from
+`settings.engines.*` so the ~14 existing call sites stay unchanged.
 
-Compose, Rewrite, Speaker-attribution, Smart-assign and Render-preset-Suggest
-all call into the LLM registry through one of these helpers. The dispatch
-looks up `settings.engines.feature_pins` for the feature key, finds the
-matching provider, and calls its `.chat()`.
-
-Slice 3 has the basic structure; Slice 6 layers tier-aware prompt
-selection on top; Slice 7 wires Compose + Rewrite endpoints to call
-into here instead of returning 501.
-"""
+The two app-catalog values (`DEFAULT_FEATURE_ROLES` — which features
+default to quick/accuracy — and the local-runner preference) live HERE
+because they're JustVoice's catalog data, not shared machinery."""
 
 from __future__ import annotations
 
-import logging
 from typing import Iterable
 
-from .base import LLMAdapter, LLMMessage, LLMResponse
-from .registry import get_llm_registry
-from .tiers import TierSpec, spec_for
+from llm_runner.llm import LLMConfig
+from llm_runner.llm import dispatch as _shared
+from llm_runner.llm.base import LLMMessage, LLMResponse
+from llm_runner.llm.dispatch import LLMNotConfiguredError
 
-log = logging.getLogger(__name__)
-
-
-class LLMNotConfiguredError(RuntimeError):
-    """Raised when a feature is invoked but no provider is pinned (or
-    the pinned provider isn't registered). The API layer maps this to
-    HTTP 501 so the UI can show the actionable "wire an LLM provider"
-    message rather than a generic 500."""
-
-
-# Default role per feature — the factory wiring of the two-speed pattern
-# (docs/plans/2026-06-11-engines-ai-features-implementation.md). Latency-
-# sensitive interactive features ride Quick; accuracy-critical async
-# features ride Accuracy. Used only when no production config and no pin.
+# JustVoice feature catalog → default role (the two-speed pattern).
+# Latency-sensitive interactive features ride Quick; accuracy-critical
+# async features ride Accuracy. Used only when no production config / pin.
 DEFAULT_FEATURE_ROLES: dict[str, str] = {
     "refine": "quick",
     "compose": "quick",
@@ -45,108 +32,37 @@ DEFAULT_FEATURE_ROLES: dict[str, str] = {
     "render_preset_suggest": "accuracy",
 }
 
-
-# The built-in llama.cpp runner. When it's registered and a target feature has
-# no production config / pin / role configured, prefer it over the generic
-# first-adapter fallback — it's the recommended local default for the
-# accuracy-critical, privacy-sensitive work the runner exists for (speaker
-# attribution). Other features keep the plain first-adapter fallback.
+# The built-in llama.cpp runner is the smart local default for its target
+# (privacy-sensitive, accuracy-critical) features when nothing more
+# specific is configured.
 LOCAL_RUNNER_PROVIDER_ID = "local-llamacpp"
 _PREFER_LOCAL_RUNNER: set[str] = {"speaker_attribution"}
 
 
-def _resolve_role(settings, role: str) -> tuple[LLMAdapter, str] | None:
-    """Map a role name to (adapter, model) via settings.engines.llm_roles."""
-    roles = getattr(settings.engines, "llm_roles", None)
-    target = getattr(roles, role, None) if roles else None
-    if target is None or not target.provider_id:
-        return None
-    adapter = get_llm_registry().get(target.provider_id)
-    if adapter is None:
-        return None
-    return adapter, target.model or adapter.default_model
+def _config(settings) -> LLMConfig:
+    """Build the shared dispatch's `LLMConfig` from JV settings."""
+    eng = settings.engines
+    return LLMConfig(
+        providers=list(getattr(eng, "llm", []) or []),
+        feature_pins=list(getattr(eng, "feature_pins", []) or []),
+        llm_roles=getattr(eng, "llm_roles", None),
+        production_configs=list(getattr(eng, "production_configs", []) or []),
+        default_feature_roles=DEFAULT_FEATURE_ROLES,
+        prefer_local_features=_PREFER_LOCAL_RUNNER,
+        local_runner_provider_id=LOCAL_RUNNER_PROVIDER_ID,
+    )
 
 
 def active_production_config(settings, feature: str):
-    """The frozen Lab config for a feature, or None. Precedence step 1."""
-    configs = getattr(settings.engines, "production_configs", []) or []
-    return next((c for c in configs if c.feature == feature), None)
+    return _shared.active_production_config(_config(settings), feature)
 
 
-def resolve_pin(settings, feature: str) -> tuple[LLMAdapter, str, str | None]:
-    """Resolve the (provider, model, tier) tuple for a feature key.
-
-    Precedence (AI-features redesign):
-      1. active production config (model part — prompts ride separately)
-      2. feature pin with explicit provider/model
-      3. feature pin inheriting a role ("quick"/"accuracy")
-      4. DEFAULT_FEATURE_ROLES → llm_roles
-      5. first registered adapter (legacy fallback)
-    Raises LLMNotConfiguredError when nothing resolves.
-    """
-    cfg = active_production_config(settings, feature)
-    if cfg is not None:
-        adapter = get_llm_registry().get(cfg.provider_id)
-        if adapter is not None:
-            return adapter, cfg.model or adapter.default_model, cfg.tier
-        log.warning(
-            "production config %r for %s names unregistered provider %s — falling through",
-            cfg.name, feature, cfg.provider_id,
-        )
-
-    feature_pins = getattr(settings.engines, "feature_pins", []) or []
-    pin = next((p for p in feature_pins if p.feature == feature), None)
-
-    if pin is not None and not pin.provider_id and pin.role:
-        resolved = _resolve_role(settings, pin.role)
-        if resolved is not None:
-            return resolved[0], resolved[1], pin.tier
-
-    if pin is None or not pin.provider_id:
-        # Role-default path: the feature's factory role, if configured.
-        default_role = DEFAULT_FEATURE_ROLES.get(feature)
-        if default_role:
-            resolved = _resolve_role(settings, default_role)
-            if resolved is not None:
-                return resolved[0], resolved[1], None
-        # Built-in local runner is the smart default for its target features
-        # (e.g. attribution) when nothing more specific is configured.
-        if feature in _PREFER_LOCAL_RUNNER:
-            local = get_llm_registry().get(LOCAL_RUNNER_PROVIDER_ID)
-            if local is not None:
-                return local, local.default_model, None
-        # No pin set yet — fall back to the first registered LLM if any.
-        # Better UX than 501 in the "user added one Claude key but didn't
-        # configure pins" common case.
-        adapters = get_llm_registry().all()
-        if not adapters:
-            raise LLMNotConfiguredError(
-                f"No LLM provider registered. Add one in EnginesView's LLM "
-                f"tab, then pin it to '{feature}' in Settings → AI Features."
-            )
-        adapter = adapters[0]
-        return adapter, adapter.default_model, None
-
-    adapter = get_llm_registry().get(pin.provider_id)
-    if adapter is None:
-        raise LLMNotConfiguredError(
-            f"Feature {feature!r} is pinned to provider {pin.provider_id!r} "
-            f"but that provider isn't registered. Check the registry in "
-            f"EnginesView's LLM tab."
-        )
-    return adapter, pin.model or adapter.default_model, pin.tier
+def resolve_pin(settings, feature: str):
+    return _shared.resolve_pin(_config(settings), feature)
 
 
-def resolve_tier(settings, feature: str) -> TierSpec:
-    """Combine pin-resolution + tier auto-classify into one call.
-
-    Returns the TierSpec the dispatcher should use for a feature: pin
-    tier override wins, else auto-classified from the resolved model id.
-    Slice 7 + the extraction backend (Phase 3) read system_key from
-    this spec to pick the right prompt body.
-    """
-    _adapter, model, tier_override = resolve_pin(settings, feature)
-    return spec_for(model, tier_override)
+def resolve_tier(settings, feature: str):
+    return _shared.resolve_tier(_config(settings), feature)
 
 
 def chat(
@@ -161,64 +77,25 @@ def chat(
     model_override: str | None = None,
     provider_override: str | None = None,
 ) -> LLMResponse:
-    """One-shot LLM call for a feature key.
-
-    `think` defaults to the resolved tier's `think` flag so reasoned-tier
-    models on Ollama emit reasoning blocks without the caller knowing the
-    tier. Pass an explicit bool to override (e.g. the Speaker-Lab forces
-    `think: false` to compare reasoned vs direct on the same model).
-    """
-    adapter, model, tier_override = resolve_pin(settings, feature)
-    if provider_override:
-        # Speaker Lab column override — route this call through a specific
-        # registered provider instead of the feature's resolved route.
-        other = get_llm_registry().get(provider_override)
-        if other is None:
-            raise LLMNotConfiguredError(
-                f"Provider {provider_override!r} isn't registered — check "
-                f"EnginesView's LLM tab."
-            )
-        adapter = other
-        if not model_override:
-            model = other.default_model
-            tier_override = None
-    if model_override:
-        # Speaker Lab column override — same provider, different model.
-        # The tier re-derives from the OVERRIDE (a qwen3:14b column goes
-        # Reasoned even when the pin's default model is Guided-class).
-        model = model_override
-        tier_override = None
-    tier = spec_for(model, tier_override)
-
-    import time as _time
-
-    from .usage import UsageEntry, get_ledger
-
-    started = _time.monotonic()
-    try:
-        resp = adapter.chat(
-            list(messages),
-            model=model,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            system=system,
-            think=tier.think if think is None else think,
-        )
-    except Exception as e:
-        get_ledger().record(
-            UsageEntry(
-                feature=feature, model=model, prompt_tokens=0, completion_tokens=0,
-                duration_ms=int((_time.monotonic() - started) * 1000),
-                ok=False, error=str(e)[:200],
-            )
-        )
-        raise
-    get_ledger().record(
-        UsageEntry(
-            feature=feature, model=resp.model or model,
-            prompt_tokens=resp.prompt_tokens, completion_tokens=resp.completion_tokens,
-            duration_ms=int((_time.monotonic() - started) * 1000),
-            ok=True,
-        )
+    return _shared.chat(
+        config=_config(settings),
+        feature=feature,
+        messages=messages,
+        system=system,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        think=think,
+        model_override=model_override,
+        provider_override=provider_override,
     )
-    return resp
+
+
+__all__ = [
+    "chat",
+    "resolve_pin",
+    "resolve_tier",
+    "active_production_config",
+    "LLMNotConfiguredError",
+    "DEFAULT_FEATURE_ROLES",
+    "LOCAL_RUNNER_PROVIDER_ID",
+]

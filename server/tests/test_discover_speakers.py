@@ -195,9 +195,11 @@ def test_usage_ledger_records_chat_calls(client, monkeypatch):
                 model=model, prompt_tokens=120, completion_tokens=18,
             )
 
+    # chat() now delegates to the shared dispatch (llm_runner.llm) — patch the
+    # provider resolution there (3-arg shared signature).
     monkeypatch.setattr(
-        "justvoice.engines.llm.dispatch.resolve_pin",
-        lambda settings, feature: (FakeAdapter(), "qwen3:8b", None),
+        "llm_runner.llm.dispatch.resolve_pin",
+        lambda config, feature, registry=None: (FakeAdapter(), "qwen3:8b", None),
     )
     monkeypatch.setattr(
         "justvoice.extraction.pipeline.resolve_tier", lambda s, f: TIERS["guided"]
