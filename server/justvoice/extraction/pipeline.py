@@ -19,8 +19,10 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from ..engines.llm import LLMMessage
-from ..engines.llm.dispatch import LLMNotConfiguredError, chat, resolve_tier
+from llm_runner.llm import LLMMessage
+from llm_runner.llm import LLMNotConfiguredError
+from llm_runner.llm.dispatch import chat, resolve_tier
+from ..engines.llm.config import llm_config
 from .anchors import find_anchors
 from .prompts import (
     format_characters,
@@ -132,10 +134,10 @@ def analyze_scene(
     )
 
     # ── 3. Resolve tier + LLM call (single shot, scene-scoped) ───
-    tier = resolve_tier(settings, "speaker_attribution")
+    tier = resolve_tier(llm_config(settings), "speaker_attribution")
     if request.tier and request.tier in {"guided", "direct", "reasoned"}:
         # Override forced by the caller (Speaker Lab column setting).
-        from ..engines.llm.tiers import TIERS
+        from llm_runner.llm import TIERS
 
         tier = TIERS[request.tier]
 
@@ -161,7 +163,7 @@ def analyze_scene(
     if n_dialogue > 0:
         try:
             resp = chat(
-                settings=settings,
+                config=llm_config(settings),
                 feature="speaker_attribution",
                 messages=[LLMMessage(role="user", content=user)],
                 system=system,

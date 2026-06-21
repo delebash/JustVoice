@@ -26,7 +26,7 @@ class FakeAdapter:
 @pytest.fixture()
 def app(tmp_path):
     app = create_app(data_dir=tmp_path)
-    from justvoice.engines.llm.registry import get_llm_registry
+    from llm_runner.llm import get_llm_registry
 
     reg = get_llm_registry()
     saved = list(reg.all())
@@ -65,7 +65,7 @@ def test_extraction_config_shape(app) -> None:
 
 def test_extraction_config_no_provider(tmp_path) -> None:
     app = create_app(data_dir=tmp_path)
-    from justvoice.engines.llm.registry import get_llm_registry
+    from llm_runner.llm import get_llm_registry
 
     reg = get_llm_registry()
     saved = list(reg.all())
@@ -81,7 +81,7 @@ def test_extraction_config_no_provider(tmp_path) -> None:
 
 
 def _fake_chat_capture(captured):
-    def fake_chat(*, settings, feature, messages, system=None, **kwargs):
+    def fake_chat(*, config, feature, messages, system=None, **kwargs):
         captured["system"] = system
         captured["user"] = messages[0].content
 
@@ -101,7 +101,7 @@ CAST = [{"id": "c_mara", "name": "Mara"}, {"id": "c_sarah", "name": "Sarah"}]
 def test_provider_override_routes_call(app, monkeypatch) -> None:
     # Register a second provider; the Lab's provider_id override must
     # route through it (and pick up ITS default model).
-    from justvoice.engines.llm.registry import get_llm_registry
+    from llm_runner.llm import get_llm_registry
 
     get_llm_registry().register(FakeAdapter("prov-cloud", "gpt-4o-mini"))
     captured: dict = {}

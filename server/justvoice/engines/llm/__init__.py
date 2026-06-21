@@ -1,20 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""LLM provider registry (Phase 2 / Slice 3 of the Profile-kill plan).
+"""JustVoice LLM engine glue.
 
-Mirrors the per-provider adapter pattern lifted from JustWrite. Each
-provider type (Anthropic / OpenAI / OpenAI-compat / Gemini / Ollama /
-DeepSeek / OpenRouter) registers an LLMAdapter at boot. The dispatch
-helpers in `dispatch.py` route Compose / Rewrite / Speaker-attribution
-calls to the right provider via feature pins from settings.engines.feature_pins.
+The LLM provider/dispatch implementation is the shared `llm_runner.llm`
+package — import contracts, adapters, registry, tiers, usage and dispatch
+from there directly. This package holds only the JustVoice-specific pieces:
+  - `config.py`        — JV's feature catalog + settings→LLMConfig mapping.
+  - `local_managed.py` — registers the bundled local llama.cpp runner.
 """
-
-from .base import LLMAdapter, LLMMessage, LLMResponse
-from .registry import LLMRegistry, get_llm_registry
-
-__all__ = [
-    "LLMAdapter",
-    "LLMMessage",
-    "LLMResponse",
-    "LLMRegistry",
-    "get_llm_registry",
-]

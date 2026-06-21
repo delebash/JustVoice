@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 
-from .base import LLMMessage, LLMResponse
+from llm_runner.llm.base import LLMMessage, LLMResponse
 
 log = logging.getLogger(__name__)
 
@@ -98,7 +98,7 @@ def register_local_adapter() -> None:
     that isn't on disk must NOT satisfy the no-pin fallback, or features
     would 502 instead of the actionable 501 ("wire an LLM provider")."""
     from ..manager import get_manager
-    from .registry import get_llm_registry
+    from llm_runner.llm import get_llm_registry
 
     if get_manager().status(LOCAL_ENGINE_ID) == "not_installed":
         return

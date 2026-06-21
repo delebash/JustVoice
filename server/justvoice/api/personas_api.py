@@ -249,8 +249,9 @@ async def compose_with_personality(id: str) -> ComposeResponse:
     """
     from fastapi import HTTPException
 
-    from ..engines.llm import LLMMessage
-    from ..engines.llm.dispatch import LLMNotConfiguredError, chat
+    from llm_runner.llm import LLMMessage, LLMNotConfiguredError
+    from llm_runner.llm.dispatch import chat
+    from ..engines.llm.config import llm_config
 
     persona = _require_persona_with_personality(id)
     system_prompt = (
@@ -262,7 +263,7 @@ async def compose_with_personality(id: str) -> ComposeResponse:
     settings = get_state().settings.get()
     try:
         resp = chat(
-            settings=settings,
+            config=llm_config(settings),
             feature="compose",
             messages=[LLMMessage(role="user", content="Compose a line.")],
             system=system_prompt,
@@ -292,8 +293,9 @@ async def rewrite_in_character(id: str, body: RewriteRequest) -> RewriteResponse
     """
     from fastapi import HTTPException
 
-    from ..engines.llm import LLMMessage
-    from ..engines.llm.dispatch import LLMNotConfiguredError, chat
+    from llm_runner.llm import LLMMessage, LLMNotConfiguredError
+    from llm_runner.llm.dispatch import chat
+    from ..engines.llm.config import llm_config
 
     persona = _require_persona_with_personality(id)
     if not body.text.strip():
@@ -314,7 +316,7 @@ async def rewrite_in_character(id: str, body: RewriteRequest) -> RewriteResponse
     settings = get_state().settings.get()
     try:
         resp = chat(
-            settings=settings,
+            config=llm_config(settings),
             feature="persona_rewrite",
             messages=[LLMMessage(role="user", content=body.text)],
             system=system_prompt,

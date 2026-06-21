@@ -13,6 +13,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from justvoice.app import create_app
+from justvoice.engines.llm.config import llm_config
 
 
 class _Fake:
@@ -29,7 +30,7 @@ class _Fake:
 
 
 def test_construct_local_llamacpp_points_at_loopback():
-    from justvoice.engines.llm.registry import construct
+    from llm_runner.llm import construct
     from justvoice.models import LLMProviderConfig
 
     adapter = construct(
@@ -52,7 +53,7 @@ def test_qwen3_llm_4b_variant_dropped():
 @pytest.fixture()
 def app_clean_registry(tmp_path):
     app = create_app(data_dir=tmp_path)
-    from justvoice.engines.llm.registry import get_llm_registry
+    from llm_runner.llm import get_llm_registry
 
     reg = get_llm_registry()
     saved = list(reg.all())
@@ -64,7 +65,7 @@ def app_clean_registry(tmp_path):
 def test_speaker_attribution_prefers_local_runner_when_present(app_clean_registry):
     _app, reg = app_clean_registry
     from justvoice.app_state import get_state
-    from justvoice.engines.llm.dispatch import resolve_pin
+    from llm_runner.llm.dispatch import resolve_pin
 
     settings = get_state().settings.get()
     # cloud provider registered FIRST, the built-in runner second
@@ -73,11 +74,11 @@ def test_speaker_attribution_prefers_local_runner_when_present(app_clean_registr
 
     # No pin/role configured → attribution picks the built-in runner, not the
     # first-registered cloud adapter.
-    adapter, _model, _ = resolve_pin(settings, "speaker_attribution")
+    adapter, _model, _ = resolve_pin(llm_config(settings), "speaker_attribution")
     assert adapter.provider_id == "local-llamacpp"
 
     # A non-target feature keeps the generic first-adapter fallback.
-    adapter, _model, _ = resolve_pin(settings, "refine")
+    adapter, _model, _ = resolve_pin(llm_config(settings), "refine")
     assert adapter.provider_id == "claude-x"
 
 

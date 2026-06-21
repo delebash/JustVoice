@@ -23,7 +23,8 @@ from sqlalchemy.orm import Session
 from ..app_state import get_state
 from ..database import get_db
 from ..database.models import Persona, ProjectPersona, Scene
-from ..engines.llm.dispatch import LLMNotConfiguredError
+from llm_runner.llm import LLMNotConfiguredError
+from ..engines.llm.config import llm_config
 from ..errors import not_found
 from ..extraction import AnalyzeRequest, analyze_scene
 
@@ -141,9 +142,9 @@ async def analyze_scene_endpoint(
     # Speaker Lab) wins outright — model AND prompts — unless the body
     # explicitly overrides (the Lab itself passes explicit values via the
     # text endpoint, not this scene endpoint).
-    from ..engines.llm.dispatch import active_production_config
+    from llm_runner.llm.dispatch import active_production_config
 
-    cfg = active_production_config(settings, "speaker_attribution")
+    cfg = active_production_config(llm_config(settings), "speaker_attribution")
     req = AnalyzeRequest(
         text=body.text,
         characters=characters,
@@ -168,11 +169,11 @@ async def analyze_scene_endpoint(
 
     # Echo back which tier ran so the UI can show "auto-routed to Reasoned"
     # in the Studio Script tab header.
-    from ..engines.llm.dispatch import resolve_tier
+    from llm_runner.llm.dispatch import resolve_tier
 
-    tier = resolve_tier(settings, "speaker_attribution")
+    tier = resolve_tier(llm_config(settings), "speaker_attribution")
     if body.tier and body.tier in {"guided", "direct", "reasoned"}:
-        from ..engines.llm.tiers import TIERS
+        from llm_runner.llm import TIERS
 
         tier = TIERS[body.tier]
 
@@ -238,11 +239,11 @@ async def analyze_text_endpoint(body: AnalyzeTextRequest) -> AnalyzeSceneRespons
         log.exception("extraction pipeline failed")
         raise HTTPException(status_code=502, detail=f"extraction failed: {e}")
 
-    from ..engines.llm.dispatch import resolve_tier
+    from llm_runner.llm.dispatch import resolve_tier
 
-    tier = resolve_tier(settings, "speaker_attribution")
+    tier = resolve_tier(llm_config(settings), "speaker_attribution")
     if body.tier and body.tier in {"guided", "direct", "reasoned"}:
-        from ..engines.llm.tiers import TIERS
+        from llm_runner.llm import TIERS
 
         tier = TIERS[body.tier]
 
@@ -294,18 +295,18 @@ class ExtractionConfigResponse(BaseModel):
     summary="Tier specs + prompt bodies + resolved route (Speaker Lab)",
 )
 async def extraction_config() -> ExtractionConfigResponse:
-    from ..engines.llm.dispatch import resolve_pin
-    from ..engines.llm.tiers import TIERS
+    from llm_runner.llm.dispatch import resolve_pin
+    from llm_runner.llm import TIERS
     from ..extraction.prompts import DIRECT_SYSTEM, GUIDED_SYSTEM, USER_TEMPLATE
 
     provider_id = model = tier_name = None
     settings = get_state().settings.get()
     try:
-        adapter, model, _tier_override = resolve_pin(settings, "speaker_attribution")
+        adapter, model, _tier_override = resolve_pin(llm_config(settings), "speaker_attribution")
         provider_id = adapter.provider_id
-        from ..engines.llm.dispatch import resolve_tier
+        from llm_runner.llm.dispatch import resolve_tier
 
-        tier_name = resolve_tier(settings, "speaker_attribution").name
+        tier_name = resolve_tier(llm_config(settings), "speaker_attribution").name
     except LLMNotConfiguredError:
         pass
 

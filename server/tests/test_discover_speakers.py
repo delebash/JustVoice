@@ -106,7 +106,7 @@ def test_promote_creates_then_reuses(client):
 def test_analyze_text_threads_model_temp_prompt_overrides(client, monkeypatch):
     captured = {}
 
-    def fake_chat(*, settings, feature, messages, system=None, temperature=0.7,
+    def fake_chat(*, config, feature, messages, system=None, temperature=0.7,
                   max_tokens=None, think=None, model_override=None,
                   provider_override=None):
         captured.update(
@@ -121,7 +121,7 @@ def test_analyze_text_threads_model_temp_prompt_overrides(client, monkeypatch):
 
         return R()
 
-    from justvoice.engines.llm.tiers import TIERS
+    from llm_runner.llm import TIERS
 
     monkeypatch.setattr("justvoice.extraction.pipeline.chat", fake_chat)
     # No provider in the test env — pin resolution would 501 before the
@@ -131,7 +131,7 @@ def test_analyze_text_threads_model_temp_prompt_overrides(client, monkeypatch):
         "justvoice.extraction.pipeline.resolve_tier", lambda settings, feature: TIERS["guided"]
     )
     monkeypatch.setattr(
-        "justvoice.engines.llm.dispatch.resolve_tier", lambda settings, feature: TIERS["guided"]
+        "llm_runner.llm.dispatch.resolve_tier", lambda settings, feature: TIERS["guided"]
     )
     r = client.post(
         "/v1/extraction/analyze-text",
@@ -181,14 +181,14 @@ def test_detect_local_llm_providers(client, monkeypatch):
 
 
 def test_usage_ledger_records_chat_calls(client, monkeypatch):
-    from justvoice.engines.llm.tiers import TIERS
-    from justvoice.engines.llm.usage import get_ledger
+    from llm_runner.llm import TIERS
+    from llm_runner.llm import get_ledger
 
     get_ledger().clear()
 
     class FakeAdapter:
         def chat(self, messages, *, model, temperature, max_tokens, system, think):
-            from justvoice.engines.llm.base import LLMResponse
+            from llm_runner.llm import LLMResponse
 
             return LLMResponse(
                 text='[{"speaker": "mara", "confidence": 0.9}]',
@@ -205,7 +205,7 @@ def test_usage_ledger_records_chat_calls(client, monkeypatch):
         "justvoice.extraction.pipeline.resolve_tier", lambda s, f: TIERS["guided"]
     )
     monkeypatch.setattr(
-        "justvoice.engines.llm.dispatch.resolve_tier", lambda s, f: TIERS["guided"]
+        "llm_runner.llm.dispatch.resolve_tier", lambda s, f: TIERS["guided"]
     )
     r = client.post(
         "/v1/extraction/analyze-text",
@@ -231,7 +231,7 @@ def test_show_notes_501_without_llm_and_works_with_stub(client, monkeypatch):
     r = client.post(f"/v1/projects/{pid}/show-notes")
     assert r.status_code == 501
 
-    def fake_chat(*, settings, feature, messages, system=None, temperature=0.7,
+    def fake_chat(*, config, feature, messages, system=None, temperature=0.7,
                   max_tokens=None, think=None, model_override=None):
         assert feature == "show_notes"
         assert "Mara Vance" in messages[0].content
@@ -242,7 +242,7 @@ def test_show_notes_501_without_llm_and_works_with_stub(client, monkeypatch):
         return R()
 
     monkeypatch.setattr("justvoice.api.projects_api.chat", fake_chat, raising=False)
-    import justvoice.engines.llm.dispatch as dispatch
+    import llm_runner.llm.dispatch as dispatch
 
     monkeypatch.setattr(dispatch, "chat", fake_chat)
     r = client.post(f"/v1/projects/{pid}/show-notes")

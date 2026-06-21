@@ -15,8 +15,8 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from ..app_state import get_state
-from ..engines.llm.registry import get_llm_registry
-from ..engines.llm.tiers import spec_for
+from llm_runner.llm import get_llm_registry
+from llm_runner.llm import spec_for
 from ..errors import not_found
 from ..models import ProductionConfig
 

@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from justvoice.app import create_app
+from justvoice.engines.llm.config import llm_config
 
 
 class FakeAdapter:
@@ -26,7 +27,7 @@ class FakeAdapter:
 @pytest.fixture()
 def app_state(tmp_path):
     app = create_app(data_dir=tmp_path)
-    from justvoice.engines.llm.registry import get_llm_registry
+    from llm_runner.llm import get_llm_registry
 
     reg = get_llm_registry()
     # isolate registry per test
@@ -47,7 +48,7 @@ def _settings():
 
 
 def test_dispatch_precedence_role_then_config(app_state) -> None:
-    from justvoice.engines.llm.dispatch import resolve_pin
+    from llm_runner.llm.dispatch import resolve_pin
     from justvoice.models import LLMRolesSettings, LLMRoleTarget, ProductionConfig
 
     state, settings = _settings()
@@ -58,23 +59,23 @@ def test_dispatch_precedence_role_then_config(app_state) -> None:
         accuracy=LLMRoleTarget(provider_id="prov-big", model="qwen3:14b"),
     )
     state.settings.set(settings)
-    adapter, model, _tier = resolve_pin(settings, "speaker_attribution")
+    adapter, model, _tier = resolve_pin(llm_config(settings), "speaker_attribution")
     assert (adapter.provider_id, model) == ("prov-big", "qwen3:14b")
-    adapter, model, _tier = resolve_pin(settings, "refine")
+    adapter, model, _tier = resolve_pin(llm_config(settings), "refine")
     assert (adapter.provider_id, model) == ("prov-fast", "qwen3:0.6b")
 
     # 3. pin.role overrides the default role map
     from justvoice.models import FeaturePinConfig
 
     settings.engines.feature_pins = [FeaturePinConfig(feature="speaker_attribution", role="quick")]
-    adapter, model, _ = resolve_pin(settings, "speaker_attribution")
+    adapter, model, _ = resolve_pin(llm_config(settings), "speaker_attribution")
     assert adapter.provider_id == "prov-fast"
 
     # 2. explicit pin beats role
     settings.engines.feature_pins = [
         FeaturePinConfig(feature="speaker_attribution", provider_id="prov-big", model="qwen3:8b")
     ]
-    adapter, model, _ = resolve_pin(settings, "speaker_attribution")
+    adapter, model, _ = resolve_pin(llm_config(settings), "speaker_attribution")
     assert (adapter.provider_id, model) == ("prov-big", "qwen3:8b")
 
     # 1. active production config beats everything
@@ -85,7 +86,7 @@ def test_dispatch_precedence_role_then_config(app_state) -> None:
             system_prompt="SYS", user_prompt="USR",
         )
     ]
-    adapter, model, _ = resolve_pin(settings, "speaker_attribution")
+    adapter, model, _ = resolve_pin(llm_config(settings), "speaker_attribution")
     assert (adapter.provider_id, model) == ("prov-big", "qwen3:14b")
 
 

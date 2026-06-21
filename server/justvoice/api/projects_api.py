@@ -1240,8 +1240,9 @@ async def project_show_notes(
     501 when no provider is pinned, same contract as analyze."""
     from fastapi import HTTPException
 
-    from ..engines.llm import LLMMessage
-    from ..engines.llm.dispatch import LLMNotConfiguredError, chat
+    from llm_runner.llm import LLMMessage, LLMNotConfiguredError
+    from llm_runner.llm.dispatch import chat
+    from ..engines.llm.config import llm_config
 
     project = db.query(Project).filter(Project.id == project_id).first()
     if project is None:
@@ -1268,7 +1269,7 @@ async def project_show_notes(
     settings = get_state().settings.get()
     try:
         resp = chat(
-            settings=settings,
+            config=llm_config(settings),
             feature="show_notes",
             messages=[LLMMessage(role="user", content=script[:24000])],
             system=SHOW_NOTES_SYSTEM,

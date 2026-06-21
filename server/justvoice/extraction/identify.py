@@ -97,9 +97,10 @@ def identify_speakers(
     """Run the identification LLM call. `chat_fn` is the dispatch seam —
     tests inject a stub; production uses engines.llm.dispatch.chat."""
     if chat_fn is None:
-        from ..engines.llm.dispatch import chat as chat_fn  # pragma: no cover
+        from llm_runner.llm.dispatch import chat as chat_fn  # pragma: no cover
 
-    from ..engines.llm import LLMMessage
+    from llm_runner.llm import LLMMessage
+    from ..engines.llm.config import llm_config
 
     user = (
         "Known characters:\n"
@@ -108,7 +109,7 @@ def identify_speakers(
         + text
     )
     resp = chat_fn(
-        settings=settings,
+        config=llm_config(settings),
         feature="speaker_attribution",
         messages=[LLMMessage(role="user", content=user)],
         system=IDENTIFY_SYSTEM,

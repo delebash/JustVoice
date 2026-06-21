@@ -221,8 +221,9 @@ def refine_transcript(
     produced the refinement. Raises LLMNotConfiguredError when no provider
     is available (the API layer maps it to 501).
     """
-    from .engines.llm import LLMMessage
-    from .engines.llm.dispatch import chat
+    from llm_runner.llm import LLMMessage
+    from llm_runner.llm.dispatch import chat
+    from .engines.llm.config import llm_config
 
     cleaned_input = collapse_repetitive_artifacts(transcript)
     system_prompt = build_refinement_prompt(flags)
@@ -234,7 +235,7 @@ def refine_transcript(
     messages.append(LLMMessage(role="user", content=cleaned_input))
 
     resp = chat(
-        settings=settings,
+        config=llm_config(settings),
         feature="refine",
         messages=messages,
         system=system_prompt,

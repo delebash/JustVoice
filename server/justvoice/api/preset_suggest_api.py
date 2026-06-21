@@ -20,8 +20,9 @@ from sqlalchemy.orm import Session
 from ..app_state import get_state
 from ..database import get_db
 from ..database.models import Block, RenderPreset, Scene
-from ..engines.llm import LLMMessage
-from ..engines.llm.dispatch import LLMNotConfiguredError, chat
+from llm_runner.llm import LLMMessage, LLMNotConfiguredError
+from llm_runner.llm.dispatch import chat
+from ..engines.llm.config import llm_config
 from ..errors import not_found
 
 log = logging.getLogger(__name__)
@@ -128,7 +129,7 @@ async def suggest_preset(
     settings = get_state().settings.get()
     try:
         resp = chat(
-            settings=settings,
+            config=llm_config(settings),
             feature="render_preset_suggest",
             messages=[LLMMessage(role="user", content=user_prompt)],
             system=SYSTEM_PROMPT,

@@ -110,9 +110,9 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     _register_existing_engines(state, data_dir)
     _register_external_engines(state)
     # Phase 2 / Slice 3 — register LLM providers from settings.engines.llm[].
-    from .engines.llm.registry import load_from_settings as load_llm_providers
+    from llm_runner.llm import load_from_configs
 
-    load_llm_providers(state.settings.get())
+    load_from_configs(state.settings.get().engines.llm)
 
     # Bundled local LLM (qwen3-llm managed engine) — registered after the
     # settings providers so the no-pin fallback prefers an explicit config.

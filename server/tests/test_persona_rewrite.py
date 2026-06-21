@@ -25,8 +25,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from justvoice.api import personas_api
-from justvoice.engines.llm.base import LLMResponse
-from justvoice.engines.llm.dispatch import LLMNotConfiguredError
+from llm_runner.llm import LLMResponse
+from llm_runner.llm import LLMNotConfiguredError
 from justvoice.models import Persona
 
 
@@ -50,7 +50,13 @@ def rewrite_client(monkeypatch):
     # The personas + state stack: persona lookup + settings get.
     state = SimpleNamespace(
         personas=SimpleNamespace(get=lambda pid: None),
-        settings=SimpleNamespace(get=lambda: SimpleNamespace()),
+        settings=SimpleNamespace(
+            get=lambda: SimpleNamespace(
+                engines=SimpleNamespace(
+                    llm=[], feature_pins=[], llm_roles=None, production_configs=[]
+                )
+            )
+        ),
     )
 
     def _set_persona(persona: Persona | None):
@@ -116,7 +122,7 @@ def test_rewrite_no_llm_returns_501(rewrite_client):
 
     # The api module imports dispatch inside the function body, so we
     # patch it in the module where it lives.
-    from justvoice.engines.llm import dispatch
+    from llm_runner.llm import dispatch
     rewrite_client.monkeypatch.setattr(dispatch, "chat", _raise_not_configured)
 
     r = rewrite_client.client.post(
@@ -135,7 +141,7 @@ def test_rewrite_llm_failure_returns_502(rewrite_client):
     def _raise_runtime(*args, **kwargs):
         raise RuntimeError("LLM provider returned malformed response")
 
-    from justvoice.engines.llm import dispatch
+    from llm_runner.llm import dispatch
     rewrite_client.monkeypatch.setattr(dispatch, "chat", _raise_runtime)
 
     r = rewrite_client.client.post(
@@ -157,7 +163,7 @@ def test_rewrite_success_returns_original_and_rewritten(rewrite_client):
             model="test-model",
         )
 
-    from justvoice.engines.llm import dispatch
+    from llm_runner.llm import dispatch
     rewrite_client.monkeypatch.setattr(dispatch, "chat", _mock_chat)
 
     r = rewrite_client.client.post(
@@ -185,7 +191,7 @@ def test_rewrite_passes_personality_into_system_prompt(rewrite_client):
         captured.update(kwargs)
         return LLMResponse(text="Rewritten!", model="test", usage_in=0, usage_out=0)
 
-    from justvoice.engines.llm import dispatch
+    from llm_runner.llm import dispatch
     rewrite_client.monkeypatch.setattr(dispatch, "chat", _capture_chat)
 
     rewrite_client.client.post(

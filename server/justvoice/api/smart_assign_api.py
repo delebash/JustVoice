@@ -17,8 +17,9 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ..app_state import get_state
-from ..engines.llm import LLMMessage
-from ..engines.llm.dispatch import LLMNotConfiguredError, chat
+from llm_runner.llm import LLMMessage, LLMNotConfiguredError
+from llm_runner.llm.dispatch import chat
+from ..engines.llm.config import llm_config
 
 log = logging.getLogger(__name__)
 
@@ -139,7 +140,7 @@ async def smart_assign(body: SmartAssignRequest) -> SmartAssignResponse:
     settings = get_state().settings.get()
     try:
         resp = chat(
-            settings=settings,
+            config=llm_config(settings),
             feature="smart_assign",
             messages=[LLMMessage(role="user", content=user_prompt)],
             system=SYSTEM_PROMPT,

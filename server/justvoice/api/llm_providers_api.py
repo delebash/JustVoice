@@ -15,7 +15,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from ..app_state import get_state
-from ..engines.llm.registry import construct, get_llm_registry
+from llm_runner.llm import construct, get_llm_registry
 from ..errors import bad_request, not_found
 from ..models import LLMProviderConfig
 
@@ -234,7 +234,7 @@ async def classify_model_tier(body: TierClassifyRequest) -> TierClassifyResponse
     Settings AI Features + Speaker Lab call this to show "this model
     auto-routes to Reasoned tier" hints before the user pins a feature.
     """
-    from ..engines.llm.tiers import classify, TIERS
+    from llm_runner.llm import classify, TIERS
 
     tier_name = classify(body.model)
     spec = TIERS[tier_name]
@@ -302,14 +302,14 @@ async def detect_local_llm_providers() -> DetectLocalResponse:
 @router.get("/v1/ai-usage")
 async def ai_usage() -> dict:
     """Token + duration ledger per feature (Settings → AI usage)."""
-    from ..engines.llm.usage import get_ledger
+    from llm_runner.llm import get_ledger
 
     return get_ledger().snapshot()
 
 
 @router.delete("/v1/ai-usage")
 async def clear_ai_usage() -> dict:
-    from ..engines.llm.usage import get_ledger
+    from llm_runner.llm import get_ledger
 
     get_ledger().clear()
     return {"cleared": True}
