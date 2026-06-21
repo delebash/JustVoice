@@ -38,7 +38,6 @@ from .api import (
     engines_api,
     extraction_api,
     feature_pins_api,
-    llm_providers_api,
     llm_roles_api,
     prefs_api,
     preset_suggest_api,
@@ -183,12 +182,16 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(engines_models_api.router)
     app.include_router(engine_sources_api.router)
     app.include_router(llm_runner_router)
-    # Shared storage-free LLM endpoints (classify-tier / ai-usage / ping /
-    # models) — the same router JustWrite will mount. Provider CRUD stays in
-    # llm_providers_api (it reads/writes JV settings).
+    # Shared LLM routers (the same JustWrite will mount): storage-free
+    # endpoints (classify-tier / ai-usage / ping / models) + the provider-CRUD
+    # router backed by JV's settings-backed ProviderStore.
     from llm_runner.llm.api import router as llm_shared_api_router
+    from llm_runner.llm.provider_api import make_provider_router
+
+    from .engines.llm.provider_store import get_provider_store
 
     app.include_router(llm_shared_api_router)
+    app.include_router(make_provider_router(get_provider_store))
     app.include_router(generate_api.router)
     app.include_router(render_chapter_api.router)
     app.include_router(analyzer_api.router)
@@ -220,7 +223,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(backup_api.router)
     app.include_router(project_export_api.router)
     app.include_router(effect_presets_api.router)
-    app.include_router(llm_providers_api.router)
     app.include_router(llm_roles_api.router)
     app.include_router(feature_pins_api.router)
     app.include_router(prefs_api.router)
