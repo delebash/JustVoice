@@ -187,6 +187,10 @@ def test_usage_ledger_records_chat_calls(client, monkeypatch):
     get_ledger().clear()
 
     class FakeAdapter:
+        provider_id = "fake"  # dispatch records adapter.provider_id in the usage ledger
+        provider_type = "openai-compat"
+        default_model = "qwen3:8b"
+
         def chat(self, messages, *, model, temperature, max_tokens, system, think):
             from llm_runner.llm import LLMResponse
 
