@@ -169,10 +169,11 @@ async def factory_reset() -> FactoryResetResponse:
         db_session.SessionLocal = None
         db_session._db_path = None
         db_session.init_db(data_dir)
-        from ..database.seed import seed_builtin_effect_presets, seed_builtin_render_presets
+        from ..database.seed import seed_builtin_effect_presets, seed_builtin_render_presets, seed_feature_prompts
         if file_recreated:
             seed_builtin_effect_presets()
             seed_builtin_render_presets()
+            seed_feature_prompts()
             cleared = len(Base.metadata.tables)
         else:
             log.warning("factory reset: DB file locked — dropping tables in place instead")
@@ -192,9 +193,10 @@ async def factory_reset() -> FactoryResetResponse:
             conn.commit()
         Base.metadata.create_all(bind=bind)
         run_migrations(bind)
-        from ..database.seed import seed_builtin_effect_presets, seed_builtin_render_presets
+        from ..database.seed import seed_builtin_effect_presets, seed_builtin_render_presets, seed_feature_prompts
         seed_builtin_effect_presets()
         seed_builtin_render_presets()
+        seed_feature_prompts()
 
     # 2. File-backed stores. Mid-Phase-1.5 personas/voices/lexicons/
     # projects/training still live as JSON files + in-memory caches —

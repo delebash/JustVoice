@@ -210,3 +210,80 @@ def seed_builtin_render_presets() -> None:
         db.rollback()
     finally:
         db.close()
+
+
+# ── Feature prompts (LLM feature catalog — DB-seeded, Lab-editable) ────────
+#
+# The default system prompt per JustVoice AI feature. Seeded into the
+# feature_prompts table on boot; the server reads prompts from the DB at request
+# time (the source of truth — no hardcoded prompt text in the endpoints). The
+# extraction (speaker_attribution) prompts migrate in a follow-on increment; this
+# covers the one-shot features. See docs/plans/2026-06-21-feature-prompts-db-seed.md.
+
+_SMART_ASSIGN_SYSTEM = """You are a casting director for an audiobook producer.
+
+Given a list of characters with descriptions and a list of available voices
+with descriptors, pick the best voice for each character. Return a JSON
+object mapping characterId -> voiceId. Match on age, gender, tone, and
+accent. Do not invent ids. If no voice fits, omit that character.
+
+Return only the JSON object. No prose, no preamble.
+"""
+
+_PRESET_SUGGEST_SYSTEM = """You classify a book chapter's tone and pick the best-fit
+render preset from a list.
+
+Return JSON only:
+
+  {"preset": "<exact preset name from the list>", "reason": "<one sentence>"}
+
+Rules:
+  - The preset value MUST match a name from the provided list exactly.
+  - If no preset fits, return {"preset": "", "reason": "..."} — don't
+    invent presets.
+  - Reply with the JSON object only. No prose, no preamble.
+"""
+
+DEFAULT_FEATURE_PROMPTS: list[dict] = [
+    {
+        "key": "smart_assign", "feature": "smart_assign",
+        "system": _SMART_ASSIGN_SYSTEM, "user_template": "",
+        "temperature": 0.2, "think": False,
+    },
+    {
+        "key": "render_preset_suggest", "feature": "render_preset_suggest",
+        "system": _PRESET_SUGGEST_SYSTEM, "user_template": "",
+        "temperature": 0.0, "think": False,
+    },
+]
+
+
+def seed_feature_prompts() -> None:
+    """Insert any missing feature-prompt rows (merge by key). Safe every boot;
+    never clobbers a row the user edited in the Lab."""
+    from . import session as _db_session
+    from .models import FeaturePrompt
+
+    if _db_session.SessionLocal is None:
+        return
+    db = _db_session.SessionLocal()
+    try:
+        existing = {r.key for r in db.query(FeaturePrompt).all()}
+        for spec in DEFAULT_FEATURE_PROMPTS:
+            if spec["key"] in existing:
+                continue
+            db.add(FeaturePrompt(
+                key=spec["key"],
+                feature=spec["feature"],
+                system=spec["system"],
+                user_template=spec.get("user_template", ""),
+                temperature=float(spec.get("temperature", 0.7)),
+                think=bool(spec.get("think", False)),
+                built_in=True,
+            ))
+        db.commit()
+    except Exception as e:
+        log.warning("feature-prompt seed failed: %s", e)
+        db.rollback()
+    finally:
+        db.close()

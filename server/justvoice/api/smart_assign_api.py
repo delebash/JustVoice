@@ -20,6 +20,7 @@ from ..app_state import get_state
 from llm_runner.llm import LLMMessage, LLMNotConfiguredError
 from llm_runner.llm.dispatch import chat
 from ..engines.llm.config import llm_config
+from ..engines.llm.prompt_store import get_prompt_store
 
 log = logging.getLogger(__name__)
 
@@ -55,17 +56,6 @@ class SmartAssignRequest(BaseModel):
 class SmartAssignResponse(BaseModel):
     assignments: dict[str, str]
     note: str | None = None
-
-
-SYSTEM_PROMPT = """You are a casting director for an audiobook producer.
-
-Given a list of characters with descriptions and a list of available voices
-with descriptors, pick the best voice for each character. Return a JSON
-object mapping characterId -> voiceId. Match on age, gender, tone, and
-accent. Do not invent ids. If no voice fits, omit that character.
-
-Return only the JSON object. No prose, no preamble.
-"""
 
 
 def _format_characters(chars: list[SmartAssignCharacter]) -> str:
@@ -137,14 +127,17 @@ async def smart_assign(body: SmartAssignRequest) -> SmartAssignResponse:
         + "\n\nReturn only the JSON object."
     )
 
+    prompt = get_prompt_store().get("smart_assign")
+    if prompt is None:
+        raise HTTPException(status_code=500, detail="smart_assign prompt not seeded")
     settings = get_state().settings.get()
     try:
         resp = chat(
             config=llm_config(settings),
             feature="smart_assign",
             messages=[LLMMessage(role="user", content=user_prompt)],
-            system=SYSTEM_PROMPT,
-            temperature=0.2,
+            system=prompt.system,
+            temperature=prompt.temperature,
             max_tokens=max(400, 80 * len(body.characters)),
         )
     except LLMNotConfiguredError as e:

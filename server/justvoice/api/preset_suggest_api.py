@@ -23,6 +23,7 @@ from ..database.models import Block, RenderPreset, Scene
 from llm_runner.llm import LLMMessage, LLMNotConfiguredError
 from llm_runner.llm.dispatch import chat
 from ..engines.llm.config import llm_config
+from ..engines.llm.prompt_store import get_prompt_store
 from ..errors import not_found
 
 log = logging.getLogger(__name__)
@@ -39,21 +40,6 @@ class PresetSuggestResponse(BaseModel):
     preset_name: str | None
     reason: str = ""
     note: str | None = None
-
-
-SYSTEM_PROMPT = """You classify a book chapter's tone and pick the best-fit
-render preset from a list.
-
-Return JSON only:
-
-  {"preset": "<exact preset name from the list>", "reason": "<one sentence>"}
-
-Rules:
-  - The preset value MUST match a name from the provided list exactly.
-  - If no preset fits, return {"preset": "", "reason": "..."} — don't
-    invent presets.
-  - Reply with the JSON object only. No prose, no preamble.
-"""
 
 
 def _sample_chapter_text(scene_id: str, db: Session) -> str:
@@ -126,14 +112,17 @@ async def suggest_preset(
         + "\n\nReturn only the JSON object."
     )
 
+    prompt = get_prompt_store().get("render_preset_suggest")
+    if prompt is None:
+        raise HTTPException(status_code=500, detail="render_preset_suggest prompt not seeded")
     settings = get_state().settings.get()
     try:
         resp = chat(
             config=llm_config(settings),
             feature="render_preset_suggest",
             messages=[LLMMessage(role="user", content=user_prompt)],
-            system=SYSTEM_PROMPT,
-            temperature=0.0,
+            system=prompt.system,
+            temperature=prompt.temperature,
             max_tokens=200,
         )
     except LLMNotConfiguredError as e:

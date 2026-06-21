@@ -40,6 +40,7 @@ from .api import (
     feature_pins_api,
     llm_roles_api,
     prefs_api,
+    ai_prompts_api,
     preset_suggest_api,
     smart_assign_api,
     engine_sources_api,
@@ -88,10 +89,15 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     # Built-in effect presets (Robotic / Radio / Echo Chamber / Deep Voice)
     # + render presets (Narration / Dramatic Dialogue / Quiet Reflection /
     # Action, task #88) — idempotent on every boot.
-    from .database.seed import seed_builtin_effect_presets, seed_builtin_render_presets
+    from .database.seed import (
+        seed_builtin_effect_presets,
+        seed_builtin_render_presets,
+        seed_feature_prompts,
+    )
 
     seed_builtin_effect_presets()
     seed_builtin_render_presets()
+    seed_feature_prompts()
 
     state = AppState(data_dir)
     set_state(state)
@@ -225,6 +231,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(effect_presets_api.router)
     app.include_router(llm_roles_api.router)
     app.include_router(feature_pins_api.router)
+    app.include_router(ai_prompts_api.router)
     app.include_router(prefs_api.router)
     app.include_router(extraction_api.router)
     app.include_router(smart_assign_api.router)

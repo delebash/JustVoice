@@ -491,6 +491,28 @@ class EffectPreset(Base):
     created_at = Column(DateTime, default=_utcnow)
 
 
+class FeaturePrompt(Base):
+    """Per-feature LLM prompt — seeded by database/seed.py and editable in the
+    Lab; the DB is the source of truth (no hardcoded prompt text read at request
+    time — see docs/plans/2026-06-21-feature-prompts-db-seed.md).
+
+    `key` is the feature/action id (e.g. "smart_assign", "speaker_attribution.
+    guided"); `feature` is the routing key for pins/roles/usage. `system` +
+    `user_template` carry the prompt text; `temperature`/`think` are per-feature
+    defaults. `built_in` marks a seeded row (so the Lab can offer "reset")."""
+
+    __tablename__ = "feature_prompts"
+
+    key = Column(String, primary_key=True)
+    feature = Column(String, nullable=False, default="")
+    system = Column(Text, nullable=False, default="")
+    user_template = Column(Text, nullable=False, default="")
+    temperature = Column(Float, nullable=False, default=0.7)
+    think = Column(Boolean, nullable=False, default=False)
+    built_in = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, default=_utcnow)
+
+
 class RenderPreset(Base):
     """Named bundle of voice + delivery + master target + lexicons. Lets the
     audiobook producer lock ACX consistency across 30 chapters, or the
