@@ -5,37 +5,53 @@
 
 ---
 
-## ⮕ ACTIVE WORK — read first (2026-06-19)
+## ⮕ ACTIVE WORK — read first (2026-06-21)
 
-**Everything remaining is gated on the user (hardware / UX / on-box verify) —
-there is no clean autonomous coding task in flight.** Detail per thread:
+**Current thread: the shared AI/LLM stack convergence.** Authoritative plan:
+`docs/plans/2026-06-20-shared-ai-stack-plan.md` — 20 settled decisions + a
+reconciliation section; **read it before any AI work and do NOT re-litigate it.**
+Branch: `claude/admiring-galileo-il3q0o` (all repos). Goal: JustVoice and
+JustWrite run the SAME AI stack — `just-llm-runner` (Python) + `@delebash/llm-ui`
+(Vue) — differing ONLY in TTS (JV) and each app's feature catalog.
 
-- **Storage rewrite — DONE, both apps** (2026-06-18/19, admiring-galileo).
-  JustWrite is fully off kv/IndexedDB/localStorage — every datum is a typed SQL
-  resource over a typed API (plan: JW `docs/plans/2026-06-18-unified-storage-no-idb.md`).
-  JustVoice: dead `idb-keyval` removed; renderer content prefs → `/v1/prefs`
-  (new `prefs` table); `settings.json` folded into a SQLite `settings` row;
-  renderer stores (ui/activeProject) + RecommendCard moved server-side (plan:
-  JV `docs/plans/2026-06-19-jv-prefs-to-sql.md`). What stays client-side in JV
-  by design: the server address/token + device-local shell config
-  (keep_server_running, updater_channel, capture_settings) + ephemeral
-  sessionStorage. `allow_network_access` now derived from `settings.server.host`.
-- **Built-in LLM runner** (`docs/plans/2026-06-16-builtin-llm-runner.md`) —
-  the 2026-06-16 "publish next" steps are DONE. `delebash/just-llm-runner` is
-  published (in this session's scope, cloned at `/home/user/just-llm-runner`);
-  JustVoice consumes it (mounts `llm_runner.router`); P1.1–P1.5 + runner
-  lifecycle endpoints + the `ui/` llm-ui skeleton are all committed/pushed.
-  **Remaining is HARDWARE-GATED**: P1.5b auto-spawn orchestration + P1.6
-  benchmark + the deferred working-config cache — must be built+validated on
-  the user's real GPU (writing them blind in the container invites rework,
-  RULE #2).
-- **Shared `llm-ui` adoption** — UX-GATED (the one explicit blocker per
-  CLAUDE.md; the package skeleton + ProviderBackend contract exist).
-- **USER, on your Windows box**: verify Engines download/load (Thread 4) and
-  the Qwen GGUF download/load before P1.6.
+**Shared packages (done + pushed):**
+- `just-llm-runner` is now two subpackages: `llm_runner/runner/` (the local
+  llama.cpp runner) + `llm_runner/llm/` (cloud-provider + dispatch + prompt layer
+  lifted from JV — adapters, registry, tiers, usage, dispatch, and `prompts.py` =
+  FeaturePromptRow + PromptStore Protocol + render + `make_prompt_router`/
+  `make_feature_router`). Public API (`from llm_runner import router, …`) unchanged.
+- `@delebash/llm-ui` (`just-llm-runner/ui/`, repo root) is **plain JS — no TS**:
+  own origin-aware `client.js`, token-driven `lu-*` `styles.css`, `Lu*` primitives,
+  and the first shared view `PromptLab.vue`. The old `ProviderBackend` adapter is
+  deleted (the UI calls the same endpoints both apps mount). Vite alias
+  `@delebash/llm-ui → ../just-llm-runner/ui/src` in both apps.
+- Feature prompts are **DB-seeded + Lab-editable** (no hardcoded prompt text),
+  served by the shared `/v1/ai/prompts` + `/v1/ai/run` + `/v1/ai/stream`. JV and
+  JW both adopted it; their per-app duplicates were deleted (the Keystone =
+  shared impl behind a host store adapter).
 
-> The 2026-06-16 block below is retained for context; the items it lists as
-> "next" (publish / switchover / P1.3–P1.5) are all DONE — see above.
+**JustWrite is the current focus app** (build the shared GUI in service of JW
+first; JV adopts the identical result after). The A–F plan:
+- A ✅ shared prompt subsystem → `llm_runner`. B ✅ JW server adopts it.
+- C 🔄 shared `@delebash/llm-ui`: **PromptLab done + screenshot-verified in JW**;
+  still to build — provider form (from JW's `SettingsProviderForm`), model picker,
+  provider list, Features routing, Usage view.
+- D ⬜ shared top-level "AI / Models" menu area (Decision 2). E ⬜ JW streaming
+  features → `/v1/ai/stream`, then delete the old `/v1/llm/...` gateway.
+
+**JustVoice's own state:** fully on the shared backend (no shims); it will adopt
+the shared `@delebash/llm-ui` views after JW proves them, then layer TTS (the one
+JV-only difference) on the same framework. **Still HARDWARE-GATED** (build/verify
+on the user's GPU): the built-in runner's P1.5b auto-spawn + P1.6 benchmark +
+working-config cache.
+
+**Storage rewrite — DONE, both apps** (2026-06-18/19): JW fully off
+kv/IndexedDB/localStorage; JV renderer prefs → `/v1/prefs`, `settings.json` →
+SQLite `settings` row. Detail: JW `docs/plans/2026-06-18-unified-storage-no-idb.md`,
+JV `docs/plans/2026-06-19-jv-prefs-to-sql.md`.
+
+> Dated session logs below (2026-06-15 and earlier) are historical — the live
+> state is THIS block + the authoritative plan. Full history is in git.
 
 ---
 
