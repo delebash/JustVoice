@@ -5,7 +5,61 @@
 
 ---
 
-## ⮕ ACTIVE WORK — read first (2026-06-21)
+## ⮕ ACTIVE WORK — read first (2026-06-23)
+
+**Thread: converge JustVoice's UI primitives onto the shared `@delebash/llm-ui`
+kit — DONE (8 slices, all pushed to `claude/admiring-galileo-il3q0o`).** Root
+cause of the old divergence: JV's markup/CSS was carried over from an HTML
+*preview* mock (raw `.jv-*` utility classes) instead of being built
+component-first like JustWrite. Every JV primitive now uses the shared `Ui*`
+components; `src/renderer/src/components/ui/` is **empty** (every `Jv*` fork
+deleted).
+
+Slices (each verified: `build:vite` + headless `smoke.mjs` zero-JS-errors +
+screenshot; committed separately): Button→UiButton · Input (component + 74 raw
+`<input>`)→UiInput · Textarea→UiTextarea · Toggle→UiToggle · Field→UiField (+
+global `.ui-field*`) · Checkbox→UiCheckbox · Tag/chip (146 `.jv-pill`)→**UiTag**
+(status badges) + new **UiChip** (interactive selection chips; distinct from
+UiSegmented) · Select (JvSelect + 36 raw `<select>`)→new **Reka-based UiSelect**
+(JV was on native `<select>` despite shipping reka-ui — the drift the user caught;
+both apps now use Reka selects). All `.jv-input/.jv-pill/.jv-btn/.jv-toggle/
+.jv-field/.jv-check/.jv-w-*` CSS deleted; JV keeps only token aliases + a few
+JV-local tweaks (`.ui-tag--violet`, untagged-input width cap, `--tag-radius/
+--chip-radius = --r-pill`).
+
+**New shared components in the kit** (`just-llm-runner/ui/src/common/`): `UiChip`
++ `UiSelect` (Reka headless Select — supersedes JwSelect *and* JvSelect; superset
+API + string-or-object options + `width`). `UiInput`/`UiTextarea` now
+`defineExpose({focus,select,el})`. `.ui-tag` radius is token-driven. **Vite
+`resolve.dedupe` added to BOTH apps** (`vue`,`reka-ui`,…) so the aliased kit
+resolves single instances (Reka provide/inject + Vue reactivity need one copy).
+JW build + headless smoke verified green after the shared changes.
+
+**Operating principle reinforced (user, 2026-06-23):** converge by default — ONE
+shared component per job, used by both apps; an app not needing a feature is NOT a
+reason to fork or "defer" a simpler/native variant. Applies to ANY reusable code
+that works on a standard Vue app, **not just primitives**. (Strengthened in
+`~/.claude/CLAUDE.md` PRIORITY #1 tells + RULE #7.)
+
+**NEXT (open): the help system is the next convergence.** Verified:
+`JvHelpDrawer.vue` is a copy-paste-with-adaptation of `JwHelpDrawer.vue` (its own
+header says so); `HelpTrigger.vue` + `services/helpMarkdown.js` are identical bar
+naming; only `services/helpDocs.js` (content) legitimately differs. Plan: extract
+a shared, pluggable help module (drawer shell + trigger + markdown renderer + open
+state) into the kit; each app plugs in its own help **content**. One stale
+fork-reason already found: the "JV has no router" excuse is obsolete (JV uses
+vue-router now).
+
+> ⚠️ DOCS DEBT to clear in-step (do NOT defer again — the user flagged that I let
+> this go stale): JV `CLAUDE.md` RULE #1 "canonical inventory" + design-conformance
+> checklist still name dead classes/components (`jv-btn`, `jv-pill`, `JvToggle`,
+> native-checkbox→JvToggle) — point them at the shared `Ui*` kit. JW `CLAUDE.md`
+> still documents the `Jw*` layer as canonical; JW's own `Jw*`→`Ui*` migration is
+> the eventual sibling task.
+
+---
+
+## ⮕ ACTIVE WORK (2026-06-21 — shared AI/LLM stack, still in progress)
 
 **Current thread: the shared AI/LLM stack convergence.** Authoritative plan:
 `docs/plans/2026-06-20-shared-ai-stack-plan.md` — 20 settled decisions + a

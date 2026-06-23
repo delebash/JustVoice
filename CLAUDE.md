@@ -60,13 +60,16 @@ commit message — two questions:**
 
 A grep for the obvious class names (`jv-subnav`, `jv-lib-toolbar`,
 `jv-table`, `jv-overlay`) costs 5 seconds; the user paying for the
-inconsistency costs a test round. Canonical inventory so far:
+inconsistency costs a test round. **Form primitives now come from the shared
+`@delebash/llm-ui` kit** (`UiButton` · `UiInput` · `UiTextarea` · `UiSelect`
+(Reka) · `UiToggle` · `UiCheckbox` · `UiField` · `UiTag` · `UiChip` — the `Jv*`
+forks were deleted 2026-06-23 and `components/ui/` is empty). The canonical
+inventory below is JV-LOCAL **layout/shell** classes only (not primitives):
 `.jv-subnav` (tabbed views) · `.jv-lib-toolbar` (search → filter chips
 → data dropdowns → spacer → actions, "+ New" rightmost) · `jv-table` +
 row-click→full-form dialog (library CRUD) · `confirmDialog`/
 `promptDialog` (never native) · `.jv-overlay`/`.jv-modal` shells ·
-`.jv-fill` (pane views that fill the content area) · `JvToggle`
-(booleans — never raw `<input type="checkbox">`).
+`.jv-fill` (pane views that fill the content area).
 
 **Design-conformance checklist** (born 2026-06-12 after a
 geometry-only "sweep" missed control-level slop — a sweep that doesn't
@@ -75,21 +78,22 @@ canonical method verbatim:
 `docs/plans/2026-06-12-design-conformance-audit.md` §Sweep method
 (two passes incl. screenshot judgment, modal/data-state coverage,
 recorded-exceptions ledger, findings before fixes):
-1. Booleans → `JvToggle`/styled control, never a native checkbox.
-2. Inputs/selects sized by content-typed width tokens (`jv-w-name` /
-   `jv-w-id` / `jv-w-token` / `--w-*`) — never full-width stretch
+1. Booleans → `UiToggle` (on/off settings) or `UiCheckbox` (multi-select /
+   inline), never a native checkbox.
+2. Inputs/selects sized to content via the `width="name|id|token|…"` prop on
+   `UiInput`/`UiSelect` (→ `.ui-w-*`, token-driven) — never full-width stretch
    unless the content is prose.
-3. Form rows → JvField pattern; sections that group controls → `jv-card`,
+3. Form rows → `UiField`; sections that group controls → `jv-card`,
    not naked rows on the page background.
-4. Buttons → `jv-btn`/`JvButton` variants only; no scoped one-offs.
+4. Buttons → `UiButton` intents only; no scoped one-offs, no raw `.btn` classes.
 5. No internal jargon in user-facing copy ("pin", "manifest", feature
    keys). If a knob's effect is invisible (e.g. a prompt resolved
    server-side), SHOW the resolved truth in the UI — never an empty
    box with a "defaults apply" placeholder (Speaker Lab lesson).
 6. NO borderless text-only buttons (user decree 2026-06-12: "no ghost
    buttons"). The ghost variant renders as a thin-bordered quiet
-   utility; jv-pill --ghost is a chip SELECTION state, not a button,
-   and is exempt.
+   utility; selection chips use `UiChip` (`:selected` state) — a chip
+   pattern, not a button, and exempt.
 7. Layout grammar (rewritten 2026-06-12 after the copy-JustWrite
    correction — "you just decided to copy instead of think"): size
    every control to its content and let rows END where content ends —
