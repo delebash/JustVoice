@@ -27,7 +27,7 @@ import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
-import { UiButton, UiInput, UiTextarea } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiCheckbox } from "@delebash/llm-ui";
 import VoiceParamsModal from "../components/VoiceParamsModal.vue";
 import EmptyState from "../components/EmptyState.vue";
 import ExportPanel from "../components/ExportPanel.vue";
@@ -1886,9 +1886,8 @@ watch(selectedProjectId, (id) => {
             <template v-for="(s, i) in scenes" :key="s.id">
               <tr>
                 <td class="studio__render-check">
-                  <input
-                    type="checkbox" class="jv-check"
-                    :checked="!!sceneSelectedForRender[s.id]"
+                  <UiCheckbox
+                    :model-value="!!sceneSelectedForRender[s.id]"
                     @change="sceneSelectedForRender = { ...sceneSelectedForRender, [s.id]: $event.target.checked }"
                   />
                 </td>

@@ -6,7 +6,7 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton, UiInput, UiTextarea, UiField } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox } from "@delebash/llm-ui";
 import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { useVoicesStore } from "../stores/voices.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -691,10 +691,7 @@ onMounted(async () => {
         </select>
       </div>
       <div class="jv-chip-card">🎛️ Effects: <strong>none</strong> <span class="muted">▾</span></div>
-      <label class="jv-chip-card">
-        🔁 Autoplay
-        <input type="checkbox" class="jv-check" v-model="autoplay" />
-      </label>
+      <UiCheckbox v-model="autoplay" class="jv-chip-card">🔁 Autoplay</UiCheckbox>
       <span class="jv-spacer" />
       <UiButton
         intent="ghost"

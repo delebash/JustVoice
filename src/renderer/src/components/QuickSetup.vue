@@ -27,7 +27,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { UiButton } from "@delebash/llm-ui";
+import { UiButton, UiCheckbox } from "@delebash/llm-ui";
 
 const emit = defineEmits(["close"]);
 
@@ -412,9 +412,8 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
             <div class="quick-setup__row-label">TTS engines</div>
             <ul class="quick-setup__engines">
               <li v-for="id in recipe.ttsEngineIds" :key="id" class="quick-setup__engine-row">
-                <input
-                  type="checkbox" class="jv-check"
-                  :checked="!deselectedEngineIds.has(id)"
+                <UiCheckbox
+                  :model-value="!deselectedEngineIds.has(id)"
                   :disabled="enginesAlreadyInstalled.some((e) => e.id === id)"
                   :title="enginesAlreadyInstalled.some((e) => e.id === id) ? 'Already on disk' : 'Uncheck to skip this engine'"
                   @change="toggleEngine(id)"

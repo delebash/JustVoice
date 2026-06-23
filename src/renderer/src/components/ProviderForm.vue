@@ -25,7 +25,7 @@
 import { computed, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { UiButton } from "@delebash/llm-ui";
+import { UiButton, UiCheckbox } from "@delebash/llm-ui";
 
 const props = defineProps({
   // The provider being edited. For new providers, pass an empty shape.
@@ -337,14 +337,11 @@ async function onSave() {
       </div>
       <div class="pf-f">
         <label title="Self-hosted = runs on your machine or network — free and private. Lists under Local; its voices badge as self-hosted, not online·metered.">Where it runs</label>
-        <label style="display:flex;align-items:center;gap:6px;font-weight:400;text-transform:none;letter-spacing:0">
-          <input type="checkbox" class="jv-check" v-model="draft.self_hosted" />
-          <span>self-hosted (my machine / network — free)</span>
-        </label>
+        <UiCheckbox v-model="draft.self_hosted">self-hosted (my machine / network — free)</UiCheckbox>
       </div>
       <div class="pf-caps">
-        <label title="Chat + embeddings — compose, rewrite, speaker extraction, refinement"><input type="checkbox" class="jv-check" v-model="capLLM" /> <span class="pf-cap llm">LLM</span></label>
-        <label title="Voice synthesis via /v1/audio/speech"><input type="checkbox" class="jv-check" v-model="capTTS" /> <span class="pf-cap tts">TTS</span></label>
+        <UiCheckbox v-model="capLLM" title="Chat + embeddings — compose, rewrite, speaker extraction, refinement"><span class="pf-cap llm">LLM</span></UiCheckbox>
+        <UiCheckbox v-model="capTTS" title="Voice synthesis via /v1/audio/speech"><span class="pf-cap tts">TTS</span></UiCheckbox>
       </div>
     </div>
 

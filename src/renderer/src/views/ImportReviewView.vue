@@ -16,7 +16,7 @@ import { projectsService } from "../services/projects.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { getImportDraft, clearImportDraft, updateImportStandard } from "../stores/importDraft.js";
-import { UiButton } from "@delebash/llm-ui";
+import { UiButton, UiCheckbox } from "@delebash/llm-ui";
 
 const activeProject = useActiveProject();
 const projectsStore = useProjectsStore();
@@ -174,7 +174,7 @@ function cancel() {
           <thead><tr><th style="width:30px"></th><th>Chapter</th><th class="r">Lines</th><th class="r">Words</th><th class="r">Est. audio</th></tr></thead>
           <tbody>
             <tr v-for="row in scenes" :key="row.index" :class="{ 'imrev__off': excluded.has(row.index) }">
-              <td><input type="checkbox" class="jv-check" :checked="!excluded.has(row.index)" :title="excluded.has(row.index) ? 'Excluded — will not import' : 'Included'" @change="toggle(row.index)" /></td>
+              <td><UiCheckbox :model-value="!excluded.has(row.index)" :title="excluded.has(row.index) ? 'Excluded — will not import' : 'Included'" @change="toggle(row.index)" /></td>
               <td class="imrev__title">{{ row.title }}</td>
               <td class="r">{{ row.lines }}</td>
               <td class="r">{{ row.words.toLocaleString() }}</td>

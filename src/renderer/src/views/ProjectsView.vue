@@ -12,7 +12,7 @@
 -->
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
-import { UiButton, UiInput } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiCheckbox } from "@delebash/llm-ui";
 import JvTag from "../components/ui/JvTag.vue";
 import EmptyState from "../components/EmptyState.vue";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
@@ -718,19 +718,18 @@ onMounted(() => {
               v-for="p in personasAvailableForCast"
               :key="p.id"
             >
-              <label style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer;">
-                <input
-                  type="checkbox" class="jv-check"
-                  :checked="addCastSelection.has(p.id)"
-                  @change="toggleAddCast(p.id)"
-                />
+              <UiCheckbox
+                :model-value="addCastSelection.has(p.id)"
+                @change="toggleAddCast(p.id)"
+                style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer;"
+              >
                 <div style="flex: 1; min-width: 0;">
                   <strong>{{ p.name }}</strong>
                   <div class="jv-muted" style="font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                     {{ p.bio || "(no bio)" }}
                   </div>
                 </div>
-              </label>
+              </UiCheckbox>
             </li>
           </ul>
         </div>
@@ -925,14 +924,6 @@ onMounted(() => {
   text-align: center;
 }
 
-/* Local checkbox styling lined-up with the row baseline. */
-.jv-checkbox {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  cursor: pointer;
-}
 .projects__qc { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
 .projects__qc-head { display: flex; align-items: center; gap: 10px; }
 .projects__qc-limits { font-size: 11.5px; }

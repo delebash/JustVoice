@@ -7,9 +7,8 @@ import { confirmDialog, promptDialog } from "../services/dialog.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { projectsService } from "../services/projects.js";
 import { readPref, writePref } from "../services/prefs.js";
-import { UiButton, UiInput, UiToggle, UiField } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiToggle, UiField, UiCheckbox } from "@delebash/llm-ui";
 import JvSelect from "../components/ui/JvSelect.vue";
-import JvCheckbox from "../components/ui/JvCheckbox.vue";
 import { useOnboarding } from "../stores/onboarding.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -1197,9 +1196,7 @@ onMounted(() => {
         <div style="display:flex; align-items:center; gap:10px; margin-top:10px">
           <UiButton intent="danger-outline" size="small" label="☢ Factory reset…" title="As-new install: all content + settings to defaults. Engine model downloads stay. Type RESET to confirm." @click="factoryReset" />
           <UiButton intent="danger-outline" size="small" label="🗑 Delete ALL projects…" :disabled="wipeBusy" @click="deleteAllProjects" />
-          <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer">
-            <input type="checkbox" class="jv-check" v-model="deletePersonasToo" /> also delete all personas
-          </label>
+          <UiCheckbox v-model="deletePersonasToo">also delete all personas</UiCheckbox>
         </div>
       </div>
     </div>
@@ -1325,10 +1322,7 @@ onMounted(() => {
           Streamed from disk — large libraries don't load into RAM.
         </p>
         <div class="setting-row">
-          <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px">
-            <input v-model="backupIncludeAudio" type="checkbox" class="jv-check" />
-            Include audio blobs (bigger, but a complete machine migration)
-          </label>
+          <UiCheckbox v-model="backupIncludeAudio">Include audio blobs (bigger, but a complete machine migration)</UiCheckbox>
         </div>
         <div class="setting-row" style="display: flex; gap: 10px; margin-top: 10px">
           <UiButton intent="primary" size="small" :loading="backupBusy" label="⬇ Download backup" title="Stream a backup zip of this installation" @click="downloadBackup" />
@@ -1658,7 +1652,7 @@ onMounted(() => {
           </UiField>
         </div>
         <div style="margin-top: 14px;">
-          <JvCheckbox v-model="settings.cache.enabled" label="Cache enabled" />
+          <UiCheckbox v-model="settings.cache.enabled" label="Cache enabled" />
         </div>
       </div>
     </div>
@@ -1832,7 +1826,7 @@ onMounted(() => {
           </UiField>
         </div>
         <div style="margin-top: 14px;">
-          <JvCheckbox
+          <UiCheckbox
             v-model="settings.training.enabled"
             label="Training enabled (master gate — off makes POST /v1/train return 501)"
           />

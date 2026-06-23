@@ -19,7 +19,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { UiButton, UiInput } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiCheckbox } from "@delebash/llm-ui";
 
 const props = defineProps({
   open: { type: Boolean, required: true },
@@ -240,10 +240,9 @@ onMounted(() => {
                 class="effects-modal__param"
               >
                 <span>{{ p.label }}</span>
-                <input
+                <UiCheckbox
                   v-if="p.type === 'boolean'"
-                  type="checkbox" class="jv-check"
-                  :checked="!!ef.params?.[p.key]"
+                  :model-value="!!ef.params?.[p.key]"
                   @change="setParam(i, p.key, $event.target.checked)"
                 />
                 <UiInput

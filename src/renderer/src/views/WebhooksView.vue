@@ -9,8 +9,7 @@ import { onMounted, ref } from "vue";
 import { webhooksService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton, UiInput, UiField } from "@delebash/llm-ui";
-import JvCheckbox from "../components/ui/JvCheckbox.vue";
+import { UiButton, UiInput, UiField, UiCheckbox } from "@delebash/llm-ui";
 
 const EVENT_OPTIONS = [
   "render.completed",
@@ -191,7 +190,7 @@ justvoice.transcribe      {audio} → text</pre>
 
       <UiField label="Events" layout="block">
         <div class="events-grid">
-          <JvCheckbox
+          <UiCheckbox
             v-for="e in EVENT_OPTIONS"
             :key="e"
             :model-value="adding.events.includes(e)"

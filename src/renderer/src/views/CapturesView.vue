@@ -9,7 +9,7 @@ import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { captureReadinessService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
-import { UiButton, UiInput } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiCheckbox } from "@delebash/llm-ui";
 import JvTag from "../components/ui/JvTag.vue";
 
 const api = useApi();
@@ -133,10 +133,7 @@ onMounted(() => {
           <span class="jv-chip-card">
             🌐 Capture language: <strong>auto</strong>
           </span>
-          <label class="jv-chip-card captures__autopaste">
-            🤖 Auto-paste
-            <input type="checkbox" class="jv-check" checked disabled title="Configurable soon" />
-          </label>
+          <UiCheckbox :model-value="true" disabled title="Configurable soon" class="jv-chip-card captures__autopaste">🤖 Auto-paste</UiCheckbox>
         </div>
         <p class="jv-muted captures__pill-hint" style="margin-top:8px">
           These defaults are shown for reference — configuring them in-app is coming soon.

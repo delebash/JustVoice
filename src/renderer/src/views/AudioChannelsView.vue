@@ -11,8 +11,7 @@ import { onMounted, ref } from "vue";
 import { channelsService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton, UiInput, UiTextarea, UiField } from "@delebash/llm-ui";
-import JvCheckbox from "../components/ui/JvCheckbox.vue";
+import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox } from "@delebash/llm-ui";
 
 const channels = ref([]);
 const editing = ref({ id: null, name: "", device_ids: [], is_default: false });
@@ -153,7 +152,7 @@ onMounted(() => {
       </UiField>
 
       <UiField label="" layout="block" style="margin-top: 8px;">
-        <JvCheckbox
+        <UiCheckbox
           v-model="editing.is_default"
           label="Default channel (used when a voice has no explicit channel assignment)"
         />

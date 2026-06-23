@@ -192,37 +192,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 .jv-rowact--danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
 .jv-rowact:disabled { opacity: 0.5; cursor: default; }
 
-/* Canonical checkbox — styled replacement for native checkboxes, which
-   render oversized + OS-coloured on Windows WebView2 no matter what
-   accent-color says. Use for row/multi-select and chip-embedded
-   booleans; standalone on/off SETTING rows use JvToggle instead. */
-input[type="checkbox"].jv-check {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 15px;
-  height: 15px;
-  flex: none;
-  border: 1.5px solid var(--line-strong);
-  border-radius: 4px;
-  background: var(--surface);
-  cursor: pointer;
-  margin: 0;
-  position: relative;
-  vertical-align: -2px;
-}
-input[type="checkbox"].jv-check:checked { background: var(--accent); border-color: var(--accent); }
-input[type="checkbox"].jv-check:checked::after {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: 1px;
-  width: 4px;
-  height: 8px;
-  border: solid #fff;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
-input[type="checkbox"].jv-check:disabled { opacity: 0.5; cursor: default; }
+/* Checkbox now comes from the shared UiCheckbox (@delebash/llm-ui, .ui-checkbox*). */
 
 /* Canonical eyebrow micro-label + eyebrow-headed pane card — the Labs
    panes (Speaker, Render): a jv-card whose first row is eyebrow ·
