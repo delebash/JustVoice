@@ -11,8 +11,7 @@ import { onMounted, ref } from "vue";
 import { channelsService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton, UiInput } from "@delebash/llm-ui";
-import JvTextarea from "../components/ui/JvTextarea.vue";
+import { UiButton, UiInput, UiTextarea } from "@delebash/llm-ui";
 import JvCheckbox from "../components/ui/JvCheckbox.vue";
 import JvField from "../components/ui/JvField.vue";
 
@@ -140,7 +139,7 @@ onMounted(() => {
       </JvField>
 
       <JvField label="Devices (comma-separated IDs)" layout="block">
-        <JvTextarea
+        <UiTextarea
           :model-value="editing.device_ids.join(', ')"
           placeholder="device-id-1, device-id-2"
           :rows="3"

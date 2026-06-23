@@ -12,7 +12,7 @@ import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { promptDialog } from "../services/dialog.js";
-import { UiButton, UiInput } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea } from "@delebash/llm-ui";
 import JvToggle from "../components/ui/JvToggle.vue";
 import { useVoicesStore } from "../stores/voices.js";
 
@@ -187,7 +187,7 @@ onMounted(loadVoices);
         </label>
         <label class="renderlab__field">
           <span class="jv-eyebrow">Sample sentence</span>
-          <textarea v-model="sampleText" class="jv-input jv-input--full renderlab__text" rows="3" />
+          <UiTextarea v-model="sampleText" class="renderlab__text" :rows="3" />
         </label>
       </div>
     </section>

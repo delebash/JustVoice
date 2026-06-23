@@ -717,7 +717,6 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
    on the specific control. Sweeping new tags through views is safer
    than flipping the default. */
 .jv-input,
-.jv-textarea,
 .jv-select {
   display: block;
   width: 100%;
@@ -744,7 +743,6 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
    tagged controls (.ui-w-*) opt out. App-local: does not affect JustWrite. */
 .ui-input:not(.ui-textarea):not([class*="ui-w-"]) { max-width: var(--w-name); }
 .jv-input--full,
-.jv-textarea--full,
 .jv-select--full { max-width: none; }
 .jv-w-token { max-width: var(--w-token); }
 .jv-w-id    { max-width: var(--w-id); }
@@ -754,29 +752,19 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
 .jv-w-prose { max-width: var(--w-prose); }
 .jv-w-edit  { max-width: var(--w-edit); }
 .jv-w-full  { max-width: none; }
-.jv-input:focus, .jv-textarea:focus, .jv-select:focus {
+.jv-input:focus, .jv-select:focus {
   outline: 0;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
-.jv-input::placeholder,
-.jv-textarea::placeholder { color: var(--ink-3); }
+.jv-input::placeholder { color: var(--ink-3); }
 .jv-input:disabled,
-.jv-textarea:disabled,
 .jv-select:disabled {
   background: var(--surface-2);
   color: var(--ink-3);
   cursor: not-allowed;
 }
 .jv-input--sm { height: 28px; padding: 0 10px; font-size: 12px; }
-
-.jv-textarea {
-  height: auto;
-  min-height: 96px;
-  padding: 10px 12px;
-  resize: vertical;
-  line-height: 1.5;
-}
 
 .jv-select {
   cursor: pointer;

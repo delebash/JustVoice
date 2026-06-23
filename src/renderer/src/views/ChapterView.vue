@@ -13,7 +13,7 @@ import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
-import { UiButton, UiInput } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea } from "@delebash/llm-ui";
 import LineageViewer from "../components/LineageViewer.vue";
 import EmptyState from "../components/EmptyState.vue";
 import JvSelect from "../components/ui/JvSelect.vue";
@@ -884,7 +884,7 @@ async function savePastedText() {
         Paste its text below (paragraphs become blocks, narrator-implied — assign
         speakers later in <a href="#studio">Studio · Script</a>), or run attribution there directly.
       </div>
-      <textarea v-model="pasteText" class="jv-input jv-input--full" rows="8" :placeholder="`Paste the ${copy.chapter.singular.toLowerCase()} text…`" style="width:100%"></textarea>
+      <UiTextarea v-model="pasteText" :rows="8" :placeholder="`Paste the ${copy.chapter.singular.toLowerCase()} text…`" style="width:100%" />
       <div style="margin-top:8px">
         <UiButton intent="primary" size="small" :loading="pasteBusy" :disabled="pasteBusy || !pasteText.trim()" label="Add as blocks" @click="savePastedText" />
       </div>
@@ -932,7 +932,7 @@ async function savePastedText() {
         <!-- Block text — read view, or in-place editor. -->
         <p v-if="editingBlockId !== block.id" class="chapter-view__block-text" :class="{ 'chapter-view__block-text--marker': block.metadata?.marker }"><template v-for="(part, pi) in tagParts(block.text)" :key="pi"><span v-if="part.tag" class="chapter__tag">{{ part.text }}</span><template v-else>{{ part.text }}</template></template></p>
         <div v-else class="chapter-view__block-edit">
-          <textarea v-model="editingText" class="jv-input jv-input--full" rows="4" @keydown.escape="editingBlockId = null" />
+          <UiTextarea v-model="editingText" :rows="4" @keydown.escape="editingBlockId = null" />
           <div class="chapter-view__block-edit-actions">
             <UiButton intent="primary" size="small" label="Save" :loading="editSaveBusy" :disabled="editSaveBusy || !editingText.trim()" @click="saveBlockText(block)" />
             <UiButton intent="ghost" size="small" label="Cancel" @click="editingBlockId = null" />

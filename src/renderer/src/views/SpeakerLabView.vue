@@ -20,7 +20,7 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
 import { promptDialog, confirmDialog } from "../services/dialog.js";
 import { readPref, writePref } from "../services/prefs.js";
-import { UiButton, UiInput } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea } from "@delebash/llm-ui";
 import JvToggle from "../components/ui/JvToggle.vue";
 import { useProjectsStore } from "../stores/projects.js";
 
@@ -531,9 +531,9 @@ onMounted(async () => {
         <UiButton intent="ghost" size="small" label="✕ Clear" title="Clear the text box" @click="text = ''" />
         <UiButton intent="secondary" size="small" label="✨ Sample" title="Load a small sample passage + cast" @click="loadSample" />
       </div>
-      <textarea
+      <UiTextarea
         v-model="text"
-        class="jv-input jv-input--full splab__text"
+        class="splab__text"
         placeholder="Paste manuscript text here, or load a chapter above…"
       />
     </section>
@@ -678,7 +678,7 @@ onMounted(async () => {
                 <UiButton intent="ghost" size="small" label="↺ Tier default" title="Restore this tier's default body" @click="applyTier(col, col.tier)" />
               </template>
             </span>
-            <textarea v-model="col.systemPrompt" class="jv-input jv-input--full splab__prompt-text" />
+            <UiTextarea v-model="col.systemPrompt" class="splab__prompt-text" />
           </div>
 
           <!-- User prompt — the template; tokens fill in server-side -->
@@ -691,7 +691,7 @@ onMounted(async () => {
                 <UiButton intent="ghost" size="small" label="↺ Default" title="Restore the default template" @click="col.userPrompt = extractionConfig?.user_template || ''" />
               </template>
             </span>
-            <textarea v-model="col.userPrompt" class="jv-input jv-input--full splab__prompt-text splab__prompt-text--user" />
+            <UiTextarea v-model="col.userPrompt" class="splab__prompt-text splab__prompt-text--user" />
           </div>
 
           <div class="splab__runrow">

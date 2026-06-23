@@ -17,7 +17,7 @@ import { computed, onMounted, ref, watch, nextTick } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton, UiInput } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea } from "@delebash/llm-ui";
 import EmptyState from "../components/EmptyState.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import { usePersonasStore } from "../stores/personas.js";
@@ -470,8 +470,8 @@ onMounted(loadAll);
 
           <label class="personas__field personas__field--wide">
             <span>Bio (character context)</span>
-            <textarea
-              class="jv-input jv-input--full personas__textarea"
+            <UiTextarea
+              class="personas__textarea"
               v-model="draft.bio"
               placeholder="A retired racetrack tout with three teeth and four lies for every truth. Speaks in fragments. Calls everyone &quot;boss.&quot; Suspicious of cops. Comfortable with silence…"
               @input="markDirty"
@@ -485,8 +485,8 @@ onMounted(loadAll);
 
           <label class="personas__field personas__field--wide">
             <span>Personality (TTS delivery instruction)</span>
-            <textarea
-              class="jv-input jv-input--full personas__textarea"
+            <UiTextarea
+              class="personas__textarea"
               v-model="draft.personality"
               placeholder="Clipped, world-weary noir delivery. Dry wit. Boston accent in stressful moments. Never overshares."
               @input="markDirty"

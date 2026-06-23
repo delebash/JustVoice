@@ -27,7 +27,7 @@ import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
-import { UiButton, UiInput } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea } from "@delebash/llm-ui";
 import VoiceParamsModal from "../components/VoiceParamsModal.vue";
 import EmptyState from "../components/EmptyState.vue";
 import ExportPanel from "../components/ExportPanel.vue";
@@ -1773,9 +1773,9 @@ watch(selectedProjectId, (id) => {
           <UiButton intent="ghost" size="small" label="Cancel" @click="cancelAnalyze" />
         </div>
 
-        <textarea
+        <UiTextarea
           v-if="!analyzeRows.length"
-          class="jv-input jv-input--full studio__script-text"
+          class="studio__script-text"
           v-model="sceneText"
           :placeholder="`Paste the ${copy.chapter.singular.toLowerCase()} text here, then click Analyze.`"
         />
@@ -2074,10 +2074,9 @@ watch(selectedProjectId, (id) => {
             <div v-else-if="rewriteError" class="jv-muted" style="padding: 10px 12px; color: var(--danger);">
               {{ rewriteError }}
             </div>
-            <textarea
+            <UiTextarea
               v-else
               v-model="rewritePreview"
-              class="jv-textarea jv-textarea--full"
               style="min-height: 100px;"
               placeholder="Rewrite will appear here…"
             />

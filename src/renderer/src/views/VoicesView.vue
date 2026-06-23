@@ -5,8 +5,7 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
 import { readPref, writePref } from "../services/prefs.js";
-import { UiButton, UiInput } from "@delebash/llm-ui";
-import JvTextarea from "../components/ui/JvTextarea.vue";
+import { UiButton, UiInput, UiTextarea } from "@delebash/llm-ui";
 import JvSelect from "../components/ui/JvSelect.vue";
 import JvTag from "../components/ui/JvTag.vue";
 import JvField from "../components/ui/JvField.vue";
@@ -968,14 +967,14 @@ function blendWithVoice() {
             <input type="file" accept="audio/*" class="jv-file-input" @change="cloneFile = $event.target.files[0]" />
           </JvField>
           <JvField label="Transcript of clip (optional — improves cloning fidelity)" layout="block" style="margin-top: 14px;">
-            <JvTextarea v-model="cloneTranscript" placeholder="What's actually said in the reference clip — engines that support text-conditioned cloning use this." :rows="3" />
+            <UiTextarea v-model="cloneTranscript" placeholder="What's actually said in the reference clip — engines that support text-conditioned cloning use this." :rows="3" />
           </JvField>
         </template>
 
         <!-- Design fields -->
         <template v-else-if="modal === 'design'">
           <JvField label="Prose description" layout="block" style="margin-top: 14px;">
-            <JvTextarea v-model="designPrompt" placeholder="a calm middle-aged British man, warm and unhurried" :rows="4" />
+            <UiTextarea v-model="designPrompt" placeholder="a calm middle-aged British man, warm and unhurried" :rows="4" />
           </JvField>
           <p class="jv-muted" style="font-size: 12px; margin-top: 6px;">Qwen3-native via the CustomVoice design path. Other engines may approximate from the prompt as a fallback.</p>
         </template>
@@ -986,7 +985,7 @@ function blendWithVoice() {
             <input type="file" accept="audio/*" class="jv-file-input" @change="importFile = $event.target.files[0]" />
           </JvField>
           <JvField label="Transcript (optional)" layout="block" style="margin-top: 14px;">
-            <JvTextarea v-model="importTranscript" placeholder="What's said in the clip." :rows="3" />
+            <UiTextarea v-model="importTranscript" placeholder="What's said in the clip." :rows="3" />
           </JvField>
           <p class="jv-muted" style="font-size: 12px; margin-top: 6px;">Imported clips are stored as-is. For voice cloning use the Clone flow.</p>
         </template>

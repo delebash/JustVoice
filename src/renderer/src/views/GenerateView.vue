@@ -6,9 +6,8 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton, UiInput } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea } from "@delebash/llm-ui";
 import JvField from "../components/ui/JvField.vue";
-import JvTextarea from "../components/ui/JvTextarea.vue";
 import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { useVoicesStore } from "../stores/voices.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -641,9 +640,9 @@ onMounted(async () => {
     <!-- Main textarea — multi-line placeholder with poetic example + tag
          hint (visible when textarea is empty). Matches preview HTML §1.
          Slash-key triggers SlashTagMenu (engine-aware inline-tag picker). -->
-    <JvTextarea
+    <UiTextarea
       v-model="text"
-      autosize
+      auto-resize
       :min-height-px="140"
       :max-height-px="360"
       :placeholder="paralinguisticHint"
@@ -864,7 +863,7 @@ onMounted(async () => {
             <span v-if="!supportsFreeform" class="jv-pill jv-pill--ghost">disabled · requires Qwen3-TTS or LuxTTS</span>
             <span v-else class="jv-pill jv-pill--green">free-form</span>
           </template>
-          <JvTextarea
+          <UiTextarea
             v-model="instruct"
             :rows="3"
             :disabled="!supportsFreeform"
