@@ -12,7 +12,7 @@
 -->
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
-import { UiButton } from "@delebash/llm-ui";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 import JvTag from "../components/ui/JvTag.vue";
 import EmptyState from "../components/EmptyState.vue";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
@@ -470,7 +470,7 @@ onMounted(() => {
          row click expands its detail card inline (provider-row pattern);
          Open ➜ is the ONLY activation. -->
     <div class="jv-lib-toolbar">
-      <input v-model="search" class="jv-input jv-input--sm projects__search" placeholder="Search projects…" />
+      <UiInput v-model="search" size="small" class="projects__search" placeholder="Search projects…" />
       <button
         v-for="t in PROJECT_TYPES"
         :key="t.id"
@@ -534,9 +534,9 @@ onMounted(() => {
           <div class="projects__fields">
             <label class="projects__field">
               <span>Title</span>
-              <input
-                class="jv-input jv-w-name"
-                :value="selectedProject.name"
+              <UiInput
+                width="name"
+                :model-value="selectedProject.name"
                 placeholder="Project title"
                 @change="commitName"
               />
@@ -544,8 +544,8 @@ onMounted(() => {
 
             <label class="projects__field">
               <span>Author</span>
-              <input
-                class="jv-input jv-w-name"
+              <UiInput
+                width="name"
                 v-model="editAuthor"
                 placeholder="e.g., D. Nash"
                 @change="commitMeta('author', editAuthor)"
@@ -613,8 +613,8 @@ onMounted(() => {
 
             <label class="projects__field projects__field--wide">
               <span>Webhook on complete</span>
-              <input
-                class="jv-input jv-w-url"
+              <UiInput
+                width="url"
                 v-model="editWebhookUrl"
                 placeholder="https://your-service.local/webhooks/render"
                 @change="commitMeta('webhook_url', editWebhookUrl)"

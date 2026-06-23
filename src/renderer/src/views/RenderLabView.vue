@@ -12,7 +12,7 @@ import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { promptDialog } from "../services/dialog.js";
-import { UiButton } from "@delebash/llm-ui";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 import JvToggle from "../components/ui/JvToggle.vue";
 import { useVoicesStore } from "../stores/voices.js";
 
@@ -217,8 +217,9 @@ onMounted(loadVoices);
             <JvToggle v-model="a.enabled" :aria-label="`Vary ${a.key}`" />
             <span>{{ a.key }}</span>
           </span>
-          <input
-            class="jv-input jv-input--sm jv-w-name"
+          <UiInput
+            size="small"
+            width="name"
             v-model="a.values"
             :disabled="!a.enabled"
             placeholder="comma-separated values"

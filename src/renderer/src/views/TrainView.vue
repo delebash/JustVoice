@@ -4,8 +4,7 @@ import { ref, onMounted, onActivated, onDeactivated, onUnmounted, computed } fro
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton } from "@delebash/llm-ui";
-import JvInput from "../components/ui/JvInput.vue";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 import JvSelect from "../components/ui/JvSelect.vue";
 import JvTag from "../components/ui/JvTag.vue";
 import JvField from "../components/ui/JvField.vue";
@@ -260,7 +259,7 @@ onUnmounted(stopPolling);
         <span class="jv-eyebrow">What to train</span>
         <div class="train-row">
           <JvField label="New voice name" layout="block">
-            <JvInput v-model="trainName" placeholder="Old Crow-trained" width="name" />
+            <UiInput v-model="trainName" placeholder="Old Crow-trained" width="name" />
           </JvField>
           <JvField label="Base engine" layout="block">
             <JvSelect v-model="trainEngine" :options="engineOptions" placeholder="Pick an engine…" width="name" />
@@ -301,7 +300,7 @@ onUnmounted(stopPolling);
             <tr v-for="(s, idx) in samples" :key="idx">
               <td><code class="jv-mono">{{ s.file.name }}</code></td>
               <td>
-                <JvInput v-model="s.transcript" placeholder="What the speaker says in this clip" />
+                <UiInput v-model="s.transcript" placeholder="What the speaker says in this clip" />
               </td>
               <td class="jv-table__actions">
                 <UiButton intent="danger-outline" size="small" @click="removeTrainFile(idx)">Remove</UiButton>
@@ -319,13 +318,13 @@ onUnmounted(stopPolling);
         </p>
         <div class="train-row">
           <JvField label="SNR threshold (dB)" layout="block">
-            <JvInput v-model.number="trainSnrThreshold" type="number" placeholder="30" width="token" />
+            <UiInput v-model.number="trainSnrThreshold" type="number" placeholder="30" width="token" />
           </JvField>
           <JvField label="Max clipping ratio" layout="block">
-            <JvInput v-model.number="trainClipRatio" type="number" step="0.001" placeholder="0.002" width="token" />
+            <UiInput v-model.number="trainClipRatio" type="number" step="0.001" placeholder="0.002" width="token" />
           </JvField>
           <JvField label="Max silence ratio" layout="block">
-            <JvInput v-model.number="trainSilenceRatio" type="number" step="0.01" placeholder="0.35" width="token" />
+            <UiInput v-model.number="trainSilenceRatio" type="number" step="0.01" placeholder="0.35" width="token" />
           </JvField>
         </div>
       </div>
@@ -334,13 +333,13 @@ onUnmounted(stopPolling);
         <span class="jv-eyebrow">Run settings</span>
         <div class="train-row">
           <JvField label="Steps" layout="block">
-            <JvInput v-model.number="trainSteps" type="number" placeholder="5000" width="token" />
+            <UiInput v-model.number="trainSteps" type="number" placeholder="5000" width="token" />
           </JvField>
           <JvField label="Learning rate" layout="block">
-            <JvInput v-model="trainLearningRate" type="number" placeholder="engine default" width="token" />
+            <UiInput v-model="trainLearningRate" type="number" placeholder="engine default" width="token" />
           </JvField>
           <JvField label="Queue concurrency" layout="block">
-            <JvInput v-model.number="trainConcurrency" type="number" placeholder="1" width="token" />
+            <UiInput v-model.number="trainConcurrency" type="number" placeholder="1" width="token" />
           </JvField>
         </div>
       </div>

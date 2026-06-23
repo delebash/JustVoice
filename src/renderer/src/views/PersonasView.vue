@@ -17,8 +17,7 @@ import { computed, onMounted, ref, watch, nextTick } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton } from "@delebash/llm-ui";
-import JvInput from "../components/ui/JvInput.vue";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 import EmptyState from "../components/EmptyState.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import { usePersonasStore } from "../stores/personas.js";
@@ -350,7 +349,7 @@ onMounted(loadAll);
     <!-- ── Card grid (nothing selected) ─────────────────────────────── -->
     <template v-if="!draft">
       <div class="jv-lib-toolbar">
-        <JvInput v-model="search" placeholder="Search personas…" size="sm" width="name" />
+        <UiInput v-model="search" placeholder="Search personas…" size="small" width="name" />
         <!-- Library-mode filter chips: All / Used / Unused / By project.
              Cross-project Personas are the model — these help find them. -->
         <button
@@ -432,7 +431,7 @@ onMounted(loadAll);
         <div class="personas__grid">
           <label class="personas__field">
             <span>Name</span>
-            <input ref="nameInput" class="jv-input jv-w-name" v-model="draft.name" @input="markDirty" />
+            <UiInput ref="nameInput" width="name" v-model="draft.name" @input="markDirty" />
           </label>
 
           <label class="personas__field">
@@ -445,12 +444,12 @@ onMounted(loadAll);
 
           <label class="personas__field">
             <span>Language</span>
-            <input class="jv-input jv-w-token" v-model="draft.language" @input="markDirty" placeholder="en" />
+            <UiInput width="token" v-model="draft.language" @input="markDirty" placeholder="en" />
           </label>
 
           <label class="personas__field">
             <span>Avatar path</span>
-            <input class="jv-input jv-w-path" v-model="draft.avatar_path" @input="markDirty" placeholder="(optional)" />
+            <UiInput width="path" v-model="draft.avatar_path" @input="markDirty" placeholder="(optional)" />
           </label>
 
           <label class="personas__field">

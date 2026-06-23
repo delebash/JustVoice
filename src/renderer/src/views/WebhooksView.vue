@@ -9,8 +9,7 @@ import { onMounted, ref } from "vue";
 import { webhooksService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton } from "@delebash/llm-ui";
-import JvInput from "../components/ui/JvInput.vue";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 import JvField from "../components/ui/JvField.vue";
 import JvCheckbox from "../components/ui/JvCheckbox.vue";
 
@@ -188,7 +187,7 @@ justvoice.transcribe      {audio} → text</pre>
       <h3 class="jv-section__title" style="margin-bottom: 16px;">New webhook subscription</h3>
 
       <JvField label="URL" layout="block">
-        <JvInput type="url" v-model="adding.url" placeholder="https://your-server/webhook" width="url" />
+        <UiInput type="url" v-model="adding.url" placeholder="https://your-server/webhook" width="url" />
       </JvField>
 
       <JvField label="Events" layout="block">
@@ -204,7 +203,7 @@ justvoice.transcribe      {audio} → text</pre>
       </JvField>
 
       <JvField label="Secret (auto-generated if blank)" layout="block">
-        <JvInput type="text" v-model="adding.secret" placeholder="32 random bytes recommended" width="url" />
+        <UiInput type="text" v-model="adding.secret" placeholder="32 random bytes recommended" width="url" />
       </JvField>
 
       <div class="jv-btn-group" style="margin-top: 16px;">

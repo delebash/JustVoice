@@ -19,7 +19,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { UiButton } from "@delebash/llm-ui";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 
 const props = defineProps({
   open: { type: Boolean, required: true },
@@ -246,15 +246,15 @@ onMounted(() => {
                   :checked="!!ef.params?.[p.key]"
                   @change="setParam(i, p.key, $event.target.checked)"
                 />
-                <input
+                <UiInput
                   v-else
                   type="number"
-                  class="jv-input effects-modal__param-num"
-                  :value="ef.params?.[p.key] ?? p.default"
+                  class="effects-modal__param-num"
+                  :model-value="ef.params?.[p.key] ?? p.default"
                   :min="p.min"
                   :max="p.max"
                   :step="p.step"
-                  @input="setParam(i, p.key, Number($event.target.value))"
+                  @update:model-value="setParam(i, p.key, Number($event))"
                 />
               </label>
             </div>
@@ -285,9 +285,9 @@ onMounted(() => {
 
         <!-- Save as preset -->
         <div class="effects-modal__row effects-modal__saveas">
-          <input
+          <UiInput
             v-model="saveAsName"
-            class="jv-input jv-w-name"
+            width="name"
             placeholder="Name (e.g. Cave reverb, Phone filter)…"
           />
           <UiButton

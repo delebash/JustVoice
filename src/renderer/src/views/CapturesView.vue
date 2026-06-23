@@ -9,9 +9,8 @@ import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { captureReadinessService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
-import { UiButton } from "@delebash/llm-ui";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 import JvTag from "../components/ui/JvTag.vue";
-import JvInput from "../components/ui/JvInput.vue";
 
 const api = useApi();
 
@@ -174,7 +173,7 @@ onMounted(() => {
         />
       </div>
       <div class="captures__search">
-        <JvInput v-model="search" placeholder="Search transcripts…" size="sm" width="name" />
+        <UiInput v-model="search" placeholder="Search transcripts…" size="small" width="name" />
         <div class="captures__filters">
           <button
             v-for="f in FILTERS"

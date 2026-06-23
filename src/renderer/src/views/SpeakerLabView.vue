@@ -20,7 +20,7 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
 import { promptDialog, confirmDialog } from "../services/dialog.js";
 import { readPref, writePref } from "../services/prefs.js";
-import { UiButton } from "@delebash/llm-ui";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 import JvToggle from "../components/ui/JvToggle.vue";
 import { useProjectsStore } from "../stores/projects.js";
 
@@ -556,8 +556,8 @@ onMounted(async () => {
         </li>
       </ul>
       <div class="splab__add-cast">
-        <input v-model="newCharName" class="jv-input jv-w-name" placeholder="Character name" @keydown.enter="addCharacter" />
-        <input v-model="newCharAliases" class="jv-input jv-w-name" placeholder="Aliases (comma-separated, optional)" @keydown.enter="addCharacter" />
+        <UiInput v-model="newCharName" width="name" placeholder="Character name" @keydown.enter="addCharacter" />
+        <UiInput v-model="newCharAliases" width="name" placeholder="Aliases (comma-separated, optional)" @keydown.enter="addCharacter" />
         <UiButton intent="secondary" size="small" label="＋ Add" @click="addCharacter" />
       </div>
     </section>
@@ -570,7 +570,7 @@ onMounted(async () => {
       <div class="splab__columns" :class="{ 'splab__columns--single': columns.length === 1 }">
         <article v-for="(col, i) in columns" :key="i" class="jv-card splab__column">
           <header class="splab__column-h">
-            <input v-model="col.label" class="jv-input jv-input--sm splab__column-name" title="Run name" />
+            <UiInput v-model="col.label" size="small" class="splab__column-name" title="Run name" />
             <span class="jv-spacer" />
             <UiButton v-if="columns.length > 1" intent="ghost" size="small" label="🗑 Delete column" title="Remove this column" @click="removeColumn(i)" />
           </header>
@@ -616,10 +616,12 @@ onMounted(async () => {
               <option value="">Route default — {{ resolvedProviderName }}</option>
               <option v-for="p in llmProviders" :key="p.id" :value="p.id">{{ p.name }}</option>
             </select>
-            <input
+            <UiInput
               v-model="col.model"
               :list="`splab-models-${i}`"
-              class="jv-input jv-input--sm jv-w-name splab__model"
+              size="small"
+              width="name"
+              class="splab__model"
               :placeholder="`(provider default — ${effectiveDefaultModel(col) || 'none'})`"
               title="Override the provider's default model; the tier re-derives from it"
               @change="reclassify(col)"
@@ -629,7 +631,7 @@ onMounted(async () => {
             </datalist>
             <label class="splab__knob splab__knob--inline">
               <span>temp</span>
-              <input v-model="col.temperature" class="jv-input jv-input--sm splab__temp" placeholder="0.2" title="Sampling temperature" />
+              <UiInput v-model="col.temperature" size="small" class="splab__temp" placeholder="0.2" title="Sampling temperature" />
             </label>
             <UiButton intent="ghost" size="small" label="↺ Reset" title="Back to the route's resolved configuration — provider, model, tier, prompts, floor" @click="resetColumn(col)" />
           </div>
@@ -656,9 +658,10 @@ onMounted(async () => {
             <span class="splab__knob" title="Demote LLM picks below the floor to 'unknown'">
               <JvToggle v-model="col.use_floor" aria-label="Confidence floor" />
               <span>Confidence floor</span>
-              <input
+              <UiInput
                 v-model="col.confidenceFloor"
-                class="jv-input jv-input--sm splab__floor"
+                size="small"
+                class="splab__floor"
                 :disabled="!col.use_floor"
                 title="0–1 · below this, picks demote to 'unknown'"
               />

@@ -14,8 +14,7 @@ import { computed, nextTick, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
-import { UiButton } from "@delebash/llm-ui";
-import JvInput from "../components/ui/JvInput.vue";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 import EmptyState from "../components/EmptyState.vue";
 import { useLexiconsStore } from "../stores/lexicons.js";
 import { useProjectsStore } from "../stores/projects.js";
@@ -389,7 +388,7 @@ onMounted(async () => {
   <div class="lex">
     <!-- ── Library ─────────────────────────────────────────────────── -->
     <div class="jv-lib-toolbar">
-      <JvInput v-model="search" placeholder="Search lexicons + words…" size="sm" width="name" />
+      <UiInput v-model="search" placeholder="Search lexicons + words…" size="small" width="name" />
       <div style="display:inline-flex;gap:4px">
         <button v-for="f in SCOPE_FILTERS" :key="f[0]" type="button" class="jv-pill" :class="scopeFilter === f[0] ? 'jv-pill--solid' : 'jv-pill--ghost'" @click="scopeFilter = f[0]">{{ f[1] }}</button>
       </div>
@@ -444,7 +443,7 @@ onMounted(async () => {
         <div class="jv-modal__body">
           <div class="lex__field">
             <label>Name</label>
-            <input ref="nameInputEl" class="jv-input jv-w-name" v-model="draft.name" placeholder="e.g. Stillwater proper names" @keydown.enter.prevent />
+            <UiInput ref="nameInputEl" width="name" v-model="draft.name" placeholder="e.g. Stillwater proper names" @keydown.enter.prevent />
           </div>
 
           <div class="lex__field">
@@ -473,8 +472,8 @@ onMounted(async () => {
 
           <div class="lex__field">
             <label>Live preview text</label>
-            <input
-              class="jv-input jv-w-prose"
+            <UiInput
+              width="prose"
               v-model="previewText"
               placeholder="Beauchamp arrived in Stillwater on the NYPD ferry. — Worcestershire sauce on his cuff."
             />
@@ -512,15 +511,15 @@ onMounted(async () => {
           <div class="lex__entry-grid">
             <label class="lex__field">
               <span>Grapheme (as written)</span>
-              <input class="jv-input jv-w-name" v-model="newGrapheme" placeholder="Beauchamp" @keydown.enter="saveEntry" />
+              <UiInput width="name" v-model="newGrapheme" placeholder="Beauchamp" @keydown.enter="saveEntry" />
             </label>
             <label class="lex__field">
               <span>Phoneme IPA</span>
-              <input class="jv-input jv-w-name" v-model="newPhonemeIpa" placeholder="/ˈbiːtʃəm/" @keydown.enter="saveEntry" />
+              <UiInput width="name" v-model="newPhonemeIpa" placeholder="/ˈbiːtʃəm/" @keydown.enter="saveEntry" />
             </label>
             <label class="lex__field">
               <span>Alias (phonetic — engine reads this)</span>
-              <input class="jv-input jv-w-name" v-model="newAlias" placeholder="bee-chum" @keydown.enter="saveEntry" />
+              <UiInput width="name" v-model="newAlias" placeholder="bee-chum" @keydown.enter="saveEntry" />
             </label>
           </div>
 

@@ -7,8 +7,7 @@ import { confirmDialog, promptDialog } from "../services/dialog.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { projectsService } from "../services/projects.js";
 import { readPref, writePref } from "../services/prefs.js";
-import { UiButton } from "@delebash/llm-ui";
-import JvInput from "../components/ui/JvInput.vue";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 import JvSelect from "../components/ui/JvSelect.vue";
 import JvCheckbox from "../components/ui/JvCheckbox.vue";
 import JvToggle from "../components/ui/JvToggle.vue";
@@ -1262,10 +1261,10 @@ onMounted(() => {
         <p class="jv-muted" style="font-size: 12px; margin-bottom: 14px;">Where this UI sends API requests. Persists in localStorage; not part of server settings.</p>
         <div class="settings-grid">
           <JvField label="Server URL" layout="block">
-            <JvInput v-model="api.serverUrl" :spellcheck="false" width="url" @blur="reload" />
+            <UiInput v-model="api.serverUrl" :spellcheck="false" width="url" @blur="reload" />
           </JvField>
           <JvField label="Bearer token (optional)" layout="block">
-            <JvInput v-model="api.token" type="password" placeholder="optional" width="url" />
+            <UiInput v-model="api.token" type="password" placeholder="optional" width="url" />
           </JvField>
         </div>
         <div class="jv-row" style="margin-top: 14px;">
@@ -1355,10 +1354,10 @@ onMounted(() => {
         </p>
         <div class="settings-grid">
           <JvField label="Host" layout="block">
-            <JvInput v-model="settings.server.host" width="id" />
+            <UiInput v-model="settings.server.host" width="id" />
           </JvField>
           <JvField label="Port" layout="block">
-            <JvInput v-model.number="settings.server.port" type="number" width="token" />
+            <UiInput v-model.number="settings.server.port" type="number" width="token" />
           </JvField>
         </div>
         <div class="setting-row" style="margin-top: 14px">
@@ -1654,10 +1653,10 @@ onMounted(() => {
         </div>
         <div class="settings-grid">
           <JvField label="Max memory entries" layout="block">
-            <JvInput v-model.number="settings.cache.max_memory_entries" type="number" width="token" />
+            <UiInput v-model.number="settings.cache.max_memory_entries" type="number" width="token" />
           </JvField>
           <JvField label="Max disk bytes per scope" layout="block">
-            <JvInput v-model.number="settings.cache.max_disk_bytes_per_scope" type="number" width="token" />
+            <UiInput v-model.number="settings.cache.max_disk_bytes_per_scope" type="number" width="token" />
           </JvField>
         </div>
         <div style="margin-top: 14px;">
@@ -1674,16 +1673,16 @@ onMounted(() => {
         </div>
         <div class="settings-grid">
           <JvField label="Text max chars" layout="block">
-            <JvInput v-model.number="settings.limits.text_max_chars" type="number" width="token" />
+            <UiInput v-model.number="settings.limits.text_max_chars" type="number" width="token" />
           </JvField>
           <JvField label="Chapter max lines" layout="block">
-            <JvInput v-model.number="settings.limits.chapter_max_lines" type="number" width="token" />
+            <UiInput v-model.number="settings.limits.chapter_max_lines" type="number" width="token" />
           </JvField>
           <JvField label="Reference clip max bytes" layout="block">
-            <JvInput v-model.number="settings.limits.reference_clip_max_bytes" type="number" width="token" />
+            <UiInput v-model.number="settings.limits.reference_clip_max_bytes" type="number" width="token" />
           </JvField>
           <JvField label="Request body max bytes" layout="block">
-            <JvInput v-model.number="settings.limits.request_body_max_bytes" type="number" width="token" />
+            <UiInput v-model.number="settings.limits.request_body_max_bytes" type="number" width="token" />
           </JvField>
         </div>
       </div>
@@ -1696,7 +1695,7 @@ onMounted(() => {
           <h3 class="jv-card__title">Local model paths</h3>
         </div>
         <JvField label="Kokoro model directory (absolute path)" layout="block">
-          <JvInput
+          <UiInput
             v-model="settings.engines.kokoro.model_dir_override"
             :spellcheck="false"
             width="path"
@@ -1822,16 +1821,16 @@ onMounted(() => {
         </div>
         <div class="settings-grid">
           <JvField label="Max concurrent jobs" layout="block">
-            <JvInput v-model.number="settings.training.max_concurrent_jobs" type="number" width="token" />
+            <UiInput v-model.number="settings.training.max_concurrent_jobs" type="number" width="token" />
           </JvField>
           <JvField label="Max samples per job" layout="block">
-            <JvInput v-model.number="settings.training.max_samples_per_job" type="number" width="token" />
+            <UiInput v-model.number="settings.training.max_samples_per_job" type="number" width="token" />
           </JvField>
           <JvField label="Sample loss every (steps)" layout="block">
-            <JvInput v-model.number="settings.training.sample_loss_every" type="number" width="token" />
+            <UiInput v-model.number="settings.training.sample_loss_every" type="number" width="token" />
           </JvField>
           <JvField label="Default voice language (BCP-47)" layout="block">
-            <JvInput v-model="settings.training.default_voice_language" width="token" />
+            <UiInput v-model="settings.training.default_voice_language" width="token" />
           </JvField>
         </div>
         <div style="margin-top: 14px;">
@@ -1846,19 +1845,19 @@ onMounted(() => {
           <h4 style="margin-bottom: 12px; color: var(--ink-3); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">Validation thresholds</h4>
           <div class="settings-grid">
             <JvField label="Min sample duration (s)" layout="block">
-              <JvInput v-model.number="settings.training.validation.min_sample_duration_secs" type="number" width="token" />
+              <UiInput v-model.number="settings.training.validation.min_sample_duration_secs" type="number" width="token" />
             </JvField>
             <JvField label="Max sample duration (s)" layout="block">
-              <JvInput v-model.number="settings.training.validation.max_sample_duration_secs" type="number" width="token" />
+              <UiInput v-model.number="settings.training.validation.max_sample_duration_secs" type="number" width="token" />
             </JvField>
             <JvField label="Min SNR (dB)" layout="block">
-              <JvInput v-model.number="settings.training.validation.min_snr_db" type="number" width="token" />
+              <UiInput v-model.number="settings.training.validation.min_snr_db" type="number" width="token" />
             </JvField>
             <JvField label="Max silence ratio" layout="block">
-              <JvInput v-model.number="settings.training.validation.max_silence_ratio" type="number" width="token" />
+              <UiInput v-model.number="settings.training.validation.max_silence_ratio" type="number" width="token" />
             </JvField>
             <JvField label="Min accepted samples" layout="block">
-              <JvInput v-model.number="settings.training.validation.min_accepted_samples" type="number" width="token" />
+              <UiInput v-model.number="settings.training.validation.min_accepted_samples" type="number" width="token" />
             </JvField>
           </div>
         </template>
@@ -1890,7 +1889,7 @@ onMounted(() => {
           <tbody>
             <tr v-for="key in urlOverrideKeys" :key="key">
               <td><code class="jv-mono">{{ key }}</code></td>
-              <td><JvInput v-model="settings.models.url_overrides[key]" :spellcheck="false" /></td>
+              <td><UiInput v-model="settings.models.url_overrides[key]" :spellcheck="false" /></td>
               <td class="jv-table__actions">
                 <UiButton intent="danger-outline" size="small" @click="removeUrlOverride(key)">Remove</UiButton>
               </td>
@@ -1900,8 +1899,8 @@ onMounted(() => {
         <p v-else class="jv-muted" style="font-style: italic; margin-bottom: 14px;">No URL overrides set.</p>
 
         <div class="jv-row" style="margin-bottom: 8px;">
-          <JvInput v-model="newOverrideVariantId" placeholder="variant id (e.g. kokoro-multi-lang-v1_0)" width="name" />
-          <JvInput v-model="newOverrideUrl" placeholder="override URL" width="url" />
+          <UiInput v-model="newOverrideVariantId" placeholder="variant id (e.g. kokoro-multi-lang-v1_0)" width="name" />
+          <UiInput v-model="newOverrideUrl" placeholder="override URL" width="url" />
           <UiButton intent="secondary" :disabled="!newOverrideVariantId || !newOverrideUrl" @click="addUrlOverride">Add override</UiButton>
         </div>
         <p class="jv-muted" style="font-size: 12px;">Saved with Settings.</p>
@@ -1940,19 +1939,19 @@ onMounted(() => {
 
         <div class="settings-grid" style="margin-top: 16px">
           <JvField label="Loudness target (LUFS)" layout="block">
-            <JvInput v-model.number="mastering.lufs" type="number" step="0.5" width="token" />
+            <UiInput v-model.number="mastering.lufs" type="number" step="0.5" width="token" />
           </JvField>
           <JvField label="True peak ceiling (dBFS)" layout="block">
-            <JvInput v-model.number="mastering.peakDbfs" type="number" step="0.1" width="token" />
+            <UiInput v-model.number="mastering.peakDbfs" type="number" step="0.1" width="token" />
           </JvField>
           <JvField label="Noise floor (dBFS)" layout="block">
-            <JvInput v-model.number="mastering.noiseFloor" type="number" step="1" width="token" />
+            <UiInput v-model.number="mastering.noiseFloor" type="number" step="1" width="token" />
           </JvField>
           <JvField label="Head silence (s)" layout="block">
-            <JvInput v-model.number="mastering.headSilence" type="number" step="0.05" width="token" />
+            <UiInput v-model.number="mastering.headSilence" type="number" step="0.05" width="token" />
           </JvField>
           <JvField label="Tail silence (s)" layout="block">
-            <JvInput v-model.number="mastering.tailSilence" type="number" step="0.25" width="token" />
+            <UiInput v-model.number="mastering.tailSilence" type="number" step="0.25" width="token" />
           </JvField>
         </div>
 
@@ -2142,11 +2141,11 @@ onMounted(() => {
         </p>
         <div class="settings-grid">
           <JvField label="Endpoint (Streamable HTTP)" layout="block">
-            <JvInput :value="`${api.serverUrl}/mcp`" :readonly="true" width="url" title="Agents connect directly to this URL — no separate process" />
+            <UiInput :value="`${api.serverUrl}/mcp`" :readonly="true" width="url" title="Agents connect directly to this URL — no separate process" />
           </JvField>
           <JvField label="Default voice" layout="block">
             <div style="display: flex; gap: 8px; align-items: center">
-              <JvInput
+              <UiInput
                 v-model="mcpDefaultVoice"
                 width="name"
                 placeholder="voice id, e.g. af_heart"
@@ -2205,8 +2204,8 @@ onMounted(() => {
           </tbody>
         </table>
         <div class="jv-row" style="gap: 8px; margin-top: 12px; align-items: center; flex-wrap: wrap">
-          <JvInput v-model="bindingDraft.client_id" width="name" placeholder="client id (e.g. claude-code)" title="The X-JustVoice-Client-Id the agent sends" />
-          <JvInput v-model="bindingDraft.label" width="name" placeholder="label (optional)" />
+          <UiInput v-model="bindingDraft.client_id" width="name" placeholder="client id (e.g. claude-code)" title="The X-JustVoice-Client-Id the agent sends" />
+          <UiInput v-model="bindingDraft.label" width="name" placeholder="label (optional)" />
           <JvSelect
             v-model="bindingDraft.persona_id"
             width="name"

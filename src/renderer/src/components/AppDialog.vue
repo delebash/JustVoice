@@ -18,8 +18,7 @@ import {
   DialogClose,
 } from "reka-ui";
 import Icon from "./Icon.vue";
-import { UiButton } from "@delebash/llm-ui";
-import JvInput from "./ui/JvInput.vue";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 import JvSelect from "./ui/JvSelect.vue";
 import JvTextarea from "./ui/JvTextarea.vue";
 
@@ -176,7 +175,7 @@ function onEnter(e, isLastField) {
                 v-model="values[f.key]"
                 @keydown.escape.prevent="cancel"
               />
-              <JvInput
+              <UiInput
                 v-else
                 :id="`jv-field-${f.key}`"
                 :ref="el => captureFirst(el, i)"

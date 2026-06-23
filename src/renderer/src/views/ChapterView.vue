@@ -13,7 +13,7 @@ import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
-import { UiButton } from "@delebash/llm-ui";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 import LineageViewer from "../components/LineageViewer.vue";
 import EmptyState from "../components/EmptyState.vue";
 import JvSelect from "../components/ui/JvSelect.vue";
@@ -797,7 +797,7 @@ async function savePastedText() {
         {{ copy.book.singular.toLowerCase() }} to Studio.
       </p>
       <div class="chapter-view__list-toolbar">
-        <input v-model="chapterFilter" class="jv-input jv-input--sm" style="max-width:260px" :placeholder="`Filter ${copy.chapter.plural.toLowerCase()}…`" />
+        <UiInput v-model="chapterFilter" size="small" style="max-width:260px" :placeholder="`Filter ${copy.chapter.plural.toLowerCase()}…`" />
         <button v-for="c in [['all','All'],['needs-script','Needs script'],['ready','Ready'],['rendered','Rendered']]" :key="c[0]"
           type="button" class="jv-pill" :class="chapterChip === c[0] ? 'jv-pill--solid' : 'jv-pill--ghost'"
           :title="c[0]==='needs-script' ? 'Chapters with unattributed or missing blocks' : c[0]==='rendered' ? 'Fully cached — re-render is free' : ''"

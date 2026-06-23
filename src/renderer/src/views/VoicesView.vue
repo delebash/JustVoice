@@ -5,8 +5,7 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
 import { readPref, writePref } from "../services/prefs.js";
-import { UiButton } from "@delebash/llm-ui";
-import JvInput from "../components/ui/JvInput.vue";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 import JvTextarea from "../components/ui/JvTextarea.vue";
 import JvSelect from "../components/ui/JvSelect.vue";
 import JvTag from "../components/ui/JvTag.vue";
@@ -640,7 +639,7 @@ function blendWithVoice() {
   <div class="voices-view jv-fill">
   <!-- ── Toolbar: search + type filter + + Clone primary action ─────────── -->
   <div class="voices-view__toolbar">
-    <JvInput v-model="search" placeholder="Search voices…" width="name" title="Filter by name or id" />
+    <UiInput v-model="search" placeholder="Search voices…" width="name" title="Filter by name or id" />
     <JvSelect
       :model-value="engineFilter"
       :options="engineFilterOptions"
@@ -839,7 +838,7 @@ function blendWithVoice() {
            textboxes that look editable. Inputs only where edits persist. -->
       <label v-if="inspectedEditable" class="voices-view__field">
         <span>Name</span>
-        <input class="jv-input jv-w-name" v-model="editDraft.name" title="Rename — every picker and persona link follows the id, so renaming is safe" />
+        <UiInput width="name" v-model="editDraft.name" title="Rename — every picker and persona link follows the id, so renaming is safe" />
       </label>
       <div v-else class="voices-view__field"><span>Name</span><b class="voices-view__fact">{{ inspectedVoice.name }}</b></div>
       <div class="voices-view__field"><span>Type</span><b class="voices-view__fact">{{ inspectedVoice.source }}</b></div>
@@ -856,7 +855,7 @@ function blendWithVoice() {
       <div v-else class="voices-view__field"><span>Gender</span><b class="voices-view__fact">{{ autoDetectGender(inspectedVoice) === "?" ? "—" : autoDetectGender(inspectedVoice) }}<span class="jv-muted" style="font-weight:400"> (chip on the row cycles it)</span></b></div>
       <label v-if="inspectedEditable" class="voices-view__field">
         <span>Language</span>
-        <input class="jv-input jv-w-token" v-model="editDraft.language" title="BCP-47 code, e.g. en, en-GB, de" />
+        <UiInput width="token" v-model="editDraft.language" title="BCP-47 code, e.g. en, en-GB, de" />
       </label>
       <div v-else class="voices-view__field"><span>Language</span><b class="voices-view__fact">{{ inspectedVoice.language || "en" }}</b></div>
       <div class="voices-view__field"><span>Audio channel</span><b class="voices-view__fact">{{ inspectedVoice.channel_id || "Default" }}</b></div>
@@ -958,7 +957,7 @@ function blendWithVoice() {
           </div>
           <div style="flex: 1;">
             <JvField label="Voice name" layout="block">
-              <JvInput v-model="voiceName" placeholder="e.g. Sarah" />
+              <UiInput v-model="voiceName" placeholder="e.g. Sarah" />
             </JvField>
           </div>
         </div>
@@ -1017,7 +1016,7 @@ function blendWithVoice() {
                     />
                   </td>
                   <td>
-                    <JvInput type="number" :modelValue="String(s.weight)" @update:modelValue="s.weight = $event" width="token" />
+                    <UiInput type="number" :modelValue="String(s.weight)" @update:modelValue="s.weight = $event" width="token" />
                   </td>
                   <td>
                     <UiButton intent="ghost" size="small" v-if="blendSources.length > 2" @click="removeBlendSource(idx)">Remove</UiButton>

@@ -11,8 +11,7 @@
 import { computed, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { UiButton } from "@delebash/llm-ui";
-import JvInput from "../components/ui/JvInput.vue";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 import JvTag from "../components/ui/JvTag.vue";
 
 const api = useApi();
@@ -137,8 +136,8 @@ function verdictVariant(v) {
         <span v-else class="jv-muted cmp__audio cmp__audio--empty">(B not chosen)</span>
       </div>
       <div class="cmp__labels">
-        <JvInput v-model="labelA" placeholder="Label A (optional)" width="name" />
-        <JvInput v-model="labelB" placeholder="Label B (optional)" width="name" />
+        <UiInput v-model="labelA" placeholder="Label A (optional)" width="name" />
+        <UiInput v-model="labelB" placeholder="Label B (optional)" width="name" />
       </div>
     </div>
 

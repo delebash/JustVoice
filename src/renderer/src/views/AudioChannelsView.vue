@@ -11,8 +11,7 @@ import { onMounted, ref } from "vue";
 import { channelsService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton } from "@delebash/llm-ui";
-import JvInput from "../components/ui/JvInput.vue";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 import JvTextarea from "../components/ui/JvTextarea.vue";
 import JvCheckbox from "../components/ui/JvCheckbox.vue";
 import JvField from "../components/ui/JvField.vue";
@@ -137,7 +136,7 @@ onMounted(() => {
       <h3 class="jv-section__title" style="margin-bottom: 16px;">{{ editing.id ? "Edit channel" : "Add channel" }}</h3>
 
       <JvField label="Name" layout="block">
-        <JvInput v-model="editing.name" placeholder="e.g. OBS virtual mic" width="name" />
+        <UiInput v-model="editing.name" placeholder="e.g. OBS virtual mic" width="name" />
       </JvField>
 
       <JvField label="Devices (comma-separated IDs)" layout="block">

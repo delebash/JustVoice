@@ -6,10 +6,9 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton } from "@delebash/llm-ui";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 import JvField from "../components/ui/JvField.vue";
 import JvTextarea from "../components/ui/JvTextarea.vue";
-import JvInput from "../components/ui/JvInput.vue";
 import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { useVoicesStore } from "../stores/voices.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -791,7 +790,7 @@ onMounted(async () => {
             </template>
             <div class="generate-view__paired">
               <input type="range" v-model.number="speed" min="0.5" max="2.0" step="0.05" class="generate-view__range" />
-              <JvInput v-model.number="speed" type="number" size="sm" class="generate-view__num" />
+              <UiInput v-model.number="speed" type="number" size="small" class="generate-view__num" />
               <span class="jv-muted">×</span>
             </div>
           </JvField>
@@ -801,7 +800,7 @@ onMounted(async () => {
             </template>
             <div class="generate-view__paired">
               <input type="range" v-model.number="pitch" :min="pitchMin" :max="pitchMax" step="1" class="generate-view__range" :disabled="!pitchNative && !pitchPostProcess" />
-              <JvInput v-model.number="pitch" type="number" size="sm" class="generate-view__num" :disabled="!pitchNative && !pitchPostProcess" />
+              <UiInput v-model.number="pitch" type="number" size="small" class="generate-view__num" :disabled="!pitchNative && !pitchPostProcess" />
               <span class="jv-muted">st</span>
             </div>
             <span v-if="pitchNative" class="jv-field__hint">Native — engine accepts pitch directly.</span>
@@ -814,7 +813,7 @@ onMounted(async () => {
             </template>
             <div class="generate-view__paired">
               <input type="range" v-model.number="gain" min="-24" max="12" step="1" class="generate-view__range" />
-              <JvInput v-model.number="gain" type="number" size="sm" class="generate-view__num" />
+              <UiInput v-model.number="gain" type="number" size="small" class="generate-view__num" />
               <span class="jv-muted">dB</span>
             </div>
           </JvField>
@@ -824,7 +823,7 @@ onMounted(async () => {
             </template>
             <div class="generate-view__paired">
               <input type="range" v-model.number="temperature" min="0" max="1" step="0.05" class="generate-view__range" />
-              <JvInput v-model.number="temperature" type="number" size="sm" class="generate-view__num" />
+              <UiInput v-model.number="temperature" type="number" size="small" class="generate-view__num" />
             </div>
           </JvField>
           <JvField layout="block">
@@ -832,14 +831,14 @@ onMounted(async () => {
               Pause before → after <span class="jv-muted generate-view__label-hint">ms</span>
             </template>
             <div class="generate-view__paired generate-view__paired--pause">
-              <JvInput v-model.number="pauseBefore" type="number" size="sm" class="generate-view__pause-num" />
+              <UiInput v-model.number="pauseBefore" type="number" size="small" class="generate-view__pause-num" />
               <span class="jv-muted">→</span>
-              <JvInput v-model.number="pauseAfter" type="number" size="sm" class="generate-view__pause-num" />
+              <UiInput v-model.number="pauseAfter" type="number" size="small" class="generate-view__pause-num" />
             </div>
           </JvField>
           <JvField label="Seed" layout="block">
             <div class="generate-view__paired generate-view__paired--seed">
-              <JvInput v-model="seed" class="generate-view__seed-input" />
+              <UiInput v-model="seed" class="generate-view__seed-input" />
               <UiButton intent="ghost" size="small" label="🎲 randomize" @click="randomizeSeed" />
             </div>
           </JvField>
@@ -890,7 +889,7 @@ onMounted(async () => {
           <template #label>
             Style prompt <span class="jv-muted generate-view__label-hint">optional · {{ currentEngine?.name }}-specific</span>
           </template>
-          <JvInput
+          <UiInput
             v-model="stylePrompt"
             placeholder="warm narrative voice, calm tempo"
           />
@@ -921,9 +920,9 @@ onMounted(async () => {
                   :min="k.min" :max="k.max" :step="k.step"
                   class="generate-view__range"
                 />
-                <JvInput
+                <UiInput
                   v-model.number="knobValues[k.key]"
-                  type="number" size="sm"
+                  type="number" size="small"
                   class="generate-view__num"
                   :min="k.min" :max="k.max" :step="k.step"
                 />
@@ -952,9 +951,9 @@ onMounted(async () => {
                   :min="k.min" :max="k.max" :step="k.step"
                   class="generate-view__range"
                 />
-                <JvInput
+                <UiInput
                   v-model.number="knobValues[k.key]"
-                  type="number" size="sm"
+                  type="number" size="small"
                   class="generate-view__num"
                   :min="k.min" :max="k.max" :step="k.step"
                 />

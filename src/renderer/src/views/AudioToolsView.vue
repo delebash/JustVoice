@@ -3,8 +3,7 @@
 import { ref, computed, onBeforeUnmount } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { UiButton } from "@delebash/llm-ui";
-import JvInput from "../components/ui/JvInput.vue";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 import JvSelect from "../components/ui/JvSelect.vue";
 import JvField from "../components/ui/JvField.vue";
 
@@ -224,15 +223,15 @@ onBeforeUnmount(revokeMastered);
         </JvField>
 
         <JvField label="Title (optional)" layout="block">
-          <JvInput type="text" v-model="masterTitle" placeholder="Chapter 1" width="name" />
+          <UiInput type="text" v-model="masterTitle" placeholder="Chapter 1" width="name" />
         </JvField>
 
         <JvField label="Author (optional)" layout="block">
-          <JvInput type="text" v-model="masterAuthor" placeholder="Author name" width="name" />
+          <UiInput type="text" v-model="masterAuthor" placeholder="Author name" width="name" />
         </JvField>
 
         <JvField label="Book / album (optional)" layout="block" style="grid-column: 1 / -1;">
-          <JvInput type="text" v-model="masterBook" placeholder="Book title" width="name" />
+          <UiInput type="text" v-model="masterBook" placeholder="Book title" width="name" />
         </JvField>
       </div>
 

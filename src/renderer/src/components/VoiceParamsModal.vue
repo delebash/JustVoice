@@ -10,7 +10,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import { UiButton } from "@delebash/llm-ui";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 
 const props = defineProps({
   open: { type: Boolean, required: true },
@@ -154,24 +154,23 @@ onMounted(() => {
                 @click="clearParam(k.key)"
               >reset</button>
             </span>
-            <input
+            <UiInput
               v-if="k.type === 'number'"
               type="number"
-              class="jv-input jv-w-token"
-              :value="params[k.key] ?? ''"
+              width="token"
+              :model-value="params[k.key] ?? ''"
               :min="k.min"
               :max="k.max"
               :step="k.step"
               :placeholder="`(default ${k.default})`"
-              @input="setParam(k.key, $event.target.value === '' ? null : Number($event.target.value))"
+              @update:model-value="setParam(k.key, $event === '' ? null : Number($event))"
             />
-            <input
+            <UiInput
               v-else
               type="text"
-              class="jv-input"
-              :value="params[k.key] ?? ''"
+              :model-value="params[k.key] ?? ''"
               :placeholder="`(default ${k.default})`"
-              @input="setParam(k.key, $event.target.value)"
+              @update:model-value="setParam(k.key, $event)"
             />
             <span v-if="k.hint" class="jv-muted voice-params-modal__hint">{{ k.hint }}</span>
           </label>
@@ -194,24 +193,23 @@ onMounted(() => {
                   @click="clearParam(k.key)"
                 >reset</button>
               </span>
-              <input
+              <UiInput
                 v-if="k.type === 'number'"
                 type="number"
-                class="jv-input jv-w-token"
-                :value="params[k.key] ?? ''"
+                width="token"
+                :model-value="params[k.key] ?? ''"
                 :min="k.min"
                 :max="k.max"
                 :step="k.step"
                 :placeholder="`(default ${k.default})`"
-                @input="setParam(k.key, $event.target.value === '' ? null : Number($event.target.value))"
+                @update:model-value="setParam(k.key, $event === '' ? null : Number($event))"
               />
-              <input
+              <UiInput
                 v-else
                 type="text"
-                class="jv-input"
-                :value="params[k.key] ?? ''"
+                :model-value="params[k.key] ?? ''"
                 :placeholder="`(default ${k.default})`"
-                @input="setParam(k.key, $event.target.value)"
+                @update:model-value="setParam(k.key, $event)"
               />
             </label>
           </div>

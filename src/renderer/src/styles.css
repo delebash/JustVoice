@@ -739,6 +739,10 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
    intentionally excluded — prose is the explicit full-width exception. */
 .jv-input,
 .jv-select { max-width: var(--w-name); }
+/* Shared UiInput defaults to full width; JV caps untagged single-line inputs
+   to a sensible field width (the old .jv-input default). Textareas + width-
+   tagged controls (.ui-w-*) opt out. App-local: does not affect JustWrite. */
+.ui-input:not(.ui-textarea):not([class*="ui-w-"]) { max-width: var(--w-name); }
 .jv-input--full,
 .jv-textarea--full,
 .jv-select--full { max-width: none; }

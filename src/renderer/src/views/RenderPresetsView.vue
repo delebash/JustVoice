@@ -20,8 +20,7 @@ import { computed, nextTick, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton } from "@delebash/llm-ui";
-import JvInput from "../components/ui/JvInput.vue";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import { usePersonasStore } from "../stores/personas.js";
 
@@ -213,7 +212,7 @@ onMounted(refresh);
         Studio Render binds one preset per scene; the preset's settings overlay the persona's at render time.
       </p>
       <div class="jv-lib-toolbar">
-        <JvInput v-model="search" placeholder="Search presets…" size="sm" width="name" />
+        <UiInput v-model="search" placeholder="Search presets…" size="small" width="name" />
         <div style="display:inline-flex;gap:4px">
           <button v-for="f in FILTERS" :key="f[0]" type="button" class="jv-pill" :class="filter === f[0] ? 'jv-pill--solid' : 'jv-pill--ghost'" @click="filter = f[0]">{{ f[1] }}</button>
         </div>
@@ -268,7 +267,7 @@ onMounted(refresh);
         </header>
         <div class="jv-modal__body render-presets-view__form">
           <label class="jv-form-row"><span>Name</span>
-            <input ref="nameInputEl" type="text" class="jv-input jv-input--sm" v-model="editDraft.name" :disabled="editIsBuiltin" placeholder="e.g. Dramatic Dialogue" />
+            <UiInput ref="nameInputEl" type="text" size="small" v-model="editDraft.name" :disabled="editIsBuiltin" placeholder="e.g. Dramatic Dialogue" />
           </label>
           <label class="jv-form-row"><span>Persona</span>
             <select class="jv-input jv-input--sm" v-model="editDraft.voice_id" :disabled="editIsBuiltin">

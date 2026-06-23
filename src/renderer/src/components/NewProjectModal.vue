@@ -12,7 +12,7 @@
 //   import  — user chose to create from a file instead (caller opens ImportModal)
 
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import { UiButton } from "@delebash/llm-ui";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 
 const props = defineProps({
   // Preselect a kind (Home's Start-something pills hand this over).
@@ -146,10 +146,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
       </div>
 
       <footer class="jv-modal__footer">
-        <input
+        <UiInput
           ref="nameInput"
           v-model="name"
-          class="jv-input jv-w-name np-name-input"
+          width="name"
+          class="np-name-input"
           placeholder="Project name…"
           @keydown.enter.stop.prevent="create"
         />

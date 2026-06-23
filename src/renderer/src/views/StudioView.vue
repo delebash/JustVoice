@@ -27,7 +27,7 @@ import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
-import { UiButton } from "@delebash/llm-ui";
+import { UiButton, UiInput } from "@delebash/llm-ui";
 import VoiceParamsModal from "../components/VoiceParamsModal.vue";
 import EmptyState from "../components/EmptyState.vue";
 import ExportPanel from "../components/ExportPanel.vue";
@@ -1634,10 +1634,11 @@ watch(selectedProjectId, (id) => {
             <!-- Search with icon + count (#E). -->
             <div class="studio__voice-search">
               <span class="studio__voice-search-icon">🔍</span>
-              <input
+              <UiInput
                 v-model="voiceSearchQuery"
                 type="search"
-                class="jv-input jv-input--sm studio__voice-search-input"
+                size="small"
+                class="studio__voice-search-input"
                 placeholder="Search by name or tone…"
               />
               <span class="studio__voice-search-count jv-muted">{{ filteredVoices.length }}</span>
