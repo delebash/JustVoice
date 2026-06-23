@@ -12,7 +12,7 @@ import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { promptDialog } from "../services/dialog.js";
-import { UiButton, UiInput, UiTextarea, UiToggle, UiTag } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiToggle, UiTag, UiSelect } from "@delebash/llm-ui";
 import { useVoicesStore } from "../stores/voices.js";
 
 const api = useApi();
@@ -180,9 +180,8 @@ onMounted(loadVoices);
       <div class="renderlab__form">
         <label class="renderlab__field">
           <span class="jv-eyebrow">Voice</span>
-          <select v-model="selectedVoiceId" class="jv-input jv-w-name">
-            <option v-for="v in voices" :key="v.id" :value="v.id">{{ v.name }} ({{ v.engine }})</option>
-          </select>
+          <UiSelect v-model="selectedVoiceId" width="name"
+            :options="voices.map((v) => ({ value: v.id, label: `${v.name} (${v.engine})` }))" />
         </label>
         <label class="renderlab__field">
           <span class="jv-eyebrow">Sample sentence</span>

@@ -1469,10 +1469,9 @@ onMounted(() => {
             <div class="ai-role__name"><span class="ai-rolechip quick">QUICK</span> Quick model</div>
             <div class="ai-role__desc">Answers in under a second. Used for: dictation cleanup · Compose · Rewrite · voice-gender guess.</div>
             <div class="ai-role__sel">
-              <select class="jv-input jv-w-url" :value="roleValue('quick')" @change="setRole('quick', $event.target.value)">
-                <option value="">(not set — features fall back to the first provider)</option>
-                <option v-for="c in roleRecs?.candidates || []" :key="`q-${c.providerId}-${c.model}`" :value="`${c.providerId}::${c.model}`">{{ c.label }}</option>
-              </select>
+              <UiSelect width="url" :model-value="roleValue('quick')"
+                :options="[{ value: '', label: '(not set — features fall back to the first provider)' }, ...(roleRecs?.candidates || []).map((c) => ({ value: `${c.providerId}::${c.model}`, label: c.label }))]"
+                @update:model-value="(v) => setRole('quick', v)" />
               <span v-if="roleRecs?.recommendedQuick" class="ai-rec" :title="`Best speed of what's installed: ${roleRecs.recommendedQuick.label}`">RECOMMENDED: {{ roleRecs.recommendedQuick.model }}</span>
             </div>
             <div class="ai-role__hint">A local small model keeps dictation cleanup free and instant — cloud models here bill on every sentence you speak.</div>
@@ -1481,10 +1480,9 @@ onMounted(() => {
             <div class="ai-role__name"><span class="ai-rolechip acc">ACCURACY</span> Accuracy model</div>
             <div class="ai-role__desc">Takes its time, gets it right. Used for: speaker extraction · smart-assign · show notes.</div>
             <div class="ai-role__sel">
-              <select class="jv-input jv-w-url" :value="roleValue('accuracy')" @change="setRole('accuracy', $event.target.value)">
-                <option value="">(not set — features fall back to the first provider)</option>
-                <option v-for="c in roleRecs?.candidates || []" :key="`a-${c.providerId}-${c.model}`" :value="`${c.providerId}::${c.model}`">{{ c.label }}</option>
-              </select>
+              <UiSelect width="url" :model-value="roleValue('accuracy')"
+                :options="[{ value: '', label: '(not set — features fall back to the first provider)' }, ...(roleRecs?.candidates || []).map((c) => ({ value: `${c.providerId}::${c.model}`, label: c.label }))]"
+                @update:model-value="(v) => setRole('accuracy', v)" />
               <span v-if="roleRecs?.recommendedAccuracy" class="ai-rec" :title="`Biggest model you can run: ${roleRecs.recommendedAccuracy.label}`">RECOMMENDED: {{ roleRecs.recommendedAccuracy.model }}</span>
             </div>
             <div class="ai-role__hint">These features run inside async jobs — a few extra seconds buys attribution quality you'll hear in the casting.</div>
@@ -1558,11 +1556,13 @@ onMounted(() => {
                 <div class="jv-muted" style="font-size:11.5px">{{ f.description }}</div>
               </td>
               <td>
-                <select class="jv-input jv-input--sm" style="min-width:200px" :value="routeValue(f.key)" @change="setRoute(f.key, $event.target.value)">
-                  <option value="inherit-quick">Inherit · Quick{{ f.defaultRole === 'quick' ? ' (default)' : '' }}</option>
-                  <option value="inherit-accuracy">Inherit · Accuracy{{ f.defaultRole === 'accuracy' ? ' (default)' : '' }}</option>
-                  <option v-for="pr in aiProviders" :key="pr.id" :value="`prov::${pr.id}`">{{ pr.name || pr.id }} · {{ pr.defaultModel || 'default model' }}</option>
-                </select>
+                <UiSelect style="min-width:200px" :model-value="routeValue(f.key)"
+                  :options="[
+                    { value: 'inherit-quick', label: `Inherit · Quick${f.defaultRole === 'quick' ? ' (default)' : ''}` },
+                    { value: 'inherit-accuracy', label: `Inherit · Accuracy${f.defaultRole === 'accuracy' ? ' (default)' : ''}` },
+                    ...aiProviders.map((pr) => ({ value: `prov::${pr.id}`, label: `${pr.name || pr.id} · ${pr.defaultModel || 'default model'}` })),
+                  ]"
+                  @update:model-value="(v) => setRoute(f.key, v)" />
               </td>
               <td><span class="jv-mono" style="font-size:11.5px">{{ resolveRoute(f.key) }}</span></td>
               <td><UiTag intent="violet" v-if="configFor(f.key)"  :title="`Promoted Lab config '${configFor(f.key).name}' wins for this feature`">CONFIG</UiTag></td>
@@ -1718,13 +1718,12 @@ onMounted(() => {
                 different engine from Voices or Engines still works — this only sets the default.
               </div>
             </div>
-            <select
-              class="jv-input jv-input--sm jv-w-name"
-              :value="settings.engines?.default_tts_engine || 'kokoro'"
-              @change="(ev) => { settings.engines.default_tts_engine = ev.target.value; saveDebounced(); }"
-            >
-              <option v-for="e in ttsEngines" :key="e.id" :value="e.id">{{ e.name || e.id }}</option>
-            </select>
+            <UiSelect
+              width="name"
+              :model-value="settings.engines?.default_tts_engine || 'kokoro'"
+              :options="ttsEngines.map((e) => ({ value: e.id, label: e.name || e.id }))"
+              @update:model-value="(v) => { settings.engines.default_tts_engine = v; saveDebounced(); }"
+            />
           </div>
         </div>
 

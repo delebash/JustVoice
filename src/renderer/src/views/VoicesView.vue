@@ -837,12 +837,12 @@ function blendWithVoice() {
       <div class="voices-view__field"><span>Engine</span><b class="voices-view__fact">{{ inspectedVoice.engine }}</b></div>
       <label v-if="inspectedEditable" class="voices-view__field">
         <span>Gender</span>
-        <select class="jv-input jv-w-id" v-model="editDraft.gender" title="Drives Smart-assign's gender matching">
-          <option value="">unspecified</option>
-          <option value="female">female</option>
-          <option value="male">male</option>
-          <option value="neutral">neutral</option>
-        </select>
+        <UiSelect v-model="editDraft.gender" width="id" title="Drives Smart-assign's gender matching" :options="[
+          { value: '', label: 'unspecified' },
+          { value: 'female', label: 'female' },
+          { value: 'male', label: 'male' },
+          { value: 'neutral', label: 'neutral' },
+        ]" />
       </label>
       <div v-else class="voices-view__field"><span>Gender</span><b class="voices-view__fact">{{ autoDetectGender(inspectedVoice) === "?" ? "—" : autoDetectGender(inspectedVoice) }}<span class="jv-muted" style="font-weight:400"> (chip on the row cycles it)</span></b></div>
       <label v-if="inspectedEditable" class="voices-view__field">

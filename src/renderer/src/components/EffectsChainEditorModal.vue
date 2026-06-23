@@ -19,7 +19,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { UiButton, UiInput, UiCheckbox, UiTag } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiCheckbox, UiTag, UiSelect } from "@delebash/llm-ui";
 
 const props = defineProps({
   open: { type: Boolean, required: true },
@@ -265,14 +265,8 @@ onMounted(() => {
         <!-- Add a new effect -->
         <div class="effects-modal__row effects-modal__add">
           <span class="effects-modal__add-label">Add effect:</span>
-          <select v-model="addEffectType" class="jv-input jv-w-name">
-            <option value="">— pick a type —</option>
-            <option
-              v-for="e in effectiveCatalog"
-              :key="e.type"
-              :value="e.type"
-            >{{ e.label }}</option>
-          </select>
+          <UiSelect v-model="addEffectType" width="name" placeholder="— pick a type —"
+            :options="effectiveCatalog" option-label="label" option-value="type" />
           <UiButton
             intent="secondary"
             size="small"

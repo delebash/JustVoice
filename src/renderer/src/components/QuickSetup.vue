@@ -27,7 +27,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { UiButton, UiCheckbox, UiTag } from "@delebash/llm-ui";
+import { UiButton, UiCheckbox, UiTag, UiSelect } from "@delebash/llm-ui";
 
 const emit = defineEmits(["close"]);
 
@@ -396,11 +396,8 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
           <section>
             <div class="quick-setup__row-label">Tier</div>
             <div class="quick-setup__row-value">
-              <select v-model="tierKey" class="jv-input jv-input--sm jv-w-name">
-                <option v-for="opt in tierOptions" :key="opt.value" :value="opt.value">
-                  {{ opt.label }}{{ opt.value === detectedTierKey ? "  · auto" : "" }}
-                </option>
-              </select>
+              <UiSelect v-model="tierKey" width="name"
+                :options="tierOptions.map((opt) => ({ value: opt.value, label: opt.label + (opt.value === detectedTierKey ? '  · auto' : '') }))" />
               <span v-if="tierKey !== detectedTierKey" class="jv-muted" style="font-size: 11.5px">
                 Overriding auto-tier
               </span>

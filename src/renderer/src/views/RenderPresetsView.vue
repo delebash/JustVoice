@@ -20,7 +20,7 @@ import { computed, nextTick, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton, UiInput, UiTag, UiChip } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTag, UiChip, UiSelect } from "@delebash/llm-ui";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import { usePersonasStore } from "../stores/personas.js";
 
@@ -216,10 +216,8 @@ onMounted(refresh);
         <div style="display:inline-flex;gap:4px">
           <UiChip :selected="filter === f[0]" v-for="f in FILTERS" :key="f[0]" type="button"  @click="filter = f[0]">{{ f[1] }}</UiChip>
         </div>
-        <select class="jv-input jv-input--sm" style="max-width:160px" v-model="masterFilter" title="Filter by master target">
-          <option value="">All targets</option>
-          <option v-for="m in MASTER_TARGETS.filter((x) => x.value)" :key="m.value" :value="m.value">{{ m.label }}</option>
-        </select>
+        <UiSelect v-model="masterFilter" style="max-width:160px" title="Filter by master target"
+          :options="[{ value: '', label: 'All targets' }, ...MASTER_TARGETS.filter((x) => x.value)]" />
         <span class="jv-spacer" />
         <UiButton intent="primary" size="small" label="+ New preset" @click="createPreset" />
       </div>
@@ -270,15 +268,11 @@ onMounted(refresh);
             <UiInput ref="nameInputEl" type="text" size="small" v-model="editDraft.name" :disabled="editIsBuiltin" placeholder="e.g. Dramatic Dialogue" />
           </label>
           <label class="jv-form-row"><span>Persona</span>
-            <select class="jv-input jv-input--sm" v-model="editDraft.voice_id" :disabled="editIsBuiltin">
-              <option value="">— none (delivery only) —</option>
-              <option v-for="ps in personas" :key="ps.id" :value="ps.id">{{ ps.name }}</option>
-            </select>
+            <UiSelect v-model="editDraft.voice_id" :disabled="editIsBuiltin"
+              :options="[{ value: '', label: '— none (delivery only) —' }, ...personas.map((ps) => ({ value: ps.id, label: ps.name }))]" />
           </label>
           <label class="jv-form-row"><span>Master target</span>
-            <select class="jv-input jv-input--sm" v-model="editDraft.master" :disabled="editIsBuiltin">
-              <option v-for="m in MASTER_TARGETS" :key="m.value" :value="m.value">{{ m.label }}</option>
-            </select>
+            <UiSelect v-model="editDraft.master" :disabled="editIsBuiltin" :options="MASTER_TARGETS" />
           </label>
           <div class="jv-form-row jv-form-row--stack"><span>Delivery</span>
             <div>

@@ -6,7 +6,7 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag, UiSelect } from "@delebash/llm-ui";
 import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { useVoicesStore } from "../stores/voices.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -672,11 +672,8 @@ onMounted(async () => {
 
     <!-- Floating chip-card bar (matches preview HTML §1 mockup). -->
     <div class="jv-floating generate-view__floating">
-      <div class="jv-chip-card">🎙️ Voice:
-        <strong>{{ availableVoices.find((v) => v.id === voice)?.name || "Pick a voice" }}</strong>
-        <select v-model="voice" :disabled="availableVoices.length === 0" class="generate-view__chip-select">
-          <option v-for="o in voiceOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-        </select>
+      <div class="jv-chip-card generate-view__select-chip">🎙️ Voice:
+        <UiSelect v-model="voice" :disabled="availableVoices.length === 0" :options="voiceOptions" placeholder="Pick a voice" />
       </div>
       <div class="jv-chip-card">🧠 Engine:
         <strong>{{ currentEngine?.name || "none loaded" }}</strong>
@@ -684,11 +681,8 @@ onMounted(async () => {
       <div class="jv-chip-card">🗣️ Lang:
         <strong>{{ availableVoices.find((v) => v.id === voice)?.language || "en" }}</strong>
       </div>
-      <div class="jv-chip-card">🎭 Persona:
-        <strong>{{ selectedPersona?.name || "none" }}</strong>
-        <select v-model="selectedPersonaId" class="generate-view__chip-select">
-          <option v-for="o in personaOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-        </select>
+      <div class="jv-chip-card generate-view__select-chip">🎭 Persona:
+        <UiSelect v-model="selectedPersonaId" :options="personaOptions" placeholder="none" />
       </div>
       <div class="jv-chip-card">🎛️ Effects: <strong>none</strong> <span class="muted">▾</span></div>
       <UiCheckbox v-model="autoplay" class="jv-chip-card">🔁 Autoplay</UiCheckbox>
@@ -1136,20 +1130,16 @@ onMounted(async () => {
   margin-bottom: 10px;
 }
 
-/* The native <select> next to the strong-text label inside a chip-card.
-   We hide the visible width of the select (the chip's strong text shows
-   the chosen value) but keep the native dropdown clickable. */
-.generate-view__chip-select {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  font: inherit;
-  color: var(--ink);
-  cursor: pointer;
-  margin-left: 6px;
-  width: 12px;
-  overflow: hidden;
+/* Voice/Persona chip-cards: the UiSelect trigger IS the value display —
+   inline + borderless inside the chip, bold like the other chips' values. */
+.generate-view__select-chip { gap: 4px; }
+.generate-view__select-chip :deep(.ui-select-trigger) {
+  border: 0; background: transparent; box-shadow: none;
+  padding: 0; width: auto; min-width: 0; max-width: none;
+  font-weight: 600; color: var(--ink); gap: 2px;
 }
+.generate-view__select-chip :deep(.ui-select-trigger.is-empty) { color: var(--ink-2); }
+.generate-view__select-chip :deep(.ui-select-trigger > [data-reka-select-value]) { flex: 0 0 auto; overflow: visible; }
 
 /* Capability indicator pills row */
 .generate-view__caps-list {

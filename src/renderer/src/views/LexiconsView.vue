@@ -14,7 +14,7 @@ import { computed, nextTick, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
-import { UiButton, UiInput, UiTag, UiChip } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTag, UiChip, UiSelect } from "@delebash/llm-ui";
 import EmptyState from "../components/EmptyState.vue";
 import { useLexiconsStore } from "../stores/lexicons.js";
 import { useProjectsStore } from "../stores/projects.js";
@@ -450,17 +450,11 @@ onMounted(async () => {
             <label>Scope</label>
             <!-- Editable only at create — scope is fixed once a lexicon exists. -->
             <div v-if="creating" class="lex__scope-row">
-              <select class="jv-input jv-w-name" v-model="draft.scope">
-                <option v-for="o in SCOPE_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
-              </select>
-              <select v-if="draft.scope === 'project'" class="jv-input jv-w-name" v-model="draft.project_id">
-                <option :value="null">— pick a book —</option>
-                <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
-              </select>
-              <select v-if="draft.scope === 'persona'" class="jv-input jv-w-name" v-model="draft.persona_id">
-                <option :value="null">— pick a persona —</option>
-                <option v-for="p in personas" :key="p.id" :value="p.id">{{ p.name }}</option>
-              </select>
+              <UiSelect width="name" v-model="draft.scope" :options="SCOPE_OPTIONS" />
+              <UiSelect v-if="draft.scope === 'project'" width="name" v-model="draft.project_id"
+                placeholder="— pick a book —" :options="projects" option-label="name" option-value="id" />
+              <UiSelect v-if="draft.scope === 'persona'" width="name" v-model="draft.persona_id"
+                placeholder="— pick a persona —" :options="personas" option-label="name" option-value="id" />
             </div>
             <div v-else class="lex__scope-row">
               <UiTag :intent="scopeBadge(draft).intent">{{ scopeBadge(draft).label }}</UiTag>

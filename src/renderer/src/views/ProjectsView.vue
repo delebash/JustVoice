@@ -12,7 +12,7 @@
 -->
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
-import { UiButton, UiInput, UiCheckbox, UiTag, UiChip } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiCheckbox, UiTag, UiChip, UiSelect } from "@delebash/llm-ui";
 import EmptyState from "../components/EmptyState.vue";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import ImportModal from "./ImportModal.vue";
@@ -552,24 +552,24 @@ onMounted(() => {
 
             <label class="projects__field">
               <span>Mastering target</span>
-              <select
-                class="jv-input jv-w-name"
-                :value="selectedProject.mastering_preset ?? ''"
-                @change="(ev) => commitMastering(ev.target.value)"
-              >
-                <option v-for="m in MASTERING_PRESETS" :key="m.id" :value="m.id">{{ m.label }}</option>
-              </select>
+              <UiSelect
+                width="name"
+                :model-value="selectedProject.mastering_preset ?? ''"
+                :options="MASTERING_PRESETS"
+                option-value="id"
+                @update:model-value="commitMastering"
+              />
             </label>
 
             <label class="projects__field">
               <span>Render preset</span>
-              <select
-                class="jv-input jv-w-name"
+              <UiSelect
+                width="name"
                 v-model="editRenderPreset"
-                @change="commitMeta('render_preset', editRenderPreset)"
-              >
-                <option v-for="r in RENDER_PRESETS" :key="r.id" :value="r.id">{{ r.label }}</option>
-              </select>
+                :options="RENDER_PRESETS"
+                option-value="id"
+                @update:model-value="(v) => commitMeta('render_preset', v)"
+              />
             </label>
 
             <div class="projects__field projects__field--wide">

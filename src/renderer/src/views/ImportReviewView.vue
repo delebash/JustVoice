@@ -16,7 +16,7 @@ import { projectsService } from "../services/projects.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { getImportDraft, clearImportDraft, updateImportStandard } from "../stores/importDraft.js";
-import { UiButton, UiCheckbox, UiTag } from "@delebash/llm-ui";
+import { UiButton, UiCheckbox, UiTag, UiSelect } from "@delebash/llm-ui";
 
 const activeProject = useActiveProject();
 const projectsStore = useProjectsStore();
@@ -155,15 +155,13 @@ function cancel() {
           <span class="jv-spacer" />
           <label v-if="showSplit" class="imrev__split">
             <span class="jv-muted">Split on</span>
-            <select
-              class="jv-input jv-input--sm"
-              :value="draft.splitOn || 'auto'"
+            <UiSelect
+              :model-value="draft.splitOn || 'auto'"
               :disabled="splitBusy"
               title="How chapters are detected — changing it re-reads the file"
-              @change="changeSplit($event.target.value)"
-            >
-              <option v-for="o in SPLIT_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
-            </select>
+              :options="SPLIT_OPTIONS"
+              @update:model-value="changeSplit"
+            />
             <span v-if="splitBusy" class="jv-boot-banner__spinner" />
           </label>
         </div>

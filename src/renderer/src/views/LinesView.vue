@@ -16,7 +16,7 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
-import { UiButton, UiInput, UiChip, UiTag } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiChip, UiTag, UiSelect } from "@delebash/llm-ui";
 import ImportModal from "./ImportModal.vue";
 
 const api = useApi();
@@ -186,10 +186,8 @@ watch(selectedProjectId, (id) => {
 <template>
   <div class="lines">
     <div class="jv-lib-toolbar lines__toolbar">
-      <select v-model="selectedProjectId" class="jv-input lines__project" title="Game projects" @change="loadLines">
-        <option v-if="!gameProjects.length" :value="null">— no game projects —</option>
-        <option v-for="p in gameProjects" :key="p.id" :value="p.id">{{ p.name }}</option>
-      </select>
+      <UiSelect v-model="selectedProjectId" class="lines__project" title="Game projects" placeholder="— no game projects —"
+        :options="gameProjects" option-label="name" option-value="id" @update:model-value="loadLines" />
       <UiInput v-model="search" class="lines__search" placeholder="Search text, id, or character…" title="Filter the grid" />
       <div class="lines__chips">
         <UiChip

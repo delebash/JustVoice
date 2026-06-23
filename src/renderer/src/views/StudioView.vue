@@ -27,7 +27,7 @@ import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
-import { UiButton, UiInput, UiTextarea, UiCheckbox, UiTag, UiChip } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiCheckbox, UiTag, UiChip, UiSelect } from "@delebash/llm-ui";
 import VoiceParamsModal from "../components/VoiceParamsModal.vue";
 import EmptyState from "../components/EmptyState.vue";
 import ExportPanel from "../components/ExportPanel.vue";
@@ -1337,9 +1337,7 @@ watch(selectedProjectId, (id) => {
     <!-- ── Project picker ───────────────────────────────────────────── -->
     <div class="jv-section studio__project-bar">
       <label class="studio__project-label">{{ copy.book.singular }}:</label>
-      <select v-model="selectedProjectId" class="jv-input jv-w-name">
-        <option v-for="o in projectOptions" :key="o.value || 'none'" :value="o.value">{{ o.label }}</option>
-      </select>
+      <UiSelect v-model="selectedProjectId" width="name" :options="projectOptions" />
       <span class="jv-spacer" />
       <!-- Which engines power this work (JustWrite reference chips). -->
       <UiChip as="a" :selected="!!headerTts" href="#engines"
@@ -1370,10 +1368,9 @@ watch(selectedProjectId, (id) => {
       </button>
       <template v-if="tab === 'script' && selectedProject">
         <span class="jv-spacer" />
-        <select v-model="selectedSceneId" class="jv-input jv-input--sm studio__script-select">
-          <option v-if="!scenes.length" :value="null">— no {{ copy.chapter.plural.toLowerCase() }} —</option>
-          <option v-for="sc in scenes" :key="sc.id" :value="sc.id">{{ sc.title || `${copy.chapter.singular} ${sc.position + 1}` }}</option>
-        </select>
+        <UiSelect v-model="selectedSceneId" class="studio__script-select"
+          :placeholder="`— no ${copy.chapter.plural.toLowerCase()} —`"
+          :options="scenes.map((sc) => ({ value: sc.id, label: sc.title || `${copy.chapter.singular} ${sc.position + 1}` }))" />
         <UiButton
           intent="primary"
           size="small"
@@ -1605,9 +1602,7 @@ watch(selectedProjectId, (id) => {
             <span class="jv-spacer" />
             <!-- Same control as the Voices page toolbar (item 6 —
                  consistency): engine DROPDOWN, not pills. -->
-            <select v-model="voiceEngineFilter" class="jv-input jv-input--sm" style="max-width: 180px" title="Show only voices from one engine">
-              <option v-for="opt in voiceEngineOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-            </select>
+            <UiSelect v-model="voiceEngineFilter" style="max-width: 180px" title="Show only voices from one engine" :options="voiceEngineOptions" />
           </div>
 
           <template v-if="!voices.length">
@@ -1797,18 +1792,13 @@ watch(selectedProjectId, (id) => {
               :title="row.kind === 'dialogue' ? 'Right-click to rewrite this line in character' : ''"
             >
               <td>
-                <select
+                <UiSelect
                   v-if="row.kind === 'dialogue'"
-                  :value="row.speaker"
-                  class="jv-input jv-input--sm jv-w-id"
-                  @change="setRowSpeaker(i, $event.target.value)"
-                >
-                  <option
-                    v-for="o in speakerOptions()"
-                    :key="o.value"
-                    :value="o.value"
-                  >{{ o.label }}</option>
-                </select>
+                  :model-value="row.speaker"
+                  width="id"
+                  :options="speakerOptions()"
+                  @update:model-value="(v) => setRowSpeaker(i, v)"
+                />
                 <span v-else>{{ speakerLabel(row.speaker) }}</span>
                 <span v-if="editedFlags[i]" class="studio__edited">✎</span>
                 <span v-if="row.rewritten" class="studio__edited" title="LLM-rewritten">✨</span>
@@ -1900,13 +1890,12 @@ watch(selectedProjectId, (id) => {
                   <template v-else>—</template>
                 </td>
                 <td>
-                  <select
-                    :value="scenePresetSelections[s.id] || ''"
-                    class="jv-input jv-input--sm jv-w-id"
-                    @change="scenePresetSelections = { ...scenePresetSelections, [s.id]: $event.target.value }"
-                  >
-                    <option v-for="o in presetOptions()" :key="o.value" :value="o.value">{{ o.label }}</option>
-                  </select>
+                  <UiSelect
+                    :model-value="scenePresetSelections[s.id] || ''"
+                    width="id"
+                    :options="presetOptions()"
+                    @update:model-value="(v) => scenePresetSelections = { ...scenePresetSelections, [s.id]: v }"
+                  />
                 </td>
                 <td>
                   <UiTag :intent="checkState(s.id).intent"  :title="qcByScene[s.id] ? `RMS ${qcByScene[s.id].rms_dbfs?.toFixed?.(1)} dB · peak ${qcByScene[s.id].peak_dbfs?.toFixed?.(1)} dB · ${Math.round(qcByScene[s.id].duration_s || 0)}s` : ''">{{ checkState(s.id).label }}</UiTag>

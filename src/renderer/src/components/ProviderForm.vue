@@ -25,7 +25,7 @@
 import { computed, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { UiButton, UiCheckbox } from "@delebash/llm-ui";
+import { UiButton, UiCheckbox, UiSelect } from "@delebash/llm-ui";
 
 const props = defineProps({
   // The provider being edited. For new providers, pass an empty shape.
@@ -356,15 +356,15 @@ async function onSave() {
     <div class="pf-row" v-if="showLlmFields()">
       <div class="pf-f">
         <label title="The wire format the adapter uses. openai-compat covers OpenAI-compatible local servers, DeepSeek, OpenRouter; ollama uses /api/chat for reasoning support.">API format</label>
-        <select v-model="draft.providerType" class="jv-input jv-w-name">
-          <option value="anthropic">Anthropic</option>
-          <option value="openai">OpenAI</option>
-          <option value="openai-compat">OpenAI-compatible</option>
-          <option value="gemini">Gemini</option>
-          <option value="ollama">Ollama</option>
-          <option value="deepseek">DeepSeek</option>
-          <option value="openrouter">OpenRouter</option>
-        </select>
+        <UiSelect v-model="draft.providerType" width="name" :options="[
+          { value: 'anthropic', label: 'Anthropic' },
+          { value: 'openai', label: 'OpenAI' },
+          { value: 'openai-compat', label: 'OpenAI-compatible' },
+          { value: 'gemini', label: 'Gemini' },
+          { value: 'ollama', label: 'Ollama' },
+          { value: 'deepseek', label: 'DeepSeek' },
+          { value: 'openrouter', label: 'OpenRouter' },
+        ]" />
       </div>
       <div class="pf-f">
         <label>Chat model</label>
@@ -438,12 +438,12 @@ async function onSave() {
       />
       <div class="pf-f">
         <label>Response format</label>
-        <select v-model="draft.response_format" class="jv-input jv-w-name">
-          <option value="wav">wav (recommended)</option>
-          <option value="mp3">mp3</option>
-          <option value="pcm">pcm</option>
-          <option value="ogg">ogg</option>
-        </select>
+        <UiSelect v-model="draft.response_format" width="name" :options="[
+          { value: 'wav', label: 'wav (recommended)' },
+          { value: 'mp3', label: 'mp3' },
+          { value: 'pcm', label: 'pcm' },
+          { value: 'ogg', label: 'ogg' },
+        ]" />
       </div>
     </div>
     <div v-if="voicesError" class="pf-error">{{ voicesError }}</div>

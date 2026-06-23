@@ -17,7 +17,7 @@ import { computed, onMounted, ref, watch, nextTick } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton, UiInput, UiTextarea, UiTag } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiTag, UiSelect } from "@delebash/llm-ui";
 import EmptyState from "../components/EmptyState.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import { usePersonasStore } from "../stores/personas.js";
@@ -360,14 +360,13 @@ onMounted(loadAll);
           :class="{ 'personas__chip--active': filter === f }"
           @click="filter = f"
         >{{ f === 'by-project' ? 'By project' : (f.charAt(0).toUpperCase() + f.slice(1)) }}</button>
-        <select
+        <UiSelect
           v-if="filter === 'by-project'"
-          class="jv-input jv-input--sm jv-w-name"
+          width="name"
           v-model="filterProjectId"
-        >
-          <option value="">— pick a project —</option>
-          <option v-for="pr in projects" :key="pr.id" :value="pr.id">{{ pr.name }}</option>
-        </select>
+          placeholder="— pick a project —"
+          :options="projects" option-label="name" option-value="id"
+        />
         <span class="jv-spacer" />
         <UiButton intent="primary" size="small" label="+ New persona" @click="createBlank" />
       </div>
@@ -436,10 +435,8 @@ onMounted(loadAll);
 
           <label class="personas__field">
             <span>Voice</span>
-            <select class="jv-input jv-w-name" v-model="draft.voice_id" @change="markDirty">
-              <option value="">— no voice yet (cast later) —</option>
-              <option v-for="v in voices" :key="v.id" :value="v.id">{{ v.name }} ({{ v.id }})</option>
-            </select>
+            <UiSelect width="name" v-model="draft.voice_id" @update:model-value="markDirty"
+              :options="[{ value: '', label: '— no voice yet (cast later) —' }, ...voices.map((v) => ({ value: v.id, label: `${v.name} (${v.id})` }))]" />
           </label>
 
           <label class="personas__field">
@@ -454,18 +451,14 @@ onMounted(loadAll);
 
           <label class="personas__field">
             <span>Engine override</span>
-            <select class="jv-input jv-w-name" v-model="draft.engine_override" @change="markDirty">
-              <option value="">(use voice default)</option>
-              <option v-for="e in engines" :key="e.id" :value="e.id">{{ e.name || e.id }}</option>
-            </select>
+            <UiSelect width="name" v-model="draft.engine_override" @update:model-value="markDirty"
+              :options="[{ value: '', label: '(use voice default)' }, ...engines.map((e) => ({ value: e.id, label: e.name || e.id }))]" />
           </label>
 
           <label class="personas__field">
             <span>Lexicon override</span>
-            <select class="jv-input jv-w-name" v-model="draft.lexicon_id" @change="markDirty">
-              <option value="">(none — use project default)</option>
-              <option v-for="lx in lexicons" :key="lx.id" :value="lx.id">{{ lx.name }}</option>
-            </select>
+            <UiSelect width="name" v-model="draft.lexicon_id" @update:model-value="markDirty"
+              :options="[{ value: '', label: '(none — use project default)' }, ...lexicons.map((lx) => ({ value: lx.id, label: lx.name }))]" />
           </label>
 
           <label class="personas__field personas__field--wide">

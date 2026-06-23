@@ -20,7 +20,7 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
 import { promptDialog, confirmDialog } from "../services/dialog.js";
 import { readPref, writePref } from "../services/prefs.js";
-import { UiButton, UiInput, UiTextarea, UiToggle, UiTag, UiChip } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiToggle, UiTag, UiChip, UiSelect } from "@delebash/llm-ui";
 import { useProjectsStore } from "../stores/projects.js";
 
 const api = useApi();
@@ -519,14 +519,10 @@ onMounted(async () => {
         <span v-if="inputStats" class="jv-muted splab__stats">{{ inputStats }}</span>
       </div>
       <div class="splab__input-toolbar">
-        <select v-model="selectedProjectId" class="jv-input splab__input-select" title="Optional — load a chapter from a project" @change="loadScenes">
-          <option :value="null">Load from chapter…</option>
-          <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
-        </select>
-        <select v-if="selectedProjectId" v-model="selectedSceneId" class="jv-input splab__input-select" @change="loadSceneText">
-          <option :value="null">— pick a chapter —</option>
-          <option v-for="s in scenes" :key="s.id" :value="s.id">{{ s.title || `Scene ${s.position + 1}` }}</option>
-        </select>
+        <UiSelect v-model="selectedProjectId" class="splab__input-select" title="Optional — load a chapter from a project"
+          placeholder="Load from chapter…" :options="projects" option-label="name" option-value="id" @update:model-value="loadScenes" />
+        <UiSelect v-if="selectedProjectId" v-model="selectedSceneId" class="splab__input-select"
+          placeholder="— pick a chapter —" :options="scenes.map((s) => ({ value: s.id, label: s.title || `Scene ${s.position + 1}` }))" @update:model-value="loadSceneText" />
         <UiButton intent="ghost" size="small" label="✕ Clear" title="Clear the text box" @click="text = ''" />
         <UiButton intent="secondary" size="small" label="✨ Sample" title="Load a small sample passage + cast" @click="loadSample" />
       </div>
@@ -578,10 +574,9 @@ onMounted(async () => {
                PRODUCTION badge, promote/save actions on one line. -->
           <div class="splab__presets">
             <span class="jv-eyebrow">Presets</span>
-            <select :value="col.presetName" class="jv-input jv-input--sm jv-w-name" title="Load a saved configuration" @change="loadPreset(col, $event.target.value)">
-              <option value="">— defaults —</option>
-              <option v-for="p in presets" :key="p.name" :value="p.name">{{ p.name }}</option>
-            </select>
+            <UiSelect :model-value="col.presetName" width="name" title="Load a saved configuration"
+              :options="[{ value: '', label: '— defaults —' }, ...presets.map((p) => ({ value: p.name, label: p.name }))]"
+              @update:model-value="(v) => loadPreset(col, v)" />
             <UiButton v-if="col.presetName" intent="ghost" size="small" label="🗑" title="Delete this preset" @click="deletePreset(col)" />
             <UiButton intent="secondary" size="small" label="＋ Save as" title="Save this column's tweaks as a named preset" @click="savePreset(col)" />
             <UiButton intent="secondary" size="small" label="✓ Use as production" title="Freeze this column — model AND prompts — as Studio · Script's attribution method" @click="useAsProduction(col)" />
@@ -607,15 +602,13 @@ onMounted(async () => {
 
           <!-- Route row: provider + model + temp + reset -->
           <div class="splab__knobrow">
-            <select
+            <UiSelect
               v-model="col.providerId"
-              class="jv-input jv-input--sm jv-w-name"
+              width="name"
               title="Route this run through a specific LLM provider"
-              @change="onProviderChange(col)"
-            >
-              <option value="">Route default — {{ resolvedProviderName }}</option>
-              <option v-for="p in llmProviders" :key="p.id" :value="p.id">{{ p.name }}</option>
-            </select>
+              :options="[{ value: '', label: `Route default — ${resolvedProviderName}` }, ...llmProviders.map((p) => ({ value: p.id, label: p.name }))]"
+              @update:model-value="onProviderChange(col)"
+            />
             <UiInput
               v-model="col.model"
               :list="`splab-models-${i}`"

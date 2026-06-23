@@ -680,71 +680,13 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
 .jv-btn-group { display: inline-flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 @keyframes jvSpin { to { transform: rotate(360deg); } }
 
-/* Inputs (preview L113-117)
-   Default stays width:100% for backwards-compat — every existing form
-   relies on it. Opt INTO content-sized widths with .jv-w-token,
-   .jv-w-id, .jv-w-name, .jv-w-url, .jv-w-path, .jv-w-prose, .jv-w-edit
-   on the specific control. Sweeping new tags through views is safer
-   than flipping the default. */
-.jv-input,
-.jv-select {
-  display: block;
-  width: 100%;
-  height: 36px;
-  padding: 0 12px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--r-control);
-  color: var(--ink);
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.4;
-  transition: border-color 0.12s, box-shadow 0.12s;
-}
-/* Default cap so an untagged single-line input/select sizes to a normal
-   field instead of bleeding full-width (RULE #1 #2 — "size to content,
-   never full-width unless prose"). Placed BEFORE the width tokens +
-   --full below so those override it by source order. Textareas are
-   intentionally excluded — prose is the explicit full-width exception. */
-.jv-input,
-.jv-select { max-width: var(--w-name); }
+/* Inputs/selects now use the shared .ui-input / .ui-select (@delebash/llm-ui),
+   tuned via JV tokens. The .ui-w-* content-width caps live in the shared kit
+   (token-driven from JV's --w-*). Only JV's untagged-input cap stays local: */
 /* Shared UiInput defaults to full width; JV caps untagged single-line inputs
    to a sensible field width (the old .jv-input default). Textareas + width-
    tagged controls (.ui-w-*) opt out. App-local: does not affect JustWrite. */
 .ui-input:not(.ui-textarea):not([class*="ui-w-"]) { max-width: var(--w-name); }
-.jv-input--full,
-.jv-select--full { max-width: none; }
-.jv-w-token { max-width: var(--w-token); }
-.jv-w-id    { max-width: var(--w-id); }
-.jv-w-name  { max-width: var(--w-name); }
-.jv-w-url   { max-width: var(--w-url); }
-.jv-w-path  { max-width: var(--w-path); }
-.jv-w-prose { max-width: var(--w-prose); }
-.jv-w-edit  { max-width: var(--w-edit); }
-.jv-w-full  { max-width: none; }
-.jv-input:focus, .jv-select:focus {
-  outline: 0;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
-.jv-input::placeholder { color: var(--ink-3); }
-.jv-input:disabled,
-.jv-select:disabled {
-  background: var(--surface-2);
-  color: var(--ink-3);
-  cursor: not-allowed;
-}
-.jv-input--sm { height: 28px; padding: 0 10px; font-size: 12px; }
-
-.jv-select {
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  padding-right: 28px;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'><path fill='%23888' d='M0 0h8L4 5z'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-}
 
 .jv-file-input {
   display: block;
