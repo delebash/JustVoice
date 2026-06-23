@@ -25,8 +25,7 @@
 // links to docs/import-formats.md#<anchor>.
 
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import { UiButton } from "@delebash/llm-ui";
-import JvSelect from "../components/ui/JvSelect.vue";
+import { UiButton, UiSelect } from "@delebash/llm-ui";
 import { projectsService } from "../services/projects.js";
 import { setImportDraft } from "../stores/importDraft.js";
 import { pushToast } from "../services/toastBridge.js";
@@ -176,7 +175,7 @@ async function doPreview() {
         <div class="import-grid">
       <label class="field">
         <span class="lbl">Source format</span>
-        <JvSelect
+        <UiSelect
           v-model="selectedSource"
           :options="adapterOptions"
           placeholder="Pick a format…"

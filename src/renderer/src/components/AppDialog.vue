@@ -18,8 +18,7 @@ import {
   DialogClose,
 } from "reka-ui";
 import Icon from "./Icon.vue";
-import { UiButton, UiInput, UiTextarea } from "@delebash/llm-ui";
-import JvSelect from "./ui/JvSelect.vue";
+import { UiButton, UiInput, UiTextarea, UiSelect } from "@delebash/llm-ui";
 
 // Normalize the active dialog into a single shape the template reads.
 // Single-field prompts become a one-element `fields` list so the template
@@ -158,7 +157,7 @@ function onEnter(e, isLastField) {
               class="jv-dialog__field"
             >
               <label v-if="f.label" class="jv-dialog__label" :for="`jv-field-${f.key}`">{{ f.label }}</label>
-              <JvSelect
+              <UiSelect
                 v-if="f.type === 'select'"
                 :input-id="`jv-field-${f.key}`"
                 :ref="el => captureFirst(el, i)"

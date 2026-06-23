@@ -5,8 +5,7 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
 import { readPref, writePref } from "../services/prefs.js";
-import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip } from "@delebash/llm-ui";
-import JvSelect from "../components/ui/JvSelect.vue";
+import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip, UiSelect } from "@delebash/llm-ui";
 import EmptyState from "../components/EmptyState.vue";
 import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
@@ -638,7 +637,7 @@ function blendWithVoice() {
   <!-- ── Toolbar: search + type filter + + Clone primary action ─────────── -->
   <div class="voices-view__toolbar">
     <UiInput v-model="search" placeholder="Search voices…" width="name" title="Filter by name or id" />
-    <JvSelect
+    <UiSelect
       :model-value="engineFilter"
       :options="engineFilterOptions"
       title="Show only voices from one engine"
@@ -945,7 +944,7 @@ function blendWithVoice() {
         <div class="jv-row" style="align-items: flex-end;">
           <div style="flex: 1;">
             <UiField label="Engine" layout="block">
-              <JvSelect v-model="selectedEngine" :options="engineOptions" />
+              <UiSelect v-model="selectedEngine" :options="engineOptions" />
             </UiField>
           </div>
           <div style="flex: 1;">
@@ -987,7 +986,7 @@ function blendWithVoice() {
         <!-- Blend fields -->
         <template v-else-if="modal === 'blend'">
           <UiField label="Interpolation strategy" layout="block" style="margin-top: 14px;">
-            <JvSelect v-model="blendStrategy" :options="BLEND_STRATEGIES" />
+            <UiSelect v-model="blendStrategy" :options="BLEND_STRATEGIES" />
           </UiField>
 
           <div style="margin-top: 14px;">
@@ -1003,7 +1002,7 @@ function blendWithVoice() {
               <tbody>
                 <tr v-for="(s, idx) in blendSources" :key="idx">
                   <td>
-                    <JvSelect
+                    <UiSelect
                       v-model="s.voice_id"
                       :options="[{ label: '— pick a voice —', value: '' }, ...engineVoiceOptions]"
                     />

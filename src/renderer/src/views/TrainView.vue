@@ -4,8 +4,7 @@ import { ref, onMounted, onActivated, onDeactivated, onUnmounted, computed } fro
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton, UiInput, UiField, UiTag } from "@delebash/llm-ui";
-import JvSelect from "../components/ui/JvSelect.vue";
+import { UiButton, UiInput, UiField, UiTag, UiSelect } from "@delebash/llm-ui";
 import { useEnginesStore } from "../stores/engines.js";
 import { useVoicesStore } from "../stores/voices.js";
 
@@ -260,13 +259,13 @@ onUnmounted(stopPolling);
             <UiInput v-model="trainName" placeholder="Old Crow-trained" width="name" />
           </UiField>
           <UiField label="Base engine" layout="block">
-            <JvSelect v-model="trainEngine" :options="engineOptions" placeholder="Pick an engine…" width="name" />
+            <UiSelect v-model="trainEngine" :options="engineOptions" placeholder="Pick an engine…" width="name" />
           </UiField>
           <UiField label="Method" layout="block">
-            <JvSelect v-model="trainMethod" :options="TRAIN_METHODS.map((m) => ({ label: m.label, value: m.id }))" width="name" />
+            <UiSelect v-model="trainMethod" :options="TRAIN_METHODS.map((m) => ({ label: m.label, value: m.id }))" width="name" />
           </UiField>
           <UiField label="Base voice (optional)" layout="block">
-            <JvSelect
+            <UiSelect
               v-model="trainBaseVoice"
               :options="[{ label: '— none —', value: '' }, ...voiceOptions]"
               width="name"

@@ -13,10 +13,9 @@ import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
-import { UiButton, UiInput, UiTextarea, UiTag, UiChip } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiTag, UiChip, UiSelect } from "@delebash/llm-ui";
 import LineageViewer from "../components/LineageViewer.vue";
 import EmptyState from "../components/EmptyState.vue";
-import JvSelect from "../components/ui/JvSelect.vue";
 
 const api = useApi();
 const activeProject = useActiveProject();
@@ -746,14 +745,14 @@ async function savePastedText() {
          spacer, actions rightmost). Replaces the old full-width
          three-column selector card + duplicate "view" heading. -->
     <div class="jv-lib-toolbar">
-      <JvSelect
+      <UiSelect
         v-model="selectedProjectId"
         :options="projectOptions"
         :placeholder="`Select a ${copy.book.singular.toLowerCase()}…`"
         width="name"
         :title="copy.book.singular"
       />
-      <JvSelect
+      <UiSelect
         v-model="selectedSceneId"
         :options="sceneOptions"
         :disabled="!selectedProjectId || !scenes.length"
@@ -980,7 +979,7 @@ async function savePastedText() {
               >&#8594;</button>
 
               <!-- Take dropdown -->
-              <JvSelect
+              <UiSelect
                 class="chapter-view__take-select"
                 :model-value="takesStore.getActiveTakeId(block.id)"
                 :options="takeDropdownOptions(block.id)"
@@ -1048,7 +1047,7 @@ async function savePastedText() {
                 <!-- B-side: user picks -->
                 <div class="chapter-view__compare-side">
                   <div class="chapter-view__compare-label">Take B</div>
-                  <JvSelect
+                  <UiSelect
                     :model-value="compareSecondaryIds.get(block.id) || ''"
                     :options="compareDropdownOptions(block.id)"
                     placeholder="Pick a take to compare…"

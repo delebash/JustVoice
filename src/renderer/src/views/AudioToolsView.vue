@@ -3,8 +3,7 @@
 import { ref, computed, onBeforeUnmount } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { UiButton, UiInput, UiField } from "@delebash/llm-ui";
-import JvSelect from "../components/ui/JvSelect.vue";
+import { UiButton, UiInput, UiField, UiSelect } from "@delebash/llm-ui";
 
 const api = useApi();
 
@@ -218,7 +217,7 @@ onBeforeUnmount(revokeMastered);
         </UiField>
 
         <UiField label="Preset" layout="block">
-          <JvSelect v-model="masterPreset" :options="PRESET_OPTIONS" width="name" />
+          <UiSelect v-model="masterPreset" :options="PRESET_OPTIONS" width="name" />
         </UiField>
 
         <UiField label="Title (optional)" layout="block">

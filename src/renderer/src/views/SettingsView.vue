@@ -7,8 +7,7 @@ import { confirmDialog, promptDialog } from "../services/dialog.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { projectsService } from "../services/projects.js";
 import { readPref, writePref } from "../services/prefs.js";
-import { UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag } from "@delebash/llm-ui";
-import JvSelect from "../components/ui/JvSelect.vue";
+import { UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect } from "@delebash/llm-ui";
 import { useOnboarding } from "../stores/onboarding.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -1400,7 +1399,7 @@ onMounted(() => {
               </div>
             </div>
             <div class="jv-row" style="gap: 8px">
-              <JvSelect
+              <UiSelect
                 v-model="updater.channel"
                 width="id"
                 :options="[
@@ -2010,7 +2009,7 @@ onMounted(() => {
               <div class="setting-row__title">STT (Whisper)</div>
               <div class="setting-row__desc">Speech-to-text model. Larger = better accuracy + slower. Turbo is best balance.</div>
             </div>
-            <JvSelect
+            <UiSelect
               v-model="capture.sttModel"
               width="name"
               :options="[
@@ -2029,7 +2028,7 @@ onMounted(() => {
               <div class="setting-row__title">LLM refinement model</div>
               <div class="setting-row__desc">Cleans transcribed text — fixes punctuation, capitalization, optional self-correction.</div>
             </div>
-            <JvSelect
+            <UiSelect
               v-model="capture.llmModel"
               width="name"
               :options="[
@@ -2050,7 +2049,7 @@ onMounted(() => {
                 preserve-technical = keep code-like tokens verbatim.
               </div>
             </div>
-            <JvSelect
+            <UiSelect
               v-model="capture.refinementMode"
               width="name"
               :options="[
@@ -2067,7 +2066,7 @@ onMounted(() => {
               <div class="setting-row__title">Capture language</div>
               <div class="setting-row__desc">Whisper language hint. "auto" detects per-recording.</div>
             </div>
-            <JvSelect
+            <UiSelect
               v-model="capture.language"
               width="name"
               :options="[
@@ -2108,7 +2107,7 @@ onMounted(() => {
                 fallback profile they get.
               </div>
             </div>
-            <JvSelect v-model="capture.defaultPlaybackVoice" :options="[{ label: '(none — pick a profile)', value: '' }]" width="name" />
+            <UiSelect v-model="capture.defaultPlaybackVoice" :options="[{ label: '(none — pick a profile)', value: '' }]" width="name" />
           </div>
         </div>
         <p class="jv-muted" style="font-size: 11.5px; margin-top: 8px">
@@ -2198,7 +2197,7 @@ onMounted(() => {
         <div class="jv-row" style="gap: 8px; margin-top: 12px; align-items: center; flex-wrap: wrap">
           <UiInput v-model="bindingDraft.client_id" width="name" placeholder="client id (e.g. claude-code)" title="The X-JustVoice-Client-Id the agent sends" />
           <UiInput v-model="bindingDraft.label" width="name" placeholder="label (optional)" />
-          <JvSelect
+          <UiSelect
             v-model="bindingDraft.persona_id"
             width="name"
             :options="[{ label: '(no persona)', value: '' }, ...mcpPersonas.map(p => ({ label: p.name, value: p.id }))]"
@@ -2328,7 +2327,7 @@ onMounted(() => {
                 Light, Dark, or Follow system. Applied immediately via CSS custom properties.
               </div>
             </div>
-            <JvSelect
+            <UiSelect
               v-model="appearance.theme"
               width="name"
               :options="[
@@ -2349,7 +2348,7 @@ onMounted(() => {
                 Compact reduces row spacing for power users. Spacious adds breathing room.
               </div>
             </div>
-            <JvSelect
+            <UiSelect
               v-model="appearance.density"
               width="name"
               :options="[
@@ -2393,7 +2392,7 @@ onMounted(() => {
                 preference now and the locale will apply once translations ship.
               </div>
             </div>
-            <JvSelect
+            <UiSelect
               v-model="appearance.locale"
               width="name"
               :options="[
@@ -2454,7 +2453,7 @@ onMounted(() => {
             </div>
           </div>
           <UiField label="Channel" layout="block">
-            <JvSelect
+            <UiSelect
               v-model="updater.channel"
               width="id"
               :options="[
