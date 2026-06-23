@@ -12,8 +12,7 @@ import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { promptDialog } from "../services/dialog.js";
-import { UiButton, UiInput, UiTextarea } from "@delebash/llm-ui";
-import JvToggle from "../components/ui/JvToggle.vue";
+import { UiButton, UiInput, UiTextarea, UiToggle } from "@delebash/llm-ui";
 import { useVoicesStore } from "../stores/voices.js";
 
 const api = useApi();
@@ -214,7 +213,7 @@ onMounted(loadVoices);
       <div class="renderlab__axes">
         <div v-for="(a, i) in axes" :key="i" class="renderlab__axis">
           <span class="renderlab__axis-enable" :title="a.enabled ? `Vary ${a.key} across the matrix` : `${a.key} stays at the engine default`">
-            <JvToggle v-model="a.enabled" :aria-label="`Vary ${a.key}`" />
+            <UiToggle v-model="a.enabled" :aria-label="`Vary ${a.key}`" />
             <span>{{ a.key }}</span>
           </span>
           <UiInput

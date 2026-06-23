@@ -20,8 +20,7 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
 import { promptDialog, confirmDialog } from "../services/dialog.js";
 import { readPref, writePref } from "../services/prefs.js";
-import { UiButton, UiInput, UiTextarea } from "@delebash/llm-ui";
-import JvToggle from "../components/ui/JvToggle.vue";
+import { UiButton, UiInput, UiTextarea, UiToggle } from "@delebash/llm-ui";
 import { useProjectsStore } from "../stores/projects.js";
 
 const api = useApi();
@@ -652,11 +651,11 @@ onMounted(async () => {
             </div>
             <span class="jv-muted splab__tiersrc">{{ col.tierSource === 'auto' ? 'auto-picked from the model' : 'your override' }}</span>
             <span class="splab__knob" title="Pre-LLM: 'Tom said' anchors the adjacent quote at confidence 1.0">
-              <JvToggle v-model="col.propagate" aria-label="Anchor propagation" />
+              <UiToggle v-model="col.propagate" aria-label="Anchor propagation" />
               <span>Anchor propagation (pre-LLM)</span>
             </span>
             <span class="splab__knob" title="Demote LLM picks below the floor to 'unknown'">
-              <JvToggle v-model="col.use_floor" aria-label="Confidence floor" />
+              <UiToggle v-model="col.use_floor" aria-label="Confidence floor" />
               <span>Confidence floor</span>
               <UiInput
                 v-model="col.confidenceFloor"

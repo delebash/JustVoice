@@ -1334,36 +1334,7 @@ p.note,
 .jv-empty__title { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
 .jv-empty__message { font-size: 12px; color: var(--ink-3); }
 
-/* Toggle switch — replaces JW JvCheckbox in toggle contexts. */
-.jv-toggle {
-  position: relative;
-  display: inline-block;
-  width: 38px;
-  height: 22px;
-  background: var(--line-strong);
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-  vertical-align: middle;
-}
-.jv-toggle__thumb {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
-  background: var(--surface);
-  border-radius: 50%;
-  box-shadow: var(--shadow-1);
-  transition: transform 0.15s ease;
-}
-.jv-toggle--on {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-.jv-toggle--on .jv-toggle__thumb { transform: translateX(16px); }
-.jv-toggle--disabled { opacity: 0.5; cursor: not-allowed; }
+/* Toggle switch now comes from the shared UiToggle (@delebash/llm-ui). */
 
 /* Segmented control — used in Settings sub-nav + filters. */
 .jv-segmented {

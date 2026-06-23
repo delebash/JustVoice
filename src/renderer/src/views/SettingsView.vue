@@ -7,10 +7,9 @@ import { confirmDialog, promptDialog } from "../services/dialog.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { projectsService } from "../services/projects.js";
 import { readPref, writePref } from "../services/prefs.js";
-import { UiButton, UiInput } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiToggle } from "@delebash/llm-ui";
 import JvSelect from "../components/ui/JvSelect.vue";
 import JvCheckbox from "../components/ui/JvCheckbox.vue";
-import JvToggle from "../components/ui/JvToggle.vue";
 import JvField from "../components/ui/JvField.vue";
 import { useOnboarding } from "../stores/onboarding.js";
 import { useProjectsStore } from "../stores/projects.js";
@@ -1294,7 +1293,7 @@ onMounted(() => {
                 stay connected. Toggle off if you'd rather a true quit on close.
               </div>
             </div>
-            <JvToggle v-model="keepServerRunning" @change="onKeepServerRunningChange" aria-label="Keep server running" />
+            <UiToggle v-model="keepServerRunning" @change="onKeepServerRunningChange" aria-label="Keep server running" />
           </div>
         </div>
 
@@ -1310,7 +1309,7 @@ onMounted(() => {
                 box). Bearer auth is recommended when enabled. Restart required.
               </div>
             </div>
-            <JvToggle v-model="allowNetworkAccess" @change="onNetworkAccessChange" aria-label="Allow network access" />
+            <UiToggle v-model="allowNetworkAccess" @change="onNetworkAccessChange" aria-label="Allow network access" />
           </div>
         </div>
       </div>
@@ -1370,7 +1369,7 @@ onMounted(() => {
                 integrations. Disable in production deployments behind public networks.
               </div>
             </div>
-            <JvToggle v-model="settings.server.docs_enabled" aria-label="Enable API docs" />
+            <UiToggle v-model="settings.server.docs_enabled" aria-label="Enable API docs" />
           </div>
         </div>
       </div>
@@ -1793,7 +1792,7 @@ onMounted(() => {
                 loudness purely via the Mastering target.
               </div>
             </div>
-            <JvToggle v-model="settings.generation.normalize_audio" @change="saveDebounced" aria-label="Normalize audio" />
+            <UiToggle v-model="settings.generation.normalize_audio" @change="saveDebounced" aria-label="Normalize audio" />
           </div>
         </div>
 
@@ -1807,7 +1806,7 @@ onMounted(() => {
                 if you'd rather queue renders silently and listen later.
               </div>
             </div>
-            <JvToggle v-model="settings.generation.autoplay_on_generate" @change="saveDebounced" aria-label="Autoplay on generate" />
+            <UiToggle v-model="settings.generation.autoplay_on_generate" @change="saveDebounced" aria-label="Autoplay on generate" />
           </div>
         </div>
       </div>
@@ -1965,7 +1964,7 @@ onMounted(() => {
                 OFF skips effects entirely for this render.
               </div>
             </div>
-            <JvToggle v-model="mastering.applyEffectsPreMaster" aria-label="Apply effects pre-master" />
+            <UiToggle v-model="mastering.applyEffectsPreMaster" aria-label="Apply effects pre-master" />
           </div>
         </div>
       </div>
@@ -2104,7 +2103,7 @@ onMounted(() => {
                 permission on macOS (Privacy → Accessibility) and Input Monitoring for the hotkey.
               </div>
             </div>
-            <JvToggle v-model="capture.allowAutoPaste" aria-label="Allow auto-paste" />
+            <UiToggle v-model="capture.allowAutoPaste" aria-label="Allow auto-paste" />
           </div>
         </div>
         <div class="setting-row">
