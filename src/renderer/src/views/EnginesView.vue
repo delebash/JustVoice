@@ -26,7 +26,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
-import { confirmDialog, promptDialog } from "../services/dialog.js";
+import { confirmDialog, promptDialog } from "@delebash/llm-ui";
 import { UiButton, UiTag } from "@delebash/llm-ui";
 import ProviderForm from "../components/ProviderForm.vue";
 import RecommendCard from "../components/RecommendCard.vue";

@@ -11,7 +11,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { promptDialog } from "../services/dialog.js";
+import { promptDialog } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiTextarea, UiToggle, UiTag, UiSelect } from "@delebash/llm-ui";
 import { useVoicesStore } from "../stores/voices.js";
 

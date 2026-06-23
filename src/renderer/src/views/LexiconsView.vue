@@ -13,7 +13,7 @@
 import { computed, nextTick, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { confirmDialog, promptDialog } from "../services/dialog.js";
+import { confirmDialog, promptDialog } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiTag, UiChip, UiSelect } from "@delebash/llm-ui";
 import EmptyState from "../components/EmptyState.vue";
 import { useLexiconsStore } from "../stores/lexicons.js";

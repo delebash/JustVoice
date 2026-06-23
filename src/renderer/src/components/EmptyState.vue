@@ -5,7 +5,7 @@
   pane empty states.
 -->
 <script setup>
-import Icon from "./Icon.vue";
+import { Icon } from "@delebash/llm-ui";
 import { UiButton } from "@delebash/llm-ui";
 
 defineProps({

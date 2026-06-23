@@ -8,7 +8,7 @@
 import { onMounted, ref } from "vue";
 import { webhooksService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
-import { confirmDialog } from "../services/dialog.js";
+import { confirmDialog } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiField, UiCheckbox, UiTag } from "@delebash/llm-ui";
 
 const EVENT_OPTIONS = [

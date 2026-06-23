@@ -31,7 +31,7 @@ import { UiButton, UiInput, UiTextarea, UiCheckbox, UiTag, UiChip, UiSelect } fr
 import VoiceParamsModal from "../components/VoiceParamsModal.vue";
 import EmptyState from "../components/EmptyState.vue";
 import ExportPanel from "../components/ExportPanel.vue";
-import { confirmDialog } from "../services/dialog.js";
+import { confirmDialog } from "@delebash/llm-ui";
 
 const api = useApi();
 const activeProject = useActiveProject();

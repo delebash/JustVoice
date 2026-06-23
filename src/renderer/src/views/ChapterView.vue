@@ -5,7 +5,7 @@ import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { useTakesStore } from "../stores/takes.js";
 import { pushToast } from "../services/toastBridge.js";
-import { confirmDialog, promptDialog } from "../services/dialog.js";
+import { confirmDialog, promptDialog } from "@delebash/llm-ui";
 import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";

@@ -8,7 +8,7 @@
 -->
 <script setup>
 import { computed, nextTick, ref, watch } from "vue";
-import { dialogState, _resolveDialog } from "../services/dialog.js";
+import { dialogState, _resolveDialog } from "@delebash/llm-ui";
 import {
   DialogRoot,
   DialogPortal,
@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogClose,
 } from "reka-ui";
-import Icon from "./Icon.vue";
+import { Icon } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiTextarea, UiSelect } from "@delebash/llm-ui";
 
 // Normalize the active dialog into a single shape the template reads.

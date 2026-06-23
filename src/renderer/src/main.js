@@ -4,7 +4,7 @@ import { createPinia } from "pinia";
 import App from "./App.vue";
 import ConnectionError from "./components/ConnectionError.vue";
 import DictateWindow from "./components/DictateWindow.vue";
-import { tooltipDirective } from "./services/tooltip.js";
+import { tooltipDirective } from "@delebash/llm-ui";
 import { checkServer } from "./services/connection.js";
 import { bootPrefs, ensureActiveProjectDefault } from "./services/prefs.js";
 import { i18n } from "./i18n/index.js";
