@@ -27,8 +27,7 @@ import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
-import { UiButton } from "@delebash/llm-ui";
-import JvTag from "../components/ui/JvTag.vue";
+import { UiButton, UiTag } from "@delebash/llm-ui";
 import ProviderForm from "../components/ProviderForm.vue";
 import RecommendCard from "../components/RecommendCard.vue";
 
@@ -1125,7 +1124,7 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
         <span class="jv-muted" v-if="g.vram_mb">{{ (g.vram_mb / 1024).toFixed(1) }} GB VRAM</span>
       </div>
       <div class="ev-hw-cell"><div class="k">Acceleration</div>
-        <span><JvTag v-for="r in activeRuntimes" :key="r" :label="r" /><span v-if="!activeRuntimes.length" class="jv-muted">CPU only</span></span>
+        <span><UiTag intent="ghost" v-for="r in activeRuntimes" :key="r" :label="r" /><span v-if="!activeRuntimes.length" class="jv-muted">CPU only</span></span>
       </div>
     </div>
 

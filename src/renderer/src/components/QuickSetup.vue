@@ -27,7 +27,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { UiButton, UiCheckbox } from "@delebash/llm-ui";
+import { UiButton, UiCheckbox, UiTag } from "@delebash/llm-ui";
 
 const emit = defineEmits(["close"]);
 
@@ -386,10 +386,10 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
             <div class="quick-setup__row-label">Detected</div>
             <div class="quick-setup__row-value">
               {{ gpu?.name || "No GPU" }}
-              <span v-if="gpu?.vram_mb" class="jv-pill jv-pill--ghost">{{ (gpu.vram_mb / 1024).toFixed(1) }} GB VRAM</span>
-              <span class="jv-pill" :class="tierKey === detectedTierKey ? 'jv-pill--solid' : 'jv-pill--ghost'">
+              <UiTag intent="ghost" v-if="gpu?.vram_mb">{{ (gpu.vram_mb / 1024).toFixed(1) }} GB VRAM</UiTag>
+              <UiTag :intent="tierKey === detectedTierKey ? 'solid' : 'ghost'">
                 Auto-tier: {{ TIER_RECIPES[detectedTierKey]?.label }}
-              </span>
+              </UiTag>
             </div>
           </section>
 
@@ -420,8 +420,8 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
                 />
                 <span class="quick-setup__engine-name">{{ engines.find((e) => e.id === id)?.name || id }}</span>
                 <span v-if="engines.find((e) => e.id === id)?.description" class="jv-muted quick-setup__engine-blurb">{{ engines.find((e) => e.id === id)?.description }}</span>
-                <span v-if="enginesAlreadyInstalled.some((e) => e.id === id)" class="jv-pill jv-pill--green">already installed</span>
-                <span v-else class="jv-pill jv-pill--ghost">to install</span>
+                <UiTag v-if="enginesAlreadyInstalled.some((e) => e.id === id)" intent="success">already installed</UiTag>
+                <UiTag intent="ghost" v-else>to install</UiTag>
               </li>
             </ul>
             <p class="jv-muted" style="font-size: 11.5px; margin: 4px 0 0">
@@ -454,7 +454,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
                 <span class="quick-setup__helper-name"><strong>{{ d.name }} detected</strong>
                   <span v-if="d.models.length" class="jv-muted"> · {{ d.models[0] }}{{ d.models.length > 1 ? ` +${d.models.length - 1}` : "" }}</span>
                 </span>
-                <span v-if="d.alreadyRegistered" class="jv-pill jv-pill--green">connected</span>
+                <UiTag intent="success" v-if="d.alreadyRegistered">connected</UiTag>
                 <UiButton v-else size="small" intent="secondary" :loading="connectingLocal === d.baseUrl" label="Connect" :title="`Register ${d.name} as an LLM provider`" @click="connectLocal(d)" />
               </li>
               <li v-if="!detectedLocal.length">
@@ -466,8 +466,8 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
                 <span class="quick-setup__helper-name"><strong>STT — {{ sttReadiness.display_name }}</strong>
                   <span class="jv-muted"> · Train transcripts + capture promotion + dictation</span>
                 </span>
-                <span v-if="sttReadiness.ready" class="jv-pill jv-pill--green">cached</span>
-                <span v-else class="jv-pill jv-pill--ghost" :title="'Downloads on first use'">{{ sttReadiness.size_mb ? `${sttReadiness.size_mb} MB on first use` : "downloads on first use" }}</span>
+                <UiTag intent="success" v-if="sttReadiness.ready">cached</UiTag>
+                <UiTag intent="ghost" v-else  :title="'Downloads on first use'">{{ sttReadiness.size_mb ? `${sttReadiness.size_mb} MB on first use` : "downloads on first use" }}</UiTag>
               </li>
             </ul>
           </section>

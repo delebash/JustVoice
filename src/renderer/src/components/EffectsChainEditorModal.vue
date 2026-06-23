@@ -19,7 +19,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { UiButton, UiInput, UiCheckbox } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiCheckbox, UiTag } from "@delebash/llm-ui";
 
 const props = defineProps({
   open: { type: Boolean, required: true },
@@ -203,7 +203,7 @@ onMounted(() => {
             @click="loadPreset(p)"
           >
             <strong>{{ p.name }}</strong>
-            <span v-if="p.is_builtin" class="jv-pill jv-pill--ghost">built-in</span>
+            <UiTag intent="ghost" v-if="p.is_builtin">built-in</UiTag>
             <span class="jv-muted">{{ (p.chain || []).length }} effect{{ (p.chain || []).length === 1 ? '' : 's' }}</span>
           </button>
           <p v-if="!presets.length" class="jv-muted">No saved chains yet. Build one below and click "Save chain to Effects library".</p>

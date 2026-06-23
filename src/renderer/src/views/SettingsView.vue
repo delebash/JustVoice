@@ -7,7 +7,7 @@ import { confirmDialog, promptDialog } from "../services/dialog.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { projectsService } from "../services/projects.js";
 import { readPref, writePref } from "../services/prefs.js";
-import { UiButton, UiInput, UiToggle, UiField, UiCheckbox } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag } from "@delebash/llm-ui";
 import JvSelect from "../components/ui/JvSelect.vue";
 import { useOnboarding } from "../stores/onboarding.js";
 import { useProjectsStore } from "../stores/projects.js";
@@ -1508,7 +1508,7 @@ onMounted(() => {
           <strong style="font-size:13.5px">{{ f.label }}</strong>
           <span class="jv-muted" style="font-size:12px">
             Active: <b style="color:var(--ink)">{{ configFor(f.key)?.name || 'Default (tier-resolved)' }}</b>
-            <span v-if="configFor(f.key)" class="jv-pill jv-pill--violet" style="margin-left:6px">FROM SPEAKER LAB</span>
+            <UiTag intent="violet" v-if="configFor(f.key)"  style="margin-left:6px">FROM SPEAKER LAB</UiTag>
           </span>
           <span v-if="configFor(f.key)" class="jv-mono jv-muted" style="font-size:11px">
             {{ configFor(f.key).model }}<span v-if="configFor(f.key).temperature != null"> · temp {{ configFor(f.key).temperature }}</span><span v-if="configFor(f.key).systemPrompt"> · custom prompts</span>
@@ -1566,7 +1566,7 @@ onMounted(() => {
                 </select>
               </td>
               <td><span class="jv-mono" style="font-size:11.5px">{{ resolveRoute(f.key) }}</span></td>
-              <td><span v-if="configFor(f.key)" class="jv-pill jv-pill--violet" :title="`Promoted Lab config '${configFor(f.key).name}' wins for this feature`">CONFIG</span></td>
+              <td><UiTag intent="violet" v-if="configFor(f.key)"  :title="`Promoted Lab config '${configFor(f.key).name}' wins for this feature`">CONFIG</UiTag></td>
             </tr>
           </tbody>
         </table>
@@ -1590,9 +1590,9 @@ onMounted(() => {
             <tr v-for="p in projectsForCorrections" :key="p.id">
               <td>{{ p.name }}</td>
               <td style="text-align: right">
-                <span :class="['jv-pill', correctionsCounts[p.id] ? 'jv-pill--solid' : '']">
+                <UiTag :intent="correctionsCounts[p.id] ? 'solid' : 'ghost'">
                   {{ correctionsCounts[p.id] ?? 0 }}
-                </span>
+                </UiTag>
               </td>
               <td>
                 <UiButton
@@ -1910,7 +1910,7 @@ onMounted(() => {
                render-preset library. -->
           <h3 class="jv-card__title" style="margin: 0">Active target</h3>
           <span class="jv-spacer" />
-          <span class="jv-pill jv-pill--green">{{ masterPresetLabel }}</span>
+          <UiTag intent="success">{{ masterPresetLabel }}</UiTag>
         </div>
         <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 14px">
           The active mastering target applies to every chapter render + standalone Audio Tools
@@ -2125,7 +2125,7 @@ onMounted(() => {
         <div class="jv-card__header" style="display: flex; align-items: center; gap: 10px">
           <h3 class="jv-card__title" style="margin: 0">MCP server</h3>
           <span class="jv-spacer" />
-          <span class="jv-pill jv-pill--green">on</span>
+          <UiTag intent="success">on</UiTag>
         </div>
         <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 12px">
           Exposes JustVoice tools to AI agents (Claude Desktop, claude-code, Unreal Editor, custom scripts).
@@ -2280,8 +2280,8 @@ onMounted(() => {
                 <div class="setting-row__title">Active</div>
                 <div class="setting-row__desc">Engines currently using this device.</div>
               </div>
-              <span v-if="gpuInfo.active_backend && gpuInfo.active_backend !== 'cpu'" class="jv-pill jv-pill--green">● in use</span>
-              <span v-else class="jv-pill jv-pill--ghost">idle</span>
+              <UiTag intent="success" v-if="gpuInfo.active_backend && gpuInfo.active_backend !== 'cpu'">● in use</UiTag>
+              <UiTag intent="ghost" v-else>idle</UiTag>
             </div>
           </div>
         </template>
@@ -2298,7 +2298,7 @@ onMounted(() => {
           waiting for download → ready</code>.
         </p>
         <div class="jv-row" style="margin-top: 14px">
-          <span class="jv-pill jv-pill--green">phase: ready</span>
+          <UiTag intent="success">phase: ready</UiTag>
           <span class="jv-muted" style="font-size: 12px">torch 2.4.1+cu124 · 2.1 GB</span>
           <span class="jv-spacer" />
           <UiButton intent="secondary" size="small" label="Switch to CPU-only" />

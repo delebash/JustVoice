@@ -17,7 +17,7 @@ import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
-import { UiButton, UiInput } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTag, UiChip } from "@delebash/llm-ui";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 
 const api = useApi();
@@ -154,7 +154,7 @@ onMounted(refresh);
       <div class="jv-lib-toolbar">
         <UiInput v-model="search" placeholder="Search chains…" size="small" width="name" />
         <div class="voices-chips" style="display:inline-flex;gap:4px">
-          <button v-for="f in FILTERS" :key="f[0]" type="button" class="jv-pill" :class="filter === f[0] ? 'jv-pill--solid' : 'jv-pill--ghost'" @click="filter = f[0]">{{ f[1] }}</button>
+          <UiChip :selected="filter === f[0]" v-for="f in FILTERS" :key="f[0]" type="button"  @click="filter = f[0]">{{ f[1] }}</UiChip>
         </div>
         <span class="jv-spacer" />
         <UiButton intent="primary" size="small" label="+ New chain preset" @click="startCreate" />
@@ -178,7 +178,7 @@ onMounted(refresh);
               <span v-if="!(p.chain || []).length" class="jv-muted">(empty chain)</span>
             </td>
             <td>{{ (p.chain || []).length }}</td>
-            <td><span v-if="p.is_builtin" class="jv-pill jv-pill--ghost">built-in</span></td>
+            <td><UiTag intent="ghost" v-if="p.is_builtin">built-in</UiTag></td>
             <td class="jv-table__actions" @click.stop>
               <UiButton intent="ghost" size="small" label="Edit" @click="startEdit(p)" />
               <UiButton intent="danger-outline" size="small" label="Delete" :disabled="p.is_builtin" @click="deletePreset(p)" />

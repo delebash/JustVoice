@@ -15,7 +15,7 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
-import { UiButton } from "@delebash/llm-ui";
+import { UiButton, UiTag } from "@delebash/llm-ui";
 
 const props = defineProps({
   project: { type: Object, required: true },
@@ -133,7 +133,7 @@ async function copyShowNotes() {
     <div class="jv-card exportp__card">
       <div class="exportp__h">
         <strong>{{ copy.book.singular }} package</strong>
-        <span class="jv-pill" :class="exportQc?.all_ok ? 'jv-pill--green' : 'jv-pill--ghost'">{{ exportQc?.all_ok ? "ready" : "unchecked" }}</span>
+        <UiTag :intent="exportQc?.all_ok ? 'success' : 'ghost'">{{ exportQc?.all_ok ? "ready" : "unchecked" }}</UiTag>
       </div>
       <div class="exportp__id">
         <span class="exportp__portrait">{{ (project.name || "?").slice(0, 1).toUpperCase() }}</span>

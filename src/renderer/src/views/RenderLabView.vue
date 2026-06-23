@@ -12,7 +12,7 @@ import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { promptDialog } from "../services/dialog.js";
-import { UiButton, UiInput, UiTextarea, UiToggle } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiToggle, UiTag } from "@delebash/llm-ui";
 import { useVoicesStore } from "../stores/voices.js";
 
 const api = useApi();
@@ -195,7 +195,7 @@ onMounted(loadVoices);
     <section class="jv-card jv-pane-card">
       <div class="jv-pane-card__h">
         <span class="jv-eyebrow">Axes</span>
-        <span class="jv-pill jv-pill--ghost">{{ matrixSize }} cells</span>
+        <UiTag intent="ghost">{{ matrixSize }} cells</UiTag>
         <span class="jv-spacer" />
         <UiButton
           intent="primary"
@@ -235,7 +235,7 @@ onMounted(loadVoices);
         <article v-for="c in cells" :key="c.key" class="jv-card renderlab__cell">
           <header class="renderlab__cell-h">
             <strong class="jv-mono">{{ c.key }}</strong>
-            <span class="jv-pill jv-pill--ghost">{{ c.status }}</span>
+            <UiTag intent="ghost">{{ c.status }}</UiTag>
           </header>
           <audio v-if="c.audioUrl" :src="c.audioUrl" controls class="renderlab__cell-audio" />
           <p v-else-if="c.status === 'failed'" class="renderlab__cell-error">{{ c.error }}</p>

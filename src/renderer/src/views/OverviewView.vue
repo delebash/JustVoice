@@ -29,7 +29,7 @@ import { useLexiconsStore } from "../stores/lexicons.js";
 import { useEnginesStore } from "../stores/engines.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast } from "../services/toastBridge.js";
-import { UiButton } from "@delebash/llm-ui";
+import { UiButton, UiTag, UiChip } from "@delebash/llm-ui";
 import RecommendCard from "../components/RecommendCard.vue";
 
 const onboarding = useOnboarding();
@@ -367,9 +367,9 @@ onMounted(() => {
       <h2 class="home__hero-title">What are you making?</h2>
       <p class="jv-muted home__hero-sub">Pick a kind — the whole app reshapes around it. Same voices, personas, and lexicons either way.</p>
       <div class="home__hero-pills">
-        <button v-for="k in KIND_PILLS" :key="k.kind" type="button" class="jv-pill home__pill home__pill--hero"
+        <UiChip v-for="k in KIND_PILLS" :key="k.kind" class="home__pill home__pill--hero"
           :title="`Create a ${k.kind === 'game_voicelines' ? 'game dialogue' : k.kind} project`"
-          @click="startKind(k.kind)">{{ k.label }}</button>
+          @click="startKind(k.kind)">{{ k.label }}</UiChip>
       </div>
       <p class="jv-muted home__hero-foot">
         …or <a href="#projects">import a manuscript / CSV</a> · not making projects?
@@ -396,9 +396,9 @@ onMounted(() => {
       <div class="jv-card home__start">
         <div class="home__eyebrow" style="margin-bottom:8px">Start something</div>
         <div class="home__pills">
-          <button v-for="k in KIND_PILLS" :key="k.kind" type="button" class="jv-pill home__pill"
+          <UiChip v-for="k in KIND_PILLS" :key="k.kind" class="home__pill"
             :title="`New ${k.kind === 'game_voicelines' ? 'game dialogue' : k.kind} project`"
-            @click="startKind(k.kind)">{{ k.label }}</button>
+            @click="startKind(k.kind)">{{ k.label }}</UiChip>
         </div>
         <UiButton intent="secondary" size="small" label="＋ New project" style="margin-top:10px" @click="startKind('')" />
       </div>
@@ -418,13 +418,13 @@ onMounted(() => {
       <div class="jv-card home__tasks">
         <div class="home__cardhead">
           <span class="home__eyebrow">Active tasks</span>
-          <span v-if="liveTasks.length" class="jv-pill jv-pill--warn">{{ liveTasks.length }} in flight</span>
+          <UiTag intent="accent2" v-if="liveTasks.length">{{ liveTasks.length }} in flight</UiTag>
           <span class="jv-spacer" />
           <UiButton intent="ghost" size="small" label="open panel ➜" data-task-panel-toggle @click="tasks.togglePanel()" />
         </div>
         <p v-if="!liveTasks.length" class="jv-muted home__empty">Nothing running. Renders, script analysis, and clones show up here with live progress.</p>
         <div v-for="t in liveTasks" :key="t.id" class="home__task">
-          <span class="jv-pill home__task-kind" :class="`home__task-kind--${taskKind(t)}`">{{ taskKind(t) }}</span>
+          <UiTag intent="ghost" class="home__task-kind" :class="`home__task-kind--${taskKind(t)}`">{{ taskKind(t) }}</UiTag>
           <strong class="home__task-label">{{ t.label }}</strong>
           <span class="jv-muted home__task-stats">{{ t.statsFn ? t.statsFn(t) : "" }}</span>
           <div class="home__prog"><div class="home__prog-fill" :style="{ width: (t.percent ?? 30) + '%' }" /></div>
@@ -435,7 +435,7 @@ onMounted(() => {
       <div class="jv-card home__engine">
         <div class="home__cardhead">
           <span class="home__eyebrow">Loaded engine</span>
-          <span class="jv-pill" :class="health?.current_engine ? 'jv-pill--green' : ''">{{ health?.current_engine ? "ready" : "none" }}</span>
+          <UiTag :intent="health?.current_engine ? 'success' : 'ghost'">{{ health?.current_engine ? "ready" : "none" }}</UiTag>
         </div>
         <template v-if="health?.current_engine">
           <div class="home__engine-line">

@@ -9,7 +9,7 @@ import { onMounted, ref } from "vue";
 import { webhooksService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton, UiInput, UiField, UiCheckbox } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiField, UiCheckbox, UiTag } from "@delebash/llm-ui";
 
 const EVENT_OPTIONS = [
   "render.completed",
@@ -110,7 +110,7 @@ onMounted(refresh);
     <div class="jv-card webhooks-view__mcp">
       <div class="webhooks-view__mcp-h">
         <strong>MCP server</strong>
-        <span class="jv-pill jv-pill--green">enabled</span>
+        <UiTag intent="success">enabled</UiTag>
         <span class="jv-spacer" />
         <a href="#settings" class="jv-muted" style="font-size:12px">configure → Settings · MCP</a>
       </div>
@@ -162,9 +162,9 @@ justvoice.transcribe      {audio} → text</pre>
           </tr>
           <tr v-for="w in subscriptions" :key="w.id">
             <td><code class="jv-mono">{{ w.url }}</code></td>
-            <td><span class="jv-pill">{{ w.events.length }}</span></td>
+            <td><UiTag intent="ghost">{{ w.events.length }}</UiTag></td>
             <td>
-              <span v-if="w.enabled" class="jv-pill jv-pill--green">Enabled</span>
+              <UiTag intent="success" v-if="w.enabled">Enabled</UiTag>
               <span v-else class="jv-muted">—</span>
             </td>
             <td class="jv-muted">{{ w.last_delivery_at ? new Date(w.last_delivery_at).toLocaleString() : "never" }}</td>

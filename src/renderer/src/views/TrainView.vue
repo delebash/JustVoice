@@ -4,9 +4,8 @@ import { ref, onMounted, onActivated, onDeactivated, onUnmounted, computed } fro
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton, UiInput, UiField } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiField, UiTag } from "@delebash/llm-ui";
 import JvSelect from "../components/ui/JvSelect.vue";
-import JvTag from "../components/ui/JvTag.vue";
 import { useEnginesStore } from "../stores/engines.js";
 import { useVoicesStore } from "../stores/voices.js";
 
@@ -63,12 +62,12 @@ function hasActive() {
   return trainJobs.value.some((j) => ACTIVE_PHASES.has(j.phase));
 }
 
-// ── phase → JvTag variant mapping ─────────────────────────────────────────────
+// ── phase → UiTag intent mapping ─────────────────────────────────────────────
 function phaseVariant(phase) {
   if (phase === "completed") return "success";
   if (phase === "failed") return "danger";
-  if (ACTIVE_PHASES.has(phase)) return "warn";
-  return "default";
+  if (ACTIVE_PHASES.has(phase)) return "accent2";
+  return "ghost";
 }
 
 // ── base64 helper ─────────────────────────────────────────────────────────────
@@ -386,7 +385,7 @@ onUnmounted(stopPolling);
             <td><span class="jv-mono jv-muted">{{ j.engine }}</span></td>
             <td>{{ j.voice_name }}</td>
             <td>
-              <JvTag :intent="phaseVariant(j.phase)" :label="j.phase" />
+              <UiTag :intent="phaseVariant(j.phase)" :label="j.phase" />
               <span v-if="j.error" class="jv-muted" style="font-size: 11px; display: block; margin-top: 2px; color: var(--danger-ink);">{{ j.error }}</span>
             </td>
             <td>

@@ -20,7 +20,7 @@ import { computed, nextTick, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton, UiInput } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTag, UiChip } from "@delebash/llm-ui";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import { usePersonasStore } from "../stores/personas.js";
 
@@ -214,7 +214,7 @@ onMounted(refresh);
       <div class="jv-lib-toolbar">
         <UiInput v-model="search" placeholder="Search presets…" size="small" width="name" />
         <div style="display:inline-flex;gap:4px">
-          <button v-for="f in FILTERS" :key="f[0]" type="button" class="jv-pill" :class="filter === f[0] ? 'jv-pill--solid' : 'jv-pill--ghost'" @click="filter = f[0]">{{ f[1] }}</button>
+          <UiChip :selected="filter === f[0]" v-for="f in FILTERS" :key="f[0]" type="button"  @click="filter = f[0]">{{ f[1] }}</UiChip>
         </div>
         <select class="jv-input jv-input--sm" style="max-width:160px" v-model="masterFilter" title="Filter by master target">
           <option value="">All targets</option>
@@ -239,10 +239,10 @@ onMounted(refresh);
             <td class="jv-muted">{{ p.voice_id ? personaName(p.voice_id) : "— delivery only —" }}</td>
             <td class="jv-muted">{{ p.master || "none" }}</td>
             <td>
-              <span v-for="(d, i) in deliveryPills(p)" :key="i" class="jv-pill jv-pill--ghost" style="margin:1px 4px 1px 0">{{ d }}</span>
+              <UiTag intent="ghost" v-for="(d, i) in deliveryPills(p)" :key="i"  style="margin:1px 4px 1px 0">{{ d }}</UiTag>
               <span v-if="!deliveryPills(p).length" class="jv-muted">(engine defaults)</span>
             </td>
-            <td><span v-if="p.is_builtin" class="jv-pill jv-pill--ghost">built-in</span></td>
+            <td><UiTag intent="ghost" v-if="p.is_builtin">built-in</UiTag></td>
             <td class="jv-table__actions" @click.stop>
               <UiButton intent="ghost" size="small" label="Edit" @click="openEdit(p)" />
               <UiButton intent="danger-outline" size="small" label="Delete" :disabled="p.is_builtin" :title="p.is_builtin ? 'Built-in presets can\'t be deleted' : 'Delete preset'" @click="deletePreset(p)" />
@@ -262,7 +262,7 @@ onMounted(refresh);
             <span class="jv-modal__eyebrow">Render preset</span>
             <h3 class="jv-modal__title">{{ dialogTitle }}</h3>
           </div>
-          <span v-if="editIsBuiltin" class="jv-pill jv-pill--ghost">built-in · read-only</span>
+          <UiTag intent="ghost" v-if="editIsBuiltin">built-in · read-only</UiTag>
           <button type="button" class="jv-modal__close" title="Close" @click="closeEdit">✕</button>
         </header>
         <div class="jv-modal__body render-presets-view__form">
@@ -282,13 +282,13 @@ onMounted(refresh);
           </label>
           <div class="jv-form-row jv-form-row--stack"><span>Delivery</span>
             <div>
-              <span v-for="(d, i) in deliveryPills(editing)" :key="i" class="jv-pill jv-pill--ghost" style="margin:1px 4px 1px 0">{{ d }}</span>
+              <UiTag intent="ghost" v-for="(d, i) in deliveryPills(editing)" :key="i"  style="margin:1px 4px 1px 0">{{ d }}</UiTag>
               <span v-if="!deliveryPills(editing).length" class="jv-muted">(engine defaults — tune in Labs · Render and save from a cell)</span>
             </div>
           </div>
           <div class="jv-form-row jv-form-row--stack"><span>Effects chain</span>
             <div>
-              <span v-for="(ef, i) in (editDraft.effects_chain || [])" :key="i" class="jv-pill jv-pill--ghost" style="margin:1px 4px 1px 0">{{ ef.type }}</span>
+              <UiTag intent="ghost" v-for="(ef, i) in (editDraft.effects_chain || [])" :key="i"  style="margin:1px 4px 1px 0">{{ ef.type }}</UiTag>
               <span v-if="!(editDraft.effects_chain || []).length" class="jv-muted">(no effects)</span>
               <UiButton v-if="!editIsBuiltin" intent="secondary" size="small" :label="(editDraft.effects_chain || []).length ? 'Edit chain' : 'Add chain'" @click="openChainEditor" />
             </div>

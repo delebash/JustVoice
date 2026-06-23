@@ -11,7 +11,7 @@ import { onMounted, ref } from "vue";
 import { channelsService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag } from "@delebash/llm-ui";
 
 const channels = ref([]);
 const editing = ref({ id: null, name: "", device_ids: [], is_default: false });
@@ -114,7 +114,7 @@ onMounted(() => {
           <tr v-for="c in channels" :key="c.id">
             <td><strong>{{ c.name }}</strong></td>
             <td>
-              <span v-if="c.is_default" class="jv-pill jv-pill--green">Default</span>
+              <UiTag intent="success" v-if="c.is_default">Default</UiTag>
               <span v-else class="jv-muted">—</span>
             </td>
             <td class="jv-muted">{{ c.device_ids?.length || 0 }} device(s)</td>

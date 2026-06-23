@@ -827,43 +827,10 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
   gap: var(--gap-grid);
 }
 
-/* Pills (preview L130-135) */
-.jv-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 10px;
-  font-size: 11px;
-  border-radius: var(--r-pill);
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
-  color: var(--ink-2);
-  white-space: nowrap;
-  line-height: 18px;
-}
-.jv-pill--green  { color: var(--accent);     border-color: var(--accent);     background: var(--accent-soft); }
-.jv-pill--warn   { color: var(--warn-ink);   border-color: var(--warn-line);  background: var(--warn-bg); }
-.jv-pill--danger { color: var(--danger-ink); border-color: var(--danger-line); background: var(--danger-bg); }
-.jv-pill--solid  { background: var(--accent); color: #fff; border-color: var(--accent); }
-/* "accent" is JvTag's fifth variant — was unstyled (fell through to the
-   base pill). Info-blue tint keeps it distinct from green/warn/danger. */
-.jv-pill--accent { color: var(--info-blue); border-color: var(--info-blue); background: transparent; }
-.jv-pill--ghost  { background: transparent; }
-.jv-pill--violet { color: #6b4fae; border-color: #c8b9ea; background: #f3eefb; }
-
-/* Tags — alias for pill in some views (kept for component compat). */
-.jv-tag { /* matches .jv-pill */
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 10px;
-  font-size: 11px;
-  border-radius: var(--r-pill);
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
-  color: var(--ink-2);
-  white-space: nowrap;
-}
+/* Status badges + selectable chips now use the shared .ui-tag / .ui-chip
+   (@delebash/llm-ui), tuned via JV's tokens (--tag-radius/--chip-radius =
+   --r-pill, --tag-border-width:1px). JV adds one extra tag intent: */
+.ui-tag--violet { color: #6b4fae; border-color: #c8b9ea; background: #f3eefb; }
 
 /* Filter chips group (preview L178-183) */
 .jv-chips {

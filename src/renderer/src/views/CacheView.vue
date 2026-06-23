@@ -12,7 +12,7 @@ import { computed, ref, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
-import { UiButton } from "@delebash/llm-ui";
+import { UiButton, UiTag } from "@delebash/llm-ui";
 import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
 
@@ -244,7 +244,7 @@ onMounted(async () => {
         </thead>
         <tbody>
           <tr v-for="r in recent" :key="r.id">
-            <td><span class="jv-pill jv-pill--ghost">{{ r.engine }}</span></td>
+            <td><UiTag intent="ghost">{{ r.engine }}</UiTag></td>
             <td>{{ r.voice }}</td>
             <td class="jv-muted">{{ r.text_preview || "—" }}</td>
             <td>{{ fmtMB(r.size_bytes || 0) }} MB</td>

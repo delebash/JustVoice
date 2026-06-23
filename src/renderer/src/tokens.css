@@ -97,6 +97,8 @@
   --input-font-size: 13px;
   /* JV tags are outlined pills (JW's are borderless soft-tint) */
   --tag-border-width: 1px;
+  --tag-radius: var(--r-pill);   /* JV badges are pill-shaped (JW's are 4px) */
+  --chip-radius: var(--r-pill);  /* JV selectable chips are pill-shaped */
 }
 
 [data-theme="dark"] {

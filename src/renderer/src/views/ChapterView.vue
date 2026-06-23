@@ -13,11 +13,10 @@ import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
-import { UiButton, UiInput, UiTextarea } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiTag, UiChip } from "@delebash/llm-ui";
 import LineageViewer from "../components/LineageViewer.vue";
 import EmptyState from "../components/EmptyState.vue";
 import JvSelect from "../components/ui/JvSelect.vue";
-import JvTag from "../components/ui/JvTag.vue";
 
 const api = useApi();
 const activeProject = useActiveProject();
@@ -573,17 +572,17 @@ function estAudio(words) {
 }
 function scriptState(id) {
   const st = sceneStats.value[id];
-  if (!st?.blocks) return { cls: "jv-pill--ghost", label: "not analyzed" };
+  if (!st?.blocks) return { intent: "ghost", label: "not analyzed" };
   return st.attributed
-    ? { cls: "jv-pill--green", label: "attributed" }
-    : { cls: "jv-pill--warn", label: "unassigned speakers" };
+    ? { intent: "success", label: "attributed" }
+    : { intent: "accent2", label: "unassigned speakers" };
 }
 function renderState(id) {
   const c = sceneCache.value[id];
-  if (!c?.total) return { cls: "jv-pill--ghost", label: "—" };
-  if (c.cached === c.total) return { cls: "jv-pill--green", label: "✓ cached" };
-  if (c.cached > 0) return { cls: "jv-pill--accent", label: `${c.cached}/${c.total} cached` };
-  return { cls: "jv-pill--ghost", label: "—" };
+  if (!c?.total) return { intent: "ghost", label: "—" };
+  if (c.cached === c.total) return { intent: "success", label: "✓ cached" };
+  if (c.cached > 0) return { intent: "info", label: `${c.cached}/${c.total} cached` };
+  return { intent: "ghost", label: "—" };
 }
 const filteredScenes = computed(() => scenes.value.filter((sc) => {
   const q = chapterFilter.value.trim().toLowerCase();
@@ -798,10 +797,10 @@ async function savePastedText() {
       </p>
       <div class="chapter-view__list-toolbar">
         <UiInput v-model="chapterFilter" size="small" style="max-width:260px" :placeholder="`Filter ${copy.chapter.plural.toLowerCase()}…`" />
-        <button v-for="c in [['all','All'],['needs-script','Needs script'],['ready','Ready'],['rendered','Rendered']]" :key="c[0]"
-          type="button" class="jv-pill" :class="chapterChip === c[0] ? 'jv-pill--solid' : 'jv-pill--ghost'"
+        <UiChip v-for="c in [['all','All'],['needs-script','Needs script'],['ready','Ready'],['rendered','Rendered']]" :key="c[0]"
+          :selected="chapterChip === c[0]"
           :title="c[0]==='needs-script' ? 'Chapters with unattributed or missing blocks' : c[0]==='rendered' ? 'Fully cached — re-render is free' : ''"
-          @click="chapterChip = c[0]">{{ c[1] }}</button>
+          @click="chapterChip = c[0]">{{ c[1] }}</UiChip>
         <span class="jv-spacer" />
         <UiButton intent="secondary" size="small" :label="`＋ Add ${copy.chapter.singular.toLowerCase()}`" @click="addChapter" />
         <UiButton intent="primary" size="small" label="Open in Studio ➜" title="Cast → Script → Render for the whole project" @click="openInStudio" />
@@ -820,8 +819,8 @@ async function savePastedText() {
             <td><strong>{{ sc.title || `${copy.chapter.singular} ${sc.position + 1}` }}</strong></td>
             <td class="chapter-view__num jv-mono">{{ (sceneStats[sc.id]?.words ?? 0).toLocaleString() }}</td>
             <td class="chapter-view__num jv-mono">{{ estAudio(sceneStats[sc.id]?.words) }}</td>
-            <td><span class="jv-pill" :class="scriptState(sc.id).cls">{{ scriptState(sc.id).label }}</span></td>
-            <td><span class="jv-pill" :class="renderState(sc.id).cls">{{ renderState(sc.id).label }}</span></td>
+            <td><UiTag :intent="scriptState(sc.id).intent">{{ scriptState(sc.id).label }}</UiTag></td>
+            <td><UiTag :intent="renderState(sc.id).intent">{{ renderState(sc.id).label }}</UiTag></td>
             <td style="text-align:right;white-space:nowrap">
               <button type="button" class="jv-rowact" title="Move up" @click.stop="moveChapter(sc, -1)">↑</button>
               <button type="button" class="jv-rowact" title="Move down" @click.stop="moveChapter(sc, 1)">↓</button>
@@ -900,33 +899,29 @@ async function savePastedText() {
         <!-- Block header: position + persona -->
         <div class="chapter-view__block-header">
           <span class="chapter-view__block-num">{{ block.position + 1 }}</span>
-          <span v-if="block.persona_id" class="jv-pill jv-pill--green">{{ personaName(block.persona_id) }}</span>
-          <span
+          <UiTag intent="success" v-if="block.persona_id">{{ personaName(block.persona_id) }}</UiTag>
+          <UiTag
             v-else-if="block.metadata?.marker"
-            class="jv-pill jv-pill--ghost"
+            intent="ghost"
             title="Music / ad direction line from the import — no speaker, renders as silence or gets replaced on the Timeline"
-          >♪ marker</span>
-          <button
+          >♪ marker</UiTag>
+          <UiChip
             v-if="!block.metadata?.marker"
-            type="button"
-            class="jv-pill chapter__direction"
-            :class="block.direction ? 'jv-pill--warn' : 'jv-pill--ghost'"
+            class="chapter__direction"
+            :selected="!!block.direction"
             :title="block.direction ? 'Edit the performance note for this line' : 'Add a performance note — instruct-capable engines perform it (e.g. weary, almost whispering)'"
             @click="editDirection(block)"
-          >{{ block.direction || "＋ direction" }}</button>
+          >{{ block.direction || "＋ direction" }}</UiChip>
           <span class="jv-spacer" />
-          <button
-            type="button"
-            class="jv-pill jv-pill--ghost"
+          <UiChip
             title="Edit this line's text in place — the next render regenerates only this line"
             @click="startEditBlock(block)"
-          >✎ Edit text</button>
-          <button
-            type="button"
-            class="jv-pill jv-pill--ghost chapter-view__fixit"
+          >✎ Edit text</UiChip>
+          <UiChip
+            class="chapter-view__fixit"
             title="Heard a mispronunciation in this line? Send the word to Lexicons — only lines containing it re-render."
             @click="flagPronunciation(block)"
-          >🔤 Fix pronunciation</button>
+          >🔤 Fix pronunciation</UiChip>
         </div>
 
         <!-- Block text — read view, or in-place editor. -->
@@ -993,20 +988,19 @@ async function savePastedText() {
               />
 
               <!-- Default badge -->
-              <JvTag
+              <UiTag
                 v-if="getActiveTake(block.id)?.is_default"
                 intent="success"
                 label="default"
               />
 
               <!-- Lineage pill — click opens the full source-chain viewer -->
-              <button
+              <UiChip
                 v-if="sourceTakeLabel(getActiveTake(block.id), block.id)"
-                type="button"
-                class="jv-pill chapter-view__lineage chapter-view__lineage--btn"
+                class="chapter-view__lineage chapter-view__lineage--btn"
                 title="View full take lineage"
                 @click="lineageTakeId = getActiveTake(block.id).id"
-              >{{ sourceTakeLabel(getActiveTake(block.id), block.id) }}</button>
+              >{{ sourceTakeLabel(getActiveTake(block.id), block.id) }}</UiChip>
             </div>
 
             <!-- ── Audio playback ─────────────────────────────────────── -->
@@ -1037,7 +1031,7 @@ async function savePastedText() {
                 <div class="chapter-view__compare-side">
                   <div class="chapter-view__compare-label">
                     Take A (active)
-                    <JvTag
+                    <UiTag
                       v-if="getActiveTake(block.id)?.is_default"
                       intent="success" label="default" class="chapter-view__compare-tag"
                     />

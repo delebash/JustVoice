@@ -11,8 +11,7 @@
 import { computed, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { UiButton, UiInput } from "@delebash/llm-ui";
-import JvTag from "../components/ui/JvTag.vue";
+import { UiButton, UiInput, UiTag } from "@delebash/llm-ui";
 
 const api = useApi();
 
@@ -93,11 +92,11 @@ function fileSummary(file, side) {
 }
 
 function verdictVariant(v) {
-  if (!v) return "default";
+  if (!v) return "ghost";
   if (/identical|near-identical/i.test(v)) return "success";
-  if (/similar/i.test(v)) return "warn";
+  if (/similar/i.test(v)) return "accent2";
   if (/different|unrelated/i.test(v)) return "danger";
-  return "default";
+  return "ghost";
 }
 </script>
 
@@ -176,7 +175,7 @@ function verdictVariant(v) {
 
       <div class="cmp__verdict-row">
         <strong>Verdict:</strong>
-        <JvTag :intent="verdictVariant(report.verdict)" :label="report.verdict || '—'" />
+        <UiTag :intent="verdictVariant(report.verdict)" :label="report.verdict || '—'" />
         <span class="jv-muted cmp__verdict-hint">classifier: identical / near-identical / similar / different / unrelated</span>
       </div>
 
@@ -235,7 +234,7 @@ function verdictVariant(v) {
 
     <!-- Bulk QC card — planned, not built yet (don't pretend it works). -->
     <section class="cmp__section">
-      <h3 class="cmp__h">Bulk QC across takes <span class="jv-pill jv-pill--ghost">coming soon</span></h3>
+      <h3 class="cmp__h">Bulk QC across takes <UiTag intent="ghost">coming soon</UiTag></h3>
       <div class="jv-card cmp__bulk-card">
         <p class="jv-muted cmp__bulk-hint" style="margin:0">
           Planned: pick a project / chapter and JustVoice spawns a Compare run per

@@ -20,7 +20,7 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
 import { promptDialog, confirmDialog } from "../services/dialog.js";
 import { readPref, writePref } from "../services/prefs.js";
-import { UiButton, UiInput, UiTextarea, UiToggle } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiToggle, UiTag, UiChip } from "@delebash/llm-ui";
 import { useProjectsStore } from "../stores/projects.js";
 
 const api = useApi();
@@ -585,11 +585,12 @@ onMounted(async () => {
             <UiButton v-if="col.presetName" intent="ghost" size="small" label="🗑" title="Delete this preset" @click="deletePreset(col)" />
             <UiButton intent="secondary" size="small" label="＋ Save as" title="Save this column's tweaks as a named preset" @click="savePreset(col)" />
             <UiButton intent="secondary" size="small" label="✓ Use as production" title="Freeze this column — model AND prompts — as Studio · Script's attribution method" @click="useAsProduction(col)" />
-            <span
+            <UiTag
               v-if="productionCfg"
-              class="jv-pill jv-pill--green splab__prod"
+              intent="success"
+              class="splab__prod"
               :title="`Studio · Script currently runs '${productionCfg.name}' (${productionCfg.model || 'route default'}). Revert in Settings → AI features.`"
-            >✓ PRODUCTION · {{ productionCfg.name }}</span>
+            >✓ PRODUCTION · {{ productionCfg.name }}</UiTag>
           </div>
 
           <!-- Pipeline explainer (JustWrite parity banner) -->
@@ -639,15 +640,13 @@ onMounted(async () => {
           <div class="splab__column-knobs">
             <span class="jv-eyebrow">Tier</span>
             <div class="splab__tierseg">
-              <button
+              <UiChip
                 v-for="t in extractionConfig?.tiers || []"
                 :key="t.name"
-                type="button"
-                class="jv-pill"
-                :class="col.tier === t.name ? 'jv-pill--solid' : 'jv-pill--ghost'"
+                :selected="col.tier === t.name"
                 :title="`floor ${t.confidence_floor}${t.think ? ' · reasoning on' : ''}`"
                 @click="setTier(col, t.name)"
-              >{{ t.label }}</button>
+              >{{ t.label }}</UiChip>
             </div>
             <span class="jv-muted splab__tiersrc">{{ col.tierSource === 'auto' ? 'auto-picked from the model' : 'your override' }}</span>
             <span class="splab__knob" title="Pre-LLM: 'Tom said' anchors the adjacent quote at confidence 1.0">
@@ -673,7 +672,7 @@ onMounted(async () => {
               System prompt
               <em class="jv-muted">— exactly what the model receives; resolved from the tier</em>
               <template v-if="systemEdited(col)">
-                <span class="jv-pill jv-pill--ghost splab__edited">edited</span>
+                <UiTag intent="ghost" class="splab__edited">edited</UiTag>
                 <UiButton intent="ghost" size="small" label="↺ Tier default" title="Restore this tier's default body" @click="applyTier(col, col.tier)" />
               </template>
             </span>
@@ -686,7 +685,7 @@ onMounted(async () => {
               User prompt
               <em class="jv-muted">— template · <code>{characters}</code>, <code>{corrections}</code>, <code>{paragraphs}</code> fill in server-side</em>
               <template v-if="userEdited(col)">
-                <span class="jv-pill jv-pill--ghost splab__edited">edited</span>
+                <UiTag intent="ghost" class="splab__edited">edited</UiTag>
                 <UiButton intent="ghost" size="small" label="↺ Default" title="Restore the default template" @click="col.userPrompt = extractionConfig?.user_template || ''" />
               </template>
             </span>
@@ -703,8 +702,8 @@ onMounted(async () => {
           <!-- Results — Raw / Parsed under THIS column -->
           <div v-if="col.result" class="splab__out">
             <div class="splab__out-tabs">
-              <button type="button" class="jv-pill" :class="col.outTab === 'raw' ? 'jv-pill--solid' : 'jv-pill--ghost'" @click="col.outTab = 'raw'">Raw</button>
-              <button type="button" class="jv-pill" :class="col.outTab === 'parsed' ? 'jv-pill--solid' : 'jv-pill--ghost'" @click="col.outTab = 'parsed'">Parsed ({{ col.result.rows?.length || 0 }})</button>
+              <UiChip :selected="col.outTab === 'raw'" type="button"  @click="col.outTab = 'raw'">Raw</UiChip>
+              <UiChip :selected="col.outTab === 'parsed'" type="button"  @click="col.outTab = 'parsed'">Parsed ({{ col.result.rows?.length || 0 }})</UiChip>
               <span class="jv-spacer" />
               <span class="jv-muted splab__out-meta">{{ col.result.tier_used }} tier · floor {{ col.result.confidence_floor }}</span>
             </div>
@@ -771,7 +770,7 @@ onMounted(async () => {
 .splab__temp { width: 64px; font-family: var(--font-mono); font-size: 12px; }
 .splab__column-knobs { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .splab__tierseg { display: inline-flex; gap: 4px; }
-.splab__tierseg .jv-pill { cursor: pointer; border: 0; font: inherit; font-size: 11.5px; }
+.splab__tierseg .ui-chip { cursor: pointer; border: 0; font: inherit; font-size: 11.5px; }
 .splab__knob { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
 .splab__knob--inline span { font-size: 11px; color: var(--ink-3); }
 .splab__floor { width: var(--w-token); font-family: var(--font-mono); font-size: 12px; }
@@ -797,7 +796,7 @@ onMounted(async () => {
 
 .splab__out { display: flex; flex-direction: column; gap: 8px; }
 .splab__out-tabs { display: flex; align-items: center; gap: 6px; }
-.splab__out-tabs .jv-pill { cursor: pointer; border: 0; font: inherit; font-size: 11.5px; }
+.splab__out-tabs .ui-chip { cursor: pointer; border: 0; font: inherit; font-size: 11.5px; }
 .splab__out-meta { font-size: 11px; }
 .splab__raw {
   margin: 0; background: #23272b; color: #d6dde3; border-radius: 8px;

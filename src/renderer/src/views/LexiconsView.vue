@@ -14,7 +14,7 @@ import { computed, nextTick, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
-import { UiButton, UiInput } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTag, UiChip } from "@delebash/llm-ui";
 import EmptyState from "../components/EmptyState.vue";
 import { useLexiconsStore } from "../stores/lexicons.js";
 import { useProjectsStore } from "../stores/projects.js";
@@ -49,9 +49,9 @@ const filteredLexicons = computed(() => {
 
 const scopeBadge = (lex) => {
   const s = lex?.scope ?? "global";
-  if (s === "project") return { label: "book", cls: "jv-pill--green" };
-  if (s === "persona") return { label: "persona-scoped", cls: "jv-pill--warn" };
-  return { label: "reusable", cls: "jv-pill--ghost" };
+  if (s === "project") return { label: "book", intent: "success" };
+  if (s === "persona") return { label: "persona-scoped", intent: "accent2" };
+  return { label: "reusable", intent: "ghost" };
 };
 
 function scopedToName(lex) {
@@ -390,7 +390,7 @@ onMounted(async () => {
     <div class="jv-lib-toolbar">
       <UiInput v-model="search" placeholder="Search lexicons + words…" size="small" width="name" />
       <div style="display:inline-flex;gap:4px">
-        <button v-for="f in SCOPE_FILTERS" :key="f[0]" type="button" class="jv-pill" :class="scopeFilter === f[0] ? 'jv-pill--solid' : 'jv-pill--ghost'" @click="scopeFilter = f[0]">{{ f[1] }}</button>
+        <UiChip :selected="scopeFilter === f[0]" v-for="f in SCOPE_FILTERS" :key="f[0]" type="button"  @click="scopeFilter = f[0]">{{ f[1] }}</UiChip>
       </div>
       <span class="jv-spacer" />
       <UiButton intent="secondary" size="small" label="⬇ Import .justlex.json" @click="chooseImportNew" />
@@ -414,7 +414,7 @@ onMounted(async () => {
       <tbody>
         <tr v-for="lx in filteredLexicons" :key="lx.id" class="lex__row" title="Click to edit" @click="openEdit(lx)">
           <td><strong>{{ lx.name }}</strong><div v-if="scopedToName(lx)" class="jv-muted" style="font-size:11.5px">{{ scopedToName(lx) }}</div></td>
-          <td><span class="jv-pill" :class="scopeBadge(lx).cls">{{ scopeBadge(lx).label }}</span></td>
+          <td><UiTag :intent="scopeBadge(lx).intent">{{ scopeBadge(lx).label }}</UiTag></td>
           <td>{{ (lx.entries || []).length }}</td>
           <td>
             <code v-for="(e, i) in (lx.entries || []).slice(0, 4)" :key="i" class="jv-mono lex__word">{{ e.grapheme }}</code>
@@ -463,10 +463,10 @@ onMounted(async () => {
               </select>
             </div>
             <div v-else class="lex__scope-row">
-              <span class="jv-pill" :class="scopeBadge(draft).cls">{{ scopeBadge(draft).label }}</span>
-              <span class="jv-pill jv-pill--ghost">applies before TTS</span>
-              <span v-if="draft.scope === 'project'" class="jv-pill jv-pill--ghost">book: {{ scopedToName(draft) || "—" }}</span>
-              <span v-if="draft.scope === 'persona'" class="jv-pill jv-pill--ghost">persona: {{ scopedToName(draft) || "—" }}</span>
+              <UiTag :intent="scopeBadge(draft).intent">{{ scopeBadge(draft).label }}</UiTag>
+              <UiTag intent="ghost">applies before TTS</UiTag>
+              <UiTag intent="ghost" v-if="draft.scope === 'project'">book: {{ scopedToName(draft) || "—" }}</UiTag>
+              <UiTag intent="ghost" v-if="draft.scope === 'persona'">persona: {{ scopedToName(draft) || "—" }}</UiTag>
             </div>
           </div>
 

@@ -12,7 +12,7 @@
 import { ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
-import { UiButton } from "@delebash/llm-ui";
+import { UiButton, UiTag } from "@delebash/llm-ui";
 
 const props = defineProps({
   takeId: { type: String, default: null },
@@ -91,7 +91,7 @@ function fmtDate(iso) {
           <div class="lineage-node__body">
             <div class="lineage-node__head">
               <strong>{{ n.label || `Take ${i + 1}` }}</strong>
-              <span v-if="n.is_default" class="jv-pill jv-pill--green">default</span>
+              <UiTag intent="success" v-if="n.is_default">default</UiTag>
               <span class="jv-muted lineage-node__time">{{ fmtDate(n.created_at) }}</span>
               <span class="jv-spacer" />
               <UiButton

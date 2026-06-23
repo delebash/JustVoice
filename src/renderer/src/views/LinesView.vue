@@ -16,7 +16,7 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
-import { UiButton, UiInput } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiChip, UiTag } from "@delebash/llm-ui";
 import ImportModal from "./ImportModal.vue";
 
 const api = useApi();
@@ -167,10 +167,10 @@ function onReimported() {
 
 function statusPill(s) {
   return {
-    rendered: { cls: "jv-pill--green", label: "✓ rendered" },
-    stale: { cls: "jv-pill--warn", label: "● stale" },
-    none: { cls: "jv-pill--ghost", label: "— none" },
-  }[s] || { cls: "jv-pill--ghost", label: s };
+    rendered: { intent: "success", label: "✓ rendered" },
+    stale: { intent: "accent2", label: "● stale" },
+    none: { intent: "ghost", label: "— none" },
+  }[s] || { intent: "ghost", label: s };
 }
 
 onMounted(loadProjects);
@@ -192,15 +192,13 @@ watch(selectedProjectId, (id) => {
       </select>
       <UiInput v-model="search" class="lines__search" placeholder="Search text, id, or character…" title="Filter the grid" />
       <div class="lines__chips">
-        <button
+        <UiChip
           v-for="f in ['all', 'rendered', 'stale', 'none']"
           :key="f"
-          type="button"
-          class="jv-pill"
-          :class="statusFilter === f ? 'jv-pill--solid' : 'jv-pill--ghost'"
+          :selected="statusFilter === f"
           :title="`Show ${f === 'all' ? 'every line' : f + ' lines'}`"
           @click="statusFilter = f"
-        >{{ f }} ({{ f === "all" ? lines.length : counts[f] || 0 }})</button>
+        >{{ f }} ({{ f === "all" ? lines.length : counts[f] || 0 }})</UiChip>
       </div>
       <span class="jv-spacer" />
       <UiButton intent="secondary" size="small" label="⬇ Re-import CSV" title="Merge the next sheet revision by line id — only changed lines go stale" :disabled="!selectedProject" @click="showReimport = true" />
@@ -237,7 +235,7 @@ watch(selectedProjectId, (id) => {
             <td class="jv-mono lines__id">{{ l.line_id || "—" }}</td>
             <td class="lines__who">{{ l.character || "—" }}</td>
             <td class="lines__text" :title="l.text">{{ l.text }}</td>
-            <td><span class="jv-pill" :class="statusPill(l.take_status).cls">{{ statusPill(l.take_status).label }}</span></td>
+            <td><UiTag :intent="statusPill(l.take_status).intent">{{ statusPill(l.take_status).label }}</UiTag></td>
             <td class="lines__actions">
               <UiButton intent="ghost" size="small" label="↻" :title="`Render ${l.line_id || 'this line'}`" @click="renderOne(l)" />
             </td>
@@ -263,7 +261,7 @@ watch(selectedProjectId, (id) => {
 .lines__project { max-width: 260px; }
 .lines__search { max-width: 260px; }
 .lines__chips { display: inline-flex; gap: 4px; }
-.lines__chips .jv-pill { cursor: pointer; border: 0; font: inherit; font-size: 11.5px; }
+.lines__chips .ui-chip { cursor: pointer; border: 0; font: inherit; font-size: 11.5px; }
 .lines__stale { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .lines__group td {
   background: var(--surface-3);

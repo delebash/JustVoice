@@ -27,7 +27,7 @@ import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
-import { UiButton, UiInput, UiTextarea, UiCheckbox } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiCheckbox, UiTag, UiChip } from "@delebash/llm-ui";
 import VoiceParamsModal from "../components/VoiceParamsModal.vue";
 import EmptyState from "../components/EmptyState.vue";
 import ExportPanel from "../components/ExportPanel.vue";
@@ -852,14 +852,14 @@ async function renderAll() {
 
 function checkState(sceneId) {
   const t = taskForScene(sceneId);
-  if (t?.status === "running") return { cls: "jv-pill--accent", label: "rendering…" };
+  if (t?.status === "running") return { intent: "info", label: "rendering…" };
   const qc = qcByScene.value[sceneId];
   if (qc) return qc.ok
-    ? { cls: "jv-pill--green", label: "✓ ACX pass" }
-    : { cls: "jv-pill--danger", label: `✗ ${!qc.rms_ok ? "RMS" : "peak"} out of spec` };
-  if (t?.status === "completed") return { cls: "jv-pill--green", label: "rendered" };
-  if (sceneSelectedForRender.value[sceneId]) return { cls: "jv-pill--ghost", label: "queued" };
-  return { cls: "jv-pill--ghost", label: "—" };
+    ? { intent: "success", label: "✓ ACX pass" }
+    : { intent: "danger", label: `✗ ${!qc.rms_ok ? "RMS" : "peak"} out of spec` };
+  if (t?.status === "completed") return { intent: "success", label: "rendered" };
+  if (sceneSelectedForRender.value[sceneId]) return { intent: "ghost", label: "queued" };
+  return { intent: "ghost", label: "—" };
 }
 
 async function renderSelected() {
@@ -1342,14 +1342,14 @@ watch(selectedProjectId, (id) => {
       </select>
       <span class="jv-spacer" />
       <!-- Which engines power this work (JustWrite reference chips). -->
-      <a class="jv-pill" :class="headerTts ? 'jv-pill--green' : 'jv-pill--ghost'" href="#engines"
+      <UiChip as="a" :selected="!!headerTts" href="#engines"
          :title="headerTts ? `${headerTts.name || headerTts.id} is loaded — renders use it. Manage in Engines.` : 'No TTS engine loaded — the first render sets one up. Manage in Engines.'">
         TTS · {{ headerTts ? (headerTts.name || headerTts.id) : "none" }}
-      </a>
-      <a class="jv-pill" :class="headerLlm ? 'jv-pill--green' : 'jv-pill--ghost'" href="#settings"
+      </UiChip>
+      <UiChip as="a" :selected="!!headerLlm" href="#settings"
          :title="headerLlm ? `${headerLlm.name || headerLlm.id} answers Script/Smart-assign. Routing in Settings → AI features.` : 'No local LLM loaded — Script/Smart-assign route per Settings → AI features.'">
         Script · {{ headerLlm ? (headerLlm.name || headerLlm.id) : "AI features" }}
-      </a>
+      </UiChip>
     </div>
 
     <!-- ── Production steps (1 · Cast → 2 · Script → 3 · Render) ────── -->
@@ -1394,7 +1394,7 @@ watch(selectedProjectId, (id) => {
       </template>
       <template v-if="tab === 'render' && selectedProject">
         <span class="jv-spacer" />
-        <span class="jv-pill jv-pill--green" :title="`Applied on render — set per project in Projects`">{{ masterPill }}</span>
+        <UiTag intent="success"  :title="`Applied on render — set per project in Projects`">{{ masterPill }}</UiTag>
         <UiButton
           intent="secondary"
           size="small"
@@ -1455,7 +1455,7 @@ watch(selectedProjectId, (id) => {
             <div class="studio__char-main">
               <div class="studio__char-name-row">
                 <strong class="studio__char-name">{{ narratorPersona.name }}</strong>
-                <span class="jv-pill jv-pill--green">main</span>
+                <UiTag intent="success">main</UiTag>
               </div>
               <div class="studio__char-role jv-muted">{{ personaRole(narratorPersona) || "carries the narration" }}</div>
               <div v-if="narratorPersona.voice_id" class="studio__char-voice">
@@ -1703,14 +1703,13 @@ watch(selectedProjectId, (id) => {
               >✓ {{ castAsByVoiceId[v.id] }}</span>
 
               <!-- Gender chip click-cycle (#H) -->
-              <button
-                type="button"
-                class="jv-pill jv-pill--ghost studio__voice-gender"
+              <UiChip
+                class="studio__voice-gender"
                 :title="displayedGender(v) ? `Cycle gender hint (now ${displayedGender(v)})` : 'Click to set gender hint'"
                 @click.stop="cycleGender(v)"
               >
                 {{ displayedGender(v) || "?" }}
-              </button>
+              </UiChip>
 
               <!-- Tune button (#I) — opens VoiceParamsModal for this voice -->
               <button
@@ -1748,10 +1747,10 @@ watch(selectedProjectId, (id) => {
         <!-- Discovered speakers — promotion banner (mock #audiobook/5) -->
         <div v-if="discovered.length" class="jv-banner jv-banner--warn studio__discovered">
           <strong>{{ discovered.length }} speaker{{ discovered.length === 1 ? "" : "s" }} found that {{ discovered.length === 1 ? "isn't" : "aren't" }} in your cast:</strong>
-          <span v-for="c in discovered" :key="c.name" class="jv-pill studio__discovered-chip" :title="c.role_hint || ''">
+          <UiTag v-for="c in discovered" :key="c.name" intent="ghost" class="studio__discovered-chip" :title="c.role_hint || ''">
             {{ c.name }}<template v-if="c.approx_lines"> · {{ c.approx_lines }} lines</template>
             <button type="button" class="studio__discovered-x" title="Ignore — assign rows manually instead" @click="ignoreCandidate(c.name)">✕</button>
-          </span>
+          </UiTag>
           <UiButton size="small" :loading="promoting" label="＋ Create personas & add to cast" @click="promoteDiscovered" />
         </div>
 
@@ -1814,7 +1813,7 @@ watch(selectedProjectId, (id) => {
                 <span v-if="editedFlags[i]" class="studio__edited">✎</span>
                 <span v-if="row.rewritten" class="studio__edited" title="LLM-rewritten">✨</span>
               </td>
-              <td><span class="jv-pill jv-pill--ghost">{{ row.kind }}</span></td>
+              <td><UiTag intent="ghost">{{ row.kind }}</UiTag></td>
               <td>
                 <span :class="sourceChipClass(row.source)">{{ row.source }}</span>
                 <span v-if="row.source === 'floored' && row.floored_from" class="jv-muted">
@@ -1823,7 +1822,7 @@ watch(selectedProjectId, (id) => {
               </td>
               <td class="studio__script-text-cell">{{ row.text }}</td>
               <td>
-                <span class="jv-pill" :class="row.confidence > 0.9 ? 'jv-pill--green' : row.confidence > 0.8 ? '' : 'jv-pill--warn'">{{ (row.confidence * 100).toFixed(0) }}%</span>
+                <UiTag :intent="row.confidence > 0.9 ? 'success' : row.confidence > 0.8 ? 'ghost' : 'accent2'">{{ (row.confidence * 100).toFixed(0) }}%</UiTag>
               </td>
             </tr>
           </tbody>
@@ -1910,7 +1909,7 @@ watch(selectedProjectId, (id) => {
                   </select>
                 </td>
                 <td>
-                  <span class="jv-pill" :class="checkState(s.id).cls" :title="qcByScene[s.id] ? `RMS ${qcByScene[s.id].rms_dbfs?.toFixed?.(1)} dB · peak ${qcByScene[s.id].peak_dbfs?.toFixed?.(1)} dB · ${Math.round(qcByScene[s.id].duration_s || 0)}s` : ''">{{ checkState(s.id).label }}</span>
+                  <UiTag :intent="checkState(s.id).intent"  :title="qcByScene[s.id] ? `RMS ${qcByScene[s.id].rms_dbfs?.toFixed?.(1)} dB · peak ${qcByScene[s.id].peak_dbfs?.toFixed?.(1)} dB · ${Math.round(qcByScene[s.id].duration_s || 0)}s` : ''">{{ checkState(s.id).label }}</UiTag>
                 </td>
                 <td class="studio__render-actions">
                   <UiButton
@@ -1936,15 +1935,12 @@ watch(selectedProjectId, (id) => {
               <tr v-if="taskForScene(s.id)" class="studio__render-progress-row">
                 <td colspan="8" class="studio__render-progress-cell">
                   <div class="studio__render-progress">
-                    <span
-                      class="jv-pill"
-                      :class="{
-                        'jv-pill--solid': taskForScene(s.id).status === 'running',
-                        'jv-pill--green': taskForScene(s.id).status === 'completed',
-                        'jv-pill--danger': taskForScene(s.id).status === 'failed',
-                        'jv-pill--warn': taskForScene(s.id).status === 'cancelled',
-                      }"
-                    >{{ taskForScene(s.id).status }}</span>
+                    <UiTag
+                      :intent="taskForScene(s.id).status === 'running' ? 'solid'
+                        : taskForScene(s.id).status === 'completed' ? 'success'
+                        : taskForScene(s.id).status === 'failed' ? 'danger'
+                        : taskForScene(s.id).status === 'cancelled' ? 'accent2' : 'ghost'"
+                    >{{ taskForScene(s.id).status }}</UiTag>
                     <div class="studio__render-bar">
                       <div
                         class="studio__render-bar-fill"

@@ -16,7 +16,7 @@ import { projectsService } from "../services/projects.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { getImportDraft, clearImportDraft, updateImportStandard } from "../stores/importDraft.js";
-import { UiButton, UiCheckbox } from "@delebash/llm-ui";
+import { UiButton, UiCheckbox, UiTag } from "@delebash/llm-ui";
 
 const activeProject = useActiveProject();
 const projectsStore = useProjectsStore();
@@ -151,7 +151,7 @@ function cancel() {
       <div class="jv-card imrev__card">
         <div class="imrev__cardhead">
           <strong>Detected structure</strong>
-          <span class="jv-pill jv-pill--green">{{ scenes.length }} chapter{{ scenes.length === 1 ? "" : "s" }}</span>
+          <UiTag intent="success">{{ scenes.length }} chapter{{ scenes.length === 1 ? "" : "s" }}</UiTag>
           <span class="jv-spacer" />
           <label v-if="showSplit" class="imrev__split">
             <span class="jv-muted">Split on</span>

@@ -17,7 +17,7 @@ import { computed, onMounted, ref, watch, nextTick } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton, UiInput, UiTextarea } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiTag } from "@delebash/llm-ui";
 import EmptyState from "../components/EmptyState.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import { usePersonasStore } from "../stores/personas.js";
@@ -396,7 +396,7 @@ onMounted(loadAll);
               <div v-if="p.bio" class="jv-muted" style="font-size:11.5px; margin-left:36px">{{ p.bio.slice(0, 70) }}{{ p.bio.length > 70 ? "…" : "" }}</div>
             </td>
             <td class="jv-muted">{{ voices.find((v) => v.id === p.voice_id)?.name || (p.voice_id || "no voice yet") }}</td>
-            <td><span class="jv-pill" :class="usageCount(p.id) > 0 ? 'jv-pill--green' : 'jv-pill--ghost'">{{ usageCount(p.id) }} project{{ usageCount(p.id) === 1 ? '' : 's' }}</span></td>
+            <td><UiTag :intent="usageCount(p.id) > 0 ? 'success' : 'ghost'">{{ usageCount(p.id) }} project{{ usageCount(p.id) === 1 ? '' : 's' }}</UiTag></td>
             <td class="jv-table__actions" @click.stop>
               <UiButton intent="ghost" size="small" label="Edit" @click="selectedId = p.id" />
               <UiButton intent="danger-outline" size="small" label="Delete" @click="removePersona(p)" />
@@ -414,16 +414,16 @@ onMounted(loadAll);
             <span class="jv-modal__eyebrow">{{ creating ? "New persona" : "Persona" }}</span>
             <h3 class="jv-modal__title">{{ draft.name || "(unnamed)" }}</h3>
           </div>
-          <span v-if="dirty" class="jv-pill jv-pill--warn">Unsaved changes</span>
-          <span v-if="selectedPersona?.imported_from" class="jv-pill jv-pill--ghost">
+          <UiTag intent="accent2" v-if="dirty">Unsaved changes</UiTag>
+          <UiTag v-if="selectedPersona?.imported_from" intent="ghost">
             imported from {{ selectedPersona.imported_from }}
-          </span>
-          <span
+          </UiTag>
+          <UiTag
             v-if="usageCount(draft.id) > 0"
-            class="jv-pill jv-pill--green"
+            intent="success"
           >
             Used in {{ usageCount(draft.id) }} project{{ usageCount(draft.id) === 1 ? '' : 's' }}
-          </span>
+          </UiTag>
           <button type="button" class="jv-modal__close" title="Close" @click="closeEditor">✕</button>
         </header>
 
@@ -551,7 +551,7 @@ onMounted(loadAll);
         >
           <h4 class="personas__section-h">
             Across projects
-            <span class="jv-pill jv-pill--ghost">{{ usageDetail.total_lines }} line{{ usageDetail.total_lines === 1 ? "" : "s" }}</span>
+            <UiTag intent="ghost">{{ usageDetail.total_lines }} line{{ usageDetail.total_lines === 1 ? "" : "s" }}</UiTag>
           </h4>
           <table class="jv-table personas__cross-project-table">
             <thead>
@@ -565,7 +565,7 @@ onMounted(loadAll);
             <tbody>
               <tr v-for="p in usageDetail.projects" :key="p.project_id">
                 <td><strong>{{ p.project_name }}</strong></td>
-                <td><span class="jv-pill jv-pill--ghost">{{ p.project_type }}</span></td>
+                <td><UiTag intent="ghost">{{ p.project_type }}</UiTag></td>
                 <td class="jv-mono">{{ p.scene_count }}</td>
                 <td class="jv-mono">{{ p.line_count }}</td>
               </tr>

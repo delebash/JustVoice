@@ -5,9 +5,8 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
 import { readPref, writePref } from "../services/prefs.js";
-import { UiButton, UiInput, UiTextarea, UiField } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip } from "@delebash/llm-ui";
 import JvSelect from "../components/ui/JvSelect.vue";
-import JvTag from "../components/ui/JvTag.vue";
 import EmptyState from "../components/EmptyState.vue";
 import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
@@ -479,17 +478,18 @@ async function submit() {
   }
 }
 
-// Voice type → JvTag variant mapping
+// Voice type → UiTag intent mapping
 function voiceTypeVariant(source) {
   // One distinct tint per type (v11): neutral / green / solid-green /
   // gold / blue / violet — so the column reads at a glance.
-  if (source === "preset") return "default";
+  // Returns shared UiTag intents.
+  if (source === "preset") return "ghost";
   if (source === "cloned") return "success";
   if (source === "designed") return "solid";
-  if (source === "blended") return "warn";
-  if (source === "trained") return "accent";
+  if (source === "blended") return "accent2";
+  if (source === "trained") return "info";
   if (source === "imported") return "violet";
-  return "default";
+  return "ghost";
 }
 
 // ── Inline inspector (preview parity §Voices). ────────────────────────
@@ -645,37 +645,32 @@ function blendWithVoice() {
       width="id"
       @update:model-value="setEngineFilter"
     />
-    <a
-      class="jv-pill"
-      :class="loadedTtsEngine ? 'jv-pill--green' : 'jv-pill--ghost'"
+    <UiChip
+      as="a"
+      :selected="!!loadedTtsEngine"
       href="#engines"
       :title="loadedTtsEngine
         ? `${loadedTtsEngine.name || loadedTtsEngine.id} is loaded — previews play instantly. Click to manage engines.`
         : 'No TTS engine loaded — the first preview will offer to load one. Click to manage engines.'"
-    >{{ loadedTtsEngine ? `● ${loadedTtsEngine.name || loadedTtsEngine.id} loaded` : "○ no engine loaded" }}</a>
-    <button
+    >{{ loadedTtsEngine ? `● ${loadedTtsEngine.name || loadedTtsEngine.id} loaded` : "○ no engine loaded" }}</UiChip>
+    <UiChip
       v-if="hiddenCount"
-      type="button"
-      class="jv-pill"
-      :class="showHidden ? 'jv-pill--solid' : 'jv-pill--ghost'"
+      :selected="showHidden"
       :title="showHidden ? 'Hide the hidden voices again' : 'Temporarily show voices you have hidden'"
       @click="showHidden = !showHidden"
-    >🙈 hidden ({{ hiddenCount }})</button>
-    <button
-      type="button"
-      class="jv-pill jv-pill--ghost"
+    >🙈 hidden ({{ hiddenCount }})</UiChip>
+    <UiChip
       title="Clear every gender override and unhide all voices (confirmed first)"
       @click="resetAllTweaks"
-    >↺ Reset all tweaks</button>
+    >↺ Reset all tweaks</UiChip>
     <div class="voices-view__chips">
-      <button
+      <UiChip
         v-for="f in TYPE_FILTERS"
         :key="f.id"
-        class="jv-pill"
-        :class="typeFilter === f.id ? 'jv-pill--solid' : 'jv-pill--ghost'"
+        :selected="typeFilter === f.id"
         :title="f.id === 'all' ? 'Show every voice' : `Show only ${f.label.toLowerCase()} voices`"
         @click="typeFilter = f.id"
-      >{{ f.label }} ({{ typeCounts[f.id] || 0 }})</button>
+      >{{ f.label }} ({{ typeCounts[f.id] || 0 }})</UiChip>
     </div>
     <span class="jv-spacer" />
     <UiButton intent="secondary" size="small" label="⬇ Import .justvoice.zip" @click="openModal('import')" />
@@ -739,7 +734,7 @@ function blendWithVoice() {
           </td>
           <td>
             <strong>{{ v.name }}</strong>
-            <JvTag v-if="orphanIds.includes(v.id)" intent="danger" label="orphan" style="margin-left: 6px" />
+            <UiTag v-if="orphanIds.includes(v.id)" intent="danger" label="orphan" style="margin-left: 6px" />
           </td>
           <td>
             <!-- Click-cycle gender chip per #85. -->
@@ -751,7 +746,7 @@ function blendWithVoice() {
               @click="cycleGender(v)"
             >{{ (autoDetectGender(v) || "?").charAt(0).toUpperCase() }}</button>
           </td>
-          <td><JvTag :intent="voiceTypeVariant(v.source)" :label="v.source" /></td>
+          <td><UiTag :intent="voiceTypeVariant(v.source)" :label="v.source" /></td>
           <td>
             <span class="jv-mono jv-muted">{{ v.engine }}</span>
             <span
@@ -814,7 +809,7 @@ function blendWithVoice() {
         title="Rename / gender / language — PATCHes the stored voice"
         @click="saveVoiceEdit"
       />
-      <span v-else class="jv-pill jv-pill--ghost" title="Engine presets ship with the engine — clone or blend to make an editable copy">preset · read-only</span>
+      <UiTag intent="ghost" v-else  title="Engine presets ship with the engine — clone or blend to make an editable copy">preset · read-only</UiTag>
       <UiButton
         intent="secondary"
         size="small"
@@ -861,7 +856,7 @@ function blendWithVoice() {
         <span>Default effect chain</span>
         <div class="voices-view__effects-row">
           <span v-if="!(inspectedVoice.default_effects?.length)" class="jv-muted">(none)</span>
-          <span v-for="fx in (inspectedVoice.default_effects || [])" :key="fx" class="jv-pill jv-pill--ghost">{{ fx }}</span>
+          <UiTag intent="ghost" v-for="fx in (inspectedVoice.default_effects || [])" :key="fx">{{ fx }}</UiTag>
           <UiButton intent="ghost" size="small" :disabled="true" title="Per-voice default effect chain editing lands with the Effects integration" label="+ Add" />
         </div>
       </div>
@@ -1090,7 +1085,7 @@ function blendWithVoice() {
   padding: 2px;
   gap: 2px;
 }
-.voices-view__chips .jv-pill {
+.voices-view__chips .ui-chip {
   border: 0;
   background: transparent;
   cursor: pointer;
@@ -1099,7 +1094,7 @@ function blendWithVoice() {
 }
 /* Same specificity as the rule above, declared after — without this the
    transparent background wins and the ACTIVE chip renders white-on-nothing. */
-.voices-view__chips .jv-pill--solid {
+.voices-view__chips .ui-chip.is-selected {
   background: var(--accent);
   color: #fff;
 }

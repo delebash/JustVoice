@@ -12,8 +12,7 @@
 -->
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
-import { UiButton, UiInput, UiCheckbox } from "@delebash/llm-ui";
-import JvTag from "../components/ui/JvTag.vue";
+import { UiButton, UiInput, UiCheckbox, UiTag, UiChip } from "@delebash/llm-ui";
 import EmptyState from "../components/EmptyState.vue";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import ImportModal from "./ImportModal.vue";
@@ -433,9 +432,9 @@ function onCreateFromImport() {
 
 function sceneStatusPill(scene) {
   const blocks = scene.block_count ?? 0;
-  if (blocks === 0) return { label: "pending",    cls: "jv-pill--ghost" };
-  if (blocks > 0)  return { label: "rendered",   cls: "jv-pill--green" };
-  return                  { label: "—",          cls: "jv-pill--ghost" };
+  if (blocks === 0) return { label: "pending",    intent: "ghost" };
+  if (blocks > 0)  return { label: "rendered",   intent: "success" };
+  return                  { label: "—",          intent: "ghost" };
 }
 
 onMounted(() => {
@@ -471,13 +470,12 @@ onMounted(() => {
          Open ➜ is the ONLY activation. -->
     <div class="jv-lib-toolbar">
       <UiInput v-model="search" size="small" class="projects__search" placeholder="Search projects…" />
-      <button
+      <UiChip
         v-for="t in PROJECT_TYPES"
         :key="t.id"
-        class="jv-pill"
-        :class="projectTypeFilter === t.id ? 'jv-pill--solid' : 'jv-pill--ghost'"
+        :selected="projectTypeFilter === t.id"
         @click="projectTypeFilter = t.id"
-      >{{ t.label }}</button>
+      >{{ t.label }}</UiChip>
       <span class="jv-spacer" />
       <UiButton intent="secondary" size="small" label="⬇ Import" title="Create a project from a file — EPUB, DOCX, CSV, markdown, JustWrite JSON" @click="showImport = true" />
       <UiButton intent="primary" size="small" label="＋ New project" @click="createBlank" />
@@ -523,13 +521,13 @@ onMounted(() => {
         <div class="jv-card projects__detail-card">
           <header class="projects__detail-header">
             <h2 class="projects__detail-title">{{ selectedProject.name }}</h2>
-            <JvTag :label="PROJECT_TYPE_LABEL[selectedProject.project_type] ?? selectedProject.project_type" />
-            <span v-if="selectedProject.imported_from" class="jv-pill jv-pill--ghost">imported_from = {{ selectedProject.imported_from }}</span>
+            <UiTag intent="ghost" :label="PROJECT_TYPE_LABEL[selectedProject.project_type] ?? selectedProject.project_type" />
+            <UiTag intent="ghost" v-if="selectedProject.imported_from">imported_from = {{ selectedProject.imported_from }}</UiTag>
           </header>
 
           <div class="projects__autosave jv-muted">
             Changes save automatically
-            <span v-if="savedFlash" class="jv-pill jv-pill--green">Saved ✓</span>
+            <UiTag intent="success" v-if="savedFlash">Saved ✓</UiTag>
           </div>
           <div class="projects__fields">
             <label class="projects__field">
@@ -578,10 +576,11 @@ onMounted(() => {
               <span>Cast</span>
               <div class="projects__cast-row">
                 <span v-if="!cast.length" class="jv-muted">No cast assigned yet.</span>
-                <span
+                <UiTag
                   v-for="c in cast"
                   :key="c.persona_id"
-                  class="jv-pill jv-pill--ghost projects__cast-pill"
+                  intent="ghost"
+                  class="projects__cast-pill"
                 >
                   {{ c.persona_name ?? c.role_label ?? c.persona_id }}
                   <button
@@ -590,7 +589,7 @@ onMounted(() => {
                     title="Remove from project"
                     @click="removeCast(c.persona_id)"
                   >✕</button>
-                </span>
+                </UiTag>
                 <UiButton
                   intent="ghost"
                   size="small"
@@ -605,9 +604,9 @@ onMounted(() => {
             <div class="projects__field projects__field--wide">
               <span>Status</span>
               <div class="projects__status-row">
-                <span class="jv-pill jv-pill--green">{{ renderedCount }} {{ copy.chapter.plural.toLowerCase() }} rendered</span>
-                <span class="jv-pill jv-pill--warn" v-if="pendingCount">{{ pendingCount }} pending</span>
-                <span class="jv-pill jv-pill--ghost" v-if="selectedProject.mastering_preset">ACX QC: pending</span>
+                <UiTag intent="success">{{ renderedCount }} {{ copy.chapter.plural.toLowerCase() }} rendered</UiTag>
+                <UiTag intent="accent2"  v-if="pendingCount">{{ pendingCount }} pending</UiTag>
+                <UiTag intent="ghost"  v-if="selectedProject.mastering_preset">ACX QC: pending</UiTag>
               </div>
             </div>
 
@@ -668,7 +667,7 @@ onMounted(() => {
                   <td>{{ s.block_count ?? 0 }}</td>
                   <td class="jv-muted">—</td>
                   <td>
-                    <span class="jv-pill" :class="sceneStatusPill(s).cls">{{ sceneStatusPill(s).label }}</span>
+                    <UiTag :intent="sceneStatusPill(s).intent">{{ sceneStatusPill(s).label }}</UiTag>
                   </td>
                   <td class="projects__row-actions">
                     <UiButton intent="ghost" size="small" label="Open" title="Open in Chapter view" @click="openChapterInView(s)" />

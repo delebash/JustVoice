@@ -6,7 +6,7 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag } from "@delebash/llm-ui";
 import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { useVoicesStore } from "../stores/voices.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -756,18 +756,18 @@ onMounted(async () => {
     <div class="jv-banner jv-banner--info generate-view__caps">
       Delivery controls below reflect <strong>{{ currentEngine?.name || "the loaded engine" }}</strong>'s capabilities. Switch engine → controls re-render.
       <div class="generate-view__caps-list">
-        <span class="jv-pill jv-pill--ghost"><strong>{{ currentEngine?.name || "no engine" }}</strong> · {{ currentEngine ? 'loaded' : 'not loaded' }}</span>
-        <span v-if="pitchNative" class="jv-pill jv-pill--green">✓ pitch {{ pitchMin }} → {{ pitchMax }} st (native)</span>
-        <span v-else-if="pitchPostProcess" class="jv-pill jv-pill--ghost">pitch via post-process only</span>
-        <span v-if="supportsTemperature" class="jv-pill jv-pill--green">✓ temperature</span>
-        <span v-if="supportsSeed" class="jv-pill jv-pill--green">✓ seed</span>
-        <span v-if="supportsEmotion" class="jv-pill jv-pill--green">✓ {{ EMOTIONS.length }} emotion tags</span>
-        <span v-if="supportsParalinguistic" class="jv-pill jv-pill--green">✓ {{ paralinguisticTagSet?.tags?.length || 0 }} {{ paralinguisticTagSet?.category }} tags</span>
-        <span v-if="supportsFreeform" class="jv-pill jv-pill--green">✓ free-form delivery</span>
-        <span v-else class="jv-pill jv-pill--ghost">✗ free-form delivery (use Qwen3)</span>
-        <span v-if="engineCaps.supports_voice_cloning" class="jv-pill jv-pill--green">✓ cloning</span>
-        <span v-if="engineCaps.supports_phoneme_input" class="jv-pill jv-pill--green">✓ IPA phoneme input</span>
-        <span v-if="engineCaps.supports_multi_speaker" class="jv-pill jv-pill--green">✓ multi-speaker</span>
+        <UiTag intent="ghost"><strong>{{ currentEngine?.name || "no engine" }}</strong> · {{ currentEngine ? 'loaded' : 'not loaded' }}</UiTag>
+        <UiTag intent="success" v-if="pitchNative">✓ pitch {{ pitchMin }} → {{ pitchMax }} st (native)</UiTag>
+        <UiTag intent="ghost" v-else-if="pitchPostProcess">pitch via post-process only</UiTag>
+        <UiTag intent="success" v-if="supportsTemperature">✓ temperature</UiTag>
+        <UiTag intent="success" v-if="supportsSeed">✓ seed</UiTag>
+        <UiTag intent="success" v-if="supportsEmotion">✓ {{ EMOTIONS.length }} emotion tags</UiTag>
+        <UiTag intent="success" v-if="supportsParalinguistic">✓ {{ paralinguisticTagSet?.tags?.length || 0 }} {{ paralinguisticTagSet?.category }} tags</UiTag>
+        <UiTag intent="success" v-if="supportsFreeform">✓ free-form delivery</UiTag>
+        <UiTag intent="ghost" v-else>✗ free-form delivery (use Qwen3)</UiTag>
+        <UiTag intent="success" v-if="engineCaps.supports_voice_cloning">✓ cloning</UiTag>
+        <UiTag intent="success" v-if="engineCaps.supports_phoneme_input">✓ IPA phoneme input</UiTag>
+        <UiTag intent="success" v-if="engineCaps.supports_multi_speaker">✓ multi-speaker</UiTag>
       </div>
       <div v-if="engineCaps.notes?.length" class="generate-view__caps-notes">
         <p v-for="(n, i) in engineCaps.notes" :key="i" class="jv-muted">{{ n }}</p>
@@ -856,8 +856,8 @@ onMounted(async () => {
         <UiField layout="block" style="margin-top: 16px">
           <template #label>
             Delivery direction
-            <span v-if="!supportsFreeform" class="jv-pill jv-pill--ghost">disabled · requires Qwen3-TTS or LuxTTS</span>
-            <span v-else class="jv-pill jv-pill--green">free-form</span>
+            <UiTag intent="ghost" v-if="!supportsFreeform">disabled · requires Qwen3-TTS or LuxTTS</UiTag>
+            <UiTag intent="success" v-else>free-form</UiTag>
           </template>
           <UiTextarea
             v-model="instruct"
@@ -968,7 +968,7 @@ onMounted(async () => {
              attached so the user knows where to wire one up. -->
         <div class="generate-view__lexicon-row">
           <span class="jv-muted">Lexicon preview applies before TTS:</span>
-          <span class="jv-pill jv-pill--ghost">{{ attachedLexicon?.name || "no lexicon attached" }}</span>
+          <UiTag intent="ghost">{{ attachedLexicon?.name || "no lexicon attached" }}</UiTag>
           <span class="jv-muted">
             {{ appliedLexiconCount }} word replacement{{ appliedLexiconCount === 1 ? "" : "s" }} would apply.
           </span>

@@ -9,8 +9,7 @@ import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { captureReadinessService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
-import { UiButton, UiInput, UiCheckbox } from "@delebash/llm-ui";
-import JvTag from "../components/ui/JvTag.vue";
+import { UiButton, UiInput, UiCheckbox, UiTag, UiChip } from "@delebash/llm-ui";
 
 const api = useApi();
 
@@ -111,7 +110,7 @@ onMounted(() => {
     <!-- ── Top band: hotkeys + animated pill preview (preview parity) ── -->
     <div class="captures__top">
       <section class="jv-card captures__hotkeys">
-        <h3 class="captures__band-h">Hotkeys <span class="jv-pill jv-pill--ghost">coming soon</span></h3>
+        <h3 class="captures__band-h">Hotkeys <UiTag intent="ghost">coming soon</UiTag></h3>
         <div class="captures__hotkey-row">
           <span class="jv-chip-card">
             🎚️ Push-to-talk:
@@ -172,14 +171,12 @@ onMounted(() => {
       <div class="captures__search">
         <UiInput v-model="search" placeholder="Search transcripts…" size="small" width="name" />
         <div class="captures__filters">
-          <button
+          <UiChip
             v-for="f in FILTERS"
             :key="f"
-            type="button"
-            class="jv-pill"
-            :class="filter === f ? 'jv-pill--solid' : 'jv-pill--ghost'"
+            :selected="filter === f"
             @click="filter = f"
-          >{{ f.charAt(0).toUpperCase() + f.slice(1) }}</button>
+          >{{ f.charAt(0).toUpperCase() + f.slice(1) }}</UiChip>
         </div>
       </div>
 
@@ -188,11 +185,11 @@ onMounted(() => {
         <strong>Dictation readiness</strong>
         <div class="captures__checklist">
           <div class="captures__check-row" :class="{ 'captures__check-row--ok': readiness.stt.ready }">
-            <JvTag :intent="readiness.stt.ready ? 'success' : 'default'" :label="readiness.stt.ready ? '✓' : '○'" />
+            <UiTag :intent="readiness.stt.ready ? 'success' : 'ghost'" :label="readiness.stt.ready ? '✓' : '○'" />
             <span>{{ readiness.stt.display_name }} {{ readiness.stt.ready ? "loaded" : "not loaded" }}</span>
           </div>
           <div class="captures__check-row" :class="{ 'captures__check-row--ok': readiness.llm.ready }">
-            <JvTag :intent="readiness.llm.ready ? 'success' : 'default'" :label="readiness.llm.ready ? '✓' : '○'" />
+            <UiTag :intent="readiness.llm.ready ? 'success' : 'ghost'" :label="readiness.llm.ready ? '✓' : '○'" />
             <span>{{ readiness.llm.display_name }} {{ readiness.llm.ready ? "loaded" : "not loaded" }}</span>
           </div>
         </div>
