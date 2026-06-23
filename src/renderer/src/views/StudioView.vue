@@ -27,7 +27,7 @@ import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import VoiceParamsModal from "../components/VoiceParamsModal.vue";
 import EmptyState from "../components/EmptyState.vue";
 import ExportPanel from "../components/ExportPanel.vue";
@@ -1374,19 +1374,19 @@ watch(selectedProjectId, (id) => {
           <option v-if="!scenes.length" :value="null">— no {{ copy.chapter.plural.toLowerCase() }} —</option>
           <option v-for="sc in scenes" :key="sc.id" :value="sc.id">{{ sc.title || `${copy.chapter.singular} ${sc.position + 1}` }}</option>
         </select>
-        <JvButton
-          variant="primary"
-          size="sm"
+        <UiButton
+          intent="primary"
+          size="small"
           :loading="analyzeBusy"
           :disabled="analyzeBusy || !sceneText.trim()"
           label="✨ Analyze chapter"
           title="LLM works out who speaks each line"
           @click="runAnalyze"
         />
-        <JvButton
+        <UiButton
           v-if="analyzeRows.length"
-          variant="secondary"
-          size="sm"
+          intent="secondary"
+          size="small"
           label="✓ Apply"
           title="Write the attribution onto this chapter's blocks"
           @click="applyAnalyzed"
@@ -1395,9 +1395,9 @@ watch(selectedProjectId, (id) => {
       <template v-if="tab === 'render' && selectedProject">
         <span class="jv-spacer" />
         <span class="jv-pill jv-pill--green" :title="`Applied on render — set per project in Projects`">{{ masterPill }}</span>
-        <JvButton
-          variant="secondary"
-          size="sm"
+        <UiButton
+          intent="secondary"
+          size="small"
           :disabled="renderBusyScene !== null || !renderGate.ok"
           label="▶ Render all"
           :title="renderGate.ok ? 'Queue every chapter that has blocks' : renderGate.reason"
@@ -1493,25 +1493,25 @@ watch(selectedProjectId, (id) => {
           <span class="jv-spacer" />
           <!-- S1: Cast actions live inside the card they act on
                (JustWrite Audio Studio reference). -->
-          <JvButton
-            variant="secondary"
-            size="sm"
+          <UiButton
+            intent="secondary"
+            size="small"
             label="＋ Add persona"
             title="Add an existing library persona to this cast"
             @click="addPersonaOpen = true"
           />
-          <JvButton
-            variant="secondary"
-            size="sm"
+          <UiButton
+            intent="secondary"
+            size="small"
             label="✕ Clear cast"
             :loading="clearCastBusy"
             :disabled="clearCastBusy || !projectPersonas.some((p) => p.voice_id)"
             title="Unassign every voice — personas stay"
             @click="clearCast"
           />
-          <JvButton
-            variant="primary"
-            size="sm"
+          <UiButton
+            intent="primary"
+            size="small"
             label="✨ Smart-assign"
             :loading="smartAssignBusy"
             :disabled="smartAssignBusy"
@@ -1751,7 +1751,7 @@ watch(selectedProjectId, (id) => {
             {{ c.name }}<template v-if="c.approx_lines"> · {{ c.approx_lines }} lines</template>
             <button type="button" class="studio__discovered-x" title="Ignore — assign rows manually instead" @click="ignoreCandidate(c.name)">✕</button>
           </span>
-          <JvButton size="sm" :loading="promoting" label="＋ Create personas & add to cast" @click="promoteDiscovered" />
+          <UiButton size="small" :loading="promoting" label="＋ Create personas & add to cast" @click="promoteDiscovered" />
         </div>
 
         <p v-if="analyzeTierUsed" class="jv-muted studio__script-meta">
@@ -1769,7 +1769,7 @@ watch(selectedProjectId, (id) => {
             long {{ copy.chapter.plural.toLowerCase() }} can take a minute or two.
           </span>
           <span class="jv-spacer" />
-          <JvButton variant="ghost" size="sm" label="Cancel" @click="cancelAnalyze" />
+          <UiButton intent="ghost" size="small" label="Cancel" @click="cancelAnalyze" />
         </div>
 
         <textarea
@@ -1837,22 +1837,22 @@ watch(selectedProjectId, (id) => {
       </div>
       <template v-else>
         <header class="studio__render-toolbar">
-          <JvButton variant="secondary" size="sm" label="Select unrendered" title="Select chapters the render cache doesn't fully cover" @click="selectAllUnrendered" />
-          <JvButton variant="ghost" size="sm" label="Select all" title="Every chapter with text — rendered ones re-serve from cache" @click="selectAllRenderable" />
+          <UiButton intent="secondary" size="small" label="Select unrendered" title="Select chapters the render cache doesn't fully cover" @click="selectAllUnrendered" />
+          <UiButton intent="ghost" size="small" label="Select all" title="Every chapter with text — rendered ones re-serve from cache" @click="selectAllRenderable" />
           <span class="jv-muted">{{ selectedSceneCount() }} selected</span>
           <span class="jv-spacer" />
-          <JvButton
-            variant="secondary"
-            size="sm"
+          <UiButton
+            intent="secondary"
+            size="small"
             :loading="qcBusy"
             :disabled="qcBusy"
             label="🎧 Run ACX QC"
             title="Render every chapter (cache-served when unchanged) and measure RMS + peak against the ACX limits"
             @click="runQC"
           />
-          <JvButton
-            variant="primary"
-            size="sm"
+          <UiButton
+            intent="primary"
+            size="small"
             :disabled="!selectedSceneCount() || renderBusyScene !== null || !renderGate.ok"
             :label="`▶ Render selected (${selectedSceneCount()})`"
             :title="renderGate.ok ? '' : renderGate.reason"
@@ -1913,17 +1913,17 @@ watch(selectedProjectId, (id) => {
                   <span class="jv-pill" :class="checkState(s.id).cls" :title="qcByScene[s.id] ? `RMS ${qcByScene[s.id].rms_dbfs?.toFixed?.(1)} dB · peak ${qcByScene[s.id].peak_dbfs?.toFixed?.(1)} dB · ${Math.round(qcByScene[s.id].duration_s || 0)}s` : ''">{{ checkState(s.id).label }}</span>
                 </td>
                 <td class="studio__render-actions">
-                  <JvButton
-                    variant="ghost"
-                    size="sm"
+                  <UiButton
+                    intent="ghost"
+                    size="small"
                     :loading="suggestBusyScene === s.id"
                     :disabled="suggestBusyScene === s.id"
                     label="💡 Suggest"
                     @click="suggestPresetFor(s)"
                   />
-                  <JvButton
-                    variant="secondary"
-                    size="sm"
+                  <UiButton
+                    intent="secondary"
+                    size="small"
                     :loading="renderBusyScene === s.id"
                     :disabled="renderBusyScene !== null && renderBusyScene !== s.id"
                     label="▶ Render"
@@ -1955,32 +1955,33 @@ watch(selectedProjectId, (id) => {
                     <span v-if="taskForScene(s.id).error" class="jv-muted" style="color: var(--danger); font-size: 11.5px;">
                       {{ taskForScene(s.id).error }}
                     </span>
-                    <JvButton
+                    <UiButton
                       v-if="taskForScene(s.id).status === 'running'"
-                      variant="danger-outline" size="sm" label="Cancel"
+                      intent="danger-outline" size="small" label="Cancel"
                       @click="taskForScene(s.id).onCancel?.()"
                     />
-                    <JvButton
+                    <UiButton
                       v-if="taskForScene(s.id).status === 'failed' || taskForScene(s.id).status === 'cancelled'"
-                      variant="secondary" size="sm" label="↻ Retry"
+                      intent="secondary" size="small" label="↻ Retry"
                       @click="renderScene(s)"
                     />
-                    <JvButton
+                    <UiButton
                       v-if="taskForScene(s.id).status === 'completed' && taskForScene(s.id).result?.url"
-                      variant="ghost" size="sm" label="▶ Play"
+                      intent="ghost" size="small" label="▶ Play"
                       title="Play in global audio player"
                       @click="audioPlayer.play({ url: taskForScene(s.id).result.url, title: s.title || 'Scene', subtitle: selectedProject?.name || '' })"
                     />
-                    <a
+                    <UiButton
+                      as="a"
                       v-if="taskForScene(s.id).status === 'completed' && taskForScene(s.id).result?.url"
                       :href="taskForScene(s.id).result.url"
                       :download="taskForScene(s.id).result.filename || 'scene.wav'"
-                      class="jv-btn jv-btn--ghost jv-btn--sm"
+                      intent="ghost" size="small"
                       title="Download WAV"
-                    >⬇ Download</a>
-                    <JvButton
+                    >⬇ Download</UiButton>
+                    <UiButton
                       v-if="taskForScene(s.id).status !== 'running'"
-                      variant="ghost" size="sm" label="✕"
+                      intent="ghost" size="small" label="✕"
                       @click="tasks.dismiss(taskForScene(s.id).id)"
                     />
                   </div>
@@ -2033,9 +2034,9 @@ watch(selectedProjectId, (id) => {
                 <strong>{{ p.name }}</strong>
                 <span class="jv-muted">{{ voiceById(p.voice_id)?.name || (p.voice_id || "no voice yet") }}</span>
               </div>
-              <JvButton
-                variant="secondary"
-                size="sm"
+              <UiButton
+                intent="secondary"
+                size="small"
                 label="Add"
                 :loading="addPersonaBusy === p.id"
                 :disabled="addPersonaBusy !== null"
@@ -2082,17 +2083,17 @@ watch(selectedProjectId, (id) => {
           </div>
         </div>
         <footer class="jv-modal__footer">
-          <JvButton
-            variant="secondary"
-            size="sm"
+          <UiButton
+            intent="secondary"
+            size="small"
             :disabled="rewriteBusy"
             label="↻ Try again"
             @click="runRewrite"
           />
           <span class="jv-spacer" />
-          <JvButton variant="secondary" label="Discard" @click="rewriteModalOpen = false" />
-          <JvButton
-            variant="primary"
+          <UiButton intent="secondary" label="Discard" @click="rewriteModalOpen = false" />
+          <UiButton
+            intent="primary"
             :disabled="rewriteBusy || !rewritePreview.trim()"
             label="Accept"
             @click="acceptRewrite"

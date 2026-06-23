@@ -72,6 +72,31 @@
   --shell-page: 1100px;  /* default page shell — tables, master-detail, QC grids */
 
   --gap-grid: 16px;  /* canonical card-grid gap */
+
+  /* ── Shared @delebash/ui token contract ──────────────────────────────
+     The shared Ui* primitives (.ui-btn / .ui-input / .ui-tag / .ui-checkbox /
+     .ui-toggle / .ui-field / .ui-w-*) read CANONICAL var names; JustVoice's
+     native tokens use different names, so alias them here. These resolve
+     through the cascade, so they track the dark-theme overrides of their
+     sources too. See just-llm-runner/ui/src/common/tokens.contract.css. */
+  --border: var(--line);
+  --border-strong: var(--line-strong);
+  --muted: var(--ink-3);
+  --on-accent: #fff;
+  --success: var(--accent);          /* JV's green is the accent */
+  --success-bg: var(--accent-soft);
+  --success-ink: var(--accent);
+  --info: var(--info-blue);
+  --info-bg: transparent;            /* JV's "accent" pill was outline-only */
+  --info-ink: var(--info-blue);
+  --gold: var(--warn);               /* accent2 == JV's gold "warn" */
+  --r-sm: var(--r-control);
+  /* control geometry — keep JV's slightly taller fields + 6px radius */
+  --btn-radius: var(--r-control);
+  --input-pad-x: 12px;
+  --input-font-size: 13px;
+  /* JV tags are outlined pills (JW's are borderless soft-tint) */
+  --tag-border-width: 1px;
 }
 
 [data-theme="dark"] {

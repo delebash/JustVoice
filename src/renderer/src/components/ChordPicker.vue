@@ -14,7 +14,7 @@
 -->
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
-import JvButton from './ui/JvButton.vue';
+import { UiButton } from "@delebash/llm-ui";
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -148,8 +148,8 @@ function onSave() {
 
       <footer class="jv-modal__footer">
         <span class="jv-spacer" />
-        <JvButton variant="secondary" label="Cancel" @click="emit('cancel')" />
-        <JvButton variant="primary" label="Save chord" :disabled="captured.length === 0" @click="onSave" />
+        <UiButton intent="secondary" label="Cancel" @click="emit('cancel')" />
+        <UiButton intent="primary" label="Save chord" :disabled="captured.length === 0" @click="onSave" />
       </footer>
     </div>
   </div>

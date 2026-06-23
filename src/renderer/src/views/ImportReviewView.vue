@@ -16,7 +16,7 @@ import { projectsService } from "../services/projects.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { getImportDraft, clearImportDraft, updateImportStandard } from "../stores/importDraft.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 
 const activeProject = useActiveProject();
 const projectsStore = useProjectsStore();
@@ -143,7 +143,7 @@ function cancel() {
       <strong>{{ draft.file.name }}</strong>
       <span class="jv-muted">· {{ (draft.file.size / 1024).toFixed(0) }} KB</span>
       <span class="jv-spacer" />
-      <JvButton variant="secondary" size="sm" label="Choose another file" title="Back to Projects — the import dialog reopens" @click="cancel" />
+      <UiButton intent="secondary" size="small" label="Choose another file" title="Back to Projects — the import dialog reopens" @click="cancel" />
     </div>
 
     <div class="imrev__cols">
@@ -196,14 +196,14 @@ function cancel() {
           chapter and offers to add them to your cast.
         </div>
         <div class="imrev__actions">
-          <JvButton
-            variant="primary"
+          <UiButton
+            intent="primary"
             :loading="committing"
             :disabled="committing || !included.length"
             :label="`Import ${included.length} ${included.length === 1 ? 'chapter' : 'chapters'} ➜`"
             @click="doImport"
           />
-          <JvButton variant="ghost" label="Cancel — go back" @click="cancel" />
+          <UiButton intent="ghost" label="Cancel — go back" @click="cancel" />
         </div>
       </div>
     </div>

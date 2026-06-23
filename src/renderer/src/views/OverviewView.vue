@@ -29,7 +29,7 @@ import { useLexiconsStore } from "../stores/lexicons.js";
 import { useEnginesStore } from "../stores/engines.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast } from "../services/toastBridge.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import RecommendCard from "../components/RecommendCard.vue";
 
 const onboarding = useOnboarding();
@@ -391,7 +391,7 @@ onMounted(() => {
             </span>
           </div>
         </div>
-        <JvButton variant="primary" label="Resume ➜" title="Open this project's home base" @click="resumeProject" />
+        <UiButton intent="primary" label="Resume ➜" title="Open this project's home base" @click="resumeProject" />
       </div>
       <div class="jv-card home__start">
         <div class="home__eyebrow" style="margin-bottom:8px">Start something</div>
@@ -400,7 +400,7 @@ onMounted(() => {
             :title="`New ${k.kind === 'game_voicelines' ? 'game dialogue' : k.kind} project`"
             @click="startKind(k.kind)">{{ k.label }}</button>
         </div>
-        <JvButton variant="secondary" size="sm" label="＋ New project" style="margin-top:10px" @click="startKind('')" />
+        <UiButton intent="secondary" size="small" label="＋ New project" style="margin-top:10px" @click="startKind('')" />
       </div>
     </div>
 
@@ -420,7 +420,7 @@ onMounted(() => {
           <span class="home__eyebrow">Active tasks</span>
           <span v-if="liveTasks.length" class="jv-pill jv-pill--warn">{{ liveTasks.length }} in flight</span>
           <span class="jv-spacer" />
-          <JvButton variant="ghost" size="sm" label="open panel ➜" data-task-panel-toggle @click="tasks.togglePanel()" />
+          <UiButton intent="ghost" size="small" label="open panel ➜" data-task-panel-toggle @click="tasks.togglePanel()" />
         </div>
         <p v-if="!liveTasks.length" class="jv-muted home__empty">Nothing running. Renders, script analysis, and clones show up here with live progress.</p>
         <div v-for="t in liveTasks" :key="t.id" class="home__task">
@@ -428,7 +428,7 @@ onMounted(() => {
           <strong class="home__task-label">{{ t.label }}</strong>
           <span class="jv-muted home__task-stats">{{ t.statsFn ? t.statsFn(t) : "" }}</span>
           <div class="home__prog"><div class="home__prog-fill" :style="{ width: (t.percent ?? 30) + '%' }" /></div>
-          <JvButton v-if="t.onCancel" variant="ghost" size="sm" class="home__task-x" label="✕" title="Cancel" @click="cancelTask(t)" />
+          <UiButton v-if="t.onCancel" intent="ghost" size="small" class="home__task-x" label="✕" title="Cancel" @click="cancelTask(t)" />
         </div>
       </div>
 
@@ -451,8 +451,8 @@ onMounted(() => {
           <span class="jv-muted home__substat" style="flex:1">
             {{ externalCount ? `● ${externalCount} external provider${externalCount === 1 ? "" : "s"} registered` : "no external providers" }}
           </span>
-          <JvButton v-if="health?.current_engine" variant="ghost" size="sm" label="Unload" :loading="unloading" title="Free the model's memory — next render reloads it" @click="unloadEngine" />
-          <JvButton variant="secondary" size="sm" label="Switch ▾" title="Open Engines to load a different model" @click="goEngines" />
+          <UiButton v-if="health?.current_engine" intent="ghost" size="small" label="Unload" :loading="unloading" title="Free the model's memory — next render reloads it" @click="unloadEngine" />
+          <UiButton intent="secondary" size="small" label="Switch ▾" title="Open Engines to load a different model" @click="goEngines" />
         </div>
       </div>
     </div>
@@ -462,15 +462,15 @@ onMounted(() => {
       <div class="home__cardhead">
         <span class="home__eyebrow">Recent generations</span>
         <span class="jv-spacer" />
-        <a class="jv-btn jv-btn--ghost jv-btn--sm" href="#generate" title="Full history lives on Generate">all history ➜</a>
+        <UiButton as="a" intent="ghost" size="small" href="#generate" title="Full history lives on Generate">all history ➜</UiButton>
       </div>
       <p v-if="!recentGenerations.length" class="jv-muted home__empty">Render something — your latest takes land here for one-click replay.</p>
       <div v-for="g in recentGenerations" :key="g.id" class="home__gen">
-        <JvButton variant="ghost" size="sm" label="▶" title="Play" @click="playGen(g)" />
+        <UiButton intent="ghost" size="small" label="▶" title="Play" @click="playGen(g)" />
         <span class="home__gen-text">{{ g.text || "—" }}</span>
         <span class="jv-muted home__gen-who">{{ g.voice || "?" }}</span>
         <span class="jv-mono jv-muted home__gen-meta">{{ g.take ? g.take + " · " : "" }}{{ fmtAgo(g.when) }}</span>
-        <a class="jv-btn jv-btn--ghost jv-btn--sm" :href="genDownloadUrl(g)" download title="Download WAV">⬇</a>
+        <UiButton as="a" intent="ghost" size="small" :href="genDownloadUrl(g)" download title="Download WAV">⬇</UiButton>
       </div>
     </div>
 

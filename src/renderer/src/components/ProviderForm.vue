@@ -25,7 +25,7 @@
 import { computed, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import JvButton from "./ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 
 const props = defineProps({
   // The provider being edited. For new providers, pass an empty shape.
@@ -381,10 +381,10 @@ async function onSave() {
         <div class="pf-fhint" v-if="chatModels.length">✓ fetched — pick from {{ chatModels.length }} models, or type any model id</div>
         <div class="pf-fhint dim" v-else>Fetch to pick from this server's model list</div>
       </div>
-      <JvButton
+      <UiButton
         class="pf-fetchbtn"
-        variant="secondary"
-        size="sm"
+        intent="secondary"
+        size="small"
         :loading="modelsLoading"
         :disabled="modelsLoading || (editingKey === 'new' && !draft.baseUrl)"
         :label="fetchedModels.length ? '⟳ Refresh' : '⟳ Fetch models'"
@@ -429,10 +429,10 @@ async function onSave() {
         />
         <div class="pf-fhint" v-if="fetchedVoices.length">✓ fetched — {{ fetchedVoices.length }} voices, click chips below to add</div>
       </div>
-      <JvButton
+      <UiButton
         class="pf-fetchbtn"
-        variant="secondary"
-        size="sm"
+        intent="secondary"
+        size="small"
         :loading="voicesLoading"
         :disabled="voicesLoading || !draft.baseUrl"
         :label="fetchedVoices.length ? '⟳ Refresh' : '⟳ Fetch voices'"
@@ -470,21 +470,21 @@ async function onSave() {
         {{ statusText }}
       </span>
       <span class="pf-spacer"></span>
-      <JvButton
-        variant="ghost"
-        size="sm"
+      <UiButton
+        intent="ghost"
+        size="small"
         :loading="testBusy"
         label="Test connection"
         title="Ping + re-fetch models and voices"
         @click="doTest"
       />
-      <JvButton
+      <UiButton
         v-if="editingKey !== 'new'"
-        variant="danger-outline" size="sm" label="Remove provider"
+        intent="danger-outline" size="small" label="Remove provider"
         @click="emit('delete')"
       />
-      <JvButton variant="ghost" size="sm" label="Cancel" @click="emit('cancel')" />
-      <JvButton variant="primary" size="sm" :loading="busy" :label="editingKey === 'new' ? 'Save provider' : 'Save'" @click="onSave" />
+      <UiButton intent="ghost" size="small" label="Cancel" @click="emit('cancel')" />
+      <UiButton intent="primary" size="small" :loading="busy" :label="editingKey === 'new' ? 'Save provider' : 'Save'" @click="onSave" />
     </footer>
   </div>
 </template>

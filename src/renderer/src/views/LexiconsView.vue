@@ -14,7 +14,7 @@ import { computed, nextTick, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import JvInput from "../components/ui/JvInput.vue";
 import EmptyState from "../components/EmptyState.vue";
 import { useLexiconsStore } from "../stores/lexicons.js";
@@ -394,8 +394,8 @@ onMounted(async () => {
         <button v-for="f in SCOPE_FILTERS" :key="f[0]" type="button" class="jv-pill" :class="scopeFilter === f[0] ? 'jv-pill--solid' : 'jv-pill--ghost'" @click="scopeFilter = f[0]">{{ f[1] }}</button>
       </div>
       <span class="jv-spacer" />
-      <JvButton variant="secondary" size="sm" label="⬇ Import .justlex.json" @click="chooseImportNew" />
-      <JvButton variant="primary" size="sm" label="+ New lexicon" @click="createLexicon" />
+      <UiButton intent="secondary" size="small" label="⬇ Import .justlex.json" @click="chooseImportNew" />
+      <UiButton intent="primary" size="small" label="+ New lexicon" @click="createLexicon" />
     </div>
 
     <div v-if="loading" class="jv-muted lex__empty">Loading…</div>
@@ -423,8 +423,8 @@ onMounted(async () => {
             <span v-if="!(lx.entries || []).length" class="jv-muted">(empty)</span>
           </td>
           <td class="jv-table__actions" @click.stop>
-            <JvButton variant="ghost" size="sm" label="Edit" @click="openEdit(lx)" />
-            <JvButton variant="danger-outline" size="sm" label="Delete" @click="deleteLexicon(lx.id)" />
+            <UiButton intent="ghost" size="small" label="Edit" @click="openEdit(lx)" />
+            <UiButton intent="danger-outline" size="small" label="Delete" @click="deleteLexicon(lx.id)" />
           </td>
         </tr>
       </tbody>
@@ -496,8 +496,8 @@ onMounted(async () => {
                 <td><code class="jv-mono">{{ e.phoneme_ipa || e.alias || "—" }}</code></td>
                 <td>{{ e.phoneme_ipa ? "IPA" : "phonetic" }}</td>
                 <td class="right lex__entry-actions">
-                  <JvButton variant="ghost" size="sm" label="Edit" title="Edit this entry in the form below" @click="startEditEntry(e, i)" />
-                  <JvButton variant="danger-outline" size="sm" label="Delete" title="Remove this entry" @click="deleteEntry(i)" />
+                  <UiButton intent="ghost" size="small" label="Edit" title="Edit this entry in the form below" @click="startEditEntry(e, i)" />
+                  <UiButton intent="danger-outline" size="small" label="Delete" title="Remove this entry" @click="deleteEntry(i)" />
                 </td>
               </tr>
             </tbody>
@@ -525,21 +525,21 @@ onMounted(async () => {
           </div>
 
           <div class="lex__actions">
-            <JvButton variant="secondary" size="sm" :label="editingEntryIndex != null ? 'Update entry' : '+ Add entry'" @click="saveEntry" :disabled="!newGrapheme.trim() || (!newPhonemeIpa.trim() && !newAlias.trim())" />
-            <JvButton v-if="editingEntryIndex != null" variant="ghost" size="sm" label="Cancel edit" @click="resetEntryForm" />
-            <JvButton v-else variant="secondary" size="sm" label="Bulk paste TSV" @click="bulkPasteTsv" />
-            <JvButton variant="secondary" size="sm" label="▶ Preview against text" :disabled="!previewText.trim()" @click="runPreview" />
+            <UiButton intent="secondary" size="small" :label="editingEntryIndex != null ? 'Update entry' : '+ Add entry'" @click="saveEntry" :disabled="!newGrapheme.trim() || (!newPhonemeIpa.trim() && !newAlias.trim())" />
+            <UiButton v-if="editingEntryIndex != null" intent="ghost" size="small" label="Cancel edit" @click="resetEntryForm" />
+            <UiButton v-else intent="secondary" size="small" label="Bulk paste TSV" @click="bulkPasteTsv" />
+            <UiButton intent="secondary" size="small" label="▶ Preview against text" :disabled="!previewText.trim()" @click="runPreview" />
             <span class="lex__spacer" />
-            <JvButton variant="secondary" size="sm" label="⬇ Merge file" @click="chooseImportMerge" />
-            <JvButton variant="secondary" size="sm" label="⬆ Export" @click="exportLexicon" />
+            <UiButton intent="secondary" size="small" label="⬇ Merge file" @click="chooseImportMerge" />
+            <UiButton intent="secondary" size="small" label="⬆ Export" @click="exportLexicon" />
           </div>
         </div>
 
         <footer class="jv-modal__footer">
           <span class="jv-muted lex__count">{{ draft.entries.length }} entr{{ draft.entries.length === 1 ? "y" : "ies" }}</span>
           <span class="jv-spacer" />
-          <JvButton variant="secondary" label="Cancel" @click="closeDialog" />
-          <JvButton variant="primary" label="Save" :disabled="!canSave" @click="saveDialog" />
+          <UiButton intent="secondary" label="Cancel" @click="closeDialog" />
+          <UiButton intent="primary" label="Save" :disabled="!canSave" @click="saveDialog" />
         </footer>
       </div>
     </div>

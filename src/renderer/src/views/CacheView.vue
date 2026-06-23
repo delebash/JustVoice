@@ -12,7 +12,7 @@ import { computed, ref, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
 
@@ -207,7 +207,7 @@ onMounted(async () => {
           </div>
         </div>
         <div class="stat-action">
-          <JvButton variant="danger-outline" label="Purge all scopes" @click="purgeAll" />
+          <UiButton intent="danger-outline" label="Purge all scopes" @click="purgeAll" />
         </div>
       </div>
     </section>
@@ -216,12 +216,12 @@ onMounted(async () => {
     <section class="jv-card jv-section">
       <h3 class="jv-section__title">Actions</h3>
       <div class="cache-view__actions">
-        <JvButton variant="secondary" label="Prune > 30 days" @click="pruneOlderThan(30)" />
-        <JvButton variant="secondary" label="Prune by voice…" @click="pruneByVoice" />
-        <JvButton variant="secondary" label="Prune by engine…" @click="pruneByEngine" />
-        <JvButton variant="secondary" label="Prune unfavorited" @click="pruneUnfavorited" />
+        <UiButton intent="secondary" label="Prune > 30 days" @click="pruneOlderThan(30)" />
+        <UiButton intent="secondary" label="Prune by voice…" @click="pruneByVoice" />
+        <UiButton intent="secondary" label="Prune by engine…" @click="pruneByEngine" />
+        <UiButton intent="secondary" label="Prune unfavorited" @click="pruneUnfavorited" />
         <span class="jv-spacer" />
-        <JvButton variant="danger-outline" :label="`Clear all (${totalSizeGb} GB · ${totalEntries} entries)`" @click="purgeAll" />
+        <UiButton intent="danger-outline" :label="`Clear all (${totalSizeGb} GB · ${totalEntries} entries)`" @click="purgeAll" />
       </div>
       <p class="jv-muted cache-view__actions-hint">
         Every action asks for confirmation first and shows exactly how many renders it will remove. Favorited (★) renders are never touched by "Prune unfavorited".
@@ -250,7 +250,7 @@ onMounted(async () => {
             <td>{{ fmtMB(r.size_bytes || 0) }} MB</td>
             <td>{{ fmtAge(r.created_at) }}</td>
             <td class="right">
-              <JvButton variant="ghost" size="sm" label="✕" title="Delete this entry" @click="deleteEntry(r.id)" />
+              <UiButton intent="ghost" size="small" label="✕" title="Delete this entry" @click="deleteEntry(r.id)" />
             </td>
           </tr>
         </tbody>
@@ -278,7 +278,7 @@ onMounted(async () => {
               <td>{{ fmtMB(scopeStats.bytes_on_disk) }}</td>
               <td>
                 <div class="jv-table__actions">
-                  <JvButton variant="danger-outline" size="sm" label="Purge" @click="purgeScope(scope)" />
+                  <UiButton intent="danger-outline" size="small" label="Purge" @click="purgeScope(scope)" />
                 </div>
               </td>
             </tr>

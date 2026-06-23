@@ -6,7 +6,7 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import JvField from "../components/ui/JvField.vue";
 import JvTextarea from "../components/ui/JvTextarea.vue";
 import JvInput from "../components/ui/JvInput.vue";
@@ -665,9 +665,9 @@ onMounted(async () => {
     <!-- Persistent affordance for users who don't know the "/" shortcut.
          Opens the same SlashTagMenu programmatically. Visible only when
          the loaded engine has inline tags to offer. -->
-    <JvButton
+    <UiButton
       v-if="engineCaps.inline_tags?.length"
-      variant="ghost" size="sm"
+      intent="ghost" size="small"
       class="generate-view__tag-button"
       label="🏷️ Insert tag…"
       @click="openTagMenu"
@@ -699,8 +699,8 @@ onMounted(async () => {
         <input type="checkbox" class="jv-check" v-model="autoplay" />
       </label>
       <span class="jv-spacer" />
-      <JvButton
-        variant="ghost"
+      <UiButton
+        intent="ghost"
         size="lg"
         :loading="rewriteBusy"
         :disabled="rewriteBusy || !hasPersonality"
@@ -710,8 +710,8 @@ onMounted(async () => {
           : 'Pick a persona that has a personality prompt to enable Rewrite'"
         @click="rewriteLine"
       />
-      <JvButton
-        variant="ghost"
+      <UiButton
+        intent="ghost"
         size="lg"
         :loading="composeBusy"
         :disabled="composeBusy || !hasPersonality"
@@ -721,17 +721,17 @@ onMounted(async () => {
           : 'Pick a persona that has a personality prompt to enable Compose'"
         @click="composeLine"
       />
-      <JvButton
-        variant="primary"
+      <UiButton
+        intent="primary"
         size="lg"
         :loading="busy"
         :disabled="busy || !voice"
         :label="busy ? 'Rendering…' : '▶ Generate'"
         @click="generate"
       />
-      <JvButton
-        variant="danger-outline"
-        size="sm"
+      <UiButton
+        intent="danger-outline"
+        size="small"
         :disabled="!busy"
         label="⏹"
         :title="busy ? 'Stop queued / running render' : 'No render in flight'"
@@ -840,7 +840,7 @@ onMounted(async () => {
           <JvField label="Seed" layout="block">
             <div class="generate-view__paired generate-view__paired--seed">
               <JvInput v-model="seed" class="generate-view__seed-input" />
-              <JvButton variant="ghost" size="sm" label="🎲 randomize" @click="randomizeSeed" />
+              <UiButton intent="ghost" size="small" label="🎲 randomize" @click="randomizeSeed" />
             </div>
           </JvField>
         </div>
@@ -982,8 +982,8 @@ onMounted(async () => {
             — attach via <a href="#personas">Personas</a>.
           </span>
           <span class="jv-spacer" />
-          <JvButton
-            variant="ghost" size="sm"
+          <UiButton
+            intent="ghost" size="small"
             label="View applied entries"
             :disabled="!appliedLexiconCount"
             :title="appliedLexiconCount
@@ -1027,7 +1027,7 @@ onMounted(async () => {
             </div>
             <footer class="jv-modal__footer">
               <span class="jv-spacer" />
-              <JvButton variant="secondary" label="Close" @click="showLexiconPreview = false" />
+              <UiButton intent="secondary" label="Close" @click="showLexiconPreview = false" />
             </footer>
           </div>
         </div>
@@ -1059,10 +1059,10 @@ onMounted(async () => {
               <td>{{ h.take || h.status || "—" }}</td>
               <td>{{ h.effects || "—" }}</td>
               <td class="right">
-                <JvButton variant="ghost" size="sm" label="▶" :disabled="!h.audio_url" title="Play this generation" @click="playTake(h)" />
-                <JvButton variant="ghost" size="sm" :label="h.is_favorited ? '★' : '☆'" :title="h.is_favorited ? 'Unfavorite' : 'Favorite — pin this generation'" @click="toggleFavorite(h)" />
-                <JvButton variant="ghost" size="sm" label="↻" title="Retry — reload this text into the editor above" @click="retryTake(h)" />
-                <JvButton variant="ghost" size="sm" label="✕" title="Delete this generation (audio + history row)" @click="deleteTake(h)" />
+                <UiButton intent="ghost" size="small" label="▶" :disabled="!h.audio_url" title="Play this generation" @click="playTake(h)" />
+                <UiButton intent="ghost" size="small" :label="h.is_favorited ? '★' : '☆'" :title="h.is_favorited ? 'Unfavorite' : 'Favorite — pin this generation'" @click="toggleFavorite(h)" />
+                <UiButton intent="ghost" size="small" label="↻" title="Retry — reload this text into the editor above" @click="retryTake(h)" />
+                <UiButton intent="ghost" size="small" label="✕" title="Delete this generation (audio + history row)" @click="deleteTake(h)" />
               </td>
             </tr>
           </tbody>
@@ -1106,8 +1106,8 @@ onMounted(async () => {
         </div>
         <footer class="jv-modal__footer">
           <span class="jv-spacer" />
-          <JvButton variant="secondary" label="Reject" @click="rejectRewrite" />
-          <JvButton variant="primary" label="Accept (replaces text)" @click="acceptRewrite" />
+          <UiButton intent="secondary" label="Reject" @click="rejectRewrite" />
+          <UiButton intent="primary" label="Accept (replaces text)" @click="acceptRewrite" />
         </footer>
       </div>
     </div>

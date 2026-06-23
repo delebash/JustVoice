@@ -18,7 +18,7 @@ import {
   DialogClose,
 } from "reka-ui";
 import Icon from "./Icon.vue";
-import JvButton from "./ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import JvInput from "./ui/JvInput.vue";
 import JvSelect from "./ui/JvSelect.vue";
 import JvTextarea from "./ui/JvTextarea.vue";
@@ -192,9 +192,9 @@ function onEnter(e, isLastField) {
         </div>
 
         <footer class="jv-dialog__footer">
-          <JvButton variant="ghost" :label="dialog?.cancelLabel || 'Cancel'" @click="cancel" />
-          <JvButton
-            :variant="dialog?.danger ? 'danger' : 'primary'"
+          <UiButton intent="ghost" :label="dialog?.cancelLabel || 'Cancel'" @click="cancel" />
+          <UiButton
+            :intent="dialog?.danger ? 'danger' : 'primary'"
             :label="dialog?.confirmLabel || 'OK'"
             :disabled="!canSubmit"
             @click="submit"

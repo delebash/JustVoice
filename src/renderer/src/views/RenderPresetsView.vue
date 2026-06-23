@@ -20,7 +20,7 @@ import { computed, nextTick, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import JvInput from "../components/ui/JvInput.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import { usePersonasStore } from "../stores/personas.js";
@@ -222,7 +222,7 @@ onMounted(refresh);
           <option v-for="m in MASTER_TARGETS.filter((x) => x.value)" :key="m.value" :value="m.value">{{ m.label }}</option>
         </select>
         <span class="jv-spacer" />
-        <JvButton variant="primary" size="sm" label="+ New preset" @click="createPreset" />
+        <UiButton intent="primary" size="small" label="+ New preset" @click="createPreset" />
       </div>
 
       <div v-if="loading" class="jv-muted render-presets-view__empty">Loading…</div>
@@ -245,8 +245,8 @@ onMounted(refresh);
             </td>
             <td><span v-if="p.is_builtin" class="jv-pill jv-pill--ghost">built-in</span></td>
             <td class="jv-table__actions" @click.stop>
-              <JvButton variant="ghost" size="sm" label="Edit" @click="openEdit(p)" />
-              <JvButton variant="danger-outline" size="sm" label="Delete" :disabled="p.is_builtin" :title="p.is_builtin ? 'Built-in presets can\'t be deleted' : 'Delete preset'" @click="deletePreset(p)" />
+              <UiButton intent="ghost" size="small" label="Edit" @click="openEdit(p)" />
+              <UiButton intent="danger-outline" size="small" label="Delete" :disabled="p.is_builtin" :title="p.is_builtin ? 'Built-in presets can\'t be deleted' : 'Delete preset'" @click="deletePreset(p)" />
             </td>
           </tr>
         </tbody>
@@ -291,17 +291,17 @@ onMounted(refresh);
             <div>
               <span v-for="(ef, i) in (editDraft.effects_chain || [])" :key="i" class="jv-pill jv-pill--ghost" style="margin:1px 4px 1px 0">{{ ef.type }}</span>
               <span v-if="!(editDraft.effects_chain || []).length" class="jv-muted">(no effects)</span>
-              <JvButton v-if="!editIsBuiltin" variant="secondary" size="sm" :label="(editDraft.effects_chain || []).length ? 'Edit chain' : 'Add chain'" @click="openChainEditor" />
+              <UiButton v-if="!editIsBuiltin" intent="secondary" size="small" :label="(editDraft.effects_chain || []).length ? 'Edit chain' : 'Add chain'" @click="openChainEditor" />
             </div>
           </div>
         </div>
         <footer class="jv-dialog__footer">
           <template v-if="editIsBuiltin">
-            <JvButton variant="primary" label="Close" @click="closeEdit" />
+            <UiButton intent="primary" label="Close" @click="closeEdit" />
           </template>
           <template v-else>
-            <JvButton variant="secondary" label="Cancel" @click="closeEdit" />
-            <JvButton variant="primary" label="Save" @click="saveEdit" />
+            <UiButton intent="secondary" label="Cancel" @click="closeEdit" />
+            <UiButton intent="primary" label="Save" @click="saveEdit" />
           </template>
         </footer>
       </div>

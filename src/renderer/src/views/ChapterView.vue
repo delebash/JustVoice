@@ -13,7 +13,7 @@ import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import LineageViewer from "../components/LineageViewer.vue";
 import EmptyState from "../components/EmptyState.vue";
 import JvSelect from "../components/ui/JvSelect.vue";
@@ -765,10 +765,10 @@ async function savePastedText() {
       <!-- "Voice for re-generate" demoted (2026-06-12): regen uses the
            block's cast persona voice; uncast blocks ask inline. -->
       <span class="jv-spacer" />
-      <JvButton
+      <UiButton
         v-if="selectedProjectId"
-        variant="secondary"
-        size="sm"
+        intent="secondary"
+        size="small"
         label="⬇ Export"
         title="Package the whole project — opens Studio · 4 Export (M4B, chapter audio, ACX checklist)"
         @click="goStudioExport"
@@ -803,8 +803,8 @@ async function savePastedText() {
           :title="c[0]==='needs-script' ? 'Chapters with unattributed or missing blocks' : c[0]==='rendered' ? 'Fully cached — re-render is free' : ''"
           @click="chapterChip = c[0]">{{ c[1] }}</button>
         <span class="jv-spacer" />
-        <JvButton variant="secondary" size="sm" :label="`＋ Add ${copy.chapter.singular.toLowerCase()}`" @click="addChapter" />
-        <JvButton variant="primary" size="sm" label="Open in Studio ➜" title="Cast → Script → Render for the whole project" @click="openInStudio" />
+        <UiButton intent="secondary" size="small" :label="`＋ Add ${copy.chapter.singular.toLowerCase()}`" @click="addChapter" />
+        <UiButton intent="primary" size="small" label="Open in Studio ➜" title="Cast → Script → Render for the whole project" @click="openInStudio" />
       </div>
       <table class="jv-table chapter-view__list">
         <thead><tr>
@@ -827,7 +827,7 @@ async function savePastedText() {
               <button type="button" class="jv-rowact" title="Move down" @click.stop="moveChapter(sc, 1)">↓</button>
               <button type="button" class="jv-rowact" title="Rename" @click.stop="renameChapter(sc)">✎</button>
               <button type="button" class="jv-rowact jv-rowact--danger" title="Delete chapter" @click.stop="deleteChapter(sc)">✕</button>
-              <JvButton variant="ghost" size="sm" label="Open" @click.stop="openChapter(sc)" />
+              <UiButton intent="ghost" size="small" label="Open" @click.stop="openChapter(sc)" />
             </td>
           </tr>
           <tr v-if="!filteredScenes.length && scenes.length"><td colspan="6" class="jv-muted" style="padding:14px">No {{ copy.chapter.plural.toLowerCase() }} match.</td></tr>
@@ -841,8 +841,8 @@ async function savePastedText() {
           Or add an empty {{ copy.chapter.singular.toLowerCase() }} and paste prose in Studio · Script.
         </p>
         <div style="display:flex; gap:8px; margin-top:12px">
-          <JvButton variant="primary" label="⬆ Import a manuscript…" @click="startImport" />
-          <JvButton variant="secondary" :label="`＋ Add ${copy.chapter.singular.toLowerCase()}`" @click="addChapter" />
+          <UiButton intent="primary" label="⬆ Import a manuscript…" @click="startImport" />
+          <UiButton intent="secondary" :label="`＋ Add ${copy.chapter.singular.toLowerCase()}`" @click="addChapter" />
         </div>
       </div>
     </template>
@@ -860,14 +860,14 @@ async function savePastedText() {
 
     <!-- ── Back to the chapter list (detail mode) ─────────────────────── -->
     <div v-if="viewMode === 'detail' && selectedProjectId" class="chapter-view__backbar">
-      <JvButton variant="ghost" size="sm" :label="`← All ${copy.chapter.plural.toLowerCase()}`" @click="backToList" />
+      <UiButton intent="ghost" size="small" :label="`← All ${copy.chapter.plural.toLowerCase()}`" @click="backToList" />
       <span class="jv-spacer" />
       <!-- Podcast journey (mock): rendered segments land on the Timeline
            — music bed + stingers get arranged there. -->
-      <JvButton
+      <UiButton
         v-if="selectedProjectRec?.project_type === 'podcast'"
-        variant="secondary"
-        size="sm"
+        intent="secondary"
+        size="small"
         label="Open Timeline ➜"
         title="Arrange rendered segments with music beds and stingers on the multi-track Timeline"
         @click="goTimeline"
@@ -886,7 +886,7 @@ async function savePastedText() {
       </div>
       <textarea v-model="pasteText" class="jv-input jv-input--full" rows="8" :placeholder="`Paste the ${copy.chapter.singular.toLowerCase()} text…`" style="width:100%"></textarea>
       <div style="margin-top:8px">
-        <JvButton variant="primary" size="sm" :loading="pasteBusy" :disabled="pasteBusy || !pasteText.trim()" label="Add as blocks" @click="savePastedText" />
+        <UiButton intent="primary" size="small" :loading="pasteBusy" :disabled="pasteBusy || !pasteText.trim()" label="Add as blocks" @click="savePastedText" />
       </div>
     </div>
 
@@ -934,8 +934,8 @@ async function savePastedText() {
         <div v-else class="chapter-view__block-edit">
           <textarea v-model="editingText" class="jv-input jv-input--full" rows="4" @keydown.escape="editingBlockId = null" />
           <div class="chapter-view__block-edit-actions">
-            <JvButton variant="primary" size="sm" label="Save" :loading="editSaveBusy" :disabled="editSaveBusy || !editingText.trim()" @click="saveBlockText(block)" />
-            <JvButton variant="ghost" size="sm" label="Cancel" @click="editingBlockId = null" />
+            <UiButton intent="primary" size="small" label="Save" :loading="editSaveBusy" :disabled="editSaveBusy || !editingText.trim()" @click="saveBlockText(block)" />
+            <UiButton intent="ghost" size="small" label="Cancel" @click="editingBlockId = null" />
             <span class="jv-muted" style="font-size:11.5px">Existing takes keep the old audio; the next render uses this text.</span>
           </div>
         </div>
@@ -950,9 +950,9 @@ async function savePastedText() {
                  only exists once takes do, so the empty state used to name
                  an action with no button. Same handler — it resolves the
                  cast voice (or asks) and renders the first take. -->
-            <JvButton
-              variant="primary"
-              size="sm"
+            <UiButton
+              intent="primary"
+              size="small"
               label="▶ Generate first take"
               :loading="regenBusy.get(block.id)"
               @click="regenerateBlock(block)"
@@ -995,7 +995,7 @@ async function savePastedText() {
               <!-- Default badge -->
               <JvTag
                 v-if="getActiveTake(block.id)?.is_default"
-                variant="success"
+                intent="success"
                 label="default"
               />
 
@@ -1039,7 +1039,7 @@ async function savePastedText() {
                     Take A (active)
                     <JvTag
                       v-if="getActiveTake(block.id)?.is_default"
-                      variant="success" label="default" class="chapter-view__compare-tag"
+                      intent="success" label="default" class="chapter-view__compare-tag"
                     />
                   </div>
                   <audio
@@ -1073,9 +1073,9 @@ async function savePastedText() {
 
               <!-- Promote B to default from the compare panel -->
               <div v-if="compareTakeB(block.id)" class="chapter-view__compare-actions">
-                <JvButton
-                  variant="secondary"
-                  size="sm"
+                <UiButton
+                  intent="secondary"
+                  size="small"
                   label="Use Take B as default"
                   :loading="promoteBusy.has(compareTakeB(block.id).id)"
                   @click="promoteToDefault(compareTakeB(block.id).id, block.id)"
@@ -1086,9 +1086,9 @@ async function savePastedText() {
             <!-- ── Action row ─────────────────────────────────────────── -->
             <div class="chapter-view__actions">
               <!-- Regenerate -->
-              <JvButton
-                variant="primary"
-                size="sm"
+              <UiButton
+                intent="primary"
+                size="small"
                 label="Regenerate"
                 :loading="regenBusy.get(block.id)"
                 :disabled="!regenVoice"
@@ -1096,19 +1096,19 @@ async function savePastedText() {
               />
 
               <!-- Set as default -->
-              <JvButton
+              <UiButton
                 v-if="getActiveTake(block.id) && !getActiveTake(block.id).is_default"
-                variant="secondary"
-                size="sm"
+                intent="secondary"
+                size="small"
                 label="Set as default"
                 :loading="promoteBusy.has(getActiveTake(block.id).id)"
                 @click="promoteToDefault(getActiveTake(block.id).id, block.id)"
               />
 
               <!-- Compare -->
-              <JvButton
-                variant="ghost"
-                size="sm"
+              <UiButton
+                intent="ghost"
+                size="small"
                 :label="compareBlockId === block.id ? 'Hide compare' : 'Compare'"
                 :disabled="getBlockTakes(block.id).length < 2"
                 @click="toggleCompare(block.id)"
@@ -1118,24 +1118,24 @@ async function savePastedText() {
               <template v-if="getActiveTake(block.id) && !getActiveTake(block.id).is_default">
                 <template v-if="deletePending.has(getActiveTake(block.id).id)">
                   <span class="chapter-view__confirm-label">Delete this take?</span>
-                  <JvButton
-                    variant="danger"
-                    size="sm"
+                  <UiButton
+                    intent="danger"
+                    size="small"
                     label="Yes, delete"
                     :loading="deleteBusy.has(getActiveTake(block.id).id)"
                     @click="confirmDeleteTake(getActiveTake(block.id).id, block.id)"
                   />
-                  <JvButton
-                    variant="ghost"
-                    size="sm"
+                  <UiButton
+                    intent="ghost"
+                    size="small"
                     label="Cancel"
                     @click="cancelDeleteTake(getActiveTake(block.id).id)"
                   />
                 </template>
-                <JvButton
+                <UiButton
                   v-else
-                  variant="danger-outline"
-                  size="sm"
+                  intent="danger-outline"
+                  size="small"
                   label="Delete take"
                   @click="requestDeleteTake(getActiveTake(block.id).id)"
                 />

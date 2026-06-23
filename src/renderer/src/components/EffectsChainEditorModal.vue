@@ -19,7 +19,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import JvButton from "./ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 
 const props = defineProps({
   open: { type: Boolean, required: true },
@@ -187,8 +187,8 @@ onMounted(() => {
       <div class="jv-modal__body effects-modal__body">
         <!-- Preset picker — loads a saved chain wholesale -->
         <div class="effects-modal__row">
-          <JvButton
-            variant="ghost" size="sm"
+          <UiButton
+            intent="ghost" size="small"
             :label="presetPickerOpen ? 'Hide presets' : 'Load from preset…'"
             @click="presetPickerOpen = !presetPickerOpen"
           />
@@ -226,9 +226,9 @@ onMounted(() => {
               <strong>{{ specFor(ef.type)?.label || ef.type }}</strong>
               <span class="effects-modal__step">step {{ i + 1 }}</span>
               <span class="jv-spacer" />
-              <JvButton variant="ghost" size="sm" label="↑" :disabled="i === 0" title="Move up" @click="move(i, -1)" />
-              <JvButton variant="ghost" size="sm" label="↓" :disabled="i === chain.length - 1" title="Move down" @click="move(i, 1)" />
-              <JvButton variant="danger-outline" size="sm" label="Remove" @click="removeAt(i)" />
+              <UiButton intent="ghost" size="small" label="↑" :disabled="i === 0" title="Move up" @click="move(i, -1)" />
+              <UiButton intent="ghost" size="small" label="↓" :disabled="i === chain.length - 1" title="Move down" @click="move(i, 1)" />
+              <UiButton intent="danger-outline" size="small" label="Remove" @click="removeAt(i)" />
             </div>
             <p v-if="specFor(ef.type)?.description" class="jv-muted effects-modal__desc">
               {{ specFor(ef.type).description }}
@@ -274,9 +274,9 @@ onMounted(() => {
               :value="e.type"
             >{{ e.label }}</option>
           </select>
-          <JvButton
-            variant="secondary"
-            size="sm"
+          <UiButton
+            intent="secondary"
+            size="small"
             label="Add"
             :disabled="!addEffectType"
             @click="addEffect"
@@ -290,9 +290,9 @@ onMounted(() => {
             class="jv-input jv-w-name"
             placeholder="Name (e.g. Cave reverb, Phone filter)…"
           />
-          <JvButton
-            variant="ghost"
-            size="sm"
+          <UiButton
+            intent="ghost"
+            size="small"
             label="Save chain to Effects library"
             :disabled="!saveAsName.trim() || !chain.length"
             @click="saveAsPreset"
@@ -302,8 +302,8 @@ onMounted(() => {
 
       <footer class="jv-modal__footer">
         <span class="jv-spacer" />
-        <JvButton variant="secondary" label="Cancel" @click="onCancel" />
-        <JvButton variant="primary" label="Save" @click="onSave" />
+        <UiButton intent="secondary" label="Cancel" @click="onCancel" />
+        <UiButton intent="primary" label="Save" @click="onSave" />
       </footer>
     </div>
   </div>

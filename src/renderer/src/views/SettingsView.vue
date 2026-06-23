@@ -7,7 +7,7 @@ import { confirmDialog, promptDialog } from "../services/dialog.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { projectsService } from "../services/projects.js";
 import { readPref, writePref } from "../services/prefs.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import JvInput from "../components/ui/JvInput.vue";
 import JvSelect from "../components/ui/JvSelect.vue";
 import JvCheckbox from "../components/ui/JvCheckbox.vue";
@@ -1173,9 +1173,9 @@ onMounted(() => {
           >{{ u.label }}</button>
         </div>
         <div style="margin-top: 12px; display: flex; align-items: center; gap: 10px">
-          <JvButton
-            variant="secondary"
-            size="sm"
+          <UiButton
+            intent="secondary"
+            size="small"
             label="⚙ Run Quick Setup again"
             title="Re-probe hardware, pick engines to install, reconnect local LLM/STT helpers"
             @click="rerunQuickSetup"
@@ -1194,12 +1194,12 @@ onMounted(() => {
           Full factory reset stays manual — restore a backup zip or delete the data directory.
         </p>
         <div style="display:flex; align-items:center; gap:10px; margin-top:10px">
-          <JvButton variant="secondary" size="sm" label="↺ Reset UI state" title="Forget active project + re-arm welcome and Quick Setup. No data touched. Reloads." @click="resetUiState" />
+          <UiButton intent="secondary" size="small" label="↺ Reset UI state" title="Forget active project + re-arm welcome and Quick Setup. No data touched. Reloads." @click="resetUiState" />
           <span class="jv-muted" style="font-size:11.5px">fresh-install behavior, zero data loss</span>
         </div>
         <div style="display:flex; align-items:center; gap:10px; margin-top:10px">
-          <JvButton variant="danger-outline" size="sm" label="☢ Factory reset…" title="As-new install: all content + settings to defaults. Engine model downloads stay. Type RESET to confirm." @click="factoryReset" />
-          <JvButton variant="danger-outline" size="sm" label="🗑 Delete ALL projects…" :disabled="wipeBusy" @click="deleteAllProjects" />
+          <UiButton intent="danger-outline" size="small" label="☢ Factory reset…" title="As-new install: all content + settings to defaults. Engine model downloads stay. Type RESET to confirm." @click="factoryReset" />
+          <UiButton intent="danger-outline" size="small" label="🗑 Delete ALL projects…" :disabled="wipeBusy" @click="deleteAllProjects" />
           <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer">
             <input type="checkbox" class="jv-check" v-model="deletePersonasToo" /> also delete all personas
           </label>
@@ -1269,7 +1269,7 @@ onMounted(() => {
           </JvField>
         </div>
         <div class="jv-row" style="margin-top: 14px;">
-          <JvButton variant="secondary" @click="reload">Reload from server</JvButton>
+          <UiButton intent="secondary" @click="reload">Reload from server</UiButton>
           <span class="jv-muted" style="font-size: 12px;">Re-fetches health + engines + voices against the new URL.</span>
         </div>
       </div>
@@ -1334,11 +1334,11 @@ onMounted(() => {
           </label>
         </div>
         <div class="setting-row" style="display: flex; gap: 10px; margin-top: 10px">
-          <JvButton variant="primary" size="sm" :loading="backupBusy" label="⬇ Download backup" title="Stream a backup zip of this installation" @click="downloadBackup" />
-          <label class="jv-btn jv-btn--secondary jv-btn--sm" style="cursor: pointer" title="Restore from a backup zip — REPLACES current data after confirmation">
+          <UiButton intent="primary" size="small" :loading="backupBusy" label="⬇ Download backup" title="Stream a backup zip of this installation" @click="downloadBackup" />
+          <UiButton as="label" intent="secondary" size="small" style="cursor: pointer" title="Restore from a backup zip — REPLACES current data after confirmation">
             ⬆ Restore from zip…
             <input type="file" accept=".zip" style="display: none" @change="restoreBackup" />
-          </label>
+          </UiButton>
         </div>
       </div>
     </div>
@@ -1419,26 +1419,26 @@ onMounted(() => {
                 ]"
                 @change="persistUpdaterChannel"
               />
-              <JvButton
+              <UiButton
                 v-if="updater.status === 'idle' || updater.status === 'uptodate' || updater.status === 'error'"
-                variant="secondary"
-                size="sm"
+                intent="secondary"
+                size="small"
                 :disabled="updater.busy"
                 label="Check now"
                 @click="checkForUpdates"
               />
-              <JvButton
+              <UiButton
                 v-if="updater.status === 'available'"
-                variant="primary"
-                size="sm"
+                intent="primary"
+                size="small"
                 :disabled="updater.busy"
                 label="Download"
                 @click="downloadUpdate"
               />
-              <JvButton
+              <UiButton
                 v-if="updater.status === 'ready'"
-                variant="primary"
-                size="sm"
+                intent="primary"
+                size="small"
                 label="Restart and install"
                 @click="restartAndInstall"
               />
@@ -1455,9 +1455,9 @@ onMounted(() => {
         💡 You just connected <b>{{ nudge.name || nudge.providerId }}</b><span v-if="nudge.model"> with <span class="jv-mono">{{ nudge.model }}</span></span>.
         Use it as one of your model roles?
         <span class="jv-spacer" />
-        <JvButton variant="primary" size="sm" label="Use for Accuracy" title="Speaker extraction, smart-assign, show notes run on it" @click="acceptNudge('accuracy')" />
-        <JvButton variant="secondary" size="sm" label="Use for Quick" title="Dictation cleanup, Compose, Rewrite run on it" @click="acceptNudge('quick')" />
-        <JvButton variant="ghost" size="sm" label="Not now" @click="dismissNudge" />
+        <UiButton intent="primary" size="small" label="Use for Accuracy" title="Speaker extraction, smart-assign, show notes run on it" @click="acceptNudge('accuracy')" />
+        <UiButton intent="secondary" size="small" label="Use for Quick" title="Dictation cleanup, Compose, Rewrite run on it" @click="acceptNudge('quick')" />
+        <UiButton intent="ghost" size="small" label="Not now" @click="dismissNudge" />
       </div>
     </div>
 
@@ -1467,7 +1467,7 @@ onMounted(() => {
         <div class="jv-card__header" style="display:flex;align-items:center;gap:10px">
           <h3 class="jv-card__title" style="margin:0">Model roles</h3>
           <span class="jv-spacer" />
-          <JvButton v-if="roleRecs?.recommendedQuick || roleRecs?.recommendedAccuracy" variant="secondary" size="sm"
+          <UiButton v-if="roleRecs?.recommendedQuick || roleRecs?.recommendedAccuracy" intent="secondary" size="small"
             label="Use recommended" title="Apply the app's hardware-aware picks for both roles" @click="acceptRecommendedRoles" />
           <a href="#engines" class="jv-muted" style="font-size:12px;text-decoration:underline" title="Connect providers / download local models">manage engines →</a>
         </div>
@@ -1523,9 +1523,9 @@ onMounted(() => {
             {{ configFor(f.key).model }}<span v-if="configFor(f.key).temperature != null"> · temp {{ configFor(f.key).temperature }}</span><span v-if="configFor(f.key).systemPrompt"> · custom prompts</span>
           </span>
           <span class="jv-spacer" />
-          <JvButton v-if="f.hasLab" variant="ghost" size="sm" label="Open in Speaker Lab" title="Retune the prompts and re-promote" @click="goHash(f.lab)" />
+          <UiButton v-if="f.hasLab" intent="ghost" size="small" label="Open in Speaker Lab" title="Retune the prompts and re-promote" @click="goHash(f.lab)" />
           <span v-else class="jv-muted" style="font-size:11.5px">Lab coming later</span>
-          <JvButton v-if="configFor(f.key)" variant="ghost" size="sm" label="Revert to Default" title="Back to the routing table + tier-resolved prompts" @click="revertConfig(f.key)" />
+          <UiButton v-if="configFor(f.key)" intent="ghost" size="small" label="Revert to Default" title="Back to the routing table + tier-resolved prompts" @click="revertConfig(f.key)" />
         </div>
         <div class="ai-ladder">
           <div class="ai-step"><span class="n">1</span><span class="w">Active production config</span><span class="who">exact model + prompts, promoted from a Lab — wins outright</span></div>
@@ -1604,8 +1604,8 @@ onMounted(() => {
                 </span>
               </td>
               <td>
-                <JvButton
-                  variant="ghost" size="sm" label="Clear all"
+                <UiButton
+                  intent="ghost" size="small" label="Clear all"
                   :disabled="!correctionsCounts[p.id]"
                   @click="clearProjectCorrections(p.id)"
                 />
@@ -1622,8 +1622,8 @@ onMounted(() => {
         <div class="jv-card__header">
           <h3 class="jv-card__title">AI usage</h3>
           <span class="jv-spacer" />
-          <JvButton variant="ghost" size="sm" label="↻" title="Refresh usage" @click="loadAiUsage" />
-          <JvButton variant="ghost" size="sm" label="Clear" title="Clear the usage log" @click="clearAiUsage" />
+          <UiButton intent="ghost" size="small" label="↻" title="Refresh usage" @click="loadAiUsage" />
+          <UiButton intent="ghost" size="small" label="Clear" title="Clear the usage log" @click="clearAiUsage" />
         </div>
         <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 10px">
           Tokens + wall time per feature, recorded for every LLM call (ported from JustWrite's usage ledger).
@@ -1892,7 +1892,7 @@ onMounted(() => {
               <td><code class="jv-mono">{{ key }}</code></td>
               <td><JvInput v-model="settings.models.url_overrides[key]" :spellcheck="false" /></td>
               <td class="jv-table__actions">
-                <JvButton variant="danger-outline" size="sm" @click="removeUrlOverride(key)">Remove</JvButton>
+                <UiButton intent="danger-outline" size="small" @click="removeUrlOverride(key)">Remove</UiButton>
               </td>
             </tr>
           </tbody>
@@ -1902,7 +1902,7 @@ onMounted(() => {
         <div class="jv-row" style="margin-bottom: 8px;">
           <JvInput v-model="newOverrideVariantId" placeholder="variant id (e.g. kokoro-multi-lang-v1_0)" width="name" />
           <JvInput v-model="newOverrideUrl" placeholder="override URL" width="url" />
-          <JvButton variant="secondary" :disabled="!newOverrideVariantId || !newOverrideUrl" @click="addUrlOverride">Add override</JvButton>
+          <UiButton intent="secondary" :disabled="!newOverrideVariantId || !newOverrideUrl" @click="addUrlOverride">Add override</UiButton>
         </div>
         <p class="jv-muted" style="font-size: 12px;">Saved with Settings.</p>
       </div>
@@ -1989,8 +1989,8 @@ onMounted(() => {
             </div>
             <div class="jv-row" style="gap: 6px">
               <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">V</span>
-              <JvButton variant="ghost" size="sm" label="Edit" />
-              <JvButton variant="ghost" size="sm" label="Clear" />
+              <UiButton intent="ghost" size="small" label="Edit" />
+              <UiButton intent="ghost" size="small" label="Clear" />
             </div>
           </div>
         </div>
@@ -2002,8 +2002,8 @@ onMounted(() => {
             </div>
             <div class="jv-row" style="gap: 6px">
               <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">D</span>
-              <JvButton variant="ghost" size="sm" label="Edit" />
-              <JvButton variant="ghost" size="sm" label="Clear" />
+              <UiButton intent="ghost" size="small" label="Edit" />
+              <UiButton intent="ghost" size="small" label="Clear" />
             </div>
           </div>
         </div>
@@ -2152,7 +2152,7 @@ onMounted(() => {
                 placeholder="voice id, e.g. af_heart"
                 title="Used when an agent calls justvoice.speak with no voice/persona and no per-client binding"
               />
-              <JvButton variant="secondary" size="sm" label="Save" @click="saveMcpDefaultVoice" />
+              <UiButton intent="secondary" size="small" label="Save" @click="saveMcpDefaultVoice" />
             </div>
           </JvField>
         </div>
@@ -2193,8 +2193,8 @@ onMounted(() => {
               <td>{{ b.engine || "(none)" }}</td>
               <td class="jv-muted">{{ b.last_seen || "never" }}</td>
               <td class="right">
-                <JvButton variant="ghost" size="sm" label="Edit" title="Load this binding into the form below" @click="editBinding(b)" />
-                <JvButton variant="ghost" size="sm" label="✕" title="Remove this binding" @click="deleteBinding(b)" />
+                <UiButton intent="ghost" size="small" label="Edit" title="Load this binding into the form below" @click="editBinding(b)" />
+                <UiButton intent="ghost" size="small" label="✕" title="Remove this binding" @click="deleteBinding(b)" />
               </td>
             </tr>
             <tr v-if="!mcpBindings.length">
@@ -2212,7 +2212,7 @@ onMounted(() => {
             width="name"
             :options="[{ label: '(no persona)', value: '' }, ...mcpPersonas.map(p => ({ label: p.name, value: p.id }))]"
           />
-          <JvButton variant="primary" size="sm" label="Save binding" :disabled="!bindingDraft.client_id.trim()" @click="saveBinding" />
+          <UiButton intent="primary" size="small" label="Save binding" :disabled="!bindingDraft.client_id.trim()" @click="saveBinding" />
         </div>
       </div>
     </div>
@@ -2224,19 +2224,19 @@ onMounted(() => {
         <h4 style="margin: 14px 0 6px; font-size: 12.5px; color: var(--ink-2)">Claude Desktop / any HTTP MCP client · <code class="jv-mono">mcp config JSON</code></h4>
         <div class="snippet-row">
           <pre class="jv-code-block">{{ MCP_SNIPPETS.claude_desktop }}</pre>
-          <JvButton variant="ghost" size="sm" label="Copy" title="Copy the JSON config" @click="copySnippet('claude_desktop')" />
+          <UiButton intent="ghost" size="small" label="Copy" title="Copy the JSON config" @click="copySnippet('claude_desktop')" />
         </div>
 
         <h4 style="margin: 14px 0 6px; font-size: 12.5px; color: var(--ink-2)">claude-code CLI</h4>
         <div class="snippet-row">
           <pre class="jv-code-block">{{ MCP_SNIPPETS.claude_code }}</pre>
-          <JvButton variant="ghost" size="sm" label="Copy" title="Copy the one-liner" @click="copySnippet('claude_code')" />
+          <UiButton intent="ghost" size="small" label="Copy" title="Copy the one-liner" @click="copySnippet('claude_code')" />
         </div>
 
         <h4 style="margin: 14px 0 6px; font-size: 12.5px; color: var(--ink-2)">curl smoke test</h4>
         <div class="snippet-row">
           <pre class="jv-code-block">{{ MCP_SNIPPETS.curl }}</pre>
-          <JvButton variant="ghost" size="sm" label="Copy" title="Copy the curl command" @click="copySnippet('curl')" />
+          <UiButton intent="ghost" size="small" label="Copy" title="Copy the curl command" @click="copySnippet('curl')" />
         </div>
       </div>
     </div>
@@ -2310,9 +2310,9 @@ onMounted(() => {
           <span class="jv-pill jv-pill--green">phase: ready</span>
           <span class="jv-muted" style="font-size: 12px">torch 2.4.1+cu124 · 2.1 GB</span>
           <span class="jv-spacer" />
-          <JvButton variant="secondary" size="sm" label="Switch to CPU-only" />
-          <JvButton variant="secondary" size="sm" label="Switch to ROCm (AMD)" />
-          <JvButton variant="secondary" size="sm" label="Re-download" />
+          <UiButton intent="secondary" size="small" label="Switch to CPU-only" />
+          <UiButton intent="secondary" size="small" label="Switch to ROCm (AMD)" />
+          <UiButton intent="secondary" size="small" label="Re-download" />
         </div>
         <p class="jv-muted" style="font-size: 11.5px; margin-top: 10px">
           The switch is per-engine. Use the Engines tab → engine row → "Install with CUDA" to enable
@@ -2433,9 +2433,9 @@ onMounted(() => {
           inspecting auth attempts. Live tail is read from <code class="jv-mono">~/.justvoice/logs/</code>.
         </p>
         <div class="jv-row" style="gap: 8px; margin-bottom: 14px">
-          <JvButton variant="secondary" size="sm" label="📂 Open log file" @click="openLogFile" />
-          <JvButton variant="secondary" size="sm" label="📥 Download recent logs" @click="downloadRecentLogs" />
-          <JvButton variant="secondary" size="sm" label="📋 Copy last 100 lines" @click="copyRecentLogs" />
+          <UiButton intent="secondary" size="small" label="📂 Open log file" @click="openLogFile" />
+          <UiButton intent="secondary" size="small" label="📥 Download recent logs" @click="downloadRecentLogs" />
+          <UiButton intent="secondary" size="small" label="📋 Copy last 100 lines" @click="copyRecentLogs" />
         </div>
         <pre class="jv-code-block" style="max-height: 280px; overflow: auto; margin: 0">{{ logsPreview }}</pre>
       </div>
@@ -2474,23 +2474,23 @@ onMounted(() => {
               @change="persistUpdaterChannel"
             />
           </JvField>
-          <JvButton
+          <UiButton
             v-if="updater.status === 'idle' || updater.status === 'uptodate' || updater.status === 'error'"
-            variant="secondary"
+            intent="secondary"
             :disabled="updater.busy"
             label="Check for updates"
             @click="checkForUpdates"
           />
-          <JvButton
+          <UiButton
             v-if="updater.status === 'available'"
-            variant="primary"
+            intent="primary"
             :disabled="updater.busy"
             label="Download"
             @click="downloadUpdate"
           />
-          <JvButton
+          <UiButton
             v-if="updater.status === 'ready'"
-            variant="primary"
+            intent="primary"
             label="Restart and install"
             @click="restartAndInstall"
           />
@@ -2525,16 +2525,16 @@ onMounted(() => {
         <p>JustVoice is a cross-platform open-source voice production studio for audiobook producers, game developers, podcasters, dictation users, and accessibility users. Built on Tauri 2 + Vue 3 + Python FastAPI.</p>
         <p class="jv-muted" style="font-size: 12px; margin-top: 10px">Licensed GPL-3.0-or-later. Portions ported from voicebox (MIT) and JustWrite (MIT) — see <code>NOTICE.md</code>.</p>
         <div class="jv-btn-group" style="margin-top: 14px">
-          <JvButton variant="secondary" label="📋 Third-party licenses" />
-          <JvButton variant="secondary" label="🐛 Report an issue" />
-          <JvButton variant="secondary" label="🎬 Run welcome again" @click="$emit('reset-onboarding')" />
+          <UiButton intent="secondary" label="📋 Third-party licenses" />
+          <UiButton intent="secondary" label="🐛 Report an issue" />
+          <UiButton intent="secondary" label="🎬 Run welcome again" @click="$emit('reset-onboarding')" />
         </div>
       </div>
     </div>
 
     <!-- ─── Save ─── -->
     <div v-show="['general','mastering','generation','capture','external'].includes(activeSub)" class="jv-section">
-      <JvButton variant="primary" size="lg" @click="save">Save settings</JvButton>
+      <UiButton intent="primary" size="lg" @click="save">Save settings</UiButton>
     </div>
 
   </div>

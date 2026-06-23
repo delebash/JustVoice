@@ -6,7 +6,7 @@
 -->
 <script setup>
 import Icon from "./Icon.vue";
-import JvButton from "./ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 
 defineProps({
   icon:        { type: String, default: "Sparkle" },
@@ -25,9 +25,9 @@ const emit = defineEmits(["action"]);
     <h3 v-if="title" class="jv-empty__title">{{ title }}</h3>
     <p v-if="message" class="jv-empty__message">{{ message }}</p>
     <slot name="actions">
-      <JvButton v-if="actionLabel" variant="primary" @click="emit('action')">
+      <UiButton v-if="actionLabel" intent="primary" @click="emit('action')">
         {{ actionLabel }}
-      </JvButton>
+      </UiButton>
     </slot>
   </div>
 </template>

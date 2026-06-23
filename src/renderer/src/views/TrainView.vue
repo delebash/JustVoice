@@ -4,7 +4,7 @@ import { ref, onMounted, onActivated, onDeactivated, onUnmounted, computed } fro
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import JvInput from "../components/ui/JvInput.vue";
 import JvSelect from "../components/ui/JvSelect.vue";
 import JvTag from "../components/ui/JvTag.vue";
@@ -286,7 +286,7 @@ onUnmounted(stopPolling);
         </p>
         <input ref="trainFileInput" type="file" accept="audio/*" multiple style="display: none" @change="addTrainFile" />
         <div>
-          <JvButton variant="secondary" size="sm" label="＋ Add WAV files…" @click="trainFileInput?.click()" />
+          <UiButton intent="secondary" size="small" label="＋ Add WAV files…" @click="trainFileInput?.click()" />
         </div>
 
         <table v-if="samples.length" class="jv-table" style="margin-top: 12px;">
@@ -304,7 +304,7 @@ onUnmounted(stopPolling);
                 <JvInput v-model="s.transcript" placeholder="What the speaker says in this clip" />
               </td>
               <td class="jv-table__actions">
-                <JvButton variant="danger-outline" size="sm" @click="removeTrainFile(idx)">Remove</JvButton>
+                <UiButton intent="danger-outline" size="small" @click="removeTrainFile(idx)">Remove</UiButton>
               </td>
             </tr>
           </tbody>
@@ -346,14 +346,14 @@ onUnmounted(stopPolling);
       </div>
 
       <div class="jv-row" style="margin-top: 16px;">
-        <JvButton
-          variant="primary"
+        <UiButton
+          intent="primary"
           :disabled="trainBusy || !canSubmit"
           :loading="trainBusy"
           @click="submitTrain"
         >
           {{ trainBusy ? "Queueing…" : "Queue training job" }}
-        </JvButton>
+        </UiButton>
         <span class="jv-muted" style="font-size: 12px;">
           {{ submitBlocker || "Runs on the server — only engines that support training can be picked." }}
         </span>
@@ -366,7 +366,7 @@ onUnmounted(stopPolling);
     <div class="jv-card">
       <div class="jv-card__header">
         <h3 class="jv-card__title">{{ trainJobs.length }} training jobs</h3>
-        <JvButton variant="ghost" size="sm" @click="refreshTrainJobs">Refresh</JvButton>
+        <UiButton intent="ghost" size="small" @click="refreshTrainJobs">Refresh</UiButton>
       </div>
 
       <table v-if="trainJobs.length" class="jv-table">
@@ -388,7 +388,7 @@ onUnmounted(stopPolling);
             <td><span class="jv-mono jv-muted">{{ j.engine }}</span></td>
             <td>{{ j.voice_name }}</td>
             <td>
-              <JvTag :variant="phaseVariant(j.phase)" :label="j.phase" />
+              <JvTag :intent="phaseVariant(j.phase)" :label="j.phase" />
               <span v-if="j.error" class="jv-muted" style="font-size: 11px; display: block; margin-top: 2px; color: var(--danger-ink);">{{ j.error }}</span>
             </td>
             <td>
@@ -413,12 +413,12 @@ onUnmounted(stopPolling);
             </td>
             <td><code class="jv-mono">{{ j.final_voice_id || "—" }}</code></td>
             <td class="jv-table__actions">
-              <JvButton
+              <UiButton
                 v-if="ACTIVE_PHASES.has(j.phase)"
-                variant="danger"
-                size="sm"
+                intent="danger"
+                size="small"
                 @click="cancelTrainJob(j.job_id)"
-              >Cancel</JvButton>
+              >Cancel</UiButton>
             </td>
           </tr>
         </tbody>

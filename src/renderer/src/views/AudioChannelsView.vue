@@ -11,7 +11,7 @@ import { onMounted, ref } from "vue";
 import { channelsService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import JvInput from "../components/ui/JvInput.vue";
 import JvTextarea from "../components/ui/JvTextarea.vue";
 import JvCheckbox from "../components/ui/JvCheckbox.vue";
@@ -124,8 +124,8 @@ onMounted(() => {
             <td class="jv-muted">{{ c.device_ids?.length || 0 }} device(s)</td>
             <td>
               <div class="jv-table__actions">
-                <JvButton variant="secondary" size="sm" label="Edit" @click="editChannel(c)" />
-                <JvButton variant="danger-outline" size="sm" label="Delete" @click="deleteChannel(c)" />
+                <UiButton intent="secondary" size="small" label="Edit" @click="editChannel(c)" />
+                <UiButton intent="danger-outline" size="small" label="Delete" @click="deleteChannel(c)" />
               </div>
             </td>
           </tr>
@@ -163,8 +163,8 @@ onMounted(() => {
       </JvField>
 
       <div class="jv-btn-group" style="margin-top: 16px;">
-        <JvButton variant="primary" :disabled="!editing.name" :label="editing.id ? 'Update' : 'Add'" @click="save" />
-        <JvButton v-if="editing.id" variant="secondary" label="Cancel" @click="editing = { id: null, name: '', device_ids: [], is_default: false }" />
+        <UiButton intent="primary" :disabled="!editing.name" :label="editing.id ? 'Update' : 'Add'" @click="save" />
+        <UiButton v-if="editing.id" intent="secondary" label="Cancel" @click="editing = { id: null, name: '', device_ids: [], is_default: false }" />
       </div>
     </section>
   </div>

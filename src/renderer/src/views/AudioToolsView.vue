@@ -3,7 +3,7 @@
 import { ref, computed, onBeforeUnmount } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import JvInput from "../components/ui/JvInput.vue";
 import JvSelect from "../components/ui/JvSelect.vue";
 import JvField from "../components/ui/JvField.vue";
@@ -149,9 +149,9 @@ onBeforeUnmount(revokeMastered);
       </JvField>
 
       <div class="jv-row" style="margin-top: 12px; align-items: center;">
-        <JvButton variant="primary" :disabled="analyzeBusy || !analyzeFile" :loading="analyzeBusy" @click="runAnalyze">
+        <UiButton intent="primary" :disabled="analyzeBusy || !analyzeFile" :loading="analyzeBusy" @click="runAnalyze">
           {{ analyzeBusy ? "Analyzing…" : "Analyze" }}
-        </JvButton>
+        </UiButton>
         <span class="jv-mono jv-muted">POST /v1/analyze</span>
       </div>
 
@@ -237,16 +237,16 @@ onBeforeUnmount(revokeMastered);
       </div>
 
       <div class="jv-row" style="margin-top: 12px; align-items: center;">
-        <JvButton variant="primary" :disabled="masterBusy || !masterFile" :loading="masterBusy" @click="runMaster">
+        <UiButton intent="primary" :disabled="masterBusy || !masterFile" :loading="masterBusy" @click="runMaster">
           {{ masterBusy ? "Mastering…" : "Master" }}
-        </JvButton>
+        </UiButton>
         <span class="jv-mono jv-muted">POST /v1/master</span>
       </div>
 
       <div v-if="masteredUrl" style="margin-top: 16px;">
         <audio :src="masteredUrl" controls preload="metadata" style="width: 100%; display: block;"></audio>
         <div class="jv-row" style="margin-top: 10px; align-items: center;">
-          <JvButton variant="secondary" @click="downloadMastered">Download {{ masteredName }}</JvButton>
+          <UiButton intent="secondary" @click="downloadMastered">Download {{ masteredName }}</UiButton>
           <span class="jv-muted jv-mono">{{ masteredMime }} · {{ fmtKB(masteredBytes) }}</span>
         </div>
       </div>

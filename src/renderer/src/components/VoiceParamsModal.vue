@@ -10,7 +10,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import JvButton from "./ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 
 const props = defineProps({
   open: { type: Boolean, required: true },
@@ -220,8 +220,8 @@ onMounted(() => {
 
       <footer class="jv-modal__footer">
         <span class="jv-spacer" />
-        <JvButton variant="secondary" label="Cancel" @click="onCancel" />
-        <JvButton variant="primary" label="Save" @click="onSave" />
+        <UiButton intent="secondary" label="Cancel" @click="onCancel" />
+        <UiButton intent="primary" label="Save" @click="onSave" />
       </footer>
     </div>
   </div>

@@ -20,7 +20,7 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
 import { promptDialog, confirmDialog } from "../services/dialog.js";
 import { readPref, writePref } from "../services/prefs.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import JvToggle from "../components/ui/JvToggle.vue";
 import { useProjectsStore } from "../stores/projects.js";
 
@@ -528,8 +528,8 @@ onMounted(async () => {
           <option :value="null">— pick a chapter —</option>
           <option v-for="s in scenes" :key="s.id" :value="s.id">{{ s.title || `Scene ${s.position + 1}` }}</option>
         </select>
-        <JvButton variant="ghost" size="sm" label="✕ Clear" title="Clear the text box" @click="text = ''" />
-        <JvButton variant="secondary" size="sm" label="✨ Sample" title="Load a small sample passage + cast" @click="loadSample" />
+        <UiButton intent="ghost" size="small" label="✕ Clear" title="Clear the text box" @click="text = ''" />
+        <UiButton intent="secondary" size="small" label="✨ Sample" title="Load a small sample passage + cast" @click="loadSample" />
       </div>
       <textarea
         v-model="text"
@@ -552,27 +552,27 @@ onMounted(async () => {
         <li v-for="(c, i) in characters" :key="c.id">
           <strong>{{ c.name }}</strong>
           <span v-if="c.aliases.length" class="jv-muted">aliases: {{ c.aliases.join(", ") }}</span>
-          <JvButton variant="ghost" size="sm" label="✕" title="Remove from cast" @click="removeCharacter(i)" />
+          <UiButton intent="ghost" size="small" label="✕" title="Remove from cast" @click="removeCharacter(i)" />
         </li>
       </ul>
       <div class="splab__add-cast">
         <input v-model="newCharName" class="jv-input jv-w-name" placeholder="Character name" @keydown.enter="addCharacter" />
         <input v-model="newCharAliases" class="jv-input jv-w-name" placeholder="Aliases (comma-separated, optional)" @keydown.enter="addCharacter" />
-        <JvButton variant="secondary" size="sm" label="＋ Add" @click="addCharacter" />
+        <UiButton intent="secondary" size="small" label="＋ Add" @click="addCharacter" />
       </div>
     </section>
 
     <!-- ── Columns (one by default) ──────────────────────────────── -->
     <section class="jv-section">
       <div class="splab__columns-toolbar">
-        <JvButton variant="secondary" size="sm" :disabled="columns.length >= MAX_COLUMNS" label="＋ Add column" title="Race another configuration on the same input" @click="addColumn" />
+        <UiButton intent="secondary" size="small" :disabled="columns.length >= MAX_COLUMNS" label="＋ Add column" title="Race another configuration on the same input" @click="addColumn" />
       </div>
       <div class="splab__columns" :class="{ 'splab__columns--single': columns.length === 1 }">
         <article v-for="(col, i) in columns" :key="i" class="jv-card splab__column">
           <header class="splab__column-h">
             <input v-model="col.label" class="jv-input jv-input--sm splab__column-name" title="Run name" />
             <span class="jv-spacer" />
-            <JvButton v-if="columns.length > 1" variant="ghost" size="sm" label="🗑 Delete column" title="Remove this column" @click="removeColumn(i)" />
+            <UiButton v-if="columns.length > 1" intent="ghost" size="small" label="🗑 Delete column" title="Remove this column" @click="removeColumn(i)" />
           </header>
 
           <!-- Presets row — JustWrite Speaker Lab parity: dropdown,
@@ -583,9 +583,9 @@ onMounted(async () => {
               <option value="">— defaults —</option>
               <option v-for="p in presets" :key="p.name" :value="p.name">{{ p.name }}</option>
             </select>
-            <JvButton v-if="col.presetName" variant="ghost" size="sm" label="🗑" title="Delete this preset" @click="deletePreset(col)" />
-            <JvButton variant="secondary" size="sm" label="＋ Save as" title="Save this column's tweaks as a named preset" @click="savePreset(col)" />
-            <JvButton variant="secondary" size="sm" label="✓ Use as production" title="Freeze this column — model AND prompts — as Studio · Script's attribution method" @click="useAsProduction(col)" />
+            <UiButton v-if="col.presetName" intent="ghost" size="small" label="🗑" title="Delete this preset" @click="deletePreset(col)" />
+            <UiButton intent="secondary" size="small" label="＋ Save as" title="Save this column's tweaks as a named preset" @click="savePreset(col)" />
+            <UiButton intent="secondary" size="small" label="✓ Use as production" title="Freeze this column — model AND prompts — as Studio · Script's attribution method" @click="useAsProduction(col)" />
             <span
               v-if="productionCfg"
               class="jv-pill jv-pill--green splab__prod"
@@ -631,7 +631,7 @@ onMounted(async () => {
               <span>temp</span>
               <input v-model="col.temperature" class="jv-input jv-input--sm splab__temp" placeholder="0.2" title="Sampling temperature" />
             </label>
-            <JvButton variant="ghost" size="sm" label="↺ Reset" title="Back to the route's resolved configuration — provider, model, tier, prompts, floor" @click="resetColumn(col)" />
+            <UiButton intent="ghost" size="small" label="↺ Reset" title="Back to the route's resolved configuration — provider, model, tier, prompts, floor" @click="resetColumn(col)" />
           </div>
 
           <!-- Tier segmented + toggles + floor value -->
@@ -672,7 +672,7 @@ onMounted(async () => {
               <em class="jv-muted">— exactly what the model receives; resolved from the tier</em>
               <template v-if="systemEdited(col)">
                 <span class="jv-pill jv-pill--ghost splab__edited">edited</span>
-                <JvButton variant="ghost" size="sm" label="↺ Tier default" title="Restore this tier's default body" @click="applyTier(col, col.tier)" />
+                <UiButton intent="ghost" size="small" label="↺ Tier default" title="Restore this tier's default body" @click="applyTier(col, col.tier)" />
               </template>
             </span>
             <textarea v-model="col.systemPrompt" class="jv-input jv-input--full splab__prompt-text" />
@@ -685,14 +685,14 @@ onMounted(async () => {
               <em class="jv-muted">— template · <code>{characters}</code>, <code>{corrections}</code>, <code>{paragraphs}</code> fill in server-side</em>
               <template v-if="userEdited(col)">
                 <span class="jv-pill jv-pill--ghost splab__edited">edited</span>
-                <JvButton variant="ghost" size="sm" label="↺ Default" title="Restore the default template" @click="col.userPrompt = extractionConfig?.user_template || ''" />
+                <UiButton intent="ghost" size="small" label="↺ Default" title="Restore the default template" @click="col.userPrompt = extractionConfig?.user_template || ''" />
               </template>
             </span>
             <textarea v-model="col.userPrompt" class="jv-input jv-input--full splab__prompt-text splab__prompt-text--user" />
           </div>
 
           <div class="splab__runrow">
-            <JvButton variant="primary" :loading="col.busy" :disabled="col.busy" label="▶ Run" @click="runColumn(col)" />
+            <UiButton intent="primary" :loading="col.busy" :disabled="col.busy" label="▶ Run" @click="runColumn(col)" />
             <span v-if="!text.trim()" class="jv-muted splab__runhint">Paste or load a passage above first.</span>
           </div>
 

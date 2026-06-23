@@ -17,7 +17,7 @@ import { computed, onMounted, ref, watch, nextTick } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import JvInput from "../components/ui/JvInput.vue";
 import EmptyState from "../components/EmptyState.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
@@ -370,7 +370,7 @@ onMounted(loadAll);
           <option v-for="pr in projects" :key="pr.id" :value="pr.id">{{ pr.name }}</option>
         </select>
         <span class="jv-spacer" />
-        <JvButton variant="primary" size="sm" label="+ New persona" @click="createBlank" />
+        <UiButton intent="primary" size="small" label="+ New persona" @click="createBlank" />
       </div>
 
       <div v-if="loading" class="jv-muted personas__empty">Loading…</div>
@@ -399,8 +399,8 @@ onMounted(loadAll);
             <td class="jv-muted">{{ voices.find((v) => v.id === p.voice_id)?.name || (p.voice_id || "no voice yet") }}</td>
             <td><span class="jv-pill" :class="usageCount(p.id) > 0 ? 'jv-pill--green' : 'jv-pill--ghost'">{{ usageCount(p.id) }} project{{ usageCount(p.id) === 1 ? '' : 's' }}</span></td>
             <td class="jv-table__actions" @click.stop>
-              <JvButton variant="ghost" size="sm" label="Edit" @click="selectedId = p.id" />
-              <JvButton variant="danger-outline" size="sm" label="Delete" @click="removePersona(p)" />
+              <UiButton intent="ghost" size="small" label="Edit" @click="selectedId = p.id" />
+              <UiButton intent="danger-outline" size="small" label="Delete" @click="removePersona(p)" />
             </td>
           </tr>
         </tbody>
@@ -519,7 +519,7 @@ onMounted(loadAll);
               >
                 {{ deliveryChipLabel(key) }}: <strong>{{ deliveryChipValue(key, value) }}</strong>
               </span>
-              <JvButton variant="ghost" size="sm" label="+ Edit" @click="openDeliveryHint" />
+              <UiButton intent="ghost" size="small" label="+ Edit" @click="openDeliveryHint" />
             </div>
           </div>
 
@@ -536,7 +536,7 @@ onMounted(loadAll);
               >
                 {{ ef.type || '?' }}
               </span>
-              <JvButton variant="ghost" size="sm" label="+ Edit chain" @click="openEffectsEditor" />
+              <UiButton intent="ghost" size="small" label="+ Edit chain" @click="openEffectsEditor" />
             </div>
           </div>
         </div>
@@ -580,8 +580,8 @@ onMounted(loadAll);
            each list row, not here, so it's never a neighbour to Save. -->
       <footer class="jv-modal__footer">
         <span class="jv-spacer" />
-        <JvButton variant="secondary" label="Cancel" @click="closeEditor" />
-        <JvButton variant="primary" label="Save" :disabled="!dirty" @click="savePersona" />
+        <UiButton intent="secondary" label="Cancel" @click="closeEditor" />
+        <UiButton intent="primary" label="Save" :disabled="!dirty" @click="savePersona" />
       </footer>
       </div>
     </div>

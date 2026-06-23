@@ -12,7 +12,7 @@
 //   import  — user chose to create from a file instead (caller opens ImportModal)
 
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import JvButton from "./ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 
 const props = defineProps({
   // Preselect a kind (Home's Start-something pills hand this over).
@@ -123,18 +123,18 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 
       <div class="np-alts">
         <span class="np-alts__lead">Or start from —</span>
-        <JvButton variant="ghost" size="sm" title="Import EPUB, DOCX, CSV, or markdown" @click="emit('import')">
+        <UiButton intent="ghost" size="small" title="Import EPUB, DOCX, CSV, or markdown" @click="emit('import')">
           <template #icon>📄</template>a file
-        </JvButton>
-        <JvButton
+        </UiButton>
+        <UiButton
           v-if="selected !== 'custom'"
-          variant="ghost"
-          size="sm"
+          intent="ghost"
+          size="small"
           :title="`Seed a small ${KINDS.find(k => k.id === selected)?.label} project you can safely explore`"
           @click="emit('demo', selected)"
         >
           <template #icon>✨</template>a demo project
-        </JvButton>
+        </UiButton>
       </div>
 
       <p class="np-focus-only">
@@ -154,7 +154,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
           @keydown.enter.stop.prevent="create"
         />
         <span class="jv-spacer" />
-        <JvButton variant="primary" :disabled="!canCreate" @click="create">Create project ➜</JvButton>
+        <UiButton intent="primary" :disabled="!canCreate" @click="create">Create project ➜</UiButton>
       </footer>
     </div>
   </div>

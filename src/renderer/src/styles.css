@@ -704,72 +704,10 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
 .jv-chip-card--disabled { opacity: 0.55; cursor: not-allowed; }
 .jv-chip-card--disabled input { cursor: not-allowed; }
 
-/* Buttons (preview L98-110) */
-.jv-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 14px;
-  border-radius: var(--r-control);
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: #fff;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: filter 0.1s, background 0.1s, color 0.1s, border-color 0.1s;
-}
-.jv-btn:hover { filter: brightness(0.94); }
-.jv-btn:disabled, .jv-btn[disabled] { opacity: 0.55; cursor: not-allowed; filter: none; }
-.jv-btn--primary  { background: var(--accent); border-color: var(--accent); color: #fff; }
-.jv-btn--secondary {
-  background: var(--surface);
-  color: var(--ink);
-  border-color: var(--line-strong);
-}
-.jv-btn--secondary:hover { background: var(--surface-2); filter: none; }
-/* Ghost = QUIET UTILITY, but never borderless — text-only buttons read
-   as unstyled (user decree 2026-06-12: "no ghost buttons"). Renders as
-   a lighter cousin of secondary: thin border, muted ink. */
-.jv-btn--ghost {
-  background: var(--surface);
-  color: var(--ink-2);
-  border-color: var(--line);
-}
-.jv-btn--ghost:hover { background: var(--surface-2); border-color: var(--line-strong); filter: none; }
-.jv-btn--danger {
-  background: var(--danger);
-  border-color: var(--danger);
-  color: #fff;
-}
-.jv-btn--danger-outline {
-  background: transparent;
-  color: var(--danger);
-  border-color: var(--danger);
-}
-.jv-btn--danger-outline:hover { background: var(--danger-bg); filter: none; }
-.jv-btn--icon {
-  width: 32px;
-  padding: 0;
-  background: var(--surface);
-  color: var(--ink-2);
-  border-color: var(--line-strong);
-}
-.jv-btn--sm { height: 26px; padding: 0 10px; font-size: 12px; }
-.jv-btn--lg { height: 38px; padding: 0 18px; font-size: 14px; }
+/* Buttons now use the shared .ui-btn (@delebash/llm-ui), tuned via tokens
+   (--btn-radius, --accent, --on-accent, …). Only the .jv-btn-group layout
+   helper + the jvSpin keyframe (used by other spinners) stay JV-local. */
 .jv-btn-group { display: inline-flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.jv-btn__spinner {
-  width: 12px; height: 12px;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
-  border-radius: 50%;
-  animation: jvSpin 0.65s linear infinite;
-}
 @keyframes jvSpin { to { transform: rotate(360deg); } }
 
 /* Inputs (preview L113-117)

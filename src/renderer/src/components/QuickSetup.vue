@@ -27,7 +27,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import JvButton from "./ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 
 const emit = defineEmits(["close"]);
 
@@ -456,7 +456,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
                   <span v-if="d.models.length" class="jv-muted"> · {{ d.models[0] }}{{ d.models.length > 1 ? ` +${d.models.length - 1}` : "" }}</span>
                 </span>
                 <span v-if="d.alreadyRegistered" class="jv-pill jv-pill--green">connected</span>
-                <JvButton v-else size="sm" variant="secondary" :loading="connectingLocal === d.baseUrl" label="Connect" :title="`Register ${d.name} as an LLM provider`" @click="connectLocal(d)" />
+                <UiButton v-else size="small" intent="secondary" :loading="connectingLocal === d.baseUrl" label="Connect" :title="`Register ${d.name} as an LLM provider`" @click="connectLocal(d)" />
               </li>
               <li v-if="!detectedLocal.length">
                 <span class="quick-setup__helper-ic">🧠</span>
@@ -538,10 +538,10 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
 
       <footer class="jv-modal__footer">
         <template v-if="step === 'confirm'">
-          <JvButton variant="ghost" label="Skip — configure later" @click="close" />
+          <UiButton intent="ghost" label="Skip — configure later" @click="close" />
           <span class="jv-spacer" />
-          <JvButton
-            variant="primary"
+          <UiButton
+            intent="primary"
             :label="enginesToInstall.length
               ? `Install ${enginesToInstall.length} engine${enginesToInstall.length === 1 ? '' : 's'} + apply pins`
               : hasLlmProvider ? 'Apply feature pins' : 'Finish — connect an LLM later'"
@@ -550,11 +550,11 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
           />
         </template>
         <template v-else-if="step === 'install'">
-          <JvButton variant="ghost" label="Cancel" @click="cancelInstalls" />
+          <UiButton intent="ghost" label="Cancel" @click="cancelInstalls" />
         </template>
         <template v-else-if="step === 'done'">
           <span class="jv-spacer" />
-          <JvButton variant="primary" label="Close" @click="close" />
+          <UiButton intent="primary" label="Close" @click="close" />
         </template>
       </footer>
     </div>

@@ -25,7 +25,7 @@
 // links to docs/import-formats.md#<anchor>.
 
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import JvSelect from "../components/ui/JvSelect.vue";
 import { projectsService } from "../services/projects.js";
 import { setImportDraft } from "../stores/importDraft.js";
@@ -230,7 +230,7 @@ async function doPreview() {
         </div>
       </div>
       <footer class="jv-modal__footer">
-        <JvButton variant="secondary" @click="emit('close')">Cancel</JvButton>
+        <UiButton intent="secondary" @click="emit('close')">Cancel</UiButton>
       </footer>
     </div>
   </div>

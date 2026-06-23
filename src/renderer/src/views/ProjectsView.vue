@@ -12,7 +12,7 @@
 -->
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import JvTag from "../components/ui/JvTag.vue";
 import EmptyState from "../components/EmptyState.vue";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
@@ -479,8 +479,8 @@ onMounted(() => {
         @click="projectTypeFilter = t.id"
       >{{ t.label }}</button>
       <span class="jv-spacer" />
-      <JvButton variant="secondary" size="sm" label="⬇ Import" title="Create a project from a file — EPUB, DOCX, CSV, markdown, JustWrite JSON" @click="showImport = true" />
-      <JvButton variant="primary" size="sm" label="＋ New project" @click="createBlank" />
+      <UiButton intent="secondary" size="small" label="⬇ Import" title="Create a project from a file — EPUB, DOCX, CSV, markdown, JustWrite JSON" @click="showImport = true" />
+      <UiButton intent="primary" size="small" label="＋ New project" @click="createBlank" />
     </div>
 
     <div v-if="loading" class="projects__empty jv-muted">Loading…</div>
@@ -513,7 +513,7 @@ onMounted(() => {
             <td class="projects__num jv-muted">{{ p.scene_count }} {{ copy.chapter.plural.toLowerCase() }}</td>
             <td class="projects__num jv-muted">{{ fmtAgo(p.updated_at) }}</td>
             <td class="projects__row-actions">
-              <JvButton variant="ghost" size="sm" label="Open ➜" :title="`Make it the active project — the sidebar reshapes to ${PROJECT_TYPE_LABEL[p.project_type] || 'this kind'}`" @click.stop="openProjectHome(p)" />
+              <UiButton intent="ghost" size="small" label="Open ➜" :title="`Make it the active project — the sidebar reshapes to ${PROJECT_TYPE_LABEL[p.project_type] || 'this kind'}`" @click.stop="openProjectHome(p)" />
             </td>
           </tr>
           <tr v-if="p.id === selectedId" class="projects__expand">
@@ -591,9 +591,9 @@ onMounted(() => {
                     @click="removeCast(c.persona_id)"
                   >✕</button>
                 </span>
-                <JvButton
-                  variant="ghost"
-                  size="sm"
+                <UiButton
+                  intent="ghost"
+                  size="small"
                   label="+ Add personas"
                   :disabled="!personasAvailableForCast.length"
                   :title="personasAvailableForCast.length ? 'Add personas from your global library' : 'Every persona is already in this project'"
@@ -627,9 +627,9 @@ onMounted(() => {
           <!-- Render + export live on Studio (4 · Export) — Projects is
                the library (user decision 2026-06-12). -->
           <div class="projects__actions">
-            <JvButton variant="primary" label="Open in Studio ➜" title="Cast → Script → Render → Export" @click="openInStudio" />
+            <UiButton intent="primary" label="Open in Studio ➜" title="Cast → Script → Render → Export" @click="openInStudio" />
             <span class="projects__spacer" />
-            <JvButton variant="danger-outline" size="sm" label="Delete project" @click="deleteProject" />
+            <UiButton intent="danger-outline" size="small" label="Delete project" @click="deleteProject" />
           </div>
 
           <div class="jv-divider" />
@@ -671,7 +671,7 @@ onMounted(() => {
                     <span class="jv-pill" :class="sceneStatusPill(s).cls">{{ sceneStatusPill(s).label }}</span>
                   </td>
                   <td class="projects__row-actions">
-                    <JvButton variant="ghost" size="sm" label="Open" title="Open in Chapter view" @click="openChapterInView(s)" />
+                    <UiButton intent="ghost" size="small" label="Open" title="Open in Chapter view" @click="openChapterInView(s)" />
                   </td>
                 </tr>
               </tbody>
@@ -737,9 +737,9 @@ onMounted(() => {
         <footer class="jv-modal__footer">
           <span class="jv-muted" style="font-size: 12px;">{{ addCastSelection.size }} selected</span>
           <span class="jv-spacer" />
-          <JvButton variant="secondary" label="Cancel" @click="addCastOpen = false" />
-          <JvButton
-            variant="primary"
+          <UiButton intent="secondary" label="Cancel" @click="addCastOpen = false" />
+          <UiButton
+            intent="primary"
             :loading="addCastBusy"
             :disabled="addCastBusy || !addCastSelection.size"
             :label="`Add ${addCastSelection.size || ''} persona${addCastSelection.size === 1 ? '' : 's'}`"

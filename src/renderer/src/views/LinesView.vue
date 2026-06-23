@@ -16,7 +16,7 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import ImportModal from "./ImportModal.vue";
 
 const api = useApi();
@@ -203,14 +203,14 @@ watch(selectedProjectId, (id) => {
         >{{ f }} ({{ f === "all" ? lines.length : counts[f] || 0 }})</button>
       </div>
       <span class="jv-spacer" />
-      <JvButton variant="secondary" size="sm" label="⬇ Re-import CSV" title="Merge the next sheet revision by line id — only changed lines go stale" :disabled="!selectedProject" @click="showReimport = true" />
-      <JvButton variant="secondary" size="sm" label="⬆ Export VO zip" title="Per-line WAVs named by line id + manifest.json" :disabled="!selectedProject" @click="exportZip" />
+      <UiButton intent="secondary" size="small" label="⬇ Re-import CSV" title="Merge the next sheet revision by line id — only changed lines go stale" :disabled="!selectedProject" @click="showReimport = true" />
+      <UiButton intent="secondary" size="small" label="⬆ Export VO zip" title="Per-line WAVs named by line id + manifest.json" :disabled="!selectedProject" @click="exportZip" />
     </div>
 
     <div v-if="staleLines.length" class="jv-banner jv-banner--warn lines__stale">
       <strong>{{ staleLines.length }} line{{ staleLines.length === 1 ? "" : "s" }} changed</strong>
       since last render (text differs from the rendered take)
-      <JvButton size="sm" :loading="rerendering" :label="`↻ Re-render ${staleLines.length} changed`" @click="rerenderChanged" />
+      <UiButton size="small" :loading="rerendering" :label="`↻ Re-render ${staleLines.length} changed`" @click="rerenderChanged" />
       <span class="jv-muted">everything else stays cached</span>
     </div>
 
@@ -239,7 +239,7 @@ watch(selectedProjectId, (id) => {
             <td class="lines__text" :title="l.text">{{ l.text }}</td>
             <td><span class="jv-pill" :class="statusPill(l.take_status).cls">{{ statusPill(l.take_status).label }}</span></td>
             <td class="lines__actions">
-              <JvButton variant="ghost" size="sm" label="↻" :title="`Render ${l.line_id || 'this line'}`" @click="renderOne(l)" />
+              <UiButton intent="ghost" size="small" label="↻" :title="`Render ${l.line_id || 'this line'}`" @click="renderOne(l)" />
             </td>
           </tr>
         </template>

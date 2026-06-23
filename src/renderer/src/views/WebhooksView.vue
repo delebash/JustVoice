@@ -9,7 +9,7 @@ import { onMounted, ref } from "vue";
 import { webhooksService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import JvInput from "../components/ui/JvInput.vue";
 import JvField from "../components/ui/JvField.vue";
 import JvCheckbox from "../components/ui/JvCheckbox.vue";
@@ -143,8 +143,8 @@ justvoice.transcribe      {audio} → text</pre>
       <strong>Secret (save now — won't show again):</strong>
       <code class="jv-mono secret-code">{{ justCreatedSecret }}</code>
       <div class="jv-btn-group">
-        <JvButton variant="secondary" size="sm" label="Copy" @click="copySecret" />
-        <JvButton variant="ghost" size="sm" label="Dismiss" @click="justCreatedSecret = null" />
+        <UiButton intent="secondary" size="small" label="Copy" @click="copySecret" />
+        <UiButton intent="ghost" size="small" label="Dismiss" @click="justCreatedSecret = null" />
       </div>
     </div>
 
@@ -173,8 +173,8 @@ justvoice.transcribe      {audio} → text</pre>
             <td class="jv-muted">{{ w.last_delivery_at ? new Date(w.last_delivery_at).toLocaleString() : "never" }}</td>
             <td>
               <div class="jv-table__actions">
-                <JvButton variant="secondary" size="sm" label="Test" @click="testWebhook(w)" />
-                <JvButton variant="danger-outline" size="sm" label="Delete" @click="deleteWebhook(w)" />
+                <UiButton intent="secondary" size="small" label="Test" @click="testWebhook(w)" />
+                <UiButton intent="danger-outline" size="small" label="Delete" @click="deleteWebhook(w)" />
               </div>
             </td>
           </tr>
@@ -182,7 +182,7 @@ justvoice.transcribe      {audio} → text</pre>
       </table>
     </div>
 
-    <JvButton v-if="!showAdd" variant="primary" label="+ Add webhook" @click="showAdd = true" />
+    <UiButton v-if="!showAdd" intent="primary" label="+ Add webhook" @click="showAdd = true" />
 
     <section v-if="showAdd" class="jv-card jv-card--soft editor-card">
       <h3 class="jv-section__title" style="margin-bottom: 16px;">New webhook subscription</h3>
@@ -208,8 +208,8 @@ justvoice.transcribe      {audio} → text</pre>
       </JvField>
 
       <div class="jv-btn-group" style="margin-top: 16px;">
-        <JvButton variant="primary" label="Create" @click="createWebhook" />
-        <JvButton variant="secondary" label="Cancel" @click="showAdd = false" />
+        <UiButton intent="primary" label="Create" @click="createWebhook" />
+        <UiButton intent="secondary" label="Cancel" @click="showAdd = false" />
       </div>
     </section>
   </div>

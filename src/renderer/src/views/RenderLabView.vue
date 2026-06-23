@@ -12,7 +12,7 @@ import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { promptDialog } from "../services/dialog.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import JvToggle from "../components/ui/JvToggle.vue";
 import { useVoicesStore } from "../stores/voices.js";
 
@@ -198,9 +198,9 @@ onMounted(loadVoices);
         <span class="jv-eyebrow">Axes</span>
         <span class="jv-pill jv-pill--ghost">{{ matrixSize }} cells</span>
         <span class="jv-spacer" />
-        <JvButton
-          variant="primary"
-          size="sm"
+        <UiButton
+          intent="primary"
+          size="small"
           :loading="running"
           :disabled="running"
           :label="`▶ Render matrix (${matrixSize} cells)`"
@@ -241,7 +241,7 @@ onMounted(loadVoices);
           <p v-else-if="c.status === 'failed'" class="renderlab__cell-error">{{ c.error }}</p>
           <p v-else class="jv-muted renderlab__cell-pending">— pending —</p>
           <footer class="renderlab__cell-actions" v-if="c.status === 'done'">
-            <JvButton variant="ghost" size="sm" label="Save as preset" @click="saveAsPreset(c)" />
+            <UiButton intent="ghost" size="small" label="Save as preset" @click="saveAsPreset(c)" />
           </footer>
         </article>
       </div>

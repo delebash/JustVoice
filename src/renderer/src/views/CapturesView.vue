@@ -9,7 +9,7 @@ import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { captureReadinessService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import JvTag from "../components/ui/JvTag.vue";
 import JvInput from "../components/ui/JvInput.vue";
 
@@ -119,14 +119,14 @@ onMounted(() => {
             <strong>
               <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">V</span>
             </strong>
-            <JvButton variant="ghost" size="sm" :disabled="true" title="Rebinding the hotkey is coming soon" label="Change" />
+            <UiButton intent="ghost" size="small" :disabled="true" title="Rebinding the hotkey is coming soon" label="Change" />
           </span>
           <span class="jv-chip-card">
             🎙️ Toggle:
             <strong>
               <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">D</span>
             </strong>
-            <JvButton variant="ghost" size="sm" :disabled="true" title="Rebinding the hotkey is coming soon" label="Change" />
+            <UiButton intent="ghost" size="small" :disabled="true" title="Rebinding the hotkey is coming soon" label="Change" />
           </span>
           <span class="jv-chip-card">
             🔉 Source: <strong>Default mic</strong>
@@ -165,9 +165,9 @@ onMounted(() => {
     <div class="captures__list jv-card jv-card--flat">
       <div class="captures__list-header">
         <span class="jv-section__title" style="margin:0;">Captures</span>
-        <JvButton
-          variant="primary"
-          size="sm"
+        <UiButton
+          intent="primary"
+          size="small"
           label="Record (soon)"
           :disabled="true"
           title="In-app record is coming soon — press your global dictation hotkey, or open the dictate window from the topbar, to capture now."
@@ -192,11 +192,11 @@ onMounted(() => {
         <strong>Dictation readiness</strong>
         <div class="captures__checklist">
           <div class="captures__check-row" :class="{ 'captures__check-row--ok': readiness.stt.ready }">
-            <JvTag :variant="readiness.stt.ready ? 'success' : 'default'" :label="readiness.stt.ready ? '✓' : '○'" />
+            <JvTag :intent="readiness.stt.ready ? 'success' : 'default'" :label="readiness.stt.ready ? '✓' : '○'" />
             <span>{{ readiness.stt.display_name }} {{ readiness.stt.ready ? "loaded" : "not loaded" }}</span>
           </div>
           <div class="captures__check-row" :class="{ 'captures__check-row--ok': readiness.llm.ready }">
-            <JvTag :variant="readiness.llm.ready ? 'success' : 'default'" :label="readiness.llm.ready ? '✓' : '○'" />
+            <JvTag :intent="readiness.llm.ready ? 'success' : 'default'" :label="readiness.llm.ready ? '✓' : '○'" />
             <span>{{ readiness.llm.display_name }} {{ readiness.llm.ready ? "loaded" : "not loaded" }}</span>
           </div>
         </div>

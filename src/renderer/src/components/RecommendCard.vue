@@ -16,7 +16,7 @@ import { ref, computed, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { readPref, writePref } from "../services/prefs.js";
-import JvButton from "./ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 
 const api = useApi();
 
@@ -103,7 +103,7 @@ function openEngines() {
         <strong>{{ gpu.name }}</strong> can run <strong>{{ engineSuggestion.name }}</strong> —
         voice cloning + paralinguistic tags. The default engine works today; this one sounds better.
       </span>
-      <JvButton variant="secondary" size="sm" label="Open Engines ➜" title="Install from the Engines page — size and progress shown there" @click="openEngines" />
+      <UiButton intent="secondary" size="small" label="Open Engines ➜" title="Install from the Engines page — size and progress shown there" @click="openEngines" />
     </div>
     <div v-for="d in detectedLocal" :key="d.baseUrl" class="recommend__row">
       <span class="recommend__ic">🧠</span>
@@ -112,7 +112,7 @@ function openEngines() {
         <template v-if="d.models?.length"> · {{ d.models[0] }}{{ d.models.length > 1 ? ` +${d.models.length - 1}` : "" }}</template>
         — connect it and Script attributes speakers automatically.
       </span>
-      <JvButton variant="secondary" size="sm" label="Connect" :loading="connecting === d.baseUrl" @click="connect(d)" />
+      <UiButton intent="secondary" size="small" label="Connect" :loading="connecting === d.baseUrl" @click="connect(d)" />
     </div>
   </div>
 </template>

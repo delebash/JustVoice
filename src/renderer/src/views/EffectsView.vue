@@ -17,7 +17,7 @@ import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import JvInput from "../components/ui/JvInput.vue";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 
@@ -158,7 +158,7 @@ onMounted(refresh);
           <button v-for="f in FILTERS" :key="f[0]" type="button" class="jv-pill" :class="filter === f[0] ? 'jv-pill--solid' : 'jv-pill--ghost'" @click="filter = f[0]">{{ f[1] }}</button>
         </div>
         <span class="jv-spacer" />
-        <JvButton variant="primary" size="sm" label="+ New chain preset" @click="startCreate" />
+        <UiButton intent="primary" size="small" label="+ New chain preset" @click="startCreate" />
       </div>
 
       <div v-if="loading" class="jv-muted effects-view__empty">Loading…</div>
@@ -181,8 +181,8 @@ onMounted(refresh);
             <td>{{ (p.chain || []).length }}</td>
             <td><span v-if="p.is_builtin" class="jv-pill jv-pill--ghost">built-in</span></td>
             <td class="jv-table__actions" @click.stop>
-              <JvButton variant="ghost" size="sm" label="Edit" @click="startEdit(p)" />
-              <JvButton variant="danger-outline" size="sm" label="Delete" :disabled="p.is_builtin" @click="deletePreset(p)" />
+              <UiButton intent="ghost" size="small" label="Edit" @click="startEdit(p)" />
+              <UiButton intent="danger-outline" size="small" label="Delete" :disabled="p.is_builtin" @click="deletePreset(p)" />
             </td>
           </tr>
         </tbody>

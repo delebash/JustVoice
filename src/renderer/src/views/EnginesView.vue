@@ -27,7 +27,7 @@ import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog, promptDialog } from "../services/dialog.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import JvTag from "../components/ui/JvTag.vue";
 import ProviderForm from "../components/ProviderForm.vue";
 import RecommendCard from "../components/RecommendCard.vue";
@@ -1171,7 +1171,7 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
           </span>
           <span class="desc">{{ pr.baseUrl }}</span>
           <span class="gsum">
-            <JvButton variant="ghost" size="sm" label="Edit" title="Edit this provider (opens the provider form)" @click="topTab = 'online'; startEditProvider(pr)" />
+            <UiButton intent="ghost" size="small" label="Edit" title="Edit this provider (opens the provider form)" @click="topTab = 'online'; startEditProvider(pr)" />
           </span>
         </div>
       </div>
@@ -1198,7 +1198,7 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
                  stay discoverable when something's in flight. -->
             <span v-if="_anyProgressForEngine(e.id)" class="meta">{{ (_anyProgressForEngine(e.id).phase || '').replaceAll('_', ' ') }} · click to expand</span>
             <span v-if="!_anyProgressForEngine(e.id) && engineNeedsInstall(e)" class="ev-badge none">engine not installed</span>
-            <JvButton v-if="!_anyProgressForEngine(e.id) && engineNeedsInstall(e)" variant="primary" size="sm"
+            <UiButton v-if="!_anyProgressForEngine(e.id) && engineNeedsInstall(e)" intent="primary" size="small"
               :label="busy[_engineKey(e.id)] === 'install' ? 'Installing…' : 'Install engine'" :disabled="busy[_engineKey(e.id)] != null"
               title="One-time: builds this engine's isolated venv. Models download separately afterwards."
               @click.stop="install(e, null)" />
@@ -1220,13 +1220,13 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
             <span class="vdesc" :title="v.description">{{ v.description }}</span>
             <span class="right">
               <span v-if="modelLoaded(e, v)" class="ev-badge loaded">● Loaded</span>
-              <JvButton v-if="modelLoaded(e, v)" variant="ghost" size="sm" label="Unload model"
+              <UiButton v-if="modelLoaded(e, v)" intent="ghost" size="small" label="Unload model"
                 title="Free the slot — weights stay on disk" @click="unload(e)" />
-              <JvButton v-if="modelLoaded(e, v) || (modelOnDisk(e, v) && v.on_disk === true)" variant="ghost" size="sm"
+              <UiButton v-if="modelLoaded(e, v) || (modelOnDisk(e, v) && v.on_disk === true)" intent="ghost" size="small"
                 label="Delete model" class="ev-danger"
                 :title="`Delete the downloaded weights — frees ${fmtDisk(v.size_mb)}`"
                 @click="deleteModel(e, v)" />
-              <JvButton v-if="!modelLoaded(e, v)" variant="primary" size="sm"
+              <UiButton v-if="!modelLoaded(e, v)" intent="primary" size="small"
                 :label="loadButtonLabel(e, v)"
                 :disabled="busy[_variantKey(e.id, v.id)] != null || busy[_engineKey(e.id)] != null || engineNeedsInstall(e)"
                 :title="modelOnDisk(e, v) ? `Load into the ${(e.kind || 'tts').toUpperCase()} slot` : `Download (${fmtDisk(v.size_mb)}) and load — one step`"
@@ -1266,14 +1266,14 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
               <!-- In flight → Cancel; terminal → Dismiss (clears the strip).
                    Without Dismiss the user was stuck staring at a FAILED
                    block they couldn't remove (user-reported 2026-06-15). -->
-              <JvButton
+              <UiButton
                 v-if="row.value.phase !== 'completed' && row.value.phase !== 'failed' && row.jobId"
-                variant="danger-outline" size="sm" label="Cancel"
+                intent="danger-outline" size="small" label="Cancel"
                 @click="cancelProgressRow(row)"
               />
-              <JvButton
+              <UiButton
                 v-else-if="row.value.phase === 'failed' || row.value.phase === 'completed'"
-                variant="ghost" size="sm" label="Dismiss"
+                intent="ghost" size="small" label="Dismiss"
                 @click="dismissProgressRow(row)"
               />
             </div>
@@ -1292,7 +1292,7 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
 
           <div class="ev-gfoot" v-if="e.isolation === 'venv' && e.status !== 'not_installed'">
             isolated venv
-            <JvButton variant="ghost" size="sm" label="Uninstall engine" class="ev-danger" style="margin-left:auto"
+            <UiButton intent="ghost" size="small" label="Uninstall engine" class="ev-danger" style="margin-left:auto"
               title="Remove this engine's venv and all its downloaded models" @click="uninstall(e)" />
           </div>
           <div class="ev-gfoot" v-else-if="e.isolation !== 'venv' && (e.status === 'installed' || e.status === 'loaded')">
@@ -1323,7 +1323,7 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
         <button v-for="c in ['all','tts','llm','embedding']" :key="c" type="button" class="ev-chip" :class="{ on: capOnline === c }" @click="capOnline = c"
         >{{ c === 'all' ? 'All' : c === 'embedding' ? 'EMBED' : c.toUpperCase() }}</button>
       </div>
-      <JvButton variant="primary" size="sm" label="+ Add provider" title="Connect a cloud or self-hosted API — no install, no downloads, no VRAM" @click="startNewProvider" />
+      <UiButton intent="primary" size="small" label="+ Add provider" title="Connect a cloud or self-hosted API — no install, no downloads, no VRAM" @click="startNewProvider" />
     </div>
 
     <div class="ev-costnote">
@@ -1339,7 +1339,7 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
         <span class="ev-dot off"></span>
         <div class="pmain"><span class="nm" style="color:var(--ink-3)">New provider</span></div>
         <span class="right">
-          <JvButton variant="ghost" size="sm" label="Cancel" @click="cancelEdit" />
+          <UiButton intent="ghost" size="small" label="Cancel" @click="cancelEdit" />
         </span>
       </div>
       <ProviderForm
@@ -1364,14 +1364,14 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
           <span class="msum">{{ pr.msum }}</span>
         </div>
         <span class="right">
-          <JvButton
-            variant="ghost" size="sm" label="Test"
+          <UiButton
+            intent="ghost" size="small" label="Test"
             :loading="!!rowTest[pr.id]?.busy"
             title="Ping the server and re-color the status dot"
             @click="testProviderRow(pr)"
           />
-          <JvButton
-            variant="ghost" size="sm" label="Edit"
+          <UiButton
+            intent="ghost" size="small" label="Edit"
             title="Edit inline — URL, key, capabilities, models"
             @click="editingKey === pr.id ? cancelEdit() : startEditProvider(pr)"
           />

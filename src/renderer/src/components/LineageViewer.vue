@@ -12,7 +12,7 @@
 import { ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
-import JvButton from "./ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 
 const props = defineProps({
   takeId: { type: String, default: null },
@@ -94,9 +94,9 @@ function fmtDate(iso) {
               <span v-if="n.is_default" class="jv-pill jv-pill--green">default</span>
               <span class="jv-muted lineage-node__time">{{ fmtDate(n.created_at) }}</span>
               <span class="jv-spacer" />
-              <JvButton
-                variant="ghost"
-                size="sm"
+              <UiButton
+                intent="ghost"
+                size="small"
                 label="▶"
                 :disabled="!n.audio_url"
                 @click="playNode(n)"

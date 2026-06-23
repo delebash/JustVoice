@@ -11,7 +11,7 @@
 import { computed, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import JvInput from "../components/ui/JvInput.vue";
 import JvTag from "../components/ui/JvTag.vue";
 
@@ -106,13 +106,13 @@ function verdictVariant(v) {
   <div class="cmp">
     <!-- Top action row -->
     <div class="cmp__toolbar">
-      <JvButton variant="secondary" size="sm" label="📂 Choose A" @click="pickA" />
-      <JvButton variant="secondary" size="sm" label="📂 Choose B" @click="pickB" />
-      <JvButton variant="secondary" size="sm" label="↻ Refresh from takes (soon)" :disabled="true" title="Coming soon — will pull A = current take, B = previous take from a chapter block" />
+      <UiButton intent="secondary" size="small" label="📂 Choose A" @click="pickA" />
+      <UiButton intent="secondary" size="small" label="📂 Choose B" @click="pickB" />
+      <UiButton intent="secondary" size="small" label="↻ Refresh from takes (soon)" :disabled="true" title="Coming soon — will pull A = current take, B = previous take from a chapter block" />
       <span class="jv-spacer" />
-      <JvButton
-        variant="primary"
-        size="sm"
+      <UiButton
+        intent="primary"
+        size="small"
         :loading="busy"
         :disabled="!fileA || !fileB"
         :label="busy ? 'Analyzing…' : 'Run analysis'"
@@ -177,7 +177,7 @@ function verdictVariant(v) {
 
       <div class="cmp__verdict-row">
         <strong>Verdict:</strong>
-        <JvTag :variant="verdictVariant(report.verdict)" :label="report.verdict || '—'" />
+        <JvTag :intent="verdictVariant(report.verdict)" :label="report.verdict || '—'" />
         <span class="jv-muted cmp__verdict-hint">classifier: identical / near-identical / similar / different / unrelated</span>
       </div>
 

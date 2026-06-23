@@ -5,7 +5,7 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
 import { readPref, writePref } from "../services/prefs.js";
-import JvButton from "../components/ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 import JvInput from "../components/ui/JvInput.vue";
 import JvTextarea from "../components/ui/JvTextarea.vue";
 import JvSelect from "../components/ui/JvSelect.vue";
@@ -681,10 +681,10 @@ function blendWithVoice() {
       >{{ f.label }} ({{ typeCounts[f.id] || 0 }})</button>
     </div>
     <span class="jv-spacer" />
-    <JvButton variant="secondary" size="sm" label="⬇ Import .justvoice.zip" @click="openModal('import')" />
-    <JvButton
-      variant="primary"
-      size="sm"
+    <UiButton intent="secondary" size="small" label="⬇ Import .justvoice.zip" @click="openModal('import')" />
+    <UiButton
+      intent="primary"
+      size="small"
       :disabled="!chatterboxLoaded"
       :title="chatterboxLoaded ? '' : 'Voice cloning requires Chatterbox loaded'"
       label="+ Clone new voice"
@@ -701,8 +701,8 @@ function blendWithVoice() {
   <details class="voices-view__add-more">
     <summary>Other ways to add a voice — Design from prose · Blend voices</summary>
     <div class="jv-btn-group" style="margin-top: 10px">
-      <JvButton variant="secondary" @click="openModal('design')">Design from prose (Qwen3)</JvButton>
-      <JvButton variant="secondary" @click="openModal('blend')">Blend voices</JvButton>
+      <UiButton intent="secondary" @click="openModal('design')">Design from prose (Qwen3)</UiButton>
+      <UiButton intent="secondary" @click="openModal('blend')">Blend voices</UiButton>
     </div>
     <p class="jv-muted" style="font-size: 11.5px; margin-top: 8px">
       <strong style="color: var(--ink);">Design</strong>: text-prompt → voice (Qwen3 native).
@@ -738,11 +738,11 @@ function blendWithVoice() {
           style="cursor: pointer"
         >
           <td @click.stop>
-            <JvButton variant="ghost" size="sm" :loading="previewingId === v.id" label="▶" :title="`Preview ${v.name}`" @click="previewVoice(v)" />
+            <UiButton intent="ghost" size="small" :loading="previewingId === v.id" label="▶" :title="`Preview ${v.name}`" @click="previewVoice(v)" />
           </td>
           <td>
             <strong>{{ v.name }}</strong>
-            <JvTag v-if="orphanIds.includes(v.id)" variant="danger" label="orphan" style="margin-left: 6px" />
+            <JvTag v-if="orphanIds.includes(v.id)" intent="danger" label="orphan" style="margin-left: 6px" />
           </td>
           <td>
             <!-- Click-cycle gender chip per #85. -->
@@ -754,7 +754,7 @@ function blendWithVoice() {
               @click="cycleGender(v)"
             >{{ (autoDetectGender(v) || "?").charAt(0).toUpperCase() }}</button>
           </td>
-          <td><JvTag :variant="voiceTypeVariant(v.source)" :label="v.source" /></td>
+          <td><JvTag :intent="voiceTypeVariant(v.source)" :label="v.source" /></td>
           <td>
             <span class="jv-mono jv-muted">{{ v.engine }}</span>
             <span
@@ -785,19 +785,19 @@ function blendWithVoice() {
           <td class="jv-muted">{{ v.channel_id || "Default" }}</td>
           <td class="jv-muted voices-view__castas" :title="(castAsByVoice[v.id] || []).join(', ')">{{ (castAsByVoice[v.id] || []).join(' · ') || "—" }}</td>
           <td class="jv-table__actions" @click.stop>
-            <JvButton variant="ghost" size="sm" label="⚙" :title="`Inspect ${v.name}`" @click="inspect(v)" />
-            <JvButton
+            <UiButton intent="ghost" size="small" label="⚙" :title="`Inspect ${v.name}`" @click="inspect(v)" />
+            <UiButton
               v-if="v.source === 'preset'"
-              variant="ghost"
-              size="sm"
+              intent="ghost"
+              size="small"
               :label="hiddenIds.has(v.id) ? '👁' : '🙈'"
               :title="hiddenIds.has(v.id) ? `Unhide ${v.name}` : `Hide ${v.name} — built-ins can't be deleted, but they can be tucked away`"
               @click="toggleHidden(v)"
             />
-            <JvButton
+            <UiButton
               v-if="v.source !== 'preset'"
-              variant="danger-outline"
-              size="sm"
+              intent="danger-outline"
+              size="small"
               label="✕"
               :title="`Delete ${v.name}`"
               @click="deleteVoice(v.id)"
@@ -808,25 +808,25 @@ function blendWithVoice() {
     <header class="voices-view__inspector-h">
       <h3>Voice inspector — {{ inspectedVoice.name }}</h3>
       <span class="jv-spacer" />
-      <JvButton
+      <UiButton
         v-if="inspectedEditable"
-        variant="primary"
-        size="sm"
+        intent="primary"
+        size="small"
         label="Save changes"
         :loading="editSaving"
         title="Rename / gender / language — PATCHes the stored voice"
         @click="saveVoiceEdit"
       />
       <span v-else class="jv-pill jv-pill--ghost" title="Engine presets ship with the engine — clone or blend to make an editable copy">preset · read-only</span>
-      <JvButton
-        variant="secondary"
-        size="sm"
+      <UiButton
+        intent="secondary"
+        size="small"
         label="Reset to defaults"
         :disabled="!voiceHasTweaks(inspectedVoice)"
         :title="voiceHasTweaks(inspectedVoice) ? 'Clears the gender override and unhides this voice' : 'Nothing overridden on this voice'"
         @click="resetVoice(inspectedVoice)"
       />
-      <JvButton variant="ghost" size="sm" label="Close" @click="inspectedId = null" />
+      <UiButton intent="ghost" size="small" label="Close" @click="inspectedId = null" />
     </header>
 
     <p v-if="!inspectedEditable" class="jv-muted voices-view__readonly-note">
@@ -865,7 +865,7 @@ function blendWithVoice() {
         <div class="voices-view__effects-row">
           <span v-if="!(inspectedVoice.default_effects?.length)" class="jv-muted">(none)</span>
           <span v-for="fx in (inspectedVoice.default_effects || [])" :key="fx" class="jv-pill jv-pill--ghost">{{ fx }}</span>
-          <JvButton variant="ghost" size="sm" :disabled="true" title="Per-voice default effect chain editing lands with the Effects integration" label="+ Add" />
+          <UiButton intent="ghost" size="small" :disabled="true" title="Per-voice default effect chain editing lands with the Effects integration" label="+ Add" />
         </div>
       </div>
     </div>
@@ -888,8 +888,8 @@ function blendWithVoice() {
           <td>{{ s.snr }}</td>
           <td class="jv-muted">{{ s.transcript }}</td>
           <td class="right">
-            <JvButton variant="ghost" size="sm" :disabled="true" title="Sample playback lands with /v1/voices/{id}/samples" label="▶" />
-            <JvButton variant="ghost" size="sm" :disabled="true" title="Sample delete lands with /v1/voices/{id}/samples" label="✕" />
+            <UiButton intent="ghost" size="small" :disabled="true" title="Sample playback lands with /v1/voices/{id}/samples" label="▶" />
+            <UiButton intent="ghost" size="small" :disabled="true" title="Sample delete lands with /v1/voices/{id}/samples" label="✕" />
           </td>
         </tr>
       </tbody>
@@ -906,13 +906,13 @@ function blendWithVoice() {
       <template v-if="inspectedEditable">
         <!-- Sample-collection flow isn't built yet — disabled so the UI
              doesn't claim an upload/record that never happens. -->
-        <JvButton variant="secondary" size="sm" :disabled="true" title="Coming soon — attach a WAV as a cloning sample" label="+ Add WAV file (soon)" />
-        <JvButton variant="secondary" size="sm" :disabled="true" title="Coming soon — in-app recorder with auto-trim + level meter" label="🎙️ Record in-app (soon)" />
-        <JvButton variant="secondary" size="sm" :disabled="true" title="Coming soon — promote a capture into this voice's samples" label="↗ Promote from Captures (soon)" />
+        <UiButton intent="secondary" size="small" :disabled="true" title="Coming soon — attach a WAV as a cloning sample" label="+ Add WAV file (soon)" />
+        <UiButton intent="secondary" size="small" :disabled="true" title="Coming soon — in-app recorder with auto-trim + level meter" label="🎙️ Record in-app (soon)" />
+        <UiButton intent="secondary" size="small" :disabled="true" title="Coming soon — promote a capture into this voice's samples" label="↗ Promote from Captures (soon)" />
       </template>
       <span class="jv-spacer" />
-      <JvButton variant="secondary" size="sm" label="🧪 Train LoRA" @click="trainLoraForVoice" />
-      <JvButton variant="secondary" size="sm" label="🔀 Blend with…" @click="blendWithVoice" />
+      <UiButton intent="secondary" size="small" label="🧪 Train LoRA" @click="trainLoraForVoice" />
+      <UiButton intent="secondary" size="small" label="🔀 Blend with…" @click="blendWithVoice" />
     </div>
   </div></td></tr>
         </template>
@@ -1020,12 +1020,12 @@ function blendWithVoice() {
                     <JvInput type="number" :modelValue="String(s.weight)" @update:modelValue="s.weight = $event" width="token" />
                   </td>
                   <td>
-                    <JvButton variant="ghost" size="sm" v-if="blendSources.length > 2" @click="removeBlendSource(idx)">Remove</JvButton>
+                    <UiButton intent="ghost" size="small" v-if="blendSources.length > 2" @click="removeBlendSource(idx)">Remove</UiButton>
                   </td>
                 </tr>
               </tbody>
             </table>
-            <JvButton variant="ghost" size="sm" style="margin-top: 8px;" @click="addBlendSource">+ Add source</JvButton>
+            <UiButton intent="ghost" size="small" style="margin-top: 8px;" @click="addBlendSource">+ Add source</UiButton>
             <p class="jv-muted" style="font-size: 12px; margin-top: 6px;">Weights normalize automatically. All source voices must belong to the selected engine.</p>
           </div>
         </template>
@@ -1033,10 +1033,10 @@ function blendWithVoice() {
       </div><!-- /.jv-modal__body -->
 
       <footer class="jv-modal__footer">
-        <JvButton variant="secondary" @click="modal = null">Cancel</JvButton>
-        <JvButton variant="primary" :disabled="busy || !valid" :loading="busy" @click="submit">
+        <UiButton intent="secondary" @click="modal = null">Cancel</UiButton>
+        <UiButton intent="primary" :disabled="busy || !valid" :loading="busy" @click="submit">
           {{ busy ? busyLabel : submitLabel }}
-        </JvButton>
+        </UiButton>
       </footer>
 
     </div>

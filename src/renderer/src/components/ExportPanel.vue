@@ -15,7 +15,7 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
-import JvButton from "./ui/JvButton.vue";
+import { UiButton } from "@delebash/llm-ui";
 
 const props = defineProps({
   project: { type: Object, required: true },
@@ -148,16 +148,16 @@ async function copyShowNotes() {
       <div class="exportp__row"><span>Also export</span><b>per-{{ copy.chapter.singular.toLowerCase() }} WAV + masters (zip)</b></div>
       <div class="exportp__row"><span>Master</span><b>{{ project.mastering_preset || (project.project_type === "audiobook" ? "ACX −20 LUFS" : "default") }}</b></div>
       <div class="exportp__actions">
-        <JvButton variant="primary" :loading="exportBusy === 'm4b'" :disabled="!!exportBusy" label="⬇ Export M4B" @click="exportM4B" />
-        <JvButton variant="secondary" :loading="exportBusy === 'zip'" :disabled="!!exportBusy" :label="`⬇ ${copy.chapter.singular} WAVs (zip)`" @click="exportChapterWavs" />
-        <JvButton v-if="project.project_type === 'podcast'" variant="secondary" label="📝 Show notes" title="Draft episode show notes from the segments (LLM)" @click="generateShowNotes" />
+        <UiButton intent="primary" :loading="exportBusy === 'm4b'" :disabled="!!exportBusy" label="⬇ Export M4B" @click="exportM4B" />
+        <UiButton intent="secondary" :loading="exportBusy === 'zip'" :disabled="!!exportBusy" :label="`⬇ ${copy.chapter.singular} WAVs (zip)`" @click="exportChapterWavs" />
+        <UiButton v-if="project.project_type === 'podcast'" intent="secondary" label="📝 Show notes" title="Draft episode show notes from the segments (LLM)" @click="generateShowNotes" />
       </div>
       <div v-if="showNotes" class="exportp__notes">
         <div class="exportp__h" style="margin-bottom:6px">
           <strong>Show notes</strong>
           <span class="jv-spacer" />
-          <JvButton variant="ghost" size="sm" label="⧉ Copy" title="Copy markdown" @click="copyShowNotes" />
-          <JvButton variant="ghost" size="sm" label="✕" @click="showNotes = null" />
+          <UiButton intent="ghost" size="small" label="⧉ Copy" title="Copy markdown" @click="copyShowNotes" />
+          <UiButton intent="ghost" size="small" label="✕" @click="showNotes = null" />
         </div>
         <pre class="exportp__notes-pre">{{ showNotes.markdown }}</pre>
       </div>
@@ -167,7 +167,7 @@ async function copyShowNotes() {
       <div class="exportp__h">
         <strong>ACX checklist</strong>
         <span class="jv-spacer" />
-        <JvButton variant="ghost" size="sm" :loading="exportQcBusy" label="↻ Re-check" title="Render every chapter (cache-served when unchanged) and measure RMS + peak against the ACX limits" @click="runExportQc" />
+        <UiButton intent="ghost" size="small" :loading="exportQcBusy" label="↻ Re-check" title="Render every chapter (cache-served when unchanged) and measure RMS + peak against the ACX limits" @click="runExportQc" />
       </div>
       <p v-if="exportQcBusy" class="jv-muted">Rendering + measuring {{ copy.chapter.plural.toLowerCase() }} — cached audio makes this fast…</p>
       <div v-else-if="qcError" class="jv-banner jv-banner--warn" style="font-size:12px">{{ qcError }}</div>
