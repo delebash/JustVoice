@@ -3,9 +3,8 @@
 import { ref, computed, onBeforeUnmount } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
-import { UiButton, UiInput } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiField } from "@delebash/llm-ui";
 import JvSelect from "../components/ui/JvSelect.vue";
-import JvField from "../components/ui/JvField.vue";
 
 const api = useApi();
 
@@ -138,14 +137,14 @@ onBeforeUnmount(revokeMastered);
         clipping ratio, and a SHA-256 fingerprint.
       </p>
 
-      <JvField label="WAV file" layout="block">
+      <UiField label="WAV file" layout="block">
         <input
           type="file"
           accept="audio/wav,.wav"
           class="file-input"
           @change="analyzeFile = $event.target.files[0]"
         />
-      </JvField>
+      </UiField>
 
       <div class="jv-row" style="margin-top: 12px; align-items: center;">
         <UiButton intent="primary" :disabled="analyzeBusy || !analyzeFile" :loading="analyzeBusy" @click="runAnalyze">
@@ -209,30 +208,30 @@ onBeforeUnmount(revokeMastered);
       </p>
 
       <div class="master-grid">
-        <JvField label="WAV file" layout="block">
+        <UiField label="WAV file" layout="block">
           <input
             type="file"
             accept="audio/wav,.wav"
             class="file-input"
             @change="masterFile = $event.target.files[0]"
           />
-        </JvField>
+        </UiField>
 
-        <JvField label="Preset" layout="block">
+        <UiField label="Preset" layout="block">
           <JvSelect v-model="masterPreset" :options="PRESET_OPTIONS" width="name" />
-        </JvField>
+        </UiField>
 
-        <JvField label="Title (optional)" layout="block">
+        <UiField label="Title (optional)" layout="block">
           <UiInput type="text" v-model="masterTitle" placeholder="Chapter 1" width="name" />
-        </JvField>
+        </UiField>
 
-        <JvField label="Author (optional)" layout="block">
+        <UiField label="Author (optional)" layout="block">
           <UiInput type="text" v-model="masterAuthor" placeholder="Author name" width="name" />
-        </JvField>
+        </UiField>
 
-        <JvField label="Book / album (optional)" layout="block" style="grid-column: 1 / -1;">
+        <UiField label="Book / album (optional)" layout="block" style="grid-column: 1 / -1;">
           <UiInput type="text" v-model="masterBook" placeholder="Book title" width="name" />
-        </JvField>
+        </UiField>
       </div>
 
       <div class="jv-row" style="margin-top: 12px; align-items: center;">

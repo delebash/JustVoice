@@ -6,8 +6,7 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton, UiInput, UiTextarea } from "@delebash/llm-ui";
-import JvField from "../components/ui/JvField.vue";
+import { UiButton, UiInput, UiTextarea, UiField } from "@delebash/llm-ui";
 import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { useVoicesStore } from "../stores/voices.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -783,7 +782,7 @@ onMounted(async () => {
       <h3 class="jv-section__title">Delivery overlay</h3>
       <div class="jv-card">
         <div class="generate-view__grid">
-          <JvField layout="block">
+          <UiField layout="block">
             <template #label>
               Speed <span class="jv-muted generate-view__label-hint">slider 0.5–2.0×</span>
             </template>
@@ -792,8 +791,8 @@ onMounted(async () => {
               <UiInput v-model.number="speed" type="number" size="small" class="generate-view__num" />
               <span class="jv-muted">×</span>
             </div>
-          </JvField>
-          <JvField layout="block">
+          </UiField>
+          <UiField layout="block">
             <template #label>
               Pitch <span class="jv-muted generate-view__label-hint">slider ±{{ Math.max(Math.abs(pitchMin), Math.abs(pitchMax)) }} st</span>
             </template>
@@ -802,11 +801,11 @@ onMounted(async () => {
               <UiInput v-model.number="pitch" type="number" size="small" class="generate-view__num" :disabled="!pitchNative && !pitchPostProcess" />
               <span class="jv-muted">st</span>
             </div>
-            <span v-if="pitchNative" class="jv-field__hint">Native — engine accepts pitch directly.</span>
-            <span v-else-if="pitchPostProcess" class="jv-field__hint">Post-process — applied to output WAV (pedalboard).</span>
-            <span v-else class="jv-field__hint">Disabled — no pitch shift available for this engine.</span>
-          </JvField>
-          <JvField layout="block">
+            <span v-if="pitchNative" class="ui-field__hint">Native — engine accepts pitch directly.</span>
+            <span v-else-if="pitchPostProcess" class="ui-field__hint">Post-process — applied to output WAV (pedalboard).</span>
+            <span v-else class="ui-field__hint">Disabled — no pitch shift available for this engine.</span>
+          </UiField>
+          <UiField layout="block">
             <template #label>
               Gain <span class="jv-muted generate-view__label-hint">slider ±12 dB</span>
             </template>
@@ -815,8 +814,8 @@ onMounted(async () => {
               <UiInput v-model.number="gain" type="number" size="small" class="generate-view__num" />
               <span class="jv-muted">dB</span>
             </div>
-          </JvField>
-          <JvField layout="block">
+          </UiField>
+          <UiField layout="block">
             <template #label>
               Temperature <span class="jv-muted generate-view__label-hint">slider 0–1</span>
             </template>
@@ -824,8 +823,8 @@ onMounted(async () => {
               <input type="range" v-model.number="temperature" min="0" max="1" step="0.05" class="generate-view__range" />
               <UiInput v-model.number="temperature" type="number" size="small" class="generate-view__num" />
             </div>
-          </JvField>
-          <JvField layout="block">
+          </UiField>
+          <UiField layout="block">
             <template #label>
               Pause before → after <span class="jv-muted generate-view__label-hint">ms</span>
             </template>
@@ -834,13 +833,13 @@ onMounted(async () => {
               <span class="jv-muted">→</span>
               <UiInput v-model.number="pauseAfter" type="number" size="small" class="generate-view__pause-num" />
             </div>
-          </JvField>
-          <JvField label="Seed" layout="block">
+          </UiField>
+          <UiField label="Seed" layout="block">
             <div class="generate-view__paired generate-view__paired--seed">
               <UiInput v-model="seed" class="generate-view__seed-input" />
               <UiButton intent="ghost" size="small" label="🎲 randomize" @click="randomizeSeed" />
             </div>
-          </JvField>
+          </UiField>
         </div>
 
         <div class="jv-divider" />
@@ -853,11 +852,11 @@ onMounted(async () => {
              tags" so users know they're available. -->
 
         <!-- Capability-gated Delivery direction textarea. Uses the
-             same `JvField + #label slot` shape as the Qwen3 example
+             same `UiField + #label slot` shape as the Qwen3 example
              below so the eyebrow renders uppercase and the
              enabled/disabled pill sits inline with the label — same
              pattern as `Raw engine knobs (JSON)`. -->
-        <JvField layout="block" style="margin-top: 16px">
+        <UiField layout="block" style="margin-top: 16px">
           <template #label>
             Delivery direction
             <span v-if="!supportsFreeform" class="jv-pill jv-pill--ghost">disabled · requires Qwen3-TTS or LuxTTS</span>
@@ -870,7 +869,7 @@ onMounted(async () => {
             :placeholder="deliveryDirectionPlaceholder"
             class="generate-view__delivery-textarea"
           />
-          <span class="jv-field__hint" v-if="!supportsFreeform && (supportsEmotion || supportsParalinguistic)">
+          <span class="ui-field__hint" v-if="!supportsFreeform && (supportsEmotion || supportsParalinguistic)">
             {{ currentEngine?.name || "This engine" }} doesn't accept free-form delivery prose.
             Use the
             <strong>🏷️ Insert tag</strong> button (or type <code class="jv-mono">/</code> in the text)
@@ -878,13 +877,13 @@ onMounted(async () => {
             <span v-if="supportsEmotion">emotion</span><span v-if="supportsEmotion && supportsParalinguistic"> and </span><span v-if="supportsParalinguistic">{{ paralinguisticTagSet?.category }}</span>
             tags inline instead.
           </span>
-        </JvField>
+        </UiField>
 
         <!-- Style prompt — Qwen3-specific. Sits under Delivery direction
              because both are about shaping the line's tone. Gated on the
              engine declaring `supports_style_prompt` in its capability
              manifest (only Qwen3 today). -->
-        <JvField v-if="supportsStylePrompt" layout="block" style="margin-top: 12px">
+        <UiField v-if="supportsStylePrompt" layout="block" style="margin-top: 12px">
           <template #label>
             Style prompt <span class="jv-muted generate-view__label-hint">optional · {{ currentEngine?.name }}-specific</span>
           </template>
@@ -892,10 +891,10 @@ onMounted(async () => {
             v-model="stylePrompt"
             placeholder="warm narrative voice, calm tempo"
           />
-          <span class="jv-field__hint">
+          <span class="ui-field__hint">
             Short tone/style descriptor for the engine. Different from Delivery direction — the style prompt sets a consistent voice character, the delivery direction shapes THIS line's delivery.
           </span>
-        </JvField>
+        </UiField>
 
         <!-- Engine-specific knobs — rendered straight from the engine's
              capability manifest (server/justvoice/engines/capability_details.py).
@@ -907,7 +906,7 @@ onMounted(async () => {
           <div class="jv-divider" />
           <h4 class="generate-view__knobs-h">{{ currentEngine?.name || "Engine" }}-specific knobs</h4>
           <div class="generate-view__grid">
-            <JvField v-for="k in primaryEngineKnobs" :key="k.key" layout="block">
+            <UiField v-for="k in primaryEngineKnobs" :key="k.key" layout="block">
               <template #label>
                 {{ k.label }}
                 <span v-if="k.hint" class="jv-muted generate-view__label-hint">{{ k.hint }}</span>
@@ -926,7 +925,7 @@ onMounted(async () => {
                   :min="k.min" :max="k.max" :step="k.step"
                 />
               </div>
-            </JvField>
+            </UiField>
           </div>
         </template>
 
@@ -938,7 +937,7 @@ onMounted(async () => {
             Power-user controls for {{ currentEngine?.name }}. Defaults work for most cases — change only if you know what each knob affects.
           </p>
           <div class="generate-view__grid generate-view__grid--advanced">
-            <JvField v-for="k in advancedEngineKnobs" :key="k.key" layout="block">
+            <UiField v-for="k in advancedEngineKnobs" :key="k.key" layout="block">
               <template #label>
                 {{ k.label }}
                 <span v-if="k.hint" class="jv-muted generate-view__label-hint">{{ k.hint }}</span>
@@ -957,7 +956,7 @@ onMounted(async () => {
                   :min="k.min" :max="k.max" :step="k.step"
                 />
               </div>
-            </JvField>
+            </UiField>
           </div>
         </details>
 
@@ -1180,7 +1179,7 @@ onMounted(async () => {
 
 /* In-label hint — the "slider 0.5–2.0×" suffix that sits after the
    field label. The parent label is uppercase + letter-spaced via the
-   global .jv-field__label rule; this overrides the case + weight back
+   global .ui-field__label rule; this overrides the case + weight back
    to regular so the hint reads as a quiet annotation rather than a
    second eyebrow. Matches preview L434/442/450/458 muted-span pattern. */
 .generate-view__label-hint {
@@ -1212,12 +1211,12 @@ onMounted(async () => {
 .generate-view__advanced > summary:hover { color: var(--ink); }
 
 /* Subordinate textareas (delivery direction / engine JSON / Qwen3
-   example) override the global jv-textarea 96px floor with the
+   example) override the global ui-textarea 96px floor with the
    preview's 60–64px floors. */
 .generate-view__delivery-textarea { min-height: 64px; }
 
 /* Engine-specific knobs section header — small uppercase eyebrow,
-   same treatment as the global jv-field__label so it lines up with
+   same treatment as the global ui-field__label so it lines up with
    the "Speed" / "Temperature" / etc. labels above. */
 .generate-view__knobs-h {
   margin: 0 0 12px;

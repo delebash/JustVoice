@@ -11,9 +11,8 @@ import { onMounted, ref } from "vue";
 import { channelsService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton, UiInput, UiTextarea } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiField } from "@delebash/llm-ui";
 import JvCheckbox from "../components/ui/JvCheckbox.vue";
-import JvField from "../components/ui/JvField.vue";
 
 const channels = ref([]);
 const editing = ref({ id: null, name: "", device_ids: [], is_default: false });
@@ -134,11 +133,11 @@ onMounted(() => {
     <section class="jv-card jv-card--soft editor-card">
       <h3 class="jv-section__title" style="margin-bottom: 16px;">{{ editing.id ? "Edit channel" : "Add channel" }}</h3>
 
-      <JvField label="Name" layout="block">
+      <UiField label="Name" layout="block">
         <UiInput v-model="editing.name" placeholder="e.g. OBS virtual mic" width="name" />
-      </JvField>
+      </UiField>
 
-      <JvField label="Devices (comma-separated IDs)" layout="block">
+      <UiField label="Devices (comma-separated IDs)" layout="block">
         <UiTextarea
           :model-value="editing.device_ids.join(', ')"
           placeholder="device-id-1, device-id-2"
@@ -151,14 +150,14 @@ onMounted(() => {
             <li v-for="d in tauriDevices" :key="d.id">{{ d.name }} <code class="jv-mono">{{ d.id }}</code></li>
           </ul>
         </details>
-      </JvField>
+      </UiField>
 
-      <JvField label="" layout="block" style="margin-top: 8px;">
+      <UiField label="" layout="block" style="margin-top: 8px;">
         <JvCheckbox
           v-model="editing.is_default"
           label="Default channel (used when a voice has no explicit channel assignment)"
         />
-      </JvField>
+      </UiField>
 
       <div class="jv-btn-group" style="margin-top: 16px;">
         <UiButton intent="primary" :disabled="!editing.name" :label="editing.id ? 'Update' : 'Add'" @click="save" />

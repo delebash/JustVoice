@@ -5,10 +5,9 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
 import { readPref, writePref } from "../services/prefs.js";
-import { UiButton, UiInput, UiTextarea } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiField } from "@delebash/llm-ui";
 import JvSelect from "../components/ui/JvSelect.vue";
 import JvTag from "../components/ui/JvTag.vue";
-import JvField from "../components/ui/JvField.vue";
 import EmptyState from "../components/EmptyState.vue";
 import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
@@ -950,51 +949,51 @@ function blendWithVoice() {
         <!-- Engine + Name (all modes) -->
         <div class="jv-row" style="align-items: flex-end;">
           <div style="flex: 1;">
-            <JvField label="Engine" layout="block">
+            <UiField label="Engine" layout="block">
               <JvSelect v-model="selectedEngine" :options="engineOptions" />
-            </JvField>
+            </UiField>
           </div>
           <div style="flex: 1;">
-            <JvField label="Voice name" layout="block">
+            <UiField label="Voice name" layout="block">
               <UiInput v-model="voiceName" placeholder="e.g. Sarah" />
-            </JvField>
+            </UiField>
           </div>
         </div>
 
         <!-- Clone fields -->
         <template v-if="modal === 'clone'">
-          <JvField label="Reference audio (3–30 s WAV / MP3 / M4A / FLAC)" layout="block" style="margin-top: 14px;">
+          <UiField label="Reference audio (3–30 s WAV / MP3 / M4A / FLAC)" layout="block" style="margin-top: 14px;">
             <input type="file" accept="audio/*" class="jv-file-input" @change="cloneFile = $event.target.files[0]" />
-          </JvField>
-          <JvField label="Transcript of clip (optional — improves cloning fidelity)" layout="block" style="margin-top: 14px;">
+          </UiField>
+          <UiField label="Transcript of clip (optional — improves cloning fidelity)" layout="block" style="margin-top: 14px;">
             <UiTextarea v-model="cloneTranscript" placeholder="What's actually said in the reference clip — engines that support text-conditioned cloning use this." :rows="3" />
-          </JvField>
+          </UiField>
         </template>
 
         <!-- Design fields -->
         <template v-else-if="modal === 'design'">
-          <JvField label="Prose description" layout="block" style="margin-top: 14px;">
+          <UiField label="Prose description" layout="block" style="margin-top: 14px;">
             <UiTextarea v-model="designPrompt" placeholder="a calm middle-aged British man, warm and unhurried" :rows="4" />
-          </JvField>
+          </UiField>
           <p class="jv-muted" style="font-size: 12px; margin-top: 6px;">Qwen3-native via the CustomVoice design path. Other engines may approximate from the prompt as a fallback.</p>
         </template>
 
         <!-- Import fields -->
         <template v-else-if="modal === 'import'">
-          <JvField label="Audio clip (WAV preferred)" layout="block" style="margin-top: 14px;">
+          <UiField label="Audio clip (WAV preferred)" layout="block" style="margin-top: 14px;">
             <input type="file" accept="audio/*" class="jv-file-input" @change="importFile = $event.target.files[0]" />
-          </JvField>
-          <JvField label="Transcript (optional)" layout="block" style="margin-top: 14px;">
+          </UiField>
+          <UiField label="Transcript (optional)" layout="block" style="margin-top: 14px;">
             <UiTextarea v-model="importTranscript" placeholder="What's said in the clip." :rows="3" />
-          </JvField>
+          </UiField>
           <p class="jv-muted" style="font-size: 12px; margin-top: 6px;">Imported clips are stored as-is. For voice cloning use the Clone flow.</p>
         </template>
 
         <!-- Blend fields -->
         <template v-else-if="modal === 'blend'">
-          <JvField label="Interpolation strategy" layout="block" style="margin-top: 14px;">
+          <UiField label="Interpolation strategy" layout="block" style="margin-top: 14px;">
             <JvSelect v-model="blendStrategy" :options="BLEND_STRATEGIES" />
-          </JvField>
+          </UiField>
 
           <div style="margin-top: 14px;">
             <p class="jv-muted" style="font-size: 11px; text-transform: uppercase; font-weight: 600; letter-spacing: .04em; margin-bottom: 8px;">Source voices + weights</p>

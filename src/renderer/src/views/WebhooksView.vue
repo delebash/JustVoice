@@ -9,8 +9,7 @@ import { onMounted, ref } from "vue";
 import { webhooksService } from "../services/projects.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton, UiInput } from "@delebash/llm-ui";
-import JvField from "../components/ui/JvField.vue";
+import { UiButton, UiInput, UiField } from "@delebash/llm-ui";
 import JvCheckbox from "../components/ui/JvCheckbox.vue";
 
 const EVENT_OPTIONS = [
@@ -186,11 +185,11 @@ justvoice.transcribe      {audio} → text</pre>
     <section v-if="showAdd" class="jv-card jv-card--soft editor-card">
       <h3 class="jv-section__title" style="margin-bottom: 16px;">New webhook subscription</h3>
 
-      <JvField label="URL" layout="block">
+      <UiField label="URL" layout="block">
         <UiInput type="url" v-model="adding.url" placeholder="https://your-server/webhook" width="url" />
-      </JvField>
+      </UiField>
 
-      <JvField label="Events" layout="block">
+      <UiField label="Events" layout="block">
         <div class="events-grid">
           <JvCheckbox
             v-for="e in EVENT_OPTIONS"
@@ -200,11 +199,11 @@ justvoice.transcribe      {audio} → text</pre>
             @update:model-value="toggleEvent(e)"
           />
         </div>
-      </JvField>
+      </UiField>
 
-      <JvField label="Secret (auto-generated if blank)" layout="block">
+      <UiField label="Secret (auto-generated if blank)" layout="block">
         <UiInput type="text" v-model="adding.secret" placeholder="32 random bytes recommended" width="url" />
-      </JvField>
+      </UiField>
 
       <div class="jv-btn-group" style="margin-top: 16px;">
         <UiButton intent="primary" label="Create" @click="createWebhook" />

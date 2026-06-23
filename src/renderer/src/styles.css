@@ -782,44 +782,11 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
   color: var(--ink-2);
 }
 
-/* Field block (preview L119-124) */
-.jv-field {
-  display: grid;
-  grid-template-columns: 160px 1fr;
-  gap: 14px;
-  align-items: center;
-  margin: 10px 0;
-  font-size: 13px;
-}
-.jv-field > label {
-  color: var(--ink-2);
-  font-size: 13px;
-}
-/* `.jv-field__label` is the explicit BEM block-label class. Always
-   renders as the uppercase eyebrow regardless of how the wrapper is
-   composed, so per-view custom layouts get the same look as a plain
-   `<JvField layout="block">`. User preference confirmed 2026-06-09:
-   sub-headers / field labels uniformly all-caps. */
-.jv-field__label,
-.jv-field--block > label {
-  display: block;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-.jv-field--block { display: block; }
-.jv-field__hint {
-  display: block;
-  font-size: 11px;
-  color: var(--ink-3);
-  margin-top: 4px;
-}
+/* Field block (.ui-field*) now comes from the shared kit (@delebash/llm-ui),
+   tuned via JV's token bridge. */
 
 /* Form layout primitives (added 2026-06-10 — plan Q6 / Slice 1)
-   Use these instead of .jv-field for new forms. Label column self-sizes
+   Use these instead of .ui-field for new forms. Label column self-sizes
    to its content (no fixed pixel column) so short-label sections don't
    waste space and long-label sections don't truncate. */
 .jv-form-section {

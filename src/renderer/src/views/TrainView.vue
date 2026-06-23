@@ -4,10 +4,9 @@ import { ref, onMounted, onActivated, onDeactivated, onUnmounted, computed } fro
 import { useApi } from "../stores/api.js";
 import { pushToast } from "../services/toastBridge.js";
 import { confirmDialog } from "../services/dialog.js";
-import { UiButton, UiInput } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiField } from "@delebash/llm-ui";
 import JvSelect from "../components/ui/JvSelect.vue";
 import JvTag from "../components/ui/JvTag.vue";
-import JvField from "../components/ui/JvField.vue";
 import { useEnginesStore } from "../stores/engines.js";
 import { useVoicesStore } from "../stores/voices.js";
 
@@ -258,22 +257,22 @@ onUnmounted(stopPolling);
       <div class="train-group">
         <span class="jv-eyebrow">What to train</span>
         <div class="train-row">
-          <JvField label="New voice name" layout="block">
+          <UiField label="New voice name" layout="block">
             <UiInput v-model="trainName" placeholder="Old Crow-trained" width="name" />
-          </JvField>
-          <JvField label="Base engine" layout="block">
+          </UiField>
+          <UiField label="Base engine" layout="block">
             <JvSelect v-model="trainEngine" :options="engineOptions" placeholder="Pick an engine…" width="name" />
-          </JvField>
-          <JvField label="Method" layout="block">
+          </UiField>
+          <UiField label="Method" layout="block">
             <JvSelect v-model="trainMethod" :options="TRAIN_METHODS.map((m) => ({ label: m.label, value: m.id }))" width="name" />
-          </JvField>
-          <JvField label="Base voice (optional)" layout="block">
+          </UiField>
+          <UiField label="Base voice (optional)" layout="block">
             <JvSelect
               v-model="trainBaseVoice"
               :options="[{ label: '— none —', value: '' }, ...voiceOptions]"
               width="name"
             />
-          </JvField>
+          </UiField>
         </div>
       </div>
 
@@ -317,30 +316,30 @@ onUnmounted(stopPolling);
           Pre-flight QC — samples failing these are rejected before training starts.
         </p>
         <div class="train-row">
-          <JvField label="SNR threshold (dB)" layout="block">
+          <UiField label="SNR threshold (dB)" layout="block">
             <UiInput v-model.number="trainSnrThreshold" type="number" placeholder="30" width="token" />
-          </JvField>
-          <JvField label="Max clipping ratio" layout="block">
+          </UiField>
+          <UiField label="Max clipping ratio" layout="block">
             <UiInput v-model.number="trainClipRatio" type="number" step="0.001" placeholder="0.002" width="token" />
-          </JvField>
-          <JvField label="Max silence ratio" layout="block">
+          </UiField>
+          <UiField label="Max silence ratio" layout="block">
             <UiInput v-model.number="trainSilenceRatio" type="number" step="0.01" placeholder="0.35" width="token" />
-          </JvField>
+          </UiField>
         </div>
       </div>
 
       <div class="train-group">
         <span class="jv-eyebrow">Run settings</span>
         <div class="train-row">
-          <JvField label="Steps" layout="block">
+          <UiField label="Steps" layout="block">
             <UiInput v-model.number="trainSteps" type="number" placeholder="5000" width="token" />
-          </JvField>
-          <JvField label="Learning rate" layout="block">
+          </UiField>
+          <UiField label="Learning rate" layout="block">
             <UiInput v-model="trainLearningRate" type="number" placeholder="engine default" width="token" />
-          </JvField>
-          <JvField label="Queue concurrency" layout="block">
+          </UiField>
+          <UiField label="Queue concurrency" layout="block">
             <UiInput v-model.number="trainConcurrency" type="number" placeholder="1" width="token" />
-          </JvField>
+          </UiField>
         </div>
       </div>
 
