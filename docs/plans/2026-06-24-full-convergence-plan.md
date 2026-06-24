@@ -116,6 +116,21 @@ just-llm-runner       Python LLM core (DONE)
    `applyAppearance(config)` machinery + a per-app knob **catalog**. JV adopts
    the engine with a JV-appropriate catalog (no editor/manuscript knobs) → JV
    gains real theming; JW keeps its full catalog.
+   - ✅ **Slice 1 (engine → kit; JW adopts) done.** Kit
+     `common/services/appearance.js` = the generic engine (`applyAppearance(cfg,
+     {extraApply})` + mode/accent/gold/functional-hue/font/button-knob/tint/ink/
+     scale/nav-typography application + system-pref listener) + all generic
+     catalogs + `migrateAppearance`/`DEFAULT_APPEARANCE`. JW's `appearance.js`
+     slimmed to: re-export the shared catalogs + JW-specific `PAPER_TINTS`/
+     `THEME_PRESETS`/`DEFAULT` (brand + editor) + an `editorExtraApply` hook for
+     the manuscript-editor vars. **JW visual parity verified** — build clean,
+     smoke 25/25, screenshot pixel-identical (accent-hue 14, Spline Sans,
+     Fraunces). The public kit index now `export *`s from `common/`.
+   - ⏭ **Slice 2 (JV):** rewrite JV `tokens.css` → hue-driven oklch (default =
+     JV green), adopt the kit engine + a JV catalog (no editor knobs), preserve
+     JV's default look.
+   - ⏭ **Slice 3 (JV):** Settings → Appearance surface (accent/font/button/tint
+     pickers) + JV appearance store + boot wiring.
 3. **modal system + AppDialog** (T5) — shared self-contained `AppModal` (scoped
    styles = canonical look) + `AppDialog` host on top of it. Migrate JV's 16
    hand-rolled modals + JW's ~11 onto it; retire `.jv-overlay`/`.jv-modal`.
