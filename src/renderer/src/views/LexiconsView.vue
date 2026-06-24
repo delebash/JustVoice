@@ -14,7 +14,7 @@ import { computed, nextTick, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
-import { UiButton, UiInput, UiTag, UiChip, UiSelect } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTag, UiChip, UiSelect, AppModal } from "@delebash/llm-ui";
 import { EmptyState } from "@delebash/llm-ui";
 import { useLexiconsStore } from "../stores/lexicons.js";
 import { useProjectsStore } from "../stores/projects.js";
@@ -430,17 +430,7 @@ onMounted(async () => {
     </table>
 
     <!-- ── Editor dialog — draft + Save/Cancel (canonical shell) ────── -->
-    <div v-if="dialogOpen && draft" class="jv-overlay" @click.self="closeDialog">
-      <div class="jv-modal lex__modal">
-        <header class="jv-modal__header">
-          <div class="jv-modal__titleblock">
-            <span class="jv-modal__eyebrow">{{ creating ? "New lexicon" : "Lexicon" }}</span>
-            <h3 class="jv-modal__title">{{ draft.name || "Untitled lexicon" }}</h3>
-          </div>
-          <button type="button" class="jv-modal__close" title="Cancel" @click="closeDialog">✕</button>
-        </header>
-
-        <div class="jv-modal__body">
+    <AppModal v-if="dialogOpen && draft" :eyebrow="creating ? 'New lexicon' : 'Lexicon'" :title="draft.name || 'Untitled lexicon'" :max-width="'860px'" dismissable @close="closeDialog">
           <div class="lex__field">
             <label>Name</label>
             <UiInput ref="nameInputEl" width="name" v-model="draft.name" placeholder="e.g. Stillwater proper names" @keydown.enter.prevent />
@@ -526,16 +516,14 @@ onMounted(async () => {
             <UiButton intent="secondary" size="small" label="⬇ Merge file" @click="chooseImportMerge" />
             <UiButton intent="secondary" size="small" label="⬆ Export" @click="exportLexicon" />
           </div>
-        </div>
 
-        <footer class="jv-modal__footer">
+        <template #footer>
           <span class="jv-muted lex__count">{{ draft.entries.length }} entr{{ draft.entries.length === 1 ? "y" : "ies" }}</span>
           <span class="jv-spacer" />
           <UiButton intent="secondary" label="Cancel" @click="closeDialog" />
           <UiButton intent="primary" label="Save" :disabled="!canSave" @click="saveDialog" />
-        </footer>
-      </div>
-    </div>
+        </template>
+    </AppModal>
 
     <input ref="fileInputNew" type="file" accept=".justlex.json,application/json" style="display:none" @change="importNewFromFile" />
     <input ref="fileInputMerge" type="file" accept=".justlex.json,application/json" style="display:none" @change="importIntoDraft" />
@@ -558,7 +546,6 @@ onMounted(async () => {
   font-size: 11.5px;
 }
 
-.lex__modal { width: min(860px, calc(100vw - 32px)); }
 .lex__count { font-size: 12px; }
 .lex__spacer { flex: 1; }
 .lex__entry-actions { white-space: nowrap; }
