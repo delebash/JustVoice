@@ -1,30 +1,26 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Backend base URL.
+// Backend base URL config for JustVoice.
 //
-// Two serving modes, and we must pick the right API origin for each:
+// The origin-aware resolver is shared (kit `makeOriginAwareResolver`): when the
+// server hosts the UI at its own origin, use that origin (same-origin, no CORS);
+// otherwise — the Vite dev server (1430/1431) or the Tauri webview
+// (tauri://localhost) — fall back to the fixed loopback port. This file supplies
+// JV's per-app dev ports + fallback, layers the runtime `jt:server` override on
+// top, and is what main.js hands to configureServerApi() at boot.
 //
-//  1. Server-served UI (headless `justvoice-server serve`, or any case where the
-//     Python server hosts dist/ at its own origin). Here the API lives on the
-//     SAME origin the page was loaded from — use window.location.origin so it
-//     works on whatever port/host the server happens to bind. Same-origin also
-//     sidesteps CORS entirely.
-//
-//  2. Vite dev server (port 1430) or the packaged Tauri webview
-//     (tauri://localhost — not a real HTTP server). There the page origin is
-//     NOT the API, so fall back to the fixed loopback port the sidecar binds.
-//
-// Override either with VITE_SERVER_URL at build/dev time.
-const FALLBACK = import.meta.env.VITE_SERVER_URL || "http://127.0.0.1:17494";
+// Override the fallback with VITE_SERVER_URL at build/dev time.
+import { makeOriginAwareResolver } from "@delebash/llm-ui";
 
-function resolveServerUrl() {
-  if (typeof window === "undefined" || !window.location) return FALLBACK;
-  const { protocol, origin, port, hostname } = window.location;
-  const isViteDev = port === "1430" || port === "1431";
-  const isTauri = protocol === "tauri:" || hostname === "tauri.localhost";
-  if (!isViteDev && !isTauri && (protocol === "http:" || protocol === "https:")) {
-    return origin; // server hosts both the UI and the API
-  }
-  return FALLBACK;
+const FALLBACK = import.meta.env.VITE_SERVER_URL || "http://127.0.0.1:17494";
+const originBase = makeOriginAwareResolver({ devPorts: ["1430", "1431"], fallback: FALLBACK });
+
+// Runtime override: a thin client explicitly pointed at a remote host
+// (`jt:server`) wins over the origin-aware default.
+export function resolveBase() {
+  const override = typeof localStorage !== "undefined" && localStorage.getItem("jt:server");
+  return override || originBase();
 }
 
-export const SERVER_URL = resolveServerUrl();
+// Static snapshot for display + back-compat consumers (ConnectionError prop,
+// prefs.js, the api store's initial serverUrl).
+export const SERVER_URL = resolveBase();

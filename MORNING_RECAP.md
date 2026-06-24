@@ -5,7 +5,30 @@
 
 ---
 
-## ⮕ ACTIVE WORK — read first (2026-06-23)
+## ⮕ ACTIVE WORK — read first (2026-06-24)
+
+**Thread: FULL cross-app convergence — server + GUI (user greenlit Option A,
+2026-06-24).** Master plan: `docs/plans/2026-06-24-full-convergence-plan.md`
+(grounded two-sided audit + the target: each app = shared packages + domain code
+only). Goal: JV and JW are the SAME code except necessary domain functionality.
+Branch `claude/admiring-galileo-il3q0o` (all repos). No defer-hatches; both apps
+become consumers of every shared piece; verify each (build+smoke / pytest).
+Key proof from the audit: server `set_state` byte-identical; JW `database.py`
+says "Mirrors JustVoice's session bootstrap"; JW HTTP scattered across ~17
+hand-rolled `fetch` files; only `llm_runner` shared on the server today.
+
+**Progress (Layer A — renderer kit):**
+- ✅ **serverApi (JV side)** — shared kit transport (`common/services/serverApi.js`:
+  resolver factory + `configureServerApi` + transport + `checkServer`); JV
+  `config.js`/`main.js`/`stores/api.js` wired; JV `serverApi.js`+`connection.js`
+  deleted. Build+smoke green (live data through the kit). JW side + JV `prefs.js`
+  straggler pending.
+- ⏭ next: JW serverApi merge → appearance engine → modals/AppDialog → JW
+  primitive+shell merge → Layer B server-core → Layer C lock.
+
+---
+
+## ⮕ EARLIER (2026-06-23): UI primitives converged onto `@delebash/llm-ui`
 
 **Thread: converge JustVoice's UI primitives onto the shared `@delebash/llm-ui`
 kit — DONE (8 slices, all pushed to `claude/admiring-galileo-il3q0o`).** Root

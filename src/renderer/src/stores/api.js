@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Reactive façade over services/serverApi.js. The transport (request,
-// safeRequest, requestBlob, postForm, verbs) lives in the service per the app
-// standard; this Pinia store only holds the reactive bits the UI binds to —
-// server URL, bearer token, last error, auth flag — and the setters that
+// Reactive façade over the shared server transport (@delebash/llm-ui
+// serverApi). The transport (request, safeRequest, requestBlob, postForm, verbs)
+// lives in the kit; this Pinia store only holds the reactive bits the UI binds
+// to — server URL, bearer token, last error, auth flag — and the setters that
 // persist them. `useApi().request(...)` etc. still work: they delegate.
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { SERVER_URL } from "../config.js";
-import * as serverApi from "../services/serverApi.js";
+import {
+  lastError, request, safeRequest, get, post, patch, put, del, requestBlob, postForm,
+} from "@delebash/llm-ui";
 
 export const useApi = defineStore("api", () => {
   const serverUrl = ref(localStorage.getItem("jt:server") || SERVER_URL);
@@ -25,18 +27,18 @@ export const useApi = defineStore("api", () => {
   return {
     serverUrl,
     token,
-    lastError: serverApi.lastError, // shared ref — set by the transport on failure
+    lastError, // shared ref from the kit transport — set on failure
     setServer,
     setToken,
-    request: serverApi.request,
-    safeRequest: serverApi.safeRequest,
-    get: serverApi.get,
-    post: serverApi.post,
-    patch: serverApi.patch,
-    put: serverApi.put,
-    del: serverApi.del,
-    requestBlob: serverApi.requestBlob,
-    postForm: serverApi.postForm,
+    request,
+    safeRequest,
+    get,
+    post,
+    patch,
+    put,
+    del,
+    requestBlob,
+    postForm,
     isAuthed: computed(() => !!token.value),
   };
 });
