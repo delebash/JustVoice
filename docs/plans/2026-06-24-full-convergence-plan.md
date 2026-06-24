@@ -211,13 +211,18 @@ just-llm-runner       Python LLM core (DONE)
      state deleted. Surfaced + fixed the font-token gap (kit shells read
      semantic `--font-display`/`--font-body`; both apps now map them). Verified:
      builds, smoke 27/27, interaction tests + screenshots, computed-style checks.
-   - ✅ **AppButton/Input/Textarea/Checkbox/Tag already on the kit** (0 `Jw*`
-     importers remain for these).
-   - ⏭ remaining primitives: `JwSelect`→`UiSelect` (13), `JwNumber`→`UiNumber`
-     (2), `JwTable`→`UiTable` (11), `JwColorPicker` (3). **Promote `UiNumber`
-     (locale number input) + `UiTable` (TanStack) to the kit first — no
-     equivalent yet; decide `JwColorPicker` (promote vs JW-local).**
-5. Delete every renderer fork; both apps' smokes green.
+   - ✅ **Primitives done (all of them).** Button/Input/Textarea/Checkbox/Tag
+     were already on the kit; this pass converged the rest: `JwSelect`→`UiSelect`
+     (13), `JwNumber`→`UiNumber` (2, **promoted** UiNumber + a kit `setUiLocale`
+     locale source), `JwTable`→`UiTable` (11, **promoted** UiTable + `@tanstack/
+     vue-table` peer dep + dedupe in both apps), `JwColorPicker`→`UiColorPicker`
+     (3, **promoted** with a `presets` prop; JW passes its palette). Each: build +
+     smoke 27/27 + interaction/visual checks + screenshots.
+   - ✅ **`src/renderer/src/components/ui/` is EMPTY in BOTH apps** — the entire
+     primitive layer is the shared kit.
+5. ✅ **Every renderer fork deleted; both apps' smokes green (JV 14/14, JW 27/27).**
+   **Layer A (renderer kit) COMPLETE** — both apps consume one shared kit for
+   primitives, shells, services, theming, modal/dialog, help, and transport.
 
 ### Layer B — extract `@delebash/server-core`
 1. **Strict file-by-file server audit first** (the part not yet done at line

@@ -65,11 +65,22 @@ hand-rolled `fetch` files; only `llm_runner` shared on the server today.
   contract. Verified both apps: builds, smoke (JV 14/14, JW 27/27), interaction
   tests (dialogs + help drawer) + screenshots + computed-style checks, zero JS
   exceptions.
-- ⏭ next: **JW primitives** — `JwSelect`→`UiSelect` (13), `JwNumber`→`UiNumber`
-  (2), `JwTable`→`UiTable` (11), `JwColorPicker` (3). Promote `UiNumber` +
-  `UiTable` to the kit first (no equivalent yet); decide `JwColorPicker`. Then
-  → Layer B server-core → Layer C lock. (Optional: expand JV's appearance
-  Settings to the full knob set the engine now supports.)
+- ✅ **JW primitives — ALL converged.** `JwSelect`→`UiSelect` (13);
+  `JwNumber`→`UiNumber` (2, promoted UiNumber + a kit `setUiLocale` i18n-agnostic
+  locale source); `JwTable`→`UiTable` (11, promoted UiTable + `@tanstack/vue-table`
+  peer dep + `resolve.dedupe` in both apps, JV installed it for its future table
+  convergence); `JwColorPicker`→`UiColorPicker` (3, promoted with a `presets`
+  prop, JW passes its palette). **`components/ui/` is now EMPTY in BOTH apps.**
+  Each verified: build + smoke 27/27 + interaction/visual checks + screenshots.
+- ✅ **LAYER A (renderer kit) COMPLETE.** Both apps now share ONE kit
+  (`@delebash/llm-ui`) for primitives, shells (modal/dialog/help/toast/tooltip/
+  breadcrumb/empty/connection-error), services (serverApi/appearance/help/
+  dialog/locale), and theming. No renderer forks remain.
+- ⏭ next: **Layer B — `@delebash/server-core`** (Python server scaffolding:
+  create_app + AppState base + CLI serve + init_db/migrations + settings/prefs
+  store + generic infra endpoints) after its own strict file-by-file server
+  audit → Layer C lock. (Optional: expand JV's appearance Settings to the full
+  knob set the engine now supports.)
 
 ---
 
