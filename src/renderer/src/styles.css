@@ -945,22 +945,6 @@ progress {
 }
 .jv-pane-list__item--active .jv-pane-list__meta { color: rgba(255, 255, 255, 0.78); }
 
-.jv-pane-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.jv-pane-header__title { flex: 1; font-size: 16px; font-weight: 600; margin: 0; }
-.jv-pane-header__h1 { flex: 1; font-size: 22px; font-weight: 600; margin: 0; }
-.jv-pane-header__eyebrow {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--ink-3);
-}
-.jv-pane-header__actions { display: flex; gap: 8px; align-items: center; }
-
 /* Banners + notes (preview L160-173) */
 .jv-banner {
   background: var(--surface-2);

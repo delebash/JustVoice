@@ -15,7 +15,7 @@ import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
 import { UiButton, UiInput, UiTextarea, UiTag, UiChip, UiSelect } from "@delebash/llm-ui";
 import LineageViewer from "../components/LineageViewer.vue";
-import EmptyState from "../components/EmptyState.vue";
+import { EmptyState } from "@delebash/llm-ui";
 
 const api = useApi();
 const activeProject = useActiveProject();

@@ -29,7 +29,7 @@ import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
 import { UiButton, UiInput, UiTextarea, UiCheckbox, UiTag, UiChip, UiSelect } from "@delebash/llm-ui";
 import VoiceParamsModal from "../components/VoiceParamsModal.vue";
-import EmptyState from "../components/EmptyState.vue";
+import { EmptyState } from "@delebash/llm-ui";
 import ExportPanel from "../components/ExportPanel.vue";
 import { confirmDialog } from "@delebash/llm-ui";
 

@@ -13,7 +13,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { UiButton, UiInput, UiCheckbox, UiTag, UiChip, UiSelect } from "@delebash/llm-ui";
-import EmptyState from "../components/EmptyState.vue";
+import { EmptyState } from "@delebash/llm-ui";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import ImportModal from "./ImportModal.vue";
 import NewProjectModal from "../components/NewProjectModal.vue";
