@@ -3,9 +3,17 @@
  * JustVoice design tokens
  * -----------------------
  * The :root custom properties (+ dark-theme overrides) — the single source of
- * design values, themeable at runtime by the theming layer. Imported before
+ * design values, themeable at runtime by the shared appearance engine
+ * (@delebash/llm-ui applyAppearance, wired in main.js). Imported before
  * styles.css so every primitive can read them. App standard: tokens.css = the
  * :root tokens only; styles.css = reset/base + canonical jv- primitives.
+ *
+ * Accent / gold / functional colours are HUE-DRIVEN: the engine sets the hue
+ * vars (--accent-hue / --gold / --warn-* / --danger-hue / --success-hue /
+ * --info-hue) from Settings → Appearance, and these rules compute each colour
+ * family from the hue using JustVoice's own L/C — so the DEFAULT hues below
+ * reproduce JustVoice's original palette exactly while the knobs retint.
+ * Surfaces, ink, lines, and fonts are app constants (not theme-hued).
  */
 
 :root {
@@ -20,28 +28,37 @@
 
   --line: #e3e1dc;
   --line-strong: #cfccc4;
-  /* --border-soft: legacy alias for --line. Several views/components
-     reference it (X-6 audit finding, 2026-06-14) — it was never defined,
-     so `border: 1px solid var(--border-soft)` silently rendered no border.
-     Aliased per-theme so it tracks the active --line. */
+  /* --border-soft: legacy alias for --line. */
   --border-soft: var(--line);
 
-  --accent: #3a7d63;
-  --accent-ink: #2c6049;
-  --accent-soft: #e8f0eb;
-  --accent-line: #b8d2c3;
+  /* Accent — hue-driven. Default hue 166 == JustVoice green #3a7d63 (measured). */
+  --accent-hue: 166;
+  --accent:      oklch(0.538 0.080 var(--accent-hue));
+  --accent-ink:  oklch(0.446 0.068 var(--accent-hue));
+  --accent-soft: oklch(0.948 0.011 var(--accent-hue));
+  --accent-line: oklch(0.840 0.035 var(--accent-hue));
 
-  --warn: #c89a3a;
-  --warn-bg: #fff8e3;
-  --warn-ink: #8a6a1f;
+  /* Gold / "Accent 2" — the engine overrides --gold + --gold-soft + --warn-*
+     per-mode from goldHue at boot; these are the pre-engine defaults (hue 82 ==
+     JV's gold #c89a3a). --warn (base) tracks --gold. */
+  --gold:      oklch(0.712 0.124 82);
+  --gold-soft: oklch(0.92 0.045 82);
+  --warn:      var(--gold);
+  --warn-bg:   #fff8e3;
+  --warn-ink:  #8a6a1f;
   --warn-line: #e6cd84;
 
-  --danger: #a8442e;
-  --danger-bg: #fbecea;
-  --danger-ink: #7a2f1f;
-  --danger-line: #e3b6ac;
+  /* Danger — hue-driven. Default hue 34 == JV danger #a8442e (measured). */
+  --danger-hue:  34;
+  --danger:      oklch(0.517 0.137 var(--danger-hue));
+  --danger-bg:   oklch(0.954 0.020 var(--danger-hue));
+  --danger-ink:  oklch(0.409 0.109 var(--danger-hue));
+  --danger-line: oklch(0.840 0.050 var(--danger-hue));
 
-  --info-blue: #2f74b5;
+  /* Info — hue-driven. Default hue 250 == JV info-blue #2f74b5 (measured). */
+  --info-hue:  250;
+  --info-blue: oklch(0.547 0.123 var(--info-hue));
+
   --jtorig: #7a3aa6;
   --combined: #b86b1f;
 
@@ -56,49 +73,55 @@
   --font-ui: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
 
-  /* Content-typed control widths — pick by what fits in the field, not by container.
-     Replaces "everything stretches to 100%" with width-by-information-content. */
-  --w-token: 110px;  /* port, version, 4-digit count, ratio */
-  --w-id:    180px;  /* short ID, model slug, enum select */
-  --w-name:  280px;  /* display name, file name, title */
-  --w-url:   360px;  /* URL, API key, token */
-  --w-path:  480px;  /* file/folder path */
-  --w-prose: 640px;  /* description, hint paragraph */
-  --w-edit:  880px;  /* manuscript reading width */
+  /* Content-typed control widths. */
+  --w-token: 110px;
+  --w-id:    180px;
+  --w-name:  280px;
+  --w-url:   360px;
+  --w-path:  480px;
+  --w-prose: 640px;
+  --w-edit:  880px;
 
-  /* Per-surface page shells (plan Q6). Every view's top-level max-width
-     comes from one of these two — not an ad-hoc pixel value. */
-  --shell-form: 880px;   /* form-first pages — single-column editor/settings panes */
-  --shell-page: 1100px;  /* default page shell — tables, master-detail, QC grids */
+  /* Per-surface page shells. */
+  --shell-form: 880px;
+  --shell-page: 1100px;
 
-  --gap-grid: 16px;  /* canonical card-grid gap */
+  --gap-grid: 16px;
 
   /* ── Shared @delebash/ui token contract ──────────────────────────────
-     The shared Ui* primitives (.ui-btn / .ui-input / .ui-tag / .ui-checkbox /
-     .ui-toggle / .ui-field / .ui-w-*) read CANONICAL var names; JustVoice's
-     native tokens use different names, so alias them here. These resolve
-     through the cascade, so they track the dark-theme overrides of their
-     sources too. See just-llm-runner/ui/src/common/tokens.contract.css. */
+     The shared Ui* primitives read CANONICAL var names; alias JV's here. */
   --border: var(--line);
   --border-strong: var(--line-strong);
   --muted: var(--ink-3);
   --on-accent: #fff;
-  --success: var(--accent);          /* JV's green is the accent */
-  --success-bg: var(--accent-soft);
-  --success-ink: var(--accent);
+  /* Success — hue-driven; default hue 166 == JV green (success == accent). */
+  --success-hue: 166;
+  --success:     oklch(0.538 0.080 var(--success-hue));
+  --success-bg:  oklch(0.948 0.011 var(--success-hue));
+  --success-ink: oklch(0.446 0.068 var(--success-hue));
   --info: var(--info-blue);
-  --info-bg: transparent;            /* JV's "accent" pill was outline-only */
+  --info-bg: transparent;            /* JV's "info" pill was outline-only */
   --info-ink: var(--info-blue);
-  --gold: var(--warn);               /* accent2 == JV's gold "warn" */
   --r-sm: var(--r-control);
-  /* control geometry — keep JV's slightly taller fields + 6px radius */
+
+  /* Button knobs — overridden at runtime by the appearance engine. Defaults
+     reproduce JV's standard / comfy / sentence-case look. */
   --btn-radius: var(--r-control);
+  --btn-pad-y: 8px;
+  --btn-pad-x: 16px;
+  --btn-pad-y-sm: 4px;
+  --btn-pad-x-sm: 11px;
+  --btn-font-size: 14px;
+  --btn-font-size-sm: 12px;
+  --btn-text-transform: none;
+  --btn-letter-spacing: normal;
+
   --input-pad-x: 12px;
   --input-font-size: 13px;
   /* JV tags are outlined pills (JW's are borderless soft-tint) */
   --tag-border-width: 1px;
-  --tag-radius: var(--r-pill);   /* JV badges are pill-shaped (JW's are 4px) */
-  --chip-radius: var(--r-pill);  /* JV selectable chips are pill-shaped */
+  --tag-radius: var(--r-pill);
+  --chip-radius: var(--r-pill);
 }
 
 [data-theme="dark"] {
@@ -112,7 +135,11 @@
   --line: #353835;
   --line-strong: #4a4d49;
   --border-soft: var(--line);
-  --accent: #5fa882;
-  --accent-soft: #1f3329;
-  --accent-line: #2c4a3a;
+  /* Accent (dark) — hue-driven; default hue 166 == JV dark green #5fa882. */
+  --accent:      oklch(0.673 0.093 var(--accent-hue));
+  --accent-soft: oklch(0.300 0.032 var(--accent-hue));
+  --accent-line: oklch(0.380 0.045 var(--accent-hue));
+  /* Gold (dark) defaults — engine overrides from goldHue at boot. */
+  --gold:      oklch(0.78 0.10 82);
+  --gold-soft: oklch(0.32 0.045 82);
 }

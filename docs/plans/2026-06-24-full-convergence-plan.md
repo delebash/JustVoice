@@ -143,8 +143,21 @@ just-llm-runner       Python LLM core (DONE)
      (no editor/display knobs); JV `main.js`/`uiStore` migrate `theme` →
      `appearance.mode` + `applyAppearance` at boot. Verify per-view screenshots
      (green + warm paper preserved).
-   - ⏭ **Slice 3 (JV):** Settings → Appearance surface (accent/font/button/ink
-     pickers) + JV appearance store + boot wiring.
+   - ✅ **Slice 2 (JV) done.** JV `tokens.css` hue-driven (accent/gold/functional
+     keyed to the hue vars with JV's measured L/C → default hues reproduce JV's
+     exact palette; surfaces/ink/mono stay JV's) + button-knob vars. JV
+     `appearance.js` = kit engine + JV DEFAULT (Inter, accentHue 166, …). The
+     duplicated local appearance system in SettingsView was removed and its UI
+     (theme/size/accent/language) rewired to `ui.appearance`/`ui.setAppearance`;
+     `uiStore.theme` → `ui.appearance` (migrates both legacy theme prefs); the
+     dead density knob → live `uiScale`; `main.js` force-inits the ui store so
+     the engine applies at first paint (every view). Verified: build clean
+     (JV+JW), smoke 14/14, screenshots — light green `oklch(.538 .08 166)` exact,
+     dark green `oklch(.673 .093 166)`, Inter + JetBrains mono preserved, accent
+     knob live (166→30 retints), Settings surface bound to the shared engine.
+   - ⏭ **Slice 3 (JV, optional polish):** expand the Settings → Appearance
+     surface to the fuller knob set (fonts/button-radius/density/ink) the engine
+     now supports — JV currently exposes theme/size/accent/language.
 3. **modal system + AppDialog** (T5) — shared self-contained `AppModal` (scoped
    styles = canonical look) + `AppDialog` host on top of it. Migrate JV's 16
    hand-rolled modals + JW's ~11 onto it; retire `.jv-overlay`/`.jv-modal`.

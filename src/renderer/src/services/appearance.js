@@ -1,32 +1,41 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Theming — applies the active colour theme to the document at runtime by
-// setting the [data-theme] attribute the design tokens key off (tokens.css).
-// App standard: theming lives in a dedicated services/appearance.js, not inlined
-// in a store.
+// JustVoice appearance — the generic theme engine + catalogs are SHARED (kit
+// @delebash/llm-ui appearance). JustVoice has no manuscript editor, so no
+// extraApply; it just sets its own brand defaults (Inter UI font, green accent
+// hue 166 — matching tokens.css's measured palette) and re-exports the catalogs
+// its Settings → Appearance UI uses. Supersedes JV's old standalone theme
+// helper + SettingsView's local applyAppearance().
+import {
+  applyAppearance as applyGeneric,
+  migrateAppearance as migrateGeneric,
+  DEFAULT_APPEARANCE as GENERIC_DEFAULT,
+} from "@delebash/llm-ui";
 
-export function resolveTheme(theme) {
-  if (theme !== "system") return theme;
-  if (typeof window === "undefined") return "dark";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+// Re-export the shared catalogs the Settings UI renders.
+export {
+  UI_FONTS, UI_SCALES, INK_PALETTES, ACCENT_PRESETS, GOLD_PRESETS, FUNCTIONAL_PRESETS,
+  BUTTON_RADIUS_OPTIONS, BUTTON_DENSITY_OPTIONS, BUTTON_LABEL_CASE_OPTIONS, currentMode,
+} from "@delebash/llm-ui";
+
+// JustVoice defaults = the generic engine defaults + JV brand. The hue defaults
+// reproduce JV's measured palette (see tokens.css) so the default look is exact.
+export const DEFAULT_APPEARANCE = {
+  ...GENERIC_DEFAULT,
+  uiFont: "Inter",
+  accentHue: 166, // green #3a7d63
+  goldHue: 82,
+  dangerHue: 34,
+  successHue: 166,
+  infoHue: 250,
+  inkPalette: "auto",
+  // JV-extra: i18n locale (persists now; applies once translations ship — #97).
+  locale: "en",
+};
+
+export function applyAppearance(appearance) {
+  applyGeneric({ ...DEFAULT_APPEARANCE, ...(appearance || {}) });
 }
 
-export function applyTheme(theme) {
-  if (typeof document === "undefined") return;
-  // tokens.css overrides live under [data-theme="dark"]; "light" falls through to
-  // the :root defaults. (Previously this toggled a `.dark` CLASS, which the
-  // tokens never matched — dark mode silently did nothing.)
-  document.documentElement.setAttribute("data-theme", resolveTheme(theme));
-}
-
-// Re-apply when the OS preference flips, but only while following "system".
-// `isSystem` is read live so the caller keeps control of the mode. Returns a
-// teardown fn.
-export function watchSystemTheme(isSystem) {
-  if (typeof window === "undefined") return () => {};
-  const mq = window.matchMedia("(prefers-color-scheme: dark)");
-  const onChange = () => {
-    if (isSystem()) applyTheme("system");
-  };
-  mq.addEventListener("change", onChange);
-  return () => mq.removeEventListener("change", onChange);
+export function migrateAppearance(persisted = {}) {
+  return migrateGeneric(persisted, DEFAULT_APPEARANCE);
 }

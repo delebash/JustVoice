@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /**
- * uiStore — theme + dialog open-state + currently-selected entity ids.
- * Persisted server-side via /v1/prefs (key: `ui`). Partial-persist: only
- * `theme` + `selectedProfileId` survive a reload.
+ * uiStore — appearance config + dialog open-state + currently-selected entity
+ * ids. Persisted server-side via /v1/prefs (key: `ui`). Partial-persist: only
+ * `appearance` + `selectedProfileId` survive a reload. Theming runs through the
+ * shared engine (@delebash/llm-ui appearance via services/appearance.js).
  */
 import { defineStore } from "pinia";
 import { ref, watch } from "vue";
 import { readPref, writePref } from "../services/prefs.js";
-import { applyTheme, watchSystemTheme } from "../services/appearance.js";
+import { applyAppearance, migrateAppearance, DEFAULT_APPEARANCE } from "../services/appearance.js";
 
 function loadInitial() {
   const p = readPref("ui", {});
@@ -24,11 +25,17 @@ export const useUIStore = defineStore("ui", () => {
   const selectedProfileId = ref(persisted.selectedProfileId ?? null);
   const selectedEngine = ref("kokoro");
   const selectedVoiceId = ref(null);
-  const theme = ref(persisted.theme ?? "system"); // "light" | "dark" | "system"
 
-  // Help-drawer open-state now lives in the shared kit (@delebash/llm-ui
-  // services/help.js — openHelp/closeHelp/helpState); the kit owns the drawer
-  // so HelpDrawer + every HelpTrigger share one source. Nothing here.
+  // Appearance config on the shared theme engine. Migrate the two legacy theme
+  // controls — the old "ui".theme topbar value + the old SettingsView
+  // "appearance" pref — into the unified config (mode + accent hue + ui scale).
+  const legacyAp = readPref("appearance", {});
+  const appearance = ref(
+    persisted.appearance && typeof persisted.appearance === "object"
+      ? { ...DEFAULT_APPEARANCE, ...persisted.appearance }
+      : migrateAppearance({ theme: legacyAp.theme || persisted.theme }),
+  );
+  if (!persisted.appearance && legacyAp.locale) appearance.value.locale = legacyAp.locale;
 
   function setSidebarOpen(v) {
     sidebarOpen.value = v;
@@ -48,20 +55,18 @@ export const useUIStore = defineStore("ui", () => {
   function setSelectedVoiceId(v) {
     selectedVoiceId.value = v;
   }
-  function setTheme(v) {
-    theme.value = v;
-    applyTheme(v);
+  function setAppearance(patch) {
+    appearance.value = { ...appearance.value, ...patch };
+    applyAppearance(appearance.value);
   }
 
-  // Apply theme on store init.
-  applyTheme(theme.value);
+  // Apply appearance on store init (synchronous in App setup → before paint).
+  // The engine owns the OS-preference listener while mode === "system".
+  applyAppearance(appearance.value);
 
-  // Re-apply when the OS preference flips, while following "system".
-  watchSystemTheme(() => theme.value === "system");
-
-  watch([theme, selectedProfileId], () => {
-    writePref("ui", { theme: theme.value, selectedProfileId: selectedProfileId.value });
-  });
+  watch([appearance, selectedProfileId], () => {
+    writePref("ui", { appearance: appearance.value, selectedProfileId: selectedProfileId.value });
+  }, { deep: true });
 
   return {
     sidebarOpen,
@@ -71,13 +76,13 @@ export const useUIStore = defineStore("ui", () => {
     selectedProfileId,
     selectedEngine,
     selectedVoiceId,
-    theme,
+    appearance,
     setSidebarOpen,
     setProfileDialogOpen,
     setEditingProfileId,
     setSelectedProfileId,
     setSelectedEngine,
     setSelectedVoiceId,
-    setTheme,
+    setAppearance,
   };
 });

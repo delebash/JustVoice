@@ -6,17 +6,19 @@ import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { projectsService } from "../services/projects.js";
-import { readPref, writePref } from "../services/prefs.js";
 import { UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect } from "@delebash/llm-ui";
 import { useOnboarding } from "../stores/onboarding.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useActiveProject } from "../stores/activeProject.js";
+import { useUIStore } from "../stores/ui.js";
+import { UI_SCALES } from "../services/appearance.js";
 import CacheView from "./CacheView.vue";
 import AudioChannelsView from "./AudioChannelsView.vue";
 import WebhooksView from "./WebhooksView.vue";
 
 const api = useApi();
+const ui = useUIStore();
 const projectsStore = useProjectsStore();
 const personasStore = usePersonasStore();
 const activeProjectStore = useActiveProject();
@@ -889,13 +891,10 @@ async function restartAndInstall() {
   if (tauri?.process?.relaunch) await tauri.process.relaunch();
 }
 
-// ── Appearance (task #93) ────────────────────────────────────────────
-const appearance = ref({
-  theme: "auto",
-  density: "default",
-  accentHue: 158, // matches preview's green accent — hsl(158, 55%, 36%)
-  locale: "en",
-});
+// ── Appearance ───────────────────────────────────────────────────────
+// The appearance config + theming now live in the shared engine via the ui
+// store (ui.appearance + ui.setAppearance, @delebash/llm-ui applyAppearance).
+// The Settings controls below bind straight to ui.appearance.
 
 // ── Capture / Dictation settings (preview parity — preview Capture sub-tab) ──
 // Mirrors the shape of settings.capture in the server-side Settings model.
@@ -1095,29 +1094,8 @@ async function copyRecentLogs() {
     pushToast({ message: "Clipboard unavailable.", kind: "warning" });
   }
 }
-function loadAppearance() {
-  const saved = readPref("appearance");
-  if (saved && typeof saved === "object") Object.assign(appearance.value, saved);
-  applyAppearance();
-}
-function applyAppearance() {
-  const root = document.documentElement;
-  // Theme — Light / Dark / Follow system. "auto" lets prefers-color-scheme drive it.
-  const t = appearance.value.theme;
-  if (t === "auto") root.removeAttribute("data-theme");
-  else root.setAttribute("data-theme", t);
-  // Density — adjusts spacing-related CSS custom property.
-  const densityScale = { compact: 0.85, default: 1.0, spacious: 1.2 }[appearance.value.density] || 1.0;
-  root.style.setProperty("--density-scale", String(densityScale));
-  // Accent hue — overrides the green accent across the app.
-  root.style.setProperty("--accent-hue", String(appearance.value.accentHue));
-  // Persist.
-  writePref("appearance", appearance.value);
-}
-
 onMounted(() => {
   loadAiUsage();
-  loadAppearance();
   loadGpuInfo();
   loadMcpBindings();
   loadLogsPreview();
@@ -2327,14 +2305,14 @@ onMounted(() => {
               </div>
             </div>
             <UiSelect
-              v-model="appearance.theme"
+              :model-value="ui.appearance.mode"
               width="name"
               :options="[
-                { label: 'Follow system', value: 'auto' },
+                { label: 'Follow system', value: 'system' },
                 { label: 'Light', value: 'light' },
                 { label: 'Dark', value: 'dark' },
               ]"
-              @change="applyAppearance"
+              @update:model-value="(v) => ui.setAppearance({ mode: v })"
             />
           </div>
         </div>
@@ -2342,20 +2320,16 @@ onMounted(() => {
         <div class="setting-row">
           <div class="setting-row__head">
             <div>
-              <div class="setting-row__title">Density</div>
+              <div class="setting-row__title">Interface size</div>
               <div class="setting-row__desc">
-                Compact reduces row spacing for power users. Spacious adds breathing room.
+                Scales the whole interface — labels, controls, and panels — together.
               </div>
             </div>
             <UiSelect
-              v-model="appearance.density"
+              :model-value="ui.appearance.uiScale"
               width="name"
-              :options="[
-                { label: 'Default', value: 'default' },
-                { label: 'Compact', value: 'compact' },
-                { label: 'Spacious', value: 'spacious' },
-              ]"
-              @change="applyAppearance"
+              :options="UI_SCALES.map((s) => ({ label: s.label, value: s.value }))"
+              @update:model-value="(v) => ui.setAppearance({ uiScale: Number(v) })"
             />
           </div>
         </div>
@@ -2363,21 +2337,21 @@ onMounted(() => {
         <div class="setting-row">
           <div class="setting-row__head">
             <div>
-              <div class="setting-row__title">Accent hue · {{ appearance.accentHue }}°</div>
+              <div class="setting-row__title">Accent hue · {{ ui.appearance.accentHue }}°</div>
               <div class="setting-row__desc">
-                Drag to pick a new accent color across the whole app. Default 158° = forest green.
+                Drag to pick a new accent color across the whole app. Default 166° = forest green.
               </div>
             </div>
             <span class="setting-row__value">
-              <span class="accent-preview" :style="{ background: `hsl(${appearance.accentHue} 55% 36%)` }" />
+              <span class="accent-preview" :style="{ background: `oklch(0.538 0.08 ${ui.appearance.accentHue})` }" />
             </span>
           </div>
           <input
             type="range"
-            v-model.number="appearance.accentHue"
+            :value="ui.appearance.accentHue"
             min="0" max="360" step="1"
             class="setting-row__slider"
-            @input="applyAppearance"
+            @input="(e) => ui.setAppearance({ accentHue: Number(e.target.value) })"
           />
         </div>
 
@@ -2392,7 +2366,7 @@ onMounted(() => {
               </div>
             </div>
             <UiSelect
-              v-model="appearance.locale"
+              :model-value="ui.appearance.locale"
               width="name"
               :options="[
                 { label: 'English (en)', value: 'en' },
@@ -2406,7 +2380,7 @@ onMounted(() => {
                 { label: 'Korean (ko)', value: 'ko' },
                 { label: 'Chinese (zh)', value: 'zh' },
               ]"
-              @change="applyAppearance"
+              @update:model-value="(v) => ui.setAppearance({ locale: v })"
             />
           </div>
         </div>

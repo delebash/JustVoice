@@ -7,6 +7,7 @@ import { tooltipDirective, configureHelp, ConnectionError, configureServerApi, c
 import { SERVER_URL, resolveBase } from "./config.js";
 import { bootPrefs, ensureActiveProjectDefault } from "./services/prefs.js";
 import { loadDoc, hasDoc, titleForSlug } from "./services/helpDocs.js";
+import { useUIStore } from "./stores/ui.js";
 import { i18n } from "./i18n/index.js";
 import router from "./router/index.js";
 import "./tokens.css";
@@ -63,10 +64,15 @@ async function boot() {
   configureHelp({ loadDoc, hasDoc, titleForSlug });
 
   const app = createApp(App);
-  app.use(createPinia());
+  const pinia = createPinia();
+  app.use(pinia);
   app.use(router);
   app.use(i18n);
   app.directive("tooltip", tooltipDirective);
+  // Force the ui store to init before mount so the persisted appearance (mode,
+  // accent hue, ui scale) is applied via the shared engine on the FIRST paint of
+  // every view — not lazily after a component first touches the store.
+  useUIStore(pinia);
   // Resolve the initial (lazy) route before mount so the first paint is the
   // real view, not an empty router-view.
   await router.isReady();

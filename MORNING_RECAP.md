@@ -26,8 +26,18 @@ hand-rolled `fetch` files; only `llm_runner` shared on the server today.
   repointed** to the kit (aiFeature stays raw — SSE streaming). Both verified:
   JV smoke 14/14, JW headless smoke 25/25, live data through the kit. The
   "~17 scattered JW fetch files" duplication is gone.
-- ⏭ next: appearance engine (JV gains the theme system) → modals/AppDialog → JW
-  primitive+shell merge → Layer B server-core → Layer C lock.
+- ✅ **appearance engine — BOTH apps done.** Shared kit engine
+  (`common/services/appearance.js`: `applyAppearance(cfg,{extraApply})` + generic
+  catalogs). JW slimmed to re-export + editor `extraApply` (pixel-identical).
+  JV adopted it (user OK'd Option A): `tokens.css` hue-driven (default hues =
+  JV's measured palette → exact light/dark look, Inter + JetBrains mono kept),
+  removed JV's duplicate local appearance system + rewired Settings to
+  `ui.appearance`, dead density→live `uiScale`, `main.js` boot-applies. Accent
+  knob now live. Verified both apps (smoke + screenshots, light+dark).
+- ⏭ next: modals/AppDialog (JV 16 hand-rolled → shared AppModal) → rest of the
+  JW UI merge (shells + Jw*→Ui* primitives; promote UiNumber/UiTable) → Layer B
+  server-core → Layer C lock. (Optional: expand JV's appearance Settings to the
+  full knob set the engine now supports.)
 
 ---
 
