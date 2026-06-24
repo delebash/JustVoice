@@ -224,15 +224,27 @@ just-llm-runner       Python LLM core (DONE)
    **Layer A (renderer kit) COMPLETE** — both apps consume one shared kit for
    primitives, shells, services, theming, modal/dialog, help, and transport.
 
-### Layer B — extract `@delebash/server-core`
-1. **Strict file-by-file server audit first** (the part not yet done at line
-   level) — settle the exact shared/per-app boundary for create_app, init_db,
-   migrations, settings/prefs, infra endpoints.
-2. Extract: `create_app(domain_routers, *, Base, db_filename, migrations, ...)`,
-   `AppState` base, CLI `serve` scaffolding, `init_db`/`get_db`/migrations
-   framework, settings/prefs store, generic infra endpoints.
-3. Wire both servers to consume it; delete the duplicated scaffolding; both
-   apps' `pytest` suites green.
+### Layer B — extract `server_core` (Python, in `just-llm-runner/`)
+
+**Audit done file-by-file (2026-06-24)** — read both apps' `app.py`, `cli.py`,
+`paths.py`, `app_state.py`, `database.py`/`database/session.py`. The server is
+**legitimately less uniform than the renderer**; converge only what is truly the
+same (RULE #7), keep the proven-different per-app. Per-unit boundary:
+
+| Unit | JV | JW | Verdict |
+|---|---|---|---|
+| `init_db` + `get_db`/`get_engine` + engine/SessionLocal globals | `database/session.py` | `database.py` ("Mirrors JustVoice's session bootstrap") — same engine + `check_same_thread=False` + FK-pragma + `create_all` + migrations + the re-init-on-different-data_dir pytest guard | ✅ **SHARE** — `server_core.db.init_db(data_dir, *, base, db_filename, on_migrate)` + `get_db`/`get_engine`. Highest value, most uniform. (Watch the module-global coupling: callers doing `from .database import engine` must read through the shared module or a re-export.) |
+| `set_state`/`get_state` + `AppState(data_dir)` base | `app_state.py` (data_dir + mkdir + stores/engines/jobs) | `app_state.py` (data_dir + mkdir only) — **byte-identical singleton + base ctor** | ✅ **SHARE** — `server_core.state.AppStateBase` + `set_state`/`get_state`. JV subclasses (adds stores/engines/jobs); JW uses the base (or a thin subclass). |
+| CLI `serve` | Typer: settings-driven host/port + log + `--no-docs` + extra cmds (default-settings/open-api/self-test) | Typer: fixed 127.0.0.1:17495 + `seed_workspace()` post-init + callback | ◑ **PARTIAL** — share a `serve` helper (banner + `create_app` + `uvicorn.run`) with hooks (default host/port, `post_init`); each keeps its app-specific options/commands. |
+| `default_data_dir` | platformdirs `justvoice`/`justvoice` + `/data` (must match the legacy Rust `resolve_data_dir` so existing data dirs transfer) | platformdirs `JustWrite` | ❌ **KEEP per-app** — JV's layout is legacy-compat; a generic helper would break data-dir migration. The JV sub-path helpers (models/voices/personas/…) are domain. |
+| `create_app` | 446 lines: auth middleware, RFC-7807 error handlers, error-envelope middleware, docs gating, MCP mount, engine-shutdown hook, **`/ui` StaticFiles mount** + legacy-gui, 40+ domain routers | 114 lines: db-usage-sink, allow-all CORS, **no UI mount**, 10 routers + the shared LLM-router block | ◑ **LOW priority** — the skeleton (FastAPI + CORS + router registration) is shared but the middleware/mount specifics diverge a lot; a hooked `create_app_base` is possible but lower value. The LLM-router block is already shared (`llm_runner`). |
+| infra endpoints | `health.py`, `settings_api.py`, `prefs_api.py` | `health.py`, `settings.py`, `sessions.py`, `images.py`, `workspace.py` | ◑ `health` is trivially shared; settings/sessions/images/workspace are mixed — evaluate per-endpoint after the core. |
+
+**Execution order (each verified by `pytest` — JV 286 / JW 82 tests collect+run
+here):** (1) `server_core.db` framework → migrate JW, then JV. (2)
+`server_core.state` base → both. (3) `serve` CLI helper → both. (4) revisit
+`create_app_base` + infra endpoints if they earn it. Do NOT force-converge
+`paths`/`create_app` divergences the table marks ❌/low.
 
 ### Layer C — lock it
 - Both apps: full `pytest` + ruff + headless smoke green.

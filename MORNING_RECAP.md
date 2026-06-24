@@ -76,11 +76,19 @@ hand-rolled `fetch` files; only `llm_runner` shared on the server today.
   (`@delebash/llm-ui`) for primitives, shells (modal/dialog/help/toast/tooltip/
   breadcrumb/empty/connection-error), services (serverApi/appearance/help/
   dialog/locale), and theming. No renderer forks remain.
-- ⏭ next: **Layer B — `@delebash/server-core`** (Python server scaffolding:
-  create_app + AppState base + CLI serve + init_db/migrations + settings/prefs
-  store + generic infra endpoints) after its own strict file-by-file server
-  audit → Layer C lock. (Optional: expand JV's appearance Settings to the full
-  knob set the engine now supports.)
+- ✅ **Layer B audit DONE (file-by-file).** Read both apps' app.py/cli.py/
+  paths.py/app_state.py/database — full per-unit shared/diverge table in the plan
+  (`docs/plans/2026-06-24-full-convergence-plan.md` §Layer B). Finding: the server
+  is legitimately less uniform than the renderer. **Share** `init_db`+`get_db`
+  (JW's literally "mirrors JustVoice") and the `set_state`/`get_state`+`AppState`
+  base (byte-identical); **partial** the `serve` CLI helper; **keep per-app**
+  `default_data_dir` (JV legacy-compat) + the divergent `create_app` middleware/
+  mounts. `server_core` lives in `just-llm-runner/` (sibling of `llm_runner`).
+  pytest gates confirmed runnable here (JV 286, JW 82).
+- ⏭ next: **Layer B extraction** in order, each pytest-verified: (1) `server_core.db`
+  framework → migrate JW then JV; (2) `server_core.state` base → both; (3) `serve`
+  CLI helper → both; (4) revisit create_app_base/infra endpoints if warranted →
+  Layer C lock. (Optional: expand JV's appearance Settings to the full knob set.)
 
 ---
 
