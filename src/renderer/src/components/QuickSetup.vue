@@ -26,7 +26,7 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "../services/toastBridge.js";
+import { pushToast } from "@delebash/llm-ui";
 import { UiButton, UiCheckbox, UiTag, UiSelect } from "@delebash/llm-ui";
 
 const emit = defineEmits(["close"]);

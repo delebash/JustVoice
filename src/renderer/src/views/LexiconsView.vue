@@ -12,7 +12,7 @@
 <script setup>
 import { computed, nextTick, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "../services/toastBridge.js";
+import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiTag, UiChip, UiSelect } from "@delebash/llm-ui";
 import EmptyState from "../components/EmptyState.vue";

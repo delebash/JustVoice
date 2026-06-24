@@ -2,7 +2,7 @@
 <script setup>
 import { ref, onMounted, onActivated, onDeactivated, onUnmounted, computed } from "vue";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "../services/toastBridge.js";
+import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiField, UiTag, UiSelect } from "@delebash/llm-ui";
 import { useEnginesStore } from "../stores/engines.js";

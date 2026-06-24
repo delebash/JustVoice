@@ -2,7 +2,7 @@
 <script setup>
 import { ref, computed, onBeforeUnmount } from "vue";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "../services/toastBridge.js";
+import { pushToast } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiField, UiSelect } from "@delebash/llm-ui";
 
 const api = useApi();

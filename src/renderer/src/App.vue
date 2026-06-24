@@ -9,14 +9,13 @@ import { useRenderTasks } from "./stores/renderTasks.js";
 import { useOnboarding } from "./stores/onboarding.js";
 import { useActiveProject } from "./stores/activeProject.js";
 import { useUiContext } from "./stores/uiContext.js";
-import Toast from "./components/Toast.vue";
 import TaskStrip from "./components/TaskStrip.vue";
 import TaskStatusPanel from "./components/TaskStatusPanel.vue";
 import AppDialog from "./components/AppDialog.vue";
 import AudioKeepAlive from "./components/AudioKeepAlive.vue";
 import QuickSetup from "./components/QuickSetup.vue";
 import KeyboardCheatsheet from "./components/KeyboardCheatsheet.vue";
-import { HelpDrawer, HelpTrigger } from "@delebash/llm-ui";
+import { HelpDrawer, HelpTrigger, Toast } from "@delebash/llm-ui";
 import GlobalAudioPlayer from "./components/GlobalAudioPlayer.vue";
 
 // View components are lazy-loaded by the router (router/index.js); App.vue holds

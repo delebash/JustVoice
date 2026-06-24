@@ -28,7 +28,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { UiButton, UiSelect } from "@delebash/llm-ui";
 import { projectsService } from "../services/projects.js";
 import { setImportDraft } from "../stores/importDraft.js";
-import { pushToast } from "../services/toastBridge.js";
+import { pushToast } from "@delebash/llm-ui";
 
 const props = defineProps({
   // When set, the import MERGES into this project by stable line id

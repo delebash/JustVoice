@@ -17,7 +17,7 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
-import { pushToast } from "../services/toastBridge.js";
+import { pushToast } from "@delebash/llm-ui";
 import { promptDialog, confirmDialog } from "@delebash/llm-ui";
 import { readPref, writePref } from "../services/prefs.js";
 import { UiButton, UiInput, UiTextarea, UiToggle, UiTag, UiChip, UiSelect } from "@delebash/llm-ui";

@@ -10,7 +10,7 @@
 <script setup>
 import { computed, ref, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "../services/toastBridge.js";
+import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
 import { UiButton, UiTag } from "@delebash/llm-ui";
 import { useVoicesStore } from "../stores/voices.js";

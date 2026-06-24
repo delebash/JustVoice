@@ -1628,7 +1628,7 @@ section.block > h3 {
 
 /* Toaster anchor (vue-sonner sets its own positioning; this just
    ensures the host doesn't get pushed by other fixed-position UI). */
-.jv-toaster { z-index: 250; }
+.ui-toaster { z-index: 250; }
 
 /* =========================================================
    5. Animations

@@ -28,7 +28,7 @@ import { useVoicesStore } from "../stores/voices.js";
 import { useLexiconsStore } from "../stores/lexicons.js";
 import { useEnginesStore } from "../stores/engines.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
-import { pushToast } from "../services/toastBridge.js";
+import { pushToast } from "@delebash/llm-ui";
 import { UiButton, UiTag, UiChip } from "@delebash/llm-ui";
 import RecommendCard from "../components/RecommendCard.vue";
 

@@ -12,7 +12,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "../services/toastBridge.js";
+import { pushToast } from "@delebash/llm-ui";
 import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
 import { UiButton, UiTag } from "@delebash/llm-ui";

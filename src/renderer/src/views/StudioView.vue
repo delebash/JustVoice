@@ -21,7 +21,7 @@ import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { useCopy } from "../services/copy.js";
 import { readPref, writePref } from "../services/prefs.js";
-import { pushToast } from "../services/toastBridge.js";
+import { pushToast } from "@delebash/llm-ui";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";

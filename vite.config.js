@@ -24,7 +24,7 @@ export default defineConfig({
     // this app's node_modules (Reka's provide/inject context + Vue reactivity
     // break with two instances). reka-ui is what UiSelect needs; marked is what
     // the shared HelpDrawer's helpMarkdown renderer needs.
-    dedupe: ["vue", "reka-ui", "@floating-ui/dom", "pinia", "vue-router", "vue-i18n", "marked"],
+    dedupe: ["vue", "reka-ui", "@floating-ui/dom", "pinia", "vue-router", "vue-i18n", "marked", "vue-sonner"],
   },
   server: {
     host: "127.0.0.1",

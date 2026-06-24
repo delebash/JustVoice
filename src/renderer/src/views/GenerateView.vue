@@ -4,7 +4,7 @@ import { ref, reactive, onMounted, computed, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
-import { pushToast } from "../services/toastBridge.js";
+import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag, UiSelect } from "@delebash/llm-ui";
 import SlashTagMenu from "../components/SlashTagMenu.vue";

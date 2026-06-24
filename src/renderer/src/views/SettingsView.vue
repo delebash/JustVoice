@@ -2,7 +2,7 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "../services/toastBridge.js";
+import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { projectsService } from "../services/projects.js";

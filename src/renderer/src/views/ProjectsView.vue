@@ -19,7 +19,7 @@ import ImportModal from "./ImportModal.vue";
 import NewProjectModal from "../components/NewProjectModal.vue";
 import { projectsService } from "../services/projects.js";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "../services/toastBridge.js";
+import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
 import { useCopy } from "../services/copy.js";
 import { useActiveProject } from "../stores/activeProject.js";

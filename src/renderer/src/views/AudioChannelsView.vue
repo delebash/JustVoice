@@ -9,7 +9,7 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import { channelsService } from "../services/projects.js";
-import { pushToast } from "../services/toastBridge.js";
+import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag } from "@delebash/llm-ui";
 

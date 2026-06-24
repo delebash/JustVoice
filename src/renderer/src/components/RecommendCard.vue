@@ -14,7 +14,7 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "../services/toastBridge.js";
+import { pushToast } from "@delebash/llm-ui";
 import { readPref, writePref } from "../services/prefs.js";
 import { UiButton } from "@delebash/llm-ui";
 

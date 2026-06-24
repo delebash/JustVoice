@@ -8,7 +8,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { captureReadinessService } from "../services/projects.js";
-import { pushToast } from "../services/toastBridge.js";
+import { pushToast } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiCheckbox, UiTag, UiChip } from "@delebash/llm-ui";
 
 const api = useApi();

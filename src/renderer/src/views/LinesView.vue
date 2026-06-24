@@ -13,7 +13,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
-import { pushToast } from "../services/toastBridge.js";
+import { pushToast } from "@delebash/llm-ui";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { UiButton, UiInput, UiChip, UiTag, UiSelect } from "@delebash/llm-ui";

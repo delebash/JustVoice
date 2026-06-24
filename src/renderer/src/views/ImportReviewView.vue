@@ -11,7 +11,7 @@
 -->
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { pushToast } from "../services/toastBridge.js";
+import { pushToast } from "@delebash/llm-ui";
 import { projectsService } from "../services/projects.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";

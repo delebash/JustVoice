@@ -4,7 +4,7 @@ import { ref, computed, watch, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { useTakesStore } from "../stores/takes.js";
-import { pushToast } from "../services/toastBridge.js";
+import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
 import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
