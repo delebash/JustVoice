@@ -126,10 +126,24 @@ just-llm-runner       Python LLM core (DONE)
      the manuscript-editor vars. **JW visual parity verified** — build clean,
      smoke 25/25, screenshot pixel-identical (accent-hue 14, Spline Sans,
      Fraunces). The public kit index now `export *`s from `common/`.
-   - ⏭ **Slice 2 (JV):** rewrite JV `tokens.css` → hue-driven oklch (default =
-     JV green), adopt the kit engine + a JV catalog (no editor knobs), preserve
-     JV's default look.
-   - ⏭ **Slice 3 (JV):** Settings → Appearance surface (accent/font/button/tint
+   - ⏭ **Slice 2 (JV) — groundwork done, ready to execute carefully.** JV's
+     palette measured in OKLCH (don't guess): accent `oklch(0.538 0.080 166)`
+     (hue 166 green) · accent-ink `0.446 0.068` · accent-soft `0.948 0.011` ·
+     accent-line `0.840 0.035` · gold/warn hue 82 · danger `0.517 0.137 34`
+     (hue 34) · info hue 250 · success = accent hue 166. JV keeps its OWN
+     per-family L/C keyed to `--accent-hue`/`--danger-hue`/`--success-hue`/
+     `--info-hue` so the **default hues reproduce JV's current hex EXACTLY**
+     (no shift) while the engine's hue knobs retint. Surfaces/ink/mono stay
+     JV's. Two kit-engine fixes needed first (both JW-safe): (a) drop the
+     hardcoded `--font-mono` set (mono is an app constant in tokens.css, not a
+     theme knob — JW's value is unchanged); (b) add **Inter** to `UI_FONTS` so
+     JV's default UI font is preserved. Then JV `tokens.css` hue-drives accent +
+     functional families + adds the button-knob vars; JV `appearance.js` = kit
+     engine + JV DEFAULT (Inter, accentHue 166, inkPalette auto) + JV catalog
+     (no editor/display knobs); JV `main.js`/`uiStore` migrate `theme` →
+     `appearance.mode` + `applyAppearance` at boot. Verify per-view screenshots
+     (green + warm paper preserved).
+   - ⏭ **Slice 3 (JV):** Settings → Appearance surface (accent/font/button/ink
      pickers) + JV appearance store + boot wiring.
 3. **modal system + AppDialog** (T5) — shared self-contained `AppModal` (scoped
    styles = canonical look) + `AppDialog` host on top of it. Migrate JV's 16
