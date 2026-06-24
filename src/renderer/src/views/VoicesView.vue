@@ -1023,8 +1023,6 @@ function blendWithVoice() {
 <style scoped>
 .row-orphan { opacity: 0.7; }
 
-/* Modal — canonical jv-overlay/jv-modal shell; only width is local. */
-
 /* File input inherits basic styling */
 .jv-file-input {
   display: block;

@@ -13,9 +13,9 @@
 // Emits:
 //   close — closing / cancel / Esc / after a successful dry-run handoff
 //
-// Renders on the jv-overlay/jv-modal shell — one of the hand-rolled JV
-// modals being migrated to the shared kit AppModal (@delebash/llm-ui) in
-// the modal-system convergence.
+// Renders on the shared kit AppModal (@delebash/llm-ui) shell — the
+// modal-system convergence is complete; no hand-rolled JV modal shell
+// remains.
 //
 // Help link: each adapter exposes a `docs_anchor` (e.g. "import-justwrite").
 // We surface it through `data-help-key` on the "What is this format?" link

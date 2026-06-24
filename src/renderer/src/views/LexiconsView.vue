@@ -6,8 +6,8 @@
   dialog. The dialog edits a working DRAFT (name + scope + entries) and
   commits on Save / discards on Cancel (save-pattern ruling 2026-06-14) —
   consistent with Personas + Render presets. "+ New lexicon" opens the same
-  dialog directly on a blank draft (no prompt-then-popup). Canonical
-  jv-overlay/jv-modal shell so the close ✕ never overlaps Import/Export.
+  dialog directly on a blank draft (no prompt-then-popup). Uses the shared
+  AppModal (@delebash/llm-ui) shell so the close ✕ never overlaps Import/Export.
 -->
 <script setup>
 import { computed, nextTick, onMounted, ref } from "vue";

@@ -47,8 +47,8 @@ they are **two separate codebases that re-implement the same scaffolding**:
 |---|---|---|---|
 | `serverApi.js` | 139 lines — full transport (base+auth+`request`/verbs/dedupe/blob/form/safe/lastError) | 28 lines — **only** the origin-aware base resolver; transport scattered across ~16 service files each hand-rolling `fetch` | JV follows the app-standard; JW drifted |
 | `appearance.js` | 32 lines — light/dark/system only | **490 lines** — full theme engine (accent/gold/functional hues, fonts, button knobs, tints, ink palettes, ui-scale, nav typography, presets) | JV would ADOPT JW's engine + a JV-appropriate knob subset |
-| `AppDialog.vue` | 203 | 242 | host for the (already-shared) `dialog.js`; a specialized modal → converges with the modal system |
-| Modal system | **16 hand-rolled** `.jv-overlay`/`.jv-modal` modals + 1 `AppModal` | funnels ~11 modals through `AppModal` | migrate JV's 16 → shared `AppModal`, retire the globals |
+| `AppDialog.vue` | ✅ now imports kit `AppDialog` (local deleted) | still local (242) — converges next | ✅ **kit `AppDialog` shipped** (on kit AppModal + shared dialog.js); JV done, JW pending |
+| Modal system | ✅ all migrated to kit `AppModal`; `.jv-overlay`/`.jv-modal*`/`.jv-dialog*`/`.jv-help-drawer*` globals removed | funnels ~11 modals through kit `AppModal` (Slice A) | ✅ JV done — both apps now share ONE modal shell |
 
 ### Genuinely different — necessary, do NOT share
 JV: engines/audio/generate/render/voices/takes/personas/lexicons + `auth.py`.
@@ -167,12 +167,29 @@ just-llm-runner       Python LLM core (DONE)
      code** (no real consumer — only a comment) → deleted. Verified: build clean
      (JV+JW), JW smoke 25/25, modal screenshot (Multi-reader panel) renders
      correctly with JW theming.
-   - ⏭ **Slice B:** migrate JV's ~16 hand-rolled `.jv-overlay`/`.jv-modal`
-     modals → kit `AppModal` (per-modal slot fit), then retire the
-     `.jv-overlay`/`.jv-modal` globals.
-   - ⏭ **AppDialog:** shared prompt/confirm host on the kit AppModal + shared
-     `dialog.js` (already in the kit); both apps' `AppDialog.vue` converge.
-     (JW's `.app-modal` CSS stays until then — its AppDialog still uses it.)
+   - ✅ **Slice B done (JV).** All JV hand-rolled `.jv-overlay`/`.jv-modal`
+     modals migrated to the kit `AppModal` (StudioView ×2, GenerateView ×2 the
+     last of the batch; earlier: KeyboardCheatsheet, NewProjectModal, ChordPicker,
+     LineageViewer, VoiceParamsModal, EffectsChainEditorModal, QuickSetup,
+     ProjectsView, PersonasView, RenderPresetsView, LexiconsView, ImportModal,
+     VoicesView). The `.jv-overlay`/`.jv-modal*` **and** the dead
+     `.jv-dialog*`/`.jv-help-drawer*` globals (leftover from the HelpDrawer kit
+     migration) + the 4 orphaned `@keyframes` (jvOverlayIn/Out, jvModalIn,
+     jvDrawerIn) were removed from `styles.css`. Verified: build clean, smoke
+     14/14 zero JS errors, screenshots.
+   - ✅ **AppDialog done (kit + JV).** New shared `common/components/AppDialog.vue`
+     built **on** the kit `AppModal` (one overlay/animation/token shell — no CSS
+     fork), driven by the already-shared `dialog.js`. Field types text/textarea/
+     select (union of both forks). New `configureDialog({ labels })` +
+     reactive `dialogLabels` keep the kit i18n-agnostic (apps inject localized
+     defaults; English defaults match JW's en.json verbatim). JV `App.vue` now
+     imports `AppDialog` from the kit; JV's local `components/AppDialog.vue`
+     deleted. Verified: confirm + prompt dialogs open/focus/close (interaction
+     test, autofocus through the AppModal slot, close-animation teardown),
+     screenshots, zero JS exceptions. **JW AppDialog convergence next** (repoint
+     its ~16 `services/dialog.js` callsites → kit, delete JW's local
+     `dialog.js` + `AppDialog.vue`, `configureDialog` in JW main.js, retire
+     JW's `.app-dialog`/`.app-modal` CSS).
 4. **JW UI merge** — JW `Jw*` → kit `Ui*` + JW shell forks → kit, exactly as JV
    did. JW deletes its forks and imports the kit.
    - ✅ **Icon done**: 77 importers repointed to the kit `Icon`; JW `Icon.vue`

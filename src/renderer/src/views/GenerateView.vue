@@ -6,7 +6,7 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
-import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag, UiSelect } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag, UiSelect, AppModal } from "@delebash/llm-ui";
 import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { useVoicesStore } from "../stores/voices.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -986,39 +986,34 @@ onMounted(async () => {
         <!-- Applied-entries preview modal — client-side match against
              the current textarea text. Same scan logic as the Lexicons
              tab's "▶ Preview against text" button. -->
-        <div v-if="showLexiconPreview && attachedLexicon" class="jv-overlay" @click.self="showLexiconPreview = false">
-          <div class="jv-modal">
-            <header class="jv-modal__header">
-              <div class="jv-modal__titleblock">
-                <span class="jv-modal__eyebrow">{{ attachedLexicon.name }}</span>
-                <h3 class="jv-modal__title">Applied entries · {{ appliedLexiconCount }} replacement{{ appliedLexiconCount === 1 ? "" : "s" }}</h3>
-              </div>
-              <button type="button" class="jv-modal__close" @click="showLexiconPreview = false">✕</button>
-            </header>
-            <div class="jv-modal__body">
-              <p v-if="!appliedLexiconMatches.length" class="jv-muted">
-                None of the lexicon's words appear in the current text. Type a word that's in the lexicon to see it here.
-              </p>
-              <table v-else class="jv-table">
-                <thead>
-                  <tr><th>Word</th><th>Pronunciation</th><th>Format</th><th class="right">Count</th></tr>
-                </thead>
-                <tbody>
-                  <tr v-for="m in appliedLexiconMatches" :key="m.word">
-                    <td><strong>{{ m.word }}</strong></td>
-                    <td><code class="jv-mono">{{ m.replacement }}</code></td>
-                    <td>{{ m.notation }}</td>
-                    <td class="right">{{ m.count }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <footer class="jv-modal__footer">
-              <span class="jv-spacer" />
-              <UiButton intent="secondary" label="Close" @click="showLexiconPreview = false" />
-            </footer>
-          </div>
-        </div>
+        <AppModal
+          v-if="showLexiconPreview && attachedLexicon"
+          :eyebrow="attachedLexicon.name"
+          :title="`Applied entries · ${appliedLexiconCount} replacement${appliedLexiconCount === 1 ? '' : 's'}`"
+          dismissable
+          @close="showLexiconPreview = false"
+        >
+          <p v-if="!appliedLexiconMatches.length" class="jv-muted">
+            None of the lexicon's words appear in the current text. Type a word that's in the lexicon to see it here.
+          </p>
+          <table v-else class="jv-table">
+            <thead>
+              <tr><th>Word</th><th>Pronunciation</th><th>Format</th><th class="right">Count</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="m in appliedLexiconMatches" :key="m.word">
+                <td><strong>{{ m.word }}</strong></td>
+                <td><code class="jv-mono">{{ m.replacement }}</code></td>
+                <td>{{ m.notation }}</td>
+                <td class="right">{{ m.count }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <template #footer>
+            <span class="jv-spacer" />
+            <UiButton intent="secondary" label="Close" @click="showLexiconPreview = false" />
+          </template>
+        </AppModal>
       </div>
     </div>
 
@@ -1063,42 +1058,32 @@ onMounted(async () => {
          decision #3). User accepts → text replaces textarea. Reject →
          original stays. THEN user clicks Generate to TTS. The rewrite
          is NEVER an automatic render-time hook. -->
-    <div
+    <AppModal
       v-if="rewritePreview"
-      class="jv-overlay"
-      @click.self="rejectRewrite"
+      eyebrow="Rewrite preview"
+      :title="`In ${selectedPersona?.name || 'character'}'s voice`"
+      :max-width="'820px'"
+      dismissable
+      @close="rejectRewrite"
     >
-      <div class="jv-modal generate-view__rewrite-modal">
-        <header class="jv-modal__header">
-          <div class="jv-modal__titleblock">
-            <span class="jv-modal__eyebrow">Rewrite preview</span>
-            <h3 class="jv-modal__title">
-              In {{ selectedPersona?.name || "character" }}'s voice
-            </h3>
-          </div>
-          <button type="button" class="jv-modal__close" @click="rejectRewrite">✕</button>
-        </header>
-        <div class="jv-modal__body">
-          <div class="generate-view__rewrite-grid">
-            <div>
-              <div class="generate-view__rewrite-h">Original</div>
-              <p class="generate-view__rewrite-text">{{ rewritePreview.original }}</p>
-            </div>
-            <div>
-              <div class="generate-view__rewrite-h">Rewritten</div>
-              <p class="generate-view__rewrite-text generate-view__rewrite-text--new">
-                {{ rewritePreview.rewritten }}
-              </p>
-            </div>
-          </div>
+      <div class="generate-view__rewrite-grid">
+        <div>
+          <div class="generate-view__rewrite-h">Original</div>
+          <p class="generate-view__rewrite-text">{{ rewritePreview.original }}</p>
         </div>
-        <footer class="jv-modal__footer">
-          <span class="jv-spacer" />
-          <UiButton intent="secondary" label="Reject" @click="rejectRewrite" />
-          <UiButton intent="primary" label="Accept (replaces text)" @click="acceptRewrite" />
-        </footer>
+        <div>
+          <div class="generate-view__rewrite-h">Rewritten</div>
+          <p class="generate-view__rewrite-text generate-view__rewrite-text--new">
+            {{ rewritePreview.rewritten }}
+          </p>
+        </div>
       </div>
-    </div>
+      <template #footer>
+        <span class="jv-spacer" />
+        <UiButton intent="secondary" label="Reject" @click="rejectRewrite" />
+        <UiButton intent="primary" label="Accept (replaces text)" @click="acceptRewrite" />
+      </template>
+    </AppModal>
   </div>
 </template>
 
@@ -1227,8 +1212,8 @@ onMounted(async () => {
   font-size: 11.5px;
 }
 
-/* Rewrite preview modal — side-by-side original vs LLM-rewritten text. */
-.generate-view__rewrite-modal { width: min(820px, calc(100vw - 32px)); }
+/* Rewrite preview modal — side-by-side original vs LLM-rewritten text.
+   Modal width comes from AppModal's max-width prop; this is the body grid. */
 .generate-view__rewrite-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

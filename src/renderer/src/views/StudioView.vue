@@ -27,7 +27,7 @@ import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
-import { UiButton, UiInput, UiTextarea, UiCheckbox, UiTag, UiChip, UiSelect } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiCheckbox, UiTag, UiChip, UiSelect, AppModal } from "@delebash/llm-ui";
 import VoiceParamsModal from "../components/VoiceParamsModal.vue";
 import { EmptyState } from "@delebash/llm-ui";
 import ExportPanel from "../components/ExportPanel.vue";
@@ -1998,16 +1998,7 @@ watch(selectedProjectId, (id) => {
     />
 
     <!-- Add an existing library persona to the cast. -->
-    <div v-if="addPersonaOpen" class="jv-overlay" @click.self="addPersonaOpen = false">
-      <div class="jv-modal" style="width: min(520px, calc(100vw - 32px));">
-        <header class="jv-modal__header">
-          <div class="jv-modal__titleblock">
-            <span class="jv-modal__eyebrow">Cast</span>
-            <h3 class="jv-modal__title">Add a persona to this {{ copy.book.singular.toLowerCase() }}</h3>
-          </div>
-          <button type="button" class="jv-modal__close" title="Close" @click="addPersonaOpen = false">✕</button>
-        </header>
-        <div class="jv-modal__body">
+    <AppModal v-if="addPersonaOpen" eyebrow="Cast" :title="`Add a persona to this ${copy.book.singular.toLowerCase()}`" :max-width="'520px'" dismissable @close="addPersonaOpen = false">
           <p v-if="!addablePersonas.length" class="jv-muted" style="margin: 4px 0 8px">
             Every library persona is already in this cast.
             <a href="#personas">Create a new persona</a> and it'll appear here.
@@ -2029,23 +2020,18 @@ watch(selectedProjectId, (id) => {
               />
             </li>
           </ul>
-        </div>
-      </div>
-    </div>
+    </AppModal>
 
     <!-- Per-block Rewrite preview (right-click on Script tab). -->
-    <div v-if="rewriteModalOpen" class="jv-overlay" @click.self="rewriteModalOpen = false">
-      <div class="jv-modal" style="width: min(720px, calc(100vw - 32px));">
-        <header class="jv-modal__header">
-          <div class="jv-modal__titleblock">
-            <span class="jv-modal__eyebrow">Rewrite in character</span>
-            <h3 class="jv-modal__title">
-              {{ rewriteRowIndex != null && analyzeRows[rewriteRowIndex] ? speakerLabel(analyzeRows[rewriteRowIndex].speaker) : "Block" }}
-            </h3>
-          </div>
-          <button type="button" class="jv-modal__close" @click="rewriteModalOpen = false">✕</button>
-        </header>
-        <div class="jv-modal__body" style="padding: 16px 22px; display: flex; flex-direction: column; gap: 14px;">
+    <AppModal
+      v-if="rewriteModalOpen"
+      eyebrow="Rewrite in character"
+      :title="rewriteRowIndex != null && analyzeRows[rewriteRowIndex] ? speakerLabel(analyzeRows[rewriteRowIndex].speaker) : 'Block'"
+      :max-width="'720px'"
+      dismissable
+      @close="rewriteModalOpen = false"
+    >
+        <div style="display: flex; flex-direction: column; gap: 14px;">
           <div>
             <div class="jv-form-row__label" style="margin-bottom: 4px">Original</div>
             <div style="padding: 10px 12px; background: var(--surface-2); border-radius: 6px; font-size: 13px; line-height: 1.5;">
@@ -2066,7 +2052,7 @@ watch(selectedProjectId, (id) => {
             />
           </div>
         </div>
-        <footer class="jv-modal__footer">
+        <template #footer>
           <UiButton
             intent="secondary"
             size="small"
@@ -2082,9 +2068,8 @@ watch(selectedProjectId, (id) => {
             label="Accept"
             @click="acceptRewrite"
           />
-        </footer>
-      </div>
-    </div>
+        </template>
+    </AppModal>
   </div>
 </template>
 

@@ -34,8 +34,21 @@ hand-rolled `fetch` files; only `llm_runner` shared on the server today.
   removed JV's duplicate local appearance system + rewired Settings to
   `ui.appearance`, dead density→live `uiScale`, `main.js` boot-applies. Accent
   knob now live. Verified both apps (smoke + screenshots, light+dark).
-- ⏭ next: modals/AppDialog (JV 16 hand-rolled → shared AppModal) → rest of the
-  JW UI merge (shells + Jw*→Ui* primitives; promote UiNumber/UiTable) → Layer B
+- ✅ **modal system + AppDialog — JV done; kit shipped.** Kit
+  `common/components/AppModal.vue` (Slice A) is the ONE modal shell both apps use.
+  ALL JV hand-rolled `.jv-overlay`/`.jv-modal` modals migrated to it (StudioView,
+  GenerateView were the last two); `.jv-overlay`/`.jv-modal*` + the dead
+  `.jv-dialog*`/`.jv-help-drawer*` globals + 4 orphaned `@keyframes` removed from
+  `styles.css`. New shared `common/components/AppDialog.vue` (prompt/confirm host)
+  built **on** the kit AppModal + the already-shared `dialog.js`, with
+  `configureDialog({labels})` + reactive `dialogLabels` (kit stays i18n-agnostic;
+  English defaults = JW's en.json). JV `App.vue` imports the kit `AppDialog`; JV's
+  local one deleted. Verified: build clean, smoke 14/14, dialog/modal interaction
+  test (open/autofocus/close-animation) + screenshots, zero JS exceptions.
+- ⏭ next: **JW AppDialog convergence** (repoint JW's ~16 `services/dialog.js`
+  callsites → kit, delete JW local `dialog.js` + `AppDialog.vue`, `configureDialog`
+  in JW main.js, retire JW `.app-dialog`/`.app-modal` CSS) → rest of the JW UI
+  merge (shells + Jw*→Ui* primitives; promote UiNumber/UiTable) → Layer B
   server-core → Layer C lock. (Optional: expand JV's appearance Settings to the
   full knob set the engine now supports.)
 
