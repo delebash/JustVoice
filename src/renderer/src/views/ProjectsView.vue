@@ -12,7 +12,7 @@
 -->
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
-import { UiButton, UiInput, UiCheckbox, UiTag, UiChip, UiSelect } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiCheckbox, UiTag, UiChip, UiSelect, AppModal } from "@delebash/llm-ui";
 import { EmptyState } from "@delebash/llm-ui";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import ImportModal from "./ImportModal.vue";
@@ -699,53 +699,49 @@ onMounted(() => {
     />
 
     <!-- Add-personas-to-project multi-select modal. -->
-    <div v-if="addCastOpen" class="jv-overlay" @click.self="addCastOpen = false">
-      <div class="jv-modal" style="width: min(540px, calc(100vw - 32px));">
-        <header class="jv-modal__header">
-          <div class="jv-modal__titleblock">
-            <span class="jv-modal__eyebrow">Project: {{ selectedProject?.name }}</span>
-            <h3 class="jv-modal__title">Add personas to this project</h3>
-          </div>
-          <button type="button" class="jv-modal__close" @click="addCastOpen = false">✕</button>
-        </header>
-        <div class="jv-modal__body" style="padding: 14px 22px;">
-          <p v-if="!personasAvailableForCast.length" class="jv-muted">
-            Every persona is already in this project. Create more personas in the Personas tab.
-          </p>
-          <ul v-else style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px;">
-            <li
-              v-for="p in personasAvailableForCast"
-              :key="p.id"
-            >
-              <UiCheckbox
-                :model-value="addCastSelection.has(p.id)"
-                @change="toggleAddCast(p.id)"
-                style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer;"
-              >
-                <div style="flex: 1; min-width: 0;">
-                  <strong>{{ p.name }}</strong>
-                  <div class="jv-muted" style="font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                    {{ p.bio || "(no bio)" }}
-                  </div>
-                </div>
-              </UiCheckbox>
-            </li>
-          </ul>
-        </div>
-        <footer class="jv-modal__footer">
-          <span class="jv-muted" style="font-size: 12px;">{{ addCastSelection.size }} selected</span>
-          <span class="jv-spacer" />
-          <UiButton intent="secondary" label="Cancel" @click="addCastOpen = false" />
-          <UiButton
-            intent="primary"
-            :loading="addCastBusy"
-            :disabled="addCastBusy || !addCastSelection.size"
-            :label="`Add ${addCastSelection.size || ''} persona${addCastSelection.size === 1 ? '' : 's'}`"
-            @click="commitAddCast"
-          />
-        </footer>
-      </div>
-    </div>
+    <AppModal
+      v-if="addCastOpen"
+      :eyebrow="`Project: ${selectedProject?.name}`"
+      title="Add personas to this project"
+      :max-width="'540px'"
+      dismissable
+      @close="addCastOpen = false"
+    >
+      <p v-if="!personasAvailableForCast.length" class="jv-muted">
+        Every persona is already in this project. Create more personas in the Personas tab.
+      </p>
+      <ul v-else style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px;">
+        <li
+          v-for="p in personasAvailableForCast"
+          :key="p.id"
+        >
+          <UiCheckbox
+            :model-value="addCastSelection.has(p.id)"
+            @change="toggleAddCast(p.id)"
+            style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer;"
+          >
+            <div style="flex: 1; min-width: 0;">
+              <strong>{{ p.name }}</strong>
+              <div class="jv-muted" style="font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                {{ p.bio || "(no bio)" }}
+              </div>
+            </div>
+          </UiCheckbox>
+        </li>
+      </ul>
+      <template #footer>
+        <span class="jv-muted" style="font-size: 12px;">{{ addCastSelection.size }} selected</span>
+        <span class="jv-spacer" />
+        <UiButton intent="secondary" label="Cancel" @click="addCastOpen = false" />
+        <UiButton
+          intent="primary"
+          :loading="addCastBusy"
+          :disabled="addCastBusy || !addCastSelection.size"
+          :label="`Add ${addCastSelection.size || ''} persona${addCastSelection.size === 1 ? '' : 's'}`"
+          @click="commitAddCast"
+        />
+      </template>
+    </AppModal>
   </div>
 </template>
 

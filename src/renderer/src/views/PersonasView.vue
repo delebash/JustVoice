@@ -17,7 +17,7 @@ import { computed, onMounted, ref, watch, nextTick } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
-import { UiButton, UiInput, UiTextarea, UiTag, UiSelect } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiTag, UiSelect, AppModal } from "@delebash/llm-ui";
 import { EmptyState } from "@delebash/llm-ui";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import { usePersonasStore } from "../stores/personas.js";
@@ -406,27 +406,23 @@ onMounted(loadAll);
     </template>
 
     <!-- ── Editor dialog (consolidated pattern 2026-06-12) ───────────── -->
-    <div v-else class="jv-overlay" @click.self="closeEditor">
-      <div class="jv-modal personas__modal">
-        <header class="jv-modal__header">
-          <div class="jv-modal__titleblock">
-            <span class="jv-modal__eyebrow">{{ creating ? "New persona" : "Persona" }}</span>
-            <h3 class="jv-modal__title">{{ draft.name || "(unnamed)" }}</h3>
-          </div>
-          <UiTag intent="accent2" v-if="dirty">Unsaved changes</UiTag>
-          <UiTag v-if="selectedPersona?.imported_from" intent="ghost">
-            imported from {{ selectedPersona.imported_from }}
-          </UiTag>
-          <UiTag
-            v-if="usageCount(draft.id) > 0"
-            intent="success"
-          >
-            Used in {{ usageCount(draft.id) }} project{{ usageCount(draft.id) === 1 ? '' : 's' }}
-          </UiTag>
-          <button type="button" class="jv-modal__close" title="Close" @click="closeEditor">✕</button>
-        </header>
-
-      <div class="jv-modal__body">
+    <AppModal
+      v-else
+      :eyebrow="creating ? 'New persona' : 'Persona'"
+      :title="draft.name || '(unnamed)'"
+      :max-width="'820px'"
+      dismissable
+      @close="closeEditor"
+    >
+      <template #header-extra>
+        <UiTag intent="accent2" v-if="dirty">Unsaved changes</UiTag>
+        <UiTag v-if="selectedPersona?.imported_from" intent="ghost">
+          imported from {{ selectedPersona.imported_from }}
+        </UiTag>
+        <UiTag v-if="usageCount(draft.id) > 0" intent="success">
+          Used in {{ usageCount(draft.id) }} project{{ usageCount(draft.id) === 1 ? '' : 's' }}
+        </UiTag>
+      </template>
         <div class="personas__grid">
           <label class="personas__field">
             <span>Name</span>
@@ -566,17 +562,15 @@ onMounted(loadAll);
           </table>
         </section>
 
-      </div><!-- /.jv-modal__body -->
 
       <!-- Dialog footer = Save + Cancel (G-PERSONA-4). Delete lives on
            each list row, not here, so it's never a neighbour to Save. -->
-      <footer class="jv-modal__footer">
+      <template #footer>
         <span class="jv-spacer" />
         <UiButton intent="secondary" label="Cancel" @click="closeEditor" />
         <UiButton intent="primary" label="Save" :disabled="!dirty" @click="savePersona" />
-      </footer>
-      </div>
-    </div>
+      </template>
+    </AppModal>
 
     <!-- Effects chain editor — opens from the Effects chain row above. -->
     <EffectsChainEditorModal
@@ -642,7 +636,6 @@ onMounted(loadAll);
 .personas__row { cursor: pointer; }
 .personas__row:hover td { background: var(--surface-2); }
 .personas__avatar-sm { width: 26px; height: 26px; font-size: 12px; vertical-align: middle; margin-right: 8px; }
-.personas__modal { width: min(820px, calc(100vw - 32px)); }
 
 .personas__grid {
   display: grid;
