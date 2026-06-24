@@ -119,8 +119,17 @@ just-llm-runner       Python LLM core (DONE)
 3. **modal system + AppDialog** (T5) — shared self-contained `AppModal` (scoped
    styles = canonical look) + `AppDialog` host on top of it. Migrate JV's 16
    hand-rolled modals + JW's ~11 onto it; retire `.jv-overlay`/`.jv-modal`.
-4. **JW primitive merge** — JW `Jw*` → kit `Ui*` (the "JW UI merge"): JW deletes
-   its `components/ui/` forks and imports the kit, exactly as JV did.
+4. **JW UI merge** — JW `Jw*` → kit `Ui*` + JW shell forks → kit, exactly as JV
+   did. JW deletes its forks and imports the kit.
+   - ✅ **Icon done**: 77 importers repointed to the kit `Icon`; JW `Icon.vue`
+     deleted (byte-identical to the kit's). Build + headless smoke 25/25 green.
+   - ⏭ remaining shells: `Breadcrumb`, `dialog`/`tooltip` services, `Toast`,
+     `EmptyState`, `ConnectionError` (props), `HelpDrawer`/`HelpTrigger`
+     (configureHelp with onOpenFull/onOpenWeb — JW has a HelpView + web docs).
+   - ⏭ primitives: `JwButton→UiButton`, `JwInput`, `JwSelect`, `JwTextarea`,
+     `JwCheckbox`, `JwTag` (per-primitive API reconciliation). **Gaps to
+     promote to the kit first: `UiNumber` (JwNumber, locale number input) +
+     `UiTable` (JwTable, TanStack) — no kit equivalent yet.**
 5. Delete every renderer fork; both apps' smokes green.
 
 ### Layer B — extract `@delebash/server-core`
