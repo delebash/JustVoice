@@ -12,7 +12,7 @@
 //   import  — user chose to create from a file instead (caller opens ImportModal)
 
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import { UiButton, UiInput } from "@delebash/llm-ui";
+import { UiButton, UiInput, AppModal } from "@delebash/llm-ui";
 
 const props = defineProps({
   // Preselect a kind (Home's Start-something pills hand this over).
@@ -86,17 +86,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 </script>
 
 <template>
-  <div class="jv-overlay" @click.self="emit('close')" role="dialog" aria-modal="true" aria-labelledby="np-title">
-    <div class="jv-modal np-modal">
-      <header class="jv-modal__header">
-        <div class="jv-modal__titleblock">
-          <span class="jv-modal__eyebrow">New project</span>
-          <h3 id="np-title" class="jv-modal__title">What are you making?</h3>
-        </div>
-        <button type="button" class="jv-modal__close" aria-label="Close" @click="emit('close')">✕</button>
-      </header>
-
-      <div class="jv-modal__body">
+  <AppModal eyebrow="New project" title="What are you making?" :max-width="'980px'" dismissable @close="emit('close')">
       <p class="np-lede">
         Everything downstream adapts — the words in the sidebar, the default mastering
         target, which Studio steps appear, and what Export produces. Same voices,
@@ -143,26 +133,23 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
         ·
         <a href="#" title="Reader-friendly playback + screen-reader-aware controls" @click.prevent="emit('focus-only', 'accessibility')">Accessibility ➜</a>
       </p>
-      </div>
 
-      <footer class="jv-modal__footer">
-        <UiInput
-          ref="nameInput"
-          v-model="name"
-          width="name"
-          class="np-name-input"
-          placeholder="Project name…"
-          @keydown.enter.stop.prevent="create"
-        />
-        <span class="jv-spacer" />
-        <UiButton intent="primary" :disabled="!canCreate" @click="create">Create project ➜</UiButton>
-      </footer>
-    </div>
-  </div>
+    <template #footer>
+      <UiInput
+        ref="nameInput"
+        v-model="name"
+        width="name"
+        class="np-name-input"
+        placeholder="Project name…"
+        @keydown.enter.stop.prevent="create"
+      />
+      <span class="jv-spacer" />
+      <UiButton intent="primary" :disabled="!canCreate" @click="create">Create project ➜</UiButton>
+    </template>
+  </AppModal>
 </template>
 
 <style scoped>
-.np-modal { width: min(980px, 96vw); }
 .np-lede { font-size: 13px; color: var(--ink-2, #4a4a4a); margin: 0 0 16px; max-width: 720px; }
 .np-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .np-card {

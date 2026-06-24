@@ -8,6 +8,7 @@
 -->
 <script setup>
 import { computed, onMounted, onBeforeUnmount, ref } from "vue";
+import { AppModal } from "@delebash/llm-ui";
 
 const open = ref(false);
 
@@ -85,38 +86,34 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="open" class="jv-overlay" @click.self="open = false">
-    <div class="jv-modal cheatsheet">
-      <header class="jv-modal__header">
-        <div class="jv-modal__titleblock">
-          <span class="jv-modal__eyebrow">Keyboard shortcuts</span>
-          <h3 class="jv-modal__title">Quick reference</h3>
-        </div>
-        <button type="button" class="jv-modal__close" @click="open = false">✕</button>
-      </header>
-      <div class="jv-modal__body cheatsheet__body">
-        <section v-for="g in GROUPS" :key="g.title" class="cheatsheet__group">
-          <h4 class="cheatsheet__group-title">{{ g.title }}</h4>
-          <dl class="cheatsheet__list">
-            <template v-for="(item, i) in g.items" :key="i">
-              <dt class="cheatsheet__keys">
-                <kbd v-for="k in item.keys" :key="k">{{ k }}</kbd>
-              </dt>
-              <dd class="cheatsheet__label">{{ item.label }}</dd>
-            </template>
-          </dl>
-        </section>
-      </div>
-      <footer class="jv-modal__footer">
-        <span class="jv-muted" style="font-size: 12px">Press <kbd>?</kbd> to toggle, <kbd>Esc</kbd> to close.</span>
-      </footer>
+  <AppModal
+    v-if="open"
+    eyebrow="Keyboard shortcuts"
+    title="Quick reference"
+    dismissable
+    @close="open = false"
+  >
+    <div class="cheatsheet__body">
+      <section v-for="g in GROUPS" :key="g.title" class="cheatsheet__group">
+        <h4 class="cheatsheet__group-title">{{ g.title }}</h4>
+        <dl class="cheatsheet__list">
+          <template v-for="(item, i) in g.items" :key="i">
+            <dt class="cheatsheet__keys">
+              <kbd v-for="k in item.keys" :key="k">{{ k }}</kbd>
+            </dt>
+            <dd class="cheatsheet__label">{{ item.label }}</dd>
+          </template>
+        </dl>
+      </section>
     </div>
-  </div>
+    <template #footer>
+      <span class="jv-muted" style="font-size: 12px">Press <kbd>?</kbd> to toggle, <kbd>Esc</kbd> to close.</span>
+    </template>
+  </AppModal>
 </template>
 
 <style scoped>
-.cheatsheet { width: min(640px, calc(100vw - 32px)); }
-.cheatsheet__body { padding: 16px 22px; display: flex; flex-direction: column; gap: 18px; }
+.cheatsheet__body { display: flex; flex-direction: column; gap: 18px; }
 .cheatsheet__group-title {
   font-size: 11px;
   text-transform: uppercase;

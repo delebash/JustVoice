@@ -12,7 +12,7 @@
 import { ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
-import { UiButton, UiTag } from "@delebash/llm-ui";
+import { UiButton, UiTag, AppModal } from "@delebash/llm-ui";
 
 const props = defineProps({
   takeId: { type: String, default: null },
@@ -62,17 +62,7 @@ function fmtDate(iso) {
 </script>
 
 <template>
-  <div v-if="open" class="jv-overlay" @click.self="emit('close')">
-    <div class="jv-modal lineage-modal">
-      <header class="jv-modal__header">
-        <div class="jv-modal__titleblock">
-          <span class="jv-modal__eyebrow">Take history</span>
-          <h3 class="jv-modal__title">Take lineage</h3>
-        </div>
-        <button type="button" class="jv-modal__close" title="Close" @click="emit('close')">✕</button>
-      </header>
-
-      <div class="jv-modal__body">
+  <AppModal v-if="open" eyebrow="Take history" title="Take lineage" :max-width="'540px'" dismissable @close="emit('close')">
       <p v-if="loading" class="jv-muted">Loading chain…</p>
       <p v-else-if="error" class="jv-banner jv-banner--danger">{{ error }}</p>
       <p v-else-if="!chain.length" class="jv-muted">No lineage found for this take.</p>
@@ -106,14 +96,10 @@ function fmtDate(iso) {
           </div>
         </div>
       </div>
-      </div>
-    </div>
-  </div>
+  </AppModal>
 </template>
 
 <style scoped>
-.lineage-modal { width: min(540px, calc(100vw - 32px)); }
-
 .lineage-chain { display: flex; flex-direction: column; }
 .lineage-node { display: flex; gap: 12px; padding: 8px 0; }
 .lineage-node__rail {

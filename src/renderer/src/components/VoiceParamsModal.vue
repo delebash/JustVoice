@@ -10,7 +10,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import { UiButton, UiInput } from "@delebash/llm-ui";
+import { UiButton, UiInput, AppModal } from "@delebash/llm-ui";
 
 const props = defineProps({
   open: { type: Boolean, required: true },
@@ -118,17 +118,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div v-if="open" class="jv-overlay" @click.self="onCancel">
-    <div class="jv-modal voice-params-modal">
-      <header class="jv-modal__header">
-        <div class="jv-modal__titleblock">
-          <span class="jv-modal__eyebrow">Tier-2 voice tuning</span>
-          <h3 class="jv-modal__title">{{ voiceName || voiceId || "Voice" }}</h3>
-        </div>
-        <button type="button" class="jv-modal__close" @click="onCancel">✕</button>
-      </header>
-
-      <div class="jv-modal__body voice-params-modal__body">
+  <AppModal v-if="open" eyebrow="Tier-2 voice tuning" :title="voiceName || voiceId || 'Voice'" :max-width="'640px'" dismissable @close="onCancel">
         <p class="jv-muted voice-params-modal__lede">
           Per-voice overrides. Empty cells fall through to the engine's default
           at render time. Only explicit values are persisted.
@@ -214,20 +204,16 @@ onMounted(() => {
             </label>
           </div>
         </details>
-      </div>
 
-      <footer class="jv-modal__footer">
+      <template #footer>
         <span class="jv-spacer" />
         <UiButton intent="secondary" label="Cancel" @click="onCancel" />
         <UiButton intent="primary" label="Save" @click="onSave" />
-      </footer>
-    </div>
-  </div>
+      </template>
+  </AppModal>
 </template>
 
 <style scoped>
-.voice-params-modal { width: min(640px, calc(100vw - 32px)); }
-.voice-params-modal__body { padding: 16px 22px; }
 .voice-params-modal__lede { font-size: 12.5px; margin: 0 0 12px; }
 
 .voice-params-modal__grid {

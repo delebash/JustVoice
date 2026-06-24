@@ -14,7 +14,7 @@
 -->
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
-import { UiButton } from "@delebash/llm-ui";
+import { UiButton, AppModal } from "@delebash/llm-ui";
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -119,44 +119,31 @@ function onSave() {
 </script>
 
 <template>
-  <div v-if="open" class="jv-overlay" @click.self="emit('cancel')">
-    <div class="jv-modal chord-picker">
-      <header class="jv-modal__header">
-        <div class="jv-modal__titleblock">
-          <span class="jv-modal__eyebrow">Keyboard chord</span>
-          <h3 class="jv-modal__title">{{ title }}</h3>
-        </div>
-        <button type="button" class="jv-modal__close" title="Cancel" @click="emit('cancel')">✕</button>
-      </header>
+  <AppModal v-if="open" eyebrow="Keyboard chord" :title="title" :max-width="'480px'" dismissable @close="emit('cancel')">
+    <p class="chord-picker__description">{{ description }}</p>
 
-      <div class="jv-modal__body">
-        <p class="chord-picker__description">{{ description }}</p>
-
-        <div
-          ref="captureEl"
-          class="chord-picker__capture"
-          tabindex="0"
-          @blur="captureEl?.focus()"
-          aria-label="Press the keys for your chord"
-        >
-          <span v-if="captured.length === 0" class="chord-picker__placeholder">Press a key…</span>
-          <span v-for="k in captured" :key="k" class="chord-picker__key">{{ k }}</span>
-        </div>
-
-        <p v-if="unsupported" class="chord-picker__unsupported">Key "{{ unsupported }}" can't be used.</p>
-      </div>
-
-      <footer class="jv-modal__footer">
-        <span class="jv-spacer" />
-        <UiButton intent="secondary" label="Cancel" @click="emit('cancel')" />
-        <UiButton intent="primary" label="Save chord" :disabled="captured.length === 0" @click="onSave" />
-      </footer>
+    <div
+      ref="captureEl"
+      class="chord-picker__capture"
+      tabindex="0"
+      @blur="captureEl?.focus()"
+      aria-label="Press the keys for your chord"
+    >
+      <span v-if="captured.length === 0" class="chord-picker__placeholder">Press a key…</span>
+      <span v-for="k in captured" :key="k" class="chord-picker__key">{{ k }}</span>
     </div>
-  </div>
+
+    <p v-if="unsupported" class="chord-picker__unsupported">Key "{{ unsupported }}" can't be used.</p>
+
+    <template #footer>
+      <span class="jv-spacer" />
+      <UiButton intent="secondary" label="Cancel" @click="emit('cancel')" />
+      <UiButton intent="primary" label="Save chord" :disabled="captured.length === 0" @click="onSave" />
+    </template>
+  </AppModal>
 </template>
 
 <style scoped>
-.chord-picker { width: min(480px, 92vw); }
 .chord-picker__description {
   margin: 0 0 16px;
   font-size: 13px;
