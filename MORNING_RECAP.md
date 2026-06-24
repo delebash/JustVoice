@@ -85,10 +85,50 @@ hand-rolled `fetch` files; only `llm_runner` shared on the server today.
   `default_data_dir` (JV legacy-compat) + the divergent `create_app` middleware/
   mounts. `server_core` lives in `just-llm-runner/` (sibling of `llm_runner`).
   pytest gates confirmed runnable here (JV 286, JW 82).
-- ⏭ next: **Layer B extraction** in order, each pytest-verified: (1) `server_core.db`
-  framework → migrate JW then JV; (2) `server_core.state` base → both; (3) `serve`
-  CLI helper → both; (4) revisit create_app_base/infra endpoints if warranted →
-  Layer C lock. (Optional: expand JV's appearance Settings to the full knob set.)
+- ✅ **Server basics — DECISION: NO shared server-core package; keep the servers
+  separate, make the basics uniform by convention.** Rationale: the one
+  substantial shared server piece (the LLM stack) is already `llm_runner`; the
+  rest (`init_db`/`AppState`/`cli`) is ~60 lines of stable boilerplate not worth a
+  cross-repo, boot-critical package with shared global DB state, and JV's server
+  is a genuinely heavier, domain-different service (TTS/engines/render/MCP/auth).
+  Uniform basics shipped to JW (JV was the reference): **headless `/ui` static
+  mount** (serve the SPA from the server), **optional bearer auth** (off by
+  default; `auth` settings section; loopback-bypass flag), **RFC-7807
+  problem+json errors** (ApiError + handlers + a 500 envelope before CORS),
+  **settings-driven CORS**, and a **Settings → Server UI** (headless URL + token
+  management). Verified: ruff + pytest (JW 82/82) + an end-to-end auth curl test
+  + the headless-served smoke.
+- ✅ **App shell — DECISION: keep-alike per app, NOT a shared component** (the
+  rail/topbar paradigms legitimately differ — JV icon-rail + topbar vs JW
+  titlebar + wide resizable sidebar + per-view headers; a shared shell would be a
+  slot-heavy net-negative). Fixed JV's two real shell bugs to JW's discipline:
+  **nav-jump** (`.app-shell` lacked `grid-template-rows` → a short view shrank
+  the row → sidebar not full-height; rail scrolled as one block with a flex
+  spacer) → `grid-template-rows: minmax(0,1fr)` + fixed-top/scroll-middle/
+  fixed-bottom rail; **Compact dead-space** (`height:100vh` ignores the `<html>`
+  zoom) → `height:100%` chain. Wrote the **"App shell structure" convention** into
+  the global app-standard + added a **smoke guard in BOTH apps** (shell fills
+  viewport · rail full-height · single scroller) so it can't silently drift again.
+
+**⏭ WHAT'S LEFT FOR JV:**
+1. **JV Appearance Settings → full knob set.** The shared appearance ENGINE
+   supports the full set (font pairings, UI/display fonts, size scale, section-
+   heading + nav-item style/size, accent2/gold, functional danger/success/info
+   hues, ink palette) and JW exposes ALL of it; JV's Appearance tab still shows
+   only Theme / Interface size / Accent hue / Language. Expose the full set in
+   JV's `SettingsView` — the clearest remaining user-facing inconsistency.
+2. **Layer C lock (optional):** a lint/CI guard beyond the shell smoke — flag a
+   re-forked `Jw*`/`Jv*` primitive or a second copy of `init_db`/`set_state`.
+3. **Optional / low value:** deeper server-basics sweep (response camelCase +
+   health/settings shape parity); a deeper strict shell diff ("there may be
+   more" — the smoke guard now catches the structural class).
+
+**▶ NEXT THREAD (user-directed 2026-06-24): switch back to the JW shared-LLM
+stack.** The shared AI/LLM cutover — `just-llm-runner` dispatch (`/v1/ai/*`) +
+`@delebash/llm-ui` views, consumed by both apps; only TTS + each app's feature
+catalog differ. Authoritative plan: `docs/plans/2026-06-20-shared-ai-stack-plan.md`.
+Read it + JW's current LLM state (`services/openai-compat.js` → `/v1/llm/*`,
+the `ai` store, what's migrated to `/v1/ai/*`) before acting.
 
 ---
 

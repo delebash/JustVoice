@@ -226,6 +226,17 @@ just-llm-runner       Python LLM core (DONE)
 
 ### Layer B — extract `server_core` (Python, in `just-llm-runner/`)
 
+> **DECISION (2026-06-24, user): do NOT extract a shared `server_core` package —
+> keep the servers separate, make the basics uniform by convention.** The audit
+> below stands, but the conclusion changed: the ~60 lines that are truly shared
+> (`init_db`/`AppState`/`cli`) aren't worth a cross-repo, boot-critical package
+> with shared global DB state, and the one substantial shared server piece (the
+> LLM stack) is already `llm_runner`. Instead JW adopted JV's server "basics" by
+> convention — headless `/ui` mount, optional bearer auth, RFC-7807 errors,
+> settings-driven CORS, + a Settings → Server UI (all shipped + verified:
+> ruff/pytest 82/82 + auth curl test + headless smoke). The `server_core.*` plan
+> below is SUPERSEDED — left as the audit record only.
+
 **Audit done file-by-file (2026-06-24)** — read both apps' `app.py`, `cli.py`,
 `paths.py`, `app_state.py`, `database.py`/`database/session.py`. The server is
 **legitimately less uniform than the renderer**; converge only what is truly the
