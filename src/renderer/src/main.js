@@ -2,9 +2,9 @@
 import { createApp } from "vue";
 import { createPinia } from "pinia";
 import App from "./App.vue";
-import ConnectionError from "./components/ConnectionError.vue";
 import DictateWindow from "./components/DictateWindow.vue";
-import { tooltipDirective, configureHelp } from "@delebash/llm-ui";
+import { tooltipDirective, configureHelp, ConnectionError } from "@delebash/llm-ui";
+import { SERVER_URL } from "./config.js";
 import { checkServer } from "./services/connection.js";
 import { bootPrefs, ensureActiveProjectDefault } from "./services/prefs.js";
 import { loadDoc, hasDoc, titleForSlug } from "./services/helpDocs.js";
@@ -33,7 +33,13 @@ async function boot() {
   // a connection-error screen instead of booting the app with empty/default
   // state (which looks broken and silently fails to save).
   if (!(await checkServer())) {
-    createApp(ConnectionError).mount("#app");
+    createApp(ConnectionError, {
+      appName: "JustVoice",
+      serverUrl: SERVER_URL,
+      need: "load voices, projects, and settings",
+      devHint:
+        "Dev: it should start automatically with `npm run tauri dev`, or run it yourself with `npm run server`, then retry.",
+    }).mount("#app");
     return;
   }
 
