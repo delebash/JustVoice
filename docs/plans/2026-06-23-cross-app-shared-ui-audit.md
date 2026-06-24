@@ -26,8 +26,36 @@ everything below that converges.
   change is plumbing-only; JW still uses its own help components). Verified:
   build clean (JV+JW), smoke 14/14 zero errors, drawer opens to "Getting
   started" (2955 chars, 4 heading ids, 1 rewritten link), Esc-closes.
-- ⏭ **Next:** T2 (light-drift shells/services) → Q1 cleanup → **T4 PAUSE+ASK**
-  (diverged trio: `serverApi.js`, `appearance.js`, `AppDialog.vue`).
+- ✅ **T2 (the cleanly-shareable shells) done:**
+  - **Toast** (runner `7b3dd7a` · JV `524358a` · JW `12c37b7`) — kit `Toast.vue`
+    + `toastBridge.js` (JV's superset signature). 29 JV call sites repointed,
+    forks deleted, `.jv-toaster`→`.ui-toaster`. `vue-sonner`→dedupe+peerDep.
+    Verified incl. an empirical toast fire (one vue-sonner instance).
+  - **EmptyState** (runner `ef74163` · JV `2d95c91`) — kit `EmptyState.vue`; 6 JV
+    consumers repointed; fork deleted. Screenshot-verified (Personas).
+  - **ConnectionError** (runner `7a25bce` · JV `c9f186f`) — kit component, per-app
+    copy via props (appName/serverUrl/need/devHint); JV main.js mounts it; fork
+    deleted. Verified via dev:vite against a dead backend + screenshot.
+  - **PaneHeader** (JV `2d95c91`) — JV's was **dead code** (no consumer; JV titles
+    panes via the global App.vue topbar, not a per-pane header — an architectural
+    difference from JW). Deleted the component + its dead `.jv-pane-header*` CSS.
+    The shared kit PaneHeader is a JW-pass concern (JW actually consumes it).
+- 🔁 **T2 reclassified out (findings):**
+  - **`connection.js` → T4.** It *calls* the server base-URL (JV: `config.js`
+    SERVER_URL + a `jt:token` Bearer; JW: `serverApi.js` serverUrl()). A shared
+    version needs the shared origin-aware `serverUrl()` (the serverApi T4 decision)
+    + an optional auth-header injector. Blocked on T4.
+  - **`AppModal.vue` → new T5 (modal-system convergence).** NOT light drift:
+    JV has **16 hand-rolled modals using the global `.jv-overlay`/`.jv-modal`
+    classes** + only **1** AppModal consumer; JW funnels ~11 modals through
+    AppModal. Sharing only the 1-consumer AppModal would leave two modal styling
+    systems (kit-scoped vs JV's 16-consumer global) — drift. Correct end-state =
+    migrate all 17 JV modals to the shared AppModal slot API, then retire the
+    `.jv-overlay`/`.jv-modal` globals. Judgment-heavy (per-modal slot fit) +
+    visually significant → its own tier; decide scope/timing at the T4 pause.
+- ⏭ **Next:** Q1 cleanup (kit-internal raw-element stragglers) → **T4 PAUSE+ASK**
+  (diverged trio `serverApi.js`, `appearance.js`, `AppDialog.vue` **+ connection.js**;
+  also flag **T5 modal migration** scope).
 
 ---
 
@@ -72,15 +100,15 @@ apart from naming → trivially shared; high = real divergence):
 | `services/tooltip.js` | 1 | 144 / 143 | **T1** identical → share now |
 | `components/Breadcrumb.vue` | 1 | 45 / 44 | **T1** identical → share now |
 | `components/Icon.vue` | 1 | 107 / 106 | **T1** identical → share now |
-| `services/connection.js` | 20 | 24 / 20 | **T2** light drift → reconcile + share |
-| `components/Toast.vue` | 17 | 26 / 21 | **T2** + `toastBridge.js` (35) |
-| `components/PaneHeader.vue` | 25 | 27 / 30 | **T2** light → share |
-| `components/ConnectionError.vue` | 26 | 40 / 38 | **T2** light → share |
+| `services/connection.js` | 20 | 24 / 20 | **→ T4** (calls the base-URL; needs shared serverApi) |
+| `components/Toast.vue` | 17 | 26 / 21 | **T2 ✅ done** (+ `toastBridge.js`) |
+| `components/PaneHeader.vue` | 25 | 27 / 30 | **✅ JV dead code removed; kit ext = JW pass** |
+| `components/ConnectionError.vue` | 26 | 40 / 38 | **T2 ✅ done** (per-app copy via props) |
 | `services/helpMarkdown.js` | 49 | 45 / 68 | **T3 (help system)** |
 | `components/HelpTrigger.vue` | 64 | 72 / 68 | **T3 (help system)** |
 | `JvHelpDrawer`/`JwHelpDrawer.vue` | (fork — verified) | 278 / 280 | **T3 (help system)** |
-| `components/EmptyState.vue` | 64 | 50 / 60 | **T2/3** reconcile → share |
-| `components/AppModal.vue` | 67 | 90 / 117 | **T2/3** reconcile (Reka Dialog shell) |
+| `components/EmptyState.vue` | 64 | 50 / 60 | **T2 ✅ done** |
+| `components/AppModal.vue` | 67 | 90 / 117 | **→ T5** (JV has 16 hand-rolled `.jv-modal` modals + 1 AppModal; migrate all → retire globals) |
 | `components/AppDialog.vue` | 125 | 203 / 242 | **T4** diverged — shared core + per-app slots |
 | `services/serverApi.js` | 157 | 139 / 28 | **T4** diverged — extract origin-aware core; endpoints stay app-local |
 | `services/appearance.js` | 514 | 32 / 490 | **T4** diverged — JW has the full theme-knob engine; share the engine, per-app knob set |
@@ -112,19 +140,28 @@ endpoint surface, theme-knob set) — never a copy of the machinery.
    `HelpTrigger` + `helpMarkdown`, with a small `configureHelp({ docs })` so each
    app plugs in its own `services/helpDocs.js` + `docs/*.md` content. (Drop the
    stale "JV has no router" fork-reason — JV has vue-router now.)
-3. **T2 — light-drift shells/services:** `connection.js`, `Toast.vue` +
-   `toastBridge.js`, `PaneHeader.vue`, `ConnectionError.vue`, `EmptyState.vue`,
-   `AppModal.vue`. Reconcile the small diffs to one implementation; JV wires it.
-4. **T4 — the diverged trio (decisions needed):**
+3. **T2 — light-drift shells/services** ✅ (the cleanly-shareable subset):
+   `Toast.vue`+`toastBridge.js`, `ConnectionError.vue`, `EmptyState.vue` shared;
+   `PaneHeader.vue` was JV dead code (removed). `connection.js` reclassified → T4
+   (calls the base-URL); `AppModal.vue` reclassified → T5 (modal-system migration).
+4. **T4 — the diverged trio + connection.js (decisions needed → PAUSE+ASK):**
    - `serverApi.js` → extract the app-standard core (origin-aware base + `url()` +
      `request`/`safeRequest`/`requestBlob`/`postForm`); per-app endpoint helpers
      stay local.
    - `appearance.js` → share the token-apply engine + the knob framework; each app
      declares its own knob set (JW has many; JV few).
    - `AppDialog.vue` → shared prompt/confirm host; per-app field types via slots.
+   - `connection.js` → shared once `serverApi.js` lands (needs the shared
+     `serverUrl()` + an optional auth-header injector for JV's `jt:token`).
 5. **Q1 cleanup:** PromptLab/FeatureWorkbench/ProviderForm raw-element stragglers →
    `Ui*`; converge JW's `Combobox`/`ModelPicker`/`ProviderSelect` onto the kit's
    `Lu*` (JW step — deferred).
+6. **T5 — modal-system convergence (new; sized at the T4 pause):** migrate JV's
+   ~16 hand-rolled `.jv-overlay`/`.jv-modal` modals + its 1 AppModal consumer to a
+   shared kit `AppModal` (self-contained scoped styles = the canonical modal look),
+   then retire the `.jv-overlay`/`.jv-modal` globals. Per-modal slot-fit judgment +
+   visual risk → its own tier. JW already funnels ~11 modals through AppModal, so
+   its AppModal is the canonical basis.
 
 **Verification gate (every step):** `build:vite` + headless smoke (zero JS errors)
 on JV — and on JW once its turn comes — plus a screenshot for any visible surface.

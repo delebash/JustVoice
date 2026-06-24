@@ -59,10 +59,21 @@ app-shell/services copies — strict-diff tiers T1–T4). Execute JV-first, no-s
   `dedupe` + kit peerDep (the JW edit is plumbing-only; JW still on its own help
   components). Verified: build clean JV+JW, smoke 14/14 zero errors, drawer renders
   "Getting started" (2955 chars · 4 heading ids · 1 rewritten link) + Esc-closes.
-- ⏭ **Remaining:** **T2** (light drift — `connection.js`, `Toast`+`toastBridge`,
-  `PaneHeader`, `ConnectionError`, `EmptyState`, `AppModal`) → **Q1 cleanup**
-  (raw-element stragglers in PromptLab/FeatureWorkbench/ProviderForm) → **T4
-  PAUSE+ASK** (`serverApi.js`, `appearance.js`, `AppDialog.vue` — design decisions).
+- ✅ **T2 (cleanly-shareable shells) done:** **Toast** (`Toast.vue`+`toastBridge.js`,
+  29 call sites repointed, empirical toast-fire verified) · **EmptyState** (6 sites,
+  Personas screenshot) · **ConnectionError** (per-app copy via props, dev:vite
+  dead-backend screenshot) · **PaneHeader** (JV dead code — removed; JV titles panes
+  via the global topbar, not a per-pane header). `vue-sonner` added to dedupe+peerDep.
+- 🔁 **Reclassified (findings):** `connection.js` → **T4** (it *calls* the base-URL —
+  needs the shared `serverApi` + an auth-header injector for JV's `jt:token`).
+  `AppModal.vue` → **new T5 modal-system convergence**: JV has **16 hand-rolled
+  `.jv-overlay`/`.jv-modal` modals + 1 AppModal consumer** (JW funnels ~11 through
+  AppModal) — sharing only AppModal = dual modal systems (drift); correct fix is
+  migrating all 17 JV modals + retiring the globals → judgment-heavy + visual risk,
+  its own tier.
+- ⏭ **Remaining:** **Q1 cleanup** (kit-internal raw-element stragglers in
+  PromptLab/FeatureWorkbench/ProviderForm) → **T4 PAUSE+ASK** (`serverApi.js`,
+  `appearance.js`, `AppDialog.vue`, `connection.js`; also size **T5 modal migration**).
 
 > DOCS DEBT status: JV `CLAUDE.md` RULE #1 inventory + checklist — **cleared**
 > (now point at the shared `Ui*` kit; `components/ui/` empty). JW `CLAUDE.md`
