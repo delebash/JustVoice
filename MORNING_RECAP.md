@@ -41,21 +41,33 @@ reason to fork or "defer" a simpler/native variant. Applies to ANY reusable code
 that works on a standard Vue app, **not just primitives**. (Strengthened in
 `~/.claude/CLAUDE.md` PRIORITY #1 tells + RULE #7.)
 
-**NEXT (open): the help system is the next convergence.** Verified:
-`JvHelpDrawer.vue` is a copy-paste-with-adaptation of `JwHelpDrawer.vue` (its own
-header says so); `HelpTrigger.vue` + `services/helpMarkdown.js` are identical bar
-naming; only `services/helpDocs.js` (content) legitimately differs. Plan: extract
-a shared, pluggable help module (drawer shell + trigger + markdown renderer + open
-state) into the kit; each app plugs in its own help **content**. One stale
-fork-reason already found: the "JV has no router" excuse is obsolete (JV uses
-vue-router now).
+**Deeper convergence audit + plan (user, 2026-06-23): "what ELSE should be
+shared so the next app reuses instead of reinvents?"** Authoritative tracker:
+`docs/plans/2026-06-23-cross-app-shared-ui-audit.md` (Q1 = shared LLM views are
+clean on `Ui*` bar ~8 raw-element stragglers; Q2 = both apps carry parallel
+app-shell/services copies — strict-diff tiers T1–T4). Execute JV-first, no-stop,
+**PAUSE+ASK only on the diverged trio (T4)**. Status:
 
-> ⚠️ DOCS DEBT to clear in-step (do NOT defer again — the user flagged that I let
-> this go stale): JV `CLAUDE.md` RULE #1 "canonical inventory" + design-conformance
-> checklist still name dead classes/components (`jv-btn`, `jv-pill`, `JvToggle`,
-> native-checkbox→JvToggle) — point them at the shared `Ui*` kit. JW `CLAUDE.md`
-> still documents the `Jw*` layer as canonical; JW's own `Jw*`→`Ui*` migration is
-> the eventual sibling task.
+- ✅ **T1 done** — `Icon`, `Breadcrumb`, `dialog.js`, `tooltip.js` → kit
+  `common/`; JV wired; forks deleted.
+- ✅ **T3 (help system) done** (runner `07b4f18` · JV `7ec1be8` · JW `d237a84`):
+  shared `HelpDrawer` + `HelpTrigger` + `helpMarkdown` + kit-owned open-state
+  (`common/services/help.js`, `configureHelp(adapter)`). JV wires it in `main.js`
+  (`configureHelp({loadDoc,hasDoc,titleForSlug})`), keeps `services/helpDocs.js`
+  (content) local; JV forks (`JvHelpDrawer`/`HelpTrigger`/`helpMarkdown`) deleted.
+  JV **gained** anchor support (heading ids + scroll). `marked` → both apps'
+  `dedupe` + kit peerDep (the JW edit is plumbing-only; JW still on its own help
+  components). Verified: build clean JV+JW, smoke 14/14 zero errors, drawer renders
+  "Getting started" (2955 chars · 4 heading ids · 1 rewritten link) + Esc-closes.
+- ⏭ **Remaining:** **T2** (light drift — `connection.js`, `Toast`+`toastBridge`,
+  `PaneHeader`, `ConnectionError`, `EmptyState`, `AppModal`) → **Q1 cleanup**
+  (raw-element stragglers in PromptLab/FeatureWorkbench/ProviderForm) → **T4
+  PAUSE+ASK** (`serverApi.js`, `appearance.js`, `AppDialog.vue` — design decisions).
+
+> DOCS DEBT status: JV `CLAUDE.md` RULE #1 inventory + checklist — **cleared**
+> (now point at the shared `Ui*` kit; `components/ui/` empty). JW `CLAUDE.md`
+> still documents the `Jw*` layer as canonical — that's the deferred JW
+> `Jw*`→`Ui*`/kit migration (do NOT touch JW source until that turn).
 
 ---
 

@@ -12,6 +12,23 @@ The kit's `common/` is explicitly "the future `@delebash/ui` — general,
 app-agnostic UI primitives" (`ui/src/common/index.js`). That is the home for
 everything below that converges.
 
+## Progress (JV-first; JW left on its forks per the hold)
+
+- ✅ **T1 done** (commit `just-llm-runner` + JV) — `Icon.vue`, `Breadcrumb.vue`,
+  `dialog.js`, `tooltip.js` moved to the kit (`common/`); JV imports them; JV
+  forks deleted. Verified build+smoke.
+- ✅ **T3 done** (runner `07b4f18` · JV `7ec1be8` · JW `d237a84`) — shared
+  `HelpDrawer` + `HelpTrigger` + `helpMarkdown` + kit-owned open-state
+  (`help.js`) with `configureHelp(adapter)`. JV wired via `main.js`
+  `configureHelp({loadDoc,hasDoc,titleForSlug})`, keeps `services/helpDocs.js`
+  (content) local; JV forks deleted. JV **gained** anchor support (heading ids +
+  scroll-into-view). `marked` added to both apps' `dedupe` + kit peerDep (JW
+  change is plumbing-only; JW still uses its own help components). Verified:
+  build clean (JV+JW), smoke 14/14 zero errors, drawer opens to "Getting
+  started" (2955 chars, 4 heading ids, 1 rewritten link), Esc-closes.
+- ⏭ **Next:** T2 (light-drift shells/services) → Q1 cleanup → **T4 PAUSE+ASK**
+  (diverged trio: `serverApi.js`, `appearance.js`, `AppDialog.vue`).
+
 ---
 
 ## Q1 — Do the shared LLM views use our shared `Ui*` primitives?
