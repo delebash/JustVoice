@@ -8,20 +8,12 @@
 // voices, per-voice gender overrides, speaker-lab presets, autoload) so a thin
 // client reads them from the server too.
 //
-// The server address + bearer token are the one thing a client MUST keep
-// locally — it can't fetch the server's own address from the server — so they
-// stay in localStorage, mirroring stores/api.js.
+// HTTP goes through the shared kit transport (@delebash/llm-ui serverApi),
+// which configureServerApi() wired with the base + bearer at boot — main.js
+// calls it before bootPrefs(), so the transport is ready here.
 
 import { reactive } from "vue";
-import { SERVER_URL } from "../config.js";
-
-function base() {
-  return (localStorage.getItem("jt:server") || SERVER_URL).replace(/\/$/, "");
-}
-function authHeaders(extra = {}) {
-  const token = localStorage.getItem("jt:token") || "";
-  return token ? { ...extra, Authorization: `Bearer ${token}` } : { ...extra };
-}
+import { safeRequest, patch } from "@delebash/llm-ui";
 
 // Reactive so computeds across views re-evaluate when a pref changes.
 const _doc = reactive({});
@@ -32,15 +24,8 @@ const PATCH_DEBOUNCE_MS = 150;
 /** Boot the prefs cache. MUST be awaited before mounting Vue so views read
  *  populated data. Resilient: boots empty (defaults) on failure. */
 export async function bootPrefs() {
-  try {
-    const res = await fetch(`${base()}/v1/prefs`, { headers: authHeaders() });
-    if (res.ok) {
-      const doc = await res.json();
-      if (doc && typeof doc === "object") Object.assign(_doc, doc);
-    }
-  } catch (err) {
-    console.error("bootPrefs failed:", err);
-  }
+  const doc = await safeRequest("/v1/prefs", null);
+  if (doc && typeof doc === "object") Object.assign(_doc, doc);
 }
 
 /** Read a pref's value (reactive), or `fallback` if unset. */
@@ -49,12 +34,10 @@ export function readPref(key, fallback = undefined) {
 }
 
 function _patch(body) {
-  return fetch(`${base()}/v1/prefs`, {
-    method: "PATCH",
-    headers: authHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(body),
-    keepalive: true,
-  }).catch((err) => console.error("prefs PATCH failed:", err));
+  // keepalive so a flush during pagehide/beforeunload still lands.
+  return patch("/v1/prefs", body, { keepalive: true }).catch((err) =>
+    console.error("prefs PATCH failed:", err),
+  );
 }
 
 /** Write a pref wholesale: update the cache and queue a debounced PATCH. */
@@ -72,20 +55,15 @@ export function writePref(key, value) {
  *  bootPrefs(), before mount. */
 export async function ensureActiveProjectDefault() {
   if (readPref("activeProject")?.id) return; // a project is already the active slot
-  try {
-    const res = await fetch(`${base()}/v1/projects`, { headers: authHeaders() });
-    if (!res.ok) return;
-    const data = await res.json();
-    const list = (data.projects || []).slice()
-      .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
-    const p = list[0];
-    if (p) writePref("activeProject", {
-      id: p.id, name: p.name || p.id, projectType: p.project_type || "",
-      master: p.mastering_preset || "", openedAt: Date.now(),
-    });
-  } catch (err) {
-    console.error("ensureActiveProjectDefault failed:", err);
-  }
+  const data = await safeRequest("/v1/projects", null);
+  if (!data) return;
+  const list = (data.projects || []).slice()
+    .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
+  const p = list[0];
+  if (p) writePref("activeProject", {
+    id: p.id, name: p.name || p.id, projectType: p.project_type || "",
+    master: p.mastering_preset || "", openedAt: Date.now(),
+  });
 }
 
 /** Flush pending debounced writes immediately (e.g. before unload). */

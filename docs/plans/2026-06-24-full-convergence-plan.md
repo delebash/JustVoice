@@ -102,8 +102,9 @@ just-llm-runner       Python LLM core (DONE)
      Verified: build clean (JV+JW), smoke 14/14 with live server data.
    - ⏭ **JW pending**: replace its resolver stub + repoint its ~17 scattered
      `fetch` files to the kit transport; delete its `connection.js`.
-   - ⏭ **JV straggler**: `services/prefs.js` hand-rolls `base()/authHeaders()/
-     fetch` — repoint to the kit transport.
+   - ✅ **JV straggler done**: `services/prefs.js` now uses the kit
+     `safeRequest`/`patch` (keepalive) instead of hand-rolled `base()/
+     authHeaders()/fetch`. Smoke green (prefs hydrate through the kit).
 2. **appearance** (trio) — extract JW's theme engine as the shared
    `applyAppearance(config)` machinery + a per-app knob **catalog**. JV adopts
    the engine with a JV-appropriate catalog (no editor/manuscript knobs) → JV
