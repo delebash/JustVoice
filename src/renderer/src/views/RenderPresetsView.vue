@@ -20,7 +20,7 @@ import { computed, nextTick, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
-import { UiButton, UiInput, UiTag, UiChip, UiSelect } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTag, UiChip, UiSelect, AppModal } from "@delebash/llm-ui";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import { usePersonasStore } from "../stores/personas.js";
 
@@ -253,17 +253,11 @@ onMounted(refresh);
     <!-- Edit dialog — full form. Edits a working draft; Save commits,
          Cancel discards (save-pattern ruling 2026-06-14). Built-ins are
          read-only. -->
-    <div v-if="editOpen && editDraft" class="jv-overlay" @click.self="closeEdit">
-      <div class="jv-modal" style="width: min(560px, calc(100vw - 32px));">
-        <header class="jv-modal__header">
-          <div class="jv-modal__titleblock">
-            <span class="jv-modal__eyebrow">Render preset</span>
-            <h3 class="jv-modal__title">{{ dialogTitle }}</h3>
-          </div>
-          <UiTag intent="ghost" v-if="editIsBuiltin">built-in · read-only</UiTag>
-          <button type="button" class="jv-modal__close" title="Close" @click="closeEdit">✕</button>
-        </header>
-        <div class="jv-modal__body render-presets-view__form">
+    <AppModal v-if="editOpen && editDraft" eyebrow="Render preset" :title="dialogTitle" :max-width="'560px'" dismissable @close="closeEdit">
+      <template #header-extra>
+        <UiTag intent="ghost" v-if="editIsBuiltin">built-in · read-only</UiTag>
+      </template>
+      <div class="render-presets-view__form">
           <label class="jv-form-row"><span>Name</span>
             <UiInput ref="nameInputEl" type="text" size="small" v-model="editDraft.name" :disabled="editIsBuiltin" placeholder="e.g. Dramatic Dialogue" />
           </label>
@@ -288,17 +282,16 @@ onMounted(refresh);
             </div>
           </div>
         </div>
-        <footer class="jv-dialog__footer">
-          <template v-if="editIsBuiltin">
-            <UiButton intent="primary" label="Close" @click="closeEdit" />
-          </template>
-          <template v-else>
-            <UiButton intent="secondary" label="Cancel" @click="closeEdit" />
-            <UiButton intent="primary" label="Save" @click="saveEdit" />
-          </template>
-        </footer>
-      </div>
-    </div>
+      <template #footer>
+        <template v-if="editIsBuiltin">
+          <UiButton intent="primary" label="Close" @click="closeEdit" />
+        </template>
+        <template v-else>
+          <UiButton intent="secondary" label="Cancel" @click="closeEdit" />
+          <UiButton intent="primary" label="Save" @click="saveEdit" />
+        </template>
+      </template>
+    </AppModal>
 
     <EffectsChainEditorModal
       :open="editorOpen"
