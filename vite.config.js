@@ -19,12 +19,13 @@ export default defineConfig({
       // Shared LLM UI package — aliased to its src for the dev/HMR loop.
       "@delebash/llm-ui": path.resolve(__dirname, "../just-llm-runner/ui/src"),
     },
-    // The aliased kit imports peer deps (vue, reka-ui, marked) by bare
-    // specifier from its own dir; dedupe forces a SINGLE copy resolved from
+    // The aliased kit imports peer deps (vue, reka-ui, marked, @tanstack/vue-table)
+    // by bare specifier from its own dir; dedupe forces a SINGLE copy resolved from
     // this app's node_modules (Reka's provide/inject context + Vue reactivity
     // break with two instances). reka-ui is what UiSelect needs; marked is what
-    // the shared HelpDrawer's helpMarkdown renderer needs.
-    dedupe: ["vue", "reka-ui", "@floating-ui/dom", "pinia", "vue-router", "vue-i18n", "marked", "vue-sonner"],
+    // the shared HelpDrawer's helpMarkdown renderer needs; @tanstack/vue-table is
+    // what UiTable needs (JV's library tables will converge to UiTable).
+    dedupe: ["vue", "reka-ui", "@floating-ui/dom", "pinia", "vue-router", "vue-i18n", "marked", "vue-sonner", "@tanstack/vue-table"],
   },
   server: {
     host: "127.0.0.1",
