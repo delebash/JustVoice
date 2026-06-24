@@ -5,7 +5,7 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
 import { readPref, writePref } from "../services/prefs.js";
-import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip, UiSelect } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip, UiSelect, AppModal } from "@delebash/llm-ui";
 import { EmptyState } from "@delebash/llm-ui";
 import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
@@ -927,18 +927,7 @@ function blendWithVoice() {
   </div><!-- /.voices-view.jv-fill — page-scroll-free pane ends here -->
 
   <!-- ── Modal ───────────────────────────────────────────────────────── -->
-  <div class="jv-overlay" v-if="modal" @click.self="modal = null">
-    <div class="jv-modal voices-modal">
-
-      <header class="jv-modal__header">
-        <div class="jv-modal__titleblock">
-          <span class="jv-modal__eyebrow">Voice</span>
-          <h3 class="jv-modal__title">{{ modalTitle }}</h3>
-        </div>
-        <button type="button" class="jv-modal__close" title="Cancel" @click="modal = null">✕</button>
-      </header>
-
-      <div class="jv-modal__body">
+  <AppModal v-if="modal" eyebrow="Voice" :title="modalTitle" :max-width="'620px'" dismissable @close="modal = null">
 
         <!-- Engine + Name (all modes) -->
         <div class="jv-row" style="align-items: flex-end;">
@@ -1021,24 +1010,20 @@ function blendWithVoice() {
           </div>
         </template>
 
-      </div><!-- /.jv-modal__body -->
 
-      <footer class="jv-modal__footer">
+      <template #footer>
         <UiButton intent="secondary" @click="modal = null">Cancel</UiButton>
         <UiButton intent="primary" :disabled="busy || !valid" :loading="busy" @click="submit">
           {{ busy ? busyLabel : submitLabel }}
         </UiButton>
-      </footer>
-
-    </div>
-  </div>
+      </template>
+  </AppModal>
 </template>
 
 <style scoped>
 .row-orphan { opacity: 0.7; }
 
 /* Modal — canonical jv-overlay/jv-modal shell; only width is local. */
-.voices-modal { width: min(620px, 92vw); }
 
 /* File input inherits basic styling */
 .jv-file-input {

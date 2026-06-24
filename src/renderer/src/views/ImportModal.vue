@@ -23,7 +23,7 @@
 // links to docs/import-formats.md#<anchor>.
 
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import { UiButton, UiSelect } from "@delebash/llm-ui";
+import { UiButton, UiSelect, AppModal } from "@delebash/llm-ui";
 import { projectsService } from "../services/projects.js";
 import { setImportDraft } from "../stores/importDraft.js";
 import { pushToast } from "@delebash/llm-ui";
@@ -160,16 +160,7 @@ async function doPreview() {
 </script>
 
 <template>
-  <div class="jv-overlay" @click.self="emit('close')" role="dialog" aria-modal="true" aria-labelledby="im-title">
-    <div class="jv-modal im-modal">
-      <header class="jv-modal__header">
-        <div class="jv-modal__titleblock">
-          <span class="jv-modal__eyebrow">Import</span>
-          <h3 id="im-title" class="jv-modal__title">{{ props.projectId ? "Re-import — update in place" : "Import a project" }}</h3>
-        </div>
-        <button type="button" class="jv-modal__close" aria-label="Close" @click="emit('close')">✕</button>
-      </header>
-      <div class="jv-modal__body">
+  <AppModal eyebrow="Import" :title="props.projectId ? 'Re-import — update in place' : 'Import a project'" :max-width="'560px'" dismissable @close="emit('close')">
         <div class="import-grid">
       <label class="field">
         <span class="lbl">Source format</span>
@@ -225,16 +216,13 @@ async function doPreview() {
 
       <p v-if="previewing" class="muted" style="margin-top:10px">Scanning the file…</p>
         </div>
-      </div>
-      <footer class="jv-modal__footer">
+      <template #footer>
         <UiButton intent="secondary" @click="emit('close')">Cancel</UiButton>
-      </footer>
-    </div>
-  </div>
+      </template>
+  </AppModal>
 </template>
 
 <style scoped>
-.im-modal { width: min(560px, calc(100vw - 32px)); }
 
 .import-grid { display: flex; flex-direction: column; gap: 18px; }
 .field { display: flex; flex-direction: column; gap: 6px; }
