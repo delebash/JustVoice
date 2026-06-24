@@ -100,8 +100,15 @@ just-llm-runner       Python LLM core (DONE)
      boot then the kit `checkServer`; `stores/api.js` delegates to the kit
      transport; `services/serverApi.js` + `services/connection.js` deleted.
      Verified: build clean (JV+JW), smoke 14/14 with live server data.
-   - ⏭ **JW pending**: replace its resolver stub + repoint its ~17 scattered
-     `fetch` files to the kit transport; delete its `connection.js`.
+   - ✅ **JW done**: `serverApi.js` now uses the shared resolver (per-app
+     config only); `main.js` calls `configureServerApi({resolveBase})` + kit
+     `checkServer`; `connection.js` deleted; **12 scattered-fetch services
+     repointed to the kit transport** (settings/usage/workspace/embed/versions/
+     chat/sessions/provider/routing/project/image/rag-vector). `aiFeature.js`
+     keeps raw fetch on the shared `serverUrl` — it's a streaming (SSE) +
+     task-panel domain runner, a proven-different case, not generic transport.
+     Verified: build clean; **JW headless smoke 25/25 routes, zero JS errors,
+     live data through the kit**. Both apps now share ONE transport.
    - ✅ **JV straggler done**: `services/prefs.js` now uses the kit
      `safeRequest`/`patch` (keepalive) instead of hand-rolled `base()/
      authHeaders()/fetch`. Smoke green (prefs hydrate through the kit).

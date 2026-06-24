@@ -18,12 +18,15 @@ says "Mirrors JustVoice's session bootstrap"; JW HTTP scattered across ~17
 hand-rolled `fetch` files; only `llm_runner` shared on the server today.
 
 **Progress (Layer A — renderer kit):**
-- ✅ **serverApi (JV side)** — shared kit transport (`common/services/serverApi.js`:
-  resolver factory + `configureServerApi` + transport + `checkServer`); JV
-  `config.js`/`main.js`/`stores/api.js` wired; JV `serverApi.js`+`connection.js`
-  deleted. Build+smoke green (live data through the kit). JW side + JV `prefs.js`
-  straggler pending.
-- ⏭ next: JW serverApi merge → appearance engine → modals/AppDialog → JW
+- ✅ **serverApi — BOTH apps done.** Shared kit transport
+  (`common/services/serverApi.js`: resolver factory + `configureServerApi` +
+  full transport + `checkServer`). JV: config/main/store wired, `serverApi.js`+
+  `connection.js`+hand-rolled `prefs.js` fetch gone. JW: resolver-only config +
+  `configureServerApi`, `connection.js` deleted, **12 scattered-fetch services
+  repointed** to the kit (aiFeature stays raw — SSE streaming). Both verified:
+  JV smoke 14/14, JW headless smoke 25/25, live data through the kit. The
+  "~17 scattered JW fetch files" duplication is gone.
+- ⏭ next: appearance engine (JV gains the theme system) → modals/AppDialog → JW
   primitive+shell merge → Layer B server-core → Layer C lock.
 
 ---
