@@ -159,8 +159,20 @@ just-llm-runner       Python LLM core (DONE)
      surface to the fuller knob set (fonts/button-radius/density/ink) the engine
      now supports — JV currently exposes theme/size/accent/language.
 3. **modal system + AppDialog** (T5) — shared self-contained `AppModal` (scoped
-   styles = canonical look) + `AppDialog` host on top of it. Migrate JV's 16
-   hand-rolled modals + JW's ~11 onto it; retire `.jv-overlay`/`.jv-modal`.
+   styles = canonical look) + `AppDialog` host on top of it.
+   - ✅ **Slice A done.** Kit `common/components/AppModal.vue` — Reka Dialog,
+     self-centering + data-state animations, canonical-token scoped styles,
+     `closeLabel` prop (i18n-friendly). **JW's 26 AppModal consumers repointed**
+     to the kit; JW `AppModal.vue` deleted. JV's own `AppModal.vue` was **dead
+     code** (no real consumer — only a comment) → deleted. Verified: build clean
+     (JV+JW), JW smoke 25/25, modal screenshot (Multi-reader panel) renders
+     correctly with JW theming.
+   - ⏭ **Slice B:** migrate JV's ~16 hand-rolled `.jv-overlay`/`.jv-modal`
+     modals → kit `AppModal` (per-modal slot fit), then retire the
+     `.jv-overlay`/`.jv-modal` globals.
+   - ⏭ **AppDialog:** shared prompt/confirm host on the kit AppModal + shared
+     `dialog.js` (already in the kit); both apps' `AppDialog.vue` converge.
+     (JW's `.app-modal` CSS stays until then — its AppDialog still uses it.)
 4. **JW UI merge** — JW `Jw*` → kit `Ui*` + JW shell forks → kit, exactly as JV
    did. JW deletes its forks and imports the kit.
    - ✅ **Icon done**: 77 importers repointed to the kit `Icon`; JW `Icon.vue`

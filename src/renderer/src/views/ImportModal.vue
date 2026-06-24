@@ -13,11 +13,9 @@
 // Emits:
 //   close — closing / cancel / Esc / after a successful dry-run handoff
 //
-// Renders on the canonical jv-overlay/jv-modal shell (RULE #1) — same
-// CSS the rest of the app's modals use, so there's no scoped one-off to
-// drift. (It could alternatively wrap components/AppModal.vue; that's a
-// later call. The earlier "vue-i18n isn't installed" note was wrong —
-// it is, and main.js registers it — so nothing blocked using the shell.)
+// Renders on the jv-overlay/jv-modal shell — one of the hand-rolled JV
+// modals being migrated to the shared kit AppModal (@delebash/llm-ui) in
+// the modal-system convergence.
 //
 // Help link: each adapter exposes a `docs_anchor` (e.g. "import-justwrite").
 // We surface it through `data-help-key` on the "What is this format?" link
