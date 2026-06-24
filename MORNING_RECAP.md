@@ -45,12 +45,20 @@ hand-rolled `fetch` files; only `llm_runner` shared on the server today.
   English defaults = JW's en.json). JV `App.vue` imports the kit `AppDialog`; JV's
   local one deleted. Verified: build clean, smoke 14/14, dialog/modal interaction
   test (open/autofocus/close-animation) + screenshots, zero JS exceptions.
-- ⏭ next: **JW AppDialog convergence** (repoint JW's ~16 `services/dialog.js`
-  callsites → kit, delete JW local `dialog.js` + `AppDialog.vue`, `configureDialog`
-  in JW main.js, retire JW `.app-dialog`/`.app-modal` CSS) → rest of the JW UI
-  merge (shells + Jw*→Ui* primitives; promote UiNumber/UiTable) → Layer B
-  server-core → Layer C lock. (Optional: expand JV's appearance Settings to the
-  full knob set the engine now supports.)
+- ✅ **AppDialog — BOTH apps done.** JW's 16 `services/dialog.js` callsites
+  repointed to the kit; JW local `dialog.js` + `AppDialog.vue` deleted; `App.vue`
+  imports the kit `AppDialog`; `configureDialog({labels})` wired in JW main.js
+  from en.json; dead `.app-modal*`/`.app-dialog` CSS removed (kept `.modal-title`
+  + the older `.modal*` system — still used). Verified: build clean, headless
+  smoke 27/27, interaction test (prompt + confirm, JW Fine Press theming),
+  screenshots, zero JS exceptions. **Both apps now share ONE modal shell + ONE
+  prompt/confirm host.**
+- ⏭ next: **rest of the JW UI merge** — JW shell forks → kit (`Toast`,
+  `JwHelpDrawer`→HelpDrawer, `Breadcrumb`, `tooltip` service, `EmptyState`,
+  `ConnectionError`) + primitives `Jw*`→`Ui*` (promote `UiNumber`/`UiTable` to
+  the kit first — no equivalent yet) → Layer B server-core → Layer C lock.
+  (Optional: expand JV's appearance Settings to the full knob set the engine
+  now supports.)
 
 ---
 

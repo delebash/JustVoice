@@ -47,8 +47,8 @@ they are **two separate codebases that re-implement the same scaffolding**:
 |---|---|---|---|
 | `serverApi.js` | 139 lines — full transport (base+auth+`request`/verbs/dedupe/blob/form/safe/lastError) | 28 lines — **only** the origin-aware base resolver; transport scattered across ~16 service files each hand-rolling `fetch` | JV follows the app-standard; JW drifted |
 | `appearance.js` | 32 lines — light/dark/system only | **490 lines** — full theme engine (accent/gold/functional hues, fonts, button knobs, tints, ink palettes, ui-scale, nav typography, presets) | JV would ADOPT JW's engine + a JV-appropriate knob subset |
-| `AppDialog.vue` | ✅ now imports kit `AppDialog` (local deleted) | still local (242) — converges next | ✅ **kit `AppDialog` shipped** (on kit AppModal + shared dialog.js); JV done, JW pending |
-| Modal system | ✅ all migrated to kit `AppModal`; `.jv-overlay`/`.jv-modal*`/`.jv-dialog*`/`.jv-help-drawer*` globals removed | funnels ~11 modals through kit `AppModal` (Slice A) | ✅ JV done — both apps now share ONE modal shell |
+| `AppDialog.vue` | ✅ imports kit `AppDialog` (local deleted) | ✅ imports kit `AppDialog`; local `AppDialog.vue` + `dialog.js` deleted, `configureDialog` wired | ✅ **DONE both** — kit `AppDialog` (on kit AppModal + shared dialog.js) is the only host |
+| Modal system | ✅ all migrated to kit `AppModal`; `.jv-overlay`/`.jv-modal*`/`.jv-dialog*`/`.jv-help-drawer*` globals removed | ✅ kit `AppModal` (Slice A) + kit `AppDialog`; dead `.app-modal*`/`.app-dialog` removed | ✅ **DONE both** — ONE modal shell + ONE prompt/confirm host across both apps |
 
 ### Genuinely different — necessary, do NOT share
 JV: engines/audio/generate/render/voices/takes/personas/lexicons + `auth.py`.
@@ -186,10 +186,18 @@ just-llm-runner       Python LLM core (DONE)
      imports `AppDialog` from the kit; JV's local `components/AppDialog.vue`
      deleted. Verified: confirm + prompt dialogs open/focus/close (interaction
      test, autofocus through the AppModal slot, close-animation teardown),
-     screenshots, zero JS exceptions. **JW AppDialog convergence next** (repoint
-     its ~16 `services/dialog.js` callsites → kit, delete JW's local
-     `dialog.js` + `AppDialog.vue`, `configureDialog` in JW main.js, retire
-     JW's `.app-dialog`/`.app-modal` CSS).
+     screenshots, zero JS exceptions.
+   - ✅ **AppDialog done (JW too).** JW's 16 `services/dialog.js` callsites
+     repointed to the kit; JW's local `services/dialog.js` + `components/AppDialog.vue`
+     deleted; `App.vue` imports the kit `AppDialog`; `configureDialog({ labels })`
+     wired in `main.js` from JW's en.json (copy stays app-owned). Removed the dead
+     `.app-modal*`/`.app-dialog` shell CSS (the `.modal-title` content class +
+     the older `.modal*` system stay — still used). Verified: build clean,
+     headless smoke 27/27 zero JS errors, interaction test (prompt + confirm
+     open/autofocus/close, JW labels via configureDialog) zero JS exceptions,
+     screenshots (JW Fine Press theming correct). **Both apps now share ONE
+     modal shell + ONE prompt/confirm host — the modal system is fully
+     converged.**
 4. **JW UI merge** — JW `Jw*` → kit `Ui*` + JW shell forks → kit, exactly as JV
    did. JW deletes its forks and imports the kit.
    - ✅ **Icon done**: 77 importers repointed to the kit `Icon`; JW `Icon.vue`
