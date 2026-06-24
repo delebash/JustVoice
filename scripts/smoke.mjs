@@ -76,6 +76,34 @@ try {
   await page.goto(BASE, { waitUntil: "networkidle" });
   await page.waitForTimeout(900);
 
+  // ── App-shell structure guard (the keep-alike discipline; see the global
+  // app standard "App shell structure"). Catches the regressions that hit on
+  // 2026-06-24: rail not full-height → nav jumps between views; 100vh →
+  // Compact dead space; rail self-scrolling instead of a fixed/scroll/fixed rail.
+  {
+    const s = await page.evaluate(() => {
+      const root = document.querySelector(".app-shell");
+      const rail = document.querySelector(".jv-sidebar");
+      if (!root || !rail) return { missing: true };
+      return {
+        shellH: Math.round(root.getBoundingClientRect().height),
+        vh: window.innerHeight,
+        railH: rail.clientHeight,
+        rootH: root.clientHeight,
+        railSelfScroll: rail.scrollHeight - rail.clientHeight,
+      };
+    });
+    const problems = [];
+    if (s.missing) problems.push(".app-shell / .jv-sidebar missing");
+    else {
+      if (Math.abs(s.shellH - s.vh) > 2) problems.push(`shell ${s.shellH}px != viewport ${s.vh}px (dead space — use a height:100% chain, not 100vh)`);
+      if (Math.abs(s.railH - s.rootH) > 2) problems.push(`rail ${s.railH}px != shell ${s.rootH}px (rail not full-height — nav jumps between views)`);
+      if (s.railSelfScroll > 2) problems.push(`rail itself scrolls by ${s.railSelfScroll}px (use fixed top + scroll middle + fixed bottom)`);
+    }
+    if (problems.length) { failed++; console.log("✗ SHELL       " + problems.join(" | ")); }
+    else console.log("✓ SHELL       fills viewport · rail full-height · single scroller");
+  }
+
   for (const tab of TABS) {
     currentTab = tab;
     try {
