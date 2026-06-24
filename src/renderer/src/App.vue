@@ -16,8 +16,7 @@ import AppDialog from "./components/AppDialog.vue";
 import AudioKeepAlive from "./components/AudioKeepAlive.vue";
 import QuickSetup from "./components/QuickSetup.vue";
 import KeyboardCheatsheet from "./components/KeyboardCheatsheet.vue";
-import JvHelpDrawer from "./components/JvHelpDrawer.vue";
-import HelpTrigger from "./components/HelpTrigger.vue";
+import { HelpDrawer, HelpTrigger } from "@delebash/llm-ui";
 import GlobalAudioPlayer from "./components/GlobalAudioPlayer.vue";
 
 // View components are lazy-loaded by the router (router/index.js); App.vue holds
@@ -485,7 +484,7 @@ onMounted(async () => {
     <AppDialog />
     <QuickSetup v-if="showQuickSetup" @close="onQuickSetupClosed" />
     <KeyboardCheatsheet />
-    <JvHelpDrawer />
+    <HelpDrawer />
     <GlobalAudioPlayer />
     <TaskStatusPanel />
   </div>

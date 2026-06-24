@@ -4,9 +4,10 @@ import { createPinia } from "pinia";
 import App from "./App.vue";
 import ConnectionError from "./components/ConnectionError.vue";
 import DictateWindow from "./components/DictateWindow.vue";
-import { tooltipDirective } from "@delebash/llm-ui";
+import { tooltipDirective, configureHelp } from "@delebash/llm-ui";
 import { checkServer } from "./services/connection.js";
 import { bootPrefs, ensureActiveProjectDefault } from "./services/prefs.js";
+import { loadDoc, hasDoc, titleForSlug } from "./services/helpDocs.js";
 import { i18n } from "./i18n/index.js";
 import router from "./router/index.js";
 import "./tokens.css";
@@ -43,6 +44,11 @@ async function boot() {
   // the kind-driven sidebar is consistent from the first paint (not just after
   // you click into a project). Server-derived; no localStorage.
   await ensureActiveProjectDefault();
+
+  // Wire the shared Help drawer (kit-owned) to JustVoice's docs/*.md corpus —
+  // the host supplies the content adapter. No full-pane reader / public docs
+  // site yet, so onOpenFull / onOpenWeb are omitted (footer buttons stay hidden).
+  configureHelp({ loadDoc, hasDoc, titleForSlug });
 
   const app = createApp(App);
   app.use(createPinia());

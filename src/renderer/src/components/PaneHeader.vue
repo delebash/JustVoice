@@ -4,7 +4,7 @@
   Uses .jv-pane-header etc. classes from justvoice.css.
 -->
 <script setup>
-import HelpTrigger from "./HelpTrigger.vue";
+import { HelpTrigger } from "@delebash/llm-ui";
 
 defineProps({
   eyebrow: { type: String, default: "" },

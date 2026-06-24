@@ -26,15 +26,9 @@ export const useUIStore = defineStore("ui", () => {
   const selectedVoiceId = ref(null);
   const theme = ref(persisted.theme ?? "system"); // "light" | "dark" | "system"
 
-  // Help drawer state. helpDrawerSlug=null means closed; any string opens
-  // the JvHelpDrawer scoped to that docs/<slug>.md file.
-  const helpDrawerSlug = ref(null);
-  function openHelp(slug) {
-    helpDrawerSlug.value = slug || "";
-  }
-  function closeHelp() {
-    helpDrawerSlug.value = null;
-  }
+  // Help-drawer open-state now lives in the shared kit (@delebash/llm-ui
+  // services/help.js — openHelp/closeHelp/helpState); the kit owns the drawer
+  // so HelpDrawer + every HelpTrigger share one source. Nothing here.
 
   function setSidebarOpen(v) {
     sidebarOpen.value = v;
@@ -78,7 +72,6 @@ export const useUIStore = defineStore("ui", () => {
     selectedEngine,
     selectedVoiceId,
     theme,
-    helpDrawerSlug,
     setSidebarOpen,
     setProfileDialogOpen,
     setEditingProfileId,
@@ -86,7 +79,5 @@ export const useUIStore = defineStore("ui", () => {
     setSelectedEngine,
     setSelectedVoiceId,
     setTheme,
-    openHelp,
-    closeHelp,
   };
 });
