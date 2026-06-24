@@ -34,6 +34,13 @@
    ========================================================= */
 
 * { box-sizing: border-box; }
+html, body, #app {
+  /* height:100% chain (NOT 100vh) so the UI-size `zoom` on <html> scales the
+     shell correctly. 100vh references the UNZOOMED viewport, so at zoom 0.9
+     (Compact) the shell renders at 90% — dead space + broken scroll. Mirrors
+     JustWrite. */
+  height: 100%;
+}
 html, body {
   margin: 0;
   padding: 0;
@@ -129,7 +136,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
      views. minmax(0,1fr) forces the row to the viewport height regardless of
      content, and lets the children own their own scroll. */
   grid-template-rows: minmax(0, 1fr);
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
 }
 
