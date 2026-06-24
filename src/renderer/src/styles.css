@@ -123,6 +123,12 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 .app-shell {
   display: grid;
   grid-template-columns: 80px 1fr;
+  /* One full-height row. WITHOUT this the implicit row is content-sized, so a
+     short view (e.g. Labs) shrinks the whole row — the sidebar then isn't
+     100vh and its pinned bottom group rises, making the nav "jump" between
+     views. minmax(0,1fr) forces the row to the viewport height regardless of
+     content, and lets the children own their own scroll. */
+  grid-template-rows: minmax(0, 1fr);
   height: 100vh;
   overflow: hidden;
 }
@@ -135,9 +141,35 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   align-items: center;
   padding: 18px 0 12px;
   gap: 3px;
+  /* The rail itself never scrolls — only its middle (.jv-sidebar__scroll) does,
+     so the brand + pinned bottom stay put and the nav can't "jump" between
+     views. Mirrors JustWrite's sidebar (fixed top + scroll middle + fixed
+     bottom). */
+  overflow: hidden;
+}
+/* Scrollable middle: the nav lanes. flex:1 + min-height:0 + overflow-y:auto is
+   the canonical scroll-container recipe (more specific than `.jv-sidebar > *`
+   below so it can shrink). */
+.jv-sidebar > .jv-sidebar__scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
+}
+/* Pinned bottom group (Settings + version) — outside the scroller, never moves. */
+.jv-sidebar__bottom {
+  flex-shrink: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
 }
 /* Canonical library toolbar — Personas/Lexicons/Presets/Effects (and
    Voices' anatomy): search · filter chips · per-data dropdowns · spacer
@@ -345,8 +377,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.jv-sidebar__spacer { flex: 1 1 0; min-height: 8px; }
-.jv-sidebar__version { font-size: 10px; color: var(--ink-3); padding-bottom: 8px; }
+.jv-sidebar__version { font-size: 10px; color: var(--ink-3); padding-top: 2px; }
 
 /* Lane headers (Workflow / Library / Tools / Advanced) — plan Q4. */
 .jv-sidebar__lane-header {
