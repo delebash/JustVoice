@@ -19,7 +19,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
-import { UiButton, UiInput, UiCheckbox, UiTag, UiSelect } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiCheckbox, UiTag, UiSelect, AppModal } from "@delebash/llm-ui";
 
 const props = defineProps({
   open: { type: Boolean, required: true },
@@ -174,17 +174,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div v-if="open" class="jv-overlay" @click.self="onCancel">
-    <div class="jv-modal effects-modal">
-      <header class="jv-modal__header">
-        <div class="jv-modal__titleblock">
-          <span v-if="contextLabel" class="jv-modal__eyebrow">{{ contextLabel }}</span>
-          <h3 class="jv-modal__title">Effects chain</h3>
-        </div>
-        <button type="button" class="jv-modal__close" @click="onCancel">✕</button>
-      </header>
-
-      <div class="jv-modal__body effects-modal__body">
+  <AppModal v-if="open" :eyebrow="contextLabel" title="Effects chain" :max-width="'720px'" no-padding dismissable @close="onCancel">
+      <div class="effects-modal__body">
         <!-- Preset picker — loads a saved chain wholesale -->
         <div class="effects-modal__row">
           <UiButton
@@ -293,17 +284,15 @@ onMounted(() => {
         </div>
       </div>
 
-      <footer class="jv-modal__footer">
+      <template #footer>
         <span class="jv-spacer" />
         <UiButton intent="secondary" label="Cancel" @click="onCancel" />
         <UiButton intent="primary" label="Save" @click="onSave" />
-      </footer>
-    </div>
-  </div>
+      </template>
+  </AppModal>
 </template>
 
 <style scoped>
-.effects-modal { width: min(720px, calc(100vw - 32px)); }
 
 .effects-modal__body { padding: 18px 22px; }
 

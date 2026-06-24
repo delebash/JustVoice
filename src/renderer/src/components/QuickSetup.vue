@@ -27,7 +27,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
-import { UiButton, UiCheckbox, UiTag, UiSelect } from "@delebash/llm-ui";
+import { UiButton, UiCheckbox, UiTag, UiSelect, AppModal } from "@delebash/llm-ui";
 
 const emit = defineEmits(["close"]);
 
@@ -357,24 +357,17 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
 </script>
 
 <template>
-  <div v-if="open" class="jv-overlay" @click.self="step === 'install' ? null : close()">
-    <div class="jv-modal quick-setup">
-      <header class="jv-modal__header">
-        <div class="jv-modal__titleblock">
-          <span class="jv-modal__eyebrow">Quick setup · step
-            {{ step === 'detect' ? '1/3' : step === 'confirm' ? '1/3' : step === 'install' ? '2/3' : '3/3' }}
-          </span>
-          <h3 class="jv-modal__title">
-            {{ step === 'detect' ? "Probing your hardware…"
-              : step === 'confirm' ? "Recommended setup"
-              : step === 'install' ? "Installing engines + pinning features"
-              : "All set" }}
-          </h3>
-        </div>
-        <button v-if="step !== 'install'" type="button" class="jv-modal__close" @click="close">✕</button>
-      </header>
-
-      <div class="jv-modal__body quick-setup__body">
+  <AppModal
+    v-if="open"
+    :eyebrow="`Quick setup · step ${step === 'detect' ? '1/3' : step === 'confirm' ? '1/3' : step === 'install' ? '2/3' : '3/3'}`"
+    :title="step === 'detect' ? 'Probing your hardware…' : step === 'confirm' ? 'Recommended setup' : step === 'install' ? 'Installing engines + pinning features' : 'All set'"
+    :max-width="'620px'"
+    no-padding
+    :closable="step !== 'install'"
+    :dismissable="step !== 'install'"
+    @close="close"
+  >
+      <div class="quick-setup__body">
         <!-- ── DETECT step ───────────────────────────────────────── -->
         <div v-if="step === 'detect'" class="jv-muted quick-setup__loading">
           Probing GPU + engines + LLM providers…
@@ -532,7 +525,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
         </template>
       </div>
 
-      <footer class="jv-modal__footer">
+      <template #footer>
         <template v-if="step === 'confirm'">
           <UiButton intent="ghost" label="Skip — configure later" @click="close" />
           <span class="jv-spacer" />
@@ -552,13 +545,11 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
           <span class="jv-spacer" />
           <UiButton intent="primary" label="Close" @click="close" />
         </template>
-      </footer>
-    </div>
-  </div>
+      </template>
+  </AppModal>
 </template>
 
 <style scoped>
-.quick-setup { width: min(620px, calc(100vw - 32px)); }
 .quick-setup__body { padding: 18px 22px; display: flex; flex-direction: column; gap: 18px; }
 .quick-setup__loading { text-align: center; padding: 24px 0; }
 .quick-setup__row-label {
