@@ -72,6 +72,12 @@
 
   --font-ui: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  /* Semantic font tokens the shared @delebash/llm-ui shells read (AppModal /
+     AppDialog / EmptyState / HelpDrawer). JustVoice's identity is sans
+     throughout (no serif in the design), so headings + body both map to the UI
+     font — modal/empty-state titles stay Inter. */
+  --font-display: var(--font-ui);
+  --font-body: var(--font-ui);
 
   /* Content-typed control widths. */
   --w-token: 110px;
