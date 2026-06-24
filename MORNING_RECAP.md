@@ -53,12 +53,23 @@ hand-rolled `fetch` files; only `llm_runner` shared on the server today.
   smoke 27/27, interaction test (prompt + confirm, JW Fine Press theming),
   screenshots, zero JS exceptions. **Both apps now share ONE modal shell + ONE
   prompt/confirm host.**
-- ⏭ next: **rest of the JW UI merge** — JW shell forks → kit (`Toast`,
-  `JwHelpDrawer`→HelpDrawer, `Breadcrumb`, `tooltip` service, `EmptyState`,
-  `ConnectionError`) + primitives `Jw*`→`Ui*` (promote `UiNumber`/`UiTable` to
-  the kit first — no equivalent yet) → Layer B server-core → Layer C lock.
-  (Optional: expand JV's appearance Settings to the full knob set the engine
-  now supports.)
+- ✅ **JW shells — ALL converged to the kit.** `Breadcrumb` (12), `EmptyState`
+  (9), `tooltip` directive, `Toast`+`toastBridge`, `ConnectionError` (props), and
+  the entire help system (`HelpDrawer`/`HelpTrigger`/help-state via
+  `configureHelp({loadDoc,hasDoc,titleForSlug,onOpenFull,onOpenWeb})` + a kit
+  empty-state "Browse all docs"). Deleted the JW forks + `services/tooltip.js`,
+  `toastBridge.js`, `helpMarkdown.js`, `JwHelpDrawer.vue`, `HelpTrigger.vue`, and
+  the ui-store help state. **Font-token gap found + fixed**: kit shells read the
+  semantic `--font-display`/`--font-body`; both apps now map them in tokens.css
+  (JW→serif Fraunces headings, JV→Inter), kit `styles.css` documents the
+  contract. Verified both apps: builds, smoke (JV 14/14, JW 27/27), interaction
+  tests (dialogs + help drawer) + screenshots + computed-style checks, zero JS
+  exceptions.
+- ⏭ next: **JW primitives** — `JwSelect`→`UiSelect` (13), `JwNumber`→`UiNumber`
+  (2), `JwTable`→`UiTable` (11), `JwColorPicker` (3). Promote `UiNumber` +
+  `UiTable` to the kit first (no equivalent yet); decide `JwColorPicker`. Then
+  → Layer B server-core → Layer C lock. (Optional: expand JV's appearance
+  Settings to the full knob set the engine now supports.)
 
 ---
 

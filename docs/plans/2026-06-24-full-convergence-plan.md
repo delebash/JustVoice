@@ -202,13 +202,21 @@ just-llm-runner       Python LLM core (DONE)
    did. JW deletes its forks and imports the kit.
    - ✅ **Icon done**: 77 importers repointed to the kit `Icon`; JW `Icon.vue`
      deleted (byte-identical to the kit's). Build + headless smoke 25/25 green.
-   - ⏭ remaining shells: `Breadcrumb`, `dialog`/`tooltip` services, `Toast`,
-     `EmptyState`, `ConnectionError` (props), `HelpDrawer`/`HelpTrigger`
-     (configureHelp with onOpenFull/onOpenWeb — JW has a HelpView + web docs).
-   - ⏭ primitives: `JwButton→UiButton`, `JwInput`, `JwSelect`, `JwTextarea`,
-     `JwCheckbox`, `JwTag` (per-primitive API reconciliation). **Gaps to
-     promote to the kit first: `UiNumber` (JwNumber, locale number input) +
-     `UiTable` (JwTable, TanStack) — no kit equivalent yet.**
+   - ✅ **Shells done (all of them).** `Breadcrumb` (12), `EmptyState` (9),
+     `tooltip` directive, `Toast`+`toastBridge`, `ConnectionError` (props), and
+     the whole help system (`HelpDrawer`/`HelpTrigger`/help state via
+     `configureHelp` with onOpenFull/onOpenWeb + the kit empty-state "Browse all
+     docs") all repointed to the kit; the JW forks + `services/tooltip.js`,
+     `services/toastBridge.js`, `services/helpMarkdown.js` and the ui-store help
+     state deleted. Surfaced + fixed the font-token gap (kit shells read
+     semantic `--font-display`/`--font-body`; both apps now map them). Verified:
+     builds, smoke 27/27, interaction tests + screenshots, computed-style checks.
+   - ✅ **AppButton/Input/Textarea/Checkbox/Tag already on the kit** (0 `Jw*`
+     importers remain for these).
+   - ⏭ remaining primitives: `JwSelect`→`UiSelect` (13), `JwNumber`→`UiNumber`
+     (2), `JwTable`→`UiTable` (11), `JwColorPicker` (3). **Promote `UiNumber`
+     (locale number input) + `UiTable` (TanStack) to the kit first — no
+     equivalent yet; decide `JwColorPicker` (promote vs JW-local).**
 5. Delete every renderer fork; both apps' smokes green.
 
 ### Layer B — extract `@delebash/server-core`
