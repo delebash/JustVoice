@@ -5,6 +5,10 @@
 
 ---
 
+## ⛔⛔ JV OUTSTANDING WORK NOW LIVES IN THE SHARED LEDGER (2026-07-06) — read it before planning any JV work
+
+> **`just-llm-runner/docs/plans/2026-07-06-outstanding-master-plan.md`** is the twice-verified (pass-1 code evidence + pass-2 adversarial checker per item) ledger of everything outstanding across all three repos. **The JV items it carries (section F):** **F1 — convergence onto the CURRENT shared stack, the single biggest open item**: JV cannot even import against today's `llm_runner` — `server/justvoice/models.py:23-29` imports `LLMRolesSettings`/`LLMRoleTarget`, symbols the shared schema no longer exports, so `import justvoice.app` dies and 30 JV tests fail at collection; that is only the FIRST blocker (full drift enumeration is part of the work); convergence also delivers everything JV currently lacks from the 2026-07 shared work for free (the model catalog/tune system with per-machine tune saves, gated auto-MTP + Gemma draft-file support, the quant dropdown with QAT labels, provider connect, the per-day Logs panel). **F2 —** the `speaker_attribution` task-kind scaffolding (absent from the shared nine; a JV need — JW bans speaker analysis), sequenced with F1. **F3 —** the parked audiobook-converters + speaker-attribution research (`docs/plans/2026-06-27-audiobook-tools-research-todo.md`, user-parked 2026-06-27). **F4 —** the JV `EngineManager.load()` → shared-VRAM-arbiter hook (the coordination DECISION was made 2026-07-04 and the arbiter is BUILT in the runner; only the JV-side wiring remains — after F1). **F5 —** the Appearance-settings knob-set gap (JV's tab exposes only Theme/size/accent/language while the shared engine supports the full JW set — the "clearest remaining user-facing inconsistency" noted below). Nothing is in flight; every item needs its own user "go".
+
 ## ⮕ ACTIVE WORK — read first (2026-06-24)
 
 **Thread: FULL cross-app convergence — server + GUI (user greenlit Option A,
