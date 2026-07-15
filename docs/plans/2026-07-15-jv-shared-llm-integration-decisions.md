@@ -145,7 +145,7 @@ Replace-surface in `server/justvoice/app.py` (all verified 2026-07-15):
 
 ## 5. Renderer / UI decisions (the user's calls, 2026-07-15)
 
-1. **MERGED area.** One nav entry replaces "Engines" (`App.vue:64` — the entry
+1. **MERGED area.** One nav entry replaces "Engines" (`App.vue:57` — the entry
    is visible in every journey; no `visibleFor` filter). JV page chrome hosts
    the kit `AiModelsArea` — the pattern JW records at `AiView.vue:2-6,40-47`
    ("jw has its card layout, we just put the control in it… Same control
