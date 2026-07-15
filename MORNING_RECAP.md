@@ -9,6 +9,21 @@
 
 > **`just-llm-runner/docs/plans/2026-07-06-outstanding-master-plan.md`** is the twice-verified (pass-1 code evidence + pass-2 adversarial checker per item) ledger of everything outstanding across all three repos. **The JV items it carries (section F):** **F1 — convergence onto the CURRENT shared stack, the single biggest open item**: JV cannot even import against today's `llm_runner` — `server/justvoice/models.py:23-29` imports `LLMRolesSettings`/`LLMRoleTarget`, symbols the shared schema no longer exports, so `import justvoice.app` dies and 30 JV tests fail at collection; that is only the FIRST blocker (full drift enumeration is part of the work); convergence also delivers everything JV currently lacks from the 2026-07 shared work for free (the model catalog/tune system with per-machine tune saves, gated auto-MTP + Gemma draft-file support, the quant dropdown with QAT labels, provider connect, the per-day Logs panel). **F2 —** the `speaker_attribution` task-kind scaffolding (absent from the shared nine; a JV need — JW bans speaker analysis), sequenced with F1. **F3 —** the parked audiobook-converters + speaker-attribution research (`docs/plans/2026-06-27-audiobook-tools-research-todo.md`, user-parked 2026-06-27). **F4 —** the JV `EngineManager.load()` → shared-VRAM-arbiter hook (the coordination DECISION was made 2026-07-04 and the arbiter is BUILT in the runner; only the JV-side wiring remains — after F1). **F5 —** the Appearance-settings knob-set gap (JV's tab exposes only Theme/size/accent/language while the shared engine supports the full JW set — the "clearest remaining user-facing inconsistency" noted below). Nothing is in flight; every item needs its own user "go".
 
+## ⮕ F1/F2 INTEGRATION DECIDED — decisions record (2026-07-15)
+
+**The shared-LLM integration was designed in discussion on 2026-07-15; the full
+plan is deferred until the other in-flight session's shared-stack changes land.**
+All decisions (user's calls: JV stays standalone with its own book door — "Shape
+2" closed; replace the pinned-snapshot LLM stack with the current shared one;
+keep all 8 features + build `voice_gender` for real; merged "AI Settings" nav
+entry hosting the kit `AiModelsArea` with TWO JV host tabs, Voice engines first)
+live in **`docs/plans/2026-07-15-jv-shared-llm-integration-decisions.md`** with
+per-claim file:line evidence, the verified server replace-surface (`app.py` line
+ranges), the required kit deltas, and the open plan-time items. Read it before
+any F1/F2 work. Key corrected fact: JV never consumed a live shared package —
+`server/pyproject.toml:44` pins a June commit SHA, and against the current
+runner JV fails at import (executed check).
+
 ## ⮕ ACTIVE WORK — read first (2026-06-24)
 
 **Thread: FULL cross-app convergence — server + GUI (user greenlit Option A,
