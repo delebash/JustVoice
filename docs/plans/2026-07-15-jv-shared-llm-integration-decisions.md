@@ -3,10 +3,11 @@
 **What this is.** The decisions from the 2026-07-15 planning discussion about
 integrating the current shared LLM stack (`just-llm-runner` + `@delebash/llm-ui`)
 into JustVoice. This is NOT the implementation plan — the user deferred the full
-plan until the other in-flight session's shared-stack changes land. Every kit /
-runner file:line cited below was verified against the working tree on
-2026-07-15 and MUST be re-verified when the plan is written (the kit and runner
-are being modified concurrently by another session).
+plan until the other in-flight session's shared-stack changes landed. **They
+landed the same day** (runner `8081539` — the preset one-source rewrite that
+deleted the task tier — plus JW `40eaa10`), and every volatile kit/runner
+citation below was re-verified against the post-landing tree on 2026-07-15
+(§7.7 has the sweep record). Next step: the full implementation plan.
 
 **How this doc was grounded.** Every claim was verified against code this
 session (reads + executed imports), after the user caught doc-drift and decreed:
@@ -61,7 +62,8 @@ package" — and the code agrees with the user:
 - JV therefore consumed a **snapshot** (functionally copied code with a version
   stamp) and never tracked the live shared package. JW, by contrast, co-evolved
   with the runner and mounts it via `install_llm`
-  (`justwrite_server/app.py:164-190`).
+  (`justwrite_server/app.py:164-203` — import at `:164`, the call `:177-203`,
+  re-verified post-`40eaa10`).
 
 **Planning frame that follows:** this is a FIRST-TIME real integration, not a
 re-convergence. No old JV wiring gets benefit of the doubt; every seam is
@@ -105,27 +107,56 @@ Replace-surface in `server/justvoice/app.py` (all verified 2026-07-15):
 - **Keep + rewire to the current dispatch:** `:236-238` (`extraction_api`,
   `smart_assign_api`, `preset_suggest_api`) plus the personas compose/rewrite
   endpoints, captures refine, and projects show-notes.
-- `install_llm` signature (current, volatile): `llm_runner/llm/install.py:64-81`
-  — `app, engine, session_factory, feature_catalog, feature_prompts,
-  engine_presets, taskkind_presets, feature_task_kinds, model_catalog_extra,
+- `install_llm` signature (RE-VERIFIED 2026-07-15 after the preset one-source
+  rewrite landed, runner commit `8081539`): `llm_runner/llm/install.py:62-79`
+  — `app, *, engine, session_factory, feature_catalog, feature_prompts,
+  engine_presets, feature_presets, default_preset_id, model_catalog_extra,
   model_tunes_seed, test_samples, feature_prompt_heals, prefer_local_features,
-  runner_catalog, data_dir`. JW's call (`justwrite_server/app.py:177-190`) is the
-  adoption template. JV passes its own feature seed and
-  `prefer_local_features={"speaker_attribution"}` (the hook already named at
-  `llm_runner/llm/schema.py:84`).
-- **F2:** `speaker_attribution` task kind added to the shared taxonomy — absent
-  from the current nine (`llm_runner/llm/seed.py:441-451`). Mapping of every JV
-  feature → task kind is a plan-time table (open, §7).
+  runner_catalog, data_dir`. The old `taskkind_presets`/`feature_task_kinds`
+  params are GONE — the task tier was deleted. JW's call
+  (`justwrite_server/app.py:177-203`) is the adoption template. JV passes its
+  own feature seed and `prefer_local_features={"speaker_attribution"}` — still
+  a first-class param (`install.py:76`, honored at `dispatch.py:142-145`), and
+  JV is the named example (`config_builder.py:5`).
+- **F2 (REFRAMED by the rewrite):** there is no shared task-kind taxonomy to
+  extend any more (`task_kinds_api.py`, `TaskKinds.vue`, `tests/test_task_kinds.py`
+  all deleted in `8081539`). Routing is per-ACTION: a `feature_preset_refs` row
+  (action → preset_id) falls back to the global `default_preset_id`
+  (`llm_runner/llm/preset_resolve.py:47-57`; dangling refs fall through `:37-44`;
+  no preset → provider-default route with no tunables `:9-11`). The run path
+  resolves + overlays the preset in `prompts.py:474,534` (provenance endpoint
+  `:607`). F2 is therefore pure per-app seed data: JV authors its own
+  `engine_presets` library + `feature_presets` refs + `default_preset_id` —
+  no upstream change needed. JW's data shapes are the template:
+  `seed_presets.py:44-78` (preset dicts: id/name/provider_id/model=""
+  /temperature/top_p/position/samplers, optional think+reasoning_effort),
+  `:133` (action→preset-id map), `:184` (default id). The JSON contract
+  (json_mode/json_schema) stays on the ACTION's prompt row, never the preset
+  (`seed_presets.py:9-11`).
 - **Delete outright** (superseded private-era code): `engines/llm/*` (config,
   provider_store, prompt_store, local_managed), `api/llm_roles_api.py`,
   `api/feature_pins_api.py`, JV's `api/ai_prompts_api.py`, the `qwen3_llm`
   engine (its own manifest names the built-in runner as primary,
   `engines/qwen3_llm/manifest.py`) — with the `capture_readiness_api.py:46-48`
   Qwen3-model references repointed for dictation readiness.
-- **Routing cascade** (exists in current code): action override →
-  feature/preset resolution → first-registered fallback
-  (`llm_runner/llm/dispatch.py:14,74,112-114`; `resolve_route` overrides
-  `:166-187`).
+- **Routing cascade** (RE-VERIFIED post-`8081539`): the ACTION's engine preset
+  is resolved first (`preset_resolve.py:47-57`) and overlaid as
+  provider/model/params onto the call; UNDER that overlay `resolve_pin` runs
+  action-explicit → feature production-config → feature pin → prefer-local →
+  first-adapter (`dispatch.py:95-155`; `_resolve_action_override` `:74-92`;
+  `resolve_route` overrides `:166-205`). NEW since the rewrite: the reasoning
+  system — presets carry `think`/`reasoning_effort`, resolved per
+  provider/model by `_apply_reasoning` (`dispatch.py:208-231`) against the
+  editable per-provider reasoning map (`reasoning_map_api.py`, mounted at
+  `install.py:194`).
+- **Pins are a bridge, not a surface:** the shared routing WIRE no longer
+  carries pins at all (`FeaturePin`, `RoutingConfig.pins`,
+  `RoutingResponse.pins` deleted from `routing_api.py` in `8081539`). The
+  `FeaturePinConfig`/`LLMConfig.feature_pins`/`resolve_pin` contract is kept
+  at dispatch-schema level explicitly for JV's CURRENT code
+  (`config_builder.py:7-9` — "the pin tier is JustVoice-only"; JW leaves pins
+  empty). Integration moves JV off pins onto preset refs; retiring the pin
+  tier upstream afterwards is a post-integration cleanup item.
 - **Transport fix (was ledger F1-a, now code-verified end-to-end):** the kit's
   `requestBlob` is path-first and auth-free (`ui/src/client.js:65-68`); JV's six
   callers are method-first and hit it unadapted via `stores/api.js:40`
@@ -157,16 +188,19 @@ Replace-surface in `server/justvoice/app.py` (all verified 2026-07-15):
    `ProviderForm`). Second: a **JV AI-settings pane** (the app-specific knobs —
    attribution confidence/corrections, dictation cleanup defaults; final
    inventory swept at plan time), the JV counterpart of JW's "Writing AI" tab.
-4. **Kit deltas required for 1+3** (coordinate with the in-flight session; all
-   in `ui/src/views/AiModelsArea.vue` as of today):
+4. **Kit deltas required for 1+3** (RE-VERIFIED against `AiModelsArea.vue`
+   post-`8081539` — the host-tab mechanics are unchanged by the rewrite; the
+   internal tab strip is now Providers & models / **Presets** / Routing by
+   feature / Usage / Server console, `Presets.vue` replacing the deleted
+   `TaskKinds.vue` + `PromptLab.vue`):
    - multi-host-tab support (today: single `appTabLabel` prop + one `#app-tab`
      slot, `:42,595-597`);
    - host-tab position + default-tab control (host tab renders last `:380`;
      default hardcoded `tab = ref("providers")` `:55` — JV needs Voice engines
      first and default-active);
-   - lazy mount for host tabs (`v-if` per tab like Routing tabs `:535,:542`,
-     not the eager `v-show` at `:595`) so the engines pane doesn't boot its
-     fetch loops when the area opens on another tab.
+   - lazy mount for host tabs (`v-if` per tab like the internal tabs
+     `:536,:543`, not the eager `v-show` at `:596`) so the engines pane doesn't
+     boot its fetch loops when the area opens on another tab.
    JW's single "Writing AI" tab keeps working through the new API shape.
 5. **Dies in the renderer:** Settings → "AI features" sub-tab
    (`SettingsView.vue:467`; production-configs promote/revert `:555-560`,
@@ -182,33 +216,67 @@ Replace-surface in `server/justvoice/app.py` (all verified 2026-07-15):
 
 ## 6. Feature → routing notes for the plan
 
-- attribution/identify → the NEW `speaker_attribution` task kind (F2), seeded
-  `prefer_local`.
-- The exact task-kind mapping for smart_assign / preset_suggest / show_notes /
-  compose / persona_rewrite / refine / voice_gender is decided in the plan
-  against the then-current task-kind set (today's nine at `seed.py:441-451`) —
-  candidates noted in discussion (extract.structured, summary.grounded,
-  prose.generate/edit) but NOT locked.
+(REWRITTEN 2026-07-15 after runner `8081539` deleted the task tier — routing is
+per-ACTION preset refs now, §4 F2.)
+
+- attribution/identify → a JV-authored deterministic/extraction-style engine
+  preset (JW's `p_extract` — temp 0.15, `min_p: 0`, pinned `seed` — is the
+  reference shape, `seed_presets.py:66-68`), plus
+  `prefer_local_features={"speaker_attribution"}` so the built-in runner is the
+  smart default when nothing is configured (`dispatch.py:142-145`).
+- The plan authors JV's OWN preset library + the action→preset refs map for
+  smart_assign / preset_suggest / show_notes / compose / persona_rewrite /
+  refine / voice_gender — per-app seed data, no upstream registration.
+  Discussion candidates map naturally onto JW-style preset shapes
+  (extraction-deterministic, grounded-summary, prose-generate/edit) but the JV
+  library is authored fresh at plan time, NOT locked to JW's ten.
+- Presets carry `think`/`reasoning_effort` (the new reasoning system) —
+  JV's extraction-grain features likely want think off; decide per preset at
+  plan time.
 - `refinement`'s flag-driven prompt builder (`refinement.py`) vs. Lab-editable
   prompt rows — how it fits the shared prompt system is a plan design item.
 
 ## 7. Open items for the plan (explicitly undecided or unverified)
 
 1. voice_gender trigger design (auto on provider voice fetch vs. explicit
-   action in Voices) + its prompt/task-kind.
+   action in Voices) + its prompt/preset.
 2. JV AI-settings host-tab content inventory (full sweep of the current
    Settings AI tab — only `:555-600` was read this session — plus knobs living
    on feature surfaces).
-3. Task-kind mapping table (§6) + seed authoring (prompts, temps, samples per
-   the shared SAMPLE-LAW conventions).
+3. JV preset library + action→preset refs authoring (§6): preset shapes
+   (temps/samplers/think per the JW reference at `seed_presets.py:44-78`),
+   prompts, and test samples per the shared SAMPLE-LAW conventions.
 4. `refinement` prompt-system fit (§6).
 5. Whether kit "Server console" needs a source label/rename once two servers'
    logs are reachable in one app.
 6. Per-journey nav: the merged entry inherits Engines' always-visible status —
    confirm that's wanted for dictation/accessibility journeys at plan time.
-7. Re-verify EVERY kit/runner citation in this doc after the in-flight session
-   lands; `install_llm`'s signature and the AiModelsArea internals are the two
-   most volatile.
+7. ~~Re-verify EVERY kit/runner citation in this doc after the in-flight
+   session lands~~ — DONE 2026-07-15, same day: runner `8081539`
+   (`feat(presets)!` — task tier deleted, presets own every tunable) + JW
+   `40eaa10` pulled; §4 (install_llm signature, F2, cascade, pins-bridge),
+   §5.4 (kit tab strip + line numbers), §6, and §7.3 rewritten against the
+   new tree. Upstream drift found during the sweep: the runner's
+   `schema.py:89` docstring points at `prompts._resolve_preset`, but the
+   resolver actually lives in `preset_resolve.py` (imported at
+   `prompts.py:43`, called at `:474,:534,:607`) — a one-line upstream
+   docstring fix candidate, not a JV blocker.
+   Per-citation ledger of the sweep (strict-diff, each checked against the
+   live file — an independent rules-checker audit then re-checked every row
+   and caught two of my line numbers, corrected below):
+   | Citation group | Verified at | Status |
+   |---|---|---|
+   | install_llm signature (feature_presets + default_preset_id; no taskkind params) | `install.py:62-79`; prefer_local `:76`; reasoning router `:194` | ✅ |
+   | preset cascade (ref → default; dangling fall-through; no-preset rule) | `preset_resolve.py:47-57,:37-44,:9-11` | ✅ |
+   | run-path overlay + provenance | `prompts.py:43,:474,:534,:607` | ✅ |
+   | dispatch cascade + reasoning + prefer-local | `dispatch.py:95-155,:74-92,:166-205,:208-231,:142-145` | ✅ |
+   | pin tier = JustVoice-only bridge | `config_builder.py:5,:7-9` | ✅ |
+   | pins gone from routing wire | `routing_api.py` (no FeaturePin/pins fields; removal note `:35`) | ✅ |
+   | kit tab strip + host-tab mechanics | `AiModelsArea.vue:42,:55,:380,:536,:543,:595-597,:596`; TaskKinds/PromptLab deleted, Presets.vue present | ✅ |
+   | JW adoption template | `justwrite_server/app.py:164-203` | ✅ |
+   | JW seed shapes | `seed_presets.py:43-78` (dicts `:44-77`), refs `:133`, default `:184`, JSON-on-action `:9-11` | ✅ (audit corrected my `:44-80`) |
+   | p_extract reference preset | `seed_presets.py:66-68` | ✅ (audit corrected my `:70-72`) |
+   | landed commits | runner `8081539`, JW `40eaa10` (git log) | ✅ |
 8. Migration of user data: existing feature-pin rows / roles settings /
    `settings.engines.llm[]` providers → shared-stack equivalents (or a clean
    drop with re-setup via Quick Setup) — user call at plan time.
@@ -218,8 +286,9 @@ Replace-surface in `server/justvoice/app.py` (all verified 2026-07-15):
 
 ## 8. Sequencing
 
-Blocked behind: the other session's shared-stack changes landing. Then: write
-the full implementation plan (plan mode, rules-checker panel, tasks with
-acceptance criteria per the global plan protocol), re-verify all volatile
-citations, and execute on branch `claude/admiring-galileo-il3q0o`. The user's
-explicit "go" is required before build (recap rule).
+~~Blocked behind: the other session's shared-stack changes landing.~~ LANDED
+2026-07-15 (runner `8081539` + JW `40eaa10`, both pulled) and every volatile
+citation re-verified same day (§7.7). Next: write the full implementation plan
+(plan mode, rules-checker panel, tasks with acceptance criteria per the global
+plan protocol), then execute on branch `claude/admiring-galileo-il3q0o`. The
+user's explicit "go" is required before build (recap rule).

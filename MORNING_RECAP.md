@@ -11,8 +11,13 @@
 
 ## ⮕ F1/F2 INTEGRATION DECIDED — decisions record (2026-07-15)
 
-**The shared-LLM integration was designed in discussion on 2026-07-15; the full
-plan is deferred until the other in-flight session's shared-stack changes land.**
+**The shared-LLM integration was designed in discussion on 2026-07-15. The
+other session's shared-stack changes LANDED the same day (runner `8081539` —
+the preset one-source rewrite: task tier deleted, per-ACTION preset refs +
+default preset own routing — plus JW `40eaa10`) and every volatile citation in
+the decisions record was re-verified against the new tree. Next step: the full
+implementation plan (plan mode + rules-checker panel); build waits on the
+user's explicit "go".**
 All decisions (user's calls: JV stays standalone with its own book door — "Shape
 2" closed; replace the pinned-snapshot LLM stack with the current shared one;
 keep all 8 features + build `voice_gender` for real; merged "AI Settings" nav
