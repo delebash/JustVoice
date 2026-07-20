@@ -25,6 +25,7 @@ dependencies = [
     "sqlalchemy>=2.0",  # Phase 1.5: primary persistence layer (atomic JSON still used for settings.json only)
     "python-multipart>=0.0.18",  # multipart form parsing — backup/restore + /v1/projects/import
     "pyloudnorm>=0.1",  # EBU R128 LUFS measurement for ACX mastering verification + analyzer
+    "tenacity>=8.2",  # prebuilt retry (backoff + jitter) for the webhook dispatcher — replaces a hand-rolled ladder
     # Phase 3: pedalboard adoption triggers the Apache-2.0 → GPL-3.0-or-later
     # atomic license flip. pedalboard is Spotify's audio-effects library
     # (compressor, reverb, EQ, delay, chorus, pitch-shift, gain, HP/LP filters).

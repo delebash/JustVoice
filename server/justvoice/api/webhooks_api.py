@@ -23,8 +23,20 @@ import httpx
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field, HttpUrl
 from sqlalchemy.orm import Session
+from tenacity import (
+    AsyncRetrying,
+    RetryError,
+    retry_if_exception_type,
+    retry_if_result,
+    stop_after_attempt,
+    wait_chain,
+    wait_fixed,
+    wait_random,
+)
 
 from ..database import Webhook, get_db
+from ..database import session as _db_session
+from ..database.session import SessionLocal
 from ..errors import not_found
 
 
@@ -176,6 +188,70 @@ async def test_webhook(webhook_id: str, db: Session = Depends(get_db)) -> Webhoo
 
 
 _RETRY_DELAYS_S = [1, 5, 30, 300]  # 1s, 5s, 30s, 5m
+_LOG_TAIL_CAP = 50  # rolling delivery-attempt log, per the module + model docstrings
+
+# Replay the fixed [1s, 5s, 30s, 5m] backoff via tenacity (a prebuilt retry lib
+# — chosen over the hand-rolled loop that swallowed every failure) with a touch
+# of proportional jitter so a fleet of webhooks pointed at one downed endpoint
+# doesn't retry in lockstep. wait_chain yields the Nth wait before the Nth retry.
+_wait_ladder = wait_chain(
+    *[wait_fixed(s) + wait_random(0, max(1.0, s * 0.1)) for s in _RETRY_DELAYS_S]
+)
+
+
+def _is_failure_status(status_code: int) -> bool:
+    """A non-2xx response is a delivery failure worth retrying."""
+    return not (200 <= status_code < 300)
+
+
+def _summarize_exc(exc: BaseException) -> str:
+    return f"{type(exc).__name__}: {exc}"[:200]
+
+
+def _open_bg_db() -> Optional[Session]:
+    """Open a session for the detached dispatcher. It runs via create_task
+    long after the request session that fanned it out has closed, so it can't
+    borrow that one. SessionLocal is None until init_db() runs (the module
+    import binds the pre-init value) — resolve lazily, the way
+    render_chapter_api._open_db does; tests patch this module's SessionLocal."""
+    factory = SessionLocal or _db_session.SessionLocal
+    return factory() if factory is not None else None
+
+
+def _record_attempt(webhook_id: str, status_code: Optional[int], error: Optional[str]) -> None:
+    """Persist one delivery attempt: bump last_status_code + last_delivery_at
+    and append a capped ``{timestamp, status, error?}`` entry to log_tail_json.
+
+    This is the bookkeeping the module + Webhook-model docstrings promise —
+    previously only the synchronous /test path recorded anything; the
+    background dispatcher swallowed every outcome. Now every attempt (success
+    AND failure) is recorded, the same way the sync path persists. Best-effort:
+    a bookkeeping error must never crash delivery."""
+    db = _open_bg_db()
+    if db is None:
+        return
+    try:
+        wh = db.query(Webhook).filter(Webhook.id == webhook_id).first()
+        if wh is None:
+            return
+        wh.last_status_code = status_code
+        wh.last_delivery_at = datetime.utcnow()
+        try:
+            tail = json.loads(wh.log_tail_json or "[]")
+            if not isinstance(tail, list):
+                tail = []
+        except (ValueError, TypeError):
+            tail = []
+        entry: dict = {"timestamp": int(time.time()), "status": status_code}
+        if error:
+            entry["error"] = error
+        tail.append(entry)
+        wh.log_tail_json = json.dumps(tail[-_LOG_TAIL_CAP:])  # roll to the cap
+        db.commit()
+    except Exception:  # noqa: BLE001 — bookkeeping must not kill delivery
+        db.rollback()
+    finally:
+        db.close()
 
 
 async def dispatch_event(event: WebhookEvent, payload: dict, db: Session) -> None:
@@ -205,15 +281,35 @@ async def _deliver_with_retry(webhook_id: str, url: str, event: WebhookEvent, pa
         "X-JustVoice-Signature": signature,
         "X-JustVoice-Event": event,
     }
-    for attempt, delay in enumerate([0] + _RETRY_DELAYS_S):
-        if delay:
-            await asyncio.sleep(delay)
+
+    async def _attempt() -> int:
+        # One delivery attempt. Records the outcome — status code, or the
+        # exception summary for a transport failure — BEFORE returning/raising,
+        # so last_status_code + log_tail reflect every attempt.
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 resp = await client.post(url, content=body_bytes, headers=headers)
-            if 200 <= resp.status_code < 300:
-                return
-        except Exception:
-            pass
-        if attempt >= len(_RETRY_DELAYS_S):
-            break
+        except Exception as exc:  # noqa: BLE001 — transport failure → retry + record
+            _record_attempt(webhook_id, None, _summarize_exc(exc))
+            raise
+        _record_attempt(
+            webhook_id,
+            resp.status_code,
+            f"HTTP {resp.status_code}" if _is_failure_status(resp.status_code) else None,
+        )
+        return resp.status_code
+
+    # 5 attempts total: the first, then the [1,5,30,300]s ladder. Retry on any
+    # transport exception OR a non-2xx status; on exhaustion tenacity raises
+    # RetryError, which we swallow — delivery is fire-and-forget and every
+    # attempt is already recorded above.
+    retryer = AsyncRetrying(
+        stop=stop_after_attempt(1 + len(_RETRY_DELAYS_S)),
+        wait=_wait_ladder,
+        retry=retry_if_exception_type() | retry_if_result(_is_failure_status),
+        reraise=False,
+    )
+    try:
+        await retryer(_attempt)
+    except RetryError:
+        pass
