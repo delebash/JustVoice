@@ -12,9 +12,9 @@ import asyncio
 import base64
 import time
 import uuid
-from collections import OrderedDict
 from typing import Optional, Literal
 
+from cachetools import TTLCache
 from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -74,36 +74,29 @@ class _PreviewEntry:
         self.expires_at = time.time() + _TTL_S
 
 
-_PREVIEW_LRU: OrderedDict[str, _PreviewEntry] = OrderedDict()
+# cachetools.TTLCache gives us the cap-20 + 10-min-TTL eviction for free — it
+# combines LRU-on-access promotion (get() moves an entry to most-recent) with
+# TTL expiry driven by its own timer, so it matches the hand-rolled OrderedDict
+# (which paid an O(n) expiry scan on every get) exactly. Not thread-safe, so
+# every access stays under _LRU_LOCK — the async endpoints share one event-loop
+# thread and the lock keeps concurrent coroutines from interleaving a mutation.
+# No eviction side effects to preserve (entries hold in-memory WAV bytes only).
+_PREVIEW_LRU: TTLCache[str, _PreviewEntry] = TTLCache(maxsize=_LRU_CAP, ttl=_TTL_S)
 _LRU_LOCK = asyncio.Lock()
-
-
-async def _evict_expired() -> None:
-    now = time.time()
-    async with _LRU_LOCK:
-        for key in list(_PREVIEW_LRU.keys()):
-            if _PREVIEW_LRU[key].expires_at < now:
-                del _PREVIEW_LRU[key]
 
 
 async def _store_preview(entry: _PreviewEntry) -> str:
     async with _LRU_LOCK:
-        # Evict LRU until under cap.
-        while len(_PREVIEW_LRU) >= _LRU_CAP:
-            _PREVIEW_LRU.popitem(last=False)
         preview_id = str(uuid.uuid4())
-        _PREVIEW_LRU[preview_id] = entry
+        _PREVIEW_LRU[preview_id] = entry  # TTLCache evicts past the cap / on TTL
         return preview_id
 
 
 async def _get_preview(preview_id: str) -> Optional[_PreviewEntry]:
-    await _evict_expired()
     async with _LRU_LOCK:
-        entry = _PREVIEW_LRU.get(preview_id)
-        if entry is not None:
-            # Move to end (LRU semantics).
-            _PREVIEW_LRU.move_to_end(preview_id)
-        return entry
+        # .get() both drops the entry if its TTL lapsed (→ None → 404) and
+        # promotes a live hit to most-recently-used.
+        return _PREVIEW_LRU.get(preview_id)
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────

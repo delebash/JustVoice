@@ -26,6 +26,7 @@ dependencies = [
     "python-multipart>=0.0.18",  # multipart form parsing — backup/restore + /v1/projects/import
     "pyloudnorm>=0.1",  # EBU R128 LUFS measurement for ACX mastering verification + analyzer
     "tenacity>=8.2",  # prebuilt retry (backoff + jitter) for the webhook dispatcher — replaces a hand-rolled ladder
+    "cachetools>=7.0",  # prebuilt TTL/LRU caches (voice-preview + render hot tier); >=7 for TTLCache LRU-on-access
     # Phase 3: pedalboard adoption triggers the Apache-2.0 → GPL-3.0-or-later
     # atomic license flip. pedalboard is Spotify's audio-effects library
     # (compressor, reverb, EQ, delay, chorus, pitch-shift, gain, HP/LP filters).

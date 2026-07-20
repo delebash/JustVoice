@@ -6,6 +6,7 @@ from __future__ import annotations
 import time
 
 import pytest
+from cachetools import TTLCache
 
 from justvoice.api import voice_preview_api as vp
 
@@ -45,11 +46,22 @@ async def test_get_moves_to_end_for_lru_semantics():
 
 
 @pytest.mark.asyncio
-async def test_ttl_expiry():
-    """Expired entries are pruned on access."""
+async def test_store_then_get_hit():
+    """A freshly stored preview reads back by id (hit/miss + key semantics)."""
     vp._PREVIEW_LRU.clear()
-    e = vp._PreviewEntry("cloned", {"i": 0}, b"x")
-    e.expires_at = time.time() - 1  # already expired
+    e = vp._PreviewEntry("cloned", {"i": 0}, b"wav")
     pid = await vp._store_preview(e)
-    fetched = await vp._get_preview(pid)
-    assert fetched is None
+    assert await vp._get_preview(pid) is e
+    assert await vp._get_preview("does-not-exist") is None
+
+
+@pytest.mark.asyncio
+async def test_ttl_expiry(monkeypatch):
+    """Expired entries read back as None (→ 404). Expiry is now driven by the
+    cache's own TTL timer (set at insert), not the entry's advisory
+    .expires_at, so exercise a short-lived cache."""
+    monkeypatch.setattr(vp, "_PREVIEW_LRU", TTLCache(maxsize=vp._LRU_CAP, ttl=0.05))
+    pid = await vp._store_preview(vp._PreviewEntry("cloned", {"i": 0}, b"x"))
+    assert await vp._get_preview(pid) is not None  # live immediately
+    time.sleep(0.12)
+    assert await vp._get_preview(pid) is None  # lapsed past TTL

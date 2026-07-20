@@ -11,8 +11,9 @@ import logging
 import struct
 import threading
 import time
-from collections import OrderedDict
 from pathlib import Path
+
+from cachetools import LRUCache
 
 from .models import CacheStats, ScopeStats
 
@@ -92,24 +93,30 @@ class RenderCache:
         self._root = Path(root)
         self._root.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
-        # In-memory LRU
-        self._memory: OrderedDict[tuple[str, str], bytes] = OrderedDict()
+        # In-memory hot tier. cachetools.LRUCache does the bounded-LRU eviction
+        # the hand-rolled OrderedDict did by hand (move_to_end on hit + popitem
+        # past the cap). Not thread-safe, so every access stays under
+        # self._lock — the sync render pipeline touches this from worker
+        # threads. Evicting a hot entry has NO side effects: put() writes disk
+        # first, so a dropped memory entry just re-reads from disk. maxsize must
+        # be >= 1 (LRUCache(0) raises on insert), so clamp the operator-tunable
+        # value — "0" degrades to a 1-entry tier instead of crashing.
         self._max_memory_entries = max_memory_entries
+        self._memory: LRUCache[tuple[str, str], bytes] = LRUCache(
+            maxsize=max(1, max_memory_entries)
+        )
 
     def get(self, scope: str, key: str) -> bytes | None:
         with self._lock:
             mkey = (scope, key)
-            if mkey in self._memory:
-                self._memory.move_to_end(mkey)
-                return self._memory[mkey]
+            cached = self._memory.get(mkey)  # .get() promotes recency on a hit
+            if cached is not None:
+                return cached
             path = self._path(scope, key)
             if not path.exists():
                 return None
             data = path.read_bytes()
-            self._memory[mkey] = data
-            self._memory.move_to_end(mkey)
-            if len(self._memory) > self._max_memory_entries:
-                self._memory.popitem(last=False)
+            self._memory[mkey] = data  # LRUCache evicts the LRU entry past cap
             return data
 
     def has(self, scope: str, key: str) -> bool:
@@ -125,11 +132,7 @@ class RenderCache:
             path = self._path(scope, key)
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(data)
-            mkey = (scope, key)
-            self._memory[mkey] = data
-            self._memory.move_to_end(mkey)
-            if len(self._memory) > self._max_memory_entries:
-                self._memory.popitem(last=False)
+            self._memory[(scope, key)] = data  # LRUCache evicts the LRU past cap
 
     def clear(
         self, scope: str | None = None, older_than_days: float | None = None
@@ -170,11 +173,14 @@ class RenderCache:
                     pass
             # Drop memory entries whose backing file is gone (put() always
             # writes disk first, so disk is the source of truth here).
-            self._memory = OrderedDict(
+            survivors = [
                 (k, v)
                 for k, v in self._memory.items()
                 if self._path(k[0], k[1]).exists()
-            )
+            ]
+            self._memory = LRUCache(maxsize=max(1, self._max_memory_entries))
+            for k, v in survivors:
+                self._memory[k] = v
         return removed
 
     def stats(self) -> CacheStats:

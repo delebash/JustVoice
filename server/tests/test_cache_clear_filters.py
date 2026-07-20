@@ -87,6 +87,21 @@ def test_clear_unfiltered_still_wipes_all(tmp_path):
     assert cache.stats().total_entries_on_disk == 0
 
 
+def test_memory_tier_evicts_lru_past_cap(tmp_path):
+    """The in-memory hot tier is bounded: past max_memory_entries the
+    least-recently-used entry is dropped, but its disk copy survives (put()
+    writes disk first) so a later get() re-reads it."""
+    cache = RenderCache(tmp_path / "cache", max_memory_entries=2)
+    cache.put("s", "a", b"a")
+    cache.put("s", "b", b"b")
+    cache.get("s", "a")  # touch a → b becomes the LRU entry
+    cache.put("s", "c", b"c")  # inserting c evicts b from the hot tier
+
+    assert cache.stats().memory_entries == 2
+    # b fell out of memory but is still on disk → get() repopulates and returns.
+    assert cache.get("s", "b") == b"b"
+
+
 # ── Endpoint behavior ─────────────────────────────────────────────────
 
 
