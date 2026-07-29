@@ -80,6 +80,23 @@ For NPC dialogue + game audio, the Chapter tab's **Export → ZIP** packages:
 
 Unreal / Unity integration plans: an `.uplugin` (Unreal) and `.unitypackage` (Unity) will consume this manifest format directly. Until those ship, write a small script in your engine to read manifest.json + load the WAVs as `USoundWave` / `AudioClip` assets.
 
+### Whole project → voiceline ZIP
+
+`POST /v1/projects/{project_id}/export_voicelines` does the same thing for an entire project
+rather than one chapter, and downloads as `<project>_VO.zip`.
+
+- **One WAV per line**, named by its stable line id and grouped into a folder per scene, so the
+  archive stays diffable across re-exports — the same line keeps the same path.
+- **`manifest.json`** alongside, in the format above.
+- Every line is rendered through the **production render path** (`render_core.render_line` with
+  the persona's delivery and lexicon), so the export matches what the Studio Render tab
+  produced. It is not a separate, drifting code path.
+
+Stable ids are what make this useful in a game pipeline: re-export after editing three lines and
+only those three files change, so your engine's asset diff stays small. That is also why
+[re-import](import-formats.md) rejects rows without a stable id — positional `row:N` fallbacks
+would silently mismatch every line the moment the sheet was reordered.
+
 ## Project export (full project archive)
 
 The Projects tab's **Export project** action produces a `.justvoice.zip` archive:
