@@ -11,7 +11,7 @@ JustVoice serves five distinct audiences. Pick your primary at first launch — 
 2. **Cast** — pick voices for every character via the Voices tab. Smart-assign auto-matches; review.
 3. **Script** — let the AI work out who speaks each line. Manually correct any misattributions in the Script tab. Corrections feed back into subsequent re-analyses.
 4. **Render** — batch render every chapter. ACX [mastering.md](mastering.md) preset applies automatically.
-5. **Export** — M4B audiobook file with chapter markers (via JustWrite's m4b.js, or directly via the Export tab).
+5. **Export** — M4B audiobook file with chapter markers, muxed server-side from the Export tab. See [export.md](export.md#audiobook--m4b).
 
 **Engine pick**: Chatterbox Turbo (voice cloning, sounds like real narrators) + Kokoro (incidental characters).
 

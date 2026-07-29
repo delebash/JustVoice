@@ -82,7 +82,8 @@ These overrides feed Tier-2 of the [3-tier voice tuning](profiles.md#3-tier-voic
 
 After rendering, the **Export** action produces:
 - **WAV** — raw single file (or one per chapter for multi-chapter projects)
-- **M4B** — audiobook container with chapter markers (muxed client-side by JustWrite's `services/m4b.js` via FFmpeg.wasm — see [CONTRACT.md](../CONTRACT.md))
+- **M4B** — audiobook container with chapter markers, muxed **on the server** by ffmpeg via
+  `POST /v1/projects/{id}/export_m4b` (needs ffmpeg on PATH — see [export.md](export.md#audiobook--m4b))
 - **ZIP** — bundle of per-block WAVs + a manifest.json for game-dev workflows
 
 Mastering is applied before export — change the target via [mastering.md](mastering.md).

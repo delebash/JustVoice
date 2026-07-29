@@ -4,11 +4,19 @@
 
 ## Product split
 
-- **JustWrite** — pure novel writing app. Owns: manuscript editor, character roster, scene/chapter tree, export to audiobook orchestration. Does NOT contain: TTS engine code, voice cloning, ACX mastering, M4B mux, lexicons, persona LLM-rewrite. Distributes as its own installer.
+- **JustWrite** — pure novel writing app, **writing-only**. Owns: manuscript editor, character roster, scene/chapter tree, manuscript export (PDF/DOCX/…). Does NOT contain: any audio code at all — no TTS engine, no voice cloning, no ACX mastering, no M4B mux, no lexicons, no persona LLM-rewrite, and no live JustVoice client.
 
 - **JustVoice** (Python package + console-script kept as `justvoice` / `justvoice-server` until the rename PR — naming-collision fix from `project_gotchas` memory must be preserved through the rename) — standalone voice production server. Owns: engine pool, voice profiles, voice cloning, persona LLM-rewrite, lexicons, per-chapter render, ACX mastering, take versioning, multi-track timeline editor, dictation, MCP server, captures. Distributes as its own installer with Tauri shell + Python sidecar.
 
-The audiobook workflow is JustWrite *orchestrating* JustVoice via HTTP. JustWrite holds the manuscript and the project shape; JustVoice holds the voices and the audio.
+The handoff is a **file export, not a live HTTP orchestration.** JustWrite exports a book
+(Settings → Backups → "Export this book"); the user opens that `.zip` in JustVoice, which then
+owns the entire audio pipeline end to end. JustWrite holds the manuscript; JustVoice holds
+everything downstream of it.
+
+> **Revised 2026-07-29.** This document previously described JustWrite driving JustVoice over
+> HTTP and muxing M4B in-browser via `services/m4b.js` + FFmpeg.wasm. That is no longer true and
+> no such code remains in JustWrite (`ExportView.vue`: *"there is no live server handoff from
+> this view anymore"*). Sections below are corrected accordingly.
 
 ## Why this split
 
@@ -88,19 +96,23 @@ JustVoice listens on `127.0.0.1:17494` (configurable). JustWrite spawns JustVoic
 | `Generation` (a TTS render of a text block) | JustVoice | SQLite-backed; audio path on disk |
 | `Take` (a generation version — for re-roll workflow) | JustVoice | SQLite-backed; lineage via `source_take_id` |
 | `RenderJob` (a chapter render in progress) | JustVoice | SQLite-backed; resumable across server restarts |
-| M4B file with chapter markers | JustWrite | JustWrite calls `/render_chapter` per chapter, then muxes locally via `services/m4b.js` (FFmpeg.wasm) |
-| Per-chapter mastered WAVs | JustVoice (cache) + JustWrite (download) | Mastered output streamed/downloaded; cached on JustVoice side keyed by content hash |
+| M4B file with chapter markers | JustVoice | `POST /v1/projects/{id}/export_m4b` — server-side ffmpeg mux (concat demuxer + FFMETADATA chapters, `-f ipod`, AAC 128k). Needs ffmpeg on PATH |
+| Per-chapter mastered WAVs | JustVoice | Rendered, mastered and cached server-side, keyed by content hash; the user downloads from JustVoice |
 
 ## Render flow (audiobook end-to-end)
 
 1. **JustWrite** holds a Book with Chapters and Scenes and Paragraphs. Each paragraph has a Character attribution and optional Direction (emotion/style hint).
-2. User clicks "Render audiobook" in JustWrite's StudioView.
-3. For each Chapter, JustWrite calls `POST /v1/render_chapter` with the ordered Blocks (text + character_id + direction + persona_overrides).
-4. **JustVoice** for each block: applies the character's Persona (with personality LLM-rewrite if enabled) → applies the active Lexicon → selects the engine → renders audio → records a `Generation` row + `Take` row → returns audio bytes (or a URL).
-5. JustWrite collects per-chapter WAVs.
-6. JustWrite calls `POST /v1/master` per chapter with the active mastering preset (ACX/iAudio/Podcast/YouTube).
-7. JustWrite's `services/m4b.js` muxes the mastered chapter WAVs into a single M4B with chapter markers using FFmpeg.wasm in-browser.
-8. User downloads the M4B; uploads to ACX.
+2. User exports the book from JustWrite (Settings → Backups → "Export this book") → a `.zip`.
+   **This is the only handoff. JustWrite makes no calls to JustVoice.**
+3. User opens that `.zip` in **JustVoice** via one of the [import adapters](docs/import-formats.md).
+   From here every step is JustVoice's.
+4. Per block: apply the character's Persona (with personality LLM-rewrite if enabled) → apply the
+   active Lexicon → select the engine → render audio → record a `Generation` row + `Take` row.
+5. Mastering runs per the active preset (ACX / iAudio / Podcast / YouTube) — see
+   [mastering.md](docs/mastering.md).
+6. `POST /v1/projects/{id}/export_m4b` assembles every chapter and muxes one M4B with chapter
+   markers — server-side ffmpeg, one invocation. See [export.md](docs/export.md).
+7. User downloads the M4B; uploads to ACX.
 
 ## Render flow (game dialogue — Unreal Engine)
 
@@ -119,8 +131,10 @@ JustVoice listens on `127.0.0.1:17494` (configurable). JustWrite spawns JustVoic
 
 ## What JustWrite MUST NOT do
 
-- Hold any voice/audio backend code. m4b.js (FFmpeg.wasm-side muxing) is the only audio code in JustWrite — and it's a thin client of JustVoice, not a backend.
-- Pin a specific JustVoice version. JustWrite hits the v1 endpoints; JustVoice guarantees v1 backward compatibility within a semver major.
+- Hold **any** audio code. Not a backend, not a thin client, not a muxer. JustWrite is
+  writing-only; the last audio code (`services/m4b.js`) is gone and must not come back.
+- Call JustVoice at runtime. The handoff is a book export the user opens in JustVoice — there is
+  no live server handoff, so there is no JustVoice version for JustWrite to pin.
 
 ## What JustVoice MUST NOT do
 

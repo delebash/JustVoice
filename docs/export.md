@@ -29,17 +29,29 @@ The chapter tab's **Render → Export → WAV** action emits one mastered WAV pe
 
 ## Audiobook → M4B
 
-M4B muxing happens client-side, not on the JustVoice server. The audiobook flow is:
+M4B assembly happens **on the JustVoice server** — one endpoint, one download, no other app
+involved. `POST /v1/projects/{project_id}/export_m4b` returns a finished `.m4b`.
 
-1. JustWrite calls JustVoice `/v1/chapters/render` per chapter → gets mastered WAVs back.
-2. JustWrite holds the manuscript + chapter metadata + cover art.
-3. JustWrite's `services/m4b.js` uses FFmpeg.wasm to mux the WAVs into one M4B file with:
-   - Chapter markers from the chapter manifest
-   - Embedded cover art
-   - Metadata (title, author, narrator, ASIN if set)
-4. User downloads the M4B → uploads to ACX.
+1. `assemble_project()` renders every scene through the **production render path** (the same
+   scene resolution and `render_core` the Studio Render tab uses), so the exported book sounds
+   exactly like what you previewed.
+2. One `ffmpeg` invocation muxes it: the chapter WAVs go through the concat demuxer, an
+   FFMETADATA file supplies the chapter marks, and `-f ipod` writes the M4B container at
+   `aac 128k`.
+3. Title comes from the project name; author is read from the project description when it starts
+   with `by `.
+4. Download → upload to ACX.
 
-For non-JustWrite workflows (a podcaster manually assembling an audiobook), you can use any external M4B muxer (`ffmpeg`, MP3Tag, Audiobook Builder) on the per-chapter WAVs JustVoice exports.
+**ffmpeg must be on the server's PATH.** Without it the endpoint returns `503` with
+`"ffmpeg is not installed — required for M4B export"` rather than failing silently. This is the
+same ffmpeg [mastering](mastering.md) requires.
+
+Cover art and narrator/ASIN metadata are **not** written today — add them in a tag editor
+(MP3Tag, Audiobook Builder) if your distributor wants them.
+
+> JustWrite does not touch audio at all. Earlier versions of this page described client-side
+> muxing in JustWrite via `services/m4b.js` and FFmpeg.wasm — that has not been true since audio
+> moved wholly into JustVoice, and no such code remains in JustWrite.
 
 ## Game-dev → ZIP bundle
 
@@ -96,7 +108,8 @@ Useful for masking JustVoice-produced audio without re-rendering.
 
 ## Troubleshooting
 
-- **M4B is missing chapter markers** — JustWrite must pass the chapter manifest to FFmpeg's `-i FFMETADATAFILE` argument. Check JustWrite's `services/m4b.js` for the call.
+- **M4B export fails with 503** — ffmpeg is not on the server's PATH. Install it and restart the server; the same binary powers [mastering](mastering.md).
+- **M4B is missing chapter markers** — chapters come from the FFMETADATA file `mux_m4b()` writes, one entry per assembled chapter. A project whose scenes have not been rendered produces no chapters; render first, then export.
 - **WAV plays at wrong speed** — Mismatched sample rate. Check the engine's output rate vs the destination application's expected rate. Engines emit at their native rate (Kokoro 24 kHz, Chatterbox 24 kHz, LuxTTS 48 kHz, TADA 24 kHz).
 - **Mastered audio is silent at the start** — A bug in the mastering normalize step. Try the "iAudio" target instead of ACX; iAudio's threshold is gentler.
 - **ZIP export is huge** — Unmastered + every take is large. Use the project export with "Default takes only" checkbox to slim it down.
