@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """/v1/ai/prompts (JustVoice) — per-feature prompts are DB-seeded and
 Lab-editable; the one-shot endpoints read their prompt from the DB, not a
 hardcoded constant. See docs/plans/2026-06-21-feature-prompts-db-seed.md."""

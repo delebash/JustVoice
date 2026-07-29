@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // End-to-end smoke suite — drives the REAL app against a running
 // headless server (Phase A closing deliverable, IMPLEMENTATION_PLAN).
 //

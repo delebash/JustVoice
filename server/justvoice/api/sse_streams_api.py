@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Server-sent event streams — per-generation status + per-model download.
 
 Subscribed by:

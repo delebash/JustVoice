@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Speechify TTS adapter (SIMBA 3.0 API).
 
 POST /v1/audio/speech with bearer auth. Response is base64-encoded audio

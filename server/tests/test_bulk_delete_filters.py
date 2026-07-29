@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """DELETE /v1/generations — engine / favorited / persona-aware voice
 filters (wiring-audit W1). The voice filter previously matched only the
 legacy profile_id column, silently missing every persona-era row.

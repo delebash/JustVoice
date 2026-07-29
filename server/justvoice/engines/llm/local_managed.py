@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Local managed-engine adapter — routes chat through the EngineManager's
 LLM slot (the bundled qwen3-llm engine, parity gap G1).
 

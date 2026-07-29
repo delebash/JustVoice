@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <!--
   Import review — the mock's "Import — stillwater.epub" PAGE (user
   decision 2026-06-12: the picker stays a small dialog; the RESULTS are

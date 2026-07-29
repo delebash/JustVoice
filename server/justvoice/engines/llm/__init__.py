@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """JustVoice LLM engine glue.
 
 The LLM provider/dispatch implementation is the shared `llm_runner.llm`

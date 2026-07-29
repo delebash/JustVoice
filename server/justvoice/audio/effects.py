@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Effects pipeline (Slice 6 of the Profile-kill plan).
 
 The render path cascades:

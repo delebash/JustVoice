@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 #
 # Variant→class/repo mapping and turbo generation params adapted from
 # voicebox (MIT) — backend/backends/chatterbox_backend.py +

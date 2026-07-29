@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """/v1/ai/prompts — read + edit the per-feature prompts in the DB (the Lab's
 prompt editor). Mirrors JustWrite's api/ai_prompts.py.
 

@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <!--
   StudioView — multi-character production environment for the
   audiobook + podcast + game use cases. Three-tab Cast → Script →

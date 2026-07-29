@@ -1,6 +1,6 @@
 # QC round 3 queue — intake 2026-06-12 evening
 
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 
 Sweep findings + plan delivered as text; user approved ("continue").
 Execution order: sweep fixes (S steps 1-3) first, then items 1-4.

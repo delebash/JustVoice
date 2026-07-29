@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Tests for the voice-preview LRU semantics — 20-cap, 10-min TTL, eviction."""
 
 from __future__ import annotations

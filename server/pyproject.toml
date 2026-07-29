@@ -4,7 +4,7 @@ version = "0.0.1"
 description = "An open-source TTS server built for audiobook production, useful for any TTS workload."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "GPL-3.0-or-later" }
+license = { text = "MIT" }
 authors = [{ name = "JustVoice contributors" }]
 keywords = ["tts", "text-to-speech", "audiobook", "speech-synthesis", "voice-cloning"]
 

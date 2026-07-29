@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Tests for atomic JSON write — the crash-safety primitive for settings.json.
 
 Phase 1.5 migrates everything else to SQLite, but settings.json stays atomic-JSON

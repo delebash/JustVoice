@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """TTS provider adapters beyond the bundled engines.
 
 Phase 2 / Slice 5 of the Profile-kill plan. Mirrors the LLM-side registry:

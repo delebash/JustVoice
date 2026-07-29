@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Unhandled server errors must reach the browser as real 500s, not
 'blocked by CORS'. Starlette runs bare-Exception handlers OUTSIDE
 CORSMiddleware, so the fix is a catch-all middleware registered inside

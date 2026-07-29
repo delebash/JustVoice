@@ -1,6 +1,6 @@
 # GUI parity — mock vs app, screen by screen
 
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 
 The approved contracts: `preview/journeys-preview.html`,
 `preview/engines-redesign.html`, `preview/ai-features-redesign.html`.

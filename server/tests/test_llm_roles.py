@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """AI-features backend — roles, production configs, dispatch precedence,
 manifest kinds, per-variant on_disk (engines + AI-features redesign)."""
 

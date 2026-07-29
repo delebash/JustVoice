@@ -1,6 +1,6 @@
 # Journey: Podcast — Priya, producer
 
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 
 Priya produces *Signal & Noise*, a 3-host tech show. Sometimes she has a
 scripted episode in markdown; sometimes she writes it directly in the app.

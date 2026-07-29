@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """MCP server tests — the /mcp mount, tool registration, and voice
 resolution precedence. Speak's render path needs a loaded engine, so it's
 covered by the e2e suite; here we verify the wiring that was previously

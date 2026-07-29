@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <!--
   LinesView — the game dev's home base (mock #game/3, CONCEPTS §1).
 

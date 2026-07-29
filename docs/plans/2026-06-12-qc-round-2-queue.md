@@ -1,6 +1,6 @@
 # QC round 2 queue — accepted 2026-06-12 ("I accept your recommendations and you can code now")
 
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 
 Execution per RULE #2: one item at a time, full read of the touched
 surface, written current-state → target, implement, verify, commit.

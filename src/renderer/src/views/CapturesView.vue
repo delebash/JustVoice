@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <!--
   CapturesView — dictation + voice-sample capture list. The animated
   CapturePill component surfaces live state; the table lists past

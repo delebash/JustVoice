@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <!--
   GlobalAudioPlayer — bottom-anchored transport bar that plays any audio
   URL pushed via the audioPlayer pinia store. Fixed bottom strip, persists

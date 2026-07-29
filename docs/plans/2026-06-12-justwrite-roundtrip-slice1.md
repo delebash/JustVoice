@@ -1,6 +1,6 @@
 # Plan: JustWrite → JustVoice round-trip — slice 1 (export handshake)
 
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 
 Next-horizon item #1 (IMPLEMENTATION_PLAN.md, recorded per user
 request). Audit findings (2026-06-12, file-verified per

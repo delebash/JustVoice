@@ -1,6 +1,6 @@
 # Test fixtures
 
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 
 `stillwater.epub` — tiny synthetic two-chapter EPUB written for this
 repo (original content, no external source). Drives the audiobook

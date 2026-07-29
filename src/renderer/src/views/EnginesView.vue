@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <!--
   EnginesView (Phase 2 / Slice 2 rewrite — dropdown selector UX).
 

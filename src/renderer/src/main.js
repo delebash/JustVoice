@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 import { createApp } from "vue";
 import { createPinia } from "pinia";
 import App from "./App.vue";

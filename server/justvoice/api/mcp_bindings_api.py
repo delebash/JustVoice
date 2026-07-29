@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """/v1/mcp/bindings — per-client MCP voice + defaults binding.
 
 When an Unreal editor / Claude / Cursor calls `justvoice.speak` without

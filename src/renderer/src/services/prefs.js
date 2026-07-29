@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // Renderer UI preferences — server-backed (SQL via /v1/prefs), NOT localStorage.
 //
 // bootPrefs() pulls the whole prefs document into a REACTIVE in-memory cache

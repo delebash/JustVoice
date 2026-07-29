@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Built-in effect presets must exist after boot (parity-audit fix) and
 every type they use must be buildable by the effects chain."""
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // verify-no-fakes.mjs — asserts the "coming soon"-gated affordances are
 // genuinely inert (disabled, no fake toast), so the UI never claims an

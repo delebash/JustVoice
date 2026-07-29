@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: MIT AND GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2026 JustWrite contributors
 // SPDX-FileCopyrightText: 2026 JustVoice contributors
 //
 // Lifted with adaptation from JustWrite's helpDocs.js. MIT permission
 // notice continues for upstream-derived portions; JustVoice changes
-// are GPL-3.0-or-later.
+// are MIT.
 //
 // In-app help docs loader.
 //

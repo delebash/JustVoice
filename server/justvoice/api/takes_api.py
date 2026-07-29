@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """/v1/takes — per-block take versioning for the audiobook re-roll workflow.
 
 Voicebox versions WHOLE generations; we version per-block so re-rendering

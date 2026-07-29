@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Tests for /v1/personas/{id}/rewrite — the LLM-rewrite endpoint.
 
 Covers the contract the StudioView per-block right-click flow depends

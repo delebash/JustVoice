@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <script setup>
 import { ref, computed, watch, onMounted } from "vue";
 import { useApi } from "../stores/api.js";

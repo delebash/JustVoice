@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Multi-adapter import pipeline.
 
 Each adapter module under `imports/adapters/` exposes a `parse(raw,

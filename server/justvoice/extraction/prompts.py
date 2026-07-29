@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT AND GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2024-2026 JustWrite contributors
 # SPDX-FileCopyrightText: 2026 JustVoice contributors
 

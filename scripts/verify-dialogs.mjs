@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // verify-dialogs.mjs — behavioral verification of the library editor
 // dialogs (Personas / Render presets / Lexicons) by driving the REAL UI

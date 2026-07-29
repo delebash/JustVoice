@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Tests for Pydantic models — round-trip + default invariants.
 
 models.py is the cross-language source of truth per CLAUDE.md. These tests guard

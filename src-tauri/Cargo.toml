@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "An open-source TTS server built for audiobook production, useful for any TTS workload."
 authors = ["JustVoice contributors"]
 edition = "2021"
-license = "GPL-3.0-or-later"
+license = "MIT"
 rust-version = "1.85"
 
 [lib]

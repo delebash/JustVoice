@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // Screenshot the voice-library design preview (v3) key states.
 import { chromium } from "playwright";
 import { fileURLToPath } from "url";

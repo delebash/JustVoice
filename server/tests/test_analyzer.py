@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Tests for audio analyzer — peak / RMS / clipping / silence detection."""
 
 from __future__ import annotations

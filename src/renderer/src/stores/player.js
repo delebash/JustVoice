@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 /**
  * playerStore — global audio playback state.
  * AudioPlayer.vue (when built) reads from here; any view can trigger playback

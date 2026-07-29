@@ -1,12 +1,12 @@
 <!--
-  SPDX-License-Identifier: MIT AND GPL-3.0-or-later
+  SPDX-License-Identifier: MIT
   SPDX-FileCopyrightText: 2024 Jamie Pine and voicebox contributors
   SPDX-FileCopyrightText: 2026 JustVoice contributors
 
   Originally from https://github.com/jamiepine/voicebox/blob/b35b90961d5bc83a8b4e96e8b6ccde2a03152ff9/app/src/components/CapturePill/CapturePill.tsx
   (commit pinned in voicebox-pin.txt at repo root).
   Translated React -> Vue on 2026-06-08. Modifications by JustVoice contributors
-  are licensed under GPL-3.0-or-later. MIT permission notice continues to apply
+  are licensed under MIT. MIT permission notice continues to apply
   to upstream-derived portions.
 
   Animated dictation pill — 7 states (recording / transcribing / refining /

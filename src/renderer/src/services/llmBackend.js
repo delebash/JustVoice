@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // JustVoice REST adapter for the shared `@delebash/llm-ui` ProviderBackend
 // contract (Thread 3 / T3.3). The shared UI components call these methods and

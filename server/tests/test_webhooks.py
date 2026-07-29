@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Tests for webhooks — HMAC signature contract + storage round-trip, plus
 the background dispatcher's delivery bookkeeping + retry ladder (HTTP mocked,
 backoff patched to zero so the ladder runs instantly).

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """JustVoice quality-evaluation labs.
 
 Holds ground-truth corpora + leaderboards for the extraction backend

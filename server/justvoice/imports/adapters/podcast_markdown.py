@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Podcast script import — speaker-labeled markdown/text (mock #podcast/2).
 
 The podcast way-in (CONCEPTS §1/§3): a script where each paragraph names

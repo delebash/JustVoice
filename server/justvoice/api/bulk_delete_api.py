@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """DELETE /v1/generations — bulk-delete generations matching filter criteria.
 
 Dry-run by default (confirm=False returns would-be-deleted count). At least

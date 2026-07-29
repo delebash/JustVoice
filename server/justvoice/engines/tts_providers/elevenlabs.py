@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """ElevenLabs TTS adapter.
 
 Proprietary /v1/text-to-speech/{voice_id} endpoint. Voices listed at

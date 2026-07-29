@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """History-row actions wired by the parity audit: favorite toggle +
 single-generation delete (the History table's ★ / ✕ buttons were
 decorative — no endpoints, no handlers)."""

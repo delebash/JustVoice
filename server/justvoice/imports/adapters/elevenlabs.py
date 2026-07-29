@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """ElevenLabs project import adapter — stub.
 
 ElevenLabs Studio exports projects as a proprietary JSON bundle that

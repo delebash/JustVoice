@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """book_prose adapter — EPUB / DOCX / Markdown / TXT, synthetic fixtures."""
 
 from __future__ import annotations

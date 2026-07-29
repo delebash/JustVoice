@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """/v1/projects/{id}/export — per-project ZIP for machine migration + handoff.
 
 Different from /v1/backup (whole-server disaster recovery): export bundles

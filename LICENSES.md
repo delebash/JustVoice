@@ -2,7 +2,11 @@
 
 Authoritative inventory of third-party software shipped with, bundled into, or installed alongside JustVoice. Full license texts live in `LICENSES/<SPDX-id>.txt`. Per-component attribution detail lives in `NOTICE.md`.
 
-JustVoice is **GPL-3.0-or-later** today (see `LICENSE`), but **nothing in the table below forces that any more.** The flip on 2026-06-08 was caused by one dependency — `pedalboard`, which is GPL-3.0 because it statically links JUCE. That dependency was **removed 2026-07-29** and its twelve effects reimplemented in `server/justvoice/audio/dsp/` (MIT, on numpy + scipy) with pitch shifting delegated to Signalsmith Stretch (MIT). Every remaining row is permissive, so relicensing to MIT is now a paperwork change rather than an engineering one.
+JustVoice is **MIT** (see `LICENSE`), and **nothing in the table below constrains that.** Every row is permissive.
+
+The project was GPL-3.0-or-later between 2026-06-08 and 2026-07-29, forced by exactly one dependency: `pedalboard`, which is GPL-3.0 because it statically links JUCE. It was removed on 2026-07-29 and its twelve effects reimplemented in `server/justvoice/audio/dsp/` on numpy + scipy, with pitch shifting delegated to Signalsmith Stretch (MIT). See `NOTICE.md` for the full license history.
+
+**The rule that keeps this true:** a copyleft dependency does not just add a row here, it relicenses the whole product. Check the SPDX identifier against the upstream `LICENSE` file before adding anything — PyPI classifiers are not reliable.
 
 | Component | Version pin | SPDX license | Apache-2.0 compatible | GPL-3.0 compatible | Source URL |
 |---|---|---|---|---|---|
@@ -41,13 +45,16 @@ JustVoice is **GPL-3.0-or-later** today (see `LICENSE`), but **nothing in the ta
 
 ## Compatibility legend
 
-- **Apache-2.0 compatible** — can be combined with JustVoice while it's Apache-2.0.
-- **GPL-3.0 compatible** — will be compatible after the pedalboard-induced license flip. Apache-2.0 is GPLv3-compatible but **not** GPLv2-compatible — relicensing to "GPL-2.0-only" would break transformers/sherpa-onnx/requests/peft/safetensors.
+The two compatibility columns are kept because they record *why* each dependency was cleared, and because they are what a future copyleft dep would collide with. Under MIT both are satisfied by everything listed — an MIT project can consume any permissive licence, and MIT code can flow into an Apache-2.0 or GPL-3.0 downstream work.
+
+- **Apache-2.0 compatible** — combinable with an Apache-2.0 work.
+- **GPL-3.0 compatible** — combinable with a GPL-3.0 work. Note Apache-2.0 is GPLv3-compatible but **not** GPLv2-compatible.
 - **AGPL** — would force the combined work to AGPL-3.0. CI gate (`pip-licenses --fail-on AGPL-3.0...`) blocks AGPL deps.
+- **Anything copyleft** — GPL or LGPL — needs a decision, not a row. GPL relicenses the whole product (that is what pedalboard did); LGPL is survivable but only via dynamic linking, with notice and source-availability obligations attached.
 
 ## Refresh policy
 
 - On every dependency bump, re-verify the SPDX id against the upstream repository's `LICENSE` file (PyPI classifiers occasionally lie).
 - On every Apache-2.0 dep bump, diff the upstream `NOTICE` against `NOTICE.md`'s snapshot.
 - On any novel license appearing (`pip-licenses` whitelist check fails), open an issue, add `LICENSES/<SPDX>.txt`, add a row here, and add a section in `NOTICE.md` before merging.
-- When `pedalboard` is added in Phase 3+, this table's "Apache-2.0 compatible" column collapses (the project is GPL-3.0-or-later). Update accordingly in the flip PR.
+- Before adding any GPL or LGPL dependency, read the row above about copyleft. `pedalboard` was added without that step in June 2026 and cost the project its permissive licence for seven weeks.

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """3-tier voice tuning merge (task #88).
 
 Tier 1 (lowest precedence) — Engine defaults from CAPABILITY_DETAILS.

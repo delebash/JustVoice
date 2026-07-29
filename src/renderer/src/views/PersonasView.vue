@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <!--
   PersonasView — Personas are the sole identity layer after the Profile-kill
   (see plan: voice + delivery + effects + personality all live here directly).

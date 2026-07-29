@@ -1,6 +1,6 @@
 # Wiring audit — GUI ↔ API honesty pass (method + seed list)
 
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 
 Recorded 2026-06-13. A defect class the GUI conformance sweeps do NOT
 cover: whether every affordance is BACKED — button → handler → request

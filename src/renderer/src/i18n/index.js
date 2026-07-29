@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // i18n scaffold (Phase 9 / Slice 1 — plan task #97).
 //

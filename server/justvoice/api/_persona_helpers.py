@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Shared persona creation for import/promotion paths.
 
 Post-Phase-1.5 flip (2026-06-12): PersonaStore reads the same SQLite

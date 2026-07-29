@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Book / manuscript import adapter — EPUB, DOCX, Markdown, plain text.
 
 The audiobook entry point for users who don't come from JustWrite: a

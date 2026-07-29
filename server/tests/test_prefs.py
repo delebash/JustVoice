@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """/v1/prefs — renderer UI preferences (real rows, not localStorage)."""
 
 from __future__ import annotations

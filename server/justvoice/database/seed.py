@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 #
 # Preset data adapted from voicebox (MIT) — backend/utils/effects.py
 # BUILTIN_PRESETS at the commit pinned in voicebox-pin.txt. Original

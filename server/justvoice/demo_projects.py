@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Seeded demo projects — one per kind (the Scrivener tutorial pattern,
 CONCEPTS §13.7). A real project the user can poke at without breaking
 their own work: import-shaped data run through the SAME adapters and

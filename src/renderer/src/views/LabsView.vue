@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <!--
   LabsView — the Tools lane collapsed into one Settings-style tabbed
   view (user decision 2026-06-12, SAME tab strip as Settings —

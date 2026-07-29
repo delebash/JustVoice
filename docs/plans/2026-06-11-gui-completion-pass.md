@@ -1,6 +1,6 @@
 # Plan: GUI completion pass — whole journeys-preview, one shot (2026-06-11)
 
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 
 User directive: complete the ENTIRE approved GUI in one pass — every
 screen in `preview/journeys-preview.html` (the approved contract),

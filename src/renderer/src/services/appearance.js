@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // JustVoice appearance — the generic theme engine + catalogs are SHARED (kit
 // @delebash/llm-ui appearance). JustVoice has no manuscript editor, so no
 // extraApply; it just sets its own brand defaults (Inter UI font, green accent

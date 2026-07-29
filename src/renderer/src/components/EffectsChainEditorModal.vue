@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <!--
   EffectsChainEditorModal — drag-reorderable list of effects
   with per-effect parameter forms. Opens against a chain ref; emits

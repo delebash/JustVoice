@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """JustWrite manuscript import adapter.
 
 JustWrite exports a manuscript as a single JSON document that pins the

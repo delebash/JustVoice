@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Tests for PATCH /v1/voices/{id} — stored-voice metadata updates.
 
 Covers the VoiceStore.update() partial-update semantics and the HTTP

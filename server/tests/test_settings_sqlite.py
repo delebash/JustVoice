@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Settings folded into SQLite (Phase 1.5) — persistence + legacy seed/retire."""
 
 from __future__ import annotations

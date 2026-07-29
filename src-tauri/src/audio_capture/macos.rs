@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: MIT AND GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: 2024 Jamie Pine and voicebox contributors
 // SPDX-FileCopyrightText: 2026 JustVoice contributors
 //
 // Originally from https://github.com/jamiepine/voicebox/blob/b35b90961d5bc83a8b4e96e8b6ccde2a03152ff9/tauri/src-tauri/src/audio_capture/macos.rs
-// Translated/ported by JustVoice contributors. Modifications under GPL-3.0-or-later.
+// Translated/ported by JustVoice contributors. Modifications under MIT.
 // Upstream MIT permission notice continues to apply.
 
 // macOS system audio capture via ScreenCaptureKit.

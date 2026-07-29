@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <!--
   WebhooksView — outbound HMAC-signed webhook subscriptions for async event
   notifications. Use cases: JustWrite gets notified on render-complete,

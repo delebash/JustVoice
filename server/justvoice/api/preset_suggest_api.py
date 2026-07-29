@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """POST /v1/llm/preset-suggest — LLM-driven render-preset classifier.
 
 Phase 6. Pairs with the Studio Render tab's 💡 Suggest button. Ports

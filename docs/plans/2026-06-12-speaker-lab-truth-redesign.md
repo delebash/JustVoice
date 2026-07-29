@@ -1,6 +1,6 @@
 # Speaker Lab truth redesign — 2026-06-12 (user redlines, "go for it")
 
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 
 User finding: the ported Lab hid the pipeline it exists to inspect —
 empty prompt box ("tier default" placeholder), no user prompt, no

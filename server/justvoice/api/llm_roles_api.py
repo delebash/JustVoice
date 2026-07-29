@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """/v1/llm-roles + /v1/production-configs — the AI-features page backend.
 
 Roles themselves persist via PATCH /v1/settings (engines.llm_roles); this

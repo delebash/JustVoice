@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <!--
   RecommendCard — "Recommended for your machine", the contextual
   replacement for the first-run QuickSetup wizard (user decision

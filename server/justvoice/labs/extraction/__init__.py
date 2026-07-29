@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Extraction lab — ground-truth corpus + accuracy scoring.
 
 Phase 8 / Slice 1. Minimum-viable evaluation harness. Future work

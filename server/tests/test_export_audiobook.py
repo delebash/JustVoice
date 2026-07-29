@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Audiobook export — QC math, FFMETADATA chapters, m4b mux argv, endpoints."""
 
 from __future__ import annotations

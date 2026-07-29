@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """/v1/capture/readiness — Whisper + LLM model readiness for dictation.
 
 Polled every 5s by useDictationReadiness while either model is missing

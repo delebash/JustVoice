@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """/v1/channels — audio output channel configs.
 
 Maps a persona to specific OS audio output devices. Use cases: multi-monitor

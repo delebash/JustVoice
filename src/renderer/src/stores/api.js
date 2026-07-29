@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // Reactive façade over the shared server transport (@delebash/llm-ui
 // serverApi). The transport (request, safeRequest, requestBlob, postForm, verbs)
 // lives in the kit; this Pinia store only holds the reactive bits the UI binds

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Tests for engine manifests — discovery + required-field validation.
 
 Every engine plugin must have a manifest.py declaring its id, name,

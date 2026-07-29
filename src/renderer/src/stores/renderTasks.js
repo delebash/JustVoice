@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 /* Render-task store — adapted from JustWrite's `aiTasks.js` pattern.
  *
  * Tracks any long-running TTS operation (single render, chapter render,

@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <!--
   Home — the daily driver (journeys-preview, Library journey step 1).
   "Everything the old Overview did well, reorganized: resume where you

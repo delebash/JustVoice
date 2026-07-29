@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Persona storage — SQLite-primary (Phase 1.5 flip, 2026-06-12).
 
 The file-per-persona JSON store kept a DB twin via a best-effort mirror,

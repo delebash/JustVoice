@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Regression: PATCH /v1/settings deep-merges instead of replacing subtrees.
 
 Found live 2026-06-11: PATCHing {"engines": {"external": [...]}} (the UI's

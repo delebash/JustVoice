@@ -44,7 +44,7 @@ A voice production studio. One app, five distinct audiences:
 
 Same engines, same voice library, same persona system. What changes per audience is the import + export pipeline and the UI tab you spend most of your time in.
 
-License: **GPL-3.0-or-later** (relicense from Apache-2.0 happened Phase 3 when we adopted Spotify's pedalboard for the effects chain).
+License: **MIT**. History: Apache-2.0 → GPL-3.0-or-later (2026-06-08, when Spotify's pedalboard was adopted for the effects chain) → MIT (2026-07-29, when pedalboard was replaced by first-party DSP).
 
 ---
 
@@ -467,7 +467,7 @@ Per-voice or per-render post-process audio effects. 8 effect types:
 
 4 built-in presets: Robotic, Radio, Echo Chamber, Deep Voice. Plus unlimited custom presets.
 
-Implementation uses Spotify's pedalboard (GPL-3.0 — the reason the project is GPL-3.0).
+Implementation is first-party DSP in `server/justvoice/audio/dsp/` (numpy + scipy), with pitch shifting via Signalsmith Stretch (MIT). It replaced Spotify's pedalboard on 2026-07-29 — pedalboard is GPL-3.0 and was the only thing forcing the project to GPL.
 
 ### How to use
 

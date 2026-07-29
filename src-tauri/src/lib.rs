@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //! JustVoice Tauri shell — webview wrapper around the Vue UI + sidecar spawn
 //! for the Python FastAPI server.
 //!
@@ -22,8 +22,9 @@
 //! All actual TTS / business logic lives in the Python sidecar. The Rust
 //! here is plumbing.
 //!
-//! Phase 3+ atomic license flip: file is GPL-3.0-or-later (was Apache-2.0
-//! before pedalboard adoption). See DESIGN_FREEZE.md §3.1.
+//! License history: Apache-2.0 → GPL-3.0-or-later (2026-06-08, when pedalboard
+//! was adopted) → MIT (2026-07-29, when pedalboard was replaced and the last
+//! copyleft dependency left the tree). See NOTICE.md.
 
 mod audio_capture;
 mod hotkey_monitor;

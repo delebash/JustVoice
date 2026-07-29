@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Variant wiring contract — the audit found every engine ignored the
 `variant` arg, making the Engines-tab model dropdown cosmetic. These tests
 pin the catalog ids to the engine-side maps so the wiring can't silently

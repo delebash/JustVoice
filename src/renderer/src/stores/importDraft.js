@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // importDraft — hands the picked file + dry-run result from the small
 // import dialog to the full-page review (#importreview). Module

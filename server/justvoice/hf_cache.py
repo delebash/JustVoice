@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """HuggingFace cache probes — torch-free, safe in the API import graph.
 
 Used by the Engines UI's per-model `on_disk` flags and the capture

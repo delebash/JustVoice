@@ -1,6 +1,6 @@
 # Implementation plan — from journeys mock to working app
 
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 
 Built from the design phase of 2026-06-11: `preview/journeys-preview.html`
 (12 tabs), `docs/CONCEPTS.md` §1–16, `docs/journeys/*`. Each milestone ends

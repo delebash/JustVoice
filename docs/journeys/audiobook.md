@@ -1,6 +1,6 @@
 # Journey: Audiobook — Sarah, indie author
 
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 
 Sarah finished her novel *Stillwater* (8 chapters, ~32k words) and wants an
 audiobook she can submit to ACX. She may have written it in JustWrite, or she

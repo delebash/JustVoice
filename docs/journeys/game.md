@@ -1,6 +1,6 @@
 # Journey: Game dialogue — Marcus, solo game dev
 
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 
 Marcus is building *Emberfall* in Unreal. His quest editor exports dialogue as
 CSV: 124 lines, 9 NPCs, 6 quests. The line — not the chapter — is his unit of

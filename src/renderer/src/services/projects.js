@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 /**
  * Projects API client — Project/Scene/Block CRUD + JustWrite import.
  * Backed by /v1/projects/* endpoints (DESIGN_FREEZE §5).

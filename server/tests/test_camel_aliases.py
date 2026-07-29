@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """camelCase-NATIVE LLM-config contract (2026-06-21 AI-stack convergence).
 
 The shared LLM-config models (LLMProviderConfig / FeaturePinConfig /

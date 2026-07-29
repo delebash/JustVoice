@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Verify services/llmBackend.js — the JustVoice ProviderBackend adapter
 // (Thread 3 / T3.3). No app or build needed: inject a stub `api` and assert

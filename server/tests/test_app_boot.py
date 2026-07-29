@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Test that the FastAPI app boots cleanly and registers expected routes.
 
 Smoke test — if create_app() raises, the server is broken. If the documented

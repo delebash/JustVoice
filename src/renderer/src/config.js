@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // Backend base URL config for JustVoice.
 //
 // The origin-aware resolver is shared (kit `makeOriginAwareResolver`): when the

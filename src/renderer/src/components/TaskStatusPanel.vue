@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <!--
   TaskStatusPanel — right-side slide-in showing all in-flight render /
   install / train / compose tasks + recent history. Adapted from

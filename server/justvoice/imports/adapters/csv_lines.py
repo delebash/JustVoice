@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """CSV-lines import adapter.
 
 Useful for game studios + podcasters who track dialogue in

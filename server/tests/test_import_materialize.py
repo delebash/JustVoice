@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Import materialization — persona reuse linking + lexicon creation.
 
 Covers the two silent-drop bugs found in the A0 audit:

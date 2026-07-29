@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Project lifecycle auto-creates a builtin Narrator for prose-voice kinds.
 
 The Narrator persona is project-scoped, linked via ProjectPersona with

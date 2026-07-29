@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 #
 # Variant→repo map adapted from voicebox (MIT) — backend/backends/
 # qwen_custom_voice_backend.py + pytorch_backend.py at the commit pinned

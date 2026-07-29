@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """POST /v1/admin/factory-reset — wipe to as-new-install (testing tier 3).
 
 Deletes every DB row (projects, scenes, blocks, takes, generations,

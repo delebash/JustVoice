@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """/v1/prefs — renderer UI preferences (real rows, not the renderer's localStorage).
 
 A small key/value JSON store for the Vue app's content prefs — appearance,

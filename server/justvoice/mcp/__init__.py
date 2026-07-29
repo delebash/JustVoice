@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """JustVoice MCP server — `justvoice.speak` and friends for local AI agents.
 
 Mounted at ``/mcp`` (Streamable HTTP). See server.py for the wiring and

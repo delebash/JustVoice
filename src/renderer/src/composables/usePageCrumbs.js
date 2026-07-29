@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // usePageCrumbs — own the topbar breadcrumb ONLY while this view is the
 // active one.

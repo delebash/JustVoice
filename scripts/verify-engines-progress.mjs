@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // Verifies the progress-accuracy fix from
 // docs/plans/2026-06-14-engines-progress-accuracy.md:
 //   - With bytes_total > 0 the bar reports REAL %, no fake 35%.

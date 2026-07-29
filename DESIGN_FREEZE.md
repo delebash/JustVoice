@@ -31,7 +31,7 @@
 | Audio blobs | ✅ Files on disk under `data/audio/`, paths referenced from SQLite rows |
 | Migration pattern | ✅ Hand-rolled idempotent column-existence checks (lifted from upstream — see per-file MIT attribution in `database/migrations.py`); no Alembic |
 | License (today) | ✅ Apache-2.0 |
-| License (after pedalboard adoption) | ✅ GPL-3.0-or-later (atomic flip commit) |
+| License (after pedalboard adoption) | ⏹ GPL-3.0-or-later — **superseded 2026-07-29**: pedalboard replaced by first-party DSP, flipped to MIT. See `NOTICE.md` |
 | Attribution policy | ✅ See `project_licensing_attribution` memory + per-file headers on lifts |
 | Use cases | ✅ Audiobook + game + podcast + dictation + accessibility (all first-class) |
 | Engine count v1 | ✅ 9 (Kokoro, Chatterbox×2, Qwen3×2, LuxTTS, TADA, Dia, MossTTS) + external OpenAI-compatible — Higgs removed 2026-06-09 (non-commercial weight license) |

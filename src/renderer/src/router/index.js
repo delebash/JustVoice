@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // Vue Router — hash history (the Tauri webview has no server for real paths),
 // lazy-loaded view components (app standard). The route NAME is the view id;
 // App.vue's VIEWS array holds the sidebar metadata (label/icon/lane/visibleFor)

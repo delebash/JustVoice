@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // Verifies the Dismiss button on failed install strips (user-reported
 // 2026-06-15 with screenshot: FAILED strip stuck with no way to clear).
 

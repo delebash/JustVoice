@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Global audio-player store. Any view calling `audioPlayer.play({...})`
 // makes the bottom-anchored GlobalAudioPlayer appear with that track.

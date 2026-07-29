@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Speechmatics TTS adapter.
 
 Proprietary endpoint shape: POST /generate/{voice_name} with `{text}`

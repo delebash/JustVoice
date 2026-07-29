@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """S0 + S1 from docs/plans/2026-06-14-engines-download-contract.md:
 
 - S0: GET/PUT/DELETE /v1/engines/{engine}/sources[/{variant}] + the

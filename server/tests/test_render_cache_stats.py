@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """GET /v1/render/cache-stats — the Studio Render cache banner.
 
 Probes each block's render-cache key without rendering. Uses the same

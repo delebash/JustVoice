@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Lexicon storage — SQLite-primary (Phase 1.5 flip, 2026-06-12).
 
 Same flip as personas: the file-per-lexicon JSON store kept a DB twin

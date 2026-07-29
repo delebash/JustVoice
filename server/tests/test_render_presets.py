@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Tests for render_presets table — unique (project_id, name) constraint
 + CRUD round-trips.
 """

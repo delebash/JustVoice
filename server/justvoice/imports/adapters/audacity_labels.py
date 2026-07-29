@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Audacity label-track import adapter.
 
 Audacity exports label tracks as a tab-separated text file:

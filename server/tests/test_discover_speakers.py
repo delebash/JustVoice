@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Speaker identification — parser + discover/promote endpoints."""
 
 from __future__ import annotations

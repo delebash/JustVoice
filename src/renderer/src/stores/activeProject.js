@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // activeProject — the app-wide "what am I working on" slot (journeys
 // contract: the open project's kind reshapes the sidebar vocabulary,

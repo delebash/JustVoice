@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Tests for the effects chain — the WAV-in/WAV-out layer over `audio/dsp/`.
 
 The chain's job is to be unbreakable: it is fed specs that come out of a

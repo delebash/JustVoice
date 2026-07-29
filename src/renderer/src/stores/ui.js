@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 /**
  * uiStore — appearance config + dialog open-state + currently-selected entity
  * ids. Persisted server-side via /v1/prefs (key: `ui`). Partial-persist: only

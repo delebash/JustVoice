@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """One-shot Profile → Persona migration (Slice 1 of the Profile-kill rollout).
 
 For every VoiceProfile row in SQLite, materialize an orphan Persona JSON

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Lexicons store — single source of truth for the lexicon list. See
 // stores/projects.js + docs/plans/2026-06-13-data-layer-rebuild.md.

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """POST /v1/cache/clear filter honesty (wiring-audit W1).
 
 Before 2026-06-13 the endpoint read ONLY `scope`; the UI's filtered

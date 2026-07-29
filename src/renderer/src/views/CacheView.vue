@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <!--
   CacheView — disk-LRU render cache stats + granular prune actions.
   Two storage layers, two prune routes (wiring-audit W1, 2026-06-13):

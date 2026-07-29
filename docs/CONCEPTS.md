@@ -1,6 +1,6 @@
 # JustVoice design concepts
 
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 
 Working design decisions and mental models, captured from design-review
 discussion (2026-06-11). The clickable companion is

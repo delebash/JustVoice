@@ -1,6 +1,6 @@
 # Whole-app design-conformance audit — 2026-06-12
 
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 
 Method: static census (grep for raw checkboxes, native dialogs, jargon)
 + rendered-DOM probe of every view and sub-tab at 1680px (native

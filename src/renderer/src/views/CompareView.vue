@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <!--
   CompareView — A/B audio comparison per preview/full-app-preview.html §Compare.
   Layout: action row (Choose A / B / Refresh from current takes / Run analysis) ·

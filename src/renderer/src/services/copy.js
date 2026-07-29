@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // useCopy() — terminology composable. The same underlying objects (a
 // long-form narration, a script line, a voice profile) get different

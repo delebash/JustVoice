@@ -1,11 +1,11 @@
-# SPDX-License-Identifier: MIT AND GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2024 Jamie Pine and voicebox contributors
 # SPDX-FileCopyrightText: 2026 JustVoice contributors
 #
 # Originally from https://github.com/jamiepine/voicebox/blob/b35b90961d5bc83a8b4e96e8b6ccde2a03152ff9/backend/database/migrations.py
 # (commit pinned in voicebox-pin.txt at repo root).
 # Adapted to JustVoice's schema on 2026-06-08.
-# Modifications by JustVoice contributors are licensed under GPL-3.0-or-later
+# Modifications by JustVoice contributors are licensed under MIT
 # as part of the combined JustVoice work. The MIT permission notice
 # (LICENSES/MIT.txt) continues to apply to upstream-derived portions.
 

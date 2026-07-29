@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Per-engine capability details — drives the Generate UI's knob + tag gating.
 
 This is the hand-authored interim data for task #89 (engine capability

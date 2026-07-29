@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """POST /v1/scenes/{id}/analyze — speaker attribution.
 
 Phase 3 / Slice 1 of the Profile-kill plan. Runs the extraction

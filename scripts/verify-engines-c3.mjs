@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // C3 verification: the big inline progress strip from the engines plan.
 // Asserts the strip renders inside the engine's ev-gbody (not in the
 // header), shows the variant title + phase + bytes + bar + Cancel, and

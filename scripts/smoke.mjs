@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Headless smoke test — drives the real renderer against a running
 // `justvoice-server serve` and asserts every view renders with zero

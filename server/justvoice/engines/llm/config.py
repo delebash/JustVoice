@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """JustVoice's LLM config — the boundary between JV's settings and the
 shared `llm_runner.llm` dispatch.
 

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """JustVoice ↔ shared llm-runner integration.
 
 The LLM-runner core lives in its OWN package (`llm_runner`, repo

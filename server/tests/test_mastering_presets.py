@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Tests for the mastering preset values + their conformance to spec.
 
 The actual ffmpeg shell-out in mastering.py is exercised by integration tests

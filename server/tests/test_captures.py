@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Captures backend (parity gaps G1/G2) — upload→transcribe→refine flow
 with the STT engine faked (no models in CI). Refinement's deterministic
 pre-pass is tested directly."""

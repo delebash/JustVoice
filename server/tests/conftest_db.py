@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """DB-aware fixtures — spin up an in-memory SQLite for the new ORM tests.
 
 Separate from conftest.py so the existing audio/format tests don't pull

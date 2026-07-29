@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
@@ -2486,7 +2486,7 @@ onMounted(() => {
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">About JustVoice v0.1.0</h3></div>
         <p>JustVoice is a cross-platform open-source voice production studio for audiobook producers, game developers, podcasters, dictation users, and accessibility users. Built on Tauri 2 + Vue 3 + Python FastAPI.</p>
-        <p class="jv-muted" style="font-size: 12px; margin-top: 10px">Licensed GPL-3.0-or-later. Portions ported from voicebox (MIT) and JustWrite (MIT) — see <code>NOTICE.md</code>.</p>
+        <p class="jv-muted" style="font-size: 12px; margin-top: 10px">Licensed MIT. Portions ported from voicebox (MIT) and JustWrite (MIT) — see <code>NOTICE.md</code>.</p>
         <div class="jv-btn-group" style="margin-top: 14px">
           <UiButton intent="secondary" label="📋 Third-party licenses" />
           <UiButton intent="secondary" label="🐛 Report an issue" />

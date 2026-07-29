@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """/v1/presets — named bundles of voice + delivery + master target + lexicons.
 
 Lets the audiobook producer lock ACX consistency across 30 chapters,

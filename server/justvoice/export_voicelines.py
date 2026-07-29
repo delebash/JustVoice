@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Game voiceline export — per-line WAVs named by stable line id + manifest.
 
 The game build consumes audio BY LINE ID (mock #game/6, CONCEPTS §1):

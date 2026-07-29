@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """/v1/webhooks — outbound HTTP webhooks with HMAC-SHA256 signed bodies.
 
 Delivery: at-least-once with exponential backoff (1s, 5s, 30s, 5m,

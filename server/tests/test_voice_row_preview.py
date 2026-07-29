@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """POST /v1/voices/{id}/preview — row audition w/ ask-before-load.
 
 Exercises the real app factory against a temp data dir: the managed

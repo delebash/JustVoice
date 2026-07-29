@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Tests for /v1/render_chapter scene_id mode.
 
 Covers the 10 behaviors documented in the Affordance Table for scene

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 // Verifies docs/plans/2026-06-15-engines-one-button.md:
 //   - One action button per model row — no separate Download.
 //   - Clicking Load on a not-on-disk variant kicks /install first

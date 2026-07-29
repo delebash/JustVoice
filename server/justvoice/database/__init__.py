@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """SQLite via SQLAlchemy — primary persistence layer.
 
 Per DESIGN_FREEZE.md §4, every entity lives here. `settings.json` was folded

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 /**
  * generationStore — in-flight generation tracking + deferred story-add queue.
  */

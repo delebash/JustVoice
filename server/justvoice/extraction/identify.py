@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Speaker identification — "who exists in this text?"
 
 Distinct from attribution ("who speaks THIS line?") per CONCEPTS.md §3/§13:

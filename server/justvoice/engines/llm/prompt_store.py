@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """JustVoice's FeaturePromptStore — the per-feature prompt rows in the
 `feature_prompts` SQLite table (DB-seeded, Lab-editable; the source of truth).
 

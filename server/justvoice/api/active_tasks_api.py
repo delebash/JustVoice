@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """/v1/active_tasks — page-refresh recovery for in-flight work.
 
 Polled every 30s by the renderer's useRestoreActiveTasks hook. Returns the

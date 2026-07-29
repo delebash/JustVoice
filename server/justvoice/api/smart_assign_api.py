@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """POST /v1/llm/smart-assign — LLM voice→character matcher.
 
 Phase 4 — pairs with the Studio Cast tab's 🪄 Smart-assign button.

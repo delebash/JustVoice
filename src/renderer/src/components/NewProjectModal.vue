@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <script setup>
 // "What are you making?" — the kind picker (CONCEPTS.md §6, mock #audiobook/1).
 //

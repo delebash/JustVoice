@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """/v1/feature-pins — wire LLM features to specific provider+model+tier.
 
 Phase 2 / Slice 7 of the Profile-kill plan. Each feature key

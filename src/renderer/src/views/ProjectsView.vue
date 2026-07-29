@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <!--
   ProjectsView — multi-use Project list (audiobooks + game-voicelines + podcasts +
   custom). Project is the use-case-generalized entity per DESIGN_FREEZE §4.4.

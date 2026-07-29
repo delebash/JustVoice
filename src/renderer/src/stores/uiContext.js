@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // uiContext — a tiny global slot for "where am I" breadcrumb segments.
 // Any view that has internal context (current project, current scene,

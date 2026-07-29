@@ -4,7 +4,7 @@
 
 JustWrite-compatible imports are one of several supported workflows — see `docs/import-formats.md`.
 
-License: **GPL-3.0-or-later** (see `LICENSE`).
+License: **MIT** (see `LICENSE`).
 
 ## What it does
 
@@ -101,7 +101,7 @@ Or use the Engines tab in the UI for per-engine install with progress.
 ✅ **Phase 1** — Foundation docs (CONTRACT, NOTICE, LICENSES)
 ✅ **Phase 1.5** — SQLite migration: 24 ORM tables, idempotent migrations, foreign keys ON, init_db wired into FastAPI startup
 ✅ **Phase 2** — pytest baseline (~15 tests) + mastering.py audit (already correct — uses ffmpeg loudnorm, not np.clip)
-✅ **Phase 3** — Upstream torch helpers + chunked TTS lifted (per-file MIT attribution in headers); pedalboard adopted; **atomic license flip Apache-2.0 → GPL-3.0-or-later** across LICENSE + pyproject.toml + 15 first-party SPDX headers
+✅ **Phase 3** — Upstream torch helpers + chunked TTS lifted (per-file MIT attribution in headers); pedalboard adopted; **atomic license flip Apache-2.0 → GPL-3.0-or-later** across LICENSE + pyproject.toml + 15 first-party SPDX headers. **Reversed 2026-07-29** — pedalboard replaced by our own DSP, flipped to MIT; see `NOTICE.md`
 ✅ **Phase 4a** — 14 new backend endpoints: takes, channels, mcp_bindings, projects (with JustWrite import), webhooks (HMAC signed), render_presets, bulk_delete (atomic with dry-run guard), backup/restore (stream-zipped), voice_preview (LRU), project_export, sse_streams, active_tasks, capture_readiness
 ✅ **Phase 4c (Tauri)** — System tray with 11-item menu, close-to-tray when keep-server-running is on, 21 Tauri invoke commands (start/stop/restart_server, set_keep_server_running, audio device + Mac TCC + hotkey stubs)
 ✅ **Phase 5 (JustVoice side)** — All endpoints for JustWrite to drive JustVoice are live; PHASE5_JUSTWRITE_INTEGRATION.md documents the JustWrite-side edits
@@ -129,8 +129,8 @@ A handful of files in this repo (`engines/_torch_helpers.py`, `audio/chunked.py`
 
 Per-file SPDX-License-Identifier headers required on every new file:
 
-- `GPL-3.0-or-later` for first-party files
-- `MIT AND GPL-3.0-or-later` for files lifted from upstream MIT code (with full attribution block referencing the pinned commit in `voicebox-pin.txt`)
+- `MIT` for first-party files
+- `MIT` for files lifted from upstream MIT code too — but they additionally carry a full attribution block referencing the pinned commit in `voicebox-pin.txt`. The identifier is no longer compound because upstream and this project are both MIT now
 
 See `project_licensing_attribution` in the memory layer for the policy + templates.
 

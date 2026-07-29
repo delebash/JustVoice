@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Settings storage — the typed operator/server config, in SQLite.
 
 Phase 1.5: folded off the legacy atomic `settings.json` into a singleton row of

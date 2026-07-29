@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """GET /v1/logs/download — the Settings → Logs download button's target
 (wiring-audit W4: the UI requested /v1/logs/download?hours=24 from a
 route that didn't exist)."""

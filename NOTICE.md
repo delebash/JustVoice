@@ -3,9 +3,26 @@
 JustVoice — an open-source voice production server (audiobook + game dialogue + podcasting + dictation + accessibility).
 
 Copyright (c) 2026 JustVoice contributors.
-Licensed under the GNU General Public License, version 3 or later (see `LICENSE`).
+Licensed under the **MIT License** (see `LICENSE`).
 
-> **License flip happened 2026-06-08 Phase 3** when `pedalboard` (Spotify, GPL-3.0) was adopted for the effects chain. The flip was atomic — a single commit updated root `LICENSE` (Apache-2.0 → GPL-3.0-or-later), `server/pyproject.toml`'s license field, this NOTICE, `LICENSES.md`, and every first-party file's SPDX header (`Apache-2.0` → `GPL-3.0-or-later`, `MIT AND Apache-2.0` → `MIT AND GPL-3.0-or-later`). See `~/.claude/projects/E--Dev-Web-justvoice/memory/project_licensing_attribution.md` for the policy and `DESIGN_FREEZE.md` §3.1 for the decision.
+> **License history — Apache-2.0 → GPL-3.0-or-later → MIT.**
+>
+> The GPL flip on **2026-06-08** was forced by exactly one dependency: `pedalboard`
+> (Spotify), which is GPL-3.0 because it statically links JUCE. Nothing else in the tree was
+> ever copyleft.
+>
+> **2026-07-29 — flipped to MIT.** `pedalboard` was removed and its twelve effects
+> reimplemented in `server/justvoice/audio/dsp/` on numpy + scipy, with pitch shifting
+> delegated to Signalsmith Stretch (MIT). With the forcing dependency gone the relicense was
+> paperwork: root `LICENSE` (GPL-3.0 → MIT), `server/pyproject.toml` and `src-tauri/Cargo.toml`
+> license fields, this NOTICE, `LICENSES.md`, the in-app About text, and every first-party
+> SPDX header across 259 files (`GPL-3.0-or-later` → `MIT`, and
+> `MIT AND GPL-3.0-or-later` → plain `MIT`, since upstream-derived files were MIT to begin
+> with and the combined work is now MIT too).
+>
+> **The policy for new files is unchanged:** every file carries an SPDX header, and files
+> lifted from upstream MIT code additionally carry a full attribution block referencing the
+> pinned commit in `voicebox-pin.txt`. Only the identifier changed.
 
 This product incorporates, links against, or depends on the following third-party software. Each component retains its original license. See `LICENSES.md` for the authoritative inventory and `LICENSES/<SPDX-id>.txt` for full license texts.
 
@@ -39,7 +56,7 @@ JustVoice surfaces the "Built with Llama" notice on the Engines tab when TADA is
 
   *To be populated as Phase 3 lifts land. Each entry: path, lift type (verbatim port / translation), original voicebox path at the pinned SHA.*
 
-The MIT permission notice (`LICENSES/MIT.txt`) applies to the upstream-derived portions of these files. JustVoice modifications are licensed under Apache-2.0 (and later GPL-3.0-or-later after the pedalboard flip) as part of the combined JustVoice work.
+The MIT permission notice (`LICENSES/MIT.txt`) applies to the upstream-derived portions of these files. JustVoice modifications are licensed under MIT as part of the combined JustVoice work — so as of 2026-07-29 these files are MIT throughout, which is why their SPDX headers are plain `MIT` rather than a compound identifier. The attribution above is still required.
 
 > **Note on voicebox upstream changes.** If voicebox relicenses to a non-permissive license after the pinned SHA above, do NOT cherry-pick patches or read post-relicense code while working on JustVoice. The pinned snapshot remains MIT in perpetuity (MIT is irrevocable), but anything past the cutoff is out of bounds.
 
@@ -90,11 +107,22 @@ Copyright 2018- The HuggingFace team. All rights reserved.
 
 - `pip install justvoice[training]`
 
-### pedalboard (GPL-3.0) — Phase 3+
+### scipy
 
-- Upstream: https://github.com/spotify/pedalboard
-- License: GPL-3.0
-- Adoption triggers the project-wide license flip from Apache-2.0 to GPL-3.0-or-later.
+- Upstream: https://github.com/scipy/scipy
+- License: BSD-3-Clause
+- `sosfilt` / `lfilter` behind the effects DSP. numpy alone cannot run recursive filters at
+  usable speed.
+
+### python-stretch (Signalsmith Stretch)
+
+- Upstream: https://github.com/gregogiudici/python-stretch
+- License: MIT
+- Pitch shifting for the effects chain.
+
+> **Removed 2026-07-29: pedalboard (Spotify, GPL-3.0).** It was the only copyleft dependency
+> the project ever had, and the sole reason for the 2026-06-08 Apache-2.0 → GPL-3.0-or-later
+> flip. Its twelve effects now live in `server/justvoice/audio/dsp/`.
 
 ---
 

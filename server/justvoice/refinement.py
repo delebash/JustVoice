@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 #
 # Adapted from voicebox (MIT) — backend/services/refinement.py at the
 # commit pinned in voicebox-pin.txt. The prompt corpus, repetition-collapse

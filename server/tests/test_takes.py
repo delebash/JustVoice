@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Tests for the takes table — per-block take versioning invariants.
 
 Covers both direct-DB invariants and HTTP API behaviour via TestClient.

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """JustVoice's ProviderStore — persists the LLM provider list in
 `settings.engines.llm` (via SettingsStore).
 

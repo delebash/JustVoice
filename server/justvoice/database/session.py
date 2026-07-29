@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """SQLAlchemy engine + session factory for the JustVoice SQLite database.
 
 Init flow lifted from an upstream MIT codebase with per-file attribution

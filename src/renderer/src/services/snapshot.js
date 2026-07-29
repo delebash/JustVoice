@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Session snapshot — views paint instantly from the last visit's data
 // and refresh silently. Canonical helper (RULE #1) for the pattern

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 #
 # Several tables (Generation, GenerationVersion, Story, StoryItem,
 # EffectPreset, Capture, MCPBinding, Channel) adapt voicebox's schema (MIT)

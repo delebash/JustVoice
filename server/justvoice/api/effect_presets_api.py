@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """/v1/effect-presets — saved effect chains the user can apply
 to a Persona's effects_chain from the EffectsChainEditorModal.
 

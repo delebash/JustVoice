@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """POST /v1/admin/factory-reset — must survive a DB whose tables drifted
 from the ORM metadata (user-hit 2026-06-12: legacy voice_profiles is in
 Base.metadata but not in real databases → the wipe 500'd)."""

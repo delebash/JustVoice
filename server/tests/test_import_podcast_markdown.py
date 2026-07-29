@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """podcast_markdown adapter — labels, headings, markers, tag preservation."""
 
 from __future__ import annotations

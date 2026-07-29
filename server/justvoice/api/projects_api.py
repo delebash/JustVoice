@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """/v1/projects — Books, game-voicelines, podcasts, custom projects.
 
 Use-case-generalized Project → Scene → Block model from DESIGN_FREEZE §4.4.

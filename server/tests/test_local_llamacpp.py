@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """P1.5 — local-llamacpp provider type + qwen3-llm demotion + dispatch default.
 
 The built-in llama.cpp runner registers as the OpenAI-compat provider type

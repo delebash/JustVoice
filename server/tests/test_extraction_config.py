@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Speaker Lab truth surface — GET /v1/extraction/config + the per-call
 user_prompt / confidence_floor overrides (Lab parity redesign)."""
 

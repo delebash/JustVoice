@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 #
 # Route surface adapted from voicebox (MIT) — backend/routes/captures.py +
 # routes/transcription.py at the commit pinned in voicebox-pin.txt,

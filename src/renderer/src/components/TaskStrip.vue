@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <!--
   TaskStrip — inline progress strip for one running OR recently-finished
   task. Adapted from JustWrite's AiTaskStrip pattern.

@@ -7,7 +7,7 @@ Executive status: post-architecture-decision execution plan (2026-06-08). See `~
 - **JustVoice-new stays as the base.** ~328 LOC of utilities + UX patterns were lifted from an upstream MIT codebase with per-file attribution headers (see `NOTICE.md`).
 - **JustVoice = engine pool + voice production. JustWrite = audiobook orchestration UI.** Wire format = HTTP. See `CONTRACT.md`.
 - **Multi-use product**: audiobook + game (Unreal) + podcast + dictation + accessibility.
-- **License**: Apache-2.0 today; flips to **GPL-3.0-or-later** when pedalboard adoption lands (Phase 3+).
+- **License**: **MIT**. Was Apache-2.0, then GPL-3.0-or-later from 2026-06-08 to 2026-07-29 while pedalboard was a dependency. See `NOTICE.md`.
 - **Stack stays Vue 3 + Pinia + Tauri 2 + Python 3.10+ FastAPI**. No React rewrite.
 - **Storage**: migrate from atomic JSON to SQLite (via SQLAlchemy). `settings.json` is the only remaining JSON store.
 - **UX**: Mercury (legacy-gui look) dropped — styles.css now derives from preview/full-app-preview.html (paper + white cards + green accent). Phase 4 design pass blesses or evolves that system as the final identity.

@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <!--
   SpeakerLabView — speaker-extraction testbed (design v5, mock #splab/1).
 

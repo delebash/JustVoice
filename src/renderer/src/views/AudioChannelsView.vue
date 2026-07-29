@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <!--
   AudioChannelsView — named audio output configs for multi-device routing.
   OBS / multi-monitor / per-character podcast monitoring use cases.

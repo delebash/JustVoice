@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- SPDX-License-Identifier: MIT -->
 <!--
   QuickSetup — post-onboarding wizard. Now multi-step + feature-pin
   auto-config per the JustWrite QuickSetup.vue / quickSetupPresets.js

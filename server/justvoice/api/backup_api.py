@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """/v1/backup + /v1/restore — disaster recovery + machine migration.
 
 Stream-zipped so 50 GB backups don't load into RAM. Includes the full SQLite DB

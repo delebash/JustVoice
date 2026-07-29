@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Audiobook assembly — per-scene renders → ACX QC report / M4B export.
 
 Replaces the BooksView toast stubs ("Export M4B", "QC report") with real

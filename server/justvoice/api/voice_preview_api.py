@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """/v1/voices/preview — audition a candidate voice without saving it.
 
 LRU cache in-memory holds candidate voices keyed by preview_id (cap 20,

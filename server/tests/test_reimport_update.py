@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Game re-import — update-in-place by stable line id + derived staleness."""
 
 from __future__ import annotations

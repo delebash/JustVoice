@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Projects store — the single source of truth for the project list.
 // Every view that shows projects reads `items` from here; nobody keeps

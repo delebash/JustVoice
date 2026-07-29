@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT AND GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: 2024-2026 JustWrite contributors
 # SPDX-FileCopyrightText: 2026 JustVoice contributors
 #
@@ -6,7 +6,7 @@
 # src/renderer/src/services/speakerAttribution.js (857 LOC). The
 # algorithmic logic — paragraph segmentation, anchor propagation,
 # confidence-floor demotion, corrections injection — is upstream-MIT;
-# our backend integration is GPL-3.0-or-later as part of the combined
+# our backend integration is MIT as part of the combined
 # JustVoice work.
 #
 # Phase 3 of the Profile-kill plan. Ships as one cohesive feature:

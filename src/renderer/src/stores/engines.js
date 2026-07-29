@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 //
 // Engines store — single source of truth for the engine list as the
 // READ-ONLY consumers see it (Personas, Voices, Studio, Generate,

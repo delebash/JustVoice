@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """JustVoice import standard schema.
 
 Every adapter normalizes its source format into a `StandardImport`
