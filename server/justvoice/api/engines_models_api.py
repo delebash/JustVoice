@@ -256,12 +256,32 @@ async def get_setup_status() -> dict:
     """Return shared-venv readiness + the detected GPU vendor / torch index.
 
     The GUI's "Set up engines" button uses this to decide whether to show
-    "Set up engines" (not ready) or "Re-run setup" (already ready)."""
-    from ..engines.manager import shared_venv_exists, SHARED_VENV_DIR, _current_os_label
+    "Set up engines" (not ready) or "Re-run setup" (already ready).
+
+    `ready` reports whether the venv's interpreter actually RUNS, not merely
+    whether its file is on disk. Those differ: a venv whose base Python was
+    removed or upgraded keeps every file while the interpreter is dead. When
+    readiness was a file-existence check the GUI offered "Re-run setup" for a
+    venv that could never work, and the breakage surfaced much later as a 502
+    from whichever engine tried to load first.
+
+    `venv_broken` distinguishes the two states so the GUI can say "rebuild
+    this" rather than "set this up", which is a different sentence for a user
+    who already ran setup once.
+    """
+    from ..engines.manager import (
+        SHARED_VENV_DIR,
+        _current_os_label,
+        shared_venv_exists,
+        shared_venv_healthy,
+    )
 
     vendor, index_url, label = detect_gpu()
+    on_disk = shared_venv_exists()
+    healthy = shared_venv_healthy()
     return {
-        "ready": shared_venv_exists(),
+        "ready": healthy,
+        "venv_broken": on_disk and not healthy,
         "venv_path": str(SHARED_VENV_DIR),
         "current_os": _current_os_label(),
         "gpu_vendor": vendor,

@@ -31,6 +31,8 @@ from .manager import (
     _run_uv_pip,
     _venv_python,
     discover_engines,
+    invalidate_shared_venv_health,
+    shared_venv_healthy,
     InstallError,
     _check_uv_available,
 )
@@ -102,6 +104,16 @@ def setup_shared_venv(
     Idempotent — re-running over an existing venv just re-checks the packages.
     Pass `force=True` to nuke the existing venv first.
 
+    A venv whose interpreter no longer runs is **rebuilt automatically**, with
+    or without `force`. That is not a nicety, it closes a dead end: a venv
+    created against a base Python that was later removed keeps every file on
+    disk while the interpreter is dead, and `uv venv --allow-existing` below
+    would happily reuse that directory. Combined with a readiness check that
+    only looked for the interpreter FILE, the GUI would offer "Re-run setup",
+    the re-run would reuse the broken venv, and the only real fix was deleting
+    several gigabytes by hand. Detecting it here means the ordinary button
+    works.
+
     Returns a summary dict with the detected GPU, the torch index used, and
     the engine ids that contributed install steps.
     """
@@ -117,9 +129,20 @@ def setup_shared_venv(
         if cancel_check and cancel_check():
             raise InstallError("cancelled by user")
 
+    if SHARED_VENV_DIR.exists() and not force and not shared_venv_healthy():
+        emit(
+            "clearing",
+            f"{SHARED_VENV_DIR} exists but its interpreter does not run "
+            "(base Python moved or removed) — rebuilding from scratch",
+        )
+        force = True
+
     if force and SHARED_VENV_DIR.exists():
         emit("clearing", str(SHARED_VENV_DIR))
         shutil.rmtree(SHARED_VENV_DIR, ignore_errors=True)
+        # The probe caches its answer; the venv we just deleted must not be
+        # remembered as broken once the rebuild below succeeds.
+        invalidate_shared_venv_health()
 
     # 1. Create the venv pinned to host Python.
     emit("creating-venv", f"uv venv {SHARED_VENV_DIR}")
@@ -134,6 +157,9 @@ def setup_shared_venv(
         )
     if r.returncode != 0:
         raise InstallError(f"uv venv failed: {r.stderr.strip() or r.stdout.strip()}")
+    # The interpreter just changed on disk, so any cached health verdict — in
+    # either direction — is now stale.
+    invalidate_shared_venv_health()
     py = _venv_python(SHARED_VENV_DIR)
     if not py.is_file():
         raise InstallError(f"venv created but python not at {py}")

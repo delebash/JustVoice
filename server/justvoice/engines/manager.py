@@ -22,7 +22,7 @@ engine.py, requirements.txt) is left alone — that's the adapter, not user
 state.
 
 Cross-platform notes:
-- Windows: subprocess uses `.venv\Scripts\python.exe`; POSIX uses `.venv/bin/python`.
+- Windows: subprocess uses `.venv\\Scripts\\python.exe`; POSIX uses `.venv/bin/python`.
 - uv must be on PATH (we shell out via `subprocess.run(["uv", ...])`); the
   manager verifies this at startup and surfaces a clear error if missing.
 """
@@ -86,7 +86,67 @@ def shared_venv_python() -> Path:
 
 
 def shared_venv_exists() -> bool:
+    """Cheap check: the interpreter file is present.
+
+    Deliberately does NOT prove the interpreter runs — see
+    `shared_venv_healthy()`. Kept cheap because the install paths call it
+    in loops.
+    """
     return shared_venv_python().is_file()
+
+
+# Cache for the health probe. `None` = not yet probed. Spawning a process is
+# far too expensive for a check the readiness endpoint polls.
+_venv_health: bool | None = None
+
+
+def invalidate_shared_venv_health() -> None:
+    """Drop the cached probe result — call after creating or deleting the venv."""
+    global _venv_health
+    _venv_health = None
+
+
+def shared_venv_healthy() -> bool:
+    """Does the shared venv's interpreter actually RUN?
+
+    A venv is a handful of files plus a `pyvenv.cfg` naming the base Python
+    it was created from. Delete or upgrade that base and every file is still
+    on disk while the interpreter is dead — on Windows it exits non-zero with
+    `No Python at '<old path>'`.
+
+    This is not hypothetical. It happened here: `.shared-venv` was built
+    against `E:\\Python310`, that install went away, and because readiness was
+    only ever a file-existence check the server kept reporting the venv ready.
+    The breakage surfaced instead as a 502 when something tried to load an
+    engine — a symptom several layers away from the cause, which is the
+    expensive kind of bug.
+
+    Cached, since the answer only changes when the venv is created or removed.
+    """
+    global _venv_health
+    if _venv_health is not None:
+        return _venv_health
+    exe = shared_venv_python()
+    if not exe.is_file():
+        _venv_health = False
+        return _venv_health
+    try:
+        proc = subprocess.run(
+            [str(exe), "-c", ""],
+            capture_output=True, text=True, timeout=20,
+        )
+        _venv_health = proc.returncode == 0
+        if not _venv_health:
+            stderr = (proc.stderr or "").strip()[:200]
+            log.error(
+                "shared venv interpreter is present but does not run (%s) — "
+                "re-run the shared-venv setup to rebuild it. stderr: %s",
+                exe, stderr,
+            )
+    except (OSError, subprocess.SubprocessError) as e:
+        log.error("shared venv interpreter could not be probed (%s): %s", exe, e)
+        _venv_health = False
+    return _venv_health
 
 
 # ─── Manifest loading ─────────────────────────────────────────────────
