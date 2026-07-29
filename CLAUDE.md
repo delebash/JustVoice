@@ -49,15 +49,19 @@ node scripts/smoke.mjs                                 # drives every view, asse
 ```
 
 `scripts/smoke_gui.mjs` screenshots tabs. `e2e/` (tauri-driver against the built binary) is the
-packaged-app check, not the quick gate.
+packaged-app check, not the quick gate. `JV_BASE` overrides the base URL.
 
-> **Known limitation (verified 2026-07-29): `findChrome()` in `scripts/smoke.mjs` scans Linux
-> paths only** — `/opt/pw-browsers` and `~/.cache/ms-playwright`, looking for
-> `<dir>/chrome-linux/chrome`. On Windows, Playwright installs to
-> `%LOCALAPPDATA%\ms-playwright\chromium-<ver>\chrome-win64\chrome.exe`, so the smoke cannot find
-> a browser there unless you set `JV_CHROME` explicitly. JustWrite hit exactly this bug and fixed
-> it on 2026-07-19 by moving `findChrome()` into `tests/lib/smoke-common.js` with Windows and macOS
-> layouts; porting that here is open work. Set `JV_CHROME` meanwhile; `JV_BASE` overrides the base URL.
+**Browser lookup lives in one place — `scripts/lib/smoke-common.mjs`.** Import `findChrome()` or
+`chromeLaunchOptions()` from it; never re-fork the lookup and never hardcode a browser path. It
+probes `/opt/pw-browsers` (the dev container's prebuilt browsers), `~/.cache/ms-playwright` and
+`%LOCALAPPDATA%\ms-playwright`, across Linux, Windows and macOS layouts, skips `headless_shell`
+builds (they lack the surface these scripts drive), and honours `JV_CHROME` above everything.
+Returning `undefined` is a SUCCESS value — it lets Playwright resolve from its own registry.
+
+Until 2026-07-29 every script carried its own Linux-only copy and the seven verify/parity scripts
+hardcoded `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, pinned to a browser version — so
+none of them could find a browser on Windows and the gate was documented as runnable when it was
+not. All eight now import the shared resolver.
 
 ## Invariants that bite
 

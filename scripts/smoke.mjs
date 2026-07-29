@@ -19,31 +19,14 @@
 // Exits non-zero if any view throws a JS error or fails to render, so
 // it can gate CI / a pre-merge check.
 
-import { existsSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
+import { findChrome } from "./lib/smoke-common.mjs";
 
 const require = createRequire(import.meta.url);
 // playwright is a CJS package; import via require to get { chromium }.
 const { chromium } = require("playwright");
 
 const BASE = process.env.JV_BASE || "http://127.0.0.1:8741/";
-
-function findChrome() {
-  if (process.env.JV_CHROME && existsSync(process.env.JV_CHROME)) return process.env.JV_CHROME;
-  // Common prebuilt Playwright location (used in the dev container).
-  const roots = ["/opt/pw-browsers", `${process.env.HOME || ""}/.cache/ms-playwright`];
-  for (const root of roots) {
-    if (!existsSync(root)) continue;
-    for (const dir of readdirSync(root)) {
-      if (!dir.startsWith("chromium")) continue;
-      const exe = `${root}/${dir}/chrome-linux/chrome`;
-      if (existsSync(exe)) return exe;
-    }
-  }
-  // Fall back to Playwright's own resolution (works if `npx playwright
-  // install chromium` succeeded).
-  return undefined;
-}
 
 // Sidebar tabs that should always be reachable for an audiobook project.
 const TABS = [

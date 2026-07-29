@@ -3,14 +3,14 @@
 // 2026-06-15 with screenshot: FAILED strip stuck with no way to clear).
 
 import { chromium } from "playwright";
+import { chromeLaunchOptions } from "./lib/smoke-common.mjs";
 
 const BASE = process.env.JV_BASE || "http://127.0.0.1:8763";
-const CHROME = process.env.JV_CHROME || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
 
 const R = [];
 const ck = (n, c, d = "") => { R.push(c); console.log(`${c ? "PASS" : "FAIL"}  ${n}${d ? "  — " + d : ""}`); };
 
-const browser = await chromium.launch({ executablePath: CHROME });
+const browser = await chromium.launch({ ...chromeLaunchOptions() });
 const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
 
 const JOBS = new Map();

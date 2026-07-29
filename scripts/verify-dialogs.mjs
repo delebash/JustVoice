@@ -16,11 +16,10 @@
 // Env: JV_BASE (server URL), JV_CHROME (chromium path), JV_SHOTS (screenshot dir).
 
 import { chromium } from "playwright";
+import { chromeLaunchOptions } from "./lib/smoke-common.mjs";
 import { mkdirSync } from "node:fs";
 
 const BASE = process.env.JV_BASE || "http://127.0.0.1:8745";
-const CHROME =
-  process.env.JV_CHROME || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
 const SHOTS = process.env.JV_SHOTS || "/tmp/jv-shots";
 mkdirSync(SHOTS, { recursive: true });
 
@@ -42,7 +41,7 @@ const api = {
   },
 };
 
-const browser = await chromium.launch({ executablePath: CHROME });
+const browser = await chromium.launch({ ...chromeLaunchOptions() });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));

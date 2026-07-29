@@ -1,7 +1,7 @@
 // Reusable capture: mock step + app state side by side.
 import { chromium } from "playwright-core";
 const [,, mockHash, appHash, outPrefix, projectLabel, extra] = process.argv;
-const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+const browser = await chromium.launch({ ...chromeLaunchOptions() });
 const page = await browser.newPage({ viewport: { width: 1480, height: 1050 } });
 const errs = [];
 page.on("pageerror", (e) => errs.push(String(e).slice(0,150)));
