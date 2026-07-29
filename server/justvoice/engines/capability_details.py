@@ -65,10 +65,10 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
         knobs=[_speed_knob()],
         inline_tags=[],
         pitch_native_st_range=None,
-        pitch_post_process=True,  # we can pedalboard the output WAV
+        pitch_post_process=True,  # the server can pitch-shift the output WAV
         notes=[
             "Deterministic — no temperature or seed. Same input → same output.",
-            "Pitch shift only available via post-process (server applies pedalboard).",
+            "Pitch shift only available via post-process (the server shifts the rendered audio).",
             "Advanced: IPA phoneme override available — bypasses text parser.",
         ],
     ),

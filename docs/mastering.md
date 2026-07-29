@@ -16,7 +16,9 @@ ACX is the strictest — Audible's QC requires every chapter between -23 LUFS an
 
 ## How it runs
 
-JustVoice uses **pyloudnorm** (EBU R128 LUFS) for measurement and **pedalboard** (Spotify's audio-effects lib) for filtering. The chain per render:
+JustVoice uses **pyloudnorm** (EBU R128 LUFS) for measurement in the analyzer, and shells out to
+**ffmpeg** for the mastering chain itself (`loudnorm`, `dynaudnorm`, `highpass`, `aresample`).
+Mastering has never used the effects DSP — the two are independent paths. The chain per render:
 
 1. **Measure** integrated loudness of the rendered WAV.
 2. **Normalize** to the preset's target with gain adjustment.

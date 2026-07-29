@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""/v1/effect-presets — saved pedalboard chains the user can apply
+"""/v1/effect-presets — saved effect chains the user can apply
 to a Persona's effects_chain from the EffectsChainEditorModal.
 
 Slice 7 of the Profile-kill plan / Effects v1 wiring. Pairs with the

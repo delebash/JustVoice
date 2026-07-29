@@ -793,7 +793,7 @@ onMounted(async () => {
               <span class="jv-muted">st</span>
             </div>
             <span v-if="pitchNative" class="ui-field__hint">Native — engine accepts pitch directly.</span>
-            <span v-else-if="pitchPostProcess" class="ui-field__hint">Post-process — applied to output WAV (pedalboard).</span>
+            <span v-else-if="pitchPostProcess" class="ui-field__hint">Post-process — applied to the rendered WAV.</span>
             <span v-else class="ui-field__hint">Disabled — no pitch shift available for this engine.</span>
           </UiField>
           <UiField layout="block">

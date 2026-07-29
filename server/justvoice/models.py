@@ -500,7 +500,7 @@ class Persona(BaseModel):
     #   render_preset (Tier 3) > persona.default_delivery (Tier 2) > engine (Tier 1).
     # JSON dict matching the Delivery shape (speed / pitch / gain_db / etc).
     default_delivery: dict[str, Any] = {}
-    # Effects chain — pedalboard-backed, applied after TTS produces WAV. List
+    # Effects chain — applied after TTS produces WAV (see audio/dsp/). List
     # of {type, params} dicts. Cascade order: persona → render preset (overlay)
     # → per-block override. Wired in Slice 6.
     effects_chain: list[dict[str, Any]] = []
@@ -752,7 +752,7 @@ class EngineCapabilityDetail(BaseModel):
     # Pitch — special-cased because it's the most-requested control even
     # though most engines lack it natively. Values:
     # - native_st_range: engine's own pitch range (only LuxTTS currently)
-    # - post_process_available: server can do pedalboard WAV pitch-shift
+    # - post_process_available: server can pitch-shift the rendered WAV
     #   on the output regardless of engine support
     pitch_native_st_range: list[int] | None = None  # [min, max] semitones
     pitch_post_process: bool = False

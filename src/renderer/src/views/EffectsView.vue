@@ -145,7 +145,7 @@ onMounted(refresh);
     <div class="jv-section">
       <h3 class="jv-section__title">Effect-chain presets</h3>
       <p class="jv-muted effects-view__lede">
-        Saved pedalboard chains you can apply to a Persona's effects from the
+        Saved effect chains you can apply to a Persona's effects from the
         chain editor's "Load from preset" picker. Editing a preset here does
         NOT retroactively change personas that already applied it — chains
         copy at apply time, like a voice template.

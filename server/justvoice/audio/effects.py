@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Pedalboard-backed effects pipeline (Slice 6 of the Profile-kill plan).
+"""Effects pipeline (Slice 6 of the Profile-kill plan).
 
 The render path cascades:
 
@@ -10,35 +10,44 @@ produced by the engine and a (possibly empty) chain spec, it returns a
 new WAV byte string with the chain applied.
 
 Chain shape: a JSON-serializable list of dicts, each `{type, params}`
-where `type` is one of the keys below and `params` matches the
-corresponding pedalboard primitive's constructor kwargs:
+where `type` is one of the keys below and `params` are that effect's
+keyword arguments in `audio/dsp/`:
 
-  - "reverb"     → Reverb(room_size, damping, wet_level, dry_level, width)
-  - "distortion" → Distortion(drive_db)
-  - "gain"       → Gain(gain_db)
-  - "compressor" → Compressor(threshold_db, ratio, attack_ms, release_ms)
-  - "pitch_shift"→ PitchShift(semitones)
-  - "delay"      → Delay(delay_seconds, feedback, mix)
-  - "highpass"   → HighpassFilter(cutoff_frequency_hz)
-  - "lowpass"    → LowpassFilter(cutoff_frequency_hz)
-  - "eq_low"     → LowShelfFilter(cutoff_frequency_hz, gain_db, q)
-  - "eq_mid"     → PeakFilter(cutoff_frequency_hz, gain_db, q)
-  - "eq_high"    → HighShelfFilter(cutoff_frequency_hz, gain_db, q)
+  - "reverb"     → room_size, damping, wet_level, dry_level, width
+  - "chorus"     → rate_hz, depth, centre_delay_ms, feedback, mix
+  - "distortion" → drive_db
+  - "gain"       → gain_db
+  - "compressor" → threshold_db, ratio, attack_ms, release_ms
+  - "pitch_shift"→ semitones
+  - "delay"      → delay_seconds, feedback, mix
+  - "highpass"   → cutoff_frequency_hz
+  - "lowpass"    → cutoff_frequency_hz
+  - "eq_low"     → cutoff_frequency_hz, gain_db, q   (low shelf)
+  - "eq_mid"     → cutoff_frequency_hz, gain_db, q   (peaking)
+  - "eq_high"    → cutoff_frequency_hz, gain_db, q   (high shelf)
+
+Those parameter names are unchanged from the previous implementation, on
+purpose: chains are persisted in the database and in user presets, and a
+rename would have silently invalidated every one of them.
 
 Unknown types are logged and skipped — never an error. Bad params are
-clamped to the primitive's accepted range by pedalboard itself.
+clamped by the effect itself; nothing in a chain can fail a render.
 
 The "EQ (3-band)" effect in the UI is sugar for the three eq_* primitives
 above; the modal expands a single EQ entry into three chain rows.
 
 `effects_chain_hash()` returns a deterministic sha256 of the resolved
 chain (persona + preset). The render cache key includes this hash so a
-cache hit only fires when the same chain would produce identical audio.
+cache hit only fires when the same chain would produce identical audio —
+which is why `DSP_VERSION` is part of the hash input. Changing the DSP
+without bumping it would serve audio rendered by the OLD code out of cache
+next to audio rendered by the new, indistinguishably.
 """
 
 from __future__ import annotations
 
 import hashlib
+import inspect
 import io
 import json
 import logging
@@ -46,20 +55,20 @@ import wave
 
 import numpy as np
 
+from .dsp import DSP_VERSION, EFFECTS
+
 log = logging.getLogger(__name__)
 
 
-def _pedalboard():
-    """Lazy import — pedalboard pulls in some native deps; skip the cost
-    on cold paths that never apply effects."""
-    import pedalboard
-
-    return pedalboard
-
-
 def _build_plugins(chain: list[dict]) -> list:
-    pb = _pedalboard()
-    plugins = []
+    """Resolve a chain spec into `[(name, fn, params), ...]`, in order.
+
+    Nothing is applied here — this only validates that each entry names a
+    known effect and carries keyword arguments that effect will accept. An
+    entry that fails either test is dropped with a log line, never raised,
+    because a malformed chain must not be able to fail a render.
+    """
+    plugins: list[tuple[str, object, dict]] = []
     for entry in chain or []:
         if not isinstance(entry, dict):
             continue
@@ -69,35 +78,21 @@ def _build_plugins(chain: list[dict]) -> list:
             continue
         kind = (entry.get("type") or "").lower()
         params = entry.get("params") or {}
+        fn = EFFECTS.get(kind)
+        if fn is None:
+            log.warning("effects: unknown effect type %r — skipped", kind)
+            continue
+        if not isinstance(params, dict):
+            log.warning("effects: %s skipped (params is %s, not a dict)", kind, type(params).__name__)
+            continue
+        # Catch a bad keyword now rather than part-way through the chain,
+        # when half the effects have already been applied.
         try:
-            if kind == "reverb":
-                plugins.append(pb.Reverb(**params))
-            elif kind == "chorus":
-                plugins.append(pb.Chorus(**params))
-            elif kind == "distortion":
-                plugins.append(pb.Distortion(**params))
-            elif kind == "gain":
-                plugins.append(pb.Gain(**params))
-            elif kind == "compressor":
-                plugins.append(pb.Compressor(**params))
-            elif kind == "pitch_shift":
-                plugins.append(pb.PitchShift(**params))
-            elif kind == "delay":
-                plugins.append(pb.Delay(**params))
-            elif kind == "highpass":
-                plugins.append(pb.HighpassFilter(**params))
-            elif kind == "lowpass":
-                plugins.append(pb.LowpassFilter(**params))
-            elif kind == "eq_low":
-                plugins.append(pb.LowShelfFilter(**params))
-            elif kind == "eq_mid":
-                plugins.append(pb.PeakFilter(**params))
-            elif kind == "eq_high":
-                plugins.append(pb.HighShelfFilter(**params))
-            else:
-                log.warning("effects: unknown effect type %r — skipped", kind)
-        except (TypeError, ValueError) as e:
+            inspect.signature(fn).bind(None, 0, **params)
+        except TypeError as e:
             log.warning("effects: %s skipped (bad params): %s", kind, e)
+            continue
+        plugins.append((kind, fn, params))
     return plugins
 
 
@@ -160,9 +155,25 @@ def apply_effects_chain(wav_bytes: bytes, chain: list[dict]) -> bytes:
     else:
         samples = samples.reshape(1, -1)
 
-    pb = _pedalboard()
-    board = pb.Pedalboard(plugins)
-    processed = board(samples, sample_rate)
+    n_in = samples.shape[-1]
+    processed = samples.astype(np.float64, copy=False)
+    for kind, fn, params in plugins:
+        try:
+            processed = fn(processed, sample_rate, **params)
+        except Exception:
+            # One bad effect must not lose the whole render. Log it with a
+            # traceback and carry on with the audio as it stands.
+            log.exception("effects: %s failed — skipped, chain continues", kind)
+
+    # Length is a contract, not an expectation: block offsets, M4B chapter
+    # marks and the per-block export manifest are all derived from render
+    # lengths. Assert it here so a future effect cannot break them quietly.
+    if processed.shape[-1] != n_in:
+        log.error(
+            "effects: chain changed length %d -> %d — trimming. This is a bug in an effect.",
+            n_in, processed.shape[-1],
+        )
+        processed = processed[..., :n_in]
 
     # Re-encode → 16-bit PCM WAV (engine outputs vary; normalize to 16-bit out).
     if processed.ndim == 1:
@@ -187,10 +198,17 @@ def effects_chain_hash(chain: list[dict] | None) -> str:
     Used by the render cache key so two requests with identical effects
     chains share a cache entry. Empty chain → constant short hash for
     cache hits across "no effects" cases.
+
+    `DSP_VERSION` is part of the payload because the cache's promise is
+    "same key → same audio", and that is a claim about the CODE as much as
+    the chain. Changing the DSP without changing the key would serve takes
+    rendered by the previous implementation alongside new ones, in the same
+    project, with nothing to distinguish them.
     """
     if not chain:
         return "noeffects"
     payload = json.dumps(chain, sort_keys=True, separators=(",", ":"))
+    payload = f"{DSP_VERSION}|{payload}"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 

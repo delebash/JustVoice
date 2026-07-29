@@ -1,6 +1,8 @@
 # LICENSES
 
-Authoritative inventory of third-party software shipped with, bundled into, or installed alongside JustVoice. JustVoice itself is **GPL-3.0-or-later** (see `LICENSE`) — flip happened 2026-06-08 Phase 3 when `pedalboard` was adopted as a runtime dep. Full license texts live in `LICENSES/<SPDX-id>.txt`. Per-component attribution detail lives in `NOTICE.md`.
+Authoritative inventory of third-party software shipped with, bundled into, or installed alongside JustVoice. Full license texts live in `LICENSES/<SPDX-id>.txt`. Per-component attribution detail lives in `NOTICE.md`.
+
+JustVoice is **GPL-3.0-or-later** today (see `LICENSE`), but **nothing in the table below forces that any more.** The flip on 2026-06-08 was caused by one dependency — `pedalboard`, which is GPL-3.0 because it statically links JUCE. That dependency was **removed 2026-07-29** and its twelve effects reimplemented in `server/justvoice/audio/dsp/` (MIT, on numpy + scipy) with pitch shifting delegated to Signalsmith Stretch (MIT). Every remaining row is permissive, so relicensing to MIT is now a paperwork change rather than an engineering one.
 
 | Component | Version pin | SPDX license | Apache-2.0 compatible | GPL-3.0 compatible | Source URL |
 |---|---|---|---|---|---|
@@ -24,7 +26,8 @@ Authoritative inventory of third-party software shipped with, bundled into, or i
 | **safetensors** | `>=0.4` (extra: `training`) | `Apache-2.0` | ✓ | ✓ | https://github.com/huggingface/safetensors |
 | **faster-whisper** | `>=1.0` (extra: `training`) | `MIT` | ✓ | ✓ | https://github.com/SYSTRAN/faster-whisper |
 | **pyloudnorm** | `>=0.1` (Phase 2) | `MIT` | ✓ | ✓ | https://github.com/csteinmetz1/pyloudnorm |
-| **pedalboard** | `>=0.9` (Phase 3+, triggers GPL flip) | `GPL-3.0` | ✗ (forces flip) | ✓ | https://github.com/spotify/pedalboard |
+| **scipy** | `>=1.11` | `BSD-3-Clause` | ✓ | ✓ | https://github.com/scipy/scipy |
+| **python-stretch** (Signalsmith Stretch) | `>=0.3` | `MIT` | ✓ | ✓ | https://github.com/gregogiudici/python-stretch |
 | **pytest** | `>=8` (dev) | `MIT` | ✓ | ✓ | https://github.com/pytest-dev/pytest |
 | **pytest-asyncio** | `>=0.24` (dev) | `Apache-2.0` | ✓ | ✓ | https://github.com/pytest-dev/pytest-asyncio |
 | **playwright** | `>=1.48` (dev) | `Apache-2.0` | ✓ | ✓ | https://github.com/microsoft/playwright-python |

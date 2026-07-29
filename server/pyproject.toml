@@ -27,11 +27,13 @@ dependencies = [
     "pyloudnorm>=0.1",  # EBU R128 LUFS measurement for ACX mastering verification + analyzer
     "tenacity>=8.2",  # prebuilt retry (backoff + jitter) for the webhook dispatcher — replaces a hand-rolled ladder
     "cachetools>=7.0",  # prebuilt TTL/LRU caches (voice-preview + render hot tier); >=7 for TTLCache LRU-on-access
-    # Phase 3: pedalboard adoption triggers the Apache-2.0 → GPL-3.0-or-later
-    # atomic license flip. pedalboard is Spotify's audio-effects library
-    # (compressor, reverb, EQ, delay, chorus, pitch-shift, gain, HP/LP filters).
-    # GPL-3.0 (verified at https://github.com/spotify/pedalboard/blob/master/LICENSE).
-    "pedalboard>=0.9",
+    # Effects DSP. `pedalboard` was removed 2026-07-29: it is GPL-3.0 (it
+    # statically links JUCE), and that single dependency was what forced the
+    # whole project to GPL. Nothing else in this list is copyleft, so
+    # replacing it is what makes an MIT relicense possible at all.
+    # The twelve effects it provided now live in `justvoice/audio/dsp/`.
+    "scipy>=1.11",  # sosfilt/lfilter — fast IIR. numpy alone cannot do recursive filters at speed. BSD-3-Clause
+    "python-stretch>=0.3",  # Signalsmith Stretch bindings — pitch shift. MIT; prebuilt wheels incl. Windows
     # MCP server (Model Context Protocol) — local AI agents call
     # justvoice.speak / list_voices / list_personas at /mcp. Same major
     # pin as upstream voicebox.

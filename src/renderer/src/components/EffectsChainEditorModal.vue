@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!--
-  EffectsChainEditorModal — drag-reorderable list of pedalboard effects
+  EffectsChainEditorModal — drag-reorderable list of effects
   with per-effect parameter forms. Opens against a chain ref; emits
   `save` with the new chain when the user clicks Save, or `cancel`
   otherwise.

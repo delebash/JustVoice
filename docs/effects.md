@@ -1,6 +1,6 @@
 # Effects chain
 
-JustVoice has a pedalboard-backed effects chain: 8 effect types, 4 built-in presets, custom presets per project.
+JustVoice has an effects chain: 10 effect types, 4 built-in presets, custom presets per project.
 
 ## Effect types
 
@@ -14,15 +14,17 @@ JustVoice has a pedalboard-backed effects chain: 8 effect types, 4 built-in pres
 | **Chorus** | Doubling effect. Two slightly-detuned copies layered for thickness. |
 | **Compressor** | Evens out level. 3:1 ratio at -18 dB threshold is a good starting point. |
 | **Gain** | Final level adjustment. ±12 dB. |
+| **Distortion** | Soft clipping (tanh waveshaper). Drive in dB — grit and breakup. |
+| **EQ (3-band)** | Low shelf · peaking mid · high shelf. Each takes a frequency, gain in dB and a Q. |
 
 ## Built-in presets
 
 | Preset | Chain |
 |---|---|
-| **Radio voice** | HP 180 Hz · LP 4500 Hz · Compressor 3:1 / -18 dB · Gain +4 dB |
-| **Robotic** | Pitch ±2 st · Bitcrusher · Comb filter |
-| **Echo Chamber** | Reverb (hall, 80% wet) · Delay 250ms |
-| **Deep Voice** | Pitch -4 st · LP 6000 Hz |
+| **Radio** | HP 300 Hz · LP 3500 Hz · Compressor 6:1 / -15 dB · Gain +6 dB |
+| **Robotic** | Chorus — slow LFO (0.2 Hz), full depth, 35% feedback (a flanger-ish metallic sweep) |
+| **Echo Chamber** | Reverb (room 0.85, damping 0.3, 45% wet) · Delay 250 ms (30% feedback, 20% mix) |
+| **Deep Voice** | Pitch −3 st · LP 6000 Hz · Compressor 3:1 / −18 dB |
 
 ## Non-destructive
 
