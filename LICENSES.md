@@ -23,7 +23,7 @@ The project was GPL-3.0-or-later between 2026-06-08 and 2026-07-29, forced by ex
 | **psutil** | `>=5.9` | `BSD-3-Clause` | ✓ | ✓ | https://github.com/giampaolo/psutil |
 | **sherpa-onnx** / **sherpa-onnx-python** | `>=1.13` (extra: `kokoro`) | `Apache-2.0` | ✓ | ✓ (GPLv3 only) | https://github.com/k2-fsa/sherpa-onnx |
 | **chatterbox-tts** | `>=0.2` (extra: `chatterbox`) | `MIT` | ✓ | ✓ | https://github.com/resemble-ai/chatterbox |
-| **qwen-tts** | `>=0.1` (extra: `qwen3`) | verify upstream | TBD | TBD | (verify) |
+| **qwen-tts** | `>=0.1` (extra: `qwen3`) | `Apache-2.0` | ✓ | ✓ | https://github.com/QwenLM/Qwen3-TTS |
 | **torch** | `>=2.2` (extras: `chatterbox`, `qwen3`) | `BSD-3-Clause` | ✓ | ✓ | https://github.com/pytorch/pytorch |
 | **peft** | `>=0.13` (extra: `training`) | `Apache-2.0` | ✓ | ✓ | https://github.com/huggingface/peft |
 | **transformers** | `>=4.45` (extra: `training`) | `Apache-2.0` | ✓ | ✓ | https://github.com/huggingface/transformers |

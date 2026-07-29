@@ -1188,6 +1188,19 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
             <span v-if="e.isolation === 'venv'" class="ev-cap iso" title="Runs in its own isolated environment — the same mechanism custom engines use">ISOLATED</span>
           </span>
           <span class="desc" :title="e.description">{{ e.description }}</span>
+          <!-- Weights-licence attribution. NOT decorative: the Llama 3.2
+               Community License §1.b requires any product built on a
+               Llama-derivative model to display "Built with Llama" in the
+               UI. TADA's weights are Llama-derived, so this row is a
+               licence obligation for anyone shipping JustVoice. The API has
+               returned `attribution` since the manifest work landed
+               (engines_api.py) but nothing rendered it until 2026-07-29 —
+               do not remove it without checking the weights licence first. -->
+          <span
+            v-if="e.attribution"
+            class="ev-attrib"
+            :title="`Required by the model's weights licence${e.weights_license ? ' (' + e.weights_license + ')' : ''}`"
+          >{{ e.attribution }}</span>
           <span class="gsum">
             <!-- C3: the per-engine header strip is now intentionally
                  minimal — the prominent progress UI is the big
@@ -1426,6 +1439,11 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
 .ev-ghead .nm{font-weight:700;font-size:14px;white-space:nowrap}
 .ev-ghead .id{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3)}
 .ev-ghead .desc{color:var(--ink-3);font-size:12px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Weights-licence attribution (e.g. "Built with Llama"). `flex:none` +
+   `white-space:nowrap` are load-bearing: .desc above is the flex-grower and
+   ellipsises, and this text is a licence obligation that must not be
+   truncated away when the row gets narrow. */
+.ev-attrib{flex:none;white-space:nowrap;color:var(--ink-3);font-size:11px;padding:1px 6px;border:1px solid var(--line-2);border-radius:999px}
 .ev-ghead .gsum{margin-left:auto;display:flex;align-items:center;gap:8px;flex:none;font-size:12px;color:var(--ink-2)}
 .ev-ghead .gsum .meta{font-size:12px;color:var(--ink-2)}
 .ev-ghead .gsum .ldd{color:var(--accent-ink,#2c6049);font-weight:600}

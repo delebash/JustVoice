@@ -668,8 +668,14 @@ class EngineInfo(BaseModel):
     # Attribution text the producing tool must display when the user
     # ships output produced by this engine. Llama-3.2 §1.b mandates
     # "Built with Llama" for any Llama-derivative model — TADA hits
-    # this. Empty string means no attribution required. The UI shows
-    # a copyable attribution row when this is non-empty.
+    # this. Empty string means no attribution required.
+    #
+    # Rendered as a pill next to the engine's description in the Engines
+    # tab (`EnginesView.vue`, `.ev-attrib`), with the weights licence in
+    # its tooltip. This is a LICENCE OBLIGATION, not decoration — the
+    # field reached the API in June but nothing consumed it until
+    # 2026-07-29, so the notice the licence requires was not actually
+    # being shown. Do not drop the render without checking the licence.
     attribution: str = ""
 
 
