@@ -180,7 +180,7 @@ jobs:
       - name: Fetch uv into Tauri binaries dir (Unix)
         if: runner.os != 'Windows'
         env:
-          UV_VERSION: "0.11.31"
+          UV_VERSION: "0.12.0"
         run: |
           set -euo pipefail
           case "${{ matrix.platform }}" in
@@ -210,7 +210,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         env:
-          UV_VERSION: "0.11.31"
+          UV_VERSION: "0.12.0"
         run: |
           $ErrorActionPreference = "Stop"
           New-Item -ItemType Directory -Force src-tauri\binaries, uv-dl | Out-Null
