@@ -119,7 +119,12 @@ fn spawn_sidecar() -> std::io::Result<Option<Child>> {
         } else {
             dir.join("justvoice-server")
         };
-        Command::new(bin).spawn()?
+        // `serve` is REQUIRED. The CLI is a Typer app built with
+        // `no_args_is_help=True` (cli.py), so spawning the sidecar with no
+        // arguments prints usage and exits — the app would come up with no
+        // backend and no error to explain it. The debug branch above has always
+        // passed `serve`; this branch had not.
+        Command::new(bin).arg("serve").spawn()?
     };
 
     std::thread::spawn(|| {

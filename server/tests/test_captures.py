@@ -9,6 +9,7 @@ import io
 
 import pytest
 from fastapi.testclient import TestClient
+from llm_runner.llm import LLMNotConfiguredError
 
 from justvoice.app import create_app
 
@@ -36,7 +37,20 @@ def test_transcribe_stateless(client) -> None:
     assert r.json()["text"] == "um hello hello world"
 
 
-def test_capture_crud_and_refine_degrades(client) -> None:
+def test_capture_crud_and_refine_degrades(client, monkeypatch) -> None:
+    # The behaviour under test is "refinement unavailable -> fall back to raw",
+    # so the unavailability is FORCED rather than assumed. This previously leaned
+    # on "no provider registered in CI" being true of the machine, which made it
+    # pass for the wrong reason — and it failed the moment this box had a working
+    # local LLM, because refinement really ran and returned "Hello, hello world."
+    # instead of the raw text.
+    import llm_runner.llm.dispatch as dispatch
+
+    def refuse(*_a, **_kw):
+        raise LLMNotConfiguredError("no LLM provider registered")
+
+    monkeypatch.setattr(dispatch, "chat", refuse)
+
     r = client.post(
         "/v1/captures",
         files={"file": ("a.wav", io.BytesIO(_wav()), "audio/wav")},
@@ -44,8 +58,8 @@ def test_capture_crud_and_refine_degrades(client) -> None:
     )
     assert r.status_code == 201, r.text
     row = r.json()
-    # auto_refine is on but no provider is registered+loadable in CI —
-    # transcript must fall back to raw, never None.
+    # auto_refine is on but refinement cannot reach a provider — the transcript
+    # must fall back to raw, never None.
     assert row["raw_transcript"] == "um hello hello world"
     assert row["transcript"] == "um hello hello world"
     assert row["refinement_flags"]["smart_cleanup"] is True

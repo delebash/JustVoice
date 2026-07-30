@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""Shared pytest fixtures — synthetic WAVs for tests that need real audio bytes."""
+"""Shared pytest fixtures — synthetic WAVs, plus engine-subprocess cleanup."""
 
 from __future__ import annotations
 
@@ -8,6 +8,43 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _reap_engine_subprocesses():
+    """Kill any engine subprocess a test started, after every test.
+
+    Engines are real subprocesses (`engine.py serve`) and do not die with the
+    test that spawned them. The app kills them from FastAPI's `shutdown` event
+    — but 25 of the 27 test files do:
+
+        app = create_app(data_dir=tmp_path)
+        return TestClient(app, raise_server_exceptions=False)
+
+    Starlette only runs lifespan when `TestClient` is used as a CONTEXT
+    MANAGER, so returning it bare means `shutdown` never fires and the engine
+    outlives the test, the module, and the run.
+
+    This accumulated invisibly until it did real damage: leaked engines held
+    the shared venv's interpreter open, which made a venv rebuild fail with
+    `os error 32`. Each leak was a pair — a venv python plus a re-exec'd
+    stock-python child — so two runs left four processes behind.
+
+    Autouse and unconditional on purpose. Fixing it in the fixtures would mean
+    editing 25 files and would break again with the 26th; this cannot be
+    forgotten. `shutdown_manager()` is idempotent and returns immediately when
+    no manager was ever created, so tests that never touch an engine pay
+    nothing.
+    """
+    yield
+    from justvoice.engines.manager import shutdown_manager
+
+    try:
+        shutdown_manager()
+    except Exception:
+        # Teardown must never turn a passing test red. A leak is preferable to
+        # a misattributed failure, and the atexit reaper is the backstop.
+        pass
 
 
 @pytest.fixture(scope="session")

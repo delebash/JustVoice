@@ -346,7 +346,18 @@ jobs:
             See CHANGELOG or commit history for details.
           releaseDraft: true
           prerelease: ${{ contains(github.ref_name, '-') }}
-          args: --target ${{ matrix.rust_target }} --bundles ${{ matrix.tauri_targets }}
+          # `--config tauri.release.conf.json` merges the sidecar declarations
+          # (justvoice-server + uv) over the base config. They live in a release
+          # overlay rather than tauri.conf.json because Tauri's build script
+          # REQUIRES every declared externalBin to exist on disk, and lib.rs
+          # deliberately does not use the bundled sidecar in debug builds — it
+          # spawns from PATH so a dev can iterate on the Python server without
+          # rebuilding a PyInstaller binary. Declaring them unconditionally
+          # would break `cargo check` and `tauri dev` for everyone.
+          args: >-
+            --target ${{ matrix.rust_target }}
+            --bundles ${{ matrix.tauri_targets }}
+            --config tauri.release.conf.json
 
       # ── Linux AppImage optional signing ─────────────────────────────────
       # If APPIMAGE_SIGNING_KEY is present, sign the produced AppImage.

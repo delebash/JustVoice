@@ -29,6 +29,7 @@ Cross-platform notes:
 
 from __future__ import annotations
 
+import atexit
 import logging
 import os
 import shutil
@@ -1452,13 +1453,40 @@ class EngineManager:
 
 _manager: EngineManager | None = None
 _manager_lock = threading.Lock()
+_atexit_registered = False
 
 
 def get_manager() -> EngineManager:
-    global _manager
+    """The process-wide engine manager, created on first use.
+
+    Creating one also arms an `atexit` reaper. Engine subprocesses are children
+    of this process and do NOT die with it on their own, and until now the only
+    thing that killed them was FastAPI's `shutdown` event — so any exit that
+    did not run it leaked a live `engine.py serve` holding a GPU and the venv
+    interpreter open.
+
+    That is not hypothetical or test-only: it made a shared-venv rebuild fail
+    with `os error 32` (the leaked engine had the interpreter open), and in the
+    test suite it accumulated silently, because 25 of 27 test files build
+    `TestClient(app)` without entering it as a context manager, which is the
+    only thing that runs lifespan.
+
+    Registered lazily so importing this module has no side effect, and only
+    once — `atexit` would otherwise call it repeatedly.
+
+    LIMIT, stated so nobody trusts it too far: `atexit` runs on normal
+    interpreter exit. It does NOT run on SIGKILL or Windows `TerminateProcess`,
+    so a hard-killed host still orphans engines. Closing that needs OS-level
+    lifetime binding (a Windows job object / POSIX process group), which is a
+    bigger change than this.
+    """
+    global _manager, _atexit_registered
     with _manager_lock:
         if _manager is None:
             _manager = EngineManager()
+        if not _atexit_registered:
+            atexit.register(shutdown_manager)
+            _atexit_registered = True
         return _manager
 
 

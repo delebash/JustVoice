@@ -6,6 +6,8 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
+from llm_runner.llm import LLMNotConfiguredError
+
 from justvoice.app import create_app
 from justvoice.extraction.identify import SpeakerCandidate, parse_candidates
 
@@ -62,10 +64,28 @@ def _import_project(client) -> tuple[str, str]:
     return pid, scenes[0]["id"]
 
 
-def test_discover_501_without_llm(client):
+def test_discover_501_without_llm(client, monkeypatch):
+    """No LLM configured must map to 501, and the no-LLM state is FORCED.
+
+    This used to assert 501 while relying on the machine simply not having a
+    working LLM. That made it pass for the wrong reason — and it broke the
+    moment the engine venv was repaired, because a real local LLM then answered
+    and returned 200. It had never been testing the 501 mapping at all.
+
+    Its sibling below forces the LLM path by patching; this forces the other
+    side of the same seam, so both are independent of what is installed.
+    """
+    import llm_runner.llm.dispatch as dispatch
+
+    def refuse(*_a, **_kw):
+        raise LLMNotConfiguredError("no LLM provider registered")
+
+    monkeypatch.setattr(dispatch, "chat", refuse)
+    monkeypatch.setattr("justvoice.extraction.identify.identify_speakers", refuse, raising=False)
+
     _pid, scene_id = _import_project(client)
     r = client.post(f"/v1/scenes/{scene_id}/discover-speakers", json={"text": "“Hi,” said Tom."})
-    assert r.status_code == 501
+    assert r.status_code == 501, r.text
 
 
 def test_discover_with_stubbed_llm(client, monkeypatch):
@@ -232,8 +252,20 @@ def test_usage_ledger_records_chat_calls(client, monkeypatch):
 
 def test_show_notes_501_without_llm_and_works_with_stub(client, monkeypatch):
     pid, _scene = _import_project(client)
+
+    # Force the no-LLM half. Previously this leaned on the machine having no
+    # working LLM, so it silently stopped testing the 501 path once one existed.
+    import llm_runner.llm.dispatch as dispatch
+
+    def refuse(*_a, **_kw):
+        raise LLMNotConfiguredError("no LLM provider registered")
+
+    monkeypatch.setattr(dispatch, "chat", refuse)
+    monkeypatch.setattr("justvoice.api.projects_api.chat", refuse, raising=False)
+
     r = client.post(f"/v1/projects/{pid}/show-notes")
-    assert r.status_code == 501
+    assert r.status_code == 501, r.text
+    monkeypatch.undo()
 
     def fake_chat(*, config, feature, messages, system=None, temperature=0.7,
                   max_tokens=None, think=None, model_override=None):
