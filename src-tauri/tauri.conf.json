@@ -28,6 +28,10 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "externalBin": [
+      "binaries/justvoice-server",
+      "binaries/uv"
+    ],
     "icon": [
       "icons/icon.png",
       "icons/icon.ico"

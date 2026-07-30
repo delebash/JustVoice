@@ -374,14 +374,64 @@ class InstallError(RuntimeError):
     pass
 
 
+#: The Python the ENGINE venvs are built on, pinned deliberately.
+#:
+#: Not `sys.executable`, for two reasons. In the shipped bundle the server is a
+#: PyInstaller one-file sidecar, so `sys.executable` is `justvoice-server.exe` —
+#: not a Python interpreter at all. Passing it to `uv venv --python` fails, and
+#: the code then fell through to a no-`--python` fallback where uv picked
+#: whatever interpreter it liked. Engine setup "worked" by accident, on an
+#: unpredictable version.
+#:
+#: That unpredictability is the real problem: the engine wheels are
+#: version-sensitive (torch cu124, numba/llvmlite ship per-Python builds), so
+#: "whatever uv found" is not a basis for installing them. Pinning means uv
+#: resolves a matching interpreter from the machine, or downloads a managed one
+#: if there is none — which is also what lets engine install work on a box with
+#: no Python at all, with the user never running a command.
+#:
+#: Bump this only together with checking the engine wheel matrix.
+ENGINE_PYTHON_VERSION = "3.12"
+
+
+def _uv_candidates() -> list[Path]:
+    """Where to look for uv, in priority order.
+
+    The BUNDLED copy wins. JustVoice ships uv as a Tauri `externalBin` sidecar,
+    which lands beside the server binary — so a user who has never installed uv
+    (i.e. almost every user) still gets working engine installs. PATH is the
+    dev-machine fallback, not the shipping mechanism.
+    """
+    exe = "uv.exe" if sys.platform == "win32" else "uv"
+    out: list[Path] = []
+    # Frozen: sys.executable IS the sidecar, so its directory holds the
+    # co-located uv. Unfrozen: this is the interpreter's dir, harmless to probe.
+    try:
+        out.append(Path(sys.executable).resolve().parent / exe)
+    except OSError:
+        pass
+    # Dev convenience: a vendored copy under the repo, if anyone drops one in.
+    out.append(ENGINES_DIR.parent.parent / "vendor" / exe)
+    return out
+
+
 def _check_uv_available() -> str:
-    """Confirm uv is on PATH. Returns the absolute path. Raises InstallError
-    with an actionable message otherwise."""
+    """Resolve uv — bundled sidecar first, then PATH. Returns an absolute path.
+
+    Raises InstallError only when neither exists, which in a correctly built
+    release should be unreachable.
+    """
+    for cand in _uv_candidates():
+        if cand.is_file():
+            return str(cand)
     uv_path = shutil.which("uv")
     if not uv_path:
         raise InstallError(
-            "uv is required but not found on PATH. Install it from https://docs.astral.sh/uv/ "
-            "(macOS/Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`, "
+            "uv was not found beside the server binary or on PATH. A release build "
+            "ships it as a sidecar, so this usually means a broken install — "
+            "reinstall JustVoice. For a dev checkout, install uv from "
+            "https://docs.astral.sh/uv/ (macOS/Linux: "
+            "`curl -LsSf https://astral.sh/uv/install.sh | sh`, "
             "Windows: `irm https://astral.sh/uv/install.ps1 | iex`)."
         )
     return uv_path
@@ -531,22 +581,18 @@ def _install_engine_isolated(
         if cancel_check and cancel_check():
             raise InstallError("cancelled by user")
 
-    # 1. Create venv — idempotent (uv complains if one exists, so we
-    #    pass --allow-existing). Pin to the same Python interpreter the
-    #    JustVoice host is running on so wheel-compat matches the host's
-    #    environment (otherwise uv may pick a different uv-managed Python
-    #    version and pull wheels the host can't use).
-    emit("creating-venv", f"uv venv {venv}")
+    # 1. Create venv — idempotent (uv complains if one exists, so we pass
+    #    --allow-existing). Pinned to ENGINE_PYTHON_VERSION, NOT sys.executable:
+    #    see that constant for why, but briefly — in the shipped bundle
+    #    sys.executable is the PyInstaller sidecar, which is not an interpreter.
+    #    There is deliberately no "let uv pick anything" fallback here; an
+    #    engine venv on an arbitrary Python version installs wheels that may not
+    #    match, and failing loudly beats a subtly wrong environment.
+    emit("creating-venv", f"uv venv {venv} (python {ENGINE_PYTHON_VERSION})")
     result = subprocess.run(
-        [uv, "venv", str(venv), "--python", sys.executable, "--allow-existing"],
+        [uv, "venv", str(venv), "--python", ENGINE_PYTHON_VERSION, "--allow-existing"],
         capture_output=True, text=True,
     )
-    if result.returncode != 0:
-        # Fall back to letting uv pick a Python (matching .python-version /
-        # uv-managed Python) — last resort.
-        result = subprocess.run(
-            [uv, "venv", str(venv), "--allow-existing"], capture_output=True, text=True
-        )
     if result.returncode != 0:
         raise InstallError(f"uv venv failed: {result.stderr.strip() or result.stdout.strip()}")
     check_cancel()

@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .manager import (
+    ENGINE_PYTHON_VERSION,
     SHARED_VENV_DIR,
     _current_os_label,
     _run_uv_pip,
@@ -144,17 +145,17 @@ def setup_shared_venv(
         # remembered as broken once the rebuild below succeeds.
         invalidate_shared_venv_health()
 
-    # 1. Create the venv pinned to host Python.
-    emit("creating-venv", f"uv venv {SHARED_VENV_DIR}")
+    # 1. Create the venv on the PINNED engine Python — not sys.executable, which
+    #    in the shipped bundle is the PyInstaller sidecar rather than an
+    #    interpreter. See ENGINE_PYTHON_VERSION. The old "let uv pick anything"
+    #    fallback is gone on purpose: it turned a broken pin into a silently
+    #    arbitrary Python version, which is how you get engine wheels that do
+    #    not match the interpreter they were installed for.
+    emit("creating-venv", f"uv venv {SHARED_VENV_DIR} (python {ENGINE_PYTHON_VERSION})")
     r = subprocess.run(
-        [uv, "venv", str(SHARED_VENV_DIR), "--python", sys.executable, "--allow-existing"],
+        [uv, "venv", str(SHARED_VENV_DIR), "--python", ENGINE_PYTHON_VERSION, "--allow-existing"],
         capture_output=True, text=True,
     )
-    if r.returncode != 0:
-        # Fall back to letting uv pick a Python.
-        r = subprocess.run(
-            [uv, "venv", str(SHARED_VENV_DIR), "--allow-existing"], capture_output=True, text=True
-        )
     if r.returncode != 0:
         raise InstallError(f"uv venv failed: {r.stderr.strip() or r.stdout.strip()}")
     # The interpreter just changed on disk, so any cached health verdict — in

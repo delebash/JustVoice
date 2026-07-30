@@ -163,6 +163,63 @@ jobs:
             "sidecar-bin\justvoice-server-${{ matrix.sidecar_triple }}.exe" `
             "src-tauri\binaries\justvoice-server-${{ matrix.sidecar_triple }}.exe"
 
+      # ── uv sidecar ──────────────────────────────────────────────────────
+      # Engine installs shell out to uv (`uv venv` + `uv pip`) to build the
+      # per-engine venvs on the user's machine — torch alone is 2.4 GB, so
+      # engines cannot be baked into the installer. uv therefore has to SHIP:
+      # a user who has never heard of it must be able to click "Install engine"
+      # and have it work, without ever running a command.
+      #
+      # uv is also the reason that works on a machine with no Python at all —
+      # it provisions an interpreter itself, which pip cannot do because pip
+      # presupposes the interpreter you do not have.
+      #
+      # `_check_uv_available()` in engines/manager.py looks for uv beside the
+      # server binary FIRST and only then falls back to PATH, so the bundled
+      # copy is what a released build uses.
+      - name: Fetch uv into Tauri binaries dir (Unix)
+        if: runner.os != 'Windows'
+        env:
+          UV_VERSION: "0.11.31"
+        run: |
+          set -euo pipefail
+          case "${{ matrix.platform }}" in
+            macos) assets="aarch64-apple-darwin x86_64-apple-darwin" ;;
+            linux) assets="x86_64-unknown-linux-gnu" ;;
+          esac
+          mkdir -p src-tauri/binaries uv-dl
+          for a in $assets; do
+            curl -fsSL -o "uv-dl/$a.tar.gz" \
+              "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-$a.tar.gz"
+            tar -xzf "uv-dl/$a.tar.gz" -C uv-dl
+            mv "uv-dl/uv-$a/uv" "uv-dl/uv-$a-bin"
+          done
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            # The macOS sidecar triple is universal-apple-darwin, so uv must be
+            # a fat binary too or Tauri will reject the pairing.
+            lipo -create -output "src-tauri/binaries/uv-${{ matrix.sidecar_triple }}" \
+              uv-dl/uv-aarch64-apple-darwin-bin uv-dl/uv-x86_64-apple-darwin-bin
+          else
+            mv "uv-dl/uv-x86_64-unknown-linux-gnu-bin" \
+              "src-tauri/binaries/uv-${{ matrix.sidecar_triple }}"
+          fi
+          chmod +x "src-tauri/binaries/uv-${{ matrix.sidecar_triple }}"
+          "src-tauri/binaries/uv-${{ matrix.sidecar_triple }}" --version
+
+      - name: Fetch uv into Tauri binaries dir (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          UV_VERSION: "0.11.31"
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force src-tauri\binaries, uv-dl | Out-Null
+          $url = "https://github.com/astral-sh/uv/releases/download/$env:UV_VERSION/uv-x86_64-pc-windows-msvc.zip"
+          Invoke-WebRequest -Uri $url -OutFile uv-dl\uv.zip
+          Expand-Archive uv-dl\uv.zip -DestinationPath uv-dl -Force
+          Copy-Item uv-dl\uv.exe "src-tauri\binaries\uv-${{ matrix.sidecar_triple }}.exe"
+          & "src-tauri\binaries\uv-${{ matrix.sidecar_triple }}.exe" --version
+
       # ── Toolchains ──────────────────────────────────────────────────────
       - name: Set up Node 20
         uses: actions/setup-node@v4
