@@ -41,7 +41,7 @@ A C++ `.uplugin` for UE5 that calls JustVoice's `/v1/generate` or `/v1/scenes/{i
 **Cons:**
 - UE5 plugin = C++ + UE-specific tooling. Larger build/test/release surface than JustVoice itself.
 - Requires a running JustVoice server. The user's UE workstation has to either run JustVoice locally or hit a shared instance.
-- License complexity — UE plugins ship under the Marketplace EULA; JustVoice is GPL-3.0-or-later. A plugin would need to live in a separate repo with its own license stance.
+- License complexity — UE plugins ship under the Marketplace EULA. This was a hard blocker while JustVoice was GPL-3.0-or-later; since the 2026-07-29 MIT relicense it is no longer one, and MIT is Marketplace-compatible. A separate repo is still preferable, but for build-surface reasons rather than licensing.
 
 ### Option C — Wwise SoundBank export
 
@@ -77,7 +77,7 @@ Same idea as C but FMOD instead of Wwise.
 
 **v1 ships Option A.** Studio Render's batch path for `project_type='game_voicelines'` writes the WAV+JSON pair. Document the sidecar JSON schema as part of `CONTRACT.md`. Users who need anything more sophisticated (in-editor preview, native Wwise routing) follow the post-v1 plugin path.
 
-**Post-v1 considers Option B.** A `.uplugin` in a separate repo at `delebash/justvoice-ue5-plugin`, MIT-licensed, that hits the JustVoice REST API. The repo lives outside the GPL-licensed JustVoice codebase so the plugin can ship under terms compatible with UE Marketplace.
+**Post-v1 considers Option B.** A `.uplugin` in a separate repo at `delebash/justvoice-ue5-plugin`, MIT-licensed, that hits the JustVoice REST API. A separate repo keeps the UE build surface out of this one; note that the original reason given here — escaping a GPL-licensed JustVoice codebase — no longer applies, since JustVoice itself is MIT as of 2026-07-29.
 
 **Options C and D stay on the roadmap.** Studios on Wwise or FMOD can write their own SoundBank/project exporters that consume the JSON sidecars from Option A — the sidecar contract makes both downstream paths possible without bespoke JustVoice code.
 

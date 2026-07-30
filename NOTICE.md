@@ -68,7 +68,30 @@ JustWrite ships `services/m4b.js`, `services/speakerAttribution.js`, `services/r
 
 ## Runtime dependencies (installed from PyPI; not re-vendored)
 
-Each retains its upstream license. Full text in `LICENSES/<SPDX-id>.txt`. Apache-2.0 NOTICE content per §4(d) is reproduced below where applicable.
+Each retains its upstream license. Full text in `LICENSES/<SPDX-id>.txt`. Apache-2.0 NOTICE content per §4(d) is reproduced below where applicable, and BSD-3-Clause copyright notices per cl. 1–2 are reproduced immediately below.
+
+### BSD-3-Clause copyright notices (cl. 1–2)
+
+`LICENSES/BSD-3-Clause.txt` carries the licence text with a `<year> <owner>` placeholder, because several components share one text. Clauses 1 and 2 additionally require each component's *own* copyright notice to be retained in source and binary redistributions — so they are reproduced here verbatim, fetched from each upstream `LICENSE` on 2026-07-29.
+
+**Distributed** — frozen into the `justvoice-server` sidecar, so these notices are obligations:
+
+```
+Copyright © 2017-present, Encode OSS Ltd.                         (uvicorn, https://www.encode.io/)
+Copyright © 2019, Encode OSS Ltd.                                 (httpx, https://www.encode.io/)
+Copyright (c) 2005-2025, NumPy Developers.                        (numpy)
+Copyright (c) 2009, Jay Loden, Dave Daeschler, Giampaolo Rodola'  (psutil)
+Copyright (c) 2001-2002 Enthought, Inc. 2003, SciPy Developers.   (scipy)
+```
+
+**Installed on demand** — `torch` arrives only with the `chatterbox` / `qwen3` extras and is never redistributed by JustVoice, so no notice obligation attaches to us. Recorded for completeness; PyTorch's `LICENSE` lists many holders beyond these three:
+
+```
+Copyright (c) 2016-     Facebook, Inc            (Adam Paszke)
+Copyright (c) 2014-     Facebook, Inc            (Soumith Chintala)
+Copyright (c) 2011-2014 Idiap Research Institute (Ronan Collobert)
+  … full list: https://github.com/pytorch/pytorch/blob/main/LICENSE
+```
 
 ### transformers (Apache-2.0)
 

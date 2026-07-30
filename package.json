@@ -2,6 +2,7 @@
   "name": "justvoice",
   "version": "0.1.0",
   "description": "An open-source TTS server built for audiobook production, useful for any TTS workload.",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "scripts": {

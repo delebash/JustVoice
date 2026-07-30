@@ -11,9 +11,10 @@ Authoritative inventory of third-party software shipped with, bundled into, or i
 > No text is owed for `GPL-3.0-or-later`: `parselmouth` is not redistributed, and shipping the GPL
 > text would wrongly imply that it is.
 >
-> **Still open (2026-07-29):** BSD-3-Clause cl. 1–2 also require each component's own copyright
-> line to be reproduced. `NOTICE.md` names the BSD-3-Clause components but does not yet carry their
-> copyright lines.
+> BSD-3-Clause cl. 1–2 additionally require each component's *own* copyright notice, which a shared
+> placeholder text cannot carry. Those five notices are reproduced verbatim in `NOTICE.md` →
+> *BSD-3-Clause copyright notices*. Both obligations are therefore met: shared licence text here,
+> per-component notices there.
 
 JustVoice is **MIT** (see `LICENSE`), and **nothing it distributes constrains that.** Every row in the table below is permissive.
 
@@ -74,7 +75,7 @@ The two compatibility columns are kept because they record *why* each dependency
 
 - **Apache-2.0 compatible** — combinable with an Apache-2.0 work.
 - **GPL-3.0 compatible** — combinable with a GPL-3.0 work. Note Apache-2.0 is GPLv3-compatible but **not** GPLv2-compatible.
-- **AGPL** — would force the combined work to AGPL-3.0. CI gate (`pip-licenses --fail-on AGPL-3.0...`) blocks AGPL deps.
+- **AGPL** — would force the combined work to AGPL-3.0 if distributed. **There is no CI gate for this.** This line previously claimed `pip-licenses --fail-on AGPL-3.0` ran in CI; checked 2026-07-29, no workflow performs any licence check, so the only thing enforcing this file is a human following the refresh policy below. Worth building — it is the one check that would have caught `pedalboard` in June 2026 before the relicense.
 - **Anything copyleft** — GPL or LGPL — needs a decision, not a row. A copyleft dependency that is **distributed** relicenses the whole product (that is what pedalboard did); LGPL is survivable but only via dynamic linking, with notice and source-availability obligations attached. A copyleft dependency that is only **installed on demand** is a different case with a different answer — see the next section.
 
 ## Installed on demand — not distributed

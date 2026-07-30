@@ -60,7 +60,8 @@ The user collected a set of open-source **book → audiobook** converters + **sp
 
 **C. Output:** save a cited decision doc to `docs/plans/` (like the LLM-research docs);
 list reusable techniques + a recommended attribution architecture for JV; flag
-licenses (we ship GPL-3.0-or-later — note any incompatible deps).
+licenses (we ship **MIT** as of 2026-07-29; this line read GPL-3.0-or-later while pedalboard was a
+dependency — note any copyleft deps, which are now blockers rather than merely something to match).
 
 ## Cross-refs
 - Our shared LLM stack + per-job model recs: `justwrite-app/docs/plans/2026-06-2X-*` (LLM model research, in progress now).
