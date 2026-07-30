@@ -98,10 +98,43 @@ Copyright 2018- The HuggingFace team. All rights reserved.
 ### fastapi (MIT) / uvicorn (BSD-3-Clause) / pydantic (MIT) / httpx (BSD-3-Clause) / typer (MIT) / rich (MIT) / requests (Apache-2.0) / psutil (BSD-3-Clause) / platformdirs (MIT)
 
 - Standard PyPI deps; see `LICENSES.md` for the full inventory.
+- Apache-2.0 §4(d) — `requests` is the one dep in this group that ships an upstream `NOTICE`
+  (checked 2026-07-29). Reproduced verbatim:
 
-### chatterbox-tts (MIT) / qwen-tts (license TBD — verify before relying on lift)
+```
+Requests
+Copyright 2019 Kenneth Reitz
+```
 
-- Engine extras; `pip install justvoice[chatterbox]` / `[qwen3]`
+### sqlalchemy (MIT) / python-multipart (Apache-2.0) / tenacity (Apache-2.0) / cachetools (MIT) / fastmcp (Apache-2.0)
+
+- Standard PyPI deps, all frozen into the shipped sidecar; see `LICENSES.md` for the inventory.
+- Apache-2.0 §4(d) — checked 2026-07-29: `python-multipart`, `tenacity` and `fastmcp` ship no
+  upstream `NOTICE` file, so there is no NOTICE content to propagate. Re-check on bump.
+
+### llm-runner (MIT)
+
+- Upstream: https://github.com/delebash/just-llm-runner
+- License: MIT
+- Own repo, consumed as a pinned git dependency and frozen into the sidecar by PyInstaller.
+
+### uv (Apache-2.0 OR MIT)
+
+- Upstream: https://github.com/astral-sh/uv
+- License: dual — upstream ships both `LICENSE-APACHE` and `LICENSE-MIT`, so an MIT product may
+  take the MIT option. No upstream `NOTICE` file (checked 2026-07-29).
+- Bundled as a Tauri `externalBin` sidecar so that installing an engine needs no system Python,
+  pip, or toolchain from the user. Version pinned in `.github/workflows/release.yml`.
+
+### chatterbox-tts (MIT) / qwen-tts (Apache-2.0)
+
+- Engine extras; `pip install justvoice[chatterbox]` / `[qwen3]`. Installed on demand onto the
+  user's machine — neither is frozen into the shipped sidecar.
+- `qwen-tts` verified 2026-07-29: `Apache-2.0` both upstream (`QwenLM/Qwen3-TTS`) and on PyPI
+  (0.1.1). It ships no upstream `NOTICE` file. This entry previously read "license TBD".
+- `chatterbox-tts` pulls in **parselmouth** (`GPL-3.0-or-later`) transitively. That copyleft does
+  not reach JustVoice: it is never redistributed, and it is imported only inside the chatterbox
+  engine subprocess. See `LICENSES.md` → *Installed on demand* for the full reasoning.
 
 ### faster-whisper (MIT) / peft (Apache-2.0) / safetensors (Apache-2.0) — training extras
 
@@ -120,9 +153,14 @@ Copyright 2018- The HuggingFace team. All rights reserved.
 - License: MIT
 - Pitch shifting for the effects chain.
 
-> **Removed 2026-07-29: pedalboard (Spotify, GPL-3.0).** It was the only copyleft dependency
-> the project ever had, and the sole reason for the 2026-06-08 Apache-2.0 → GPL-3.0-or-later
+> **Removed 2026-07-29: pedalboard (Spotify, GPL-3.0).** It was the only copyleft dependency the
+> project ever *distributed*, and the sole reason for the 2026-06-08 Apache-2.0 → GPL-3.0-or-later
 > flip. Its twelve effects now live in `server/justvoice/audio/dsp/`.
+>
+> One copyleft dependency is still *reachable* — `parselmouth` (`GPL-3.0-or-later`), pulled in
+> transitively by the `chatterbox` extra. It does not relicense anything, because JustVoice never
+> redistributes it and never links it in-process. Redistribution plus in-process linkage is what
+> propagated with pedalboard; see `LICENSES.md` → *Installed on demand*.
 
 ---
 

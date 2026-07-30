@@ -21,9 +21,9 @@ Deliverables:
 - `NOTICE.md` — third-party attribution ✅
 - `LICENSES.md` — dep license table ✅
 - `voicebox-pin.txt` — pinned upstream MIT commit referenced by per-file attribution headers ✅
-- `LICENSES/Apache-2.0.txt` — full license text (pending)
-- `LICENSES/MIT.txt` — full license text (pending)
-- `LICENSES/BSD-3-Clause.txt` — full license text (pending)
+- `LICENSES/Apache-2.0.txt` — full license text ✅ (canonical text from apache.org, 2026-07-29)
+- `LICENSES/MIT.txt` — full license text ✅
+- `LICENSES/BSD-3-Clause.txt` — full license text ✅ (canonical text from spdx.org, 2026-07-29)
 - `CLAUDE.md` — updated for multi-use + storage + license changes ✅
 - `MORNING_RECAP.md` — updated to reflect FINAL architecture ✅
 
