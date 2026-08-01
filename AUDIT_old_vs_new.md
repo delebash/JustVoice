@@ -11,7 +11,7 @@ The full §7 remediation list was executed:
 - ✅ 4 missing views built: **Cache, Personas, Lexicons, Train** (all wired to existing endpoints).
 - ✅ Voices: clone / design / import / blend modal added. Settings: training + external-servers + URL-overrides sections added.
 - ✅ Restyled to the legacy crisp "Mercury" system (cream paper, sharp corners, oxblood accent, uppercase labels) — see `reference_gui_styling` memory.
-- App now has all **11 views**; `verify_all.mjs` confirms every tab renders with **zero console errors**; persona create verified end-to-end through the GUI; `vite build` ✓.
+- App now has all **11 views**; `verify_all.js` confirms every tab renders with **zero console errors**; persona create verified end-to-end through the GUI; `vite build` ✓.
 
 Sections below are the original audit (kept as the historical gap record).
 

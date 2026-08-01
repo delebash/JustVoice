@@ -58,7 +58,7 @@ Trigger the Apache → GPL-3.0-or-later license flip in Phase 3 when pedalboard 
 
 ### 3.2 JustWrite book export schema → **defer to Phase 5 spike**
 
-We need to look at JustWrite's actual export shape (JSON/EPUB/custom) before locking. Add to Phase 5 a 1-day spike: read `justwrite-app/src/renderer/src/services/export/*` to determine the format, then design `POST /books/import` against the real shape. Don't pre-design against an imagined schema.
+We need to look at JustWrite's actual export shape (JSON/EPUB/custom) before locking. Add to Phase 5 a 1-day spike: read `justwrite-app/src/services/export/*` to determine the format, then design `POST /books/import` against the real shape. Don't pre-design against an imagined schema.
 
 ### 3.3 MCP timing → **Phase 4a backend + Phase 4b UI; ship in v1**
 

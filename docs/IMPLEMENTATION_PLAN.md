@@ -98,7 +98,7 @@ accent-color); fixes go to the base layer first, per-view second.
 pytest for every adapter/endpoint (synthetic fixtures built in-test);
 extraction changes scored against `labs/extraction` corpus; renderer
 changes screenshot-verified against the corresponding mock screen;
-✅ Playwright E2E shipped: scripts/e2e.mjs — 20-view zero-error sweep, real CSV import → Lines grid, adapter sniffing, 409 preview contract, backup zip. Run: node scripts/e2e.mjs (server up; --executable for a custom chrome).
+✅ Playwright E2E shipped: scripts/e2e.js — 20-view zero-error sweep, real CSV import → Lines grid, adapter sniffing, 409 preview contract, backup zip. Run: node scripts/e2e.js (server up; --executable for a custom chrome).
 
 ## Voicebox parity audit — 2026-06-11 (see docs/VOICEBOX_PARITY.md)
 

@@ -49,7 +49,7 @@ Register both in `invoke_handler!` alongside (or replacing) the legacy install c
 
 ### 2. Point `services/render.js` at JustVoice's endpoints
 
-**File**: `justwrite-app/src/renderer/src/services/render.js` (the existing render-driving code).
+**File**: `justwrite-app/src/services/render.js` (the existing render-driving code).
 
 Replace the legacy server URLs with JustVoice's. Add a config item to JustWrite settings for the JustVoice server URL (default `http://127.0.0.1:17494`).
 
@@ -92,7 +92,7 @@ When JustWrite identifies which character speaks a paragraph, also write the cor
 ### 4. Add JustVoice server URL config to JustWrite settings
 
 ```js
-// justwrite-app/src/renderer/src/stores/settings.js
+// justwrite-app/src/stores/settings.js
 {
   justvoice: {
     serverUrl: "http://127.0.0.1:17494",
@@ -130,7 +130,7 @@ When JustWrite identifies which character speaks a paragraph, also write the cor
 
 ## Open question — JustWrite book export schema
 
-JustVoice's `JustWriteBookImport` Pydantic model in `projects_api.py` is a reasonable guess at the export shape. Before the spike, look at JustWrite's actual export code (under `justwrite-app/src/renderer/src/services/export/*`) and adjust the Pydantic model + sample JSON if the field names don't match.
+JustVoice's `JustWriteBookImport` Pydantic model in `projects_api.py` is a reasonable guess at the export shape. Before the spike, look at JustWrite's actual export code (under `justwrite-app/src/services/export/*`) and adjust the Pydantic model + sample JSON if the field names don't match.
 
 ## When this lands
 

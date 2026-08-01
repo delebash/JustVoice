@@ -8,7 +8,7 @@
 //   - Sibling variant is unaffected (C1 still holds).
 
 import { chromium } from "playwright";
-import { chromeLaunchOptions } from "./lib/smoke-common.mjs";
+import { chromeLaunchOptions } from "./lib/smoke-common.js";
 import { mkdirSync } from "node:fs";
 
 const BASE = process.env.JV_BASE || "http://127.0.0.1:8762";

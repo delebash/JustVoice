@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// verify-dialogs.mjs — behavioral verification of the library editor
+// verify-dialogs.js — behavioral verification of the library editor
 // dialogs (Personas / Render presets / Lexicons) by driving the REAL UI
 // in a headless browser. This is the standing check for these dialogs:
 // it asserts the agreed contract — create opens the editor DIRECTLY (no
@@ -11,12 +11,12 @@
 // Run it against a running server:
 //   1. cd server && JUSTVOICE_DATA_DIR=/tmp/jv-verify justvoice-server serve \
 //        --host 127.0.0.1 --port 8745
-//   2. JV_BASE=http://127.0.0.1:8745 node scripts/verify-dialogs.mjs
+//   2. JV_BASE=http://127.0.0.1:8745 node scripts/verify-dialogs.js
 //
 // Env: JV_BASE (server URL), JV_CHROME (chromium path), JV_SHOTS (screenshot dir).
 
 import { chromium } from "playwright";
-import { chromeLaunchOptions } from "./lib/smoke-common.mjs";
+import { chromeLaunchOptions } from "./lib/smoke-common.js";
 import { mkdirSync } from "node:fs";
 
 const BASE = process.env.JV_BASE || "http://127.0.0.1:8745";

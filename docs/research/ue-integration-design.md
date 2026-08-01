@@ -119,5 +119,5 @@ Stable fields: `persona_id`, `persona_name`, `block_id`, `line_text`. Everything
 
 - Plan: `~/.claude/plans/1-what-are-the-magical-scone.md`
 - Game-flow walkthrough: plan Q2 walkthrough section
-- Studio Render Tab: `src/renderer/src/views/StudioView.vue` Render tab
+- Studio Render Tab: `src/views/StudioView.vue` Render tab
 - CONTRACT.md: HTTP boundary between JustVoice and external consumers

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 //
-// verify-no-fakes.mjs — asserts the "coming soon"-gated affordances are
+// verify-no-fakes.js — asserts the "coming soon"-gated affordances are
 // genuinely inert (disabled, no fake toast), so the UI never claims an
 // action it can't perform. Covers the item-4 fakes: Compare (Refresh /
 // Bulk QC), Captures (Record / Hotkey Change). Voices inspector buttons
@@ -8,10 +8,10 @@
 // by build + static disabled markup, not here.
 //
 //   cd server && JUSTVOICE_DATA_DIR=/tmp/jv-vX justvoice-server serve --host 127.0.0.1 --port 8752 &
-//   JV_BASE=http://127.0.0.1:8752 node scripts/verify-no-fakes.mjs
+//   JV_BASE=http://127.0.0.1:8752 node scripts/verify-no-fakes.js
 
 import { chromium } from "playwright";
-import { chromeLaunchOptions } from "./lib/smoke-common.mjs";
+import { chromeLaunchOptions } from "./lib/smoke-common.js";
 import { mkdirSync } from "node:fs";
 
 const BASE = process.env.JV_BASE || "http://127.0.0.1:8752";

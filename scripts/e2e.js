@@ -4,7 +4,7 @@
 //
 // Usage:
 //   1. cd server && justvoice-server serve     (separate terminal)
-//   2. node scripts/e2e.mjs [--executable /path/to/chrome]
+//   2. node scripts/e2e.js [--executable /path/to/chrome]
 //
 // What it covers (no TTS/LLM models needed — those paths assert their
 // graceful-degradation contracts instead):

@@ -11,7 +11,7 @@
 // translation), kept as the single, documented boundary the shared UI calls.
 //
 // `api` is the Pinia api store ({ get, post, patch, put, del } over request).
-// Inject a stub with the same surface to unit-test (scripts/verify-llm-backend.mjs).
+// Inject a stub with the same surface to unit-test (scripts/verify-llm-backend.js).
 
 function providerFromApi(p) {
   return {

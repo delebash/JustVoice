@@ -45,13 +45,13 @@ The Playwright headless smoke is the gate for any renderer or GUI change:
 ```bash
 justvoice-server serve --host 127.0.0.1 --port 8741   # background
 npm run build:vite
-node scripts/smoke.mjs                                 # drives every view, asserts zero JS errors
+node scripts/smoke.js                                  # drives every view, asserts zero JS errors
 ```
 
-`scripts/smoke_gui.mjs` screenshots tabs. `e2e/` (tauri-driver against the built binary) is the
+`scripts/smoke_gui.js` screenshots tabs. `e2e/` (tauri-driver against the built binary) is the
 packaged-app check, not the quick gate. `JV_BASE` overrides the base URL.
 
-**Browser lookup lives in one place — `scripts/lib/smoke-common.mjs`.** Import `findChrome()` or
+**Browser lookup lives in one place — `scripts/lib/smoke-common.js`.** Import `findChrome()` or
 `chromeLaunchOptions()` from it; never re-fork the lookup and never hardcode a browser path. It
 probes `/opt/pw-browsers` (the dev container's prebuilt browsers), `~/.cache/ms-playwright` and
 `%LOCALAPPDATA%\ms-playwright`, across Linux, Windows and macOS layouts, skips `headless_shell`
@@ -84,8 +84,8 @@ not. All eight now import the shared resolver.
 | Audio analyzer, WAV math, mastering | `server/justvoice/audio/`, `mastering.py` |
 | API endpoints | `server/justvoice/api/<area>_api.py` |
 | Request/response shapes | `server/justvoice/models.py` |
-| UI components and views | `src/renderer/src/components/`, `views/` |
-| Pinia stores (api, toasts, tasks) | `src/renderer/src/stores/` |
+| UI components and views | `src/components/`, `views/` |
+| Pinia stores (api, toasts, tasks) | `src/stores/` |
 | Desktop-only concerns (file picker, OS paths) | `src-tauri/src/lib.rs` |
 
 Renderer/server are larger here than in JustWrite, and a few stores are domain-rich (engines,

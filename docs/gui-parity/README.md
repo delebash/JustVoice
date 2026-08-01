@@ -41,5 +41,5 @@ element-by-element — next pass.
 | Engines (both tabs) | (session screenshots) | ✅ | rebuilt + provider form + merged rows, this session |
 | Settings · AI features | (session screenshots) | ✅ | rebuilt to contract this session |
 
-Regeneration: `node scripts/parity-cap.mjs <mockHash> <appHash> <outPrefix> [projectLabel] [extra]`
+Regeneration: `node scripts/parity-cap.js <mockHash> <appHash> <outPrefix> [projectLabel] [extra]`
 (script at repo root; server running; chromium at /opt/pw-browsers).

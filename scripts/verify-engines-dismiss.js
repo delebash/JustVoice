@@ -3,7 +3,7 @@
 // 2026-06-15 with screenshot: FAILED strip stuck with no way to clear).
 
 import { chromium } from "playwright";
-import { chromeLaunchOptions } from "./lib/smoke-common.mjs";
+import { chromeLaunchOptions } from "./lib/smoke-common.js";
 
 const BASE = process.env.JV_BASE || "http://127.0.0.1:8763";
 

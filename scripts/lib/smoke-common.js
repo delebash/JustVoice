@@ -1,7 +1,7 @@
 // Shared browser lookup for every JV script that drives the renderer with Playwright.
 //
 // WHY this exists: until 2026-07-29 each script carried its own copy, and every copy
-// looked in Linux locations only — `smoke.mjs` scanned `/opt/pw-browsers` and
+// looked in Linux locations only — `smoke.js` scanned `/opt/pw-browsers` and
 // `~/.cache/ms-playwright` for `<dir>/chrome-linux/chrome`, and the seven verify/parity
 // scripts hardcoded `/opt/pw-browsers/chromium-1194/chrome-linux/chrome` outright, pinned
 // to a browser version. On Windows, Playwright installs to

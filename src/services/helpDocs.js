@@ -8,15 +8,15 @@
 //
 // In-app help docs loader.
 //
-// docs/*.md and docs/toc.json live at the repo root (one level above
-// the vite root, `src/renderer/`). The TOC is a small JSON import; the
-// markdown is loaded LAZILY (import.meta.glob without `eager`) — a doc's
-// content is fetched only when its Help drawer opens, not bundled into /
-// fetched on the boot path. Loaded docs are cached for the session.
+// docs/*.md and docs/toc.json live at the repo root, which is also the vite
+// root. The TOC is a small JSON import; the markdown is loaded LAZILY
+// (import.meta.glob without `eager`) — a doc's content is fetched only when
+// its Help drawer opens, not bundled into / fetched on the boot path.
+// Loaded docs are cached for the session.
 
-import HELP_TOC_DATA from "../../../../docs/toc.json";
+import HELP_TOC_DATA from "../../docs/toc.json";
 
-const loaders = import.meta.glob("../../../../docs/*.md", {
+const loaders = import.meta.glob("../../docs/*.md", {
   query: "?raw",
   import: "default",
 });

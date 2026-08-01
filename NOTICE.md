@@ -40,7 +40,7 @@ JustVoice itself is free software, but a few bundled engines ship model weights 
 
 TADA is built on Meta Llama 3.2. The Llama 3.2 Community License §1.b requires that any product or service built using Llama-derivative models display **"Built with Llama"** prominently in the user interface AND include the same notice in any associated documentation. The 700M MAU threshold in §2 is a separate clause that doesn't apply to JustVoice's distribution model.
 
-JustVoice surfaces the "Built with Llama" notice on the Engines tab when TADA is selected (see `src/renderer/src/views/EnginesView.vue` license row; data driven by `WEIGHTS_LICENSE` + `ATTRIBUTION` fields on the engine manifest). End users who ship audiobooks, podcasts, or game audio produced with TADA must reproduce the same attribution in their published work's credits.
+JustVoice surfaces the "Built with Llama" notice on the Engines tab when TADA is selected (see `src/views/EnginesView.vue` license row; data driven by `WEIGHTS_LICENSE` + `ATTRIBUTION` fields on the engine manifest). End users who ship audiobooks, podcasts, or game audio produced with TADA must reproduce the same attribution in their published work's credits.
 
 ---
 

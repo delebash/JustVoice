@@ -106,5 +106,5 @@ None of these are on the v1 horizon.
 - Plan: `~/.claude/plans/1-what-are-the-magical-scone.md` (locked decisions section)
 - Block schema: `server/justvoice/database/models.py` (around line 206)
 - project_type enum: `server/justvoice/database/models.py` `Project.project_type` column
-- `useCopy()` mapping: `src/renderer/src/services/copy.js`
-- Sidebar gating (Phase 1 / Slice 5): `src/renderer/src/App.vue` `visibleFor` per-tab
+- `useCopy()` mapping: `src/services/copy.js`
+- Sidebar gating (Phase 1 / Slice 5): `src/App.vue` `visibleFor` per-tab

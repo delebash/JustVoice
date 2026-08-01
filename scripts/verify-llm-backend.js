@@ -6,10 +6,10 @@
 // camelCase-NATIVE (no snake aliases), so provider / feature-pin / detect-local
 // shapes are camelCase on BOTH sides (the usage ledger stays snake — out of
 // the camelCase rewrite scope).
-//   node scripts/verify-llm-backend.mjs
+//   node scripts/verify-llm-backend.js
 import assert from "node:assert/strict";
 
-import { createJustVoiceBackend } from "../src/renderer/src/services/llmBackend.js";
+import { createJustVoiceBackend } from "../src/services/llmBackend.js";
 
 function makeApi(handler) {
   const calls = [];

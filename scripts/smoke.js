@@ -9,7 +9,7 @@
 // Usage:
 //   1. Start the server:   justvoice-server serve --host 127.0.0.1 --port 8741
 //   2. Build the renderer: npm run build:vite
-//   3. Run:                node scripts/smoke.mjs
+//   3. Run:                node scripts/smoke.js
 //
 // Env overrides:
 //   JV_BASE    base URL of the running server (default http://127.0.0.1:8741/)
@@ -20,7 +20,7 @@
 // it can gate CI / a pre-merge check.
 
 import { createRequire } from "node:module";
-import { findChrome } from "./lib/smoke-common.mjs";
+import { findChrome } from "./lib/smoke-common.js";
 
 const require = createRequire(import.meta.url);
 // playwright is a CJS package; import via require to get { chromium }.
