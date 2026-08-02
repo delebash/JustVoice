@@ -57,6 +57,7 @@ def run_migrations(engine) -> None:
     _migrate_blocks_extraction_telemetry(engine, inspector, tables)
     _migrate_mcp_bindings_persona(engine, inspector, tables)
     _migrate_captures_pinned(engine, inspector, tables)
+    _migrate_rename_jv_feature_prompts(engine, inspector, tables)
 
 
 # ── helpers ───────────────────────────────────────────────────────────────
@@ -322,3 +323,21 @@ def _migrate_mcp_bindings_persona(engine, inspector, tables: set[str]) -> None:
         _add_column(engine, "mcp_bindings", "default_engine VARCHAR", "default_engine")
     if "last_seen_at" not in columns:
         _add_column(engine, "mcp_bindings", "last_seen_at DATETIME", "last_seen_at")
+
+
+def _migrate_rename_jv_feature_prompts(engine, inspector, tables) -> None:
+    """feature_prompts -> jv_feature_prompts (2026-08-01, convergence part 2).
+
+    The shared LLM stack (install_llm) owns a `feature_prompts` table with a
+    DIFFERENT schema (json_mode/json_schema; tunables in engine presets). JV's
+    own prompt table moves aside so both systems keep their rows — including a
+    user's Lab edits — until part 3 merges them. Idempotent: only fires when
+    the old name exists in JV's shape (has `temperature`, lacks `json_mode`);
+    a table already renamed, or already the SHARED shape, is left alone."""
+    if "feature_prompts" not in tables or "jv_feature_prompts" in tables:
+        return
+    cols = _get_columns(inspector, "feature_prompts")
+    if "temperature" not in cols or "json_mode" in cols:
+        return  # the shared stack's table (or unknown) — not ours to touch
+    with engine.begin() as conn:
+        conn.exec_driver_sql("ALTER TABLE feature_prompts RENAME TO jv_feature_prompts")

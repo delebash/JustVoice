@@ -114,16 +114,9 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 
     _register_existing_engines(state, data_dir)
     _register_external_engines(state)
-    # Phase 2 / Slice 3 — register LLM providers from settings.engines.llm[].
-    from llm_runner.llm import load_from_configs
-
-    load_from_configs(state.settings.get().engines.llm)
-
-    # Bundled local LLM (qwen3-llm managed engine) — registered after the
-    # settings providers so the no-pin fallback prefers an explicit config.
-    from .engines.llm.local_managed import register_local_adapter
-
-    register_local_adapter()
+    # LLM provider REGISTRY boot moved below install_llm (convergence part 2,
+    # 2026-08-01): providers live in the shared DB store now, which does not
+    # exist until install_llm wires storage. See the mount block.
 
     settings = state.settings.get()
     app = FastAPI(
@@ -188,16 +181,48 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(engines_models_api.router)
     app.include_router(engine_sources_api.router)
     app.include_router(llm_runner_router)
-    # Shared LLM routers (the same JustWrite will mount): storage-free
-    # endpoints (classify-tier / ai-usage / ping / models) + the provider-CRUD
-    # router backed by JV's settings-backed ProviderStore.
-    from llm_runner.llm.api import router as llm_shared_api_router
-    from llm_runner.llm.provider_api import make_provider_router
+    # THE SHARED STACK, ONE CALL (convergence part 2, 2026-08-01). This replaces
+    # the à-la-carte mounts JV carried since the AI-stack lift — the shared api
+    # router + a provider router over JV's own settings-backed store — with the
+    # same install_llm JustWrite boots through: LLM tables in JV's SQLite,
+    # DB-backed provider CRUD, routing/presets/tunes/knob-catalog surface, the
+    # DB usage sink, and the bundled runner wired to the DB catalog (data under
+    # <data_dir>/ai-cache). feature_prompts stays {} — JV's per-feature prompts
+    # live in its OWN system (jv_feature_prompts + ai_prompts_api, mounted BELOW
+    # install_llm's routers but registered FIRST for /v1/ai/prompts — see the
+    # early mount right above install_llm). Merging that system into the shared
+    # prompt/preset model is convergence part 3.
+    from llm_runner.llm import install_llm, load_from_configs, stores
+    from llm_runner.llm.seed import seed_llm
 
-    from .engines.llm.provider_store import get_provider_store
+    from .database import session as _db_session
+    from .engines.llm.config import FEATURE_CATALOG
+    from .engines.llm.migrate_providers import migrate_settings_providers_to_db
 
-    app.include_router(llm_shared_api_router)
-    app.include_router(make_provider_router(get_provider_store))
+    # JV's OWN prompt editor keeps its path: FastAPI serves the FIRST-registered
+    # match, and install_llm mounts the shared /v1/ai/prompts right after this.
+    app.include_router(ai_prompts_api.router)
+
+    install_llm(
+        app,
+        engine=_db_session.engine,
+        session_factory=_db_session.SessionLocal,
+        feature_catalog=FEATURE_CATALOG,
+        feature_prompts={},
+        data_dir=data_dir,
+    )
+    # One-time settings→DB provider migration (idempotent by id), then the
+    # shared seed (insert-if-missing), then the registry boots FROM THE DB —
+    # the exact order JustWrite uses, so `registered` flags are live from boot.
+    migrate_settings_providers_to_db(state.settings.get())
+    seed_llm()
+    load_from_configs(stores.get_provider_store().list())
+
+    # Bundled local LLM (qwen3-llm managed engine) — registered after the DB
+    # providers so the no-pin fallback prefers an explicit config.
+    from .engines.llm.local_managed import register_local_adapter
+
+    register_local_adapter()
     app.include_router(generate_api.router)
     app.include_router(render_chapter_api.router)
     app.include_router(analyzer_api.router)
@@ -231,7 +256,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(effect_presets_api.router)
     app.include_router(llm_roles_api.router)
     app.include_router(feature_pins_api.router)
-    app.include_router(ai_prompts_api.router)
     app.include_router(prefs_api.router)
     app.include_router(extraction_api.router)
     app.include_router(smart_assign_api.router)

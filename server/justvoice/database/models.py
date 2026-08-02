@@ -497,11 +497,20 @@ class FeaturePrompt(Base):
     time — see docs/plans/2026-06-21-feature-prompts-db-seed.md).
 
     `key` is the feature/action id (e.g. "smart_assign", "speaker_attribution.
-    guided"); `feature` is the routing key for pins/roles/usage. `system` +
+    guided"); `feature` is the routing key for pins/usage. `system` +
     `user_template` carry the prompt text; `temperature`/`think` are per-feature
-    defaults. `built_in` marks a seeded row (so the Lab can offer "reset")."""
+    defaults. `built_in` marks a seeded row (so the Lab can offer "reset").
 
-    __tablename__ = "feature_prompts"
+    RENAMED `feature_prompts` -> `jv_feature_prompts` (2026-08-01, convergence
+    part 2): install_llm now creates the SHARED stack's `feature_prompts` table
+    (a different schema — tunables live in engine presets there) in the same
+    SQLite file, and two ORM models fighting over one table name produced
+    `no such column: feature_prompts.json_mode` 500s. JV's prompt system keeps
+    working under its own name; MERGING it into the shared prompt/preset model
+    (6 call-sites, per-tier keys, per-row temperature/think -> presets) is
+    convergence part 3."""
+
+    __tablename__ = "jv_feature_prompts"
 
     key = Column(String, primary_key=True)
     feature = Column(String, nullable=False, default="")

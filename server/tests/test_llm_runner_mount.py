@@ -39,13 +39,13 @@ def test_runner_router_mounted_and_camelcase(client):
     r = client.get("/v1/llm-runner/models")
     assert r.status_code == 200
     body = r.json()
-    # HONEST STATE (2026-08-01): JV mounts the router but has NOT wired a catalog
-    # source (no configure_service/install_llm yet) — so the endpoint must SAY so
-    # rather than serve an indistinguishable empty list. Full convergence
-    # (install_llm adoption) flips this to True; when it does, THIS assert flips
-    # with it, deliberately.
-    assert body["catalogWired"] is False
-    assert body["models"] == []
+    # Part 2 of the convergence (install_llm adoption, same session): the catalog
+    # is WIRED to the shared DB store now, and the shared seed populates it — so
+    # the runner has real models to offer. (This assert read `is False` for the
+    # few hours between part 1 and part 2, deliberately: the unwired state had to
+    # be visible before it could be fixed.)
+    assert body["catalogWired"] is True
+    assert len(body["models"]) > 0
 
 
 def test_hardware_endpoint_mounted_and_camelcase(client):
