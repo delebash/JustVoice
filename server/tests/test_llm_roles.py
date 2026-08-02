@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: MIT
-"""AI-features backend — roles, production configs, dispatch precedence,
-manifest kinds, per-variant on_disk (engines + AI-features redesign)."""
+"""AI-features backend — recommendations, production configs, dispatch precedence,
+manifest kinds, per-variant on_disk (engines + AI-features redesign).
+
+The persisted Quick/Accuracy ROLES are gone (2026-08-01, full-convergence ruling —
+the shared package deleted the concept with 7232214). The precedence test below
+asserts the CURRENT shared chain: production config → explicit pin → prefer-local →
+first adapter. The file keeps its name because /v1/llm-roles/recommendations still
+exists (the UI path name survives)."""
 
 from __future__ import annotations
 
@@ -47,38 +53,46 @@ def _settings():
     return get_state(), get_state().settings.get()
 
 
-def test_dispatch_precedence_role_then_config(app_state) -> None:
+def test_dispatch_precedence_config_pin_local_first(app_state) -> None:
+    """The CURRENT shared chain, no roles: production config → explicit pin →
+    prefer-local → first registered adapter."""
     from llm_runner.llm.dispatch import resolve_pin
-    from justvoice.models import LLMRolesSettings, LLMRoleTarget, ProductionConfig
+
+    from justvoice.models import FeaturePinConfig, ProductionConfig
 
     state, settings = _settings()
 
-    # 4. DEFAULT_FEATURE_ROLES: speaker_attribution -> accuracy role
-    settings.engines.llm_roles = LLMRolesSettings(
-        quick=LLMRoleTarget(providerId="prov-fast", model="qwen3:0.6b"),
-        accuracy=LLMRoleTarget(providerId="prov-big", model="qwen3:14b"),
-    )
+    # 4. nothing configured → first registered adapter. (speaker_attribution is in
+    # PREFER_LOCAL_FEATURES but no "local-llamacpp" adapter is registered here, so
+    # the prefer-local step is a no-op and it also falls through to first.)
+    settings.engines.feature_pins = []
+    settings.engines.production_configs = []
     state.settings.set(settings)
-    adapter, model, _tier = resolve_pin(llm_config(settings), "speaker_attribution")
-    assert (adapter.provider_id, model) == ("prov-big", "qwen3:14b")
-    adapter, model, _tier = resolve_pin(llm_config(settings), "refine")
-    assert (adapter.provider_id, model) == ("prov-fast", "qwen3:0.6b")
+    adapter, _model, _tier = resolve_pin(llm_config(settings), "refine")
+    assert adapter.provider_id == "prov-big"
+    adapter, _model, _tier = resolve_pin(llm_config(settings), "speaker_attribution")
+    assert adapter.provider_id == "prov-big"
 
-    # 3. pin.role overrides the default role map
-    from justvoice.models import FeaturePinConfig
+    # 3. prefer-local routes to the built-in runner WHEN it is registered.
+    reg = __import__("llm_runner.llm", fromlist=["get_llm_registry"]).get_llm_registry()
+    reg.register(FakeAdapter("local-llamacpp", "gemma-4-12b"))
+    try:
+        adapter, model, _ = resolve_pin(llm_config(settings), "speaker_attribution")
+        assert (adapter.provider_id, model) == ("local-llamacpp", "gemma-4-12b")
+        # …and only for the features that opted in.
+        adapter, _model, _ = resolve_pin(llm_config(settings), "refine")
+        assert adapter.provider_id == "prov-big"
+    finally:
+        reg._adapters.pop("local-llamacpp", None)
 
-    settings.engines.feature_pins = [FeaturePinConfig(feature="speaker_attribution", role="quick")]
-    adapter, model, _ = resolve_pin(llm_config(settings), "speaker_attribution")
-    assert adapter.provider_id == "prov-fast"
-
-    # 2. explicit pin beats role
+    # 2. explicit pin beats prefer-local and first.
     settings.engines.feature_pins = [
         FeaturePinConfig(feature="speaker_attribution", providerId="prov-big", model="qwen3:8b")
     ]
     adapter, model, _ = resolve_pin(llm_config(settings), "speaker_attribution")
     assert (adapter.provider_id, model) == ("prov-big", "qwen3:8b")
 
-    # 1. active production config beats everything
+    # 1. active production config beats everything.
     settings.engines.production_configs = [
         ProductionConfig(
             feature="speaker_attribution", name="14b-twopass-v3",

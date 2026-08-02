@@ -2,39 +2,28 @@
 """JustVoice's LLM config — the boundary between JV's settings and the
 shared `llm_runner.llm` dispatch.
 
-This is NOT a forwarding shim (RULE #8). It holds the two genuinely
+This is NOT a forwarding shim (RULE #8). It holds the genuinely
 JustVoice-specific things the shared dispatch needs and which cannot live
-in the shared package:
+in the shared package: the mapping from JV's settings tree
+(`settings.engines.*`) to the shared `LLMConfig` contract, plus which JV
+features prefer the built-in local runner.
 
-  1. JV's **feature catalog** → default role (which features exist and
-     whether each rides Quick or Accuracy). JustWrite has a different
-     catalog; this is the per-app data the shared dispatch is parameterized on.
-  2. The **mapping** from JV's settings tree (`settings.engines.*`) to the
-     shared `LLMConfig` contract.
+REALIGNED 2026-08-01 (full-convergence ruling). The old version passed
+`llm_roles=` and `default_feature_roles=` — fields the shared `LLMConfig`
+deleted with the roles concept (`7232214`) — so every construction here was
+a runtime TypeError, not just a stale import: JV's whole dispatch path was
+dead, silently, because nothing ran its suite. The shared precedence is now
+production-config → explicit pin → prefer-local → first adapter, and this
+mapper passes exactly the fields that chain reads.
 
-JustWrite has its own equivalent of this file (its catalog + its
-settings→LLMConfig mapping). Everything else — adapters, registry,
-tiers, usage, the dispatch logic itself — is the single shared
-implementation in `llm_runner.llm`.
+JustWrite has its own equivalent (`build_llm_config` over the shared
+stores). JV still reads providers/pins from its settings tree; moving them
+into the shared DB stores is the remaining convergence step.
 """
 
 from __future__ import annotations
 
 from llm_runner.llm import LLMConfig
-
-# JustVoice feature catalog → default role (the two-speed pattern).
-# Latency-sensitive interactive features ride Quick; accuracy-critical
-# async features ride Accuracy. Used only when no production config / pin.
-DEFAULT_FEATURE_ROLES: dict[str, str] = {
-    "refine": "quick",
-    "compose": "quick",
-    "persona_rewrite": "quick",
-    "voice_gender": "quick",
-    "speaker_attribution": "accuracy",
-    "smart_assign": "accuracy",
-    "show_notes": "accuracy",
-    "render_preset_suggest": "accuracy",
-}
 
 # Features that prefer the built-in llama.cpp runner when nothing more
 # specific is configured (privacy-sensitive, accuracy-critical work).
@@ -48,9 +37,7 @@ def llm_config(settings) -> LLMConfig:
     return LLMConfig(
         providers=list(getattr(eng, "llm", []) or []),
         feature_pins=list(getattr(eng, "feature_pins", []) or []),
-        llm_roles=getattr(eng, "llm_roles", None),
         production_configs=list(getattr(eng, "production_configs", []) or []),
-        default_feature_roles=DEFAULT_FEATURE_ROLES,
         prefer_local_features=PREFER_LOCAL_FEATURES,
         local_runner_provider_id=LOCAL_RUNNER_PROVIDER_ID,
     )

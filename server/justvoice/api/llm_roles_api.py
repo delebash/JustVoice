@@ -1,10 +1,13 @@
 # SPDX-License-Identifier: MIT
 """/v1/llm-roles + /v1/production-configs — the AI-features page backend.
 
-Roles themselves persist via PATCH /v1/settings (engines.llm_roles); this
-module serves the RECOMMENDATIONS (so the UI never asks "which model is
-fast?" cold) and the production-config lifecycle (Speaker Lab promote /
-revert). See docs/plans/2026-06-11-engines-ai-features-implementation.md.
+The persisted Quick/Accuracy roles are GONE (2026-08-01, full-convergence
+ruling — the shared package deleted the concept; features resolve
+production-config → pin → prefer-local → first). What remains here:
+the RECOMMENDATIONS endpoint (so the UI never asks "which model is fast?"
+cold — the /v1/llm-roles path name survives for the UI's sake) and the
+production-config lifecycle (Speaker Lab promote / revert).
+See docs/plans/2026-06-11-engines-ai-features-implementation.md.
 """
 
 from __future__ import annotations
@@ -12,11 +15,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import APIRouter
+from llm_runner.llm import get_llm_registry, spec_for
 from pydantic import BaseModel
 
 from ..app_state import get_state
-from llm_runner.llm import get_llm_registry
-from llm_runner.llm import spec_for
 from ..errors import not_found
 from ..models import ProductionConfig
 

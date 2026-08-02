@@ -13,20 +13,22 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
-
-# LLM provider / feature-pin / role / production-config models are the
-# SHARED contract — single-sourced in llm_runner.llm.schema (2026-06-21
-# AI-stack convergence) and reused here so JV settings + the shared dispatch
-# never drift. (Previously duplicated verbatim in this file.) LLMRoleTarget is
-# re-exported for justvoice.models consumers (tests, settings) — hence noqa.
-from llm_runner.llm.schema import (  # noqa: F401
+# LLM provider / feature-pin / production-config models are the SHARED
+# contract — single-sourced in llm_runner.llm.schema (2026-06-21 AI-stack
+# convergence) and reused here so JV settings + the shared dispatch never
+# drift. (Previously duplicated verbatim in this file.)
+# LLMRolesSettings/LLMRoleTarget are GONE (2026-08-01, full-convergence
+# ruling): the shared package deleted the roles concept with 7232214 —
+# features resolve production-config → pin → prefer-local → first — and JV
+# kept importing the deleted names, which is what broke its server for
+# weeks. scripts/check-consumers.py in just-llm-runner now catches that
+# class of break at the deletion site.
+from llm_runner.llm.schema import (
     FeaturePinConfig,
     LLMProviderConfig,
-    LLMRolesSettings,
-    LLMRoleTarget,
     ProductionConfig,
 )
+from pydantic import BaseModel, Field
 
 # ─── Common / system ────────────────────────────────────────────────────
 
@@ -285,9 +287,10 @@ class EnginesSettings(BaseModel):
     llm: list[LLMProviderConfig] = []
     # Phase 2 / Slice 7 — pin LLM features to specific provider+model+tier.
     feature_pins: list[FeaturePinConfig] = []
-    # AI-features redesign (docs/plans/2026-06-11): the Quick/Accuracy pair
-    # + per-feature frozen configs promoted from Labs.
-    llm_roles: LLMRolesSettings = LLMRolesSettings()
+    # `llm_roles` (the Quick/Accuracy pair) was deleted 2026-08-01 with the
+    # shared roles concept. A stored settings.json still carrying the key is
+    # harmless: pydantic ignores unknown fields on load and the next save
+    # writes the model without it.
     production_configs: list[ProductionConfig] = []
 
 

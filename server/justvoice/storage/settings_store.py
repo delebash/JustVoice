@@ -30,10 +30,10 @@ _ROW_ID = "singleton"
 
 # ── Legacy LLM-config camelCase migration ────────────────────────────────
 # The shared LLM-config models (llm_runner.llm.schema: LLMProviderConfig /
-# FeaturePinConfig / LLMRoleTarget / ProductionConfig) became camelCase-NATIVE
+# FeaturePinConfig / ProductionConfig) became camelCase-NATIVE
 # on 2026-06-21 — the Python field IS the JSON key, with NO snake_case aliases
 # and no populate_by_name. Settings persisted before that date stored these
-# sections (engines.llm[] / feature_pins[] / llm_roles / production_configs[])
+# sections (engines.llm[] / feature_pins[] / production_configs[])
 # with snake_case keys via the old `model_dump()`. Loading that snake data into
 # the camel-native models would silently DROP the renamed fields (a provider
 # would lose its base_url / api_key / default_model, etc.). This one-time,
@@ -41,6 +41,9 @@ _ROW_ID = "singleton"
 # those LLM sections before validation. Already-camel data passes through
 # untouched (the snake keys simply aren't present). Other settings sections
 # (engines.external[] = TTS, etc.) keep their snake fields and are left alone.
+# (`engines.llm_roles` was migrated here too until 2026-08-01; the roles
+# concept is deleted, the model has no such field, and a stored key is now
+# simply ignored by pydantic — no rename needed for data nothing reads.)
 
 # Per-section snake→camel rename maps. Only these keys are renamed; anything
 # else in a row is preserved verbatim.
@@ -53,7 +56,6 @@ _LLM_PROVIDER_RENAMES = {
     "timeout_seconds": "timeoutSeconds",
 }
 _FEATURE_PIN_RENAMES = {"provider_id": "providerId"}
-_ROLE_TARGET_RENAMES = {"provider_id": "providerId"}
 _PRODUCTION_CONFIG_RENAMES = {
     "provider_id": "providerId",
     "system_prompt": "systemPrompt",
@@ -90,13 +92,6 @@ def _migrate_llm_camel(data: dict) -> dict:
     for pin in engines.get("feature_pins") or []:
         if isinstance(pin, dict):
             _rename_keys(pin, _FEATURE_PIN_RENAMES)
-
-    roles = engines.get("llm_roles")
-    if isinstance(roles, dict):
-        for key in ("quick", "accuracy"):
-            target = roles.get(key)
-            if isinstance(target, dict):
-                _rename_keys(target, _ROLE_TARGET_RENAMES)
 
     for cfg in engines.get("production_configs") or []:
         if isinstance(cfg, dict):
@@ -204,7 +199,7 @@ class SettingsStore:
         Deep-merges dicts so `PATCH {"engines": {"external": [...]}}` only
         touches `engines.external` — a shallow top-level assignment used to
         replace the WHOLE engines subtree with section defaults, wiping
-        sibling state (llm providers, llm_roles, production_configs).
+        sibling state (llm providers, production_configs).
         Lists replace wholesale; only fields the caller actually sent
         (exclude_unset) participate.
         """

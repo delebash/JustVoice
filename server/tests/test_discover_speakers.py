@@ -5,12 +5,10 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
-
 from llm_runner.llm import LLMNotConfiguredError
 
 from justvoice.app import create_app
 from justvoice.extraction.identify import SpeakerCandidate, parse_candidates
-
 
 # ── parser ───────────────────────────────────────────────────────────
 
@@ -75,7 +73,7 @@ def test_discover_501_without_llm(client, monkeypatch):
     Its sibling below forces the LLM path by patching; this forces the other
     side of the same seam, so both are independent of what is installed.
     """
-    import llm_runner.llm.dispatch as dispatch
+    from llm_runner.llm import dispatch
 
     def refuse(*_a, **_kw):
         raise LLMNotConfiguredError("no LLM provider registered")
@@ -201,8 +199,7 @@ def test_detect_local_llm_providers(client, monkeypatch):
 
 
 def test_usage_ledger_records_chat_calls(client, monkeypatch):
-    from llm_runner.llm import TIERS
-    from llm_runner.llm import get_ledger
+    from llm_runner.llm import TIERS, get_ledger
 
     get_ledger().clear()
 
@@ -211,7 +208,10 @@ def test_usage_ledger_records_chat_calls(client, monkeypatch):
         provider_type = "openai-compat"
         default_model = "qwen3:8b"
 
-        def chat(self, messages, *, model, temperature, max_tokens, system, think):
+        def chat(self, messages, *, model, temperature, max_tokens, system, think, **kwargs):
+            # **kwargs: the shared chat() surface grows (extra=, reasoning knobs);
+            # a strict stub signature breaks on every addition — tolerate like a
+            # real adapter does.
             from llm_runner.llm import LLMResponse
 
             return LLMResponse(
@@ -223,7 +223,7 @@ def test_usage_ledger_records_chat_calls(client, monkeypatch):
     # provider resolution there (3-arg shared signature).
     monkeypatch.setattr(
         "llm_runner.llm.dispatch.resolve_pin",
-        lambda config, feature, registry=None: (FakeAdapter(), "qwen3:8b", None),
+        lambda config, feature, registry=None, action=None: (FakeAdapter(), "qwen3:8b", None),
     )
     monkeypatch.setattr(
         "justvoice.extraction.pipeline.resolve_tier", lambda s, f: TIERS["guided"]
@@ -255,7 +255,7 @@ def test_show_notes_501_without_llm_and_works_with_stub(client, monkeypatch):
 
     # Force the no-LLM half. Previously this leaned on the machine having no
     # working LLM, so it silently stopped testing the 501 path once one existed.
-    import llm_runner.llm.dispatch as dispatch
+    from llm_runner.llm import dispatch
 
     def refuse(*_a, **_kw):
         raise LLMNotConfiguredError("no LLM provider registered")
@@ -278,7 +278,7 @@ def test_show_notes_501_without_llm_and_works_with_stub(client, monkeypatch):
         return R()
 
     monkeypatch.setattr("justvoice.api.projects_api.chat", fake_chat, raising=False)
-    import llm_runner.llm.dispatch as dispatch
+    from llm_runner.llm import dispatch
 
     monkeypatch.setattr(dispatch, "chat", fake_chat)
     r = client.post(f"/v1/projects/{pid}/show-notes")

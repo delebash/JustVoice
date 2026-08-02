@@ -3,8 +3,7 @@
 
 Found live 2026-06-11: PATCHing {"engines": {"external": [...]}} (the UI's
 external-TTS save path) replaced the WHOLE engines section with defaults,
-wiping engines.llm (registered LLM providers), llm_roles, and
-production_configs. The store now deep-merges dicts; lists still replace
+wiping engines.llm (registered LLM providers) and production_configs. The store now deep-merges dicts; lists still replace
 wholesale.
 """
 

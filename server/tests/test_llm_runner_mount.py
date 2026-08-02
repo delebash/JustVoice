@@ -24,18 +24,28 @@ def client(tmp_path):
     return TestClient(create_app(data_dir=tmp_path))
 
 
-def test_manifest_endpoint_mounted_and_camelcase(client):
-    r = client.get("/v1/llm-runner/manifest")
+def test_runner_router_mounted_and_camelcase(client):
+    # /v1/llm-runner/manifest is GONE — runner-manifest.json was deleted with A7
+    # ("config is data, it belongs in the DB"); this test asserted the dead route
+    # and passed only while JV's environment froze a pre-A7 llm-runner. The
+    # CURRENT mounted contract: /config serves the engine defaults (camelCase)
+    # and /models serves the catalog view.
+    r = client.get("/v1/llm-runner/config")
     assert r.status_code == 200
     body = r.json()
-    # Shared contract is camelCase (the Vue llm-ui reads the same shape).
-    assert body["schemaVersion"] == 1
-    assert body["llamacpp"]["pinnedBuild"]
-    assert "flagPresets" in body and "vramFit" in body
-    assert "schema_version" not in body
-    # Spawner-relevant flags survive the round-trip.
-    assert "-ngl" in body["flagPresets"]["base"]
-    assert "--spec-type" in body["flagPresets"]["mtp"]
+    assert body["llamacpp"]["pinnedBuild"]  # camelCase — the Vue llm-ui reads this shape
+    assert "pinned_build" not in body.get("llamacpp", {})
+
+    r = client.get("/v1/llm-runner/models")
+    assert r.status_code == 200
+    body = r.json()
+    # HONEST STATE (2026-08-01): JV mounts the router but has NOT wired a catalog
+    # source (no configure_service/install_llm yet) — so the endpoint must SAY so
+    # rather than serve an indistinguishable empty list. Full convergence
+    # (install_llm adoption) flips this to True; when it does, THIS assert flips
+    # with it, deliberately.
+    assert body["catalogWired"] is False
+    assert body["models"] == []
 
 
 def test_hardware_endpoint_mounted_and_camelcase(client):

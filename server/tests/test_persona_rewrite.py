@@ -23,10 +23,9 @@ from types import SimpleNamespace
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from llm_runner.llm import LLMNotConfiguredError, LLMResponse
 
 from justvoice.api import personas_api
-from llm_runner.llm import LLMResponse
-from llm_runner.llm import LLMNotConfiguredError
 from justvoice.models import Persona
 
 
@@ -53,7 +52,7 @@ def rewrite_client(monkeypatch):
         settings=SimpleNamespace(
             get=lambda: SimpleNamespace(
                 engines=SimpleNamespace(
-                    llm=[], feature_pins=[], llm_roles=None, production_configs=[]
+                    llm=[], feature_pins=[], production_configs=[]
                 )
             )
         ),

@@ -2,7 +2,7 @@
 """camelCase-NATIVE LLM-config contract (2026-06-21 AI-stack convergence).
 
 The shared LLM-config models (LLMProviderConfig / FeaturePinConfig /
-LLMRoleTarget / ProductionConfig) have ONE name per field — camelCase — with
+ProductionConfig) have ONE name per field — camelCase — with
 NO snake_case aliases and no populate_by_name. The Python attribute == the
 JSON key == the JS renderer key. These tests lock that single-name contract:
 the field is camel on the model, camel on the wire (/v1/settings emits it
@@ -89,15 +89,16 @@ def test_legacy_snake_settings_row_is_migrated(tmp_path):
     # A pre-2026-06-21 SQLite settings row stored the LLM sections in
     # snake_case. Loading it must rename those keys to camelCase so no field
     # is dropped (a provider keeps its baseUrl / apiKey / defaultModel, the
-    # roles keep providerId, the production config keeps systemPrompt, etc.).
+    # production config keeps systemPrompt, etc.). The legacy llm_roles
+    # section STAYS in the payload deliberately: the roles concept is deleted
+    # (2026-08-01) and the load must TOLERATE the stray key, not migrate it.
     import json
-
-    from justvoice.database import session as _db
-    from justvoice.database.models import SettingsRow
-    from justvoice.storage.settings_store import SettingsStore
 
     # Initialise the DB the same way the app boot does.
     from justvoice.app import create_app
+    from justvoice.database import session as _db
+    from justvoice.database.models import SettingsRow
+    from justvoice.storage.settings_store import SettingsStore
 
     create_app(data_dir=tmp_path)
 
@@ -139,8 +140,8 @@ def test_legacy_snake_settings_row_is_migrated(tmp_path):
     assert prov.embeddingModel == "nomic-embed-text"
     assert prov.timeoutSeconds == 90
     assert s.engines.feature_pins[0].providerId == "ollama-pc"
-    assert s.engines.llm_roles.quick.providerId == "ollama-pc"
-    assert s.engines.llm_roles.accuracy.providerId == "ollama-pc"
+    # The stray legacy llm_roles key was ignored, not resurrected as a field.
+    assert not hasattr(s.engines, "llm_roles")
     pc = s.engines.production_configs[0]
     assert pc.providerId == "ollama-pc"
     assert pc.systemPrompt == "SYS"
@@ -155,14 +156,16 @@ def test_migration_is_idempotent_on_camel_data(tmp_path):
     camel = {
         "engines": {
             "llm": [{"id": "p", "providerType": "openai", "baseUrl": "u"}],
-            "llm_roles": {"quick": {"providerId": "p", "model": "m"}},
+            # legacy roles section: the migration must leave it verbatim (the
+            # concept is deleted; the model ignores the key at validation).
+            "llm_roles": {"quick": {"provider_id": "p", "model": "m"}},
         }
     }
     out = _migrate_llm_camel(json_roundtrip(camel))
     assert out["engines"]["llm"][0]["providerType"] == "openai"
     assert out["engines"]["llm"][0]["baseUrl"] == "u"
     assert "provider_type" not in out["engines"]["llm"][0]
-    assert out["engines"]["llm_roles"]["quick"]["providerId"] == "p"
+    assert out["engines"]["llm_roles"] == {"quick": {"provider_id": "p", "model": "m"}}
 
 
 def json_roundtrip(obj):

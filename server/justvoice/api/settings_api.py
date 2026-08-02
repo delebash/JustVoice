@@ -1,12 +1,14 @@
 """GET/PUT/PATCH /v1/settings — settings read + update.
 
 The nested LLM-config models (`LLMProviderConfig` / `FeaturePinConfig` /
-`LLMRoleTarget` / `ProductionConfig`) are camelCase-NATIVE as of 2026-06-21 —
+`ProductionConfig`) are camelCase-NATIVE as of 2026-06-21 —
 the Python field IS the JSON key, with no snake_case aliases. So this surface
-emits `engines.llm[].providerType`, `engines.llm_roles.quick.providerId`, etc.
+emits `engines.llm[].providerType`, `engines.feature_pins[].providerId`, etc.
 natively (no `response_model_by_alias` needed — there are no aliases to pick
 between), and the renderer reads/writes those sections in camelCase. Non-LLM
 settings sections keep their own (snake) field names unchanged.
+(`engines.llm_roles` no longer exists — the roles concept was deleted
+2026-08-01 with the shared package's full-convergence ruling.)
 """
 
 from __future__ import annotations
