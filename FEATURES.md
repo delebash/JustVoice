@@ -2,7 +2,7 @@
 
 > Comprehensive user-facing guide. For every feature: what it is, when to use it, how to use it, and worked examples. If something is missing, file an issue.
 >
-> For developer/architecture docs see `DESIGN_FREEZE.md`, `CONTRACT.md`, `PHASE_PLAN.md`. For the JustWrite→JustVoice bridge see `PHASE5_JUSTWRITE_INTEGRATION.md`.
+> For developer/architecture docs see `DESIGN_FREEZE.md`, `CONTRACT.md`, `docs/plans/archive/PHASE_PLAN.md`. For the JustWrite→JustVoice bridge see `docs/plans/archive/PHASE5_JUSTWRITE_INTEGRATION.md`.
 
 ## Table of contents
 
@@ -820,7 +820,7 @@ Every numeric value in Settings is **operator-tunable per CLAUDE.md "no hardcode
 
 ## 21. JustWrite integration end-to-end
 
-See `PHASE5_JUSTWRITE_INTEGRATION.md` for the integration-engineer guide. User-facing flow:
+See `docs/plans/archive/PHASE5_JUSTWRITE_INTEGRATION.md` for the integration-engineer guide. User-facing flow:
 
 1. Author writes novel in JustWrite.
 2. JustWrite identifies characters automatically (via `speakerAttribution.js`).

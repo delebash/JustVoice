@@ -17,8 +17,8 @@ The user collected a set of open-source **book → audiobook** converters + **sp
 > The user's note: *"You can also do your own deep research — not limited to these
 > sites; these are just some I found interesting."* So treat the list as seeds, not
 > the whole corpus. The `/deep-research` harness is the tool (see the two LLM-research
-> docs it already produced: `just-llm-runner/docs/plans/2026-06-24-small-vram-multimodel-research.md`
-> and `justwrite-app/docs/plans/2026-06-24-local-model-recommendations.md`).
+> docs it already produced: `just-llm-runner/docs/plans/archive/2026-06-24-small-vram-multimodel-research.md`
+> and `justwrite-app/docs/plans/archive/2026-06-24-local-model-recommendations.md`).
 
 ## Repos to investigate
 > Categories are **inferred from the repo name and have NOT been verified** — confirm

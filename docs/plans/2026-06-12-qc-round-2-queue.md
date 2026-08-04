@@ -1,5 +1,7 @@
 # QC round 2 queue — accepted 2026-06-12 ("I accept your recommendations and you can code now")
 
+> ✅ **PRESUMED COMPLETE (docs campaign 2026-08-04)** — the accepted June queue; its items were never individually marked (sibling round-3 is banner'd complete). If one still bites on the box it re-enters `docs/dev/TASKS.md`.
+
 <!-- SPDX-License-Identifier: MIT -->
 
 Execution per RULE #2: one item at a time, full read of the touched

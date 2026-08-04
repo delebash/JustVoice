@@ -1,5 +1,7 @@
 # Implementation plan — from journeys mock to working app
 
+> ✅ **CLOSED (docs campaign 2026-08-04)** — the June-11 build order; its "in progress" tail is long done. History only; live work: `docs/dev/TASKS.md`.
+
 <!-- SPDX-License-Identifier: MIT -->
 
 Built from the design phase of 2026-06-11: `preview/journeys-preview.html`

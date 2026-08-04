@@ -103,7 +103,7 @@ None of these are on the v1 horizon.
 
 ## Links
 
-- Plan: `~/.claude/plans/1-what-are-the-magical-scone.md` (locked decisions section)
+- Plan: `docs/research/persona-voiceprofile-multiuse-design.md` (locked decisions section)
 - Block schema: `server/justvoice/database/models.py` (around line 206)
 - project_type enum: `server/justvoice/database/models.py` `Project.project_type` column
 - `useCopy()` mapping: `src/services/copy.js`

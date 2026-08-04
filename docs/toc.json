@@ -21,7 +21,6 @@
       { "slug": "generate",           "title": "Generate" },
       { "slug": "chapter",            "title": "Chapter editor" },
       { "slug": "take-versioning",    "title": "Take versioning" },
-      { "slug": "stories",            "title": "Stories timeline" },
       { "slug": "effects",            "title": "Effects chain" },
       { "slug": "mastering",          "title": "Mastering (ACX et al.)" }
     ]

@@ -26,7 +26,9 @@ const require = createRequire(import.meta.url);
 // playwright is a CJS package; import via require to get { chromium }.
 const { chromium } = require("playwright");
 
-const BASE = process.env.JV_BASE || "http://127.0.0.1:8741/";
+// 17494 is JV's real port (src-tauri/src/lib.rs SERVER_PORT); this default said
+// 8741 — a port JV never listens on — until the 2026-08-04 docs campaign.
+const BASE = process.env.JV_BASE || "http://127.0.0.1:17494/";
 
 // Sidebar tabs that should always be reachable for an audiobook project.
 const TABS = [

@@ -1,8 +1,10 @@
 # Plan: JustWrite → JustVoice round-trip — slice 1 (export handshake)
 
+> ⚠️ **STATUS UNKNOWN (docs campaign 2026-08-04)** — "JV side DONE, JW side MISSING"; the JW half lives in the other repo and no status was ever written back. Verify-or-close is tracked in `docs/dev/TASKS.md`.
+
 <!-- SPDX-License-Identifier: MIT -->
 
-Next-horizon item #1 (IMPLEMENTATION_PLAN.md, recorded per user
+Next-horizon item #1 (archive/IMPLEMENTATION_PLAN.md, recorded per user
 request). Audit findings (2026-06-12, file-verified per
 `feedback_upstream_audit_hard_rule`):
 

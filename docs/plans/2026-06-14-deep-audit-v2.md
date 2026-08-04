@@ -1,6 +1,8 @@
 # Deep audit v2 — full re-derivation (2026-06-14)
 
-**SUPERSEDES `2026-06-14-deep-audit.md`.** That pass mixed deep reads
+> ✅ **PRESUMED COMPLETE (docs campaign 2026-08-04)** — 836-line June ledger with DONE sections and no top-level close; unextracted findings were never triaged. A live one re-enters `docs/dev/TASKS.md`.
+
+**SUPERSEDES `archive/2026-06-14-deep-audit.md`.** That pass mixed deep reads
 with grep proxies and declared "complete" prematurely; it missed the
 Preset dialog, non-canonical modal shells, the Lexicon append-only-
 entries gap, and more. **None of its verdicts are trusted here** — every
@@ -107,7 +109,7 @@ is in views that hand-roll instead of using them, not here.
 
 **Task:** complete, full deep audit of the WHOLE app (client + server),
 re-derived from full reads (this v2 doc). User does NOT trust the v1 doc
-(`2026-06-14-deep-audit.md`) — its verdicts were grep/shallow. Run to the
+(`archive/2026-06-14-deep-audit.md`) — its verdicts were grep/shallow. Run to the
 end autonomously; commit per area; don't declare complete until every
 file in the Coverage checklist has a written verdict.
 

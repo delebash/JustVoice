@@ -133,7 +133,7 @@ Why it matters:
 6. **Dialog-only / gender-mapped voicing modes** (audiobook-creator) — simple
    multi-voice options.
 7. **Model recommendations confirmed** — audiobook-creator independently picks
-   Qwen3-30B-A3B for character ID → reinforces `docs/plans/2026-06-24-local-model-recommendations.md`
+   Qwen3-30B-A3B for character ID → reinforces `justwrite-app/docs/plans/archive/2026-06-24-local-model-recommendations.md`
    (A3B MoE for hard structured tasks). Feed into the recommended set.
 
 ## What JV/JW already do as well or better

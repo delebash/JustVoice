@@ -1,5 +1,7 @@
 # Session Handoff — outstanding work (authored 2026-06-16, busy-rubin)
 
+> ⛔ **A JUNE SESSION'S HANDOFF — DO NOT FOLLOW ITS INSTRUCTIONS (banner: docs campaign 2026-08-04).** Its "first 30 minutes" routine, container paths, and in-flight list describe 2026-06-16. The live tracker is `docs/dev/TASKS.md`.
+
 **Master list of everything in flight across JustVoice + JustWrite.** A new
 session should read this AFTER `CLAUDE.md` + `MORNING_RECAP.md`. Detailed
 plans live in the linked `docs/plans/*` files; this is the index + status.

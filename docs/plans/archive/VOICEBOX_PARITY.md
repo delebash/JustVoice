@@ -1,5 +1,7 @@
 # Voicebox parity audit
 
+> ✅ **CLOSED (docs campaign 2026-08-04)** — the 2026-06-11 parity audit against upstream `b35b909`, untouched since Jun 12. Its live residue (the G1-G5 gap list) is carried as an [attributed] line in `docs/dev/TASKS.md`; re-verify before acting.
+
 Audit of JustVoice against upstream voicebox at the pinned commit
 `b35b909` (see `voicebox-pin.txt`; local clone verified at exactly that
 SHA — same code as the v0.5.0 desktop build). Method per

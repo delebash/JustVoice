@@ -1,6 +1,6 @@
 # JustVoice ↔ JustWrite Contract
 
-> Authoritative definition of the boundary between JustVoice (voice production server) and JustWrite (novel writing app). Last revised 2026-06-09 (added profiles + capability manifest + take lineage + 3-tier voice tuning endpoints; see `MORNING_RECAP.md` "2026-06-09 ship list").
+> Authoritative definition of the boundary between JustVoice (voice production server) and JustWrite (novel writing app). Last revised 2026-06-09 (added profiles + capability manifest + take lineage + 3-tier voice tuning endpoints; the "2026-06-09 ship list" it cited lived in the root MORNING_RECAP.md, archived at `docs/plans/2026-07-29-morning-recap-archive.md`).
 
 ## Product split
 

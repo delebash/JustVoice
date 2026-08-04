@@ -45,7 +45,7 @@ Dialogs are always `confirmDialog` / `promptDialog` — never a native dialog.
 
 Born 2026-06-12, after a geometry-only "sweep" missed control-level slop: a sweep that doesn't check
 these checked nothing. When asked to sweep the app, use the canonical method verbatim from
-`docs/plans/2026-06-12-design-conformance-audit.md` §Sweep method — two passes including screenshot
+`docs/plans/archive/2026-06-12-design-conformance-audit.md` §Sweep method — two passes including screenshot
 judgment, modal and data-state coverage, a recorded-exceptions ledger, and findings before fixes.
 
 1. **Booleans** → `UiToggle` (on/off settings) or `UiCheckbox` (multi-select or inline). Never a native checkbox.

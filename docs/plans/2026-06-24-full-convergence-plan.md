@@ -1,11 +1,13 @@
 # Full cross-app convergence plan — server + GUI (2026-06-24)
 
+> ✅ **CLOSED (docs campaign 2026-08-04)** — the master convergence plan; its surviving work is the F-arc in `docs/dev/TASKS.md`.
+
 Scope: **JustVoice (JV)** + **JustWrite (JW)** + the shared packages
 (`@delebash/llm-ui`/`@delebash/ui`, `just-llm-runner`). Goal (user): the two
 apps should be **the same code except necessary domain functionality**, so the
 next app reuses instead of reinvents. This doc is the grounded audit + the
 options + the recommendation. Supersedes the renderer-only
-`2026-06-23-cross-app-shared-ui-audit.md` (that one is now the "renderer kit"
+`archive/2026-06-23-cross-app-shared-ui-audit.md` (that one is now the "renderer kit"
 sub-plan; this is the master).
 
 > Every claim below was read file-by-file this session (not from memory).

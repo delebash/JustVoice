@@ -1,5 +1,7 @@
 # Feature prompts → DB-seeded; server-side assembly; one generic endpoint (2026-06-21)
 
+> ✅ **CLOSED (docs campaign 2026-08-04)** — "done + tested + pushed" server-side per its own words.
+
 **Same file committed in both repos** (JustWrite + JustVoice). **Supersedes the
 earlier draft of this file** (which proposed a shared `PromptStore` package +
 deleting the endpoint — both wrong; see "The decision").
@@ -132,7 +134,7 @@ routing key for pins/roles/usage.
   view is not built yet.
 - **Streaming** (writerAI/rag/characterChat) → `/v1/ai/stream`.
 - **Shared provider GUI (`@delebash/llm-ui`) + JV TTS editor** — the largest
-  remaining track (`2026-06-20-engines-llmui-cutover-boundary.md`); needs visual QC.
+  remaining track (`archive/2026-06-20-engines-llmui-cutover-boundary.md`); needs visual QC.
 
 **Autonomous-limit note:** server-side prompt convergence is tested to a high bar.
 The GUI tracks can only be **smoke-verified** autonomously (routes render + zero JS

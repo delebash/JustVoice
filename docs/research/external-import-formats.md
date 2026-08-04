@@ -120,7 +120,7 @@ Not in scope: Audacity Labels (already supported), SRT (already supported), Just
 
 ## Links
 
-- Plan: `~/.claude/plans/1-what-are-the-magical-scone.md`
+- Plan: `docs/research/persona-voiceprofile-multiuse-design.md`
 - Standard import schema: `server/justvoice/imports/standard_schema.py`
 - Existing adapters: `server/justvoice/imports/adapters/`
 - CONTRACT.md: the external HTTP boundary

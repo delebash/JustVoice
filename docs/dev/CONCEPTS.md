@@ -7,7 +7,7 @@ discussion (2026-06-11). The clickable companion is
 `preview/journeys-preview.html` (12 tabs: the three production journeys,
 First run, Live voice, Fix-it loop, Library & tools, Help, Speaker Lab,
 Proof & QC, Identity flow). Walkthroughs: `docs/journeys/`. Build order:
-`docs/IMPLEMENTATION_PLAN.md`.
+`docs/plans/archive/IMPLEMENTATION_PLAN.md`.
 
 ## 1. One data model, per-kind vocabulary
 

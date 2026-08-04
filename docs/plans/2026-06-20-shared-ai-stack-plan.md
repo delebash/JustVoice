@@ -1,9 +1,11 @@
 # Shared AI stack — JustVoice + JustWrite (+ future apps) — full plan
 
+> ⛔ **NOT AUTHORITATIVE (banner: docs campaign 2026-08-04).** This 832-line plan was superseded by the runner's outstanding master plan (now itself history at `just-llm-runner/docs/plans/2026-07-06-outstanding-master-plan.md`); live open work is per-repo in each `docs/dev/TASKS.md`.
+
 **Authored 2026-06-20 after a RULE #7 deep dive** (read JV, JW, and
 `just-llm-runner` in full + web UX research). This is the authoritative plan; it
-supersedes the per-app-adapter framing in `2026-06-16-thread3-phase2-llm-ui.md`
-and folds in `2026-06-20-engines-llmui-cutover-boundary.md` (kept for its cited
+supersedes the per-app-adapter framing in `archive/2026-06-16-thread3-phase2-llm-ui.md`
+and folds in `archive/2026-06-20-engines-llmui-cutover-boundary.md` (kept for its cited
 per-surface tables). **Same file in both repos.**
 
 ## Principle (RULE #7)

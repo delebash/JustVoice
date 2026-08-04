@@ -25,8 +25,8 @@ Read the docs in this order:
 | **`FEATURES.md`** | **User-facing guide. Read first if you're using the app.** Every feature explained: what it is, when to use it, how to use it, worked examples, troubleshooting. |
 | `DESIGN_FREEZE.md` | Architecture decisions, full data model, complete API surface |
 | `CONTRACT.md` | The JustWrite ↔ JustVoice HTTP boundary contract |
-| `PHASE_PLAN.md` | Build phases 1 → 6 (status of each) |
-| `PHASE5_JUSTWRITE_INTEGRATION.md` | Concrete JustWrite-side edits for the JustWrite → JustVoice audiobook bridge |
+| `docs/plans/archive/PHASE_PLAN.md` | Build phases 1 → 6 (status of each) |
+| `docs/plans/archive/PHASE5_JUSTWRITE_INTEGRATION.md` | Concrete JustWrite-side edits for the JustWrite → JustVoice audiobook bridge |
 | `NOTICE.md` | Third-party attribution (MIT/Apache lifts + Llama 3.2 weights for TADA) |
 | `LICENSES.md` | Dependency license inventory |
 | `MORNING_RECAP.md` | Current build state — what shipped, what's pending |

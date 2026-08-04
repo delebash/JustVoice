@@ -2,7 +2,7 @@
 
 **2026-06-18 (admiring-galileo).** Spans **JustVoice** + **JustWrite**.
 Records a design discussion and the **approved** direction. Partially
-supersedes `2026-06-16-builtin-llm-runner.md` (see end). Android is a
+supersedes `archive/2026-06-16-builtin-llm-runner.md` (see end). Android is a
 **"maybe"**, so we take the lighter path with a clear upgrade trigger.
 
 > **⚠️ AMENDED 2026-06-18 (later) — superseded by §AMENDMENT below.** The
@@ -127,7 +127,7 @@ recorded; implementation not started.
 - **Rust runner (option B):** only if JW must become *strictly*
   Python-free (reverse of the current stance).
 
-## Supersedes in `2026-06-16-builtin-llm-runner.md`
+## Supersedes in `archive/2026-06-16-builtin-llm-runner.md`
 
 - "Rust in JW's shell, NO Python" (§6 Phase 3, §7) — **dropped.** Runner
   is Python; JW lazy-sidecars the same package.

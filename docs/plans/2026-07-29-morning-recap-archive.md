@@ -5,9 +5,19 @@
 
 ---
 
-## ⛔⛔ JV OUTSTANDING WORK IS IN THE WHOLE-SYSTEM TRACKER (2026-07-06) — read it before planning any JV work
+## ⛔⛔ JV OUTSTANDING WORK IS IN **`docs/dev/TASKS.md`** — THIS repo's live tracker
 
-> **The live tracker is `justwrite-app/docs/TASKS.md`** (2026-07-19; whole-system — JustWrite · shared AI stack · JustVoice; unscheduled ideas in `justwrite-app/docs/IDEAS.md`) — the JV items sit under its **JustVoice** section. It points to the twice-verified detail, **`just-llm-runner/docs/plans/2026-07-06-outstanding-master-plan.md`** (pass-1 code evidence + pass-2 adversarial checker per item, everything outstanding across all three repos). **The JV items it carries (ledger section F):** **F1 — convergence onto the CURRENT shared stack, the single biggest open item**: JV cannot even import against today's `llm_runner` — `server/justvoice/models.py:23-29` imports `LLMRolesSettings`/`LLMRoleTarget`, symbols the shared schema no longer exports, so `import justvoice.app` dies and 30 JV tests fail at collection; that is only the FIRST blocker (full drift enumeration is part of the work); convergence also delivers everything JV currently lacks from the 2026-07 shared work for free (the model catalog/tune system with per-machine tune saves, gated auto-MTP + Gemma draft-file support, the quant dropdown with QAT labels, provider connect, the per-day Logs panel). **F2 —** the `speaker_attribution` task-kind scaffolding (absent from the shared nine; a JV need — JW bans speaker analysis), sequenced with F1. **F3 —** the parked audiobook-converters + speaker-attribution research (`docs/plans/2026-06-27-audiobook-tools-research-todo.md`, user-parked 2026-06-27). **F4 —** the JV `EngineManager.load()` → shared-VRAM-arbiter hook (the coordination DECISION was made 2026-07-04 and the arbiter is BUILT in the runner; only the JV-side wiring remains — after F1). **F5 —** the Appearance-settings knob-set gap (JV's tab exposes only Theme/size/accent/language while the shared engine supports the full JW set — the "clearest remaining user-facing inconsistency" noted below). Nothing is in flight; every item needs its own user "go".
+> **Rewritten by the docs campaign 2026-08-04.** Every repo now carries its own
+> tracker (`just-llm-runner/docs/app-structure.md` §13); JV's F-arc (F1–F5, I6)
+> moved out of JW's whole-system tracker into **`docs/dev/TASKS.md`** here, with
+> one claim corrected on the way: F1's "JV cannot even import `llm_runner`" was
+> STALE — the dead `LLMRolesSettings` imports were removed 2026-08-01 and the
+> runner's `check-consumers.py` passes for JV; F1's real scope (adopt the 2026-07
+> shared work: catalog/tune, auto-MTP, quant dropdown, provider connect, Logs)
+> stands. Ledger detail per item:
+> `just-llm-runner/docs/plans/2026-07-06-outstanding-master-plan.md` (history —
+> its own open tail was extracted to the runner's tracker the same day).
+> Nothing is in flight; every item needs its own user "go".
 
 ## ⮕ F1/F2 INTEGRATION DECIDED — decisions record (2026-07-15)
 
@@ -194,7 +204,7 @@ that works on a standard Vue app, **not just primitives**. (Strengthened in
 
 **Deeper convergence audit + plan (user, 2026-06-23): "what ELSE should be
 shared so the next app reuses instead of reinvents?"** Authoritative tracker:
-`docs/plans/2026-06-23-cross-app-shared-ui-audit.md` (Q1 = shared LLM views are
+`docs/plans/archive/2026-06-23-cross-app-shared-ui-audit.md` (Q1 = shared LLM views are
 clean on `Ui*` bar ~8 raw-element stragglers; Q2 = both apps carry parallel
 app-shell/services copies — strict-diff tiers T1–T4). Execute JV-first, no-stop,
 **PAUSE+ASK only on the diverged trio (T4)**. Status:
@@ -276,7 +286,7 @@ working-config cache.
 **Storage rewrite — DONE, both apps** (2026-06-18/19): JW fully off
 kv/IndexedDB/localStorage; JV renderer prefs → `/v1/prefs`, `settings.json` →
 SQLite `settings` row. Detail: JW `docs/plans/2026-06-18-unified-storage-no-idb.md`,
-JV `docs/plans/2026-06-19-jv-prefs-to-sql.md`.
+JV `docs/plans/archive/2026-06-19-jv-prefs-to-sql.md`.
 
 ---
 

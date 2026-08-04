@@ -1,5 +1,10 @@
 # Design analysis: Persona/Profile/Voice + multi-use audiobook workflow
 
+> Renamed + relocated by the docs campaign 2026-08-04 - previously at
+> `docs/plans/1-what-are-the-magical-scone.md` (a plan-mode container slug that
+> stuck when the doc was copied into the repo). The three research/decisions files
+> citing it as their decision source were repointed the same day.
+
 ## Context
 
 JustVoice grew out of JustTTS, where the only use case was audiobook production. JustWrite drove the workflow end-to-end through a "straightforward" 3-tab Cast → Script → Render flow in `StudioView.vue`, with ML speaker attribution gluing prose to characters.
