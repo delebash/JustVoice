@@ -22,7 +22,17 @@
       { "slug": "chapter",            "title": "Chapter editor" },
       { "slug": "take-versioning",    "title": "Take versioning" },
       { "slug": "effects",            "title": "Effects chain" },
+      { "slug": "presets",            "title": "Render presets" },
       { "slug": "mastering",          "title": "Mastering (ACX et al.)" }
+    ]
+  },
+  {
+    "group": "The workspaces",
+    "items": [
+      { "slug": "projects",           "title": "Projects" },
+      { "slug": "studio",             "title": "Studio — Cast · Script · Render" },
+      { "slug": "lines",              "title": "Lines (game projects)" },
+      { "slug": "labs",               "title": "Labs" }
     ]
   },
   {
@@ -60,6 +70,10 @@
   {
     "group": "Reference",
     "items": [
+      { "slug": "run-modes",          "title": "Run modes (desktop · headless · admin)" },
+      { "slug": "settings-reference", "title": "Settings reference" },
+      { "slug": "backup-restore",     "title": "Backup and restore" },
+      { "slug": "troubleshooting",    "title": "Troubleshooting" },
       { "slug": "keyboard-shortcuts", "title": "Keyboard shortcuts" }
     ]
   }

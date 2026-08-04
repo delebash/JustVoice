@@ -76,7 +76,7 @@ For NPC dialogue + game audio, the Chapter tab's **Export → ZIP** packages:
     ]
   }
   ```
-- Optional per-block JSON sidecars with viseme data (if the engine produced it) for lip-sync rigs
+- Per-line JSON sidecars carry line metadata (id, character, delivery) (if the engine produced it) for lip-sync rigs
 
 Unreal / Unity integration plans: an `.uplugin` (Unreal) and `.unitypackage` (Unity) will consume this manifest format directly. Until those ship, write a small script in your engine to read manifest.json + load the WAVs as `USoundWave` / `AudioClip` assets.
 
@@ -113,7 +113,7 @@ Useful for handing a project to a collaborator, archiving a finished book, or mo
 
 Per-take ZIP export (endpoint exists but not yet exposed in the UI): bundles the take's audio + every effects-applied version + a manifest with the lineage. Useful for handing a take to a sound designer.
 
-API: `GET /v1/takes/{take_id}/export` returns the ZIP.
+API: per-line files ride the project voicelines export (`/v1/projects/{id}/export_voicelines`).
 
 ## Mastered audio direct from API
 

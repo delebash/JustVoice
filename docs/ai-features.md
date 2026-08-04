@@ -1,6 +1,6 @@
 # AI features — routing Compose / Rewrite / Speaker attribution / Smart-assign / Suggest
 
-JustVoice has five LLM-driven features. Each one can route through a different provider, model, and tier independently. The routing surface is **Settings → AI features**.
+JustVoice has eight pinnable LLM-driven features — six in the feature catalog (speaker attribution, smart assign, persona compose/rewrite, preset suggest, narrator, show notes) plus two Settings-side rows (dictation refine, voice gender). Each one can route through a different provider, model, and tier independently. The routing surface is **Settings → AI features**.
 
 ## The five features
 
@@ -59,3 +59,10 @@ Below the AI Features table, the **Speaker corrections** panel shows a per-proje
 - **501 "LLM service not configured"** — no LLM provider is registered. Add one in Engines → LLM tab (see `providers.md`).
 - **Pin saved but the feature still uses the wrong provider** — verify the provider's `live` pill is green in the Engines tab. Unregistered providers (red `unregistered` pill) get skipped at dispatch time.
 - **Model field shows "default" placeholder** — the pin was set but no model id was specified; dispatch uses the provider's saved default. Open the row, click ↻ to fetch the model list, pick one explicitly.
+
+## Show notes (podcast projects)
+
+`POST /v1/projects/{id}/show-notes` drafts podcast show notes from the project's
+script — an episode summary with segment beats you can paste into your feed. It
+rides the `show_notes` feature pin like every other LLM feature, and answers
+**501** with a clear message when no LLM provider is configured.

@@ -1,5 +1,7 @@
 # Journey: Podcast — Priya, producer
 
+> ⚠️ **DESIGN TARGET (banner added 2026-08-04).** This journey narrates the intended experience; several steps are NOT BUILT yet — the multi-track timeline (the Stories tab is a placeholder), auto-lay onto per-speaker tracks, music-bed ducking, ad markers, per-track stems, and ID3 show art do not exist today. Podcast projects work through Chapters + Studio; mastering targets (-16 LUFS / -1.5 dBTP) ARE real and switch by project kind.
+
 <!-- SPDX-License-Identifier: MIT -->
 
 Priya produces *Signal & Noise*, a 3-host tech show. Sometimes she has a

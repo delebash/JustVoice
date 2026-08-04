@@ -1,5 +1,7 @@
 # Journey: Audiobook — Sarah, indie author
 
+> *Note (2026-08-04): near-accurate against the shipped app; the per-chapter script/render status columns described in step 3 are not in the current Projects chapters table.*
+
 <!-- SPDX-License-Identifier: MIT -->
 
 Sarah finished her novel *Stillwater* (8 chapters, ~32k words) and wants an

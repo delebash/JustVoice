@@ -1,5 +1,7 @@
 # Journey: Game dialogue — Marcus, solo game dev
 
+> ⚠️ **DESIGN TARGET (banner added 2026-08-04).** This journey narrates the intended experience; several steps are NOT BUILT yet — CSV import uses FIXED headers (scene, character, text, delivery, pause_after_ms — only text required): there is no column-mapping UI and no per-project mapping memory; export filenames derive from source_ref or sNN_lNNN with no selectable pattern, and there is no changed-only export. The stable-id merge, stale derivation, and re-render-only-stale ARE real.
+
 <!-- SPDX-License-Identifier: MIT -->
 
 Marcus is building *Emberfall* in Unreal. His quest editor exports dialogue as

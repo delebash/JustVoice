@@ -64,6 +64,19 @@ no tracker line until the docs campaign. All yours:
 
 ## Repo hygiene (found by the 2026-08-04 campaign)
 
+- **The Stories nav lede SELLS an inert view [verified]** — the tab's own copy
+  reads "Multi-track timeline editor. For podcasting…" (`App.vue:44`) while
+  `StoriesView.vue` is a gated placeholder. Reword the lede or hide the tab until
+  it's built; app copy is code, so this is your call. (User docs were corrected
+  2026-08-04 to stop routing podcasters there.)
+- **Dev-doc gaps from the coverage audit [attributed]** — record when convenient:
+  the Stories gating why (lives only in `StoriesView.vue:4-14`) → design-decisions
+  §5 · the backup schema-v1/4 GB design → a decisions record · the settings→SQLite
+  fold comment (`settings_store.py:31-64`) → `docs/decisions/` · the
+  engine-source-overrides "no hardcoded operator values" law · corrections-as-
+  few-shot · the feature-pin catalog vs SettingsView row divergence
+  (`SettingsView.vue:570-574`).
+
 - **F1's concrete artifact: `server/pyproject.toml:44` pins a June commit SHA** of
   the shared stack [verified by the recap; the pin is the stale-snapshot mechanism
   F1 removes].

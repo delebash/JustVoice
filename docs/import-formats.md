@@ -274,3 +274,13 @@ Reference: <https://elevenlabs.io/docs/api-reference/studio>.
 That's it — no further wiring needed. The adapter is automatically
 listed in `GET /v1/projects/import/adapters` and selectable in the
 ImportModal's UI picker.
+
+---
+
+## The import review page
+
+Every import lands on a review page before anything is written — a dry run you
+can steer. Change the **split strategy** and the dry run re-runs so you see the
+chapter boundaries move; untick chapters you don't want; if speaker information
+turns up mid-review, a banner surfaces it. Nothing exists until **Commit** — an
+import you abandon leaves no trace.

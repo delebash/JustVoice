@@ -4,7 +4,7 @@ JustVoice is a cross-platform voice-production studio. Five audiences share one 
 
 ## First launch
 
-1. **Pick a use case.** The Welcome modal asks what you're doing with JustVoice. Your choice retunes the UI: audiobook producers land on the Books tab with chapters terminology; game devs land on Voices with "voice line set" terminology; podcasters land on the Stories timeline. The chosen use case is also highlighted on the Overview dashboard as a quick-action card so you can jump straight back into your workflow. You can re-pick later in Settings → About.
+1. **Pick a use case.** The Welcome modal asks what you're doing with JustVoice. Your choice retunes the UI: audiobook producers get the Projects + Chapters tabs with chapters terminology; game devs get the Lines tab (every line of the game, stable ids); podcasters get Projects + Chapters + Studio (the multi-track Stories timeline tab is a placeholder — not built yet). The chosen use case is also highlighted on the Overview dashboard as a quick-action card so you can jump straight back into your workflow. You can re-pick later in Settings → About.
 
 2. **Load an engine.** Open the Engines tab. Click Load on Kokoro (free, fast, CPU-realtime, 54 preset voices, 8 languages) — that's the lightest starting point. Then try Chatterbox Turbo if you want voice cloning (clone from a reference WAV/MP3).
 
@@ -14,9 +14,9 @@ JustVoice is a cross-platform voice-production studio. Five audiences share one 
 
 ## Common next steps
 
-- **Producing an audiobook.** Import a manuscript via Books → "+ Import…", choose JustWrite or CSV or SRT or Audacity Labels, then open Studio (when it lands) for the Cast → Script → Render flow.
-- **Voicing game NPCs.** Voices tab → "+ Clone new voice" with a reference WAV (Chatterbox required). Then Books → "+ Import…" with a CSV of dialogue rows.
-- **Recording a podcast script.** Books → "+ New blank Project" → Project type "Podcast" → use Stories to arrange voiced segments on a multi-track timeline.
+- **Producing an audiobook.** Import a manuscript via Projects → "+ Import…", choose JustWrite or CSV or SRT or Audacity Labels, then open Studio for the Cast → Script → Render flow.
+- **Voicing game NPCs.** Voices tab → "+ Clone new voice" with a reference WAV (Chatterbox required). Then Projects → "+ Import…" with a CSV of dialogue rows (fixed headers: scene, character, text, delivery, pause_after_ms — only text is required), and work the Lines tab.
+- **Recording a podcast script.** Projects → "+ New blank Project" → Project type "Podcast" → arrange voiced segments per chapter in Studio (the multi-track Stories timeline is planned, not built).
 - **Dictating with global hotkey.** Captures tab → confirm all 6 readiness gates pass → set the push-to-talk chord in Settings → Capture.
 
 ## Headless mode

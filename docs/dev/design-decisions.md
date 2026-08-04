@@ -44,10 +44,13 @@ integration decisions record stays live at
   cross-language source of truth; additions are non-breaking, removals/shape changes
   are major bumps. (The freeze-era CI OpenAPI-snapshot claim is UNVERIFIED — no
   `openapi.json` / `test_contract.py` found; tracked.)
-- **Three-tier voice tuning precedence** (highest first): preset `delivery_json` →
-  request `delivery` → `VoiceProfile.default_delivery` → engine defaults from the
-  capability manifest; dict-deep merge incl. `delivery.engine.*`
-  (`server/justvoice/delivery_merge.py`).
+- **Three-tier voice tuning precedence** — code-verbatim from
+  `server/justvoice/delivery_merge.py` (corrected 2026-08-04; the archived
+  CONTRACT's ordering was wrong): Tier 1 (lowest) engine defaults from
+  CAPABILITY_DETAILS → Tier 2 `VoiceProfile.default_delivery` → Tier 3 (highest)
+  `RenderPreset.delivery_overlay` OR `request.delivery` — one shared top tier.
+  Dict-deep merge incl. `delivery.engine.*`; called identically from
+  `/v1/generate` and chapter render.
 - **Channel bindings are PERSONA-level** — `/v1/personas/{id}/channels`
   (`api/channels_api.py`); the freeze's profile-level design shipped differently.
 - CUDA: installer ships CPU-baseline torch (~250 MB); GPU is an in-app opt-in wheel
@@ -60,7 +63,10 @@ integration decisions record stays live at
 - Webhooks: at-least-once, backoff 1s/5s/30s/5m ×3,
   `X-JustVoice-Signature: hex(hmac_sha256(secret, body))`. Bulk-delete:
   `confirm=False` is a dry-run, ≥1 filter required. Generations sourced `mcp`/`rest`
-  skip main-window autoplay. Recordings need ≥0.5 s. MCP: 6 tools, off by default,
+  skip main-window autoplay. Recordings need ≥0.5 s. MCP (corrected 2026-08-04 — the freeze's "6 tools, off
+  by default" was wrong): **4 tools** (`justvoice.speak/list_voices/transcribe/
+  list_personas`), mounted **unconditionally** at `/mcp` on the app port (only a
+  missing `fastmcp` disables it); `MCPSettings` holds one field, `default_voice`;
   `transcribe`'s `audio_path` is loopback-only.
 - **Backup vs export:** backup = whole-server disaster recovery; export =
   per-project handoff.
