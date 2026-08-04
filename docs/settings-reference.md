@@ -24,6 +24,7 @@ need your attention; this page is the operator config under `/v1/settings`.)
 
 ## Restart-required
 
-A few fields only take effect after a server restart — the API marks them, and
-the UI says so when you change one: the bind host/port, auth changes, and CORS.
-Everything else applies live.
+A few fields only take effect after a server restart — the API names them when
+you change one: `server.host`, `server.port`, `server.docs_enabled`,
+`logging.level`, `logging.format`, `cors.origins`,
+`limits.request_body_max_bytes`, and `engines.kokoro.model_dir_override`.

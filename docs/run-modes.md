@@ -3,8 +3,11 @@
 ## Desktop
 
 The normal double-click app: a Tauri window over a local server it spawns and
-owns. Closing the window stops the server. The [system tray](system-tray.md)
-gives quick actions without raising the window.
+owns. By default, closing the window quits everything — window, tray, and
+server. With the **keep-server-running** setting on, closing the window leaves
+the tray and the server running (headless without a terminal); the
+[system tray](system-tray.md) offers Show/Hide window, Start/Stop/Restart
+server, and Quit.
 
 ## Headless
 
@@ -14,8 +17,8 @@ The same server, no window:
 
 The full UI is served at `http://<host>:17494/ui/` — any browser works, which is
 how you run JustVoice on a remote GPU box and drive it from a laptop. `--no-docs`
-skips serving the help pages. Every flag has a `JUSTVOICE_*` environment-variable
-twin for service managers. Add bearer tokens (Settings → auth) before exposing a
+skips serving the help pages. The usual flags have `JUSTVOICE_*` environment-variable
+twins for service managers. Add bearer tokens (Settings → auth) before exposing a
 host beyond loopback; loopback requests are exempt unless you require otherwise.
 
 Utility subcommands: `justvoice-server default-settings` (print the full settings

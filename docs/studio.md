@@ -10,8 +10,7 @@ projects, segments for podcasts) — same flow, your vocabulary.
 Every character in the project, with their voice assignment. Add a character,
 open the voice params modal to tune their delivery, and **Test line** to hear a
 sample before committing. **Smart assign** asks the LLM to propose voices for
-the whole unassigned cast in one pass — grounded in each character's bio and
-your voice library — and you accept or change per row.
+the whole unassigned cast in one pass, and you accept or change per row.
 
 ## Script
 
