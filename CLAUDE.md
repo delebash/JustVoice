@@ -28,7 +28,7 @@ cd server && ruff check . && pytest    # both must pass before a commit
 > schema no longer exports either symbol (verified 2026-07-29). So `import justvoice.app` raises,
 > the server will not boot, and pytest fails at collection. This is the first blocker of the
 > shared-stack convergence tracked as **F1** in
-> `../just-llm-runner/docs/plans/2026-07-06-outstanding-master-plan.md`, and it is only the first —
+> `../just-llm-runner/docs/plans/archive/2026-07-06-outstanding-master-plan.md`, and it is only the first —
 > the full drift enumeration is part of that work. Do not paper over it with a local shim; the
 > convergence is the fix.
 
@@ -108,7 +108,7 @@ server), and **accessibility users** (real-time TTS, screen-reader integration �
 | The JustWrite ↔ JustVoice HTTP boundary | `CONTRACT.md` |
 | UI design method, class inventory, sweep checklist | `docs/dev/design-law.md` |
 | Open work across all three repos | `../justwrite-app/docs/TASKS.md` |
-| The shared AI-stack ledger | `../just-llm-runner/docs/plans/2026-07-06-outstanding-master-plan.md` |
+| The shared AI-stack ledger | `../just-llm-runner/docs/plans/archive/2026-07-06-outstanding-master-plan.md` |
 | Per-task history and evidence | `docs/plans/*` |
 | Product scope and feature history | `FEATURES.md`, `DESIGN_FREEZE.md` (both historical records) |
 

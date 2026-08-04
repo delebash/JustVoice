@@ -1,6 +1,6 @@
 # Audio output channels
 
-Route specific voices to specific OS audio devices. The **Channels** tab is where you bind a voice (or persona, or profile) to an output device — useful for stream-deck-style multi-output rigs, DAW routing, or accessibility setups.
+Route specific voices to specific OS audio devices. The **Channels** tab is where you bind a persona to an output device (personas wrap a voice; bindings are persona-level) — useful for stream-deck-style multi-output rigs, DAW routing, or accessibility setups.
 
 ## When you'd use channels
 
@@ -18,7 +18,7 @@ JustVoice enumerates OS audio devices on startup (PortAudio under the hood). Eac
 - Channels (mono / stereo)
 
 Channels tab shows the device list + a "Bind a voice" form:
-- Pick a voice / persona / profile
+- Pick a persona
 - Pick an output device
 - Save the binding
 
@@ -34,7 +34,7 @@ API:
 |---|---|
 | `GET /v1/channels/devices` | List audio devices |
 | `GET /v1/channels/bindings` | List current bindings |
-| `POST /v1/channels/bindings` | Bind a voice/persona/profile to a device |
+| `POST /v1/channels/bindings` | Bind a persona to a device |
 | `DELETE /v1/channels/bindings/{id}` | Remove a binding |
 
 ## Routing precedence
@@ -43,7 +43,7 @@ When a render's audio is ready, JustVoice routes via:
 
 1. **Per-take override** — if the render request specified an `output_device`, use that.
 2. **Persona binding** — if the persona attribution has a channel binding, use that device.
-3. **Profile binding** — fallback to the profile's device.
+3. **Persona binding** — fallback to the persona's device.
 4. **System default** — fallback to OS default output.
 
 ## Why not just OS-level routing?
