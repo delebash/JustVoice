@@ -24,9 +24,7 @@ from typing import Any, Literal
 # weeks. scripts/check-consumers.py in just-llm-runner now catches that
 # class of break at the deletion site.
 from llm_runner.llm.schema import (
-    FeaturePinConfig,
     LLMProviderConfig,
-    ProductionConfig,
 )
 from pydantic import BaseModel, Field
 
@@ -45,7 +43,7 @@ class HealthResponse(BaseModel):
     # what the family's checkers read; the snake extras below stay for JV's
     # own consumers (the topbar engine pill reads current_engine).
     product: str = ""
-    apiVersion: str = ""  # noqa: N815 — the family wire name
+    apiVersion: str = ""  # camelCase on purpose — the family wire name
     status: Literal["ok", "degraded", "down"] = "ok"
     version: str
     api_version: str

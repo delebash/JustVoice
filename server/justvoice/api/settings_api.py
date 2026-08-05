@@ -1,6 +1,6 @@
 """GET/PUT/PATCH /v1/settings — settings read + update.
 
-The nested LLM-config models (`LLMProviderConfig` / `FeaturePinConfig` /
+The nested legacy LLM-provider model (`LLMProviderConfig` /
 `ProductionConfig`) are camelCase-NATIVE as of 2026-06-21 —
 the Python field IS the JSON key, with no snake_case aliases. So this surface
 emits `engines.llm[].providerType` etc. (the legacy provider list).

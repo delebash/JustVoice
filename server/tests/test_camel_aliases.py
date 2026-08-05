@@ -40,13 +40,8 @@ def test_provider_config_is_camel_native():
         LLMProviderConfig(id="p", name="P", provider_type="openai")  # type: ignore[call-arg]
 
 
-def test_feature_pin_config_is_camel_native():
-    from justvoice.models import FeaturePinConfig
-
-    p = FeaturePinConfig.model_validate({"feature": "compose", "providerId": "x", "model": "m"})
-    assert p.providerId == "x"
-    d = p.model_dump()
-    assert d["providerId"] == "x" and "provider_id" not in d
+# (test_feature_pin_config_is_camel_native retired with F1 Phase 2: the pin
+# model left JV's vocabulary — the shared repo owns its own model shapes.)
 
 
 @pytest.fixture
