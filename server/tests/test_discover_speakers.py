@@ -89,7 +89,7 @@ def test_discover_501_without_llm(client, monkeypatch):
 def test_discover_with_stubbed_llm(client, monkeypatch):
     _pid, scene_id = _import_project(client)
 
-    def fake_identify(text, known, *, settings, chat_fn=None):
+    def fake_identify(text, known, *, settings, run_fn=None):
         assert "Mara Vance" in known
         return [SpeakerCandidate(name="Tom Harlan", role_hint="neighbor", approx_lines=3)]
 
@@ -122,35 +122,20 @@ def test_promote_creates_then_reuses(client):
 
 
 def test_analyze_text_threads_model_temp_prompt_overrides(client, monkeypatch):
+    # The pipeline runs through the shared run path now (F1 Phase 2); the seam
+    # is its run_feature import — capture what the Lab's overrides thread into
+    # the RunRequest kwargs.
     captured = {}
 
-    def fake_chat(*, config, feature, messages, system=None, temperature=0.7,
-                  max_tokens=None, think=None, model_override=None,
-                  provider_override=None):
-        captured.update(
-            system=system,
-            temperature=temperature,
-            model_override=model_override,
-            provider_override=provider_override,
-        )
+    def fake_run(action, variables, **overrides):
+        captured.update(action=action, variables=variables, **overrides)
 
         class R:
             text = '[{"speaker": "mara", "confidence": 0.9}]'
 
         return R()
 
-    from llm_runner.llm import TIERS
-
-    monkeypatch.setattr("justvoice.extraction.pipeline.chat", fake_chat)
-    # No provider in the test env — pin resolution would 501 before the
-    # stubbed chat runs. Tier resolution is stubbed in both call sites
-    # (pipeline prompt pick + endpoint echo-back).
-    monkeypatch.setattr(
-        "justvoice.extraction.pipeline.resolve_tier", lambda settings, feature: TIERS["guided"]
-    )
-    monkeypatch.setattr(
-        "llm_runner.llm.dispatch.resolve_tier", lambda settings, feature: TIERS["guided"]
-    )
+    monkeypatch.setattr("justvoice.extraction.pipeline.run_feature", fake_run)
     r = client.post(
         "/v1/extraction/analyze-text",
         json={
@@ -162,9 +147,13 @@ def test_analyze_text_threads_model_temp_prompt_overrides(client, monkeypatch):
         },
     )
     assert r.status_code == 200, r.text
-    assert captured["model_override"] == "qwen3:14b"
+    assert captured["model"] == "qwen3:14b"
     assert captured["temperature"] == 0.05
     assert captured["system"] == "CUSTOM PROMPT BODY"
+    # qwen3:14b auto-classifies REASONED (≥14B hybrid) — the action follows.
+    assert captured["action"] == "speaker_attribution.direct"
+    assert captured["think"] is True
+    assert 'id="mara"' in captured["variables"]["characters"]
     assert r.json()["raw_llm"] == '[{"speaker": "mara", "confidence": 0.9}]'
 
 
@@ -199,12 +188,15 @@ def test_detect_local_llm_providers(client, monkeypatch):
 
 
 def test_usage_ledger_records_chat_calls(client, monkeypatch):
-    from llm_runner.llm import TIERS, get_ledger
+    from llm_runner.llm import get_ledger, get_llm_registry
+    from llm_runner.llm.dispatch import set_ensure_local_model
 
     get_ledger().clear()
 
     class FakeAdapter:
-        provider_id = "fake"  # dispatch records adapter.provider_id in the usage ledger
+        # The preset routes to local-llamacpp; registering the fake under that
+        # id lets the REAL resolution find it (no resolve patching).
+        provider_id = "local-llamacpp"
         provider_type = "openai-compat"
         default_model = "qwen3:8b"
 
@@ -216,21 +208,12 @@ def test_usage_ledger_records_chat_calls(client, monkeypatch):
 
             return LLMResponse(
                 text='[{"speaker": "mara", "confidence": 0.9}]',
-                model=model, prompt_tokens=120, completion_tokens=18,
+                model=model or self.default_model, prompt_tokens=120, completion_tokens=18,
             )
 
-    # chat() now delegates to the shared dispatch (llm_runner.llm) — patch the
-    # provider resolution there (3-arg shared signature).
-    monkeypatch.setattr(
-        "llm_runner.llm.dispatch.resolve_pin",
-        lambda config, feature, registry=None, action=None: (FakeAdapter(), "qwen3:8b", None),
-    )
-    monkeypatch.setattr(
-        "justvoice.extraction.pipeline.resolve_tier", lambda s, f: TIERS["guided"]
-    )
-    monkeypatch.setattr(
-        "llm_runner.llm.dispatch.resolve_tier", lambda s, f: TIERS["guided"]
-    )
+    get_llm_registry()._adapters = {}
+    get_llm_registry().register(FakeAdapter())
+    set_ensure_local_model(None)  # no bundled-runner load in unit tests
     r = client.post(
         "/v1/extraction/analyze-text",
         json={"text": '"Hi," said Mara.', "characters": [{"id": "mara", "name": "Mara"}]},
@@ -253,34 +236,30 @@ def test_usage_ledger_records_chat_calls(client, monkeypatch):
 def test_show_notes_501_without_llm_and_works_with_stub(client, monkeypatch):
     pid, _scene = _import_project(client)
 
-    # Force the no-LLM half. Previously this leaned on the machine having no
-    # working LLM, so it silently stopped testing the 501 path once one existed.
-    from llm_runner.llm import dispatch
+    from llm_runner.llm import LLMResponse, get_llm_registry
+    from llm_runner.llm.dispatch import set_ensure_local_model
 
-    def refuse(*_a, **_kw):
-        raise LLMNotConfiguredError("no LLM provider registered")
-
-    monkeypatch.setattr(dispatch, "chat", refuse)
-    monkeypatch.setattr("justvoice.api.projects_api.chat", refuse, raising=False)
-
+    # Force the no-LLM half: an EMPTY registry makes the shared run path's own
+    # resolution raise LLMNotConfiguredError — testing the real 501 mapping.
+    get_llm_registry()._adapters = {}
+    set_ensure_local_model(None)
     r = client.post(f"/v1/projects/{pid}/show-notes")
     assert r.status_code == 501, r.text
-    monkeypatch.undo()
 
-    def fake_chat(*, config, feature, messages, system=None, temperature=0.7,
-                  max_tokens=None, think=None, model_override=None):
-        assert feature == "show_notes"
-        assert "Mara Vance" in messages[0].content
+    # Success half: a capturing adapter under the preset's provider id — the
+    # {{script}} template row renders the project's segments into the user turn.
+    class FakeAdapter:
+        provider_id = "local-llamacpp"
+        provider_type = "openai-compat"
+        default_model = "m"
 
-        class R:
-            text = "## Episode summary\nA test episode."
+        def chat(self, messages, *, model=None, system=None, **kwargs):
+            assert "Mara Vance" in messages[-1].content
+            assert "show notes" in (system or "").lower()
+            return LLMResponse(text="## Episode summary\nA test episode.",
+                               model=model or self.default_model)
 
-        return R()
-
-    monkeypatch.setattr("justvoice.api.projects_api.chat", fake_chat, raising=False)
-    from llm_runner.llm import dispatch
-
-    monkeypatch.setattr(dispatch, "chat", fake_chat)
+    get_llm_registry().register(FakeAdapter())
     r = client.post(f"/v1/projects/{pid}/show-notes")
     assert r.status_code == 200, r.text
     assert r.json()["markdown"].startswith("## Episode summary")

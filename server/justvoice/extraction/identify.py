@@ -92,30 +92,22 @@ def identify_speakers(
     known_names: list[str],
     *,
     settings,
-    chat_fn: Callable[..., Any] | None = None,
+    run_fn: Callable[..., Any] | None = None,
 ) -> list[SpeakerCandidate]:
-    """Run the identification LLM call. `chat_fn` is the dispatch seam —
-    tests inject a stub; production uses engines.llm.dispatch.chat."""
-    if chat_fn is None:
-        from llm_runner.llm.dispatch import chat as chat_fn  # pragma: no cover
+    """Run the identification LLM call through the shared run path. `run_fn`
+    is the seam — tests inject a stub; production uses engines.llm.run's
+    run_feature (the `speaker_attribution.identify` template row + its preset;
+    `settings` is unused since the pin-era config died, kept for the callers'
+    signature until the settings tree sheds its LLM residue)."""
+    del settings  # pin-era argument — routing is preset-resolved now
+    if run_fn is None:
+        from ..engines.llm.run import run_feature as run_fn  # pragma: no cover
 
-    from llm_runner.llm import LLMMessage
-    from ..engines.llm.config import llm_config
-
-    user = (
-        "Known characters:\n"
-        + "\n".join(f"- {n}" for n in known_names or ["(none)"])
-        + "\n\nManuscript text:\n"
-        + text
+    resp = run_fn(
+        "speaker_attribution.identify",
+        {
+            "known_characters": "\n".join(f"- {n}" for n in known_names or ["(none)"]),
+            "manuscript": text,
+        },
     )
-    from ..engines.llm.prompt_store import get_prompt_store
-
-    _prompt = get_prompt_store().get("identify")
-    resp = chat_fn(
-        config=llm_config(settings),
-        feature="speaker_attribution",
-        messages=[LLMMessage(role="user", content=user)],
-        system=(_prompt.system if _prompt else ""),
-        temperature=(_prompt.temperature if _prompt else 0.2),
-    )
-    return parse_candidates(getattr(resp, "content", str(resp)), known_names)
+    return parse_candidates(getattr(resp, "text", str(resp)), known_names)

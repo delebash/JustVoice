@@ -16,11 +16,9 @@ import re
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from ..app_state import get_state
-from llm_runner.llm import LLMMessage, LLMNotConfiguredError
-from llm_runner.llm.dispatch import chat
-from ..engines.llm.config import llm_config
-from ..engines.llm.prompt_store import get_prompt_store
+from llm_runner.llm import LLMNotConfiguredError
+
+from ..engines.llm.run import run_feature
 
 log = logging.getLogger(__name__)
 
@@ -119,26 +117,16 @@ async def smart_assign(body: SmartAssignRequest) -> SmartAssignResponse:
             detail="smart-assign requires non-empty characters AND voices",
         )
 
-    user_prompt = (
-        "Characters:\n"
-        + _format_characters(body.characters)
-        + "\n\nAvailable voices:\n"
-        + _format_voices(body.voices)
-        + "\n\nReturn only the JSON object."
-    )
-
-    prompt = get_prompt_store().get("smart_assign")
-    if prompt is None:
-        raise HTTPException(status_code=500, detail="smart_assign prompt not seeded")
-    settings = get_state().settings.get()
+    # The template row owns the wording ({{characters}}/{{voices}} — ruling 9);
+    # code computes the variable VALUES + the per-call token budget.
     try:
-        resp = chat(
-            config=llm_config(settings),
-            feature="smart_assign",
-            messages=[LLMMessage(role="user", content=user_prompt)],
-            system=prompt.system,
-            temperature=prompt.temperature,
-            max_tokens=max(400, 80 * len(body.characters)),
+        resp = run_feature(
+            "smart_assign",
+            {
+                "characters": _format_characters(body.characters),
+                "voices": _format_voices(body.voices),
+            },
+            maxTokens=max(400, 80 * len(body.characters)),
         )
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))

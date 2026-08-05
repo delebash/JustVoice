@@ -249,27 +249,16 @@ async def compose_with_personality(id: str) -> ComposeResponse:
     """
     from fastapi import HTTPException
 
-    from llm_runner.llm import LLMMessage, LLMNotConfiguredError
-    from llm_runner.llm.dispatch import chat
-    from ..engines.llm.config import llm_config
+    from llm_runner.llm import LLMNotConfiguredError
+
+    from ..engines.llm.run import run_feature
 
     persona = _require_persona_with_personality(id)
-    system_prompt = (
-        f"You are voicing a character. Their personality:\n\n"
-        f"{persona.personality.strip()}\n\n"
-        f"Write a single, fresh in-character line they would say. "
-        f"Reply with the line only — no quotes, no preamble, no narration."
-    )
-    settings = get_state().settings.get()
+    # The template row owns the wording ({{personality}} in the system half);
+    # the old hardcoded temperature=0.9 + max_tokens=300 live on its preset
+    # (p_compose — ruling 9).
     try:
-        resp = chat(
-            config=llm_config(settings),
-            feature="compose",
-            messages=[LLMMessage(role="user", content="Compose a line.")],
-            system=system_prompt,
-            temperature=0.9,
-            max_tokens=300,
-        )
+        resp = run_feature("compose", {"personality": persona.personality.strip()})
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))
     except Exception as e:
@@ -293,9 +282,9 @@ async def rewrite_in_character(id: str, body: RewriteRequest) -> RewriteResponse
     """
     from fastapi import HTTPException
 
-    from llm_runner.llm import LLMMessage, LLMNotConfiguredError
-    from llm_runner.llm.dispatch import chat
-    from ..engines.llm.config import llm_config
+    from llm_runner.llm import LLMNotConfiguredError
+
+    from ..engines.llm.run import run_feature
 
     persona = _require_persona_with_personality(id)
     if not body.text.strip():
@@ -304,24 +293,14 @@ async def rewrite_in_character(id: str, body: RewriteRequest) -> RewriteResponse
             detail="rewrite requires non-empty text",
         )
 
-    system_prompt = (
-        f"Rewrite the user's line in this character's voice.\n\n"
-        f"Character personality:\n{persona.personality.strip()}\n\n"
-        f"Rules:\n"
-        f"- Preserve the line's meaning.\n"
-        f"- Match the character's diction, rhythm, vocabulary, accent markers.\n"
-        f"- Reply with the rewritten line only — no quotes, no preamble, "
-        f"no narration, no explanation."
-    )
-    settings = get_state().settings.get()
+    # The template row owns the wording ({{personality}} system + {{text}}
+    # user); temperature lives on p_voiced_edit; the length-scaled token
+    # budget stays a code-computed per-call value.
     try:
-        resp = chat(
-            config=llm_config(settings),
-            feature="persona_rewrite",
-            messages=[LLMMessage(role="user", content=body.text)],
-            system=system_prompt,
-            temperature=0.6,
-            max_tokens=max(300, len(body.text) // 2 + 200),
+        resp = run_feature(
+            "persona_rewrite",
+            {"personality": persona.personality.strip(), "text": body.text},
+            maxTokens=max(300, len(body.text) // 2 + 200),
         )
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))

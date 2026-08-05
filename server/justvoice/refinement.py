@@ -209,37 +209,69 @@ REFINEMENT_EXAMPLES: list[tuple[str, str]] = [
 ]
 
 
+def compose_refinement_system(flags: RefinementFlags) -> str:
+    """Assemble the production system prompt from the TEMPLATE ROWS (ruling 9,
+    2026-08-05): `refine.base` + each enabled section row's system text, joined
+    the way `build_refinement_prompt` joined the code constants. The rows are
+    Lab-editable one by one (each standalone-testable with its own
+    {{transcript}} user half); production runs this COMPOSITION through the
+    run path's explicit-system door. The base row itself states the
+    no-sections identity behavior, so the builder's hardcoded fallback line is
+    retired by construction. A missing row (never seeded / deleted) is skipped
+    rather than fatal — the base alone is a complete instruction."""
+    from llm_runner.llm import stores
+
+    store = stores.get_prompt_store()
+    parts: list[str] = []
+    base = store.get("refine.base")
+    if base is not None:
+        parts.append(base.system)
+    for flag_on, key in (
+        (flags.smart_cleanup, "refine.smart_cleanup"),
+        (flags.self_correction, "refine.self_correction"),
+        (flags.preserve_technical, "refine.preserve_technical"),
+    ):
+        if not flag_on:
+            continue
+        row = store.get(key)
+        if row is not None:
+            parts.append(row.system)
+    return "\n\n".join(parts)
+
+
 def refine_transcript(
     transcript: str,
     flags: RefinementFlags,
     *,
     settings,
 ) -> tuple[str, str]:
-    """Run the transcript through the pinned 'refine' LLM provider.
+    """Run the transcript through the shared run path ('refine' feature).
 
     Returns (refined_text, model_id) so callers can persist which model
     produced the refinement. Raises LLMNotConfiguredError when no provider
-    is available (the API layer maps it to 501).
-    """
-    from llm_runner.llm import LLMMessage
-    from llm_runner.llm.dispatch import chat
-    from .engines.llm.config import llm_config
+    is available (the API layer maps it to 501). Tunables (0.2 / 2048) live
+    on the p_refine preset; the few-shot REFINEMENT_EXAMPLES ride as real
+    history turns exactly as before. `settings` is unused since the pin-era
+    config died; kept for the callers' signature until the settings tree
+    sheds its LLM residue."""
+    del settings  # pin-era argument — routing is preset-resolved now
+    from .engines.llm.run import run_feature
 
     cleaned_input = collapse_repetitive_artifacts(transcript)
-    system_prompt = build_refinement_prompt(flags)
 
-    messages: list[LLMMessage] = []
-    for user_text, assistant_text in REFINEMENT_EXAMPLES:
-        messages.append(LLMMessage(role="user", content=user_text))
-        messages.append(LLMMessage(role="assistant", content=assistant_text))
-    messages.append(LLMMessage(role="user", content=cleaned_input))
-
-    resp = chat(
-        config=llm_config(settings),
-        feature="refine",
-        messages=messages,
-        system=system_prompt,
-        temperature=0.2,
-        max_tokens=2048,
+    resp = run_feature(
+        "refine.base",
+        {"transcript": cleaned_input},
+        # The composed system overrides the base row's own (the explicit-system
+        # door); the user half still renders from the base row's template.
+        system=compose_refinement_system(flags),
+        history=[
+            m
+            for user_text, assistant_text in REFINEMENT_EXAMPLES
+            for m in (
+                {"role": "user", "content": user_text},
+                {"role": "assistant", "content": assistant_text},
+            )
+        ],
     )
     return resp.text.strip(), resp.model

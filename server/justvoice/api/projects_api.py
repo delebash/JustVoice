@@ -1222,13 +1222,12 @@ async def project_show_notes(
     project_id: str, db: Session = Depends(get_db)
 ) -> ShowNotesResponse:
     """LLM show notes from the project's segments (CONCEPTS §14.4).
-    501 when no provider is pinned, same contract as analyze."""
+    501 when no provider is configured, same contract as analyze."""
     from fastapi import HTTPException
 
-    from llm_runner.llm import LLMMessage, LLMNotConfiguredError
-    from llm_runner.llm.dispatch import chat
-    from ..engines.llm.config import llm_config
-    from ..engines.llm.prompt_store import get_prompt_store
+    from llm_runner.llm import LLMNotConfiguredError
+
+    from ..engines.llm.run import run_feature
 
     project = db.query(Project).filter(Project.id == project_id).first()
     if project is None:
@@ -1252,18 +1251,10 @@ async def project_show_notes(
     if not script.strip():
         raise bad_request("project has no segments to summarize")
 
-    prompt = get_prompt_store().get("show_notes")
-    if prompt is None:
-        raise HTTPException(status_code=500, detail="show_notes prompt not seeded")
-    settings = get_state().settings.get()
+    # The template row owns the wording (user half = {{script}}); the cap on
+    # the script sample stays code-side (a computed VALUE).
     try:
-        resp = chat(
-            config=llm_config(settings),
-            feature="show_notes",
-            messages=[LLMMessage(role="user", content=script[:24000])],
-            system=prompt.system,
-            temperature=prompt.temperature,
-        )
+        resp = run_feature("show_notes", {"script": script[:24000]})
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))
     return ShowNotesResponse(project_id=project_id, markdown=resp.text.strip())

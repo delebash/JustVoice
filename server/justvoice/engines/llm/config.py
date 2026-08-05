@@ -24,34 +24,13 @@ into the shared DB stores is the remaining convergence step.
 from __future__ import annotations
 
 from llm_runner.llm import LLMConfig
-from llm_runner.llm.routing_api import FeatureCatalogEntry
 
-# Features that prefer the built-in llama.cpp runner when nothing more
-# specific is configured (privacy-sensitive, accuracy-critical work).
-PREFER_LOCAL_FEATURES: set[str] = {"speaker_attribution"}
+# Moved to justvoice/feature_catalog.py (F1 Phase 2 — install inputs, family
+# shape); re-exported here so the pin-era callers keep importing until the
+# feature rewire deletes this module.
+from ...feature_catalog import FEATURE_CATALOG, PREFER_LOCAL_FEATURES  # noqa: F401
+
 LOCAL_RUNNER_PROVIDER_ID = "local-llamacpp"
-
-# JV's feature catalog — the per-app data install_llm registers so the shared
-# routing surface knows which features exist. Labels match the AI-features page.
-FEATURE_CATALOG: list[FeatureCatalogEntry] = [
-    FeatureCatalogEntry(key="speaker_attribution", label="Speaker attribution",
-                        hint="Who says each line — the audiobook pipeline's core call.",
-                        group="Analysis"),
-    FeatureCatalogEntry(key="smart_assign", label="Smart assign",
-                        hint="Bulk-assign detected speakers to personas.", group="Analysis"),
-    FeatureCatalogEntry(key="show_notes", label="Show notes",
-                        hint="Chapter summaries for podcast descriptions.", group="Analysis"),
-    FeatureCatalogEntry(key="render_preset_suggest", label="Render preset suggestion",
-                        hint="Suggest a render preset from the text's mood.", group="Analysis"),
-    FeatureCatalogEntry(key="compose", label="Compose",
-                        hint="Draft text from a prompt in the editor.", group="Editing"),
-    FeatureCatalogEntry(key="refine", label="Dictation cleanup",
-                        hint="Raw speech → clean text before paste.", group="Editing"),
-    FeatureCatalogEntry(key="persona_rewrite", label="Persona rewrite",
-                        hint="Rewrite text in a persona's voice.", group="Editing"),
-    FeatureCatalogEntry(key="voice_gender", label="Voice gender guess",
-                        hint="Label fetched voices the dictionary doesn't know.", group="Voices"),
-]
 
 
 def llm_config(settings) -> LLMConfig:

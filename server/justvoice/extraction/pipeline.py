@@ -19,17 +19,15 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from llm_runner.llm import LLMMessage
 from llm_runner.llm import LLMNotConfiguredError
-from llm_runner.llm.dispatch import chat, resolve_tier
-from ..engines.llm.config import llm_config
+
+from ..engines.llm.run import run_feature
 from .anchors import find_anchors
 from .prompts import (
     format_characters,
     format_corrections,
     format_paragraphs,
 )
-from ..engines.llm.prompt_store import get_prompt_store
 from .segmentation import segment_paragraphs, split_into_paragraphs
 
 log = logging.getLogger(__name__)
@@ -107,6 +105,21 @@ def _extract_first_json_array(text: str) -> list:
     return v if isinstance(v, list) else []
 
 
+def pick_tier(tier_override: str | None, model_override: str | None):
+    """The tier CHOICE post-pins (F1 Phase 2, ruling 1): the caller's override
+    (a Speaker Lab column / the Studio's knob) wins; otherwise auto-classify
+    the model the run resolves to (request override, else the action's preset
+    model) — spec_for keeps the old resolve_tier semantics, empty/unknown
+    model → guided. Shared by analyze_scene and the API's response metadata so
+    the echoed tier can never drift from the one that ran."""
+    from llm_runner.llm import spec_for
+    from llm_runner.llm.preset_resolve import resolve_feature_preset
+
+    override = tier_override if tier_override in {"guided", "direct", "reasoned"} else None
+    preset = resolve_feature_preset(f"speaker_attribution.{override or 'guided'}")
+    return spec_for(model_override or (preset.model if preset else ""), override)
+
+
 def analyze_scene(
     *,
     settings,
@@ -117,8 +130,11 @@ def analyze_scene(
 
     Returns the AttributionRow list in the same order as the segments
     appear in the scene. Narration rows have speaker="narrator" with
-    confidence=1.0 + source="narration".
+    confidence=1.0 + source="narration". `settings` is unused since the
+    pin-era config died (routing is preset-resolved); kept for the callers'
+    signature until the settings tree sheds its LLM residue.
     """
+    del settings  # pin-era argument
     # ── 1. Segment ───────────────────────────────────────────────
     paragraphs = split_into_paragraphs(request.text)
     segments = segment_paragraphs(paragraphs)
@@ -132,26 +148,9 @@ def analyze_scene(
         else {}
     )
 
-    # ── 3. Resolve tier + LLM call (single shot, scene-scoped) ───
-    tier = resolve_tier(llm_config(settings), "speaker_attribution")
-    if request.tier and request.tier in {"guided", "direct", "reasoned"}:
-        # Override forced by the caller (Speaker Lab column setting).
-        from llm_runner.llm import TIERS
+    # ── 3. Pick the tier + run through the shared path ───────────
+    tier = pick_tier(request.tier, request.model)
 
-        tier = TIERS[request.tier]
-
-    # Tier-specific prompt comes from the DB (Lab-editable), keyed
-    # speaker_attribution.<guided|direct>; the request can override per-call.
-    attr = get_prompt_store().get(f"speaker_attribution.{tier.system_key}")
-    system = request.system_prompt or (attr.system if attr else "")
-    # Token replacement instead of str.format so a user-edited template
-    # with stray braces can't raise KeyError mid-pipeline.
-    user = (
-        (request.user_prompt or (attr.user_template if attr else ""))
-        .replace("{characters}", format_characters(request.characters))
-        .replace("{corrections}", format_corrections(request.corrections))
-        .replace("{paragraphs}", format_paragraphs(segments))
-    )
     floor = (
         request.confidence_floor
         if request.confidence_floor is not None
@@ -164,16 +163,24 @@ def analyze_scene(
     llm_picks: list[dict[str, Any]] = []
     if n_dialogue > 0:
         try:
-            resp = chat(
-                config=llm_config(settings),
-                feature="speaker_attribution",
-                messages=[LLMMessage(role="user", content=user)],
-                system=system,
-                temperature=request.temperature if request.temperature is not None else 0.2,
-                max_tokens=max(800, 12 * n_dialogue),
-                think=tier.think,
-                model_override=request.model,
-                provider_override=request.provider_id,
+            # The tier's template row owns the wording; code passes the
+            # formatted blocks as variables (ruling 9). The reasoned tier's
+            # think-on rides the per-call override; the Speaker Lab's
+            # system/user candidates ride the explicit-prompt door.
+            resp = run_feature(
+                f"speaker_attribution.{tier.system_key}",
+                {
+                    "characters": format_characters(request.characters),
+                    "corrections": format_corrections(request.corrections),
+                    "paragraphs": format_paragraphs(segments),
+                },
+                system=request.system_prompt or None,
+                userTemplate=request.user_prompt or None,
+                temperature=request.temperature,
+                maxTokens=max(800, 12 * n_dialogue),
+                think=(True if tier.think else None),
+                model=request.model or "",
+                providerId=request.provider_id or "",
             )
             if raw_out is not None:
                 raw_out["llm_text"] = resp.text

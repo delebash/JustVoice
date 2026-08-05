@@ -31,7 +31,15 @@ def app(tmp_path):
     reg = get_llm_registry()
     saved = list(reg.all())
     reg._adapters = {}
-    reg.register(FakeAdapter("prov-local", "qwen3:8b"))
+    # Registered under the PRESET's provider id (F1 Phase 2: the route truth is
+    # the action's preset — provider local-llamacpp, model "" → the provider's
+    # default fills in).
+    reg.register(FakeAdapter("local-llamacpp", "qwen3:8b"))
+    # install_llm wired the ensure-local hook to the real runner service; a
+    # local-routed unit-test run must not try to LOAD a model.
+    from llm_runner.llm.dispatch import set_ensure_local_model
+
+    set_ensure_local_model(None)
     yield app
     reg._adapters = {a.provider_id: a for a in saved}
 
@@ -54,11 +62,14 @@ def test_extraction_config_shape(app) -> None:
     assert body["system_prompts"]["guided"].startswith(
         body["system_prompts"]["direct"].rstrip()[:40]
     )
-    for token in ("{characters}", "{corrections}", "{paragraphs}"):
+    # The shared renderer's {{var}} placeholders (F1 Phase 2 — the old
+    # single-brace .replace tokens converted with the template-row move).
+    for token in ("{{characters}}", "{{corrections}}", "{{paragraphs}}"):
         assert token in body["user_template"]
 
-    # Route resolved against the registered fake adapter.
-    assert body["resolved_provider_id"] == "prov-local"
+    # Route resolved via the action's preset (provider local-llamacpp, model ""
+    # → the registered adapter's default model fills in).
+    assert body["resolved_provider_id"] == "local-llamacpp"
     assert body["resolved_model"] == "qwen3:8b"
     assert body["resolved_tier"] == "guided"  # qwen3:8b sub-12B → guided
 
@@ -80,18 +91,24 @@ def test_extraction_config_no_provider(tmp_path) -> None:
         reg._adapters = {a.provider_id: a for a in saved}
 
 
-def _fake_chat_capture(captured):
-    def fake_chat(*, config, feature, messages, system=None, **kwargs):
+def _capture_adapter_chat(captured):
+    """FakeAdapter.chat replacement — captures what the RENDERED template
+    produced (the real run path end-to-end, adapter as the seam)."""
+
+    def fake_adapter_chat(self, messages, *, model=None, system=None, **kwargs):
         captured["system"] = system
-        captured["user"] = messages[0].content
+        captured["user"] = messages[-1].content
 
         class R:
             # Two dialogue segments: one confident, one at 0.6.
             text = '[{"speaker": "c_mara", "confidence": 0.9}, {"speaker": "c_sarah", "confidence": 0.6}]'
+            prompt_tokens = 0
+            completion_tokens = 0
+            model = ""
 
         return R()
 
-    return fake_chat
+    return fake_adapter_chat
 
 
 TEXT = 'Mara stood up.\n\n"Hello," she said.\n\n"Hi."'
@@ -135,14 +152,13 @@ def test_provider_override_routes_call(app, monkeypatch) -> None:
 
 def test_user_prompt_and_floor_overrides(app, monkeypatch) -> None:
     captured: dict = {}
-    monkeypatch.setattr(
-        "justvoice.extraction.pipeline.chat", _fake_chat_capture(captured)
-    )
+    monkeypatch.setattr(FakeAdapter, "chat", _capture_adapter_chat(captured))
     client = TestClient(app)
 
-    # Custom user template is interpolated and sent; custom floor (0.65)
-    # keeps the 0.6 pick floored even on the direct tier (default 0.5),
-    # and the response echoes the effective floor.
+    # Custom user template ({{var}} — the shared renderer's syntax) is
+    # interpolated and sent; custom floor (0.65) keeps the 0.6 pick floored
+    # even on the direct tier (default 0.5), and the response echoes the
+    # effective floor.
     r = client.post(
         "/v1/extraction/analyze-text",
         json={
@@ -150,7 +166,7 @@ def test_user_prompt_and_floor_overrides(app, monkeypatch) -> None:
             "characters": CAST,
             "tier": "direct",
             "propagate": False,
-            "userPrompt": "CAST:\n{characters}\nBODY:\n{paragraphs}",
+            "userPrompt": "CAST:\n{{characters}}\nBODY:\n{{paragraphs}}",
             "confidence_floor": 0.65,
         },
     )
@@ -159,7 +175,7 @@ def test_user_prompt_and_floor_overrides(app, monkeypatch) -> None:
     assert body["confidence_floor"] == 0.65
     assert captured["user"].startswith("CAST:\n")
     assert 'id="c_mara"' in captured["user"]
-    assert "{paragraphs}" not in captured["user"]
+    assert "{{paragraphs}}" not in captured["user"]
 
     dialogue = [row for row in body["rows"] if row["kind"] == "dialogue"]
     floored = [row for row in dialogue if row["source"] == "floored"]

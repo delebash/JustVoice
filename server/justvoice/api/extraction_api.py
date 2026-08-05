@@ -20,13 +20,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from llm_runner.llm import LLMNotConfiguredError
+
 from ..app_state import get_state
 from ..database import get_db
 from ..database.models import Persona, ProjectPersona, Scene
-from llm_runner.llm import LLMNotConfiguredError
-from ..engines.llm.config import llm_config
 from ..errors import not_found
 from ..extraction import AnalyzeRequest, analyze_scene
+from ..extraction.pipeline import pick_tier
 
 log = logging.getLogger(__name__)
 
@@ -138,24 +139,16 @@ async def analyze_scene_endpoint(
     corrections = body.corrections if body.corrections is not None else _resolve_corrections(scene.project_id, db)
 
     settings = get_state().settings.get()
-    # AI-features redesign: the ACTIVE production config (promoted from
-    # Speaker Lab) wins outright — model AND prompts — unless the body
-    # explicitly overrides (the Lab itself passes explicit values via the
-    # text endpoint, not this scene endpoint).
-    from llm_runner.llm.dispatch import active_production_config
-
-    cfg = active_production_config(llm_config(settings), "speaker_attribution")
+    # The production-config tier died with the pin era (ruling 1's clean drop):
+    # prompts are the shared template rows, the route is the action's preset —
+    # the body's explicit overrides (the Studio's own knobs) still win.
     req = AnalyzeRequest(
         text=body.text,
         characters=characters,
         corrections=corrections,
-        tier=body.tier or (cfg.tier if cfg else None),
+        tier=body.tier,
         propagate=body.propagate,
         use_floor=body.use_floor,
-        model=(cfg.model or None) if cfg else None,
-        temperature=cfg.temperature if cfg else None,
-        system_prompt=cfg.systemPrompt if cfg else None,
-        user_prompt=cfg.userPrompt if cfg else None,
     )
 
     try:
@@ -168,14 +161,8 @@ async def analyze_scene_endpoint(
         raise HTTPException(status_code=502, detail=f"extraction failed: {e}")
 
     # Echo back which tier ran so the UI can show "auto-routed to Reasoned"
-    # in the Studio Script tab header.
-    from llm_runner.llm.dispatch import resolve_tier
-
-    tier = resolve_tier(llm_config(settings), "speaker_attribution")
-    if body.tier and body.tier in {"guided", "direct", "reasoned"}:
-        from llm_runner.llm import TIERS
-
-        tier = TIERS[body.tier]
+    # in the Studio Script tab header — the SAME choice the pipeline made.
+    tier = pick_tier(body.tier, None)
 
     return AnalyzeSceneResponse(
         scene_id=scene_id,
@@ -240,13 +227,7 @@ async def analyze_text_endpoint(body: AnalyzeTextRequest) -> AnalyzeSceneRespons
         log.exception("extraction pipeline failed")
         raise HTTPException(status_code=502, detail=f"extraction failed: {e}")
 
-    from llm_runner.llm.dispatch import resolve_tier
-
-    tier = resolve_tier(llm_config(settings), "speaker_attribution")
-    if body.tier and body.tier in {"guided", "direct", "reasoned"}:
-        from llm_runner.llm import TIERS
-
-        tier = TIERS[body.tier]
+    tier = pick_tier(body.tier, body.model)
 
     return AnalyzeSceneResponse(
         scene_id="(adhoc)",
@@ -296,22 +277,30 @@ class ExtractionConfigResponse(BaseModel):
     summary="Tier specs + prompt bodies + resolved route (Speaker Lab)",
 )
 async def extraction_config() -> ExtractionConfigResponse:
-    from llm_runner.llm.dispatch import resolve_pin
-    from llm_runner.llm import TIERS
-    from ..engines.llm.prompt_store import get_prompt_store
+    from llm_runner.llm import TIERS, stores
 
-    _store = get_prompt_store()
+    from ..engines.llm.run import jv_llm_config
+
+    # Prompt truth = the SHARED template rows (the same rows the run renders).
+    _store = stores.get_prompt_store()
     _guided = _store.get("speaker_attribution.guided")
     _direct = _store.get("speaker_attribution.direct")
 
+    # Route truth = the action's PRESET through the same resolution the run
+    # uses (preset provider/model as overrides over the dispatch cascade).
     provider_id = model = tier_name = None
-    settings = get_state().settings.get()
     try:
-        adapter, model, _tier_override = resolve_pin(llm_config(settings), "speaker_attribution")
-        provider_id = adapter.provider_id
-        from llm_runner.llm.dispatch import resolve_tier
+        from llm_runner.llm.dispatch import resolve_route
+        from llm_runner.llm.preset_resolve import resolve_feature_preset
 
-        tier_name = resolve_tier(llm_config(settings), "speaker_attribution").name
+        preset = resolve_feature_preset("speaker_attribution.guided")
+        adapter, model, _t = resolve_route(
+            jv_llm_config(), "speaker_attribution", action="speaker_attribution.guided",
+            provider_override=(preset.providerId or None) if preset else None,
+            model_override=(preset.model or None) if preset else None,
+        )
+        provider_id = adapter.provider_id
+        tier_name = pick_tier(None, model).name
     except LLMNotConfiguredError:
         pass
 

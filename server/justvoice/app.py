@@ -198,11 +198,25 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     from llm_runner.llm.seed import seed_llm
 
     from .database import session as _db_session
-    from .engines.llm.config import FEATURE_CATALOG
+    from .engines.llm.migrate_prompts import (
+        lift_edited_tunables_into_presets,
+        migrate_jv_prompts_to_shared,
+    )
     from .engines.llm.migrate_providers import migrate_settings_providers_to_db
+    from .feature_catalog import FEATURE_CATALOG, PREFER_LOCAL_FEATURES
+    from .seed_feature_prompts import DEFAULT_FEATURE_PROMPTS
+    from .seed_presets import (
+        DEFAULT_ENGINE_PRESETS,
+        DEFAULT_FEATURE_PRESETS,
+        DEFAULT_PRESET_ID,
+        DEFAULT_TEST_SAMPLES,
+    )
 
-    # JV's OWN prompt editor keeps its path: FastAPI serves the FIRST-registered
-    # match, and install_llm mounts the shared /v1/ai/prompts right after this.
+    # JV's OWN prompt editor keeps its path while callers still read the legacy
+    # store: FastAPI serves the FIRST-registered match, and install_llm mounts
+    # the shared /v1/ai/prompts right after this. Dies with convergence part
+    # 3's deletion step (the shared rows are seeded below; the kit Lab is the
+    # editor once the callers rewire).
     app.include_router(ai_prompts_api.router)
 
     install_llm(
@@ -210,8 +224,22 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         engine=_db_session.engine,
         session_factory=_db_session.SessionLocal,
         feature_catalog=FEATURE_CATALOG,
-        feature_prompts={},
+        # Every JV action as a template row (ruling 9) + the preset library the
+        # rows run on (one-source: presets own every tunable) + per-row Lab
+        # samples. Insert-if-missing; migrated legacy edits land first.
+        feature_prompts=DEFAULT_FEATURE_PROMPTS,
+        engine_presets=DEFAULT_ENGINE_PRESETS,
+        feature_presets=DEFAULT_FEATURE_PRESETS,
+        default_preset_id=DEFAULT_PRESET_ID,
+        test_samples=DEFAULT_TEST_SAMPLES,
+        # The pin-era PREFER_LOCAL_FEATURES, as the install param (config.py's
+        # mapper dies with the pins).
+        prefer_local_features=PREFER_LOCAL_FEATURES,
         data_dir=data_dir,
+        # Names JV in the family cache registry so a sibling app's Quick Setup
+        # can offer to SHARE the engine + model cache instead of re-downloading.
+        product=PRODUCT,
+        # allow_key_reveal stays OFF: JV has no CSRF/origin middleware.
     )
     # JV's warm-on-startup default is OFF (ruling 2026-08-05: the TTS engines own
     # the GPU until F4's VRAM arbiter; the user can flip it on). The SHARED seed
@@ -222,11 +250,18 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     # toggle, so it cannot be a user's choice), and a user who later flips warm
     # ON must keep that choice across boots.
     _apply_jv_warm_default()
+    # Legacy prompt rows: an EDITED jv_feature_prompts row migrates into the
+    # shared table FIRST (before seed_llm), so the insert-if-missing seed
+    # skips it — user edits win over seed defaults (ruling 1).
+    migrate_jv_prompts_to_shared()
     # One-time settings→DB provider migration (idempotent by id), then the
     # shared seed (insert-if-missing), then the registry boots FROM THE DB —
     # the exact order JustWrite uses, so `registered` flags are live from boot.
     migrate_settings_providers_to_db(state.settings.get())
     seed_llm()
+    # After the presets exist: a legacy row's hand-changed temperature/think
+    # lifts onto its feature's assigned preset (one-time, marker-guarded).
+    lift_edited_tunables_into_presets()
     load_from_configs(stores.get_provider_store().list())
 
     # Bundled local LLM (qwen3-llm managed engine) — registered after the DB

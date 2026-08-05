@@ -17,13 +17,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from ..app_state import get_state
+from llm_runner.llm import LLMNotConfiguredError
+
 from ..database import get_db
 from ..database.models import Block, RenderPreset, Scene
-from llm_runner.llm import LLMMessage, LLMNotConfiguredError
-from llm_runner.llm.dispatch import chat
-from ..engines.llm.config import llm_config
-from ..engines.llm.prompt_store import get_prompt_store
+from ..engines.llm.run import run_feature
 from ..errors import not_found
 
 log = logging.getLogger(__name__)
@@ -104,26 +102,18 @@ async def suggest_preset(
             detail="Scene has no blocks to classify — analyze + apply first.",
         )
 
-    user_prompt = (
-        "Available presets:\n"
-        + "\n".join(f"  - {p.name}" + (f" — {p.description}" if p.description else "") for p in presets)
-        + "\n\nChapter text:\n"
-        + chapter_text
-        + "\n\nReturn only the JSON object."
-    )
-
-    prompt = get_prompt_store().get("render_preset_suggest")
-    if prompt is None:
-        raise HTTPException(status_code=500, detail="render_preset_suggest prompt not seeded")
-    settings = get_state().settings.get()
+    # The template row owns the wording ({{presets}}/{{chapter_text}}); the
+    # max-tokens 200 lives on its preset (p_classify).
     try:
-        resp = chat(
-            config=llm_config(settings),
-            feature="render_preset_suggest",
-            messages=[LLMMessage(role="user", content=user_prompt)],
-            system=prompt.system,
-            temperature=prompt.temperature,
-            max_tokens=200,
+        resp = run_feature(
+            "render_preset_suggest",
+            {
+                "presets": "\n".join(
+                    f"  - {p.name}" + (f" — {p.description}" if p.description else "")
+                    for p in presets
+                ),
+                "chapter_text": chapter_text,
+            },
         )
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))
