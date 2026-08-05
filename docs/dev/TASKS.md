@@ -30,18 +30,12 @@
   transports carry no bearer token and resolve base = window.location.origin
   (wrong under Tauri prod + vite dev) because JV never calls
   `configureLlmUi`/`installLlmUi`.
-- **The tray's six extra menu entries are dead in the donor** — `tray:*` emits
-  (`lib.rs:512-533`) have ZERO renderer listeners; Open settings shows the window
-  but never navigates, Copy URL copies nothing, dictate/MCP/logs/about no-op.
-  Tray Quit orphans the Python sidecar (`app.exit(0)` without kill_child); no
-  tray `.icon()` is set (blank icon on Windows). The docgen/JW ports fixed all
-  three (Rust-side handlers, kill-then-exit, app icon) — the family "port the
-  donor whole" ruling must implement the extra entries PROPERLY, not copy the
-  dead emits.
-- **`docs/system-tray.md` describes fiction** — "On (default)" (contradicts the
-  family ruling, JV's own run-modes.md and the Rust default), colored status
-  tint, progress badge, "Launch at login", "in-flight renders finish first":
-  none exist in code. Rewrite to the truth when the tray work lands.
+- *(Tray fixed off-sequence 2026-08-05, Batch 4: icon set, Quit kills the
+  sidecar, copy shows the window first, Open log file opens the logs folder
+  Rust-side, and App.vue carries the `tray:*` listeners for
+  settings/about/copy — the generic entries WORK now. `system-tray.md`
+  rewritten to truth. Still JV's own: dictate/MCP entries remain unwired
+  (parked with the standing sequence).)*
 - **Server `ruff check` FAILS with 515 errors** (283 auto-fixable; top: UP045,
   B008, BLE001, I001) while JV's CLAUDE.md says ruff must pass before commit —
   pre-existing, not the kit's doing. pytest is green (383 passed).

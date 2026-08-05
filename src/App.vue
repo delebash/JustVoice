@@ -15,7 +15,7 @@ import TaskStatusPanel from "./components/TaskStatusPanel.vue";
 import AudioKeepAlive from "./components/AudioKeepAlive.vue";
 import QuickSetup from "./components/QuickSetup.vue";
 import KeyboardCheatsheet from "./components/KeyboardCheatsheet.vue";
-import { HelpDrawer, HelpTrigger, Toast, AppDialog } from "@delebash/llm-ui";
+import { HelpDrawer, HelpTrigger, Toast, AppDialog, pushToast } from "@delebash/llm-ui";
 import GlobalAudioPlayer from "./components/GlobalAudioPlayer.vue";
 
 // View components are lazy-loaded by the router (router/index.js); App.vue holds
@@ -338,6 +338,23 @@ onMounted(async () => {
   window.addEventListener("jv:health-refresh", refresh);
   // Re-run the QuickSetup wizard on demand (Settings → General, Home).
   window.addEventListener("jv:quick-setup", () => { showQuickSetup.value = true; });
+  // The tray's renderer half (the family full-donor ruling 2026-08-04): the
+  // donor's generic entries were dead emits with ZERO listeners (audit
+  // 2026-08-05) — these are the listeners. dictate/MCP stay JV-specific;
+  // their wiring is JV feature work, parked per the standing sequence.
+  const tauriEvent = typeof window !== "undefined" ? window.__TAURI__?.event : null;
+  if (tauriEvent?.listen) {
+    tauriEvent.listen("tray:open-settings", () => goView("settings"));
+    tauriEvent.listen("tray:about", () => goView("settings"));
+    tauriEvent.listen("tray:copy-url", async (e) => {
+      try {
+        await navigator.clipboard.writeText(String(e.payload));
+        pushToast({ message: `Server URL copied — ${e.payload}`, duration: 4000 });
+      } catch {
+        pushToast({ message: "Copy failed", kind: "error" });
+      }
+    });
+  }
 });
 </script>
 

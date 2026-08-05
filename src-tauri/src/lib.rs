@@ -521,10 +521,47 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
             let _ = app.emit("tray:open-settings", ());
         }
         "copy_url" => {
+            // Show first: a focused webview's clipboard write is reliable; a
+            // hidden one's is not (the family fix, 2026-08-05 — this emit had
+            // no listener at all before; App.vue carries it now).
+            let _ = window.show();
+            let _ = window.set_focus();
             let _ = app.emit("tray:copy-url", format!("http://127.0.0.1:{SERVER_PORT}"));
         }
         "open_logs" => {
-            let _ = app.emit("tray:open-logs", ());
+            // REAL behavior (the dead emit had zero listeners — audit
+            // 2026-08-05): open the server's logs folder. The server keeps it
+            // under its data dir (justvoice/paths.py: platformdirs
+            // user_data_dir("justvoice", "justvoice", roaming)); honor
+            // JUSTVOICE_DATA_DIR like the CLI does.
+            let data = std::env::var("JUSTVOICE_DATA_DIR")
+                .map(std::path::PathBuf::from)
+                .unwrap_or_else(|_| {
+                    #[cfg(windows)]
+                    {
+                        std::path::PathBuf::from(std::env::var("APPDATA").unwrap_or_default())
+                            .join("justvoice")
+                            .join("justvoice")
+                    }
+                    #[cfg(target_os = "macos")]
+                    {
+                        std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default())
+                            .join("Library/Application Support/justvoice")
+                    }
+                    #[cfg(all(unix, not(target_os = "macos")))]
+                    {
+                        std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default())
+                            .join(".local/share/justvoice")
+                    }
+                });
+            let logs = data.join("logs");
+            let target = if logs.exists() { logs } else { data };
+            #[cfg(windows)]
+            let _ = std::process::Command::new("explorer").arg(&target).spawn();
+            #[cfg(target_os = "macos")]
+            let _ = std::process::Command::new("open").arg(&target).spawn();
+            #[cfg(all(unix, not(target_os = "macos")))]
+            let _ = std::process::Command::new("xdg-open").arg(&target).spawn();
         }
         "about" => {
             let _ = window.show();
@@ -532,6 +569,11 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
             let _ = app.emit("tray:about", ());
         }
         "quit" => {
+            // Kill the sidecar FIRST — quitting from the tray orphaned the
+            // Python server (audit 2026-08-05; the family kill-then-exit rule).
+            if let Some(state) = app.try_state::<SidecarState>() {
+                state.kill_child();
+            }
             app.exit(0);
         }
         _ => {}
@@ -585,6 +627,9 @@ pub fn run() {
             // §6 + tasks #59 + #60).
             let menu = build_tray_menu(app.handle())?;
             let _tray = TrayIconBuilder::with_id(TRAY_ICON_LABEL)
+                // The app icon IS the tray icon — without one Windows shows a
+                // blank square (audit 2026-08-05; docgen/JW set it from day one).
+                .icon(app.default_window_icon().cloned().expect("app icon"))
                 .tooltip("JustVoice — voice production studio")
                 .menu(&menu)
                 .on_menu_event(|app, event| {
