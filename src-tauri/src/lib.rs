@@ -597,6 +597,8 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
+        // Remember the window size + position across launches (family parity).
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(sidecar)
         .manage(audio_capture::AudioCaptureState::new())
         .manage(hotkey_monitor::HotkeyState::new())

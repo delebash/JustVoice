@@ -72,7 +72,7 @@ async function exportM4B() {
   exportBusy.value = "m4b";
   pushToast({ message: "Export M4B — rendering anything not cached, then muxing chapters…", kind: "info" });
   try {
-    const blob = await api.requestBlob("POST", `/v1/projects/${p.id}/export_m4b`);
+    const blob = await api.requestBlob(`/v1/projects/${p.id}/export_m4b`, { method: "POST" });
     saveBlob(blob, `${(p.name || "book").replace(/[^\w.-]+/g, "_")}.m4b`);
     pushToast({ message: "M4B exported.", kind: "success" });
   } catch (e) {

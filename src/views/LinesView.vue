@@ -147,7 +147,7 @@ async function exportZip() {
   if (!selectedProject.value) return;
   pushToast({ message: "Rendering + zipping voicelines… cached lines are instant.", kind: "info" });
   try {
-    const blob = await api.requestBlob("POST", `/v1/projects/${selectedProject.value.id}/export_voicelines`);
+    const blob = await api.requestBlob(`/v1/projects/${selectedProject.value.id}/export_voicelines`, { method: "POST" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

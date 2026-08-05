@@ -31,22 +31,6 @@
 ## SettingsView now drives useServerStore — one persistence, default false,
 ## correct `keepRunning` param, boot re-apply in App.vue)
 
-- **All six blob-download surfaces are runtime-broken** — `requestBlob("METHOD",
-  path)` method-first at `services/projects.js:87,176`, `ExportPanel.vue:75`,
-  `LinesView.vue:150`, `SettingsView.vue:156,1074` (lines re-checked 2026-08-05
-  s2) resolves to the KIT's path-first `requestBlob(path, {method})` from
-  client.js (the public export, index.js:14). Backup, logs download, M4B,
-  voicelines and project export all fetch `<base>METHOD` with GET. PRECISION
-  (2026-08-05 s2 — the old wording over-blamed): JV DOES feed the kit's COMMON
-  transport (`configureServerApi` via config.js — request/verbs are
-  base-correct and auth-capable; serverApi.js:6-9 "JustVoice authenticates").
-  What's unfed is client.js (`configureLlmUi` never called), whose
-  requestBlob/postForm fall back to window.location.origin (wrong under Tauri
-  prod + vite dev) and are deliberately AUTH-FREE — the kit's own note
-  (serverApi.js:144-148) records the authed-blob seam as later work with JV
-  named ("JV authenticates on blob downloads"). The F1 Phase-1 fix therefore =
-  `installLlmUi` (feeds client.js its base) + the six call sites flipped to
-  path-first + that small ADDITIVE authed-blob kit delta (JW/docgen untouched).
 - *(Tray fixed off-sequence 2026-08-05, Batch 4: icon set, Quit kills the
   sidecar, copy shows the window first, Open log file opens the logs folder
   Rust-side, and App.vue carries the `tray:*` listeners for
@@ -181,9 +165,55 @@
      `/v1/server-auth`), loses "AI features"; once-ever `AiSetupOffer`.
   3. `voice_gender` (the one new feature) + the Rust portable-data-root work.
 
+  **BUILD LOG (the go was given 2026-08-05 s3 — "you have a go for coding"):**
+  - **Phase 0 ✓ (verification, all 8 checks answered, no plan changes):**
+    route overlap = only the known three (ai_prompts shadow · llm-roles +
+    feature-pins · qwen3), JV's own `/v1/cache/*` clear of the shared `/v1/ai`
+    cache router · cache registry = `llm_runner/runner/cache_registry.py`,
+    keyed (product, dataDir), JV will pass `product=PRODUCT` ("JustVoice",
+    version.py:3) · all 8 dispatch.chat callers mapped (extraction/pipeline
+    :167, identify :100, refinement :237, smart_assign :135, personas :265+
+    :318, projects :1260, preset_suggest :120) · log twins = confirmed private
+    duplicates, zero platform imports · **shared warm default is ON** (seed
+    "1", model True, reset "1"; ABSENT row reads ON) → ruling-7 contingency
+    fired · Engines nav omits visibleFor = always visible (the mechanism
+    ruling 4 + 8 need) · **render() is silent-empty** (prompts.py:89) →
+    ruling-9's kit fail-loud hardening gates Phase 2's row work ·
+    `[project.scripts]` = `justvoice-server = "justvoice.cli:app"` only.
+  - **Phase 1 ✓ SHIPPED (renderer chrome; all instant gates green: JV vite
+    build, docgen vite build, JW blob-guard vitest 3/3, new pytest 3/3 + 386
+    collected, ruff app.py 6=6 no new, biome kit+JV clean, cargo check 8s):**
+    `installLlmUi` in main.js — BOTH boot branches incl. the dictate webview —
+    with JV's `resolveBase` (jt:server layering preserved), `{embeddings:
+    false}`, plugin-shell opener, JV catalogCopy/quickSetupCopy VOICE (my
+    words, review welcome; the wizard's "LLM engine setup" NAME lands with the
+    Phase-2 labels feed) · `configureServerApi({authToken})` kept as JV's
+    layer on top · the AUTHED path-first `requestBlob` added to kit serverApi
+    + public blob/form pair re-pointed there (index.js exports via
+    common/index.js; client.js keeps auth-free twins for kit-internal relative
+    imports; JW/docgen behavior unchanged — same base, no token; JW's two
+    guard tests still pass; 3 stale JW comment cites fixed) · six blob call
+    sites flipped path-first (sweep: zero method-first remain) · index.html
+    minimal brand plate (ruling 5: logo + name, today's palette, no spinner)
+    synced with new App.vue `.splash` + `<BootModelLoad/>` overlay on
+    `warmModelId` · hand-mounted Toast/AppDialog → `<LlmUiHosts/>` ·
+    `startWarmOnBoot()` pre-mount + boot-error plate teardown (docgen's
+    lesson) · window-state plugin in Cargo.toml + lib.rs (no denylist — the
+    dictate window is never actually created today) · **ruling 7 landed
+    server-side**: `_apply_jv_warm_default()` in app.py (explicit "0" row,
+    marker-guarded one-time so a user's later ON survives; before seed_llm so
+    insert-if-missing skips it) + `tests/test_warm_default.py` (fresh OFF ·
+    legacy flip · user-ON survives) · §7.9 RESOLVED in the decisions doc
+    (localStorage sanctioned for jt:server/jt:token). NOT in Phase 1 (correct,
+    later phases): AiSetupOffer (Phase 2, first-project moment), kit QuickSetup
+    mount, nav/AI-area work. User docs: checked — the download docs describe
+    the now-restored behavior; no wording changed.
+  - Phase 2 next: kit render() fail-loud hardening FIRST, then complete the
+    install call + convergence part 3 + chrome, per the phase corrections.
+
   **THE NINE RULINGS — ALL DECIDED 2026-08-05 s2 (chat, item by item; the
   final converged text below IS the decision — the "owed" framing below it is
-  historical). The literal "go" for Phase 0 has NOT been given yet.**
+  historical).**
 
   1. **Clean drop** of the old routing leftovers: settings-tree feature-pins,
      production-configs, roles data, dormant `engines.llm[]`. Providers are

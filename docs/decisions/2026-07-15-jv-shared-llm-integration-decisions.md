@@ -282,7 +282,14 @@ per-ACTION preset refs now, §4 F2.)
    drop with re-setup via Quick Setup) — user call at plan time.
 9. `stores/api.js:15-16` uses `localStorage` for `jt:server`/`jt:token` —
    observed during verification; check against the storage rules when touching
-   the transport.
+   the transport. **RESOLVED with F1 Phase 1 (2026-08-05): localStorage IS the
+   sanctioned store for these two.** They are thin-client RENDERER config (which
+   server this window talks to + its bearer token), not app data — the server
+   cannot hold the address used to reach it; every other pref lives server-side.
+   The kit transport reads the token per request (`configureServerApi({
+   authToken })`, main.js) and `jt:server` layers over the origin-aware resolver
+   (config.js); since Phase 1 the public kit `requestBlob`/`postForm` ride the
+   same auth headers, so thin-client blob downloads authenticate too.
 
 ## 8. Sequencing
 

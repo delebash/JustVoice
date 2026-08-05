@@ -1482,3 +1482,32 @@ section.block > h3 {
 }
 .jv-task-pulse { animation: jvTaskPulse 1.4s ease-in-out infinite; }
 .jv-btn-spin { animation: jvSpin 0.65s linear infinite; display: inline-block; }
+
+/* =========================================================
+   6. Boot splash — the minimal brand plate (F1 Phase 1)
+   The SAME plate as index.html #app-boot (KEEP IN SYNC): static
+   layer first paint → this Vue splash while a model warm-load runs
+   (<BootModelLoad/> in the strip) → shell. Palette is the boot
+   layer's, not the app tokens — it must match the static plate
+   before tokens/theme apply.
+   ========================================================= */
+
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: #fbfaf7;
+  color: #6f6a62;
+  font: 600 21px/1.3 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  letter-spacing: 0.04em;
+}
+.splash__logo { width: 56px; height: 56px; }
+.splash__strip { margin-top: 18px; width: min(420px, 82vw); }
+@media (prefers-color-scheme: dark) {
+  .splash { background: #1b1917; color: #8c857c; }
+}

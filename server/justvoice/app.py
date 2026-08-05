@@ -213,6 +213,15 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         feature_prompts={},
         data_dir=data_dir,
     )
+    # JV's warm-on-startup default is OFF (ruling 2026-08-05: the TTS engines own
+    # the GPU until F4's VRAM arbiter; the user can flip it on). The SHARED seed
+    # inserts "1" when the row is missing and the runtime reads an absent row as
+    # ON, so JV must hold an explicit "0" — written BEFORE seed_llm() so the
+    # shared insert-if-missing skips it. One-time by marker: DBs seeded since
+    # 2026-08-01 already carry the shared "1" (no JV surface ever exposed the
+    # toggle, so it cannot be a user's choice), and a user who later flips warm
+    # ON must keep that choice across boots.
+    _apply_jv_warm_default()
     # One-time settings→DB provider migration (idempotent by id), then the
     # shared seed (insert-if-missing), then the registry boots FROM THE DB —
     # the exact order JustWrite uses, so `registered` flags are live from boot.
@@ -329,6 +338,34 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         )
 
     return app
+
+
+def _apply_jv_warm_default() -> None:
+    """Seed JV's warm-on-startup default OFF, once (ruling 2026-08-05).
+
+    Runs after install_llm (the shared tables + storage exist) and before
+    seed_llm (whose insert-if-missing then leaves the row alone). The marker row
+    is what makes it one-time: without it, a user's later warm-ON choice would
+    be flipped back on every boot. Best-effort — a failure here must never stop
+    a boot (the cost is the family default, warm ON)."""
+    from llm_runner.llm import db as llm_db
+
+    try:
+        s = llm_db.session()
+        try:
+            if s.get(llm_db.RunnerSetting, "jv_warm_default_applied") is not None:
+                return
+            row = s.get(llm_db.RunnerSetting, "warm_default_on_startup")
+            if row is None:
+                s.add(llm_db.RunnerSetting(key="warm_default_on_startup", value="0"))
+            else:
+                row.value = "0"
+            s.add(llm_db.RunnerSetting(key="jv_warm_default_applied", value="1"))
+            s.commit()
+        finally:
+            s.close()
+    except Exception as e:  # noqa: BLE001 — a seed nicety, never boot-fatal
+        log.warning("could not apply JV's warm-default-off seed: %s", e)
 
 
 def _locate_ui_dir() -> Path | None:

@@ -15,7 +15,7 @@ import TaskStatusPanel from "./components/TaskStatusPanel.vue";
 import AudioKeepAlive from "./components/AudioKeepAlive.vue";
 import QuickSetup from "./components/QuickSetup.vue";
 import KeyboardCheatsheet from "./components/KeyboardCheatsheet.vue";
-import { HelpDrawer, HelpTrigger, Toast, AppDialog, pushToast } from "@delebash/llm-ui";
+import { BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, pushToast, warmModelId } from "@delebash/llm-ui";
 import GlobalAudioPlayer from "./components/GlobalAudioPlayer.vue";
 
 // View components are lazy-loaded by the router (router/index.js); App.vue holds
@@ -507,12 +507,26 @@ onMounted(async () => {
       </div>
     </main>
 
-    <Toast />
-    <AppDialog />
+    <!-- Every host element the shared UI needs, as ONE tag (Toast + AppDialog were
+         hand-mounted here; the failure mode the installer kills is mounting SOME). -->
+    <LlmUiHosts />
     <QuickSetup v-if="showQuickSetup" @close="onQuickSetupClosed" />
     <KeyboardCheatsheet />
     <HelpDrawer />
     <GlobalAudioPlayer />
     <TaskStatusPanel />
+
+    <!-- Boot splash — the PAGE is this app's (the same minimal brand plate as
+         index.html #app-boot — KEEP IN SYNC), the load group is the KIT's.
+         `warmModelId` is set by main.js's pre-mount startWarmOnBoot(); nothing
+         loading → no splash → the app just opens. JV's warm default is OFF
+         (ruling 2026-08-05), so this shows only when the user turned warm on. -->
+    <div v-if="warmModelId" class="splash">
+      <img class="splash__logo" src="/justtts.svg" alt="" />
+      <div class="splash__name">JustVoice</div>
+      <div class="splash__strip">
+        <BootModelLoad />
+      </div>
+    </div>
   </div>
 </template>

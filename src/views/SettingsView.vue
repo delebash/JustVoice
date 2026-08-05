@@ -153,7 +153,7 @@ const backupIncludeAudio = ref(true);
 async function downloadBackup() {
   backupBusy.value = true;
   try {
-    const blob = await api.requestBlob("GET", `/v1/backup?include_audio=${backupIncludeAudio.value}`);
+    const blob = await api.requestBlob(`/v1/backup?include_audio=${backupIncludeAudio.value}`);
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -1071,7 +1071,7 @@ async function downloadRecentLogs() {
   try {
     // requestBlob, not request() — the response is text/plain and
     // request() would hand back a string the anchor can't download.
-    const blob = await api.requestBlob("GET", "/v1/logs/download");
+    const blob = await api.requestBlob("/v1/logs/download");
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

@@ -84,7 +84,7 @@ export const projectsService = {
     const params = new URLSearchParams();
     params.set("include_audio", String(opts.includeAudio ?? true));
     params.set("include_masters", String(opts.includeMasters ?? true));
-    return withApi().requestBlob("GET", `/v1/projects/${projectId}/export?${params}`);
+    return withApi().requestBlob(`/v1/projects/${projectId}/export?${params}`);
   },
 };
 
@@ -173,10 +173,7 @@ export const webhooksService = {
 
 export const backupService = {
   download(includeGenerations = true) {
-    return withApi().requestBlob(
-      "GET",
-      `/v1/backup?include_generations=${includeGenerations}`,
-    );
+    return withApi().requestBlob(`/v1/backup?include_generations=${includeGenerations}`);
   },
   async restore(file, mode = "replace", confirm = false) {
     const form = new FormData();
