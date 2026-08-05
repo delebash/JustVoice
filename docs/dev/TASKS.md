@@ -181,8 +181,90 @@
      `/v1/server-auth`), loses "AI features"; once-ever `AiSetupOffer`.
   3. `voice_gender` (the one new feature) + the Rust portable-data-root work.
 
-  **NINE RULINGS OWED before coding** (my recs in parens; three refined by the
-  s2 verification passes — the refinements are the current recs):
+  **THE NINE RULINGS — ALL DECIDED 2026-08-05 s2 (chat, item by item; the
+  final converged text below IS the decision — the "owed" framing below it is
+  historical). The literal "go" for Phase 0 has NOT been given yet.**
+
+  1. **Clean drop** of the old routing leftovers: settings-tree feature-pins,
+     production-configs, roles data, dormant `engines.llm[]`. Providers are
+     SAFE either way (migrated to the shared DB on every boot since
+     2026-08-01, app.py:219). **Surviving explicitly:** the refine FLAGS +
+     the auto-refine-after-capture toggle (behavior config, not routing
+     residue). Prompt TEXT always migrates preserving user edits
+     (seed-if-missing semantics, never clobber); a row's hand-changed
+     temperature/think lifts into that feature's assigned preset.
+  2. **voice_gender triggers by explicit button in Voices** — never auto on
+     fetch.
+  3. **"AI engine console" — FAMILY-WIDE rename of the kit console tab, all
+     three apps** (the AI-engine process exists in every app; JV additionally
+     runs TTS engine processes, whose logs stay JV's own surface). Blast
+     radius: familyContract.js manifest + JW en/es keys + both contract
+     tests + docs mentions. Kit-side item recorded in the runner's TASKS.
+  4. **AI Settings nav entry: always visible** in every journey. Phase-0
+     check: today's Engines-entry visibleFor behavior. **Voice engines (its
+     own page per ruling 8) keeps TODAY'S visibility behavior** — never part
+     of this ruling.
+  5. **JV splash plate: minimal brand plate** (name/logo on brand background;
+     dark-mode variant like today's boot layer). No artwork invention.
+  6. **JV-only wizard words: "LLM engine setup"** beside "Voice engine setup"
+     (JV has two engine kinds; the pair names them). Visible words only, via
+     the per-app word feeds that already exist (quickSetupCopy voice seam +
+     JV's labels feed); siblings keep "Quick Setup"; code identifiers
+     (`?quicksetup=1`, seam names) unchanged.
+  7. **Warm-on-startup default OFF in JV** (TTS owns the GPU until F4's
+     arbiter; mechanics ship identically; user can flip it on). Phase-0
+     checkbox: verify the shared `warmDefaultOnStartup` default — if the
+     shared seed defaults ON, Phase 1 seeds JV's explicitly false. The
+     shared routes are live TODAY, so this matters from Phase 1, not 2.
+  8. **ONE host tab** (JW's exact shape, zero kit changes); Voice engines
+     stays its own nav page. Phase-2 rehoming step: inventory the dying
+     Settings "AI features" section — anything app-specific (attribution
+     confidence etc.) rehomes to a JV-owned section or its feature surface,
+     never dropped.
+  9. **EVERYTHING IS A TEMPLATE ROW, in every app — nothing hardcoded**
+     (decided over several passes; JW's `{{characterName}}`/`{{excerpts}}`
+     pattern is the family shape; code computes variable VALUES, rows own
+     the WORDING, presets own every tunable):
+     - **JV: 12 rows over 9 features** — `speaker_attribution.guided` +
+       `.direct` (exist) · `smart_assign` (exists) · `render_preset_suggest`
+       (exists) · `show_notes` (exists) · `compose` (new — `{{personality}}`;
+       its hardcoded `temperature=0.9` at personas_api.py:270 moves onto its
+       preset) · `persona_rewrite` (new — `{{personality}}` + `{{text}}`) ·
+       `voice_gender` (new feature, new row) · **refine ×4**: `refine.base`
+       (base instructions + the Forbidden block; user template
+       `{{transcript}}`; carries "if no transformation sections follow,
+       return the transcript unchanged" — retiring the builder's hardcoded
+       fallback by construction) + `refine.smart_cleanup` +
+       `refine.self_correction` + `refine.preserve_technical` (each section's
+       full text from refinement.py:131-154 becomes its row; each carries its
+       own `{{transcript}}` user template so it is STANDALONE-testable in
+       the Lab with a sample demonstrating exactly its behavior).
+     - **The refine composition:** the Settings checkboxes keep choosing
+       which section rows ride; a ~10-line JV composer concatenates base +
+       enabled sections' system texts and uses base's user half; the call
+       runs through the run helper's EXISTING explicit-system door (the
+       A922 body-supplied-system path — zero new runner mechanism). The Lab
+       tests each PART; production runs the COMPOSITION — stated honestly;
+       the assembled prompt is visible in the AI-task detail after a real
+       run. Routing lists ONE "Dictation cleanup" (catalog entry); the
+       Workbench lists the four rows under it — VERIFIED first-class in the
+       kit (FeatureWorkbench.vue:56-57 groups rows per feature, :94 group
+       heads; zero-row features are dropped :59-60).
+     - **REFINEMENT_EXAMPLES stay code-side data** (few-shot sent as real
+       chat turns, refinement.py:180-209; measured rationale: small models
+       echo inline examples, order matters — last slots pin hardest rules).
+       Revisitable; recorded, not hidden.
+     - Row keys pin to the catalog key spelling (`refine.*`). Every row
+       gets `test_samples` sample data, JW-style. jsonMode/schema lives on
+       the row where a feature needs a JSON contract.
+     - **Docgen converges too** — its own follow-on item (docgen TASKS),
+       right AFTER F1 delivers the run helper (decided sequencing: NOT
+       folded into F1). The promptless mode retires family-wide with it.
+     - Hard gate before ANY row conversion: verify shared `render()`'s
+       missing-placeholder behavior; if silent, the kit fail-loud hardening
+       lands first.
+
+  *(Historical — the pre-decision framing and recs, kept for context:)*
   1. Old JV LLM rows — clean drop + Quick Setup, incl. the
      `settings.engines.llm[]` residue (rec). **Stakes corrected (s2): the
      user-configured PROVIDERS already live in the shared DB** —
