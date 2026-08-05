@@ -26,6 +26,7 @@ const routes = [
   { path: "/effects", name: "effects", component: () => import("../views/EffectsView.vue") },
   { path: "/presets", name: "presets", component: () => import("../views/RenderPresetsView.vue") },
   { path: "/engines", name: "engines", component: () => import("../views/EnginesView.vue") },
+  { path: "/ai", name: "ai", component: () => import("../views/AiView.vue") },
 
   // ── Hidden / pinned ───────────────────────────────────────────────
   { path: "/importreview", name: "importreview", component: () => import("../views/ImportReviewView.vue") },

@@ -3,7 +3,7 @@
 The nested LLM-config models (`LLMProviderConfig` / `FeaturePinConfig` /
 `ProductionConfig`) are camelCase-NATIVE as of 2026-06-21 —
 the Python field IS the JSON key, with no snake_case aliases. So this surface
-emits `engines.llm[].providerType`, `engines.feature_pins[].providerId`, etc.
+emits `engines.llm[].providerType` etc. (the legacy provider list).
 natively (no `response_model_by_alias` needed — there are no aliases to pick
 between), and the renderer reads/writes those sections in camelCase. Non-LLM
 settings sections keep their own (snake) field names unchanged.

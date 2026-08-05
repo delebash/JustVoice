@@ -37,8 +37,9 @@ _ROW_ID = "singleton"
 # with snake_case keys via the old `model_dump()`. Loading that snake data into
 # the camel-native models would silently DROP the renamed fields (a provider
 # would lose its base_url / api_key / default_model, etc.). This one-time,
-# idempotent migration renames the known snake keys to camelCase for exactly
-# those LLM sections before validation. Already-camel data passes through
+# idempotent migration renames the known snake keys to camelCase for the ONE
+# surviving section (engines.llm[] — migrate_providers still reads it) before
+# validation. Already-camel data passes through
 # untouched (the snake keys simply aren't present). Other settings sections
 # (engines.external[] = TTS, etc.) keep their snake fields and are left alone.
 # (`engines.llm_roles` was migrated here too until 2026-08-01; the roles
@@ -55,13 +56,9 @@ _LLM_PROVIDER_RENAMES = {
     "embedding_model": "embeddingModel",
     "timeout_seconds": "timeoutSeconds",
 }
-_FEATURE_PIN_RENAMES = {"provider_id": "providerId"}
-_PRODUCTION_CONFIG_RENAMES = {
-    "provider_id": "providerId",
-    "system_prompt": "systemPrompt",
-    "user_prompt": "userPrompt",
-    "promoted_at": "promotedAt",
-}
+# (`feature_pins` / `production_configs` rename maps died with their fields —
+# F1 Phase 2: like `llm_roles` before them, a stray stored key is simply
+# ignored at validation; renaming data nothing reads was dead motion.)
 
 
 def _rename_keys(obj: dict, renames: dict[str, str]) -> None:
@@ -88,14 +85,6 @@ def _migrate_llm_camel(data: dict) -> dict:
     for prov in engines.get("llm") or []:
         if isinstance(prov, dict):
             _rename_keys(prov, _LLM_PROVIDER_RENAMES)
-
-    for pin in engines.get("feature_pins") or []:
-        if isinstance(pin, dict):
-            _rename_keys(pin, _FEATURE_PIN_RENAMES)
-
-    for cfg in engines.get("production_configs") or []:
-        if isinstance(cfg, dict):
-            _rename_keys(cfg, _PRODUCTION_CONFIG_RENAMES)
 
     return data
 

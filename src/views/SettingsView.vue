@@ -6,7 +6,7 @@ import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { projectsService } from "../services/projects.js";
-import { UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, LogsPanel, fmtBytes, refreshRunnerModels, serverUrl } from "@delebash/llm-ui";
 import { useOnboarding } from "../stores/onboarding.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -140,14 +140,6 @@ async function deleteAllProjects() {
 }
 
 // ── Backup & restore (GET /v1/backup, POST /v1/restore) ─────────────
-const aiUsage = ref(null);
-async function loadAiUsage() {
-  try { aiUsage.value = await api.request("/v1/ai-usage"); } catch { aiUsage.value = null; }
-}
-async function clearAiUsage() {
-  try { await api.request("/v1/ai-usage", { method: "DELETE" }); await loadAiUsage(); } catch { /* toast not needed */ }
-}
-
 const backupBusy = ref(false);
 const backupIncludeAudio = ref(true);
 async function downloadBackup() {
@@ -460,13 +452,14 @@ onMounted(loadTtsEngines);
 // ── Sub-nav (matches preview HTML §13). ─────────────────────────────
 const SUBS = [
   { id: "general",    label: "General" },
-  { id: "ai",         label: "AI features" },
   { id: "mastering",  label: "Mastering" },
   { id: "generation", label: "Generation" },
   { id: "capture",    label: "Capture / Dictation" },
   { id: "mcp",        label: "MCP server" },
   { id: "gpu",        label: "GPU" },
   { id: "appearance", label: "Appearance" },
+  { id: "storage",    label: "Storage" },
+  { id: "server",     label: "Server" },
   { id: "cache",      label: "Cache" },
   { id: "channels",   label: "Channels" },
   { id: "webhooks",   label: "Webhooks" },
@@ -485,295 +478,6 @@ try {
     activeSub.value = sub;
   }
 } catch { /* ignore */ }
-
-// ── Model roles — Quick / Accuracy (engines redesign 2026-06-11) ─────
-// Two plain-language roles; features inherit one unless pinned. The
-// recommendations endpoint classifies registered providers' models so
-// the user never answers "which model is fast?" cold.
-const roleRecs = ref(null);
-const roles = ref({ quick: null, accuracy: null });
-async function loadRoles() {
-  const [recs, st] = await Promise.all([
-    api.safeRequest("/v1/llm-roles/recommendations", null),
-    api.safeRequest("/v1/settings", null),
-  ]);
-  roleRecs.value = recs;
-  roles.value = {
-    quick: st?.engines?.llm_roles?.quick || null,
-    accuracy: st?.engines?.llm_roles?.accuracy || null,
-  };
-}
-function roleValue(role) {
-  const t = roles.value[role];
-  return t ? `${t.providerId}::${t.model}` : "";
-}
-async function setRole(role, packed) {
-  const [providerId, model] = (packed || "::").split("::");
-  const next = { ...roles.value, [role]: providerId ? { providerId, model } : null };
-  try {
-    await api.request("/v1/settings", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ engines: { llm_roles: next } }),
-    });
-    roles.value = next;
-    pushToast({ message: `${role === "quick" ? "Quick" : "Accuracy"} model updated.`, duration: 2500 });
-  } catch (e) {
-    pushToast({ message: `Save failed: ${e?.message || e}`, kind: "error" });
-  }
-}
-function acceptRecommendedRoles() {
-  const q = roleRecs.value?.recommendedQuick;
-  const a = roleRecs.value?.recommendedAccuracy;
-  if (q) setRole("quick", `${q.providerId}::${q.model}`);
-  if (a) setRole("accuracy", `${a.providerId}::${a.model}`);
-}
-
-// ── Production configs (Speaker Lab promote → here) ─────────────────
-const prodConfigs = ref([]);
-async function loadProdConfigs() {
-  const r = await api.safeRequest("/v1/production-configs", { configs: [] });
-  prodConfigs.value = r?.configs || [];
-}
-function configFor(feature) {
-  return prodConfigs.value.find((c) => c.feature === feature) || null;
-}
-function goHash(h) { window.location.hash = h; }
-async function revertConfig(feature) {
-  const ok = await confirmDialog({
-    title: "Revert to Default?",
-    message: "The feature goes back to the routing table + tier-resolved prompts. The Lab preset itself is untouched.",
-    confirmLabel: "Revert",
-  });
-  if (!ok) return;
-  try {
-    await api.request(`/v1/production-configs/${feature}`, { method: "DELETE" });
-    await loadProdConfigs();
-    pushToast({ message: "Reverted to Default (tier-resolved).", duration: 2500 });
-  } catch (e) {
-    pushToast({ message: `Revert failed: ${e?.message || e}`, kind: "error" });
-  }
-}
-
-// ── Feature routing table (redesign) ────────────────────────────────
-// Default role per feature mirrors dispatch.DEFAULT_FEATURE_ROLES.
-const DEFAULT_ROLES = {
-  compose: "quick", persona_rewrite: "quick", refine: "quick", voice_gender: "quick",
-  speaker_attribution: "accuracy", smart_assign: "accuracy", show_notes: "accuracy",
-  render_preset_suggest: "accuracy",
-};
-const EXTRA_FEATURES = [
-  { key: "refine", label: "Dictation cleanup", description: "Captures: raw speech → clean text before paste (filler removal, self-corrections, punctuation)." },
-  { key: "voice_gender", label: "Voice gender guess", description: "Voices: labels fetched voices the built-in dictionary doesn't recognise." },
-];
-const routeRows = computed(() => {
-  const cat = aiCatalog.value.map((e) => ({ key: e.key, label: e.label, description: e.description }));
-  const merged = [...cat, ...EXTRA_FEATURES.filter((x) => !cat.some((c) => c.key === x.key))];
-  return merged.map((f) => ({ ...f, defaultRole: DEFAULT_ROLES[f.key] || "accuracy" }));
-});
-function routeValue(key) {
-  const pin = pinForFeature(key);
-  if (pin?.providerId) return `prov::${pin.providerId}`;
-  if (pin?.role) return `inherit-${pin.role}`;
-  return `inherit-${DEFAULT_ROLES[key] || "accuracy"}`;
-}
-async function setRoute(key, value) {
-  let body;
-  if (value.startsWith("prov::")) body = { feature: key, providerId: value.slice(6), model: "" };
-  else body = { feature: key, providerId: "", model: "", role: value.replace("inherit-", "") };
-  try {
-    await api.request("/v1/feature-pins", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    await loadAiPanel();
-  } catch (e) {
-    pushToast({ message: `Routing save failed: ${e?.message || e}`, kind: "error" });
-  }
-}
-function resolveRoute(key) {
-  const cfg = configFor(key);
-  if (cfg) return `${cfg.model || "?"} · ${cfg.providerId} (config)`;
-  const pin = pinForFeature(key);
-  if (pin?.providerId) {
-    const pr = aiProviders.value.find((x) => x.id === pin.providerId);
-    return `${pin.model || pr?.defaultModel || "default"} · ${pr?.name || pin.providerId}`;
-  }
-  const role = pin?.role || DEFAULT_ROLES[key] || "accuracy";
-  const t = roles.value[role];
-  if (t?.providerId) return `${t.model || "default"} · ${t.providerId} (${role})`;
-  const fb = fallbackProvider.value;
-  return fb ? `${fb.defaultModel || "default"} · ${fb.name || fb.id} (fallback)` : "— set a role above";
-}
-
-// ── Nudge banner — provider saved on Engines hands off here ─────────
-const nudge = ref(null);
-function loadNudge() {
-  try {
-    const raw = window.sessionStorage?.getItem("jv.ai.nudge");
-    if (raw) nudge.value = JSON.parse(raw);
-  } catch { /* ignore */ }
-}
-function dismissNudge() {
-  nudge.value = null;
-  try { window.sessionStorage?.removeItem("jv.ai.nudge"); } catch { /* ignore */ }
-}
-async function acceptNudge(role) {
-  if (!nudge.value) return;
-  await setRole(role, `${nudge.value.providerId}::${nudge.value.model || ""}`);
-  dismissNudge();
-}
-
-// ── Usage strip (4-stat summary; detail panel below keeps the table) ──
-const usageStats = computed(() => {
-  const u = aiUsage.value;
-  if (!u) return null;
-  let tokens = 0; let busiest = null; let busiestCalls = 0;
-  for (const [feat, agg] of Object.entries(u.by_feature || {})) {
-    tokens += (agg.prompt_tokens || 0) + (agg.completion_tokens || 0);
-    if (agg.calls > busiestCalls) { busiest = feat; busiestCalls = agg.calls; }
-  }
-  return { calls: u.total_calls || 0, tokens, busiest, busiestCalls };
-});
-
-// ── AI features panel (plan Q5 / Slice 1) ───────────────────────────
-// Pin LLM features (compose / persona_rewrite / speaker_attribution /
-// render_preset_suggest / smart_assign) to specific provider + model +
-// tier. Backend at server/justvoice/api/feature_pins_api.py.
-const aiCatalog = ref([]);
-const aiPins = ref([]);
-const aiProviders = ref([]);
-const aiBusy = ref(false);
-
-async function loadAiPanel() {
-  try {
-    const [pins, providers] = await Promise.all([
-      api.safeRequest("/v1/feature-pins", { pins: [], catalog: [] }),
-      api.safeRequest("/v1/llm-providers", { providers: [] }),
-    ]);
-    aiCatalog.value = pins?.catalog || [];
-    aiPins.value = pins?.pins || [];
-    aiProviders.value = providers?.providers || [];
-  } catch (e) {
-    pushToast({ message: `AI panel load failed: ${e?.message || e}`, kind: "error" });
-  }
-}
-
-function pinForFeature(key) {
-  return aiPins.value.find((p) => p.feature === key) || null;
-}
-function providerLabel(providerId) {
-  return aiProviders.value.find((p) => p.id === providerId)?.name || providerId;
-}
-
-// Fallback provider — when no pin is set for a feature, the dispatch
-// uses the first registered LLM. Surface its name in the "Inherit
-// default" option so users know which provider their feature actually
-// falls through to.
-const fallbackProvider = computed(() => aiProviders.value[0] || null);
-
-// Per-provider model cache. Lazy-fetched when the user clicks the
-// 🔄 button next to a feature row, then offered as datalist options
-// so the model input becomes a typing-combobox like ProviderForm.
-const providerModels = ref({});  // { providerId: string[] }
-const providerModelsBusy = ref({});  // { providerId: boolean }
-
-async function fetchProviderModels(providerId) {
-  if (!providerId) return;
-  providerModelsBusy.value = { ...providerModelsBusy.value, [providerId]: true };
-  try {
-    const r = await api.request(`/v1/llm-providers/${providerId}/models`);
-    providerModels.value = { ...providerModels.value, [providerId]: r?.models || [] };
-    if (!(r?.models || []).length) {
-      pushToast({ message: `${providerLabel(providerId)} returned no models.`, kind: "info" });
-    }
-  } catch (e) {
-    pushToast({ message: `Couldn't list models for ${providerLabel(providerId)}: ${e?.message || e}`, kind: "error" });
-  } finally {
-    providerModelsBusy.value = { ...providerModelsBusy.value, [providerId]: false };
-  }
-}
-
-// Lab destination per feature — speaker_attribution lands in Speaker Lab.
-// Future: smart_assign → Smart-Assign Lab when it ships.
-const LAB_PATHS = {
-  speaker_attribution: { href: "#speakerlab", label: "Speaker Lab" },
-};
-
-async function savePin(feature, providerId, model, tier) {
-  if (!providerId) {
-    pushToast({ message: "Pick a provider first.", kind: "info" });
-    return;
-  }
-  aiBusy.value = true;
-  try {
-    await api.request("/v1/feature-pins", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ feature, providerId, model: model || "", tier: tier || null }),
-    });
-    await loadAiPanel();
-    pushToast({ message: `${feature} pinned to ${providerLabel(providerId)}.`, kind: "success" });
-  } catch (e) {
-    pushToast({ message: `Pin failed: ${e?.message || e}`, kind: "error" });
-  } finally {
-    aiBusy.value = false;
-  }
-}
-
-async function clearPin(feature) {
-  aiBusy.value = true;
-  try {
-    await api.request(`/v1/feature-pins/${feature}`, { method: "DELETE" });
-    await loadAiPanel();
-    pushToast({ message: `${feature} pin cleared — falls back to first registered LLM.`, kind: "success" });
-  } catch (e) {
-    pushToast({ message: `Clear failed: ${e?.message || e}`, kind: "error" });
-  } finally {
-    aiBusy.value = false;
-  }
-}
-
-// ── Corrections badge (Phase 5 surfacing) ───────────────────────────
-const correctionsCounts = ref({});   // {projectId: count}
-const projectsForCorrections = ref([]);
-async function loadCorrections() {
-  try {
-    const r = await api.safeRequest("/v1/projects", { projects: [] });
-    projectsForCorrections.value = r?.projects || [];
-    // Pull corrections per project. Cap at 30 to keep this cheap.
-    const slice = projectsForCorrections.value.slice(0, 30);
-    const counts = {};
-    await Promise.all(
-      slice.map(async (p) => {
-        try {
-          const c = await api.safeRequest(`/v1/projects/${p.id}/corrections/count`, { count: 0 });
-          counts[p.id] = c?.count ?? 0;
-        } catch {
-          counts[p.id] = 0;
-        }
-      }),
-    );
-    correctionsCounts.value = counts;
-  } catch { /* ignore */ }
-}
-async function clearProjectCorrections(projectId) {
-  const ok = await confirmDialog({
-    title: "Clear corrections?",
-    message: "Clear all speaker corrections for this project? This cannot be undone.",
-    danger: true,
-    confirmLabel: "Clear all",
-  });
-  if (!ok) return;
-  try {
-    await api.request(`/v1/projects/${projectId}/corrections`, { method: "DELETE" });
-    correctionsCounts.value = { ...correctionsCounts.value, [projectId]: 0 };
-    pushToast({ message: "Corrections cleared.", kind: "success" });
-  } catch (e) {
-    pushToast({ message: `Clear failed: ${e?.message || e}`, kind: "error" });
-  }
-}
 
 // ── GPU info (task #91) ──────────────────────────────────────────────
 const gpuInfo = ref(null);
@@ -1038,13 +742,125 @@ async function copySnippet(key) {
   }
 }
 
-// ── Log viewer (preview parity — preview Logs sub-tab) ──────────────
-const logsPreview = ref(`Loading recent log lines…`);
-async function loadLogsPreview() {
-  const r = await api.safeRequest("/v1/logs/tail?lines=80", null);
-  if (r?.text) logsPreview.value = r.text;
-  else logsPreview.value = "(no recent log lines — server may be offline or logging not yet wired)";
+// ── Storage (family section): data root via the shell + disk usage ──
+const storageRoot = ref(null); // { root, default, portable } from the shell
+const isDesktop = ref(false);
+const relocating = ref(false);
+const storageErr = ref("");
+const diskUsage = ref(null);
+const diskBusy = ref("");
+const diskErr = ref("");
+
+async function loadStorageRoot() {
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    storageRoot.value = await invoke("storage_get_root");
+    isDesktop.value = true;
+  } catch {
+    isDesktop.value = false;
+  }
 }
+async function loadDiskUsage() {
+  diskUsage.value = await api.safeRequest("/v1/disk/usage", null);
+}
+// Loading state = an em-dash per row; a real 0 formats as "0 MB" (the kit's
+// fmtBytes returns "" for 0). fmtBytes stays the ONE source for the number.
+function diskSize(n) {
+  if (diskUsage.value == null) return "—";
+  return fmtBytes(n) || "0 MB";
+}
+async function changeFolder() {
+  storageErr.value = "";
+  const { open } = await import("@tauri-apps/plugin-dialog");
+  const picked = await open({ directory: true, title: "Choose a data folder",
+    defaultPath: storageRoot.value?.root || undefined });
+  if (!picked) return;
+  const yes = await confirmDialog({
+    title: "Move all app data?",
+    message: `Everything JustVoice saves — projects, voices, the database, the AI engine and models, and logs — moves to ${picked}. The app restarts when the move finishes.`,
+    confirmLabel: "Move & restart",
+  });
+  if (!yes) return;
+  relocating.value = true;
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    await invoke("storage_relocate", { newRoot: picked });
+    window.location.reload();
+  } catch (e) {
+    storageErr.value = String(e || "Move failed.");
+    relocating.value = false;
+  }
+}
+async function clearModelsCache() {
+  const size = fmtBytes(diskUsage.value?.modelsCache) || "0 MB";
+  const yes = await confirmDialog({
+    title: "Clear downloaded models?",
+    message: `This frees ${size} of downloaded model files. Your models stay in the catalog and re-download on demand.`,
+    confirmLabel: "Clear models cache",
+  });
+  if (!yes) return;
+  diskBusy.value = "models";
+  diskErr.value = "";
+  try {
+    const res = await api.request("/v1/llm-runner/models-cache/clear", { method: "POST" });
+    if (res?.ok === false) {
+      diskErr.value = res.detail === "unload models first"
+        ? "A model is loaded — unload it first (AI Settings → Unload), then try again."
+        : res.detail || "Couldn't clear the models cache.";
+    }
+  } catch {
+    diskErr.value = "Couldn't clear the models cache.";
+  } finally {
+    diskBusy.value = "";
+    await loadDiskUsage();
+    // Re-stat the shared catalog so cleared models flip to "Download".
+    refreshRunnerModels();
+  }
+}
+async function clearSpawnLogs() {
+  diskBusy.value = "spawn";
+  diskErr.value = "";
+  try {
+    await api.request("/v1/llm-runner/spawn-logs/clear", { method: "POST" });
+  } catch {
+    diskErr.value = "Couldn't clear the engine logs.";
+  } finally {
+    diskBusy.value = "";
+    await loadDiskUsage();
+  }
+}
+
+// ── Server (family section): headless access + bearer tokens ────────
+const auth = ref({ tokens: [], requireForLoopback: false });
+const tokenDraft = ref("");
+const headlessUrl = computed(() => serverUrl("") || api.serverUrl);
+async function loadAuth() {
+  const a = await api.safeRequest("/v1/server-auth", null);
+  if (a) auth.value = a;
+}
+async function saveAuth(patch) {
+  const next = { ...auth.value, ...patch };
+  try {
+    auth.value = await api.request("/v1/server-auth", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(next),
+    });
+  } catch (e) {
+    pushToast({ message: `Could not save: ${e?.message || e}`, kind: "error" });
+  }
+}
+function addToken() {
+  const t = tokenDraft.value.trim();
+  if (!t) return;
+  tokenDraft.value = "";
+  saveAuth({ tokens: [...auth.value.tokens, t] });
+}
+function dropToken(t) {
+  saveAuth({ tokens: auth.value.tokens.filter((x) => x !== t) });
+}
+
+// ── Log viewer (preview parity — preview Logs sub-tab) ──────────────
 // "Open log file" opens the on-disk rotating log (user decision
 // 2026-06-13, W4 revision: the ring dies with the process — a crash or
 // boot hang is exactly when logs are needed, so the server now writes
@@ -1067,39 +883,12 @@ async function openLogFile() {
     pushToast({ message: `Couldn't open log: ${e?.message || e}`, kind: "error" });
   }
 }
-async function downloadRecentLogs() {
-  try {
-    // requestBlob, not request() — the response is text/plain and
-    // request() would hand back a string the anchor can't download.
-    const blob = await api.requestBlob("/v1/logs/download");
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `justvoice-logs-${new Date().toISOString().slice(0, 10)}.txt`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  } catch (e) {
-    pushToast({ message: `Log download failed: ${e?.message || e}`, kind: "error" });
-  }
-}
-async function copyRecentLogs() {
-  try {
-    await navigator.clipboard.writeText(logsPreview.value || "");
-    pushToast({ message: "Recent log lines copied.", duration: 2000 });
-  } catch {
-    pushToast({ message: "Clipboard unavailable.", kind: "warning" });
-  }
-}
 onMounted(() => {
-  loadAiUsage();
   loadGpuInfo();
   loadMcpBindings();
-  loadLogsPreview();
-  loadAiPanel();
-  loadRoles();
-  loadProdConfigs();
-  loadNudge();
-  loadCorrections();
+  loadAuth();
+  loadStorageRoot();
+  loadDiskUsage();
 });
 </script>
 
@@ -1212,7 +1001,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <div v-show="activeSub === 'general'" class="jv-section">
+    <div v-show="activeSub === 'server'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header" style="display: flex; align-items: center; gap: 10px">
           <h3 class="jv-card__title" style="margin: 0">Connection</h3>
@@ -1242,8 +1031,49 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── General · Lifecycle (preview parity — preview line 1564) ─── -->
-    <div v-show="activeSub === 'general'" class="jv-section">
+    <!-- ─── Server · Headless access + bearer tokens (family section) ─── -->
+    <div v-show="activeSub === 'server'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">Headless access</h3></div>
+        <p class="jv-muted" style="font-size: 12.5px">
+          The server hosts the UI itself — <code class="jv-mono">justvoice-server serve</code>
+          plus a browser gives the full app without the desktop shell.
+        </p>
+        <div class="settings-grid" style="margin-top: 8px">
+          <UiField label="URL" layout="block"><span class="jv-mono" style="font-size: 12px">{{ headlessUrl }}</span></UiField>
+        </div>
+      </div>
+
+      <div class="jv-card" style="margin-top: 16px">
+        <div class="jv-card__header"><h3 class="jv-card__title">Access tokens</h3></div>
+        <p class="jv-muted" style="font-size: 12.5px">
+          Off by default. Add a token to require an
+          <code class="jv-mono">Authorization: Bearer</code> header on every
+          <code class="jv-mono">/v1</code> API call — for when you run the server
+          exposed beyond this machine. Thin clients paste the token under Connection.
+        </p>
+        <table class="jv-table" style="max-width: 560px" v-if="auth.tokens.length">
+          <tbody>
+            <tr v-for="t in auth.tokens" :key="t">
+              <td class="jv-mono" style="font-size: 12px">{{ t }}</td>
+              <td style="width: 90px"><UiButton intent="ghost" size="small" label="Remove" @click="dropToken(t)" /></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="jv-row" style="margin-top: 10px; gap: 8px">
+          <UiInput v-model="tokenDraft" width="name" placeholder="new token…" @keydown.enter="addToken" />
+          <UiButton intent="secondary" label="Add token" :disabled="!tokenDraft.trim()" @click="addToken" />
+        </div>
+        <div class="jv-row" style="margin-top: 12px; align-items: center; gap: 10px">
+          <UiToggle :model-value="auth.requireForLoopback"
+            @update:model-value="(v) => saveAuth({ requireForLoopback: v })" aria-label="Require a token on localhost" />
+          <span style="font-size: 12.5px">Require a token even on localhost</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Server · Lifecycle (the family headless/tray ruling) ─── -->
+    <div v-show="activeSub === 'server'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header">
           <h3 class="jv-card__title">Lifecycle</h3>
@@ -1284,8 +1114,55 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── General · Server bind (preview parity) ─── -->
-    <div v-show="activeSub === 'general'" class="jv-section">
+    <!-- ─── Storage · Data location + disk usage (family section) ─── -->
+    <div v-show="activeSub === 'storage'" class="jv-section">
+      <div class="jv-card">
+        <div class="jv-card__header"><h3 class="jv-card__title">Data location</h3></div>
+        <p class="jv-muted" style="font-size: 12.5px">
+          One folder holds everything JustVoice saves — projects, voices, the database,
+          the AI engine and models, and logs. Delete the folder, delete it all.
+        </p>
+        <div class="settings-grid" style="margin-top: 10px">
+          <UiField label="Folder" layout="block">
+            <span class="jv-mono" style="font-size: 12px">{{ isDesktop ? (storageRoot?.root || "—") : "headless — set by JUSTVOICE_DATA_DIR" }}</span>
+          </UiField>
+          <UiField v-if="isDesktop" label="Type" layout="block">
+            <span style="font-size: 12.5px">{{ storageRoot?.portable ? "Portable — beside the app" : "User folder" }}</span>
+          </UiField>
+        </div>
+        <div class="jv-row" style="margin-top: 12px" v-if="isDesktop">
+          <UiButton intent="secondary"
+            :label="relocating ? 'Moving your data — the app will restart…' : 'Change folder…'"
+            :disabled="relocating" @click="changeFolder" />
+        </div>
+        <p v-else class="jv-muted" style="margin: 8px 0 0; font-size: 12px">Changing the folder is available in the desktop app.</p>
+        <p v-if="storageErr" class="jv-mono" style="color: var(--danger); font-size: 12px">{{ storageErr }}</p>
+      </div>
+
+      <div class="jv-card" style="margin-top: 16px">
+        <div class="jv-card__header"><h3 class="jv-card__title">Disk usage</h3></div>
+        <p class="jv-muted" style="font-size: 12.5px">Where the data folder's space goes — and what can be reclaimed.</p>
+        <table class="jv-table" style="max-width: 560px; margin-top: 10px">
+          <tbody>
+            <tr><td>Models cache</td><td>{{ diskSize(diskUsage?.modelsCache) }}</td>
+              <td style="width: 130px"><UiButton intent="secondary" size="small" :disabled="!!diskBusy"
+                :label="diskBusy === 'models' ? 'Clearing…' : 'Clear'" @click="clearModelsCache" /></td></tr>
+            <tr><td>Engine spawn logs</td><td>{{ diskSize(diskUsage?.spawnLogs) }}</td>
+              <td><UiButton intent="secondary" size="small" :disabled="!!diskBusy"
+                :label="diskBusy === 'spawn' ? 'Clearing…' : 'Clear'" @click="clearSpawnLogs" /></td></tr>
+            <tr><td>Engine builds</td><td>{{ diskSize(diskUsage?.engineBuilds) }}</td><td /></tr>
+            <tr><td>Database</td><td>{{ diskSize(diskUsage?.database) }}</td><td /></tr>
+            <tr><td>Server logs</td><td>{{ diskSize(diskUsage?.appLogs) }}</td><td /></tr>
+            <tr><td><b>Total</b></td><td><b>{{ diskSize(diskUsage?.total) }}</b></td><td /></tr>
+            <tr><td>Free disk space</td><td>{{ diskSize(diskUsage?.diskFree) }}</td><td /></tr>
+          </tbody>
+        </table>
+        <p v-if="diskErr" class="jv-mono" style="color: var(--danger); font-size: 12px">{{ diskErr }}</p>
+      </div>
+    </div>
+
+    <!-- ─── Storage · Backup & restore ─── -->
+    <div v-show="activeSub === 'storage'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header">
           <h3 class="jv-card__title">Backup & restore</h3>
@@ -1307,7 +1184,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <div v-show="activeSub === 'general'" class="jv-section">
+    <div v-show="activeSub === 'server'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header">
           <h3 class="jv-card__title">Server bind</h3>
@@ -1409,205 +1286,6 @@ onMounted(() => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- ─── AI features (Phase 2 / Slice 7 UI surface) ─── -->
-    <!-- ─── AI · nudge banner (Engines provider-save hands off here) ─── -->
-    <div v-show="activeSub === 'ai'" class="jv-section" v-if="nudge">
-      <div class="ai-nudge">
-        💡 You just connected <b>{{ nudge.name || nudge.providerId }}</b><span v-if="nudge.model"> with <span class="jv-mono">{{ nudge.model }}</span></span>.
-        Use it as one of your model roles?
-        <span class="jv-spacer" />
-        <UiButton intent="primary" size="small" label="Use for Accuracy" title="Speaker extraction, smart-assign, show notes run on it" @click="acceptNudge('accuracy')" />
-        <UiButton intent="secondary" size="small" label="Use for Quick" title="Dictation cleanup, Compose, Rewrite run on it" @click="acceptNudge('quick')" />
-        <UiButton intent="ghost" size="small" label="Not now" @click="dismissNudge" />
-      </div>
-    </div>
-
-    <!-- ─── AI · Model roles (engines redesign — full contract) ─── -->
-    <div v-show="activeSub === 'ai'" class="jv-section">
-      <div class="jv-card">
-        <div class="jv-card__header" style="display:flex;align-items:center;gap:10px">
-          <h3 class="jv-card__title" style="margin:0">Model roles</h3>
-          <span class="jv-spacer" />
-          <UiButton v-if="roleRecs?.recommendedQuick || roleRecs?.recommendedAccuracy" intent="secondary" size="small"
-            label="Use recommended" title="Apply the app's hardware-aware picks for both roles" @click="acceptRecommendedRoles" />
-          <a href="#engines" class="jv-muted" style="font-size:12px;text-decoration:underline" title="Connect providers / download local models">manage engines →</a>
-        </div>
-        <p class="jv-muted" style="font-size:12.5px">
-          Two jobs, two models. Recommendations come from your hardware and what's installed — pick anything; the labels just explain the trade.
-        </p>
-        <div class="ai-roles">
-          <div class="ai-role">
-            <div class="ai-role__name"><span class="ai-rolechip quick">QUICK</span> Quick model</div>
-            <div class="ai-role__desc">Answers in under a second. Used for: dictation cleanup · Compose · Rewrite · voice-gender guess.</div>
-            <div class="ai-role__sel">
-              <UiSelect width="url" :model-value="roleValue('quick')"
-                :options="[{ value: '', label: '(not set — features fall back to the first provider)' }, ...(roleRecs?.candidates || []).map((c) => ({ value: `${c.providerId}::${c.model}`, label: c.label }))]"
-                @update:model-value="(v) => setRole('quick', v)" />
-              <span v-if="roleRecs?.recommendedQuick" class="ai-rec" :title="`Best speed of what's installed: ${roleRecs.recommendedQuick.label}`">RECOMMENDED: {{ roleRecs.recommendedQuick.model }}</span>
-            </div>
-            <div class="ai-role__hint">A local small model keeps dictation cleanup free and instant — cloud models here bill on every sentence you speak.</div>
-          </div>
-          <div class="ai-role">
-            <div class="ai-role__name"><span class="ai-rolechip acc">ACCURACY</span> Accuracy model</div>
-            <div class="ai-role__desc">Takes its time, gets it right. Used for: speaker extraction · smart-assign · show notes.</div>
-            <div class="ai-role__sel">
-              <UiSelect width="url" :model-value="roleValue('accuracy')"
-                :options="[{ value: '', label: '(not set — features fall back to the first provider)' }, ...(roleRecs?.candidates || []).map((c) => ({ value: `${c.providerId}::${c.model}`, label: c.label }))]"
-                @update:model-value="(v) => setRole('accuracy', v)" />
-              <span v-if="roleRecs?.recommendedAccuracy" class="ai-rec" :title="`Biggest model you can run: ${roleRecs.recommendedAccuracy.label}`">RECOMMENDED: {{ roleRecs.recommendedAccuracy.model }}</span>
-            </div>
-            <div class="ai-role__hint">These features run inside async jobs — a few extra seconds buys attribution quality you'll hear in the casting.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ─── AI · Production configs (Speaker Lab promote lands here) ─── -->
-    <div v-show="activeSub === 'ai'" class="jv-section">
-      <div class="jv-card">
-        <div class="jv-card__header"><h3 class="jv-card__title">Production configs</h3></div>
-        <p class="jv-muted" style="font-size:12.5px">
-          A config freezes a feature exactly as tuned in its Lab — model <i>and</i> prompts. The active config
-          beats the pins below. <b>Default (tier-resolved)</b> = routing decides the model; prompts auto-match its size.
-          Precedence: <span class="jv-mono" style="font-size:11px">config → pin → role → tier</span>.
-        </p>
-        <div v-for="f in [{ key: 'speaker_attribution', label: 'Speaker extraction', lab: '#speakerlab', hasLab: true }, { key: 'smart_assign', label: 'Smart-assign voices', lab: '', hasLab: false }]" :key="f.key"
-          style="display:flex;align-items:center;gap:10px;margin-top:10px;padding:11px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2)">
-          <strong style="font-size:13.5px">{{ f.label }}</strong>
-          <span class="jv-muted" style="font-size:12px">
-            Active: <b style="color:var(--ink)">{{ configFor(f.key)?.name || 'Default (tier-resolved)' }}</b>
-            <UiTag intent="violet" v-if="configFor(f.key)"  style="margin-left:6px">FROM SPEAKER LAB</UiTag>
-          </span>
-          <span v-if="configFor(f.key)" class="jv-mono jv-muted" style="font-size:11px">
-            {{ configFor(f.key).model }}<span v-if="configFor(f.key).temperature != null"> · temp {{ configFor(f.key).temperature }}</span><span v-if="configFor(f.key).systemPrompt"> · custom prompts</span>
-          </span>
-          <span class="jv-spacer" />
-          <UiButton v-if="f.hasLab" intent="ghost" size="small" label="Open in Speaker Lab" title="Retune the prompts and re-promote" @click="goHash(f.lab)" />
-          <span v-else class="jv-muted" style="font-size:11.5px">Lab coming later</span>
-          <UiButton v-if="configFor(f.key)" intent="ghost" size="small" label="Revert to Default" title="Back to the routing table + tier-resolved prompts" @click="revertConfig(f.key)" />
-        </div>
-        <div class="ai-ladder">
-          <div class="ai-step"><span class="n">1</span><span class="w">Active production config</span><span class="who">exact model + prompts, promoted from a Lab — wins outright</span></div>
-          <div class="ai-step"><span class="n">2</span><span class="w">Feature override</span><span class="who">a specific provider picked in the routing table</span></div>
-          <div class="ai-step"><span class="n">3</span><span class="w">Role default</span><span class="who">Quick or Accuracy, from Model roles above</span></div>
-          <div class="ai-step"><span class="n">4</span><span class="w">Tier-resolved prompts</span><span class="who">automatic — small models get guided prompts, big ones terse; never a setting</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ─── AI · usage strip (summary; the detail panel below keeps the table) ─── -->
-    <div v-show="activeSub === 'ai'" class="jv-section" v-if="usageStats">
-      <div class="jv-card">
-        <div class="jv-card__header"><h3 class="jv-card__title">AI usage</h3></div>
-        <div class="ai-usage">
-          <div class="u"><b>{{ usageStats.calls.toLocaleString() }}</b>calls recorded</div>
-          <div class="u"><b>{{ usageStats.tokens.toLocaleString() }}</b>tokens total</div>
-          <div class="u"><b>{{ usageStats.busiest || '—' }}</b>busiest feature <small v-if="usageStats.busiestCalls">· {{ usageStats.busiestCalls }} calls</small></div>
-        </div>
-      </div>
-    </div>
-
-    <div v-show="activeSub === 'ai'" class="jv-section">
-      <!-- Feature routing — redesigned table (approved ai-features contract).
-           Plain-English rows; each inherits a role or overrides to a
-           provider; Resolves-to shows the actual model; CONFIG tag marks
-           rows where a promoted Lab config wins. -->
-      <div class="jv-card">
-        <div class="jv-card__header"><h3 class="jv-card__title">Feature routing</h3></div>
-        <p class="jv-muted" style="font-size: 12.5px">
-          Every AI feature, in plain words, and what answers it. “Inherit” follows the Model roles above —
-          override any row to a specific provider when you care. An active production config (purple tag) wins outright.
-        </p>
-        <table class="jv-table" style="margin-top: 12px">
-          <thead><tr><th style="width:36%">Feature</th><th style="width:26%">Uses</th><th>Resolves to</th><th></th></tr></thead>
-          <tbody>
-            <tr v-for="f in routeRows" :key="f.key">
-              <td>
-                <div style="font-weight:600">{{ f.label }}</div>
-                <div class="jv-muted" style="font-size:11.5px">{{ f.description }}</div>
-              </td>
-              <td>
-                <UiSelect style="min-width:200px" :model-value="routeValue(f.key)"
-                  :options="[
-                    { value: 'inherit-quick', label: `Inherit · Quick${f.defaultRole === 'quick' ? ' (default)' : ''}` },
-                    { value: 'inherit-accuracy', label: `Inherit · Accuracy${f.defaultRole === 'accuracy' ? ' (default)' : ''}` },
-                    ...aiProviders.map((pr) => ({ value: `prov::${pr.id}`, label: `${pr.name || pr.id} · ${pr.defaultModel || 'default model'}` })),
-                  ]"
-                  @update:model-value="(v) => setRoute(f.key, v)" />
-              </td>
-              <td><span class="jv-mono" style="font-size:11.5px">{{ resolveRoute(f.key) }}</span></td>
-              <td><UiTag intent="violet" v-if="configFor(f.key)"  :title="`Promoted Lab config '${configFor(f.key).name}' wins for this feature`">CONFIG</UiTag></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-
-      <!-- ── Speaker corrections — Phase 5 surfacing ── -->
-      <div class="jv-card" style="margin-top: 16px">
-        <div class="jv-card__header">
-          <h3 class="jv-card__title">Speaker corrections</h3>
-        </div>
-        <p class="jv-muted" style="font-size: 12.5px; margin: 4px 0 12px">
-          Manual fixes you make on the Studio Script tab become correction memory — the top 12 most recent corrections per project inject into the next Analyze run as worked examples. Clearing wipes the project's correction history.
-        </p>
-        <p v-if="!projectsForCorrections.length" class="jv-muted">No projects yet.</p>
-        <table v-else class="jv-table" style="max-width: 720px">
-          <thead>
-            <tr><th>Project</th><th style="width: 120px; text-align: right">Corrections</th><th style="width: 120px" /></tr>
-          </thead>
-          <tbody>
-            <tr v-for="p in projectsForCorrections" :key="p.id">
-              <td>{{ p.name }}</td>
-              <td style="text-align: right">
-                <UiTag :intent="correctionsCounts[p.id] ? 'solid' : 'ghost'">
-                  {{ correctionsCounts[p.id] ?? 0 }}
-                </UiTag>
-              </td>
-              <td>
-                <UiButton
-                  intent="ghost" size="small" label="Clear all"
-                  :disabled="!correctionsCounts[p.id]"
-                  @click="clearProjectCorrections(p.id)"
-                />
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ─── General · Cache ─── -->
-    <div v-show="activeSub === 'ai'" class="jv-section">
-      <div class="jv-card">
-        <div class="jv-card__header">
-          <h3 class="jv-card__title">AI usage</h3>
-          <span class="jv-spacer" />
-          <UiButton intent="ghost" size="small" label="↻" title="Refresh usage" @click="loadAiUsage" />
-          <UiButton intent="ghost" size="small" label="Clear" title="Clear the usage log" @click="clearAiUsage" />
-        </div>
-        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 10px">
-          Tokens + wall time per feature, recorded for every LLM call (ported from JustWrite's usage ledger).
-        </p>
-        <table v-if="aiUsage && Object.keys(aiUsage.by_feature || {}).length" class="jv-table">
-          <thead>
-            <tr><th>Feature</th><th class="jv-right">Calls</th><th class="jv-right">Errors</th><th class="jv-right">Tokens in</th><th class="jv-right">Tokens out</th><th class="jv-right">Time</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="(agg, feature) in aiUsage.by_feature" :key="feature">
-              <td><code>{{ feature }}</code></td>
-              <td class="jv-right jv-mono">{{ agg.calls }}</td>
-              <td class="jv-right jv-mono" :style="agg.errors ? 'color: var(--danger)' : ''">{{ agg.errors }}</td>
-              <td class="jv-right jv-mono">{{ agg.prompt_tokens.toLocaleString() }}</td>
-              <td class="jv-right jv-mono">{{ agg.completion_tokens.toLocaleString() }}</td>
-              <td class="jv-right jv-mono">{{ (agg.duration_ms / 1000).toFixed(1) }}s</td>
-            </tr>
-          </tbody>
-        </table>
-        <p v-else class="jv-muted" style="font-size: 12.5px">No AI calls recorded yet this session.</p>
       </div>
     </div>
 
@@ -1999,18 +1677,12 @@ onMounted(() => {
           <div class="setting-row__head">
             <div>
               <div class="setting-row__title">LLM refinement model</div>
-              <div class="setting-row__desc">Cleans transcribed text — fixes punctuation, capitalization, optional self-correction.</div>
+              <div class="setting-row__desc">
+                Cleans transcribed text — the model comes from
+                <a href="#/ai">AI Settings → Routing by feature</a> (the "Dictation
+                cleanup" row), like every AI feature.
+              </div>
             </div>
-            <UiSelect
-              v-model="capture.llmModel"
-              width="name"
-              :options="[
-                { label: 'Qwen 0.6B (fastest)', value: '0.6B' },
-                { label: 'Qwen 1.7B (balanced)', value: '1.7B' },
-                { label: 'Qwen 4B (best)', value: '4B' },
-                { label: 'Off — raw transcription only', value: 'off' },
-              ]"
-            />
           </div>
         </div>
         <div class="setting-row">
@@ -2393,10 +2065,10 @@ onMounted(() => {
         </p>
         <div class="jv-row" style="gap: 8px; margin-bottom: 14px">
           <UiButton intent="secondary" size="small" label="📂 Open log file" @click="openLogFile" />
-          <UiButton intent="secondary" size="small" label="📥 Download recent logs" @click="downloadRecentLogs" />
-          <UiButton intent="secondary" size="small" label="📋 Copy last 100 lines" @click="copyRecentLogs" />
         </div>
-        <pre class="jv-code-block" style="max-height: 280px; overflow: auto; margin: 0">{{ logsPreview }}</pre>
+        <!-- The kit panel over the shared /v1/logs routes: live ring tail +
+             per-day files + download (replaced JV's private ring preview). -->
+        <LogsPanel />
       </div>
     </div>
 
@@ -2507,28 +2179,6 @@ onMounted(() => {
   gap: 16px;
 }
 
-/* AI features — redesign cards (nudge, role panels, ladder, usage strip) */
-.ai-nudge{display:flex;gap:10px;align-items:center;padding:12px 16px;border:1px solid var(--accent-line,#b8d2c3);background:var(--accent-soft,#e8f0eb);border-radius:10px;font-size:13px}
-.ai-roles{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
-.ai-role{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:var(--surface-2,#fbfaf7)}
-.ai-role__name{font-weight:700;font-size:13.5px;display:flex;gap:8px;align-items:center}
-.ai-role__desc{font-size:12px;color:var(--ink-2);margin:3px 0 10px}
-.ai-role__sel{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.ai-role__sel select{flex:1;min-width:220px}
-.ai-role__hint{font-size:11px;color:var(--ink-3);margin-top:7px}
-.ai-rolechip{font-size:10px;font-weight:700;letter-spacing:.04em;border-radius:999px;padding:2px 9px}
-.ai-rolechip.quick{background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049);border:1px solid var(--accent-line,#b8d2c3)}
-.ai-rolechip.acc{background:#f5edda;color:#b08a3e;border:1px solid #e2d2b0}
-.ai-rec{font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--accent-ink,#2c6049);background:var(--accent-soft,#e8f0eb);border:1px solid var(--accent-line,#b8d2c3);border-radius:999px;padding:2px 8px}
-.ai-ladder{margin-top:14px;border-left:3px solid var(--accent-line,#b8d2c3);padding-left:14px}
-.ai-step{display:flex;gap:10px;align-items:baseline;padding:4px 0;font-size:13px}
-.ai-step .n{font-weight:700;color:var(--accent-ink,#2c6049);font-family:var(--font-mono);font-size:12px}
-.ai-step .w{font-weight:600;min-width:200px}
-.ai-step .who{color:var(--ink-3);font-size:12px}
-.ai-usage{display:flex;gap:30px;margin-top:8px}
-.ai-usage .u{font-size:13px;color:var(--ink-2)}
-.ai-usage .u b{display:block;font-size:17px;color:var(--ink)}
-.ai-usage .u small{color:var(--ink-3)}
 
 /* Workspace-focus chips — same visual family as the welcome modal's
    use-case cards, compacted to a single selectable row. */

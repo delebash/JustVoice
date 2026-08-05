@@ -7,7 +7,7 @@ from fastapi import APIRouter
 from ..app_state import get_state
 from ..engines.manager import get_manager
 from ..models import EngineHealth, HealthResponse
-from ..version import API_VERSION, VERSION
+from ..version import API_VERSION, PRODUCT, VERSION
 
 router = APIRouter(tags=["system"])
 
@@ -31,6 +31,8 @@ async def get_health() -> HealthResponse:
     # loaded (manager.load() vs registry.set_current()).
     current = get_manager().current_id() or st.engines.current()
     return HealthResponse(
+        product=PRODUCT,
+        apiVersion=API_VERSION,
         status="ok",
         version=VERSION,
         api_version=API_VERSION,

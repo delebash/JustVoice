@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!--
-  QuickSetup — post-onboarding wizard. Now multi-step + feature-pin
-  auto-config per the JustWrite QuickSetup.vue / quickSetupPresets.js
-  pattern (source read this turn). The earlier single-screen version
-  installed engines but skipped the load-bearing recipe writes that
-  make JustVoice actually configured for the user.
+  Voice engine setup — the TTS-engine wizard (renamed from "Quick Setup",
+  ruling 6 2026-08-05: JV has two engine kinds and the pair names them —
+  the LLM sibling is the KIT wizard under AI Settings). The feature-pin
+  recipe died with the pin era (F1 Phase 2): AI routing lives in the shared
+  presets now, seeded working out of the box.
 
   Affordance Table (source: JustWrite's QuickSetup.vue:1-200 +
   quickSetupPresets.js read this turn):
@@ -13,9 +13,6 @@
     ✅ tier auto-pick from VRAM + manual override dropdown
     ✅ preset blurb + estimated download GB
     ✅ per-engine install progress (poll job_id via /v1/jobs/{id})
-    ✅ recipe writes feature pins (speaker_attribution → Reasoned/Direct
-       based on tier, compose / persona_rewrite / smart_assign / preset_suggest
-       → Direct) via PUT /v1/feature-pins per pin
     ✅ LLM provider auto-recommend ("register a Claude key for richer
        attribution" or "Ollama covers Compose if you don't want cloud")
     ⚠ manual provider picker — not implemented; user goes to Engines
@@ -41,86 +38,44 @@ const engines = ref([]);
 const llmProviders = ref([]);
 
 // ── Tier recipes ────────────────────────────────────────────────────
-// Per-tier recipe: which engines to install + which features to pin to
-// which tier. Mirrors JustWrite's quickSetupPresets.js shape.
+// Per-tier recipe: which VOICE engines to install (the pin half died with
+// the pin era — AI routing lives in the shared presets).
 const TIER_RECIPES = {
   cpu: {
     label: "CPU / low VRAM",
     blurb: "Kokoro runs realtime on CPU. Speaker attribution routes through whichever LLM you register — Claude / OpenAI / Ollama.",
     ttsEngineIds: ["kokoro"],
     estimatedDownloadGb: 0.4,
-    featurePins: {
-      compose:               { tier: "direct" },
-      persona_rewrite:       { tier: "direct" },
-      speaker_attribution:   { tier: "direct" },  // Direct on CPU — Reasoned is too slow
-      render_preset_suggest: { tier: "direct" },
-      smart_assign:          { tier: "direct" },
-    },
   },
   vram8: {
     label: "8 GB tier",
     blurb: "Kokoro + Chatterbox cover most production work. Voice cloning on 8 GB. Speaker attribution still Direct on the LLM side.",
     ttsEngineIds: ["kokoro", "chatterbox"],
     estimatedDownloadGb: 2.4,
-    featurePins: {
-      compose:               { tier: "direct" },
-      persona_rewrite:       { tier: "direct" },
-      speaker_attribution:   { tier: "direct" },
-      render_preset_suggest: { tier: "direct" },
-      smart_assign:          { tier: "direct" },
-    },
   },
   vram12: {
     label: "12 GB tier",
     blurb: "Adds Qwen3-TTS 0.6B for natural-language delivery instructions. Speaker attribution upgrades to Reasoned for harder books.",
     ttsEngineIds: ["kokoro", "chatterbox", "qwen3"],
     estimatedDownloadGb: 4.1,
-    featurePins: {
-      compose:               { tier: "direct" },
-      persona_rewrite:       { tier: "direct" },
-      speaker_attribution:   { tier: "reasoned" },
-      render_preset_suggest: { tier: "direct" },
-      smart_assign:          { tier: "direct" },
-    },
   },
   vram16: {
     label: "16 GB tier",
     blurb: "Adds Dia (multi-speaker dialogue). Full Reasoned-tier prompts for attribution.",
     ttsEngineIds: ["kokoro", "chatterbox", "qwen3", "dia"],
     estimatedDownloadGb: 6.8,
-    featurePins: {
-      compose:               { tier: "direct" },
-      persona_rewrite:       { tier: "direct" },
-      speaker_attribution:   { tier: "reasoned" },
-      render_preset_suggest: { tier: "direct" },
-      smart_assign:          { tier: "reasoned" },
-    },
   },
   vram24: {
     label: "24 GB tier",
     blurb: "Adds LuxTTS + MOSS-TTS (high-fidelity production). Smart-assign + attribution both Reasoned.",
     ttsEngineIds: ["kokoro", "chatterbox", "qwen3", "dia", "luxtts", "moss_tts"],
     estimatedDownloadGb: 14.0,
-    featurePins: {
-      compose:               { tier: "direct" },
-      persona_rewrite:       { tier: "reasoned" },
-      speaker_attribution:   { tier: "reasoned" },
-      render_preset_suggest: { tier: "direct" },
-      smart_assign:          { tier: "reasoned" },
-    },
   },
   vram32: {
     label: "32 GB+ tier",
     blurb: "Full pool including TADA Llama. Every feature routes Reasoned.",
     ttsEngineIds: ["kokoro", "chatterbox", "qwen3", "dia", "luxtts", "moss_tts", "tada"],
     estimatedDownloadGb: 22.0,
-    featurePins: {
-      compose:               { tier: "reasoned" },
-      persona_rewrite:       { tier: "reasoned" },
-      speaker_attribution:   { tier: "reasoned" },
-      render_preset_suggest: { tier: "reasoned" },
-      smart_assign:          { tier: "reasoned" },
-    },
   },
 };
 
@@ -249,45 +204,12 @@ async function runInstalls() {
       setProgress(engine.id, { phase: "failed", error: e?.message || String(e) });
     }
   }
-  // Once all engines either completed or failed, apply feature pins
-  // (always — they're independent of engine install success).
-  await applyFeaturePins();
   step.value = "done";
 }
 
 function cancelInstalls() {
   installAborted.value = true;
   pushToast({ message: "Install cancelled. Engines that finished are kept.", kind: "info" });
-}
-
-// ── Apply feature pin recipe ────────────────────────────────────────
-const pinResults = ref({});
-async function applyFeaturePins() {
-  pinResults.value = {};
-  // Pick the first registered LLM as the target provider. If none, all
-  // pins fail with "no provider" — UI surfaces this honestly.
-  const providerId = llmProviders.value[0]?.id || "";
-  for (const [feature, spec] of Object.entries(recipe.value.featurePins)) {
-    if (!providerId) {
-      pinResults.value[feature] = { ok: false, error: "no LLM provider registered" };
-      continue;
-    }
-    try {
-      await api.request("/v1/feature-pins", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          feature,
-          providerId,
-          model: "",
-          tier: spec.tier,
-        }),
-      });
-      pinResults.value[feature] = { ok: true };
-    } catch (e) {
-      pinResults.value[feature] = { ok: false, error: e?.message || String(e) };
-    }
-  }
 }
 
 // ── Optional helpers — local LLM detect-and-connect + STT readiness ──
@@ -323,7 +245,7 @@ async function connectLocal(d) {
         timeoutSeconds: 120,
       }),
     });
-    pushToast({ message: `${d.name} connected — feature pins can route to it.`, kind: "success" });
+    pushToast({ message: `${d.name} connected — the AI features can route to it.`, kind: "success" });
     await probeHelpers();
     await detect(); // refresh llmProviders so pins pick it up
   } catch (e) {
@@ -347,20 +269,14 @@ const totalInstalled = computed(() =>
 const totalFailed = computed(() =>
   Object.values(installProgress.value).filter((p) => p.phase === "failed").length,
 );
-const pinsApplied = computed(() =>
-  Object.values(pinResults.value).filter((r) => r.ok).length,
-);
-const pinsFailed = computed(() =>
-  Object.values(pinResults.value).filter((r) => !r.ok).length,
-);
 const hasLlmProvider = computed(() => llmProviders.value.length > 0);
 </script>
 
 <template>
   <AppModal
     v-if="open"
-    :eyebrow="`Quick setup · step ${step === 'detect' ? '1/3' : step === 'confirm' ? '1/3' : step === 'install' ? '2/3' : '3/3'}`"
-    :title="step === 'detect' ? 'Probing your hardware…' : step === 'confirm' ? 'Recommended setup' : step === 'install' ? 'Installing engines + pinning features' : 'All set'"
+    :eyebrow="`Voice engine setup · step ${step === 'detect' ? '1/3' : step === 'confirm' ? '1/3' : step === 'install' ? '2/3' : '3/3'}`"
+    :title="step === 'detect' ? 'Probing your hardware…' : step === 'confirm' ? 'Recommended setup' : step === 'install' ? 'Installing voice engines' : 'All set'"
     :max-width="'620px'"
     no-padding
     :closable="step !== 'install'"
@@ -509,18 +425,12 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
         <!-- ── DONE step ────────────────────────────────────────── -->
         <template v-else>
           <p>
-            <strong>{{ totalInstalled }}</strong> engine{{ totalInstalled === 1 ? "" : "s" }} installed
-            <span v-if="totalFailed">· <strong>{{ totalFailed }}</strong> failed</span>
-            · <strong>{{ pinsApplied }}</strong> feature pin{{ pinsApplied === 1 ? "" : "s" }} applied
-            <span v-if="pinsFailed">· <strong>{{ pinsFailed }}</strong> deferred</span>.
+            <strong>{{ totalInstalled }}</strong> voice engine{{ totalInstalled === 1 ? "" : "s" }} installed
+            <span v-if="totalFailed">· <strong>{{ totalFailed }}</strong> failed</span>.
           </p>
           <p v-if="!hasLlmProvider" class="jv-muted" style="font-size: 12px">
-            No LLM provider was registered, so feature pins didn't apply.
-            Open <a href="#engines">Engines → LLM tab</a> to add Claude / OpenAI / Ollama / DeepSeek, then revisit
-            <a href="#settings">Settings → AI features</a> to confirm the pins took.
-          </p>
-          <p v-else-if="pinsFailed" class="jv-muted" style="font-size: 12px">
-            Some pins failed — re-apply individually from <a href="#settings">Settings → AI features</a>.
+            The AI text features (attribution, dictation cleanup, compose) have their own
+            setup — open <a href="#/ai">AI Settings</a> and run the LLM engine setup.
           </p>
         </template>
       </div>
@@ -532,10 +442,10 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
           <UiButton
             intent="primary"
             :label="enginesToInstall.length
-              ? `Install ${enginesToInstall.length} engine${enginesToInstall.length === 1 ? '' : 's'} + apply pins`
-              : hasLlmProvider ? 'Apply feature pins' : 'Finish — connect an LLM later'"
-            title="Nothing here blocks you: AI features wait quietly until an LLM is connected (Engines → Online providers)"
-            @click="enginesToInstall.length || hasLlmProvider ? runInstalls() : close()"
+              ? `Install ${enginesToInstall.length} engine${enginesToInstall.length === 1 ? '' : 's'}`
+              : 'Finish'"
+            title="Nothing here blocks you: the AI text features have their own setup under AI Settings"
+            @click="enginesToInstall.length ? runInstalls() : close()"
           />
         </template>
         <template v-else-if="step === 'install'">

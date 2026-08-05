@@ -1511,3 +1511,27 @@ section.block > h3 {
 @media (prefers-color-scheme: dark) {
   .splash { background: #1b1917; color: #8c857c; }
 }
+
+/* AI-tasks sidebar toggle (kit panel) — button variant of the nav row + the
+   running-count badge (red while there are unseen errors). */
+.jv-sidebar__nav--btn {
+  background: none;
+  border: none;
+  width: 100%;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.jv-sidebar__count {
+  margin-left: auto;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  background: var(--accent);
+  color: #fff;
+}
+.jv-sidebar__count--error { background: var(--danger, #c0392b); }

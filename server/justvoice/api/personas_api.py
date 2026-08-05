@@ -243,9 +243,8 @@ async def compose_with_personality(id: str) -> ComposeResponse:
     """LLM-fills a line of dialogue in the persona's personality voice.
 
     Drives the Compose button in the Generate view's floating bar.
-    Phase 2 / Slice 7 — wired to the LLM provider registry. Looks up
-    settings.engines.feature_pins.compose to route the call; falls
-    back to the first registered LLM if no pin set.
+    Runs through the shared run path — the `compose` template row + its
+    engine preset (F1 Phase 2; the pin-era routing died).
     """
     from fastapi import HTTPException
 
@@ -277,8 +276,8 @@ async def rewrite_in_character(id: str, body: RewriteRequest) -> RewriteResponse
     the textarea) or rejects (original preserved) before sending to TTS.
 
     NEVER an automatic render-time hook — see plan Q3. Always explicit.
-    Phase 2 / Slice 7 — wired to the LLM provider registry. Routes via
-    settings.engines.feature_pins.persona_rewrite.
+    Runs through the shared run path — the `persona_rewrite` template row +
+    its engine preset (F1 Phase 2; the pin-era routing died).
     """
     from fastapi import HTTPException
 

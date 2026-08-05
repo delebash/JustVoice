@@ -139,14 +139,12 @@ def test_legacy_snake_settings_row_is_migrated(tmp_path):
     assert prov.defaultModel == "qwen3:8b"
     assert prov.embeddingModel == "nomic-embed-text"
     assert prov.timeoutSeconds == 90
-    assert s.engines.feature_pins[0].providerId == "ollama-pc"
-    # The stray legacy llm_roles key was ignored, not resurrected as a field.
+    # The pin-era sections (feature_pins / production_configs) were dropped
+    # with F1 Phase 2, joining llm_roles: the load must TOLERATE their stray
+    # legacy keys — ignored at validation, never resurrected as fields.
     assert not hasattr(s.engines, "llm_roles")
-    pc = s.engines.production_configs[0]
-    assert pc.providerId == "ollama-pc"
-    assert pc.systemPrompt == "SYS"
-    assert pc.userPrompt == "USR"
-    assert pc.promotedAt == "2026-01-01T00:00:00Z"
+    assert not hasattr(s.engines, "feature_pins")
+    assert not hasattr(s.engines, "production_configs")
 
 
 def test_migration_is_idempotent_on_camel_data(tmp_path):

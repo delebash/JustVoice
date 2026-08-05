@@ -23,6 +23,12 @@ from fastapi.staticfiles import StaticFiles
 # /v1/llm-runner/* router (manifest + detected hardware). Both apps mount the
 # SAME router. See docs/plans/2026-06-16-builtin-llm-runner.md.
 from llm_runner import router as llm_runner_router
+from llm_runner.platform import (
+    install_file_log,
+    install_log_ring,
+    make_disk_router,
+    make_logs_router,
+)
 
 from .api import (
     admin_api,
@@ -37,8 +43,6 @@ from .api import (
     effect_presets_api,
     engines_api,
     extraction_api,
-    feature_pins_api,
-    llm_roles_api,
     prefs_api,
     preset_suggest_api,
     smart_assign_api,
@@ -79,6 +83,12 @@ log = logging.getLogger(__name__)
 
 def create_app(data_dir: Path | None = None) -> FastAPI:
     data_dir = data_dir or default_data_dir()
+
+    # Server logs → in-memory ring (Settings → Logs) + a rotating file that
+    # survives a crash/boot-hang. Shared platform helpers, same in every app
+    # (they replaced admin_api's private twins — F1 Phase 2).
+    install_log_ring()
+    install_file_log(Path(data_dir) / "logs" / "justvoice.log")
 
     # Phase 1.5: SQLite is the primary persistence layer. init_db() runs
     # idempotent migrations + creates net-new tables. settings.json has been
@@ -271,8 +281,10 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(capture_readiness_api.router)
     app.include_router(captures_api.router)
     app.include_router(admin_api.router)
-    admin_api.install_log_ring()
-    admin_api.install_file_log(data_dir)
+    # The shared platform log + disk surface (kit LogsPanel + Storage read
+    # these; JV's private ring/file twins died with F1 Phase 2).
+    app.include_router(make_logs_router(PRODUCT))
+    app.include_router(make_disk_router(data_dir))
     app.include_router(sse_streams_api.router)
     # (projects_api is included once, in the Phase-5 block above — it was
     # registered twice until the 2026-06-13 wiring audit, W7.)
@@ -285,8 +297,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(backup_api.router)
     app.include_router(project_export_api.router)
     app.include_router(effect_presets_api.router)
-    app.include_router(llm_roles_api.router)
-    app.include_router(feature_pins_api.router)
     app.include_router(prefs_api.router)
     app.include_router(extraction_api.router)
     app.include_router(smart_assign_api.router)

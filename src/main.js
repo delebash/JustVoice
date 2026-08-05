@@ -8,6 +8,7 @@ import {
   configureHelp,
   ConnectionError,
   configureServerApi,
+  configureFamilyLabels,
   checkServer,
   installLlmUi,
   startWarmOnBoot,
@@ -75,6 +76,19 @@ function wireKit(app) {
   configureServerApi({
     authToken: () =>
       (typeof localStorage !== "undefined" && localStorage.getItem("jt:token")) || "",
+  });
+  // Ruling 6 (2026-08-05): JV alone renames the kit wizard's VISIBLE words —
+  // "LLM engine setup" beside the TTS "Voice engine setup" (two engine kinds;
+  // the pair names them). Words only, via the existing labels feed; siblings
+  // keep "Quick Setup"; code identifiers (?quicksetup=1, seam names) unchanged.
+  configureFamilyLabels({
+    quickSetup: {
+      runButton: "Run LLM engine setup",
+      rerunButton: "Re-run LLM engine setup",
+    },
+    aiOffer: {
+      quickSetup: "Run LLM engine setup",
+    },
   });
 }
 

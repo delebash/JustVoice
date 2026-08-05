@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: MIT
 """POST /v1/admin/factory-reset — wipe to as-new-install (testing tier 3).
 
+(The private log ring/file twins + /v1/logs routes that lived here died with
+F1 Phase 2 — the shared platform helpers `install_log_ring`/`install_file_log`
++ `make_logs_router` serve logging now, wired in app.py.)
+
 Deletes every DB row (projects, scenes, blocks, takes, generations,
 captures, bindings, …) AND the file-backed stores (personas, voices,
 lexicons, project JSON, training jobs, generation audio — mid-Phase-1.5
@@ -14,14 +18,10 @@ remove via Engines).
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from logging.handlers import RotatingFileHandler
-from pathlib import Path
 
 from fastapi import APIRouter
-from fastapi.responses import PlainTextResponse
-from sqlalchemy import inspect, text
 from pydantic import BaseModel
+from sqlalchemy import inspect, text
 
 from ..app_state import get_state
 from ..database import session as db_session
@@ -31,106 +31,6 @@ from ..models import Settings
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["admin"])
-
-
-# ── Log ring (Settings → Logs preview) ───────────────────────────────
-# The server logs to stdout; nothing on disk to tail. A bounded ring
-# handler on the root logger keeps the last N lines for the UI.
-class _RingHandler(logging.Handler):
-    def __init__(self, capacity: int = 500):
-        super().__init__()
-        self.capacity = capacity
-        self.lines: list[str] = []
-        self.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
-
-    def emit(self, record: logging.LogRecord) -> None:
-        try:
-            self.lines.append(self.format(record))
-            if len(self.lines) > self.capacity:
-                del self.lines[: len(self.lines) - self.capacity]
-        except Exception:  # noqa: BLE001 — logging must never raise
-            pass
-
-
-_ring = _RingHandler()
-
-
-def install_log_ring() -> None:
-    """Idempotent — called from create_app()."""
-    root = logging.getLogger()
-    if _ring not in root.handlers:
-        root.addHandler(_ring)
-
-
-# ── File log (user decision 2026-06-13, wiring-audit W4 revision) ────
-# The ring dies with the process; a crash or boot hang is exactly when
-# logs are needed (this project's history: Windows spawn loops, boot
-# failures). A rotating file at {data_dir}/logs/justvoice.log survives.
-_file_handler: logging.Handler | None = None
-
-
-def install_file_log(data_dir) -> Path | None:
-    """Rotating file handler at {data_dir}/logs/justvoice.log.
-
-    Idempotent per data_dir; if called with a DIFFERENT data_dir (tests
-    create several apps per process), the old handler is closed and
-    replaced so records land in the current app's tree. Returns the log
-    path, or None when the directory isn't writable (never fatal — the
-    ring still works).
-    """
-    global _file_handler
-    log_path = Path(data_dir) / "logs" / "justvoice.log"
-    root = logging.getLogger()
-    if _file_handler is not None:
-        if getattr(_file_handler, "baseFilename", None) == str(log_path):
-            return log_path
-        root.removeHandler(_file_handler)
-        _file_handler.close()
-        _file_handler = None
-    try:
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-        handler = RotatingFileHandler(
-            log_path, maxBytes=2_000_000, backupCount=3, encoding="utf-8"
-        )
-    except OSError:
-        log.warning("file log unavailable at %s — ring only", log_path)
-        return None
-    handler.setFormatter(
-        logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-    )
-    root.addHandler(handler)
-    _file_handler = handler
-    return log_path
-
-
-class LogTailResponse(BaseModel):
-    text: str
-    lines: int
-
-
-@router.get("/v1/logs/tail", response_model=LogTailResponse)
-async def logs_tail(lines: int = 80) -> LogTailResponse:
-    lines = max(1, min(lines, _ring.capacity))
-    tail = _ring.lines[-lines:]
-    return LogTailResponse(text="\n".join(tail), lines=len(tail))
-
-
-@router.get("/v1/logs/download")
-async def logs_download() -> PlainTextResponse:
-    """The full in-memory log ring as a downloadable text file.
-
-    The ring (last 500 lines) is the ONLY log store — there is no file
-    logging — so this serves everything it has and takes no time-window
-    param (wiring-audit W4: the UI used to request ?hours=24 from a
-    route that didn't exist).
-    """
-    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    return PlainTextResponse(
-        "\n".join(_ring.lines),
-        headers={
-            "Content-Disposition": f'attachment; filename="justvoice-logs-{stamp}.txt"'
-        },
-    )
 
 
 class FactoryResetResponse(BaseModel):

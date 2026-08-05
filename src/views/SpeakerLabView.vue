@@ -7,7 +7,10 @@
   with its own results filling in beneath it (Raw / Parsed tabs).
   "＋ Add column" races a second config against the same input; no
   Run-all — each column runs itself. Presets save/load server-side;
-  "Use as production" writes the speaker_attribution feature pin so
+  (The old "Use as production" promote — production-configs + pins — died
+  with the pin era, F1 Phase 2: routing lives in AI Settings → Routing by
+  feature; prompt text is Lab-editable there too.) Historical line kept for
+  context: it wrote the speaker_attribution feature pin so
   Studio · Script uses the tuned combination from then on.
 
   Calls the same backend Studio Script uses (/v1/extraction/analyze-text)
@@ -35,19 +38,11 @@ const projectsStore = useProjectsStore();
 // hides its pipeline can't be trusted).
 const extractionConfig = ref(null);
 const llmProviders = ref([]);
-const productionCfg = ref(null); // active speaker_attribution config
 const providerModels = reactive({}); // providerId → [model ids]
 
 async function loadLabConfig() {
   try { extractionConfig.value = await api.request("/v1/extraction/config"); } catch { /* server may be older */ }
   try { llmProviders.value = (await api.request("/v1/llm-providers"))?.providers || []; } catch { /* tolerated */ }
-  await refreshProductionCfg();
-}
-async function refreshProductionCfg() {
-  try {
-    const r = await api.request("/v1/production-configs");
-    productionCfg.value = (r?.configs || []).find((c) => c.feature === "speaker_attribution") || null;
-  } catch { /* tolerated */ }
 }
 
 function tierSpec(name) {
@@ -404,71 +399,6 @@ function deletePreset(col) {
   col.presetName = "";
 }
 
-async function useAsProduction(col) {
-  // The column's own provider pick wins; otherwise reuse the feature's
-  // current route (pin) provider.
-  let providerId = col.providerId || extractionConfig.value?.resolved_provider_id || null;
-  let pinModel = "";
-  if (!providerId) {
-    try {
-      const pins = await api.request("/v1/feature-pins");
-      const current = (pins?.pins || []).find((p) => p.feature === "speaker_attribution");
-      providerId = current?.providerId || null;
-      pinModel = current?.model || "";
-    } catch { /* fall through to the warning below */ }
-  }
-  if (!providerId) {
-    pushToast({
-      message: "No LLM provider available — add one in Engines → LLM first.",
-      kind: "warning",
-      duration: 7000,
-    });
-    return;
-  }
-  const model = col.model.trim() || effectiveDefaultModel(col) || pinModel;
-  const hasPrompts = systemEdited(col) || userEdited(col);
-  const ok = await confirmDialog({
-    title: "Use as production?",
-    message: `Studio · Script will run speaker extraction EXACTLY as this column: ${model}${col.tier ? ` (${col.tier} tier)` : " (auto tier)"}${hasPrompts ? " with this column's prompts" : ""}. Revert anytime in Settings → AI features.`,
-    confirmLabel: "Use as production",
-  });
-  if (!ok) return;
-  try {
-    // Full freeze — model AND prompts (engines redesign: production
-    // configs beat pins/roles; Settings → AI features shows + reverts it).
-    await api.request("/v1/production-configs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        feature: "speaker_attribution",
-        name: col.presetName || `${model}${col.tier ? `-${col.tier}` : ""} · lab`,
-        providerId,
-        model,
-        tier: col.tier || null,
-        temperature: col.temperature === "" ? null : Number(col.temperature),
-        systemPrompt: systemEdited(col) ? col.systemPrompt : null,
-        userPrompt: userEdited(col) ? col.userPrompt : null,
-        source: "speaker_lab",
-      }),
-    });
-    // Keep the pin in sync for older consumers.
-    await api.request("/v1/feature-pins", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        feature: "speaker_attribution",
-        providerId,
-        model,
-        tier: col.tier || null,
-      }),
-    }).catch(() => {});
-    await refreshProductionCfg();
-    pushToast({ message: `Production config saved — ${model}${hasPrompts ? " + prompts" : ""}. Manage it in Settings → AI features.`, kind: "success", duration: 5000 });
-  } catch (e) {
-    pushToast({ message: `Promote failed: ${e?.message || e}`, kind: "error" });
-  }
-}
-
 // ── Result rendering helpers ─────────────────────────────────────────
 
 function disagrees(colIdx, rowIdx) {
@@ -579,13 +509,6 @@ onMounted(async () => {
               @update:model-value="(v) => loadPreset(col, v)" />
             <UiButton v-if="col.presetName" intent="ghost" size="small" label="🗑" title="Delete this preset" @click="deletePreset(col)" />
             <UiButton intent="secondary" size="small" label="＋ Save as" title="Save this column's tweaks as a named preset" @click="savePreset(col)" />
-            <UiButton intent="secondary" size="small" label="✓ Use as production" title="Freeze this column — model AND prompts — as Studio · Script's attribution method" @click="useAsProduction(col)" />
-            <UiTag
-              v-if="productionCfg"
-              intent="success"
-              class="splab__prod"
-              :title="`Studio · Script currently runs '${productionCfg.name}' (${productionCfg.model || 'route default'}). Revert in Settings → AI features.`"
-            >✓ PRODUCTION · {{ productionCfg.name }}</UiTag>
           </div>
 
           <!-- Pipeline explainer (JustWrite parity banner) -->

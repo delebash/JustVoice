@@ -41,6 +41,11 @@ class EngineHealth(BaseModel):
 
 
 class HealthResponse(BaseModel):
+    # Family health baseline (F1 Phase 2): `product` + camel `apiVersion` are
+    # what the family's checkers read; the snake extras below stay for JV's
+    # own consumers (the topbar engine pill reads current_engine).
+    product: str = ""
+    apiVersion: str = ""  # noqa: N815 — the family wire name
     status: Literal["ok", "degraded", "down"] = "ok"
     version: str
     api_version: str
@@ -282,16 +287,15 @@ class EnginesSettings(BaseModel):
     # whichever-engine-happens-to-be-first). Engine id, e.g. "kokoro".
     default_tts_engine: str = "kokoro"
     external: list[ExternalEngineConfig] = []
-    # Phase 2 / Slice 3 — LLM provider registry. Each entry registers an
-    # adapter at boot (server/justvoice/engines/llm/registry.py).
+    # LEGACY LLM provider list — dormant since 2026-08-01 (providers live in
+    # the shared DB store); the field STAYS because migrate_providers reads it
+    # to upgrade old installs on every boot.
     llm: list[LLMProviderConfig] = []
-    # Phase 2 / Slice 7 — pin LLM features to specific provider+model+tier.
-    feature_pins: list[FeaturePinConfig] = []
-    # `llm_roles` (the Quick/Accuracy pair) was deleted 2026-08-01 with the
-    # shared roles concept. A stored settings.json still carrying the key is
-    # harmless: pydantic ignores unknown fields on load and the next save
-    # writes the model without it.
-    production_configs: list[ProductionConfig] = []
+    # `feature_pins` + `production_configs` (the pin-era routing residue) were
+    # dropped with F1 Phase 2 (ruling 1's clean drop), same pattern as
+    # `llm_roles` before them: a stored settings tree still carrying the keys
+    # is harmless — pydantic ignores unknown fields on load and the next save
+    # writes the model without them. Routing lives on the shared presets.
 
 
 class ModelsSettings(BaseModel):

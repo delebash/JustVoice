@@ -15,7 +15,8 @@ import TaskStatusPanel from "./components/TaskStatusPanel.vue";
 import AudioKeepAlive from "./components/AudioKeepAlive.vue";
 import QuickSetup from "./components/QuickSetup.vue";
 import KeyboardCheatsheet from "./components/KeyboardCheatsheet.vue";
-import { BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, pushToast, warmModelId } from "@delebash/llm-ui";
+import { AiSetupOffer, AiStatusButton, BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, pushToast, useAiTasksNav, useModelApply, warmModelId } from "@delebash/llm-ui";
+import { readPref, writePref } from "./services/prefs.js";
 import GlobalAudioPlayer from "./components/GlobalAudioPlayer.vue";
 
 // View components are lazy-loaded by the router (router/index.js); App.vue holds
@@ -55,7 +56,10 @@ const VIEWS = [
   { id: "lexicons",  lane: "library", label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Force \"Beauchamp\" → \"BEE-chum\", domain words → consistent phoneme-level pronunciation across a whole book. Per-character override.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "effects",   lane: "library", label: "Effects",   icon: "🎛️", lede: "Pedalboard-backed effects chain. Apply non-destructively — creates a new generation version that preserves the original. 8 types · 4 built-in presets + custom.", visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   { id: "presets",   lane: "library", label: "Presets",   icon: "🎚️", lede: "Render presets — named bundles of voice + delivery + effects chain + master target. Studio Render binds one per scene to lock per-chapter or per-quest output consistency.", visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "engines",   lane: "library", label: "Engines",   icon: "🧠", lede: "Installed engine catalog. Install / load / unload models. Per-engine venv isolation (JustVoice advantage — install Chatterbox without breaking Kokoro)." },
+  { id: "engines",   lane: "library", label: "Voice engines", icon: "🧠", lede: "Installed voice engine catalog. Install / load / unload models. Per-engine venv isolation (JustVoice advantage — install Chatterbox without breaking Kokoro)." },
+  // Always visible (ruling 4, 2026-08-05): the shared AI area — providers,
+  // model catalog, routing by feature, usage, the AI engine console.
+  { id: "ai",        lane: "library", label: "AI Settings", icon: "🤖", lede: "" },
 
   // ─── Tools lane ────────────────────────────────────────────────────
 
@@ -165,6 +169,37 @@ function goView(id) { if (id && route.name !== id) router.push(`/${id}`); }
 const health = ref(null);
 const api = useApi();
 const tasks = useRenderTasks();
+
+// The AI-tasks nav row (family parity): toggles the kit panel, badges the
+// running count — red while there are unseen errors. Behaviour AND the
+// required `data-panel-toggle` attribute come from the kit composable, so the
+// row cannot be rebuilt without the one attribute that makes it work.
+const aiTasksNav = useAiTasksNav();
+
+// ── Once-ever AI setup offer (the family R3 shape; JV's moment = right after
+// the FIRST project is created or opened — the recorded donor semantics).
+// The once-flag persists in server-side prefs; a box that already has a
+// default provider gets the flag marked silently instead of an offer.
+const aiOfferOpen = ref(false);
+async function maybeOfferAiSetup() {
+  if (readPref("aiOfferShown", false)) return;
+  try {
+    const { refreshApplied, currentDefaultProviderId } = useModelApply();
+    await refreshApplied();
+    if (currentDefaultProviderId.value) {
+      writePref("aiOfferShown", true);
+      return;
+    }
+  } catch { /* unknown → offer; the unconfigured box is the case it serves */ }
+  aiOfferOpen.value = true;
+}
+function closeAiOffer() {
+  aiOfferOpen.value = false;
+  writePref("aiOfferShown", true); // whatever path was taken, once ever
+}
+watch(() => activeProject.id, (id, prev) => {
+  if (id && !prev) maybeOfferAiSetup();
+});
 const onboarding = useOnboarding();
 const activeProject = useActiveProject();
 const uiContext = useUiContext();
@@ -391,6 +426,23 @@ onMounted(async () => {
 
       <!-- Pinned bottom — Settings etc. + version, always at the foot. -->
       <div class="jv-sidebar__bottom">
+        <!-- The kit AI-tasks panel toggle. v-bind carries `data-panel-toggle`:
+             the kit's outside-click dismiss exempts elements holding it, so
+             the click that OPENS the panel isn't also the click that closes
+             it (family lesson, found live 2026-08-03). -->
+        <button
+          class="jv-sidebar__nav jv-sidebar__nav--btn"
+          :class="{ 'jv-sidebar__nav--active': aiTasksNav.isOpen.value }"
+          title="AI tasks"
+          v-bind="aiTasksNav.navAttrs" @click="aiTasksNav.toggle"
+        >
+          <span class="jv-sidebar__icon">✨</span>
+          <span class="jv-sidebar__label">AI tasks</span>
+          <span
+            v-if="aiTasksNav.badge.value" class="jv-sidebar__count"
+            :class="{ 'jv-sidebar__count--error': aiTasksNav.hasErrors.value }"
+          >{{ aiTasksNav.badge.value }}</span>
+        </button>
         <a
           v-for="v in pinnedViews"
           :key="v.id"
@@ -484,6 +536,9 @@ onMounted(async () => {
             · <strong>{{ tasks.activeCount }}</strong> in flight
           </span>
         </button>
+        <!-- §11 chrome: the kit's AI status button inside the app's OWN topbar
+             (JW's donor shape — the kit TitleBar frame is optional dedup). -->
+        <AiStatusButton />
         <HelpTrigger :slug="currentHelpSlug" :label="currentView?.label || 'JustVoice'" />
       </header>
 
@@ -510,6 +565,14 @@ onMounted(async () => {
     <!-- Every host element the shared UI needs, as ONE tag (Toast + AppDialog were
          hand-mounted here; the failure mode the installer kills is mounting SOME). -->
     <LlmUiHosts />
+    <!-- The once-ever AI offer — fired right after the first project is
+         created or opened on a box with no default provider (the flag
+         persists whatever path is taken). -->
+    <AiSetupOffer
+      v-if="aiOfferOpen" app-name="JustVoice"
+      @close="closeAiOffer"
+      @quick-setup="closeAiOffer(); router.push('/ai?quicksetup=1')"
+      @connect-provider="closeAiOffer(); router.push('/ai?providers=online')" />
     <QuickSetup v-if="showQuickSetup" @close="onQuickSetupClosed" />
     <KeyboardCheatsheet />
     <HelpDrawer />

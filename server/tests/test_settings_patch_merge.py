@@ -18,6 +18,14 @@ from justvoice.storage.settings_store import SettingsStore
 
 
 def _store(tmp_path) -> SettingsStore:
+    # The store persists through the PROCESS-GLOBAL SessionLocal; without an
+    # init here these tests only ever worked when a neighbouring test had
+    # initialized SOME db first — and then read that test's leftover row
+    # (order-dependent, exposed 2026-08-05 when the suite's xdist grouping
+    # shifted). Point the global at THIS test's own file.
+    from justvoice.database import init_db
+
+    init_db(tmp_path)
     return SettingsStore(tmp_path)
 
 
