@@ -25,11 +25,6 @@ f-strings; voice_gender is the one NEW prompt (feature ships in Phase 3).
 
 from __future__ import annotations
 
-from .database.seed import (
-    _PRESET_SUGGEST_SYSTEM,
-    _SHOW_NOTES_SYSTEM,
-    _SMART_ASSIGN_SYSTEM,
-)
 from .extraction.identify import IDENTIFY_SYSTEM
 from .extraction.prompts import DIRECT_SYSTEM, GUIDED_SYSTEM
 from .refinement import (
@@ -38,6 +33,46 @@ from .refinement import (
     _SELF_CORRECTION,
     _SMART_CLEANUP,
 )
+
+# The one-shot analysis systems — moved here from database/seed.py when the
+# legacy jv_feature_prompts seeder died (F1 Phase 2); this file is their home.
+_SMART_ASSIGN_SYSTEM = """You are a casting director for an audiobook producer.
+
+Given a list of characters with descriptions and a list of available voices
+with descriptors, pick the best voice for each character. Return a JSON
+object mapping characterId -> voiceId. Match on age, gender, tone, and
+accent. Do not invent ids. If no voice fits, omit that character.
+
+Return only the JSON object. No prose, no preamble.
+"""
+
+_PRESET_SUGGEST_SYSTEM = """You classify a book chapter's tone and pick the best-fit
+render preset from a list.
+
+Return JSON only:
+
+  {"preset": "<exact preset name from the list>", "reason": "<one sentence>"}
+
+Rules:
+  - The preset value MUST match a name from the provided list exactly.
+  - If no preset fits, return {"preset": "", "reason": "..."} — don't
+    invent presets.
+  - Reply with the JSON object only. No prose, no preamble.
+"""
+
+_SHOW_NOTES_SYSTEM = """You write podcast show notes. Given a transcript-style
+script (segments with speaker names), produce concise markdown:
+
+## Episode summary
+2-3 sentences.
+
+## Chapters
+- One bullet per segment/topic, naming who speaks.
+
+## Pull quotes
+2 short verbatim quotes, attributed.
+
+Return ONLY the markdown."""
 
 # The attribution user template — extraction/prompts.py's USER_TEMPLATE with the
 # three .replace tokens converted to the shared {{var}} form (the pipeline now

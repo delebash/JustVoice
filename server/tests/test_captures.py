@@ -90,12 +90,20 @@ def test_collapse_repetitive_artifacts() -> None:
     assert collapse("wooooooow") == "wooooooow"
 
 
-def test_build_refinement_prompt_toggles() -> None:
-    from justvoice.refinement import RefinementFlags, build_refinement_prompt
+def test_compose_refinement_system_toggles(tmp_path) -> None:
+    # F1 Phase 2: the system assembles from the TEMPLATE ROWS (refine.base +
+    # enabled section rows); the no-sections identity line lives in the base
+    # row itself, so flags-all-off still states it.
+    from fastapi.testclient import TestClient
 
-    all_on = build_refinement_prompt(RefinementFlags())
+    from justvoice.app import create_app
+    from justvoice.refinement import RefinementFlags, compose_refinement_system
+
+    TestClient(create_app(data_dir=tmp_path), raise_server_exceptions=False)
+    all_on = compose_refinement_system(RefinementFlags())
     assert "self" in all_on.lower() and "technical" in all_on.lower()
-    none_on = build_refinement_prompt(
+    none_on = compose_refinement_system(
         RefinementFlags(smart_cleanup=False, self_correction=False, preserve_technical=False)
     )
-    assert "Return the transcript unchanged" in none_on
+    assert "return the transcript unchanged" in none_on.lower()
+    assert "technical" not in none_on.lower()

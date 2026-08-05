@@ -491,35 +491,11 @@ class EffectPreset(Base):
     created_at = Column(DateTime, default=_utcnow)
 
 
-class FeaturePrompt(Base):
-    """Per-feature LLM prompt — seeded by database/seed.py and editable in the
-    Lab; the DB is the source of truth (no hardcoded prompt text read at request
-    time — see docs/plans/2026-06-21-feature-prompts-db-seed.md).
-
-    `key` is the feature/action id (e.g. "smart_assign", "speaker_attribution.
-    guided"); `feature` is the routing key for pins/usage. `system` +
-    `user_template` carry the prompt text; `temperature`/`think` are per-feature
-    defaults. `built_in` marks a seeded row (so the Lab can offer "reset").
-
-    RENAMED `feature_prompts` -> `jv_feature_prompts` (2026-08-01, convergence
-    part 2): install_llm now creates the SHARED stack's `feature_prompts` table
-    (a different schema — tunables live in engine presets there) in the same
-    SQLite file, and two ORM models fighting over one table name produced
-    `no such column: feature_prompts.json_mode` 500s. JV's prompt system keeps
-    working under its own name; MERGING it into the shared prompt/preset model
-    (6 call-sites, per-tier keys, per-row temperature/think -> presets) is
-    convergence part 3."""
-
-    __tablename__ = "jv_feature_prompts"
-
-    key = Column(String, primary_key=True)
-    feature = Column(String, nullable=False, default="")
-    system = Column(Text, nullable=False, default="")
-    user_template = Column(Text, nullable=False, default="")
-    temperature = Column(Float, nullable=False, default=0.7)
-    think = Column(Boolean, nullable=False, default=False)
-    built_in = Column(Boolean, nullable=False, default=True)
-    created_at = Column(DateTime, default=_utcnow)
+# (The FeaturePrompt / jv_feature_prompts model died with F1 Phase 2's
+# convergence part 3 — every prompt is a SHARED feature_prompts template row
+# now. Legacy DBs migrate + drop the table via engines/llm/migrate_prompts.py,
+# which reads it by raw SQL; the 2026-08-01 rename migration in migrations.py
+# stays so pre-rename DBs still feed that path.)
 
 
 class RenderPreset(Base):

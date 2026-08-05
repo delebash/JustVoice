@@ -30,8 +30,6 @@ def models_for(engine_id: str) -> list[ModelVariant]:
             return _moss_tts_variants()
         case "whisper":
             return _whisper_variants()
-        case "qwen3-llm":
-            return _qwen3_llm_variants()
         case _:
             return []
 
@@ -72,32 +70,6 @@ def _whisper_variants() -> list[ModelVariant]:
             files=[_hf_placeholder(repo, size)],
         )
         for vid, name, repo, size, vram, quality in sizes
-    ]
-
-
-def _qwen3_llm_variants() -> list[ModelVariant]:
-    # Lightweight CPU/low-VRAM fallback sizes. The built-in llama.cpp runner
-    # (local-llamacpp provider) is the primary local LLM for heavier work
-    # like speaker attribution; the 4B transformers variant was dropped
-    # (worst trade — heavy VRAM, unquantized) when the runner landed.
-    sizes = [
-        ("qwen3-llm-0.6b", "Qwen3 0.6B", "Qwen/Qwen3-0.6B", 1400, 1500, 60,
-         "Very fast — live transcript refinement. Recommended default."),
-        ("qwen3-llm-1.7b", "Qwen3 1.7B", "Qwen/Qwen3-1.7B", 3500, 4000, 75,
-         "Better self-correction handling and technical vocabulary."),
-    ]
-    return [
-        ModelVariant(
-            id=vid,
-            name=name,
-            description=desc,
-            size_mb=size,
-            vram_mb=vram,
-            quality=quality,
-            languages=["multilingual"],
-            files=[_hf_placeholder(repo, size)],
-        )
-        for vid, name, repo, size, vram, quality, desc in sizes
     ]
 
 

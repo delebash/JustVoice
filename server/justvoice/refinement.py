@@ -154,21 +154,11 @@ When the speaker dictates a punctuation word inside a technical term, convert it
 For example, "run npm install then cd into src slash components and edit index dot tsx" yields "Run npm install then cd into src/components and edit index.tsx.\""""
 
 
-def build_refinement_prompt(flags: RefinementFlags) -> str:
-    """Assemble the system prompt for a given flag combination."""
-    sections = [_BASE_INSTRUCTIONS]
-
-    if flags.smart_cleanup:
-        sections.append(_SMART_CLEANUP)
-    if flags.self_correction:
-        sections.append(_SELF_CORRECTION)
-    if flags.preserve_technical:
-        sections.append(_PRESERVE_TECHNICAL)
-
-    if len(sections) == 1:
-        sections.append("No transformations are enabled. Return the transcript unchanged.")
-
-    return "\n\n".join(sections)
+# (build_refinement_prompt died with F1 Phase 2: production assembles the
+# system from the TEMPLATE ROWS — compose_refinement_system below — and the
+# no-sections fallback line lives in the refine.base row by construction. The
+# section texts above stay HERE as the seed's source; seed_feature_prompts.py
+# imports them.)
 
 
 # Few-shot examples passed as real chat turns (user → assistant pairs).

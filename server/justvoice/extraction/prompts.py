@@ -77,15 +77,8 @@ Example 4 — mid-paragraph continuation through pronoun tag:
 """
 
 
-USER_TEMPLATE = """Characters in this scene:
-{characters}
-{corrections}
-Paragraphs (dialogue segments tagged inline):
-
-{paragraphs}
-
-Return only the JSON array, one entry per [D#] in the order they appear.
-"""
+# (USER_TEMPLATE moved to seed_feature_prompts.py as the {{var}} template row —
+# F1 Phase 2; the pipeline passes the format_* outputs below as variables.)
 
 
 def format_characters(characters: list[dict]) -> str:

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
-"""/v1/ai/prompts (JustVoice) — per-feature prompts are DB-seeded and
-Lab-editable; the one-shot endpoints read their prompt from the DB, not a
-hardcoded constant. See docs/plans/2026-06-21-feature-prompts-db-seed.md."""
+"""/v1/ai/prompts — every JV action is a SHARED template row (F1 Phase 2:
+the legacy shadow editor died; the kit's prompt router serves this path), the
+endpoints read their prompt from the DB, and tunables live on presets."""
 
 from fastapi.testclient import TestClient
 
@@ -19,19 +19,19 @@ def test_prompts_seeded_and_editable(tmp_path):
     assert "casting director" in by_key["smart_assign"]["system"]
     assert by_key["smart_assign"]["builtIn"] is True
 
-    # Edit persists to the DB and reads back.
+    # Edit persists to the DB and reads back (tunables live on PRESETS now —
+    # the shared wire carries no temperature).
     r = c.put("/v1/ai/prompts/smart_assign", json={
         "feature": "smart_assign", "system": "EDITED", "userTemplate": "",
-        "temperature": 0.5, "think": False,
     })
     assert r.status_code == 200, r.text
-    assert r.json()["system"] == "EDITED" and r.json()["temperature"] == 0.5
+    assert r.json()["system"] == "EDITED"
     assert c.get("/v1/ai/prompts/smart_assign").json()["system"] == "EDITED"
 
     # Reset restores the seeded default.
     r = c.post("/v1/ai/prompts/smart_assign/reset")
     assert r.status_code == 200, r.text
-    assert "casting director" in r.json()["system"] and r.json()["temperature"] == 0.2
+    assert "casting director" in r.json()["system"]
 
 
 def test_reset_and_get_unknown(tmp_path):
@@ -57,11 +57,12 @@ def test_extraction_prompts_seeded(tmp_path):
     c = TestClient(create_app(data_dir=tmp_path))
     by_key = {p["key"]: p for p in c.get("/v1/ai/prompts").json()["prompts"]}
     assert "speaker_attribution.guided" in by_key and "speaker_attribution.direct" in by_key
-    assert "identify" in by_key and "casting assistant" in by_key["identify"]["system"]
+    assert "speaker_attribution.identify" in by_key
+    assert "casting assistant" in by_key["speaker_attribution.identify"]["system"]
     g, d = by_key["speaker_attribution.guided"], by_key["speaker_attribution.direct"]
     assert "attribute dialogue" in g["system"] and "WORKED EXAMPLES" in g["system"]
     assert "attribute dialogue" in d["system"] and "WORKED EXAMPLES" not in d["system"]
-    assert "{characters}" in g["userTemplate"] and "{paragraphs}" in g["userTemplate"]
+    assert "{{characters}}" in g["userTemplate"] and "{{paragraphs}}" in g["userTemplate"]
     assert g["feature"] == "speaker_attribution" and g["builtIn"] is True
 
     from justvoice.extraction import prompts as _p
@@ -76,4 +77,4 @@ def test_extraction_config_serves_db_prompts(tmp_path):
     body = r.json()
     assert "WORKED EXAMPLES" in body["system_prompts"]["guided"]
     assert "WORKED EXAMPLES" not in body["system_prompts"]["direct"]
-    assert "{paragraphs}" in body["user_template"]
+    assert "{{paragraphs}}" in body["user_template"]

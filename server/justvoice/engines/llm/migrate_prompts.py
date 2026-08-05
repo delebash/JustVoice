@@ -17,22 +17,22 @@ Runs from create_app in two halves around `seed_llm()`:
 
   lift_edited_tunables_into_presets()   AFTER seed_llm — presets must exist
       before their temperature/think can be overwritten. Marker-guarded
-      one-time (`jv_prompt_tunables_lifted` beside the warm-default marker):
-      re-running every boot would clobber later Lab edits with the old values.
+      one-time (`jv_prompt_tunables_lifted` beside the warm-default marker),
+      and on success it DROPS the legacy table — the old system's code
+      (model, store, editor router, seeder) is deleted, so this module reads
+      the legacy rows by raw SQL and is the table's last consumer.
 
-The old table itself is dropped in the deletion step, after every caller stops
-reading it — not here.
-
-Edit detection compares against the OLD seed defaults
-(database/seed.py DEFAULT_FEATURE_PROMPTS), per field: an edited system
-migrates while an untouched user_template still takes the NEW seed's template
-(most old rows had empty user templates — their user messages were code-built,
-and an edited system must not cost the feature its new user half).
+Edit detection compares against the OLD seed defaults, reconstructed here:
+the old system texts are the same constants the new seed uses (they never
+forked), and the old user templates were the single-brace attribution template
+for the tier pair and "" everywhere else (those user messages were code-built).
 """
 
 from __future__ import annotations
 
 import logging
+
+from sqlalchemy import text
 
 log = logging.getLogger(__name__)
 
@@ -42,39 +42,92 @@ _KEY_RENAMES = {"identify": "speaker_attribution.identify"}
 # The attribution user template's pre-shared substitution tokens → {{var}}.
 _BRACE_TOKENS = ("characters", "corrections", "paragraphs")
 
+# The OLD seeded attribution user template, verbatim (single-brace .replace
+# tokens — extraction/prompts.py's USER_TEMPLATE before the {{var}} move).
+_OLD_ATTR_USER_TEMPLATE = """Characters in this scene:
+{characters}
+{corrections}
+Paragraphs (dialogue segments tagged inline):
 
-def _convert_braces(text: str) -> str:
+{paragraphs}
+
+Return only the JSON array, one entry per [D#] in the order they appear.
+"""
+
+
+def _convert_braces(text_: str) -> str:
     for name in _BRACE_TOKENS:
-        text = text.replace("{" + name + "}", "{{" + name + "}}")
-    return text
+        text_ = text_.replace("{" + name + "}", "{{" + name + "}}")
+    return text_
 
 
-def _old_rows_and_seeds():
-    """(old rows, old seed-defaults dict) — [] when the legacy table is absent
-    or empty (a fresh install after the table drop lands)."""
+def _old_seed_defaults() -> dict:
+    """The retired seeder's per-key defaults, for edit detection. System texts
+    import from the same homes the old seeder used — they never forked."""
+    from ...extraction.identify import IDENTIFY_SYSTEM
+    from ...extraction.prompts import DIRECT_SYSTEM, GUIDED_SYSTEM
+    from ...seed_feature_prompts import (
+        _PRESET_SUGGEST_SYSTEM,
+        _SHOW_NOTES_SYSTEM,
+        _SMART_ASSIGN_SYSTEM,
+    )
+
+    return {
+        "smart_assign": {"system": _SMART_ASSIGN_SYSTEM, "user_template": "",
+                         "temperature": 0.2, "think": False},
+        "render_preset_suggest": {"system": _PRESET_SUGGEST_SYSTEM, "user_template": "",
+                                  "temperature": 0.0, "think": False},
+        "show_notes": {"system": _SHOW_NOTES_SYSTEM, "user_template": "",
+                       "temperature": 0.4, "think": False},
+        "speaker_attribution.guided": {"system": GUIDED_SYSTEM,
+                                       "user_template": _OLD_ATTR_USER_TEMPLATE,
+                                       "temperature": 0.2, "think": False},
+        "speaker_attribution.direct": {"system": DIRECT_SYSTEM,
+                                       "user_template": _OLD_ATTR_USER_TEMPLATE,
+                                       "temperature": 0.2, "think": False},
+        "identify": {"system": IDENTIFY_SYSTEM, "user_template": "",
+                     "temperature": 0.2, "think": False},
+    }
+
+
+def _old_rows() -> list[dict]:
+    """The legacy table's rows via raw SQL (its ORM model is deleted) — []
+    when the table is absent (fresh install, or already migrated + dropped)."""
     from ...database import session as db_session
-    from ...database.models import FeaturePrompt
-    from ...database.seed import DEFAULT_FEATURE_PROMPTS as OLD_SEEDS
 
     if db_session.SessionLocal is None:
-        return [], {}
+        return []
     s = db_session.SessionLocal()
     try:
         try:
-            rows = s.query(FeaturePrompt).all()
-        except Exception:  # noqa: BLE001 — table already dropped
-            return [], {}
-        return (
-            [
-                {
-                    "key": r.key, "feature": r.feature, "system": r.system,
-                    "user_template": r.user_template,
-                    "temperature": r.temperature, "think": r.think,
-                }
-                for r in rows
-            ],
-            {d["key"]: d for d in OLD_SEEDS},
-        )
+            rows = s.execute(text(
+                "SELECT key, feature, system, user_template, temperature, think "
+                "FROM jv_feature_prompts"
+            )).fetchall()
+        except Exception:  # noqa: BLE001 — no such table
+            return []
+        return [
+            {"key": r[0], "feature": r[1], "system": r[2], "user_template": r[3],
+             "temperature": r[4], "think": bool(r[5])}
+            for r in rows
+        ]
+    finally:
+        s.close()
+
+
+def _drop_legacy_table() -> None:
+    """DROP the migrated table (idempotent). Only called from the lift's
+    success paths — a failed migration must keep the rows for the next boot."""
+    from ...database import session as db_session
+
+    if db_session.SessionLocal is None:
+        return
+    s = db_session.SessionLocal()
+    try:
+        s.execute(text("DROP TABLE IF EXISTS jv_feature_prompts"))
+        s.commit()
+    except Exception as e:  # noqa: BLE001
+        log.warning("could not drop legacy jv_feature_prompts: %s", e)
     finally:
         s.close()
 
@@ -87,9 +140,10 @@ def migrate_jv_prompts_to_shared() -> None:
 
     from ...seed_feature_prompts import DEFAULT_FEATURE_PROMPTS as NEW_SEEDS
 
-    old_rows, old_seeds = _old_rows_and_seeds()
+    old_rows = _old_rows()
     if not old_rows:
         return
+    old_seeds = _old_seed_defaults()
     try:
         s = llm_db.session()
         try:
@@ -124,24 +178,30 @@ def migrate_jv_prompts_to_shared() -> None:
         finally:
             s.close()
     except Exception as e:  # noqa: BLE001 — migration must never stop a boot
-        log.warning("jv prompt migration failed (old system still serves): %s", e)
+        log.warning("jv prompt migration failed (rows kept for the next boot): %s", e)
 
 
 def lift_edited_tunables_into_presets() -> None:
     """Once: a legacy row's hand-changed temperature/think overwrites its
     feature's ASSIGNED preset (the one-source rule — tunables live on presets).
-    After seed_llm so the preset rows exist."""
+    After seed_llm so the preset rows exist. On success (either the fresh lift
+    or the marker saying it already happened) the legacy table drops."""
     from llm_runner.llm import db as llm_db
 
     from ...seed_presets import DEFAULT_FEATURE_PRESETS
 
-    old_rows, old_seeds = _old_rows_and_seeds()
+    old_rows = _old_rows()
     if not old_rows:
         return
+    old_seeds = _old_seed_defaults()
     try:
         s = llm_db.session()
         try:
             if s.get(llm_db.RunnerSetting, "jv_prompt_tunables_lifted") is not None:
+                # Lifted on an earlier boot (before the drop existed) — the
+                # table is migrated residue; drop it now.
+                s.close()
+                _drop_legacy_table()
                 return
             lifted = 0
             for row in old_rows:
@@ -165,5 +225,7 @@ def lift_edited_tunables_into_presets() -> None:
                 log.info("lifted %d hand-changed prompt tunable(s) into presets", lifted)
         finally:
             s.close()
+        # Both halves succeeded — the legacy rows are fully absorbed.
+        _drop_legacy_table()
     except Exception as e:  # noqa: BLE001
         log.warning("jv tunable lift failed (presets keep seed values): %s", e)

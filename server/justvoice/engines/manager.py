@@ -1328,15 +1328,8 @@ class EngineManager:
                     if variant not in (None, "", "auto")
                     else self._resolved_default_variant(m)
                 )
-            if target_kind == "llm":
-                # A freshly installed+loaded local LLM should immediately
-                # serve features through the provider registry.
-                try:
-                    from .llm.local_managed import register_local_adapter
-
-                    register_local_adapter()
-                except Exception as e:
-                    log.debug("local LLM adapter registration skipped: %s", e)
+            # (The qwen3-llm adapter hook died with the engine — F1 Phase 2:
+            # the shared stack's bundled runner is THE local LLM.)
             if progress:
                 progress("warming_up", f"{engine_id} ready")
             return r.json()

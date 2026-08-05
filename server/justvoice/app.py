@@ -40,7 +40,6 @@ from .api import (
     feature_pins_api,
     llm_roles_api,
     prefs_api,
-    ai_prompts_api,
     preset_suggest_api,
     smart_assign_api,
     engine_sources_api,
@@ -93,12 +92,10 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     from .database.seed import (
         seed_builtin_effect_presets,
         seed_builtin_render_presets,
-        seed_feature_prompts,
     )
 
     seed_builtin_effect_presets()
     seed_builtin_render_presets()
-    seed_feature_prompts()
 
     state = AppState(data_dir)
     set_state(state)
@@ -183,17 +180,14 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(engines_models_api.router)
     app.include_router(engine_sources_api.router)
     app.include_router(llm_runner_router)
-    # THE SHARED STACK, ONE CALL (convergence part 2, 2026-08-01). This replaces
-    # the à-la-carte mounts JV carried since the AI-stack lift — the shared api
-    # router + a provider router over JV's own settings-backed store — with the
-    # same install_llm JustWrite boots through: LLM tables in JV's SQLite,
-    # DB-backed provider CRUD, routing/presets/tunes/knob-catalog surface, the
-    # DB usage sink, and the bundled runner wired to the DB catalog (data under
-    # <data_dir>/ai-cache). feature_prompts stays {} — JV's per-feature prompts
-    # live in its OWN system (jv_feature_prompts + ai_prompts_api, mounted BELOW
-    # install_llm's routers but registered FIRST for /v1/ai/prompts — see the
-    # early mount right above install_llm). Merging that system into the shared
-    # prompt/preset model is convergence part 3.
+    # THE SHARED STACK, ONE CALL (convergence part 2, 2026-08-01; completed by
+    # F1 Phase 2, 2026-08-05 — convergence part 3): the same install_llm
+    # JustWrite boots through — LLM tables in JV's SQLite, DB-backed provider
+    # CRUD, routing/presets/tunes/knob-catalog surface, the DB usage sink, the
+    # bundled runner wired to the DB catalog (data under <data_dir>/ai-cache),
+    # and now JV's OWN feature data: every action a template row, every tunable
+    # on a preset, per-row Lab samples. The old jv_feature_prompts system is
+    # gone (its editor router, store, seeder); edited legacy rows migrate below.
     from llm_runner.llm import install_llm, load_from_configs, stores
     from llm_runner.llm.seed import seed_llm
 
@@ -211,13 +205,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         DEFAULT_PRESET_ID,
         DEFAULT_TEST_SAMPLES,
     )
-
-    # JV's OWN prompt editor keeps its path while callers still read the legacy
-    # store: FastAPI serves the FIRST-registered match, and install_llm mounts
-    # the shared /v1/ai/prompts right after this. Dies with convergence part
-    # 3's deletion step (the shared rows are seeded below; the kit Lab is the
-    # editor once the callers rewire).
-    app.include_router(ai_prompts_api.router)
 
     install_llm(
         app,
@@ -248,8 +235,11 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     # shared insert-if-missing skips it. One-time by marker: DBs seeded since
     # 2026-08-01 already carry the shared "1" (no JV surface ever exposed the
     # toggle, so it cannot be a user's choice), and a user who later flips warm
-    # ON must keep that choice across boots.
-    _apply_jv_warm_default()
+    # ON must keep that choice across boots. (Shared with factory-reset's
+    # dual-seed path — llm_bootstrap.py.)
+    from .llm_bootstrap import apply_jv_warm_default
+
+    apply_jv_warm_default()
     # Legacy prompt rows: an EDITED jv_feature_prompts row migrates into the
     # shared table FIRST (before seed_llm), so the insert-if-missing seed
     # skips it — user edits win over seed defaults (ruling 1).
@@ -264,11 +254,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     lift_edited_tunables_into_presets()
     load_from_configs(stores.get_provider_store().list())
 
-    # Bundled local LLM (qwen3-llm managed engine) — registered after the DB
-    # providers so the no-pin fallback prefers an explicit config.
-    from .engines.llm.local_managed import register_local_adapter
-
-    register_local_adapter()
     app.include_router(generate_api.router)
     app.include_router(render_chapter_api.router)
     app.include_router(analyzer_api.router)
@@ -373,34 +358,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         )
 
     return app
-
-
-def _apply_jv_warm_default() -> None:
-    """Seed JV's warm-on-startup default OFF, once (ruling 2026-08-05).
-
-    Runs after install_llm (the shared tables + storage exist) and before
-    seed_llm (whose insert-if-missing then leaves the row alone). The marker row
-    is what makes it one-time: without it, a user's later warm-ON choice would
-    be flipped back on every boot. Best-effort — a failure here must never stop
-    a boot (the cost is the family default, warm ON)."""
-    from llm_runner.llm import db as llm_db
-
-    try:
-        s = llm_db.session()
-        try:
-            if s.get(llm_db.RunnerSetting, "jv_warm_default_applied") is not None:
-                return
-            row = s.get(llm_db.RunnerSetting, "warm_default_on_startup")
-            if row is None:
-                s.add(llm_db.RunnerSetting(key="warm_default_on_startup", value="0"))
-            else:
-                row.value = "0"
-            s.add(llm_db.RunnerSetting(key="jv_warm_default_applied", value="1"))
-            s.commit()
-        finally:
-            s.close()
-    except Exception as e:  # noqa: BLE001 — a seed nicety, never boot-fatal
-        log.warning("could not apply JV's warm-default-off seed: %s", e)
 
 
 def _locate_ui_dir() -> Path | None:

@@ -169,11 +169,15 @@ async def factory_reset() -> FactoryResetResponse:
         db_session.SessionLocal = None
         db_session._db_path = None
         db_session.init_db(data_dir)
-        from ..database.seed import seed_builtin_effect_presets, seed_builtin_render_presets, seed_feature_prompts
+        from ..database.seed import seed_builtin_effect_presets, seed_builtin_render_presets
+        from ..llm_bootstrap import reseed_shared_llm
         if file_recreated:
             seed_builtin_effect_presets()
             seed_builtin_render_presets()
-            seed_feature_prompts()
+            # The SAME file carries the shared LLM tables — re-wire storage at
+            # the NEW session factory + re-seed BOTH sets (the family's
+            # dual-table reset lesson; JV's warm-OFF default re-applies).
+            reseed_shared_llm(db_session.engine, db_session.SessionLocal)
             cleared = len(Base.metadata.tables)
         else:
             log.warning("factory reset: DB file locked — dropping tables in place instead")
@@ -193,10 +197,13 @@ async def factory_reset() -> FactoryResetResponse:
             conn.commit()
         Base.metadata.create_all(bind=bind)
         run_migrations(bind)
-        from ..database.seed import seed_builtin_effect_presets, seed_builtin_render_presets, seed_feature_prompts
+        from ..database.seed import seed_builtin_effect_presets, seed_builtin_render_presets
+        from ..llm_bootstrap import reseed_shared_llm
         seed_builtin_effect_presets()
         seed_builtin_render_presets()
-        seed_feature_prompts()
+        # Dropped-in-place path: the shared tables were dropped with the rest —
+        # recreate + reseed them on the same bind.
+        reseed_shared_llm(bind, db_session.SessionLocal)
 
     # 2. File-backed stores. Mid-Phase-1.5 personas/voices/lexicons/
     # projects/training still live as JSON files + in-memory caches —

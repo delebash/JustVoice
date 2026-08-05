@@ -32,7 +32,6 @@ class CaptureReadiness(BaseModel):
 
 
 _WHISPER_DEFAULT = "turbo"
-_LLM_DEFAULT = "0.6B"
 
 _WHISPER_DISPLAY = {
     "base": "Whisper Base (74M)",
@@ -42,12 +41,6 @@ _WHISPER_DISPLAY = {
     "turbo": "Whisper Large v3 Turbo",
 }
 _WHISPER_SIZE_MB = {"base": 74, "small": 244, "medium": 769, "large": 1500, "turbo": 1500}
-_LLM_DISPLAY = {
-    "0.6B": "Qwen3 0.6B (refinement)",
-    "1.7B": "Qwen3 1.7B (refinement)",
-    "4B": "Qwen3 4B (refinement)",
-}
-_LLM_SIZE_MB = {"0.6B": 400, "1.7B": 1100, "4B": 2500}
 
 
 def _check_model_cached(hf_repo: str) -> bool:
@@ -70,15 +63,36 @@ def _check_model_cached(hf_repo: str) -> bool:
         return False
 
 
+def _llm_readiness() -> ModelReadiness:
+    """The dictation-cleanup LLM = whatever the refine action resolves to on
+    the SHARED stack (its preset → provider → model), replacing the retired
+    bundled-qwen3 HF-cache probe (F1 Phase 2, 2026-08-05). Ready = the route
+    resolves to a model; the LLM engine setup wizard is what fills it."""
+    try:
+        from llm_runner.llm.dispatch import resolve_route
+        from llm_runner.llm.preset_resolve import resolve_feature_preset
+
+        from ..engines.llm.run import jv_llm_config
+
+        preset = resolve_feature_preset("refine.base")
+        _adapter, model, _tier = resolve_route(
+            jv_llm_config(), "refine", action="refine.base",
+            provider_override=(preset.providerId or None) if preset else None,
+            model_override=(preset.model or None) if preset else None,
+        )
+        if model:
+            return ModelReadiness(ready=True, display_name=model)
+        return ModelReadiness(ready=False, display_name="No AI model selected")
+    except Exception:  # noqa: BLE001 — not-set-up is a state, not an error
+        return ModelReadiness(ready=False, display_name="AI engine not set up")
+
+
 @router.get("/v1/capture/readiness", response_model=CaptureReadiness)
 async def get_capture_readiness() -> CaptureReadiness:
     # Default model picks; in a fuller implementation we'd read these from
     # CaptureSettings. For v1 we use the defaults.
     whisper_model = _WHISPER_DEFAULT
-    llm_model = _LLM_DEFAULT
-
     whisper_ready = _check_model_cached(f"openai/whisper-{whisper_model}")
-    llm_ready = _check_model_cached(f"Qwen/Qwen3-{llm_model}-Instruct")
 
     return CaptureReadiness(
         stt=ModelReadiness(
@@ -86,9 +100,5 @@ async def get_capture_readiness() -> CaptureReadiness:
             display_name=_WHISPER_DISPLAY.get(whisper_model, whisper_model),
             size_mb=_WHISPER_SIZE_MB.get(whisper_model),
         ),
-        llm=ModelReadiness(
-            ready=llm_ready,
-            display_name=_LLM_DISPLAY.get(llm_model, llm_model),
-            size_mb=_LLM_SIZE_MB.get(llm_model),
-        ),
+        llm=_llm_readiness(),
     )

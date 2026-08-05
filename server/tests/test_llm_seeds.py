@@ -54,31 +54,56 @@ def test_presets_and_refs_seed(tmp_path):
     assert set(DEFAULT_FEATURE_PRESETS) == set(DEFAULT_FEATURE_PROMPTS)
 
 
-def test_edited_legacy_row_migrates_and_wins_over_seed(tmp_path):
-    # Boot once (seeds both systems), then simulate the 2026-08-01..05 state:
-    # a user-edited legacy row + no shared row yet.
-    _client(tmp_path)
-    from llm_runner.llm import db as llm_db
+def _plant_legacy_row(key: str, system: str, temperature: float) -> None:
+    """Recreate the pre-F1 state: a jv_feature_prompts table (the model is
+    gone — raw SQL, like the migration's own reads) holding one user-edited
+    row. Boots migrate it, then drop the table."""
+    from sqlalchemy import text
 
     from justvoice.database import session as db_session
-    from justvoice.database.models import FeaturePrompt as JvPrompt
 
     s = db_session.SessionLocal()
     try:
-        s.query(JvPrompt).filter(JvPrompt.key == "smart_assign").update(
-            {"system": "MY EDITED CASTING PROMPT", "temperature": 0.55})
+        s.execute(text(
+            "CREATE TABLE IF NOT EXISTS jv_feature_prompts ("
+            "key TEXT PRIMARY KEY, feature TEXT NOT NULL DEFAULT '', "
+            "system TEXT NOT NULL DEFAULT '', user_template TEXT NOT NULL DEFAULT '', "
+            "temperature FLOAT NOT NULL DEFAULT 0.7, think BOOLEAN NOT NULL DEFAULT 0, "
+            "built_in BOOLEAN NOT NULL DEFAULT 1, created_at DATETIME)"
+        ))
+        s.execute(
+            text("INSERT INTO jv_feature_prompts (key, feature, system, user_template, temperature, think) "
+                 "VALUES (:k, :f, :sys, '', :t, 0)"),
+            {"k": key, "f": "x", "sys": system, "t": temperature},
+        )
         s.commit()
     finally:
         s.close()
+
+
+def _clear_shared(key: str, *, clear_lift_marker: bool = False) -> None:
+    from llm_runner.llm import db as llm_db
+
     ls = llm_db.session()
     try:
-        ls.delete(ls.get(llm_db.FeaturePrompt, "smart_assign"))
-        marker = ls.get(llm_db.RunnerSetting, "jv_prompt_tunables_lifted")
-        if marker is not None:
-            ls.delete(marker)
+        row = ls.get(llm_db.FeaturePrompt, key)
+        if row is not None:
+            ls.delete(row)
+        if clear_lift_marker:
+            marker = ls.get(llm_db.RunnerSetting, "jv_prompt_tunables_lifted")
+            if marker is not None:
+                ls.delete(marker)
         ls.commit()
     finally:
         ls.close()
+
+
+def test_edited_legacy_row_migrates_wins_and_table_drops(tmp_path):
+    # Boot once (fresh shared seed), then simulate the 2026-08-01..05 state:
+    # a user-edited legacy row + no shared row yet.
+    _client(tmp_path)
+    _plant_legacy_row("smart_assign", "MY EDITED CASTING PROMPT", 0.55)
+    _clear_shared("smart_assign", clear_lift_marker=True)
 
     _client(tmp_path)
     row = _shared_rows()["smart_assign"]
@@ -86,34 +111,32 @@ def test_edited_legacy_row_migrates_and_wins_over_seed(tmp_path):
     assert row.system == "MY EDITED CASTING PROMPT"
     # …while the untouched (legacy-empty) user template took the NEW seed's.
     assert "{{voices}}" in row.user_template
-    # The hand-changed temperature lifted onto the assigned preset.
+    from llm_runner.llm import db as llm_db
+
     ls = llm_db.session()
     try:
+        # The hand-changed temperature lifted onto the assigned preset.
         assert ls.get(llm_db.EnginePreset, "p_extract").temperature == 0.55
     finally:
         ls.close()
+    # Both halves succeeded → the legacy table dropped.
+    from sqlalchemy import text
+
+    from justvoice.database import session as db_session
+
+    s = db_session.SessionLocal()
+    try:
+        names = {r[0] for r in s.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table'")).fetchall()}
+        assert "jv_feature_prompts" not in names
+    finally:
+        s.close()
 
 
 def test_legacy_identify_key_renames(tmp_path):
     _client(tmp_path)
-    from llm_runner.llm import db as llm_db
-
-    from justvoice.database import session as db_session
-    from justvoice.database.models import FeaturePrompt as JvPrompt
-
-    s = db_session.SessionLocal()
-    try:
-        s.query(JvPrompt).filter(JvPrompt.key == "identify").update(
-            {"system": "EDITED DISCOVERY PROMPT"})
-        s.commit()
-    finally:
-        s.close()
-    ls = llm_db.session()
-    try:
-        ls.delete(ls.get(llm_db.FeaturePrompt, "speaker_attribution.identify"))
-        ls.commit()
-    finally:
-        ls.close()
+    _plant_legacy_row("identify", "EDITED DISCOVERY PROMPT", 0.2)
+    _clear_shared("speaker_attribution.identify", clear_lift_marker=True)
 
     _client(tmp_path)
     row = _shared_rows()["speaker_attribution.identify"]
