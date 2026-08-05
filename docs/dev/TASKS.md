@@ -13,6 +13,17 @@
 > **THE STANDING SEQUENCE (the user's roadmap ruling, 2026-07-26):** *"completely
 > finish JW and all AI stuff, then we will work on JV."* Everything here is parked
 > behind that unless the user says otherwise; every item needs its own go.
+>
+> **GITHUB ACTIONS STAY OFF (user ruling, re-issued 2026-08-05: "i asked you to
+> turn off github actions when yo commit jv you ignored this fix it").** All
+> three workflows — `CI`, `CodeQL`, `release.yml` — are `disabled_manually` on
+> the remote (set via `gh workflow disable <file>`; a repo SETTING, no file
+> edit, reversible with `gh workflow enable <file>`). This was ignored once and
+> three pushes each triggered FAILING runs (CI red; `release.yml` firing twice
+> per push and dying in 0 s). **Before pushing JV, confirm
+> `gh workflow list --all` still shows all three disabled.** The workflow YAML
+> is left untouched on purpose so re-enabling is one command when the CI
+> pipeline is actually wanted again.
 
 ## Found by the 2026-08-05 family audit [verified by hand] — parked per the
 ## standing sequence, but the first one is REAL user-facing breakage
