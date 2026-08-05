@@ -32,10 +32,15 @@ mod permissions;
 mod synthetic_keys;
 mod system_audio;
 
+use std::fs;
 use std::net::{SocketAddr, TcpStream};
+use std::path::PathBuf;
 use std::process::{Child, Command};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
+
+use serde::Serialize;
+use tauri::AppHandle;
 
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
@@ -46,6 +51,106 @@ use tauri::{
 const SERVER_PORT: u16 = 17494;
 const TRAY_ICON_LABEL: &str = "justvoice-tray";
 const MAIN_WINDOW_LABEL: &str = "main";
+const DATA_DIR_ENV: &str = "JUSTVOICE_DATA_DIR";
+
+// ─── Data root (the portable, user-settable location for ALL app data) ──────
+// Resolved by the shell BEFORE the server spawns; the server honors the env var
+// (justvoice/paths.py). Family §5 shape (docgen's donor) with ONE deliberate
+// difference: the DEFAULT is the server's own platformdirs location — JV
+// installs predate this machinery and their data already lives there, so a
+// portable-beside-the-exe default would silently point an upgraded install at
+// an empty root. Portable mode is one Change-folder click away; the pointer
+// (dataroot.txt, kept OUTSIDE the relocatable root) records the choice.
+
+fn exe_dir() -> Option<PathBuf> {
+    std::env::current_exe().ok().and_then(|e| e.parent().map(|d| d.to_path_buf()))
+}
+
+fn dir_is_writable(dir: &std::path::Path) -> bool {
+    if fs::create_dir_all(dir).is_err() {
+        return false;
+    }
+    let probe = dir.join(".jv_write_probe");
+    match fs::write(&probe, b"x") {
+        Ok(()) => {
+            let _ = fs::remove_file(&probe);
+            true
+        }
+        Err(_) => false,
+    }
+}
+
+// The server's own default (paths.py: platformdirs user_data_dir("justvoice",
+// "justvoice", roaming)) — shell and server MUST agree on the no-pointer case.
+fn default_data_root(_app: &AppHandle) -> PathBuf {
+    #[cfg(windows)]
+    {
+        PathBuf::from(std::env::var("APPDATA").unwrap_or_default())
+            .join("justvoice")
+            .join("justvoice")
+    }
+    #[cfg(target_os = "macos")]
+    {
+        PathBuf::from(std::env::var("HOME").unwrap_or_default())
+            .join("Library/Application Support/justvoice")
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        PathBuf::from(std::env::var("HOME").unwrap_or_default()).join(".local/share/justvoice")
+    }
+}
+
+fn pointer_candidates(app: &AppHandle) -> Vec<PathBuf> {
+    let mut v = Vec::new();
+    if let Some(dir) = exe_dir() {
+        v.push(dir.join("dataroot.txt"));
+    }
+    if let Ok(cfg) = app.path().app_config_dir() {
+        v.push(cfg.join("dataroot.txt"));
+    }
+    v
+}
+
+fn resolve_data_root(app: &AppHandle) -> PathBuf {
+    for p in pointer_candidates(app) {
+        if let Ok(s) = fs::read_to_string(&p) {
+            let root = PathBuf::from(s.trim());
+            if !root.as_os_str().is_empty() {
+                return root;
+            }
+        }
+    }
+    default_data_root(app)
+}
+
+fn write_data_root_pointer(app: &AppHandle, root: &std::path::Path) -> std::io::Result<()> {
+    let pointer = pointer_candidates(app)
+        .into_iter()
+        .find(|p| p.parent().map(dir_is_writable).unwrap_or(false))
+        .unwrap_or_else(|| PathBuf::from("dataroot.txt"));
+    if let Some(parent) = pointer.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    // Atomic: temp sibling + rename, so a torn write can never strand the app
+    // on a half-written path.
+    let tmp = pointer.with_extension("tmp");
+    fs::write(&tmp, root.to_string_lossy().as_bytes())?;
+    fs::rename(&tmp, &pointer)
+}
+
+fn copy_dir_all(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
+    fs::create_dir_all(dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let target = dst.join(entry.file_name());
+        if entry.file_type()?.is_dir() {
+            copy_dir_all(&entry.path(), &target)?;
+        } else {
+            fs::copy(entry.path(), &target)?;
+        }
+    }
+    Ok(())
+}
 
 // ── Sidecar lifecycle state ──────────────────────────────────────────────
 
@@ -75,11 +180,21 @@ impl SidecarState {
             }
         }
     }
+
+    // Replace the running sidecar (storage_relocate: stop → move → respawn).
+    fn set_child(&self, child: Option<Child>) {
+        if let Ok(mut guard) = self.child.lock() {
+            if let Some(mut old) = guard.take() {
+                let _ = old.kill();
+            }
+            *guard = child;
+        }
+    }
 }
 
 // ── Sidecar spawn helpers ────────────────────────────────────────────────
 
-fn spawn_sidecar() -> std::io::Result<Option<Child>> {
+fn spawn_sidecar(data_root: &std::path::Path) -> std::io::Result<Option<Child>> {
     if std::env::var("JUSTVOICE_DEV_NO_SIDECAR").is_ok() {
         return Ok(None);
     }
@@ -105,11 +220,36 @@ fn spawn_sidecar() -> std::io::Result<Option<Child>> {
     // binary's directory first, so that name resolves to OUR binary,
     // spawning a new desktop window in an infinite loop.
     let cmd = if cfg!(debug_assertions) {
-        match Command::new("justvoice-server").arg("serve").spawn() {
-            Ok(child) => child,
-            Err(_) => Command::new("python")
-                .args(["-m", "justvoice.cli", "serve"])
-                .spawn()?,
+        // Prefer the repo's OWN venv entry point, resolved from the compile-time
+        // crate path (repo root = CARGO_MANIFEST_DIR/..) — `npm run dev` must
+        // work from ANY shell, not only one with the venv activated (§5's
+        // pattern; a PATH-stale justvoice-server was the audit's named failure).
+        let venv_server = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .map(|repo| {
+                if cfg!(windows) {
+                    repo.join("server").join(".venv").join("Scripts").join("justvoice-server.exe")
+                } else {
+                    repo.join("server").join(".venv").join("bin").join("justvoice-server")
+                }
+            })
+            .filter(|p| p.exists());
+        let venv_child = venv_server.and_then(|p| {
+            Command::new(p).arg("serve").env(DATA_DIR_ENV, data_root).spawn().ok()
+        });
+        match venv_child {
+            Some(child) => child,
+            None => match Command::new("justvoice-server")
+                .arg("serve")
+                .env(DATA_DIR_ENV, data_root)
+                .spawn()
+            {
+                Ok(child) => child,
+                Err(_) => Command::new("python")
+                    .args(["-m", "justvoice.cli", "serve"])
+                    .env(DATA_DIR_ENV, data_root)
+                    .spawn()?,
+            },
         }
     } else {
         let exe = std::env::current_exe()?;
@@ -124,7 +264,7 @@ fn spawn_sidecar() -> std::io::Result<Option<Child>> {
         // arguments prints usage and exits — the app would come up with no
         // backend and no error to explain it. The debug branch above has always
         // passed `serve`; this branch had not.
-        Command::new(bin).arg("serve").spawn()?
+        Command::new(bin).arg("serve").env(DATA_DIR_ENV, data_root).spawn()?
     };
 
     std::thread::spawn(|| {
@@ -231,11 +371,11 @@ async fn server_health() -> Result<String, String> {
 }
 
 #[tauri::command]
-fn start_server(state: tauri::State<'_, SidecarState>) -> Result<(), String> {
+fn start_server(app: AppHandle, state: tauri::State<'_, SidecarState>) -> Result<(), String> {
     if port_in_use(SERVER_PORT) {
         return Ok(()); // already up
     }
-    match spawn_sidecar() {
+    match spawn_sidecar(&resolve_data_root(&app)) {
         Ok(child) => {
             state.store_child(child);
             Ok(())
@@ -251,17 +391,90 @@ fn stop_server(state: tauri::State<'_, SidecarState>) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn restart_server(state: tauri::State<'_, SidecarState>) -> Result<(), String> {
+fn restart_server(app: AppHandle, state: tauri::State<'_, SidecarState>) -> Result<(), String> {
     state.kill_child();
     // Wait briefly for port free, then respawn.
     let _ = wait_for_port_free(SERVER_PORT, Duration::from_secs(5));
-    match spawn_sidecar() {
+    match spawn_sidecar(&resolve_data_root(&app)) {
         Ok(child) => {
             state.store_child(child);
             Ok(())
         }
         Err(e) => Err(format!("Failed to respawn sidecar: {e}")),
     }
+}
+
+// ─── Storage commands (the portable data root, user-relocatable) ─────
+
+// JW parity: the panel needs {root, default, portable} — camelCase off the
+// wire like every family payload.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct StorageRoot {
+    root: String,
+    default: String,
+    portable: bool,
+}
+
+#[tauri::command]
+fn storage_get_root(app: AppHandle) -> StorageRoot {
+    let root = resolve_data_root(&app);
+    let portable = exe_dir().map(|d| root.starts_with(&d)).unwrap_or(false);
+    StorageRoot {
+        default: default_data_root(&app).to_string_lossy().into_owned(),
+        portable,
+        root: root.to_string_lossy().into_owned(),
+    }
+}
+
+#[tauri::command]
+fn storage_relocate(app: AppHandle, new_root: String) -> Result<(), String> {
+    let old_root = resolve_data_root(&app);
+    let new_root = PathBuf::from(new_root.trim());
+    if new_root == old_root {
+        return Ok(());
+    }
+    if !dir_is_writable(new_root.parent().unwrap_or(&new_root)) {
+        return Err(format!("cannot write to {}", new_root.display()));
+    }
+    // Stop the server so nothing holds the DB open during the move.
+    if let Some(state) = app.try_state::<SidecarState>() {
+        state.kill_child();
+    }
+    wait_for_port_free(SERVER_PORT, Duration::from_secs(5));
+
+    let outcome = relocate_data(&app, &old_root, &new_root);
+
+    // ALWAYS bring a server back up — the new root on success, the old on
+    // failure — so a failed move never leaves the app serverless.
+    let serve_root = if outcome.is_ok() { &new_root } else { &old_root };
+    if let Some(state) = app.try_state::<SidecarState>() {
+        state.set_child(spawn_sidecar(serve_root).ok().flatten());
+    }
+    outcome
+}
+
+// Crash-safe move. Data is never lost: old_root is deleted only AFTER the
+// pointer commit, so a crash before the commit leaves the old root intact.
+fn relocate_data(
+    app: &AppHandle,
+    old_root: &std::path::Path,
+    new_root: &std::path::Path,
+) -> Result<(), String> {
+    let name = new_root
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "data".to_string());
+    let staging = new_root.with_file_name(format!("{name}.jv_moving"));
+    if staging.exists() {
+        let _ = fs::remove_dir_all(&staging);
+    }
+    copy_dir_all(old_root, &staging).map_err(|e| format!("copy failed: {e}"))?;
+    fs::rename(&staging, new_root).map_err(|e| format!("finalize failed: {e}"))?;
+    // THE commit point — atomic pointer write (tmp + rename inside).
+    write_data_root_pointer(app, new_root).map_err(|e| format!("pointer write failed: {e}"))?;
+    let _ = fs::remove_dir_all(old_root);
+    Ok(())
 }
 
 #[tauri::command]
@@ -489,7 +702,7 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
         "server_start" => {
             if let Some(state) = app.try_state::<SidecarState>() {
                 if !port_in_use(SERVER_PORT) {
-                    if let Ok(child) = spawn_sidecar() {
+                    if let Ok(child) = spawn_sidecar(&resolve_data_root(app)) {
                         state.store_child(child);
                     }
                 }
@@ -504,7 +717,7 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
             if let Some(state) = app.try_state::<SidecarState>() {
                 state.kill_child();
                 std::thread::sleep(Duration::from_millis(500));
-                if let Ok(child) = spawn_sidecar() {
+                if let Ok(child) = spawn_sidecar(&resolve_data_root(app)) {
                     state.store_child(child);
                 }
             }
@@ -534,26 +747,9 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
             // under its data dir (justvoice/paths.py: platformdirs
             // user_data_dir("justvoice", "justvoice", roaming)); honor
             // JUSTVOICE_DATA_DIR like the CLI does.
-            let data = std::env::var("JUSTVOICE_DATA_DIR")
-                .map(std::path::PathBuf::from)
-                .unwrap_or_else(|_| {
-                    #[cfg(windows)]
-                    {
-                        std::path::PathBuf::from(std::env::var("APPDATA").unwrap_or_default())
-                            .join("justvoice")
-                            .join("justvoice")
-                    }
-                    #[cfg(target_os = "macos")]
-                    {
-                        std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default())
-                            .join("Library/Application Support/justvoice")
-                    }
-                    #[cfg(all(unix, not(target_os = "macos")))]
-                    {
-                        std::path::PathBuf::from(std::env::var("HOME").unwrap_or_default())
-                            .join(".local/share/justvoice")
-                    }
-                });
+            // The SAME resolution the spawn uses (pointer → platform default),
+            // so the tray always opens the logs the server actually writes.
+            let data = resolve_data_root(app);
             let logs = data.join("logs");
             let target = if logs.exists() { logs } else { data };
             #[cfg(windows)]
@@ -583,14 +779,6 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
 // ── Main entry ───────────────────────────────────────────────────────────
 
 pub fn run() {
-    let sidecar = match spawn_sidecar() {
-        Ok(child) => SidecarState::new(child),
-        Err(e) => {
-            eprintln!("Failed to spawn Python sidecar: {e}");
-            SidecarState::new(None)
-        }
-    };
-
     tauri::Builder::default()
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_dialog::init())
@@ -599,7 +787,6 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         // Remember the window size + position across launches (family parity).
         .plugin(tauri_plugin_window_state::Builder::default().build())
-        .manage(sidecar)
         .manage(audio_capture::AudioCaptureState::new())
         .manage(hotkey_monitor::HotkeyState::new())
         .invoke_handler(tauri::generate_handler![
@@ -608,6 +795,8 @@ pub fn run() {
             stop_server,
             restart_server,
             set_keep_server_running,
+            storage_get_root,
+            storage_relocate,
             list_audio_output_devices,
             play_audio_to_devices,
             stop_audio_playback,
@@ -625,6 +814,25 @@ pub fn run() {
             copy_server_url,
         ])
         .setup(|app| {
+            // Resolve the (portable, user-settable) data root with Tauri's OWN
+            // path resolver, then bring the server up UNDER that root before
+            // the webview's first probe. Lock the choice into the pointer on
+            // first run (docgen's §5 shape; JV's default stays the server's
+            // platformdirs dir — see default_data_root).
+            let handle = app.handle().clone();
+            let root = resolve_data_root(&handle);
+            if pointer_candidates(&handle).iter().all(|p| !p.exists()) {
+                let _ = write_data_root_pointer(&handle, &root);
+            }
+            let sidecar = match spawn_sidecar(&root) {
+                Ok(child) => SidecarState::new(child),
+                Err(e) => {
+                    eprintln!("Failed to spawn Python sidecar: {e}");
+                    SidecarState::new(None)
+                }
+            };
+            app.manage(sidecar);
+
             // Build the system tray with the right-click menu (DESIGN_FREEZE
             // §6 + tasks #59 + #60).
             let menu = build_tray_menu(app.handle())?;
