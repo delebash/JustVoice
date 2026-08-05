@@ -30,7 +30,10 @@ export default defineConfig({
     // break with two instances). reka-ui is what UiSelect needs; marked is what
     // the shared HelpDrawer's helpMarkdown renderer needs; @tanstack/vue-table is
     // what UiTable needs (JV's library tables will converge to UiTable).
-    dedupe: ["vue", "reka-ui", "@floating-ui/dom", "pinia", "vue-router", "vue-i18n", "marked", "vue-sonner", "@tanstack/vue-table"],
+    // @vueuse/core rides the kit AppModal's header-drag (useDraggable) — declared a
+    // real dep + deduped 2026-08-05 (s2 audit: the kit imported it while JV never
+    // declared it; it resolved by hoisting luck only).
+    dedupe: ["vue", "reka-ui", "@floating-ui/dom", "pinia", "vue-router", "vue-i18n", "marked", "vue-sonner", "@tanstack/vue-table", "@vueuse/core"],
   },
   server: {
     host: "127.0.0.1",
