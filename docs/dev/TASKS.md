@@ -208,8 +208,65 @@
     later phases): AiSetupOffer (Phase 2, first-project moment), kit QuickSetup
     mount, nav/AI-area work. User docs: checked — the download docs describe
     the now-restored behavior; no wording changed.
-  - Phase 2 next: kit render() fail-loud hardening FIRST, then complete the
-    install call + convergence part 3 + chrome, per the phase corrections.
+  - **Phase 2 in progress — server half DONE in three commits (runner
+    `7d72aff`, JV `e7f35a7` + `906e865`; JW test fix `1450842`):**
+    (a) kit render() FAILS LOUD (MissingTemplateVariables, routes→400, union
+    via _render_pair) + `run_action` extracted (the route rides it via
+    to_thread; exported with UnknownActionError/RunRequest; five
+    incomplete-variables tests the silence hid were fixed in runner+JW).
+    (b) install call COMPLETE (product=/prefer_local_features=/all seeds);
+    13 rows / 9 features seeded (the count is 13 not 12 — the brief's tally
+    missed the EXISTING `identify` row, now `speaker_attribution.identify`;
+    ruling 9's principle covers it) + 6 presets (p_extract 0.2 · p_classify
+    0.0/200 · p_notes 0.4 · p_compose 0.9/300 · p_voiced_edit 0.6 ·
+    p_refine 0.2/2048) + 13 refs + samples per row; migrate_prompts.py
+    (edits win, brace-convert, key rename, tunable lift, table DROP after
+    success); all 8 features rewired through engines/llm/run.py's
+    run_feature; extraction tier choice = pick_tier (override or
+    model-classify — resolve_tier's pin path died); refine = the ×4 row
+    composition via the explicit-system door, few-shot as history.
+    (c) deletions: ai_prompts shadow, prompt_store, config.py, local_managed
+    + the qwen3_llm engine (+ manager hook + catalog variants), old
+    seeder/model (texts moved to seed_feature_prompts.py/refinement.py),
+    llmBackend.js + verify-llm-backend.js; capture readiness repointed to
+    what refine.base resolves to; factory-reset re-seeds BOTH sets via
+    llm_bootstrap.reseed_shared_llm (the dual-table lesson — reset was
+    leaving shared tables absent + storage on a disposed engine). Tests:
+    test_llm_roles + test_local_llamacpp retired; feature_prompts /
+    variant_wiring / captures / persona_rewrite / extraction_config /
+    discover_speakers rewritten to the shared truth. Suite 379 passed.
+    Behavior deltas recorded honestly: smart_assign/preset_suggest/
+    voice_gender rows run json_mode (response_format json_object — new);
+    attribution rows do NOT (array output); pre-QuickSetup runs now say
+    "run Quick Setup" (preset model "" — ruling 1's accepted clean-drop);
+    a Speaker-Lab CUSTOM user prompt now uses {{var}} not {brace} syntax.
+  - **Phase 2 REMAINING (the route+UI-coupled half — next session):**
+    · llm_roles_api + feature_pins_api mounts+files die WITH their renderer
+      bindings (QuickSetup.vue:276, SpeakerLabView.vue:414+:48+:439,
+      SettingsView.vue:497+:535-550+:585-728) — same slice as the chrome.
+    · Settings-tree residue: drop feature_pins/production_configs/roles (+
+      dormant engines.llm[] read path stays for migrate_providers); refine
+      FLAGS + auto-refine toggle SURVIVE; test_camel_aliases +
+      test_settings_patch_merge + test_system_info adjust then.
+    · CHROME: nav "AI Settings" entry (always visible, no visibleFor) +
+      route hosting kit AiModelsArea (ONE host tab per ruling 8; today's
+      Engines page renames "Voice engines", keeps no-visibleFor); kit
+      QuickSetup + ?quicksetup=1 + ruling 6's words via the labels feed
+      ("LLM engine setup"/"Voice engine setup"); AiStatusButton +
+      useAiTasksNav row in JV's topbar; Settings gains Storage + Server,
+      loses "AI features" (rehome app-specific knobs first — ruling 8);
+      kit LogsPanel + platform install_log_ring/install_file_log +
+      make_logs_router(PRODUCT) + make_disk_router replacing admin_api's
+      twins; AiSetupOffer at the first-project moment; health gains
+      product + camel apiVersion.
+    · Rust: portable data root (storage_get_root/relocate + pointer) +
+      spawn sets JUSTVOICE_DATA_DIR + venv-first debug spawn arm.
+    · Housekeeping: llm-runner pin → bundle extra (@main) + update-pydeps
+      fix; the app.py "convergence part 2" boot-order comment block near
+      the provider migration still references the old order (minor).
+    · Docs sweep for everything above (FEATURES.md / docs/*) + the two
+      CONTRACT.md corrections (decisions doc §4).
+    · Then Phase 3: voice_gender (its row + preset + sample already seed).
 
   **THE NINE RULINGS — ALL DECIDED 2026-08-05 s2 (chat, item by item; the
   final converged text below IS the decision — the "owed" framing below it is
