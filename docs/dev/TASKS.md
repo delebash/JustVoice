@@ -14,6 +14,43 @@
 > finish JW and all AI stuff, then we will work on JV."* Everything here is parked
 > behind that unless the user says otherwise; every item needs its own go.
 
+## Found by the 2026-08-05 family audit [verified by hand] — parked per the
+## standing sequence, but the first one is REAL user-facing breakage
+## (the keep-running param bug was fixed off-sequence 2026-08-05, Batch 1:
+## SettingsView now drives useServerStore — one persistence, default false,
+## correct `keepRunning` param, boot re-apply in App.vue)
+
+- **All six blob-download surfaces are runtime-broken** — `requestBlob("METHOD",
+  path)` method-first at `services/projects.js:87,176`, `ExportPanel.vue:75`,
+  `LinesView.vue:150`, `SettingsView.vue:155,1078` resolves to the KIT's
+  path-first `requestBlob(path, {method})` (kit `index.js` explicit export beats
+  serverApi's `export *`; serverApi's own copy was deleted — its :127-131 comment
+  flags JV as pending integration). Backup, logs download, M4B, voicelines and
+  project export all fetch `<base>METHOD` with GET. Also: these client.js
+  transports carry no bearer token and resolve base = window.location.origin
+  (wrong under Tauri prod + vite dev) because JV never calls
+  `configureLlmUi`/`installLlmUi`.
+- **The tray's six extra menu entries are dead in the donor** — `tray:*` emits
+  (`lib.rs:512-533`) have ZERO renderer listeners; Open settings shows the window
+  but never navigates, Copy URL copies nothing, dictate/MCP/logs/about no-op.
+  Tray Quit orphans the Python sidecar (`app.exit(0)` without kill_child); no
+  tray `.icon()` is set (blank icon on Windows). The docgen/JW ports fixed all
+  three (Rust-side handlers, kill-then-exit, app icon) — the family "port the
+  donor whole" ruling must implement the extra entries PROPERLY, not copy the
+  dead emits.
+- **`docs/system-tray.md` describes fiction** — "On (default)" (contradicts the
+  family ruling, JV's own run-modes.md and the Rust default), colored status
+  tint, progress badge, "Launch at login", "in-flight renders finish first":
+  none exist in code. Rewrite to the truth when the tray work lands.
+- **Server `ruff check` FAILS with 515 errors** (283 auto-fixable; top: UP045,
+  B008, BLE001, I001) while JV's CLAUDE.md says ruff must pass before commit —
+  pre-existing, not the kit's doing. pytest is green (383 passed).
+- Dead code: `src/services/llmBackend.js` has zero importers (the kit deleted
+  that contract); only `scripts/verify-llm-backend.js` exercises it.
+- No `lint`/`test`/`smoke` entries in package.json — gates exist only as raw
+  scripts + CLAUDE.md prose; the kit's new biome gate is chained by docgen's
+  lint but by nothing in JV.
+
 ## The convergence arc (moved from JW's whole-system tracker 2026-08-04)
 
 - **F1 — convergence onto the current shared stack (THE big one).** CORRECTED

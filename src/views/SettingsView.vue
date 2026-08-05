@@ -12,6 +12,7 @@ import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useUIStore } from "../stores/ui.js";
+import { useServerStore } from "../stores/server.js";
 import { UI_SCALES } from "../services/appearance.js";
 import CacheView from "./CacheView.vue";
 import AudioChannelsView from "./AudioChannelsView.vue";
@@ -409,31 +410,26 @@ function saveDebounced() {
 }
 
 // ─── Keep-server-running + Network access (preview parity, Tauri commands) ──
-const keepServerRunning = ref(true);
+// ONE source of truth: the server store (persisted in its `justvoice-server`
+// doc, default FALSE — the family headless ruling 2026-08-04). The view's own
+// `justvoice:keep_server_running` key + `{ enabled }` invoke died 2026-08-05:
+// the Rust command's arg is `keepRunning`, so that invoke NEVER worked — the
+// store's setter is the call that does.
+const serverStore = useServerStore();
+const keepServerRunning = computed({
+  get: () => serverStore.keepServerRunningOnClose,
+  set: (v) => serverStore.setKeepServerRunningOnClose(v),
+});
 const allowNetworkAccess = ref(false);
-const KEEP_RUNNING_KEY = "justvoice:keep_server_running";
-try {
-  const k = localStorage.getItem(KEEP_RUNNING_KEY);
-  if (k !== null) keepServerRunning.value = k === "true";
-} catch {}
 // allowNetworkAccess is derived from settings.server.host in refresh().
 
-async function onKeepServerRunningChange() {
-  try { localStorage.setItem(KEEP_RUNNING_KEY, String(keepServerRunning.value)); } catch {}
-  const tauri = typeof window !== "undefined" ? window.__TAURI__ : null;
-  if (tauri?.core?.invoke) {
-    try {
-      await tauri.core.invoke("set_keep_server_running", { enabled: keepServerRunning.value });
-      pushToast({
-        message: keepServerRunning.value
-          ? "Server will stay running when the window closes."
-          : "Server will quit when the window closes.",
-        duration: 4000,
-      });
-    } catch (e) {
-      pushToast({ message: `Couldn't sync setting to Tauri: ${e?.message || e}`, kind: "error" });
-    }
-  }
+function onKeepServerRunningChange() {
+  pushToast({
+    message: keepServerRunning.value
+      ? "Server will stay running when the window closes."
+      : "Server will quit when the window closes.",
+    duration: 4000,
+  });
 }
 
 async function onNetworkAccessChange() {

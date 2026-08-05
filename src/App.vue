@@ -9,6 +9,7 @@ import { useRenderTasks } from "./stores/renderTasks.js";
 import { useOnboarding } from "./stores/onboarding.js";
 import { useActiveProject } from "./stores/activeProject.js";
 import { useUiContext } from "./stores/uiContext.js";
+import { useServerStore } from "./stores/server.js";
 import TaskStrip from "./components/TaskStrip.vue";
 import TaskStatusPanel from "./components/TaskStatusPanel.vue";
 import AudioKeepAlive from "./components/AudioKeepAlive.vue";
@@ -167,6 +168,7 @@ const tasks = useRenderTasks();
 const onboarding = useOnboarding();
 const activeProject = useActiveProject();
 const uiContext = useUiContext();
+const serverStore = useServerStore();
 const { t } = useI18n();
 // initialDeepLink is non-empty only for a real bookmarked route — the "/"
 // default redirects to /overview, so first-run logic uses it to tell "user
@@ -299,6 +301,12 @@ function onQuickSetupClosed() {
 }
 
 onMounted(async () => {
+  // Re-apply the persisted keep-running flag to the shell every boot — the
+  // Rust side resets to false per launch (the family headless ruling
+  // 2026-08-04; setter no-ops outside Tauri).
+  if (serverStore.keepServerRunningOnClose) {
+    serverStore.setKeepServerRunningOnClose(true);
+  }
   const start = performance.now();
   const tick = setInterval(() => { bootElapsedMs.value = performance.now() - start; }, 200);
   // Polling loop until the server comes up — every 1.5s while health is
