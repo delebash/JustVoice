@@ -47,20 +47,90 @@
 
 ## The convergence arc (moved from JW's whole-system tracker 2026-08-04)
 
-- **F1 — convergence onto the current shared stack (THE big one).** CORRECTED
-  2026-08-04 [verified]: the old "JV can't even import `llm_runner`" claim is
-  STALE — `models.py`'s dead `LLMRolesSettings` imports were removed 2026-08-01
-  (its :20 comment records it) and `check-consumers.py` passes for JV (29 imports
-  resolve). The real scope stands: adopt the 2026-07 shared work JV still lacks —
-  the model catalog/tune system with per-machine tune saves, gated auto-MTP +
-  Gemma draft-file support, the quant dropdown with QAT labels, provider connect,
-  the per-day Logs panel. **Read BEFORE any F1/F2 work:** the 2026-07-15
-  integration decisions record —
-  `docs/decisions/2026-07-15-jv-shared-llm-integration-decisions.md` (JV stays
-  standalone with its own book door; the current shared stack replaces the pinned
-  snapshot; all 8 features kept + `voice_gender` built for real; merged "AI
-  Settings" nav hosting the kit `AiModelsArea` with two JV host tabs). Ledger
-  history: `just-llm-runner/docs/plans/archive/2026-07-06-outstanding-master-plan.md` §F1.
+- **F1 — convergence onto the current shared stack (THE big one). APPROVED
+  2026-08-05, NOT STARTED — no JV code touched.** The user's frame, verbatim:
+  *"replacing jv current llm with shared llm runner the f1 convergance, i
+  approve all per your rec"* + *"it should be simple drop in adn set jv routing
+  features"* + *"also spash page and loading model, again this should all be
+  same as jw and ai docgen"*. So: JV becomes the THIRD INSTALL of the same
+  family app — docgen's `app.py` + `main.js` are the working templates — and
+  the delta is JV's own features only.
+  **Read BEFORE coding:** `docs/decisions/2026-07-15-jv-shared-llm-integration-decisions.md`
+  — its PRODUCT rulings stand (JV standalone with its own book door; all 8 LLM
+  features kept + `voice_gender` built; merged "AI Settings" nav hosting the kit
+  `AiModelsArea`; compose/persona_rewrite frozen scope; the verified 8-feature
+  inventory table). Its CODE CITATIONS are 3 weeks stale — **re-verify every one
+  against the live tree** (the user's standing rule: docs go stale, verify in
+  code).
+
+  **Verified against the live tree 2026-08-05 (these ARE current):**
+  - JV's modules do NOT import against today's runner: `extraction_api` and
+    `smart_assign_api` fail on `llm_runner.llm.routing_api` (module deleted).
+    `TIERS`, `resolve_tier`, `resolve_pin`, `active_production_config`, `chat`
+    all still exist. So the tracker's "check-consumers passes" is true of the
+    SCRIPT, not the modules.
+  - `install_llm`'s required args are satisfied: JV has `SessionLocal` + `engine`
+    (`database/session.py`). Live signature adds params the doc never mentions —
+    `seed_default_model_catalog`, `cache_root`, `product`, `allow_key_reveal`.
+    BOTH siblings pass `product=` (family cache registry — a sibling can offer to
+    share the downloaded engine/models) and `data_dir=`; JV must too.
+    `allow_key_reveal` stays OFF (JV has no CSRF/origin middleware).
+  - JV's vite dev port is **1430** (hmr 1431) — `installLlmUi({devPorts:["1430"]})`,
+    NOT docgen's 1420.
+  - 7 renderer files bind the dying LLM shape: `ProviderForm.vue`,
+    `QuickSetup.vue`, `RecommendCard.vue`, `services/llmBackend.js`,
+    `EnginesView.vue`, `SettingsView.vue`, **`SpeakerLabView.vue`** (a core
+    workflow surface — the last two were never in the 7-15 doc's list).
+  - 5 of 54 server test files touch dying surfaces: `test_llm_roles`,
+    `test_local_llamacpp`, `test_persona_rewrite`, `test_camel_aliases`,
+    `test_settings_patch_merge`.
+  - MCP (`justvoice/mcp/`, `mcp_bindings_api.py`) and `webhooks_api.py` are
+    CLEAR of the dying surfaces.
+  - Chrome parity gaps: `index.html` boot layer is a green spinner (`#2f8f63`),
+    not a static plate → no `BootModelLoad`/`startWarmOnBoot`; JV mounts ZERO
+    kit chrome (no `SettingsShell`, `LogsPanel`, `DataManagement`,
+    `UpdatesPanel`, `AiStatusButton`, kit `TitleBar`); the Rust shell has NO
+    `storage_get_root`/`storage_relocate`/data-root pointer (no portable data
+    root at all); Settings has Appearance/Logs/About but NO Storage and NO
+    Server section (so the new `/v1/server-auth` door has no UI).
+  - Kit host tabs today: ONE `appTabLabel` + one `#app-tab` slot, eager
+    `v-show`, default tab hardcoded `"providers"`, host tab renders LAST. So
+    "two host tabs, Voice engines first" needs 3 kit deltas (multi-tab,
+    default-tab control, lazy mount); ONE host tab needs zero kit changes —
+    and JW has exactly one, docgen zero.
+
+  **Intended build order** (each phase leaves JV working; adversarial rethink
+  after each; instant gates only, full suites at the end):
+  0. Verify the drop-in premise against live signatures (minutes).
+  1. Renderer chrome FIRST (works against the old server): `installLlmUi`
+     (fixes transport base + token + the six method-first `requestBlob` calls),
+     `ConnectionError` boot gate, static plate + `BootModelLoad` +
+     `startWarmOnBoot`, `LlmUiHosts`, window-state plugin.
+  2. Server swap + AI area TOGETHER (one working-state series): `install_llm`
+     with JV's catalog/prompts/preset library/refs/default +
+     `prefer_local_features={"speaker_attribution"}`; rewire the 8 features to
+     the shared dispatch; delete the private-era stack (roles/pins/prompt-store/
+     provider-store/qwen3 engine, repoint dictation readiness); health baseline
+     keys; shared logs+disk routers; nav "Engines" → "AI Settings" hosting
+     `AiModelsArea`; kit QuickSetup (LLM) with `?quicksetup=1`; `AiStatusButton`
+     + AI-tasks nav row; Settings gains Storage + Server (tokens UI on
+     `/v1/server-auth`), loses "AI features"; once-ever `AiSetupOffer`.
+  3. `voice_gender` (the one new feature) + the Rust portable-data-root work.
+
+  **NINE RULINGS OWED before coding** (my recs in parens): old JV LLM rows —
+  clean drop + Quick Setup, incl. the `settings.engines.llm[]` residue (rec) ·
+  `voice_gender` trigger — explicit button in Voices (rec) · kit console tab
+  label in JV — "AI engine console" (rec) · merged AI nav always visible — yes
+  (rec) · JV splash plate — minimal brand plate, no artwork invention (rec) ·
+  JV's TTS wizard renamed "Voice engine setup" so "Quick Setup" stays the family
+  LLM wizard (rec) · warm-on-startup default in JV — OFF until F4's VRAM arbiter
+  (rec) · ONE host tab vs the July ruling's two (rec: one — JW's shape, zero kit
+  changes; Voice engines stays its own page) · which features get Lab-editable
+  prompt ROWS vs code-assembled prompts (rec: rows for smart_assign,
+  preset_suggest, show_notes, compose, persona_rewrite, voice_gender; code-built
+  for `refinement.py`'s flag-driven builder and the attribution pipeline).
+
+  Ledger history: `just-llm-runner/docs/plans/archive/2026-07-06-outstanding-master-plan.md` §F1.
 - **F2 — `speaker_attribution` task scaffolding** (a JV need; JW bans speaker
   analysis) — after F1. Ledger §F2.
 - **F4 — `EngineManager.load()` → shared VRAM-arbiter hook** — the decision was
