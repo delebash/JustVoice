@@ -45,7 +45,15 @@ class BearerAuthMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         client_host = request.client.host if request.client else ""
-        if _is_loopback(client_host) and not settings.auth.require_for_loopback:
+        is_loop = _is_loopback(client_host)
+        # The lockout escape (family shape, 2026-08-05: require_for_loopback +
+        # a lost token gated even the health probe and every way to fix it).
+        # From the machine itself /v1/health and the /v1/server-auth door
+        # always answer; the tokens sit in a locally readable settings store
+        # anyway. Remote stays gated.
+        if is_loop and (path == "/v1/health" or path.startswith("/v1/server-auth")):
+            return await call_next(request)
+        if is_loop and not settings.auth.require_for_loopback:
             return await call_next(request)
 
         header = request.headers.get("authorization", "")

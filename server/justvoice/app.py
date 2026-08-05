@@ -58,6 +58,7 @@ from .api import (
     projects_api,
     render_chapter_api,
     render_presets_api,
+    server_auth_api,
     settings_api,
     sse_streams_api,
     system_api,
@@ -172,6 +173,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     # Routes
     app.include_router(health.router)
     app.include_router(system_api.router)
+    app.include_router(server_auth_api.router)  # the auth door + lockout escape (family shape)
     app.include_router(settings_api.router)
     app.include_router(voices_api.router)
     app.include_router(personas_api.router)
