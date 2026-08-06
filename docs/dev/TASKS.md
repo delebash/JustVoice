@@ -38,12 +38,17 @@
 - **The Auto pane is plain words + ONE control** (user: "the auto just
   explains what it does why it picks features and that you can set param
   size to change it, correct, simple"). The pane text, verbatim:
-  > Auto never picks a model — it looks at the model you've already assigned
-  > and picks the feature that fits it:
-  > Can your model think? → **Reasoned** runs. The Thinking flag on the
-  > model's catalog row decides — edit it there.
-  > No — is it [ 14 ] B or bigger? → **Direct**. Smaller? → **Guided**.
-  > Size unknown → treated as small.
+  > Auto never picks a model. It looks at the model you've already
+  > assigned and picks the feature that suits it.
+  > If your model can think, **Reasoned** runs. The Thinking flag on the
+  > model's row in the catalog decides that — you can edit it there.
+  > If it can't think but has at least [ 14 ] billion parameters,
+  > **Direct** runs. Smaller models get **Guided**.
+  > If JustVoice can't tell how big the model is, it plays it safe and
+  > uses **Guided**.
+  (Reworded to plain sentences on the user's live QC 2026-08-06 — "state
+  it nice and simple, not like a machine"; the catalog sentence kept by
+  the user's word the same day.)
   The [14] is the editable size line (settings.extraction.direct_min_b). No
   pills, no RIGHT NOW readout, no model names on the pane. Check order
   confirmed by the user ("ok tht sound right"): thinking first (the
@@ -78,61 +83,104 @@
 - Studio meta/toast unchanged ("Route: X — Auto's pick / forced"). Docs +
   tests + migrations ride. NEXT: the gemma/MoE route tests, run together.
 
-## OPEN (user find during the same walk, 2026-08-06 — "add as task finish
-## wht you are doing first"): **attribution runs bypass the standard
-## llm-runner run surface** — a Lab analyze run adds NO AI-task entry and
-## reports NO tokens / word count / seconds ("you not using are standard llm
-## runner no ai task added no token word count seconds … you mush keep
-## rolling you own stuff"). Cause VERIFIED 2026-08-06: server-side token/
-## usage accounting is fine — it lives in the kit's dispatch layer and EVERY
-## feature funnels through it (attribution included; the Usage tab counts
-## these runs). What the attribution Lab adapter bypasses is the kit's
-## CLIENT-side task surface (aiTasks registration → the live seconds/tokens
-## strip, the task row) — it calls the server directly instead of the
-## standard run path. Only attribution + Find new speakers carry an adapter;
-## every other feature's Lab run takes the standard path. Production
-## buttons are per-surface client wiring, NOT yet audited feature-by-
-## feature — that enumeration is part of this task's plan.
-## DECIDED SPEC EXISTS — docs/dev/CONCEPTS.md §16 "AI task runner (hard
-## requirement, all AI features)" + addendum (inline bar: seconds · tokens ·
-## words · Details · Cancel at the call site; the AI-tasks slide-out; stall
-## detection; history with duration + tokens) — MUST be read before the
-## plan. Plan presented in chat before any code; sequenced AFTER the Auto
-## simplification + the model tests.
+## OPEN — THE LAB PLAN (2026-08-06; ONE task, text approved as presented
+## in chat — absorbs the three OPEN finds it replaces: the standard-runner
+## surface, the original-Lab restoration, the corrections box). Read
+## first: docs/dev/CONCEPTS.md §16 + its addendum — MUST be read before
+## the plan. The plan is presented in chat for its own go before any code.
 
-## OPEN (user find, 2026-08-06, from the running ORIGINAL Speaker Lab at
-## JustVioce-old — "you had a perfect example of the originall speaker
-## extraction and you could not even do that correct"): **the new
-## attribution Lab lost the original's cast editor + passage niceties.**
-## The original screen (Labs → Speaker, screenshot in chat): CAST is a
-## structured editor — chips with ×, a "Character name" input, an "Aliases
-## (comma-separated, optional)" input, "+ Add" — NO ids user-facing (ids
-## are the internal June contract, prompts.py:19-29 verified; the UI
-## generates them). INPUT PASSAGE has "Load from chapter…", live "N words ·
-## N chars · ~N tokens" counters, and Sample fills passage AND cast
-## together. The new kit Lab renders {{characters}} as a raw text box.
-## Fix = restore the original cast-editor surface (kit seam: per-variable
-## custom input, or configExtra grows the cast editor writing the
-## characters var) + the passage counters; ALSO swap the attribution
-## sample text to the original's own cellar passage verbatim (Sarah/Mara —
-## needs a row swap; today's quay sample already seeded). DECIDED SPEC:
-## docs/dev/CONCEPTS.md §16 + addendum (input header live words · chars ·
-## ~tokens; "Load from chapter…" + Clear + Sample above the paste box;
-## JSON output view; both prompts editable; named tweak presets) — MUST be
-## read before the plan. The plan must ALSO reconcile §16's "columns
-## compare MODELS, tier follows the model" (2026-06-11, one-feature world)
-## with the routed-cards world (2026-08-06: the card IS the route) — not
-## silently pick one. The project-kind-aware sample behavior the user
-## recalls ("if project select is dictation or ect") was discussed but its
-## text is NOT yet located — find it (or the user points at it) before the
-## plan; never re-guess it. One plan with the standard-runner item above
-## (same screen).
+**Part 1 — every run shows up like a real AI task (§16).**
+- Attribution Lab runs register with aiTasks: task row, live seconds + tokens.
+- The extraction responses start returning usage numbers.
+  (The server already records them; the responses just don't carry them.)
+- Then audit each production button for the §16 inline bar:
+  Studio Analyze · Smart-assign · Suggest · voice-gender · compose ·
+  show-notes · dictation.
 
-## OPEN (found in the same walk): the Lab's ad-hoc attribution run always
-## sends corrections=[] — the corrections box the kit renders for the
-## {{corrections}} placeholder is inert there (production injects the
-## project's real top-12). Decide: wire the box through, or hide it on
-## ad-hoc runs. Rides the same Lab plan.
+**Part 2 — dead controls on attribution columns.**
+- Reasoning, Max tok, Top-p and the samplers do nothing there (verified
+  end-to-end: the adapter drops them AND AnalyzeRequest rejects them).
+- The plan decides: hide them, or make the server accept them.
+
+**Part 3 — the Lab looks like the original again.**
+- Cast editor: chips, a name input, an aliases input, an Add button. No
+  visible ids (ids stay the internal contract; the UI generates them).
+- Live counters over the passage box: words · chars · ~tokens.
+- "Load from chapter…" returns.
+- Sample fills the passage AND the cast together.
+- The sample text becomes the original cellar passage, word for word
+  (row swap — today's quay sample already seeded).
+
+**Part 4 — boxes stop faking data the app already owns.**
+- One kit seam: a variable can declare an app source to fill from.
+- Cast → attribution, identify, smart-assign.
+- Voices → smart-assign, voice-gender.
+- Personas → compose, rewrite.
+- Render presets + chapters → preset-suggest. Script → show-notes.
+- Off by default in the kit, so JustWrite's screens don't change.
+
+**Part 5 — the corrections box goes away (user ruled YES 2026-08-06).**
+- Nothing can honestly be typed there; corrections only exist by fixing
+  real results.
+- With a project open, a run uses that project's stored corrections,
+  like production.
+- The count card under the results stays.
+
+**Part 6 — contracts to pin while building.**
+- One agreed shape for the characters variable (editor, parser, sample,
+  fill).
+- A readable rendering for id-JSON results (smart-assign shows raw ids
+  today).
+- First JS tests for the adapter + the seam (JV has no vitest today;
+  smaller than, separate from, the deferred e2e harness).
+
+**Part 7 — small riders on the same go.**
+- direct_min_b gets a minimum at the API.
+- CONCEPTS §16 gets a dated note (its "tier follows the model" line is
+  outdated — the card is the route; this plan reconciles the
+  models-per-column idea, not silently).
+- ~~An aria-label on the number input on the Auto row's page~~ — DONE
+  2026-08-06 (rode the plain-English rewording edit).
+- A test pinning factory-reset migration order.
+
+**Part 8 — recorded for task #22, not here.**
+- Dictation's Lab runs lack production's few-shot history
+  (REFINEMENT_EXAMPLES ride as history turns in production; the Lab
+  sends none); #22's plan carries it.
+
+**Rulings resolved 2026-08-06:** corrections box removal YES · per-kind
+samples DROPPED (user: "forget it") · the production-surface sweep WAITS
+with the deferred deep audit.
+**RULED 2026-08-06 (user: "it just defaults to default model, correct?"):**
+Auto judges the model that would actually run — the preset's model, else
+the provider default, the same resolution the run itself uses. Not new
+machinery, just pointing the two existing checks at the real model. This
+makes Reasoned reachable by Auto on a fresh setup. BUILD: small server
+change (auto_route's per-card model resolution); rides the Lab plan, or
+its own quick go if wanted sooner.
+
+## OPEN (user QC find 2026-08-06, added on sight): "chapters has menu
+## items cast script ect but they dont open to the correspoding items in
+## studio." ROOT CAUSE DIAGNOSED same day: the handoff is wired at both
+## ends — goStudio(tab) writes sessionStorage "jv.studio.tab"
+## (ChapterView.vue:664-667, also goStudioExport :498) and StudioView
+## reads it — but the read sits in onMounted (StudioView.vue:1310-1320)
+## while App.vue wraps views in KeepAlive (App.vue:569), so mounted fires
+## ONCE per session: the handoff works at most on Studio's first-ever
+## visit, never again. Fix = move the consumer to onActivated (or a hash
+## watcher). SAME PASS: audit every kept-alive view's onMounted-only
+## per-visit work for the same class (StudioView's loadAll() rides the
+## same mounted hook — verify its revisit freshness), plus the sibling
+## navigations ("Open in Studio ➜" ChapterView.vue:805, the
+## discovered-speakers banner → Script). ACCEPTANCE (the user's words):
+## "cast on chapters page opens same page as cast on studio page" — every
+## Chapters button lands on exactly the tab Studio's own tab bar opens,
+## regardless of which tab Studio last showed. SECOND AXIS to verify at
+## the fix: the PROJECT must follow too — goStudio hands over only the
+## tab, Studio keeps its own kept-alive project selection, and only the
+## Studio→app sync direction is proven (StudioView.vue:1324); if the
+## reverse pull is missing, Cast-from-Chapters can land on another
+## project's cast. Fix needs its own go.
 
 ## APPROVED 2026-08-06 (late) — SPEAKER ATTRIBUTION: the old functionality,
 ## split into routed features + the visible Auto row. GO: "lets try your rec
@@ -266,7 +314,9 @@ superseded above):
   THE deep exhaustive audit are DEFERRED — "for now we are not doing jv
   harness or deep audit i want to finish all features and complete the jv
   llm runner conversion."** The next work = the convergence arc's remaining
-  items (F2 attribution task scaffolding · F4 VRAM-arbiter wiring · F5
+  items (F2 attribution task scaffolding [CLOSED 2026-08-06 — superseded:
+  its target task-kind taxonomy was deleted from the kit 2026-07-15; the
+  intent shipped as the routed-cards restore] · F4 VRAM-arbiter wiring · F5
   appearance knob-set · the I6 tail — each item's ledger section MUST be
   read before its plan:
   `just-llm-runner/docs/plans/archive/2026-07-06-outstanding-master-plan.md`).
@@ -311,8 +361,6 @@ superseded above):
     retire-or-replace rides the harness item.
   - `capture.llm_model` settings field is dormant residue — decided KEEP
     (not in the drop list; the UI picker is gone).
-- **F2 — `speaker_attribution` task scaffolding** (a JV need; JW bans speaker
-  analysis) — after F1. Ledger §F2.
 - **F4 — `EngineManager.load()` → shared VRAM-arbiter hook** — the decision was
   made 2026-07-04 and the arbiter is BUILT in the runner; only the JV-side wiring
   remains. After F1. Ledger §F4.

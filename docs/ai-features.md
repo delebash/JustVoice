@@ -58,12 +58,13 @@ Lab:
   text starts as a copy of Direct's; edit it separately whenever you like.)
 
 Above them sits the **Auto** row — *"Picks which of the three features below
-runs."* Its pane is plain words plus one number. Auto never picks a model —
-it looks at the model you've already assigned and picks the feature that
-fits it: can your model think (the **Thinking** flag on its catalog row —
-edit it there)? **Reasoned** runs. Otherwise, at or above the **editable
-size line** (billions of parameters, default 14) **Direct** runs; under it,
-**Guided**. Unknown size counts as small.
+runs."* Its page is plain sentences plus one number. Auto never picks a
+model — it looks at the model you've already assigned and picks the feature
+that suits it. If your model can think, **Reasoned** runs (the **Thinking**
+flag on the model's catalog row decides; edit it there). If it can't think
+but has at least the editable number of billion parameters (default 14),
+**Direct** runs; smaller models get **Guided**. When JustVoice can't tell
+the size, it plays it safe and uses **Guided**.
 
 Production always runs Auto's pick — there is no stored force. After every
 Analyze, Studio's meta line reports the route that ran and whether it was

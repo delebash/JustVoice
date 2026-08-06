@@ -52,20 +52,24 @@ onMounted(load);
 <template>
   <div class="aap">
     <p class="aap__intro">
-      Auto never picks a model — it looks at the model you've already assigned
-      and picks the feature that fits it:
+      Auto never picks a model. It looks at the model you've already assigned
+      and picks the feature that suits it.
     </p>
     <p class="aap__rule">
-      Can your model think? → <b>Reasoned</b> runs. The Thinking flag on the
-      model's catalog row decides — edit it there.
+      If your model can think, <b>Reasoned</b> runs. The Thinking flag on the
+      model's row in the catalog decides that — you can edit it there.
     </p>
     <p class="aap__rule">
-      No — is it
+      If it can't think but has at least
       <input class="aap__num" type="number" min="0.1" step="0.5" v-model="directMinB"
+        aria-label="Direct size threshold in billions of parameters"
         :disabled="busy" @change="saveMinB" @keyup.enter="saveMinB" />
-      B or bigger? → <b>Direct</b>. Smaller? → <b>Guided</b>.
+      billion parameters, <b>Direct</b> runs. Smaller models get <b>Guided</b>.
     </p>
-    <p class="aap__rule">Size unknown → treated as small.</p>
+    <p class="aap__rule">
+      If JustVoice can't tell how big the model is, it plays it safe and uses
+      <b>Guided</b>.
+    </p>
   </div>
 </template>
 
