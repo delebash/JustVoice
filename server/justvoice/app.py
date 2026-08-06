@@ -214,6 +214,8 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         DEFAULT_FEATURE_PRESETS,
         DEFAULT_PRESET_ID,
         DEFAULT_TEST_SAMPLES,
+        JV_CLASS_TUNE_IDENTITY,
+        JV_CLASS_TUNES,
         JV_MODEL_CATALOG,
     )
 
@@ -230,10 +232,14 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         feature_presets=DEFAULT_FEATURE_PRESETS,
         default_preset_id=DEFAULT_PRESET_ID,
         test_samples=DEFAULT_TEST_SAMPLES,
-        # The family's measured daily driver ONLY (user direction 2026-08-05);
-        # the shared writing-curated default catalog is suppressed.
+        # The family's measured daily driver ONLY (user direction 2026-08-05).
+        # Since decision ④ every app seeds its whole catalog — the kit's shared
+        # DEFAULT_CATALOG is empty and the old suppress flag is gone. JV also
+        # registers the driver's measured class tunes + identity below, so the
+        # family's 8 GB/32 GB (and sibling-class) launch configs apply here too.
         model_catalog_extra=JV_MODEL_CATALOG,
-        seed_default_model_catalog=False,
+        class_tunes_seed=JV_CLASS_TUNES,
+        class_tune_identity=JV_CLASS_TUNE_IDENTITY,
         # The pin-era PREFER_LOCAL_FEATURES, as the install param (config.py's
         # mapper dies with the pins).
         prefer_local_features=PREFER_LOCAL_FEATURES,

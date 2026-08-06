@@ -42,10 +42,10 @@ DEFAULT_ENGINE_PRESETS: list[dict] = [
 ]
 
 # ── JV's model catalog (user direction 2026-08-05, QC of the AI area): the
-# family's measured daily driver ONLY — the shared writing-curated
-# DEFAULT_CATALOG is suppressed (seed_default_model_catalog=False, docgen's
-# pattern; its 12B/E4B/style-tune/uncensored rows were noise here and the one
-# row the family actually uses lived in JW's per-app seed). Row copied from
+# family's measured daily driver ONLY. (The shared writing-curated
+# DEFAULT_CATALOG its 12B/E4B/style-tune/uncensored rows came from is EMPTY
+# since decision ④ — every app seeds its own catalog; there is no suppress
+# flag anymore.) Row copied from
 # JW's DEFAULT_MODEL_CATALOG_EXTRA verbatim; only the user-facing `notes`
 # speak JV's features (the 2026-07-25 ruling: box-independent plain words).
 # The MoE's 4B active slice is why it runs acceptably on CPU too — the floors
@@ -65,6 +65,50 @@ JV_MODEL_CATALOG: list[dict] = [
               "graphics cards and up (and usably on CPU — only the 4B active slice "
               "computes per token); thinking is managed per task automatically."},
 ]
+
+# ── The daily driver's MEASURED class tunes (decision ④, 2026-08-05: class tunes
+# are per-app data and travel WITH the catalog row). These six rows are the
+# family's measured launch configs for exactly the model above, copied verbatim
+# from the shared seed at the move (the measurement trail lives in JW's
+# seed_presets.py, which carries the full 13-row library). Without them a fresh
+# JV install launches the 26B on automatic fit — ctx 16384 with NO expert
+# offload against a measured ctx 32768 + n_cpu_moe 21 (the family's recorded
+# 27-minute lesson). Merge-by-(model, class): a user's Lab-measured row wins.
+JV_CLASS_TUNES: list[dict] = [
+    {"model_id": "gemma-4-26b-a4b-qat", "class_key": "dgpu-vram8|ram32", "switches": {
+        "n_gpu_layers": "99", "n_cpu_moe": "21", "ctx_len": "32768",
+        "batch_size": "512", "ubatch_size": "512", "threads": "8",
+        "reasoning_budget": "1024",
+    }},
+    {"model_id": "gemma-4-26b-a4b-qat", "class_key": "igpu-mem32", "switches": {
+        "n_gpu_layers": "99", "n_cpu_moe": "0", "ctx_len": "32768",
+        "batch_size": "512", "ubatch_size": "512", "flash_attn": "off",
+        "reasoning_budget": "1024",
+    }},
+    {"model_id": "gemma-4-26b-a4b-qat", "class_key": "dgpu-vram16|ram32", "switches": {
+        "ctx_len": "32768", "batch_size": "512", "ubatch_size": "512",
+        "reasoning_budget": "1024",
+    }},
+    {"model_id": "gemma-4-26b-a4b-qat", "class_key": "dgpu-vram16|ram64", "switches": {
+        "ctx_len": "32768", "batch_size": "512", "ubatch_size": "512",
+        "reasoning_budget": "1024",
+    }},
+    {"model_id": "gemma-4-26b-a4b-qat", "class_key": "dgpu-vram24|ram32", "switches": {
+        "n_gpu_layers": "99", "n_cpu_moe": "0", "ctx_len": "32768",
+        "batch_size": "512", "ubatch_size": "512", "reasoning_budget": "1024",
+    }},
+    {"model_id": "gemma-4-26b-a4b-qat", "class_key": "dgpu-vram24|ram64", "switches": {
+        "n_gpu_layers": "99", "n_cpu_moe": "0", "ctx_len": "32768",
+        "batch_size": "512", "ubatch_size": "512", "reasoning_budget": "1024",
+    }},
+]
+
+# What the tunes were measured on — binds them by identity if the row is ever
+# renamed here (the docgen `-xl` id is the measured precedent for why).
+JV_CLASS_TUNE_IDENTITY: dict[str, dict] = {
+    "gemma-4-26b-a4b-qat": {"hf_repo": "unsloth/gemma-4-26B-A4B-it-qat-GGUF",
+                            "quant": "UD-Q4_K_XL"},
+}
 
 
 # The per-ACTION preset refs — all 13 rows over the 6 presets.
