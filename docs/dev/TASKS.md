@@ -75,30 +75,10 @@ The approved text, as presented and confirmed:
 - Sequencing: kit gate slice FIRST (JW full suite as its gate), then the JV
   rework. Docs ride each slice.
 
-## QC finds 2026-08-06 (user's eyes, added on sight)
-
-- **JV adopts the family TitleBar** (user ruling: "same back buttons, same
-  title bar type as the other apps"). §11 canon = JW's TitleBar (back/forward
-  · title · mode · status chip); JV still runs its own topbar. Adopt it with
-  JV's own chips (project/kind · engine state · AiStatusButton) as the app's
-  slot content. (The user's related nav question was ruled the OTHER way:
-  sidebars stay per-app for now — dropped, not deferred.)
-- **Topbar chip "No engine" → "No voice engine"** (user ruling: two engine
-  kinds make the bare words ambiguous — it reads "no AI at all" when it means
-  no TTS engine loaded; ruling-6's naming class). Verify the loaded state
-  names the kind too.
-- **Add Gemma 4 12B (QAT) + Gemma 4 E4B (QAT) back to the model catalog**
-  (user ask 2026-08-06). Both ids sit in `_RETIRED_DEFAULT_CATALOG_IDS`
-  (llm_bootstrap.py — the 2026-08-05 one-row-catalog direction removed them).
-  Re-adding = seed the two rows in JV's `model_catalog_extra` (pull the
-  audited row facts + any measured class tunes from JW's library), take the
-  ids OUT of the retirement list (it's marker-guarded one-time, but a fresh
-  install must keep them), and re-run the seed-facts audit for the rows.
-- **Sidebar: AI tasks · Labs · Settings sit OUTSIDE the scroll area** while the
-  nav lanes scroll — the pinned-bottom group (`.jv-sidebar__bottom`, App.vue)
-  holds them; the user flags the split as wrong ("outside scroll for some
-  reason"). Decide: fold them into the scrolling lanes, or keep a pinned
-  bottom deliberately — surface options first, then fix.
+## QC finds 2026-08-06 (user's eyes) — ALL BUILT same day
+- Sidebar fold + "No voice engine" chip + the family TitleBar adoption:
+  `8b7e05a`. Gemma 4 12B/E4B catalog re-add: `f5bb907`. (Close = delete —
+  the rulings' text lives in the commits; git keeps everything.)
 
 ## QC finds 2026-08-05 (user's eyes, added on sight)
 
