@@ -41,7 +41,7 @@
       { "slug": "engines",            "title": "Engines" },
       { "slug": "providers",          "title": "LLM + TTS providers" },
       { "slug": "ai-features",        "title": "AI feature routing" },
-      { "slug": "quick-setup",        "title": "Quick Setup wizard" },
+      { "slug": "quick-setup",        "title": "Voice engine setup wizard" },
       { "slug": "gpu",                "title": "GPU / CUDA" }
     ]
   },

@@ -77,6 +77,60 @@ function savePresetGenderOverride(id, gender) {
   writePref("presetGenderOverrides", map);
 }
 
+// ── LLM gender guess (F1 Phase 3, ruling 2: EXPLICIT button, never auto) ──
+// Sends only the voices the dictionary left at "?" to the voice_gender
+// feature; applies answers through the SAME persistence as a manual cycle
+// (pref override for presets, PATCH for stored voices).
+const genderGuessBusy = ref(false);
+async function guessUnknownGenders() {
+  const unknown = voices.value.filter((v) => autoDetectGender(v) === "?").slice(0, 60);
+  if (!unknown.length) {
+    pushToast({ message: "Nothing to guess — every voice already has a gender.", duration: 3500 });
+    return;
+  }
+  genderGuessBusy.value = true;
+  try {
+    const r = await api.request("/v1/voices/gender-guess", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ voices: unknown.map((v) => ({
+        name: v.name || v.id, description: v.design_prompt || "",
+      })) }),
+    });
+    const guesses = r?.guesses || {};
+    let applied = 0;
+    for (const v of unknown) {
+      const g = guesses[v.name || v.id];
+      if (!g) continue;
+      v.gender_user_override = g;
+      if (v.source === "preset") {
+        savePresetGenderOverride(v.id, g);
+      } else {
+        await api.request(`/v1/voices/${v.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ gender: g }),
+        });
+      }
+      applied += 1;
+    }
+    pushToast({
+      message: `${applied} voice${applied === 1 ? "" : "s"} labeled · ${unknown.length - applied} left unknown.`,
+      kind: "success",
+    });
+  } catch (e) {
+    const msg = String(e?.message || e);
+    pushToast({
+      message: msg.includes("501")
+        ? "No AI model set up — run the LLM engine setup under AI Settings first."
+        : `Gender guess failed: ${msg}`,
+      kind: "error", duration: 6000,
+    });
+  } finally {
+    genderGuessBusy.value = false;
+  }
+}
+
 async function cycleGender(v) {
   const cur = autoDetectGender(v);
   const idx = GENDER_CYCLE.indexOf(cur);
@@ -672,6 +726,11 @@ function blendWithVoice() {
       >{{ f.label }} ({{ typeCounts[f.id] || 0 }})</UiChip>
     </div>
     <span class="jv-spacer" />
+    <UiButton intent="secondary" size="small" :loading="genderGuessBusy"
+      :disabled="genderGuessBusy"
+      label="✨ Guess unknown genders"
+      title="Ask the AI to label the voices the built-in dictionary doesn't know (the voice_gender feature — runs only when you click)"
+      @click="guessUnknownGenders" />
     <UiButton intent="secondary" size="small" label="⬇ Import .justvoice.zip" @click="openModal('import')" />
     <UiButton
       intent="primary"

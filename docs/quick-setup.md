@@ -1,10 +1,15 @@
-# Quick Setup wizard
+# Voice engine setup wizard
 
-After picking a use case in the Welcome modal, JustVoice runs a Quick Setup wizard that gets you from a fresh install to a working configuration in three steps:
+(Renamed from "Quick Setup": JustVoice has two engine kinds, and the pair
+names them — this wizard sets up the **voice** engines; its sibling, the
+**LLM engine setup** on the AI Settings page, sets up the text-AI model.)
+
+After picking a use case in the Welcome modal, JustVoice runs the Voice engine
+setup wizard that gets you from a fresh install to working TTS in three steps:
 
 1. **Detect** — probes your GPU + which engines + LLM providers are already registered.
 2. **Confirm** — shows a recommended setup for your hardware tier; lets you override.
-3. **Install** — installs the recommended TTS engines + pins the AI features to the right tier on your registered LLM.
+3. **Install** — installs the recommended TTS engines.
 
 Total time depends on download size: 0.4 GB for CPU tier, up to 22 GB for the full 32 GB GPU tier.
 
@@ -21,21 +26,13 @@ Total time depends on download size: 0.4 GB for CPU tier, up to 22 GB for the fu
 
 JustVoice auto-detects your VRAM via `/v1/system/info` and pre-picks the right tier. You can override with the dropdown in the confirm step — useful if you'd rather not download 14 GB on a 24 GB card right now.
 
-## Feature pin recipe per tier
+## What about the AI features?
 
-The Quick Setup wizard doesn't just install engines — it pins the AI features (Compose / Persona rewrite / Speaker attribution / Smart-assign / Render preset suggest) to the right tier for your hardware.
-
-| Tier | Compose | Rewrite | Attribution | Smart-assign | Suggest |
-|---|---|---|---|---|---|
-| CPU / 8 GB | Direct | Direct | Direct | Direct | Direct |
-| 12 GB | Direct | Direct | **Reasoned** | Direct | Direct |
-| 16 GB | Direct | Direct | Reasoned | **Reasoned** | Direct |
-| 24 GB | Direct | **Reasoned** | Reasoned | Reasoned | Direct |
-| 32 GB+ | Reasoned | Reasoned | Reasoned | Reasoned | Reasoned |
-
-Reasoning tiers cost more per call but substantially improve speaker attribution accuracy and character-voice match. The wizard only ratchets up to Reasoned when the hardware can probably run a reasoning-class LLM locally.
-
-**Note:** the recipe targets the **first registered LLM provider** in your Engines tab. If no provider is registered when you run Quick Setup, the wizard shows a warning banner in the confirm step and the pins are queued — register a provider in Engines → LLM and revisit Settings → AI features to confirm the pins took.
+The pin recipe this wizard used to apply is gone — AI routing lives on the
+shared presets now, seeded working out of the box. Set up the text-AI model
+with the **LLM engine setup** under **AI Settings** (one click: engine +
+model sized to this PC); per-feature choices live under Routing by feature.
+See `ai-features.md`.
 
 ## Watching install progress
 
@@ -50,20 +47,15 @@ You can **Cancel** mid-install. Engines that have already completed are kept; th
 
 ## Done step
 
-Shows a success summary:
-
-- N engines installed
-- N feature pins applied
-- N deferred (when no LLM provider was registered yet)
-
-If pins were deferred, the Done step shows a follow-up link to `Engines → LLM tab` to add a provider, then `Settings → AI features` to confirm the pins.
+Shows a success summary — N voice engines installed (with failures counted) —
+and, when no text-AI model is set up yet, a pointer to the LLM engine setup
+under AI Settings.
 
 ## Skipping the wizard
 
 Click **Skip — configure later** in the confirm step. You can:
 
-- Install engines manually in the Engines tab.
-- Pin features manually in Settings → AI features.
+- Install voice engines manually on the Voice engines page.
 
 The wizard re-runs from Settings → About → Run welcome again. Quick Setup persists "I've seen this" in localStorage so it doesn't re-pop on every launch.
 
@@ -71,4 +63,4 @@ The wizard re-runs from Settings → About → Run welcome again. Quick Setup pe
 
 - **Detection shows "CPU only" but you have a GPU** — check Settings → GPU. If JustVoice doesn't detect a runtime (CUDA / Metal / DirectML), your driver may need to be reinstalled or the runtime isn't on your PATH. Pick the tier manually for now.
 - **Engine install fails on shared-venv setup** — first install on a shared-venv engine builds the venv (~1-2 minutes). If it fails, check Settings → Logs for the pip install output. Common cause: PyPI rate limit or a build dep missing on your system.
-- **Pins don't apply** — almost always means no LLM provider is registered yet. The wizard surfaces this with a banner; check Engines → LLM tab to confirm a provider with the `live` pill.
+- **AI features answer 501** — the text-AI model isn't set up; that's the other wizard: AI Settings → Run LLM engine setup.

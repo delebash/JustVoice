@@ -306,16 +306,16 @@ and JustVoice should keep that separation:
   Runs rarely (once per import/chapter), so it can afford a bigger model.
   In JustVoice this is the "N speakers found that aren't in your cast"
   banner — the discovered-speakers flow.
-- **Attribution** (`services/speakerAttribution.js`) answers *"who speaks
-  THIS line?"* — the [D#]-numbered segment pipeline with dialogue-anchor
-  propagation, tier-resolved prompts, confidence floor. Runs constantly
-  (every chapter, every re-analysis), so it must be cheap and is the thing
-  Speaker Lab tunes.
+- **Attribution** answers *"who speaks THIS line?"* — the [D#]-numbered
+  segment pipeline with dialogue-anchor propagation, tier prompts, confidence
+  floor. Runs constantly (every chapter, every re-analysis), so it must be
+  cheap and is the thing Speaker Lab tunes. (CORRECTION 2026-08-05, the
+  archived CONTRACT's claim: JW never had a `services/speakerAttribution.js`
+  — attribution was always JV's own, server-side.)
 
-Different cadence, different cost profile, different failure modes →
-separate feature pins so each can bind to a different provider/model/tier.
-JustVoice's `feature_pins_api.py` already supports this; the UI should
-expose both pins, not one "LLM" setting.
+Different cadence, different cost profile, different failure modes → separate
+ROUTING so each can bind to a different provider/model — since F1 that's the
+two actions' engine presets (AI Settings → Routing by feature), not pins.
 
 ### Adopt (with where it lands)
 

@@ -196,3 +196,72 @@ async def import_voice(body: ImportVoiceRequest) -> Voice:
     created = st.voices.create(rec)
     st.voices.write_ref_wav(created.id, wav_bytes)
     return _stored_to_dto(created)
+
+
+# ── LLM gender guess (F1 Phase 3 — the voice_gender feature) ─────────────
+# EXPLICIT trigger only (ruling 2, 2026-08-05: a button in Voices, never auto
+# on fetch). The renderer sends the voices its dictionary could not label; the
+# `voice_gender` template row + its preset (p_classify) do the wording and
+# tunables; this route computes the variable VALUE and maps the row's
+# male/female/unknown contract onto JV's F/M/"" vocabulary.
+
+import json as _json
+import re as _re
+
+from llm_runner.llm import LLMNotConfiguredError
+from pydantic import BaseModel as _BaseModel
+
+from ..engines.llm.run import run_feature
+
+
+class GenderGuessVoice(_BaseModel):
+    name: str
+    description: str = ""
+
+
+class GenderGuessRequest(_BaseModel):
+    voices: list[GenderGuessVoice]
+
+
+class GenderGuessResponse(_BaseModel):
+    # {input name: "F" | "M" | ""} — "" = the model said unknown (left unset).
+    guesses: dict[str, str]
+
+
+_GENDER_MAP = {"female": "F", "male": "M"}
+
+
+def _first_json_object(text: str) -> dict:
+    text = _re.sub(r"<think>.*?</think>", "", text, flags=_re.DOTALL).strip()
+    m = _re.search(r"\{.*\}", text, flags=_re.DOTALL)
+    if not m:
+        return {}
+    try:
+        v = _json.loads(m.group(0))
+    except (ValueError, TypeError):
+        return {}
+    return v if isinstance(v, dict) else {}
+
+
+@router.post("/v1/voices/gender-guess", response_model=GenderGuessResponse,
+             summary="LLM-label the voices the built-in dictionary doesn't know")
+async def gender_guess(body: GenderGuessRequest) -> GenderGuessResponse:
+    from fastapi import HTTPException
+
+    if not body.voices:
+        return GenderGuessResponse(guesses={})
+    lines = [
+        f"- {v.name}" + (f" — {v.description}" if v.description else "")
+        for v in body.voices
+    ]
+    try:
+        resp = run_feature("voice_gender", {"voices": "\n".join(lines)})
+    except LLMNotConfiguredError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    raw = _first_json_object(resp.text)
+    wanted = {v.name for v in body.voices}
+    guesses = {}
+    for name, val in raw.items():
+        if name in wanted:
+            guesses[name] = _GENDER_MAP.get(str(val).strip().lower(), "")
+    return GenderGuessResponse(guesses=guesses)

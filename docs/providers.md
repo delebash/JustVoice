@@ -22,7 +22,7 @@ The Engines tab is split into both sections per kind. This doc covers the **onli
 1. **Open Engines → LLM tab** (or TTS tab).
 2. Click **+ Add LLM provider** (or **+ Add TTS provider**). An inline editor expands at the top of the registered-provider list.
 3. Fill in the form:
-   - **ID** — a stable identifier used by feature pins (e.g. `my-claude`). Cannot change after the first save (would orphan feature pins).
+   - **ID** — a stable identifier the routing refers to (e.g. `my-claude`). Cannot change after the first save (would orphan routing that points at it).
    - **Display name** — what shows in dropdowns. Edit later if you want.
    - **Kind** — `llm`, `tts`, or `both`. Most providers are one or the other.
    - **Base URL** — the API root. Examples:
@@ -52,7 +52,7 @@ The chat-model row shows a 3-button tier picker (**Guided** / **Direct** / **Rea
 - **Direct** — mid-range (Haiku 4.5, GPT-4o-mini, Qwen 14B). Standard one-shot prompts.
 - **Reasoned** — reasoning models (Claude 3.7 thinking, o1 / o3, qwen3:32b). JustVoice allows chain-of-thought; longer but higher accuracy for speaker attribution and structural analysis.
 
-JustVoice classifies the picked model automatically via heuristic on the model id. You can pin a tier per-model — useful when the auto-classification gets it wrong (rare). The pin is session-only in the current build; persistent per-model tier pinning ships in a follow-up.
+JustVoice classifies the picked model automatically via heuristic on the model id (the Speaker Lab can override the tier per run when the auto-classification gets it wrong — rare).
 
 ## Ping / verify the provider works
 
@@ -66,7 +66,7 @@ Use Ping before relying on a provider — catches a typo'd base URL or expired A
 ## Editing or removing
 
 - **Edit** — click Edit on the row. The form expands in place. Fields readonly when not editable (e.g. `id`).
-- **Delete** — inside the Edit form, bottom-left. Confirms before removing. Feature pins that pointed at this provider fall back to the first registered LLM provider.
+- **Delete** — inside the Edit form, bottom-left. Confirms before removing. Routing that pointed at this provider falls back at dispatch time.
 
 ## Self-hosted TTS — Kokoro / Chatterbox / Dia / Qwen3-TTS
 
@@ -74,7 +74,7 @@ If you're running a self-hosted TTS server (community-published OpenAI-compatibl
 
 ## What about feature routing?
 
-After registering one or more LLM providers, open **Settings → AI features** to pin specific features (Compose / Persona rewrite / Speaker attribution / Smart-assign / Render preset suggest) to specific provider+model+tier combinations. See `ai-features.md` for the routing model.
+After registering one or more LLM providers, open **AI Settings → Routing by feature** to point specific features (Compose / Persona rewrite / Speaker attribution / Smart-assign / Render preset suggest / the rest) at specific provider+model presets. See `ai-features.md` for the routing model.
 
 ## Troubleshooting
 

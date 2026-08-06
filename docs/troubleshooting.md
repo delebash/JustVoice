@@ -5,7 +5,7 @@ tails for anything specific to that surface.
 
 **An AI feature answers 501 "LLM not configured".** The LLM features (speaker
 attribution, smart assign, show notes, …) need a provider — set one up under
-Settings → AI features. TTS itself never needs an LLM.
+AI Settings (the sidebar page). TTS itself never needs an LLM.
 
 **Mastering or export answers 503 mentioning ffmpeg.** ffmpeg isn't installed or
 isn't on PATH. Install it and restart the server; everything that muxes or

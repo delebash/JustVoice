@@ -16,7 +16,7 @@ The Persona layer holds the **character bio**, the **voice mapping** (which can 
 | Role | Smart-assign uses this to match voice age/tone. |
 | Gender / Pronouns | Smart-assign — matching voices on the gender axis. Speaker-attribution prompt context. |
 | Aliases | "Mara", "she", "the detective" all attribute to the same persona. Set explicit aliases to keep the LLM consistent across chapters. |
-| Personality | A short prose description used by the LLM-rewrite step (if enabled) — rewrites generated text "in character" before TTS. |
+| Personality | A short prose description. Drives the explicit Compose/Rewrite flows (preview-then-accept — never applied automatically at render time) and the voice's TTS delivery instruction. |
 | Engine override | Per-persona engine selection. Useful when one character sounds best in Chatterbox while the rest use Kokoro. |
 | Lexicon override | A persona-scoped lexicon (e.g. street slang for Old Crow). Overrides any project-level lexicon for this character only. |
 

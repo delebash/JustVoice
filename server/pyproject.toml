@@ -38,14 +38,13 @@ dependencies = [
     # justvoice.speak / list_voices / list_personas at /mcp. Same major
     # pin as upstream voicebox.
     "fastmcp>=3.0,<4.0",
-    # Shared local-LLM runner core (hardware detection, llama.cpp binary
-    # acquisition, GGUF download, llama-server spawn + VRAM-fit). Its own
-    # private repo, consumed as a PINNED git dependency (frozen into the
-    # bundle via PyInstaller; NOT published to PyPI). Dev uses an editable
-    # path install (`pip install -e ../just-llm-runner`), which takes
-    # precedence over this pin. See docs/plans/2026-06-16-builtin-llm-runner.md.
-    # Pinned to a commit SHA (no release tag yet); bump when just-llm-runner advances.
-    "llm-runner @ git+https://github.com/delebash/just-llm-runner.git@e7d2f1ce0e49cc05f828c1c9a5d903a1ea58bbe9",
+    # llm-runner is DELIBERATELY not a hard dependency (the siblings' pattern,
+    # adopted with F1: the June SHA pin here made `pip install -e .` — the
+    # update-pydeps script — CLOBBER the editable runner with month-old code).
+    # Dev installs it editable once:
+    #     pip install -e ../just-llm-runner
+    # After that every `git pull` of just-llm-runner is live with NO reinstall.
+    # The frozen PyInstaller bundle pulls it from git via the `bundle` extra.
 ]
 
 [project.optional-dependencies]
@@ -73,6 +72,10 @@ training = [
 
 # Dev / test
 dev = ["pytest>=8", "pytest-asyncio>=0.24", "playwright>=1.48", "ruff>=0.7"]
+
+# The frozen PyInstaller bundle's runner source — @main, never a SHA pin (JW's
+# lesson: a stale pin ships old code while dev runs the editable HEAD).
+bundle = ["llm-runner @ git+https://github.com/delebash/just-llm-runner.git@main"]
 
 [project.scripts]
 # Named `justvoice-server` (not `justvoice`) so it doesn't collide with the

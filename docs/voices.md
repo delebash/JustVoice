@@ -27,6 +27,12 @@ Every voice has a gender chip (F / M / N / ❓ / unset) in the library. JustVoic
 
 Click the chip to cycle through F → M → N → unset → ❓. The override saves on the voice and feeds **Smart-assign** (the LLM voice→character matcher) on subsequent runs.
 
+For the voices the dictionary can't label (the ❓ ones), the toolbar's
+**✨ Guess unknown genders** button asks the AI to label them in one batch —
+it runs only when you click, applies the confident answers exactly like a
+manual chip click, and leaves genuinely ambiguous names unset. (This is the
+`voice_gender` feature; its prompt and model live under AI Settings.)
+
 ## Per-voice overrides (Tier 2)
 
 Click the ⚙ button on a voice to open the "Tune {voice}" modal. The same engine params Tier 1 (engine defaults) exposes, but scoped to this voice. Includes a **Preview** button that synthesizes with your pending edits without saving — audition first.
