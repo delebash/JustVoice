@@ -45,13 +45,14 @@ def apply_jv_warm_default() -> None:
 
 
 # The shared DEFAULT_CATALOG ids JV retired (user direction 2026-08-05: the
-# catalog shows the family's measured daily driver and nothing else). Existing
-# DBs seeded these before the suppression; the one-time cleanup below removes
-# exactly this list — a user-ADDED row has a different id and is never touched.
-# Downloaded GGUFs stay on disk (a removed row is re-addable via Add a model).
+# catalog shows the family's measured daily driver and nothing else — AMENDED
+# 2026-08-06: the 12B and E4B rungs return by user ask, so their ids left this
+# list and live in JV_MODEL_CATALOG; on an already-retired DB the seed's
+# insert-if-missing simply re-adds them). Existing DBs seeded the rest before
+# the suppression; the one-time cleanup below removes exactly this list — a
+# user-ADDED row has a different id and is never touched. Downloaded GGUFs
+# stay on disk (a removed row is re-addable via Add a model).
 _RETIRED_DEFAULT_CATALOG_IDS = (
-    "gemma-4-12b-qat",
-    "gemma-4-e4b-qat",
     "llama-3.3-70b-q4_k_m",
     "glm-4.5-air",
     "qwen3.6-27b",

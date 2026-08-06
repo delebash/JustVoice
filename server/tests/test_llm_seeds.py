@@ -155,26 +155,30 @@ def test_legacy_identify_key_renames(tmp_path):
     assert "{{manuscript}}" in row.user_template
 
 
-def test_catalog_is_the_measured_daily_driver_only(tmp_path):
-    # User direction 2026-08-05: the shared writing-curated DEFAULT_CATALOG is
-    # suppressed; JV seeds exactly the family's measured Gemma 4 26B-A4B QAT.
+def test_catalog_is_the_three_family_rungs(tmp_path):
+    # 2026-08-05: the measured daily driver only; AMENDED 2026-08-06 (user
+    # ask): the 12B and E4B rungs return — three rows, the flagship ranked
+    # best (QuickSetup's best-that-fits order).
     c = _client(tmp_path)
     rows = c.get("/v1/ai/model-catalog").json()
     ids = {r["id"] for r in rows["rows"]}
-    assert ids == {"gemma-4-26b-a4b-qat"}
-    row = rows["rows"][0]
-    assert row["quant"] == "UD-Q4_K_XL" and row["tier"] == "low-vram-moe"
+    assert ids == {"gemma-4-26b-a4b-qat", "gemma-4-12b-qat", "gemma-4-e4b-qat"}
+    by_id = {r["id"]: r for r in rows["rows"]}
+    flagship = by_id["gemma-4-26b-a4b-qat"]
+    assert flagship["quant"] == "UD-Q4_K_XL" and flagship["tier"] == "low-vram-moe"
+    assert flagship["qualityRank"] < by_id["gemma-4-12b-qat"]["qualityRank"]
+    assert by_id["gemma-4-12b-qat"]["qualityRank"] < by_id["gemma-4-e4b-qat"]["qualityRank"]
 
 
 def test_retired_default_rows_are_removed_once_from_existing_dbs(tmp_path):
-    # Simulate the pre-suppression state: a DB that already carries two of the
-    # retired shared-default rows + no marker.
+    # Simulate the pre-suppression state: a DB that already carries one of the
+    # retired shared-default rows + no marker. (The 12B/E4B ids left the
+    # retirement list on the 2026-08-06 re-add — they must SURVIVE.)
     _client(tmp_path)
     from llm_runner.llm import db as llm_db
 
     ls = llm_db.session()
     try:
-        ls.add(llm_db.ModelCatalog(id="gemma-4-12b-qat", name="Gemma 4 12B (QAT)"))
         ls.add(llm_db.ModelCatalog(id="gryphe-styletune-v2", name="StyleTune"))
         # A USER-added row must survive the cleanup untouched.
         ls.add(llm_db.ModelCatalog(id="my-own-model", name="Mine"))
@@ -187,5 +191,7 @@ def test_retired_default_rows_are_removed_once_from_existing_dbs(tmp_path):
 
     c = _client(tmp_path)
     ids = {r["id"] for r in c.get("/v1/ai/model-catalog").json()["rows"]}
-    assert ids == {"gemma-4-26b-a4b-qat", "my-own-model"}
+    assert ids == {
+        "gemma-4-26b-a4b-qat", "gemma-4-12b-qat", "gemma-4-e4b-qat", "my-own-model",
+    }
 

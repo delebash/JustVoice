@@ -47,15 +47,15 @@ DEFAULT_ENGINE_PRESETS: list[dict] = [
      "model": "", "temperature": 0.2, "think": True, "position": 6},
 ]
 
-# ── JV's model catalog (user direction 2026-08-05, QC of the AI area): the
-# family's measured daily driver ONLY. (The shared writing-curated
-# DEFAULT_CATALOG its 12B/E4B/style-tune/uncensored rows came from is EMPTY
-# since decision ④ — every app seeds its own catalog; there is no suppress
-# flag anymore.) Row copied from
-# JW's DEFAULT_MODEL_CATALOG_EXTRA verbatim; only the user-facing `notes`
-# speak JV's features (the 2026-07-25 ruling: box-independent plain words).
-# The MoE's 4B active slice is why it runs acceptably on CPU too — the floors
-# say so (min_vram 4 GB with CPU expert offload; binary-MB convention).
+# ── JV's model catalog: the family's measured daily driver, plus the 12B and
+# E4B rungs (user QC ask 2026-08-06: "add Gemma 4 12B (QAT) and Gemma 4 E4B
+# (QAT) back" — they were retired in the 2026-08-05 one-row trim, ids since
+# REMOVED from _RETIRED_DEFAULT_CATALOG_IDS so they stay). Rows copied from
+# JW's seed verbatim (the audited facts + the seed-facts-audit trail live
+# there); only the user-facing `notes` speak JV's features (the 2026-07-25
+# ruling: box-independent plain words). The MoE's 4B active slice is why it
+# runs acceptably on CPU too — the floors say so (min_vram 4 GB with CPU
+# expert offload; binary-MB convention).
 JV_MODEL_CATALOG: list[dict] = [
     {"id": "gemma-4-26b-a4b-qat", "name": "Gemma 4 26B-A4B (QAT)",
      "hf_repo": "unsloth/gemma-4-26B-A4B-it-qat-GGUF", "quant": "UD-Q4_K_XL",
@@ -70,6 +70,27 @@ JV_MODEL_CATALOG: list[dict] = [
               "dictation cleanup, and the rest of the AI features. Runs on 8 GB "
               "graphics cards and up (and usably on CPU — only the 4B active slice "
               "computes per token); thinking is managed per task automatically."},
+    {"id": "gemma-4-12b-qat", "name": "Gemma 4 12B (QAT)",
+     "hf_repo": "unsloth/gemma-4-12B-it-qat-GGUF", "quant": "UD-Q4_K_XL", "total_params": "12B",
+     "mtp": True, "est_vram_mb": 10721, "mtp_draft_file": "MTP/mtp-gemma-4-12B-it-Q4_0.gguf", "mtp_draft_quant": "Q4_0",
+     "trained_ctx": 262144, "samplers": {"top_k": "64", "top_p": "0.95", "temperature": "1"},
+     "min_ram_mb": 12288, "min_vram_mb": 8192, "tier": "mid", "license": "Apache-2.0", "position": 21,
+     "quality_rank": 22, "architecture": "gemma4", "experts": 0,
+     "size_label": "12B", "size_bytes": 6716355328,
+     "description": "12B model · 256k context · MTP draft for faster generation · UD-Q4_K_XL (QAT)",
+     "notes": "The lighter, faster pick — runs fully on a 10-12 GB graphics card "
+              "(tight on 8 GB) and needs little system RAM."},
+    {"id": "gemma-4-e4b-qat", "name": "Gemma 4 E4B (QAT)",
+     "hf_repo": "unsloth/gemma-4-E4B-it-qat-GGUF", "quant": "UD-Q4_K_XL", "total_params": "E4B",
+     "mtp": False, "mtp_draft_quant": "Q4_K_S", "mtp_draft_file": "gemma-4-E4B-it-assistant.Q4_K_S.gguf",
+     "mtp_draft_repo": "AtomicChat/gemma-4-E4B-it-assistant-GGUF",
+     "est_vram_mb": 5411, "size_bytes": 4215695776, "size_label": "7.5B", "trained_ctx": 131072,
+     "samplers": {"top_k": "64", "top_p": "0.95", "temperature": "1"},
+     "min_ram_mb": 8192, "min_vram_mb": 6144, "tier": "mid", "license": "Apache-2.0", "position": 22,
+     "quality_rank": 23, "architecture": "gemma4", "experts": 0,
+     "description": "E4B model · 128k context · UD-Q4_K_XL (QAT)",
+     "notes": "Made for laptops with integrated graphics, where the GPU shares "
+              "system memory. Small and quick, and holds its quality well for the size."},
 ]
 
 # ── The daily driver's MEASURED class tunes (decision ④, 2026-08-05: class tunes
@@ -85,6 +106,36 @@ JV_CLASS_TUNES: list[dict] = [
         "n_gpu_layers": "99", "n_cpu_moe": "21", "ctx_len": "32768",
         "batch_size": "512", "ubatch_size": "512", "threads": "8",
         "reasoning_budget": "1024",
+    }},
+    # The 12B + E4B rungs' measured/recommended tunes, copied from JW's library
+    # with their rows (2026-08-06 re-add): E4B's igpu-mem16 row is MEASURED on
+    # the family's Iris Xe box (9.8 tok/s decode, fa-off + ub 512 — JW's seed
+    # carries the full trail); the 12B dgpu rows are the per-band survey's
+    # recommendations (2026-07-25).
+    {"model_id": "gemma-4-e4b-qat", "class_key": "igpu-mem16", "switches": {
+        "n_gpu_layers": "99", "ctx_len": "32768",
+        "batch_size": "512", "ubatch_size": "512", "flash_attn": "off",
+        "reasoning_budget": "1024",
+    }},
+    {"model_id": "gemma-4-12b-qat", "class_key": "dgpu-vram8|ram16", "switches": {
+        "n_gpu_layers": "99", "ctx_len": "32768",
+        "batch_size": "512", "ubatch_size": "512", "reasoning_budget": "1024",
+    }},
+    {"model_id": "gemma-4-12b-qat", "class_key": "dgpu-vram12|ram16", "switches": {
+        "n_gpu_layers": "99", "ctx_len": "32768",
+        "batch_size": "512", "ubatch_size": "512", "reasoning_budget": "1024",
+    }},
+    {"model_id": "gemma-4-12b-qat", "class_key": "dgpu-vram12|ram32", "switches": {
+        "n_gpu_layers": "99", "ctx_len": "32768",
+        "batch_size": "512", "ubatch_size": "512", "reasoning_budget": "1024",
+    }},
+    {"model_id": "gemma-4-12b-qat", "class_key": "dgpu-vram12|ram64", "switches": {
+        "n_gpu_layers": "99", "ctx_len": "32768",
+        "batch_size": "512", "ubatch_size": "512", "reasoning_budget": "1024",
+    }},
+    {"model_id": "gemma-4-12b-qat", "class_key": "dgpu-vram16|ram16", "switches": {
+        "n_gpu_layers": "99", "ctx_len": "32768",
+        "batch_size": "512", "ubatch_size": "512", "reasoning_budget": "1024",
     }},
     {"model_id": "gemma-4-26b-a4b-qat", "class_key": "igpu-mem32", "switches": {
         "n_gpu_layers": "99", "n_cpu_moe": "0", "ctx_len": "32768",
@@ -114,6 +165,10 @@ JV_CLASS_TUNES: list[dict] = [
 JV_CLASS_TUNE_IDENTITY: dict[str, dict] = {
     "gemma-4-26b-a4b-qat": {"hf_repo": "unsloth/gemma-4-26B-A4B-it-qat-GGUF",
                             "quant": "UD-Q4_K_XL"},
+    "gemma-4-12b-qat": {"hf_repo": "unsloth/gemma-4-12B-it-qat-GGUF",
+                        "quant": "UD-Q4_K_XL"},
+    "gemma-4-e4b-qat": {"hf_repo": "unsloth/gemma-4-E4B-it-qat-GGUF",
+                        "quant": "UD-Q4_K_XL"},
 }
 
 
