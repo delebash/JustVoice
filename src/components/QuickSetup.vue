@@ -23,7 +23,8 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "@delebash/llm-ui";
+import { DownloadBar, pushToast } from "@delebash/llm-ui";
+import { makeEngineDownloadTask } from "../services/ttsJobChannel.js";
 import { UiButton, UiCheckbox, UiTag, UiSelect, AppModal } from "@delebash/llm-ui";
 
 const emit = defineEmits(["close"]);
@@ -148,67 +149,30 @@ async function detect() {
 }
 
 // ── Install step ────────────────────────────────────────────────────
-// Per-engine progress: { engineId: { jobId, phase, percent, error } }
-const installProgress = ref({});
+// One kit download task per engine (ttsJobChannel over the job API) — the
+// shared DownloadBar renders them; the hand pollJob + percent bars died with
+// the parity batch (2026-08-06).
+const installTasks = ref({});   // engineId -> createDownloadTask instance
 const installAborted = ref(false);
-
-function setProgress(engineId, patch) {
-  installProgress.value = {
-    ...installProgress.value,
-    [engineId]: { ...(installProgress.value[engineId] || {}), ...patch },
-  };
-}
-
-async function pollJob(engineId, jobId) {
-  while (true) {
-    if (installAborted.value) return;
-    let job;
-    try {
-      job = await api.request(`/v1/jobs/${jobId}`);
-    } catch (e) {
-      setProgress(engineId, { phase: "failed", error: e?.message || String(e) });
-      return;
-    }
-    const percent = job.bytes_total > 0
-      ? Math.min(100, Math.round(100 * (job.bytes_downloaded || 0) / job.bytes_total))
-      : null;
-    setProgress(engineId, {
-      phase: job.phase,
-      percent,
-      error: job.error || null,
-    });
-    if (job.phase === "completed") return;
-    if (job.phase === "failed") return;
-    await new Promise((r) => setTimeout(r, 800));
-  }
-}
 
 async function runInstalls() {
   step.value = "install";
   installAborted.value = false;
+  installTasks.value = {};
   for (const engine of enginesToInstall.value) {
     if (installAborted.value) break;
-    setProgress(engine.id, { phase: "queued", percent: 0 });
-    try {
-      const accepted = await api.request(`/v1/engines/${engine.id}/install`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      if (accepted?.job_id) {
-        await pollJob(engine.id, accepted.job_id);
-      } else {
-        setProgress(engine.id, { phase: "completed", percent: 100 });
-      }
-    } catch (e) {
-      setProgress(engine.id, { phase: "failed", error: e?.message || String(e) });
-    }
+    const task = makeEngineDownloadTask(api, engine.id, {});
+    installTasks.value = { ...installTasks.value, [engine.id]: task };
+    await task.start();   // engines install one at a time, as before
   }
   step.value = "done";
 }
 
 function cancelInstalls() {
   installAborted.value = true;
+  for (const t of Object.values(installTasks.value)) {
+    if (t.state === "running") t.cancel();
+  }
   pushToast({ message: "Install cancelled. Engines that finished are kept.", kind: "info" });
 }
 
@@ -264,10 +228,10 @@ function close() {
 onMounted(() => { detect(); probeHelpers(); });
 
 const totalInstalled = computed(() =>
-  Object.values(installProgress.value).filter((p) => p.phase === "completed").length,
+  Object.values(installTasks.value).filter((t) => t.state === "done").length,
 );
 const totalFailed = computed(() =>
-  Object.values(installProgress.value).filter((p) => p.phase === "failed").length,
+  Object.values(installTasks.value).filter((t) => t.state === "error").length,
 );
 const hasLlmProvider = computed(() => llmProviders.value.length > 0);
 </script>
@@ -341,11 +305,11 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
             <p class="jv-muted" style="font-size: 11.5px; margin: 0 0 6px">
               AI features route themselves: careful-reading work (Script speaker attribution)
               goes to your strongest model; quick tasks (Compose, Rewrite, Smart-assign,
-              preset suggestions) go to the fastest. Tune any of it later in
-              Settings → AI features.
+              preset suggestions) go to the fastest. Tune any of it later on the AI
+              page under Routing by feature.
             </p>
             <div v-if="!hasLlmProvider" class="jv-banner jv-banner--warn" style="font-size: 11.5px; margin-top: 8px">
-              <strong>No LLM provider registered yet.</strong> Feature pins will be queued — register Claude or Ollama on Engines → LLM tab after this wizard, then re-run pins from Settings → AI features.
+              <strong>No language-model provider connected yet.</strong> The AI text features wait quietly — after this wizard, open the AI page and run the LLM engine setup (or connect a provider on its LLM providers tab).
             </div>
           </section>
 
@@ -397,29 +361,11 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
           <p class="jv-muted" style="font-size: 12px; margin: 0 0 10px">
             Engines install one at a time; feature pins apply once installs finish.
           </p>
-          <ul class="quick-setup__progress-list">
-            <li v-for="engine in enginesToInstall" :key="engine.id" class="quick-setup__progress-row">
-              <strong>{{ engine.name }}</strong>
-              <span class="jv-muted" style="font-size: 11px">{{ engine.id }}</span>
-              <div class="quick-setup__progress-bar">
-                <div
-                  class="quick-setup__progress-fill"
-                  :class="{
-                    'quick-setup__progress-fill--done': installProgress[engine.id]?.phase === 'completed',
-                    'quick-setup__progress-fill--err': installProgress[engine.id]?.phase === 'failed',
-                  }"
-                  :style="{ width: (installProgress[engine.id]?.percent ?? 0) + '%' }"
-                />
-              </div>
-              <span class="quick-setup__progress-state jv-muted">
-                {{ installProgress[engine.id]?.phase || "waiting" }}
-                {{ installProgress[engine.id]?.percent != null ? `· ${installProgress[engine.id].percent}%` : "" }}
-              </span>
-              <span v-if="installProgress[engine.id]?.error" class="quick-setup__progress-err">
-                {{ installProgress[engine.id].error }}
-              </span>
-            </li>
-          </ul>
+          <!-- THE one download bar per engine (kit DownloadBar over the kit
+               task — same control every download in the family renders). -->
+          <DownloadBar v-for="engine in enginesToInstall" :key="engine.id"
+            :title="engine.name" :role="engine.id"
+            :task="installTasks[engine.id] || { state: '', label: 'Waiting…', done: 0, total: 0, error: '' }" />
         </template>
 
         <!-- ── DONE step ────────────────────────────────────────── -->
@@ -499,41 +445,8 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
   font-family: var(--font-mono);
   font-size: 11px;
 }
-.quick-setup__progress-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.quick-setup__progress-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 4px 10px;
-  padding: 8px 10px;
-  background: var(--surface-2);
-  border-radius: 4px;
-}
 .quick-setup__progress-row strong { grid-column: 1; font-size: 12.5px; }
 .quick-setup__progress-row > span:nth-child(2) { grid-column: 2; }
-.quick-setup__progress-bar {
-  grid-column: 1 / -1;
-  height: 4px;
-  background: var(--surface);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-top: 2px;
-}
-.quick-setup__progress-fill {
-  height: 100%;
-  background: var(--accent);
-  transition: width 0.18s ease-out;
-}
-.quick-setup__progress-fill--done { background: var(--accent); }
-.quick-setup__progress-fill--err { background: var(--danger); }
-.quick-setup__progress-state { grid-column: 1 / -1; font-size: 11px; }
-.quick-setup__progress-err { grid-column: 1 / -1; font-size: 11px; color: var(--danger); }
 .quick-setup__helpers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .quick-setup__helpers li {
   display: flex; align-items: center; gap: 10px;

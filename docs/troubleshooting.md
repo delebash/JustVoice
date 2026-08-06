@@ -12,7 +12,7 @@ isn't on PATH. Install it and restart the server; everything that muxes or
 masters audio depends on it.
 
 **A model load hangs or you loaded the wrong one.** Engine loads are
-cancellable — the Engines tab's load job has a Cancel; a cancelled load leaves
+cancellable — the Speech engines tab's load job has a Cancel; a cancelled load leaves
 the previous state intact.
 
 **Restore finished but something looks off.** A restore (Settings → Backups →

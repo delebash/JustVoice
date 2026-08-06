@@ -25,7 +25,10 @@ const routes = [
   { path: "/lexicons", name: "lexicons", component: () => import("../views/LexiconsView.vue") },
   { path: "/effects", name: "effects", component: () => import("../views/EffectsView.vue") },
   { path: "/presets", name: "presets", component: () => import("../views/RenderPresetsView.vue") },
-  { path: "/engines", name: "engines", component: () => import("../views/EnginesView.vue") },
+  // The Voice engines page died in the parity batch (2026-08-06) — engines live
+  // on the AI console's Speech engines tab. Every old #engines deep link (the
+  // topbar pill, VoicesView's banner, Overview's card) lands there.
+  { path: "/engines", redirect: { path: "/ai", query: { tab: "speech-engines" } } },
   { path: "/ai", name: "ai", component: () => import("../views/AiView.vue") },
 
   // ── Hidden / pinned ───────────────────────────────────────────────

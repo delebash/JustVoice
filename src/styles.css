@@ -1535,3 +1535,89 @@ section.block > h3 {
   color: #fff;
 }
 .jv-sidebar__count--error { background: var(--danger, #c0392b); }
+
+/* ── The AI console's speech tabs (Speech engines + TTS providers) — the
+   .ev-* system moved here from the retired EnginesView (parity batch
+   2026-08-06) so the two tabs share one copy. ── */
+/* ── Engines redesign (v7 contract) ─────────────────────────────────── */
+.ev-toprow{display:flex;gap:12px;align-items:center;margin-bottom:14px}
+/* Filter chips — DELIBERATELY scoped, not promoted: the app already has
+   jv-pill --solid/--ghost filter chips (smaller). Converging the two
+   looks is a Phase 4 visual-direction call (mock-v7 approved this
+   size); promoting a second canonical chip would duplicate the job. */
+.ev-chips{display:flex;gap:6px}
+.ev-chip{font:inherit;font-size:11.5px;font-weight:700;letter-spacing:.04em;border:1px solid var(--line);border-radius:999px;padding:5px 13px;cursor:pointer;background:var(--surface);color:var(--ink-2)}
+.ev-chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.ev-hw{display:flex;gap:26px;align-items:center;padding:12px 18px;margin-bottom:14px}
+.ev-hw-cell .k{font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em}
+.ev-rail{display:flex;align-items:center;background:var(--surface);border:1px solid var(--accent-line,#b8d2c3);border-radius:10px;margin-bottom:18px;overflow:hidden}
+.ev-rail-h{background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:14px 16px;align-self:stretch;display:flex;align-items:center;border-right:1px solid var(--accent-line,#b8d2c3)}
+.ev-slot{display:flex;align-items:center;gap:10px;padding:9px 16px;border-right:1px solid var(--line);flex:1;min-width:0}
+.ev-slot .k{font-size:10.5px;font-weight:700;color:var(--ink-3);width:30px}
+.ev-slot .nm{font-weight:600;font-size:13px;white-space:nowrap}
+.ev-slot .sub{font-size:11px;color:var(--ink-3);white-space:nowrap}
+.ev-slot.empty .nm{color:var(--ink-3);font-weight:400}
+.ev-x{margin-left:auto;border:1px solid var(--line);background:var(--surface);border-radius:6px;font-size:11px;padding:3px 9px;cursor:pointer;color:var(--ink-2)}
+.ev-x:hover{border-color:#b04a3e;color:#b04a3e}
+.ev-vrtotal{padding:9px 16px;font-size:12px;color:var(--ink-2);border-left:1px solid var(--line);white-space:nowrap}
+.ev-section-h{display:flex;align-items:baseline;gap:10px;margin:26px 0 0;padding-bottom:8px;border-bottom:2px solid var(--line)}
+.ev-section-h h3{font-family:var(--font-serif,Georgia,serif);font-size:17px;margin:0;font-weight:600}
+.ev-section-h .suffix{color:var(--ink-3);font-weight:400}
+.ev-section-h .count{font-size:12px;color:var(--ink-3)}
+.ev-section-h .note{margin-left:auto;font-size:12px;color:var(--ink-3)}
+.ev-xlink{color:var(--accent-ink,#2c6049);text-decoration:underline}
+.ev-group{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-top:10px;box-shadow:0 1px 3px rgba(20,22,24,.04);overflow:hidden}
+.ev-ghead{display:flex;align-items:center;gap:10px;padding:11px 16px;cursor:pointer}
+.ev-ghead:hover{background:var(--surface-2)}
+.ev-ghead .chev{color:var(--ink-3);font-size:10px;width:11px;transition:transform .15s;flex:none}
+.ev-ghead .chev.open{transform:rotate(90deg)}
+.ev-ghead .nm{font-weight:700;font-size:14px;white-space:nowrap}
+.ev-ghead .id{font-family:var(--font-mono);font-size:10.5px;color:var(--ink-3)}
+.ev-ghead .desc{color:var(--ink-3);font-size:12px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Weights-licence attribution (e.g. "Built with Llama"). `flex:none` +
+   `white-space:nowrap` are load-bearing: .desc above is the flex-grower and
+   ellipsises, and this text is a licence obligation that must not be
+   truncated away when the row gets narrow. */
+.ev-attrib{flex:none;white-space:nowrap;color:var(--ink-3);font-size:11px;padding:1px 6px;border:1px solid var(--line-2);border-radius:999px}
+.ev-ghead .gsum{margin-left:auto;display:flex;align-items:center;gap:8px;flex:none;font-size:12px;color:var(--ink-2)}
+.ev-ghead .gsum .meta{font-size:12px;color:var(--ink-2)}
+.ev-ghead .gsum .ldd{color:var(--accent-ink,#2c6049);font-weight:600}
+.ev-caps{display:flex;gap:4px;flex:none}
+.ev-cap{font-size:9.5px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:999px;border:1px solid var(--line-strong,#cfccc4);color:var(--ink-2);background:var(--surface)}
+.ev-cap.tts{border-color:var(--accent-line,#b8d2c3);background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049)}
+.ev-cap.stt{border-color:#c8d4e8;background:#eaf0f8;color:#3a5a8c}
+.ev-cap.llm{border-color:#e2d2b0;background:#f5edda;color:#b08a3e}
+.ev-cap.embedding{border-color:#bcd9d4;background:#e3f1ee;color:#2e6e64}
+.ev-cap.iso{border-color:#d8c8e8;background:#f1eaf8;color:#6a4a8c}
+.ev-badge{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:4px 11px;border-radius:999px}
+.ev-badge.loaded{background:var(--accent);color:#fff}
+.ev-badge.none{border:1px dashed var(--line-strong,#cfccc4);color:var(--ink-3)}
+.ev-gbody{border-top:1px solid var(--line)}
+.ev-model{display:flex;align-items:center;gap:12px;padding:10px 16px 10px 37px;border-bottom:1px solid var(--line)}
+.ev-model:last-of-type{border-bottom:0}
+.ev-model:hover{background:var(--surface-2)}
+.ev-model.dim{opacity:.55}
+.ev-model .vn{font-weight:600;font-size:13.5px;min-width:170px}
+.ev-model .vmeta{font-size:11.5px;color:var(--ink-3);min-width:150px}
+.ev-model .vdesc{font-size:12px;color:var(--ink-2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev-model .right{margin-left:auto;display:flex;gap:8px;align-items:center;flex:none}
+.ev-fit{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
+.ev-fit.ok{background:#4d9b6d}
+.ev-fit.tight{background:#d9a23c}
+.ev-fit.no{background:#c45a4d}
+.ev-gfoot{display:flex;align-items:center;gap:10px;padding:8px 16px 8px 37px;font-size:11.5px;color:var(--ink-3);background:var(--surface-2)}
+.ev-danger{color:#b04a3e !important}
+.ev-fitnote{font-size:11px;color:var(--ink-3);margin:14px 2px 0}
+.ev-fitnote .ev-fit{vertical-align:middle;margin:0 3px 0 10px}
+.ev-runtime{display:flex;align-items:center;gap:10px;margin-top:14px;padding:10px 16px;border:1px dashed var(--line-strong,#cfccc4);border-radius:10px;font-size:12px;color:var(--ink-3)}
+.ev-costnote{display:flex;gap:10px;align-items:center;margin-bottom:14px;padding:10px 16px;border:1px solid #e2d2b0;background:#f5edda;border-radius:10px;font-size:12.5px;color:var(--ink-2)}
+.ev-prov{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-top:10px;overflow:hidden}
+.ev-prow{display:flex;align-items:center;gap:12px;padding:12px 16px}
+.ev-dot{width:8px;height:8px;border-radius:50%;background:#4d9b6d;flex:none}
+.ev-dot.off{background:var(--line-strong,#cfccc4)}
+.ev-dot.err{background:#c45a4d}
+.ev-prow .pmain{min-width:0;flex:1}
+.ev-prow .nm{font-weight:600}
+.ev-prow .url{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);display:block}
+.ev-prow .msum{font-size:11.5px;color:var(--ink-2)}
+.ev-prow .right{margin-left:auto;display:flex;gap:8px;align-items:center;flex:none}

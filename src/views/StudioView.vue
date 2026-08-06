@@ -1341,7 +1341,7 @@ watch(selectedProjectId, (id) => {
       <span class="jv-spacer" />
       <!-- Which engines power this work (JustWrite reference chips). -->
       <UiChip as="a" :selected="!!headerTts" href="#engines"
-         :title="headerTts ? `${headerTts.name || headerTts.id} is loaded — renders use it. Manage in Engines.` : 'No TTS engine loaded — the first render sets one up. Manage in Engines.'">
+         :title="headerTts ? `${headerTts.name || headerTts.id} is loaded — renders use it. Manage on the Speech engines tab.` : 'No TTS engine loaded — the first render sets one up. Manage on the Speech engines tab.'">
         TTS · {{ headerTts ? (headerTts.name || headerTts.id) : "none" }}
       </UiChip>
       <UiChip as="a" :selected="!!headerLlm" href="#settings"
@@ -1610,7 +1610,7 @@ watch(selectedProjectId, (id) => {
               icon="Sparkle"
               title="No voices loaded yet"
               message="Load a TTS engine to populate the voice library. JustVoice ships with 54 Kokoro voices that run on CPU."
-              action-label="Open Engines"
+              action-label="Open Speech engines"
               compact
               @action="(typeof window !== 'undefined') && (window.location.hash = '#engines')"
             />

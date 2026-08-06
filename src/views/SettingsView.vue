@@ -152,14 +152,8 @@ const settings = ref({
 });
 const serverReachable = ref(false);
 
-// TTS engine catalog — drives the default-engine select (Generation).
-const ttsEngines = ref([]);
-async function loadTtsEngines() {
-  try {
-    const r = await api.safeRequest("/v1/engines", { engines: [] });
-    ttsEngines.value = (r?.engines || []).filter((e) => (e.kind || "tts") === "tts");
-  } catch { ttsEngines.value = []; }
-}
+// (The TTS-engine catalog loader left with the default-engine dropdown —
+// parity batch 2026-08-06; the default is a Speech-engines row action now.)
 
 // ─── External engine probe state ────────────────────────────────────────
 const probe = ref(null);
@@ -402,7 +396,6 @@ const connectionStatus = computed(() => {
 });
 
 onMounted(refresh);
-onMounted(loadTtsEngines);
 
 // ── Sections (family parity batch 2026-08-06): the canon shared sections in
 // their fixed relative order — words from the FAMILY CONTRACT, enforced by
@@ -1251,24 +1244,9 @@ onMounted(() => {
           single-shot fast path with zero overhead — the chunker only kicks in when needed.
         </p>
 
-        <!-- Default TTS engine (user ask 2026-06-12) -->
-        <div class="setting-row">
-          <div class="setting-row__head">
-            <div>
-              <div class="setting-row__title">Default TTS engine</div>
-              <div class="setting-row__desc">
-                Which engine new-voice flows and first-render auto-setup prefer. Loading a
-                different engine from Voices or Engines still works — this only sets the default.
-              </div>
-            </div>
-            <UiSelect
-              width="name"
-              :model-value="settings.engines?.default_tts_engine || 'kokoro'"
-              :options="ttsEngines.map((e) => ({ value: e.id, label: e.name || e.id }))"
-              @update:model-value="(v) => { settings.engines.default_tts_engine = v; saveDebounced(); }"
-            />
-          </div>
-        </div>
+        <!-- (The Default TTS engine dropdown died in the parity batch,
+             2026-08-06 — "Set as default" is a row action on the AI console's
+             Speech engines tab now; one source.) -->
 
         <!-- Max chunk chars slider -->
         <div class="setting-row">

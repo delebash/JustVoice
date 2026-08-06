@@ -6,7 +6,7 @@ JustVoice is a cross-platform voice-production studio. Five audiences share one 
 
 1. **Pick a use case.** The Welcome modal asks what you're doing with JustVoice. Your choice retunes the UI: audiobook producers get the Projects + Chapters tabs with chapters terminology; game devs get the Lines tab (every line of the game, stable ids); podcasters get Projects + Chapters + Studio (the multi-track Stories timeline tab is a placeholder — not built yet). The chosen use case is also highlighted on the Overview dashboard as a quick-action card so you can jump straight back into your workflow. You can re-pick later in Settings → About.
 
-2. **Load an engine.** Open the Engines tab. Click Load on Kokoro (free, fast, CPU-realtime, 54 preset voices, 8 languages) — that's the lightest starting point. Then try Chatterbox Turbo if you want voice cloning (clone from a reference WAV/MP3).
+2. **Load an engine.** Open the AI page's **Speech engines** tab. Click Load on Kokoro (free, fast, CPU-realtime, 54 preset voices, 8 languages) — that's the lightest starting point. Then try Chatterbox Turbo if you want voice cloning (clone from a reference WAV/MP3).
 
 3. **Pick a voice.** Voices tab. Hit ▶ Preview on any row to audition.
 

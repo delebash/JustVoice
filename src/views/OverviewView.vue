@@ -30,7 +30,6 @@ import { useEnginesStore } from "../stores/engines.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast } from "@delebash/llm-ui";
 import { UiButton, UiTag, UiChip } from "@delebash/llm-ui";
-import RecommendCard from "../components/RecommendCard.vue";
 
 const onboarding = useOnboarding();
 const api = useApi();
@@ -332,7 +331,7 @@ const dictateChord = computed(() => chordLabel(settings.value?.captures?.chord_p
 // ── Bootstrap banner (cold install — mock assumes a warmed-up state) ──
 const nextStep = computed(() => {
   if (health.value && !loadedEngine.value && !health.value.current_engine) {
-    return { title: "Load your first engine", body: "Kokoro runs on CPU in realtime — a good first pick.", href: "#engines", cta: "Open Engines" };
+    return { title: "Load your first engine", body: "Kokoro runs on CPU in realtime — a good first pick.", href: "#engines", cta: "Open Speech engines" };
   }
   if (health.value && !projects.value.length) {
     return { title: "Create your first project", body: "Pick what you're making — the whole app reshapes around it.", href: "#projects", cta: "Open Projects" };
@@ -358,7 +357,9 @@ onMounted(() => {
       <span class="home__next-cta">{{ nextStep.cta }} ➜</span>
     </a>
 
-    <RecommendCard />
+    <!-- (RecommendCard died in the parity batch, 2026-08-06 — it drove the
+         F1-deleted llm-roles route, a live dead panel; the AI console's Quick
+         Setup + routing own recommendations now.) -->
 
     <!-- Zero projects — the welcome hero IS row 1 (no modal ambush;
          the auto-picker only fires on true first run). -->

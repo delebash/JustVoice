@@ -86,7 +86,10 @@ def _info_from_manifest(manifest: EngineManifest, status: str) -> EngineInfo:
         status=status,
         current=False,  # filled in by caller
         is_stubbed=False,
-        default_variant_id=manifest.default_variant_id,
+        # The RESOLVED default (parity batch 2026-08-06): the user's
+        # Set-as-default override layered over the manifest's — so the UI's
+        # "Default ✓" badge and a no-variant load can never disagree.
+        default_variant_id=mgr.resolved_default_variant(manifest.id) or manifest.default_variant_id,
         # Phase 2 / Slice 1 — kind + current_variant_id surface so the
         # EnginesView dropdown can group by tab + label "Loaded: <v>".
         kind=manifest.kind,

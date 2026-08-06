@@ -81,6 +81,9 @@ function wireKit(app) {
   // "LLM engine setup" beside the TTS "Voice engine setup" (two engine kinds;
   // the pair names them). Words only, via the existing labels feed; siblings
   // keep "Quick Setup"; code identifiers (?quicksetup=1, seam names) unchanged.
+  // The AI console's provider/model tabs relabel the same way (parity batch
+  // 2026-08-06): with TTS in the area, bare "Providers & models"/"Models" stops
+  // naming one thing — JV says which kind; siblings keep the canon words.
   configureFamilyLabels({
     quickSetup: {
       runButton: "Run LLM engine setup",
@@ -88,6 +91,10 @@ function wireKit(app) {
     },
     aiOffer: {
       quickSetup: "Run LLM engine setup",
+    },
+    aiTabs: {
+      providers: "LLM providers",
+      models: "LLM models",
     },
   });
 }

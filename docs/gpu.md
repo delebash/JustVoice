@@ -24,7 +24,7 @@ For audiobook-scale work, get CUDA (NVIDIA) or Metal (Apple Silicon) working.
 PyTorch engines (Chatterbox / Qwen3 / TADA / LuxTTS / Dia / MOSS) ship with the **CPU wheel** of torch by default. To enable CUDA acceleration:
 
 1. Settings → GPU — confirm the runtimes panel lists `cuda` (means the driver is installed).
-2. Engines tab → find the engine you want — click **Install with CUDA**.
+2. Speech engines tab (AI page) → find the engine you want — click **Install with CUDA**.
 3. JustVoice reinstalls torch + torchaudio in that engine's venv with the matching CUDA wheel (downloads ~2-3 GB).
 4. After reinstall, the engine's row shows the active wheel + the engine will use CUDA on next load.
 
@@ -52,7 +52,7 @@ MLX is Apple's experimental ML framework. We detect it but no engine adapter cur
 
 ## Memory budgeting
 
-Each engine has a `vram_min_mb` in its manifest. The Engines tab shows the requirement next to each engine's row + flags `would_oom` variants when you have less VRAM than recommended. Rough VRAM needs:
+Each engine has a `vram_min_mb` in its manifest. The Speech engines tab shows the requirement next to each engine's row + flags `would_oom` variants when you have less VRAM than recommended. Rough VRAM needs:
 
 | Engine | VRAM (bf16) |
 |---|---|
@@ -62,13 +62,13 @@ Each engine has a `vram_min_mb` in its manifest. The Engines tab shows the requi
 | TADA 3B | ~9 GB |
 | MOSS-TTSD | ~12-16 GB |
 
-You can load one engine at a time. Unload via the Engines tab to free VRAM before loading another.
+You can load one engine at a time. Unload via the Speech engines tab to free VRAM before loading another.
 
 ## Troubleshooting
 
 - **GPU info card shows "no GPU detected"** — Either no discrete GPU is present (laptops often have CPU + integrated graphics only, which torch ignores) or the driver isn't installed. Run `nvidia-smi` (NVIDIA) or `vulkaninfo` (AMD) from a terminal to verify.
 - **CUDA wheel switch fails** — Most often a network issue downloading the ~2 GB wheel. Check the install-log modal for the pip output.
-- **Out-of-memory on render** — Switch to a smaller model variant (Engines tab → engine row → "Variants" → pick a `7b` or smaller). Or load a lighter engine entirely.
+- **Out-of-memory on render** — Switch to a smaller model variant (Speech engines tab → engine row → pick a `7b` or smaller). Or load a lighter engine entirely.
 - **Engine runs but very slow** — Check Settings → GPU: are you actually on CUDA, or did the wheel switch fall back to CPU? The Active backend pill is authoritative.
 - **macOS: Chatterbox is way slower than expected** — Chatterbox forces CPU on Mac due to the MPS bug. This is intentional. Use Kokoro / Qwen3 on Mac for GPU acceleration.
 

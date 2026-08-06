@@ -214,12 +214,16 @@ def test_load_no_manifest_default_no_disk_falls_back_to_catalog_first(
 def test_all_multi_variant_engines_resolve_a_real_variant() -> None:
     """Every discovered engine must resolve a non-empty, catalog-valid
     variant id for a no-variant load — pins dia/luxtts/moss-tts/tada's
-    new DEFAULT_VARIANT_IDs and kokoro's disk-probe fallback."""
-    from justvoice.engines.manager import EngineManager, discover_engines
+    new DEFAULT_VARIANT_IDs and kokoro's disk-probe fallback.
+
+    (Instance call since the parity batch: resolution now consults the user's
+    Set-as-default override first — absent here, so manifest order is what
+    this pins.)"""
+    from justvoice.engines.manager import get_manager, discover_engines
     from justvoice.engines.model_catalog import models_for
 
     for engine_id, m in discover_engines().items():
-        resolved = EngineManager._resolved_default_variant(m)
+        resolved = get_manager()._resolved_default_variant(m)
         catalog_ids = {v.id for v in models_for(engine_id)}
         if not catalog_ids:
             continue

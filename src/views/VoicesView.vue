@@ -744,7 +744,7 @@ function blendWithVoice() {
 
   <!-- Hint when clone-gate is closed (#99). -->
   <p v-if="!chatterboxLoaded" class="jv-banner jv-banner--warn">
-    Voice cloning is Chatterbox-only. <a href="#engines"><strong>Load Chatterbox in the Engines tab</strong></a> to enable the "+ Clone new voice" button.
+    Voice cloning is Chatterbox-only. <a href="#engines"><strong>Load Chatterbox on the Speech engines tab</strong></a> to enable the "+ Clone new voice" button.
   </p>
 
   <!-- Add additional creation paths (Design / Blend) — less common, behind a details toggle -->
@@ -973,7 +973,7 @@ function blendWithVoice() {
       icon="Sparkle"
       title="No voices registered"
       message="Load an engine to see its preset voices, or clone a new voice from a reference WAV. JustVoice ships with 54 Kokoro presets out of the box."
-      action-label="Open Engines"
+      action-label="Open Speech engines"
       compact
       @action="$router && $router.push?.('#engines'); window.location.hash = '#engines'"
     />

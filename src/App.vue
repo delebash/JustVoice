@@ -56,7 +56,9 @@ const VIEWS = [
   { id: "lexicons",  lane: "library", label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Force \"Beauchamp\" → \"BEE-chum\", domain words → consistent phoneme-level pronunciation across a whole book. Per-character override.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "effects",   lane: "library", label: "Effects",   icon: "🎛️", lede: "Pedalboard-backed effects chain. Apply non-destructively — creates a new generation version that preserves the original. 8 types · 4 built-in presets + custom.", visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
   { id: "presets",   lane: "library", label: "Presets",   icon: "🎚️", lede: "Render presets — named bundles of voice + delivery + effects chain + master target. Studio Render binds one per scene to lock per-chapter or per-quest output consistency.", visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },
-  { id: "engines",   lane: "library", label: "Voice engines", icon: "🧠", lede: "Installed voice engine catalog. Install / load / unload models. Per-engine venv isolation (JustVoice advantage — install Chatterbox without breaking Kokoro)." },
+  // (The Voice engines page left the sidebar in the parity batch, 2026-08-06 —
+  // the installed-engine catalog is the AI console's Speech engines tab now;
+  // /engines redirects there.)
   // Always visible (ruling 4, 2026-08-05): the shared AI area — providers,
   // model catalog, routing by feature, usage, the AI engine console.
   { id: "ai",        lane: "library", label: "AI Settings", icon: "🤖", lede: "" },
@@ -148,7 +150,6 @@ const HELP_SLUG_BY_VIEW = {
   lexicons: "lexicons",
   captures: "dictation",
   effects:  "effects",
-  engines:  "engines",
   train:    "engines",
   compare:  "mastering",
   cache:    "core-concepts",
@@ -512,7 +513,8 @@ onMounted(async () => {
         </template>
 
         <!-- Engine pill — persistent visibility of the currently-loaded
-             TTS engine. Click jumps to Engines tab. -->
+             TTS engine. Click lands on the AI console's Speech engines tab
+             (the /engines redirect). -->
         <button
           v-if="health"
           type="button"

@@ -158,7 +158,7 @@ Click a take to see its lineage via the [take versioning](take-versioning.md) ch
 
 ## Troubleshooting
 
-- **"No engine loaded. Go to Engines → Load."** — Click the link to the [Engines](engines.md) tab and load one. Kokoro is the lightest if you're unsure.
+- **"No engine loaded."** — Click the link to load one on the [Speech engines](engines.md) tab (AI page). Kokoro is the lightest if you're unsure.
 - **Voice dropdown says "no voices available"** — The loaded engine is clone-only (Chatterbox) and you haven't cloned a reference WAV yet. Use the link in the banner to [Voices](voices.md).
 - **Compose button is disabled (grayed out)** — No profile is selected, or the selected profile has no personality prompt. Pick a profile in the 👤 Profile chip or add a personality prompt via [Profiles](profiles.md).
 - **Compose returns "LLM not configured"** — Wire an OpenAI-compatible endpoint in Settings → External.

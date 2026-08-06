@@ -1,11 +1,11 @@
 # LLM + TTS providers
 
-JustVoice's Engines tab handles two kinds of provider:
+JustVoice's AI page handles two kinds of provider, each on its own tab:
 
 - **Local engines** — Kokoro / Chatterbox / Qwen3-TTS / Dia / LuxTTS / MossTTS / TADA. Managed by JustVoice, installed into per-engine Python venvs, loaded one-at-a-time per kind (TTS / LLM / embedding). See `engines.md` for the catalog.
 - **Online + self-hosted providers** — Anthropic Claude / OpenAI / Gemini / Ollama / DeepSeek / OpenRouter for LLM; ElevenLabs / Speechify / Speechmatics / OpenAI TTS / OpenAI-compatible servers for TTS. These talk HTTP, don't install anything locally, and need an API key + base URL.
 
-The Engines tab is split into both sections per kind. This doc covers the **online + self-hosted provider** flow.
+Language models live on the **LLM providers** tab; speech on the **TTS providers** tab. This doc covers the **online + self-hosted speech provider** flow.
 
 ## When to add a provider
 
@@ -19,7 +19,7 @@ The Engines tab is split into both sections per kind. This doc covers the **onli
 
 ## Adding a provider
 
-1. **Open Engines → LLM tab** (or TTS tab).
+1. **Open the AI page → TTS providers tab** (language models: the LLM providers tab).
 2. Click **+ Add LLM provider** (or **+ Add TTS provider**). An inline editor expands at the top of the registered-provider list.
 3. Fill in the form:
    - **ID** — a stable identifier the routing refers to (e.g. `my-claude`). Cannot change after the first save (would orphan routing that points at it).

@@ -55,7 +55,7 @@ under AI Settings.
 
 Click **Skip — configure later** in the confirm step. You can:
 
-- Install voice engines manually on the Voice engines page.
+- Install voice engines manually on the Speech engines tab of the AI page.
 
 The wizard re-runs from Settings → About → Run welcome again. Quick Setup persists "I've seen this" in localStorage so it doesn't re-pop on every launch.
 

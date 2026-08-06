@@ -252,6 +252,12 @@ class EngineOverrides(BaseModel):
     """
 
     sources: dict[str, EngineModelSourceOverride] = {}
+    # The operator's own default MODEL for this engine (parity batch
+    # 2026-08-06 — the Speech-engines page's "Default ✓" row action). A USER
+    # layer over the manifest's DEFAULT_VARIANT_ID: the manager's
+    # _resolved_default_variant consults this first, so a no-variant load
+    # actually loads it (never just relabels a row). None = manifest default.
+    default_variant: str | None = None
 
 
 class ExternalEngineConfig(BaseModel):

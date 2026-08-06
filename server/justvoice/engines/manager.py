@@ -1104,17 +1104,40 @@ class EngineManager:
         with self._lock:
             return self._current_variants.get(engine_id)
 
+    def resolved_default_variant(self, engine_id: str) -> str:
+        """Public door for the API layer: what a no-variant load of this engine
+        resolves to (user Set-as-default override → manifest → heuristics)."""
+        m = self.get_manifest(engine_id)
+        return self._resolved_default_variant(m) if m else ""
+
     @staticmethod
-    def _resolved_default_variant(m: EngineManifest) -> str:
+    def _user_default_variant(engine_id: str) -> str:
+        """The operator's own default-model choice for this engine
+        (settings.engines.engine_overrides[id].default_variant — written by the
+        Speech-engines page's "Set as default" row action, parity batch
+        2026-08-06). Best-effort: unit tests run without app state → ""."""
+        try:
+            from ..app_state import get_state
+
+            ov = get_state().settings.get().engines.engine_overrides.get(engine_id)
+            return (ov.default_variant or "") if ov else ""
+        except Exception:  # noqa: BLE001 — no state / mid-boot → manifest order
+            return ""
+
+    def _resolved_default_variant(self, m: EngineManifest) -> str:
         """What variant id a no-variant load actually resolves to, so the
         Engines page can highlight the right model row (user-hit twice:
         load via Voices → both rows said "Load model").
 
-        Order: manifest DEFAULT_VARIANT_ID → sole catalog variant → the
-        variant whose files are in the engine's models_dir (kokoro loads
-        whatever's on disk; the tarball extracts into a variant-named
-        subdir) → first catalog variant as best effort.
+        Order: the USER's default_variant override (Set as default) → manifest
+        DEFAULT_VARIANT_ID → sole catalog variant → the variant whose files are
+        in the engine's models_dir (kokoro loads whatever's on disk; the
+        tarball extracts into a variant-named subdir) → first catalog variant
+        as best effort.
         """
+        user = self._user_default_variant(m.id)
+        if user:
+            return user
         if m.default_variant_id:
             return m.default_variant_id
         try:
@@ -1310,6 +1333,17 @@ class EngineManager:
                 self._loaded[target_kind] = proc
 
             _maybe_cancel()
+
+            # A FRESH no-variant load resolves the default HERE (parity batch
+            # 2026-08-06): the engine subprocess receives `variant` verbatim, so
+            # the user's Set-as-default choice must be substituted before the
+            # POST — otherwise it would only relabel a row while the engine
+            # still loaded its own default. Deliberately AFTER the
+            # already-loaded early-return above: a no-variant re-load of a
+            # loaded engine keeps whatever is loaded (the Voices preview path —
+            # pinned by test_already_loaded_reload_keeps_resolved_variant).
+            if variant in (None, "", "auto"):
+                variant = self._resolved_default_variant(m) or None
 
             # Now POST /load to the engine — this is where the model actually
             # comes into memory.

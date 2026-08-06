@@ -32,7 +32,7 @@ JustVoice ships with 7 commercial-output-permitting TTS engines plus an external
 
 ## Loading / unloading
 
-Only one engine is **loaded** at a time per GPU. Loading takes 10-30s (model load + warmup). The Engines tab shows the current state per engine:
+Only one engine is **loaded** at a time per GPU. Loading takes 10-30s (model load + warmup). The **speech engines** tab on the ai page shows the current state per engine:
 
 - `not installed` — first download required.
 - `installed` — present on disk, not currently in VRAM.
@@ -57,7 +57,7 @@ The same Cancel + Retry pattern applies to every long-running operation in the a
 
 ## GPU detection + tier-aware default
 
-The Engines tab's GPU diagnostics panel shows your backend (CUDA / MPS / Metal / XPU / DirectML / ROCm), device name, VRAM total / used, compute capability, and HSA override status. JustVoice uses this to suggest defaults:
+Settings → GPU shows your backend (CUDA / MPS / Metal / XPU / DirectML / ROCm), device name, VRAM total / used, compute capability, and HSA override status. JustVoice uses this to suggest defaults:
 
 - CPU only → Kokoro recommended; clone engines disabled with a warning.
 - 8-12 GB VRAM → Chatterbox Turbo or Qwen3 (small).
@@ -65,7 +65,7 @@ The Engines tab's GPU diagnostics panel shows your backend (CUDA / MPS / Metal /
 
 ## CUDA wheel download
 
-Switching CUDA versions is a 4-phase flow: idle → stopping engines → waiting for download → ready. Initiate from Engines → GPU → "Re-download / switch CUDA version" or Settings → GPU. Roughly 2 GB per torch wheel.
+Switching CUDA versions is a 4-phase flow: idle → stopping engines → waiting for download → ready. Initiate from Settings → GPU → "Re-download / switch CUDA version". Roughly 2 GB per torch wheel.
 
 ## Per-engine venv isolation
 
@@ -78,8 +78,8 @@ Local engines (above) are managed by JustVoice — installed into per-engine ven
 - **LLM providers** — Anthropic Claude, OpenAI, Gemini, Ollama, DeepSeek, OpenRouter. Needed for Compose, Persona rewrite, Speaker attribution, Smart-assign, Render preset suggest.
 - **TTS providers** — ElevenLabs, Speechify, Speechmatics, OpenAI TTS, OpenAI-compatible self-hosted servers (Kokoro-FastAPI, Chatterbox-TTS-Server, Dia-TTS-Server, Qwen3-TTS).
 
-Both register through Engines → LLM tab or TTS tab → **+ Add provider**, with an inline form that handles API key, base URL, model picking (with Fetch button), tier picker (LLM), voice multi-select (TTS), and Ping verification. See [providers.md](providers.md) for the full flow.
+Language-model providers register on the AI page's **LLM providers** tab; speech providers on its **TTS providers** tab → **+ Add provider**, with an inline form that handles API key, base URL, model picking (with Fetch), voice multi-select (TTS), and Test verification. See [providers.md](providers.md) for the full flow.
 
-The Engines tab also tracks **how many** registered providers exist per kind. Tab labels read "TTS (N local · M online)" so you can see at a glance whether you have credentials configured.
+Self-hosted speech servers you register also list under Local on the Speech engines tab, beside the installed engines.
 
 After registering one or more LLM providers, configure feature routing in [ai-features.md](ai-features.md) — pin specific features (Compose, Speaker attribution, etc.) to specific provider+model+tier combinations.
