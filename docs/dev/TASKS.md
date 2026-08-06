@@ -77,6 +77,13 @@ The approved text, as presented and confirmed:
 
 ## QC finds 2026-08-06 (user's eyes, added on sight)
 
+- **Add Gemma 4 12B (QAT) + Gemma 4 E4B (QAT) back to the model catalog**
+  (user ask 2026-08-06). Both ids sit in `_RETIRED_DEFAULT_CATALOG_IDS`
+  (llm_bootstrap.py — the 2026-08-05 one-row-catalog direction removed them).
+  Re-adding = seed the two rows in JV's `model_catalog_extra` (pull the
+  audited row facts + any measured class tunes from JW's library), take the
+  ids OUT of the retirement list (it's marker-guarded one-time, but a fresh
+  install must keep them), and re-run the seed-facts audit for the rows.
 - **Sidebar: AI tasks · Labs · Settings sit OUTSIDE the scroll area** while the
   nav lanes scroll — the pinned-bottom group (`.jv-sidebar__bottom`, App.vue)
   holds them; the user flags the split as wrong ("outside scroll for some
