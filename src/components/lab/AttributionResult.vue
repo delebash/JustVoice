@@ -65,6 +65,12 @@ function disagrees(i) {
   return !!a && !!b && a !== b;
 }
 
+// The pipeline reports which instruction tier ran — say it in the approved
+// human words (the copy law: tier names never reach the screen).
+const TIER_WORDS = { guided: "with examples", direct: "rules only", reasoned: "rules + thinking" };
+function tierWords(t) {
+  return TIER_WORDS[t] || t || "";
+}
 function speakerLabel(spk) {
   if (!spk || spk === "unknown") return "unknown";
   if (spk === "narrator") return "Narrator";
@@ -187,7 +193,7 @@ async function clearCorrections() {
     </template>
 
     <div v-if="data && !candidates" class="attr__meta jv-muted">
-      {{ rows.length }} segments · {{ data.tier_used }} instructions · floor {{ data.confidence_floor }}
+      {{ rows.length }} segments · read {{ tierWords(data.tier_used) }} · confidence floor {{ data.confidence_floor }}
       <span v-if="otherRows" class="attr__meta-note">· disagreements with the other column are underlined</span>
     </div>
 

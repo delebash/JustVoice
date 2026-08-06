@@ -126,13 +126,20 @@ DEFAULT_FEATURE_PROMPTS: dict[str, dict] = {
     # ── speaker_attribution (the pipeline's tier pair + discovery) ──────────
     # Array outputs → json_mode stays OFF (json_object constrains to an OBJECT;
     # the tolerant array extraction is the measured contract).
+    # Labels/descriptions: the parity batch's approved copy (§9, 2026-08-06)
+    # — VERBATIM, outcomes in user words. Row labels live here in the seed
+    # (recorded limit: vue-i18n cannot reach DB rows).
     "speaker_attribution.guided": {
         "feature": "speaker_attribution",
+        "label": "Reading instructions (with examples)",
+        "description": "What the AI is told when it reads your chapter. This version includes worked examples — used automatically when a smaller model is doing the reading, because small models need to be shown.",
         "system": GUIDED_SYSTEM,
         "user_template": _ATTR_USER_TEMPLATE,
     },
     "speaker_attribution.direct": {
         "feature": "speaker_attribution",
+        "label": "Reading instructions (rules only)",
+        "description": "The same job without the examples — used automatically with larger models. JustVoice picks between these two for you.",
         "system": DIRECT_SYSTEM,
         "user_template": _ATTR_USER_TEMPLATE,
     },
@@ -140,6 +147,8 @@ DEFAULT_FEATURE_PROMPTS: dict[str, dict] = {
     # the family dotted spelling; the migration maps old rows across.
     "speaker_attribution.identify": {
         "feature": "speaker_attribution",
+        "label": "Find new speakers",
+        "description": "Behind Discover speakers: lists characters who talk in the text but aren't in your cast yet.",
         "system": IDENTIFY_SYSTEM,
         "user_template": """Known characters:
 {{known_characters}}
@@ -150,6 +159,7 @@ Manuscript text:
     # ── casting / production helpers ────────────────────────────────────────
     "smart_assign": {
         "feature": "smart_assign",
+        "description": "Matches each character to a voice from your library, judging age, gender and tone — the Smart-assign button on the Cast tab.",
         "system": _SMART_ASSIGN_SYSTEM,
         "user_template": """Characters:
 {{characters}}
@@ -162,6 +172,7 @@ Return only the JSON object.""",
     },
     "render_preset_suggest": {
         "feature": "render_preset_suggest",
+        "description": "Reads a chapter's mood and picks which of your render presets fits it — the 💡 Suggest button.",
         "system": _PRESET_SUGGEST_SYSTEM,
         "user_template": """Available presets:
 {{presets}}
@@ -174,17 +185,20 @@ Return only the JSON object.""",
     },
     "show_notes": {
         "feature": "show_notes",
+        "description": "Writes podcast show notes from your episode: a summary, chapter list, and pull quotes.",
         "system": _SHOW_NOTES_SYSTEM,
         "user_template": "{{script}}",
     },
     # ── persona voice features ──────────────────────────────────────────────
     "compose": {
         "feature": "compose",
+        "description": "Writes a fresh line the character would actually say, from the persona's personality — the 🎲 button.",
         "system": _COMPOSE_SYSTEM,
         "user_template": "Compose a line.",
     },
     "persona_rewrite": {
         "feature": "persona_rewrite",
+        "description": "Rewrites your line the way the character would say it. You see the result first and keep it or toss it.",
         "system": _PERSONA_REWRITE_SYSTEM,
         "user_template": "{{text}}",
     },
@@ -194,27 +208,36 @@ Return only the JSON object.""",
     # {{transcript}} user half so the Lab tests every PART standalone.
     "refine.base": {
         "feature": "refine",
+        "label": "The ground rules",
+        "description": "Fix punctuation, never answer back, never add words you didn't say.",
         "system": _REFINE_BASE_SYSTEM,
         "user_template": "{{transcript}}",
     },
     "refine.smart_cleanup": {
         "feature": "refine",
+        "label": "Remove filler",
+        "description": 'Drops the ums, uhs and "you know"s, adds sentence punctuation.',
         "system": _SMART_CLEANUP,
         "user_template": "{{transcript}}",
     },
     "refine.self_correction": {
         "feature": "refine",
+        "label": "Take your corrections",
+        "description": 'Say "no wait — make that Tuesday" and only Tuesday survives.',
         "system": _SELF_CORRECTION,
         "user_template": "{{transcript}}",
     },
     "refine.preserve_technical": {
         "feature": "refine",
+        "label": "Keep technical words",
+        "description": '"index dot tsx" comes out as index.tsx, exactly as spoken.',
         "system": _PRESERVE_TECHNICAL,
         "user_template": "{{transcript}}",
     },
     # ── voices ──────────────────────────────────────────────────────────────
     "voice_gender": {
         "feature": "voice_gender",
+        "description": "Labels voices male or female when the name alone doesn't tell you — runs only when you click the ✨ button on Voices.",
         "system": _VOICE_GENDER_SYSTEM,
         "user_template": """Voices:
 {{voices}}

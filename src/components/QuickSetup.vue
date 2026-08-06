@@ -261,18 +261,18 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
               {{ gpu?.name || "No GPU" }}
               <UiTag intent="ghost" v-if="gpu?.vram_mb">{{ (gpu.vram_mb / 1024).toFixed(1) }} GB VRAM</UiTag>
               <UiTag :intent="tierKey === detectedTierKey ? 'solid' : 'ghost'">
-                Auto-tier: {{ TIER_RECIPES[detectedTierKey]?.label }}
+                Suggested: {{ TIER_RECIPES[detectedTierKey]?.label }}
               </UiTag>
             </div>
           </section>
 
           <section>
-            <div class="quick-setup__row-label">Tier</div>
+            <div class="quick-setup__row-label">Hardware fit</div>
             <div class="quick-setup__row-value">
               <UiSelect v-model="tierKey" width="name"
-                :options="tierOptions.map((opt) => ({ value: opt.value, label: opt.label + (opt.value === detectedTierKey ? '  · auto' : '') }))" />
+                :options="tierOptions.map((opt) => ({ value: opt.value, label: opt.label + (opt.value === detectedTierKey ? '  · suggested' : '') }))" />
               <span v-if="tierKey !== detectedTierKey" class="jv-muted" style="font-size: 11.5px">
-                Overriding auto-tier
+                Overriding the suggestion
               </span>
             </div>
             <p class="jv-muted quick-setup__blurb">{{ recipe.blurb }}</p>
