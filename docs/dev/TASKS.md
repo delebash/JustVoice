@@ -240,7 +240,55 @@
     attribution rows do NOT (array output); pre-QuickSetup runs now say
     "run Quick Setup" (preset model "" — ruling 1's accepted clean-drop);
     a Speaker-Lab CUSTOM user prompt now uses {{var}} not {brace} syntax.
-  - **Phase 2 REMAINING (the route+UI-coupled half — next session):**
+  - **Phase 2 route+UI half + Phase 3 + docs: DONE (2026-08-05 s3 continued,
+    under the all-phases go; commits `54c6941` → `f917133` + the build-log
+    one):** the AI Settings area (/ai + kit AiModelsArea, ONE host tab
+    **"Speech AI"** = the rehomed Speaker-corrections card), nav AI Settings
+    (always visible, icon **🤖**) + Engines → "Voice engines", AiStatusButton
+    in the topbar, the kit AI-tasks sidebar row, once-ever AiSetupOffer at the
+    first-project moment (server-pref flag, silent-mark when a default
+    exists), ruling 6's words via configureFamilyLabels ("LLM engine setup"/
+    "Re-run LLM engine setup" + the offer button), the old wizard renamed
+    "Voice engine setup" with its pins recipe stripped, Settings −"AI
+    features" +family Storage (data location/relocate + disk usage) +family
+    Server (headless URL + /v1/server-auth tokens + rehomed Connection/
+    Lifecycle/Server-bind) + kit LogsPanel; SpeakerLab's promote flow died
+    with production-configs; llm_roles_api + feature_pins_api deleted;
+    EnginesSettings dropped feature_pins/production_configs (stray keys
+    tolerated, llm_roles pattern; engines.llm stays for migrate_providers);
+    platform log ring/file + make_logs_router(PRODUCT) + make_disk_router
+    replaced admin_api's twins; health = product + camel apiVersion + snake
+    extras; the Rust portable data root (pointer/resolve/relocate commands,
+    spawn sets JUSTVOICE_DATA_DIR on every arm, venv-first debug arm; JV's
+    DEFAULT deliberately stays the server's platformdirs dir — existing
+    installs' data lives there, portable is one Change-folder click); the
+    llm-runner pin → bundle extra @main (update-pydeps declobbered by
+    construction); **Phase 3 voice_gender shipped** (POST
+    /v1/voices/gender-guess over the seeded row; Voices "✨ Guess unknown
+    genders" button, explicit-only per ruling 2, applies via the manual-click
+    persistence paths); user docs swept (ai-features rewritten,
+    quick-setup → Voice engine setup, providers/troubleshooting/voices/toc)
+    and the archived CONTRACT's two wrong claims corrected at their LIVE
+    homes (CONCEPTS.md, core-concepts.md, personas.md).
+    **The four word-gaps the user approved as recs ("your rec on those, go"):**
+    (1) the Phase-1 catalogCopy/quickSetupCopy voice sentences as written in
+    main.js; (2) the voice_gender seed prompt as written; (3) host tab label
+    "Speech AI"; (4) AI Settings nav icon 🤖.
+    **REAL-APP CHECK RUN (the rule-7 gate):** the real venv server booted on
+    the REAL data dir — /v1/health carries product+apiVersion; /v1/ai/prompts
+    serves the 13 shared rows (the shadow is gone); the 6 presets at the
+    decided temps; warmDefaultOnStartup=False ON THE REAL previously-ON DB
+    (the one-time flip worked); platform /v1/logs/tail + /v1/disk/usage live;
+    readiness says "AI engine not set up" (honest pre-QuickSetup state).
+    Eyes-on QC still the user's: the webview walk of the new chrome (AI
+    Settings, wizards, Storage/Server, the offer, the gender button).
+  - **Phase 2 leftovers folded forward (small, non-blocking):** JV still has
+    no scripts/py.js + lint/test scripts (pre-recorded family-contract gap) ·
+    capture.llm_model settings field is dormant residue (kept — not in the
+    decided drop list; the UI picker is gone) · the labels-feed adoption
+    beyond ruling 6's keys + SettingsShell/PaneHeader ride their family
+    items · JV e2e harness item unchanged.
+  - **(Historical — the itemized remainder below was the pre-execution plan:)**
     · llm_roles_api + feature_pins_api mounts+files die WITH their renderer
       bindings (QuickSetup.vue:276, SpeakerLabView.vue:414+:48+:439,
       SettingsView.vue:497+:535-550+:585-728) — same slice as the chrome.
