@@ -518,8 +518,8 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
            Local with their kind. Provider verbs live on the TTS providers tab. -->
       <div v-if="sec.id === 'tts'" >
         <div v-for="pr in selfHostedTts" :key="`sh-${pr.id}`" class="ev-group">
-          <div class="ev-ghead" style="cursor:default">
-            <span class="chev" style="visibility:hidden">▶</span>
+          <div class="ev-ghead ev-ghead--static">
+            <span class="chev chev--ghost">▶</span>
             <span class="nm">{{ pr.name }}</span><span class="id">{{ pr.id }}</span>
             <span class="ev-caps">
               <span class="ev-cap tts">TTS</span>
@@ -602,7 +602,7 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
 
           <div class="ev-gfoot" v-if="e.isolation === 'venv' && e.status !== 'not_installed'">
             isolated venv
-            <UiButton intent="ghost" size="small" label="Uninstall engine" class="ev-danger" style="margin-left:auto"
+            <UiButton intent="ghost" size="small" label="Uninstall engine" class="ev-danger ev-push-right"
               title="Remove this engine's venv and all its downloaded models" @click="uninstall(e)" />
           </div>
           <div class="ev-gfoot" v-else-if="e.isolation !== 'venv' && (e.status === 'installed' || e.status === 'loaded')">
@@ -621,7 +621,7 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
 
     <div class="ev-runtime">
       Shared runtime (torch + common deps for the {{ sharedEngines }} shared engines)
-      <span class="jv-muted" style="margin-left:auto">engines install into it automatically on first use</span>
+      <span class="jv-muted ev-push-right">engines install into it automatically on first use</span>
     </div>
   </div>
 </template>

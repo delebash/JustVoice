@@ -271,7 +271,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
             <div class="quick-setup__row-value">
               <UiSelect v-model="tierKey" width="name"
                 :options="tierOptions.map((opt) => ({ value: opt.value, label: opt.label + (opt.value === detectedTierKey ? '  · suggested' : '') }))" />
-              <span v-if="tierKey !== detectedTierKey" class="jv-muted" style="font-size: 11.5px">
+              <span v-if="tierKey !== detectedTierKey" class="jv-muted quick-setup__note">
                 Overriding the suggestion
               </span>
             </div>
@@ -294,7 +294,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
                 <UiTag intent="ghost" v-else>to install</UiTag>
               </li>
             </ul>
-            <p class="jv-muted" style="font-size: 11.5px; margin: 4px 0 0">
+            <p class="jv-muted quick-setup__note quick-setup__note--est">
               Estimated download: <strong>{{ recipe.estimatedDownloadGb }} GB</strong>
               · {{ enginesToInstall.length }} new · {{ enginesAlreadyInstalled.length }} already on disk
             </p>
@@ -302,20 +302,20 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
 
           <section>
             <div class="quick-setup__row-label">Feature routing</div>
-            <p class="jv-muted" style="font-size: 11.5px; margin: 0 0 6px">
+            <p class="jv-muted quick-setup__note quick-setup__note--lede">
               AI features route themselves: careful-reading work (Script speaker attribution)
               goes to your strongest model; quick tasks (Compose, Rewrite, Smart-assign,
               preset suggestions) go to the fastest. Tune any of it later on the AI
               page under Routing by feature.
             </p>
-            <div v-if="!hasLlmProvider" class="jv-banner jv-banner--warn" style="font-size: 11.5px; margin-top: 8px">
+            <div v-if="!hasLlmProvider" class="jv-banner jv-banner--warn quick-setup__note quick-setup__note--banner">
               <strong>No language-model provider connected yet.</strong> The AI text features wait quietly — after this wizard, open the AI page and run the LLM engine setup (or connect a provider on its LLM providers tab).
             </div>
           </section>
 
           <section>
             <div class="quick-setup__row-label">Optional helpers</div>
-            <p class="jv-muted" style="font-size: 11.5px; margin: 0 0 6px">
+            <p class="jv-muted quick-setup__note quick-setup__note--lede">
               Skip either — the features that need them wait quietly until you connect one.
             </p>
             <ul class="quick-setup__helpers">
@@ -349,7 +349,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
               <li>Clone your voice from ~30 s of audio — or skip and use preset voices</li>
               <li>Pick what you're making (audiobook · game · podcast) and import</li>
             </ol>
-            <div class="jv-banner jv-banner--info" style="font-size: 11.5px; margin-top: 8px">
+            <div class="jv-banner jv-banner--info quick-setup__note quick-setup__note--banner">
               Everything runs <strong>locally</strong>. No audio or text leaves this machine
               unless you add an external provider yourself.
             </div>
@@ -358,8 +358,9 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
 
         <!-- ── INSTALL step ─────────────────────────────────────── -->
         <template v-else-if="step === 'install'">
-          <p class="jv-muted" style="font-size: 12px; margin: 0 0 10px">
-            Engines install one at a time; feature pins apply once installs finish.
+          <p class="jv-muted quick-setup__note-md quick-setup__note-md--lede">
+            Engines install one at a time — each downloads, verifies, and lands in
+            your library before the next starts.
           </p>
           <!-- THE one download bar per engine (kit DownloadBar over the kit
                task — same control every download in the family renders). -->
@@ -374,7 +375,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
             <strong>{{ totalInstalled }}</strong> voice engine{{ totalInstalled === 1 ? "" : "s" }} installed
             <span v-if="totalFailed">· <strong>{{ totalFailed }}</strong> failed</span>.
           </p>
-          <p v-if="!hasLlmProvider" class="jv-muted" style="font-size: 12px">
+          <p v-if="!hasLlmProvider" class="jv-muted quick-setup__note-md">
             The AI text features (attribution, dictation cleanup, compose) have their own
             setup — open <a href="#/ai">AI Settings</a> and run the LLM engine setup.
           </p>
@@ -424,6 +425,14 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
   flex-wrap: wrap;
 }
 .quick-setup__blurb { font-size: 12px; line-height: 1.5; margin: 6px 0 0; }
+/* Inline-style purge (parity batch slice 10) — the repeated note literals
+   became these; values stay the exact ones the template used. */
+.quick-setup__note { font-size: 11.5px; }
+.quick-setup__note--est { margin: 4px 0 0; }
+.quick-setup__note--lede { margin: 0 0 6px; }
+.quick-setup__note--banner { margin-top: 8px; }
+.quick-setup__note-md { font-size: 12px; }
+.quick-setup__note-md--lede { margin: 0 0 10px; }
 .quick-setup__engines, .quick-setup__pins {
   list-style: none;
   padding: 0;

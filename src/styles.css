@@ -129,7 +129,9 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 
 .app-shell {
   display: grid;
-  grid-template-columns: 80px 1fr;
+  /* auto, not a hardcoded rail width (parity batch slice 10): the sidebar
+     sizes from its content — the widest label decides, nothing clips. */
+  grid-template-columns: auto 1fr;
   /* One full-height row. WITHOUT this the implicit row is content-sized, so a
      short view (e.g. Labs) shrinks the whole row — the sidebar then isn't
      100vh and its pinned bottom group rises, making the nav "jump" between
@@ -145,8 +147,10 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 18px 0 12px;
+  /* stretch (parity batch slice 10): rows fill the rail, the rail's width
+     comes from the widest row — no fixed button/label widths anywhere. */
+  align-items: stretch;
+  padding: 18px 6px 12px;
   gap: 3px;
   /* The rail itself never scrolls — only its middle (.jv-sidebar__scroll) does,
      so the brand + pinned bottom stay put and the nav can't "jump" between
@@ -163,7 +167,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 3px;
   overflow-y: auto;
   overflow-x: hidden;
@@ -175,7 +179,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 3px;
 }
 /* Canonical library toolbar — Personas/Lexicons/Presets/Effects (and
@@ -350,6 +354,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 .jv-sidebar > * { flex-shrink: 0; }
 .jv-sidebar__brand {
   width: 44px; height: 44px;
+  align-self: center; /* a logo tile, not a width driver */
   border-radius: 10px;
   background: var(--accent);
   color: #fff;
@@ -358,7 +363,10 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   margin-bottom: 14px;
 }
 .jv-sidebar__nav {
-  width: 56px; height: 54px;
+  /* Content-sized (parity batch slice 10, was 56×54 fixed): stretched to the
+     rail's width, tall enough for icon + a wrapped label. */
+  min-height: 54px;
+  padding: 5px 6px;
   border-radius: 10px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 2px;
@@ -374,21 +382,18 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 .jv-sidebar__nav--active:hover { background: var(--accent); color: #fff; }
 .jv-sidebar__icon { font-size: 17px; line-height: 1; }
 .jv-sidebar__label {
+  /* Wraps freely (parity batch slice 10) — the nowrap/54px/ellipsis clip is
+     gone; the rail is as wide as its longest word needs. */
   font-size: 9px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   font-weight: 500;
   text-align: center;
-  white-space: nowrap;
-  max-width: 54px;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.jv-sidebar__version { font-size: 10px; color: var(--ink-3); padding-top: 2px; }
+.jv-sidebar__version { font-size: 10px; color: var(--ink-3); padding-top: 2px; text-align: center; }
 
 /* Lane headers (Workflow / Library / Tools / Advanced) — plan Q4. */
 .jv-sidebar__lane-header {
-  width: 64px;
   font-size: 9px;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -1583,6 +1588,7 @@ section.block > h3 {
 .ev-ghead .gsum .meta{font-size:12px;color:var(--ink-2)}
 .ev-ghead .gsum .ldd{color:var(--accent-ink,#2c6049);font-weight:600}
 .ev-caps{display:flex;gap:4px;flex:none}
+.ev-caps--inline{display:inline-flex;margin-left:6px}
 .ev-cap{font-size:9.5px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:999px;border:1px solid var(--line-strong,#cfccc4);color:var(--ink-2);background:var(--surface)}
 .ev-cap.tts{border-color:var(--accent-line,#b8d2c3);background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049)}
 .ev-cap.stt{border-color:#c8d4e8;background:#eaf0f8;color:#3a5a8c}
@@ -1618,6 +1624,15 @@ section.block > h3 {
 .ev-dot.err{background:#c45a4d}
 .ev-prow .pmain{min-width:0;flex:1}
 .ev-prow .nm{font-weight:600}
+.ev-prow .nm--placeholder{color:var(--ink-3)}
 .ev-prow .url{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);display:block}
 .ev-prow .msum{font-size:11.5px;color:var(--ink-2)}
 .ev-prow .right{margin-left:auto;display:flex;gap:8px;align-items:center;flex:none}
+/* TTS providers tab (inline-style purge, parity batch slice 10) */
+.tp-empty{margin-top:14px}
+/* Speech engines tab statics (same purge): the STT group head isn't a
+   toggle, its chevron only reserves the column; the uninstall + venv notes
+   sit at the row's right edge. */
+.ev-ghead--static{cursor:default}
+.chev--ghost{visibility:hidden}
+.ev-push-right{margin-left:auto}

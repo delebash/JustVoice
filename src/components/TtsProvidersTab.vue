@@ -192,7 +192,7 @@ onMounted(loadProviders);
     <div v-if="editingKey === 'new' && draft" class="ev-prov">
       <div class="ev-prow">
         <span class="ev-dot off"></span>
-        <div class="pmain"><span class="nm" style="color:var(--ink-3)">New provider</span></div>
+        <div class="pmain"><span class="nm nm--placeholder">New provider</span></div>
         <span class="right">
           <UiButton intent="ghost" size="small" label="Cancel" @click="cancelEdit" />
         </span>
@@ -205,7 +205,7 @@ onMounted(loadProviders);
         <span class="ev-dot" :class="rowDotClass(pr)" :title="rowTest[pr.id]?.ok ? `Reachable · ${rowTest[pr.id].ms} ms` : (rowTest[pr.id]?.message || 'Click Test to check reachability')"></span>
         <div class="pmain">
           <span class="nm">{{ pr.name || pr.id }}</span>
-          <span class="ev-caps" style="display:inline-flex;margin-left:6px">
+          <span class="ev-caps ev-caps--inline">
             <span class="ev-cap tts">TTS</span>
             <span v-if="pr.self_hosted" class="ev-cap iso">SELF-HOSTED</span>
           </span>
@@ -222,6 +222,6 @@ onMounted(loadProviders);
       <TtsProviderForm v-if="editingKey === pr.id && draft" :draft="draft" :editing-key="pr.id"
         @save="saveProvider" @cancel="cancelEdit" @delete="deleteProvider" />
     </div>
-    <p v-if="!visibleProviders.length && editingKey !== 'new'" class="jv-muted" style="margin-top:14px">No speech providers yet — click "+ Add provider".</p>
+    <p v-if="!visibleProviders.length && editingKey !== 'new'" class="jv-muted tp-empty">No speech providers yet — click "+ Add provider".</p>
   </div>
 </template>
