@@ -439,18 +439,30 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   padding: 22px 32px 14px;
   border-bottom: 1px solid var(--line);
 }
-.jv-topbar__title {
+/* The kit TitleBar FRAME hosts the topbar now (family adoption, QC ruling
+   2026-08-06). The compound selector outweighs the frame's own one-class
+   layout rule so JV's baseline/gap stand; the frame's nav buttons center
+   themselves against the tall title. */
+.jv-topbar.lu-titlebar { align-items: baseline; gap: 16px; }
+.jv-topbar .lu-titlebar-btn {
+  align-self: center;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; background: transparent; cursor: pointer;
+  color: var(--ink-2); padding: 4px; border-radius: 6px;
+}
+.jv-topbar .lu-titlebar-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
+.jv-topbar .lu-titlebar-btn:disabled { opacity: 0.32; cursor: default; }
+.jv-topbar .lu-titlebar-title {
   font-size: 24px;
   font-weight: 600;
   letter-spacing: -0.015em;
-  margin: 0;
-  /* One line, always: long breadcrumbs (chapter titles) truncate instead
-     of wrapping the whole topbar to a second line. */
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* (.jv-topbar__title died with the kit-frame adoption — the title styles live
+   on .jv-topbar .lu-titlebar-title above; the crumbs render inside it.) */
 .jv-topbar__crumb-sep {
   margin: 0 8px;
   color: var(--ink-3);

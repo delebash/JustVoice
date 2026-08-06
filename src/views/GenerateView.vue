@@ -728,7 +728,7 @@ onMounted(async () => {
 
     <p v-if="emptyVoiceReason" class="jv-banner jv-banner--warn">
       <template v-if="emptyVoiceReason.kind === 'no-engine'">
-        No engine loaded. <a href="#engines">Load one on the Speech engines tab</a>.
+        No voice engine loaded. <a href="#engines">Load one on the Speech engines tab</a>.
       </template>
       <template v-else-if="emptyVoiceReason.kind === 'clone-only'">
         {{ emptyVoiceReason.engine }} is clone-only — <a href="#voices">clone a reference WAV in Voices</a> first.

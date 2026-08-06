@@ -15,7 +15,7 @@ import TaskStatusPanel from "./components/TaskStatusPanel.vue";
 import AudioKeepAlive from "./components/AudioKeepAlive.vue";
 import QuickSetup from "./components/QuickSetup.vue";
 import KeyboardCheatsheet from "./components/KeyboardCheatsheet.vue";
-import { AiSetupOffer, AiStatusButton, BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, pushToast, useAiTasksNav, useModelApply, warmModelId } from "@delebash/llm-ui";
+import { AiSetupOffer, AiStatusButton, BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, TitleBar, pushToast, useAiTasksNav, useModelApply, warmModelId } from "@delebash/llm-ui";
 import { readPref, writePref } from "./services/prefs.js";
 import GlobalAudioPlayer from "./components/GlobalAudioPlayer.vue";
 
@@ -407,9 +407,10 @@ onMounted(async () => {
     <aside class="jv-sidebar">
       <div class="jv-sidebar__brand" title="JustVoice">JV</div>
 
-      <!-- Scrollable middle: only the lanes scroll when they overflow, so the
-           brand (top) and the pinned bottom group never move. Mirrors JustWrite's
-           sidebar (fixed top + scrollable nav + fixed bottom). -->
+      <!-- Scrollable middle: ALL the nav scrolls together (user QC ruling
+           2026-08-06 — AI tasks/Labs/Settings sat outside the scroll "for
+           some reason"; the split was arbitrary). Only the brand (top) and
+           the version line (foot) stay put. -->
       <div class="jv-sidebar__scroll">
         <template v-for="lane in lanesWithViews" :key="lane.id">
           <div class="jv-sidebar__lane-header">
@@ -427,10 +428,7 @@ onMounted(async () => {
             <span class="jv-sidebar__label">{{ navLabel(v) }}</span>
           </a>
         </template>
-      </div>
 
-      <!-- Pinned bottom — Settings etc. + version, always at the foot. -->
-      <div class="jv-sidebar__bottom">
         <!-- The kit AI-tasks panel toggle. v-bind carries `data-panel-toggle`:
              the kit's outside-click dismiss exempts elements holding it, so
              the click that OPENS the panel isn't also the click that closes
@@ -459,13 +457,21 @@ onMounted(async () => {
           <span class="jv-sidebar__icon">{{ v.icon || '·' }}</span>
           <span class="jv-sidebar__label">{{ v.label }}</span>
         </a>
+      </div>
+
+      <!-- Pinned foot — the version line only (not nav). -->
+      <div class="jv-sidebar__bottom">
         <span class="jv-sidebar__version" v-if="health">v{{ health.version }}</span>
       </div>
     </aside>
 
     <main class="jv-main">
-      <header class="jv-topbar">
-        <h2 class="jv-topbar__title">
+      <!-- The family TitleBar FRAME (user QC ruling 2026-08-06: "same back
+           buttons, same title bar type as the other apps") — the kit owns the
+           back/forward mechanics + the frame; everything JV sits in the slots,
+           exactly like docgen's adoption. -->
+      <TitleBar class="jv-topbar">
+        <template #title>
           {{ currentView ? navLabel(currentView) : '' }}
           <template v-for="(seg, i) in uiContext.breadcrumb" :key="i">
             <span class="jv-topbar__crumb-sep">›</span>
@@ -476,7 +482,7 @@ onMounted(async () => {
             >{{ seg.label }}</a>
             <span v-else class="jv-topbar__crumb jv-topbar__crumb--current">{{ seg.label }}</span>
           </template>
-        </h2>
+        </template>
 
         <!-- Active-project chips (journeys topbar contract) — Project /
              Kind / Master. Click the project chip to jump to Projects. -->
@@ -520,11 +526,11 @@ onMounted(async () => {
           type="button"
           class="jv-topbar__engine-pill"
           :class="{ 'jv-topbar__engine-pill--empty': !health.current_engine }"
-          :title="health.current_engine ? `Loaded: ${health.current_engine}. Click to manage engines.` : 'No engine loaded. Click to load one.'"
+          :title="health.current_engine ? `Voice engine loaded: ${health.current_engine}. Click to manage speech engines.` : 'No voice engine loaded. Click to load one.'"
           @click="goView('engines')"
         >
           <span class="jv-topbar__engine-icon">🧠</span>
-          {{ health.current_engine || "No engine" }}
+          {{ health.current_engine || "No voice engine" }}
         </button>
 
         <button
@@ -542,11 +548,10 @@ onMounted(async () => {
             · <strong>{{ tasks.activeCount }}</strong> in flight
           </span>
         </button>
-        <!-- §11 chrome: the kit's AI status button inside the app's OWN topbar
-             (JW's donor shape — the kit TitleBar frame is optional dedup). -->
+        <!-- §11 chrome: the kit's AI status button, in the frame's slot. -->
         <AiStatusButton />
         <HelpTrigger :slug="currentHelpSlug" :label="currentView?.label || 'JustVoice'" />
-      </header>
+      </TitleBar>
 
       <div class="jv-content">
         <div v-if="showBootBanner" class="jv-banner jv-banner--warn jv-boot-banner">
