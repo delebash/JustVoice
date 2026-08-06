@@ -3,24 +3,36 @@
 **Backup = whole-server disaster recovery. Project export = per-project
 handoff.** Different jobs; this page is the first one.
 
+Backups live under **Settings → Backups**.
+
 ## Backup
 
-`GET /v1/backup` (Settings offers the button) downloads one ZIP: the database
-(every project, take, persona, lexicon, setting), audio blobs, voice embeddings,
-and training adapters. `?include_generations=false` shrinks it by leaving out
-generated audio — structure and library only. The archive carries schema version
-**1**; a future JustVoice restores any archive whose version it knows.
+**Export backup…** downloads one ZIP: the database (every project, take,
+persona, lexicon, setting) plus your content folders — voices, personas,
+lexicons, project files, generated audio, training data, and dictation
+recordings. Untick **Include generated audio** to leave out the renders and
+dictation recordings — the backup shrinks to structure and library only, which
+matters when generated audio runs to many gigabytes.
 
-One honest limit: the ZIP is built in memory — very large libraries (past a few
-GB, especially with generations included) should use `include_generations=false`
-or per-project exports instead.
+For scripts, the same backup streams from `GET /v1/data/backup`
+(`?exclude=generations,captures` matches the unticked box).
 
 ## Restore
 
-`POST /v1/restore` with a backup ZIP replaces the server's state and answers
-with `restart_required: true` — the server must restart before the restored data
-is live (the desktop shell offers it; headless, restart the process). Restore is
-whole-state: it is the disaster-recovery path, not a merge.
+**Import backup…** replaces the current data with the backup's contents and
+reloads the app — no restart step. Restore is whole-state: it is the
+disaster-recovery path, not a merge. A backup made without generated audio
+restores everything else and leaves whatever audio is currently on disk in
+place. Loaded speech engines are unloaded during a restore; load one again from
+the AI page when you need it.
+
+## Reset
+
+**Reset…** on the same page is the factory reset: every project, persona,
+voice, lexicon, capture, and setting returns to a fresh install (the server
+address is kept so the app stays reachable). Downloaded engine models stay on
+disk — remove those from the AI page if you want the space back. Take a backup
+first.
 
 ## When to use which
 

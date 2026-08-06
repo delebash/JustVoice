@@ -15,9 +15,10 @@ masters audio depends on it.
 cancellable — the Engines tab's load job has a Cancel; a cancelled load leaves
 the previous state intact.
 
-**Restore finished but the data isn't there.** `POST /v1/restore` requires a
-server restart (`restart_required: true`) — restart the app (or the headless
-process) and the restored state is live.
+**Restore finished but something looks off.** A restore (Settings → Backups →
+Import backup…) replaces the data live and reloads the app. If a view still
+shows pre-restore state, reload once more; speech engines are unloaded by a
+restore, so load one again from the AI page before generating.
 
 **MCP clients can't find the server.** MCP mounts at `/mcp` on the app port
 (17494) — if it's missing, the server log will say the `fastmcp` package is

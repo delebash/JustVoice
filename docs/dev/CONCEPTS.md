@@ -339,10 +339,11 @@ two actions' engine presets (AI Settings → Routing by feature), not pins.
    inlined). JV: per-feature system-prompt override on the feature pin,
    factory-resettable, with "Promote to production" from the Speaker Lab
    Tuner — already mocked as the 📌 pin button.
-5. **Backup UI** — server side already exists (`/v1/backup` + `/v1/restore`,
-   stream-zipped, settings + SQLite + optional blobs, DESIGN_FREEZE §5).
-   Adopt JustWrite's **manual "Export backup…" + restore flow** as a
-   Settings → General card, plus a scheduled-auto-backup toggle.
+5. **Backup UI** — DONE (parity batch 2026-08-06): the kit DataManagement
+   under Settings → Backups over the shared `/v1/data` router (the bespoke
+   `/v1/backup` + `/v1/restore` retired; include-audio rides the kit's
+   per-app options seam). Still open from the original idea: a
+   scheduled-auto-backup toggle.
 6. **In-app help docs pattern** (`services/helpDocs.js` — `docs/*.md` +
    `toc.json` bundled at build, same files shipped to the marketing site).
    Exactly matches the help-drawer design already mocked (❓ tab); reuse

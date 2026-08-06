@@ -115,9 +115,10 @@ const run = async () => {
   if (preview === 409) ok("row preview gates on engine load (409 contract)");
   else fail("preview gate", `status ${preview}`);
 
-  // ── 5. backup streams a real zip ───────────────────────────────────
+  // ── 5. backup streams a real zip (the shared /v1/data router since the
+  // parity batch; audio dirs excluded to keep the smoke light) ───────────
   const backup = await page.evaluate(async () => {
-    const r = await fetch("/v1/backup?include_audio=false");
+    const r = await fetch("/v1/data/backup?exclude=generations,captures");
     const buf = new Uint8Array(await r.arrayBuffer());
     return { status: r.status, magic: String.fromCharCode(...buf.slice(0, 2)) };
   });

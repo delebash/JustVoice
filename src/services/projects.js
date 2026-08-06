@@ -171,18 +171,9 @@ export const webhooksService = {
   },
 };
 
-export const backupService = {
-  download(includeGenerations = true) {
-    return withApi().requestBlob(`/v1/backup?include_generations=${includeGenerations}`);
-  },
-  async restore(file, mode = "replace", confirm = false) {
-    const form = new FormData();
-    form.append("file", file);
-    form.append("mode", mode);
-    form.append("confirm", String(confirm));
-    return withApi().postForm(`/v1/restore`, form);
-  },
-};
+// (backupService died with the bespoke /v1/backup + /v1/restore — the kit
+// DataManagement over the shared /v1/data router is the one backup surface,
+// parity batch 2026-08-06.)
 
 export const voicePreviewService = {
   preview(body) {

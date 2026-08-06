@@ -1,12 +1,12 @@
 <!-- SPDX-License-Identifier: MIT -->
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
-import { confirmDialog, promptDialog } from "@delebash/llm-ui";
+import { confirmDialog } from "@delebash/llm-ui";
 import { useRenderTasks } from "../stores/renderTasks.js";
-import { projectsService } from "../services/projects.js";
-import { UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, LogsPanel, fmtBytes, refreshRunnerModels, serverUrl } from "@delebash/llm-ui";
+import { DataManagement, FAMILY_LABELS, LogsPanel, SettingsShell, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, fmtBytes, refreshRunnerModels, renderHelpMarkdown, serverUrl } from "@delebash/llm-ui";
+import { loadDoc } from "../services/helpDocs.js";
 import { useOnboarding } from "../stores/onboarding.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -74,28 +74,9 @@ async function resetUiState() {
   window.location.replace(window.location.pathname + window.location.search);
 }
 
-// Tier 3: factory reset — as-new install (testing).
-async function factoryReset() {
-  const typed = await promptDialog({
-    title: "Factory reset — everything goes",
-    message: "Deletes ALL projects, personas, voices, lexicons, captures, history, and the render cache, and resets every setting to defaults. Engine model downloads stay on disk. Type RESET to confirm.",
-    placeholder: "RESET",
-  });
-  if (typed !== "RESET") {
-    if (typed != null) pushToast({ kind: "info", title: "Not reset", description: "Confirmation text didn't match." });
-    return;
-  }
-  try {
-    await api.request("/v1/admin/factory-reset", { method: "POST" });
-    try { window.localStorage?.clear(); window.sessionStorage?.clear(); } catch { /* ignore */ }
-    // Reload WITHOUT a hash — an explicit fragment outranks the
-    // first-run branch in resolveInitialTab, which skipped the kind
-    // picker after reset (user-hit: only a fresh relaunch showed it).
-    window.location.replace(window.location.pathname + window.location.search);
-  } catch (e) {
-    pushToast({ kind: "error", title: "Factory reset failed", description: String(e?.message ?? e) });
-  }
-}
+// (Tier 3 — the factory reset — is the kit DataManagement's Reset now, under
+// Settings → Backups over the shared POST /v1/data/reset; the bespoke button
+// and /v1/admin/factory-reset died in the parity batch, 2026-08-06.)
 
 // Tier 2: wipe every project (and optionally the personas) — the
 // workflow-testing reset. Voices, engines, providers, lexicons survive.
@@ -139,45 +120,19 @@ async function deleteAllProjects() {
   }
 }
 
-// ── Backup & restore (GET /v1/backup, POST /v1/restore) ─────────────
-const backupBusy = ref(false);
-const backupIncludeAudio = ref(true);
-async function downloadBackup() {
-  backupBusy.value = true;
-  try {
-    const blob = await api.requestBlob(`/v1/backup?include_audio=${backupIncludeAudio.value}`);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `justvoice-backup-${new Date().toISOString().slice(0, 10)}.zip`;
-    a.click();
-    URL.revokeObjectURL(url);
-    pushToast({ kind: "success", title: "Backup downloaded" });
-  } catch (e) {
-    pushToast({ kind: "error", title: "Backup failed", description: String(e?.message ?? e) });
-  } finally {
-    backupBusy.value = false;
-  }
-}
-async function restoreBackup(ev) {
-  const f = ev.target?.files?.[0];
-  ev.target.value = "";
-  if (!f) return;
-  const ok = await confirmDialog({
-    title: "Restore from backup?",
-    message: `Restore "${f.name}"? This REPLACES the current settings and database. The server restarts its stores; a page reload follows.`,
-    confirmLabel: "Replace & restore",
-    danger: true,
-  });
-  if (!ok) return;
-  try {
-    await projectsService.restore(f, "replace", true);
-    pushToast({ kind: "success", title: "Restored — reloading" });
-    setTimeout(() => window.location.reload(), 1200);
-  } catch (e) {
-    pushToast({ kind: "error", title: "Restore failed", description: String(e?.message ?? e) });
-  }
-}
+// ── Backups — the kit DataManagement over the shared /v1/data router
+// (parity batch 2026-08-06; the bespoke /v1/backup + /v1/restore died with
+// backup_api). The include-audio choice rides the kit's per-app options seam:
+// unchecked, the backup request carries ?exclude=generations,captures and the
+// shared route skips those dirs. (The old UI sent `include_audio` to a route
+// that read `include_generations` — the toggle was silently ignored.)
+const BACKUP_OPTIONS = [{
+  id: "audio",
+  label: "Include generated audio",
+  sub: "renders and dictation recordings — bigger, but a complete machine migration",
+  excludes: ["generations", "captures"],
+  default: true,
+}];
 // Initialize with the same shape the API returns so the sub-nav + every
 // field renders before /v1/settings comes back (or when the server is
 // offline). refresh() overwrites with real values when the server is up.
@@ -449,33 +404,39 @@ const connectionStatus = computed(() => {
 onMounted(refresh);
 onMounted(loadTtsEngines);
 
-// ── Sub-nav (matches preview HTML §13). ─────────────────────────────
+// ── Sections (family parity batch 2026-08-06): the canon shared sections in
+// their fixed relative order — words from the FAMILY CONTRACT, enforced by
+// construction — then JV's own lane. "Changelog" died for the canon "Updates".
+const SEC = FAMILY_LABELS.settingsSections;
 const SUBS = [
   { id: "general",    label: "General" },
+  { id: "appearance", label: SEC.appearance },
+  { id: "backups",    label: SEC.backups },
+  { id: "storage",    label: SEC.storage },
+  { id: "server",     label: SEC.server },
+  { id: "logs",       label: SEC.logs },
+  { id: "updates",    label: SEC.updates },
+  { id: "about",      label: SEC.about },
+  // JV's own lane.
   { id: "mastering",  label: "Mastering" },
   { id: "generation", label: "Generation" },
   { id: "capture",    label: "Capture / Dictation" },
   { id: "mcp",        label: "MCP server" },
   { id: "gpu",        label: "GPU" },
-  { id: "appearance", label: "Appearance" },
-  { id: "storage",    label: "Storage" },
-  { id: "server",     label: "Server" },
   { id: "cache",      label: "Cache" },
   { id: "channels",   label: "Channels" },
   { id: "webhooks",   label: "Webhooks" },
-  { id: "logs",       label: "Logs" },
-  { id: "changelog",  label: "Changelog" },
-  { id: "about",      label: "About" },
 ];
 const activeSub = ref("general");
 
 // Deep links (#cache/#channels/#webhooks redirect here) hand the target
-// sub-tab over via sessionStorage.
+// sub-tab over via sessionStorage — ids stay stable; the retired "changelog"
+// id keeps landing on the section that replaced it.
 try {
   const sub = window.sessionStorage?.getItem("jv.settings.sub");
   if (sub) {
     window.sessionStorage.removeItem("jv.settings.sub");
-    activeSub.value = sub;
+    activeSub.value = sub === "changelog" ? "updates" : sub;
   }
 } catch { /* ignore */ }
 
@@ -505,6 +466,16 @@ const gpuVramPct = computed(() => {
   const used = gpuInfo.value?.gpus?.[0]?.vram_used_mb || 0;
   const total = gpuInfo.value?.gpus?.[0]?.vram_mb || 0;
   return total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
+});
+
+// ── Updates — release notes for the kit UpdatesPanel (JW's pattern: the
+// changelog source + renderer stay app-side, the presentation is shared).
+// Loaded lazily the first time the Updates section opens.
+const changelogHtml = ref("");
+watch(activeSub, async (a) => {
+  if (a === "updates" && !changelogHtml.value) {
+    changelogHtml.value = renderHelpMarkdown((await loadDoc("whats-new")) || "");
+  }
 });
 
 // ── Auto-updater (task #90) ──────────────────────────────────────────
@@ -900,22 +871,15 @@ onMounted(() => {
       <a href="#" @click.prevent="reload">Retry</a>
     </p>
 
-    <!-- ── Sub-nav (matches preview HTML §13). ────────────────────────── -->
-    <div class="jv-subnav">
-      <a
-        v-for="s in SUBS"
-        :key="s.id"
-        class="jv-subnav__tab"
-        :class="{ 'jv-subnav__tab--active': activeSub === s.id }"
-        @click="activeSub = s.id"
-      >{{ s.label }}</a>
-    </div>
+    <!-- The family Settings chrome (kit SettingsShell — JW's donor strip; the
+         hand-rolled jv-subnav died with the parity batch). -->
+    <SettingsShell :sections="SUBS" v-model="activeSub">
 
     <!-- ─── General · Workspace focus ─── -->
     <div v-show="activeSub === 'general'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">Workspace focus</h3></div>
-        <p class="jv-muted" style="font-size: 12.5px">
+        <p class="jv-muted jv-hint">
           What you mostly make here. Tunes the sidebar (hides tabs that don't apply),
           the vocabulary, and the launch tab. Pick "Not set" to show everything.
         </p>
@@ -930,7 +894,7 @@ onMounted(() => {
             @click="setUseCase(u.id)"
           >{{ u.label }}</button>
         </div>
-        <div style="margin-top: 12px; display: flex; align-items: center; gap: 10px">
+        <div class="jv-inline-row jv-mt12">
           <UiButton
             intent="secondary"
             size="small"
@@ -938,7 +902,7 @@ onMounted(() => {
             title="Re-probe hardware, pick engines to install, reconnect local LLM/STT helpers"
             @click="rerunQuickSetup"
           />
-          <span class="jv-muted" style="font-size: 11.5px">Hardware probe → recommended engines → helper connections.</span>
+          <span class="jv-muted jv-note-xs">Hardware probe → recommended engines → helper connections.</span>
         </div>
       </div>
     </div>
@@ -947,16 +911,15 @@ onMounted(() => {
     <div v-show="activeSub === 'general'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">Testing / danger zone</h3></div>
-        <p class="jv-muted" style="font-size: 12.5px">
+        <p class="jv-muted jv-hint">
           For walking the workflows from scratch. Tier 1 is safe; tier 2 deletes content.
-          Full factory reset stays manual — restore a backup zip or delete the data directory.
+          The full factory reset lives under Backups (Reset JustVoice).
         </p>
-        <div style="display:flex; align-items:center; gap:10px; margin-top:10px">
+        <div class="jv-inline-row jv-mt10">
           <UiButton intent="secondary" size="small" label="↺ Reset UI state" title="Forget active project + re-arm welcome and Quick Setup. No data touched. Reloads." @click="resetUiState" />
-          <span class="jv-muted" style="font-size:11.5px">fresh-install behavior, zero data loss</span>
+          <span class="jv-muted jv-note-xs">fresh-install behavior, zero data loss</span>
         </div>
-        <div style="display:flex; align-items:center; gap:10px; margin-top:10px">
-          <UiButton intent="danger-outline" size="small" label="☢ Factory reset…" title="As-new install: all content + settings to defaults. Engine model downloads stay. Type RESET to confirm." @click="factoryReset" />
+        <div class="jv-inline-row jv-mt10">
           <UiButton intent="danger-outline" size="small" label="🗑 Delete ALL projects…" :disabled="wipeBusy" @click="deleteAllProjects" />
           <UiCheckbox v-model="deletePersonasToo">also delete all personas</UiCheckbox>
         </div>
@@ -968,16 +931,16 @@ onMounted(() => {
     <div v-show="activeSub === 'channels'" class="jv-section"><AudioChannelsView /></div>
     <div v-show="activeSub === 'webhooks'" class="jv-section"><WebhooksView /></div>
 
-    <!-- ─── General · Connection ─── -->
-    <!-- ─── General · API reference (task #96) ─── -->
-    <div v-show="activeSub === 'general'" class="jv-section">
+    <!-- ─── Server · API reference (task #96; re-homed from General in the
+         parity batch — it documents the server's HTTP surface + auth) ─── -->
+    <div v-show="activeSub === 'server'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">API reference</h3></div>
-        <p class="jv-muted" style="font-size: 12.5px">
+        <p class="jv-muted jv-hint">
           JustVoice exposes a stable HTTP API. Use these endpoints from scripts, CI, or external tools.
           The full OpenAPI spec is at <a :href="api.serverUrl + '/docs'" target="_blank"><code class="jv-mono">{{ api.serverUrl }}/docs</code></a>.
         </p>
-        <table class="jv-table" style="margin-top: 12px">
+        <table class="jv-table jv-mt12">
           <thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
           <tbody>
             <tr><td><code class="jv-mono">POST</code></td><td><code class="jv-mono">/v1/generate</code></td><td>Single-line synthesis → audio/wav. Auto-chunks long text.</td></tr>
@@ -993,7 +956,7 @@ onMounted(() => {
             <tr><td><code class="jv-mono">GET</code></td><td><code class="jv-mono">/v1/health</code></td><td>Server status + version.</td></tr>
           </tbody>
         </table>
-        <p class="jv-muted" style="font-size: 11.5px; margin-top: 12px">
+        <p class="jv-muted jv-note-xs jv-mt12">
           Auth: set <code class="jv-mono">JUSTVOICE_BEARER_TOKEN</code> on the server + pass
           <code class="jv-mono">Authorization: Bearer &lt;token&gt;</code>. Loopback (127.0.0.1)
           requests skip auth by default.
@@ -1003,8 +966,8 @@ onMounted(() => {
 
     <div v-show="activeSub === 'server'" class="jv-section">
       <div class="jv-card">
-        <div class="jv-card__header" style="display: flex; align-items: center; gap: 10px">
-          <h3 class="jv-card__title" style="margin: 0">Connection</h3>
+        <div class="jv-card__header jv-inline-row">
+          <h3 class="jv-card__title jv-m0">Connection</h3>
           <span class="jv-spacer" />
           <span
             class="connection-status"
@@ -1015,7 +978,7 @@ onMounted(() => {
             {{ connectionStatus.label }}
           </span>
         </div>
-        <p class="jv-muted" style="font-size: 12px; margin-bottom: 14px;">Where this UI sends API requests. Persists in localStorage; not part of server settings.</p>
+        <p class="jv-muted jv-note jv-mb14">Where this UI sends API requests. Persists in localStorage; not part of server settings.</p>
         <div class="settings-grid">
           <UiField label="Server URL" layout="block">
             <UiInput v-model="api.serverUrl" :spellcheck="false" width="url" @blur="reload" />
@@ -1024,9 +987,9 @@ onMounted(() => {
             <UiInput v-model="api.token" type="password" placeholder="optional" width="url" />
           </UiField>
         </div>
-        <div class="jv-row" style="margin-top: 14px;">
+        <div class="jv-row jv-mt14">
           <UiButton intent="secondary" @click="reload">Reload from server</UiButton>
-          <span class="jv-muted" style="font-size: 12px;">Re-fetches health + engines + voices against the new URL.</span>
+          <span class="jv-muted jv-note">Re-fetches health + engines + voices against the new URL.</span>
         </div>
       </div>
     </div>
@@ -1035,39 +998,39 @@ onMounted(() => {
     <div v-show="activeSub === 'server'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">Headless access</h3></div>
-        <p class="jv-muted" style="font-size: 12.5px">
+        <p class="jv-muted jv-hint">
           The server hosts the UI itself — <code class="jv-mono">justvoice-server serve</code>
           plus a browser gives the full app without the desktop shell.
         </p>
-        <div class="settings-grid" style="margin-top: 8px">
-          <UiField label="URL" layout="block"><span class="jv-mono" style="font-size: 12px">{{ headlessUrl }}</span></UiField>
+        <div class="settings-grid jv-mt8">
+          <UiField label="URL" layout="block"><span class="jv-mono jv-note">{{ headlessUrl }}</span></UiField>
         </div>
       </div>
 
-      <div class="jv-card" style="margin-top: 16px">
+      <div class="jv-card jv-mt16">
         <div class="jv-card__header"><h3 class="jv-card__title">Access tokens</h3></div>
-        <p class="jv-muted" style="font-size: 12.5px">
+        <p class="jv-muted jv-hint">
           Off by default. Add a token to require an
           <code class="jv-mono">Authorization: Bearer</code> header on every
           <code class="jv-mono">/v1</code> API call — for when you run the server
           exposed beyond this machine. Thin clients paste the token under Connection.
         </p>
-        <table class="jv-table" style="max-width: 560px" v-if="auth.tokens.length">
+        <table class="jv-table jv-w560" v-if="auth.tokens.length">
           <tbody>
             <tr v-for="t in auth.tokens" :key="t">
-              <td class="jv-mono" style="font-size: 12px">{{ t }}</td>
-              <td style="width: 90px"><UiButton intent="ghost" size="small" label="Remove" @click="dropToken(t)" /></td>
+              <td class="jv-mono jv-note">{{ t }}</td>
+              <td class="jv-w90"><UiButton intent="ghost" size="small" label="Remove" @click="dropToken(t)" /></td>
             </tr>
           </tbody>
         </table>
-        <div class="jv-row" style="margin-top: 10px; gap: 8px">
+        <div class="jv-row jv-mt10 jv-gap8">
           <UiInput v-model="tokenDraft" width="name" placeholder="new token…" @keydown.enter="addToken" />
           <UiButton intent="secondary" label="Add token" :disabled="!tokenDraft.trim()" @click="addToken" />
         </div>
-        <div class="jv-row" style="margin-top: 12px; align-items: center; gap: 10px">
+        <div class="jv-row jv-row--mid jv-mt12">
           <UiToggle :model-value="auth.requireForLoopback"
             @update:model-value="(v) => saveAuth({ requireForLoopback: v })" aria-label="Require a token on localhost" />
-          <span style="font-size: 12.5px">Require a token even on localhost</span>
+          <span class="jv-hint">Require a token even on localhost</span>
         </div>
       </div>
     </div>
@@ -1118,34 +1081,34 @@ onMounted(() => {
     <div v-show="activeSub === 'storage'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">Data location</h3></div>
-        <p class="jv-muted" style="font-size: 12.5px">
+        <p class="jv-muted jv-hint">
           One folder holds everything JustVoice saves — projects, voices, the database,
           the AI engine and models, and logs. Delete the folder, delete it all.
         </p>
-        <div class="settings-grid" style="margin-top: 10px">
+        <div class="settings-grid jv-mt10">
           <UiField label="Folder" layout="block">
-            <span class="jv-mono" style="font-size: 12px">{{ isDesktop ? (storageRoot?.root || "—") : "headless — set by JUSTVOICE_DATA_DIR" }}</span>
+            <span class="jv-mono jv-note">{{ isDesktop ? (storageRoot?.root || "—") : "headless — set by JUSTVOICE_DATA_DIR" }}</span>
           </UiField>
           <UiField v-if="isDesktop" label="Type" layout="block">
-            <span style="font-size: 12.5px">{{ storageRoot?.portable ? "Portable — beside the app" : "User folder" }}</span>
+            <span class="jv-hint">{{ storageRoot?.portable ? "Portable — beside the app" : "User folder" }}</span>
           </UiField>
         </div>
-        <div class="jv-row" style="margin-top: 12px" v-if="isDesktop">
+        <div class="jv-row jv-mt12" v-if="isDesktop">
           <UiButton intent="secondary"
             :label="relocating ? 'Moving your data — the app will restart…' : 'Change folder…'"
             :disabled="relocating" @click="changeFolder" />
         </div>
-        <p v-else class="jv-muted" style="margin: 8px 0 0; font-size: 12px">Changing the folder is available in the desktop app.</p>
-        <p v-if="storageErr" class="jv-mono" style="color: var(--danger); font-size: 12px">{{ storageErr }}</p>
+        <p v-else class="jv-muted jv-note jv-tight-top">Changing the folder is available in the desktop app.</p>
+        <p v-if="storageErr" class="jv-mono jv-danger-note">{{ storageErr }}</p>
       </div>
 
-      <div class="jv-card" style="margin-top: 16px">
+      <div class="jv-card jv-mt16">
         <div class="jv-card__header"><h3 class="jv-card__title">Disk usage</h3></div>
-        <p class="jv-muted" style="font-size: 12.5px">Where the data folder's space goes — and what can be reclaimed.</p>
-        <table class="jv-table" style="max-width: 560px; margin-top: 10px">
+        <p class="jv-muted jv-hint">Where the data folder's space goes — and what can be reclaimed.</p>
+        <table class="jv-table jv-w560 jv-mt10">
           <tbody>
             <tr><td>Models cache</td><td>{{ diskSize(diskUsage?.modelsCache) }}</td>
-              <td style="width: 130px"><UiButton intent="secondary" size="small" :disabled="!!diskBusy"
+              <td class="jv-w130"><UiButton intent="secondary" size="small" :disabled="!!diskBusy"
                 :label="diskBusy === 'models' ? 'Clearing…' : 'Clear'" @click="clearModelsCache" /></td></tr>
             <tr><td>Engine spawn logs</td><td>{{ diskSize(diskUsage?.spawnLogs) }}</td>
               <td><UiButton intent="secondary" size="small" :disabled="!!diskBusy"
@@ -1157,30 +1120,18 @@ onMounted(() => {
             <tr><td>Free disk space</td><td>{{ diskSize(diskUsage?.diskFree) }}</td><td /></tr>
           </tbody>
         </table>
-        <p v-if="diskErr" class="jv-mono" style="color: var(--danger); font-size: 12px">{{ diskErr }}</p>
+        <p v-if="diskErr" class="jv-mono jv-danger-note">{{ diskErr }}</p>
       </div>
     </div>
 
-    <!-- ─── Storage · Backup & restore ─── -->
-    <div v-show="activeSub === 'storage'" class="jv-section">
+    <!-- ─── Backups — the family surface (kit DataManagement over /v1/data;
+         backup/restore left Storage per the canon: Storage = data location +
+         disk only). The include-audio choice is the kit's per-app options
+         seam — decision ① — covering renders AND dictation recordings. ─── -->
+    <div v-show="activeSub === 'backups'" class="jv-section">
       <div class="jv-card">
-        <div class="jv-card__header">
-          <h3 class="jv-card__title">Backup & restore</h3>
-        </div>
-        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 14px">
-          One zip: settings.json + the full SQLite database{{ backupIncludeAudio ? " + all audio blobs, voice embeddings, training adapters" : "" }}.
-          Streamed from disk — large libraries don't load into RAM.
-        </p>
-        <div class="setting-row">
-          <UiCheckbox v-model="backupIncludeAudio">Include audio blobs (bigger, but a complete machine migration)</UiCheckbox>
-        </div>
-        <div class="setting-row" style="display: flex; gap: 10px; margin-top: 10px">
-          <UiButton intent="primary" size="small" :loading="backupBusy" label="⬇ Download backup" title="Stream a backup zip of this installation" @click="downloadBackup" />
-          <UiButton as="label" intent="secondary" size="small" style="cursor: pointer" title="Restore from a backup zip — REPLACES current data after confirmation">
-            ⬆ Restore from zip…
-            <input type="file" accept=".zip" style="display: none" @change="restoreBackup" />
-          </UiButton>
-        </div>
+        <div class="jv-card__header"><h3 class="jv-card__title">{{ SEC.backups }}</h3></div>
+        <DataManagement app-name="JustVoice" :options="BACKUP_OPTIONS" />
       </div>
     </div>
 
@@ -1189,7 +1140,7 @@ onMounted(() => {
         <div class="jv-card__header">
           <h3 class="jv-card__title">Server bind</h3>
         </div>
-        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 14px">
+        <p class="jv-muted jv-hint jv-mb14">
           Low-level network settings. Most users don't need to touch these — the defaults
           (127.0.0.1:17494, docs enabled) work for local single-machine use. Restart required
           after changing.
@@ -1202,7 +1153,7 @@ onMounted(() => {
             <UiInput v-model.number="settings.server.port" type="number" width="token" />
           </UiField>
         </div>
-        <div class="setting-row" style="margin-top: 14px">
+        <div class="setting-row jv-mt14">
           <div class="setting-row__head">
             <div>
               <div class="setting-row__title">Interactive API docs</div>
@@ -1224,72 +1175,12 @@ onMounted(() => {
          Appearance sub-tab. -->
 
 
-    <!-- ─── General · Updates ─── -->
-    <div v-show="activeSub === 'general'" class="jv-section">
-      <div class="jv-card">
-        <div class="jv-card__header" style="display: flex; align-items: center; gap: 8px">
-          <h3 class="jv-card__title" style="margin: 0">Updates</h3>
-          <span class="jv-spacer" />
-          <span class="jv-muted" style="font-size: 11.5px">Current: v{{ updater.currentVersion }}</span>
-        </div>
+    <!-- (The General · Updates card died in the parity batch — the ONE Updates
+         surface is the kit UpdatesPanel under the Updates section below.) -->
 
-        <div class="setting-row">
-          <div class="setting-row__head">
-            <div>
-              <div class="setting-row__title">Check for updates</div>
-              <div class="setting-row__desc">
-                <span v-if="updater.status === 'idle'">Last checked: {{ updater.lastChecked || 'never' }}</span>
-                <span v-else-if="updater.status === 'checking'">Checking…</span>
-                <span v-else-if="updater.status === 'available'">
-                  <strong>v{{ updater.availableVersion }} available.</strong> {{ updater.notes || '' }}
-                </span>
-                <span v-else-if="updater.status === 'downloading'">Downloading… {{ updater.progressPct }}%</span>
-                <span v-else-if="updater.status === 'ready'">Ready to install — restart to apply.</span>
-                <span v-else-if="updater.status === 'error'" style="color: var(--danger)">{{ updater.error }}</span>
-                <span v-else-if="updater.status === 'uptodate'">You're on the latest version.</span>
-              </div>
-            </div>
-            <div class="jv-row" style="gap: 8px">
-              <UiSelect
-                v-model="updater.channel"
-                width="id"
-                :options="[
-                  { label: 'Stable', value: 'stable' },
-                  { label: 'Beta', value: 'beta' },
-                  { label: 'Nightly', value: 'nightly' },
-                ]"
-                @change="persistUpdaterChannel"
-              />
-              <UiButton
-                v-if="updater.status === 'idle' || updater.status === 'uptodate' || updater.status === 'error'"
-                intent="secondary"
-                size="small"
-                :disabled="updater.busy"
-                label="Check now"
-                @click="checkForUpdates"
-              />
-              <UiButton
-                v-if="updater.status === 'available'"
-                intent="primary"
-                size="small"
-                :disabled="updater.busy"
-                label="Download"
-                @click="downloadUpdate"
-              />
-              <UiButton
-                v-if="updater.status === 'ready'"
-                intent="primary"
-                size="small"
-                label="Restart and install"
-                @click="restartAndInstall"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div v-show="activeSub === 'general'" class="jv-section">
+    <!-- ─── Cache · Server-side cache tunables (re-homed from General in the
+         parity batch — they sit beside the cache browser they govern) ─── -->
+    <div v-show="activeSub === 'cache'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header">
           <h3 class="jv-card__title">Cache</h3>
@@ -1302,7 +1193,7 @@ onMounted(() => {
             <UiInput v-model.number="settings.cache.max_disk_bytes_per_scope" type="number" width="token" />
           </UiField>
         </div>
-        <div style="margin-top: 14px;">
+        <div class="jv-mt14">
           <UiCheckbox v-model="settings.cache.enabled" label="Cache enabled" />
         </div>
       </div>
@@ -1345,7 +1236,7 @@ onMounted(() => {
             placeholder="e.g. C:\Users\you\kokoro-multi-lang-v1_0"
           />
         </UiField>
-        <p class="jv-muted" style="font-size: 12px; margin-top: 8px;">Restart required after changing.</p>
+        <p class="jv-muted jv-note jv-mt8">Restart required after changing.</p>
       </div>
     </div>
 
@@ -1355,7 +1246,7 @@ onMounted(() => {
         <div class="jv-card__header">
           <h3 class="jv-card__title">Generation pipeline</h3>
         </div>
-        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 18px">
+        <p class="jv-muted jv-hint jv-mb18">
           How the chunked TTS pipeline handles long text. Short text (≤ chunk limit) takes the
           single-shot fast path with zero overhead — the chunker only kicks in when needed.
         </p>
@@ -1475,7 +1366,7 @@ onMounted(() => {
             <UiInput v-model="settings.training.default_voice_language" width="token" />
           </UiField>
         </div>
-        <div style="margin-top: 14px;">
+        <div class="jv-mt14">
           <UiCheckbox
             v-model="settings.training.enabled"
             label="Training enabled (master gate — off makes POST /v1/train return 501)"
@@ -1484,7 +1375,7 @@ onMounted(() => {
 
         <template v-if="settings.training.validation">
           <div class="jv-divider"></div>
-          <h4 style="margin-bottom: 12px; color: var(--ink-3); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">Validation thresholds</h4>
+          <h4 class="jv-eyebrow-h">Validation thresholds</h4>
           <div class="settings-grid">
             <UiField label="Min sample duration (s)" layout="block">
               <UiInput v-model.number="settings.training.validation.min_sample_duration_secs" type="number" width="token" />
@@ -1515,12 +1406,12 @@ onMounted(() => {
         <div class="jv-card__header">
           <h3 class="jv-card__title">Model URL overrides</h3>
         </div>
-        <p class="jv-muted" style="font-size: 12px; margin-bottom: 16px;">
+        <p class="jv-muted jv-note jv-mb16">
           Override download URLs per variant. Useful when upstream artifacts move or when mirroring to an internal CDN.
           Keyed by variant id (e.g. <code class="jv-mono">kokoro-multi-lang-v1_0</code>).
         </p>
 
-        <table v-if="urlOverrideKeys.length" class="jv-table" style="margin-bottom: 16px;">
+        <table v-if="urlOverrideKeys.length" class="jv-table jv-mb16">
           <thead>
             <tr>
               <th>Variant id</th>
@@ -1538,14 +1429,14 @@ onMounted(() => {
             </tr>
           </tbody>
         </table>
-        <p v-else class="jv-muted" style="font-style: italic; margin-bottom: 14px;">No URL overrides set.</p>
+        <p v-else class="jv-muted jv-italic jv-mb14">No URL overrides set.</p>
 
-        <div class="jv-row" style="margin-bottom: 8px;">
+        <div class="jv-row jv-mb8">
           <UiInput v-model="newOverrideVariantId" placeholder="variant id (e.g. kokoro-multi-lang-v1_0)" width="name" />
           <UiInput v-model="newOverrideUrl" placeholder="override URL" width="url" />
           <UiButton intent="secondary" :disabled="!newOverrideVariantId || !newOverrideUrl" @click="addUrlOverride">Add override</UiButton>
         </div>
-        <p class="jv-muted" style="font-size: 12px;">Saved with Settings.</p>
+        <p class="jv-muted jv-note">Saved with Settings.</p>
       </div>
     </div>
 
@@ -1553,16 +1444,16 @@ onMounted(() => {
     <!-- ─── Mastering (preview parity, preview lines 1599-1632) ─── -->
     <div v-show="activeSub === 'mastering'" class="jv-section">
       <div class="jv-card">
-        <div class="jv-card__header" style="display: flex; align-items: center; gap: 10px">
+        <div class="jv-card__header jv-inline-row">
           <!-- "Target", not "preset" — CONCEPTS §7: three things were
                called preset; loudness/peak/format specs are TARGETS
                (ACX target, podcast target). "Preset" stays with the
                render-preset library. -->
-          <h3 class="jv-card__title" style="margin: 0">Active target</h3>
+          <h3 class="jv-card__title jv-m0">Active target</h3>
           <span class="jv-spacer" />
           <UiTag intent="success">{{ masterPresetLabel }}</UiTag>
         </div>
-        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 14px">
+        <p class="jv-muted jv-hint jv-mb14">
           The active mastering target applies to every chapter render + standalone Audio Tools
           master. Switch targets by clicking a chip. Custom lets you override individual knobs
           below.
@@ -1579,7 +1470,7 @@ onMounted(() => {
           >{{ p.label }}</button>
         </div>
 
-        <div class="settings-grid" style="margin-top: 16px">
+        <div class="settings-grid jv-mt16">
           <UiField label="Loudness target (LUFS)" layout="block">
             <UiInput v-model.number="mastering.lufs" type="number" step="0.5" width="token" />
           </UiField>
@@ -1597,7 +1488,7 @@ onMounted(() => {
           </UiField>
         </div>
 
-        <div class="setting-row" style="margin-top: 14px">
+        <div class="setting-row jv-mt14">
           <div class="setting-row__head">
             <div>
               <div class="setting-row__title">Apply effects pre-master</div>
@@ -1618,7 +1509,7 @@ onMounted(() => {
     <div v-show="activeSub === 'capture'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">Hotkeys (ChordPicker)</h3></div>
-        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 14px">
+        <p class="jv-muted jv-hint jv-mb14">
           Press-and-hold or toggle hotkeys for dictation. ChordPicker is a live keyboard combo editor —
           press the chord, peak-set is captured, Esc/Tab pass through.
         </p>
@@ -1628,7 +1519,7 @@ onMounted(() => {
               <div class="setting-row__title">Push-to-talk</div>
               <div class="setting-row__desc">Hold the chord to record. Release to stop + transcribe.</div>
             </div>
-            <div class="jv-row" style="gap: 6px">
+            <div class="jv-row jv-gap6">
               <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">V</span>
               <UiButton intent="ghost" size="small" label="Edit" />
               <UiButton intent="ghost" size="small" label="Clear" />
@@ -1641,7 +1532,7 @@ onMounted(() => {
               <div class="setting-row__title">Toggle-to-talk</div>
               <div class="setting-row__desc">Press once to start, press again to stop. Useful for long passages.</div>
             </div>
-            <div class="jv-row" style="gap: 6px">
+            <div class="jv-row jv-gap6">
               <span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">D</span>
               <UiButton intent="ghost" size="small" label="Edit" />
               <UiButton intent="ghost" size="small" label="Clear" />
@@ -1755,7 +1646,7 @@ onMounted(() => {
             <UiSelect v-model="capture.defaultPlaybackVoice" :options="[{ label: '(none — pick a profile)', value: '' }]" width="name" />
           </div>
         </div>
-        <p class="jv-muted" style="font-size: 11.5px; margin-top: 8px">
+        <p class="jv-muted jv-note-xs jv-mt8">
           Captures live under <code class="jv-mono">~/.justvoice/captures/</code>. See the
           <a href="#captures">Captures tab</a> for the live recording list + 6-gate readiness checklist.
         </p>
@@ -1766,12 +1657,12 @@ onMounted(() => {
     <!-- ─── MCP server (preview parity, preview lines 1664-1715) ─── -->
     <div v-show="activeSub === 'mcp'" class="jv-section">
       <div class="jv-card">
-        <div class="jv-card__header" style="display: flex; align-items: center; gap: 10px">
-          <h3 class="jv-card__title" style="margin: 0">MCP server</h3>
+        <div class="jv-card__header jv-inline-row">
+          <h3 class="jv-card__title jv-m0">MCP server</h3>
           <span class="jv-spacer" />
           <UiTag intent="success">on</UiTag>
         </div>
-        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 12px">
+        <p class="jv-muted jv-hint jv-mb12">
           Exposes JustVoice tools to AI agents (Claude Desktop, claude-code, Unreal Editor, custom scripts).
           The server runs in-process on the JustVoice port; agents connect via the URL below.
         </p>
@@ -1780,7 +1671,7 @@ onMounted(() => {
             <UiInput :value="`${api.serverUrl}/mcp`" :readonly="true" width="url" title="Agents connect directly to this URL — no separate process" />
           </UiField>
           <UiField label="Default voice" layout="block">
-            <div style="display: flex; gap: 8px; align-items: center">
+            <div class="jv-inline-row jv-gap8">
               <UiInput
                 v-model="mcpDefaultVoice"
                 width="name"
@@ -1797,7 +1688,7 @@ onMounted(() => {
     <div v-show="activeSub === 'mcp'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">Exposed tools</h3></div>
-        <div class="jv-row" style="gap: 6px; flex-wrap: wrap; margin-top: 8px">
+        <div class="jv-row jv-gap6 jv-wrap jv-mt8">
           <span class="jv-chip-card" title="Render text to speech; returns a generation id + audio URL"><strong>justvoice.speak</strong></span>
           <span class="jv-chip-card" title="Audio → text via the local Whisper engine"><strong>justvoice.transcribe</strong></span>
           <span class="jv-chip-card" title="All voices (presets + cloned + designed)"><strong>justvoice.list_voices</strong></span>
@@ -1809,12 +1700,12 @@ onMounted(() => {
     <div v-show="activeSub === 'mcp'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">Per-client bindings</h3></div>
-        <p class="jv-muted" style="font-size: 12.5px">
+        <p class="jv-muted jv-hint">
           Bind a default persona per client ID. Agents that send the
           <code class="jv-mono">X-JustVoice-Client-Id</code> header get the bound persona's voice
           when calling <code class="jv-mono">justvoice.speak</code> without arguments.
         </p>
-        <table class="jv-table" style="margin-top: 12px">
+        <table class="jv-table jv-mt12">
           <thead>
             <tr>
               <th>Client ID</th><th>Label</th><th>Default persona</th><th>Default engine</th><th>Last seen</th><th class="right"></th>
@@ -1833,13 +1724,13 @@ onMounted(() => {
               </td>
             </tr>
             <tr v-if="!mcpBindings.length">
-              <td colspan="6" class="jv-muted" style="text-align: center; padding: 16px">
+              <td colspan="6" class="jv-muted jv-center-pad">
                 No clients yet. Rows appear when an agent first calls a tool with its client ID — or add one below.
               </td>
             </tr>
           </tbody>
         </table>
-        <div class="jv-row" style="gap: 8px; margin-top: 12px; align-items: center; flex-wrap: wrap">
+        <div class="jv-row jv-row--mid jv-gap8 jv-mt12 jv-wrap">
           <UiInput v-model="bindingDraft.client_id" width="name" placeholder="client id (e.g. claude-code)" title="The X-JustVoice-Client-Id the agent sends" />
           <UiInput v-model="bindingDraft.label" width="name" placeholder="label (optional)" />
           <UiSelect
@@ -1856,19 +1747,19 @@ onMounted(() => {
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">Install snippets</h3></div>
 
-        <h4 style="margin: 14px 0 6px; font-size: 12.5px; color: var(--ink-2)">Claude Desktop / any HTTP MCP client · <code class="jv-mono">mcp config JSON</code></h4>
+        <h4 class="jv-subhead">Claude Desktop / any HTTP MCP client · <code class="jv-mono">mcp config JSON</code></h4>
         <div class="snippet-row">
           <pre class="jv-code-block">{{ MCP_SNIPPETS.claude_desktop }}</pre>
           <UiButton intent="ghost" size="small" label="Copy" title="Copy the JSON config" @click="copySnippet('claude_desktop')" />
         </div>
 
-        <h4 style="margin: 14px 0 6px; font-size: 12.5px; color: var(--ink-2)">claude-code CLI</h4>
+        <h4 class="jv-subhead">claude-code CLI</h4>
         <div class="snippet-row">
           <pre class="jv-code-block">{{ MCP_SNIPPETS.claude_code }}</pre>
           <UiButton intent="ghost" size="small" label="Copy" title="Copy the one-liner" @click="copySnippet('claude_code')" />
         </div>
 
-        <h4 style="margin: 14px 0 6px; font-size: 12.5px; color: var(--ink-2)">curl smoke test</h4>
+        <h4 class="jv-subhead">curl smoke test</h4>
         <div class="snippet-row">
           <pre class="jv-code-block">{{ MCP_SNIPPETS.curl }}</pre>
           <UiButton intent="ghost" size="small" label="Copy" title="Copy the curl command" @click="copySnippet('curl')" />
@@ -1910,9 +1801,9 @@ onMounted(() => {
                   Unload engines via the Engines tab to free VRAM before loading larger models.
                 </div>
               </div>
-              <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px">
+              <div class="jv-col-end">
                 <strong>{{ gpuVramUsedGB }} / {{ gpuVramTotalGB }} GB</strong>
-                <div style="width: 200px; height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden">
+                <div class="jv-meter">
                   <div :style="{ width: gpuVramPct + '%', height: '100%', background: 'var(--accent)' }" />
                 </div>
               </div>
@@ -1935,21 +1826,21 @@ onMounted(() => {
     <div v-show="activeSub === 'gpu'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">CUDA wheel download flow</h3></div>
-        <p class="jv-muted" style="font-size: 12.5px">
+        <p class="jv-muted jv-hint">
           PyTorch engines ship with the CPU wheel by default. Switching to CUDA reinstalls torch in
           the engine's venv with the matching CUDA build (~2 GB download). Per-engine — Chatterbox
           on CUDA and Kokoro on CPU is fine. Phases: <code class="jv-mono">idle → stopping engines →
           waiting for download → ready</code>.
         </p>
-        <div class="jv-row" style="margin-top: 14px">
+        <div class="jv-row jv-mt14">
           <UiTag intent="success">phase: ready</UiTag>
-          <span class="jv-muted" style="font-size: 12px">torch 2.4.1+cu124 · 2.1 GB</span>
+          <span class="jv-muted jv-note">torch 2.4.1+cu124 · 2.1 GB</span>
           <span class="jv-spacer" />
           <UiButton intent="secondary" size="small" label="Switch to CPU-only" />
           <UiButton intent="secondary" size="small" label="Switch to ROCm (AMD)" />
           <UiButton intent="secondary" size="small" label="Re-download" />
         </div>
-        <p class="jv-muted" style="font-size: 11.5px; margin-top: 10px">
+        <p class="jv-muted jv-note-xs jv-mt10">
           The switch is per-engine. Use the Engines tab → engine row → "Install with CUDA" to enable
           per engine. On Apple Silicon, MPS / CoreML is auto-detected — no switch required.
         </p>
@@ -1960,7 +1851,7 @@ onMounted(() => {
     <div v-show="activeSub === 'appearance'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">Appearance</h3></div>
-        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 6px">
+        <p class="jv-muted jv-hint jv-mb6">
           Visual and locale preferences. Saved to this server (renderer prefs), so they follow you to any client.
         </p>
 
@@ -2059,11 +1950,11 @@ onMounted(() => {
     <div v-show="activeSub === 'logs'" class="jv-section">
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">Logs</h3></div>
-        <p class="jv-muted" style="font-size: 12.5px; margin-bottom: 14px">
+        <p class="jv-muted jv-hint jv-mb14">
           Server-side log file. Useful for debugging engine load failures, render errors, and
           inspecting auth attempts. Live tail is read from <code class="jv-mono">~/.justvoice/logs/</code>.
         </p>
-        <div class="jv-row" style="gap: 8px; margin-bottom: 14px">
+        <div class="jv-row jv-gap8 jv-mb14">
           <UiButton intent="secondary" size="small" label="📂 Open log file" @click="openLogFile" />
         </div>
         <!-- The kit panel over the shared /v1/logs routes: live ring tail +
@@ -2072,80 +1963,67 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- ─── Changelog + updater (task #90) ─── -->
-    <div v-show="activeSub === 'changelog'" class="jv-section">
+    <!-- ─── Updates — the kit UpdatesPanel is THE surface (no-valve commitment;
+         the "Changelog" name died with the parity batch). Release notes come
+         from docs/whats-new.md (JW's pattern: source + renderer app-side,
+         presentation shared); JV's Tauri auto-updater rides the panel's
+         designed #actions slot. ─── -->
+    <div v-show="activeSub === 'updates'" class="jv-section">
       <div class="jv-card">
-        <div class="jv-card__header">
-          <h3 class="jv-card__title">Updates</h3>
-        </div>
-        <div class="jv-row" style="align-items: center; gap: 14px">
-          <div style="flex: 1">
-            <strong>Current: v{{ updater.currentVersion }}</strong>
-            <div class="jv-muted" style="font-size: 12.5px; margin-top: 4px">
-              <span v-if="updater.status === 'idle'">Last checked: {{ updater.lastChecked || 'never' }}</span>
-              <span v-else-if="updater.status === 'checking'">Checking for updates…</span>
-              <span v-else-if="updater.status === 'available'">
-                <strong>v{{ updater.availableVersion }} available</strong> · {{ updater.notes || '' }}
+        <UpdatesPanel :app-version="updater.currentVersion" :changelog-html="changelogHtml">
+          <template #actions>
+            <div class="jv-row jv-updater-actions">
+              <span class="jv-muted jv-updater-status">
+                <span v-if="updater.status === 'idle'">Last checked: {{ updater.lastChecked || 'never' }}</span>
+                <span v-else-if="updater.status === 'checking'">Checking for updates…</span>
+                <span v-else-if="updater.status === 'available'">
+                  <strong>v{{ updater.availableVersion }} available</strong> · {{ updater.notes || '' }}
+                </span>
+                <span v-else-if="updater.status === 'downloading'">Downloading… {{ updater.progressPct }}%</span>
+                <span v-else-if="updater.status === 'ready'">Ready to install — restart to apply.</span>
+                <span v-else-if="updater.status === 'error'" class="jv-updater-error">{{ updater.error }}</span>
+                <span v-else-if="updater.status === 'uptodate'">You're on the latest version.</span>
               </span>
-              <span v-else-if="updater.status === 'downloading'">Downloading… {{ updater.progressPct }}%</span>
-              <span v-else-if="updater.status === 'ready'">Ready to install — restart to apply.</span>
-              <span v-else-if="updater.status === 'error'" style="color: var(--danger)">{{ updater.error }}</span>
-              <span v-else-if="updater.status === 'uptodate'">You're on the latest version.</span>
+              <UiSelect
+                v-model="updater.channel"
+                width="id"
+                :options="[
+                  { label: 'Stable', value: 'stable' },
+                  { label: 'Beta', value: 'beta' },
+                  { label: 'Nightly', value: 'nightly' },
+                ]"
+                @change="persistUpdaterChannel"
+              />
+              <UiButton
+                v-if="updater.status === 'idle' || updater.status === 'uptodate' || updater.status === 'error'"
+                intent="secondary"
+                size="small"
+                :disabled="updater.busy"
+                label="Check for updates"
+                @click="checkForUpdates"
+              />
+              <UiButton
+                v-if="updater.status === 'available'"
+                intent="primary"
+                size="small"
+                :disabled="updater.busy"
+                label="Download"
+                @click="downloadUpdate"
+              />
+              <UiButton
+                v-if="updater.status === 'ready'"
+                intent="primary"
+                size="small"
+                label="Restart and install"
+                @click="restartAndInstall"
+              />
             </div>
-          </div>
-          <UiField label="Channel" layout="block">
-            <UiSelect
-              v-model="updater.channel"
-              width="id"
-              :options="[
-                { label: 'Stable', value: 'stable' },
-                { label: 'Beta', value: 'beta' },
-                { label: 'Nightly', value: 'nightly' },
-              ]"
-              @change="persistUpdaterChannel"
-            />
-          </UiField>
-          <UiButton
-            v-if="updater.status === 'idle' || updater.status === 'uptodate' || updater.status === 'error'"
-            intent="secondary"
-            :disabled="updater.busy"
-            label="Check for updates"
-            @click="checkForUpdates"
-          />
-          <UiButton
-            v-if="updater.status === 'available'"
-            intent="primary"
-            :disabled="updater.busy"
-            label="Download"
-            @click="downloadUpdate"
-          />
-          <UiButton
-            v-if="updater.status === 'ready'"
-            intent="primary"
-            label="Restart and install"
-            @click="restartAndInstall"
-          />
-        </div>
-        <p class="jv-muted" style="font-size: 11px; margin-top: 12px">
+          </template>
+        </UpdatesPanel>
+        <p class="jv-muted jv-updater-note">
           Updates ship via the GitHub Releases feed signed with the project's update key.
           Verify the binary signature on every download (Tauri does this automatically).
         </p>
-      </div>
-
-      <div class="jv-card" style="margin-top: 16px">
-        <div class="jv-card__header"><h3 class="jv-card__title">What's new in v0.1.0</h3></div>
-        <ul class="jv-muted" style="margin-left: 18px; line-height: 1.7">
-          <li>Multi-use Project model (audiobook / game_voicelines / podcast / custom)</li>
-          <li>Per-engine venv isolation</li>
-          <li>Take versioning with source-lineage</li>
-          <li>HMAC-signed webhooks with exponential backoff</li>
-          <li>Backup / restore via signed ZIP</li>
-          <li>Audio output channels (multi-device routing)</li>
-          <li>System tray with full lifecycle controls</li>
-          <li>Multi-adapter import (JustWrite / CSV / SRT / Audacity labels / standard JSON)</li>
-          <li>In-app help drawer with ~14 docs</li>
-          <li>Multi-use first-run onboarding (5 audiences)</li>
-        </ul>
       </div>
     </div>
 
@@ -2154,8 +2032,8 @@ onMounted(() => {
       <div class="jv-card">
         <div class="jv-card__header"><h3 class="jv-card__title">About JustVoice v0.1.0</h3></div>
         <p>JustVoice is a cross-platform open-source voice production studio for audiobook producers, game developers, podcasters, dictation users, and accessibility users. Built on Tauri 2 + Vue 3 + Python FastAPI.</p>
-        <p class="jv-muted" style="font-size: 12px; margin-top: 10px">Licensed MIT. Portions ported from voicebox (MIT) and JustWrite (MIT) — see <code>NOTICE.md</code>.</p>
-        <div class="jv-btn-group" style="margin-top: 14px">
+        <p class="jv-muted jv-note jv-mt10">Licensed MIT. Portions ported from voicebox (MIT) and JustWrite (MIT) — see <code>NOTICE.md</code>.</p>
+        <div class="jv-btn-group jv-mt14">
           <UiButton intent="secondary" label="📋 Third-party licenses" />
           <UiButton intent="secondary" label="🐛 Report an issue" />
           <UiButton intent="secondary" label="🎬 Run welcome again" @click="$emit('reset-onboarding')" />
@@ -2164,15 +2042,56 @@ onMounted(() => {
     </div>
 
     <!-- ─── Save ─── -->
-    <div v-show="['general','mastering','generation','capture','external'].includes(activeSub)" class="jv-section">
+    <div v-show="['general','mastering','generation','capture','external','cache'].includes(activeSub)" class="jv-section">
       <UiButton intent="primary" size="lg" @click="save">Save settings</UiButton>
     </div>
 
+    </SettingsShell>
   </div>
 </template>
 
 <style scoped>
-/* Sub-nav — tab strip at top of Settings (matches preview HTML §13). */
+/* ── Inline-style purge (parity batch 2026-08-06): the repeated inline literals
+   became these utilities; values stay the exact ones the view used. ── */
+.jv-hint { font-size: 12.5px; }
+.jv-note { font-size: 12px; }
+.jv-note-xs { font-size: 11.5px; }
+.jv-note-2xs { font-size: 11px; }
+.jv-subhead { margin: 14px 0 6px; font-size: 12.5px; color: var(--ink-2); }
+.jv-danger-note { color: var(--danger); font-size: 12px; }
+.jv-inline-row { display: flex; align-items: center; gap: 10px; }
+.jv-row--mid { align-items: center; gap: 10px; }
+.jv-tight-top { margin: 8px 0 0; }
+.jv-m0 { margin: 0; }
+.jv-mt8 { margin-top: 8px; }
+.jv-mt10 { margin-top: 10px; }
+.jv-mt12 { margin-top: 12px; }
+.jv-mt14 { margin-top: 14px; }
+.jv-mt16 { margin-top: 16px; }
+.jv-mb8 { margin-bottom: 8px; }
+.jv-mb14 { margin-bottom: 14px; }
+.jv-mb16 { margin-bottom: 16px; }
+.jv-mb18 { margin-bottom: 18px; }
+.jv-gap6 { gap: 6px; }
+.jv-gap8 { gap: 8px; }
+.jv-w560 { max-width: 560px; }
+.jv-w90 { width: 90px; }
+.jv-w130 { width: 130px; }
+.jv-center-pad { text-align: center; padding: 16px; }
+.jv-eyebrow-h { margin-bottom: 12px; color: var(--ink-3); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+.jv-italic { font-style: italic; }
+.jv-wrap { flex-wrap: wrap; }
+.jv-col-end { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.jv-meter { width: 200px; height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+.jv-mb6 { margin-bottom: 6px; }
+.jv-mb12 { margin-bottom: 12px; }
+
+/* The updater controls riding the kit UpdatesPanel's #actions slot. */
+.jv-updater-actions { align-items: center; gap: 8px; flex-wrap: wrap; }
+.jv-updater-status { font-size: 12.5px; }
+.jv-updater-error { color: var(--danger); }
+.jv-updater-note { font-size: 11px; margin-top: 12px; }
+
 .settings-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

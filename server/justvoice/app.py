@@ -31,10 +31,8 @@ from llm_runner.platform import (
 )
 
 from .api import (
-    admin_api,
     active_tasks_api,
     analyzer_api,
-    backup_api,
     bulk_delete_api,
     cache_api,
     capture_readiness_api,
@@ -72,6 +70,7 @@ from .api import (
 )
 from .app_state import AppState, set_state
 from .auth import BearerAuthMiddleware
+from .data_admin import get_data_router
 from .engines.external_openai import ExternalOpenAiTtsBackend
 from .engines.manager import get_manager, shutdown_manager
 from .errors import ApiError, api_exception_handler, http_exception_handler
@@ -296,7 +295,10 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(active_tasks_api.router)
     app.include_router(capture_readiness_api.router)
     app.include_router(captures_api.router)
-    app.include_router(admin_api.router)
+    # The shared /v1/data backup/restore/reset (family parity batch 2026-08-06 —
+    # JW's donor wiring in data_admin.py; the bespoke /v1/backup + /v1/restore +
+    # /v1/admin/factory-reset died with it, no old-zip compat per decision ②).
+    app.include_router(get_data_router())
     # The shared platform log + disk surface (kit LogsPanel + Storage read
     # these; JV's private ring/file twins died with F1 Phase 2).
     app.include_router(make_logs_router(PRODUCT))
@@ -310,7 +312,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(render_presets_api.router)
     app.include_router(bulk_delete_api.router)
     app.include_router(voice_preview_api.router)
-    app.include_router(backup_api.router)
     app.include_router(project_export_api.router)
     app.include_router(effect_presets_api.router)
     app.include_router(prefs_api.router)
