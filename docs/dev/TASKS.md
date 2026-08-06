@@ -25,7 +25,9 @@
 > is left untouched on purpose so re-enabling is one command when the CI
 > pipeline is actually wanted again.
 
-## APPROVED 2026-08-06 (QC walk rulings, "ok your rec go" + "ok go") — IN BUILD
+## APPROVED 2026-08-06 (QC walk rulings) — BUILT same day, awaiting the user's QC
+## (kit `def5142` gate + `cbdbfff` pieces/panels/cascade · JV `7b6feb1`; text kept
+## verbatim below until the walk confirms, then this block collapses)
 
 **The Routing-by-feature rework (JV) + the thinking capability gate (kit).**
 The approved text, as presented and confirmed:
