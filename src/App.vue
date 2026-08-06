@@ -197,14 +197,18 @@ function closeAiOffer() {
   aiOfferOpen.value = false;
   writePref("aiOfferShown", true); // whatever path was taken, once ever
 }
-watch(() => activeProject.id, (id, prev) => {
-  if (id && !prev) maybeOfferAiSetup();
-});
 const onboarding = useOnboarding();
 const activeProject = useActiveProject();
 const uiContext = useUiContext();
 const serverStore = useServerStore();
 const { t } = useI18n();
+// The offer's trigger — BELOW the store declarations: this watch runs at setup
+// time, and referencing `activeProject` above its `const` was a
+// temporal-dead-zone boot crash the vite build can't catch (found live on the
+// first QC run, 2026-08-05 — only the real webview executes setup).
+watch(() => activeProject.id, (id, prev) => {
+  if (id && !prev) maybeOfferAiSetup();
+});
 // initialDeepLink is non-empty only for a real bookmarked route — the "/"
 // default redirects to /overview, so first-run logic uses it to tell "user
 // chose overview" from "defaulted there".
