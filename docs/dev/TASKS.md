@@ -27,6 +27,16 @@
 
 ## QC finds 2026-08-05 (user's eyes, added on sight)
 
+
+## THE FAMILY PARITY BATCH — approved 2026-08-05, THE next build
+- **The master plan (read WHOLE before coding any slice):**
+  `../justwrite-app/docs/plans/2026-08-05-family-parity-batch.md` — all
+  decisions verbatim (①-⑤, the no-escape-valve commitments, the governing
+  mechanism-vs-data principle), the 12-slice checklist, the Speaker-Lab
+  12-point acceptance inventory, the approved human copy for the 13 rows,
+  the after-batch order (UiTable → e2e harness → THE deep exhaustive audit →
+  product calls). This repo's slices are marked per-app inside it.
+
 - **Sidebar nav items are cut off** — labels truncate/don't fit after the F1
   labels got longer ("AI Settings", "Voice engines", the "AI tasks" toggle +
   badge). The nav must SIZE ITSELF so words are never clipped (normal
