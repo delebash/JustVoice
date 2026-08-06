@@ -2,6 +2,8 @@
 
 ## v0.1.0
 
+- One AI Settings console — text AI (providers + models) and speech (engines,
+  self-hosted servers, cloud APIs) with per-feature routing and a live Lab
 - Multi-use Project model (audiobook / game voice lines / podcast / custom)
 - Per-engine venv isolation
 - Take versioning with source lineage

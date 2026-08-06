@@ -78,8 +78,14 @@ Local engines (above) are managed by JustVoice — installed into per-engine ven
 - **LLM providers** — Anthropic Claude, OpenAI, Gemini, Ollama, DeepSeek, OpenRouter. Needed for Compose, Persona rewrite, Speaker attribution, Smart-assign, Render preset suggest.
 - **TTS providers** — ElevenLabs, Speechify, Speechmatics, OpenAI TTS, OpenAI-compatible self-hosted servers (Kokoro-FastAPI, Chatterbox-TTS-Server, Dia-TTS-Server, Qwen3-TTS).
 
-Language-model providers register on the AI page's **LLM providers** tab; speech providers on its **TTS providers** tab → **+ Add provider**, with an inline form that handles API key, base URL, model picking (with Fetch), voice multi-select (TTS), and Test verification. See [providers.md](providers.md) for the full flow.
+Language-model providers register on the AI page's **LLM providers** tab.
+Speech providers register on the **Speech engines** tab: cloud APIs under
+**Online · metered** → **+ Add provider**; servers you run yourself under
+**Local · free** → **Self-hosted servers** → **+ Add self-hosted server**.
+The inline form handles API key, base URL, the TTS model, voice multi-select
+(with Fetch voices), and Test verification. See [providers.md](providers.md)
+for the full flow.
 
-Self-hosted speech servers you register also list under Local on the Speech engines tab, beside the installed engines.
-
-After registering one or more LLM providers, configure feature routing in [ai-features.md](ai-features.md) — pin specific features (Compose, Speaker attribution, etc.) to specific provider+model+tier combinations.
+After registering one or more LLM providers, open **AI Settings → Routing by
+feature** to point specific features (Compose, Speaker attribution, etc.) at
+specific provider + model choices — see [ai-features.md](ai-features.md).

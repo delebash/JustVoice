@@ -1,16 +1,20 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!--
-  The ONE AI console (family parity batch 2026-08-06) — the kit's whole AI area
-  plus JV's speech surfaces as HOST TABS. The strip (JV's approved seven):
-  LLM providers · TTS providers · Speech engines · LLM models · Routing by
-  feature · Usage · AI engine console. The providers/models tabs are the kit's,
-  relabeled JV-only via the labels feed (two provider kinds need naming — see
-  main.js); TTS providers + Speech engines are host tabs lifted from the
-  retired Voice engines page; the Models split rides the kit's opt-in
-  `modelsTab`. Deep links: ?tab=<id> (the old #engines page redirects here to
-  the Speech engines tab) and ?action=<featureAction> (the old #speakerlab
-  redirects to ?tab=features&action=speaker_attribution.guided — the Lab there
-  IS the Speaker Lab now, running the real pipeline via the labAdapters seam;
+  The ONE AI console — the kit's whole AI area plus JV's speech surface as a
+  HOST TAB. The strip (user QC ruling 2026-08-06 — five, one per concern):
+  LLM providers · Speech engines · Routing by feature · Usage · AI engine
+  console. The providers tab is the kit's ("Providers & models" — connections
+  + the local model catalog together, the kit's default shape), relabeled
+  JV-only via the labels feed (two provider kinds need naming — see main.js);
+  Speech engines is the one speech surface with its own Local/Online pair
+  (engines + self-hosted under Local, cloud APIs under Online). The
+  four-tab split this replaced (separate TTS-providers and LLM-models tabs)
+  was the batch's miss — the models tab duplicated the catalog already inside
+  LLM providers, and the provider halves belong inside the speech surface.
+  Deep links: ?tab=<id> (the old #engines page redirects here to the Speech
+  engines tab) and ?action=<featureAction> (the old #speakerlab redirects to
+  ?tab=features&action=speaker_attribution.guided — the Lab there IS the
+  Speaker Lab now, running the real pipeline via the labAdapters seam;
   main.js registers it). The KIT wizard runs here, voiced by main.js's
   quickSetupCopy and named "LLM engine setup" by the labels feed (ruling 6).
 -->
@@ -19,16 +23,13 @@ import { onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { AiModelsArea, useModelApply } from "@delebash/llm-ui";
 import SpeechEnginesTab from "../components/SpeechEnginesTab.vue";
-import TtsProvidersTab from "../components/TtsProvidersTab.vue";
 
 const route = useRoute();
 const router = useRouter();
 
-// The two speech host tabs sit right after the (LLM) providers tab — the
-// approved strip order.
+// The one speech host tab, right after the (LLM) providers tab.
 const APP_TABS = [
-  { id: "tts-providers", label: "TTS providers", after: "providers" },
-  { id: "speech-engines", label: "Speech engines", after: "tts-providers" },
+  { id: "speech-engines", label: "Speech engines", after: "providers" },
 ];
 
 // ?tab= / ?action= deep links (one-shot, like ?quicksetup): the redirect from
@@ -64,9 +65,7 @@ onMounted(async () => {
       :initial-tab="initialTab"
       :initial-feature-action="initialAction"
       :app-tabs="APP_TABS"
-      models-tab
     >
-      <template #app-tab-tts-providers><TtsProvidersTab /></template>
       <template #app-tab-speech-engines><SpeechEnginesTab /></template>
     </AiModelsArea>
   </div>

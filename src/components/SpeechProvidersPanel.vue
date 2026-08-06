@@ -1,19 +1,26 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!--
-  TTS providers — the external speech-provider CRUD, a HOST TAB inside the AI
-  console since the family parity batch (2026-08-06). This is the old
-  EnginesView's ONLINE half with the LLM residue gone: LLM providers live on
-  the LLM providers tab (the kit surface), so the dual-kind capability
-  checkboxes, the /v1/llm-providers merging, and the old ProviderForm died.
-  What remains is exactly this app's own store: settings.engines.external
+  SpeechProvidersPanel — the external speech-provider CRUD, mounted INSIDE the
+  Speech engines tab (user QC ruling 2026-08-06: the standalone "TTS providers"
+  tab made no sense — one speech surface with the normal Local/Online pair,
+  like the LLM providers tab one tab over). Two mounts, one save path:
+    scope="selfhosted" → the Local half's "servers you run" rows
+    scope="cloud"      → the Online half (cloud speech APIs)
+  The store is exactly this app's own: settings.engines.external
   (ExternalEngineConfig — snake_case on the wire; the snake↔camel boundary
-  lives at this tab's read + write edges, as before).
+  lives at this panel's read + write edges). The LLM residue died with the old
+  EnginesView in the parity batch.
 -->
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { UiButton, confirmDialog, pushToast } from "@delebash/llm-ui";
 import TtsProviderForm from "./TtsProviderForm.vue";
+
+const props = defineProps({
+  // Which half of the Local/Online pair this mount serves.
+  scope: { type: String, required: true, validator: (v) => ["cloud", "selfhosted"].includes(v) },
+});
 
 const api = useApi();
 
@@ -41,6 +48,9 @@ async function loadProviders() {
 
 const visibleProviders = computed(() => {
   return ttsProviders.value.filter((p) => {
+    // Each mount shows its half only — a saved row lists under whichever half
+    // its self_hosted flag matches (the form's URL auto-detect can flip it).
+    if ((props.scope === "selfhosted") !== !!p.self_hosted) return false;
     const blob = `${p.name} ${p.id} ${p.baseUrl || ""} ${p.tts_model || ""}`.toLowerCase();
     return !qp.value.trim() || blob.includes(qp.value.trim().toLowerCase());
   });
@@ -64,7 +74,7 @@ function defaultDraft() {
     tts_model: "",
     voices: [],
     response_format: "wav",
-    self_hosted: false,
+    self_hosted: props.scope === "selfhosted",
   };
 }
 function startNewProvider() {
@@ -173,6 +183,23 @@ function rowDotClass(pr) {
   return (pr.hasApiKey || /localhost|127\.0\.0\.1/.test(pr.baseUrl || "")) ? "" : "off";
 }
 
+// The half's words — outcomes in user language, per scope.
+const COPY = {
+  cloud: {
+    add: "+ Add provider",
+    addTitle: "Connect a speech API — no install, no downloads, no VRAM",
+    note: "💳 These call external speech APIs with your keys — usage is billed by the provider, and your text leaves this machine.",
+    empty: 'No speech providers yet — click "+ Add provider".',
+  },
+  selfhosted: {
+    add: "+ Add self-hosted server",
+    addTitle: "An OpenAI-compatible speech server you run yourself — localhost or LAN, free and private",
+    note: "🖥️ Servers you run yourself — free, private, nothing leaves your network. JustVoice just needs the URL.",
+    empty: 'No self-hosted servers yet — click "+ Add self-hosted server".',
+  },
+};
+const words = computed(() => COPY[props.scope]);
+
 onMounted(loadProviders);
 </script>
 
@@ -181,18 +208,15 @@ onMounted(loadProviders);
     <div class="ev-toprow">
       <div class="jv-searchbar">🔍 <input v-model="qp" placeholder="Search providers…"></div>
       <span class="jv-spacer" />
-      <UiButton intent="primary" size="small" label="+ Add provider" title="Connect a speech API — no install, no downloads, no VRAM" @click="startNewProvider" />
+      <UiButton intent="primary" size="small" :label="words.add" :title="words.addTitle" @click="startNewProvider" />
     </div>
 
-    <div class="ev-costnote">
-      💳 These call external speech APIs with your keys — usage is billed by the provider, and your text leaves this machine.
-      Self-hosted servers (localhost/LAN) are free and private. Local engines live on the Speech engines tab.
-    </div>
+    <div class="ev-costnote">{{ words.note }}</div>
 
     <div v-if="editingKey === 'new' && draft" class="ev-prov">
       <div class="ev-prow">
         <span class="ev-dot off"></span>
-        <div class="pmain"><span class="nm nm--placeholder">New provider</span></div>
+        <div class="pmain"><span class="nm nm--placeholder">{{ scope === 'selfhosted' ? 'New self-hosted server' : 'New provider' }}</span></div>
         <span class="right">
           <UiButton intent="ghost" size="small" label="Cancel" @click="cancelEdit" />
         </span>
@@ -222,6 +246,6 @@ onMounted(loadProviders);
       <TtsProviderForm v-if="editingKey === pr.id && draft" :draft="draft" :editing-key="pr.id"
         @save="saveProvider" @cancel="cancelEdit" @delete="deleteProvider" />
     </div>
-    <p v-if="!visibleProviders.length && editingKey !== 'new'" class="jv-muted tp-empty">No speech providers yet — click "+ Add provider".</p>
+    <p v-if="!visibleProviders.length && editingKey !== 'new'" class="jv-muted tp-empty">{{ words.empty }}</p>
   </div>
 </template>

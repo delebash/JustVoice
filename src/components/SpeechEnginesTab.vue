@@ -1,25 +1,29 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!--
-  Speech engines — the managed-engine catalog (TTS + STT), a HOST TAB inside the
-  AI console since the family parity batch (2026-08-06). This is the old
-  EnginesView's LOCAL half with the LLM-runner interaction grammar:
+  Speech engines — JV's ONE speech surface inside the AI console (user QC
+  ruling 2026-08-06: five tabs — LLM providers · Speech engines · Routing by
+  feature · Usage · AI engine console; the separate TTS-providers and
+  LLM-models tabs made no sense). The normal Local/Online pair, mirroring the
+  LLM providers tab one tab over:
 
-  - install / download / load run through the kit's createDownloadTask over
-    ttsJobChannel (JV's POST → job_id → GET /v1/jobs/{id} → DELETE is exactly
-    the channel contract), and the kit DownloadBar renders every operation —
-    the ~70-line hand EWMA/rate/ETA strip (the old C3 .jv-install-strip) died.
-  - "Set as default" is a ROW ACTION on engines (writes
-    settings.engines.default_tts_engine — the old Settings → Generation
-    dropdown died with it; one source) and on models (writes
-    engine_overrides[id].default_variant, the user layer the manager resolves
-    over the manifest's DEFAULT_VARIANT_ID).
-  - The LLM and Embeddings sections died here: language models live on the
-    LLM providers / LLM models tabs of this same console.
+  - LOCAL · free — the managed-engine catalog (TTS + STT) with the LLM-runner
+    interaction grammar, plus the self-hosted servers you run
+    (SpeechProvidersPanel scope="selfhosted" — full add/edit/test verbs):
+    · install / download / load run through the kit's createDownloadTask over
+      ttsJobChannel (POST → job_id → GET /v1/jobs/{id} → DELETE is exactly
+      the channel contract); the kit DownloadBar renders every operation.
+    · "Set as default" is a ROW ACTION on engines (settings.engines.
+      default_tts_engine — one source) and on models (engine_overrides[id].
+      default_variant, the user layer the manager resolves).
+  - ONLINE · metered — the cloud speech APIs (SpeechProvidersPanel
+    scope="cloud" — ElevenLabs, OpenAI TTS, …).
 
-  Kept from the old page, deliberately: the hardware card, the loaded-now rail,
-  search + kind chips, fit dots, the weights-licence attribution row (a licence
-  OBLIGATION — see the inline note), per-variant delete, venv uninstall, and
-  the self-hosted TTS providers listed under Local with their kind.
+  The LLM and Embeddings sections died here in the parity batch: language
+  models live on the LLM providers tab of this same console. Kept from the
+  old Engines page, deliberately: the hardware card, the loaded-now rail,
+  search + kind chips, fit dots, the weights-licence attribution row (a
+  licence OBLIGATION — see the inline note), per-variant delete, venv
+  uninstall, and the folder-tab pair itself (Engines' approved mock v7).
 -->
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
@@ -28,6 +32,10 @@ import { useRenderTasks } from "../stores/renderTasks.js";
 import { DownloadBar, UiButton, UiTag, confirmDialog, promptDialog, pushToast } from "@delebash/llm-ui";
 import { makeEngineDownloadTask } from "../services/ttsJobChannel.js";
 import { createDownloadTask } from "@delebash/llm-ui";
+import SpeechProvidersPanel from "./SpeechProvidersPanel.vue";
+
+// The Local/Online half switch (the folder-tab pair).
+const half = ref("local");
 
 const api = useApi();
 const tasks = useRenderTasks();
@@ -117,21 +125,6 @@ async function setDefaultVariant(engine, variantId) {
     pushToast({ message: `Couldn't set the default: ${e?.message || e}`, kind: "error" });
   }
 }
-
-// ── Registered self-hosted TTS providers (listed under Local with their
-// kind — the user runs these; provider verbs live on the TTS providers tab).
-const ttsProviders = ref([]);
-async function loadProviders() {
-  const s = await api.safeRequest("/v1/settings", null);
-  const list = s?.engines?.external || [];
-  ttsProviders.value = list.map((p) => ({
-    id: p.id,
-    name: p.name || p.id,
-    baseUrl: p.base_url || "",
-    self_hosted: !!p.self_hosted,
-  }));
-}
-const selfHostedTts = computed(() => ttsProviders.value.filter((p) => p.self_hosted));
 
 const RUNTIME_LABELS = {
   cuda: "CUDA", metal: "Metal", coreml: "CoreML", directml: "DirectML",
@@ -453,7 +446,7 @@ async function unloadKind(kind) {
 const sharedEngines = computed(() => engines.value.filter((e) => e.isolation !== "venv").length);
 
 onMounted(() => {
-  refresh(); loadSystem(); loadProviders(); loadDefaults();
+  refresh(); loadSystem(); loadDefaults();
   window.addEventListener("jv:health-refresh", refresh);
 });
 onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
@@ -461,6 +454,24 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
 
 <template>
   <div>
+    <!-- The folder-tab pair (Engines' approved mock v7) — same split as the
+         LLM providers tab one tab over. -->
+    <div class="jv-toptabs">
+      <button type="button" class="jv-toptab" :class="{ on: half === 'local' }" @click="half = 'local'">
+        <span class="t1">Local · free</span>
+        <span class="t2">Engines JustVoice installs, plus servers you run — no key, no per-use cost</span>
+      </button>
+      <button type="button" class="jv-toptab" :class="{ on: half === 'online' }" @click="half = 'online'">
+        <span class="t1">Online · metered</span>
+        <span class="t2">Cloud speech APIs — your account, billed by the provider</span>
+      </button>
+    </div>
+
+    <!-- ── ONLINE half: the cloud speech-provider CRUD. ── -->
+    <SpeechProvidersPanel v-if="half === 'online'" scope="cloud" />
+
+    <!-- ── LOCAL half: managed engines + self-hosted servers. ── -->
+    <template v-else>
     <div class="ev-toprow">
       <div class="jv-searchbar">
         🔍 <input v-model="q" placeholder="Search speech models and engines…" title="Filters engines and models; matching groups auto-expand">
@@ -512,23 +523,6 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
         <h3>{{ sec.title }} <span class="suffix">— {{ sec.suffix }}</span></h3>
         <span class="count">{{ sec.engineCount }} engine{{ sec.engineCount === 1 ? '' : 's' }} · {{ sec.modelCount }} models</span>
         <span class="note">{{ sec.note }}</span>
-      </div>
-
-      <!-- Self-hosted TTS providers — the user runs these; they belong under
-           Local with their kind. Provider verbs live on the TTS providers tab. -->
-      <div v-if="sec.id === 'tts'" >
-        <div v-for="pr in selfHostedTts" :key="`sh-${pr.id}`" class="ev-group">
-          <div class="ev-ghead ev-ghead--static">
-            <span class="chev chev--ghost">▶</span>
-            <span class="nm">{{ pr.name }}</span><span class="id">{{ pr.id }}</span>
-            <span class="ev-caps">
-              <span class="ev-cap tts">TTS</span>
-              <span class="ev-cap iso" title="OpenAI-compatible server you run yourself — free, private, nothing to install here">SELF-HOSTED</span>
-            </span>
-            <span class="desc">{{ pr.baseUrl }}</span>
-            <span class="gsum jv-muted">manage it on the TTS providers tab</span>
-          </div>
-        </div>
       </div>
 
       <div v-for="e in sec.engines" :key="e.id" class="ev-group">
@@ -612,6 +606,14 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
       </div>
     </div>
 
+    <!-- Self-hosted servers — the user runs these; they live under Local with
+         their kind, WITH their verbs (add/edit/test — the read-only teaser +
+         separate tab died, user QC ruling 2026-08-06). -->
+    <div class="ev-section-h">
+      <h3>Self-hosted servers <span class="suffix">— speech servers you run</span></h3>
+    </div>
+    <SpeechProvidersPanel scope="selfhosted" />
+
     <p class="ev-fitnote" v-if="gpuVramMb">
       Hardware fit, against your card:
       <span class="ev-fit ok"></span> fits
@@ -623,6 +625,7 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
       Shared runtime (torch + common deps for the {{ sharedEngines }} shared engines)
       <span class="jv-muted ev-push-right">engines install into it automatically on first use</span>
     </div>
+    </template>
   </div>
 </template>
 
