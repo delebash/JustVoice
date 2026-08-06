@@ -14,6 +14,7 @@ import {
   startWarmOnBoot,
 } from "@delebash/llm-ui";
 import { SERVER_URL, resolveBase } from "./config.js";
+import { attributionLabAdapter } from "./services/attributionLab.js";
 import { bootPrefs, ensureActiveProjectDefault } from "./services/prefs.js";
 import { loadDoc, hasDoc, titleForSlug } from "./services/helpDocs.js";
 import { useUIStore } from "./stores/ui.js";
@@ -46,6 +47,12 @@ function wireKit(app) {
     },
     // Nothing in JV embeds (chat ruling 2026-08-05).
     capabilities: { embeddings: false },
+    // The Lab runs the REAL attribution pipeline for speaker_attribution
+    // columns (parity batch 2026-08-06 — the Speaker Lab reunification):
+    // /v1/extraction/analyze-text instead of the generic /v1/ai/run, the
+    // speaker table with reassign-teaches as the renderer, tier + floor
+    // controls on the column. CONCEPTS §16: lab and production cannot drift.
+    labAdapters: { speaker_attribution: attributionLabAdapter },
     // This app's voice on the shared model-catalog surface (defaults are JW's words).
     catalogCopy: {
       chatSectionLabel: "Assistant models",

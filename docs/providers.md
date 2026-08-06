@@ -17,60 +17,47 @@ Language models live on the **LLM providers** tab; speech on the **TTS providers
 | Low-cost cloud LLM | DeepSeek or OpenRouter (LLM provider) | Cheaper per-token than Claude / OpenAI for speaker attribution at audiobook scale |
 | Local LLM, no API costs | Ollama (LLM provider) | Run llama3.2 / qwen3 / mistral locally. Routes everything through your machine |
 
-## Adding a provider
+## Adding a speech provider
 
-1. **Open the AI page → TTS providers tab** (language models: the LLM providers tab).
-2. Click **+ Add LLM provider** (or **+ Add TTS provider**). An inline editor expands at the top of the registered-provider list.
+1. **Open the AI page → TTS providers tab** (language models: the LLM
+   providers tab has its own form — connect Claude / OpenAI / Ollama and the
+   rest there).
+2. Click **+ Add provider**. An inline editor expands.
 3. Fill in the form:
-   - **ID** — a stable identifier the routing refers to (e.g. `my-claude`). Cannot change after the first save (would orphan routing that points at it).
-   - **Display name** — what shows in dropdowns. Edit later if you want.
-   - **Kind** — `llm`, `tts`, or `both`. Most providers are one or the other.
+   - **Name** — what shows in dropdowns and the Studio Cast voice library.
    - **Base URL** — the API root. Examples:
-     - Anthropic: `https://api.anthropic.com`
-     - OpenAI: `https://api.openai.com/v1`
-     - DeepSeek: `https://api.deepseek.com/v1`
-     - Ollama: `http://localhost:11434`
+     - ElevenLabs: `https://api.elevenlabs.io`
+     - OpenAI TTS: `https://api.openai.com/v1`
      - Self-hosted Kokoro: `http://localhost:8880`
-   - **API key** — paste from your provider's console. JustVoice stores it locally; never sent anywhere except to that provider's base URL. Editing existing? Leave blank to preserve the saved key.
-   - **API format** (LLM only) — `Anthropic` / `OpenAI` / `OpenAI-compatible` / `Gemini` / `Ollama` / `DeepSeek` / `OpenRouter`. Drives which wire format JustVoice speaks. The Install / setup hint band shows you where to get credentials for each.
-4. Click **Save**. JustVoice registers the provider, and the row appears in the list with a 🔑 indicator (API key on file) and a `live` pill if the adapter constructed cleanly.
+   - **API key** — paste from your provider's console. JustVoice stores it
+     locally; never sent anywhere except to that provider's base URL. Editing
+     an existing provider? Leave blank to preserve the saved key.
+   - **TTS model** — the model id the server expects (e.g.
+     `eleven_flash_v2_5`).
+   - **Voices** — the voice ids you want JustVoice to use; only those appear
+     in the Studio Cast voice library. **⟳ Fetch voices** asks the server for
+     its list so you can pick instead of type.
+4. **Test connection** checks the URL + key round-trip before you commit.
+5. Click **Save provider**.
 
-## Picking a model
+## Which reading instructions run (LLM)
 
-After saving, click the row's **Edit** button to expand the form again. The chat-model and TTS-model fields each have a typing combobox + a **Fetch models** button.
-
-- **Fetch models** — for live LLM providers, calls the provider's `/v1/models`-equivalent endpoint and lists everything available. Click an entry to pick it, or type to filter.
-- **Fetch voices** (TTS) — calls the server's voices endpoint and shows them in a multi-select with checkmarks. Pick the ones you want JustVoice to use; only those appear in the Studio Cast voice library.
-
-If Fetch fails (network error, bad credentials), the error appears under the field and the saved key gets preserved.
-
-## Tier picker
-
-The chat-model row shows a 3-button tier picker (**Guided** / **Direct** / **Reasoned**) with an auto-detected suggestion:
-
-- **Guided** — small or quantized models (Qwen 3B, Llama 3.2 1B). JustVoice sends hand-held step-by-step prompts.
-- **Direct** — mid-range (Haiku 4.5, GPT-4o-mini, Qwen 14B). Standard one-shot prompts.
-- **Reasoned** — reasoning models (Claude 3.7 thinking, o1 / o3, qwen3:32b). JustVoice allows chain-of-thought; longer but higher accuracy for speaker attribution and structural analysis.
-
-JustVoice classifies the picked model automatically via heuristic on the model id (the Speaker Lab can override the tier per run when the auto-classification gets it wrong — rare).
-
-## Ping / verify the provider works
-
-Every provider row has a **Ping** button. It does an unauthenticated round-trip:
-
-- For LLM providers: hits the adapter's reachability check. Returns a green "Reachable" strip or a red error.
-- For TTS providers: probes `/v1/models` + `/v1/audio/voices` to confirm the URL and credentials work, and reports back which models + voices the server exposes.
-
-Use Ping before relying on a provider — catches a typo'd base URL or expired API key before you try to render a chapter.
+There's no tier to configure on a provider. When an AI feature runs, JustVoice
+picks the reading instructions from the model the run resolves to — small
+models get worked examples, larger ones get the rules alone, hybrid thinking
+models get reasoning enabled. The attribution Lab (AI Settings → Routing by
+feature → a speaker-attribution row) can override the pick per run when the
+auto-classification gets it wrong — rare.
 
 ## Editing or removing
 
-- **Edit** — click Edit on the row. The form expands in place. Fields readonly when not editable (e.g. `id`).
-- **Delete** — inside the Edit form, bottom-left. Confirms before removing. Routing that pointed at this provider falls back at dispatch time.
+- **Edit** — click Edit on the row. The form expands in place.
+- **Remove provider** — inside the Edit form. Confirms before removing.
+  Casting that pointed at this provider's voices falls back at render time.
 
 ## Self-hosted TTS — Kokoro / Chatterbox / Dia / Qwen3-TTS
 
-If you're running a self-hosted TTS server (community-published OpenAI-compatible projects exist for each), register it as a TTS provider with `kind=tts` and `provider_type=openai-compat`. The install-hint band in the form links to each project's canonical GitHub. JustVoice handles the standard `POST /v1/audio/speech` shape; non-standard fields (Chatterbox's `exaggeration` / `cfg_weight`, Dia's multi-speaker tags) ride through `params` JSON.
+If you're running a self-hosted TTS server (community-published OpenAI-compatible projects exist for each), add it on the TTS providers tab with its base URL — no key needed for local servers. The setup-hint band in the form links to each known project's canonical GitHub. JustVoice speaks the standard `POST /v1/audio/speech` shape; non-standard fields (Chatterbox's `exaggeration` / `cfg_weight`, Dia's multi-speaker tags) ride through `params` JSON.
 
 ## What about feature routing?
 
@@ -78,7 +65,9 @@ After registering one or more LLM providers, open **AI Settings → Routing by f
 
 ## Troubleshooting
 
-- **Save failed: 400 "provider id X already exists"** — IDs must be unique. Use the Edit button on the existing row instead of registering a new one.
-- **Fetch models hangs** — the provider's server is unreachable. Ping first; check the base URL + API key.
-- **"unregistered" pill on an LLM row** — the adapter persisted to settings but couldn't construct (most often a missing or invalid API key field). Open the row, fix the field, Save again.
-- **Compose / Rewrite return HTTP 501** — no LLM provider is registered yet. Add one before using features that need an LLM.
+- **Fetch voices hangs or errors** — the provider's server is unreachable.
+  Test connection first; check the base URL + API key.
+- **A provider's voices don't show in Studio Cast** — only the voices picked
+  on the provider row appear; Edit the row and add them.
+- **Compose / Rewrite return HTTP 501** — no language model is set up yet.
+  Connect one on the LLM providers tab (or run the LLM engine setup).

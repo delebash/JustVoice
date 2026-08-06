@@ -118,6 +118,64 @@ def test_promote_creates_then_reuses(client):
     assert r2.json()["created"] == [] and r2.json()["reused"] == [new_id]
 
 
+# ── The ad-hoc discovery door (the attribution Lab's identify twin) ──
+
+
+def test_discover_adhoc_free_text(client, monkeypatch):
+    """POST /v1/extraction/discover-speakers — no scene, caller-supplied known
+    names (parity batch 2026-08-06: the Lab's identify columns run this)."""
+
+    def fake_identify(text, known, *, settings, run_fn=None):
+        assert known == ["Mara Vance"]
+        assert "Tom" in text
+        return [SpeakerCandidate(name="Tom Harlan", role_hint="neighbor", approx_lines=3)]
+
+    monkeypatch.setattr("justvoice.extraction.identify.identify_speakers", fake_identify)
+    r = client.post(
+        "/v1/extraction/discover-speakers",
+        json={"text": "“Hi,” said Tom.", "known_characters": ["Mara Vance"]},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["scene_id"] == "(adhoc)"
+    assert r.json()["candidates"] == [
+        {"name": "Tom Harlan", "role_hint": "neighbor", "approx_lines": 3}
+    ]
+
+
+def test_discover_adhoc_threads_column_pins(client, monkeypatch):
+    """The Lab column's pins (provider/model/temperature/prompts) thread through
+    the route's run_fn into the shared run path's kwargs."""
+    captured = {}
+
+    def fake_run(action, variables, **overrides):
+        captured.update(action=action, **overrides)
+
+        class R:
+            text = '[{"name": "Tom Harlan"}]'
+
+        return R()
+
+    monkeypatch.setattr("justvoice.engines.llm.run.run_feature", fake_run)
+    r = client.post(
+        "/v1/extraction/discover-speakers",
+        json={
+            "text": "“Hi,” said Tom.",
+            "known_characters": ["Mara Vance"],
+            "providerId": "anthropic",
+            "model": "claude-sonnet-5",
+            "temperature": 0.1,
+            "systemPrompt": "CUSTOM DISCOVERY PROMPT",
+        },
+    )
+    assert r.status_code == 200, r.text
+    assert captured["action"] == "speaker_attribution.identify"
+    assert captured["providerId"] == "anthropic"
+    assert captured["model"] == "claude-sonnet-5"
+    assert captured["temperature"] == 0.1
+    assert captured["system"] == "CUSTOM DISCOVERY PROMPT"
+    assert [c["name"] for c in r.json()["candidates"]] == ["Tom Harlan"]
+
+
 # ── Speaker Lab per-column overrides reach the LLM call ──────────────
 
 

@@ -267,8 +267,18 @@ costs specific features, and the UI says exactly which.
 
 ## 12. Speaker Lab (attribution tuning) — Tuner is production-facing, Lab is preserved
 
-Grounded in code: `engines/llm/tiers.py`, `SpeakerLabView.vue`,
-`api/extraction_api.py`, `api/feature_pins_api.py`, `labs/extraction/`.
+> **RELOCATED 2026-08-06 (parity batch):** the standalone Speaker Lab view
+> retired. The lab is the AI console's Lab now (Routing by feature → a
+> speaker-attribution row) via the kit's `labAdapters` seam —
+> `src/services/attributionLab.js` + `src/components/lab/Attribution*.vue`
+> run the same `/v1/extraction/analyze-text` pipeline (§16's law holds).
+> The tier auto-classification below still runs server-side per call;
+> "Pin to production" died with F1 (engine presets route features now).
+> `#speakerlab` redirects to the new home.
+
+Grounded in code (pre-relocation names): `engines/llm/tiers.py`,
+`SpeakerLabView.vue`, `api/extraction_api.py`, `api/feature_pins_api.py`,
+`labs/extraction/`.
 
 - **Tuner tab (the main one).** Detects the connected model and
   auto-classifies its tier (heuristics ported from JustWrite's

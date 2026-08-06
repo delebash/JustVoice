@@ -465,28 +465,14 @@ async def update_block(
         b.source = body.source
 
     if persona_id_changed:
-        # Look up the parent project via the scene.
+        # Look up the parent project via the scene, then write through THE one
+        # correction writer (extraction_api.record_correction — the Lab's
+        # reassign shares it since the parity batch; cap + shape live once).
         scene = db.query(Scene).filter(Scene.id == b.scene_id).first()
         if scene:
-            from ..database.models import SpeakerCorrection
+            from .extraction_api import record_correction
 
-            db.add(
-                SpeakerCorrection(
-                    project_id=scene.project_id,
-                    text_snippet=b.text[:400],
-                    character_id=body.persona_id,
-                )
-            )
-            # Cap at 200 per project — drop oldest on overflow.
-            existing = (
-                db.query(SpeakerCorrection)
-                .filter(SpeakerCorrection.project_id == scene.project_id)
-                .order_by(SpeakerCorrection.created_at.desc())
-                .offset(200)
-                .all()
-            )
-            for row in existing:
-                db.delete(row)
+            record_correction(db, scene.project_id, b.text, body.persona_id)
 
     db.commit()
     db.refresh(b)

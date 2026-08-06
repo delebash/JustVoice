@@ -2,17 +2,17 @@
 <!--
   LabsView — the Tools lane collapsed into one Settings-style tabbed
   view (user decision 2026-06-12, SAME tab strip as Settings —
-  .jv-subnav): Compare · Train · Speaker · Render ·
-  Audio. Legacy hashes (#compare/#train/#speakerlab/#renderlab/#audio)
-  redirect here with jv.labs.sub carrying the target tab. Only the
-  active tab mounts (dynamic component), so each lab's fetches run on
-  entry, not five at once.
+  .jv-subnav): Compare · Train · Render · Audio (the TTS domain). Legacy
+  hashes (#compare/#train/#renderlab/#audio) redirect here with
+  jv.labs.sub carrying the target tab; #speakerlab redirects to the AI
+  console's Lab instead (the Speaker Lab reunified there, parity batch
+  2026-08-06). Only the active tab mounts (dynamic component), so each
+  lab's fetches run on entry, not four at once.
 -->
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import CompareView from "./CompareView.vue";
 import TrainView from "./TrainView.vue";
-import SpeakerLabView from "./SpeakerLabView.vue";
 import RenderLabView from "./RenderLabView.vue";
 import AudioToolsView from "./AudioToolsView.vue";
 
@@ -28,10 +28,6 @@ const SUBS = [
   {
     id: "train", label: "Train", component: TrainView,
     lede: "Fine-tuning queue. Train a LoRA (or full fine-tune) on a voice's samples against a base engine; finished jobs land in the voice library as new profiles.",
-  },
-  {
-    id: "speakerlab", label: "Speaker", component: SpeakerLabView,
-    lede: "Speaker-extraction testbed. Paste any text — chapters optional — then tune the run: model, temperature, tier, floors, and the system prompt. Add a column to race a second configuration on the same input. Same backend as Studio · Script.",
   },
   {
     id: "renderlab", label: "Render", component: RenderLabView,

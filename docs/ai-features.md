@@ -40,15 +40,36 @@ test it standalone). Dictation cleanup is four rows (base + the three
 transformation sections your Capture toggles enable); production runs the
 composition of whichever sections are on.
 
-## The Speech AI tab
+## The attribution Lab
 
-The AI Settings page's **Speech AI** tab holds JustVoice's own knobs:
+The speaker-attribution rows' **Lab** (Routing by feature → open a "Who
+speaks" row) runs the **real reading pipeline** — the same
+segmentation, "Tom said" anchors, and confidence floor as Studio's Analyze —
+so what you tune there is exactly what production runs:
 
-- **Speaker corrections** — a per-project count of the manual fixes you've made
-  on the Studio Script tab. The top-12 most recent corrections per project
-  inject into the next Analyze run as worked examples. **Clear all** wipes a
-  project's correction history — use it when you change your mind about a
-  character's identity and don't want old corrections steering the next run.
+- **Reading instructions** — per column: Auto (matched to the model), With
+  examples, Rules only, or Rules + thinking. Auto lets JustVoice pick from the
+  model's size.
+- **Confidence floor & anchors** — below the floor a pick becomes *unknown*
+  instead of a guess; the anchor toggle controls the pre-AI "Tom said"
+  attribution.
+- **Results you can correct** — every row shows speaker · line ·
+  confidence, with a reassign dropdown. Reassigning to a real character
+  records a **speaker correction** for the open project, exactly like fixing
+  a block on the Studio Script tab.
+- **Correction memory** — the card under the results counts the open
+  project's corrections; the top-12 most recent inject into the next Analyze
+  run as worked examples. **Clear all** wipes the project's correction
+  history — use it when you change your mind about a character's identity and
+  don't want old corrections steering the next run.
+
+Add a second column to race two configurations over the same passage;
+disagreements between columns are underlined.
+
+The **Find new speakers** row's Lab runs the discovery scan instead — the
+same pipeline behind Studio's "new speakers found" banner. It lists names
+that speak but aren't in the known-characters list, as a review list;
+nothing is created from the Lab.
 
 ## Show notes (podcast projects)
 

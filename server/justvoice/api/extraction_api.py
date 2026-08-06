@@ -357,6 +357,61 @@ async def clear_corrections(project_id: str, db: Session = Depends(get_db)) -> d
     db.commit()
     return {"deleted": deleted}
 
+
+def record_correction(db: Session, project_id: str, text_snippet: str, character_id: str) -> None:
+    """THE one correction writer (parity batch 2026-08-06): the Studio block-PATCH
+    side effect and the Lab's reassign both call this — same row shape, same
+    200-per-project cap (oldest dropped), so the two doors can't drift."""
+    from ..database.models import SpeakerCorrection
+
+    db.add(SpeakerCorrection(
+        project_id=project_id,
+        text_snippet=(text_snippet or "")[:400],
+        character_id=character_id,
+    ))
+    # SessionLocal runs autoflush=False — without this flush the overflow query
+    # can't see the row just added and the cap drifts one past 200 forever.
+    db.flush()
+    overflow = (
+        db.query(SpeakerCorrection)
+        .filter(SpeakerCorrection.project_id == project_id)
+        .order_by(SpeakerCorrection.created_at.desc())
+        .offset(200)
+        .all()
+    )
+    for row in overflow:
+        db.delete(row)
+
+
+class CorrectionIn(BaseModel):
+    text_snippet: str
+    character_id: str
+
+
+@router.post("/v1/projects/{project_id}/corrections")
+async def add_correction(
+    project_id: str, body: CorrectionIn, db: Session = Depends(get_db)
+) -> dict:
+    """The Lab's reassign door (parity batch 2026-08-06): a corrected speaker in
+    the attribution Lab writes correction memory exactly as Studio's block
+    reassign does — record_correction is the shared implementation.
+    character_id must be a REAL persona (the FK the table carries) — the Lab's
+    typed cast uses synthetic ids, which teach nothing and are refused here."""
+    if db.query(Persona).filter(Persona.id == body.character_id).first() is None:
+        raise HTTPException(
+            status_code=404, detail=f"persona {body.character_id} not found"
+        )
+    record_correction(db, project_id, body.text_snippet, body.character_id)
+    db.commit()
+    n = _count_project_corrections(db, project_id)
+    return {"ok": True, "count": n}
+
+
+def _count_project_corrections(db: Session, project_id: str) -> int:
+    from ..database.models import SpeakerCorrection
+
+    return db.query(SpeakerCorrection).filter(SpeakerCorrection.project_id == project_id).count()
+
 # ── Speaker identification — discovered-speakers banner (CONCEPTS §3) ──
 
 
@@ -404,6 +459,66 @@ async def discover_speakers_endpoint(
         raise HTTPException(status_code=502, detail=f"identification failed: {e}")
     return DiscoverSpeakersResponse(
         scene_id=scene_id,
+        candidates=[
+            SpeakerCandidateOut(
+                name=c.name, role_hint=c.role_hint, approx_lines=c.approx_lines
+            )
+            for c in candidates
+        ],
+    )
+
+
+class DiscoverTextRequest(BaseModel):
+    """The attribution Lab's discovery body — the identify twin of
+    AnalyzeTextRequest (free-form text, no scene). The camelCase override
+    fields are the Lab column's pins, same contract as analyze-text."""
+
+    text: str
+    known_characters: list[str] = []
+    providerId: str | None = None
+    model: str | None = None
+    temperature: float | None = None
+    systemPrompt: str | None = None
+    userPrompt: str | None = None
+
+
+@router.post(
+    "/v1/extraction/discover-speakers",
+    response_model=DiscoverSpeakersResponse,
+    summary="Find speaking characters in free-form text (the attribution Lab)",
+)
+async def discover_text_endpoint(body: DiscoverTextRequest) -> DiscoverSpeakersResponse:
+    """No scene id — the Lab's discovery door (parity batch 2026-08-06),
+    beside /v1/extraction/analyze-text. Same identify pipeline as the Script
+    banner; candidates are a review list, nothing is created."""
+    from ..extraction.identify import identify_speakers
+
+    overrides = {
+        "providerId": body.providerId,
+        "model": body.model,
+        "temperature": body.temperature,
+        "system": body.systemPrompt,
+        "userTemplate": body.userPrompt,
+    }
+    overrides = {k: v for k, v in overrides.items() if v is not None}
+
+    def run_fn(action: str, variables: dict):
+        from ..engines.llm.run import run_feature
+
+        return run_feature(action, variables, **overrides)
+
+    settings = get_state().settings.get()
+    try:
+        candidates = identify_speakers(
+            body.text, body.known_characters, settings=settings, run_fn=run_fn
+        )
+    except LLMNotConfiguredError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    except Exception as e:
+        log.exception("speaker identification failed")
+        raise HTTPException(status_code=502, detail=f"identification failed: {e}")
+    return DiscoverSpeakersResponse(
+        scene_id="(adhoc)",
         candidates=[
             SpeakerCandidateOut(
                 name=c.name, role_hint=c.role_hint, approx_lines=c.approx_lines

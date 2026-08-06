@@ -38,7 +38,7 @@ const routes = [
 
   // ── Legacy sub-tab deep-links ─────────────────────────────────────
   // Settings sub-tabs (#cache/#channels/#webhooks) and Labs sub-tabs
-  // (#compare/#train/#speakerlab/#renderlab/#audio) were top-level hashes. The
+  // (#compare/#train/#renderlab/#audio) were top-level hashes. The
   // destination view reads the chosen sub-tab from sessionStorage on mount, so
   // set it here then redirect to the parent view.
   ...["cache", "channels", "webhooks"].map((sub) => ({
@@ -48,7 +48,15 @@ const routes = [
       return "/settings";
     },
   })),
-  ...["compare", "train", "speakerlab", "renderlab", "audio"].map((sub) => ({
+  // The Speaker Lab died in the parity batch (2026-08-06) — attribution testing
+  // is the AI console's Lab now (Routing by feature → the attribution action),
+  // running the REAL pipeline via the labAdapters seam. Old #speakerlab deep
+  // links land there with the guided action focused.
+  {
+    path: "/speakerlab",
+    redirect: { path: "/ai", query: { tab: "features", action: "speaker_attribution.guided" } },
+  },
+  ...["compare", "train", "renderlab", "audio"].map((sub) => ({
     path: `/${sub}`,
     redirect: () => {
       try { sessionStorage.setItem("jv.labs.sub", sub); } catch { /* ignore */ }

@@ -8,14 +8,16 @@
   main.js); TTS providers + Speech engines are host tabs lifted from the
   retired Voice engines page; the Models split rides the kit's opt-in
   `modelsTab`. Deep links: ?tab=<id> (the old #engines page redirects here to
-  the Speech engines tab). The KIT wizard runs here, voiced by main.js's
+  the Speech engines tab) and ?action=<featureAction> (the old #speakerlab
+  redirects to ?tab=features&action=speaker_attribution.guided — the Lab there
+  IS the Speaker Lab now, running the real pipeline via the labAdapters seam;
+  main.js registers it). The KIT wizard runs here, voiced by main.js's
   quickSetupCopy and named "LLM engine setup" by the labels feed (ruling 6).
 -->
 <script setup>
 import { onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { AiModelsArea, useModelApply } from "@delebash/llm-ui";
-import SpeechAiSettings from "../components/SpeechAiSettings.vue";
 import SpeechEnginesTab from "../components/SpeechEnginesTab.vue";
 import TtsProvidersTab from "../components/TtsProvidersTab.vue";
 
@@ -29,9 +31,11 @@ const APP_TABS = [
   { id: "speech-engines", label: "Speech engines", after: "tts-providers" },
 ];
 
-// ?tab= deep link (one-shot, like ?quicksetup): the redirect from the retired
-// #engines page lands on the Speech engines tab.
+// ?tab= / ?action= deep links (one-shot, like ?quicksetup): the redirect from
+// the retired #engines page lands on the Speech engines tab; the retired
+// #speakerlab's lands on the features tab with the attribution action focused.
 const initialTab = ref(String(route.query.tab || ""));
+const initialAction = ref(String(route.query.action || ""));
 
 // The ?quicksetup=1 deep link is a ONE-SHOT INSTRUCTION, not a place (docgen's
 // 2026-08-03 lesson): read it once into a plain ref and strip it from the URL,
@@ -39,7 +43,7 @@ const initialTab = ref(String(route.query.tab || ""));
 const openWizardOnce = ref(route.query.quicksetup === "1");
 
 onMounted(async () => {
-  if (route.query.tab) router.replace({ path: "/ai" }); // consumed
+  if (route.query.tab || route.query.action) router.replace({ path: "/ai" }); // consumed
   if (!openWizardOnce.value) return;
   // …and never offer to set up a machine that IS set up: arriving with a
   // default already applied, the wizard is pure noise.
@@ -58,16 +62,12 @@ onMounted(async () => {
       :auto-open-quick-setup="openWizardOnce"
       :initial-provider-scope="route.query.providers === 'online' ? 'online' : ''"
       :initial-tab="initialTab"
+      :initial-feature-action="initialAction"
       :app-tabs="APP_TABS"
       models-tab
-      app-tab-label="Speech AI"
-      :data-links="[
-        { label: 'Speaker Lab', href: '#speakerlab' },
-      ]"
     >
       <template #app-tab-tts-providers><TtsProvidersTab /></template>
       <template #app-tab-speech-engines><SpeechEnginesTab /></template>
-      <template #app-tab><SpeechAiSettings /></template>
     </AiModelsArea>
   </div>
 </template>

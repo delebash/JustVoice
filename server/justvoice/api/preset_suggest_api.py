@@ -127,7 +127,7 @@ async def suggest_preset(
             preset_id=None,
             preset_name=None,
             reason=reason,
-            note="model returned no preset; check the response in the Speaker Lab if this repeats",
+            note="model returned no preset; check the raw model output in the AI page's Lab if this repeats",
         )
 
     # Match by exact name (case-insensitive).
