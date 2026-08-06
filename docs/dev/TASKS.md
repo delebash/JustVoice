@@ -77,6 +77,16 @@ The approved text, as presented and confirmed:
 
 ## QC finds 2026-08-06 (user's eyes, added on sight)
 
+- **JV adopts the family TitleBar** (user ruling: "same back buttons, same
+  title bar type as the other apps"). §11 canon = JW's TitleBar (back/forward
+  · title · mode · status chip); JV still runs its own topbar. Adopt it with
+  JV's own chips (project/kind · engine state · AiStatusButton) as the app's
+  slot content. (The user's related nav question was ruled the OTHER way:
+  sidebars stay per-app for now — dropped, not deferred.)
+- **Topbar chip "No engine" → "No voice engine"** (user ruling: two engine
+  kinds make the bare words ambiguous — it reads "no AI at all" when it means
+  no TTS engine loaded; ruling-6's naming class). Verify the loaded state
+  names the kind too.
 - **Add Gemma 4 12B (QAT) + Gemma 4 E4B (QAT) back to the model catalog**
   (user ask 2026-08-06). Both ids sit in `_RETIRED_DEFAULT_CATALOG_IDS`
   (llm_bootstrap.py — the 2026-08-05 one-row-catalog direction removed them).
