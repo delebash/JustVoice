@@ -214,6 +214,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         DEFAULT_FEATURE_PRESETS,
         DEFAULT_PRESET_ID,
         DEFAULT_TEST_SAMPLES,
+        JV_MODEL_CATALOG,
     )
 
     install_llm(
@@ -229,6 +230,10 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         feature_presets=DEFAULT_FEATURE_PRESETS,
         default_preset_id=DEFAULT_PRESET_ID,
         test_samples=DEFAULT_TEST_SAMPLES,
+        # The family's measured daily driver ONLY (user direction 2026-08-05);
+        # the shared writing-curated default catalog is suppressed.
+        model_catalog_extra=JV_MODEL_CATALOG,
+        seed_default_model_catalog=False,
         # The pin-era PREFER_LOCAL_FEATURES, as the install param (config.py's
         # mapper dies with the pins).
         prefer_local_features=PREFER_LOCAL_FEATURES,
@@ -262,6 +267,11 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     # After the presets exist: a legacy row's hand-changed temperature/think
     # lifts onto its feature's assigned preset (one-time, marker-guarded).
     lift_edited_tunables_into_presets()
+    # One-time: existing DBs drop the retired shared-default catalog rows so
+    # the catalog matches a fresh install (the measured 26B row only).
+    from .llm_bootstrap import retire_default_catalog_rows
+
+    retire_default_catalog_rows()
     load_from_configs(stores.get_provider_store().list())
 
     app.include_router(generate_api.router)

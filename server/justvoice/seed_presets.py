@@ -41,6 +41,32 @@ DEFAULT_ENGINE_PRESETS: list[dict] = [
      "model": "", "temperature": 0.2, "max_tokens": 2048, "position": 5},
 ]
 
+# ── JV's model catalog (user direction 2026-08-05, QC of the AI area): the
+# family's measured daily driver ONLY — the shared writing-curated
+# DEFAULT_CATALOG is suppressed (seed_default_model_catalog=False, docgen's
+# pattern; its 12B/E4B/style-tune/uncensored rows were noise here and the one
+# row the family actually uses lived in JW's per-app seed). Row copied from
+# JW's DEFAULT_MODEL_CATALOG_EXTRA verbatim; only the user-facing `notes`
+# speak JV's features (the 2026-07-25 ruling: box-independent plain words).
+# The MoE's 4B active slice is why it runs acceptably on CPU too — the floors
+# say so (min_vram 4 GB with CPU expert offload; binary-MB convention).
+JV_MODEL_CATALOG: list[dict] = [
+    {"id": "gemma-4-26b-a4b-qat", "name": "Gemma 4 26B-A4B (QAT)",
+     "hf_repo": "unsloth/gemma-4-26B-A4B-it-qat-GGUF", "quant": "UD-Q4_K_XL",
+     "total_params": "26B", "active_params": "4B", "mtp": True, "size_bytes": 14249045120, "size_label": "128x2.6B", "est_vram_mb": 17713, "type": "moe",
+     "mtp_draft_file": "MTP/mtp-gemma-4-26B-A4B-it-Q4_0.gguf", "mtp_draft_quant": "Q4_0",
+     "samplers": {"top_k": "64", "top_p": "0.95", "temperature": "1"},
+     "trained_ctx": 262144, "min_vram_mb": 4096, "min_ram_mb": 24576,
+     "tier": "low-vram-moe", "license": "Apache-2.0", "quality_rank": 5, "position": 20,
+     "architecture": "gemma4", "experts": 128,
+     "description": "26B mixture-of-experts model · 256k context · MTP draft for faster generation · UD-Q4_K_XL (QAT)",
+     "notes": "The recommended all-rounder — one setup covers speaker attribution, "
+              "dictation cleanup, and the rest of the AI features. Runs on 8 GB "
+              "graphics cards and up (and usably on CPU — only the 4B active slice "
+              "computes per token); thinking is managed per task automatically."},
+]
+
+
 # The per-ACTION preset refs — all 13 rows over the 6 presets.
 DEFAULT_FEATURE_PRESETS: dict[str, str] = {
     # Structured extraction (attribution's measured 0.2 family)

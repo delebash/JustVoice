@@ -25,6 +25,19 @@
 > is left untouched on purpose so re-enabling is one command when the CI
 > pipeline is actually wanted again.
 
+## QC finds 2026-08-05 (user's eyes, added on sight)
+
+- **Sidebar nav items are cut off** — labels truncate/don't fit after the F1
+  labels got longer ("AI Settings", "Voice engines", the "AI tasks" toggle +
+  badge). The nav must SIZE ITSELF so words are never clipped (normal
+  flex/column CSS — auto-fit, no hardcoded widths; the user hit this same
+  class in JW's design work: hardcoded widths). Fix rides the parity go:
+  make the sidebar layout flexible per the standard CSS conventions AND
+  sweep every F1-added surface (sidebar button/badge, splash, AI area
+  wrapper, Settings cards) for hardcoded-width violations. The truncation
+  mechanism itself is pre-F1 sidebar CSS; the new longer labels exposed it —
+  adding them without checking fit was the miss.
+
 ## Found by the 2026-08-05 family audit [verified by hand] — parked per the
 ## standing sequence, but the first one is REAL user-facing breakage
 ## (the keep-running param bug was fixed off-sequence 2026-08-05, Batch 1:

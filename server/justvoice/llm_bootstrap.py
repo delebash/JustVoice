@@ -44,6 +44,55 @@ def apply_jv_warm_default() -> None:
         log.warning("could not apply JV's warm-default-off seed: %s", e)
 
 
+# The shared DEFAULT_CATALOG ids JV retired (user direction 2026-08-05: the
+# catalog shows the family's measured daily driver and nothing else). Existing
+# DBs seeded these before the suppression; the one-time cleanup below removes
+# exactly this list — a user-ADDED row has a different id and is never touched.
+# Downloaded GGUFs stay on disk (a removed row is re-addable via Add a model).
+_RETIRED_DEFAULT_CATALOG_IDS = (
+    "gemma-4-12b-qat",
+    "gemma-4-e4b-qat",
+    "llama-3.3-70b-q4_k_m",
+    "glm-4.5-air",
+    "qwen3.6-27b",
+    "gryphe-styletune-v2",
+    "gemma-4-26b-a4b-uncensored-ez",
+    "qwen3-embedding-4b",
+    "qwen3-embedding-8b",
+    "kalm-embedding-gemma3-12b",
+)
+
+
+def retire_default_catalog_rows() -> None:
+    """Once, marker-guarded: drop the retired shared-default catalog rows (and
+    their soft-ref sampler/embed-template children) from an existing DB, so an
+    upgraded install shows the same one-row catalog as a fresh one."""
+    from llm_runner.llm import db as llm_db
+
+    try:
+        s = llm_db.session()
+        try:
+            if s.get(llm_db.RunnerSetting, "jv_default_catalog_retired") is not None:
+                return
+            removed = 0
+            for mid in _RETIRED_DEFAULT_CATALOG_IDS:
+                row = s.get(llm_db.ModelCatalog, mid)
+                if row is not None:
+                    s.delete(row)
+                    removed += 1
+                for child_model in (llm_db.ModelSampler, llm_db.ModelEmbedTemplate):
+                    for child in s.query(child_model).filter_by(model_id=mid).all():
+                        s.delete(child)
+            s.add(llm_db.RunnerSetting(key="jv_default_catalog_retired", value="1"))
+            s.commit()
+            if removed:
+                log.info("retired %d shared-default catalog row(s)", removed)
+        finally:
+            s.close()
+    except Exception as e:  # noqa: BLE001 — cleanup nicety, never boot-fatal
+        log.warning("default-catalog retirement failed (rows remain visible): %s", e)
+
+
 def reseed_shared_llm(engine, session_factory) -> None:
     """Factory-reset's shared-stack half: re-point storage at the NEW session
     factory, re-create the shared tables in the fresh file, re-apply JV's warm
@@ -56,3 +105,4 @@ def reseed_shared_llm(engine, session_factory) -> None:
     llm_db.create_all(engine)
     apply_jv_warm_default()
     seed_llm()
+    retire_default_catalog_rows()
