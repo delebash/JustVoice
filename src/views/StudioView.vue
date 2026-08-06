@@ -178,6 +178,11 @@ const discovered = ref([]);   // [{name, role_hint, approx_lines}]
 const promoting = ref(false);
 const analyzeRows = ref([]);
 const analyzeTierUsed = ref(null);
+// Why that route ran ("auto" | "forced") — the no-silent-state rule: the
+// meta line says Auto's pick vs forced. (The stored force died with the
+// pills, 2026-08-06 — "forced" now only ever means a per-run override.)
+const analyzeTierSource = ref(null);
+const ROUTE_LABELS = { guided: "Guided", direct: "Direct", reasoned: "Reasoned" };
 const analyzeFloor = ref(null);
 const editedFlags = ref({});  // {rowIdx: true} for rows the user changed
 
@@ -945,7 +950,7 @@ async function runAnalyze() {
     statsFn: (t) => {
       const out = [`${wordCount} words in`];
       if (t.meta?.rows != null) out.push(`${t.meta.rows} segments`);
-      if (t.meta?.tier) out.push(`${t.meta.tier} tier`);
+      if (t.meta?.tier) out.push(`${ROUTE_LABELS[t.meta.tier] || t.meta.tier} route`);
       return out;
     },
   });
@@ -958,13 +963,14 @@ async function runAnalyze() {
     });
     analyzeRows.value = r.rows || [];
     analyzeTierUsed.value = r.tier_used;
+    analyzeTierSource.value = r.tier_source || "auto";
     analyzeFloor.value = r.confidence_floor;
     editedFlags.value = {};
     tasks.update(task.id, { meta: { rows: analyzeRows.value.length, tier: r.tier_used } });
     tasks.finish(task.id);
     runDiscoverSpeakers(); // fire-and-forget — banner appears if it finds anyone
     pushToast({
-      message: `Analyzed ${analyzeRows.value.length} segment${analyzeRows.value.length === 1 ? "" : "s"} using ${r.tier_used} tier.`,
+      message: `Analyzed ${analyzeRows.value.length} segment${analyzeRows.value.length === 1 ? "" : "s"} — ${ROUTE_LABELS[r.tier_used] || r.tier_used} ${r.tier_source === "auto" ? "(Auto's pick)" : "(forced)"}.`,
       kind: "success",
       duration: 3500,
     });
@@ -1750,7 +1756,9 @@ watch(selectedProjectId, (id) => {
         </div>
 
         <p v-if="analyzeTierUsed" class="jv-muted studio__script-meta">
-          Routed to <strong>{{ analyzeTierUsed }}</strong> tier · confidence floor {{ analyzeFloor }} · {{ analyzeRows.length }} segments
+          Route: <strong>{{ ROUTE_LABELS[analyzeTierUsed] || analyzeTierUsed }}</strong>
+          {{ analyzeTierSource === "auto" ? "— Auto's pick" : "— forced" }} ·
+          confidence floor {{ analyzeFloor }} · {{ analyzeRows.length }} segments
         </p>
 
         <!-- Inline analyze progress — the global task strip sits above the

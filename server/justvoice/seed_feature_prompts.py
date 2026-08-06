@@ -123,33 +123,48 @@ Return only the JSON object. No prose, no preamble."""
 
 
 DEFAULT_FEATURE_PROMPTS: dict[str, dict] = {
-    # ── speaker_attribution (the pipeline's tier pair + discovery) ──────────
+    # ── speaker_attribution — THREE ROUTED FEATURES (the attribution restore,
+    # approved 2026-08-06: "i wanted old functionality just split into
+    # features"). Each row routes on its own card under the SPEAKER
+    # ATTRIBUTION heading; the Auto row above them picks which one runs.
     # Array outputs → json_mode stays OFF (json_object constrains to an OBJECT;
-    # the tolerant array extraction is the measured contract).
-    # Labels/descriptions: the QC-approved words (2026-08-06 rework — the old
-    # names Guided/Direct return; the §9 renames erased the user's vocabulary).
-    # Row labels live here in the seed (recorded limit: vue-i18n cannot reach
-    # DB rows). These two rows are PIECES of Speaker attribution — one of them
-    # is picked per run from the model; they route through the feature's one
-    # preset (llm_bootstrap.migrate_reading_rework carries existing DBs over).
+    # the tolerant array extraction is the measured contract). Positions pin
+    # the approved order Guided · Direct · Reasoned (key-alphabetical would
+    # put Direct first). Row labels live here in the seed (recorded limit:
+    # vue-i18n cannot reach DB rows).
     "speaker_attribution.guided": {
         "feature": "speaker_attribution",
         "label": "Guided",
-        "description": "For small models — the rules plus worked examples; small models follow better when shown. Below 0.7 confidence a pick becomes unknown.",
+        "description": "For small models — its system prompt carries the rules plus worked examples; small models follow better when shown. Below 0.7 confidence a pick becomes unknown.",
         "system": GUIDED_SYSTEM,
         "user_template": _ATTR_USER_TEMPLATE,
+        "position": 1,
     },
     "speaker_attribution.direct": {
         "feature": "speaker_attribution",
         "label": "Direct",
-        "description": "For big models — the same rules without the examples. Below 0.5 confidence a pick becomes unknown. JustVoice picks between Guided and Direct from your model; the dial on Speaker attribution can force one.",
+        "description": "For big models — the same system-prompt rules without the examples. Below 0.5 confidence a pick becomes unknown.",
         "system": DIRECT_SYSTEM,
         "user_template": _ATTR_USER_TEMPLATE,
+        "position": 2,
     },
-    # Discovery ("who exists?") — renamed from the old bare `identify` key to
-    # the family dotted spelling; the migration maps old rows across.
-    "speaker_attribution.identify": {
+    # Reasoned — restored as its own routed feature (user ruling: "just make
+    # it a feature seed it with direct prompt and enable reasoning"). The text
+    # SEEDS as a copy of Direct's and is editable separately from then on;
+    # thinking rides its preset ("Reasoned extraction", think ON).
+    "speaker_attribution.reasoned": {
         "feature": "speaker_attribution",
+        "label": "Reasoned",
+        "description": "Direct's rules with thinking on — for reasoning models. Below 0.5 confidence a pick becomes unknown.",
+        "system": DIRECT_SYSTEM,
+        "user_template": _ATTR_USER_TEMPLATE,
+        "position": 3,
+    },
+    # Discovery ("who exists?") — its own thing that runs alone, so its own
+    # FEATURE in the routing list (the restore moved it out from under the
+    # Speaker attribution heading; the action key stays for its callers).
+    "speaker_attribution.identify": {
+        "feature": "speaker_discovery",
         "label": "Find new speakers",
         "description": "Behind Discover speakers: lists characters who talk in the text but aren't in your cast yet.",
         "system": IDENTIFY_SYSTEM,

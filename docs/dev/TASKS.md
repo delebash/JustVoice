@@ -25,39 +25,213 @@
 > is left untouched on purpose so re-enabling is one command when the CI
 > pipeline is actually wanted again.
 
-## APPROVED 2026-08-06 (QC walk rulings) — BUILT same day, awaiting the user's QC
-## (kit `def5142` gate + `cbdbfff` pieces/panels/cascade · JV `7b6feb1`; text kept
-## verbatim below until the walk confirms, then this block collapses)
+## APPROVED 2026-08-06 (the QC walk's rulings) — THE AUTO SIMPLIFICATION.
+## GO: "so go ahead and make your changes so lab works correct, then we will
+## run some tests" + two mid-build catches folded in ("you still have verbage
+## and stuff in each feture that should not be there Route Auto Guided Direct
+## Reasoned" · the examples-location wording). Supersedes, in the block
+## below: the force pills, the rules+readout pane, the card description
+## tails, and the Lab's per-column route chips.
+
+**The decision — as presented and confirmed (assembled from the chat):**
+
+- **The Auto pane is plain words + ONE control** (user: "the auto just
+  explains what it does why it picks features and that you can set param
+  size to change it, correct, simple"). The pane text, verbatim:
+  > Auto never picks a model — it looks at the model you've already assigned
+  > and picks the feature that fits it:
+  > Can your model think? → **Reasoned** runs. The Thinking flag on the
+  > model's catalog row decides — edit it there.
+  > No — is it [ 14 ] B or bigger? → **Direct**. Smaller? → **Guided**.
+  > Size unknown → treated as small.
+  The [14] is the editable size line (settings.extraction.direct_min_b). No
+  pills, no RIGHT NOW readout, no model names on the pane. Check order
+  confirmed by the user ("ok tht sound right"): thinking first (the
+  original's rule), then size. Row note: "Picks which of the three features
+  below runs" — feature vocabulary everywhere ("auto does not pick prompt it
+  picks what feature to run, feture picks prompt").
+- **Production always runs Auto — the persistent force dies** (the
+  original's own behavior): `settings.extraction.route` removed, stale
+  stored keys (`route`, `reading_style`) ignored on load; the per-run
+  override door (a card's Lab run / the API `tier` field) stays and wins.
+  [CLI --tier was claimed by the restore text and repeated here — VERIFIED
+  FALSE 2026-08-06: justvoice.cli has no analyze command; the Lab and the
+  API are the only per-run doors.]
+- **Each feature card's pane loses the Route chip row** — the card IS the
+  route: its Lab run always forces its own route and its prompt boxes always
+  ride ("what you see is what runs"; the route-mismatch guard machinery
+  dies with the chips).
+- **Card descriptions say only what the card is** — the "Auto runs this
+  when…" tails trim off (one-time marker-guarded migration; edited rows
+  stay). Examples wording names WHERE examples live (user catch): Guided =
+  the system prompt's rules plus worked examples; Direct = the same
+  system-prompt rules without them; the user prompt is identical per route.
+  Docs keep correction-memory examples (user-prompt injections) distinct.
+- **The catalog shows the Thinking flag on the row** (user: "are you adding
+  thinking row to catalog? it is not there now") — the kit edit form already
+  had the checkbox; a "Thinks" row tag (MTP/Embed pattern) makes it visible
+  without opening the form.
+- **MoE size reading: DEFERRED to the tests** (user: "i htink we test moe
+  and those smaller gemma qat models to see how they work") — today's
+  total-params reading stands until the tests rule; the MoE decision
+  (active vs total, catalog-edit correction) returns here after them.
+- Studio meta/toast unchanged ("Route: X — Auto's pick / forced"). Docs +
+  tests + migrations ride. NEXT: the gemma/MoE route tests, run together.
+
+## OPEN (user find during the same walk, 2026-08-06 — "add as task finish
+## wht you are doing first"): **attribution runs bypass the standard
+## llm-runner run surface** — a Lab analyze run adds NO AI-task entry and
+## reports NO tokens / word count / seconds ("you not using are standard llm
+## runner no ai task added no token word count seconds … you mush keep
+## rolling you own stuff"). Cause VERIFIED 2026-08-06: server-side token/
+## usage accounting is fine — it lives in the kit's dispatch layer and EVERY
+## feature funnels through it (attribution included; the Usage tab counts
+## these runs). What the attribution Lab adapter bypasses is the kit's
+## CLIENT-side task surface (aiTasks registration → the live seconds/tokens
+## strip, the task row) — it calls the server directly instead of the
+## standard run path. Only attribution + Find new speakers carry an adapter;
+## every other feature's Lab run takes the standard path. Production
+## buttons are per-surface client wiring, NOT yet audited feature-by-
+## feature — that enumeration is part of this task's plan.
+## DECIDED SPEC EXISTS — docs/dev/CONCEPTS.md §16 "AI task runner (hard
+## requirement, all AI features)" + addendum (inline bar: seconds · tokens ·
+## words · Details · Cancel at the call site; the AI-tasks slide-out; stall
+## detection; history with duration + tokens) — MUST be read before the
+## plan. Plan presented in chat before any code; sequenced AFTER the Auto
+## simplification + the model tests.
+
+## OPEN (user find, 2026-08-06, from the running ORIGINAL Speaker Lab at
+## JustVioce-old — "you had a perfect example of the originall speaker
+## extraction and you could not even do that correct"): **the new
+## attribution Lab lost the original's cast editor + passage niceties.**
+## The original screen (Labs → Speaker, screenshot in chat): CAST is a
+## structured editor — chips with ×, a "Character name" input, an "Aliases
+## (comma-separated, optional)" input, "+ Add" — NO ids user-facing (ids
+## are the internal June contract, prompts.py:19-29 verified; the UI
+## generates them). INPUT PASSAGE has "Load from chapter…", live "N words ·
+## N chars · ~N tokens" counters, and Sample fills passage AND cast
+## together. The new kit Lab renders {{characters}} as a raw text box.
+## Fix = restore the original cast-editor surface (kit seam: per-variable
+## custom input, or configExtra grows the cast editor writing the
+## characters var) + the passage counters; ALSO swap the attribution
+## sample text to the original's own cellar passage verbatim (Sarah/Mara —
+## needs a row swap; today's quay sample already seeded). DECIDED SPEC:
+## docs/dev/CONCEPTS.md §16 + addendum (input header live words · chars ·
+## ~tokens; "Load from chapter…" + Clear + Sample above the paste box;
+## JSON output view; both prompts editable; named tweak presets) — MUST be
+## read before the plan. The plan must ALSO reconcile §16's "columns
+## compare MODELS, tier follows the model" (2026-06-11, one-feature world)
+## with the routed-cards world (2026-08-06: the card IS the route) — not
+## silently pick one. The project-kind-aware sample behavior the user
+## recalls ("if project select is dictation or ect") was discussed but its
+## text is NOT yet located — find it (or the user points at it) before the
+## plan; never re-guess it. One plan with the standard-runner item above
+## (same screen).
+
+## OPEN (found in the same walk): the Lab's ad-hoc attribution run always
+## sends corrections=[] — the corrections box the kit renders for the
+## {{corrections}} placeholder is inert there (production injects the
+## project's real top-12). Decide: wire the box through, or hide it on
+## ad-hoc runs. Rides the same Lab plan.
+
+## APPROVED 2026-08-06 (late) — SPEAKER ATTRIBUTION: the old functionality,
+## split into routed features + the visible Auto row. GO: "lets try your rec
+## for the new auto row, go code it and we will see". **BUILT same day** (kit
+## + JV; real-DB verified via the live server — 3 routes seeded/ordered,
+## "Reasoned extraction" in, "Careful reading" retired, refs per-route,
+## identify → its own Find new speakers card). QC-WALKED same day: the Auto
+## pane/pills/readout, the card tails and the Lab route chips were REFUTED —
+## superseded by the AUTO SIMPLIFICATION block above; the rest stands built.
+## Two live-QC additions built in-flight:
+## ANALYSIS order puts the single cards FIRST, the SPEAKER ATTRIBUTION-headed
+## block LAST (a heading's scope only ends at the next heading — user catch);
+## Studio meta/toast say "Route: Guided — Auto's pick / forced" (route words,
+## never "tier").
+## OPEN from the same walk: Dictation cleanup's presentation (task #22 —
+## bare Engine-preset pane + full-size piece cards; proposal awaits go).
+## Supersedes the attribution part of the earlier block below (QC refuted it:
+## non-routing peer cards, the bare feature-preset pane, the unexplained dial).
+
+**The plan — as presented and approved (verbatim):**
+
+**The screen (Routing by feature, ANALYSIS group):**
+- **SPEAKER ATTRIBUTION** — a plain sub-heading, JW's LINE EDITS pattern (the
+  kit already renders this; the pieces layer for attribution is deleted).
+- **An "Auto" row, first under the heading.** Not a routed card — its line
+  reads "Picks which of the three below runs." Click it, and its pane is the
+  entire mechanism, visible and editable in one place:
+  - **The force pills: Auto · Guided · Direct · Reasoned** — persistent. Leave
+    it on Auto and JV picks; set a route and every production run uses that
+    route (the Lab's per-run override still wins for tests). The old Speaker
+    Lab's "Auto → Direct" pills reborn; this closes the switch question: yes,
+    and it lives here.
+  - **The two rules Auto uses, written out and editable:** "Reasoned — when
+    the model can think" (reads the model's Thinking flag — a model property,
+    stays in the catalog where it's already built) · "Direct — when the model
+    is at least [14] B; otherwise Guided" — the size line that was hardcoded
+    becomes an editable number right here.
+  - **A live readout that shows its work**: "Right now: qwen3-32b can think →
+    Reasoned runs." Each rule is judged against THAT CARD'S OWN model and the
+    readout names the model it checked — day one all three cards share one
+    preset (like the original) so behavior is identical to the old system;
+    split them later and there's no hidden anchor: every line says which model
+    it looked at.
+- Under it, three cards, each a real routed feature — own "→ preset ·
+  assigned" line, own standard JW pane (prompt · Tune presets · test input ·
+  PRESET dropdown · Use in production):
+  - **Guided** — "For small models — the rules plus worked examples; small
+    models follow better when shown. Below 0.7 confidence a pick becomes
+    unknown. Auto runs this when your model is small."
+  - **Direct** — "For big models — the same rules without the examples. Below
+    0.5 confidence a pick becomes unknown. Auto runs this when your model is
+    big."
+  - **Reasoned** — "Direct's rules with thinking on — for reasoning models.
+    Below 0.5 confidence a pick becomes unknown. Auto runs this when your
+    model is a reasoning model." Text seeded as a copy of Direct's; editable
+    separately from then on ("yes i know reason was a copy of direct just make
+    it a feature seed it with direct prompt and enable reasoning").
+- **Routing seeds:** Guided and Direct back to **Structured extraction** (the
+  original). Reasoned routes to **"Reasoned extraction"** (name approved) —
+  thinking ON. My "Careful reading" preset retires: a one-time migration
+  repoints existing DBs to these seeds and removes it if unedited.
+- **The mechanism (every run, strict order):** (1) per-run override on the
+  request (Lab pills / CLI / API) — wins always; (2) the persistent force
+  pills if not Auto; (3) Auto: the two rules above, each card judged by its
+  own model. **The run always reports which route ran and why** ("Direct —
+  Auto's pick" / "Direct — forced"): Studio meta shows it; the Lab pill shows
+  "Auto → X" before running. No silent state.
+- **Override restored everywhere:** the Lab's route control gets Reasoned
+  back (Auto / Guided / Direct / Reasoned); CLI --tier keeps 3 choices; the
+  analyze API accepts reasoned again. The rework's 3-value dial + its panel +
+  `reading_style` are replaced by the route setting (migration converts).
+- The family thinking gate stays as approved (a model that can't think just
+  doesn't, annotated). Untouched: Dictation cleanup (decided: ONE feature,
+  ONE call, four texts as sections — not reopened), Find new speakers,
+  everything else. Docs and tests ride the change; full suites + a
+  conformance read of the rendered screen against this text before reporting
+  built.
+
+## APPROVED 2026-08-06 (QC walk rulings) — BUILT same day; the ATTRIBUTION
+## part is superseded by the block above; the gate + cleanup pieces + Lab
+## fixes below STAND (kit `def5142` gate + `cbdbfff` pieces/panels/cascade ·
+## JV `7b6feb1`)
 
 **The Routing-by-feature rework (JV) + the thinking capability gate (kit).**
-The approved text, as presented and confirmed:
+The approved text, as presented and confirmed (attribution card/dial portion
+superseded above):
 
 - **Features list — one card per feature; piece-rows under their feature
   without routing arrows** (kit seam, default-empty → JW pixel-identical):
-  - Speaker attribution card — description in the user's words: "Extracts who
-    says what and what they say." ONE chooser (its preset, JW-style). On the
-    card, the visible dial: **Reading style: Auto · Guided · Direct**, where
-    Auto SHOWS its decision + reason ("Auto — currently Guided (your model is
-    small)"). Auto default = the original behavior. Under it, the two texts
-    as piece-rows: "Guided — for small models · examples included" /
-    "Direct — for big models · rules only" — editable + Lab-testable, no
-    routing of their own (floors 0.7/0.5 ride the style).
   - Dictation cleanup card ("Cleans your dictated text in one pass — what it
     fixes follows your Capture toggles") + its four texts as piece-rows.
   - Find new speakers — its own card with its own routing.
-  - **Reasoned dies as a concept**: attribution stops forcing think and obeys
-    the preset's think setting like every feature; tier registry = guided/
-    direct; attribution's preset seeds think=ON (the gate below handles
-    capability). APPROVED knowingly: small thinking models now think on
-    attribution too (the old system only forced think at 14B+/reasoning
-    families) — "a model that thinks, thinks"; the visible off-switch is the
-    preset's think box.
+  - *(The "Reasoned dies as a concept" and "Production reading-style" bullets
+    are superseded by the block above — Reasoned RETURNS as a routed card; the
+    dial becomes the Auto row's force pills.)*
   - Lab column: saved-setups row DELETED (standard Save-as-preset only);
     anchors toggle label back to **"Anchor propagation"** (tooltip carries
-    the 'Tom said' explanation); tier chips Auto/Guided/Direct.
-  - Production reading-style setting persists server-side; Studio Analyze
-    honors it; /v1/extraction/config serves the current auto pick + reason
-    for the dial. Per-call override (Lab) still wins.
+    the 'Tom said' explanation); tier chips — now Auto/Guided/Direct/Reasoned
+    per the block above.
 - **The thinking capability gate (KIT, family-wide — JW included, approved):**
   effective thinking = the preset's think (the task's tested want) AND the
   model can think. `model_thinks` resolver, server-side, three layers:

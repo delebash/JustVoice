@@ -39,11 +39,11 @@ DEFAULT_ENGINE_PRESETS: list[dict] = [
      "model": "", "temperature": 0.6, "position": 4},
     {"id": "p_refine", "name": "Dictation cleanup", "provider_id": "local-llamacpp",
      "model": "", "temperature": 0.2, "max_tokens": 2048, "position": 5},
-    # Speaker attribution's own preset (the 2026-08-06 rework): think ON is the
-    # task's tested want — the runner's CAPABILITY GATE turns it into "thinks on
-    # models that can, cleanly off elsewhere" (the old forced-Reasoned behavior,
-    # now built from standard parts). Same measured 0.2 temperature family.
-    {"id": "p_read", "name": "Careful reading", "provider_id": "local-llamacpp",
+    # Reasoned's preset (the attribution restore, name approved 2026-08-06):
+    # think ON is the route's point — the runner's capability gate keeps it
+    # clean on models that can't ("Reasoned extraction" replaces the retired
+    # "Careful reading"). Same measured 0.2 temperature family.
+    {"id": "p_reason", "name": "Reasoned extraction", "provider_id": "local-llamacpp",
      "model": "", "temperature": 0.2, "think": True, "position": 6},
 ]
 
@@ -172,14 +172,17 @@ JV_CLASS_TUNE_IDENTITY: dict[str, dict] = {
 }
 
 
-# The preset refs (the 2026-08-06 pieces rework): a feature whose rows are
-# PIECES routes ONCE at the FEATURE key — the pieces follow it through the
-# resolver's feature layer (action ref → feature ref → default). Only rows
-# that genuinely run alone keep an action-level ref.
+# The preset refs. Speaker attribution's three routes each route on their OWN
+# action ref (the attribution restore, 2026-08-06 — per-route routing is what
+# the original had). A feature whose rows are PIECES (dictation cleanup)
+# routes ONCE at the FEATURE key — the pieces follow it through the
+# resolver's feature layer (action ref → feature ref → default).
 DEFAULT_FEATURE_PRESETS: dict[str, str] = {
-    # Speaker attribution — ONE chooser for both reading styles (Careful
-    # reading: think on; the capability gate handles models that can't).
-    "speaker_attribution": "p_read",
+    # Speaker attribution — three routed cards; day one all on the same
+    # preset except Reasoned, whose preset carries think ON.
+    "speaker_attribution.guided": "p_extract",
+    "speaker_attribution.direct": "p_extract",
+    "speaker_attribution.reasoned": "p_reason",
     # Find new speakers — its own runnable card, its own ref.
     "speaker_attribution.identify": "p_extract",
     "smart_assign": "p_extract",
@@ -200,22 +203,25 @@ DEFAULT_FEATURE_PRESETS: dict[str, str] = {
 DEFAULT_PRESET_ID: str = "p_notes"
 
 
-# §7.3 Lab test samples — authored against each action's own prompt contract
-# (the SAMPLE LAW: read the prompt, shape the sample like a real run's
-# composer output). SYNTHESIZED, never real user data. Fill-if-empty per
-# (action, label).
+# §7.3 Lab test samples — authored against each action's own RUN contract
+# (the SAMPLE LAW, amended 2026-08-06 on a user catch — "samples represent
+# real world text": the attribution adapter feeds the REAL pipeline, which
+# segments and adds the [D#] tags itself, so its sample is raw prose exactly
+# as a user would paste it, never pre-tagged; its characters box is plain
+# names — the adapter's own parse format, not the template composer's).
+# SYNTHESIZED, never real user data. Fill-if-empty per (action, label).
 _ATTR_SAMPLE_VARS = {
-    "characters": '- id="c_mara", name="Mara", gender="female"\n'
-                  '- id="c_renn", name="Renn", gender="male"',
+    "characters": "Mara\nRenn",
     "corrections": "",
-    "paragraphs": 'Mira reached the quay as the bell finished counting. '
-                  '[D1] "You knew before the funeral," Renn said. He did not look at her.\n\n'
-                  '[D2] "The page told me," she said. [D3] "Ask me who else can read it."',
+    "paragraphs": 'Mara reached the quay as the bell finished counting.\n\n'
+                  '"You knew before the funeral," Renn said. He did not look at her.\n\n'
+                  '"The page told me," she said. "Ask me who else can read it."',
 }
 
 DEFAULT_TEST_SAMPLES: list[dict] = [
-    {"actions": ["speaker_attribution.guided", "speaker_attribution.direct"],
-     "label": "Quay scene — tagged + bare quotes",
+    {"actions": ["speaker_attribution.guided", "speaker_attribution.direct",
+                 "speaker_attribution.reasoned"],
+     "label": "Quay scene — anchored + bare quotes",
      "variables": _ATTR_SAMPLE_VARS},
     {"actions": ["speaker_attribution.identify"], "label": "Discover the harbor-master",
      "variables": {

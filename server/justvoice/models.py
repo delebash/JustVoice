@@ -346,13 +346,19 @@ class MCPSettings(BaseModel):
 
 
 class ExtractionSettings(BaseModel):
-    """Speaker-attribution behaviour — the reading-style dial (approved
-    2026-08-06). "auto" = pick the instruction style from the feature's
-    resolved model (the original behaviour: small → Guided/examples, bigger →
-    Direct/rules-only); "guided"/"direct" force that style for production
-    Analyze runs. The Lab's per-call override still wins over this."""
+    """Speaker-attribution routing (the Auto simplification, 2026-08-06).
 
-    reading_style: Literal["auto", "guided", "direct"] = "auto"
+    Production always runs Auto — no stored force exists. A per-run route
+    override (a route card's Lab run / the API `tier` field) wins over
+    Auto for that run only.
+    `direct_min_b` — the editable size rule: Direct when the model is at
+    least this many billion parameters, otherwise Guided. (The Reasoned
+    rule — "when the model can think" — reads the model catalog's Thinking
+    flag, edited there.) Stale keys from the retired force pills (`route`)
+    and dial (`reading_style`) are ignored on load; the next settings save
+    rewrites the canonical shape without them."""
+
+    direct_min_b: float = 14.0
 
 
 class AppSettings(BaseModel):

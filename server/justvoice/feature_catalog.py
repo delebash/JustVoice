@@ -13,14 +13,19 @@ from llm_runner.llm.routing_api import FeatureCatalogEntry
 
 # Features that prefer the built-in llama.cpp runner when nothing more
 # specific is configured (privacy-sensitive, accuracy-critical work).
-# Passed to install_llm(prefer_local_features=…).
-PREFER_LOCAL_FEATURES: set[str] = {"speaker_attribution"}
+# Passed to install_llm(prefer_local_features=…). speaker_discovery reads the
+# same manuscript text attribution does — it moved out of that feature key in
+# the restore and keeps the preference with it.
+PREFER_LOCAL_FEATURES: set[str] = {"speaker_attribution", "speaker_discovery"}
 
 FEATURE_CATALOG: list[FeatureCatalogEntry] = [
-    # The attribution hint is the user's own sentence (QC ruling 2026-08-06);
-    # its two reading-style rows are PIECES under this card.
-    FeatureCatalogEntry(key="speaker_attribution", label="Speaker attribution",
-                        hint="Extracts who says what and what they say.",
+    # ANALYSIS order (user QC 2026-08-06): the plain single cards FIRST, the
+    # SPEAKER ATTRIBUTION-headed block LAST — a sub-heading's scope only ends
+    # at the next heading, so cards after it would read as belonging to it.
+    # Discovery runs alone → its own feature card (moved out from under the
+    # attribution heading by the restore; the action key keeps its old name).
+    FeatureCatalogEntry(key="speaker_discovery", label="Find new speakers",
+                        hint="Behind Discover speakers: lists characters who talk in the text but aren't in your cast yet.",
                         group="Analysis"),
     FeatureCatalogEntry(key="smart_assign", label="Smart assign",
                         hint="Bulk-assign detected speakers to personas.", group="Analysis"),
@@ -28,6 +33,13 @@ FEATURE_CATALOG: list[FeatureCatalogEntry] = [
                         hint="Chapter summaries for podcast descriptions.", group="Analysis"),
     FeatureCatalogEntry(key="render_preset_suggest", label="Render preset suggestion",
                         hint="Suggest a render preset from the text's mood.", group="Analysis"),
+    # The attribution restore (approved 2026-08-06): SPEAKER ATTRIBUTION is a
+    # plain heading; its three routes (Guided · Direct · Reasoned) are routed
+    # cards under it, with the app's "Auto" panel row first (main.js registers
+    # it). The hint is the user's own sentence (QC ruling 2026-08-06).
+    FeatureCatalogEntry(key="speaker_attribution", label="Speaker attribution",
+                        hint="Extracts who says what and what they say.",
+                        group="Analysis"),
     FeatureCatalogEntry(key="compose", label="Compose",
                         hint="Draft text from a prompt in the editor.", group="Editing"),
     FeatureCatalogEntry(key="refine", label="Dictation cleanup",

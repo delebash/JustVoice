@@ -27,7 +27,7 @@ from ..database import get_db
 from ..database.models import Persona, ProjectPersona, Scene
 from ..errors import not_found
 from ..extraction import AnalyzeRequest, analyze_scene
-from ..extraction.pipeline import pick_tier
+from ..extraction.pipeline import auto_route
 
 log = logging.getLogger(__name__)
 
@@ -67,6 +67,9 @@ class AnalyzeSceneResponse(BaseModel):
     scene_id: str
     rows: list[AttributionRowResponse]
     tier_used: str
+    # Why that route ran (the restore's no-silent-state rule): "forced"
+    # (per-run override) | "setting" (the Auto row's force pills) | "auto".
+    tier_source: str = "auto"
     confidence_floor: float
     # Raw LLM reply text — Speaker Lab's "Raw" tab. None when the call
     # was anchors-only / no dialogue.
@@ -139,20 +142,14 @@ async def analyze_scene_endpoint(
     corrections = body.corrections if body.corrections is not None else _resolve_corrections(scene.project_id, db)
 
     settings = get_state().settings.get()
-    # The reading-style dial (approved 2026-08-06): production Analyze honors
-    # the stored setting when the caller didn't say — "auto" leaves the
-    # model-size pick to the pipeline; the body's explicit tier (a Studio
-    # knob / a test) still wins.
-    style = body.tier or (
-        settings.extraction.reading_style
-        if settings.extraction.reading_style != "auto"
-        else None
-    )
+    # Route precedence lives in ONE place (pipeline.pick_route): the body's
+    # explicit tier (a per-run override) > the force pills > Auto. The
+    # pipeline reports the pick that RAN via raw_out — never re-derived here.
     req = AnalyzeRequest(
         text=body.text,
         characters=characters,
         corrections=corrections,
-        tier=style,
+        tier=body.tier,
         propagate=body.propagate,
         use_floor=body.use_floor,
     )
@@ -166,16 +163,13 @@ async def analyze_scene_endpoint(
         log.exception("extraction pipeline failed")
         raise HTTPException(status_code=502, detail=f"extraction failed: {e}")
 
-    # Echo back which reading style ran, so the UI shows the SAME choice the
-    # pipeline made.
-    tier = pick_tier(style, None)
-
     return AnalyzeSceneResponse(
         scene_id=scene_id,
         raw_llm=raw_out.get("llm_text"),
         rows=[AttributionRowResponse(**row.__dict__) for row in rows],
-        tier_used=tier.name,
-        confidence_floor=tier.confidence_floor,
+        tier_used=raw_out.get("route", "guided"),
+        tier_source=raw_out.get("route_source", "auto"),
+        confidence_floor=raw_out.get("floor", 0.7),
     )
 
 
@@ -233,18 +227,13 @@ async def analyze_text_endpoint(body: AnalyzeTextRequest) -> AnalyzeSceneRespons
         log.exception("extraction pipeline failed")
         raise HTTPException(status_code=502, detail=f"extraction failed: {e}")
 
-    tier = pick_tier(body.tier, body.model)
-
     return AnalyzeSceneResponse(
         scene_id="(adhoc)",
         raw_llm=raw_out.get("llm_text"),
         rows=[AttributionRowResponse(**row.__dict__) for row in rows],
-        tier_used=tier.name,
-        confidence_floor=(
-            body.confidence_floor
-            if body.confidence_floor is not None
-            else tier.confidence_floor
-        ),
+        tier_used=raw_out.get("route", "guided"),
+        tier_source=raw_out.get("route_source", "auto"),
+        confidence_floor=raw_out.get("floor", 0.7),
     )
 
 
@@ -259,75 +248,53 @@ class ExtractionTierInfo(BaseModel):
     confidence_floor: float
 
 
+class AutoCheckInfo(BaseModel):
+    """One line of Auto's shown work: the rule, the model it judged (that
+    card's OWN model — no hidden anchor), and whether it passed."""
+
+    route: str
+    model: str
+    passed: bool
+    rule: str
+
+
 class ExtractionConfigResponse(BaseModel):
-    """Everything the attribution Lab + the reading-style dial need to SHOW
-    what the pipeline will actually do: the two reading styles (the 2026-08-06
-    collapse — "reasoned" is gone; thinking belongs to the preset + the
-    runner's capability gate), both system-prompt bodies, the user-prompt
-    template, the currently-resolved route, the stored production dial value,
-    and what Auto currently picks + why. The server is the single source of
-    truth — the UI never duplicates prompt text or re-derives the pick."""
+    """Everything the attribution Lab + the Auto row need to SHOW what the
+    pipeline will actually do: the THREE routes (the attribution restore),
+    their prompt bodies, the user-prompt template, the editable size rule,
+    and Auto's current pick with its work (each rule judged against that
+    card's own model — the Lab and Studio report it; the Auto pane itself is
+    plain words + the size line, per the Auto simplification 2026-08-06).
+    The server is the single source of truth — the UI never duplicates
+    prompt text or re-derives the pick. The stored force (`route`) died with
+    the pills: production always runs Auto."""
 
     tiers: list[ExtractionTierInfo]
-    # {"guided": <full body>, "direct": <full body>}
+    # {"guided": <full body>, "direct": <full body>, "reasoned": <full body>}
     system_prompts: dict[str, str]
     user_template: str
-    # Where speaker_attribution routes today. All None when no LLM provider
-    # is registered.
-    resolved_provider_id: str | None = None
-    resolved_model: str | None = None
-    resolved_tier: str | None = None
-    # The dial (settings.extraction.reading_style): "auto" | "guided" | "direct".
-    reading_style: str = "auto"
-    # What Auto picks RIGHT NOW for the resolved model, and the reason in user
-    # words ("your model is small"). Null when no route resolves.
-    auto_style: str | None = None
-    auto_reason: str | None = None
+    # The editable size rule (settings.extraction.direct_min_b).
+    direct_min_b: float = 14.0
+    # Auto's pick right now + the readout lines that justify it.
+    auto_picked: str = "guided"
+    auto_checks: list[AutoCheckInfo] = []
 
 
 @router.get(
     "/v1/extraction/config",
     response_model=ExtractionConfigResponse,
-    summary="Reading styles + prompt bodies + resolved route (the attribution Lab + dial)",
+    summary="The three routes + prompt bodies + Auto's pick and its work (the attribution Lab + Auto row)",
 )
 async def extraction_config() -> ExtractionConfigResponse:
     from llm_runner.llm import TIERS, stores
 
-    from ..engines.llm.run import jv_llm_config
-
     # Prompt truth = the SHARED template rows (the same rows the run renders).
     _store = stores.get_prompt_store()
-    _guided = _store.get("speaker_attribution.guided")
-    _direct = _store.get("speaker_attribution.direct")
-
-    # Route truth = the action's PRESET through the same resolution the run
-    # uses (preset provider/model as overrides over the dispatch cascade).
-    provider_id = model = tier_name = None
-    try:
-        from llm_runner.llm.dispatch import resolve_route
-        from llm_runner.llm.preset_resolve import resolve_feature_preset
-
-        preset = resolve_feature_preset(
-            "speaker_attribution.guided", feature="speaker_attribution"
-        )
-        adapter, model, _t = resolve_route(
-            jv_llm_config(), "speaker_attribution", action="speaker_attribution.guided",
-            provider_override=(preset.providerId or None) if preset else None,
-            model_override=(preset.model or None) if preset else None,
-        )
-        provider_id = adapter.provider_id
-        tier_name = pick_tier(None, model).name
-    except LLMNotConfiguredError:
-        pass
+    rows = {name: _store.get(f"speaker_attribution.{name}")
+            for name in ("guided", "direct", "reasoned")}
 
     settings = get_state().settings.get()
-    auto_reason = None
-    if tier_name:
-        auto_reason = (
-            "your model is small — examples included"
-            if tier_name == "guided"
-            else "your model is big enough for the rules alone"
-        )
+    picked, checks = auto_route(settings.extraction.direct_min_b)
 
     return ExtractionConfigResponse(
         tiers=[
@@ -339,19 +306,12 @@ async def extraction_config() -> ExtractionConfigResponse:
                 confidence_floor=t.confidence_floor,
             )
             for t in TIERS.values()
-            if t.name != "reasoned"  # the collapse: two reading styles exist
         ],
-        system_prompts={
-            "guided": _guided.system if _guided else "",
-            "direct": _direct.system if _direct else "",
-        },
-        user_template=_guided.user_template if _guided else "",
-        resolved_provider_id=provider_id,
-        resolved_model=model,
-        resolved_tier=tier_name,
-        reading_style=settings.extraction.reading_style,
-        auto_style=tier_name,
-        auto_reason=auto_reason,
+        system_prompts={name: (r.system if r else "") for name, r in rows.items()},
+        user_template=rows["guided"].user_template if rows["guided"] else "",
+        direct_min_b=settings.extraction.direct_min_b,
+        auto_picked=picked,
+        auto_checks=[AutoCheckInfo(**c) for c in checks],
     )
 
 

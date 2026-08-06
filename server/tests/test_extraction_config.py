@@ -50,21 +50,27 @@ def test_extraction_config_shape(app) -> None:
     assert r.status_code == 200
     body = r.json()
 
-    # TWO reading styles since the 2026-08-06 collapse — "reasoned" was
-    # direct's text plus a forced think flag; thinking belongs to the preset
-    # + the runner's capability gate now.
+    # THREE routes (the attribution restore) with the measured floors.
     names = {t["name"] for t in body["tiers"]}
-    assert names == {"guided", "direct"}
+    assert names == {"guided", "direct", "reasoned"}
     floors = {t["name"]: t["confidence_floor"] for t in body["tiers"]}
-    assert floors["guided"] == 0.7 and floors["direct"] == 0.5
-    # The dial's truth: the stored setting + what Auto picks and why.
-    assert body["reading_style"] == "auto"
-    assert body["auto_style"] in ("guided", "direct", None)
+    assert floors["guided"] == 0.7 and floors["direct"] == 0.5 and floors["reasoned"] == 0.5
 
-    # Real prompt bodies, not placeholders — guided extends direct with
-    # the worked examples.
+    # The Auto row's truth: the editable size rule + the pick with its work
+    # (each line names the model it judged). The stored force (`route`) died
+    # with the pills (the Auto simplification) — production always runs Auto.
+    assert "route" not in body
+    assert body["direct_min_b"] == 14.0
+    assert body["auto_picked"] in ("guided", "direct", "reasoned")
+    assert body["auto_checks"], "the readout must show Auto's work"
+    for check in body["auto_checks"]:
+        assert set(check) == {"route", "model", "passed", "rule"}
+
+    # Real prompt bodies, not placeholders — guided extends direct with the
+    # worked examples; reasoned SEEDS as a copy of direct's text.
     assert "RULES:" in body["system_prompts"]["direct"]
     assert "WORKED EXAMPLES:" in body["system_prompts"]["guided"]
+    assert body["system_prompts"]["reasoned"] == body["system_prompts"]["direct"]
     assert body["system_prompts"]["guided"].startswith(
         body["system_prompts"]["direct"].rstrip()[:40]
     )
@@ -72,14 +78,6 @@ def test_extraction_config_shape(app) -> None:
     # single-brace .replace tokens converted with the template-row move).
     for token in ("{{characters}}", "{{corrections}}", "{{paragraphs}}"):
         assert token in body["user_template"]
-
-    # Route resolved via the action's preset (provider local-llamacpp, model ""
-    # → the registered adapter's default model fills in).
-    assert body["resolved_provider_id"] == "local-llamacpp"
-    assert body["resolved_model"] == "qwen3:8b"
-    assert body["resolved_tier"] == "guided"  # qwen3:8b sub-12B → guided
-    assert body["auto_style"] == "guided"
-    assert "small" in body["auto_reason"]
 
 
 def test_extraction_config_no_provider(tmp_path) -> None:
@@ -93,8 +91,9 @@ def test_extraction_config_no_provider(tmp_path) -> None:
         r = TestClient(app).get("/v1/extraction/config")
         assert r.status_code == 200
         body = r.json()
-        assert body["resolved_provider_id"] is None
         assert body["system_prompts"]["guided"]  # prompts still served
+        # No model routed anywhere → the rules land on Guided, visibly.
+        assert body["auto_picked"] == "guided"
     finally:
         reg._adapters = {a.provider_id: a for a in saved}
 

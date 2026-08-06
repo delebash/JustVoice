@@ -94,43 +94,70 @@ def retire_default_catalog_rows() -> None:
         log.warning("default-catalog retirement failed (rows remain visible): %s", e)
 
 
-# The 2026-08-06 reading rework's one-time fixups for EXISTING DBs (fresh
-# installs get the new seeds directly). Exact-stale-value pattern throughout:
-# only rows still holding the OLD SEED VALUE byte-exact are touched — anything
-# a user edited stays theirs.
-_OLD_PIECE_REFS = (
-    # (piece action key, the old seed's preset id)
-    ("speaker_attribution.guided", "p_extract"),
-    ("speaker_attribution.direct", "p_extract"),
-    ("refine.base", "p_refine"),
-    ("refine.smart_cleanup", "p_refine"),
-    ("refine.self_correction", "p_refine"),
-    ("refine.preserve_technical", "p_refine"),
-)
+# The attribution restore's one-time fixups for EXISTING DBs (approved
+# 2026-08-06 late — three routed cards + the Auto row; supersedes the same
+# day's pieces-rework migration, whose code this replaced). Fresh installs get
+# the new seeds directly. Exact-stale-value pattern for anything a user can
+# edit; bare metadata (positions, the feature grouping) is forced.
+_STALE_ATTR_DESCS = {
+    # key: [stale (label, description) pairs from BOTH earlier wordings — the
+    # §9 originals and the pieces-rework words. A row still wearing one gets
+    # the restore's seed words; an edited row stays the user's.]
+    "speaker_attribution.guided": [
+        (
+            "Reading instructions (with examples)",
+            "What the AI is told when it reads your chapter. This version includes worked examples — used automatically when a smaller model is doing the reading, because small models need to be shown.",
+        ),
+        (
+            "Guided",
+            "For small models — the rules plus worked examples; small models follow better when shown. Below 0.7 confidence a pick becomes unknown.",
+        ),
+    ],
+    "speaker_attribution.direct": [
+        (
+            "Reading instructions (rules only)",
+            "The same job without the examples — used automatically with larger models. JustVoice picks between these two for you.",
+        ),
+        (
+            "Direct",
+            "For big models — the same rules without the examples. Below 0.5 confidence a pick becomes unknown. JustVoice picks between Guided and Direct from your model; the dial on Speaker attribution can force one.",
+        ),
+    ],
+}
 
-_OLD_ROW_WORDS = {
-    # key: (old §9 label, old §9 description) — the batch's first wording, which
-    # the user's QC replaced ("you are confusing me" — the old names return).
-    "speaker_attribution.guided": (
-        "Reading instructions (with examples)",
-        "What the AI is told when it reads your chapter. This version includes worked examples — used automatically when a smaller model is doing the reading, because small models need to be shown.",
-    ),
-    "speaker_attribution.direct": (
-        "Reading instructions (rules only)",
-        "The same job without the examples — used automatically with larger models. JustVoice picks between these two for you.",
-    ),
+# The pieces rework's "Careful reading" preset, byte-exact as it seeded — an
+# unedited copy retires with the rework; any user change keeps the preset.
+_CARELESS_READING_SEED = {
+    "name": "Careful reading", "provider_id": "local-llamacpp",
+    "model": "", "temperature": 0.2, "think": True,
+}
+
+_ATTR_POSITIONS = {
+    "speaker_attribution.guided": 1,
+    "speaker_attribution.direct": 2,
+    "speaker_attribution.reasoned": 3,
 }
 
 
-def migrate_reading_rework() -> None:
-    """Once, marker-guarded (approved 2026-08-06 — the pieces rework):
+def migrate_attribution_restore() -> None:
+    """Once, marker-guarded (the attribution restore, approved 2026-08-06):
 
-    1. A piece row can't route alone anymore — its UNEDITED action-level ref
-       (still the old seed value) is removed so the new FEATURE-level ref
-       (seeded by the same boot's seed_llm) takes over. An edited ref is a
-       user's routing and survives; it keeps winning through the action layer.
-    2. The guided/direct rows still wearing the batch's first wording get the
-       QC-approved words (Guided/Direct) — edited labels stay."""
+    1. Display positions on the three route rows (bare metadata — forced) so
+       the list reads Guided · Direct · Reasoned, not key-alphabetical.
+    2. `speaker_attribution.identify` moves to its own feature key
+       (`speaker_discovery`) so Find new speakers leaves the heading (bare
+       metadata — forced; the row's texts are untouched).
+    3. The pieces rework's FEATURE-level ref (p_read) is removed — routing is
+       per-route action refs again (the same boot's seed_llm inserts them
+       where missing). A user's hand-assigned feature ref survives.
+    4. The "Careful reading" preset retires if byte-identical to its seed; an
+       edited one stays (unassigned, deletable in the Lab).
+    5. Route rows still wearing either earlier wording get the restore's
+       words — edited rows stay the user's.
+
+    Runs after seed_llm (the reasoned row + refs must exist). Also stamps the
+    superseded pieces-rework marker so that retired migration can never fire
+    on a DB that skipped it."""
     from llm_runner.llm import db as llm_db
 
     from .seed_feature_prompts import DEFAULT_FEATURE_PROMPTS
@@ -138,24 +165,130 @@ def migrate_reading_rework() -> None:
     try:
         s = llm_db.session()
         try:
-            if s.get(llm_db.RunnerSetting, "jv_reading_rework_applied") is not None:
+            if s.get(llm_db.RunnerSetting, "jv_attribution_restore_applied") is not None:
                 return
-            for key, old_pid in _OLD_PIECE_REFS:
-                row = s.get(llm_db.FeaturePresetRef, key)
-                if row is not None and row.preset_id == old_pid:
-                    s.delete(row)
-            for key, (old_label, old_desc) in _OLD_ROW_WORDS.items():
+            for key, pos in _ATTR_POSITIONS.items():
+                row = s.get(llm_db.FeaturePrompt, key)
+                if row is not None:
+                    row.position = pos
+            ident = s.get(llm_db.FeaturePrompt, "speaker_attribution.identify")
+            if ident is not None:
+                ident.feature = "speaker_discovery"
+            fref = s.get(llm_db.FeaturePresetRef, "speaker_attribution")
+            if fref is not None and fref.preset_id == "p_read":
+                s.delete(fref)
+            p_read = s.get(llm_db.EnginePreset, "p_read")
+            if p_read is not None and all(
+                getattr(p_read, k, None) == v for k, v in _CARELESS_READING_SEED.items()
+            ):
+                s.delete(p_read)
+            for key, stale_pairs in _STALE_ATTR_DESCS.items():
                 row = s.get(llm_db.FeaturePrompt, key)
                 spec = DEFAULT_FEATURE_PROMPTS.get(key) or {}
-                if row is not None and row.label == old_label and row.description == old_desc:
+                if row is not None and (row.label, row.description) in stale_pairs:
                     row.label = str(spec.get("label") or "")
                     row.description = str(spec.get("description") or "")
-            s.add(llm_db.RunnerSetting(key="jv_reading_rework_applied", value="1"))
+            s.add(llm_db.RunnerSetting(key="jv_attribution_restore_applied", value="1"))
+            if s.get(llm_db.RunnerSetting, "jv_reading_rework_applied") is None:
+                s.add(llm_db.RunnerSetting(key="jv_reading_rework_applied", value="1"))
             s.commit()
         finally:
             s.close()
     except Exception as e:  # noqa: BLE001 — a fixup nicety, never boot-fatal
-        log.warning("reading-rework migration failed (stale refs/words remain): %s", e)
+        log.warning("attribution-restore migration failed (stale rows remain): %s", e)
+
+
+# Yesterday's restore wordings, byte-exact as they seeded — the Auto
+# simplification (approved 2026-08-06) trims the "Auto runs this when…"
+# tails (the Auto pane owns the picking; a card describes only itself) and
+# names WHERE the examples live. A row still wearing the tailed words gets
+# the trimmed seed; an edited row stays the user's.
+_TAILED_ATTR_DESCS = {
+    "speaker_attribution.guided": (
+        "Guided",
+        "For small models — the rules plus worked examples; small models follow better when shown. Below 0.7 confidence a pick becomes unknown. Auto runs this when your model is small.",
+    ),
+    "speaker_attribution.direct": (
+        "Direct",
+        "For big models — the same rules without the examples. Below 0.5 confidence a pick becomes unknown. Auto runs this when your model is big.",
+    ),
+    "speaker_attribution.reasoned": (
+        "Reasoned",
+        "Direct's rules with thinking on — for reasoning models. Below 0.5 confidence a pick becomes unknown. Auto runs this when your model is a reasoning model.",
+    ),
+}
+
+
+# The restore's attribution Lab sample, byte-exact as it seeded — retired by
+# the same user catch ("samples represent real world text"): it carried the
+# pipeline-internal [D#] tags (segmentation adds those itself), a Mira/Mara
+# typo, and a template-composer characters format the attribution adapter
+# can't parse. The raw-prose replacement seeds under a NEW label, so an
+# unedited old row is deleted here; an edited one stays the user's.
+_TAGGED_SAMPLE_LABEL = "Quay scene — tagged + bare quotes"
+_TAGGED_SAMPLE_VARS = {
+    "characters": '- id="c_mara", name="Mara", gender="female"\n'
+                  '- id="c_renn", name="Renn", gender="male"',
+    "corrections": "",
+    "paragraphs": 'Mira reached the quay as the bell finished counting. '
+                  '[D1] "You knew before the funeral," Renn said. He did not look at her.\n\n'
+                  '[D2] "The page told me," she said. [D3] "Ask me who else can read it."',
+}
+_ATTR_ROUTE_ACTIONS = (
+    "speaker_attribution.guided",
+    "speaker_attribution.direct",
+    "speaker_attribution.reasoned",
+)
+
+
+def migrate_auto_simplify() -> None:
+    """Once, marker-guarded (the Auto simplification, approved 2026-08-06):
+
+    1. Route rows still wearing the restore's tailed wordings get the trimmed
+       seed words — edited rows stay the user's.
+    2. The pre-tagged attribution Lab sample retires if byte-identical to its
+       seed; this boot's seed_fill has already inserted the raw-prose
+       replacement under its new label.
+
+    (The retired force needs no scrub: the settings model dropped `route`,
+    so loads ignore a stale key and the next save rewrites the canonical
+    shape.) Runs after seed_llm + migrate_attribution_restore, so a
+    pre-restore DB has already landed on the current seeds before this
+    looks."""
+    from llm_runner.llm import db as llm_db
+
+    from .seed_feature_prompts import DEFAULT_FEATURE_PROMPTS
+
+    try:
+        s = llm_db.session()
+        try:
+            if s.get(llm_db.RunnerSetting, "jv_attr_auto_simplify_applied") is not None:
+                return
+            for key, stale in _TAILED_ATTR_DESCS.items():
+                row = s.get(llm_db.FeaturePrompt, key)
+                spec = DEFAULT_FEATURE_PROMPTS.get(key) or {}
+                if row is not None and (row.label, row.description) == stale:
+                    row.label = str(spec.get("label") or "")
+                    row.description = str(spec.get("description") or "")
+            for action in _ATTR_ROUTE_ACTIONS:
+                for sample in (
+                    s.query(llm_db.TestSample)
+                    .filter_by(action_key=action, label=_TAGGED_SAMPLE_LABEL)
+                    .all()
+                ):
+                    vars_rows = (
+                        s.query(llm_db.TestSampleVar).filter_by(sample_id=sample.id).all()
+                    )
+                    if {v.name: v.value for v in vars_rows} == _TAGGED_SAMPLE_VARS:
+                        for v in vars_rows:
+                            s.delete(v)
+                        s.delete(sample)
+            s.add(llm_db.RunnerSetting(key="jv_attr_auto_simplify_applied", value="1"))
+            s.commit()
+        finally:
+            s.close()
+    except Exception as e:  # noqa: BLE001 — a fixup nicety, never boot-fatal
+        log.warning("auto-simplify migration failed (stale rows remain): %s", e)
 
 
 def reseed_shared_llm(engine, session_factory) -> None:
@@ -171,3 +304,5 @@ def reseed_shared_llm(engine, session_factory) -> None:
     apply_jv_warm_default()
     seed_llm()
     retire_default_catalog_rows()
+    migrate_attribution_restore()
+    migrate_auto_simplify()

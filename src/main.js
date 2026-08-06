@@ -14,7 +14,7 @@ import {
   startWarmOnBoot,
 } from "@delebash/llm-ui";
 import { SERVER_URL, resolveBase } from "./config.js";
-import AttributionStylePanel from "./components/lab/AttributionStylePanel.vue";
+import AttributionAutoPanel from "./components/lab/AttributionAutoPanel.vue";
 import { attributionLabAdapter } from "./services/attributionLab.js";
 import { bootPrefs, ensureActiveProjectDefault } from "./services/prefs.js";
 import { loadDoc, hasDoc, titleForSlug } from "./services/helpDocs.js";
@@ -55,23 +55,28 @@ function wireKit(app) {
     // floor controls on the column. CONCEPTS §16: lab and production cannot
     // drift.
     labAdapters: { speaker_attribution: attributionLabAdapter },
-    // The pieces rework (approved 2026-08-06): rows that can't run or route
-    // alone show their RELATION instead of a routing arrow, and their feature
-    // routes ONCE at its own card. Attribution's two reading styles are picked
-    // per run from the model; cleanup's four texts concatenate into one call.
+    // Dictation cleanup's four texts are PIECES (decided, not reopened): they
+    // concatenate into ONE call, so the rows show their RELATION instead of a
+    // routing arrow and the feature routes once at its own card. Attribution's
+    // routes are NOT pieces anymore — the restore (approved 2026-08-06) made
+    // Guided/Direct/Reasoned real routed cards under a plain heading.
     featurePieces: {
-      "speaker_attribution.guided":
-        "One of Speaker attribution's two reading styles — picked from your model",
-      "speaker_attribution.direct":
-        "One of Speaker attribution's two reading styles — picked from your model",
       "refine.base": "Part of Dictation cleanup — always runs with it",
       "refine.smart_cleanup": "Part of Dictation cleanup — runs when its Capture toggle is on",
       "refine.self_correction": "Part of Dictation cleanup — runs when its Capture toggle is on",
       "refine.preserve_technical": "Part of Dictation cleanup — runs when its Capture toggle is on",
     },
-    // The reading-style dial on the Speaker attribution card (Auto shows its
-    // pick + why; Guided/Direct force one for production runs).
-    featurePanels: { speaker_attribution: AttributionStylePanel },
+    // The "Auto" row under the SPEAKER ATTRIBUTION heading (the Auto
+    // simplification, 2026-08-06): label + note render the nav row; the
+    // panel is its whole pane — the plain words for how Auto picks a
+    // feature, plus the one editable size line. No pills, no readout.
+    featurePanels: {
+      speaker_attribution: {
+        component: AttributionAutoPanel,
+        label: "Auto",
+        note: "Picks which of the three features below runs",
+      },
+    },
     // This app's voice on the shared model-catalog surface (defaults are JW's words).
     catalogCopy: {
       chatSectionLabel: "Assistant models",

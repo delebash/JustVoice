@@ -32,9 +32,9 @@ def test_all_actions_seed_as_shared_rows(tmp_path):
     rows = _shared_rows()
     for key in DEFAULT_FEATURE_PROMPTS:
         assert key in rows, f"missing shared row {key}"
-    # 13 actions over 9 features (the refine ×4 composition + the tier pair +
-    # discovery under speaker_attribution).
-    assert len(DEFAULT_FEATURE_PROMPTS) == 13
+    # 14 actions over 10 features (the refine ×4 composition + attribution's
+    # three routes + discovery as its own speaker_discovery feature).
+    assert len(DEFAULT_FEATURE_PROMPTS) == 14
     assert rows["refine.base"].user_template == "{{transcript}}"
     assert "{{characters}}" in rows["speaker_attribution.guided"].user_template
     assert rows["smart_assign"].json_mode is True
@@ -50,13 +50,17 @@ def test_presets_and_refs_seed(tmp_path):
     # compose runs at its preset's 0.9 (the hardcoded personas_api temperature
     # moved onto the preset — ruling 9).
     assert presets["p_compose"]["temperature"] == 0.9
-    # Attribution's own preset asks for thinking — the runner's capability
-    # gate turns that into "thinks on models that can" (approved 2026-08-06).
-    assert presets["p_read"]["think"] is True
+    # Reasoned's preset asks for thinking — the route's point; the runner's
+    # capability gate keeps it clean on models that can't (the restore).
+    assert presets["p_reason"]["think"] is True
+    # The three routes each carry their OWN ref (per-route routing restored);
+    # Reasoned's text seeds as a copy of Direct's.
+    assert DEFAULT_FEATURE_PRESETS["speaker_attribution.reasoned"] == "p_reason"
+    rows = _shared_rows()
+    assert rows["speaker_attribution.reasoned"].system == rows["speaker_attribution.direct"].system
     # Every seeded row RESOLVES through the cascade: its own ref, or its
-    # FEATURE's ref (the pieces rework — guided/direct and the refine sections
-    # route through one feature-level assignment). And every ref names a
-    # seeded row or a seeded feature.
+    # FEATURE's ref (the refine sections route through one feature-level
+    # assignment). And every ref names a seeded row or a seeded feature.
     features_of = {k: (v.get("feature") or k) for k, v in DEFAULT_FEATURE_PROMPTS.items()}
     for key, feat in features_of.items():
         assert key in DEFAULT_FEATURE_PRESETS or feat in DEFAULT_FEATURE_PRESETS, key

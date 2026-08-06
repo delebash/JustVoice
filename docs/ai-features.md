@@ -32,47 +32,55 @@ Until a model is picked, features answer with a "run the LLM engine setup"
 message — the one-click wizard on the AI Settings page installs the built-in
 engine, downloads a model sized to your PC, and sets it as the default.
 
-## Prompts are editable — features vs their pieces
+## Prompts are editable — features and Dictation cleanup's pieces
 
 Every prompt a feature sends is a **template row** — the wording lives in the
 database, visible and editable under Routing by feature. Most features are one
-row. Two features are made of **pieces** — rows you can read, edit and test,
-that never run alone:
+row. **Dictation cleanup** is made of **pieces** — four texts (the ground
+rules plus the three sections your Capture toggles switch on) you can read,
+edit and test, that never run alone: production pastes the enabled ones
+together and makes **one** call. A piece's card shows what it belongs to
+instead of a routing arrow — the cleanup card itself is where its engine
+preset is chosen, once, for all four.
 
-- **Speaker attribution** has two reading styles: **Guided** (the rules plus
-  worked examples — small models follow better when shown) and **Direct** (the
-  same rules alone — for bigger models). One of them is picked per run;
-  they're not separate features.
-- **Dictation cleanup** has four texts: the ground rules plus the three
-  sections your Capture toggles switch on. Production pastes the enabled ones
-  together and makes **one** call.
+## Speaker attribution — three routes and the Auto row
 
-A piece's card shows what it belongs to instead of a routing arrow — the
-feature's own card is where the engine preset (provider · model · thinking)
-is chosen, once, for all its pieces.
+Under the **SPEAKER ATTRIBUTION** heading there are three real routed
+features — each with its own editable text, its own engine preset, its own
+Lab:
 
-## Speaker attribution's reading style
+- **Guided** — its system prompt carries the rules **plus worked examples**;
+  small models follow better when shown.
+- **Direct** — the **same system-prompt rules without the examples**, for
+  big models. (The user prompt — your text and cast — is identical on every
+  route; only the system prompt differs.)
+- **Reasoned** — Direct's rules with thinking on, for reasoning models. (Its
+  text starts as a copy of Direct's; edit it separately whenever you like.)
 
-On the Speaker attribution card, the **Reading style** dial shows how the
-instructions are chosen:
+Above them sits the **Auto** row — *"Picks which of the three features below
+runs."* Its pane is plain words plus one number. Auto never picks a model —
+it looks at the model you've already assigned and picks the feature that
+fits it: can your model think (the **Thinking** flag on its catalog row —
+edit it there)? **Reasoned** runs. Otherwise, at or above the **editable
+size line** (billions of parameters, default 14) **Direct** runs; under it,
+**Guided**. Unknown size counts as small.
 
-- **Auto** (default) — JustVoice picks Guided or Direct from your model's
-  size, and the dial says what it currently picks and why ("currently Guided —
-  your model is small").
-- **Guided / Direct** — force one style for every production run.
-
-Thinking is not part of the style: a model that thinks, thinks — the feature's
-preset carries the thinking setting, and models that can't think are simply
-never asked to (the family-wide capability gate).
+Production always runs Auto's pick — there is no stored force. After every
+Analyze, Studio's meta line reports the route that ran and whether it was
+Auto's pick or forced per run. A route card's Lab run or an API call forces
+its own route for that run only — that always wins. Thinking itself rides
+the route's preset (Reasoned's has it on), and models that can't think are
+simply never asked to (the family-wide capability gate).
 
 ## The attribution Lab
 
-Open either reading-style row and its **Lab** runs the **real reading
-pipeline** — the same segmentation, anchor propagation, and confidence floor
-as Studio's Analyze — so what you tune is exactly what production runs:
+Open any route's row and its **Lab** runs the **real reading pipeline** — the
+same segmentation, anchor propagation, and confidence floor as Studio's
+Analyze — so what you tune is exactly what production runs:
 
-- **Reading style** — per column: Auto, Guided, or Direct, for testing "is my
-  model misclassified?"
+- **The card is the route** — a card's Lab run always forces its own route:
+  Guided's card tests Guided, Direct's tests Direct, Reasoned's tests
+  Reasoned. The prompt boxes you see are exactly what runs.
 - **Confidence floor & Anchor propagation** — below the floor a pick becomes
   *unknown* instead of a guess; anchor propagation is the pre-AI step where
   "Tom said" attributes the quote beside it.
@@ -82,7 +90,9 @@ as Studio's Analyze — so what you tune is exactly what production runs:
   a block on the Studio Script tab.
 - **Correction memory** — the card under the results counts the open
   project's corrections; the top-12 most recent inject into the next Analyze
-  run as worked examples. **Clear all** wipes the project's correction
+  run's **user prompt** as correction examples (separate from Guided's
+  built-in worked examples, which live in its system prompt). **Clear all**
+  wipes the project's correction
   history — use it when you change your mind about a character's identity and
   don't want old corrections steering the next run.
 

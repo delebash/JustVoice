@@ -105,30 +105,112 @@ def _extract_first_json_array(text: str) -> list:
     return v if isinstance(v, list) else []
 
 
-def pick_tier(tier_override: str | None, model_override: str | None):
-    """The READING-STYLE choice (approved 2026-08-06 — "Reasoned" collapsed):
-    the caller's override (a Lab column / the production dial injected at the
-    API layer) wins; otherwise auto-classify the model the run resolves to —
-    small → guided (examples, floor 0.7), bigger → direct (rules only, floor
-    0.5). Only TWO styles exist now: the old "reasoned" was direct's text plus
-    a forced think flag, and thinking belongs to the preset + the runner's
-    capability gate like every feature (a stale "reasoned" override or a
-    reasoning-family classification coerces to direct — same text, same
-    floor). Shared by analyze_scene and the API's response metadata so the
-    echoed style can never drift from the one that ran."""
-    from llm_runner.llm import TIERS, spec_for
+ROUTES = ("guided", "direct", "reasoned")
+
+
+@dataclass(frozen=True)
+class RoutePick:
+    """Which attribution route runs, and why — echoed to the caller so the UI
+    shows the SAME choice the pipeline made (never re-derived client-side)."""
+
+    name: str    # "guided" | "direct" | "reasoned"
+    floor: float
+    source: str  # "forced" (per-run override) | "setting" (the force pills) | "auto"
+
+
+def route_model(route: str) -> str:
+    """The model a route's card resolves to (its own action ref → feature
+    layer → default). Empty when nothing resolves."""
     from llm_runner.llm.preset_resolve import resolve_feature_preset
 
-    override = tier_override if tier_override in {"guided", "direct"} else (
-        "direct" if tier_override == "reasoned" else None
-    )
     preset = resolve_feature_preset(
-        f"speaker_attribution.{override or 'guided'}", feature="speaker_attribution"
+        f"speaker_attribution.{route}", feature="speaker_attribution"
     )
-    spec = spec_for(model_override or (preset.model if preset else ""), override)
-    # The collapse: a reasoning-family classification means "direct text" —
-    # think is NOT this layer's business anymore.
-    return TIERS["direct"] if spec.name == "reasoned" else spec
+    return (preset.model if preset else "") or ""
+
+
+def model_size_b(model_id: str) -> float:
+    """Billions of parameters for the Auto size rule: the catalog row's
+    total_params when the model is cataloged ("26B", "E4B"), else the first
+    size token in the id ("…-12b-…"). Unknown → 0 (reads as small → Guided)."""
+    total = ""
+    if model_id:
+        try:
+            from llm_runner.llm import db as llm_db
+
+            s = llm_db.session()
+            try:
+                row = s.get(llm_db.ModelCatalog, model_id)
+                total = (getattr(row, "total_params", "") or "") if row else ""
+            finally:
+                s.close()
+        except Exception:  # noqa: BLE001 — any lookup failure falls to the id parse
+            total = ""
+    for source in (total, model_id or ""):
+        m = re.search(r"(\d+(?:\.\d+)?)\s*b\b", source, flags=re.IGNORECASE)
+        if m:
+            try:
+                return float(m.group(1))
+            except (TypeError, ValueError):
+                continue
+    return 0.0
+
+
+def auto_route(direct_min_b: float, model_override: str = "") -> tuple[str, list[dict]]:
+    """The Auto pick + its shown work (the approved two visible rules):
+
+      Reasoned — when the model can think (the catalog's Thinking flag,
+                 name-heuristic fallback; unknown does NOT force Reasoned).
+      Direct   — when the model is at least `direct_min_b` billion params.
+      Guided   — otherwise.
+
+    Production (no override): each rule judged against THAT CARD'S OWN model
+    — no hidden anchor; the readout the API serves names every model it
+    checked. A per-call MODEL override (a Lab column's pin) is the model that
+    actually runs, so every rule judges IT — the old system's own documented
+    behavior ("the model the run resolves to: request override, else the
+    action's preset model")."""
+    from llm_runner.llm.capability import model_thinks
+
+    def m(route: str) -> str:
+        return model_override or route_model(route)
+
+    checks: list[dict] = []
+    m_reason = m("reasoned")
+    thinks = bool(m_reason) and model_thinks(m_reason) is True
+    checks.append({"route": "reasoned", "model": m_reason, "passed": thinks,
+                   "rule": "when the model can think"})
+    if thinks:
+        return "reasoned", checks
+    m_direct = m("direct")
+    size = model_size_b(m_direct)
+    big = size >= float(direct_min_b or 0)
+    checks.append({"route": "direct", "model": m_direct, "passed": big,
+                   "rule": f"when the model is at least {direct_min_b:g} B"})
+    if big:
+        return "direct", checks
+    checks.append({"route": "guided", "model": m("guided"),
+                   "passed": True, "rule": "otherwise"})
+    return "guided", checks
+
+
+def pick_route(tier_override: str | None, settings, model_override: str = "") -> RoutePick:
+    """The route choice (the Auto simplification, 2026-08-06): the caller's
+    per-run route override (a route card's Lab run / the API `tier` field —
+    the CLI has no analyze command, verified 2026-08-06) wins; otherwise
+    Auto — the two visible rules, judging the per-call model override when
+    one rides the request. Production is always Auto: the stored force died
+    with the pills. Floors come from the shared route registry (guided 0.7 ·
+    direct/reasoned 0.5)."""
+    from llm_runner.llm import TIERS
+
+    if tier_override in ROUTES:
+        return RoutePick(tier_override, TIERS[tier_override].confidence_floor, "forced")
+    name, _checks = auto_route(
+        getattr(getattr(settings, "extraction", None), "direct_min_b", 14.0),
+        model_override or "",
+    )
+    return RoutePick(name, TIERS[name].confidence_floor, "auto")
 
 
 def analyze_scene(
@@ -141,11 +223,10 @@ def analyze_scene(
 
     Returns the AttributionRow list in the same order as the segments
     appear in the scene. Narration rows have speaker="narrator" with
-    confidence=1.0 + source="narration". `settings` is unused since the
-    pin-era config died (routing is preset-resolved); kept for the callers'
-    signature until the settings tree sheds its LLM residue.
+    confidence=1.0 + source="narration". `settings` carries the route force
+    pills + the Auto size rule (settings.extraction — the attribution
+    restore); engine routing itself stays preset-resolved.
     """
-    del settings  # pin-era argument
     # ── 1. Segment ───────────────────────────────────────────────
     paragraphs = split_into_paragraphs(request.text)
     segments = segment_paragraphs(paragraphs)
@@ -159,14 +240,19 @@ def analyze_scene(
         else {}
     )
 
-    # ── 3. Pick the tier + run through the shared path ───────────
-    tier = pick_tier(request.tier, request.model)
+    # ── 3. Pick the route + run through the shared path ──────────
+    pick = pick_route(request.tier, settings, request.model or "")
 
     floor = (
         request.confidence_floor
         if request.confidence_floor is not None
-        else tier.confidence_floor
+        else pick.floor
     )
+    if raw_out is not None:
+        # The pick that RAN, for the response meta — one source, no re-derive.
+        raw_out["route"] = pick.name
+        raw_out["route_source"] = pick.source
+        raw_out["floor"] = floor
 
     dialogue_segments = [s for s in segments if s["kind"] == "dialogue"]
     n_dialogue = len(dialogue_segments)
@@ -174,13 +260,13 @@ def analyze_scene(
     llm_picks: list[dict[str, Any]] = []
     if n_dialogue > 0:
         try:
-            # The style's template row owns the wording; code passes the
-            # formatted blocks as variables (ruling 9). Thinking is NOT forced
-            # here anymore (the 2026-08-06 collapse): the preset's think + the
-            # runner's capability gate govern, like every feature. The Lab's
-            # system/user candidates ride the explicit-prompt door.
+            # The route's OWN template row + OWN preset run (per-route routing,
+            # the attribution restore — Reasoned has its own row and a
+            # think-ON preset; the runner's capability gate governs models
+            # that can't think). The Lab's system/user candidates ride the
+            # explicit-prompt door.
             resp = run_feature(
-                f"speaker_attribution.{tier.system_key}",
+                f"speaker_attribution.{pick.name}",
                 {
                     "characters": format_characters(request.characters),
                     "corrections": format_corrections(request.corrections),

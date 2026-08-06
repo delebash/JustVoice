@@ -5,9 +5,10 @@
 // the REAL pipeline (/v1/extraction/analyze-text — segmentation, [D#] tags,
 // anchors, floors; the discovery action runs /v1/extraction/discover-speakers)
 // instead of the generic /v1/ai/run, renders the speaker table with reassign
-// (AttributionResult), and carries the tier + floor controls
-// (AttributionConfigExtra). CONCEPTS §16 holds: the lab and production share
-// one pipeline, so they cannot drift.
+// (AttributionResult), and carries the floor + anchor controls
+// (AttributionConfigExtra). Each card's run forces its OWN route — the card
+// IS the route (the Auto simplification, 2026-08-06). CONCEPTS §16 holds:
+// the lab and production share one pipeline, so they cannot drift.
 import AttributionConfigExtra from "../components/lab/AttributionConfigExtra.vue";
 import AttributionResult from "../components/lab/AttributionResult.vue";
 import { useApi } from "../stores/api.js";
@@ -34,14 +35,14 @@ function parseCharacters(raw) {
     .filter((c) => c.name);
 }
 
-// Which tier an action's own prompt row belongs to — when the column's tier
-// matches (or is Auto), the column's edited prompt boxes ride as overrides
-// ("what you see is what runs"); a DIFFERENT tier means the server's real
-// prompt for that tier runs instead (sending this row's text would silently
-// run the wrong instructions under the right name).
-const ACTION_TIER = {
+// Each card IS its route (the Auto simplification, 2026-08-06): a card's Lab
+// run always forces its own route, so the column's edited prompt boxes
+// always ride as overrides — "what you see is what runs", with no
+// route-vs-prompt mismatch possible.
+const ACTION_ROUTE = {
   "speaker_attribution.guided": "guided",
   "speaker_attribution.direct": "direct",
+  "speaker_attribution.reasoned": "reasoned",
 };
 
 async function run(body, { signal } = {}) {
@@ -80,9 +81,7 @@ async function run(body, { signal } = {}) {
     };
   }
 
-  const actionTier = ACTION_TIER[body.action] || null;
-  const tier = extra.tier || null;                 // null/"" = Auto (server classifies)
-  const promptsApply = !tier || tier === actionTier;
+  const tier = ACTION_ROUTE[body.action] || null; // the card's own route, forced
 
   const payload = {
     text: passageFrom(vars),
@@ -94,8 +93,8 @@ async function run(body, { signal } = {}) {
     providerId: body.providerId || null,
     model: body.model || null,
     temperature: body.temperature ?? null,
-    systemPrompt: promptsApply && body.system ? body.system : null,
-    userPrompt: promptsApply && body.userTemplate ? body.userTemplate : null,
+    systemPrompt: body.system || null,
+    userPrompt: body.userTemplate || null,
     confidence_floor:
       (extra.useFloor ?? true) && extra.floor !== "" && extra.floor != null
         ? Number(extra.floor)
