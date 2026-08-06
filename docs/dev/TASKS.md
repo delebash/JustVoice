@@ -25,6 +25,54 @@
 > is left untouched on purpose so re-enabling is one command when the CI
 > pipeline is actually wanted again.
 
+## APPROVED 2026-08-06 (QC walk rulings, "ok your rec go" + "ok go") — IN BUILD
+
+**The Routing-by-feature rework (JV) + the thinking capability gate (kit).**
+The approved text, as presented and confirmed:
+
+- **Features list — one card per feature; piece-rows under their feature
+  without routing arrows** (kit seam, default-empty → JW pixel-identical):
+  - Speaker attribution card — description in the user's words: "Extracts who
+    says what and what they say." ONE chooser (its preset, JW-style). On the
+    card, the visible dial: **Reading style: Auto · Guided · Direct**, where
+    Auto SHOWS its decision + reason ("Auto — currently Guided (your model is
+    small)"). Auto default = the original behavior. Under it, the two texts
+    as piece-rows: "Guided — for small models · examples included" /
+    "Direct — for big models · rules only" — editable + Lab-testable, no
+    routing of their own (floors 0.7/0.5 ride the style).
+  - Dictation cleanup card ("Cleans your dictated text in one pass — what it
+    fixes follows your Capture toggles") + its four texts as piece-rows.
+  - Find new speakers — its own card with its own routing.
+  - **Reasoned dies as a concept**: attribution stops forcing think and obeys
+    the preset's think setting like every feature; tier registry = guided/
+    direct; attribution's preset seeds think=ON (the gate below handles
+    capability). APPROVED knowingly: small thinking models now think on
+    attribution too (the old system only forced think at 14B+/reasoning
+    families) — "a model that thinks, thinks"; the visible off-switch is the
+    preset's think box.
+  - Lab column: saved-setups row DELETED (standard Save-as-preset only);
+    anchors toggle label back to **"Anchor propagation"** (tooltip carries
+    the 'Tom said' explanation); tier chips Auto/Guided/Direct.
+  - Production reading-style setting persists server-side; Studio Analyze
+    honors it; /v1/extraction/config serves the current auto pick + reason
+    for the dial. Per-call override (Lab) still wins.
+- **The thinking capability gate (KIT, family-wide — JW included, approved):**
+  effective thinking = the preset's think (the task's tested want) AND the
+  model can think. `model_thinks` resolver, server-side, three layers:
+  catalog row's thinking flag (trusted, editable) → name heuristic (JV's
+  retiring tier classifier donates the knowledge) → **unknown = permit
+  (today's behavior — the gate never makes anything worse)**. REQUIRED: the
+  chip AND Lab show "thinking on — inactive: this model doesn't think" when
+  gated (rides the chip↔Lab parity test); the checkbox's meaning = "ask for
+  thinking where the model offers the choice" (always-thinkers like o1-class
+  cannot be gated off — worded, not pretended). BUILD ITEM: verify the
+  catalog UI can edit the thinking flag; add the control if missing.
+  Necessity proven: think-on to a non-reasoning cloud model sends
+  reasoning_effort → API error (prompts.py:415-417) — without the gate the
+  attribution collapse breaks on mainstream cloud routes.
+- Sequencing: kit gate slice FIRST (JW full suite as its gate), then the JV
+  rework. Docs ride each slice.
+
 ## QC finds 2026-08-05 (user's eyes, added on sight)
 
 
