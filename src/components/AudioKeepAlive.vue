@@ -59,7 +59,9 @@ onMounted(() => {
   const tryPlay = () => {
     if (!audioEl.value) return;
     if (!audioEl.value.paused) return;
-    audioEl.value.play().catch((err) => {
+    // play() may return undefined instead of a promise (spec-legal in older
+    // engines; jsdom's media stub does) — optional-chain so boot never dies on it.
+    audioEl.value.play()?.catch((err) => {
       console.debug('[AudioKeepAlive] play blocked (will retry on next gesture):', err);
     });
   };

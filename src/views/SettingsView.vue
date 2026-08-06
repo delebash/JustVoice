@@ -14,6 +14,7 @@ import { useActiveProject } from "../stores/activeProject.js";
 import { useUIStore } from "../stores/ui.js";
 import { useServerStore } from "../stores/server.js";
 import { UI_SCALES } from "../services/appearance.js";
+import { SETTINGS_SECTION_IDS } from "./settingsSections.js";
 import CacheView from "./CacheView.vue";
 import AudioChannelsView from "./AudioChannelsView.vue";
 import WebhooksView from "./WebhooksView.vue";
@@ -400,26 +401,24 @@ onMounted(refresh);
 // ── Sections (family parity batch 2026-08-06): the canon shared sections in
 // their fixed relative order — words from the FAMILY CONTRACT, enforced by
 // construction — then JV's own lane. "Changelog" died for the canon "Updates".
+// The ORDER lives in settingsSections.js so the canon contract test asserts
+// exactly what renders (slice 11); labels stay here.
 const SEC = FAMILY_LABELS.settingsSections;
-const SUBS = [
-  { id: "general",    label: "General" },
-  { id: "appearance", label: SEC.appearance },
-  { id: "backups",    label: SEC.backups },
-  { id: "storage",    label: SEC.storage },
-  { id: "server",     label: SEC.server },
-  { id: "logs",       label: SEC.logs },
-  { id: "updates",    label: SEC.updates },
-  { id: "about",      label: SEC.about },
-  // JV's own lane.
-  { id: "mastering",  label: "Mastering" },
-  { id: "generation", label: "Generation" },
-  { id: "capture",    label: "Capture / Dictation" },
-  { id: "mcp",        label: "MCP server" },
-  { id: "gpu",        label: "GPU" },
-  { id: "cache",      label: "Cache" },
-  { id: "channels",   label: "Channels" },
-  { id: "webhooks",   label: "Webhooks" },
-];
+const APP_SECTION_LABELS = {
+  general: "General",
+  mastering: "Mastering",
+  generation: "Generation",
+  capture: "Capture / Dictation",
+  mcp: "MCP server",
+  gpu: "GPU",
+  cache: "Cache",
+  channels: "Channels",
+  webhooks: "Webhooks",
+};
+const SUBS = SETTINGS_SECTION_IDS.map((id) => ({
+  id,
+  label: SEC[id] || APP_SECTION_LABELS[id] || id,
+}));
 const activeSub = ref("general");
 
 // Deep links (#cache/#channels/#webhooks redirect here) hand the target
