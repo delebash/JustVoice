@@ -345,6 +345,16 @@ class MCPSettings(BaseModel):
     default_voice: str | None = None
 
 
+class ExtractionSettings(BaseModel):
+    """Speaker-attribution behaviour — the reading-style dial (approved
+    2026-08-06). "auto" = pick the instruction style from the feature's
+    resolved model (the original behaviour: small → Guided/examples, bigger →
+    Direct/rules-only); "guided"/"direct" force that style for production
+    Analyze runs. The Lab's per-call override still wins over this."""
+
+    reading_style: Literal["auto", "guided", "direct"] = "auto"
+
+
 class AppSettings(BaseModel):
     """First-run onboarding + cross-cutting UI preferences.
 
@@ -372,6 +382,7 @@ class Settings(BaseModel):
     generation: GenerationSettings = GenerationSettings()
     captures: CapturesSettings = CapturesSettings()
     mcp: MCPSettings = MCPSettings()
+    extraction: ExtractionSettings = ExtractionSettings()
     app: AppSettings = AppSettings()
 
 
@@ -391,6 +402,7 @@ class SettingsPatch(BaseModel):
     generation: GenerationSettings | None = None
     captures: CapturesSettings | None = None
     mcp: MCPSettings | None = None
+    extraction: ExtractionSettings | None = None
     app: AppSettings | None = None
 
 

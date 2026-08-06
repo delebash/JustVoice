@@ -208,9 +208,11 @@ def test_analyze_text_threads_model_temp_prompt_overrides(client, monkeypatch):
     assert captured["model"] == "qwen3:14b"
     assert captured["temperature"] == 0.05
     assert captured["system"] == "CUSTOM PROMPT BODY"
-    # qwen3:14b auto-classifies REASONED (≥14B hybrid) — the action follows.
+    # A reasoning-family model reads with the DIRECT text — and since the
+    # 2026-08-06 collapse the pipeline never forces think: the preset's think +
+    # the runner's capability gate govern, so no think kwarg is threaded at all.
     assert captured["action"] == "speaker_attribution.direct"
-    assert captured["think"] is True
+    assert "think" not in captured
     assert 'id="mara"' in captured["variables"]["characters"]
     assert r.json()["raw_llm"] == '[{"speaker": "mara", "confidence": 0.9}]'
 

@@ -126,20 +126,23 @@ DEFAULT_FEATURE_PROMPTS: dict[str, dict] = {
     # ── speaker_attribution (the pipeline's tier pair + discovery) ──────────
     # Array outputs → json_mode stays OFF (json_object constrains to an OBJECT;
     # the tolerant array extraction is the measured contract).
-    # Labels/descriptions: the parity batch's approved copy (§9, 2026-08-06)
-    # — VERBATIM, outcomes in user words. Row labels live here in the seed
-    # (recorded limit: vue-i18n cannot reach DB rows).
+    # Labels/descriptions: the QC-approved words (2026-08-06 rework — the old
+    # names Guided/Direct return; the §9 renames erased the user's vocabulary).
+    # Row labels live here in the seed (recorded limit: vue-i18n cannot reach
+    # DB rows). These two rows are PIECES of Speaker attribution — one of them
+    # is picked per run from the model; they route through the feature's one
+    # preset (llm_bootstrap.migrate_reading_rework carries existing DBs over).
     "speaker_attribution.guided": {
         "feature": "speaker_attribution",
-        "label": "Reading instructions (with examples)",
-        "description": "What the AI is told when it reads your chapter. This version includes worked examples — used automatically when a smaller model is doing the reading, because small models need to be shown.",
+        "label": "Guided",
+        "description": "For small models — the rules plus worked examples; small models follow better when shown. Below 0.7 confidence a pick becomes unknown.",
         "system": GUIDED_SYSTEM,
         "user_template": _ATTR_USER_TEMPLATE,
     },
     "speaker_attribution.direct": {
         "feature": "speaker_attribution",
-        "label": "Reading instructions (rules only)",
-        "description": "The same job without the examples — used automatically with larger models. JustVoice picks between these two for you.",
+        "label": "Direct",
+        "description": "For big models — the same rules without the examples. Below 0.5 confidence a pick becomes unknown. JustVoice picks between Guided and Direct from your model; the dial on Speaker attribution can force one.",
         "system": DIRECT_SYSTEM,
         "user_template": _ATTR_USER_TEMPLATE,
     },

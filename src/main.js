@@ -14,6 +14,7 @@ import {
   startWarmOnBoot,
 } from "@delebash/llm-ui";
 import { SERVER_URL, resolveBase } from "./config.js";
+import AttributionStylePanel from "./components/lab/AttributionStylePanel.vue";
 import { attributionLabAdapter } from "./services/attributionLab.js";
 import { bootPrefs, ensureActiveProjectDefault } from "./services/prefs.js";
 import { loadDoc, hasDoc, titleForSlug } from "./services/helpDocs.js";
@@ -50,9 +51,27 @@ function wireKit(app) {
     // The Lab runs the REAL attribution pipeline for speaker_attribution
     // columns (parity batch 2026-08-06 — the Speaker Lab reunification):
     // /v1/extraction/analyze-text instead of the generic /v1/ai/run, the
-    // speaker table with reassign-teaches as the renderer, tier + floor
-    // controls on the column. CONCEPTS §16: lab and production cannot drift.
+    // speaker table with reassign-teaches as the renderer, reading-style +
+    // floor controls on the column. CONCEPTS §16: lab and production cannot
+    // drift.
     labAdapters: { speaker_attribution: attributionLabAdapter },
+    // The pieces rework (approved 2026-08-06): rows that can't run or route
+    // alone show their RELATION instead of a routing arrow, and their feature
+    // routes ONCE at its own card. Attribution's two reading styles are picked
+    // per run from the model; cleanup's four texts concatenate into one call.
+    featurePieces: {
+      "speaker_attribution.guided":
+        "One of Speaker attribution's two reading styles — picked from your model",
+      "speaker_attribution.direct":
+        "One of Speaker attribution's two reading styles — picked from your model",
+      "refine.base": "Part of Dictation cleanup — always runs with it",
+      "refine.smart_cleanup": "Part of Dictation cleanup — runs when its Capture toggle is on",
+      "refine.self_correction": "Part of Dictation cleanup — runs when its Capture toggle is on",
+      "refine.preserve_technical": "Part of Dictation cleanup — runs when its Capture toggle is on",
+    },
+    // The reading-style dial on the Speaker attribution card (Auto shows its
+    // pick + why; Guided/Direct force one for production runs).
+    featurePanels: { speaker_attribution: AttributionStylePanel },
     // This app's voice on the shared model-catalog surface (defaults are JW's words).
     catalogCopy: {
       chatSectionLabel: "Assistant models",

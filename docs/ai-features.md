@@ -12,7 +12,7 @@ is the **AI Settings** page in the sidebar.
 |---|---|---|
 | **Compose** | Writes a fresh in-character line from a persona's personality prompt | Generate view → 🎲 Compose button |
 | **Persona rewrite** | Rewrites the current text in a character's voice (preview-then-accept) | Generate view → ✏️ Rewrite · Studio Script → right-click a dialogue block |
-| **Speaker attribution** | Tags each paragraph with its speaker (narrator vs character) | Studio Script tab → Analyze |
+| **Speaker attribution** | Extracts who says what and what they say | Studio Script tab → Analyze |
 | **Smart-assign** | Matches each character in your cast to a TTS voice | Studio Cast tab → Smart-assign |
 | **Render preset suggest** | Classifies a chapter's tone and picks the best render preset | Studio Render tab → 💡 Suggest |
 | **Show notes** | Chapter summaries for podcast descriptions | Projects → Show notes |
@@ -32,27 +32,50 @@ Until a model is picked, features answer with a "run the LLM engine setup"
 message — the one-click wizard on the AI Settings page installs the built-in
 engine, downloads a model sized to your PC, and sets it as the default.
 
-## Prompts are editable
+## Prompts are editable — features vs their pieces
 
-Every feature's prompt is a **template row** — the wording lives in the
-database, editable in the AI Settings Lab (each row ships a sample so you can
-test it standalone). Dictation cleanup is four rows (base + the three
-transformation sections your Capture toggles enable); production runs the
-composition of whichever sections are on.
+Every prompt a feature sends is a **template row** — the wording lives in the
+database, visible and editable under Routing by feature. Most features are one
+row. Two features are made of **pieces** — rows you can read, edit and test,
+that never run alone:
+
+- **Speaker attribution** has two reading styles: **Guided** (the rules plus
+  worked examples — small models follow better when shown) and **Direct** (the
+  same rules alone — for bigger models). One of them is picked per run;
+  they're not separate features.
+- **Dictation cleanup** has four texts: the ground rules plus the three
+  sections your Capture toggles switch on. Production pastes the enabled ones
+  together and makes **one** call.
+
+A piece's card shows what it belongs to instead of a routing arrow — the
+feature's own card is where the engine preset (provider · model · thinking)
+is chosen, once, for all its pieces.
+
+## Speaker attribution's reading style
+
+On the Speaker attribution card, the **Reading style** dial shows how the
+instructions are chosen:
+
+- **Auto** (default) — JustVoice picks Guided or Direct from your model's
+  size, and the dial says what it currently picks and why ("currently Guided —
+  your model is small").
+- **Guided / Direct** — force one style for every production run.
+
+Thinking is not part of the style: a model that thinks, thinks — the feature's
+preset carries the thinking setting, and models that can't think are simply
+never asked to (the family-wide capability gate).
 
 ## The attribution Lab
 
-The speaker-attribution rows' **Lab** (Routing by feature → open a "Who
-speaks" row) runs the **real reading pipeline** — the same
-segmentation, "Tom said" anchors, and confidence floor as Studio's Analyze —
-so what you tune there is exactly what production runs:
+Open either reading-style row and its **Lab** runs the **real reading
+pipeline** — the same segmentation, anchor propagation, and confidence floor
+as Studio's Analyze — so what you tune is exactly what production runs:
 
-- **Reading instructions** — per column: Auto (matched to the model), With
-  examples, Rules only, or Rules + thinking. Auto lets JustVoice pick from the
-  model's size.
-- **Confidence floor & anchors** — below the floor a pick becomes *unknown*
-  instead of a guess; the anchor toggle controls the pre-AI "Tom said"
-  attribution.
+- **Reading style** — per column: Auto, Guided, or Direct, for testing "is my
+  model misclassified?"
+- **Confidence floor & Anchor propagation** — below the floor a pick becomes
+  *unknown* instead of a guess; anchor propagation is the pre-AI step where
+  "Tom said" attributes the quote beside it.
 - **Results you can correct** — every row shows speaker · line ·
   confidence, with a reassign dropdown. Reassigning to a real character
   records a **speaker correction** for the open project, exactly like fixing

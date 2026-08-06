@@ -17,8 +17,10 @@ from llm_runner.llm.routing_api import FeatureCatalogEntry
 PREFER_LOCAL_FEATURES: set[str] = {"speaker_attribution"}
 
 FEATURE_CATALOG: list[FeatureCatalogEntry] = [
+    # The attribution hint is the user's own sentence (QC ruling 2026-08-06);
+    # its two reading-style rows are PIECES under this card.
     FeatureCatalogEntry(key="speaker_attribution", label="Speaker attribution",
-                        hint="Who says each line — the audiobook pipeline's core call.",
+                        hint="Extracts who says what and what they say.",
                         group="Analysis"),
     FeatureCatalogEntry(key="smart_assign", label="Smart assign",
                         hint="Bulk-assign detected speakers to personas.", group="Analysis"),
@@ -29,7 +31,8 @@ FEATURE_CATALOG: list[FeatureCatalogEntry] = [
     FeatureCatalogEntry(key="compose", label="Compose",
                         hint="Draft text from a prompt in the editor.", group="Editing"),
     FeatureCatalogEntry(key="refine", label="Dictation cleanup",
-                        hint="Raw speech → clean text before paste.", group="Editing"),
+                        hint="Cleans your dictated text in one pass — what it fixes follows your Capture toggles.",
+                        group="Editing"),
     FeatureCatalogEntry(key="persona_rewrite", label="Persona rewrite",
                         hint="Rewrite text in a persona's voice.", group="Editing"),
     FeatureCatalogEntry(key="voice_gender", label="Voice gender guess",

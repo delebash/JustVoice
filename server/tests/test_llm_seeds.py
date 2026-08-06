@@ -50,8 +50,19 @@ def test_presets_and_refs_seed(tmp_path):
     # compose runs at its preset's 0.9 (the hardcoded personas_api temperature
     # moved onto the preset — ruling 9).
     assert presets["p_compose"]["temperature"] == 0.9
-    # Every seeded action carries a ref, and refs only name seeded actions.
-    assert set(DEFAULT_FEATURE_PRESETS) == set(DEFAULT_FEATURE_PROMPTS)
+    # Attribution's own preset asks for thinking — the runner's capability
+    # gate turns that into "thinks on models that can" (approved 2026-08-06).
+    assert presets["p_read"]["think"] is True
+    # Every seeded row RESOLVES through the cascade: its own ref, or its
+    # FEATURE's ref (the pieces rework — guided/direct and the refine sections
+    # route through one feature-level assignment). And every ref names a
+    # seeded row or a seeded feature.
+    features_of = {k: (v.get("feature") or k) for k, v in DEFAULT_FEATURE_PROMPTS.items()}
+    for key, feat in features_of.items():
+        assert key in DEFAULT_FEATURE_PRESETS or feat in DEFAULT_FEATURE_PRESETS, key
+    known = set(DEFAULT_FEATURE_PROMPTS) | set(features_of.values())
+    for ref_key in DEFAULT_FEATURE_PRESETS:
+        assert ref_key in known, ref_key
 
 
 def _plant_legacy_row(key: str, system: str, temperature: float) -> None:

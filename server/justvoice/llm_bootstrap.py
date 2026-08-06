@@ -93,6 +93,70 @@ def retire_default_catalog_rows() -> None:
         log.warning("default-catalog retirement failed (rows remain visible): %s", e)
 
 
+# The 2026-08-06 reading rework's one-time fixups for EXISTING DBs (fresh
+# installs get the new seeds directly). Exact-stale-value pattern throughout:
+# only rows still holding the OLD SEED VALUE byte-exact are touched — anything
+# a user edited stays theirs.
+_OLD_PIECE_REFS = (
+    # (piece action key, the old seed's preset id)
+    ("speaker_attribution.guided", "p_extract"),
+    ("speaker_attribution.direct", "p_extract"),
+    ("refine.base", "p_refine"),
+    ("refine.smart_cleanup", "p_refine"),
+    ("refine.self_correction", "p_refine"),
+    ("refine.preserve_technical", "p_refine"),
+)
+
+_OLD_ROW_WORDS = {
+    # key: (old §9 label, old §9 description) — the batch's first wording, which
+    # the user's QC replaced ("you are confusing me" — the old names return).
+    "speaker_attribution.guided": (
+        "Reading instructions (with examples)",
+        "What the AI is told when it reads your chapter. This version includes worked examples — used automatically when a smaller model is doing the reading, because small models need to be shown.",
+    ),
+    "speaker_attribution.direct": (
+        "Reading instructions (rules only)",
+        "The same job without the examples — used automatically with larger models. JustVoice picks between these two for you.",
+    ),
+}
+
+
+def migrate_reading_rework() -> None:
+    """Once, marker-guarded (approved 2026-08-06 — the pieces rework):
+
+    1. A piece row can't route alone anymore — its UNEDITED action-level ref
+       (still the old seed value) is removed so the new FEATURE-level ref
+       (seeded by the same boot's seed_llm) takes over. An edited ref is a
+       user's routing and survives; it keeps winning through the action layer.
+    2. The guided/direct rows still wearing the batch's first wording get the
+       QC-approved words (Guided/Direct) — edited labels stay."""
+    from llm_runner.llm import db as llm_db
+
+    from .seed_feature_prompts import DEFAULT_FEATURE_PROMPTS
+
+    try:
+        s = llm_db.session()
+        try:
+            if s.get(llm_db.RunnerSetting, "jv_reading_rework_applied") is not None:
+                return
+            for key, old_pid in _OLD_PIECE_REFS:
+                row = s.get(llm_db.FeaturePresetRef, key)
+                if row is not None and row.preset_id == old_pid:
+                    s.delete(row)
+            for key, (old_label, old_desc) in _OLD_ROW_WORDS.items():
+                row = s.get(llm_db.FeaturePrompt, key)
+                spec = DEFAULT_FEATURE_PROMPTS.get(key) or {}
+                if row is not None and row.label == old_label and row.description == old_desc:
+                    row.label = str(spec.get("label") or "")
+                    row.description = str(spec.get("description") or "")
+            s.add(llm_db.RunnerSetting(key="jv_reading_rework_applied", value="1"))
+            s.commit()
+        finally:
+            s.close()
+    except Exception as e:  # noqa: BLE001 — a fixup nicety, never boot-fatal
+        log.warning("reading-rework migration failed (stale refs/words remain): %s", e)
+
+
 def reseed_shared_llm(engine, session_factory) -> None:
     """Factory-reset's shared-stack half: re-point storage at the NEW session
     factory, re-create the shared tables in the fresh file, re-apply JV's warm

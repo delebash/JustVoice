@@ -47,14 +47,15 @@ provider** flow.
 4. **Test connection** checks the URL + key round-trip before you commit.
 5. Click **Save provider**.
 
-## Which reading instructions run (LLM)
+## Which reading style runs (LLM)
 
-There's no tier to configure on a provider. When an AI feature runs, JustVoice
-picks the reading instructions from the model the run resolves to — small
-models get worked examples, larger ones get the rules alone, hybrid thinking
-models get reasoning enabled. The attribution Lab (AI Settings → Routing by
-feature → a speaker-attribution row) can override the pick per run when the
-auto-classification gets it wrong — rare.
+There's nothing to configure on a provider. When speaker attribution runs,
+JustVoice picks the reading style from the model the run resolves to — small
+models get **Guided** (rules + worked examples), larger ones get **Direct**
+(the rules alone). The **Reading style** dial on the Speaker attribution card
+(AI Settings → Routing by feature) shows the current pick and can force one;
+the Lab can override per test run. Thinking follows the feature's preset —
+models that can't think are never asked to.
 
 ## Editing or removing
 

@@ -106,18 +106,29 @@ def _extract_first_json_array(text: str) -> list:
 
 
 def pick_tier(tier_override: str | None, model_override: str | None):
-    """The tier CHOICE post-pins (F1 Phase 2, ruling 1): the caller's override
-    (a Speaker Lab column / the Studio's knob) wins; otherwise auto-classify
-    the model the run resolves to (request override, else the action's preset
-    model) — spec_for keeps the old resolve_tier semantics, empty/unknown
-    model → guided. Shared by analyze_scene and the API's response metadata so
-    the echoed tier can never drift from the one that ran."""
-    from llm_runner.llm import spec_for
+    """The READING-STYLE choice (approved 2026-08-06 — "Reasoned" collapsed):
+    the caller's override (a Lab column / the production dial injected at the
+    API layer) wins; otherwise auto-classify the model the run resolves to —
+    small → guided (examples, floor 0.7), bigger → direct (rules only, floor
+    0.5). Only TWO styles exist now: the old "reasoned" was direct's text plus
+    a forced think flag, and thinking belongs to the preset + the runner's
+    capability gate like every feature (a stale "reasoned" override or a
+    reasoning-family classification coerces to direct — same text, same
+    floor). Shared by analyze_scene and the API's response metadata so the
+    echoed style can never drift from the one that ran."""
+    from llm_runner.llm import TIERS, spec_for
     from llm_runner.llm.preset_resolve import resolve_feature_preset
 
-    override = tier_override if tier_override in {"guided", "direct", "reasoned"} else None
-    preset = resolve_feature_preset(f"speaker_attribution.{override or 'guided'}")
-    return spec_for(model_override or (preset.model if preset else ""), override)
+    override = tier_override if tier_override in {"guided", "direct"} else (
+        "direct" if tier_override == "reasoned" else None
+    )
+    preset = resolve_feature_preset(
+        f"speaker_attribution.{override or 'guided'}", feature="speaker_attribution"
+    )
+    spec = spec_for(model_override or (preset.model if preset else ""), override)
+    # The collapse: a reasoning-family classification means "direct text" —
+    # think is NOT this layer's business anymore.
+    return TIERS["direct"] if spec.name == "reasoned" else spec
 
 
 def analyze_scene(
@@ -163,9 +174,10 @@ def analyze_scene(
     llm_picks: list[dict[str, Any]] = []
     if n_dialogue > 0:
         try:
-            # The tier's template row owns the wording; code passes the
-            # formatted blocks as variables (ruling 9). The reasoned tier's
-            # think-on rides the per-call override; the Speaker Lab's
+            # The style's template row owns the wording; code passes the
+            # formatted blocks as variables (ruling 9). Thinking is NOT forced
+            # here anymore (the 2026-08-06 collapse): the preset's think + the
+            # runner's capability gate govern, like every feature. The Lab's
             # system/user candidates ride the explicit-prompt door.
             resp = run_feature(
                 f"speaker_attribution.{tier.system_key}",
@@ -178,7 +190,6 @@ def analyze_scene(
                 userTemplate=request.user_prompt or None,
                 temperature=request.temperature,
                 maxTokens=max(800, 12 * n_dialogue),
-                think=(True if tier.think else None),
                 model=request.model or "",
                 providerId=request.provider_id or "",
             )

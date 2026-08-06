@@ -50,10 +50,16 @@ def test_extraction_config_shape(app) -> None:
     assert r.status_code == 200
     body = r.json()
 
+    # TWO reading styles since the 2026-08-06 collapse — "reasoned" was
+    # direct's text plus a forced think flag; thinking belongs to the preset
+    # + the runner's capability gate now.
     names = {t["name"] for t in body["tiers"]}
-    assert names == {"guided", "direct", "reasoned"}
+    assert names == {"guided", "direct"}
     floors = {t["name"]: t["confidence_floor"] for t in body["tiers"]}
     assert floors["guided"] == 0.7 and floors["direct"] == 0.5
+    # The dial's truth: the stored setting + what Auto picks and why.
+    assert body["reading_style"] == "auto"
+    assert body["auto_style"] in ("guided", "direct", None)
 
     # Real prompt bodies, not placeholders — guided extends direct with
     # the worked examples.
@@ -72,6 +78,8 @@ def test_extraction_config_shape(app) -> None:
     assert body["resolved_provider_id"] == "local-llamacpp"
     assert body["resolved_model"] == "qwen3:8b"
     assert body["resolved_tier"] == "guided"  # qwen3:8b sub-12B → guided
+    assert body["auto_style"] == "guided"
+    assert "small" in body["auto_reason"]
 
 
 def test_extraction_config_no_provider(tmp_path) -> None:

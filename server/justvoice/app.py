@@ -274,9 +274,13 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     lift_edited_tunables_into_presets()
     # One-time: existing DBs drop the retired shared-default catalog rows so
     # the catalog matches a fresh install (the measured 26B row only).
-    from .llm_bootstrap import retire_default_catalog_rows
+    from .llm_bootstrap import migrate_reading_rework, retire_default_catalog_rows
 
     retire_default_catalog_rows()
+    # One-time (approved 2026-08-06): unedited piece action-refs fall away so
+    # the new feature-level refs route, and the guided/direct rows get the
+    # QC-approved words. Runs AFTER seed_llm so the feature refs exist.
+    migrate_reading_rework()
     load_from_configs(stores.get_provider_store().list())
 
     app.include_router(generate_api.router)

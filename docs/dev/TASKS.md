@@ -73,6 +73,14 @@ The approved text, as presented and confirmed:
 - Sequencing: kit gate slice FIRST (JW full suite as its gate), then the JV
   rework. Docs ride each slice.
 
+## QC finds 2026-08-06 (user's eyes, added on sight)
+
+- **Sidebar: AI tasks · Labs · Settings sit OUTSIDE the scroll area** while the
+  nav lanes scroll — the pinned-bottom group (`.jv-sidebar__bottom`, App.vue)
+  holds them; the user flags the split as wrong ("outside scroll for some
+  reason"). Decide: fold them into the scrolling lanes, or keep a pinned
+  bottom deliberately — surface options first, then fix.
+
 ## QC finds 2026-08-05 (user's eyes, added on sight)
 
 

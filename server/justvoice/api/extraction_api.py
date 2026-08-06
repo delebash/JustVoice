@@ -139,14 +139,20 @@ async def analyze_scene_endpoint(
     corrections = body.corrections if body.corrections is not None else _resolve_corrections(scene.project_id, db)
 
     settings = get_state().settings.get()
-    # The production-config tier died with the pin era (ruling 1's clean drop):
-    # prompts are the shared template rows, the route is the action's preset —
-    # the body's explicit overrides (the Studio's own knobs) still win.
+    # The reading-style dial (approved 2026-08-06): production Analyze honors
+    # the stored setting when the caller didn't say — "auto" leaves the
+    # model-size pick to the pipeline; the body's explicit tier (a Studio
+    # knob / a test) still wins.
+    style = body.tier or (
+        settings.extraction.reading_style
+        if settings.extraction.reading_style != "auto"
+        else None
+    )
     req = AnalyzeRequest(
         text=body.text,
         characters=characters,
         corrections=corrections,
-        tier=body.tier,
+        tier=style,
         propagate=body.propagate,
         use_floor=body.use_floor,
     )
@@ -160,9 +166,9 @@ async def analyze_scene_endpoint(
         log.exception("extraction pipeline failed")
         raise HTTPException(status_code=502, detail=f"extraction failed: {e}")
 
-    # Echo back which tier ran so the UI can show "auto-routed to Reasoned"
-    # in the Studio Script tab header — the SAME choice the pipeline made.
-    tier = pick_tier(body.tier, None)
+    # Echo back which reading style ran, so the UI shows the SAME choice the
+    # pipeline made.
+    tier = pick_tier(style, None)
 
     return AnalyzeSceneResponse(
         scene_id=scene_id,
@@ -254,27 +260,35 @@ class ExtractionTierInfo(BaseModel):
 
 
 class ExtractionConfigResponse(BaseModel):
-    """Everything the Speaker Lab needs to SHOW what the pipeline will
-    actually send: the tier registry, both system-prompt bodies, the
-    user-prompt template, and the currently-resolved default route. The
-    server is the single source of truth — the UI never duplicates
-    prompt text."""
+    """Everything the attribution Lab + the reading-style dial need to SHOW
+    what the pipeline will actually do: the two reading styles (the 2026-08-06
+    collapse — "reasoned" is gone; thinking belongs to the preset + the
+    runner's capability gate), both system-prompt bodies, the user-prompt
+    template, the currently-resolved route, the stored production dial value,
+    and what Auto currently picks + why. The server is the single source of
+    truth — the UI never duplicates prompt text or re-derives the pick."""
 
     tiers: list[ExtractionTierInfo]
     # {"guided": <full body>, "direct": <full body>}
     system_prompts: dict[str, str]
     user_template: str
-    # Where speaker_attribution routes today (production config > pin >
-    # role > fallback). All None when no LLM provider is registered.
+    # Where speaker_attribution routes today. All None when no LLM provider
+    # is registered.
     resolved_provider_id: str | None = None
     resolved_model: str | None = None
     resolved_tier: str | None = None
+    # The dial (settings.extraction.reading_style): "auto" | "guided" | "direct".
+    reading_style: str = "auto"
+    # What Auto picks RIGHT NOW for the resolved model, and the reason in user
+    # words ("your model is small"). Null when no route resolves.
+    auto_style: str | None = None
+    auto_reason: str | None = None
 
 
 @router.get(
     "/v1/extraction/config",
     response_model=ExtractionConfigResponse,
-    summary="Tier specs + prompt bodies + resolved route (Speaker Lab)",
+    summary="Reading styles + prompt bodies + resolved route (the attribution Lab + dial)",
 )
 async def extraction_config() -> ExtractionConfigResponse:
     from llm_runner.llm import TIERS, stores
@@ -293,7 +307,9 @@ async def extraction_config() -> ExtractionConfigResponse:
         from llm_runner.llm.dispatch import resolve_route
         from llm_runner.llm.preset_resolve import resolve_feature_preset
 
-        preset = resolve_feature_preset("speaker_attribution.guided")
+        preset = resolve_feature_preset(
+            "speaker_attribution.guided", feature="speaker_attribution"
+        )
         adapter, model, _t = resolve_route(
             jv_llm_config(), "speaker_attribution", action="speaker_attribution.guided",
             provider_override=(preset.providerId or None) if preset else None,
@@ -303,6 +319,15 @@ async def extraction_config() -> ExtractionConfigResponse:
         tier_name = pick_tier(None, model).name
     except LLMNotConfiguredError:
         pass
+
+    settings = get_state().settings.get()
+    auto_reason = None
+    if tier_name:
+        auto_reason = (
+            "your model is small — examples included"
+            if tier_name == "guided"
+            else "your model is big enough for the rules alone"
+        )
 
     return ExtractionConfigResponse(
         tiers=[
@@ -314,6 +339,7 @@ async def extraction_config() -> ExtractionConfigResponse:
                 confidence_floor=t.confidence_floor,
             )
             for t in TIERS.values()
+            if t.name != "reasoned"  # the collapse: two reading styles exist
         ],
         system_prompts={
             "guided": _guided.system if _guided else "",
@@ -323,6 +349,9 @@ async def extraction_config() -> ExtractionConfigResponse:
         resolved_provider_id=provider_id,
         resolved_model=model,
         resolved_tier=tier_name,
+        reading_style=settings.extraction.reading_style,
+        auto_style=tier_name,
+        auto_reason=auto_reason,
     )
 
 

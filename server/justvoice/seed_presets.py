@@ -39,6 +39,12 @@ DEFAULT_ENGINE_PRESETS: list[dict] = [
      "model": "", "temperature": 0.6, "position": 4},
     {"id": "p_refine", "name": "Dictation cleanup", "provider_id": "local-llamacpp",
      "model": "", "temperature": 0.2, "max_tokens": 2048, "position": 5},
+    # Speaker attribution's own preset (the 2026-08-06 rework): think ON is the
+    # task's tested want — the runner's CAPABILITY GATE turns it into "thinks on
+    # models that can, cleanly off elsewhere" (the old forced-Reasoned behavior,
+    # now built from standard parts). Same measured 0.2 temperature family.
+    {"id": "p_read", "name": "Careful reading", "provider_id": "local-llamacpp",
+     "model": "", "temperature": 0.2, "think": True, "position": 6},
 ]
 
 # ── JV's model catalog (user direction 2026-08-05, QC of the AI area): the
@@ -111,11 +117,15 @@ JV_CLASS_TUNE_IDENTITY: dict[str, dict] = {
 }
 
 
-# The per-ACTION preset refs — all 13 rows over the 6 presets.
+# The preset refs (the 2026-08-06 pieces rework): a feature whose rows are
+# PIECES routes ONCE at the FEATURE key — the pieces follow it through the
+# resolver's feature layer (action ref → feature ref → default). Only rows
+# that genuinely run alone keep an action-level ref.
 DEFAULT_FEATURE_PRESETS: dict[str, str] = {
-    # Structured extraction (attribution's measured 0.2 family)
-    "speaker_attribution.guided": "p_extract",
-    "speaker_attribution.direct": "p_extract",
+    # Speaker attribution — ONE chooser for both reading styles (Careful
+    # reading: think on; the capability gate handles models that can't).
+    "speaker_attribution": "p_read",
+    # Find new speakers — its own runnable card, its own ref.
     "speaker_attribution.identify": "p_extract",
     "smart_assign": "p_extract",
     # Deterministic classification
@@ -126,12 +136,9 @@ DEFAULT_FEATURE_PRESETS: dict[str, str] = {
     # Persona voice
     "compose": "p_compose",
     "persona_rewrite": "p_voiced_edit",
-    # Dictation cleanup — every section row runs at the composition's preset,
-    # so a Lab run of one PART behaves like its slice of production.
-    "refine.base": "p_refine",
-    "refine.smart_cleanup": "p_refine",
-    "refine.self_correction": "p_refine",
-    "refine.preserve_technical": "p_refine",
+    # Dictation cleanup — ONE chooser; the four section rows are pieces of the
+    # one composed call and follow the feature ref.
+    "refine": "p_refine",
 }
 
 # Catch-all for an action with no ref (custom Lab actions before assignment).
