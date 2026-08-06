@@ -86,12 +86,18 @@ The approved text, as presented and confirmed:
 ## THE FAMILY PARITY BATCH — SHIPPED 2026-08-06 (all twelve slices)
 - The master plan + its BUILD LOG (deviations, guard-caught bugs, end-gate
   results): `../justwrite-app/docs/plans/2026-08-05-family-parity-batch.md`.
-  What remains open is the after-batch order recorded there: JV UiTable
-  convergence → JV e2e harness → THE deep exhaustive audit → product calls,
-  plus the user's QC walk with the acceptance checklists. QC note: the
-  once-ever AI setup offer WILL pop once at first project-open — that's it
-  working. (The sidebar-clipping QC find closed with slice 10 — the rail
-  sizes from content now, no hardcoded widths.)
+  QC note: the once-ever AI setup offer WILL pop once at first project-open —
+  that's it working.
+- **SEQUENCING AMENDED (user's word, 2026-08-06 late): the JV e2e harness and
+  THE deep exhaustive audit are DEFERRED — "for now we are not doing jv
+  harness or deep audit i want to finish all features and complete the jv
+  llm runner conversion."** The next work = the convergence arc's remaining
+  items (F2 attribution task scaffolding · F4 VRAM-arbiter wiring · F5
+  appearance knob-set · the I6 tail — each item's ledger section MUST be
+  read before its plan:
+  `just-llm-runner/docs/plans/archive/2026-07-06-outstanding-master-plan.md`).
+  Plan presented in chat first, per item, before any code. UiTable was
+  neither named nor excluded — ask when the arc plan is presented.
 
 ## Found by the 2026-08-05 family audit [verified by hand] — parked per the
 ## standing sequence, but the first one is REAL user-facing breakage
