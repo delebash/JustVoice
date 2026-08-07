@@ -75,7 +75,7 @@ Same idea as C but FMOD instead of Wwise.
 
 ## The plan
 
-**v1 ships Option A.** Studio Render's batch path for `project_type='game_voicelines'` writes the WAV+JSON pair. Document the sidecar JSON schema as part of `CONTRACT.md`. Users who need anything more sophisticated (in-editor preview, native Wwise routing) follow the post-v1 plugin path.
+**v1 ships Option A.** Studio Render's batch path for `project_type='game_voicelines'` writes the WAV+JSON pair. Document the sidecar JSON schema in `docs/dev/design-decisions.md` §3 when it ships (the original CONTRACT.md is archived). Users who need anything more sophisticated (in-editor preview, native Wwise routing) follow the post-v1 plugin path.
 
 **Post-v1 considers Option B.** A `.uplugin` in a separate repo at `delebash/justvoice-ue5-plugin`, MIT-licensed, that hits the JustVoice REST API. A separate repo keeps the UE build surface out of this one; note that the original reason given here — escaping a GPL-licensed JustVoice codebase — no longer applies, since JustVoice itself is MIT as of 2026-07-29.
 
@@ -117,7 +117,7 @@ Stable fields: `persona_id`, `persona_name`, `block_id`, `line_text`. Everything
 
 ## Links
 
-- Plan: `docs/research/persona-voiceprofile-multiuse-design.md`
+- Plan: `docs/plans/archive/persona-voiceprofile-multiuse-design.md` (executed history)
 - Game-flow walkthrough: plan Q2 walkthrough section
 - Studio Render Tab: `src/views/StudioView.vue` Render tab
-- CONTRACT.md: HTTP boundary between JustVoice and external consumers
+- The external boundary rules: `docs/dev/design-decisions.md` §3 (the original CONTRACT.md is archived)

@@ -125,7 +125,7 @@ def seed_builtin_effect_presets() -> None:
 # ── Built-in render presets (task #88) ────────────────────────────────────
 #
 # The 4 delivery styles the Studio Render tab's per-chapter "Preset:"
-# dropdown was designed around (docs/decisions/discussed-features-inventory.md).
+# dropdown was designed around (docs/plans/archive/discussed-features-inventory.md).
 # Global scope, NO voice binding — a preset is HOW a render sounds; WHO
 # speaks comes from the block's persona. `instruct` is consumed by engines
 # that declare supports_instruct_freeform and ignored by the rest; the

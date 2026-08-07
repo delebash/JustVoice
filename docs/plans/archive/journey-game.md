@@ -1,5 +1,15 @@
 # Journey: Game dialogue — Marcus, solo game dev
 
+> ⛔ **RETIRED (archived 2026-08-06, code-verified).** The shipped spine (Lines grid,
+> stable-id merge, stale derivation, voicelines export) is documented in `lines.md` +
+> `export.md`. The seven design-target items recorded only here were extracted to
+> `docs/dev/IDEAS.md` the same day: CSV column-mapping UI with per-project memory ·
+> duplicate-ID pre-check · selectable export naming pattern · changed-only export ·
+> manifest `voice`+`rendered_at` fields · folder-per-quest naming · the 500-line
+> scale criteria (virtualized grid, streaming progress, per-line failure isolation).
+> Unbanered errors in this text: "Test line" on a real line does not exist (the ▶ is
+> a generic voice preview) and no 48 kHz per-line mastering default is set by kind.
+
 > ⚠️ **DESIGN TARGET (banner added 2026-08-04).** This journey narrates the intended experience; several steps are NOT BUILT yet — CSV import uses FIXED headers (scene, character, text, delivery, pause_after_ms — only text required): there is no column-mapping UI and no per-project mapping memory; export filenames derive from source_ref or sNN_lNNN with no selectable pattern, and there is no changed-only export. The stable-id merge, stale derivation, and re-render-only-stale ARE real.
 
 <!-- SPDX-License-Identifier: MIT -->

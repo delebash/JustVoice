@@ -1,5 +1,16 @@
 # Design analysis: Persona/Profile/Voice + multi-use audiobook workflow
 
+> ⛔ **~90% EXECUTED HISTORY (archived 2026-08-06, code-verified).** Q1 and all seven
+> locked decisions shipped (Profile-kill, personality-as-instruct, one Studio, the
+> sidebar contract…); the whole Q2 "what's missing" list is now false. Superseded by
+> later rulings: 3-tier Guided/Direct/Reasoned → two routes with size-only Auto; the
+> welcome quiz → the kind picker IS onboarding; 3 Studio tabs → 4, game skips Script;
+> 4-lane sidebar → 2 lanes + Labs; feature pins → dropped with F1 Phase 2. The still-
+> open residue was extracted 2026-08-06: LD5's effects-at-chapter-render gap →
+> `docs/dev/TASKS.md`; the soft UI leftovers (batch rewrite-in-character, compose-
+> into-script, explainer headers, "What now?", on-blur validation, the shared-repo
+> revisit triggers, Q6 slices 2–6) → `docs/dev/IDEAS.md`.
+
 > Renamed + relocated by the docs campaign 2026-08-04 - previously at
 > `docs/plans/1-what-are-the-magical-scone.md` (a plan-mode container slug that
 > stuck when the doc was copied into the repo). The three research/decisions files

@@ -1,5 +1,14 @@
 # Cross-App Architecture Decision — Runner Language + JW Backend
 
+> ⛔ **EXECUTED HISTORY (archived 2026-08-06, code-verified).** Every decision here
+> including the amendment shipped: JW runs in server mode, the runner is Python and
+> the single hardware authority, full symmetry landed. One claim is now FALSE in
+> code: decision 6's "inference goes direct to llama-server; the runner is NOT in
+> the token path" — the runner today owns `/v1/ai/run`+`/v1/ai/stream` and local
+> llama.cpp tokens flow through its httpx adapter. The durable rules were distilled
+> into `docs/dev/design-decisions.md` §2/§4 the same day. JustWrite archived its
+> copy of this doc earlier with the same status.
+
 **2026-06-18 (admiring-galileo).** Spans **JustVoice** + **JustWrite**.
 Records a design discussion and the **approved** direction. Partially
 supersedes `archive/2026-06-16-builtin-llm-runner.md` (see end). Android is a

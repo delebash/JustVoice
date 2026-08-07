@@ -18,6 +18,8 @@ A chapter render walks every block in order, picks the default take for each, op
 
 The left pane lists projects → chapters → scenes → blocks. Click to navigate. The right pane shows the currently-selected block.
 
+The chapters list carries per-chapter **Script** and **Render** status columns — Script shows attribution state (e.g. `unassigned speakers` when lines still need a persona), Render shows cache state (`✓ cached` / `n/m cached`) — so you can see at a glance which chapters still need attribution or rendering.
+
 Top toolbar:
 - **Import** — pull in a script via one of the [import adapters](import-formats.md) (JustWrite JSON / CSV / SRT / Audacity labels / JustVoice standard schema).
 - **Render chapter** — kick off the chapter pipeline (default takes only).
@@ -61,7 +63,7 @@ Old takes stay in the DB until you bulk-delete them — useful for going back if
 
 The Chapter tab is gated on having a project selected. New users: hit the **Go to Projects** link in the empty-state banner to import a manuscript. Adapters:
 
-- **JustWrite JSON** — the primary integration (see [CONTRACT.md](../CONTRACT.md))
+- **JustWrite JSON** — the primary integration (export a book from JustWrite, open it here)
 - **CSV** — `character,text` columns
 - **SRT** — subtitle files (timing ignored; lines become blocks)
 - **Audacity labels** — label-track export

@@ -1,5 +1,12 @@
 # Data model — per use case
 
+> ✅ **ENACTED (archived 2026-08-06, code-verified).** Every operative claim is live:
+> single Project → Scene → Block → Take schema, the exact four `project_type` values,
+> `useCopy()`, sidebar filtering, Studio gating. The decision row lives in
+> `docs/dev/design-decisions.md` §1; the rejected-alternatives rationale was distilled
+> there the same day. Known drift in this text: game's container term is **Scene**,
+> not "Quest" (`src/services/copy.js`), and the Block-schema line pointer is stale.
+
 ## Decision
 
 **JustVoice keeps a single Project → Scene → Block schema across all five use cases.** No forks, no per-use-case subtypes.

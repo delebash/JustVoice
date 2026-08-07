@@ -1,5 +1,15 @@
 # JV shared-LLM integration — DECISIONS RECORD (2026-07-15)
 
+> ⛔ **EXECUTED HISTORY (archived 2026-08-06, code-verified).** F1 executed ~90% of
+> this record as decided; the notable supersessions: §5.3's two host tabs became ONE
+> "Speech engines" tab (the JV AI-settings pane dissolved into a kit feature panel +
+> Capture settings), §1.7's "parked with F3" is dead (EPUB+DOCX shipped, F3 no longer
+> exists), and §3's `identify` shipped as `speaker_discovery` with attribution split
+> into guided/direct routed cards. The three items that were still live at archive
+> time were extracted to `docs/dev/TASKS.md`: F4 VRAM-arbiter wiring, upstream
+> pin-tier retirement in the runner, and the archived CONTRACT.md factual
+> corrections (§4).
+
 **What this is.** The decisions from the 2026-07-15 planning discussion about
 integrating the current shared LLM stack (`just-llm-runner` + `@delebash/llm-ui`)
 into JustVoice. This is NOT the implementation plan — the user deferred the full

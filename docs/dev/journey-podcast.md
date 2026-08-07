@@ -1,6 +1,16 @@
 # Journey: Podcast — Priya, producer
 
-> ⚠️ **DESIGN TARGET (banner added 2026-08-04).** This journey narrates the intended experience; several steps are NOT BUILT yet — the multi-track timeline (the Stories tab is a placeholder), auto-lay onto per-speaker tracks, music-bed ducking, ad markers, per-track stems, and ID3 show art do not exist today. Podcast projects work through Chapters + Studio; mastering targets (-16 LUFS / -1.5 dBTP) ARE real and switch by project kind.
+> ⚠️ **DESIGN TARGET — kept live as the Timeline/episode-export spec (moved to
+> dev docs 2026-08-06, user's call).** This journey narrates the intended experience;
+> several steps are NOT BUILT yet — the multi-track timeline (the Stories tab is a
+> placeholder), auto-lay onto per-speaker tracks, music-bed ducking, ad markers,
+> per-track stems, and ID3 show art do not exist today. Podcast projects work through
+> Chapters + Studio. Banner corrections (2026-08-06, code-verified): the podcast
+> mastering preset's true peak is **−1.0 dBFS**, not −1.5 (`models.py` MasterPreset),
+> and **nothing switches mastering by kind** — only an audiobook *import* sets `acx`;
+> Studio render sends no `master` at all. Also wrong in step 1: podcast Studio does
+> NOT collapse to Cast → Render — only game skips Script (`StudioView.vue`); podcast
+> gets the full Cast → Script → Render → Export.
 
 <!-- SPDX-License-Identifier: MIT -->
 

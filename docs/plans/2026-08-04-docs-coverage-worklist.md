@@ -94,7 +94,8 @@ off by deletion.
   editor…", `App.vue:44`) — reword or gate the tab; code change, user's ruling.
 - design-decisions §5 add the Stories/Timeline gating why (from
   `StoriesView.vue:4-14`); backup design record (>4 GB limit, schema-v1 policy);
-  settings→SQLite fold → a `docs/decisions/` record (distill
+  settings→SQLite fold → a `design-decisions.md` record (the decisions folder
+  was dissolved 2026-08-06; distill
   `settings_store.py:31-64`); engine-source-overrides law; corrections-as-few-shot
   decision; feature-pin catalog governance divergence
   (`SettingsView.vue:570-574` adds rows outside the catalog).

@@ -1,5 +1,13 @@
 # Journey: Audiobook — Sarah, indie author
 
+> ⛔ **RETIRED (archived 2026-08-06, code-verified).** The shipped steps are covered
+> better by the user docs (`projects.md`, `import-formats.md`, `studio.md`,
+> `export.md`); the Chapters status columns moved to `chapter.md`. Two sentences here
+> are wrong against code: chapter renders are NOT mastered per chapter (the QC column
+> measures unmastered audio), and the export checklist does not gate the button.
+> The 2026-08-04 note below misread step 3's home base — the Chapters tab DOES have
+> Script/Render status columns (`ChapterView.vue`), with different labels.
+
 > *Note (2026-08-04): near-accurate against the shipped app; the per-chapter script/render status columns described in step 3 are not in the current Projects chapters table.*
 
 <!-- SPDX-License-Identifier: MIT -->

@@ -5,8 +5,10 @@ SQLite) server**, with PyTorch TTS engines in-process and Kokoro through `sherpa
 Also runs **headless** as `justvoice-server serve`, no Tauri shell.
 
 Standalone product. JustWrite drives JustVoice for audiobooks — JW hands over the prose, JV does
-its own casting and narration — but JustVoice does not depend on JustWrite. That boundary is
-`CONTRACT.md`, and it is the contract to read before touching anything cross-app.
+its own casting and narration — but JustVoice does not depend on JustWrite. The boundary rules
+live in `docs/dev/design-decisions.md` §3 — read them before touching anything cross-app. (The
+original `CONTRACT.md` was archived to `docs/plans/archive/` by the 2026-08-04 docs campaign;
+its endpoint table is stale — trust `server/justvoice/api/*` route literals.)
 
 The AI/LLM stack is shared with JustWrite: `just-llm-runner` (Python) + `@delebash/llm-ui` (Vue).
 Only TTS and each app's feature catalog differ. A change in those repos lands here too.
@@ -22,15 +24,6 @@ npm run tauri build                # production installer
 justvoice-server serve             # headless; same UI at /ui/
 cd server && ruff check . && pytest    # both must pass before a commit
 ```
-
-> **⛔ The server does not import right now — you have not broken it.** `server/justvoice/models.py:23-29`
-> imports `LLMRolesSettings` and `LLMRoleTarget` from `llm_runner.llm.schema`, and the shared
-> schema no longer exports either symbol (verified 2026-07-29). So `import justvoice.app` raises,
-> the server will not boot, and pytest fails at collection. This is the first blocker of the
-> shared-stack convergence tracked as **F1** in
-> `../just-llm-runner/docs/plans/archive/2026-07-06-outstanding-master-plan.md`, and it is only the first —
-> the full drift enumeration is part of that work. Do not paper over it with a local shim; the
-> convergence is the fix.
 
 **The console script is `justvoice-server`, never `justvoice`.** The Tauri binary is
 `justvoice.exe`; giving both the same name makes Windows `CreateProcessW` resolve
@@ -67,7 +60,7 @@ not. All eight now import the shared resolver.
 
 - **No hardcoded operator-tunable values.** Every knob lives in settings (SQLite via `SettingsStore`) and is reachable through `PATCH /v1/settings`.
 - **SQLite via SQLAlchemy is the primary persistence layer**, and there is no renderer-side store. `settings.json` was folded into the `settings` table and renderer UI prefs into `prefs` (the 2026-06-19 storage rewrite; `SettingsStore` imports a legacy `settings.json` once). Per-artifact JSON sidecars on disk are the exception and still live: `storage/atomic.py`'s `atomic_write_json` (tmp + `os.replace` + fsync) writes voice manifests (`storage/voices.py`) and training-job records (`storage/training_jobs.py`).
-- **`server/justvoice/models.py` is the cross-language source of truth.** The Vue client fetches directly against the OpenAPI shape; `CONTRACT.md` is the JustWrite-facing subset of it.
+- **`server/justvoice/models.py` is the cross-language source of truth.** The Vue client fetches directly against the OpenAPI shape; the JustWrite-facing boundary rules are `docs/dev/design-decisions.md` §3.
 - **Business logic never goes in Rust.** `src-tauri/` is plumbing — spawn the sidecar, host the webview, shut down cleanly. If you are writing logic there, it belongs in Python.
 - **Every file carries an SPDX-License-Identifier header.** Files lifted from an upstream MIT codebase also carry a full attribution block referencing `voicebox-pin.txt`. Ship license is MIT.
 - **Precedent before pattern** — before adding any UI surface, name the existing view that already solves that shape and use its canonical class; if nothing exists, promote a new canonical class into `styles.css` rather than a scoped one-off. The method, the class inventory and the 7-point conformance checklist are in `docs/dev/design-law.md`. Read it before UI work or a design sweep.
@@ -105,11 +98,11 @@ server), and **accessibility users** (real-time TTS, screen-reader integration �
 
 | For | Read |
 |---|---|
-| The JustWrite ↔ JustVoice HTTP boundary | `CONTRACT.md` |
+| The JustWrite ↔ JustVoice boundary | `docs/dev/design-decisions.md` §3 (archived original: `docs/plans/archive/CONTRACT.md`) |
 | UI design method, class inventory, sweep checklist | `docs/dev/design-law.md` |
 | Open work across all three repos | `../justwrite-app/docs/TASKS.md` |
 | The shared AI-stack ledger | `../just-llm-runner/docs/plans/archive/2026-07-06-outstanding-master-plan.md` |
 | Per-task history and evidence | `docs/plans/*` |
-| Product scope and feature history | `FEATURES.md`, `DESIGN_FREEZE.md` (both historical records) |
+| Product scope and feature history | `docs/plans/archive/FEATURES.md`, `docs/plans/archive/DESIGN_FREEZE.md` (both historical records) |
 
 Read branch and working-tree state from git, never from a doc.

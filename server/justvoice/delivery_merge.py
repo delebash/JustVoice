@@ -2,7 +2,8 @@
 """3-tier voice tuning merge (task #88).
 
 Tier 1 (lowest precedence) — Engine defaults from CAPABILITY_DETAILS.
-Tier 2                     — VoiceProfile.default_delivery JSON.
+Tier 2                     — the persona overlay (caller-resolved; was
+                             VoiceProfile.default_delivery before the Profile-kill).
 Tier 3 (highest precedence)— RenderPreset.delivery_overlay OR request.delivery.
 
 `merge_delivery()` collapses these into one effective delivery dict that

@@ -20,10 +20,10 @@ JustVoice serves five distinct audiences. Pick your primary at first launch — 
 **Goal**: voice 50-500 NPC lines with consistent character voices.
 
 **Flow**:
-1. **Import** a CSV of dialogue rows (`speaker, line, voice_hint, delivery`). See [import-formats.md](import-formats.md).
+1. **Import** a CSV of dialogue rows (`scene, character, text, delivery, pause_after_ms` — only `text` is required; include an `id`/`line_id`/`dialogue_id` column so re-imports merge by stable id). See [import-formats.md](import-formats.md).
 2. **Cast** — assign each character to a voice. Cloned voices for hero NPCs, preset voices for villagers.
-3. **Render** — bulk render every line. Per-line WAV + JSON sidecar with metadata for Unreal import.
-4. **Export** — WAV+JSON per line, or a single Unreal `.uplugin` bundle (planned).
+3. **Render** — bulk render every line.
+4. **Export** — per-line WAVs grouped by scene plus a `manifest.json` of line metadata for Unreal import; an Unreal `.uplugin` bundle is planned.
 
 **Engine pick**: Kokoro (CPU-fast at scale, 54 preset voices) + Chatterbox for protagonist clones.
 
@@ -34,7 +34,7 @@ JustVoice serves five distinct audiences. Pick your primary at first launch — 
 **Flow**:
 1. **Import** a script (CSV, SRT, or write directly in JustVoice).
 2. **Cast** voices for hosts + guests.
-3. **Stories timeline** — arrange voiced segments on a multi-track timeline. Add SFX, music beds via drag-drop. Trim, split, version-pin per clip.
+3. **Stories timeline** *(planned — the tab is a placeholder today; episodes work through Chapters + Studio)* — arrange voiced segments on a multi-track timeline. Add SFX, music beds via drag-drop. Trim, split, version-pin per clip.
 4. **Render** — full episode mix-down. Podcast [mastering.md](mastering.md) preset (-16 LUFS).
 5. **Export** — MP3 / WAV.
 

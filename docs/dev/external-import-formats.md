@@ -103,7 +103,7 @@ chapters:
 
 ## What JustVoice needs to do
 
-1. **One adapter per supported tool**, under `server/justvoice/imports/adapters/`. Each implements `parse(file_handle) -> StandardImport`. The existing `justwrite.py` is the template.
+1. **One adapter per supported tool**, under `server/justvoice/imports/adapters/`. Each is a module exporting a `SOURCE_ID` constant and `parse(raw: bytes, *, filename: str | None = None) -> StandardImport` (bytes, not a file handle — corrected 2026-08-06 against the code). Registration is the manual 3-step in `imports/__init__.py`: create the module, append the `_ADAPTER_REGISTRY` tuple, document in `docs/import-formats.md`. The existing `justwrite.py` is the template; `elevenlabs.py` is a registered `implemented=False` stub whose stated blocker (cloud-scoped voice IDs) is what item 3 below solves.
 2. **StandardImport schema stays as-is** — every tool's export normalizes through it before hitting the Project/Scene/Block writer.
 3. **Voice/Persona collision resolution**: when an imported tool's voice/persona ID conflicts with an existing JustVoice entry, default to "create new Persona with imported_from=<tool>, imported_id=<id>" so the originals stay clean.
 4. **Reference-WAV ingestion** for Coqui/OpenVoice: stream the referenced WAV files into JustVoice's voice-store via the existing `voices.py` upload path.
@@ -120,7 +120,7 @@ Not in scope: Audacity Labels (already supported), SRT (already supported), Just
 
 ## Links
 
-- Plan: `docs/research/persona-voiceprofile-multiuse-design.md`
+- Plan: `docs/plans/archive/persona-voiceprofile-multiuse-design.md` (executed history)
 - Standard import schema: `server/justvoice/imports/standard_schema.py`
 - Existing adapters: `server/justvoice/imports/adapters/`
-- CONTRACT.md: the external HTTP boundary
+- The external boundary rules: `docs/dev/design-decisions.md` §3 (the original CONTRACT.md is archived)

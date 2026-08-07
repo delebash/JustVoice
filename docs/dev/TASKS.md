@@ -64,7 +64,7 @@ caused BY a cap); the reasoning budget is the guard with real saves; the
 caps were inherited old-JV code carried forward unquestioned.
 
 **Status:** BUILT + verified 2026-08-07 — pytest 407 passed (full suite);
-not committed. SURFACED the same run, needs its own ruling: the documented
+committed + pushed in `ac00291`. SURFACED the same run, needs its own ruling: the documented
 `ruff check .` gate is red on ~500 PRE-EXISTING findings, none from this
 change — the dev pin floats (`ruff>=0.7`) and now resolves ruff 0.16.0,
 whose defaults enable far more rule families; 6 errors exist even under
@@ -153,11 +153,18 @@ findings. Awaiting the user's QC.
    machinery (thinkingControl, reasoning budgets, per-call think,
    _strip_thinking), the attribution cards' prompts, the floors' values.
 
-**Status:** BUILT + verified 2026-08-07, not committed. Gates: JV pytest
-404 · kit pytest 769 (the 1 failure = the KNOWN pre-existing Linux-only
-lspci test) · JW vitest 566 (exactly the 5 deleted classifier tests
-fewer) · JV vitest 13 · biome clean on all three JS surfaces · vite
-build · Playwright smoke on the REAL data dir, zero JS errors. One
+**Status:** BUILT + verified 2026-08-07, committed + pushed — JV
+`ac00291` · kit `ab398b5` · JW `b85fb17` (workflows confirmed disabled
+before the JV push). The same JW commit carries the JW DOCS CLEANUP
+(its own go, same day): ai-providers.md's retired Ollama-wizard and
+pins-recipe sections rewritten to the built-in-engine + preset reality,
+the Claude walkthrough to the native API, the Ollama walkthrough to the
+native preset (no /v1), getting-started's local-AI bullet — eyeball on
+the QC walk. Gates: JV pytest 404 · kit pytest 769 (the 1 failure = the
+KNOWN pre-existing Linux-only lspci test) · JW vitest 566 (exactly the
+5 deleted classifier tests fewer) · JW server pytest 122 · JV vitest 13
+· biome clean on all three JS surfaces · vite build · Playwright smoke
+on the REAL data dir, zero JS errors. One
 consequence of the no-migration rule, stated plainly: the user's CURRENT
 real DB still carries the old Reasoned row + p_reason preset (seeds are
 insert-if-missing) — the next factory reset lands the clean two-route
@@ -459,6 +466,65 @@ superseded above):
   remains. After F1. Ledger §F4.
 - **I6 — the JV tail beyond F1–F5** — ledger §I6.
 
+## The 2026-08-06 docs disposition sweep — APPROVED + EXECUTED same session
+
+**The user's finding:** `docs/decisions/`, `docs/research/`, `docs/journeys/`
+violated the three-places convention (user docs · dev docs · plans); the
+2026-08-04 campaign was scoped to content accuracy and codified the folders
+instead of dissolving them. **The approved decision (user's go 2026-08-06, after
+an 8-agent code-verification of all 10 files — calls: (a) podcast journey kept
+whole in dev, (b) functional gaps track-only, (c) CLAUDE.md pointers fixed):**
+
+1. Extract before anything moves — IDEAS: the competitor-research ideas (only 4
+   of 21 ever built; previously untracked), the game-journey residue (7 items),
+   the podcast-spec pointer, the UE correction (the JSON sidecar itself is
+   outstanding, not just Phase 2), the multi-use soft residue; TASKS: the open
+   items below; design-decisions: the durable 06-18 cross-app rules + the
+   data-model rationale, plus its 4 stale rows fixed.
+2. Dispositions — keep-live → `docs/dev/`: external-import-formats ·
+   ue-integration-design · 2026-06-24-audiobook-nlp-competitor-research ·
+   journey-podcast (the Timeline spec). Archive with status banners →
+   `docs/plans/archive/`: 2026-06-18 + 2026-07-15 decision records ·
+   data-model-per-usecase · persona-voiceprofile-multiuse-design ·
+   journey-audiobook · journey-game. The three folders deleted, every
+   reference repointed, the three-places rule stated in `dev/README.md`.
+3. The lying docs fixed in the same pass (docs law): export.md
+   sidecar/manifest, use-cases.md, studio.md Test-line, mastering.md invented
+   per-chapter/per-take UI, CONCEPTS.md two-pass + podcast-Studio claims, the
+   journey-podcast banner (−1.0 dBFS; nothing switches by kind), chapter.md
+   status columns added, seed.py + delivery_merge.py stale comments, CLAUDE.md
+   stale CONTRACT/FEATURES/DESIGN_FREEZE pointers + the dead boot-blocker note
+   (`import justvoice.app` verified OK this session).
+
+**Open items extracted (track-only per ruling b; each needs its own plan + go):**
+
+- **Effects chain missing from chapter/batch render [verified 2026-08-06]** —
+  `render_core.py` contains zero effects code; `apply_effects_chain` is called
+  only from `generate_api.py` single-line paths, and the render cache key does
+  not include the chain hash, so chain edits don't bust the cache. This is
+  locked decision 5's second half from the archived persona/voiceprofile design.
+- **No mastering is set or applied by kind [verified 2026-08-06]** — the kind
+  picker sets no `mastering_preset` (only audiobook *import* sets `acx`,
+  `projects_api.py:643`); Studio render sends no `master`, so the ACX QC column
+  measures unmastered audio; the podcast −16 LUFS default does not exist. The
+  per-project select DOES exist (`ProjectsView.vue:562`). Decide: wire kind
+  defaults + a mastered render/QC path, or re-scope the docs' promise.
+- **Archived CONTRACT.md factual corrections [from the 07-15 record §4]** —
+  `docs/plans/archive/CONTRACT.md:89` (attribution "computed in JW's
+  `speakerAttribution.js`") and `:93` (personality as a render-time LLM rewrite)
+  are both false; correct in place or extend design-decisions §3's stale-table
+  note to name them.
+- **Upstream pin-tier retirement (just-llm-runner)** — JV is fully off pins; the
+  runner still ships `resolve_pin` in dispatch and its
+  `docs/feature-model-system.md:29-30` declares pins KEPT. Decided 2026-07-15 as
+  post-integration cleanup; untracked upstream until now.
+- **chapter.md is stale beyond this sweep's scope [seen 2026-08-06]** — it links
+  dead pages (`stories.md`, `profiles.md`), and its export/mastering prose
+  repeats the unverified "mastered per chapter" claim; a rewrite rides the
+  mastering ruling above. export.md's "Chapter render → mastered WAV" section is
+  the same suspect class (unverified this pass — only the voicelines manifest and
+  sidecar claims were code-checked and fixed).
+
 ## Repo hygiene (found by the 2026-08-04 campaign)
 
 - **The Stories nav lede SELLS an inert view [verified]** — the tab's own copy
@@ -466,10 +532,11 @@ superseded above):
   `StoriesView.vue` is a gated placeholder. Reword the lede or hide the tab until
   it's built; app copy is code, so this is your call. (User docs were corrected
   2026-08-04 to stop routing podcasters there.)
-- **Dev-doc gaps from the coverage audit [attributed]** — record when convenient:
-  the Stories gating why (lives only in `StoriesView.vue:4-14`) → design-decisions
-  §5 · the backup schema-v1/4 GB design → a decisions record · the settings→SQLite
-  fold comment (`settings_store.py:31-64`) → `docs/decisions/` · the
+- **Dev-doc gaps from the coverage audit [attributed]** — record when convenient
+  (home = `design-decisions.md` sections; the decisions folder was dissolved
+  2026-08-06): the Stories gating why (lives only in `StoriesView.vue:4-14`) →
+  design-decisions §5 · the backup schema-v1/4 GB design · the settings→SQLite
+  fold comment (`settings_store.py:31-64`) · the
   engine-source-overrides "no hardcoded operator values" law · corrections-as-
   few-shot · the feature-pin catalog vs SettingsView row divergence
   (`SettingsView.vue:570-574`).
@@ -487,10 +554,6 @@ superseded above):
 - **CI contract enforcement is CLAIMED but not found** [verified]: the archived
   CONTRACT cites `server/justvoice/openapi.json` + `tests/test_contract.py` —
   neither exists. Build it or strike the claim.
-- **Missing user docs** [verified vs toc.json]: stories (tracked above) · backup/
-  restore · render presets · a settings reference · troubleshooting · run-modes
-  (desktop vs headless). The archived FEATURES.md §s name the content to lift.
-
 - **Family-contract gaps [re-verified 2026-08-06]:** `scripts/py.js`, `lint`,
   `test:unit`, `test:server` and `test` npm scripts EXIST now (the parity
   batch landed them — the earlier "missing" rows were stale); still missing:
@@ -500,10 +563,6 @@ superseded above):
 - **`docs/stories.md` is missing while `toc.json` listed a `stories` slug
   [verified]** — the entry was removed from the TOC 2026-08-04 (it 404'd in-app);
   write the doc for `StoriesView` and restore the entry.
-- **Root strays need your classification:** `DESIGN_FREEZE.md` (940 lines,
-  ⏳-pending legend, touched Aug 1) · `CONTRACT.md` (JV↔JW boundary, last revised
-  2026-06-09) · `FEATURES.md` (911-line user guide overlapping `docs/*`). Too
-  big/live-looking for the light pass — keep / update / archive is your call.
 - **`2026-06-12-justwrite-roundtrip-slice1.md` — "JW side MISSING" [attributed]:**
   the JW half lives in the other repo and no status was ever written back; verify
   in JW's code, then close or queue.

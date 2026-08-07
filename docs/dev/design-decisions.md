@@ -5,8 +5,10 @@ Distilled 2026-08-04 by the docs campaign from `DESIGN_FREEZE.md` (2026-06-08),
 Recap — all now in `../plans/archive/`. Where code reversed a frozen decision, THIS
 doc states today's truth and §5 records the reversal. Open product questions from
 the freeze live in `TASKS.md`; the deferred list in `IDEAS.md`. The F1/F2
-integration decisions record stays live at
-`../decisions/2026-07-15-jv-shared-llm-integration-decisions.md`.
+integration decisions record (2026-07-15) is executed history at
+`../plans/archive/2026-07-15-jv-shared-llm-integration-decisions.md` — F1 shipped
+~90% of it as decided; its still-live residue was extracted to `TASKS.md`
+2026-08-06.
 
 ## 1 · Product shape
 
@@ -19,14 +21,32 @@ integration decisions record stays live at
   level + per-use-case export pipelines.
 - **The project model is type-discriminated, not book-specific**: `projects.project_type
   ∈ audiobook|game_voicelines|podcast|custom`; scene = chapter/dialogue-tree/segment;
-  block = paragraph/NPC-line/take. One data model serves all use cases.
-- The per-use-case UX narratives live in `../journeys/` (audiobook · game · podcast)
-  — the only place the kind-picker/import/Studio flow shapes are written down; kept live.
+  block = paragraph/NPC-line/take. One data model serves all use cases. **Why no
+  forks** (distilled 2026-08-06 from the archived data-model decision): a subtype
+  fork and a metadata-blob hybrid were both weighed and rejected — the audiobook
+  schema already generalizes, and every per-use-case difference is expressible as
+  `project_type` + `useCopy()` terminology + view gating + empty states, so a
+  second schema would only buy drift. Do not re-litigate.
+- The per-use-case flow shapes live in `CONCEPTS.md` §6, the user docs
+  (`projects.md` · `studio.md` · `lines.md`), and the podcast Timeline spec kept
+  live at `journey-podcast.md` (this folder). The audiobook/game journeys are
+  banner'd history in `../plans/archive/` (2026-08-06 sweep); the earlier "only
+  place the flow shapes are written down" claim here was false.
 
 ## 2 · Locked stack + behavior decisions (current truth)
 
 - Tauri 2 shell · Vue 3 + Pinia + Vite renderer (NOT React) · Python FastAPI +
   SQLite/SQLAlchemy server · audio blobs as files under `data/audio/`, paths in rows.
+- **Cross-app rules distilled 2026-08-06 from the archived 2026-06-18 decision**
+  (the full rationale lives there): **the shared runner is Python, no third
+  language** — Rust re-enters only if JW must become *strictly* Python-free; **the
+  runner is the single hardware authority** — detection AND cross-subsystem VRAM
+  budgeting (voice + LLM) go through `llm_runner.runner.hardware` /
+  the arbiter, never a second probe (`system_info.py` complies); **a backend is
+  justified by consumers, not symmetry**. Reality correction the old doc missed:
+  the runner IS in the token path now — it owns `/v1/ai/run` + `/v1/ai/stream`,
+  and local llama.cpp tokens flow through its httpx adapter; the 06-18 "direct to
+  llama-server, zero overhead" premise is dead.
 - **License: MIT** (was Apache-2.0; the GPL flirtation died when pedalboard was
   replaced by first-party DSP 2026-07-29 — see `NOTICE.md`). Lifts carry per-file headers.
 - **Migrations: hand-rolled idempotent column-existence checks — no Alembic.**
@@ -47,7 +67,9 @@ integration decisions record stays live at
 - **Three-tier voice tuning precedence** — code-verbatim from
   `server/justvoice/delivery_merge.py` (corrected 2026-08-04; the archived
   CONTRACT's ordering was wrong): Tier 1 (lowest) engine defaults from
-  CAPABILITY_DETAILS → Tier 2 `VoiceProfile.default_delivery` → Tier 3 (highest)
+  CAPABILITY_DETAILS → Tier 2 the persona overlay, caller-resolved (was
+  `VoiceProfile.default_delivery` until the Profile-kill; corrected 2026-08-06 —
+  the code at `delivery_merge.py:79` had it right) → Tier 3 (highest)
   `RenderPreset.delivery_overlay` OR `request.delivery` — one shared top tier.
   Dict-deep merge incl. `delivery.engine.*`; called identically from
   `/v1/generate` and chapter render.
@@ -129,4 +151,4 @@ integration decisions record stays live at
 | channels bind to profiles | channels bind to **personas** |
 | `/v1/render_jobs*`, `/v1/generate_async`, per-gen stream/cancel | `/v1/render_chapter`, `/v1/render/cache-stats`, `/v1/generate/{id}/status` |
 | `/v1/effects/available`·`/presets`, `/v1/cache` GET+DELETE, `/v1/training_jobs*`, `/v1/unreal/voicelines/*`, `/v1/health/filesystem` | `/v1/effects/catalog`·`/v1/effect-presets`, `/v1/cache/stats·clear·recent`, `/v1/train*`, `/v1/projects/{id}/export_voicelines`, `/v1/system/info` |
-| — (absent from the freeze) | `/v1/voices/design`, scene analyze/discover-speakers, `/v1/llm/smart-assign`·`preset-suggest`, project qc/show-notes/narrator/corrections, `/v1/extraction/*`, `/v1/feature-pins`, `/v1/prefs`, `/v1/logs/tail` |
+| — (absent from the freeze) | `/v1/voices/design`, scene analyze/discover-speakers, `/v1/llm/smart-assign`·`preset-suggest`, project qc/show-notes/narrator/corrections, `/v1/extraction/*`, `/v1/prefs`, `/v1/logs/tail` (`/v1/feature-pins` came and went — dropped with F1 Phase 2) |

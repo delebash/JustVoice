@@ -55,28 +55,25 @@ Cover art and narrator/ASIN metadata are **not** written today — add them in a
 
 ## Game-dev → ZIP bundle
 
-For NPC dialogue + game audio, the Chapter tab's **Export → ZIP** packages:
-- One WAV per block, named by block_id (or by block.character + sequence if set)
-- A `manifest.json` listing each WAV's metadata:
+For NPC dialogue + game audio, the voicelines export packages:
+- One WAV per line, named by its stable line id and grouped into a folder per scene
+- A `manifest.json` listing each WAV's metadata — one entry per line, with these
+  fields:
   ```json
   {
-    "version": 1,
-    "project": "RPG-7",
-    "blocks": [
-      {
-        "id": "blk_001",
-        "character": "Shopkeeper",
-        "scene": "Tavern",
-        "text": "Welcome, traveler. What'll it be?",
-        "file": "blocks/blk_001.wav",
-        "duration_sec": 2.4,
-        "engine": "chatterbox",
-        "delivery": {"speed": 0.95, "emotion": "neutral"}
-      }
-    ]
+    "line_id": "s01_l001",
+    "scene": "tavern",
+    "character": "Shopkeeper",
+    "text": "Welcome, traveler. What'll it be?",
+    "file": "tavern/s01_l001.wav",
+    "duration_s": 2.4,
+    "text_hash": "9f2a…"
   }
   ```
-- Per-line JSON sidecars carry line metadata (id, character, delivery) (if the engine produced it) for lip-sync rigs
+
+There are **no per-line JSON sidecar files** — the aggregate `manifest.json` is
+the only metadata artifact today. (A richer per-line sidecar for engine
+importers is a tracked idea, not a shipped feature.)
 
 Unreal / Unity integration plans: an `.uplugin` (Unreal) and `.unitypackage` (Unity) will consume this manifest format directly. Until those ship, write a small script in your engine to read manifest.json + load the WAVs as `USoundWave` / `AudioClip` assets.
 
@@ -129,4 +126,4 @@ Useful for masking JustVoice-produced audio without re-rendering.
 - **M4B is missing chapter markers** — chapters come from the FFMETADATA file `mux_m4b()` writes, one entry per assembled chapter. A project whose scenes have not been rendered produces no chapters; render first, then export.
 - **WAV plays at wrong speed** — Mismatched sample rate. Check the engine's output rate vs the destination application's expected rate. Engines emit at their native rate (Kokoro 24 kHz, Chatterbox 24 kHz, LuxTTS 48 kHz, TADA 24 kHz).
 - **Mastered audio is silent at the start** — A bug in the mastering normalize step. Try the "iAudio" target instead of ACX; iAudio's threshold is gentler.
-- **ZIP export is huge** — Unmastered + every take is large. Use the project export with "Default takes only" checkbox to slim it down.
+- **ZIP export is huge** — Unmastered + every take is large. Project export offers `include_audio` / `include_masters` toggles; bulk-delete old takes first to slim the archive.

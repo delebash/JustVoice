@@ -26,23 +26,25 @@ Mastering has never used the effects DSP — the two are independent paths. The 
 4. **Trim head / tail silence** to the preset's head_silence + tail_silence values.
 5. **Optional noise gate** if the noise floor is configured.
 
-## Per-project + per-chapter
+## Where the preset is set
 
-- **Per-project**: set in the project's detail panel. Default for every chapter.
-- **Per-chapter**: override via the chapter row's preset dropdown (overrides project default).
-- **Per-take**: re-master a take without re-rendering via the "Apply mastering → new version" button (creates a new take with mastering applied; original survives).
+- **Per-project**: the project's detail panel (Projects tab). Audiobook projects
+  imported from a manuscript get **ACX** automatically; other kinds start with no
+  preset until you pick one.
+- There is **no per-chapter mastering override and no per-take re-master
+  button** — earlier versions of this page described both, but neither exists in
+  the app. Mastering applies when the project is exported/assembled, not on each
+  chapter render. (Per-scene **render presets** in Studio are a different thing —
+  delivery/effects bundles, not mastering targets; see [presets.md](presets.md).)
 
 ## ACX QC report
 
-For audiobook projects with ACX preset, every rendered chapter gets a **QC report** flagging:
-
-- Loudness ≥ -23 LUFS and ≤ -18 LUFS ✓ / ✗
-- True peak ≤ -3 dB ✓ / ✗
-- Noise floor ≤ -60 dB ✓ / ✗
-- Head silence between 0.5s and 1.0s ✓ / ✗
-- Tail silence between 1.0s and 5.0s ✓ / ✗
-
-A failed chapter shows the failing metric inline + a "Re-master with safer headroom" button.
+For audiobook projects, the QC check measures each rendered chapter's **RMS
+loudness window and peak ceiling** — the two ACX technical checks implemented
+today. The export checklist lists the remaining ACX items (noise floor,
+head/tail silence) as **"not measured yet"** rather than pretending; a failing
+chapter shows the failing metric inline. Note the QC currently measures the
+*rendered* audio, which is unmastered until export.
 
 ## Custom presets
 

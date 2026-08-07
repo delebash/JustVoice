@@ -6,7 +6,9 @@ Working design decisions and mental models, captured from design-review
 discussion (2026-06-11). The clickable companion is
 `preview/journeys-preview.html` (12 tabs: the three production journeys,
 First run, Live voice, Fix-it loop, Library & tools, Help, Speaker Lab,
-Proof & QC, Identity flow). Walkthroughs: `docs/journeys/`. Build order:
+Proof & QC, Identity flow). Walkthroughs: `journey-podcast.md` (live, this
+folder) + the archived `journey-audiobook.md` / `journey-game.md` in
+`../plans/archive/` (the journeys folder was dissolved 2026-08-06). Build order:
 `docs/plans/archive/IMPLEMENTATION_PLAN.md`.
 
 ## 1. One data model, per-kind vocabulary
@@ -141,6 +143,12 @@ Picking a kind at project creation sets:
 - **Export surface** — M4B + chapter WAVs / per-line WAVs + manifest.json /
   episode MP3-WAV + stems
 
+> *Code check (2026-08-06): two of these four remain intent, not code. Podcast
+> Studio does NOT collapse — only game skips Script (`StudioView.vue:229-230`);
+> and the kind picker sets NO mastering target (only an audiobook import sets
+> `acx`; Studio render sends no `master`). Tracked in `TASKS.md` (the mastering
+> ruling).*
+
 ## 7. The three things called "preset" (all in use, naming collision)
 
 | Term | What it is | Where |
@@ -233,7 +241,8 @@ Implementation shape (single-sourced, headless-parity):
 - UI regions carry `data-help-id`; the drawer maps region → topic.
   Card-level `?` opens the same drawer scrolled to the topic anchor.
 - The same markdown set builds the public docs site later — write once.
-- Journeys docs (`docs/journeys/`) become the tour scripts.
+- Journeys docs (the live podcast spec + the archived audiobook/game journeys)
+  become the tour scripts.
 
 Rejected alternatives: external-docs-only (context switch, useless
 offline); coach-mark overlays everywhere (annoying after first run —
@@ -301,6 +310,14 @@ Grounded in code (pre-relocation names): `engines/llm/tiers.py`,
   record: ~+2 pp accuracy at 2.3× token cost — not the default, kept so
   the next bigger local model can be re-scored in one click. Headless:
   `python -m justvoice.labs.extraction.run --corpus <slug> --route <r>`.
+
+  > *Code check (2026-08-06): this bullet describes a design that was NEVER
+  > BUILT — `labs/extraction/run.py` makes exactly one `analyze_scene` call
+  > (no two-pass), the ground-truth corpus directory is empty, the "~+2 pp at
+  > 2.3×" verdict never happened, the "Reasoned" tier is dead (two routes
+  > only), and "Pin to production" is gone — feature pins were dropped with
+  > F1 Phase 2. The two-pass review idea itself is tracked in `IDEAS.md`
+  > (competitor-research entry).*
 
 ## 13. Final idea pass — JustWrite carry-overs (2026-06-11)
 
