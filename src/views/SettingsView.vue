@@ -5,7 +5,7 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
 import { useRenderTasks } from "../stores/renderTasks.js";
-import { DataManagement, FAMILY_LABELS, LogsPanel, SettingsShell, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, fmtBytes, refreshRunnerModels, renderHelpMarkdown, serverUrl } from "@delebash/llm-ui";
+import { AppearancePanel, DataManagement, FAMILY_LABELS, LogsPanel, SettingsShell, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, fmtBytes, refreshRunnerModels, renderHelpMarkdown, serverUrl } from "@delebash/llm-ui";
 import { loadDoc } from "../services/helpDocs.js";
 import { useOnboarding } from "../stores/onboarding.js";
 import { useProjectsStore } from "../stores/projects.js";
@@ -13,11 +13,25 @@ import { usePersonasStore } from "../stores/personas.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useUIStore } from "../stores/ui.js";
 import { useServerStore } from "../stores/server.js";
-import { UI_SCALES } from "../services/appearance.js";
 import { SETTINGS_SECTION_IDS } from "./settingsSections.js";
 import CacheView from "./CacheView.vue";
 import AudioChannelsView from "./AudioChannelsView.vue";
 import WebhooksView from "./WebhooksView.vue";
+
+// Appearance — the shared rows are the kit AppearancePanel; the Language
+// options are JV app content (docgen has no i18n) so they live here.
+const LOCALES = [
+  { label: "English (en)", value: "en" },
+  { label: "Spanish (es)", value: "es" },
+  { label: "French (fr)", value: "fr" },
+  { label: "German (de)", value: "de" },
+  { label: "Italian (it)", value: "it" },
+  { label: "Portuguese (pt)", value: "pt" },
+  { label: "Russian (ru)", value: "ru" },
+  { label: "Japanese (ja)", value: "ja" },
+  { label: "Korean (ko)", value: "ko" },
+  { label: "Chinese (zh)", value: "zh" },
+];
 
 const api = useApi();
 const ui = useUIStore();
@@ -1836,94 +1850,14 @@ onMounted(() => {
           Visual and locale preferences. Saved to this server (renderer prefs), so they follow you to any client.
         </p>
 
-        <div class="setting-row">
-          <div class="setting-row__head">
-            <div>
-              <div class="setting-row__title">Theme</div>
-              <div class="setting-row__desc">
-                Light, Dark, or Follow system. Applied immediately via CSS custom properties.
-              </div>
-            </div>
-            <UiSelect
-              :model-value="ui.appearance.mode"
-              width="name"
-              :options="[
-                { label: 'Follow system', value: 'system' },
-                { label: 'Light', value: 'light' },
-                { label: 'Dark', value: 'dark' },
-              ]"
-              @update:model-value="(v) => ui.setAppearance({ mode: v })"
-            />
-          </div>
-        </div>
-
-        <div class="setting-row">
-          <div class="setting-row__head">
-            <div>
-              <div class="setting-row__title">Interface size</div>
-              <div class="setting-row__desc">
-                Scales the whole interface — labels, controls, and panels — together.
-              </div>
-            </div>
-            <UiSelect
-              :model-value="ui.appearance.uiScale"
-              width="name"
-              :options="UI_SCALES.map((s) => ({ label: s.label, value: s.value }))"
-              @update:model-value="(v) => ui.setAppearance({ uiScale: Number(v) })"
-            />
-          </div>
-        </div>
-
-        <div class="setting-row">
-          <div class="setting-row__head">
-            <div>
-              <div class="setting-row__title">Accent hue · {{ ui.appearance.accentHue }}°</div>
-              <div class="setting-row__desc">
-                Drag to pick a new accent color across the whole app. Default 166° = forest green.
-              </div>
-            </div>
-            <span class="setting-row__value">
-              <span class="accent-preview" :style="{ background: `oklch(0.538 0.08 ${ui.appearance.accentHue})` }" />
-            </span>
-          </div>
-          <input
-            type="range"
-            :value="ui.appearance.accentHue"
-            min="0" max="360" step="1"
-            class="setting-row__slider"
-            @input="(e) => ui.setAppearance({ accentHue: Number(e.target.value) })"
-          />
-        </div>
-
-        <div class="setting-row">
-          <div class="setting-row__head">
-            <div>
-              <div class="setting-row__title">Language</div>
-              <div class="setting-row__desc">
-                UI language. Engine output language is configured per-voice in the Profile.
-                Full i18next wiring lands with task <code>#97</code> — the picker persists your
-                preference now and the locale will apply once translations ship.
-              </div>
-            </div>
-            <UiSelect
-              :model-value="ui.appearance.locale"
-              width="name"
-              :options="[
-                { label: 'English (en)', value: 'en' },
-                { label: 'Spanish (es)', value: 'es' },
-                { label: 'French (fr)', value: 'fr' },
-                { label: 'German (de)', value: 'de' },
-                { label: 'Italian (it)', value: 'it' },
-                { label: 'Portuguese (pt)', value: 'pt' },
-                { label: 'Russian (ru)', value: 'ru' },
-                { label: 'Japanese (ja)', value: 'ja' },
-                { label: 'Korean (ko)', value: 'ko' },
-                { label: 'Chinese (zh)', value: 'zh' },
-              ]"
-              @update:model-value="(v) => ui.setAppearance({ locale: v })"
-            />
-          </div>
-        </div>
+        <AppearancePanel
+          :appearance="ui.appearance"
+          :accent-chroma="0.08"
+          accent-note="Default 166° = forest green."
+          :locales="LOCALES"
+          locale-desc="UI language. Engine output language is configured per-voice in the Profile. Full i18next wiring lands with task #97 — the picker persists your preference now and the locale will apply once translations ship."
+          @patch="(p) => ui.setAppearance(p)"
+        />
       </div>
     </div>
 
