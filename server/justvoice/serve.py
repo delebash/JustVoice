@@ -45,8 +45,10 @@ def main() -> None:
     app = create_app(dd)
 
     # Workspace seeding lives HERE, not in create_app(), on purpose: the pytest
-    # suite's create_app(tmp_path) apps start from an empty, unmigrated database
-    # (the family's named winner for the seeding call-site — target-tree P6).
+    # suite's create_app(tmp_path) apps start from an empty database — the
+    # family's named winner for the seeding call-site (target-tree P6). The one
+    # create_app-time data operation left is the profile→persona migration
+    # (Slice 1, no-ops on an empty DB, dies with Slice 4).
     from .database.seed import seed_workspace
 
     seed_workspace()

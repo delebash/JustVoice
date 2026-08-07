@@ -216,7 +216,7 @@ def seed_workspace() -> None:
     """Serve-time workspace seeding — the family call-site (target-tree P6).
 
     Everything here ran inside create_app() until 2026-08-08; it moved so
-    `create_app(tmp_path)` starts from an EMPTY, unmigrated database (JW's
+    `create_app(tmp_path)` starts from an EMPTY database (JW's
     pytest-isolation rationale, the family's named winner). Called by serve.py
     after create_app; tests that assert seeded content call it explicitly.
     The factory-reset path stays on its own bundle (data_admin.py →

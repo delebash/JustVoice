@@ -261,7 +261,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     # registry boot — lives in database/seed.py::seed_workspace(), called by
     # serve.py AFTER create_app (the family call-site, target-tree P6, with
     # order-of-operations documented there). create_app(tmp_path) starts from
-    # an EMPTY, unmigrated DB — JW's pytest-isolation rationale, the family's
+    # an EMPTY DB — JW's pytest-isolation rationale, the family's
     # named winner; tests that assert seeded content call seed_workspace().
 
     app.include_router(generate_api.router)
