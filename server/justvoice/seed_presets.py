@@ -11,10 +11,9 @@ Temperatures are TODAY'S measured values lifted off the retiring per-row /
 hardcoded call sites (behavior-preserving migration, F1 Phase 2 2026-08-05):
 attribution & friends 0.2 · preset-suggest 0.0 · show-notes 0.4 · compose 0.9
 (was hardcoded at personas_api.py:270 — ruling 9 moves it onto the preset) ·
-persona-rewrite 0.6 · refine 0.2/2048. Callers with dynamic token budgets
-(attribution's 12×dialogue, smart-assign's 80×characters, rewrite's
-length-based) keep passing them as per-call RunRequest.maxTokens — code
-computes VALUES, presets own defaults. A user's hand-changed row temperature
+persona-rewrite 0.6 · refine 0.2. NO max_tokens anywhere (caps ruling
+2026-08-07: no formulas, no seeded numbers — empty = uncapped, JW's model;
+the old code-computed budgets are deleted). A user's hand-changed row temperature
 from the old system lifts onto the assigned preset at migration
 (engines/llm/migrate_prompts.py).
 
@@ -30,21 +29,15 @@ DEFAULT_ENGINE_PRESETS: list[dict] = [
     {"id": "p_extract", "name": "Structured extraction", "provider_id": "local-llamacpp",
      "model": "", "temperature": 0.2, "position": 0},
     {"id": "p_classify", "name": "Deterministic classification", "provider_id": "local-llamacpp",
-     "model": "", "temperature": 0.0, "max_tokens": 200, "position": 1},
+     "model": "", "temperature": 0.0, "position": 1},
     {"id": "p_notes", "name": "Grounded summary", "provider_id": "local-llamacpp",
      "model": "", "temperature": 0.4, "position": 2},
     {"id": "p_compose", "name": "Creative compose", "provider_id": "local-llamacpp",
-     "model": "", "temperature": 0.9, "max_tokens": 300, "position": 3},
+     "model": "", "temperature": 0.9, "position": 3},
     {"id": "p_voiced_edit", "name": "Voiced rewrite", "provider_id": "local-llamacpp",
      "model": "", "temperature": 0.6, "position": 4},
     {"id": "p_refine", "name": "Dictation cleanup", "provider_id": "local-llamacpp",
-     "model": "", "temperature": 0.2, "max_tokens": 2048, "position": 5},
-    # Reasoned's preset (the attribution restore, name approved 2026-08-06):
-    # think ON is the route's point — the runner's capability gate keeps it
-    # clean on models that can't ("Reasoned extraction" replaces the retired
-    # "Careful reading"). Same measured 0.2 temperature family.
-    {"id": "p_reason", "name": "Reasoned extraction", "provider_id": "local-llamacpp",
-     "model": "", "temperature": 0.2, "think": True, "position": 6},
+     "model": "", "temperature": 0.2, "position": 5},
 ]
 
 # ── JV's model catalog: the family's measured daily driver, plus the 12B and
@@ -69,7 +62,7 @@ JV_MODEL_CATALOG: list[dict] = [
      "notes": "The recommended all-rounder — one setup covers speaker attribution, "
               "dictation cleanup, and the rest of the AI features. Runs on 8 GB "
               "graphics cards and up (and usably on CPU — only the 4B active slice "
-              "computes per token); thinking is managed per task automatically."},
+              "computes per token)."},
     {"id": "gemma-4-12b-qat", "name": "Gemma 4 12B (QAT)",
      "hf_repo": "unsloth/gemma-4-12B-it-qat-GGUF", "quant": "UD-Q4_K_XL", "total_params": "12B",
      "mtp": True, "est_vram_mb": 10721, "mtp_draft_file": "MTP/mtp-gemma-4-12B-it-Q4_0.gguf", "mtp_draft_quant": "Q4_0",
@@ -178,11 +171,11 @@ JV_CLASS_TUNE_IDENTITY: dict[str, dict] = {
 # routes ONCE at the FEATURE key — the pieces follow it through the
 # resolver's feature layer (action ref → feature ref → default).
 DEFAULT_FEATURE_PRESETS: dict[str, str] = {
-    # Speaker attribution — three routed cards; day one all on the same
-    # preset except Reasoned, whose preset carries think ON.
+    # Speaker attribution — two routed cards, same preset (think-off like
+    # every preset; the Reasoned route + p_reason died in the tier-debris
+    # cleanup 2026-08-07).
     "speaker_attribution.guided": "p_extract",
     "speaker_attribution.direct": "p_extract",
-    "speaker_attribution.reasoned": "p_reason",
     # Find new speakers — its own runnable card, its own ref.
     "speaker_attribution.identify": "p_extract",
     "smart_assign": "p_extract",
@@ -225,8 +218,7 @@ _ATTR_SAMPLE_VARS = {
 }
 
 DEFAULT_TEST_SAMPLES: list[dict] = [
-    {"actions": ["speaker_attribution.guided", "speaker_attribution.direct",
-                 "speaker_attribution.reasoned"],
+    {"actions": ["speaker_attribution.guided", "speaker_attribution.direct"],
      "label": "Cellar scene — the original Speaker Lab sample",
      "variables": _ATTR_SAMPLE_VARS},
     {"actions": ["speaker_attribution.identify"], "label": "Discover the harbor-master",

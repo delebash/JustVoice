@@ -49,16 +49,16 @@ provider** flow.
 
 ## Which attribution route runs (LLM)
 
-There's nothing to configure on a provider. Speaker attribution has three
+There's nothing to configure on a provider. Speaker attribution has two
 routes — **Guided** (the system prompt's rules plus worked examples, for
-small models), **Direct** (the same system prompt without the examples, for
-big models), **Reasoned** (Direct's rules with thinking on, for reasoning
-models) — and the **Auto** row above them (AI Settings → Routing by feature)
-picks which one runs: Reasoned when the model can think (the catalog's
-Thinking flag), Direct at and above the editable size line, Guided
-otherwise. Production always runs Auto's pick; a route card's Lab run or an
-API call forces its own route per run. Thinking rides each route's preset —
-models that can't think are never asked to.
+small models) and **Direct** (the same system prompt without the examples,
+for big models) — and the **Auto** row above them (AI Settings → Routing by
+feature) picks which one runs by size alone: Direct at and above the
+editable size line (a mixture-of-experts model counts its total size),
+Guided otherwise and when the size is unknown. Production always runs
+Auto's pick; a route card's Lab run or an API call forces its own route per
+run. Thinking is a per-feature preset setting like anywhere else — every
+preset ships with it off; turn it on on a card's preset to test it.
 
 ## Editing or removing
 

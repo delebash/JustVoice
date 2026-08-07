@@ -2,8 +2,8 @@
 """Extraction lab CLI.
 
 Usage:
-  python -m justvoice.labs.extraction.run                 # run every passage at auto tier
-  python -m justvoice.labs.extraction.run --tier guided   # force a tier
+  python -m justvoice.labs.extraction.run                  # run every passage at auto route
+  python -m justvoice.labs.extraction.run --route guided   # force a route
   python -m justvoice.labs.extraction.run --corpus austen_persuasion
 
 Writes a markdown report to labs/extraction/reports/<timestamp>.md with
@@ -93,7 +93,7 @@ def score_case(rows: list, ground_truth: list[dict]) -> dict[str, Any]:
     }
 
 
-def run_passage(case: dict, tier_override: str | None) -> dict[str, Any]:
+def run_passage(case: dict, route_override: str | None) -> dict[str, Any]:
     # Lazy import so a missing optional dependency doesn't kill the CLI.
     from ...app_state import get_state, set_state, AppState
     from ...extraction import AnalyzeRequest, analyze_scene
@@ -112,7 +112,7 @@ def run_passage(case: dict, tier_override: str | None) -> dict[str, Any]:
                 text=case["text"],
                 characters=case["characters"],
                 corrections=[],
-                tier=tier_override,
+                route=route_override,
                 propagate=True,
                 use_floor=True,
             ),
@@ -131,11 +131,11 @@ def run_passage(case: dict, tier_override: str | None) -> dict[str, Any]:
     return scored
 
 
-def format_report(results: list[dict], tier_label: str) -> str:
+def format_report(results: list[dict], route_label: str) -> str:
     lines = [
         "# Extraction lab report",
         "",
-        f"- Tier: `{tier_label}`",
+        f"- Route: `{route_label}`",
         f"- Passages: {len(results)}",
         "",
         "## Per-passage accuracy",
@@ -176,7 +176,7 @@ def format_report(results: list[dict], tier_label: str) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="JustVoice extraction lab")
-    parser.add_argument("--tier", choices=["guided", "direct", "reasoned"], help="force a tier")
+    parser.add_argument("--route", choices=["guided", "direct"], help="force a route")
     parser.add_argument("--corpus", help="run a single passage by slug; default = all")
     args = parser.parse_args(argv)
 
@@ -186,13 +186,13 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     print(f"Running {len(cases)} passage(s)…", file=sys.stderr)
-    results = [run_passage(c, args.tier) for c in cases]
+    results = [run_passage(c, args.route) for c in cases]
 
-    report = format_report(results, args.tier or "auto")
+    report = format_report(results, args.route or "auto")
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     # Use a deterministic name so output stays predictable (the user can
     # diff successive runs by overwriting the same file).
-    out_path = REPORTS_DIR / f"latest-{args.tier or 'auto'}.md"
+    out_path = REPORTS_DIR / f"latest-{args.route or 'auto'}.md"
     out_path.write_text(report, encoding="utf-8")
     print(f"Report -> {out_path}", file=sys.stderr)
     # Guard against non-UTF-8 stdout encodings (Windows cp1252 trips on

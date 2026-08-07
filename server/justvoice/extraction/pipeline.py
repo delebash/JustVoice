@@ -16,7 +16,7 @@ import logging
 import re
 import time
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -66,18 +66,20 @@ class AnalyzeRequest(BaseModel):
     text: str
     characters: list[dict] = []
     corrections: list[dict] = []
-    # Override tier auto-classification per call (Speaker Lab uses this).
-    tier: str | None = None
+    # Per-run route force (a route card's Lab run / the API). None = Auto.
+    # Renamed from `tier` in the tier-debris cleanup (2026-08-07): route
+    # words, never tier; an unknown value (e.g. the dead "reasoned") 422s.
+    route: Literal["guided", "direct"] | None = None
     propagate: bool = True  # apply anchor propagation pass
     use_floor: bool = True  # demote below-floor LLM picks to "unknown"
-    # Speaker Lab per-column overrides — None means "use the feature pin /
-    # tier defaults". Prompts let the lab tune wording before promoting a
+    # Lab per-column overrides — None means "use the resolved preset /
+    # route defaults". Prompts let the Lab tune wording before promoting a
     # preset to production.
     model: str | None = None
     temperature: float | None = None
     system_prompt: str | None = None
     # Custom user-prompt template ({characters}/{corrections}/{paragraphs}
-    # tokens are substituted) and a per-call floor that beats the tier's
+    # tokens are substituted) and a per-call floor that beats the route's
     # default — both surfaced in the Lab for full parity with the
     # JustWrite original.
     user_prompt: str | None = None
@@ -87,7 +89,8 @@ class AnalyzeRequest(BaseModel):
     provider_id: str | None = None
     # The Lab column's remaining tunables (Part 2, 2026-08-06 — the controls
     # are REAL): forwarded to the shared run path like any feature's. None =
-    # the resolved preset's value; max_tokens None = the code-computed budget.
+    # the resolved preset's value (empty preset = uncapped; caps ruling
+    # 2026-08-07 — no code-computed budget anymore).
     think: bool | None = None
     reasoning_effort: str | None = None
     max_tokens: int | None = None
@@ -114,7 +117,13 @@ def _extract_first_json_array(text: str) -> list:
     return v if isinstance(v, list) else []
 
 
-ROUTES = ("guided", "direct", "reasoned")
+ROUTES = ("guided", "direct")
+
+# The per-route confidence floors — JV-local since the tier-debris cleanup
+# (2026-08-07; the kit's tier registry died). Guided filters stricter because
+# small models spread confidence wider. Route data, not a request param: the
+# floor demotes below-floor picks to "unknown" AFTER the model answers.
+ROUTE_FLOORS = {"guided": 0.7, "direct": 0.5}
 
 
 @dataclass(frozen=True)
@@ -122,7 +131,7 @@ class RoutePick:
     """Which attribution route runs, and why — echoed to the caller so the UI
     shows the SAME choice the pipeline made (never re-derived client-side)."""
 
-    name: str    # "guided" | "direct" | "reasoned"
+    name: str    # "guided" | "direct"
     floor: float
     source: str  # "forced" (per-run override) | "setting" (the force pills) | "auto"
 
@@ -187,31 +196,25 @@ def model_size_b(model_id: str) -> float:
 
 
 def auto_route(direct_min_b: float, model_override: str = "") -> tuple[str, list[dict]]:
-    """The Auto pick + its shown work (the approved two visible rules):
+    """The Auto pick + its shown work — SIZE ONLY (the tier-debris cleanup,
+    2026-08-07: the thinking rule died with the Reasoned route):
 
-      Reasoned — when the model can think (the catalog's Thinking flag,
-                 name-heuristic fallback; unknown does NOT force Reasoned).
-      Direct   — when the model is at least `direct_min_b` billion params.
-      Guided   — otherwise.
+      Direct — when the model is at least `direct_min_b` billion params
+               (a MoE counts TOTAL params — the size pattern reads the
+               catalog's total_params, e.g. 26B for the Gemma MoE).
+      Guided — otherwise, including when the size is unknown (worked
+               examples never hurt a big model; missing them hurts a
+               small one).
 
-    Production (no override): each rule judged against THAT CARD'S OWN model
-    — no hidden anchor; the readout the API serves names every model it
-    checked. A per-call MODEL override (a Lab column's pin) is the model that
-    actually runs, so every rule judges IT — the old system's own documented
-    behavior ("the model the run resolves to: request override, else the
-    action's preset model")."""
-    from llm_runner.llm.capability import model_thinks
+    Production (no override): judged against THAT CARD'S OWN model — no
+    hidden anchor; the readout the API serves names the model it checked. A
+    per-call MODEL override (a Lab column's pin) is the model that actually
+    runs, so the rule judges IT."""
 
     def m(route: str) -> str:
         return model_override or route_model(route)
 
     checks: list[dict] = []
-    m_reason = m("reasoned")
-    thinks = bool(m_reason) and model_thinks(m_reason) is True
-    checks.append({"route": "reasoned", "model": m_reason, "passed": thinks,
-                   "rule": "when the model can think"})
-    if thinks:
-        return "reasoned", checks
     m_direct = m("direct")
     size = model_size_b(m_direct)
     big = size >= float(direct_min_b or 0)
@@ -224,23 +227,21 @@ def auto_route(direct_min_b: float, model_override: str = "") -> tuple[str, list
     return "guided", checks
 
 
-def pick_route(tier_override: str | None, settings, model_override: str = "") -> RoutePick:
+def pick_route(route_override: str | None, settings, model_override: str = "") -> RoutePick:
     """The route choice (the Auto simplification, 2026-08-06): the caller's
-    per-run route override (a route card's Lab run / the API `tier` field —
+    per-run route override (a route card's Lab run / the API `route` field —
     the CLI has no analyze command, verified 2026-08-06) wins; otherwise
-    Auto — the two visible rules, judging the per-call model override when
-    one rides the request. Production is always Auto: the stored force died
-    with the pills. Floors come from the shared route registry (guided 0.7 ·
-    direct/reasoned 0.5)."""
-    from llm_runner.llm import TIERS
-
-    if tier_override in ROUTES:
-        return RoutePick(tier_override, TIERS[tier_override].confidence_floor, "forced")
+    Auto — the size rule, judging the per-call model override when one rides
+    the request. Production is always Auto: the stored force died with the
+    pills. Floors come from ROUTE_FLOORS (JV-local since the tier-debris
+    cleanup 2026-08-07)."""
+    if route_override in ROUTES:
+        return RoutePick(route_override, ROUTE_FLOORS[route_override], "forced")
     name, _checks = auto_route(
         getattr(getattr(settings, "extraction", None), "direct_min_b", 14.0),
         model_override or "",
     )
-    return RoutePick(name, TIERS[name].confidence_floor, "auto")
+    return RoutePick(name, ROUTE_FLOORS[name], "auto")
 
 
 def analyze_scene(
@@ -271,7 +272,7 @@ def analyze_scene(
     )
 
     # ── 3. Pick the route + run through the shared path ──────────
-    pick = pick_route(request.tier, settings, request.model or "")
+    pick = pick_route(request.route, settings, request.model or "")
 
     floor = (
         request.confidence_floor
@@ -287,22 +288,12 @@ def analyze_scene(
     dialogue_segments = [s for s in segments if s["kind"] == "dialogue"]
     n_dialogue = len(dialogue_segments)
 
-    # The code-computed answer budget. Reasoned's think tokens count INSIDE
-    # the completion (measured live 2026-08-06, gemma-4-26b-a4b: ~1030
-    # think+answer for a 5-line passage against the runner's 1024 reasoning
-    # budget — the bare 800 cap truncated the JSON array mid-answer and the
-    # tail rows fell to the unknown pad). The route gets thinking headroom;
-    # an explicit per-call budget always wins.
-    budget = max(800, 12 * n_dialogue)
-
     llm_picks: list[dict[str, Any]] = []
     if n_dialogue > 0:
         try:
-            # The route's OWN template row + OWN preset run (per-route routing,
-            # the attribution restore — Reasoned has its own row and a
-            # think-ON preset; the runner's capability gate governs models
-            # that can't think). The Lab's system/user candidates ride the
-            # explicit-prompt door.
+            # The route's OWN template row + OWN preset run (per-route
+            # routing, the attribution restore). The Lab's system/user
+            # candidates ride the explicit-prompt door.
             t0 = time.monotonic()
             resp = run_feature(
                 f"speaker_attribution.{pick.name}",
@@ -314,10 +305,10 @@ def analyze_scene(
                 system=request.system_prompt or None,
                 userTemplate=request.user_prompt or None,
                 temperature=request.temperature,
-                # A caller's explicit budget wins; else the code-computed one
-                # (+ thinking headroom on the reasoned route).
-                maxTokens=request.max_tokens
-                or (budget + 1536 if pick.name == "reasoned" else budget),
+                # Caps ruling 2026-08-07: no code-computed budget. An explicit
+                # per-call value rides; None falls to the preset (empty =
+                # uncapped, nothing sent).
+                maxTokens=request.max_tokens,
                 model=request.model or "",
                 providerId=request.provider_id or "",
                 think=request.think,

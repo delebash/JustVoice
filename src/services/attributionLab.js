@@ -47,14 +47,12 @@ export function parseCharacters(raw) {
 export const ACTION_ROUTE = {
   "speaker_attribution.guided": "guided",
   "speaker_attribution.direct": "direct",
-  "speaker_attribution.reasoned": "reasoned",
 };
 
 // Card labels for the task strip — the rows' own on-screen names.
 const ACTION_LABEL = {
   "speaker_attribution.guided": "Guided",
   "speaker_attribution.direct": "Direct",
-  "speaker_attribution.reasoned": "Reasoned",
   "speaker_attribution.identify": "Find new speakers",
 };
 
@@ -149,7 +147,7 @@ async function runInner(body, vars, extra, api, signal) {
     };
   }
 
-  const tier = ACTION_ROUTE[body.action] || null; // the card's own route, forced
+  const route = ACTION_ROUTE[body.action] || null; // the card's own route, forced
 
   const payload = {
     text: passageFrom(vars),
@@ -159,7 +157,7 @@ async function runInner(body, vars, extra, api, signal) {
     // through the same resolver production uses.
     corrections: [],
     project_id: useActiveProject().id || null,
-    tier,
+    route,
     propagate: extra.propagate ?? true,
     use_floor: extra.useFloor ?? true,
     providerId: body.providerId || null,

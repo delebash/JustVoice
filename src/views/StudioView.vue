@@ -177,12 +177,12 @@ const analyzeBusy = ref(false);
 const discovered = ref([]);   // [{name, role_hint, approx_lines}]
 const promoting = ref(false);
 const analyzeRows = ref([]);
-const analyzeTierUsed = ref(null);
+const analyzeRouteUsed = ref(null);
 // Why that route ran ("auto" | "forced") — the no-silent-state rule: the
 // meta line says Auto's pick vs forced. (The stored force died with the
 // pills, 2026-08-06 — "forced" now only ever means a per-run override.)
-const analyzeTierSource = ref(null);
-const ROUTE_LABELS = { guided: "Guided", direct: "Direct", reasoned: "Reasoned" };
+const analyzeRouteSource = ref(null);
+const ROUTE_LABELS = { guided: "Guided", direct: "Direct" };
 const analyzeFloor = ref(null);
 const editedFlags = ref({});  // {rowIdx: true} for rows the user changed
 
@@ -975,15 +975,15 @@ async function runAnalyze() {
       signal: ctrl.signal,
     });
     analyzeRows.value = r.rows || [];
-    analyzeTierUsed.value = r.tier_used;
-    analyzeTierSource.value = r.tier_source || "auto";
+    analyzeRouteUsed.value = r.route_used;
+    analyzeRouteSource.value = r.route_source || "auto";
     analyzeFloor.value = r.confidence_floor;
     editedFlags.value = {};
-    tasks.update(task.id, { meta: { rows: analyzeRows.value.length, tier: r.tier_used } });
+    tasks.update(task.id, { meta: { rows: analyzeRows.value.length, route: r.route_used } });
     tasks.finish(task.id);
     runDiscoverSpeakers(); // fire-and-forget — banner appears if it finds anyone
     pushToast({
-      message: `Analyzed ${analyzeRows.value.length} segment${analyzeRows.value.length === 1 ? "" : "s"} — ${ROUTE_LABELS[r.tier_used] || r.tier_used} ${r.tier_source === "auto" ? "(Auto's pick)" : "(forced)"}.`,
+      message: `Analyzed ${analyzeRows.value.length} segment${analyzeRows.value.length === 1 ? "" : "s"} — ${ROUTE_LABELS[r.route_used] || r.route_used} ${r.route_source === "auto" ? "(Auto's pick)" : "(forced)"}.`,
       kind: "success",
       duration: 3500,
     });
@@ -1782,9 +1782,9 @@ watch(selectedProjectId, (id) => {
           <UiButton size="small" :loading="promoting" label="＋ Create personas & add to cast" @click="promoteDiscovered" />
         </div>
 
-        <p v-if="analyzeTierUsed" class="jv-muted studio__script-meta">
-          Route: <strong>{{ ROUTE_LABELS[analyzeTierUsed] || analyzeTierUsed }}</strong>
-          {{ analyzeTierSource === "auto" ? "— Auto's pick" : "— forced" }} ·
+        <p v-if="analyzeRouteUsed" class="jv-muted studio__script-meta">
+          Route: <strong>{{ ROUTE_LABELS[analyzeRouteUsed] || analyzeRouteUsed }}</strong>
+          {{ analyzeRouteSource === "auto" ? "— Auto's pick" : "— forced" }} ·
           confidence floor {{ analyzeFloor }} · {{ analyzeRows.length }} segments
         </p>
 

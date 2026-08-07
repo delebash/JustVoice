@@ -34,9 +34,9 @@ FEATURE_CATALOG: list[FeatureCatalogEntry] = [
     FeatureCatalogEntry(key="render_preset_suggest", label="Render preset suggestion",
                         hint="Suggest a render preset from the text's mood.", group="Analysis"),
     # The attribution restore (approved 2026-08-06): SPEAKER ATTRIBUTION is a
-    # plain heading; its three routes (Guided · Direct · Reasoned) are routed
-    # cards under it, with the app's "Auto" panel row first (main.js registers
-    # it). The hint is the user's own sentence (QC ruling 2026-08-06).
+    # plain heading; its two routes (Guided · Direct) are routed cards under
+    # it, with the app's "Auto" panel row first (main.js registers it). The
+    # hint is the user's own sentence (QC ruling 2026-08-06).
     FeatureCatalogEntry(key="speaker_attribution", label="Speaker attribution",
                         hint="Extracts who says what and what they say.",
                         group="Analysis"),

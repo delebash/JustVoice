@@ -56,28 +56,26 @@ and a working model returns something like
 `Can you check if the export finished before we send it?` — fillers
 dropped, punctuation added, nothing answered back.
 
-## Speaker attribution — three routes and the Auto row
+## Speaker attribution — two routes and the Auto row
 
-Under the **SPEAKER ATTRIBUTION** heading there are three real routed
+Under the **SPEAKER ATTRIBUTION** heading there are two real routed
 features — each with its own editable text, its own engine preset, its own
 Lab:
 
 - **Guided** — its system prompt carries the rules **plus worked examples**;
   small models follow better when shown.
 - **Direct** — the **same system-prompt rules without the examples**, for
-  big models. (The user prompt — your text and cast — is identical on every
-  route; only the system prompt differs.)
-- **Reasoned** — Direct's rules with thinking on, for reasoning models. (Its
-  text starts as a copy of Direct's; edit it separately whenever you like.)
+  big models. (The user prompt — your text and cast — is identical on both
+  routes; only the system prompt differs.)
 
-Above them sits the **Auto** row — *"Picks which of the three features below
+Above them sits the **Auto** row — *"Picks which of the two features below
 runs."* Its page is plain sentences plus one number. Auto never picks a
 model — it looks at the model you've already assigned and picks the feature
-that suits it. If your model can think, **Reasoned** runs (the **Thinking**
-flag on the model's catalog row decides; edit it there). If it can't think
-but has at least the editable number of billion parameters (default 14),
-**Direct** runs; smaller models get **Guided**. When JustVoice can't tell
-the size, it plays it safe and uses **Guided**.
+that suits it, **by size alone**: at least the editable number of billion
+parameters (default 14) and **Direct** runs; smaller models get **Guided**.
+A mixture-of-experts model counts its **total** size (the built-in Gemma
+reads as 26B). When JustVoice can't tell the size, it plays it safe and
+uses **Guided**.
 
 Auto always judges the model a card would **actually run**: the card's
 engine preset names a model, and when it doesn't, your default model fills
@@ -87,10 +85,12 @@ instead of giving up.
 
 Production always runs Auto's pick — there is no stored force. After every
 Analyze, Studio's meta line reports the route that ran and whether it was
-Auto's pick or forced per run ("Route: Reasoned — Auto's pick"). A route
+Auto's pick or forced per run ("Route: Direct — Auto's pick"). A route
 card's Lab run or an API call forces its own route for that run only — that
-always wins. Thinking itself rides the route's preset: Reasoned's preset
-asks for it, Guided's and Direct's don't.
+always wins. Thinking is a per-preset setting like on any feature — both
+routes ship with it off; to try attribution with thinking, turn **think**
+on in a card's Lab column, compare, and **Use in production** if it earns
+it.
 
 ## The attribution Lab
 
@@ -99,9 +99,9 @@ same segmentation, anchor propagation, and confidence floor as Studio's
 Analyze — so what you tune is exactly what production runs.
 
 **The card is the route.** A card's Lab run always forces its own route:
-Guided's card tests Guided, Direct's tests Direct, Reasoned's tests
-Reasoned. The prompt boxes you see are exactly what runs — there is no
-separate route picker to disagree with them.
+Guided's card tests Guided, Direct's tests Direct. The prompt boxes you see
+are exactly what runs — there is no separate route picker to disagree with
+them.
 
 **The cast editor.** The Characters box isn't a raw text area — it's the
 original Speaker Lab's cast editor: your cast as removable chips, a
@@ -161,10 +161,13 @@ Guided's built-in worked examples — those live in its system prompt.)
 
 **The tunables are real.** Temperature, **Reasoning**, **Max tok**,
 **Top-p** and the sampler rows on a column all ride the run — set them and
-the run actually uses them, exactly like any feature's Lab. A practical
-example: on a Reasoned test, raising **Max tok** to 2048 gives the model's
-hidden thinking room to finish AND still answer — thinking tokens count
-against the same budget as the visible reply.
+the run actually uses them, exactly like any feature's Lab. **Max tok is
+empty out of the box — on every feature.** No feature ships with a token
+cap, and an empty box sends no limit at all: a run simply ends when the
+model finishes its answer. Type a number only when you want a hard ceiling
+(say, a cost limit on a paid provider) — and know that on a thinking run
+the model's hidden reasoning counts against that same ceiling, so a tight
+cap can cut an answer off mid-sentence.
 
 **Race configurations.** Add a second column to run two setups over the
 same passage; disagreements between columns are underlined so the better
@@ -224,12 +227,12 @@ prompt gets a direct answer.
 **The one control is the feature's engine preset.** The preset's thinking
 control — Off, or an effort level from Low to Max — is the whole story:
 what you set there is exactly what every run of that feature sends, no
-exceptions, nothing second-guessing it. Out of the box only ONE preset
-asks: **Reasoned extraction**, behind the Reasoned speaker-attribution
-card. Dictation cleanup, Smart-assign, Compose, Rewrite, Show notes,
-Preset suggest and the voice gender guess all ship with thinking off. The
-effort level sets how MUCH a thinking run reasons — lower is a shorter
-hidden pass and a faster answer.
+exceptions, nothing second-guessing it. **Out of the box every preset
+ships with thinking off** — speaker attribution, dictation cleanup,
+Smart-assign, Compose, Rewrite, Show notes, Preset suggest, the voice
+gender guess, all of them. Thinking only ever happens because you turned
+it on, on that feature's preset. The effort level sets how MUCH a thinking
+run reasons — lower is a shorter hidden pass and a faster answer.
 
 **If a model can't take it, you hear it from the provider — not from
 JustVoice guessing.** Ask for thinking on a model that doesn't support the
@@ -245,25 +248,14 @@ thinking off, no run silently succeeding differently than you configured
 it. (Your local engine accepts the thinking setting for any model, so this
 error can only come from a cloud provider.)
 
-**The catalog's Thinking flag does exactly one thing, and only here.**
-Rows in the model catalog can carry a **Thinks** tag — a fact about the
-model, editable on its row. In the entire app it has a single consumer:
-**speaker attribution's Auto row**, where "if your model can think,
-Reasoned runs." That is the complete list — it changes nothing for
-dictation cleanup, smart-assign, compose, rewrite, show notes, preset
-suggest or the gender guess (their thinking is their presets' own
-setting), it never touches what any run sends, and it does nothing in
-JustWrite at all (the sibling app has no Auto and keeps its own catalog).
-If you never use speaker attribution, this checkbox does nothing.
-
-Worth knowing when you pick: a thinking run spends hundreds to a thousand
-hidden tokens before its first visible word, so it is many times slower
-than the same model answering directly — on the built-in Gemma models,
-the same attribution answered identically in a few seconds without
-thinking and in half a minute with it. If a model routes to Reasoned and
-you'd rather have it fast, turn its Thinking flag off in the catalog and
-Auto routes by size instead; if you want the deep route but shorter,
-lower the reasoning effort on the Reasoned extraction preset.
+Worth knowing before you turn it on: a thinking run spends hundreds to a
+thousand hidden tokens before its first visible word, so it is many times
+slower than the same model answering directly — on the built-in Gemma
+models, the same attribution answered identically in a few seconds without
+thinking and in half a minute with it. That's why everything ships off:
+enable it deliberately, on the one feature where you've tested that it
+earns its time, and lower the effort level if you want the reasoning pass
+shorter.
 
 ## Show notes (podcast projects)
 
@@ -288,3 +280,8 @@ feature, and answers **501** with a clear message when no model is set up.
   own, and the fix is the sentence at its end: turn thinking off on that
   feature's preset (Routing by feature → the feature → its preset's thinking
   control), or route the feature to a model that can think.
+- **An answer stops mid-sentence** — a **Max tok** cap is set on that
+  feature's preset and the answer hit it. No feature ships with one, so if
+  there's a number there, someone typed it: raise it or clear the box
+  (empty = no limit). Remember that on thinking runs the hidden reasoning
+  counts against the same cap.

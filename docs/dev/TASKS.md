@@ -25,50 +25,53 @@
 > is left untouched on purpose so re-enabling is one command when the CI
 > pipeline is actually wanted again.
 
-## OPEN — THE CAPS DISCUSSION (2026-08-06 late, MID-DISCUSSION at
-## compaction — nothing here is ruled; the verified facts are recorded so
-## the next session needs zero re-verification archaeology).
+## APPROVED 2026-08-07 — CAPS: NOTHING NEW, REMOVE WHAT WAS SEEDED. Ends
+## the 2026-08-06 caps discussion. The user: "no incident of needing cap
+## anywhere ... we need nothing new leave it as is ... no formulate no
+## numbers in max cap on any features, remove what you have seeded" —
+## approved point by point ("1 yes 2 yes and no migration again rule, i
+## just reset app, 3 yes, 4 yes original reason budget token field that
+## we have been using all along 5 fine 6 yes").
 
-**The user's frame (their words): caps look worth having — "it makes
-failures faster and that is critical"; the questions are when to set
-them, per feature or per model, whether tests are needed, and how to
-calculate them.**
+**The decision — as presented and approved (with the user's amendments):**
+1. The three code formulas are deleted — attribution's max(800, 12n)
+   including the temporary +1536, smart assign's max(400, 80n), persona
+   rewrite's max(300, len//2+200). No computed caps anywhere.
+2. The three seeded numbers go — classify 200, compose 300, refine 2048:
+   removed from the seeds. NO migration (the user's amendment: "no
+   migration again rule, i just reset app").
+3. The Max tok field itself stays everywhere, empty by default. Empty =
+   nothing sent = uncapped, exactly JW's model. It remains there for
+   anyone who ever wants a ceiling (cloud cost), and if set, it's
+   honestly applied.
+4. The original Reasoned problem dies at the root — no cap means nothing
+   for thinking tokens to collide with; the reasoning budget stays as
+   the dedicated think-loop guard (the user: "original reason budget
+   token field that we have been using all along").
+5. Footnote, acknowledged "fine": the Anthropic adapter always sends
+   4096 when nothing is set because that API requires the field on the
+   wire — pre-existing adapter plumbing, unchanged by this; the single
+   place "empty" isn't literally uncapped.
+6. Same change carries: the tests that assert the old formulas, the docs
+   (ai-features.md's Max tok passages become "empty unless you set
+   one"), and this TASKS block closes with the ruling.
 
-**The verified inventory (every line code-verified 2026-08-06):**
-- JV seeded fixed caps: suggest + gender guess 200 (p_classify), compose
-  300, cleanup 2048 — the AI's guesses, surfaced by the conversion.
-- JV computed caps, still invisible in any UI: attribution max(800,
-  12×dialogue) · smart-assign max(400, 80×characters) · rewrite max(300,
-  half the text + 200).
-- JV uncapped: show notes, Find new speakers.
-- JustWrite: uncapped everywhere (seeds + client both verified).
-- Docgen: uncapped everywhere, including its unattended batches.
-- Every adapter omits the cap when unset — EXCEPT Anthropic, which fills
-  a hardcoded 4096 (anthropic.py:173) and ALREADY raises the cap to at
-  least the thinking budget + 2048 (anthropic.py:140) — the coordination
-  rule the local path lacks, hardcoded in one adapter.
-- pipeline.py still carries the TEMPORARY reasoned +1536 headroom — it
-  violates the no-hardcode law and dies under ANY ruling here.
+**The evidence the ruling rests on (the closed discussion's receipts —
+full verified inventory in this block's git history):** zero incidents
+ever needing a cap in JW (uncapped everywhere), docgen (uncapped, incl.
+unattended batches) or JV; one own-goal (the Reasoned 800 truncation,
+caused BY a cap); the reasoning budget is the guard with real saves; the
+caps were inherited old-JV code carried forward unquestioned.
 
-**The doctrine as discussed (leans, not rulings):**
-- A cap is a fail-fast watchdog on sick runs + a cost ceiling on paid
-  cloud; it never speeds a healthy run (measured), never enforces format.
-- Sized per FEATURE (answer type); the model enters only as "+ the
-  resolved thinking budget when thinking is on" (the collision fix).
-- Calibration is cheap now: the Lab shows real token spend — one real
-  chapter per feature gives measured multipliers.
-- The ledger: the reasoning budget has real saves; outer caps have zero
-  saves and one own-goal (the Reasoned truncation).
-
-**Open sub-questions for the ruling:** defaults vs empty-by-default ·
-the per-feature values and whether calibration runs happen · generalize
-Anthropic's coordination rule to all providers · surface Anthropic's
-4096/2048 constants · replace the +1536.
-
-**Also discussed to a lean, NOT ruled (tangled with the flag ruling
-above): size-only Auto (drop the thinking rule; Reasoned becomes a
-hand-run/API route) · whether the Thinks tag / catalog thinking checkbox
-stay visible.**
+**Status:** BUILT + verified 2026-08-07 — pytest 407 passed (full suite);
+not committed. SURFACED the same run, needs its own ruling: the documented
+`ruff check .` gate is red on ~500 PRE-EXISTING findings, none from this
+change — the dev pin floats (`ruff>=0.7`) and now resolves ruff 0.16.0,
+whose defaults enable far more rule families; 6 errors exist even under
+the classic E4/E7/E9/F defaults, in files this change never touched
+(voices_api.py E402 ×5, shared_venv.py F401). Options when ruled: pin the
+ruff version · set an explicit `[tool.ruff.lint] select` · fix the
+findings. Awaiting the user's QC.
 
 ## APPROVED 2026-08-06 (late) — THE CAPABILITY GATE IS REMOVED. The user's
 ## ruling ("i thib this whole gate is bad idea, i think we should leave it
@@ -96,13 +99,74 @@ stay visible.**
   message gains the fix pointer, and the thinking docs section is
   rewritten to the simpler truth. Nothing else rides along.
 
-## OPEN RULING — what may drive off the catalog Thinking flag (2026-08-06,
-## the user, mid-build: "i think the thinking in model catalgo is good to
-## have but not drive anhthing off it yet" then "ataull maybe not we need
-## to think on this some more"). NOTHING built on it — parked for the
-## user's thinking. Today's shipped truth, until ruled otherwise: the
-## flag's ONE job is Auto's route pick in JV (thinking → Reasoned); it
-## never touches a run's ask anywhere (the gate removal, same day).
+## APPROVED 2026-08-07 — THE TIER-DEBRIS CLEANUP: REASONED DIES,
+## THINKING-IN-MODEL DIES EVERYWHERE, AUTO ROUTES BY SIZE ONLY. The go,
+## given after the full interrogation (dead-code proof, the JW-invisible
+## verification, the floors-are-params reading): "ok you have a go
+## cleanup the code your recs". Closes the flag ruling, the size-only
+## lean, and the MoE word.
+
+**The decision — the recs as presented and interrogated:**
+1. The Reasoned route dies completely: the card, the
+   speaker_attribution.reasoned prompt row, the p_reason preset, its
+   preset-map entry, the reasoned value in the API (loud 422, no silent
+   alias), every dead branch in pick_route/route_model, the Auto page's
+   mention, the Lab adapter's reasoned action, its test-data entries.
+   The Guided and Direct ROUTES (two cards, genuinely different prompts)
+   stay. Testing thinking = check think on a card's Lab column like any
+   feature, promote with Use in production.
+2. The thinking field dies as data, not just UI: the kit catalog column,
+   its schema-evolution entry, the seed heuristic
+   (_can_reason/_REASONING_ARCHS), the row-editor checkbox, the Thinks
+   tag, useCatalogMeta's thinkingById. model_thinks()/capability.py die
+   whole.
+3. The tier subsystem is swept family-wide (it was ALREADY REPLACED —
+   presets own routing+thinking, hardware tunes own launch, Auto owns
+   the route pick; what remained was debris with zero effect, verified):
+   kit tiers.py deleted; dispatch's never-fires think fallback and
+   resolve_tier deleted (no explicit think = off — behavior-preserving,
+   no production caller passes None, verified all three apps); the
+   caller-less /v1/llm-providers/classify-tier endpoint deleted; the
+   inert tier fields leave FeaturePinConfig/ProductionConfig and the
+   resolve_pin/resolve_route plumbing; JW's dead chain deleted
+   (modelMeta.js, ai.js modelTiers state/getters/action, its test, the
+   stale doc sections — zero UI callers, nothing visible changes).
+4. The confidence floors (guided 0.7 · direct 0.5) move to a JV-local
+   route table beside the routes they describe — same code-constant
+   nature as today; whether the DEFAULTS become a stored setting is
+   surfaced as its own open question, not built.
+5. Auto = size only: ≥ direct_min_b (editable, default 14) → Direct;
+   smaller or unknown → Guided; MoE counts TOTAL params (the gemma
+   evidence: Direct matched Reasoned at 3-4s vs 27-64s on all three).
+6. JV's analyze API renames tier → route (the "route words, never tier"
+   QC ruling extended to the API; the routes-listing endpoint renames
+   with it).
+7. Every preset ships think-off — p_reason's death removes the family's
+   last exception; thinking is always a deliberate per-preset act.
+8. The one-time attribution migrations that create/touch the Reasoned
+   row are removed or neutralized (reviewed one by one); NO new
+   migrations (the reset rule). Docs rewritten properly in the same
+   change (JV ai-features/CONCEPTS/providers; the stale JW/kit doc
+   lines). The method: the receipted grep sweep — every reasoned /
+   p_reason / thinking-flag / tier hit dies or is justified by name in
+   the build report. NOT touched: the preset thinking control and its
+   machinery (thinkingControl, reasoning budgets, per-call think,
+   _strip_thinking), the attribution cards' prompts, the floors' values.
+
+**Status:** BUILT + verified 2026-08-07, not committed. Gates: JV pytest
+404 · kit pytest 769 (the 1 failure = the KNOWN pre-existing Linux-only
+lspci test) · JW vitest 566 (exactly the 5 deleted classifier tests
+fewer) · JV vitest 13 · biome clean on all three JS surfaces · vite
+build · Playwright smoke on the REAL data dir, zero JS errors. One
+consequence of the no-migration rule, stated plainly: the user's CURRENT
+real DB still carries the old Reasoned row + p_reason preset (seeds are
+insert-if-missing) — the next factory reset lands the clean two-route
+state; until then a stale third card shows, harmless. Sweep leftovers,
+all justified: decision/history text in the trackers, comments that NAME
+the death, the 422 test's dead-value probe, docs/plans + docs/research
+archives (history), JW ai-providers.md's hardware-tier wizard prose (a
+different "tier", pre-existing docs debt, out of scope). Awaiting the
+user's QC.
 
 ## OPEN — JW RIDER of the docs sweep (needs its own word): the thinking
 ## section for JustWrite's help docs, in JW's words — JW shares the
@@ -119,6 +183,10 @@ stay visible.**
 ## Reasoned" · the examples-location wording). Supersedes, in the block
 ## below: the force pills, the rules+readout pane, the card description
 ## tails, and the Lab's per-column route chips.
+## AMENDED 2026-08-07 (the tier-debris cleanup, above): the thinking rule,
+## the Thinks tag and the MoE deferral are superseded — Auto is SIZE-ONLY
+## and the pane text was rewritten; the quote below is the 2026-08-06
+## record.
 
 **The decision — as presented and confirmed (assembled from the chat):**
 
@@ -159,16 +227,9 @@ stay visible.**
   the system prompt's rules plus worked examples; Direct = the same
   system-prompt rules without them; the user prompt is identical per route.
   Docs keep correction-memory examples (user-prompt injections) distinct.
-- **The catalog shows the Thinking flag on the row** (user: "are you adding
-  thinking row to catalog? it is not there now") — the kit edit form already
-  had the checkbox; a "Thinks" row tag (MTP/Embed pattern) makes it visible
-  without opening the form.
-- **MoE size reading: DEFERRED to the tests** (user: "i htink we test moe
-  and those smaller gemma qat models to see how they work") — today's
-  total-params reading stands until the tests rule; the MoE decision
-  (active vs total, catalog-edit correction) returns here after them.
 - Studio meta/toast unchanged ("Route: X — Auto's pick / forced"). Docs +
-  tests + migrations ride. NEXT: the gemma/MoE route tests, run together.
+  tests + migrations ride. (The Thinks-tag and MoE-deferral bullets closed
+  2026-08-07 — both resolved by the tier-debris cleanup.)
 
 ## BUILT 2026-08-06 (the autonomous run, user's go: "the whole task list
 ## up to F4, do not stop coding") — AWAITING YOUR QC WALK + three words.
@@ -177,11 +238,11 @@ stay visible.**
 ## and are deleted per close = delete (git keeps them).
 
 **What was built (eyeball on your next walk):**
-- The Reasoned row shows your model now — the Set-as-default writer
-  skipped presets born after Quick Setup as "hand-picked"; fixed in the
-  kit, and your real DB was stamped through the app's own writer.
+- Set-as-default fills every preset that was never hand-configured (the
+  writer skipped presets born after Quick Setup as "hand-picked"); fixed
+  in the kit, and your real DB was stamped through the app's own writer.
 - Auto judges the model that would actually run (your judge-what-runs
-  ruling) — on your setup Auto now picks Reasoned, verified live.
+  ruling) — since the tier-debris cleanup it judges that model's SIZE.
 - Chapters buttons land on the right Studio tab every time, and the
   project follows — the whole one-shot handoff family was converted
   (Studio tab, Chapters scene, Projects import/create, Settings + Labs
@@ -197,22 +258,15 @@ stay visible.**
 - Smart-assign's Lab result reads as Character → Voice names.
 - The cleanup card's pane carries the full Lab over the real composed
   call, and every cleanup Lab run rides production's few-shot history.
-- The reasoned route was silently truncating (think tokens ate the 800
-  budget — measured live on your gemma); it has thinking headroom now.
+  (The reasoned-headroom line closed: the +1536 died with the caps ruling
+  and the route itself died with the tier-debris cleanup, both 2026-08-07.)
 
-**Three things that need your word:**
-1. The MoE size ruling (deferred to the tests — they ran): all three
-   gemmas carry Thinking=true, so Auto routes them to Reasoned and the
-   size rule never decides; sizes read 26B (total) · 12B · 4B ("E4B").
-   Evidence: on the cellar passage, Direct matched Reasoned's quality at
-   3-4s vs 27-64s on every gemma, and 12B's Reasoned even floored one
-   row. My recommendation: keep the total-params reading (it only ever
-   decides for non-thinkers), and if you want the gemmas fast, the
-   catalog's Thinking flag is the one switch — your call.
-2. Part 2 of the Lab plan left "hide vs make real" open — I made the
+**Two things that need your word** (the MoE item closed 2026-08-07 — the
+tier-debris cleanup ruled TOTAL params):
+1. Part 2 of the Lab plan left "hide vs make real" open — I made the
    controls REAL (pass-through), on the drop-in principle. Ratify or
    reverse.
-3. Task #22's "piece rows go compact" was ambiguous — I built the
+2. Task #22's "piece rows go compact" was ambiguous — I built the
    composed-prompt pane and left the four piece rows' own panes working
    (did not strip them). Say the word if compact meant less.
 
@@ -224,6 +278,8 @@ stay visible.**
 ## identify → its own Find new speakers card). QC-WALKED same day: the Auto
 ## pane/pills/readout, the card tails and the Lab route chips were REFUTED —
 ## superseded by the AUTO SIMPLIFICATION block above; the rest stands built.
+## AMENDED 2026-08-07: the Reasoned card + its preset died in the
+## tier-debris cleanup — Guided/Direct + the Auto row are what stands.
 ## Two live-QC additions built in-flight:
 ## ANALYSIS order puts the single cards FIRST, the SPEAKER ATTRIBUTION-headed
 ## block LAST (a heading's scope only ends at the next heading — user catch);
@@ -351,7 +407,9 @@ superseded above):
   items (F2 attribution task scaffolding [CLOSED 2026-08-06 — superseded:
   its target task-kind taxonomy was deleted from the kit 2026-07-15; the
   intent shipped as the routed-cards restore] · F4 VRAM-arbiter wiring · F5
-  appearance knob-set · the I6 tail — each item's ledger section MUST be
+  [CLOSED 2026-08-06 — user: JV's tab stays as is, JW keeps its own styling;
+  the JV+docgen shared appearance panel stays tracked in docgen's TASKS] ·
+  the I6 tail — each item's ledger section MUST be
   read before its plan:
   `just-llm-runner/docs/plans/archive/2026-07-06-outstanding-master-plan.md`).
   Plan presented in chat first, per item, before any code. UiTable was
@@ -367,8 +425,9 @@ superseded above):
   sidecar, copy shows the window first, Open log file opens the logs folder
   Rust-side, and App.vue carries the `tray:*` listeners for
   settings/about/copy — the generic entries WORK now. `system-tray.md`
-  rewritten to truth. Still JV's own: dictate/MCP entries remain unwired
-  (parked with the standing sequence).)*
+  rewritten to truth. The dictate/MCP rows: CLOSED 2026-08-06 (user, after
+  the tray was verified against the family standard) — they stay as
+  documented placeholders; `system-tray.md` marks both "not wired yet".)*
 - **Server `ruff check` FAILS with 492 errors** (re-measured 2026-08-06; 267
   auto-fixable; top: UP045, B008, BLE001, I001) while JV's CLAUDE.md says ruff
   must pass before commit — pre-existing baseline debt, deliberately left out
@@ -398,32 +457,7 @@ superseded above):
 - **F4 — `EngineManager.load()` → shared VRAM-arbiter hook** — the decision was
   made 2026-07-04 and the arbiter is BUILT in the runner; only the JV-side wiring
   remains. After F1. Ledger §F4.
-- **F5 — Appearance knob-set gap** — JV exposes Theme/size/accent/language while
-  the shared engine supports the full JW set. Independent of F1. Ledger §F5.
-  (Related: the user's 2026-08-04 ruling that the appearance SURFACE should be
-  shared JV + i18n-docgen — tracked in docgen's TASKS.)
-- **F3 — audiobook converters + speaker-attribution deep research** — PARKED by
-  the user's word 2026-06-27 (`docs/plans/archive/2026-06-27-audiobook-tools-research-todo.md`).
 - **I6 — the JV tail beyond F1–F5** — ledger §I6.
-
-## Product decisions still open — extracted from the archived DESIGN_FREEZE §10
-
-The freeze said "code resumes on user's answer"; these were never answered and had
-no tracker line until the docs campaign. All yours:
-
-- **Brand-name clearance** — USPTO TESS + Google check (the old "task #58"), then
-  the rename PR (the `justvoice`/`justvoice-server` console-script split survives
-  any rename — the Windows spawn-loop guard).
-- **Code signing** — Windows-only EV cert ($200-400/yr) at v1.0 vs all platforms
-  day 1 (±4-6 weeks of launch timeline).
-- **Audio-channels UI** in v1 (gated toggle) vs v1.1 — REFRAMED by code: bindings
-  are persona-level now, so the question is about the persona-channels surface.
-- **External provider per-character** in v1 vs v1.1.
-- **Tab discovery order** — the freeze's 13-tab question is moot (14 routes +
-  Labs/Settings collapse today); the underlying "does discovery order match
-  intent?" question stands for the current nav.
-- **Loading-message tone** (playful pro-tool vs too playful) · **v1 scope check** —
-  anything in the deferred list (IDEAS) that belongs in v1.0.
 
 ## Repo hygiene (found by the 2026-08-04 campaign)
 

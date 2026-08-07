@@ -199,7 +199,6 @@ const ATTR_PICKERS = [
 export const LAB_TEST_ACTIONS = {
   "speaker_attribution.guided": { pickers: ATTR_PICKERS },
   "speaker_attribution.direct": { pickers: ATTR_PICKERS },
-  "speaker_attribution.reasoned": { pickers: ATTR_PICKERS },
   "speaker_attribution.identify": {
     pickers: [
       { source: "chapters", fill: async (id) => ({ manuscript: await chapterProse(id) }) },

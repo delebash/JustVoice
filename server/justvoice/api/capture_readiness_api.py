@@ -75,7 +75,7 @@ def _llm_readiness() -> ModelReadiness:
         from ..engines.llm.run import jv_llm_config
 
         preset = resolve_feature_preset("refine.base")
-        _adapter, model, _tier = resolve_route(
+        _adapter, model = resolve_route(
             jv_llm_config(), "refine", action="refine.base",
             provider_override=(preset.providerId or None) if preset else None,
             model_override=(preset.model or None) if preset else None,

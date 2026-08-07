@@ -272,9 +272,11 @@ costs specific features, and the UI says exactly which.
 > speaker-attribution row) via the kit's `labAdapters` seam —
 > `src/services/attributionLab.js` + `src/components/lab/Attribution*.vue`
 > run the same `/v1/extraction/analyze-text` pipeline (§16's law holds).
-> The tier auto-classification below still runs server-side per call;
-> "Pin to production" died with F1 (engine presets route features now).
-> `#speakerlab` redirects to the new home.
+> The tier auto-classification below DIED with the tier-debris cleanup
+> (2026-08-07): Auto routes by SIZE only (Guided/Direct; Reasoned and the
+> catalog Thinking flag died with it), and "Pin to production" died with
+> F1 (engine presets route features now). `#speakerlab` redirects to the
+> new home.
 
 Grounded in code (pre-relocation names): `engines/llm/tiers.py`,
 `SpeakerLabView.vue`, `api/extraction_api.py`, `api/feature_pins_api.py`,
@@ -298,7 +300,7 @@ Grounded in code (pre-relocation names): `engines/llm/tiers.py`,
   (block accuracy, per-character F1, source breakdown). Verdict on
   record: ~+2 pp accuracy at 2.3× token cost — not the default, kept so
   the next bigger local model can be re-scored in one click. Headless:
-  `python -m justvoice.labs.extraction.run --corpus <slug> --tier <t>`.
+  `python -m justvoice.labs.extraction.run --corpus <slug> --route <r>`.
 
 ## 13. Final idea pass — JustWrite carry-overs (2026-06-11)
 
@@ -476,15 +478,16 @@ Reasoned (think=true); the 8b stays at think=false. You select a tier
 manually only when you know better than the auto-classification; some
 models are hard-coded in `tiers.py`.
 
-> **Dated note (2026-08-06, the Lab plan — reconciled, not silently):**
-> "the tier follows the model" describes the retired per-column
-> auto-switch; `tiers.py` is gone. Today **the card is the route**:
-> Guided/Direct/Reasoned are three routed feature cards, and a card's Lab
-> run always forces its own route — its prompt boxes are exactly what
-> runs. Columns still compare models and configs (the per-column
-> provider/model pin stays); what changed is that the ROUTE never follows
-> the column's model — production's route is Auto's pick, judged from the
-> model each card actually resolves to.
+> **Dated note (2026-08-06, amended 2026-08-07 — reconciled, not
+> silently):** "the tier follows the model" describes the retired
+> per-column auto-switch; `tiers.py` is gone (the tier-debris cleanup
+> deleted the whole classifier family-wide). Today **the card is the
+> route**: Guided/Direct are two routed feature cards (Reasoned died —
+> testing thinking = the think control on a card's Lab column), and a
+> card's Lab run always forces its own route — its prompt boxes are
+> exactly what runs. Columns still compare models and configs (the
+> per-column provider/model pin stays); production's route is Auto's
+> SIZE-ONLY pick, judged from the model each card actually resolves to.
 
 **Prompts are part of what you tune.** Per-tier prompt bodies are
 editable in the lab and resettable to shipped defaults (the defaults were

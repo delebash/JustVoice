@@ -11,9 +11,10 @@ render fail-loud → resolve its ENGINE PRESET → overlay tunables → ensure a
 local model resident → dispatch) over the SHARED prompt store and the shared
 `build_llm_config` — the same path POST /v1/ai/run takes, so a feature and its
 Lab column can never drift. Kwargs pass through to RunRequest (per-call
-`maxTokens` for the code-computed budgets, `system`/`userTemplate` for the
+`maxTokens` for a Lab/API override — caps ruling 2026-08-07: no code-computed
+budgets, an empty preset means uncapped — `system`/`userTemplate` for the
 refine composition's explicit-system door, `history` for few-shot turns,
-`think`/`model`/`providerId` for the Speaker Lab's overrides).
+`think`/`model`/`providerId` for the attribution Lab's overrides).
 
 This file replaces the pin-era `config.py` mapper as the features' entry:
 providers come from the shared DB store; routing is preset-resolved per action;

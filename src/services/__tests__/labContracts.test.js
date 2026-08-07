@@ -48,7 +48,6 @@ describe("the card is the route", () => {
     expect(ACTION_ROUTE).toEqual({
       "speaker_attribution.guided": "guided",
       "speaker_attribution.direct": "direct",
-      "speaker_attribution.reasoned": "reasoned",
     });
   });
 });

@@ -73,7 +73,8 @@ function wireKit(app) {
     // concatenate into ONE call, so the rows show their RELATION instead of a
     // routing arrow and the feature routes once at its own card. Attribution's
     // routes are NOT pieces anymore — the restore (approved 2026-08-06) made
-    // Guided/Direct/Reasoned real routed cards under a plain heading.
+    // Guided/Direct real routed cards under a plain heading (Reasoned died in
+    // the tier-debris cleanup 2026-08-07).
     featurePieces: {
       "refine.base": "Part of Dictation cleanup — always runs with it",
       "refine.smart_cleanup": "Part of Dictation cleanup — runs when its Capture toggle is on",
@@ -88,7 +89,7 @@ function wireKit(app) {
       speaker_attribution: {
         component: AttributionAutoPanel,
         label: "Auto",
-        note: "Picks which of the three features below runs",
+        note: "Picks which of the two features below runs",
       },
     },
     // This app's voice on the shared model-catalog surface (defaults are JW's words).

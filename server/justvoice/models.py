@@ -349,14 +349,15 @@ class ExtractionSettings(BaseModel):
     """Speaker-attribution routing (the Auto simplification, 2026-08-06).
 
     Production always runs Auto — no stored force exists. A per-run route
-    override (a route card's Lab run / the API `tier` field) wins over
+    override (a route card's Lab run / the API `route` field) wins over
     Auto for that run only.
-    `direct_min_b` — the editable size rule: Direct when the model is at
-    least this many billion parameters, otherwise Guided. (The Reasoned
-    rule — "when the model can think" — reads the model catalog's Thinking
-    flag, edited there.) Stale keys from the retired force pills (`route`)
-    and dial (`reading_style`) are ignored on load; the next settings save
-    rewrites the canonical shape without them.
+    `direct_min_b` — the editable size rule, Auto's ONLY rule since the
+    tier-debris cleanup (2026-08-07: the thinking rule died with the
+    Reasoned route): Direct when the model is at least this many billion
+    parameters, otherwise Guided; unknown sizes play safe with Guided; a
+    MoE counts TOTAL params. Stale keys from the retired force pills
+    (`route`) and dial (`reading_style`) are ignored on load; the next
+    settings save rewrites the canonical shape without them.
     The API floor (Part 7 rider, 2026-08-06) mirrors the pane input's
     min=0.1 — zero or a negative would route EVERY model to Direct."""
 

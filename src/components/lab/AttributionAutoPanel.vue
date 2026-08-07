@@ -56,15 +56,13 @@ onMounted(load);
       and picks the feature that suits it.
     </p>
     <p class="aap__rule">
-      If your model can think, <b>Reasoned</b> runs. The Thinking flag on the
-      model's row in the catalog decides that — you can edit it there.
-    </p>
-    <p class="aap__rule">
-      If it can't think but has at least
+      If your model has at least
       <input class="aap__num" type="number" min="0.1" step="0.5" v-model="directMinB"
         aria-label="Direct size threshold in billions of parameters"
         :disabled="busy" @change="saveMinB" @keyup.enter="saveMinB" />
       billion parameters, <b>Direct</b> runs. Smaller models get <b>Guided</b>.
+      A mixture-of-experts model counts its total size (26B for the built-in
+      Gemma).
     </p>
     <p class="aap__rule">
       If JustVoice can't tell how big the model is, it plays it safe and uses

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -58,7 +59,9 @@ class AnalyzeSceneRequest(BaseModel):
     text: str
     characters: list[dict] | None = None
     corrections: list[dict] | None = None
-    tier: str | None = None
+    # Per-run route force; None = Auto. Renamed from `tier` in the
+    # tier-debris cleanup (2026-08-07); an unknown value 422s loudly.
+    route: Literal["guided", "direct"] | None = None
     propagate: bool = True
     use_floor: bool = True
 
@@ -76,10 +79,10 @@ class RunUsage(BaseModel):
 class AnalyzeSceneResponse(BaseModel):
     scene_id: str
     rows: list[AttributionRowResponse]
-    tier_used: str
+    route_used: str
     # Why that route ran (the restore's no-silent-state rule): "forced"
-    # (per-run override) | "setting" (the Auto row's force pills) | "auto".
-    tier_source: str = "auto"
+    # (per-run override) | "auto".
+    route_source: str = "auto"
     confidence_floor: float
     # Raw LLM reply text — Speaker Lab's "Raw" tab. None when the call
     # was anchors-only / no dialogue.
@@ -155,13 +158,13 @@ async def analyze_scene_endpoint(
 
     settings = get_state().settings.get()
     # Route precedence lives in ONE place (pipeline.pick_route): the body's
-    # explicit tier (a per-run override) > the force pills > Auto. The
-    # pipeline reports the pick that RAN via raw_out — never re-derived here.
+    # explicit route (a per-run override) > Auto. The pipeline reports the
+    # pick that RAN via raw_out — never re-derived here.
     req = AnalyzeRequest(
         text=body.text,
         characters=characters,
         corrections=corrections,
-        tier=body.tier,
+        route=body.route,
         propagate=body.propagate,
         use_floor=body.use_floor,
     )
@@ -179,8 +182,8 @@ async def analyze_scene_endpoint(
         scene_id=scene_id,
         raw_llm=raw_out.get("llm_text"),
         rows=[AttributionRowResponse(**row.__dict__) for row in rows],
-        tier_used=raw_out.get("route", "guided"),
-        tier_source=raw_out.get("route_source", "auto"),
+        route_used=raw_out.get("route", "guided"),
+        route_source=raw_out.get("route_source", "auto"),
         confidence_floor=raw_out.get("floor", 0.7),
         usage=raw_out.get("usage"),
     )
@@ -200,10 +203,12 @@ class AnalyzeTextRequest(BaseModel):
     characters: list[dict] = []
     corrections: list[dict] = []
     project_id: str | None = None
-    tier: str | None = None
+    # Per-run route force (a card's Lab run always sends its own); None =
+    # Auto. Renamed from `tier` (2026-08-07); an unknown value 422s loudly.
+    route: Literal["guided", "direct"] | None = None
     propagate: bool = True
     use_floor: bool = True
-    # Speaker Lab per-column overrides (None = pin/tier defaults). camelCase
+    # Lab per-column overrides (None = preset/route defaults). camelCase
     # to match the shared LLM-config contract the renderer sends.
     providerId: str | None = None
     model: str | None = None
@@ -242,7 +247,7 @@ async def analyze_text_endpoint(
         text=body.text,
         characters=body.characters,
         corrections=corrections,
-        tier=body.tier,
+        route=body.route,
         propagate=body.propagate,
         use_floor=body.use_floor,
         model=body.model,
@@ -270,8 +275,8 @@ async def analyze_text_endpoint(
         scene_id="(adhoc)",
         raw_llm=raw_out.get("llm_text"),
         rows=[AttributionRowResponse(**row.__dict__) for row in rows],
-        tier_used=raw_out.get("route", "guided"),
-        tier_source=raw_out.get("route_source", "auto"),
+        route_used=raw_out.get("route", "guided"),
+        route_source=raw_out.get("route_source", "auto"),
         confidence_floor=raw_out.get("floor", 0.7),
         usage=raw_out.get("usage"),
     )
@@ -280,11 +285,9 @@ async def analyze_text_endpoint(
 # ── Lab config — the truth the Speaker Lab displays ──────────────────────
 
 
-class ExtractionTierInfo(BaseModel):
+class ExtractionRouteInfo(BaseModel):
     name: str
     label: str
-    system_key: str
-    think: bool
     confidence_floor: float
 
 
@@ -300,17 +303,17 @@ class AutoCheckInfo(BaseModel):
 
 class ExtractionConfigResponse(BaseModel):
     """Everything the attribution Lab + the Auto row need to SHOW what the
-    pipeline will actually do: the THREE routes (the attribution restore),
-    their prompt bodies, the user-prompt template, the editable size rule,
-    and Auto's current pick with its work (each rule judged against that
-    card's own model — the Lab and Studio report it; the Auto pane itself is
-    plain words + the size line, per the Auto simplification 2026-08-06).
-    The server is the single source of truth — the UI never duplicates
-    prompt text or re-derives the pick. The stored force (`route`) died with
-    the pills: production always runs Auto."""
+    pipeline will actually do: the TWO routes (Guided · Direct — Reasoned
+    died in the tier-debris cleanup 2026-08-07), their prompt bodies, the
+    user-prompt template, the editable size rule, and Auto's current pick
+    with its work (judged against that card's own model — the Lab and
+    Studio report it; the Auto pane itself is plain words + the size line,
+    per the Auto simplification 2026-08-06). The server is the single
+    source of truth — the UI never duplicates prompt text or re-derives
+    the pick. Production always runs Auto."""
 
-    tiers: list[ExtractionTierInfo]
-    # {"guided": <full body>, "direct": <full body>, "reasoned": <full body>}
+    routes: list[ExtractionRouteInfo]
+    # {"guided": <full body>, "direct": <full body>}
     system_prompts: dict[str, str]
     user_template: str
     # The editable size rule (settings.extraction.direct_min_b).
@@ -323,29 +326,28 @@ class ExtractionConfigResponse(BaseModel):
 @router.get(
     "/v1/extraction/config",
     response_model=ExtractionConfigResponse,
-    summary="The three routes + prompt bodies + Auto's pick and its work (the attribution Lab + Auto row)",
+    summary="The two routes + prompt bodies + Auto's pick and its work (the attribution Lab + Auto row)",
 )
 async def extraction_config() -> ExtractionConfigResponse:
-    from llm_runner.llm import TIERS, stores
+    from llm_runner.llm import stores
+
+    from ..extraction.pipeline import ROUTE_FLOORS, ROUTES
 
     # Prompt truth = the SHARED template rows (the same rows the run renders).
     _store = stores.get_prompt_store()
-    rows = {name: _store.get(f"speaker_attribution.{name}")
-            for name in ("guided", "direct", "reasoned")}
+    rows = {name: _store.get(f"speaker_attribution.{name}") for name in ROUTES}
 
     settings = get_state().settings.get()
     picked, checks = auto_route(settings.extraction.direct_min_b)
 
     return ExtractionConfigResponse(
-        tiers=[
-            ExtractionTierInfo(
-                name=t.name,
-                label=t.name.capitalize(),
-                system_key=t.system_key,
-                think=t.think,
-                confidence_floor=t.confidence_floor,
+        routes=[
+            ExtractionRouteInfo(
+                name=name,
+                label=name.capitalize(),
+                confidence_floor=ROUTE_FLOORS[name],
             )
-            for t in TIERS.values()
+            for name in ROUTES
         ],
         system_prompts={name: (r.system if r else "") for name, r in rows.items()},
         user_template=rows["guided"].user_template if rows["guided"] else "",

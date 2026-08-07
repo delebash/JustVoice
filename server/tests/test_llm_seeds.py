@@ -32,9 +32,10 @@ def test_all_actions_seed_as_shared_rows(tmp_path):
     rows = _shared_rows()
     for key in DEFAULT_FEATURE_PROMPTS:
         assert key in rows, f"missing shared row {key}"
-    # 14 actions over 10 features (the refine ×4 composition + attribution's
-    # three routes + discovery as its own speaker_discovery feature).
-    assert len(DEFAULT_FEATURE_PROMPTS) == 14
+    # 13 actions over 10 features (the refine ×4 composition + attribution's
+    # two routes + discovery as its own speaker_discovery feature; Reasoned
+    # died in the tier-debris cleanup 2026-08-07).
+    assert len(DEFAULT_FEATURE_PROMPTS) == 13
     assert rows["refine.base"].user_template == "{{transcript}}"
     assert "{{characters}}" in rows["speaker_attribution.guided"].user_template
     assert rows["smart_assign"].json_mode is True
@@ -50,14 +51,11 @@ def test_presets_and_refs_seed(tmp_path):
     # compose runs at its preset's 0.9 (the hardcoded personas_api temperature
     # moved onto the preset — ruling 9).
     assert presets["p_compose"]["temperature"] == 0.9
-    # Reasoned's preset asks for thinking — the route's point; the runner's
-    # capability gate keeps it clean on models that can't (the restore).
-    assert presets["p_reason"]["think"] is True
-    # The three routes each carry their OWN ref (per-route routing restored);
-    # Reasoned's text seeds as a copy of Direct's.
-    assert DEFAULT_FEATURE_PRESETS["speaker_attribution.reasoned"] == "p_reason"
-    rows = _shared_rows()
-    assert rows["speaker_attribution.reasoned"].system == rows["speaker_attribution.direct"].system
+    # EVERY preset ships think-off — the family rule with zero exceptions
+    # (p_reason, the last exception, died with the Reasoned route 2026-08-07).
+    assert all(not p.get("think") for p in presets.values())
+    # The two routes each carry their OWN ref (per-route routing restored).
+    assert DEFAULT_FEATURE_PRESETS["speaker_attribution.direct"] == "p_extract"
     # Every seeded row RESOLVES through the cascade: its own ref, or its
     # FEATURE's ref (the refine sections route through one feature-level
     # assignment). And every ref names a seeded row or a seeded feature.
@@ -201,11 +199,11 @@ def test_retired_default_rows_are_removed_once_from_existing_dbs(tmp_path):
 
 
 
-def test_factory_reset_runs_seed_before_migrations(monkeypatch):
-    """Part 7 rider (2026-08-06): the factory-reset shared half pins its
-    order — storage re-point, table create, warm default, SEED, then the
-    one-time migrations in ship order (each assumes the seed's rows and the
-    previous migration's state exist)."""
+def test_factory_reset_runs_in_ship_order(monkeypatch):
+    """Part 7 rider (2026-08-06; the one-time attribution migrations died in
+    the tier-debris cleanup 2026-08-07): the factory-reset shared half pins
+    its order — storage re-point, table create, warm default, SEED, then the
+    catalog retirement."""
     import llm_runner.llm.db as llm_db
     import llm_runner.llm.seed as llm_seed
 
@@ -217,12 +215,7 @@ def test_factory_reset_runs_seed_before_migrations(monkeypatch):
     monkeypatch.setattr(llm_seed, "seed_llm", lambda: calls.append("seed"))
     monkeypatch.setattr(lb, "apply_jv_warm_default", lambda: calls.append("warm"))
     monkeypatch.setattr(lb, "retire_default_catalog_rows", lambda: calls.append("retire"))
-    monkeypatch.setattr(lb, "migrate_attribution_restore", lambda: calls.append("restore"))
-    monkeypatch.setattr(lb, "migrate_auto_simplify", lambda: calls.append("simplify"))
-    monkeypatch.setattr(lb, "migrate_lab_restoration", lambda: calls.append("lab"))
 
     lb.reseed_shared_llm(engine=None, session_factory=None)
 
-    assert calls == [
-        "storage", "tables", "warm", "seed", "retire", "restore", "simplify", "lab",
-    ]
+    assert calls == ["storage", "tables", "warm", "seed", "retire"]

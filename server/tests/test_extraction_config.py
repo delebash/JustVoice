@@ -50,27 +50,27 @@ def test_extraction_config_shape(app) -> None:
     assert r.status_code == 200
     body = r.json()
 
-    # THREE routes (the attribution restore) with the measured floors.
-    names = {t["name"] for t in body["tiers"]}
-    assert names == {"guided", "direct", "reasoned"}
-    floors = {t["name"]: t["confidence_floor"] for t in body["tiers"]}
-    assert floors["guided"] == 0.7 and floors["direct"] == 0.5 and floors["reasoned"] == 0.5
+    # TWO routes (Reasoned died in the tier-debris cleanup 2026-08-07) with
+    # the measured floors — JV-local ROUTE_FLOORS now.
+    names = {t["name"] for t in body["routes"]}
+    assert names == {"guided", "direct"}
+    floors = {t["name"]: t["confidence_floor"] for t in body["routes"]}
+    assert floors["guided"] == 0.7 and floors["direct"] == 0.5
 
     # The Auto row's truth: the editable size rule + the pick with its work
     # (each line names the model it judged). The stored force (`route`) died
     # with the pills (the Auto simplification) — production always runs Auto.
     assert "route" not in body
     assert body["direct_min_b"] == 14.0
-    assert body["auto_picked"] in ("guided", "direct", "reasoned")
+    assert body["auto_picked"] in ("guided", "direct")
     assert body["auto_checks"], "the readout must show Auto's work"
     for check in body["auto_checks"]:
         assert set(check) == {"route", "model", "passed", "rule"}
 
     # Real prompt bodies, not placeholders — guided extends direct with the
-    # worked examples; reasoned SEEDS as a copy of direct's text.
+    # worked examples.
     assert "RULES:" in body["system_prompts"]["direct"]
     assert "WORKED EXAMPLES:" in body["system_prompts"]["guided"]
-    assert body["system_prompts"]["reasoned"] == body["system_prompts"]["direct"]
     assert body["system_prompts"]["guided"].startswith(
         body["system_prompts"]["direct"].rstrip()[:40]
     )
@@ -164,14 +164,14 @@ def test_user_prompt_and_floor_overrides(app, monkeypatch) -> None:
 
     # Custom user template ({{var}} — the shared renderer's syntax) is
     # interpolated and sent; custom floor (0.65) keeps the 0.6 pick floored
-    # even on the direct tier (default 0.5), and the response echoes the
+    # even on the direct route (default 0.5), and the response echoes the
     # effective floor.
     r = client.post(
         "/v1/extraction/analyze-text",
         json={
             "text": TEXT,
             "characters": CAST,
-            "tier": "direct",
+            "route": "direct",
             "propagate": False,
             "userPrompt": "CAST:\n{{characters}}\nBODY:\n{{paragraphs}}",
             "confidence_floor": 0.65,
@@ -188,14 +188,14 @@ def test_user_prompt_and_floor_overrides(app, monkeypatch) -> None:
     floored = [row for row in dialogue if row["source"] == "floored"]
     assert len(floored) == 1 and floored[0]["floored_from"] == "c_sarah"
 
-    # Same call without the floor override: direct tier's 0.5 applies,
+    # Same call without the floor override: direct route's 0.5 applies,
     # so the 0.6 pick survives.
     r2 = client.post(
         "/v1/extraction/analyze-text",
         json={
             "text": TEXT,
             "characters": CAST,
-            "tier": "direct",
+            "route": "direct",
             "propagate": False,
         },
     )

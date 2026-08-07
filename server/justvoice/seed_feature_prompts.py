@@ -123,15 +123,16 @@ Return only the JSON object. No prose, no preamble."""
 
 
 DEFAULT_FEATURE_PROMPTS: dict[str, dict] = {
-    # ── speaker_attribution — THREE ROUTED FEATURES (the attribution restore,
-    # approved 2026-08-06: "i wanted old functionality just split into
-    # features"). Each row routes on its own card under the SPEAKER
-    # ATTRIBUTION heading; the Auto row above them picks which one runs.
-    # Array outputs → json_mode stays OFF (json_object constrains to an OBJECT;
-    # the tolerant array extraction is the measured contract). Positions pin
-    # the approved order Guided · Direct · Reasoned (key-alphabetical would
-    # put Direct first). Row labels live here in the seed (recorded limit:
-    # vue-i18n cannot reach DB rows).
+    # ── speaker_attribution — TWO ROUTED FEATURES (the attribution restore,
+    # approved 2026-08-06; the Reasoned route died in the tier-debris
+    # cleanup 2026-08-07 — testing thinking = check think on a card's Lab
+    # column like any feature). Each row routes on its own card under the
+    # SPEAKER ATTRIBUTION heading; the Auto row above them picks which one
+    # runs. Array outputs → json_mode stays OFF (json_object constrains to
+    # an OBJECT; the tolerant array extraction is the measured contract).
+    # Positions pin the approved order Guided · Direct (key-alphabetical
+    # would put Direct first). Row labels live here in the seed (recorded
+    # limit: vue-i18n cannot reach DB rows).
     "speaker_attribution.guided": {
         "feature": "speaker_attribution",
         "label": "Guided",
@@ -147,18 +148,6 @@ DEFAULT_FEATURE_PROMPTS: dict[str, dict] = {
         "system": DIRECT_SYSTEM,
         "user_template": _ATTR_USER_TEMPLATE,
         "position": 2,
-    },
-    # Reasoned — restored as its own routed feature (user ruling: "just make
-    # it a feature seed it with direct prompt and enable reasoning"). The text
-    # SEEDS as a copy of Direct's and is editable separately from then on;
-    # thinking rides its preset ("Reasoned extraction", think ON).
-    "speaker_attribution.reasoned": {
-        "feature": "speaker_attribution",
-        "label": "Reasoned",
-        "description": "Direct's rules with thinking on — for reasoning models. Below 0.5 confidence a pick becomes unknown.",
-        "system": DIRECT_SYSTEM,
-        "user_template": _ATTR_USER_TEMPLATE,
-        "position": 3,
     },
     # Discovery ("who exists?") — its own thing that runs alone, so its own
     # FEATURE in the routing list (the restore moved it out from under the

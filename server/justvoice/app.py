@@ -274,26 +274,12 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     # lifts onto its feature's assigned preset (one-time, marker-guarded).
     lift_edited_tunables_into_presets()
     # One-time: existing DBs drop the retired shared-default catalog rows so
-    # the catalog matches a fresh install (the measured 26B row only).
-    from .llm_bootstrap import (
-        migrate_attribution_restore,
-        migrate_auto_simplify,
-        migrate_lab_restoration,
-        retire_default_catalog_rows,
-    )
+    # the catalog matches a fresh install (the measured 26B row only). The
+    # 2026-08-06 attribution fixup migrations were removed in the tier-debris
+    # cleanup (2026-08-07) — pre-restore DBs are extinct under the reset rule.
+    from .llm_bootstrap import retire_default_catalog_rows
 
     retire_default_catalog_rows()
-    # One-time (the attribution restore, approved 2026-08-06): route-row
-    # positions + the identify feature move, the pieces-era feature ref and
-    # "Careful reading" preset retire, stale route wordings refresh. Runs
-    # AFTER seed_llm so the reasoned row + per-route refs exist.
-    migrate_attribution_restore()
-    # One-time (the Auto simplification, approved 2026-08-06): the restore's
-    # "Auto runs this when…" description tails trim off unedited route rows.
-    migrate_auto_simplify()
-    # One-time (the Lab restoration, Part 3 2026-08-06): the pristine quay
-    # sample retires — the original cellar passage seeds under its new label.
-    migrate_lab_restoration()
     load_from_configs(stores.get_provider_store().list())
 
     app.include_router(generate_api.router)

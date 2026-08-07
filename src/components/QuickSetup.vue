@@ -44,37 +44,37 @@ const llmProviders = ref([]);
 const TIER_RECIPES = {
   cpu: {
     label: "CPU / low VRAM",
-    blurb: "Kokoro runs realtime on CPU. Speaker attribution routes through whichever LLM you register — Claude / OpenAI / Ollama.",
+    blurb: "Kokoro runs realtime on CPU.",
     ttsEngineIds: ["kokoro"],
     estimatedDownloadGb: 0.4,
   },
   vram8: {
     label: "8 GB tier",
-    blurb: "Kokoro + Chatterbox cover most production work. Voice cloning on 8 GB. Speaker attribution still Direct on the LLM side.",
+    blurb: "Kokoro + Chatterbox cover most production work. Voice cloning on 8 GB.",
     ttsEngineIds: ["kokoro", "chatterbox"],
     estimatedDownloadGb: 2.4,
   },
   vram12: {
     label: "12 GB tier",
-    blurb: "Adds Qwen3-TTS 0.6B for natural-language delivery instructions. Speaker attribution upgrades to Reasoned for harder books.",
+    blurb: "Adds Qwen3-TTS 0.6B for natural-language delivery instructions.",
     ttsEngineIds: ["kokoro", "chatterbox", "qwen3"],
     estimatedDownloadGb: 4.1,
   },
   vram16: {
     label: "16 GB tier",
-    blurb: "Adds Dia (multi-speaker dialogue). Full Reasoned-tier prompts for attribution.",
+    blurb: "Adds Dia (multi-speaker dialogue).",
     ttsEngineIds: ["kokoro", "chatterbox", "qwen3", "dia"],
     estimatedDownloadGb: 6.8,
   },
   vram24: {
     label: "24 GB tier",
-    blurb: "Adds LuxTTS + MOSS-TTS (high-fidelity production). Smart-assign + attribution both Reasoned.",
+    blurb: "Adds LuxTTS + MOSS-TTS (high-fidelity production).",
     ttsEngineIds: ["kokoro", "chatterbox", "qwen3", "dia", "luxtts", "moss_tts"],
     estimatedDownloadGb: 14.0,
   },
   vram32: {
     label: "32 GB+ tier",
-    blurb: "Full pool including TADA Llama. Every feature routes Reasoned.",
+    blurb: "Full pool including TADA Llama.",
     ttsEngineIds: ["kokoro", "chatterbox", "qwen3", "dia", "luxtts", "moss_tts", "tada"],
     estimatedDownloadGb: 22.0,
   },

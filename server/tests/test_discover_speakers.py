@@ -210,12 +210,11 @@ def test_analyze_text_threads_model_temp_prompt_overrides(client, monkeypatch):
     assert captured["system"] == "CUSTOM PROMPT BODY"
     # A per-call model override is the model that actually runs, so Auto
     # judges IT (the old system's documented behavior, kept by the restore):
-    # qwen3:14b thinks → the Reasoned route, its OWN row now (seeded from
-    # Direct's text — no coercion). The pipeline still never FORCES think —
-    # the caller sent none, so it rides as None (Part 2, 2026-08-06: the
-    # controls are real passthroughs; None = the route's preset + the
-    # runner's capability gate govern, exactly as before).
-    assert captured["action"] == "speaker_attribution.reasoned"
+    # qwen3:14b reads 14B ≥ 14 → the Direct route (Auto is SIZE-ONLY since
+    # the tier-debris cleanup 2026-08-07). The pipeline still never FORCES
+    # think — the caller sent none, so it rides as None (Part 2, 2026-08-06:
+    # the controls are real passthroughs; None = the route's preset value).
+    assert captured["action"] == "speaker_attribution.direct"
     assert captured.get("think") is None
     assert 'id="mara"' in captured["variables"]["characters"]
     assert r.json()["raw_llm"] == '[{"speaker": "mara", "confidence": 0.9}]'

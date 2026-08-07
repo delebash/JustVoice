@@ -254,8 +254,8 @@ async def compose_with_personality(id: str) -> ComposeResponse:
 
     persona = _require_persona_with_personality(id)
     # The template row owns the wording ({{personality}} in the system half);
-    # the old hardcoded temperature=0.9 + max_tokens=300 live on its preset
-    # (p_compose — ruling 9).
+    # the old hardcoded temperature=0.9 lives on its preset (p_compose —
+    # ruling 9; its seeded 300 cap died in the caps ruling 2026-08-07).
     try:
         resp = run_feature("compose", {"personality": persona.personality.strip()})
     except LLMNotConfiguredError as e:
@@ -293,13 +293,12 @@ async def rewrite_in_character(id: str, body: RewriteRequest) -> RewriteResponse
         )
 
     # The template row owns the wording ({{personality}} system + {{text}}
-    # user); temperature lives on p_voiced_edit; the length-scaled token
-    # budget stays a code-computed per-call value.
+    # user); temperature lives on p_voiced_edit. No token cap (caps ruling
+    # 2026-08-07).
     try:
         resp = run_feature(
             "persona_rewrite",
             {"personality": persona.personality.strip(), "text": body.text},
-            maxTokens=max(300, len(body.text) // 2 + 200),
         )
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))

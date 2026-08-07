@@ -118,7 +118,7 @@ async def smart_assign(body: SmartAssignRequest) -> SmartAssignResponse:
         )
 
     # The template row owns the wording ({{characters}}/{{voices}} — ruling 9);
-    # code computes the variable VALUES + the per-call token budget.
+    # code computes the variable VALUES. No token cap (caps ruling 2026-08-07).
     try:
         resp = run_feature(
             "smart_assign",
@@ -126,7 +126,6 @@ async def smart_assign(body: SmartAssignRequest) -> SmartAssignResponse:
                 "characters": _format_characters(body.characters),
                 "voices": _format_voices(body.voices),
             },
-            maxTokens=max(400, 80 * len(body.characters)),
         )
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))

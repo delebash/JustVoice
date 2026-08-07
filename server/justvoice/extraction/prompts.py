@@ -5,9 +5,7 @@
 """Tier-aware prompt templates.
 
 JustWrite's audit identified two prompt bodies — strict-rules-only
-("direct") and strict-rules-plus-four-worked-examples ("guided"). The
-Reasoned tier shares the Direct body but enables Ollama's reasoning
-blocks via think=True.
+("direct") and strict-rules-plus-four-worked-examples ("guided").
 """
 
 from __future__ import annotations

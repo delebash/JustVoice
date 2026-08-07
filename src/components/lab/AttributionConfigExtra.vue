@@ -40,10 +40,9 @@ const propagate = computed(() => props.modelValue?.propagate ?? true);
 const ACTION_ROUTE = {
   "speaker_attribution.guided": "guided",
   "speaker_attribution.direct": "direct",
-  "speaker_attribution.reasoned": "reasoned",
 };
 
-// The route registry (floors) — the Lab's truth surface, from the same
+// The route floors — the Lab's truth surface, from the same
 // /v1/extraction/config the pipeline serves.
 const extractionConfig = ref(null);
 onMounted(async () => {
@@ -51,7 +50,7 @@ onMounted(async () => {
 });
 const ownFloor = computed(
   () =>
-    extractionConfig.value?.tiers?.find(
+    extractionConfig.value?.routes?.find(
       (t) => t.name === (ACTION_ROUTE[props.action] || "guided"),
     )?.confidence_floor ?? "0.7",
 );
