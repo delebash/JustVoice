@@ -15,7 +15,7 @@
 // and its own tests would not catch it.
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
-import { useAiTasksStore } from "@delebash/llm-ui";
+import { FAMILY_TASK_LINGER, useAiTasksStore } from "@delebash/llm-ui";
 
 const LINGER = { completed: 5000, cancelled: 3000, failed: null };
 
@@ -31,13 +31,49 @@ describe("kit task queue — the capabilities JustVoice's fork had", () => {
     vi.useRealTimers();
   });
 
-  it("without lingerMs a finished task archives immediately (JustWrite/docgen path)", () => {
-    const h = tasks.start({ feature: "x", label: "no linger" });
+  it("OMITTED lingerMs means the FAMILY policy — same behaviour in every app", () => {
+    // This case originally asserted the opposite ("without lingerMs a finished task
+    // archives immediately — the JustWrite/docgen path") and enshrined an opt-in
+    // framing the user overruled on 2026-08-07: linger is family canon
+    // (FAMILY_TASK_LINGER in familyContract.js), not a JustVoice choice.
+    const h = tasks.start({ feature: "x", label: "defaulted" });
+    h.finish({});
+    expect(tasks.visibleTasks).toHaveLength(1);          // lingers…
+    expect(tasks.runningCount).toBe(0);                  // …but never counts as running
+    vi.advanceTimersByTime(FAMILY_TASK_LINGER.completed + 1);
+    expect(tasks.visibleTasks).toHaveLength(0);          // …then archives on the family dwell
+    expect(tasks.history[0].label).toBe("defaulted");
+  });
+
+  it("lingerMs: {} is the explicit opt-out — archive on finish, the pre-policy behaviour", () => {
+    const h = tasks.start({ feature: "x", label: "no linger", lingerMs: {} });
     expect(tasks.runningCount).toBe(1);
     h.finish({});
     expect(tasks.runningCount).toBe(0);
     expect(tasks.visibleTasks).toHaveLength(0);
     expect(tasks.history[0].label).toBe("no linger");
+  });
+
+  it("retry works from a HISTORY row — the callback survives archival", () => {
+    const again = vi.fn();
+    const h = tasks.start({ feature: "render", label: "Render", lingerMs: {}, onRetry: again });
+    h.fail(new Error("boom"));
+    // Archived straight to history (opt-out), where JustVoice's fork could always
+    // re-run from; the kit's summary now carries the callback too.
+    expect(tasks.visibleTasks).toHaveLength(0);
+    const hist = tasks.history[0];
+    expect(hist.status).toBe("error");
+    tasks.retry(hist.id);
+    expect(again).toHaveBeenCalledTimes(1);
+    // The history row STAYS — it is the record; the re-run appears as a fresh task.
+    expect(tasks.history[0].id).toBe(hist.id);
+  });
+
+  it("a task marked inline is flagged for global stacks to skip", () => {
+    const h = tasks.start({ feature: "x", label: "Lab run", inline: true, lingerMs: {} });
+    expect(tasks.taskById(h.id).inline).toBe(true);
+    const plain = tasks.start({ feature: "x", label: "page run", lingerMs: {} });
+    expect(tasks.taskById(plain.id).inline).toBe(false);
   });
 
   it("a completed task lingers, stays OUT of runningTasks, then archives", () => {
