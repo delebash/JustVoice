@@ -121,6 +121,35 @@ describe("kit task queue — the capabilities JustVoice's fork had", () => {
     expect(t.meta).toEqual({ words: 12, bytesOut: 4096 });
   });
 
+  it("cancel then fail keeps the CANCELLED outcome — the shape every caller writes", () => {
+    // Callers write `catch (e) { if (signal.aborted) cancel(); else fail(e) }`, and an
+    // abort throws into that same catch, so cancel-then-fail is the normal path. Before
+    // lingering, cancel() archived the task immediately and the later fail() hit a
+    // deleted row; with a lingering row it would have flipped a user cancel into an
+    // error, badged the titlebar red, and never left.
+    const h = tasks.start({ feature: "render", label: "Render", lingerMs: LINGER });
+    tasks.cancel(h.id);
+    h.fail(new Error("aborted"));
+
+    const t = tasks.visibleTasks[0];
+    expect(t.status).toBe("cancelled");
+    expect(t.error).toBeNull();
+    expect(tasks.unseenErrors).toBe(0);
+
+    // And it still archives on the CANCELLED dwell, not the failed one.
+    vi.advanceTimersByTime(3001);
+    expect(tasks.visibleTasks).toHaveLength(0);
+    expect(tasks.history[0].status).toBe("cancelled");
+  });
+
+  it("finish after fail does not resurrect a failed task", () => {
+    const h = tasks.start({ feature: "render", label: "Render", lingerMs: LINGER });
+    h.fail(new Error("boom"));
+    h.finish({});
+    expect(tasks.visibleTasks[0].status).toBe("error");
+    expect(tasks.unseenErrors).toBe(1);
+  });
+
   it("the 500ms ticker STOPS once nothing is running, even with a task still lingering", () => {
     // The reason the ticker gate counts running tasks instead of order.length. With
     // `failed: null` a row stays until dismissed, so a length-gated ticker would run
