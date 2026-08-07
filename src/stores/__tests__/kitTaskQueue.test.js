@@ -121,6 +121,26 @@ describe("kit task queue — the capabilities JustVoice's fork had", () => {
     expect(t.meta).toEqual({ words: 12, bytesOut: 4096 });
   });
 
+  it("the 500ms ticker STOPS once nothing is running, even with a task still lingering", () => {
+    // The reason the ticker gate counts running tasks instead of order.length. With
+    // `failed: null` a row stays until dismissed, so a length-gated ticker would run
+    // forever behind it — the runaway JustVoice's own renderTasks comment records
+    // fixing. Asserted rather than asserted-in-a-commit-message: the interval is
+    // module-scope and can't be read directly, so count live timers instead.
+    const h = tasks.start({ feature: "render", label: "Render", lingerMs: LINGER });
+    expect(vi.getTimerCount()).toBeGreaterThan(0); // the ticker is up
+
+    h.fail(new Error("boom"));
+    // Lingering forever (failed: null) means no archive timeout was scheduled either,
+    // so a still-running ticker would be the ONLY live timer. There must be none.
+    expect(tasks.visibleTasks).toHaveLength(1);
+    expect(vi.getTimerCount()).toBe(0);
+
+    // And it comes back for the next real run.
+    tasks.start({ feature: "render", label: "Another", lingerMs: LINGER });
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+  });
+
   it("a lingering task never inflates runningCount, even beside a live one", () => {
     const done = tasks.start({ feature: "a", label: "finished", lingerMs: LINGER });
     const live = tasks.start({ feature: "b", label: "still going", lingerMs: LINGER });
