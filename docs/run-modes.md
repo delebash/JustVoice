@@ -16,14 +16,16 @@ The same server, no window:
     justvoice-server serve --host 127.0.0.1 --port 17494 --data-dir <path> --log-level info
 
 The full UI is served at `http://<host>:17494/ui/` — any browser works, which is
-how you run JustVoice on a remote GPU box and drive it from a laptop. `--no-docs`
-skips serving the help pages. The usual flags have `JUSTVOICE_*` environment-variable
-twins for service managers. Add bearer tokens (Settings → auth) before exposing a
-host beyond loopback; loopback requests are exempt unless you require otherwise.
+how you run JustVoice on a remote GPU box and drive it from a laptop. The usual
+flags have `JUSTVOICE_*` environment-variable twins for service managers. Add
+bearer tokens (Settings → auth) before exposing a host beyond loopback; loopback
+requests are exempt unless you require otherwise.
 
-Utility subcommands: `justvoice-server default-settings` (print the full settings
-document with defaults) · `open-api` (dump the API schema) · `self-test` (quick
-health run). `python -m justvoice` works where the console script isn't on PATH.
+Dev utilities live on the domain CLI, not the server command:
+`python -m justvoice.cli default-settings` (print the full settings document
+with defaults) · `open-api` (dump the API schema) · `self-test` (quick health
+run). `python -m justvoice` serves, same as `justvoice-server serve`, where the
+console script isn't on PATH.
 
 ## Admin operations
 

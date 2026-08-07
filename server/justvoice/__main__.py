@@ -7,16 +7,22 @@
 
 This file did not exist, so that step could not succeed and no release has ever
 produced a Python sidecar. The console script (`justvoice-server =
-"justvoice.cli:app"`) covers a pip install, but PyInstaller needs a real script
-path to freeze, not an entry-point name — hence this shim.
+"justvoice.serve:main"`) covers a pip install, but PyInstaller needs a real
+script path to freeze, not an entry-point name — hence this shim.
 
-It stays a shim on purpose: no logic, no imports beyond the CLI, so there is
-nothing here to drift from `cli.py`.
+It targets the SERVER entry (target-tree P3 backfill, 2026-08-08): the sidecar
+IS the server, and serve.py has been the one serving door since cli.py became
+the domain CLI. Until this fix the shim still ran `cli.app`, whose `serve`
+command died in P3 — a frozen sidecar (or bare `python -m justvoice`) printed
+Typer help and exited instead of serving.
+
+It stays a shim on purpose: no logic, no imports beyond the entry, so there is
+nothing here to drift from `serve.py`.
 """
 
 from __future__ import annotations
 
-from .cli import app
+from .serve import main
 
 if __name__ == "__main__":
-    app()
+    main()

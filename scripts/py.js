@@ -4,7 +4,7 @@
 // Resolves THIS PROJECT'S interpreter (server/.venv) and execs it with the args.
 //
 //   node scripts/py.js -m pytest -q
-//   node scripts/py.js -m justvoice.cli serve
+//   node scripts/py.js -m justvoice.serve serve
 //
 // WHY: bare `python` resolves to whatever is first on PATH — on a stock box that is
 // an interpreter with none of this project's dependencies, and the failure reads as
