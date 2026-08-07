@@ -1,57 +1,26 @@
-"""Typer-based CLI matching the Rust binary's surface.
+"""Typer-based domain CLI — dev utilities, reachable as `python -m justvoice.cli`.
+
+The SERVER entry moved to serve.py (target-tree P3, 2026-08-08): the
+`justvoice-server` console script targets `justvoice.serve:main`, one door per
+purpose. (The old `--no-docs` serve flag died with the move — it was accepted
+and never read; docs visibility comes from settings.server.docs_enabled.)
 
 Subcommands:
-  - serve              start the server
   - default-settings   print the seed settings.json
+  - open-api           print the OpenAPI spec
   - self-test          run smoke tests against a booted server
 """
 
 from __future__ import annotations
 
 import json
-import logging
-from pathlib import Path
 
 import typer
-import uvicorn
 
 from .app import create_app
 from .models import Settings
-from .paths import default_data_dir
-from .version import VERSION
 
-app = typer.Typer(name="justvoice", no_args_is_help=True, help="JustVoice server CLI")
-
-
-@app.command()
-def serve(
-    host: str | None = typer.Option(None, "--host", envvar="JUSTVOICE_HOST"),
-    port: int | None = typer.Option(None, "--port", envvar="JUSTVOICE_PORT"),
-    data_dir: Path | None = typer.Option(None, "--data-dir", envvar="JUSTVOICE_DATA_DIR"),
-    log_level: str = typer.Option("info", "--log-level", envvar="JUSTVOICE_LOG_LEVEL"),
-    no_docs: bool = typer.Option(False, "--no-docs", help="Disable Swagger/Redoc UIs"),
-):
-    """Boot the JustVoice server."""
-    logging.basicConfig(
-        level=log_level.upper(),
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    )
-
-    dd = data_dir or default_data_dir()
-    fastapi_app = create_app(dd)
-
-    # Apply CLI overrides over the settings-derived host/port
-    from .app_state import get_state
-
-    settings = get_state().settings.get()
-    bind_host = host or settings.server.host
-    bind_port = port or settings.server.port
-
-    typer.secho(
-        f"JustVoice {VERSION} — http://{bind_host}:{bind_port}/  (data: {dd})",
-        fg=typer.colors.GREEN,
-    )
-    uvicorn.run(fastapi_app, host=bind_host, port=bind_port, log_level=log_level.lower())
+app = typer.Typer(name="justvoice", no_args_is_help=True, help="JustVoice domain CLI")
 
 
 @app.command(name="default-settings")

@@ -206,9 +206,6 @@ next refactor:
 
 ## Known deviations, recorded so they aren't re-litigated
 
-- **The console script is `justvoice.cli`, not the family-standard
-  `<package>.serve`** — grandfathered, same class as JustWrite's recorded
-  exception. Verified 2026-08-07 in `package.json`'s `server` script.
 - **No real-webview end-to-end harness** — deferred by your word above. When it
   is picked up, docgen's harness is the donor, and `scripts/shots.js`,
   `scripts/verify_all.js` and `scripts/e2e.js` retire or get replaced with it:

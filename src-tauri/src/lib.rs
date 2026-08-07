@@ -246,7 +246,7 @@ fn spawn_sidecar(data_root: &std::path::Path) -> std::io::Result<Option<Child>> 
             {
                 Ok(child) => child,
                 Err(_) => Command::new("python")
-                    .args(["-m", "justvoice.cli", "serve"])
+                    .args(["-m", "justvoice.serve", "serve"])
                     .env(DATA_DIR_ENV, data_root)
                     .spawn()?,
             },

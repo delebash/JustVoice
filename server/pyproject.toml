@@ -83,7 +83,7 @@ bundle = ["llm-runner @ git+https://github.com/delebash/just-llm-runner.git@main
 # this command in dev mode; on Windows, CreateProcessW resolves command
 # names relative to the parent binary's directory first — using the same
 # name would cause the shell to spawn itself, opening windows forever.
-justvoice-server = "justvoice.cli:app"
+justvoice-server = "justvoice.serve:main"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]

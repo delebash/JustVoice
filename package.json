@@ -13,8 +13,9 @@
     "dev": "tauri dev",
     "build": "tauri build",
     "tauri": "tauri",
-    "server": "cd server && node ../scripts/py.js -m justvoice.cli serve",
+    "server": "cd server && node ../scripts/py.js -m justvoice.serve serve",
     "lint": "biome check src",
+    "screenshots": "node scripts/smoke_gui.js",
     "test:unit": "vitest run",
     "test:server": "cd server && node ../scripts/py.js -m pytest -q",
     "test": "node scripts/e2e.js"
