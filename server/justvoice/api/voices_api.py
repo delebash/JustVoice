@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 import base64
+import json as _json
+import re as _re
 from datetime import datetime, timezone
 
 from fastapi import APIRouter
+from llm_runner.llm import LLMNotConfiguredError
+from pydantic import BaseModel as _BaseModel
 
 from ..app_state import get_state
+from ..engines.llm.run import run_feature
 from ..engines.manager import get_manager
 from ..errors import bad_request, not_found
 from ..models import (
@@ -205,13 +210,6 @@ async def import_voice(body: ImportVoiceRequest) -> Voice:
 # tunables; this route computes the variable VALUE and maps the row's
 # male/female/unknown contract onto JV's F/M/"" vocabulary.
 
-import json as _json
-import re as _re
-
-from llm_runner.llm import LLMNotConfiguredError
-from pydantic import BaseModel as _BaseModel
-
-from ..engines.llm.run import run_feature
 
 
 class GenderGuessVoice(_BaseModel):

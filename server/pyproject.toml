@@ -99,3 +99,10 @@ asyncio_mode = "auto"
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.lint]
+# Pinned to the ruleset this codebase was written against (the historical ruff
+# defaults). ruff 0.16 widened its defaults and lit 504 findings overnight with
+# zero code changes — a gate must not change meaning because a venv upgraded.
+# Whether the family adopts a wider set is P10's call (kit target-tree §3/P10).
+select = ["E4", "E7", "E9", "F"]

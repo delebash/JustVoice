@@ -282,7 +282,7 @@ def test_registered_and_runs_through_registry():
 
 
 def test_endpoint_multipart_dry_run_epub(db_session, tmp_path, monkeypatch):
-    from fastapi import FastAPI, HTTPException
+    from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
     from justvoice.api import projects_api
