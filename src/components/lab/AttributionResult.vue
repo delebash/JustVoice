@@ -16,14 +16,12 @@
       with the first);
   (8) the floored-from display (the source chips: tag · propagated · llm ·
       floored · narration);
-  (10) the corrections card beside the results — the per-project memory count
-      + Clear, with the write-target project named.
   (11) the raw model output stays viewable via the kit column's own
       "Raw model output" fold below this table.
 -->
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import { UiButton, UiSelect, UiTag, confirmDialog, pushToast } from "@delebash/llm-ui";
+import { UiSelect, pushToast } from "@delebash/llm-ui";
 import { useApi } from "../../stores/api.js";
 import { useActiveProject } from "../../stores/activeProject.js";
 import { usePersonasStore } from "../../stores/personas.js";
@@ -89,11 +87,11 @@ function chipClass(source) {
 }
 
 // ── (6) Reassign — writes correction memory like Studio. ──────────────
-// Corrections are per-project; the write targets the ACTIVE project (named on
-// the card below). No project open → the reassign still updates the row here,
-// and the card says nothing was recorded. The teachable choices are the
-// project's REAL cast (persona rows — the FK the correction table demands),
-// never the typed lab cast's synthetic ids.
+// Corrections are per-project; the write targets the ACTIVE project (named in
+// the toast the write raises). No project open → the reassign still updates the
+// row here and says so. The teachable choices are the project's REAL cast
+// (persona rows — the FK the correction table demands), never the typed lab
+// cast's synthetic ids.
 const projectId = computed(() => activeProjectStore.id || null);
 const projectName = computed(() => {
   const id = projectId.value;
@@ -115,14 +113,7 @@ const reassignOptions = computed(() => [
   { value: "unknown", label: "unknown" },
 ]);
 
-const correctionsCount = ref(null);
-async function refreshCount() {
-  if (!projectId.value) { correctionsCount.value = null; return; }
-  const r = await api.safeRequest(`/v1/projects/${projectId.value}/corrections/count`, { count: 0 });
-  correctionsCount.value = r?.count ?? 0;
-}
 onMounted(() => {
-  refreshCount();
   loadProjectCast();
   projectsStore.ensureLoaded();
   personasStore.ensureLoaded();
@@ -142,12 +133,11 @@ async function reassign(row, newSpeaker) {
     return;
   }
   try {
-    const r = await api.request(`/v1/projects/${projectId.value}/corrections`, {
+    await api.request(`/v1/projects/${projectId.value}/corrections`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text_snippet: row.text || "", character_id: newSpeaker }),
     });
-    correctionsCount.value = r?.count ?? correctionsCount.value;
     pushToast({ message: `Recorded — the next run for ${projectName.value} learns from it.`, kind: "success", duration: 3000 });
   } catch (e) {
     row.speaker = prev;
@@ -155,23 +145,6 @@ async function reassign(row, newSpeaker) {
   }
 }
 
-async function clearCorrections() {
-  if (!projectId.value) return;
-  const ok = await confirmDialog({
-    title: "Clear corrections?",
-    message: `Clear all speaker corrections for ${projectName.value}? This cannot be undone.`,
-    danger: true,
-    confirmLabel: "Clear all",
-  });
-  if (!ok) return;
-  try {
-    await api.request(`/v1/projects/${projectId.value}/corrections`, { method: "DELETE" });
-    correctionsCount.value = 0;
-    pushToast({ message: "Corrections cleared.", kind: "success" });
-  } catch (e) {
-    pushToast({ message: `Clear failed: ${e?.message || e}`, kind: "error" });
-  }
-}
 </script>
 
 <template>
@@ -212,18 +185,6 @@ async function clearCorrections() {
       </div>
     </div>
     <p v-else-if="data" class="jv-muted attr__empty">No dialogue segments in this passage — narration only.</p>
-
-    <!-- (10) The corrections card, beside the results (attribution runs only —
-         discovery proposes names, there is nothing to reassign). -->
-    <div v-if="!candidates" class="attr__corrections">
-      <span class="jv-eyebrow">Correction memory</span>
-      <template v-if="projectId">
-        <UiTag :intent="correctionsCount ? 'solid' : 'ghost'">{{ correctionsCount ?? "…" }}</UiTag>
-        <span class="jv-muted attr__cor-note">for {{ projectName }} — the most recent teach the next run as worked examples</span>
-        <UiButton intent="ghost" size="small" label="Clear all" :disabled="!correctionsCount" @click="clearCorrections" />
-      </template>
-      <span v-else class="jv-muted attr__cor-note">no project open — reassignments here update the table but are not remembered</span>
-    </div>
   </div>
 </template>
 
@@ -253,6 +214,4 @@ async function clearCorrections() {
 .attr__chip--narration  { border-style: dashed; }
 .attr__chip--floored    { background: var(--warn-bg, var(--surface-2)); color: var(--warn-ink, var(--ink-2)); border-color: var(--warn-line, var(--border-soft)); }
 .attr__disagree { color: var(--danger, #a8442e); text-decoration: underline wavy; text-underline-offset: 3px; }
-.attr__corrections { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
-.attr__cor-note { font-size: 11.5px; }
 </style>

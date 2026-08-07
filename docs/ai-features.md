@@ -143,10 +143,7 @@ controls so you never have to invent test data:
 into — nothing honest could be typed there, because corrections only exist
 by fixing real results. With a project open, every Lab run automatically
 uses that project's stored corrections, exactly like a production Analyze
-(the same most-recent-12). The card under the results shows the count, and
-**Clear all** wipes the project's correction history — use it when you
-change your mind about a character's identity and don't want old
-corrections steering the next run.
+(the same most-recent-12).
 
 **Results you can correct.** Every row shows speaker · line · confidence,
 with a reassign dropdown. Reassigning to a real character records a
