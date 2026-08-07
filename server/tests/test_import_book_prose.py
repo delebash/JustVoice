@@ -287,12 +287,11 @@ def test_endpoint_multipart_dry_run_epub(db_session, tmp_path, monkeypatch):
 
     from justvoice.api import projects_api
     from justvoice.database import get_db
-    from justvoice.errors import ApiError, api_exception_handler, http_exception_handler
+    from llm_runner.platform import install_error_handlers
 
     app = FastAPI()
     app.include_router(projects_api.router)
-    app.add_exception_handler(ApiError, api_exception_handler)
-    app.add_exception_handler(HTTPException, http_exception_handler)
+    install_error_handlers(app, type_base="https://justvoice.dev/errors/")
     app.dependency_overrides[get_db] = lambda: db_session
 
     raw = _make_epub(

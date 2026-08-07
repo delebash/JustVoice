@@ -70,12 +70,13 @@ from .api import (
     webhooks_api,
 )
 from .app_state import AppState, set_state
-from .auth import BearerAuthMiddleware
-from .csrf import CsrfOriginMiddleware
+from llm_runner.platform import BearerAuthMiddleware, CsrfOriginMiddleware, install_error_handlers
+
+from .auth import read_auth
 from .data_admin import get_data_router
 from .engines.external_openai import ExternalOpenAiTtsBackend
 from .engines.manager import get_manager, shutdown_manager
-from .errors import ApiError, api_exception_handler, http_exception_handler
+
 from .paths import default_data_dir
 from .version import PRODUCT, VERSION
 
@@ -166,7 +167,11 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     # which made AUTH outermost — the exact inversion its own comment warned
     # about (masked while auth defaults off; found by the Round-2 family
     # audit, fixed 2026-08-08 to JW/docgen's verified ordering).
-    app.add_middleware(BearerAuthMiddleware)
+    app.add_middleware(
+        BearerAuthMiddleware,
+        read_auth=read_auth,
+        type_base="https://justvoice.dev/errors/",
+    )
 
     if settings.cors.origins or settings.cors.origin_regex:
         app.add_middleware(
@@ -185,13 +190,14 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     # Added last → runs outermost, before CORS (JW's exact ordering).
     app.add_middleware(
         CsrfOriginMiddleware,
+        app_origins=("http://localhost:1430", "http://127.0.0.1:1430"),
         extra_origins=settings.cors.origins,
         origin_regex=settings.cors.origin_regex,
+        type_base="https://justvoice.dev/errors/",
     )
 
     # Error handlers — convert ApiError + HTTPException to RFC 7807 problem+json
-    app.add_exception_handler(ApiError, api_exception_handler)
-    app.add_exception_handler(HTTPException, http_exception_handler)
+    install_error_handlers(app, type_base="https://justvoice.dev/errors/")
 
     # Routes
     app.include_router(health.router)

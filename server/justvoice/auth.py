@@ -1,85 +1,25 @@
-"""Bearer-token authentication middleware.
+# SPDX-License-Identifier: MIT
+"""JustVoice's auth SEAM — the settings read behind the family bearer-auth
+middleware (`llm_runner.platform.BearerAuthMiddleware`, wired in app.py).
 
-Mirrors the Rust core's policy:
-- empty `auth.tokens` list = no auth required, even on non-loopback binds (with a warning)
-- non-empty tokens + loopback bind + `require_for_loopback=false` = loopback bypasses auth
-- otherwise: every request needs `Authorization: Bearer <token>`
+The POLICY (token check, loopback bypass, the 2026-08-05 lockout escape) lives
+once in the kit — P2 of the target tree (2026-08-08) ended the era of three
+hand-synced copies. What stays here is the only genuinely per-app part: where
+this app keeps its auth config — the SettingsStore's `auth` section
+(tokens + require_for_loopback), read live per /v1 request.
 """
 
 from __future__ import annotations
 
-import ipaddress
-import logging
-
-from fastapi import Request
-from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
-
 from .app_state import get_state
 
-log = logging.getLogger(__name__)
 
-
-def _is_loopback(host: str) -> bool:
-    if host in ("127.0.0.1", "::1", "localhost"):
-        return True
+def read_auth() -> tuple[list[str], bool]:
+    """(tokens, require_for_loopback) from settings. Never raises: before the
+    AppState exists (early boot) — or on any read problem — it answers
+    "no auth", so a config glitch can't lock the user out."""
     try:
-        return ipaddress.ip_address(host).is_loopback
-    except ValueError:
-        return False
-
-
-class BearerAuthMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        # Skip auth for the spec endpoint + UI assets + docs UIs
-        path = request.url.path
-        if path.startswith(("/openapi.json", "/docs", "/redoc", "/ui", "/")) and not path.startswith("/v1"):
-            return await call_next(request)
-
-        try:
-            settings = get_state().settings.get()
-        except RuntimeError:
-            return await call_next(request)
-        tokens = settings.auth.tokens
-        if not tokens:
-            return await call_next(request)
-
-        client_host = request.client.host if request.client else ""
-        is_loop = _is_loopback(client_host)
-        # The lockout escape (family shape, 2026-08-05: require_for_loopback +
-        # a lost token gated even the health probe and every way to fix it).
-        # From the machine itself /v1/health and the /v1/server-auth door
-        # always answer; the tokens sit in a locally readable settings store
-        # anyway. Remote stays gated.
-        if is_loop and (path == "/v1/health" or path.startswith("/v1/server-auth")):
-            return await call_next(request)
-        if is_loop and not settings.auth.require_for_loopback:
-            return await call_next(request)
-
-        header = request.headers.get("authorization", "")
-        if not header.startswith("Bearer "):
-            return JSONResponse(
-                status_code=401,
-                content={
-                    "type": "https://justvoice.dev/errors/unauthorized",
-                    "title": "Unauthorized",
-                    "status": 401,
-                    "detail": "Authorization header missing or malformed",
-                    "instance": request.url.path,
-                },
-                media_type="application/problem+json",
-            )
-        token = header[len("Bearer ") :].strip()
-        if token not in tokens:
-            return JSONResponse(
-                status_code=403,
-                content={
-                    "type": "https://justvoice.dev/errors/forbidden",
-                    "title": "Forbidden",
-                    "status": 403,
-                    "detail": "Bearer token not accepted",
-                    "instance": request.url.path,
-                },
-                media_type="application/problem+json",
-            )
-        return await call_next(request)
+        settings = get_state().settings.get()
+    except RuntimeError:
+        return [], False
+    return list(settings.auth.tokens or []), bool(settings.auth.require_for_loopback)

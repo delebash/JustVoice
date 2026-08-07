@@ -20,9 +20,7 @@ from fastapi.testclient import TestClient
 from justvoice.api import takes_api
 from justvoice.database import get_db
 from justvoice.database.models import Block, Generation, Persona, Scene, Project, Take
-from justvoice.errors import ApiError, api_exception_handler
-from fastapi import HTTPException
-from justvoice.errors import http_exception_handler
+from llm_runner.platform import install_error_handlers
 
 pytest_plugins = ["tests.conftest_db"]
 
@@ -96,8 +94,7 @@ def api_client(tmp_db) -> Generator[tuple[TestClient, object], None, None]:
 
     app = FastAPI()
     app.include_router(takes_api.router)
-    app.add_exception_handler(ApiError, api_exception_handler)
-    app.add_exception_handler(HTTPException, http_exception_handler)
+    install_error_handlers(app, type_base="https://justvoice.dev/errors/")
     app.dependency_overrides[get_db] = _override_get_db
 
     with TestClient(app, raise_server_exceptions=False) as client:
