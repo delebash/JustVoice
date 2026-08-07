@@ -86,13 +86,102 @@ the full-size piece cards as wrong. A proposal is owed to you before anything is
 built. The decision underneath is settled and is *not* being reopened — dictation
 cleanup stays one feature, one call, four texts as sections.
 
-## The next build
+## APPROVED 2026-08-07 — THE TASK-QUEUE CONVERSION: JustVoice's forked task
+## system dies, the 17 sites move onto the kit's shared queue. The go, given
+## on the plan below after seven adversarial passes and two "think again"
+## refinements. THE KIT HALF IS BUILT (see Status); the JustVoice half is
+## THE NEXT WORK, ahead of the VRAM arbiter.
+
+**The rulings this executes (the user's words):**
+- *"why do we have different ai task ect"* / *"i just want them to be the same
+  where it makes sense"* — the fork (`TaskStrip.vue`, `TaskStatusPanel.vue`,
+  `renderTasks.js`, each header naming JustWrite as its donor) is deleted;
+  every task site uses `useAiTasksStore` from `@delebash/llm-ui`.
+- *"you say full for justvoice why are we not using same for all apps"* — the
+  linger policy became FAMILY canon (`FAMILY_TASK_LINGER` in the kit's
+  `familyContract.js`: completed 5 s · cancelled 3 s · failed until dismissed),
+  the store's DEFAULT. JustVoice passes nothing and gets its 2026-06-09
+  flash-and-disappear fix back automatically.
+- *"i want the better one"* on strip vs strip — the kit took the fork's
+  finished-state layer (badge · colour · DONE/FAILED/CANCELLED tag · inline
+  error · spinner gated), the panel took its Running/Recent split and
+  retry-from-history; the fork's `percent` bar (unit bug — one writer stored a
+  0–1 fraction, three readers rendered `percent + '%'`, the bar topped out at
+  1%) and its `freshness()` (lied "stuck" on every healthy render after 10 s)
+  were NOT taken — `{done,total}` and honest-absence replace them.
+- The global stack stays (domain: fire-and-navigate renders/installs), rebuilt
+  on kit parts with the `inline` filter so a Lab run never shows twice.
+
+**The conversion, site by site (all receipts code-verified 2026-08-07):**
+1. The 17 `tasks.start` sites → kit handles: `ExportPanel.vue:109` ·
+   `SpeechEnginesTab.vue:194,228` · `attributionLab.js:74` · `refineLab.js:22` ·
+   `ChapterView.vue:350` · `GenerateView.vue:319,356,438` · `LinesView.vue:120` ·
+   `StudioView.vue:705,756,840,957,1015,1258` · `VoicesView.vue:96`.
+   Option mapping: `kind` dies (feature covers it) · `onCancel: () =>
+   ctrl.abort()` dies — thread `handle.signal` into the fetch instead (the kit
+   owns the controller; the panel's Cancel aborts it) · `onRetry` maps 1:1 ·
+   `statsFn` (6 sites) → `stats: []` at start + `handle.setStats([...])` at the
+   points that today mutate meta (e.g. GenerateView's bytesOut after the blob)
+   · `percent` → `handle.setProgress(done, total)` (LinesView:133 is the only
+   writer — its `done / targets.length` fraction bug dies by construction) ·
+   `tasks.update(id,{meta})` → `handle.update({meta})` · the
+   `catch { aborted ? cancel() : fail() }` shape at every site is SAFE — the
+   store's first-outcome-wins guard was built for exactly it.
+2. The NON-start consumers (the part a naive plan missed): `App.vue` — the
+   topbar pill's `activeCount` → `runningCount` (the fork's count lied:
+   "running + just-finished"; the kit's is accurate), the global stack →
+   `<AiTaskStrip v-for over visibleTasks.filter(t => !t.inline)>`, the
+   `<TaskStatusPanel />` mount DIES (the kit's `AiStatusButton` at App.vue:552
+   already includes `AiStatusPanel`) · `OverviewView.vue:165,266,276,424,431` —
+   the dashboard's `liveTasks` → `runningTasks`, and its fake
+   `width: (percent ?? 30) + '%'` bar (invents 30% for tasks with no data) →
+   `{done,total}` or nothing · `SettingsView.vue:101` — **the delete-ALL-projects
+   guard**: `tasks.running.some(t => t.status === "running")` →
+   `tasks.runningCount > 0`. DATA-LOSS PATH — map first, verify hardest ·
+   `StudioView.vue:966` (meta route label — carries over) and `:1971` (the
+   per-scene render bar keeps its own indeterminate sweep, reads
+   `t.progress` for the determinate case).
+3. `data-task-panel-toggle` → `data-panel-toggle` everywhere (`App.vue:540`,
+   `OverviewView.vue:424`; TaskStrip's dies with the file) — the kit's
+   `usePanelDismiss` exempts only the kit attribute; without the rename the
+   button opens the panel and the same click closes it (the exact bug found
+   live in docgen 2026-08-03).
+4. The Lab adapters (`attributionLab.js`, `refineLab.js`) STOP registering
+   their own tasks — `ConfigColumn` registers the run in the kit store since
+   `947f08c` (inline-flagged since `2579d21`); the adapters run against the
+   passed `{signal}`. Accepted loss, stated: the adapter's word-count stats
+   don't reach the kit handle (the adapter never sees it) — the Lab's result
+   pane carries those numbers anyway. `labContracts.test.js` reviewed in the
+   same change.
+5. Delete `src/components/TaskStrip.vue`, `src/components/TaskStatusPanel.vue`,
+   `src/stores/renderTasks.js`. The fork's `SINGLE_CALL_KINDS` freshness and
+   `stats()`/`freshness()` store fns die with it.
+6. Docs in the same change (the docs law): `docs/generate.md` §"In-flight
+   status strip + status panel" rewritten to kit reality (statsFn → the app's
+   stat chips; the fork's pill/panel wording; Recent behaviour + retry;
+   history 50) · `docs/ai-features.md` Lab-run task-row claims re-verified ·
+   `docs/dev/CONCEPTS.md` §16 checked for fork-specific wording.
+7. Gates: biome · vitest (28) · build · Playwright smoke against the real
+   server · guard re-run · JW 566 + docgen 3 regression (shared store) · and
+   the LIVE Routing-by-feature run — the user's original bug ("not using the
+   kit ai progress bar"), which no automated test clicks.
+
+**Status:** kit half BUILT + verified 2026-08-07 — kit `f1fa1dd` (linger/retry/
+stats capabilities) + `5dfe772`-adjacent guards + `2579d21` (family default,
+finished-state layer, Running/Recent split, retry-from-history, inline flag,
+{done,total} bar, panel-open ticker, history 50, preview cap) · JW companion
+`277b50d` (4 intent-preserving test rewrites, afterEach timer teardown, B5-7
+notice reads lingering ∪ history, ai-providers.md updated + two pre-existing
+lies fixed) · JV `23b8bf8` (15 kit-queue tests, 2 mutation-checked). 15 unpushed
+commits across three repos await the push word (JV 5 · kit 8 · JW 2 — **JW's
+branch is `master`**, the siblings' `main`; check `origin/master..HEAD` there).
+The JustVoice conversion above is NOT started.
+
+## The next build (after the conversion above)
 
 **Deferred by your word (2026-08-06):** the real-webview test harness and the
 deep exhaustive audit — *"for now we are not doing jv harness or deep audit i
 want to finish all features and complete the jv llm runner conversion."*
-
-So there is exactly one item of committed build work left in the conversion:
 
 ### Make TTS engine loading reserve VRAM through the shared arbiter
 
