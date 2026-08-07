@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from justvoice.app import create_app
+from justvoice.database.seed import seed_workspace
 
 
 class FakeAdapter:
@@ -26,6 +27,7 @@ class FakeAdapter:
 @pytest.fixture()
 def app(tmp_path):
     app = create_app(data_dir=tmp_path)
+    seed_workspace()
     from llm_runner.llm import get_llm_registry
 
     reg = get_llm_registry()
@@ -82,6 +84,7 @@ def test_extraction_config_shape(app) -> None:
 
 def test_extraction_config_no_provider(tmp_path) -> None:
     app = create_app(data_dir=tmp_path)
+    seed_workspace()
     from llm_runner.llm import get_llm_registry
 
     reg = get_llm_registry()

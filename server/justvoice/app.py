@@ -49,7 +49,7 @@ from .api import (
     engines_models_api,
     external_api,
     generate_api,
-    health,
+    health_api,
     lexicons_api,
     master_api,
     mcp_bindings_api,
@@ -97,17 +97,6 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     # folded into the `settings` table (SettingsStore imports any legacy file).
     from .database import init_db
     init_db(data_dir)
-
-    # Built-in effect presets (Robotic / Radio / Echo Chamber / Deep Voice)
-    # + render presets (Narration / Dramatic Dialogue / Quiet Reflection /
-    # Action, task #88) — idempotent on every boot.
-    from .database.seed import (
-        seed_builtin_effect_presets,
-        seed_builtin_render_presets,
-    )
-
-    seed_builtin_effect_presets()
-    seed_builtin_render_presets()
 
     state = AppState(data_dir)
     set_state(state)
@@ -200,7 +189,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     install_error_handlers(app, type_base="https://justvoice.dev/errors/")
 
     # Routes
-    app.include_router(health.router)
+    app.include_router(health_api.router)
     app.include_router(system_api.router)
     app.include_router(server_auth_api.router)  # the auth door + lockout escape (family shape)
     app.include_router(settings_api.router)
@@ -220,15 +209,9 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     # and now JV's OWN feature data: every action a template row, every tunable
     # on a preset, per-row Lab samples. The old jv_feature_prompts system is
     # gone (its editor router, store, seeder); edited legacy rows migrate below.
-    from llm_runner.llm import install_llm, load_from_configs, stores
-    from llm_runner.llm.seed import seed_llm
+    from llm_runner.llm import install_llm
 
     from .database import session as _db_session
-    from .engines.llm.migrate_prompts import (
-        lift_edited_tunables_into_presets,
-        migrate_jv_prompts_to_shared,
-    )
-    from .engines.llm.migrate_providers import migrate_settings_providers_to_db
     from .feature_catalog import FEATURE_CATALOG, PREFER_LOCAL_FEATURES
     from .seed_feature_prompts import DEFAULT_FEATURE_PROMPTS
     from .seed_presets import (
@@ -273,38 +256,13 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         # reason — "JV has no CSRF/origin middleware" — closed 2026-08-08 when
         # csrf.py landed; flipping the flag is a separate product decision.)
     )
-    # JV's warm-on-startup default is OFF (ruling 2026-08-05: the TTS engines own
-    # the GPU until F4's VRAM arbiter; the user can flip it on). The SHARED seed
-    # inserts "1" when the row is missing and the runtime reads an absent row as
-    # ON, so JV must hold an explicit "0" — written BEFORE seed_llm() so the
-    # shared insert-if-missing skips it. One-time by marker: DBs seeded since
-    # 2026-08-01 already carry the shared "1" (no JV surface ever exposed the
-    # toggle, so it cannot be a user's choice), and a user who later flips warm
-    # ON must keep that choice across boots. (Shared with factory-reset's
-    # dual-seed path — llm_bootstrap.py.)
-    from .llm_bootstrap import apply_jv_warm_default
-
-    apply_jv_warm_default()
-    # Legacy prompt rows: an EDITED jv_feature_prompts row migrates into the
-    # shared table FIRST (before seed_llm), so the insert-if-missing seed
-    # skips it — user edits win over seed defaults (ruling 1).
-    migrate_jv_prompts_to_shared()
-    # One-time settings→DB provider migration (idempotent by id), then the
-    # shared seed (insert-if-missing), then the registry boots FROM THE DB —
-    # the exact order JustWrite uses, so `registered` flags are live from boot.
-    migrate_settings_providers_to_db(state.settings.get())
-    seed_llm()
-    # After the presets exist: a legacy row's hand-changed temperature/think
-    # lifts onto its feature's assigned preset (one-time, marker-guarded).
-    lift_edited_tunables_into_presets()
-    # One-time: existing DBs drop the retired shared-default catalog rows so
-    # the catalog matches a fresh install (the measured 26B row only). The
-    # 2026-08-06 attribution fixup migrations were removed in the tier-debris
-    # cleanup (2026-08-07) — pre-restore DBs are extinct under the reset rule.
-    from .llm_bootstrap import retire_default_catalog_rows
-
-    retire_default_catalog_rows()
-    load_from_configs(stores.get_provider_store().list())
+    # Workspace SEEDING — effect/render presets, JV's warm-OFF default, the
+    # legacy-prompt/provider migrations, the shared LLM seed, and the provider
+    # registry boot — lives in database/seed.py::seed_workspace(), called by
+    # serve.py AFTER create_app (the family call-site, target-tree P6, with
+    # order-of-operations documented there). create_app(tmp_path) starts from
+    # an EMPTY, unmigrated DB — JW's pytest-isolation rationale, the family's
+    # named winner; tests that assert seeded content call seed_workspace().
 
     app.include_router(generate_api.router)
     app.include_router(render_chapter_api.router)

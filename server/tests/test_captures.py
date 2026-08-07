@@ -12,11 +12,13 @@ from fastapi.testclient import TestClient
 from llm_runner.llm import LLMNotConfiguredError
 
 from justvoice.app import create_app
+from justvoice.database.seed import seed_workspace
 
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     app = create_app(data_dir=tmp_path)
+    seed_workspace()
     # Fake the engine round-trip — STT correctness is the engine's concern;
     # here we test the API contract.
     monkeypatch.setattr(
@@ -100,6 +102,7 @@ def test_compose_refinement_system_toggles(tmp_path) -> None:
     from justvoice.refinement import RefinementFlags, compose_refinement_system
 
     TestClient(create_app(data_dir=tmp_path), raise_server_exceptions=False)
+    seed_workspace()
     all_on = compose_refinement_system(RefinementFlags())
     assert "self" in all_on.lower() and "technical" in all_on.lower()
     none_on = compose_refinement_system(

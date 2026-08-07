@@ -6,10 +6,12 @@ endpoints read their prompt from the DB, and tunables live on presets."""
 from fastapi.testclient import TestClient
 
 from justvoice.app import create_app
+from justvoice.database.seed import seed_workspace
 
 
 def test_prompts_seeded_and_editable(tmp_path):
     c = TestClient(create_app(data_dir=tmp_path))
+    seed_workspace()
 
     r = c.get("/v1/ai/prompts")
     assert r.status_code == 200, r.text
@@ -36,6 +38,7 @@ def test_prompts_seeded_and_editable(tmp_path):
 
 def test_reset_and_get_unknown(tmp_path):
     c = TestClient(create_app(data_dir=tmp_path))
+    seed_workspace()
     assert c.post("/v1/ai/prompts/nope/reset").status_code == 400
     assert c.get("/v1/ai/prompts/nope").status_code == 404
 
@@ -55,6 +58,7 @@ def test_extraction_prompts_seeded(tmp_path):
     # prompts from the DB (speaker_attribution.guided/.direct). The old in-code
     # selector system_for() is gone.
     c = TestClient(create_app(data_dir=tmp_path))
+    seed_workspace()
     by_key = {p["key"]: p for p in c.get("/v1/ai/prompts").json()["prompts"]}
     assert "speaker_attribution.guided" in by_key and "speaker_attribution.direct" in by_key
     assert "speaker_attribution.identify" in by_key
@@ -72,6 +76,7 @@ def test_extraction_prompts_seeded(tmp_path):
 def test_extraction_config_serves_db_prompts(tmp_path):
     # The Speaker Lab's config endpoint now sources its prompt bodies from the DB.
     c = TestClient(create_app(data_dir=tmp_path))
+    seed_workspace()
     r = c.get("/v1/extraction/config")
     assert r.status_code == 200, r.text
     body = r.json()

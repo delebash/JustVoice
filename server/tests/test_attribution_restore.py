@@ -10,11 +10,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 from justvoice.app import create_app
+from justvoice.database.seed import seed_workspace
 
 
 @pytest.fixture()
 def client(tmp_path):
     app = create_app(data_dir=tmp_path)
+    seed_workspace()
     return TestClient(app, raise_server_exceptions=False)
 
 

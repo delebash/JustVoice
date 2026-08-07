@@ -157,8 +157,10 @@ def test_migration_relaxes_voice_id_not_null(tmp_path):
 def test_builtin_render_presets_seeded(tmp_path):
     """Boot seeds the 4 task-#88 styles as global delivery-only presets."""
     from justvoice.app import create_app
+    from justvoice.database.seed import seed_workspace
 
     create_app(data_dir=tmp_path)
+    seed_workspace()
 
     from justvoice.database import get_db
 

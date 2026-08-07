@@ -13,12 +13,16 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from justvoice.app import create_app
+from justvoice.database.seed import seed_workspace
 from justvoice.seed_feature_prompts import DEFAULT_FEATURE_PROMPTS
 from justvoice.seed_presets import DEFAULT_ENGINE_PRESETS, DEFAULT_FEATURE_PRESETS
 
 
 def _client(tmp_path) -> TestClient:
-    return TestClient(create_app(data_dir=tmp_path), raise_server_exceptions=False)
+    app = create_app(data_dir=tmp_path)
+    seed_workspace()
+    seed_workspace()
+    return TestClient(app, raise_server_exceptions=False)
 
 
 def _shared_rows() -> dict:

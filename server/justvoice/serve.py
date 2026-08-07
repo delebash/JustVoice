@@ -44,6 +44,13 @@ def main() -> None:
     dd = Path(args.data_dir) if args.data_dir else default_data_dir()
     app = create_app(dd)
 
+    # Workspace seeding lives HERE, not in create_app(), on purpose: the pytest
+    # suite's create_app(tmp_path) apps start from an empty, unmigrated database
+    # (the family's named winner for the seeding call-site — target-tree P6).
+    from .database.seed import seed_workspace
+
+    seed_workspace()
+
     # CLI/env overrides sit on top of the settings-derived host/port.
     from .app_state import get_state
 

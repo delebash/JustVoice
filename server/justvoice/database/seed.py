@@ -210,3 +210,45 @@ def seed_builtin_render_presets() -> None:
         db.rollback()
     finally:
         db.close()
+
+
+def seed_workspace() -> None:
+    """Serve-time workspace seeding — the family call-site (target-tree P6).
+
+    Everything here ran inside create_app() until 2026-08-08; it moved so
+    `create_app(tmp_path)` starts from an EMPTY, unmigrated database (JW's
+    pytest-isolation rationale, the family's named winner). Called by serve.py
+    after create_app; tests that assert seeded content call it explicitly.
+    The factory-reset path stays on its own bundle (data_admin.py →
+    llm_bootstrap.reseed_shared_llm — reset semantics, no migrations).
+
+    ORDER IS THE CONTRACT (moved verbatim from create_app):
+    warm-OFF default BEFORE seed_llm (the shared insert-if-missing must skip
+    JV's explicit "0"); legacy-prompt migration BEFORE seed_llm (user edits
+    win over seed defaults, ruling 1); settings→DB provider migration, the
+    shared seed, then the registry boots FROM THE DB — the exact order
+    JustWrite uses, so `registered` flags are live from boot; tunable-lift and
+    catalog-row retirement after the presets exist; effect/render presets are
+    independent domain seeds and run first.
+    """
+    from llm_runner.llm import load_from_configs, stores
+    from llm_runner.llm.seed import seed_llm
+
+    from ..app_state import get_state
+    from ..engines.llm.migrate_prompts import (
+        lift_edited_tunables_into_presets,
+        migrate_jv_prompts_to_shared,
+    )
+    from ..engines.llm.migrate_providers import migrate_settings_providers_to_db
+    from ..llm_bootstrap import apply_jv_warm_default, retire_default_catalog_rows
+
+    seed_builtin_effect_presets()
+    seed_builtin_render_presets()
+
+    apply_jv_warm_default()
+    migrate_jv_prompts_to_shared()
+    migrate_settings_providers_to_db(get_state().settings.get())
+    seed_llm()
+    lift_edited_tunables_into_presets()
+    retire_default_catalog_rows()
+    load_from_configs(stores.get_provider_store().list())

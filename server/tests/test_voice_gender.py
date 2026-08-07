@@ -13,6 +13,7 @@ from llm_runner.llm import LLMResponse, get_llm_registry
 from llm_runner.llm.dispatch import set_ensure_local_model
 
 from justvoice.app import create_app
+from justvoice.database.seed import seed_workspace
 
 
 class _FakeLocalAdapter:
@@ -37,6 +38,7 @@ class _FakeLocalAdapter:
 
 def _client(tmp_path) -> TestClient:
     app = create_app(data_dir=tmp_path)
+    seed_workspace()
     get_llm_registry()._adapters = {}
     set_ensure_local_model(None)
     return TestClient(app, raise_server_exceptions=False)

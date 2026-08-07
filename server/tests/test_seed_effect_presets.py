@@ -9,8 +9,10 @@ import json
 
 def test_builtins_seeded_and_buildable(tmp_path) -> None:
     from justvoice.app import create_app
+    from justvoice.database.seed import seed_workspace
 
     create_app(data_dir=tmp_path)
+    seed_workspace()
 
     from justvoice.database import get_db
     from justvoice.database.models import EffectPreset

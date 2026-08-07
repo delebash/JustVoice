@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from llm_runner.llm import LLMNotConfiguredError
 
 from justvoice.app import create_app
+from justvoice.database.seed import seed_workspace
 from justvoice.extraction.identify import SpeakerCandidate, parse_candidates
 
 # ── parser ───────────────────────────────────────────────────────────
@@ -42,6 +43,7 @@ def test_parse_garbage_returns_empty():
 @pytest.fixture()
 def client(tmp_path):
     app = create_app(data_dir=tmp_path)
+    seed_workspace()
     return TestClient(app, raise_server_exceptions=False)
 
 
