@@ -6,6 +6,15 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-08-07 · A TTS Lab** — moved here off the tracker by the user's word.
+  The name was parked in the shared AI-stack ledger on 2026-07-06 and held
+  behind the JustVoice convergence work; that work finished 2026-08-05/06 and
+  nobody went back to it. **No scope was ever written for it** — the ledger
+  recorded the name only, explicitly so it wouldn't be lost. What a TTS Lab
+  would be (a per-engine equivalent of the LLM feature Lab? a voice A/B bench?)
+  is undecided and unwritten. It needs a real discussion before it is anything.
+  Three sibling names were parked with it and were dropped rather than moved: a
+  capture/dictation fix, a prompt-editor view, and catalog drift rows.
 - **2026-08-06 · Audiobook competitor-research ideas (unbuilt, previously
   untracked)** — from `docs/dev/2026-06-24-audiobook-nlp-competitor-research.md`
   (code-verified 2026-08-06: only 4 of its 21 ideas ever got built). The top two:

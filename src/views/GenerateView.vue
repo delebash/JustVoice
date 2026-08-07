@@ -1175,7 +1175,7 @@ onActivated(() => {
 .generate-view__audio { width: 100%; margin-top: 12px; }
 
 /* Delivery overlay paired-control grid — tight row gap, generous
-   column gap (matches preview/full-app-preview.html:124 `.field-grid`). */
+   column gap. */
 .generate-view__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

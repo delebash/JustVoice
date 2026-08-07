@@ -18,7 +18,7 @@ const voices = computed(() => voicesStore.items);
 const trainJobs = ref([]);
 
 // ── form state ────────────────────────────────────────────────────────────────
-// 8 fields matching preview/full-app-preview.html §Train New training job:
+// 8 fields on the New training job form:
 //   Voice profile / Base engine / Method / Steps / SNR threshold (dB) /
 //   Max clipping ratio / Max silence ratio / Concurrent jobs limit
 const trainName = ref("");          // 1) Voice profile (output name)

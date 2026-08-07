@@ -18,8 +18,6 @@ Priya produces *Signal & Noise*, a 3-host tech show. Sometimes she has a
 scripted episode in markdown; sometimes she writes it directly in the app.
 Her deliverable is one mastered episode file for the feed.
 
-Mock: `preview/journeys-preview.html#podcast/1`
-
 ## The path
 
 1. **New project → kind picker.** She picks **Podcast**. Sidebar says

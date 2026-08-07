@@ -2,9 +2,8 @@
 /*
  * JustVoice global styles
  * ------------------------
- * Single-source CSS. Derived directly from `preview/full-app-preview.html`
- * (the canonical visual spec), BEM-renamed with `jv-` prefix so views
- * compose Vue components against named primitives. Replaces the old
+ * Single-source CSS, BEM-named with a `jv-` prefix so views compose Vue
+ * components against named primitives. Replaces the old
  * `styles.css` + `assets/styles/justvoice.css` pair which had ~1.3k lines
  * of JW-inherited bloat that no longer applied.
  *
@@ -1127,8 +1126,7 @@ progress {
 }
 
 /* Borderless informational paragraph — quiet prose block with an
-   inline chip ("info" / "warn" / "danger") prefixed via .tag-info etc.
-   Matches preview/full-app-preview.html L168-173 (`p.note`). */
+   inline chip ("info" / "warn" / "danger") prefixed via .tag-info etc. */
 p.note,
 .note {
   display: block;

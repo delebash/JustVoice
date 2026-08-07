@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!--
-  CompareView — A/B audio comparison per preview/full-app-preview.html §Compare.
+  CompareView — A/B audio comparison.
   Layout: action row (Choose A / B / Refresh from current takes / Run analysis) ·
   picked-file chip cards + dual <audio> players · 6-tile delta grid (Peak Δ /
   RMS Δ / Duration Δ / Sample RMSE / Crest factor Δ / Identical samples) ·

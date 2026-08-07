@@ -3,10 +3,7 @@
 <!-- SPDX-License-Identifier: MIT -->
 
 Working design decisions and mental models, captured from design-review
-discussion (2026-06-11). The clickable companion is
-`preview/journeys-preview.html` (12 tabs: the three production journeys,
-First run, Live voice, Fix-it loop, Library & tools, Help, Speaker Lab,
-Proof & QC, Identity flow). Walkthroughs: `journey-podcast.md` (live, this
+discussion (2026-06-11). Walkthroughs: `journey-podcast.md` (live, this
 folder) + the archived `journey-audiobook.md` / `journey-game.md` in
 `../plans/archive/` (the journeys folder was dissolved 2026-08-06). Build order:
 `docs/plans/archive/IMPLEMENTATION_PLAN.md`.

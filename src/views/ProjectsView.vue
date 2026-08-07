@@ -5,7 +5,7 @@
   Audiobook = chapters + paragraphs; game = dialogue trees + NPC lines;
   podcast = episodes + segments. Same data model, different export pipeline.
 
-  Detail pane mirrors preview/full-app-preview.html §Books: editable header
+  Detail pane: editable header
   fields (Title/Author/Mastering/Render-preset/Cast/Status/Webhook), action
   row (Render all / Export M4B / QC report / Export ZIP / Delete), chapters
   subtable with bulk-action bar, per-row Open / ▶ / ↻ / ⚙ buttons.
