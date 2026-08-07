@@ -482,7 +482,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   gap: 8px;
   font-size: 12px;
   color: var(--ink-2);
-  /* Now a clickable button — opens the TaskStatusPanel. Keep the
+  /* Now a clickable button — opens the kit AI status panel. Keep the
      visual subtle so it still reads as a status indicator; the
      `in flight` chip on the right is what tells the user there's
      something to open. */

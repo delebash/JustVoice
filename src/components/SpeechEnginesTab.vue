@@ -28,8 +28,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useApi } from "../stores/api.js";
-import { useRenderTasks } from "../stores/renderTasks.js";
-import { DownloadBar, UiButton, UiTag, confirmDialog, promptDialog, pushToast } from "@delebash/llm-ui";
+import { DownloadBar, UiButton, UiTag, confirmDialog, promptDialog, pushToast, useAiTasksStore } from "@delebash/llm-ui";
 import { makeEngineDownloadTask } from "../services/ttsJobChannel.js";
 import { createDownloadTask } from "@delebash/llm-ui";
 import SpeechProvidersPanel from "./SpeechProvidersPanel.vue";
@@ -38,7 +37,7 @@ import SpeechProvidersPanel from "./SpeechProvidersPanel.vue";
 const half = ref("local");
 
 const api = useApi();
-const tasks = useRenderTasks();
+const tasks = useAiTasksStore();
 
 // Seed from the last fetch so revisiting doesn't flash the "no engines"
 // banner before the list arrives (user-hit 2026-06-12).
@@ -192,20 +191,24 @@ async function installEngine(engine) {
   const task = makeEngineDownloadTask(api, engine.id, {});
   dlTasks[key] = task;
   const panel = tasks.start({
+    feature: "install",
     label: `Installing · ${engine.name || engine.id}`,
-    kind: "install",
-    onCancel: () => task.cancel(),
   });
+  // The kit store owns the AbortController — bridge its Cancel to the
+  // job-channel task so the strip's ✕ stops the actual install.
+  panel.signal.addEventListener("abort", () => {
+    if (task.state === "running") task.cancel();
+  }, { once: true });
   await task.start();
   if (task.state === "done") {
-    tasks.finish(panel.id);
+    panel.finish();
     pushToast({ message: `${engine.name || engine.id} installed.`, kind: "success", duration: 4000 });
     delete variants[engine.id];
     await refresh();
   } else if (task.state === "error") {
-    tasks.fail(panel.id, task.error);
+    panel.fail(task.error);
   } else {
-    tasks.finish(panel.id);
+    panel.cancel();
   }
 }
 
@@ -226,18 +229,21 @@ async function runLoad(engine, variantId) {
       });
   dlTasks[key] = task;
   const panel = tasks.start({
+    feature: "load",
     label: `Loading · ${engine.name || engine.id} (${variantNameFor(engine.id, variantId)})`,
-    kind: "load",
-    onCancel: () => task.cancel(),
     onRetry: () => runLoad(engine, variantId),
   });
+  // Bridge the kit handle's Cancel to the job-channel task (see installEngine).
+  panel.signal.addEventListener("abort", () => {
+    if (task.state === "running") task.cancel();
+  }, { once: true });
 
   try {
     if (needsDownload) {
       await task.start();               // phase A — the download, kit-polled
       if (task.state !== "done") {      // cancelled or failed → stop honestly
-        if (task.state === "error") tasks.fail(panel.id, task.error);
-        else tasks.finish(panel.id);
+        if (task.state === "error") panel.fail(task.error);
+        else panel.cancel();
         return;
       }
       delete variants[engine.id];       // on_disk changed — re-read truthfully
@@ -251,17 +257,17 @@ async function runLoad(engine, variantId) {
       body: JSON.stringify({ device: "auto", model_variant: variantId || null }),
     });
     task.apply({ terminal: "done" });
-    tasks.finish(panel.id);
+    panel.finish();
     window.dispatchEvent(new Event("jv:health-refresh"));
     delete variants[engine.id];
     await refresh();
     pushToast({ message: `${engine.name || engine.id} loaded.`, kind: "success", duration: 4500 });
     delete dlTasks[key];
   } catch (e) {
-    if (task.state === "cancelled") { tasks.finish(panel.id); return; }
+    if (task.state === "cancelled") { panel.cancel(); return; }
     const raw = String(e?.message || e);
     task.fail(raw);
-    tasks.fail(panel.id, raw);
+    panel.fail(raw);
   }
 }
 

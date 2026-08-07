@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-// The KIT's task queue, exercised as JustVoice is about to use it.
+// The KIT's task queue, exercised as JustVoice uses it.
 //
-// JustVoice is deleting its own renderTasks/TaskStrip/TaskStatusPanel trio and moving
+// JustVoice deleted its own renderTasks/TaskStrip/TaskStatusPanel trio and moved
 // its 17 task sites onto @delebash/llm-ui's shared queue. The three capabilities that
 // move made the swap possible — linger, retry, per-task stats — and NONE of them had a
 // caller when they were written, so every app's suite passed while proving nothing

@@ -5,17 +5,14 @@ import { useRoute, useRouter } from "vue-router";
 import { initialDeepLink } from "./router/index.js";
 import { useI18n } from "vue-i18n";
 import { useApi } from "./stores/api.js";
-import { useRenderTasks } from "./stores/renderTasks.js";
 import { useOnboarding } from "./stores/onboarding.js";
 import { useActiveProject } from "./stores/activeProject.js";
 import { useUiContext } from "./stores/uiContext.js";
 import { useServerStore } from "./stores/server.js";
-import TaskStrip from "./components/TaskStrip.vue";
-import TaskStatusPanel from "./components/TaskStatusPanel.vue";
 import AudioKeepAlive from "./components/AudioKeepAlive.vue";
 import QuickSetup from "./components/QuickSetup.vue";
 import KeyboardCheatsheet from "./components/KeyboardCheatsheet.vue";
-import { AiSetupOffer, AiStatusButton, BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, TitleBar, pushToast, useAiTasksNav, useModelApply, warmModelId } from "@delebash/llm-ui";
+import { AiSetupOffer, AiStatusButton, AiTaskStrip, BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, TitleBar, pushToast, useAiTasksNav, useAiTasksStore, useModelApply, warmModelId } from "@delebash/llm-ui";
 import { readPref, writePref } from "./services/prefs.js";
 import GlobalAudioPlayer from "./components/GlobalAudioPlayer.vue";
 
@@ -169,7 +166,7 @@ function goView(id) { if (id && route.name !== id) router.push(`/${id}`); }
 
 const health = ref(null);
 const api = useApi();
-const tasks = useRenderTasks();
+const tasks = useAiTasksStore();
 
 // The AI-tasks nav row (family parity): toggles the kit panel, badges the
 // running count — red while there are unseen errors. Behaviour AND the
@@ -537,15 +534,15 @@ onMounted(async () => {
           type="button"
           class="jv-topbar__status"
           :class="{ 'jv-topbar__status--warn': !health || health.status !== 'ok' }"
-          data-task-panel-toggle
-          :title="tasks.activeCount ? 'Open status panel' : 'Server status'"
+          data-panel-toggle
+          :title="tasks.runningCount ? 'Open status panel' : 'Server status'"
           @click="tasks.togglePanel()"
         >
           <span class="jv-topbar__dot"></span>
           {{ health && health.status === "ok" ? "Operational" : (health ? health.status : "Offline") }}
           <span class="jv-topbar__url">· {{ api.serverUrl }}</span>
-          <span v-if="tasks.activeCount" class="jv-topbar__taskcount">
-            · <strong>{{ tasks.activeCount }}</strong> in flight
+          <span v-if="tasks.runningCount" class="jv-topbar__taskcount">
+            · <strong>{{ tasks.runningCount }}</strong> in flight
           </span>
         </button>
         <!-- §11 chrome: the kit's AI status button, in the frame's slot. -->
@@ -564,7 +561,10 @@ onMounted(async () => {
             <a :href="effectiveLede.linkHash">{{ effectiveLede.linkLabel }}</a>.
           </template>
         </p>
-        <TaskStrip v-for="task in tasks.running" :key="task.id" :task="task" />
+        <!-- Global task stack (kit strips). Inline-flagged tasks are skipped —
+             their surface (a Lab column, a modal) renders its own strip, and
+             one run must never show twice. -->
+        <AiTaskStrip v-for="task in tasks.visibleTasks.filter((t) => !t.inline)" :key="task.id" :task="task" />
         <router-view v-slot="{ Component }">
           <KeepAlive>
             <component :is="Component" :key="route.name" />
@@ -588,7 +588,6 @@ onMounted(async () => {
     <KeyboardCheatsheet />
     <HelpDrawer />
     <GlobalAudioPlayer />
-    <TaskStatusPanel />
 
     <!-- Boot splash — the PAGE is this app's (the same minimal brand plate as
          index.html #app-boot — KEEP IN SYNC), the load group is the KIT's.

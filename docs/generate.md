@@ -117,34 +117,37 @@ Per-chunk seeds are deterministically varied (`seed + chunk_index`) so the same 
 
 ## In-flight status strip + status panel
 
-Hitting ▶ Generate (or any AI-driven action — Compose, chapter renders, engine installs, training jobs) pushes an accent-tinted progress strip into the top of the content area. Adapted from JustWrite's `AiTaskStrip` pattern.
+Hitting ▶ Generate (or any AI-driven action — Compose, chapter renders, engine installs, training jobs) pushes an accent-tinted progress strip into the top of the content area. It is the same shared strip every app in the family uses (`AiTaskStrip` from the shared UI kit), reading the shared task queue — a run keeps going even if you navigate away, and the strip follows you.
 
 ### Strip lifecycle
 
 | State | Visual | Auto-dismiss |
 |---|---|---|
-| `running` | animated ✨ sparkle + elapsed seconds + per-feature stats + live/stalling/stuck freshness | — (Cancel button while running) |
-| `completed` | green ✓ badge + `done` + soft-green strip | 5 seconds |
-| `failed` | red ⚠ badge + `failed` + inline error + red-bordered strip | **never** (manual ✕ only — so you can read the error) |
-| `cancelled` | gray ⊘ badge + `cancelled` + muted strip | 3 seconds |
+| running | animated ✨ sparkle + elapsed seconds + per-task stat chips | — (Cancel button while running) |
+| done | green ✓ badge + `done` + soft-green strip | 5 seconds |
+| failed | red ⚠ badge + `failed` + inline error + red-bordered strip | **never** (manual ✕ only — so you can read the error) |
+| cancelled | gray ⊘ badge + `cancelled` + muted strip | 3 seconds |
 
-Per-task stat chips render whatever the calling view's `statsFn` emits: characters, words, KB out, audio seconds, realtime factor for TTS renders; tokens / first-token latency / tokens-per-second for LLM-driven actions like Compose.
+Per-task stat chips show the numbers each operation reports: characters, words, KB out and audio seconds for TTS renders; tokens and tokens-per-second for LLM-driven actions like Compose. A batch operation (Lines → *Re-render changed*) also shows a live `done/total` counter with a real progress bar. Single-call operations show elapsed time only — the strip never invents a percentage for work that doesn't report one.
 
 Buttons on the right:
-- **Details** — opens the side-slide status panel (see below).
-- **Cancel** — while running, if the task has a cancel handler.
+- **Details** — opens the AI-tasks status panel (see below).
+- **Cancel** — while running. Cancelling aborts the actual request or batch, not just the display.
+- **Retry** — on a finished task whose operation can re-run (renders, analyses, guesses). Also available from the panel's Recent list, so a failed run can be retried even after its strip is gone.
 - **✕** — once finished, dismisses the strip immediately. Failed strips don't auto-clear so you can read the error.
+
+A failed task also badges the ✨ AI-tasks button red until you open the panel — a failure can't slip past unseen while you're on another view.
 
 ### Status panel
 
-A persistent **Open full status panel** pill appears at the bottom-right of the screen whenever a task is in flight (or recently finished and still visible). Click it — or any strip's Details button — to slide in the **AI tasks** panel from the right.
+The **AI tasks** panel slides in from the right. Open it from any strip's Details button, the ✨ button in the title bar, the ✨ AI tasks row in the sidebar, or the server-status pill in the title bar.
 
 The panel has two sections:
 
-- **Running** — accent-tinted cards for every active task. Phase dot (`Live` / `Stalling` / `Stuck`), elapsed time, per-feature stats, per-task Cancel. A `× Cancel all` action at the top of the section when more than one is running.
-- **Recent** — last 50 completed / cancelled / failed tasks with status icon (✓ / ⊘ / ⚠), elapsed duration, stat summary, and the error message for failed runs. `🗑 Clear` clears the recent list.
+- **Running** — accent-tinted cards for every active task: elapsed time, per-task stats, per-task Cancel, and a `Cancel all` action when more than one is running. Streaming LLM tasks also show a live/stalling/stuck freshness dot, calibrated to the stream's own pace.
+- **Recent** — just-finished tasks still on screen, then the last 50 completed / cancelled / failed tasks with status icon (✓ / ⊘ / ⚠), duration, stat summary, the error message for failed runs, and Retry where the operation supports it. `🗑 Clear` clears the history.
 
-The panel closes on backdrop click, Escape, or the ✕ Close button.
+The panel closes on outside click, Escape, or the ✕ Close button.
 
 ## History
 

@@ -4,8 +4,7 @@ import { ref, computed, onActivated, onMounted, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
-import { useRenderTasks } from "../stores/renderTasks.js";
-import { AppearancePanel, DataManagement, FAMILY_LABELS, LogsPanel, SettingsShell, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, fmtBytes, refreshRunnerModels, renderHelpMarkdown, serverUrl } from "@delebash/llm-ui";
+import { AppearancePanel, DataManagement, FAMILY_LABELS, LogsPanel, SettingsShell, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, fmtBytes, refreshRunnerModels, renderHelpMarkdown, serverUrl, useAiTasksStore } from "@delebash/llm-ui";
 import { loadDoc } from "../services/helpDocs.js";
 import { useOnboarding } from "../stores/onboarding.js";
 import { useProjectsStore } from "../stores/projects.js";
@@ -38,7 +37,7 @@ const ui = useUIStore();
 const projectsStore = useProjectsStore();
 const personasStore = usePersonasStore();
 const activeProjectStore = useActiveProject();
-const tasks = useRenderTasks();
+const tasks = useAiTasksStore();
 
 // ── Workspace focus (primary use case) ──────────────────────────────
 // The welcome modal asks this once; this card is the only place to
@@ -98,7 +97,11 @@ async function resetUiState() {
 const deletePersonasToo = ref(false);
 const wipeBusy = ref(false);
 async function deleteAllProjects() {
-  if (tasks.running.some((t) => t.status === "running")) {
+  // DATA-LOSS GUARD: never wipe while anything is actually running.
+  // runningCount counts connecting/streaming only — a finished task
+  // lingering on screen does not block the wipe (same as the fork's
+  // status === "running" check).
+  if (tasks.runningCount > 0) {
     pushToast({ kind: "info", title: "A task is running", description: "Wait for (or cancel) running renders before wiping projects." });
     return;
   }

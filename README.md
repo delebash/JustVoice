@@ -77,7 +77,7 @@ Or use the Engines tab in the UI for per-engine install with progress.
 ├── src-tauri/                 # Tauri 2 Rust shell (window mgmt + sidecar spawn + tray + system audio + 21 invoke commands)
 ├── src/                       # Vue 3 + Pinia + Vite SPA
 │   ├── components/            # ListPane, CapturePill, ChordPicker, AudioKeepAlive, etc.
-│   ├── stores/                # Pinia: api, server, player, ui, audioChannel, generation, renderTasks
+│   ├── stores/                # Pinia: api, server, player, ui, audioChannel, generation (AI tasks live in the kit's store)
 │   ├── services/              # HTTP client per endpoint group (projects, webhooks, takes, …)
 │   └── views/                 # One per top-level tab
 ├── server/                    # Python FastAPI server — the brain

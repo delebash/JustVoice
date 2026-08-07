@@ -170,14 +170,17 @@ cap can cut an answer off mid-sentence.
 same passage; disagreements between columns are underlined so the better
 config is obvious at a glance.
 
-**Every run is a real task.** The strip at the top of the page appears the
-moment a run starts and counts live — something like
-`Lab — Guided · 12.3s · 42 words · 1,234 tok` when it finishes — with
-**Cancel** to stop the run mid-flight and **Details** to open the task
-panel with recent history. A failed run's strip stays until you dismiss it,
-so errors don't vanish before you read them. The same strip follows every
-AI button in the app: Studio's Analyze, Smart-assign, 💡 Suggest, Show
-notes, the persona 🎲/✏️ buttons, and the voice ✨ gender guess.
+**Every run is a real task.** The moment a run starts, the shared progress
+strip appears in the column under the Run row and counts live seconds, with
+**Cancel** to stop the run mid-flight and **Details** to open the AI-tasks
+panel. When the run finishes, the strip yields to the result pane, which
+carries the numbers (elapsed, words, tokens, tok/s); the run is also
+recorded in the panel's Recent list with its token counts. A failed run
+shows its error right in the column, badges the AI-tasks button until you
+open the panel, and keeps its error in the panel until you dismiss it — so
+errors don't vanish before you read them. The same strip follows every AI
+button in the app: Studio's Analyze, Smart-assign, 💡 Suggest, Show notes,
+the persona 🎲/✏️ buttons, and the voice ✨ gender guess.
 
 The **Find new speakers** row's Lab runs the discovery scan instead — the
 same pipeline behind Studio's "new speakers found" banner. It lists names

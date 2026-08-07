@@ -2,9 +2,8 @@
 <script setup>
 import { ref, computed, watch, onActivated, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
-import { useRenderTasks } from "../stores/renderTasks.js";
 import { useTakesStore } from "../stores/takes.js";
-import { pushToast } from "@delebash/llm-ui";
+import { pushToast, useAiTasksStore } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
 import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
@@ -19,7 +18,7 @@ import { EmptyState } from "@delebash/llm-ui";
 
 const api = useApi();
 const activeProject = useActiveProject();
-const tasks = useRenderTasks();
+const tasks = useAiTasksStore();
 const takesStore = useTakesStore();
 // Per-use-case terminology (plan locked decision #7 / Slice 5). Audiobook
 // users see "Chapter / Line"; game devs see "Scene / Voiceline"; podcasters
@@ -348,10 +347,9 @@ async function regenerateBlock(block) {
   }
   regenBusy.value.set(block.id, true);
   const task = tasks.start({
+    feature: "chapter",
     label: `Regen block · ${block.text.slice(0, 40)}…`,
-    kind: "chapter",
-    statsFn: () => ["1 block"],
-    onCancel: () => {},
+    stats: ["1 block"],
   });
   try {
     // Regen inherits the project's default lexicon so pronunciation
@@ -374,9 +372,10 @@ async function regenerateBlock(block) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: task.signal,
     });
-    tasks.update(task.id, { meta: { bytesOut: blob.size } });
-    tasks.finish(task.id);
+    task.setStats(["1 block", `${(blob.size / 1024).toFixed(1)} KB`]);
+    task.finish();
     // After regen succeeds, refresh the takes for this block so the new take
     // appears.  (A future endpoint may auto-create the Take row server-side;
     // for now we just refresh so any server-created takes show up.)
@@ -384,8 +383,12 @@ async function regenerateBlock(block) {
     await takesStore.fetchTakes(block.id);
     pushToast({ message: `${copy.value.line.singular} regenerated.`, kind: "success" });
   } catch (e) {
-    tasks.fail(task.id, String(e.message || e));
-    pushToast({ message: `Regen failed: ${e.message || e}`, kind: "error", duration: 6000 });
+    if (task.signal.aborted) {
+      task.cancel();
+    } else {
+      task.fail(e);
+      pushToast({ message: `Regen failed: ${e.message || e}`, kind: "error", duration: 6000 });
+    }
   } finally {
     regenBusy.value.set(block.id, false);
   }

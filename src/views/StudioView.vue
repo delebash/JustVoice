@@ -16,7 +16,7 @@
 <script setup>
 import { computed, onActivated, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import { useRenderTasks } from "../stores/renderTasks.js";
+import { useAiTasksStore } from "@delebash/llm-ui";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { useCopy } from "../services/copy.js";
@@ -35,7 +35,7 @@ import { confirmDialog } from "@delebash/llm-ui";
 
 const api = useApi();
 const activeProject = useActiveProject();
-const tasks = useRenderTasks();
+const tasks = useAiTasksStore();
 const audioPlayer = useAudioPlayer();
 const copy = useCopy();
 
@@ -208,11 +208,29 @@ const suggestBusyScene = ref(null);
 const sceneBlockCounts = ref({});  // {sceneId: count of blocks}
 
 // Per-scene task lookup so the render row can show a progress strip
-// driven by the renderTasks store.
+// driven by the shared kit task queue. visibleTasks keeps a finished
+// task in reach for its linger window (failed: until dismissed).
 function taskForScene(sceneId) {
-  return tasks.running.find(
+  return tasks.visibleTasks.find(
     (t) => t.feature === "render-scene" && t.meta?.sceneId === sceneId,
   ) || null;
+}
+function sceneTaskRunning(sceneId) {
+  const t = taskForScene(sceneId);
+  return !!t && tasks.isRunning(t.id);
+}
+// Kit statuses → the row's badge (the kit's "connecting" would read wrong
+// on a render — a single HTTP call streams nothing, so it never leaves
+// that phase while working).
+function sceneTaskBadge(sceneId) {
+  const t = taskForScene(sceneId);
+  if (!t) return null;
+  if (tasks.isRunning(t.id)) return { text: "rendering", intent: "solid" };
+  return {
+    done: { text: "done", intent: "success" },
+    error: { text: "failed", intent: "danger" },
+    cancelled: { text: "cancelled", intent: "accent2" },
+  }[t.status] || { text: t.status, intent: "ghost" };
 }
 
 // Numbered production steps (journeys contract): 1 · Cast → 2 · Script →
@@ -701,12 +719,9 @@ function presetOptions() {
 async function suggestPresetFor(scene) {
   suggestBusyScene.value = scene.id;
   // §16: every AI call surfaces as a task (row + seconds + cancel).
-  const ctrl = new AbortController();
   const task = tasks.start({
-    kind: "extract",
     feature: "preset-suggest",
     label: `Preset suggest · ${scene.title || "chapter"}`,
-    onCancel: () => ctrl.abort(),
     onRetry: () => suggestPresetFor(scene),
   });
   try {
@@ -714,9 +729,9 @@ async function suggestPresetFor(scene) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scene_id: scene.id }),
-      signal: ctrl.signal,
+      signal: task.signal,
     });
-    tasks.finish(task.id);
+    task.finish();
     if (r?.preset_id) {
       scenePresetSelections.value = { ...scenePresetSelections.value, [scene.id]: r.preset_id };
       pushToast({
@@ -728,8 +743,8 @@ async function suggestPresetFor(scene) {
       pushToast({ message: r.note, kind: "warning", duration: 5000 });
     }
   } catch (e) {
-    if (ctrl.signal.aborted) tasks.cancel(task.id);
-    else tasks.fail(task.id, e?.message || String(e));
+    if (task.signal.aborted) task.cancel();
+    else task.fail(e);
     pushToast({
       message: e?.message?.includes("501") || e?.status === 501
         ? "Suggest unavailable — wire an LLM provider in Engines → LLM tab."
@@ -751,16 +766,11 @@ async function renderScene(scene) {
 
   // Standing rule (memory feedback_long_running_process_rule): every
   // long-running operation registers a task with cancel + retry handles
-  // so the global TaskStrip + StatusPanel can surface progress.
-  const abortController = new AbortController();
+  // so the global task stack + status panel can surface progress. The kit
+  // store owns the AbortController — its Cancel aborts `task.signal`.
   const task = tasks.start({
-    kind: "chapter",
     feature: "render-scene",
     label: `${scene.title || copy.value.chapter.singular} → ${copy.value.chapter.singular.toLowerCase()} render`,
-    // Only tear down the operation here — the store's cancel() does the
-    // state transition AFTER calling this. (Calling tasks.cancel(task.id)
-    // here recursed cancel→onCancel→cancel until the stack overflowed.)
-    onCancel: () => abortController.abort(),
     onRetry: () => renderScene(scene),
     meta: { sceneId: scene.id, projectId: selectedProjectId.value },
   });
@@ -774,7 +784,7 @@ async function renderScene(scene) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      signal: abortController.signal,
+      signal: task.signal,
     });
     // /v1/render_chapter returns audio/wav (a Blob via api.request). Drop
     // it into the GlobalAudioPlayer so the user can hear the result
@@ -783,7 +793,8 @@ async function renderScene(scene) {
     if (audio instanceof Blob) {
       const blobUrl = URL.createObjectURL(audio);
       const label = scene.title || `${copy.value.chapter.singular} ${scene.position + 1}`;
-      tasks.finish(task.id, { result: { url: blobUrl, filename: `${label.replace(/[^a-z0-9_-]+/gi, "_")}.wav` } });
+      task.update({ result: { url: blobUrl, filename: `${label.replace(/[^a-z0-9_-]+/gi, "_")}.wav` } });
+      task.finish();
       audioPlayer.play({
         url: blobUrl,
         title: `${label} — rendered`,
@@ -791,15 +802,16 @@ async function renderScene(scene) {
       });
       pushToast({ message: `${label} render complete. Now playing.`, kind: "success" });
     } else {
-      tasks.finish(task.id, { result: audio });
+      task.update({ result: audio });
+      task.finish();
       pushToast({ message: `${scene.title || "Scene"} render complete.`, kind: "success" });
     }
   } catch (e) {
-    if (abortController.signal.aborted) {
-      // Already marked cancelled in onCancel handler.
+    if (task.signal.aborted) {
+      // The store's cancel() already marked the task.
       pushToast({ message: `${scene.title || "Scene"} render cancelled.`, kind: "info" });
     } else {
-      tasks.fail(task.id, e?.message || String(e));
+      task.fail(e);
       pushToast({ message: `Render failed: ${e?.message || e}`, kind: "error", duration: 7000 });
     }
   } finally {
@@ -838,17 +850,16 @@ async function runQC() {
   if (!selectedProjectId.value || qcBusy.value) return;
   qcBusy.value = true;
   const task = tasks.start({
-    kind: "qc",
     feature: "acx-qc",
     label: `ACX QC · ${selectedProject.value?.name || ""}`,
     meta: { projectId: selectedProjectId.value },
   });
   try {
-    const r = await api.request(`/v1/projects/${selectedProjectId.value}/qc`);
+    const r = await api.request(`/v1/projects/${selectedProjectId.value}/qc`, { signal: task.signal });
     const map = {};
     for (const c of r?.chapters || []) map[c.scene_id] = c;
     qcByScene.value = map;
-    tasks.finish(task.id);
+    task.finish();
     pushToast({
       message: r?.all_ok ? "ACX QC: every chapter passes." : "ACX QC: some chapters are out of spec — see the Check column.",
       kind: r?.all_ok ? "success" : "info",
@@ -856,8 +867,12 @@ async function runQC() {
     });
     await loadCacheStats();
   } catch (e) {
-    tasks.fail(task.id, e?.message || String(e));
-    pushToast({ message: `QC failed: ${e?.message || e}`, kind: "error", duration: 7000 });
+    if (task.signal.aborted) {
+      task.cancel();
+    } else {
+      task.fail(e);
+      pushToast({ message: `QC failed: ${e?.message || e}`, kind: "error", duration: 7000 });
+    }
   } finally {
     qcBusy.value = false;
   }
@@ -870,7 +885,7 @@ async function renderAll() {
 
 function checkState(sceneId) {
   const t = taskForScene(sceneId);
-  if (t?.status === "running") return { intent: "info", label: "rendering…" };
+  if (t && tasks.isRunning(t.id)) return { intent: "info", label: "rendering…" };
   const qc = qcByScene.value[sceneId];
   if (qc) return qc.ok
     ? { intent: "success", label: "✓ ACX pass" }
@@ -939,9 +954,11 @@ watch(selectedSceneId, (id) => {
   editedFlags.value = {};
 }, { immediate: true });
 
-const analyzeCtrl = ref(null);
+// The Script tab's own Cancel button routes through the store so the
+// task is marked, not just aborted (the kit owns the AbortController).
+const analyzeTaskId = ref(null);
 function cancelAnalyze() {
-  analyzeCtrl.value?.abort();
+  if (analyzeTaskId.value) tasks.cancel(analyzeTaskId.value);
 }
 
 async function runAnalyze() {
@@ -950,37 +967,33 @@ async function runAnalyze() {
     return;
   }
   analyzeBusy.value = true;
-  const ctrl = new AbortController();
-  analyzeCtrl.value = ctrl;
   const sceneTitle = scenes.value.find((sc) => sc.id === selectedSceneId.value)?.title || "scene";
   const wordCount = sceneText.value.trim().split(/\s+/).length;
   const task = tasks.start({
-    kind: "extract",
     feature: "speaker_attribution",
     label: `Speaker extraction · ${sceneTitle}`,
-    onCancel: () => ctrl.abort(),
+    stats: [`${wordCount} words in`],
     onRetry: () => runAnalyze(),
-    statsFn: (t) => {
-      const out = [`${wordCount} words in`];
-      if (t.meta?.rows != null) out.push(`${t.meta.rows} segments`);
-      if (t.meta?.tier) out.push(`${ROUTE_LABELS[t.meta.tier] || t.meta.tier} route`);
-      return out;
-    },
   });
+  analyzeTaskId.value = task.id;
   try {
     const r = await api.request(`/v1/scenes/${selectedSceneId.value}/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: sceneText.value }),
-      signal: ctrl.signal,
+      signal: task.signal,
     });
     analyzeRows.value = r.rows || [];
     analyzeRouteUsed.value = r.route_used;
     analyzeRouteSource.value = r.route_source || "auto";
     analyzeFloor.value = r.confidence_floor;
     editedFlags.value = {};
-    tasks.update(task.id, { meta: { rows: analyzeRows.value.length, route: r.route_used } });
-    tasks.finish(task.id);
+    task.setStats([
+      `${wordCount} words in`,
+      `${analyzeRows.value.length} segments`,
+      `${ROUTE_LABELS[r.route_used] || r.route_used} route`,
+    ]);
+    task.finish();
     runDiscoverSpeakers(); // fire-and-forget — banner appears if it finds anyone
     pushToast({
       message: `Analyzed ${analyzeRows.value.length} segment${analyzeRows.value.length === 1 ? "" : "s"} — ${ROUTE_LABELS[r.route_used] || r.route_used} ${r.route_source === "auto" ? "(Auto's pick)" : "(forced)"}.`,
@@ -988,13 +1001,13 @@ async function runAnalyze() {
       duration: 3500,
     });
   } catch (e) {
-    if (ctrl.signal.aborted) {
+    if (task.signal.aborted) {
       // tasks.cancel already marked it; nothing else to do.
     } else {
-      tasks.fail(task.id, e?.message || String(e));
+      task.fail(e);
     }
     pushToast({
-      message: ctrl.signal.aborted
+      message: task.signal.aborted
         ? "Analyze cancelled."
         : e?.message?.includes("501") || e?.status === 501
           ? "Analyze unavailable — wire an LLM provider in Engines → LLM tab."
@@ -1004,38 +1017,34 @@ async function runAnalyze() {
     });
   } finally {
     analyzeBusy.value = false;
-    analyzeCtrl.value = null;
+    analyzeTaskId.value = null;
   }
 }
 
 async function runDiscoverSpeakers() {
   discovered.value = [];
   if (!selectedSceneId.value || !sceneText.value.trim()) return;
-  const ctrl = new AbortController();
   const t = tasks.start({
-    kind: "extract",
     feature: "speaker_identification",
     label: "Speaker identification",
-    onCancel: () => ctrl.abort(),
-    statsFn: (x) => (x.meta?.found != null ? [`${x.meta.found} new speaker${x.meta.found === 1 ? "" : "s"}`] : []),
   });
   try {
     const r = await api.request(`/v1/scenes/${selectedSceneId.value}/discover-speakers`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: sceneText.value }),
-      signal: ctrl.signal,
+      signal: t.signal,
     });
     discovered.value = r?.candidates || [];
-    tasks.update(t.id, { meta: { found: discovered.value.length } });
-    tasks.finish(t.id);
+    t.setStats([`${discovered.value.length} new speaker${discovered.value.length === 1 ? "" : "s"}`]);
+    t.finish();
   } catch (e) {
     // Identification is best-effort sugar on top of analyze — a 501
     // (no LLM) just means no banner; don't leave a sticky task. finish()
-    // (not dismiss, which no-ops on a still-"running" task and would
-    // orphan it in the strip + keep the elapsed tick alive) marks it done
-    // so it auto-dismisses.
-    tasks.finish(t.id);
+    // (not dismiss, which no-ops on a still-running task and would
+    // orphan it in the strip) marks it done so it auto-archives; the
+    // store's first-outcome-wins guard makes it a no-op after a Cancel.
+    t.finish();
   }
 }
 
@@ -1254,24 +1263,18 @@ async function smartAssignCast() {
     return;
   }
   smartAssignBusy.value = true;
-  const saCtrl = new AbortController();
+  const saStats = [`${characterPersonas.value.length} characters`, `${voices.value.length} voices`];
   const saTask = tasks.start({
-    kind: "extract",
     feature: "smart_assign",
     label: `Smart-assign · ${characterPersonas.value.length} characters`,
-    onCancel: () => saCtrl.abort(),
+    stats: saStats,
     onRetry: () => smartAssignCast(),
-    statsFn: (t) => {
-      const out = [`${characterPersonas.value.length} characters`, `${voices.value.length} voices`];
-      if (t.meta?.applied != null) out.push(`${t.meta.applied} applied`);
-      return out;
-    },
   });
   try {
     const r = await api.request("/v1/llm/smart-assign", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      signal: saCtrl.signal,
+      signal: saTask.signal,
       body: JSON.stringify({
         characters: characterPersonas.value.map((p) => ({
           id: p.id,
@@ -1297,8 +1300,8 @@ async function smartAssignCast() {
         applied += 1;
       }
     }
-    tasks.update(saTask.id, { meta: { applied } });
-    tasks.finish(saTask.id);
+    saTask.setStats([...saStats, `${applied} applied`]);
+    saTask.finish();
     pushToast({
       message: applied
         ? `Smart-assign applied ${applied} assignment${applied === 1 ? "" : "s"}.`
@@ -1307,7 +1310,7 @@ async function smartAssignCast() {
       duration: 4500,
     });
   } catch (e) {
-    if (!saCtrl.signal.aborted) tasks.fail(saTask.id, e?.message || String(e));
+    if (!saTask.signal.aborted) saTask.fail(e);
     pushToast({
       message: e?.message?.includes("501") || e?.status === 501
         ? "Smart-assign unavailable — wire an LLM provider in Engines → LLM tab."
@@ -1955,52 +1958,48 @@ watch(selectedProjectId, (id) => {
                 </td>
               </tr>
               <!-- Per-scene progress strip — appears below the row when
-                   a render task is in flight or finished-but-still-visible. -->
+                   a render task is in flight or lingering after its finish
+                   (kit queue; failed rows stay until dismissed). -->
               <tr v-if="taskForScene(s.id)" class="studio__render-progress-row">
                 <td colspan="8" class="studio__render-progress-cell">
                   <div class="studio__render-progress">
-                    <UiTag
-                      :intent="taskForScene(s.id).status === 'running' ? 'solid'
-                        : taskForScene(s.id).status === 'completed' ? 'success'
-                        : taskForScene(s.id).status === 'failed' ? 'danger'
-                        : taskForScene(s.id).status === 'cancelled' ? 'accent2' : 'ghost'"
-                    >{{ taskForScene(s.id).status }}</UiTag>
+                    <UiTag :intent="sceneTaskBadge(s.id).intent">{{ sceneTaskBadge(s.id).text }}</UiTag>
                     <div class="studio__render-bar">
                       <div
                         class="studio__render-bar-fill"
-                        :class="{ 'studio__render-bar-fill--indeterminate': taskForScene(s.id).percent == null && taskForScene(s.id).status === 'running' }"
-                        :style="taskForScene(s.id).percent != null ? { width: (taskForScene(s.id).percent * 100) + '%' } : {}"
+                        :class="{ 'studio__render-bar-fill--indeterminate': !taskForScene(s.id).progress && sceneTaskRunning(s.id) }"
+                        :style="taskForScene(s.id).progress?.total ? { width: ((taskForScene(s.id).progress.done / taskForScene(s.id).progress.total) * 100) + '%' } : {}"
                       />
                     </div>
                     <span v-if="taskForScene(s.id).error" class="jv-muted" style="color: var(--danger); font-size: 11.5px;">
                       {{ taskForScene(s.id).error }}
                     </span>
                     <UiButton
-                      v-if="taskForScene(s.id).status === 'running'"
+                      v-if="sceneTaskRunning(s.id)"
                       intent="danger-outline" size="small" label="Cancel"
-                      @click="taskForScene(s.id).onCancel?.()"
+                      @click="tasks.cancel(taskForScene(s.id).id)"
                     />
                     <UiButton
-                      v-if="taskForScene(s.id).status === 'failed' || taskForScene(s.id).status === 'cancelled'"
+                      v-if="taskForScene(s.id).status === 'error' || taskForScene(s.id).status === 'cancelled'"
                       intent="secondary" size="small" label="↻ Retry"
                       @click="renderScene(s)"
                     />
                     <UiButton
-                      v-if="taskForScene(s.id).status === 'completed' && taskForScene(s.id).result?.url"
+                      v-if="taskForScene(s.id).status === 'done' && taskForScene(s.id).result?.url"
                       intent="ghost" size="small" label="▶ Play"
                       title="Play in global audio player"
                       @click="audioPlayer.play({ url: taskForScene(s.id).result.url, title: s.title || 'Scene', subtitle: selectedProject?.name || '' })"
                     />
                     <UiButton
                       as="a"
-                      v-if="taskForScene(s.id).status === 'completed' && taskForScene(s.id).result?.url"
+                      v-if="taskForScene(s.id).status === 'done' && taskForScene(s.id).result?.url"
                       :href="taskForScene(s.id).result.url"
                       :download="taskForScene(s.id).result.filename || 'scene.wav'"
                       intent="ghost" size="small"
                       title="Download WAV"
                     >⬇ Download</UiButton>
                     <UiButton
-                      v-if="taskForScene(s.id).status !== 'running'"
+                      v-if="!sceneTaskRunning(s.id)"
                       intent="ghost" size="small" label="✕"
                       @click="tasks.dismiss(taskForScene(s.id).id)"
                     />

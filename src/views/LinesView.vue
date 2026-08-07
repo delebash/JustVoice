@@ -12,7 +12,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import { useRenderTasks } from "../stores/renderTasks.js";
+import { useAiTasksStore } from "@delebash/llm-ui";
 import { pushToast } from "@delebash/llm-ui";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
@@ -22,7 +22,7 @@ import ImportModal from "./ImportModal.vue";
 const api = useApi();
 const activeProject = useActiveProject();
 const projectsStore = useProjectsStore();
-const tasks = useRenderTasks();
+const tasks = useAiTasksStore();
 
 const projects = computed(() => projectsStore.items);
 const selectedProjectId = ref(null);
@@ -116,27 +116,27 @@ async function rerenderChanged() {
   if (!targets.length || rerendering.value) return;
   rerendering.value = true;
   let done = 0;
-  let cancelled = false;
   const task = tasks.start({
-    kind: "chapter",
+    feature: "chapter",
     label: `Re-render ${targets.length} changed line${targets.length === 1 ? "" : "s"}`,
-    percent: 0,
-    onCancel: () => { cancelled = true; },
     onRetry: () => rerenderChanged(),
-    statsFn: () => [`${done} / ${targets.length} lines`],
   });
+  task.setProgress(0, targets.length);
   try {
     for (const line of targets) {
-      if (cancelled) break;
-      await api.request(`/v1/blocks/${line.block_id}/render`, { method: "POST" });
+      // The strip's Cancel aborts the kit handle's signal — stop between
+      // lines (and mid-line: the signal rides into the in-flight request).
+      if (task.signal.aborted) break;
+      await api.request(`/v1/blocks/${line.block_id}/render`, { method: "POST", signal: task.signal });
       done += 1;
-      tasks.update(task.id, { percent: done / targets.length });
+      task.setProgress(done, targets.length);
     }
-    if (cancelled) tasks.cancel(task.id);
-    else tasks.finish(task.id);
+    if (!task.signal.aborted) task.finish();
   } catch (e) {
-    tasks.fail(task.id, e?.message || String(e));
-    pushToast({ message: `Re-render failed after ${done} lines: ${e?.message || e}`, kind: "error" });
+    if (!task.signal.aborted) {
+      task.fail(e);
+      pushToast({ message: `Re-render failed after ${done} lines: ${e?.message || e}`, kind: "error" });
+    }
   } finally {
     rerendering.value = false;
     await loadLines();

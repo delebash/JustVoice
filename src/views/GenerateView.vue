@@ -2,9 +2,8 @@
 <script setup>
 import { ref, reactive, onActivated, onMounted, computed, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import { useRenderTasks } from "../stores/renderTasks.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
-import { pushToast } from "@delebash/llm-ui";
+import { pushToast, useAiTasksStore } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag, UiSelect, AppModal } from "@delebash/llm-ui";
 import SlashTagMenu from "../components/SlashTagMenu.vue";
@@ -12,7 +11,7 @@ import { useVoicesStore } from "../stores/voices.js";
 import { usePersonasStore } from "../stores/personas.js";
 
 const api = useApi();
-const tasks = useRenderTasks();
+const tasks = useAiTasksStore();
 const audioPlayer = useAudioPlayer();
 // voices + personas from shared stores; engines/current + capabilities
 // are single-record/map fetches that stay local.
@@ -315,23 +314,20 @@ async function composeLine() {
   if (!selectedPersonaId.value || !hasPersonality.value) return;
   composeBusy.value = true;
   // §16: every AI call surfaces as a task (row + seconds + cancel).
-  const ctrl = new AbortController();
   const task = tasks.start({
-    kind: "compose",
     feature: "compose",
     label: `Compose · ${selectedPersona.value?.name || "persona"}`,
-    onCancel: () => ctrl.abort(),
     onRetry: () => composeLine(),
   });
   try {
     const r = await api.request(`/v1/personas/${selectedPersonaId.value}/compose`, {
-      method: "POST", signal: ctrl.signal,
+      method: "POST", signal: task.signal,
     });
-    tasks.finish(task.id);
+    task.finish();
     if (r?.text) text.value = r.text;
   } catch (e) {
-    if (ctrl.signal.aborted) tasks.cancel(task.id);
-    else tasks.fail(task.id, e?.message || String(e));
+    if (task.signal.aborted) task.cancel();
+    else task.fail(e);
     pushToast({
       message: e?.message?.includes("501") || e?.status === 501
         ? "Compose unavailable — wire an LLM provider in Settings → AI Engines (Phase 2)."
@@ -352,12 +348,9 @@ async function rewriteLine() {
   }
   rewriteBusy.value = true;
   // §16: every AI call surfaces as a task (row + seconds + cancel).
-  const ctrl = new AbortController();
   const task = tasks.start({
-    kind: "compose",
     feature: "persona-rewrite",
     label: `Rewrite · ${selectedPersona.value?.name || "persona"}`,
-    onCancel: () => ctrl.abort(),
     onRetry: () => rewriteLine(),
   });
   try {
@@ -365,15 +358,15 @@ async function rewriteLine() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: text.value }),
-      signal: ctrl.signal,
+      signal: task.signal,
     });
-    tasks.finish(task.id);
+    task.finish();
     if (r?.rewritten) {
       rewritePreview.value = { original: r.original, rewritten: r.rewritten };
     }
   } catch (e) {
-    if (ctrl.signal.aborted) tasks.cancel(task.id);
-    else tasks.fail(task.id, e?.message || String(e));
+    if (task.signal.aborted) task.cancel();
+    else task.fail(e);
     pushToast({
       message: e?.message?.includes("501") || e?.status === 501
         ? "Rewrite unavailable — wire an LLM provider in Settings → AI Engines (Phase 2)."
@@ -433,21 +426,12 @@ async function generate() {
   const delivery = buildDelivery();
   busy.value = true;
   if (audio.value) { URL.revokeObjectURL(audio.value); audio.value = null; }
-  const ctl = new AbortController();
   const charCount = text.value.length;
+  const baseStats = [`${charCount} chars`, `${wordCount.value} words`];
   const task = tasks.start({
+    feature: "generate",
     label: `Render · ${voice.value}`,
-    kind: "generate",
-    statsFn: (t) => {
-      const out = [`${charCount} chars`, `${wordCount.value} words`];
-      if (t.meta?.bytesOut) {
-        out.push(`${(t.meta.bytesOut / 1024).toFixed(1)} KB`);
-        const audioSec = Math.max(0, (t.meta.bytesOut - 44)) / 48000;
-        out.push(`${audioSec.toFixed(1)}s audio`);
-      }
-      return out;
-    },
-    onCancel: () => ctl.abort(),
+    stats: baseStats,
     onRetry: () => generate(),
   });
   try {
@@ -462,10 +446,11 @@ async function generate() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      signal: ctl.signal,
+      signal: task.signal,
     });
-    tasks.update(task.id, { meta: { bytesOut: blob.size } });
-    tasks.finish(task.id);
+    const audioSec = Math.max(0, blob.size - 44) / 48000;
+    task.setStats([...baseStats, `${(blob.size / 1024).toFixed(1)} KB`, `${audioSec.toFixed(1)}s audio`]);
+    task.finish();
     audio.value = URL.createObjectURL(blob);
     if (autoplay.value) {
       // <audio> auto-plays via the v-if/key, but iOS Safari requires explicit
@@ -473,8 +458,8 @@ async function generate() {
       setTimeout(() => document.querySelector(".generate-view__audio")?.play?.().catch(() => {}), 60);
     }
   } catch (e) {
-    if (!ctl.signal.aborted) {
-      tasks.fail(task.id, String(e.message || e));
+    if (!task.signal.aborted) {
+      task.fail(e);
       pushToast({ message: `Render failed: ${e.message || e}`, kind: "error", duration: 6000 });
     }
   } finally {

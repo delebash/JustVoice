@@ -8,12 +8,12 @@ import { readPref, writePref } from "../services/prefs.js";
 import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip, UiSelect, AppModal } from "@delebash/llm-ui";
 import { EmptyState } from "@delebash/llm-ui";
 import { useVoicesStore } from "../stores/voices.js";
-import { useRenderTasks } from "../stores/renderTasks.js";
+import { useAiTasksStore } from "@delebash/llm-ui";
 import { useEnginesStore } from "../stores/engines.js";
 import { usePersonasStore } from "../stores/personas.js";
 
 const api = useApi();
-const tasks = useRenderTasks();
+const tasks = useAiTasksStore();
 // voices / engines / personas come from shared stores. Mutations here
 // (clone/design/blend/delete/gender) call refresh() → store.reload(),
 // so other views update. Store items are deeply reactive, so in-place
@@ -92,12 +92,9 @@ async function guessUnknownGenders() {
   }
   genderGuessBusy.value = true;
   // §16: every AI call surfaces as a task (row + seconds + cancel).
-  const ctrl = new AbortController();
   const task = tasks.start({
-    kind: "extract",
     feature: "voice-gender",
     label: `Gender guess · ${unknown.length} voice${unknown.length === 1 ? "" : "s"}`,
-    onCancel: () => ctrl.abort(),
     onRetry: () => guessUnknownGenders(),
   });
   try {
@@ -107,9 +104,9 @@ async function guessUnknownGenders() {
       body: JSON.stringify({ voices: unknown.map((v) => ({
         name: v.name || v.id, description: v.design_prompt || "",
       })) }),
-      signal: ctrl.signal,
+      signal: task.signal,
     });
-    tasks.finish(task.id);
+    task.finish();
     const guesses = r?.guesses || {};
     let applied = 0;
     for (const v of unknown) {
@@ -132,8 +129,8 @@ async function guessUnknownGenders() {
       kind: "success",
     });
   } catch (e) {
-    if (ctrl.signal.aborted) tasks.cancel(task.id);
-    else tasks.fail(task.id, e?.message || String(e));
+    if (task.signal.aborted) task.cancel();
+    else task.fail(e);
     const msg = String(e?.message || e);
     pushToast({
       message: msg.includes("501")

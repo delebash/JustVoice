@@ -14,7 +14,6 @@ import AttributionResult from "../components/lab/AttributionResult.vue";
 import CastEditor from "../components/lab/CastEditor.vue";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useApi } from "../stores/api.js";
-import { useRenderTasks } from "../stores/renderTasks.js";
 
 // The passage text can arrive under any of the rows' template names —
 // guided/direct use {{paragraphs}}, discovery uses {{manuscript}}.
@@ -49,58 +48,16 @@ export const ACTION_ROUTE = {
   "speaker_attribution.direct": "direct",
 };
 
-// Card labels for the task strip — the rows' own on-screen names.
-const ACTION_LABEL = {
-  "speaker_attribution.guided": "Guided",
-  "speaker_attribution.direct": "Direct",
-  "speaker_attribution.identify": "Find new speakers",
-};
-
 async function run(body, { signal } = {}) {
   const api = useApi();
   const vars = body.variables || {};
   const extra = body.extra || {};
 
-  // §16: a Lab run is a real AI task — task row, live seconds, tokens on the
-  // strip, Cancel both ways (the strip's Cancel aborts the request; the Lab
-  // column's own cancel marks the task). Words are known at start.
-  const tasks = useRenderTasks();
-  const ctrl = new AbortController();
-  if (signal) {
-    if (signal.aborted) ctrl.abort();
-    else signal.addEventListener("abort", () => ctrl.abort(), { once: true });
-  }
-  const words = String(passageFrom(vars)).trim().split(/\s+/).filter(Boolean).length;
-  const task = tasks.start({
-    kind: "extract",
-    feature: "extract",
-    label: `Lab — ${ACTION_LABEL[body.action] || body.action}`,
-    meta: { words },
-    statsFn: (t) => {
-      const out = [`${t.meta.words ?? 0} words`];
-      if (t.meta.tokens != null) out.push(`${t.meta.tokens} tok`);
-      return out;
-    },
-    onCancel: () => ctrl.abort(),
-  });
-  try {
-    const result = await runInner(body, vars, extra, api, ctrl.signal);
-    const u = result?.data?.usage;
-    if (u) {
-      tasks.update(task.id, {
-        meta: {
-          words,
-          tokens: (u.prompt_tokens || 0) + (u.completion_tokens || 0),
-        },
-      });
-    }
-    tasks.finish(task.id);
-    return result;
-  } catch (e) {
-    if (ctrl.signal.aborted) tasks.cancel(task.id);
-    else tasks.fail(task.id, e?.message || String(e));
-    throw e;
-  }
+  // §16: a Lab run is a real AI task — but the task row is ConfigColumn's:
+  // it registers the run in the shared kit queue (inline-flagged) and hands
+  // this adapter the handle's abort signal, so the strip's and the column's
+  // Cancel both land here. The adapter only runs the pipeline.
+  return runInner(body, vars, extra, api, signal);
 }
 
 async function runInner(body, vars, extra, api, signal) {

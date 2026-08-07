@@ -526,6 +526,18 @@ must surface to the user:
 
 Mocked as Speaker Lab step 3 (`#splab/3`).
 
+> **Dated note (2026-08-07):** the requirement stands; the implementation
+> moved. The JustVoice fork this section spawned (`renderTasks.js` +
+> `TaskStrip` + `TaskStatusPanel`) was deleted in the task-queue
+> conversion — every site now uses the kit's `useAiTasksStore` +
+> `AiTaskStrip`/`AiStatusPanel` (shared with JustWrite and docgen).
+> Details that changed since 2026-06-11: stall detection is rate-relative
+> to the stream's own pace, not 5 s/30 s absolutes; completion fires **no
+> toast** (the toast law — the strip and the panel are the outcome
+> surfaces, and failures badge the ✨ AI-tasks button durably); the header
+> chip is the kit's ✨ button. Linger (done 5 s · cancelled 3 s · failed
+> until dismissed) is the family default (`FAMILY_TASK_LINGER`).
+
 ### §16 addendum — Speaker Lab + task runner details (from JustWrite screenshots)
 
 - **Two surfaces per AI task:** (1) a small **inline bar at the call

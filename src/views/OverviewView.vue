@@ -19,7 +19,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import { useRenderTasks } from "../stores/renderTasks.js";
+import { useAiTasksStore } from "@delebash/llm-ui";
 import { useOnboarding } from "../stores/onboarding.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
@@ -33,7 +33,7 @@ import { UiButton, UiTag, UiChip } from "@delebash/llm-ui";
 
 const onboarding = useOnboarding();
 const api = useApi();
-const tasks = useRenderTasks();
+const tasks = useAiTasksStore();
 const activeProject = useActiveProject();
 const audioPlayer = useAudioPlayer();
 
@@ -162,7 +162,7 @@ const continueStatus = computed(() => {
   if (!p) return "";
   const bits = [`${continueMeta.value.icon} ${continueMeta.value.label}`];
   if (p.scene_count != null) bits.push(`${p.scene_count} ${continueMeta.value.unit}`);
-  const render = tasks.running.find((t) => t.status === "running");
+  const render = tasks.runningTasks[0];
   if (render) bits.push(render.label);
   if (p.updated_at) bits.push(`last open ${fmtAgo(p.updated_at)}`);
   return bits.join(" · ");
@@ -263,7 +263,7 @@ const statCards = computed(() => [
 ]);
 
 // ── Active tasks ──────────────────────────────────────────────────────
-const liveTasks = computed(() => tasks.running.filter((t) => t.status === "running"));
+const liveTasks = computed(() => tasks.runningTasks);
 function taskKind(t) {
   const l = (t.label || "").toLowerCase();
   if (l.includes("render")) return "render";
@@ -272,8 +272,9 @@ function taskKind(t) {
   return "task";
 }
 function cancelTask(t) {
-  try { t.onCancel?.(); } catch { /* task may have just finished */ }
-  tasks.cancel?.(t.id);
+  // The kit store owns the AbortController; cancel() aborts + marks, and
+  // no-ops if the task just finished.
+  tasks.cancel(t.id);
 }
 
 // ── Loaded engine card ────────────────────────────────────────────────
@@ -421,15 +422,17 @@ onMounted(() => {
           <span class="home__eyebrow">Active tasks</span>
           <UiTag intent="accent2" v-if="liveTasks.length">{{ liveTasks.length }} in flight</UiTag>
           <span class="jv-spacer" />
-          <UiButton intent="ghost" size="small" label="open panel ➜" data-task-panel-toggle @click="tasks.togglePanel()" />
+          <UiButton intent="ghost" size="small" label="open panel ➜" data-panel-toggle @click="tasks.togglePanel()" />
         </div>
         <p v-if="!liveTasks.length" class="jv-muted home__empty">Nothing running. Renders, script analysis, and clones show up here with live progress.</p>
         <div v-for="t in liveTasks" :key="t.id" class="home__task">
           <UiTag intent="ghost" class="home__task-kind" :class="`home__task-kind--${taskKind(t)}`">{{ taskKind(t) }}</UiTag>
           <strong class="home__task-label">{{ t.label }}</strong>
-          <span class="jv-muted home__task-stats">{{ t.statsFn ? t.statsFn(t) : "" }}</span>
-          <div class="home__prog"><div class="home__prog-fill" :style="{ width: (t.percent ?? 30) + '%' }" /></div>
-          <UiButton v-if="t.onCancel" intent="ghost" size="small" class="home__task-x" label="✕" title="Cancel" @click="cancelTask(t)" />
+          <span class="jv-muted home__task-stats">{{ (t.stats || []).join(" · ") }}</span>
+          <!-- A bar only when the task reports real {done,total} progress —
+               no invented percentages. -->
+          <div v-if="t.progress?.total" class="home__prog"><div class="home__prog-fill" :style="{ width: ((t.progress.done / t.progress.total) * 100) + '%' }" /></div>
+          <UiButton intent="ghost" size="small" class="home__task-x" label="✕" title="Cancel" @click="cancelTask(t)" />
         </div>
       </div>
 
