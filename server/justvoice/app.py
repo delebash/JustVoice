@@ -71,6 +71,7 @@ from .api import (
 )
 from .app_state import AppState, set_state
 from .auth import BearerAuthMiddleware
+from .csrf import CsrfOriginMiddleware
 from .data_admin import get_data_router
 from .engines.external_openai import ExternalOpenAiTtsBackend
 from .engines.manager import get_manager, shutdown_manager
@@ -159,6 +160,14 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
                 content={"title": "Internal Server Error", "detail": str(exc)[:300]},
             )
 
+    # Auth — added BEFORE CORS so CORS ends up OUTERMOST (Starlette runs
+    # last-added first): CORS answers preflights before auth sees them, and
+    # wraps auth's 401/403 with CORS headers. The old order added CORS first,
+    # which made AUTH outermost — the exact inversion its own comment warned
+    # about (masked while auth defaults off; found by the Round-2 family
+    # audit, fixed 2026-08-08 to JW/docgen's verified ordering).
+    app.add_middleware(BearerAuthMiddleware)
+
     if settings.cors.origins or settings.cors.origin_regex:
         app.add_middleware(
             CORSMiddleware,
@@ -169,9 +178,16 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
             allow_headers=["*"],
         )
 
-
-    # Auth — after CORS so preflights succeed without a token
-    app.add_middleware(BearerAuthMiddleware)
+    # CSRF: reject cross-site browser mutations to /v1 (no token — can never
+    # lock anyone out). JW's csrf.py is the donor; JV reuses its CORS origins
+    # AND its loopback origin_regex as the one allowlist, so every documented
+    # local flow keeps working and only foreign web origins are blocked.
+    # Added last → runs outermost, before CORS (JW's exact ordering).
+    app.add_middleware(
+        CsrfOriginMiddleware,
+        extra_origins=settings.cors.origins,
+        origin_regex=settings.cors.origin_regex,
+    )
 
     # Error handlers — convert ApiError + HTTPException to RFC 7807 problem+json
     app.add_exception_handler(ApiError, api_exception_handler)
@@ -247,7 +263,9 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         # Names JV in the family cache registry so a sibling app's Quick Setup
         # can offer to SHARE the engine + model cache instead of re-downloading.
         product=PRODUCT,
-        # allow_key_reveal stays OFF: JV has no CSRF/origin middleware.
+        # allow_key_reveal stays OFF pending an explicit ruling. (The original
+        # reason — "JV has no CSRF/origin middleware" — closed 2026-08-08 when
+        # csrf.py landed; flipping the flag is a separate product decision.)
     )
     # JV's warm-on-startup default is OFF (ruling 2026-08-05: the TTS engines own
     # the GPU until F4's VRAM arbiter; the user can flip it on). The SHARED seed
