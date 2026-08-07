@@ -41,6 +41,9 @@ def _fake_run(captured):
 
         class R:
             text = "[]"
+            model = "stub-model"
+            prompt_tokens = 7
+            completion_tokens = 3
 
         return R()
 
@@ -62,6 +65,10 @@ def test_route_override_and_auto_source(client, monkeypatch):
     assert captured["action"] == "speaker_attribution.guided"
     assert r.json()["tier_used"] == "guided"
     assert r.json()["tier_source"] == "auto"
+    # §16: the response carries the run's usage numbers.
+    usage = r.json()["usage"]
+    assert usage["prompt_tokens"] == 7 and usage["completion_tokens"] == 3
+    assert usage["model"] == "stub-model" and usage["duration_ms"] >= 0
 
     # The retired pills' key is ignored wholesale — nothing gets forced.
     r = client.patch("/v1/settings", json={"extraction": {"route": "reasoned"}})
@@ -291,9 +298,219 @@ def test_auto_simplify_trims_tails_and_keeps_edits(client):
         s.close()
 
 
+def test_reasoned_budget_carries_thinking_headroom(client, monkeypatch):
+    """Measured live 2026-08-06 (gemma-4-26b-a4b): think tokens count inside
+    the completion and the bare 800 cap truncated Reasoned's answer — the
+    reasoned route gets headroom; other routes keep the code budget; an
+    explicit per-call budget wins everywhere."""
+    captured = {}
+
+    def fake(action, variables, **overrides):
+        captured[action] = overrides.get("maxTokens")
+
+        class R:
+            text = "[]"
+            model = "m"
+            prompt_tokens = 0
+            completion_tokens = 0
+
+        return R()
+
+    monkeypatch.setattr("justvoice.extraction.pipeline.run_feature", fake)
+    scene_id = _import_project(client)
+
+    client.post(f"/v1/scenes/{scene_id}/analyze", json={"text": '"Hi," said Mara.', "tier": "direct"})
+    assert captured["speaker_attribution.direct"] == 800
+
+    client.post(f"/v1/scenes/{scene_id}/analyze", json={"text": '"Hi," said Mara.', "tier": "reasoned"})
+    assert captured["speaker_attribution.reasoned"] == 800 + 1536
+
+    r = client.post(
+        "/v1/extraction/analyze-text",
+        json={"text": '"Hi," said Mara.', "tier": "reasoned", "maxTokens": 2048},
+    )
+    assert r.status_code == 200
+    assert captured["speaker_attribution.reasoned"] == 2048
+
+
+def test_lab_run_uses_stored_project_corrections(client, monkeypatch):
+    """Part 5 (2026-08-06): the typed corrections box died — an adhoc Lab run
+    carrying project_id uses that project's STORED corrections through the
+    same resolver production uses."""
+    captured = {}
+
+    def fake(action, variables, **overrides):
+        captured["variables"] = variables
+
+        class R:
+            text = "[]"
+            model = "m"
+            prompt_tokens = 0
+            completion_tokens = 0
+
+        return R()
+
+    monkeypatch.setattr("justvoice.extraction.pipeline.run_feature", fake)
+    _scene_id = _import_project(client)
+    pid = client.get("/v1/projects").json()["projects"][0]["id"]
+    persona = client.get("/v1/personas").json()["personas"][0]
+    r = client.post(
+        f"/v1/projects/{pid}/corrections",
+        json={"text_snippet": '"Hi," said Mara.', "character_id": persona["id"]},
+    )
+    assert r.status_code == 200, r.text
+
+    r = client.post(
+        "/v1/extraction/analyze-text",
+        json={"text": '"Hi," said Mara.', "project_id": pid},
+    )
+    assert r.status_code == 200, r.text
+    assert '"Hi," said Mara.' in captured["variables"]["corrections"]
+
+
+def test_lab_restoration_swaps_pristine_sample(client):
+    """Part 3's row swap (2026-08-06): a pristine quay sample retires — the
+    cellar passage (the original Speaker Lab's, word for word) seeds under its
+    new label — while an edited quay row stays the user's."""
+    from llm_runner.llm import db as llm_db
+
+    from justvoice.llm_bootstrap import (
+        _QUAY_SAMPLE_LABEL,
+        _QUAY_SAMPLE_VARS,
+        migrate_lab_restoration,
+    )
+
+    s = llm_db.session()
+    try:
+        marker = s.get(llm_db.RunnerSetting, "jv_lab_restoration_applied")
+        if marker is not None:
+            s.delete(marker)
+        pristine = llm_db.TestSample(
+            action_key="speaker_attribution.guided", label=_QUAY_SAMPLE_LABEL
+        )
+        s.add(pristine)
+        s.flush()
+        for name, value in _QUAY_SAMPLE_VARS.items():
+            s.add(llm_db.TestSampleVar(sample_id=pristine.id, name=name, value=value))
+        edited = llm_db.TestSample(
+            action_key="speaker_attribution.direct", label=_QUAY_SAMPLE_LABEL
+        )
+        s.add(edited)
+        s.flush()
+        s.add(llm_db.TestSampleVar(sample_id=edited.id, name="paragraphs", value="my own passage"))
+        s.commit()
+    finally:
+        s.close()
+
+    migrate_lab_restoration()
+
+    s = llm_db.session()
+    try:
+        assert (
+            s.query(llm_db.TestSample)
+            .filter_by(action_key="speaker_attribution.guided", label=_QUAY_SAMPLE_LABEL)
+            .all()
+            == []
+        )
+        kept = (
+            s.query(llm_db.TestSample)
+            .filter_by(action_key="speaker_attribution.direct", label=_QUAY_SAMPLE_LABEL)
+            .all()
+        )
+        assert len(kept) == 1
+        cellar = (
+            s.query(llm_db.TestSample)
+            .filter_by(
+                action_key="speaker_attribution.guided",
+                label="Cellar scene — the original Speaker Lab sample",
+            )
+            .all()
+        )
+        assert len(cellar) == 1
+        vars_rows = s.query(llm_db.TestSampleVar).filter_by(sample_id=cellar[0].id).all()
+        by_name = {v.name: v.value for v in vars_rows}
+        assert "cellar" in by_name["paragraphs"] and by_name["characters"] == "Mara\nSarah"
+        assert s.get(llm_db.RunnerSetting, "jv_lab_restoration_applied") is not None
+    finally:
+        s.close()
+
+
 def test_extraction_config_has_no_force_field(client):
     """The pane is words + the size line — the config response carries no
     stored force (the pills died; production always runs Auto)."""
     r = client.get("/v1/extraction/config")
     assert r.status_code == 200
     assert "route" not in r.json()
+
+
+def test_lab_tunables_pass_through(client, monkeypatch):
+    """Part 2 (2026-08-06): the Lab column's Reasoning / Max tok / Top-p /
+    samplers are REAL — they ride the analyze request into the shared run
+    path (they were verified inert before: adapter dropped them AND the
+    request model rejected them)."""
+    captured = {}
+
+    def fake(action, variables, **overrides):
+        captured["overrides"] = overrides
+
+        class R:
+            text = "[]"
+            model = "m"
+            prompt_tokens = 0
+            completion_tokens = 0
+
+        return R()
+
+    monkeypatch.setattr("justvoice.extraction.pipeline.run_feature", fake)
+    r = client.post(
+        "/v1/extraction/analyze-text",
+        json={
+            "text": '"Hi," said Mara.',
+            "tier": "direct",
+            "think": True,
+            "reasoningEffort": "low",
+            "maxTokens": 512,
+            "topP": 0.9,
+            "samplers": [{"flagName": "top_k", "flagValue": "40"}],
+        },
+    )
+    assert r.status_code == 200, r.text
+    o = captured["overrides"]
+    assert o["think"] is True and o["reasoningEffort"] == "low"
+    assert o["maxTokens"] == 512 and o["topP"] == 0.9
+    assert o["samplers"] == [{"flagName": "top_k", "flagValue": "40"}]
+
+
+def test_auto_judges_the_model_that_would_run(client, monkeypatch):
+    """Judge-what-runs (ruled 2026-08-06: "it just defaults to default
+    model"): a card whose preset ships model-empty is judged by the model the
+    run would actually land on — its provider's default model — so Reasoned
+    is reachable by Auto on a setup that never hand-filled the presets."""
+    from justvoice.extraction import pipeline
+
+    captured = {}
+    monkeypatch.setattr("justvoice.extraction.pipeline.run_feature", _fake_run(captured))
+    scene_id = _import_project(client)
+
+    # Fresh state: presets ship model-empty and the provider has no default
+    # → every card judges empty → Guided (the safe floor).
+    assert pipeline.route_model("reasoned") == ""
+    r = client.post(f"/v1/scenes/{scene_id}/analyze", json={"text": '"Hi," said Mara.'})
+    assert captured["action"] == "speaker_attribution.guided"
+
+    # Give the local provider a default model through the app's own door
+    # (the PATCH re-registers the adapter, exactly like the provider form).
+    rows = client.get("/v1/llm-providers").json()["providers"]
+    local = next(p for p in rows if p["id"] == "local-llamacpp")
+    r = client.patch(
+        "/v1/llm-providers/local-llamacpp",
+        json={**local, "apiKey": "", "defaultModel": "gemma-4-12b-qat"},
+    )
+    assert r.status_code == 200, r.text
+
+    # The judge now sees what the run would use: preset model empty → the
+    # provider default — a cataloged thinker → Reasoned runs, by Auto.
+    assert pipeline.route_model("reasoned") == "gemma-4-12b-qat"
+    r = client.post(f"/v1/scenes/{scene_id}/analyze", json={"text": '"Hi," said Mara.'})
+    assert captured["action"] == "speaker_attribution.reasoned"
+    assert r.json()["tier_used"] == "reasoned" and r.json()["tier_source"] == "auto"

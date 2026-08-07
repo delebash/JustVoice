@@ -210,18 +210,24 @@ DEFAULT_PRESET_ID: str = "p_notes"
 # as a user would paste it, never pre-tagged; its characters box is plain
 # names — the adapter's own parse format, not the template composer's).
 # SYNTHESIZED, never real user data. Fill-if-empty per (action, label).
+# The attribution sample is the ORIGINAL Speaker Lab's cellar passage, word
+# for word (the Lab restoration, 2026-08-06 — SpeakerLabView.vue's
+# SAMPLE_TEXT + SAMPLE_CAST): anchored quotes, a bare quote, and a
+# narration-only opener.
 _ATTR_SAMPLE_VARS = {
-    "characters": "Mara\nRenn",
+    "characters": "Mara\nSarah",
     "corrections": "",
-    "paragraphs": 'Mara reached the quay as the bell finished counting.\n\n'
-                  '"You knew before the funeral," Renn said. He did not look at her.\n\n'
-                  '"The page told me," she said. "Ask me who else can read it."',
+    "paragraphs": 'Mara stood at the rail. The fog clawed at her ankles.\n\n'
+                  '"Where are you going?" Sarah asked.\n\n'
+                  '"Down," Mara said. "There\'s something in the cellar."\n\n'
+                  'Sarah didn\'t move. "Are you sure?"\n\n'
+                  '"No."',
 }
 
 DEFAULT_TEST_SAMPLES: list[dict] = [
     {"actions": ["speaker_attribution.guided", "speaker_attribution.direct",
                  "speaker_attribution.reasoned"],
-     "label": "Quay scene — anchored + bare quotes",
+     "label": "Cellar scene — the original Speaker Lab sample",
      "variables": _ATTR_SAMPLE_VARS},
     {"actions": ["speaker_attribution.identify"], "label": "Discover the harbor-master",
      "variables": {

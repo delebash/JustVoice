@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -84,6 +85,14 @@ class AnalyzeRequest(BaseModel):
     # Route this call through a specific registered LLM provider instead
     # of the feature's resolved route (Speaker Lab provider dropdown).
     provider_id: str | None = None
+    # The Lab column's remaining tunables (Part 2, 2026-08-06 — the controls
+    # are REAL): forwarded to the shared run path like any feature's. None =
+    # the resolved preset's value; max_tokens None = the code-computed budget.
+    think: bool | None = None
+    reasoning_effort: str | None = None
+    max_tokens: int | None = None
+    top_p: float | None = None
+    samplers: list[dict] = []
 
 
 def _strip_thinking(text: str) -> str:
@@ -118,15 +127,36 @@ class RoutePick:
     source: str  # "forced" (per-run override) | "setting" (the force pills) | "auto"
 
 
+def _provider_default_model(provider_id: str) -> str:
+    """The default model of a registered provider — the same fall-through the
+    run itself applies (resolve_route: a provider override with no model lands
+    on that provider's default model). Empty when unknown."""
+    if not provider_id:
+        return ""
+    try:
+        from llm_runner.llm import get_llm_registry
+
+        adapter = get_llm_registry().get(provider_id)
+        return (adapter.default_model or "") if adapter is not None else ""
+    except Exception:  # noqa: BLE001 — judging falls to "unknown", never breaks a run
+        return ""
+
+
 def route_model(route: str) -> str:
-    """The model a route's card resolves to (its own action ref → feature
-    layer → default). Empty when nothing resolves."""
+    """The model a route's run would ACTUALLY use (judge-what-runs, ruled
+    2026-08-06: "it just defaults to default model"): the card's preset model
+    when set, else that preset's provider default — the same resolution the
+    run itself uses. Empty when neither is set (Auto then plays it safe)."""
     from llm_runner.llm.preset_resolve import resolve_feature_preset
 
     preset = resolve_feature_preset(
         f"speaker_attribution.{route}", feature="speaker_attribution"
     )
-    return (preset.model if preset else "") or ""
+    if preset is None:
+        return ""
+    if (preset.model or "").strip():
+        return preset.model
+    return _provider_default_model(preset.providerId or "")
 
 
 def model_size_b(model_id: str) -> float:
@@ -257,6 +287,14 @@ def analyze_scene(
     dialogue_segments = [s for s in segments if s["kind"] == "dialogue"]
     n_dialogue = len(dialogue_segments)
 
+    # The code-computed answer budget. Reasoned's think tokens count INSIDE
+    # the completion (measured live 2026-08-06, gemma-4-26b-a4b: ~1030
+    # think+answer for a 5-line passage against the runner's 1024 reasoning
+    # budget — the bare 800 cap truncated the JSON array mid-answer and the
+    # tail rows fell to the unknown pad). The route gets thinking headroom;
+    # an explicit per-call budget always wins.
+    budget = max(800, 12 * n_dialogue)
+
     llm_picks: list[dict[str, Any]] = []
     if n_dialogue > 0:
         try:
@@ -265,6 +303,7 @@ def analyze_scene(
             # think-ON preset; the runner's capability gate governs models
             # that can't think). The Lab's system/user candidates ride the
             # explicit-prompt door.
+            t0 = time.monotonic()
             resp = run_feature(
                 f"speaker_attribution.{pick.name}",
                 {
@@ -275,12 +314,27 @@ def analyze_scene(
                 system=request.system_prompt or None,
                 userTemplate=request.user_prompt or None,
                 temperature=request.temperature,
-                maxTokens=max(800, 12 * n_dialogue),
+                # A caller's explicit budget wins; else the code-computed one
+                # (+ thinking headroom on the reasoned route).
+                maxTokens=request.max_tokens
+                or (budget + 1536 if pick.name == "reasoned" else budget),
                 model=request.model or "",
                 providerId=request.provider_id or "",
+                think=request.think,
+                reasoningEffort=request.reasoning_effort,
+                topP=request.top_p,
+                samplers=request.samplers or [],
             )
             if raw_out is not None:
                 raw_out["llm_text"] = resp.text
+                # §16: the run's usage rides the response (the server always
+                # had the numbers — LLMResponse carries them; 0 = unreported).
+                raw_out["usage"] = {
+                    "prompt_tokens": int(getattr(resp, "prompt_tokens", 0) or 0),
+                    "completion_tokens": int(getattr(resp, "completion_tokens", 0) or 0),
+                    "duration_ms": int((time.monotonic() - t0) * 1000),
+                    "model": getattr(resp, "model", "") or "",
+                }
             llm_picks = _extract_first_json_array(resp.text)
         except LLMNotConfiguredError:
             # Caller (the API layer) catches this separately to return

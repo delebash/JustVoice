@@ -89,7 +89,7 @@ def test_discover_501_without_llm(client, monkeypatch):
 def test_discover_with_stubbed_llm(client, monkeypatch):
     _pid, scene_id = _import_project(client)
 
-    def fake_identify(text, known, *, settings, run_fn=None):
+    def fake_identify(text, known, *, settings, run_fn=None, raw_out=None):
         assert "Mara Vance" in known
         return [SpeakerCandidate(name="Tom Harlan", role_hint="neighbor", approx_lines=3)]
 
@@ -125,7 +125,7 @@ def test_discover_adhoc_free_text(client, monkeypatch):
     """POST /v1/extraction/discover-speakers — no scene, caller-supplied known
     names (parity batch 2026-08-06: the Lab's identify columns run this)."""
 
-    def fake_identify(text, known, *, settings, run_fn=None):
+    def fake_identify(text, known, *, settings, run_fn=None, raw_out=None):
         assert known == ["Mara Vance"]
         assert "Tom" in text
         return [SpeakerCandidate(name="Tom Harlan", role_hint="neighbor", approx_lines=3)]
@@ -211,10 +211,12 @@ def test_analyze_text_threads_model_temp_prompt_overrides(client, monkeypatch):
     # A per-call model override is the model that actually runs, so Auto
     # judges IT (the old system's documented behavior, kept by the restore):
     # qwen3:14b thinks → the Reasoned route, its OWN row now (seeded from
-    # Direct's text — no coercion). The pipeline still never forces think:
-    # the route's preset + the runner's capability gate govern.
+    # Direct's text — no coercion). The pipeline still never FORCES think —
+    # the caller sent none, so it rides as None (Part 2, 2026-08-06: the
+    # controls are real passthroughs; None = the route's preset + the
+    # runner's capability gate govern, exactly as before).
     assert captured["action"] == "speaker_attribution.reasoned"
-    assert "think" not in captured
+    assert captured.get("think") is None
     assert 'id="mara"' in captured["variables"]["characters"]
     assert r.json()["raw_llm"] == '[{"speaker": "mara", "confidence": 0.9}]'
 

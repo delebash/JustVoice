@@ -10,7 +10,7 @@
   lab's fetches run on entry, not four at once.
 -->
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onActivated, ref } from "vue";
 import CompareView from "./CompareView.vue";
 import TrainView from "./TrainView.vue";
 import RenderLabView from "./RenderLabView.vue";
@@ -45,7 +45,9 @@ const activeEntry = computed(
 );
 const activeComponent = computed(() => activeEntry.value.component);
 
-onMounted(() => {
+// Consumed on EVERY entry (kept-alive view; a mounted-time read fires once
+// per session — later #compare/#train/#renderlab/#audio links would no-op).
+onActivated(() => {
   try {
     const sub = window.sessionStorage?.getItem("jv.labs.sub");
     if (sub && SUBS.some((s) => s.id === sub)) {

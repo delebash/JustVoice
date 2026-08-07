@@ -93,16 +93,21 @@ def identify_speakers(
     *,
     settings,
     run_fn: Callable[..., Any] | None = None,
+    raw_out: dict | None = None,
 ) -> list[SpeakerCandidate]:
     """Run the identification LLM call through the shared run path. `run_fn`
     is the seam — tests inject a stub; production uses engines.llm.run's
     run_feature (the `speaker_attribution.identify` template row + its preset;
     `settings` is unused since the pin-era config died, kept for the callers'
-    signature until the settings tree sheds its LLM residue)."""
+    signature until the settings tree sheds its LLM residue). `raw_out`
+    receives the run's usage (§16 — the responses carry the numbers)."""
     del settings  # pin-era argument — routing is preset-resolved now
     if run_fn is None:
         from ..engines.llm.run import run_feature as run_fn  # pragma: no cover
 
+    import time
+
+    t0 = time.monotonic()
     resp = run_fn(
         "speaker_attribution.identify",
         {
@@ -110,4 +115,11 @@ def identify_speakers(
             "manuscript": text,
         },
     )
+    if raw_out is not None:
+        raw_out["usage"] = {
+            "prompt_tokens": int(getattr(resp, "prompt_tokens", 0) or 0),
+            "completion_tokens": int(getattr(resp, "completion_tokens", 0) or 0),
+            "duration_ms": int((time.monotonic() - t0) * 1000),
+            "model": getattr(resp, "model", "") or "",
+        }
     return parse_candidates(getattr(resp, "text", str(resp)), known_names)

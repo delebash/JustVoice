@@ -291,6 +291,54 @@ def migrate_auto_simplify() -> None:
         log.warning("auto-simplify migration failed (stale rows remain): %s", e)
 
 
+# The Auto simplification's quay sample, byte-exact as it seeded — retired by
+# the Lab restoration (Part 3, 2026-08-06): the sample text becomes the
+# ORIGINAL Speaker Lab's cellar passage, word for word (row swap — this boot's
+# seed has already inserted the cellar sample under its new label). An edited
+# quay row stays the user's.
+_QUAY_SAMPLE_LABEL = "Quay scene — anchored + bare quotes"
+_QUAY_SAMPLE_VARS = {
+    "characters": "Mara\nRenn",
+    "corrections": "",
+    "paragraphs": 'Mara reached the quay as the bell finished counting.\n\n'
+                  '"You knew before the funeral," Renn said. He did not look at her.\n\n'
+                  '"The page told me," she said. "Ask me who else can read it."',
+}
+
+
+def migrate_lab_restoration() -> None:
+    """Once, marker-guarded (the Lab restoration, Part 3 2026-08-06): the
+    pristine quay attribution sample retires — the cellar passage (the
+    original Speaker Lab's, word for word) seeds under its new label on the
+    same boot. An edited quay row stays the user's. Runs after seed_llm."""
+    from llm_runner.llm import db as llm_db
+
+    try:
+        s = llm_db.session()
+        try:
+            if s.get(llm_db.RunnerSetting, "jv_lab_restoration_applied") is not None:
+                return
+            for action in _ATTR_ROUTE_ACTIONS:
+                for sample in (
+                    s.query(llm_db.TestSample)
+                    .filter_by(action_key=action, label=_QUAY_SAMPLE_LABEL)
+                    .all()
+                ):
+                    vars_rows = (
+                        s.query(llm_db.TestSampleVar).filter_by(sample_id=sample.id).all()
+                    )
+                    if {v.name: v.value for v in vars_rows} == _QUAY_SAMPLE_VARS:
+                        for v in vars_rows:
+                            s.delete(v)
+                        s.delete(sample)
+            s.add(llm_db.RunnerSetting(key="jv_lab_restoration_applied", value="1"))
+            s.commit()
+        finally:
+            s.close()
+    except Exception as e:  # noqa: BLE001 — a fixup nicety, never boot-fatal
+        log.warning("lab-restoration migration failed (stale sample remains): %s", e)
+
+
 def reseed_shared_llm(engine, session_factory) -> None:
     """Factory-reset's shared-stack half: re-point storage at the NEW session
     factory, re-create the shared tables in the fresh file, re-apply JV's warm
@@ -306,3 +354,4 @@ def reseed_shared_llm(engine, session_factory) -> None:
     retire_default_catalog_rows()
     migrate_attribution_restore()
     migrate_auto_simplify()
+    migrate_lab_restoration()

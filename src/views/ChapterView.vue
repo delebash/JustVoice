@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: MIT -->
 <script setup>
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch, onActivated, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { useTakesStore } from "../stores/takes.js";
@@ -183,6 +183,32 @@ onMounted(() => {
   personasStore.ensureLoaded();
   voicesStore.ensureLoaded();
   refreshCurrentEngine();
+});
+
+// KeepAlive re-entry (App.vue caches views; mounted fires once per session):
+// adopt the app-wide active project on entry — Home, Projects and Studio all
+// push their selection there, and the workflow strip's Studio handoff relies
+// on this view showing the SAME project it hands over. The picker still
+// changes it freely afterwards (the watch above pushes the change back).
+// The scene handoff (ProjectsView's chapters-subtable "Open") re-reads here
+// too: the setup-time read above also fires once per session. Read it BEFORE
+// the project pull so a pull-triggered loadScenes() consumes it; when no
+// reload will run (same project), apply it directly.
+onActivated(() => {
+  try {
+    const sid = window.sessionStorage?.getItem("jv.chapter.sceneId") || null;
+    if (sid) {
+      window.sessionStorage.removeItem("jv.chapter.sceneId");
+      _pendingSceneId = sid;
+    }
+  } catch { /* ignore */ }
+  const p = projects.value.find((x) => x.id === activeProject.id);
+  if (p && selectedProjectId.value !== p.id) {
+    selectedProjectId.value = p.id;
+  } else if (_pendingSceneId && scenes.value.some((s) => s.id === _pendingSceneId)) {
+    selectedSceneId.value = _pendingSceneId;
+    _pendingSceneId = null;
+  }
 });
 
 // ── Voices (for re-generation) ─────────────────────────────────────────────

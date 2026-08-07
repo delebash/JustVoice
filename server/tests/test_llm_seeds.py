@@ -199,3 +199,30 @@ def test_retired_default_rows_are_removed_once_from_existing_dbs(tmp_path):
         "gemma-4-26b-a4b-qat", "gemma-4-12b-qat", "gemma-4-e4b-qat", "my-own-model",
     }
 
+
+
+def test_factory_reset_runs_seed_before_migrations(monkeypatch):
+    """Part 7 rider (2026-08-06): the factory-reset shared half pins its
+    order — storage re-point, table create, warm default, SEED, then the
+    one-time migrations in ship order (each assumes the seed's rows and the
+    previous migration's state exist)."""
+    import llm_runner.llm.db as llm_db
+    import llm_runner.llm.seed as llm_seed
+
+    import justvoice.llm_bootstrap as lb
+
+    calls: list[str] = []
+    monkeypatch.setattr(llm_db, "configure_storage", lambda sf: calls.append("storage"))
+    monkeypatch.setattr(llm_db, "create_all", lambda e: calls.append("tables"))
+    monkeypatch.setattr(llm_seed, "seed_llm", lambda: calls.append("seed"))
+    monkeypatch.setattr(lb, "apply_jv_warm_default", lambda: calls.append("warm"))
+    monkeypatch.setattr(lb, "retire_default_catalog_rows", lambda: calls.append("retire"))
+    monkeypatch.setattr(lb, "migrate_attribution_restore", lambda: calls.append("restore"))
+    monkeypatch.setattr(lb, "migrate_auto_simplify", lambda: calls.append("simplify"))
+    monkeypatch.setattr(lb, "migrate_lab_restoration", lambda: calls.append("lab"))
+
+    lb.reseed_shared_llm(engine=None, session_factory=None)
+
+    assert calls == [
+        "storage", "tables", "warm", "seed", "retire", "restore", "simplify", "lab",
+    ]

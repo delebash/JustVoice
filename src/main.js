@@ -9,13 +9,17 @@ import {
   ConnectionError,
   configureServerApi,
   configureFamilyLabels,
+  configureTestData,
   checkServer,
   installLlmUi,
   startWarmOnBoot,
 } from "@delebash/llm-ui";
 import { SERVER_URL, resolveBase } from "./config.js";
 import AttributionAutoPanel from "./components/lab/AttributionAutoPanel.vue";
+import SmartAssignResult from "./components/lab/SmartAssignResult.vue";
 import { attributionLabAdapter } from "./services/attributionLab.js";
+import { refineLabAdapter } from "./services/refineLab.js";
+import { LAB_TEST_ACTIONS, LAB_TEST_SOURCES } from "./services/labTestData.js";
 import { bootPrefs, ensureActiveProjectDefault } from "./services/prefs.js";
 import { loadDoc, hasDoc, titleForSlug } from "./services/helpDocs.js";
 import { useUIStore } from "./stores/ui.js";
@@ -54,7 +58,17 @@ function wireKit(app) {
     // speaker table with reassign-teaches as the renderer, reading-style +
     // floor controls on the column. CONCEPTS §16: lab and production cannot
     // drift.
-    labAdapters: { speaker_attribution: attributionLabAdapter },
+    labAdapters: {
+      speaker_attribution: attributionLabAdapter,
+      // Render-only (Part 6, 2026-08-06): smart-assign's Lab keeps the
+      // generic run; the raw characterId → voiceId object renders as
+      // readable Character → Voice names.
+      smart_assign: { render: SmartAssignResult },
+      // Task #22 (2026-08-06): every refine Lab run — piece columns AND the
+      // cleanup pane's composed-prompt Lab — takes production's real path
+      // (/v1/refine/lab-run: composed system + few-shot history).
+      refine: refineLabAdapter,
+    },
     // Dictation cleanup's four texts are PIECES (decided, not reopened): they
     // concatenate into ONE call, so the rows show their RELATION instead of a
     // routing arrow and the feature routes once at its own card. Attribution's
@@ -101,6 +115,13 @@ function wireKit(app) {
         "Speaker attribution, dictation cleanup and the other AI features run on this model — change it any time under Routing by feature.",
     },
   });
+  // The Lab's fill-from-app doors (Part 4, 2026-08-06 — the kit's
+  // configureTestData seam, off by default; JW's registration is the donor):
+  // chapters/cast → attribution + identify, cast/voices → smart-assign,
+  // voices → gender guess, presets + chapters → preset-suggest, script →
+  // show notes, personas → compose/rewrite. Every fill emits the SAME block
+  // the production caller sends (labTestData.js names each source of truth).
+  configureTestData({ sources: LAB_TEST_SOURCES, actions: LAB_TEST_ACTIONS });
   // installLlmUi fed `resolveBase` to the shared transport; the bearer token is
   // JV's own layer on top (thin-client `jt:server` mode authenticates).
   // configureServerApi merges — this call leaves the resolver in place.

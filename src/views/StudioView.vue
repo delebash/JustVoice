@@ -14,7 +14,7 @@
   Phase 6      — Render tab (Studio Render slice).
 -->
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onActivated, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
@@ -700,12 +700,23 @@ function presetOptions() {
 
 async function suggestPresetFor(scene) {
   suggestBusyScene.value = scene.id;
+  // §16: every AI call surfaces as a task (row + seconds + cancel).
+  const ctrl = new AbortController();
+  const task = tasks.start({
+    kind: "extract",
+    feature: "preset-suggest",
+    label: `Preset suggest · ${scene.title || "chapter"}`,
+    onCancel: () => ctrl.abort(),
+    onRetry: () => suggestPresetFor(scene),
+  });
   try {
     const r = await api.request(`/v1/llm/preset-suggest`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scene_id: scene.id }),
+      signal: ctrl.signal,
     });
+    tasks.finish(task.id);
     if (r?.preset_id) {
       scenePresetSelections.value = { ...scenePresetSelections.value, [scene.id]: r.preset_id };
       pushToast({
@@ -717,6 +728,8 @@ async function suggestPresetFor(scene) {
       pushToast({ message: r.note, kind: "warning", duration: 5000 });
     }
   } catch (e) {
+    if (ctrl.signal.aborted) tasks.cancel(task.id);
+    else tasks.fail(task.id, e?.message || String(e));
     pushToast({
       message: e?.message?.includes("501") || e?.status === 501
         ? "Suggest unavailable — wire an LLM provider in Engines → LLM tab."
@@ -1307,8 +1320,11 @@ async function smartAssignCast() {
   }
 }
 
-onMounted(() => {
-  // Chapters workflow strip hands the target tab over (Cast/Script/Render).
+// Chapters workflow strip hands the target tab over (Cast/Script/Render/
+// Export). Consumed on EVERY entry: App.vue keeps views alive (KeepAlive),
+// so mounted fires once per session — the handoff must ride onActivated
+// (which also fires after the initial mount) or it works at most once.
+function consumeTabHandoff() {
   try {
     const t = window.sessionStorage?.getItem("jv.studio.tab");
     if (t) {
@@ -1316,7 +1332,18 @@ onMounted(() => {
       if (["cast", "script", "render", "export"].includes(t)) tab.value = t;
     }
   } catch { /* ignore */ }
-  loadAll();
+}
+
+onMounted(loadAll);
+
+onActivated(() => {
+  consumeTabHandoff();
+  // The project follows too: the app-wide active project is the source of
+  // truth on entry (Chapters pushes its selection there before navigating) —
+  // without this pull, Cast-from-Chapters can land on another project's
+  // cast, because this view keeps its own kept-alive selection.
+  const p = projects.value.find((x) => x.id === activeProject.id);
+  if (p && selectedProjectId.value !== p.id) selectedProjectId.value = p.id;
 });
 
 // Keep the app-wide active project (sidebar vocabulary, topbar chips,

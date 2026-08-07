@@ -204,3 +204,16 @@ def test_user_prompt_and_floor_overrides(app, monkeypatch) -> None:
     assert not [
         row for row in r2.json()["rows"] if row["source"] == "floored"
     ]
+
+
+def test_direct_min_b_has_an_api_floor(app) -> None:
+    """Part 7 rider (2026-08-06): the size line's API floor mirrors the pane
+    input's min=0.1 — zero or negative would route EVERY model to Direct."""
+    client = TestClient(app, raise_server_exceptions=False)
+    r = client.patch("/v1/settings", json={"extraction": {"direct_min_b": 0}})
+    assert r.status_code in (400, 422), r.text
+    r = client.patch("/v1/settings", json={"extraction": {"direct_min_b": -3}})
+    assert r.status_code in (400, 422), r.text
+    r = client.patch("/v1/settings", json={"extraction": {"direct_min_b": 0.5}})
+    assert r.status_code == 200, r.text
+    assert client.get("/v1/extraction/config").json()["direct_min_b"] == 0.5

@@ -10,7 +10,7 @@
   with no draft it bounces back to Projects.
 -->
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onActivated } from "vue";
 import { pushToast } from "@delebash/llm-ui";
 import { projectsService } from "../services/projects.js";
 import { useActiveProject } from "../stores/activeProject.js";
@@ -24,8 +24,13 @@ const draft = ref(null);
 const committing = ref(false);
 const excluded = ref(new Set());
 
-onMounted(() => {
+// Pulled on EVERY entry (kept-alive view; a mounted-only read fires once per
+// session — the SECOND import of a session would review the previous file's
+// stale draft). Each entry is a fresh review: re-read the draft, clear the
+// exclusions.
+onActivated(() => {
   draft.value = getImportDraft();
+  excluded.value = new Set();
   if (!draft.value) window.location.hash = "#projects";
 });
 

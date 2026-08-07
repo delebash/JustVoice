@@ -476,6 +476,16 @@ Reasoned (think=true); the 8b stays at think=false. You select a tier
 manually only when you know better than the auto-classification; some
 models are hard-coded in `tiers.py`.
 
+> **Dated note (2026-08-06, the Lab plan — reconciled, not silently):**
+> "the tier follows the model" describes the retired per-column
+> auto-switch; `tiers.py` is gone. Today **the card is the route**:
+> Guided/Direct/Reasoned are three routed feature cards, and a card's Lab
+> run always forces its own route — its prompt boxes are exactly what
+> runs. Columns still compare models and configs (the per-column
+> provider/model pin stays); what changed is that the ROUTE never follows
+> the column's model — production's route is Auto's pick, judged from the
+> model each card actually resolves to.
+
 **Prompts are part of what you tune.** Per-tier prompt bodies are
 editable in the lab and resettable to shipped defaults (the defaults were
 tuned against 8b/14b and found best there). **Promote** pins the whole

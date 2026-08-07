@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: MIT -->
 <script setup>
-import { ref, reactive, onMounted, computed, watch } from "vue";
+import { ref, reactive, onActivated, onMounted, computed, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { useRenderTasks } from "../stores/renderTasks.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
@@ -314,12 +314,24 @@ async function refreshVoices() {
 async function composeLine() {
   if (!selectedPersonaId.value || !hasPersonality.value) return;
   composeBusy.value = true;
+  // §16: every AI call surfaces as a task (row + seconds + cancel).
+  const ctrl = new AbortController();
+  const task = tasks.start({
+    kind: "compose",
+    feature: "compose",
+    label: `Compose · ${selectedPersona.value?.name || "persona"}`,
+    onCancel: () => ctrl.abort(),
+    onRetry: () => composeLine(),
+  });
   try {
     const r = await api.request(`/v1/personas/${selectedPersonaId.value}/compose`, {
-      method: "POST",
+      method: "POST", signal: ctrl.signal,
     });
+    tasks.finish(task.id);
     if (r?.text) text.value = r.text;
   } catch (e) {
+    if (ctrl.signal.aborted) tasks.cancel(task.id);
+    else tasks.fail(task.id, e?.message || String(e));
     pushToast({
       message: e?.message?.includes("501") || e?.status === 501
         ? "Compose unavailable — wire an LLM provider in Settings → AI Engines (Phase 2)."
@@ -339,16 +351,29 @@ async function rewriteLine() {
     return;
   }
   rewriteBusy.value = true;
+  // §16: every AI call surfaces as a task (row + seconds + cancel).
+  const ctrl = new AbortController();
+  const task = tasks.start({
+    kind: "compose",
+    feature: "persona-rewrite",
+    label: `Rewrite · ${selectedPersona.value?.name || "persona"}`,
+    onCancel: () => ctrl.abort(),
+    onRetry: () => rewriteLine(),
+  });
   try {
     const r = await api.request(`/v1/personas/${selectedPersonaId.value}/rewrite`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: text.value }),
+      signal: ctrl.signal,
     });
+    tasks.finish(task.id);
     if (r?.rewritten) {
       rewritePreview.value = { original: r.original, rewritten: r.rewritten };
     }
   } catch (e) {
+    if (ctrl.signal.aborted) tasks.cancel(task.id);
+    else tasks.fail(task.id, e?.message || String(e));
     pushToast({
       message: e?.message?.includes("501") || e?.status === 501
         ? "Rewrite unavailable — wire an LLM provider in Settings → AI Engines (Phase 2)."
@@ -616,10 +641,13 @@ function onSlashInsert({ rendered, placement }) {
   }, 0);
 }
 
-onMounted(async () => {
-  await refreshVoices();
-  // One-shot prefill handoff — Overview's ↻ Re-render (and any future
-  // cross-view "open in Generate" affordance) stashes {text, voice} here.
+// One-shot prefill handoff — Overview's ↻ Re-render, Captures' "open in
+// Generate" (and any future cross-view affordance) stash {text, voice} here.
+// Consumed after the first voices load AND on every re-entry (kept-alive
+// view; a mounted-only read fires once per session — the second handoff of a
+// session would arrive to nothing).
+let _voicesReady = false;
+function consumeGeneratePrefill() {
   try {
     const raw = window.sessionStorage?.getItem("jv.generate.prefill");
     if (raw) {
@@ -631,6 +659,16 @@ onMounted(async () => {
       }
     }
   } catch { /* malformed prefill — ignore */ }
+}
+
+onMounted(async () => {
+  await refreshVoices();
+  _voicesReady = true;
+  consumeGeneratePrefill();
+});
+
+onActivated(() => {
+  if (_voicesReady) consumeGeneratePrefill();
 });
 </script>
 

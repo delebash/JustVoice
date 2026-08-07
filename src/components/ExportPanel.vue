@@ -15,6 +15,7 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
+import { useRenderTasks } from "../stores/renderTasks.js";
 import { UiButton, UiTag } from "@delebash/llm-ui";
 
 const props = defineProps({
@@ -23,6 +24,7 @@ const props = defineProps({
 });
 
 const api = useApi();
+const tasks = useRenderTasks();
 const copy = useCopy();
 
 const exportQc = ref(null);
@@ -102,10 +104,23 @@ async function generateShowNotes() {
   const p = props.project;
   if (!p) return;
   showNotes.value = null;
-  pushToast({ message: "Drafting show notes from the segments…", kind: "info" });
+  // §16: every AI call surfaces as a task (row + seconds + cancel).
+  const ctrl = new AbortController();
+  const task = tasks.start({
+    kind: "extract",
+    feature: "show-notes",
+    label: `Show notes · ${p.name || "project"}`,
+    onCancel: () => ctrl.abort(),
+    onRetry: () => generateShowNotes(),
+  });
   try {
-    showNotes.value = await api.request(`/v1/projects/${p.id}/show-notes`, { method: "POST" });
+    showNotes.value = await api.request(`/v1/projects/${p.id}/show-notes`, {
+      method: "POST", signal: ctrl.signal,
+    });
+    tasks.finish(task.id);
   } catch (e) {
+    if (ctrl.signal.aborted) tasks.cancel(task.id);
+    else tasks.fail(task.id, e?.message || String(e));
     pushToast({ message: `Show notes failed: ${e?.message || e}`, kind: "error", duration: 7000 });
   }
 }

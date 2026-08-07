@@ -25,6 +25,93 @@
 > is left untouched on purpose so re-enabling is one command when the CI
 > pipeline is actually wanted again.
 
+## OPEN — THE CAPS DISCUSSION (2026-08-06 late, MID-DISCUSSION at
+## compaction — nothing here is ruled; the verified facts are recorded so
+## the next session needs zero re-verification archaeology).
+
+**The user's frame (their words): caps look worth having — "it makes
+failures faster and that is critical"; the questions are when to set
+them, per feature or per model, whether tests are needed, and how to
+calculate them.**
+
+**The verified inventory (every line code-verified 2026-08-06):**
+- JV seeded fixed caps: suggest + gender guess 200 (p_classify), compose
+  300, cleanup 2048 — the AI's guesses, surfaced by the conversion.
+- JV computed caps, still invisible in any UI: attribution max(800,
+  12×dialogue) · smart-assign max(400, 80×characters) · rewrite max(300,
+  half the text + 200).
+- JV uncapped: show notes, Find new speakers.
+- JustWrite: uncapped everywhere (seeds + client both verified).
+- Docgen: uncapped everywhere, including its unattended batches.
+- Every adapter omits the cap when unset — EXCEPT Anthropic, which fills
+  a hardcoded 4096 (anthropic.py:173) and ALREADY raises the cap to at
+  least the thinking budget + 2048 (anthropic.py:140) — the coordination
+  rule the local path lacks, hardcoded in one adapter.
+- pipeline.py still carries the TEMPORARY reasoned +1536 headroom — it
+  violates the no-hardcode law and dies under ANY ruling here.
+
+**The doctrine as discussed (leans, not rulings):**
+- A cap is a fail-fast watchdog on sick runs + a cost ceiling on paid
+  cloud; it never speeds a healthy run (measured), never enforces format.
+- Sized per FEATURE (answer type); the model enters only as "+ the
+  resolved thinking budget when thinking is on" (the collision fix).
+- Calibration is cheap now: the Lab shows real token spend — one real
+  chapter per feature gives measured multipliers.
+- The ledger: the reasoning budget has real saves; outer caps have zero
+  saves and one own-goal (the Reasoned truncation).
+
+**Open sub-questions for the ruling:** defaults vs empty-by-default ·
+the per-feature values and whether calibration runs happen · generalize
+Anthropic's coordination rule to all providers · surface Anthropic's
+4096/2048 constants · replace the +1536.
+
+**Also discussed to a lean, NOT ruled (tangled with the flag ruling
+above): size-only Auto (drop the thinking rule; Reasoned becomes a
+hand-run/API route) · whether the Thinks tag / catalog thinking checkbox
+stay visible.**
+
+## APPROVED 2026-08-06 (late) — THE CAPABILITY GATE IS REMOVED. The user's
+## ruling ("i thib this whole gate is bad idea, i think we should leave it
+## as it was and just let user know the error from provider how it works,
+## no fancy magic" · "i agree continue"). Supersedes BOTH the family-wide
+## gate ruling (earlier same day) and the "one-source thinking" option 1.
+
+**The decision — as presented and agreed (verbatim):**
+- One source, one behavior, real errors: the preset is the only thinking
+  control, every request goes out exactly as set, and when a provider
+  refuses, the user reads the provider's own words and fixes the setting
+  themselves.
+- The one addition — the honest version of "let the user know how it
+  works," not magic: when the provider's rejection comes back on a run
+  that carried the thinking parameter, the error the user sees is the
+  provider's message plus one plain sentence naming the fix — "this
+  usually means the model can't think: turn thinking off on this
+  feature's preset, or pick another model."
+- What stays untouched: the catalog Thinking flag and its Thinks tag keep
+  their JustVoice job — Auto's routing — where a wrong reading costs a
+  visible route choice, never the user's ask. Auto doesn't change at all.
+- Scope: the kit deletes the send-time veto and the "thinking on —
+  inactive" machinery (dispatch, the chip/Lab mirror, their tests —
+  family-wide, so JustWrite also returns to honest errors), the error
+  message gains the fix pointer, and the thinking docs section is
+  rewritten to the simpler truth. Nothing else rides along.
+
+## OPEN RULING — what may drive off the catalog Thinking flag (2026-08-06,
+## the user, mid-build: "i think the thinking in model catalgo is good to
+## have but not drive anhthing off it yet" then "ataull maybe not we need
+## to think on this some more"). NOTHING built on it — parked for the
+## user's thinking. Today's shipped truth, until ruled otherwise: the
+## flag's ONE job is Auto's route pick in JV (thinking → Reasoned); it
+## never touches a run's ask anywhere (the gate removal, same day).
+
+## OPEN — JW RIDER of the docs sweep (needs its own word): the thinking
+## section for JustWrite's help docs, in JW's words — JW shares the
+## machinery (one control on the preset, honest provider errors since the
+## gate removal 2026-08-06) but its docs live in its own repo.
+## (The JV docs sweep itself is DONE 2026-08-06 — every surface written to
+## the bar with worked examples in docs/ai-features.md; the checklist this
+## block carried is deleted per close = delete.)
+
 ## APPROVED 2026-08-06 (the QC walk's rulings) — THE AUTO SIMPLIFICATION.
 ## GO: "so go ahead and make your changes so lab works correct, then we will
 ## run some tests" + two mid-build catches folded in ("you still have verbage
@@ -83,104 +170,51 @@
 - Studio meta/toast unchanged ("Route: X — Auto's pick / forced"). Docs +
   tests + migrations ride. NEXT: the gemma/MoE route tests, run together.
 
-## OPEN — THE LAB PLAN (2026-08-06; ONE task, text approved as presented
-## in chat — absorbs the three OPEN finds it replaces: the standard-runner
-## surface, the original-Lab restoration, the corrections box). Read
-## first: docs/dev/CONCEPTS.md §16 + its addendum — MUST be read before
-## the plan. The plan is presented in chat for its own go before any code.
+## BUILT 2026-08-06 (the autonomous run, user's go: "the whole task list
+## up to F4, do not stop coding") — AWAITING YOUR QC WALK + three words.
+## Everything below in THIS block is built, tested and smoke-verified
+## against your real data dir; the decision texts it executed lived here
+## and are deleted per close = delete (git keeps them).
 
-**Part 1 — every run shows up like a real AI task (§16).**
-- Attribution Lab runs register with aiTasks: task row, live seconds + tokens.
-- The extraction responses start returning usage numbers.
-  (The server already records them; the responses just don't carry them.)
-- Then audit each production button for the §16 inline bar:
-  Studio Analyze · Smart-assign · Suggest · voice-gender · compose ·
-  show-notes · dictation.
+**What was built (eyeball on your next walk):**
+- The Reasoned row shows your model now — the Set-as-default writer
+  skipped presets born after Quick Setup as "hand-picked"; fixed in the
+  kit, and your real DB was stamped through the app's own writer.
+- Auto judges the model that would actually run (your judge-what-runs
+  ruling) — on your setup Auto now picks Reasoned, verified live.
+- Chapters buttons land on the right Studio tab every time, and the
+  project follows — the whole one-shot handoff family was converted
+  (Studio tab, Chapters scene, Projects import/create, Settings + Labs
+  sub-tabs, Lexicons + Generate prefills, Import review, the #engines
+  deep link).
+- Lab runs are real tasks (strip + seconds + tokens + cancel), and
+  Suggest / gender guess / Compose / Rewrite / Show notes got task rows.
+- The attribution Lab wears the original's face again: the cast chip
+  editor (no ids), live word counters, Insert-from-chapter/cast pickers,
+  the cellar sample word for word, corrections box gone (a project's
+  stored corrections ride automatically).
+- Reasoning / Max tok / Top-p / samplers on Lab columns are REAL now.
+- Smart-assign's Lab result reads as Character → Voice names.
+- The cleanup card's pane carries the full Lab over the real composed
+  call, and every cleanup Lab run rides production's few-shot history.
+- The reasoned route was silently truncating (think tokens ate the 800
+  budget — measured live on your gemma); it has thinking headroom now.
 
-**Part 2 — dead controls on attribution columns.**
-- Reasoning, Max tok, Top-p and the samplers do nothing there (verified
-  end-to-end: the adapter drops them AND AnalyzeRequest rejects them).
-- The plan decides: hide them, or make the server accept them.
-
-**Part 3 — the Lab looks like the original again.**
-- Cast editor: chips, a name input, an aliases input, an Add button. No
-  visible ids (ids stay the internal contract; the UI generates them).
-- Live counters over the passage box: words · chars · ~tokens.
-- "Load from chapter…" returns.
-- Sample fills the passage AND the cast together.
-- The sample text becomes the original cellar passage, word for word
-  (row swap — today's quay sample already seeded).
-
-**Part 4 — boxes stop faking data the app already owns.**
-- One kit seam: a variable can declare an app source to fill from.
-- Cast → attribution, identify, smart-assign.
-- Voices → smart-assign, voice-gender.
-- Personas → compose, rewrite.
-- Render presets + chapters → preset-suggest. Script → show-notes.
-- Off by default in the kit, so JustWrite's screens don't change.
-
-**Part 5 — the corrections box goes away (user ruled YES 2026-08-06).**
-- Nothing can honestly be typed there; corrections only exist by fixing
-  real results.
-- With a project open, a run uses that project's stored corrections,
-  like production.
-- The count card under the results stays.
-
-**Part 6 — contracts to pin while building.**
-- One agreed shape for the characters variable (editor, parser, sample,
-  fill).
-- A readable rendering for id-JSON results (smart-assign shows raw ids
-  today).
-- First JS tests for the adapter + the seam (JV has no vitest today;
-  smaller than, separate from, the deferred e2e harness).
-
-**Part 7 — small riders on the same go.**
-- direct_min_b gets a minimum at the API.
-- CONCEPTS §16 gets a dated note (its "tier follows the model" line is
-  outdated — the card is the route; this plan reconciles the
-  models-per-column idea, not silently).
-- ~~An aria-label on the number input on the Auto row's page~~ — DONE
-  2026-08-06 (rode the plain-English rewording edit).
-- A test pinning factory-reset migration order.
-
-**Part 8 — recorded for task #22, not here.**
-- Dictation's Lab runs lack production's few-shot history
-  (REFINEMENT_EXAMPLES ride as history turns in production; the Lab
-  sends none); #22's plan carries it.
-
-**Rulings resolved 2026-08-06:** corrections box removal YES · per-kind
-samples DROPPED (user: "forget it") · the production-surface sweep WAITS
-with the deferred deep audit.
-**RULED 2026-08-06 (user: "it just defaults to default model, correct?"):**
-Auto judges the model that would actually run — the preset's model, else
-the provider default, the same resolution the run itself uses. Not new
-machinery, just pointing the two existing checks at the real model. This
-makes Reasoned reachable by Auto on a fresh setup. BUILD: small server
-change (auto_route's per-card model resolution); rides the Lab plan, or
-its own quick go if wanted sooner.
-
-## OPEN (user QC find 2026-08-06, added on sight): "chapters has menu
-## items cast script ect but they dont open to the correspoding items in
-## studio." ROOT CAUSE DIAGNOSED same day: the handoff is wired at both
-## ends — goStudio(tab) writes sessionStorage "jv.studio.tab"
-## (ChapterView.vue:664-667, also goStudioExport :498) and StudioView
-## reads it — but the read sits in onMounted (StudioView.vue:1310-1320)
-## while App.vue wraps views in KeepAlive (App.vue:569), so mounted fires
-## ONCE per session: the handoff works at most on Studio's first-ever
-## visit, never again. Fix = move the consumer to onActivated (or a hash
-## watcher). SAME PASS: audit every kept-alive view's onMounted-only
-## per-visit work for the same class (StudioView's loadAll() rides the
-## same mounted hook — verify its revisit freshness), plus the sibling
-## navigations ("Open in Studio ➜" ChapterView.vue:805, the
-## discovered-speakers banner → Script). ACCEPTANCE (the user's words):
-## "cast on chapters page opens same page as cast on studio page" — every
-## Chapters button lands on exactly the tab Studio's own tab bar opens,
-## regardless of which tab Studio last showed. SECOND AXIS to verify at
-## the fix: the PROJECT must follow too — goStudio hands over only the
-## tab, Studio keeps its own kept-alive project selection, and only the
-## Studio→app sync direction is proven (StudioView.vue:1324); if the
-## reverse pull is missing, Cast-from-Chapters can land on another
-## project's cast. Fix needs its own go.
+**Three things that need your word:**
+1. The MoE size ruling (deferred to the tests — they ran): all three
+   gemmas carry Thinking=true, so Auto routes them to Reasoned and the
+   size rule never decides; sizes read 26B (total) · 12B · 4B ("E4B").
+   Evidence: on the cellar passage, Direct matched Reasoned's quality at
+   3-4s vs 27-64s on every gemma, and 12B's Reasoned even floored one
+   row. My recommendation: keep the total-params reading (it only ever
+   decides for non-thinkers), and if you want the gemmas fast, the
+   catalog's Thinking flag is the one switch — your call.
+2. Part 2 of the Lab plan left "hide vs make real" open — I made the
+   controls REAL (pass-through), on the drop-in principle. Ratify or
+   reverse.
+3. Task #22's "piece rows go compact" was ambiguous — I built the
+   composed-prompt pane and left the four piece rows' own panes working
+   (did not strip them). Say the word if compact meant less.
 
 ## APPROVED 2026-08-06 (late) — SPEAKER ATTRIBUTION: the old functionality,
 ## split into routed features + the visible Auto row. GO: "lets try your rec
@@ -423,10 +457,12 @@ no tracker line until the docs campaign. All yours:
   restore · render presets · a settings reference · troubleshooting · run-modes
   (desktop vs headless). The archived FEATURES.md §s name the content to lift.
 
-- **Family-contract gaps [verified against `app-structure.md` §1/§2]:** no
-  `scripts/py.js` (the `server` script calls bare `python`); no `lint` /
-  `test:server` / `test` / `screenshots` npm scripts; no e2e harness. Port is
-  17494 (the standard's registry was wrong until 2026-08-04, not this app).
+- **Family-contract gaps [re-verified 2026-08-06]:** `scripts/py.js`, `lint`,
+  `test:unit`, `test:server` and `test` npm scripts EXIST now (the parity
+  batch landed them — the earlier "missing" rows were stale); still missing:
+  a `screenshots` script and the real-webview e2e harness (deferred by your
+  word). Port is 17494 (the standard's registry was wrong until 2026-08-04,
+  not this app).
 - **`docs/stories.md` is missing while `toc.json` listed a `stories` slug
   [verified]** — the entry was removed from the TOC 2026-08-04 (it 404'd in-app);
   write the doc for `StoriesView` and restore the entry.

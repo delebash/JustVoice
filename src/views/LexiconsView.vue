@@ -10,7 +10,7 @@
   AppModal (@delebash/llm-ui) shell so the close ✕ never overlaps Import/Export.
 -->
 <script setup>
-import { computed, nextTick, onMounted, ref } from "vue";
+import { computed, nextTick, onActivated, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
@@ -359,11 +359,14 @@ function runPreview() {
   previewResult.value = out;
 }
 
-onMounted(async () => {
-  await refresh();
-  // Fix-it loop handoff: Chapters/Studio flag a misread word → arrives
-  // here prefilled. Open the first lexicon (or a new draft) with the
-  // grapheme seeded into the entry form, ready for a pronunciation.
+// Fix-it loop handoff: Chapters/Studio flag a misread word → arrives here
+// prefilled. Open the first lexicon (or a new draft) with the grapheme seeded
+// into the entry form, ready for a pronunciation. Consumed after the first
+// refresh AND on every re-entry (kept-alive view; a mounted-only read fires
+// once per session — the second misread word of a session would arrive to
+// nothing). The flag keeps the re-entry path from racing the first load.
+let _lexiconsReady = false;
+function consumeLexiconPrefill() {
   try {
     const raw = window.sessionStorage?.getItem("jv.lexicon.prefill");
     if (raw) {
@@ -381,6 +384,16 @@ onMounted(async () => {
       }
     }
   } catch { /* ignore */ }
+}
+
+onMounted(async () => {
+  await refresh();
+  _lexiconsReady = true;
+  consumeLexiconPrefill();
+});
+
+onActivated(() => {
+  if (_lexiconsReady) consumeLexiconPrefill();
 });
 </script>
 

@@ -43,6 +43,7 @@ from .api import (
     extraction_api,
     prefs_api,
     preset_suggest_api,
+    refine_lab_api,
     smart_assign_api,
     engine_sources_api,
     engines_models_api,
@@ -277,6 +278,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     from .llm_bootstrap import (
         migrate_attribution_restore,
         migrate_auto_simplify,
+        migrate_lab_restoration,
         retire_default_catalog_rows,
     )
 
@@ -289,6 +291,9 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     # One-time (the Auto simplification, approved 2026-08-06): the restore's
     # "Auto runs this when…" description tails trim off unedited route rows.
     migrate_auto_simplify()
+    # One-time (the Lab restoration, Part 3 2026-08-06): the pristine quay
+    # sample retires — the original cellar passage seeds under its new label.
+    migrate_lab_restoration()
     load_from_configs(stores.get_provider_store().list())
 
     app.include_router(generate_api.router)
@@ -328,6 +333,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(effect_presets_api.router)
     app.include_router(prefs_api.router)
     app.include_router(extraction_api.router)
+    app.include_router(refine_lab_api.router)
     app.include_router(smart_assign_api.router)
     app.include_router(preset_suggest_api.router)
 

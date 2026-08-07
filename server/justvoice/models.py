@@ -356,9 +356,11 @@ class ExtractionSettings(BaseModel):
     rule — "when the model can think" — reads the model catalog's Thinking
     flag, edited there.) Stale keys from the retired force pills (`route`)
     and dial (`reading_style`) are ignored on load; the next settings save
-    rewrites the canonical shape without them."""
+    rewrites the canonical shape without them.
+    The API floor (Part 7 rider, 2026-08-06) mirrors the pane input's
+    min=0.1 — zero or a negative would route EVERY model to Direct."""
 
-    direct_min_b: float = 14.0
+    direct_min_b: float = Field(default=14.0, ge=0.1)
 
 
 class AppSettings(BaseModel):

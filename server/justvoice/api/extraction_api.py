@@ -63,6 +63,16 @@ class AnalyzeSceneRequest(BaseModel):
     use_floor: bool = True
 
 
+class RunUsage(BaseModel):
+    """The run's usage numbers (§16 — every AI response carries them; the
+    server always had them, the responses just didn't). 0 = unreported."""
+
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    duration_ms: int = 0
+    model: str = ""
+
+
 class AnalyzeSceneResponse(BaseModel):
     scene_id: str
     rows: list[AttributionRowResponse]
@@ -74,6 +84,8 @@ class AnalyzeSceneResponse(BaseModel):
     # Raw LLM reply text — Speaker Lab's "Raw" tab. None when the call
     # was anchors-only / no dialogue.
     raw_llm: str | None = None
+    # None when no LLM call ran (anchors-only / no dialogue).
+    usage: RunUsage | None = None
 
 
 def _resolve_corrections(project_id: str, db: Session, *, limit: int = 12) -> list[dict]:
@@ -170,17 +182,24 @@ async def analyze_scene_endpoint(
         tier_used=raw_out.get("route", "guided"),
         tier_source=raw_out.get("route_source", "auto"),
         confidence_floor=raw_out.get("floor", 0.7),
+        usage=raw_out.get("usage"),
     )
 
 
 class AnalyzeTextRequest(BaseModel):
     """Speaker-Lab body — analyze raw text without a scene id. Caller
     supplies the cast directly + the same tuning flags as the scene-
-    scoped endpoint."""
+    scoped endpoint.
+
+    Corrections (Part 5, 2026-08-06 — the typed box died: corrections only
+    exist by fixing real results): pass `project_id` and the run uses that
+    project's STORED corrections through the same resolver production uses;
+    an explicit non-empty `corrections` list still wins (API compat)."""
 
     text: str
     characters: list[dict] = []
     corrections: list[dict] = []
+    project_id: str | None = None
     tier: str | None = None
     propagate: bool = True
     use_floor: bool = True
@@ -192,6 +211,14 @@ class AnalyzeTextRequest(BaseModel):
     systemPrompt: str | None = None
     userPrompt: str | None = None
     confidence_floor: float | None = None
+    # The column's remaining tunables (Part 2, 2026-08-06 — the controls are
+    # REAL): pass straight through to the shared run path, same as any
+    # feature. None/[] = the resolved preset's values.
+    think: bool | None = None
+    reasoningEffort: str | None = None
+    maxTokens: int | None = None
+    topP: float | None = None
+    samplers: list[dict] = []
 
 
 @router.post(
@@ -199,15 +226,22 @@ class AnalyzeTextRequest(BaseModel):
     response_model=AnalyzeSceneResponse,
     summary="Run speaker attribution on free-form text (Speaker Lab)",
 )
-async def analyze_text_endpoint(body: AnalyzeTextRequest) -> AnalyzeSceneResponse:
+async def analyze_text_endpoint(
+    body: AnalyzeTextRequest, db: Session = Depends(get_db)
+) -> AnalyzeSceneResponse:
     """No scene id — for the Speaker Lab + ad-hoc analysis. Returns the
     same AnalyzeSceneResponse shape with scene_id="(adhoc)".
     """
+    corrections = body.corrections
+    if not corrections and body.project_id:
+        # The open project's stored corrections, exactly like production
+        # (Part 5 — same resolver, same top-12, zero drift).
+        corrections = _resolve_corrections(body.project_id, db)
     settings = get_state().settings.get()
     req = AnalyzeRequest(
         text=body.text,
         characters=body.characters,
-        corrections=body.corrections,
+        corrections=corrections,
         tier=body.tier,
         propagate=body.propagate,
         use_floor=body.use_floor,
@@ -217,6 +251,11 @@ async def analyze_text_endpoint(body: AnalyzeTextRequest) -> AnalyzeSceneRespons
         user_prompt=body.userPrompt,
         confidence_floor=body.confidence_floor,
         provider_id=body.providerId,
+        think=body.think,
+        reasoning_effort=body.reasoningEffort,
+        max_tokens=body.maxTokens,
+        top_p=body.topP,
+        samplers=body.samplers,
     )
     try:
         raw_out: dict = {}
@@ -234,6 +273,7 @@ async def analyze_text_endpoint(body: AnalyzeTextRequest) -> AnalyzeSceneRespons
         tier_used=raw_out.get("route", "guided"),
         tier_source=raw_out.get("route_source", "auto"),
         confidence_floor=raw_out.get("floor", 0.7),
+        usage=raw_out.get("usage"),
     )
 
 
@@ -417,6 +457,8 @@ class SpeakerCandidateOut(BaseModel):
 class DiscoverSpeakersResponse(BaseModel):
     scene_id: str
     candidates: list[SpeakerCandidateOut]
+    # The run's usage (§16) — None only if the call never ran.
+    usage: RunUsage | None = None
 
 
 @router.post(
@@ -440,7 +482,8 @@ async def discover_speakers_endpoint(
     known = [c.get("name", "") for c in _resolve_cast(scene_id, db)]
     settings = get_state().settings.get()
     try:
-        candidates = identify_speakers(body.text, known, settings=settings)
+        raw_out: dict = {}
+        candidates = identify_speakers(body.text, known, settings=settings, raw_out=raw_out)
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))
     except Exception as e:
@@ -454,6 +497,7 @@ async def discover_speakers_endpoint(
             )
             for c in candidates
         ],
+        usage=raw_out.get("usage"),
     )
 
 
@@ -469,6 +513,13 @@ class DiscoverTextRequest(BaseModel):
     temperature: float | None = None
     systemPrompt: str | None = None
     userPrompt: str | None = None
+    # The column's remaining tunables (Part 2, 2026-08-06) — same contract as
+    # analyze-text.
+    think: bool | None = None
+    reasoningEffort: str | None = None
+    maxTokens: int | None = None
+    topP: float | None = None
+    samplers: list[dict] = []
 
 
 @router.post(
@@ -488,6 +539,11 @@ async def discover_text_endpoint(body: DiscoverTextRequest) -> DiscoverSpeakersR
         "temperature": body.temperature,
         "system": body.systemPrompt,
         "userTemplate": body.userPrompt,
+        "think": body.think,
+        "reasoningEffort": body.reasoningEffort,
+        "maxTokens": body.maxTokens,
+        "topP": body.topP,
+        "samplers": body.samplers or None,
     }
     overrides = {k: v for k, v in overrides.items() if v is not None}
 
@@ -498,8 +554,10 @@ async def discover_text_endpoint(body: DiscoverTextRequest) -> DiscoverSpeakersR
 
     settings = get_state().settings.get()
     try:
+        raw_out: dict = {}
         candidates = identify_speakers(
-            body.text, body.known_characters, settings=settings, run_fn=run_fn
+            body.text, body.known_characters, settings=settings, run_fn=run_fn,
+            raw_out=raw_out,
         )
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))
@@ -514,6 +572,7 @@ async def discover_text_endpoint(body: DiscoverTextRequest) -> DiscoverSpeakersR
             )
             for c in candidates
         ],
+        usage=raw_out.get("usage"),
     )
 
 

@@ -19,7 +19,7 @@
   quickSetupCopy and named "LLM engine setup" by the labels feed (ruling 6).
 -->
 <script setup>
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { AiModelsArea, useModelApply } from "@delebash/llm-ui";
 import SpeechEnginesTab from "../components/SpeechEnginesTab.vue";
@@ -42,6 +42,20 @@ const initialAction = ref(String(route.query.action || ""));
 // 2026-08-03 lesson): read it once into a plain ref and strip it from the URL,
 // or the wizard reopens on every remount and on Back.
 const openWizardOnce = ref(route.query.quicksetup === "1");
+
+// This view is kept alive (App.vue's KeepAlive), so the setup reads above fire
+// once per session — a LATER #engines / #speakerlab redirect arrives as a query
+// on the same route and must be re-consumed here. The kit area reacts to the
+// prop updates (its own deep-link watcher, 2026-08-06).
+watch(() => route.fullPath, () => {
+  if (route.name !== "ai") return;
+  const t = String(route.query.tab || "");
+  const a = String(route.query.action || "");
+  if (!t && !a) return;
+  if (t) initialTab.value = t;
+  if (a) initialAction.value = a;
+  router.replace({ path: "/ai" }); // consumed — strip so Back doesn't re-fire
+});
 
 onMounted(async () => {
   if (route.query.tab || route.query.action) router.replace({ path: "/ai" }); // consumed

@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: MIT -->
 <script setup>
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onActivated, onMounted, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
@@ -423,14 +423,18 @@ const activeSub = ref("general");
 
 // Deep links (#cache/#channels/#webhooks redirect here) hand the target
 // sub-tab over via sessionStorage — ids stay stable; the retired "changelog"
-// id keeps landing on the section that replaced it.
-try {
-  const sub = window.sessionStorage?.getItem("jv.settings.sub");
-  if (sub) {
-    window.sessionStorage.removeItem("jv.settings.sub");
-    activeSub.value = sub === "changelog" ? "updates" : sub;
-  }
-} catch { /* ignore */ }
+// id keeps landing on the section that replaced it. Consumed on EVERY entry:
+// this view is kept alive (App.vue), so a setup-time read fires once per
+// session and later deep links would land on whatever sub was left open.
+onActivated(() => {
+  try {
+    const sub = window.sessionStorage?.getItem("jv.settings.sub");
+    if (sub) {
+      window.sessionStorage.removeItem("jv.settings.sub");
+      activeSub.value = sub === "changelog" ? "updates" : sub;
+    }
+  } catch { /* ignore */ }
+});
 
 // ── GPU info (task #91) ──────────────────────────────────────────────
 const gpuInfo = ref(null);

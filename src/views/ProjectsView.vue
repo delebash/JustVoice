@@ -11,7 +11,7 @@
   subtable with bulk-action bar, per-row Open / ▶ / ↻ / ⚙ buttons.
 -->
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onActivated, onMounted, ref, watch } from "vue";
 import { UiButton, UiInput, UiCheckbox, UiTag, UiChip, UiSelect, AppModal } from "@delebash/llm-ui";
 import { EmptyState } from "@delebash/llm-ui";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
@@ -442,8 +442,13 @@ onMounted(() => {
   // personas feeds the cast detail pane.
   projectsStore.ensureLoaded();
   personasStore.ensureLoaded();
-  // Home's Start-something pills hand a kind over via sessionStorage —
-  // consume it once and open the kind picker preselected.
+});
+
+// Home's Start-something pills (and Chapters' "1 Import") hand their ask over
+// via sessionStorage. Consumed on EVERY entry: this view is kept alive
+// (App.vue), so a mounted-time read fires once per session and the second
+// "start an audiobook" click of a session would open nothing.
+onActivated(() => {
   try {
     if (window.sessionStorage?.getItem("jv.projects.openImport")) {
       window.sessionStorage.removeItem("jv.projects.openImport");
