@@ -12,7 +12,7 @@ import { useServerStore } from "./stores/server.js";
 import AudioKeepAlive from "./components/AudioKeepAlive.vue";
 import QuickSetup from "./components/QuickSetup.vue";
 import KeyboardCheatsheet from "./components/KeyboardCheatsheet.vue";
-import { AiSetupOffer, AiStatusButton, AiTaskStrip, BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, TitleBar, pushToast, useAiTasksNav, useAiTasksStore, useModelApply, warmModelId } from "@delebash/llm-ui";
+import { AiSetupOffer, AiStatusButton, AiTaskStrip, BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, TitleBar, openExternal, pushToast, useAiTasksNav, useAiTasksStore, useModelApply, warmModelId } from "@delebash/llm-ui";
 import { readPref, writePref } from "./services/prefs.js";
 import GlobalAudioPlayer from "./components/GlobalAudioPlayer.vue";
 
@@ -530,21 +530,34 @@ onMounted(async () => {
           {{ health.current_engine || "No voice engine" }}
         </button>
 
-        <button
-          type="button"
-          class="jv-topbar__status"
-          :class="{ 'jv-topbar__status--warn': !health || health.status !== 'ok' }"
-          data-panel-toggle
-          :title="tasks.runningCount ? 'Open status panel' : 'Server status'"
-          @click="tasks.togglePanel()"
-        >
-          <span class="jv-topbar__dot"></span>
-          {{ health && health.status === "ok" ? "Operational" : (health ? health.status : "Offline") }}
-          <span class="jv-topbar__url">· {{ api.serverUrl }}</span>
-          <span v-if="tasks.runningCount" class="jv-topbar__taskcount">
-            · <strong>{{ tasks.runningCount }}</strong> in flight
-          </span>
-        </button>
+        <!-- Status and server URL are TWO controls, not one (user, 2026-08-08).
+             They used to be a single button, so clicking the URL opened the
+             status panel — the one thing a URL must not do. The status text
+             toggles the panel; the URL is a real link that opens the server in
+             the browser through the app's Tauri opener (the webview swallows
+             target=_blank, so an unrouted anchor is silently dead). -->
+        <span class="jv-topbar__statusgroup">
+          <button
+            type="button"
+            class="jv-topbar__status"
+            :class="{ 'jv-topbar__status--warn': !health || health.status !== 'ok' }"
+            data-panel-toggle
+            :title="tasks.runningCount ? 'Open status panel' : 'Server status'"
+            @click="tasks.togglePanel()"
+          >
+            <span class="jv-topbar__dot"></span>
+            {{ health && health.status === "ok" ? "Operational" : (health ? health.status : "Offline") }}
+            <span v-if="tasks.runningCount" class="jv-topbar__taskcount">
+              · <strong>{{ tasks.runningCount }}</strong> in flight
+            </span>
+          </button>
+          <a
+            class="jv-topbar__url"
+            :href="api.serverUrl"
+            :title="`Open ${api.serverUrl} in your browser`"
+            @click.prevent="openExternal(api.serverUrl)"
+          >{{ api.serverUrl }}</a>
+        </span>
         <!-- §11 chrome: the kit's AI status button, in the frame's slot. -->
         <AiStatusButton />
         <HelpTrigger :slug="currentHelpSlug" :label="currentView?.label || 'JustVoice'" />
