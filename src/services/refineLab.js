@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-// The dictation-cleanup Lab adapter (task #22, 2026-08-06). Registered under
-// the `refine` FEATURE, so the four piece columns AND the feature pane's
-// composed-prompt Lab all run the REAL production path — /v1/refine/lab-run:
-// the explicit composed system plus the few-shot REFINEMENT_EXAMPLES history
-// production sends (the generic run sent no history — the recorded #22 gap).
-// A piece column's own system text still rides, so every part stays
-// standalone-testable. §16: every run is a real task on the strip — the
+// The dictation-cleanup Lab adapter. Registered under the `refine` FEATURE:
+// the card's Lab (the one refine surface since the 2026-08-08 sectioned
+// redesign retired the per-piece panes) runs the REAL production path —
+// /v1/refine/lab-run: the composed system plus the few-shot
+// REFINEMENT_EXAMPLES history production sends (the generic run sent no
+// history — the recorded 2026-08-06 gap). A column-edited system still
+// rides (what you see is what runs). §16: every run is a real task on the strip — the
 // task row is ConfigColumn's: it registers the run in the shared kit queue
 // (inline-flagged) and hands this adapter the handle's abort signal.
 import { useApi } from "../stores/api.js";

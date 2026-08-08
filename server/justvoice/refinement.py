@@ -200,33 +200,37 @@ REFINEMENT_EXAMPLES: list[tuple[str, str]] = [
 
 
 def compose_refinement_system(flags: RefinementFlags) -> str:
-    """Assemble the production system prompt from the TEMPLATE ROWS (ruling 9,
-    2026-08-05): `refine.base` + each enabled section row's system text, joined
-    the way `build_refinement_prompt` joined the code constants. The rows are
-    Lab-editable one by one (each standalone-testable with its own
-    {{transcript}} user half); production runs this COMPOSITION through the
-    run path's explicit-system door. The base row itself states the
-    no-sections identity behavior, so the builder's hardcoded fallback line is
-    retired by construction. A missing row (never seeded / deleted) is skipped
-    rather than fatal — the base alone is a complete instruction."""
-    from llm_runner.llm import stores
+    """Render the production system prompt from the TEMPLATE ROWS (the
+    2026-08-08 sectioned redesign — template-with-variables, the same
+    mechanism every feature uses; supersedes ruling 9's concatenation):
+    `refine.base`'s system carries {{smart_cleanup}} / {{self_correction}} /
+    {{preserve_technical}} markers, each filled with its section row's text
+    only when its Capture toggle is on — off is an EMPTY value, deliberately
+    distinct from MISSING (the kit render() fails loud on a missing name, and
+    all three names are always supplied). Marker order in the row IS the
+    paste order — visible and the user's to change. Edges, both visible in
+    the Lab preview: a user-deleted marker drops that section even when its
+    toggle is on; a pre-redesign base row (no markers — seeds-only change,
+    the user resets) composes to the ground rules alone; a missing section
+    row renders empty rather than fatal."""
+    from llm_runner.llm import render, stores
 
     store = stores.get_prompt_store()
-    parts: list[str] = []
     base = store.get("refine.base")
-    if base is not None:
-        parts.append(base.system)
+    if base is None:
+        return ""
+    variables: dict[str, str] = {}
     for flag_on, key in (
-        (flags.smart_cleanup, "refine.smart_cleanup"),
-        (flags.self_correction, "refine.self_correction"),
-        (flags.preserve_technical, "refine.preserve_technical"),
+        (flags.smart_cleanup, "smart_cleanup"),
+        (flags.self_correction, "self_correction"),
+        (flags.preserve_technical, "preserve_technical"),
     ):
-        if not flag_on:
-            continue
-        row = store.get(key)
-        if row is not None:
-            parts.append(row.system)
-    return "\n\n".join(parts)
+        row = store.get(f"refine.{key}") if flag_on else None
+        variables[key] = row.system if (flag_on and row is not None) else ""
+    out = render(base.system, variables)
+    # Empty markers leave blank-line runs behind — collapse back to the old
+    # join's double-newline rhythm.
+    return re.sub(r"\n{3,}", "\n\n", out).strip()
 
 
 def refine_transcript(

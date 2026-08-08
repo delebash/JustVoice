@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: MIT
-"""The dictation-cleanup Lab doors (task #22, 2026-08-06).
+"""The dictation-cleanup Lab doors.
 
-POST /v1/ai/prompt-preview — the family prompt-preview contract (the kit's
-promptless / pieces-parent Lab pane): for the `refine` feature it returns the
-REAL composed call — the ground rules plus the sections the user's Capture
-toggles enable — so what the Lab shows and tunes is exactly what a dictation
-run sends. Any other feature 404s (fail-loud; the kit falls back to its
-assignment-only pane).
+POST /v1/ai/prompt-preview — the family prompt-preview contract, surviving
+solely as the COMPOSED-CALL door (the 2026-08-08 carve-out): for the `refine`
+feature it returns the REAL composed call — the base template rendered with
+the sections the user's Capture toggles enable — so what the sectioned pane
+shows and tunes is exactly what a dictation run sends. Any other feature 404s
+(fail-loud; the kit shows the error line, never a fallback picker).
 
 POST /v1/refine/lab-run — the refine Lab's run door: the SAME path production
 takes (explicit composed system + the few-shot REFINEMENT_EXAMPLES history —
@@ -115,8 +115,8 @@ async def refine_lab_run(body: RefineLabRunRequest) -> RefineLabRunResponse:
     }
     overrides = {k: v for k, v in overrides.items() if v is not None}
     # The column's own system wins when it sent one (what you see is what
-    # runs — a piece column tests its OWN text standalone); else the CURRENT
-    # toggles' composition, exactly production's call.
+    # runs); else the CURRENT toggles' composition — exactly production's
+    # call (the sectioned redesign, 2026-08-08).
     overrides.setdefault("system", compose_refinement_system(_current_flags()))
     t0 = time.monotonic()
     try:

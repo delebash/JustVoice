@@ -32,25 +32,31 @@ Until a model is picked, features answer with a "run the LLM engine setup"
 message — the one-click wizard on the AI Settings page installs the built-in
 engine, downloads a model sized to your PC, and sets it as the default.
 
-## Prompts are editable — features and Dictation cleanup's pieces
+## Prompts are editable — and Dictation cleanup is one card with sections
 
 Every prompt a feature sends is a **template row** — the wording lives in the
 database, visible and editable under Routing by feature. Most features are one
-row. **Dictation cleanup** is made of **pieces** — four texts (the ground
-rules plus the three sections your Capture toggles switch on) you can read,
-edit and test, that never run alone: production pastes the enabled ones
-together and makes **one** call. A piece's card shows what it belongs to
-instead of a routing arrow — the cleanup card itself is where its engine
-preset is chosen, once, for all four.
+row. **Dictation cleanup** is one card whose prompt is built from **sections**:
+the ground-rules text is a template, and its `{{…}}` markers place the three
+section texts — *Remove filler*, *Take your corrections*, *Keep technical
+words* — into the prompt when their Capture toggle is on. The sections never
+run alone: production renders the template and makes **one** call, on the one
+preset the card is assigned.
 
-The cleanup card's own pane carries the full Lab over the **real composed
-call**: open it and the system prompt you see is the ground rules plus
-whichever of *Remove filler*, *Take your corrections* and *Keep technical
-words* your Capture toggles have on right now — flip a toggle and the
-composition follows. Every cleanup Lab run (the card's or a single
-piece's) also rides the same worked examples production sends with each
-dictation, so what you test is exactly what a real capture runs. What that
-looks like in practice: paste
+Everything lives on the cleanup card's pane, and everything on it is real:
+
+- **The toggles at the top are your actual Capture settings** — flip one here
+  and your next dictation changes too, and you watch the section enter or
+  leave the generated prompt below.
+- **The four text boxes are the stored texts.** The ground-rules box is the
+  template — move a marker and you've changed the order the sections paste
+  in. Saving a box refreshes the generated prompt; the pane never shows a
+  composition built from unsaved text.
+- **The generated prompt is the real composed call**, and the Lab under it
+  runs that exact call — with the same worked examples production sends with
+  each dictation. What you test is what a capture runs.
+
+What that looks like in practice: paste
 `um can you check if the uh export finished before we send it`
 and a working model returns something like
 `Can you check if the export finished before we send it?` — fillers

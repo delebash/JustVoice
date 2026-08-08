@@ -16,6 +16,7 @@ import {
 } from "@delebash/llm-ui";
 import { SERVER_URL, resolveBase } from "./config.js";
 import AttributionAutoPanel from "./components/lab/AttributionAutoPanel.vue";
+import RefineSectionToggles from "./components/lab/RefineSectionToggles.vue";
 import SmartAssignResult from "./components/lab/SmartAssignResult.vue";
 import { attributionLabAdapter } from "./services/attributionLab.js";
 import { refineLabAdapter } from "./services/refineLab.js";
@@ -64,33 +65,34 @@ function wireKit(app) {
       // generic run; the raw characterId → voiceId object renders as
       // readable Character → Voice names.
       smart_assign: { render: SmartAssignResult },
-      // Task #22 (2026-08-06): every refine Lab run — piece columns AND the
-      // cleanup pane's composed-prompt Lab — takes production's real path
-      // (/v1/refine/lab-run: composed system + few-shot history).
+      // Every refine Lab run takes production's real path (/v1/refine/lab-run:
+      // composed system + few-shot history) — the card's Lab over the
+      // sectioned composition (2026-08-08; the piece columns died with the
+      // pieces concept).
       refine: refineLabAdapter,
     },
-    // Dictation cleanup's four texts are PIECES (decided, not reopened): they
-    // concatenate into ONE call, so the rows show their RELATION instead of a
-    // routing arrow and the feature routes once at its own card. Attribution's
-    // routes are NOT pieces anymore — the restore (approved 2026-08-06) made
-    // Guided/Direct real routed cards under a plain heading (Reasoned died in
-    // the tier-debris cleanup 2026-08-07).
-    featurePieces: {
-      "refine.base": "Part of Dictation cleanup — always runs with it",
-      "refine.smart_cleanup": "Part of Dictation cleanup — runs when its Capture toggle is on",
-      "refine.self_correction": "Part of Dictation cleanup — runs when its Capture toggle is on",
-      "refine.preserve_technical": "Part of Dictation cleanup — runs when its Capture toggle is on",
-    },
-    // The "Auto" row under the SPEAKER ATTRIBUTION heading (the Auto
-    // simplification, 2026-08-06): label + note render the nav row; the
-    // panel is its whole pane — the plain words for how Auto picks a
-    // feature, plus the one editable size line. No pills, no readout.
+    // Dictation cleanup is SECTIONED (the 2026-08-08 redesign — it retired
+    // the pieces concept): ONE nav card; the base row's system is a template
+    // whose {{smart_cleanup}}/{{self_correction}}/{{preserve_technical}}
+    // markers fill from the section rows when their Capture toggle is on.
+    // All four texts edit on the card's pane; the Lab runs over the REAL
+    // composed preview (refine_lab_api). Attribution's routes stay real
+    // routed cards (the restore, 2026-08-06 — either/or routes, not sections).
+    sectionedFeatures: ["refine"],
     featurePanels: {
+      // The "Auto" row under the SPEAKER ATTRIBUTION heading (the Auto
+      // simplification, 2026-08-06): label + note render the nav row; the
+      // panel is its whole pane — the plain words for how Auto picks a
+      // feature, plus the one editable size line. No pills, no readout.
       speaker_attribution: {
         component: AttributionAutoPanel,
         label: "Auto",
         note: "Picks which of the two features below runs",
       },
+      // The cleanup card's LIVE Capture toggles (no label → mounts on the
+      // pane, no nav row): they read and write the REAL server settings —
+      // no Lab-only state, the Lab mirrors production (the standing premise).
+      refine: RefineSectionToggles,
     },
     // This app's voice on the shared model-catalog surface (defaults are JW's words).
     catalogCopy: {

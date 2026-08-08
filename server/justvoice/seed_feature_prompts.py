@@ -88,12 +88,22 @@ Paragraphs (dialogue segments tagged inline):
 Return only the JSON array, one entry per [D#] in the order they appear.
 """
 
-# refine.base carries the no-sections fallback IN THE ROW (ruling 9: retiring
-# build_refinement_prompt's hardcoded fallback line by construction — with no
-# section rows appended, the base alone still states the identity behavior).
+# refine.base is the TEMPLATE (the 2026-08-08 sectioned redesign): its {{…}}
+# markers place the section rows' texts — each fills only when its Capture
+# toggle is on, empty otherwise — so the paste order is visible in the row
+# and the user's to change. Marker names == Capture flag names == row-key
+# suffixes, one vocabulary. The no-sections fallback line stays IN the row
+# (ruling 9): with every marker empty, the base alone still states the
+# identity behavior.
 _REFINE_BASE_SYSTEM = _BASE_INSTRUCTIONS + """
 
-If no transformation sections follow, return the transcript unchanged."""
+If no transformation sections follow, return the transcript unchanged.
+
+{{smart_cleanup}}
+
+{{self_correction}}
+
+{{preserve_technical}}"""
 
 # compose / persona_rewrite — verbatim from personas_api.py's f-strings
 # (2026-08-05), the persona's personality lifted to a {{personality}} slot.
@@ -209,10 +219,12 @@ Return only the JSON object.""",
         "system": _PERSONA_REWRITE_SYSTEM,
         "user_template": "{{text}}",
     },
-    # ── dictation cleanup — the ×4 composition (ruling 9) ──────────────────
-    # Production concatenates base + the enabled sections' system texts and runs
-    # through run_action's explicit-system door; each row carries its OWN
-    # {{transcript}} user half so the Lab tests every PART standalone.
+    # ── dictation cleanup — SECTIONED (the 2026-08-08 redesign) ─────────────
+    # The base row is the template (markers above); the three section rows are
+    # the texts its markers place. They never run alone — one composed call —
+    # so only the base carries a {{transcript}} user half (the section rows
+    # shed theirs with the redesign; isolation testing = flip the real Capture
+    # toggles on the card's pane).
     "refine.base": {
         "feature": "refine",
         "label": "The ground rules",
@@ -225,21 +237,18 @@ Return only the JSON object.""",
         "label": "Remove filler",
         "description": 'Drops the ums, uhs and "you know"s, adds sentence punctuation.',
         "system": _SMART_CLEANUP,
-        "user_template": "{{transcript}}",
     },
     "refine.self_correction": {
         "feature": "refine",
         "label": "Take your corrections",
         "description": 'Say "no wait — make that Tuesday" and only Tuesday survives.',
         "system": _SELF_CORRECTION,
-        "user_template": "{{transcript}}",
     },
     "refine.preserve_technical": {
         "feature": "refine",
         "label": "Keep technical words",
         "description": '"index dot tsx" comes out as index.tsx, exactly as spoken.',
         "system": _PRESERVE_TECHNICAL,
-        "user_template": "{{transcript}}",
     },
     # ── voices ──────────────────────────────────────────────────────────────
     "voice_gender": {
