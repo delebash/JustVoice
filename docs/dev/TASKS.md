@@ -165,6 +165,30 @@ why settings folded from JSON into SQLite (`storage/settings_store.py:4-8`) · t
 implement it · corrections used as few-shot examples.
 GO: needed.
 
+### The `screenshots` npm script is broken two independent ways
+
+STATE: FINDING — hit live 2026-08-08 (left unfixed: no go was given to edit it).
+BUILT: nothing. `scripts/smoke_gui.js` hardcodes `127.0.0.1:17497` and ignores
+`JV_BASE` (CLAUDE.md's "JV_BASE overrides the base URL" is true of `smoke.js`
+only), and even on the right port it times out waiting for a
+`getByRole('button', { name: 'Engines' })` that no longer resolves.
+OPEN: fix the port to honor `JV_BASE` and update the stale selectors — or
+retire the script into the deferred harness decision (it is browser-driven,
+the banned acceptance class).
+GO: needed.
+
+### §3 wording tension: "speaker attribution = JW" vs "JV does its own casting"
+
+STATE: OPEN — observed 2026-08-08 during the contract-rows work, **unverified**
+which reading is right.
+WHY it matters: `design-decisions.md:105` lists speaker attribution under JW's
+data ownership, while CLAUDE.md says "JW hands over the prose, JV does its own
+casting and narration" and JV's extraction pipeline computes attribution.
+Possibly ownership-of-data vs where-computation-runs — but the two sentences
+read as contradicting each other and one page should say which.
+OPEN: reconcile the §3 wording (one look at what JW actually exports).
+GO: needed.
+
 ## Known deviations, recorded so they aren't re-litigated
 
 - **No real-webview end-to-end harness** — deferred by your word above. When it
