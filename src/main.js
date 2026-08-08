@@ -22,11 +22,11 @@ import { refineLabAdapter } from "./services/refineLab.js";
 import { LAB_TEST_ACTIONS, LAB_TEST_SOURCES } from "./services/labTestData.js";
 import { bootPrefs, ensureActiveProjectDefault } from "./services/prefs.js";
 import { loadDoc, hasDoc, titleForSlug } from "./services/helpDocs.js";
-import { useUIStore } from "./stores/ui.js";
+import { useUiStore } from "./stores/ui.js";
 import { i18n } from "./i18n/index.js";
 import router from "./router/index.js";
-import "./tokens.css";
-import "./styles.css";
+import "./styles/tokens.css";
+import "./styles/styles.css";
 
 function isDictateView() {
   if (typeof window === "undefined") return false;
@@ -202,7 +202,7 @@ async function boot() {
   // Force the ui store to init before mount so the persisted appearance (mode,
   // accent hue, ui scale) is applied via the shared engine on the FIRST paint of
   // every view — not lazily after a component first touches the store.
-  useUIStore(pinia);
+  useUiStore(pinia);
   // Warm the default local model BEFORE mount (the kit's startWarmOnBoot —
   // family mechanic): App.vue's splash overlay is up on the very first Vue
   // paint, a seamless hand-off from index.html's static plate. JV's warm

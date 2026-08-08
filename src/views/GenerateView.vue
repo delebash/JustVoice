@@ -626,7 +626,7 @@ function onSlashInsert({ rendered, placement }) {
   }, 0);
 }
 
-// One-shot prefill handoff — Overview's ↻ Re-render, Captures' "open in
+// One-shot prefill handoff — Home's ↻ Re-render, Captures' "open in
 // Generate" (and any future cross-view affordance) stash {text, voice} here.
 // Consumed after the first voices load AND on every re-entry (kept-alive
 // view; a mounted-only read fires once per session — the second handoff of a
@@ -1042,7 +1042,7 @@ onActivated(() => {
 
     <!-- History — takes, favorites, retry. Pulls from /v1/takes/recent
          (route lands with #87); empty-state until then. Card-wrapped to
-         match Overview's "Recent generations" empty-state shape. -->
+         match Home's "Recent generations" empty-state shape. -->
     <div class="jv-section">
       <h3 class="jv-section__title">History — takes, favorites, retry</h3>
       <div class="jv-card">

@@ -1250,7 +1250,7 @@ p.note,
 }
 .jv-segmented--sm .jv-segmented__btn { height: 24px; font-size: 11px; padding: 0 10px; }
 
-/* Stat tile grid (preview L185-190) — used by Overview / Engines /
+/* Stat tile grid (preview L185-190) — used by Home / Engines /
    Cache / Compare to render `.k` (eyebrow) + `.v` (big value) + `.x`
    (sub) inside a `.stat` card. */
 .stat-grid {

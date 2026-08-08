@@ -15,7 +15,7 @@ function loadInitial() {
   return p && typeof p === "object" ? p : {};
 }
 
-export const useUIStore = defineStore("ui", () => {
+export const useUiStore = defineStore("ui", () => {
   const persisted = loadInitial();
 
   const sidebarOpen = ref(true);

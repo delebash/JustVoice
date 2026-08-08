@@ -4,7 +4,7 @@ JustVoice is a cross-platform voice-production studio. Five audiences share one 
 
 ## First launch
 
-1. **Pick a use case.** The Welcome modal asks what you're doing with JustVoice. Your choice retunes the UI: audiobook producers get the Projects + Chapters tabs with chapters terminology; game devs get the Lines tab (every line of the game, stable ids); podcasters get Projects + Chapters + Studio (the multi-track Stories timeline tab is a placeholder — not built yet). The chosen use case is also highlighted on the Overview dashboard as a quick-action card so you can jump straight back into your workflow. You can re-pick later in Settings → About.
+1. **Pick a use case.** The Welcome modal asks what you're doing with JustVoice. Your choice retunes the UI: audiobook producers get the Projects + Chapters tabs with chapters terminology; game devs get the Lines tab (every line of the game, stable ids); podcasters get Projects + Chapters + Studio (the multi-track Stories timeline tab is a placeholder — not built yet). The chosen use case is also highlighted on the Home dashboard as a quick-action card so you can jump straight back into your workflow. You can re-pick later in Settings → About.
 
 2. **Load an engine.** Open the AI page's **Speech engines** tab. Click Load on Kokoro (free, fast, CPU-realtime, 54 preset voices, 8 languages) — that's the lightest starting point. Then try Chatterbox Turbo if you want voice cloning (clone from a reference WAV/MP3).
 
@@ -29,7 +29,7 @@ The same UI is served at `http://localhost:17494/ui/`. Connect from any browser 
 
 ## Where things live
 
-- **Overview.** Dashboard — intro band + quick-actions for each audience + the engine/voice catalogue, loaded engine status, in-flight render tasks, and recent generations.
+- **Home.** Dashboard — intro band + quick-actions for each audience + the engine/voice catalogue, loaded engine status, in-flight render tasks, and recent generations.
 - **Settings.** Server URL, mastering preset (ACX / iAudio / Podcast / YouTube), generation defaults, capture hotkeys, MCP server, GPU diagnostics.
 - **Engines.** Per-engine venv isolation — installing Chatterbox doesn't break Kokoro.
 - **Cache.** Disk-LRU render cache. Identical render of the same line costs nothing twice.

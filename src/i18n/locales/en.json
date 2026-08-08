@@ -12,7 +12,7 @@
     "loading": "Loading…"
   },
   "sidebar": {
-    "overview": "Home",
+    "home": "Home",
     "generate": "Generate",
     "studio": "Studio",
     "chapter": "Chapters",

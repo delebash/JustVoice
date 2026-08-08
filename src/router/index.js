@@ -7,10 +7,13 @@
 import { createRouter, createWebHashHistory } from "vue-router";
 
 const routes = [
-  { path: "/", redirect: "/overview" },
+  { path: "/", redirect: "/home" },
 
   // ── Workflow ──────────────────────────────────────────────────────
-  { path: "/overview", name: "overview", component: () => import("../views/OverviewView.vue") },
+  { path: "/home", name: "home", component: () => import("../views/HomeView.vue") },
+  // The Home view was OverviewView at /overview until the family renderer-tree
+  // alignment (target-tree P8) — old #overview deep links keep landing.
+  { path: "/overview", redirect: "/home" },
   { path: "/projects", name: "projects", component: () => import("../views/ProjectsView.vue") },
   { path: "/chapter", name: "chapter", component: () => import("../views/ChapterView.vue") },
   { path: "/lines", name: "lines", component: () => import("../views/LinesView.vue") },
@@ -27,7 +30,7 @@ const routes = [
   { path: "/presets", name: "presets", component: () => import("../views/RenderPresetsView.vue") },
   // The Voice engines page died in the parity batch (2026-08-06) — engines live
   // on the AI console's Speech engines tab. Every old #engines deep link (the
-  // topbar pill, VoicesView's banner, Overview's card) lands there.
+  // topbar pill, VoicesView's banner, Home's card) lands there.
   { path: "/engines", redirect: { path: "/ai", query: { tab: "speech-engines" } } },
   { path: "/ai", name: "ai", component: () => import("../views/AiView.vue") },
 
@@ -65,11 +68,11 @@ const routes = [
   })),
 
   // Unknown → Home.
-  { path: "/:pathMatch(.*)*", redirect: "/overview" },
+  { path: "/:pathMatch(.*)*", redirect: "/home" },
 ];
 
 // Raw initial view id from the URL hash, captured at module load — BEFORE the
-// router runs its first navigation (which redirects "/" → /overview). App.vue
+// router runs its first navigation (which redirects "/" → /home). App.vue
 // uses it to tell a real deep-link from the default landing for first-run.
 export const initialDeepLink = (typeof window !== "undefined"
   ? window.location.hash.replace(/^#\/?/, "").split(/[/?]/)[0]

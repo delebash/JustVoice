@@ -10,7 +10,7 @@ import { useOnboarding } from "../stores/onboarding.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useActiveProject } from "../stores/activeProject.js";
-import { useUIStore } from "../stores/ui.js";
+import { useUiStore } from "../stores/ui.js";
 import { useServerStore } from "../stores/server.js";
 import { SETTINGS_SECTION_IDS } from "./settingsSections.js";
 import CacheView from "./CacheView.vue";
@@ -33,7 +33,7 @@ const LOCALES = [
 ];
 
 const api = useApi();
-const ui = useUIStore();
+const ui = useUiStore();
 const projectsStore = useProjectsStore();
 const personasStore = usePersonasStore();
 const activeProjectStore = useActiveProject();

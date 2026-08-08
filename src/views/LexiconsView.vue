@@ -23,7 +23,7 @@ import { usePersonasStore } from "../stores/personas.js";
 const api = useApi();
 
 // lexicons / projects / personas from shared stores. Save commits via the
-// API then refresh() → store.reload() so consumers (Personas, Overview)
+// API then refresh() → store.reload() so consumers (Personas, Home)
 // reflect the change.
 const lexiconsStore = useLexiconsStore();
 const projectsStore = useProjectsStore();

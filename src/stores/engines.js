@@ -2,7 +2,7 @@
 //
 // Engines store — single source of truth for the engine list as the
 // READ-ONLY consumers see it (Personas, Voices, Studio, Generate,
-// Overview, etc.). See stores/projects.js + the rebuild plan doc.
+// Home, etc.). See stores/projects.js + the rebuild plan doc.
 //
 // NOTE: EnginesView itself owns the install/load progress polling and
 // dispatches `jv:health-refresh` after state changes; this store

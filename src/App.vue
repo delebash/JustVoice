@@ -35,7 +35,7 @@ import GlobalAudioPlayer from "./components/GlobalAudioPlayer.vue";
 const ALL_USE_CASES = ["audiobook", "game", "podcast", "dictation", "accessibility", "multiple", "unset"];
 const VIEWS = [
   // ─── Workflow lane ─────────────────────────────────────────────────
-  { id: "overview",  lane: "workflow", label: "Home",      icon: "🏠", lede: "" },
+  { id: "home",      lane: "workflow", label: "Home",      icon: "🏠", lede: "" },
   { id: "projects",  lane: "workflow", label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Import manuscripts from JustWrite, or scripts and audio from other tools.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "chapter",   lane: "workflow", label: "Chapters",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved.", visibleFor: ["audiobook", "podcast", "multiple", "unset"] },
   { id: "lines",     lane: "workflow", label: "Lines",      icon: "🎮", lede: "Every line of the game project — stable ids, characters, derived take status. Re-import the writers\u2019 next sheet (only changed lines go stale), re-render exactly those, export per-line WAVs + manifest.", visibleFor: ["game", "multiple", "unset"] },
@@ -137,7 +137,7 @@ if (typeof document !== "undefined") {
 // Map each view id → docs/<slug>.md for the topbar HelpTrigger.
 // Views without a dedicated doc fall back to getting-started.
 const HELP_SLUG_BY_VIEW = {
-  overview: "getting-started",
+  home:     "getting-started",
   generate: "generate",
   projects: "core-concepts",
   stories:  "stories",
@@ -161,7 +161,7 @@ const HELP_SLUG_BY_VIEW = {
 // redirects. App.vue only decides which routes SHOW in the sidebar.
 const router = useRouter();
 const route = useRoute();
-const view = computed(() => route.name || "overview");
+const view = computed(() => route.name || "home");
 function goView(id) { if (id && route.name !== id) router.push(`/${id}`); }
 
 const health = ref(null);
@@ -208,8 +208,8 @@ watch(() => activeProject.id, (id, prev) => {
   if (id && !prev) maybeOfferAiSetup();
 });
 // initialDeepLink is non-empty only for a real bookmarked route — the "/"
-// default redirects to /overview, so first-run logic uses it to tell "user
-// chose overview" from "defaulted there".
+// default redirects to /home, so first-run logic uses it to tell "user
+// chose Home" from "defaulted there".
 let initialTabResolved = !!initialDeepLink;
 
 // Localized sidebar labels — proves the i18n scaffold is live. VIEWS
@@ -232,7 +232,7 @@ const currentView = computed(() => VIEWS.find((v) => v.id === view.value));
 const currentHelpSlug = computed(() => HELP_SLUG_BY_VIEW[view.value] || "getting-started");
 
 // State-aware lede override. Currently a no-op — the no-engine case is
-// already surfaced where it matters (Overview's engine card, Studio's
+// already surfaced where it matters (Home's engine card, Studio's
 // header pill, Generate's inline banner, Chapters' regen-time prompt),
 // so the old "No engine in memory…" lede that fired across generate/
 // studio/chapter was redundant and noisy (user feedback 2026-06-13).

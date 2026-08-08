@@ -27,7 +27,7 @@ const exeIdx = process.argv.indexOf("--executable");
 const EXE = exeIdx > 0 ? process.argv[exeIdx + 1] : undefined;
 
 const VIEWS = [
-  "overview","studio","generate","chapter","lines","stories","captures",
+  "home","studio","generate","chapter","lines","stories","captures",
   "books","voices","personas","lexicons","effects","presets","ai",
   "compare","audio","labs","renderlab","train","settings",
 ];
@@ -60,7 +60,7 @@ const run = async () => {
   });
 
   // ── boot + dismiss first-run modal ─────────────────────────────────
-  await page.goto(`${BASE}/#overview`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/#home`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1500);
   const close = page.locator(".app-modal-close");
   if (await close.count()) await close.click();
