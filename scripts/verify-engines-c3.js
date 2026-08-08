@@ -13,7 +13,7 @@ const SHOTS = process.env.JV_SHOTS || "/tmp/jv-shots";
 mkdirSync(SHOTS, { recursive: true });
 
 const R = [];
-const ck = (n, c, d = "") => { R.push(c); console.log(`${c ? "PASS" : "FAIL"}  ${n}${d ? "  — " + d : ""}`); };
+const ck = (n, c, d = "") => { R.push(c); console.log(`${c ? "PASS" : "FAIL"}  ${n}${d ? `  — ${d}` : ""}`); };
 
 const browser = await chromium.launch({ ...chromeLaunchOptions() });
 const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Screenshot the voice-library design preview (v3) key states.
 import { chromium } from "playwright";
-import { fileURLToPath } from "url";
-import path from "path";
-import { mkdirSync } from "fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import { mkdirSync } from "node:fs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = process.env.OUT || path.join(root, "scripts", "_shots");
@@ -12,7 +12,7 @@ mkdirSync(OUT, { recursive: true });
 
 const browser = await chromium.launch({ executablePath: EXE, args: ["--no-sandbox"] });
 const page = await browser.newPage({ viewport: { width: 1560, height: 940 } });
-await page.goto("file://" + path.join(root, "preview", "voice-library-preview.html"));
+await page.goto(`file://${path.join(root, "preview", "voice-library-preview.html")}`);
 await page.waitForTimeout(700);
 
 // 1. Studio default — audiobook project, narrator band, picking for Idris

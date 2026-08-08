@@ -10,8 +10,8 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 
 const errors = [];
 page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
-page.on("pageerror", (e) => errors.push("PAGEERROR: " + e.message));
-page.on("requestfailed", (r) => errors.push("REQFAIL: " + r.url() + " " + (r.failure()?.errorText || "")));
+page.on("pageerror", (e) => errors.push(`PAGEERROR: ${e.message}`));
+page.on("requestfailed", (r) => errors.push(`REQFAIL: ${r.url()} ${r.failure()?.errorText || ""}`));
 
 await page.goto(BASE, { waitUntil: "networkidle" });
 await page.waitForTimeout(800);

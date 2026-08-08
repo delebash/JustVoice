@@ -99,7 +99,7 @@ export function smartAssignVoicesBlock(rows) {
 // over what VoicesView's ✨ button sends (name · design_prompt).
 export function voiceGenderBlock(rows) {
   return rows
-    .map((v) => `- ${v.name || v.id}` + (v.design_prompt ? ` — ${v.design_prompt}` : ""))
+    .map((v) => `- ${v.name || v.id}${v.design_prompt ? ` — ${v.design_prompt}` : ""}`)
     .join("\n");
 }
 
@@ -110,7 +110,7 @@ async function presetsBlock() {
   const rows = r?.presets || [];
   if (!rows.length) throw new Error("No render presets yet — create some on the Render Presets tab.");
   return rows
-    .map((p) => `  - ${p.name}` + (p.description ? ` — ${p.description}` : ""))
+    .map((p) => `  - ${p.name}${p.description ? ` — ${p.description}` : ""}`)
     .join("\n");
 }
 

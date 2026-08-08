@@ -14,7 +14,7 @@
     "build": "tauri build",
     "tauri": "tauri",
     "server": "cd server && node ../scripts/py.js -m justvoice.serve serve",
-    "lint": "biome check src",
+    "lint": "biome check .",
     "screenshots": "node scripts/smoke_gui.js",
     "test:unit": "vitest run",
     "test:server": "cd server && node ../scripts/py.js -m pytest -q",
@@ -39,7 +39,7 @@
     "vue-sonner": "^2.0.9"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.0",
+    "@biomejs/biome": "2.5.6",
     "@playwright/test": "^1.61.0",
     "@tauri-apps/cli": "^2.11.3",
     "@vitejs/plugin-vue": "^6.0.7",

@@ -56,7 +56,8 @@ const run = async () => {
   const jsErrors = {};
   page.on("pageerror", (e) => {
     const v = page.url().split("#")[1] || "?";
-    (jsErrors[v] ||= []).push(String(e).slice(0, 160));
+    if (!jsErrors[v]) jsErrors[v] = [];
+    jsErrors[v].push(String(e).slice(0, 160));
   });
 
   // ── boot + dismiss first-run modal ─────────────────────────────────

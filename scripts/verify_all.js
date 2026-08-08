@@ -4,7 +4,7 @@ const b = await chromium.launch();
 const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
 const errs = [];
 p.on("console", m => { if (m.type()==="error") errs.push(m.text()); });
-p.on("pageerror", e => errs.push("PAGEERROR: "+e.message));
+p.on("pageerror", e => errs.push(`PAGEERROR: ${e.message}`));
 await p.goto("http://localhost:1430", { waitUntil:"networkidle" });
 await p.waitForTimeout(600);
 const out = {};

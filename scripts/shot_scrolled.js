@@ -8,7 +8,7 @@ const SCROLL = Number(process.env.SCROLL || 500);
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-await page.goto(BASE + "/", { waitUntil: "networkidle" });
+await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
 await page.waitForTimeout(800);
 await page.getByRole("button", { name: TAB, exact: true }).click();
 await page.waitForTimeout(700);

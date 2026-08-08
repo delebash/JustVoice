@@ -30,6 +30,6 @@ async function inspect(url, label) {
   await page.close();
 }
 
-await inspect(BASE + "/", "NEW   ");
-await inspect(BASE + "/legacy/", "LEGACY");
+await inspect(`${BASE}/`, "NEW   ");
+await inspect(`${BASE}/legacy/`, "LEGACY");
 await browser.close();

@@ -19,13 +19,13 @@ const SHOTS = process.env.JV_SHOTS || "/tmp/jv-shots";
 mkdirSync(SHOTS, { recursive: true });
 
 const results = [];
-const check = (n, c, d = "") => { results.push(c); console.log(`${c ? "PASS" : "FAIL"}  ${n}${d ? "  — " + d : ""}`); };
+const check = (n, c, d = "") => { results.push(c); console.log(`${c ? "PASS" : "FAIL"}  ${n}${d ? `  — ${d}` : ""}`); };
 
 const browser = await chromium.launch({ ...chromeLaunchOptions() });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
-page.on("console", (m) => { if (m.type() === "error" && !/ERR_CERT|favicon|404/.test(m.text())) errors.push("c: " + m.text()); });
+page.on("console", (m) => { if (m.type() === "error" && !/ERR_CERT|favicon|404/.test(m.text())) errors.push(`c: ${m.text()}`); });
 async function go(hash) {
   await page.goto(`${BASE}/${hash}`, { waitUntil: "networkidle" });
   await page.evaluate((h) => { window.location.hash = h; }, hash);
@@ -61,7 +61,7 @@ await page.screenshot({ path: `${SHOTS}/comingsoon-captures.png` });
 // ── Voices — seed an editable (designed) voice so the inspector's
 //    sample-collection buttons render, then assert they're disabled. ──
 const made = await page.evaluate(async (b) => {
-  const r = await fetch(b + "/v1/voices/design", {
+  const r = await fetch(`${b}/v1/voices/design`, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ engine: "chatterbox", name: "Verify Editable Voice", prompt: "a calm narrator" }),
   });

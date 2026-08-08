@@ -19,7 +19,8 @@ export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "src"),
+      // The family renderer alias — `@renderer` only (the extra `@` died in
+      // target-tree P10 with ZERO imports using it; one name family-wide).
       "@renderer": path.resolve(__dirname, "src"),
       // Shared LLM UI package — aliased to its src for the dev/HMR loop.
       "@delebash/llm-ui": path.resolve(__dirname, "../just-llm-runner/ui/src"),
@@ -57,9 +58,15 @@ export default defineConfig({
     fs: { allow: [path.resolve(__dirname, "."), path.resolve(__dirname, "../just-llm-runner/ui")] },
   },
   build: {
+    // JW's build shape (target-tree P10). Tauri's bundled webview is a current
+    // Chromium / WKWebView on each OS; the per-platform targets keep esbuild
+    // from down-leveling (the old `esnext` + always-on sourcemap died here).
+    // The macOS floor (safari17) matches the WKWebView version Tauri 2 ships
+    // against.
     outDir: path.resolve(__dirname, "dist"),
     emptyOutDir: true,
-    target: "esnext",
-    sourcemap: true,
+    target: process.env.TAURI_ENV_PLATFORM === "windows" ? "chrome105" : "safari17",
+    minify: !process.env.TAURI_ENV_DEBUG,
+    sourcemap: !!process.env.TAURI_ENV_DEBUG,
   },
 });

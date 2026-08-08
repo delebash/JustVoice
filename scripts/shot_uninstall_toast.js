@@ -11,7 +11,7 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 page.on("console", (msg) => console.log("[browser]", msg.type(), msg.text()));
 page.on("dialog", (d) => { console.log("[dialog]", d.message()); d.accept(); });
 
-await page.goto(BASE + "/", { waitUntil: "networkidle" });
+await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
 await page.waitForTimeout(800);
 await page.getByRole("button", { name: "Engines", exact: true }).click();
 await page.waitForTimeout(700);

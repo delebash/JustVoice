@@ -24,7 +24,7 @@ const widths = {
   pauseNum: await page.$$eval('.generate-view__pause-num', a => a.map(e => getComputedStyle(e).width)),
   seed:     await page.$eval('.generate-view__seed-input', e => getComputedStyle(e).width).catch(() => null),
   num:      await page.$$eval('.generate-view__num', a => a.map(e => getComputedStyle(e).width)),
-  grid:     await page.$eval('.generate-view__grid', e => getComputedStyle(e).rowGap + ' / ' + getComputedStyle(e).columnGap),
+  grid:     await page.$eval('.generate-view__grid', e => `${getComputedStyle(e).rowGap} / ${getComputedStyle(e).columnGap}`),
   floating: await page.$eval('.jv-floating', e => `${getComputedStyle(e).padding} r=${getComputedStyle(e).borderRadius}`),
 };
 console.log(JSON.stringify({ sliders, widths }, null, 2));

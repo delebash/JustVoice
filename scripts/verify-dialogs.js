@@ -26,18 +26,18 @@ mkdirSync(SHOTS, { recursive: true });
 const results = [];
 function check(name, cond, detail = "") {
   results.push({ name, ok: !!cond, detail });
-  console.log(`${cond ? "PASS" : "FAIL"}  ${name}${detail ? "  — " + detail : ""}`);
+  console.log(`${cond ? "PASS" : "FAIL"}  ${name}${detail ? `  — ${detail}` : ""}`);
 }
 
 const api = {
   async presets(page) {
-    return page.evaluate(async (b) => (await (await fetch(b + "/v1/presets")).json()).presets, BASE);
+    return page.evaluate(async (b) => (await (await fetch(`${b}/v1/presets`)).json()).presets, BASE);
   },
   async lexicons(page) {
-    return page.evaluate(async (b) => (await (await fetch(b + "/v1/lexicons")).json()).lexicons, BASE);
+    return page.evaluate(async (b) => (await (await fetch(`${b}/v1/lexicons`)).json()).lexicons, BASE);
   },
   async personas(page) {
-    return page.evaluate(async (b) => (await (await fetch(b + "/v1/personas")).json()).personas, BASE);
+    return page.evaluate(async (b) => (await (await fetch(`${b}/v1/personas`)).json()).personas, BASE);
   },
 };
 
@@ -45,7 +45,7 @@ const browser = await chromium.launch({ ...chromeLaunchOptions() });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
-page.on("console", (m) => { if (m.type() === "error" && !/ERR_CERT|favicon|404/.test(m.text())) errors.push("console: " + m.text()); });
+page.on("console", (m) => { if (m.type() === "error" && !/ERR_CERT|favicon|404/.test(m.text())) errors.push(`console: ${m.text()}`); });
 
 async function go(hash) {
   await page.goto(`${BASE}/${hash}`, { waitUntil: "networkidle" });

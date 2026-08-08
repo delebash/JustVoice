@@ -49,12 +49,15 @@ const page = await browser.newPage();
 
 let currentTab = "boot";
 const errorsByTab = {};
-const record = (msg) => { (errorsByTab[currentTab] ??= []).push(msg); };
-page.on("pageerror", (e) => record("PAGEERROR: " + e.message.slice(0, 200)));
+const record = (msg) => {
+  if (!errorsByTab[currentTab]) errorsByTab[currentTab] = [];
+  errorsByTab[currentTab].push(msg);
+};
+page.on("pageerror", (e) => record(`PAGEERROR: ${e.message.slice(0, 200)}`));
 page.on("console", (m) => {
   // Ignore benign network noise (favicon / external cert) — only real JS.
   if (m.type() === "error" && !/ERR_CERT|404|favicon/.test(m.text())) {
-    record("CONSOLE: " + m.text().slice(0, 180));
+    record(`CONSOLE: ${m.text().slice(0, 180)}`);
   }
 });
 
@@ -87,7 +90,7 @@ try {
       if (Math.abs(s.railH - s.rootH) > 2) problems.push(`rail ${s.railH}px != shell ${s.rootH}px (rail not full-height — nav jumps between views)`);
       if (s.railSelfScroll > 2) problems.push(`rail itself scrolls by ${s.railSelfScroll}px (use fixed top + scroll middle + fixed bottom)`);
     }
-    if (problems.length) { failed++; console.log("✗ SHELL       " + problems.join(" | ")); }
+    if (problems.length) { failed++; console.log(`✗ SHELL       ${problems.join(" | ")}`); }
     else console.log("✓ SHELL       fills viewport · rail full-height · single scroller");
   }
 
@@ -103,7 +106,7 @@ try {
       const ok = errs.length === 0 && bodyChars > 0;
       if (!ok) failed++;
       console.log(`${ok ? "✓" : "✗"} ${tab.padEnd(10)} bodyChars=${bodyChars} errors=${errs.length}`);
-      errs.slice(0, 4).forEach((e) => console.log("      " + e));
+      for (const e of errs.slice(0, 4)) console.log(`      ${e}`);
     } catch (e) {
       failed++;
       console.log(`✗ ${tab.padEnd(10)} NAV-FAIL ${String(e.message || e).slice(0, 100)}`);

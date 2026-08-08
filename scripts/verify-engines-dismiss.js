@@ -8,7 +8,7 @@ import { chromeLaunchOptions } from "./lib/smoke-common.js";
 const BASE = process.env.JV_BASE || "http://127.0.0.1:8763";
 
 const R = [];
-const ck = (n, c, d = "") => { R.push(c); console.log(`${c ? "PASS" : "FAIL"}  ${n}${d ? "  — " + d : ""}`); };
+const ck = (n, c, d = "") => { R.push(c); console.log(`${c ? "PASS" : "FAIL"}  ${n}${d ? `  — ${d}` : ""}`); };
 
 const browser = await chromium.launch({ ...chromeLaunchOptions() });
 const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });

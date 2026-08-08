@@ -3,7 +3,7 @@
 //   New:    http://localhost:17494/
 //   Legacy: http://localhost:17494/legacy/
 import { chromium } from "playwright";
-import { mkdir } from "fs/promises";
+import { mkdir } from "node:fs/promises";
 
 const BASE = process.env.BASE || "http://localhost:17494";
 const OUT = process.env.OUT || "E:/Dev/Web/justvoice-new/scripts/_shots";
@@ -19,7 +19,7 @@ const slug = TAB.toLowerCase().replace(/\s+/g, "-");
 // — New SPA —
 {
   const page = await ctx.newPage();
-  await page.goto(BASE + "/", { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
   await page.waitForTimeout(900);
   try {
     await page.getByRole("button", { name: TAB, exact: true }).click();
@@ -34,7 +34,7 @@ const slug = TAB.toLowerCase().replace(/\s+/g, "-");
 // — Legacy GUI —
 {
   const page = await ctx.newPage();
-  await page.goto(BASE + "/legacy/", { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/legacy/`, { waitUntil: "networkidle" });
   await page.waitForTimeout(900);
   try {
     await page.getByRole("button", { name: TAB, exact: true }).click();

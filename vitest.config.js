@@ -16,7 +16,6 @@ export default defineConfig({
   plugins: [vue({ template: { transformAssetUrls: false } })],
   resolve: {
     alias: {
-      "@": resolve(__dirname, "src"),
       "@renderer": resolve(__dirname, "src"),
       "@delebash/llm-ui": resolve(__dirname, "../just-llm-runner/ui/src"),
     },
