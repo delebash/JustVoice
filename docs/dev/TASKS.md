@@ -149,25 +149,6 @@ OPEN: the copy decision, then either write `docs/stories.md` + restore its
 `toc.json` entry, or remove the tab and leave both out.
 GO: needed. (User docs were corrected 2026-08-04 to stop sending podcasters there.)
 
-### The cited contract tests guard a boundary that no longer exists
-
-STATE: FINDING — reframed 2026-08-08 by the mandatory §3 read (the user's go on
-"build them" was premised on this being shared-LLM work; it is not, and the
-deeper premise is dead too). The archived contract doc cites
-`server/justvoice/openapi.json` + `server/tests/test_contract.py` as enforcement
-for a JW→JV HTTP contract; neither exists — and `design-decisions.md` §3 rules
-the premise out: **the handoff is a FILE export (the book .zip), JW never calls
-JV at runtime, there is no JV version for JW to pin.** An HTTP-contract suite
-would enforce an interface with zero callers.
-NOT: building the HTTP suite as cited (dead premise). NOT: a committed
-`openapi.json` snapshot (rots with every API change).
-OPEN — your call: (a) STRIKE the claim — one sentence added to §3's stale notes
-beside the two false-row callouts; or (b) build the contract test for the REAL
-boundary: the book-zip import format (`api/projects_api.py` audiobook import,
-pinning the JW export shape JV accepts). Rec: (a) now; (b) only if you want the
-import format enforced, as its own decided item.
-GO: needed.
-
 ### Design rationale that exists only as code comments
 
 STATE: FINDING — the comments verified present 2026-08-08; whether

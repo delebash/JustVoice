@@ -121,6 +121,13 @@ integration decisions record (2026-07-15) is executed history at
   actually feeds `delivery.instruct` at render
   (`api/render_chapter_api.py:7-8`), and compose/rewrite are explicit user
   actions (`api/personas_api.py`), never a render-time pass.
+- **The archived CONTRACT's enforcement mechanism was never built, and guards a
+  boundary that doesn't exist** (struck 2026-08-08, user's word): it cites
+  `server/justvoice/openapi.json` + `server/tests/test_contract.py` as the
+  JW→JV HTTP contract's enforcement — neither file was ever written, and the
+  handoff above is a FILE export with no runtime HTTP, so there is nothing for
+  an HTTP-contract suite to enforce. (If the book-zip import format ever wants
+  enforcement, that is a new decision, not this one.)
 
 ## 4 · Convergence outcomes (2026-06-24 arc, closed)
 
