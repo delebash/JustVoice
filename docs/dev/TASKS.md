@@ -56,22 +56,26 @@
 
 ## Waiting on your decision
 
-### Dictation cleanup — REDESIGNED 2026-08-08; JV's half is seeds
+### Settings → Capture is a localStorage mock — its controls never reach the server
 
-STATE: DECIDED 2026-08-08 — the full decision text (accepted verbatim, with the
-toggle-≠-route ruling and the Lab-mirrors-production premise) lives in the kit
-tracker: **"Dictation cleanup redesign — one pane, template + sections; the
-pieces concept retires."** It supersedes this item's whole 2026-08-06 story:
-the pieces presentation (the compact rows built earlier today included) is
-DELETED with the pieces nav, and the card becomes one pane — the base prompt as
-a template with `{{section}}` variables, three section text boxes, the live
-Capture toggles, the Generated prompt, the standard CONFIG column.
-OPEN (JV's half — seeds only, no migration, the user resets): the base row's
-system gains the `{{…}}` markers; the three section rows shed their standalone
-`{{transcript}}` halves; `refine_lab_api.py`'s preview stays (the composed-call
-door). The runtime mechanism is unchanged: `refinement.py` composes and runs
-ONE call.
-GO: build needed — rides the kit item's go.
+STATE: FINDING — code-verified 2026-08-08 (found wiring the cleanup redesign's
+live toggles).
+WHY it matters: `SettingsView.vue:585-599` says it itself — "Persisted via
+PATCH /v1/settings when wired; for now uses localStorage"
+(`justvoice:capture_settings`). Every control on the card (STT model,
+refinement mode, language, auto-paste, playback voice) writes only
+localStorage; the SERVER's `captures.*` settings — the ones production reads —
+never change. Worse, "Refinement mode" is a single-choice select over what the
+server stores as THREE independent booleans (`smart_cleanup` /
+`self_correction` / `preserve_technical`) — the control cannot even express
+the real state. The cleanup card's pane toggles (2026-08-08) write the real
+flags, so the two surfaces can now visibly disagree. Violates the
+no-renderer-store law (the 2026-06-19 storage rewrite).
+NOT: fixed as a rider on the redesign build — un-go'd scope, recorded instead.
+OPEN: wire the card to PATCH `/v1/settings` (deep-merge proven), replace the
+mode select with the three real toggles, delete the localStorage shim — or
+strip the card to what's real.
+GO: needed.
 
 ## The next build
 
