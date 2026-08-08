@@ -44,17 +44,21 @@ node scripts/smoke.js                                  # drives every view, asse
 `scripts/smoke_gui.js` screenshots tabs. `e2e/` (tauri-driver against the built binary) is the
 packaged-app check, not the quick gate. `JV_BASE` overrides the base URL.
 
-**Browser lookup lives in one place — `scripts/lib/smoke-common.js`.** Import `findChrome()` or
-`chromeLaunchOptions()` from it; never re-fork the lookup and never hardcode a browser path. It
-probes `/opt/pw-browsers` (the dev container's prebuilt browsers), `~/.cache/ms-playwright` and
-`%LOCALAPPDATA%\ms-playwright`, across Linux, Windows and macOS layouts, skips `headless_shell`
-builds (they lack the surface these scripts drive), and honours `JV_CHROME` above everything.
-Returning `undefined` is a SUCCESS value — it lets Playwright resolve from its own registry.
+**Browser lookup has one door — `scripts/lib/smoke-common.js`.** Import `findChrome()` or
+`chromeLaunchOptions()` from it; never re-fork the lookup and never hardcode a browser path. The
+implementation is the kit's `../just-llm-runner/scripts/lib/exec-resolve.mjs` (one copy for the
+family; the door binds `JV_CHROME`): it probes `/opt/pw-browsers` (the dev container's prebuilt
+browsers), `~/.cache/ms-playwright` and `%LOCALAPPDATA%\ms-playwright`, across Linux, Windows and
+macOS layouts, skips `headless_shell` builds (they lack the surface these scripts drive), and
+honours `JV_CHROME` above everything. Returning `undefined` is a SUCCESS value — it lets
+Playwright resolve from its own registry. `scripts/py.js` rides the same kit resolver
+(`JV_PYTHON`, `server/.venv`), so node-side tooling needs the kit checked out as a sibling —
+the same layout the vite alias already requires.
 
 Until 2026-07-29 every script carried its own Linux-only copy and the seven verify/parity scripts
 hardcoded `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, pinned to a browser version — so
 none of them could find a browser on Windows and the gate was documented as runnable when it was
-not. All eight now import the shared resolver.
+not. All eight import the shared lookup; since 2026-08-08 it lives in the kit.
 
 ## Invariants that bite
 
