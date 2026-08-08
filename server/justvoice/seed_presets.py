@@ -36,7 +36,12 @@ DEFAULT_ENGINE_PRESETS: list[dict] = [
      "model": "", "temperature": 0.9, "position": 3},
     {"id": "p_voiced_edit", "name": "Voiced rewrite", "provider_id": "local-llamacpp",
      "model": "", "temperature": 0.6, "position": 4},
-    {"id": "p_refine", "name": "Dictation cleanup", "provider_id": "local-llamacpp",
+    # Named for the SHAPE like its five siblings, never for a feature — the
+    # feature-named "Dictation cleanup" made the card read "Dictation cleanup →
+    # Dictation cleanup · assigned" (renamed 2026-08-08, user took the rec).
+    # NOT merged into p_extract despite identical tunables: cleanup returns
+    # prose, extraction returns JSON — same knobs, different shape.
+    {"id": "p_refine", "name": "Faithful edit", "provider_id": "local-llamacpp",
      "model": "", "temperature": 0.2, "position": 5},
 ]
 
