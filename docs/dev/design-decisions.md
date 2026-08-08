@@ -111,6 +111,16 @@ integration decisions record (2026-07-15) is executed history at
   ever shipped (voices are `/v1/voices*`), `render_chapter_async`/`render_story`/
   `lexicons/apply` don't exist, `/v1/jobs/{id}` means engine/model INSTALL jobs.
   Trust `server/justvoice/api/*` route literals, not the old table.
+- **Two of the archived CONTRACT's data-ownership rows are false** (verified
+  2026-08-08). Its Speaker-attribution row (`CONTRACT.md:91`) claims attribution
+  is "computed in JustWrite's `services/speakerAttribution.js`" and passed inside
+  the `/render_chapter` payload — no such JW file exists (grep-verified), and
+  attribution actually runs server-side in JustVoice's extraction pipeline,
+  driven from Studio's Analyze. Its Persona row (`CONTRACT.md:94`) claims a
+  per-persona render-time LLM rewrite behind a `personality` flag — personality
+  actually feeds `delivery.instruct` at render
+  (`api/render_chapter_api.py:7-8`), and compose/rewrite are explicit user
+  actions (`api/personas_api.py`), never a render-time pass.
 
 ## 4 · Convergence outcomes (2026-06-24 arc, closed)
 
