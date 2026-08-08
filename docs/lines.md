@@ -22,4 +22,4 @@ The per-line export writes one WAV per line, named by your `source_ref` (or the
 generated id), plus a JSON manifest — drop the folder into your engine's import
 pipeline. CSV import expects fixed headers — `scene, character, text, delivery,
 pause_after_ms` (only `text` is required); see
-[Import formats](import-formats.md).
+[Import & export](import-and-export.md).

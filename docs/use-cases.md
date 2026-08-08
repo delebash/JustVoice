@@ -7,11 +7,11 @@ JustVoice serves five distinct audiences. Pick your primary at first launch — 
 **Goal**: turn a manuscript into a multi-narrator audiobook ready for Audible / Apple Books.
 
 **Flow**:
-1. **Import** the manuscript (JustWrite export, or any of the supported [import-formats.md](import-formats.md)).
+1. **Import** the manuscript (JustWrite export, or any of the supported [import formats](import-and-export.md)).
 2. **Cast** — pick voices for every character via the Voices tab. Smart-assign auto-matches; review.
 3. **Script** — let the AI work out who speaks each line. Manually correct any misattributions in the Script tab. Corrections feed back into subsequent re-analyses.
 4. **Render** — batch render every chapter. ACX [mastering.md](mastering.md) preset applies automatically.
-5. **Export** — M4B audiobook file with chapter markers, muxed server-side from the Export tab. See [export.md](export.md#audiobook--m4b).
+5. **Export** — M4B audiobook file with chapter markers, muxed server-side from the Export tab. See [Audiobook → M4B](import-and-export.md#audiobook--m4b).
 
 **Engine pick**: Chatterbox Turbo (voice cloning, sounds like real narrators) + Kokoro (incidental characters).
 
@@ -20,7 +20,7 @@ JustVoice serves five distinct audiences. Pick your primary at first launch — 
 **Goal**: voice 50-500 NPC lines with consistent character voices.
 
 **Flow**:
-1. **Import** a CSV of dialogue rows (`scene, character, text, delivery, pause_after_ms` — only `text` is required; include an `id`/`line_id`/`dialogue_id` column so re-imports merge by stable id). See [import-formats.md](import-formats.md).
+1. **Import** a CSV of dialogue rows (`scene, character, text, delivery, pause_after_ms` — only `text` is required; include an `id`/`line_id`/`dialogue_id` column so re-imports merge by stable id). See [import-and-export.md](import-and-export.md).
 2. **Cast** — assign each character to a voice. Cloned voices for hero NPCs, preset voices for villagers.
 3. **Render** — bulk render every line.
 4. **Export** — per-line WAVs grouped by scene plus a `manifest.json` of line metadata for Unreal import; an Unreal `.uplugin` bundle is planned.

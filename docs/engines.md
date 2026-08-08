@@ -83,7 +83,7 @@ Speech providers register on the **Speech engines** tab: cloud APIs under
 **Online · metered** → **+ Add provider**; servers you run yourself under
 **Local · free** → **Self-hosted servers** → **+ Add self-hosted server**.
 The inline form handles API key, base URL, the TTS model, voice multi-select
-(with Fetch voices), and Test verification. See [providers.md](providers.md)
+(with Fetch voices), and Test verification. See [ai-providers.md](ai-providers.md)
 for the full flow.
 
 After registering one or more LLM providers, open **AI Settings → Routing by

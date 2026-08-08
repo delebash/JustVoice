@@ -108,7 +108,11 @@ _ADAPTER_REGISTRY: list[tuple[AdapterInfo, Callable[..., StandardImport]]] = [
             description="A payload already in the JustVoice import standard shape — pass-through + validate.",
             file_extensions=[".json"],
             implemented=True,
-            docs_anchor="import-standard",
+            # "import-standard-json" since the import/export doc merge
+            # (2026-08-08): the old "import-standard" id was DUPLICATED in the
+            # page (the schema section carried it too), so this adapter's help
+            # link landed on the schema instead of its own section.
+            docs_anchor="import-standard-json",
         ),
         justvoice_standard.parse,
     ),

@@ -27,7 +27,7 @@ to personas in one click.
 ## Render
 
 Batch-render the project scene by scene. Each scene can bind a **render preset**
-(see [Presets](presets.md)) so a chapter or quest keeps one locked sound;
+(see [Presets](render-presets.md)) so a chapter or quest keeps one locked sound;
 **Suggest** proposes a preset per scene. The progress panel shows per-scene
 status, and the render cache means an unchanged line costs nothing to re-render
 — cache hits are reported as such.

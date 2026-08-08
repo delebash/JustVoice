@@ -22,7 +22,7 @@
       { "slug": "chapter",            "title": "Chapter editor" },
       { "slug": "take-versioning",    "title": "Take versioning" },
       { "slug": "effects",            "title": "Effects chain" },
-      { "slug": "presets",            "title": "Render presets" },
+      { "slug": "render-presets",     "title": "Render presets" },
       { "slug": "mastering",          "title": "Mastering (ACX et al.)" }
     ]
   },
@@ -39,8 +39,8 @@
     "group": "Engines & providers",
     "items": [
       { "slug": "engines",            "title": "Engines" },
-      { "slug": "providers",          "title": "LLM + TTS providers" },
-      { "slug": "ai-features",        "title": "AI feature routing" },
+      { "slug": "ai-providers",       "title": "LLM + TTS providers" },
+      { "slug": "ai-features",        "title": "The AI features" },
       { "slug": "quick-setup",        "title": "Voice engine setup wizard" },
       { "slug": "gpu",                "title": "GPU / CUDA" }
     ]
@@ -54,8 +54,7 @@
   {
     "group": "Import & export",
     "items": [
-      { "slug": "import-formats",     "title": "Import formats" },
-      { "slug": "export",             "title": "Export (WAV / M4B / ZIP)" }
+      { "slug": "import-and-export",  "title": "Import and export" }
     ]
   },
   {
@@ -72,7 +71,7 @@
     "items": [
       { "slug": "run-modes",          "title": "Run modes (desktop · headless · admin)" },
       { "slug": "settings-reference", "title": "Settings reference" },
-      { "slug": "backup-restore",     "title": "Backup and restore" },
+      { "slug": "backups-and-data",   "title": "Backups and data" },
       { "slug": "troubleshooting",    "title": "Troubleshooting" },
       { "slug": "keyboard-shortcuts", "title": "Keyboard shortcuts" }
     ]

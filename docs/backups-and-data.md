@@ -38,4 +38,4 @@ first.
 
 - Moving to a new machine, or before risky surgery → **backup**.
 - Sending one audiobook to a collaborator → **project export ZIP**
-  ([Export](export.md)), which travels a single project with its audio.
+  ([Export](import-and-export.md)), which travels a single project with its audio.

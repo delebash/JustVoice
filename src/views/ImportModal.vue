@@ -20,7 +20,7 @@
 // Help link: each adapter exposes a `docs_anchor` (e.g. "import-justwrite").
 // We surface it through `data-help-key` on the "What is this format?" link
 // so the existing help-bus picks it up when implemented; for now it deep-
-// links to docs/import-formats.md#<anchor>.
+// links to docs/import-and-export.md#<anchor>.
 
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { UiButton, UiSelect, AppModal } from "@delebash/llm-ui";
@@ -59,7 +59,7 @@ const canPreview = computed(
 
 const helpKey = computed(() => selectedAdapter.value?.docs_anchor || null);
 const helpHref = computed(() =>
-  helpKey.value ? `docs/import-formats.md#${helpKey.value}` : "docs/import-formats.md"
+  helpKey.value ? `docs/import-and-export.md#${helpKey.value}` : "docs/import-and-export.md"
 );
 
 function onKey(e) {

@@ -49,7 +49,7 @@ Routes through your AI Features pin for `persona_rewrite` (see `ai-features.md`)
 
 ## Auto-create from JustWrite (and other imports)
 
-When you import a manuscript, every character in the source becomes a Persona automatically, keyed on `(imported_from, imported_id)`. Re-importing the same source uses the existing persona rows instead of creating duplicates. See [import-formats.md](import-formats.md).
+When you import a manuscript, every character in the source becomes a Persona automatically, keyed on `(imported_from, imported_id)`. Re-importing the same source uses the existing persona rows instead of creating duplicates. See [Import & export](import-and-export.md).
 
 ## Smart-assign
 

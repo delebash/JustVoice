@@ -31,7 +31,7 @@ console script isn't on PATH.
 
 - **Logs** — Settings → logs offers tail and download (`/v1/logs/tail`).
 - **Factory reset** — wipes the server state back to first-run; confirm-gated.
-  [Back up](backup-restore.md) first.
+  [Back up](backups-and-data.md) first.
 - **Bulk-delete generations** — clears old audio en masse; the API's
   `confirm=false` dry-run shows what WOULD be deleted first, and at least one
   filter is required so "delete everything" can't happen by accident.

@@ -35,7 +35,7 @@ Mastering has never used the effects DSP — the two are independent paths. The 
   button** — earlier versions of this page described both, but neither exists in
   the app. Mastering applies when the project is exported/assembled, not on each
   chapter render. (Per-scene **render presets** in Studio are a different thing —
-  delivery/effects bundles, not mastering targets; see [presets.md](presets.md).)
+  delivery/effects bundles, not mastering targets; see [render-presets.md](render-presets.md).)
 
 ## ACX QC report
 
