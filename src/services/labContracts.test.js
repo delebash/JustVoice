@@ -6,13 +6,13 @@
 // mirrors so drift breaks loudly).
 import { describe, expect, it } from "vitest";
 
-import { ACTION_ROUTE, parseCharacters, passageFrom } from "../attributionLab.js";
+import { ACTION_ROUTE, parseCharacters, passageFrom } from "./attributionLab.js";
 import {
   castNamesBlock,
   smartAssignCharactersBlock,
   smartAssignVoicesBlock,
   voiceGenderBlock,
-} from "../labTestData.js";
+} from "./labTestData.js";
 
 describe("the ONE characters shape", () => {
   it("parses one name per line, aliases behind | or :", () => {
