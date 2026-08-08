@@ -58,7 +58,8 @@ the same layout the vite alias already requires.
 Until 2026-07-29 every script carried its own Linux-only copy and the seven verify/parity scripts
 hardcoded `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, pinned to a browser version — so
 none of them could find a browser on Windows and the gate was documented as runnable when it was
-not. All eight import the shared lookup; since 2026-08-08 it lives in the kit.
+not. The gate (`smoke.js`) and every verify script import the shared lookup; since 2026-08-08 the
+implementation lives in the kit. The one-off snapshot scripts predating the law are not converted.
 
 ## Invariants that bite
 
