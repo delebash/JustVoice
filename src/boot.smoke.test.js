@@ -11,7 +11,7 @@ registerBootSmoke({
   boot: () => import("./main.js"),
   routes: {
     "/v1/health": { status: "ok", product: "justvoice" },
-    "/v1/prefs": { prefs: {} },
+    "/v1/prefs": {}, // the prefs DOCUMENT is the top-level object (empty = defaults)
     "/v1/projects": { projects: [] },
   },
   // boot() is async and surfaces failures on window.__bootErr — rethrow so the
