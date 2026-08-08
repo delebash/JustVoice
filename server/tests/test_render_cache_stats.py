@@ -96,3 +96,18 @@ def test_cache_stats_unknown_project_404s(tmp_db, monkeypatch):  # noqa: F811
     monkeypatch.setattr(render_chapter_api, "SessionLocal", session_factory)
     with pytest.raises(ApiError):
         asyncio.run(render_chapter_api.render_cache_stats("nope"))
+
+
+def test_cache_stats_scene_less_project_is_empty_not_404(tmp_db, monkeypatch):  # noqa: F811
+    """A real project with nothing in it yet answers 200 with zero coverage.
+    Home/Studio/Chapter probe this on mount; only an unknown id is a 404."""
+    session_factory, _engine = tmp_db
+    monkeypatch.setattr(render_chapter_api, "SessionLocal", session_factory)
+    db = session_factory()
+    db.add(Project(id="proj-empty", name="Empty", project_type="audiobook"))
+    db.commit()
+    db.close()
+
+    r = asyncio.run(render_chapter_api.render_cache_stats("proj-empty"))
+    assert r.project_id == "proj-empty"
+    assert (r.total, r.cached, r.scenes) == (0, 0, [])

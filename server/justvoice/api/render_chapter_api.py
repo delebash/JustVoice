@@ -18,7 +18,7 @@ from pydantic import BaseModel
 
 from ..app_state import get_state
 from ..audio.wav import write_wav_container
-from ..database.models import Block, RenderPreset, Scene
+from ..database.models import Block, Project, RenderPreset, Scene
 from ..database import session as _db_session
 from ..database.session import SessionLocal
 from ..delivery_merge import merge_delivery
@@ -166,6 +166,7 @@ async def render_cache_stats(project_id: str) -> RenderCacheStatsResponse:
     exactly as render_line would; no audio is produced, no engine loads."""
     db = _open_db()
     try:
+        known = db.query(Project.id).filter(Project.id == project_id).first() is not None
         scenes = (
             db.query(Scene)
             .filter(Scene.project_id == project_id)
@@ -174,8 +175,15 @@ async def render_cache_stats(project_id: str) -> RenderCacheStatsResponse:
         )
     finally:
         db.close()
+    if not known:
+        raise not_found(f"project {project_id} not found")
     if not scenes:
-        raise not_found(f"project {project_id} has no scenes")
+        # A real project with nothing in it yet is a normal state, not an
+        # error: Home, Studio and Chapter all probe this on mount, so an
+        # empty project used to print three 404s per visit and every caller
+        # swallowed them. Zero scenes = zero coverage. 404 is reserved for
+        # an id that does not exist.
+        return RenderCacheStatsResponse(project_id=project_id, total=0, cached=0, scenes=[])
     st = get_state()
 
     out: list[SceneCacheStats] = []
