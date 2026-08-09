@@ -79,6 +79,21 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
   recommended importer shape, unbuilt (re-verified 2026-08-06: zero of six
   built; `elevenlabs.py` is a deliberate 501 stub pointing at this research):
   `docs/dev/external-import-formats.md`.
+- **2026-08-08 · Single-quoted manuscripts segment to zero dialogue** — the
+  segmenter matches double quotes only, deliberately, to avoid apostrophe false
+  positives (`extraction/segmentation.py:8-10, 20-25`). A UK-punctuated book
+  (`'Where is he?'`) therefore reads entirely as narration and NO amount of
+  re-analyzing fixes it. Biggest attribution failure mode in the system.
+  Out of scope for `docs/plans/2026-08-08-script-tab-restore.md`; needs either a
+  segmenter option or manual split (itself deferred there).
+- **2026-08-08 · Anchor-vs-LLM disagreement is computed, sent, and dropped** —
+  every anchor-won row carries `llm_speaker` + `llm_confidence`, and
+  `extraction/pipeline.py:57-60` says they exist "so the Speaker Lab can render
+  disagreement badges". **Zero references in `src/`** (exhaustive grep) — neither
+  Studio nor the Lab renders them. It is the best "check this row" signal in the
+  payload and costs one predicate. The Lab already has the visual idiom (a wavy
+  underline, `components/lab/AttributionResult.vue:216`) pointed at a different
+  comparison.
 - **2026-08-04 · The deferred-to-v1.1+ list (extracted from the archived
   DESIGN_FREEZE):** Apple notarization + Linux AppImage signing · audio-channels
   MultiSelect UI (backend ships) · per-character external provider override ·

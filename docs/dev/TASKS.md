@@ -112,6 +112,32 @@ GO: needed.
 deep exhaustive audit — *"for now we are not doing jv harness or deep audit i
 want to finish all features and complete the jv llm runner conversion."*
 
+### The Script tab loses every analysis, and duplicates the chapter if you save one
+
+STATE: DECIDED 2026-08-08 — nine questions, each ruled by the user separately.
+Every finding, cite and phase lives in `docs/plans/2026-08-08-script-tab-restore.md`,
+code-verified against `5ee7d3a`. Read it first; it exists so nothing is re-derived.
+WHY: three confirmed breaks — the analysis is wiped on chapter change and never
+rehydrated (`StudioView.vue:955-959`); Apply duplicates the chapter, because its
+text comes FROM the blocks it then re-POSTs (`:1091-1125`+`:941-953`); narration
+gets `persona_id = null` (`:1099`) and null-persona blocks are silently skipped at
+render (`render_chapter_api.py:99-109`), so narration never reaches the audio.
+THE RULINGS (only the conversation holds these): persist on Analyze, derive
+"analyzed" from `Block.source`, no schema change · re-analyze never re-cuts the
+text and skips rows the user corrected · bind the Narrator persona · render stops
+and lists unknowns, with one-click assign-all · build the speaker dropdown on
+EVERY row + bulk unknown→Narrator · Kind column derived from `source` · share a
+canonical chip + helpers module + one speaker cell · the source word is
+`corrected` · bugs before polish.
+NOT: mounting the Lab's `AttributionResult` in Studio (column-tuned layout;
+design-law #7) · one shared row component (`<tr>` vs `<div>`) · a change-kind
+toggle (nothing consumes or stores `kind`) · split/merge/reorder in pass one
+(they change block count; `Take.block_id` is CASCADE, `models.py:297`) · adding
+chapter-loading to the Lab (it already has it, `labTestData.js:194-207`) · any DB
+migration (seeds only, the user resets).
+BUILT: nothing. OPEN: the whole build, phased in §6 of the plan doc; `docs/studio.md:20-21` is wrong today and changes with it.
+GO: needed — decisions taken, build NOT authorized.
+
 ### VRAM: STOP AND THINK before any arbiter wiring
 
 STATE: the 2026-07-04 decision stands (one shared VRAM budget family-wide; an
