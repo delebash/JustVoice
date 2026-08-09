@@ -325,6 +325,38 @@ re-deriving anything. Each step names its repo, its files, and which Q gates
 it. The order is load-bearing: 1 and 2 are prerequisites — nothing after them
 is safe to build first.
 
+> **STATUS STAMP (2026-08-09, after the scheduler shipped — commit
+> `3a5a23d`, Q1–Q8 all decided, scheduler Stages 1+2 BUILT per §7-7d).**
+> Read this section THROUGH the stamp; the per-step notes below are the
+> law for what remains:
+> - **Step 1 (kit executor seam): OPEN, unchanged** — still the first build.
+> - **Step 2 (load-door unification): the MANAGED half is DONE** — §7d's
+>   bridge routes every managed render through `mgr.load`/`mgr.synth`
+>   (render_core.py, landed in `3a5a23d`). The residual object-door calls
+>   (`engine.load("auto", None)` in render_core's registry branch,
+>   voice_preview's registry branch, generate's in-process branch) are
+>   EXTERNAL/remote-API engines only — no local process, no slot, no VRAM;
+>   out of arbitration scope. Step 2's original grep check is obsolete;
+>   nothing further to build here unless external engines ever grow local
+>   residency.
+> - **Step 3 (device policy + reservation in `EngineManager.load()`): OPEN,
+>   unchanged** — the one load door now genuinely receives every managed
+>   load, so this lands cleanly.
+> - **Step 4 (busy flags): tts-busy's home MOVED** — it is the scheduler
+>   worker ("worker is synthesizing", §7b), not a manager choke; stt-busy
+>   stays at `manager.transcribe`. The Stage-1 per-kind ACTIVITY locks
+>   (`manager._activity`) are the mechanical seed: admission's
+>   `protected_kinds` should derive from scheduler-busy + stt-activity, and
+>   llm-busy still lands in the KIT dispatch layer as written.
+> - **Steps 5 (visibility) and 6 (warm-boot flip): OPEN, unchanged.**
+> - **Step 7 (engine-grouped synthesis): DONE AND SUPERSEDED** — the
+>   SynthScheduler (§7b design, built `3a5a23d`) groups pool-wide across
+>   every producer, which is strictly more than this step asked for. Skip.
+> - Admission's call SITE: `make_room` runs at the scheduler's
+>   engine-switch boundaries (once per engine per drain cycle) and inside
+>   `EngineManager.load()` for direct loads (Engines-tab button, captures) —
+>   both funnel into the same step-3 policy.
+
 **Step 1 — KIT: the eviction-executor seam (gates: Q1; finding F1/P5-3).**
 `llm_runner/runner/arbiter.py`: `_Reservation` grows `kind: str` and
 `evict_fn: Callable[[], None] | None`; `reserve()` takes both. New
