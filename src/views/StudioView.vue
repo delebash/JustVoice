@@ -18,7 +18,7 @@ import { computed, onActivated, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 // Task lifecycles ride the kit runners (AI-call convention, app-structure §8);
 // the store import remains for READS only (per-scene bars, taskForScene).
-import { AiTaskStrip, runAiEndpoint, useAiTasksStore, withAiTask } from "@delebash/llm-ui";
+import { AiTaskStrip, runAiEndpoint, runAiEndpointStream, useAiTasksStore, withAiTask } from "@delebash/llm-ui";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { useCopy } from "../services/copy.js";
@@ -964,9 +964,8 @@ watch(selectedSceneId, (id) => {
 // window instead of vanishing the instant the call returns. (The old
 // hand-rolled banner + its cancelAnalyze() died 2026-08-08; the strip's own
 // Cancel aborts the kit-owned controller.)
-const analyzeTaskId = ref(null);
 const analyzeTask = computed(() =>
-  tasks.visibleTasks.find((t) => t.id === analyzeTaskId.value || (t.feature === "speaker_attribution" && t.inline))
+  tasks.visibleTasks.find((t) => t.feature === "speaker_attribution" && t.inline)
 );
 
 async function runAnalyze() {
@@ -977,44 +976,30 @@ async function runAnalyze() {
   analyzeBusy.value = true;
   const sceneTitle = scenes.value.find((sc) => sc.id === selectedSceneId.value)?.title || "scene";
   const wordCount = sceneText.value.trim().split(/\s+/).length;
-  let aborted = false;
   try {
     // `inline: true` — the Script pane mounts its own AiTaskStrip where the
     // hand-rolled "Analyzing…" banner used to sit (the 2026-08-08 ruling: the
     // kit strip IS the indicator; the global stack must not show it twice).
-    // The response's usage rides finish(), so the strip shows real tokens.
-    await withAiTask({
-      feature: "speaker_attribution",
-      label: `Speaker extraction · ${sceneTitle}`,
-      stats: [`${wordCount} words in`],
-      onRetry: () => runAnalyze(),
-      inline: true,
-    }, async (task) => {
-      analyzeTaskId.value = task.id;
-      let r;
-      try {
-        r = await api.request(`/v1/scenes/${selectedSceneId.value}/analyze`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: sceneText.value }),
-          signal: task.signal,
-        });
-      } catch (e) {
-        aborted = task.signal.aborted;
-        throw e;
-      }
-      analyzeRows.value = r.rows || [];
-      analyzeRouteUsed.value = r.route_used;
-      analyzeRouteSource.value = r.route_source || "auto";
-      analyzeFloor.value = r.confidence_floor;
-      editedFlags.value = {};
-      task.setStats([
-        `${wordCount} words in`,
-        `${analyzeRows.value.length} segments`,
-        `${ROUTE_LABELS[r.route_used] || r.route_used} route`,
-      ]);
-      return { result: r, usage: r.usage };
+    // Lane 2A (same day): the endpoint STREAMS the family frames, so a
+    // minute-long chapter shows live tokens/tok-s instead of a silent wait;
+    // the done frame carries the same fields as the JSON response. The URL is
+    // app-resolved (api.serverUrl) — the kit client passes absolutes through.
+    const r = await runAiEndpointStream({
+      url: `${api.serverUrl}/v1/scenes/${selectedSceneId.value}/analyze/stream`,
+      body: { text: sceneText.value },
+      task: {
+        feature: "speaker_attribution",
+        label: `Speaker extraction · ${sceneTitle}`,
+        stats: [`${wordCount} words in`],
+        onRetry: () => runAnalyze(),
+        inline: true,
+      },
     });
+    analyzeRows.value = r.rows || [];
+    analyzeRouteUsed.value = r.route_used;
+    analyzeRouteSource.value = r.route_source || "auto";
+    analyzeFloor.value = r.confidence_floor;
+    editedFlags.value = {};
     runDiscoverSpeakers(); // fire-and-forget — banner appears if it finds anyone
     pushToast({
       message: `Analyzed ${analyzeRows.value.length} segment${analyzeRows.value.length === 1 ? "" : "s"} — ${ROUTE_LABELS[analyzeRouteUsed.value] || analyzeRouteUsed.value} ${analyzeRouteSource.value === "auto" ? "(Auto's pick)" : "(forced)"}.`,
@@ -1022,18 +1007,18 @@ async function runAnalyze() {
       duration: 3500,
     });
   } catch (e) {
+    const msg = String(e?.message || e);
     pushToast({
-      message: aborted
+      message: /abort/i.test(msg)
         ? "Analyze cancelled."
-        : e?.message?.includes("501") || e?.status === 501
-          ? "Analyze unavailable — wire an LLM provider in Engines → LLM tab."
-          : `Analyze failed: ${e?.message || e}`,
+        : msg.includes("501") || e?.status === 501 || /no llm provider/i.test(msg)
+          ? "Analyze unavailable — wire an LLM provider in AI Settings."
+          : `Analyze failed: ${msg}`,
       kind: "warning",
       duration: 6000,
     });
   } finally {
     analyzeBusy.value = false;
-    analyzeTaskId.value = null;
   }
 }
 

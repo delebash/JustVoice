@@ -25,7 +25,7 @@ caller bug named loudly, UnknownActionError → an unseeded row).
 
 from __future__ import annotations
 
-from llm_runner.llm import RunRequest, run_action, stores
+from llm_runner.llm import RunRequest, run_action, stores, stream_action
 from llm_runner.llm.base import LLMResponse
 from llm_runner.llm.config_builder import build_llm_config
 
@@ -40,6 +40,20 @@ def jv_llm_config():
 
 def run_feature(action: str, variables: dict, **overrides) -> LLMResponse:
     return run_action(
+        stores.get_prompt_store(),
+        jv_llm_config(),
+        RunRequest(action=action, variables=variables, **overrides),
+    )
+
+
+def stream_feature(action: str, variables: dict, **overrides):
+    """run_feature's streaming sibling (lane 2A, 2026-08-08): the kit's
+    stream_action over the same store + config. Returns a StreamDelta iterator
+    — text chunks, optional prompt-eval `progress`, a final `done=True` with
+    usage. Resolution + the local-model ensure run eagerly, so callers get
+    LLMNotConfiguredError before any frame. Blocking — SSE endpoints drive it
+    from a worker thread."""
+    return stream_action(
         stores.get_prompt_store(),
         jv_llm_config(),
         RunRequest(action=action, variables=variables, **overrides),

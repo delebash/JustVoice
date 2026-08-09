@@ -112,18 +112,65 @@ GO: needed.
 deep exhaustive audit — *"for now we are not doing jv harness or deep audit i
 want to finish all features and complete the jv llm runner conversion."*
 
-### Make TTS engine loading reserve VRAM through the shared arbiter
+### VRAM: STOP AND THINK before any arbiter wiring
 
-STATE: DECIDED 2026-07-04 — one shared VRAM budget for the whole family, and
-JustVoice runs an LLM **or** TTS, never both on the GPU at once.
-WHY: nothing else stops an LLM and a TTS engine claiming the same card.
-NOT: a JustVoice-local budget — the arbiter is family-wide by design.
-BUILT: the arbiter itself, in the runner (`runner/arbiter.py`).
-OPEN: JustVoice's half — `EngineManager.load()` neither reserves nor releases.
-Verified 2026-08-08: the string "arbiter" appears **nowhere** in `server/`.
-Sized medium. One correction rides along: the design doc calls JustVoice's
-engines in-process; they are OS subprocesses.
-GO: needed.
+STATE: the 2026-07-04 decision stands (one shared VRAM budget family-wide; an
+LLM **or** a TTS engine on the GPU, never both) — but the user ORDERED A STOP
+first, 2026-08-08: *"once done with those tasks we need to stop and think about
+vram, has that already been planned? some tts engines can run direclyt on cpu
+and dont need vram, same with some of our modles so we need to take that into
+consideration as well as the fact that we dont autoload the lmm model so how
+does a user know what they can and cannot load if llm model is not even
+selected or loaded, as we have it load on demand"*.
+WHY: the old item assumed the wiring was the remaining work; the user names two
+unplanned dimensions — CPU-resident engines/models that need NO budget, and the
+load-on-demand LLM meaning the budget's biggest consumer is invisible until it
+runs.
+BUILT: the arbiter itself, in the runner (`runner/arbiter.py`); JustVoice's
+`EngineManager.load()` neither reserves nor releases ("arbiter" appears nowhere
+in `server/`, verified 2026-08-08). The engines are OS subprocesses, not
+in-process (design-doc correction rides along).
+OPEN: the THINK is DELIVERED, then twice hardened by ordered adversarial
+passes — `docs/plans/2026-08-08-vram-think.md`. Pass 2 found the budgeted
+policy ALREADY RUNS in JV's process for the LLM (`lifecycle.py:491`), reversing
+Q1 to budgeted-from-the-start and cutting two overbuilt pieces. Pass 3 found
+the decisive structural fact: naive TTS reservations would CORRUPT the runner's
+`_admit` (it would "evict" a foreign key via router_unload no-op + release —
+the ledger lies, overcommit returns), so the wiring's PREREQUISITE is the
+kit-side eviction-executor seam (reservation kind + evict_fn + a shared
+make_room; `_admit` refactored onto it). Pass 3 also disproved pass 2's
+self-shrink assumption (the load fits against the FULL card and EVICTS —
+`lifecycle.py:1937` + `_admit`) and found the shipped in-runner precedent for
+Q2's policy shape (the #274 embed placement). The workflow pass (the user's
+"how does the flow work" question) added §4 + two more calls: Q6 — Quick Setup
+UNCHANGED (family-canon charter; TTS has no default-model concept, voices are
+the unit and engines follow them), but the 2026-08-05 warm-boot stopgap
+("TTS owns the GPU until F4's arbiter", main.js:208-214) comes back — rec:
+flip LLM warm-boot ON as the wiring's last step; Q7 — mixed-GPU-engine casts
+thrash full model loads per engine crossing (one-slot-per-kind +
+per-line auto-load, verified) — rec: chapter render synthesizes grouped by
+engine. Pass 4 verified the newest pieces in code: Q7's premise holds (the
+chapter render is collect-then-assemble, `render_chapter_api.py:250-264`, so
+grouping is just iteration order); Q6's mechanics corrected (warm is a per-DB
+SETTING — kit default ON, JV's `llm_bootstrap.py:34-36` seeds it 0; the flip
+reaches fresh DBs only, seeds-only rule); and Q8 found the deeper limiter —
+`synth()` is slot-coupled (`manager.py:1415-1417`), so CPU-kokoro + GPU-engine
+can never co-reside; multi-resident engines recorded as the later refactor,
+NOT built. make_room's busy protection also closes the pre-existing same-kind
+hole (loading LLM B could evict busy LLM A). Pass 5 produced ZERO design
+reversals and four wiring corrections (§5 of the doc — convergence): whisper
+IS the third kind and AUTO-LOADS today (`captures_api.py:48-60`, stt slot,
+1500 MB cuda-only manifest) so dictation's resident set is stt+llm at once;
+there are TWO engine-load doors and `render_core.render_line`'s direct
+`engine.load` would BYPASS arbitration — door unification onto
+`EngineManager.load()` is wiring prerequisite #2; `models_max`'s count cap
+must be kind-scoped or a TTS resident eats a llama.cpp child slot; TTS
+admission reuses the existing `safety_margin_mb` knob; and the claim line's
+two sources are verified (measurements record `vram_total_mb`; `compute_fit`
+prices an on-disk gguf). llm-busy lands in the KIT dispatch layer (JW inherits
+the protection free); tts/stt-busy at the manager chokes. Your calls on Q1–Q8
+are the gate. NO code before those decisions.
+GO: needed — the decisions, then the wiring gets its own go.
 
 ## Features the docs promise and the code does not do
 

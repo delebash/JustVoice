@@ -13,11 +13,15 @@ actionable message from LLMNotConfiguredError.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
+from queue import SimpleQueue
+from threading import Thread
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -187,6 +191,94 @@ async def analyze_scene_endpoint(
         confidence_floor=raw_out.get("floor", 0.7),
         usage=raw_out.get("usage"),
     )
+
+
+@router.post(
+    "/v1/scenes/{scene_id}/analyze/stream",
+    summary="Run speaker attribution on a scene, streaming the family SSE frames",
+)
+async def analyze_scene_stream_endpoint(
+    scene_id: str,
+    body: AnalyzeSceneRequest,
+    db: Session = Depends(get_db),
+) -> StreamingResponse:
+    """Lane 2A of the AI-call convention (2026-08-08): the SAME pipeline as
+    /analyze — same cast/corrections resolution, same route pick, same parsing
+    and floor — but the LLM reply streams, so a minute-long chapter shows live
+    tokens instead of a silent wait. Frames are the family contract
+    (`data:{"delta"}` · `data:{"progress"}` · a final `data:{"done":true,...}`
+    carrying the usage names top-level PLUS everything AnalyzeSceneResponse
+    carries · `data:[DONE]`; errors as `data:{"error"}` — the stream has
+    started, so there is no HTTP status to send).
+
+    The pipeline is sync + blocking (the kit's stream_action is), so it runs in
+    a worker thread feeding a queue the generator drains."""
+    scene = db.query(Scene).filter(Scene.id == scene_id).first()
+    if scene is None:
+        raise not_found(f"scene {scene_id}")
+
+    characters = body.characters if body.characters is not None else _resolve_cast(scene_id, db)
+    corrections = body.corrections if body.corrections is not None else _resolve_corrections(scene.project_id, db)
+    settings = get_state().settings.get()
+    req = AnalyzeRequest(
+        text=body.text,
+        characters=characters,
+        corrections=corrections,
+        route=body.route,
+        propagate=body.propagate,
+        use_floor=body.use_floor,
+    )
+
+    q: SimpleQueue = SimpleQueue()
+
+    def worker() -> None:
+        raw_out: dict = {}
+        try:
+            rows = analyze_scene(
+                settings=settings,
+                request=req,
+                raw_out=raw_out,
+                on_delta=lambda t: q.put({"delta": t}),
+                on_progress=lambda p: q.put({"progress": p}),
+            )
+            usage = raw_out.get("usage") or {}
+            q.put({
+                "done": True,
+                # The family usage names, top level — the kit client normalizes
+                # exactly these (ui/src/client.js requestStream).
+                "promptTokens": usage.get("prompt_tokens", 0),
+                "completionTokens": usage.get("completion_tokens", 0),
+                "model": usage.get("model", ""),
+                # The domain payload — the same fields AnalyzeSceneResponse
+                # carries, same names, so the client's result handling is one
+                # code path across both transports.
+                "scene_id": scene_id,
+                "rows": [row.__dict__ for row in rows],
+                "route_used": raw_out.get("route", "guided"),
+                "route_source": raw_out.get("route_source", "auto"),
+                "confidence_floor": raw_out.get("floor", 0.7),
+                "raw_llm": raw_out.get("llm_text"),
+                "usage": usage or None,
+            })
+        except LLMNotConfiguredError as e:
+            q.put({"error": str(e)})
+        except Exception as e:  # noqa: BLE001 — surface as an error frame, not a 500
+            log.exception("extraction stream failed")
+            q.put({"error": str(e)[:200]})
+        finally:
+            q.put(None)
+
+    Thread(target=worker, daemon=True).start()
+
+    def gen():
+        while True:
+            item = q.get()
+            if item is None:
+                break
+            yield f"data: {json.dumps(item)}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(gen(), media_type="text/event-stream")
 
 
 class AnalyzeTextRequest(BaseModel):

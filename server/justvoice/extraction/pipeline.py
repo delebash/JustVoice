@@ -22,7 +22,7 @@ from pydantic import BaseModel
 
 from llm_runner.llm import LLMNotConfiguredError
 
-from ..engines.llm.run import run_feature
+from ..engines.llm.run import run_feature, stream_feature
 from .anchors import find_anchors
 from .prompts import (
     format_characters,
@@ -249,6 +249,8 @@ def analyze_scene(
     settings,
     request: AnalyzeRequest,
     raw_out: dict | None = None,
+    on_delta=None,
+    on_progress=None,
 ) -> list[AttributionRow]:
     """Run the full pipeline.
 
@@ -257,6 +259,13 @@ def analyze_scene(
     confidence=1.0 + source="narration". `settings` carries the route force
     pills + the Auto size rule (settings.extraction — the attribution
     restore); engine routing itself stays preset-resolved.
+
+    `on_delta` (lane 2A, 2026-08-08): when set, the LLM call STREAMS — each raw
+    text chunk is passed to `on_delta(text)` as it arrives (the SSE endpoint
+    forwards them so the strip shows live tok/s on a minute-long chapter), and
+    `on_progress(0..1)` gets the builtin engine's prompt-eval frames. The
+    pipeline's inputs, outputs, parsing, floor and raw_out are IDENTICAL either
+    way — streaming changes how the reply travels, never what runs.
     """
     # ── 1. Segment ───────────────────────────────────────────────
     paragraphs = split_into_paragraphs(request.text)
@@ -295,13 +304,7 @@ def analyze_scene(
             # routing, the attribution restore). The Lab's system/user
             # candidates ride the explicit-prompt door.
             t0 = time.monotonic()
-            resp = run_feature(
-                f"speaker_attribution.{pick.name}",
-                {
-                    "characters": format_characters(request.characters),
-                    "corrections": format_corrections(request.corrections),
-                    "paragraphs": format_paragraphs(segments),
-                },
+            call_kwargs = dict(
                 system=request.system_prompt or None,
                 userTemplate=request.user_prompt or None,
                 temperature=request.temperature,
@@ -316,17 +319,47 @@ def analyze_scene(
                 topP=request.top_p,
                 samplers=request.samplers or [],
             )
+            variables = {
+                "characters": format_characters(request.characters),
+                "corrections": format_corrections(request.corrections),
+                "paragraphs": format_paragraphs(segments),
+            }
+            action = f"speaker_attribution.{pick.name}"
+            if on_delta is None:
+                resp = run_feature(action, variables, **call_kwargs)
+                text = resp.text
+                ptok = int(getattr(resp, "prompt_tokens", 0) or 0)
+                ctok = int(getattr(resp, "completion_tokens", 0) or 0)
+                model_used = getattr(resp, "model", "") or ""
+            else:
+                # Lane 2A: same route, same template row, same preset — the
+                # reply just STREAMS. The final delta carries the usage.
+                parts: list[str] = []
+                ptok = ctok = 0
+                model_used = ""
+                for delta in stream_feature(action, variables, **call_kwargs):
+                    if delta.done:
+                        ptok = int(delta.prompt_tokens or 0)
+                        ctok = int(delta.completion_tokens or 0)
+                        model_used = delta.model or ""
+                    elif delta.progress is not None:
+                        if on_progress is not None:
+                            on_progress(delta.progress)
+                    elif delta.text:
+                        parts.append(delta.text)
+                        on_delta(delta.text)
+                text = "".join(parts)
             if raw_out is not None:
-                raw_out["llm_text"] = resp.text
+                raw_out["llm_text"] = text
                 # §16: the run's usage rides the response (the server always
                 # had the numbers — LLMResponse carries them; 0 = unreported).
                 raw_out["usage"] = {
-                    "prompt_tokens": int(getattr(resp, "prompt_tokens", 0) or 0),
-                    "completion_tokens": int(getattr(resp, "completion_tokens", 0) or 0),
+                    "prompt_tokens": ptok,
+                    "completion_tokens": ctok,
                     "duration_ms": int((time.monotonic() - t0) * 1000),
-                    "model": getattr(resp, "model", "") or "",
+                    "model": model_used,
                 }
-            llm_picks = _extract_first_json_array(resp.text)
+            llm_picks = _extract_first_json_array(text)
         except LLMNotConfiguredError:
             # Caller (the API layer) catches this separately to return
             # 501 with the actionable message. Bubble it up.

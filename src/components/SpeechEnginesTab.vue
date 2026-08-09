@@ -26,11 +26,25 @@
   uninstall, and the folder-tab pair itself (Engines' approved mock v7).
 -->
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { DownloadBar, UiButton, UiTag, confirmDialog, promptDialog, pushToast, withAiTask } from "@delebash/llm-ui";
 import { makeEngineDownloadTask } from "../services/ttsJobChannel.js";
 import { createDownloadTask } from "@delebash/llm-ui";
+
+// Mirror the job-channel task's live numbers into the kit strip's progress —
+// the bar computes from done/total (bytes) and the TEXT is the ONE shared
+// caption ("Downloading · 42% · 512 MB of 1.2 GB · 24 MB/s"), so the strip and
+// the Engines card can never disagree (the install-progress bridge,
+// 2026-08-08 — before it the strip showed a bare label while the card had the
+// percent). Returns the stop handle; the caller stops it when the phase ends.
+function bridgeJobProgress(panel, task) {
+  return watch(
+    () => [task.done, task.total, task.label],
+    () => panel.setProgress(task.done || 0, task.total || 0, task.label),
+    { immediate: true },
+  );
+}
 import SpeechProvidersPanel from "./SpeechProvidersPanel.vue";
 
 // The Local/Online half switch (the folder-tab pair).
@@ -204,7 +218,12 @@ async function installEngine(engine) {
       panel.signal.addEventListener("abort", () => {
         if (task.state === "running") task.cancel();
       }, { once: true });
-      await task.start();
+      const stopBridge = bridgeJobProgress(panel, task);
+      try {
+        await task.start();
+      } finally {
+        stopBridge();
+      }
       if (task.state === "error") throw new Error(task.error || "install failed");
       if (task.state !== "done") { panel.cancel(); return; }
       pushToast({ message: `${engine.name || engine.id} installed.`, kind: "success", duration: 4000 });
@@ -243,35 +262,40 @@ async function runLoad(engine, variantId) {
       panel.signal.addEventListener("abort", () => {
         if (task.state === "running") task.cancel();
       }, { once: true });
-      if (needsDownload) {
-        await task.start();               // phase A — the download, kit-polled
-        if (task.state !== "done") {      // cancelled or failed → stop honestly
-          if (task.state === "error") throw new Error(task.error || "download failed");
-          panel.cancel();
-          return;
-        }
-        delete variants[engine.id];       // on_disk changed — re-read truthfully
-        task.arm("Loading model");        // phase B under the same bar
-      } else {
-        task.arm("Loading model");
-      }
+      const stopBridge = bridgeJobProgress(panel, task);
       try {
-        await api.request(`/v1/engines/${engine.id}/load`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ device: "auto", model_variant: variantId || null }),
-        });
-      } catch (e) {
-        if (task.state === "cancelled") { panel.cancel(); return; }
-        task.fail(String(e?.message || e));   // the CARD's job bar, not the panel
-        throw e;
+        if (needsDownload) {
+          await task.start();               // phase A — the download, kit-polled
+          if (task.state !== "done") {      // cancelled or failed → stop honestly
+            if (task.state === "error") throw new Error(task.error || "download failed");
+            panel.cancel();
+            return;
+          }
+          delete variants[engine.id];       // on_disk changed — re-read truthfully
+          task.arm("Loading model");        // phase B under the same bar
+        } else {
+          task.arm("Loading model");
+        }
+        try {
+          await api.request(`/v1/engines/${engine.id}/load`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ device: "auto", model_variant: variantId || null }),
+          });
+        } catch (e) {
+          if (task.state === "cancelled") { panel.cancel(); return; }
+          task.fail(String(e?.message || e));   // the CARD's job bar, not the panel
+          throw e;
+        }
+        task.apply({ terminal: "done" });
+        window.dispatchEvent(new Event("jv:health-refresh"));
+        delete variants[engine.id];
+        await refresh();
+        pushToast({ message: `${engine.name || engine.id} loaded.`, kind: "success", duration: 4500 });
+        delete dlTasks[key];
+      } finally {
+        stopBridge();
       }
-      task.apply({ terminal: "done" });
-      window.dispatchEvent(new Event("jv:health-refresh"));
-      delete variants[engine.id];
-      await refresh();
-      pushToast({ message: `${engine.name || engine.id} loaded.`, kind: "success", duration: 4500 });
-      delete dlTasks[key];
     });
   } catch {
     // The task row carries the error (failed lingers until dismissed).
