@@ -19,6 +19,7 @@ from pydantic import BaseModel
 from llm_runner.llm import LLMNotConfiguredError
 
 from ..engines.llm.run import run_feature
+from .extraction_api import RunUsage
 
 log = logging.getLogger(__name__)
 
@@ -54,6 +55,9 @@ class SmartAssignRequest(BaseModel):
 class SmartAssignResponse(BaseModel):
     assignments: dict[str, str]
     note: str | None = None
+    # §16: every AI response carries the run's usage (found violated 2026-08-08
+    # by the AI-call-convention pass — the counts were in `resp` and dropped).
+    usage: RunUsage | None = None
 
 
 def _format_characters(chars: list[SmartAssignCharacter]) -> str:
@@ -147,4 +151,12 @@ async def smart_assign(body: SmartAssignRequest) -> SmartAssignResponse:
     if not assignments and raw:
         note = "Model returned assignments, but none matched the current catalog."
 
-    return SmartAssignResponse(assignments=assignments, note=note)
+    return SmartAssignResponse(
+        assignments=assignments,
+        note=note,
+        usage=RunUsage(
+            prompt_tokens=resp.prompt_tokens,
+            completion_tokens=resp.completion_tokens,
+            model=resp.model,
+        ),
+    )

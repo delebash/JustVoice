@@ -12,7 +12,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import { useAiTasksStore } from "@delebash/llm-ui";
+import { withAiTask } from "@delebash/llm-ui";
 import { pushToast } from "@delebash/llm-ui";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
@@ -22,7 +22,6 @@ import ImportModal from "./ImportModal.vue";
 const api = useApi();
 const activeProject = useActiveProject();
 const projectsStore = useProjectsStore();
-const tasks = useAiTasksStore();
 
 const projects = computed(() => projectsStore.items);
 const selectedProjectId = ref(null);
@@ -116,25 +115,31 @@ async function rerenderChanged() {
   if (!targets.length || rerendering.value) return;
   rerendering.value = true;
   let done = 0;
-  const task = tasks.start({
-    feature: "chapter",
-    label: `Re-render ${targets.length} changed line${targets.length === 1 ? "" : "s"}`,
-    onRetry: () => rerenderChanged(),
-  });
-  task.setProgress(0, targets.length);
+  let aborted = false;
   try {
-    for (const line of targets) {
-      // The strip's Cancel aborts the kit handle's signal — stop between
-      // lines (and mid-line: the signal rides into the in-flight request).
-      if (task.signal.aborted) break;
-      await api.request(`/v1/blocks/${line.block_id}/render`, { method: "POST", signal: task.signal });
-      done += 1;
-      task.setProgress(done, targets.length);
-    }
-    if (!task.signal.aborted) task.finish();
+    // One batch = ONE task on the kit runner; real n/m via setProgress.
+    await withAiTask({
+      feature: "chapter",
+      label: `Re-render ${targets.length} changed line${targets.length === 1 ? "" : "s"}`,
+      onRetry: () => rerenderChanged(),
+    }, async (task) => {
+      task.setProgress(0, targets.length);
+      for (const line of targets) {
+        // The strip's Cancel aborts the kit handle's signal — stop between
+        // lines (and mid-line: the signal rides into the in-flight request).
+        if (task.signal.aborted) break;
+        try {
+          await api.request(`/v1/blocks/${line.block_id}/render`, { method: "POST", signal: task.signal });
+        } catch (e) {
+          aborted = task.signal.aborted;
+          throw e;
+        }
+        done += 1;
+        task.setProgress(done, targets.length);
+      }
+    });
   } catch (e) {
-    if (!task.signal.aborted) {
-      task.fail(e);
+    if (!aborted) {
       pushToast({ message: `Re-render failed after ${done} lines: ${e?.message || e}`, kind: "error" });
     }
   } finally {

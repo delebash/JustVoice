@@ -23,6 +23,7 @@ from ..database import get_db
 from ..database.models import Block, RenderPreset, Scene
 from ..engines.llm.run import run_feature
 from ..errors import not_found
+from .extraction_api import RunUsage
 
 log = logging.getLogger(__name__)
 
@@ -38,6 +39,9 @@ class PresetSuggestResponse(BaseModel):
     preset_name: str | None
     reason: str = ""
     note: str | None = None
+    # §16: every AI response carries the run's usage (found violated 2026-08-08
+    # by the AI-call-convention pass — the counts were in `resp` and dropped).
+    usage: RunUsage | None = None
 
 
 def _sample_chapter_text(scene_id: str, db: Session) -> str:
@@ -121,6 +125,11 @@ async def suggest_preset(
         log.warning("preset_suggest LLM call failed: %s", e)
         raise HTTPException(status_code=502, detail=f"suggest failed: {e}")
 
+    usage = RunUsage(
+        prompt_tokens=resp.prompt_tokens,
+        completion_tokens=resp.completion_tokens,
+        model=resp.model,
+    )
     preset_name, reason = _parse_response(resp.text)
     if not preset_name:
         return PresetSuggestResponse(
@@ -128,6 +137,7 @@ async def suggest_preset(
             preset_name=None,
             reason=reason,
             note="model returned no preset; check the raw model output in the AI page's Lab if this repeats",
+            usage=usage,
         )
 
     # Match by exact name (case-insensitive).
@@ -138,9 +148,11 @@ async def suggest_preset(
             preset_name=preset_name,
             reason=reason,
             note=f"model picked {preset_name!r} but no preset by that name exists",
+            usage=usage,
         )
     return PresetSuggestResponse(
         preset_id=match.id,
         preset_name=match.name,
         reason=reason,
+        usage=usage,
     )

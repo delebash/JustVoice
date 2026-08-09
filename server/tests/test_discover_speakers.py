@@ -10,6 +10,7 @@ from llm_runner.llm import LLMNotConfiguredError
 from justvoice.app import create_app
 from justvoice.database.seed import seed_workspace
 from justvoice.extraction.identify import SpeakerCandidate, parse_candidates
+from tests.jw_fixtures import book_json
 
 # ── parser ───────────────────────────────────────────────────────────
 
@@ -48,16 +49,10 @@ def client(tmp_path):
 
 
 def _import_project(client) -> tuple[str, str]:
-    payload = {
-        "schema": "justwrite/v1",
-        "book": {"title": "Stillwater", "author": "x", "language": "en-US", "description": None},
-        "characters": [{"id": "mara", "name": "Mara Vance", "voice_hint": None, "notes": None}],
-        "chapters": [
-            {"id": "ch1", "title": "One", "lines": [{"character_id": "mara", "text": "Hello."}]}
-        ],
-        "lexicon": [],
-    }
-    r = client.post("/v1/projects/import?source=justwrite", json=payload)
+    # A real JustWrite book.json (tests/jw_fixtures.py). Its lines arrive
+    # SPEAKERLESS — JustWrite does not attribute dialogue — which is exactly
+    # the state these discovery tests are about.
+    r = client.post("/v1/projects/import?source=justwrite", json=book_json())
     assert r.status_code == 200, r.text
     pid = r.json()["project_id"]
     scenes = client.get(f"/v1/projects/{pid}/scenes").json()
@@ -319,7 +314,12 @@ def test_show_notes_501_without_llm_and_works_with_stub(client, monkeypatch):
         default_model = "m"
 
         def chat(self, messages, *, model=None, system=None, **kwargs):
-            assert "Mara Vance" in messages[-1].content
+            # The chapter heading and its prose, rendered from the project's
+            # segments. The speaker reads NARRATION, not "Mara Vance": a
+            # JustWrite import arrives speakerless by design, and Analyze is
+            # what assigns characters to lines.
+            assert "## One" in messages[-1].content
+            assert "NARRATION: Hello." in messages[-1].content
             assert "show notes" in (system or "").lower()
             return LLMResponse(text="## Episode summary\nA test episode.",
                                model=model or self.default_model)

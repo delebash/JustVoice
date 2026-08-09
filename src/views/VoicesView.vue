@@ -8,12 +8,11 @@ import { readPref, writePref } from "../services/prefs.js";
 import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip, UiSelect, AppModal } from "@delebash/llm-ui";
 import { EmptyState } from "@delebash/llm-ui";
 import { useVoicesStore } from "../stores/voices.js";
-import { useAiTasksStore } from "@delebash/llm-ui";
+import { runAiEndpoint } from "@delebash/llm-ui";
 import { useEnginesStore } from "../stores/engines.js";
 import { usePersonasStore } from "../stores/personas.js";
 
 const api = useApi();
-const tasks = useAiTasksStore();
 // voices / engines / personas come from shared stores. Mutations here
 // (clone/design/blend/delete/gender) call refresh() → store.reload(),
 // so other views update. Store items are deeply reactive, so in-place
@@ -91,22 +90,20 @@ async function guessUnknownGenders() {
     return;
   }
   genderGuessBusy.value = true;
-  // §16: every AI call surfaces as a task (row + seconds + cancel).
-  const task = tasks.start({
-    feature: "voice-gender",
-    label: `Gender guess · ${unknown.length} voice${unknown.length === 1 ? "" : "s"}`,
-    onRetry: () => guessUnknownGenders(),
-  });
   try {
-    const r = await api.request("/v1/voices/gender-guess", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ voices: unknown.map((v) => ({
+    // The kit runner owns the task (row + seconds + tokens + cancel).
+    const r = await runAiEndpoint({
+      request: (p, o) => api.request(p, o),
+      path: "/v1/voices/gender-guess",
+      body: { voices: unknown.map((v) => ({
         name: v.name || v.id, description: v.design_prompt || "",
-      })) }),
-      signal: task.signal,
+      })) },
+      task: {
+        feature: "voice-gender",
+        label: `Gender guess · ${unknown.length} voice${unknown.length === 1 ? "" : "s"}`,
+        onRetry: () => guessUnknownGenders(),
+      },
     });
-    task.finish();
     const guesses = r?.guesses || {};
     let applied = 0;
     for (const v of unknown) {
@@ -129,10 +126,8 @@ async function guessUnknownGenders() {
       kind: "success",
     });
   } catch (e) {
-    if (task.signal.aborted) task.cancel();
-    else task.fail(e);
     const msg = String(e?.message || e);
-    pushToast({
+    if (!/abort/i.test(msg)) pushToast({
       message: msg.includes("501")
         ? "No AI model set up — run the LLM engine setup under AI Settings first."
         : `Gender guess failed: ${msg}`,

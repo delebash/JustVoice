@@ -38,6 +38,7 @@ from ..database.models import (
 from ..errors import not_found, bad_request
 from ..app_state import get_state
 from ._persona_helpers import ensure_project_persona
+from .extraction_api import RunUsage
 from ..imports import list_adapters, run_adapter
 from ..imports.standard_schema import (
     AdapterListResponse,
@@ -603,13 +604,13 @@ async def remove_from_cast(
 # Replaces the original JustWrite-only endpoint. Sources are pluggable
 # (see server/justvoice/imports/) and the adapter registry produces a
 # normalized StandardImport that this endpoint materializes into ORM
-# rows. JustWrite is one adapter among several (csv_lines, srt,
-# audacity_labels, justvoice_standard, elevenlabs-stub).
+# rows. JustWrite is one adapter among several (book_prose,
+# podcast_markdown, csv_lines, srt, audacity_labels, justvoice_standard).
 #
 # Transport:
 #   - Preferred: multipart/form-data { source, file, dry_run? }
-#   - Legacy backward-compat for JustWrite's existing client:
-#       POST /v1/projects/import?source=justwrite (raw JSON body)
+#   - Raw request body with ?source=… — no file part, the body IS the
+#     payload (a book zip's bytes, a JSON document); usable by automation
 
 
 _KIND_TO_PROJECT_TYPE: dict[str, str] = {
@@ -787,7 +788,7 @@ async def import_project(
 
     Multipart shape (preferred — what ImportModal sends):
       multipart/form-data
-        source   = adapter id (justwrite | csv_lines | srt | audacity_labels | justvoice_standard | elevenlabs)
+        source   = adapter id (justwrite | book_prose | podcast_markdown | csv_lines | srt | audacity_labels | justvoice_standard)
         file     = the source file
         dry_run  = "true" to parse + return preview without committing
 
@@ -1201,6 +1202,9 @@ async def create_demo_project(
 class ShowNotesResponse(BaseModel):
     project_id: str
     markdown: str
+    # §16: every AI response carries the run's usage (found violated 2026-08-08
+    # by the AI-call-convention pass — the counts were in `resp` and dropped).
+    usage: RunUsage | None = None
 
 
 @router.post("/v1/projects/{project_id}/show-notes", response_model=ShowNotesResponse)
@@ -1243,5 +1247,13 @@ async def project_show_notes(
         resp = run_feature("show_notes", {"script": script[:24000]})
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))
-    return ShowNotesResponse(project_id=project_id, markdown=resp.text.strip())
+    return ShowNotesResponse(
+        project_id=project_id,
+        markdown=resp.text.strip(),
+        usage=RunUsage(
+            prompt_tokens=resp.prompt_tokens,
+            completion_tokens=resp.completion_tokens,
+            model=resp.model,
+        ),
+    )
 

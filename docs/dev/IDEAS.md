@@ -6,6 +6,17 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-08-08 · Unreal / Unity string-table import for game dialogue** — moved
+  here by the user's word ("move unreal stuff to ideas") during the import-picker
+  sweep. The gap is real and currently advertised: `NewProjectModal.vue` sells
+  Game dialogue as "CSV / JSON / string-table import" and `docs/dev/CONCEPTS.md`
+  (lines 22 and 79) names "Unreal string table" as a game import surface with a
+  speaker column discovered at import — but no adapter reads one; game devs get
+  `csv_lines` or JustVoice standard JSON. The false half of that promise was
+  struck from the New Project card in the same sweep, so the app no longer claims
+  it; CONCEPTS keeps it as the intended model. Note `docs/dev/ue-integration-design.md`
+  is the EXPORT side (WAV-per-line + JSON sidecar, UE plugin phase 2) — a
+  different direction of travel, not this.
 - **2026-08-07 · A TTS Lab** — moved here off the tracker by the user's word.
   The name was parked in the shared AI-stack ledger on 2026-07-06 and held
   behind the JustVoice convergence work; that work finished 2026-08-05/06 and

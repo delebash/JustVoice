@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 
 from justvoice.app import create_app
 from justvoice.database.seed import seed_workspace
+from tests.jw_fixtures import book_json
 
 
 @pytest.fixture()
@@ -21,16 +22,8 @@ def client(tmp_path):
 
 
 def _import_project(client) -> str:
-    payload = {
-        "schema": "justwrite/v1",
-        "book": {"title": "Stillwater", "author": "x", "language": "en-US", "description": None},
-        "characters": [{"id": "mara", "name": "Mara Vance", "voice_hint": None, "notes": None}],
-        "chapters": [
-            {"id": "ch1", "title": "One", "lines": [{"character_id": "mara", "text": "Hello."}]}
-        ],
-        "lexicon": [],
-    }
-    r = client.post("/v1/projects/import?source=justwrite", json=payload)
+    # A real JustWrite book.json — see tests/jw_fixtures.py.
+    r = client.post("/v1/projects/import?source=justwrite", json=book_json())
     assert r.status_code == 200, r.text
     pid = r.json()["project_id"]
     scenes = client.get(f"/v1/projects/{pid}/scenes").json()

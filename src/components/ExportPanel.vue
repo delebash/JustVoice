@@ -15,7 +15,7 @@ import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
-import { UiButton, UiTag, useAiTasksStore } from "@delebash/llm-ui";
+import { UiButton, UiTag, runAiEndpoint } from "@delebash/llm-ui";
 
 const props = defineProps({
   project: { type: Object, required: true },
@@ -23,7 +23,6 @@ const props = defineProps({
 });
 
 const api = useApi();
-const tasks = useAiTasksStore();
 const copy = useCopy();
 
 const exportQc = ref(null);
@@ -103,22 +102,21 @@ async function generateShowNotes() {
   const p = props.project;
   if (!p) return;
   showNotes.value = null;
-  // §16: every AI call surfaces as a task (row + seconds + cancel). The kit
-  // store owns the AbortController — thread `task.signal` into the fetch.
-  const task = tasks.start({
-    feature: "show-notes",
-    label: `Show notes · ${p.name || "project"}`,
-    onRetry: () => generateShowNotes(),
-  });
   try {
-    showNotes.value = await api.request(`/v1/projects/${p.id}/show-notes`, {
-      method: "POST", signal: task.signal,
+    // The kit runner owns the task (row + seconds + tokens + cancel).
+    showNotes.value = await runAiEndpoint({
+      request: (path, o) => api.request(path, o),
+      path: `/v1/projects/${p.id}/show-notes`,
+      task: {
+        feature: "show-notes",
+        label: `Show notes · ${p.name || "project"}`,
+        onRetry: () => generateShowNotes(),
+      },
     });
-    task.finish();
   } catch (e) {
-    if (task.signal.aborted) task.cancel();
-    else task.fail(e);
-    pushToast({ message: `Show notes failed: ${e?.message || e}`, kind: "error", duration: 7000 });
+    if (!/abort/i.test(String(e?.message || ""))) {
+      pushToast({ message: `Show notes failed: ${e?.message || e}`, kind: "error", duration: 7000 });
+    }
   }
 }
 

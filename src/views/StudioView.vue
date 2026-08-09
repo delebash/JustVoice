@@ -16,7 +16,9 @@
 <script setup>
 import { computed, onActivated, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import { useAiTasksStore } from "@delebash/llm-ui";
+// Task lifecycles ride the kit runners (AI-call convention, app-structure §8);
+// the store import remains for READS only (per-scene bars, taskForScene).
+import { AiTaskStrip, runAiEndpoint, useAiTasksStore, withAiTask } from "@delebash/llm-ui";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { useCopy } from "../services/copy.js";
@@ -718,20 +720,18 @@ function presetOptions() {
 
 async function suggestPresetFor(scene) {
   suggestBusyScene.value = scene.id;
-  // §16: every AI call surfaces as a task (row + seconds + cancel).
-  const task = tasks.start({
-    feature: "preset-suggest",
-    label: `Preset suggest · ${scene.title || "chapter"}`,
-    onRetry: () => suggestPresetFor(scene),
-  });
   try {
-    const r = await api.request(`/v1/llm/preset-suggest`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scene_id: scene.id }),
-      signal: task.signal,
+    // The kit runner owns the task (row + seconds + tokens + cancel).
+    const r = await runAiEndpoint({
+      request: (p, o) => api.request(p, o),
+      path: `/v1/llm/preset-suggest`,
+      body: { scene_id: scene.id },
+      task: {
+        feature: "preset-suggest",
+        label: `Preset suggest · ${scene.title || "chapter"}`,
+        onRetry: () => suggestPresetFor(scene),
+      },
     });
-    task.finish();
     if (r?.preset_id) {
       scenePresetSelections.value = { ...scenePresetSelections.value, [scene.id]: r.preset_id };
       pushToast({
@@ -743,9 +743,7 @@ async function suggestPresetFor(scene) {
       pushToast({ message: r.note, kind: "warning", duration: 5000 });
     }
   } catch (e) {
-    if (task.signal.aborted) task.cancel();
-    else task.fail(e);
-    pushToast({
+    if (!/abort/i.test(String(e?.message || ""))) pushToast({
       message: e?.message?.includes("501") || e?.status === 501
         ? "Suggest unavailable — wire an LLM provider in Engines → LLM tab."
         : `Suggest failed: ${e?.message || e}`,
@@ -765,53 +763,56 @@ async function renderScene(scene) {
   renderBusyScene.value = scene.id;
 
   // Standing rule (memory feedback_long_running_process_rule): every
-  // long-running operation registers a task with cancel + retry handles
-  // so the global task stack + status panel can surface progress. The kit
-  // store owns the AbortController — its Cancel aborts `task.signal`.
-  const task = tasks.start({
-    feature: "render-scene",
-    label: `${scene.title || copy.value.chapter.singular} → ${copy.value.chapter.singular.toLowerCase()} render`,
-    onRetry: () => renderScene(scene),
-    meta: { sceneId: scene.id, projectId: selectedProjectId.value },
-  });
-
+  // long-running operation surfaces as a task with cancel + retry. The kit
+  // runner owns the lifecycle; the callback keeps the blob/domain work.
+  let aborted = false;
   try {
-    const body = {
-      scene_id: scene.id,
-      preset_id: scenePresetSelections.value[scene.id] || null,
-    };
-    const audio = await api.request("/v1/render_chapter", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: task.signal,
+    await withAiTask({
+      feature: "render-scene",
+      label: `${scene.title || copy.value.chapter.singular} → ${copy.value.chapter.singular.toLowerCase()} render`,
+      onRetry: () => renderScene(scene),
+      meta: { sceneId: scene.id, projectId: selectedProjectId.value },
+    }, async (task) => {
+      const body = {
+        scene_id: scene.id,
+        preset_id: scenePresetSelections.value[scene.id] || null,
+      };
+      let audio;
+      try {
+        audio = await api.request("/v1/render_chapter", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: task.signal,
+        });
+      } catch (e) {
+        aborted = task.signal.aborted;
+        throw e;
+      }
+      // /v1/render_chapter returns audio/wav (a Blob via api.request). Drop
+      // it into the GlobalAudioPlayer so the user can hear the result
+      // immediately, and store the URL on the task so the strip can
+      // expose download + play actions per scene.
+      if (audio instanceof Blob) {
+        const blobUrl = URL.createObjectURL(audio);
+        const label = scene.title || `${copy.value.chapter.singular} ${scene.position + 1}`;
+        task.update({ result: { url: blobUrl, filename: `${label.replace(/[^a-z0-9_-]+/gi, "_")}.wav` } });
+        audioPlayer.play({
+          url: blobUrl,
+          title: `${label} — rendered`,
+          subtitle: selectedProject.value?.name || "",
+        });
+        pushToast({ message: `${label} render complete. Now playing.`, kind: "success" });
+      } else {
+        task.update({ result: audio });
+        pushToast({ message: `${scene.title || "Scene"} render complete.`, kind: "success" });
+      }
     });
-    // /v1/render_chapter returns audio/wav (a Blob via api.request). Drop
-    // it into the GlobalAudioPlayer so the user can hear the result
-    // immediately, and store the URL on the task so the strip can
-    // expose download + play actions per scene.
-    if (audio instanceof Blob) {
-      const blobUrl = URL.createObjectURL(audio);
-      const label = scene.title || `${copy.value.chapter.singular} ${scene.position + 1}`;
-      task.update({ result: { url: blobUrl, filename: `${label.replace(/[^a-z0-9_-]+/gi, "_")}.wav` } });
-      task.finish();
-      audioPlayer.play({
-        url: blobUrl,
-        title: `${label} — rendered`,
-        subtitle: selectedProject.value?.name || "",
-      });
-      pushToast({ message: `${label} render complete. Now playing.`, kind: "success" });
-    } else {
-      task.update({ result: audio });
-      task.finish();
-      pushToast({ message: `${scene.title || "Scene"} render complete.`, kind: "success" });
-    }
   } catch (e) {
-    if (task.signal.aborted) {
+    if (aborted) {
       // The store's cancel() already marked the task.
       pushToast({ message: `${scene.title || "Scene"} render cancelled.`, kind: "info" });
     } else {
-      task.fail(e);
       pushToast({ message: `Render failed: ${e?.message || e}`, kind: "error", duration: 7000 });
     }
   } finally {
@@ -849,17 +850,23 @@ const masterPill = computed(() => {
 async function runQC() {
   if (!selectedProjectId.value || qcBusy.value) return;
   qcBusy.value = true;
-  const task = tasks.start({
-    feature: "acx-qc",
-    label: `ACX QC · ${selectedProject.value?.name || ""}`,
-    meta: { projectId: selectedProjectId.value },
-  });
+  let aborted = false;
   try {
-    const r = await api.request(`/v1/projects/${selectedProjectId.value}/qc`, { signal: task.signal });
+    const r = await withAiTask({
+      feature: "acx-qc",
+      label: `ACX QC · ${selectedProject.value?.name || ""}`,
+      meta: { projectId: selectedProjectId.value },
+    }, async (task) => {
+      try {
+        return await api.request(`/v1/projects/${selectedProjectId.value}/qc`, { signal: task.signal });
+      } catch (e) {
+        aborted = task.signal.aborted;
+        throw e;
+      }
+    });
     const map = {};
     for (const c of r?.chapters || []) map[c.scene_id] = c;
     qcByScene.value = map;
-    task.finish();
     pushToast({
       message: r?.all_ok ? "ACX QC: every chapter passes." : "ACX QC: some chapters are out of spec — see the Check column.",
       kind: r?.all_ok ? "success" : "info",
@@ -867,10 +874,7 @@ async function runQC() {
     });
     await loadCacheStats();
   } catch (e) {
-    if (task.signal.aborted) {
-      task.cancel();
-    } else {
-      task.fail(e);
+    if (!aborted) {
       pushToast({ message: `QC failed: ${e?.message || e}`, kind: "error", duration: 7000 });
     }
   } finally {
@@ -955,11 +959,15 @@ watch(selectedSceneId, (id) => {
 }, { immediate: true });
 
 // The Script tab's own Cancel button routes through the store so the
-// task is marked, not just aborted (the kit owns the AbortController).
+// The Script pane's inline strip finds its task by feature — running OR
+// lingering, so the done/failed state stays visible for the family linger
+// window instead of vanishing the instant the call returns. (The old
+// hand-rolled banner + its cancelAnalyze() died 2026-08-08; the strip's own
+// Cancel aborts the kit-owned controller.)
 const analyzeTaskId = ref(null);
-function cancelAnalyze() {
-  if (analyzeTaskId.value) tasks.cancel(analyzeTaskId.value);
-}
+const analyzeTask = computed(() =>
+  tasks.visibleTasks.find((t) => t.id === analyzeTaskId.value || (t.feature === "speaker_attribution" && t.inline))
+);
 
 async function runAnalyze() {
   if (!selectedSceneId.value || !sceneText.value.trim()) {
@@ -969,45 +977,53 @@ async function runAnalyze() {
   analyzeBusy.value = true;
   const sceneTitle = scenes.value.find((sc) => sc.id === selectedSceneId.value)?.title || "scene";
   const wordCount = sceneText.value.trim().split(/\s+/).length;
-  const task = tasks.start({
-    feature: "speaker_attribution",
-    label: `Speaker extraction · ${sceneTitle}`,
-    stats: [`${wordCount} words in`],
-    onRetry: () => runAnalyze(),
-  });
-  analyzeTaskId.value = task.id;
+  let aborted = false;
   try {
-    const r = await api.request(`/v1/scenes/${selectedSceneId.value}/analyze`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: sceneText.value }),
-      signal: task.signal,
+    // `inline: true` — the Script pane mounts its own AiTaskStrip where the
+    // hand-rolled "Analyzing…" banner used to sit (the 2026-08-08 ruling: the
+    // kit strip IS the indicator; the global stack must not show it twice).
+    // The response's usage rides finish(), so the strip shows real tokens.
+    await withAiTask({
+      feature: "speaker_attribution",
+      label: `Speaker extraction · ${sceneTitle}`,
+      stats: [`${wordCount} words in`],
+      onRetry: () => runAnalyze(),
+      inline: true,
+    }, async (task) => {
+      analyzeTaskId.value = task.id;
+      let r;
+      try {
+        r = await api.request(`/v1/scenes/${selectedSceneId.value}/analyze`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: sceneText.value }),
+          signal: task.signal,
+        });
+      } catch (e) {
+        aborted = task.signal.aborted;
+        throw e;
+      }
+      analyzeRows.value = r.rows || [];
+      analyzeRouteUsed.value = r.route_used;
+      analyzeRouteSource.value = r.route_source || "auto";
+      analyzeFloor.value = r.confidence_floor;
+      editedFlags.value = {};
+      task.setStats([
+        `${wordCount} words in`,
+        `${analyzeRows.value.length} segments`,
+        `${ROUTE_LABELS[r.route_used] || r.route_used} route`,
+      ]);
+      return { result: r, usage: r.usage };
     });
-    analyzeRows.value = r.rows || [];
-    analyzeRouteUsed.value = r.route_used;
-    analyzeRouteSource.value = r.route_source || "auto";
-    analyzeFloor.value = r.confidence_floor;
-    editedFlags.value = {};
-    task.setStats([
-      `${wordCount} words in`,
-      `${analyzeRows.value.length} segments`,
-      `${ROUTE_LABELS[r.route_used] || r.route_used} route`,
-    ]);
-    task.finish();
     runDiscoverSpeakers(); // fire-and-forget — banner appears if it finds anyone
     pushToast({
-      message: `Analyzed ${analyzeRows.value.length} segment${analyzeRows.value.length === 1 ? "" : "s"} — ${ROUTE_LABELS[r.route_used] || r.route_used} ${r.route_source === "auto" ? "(Auto's pick)" : "(forced)"}.`,
+      message: `Analyzed ${analyzeRows.value.length} segment${analyzeRows.value.length === 1 ? "" : "s"} — ${ROUTE_LABELS[analyzeRouteUsed.value] || analyzeRouteUsed.value} ${analyzeRouteSource.value === "auto" ? "(Auto's pick)" : "(forced)"}.`,
       kind: "success",
       duration: 3500,
     });
   } catch (e) {
-    if (task.signal.aborted) {
-      // tasks.cancel already marked it; nothing else to do.
-    } else {
-      task.fail(e);
-    }
     pushToast({
-      message: task.signal.aborted
+      message: aborted
         ? "Analyze cancelled."
         : e?.message?.includes("501") || e?.status === 501
           ? "Analyze unavailable — wire an LLM provider in Engines → LLM tab."
@@ -1024,28 +1040,30 @@ async function runAnalyze() {
 async function runDiscoverSpeakers() {
   discovered.value = [];
   if (!selectedSceneId.value || !sceneText.value.trim()) return;
-  const t = tasks.start({
+  const r = await withAiTask({
     feature: "speaker_identification",
     label: "Speaker identification",
+  }, async (t) => {
+    try {
+      const out = await api.request(`/v1/scenes/${selectedSceneId.value}/discover-speakers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: sceneText.value }),
+        signal: t.signal,
+      });
+      const found = out?.candidates || [];
+      t.setStats([`${found.length} new speaker${found.length === 1 ? "" : "s"}`]);
+      return { result: out, usage: out?.usage };
+    } catch {
+      // Identification is best-effort sugar on top of analyze — a 501 (no
+      // LLM) just means no banner, and the pre-conversion design DELIBERATELY
+      // finished (not failed) so no sticky red row lingers. Swallowing here
+      // keeps that: the runner finishes normally with an empty result; after
+      // a Cancel, first-outcome-wins makes the finish a no-op.
+      return { result: null };
+    }
   });
-  try {
-    const r = await api.request(`/v1/scenes/${selectedSceneId.value}/discover-speakers`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: sceneText.value }),
-      signal: t.signal,
-    });
-    discovered.value = r?.candidates || [];
-    t.setStats([`${discovered.value.length} new speaker${discovered.value.length === 1 ? "" : "s"}`]);
-    t.finish();
-  } catch (e) {
-    // Identification is best-effort sugar on top of analyze — a 501
-    // (no LLM) just means no banner; don't leave a sticky task. finish()
-    // (not dismiss, which no-ops on a still-running task and would
-    // orphan it in the strip) marks it done so it auto-archives; the
-    // store's first-outcome-wins guard makes it a no-op after a Cancel.
-    t.finish();
-  }
+  discovered.value = r?.candidates || [];
 }
 
 function ignoreCandidate(name) {
@@ -1264,44 +1282,45 @@ async function smartAssignCast() {
   }
   smartAssignBusy.value = true;
   const saStats = [`${characterPersonas.value.length} characters`, `${voices.value.length} voices`];
-  const saTask = tasks.start({
-    feature: "smart_assign",
-    label: `Smart-assign · ${characterPersonas.value.length} characters`,
-    stats: saStats,
-    onRetry: () => smartAssignCast(),
-  });
   try {
-    const r = await api.request("/v1/llm/smart-assign", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: saTask.signal,
-      body: JSON.stringify({
-        characters: characterPersonas.value.map((p) => ({
-          id: p.id,
-          name: p.name,
-          bio: p.bio,
-          personality: p.personality,
-        })),
-        voices: voices.value.map((v) => ({
-          id: v.id,
-          name: v.name,
-          gender: v.gender,
-          language: v.language,
-        })),
-      }),
-    });
-    const proposed = r?.assignments || {};
-    let applied = 0;
-    for (const [characterId, voiceId] of Object.entries(proposed)) {
-      const persona = characterPersonas.value.find((p) => p.id === characterId);
-      const voice = voices.value.find((v) => v.id === voiceId);
-      if (persona && voice) {
-        await assignVoice(characterId, voiceId);
-        applied += 1;
+    const applied = await withAiTask({
+      feature: "smart_assign",
+      label: `Smart-assign · ${characterPersonas.value.length} characters`,
+      stats: saStats,
+      onRetry: () => smartAssignCast(),
+    }, async (saTask) => {
+      const r = await api.request("/v1/llm/smart-assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: saTask.signal,
+        body: JSON.stringify({
+          characters: characterPersonas.value.map((p) => ({
+            id: p.id,
+            name: p.name,
+            bio: p.bio,
+            personality: p.personality,
+          })),
+          voices: voices.value.map((v) => ({
+            id: v.id,
+            name: v.name,
+            gender: v.gender,
+            language: v.language,
+          })),
+        }),
+      });
+      const proposed = r?.assignments || {};
+      let count = 0;
+      for (const [characterId, voiceId] of Object.entries(proposed)) {
+        const persona = characterPersonas.value.find((p) => p.id === characterId);
+        const voice = voices.value.find((v) => v.id === voiceId);
+        if (persona && voice) {
+          await assignVoice(characterId, voiceId);
+          count += 1;
+        }
       }
-    }
-    saTask.setStats([...saStats, `${applied} applied`]);
-    saTask.finish();
+      saTask.setStats([...saStats, `${count} applied`]);
+      return { result: count, usage: r?.usage };
+    });
     pushToast({
       message: applied
         ? `Smart-assign applied ${applied} assignment${applied === 1 ? "" : "s"}.`
@@ -1310,7 +1329,6 @@ async function smartAssignCast() {
       duration: 4500,
     });
   } catch (e) {
-    if (!saTask.signal.aborted) saTask.fail(e);
     pushToast({
       message: e?.message?.includes("501") || e?.status === 501
         ? "Smart-assign unavailable — wire an LLM provider in Engines → LLM tab."
@@ -1410,7 +1428,6 @@ watch(selectedProjectId, (id) => {
         <UiButton
           intent="primary"
           size="small"
-          :loading="analyzeBusy"
           :disabled="analyzeBusy || !sceneText.trim()"
           label="✨ Analyze chapter"
           title="LLM works out who speaks each line"
@@ -1791,19 +1808,13 @@ watch(selectedProjectId, (id) => {
           confidence floor {{ analyzeFloor }} · {{ analyzeRows.length }} segments
         </p>
 
-        <!-- Inline analyze progress — the global task strip sits above the
-             fold; this one is impossible to miss next to the content
-             (user ask: "no ai progress bar when i clicked analyze"). -->
-        <div v-if="analyzeBusy" class="jv-banner studio__analyze-progress">
-          <span class="jv-boot-banner__spinner" />
-          <span>
-            <strong>Analyzing…</strong> the LLM is reading the
-            {{ copy.chapter.singular.toLowerCase() }} and attributing speakers —
-            long {{ copy.chapter.plural.toLowerCase() }} can take a minute or two.
-          </span>
-          <span class="jv-spacer" />
-          <UiButton intent="ghost" size="small" label="Cancel" @click="cancelAnalyze" />
-        </div>
+        <!-- Inline analyze progress — the KIT strip, in the spot the
+             hand-rolled "Analyzing…" banner occupied until 2026-08-08 (user
+             ruling: "the llm runner strip should be in location that second
+             strip is and second strip should be removed"). The task is
+             inline-flagged, so the global stack never shows the run twice;
+             elapsed, tokens, stall state and Cancel are the kit's. -->
+        <AiTaskStrip v-if="analyzeTask" :task="analyzeTask" />
 
         <UiTextarea
           v-if="!analyzeRows.length"
@@ -2675,7 +2686,6 @@ watch(selectedProjectId, (id) => {
 .studio__addpersona-meta { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .studio__addpersona-meta .jv-muted { font-size: 11.5px; }
 
-.studio__analyze-progress { display: flex; align-items: center; gap: 10px; }
 
 .studio__vrow-instruct {
   font-size: 9px;

@@ -159,14 +159,24 @@ def _build(
 
 
 class _XhtmlBlocks(HTMLParser):
-    """Collects ("h"|"p", text) blocks from one XHTML document, in order."""
+    """Collects ("h"|"p", text) blocks from one XHTML document, in order.
 
-    def __init__(self) -> None:
+    `skip_classes` drops whole blocks whose class attribute names one of them.
+    Empty by default, so the EPUB/DOCX paths behave exactly as before; the
+    JustWrite adapter passes {"scene-mark"} because JustWrite's editor can
+    leave a `<p class="scene-mark">* * *</p>` separator inside a single scene's
+    body (its seed data does — see JustWrite's services/export/manuscript.js),
+    and a narrator must not read the asterisks aloud.
+    """
+
+    def __init__(self, skip_classes: frozenset[str] = frozenset()) -> None:
         super().__init__(convert_charrefs=True)
         self.blocks: list[tuple[str, str]] = []
+        self._skip_classes = skip_classes
         self._tag: str | None = None
         self._buf: list[str] = []
         self._skip_depth = 0
+        self._drop = False
 
     def handle_starttag(self, tag: str, attrs) -> None:
         if tag in ("script", "style"):
@@ -174,6 +184,8 @@ class _XhtmlBlocks(HTMLParser):
         elif tag in _BLOCK_TAGS and self._skip_depth == 0:
             self._flush()
             self._tag = tag
+            classes = set((dict(attrs).get("class") or "").split())
+            self._drop = bool(self._skip_classes & classes)
         elif tag == "br" and self._tag:
             self._buf.append(" ")
 
@@ -188,18 +200,34 @@ class _XhtmlBlocks(HTMLParser):
             self._buf.append(data)
 
     def _flush(self) -> None:
-        if self._tag:
+        if self._tag and not self._drop:
             text = re.sub(r"\s+", " ", "".join(self._buf)).strip()
             if text:
                 # Headings keep their tag (h1/h2/h3) so split_on can
                 # distinguish levels; everything else is "p".
                 kind = self._tag if self._tag in _HEADING_TAGS else "p"
                 self.blocks.append((kind, text))
-        self._tag, self._buf = None, []
+        self._tag, self._buf, self._drop = None, [], False
 
     def close(self) -> None:  # flush a trailing unterminated block
         self._flush()
         super().close()
+
+
+def html_blocks(
+    html: str, *, skip_classes: frozenset[str] = frozenset()
+) -> list[tuple[str, str]]:
+    """Ordered (kind, text) blocks from an HTML fragment.
+
+    The ONE door for other adapters — nobody re-forks the parser. The
+    JustWrite adapter reads rich-editor HTML out of `book.json` scene rows and
+    needs exactly this: inline markup flattened to text, `<hr>` and empty
+    paragraphs dropped, heading level preserved.
+    """
+    parser = _XhtmlBlocks(skip_classes=skip_classes)
+    parser.feed(html or "")
+    parser.close()
+    return parser.blocks
 
 
 def _xml_root(data: bytes, what: str) -> ET.Element:

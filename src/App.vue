@@ -36,7 +36,7 @@ const ALL_USE_CASES = ["audiobook", "game", "podcast", "dictation", "accessibili
 const VIEWS = [
   // ─── Workflow lane ─────────────────────────────────────────────────
   { id: "home",      lane: "workflow", label: "Home",      icon: "🏠", lede: "" },
-  { id: "projects",  lane: "workflow", label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Import manuscripts from JustWrite, or scripts and audio from other tools.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "projects",  lane: "workflow", label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Import a book from JustWrite, or scripts, line lists and subtitle files from other tools.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "chapter",   lane: "workflow", label: "Chapters",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved.", visibleFor: ["audiobook", "podcast", "multiple", "unset"] },
   { id: "lines",     lane: "workflow", label: "Lines",      icon: "🎮", lede: "Every line of the game project — stable ids, characters, derived take status. Re-import the writers\u2019 next sheet (only changed lines go stale), re-render exactly those, export per-line WAVs + manifest.", visibleFor: ["game", "multiple", "unset"] },
   { id: "studio",    lane: "workflow", label: "Studio",    icon: "🎬", lede: "Cast → Script → Render production environment. Three-tab flow for multi-character work. Cast assigns voices to characters; Script runs LLM speaker attribution (Phase 3 backend); Render batches the whole project.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },

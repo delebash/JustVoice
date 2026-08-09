@@ -3,7 +3,7 @@
 import { ref, computed, watch, onActivated, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
 import { useTakesStore } from "../stores/takes.js";
-import { pushToast, useAiTasksStore } from "@delebash/llm-ui";
+import { pushToast, withAiTask } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
 import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
@@ -18,7 +18,6 @@ import { EmptyState } from "@delebash/llm-ui";
 
 const api = useApi();
 const activeProject = useActiveProject();
-const tasks = useAiTasksStore();
 const takesStore = useTakesStore();
 // Per-use-case terminology (plan locked decision #7 / Slice 5). Audiobook
 // users see "Chapter / Line"; game devs see "Scene / Voiceline"; podcasters
@@ -346,36 +345,44 @@ async function regenerateBlock(block) {
     regenVoice.value = voice; // remember as the session fallback
   }
   regenBusy.value.set(block.id, true);
-  const task = tasks.start({
-    feature: "chapter",
-    label: `Regen block · ${block.text.slice(0, 40)}…`,
-    stats: ["1 block"],
-  });
+  let aborted = false;
   try {
-    // Regen inherits the project's default lexicon so pronunciation
-    // overrides for this chapter don't silently drop on a re-roll.
-    // preset_id is NOT inherited automatically — project.metadata
-    // .render_preset is a UI enum, not a render_presets.id, and the
-    // last-used preset isn't persisted on the block or scene. If
-    // preset inheritance becomes a need, plumb it from the block's
-    // most recent Generation.preset_id (server-side join, since
-    // TakeResponse currently only exposes generation_id).
-    const body = {
-      lines: [{ voice, text: block.text }],
-      between_lines: { silence_ms: 0 },
-    };
-    const project = selectedProjectRec.value;
-    if (project?.default_lexicon_id) {
-      body.lexicons = [project.default_lexicon_id];
-    }
-    const blob = await api.request("/v1/render_chapter", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: task.signal,
+    // The kit runner owns the task; the callback keeps the render work.
+    await withAiTask({
+      feature: "chapter",
+      label: `Regen block · ${block.text.slice(0, 40)}…`,
+      stats: ["1 block"],
+    }, async (task) => {
+      // Regen inherits the project's default lexicon so pronunciation
+      // overrides for this chapter don't silently drop on a re-roll.
+      // preset_id is NOT inherited automatically — project.metadata
+      // .render_preset is a UI enum, not a render_presets.id, and the
+      // last-used preset isn't persisted on the block or scene. If
+      // preset inheritance becomes a need, plumb it from the block's
+      // most recent Generation.preset_id (server-side join, since
+      // TakeResponse currently only exposes generation_id).
+      const body = {
+        lines: [{ voice, text: block.text }],
+        between_lines: { silence_ms: 0 },
+      };
+      const project = selectedProjectRec.value;
+      if (project?.default_lexicon_id) {
+        body.lexicons = [project.default_lexicon_id];
+      }
+      let blob;
+      try {
+        blob = await api.request("/v1/render_chapter", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: task.signal,
+        });
+      } catch (e) {
+        aborted = task.signal.aborted;
+        throw e;
+      }
+      task.setStats(["1 block", `${(blob.size / 1024).toFixed(1)} KB`]);
     });
-    task.setStats(["1 block", `${(blob.size / 1024).toFixed(1)} KB`]);
-    task.finish();
     // After regen succeeds, refresh the takes for this block so the new take
     // appears.  (A future endpoint may auto-create the Take row server-side;
     // for now we just refresh so any server-created takes show up.)
@@ -383,10 +390,7 @@ async function regenerateBlock(block) {
     await takesStore.fetchTakes(block.id);
     pushToast({ message: `${copy.value.line.singular} regenerated.`, kind: "success" });
   } catch (e) {
-    if (task.signal.aborted) {
-      task.cancel();
-    } else {
-      task.fail(e);
+    if (!aborted) {
       pushToast({ message: `Regen failed: ${e.message || e}`, kind: "error", duration: 6000 });
     }
   } finally {

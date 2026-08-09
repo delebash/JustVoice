@@ -28,7 +28,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useApi } from "../stores/api.js";
-import { DownloadBar, UiButton, UiTag, confirmDialog, promptDialog, pushToast, useAiTasksStore } from "@delebash/llm-ui";
+import { DownloadBar, UiButton, UiTag, confirmDialog, promptDialog, pushToast, withAiTask } from "@delebash/llm-ui";
 import { makeEngineDownloadTask } from "../services/ttsJobChannel.js";
 import { createDownloadTask } from "@delebash/llm-ui";
 import SpeechProvidersPanel from "./SpeechProvidersPanel.vue";
@@ -37,7 +37,6 @@ import SpeechProvidersPanel from "./SpeechProvidersPanel.vue";
 const half = ref("local");
 
 const api = useApi();
-const tasks = useAiTasksStore();
 
 // Seed from the last fetch so revisiting doesn't flash the "no engines"
 // banner before the list arrives (user-hit 2026-06-12).
@@ -185,30 +184,36 @@ function modelOnDisk(e, v) { return v.on_disk === true || (v.on_disk == null && 
 function engineNeedsInstall(e) { return e.isolation === "venv" && e.status === "not_installed"; }
 
 // ── Install (engine venv) — kit task over the job channel. ────────────
+// The runner owns the panel lifecycle. The job task decides the OUTCOME by
+// state, not by exception, so the callback translates: done → return (the
+// runner finishes) · error → throw (the runner fails, the row keeps the
+// error) · cancelled → panel.cancel() + return (first-outcome-wins makes the
+// runner's finish a no-op). Download PERCENT does not reach the strip yet —
+// bridging it is the user's named next task (with the VRAM arbiter).
 async function installEngine(engine) {
   const key = _engineKey(engine.id);
   clearTerminalTask(key);
   const task = makeEngineDownloadTask(api, engine.id, {});
   dlTasks[key] = task;
-  const panel = tasks.start({
-    feature: "install",
-    label: `Installing · ${engine.name || engine.id}`,
-  });
-  // The kit store owns the AbortController — bridge its Cancel to the
-  // job-channel task so the strip's ✕ stops the actual install.
-  panel.signal.addEventListener("abort", () => {
-    if (task.state === "running") task.cancel();
-  }, { once: true });
-  await task.start();
-  if (task.state === "done") {
-    panel.finish();
-    pushToast({ message: `${engine.name || engine.id} installed.`, kind: "success", duration: 4000 });
-    delete variants[engine.id];
-    await refresh();
-  } else if (task.state === "error") {
-    panel.fail(task.error);
-  } else {
-    panel.cancel();
+  try {
+    await withAiTask({
+      feature: "install",
+      label: `Installing · ${engine.name || engine.id}`,
+    }, async (panel) => {
+      // Bridge the strip's ✕ to the job-channel task so it stops the install.
+      panel.signal.addEventListener("abort", () => {
+        if (task.state === "running") task.cancel();
+      }, { once: true });
+      await task.start();
+      if (task.state === "error") throw new Error(task.error || "install failed");
+      if (task.state !== "done") { panel.cancel(); return; }
+      pushToast({ message: `${engine.name || engine.id} installed.`, kind: "success", duration: 4000 });
+      delete variants[engine.id];
+      await refresh();
+    });
+  } catch {
+    // The task row carries the error (failed lingers until dismissed) — the
+    // pre-conversion code surfaced no toast here either.
   }
 }
 
@@ -228,46 +233,48 @@ async function runLoad(engine, variantId) {
         cancel: () => api.request(`/v1/engines/${engine.id}/cancel-load`, { method: "POST" }),
       });
   dlTasks[key] = task;
-  const panel = tasks.start({
-    feature: "load",
-    label: `Loading · ${engine.name || engine.id} (${variantNameFor(engine.id, variantId)})`,
-    onRetry: () => runLoad(engine, variantId),
-  });
-  // Bridge the kit handle's Cancel to the job-channel task (see installEngine).
-  panel.signal.addEventListener("abort", () => {
-    if (task.state === "running") task.cancel();
-  }, { once: true });
-
   try {
-    if (needsDownload) {
-      await task.start();               // phase A — the download, kit-polled
-      if (task.state !== "done") {      // cancelled or failed → stop honestly
-        if (task.state === "error") panel.fail(task.error);
-        else panel.cancel();
-        return;
+    await withAiTask({
+      feature: "load",
+      label: `Loading · ${engine.name || engine.id} (${variantNameFor(engine.id, variantId)})`,
+      onRetry: () => runLoad(engine, variantId),
+    }, async (panel) => {
+      // Bridge the kit handle's Cancel to the job-channel task (see installEngine).
+      panel.signal.addEventListener("abort", () => {
+        if (task.state === "running") task.cancel();
+      }, { once: true });
+      if (needsDownload) {
+        await task.start();               // phase A — the download, kit-polled
+        if (task.state !== "done") {      // cancelled or failed → stop honestly
+          if (task.state === "error") throw new Error(task.error || "download failed");
+          panel.cancel();
+          return;
+        }
+        delete variants[engine.id];       // on_disk changed — re-read truthfully
+        task.arm("Loading model");        // phase B under the same bar
+      } else {
+        task.arm("Loading model");
       }
-      delete variants[engine.id];       // on_disk changed — re-read truthfully
-      task.arm("Loading model");        // phase B under the same bar
-    } else {
-      task.arm("Loading model");
-    }
-    await api.request(`/v1/engines/${engine.id}/load`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ device: "auto", model_variant: variantId || null }),
+      try {
+        await api.request(`/v1/engines/${engine.id}/load`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ device: "auto", model_variant: variantId || null }),
+        });
+      } catch (e) {
+        if (task.state === "cancelled") { panel.cancel(); return; }
+        task.fail(String(e?.message || e));   // the CARD's job bar, not the panel
+        throw e;
+      }
+      task.apply({ terminal: "done" });
+      window.dispatchEvent(new Event("jv:health-refresh"));
+      delete variants[engine.id];
+      await refresh();
+      pushToast({ message: `${engine.name || engine.id} loaded.`, kind: "success", duration: 4500 });
+      delete dlTasks[key];
     });
-    task.apply({ terminal: "done" });
-    panel.finish();
-    window.dispatchEvent(new Event("jv:health-refresh"));
-    delete variants[engine.id];
-    await refresh();
-    pushToast({ message: `${engine.name || engine.id} loaded.`, kind: "success", duration: 4500 });
-    delete dlTasks[key];
-  } catch (e) {
-    if (task.state === "cancelled") { panel.cancel(); return; }
-    const raw = String(e?.message || e);
-    task.fail(raw);
-    panel.fail(raw);
+  } catch {
+    // The task row carries the error (failed lingers until dismissed).
   }
 }
 

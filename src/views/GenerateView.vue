@@ -3,7 +3,7 @@
 import { ref, reactive, onActivated, onMounted, computed, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { useAudioPlayer } from "../stores/audioPlayer.js";
-import { pushToast, useAiTasksStore } from "@delebash/llm-ui";
+import { pushToast, runAiEndpoint, withAiTask } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag, UiSelect, AppModal } from "@delebash/llm-ui";
 import SlashTagMenu from "../components/SlashTagMenu.vue";
@@ -11,7 +11,6 @@ import { useVoicesStore } from "../stores/voices.js";
 import { usePersonasStore } from "../stores/personas.js";
 
 const api = useApi();
-const tasks = useAiTasksStore();
 const audioPlayer = useAudioPlayer();
 // voices + personas from shared stores; engines/current + capabilities
 // are single-record/map fetches that stay local.
@@ -313,22 +312,20 @@ async function refreshVoices() {
 async function composeLine() {
   if (!selectedPersonaId.value || !hasPersonality.value) return;
   composeBusy.value = true;
-  // §16: every AI call surfaces as a task (row + seconds + cancel).
-  const task = tasks.start({
-    feature: "compose",
-    label: `Compose · ${selectedPersona.value?.name || "persona"}`,
-    onRetry: () => composeLine(),
-  });
   try {
-    const r = await api.request(`/v1/personas/${selectedPersonaId.value}/compose`, {
-      method: "POST", signal: task.signal,
+    // The kit runner owns the task (row + seconds + tokens + cancel).
+    const r = await runAiEndpoint({
+      request: (p, o) => api.request(p, o),
+      path: `/v1/personas/${selectedPersonaId.value}/compose`,
+      task: {
+        feature: "compose",
+        label: `Compose · ${selectedPersona.value?.name || "persona"}`,
+        onRetry: () => composeLine(),
+      },
     });
-    task.finish();
     if (r?.text) text.value = r.text;
   } catch (e) {
-    if (task.signal.aborted) task.cancel();
-    else task.fail(e);
-    pushToast({
+    if (!/abort/i.test(String(e?.message || ""))) pushToast({
       message: e?.message?.includes("501") || e?.status === 501
         ? "Compose unavailable — wire an LLM provider in Settings → AI Engines (Phase 2)."
         : `Compose failed: ${e?.message || e}`,
@@ -347,27 +344,23 @@ async function rewriteLine() {
     return;
   }
   rewriteBusy.value = true;
-  // §16: every AI call surfaces as a task (row + seconds + cancel).
-  const task = tasks.start({
-    feature: "persona-rewrite",
-    label: `Rewrite · ${selectedPersona.value?.name || "persona"}`,
-    onRetry: () => rewriteLine(),
-  });
   try {
-    const r = await api.request(`/v1/personas/${selectedPersonaId.value}/rewrite`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: text.value }),
-      signal: task.signal,
+    // The kit runner owns the task (row + seconds + tokens + cancel).
+    const r = await runAiEndpoint({
+      request: (p, o) => api.request(p, o),
+      path: `/v1/personas/${selectedPersonaId.value}/rewrite`,
+      body: { text: text.value },
+      task: {
+        feature: "persona-rewrite",
+        label: `Rewrite · ${selectedPersona.value?.name || "persona"}`,
+        onRetry: () => rewriteLine(),
+      },
     });
-    task.finish();
     if (r?.rewritten) {
       rewritePreview.value = { original: r.original, rewritten: r.rewritten };
     }
   } catch (e) {
-    if (task.signal.aborted) task.cancel();
-    else task.fail(e);
-    pushToast({
+    if (!/abort/i.test(String(e?.message || ""))) pushToast({
       message: e?.message?.includes("501") || e?.status === 501
         ? "Rewrite unavailable — wire an LLM provider in Settings → AI Engines (Phase 2)."
         : `Rewrite failed: ${e?.message || e}`,
@@ -428,29 +421,38 @@ async function generate() {
   if (audio.value) { URL.revokeObjectURL(audio.value); audio.value = null; }
   const charCount = text.value.length;
   const baseStats = [`${charCount} chars`, `${wordCount.value} words`];
-  const task = tasks.start({
-    feature: "generate",
-    label: `Render · ${voice.value}`,
-    stats: baseStats,
-    onRetry: () => generate(),
-  });
+  let aborted = false;
   try {
-    const body = { voice: voice.value, text: text.value, cache: false };
-    if (delivery) body.delivery = delivery;
-    // Attach the profile's lexicon (if any) so the server applies the
-    // pronunciation overrides before TTS — matches the populated state
-    // shown in the lexicon-preview row above.
-    if (attachedLexicon.value?.id) body.lexicons = [attachedLexicon.value.id];
-    if (selectedPersonaId.value) body.persona_id = selectedPersonaId.value;
-    const blob = await api.request("/v1/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: task.signal,
+    // The kit runner owns the task; the callback keeps the blob/audio work.
+    const blob = await withAiTask({
+      feature: "generate",
+      label: `Render · ${voice.value}`,
+      stats: baseStats,
+      onRetry: () => generate(),
+    }, async (task) => {
+      const body = { voice: voice.value, text: text.value, cache: false };
+      if (delivery) body.delivery = delivery;
+      // Attach the profile's lexicon (if any) so the server applies the
+      // pronunciation overrides before TTS — matches the populated state
+      // shown in the lexicon-preview row above.
+      if (attachedLexicon.value?.id) body.lexicons = [attachedLexicon.value.id];
+      if (selectedPersonaId.value) body.persona_id = selectedPersonaId.value;
+      let out;
+      try {
+        out = await api.request("/v1/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: task.signal,
+        });
+      } catch (e) {
+        aborted = task.signal.aborted;
+        throw e;
+      }
+      const audioSec = Math.max(0, out.size - 44) / 48000;
+      task.setStats([...baseStats, `${(out.size / 1024).toFixed(1)} KB`, `${audioSec.toFixed(1)}s audio`]);
+      return out;
     });
-    const audioSec = Math.max(0, blob.size - 44) / 48000;
-    task.setStats([...baseStats, `${(blob.size / 1024).toFixed(1)} KB`, `${audioSec.toFixed(1)}s audio`]);
-    task.finish();
     audio.value = URL.createObjectURL(blob);
     if (autoplay.value) {
       // <audio> auto-plays via the v-if/key, but iOS Safari requires explicit
@@ -458,8 +460,7 @@ async function generate() {
       setTimeout(() => document.querySelector(".generate-view__audio")?.play?.().catch(() => {}), 60);
     }
   } catch (e) {
-    if (!task.signal.aborted) {
-      task.fail(e);
+    if (!aborted) {
       pushToast({ message: `Render failed: ${e.message || e}`, kind: "error", duration: 6000 });
     }
   } finally {

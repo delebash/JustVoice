@@ -25,6 +25,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { UiButton, UiSelect, AppModal } from "@delebash/llm-ui";
 import { projectsService } from "../services/projects.js";
+import { pickAdapter } from "../services/importPicker.js";
 import { setImportDraft } from "../stores/importDraft.js";
 import { pushToast } from "@delebash/llm-ui";
 
@@ -48,10 +49,7 @@ const selectedAdapter = computed(() =>
   adapters.value.find((a) => a.id === selectedSource.value) || null
 );
 const adapterOptions = computed(() =>
-  adapters.value.map((a) => ({
-    label: a.implemented ? a.label : `${a.label}`,
-    value: a.id,
-  }))
+  adapters.value.map((a) => ({ label: a.label, value: a.id }))
 );
 const canPreview = computed(
   () => !!file.value && !!selectedSource.value && selectedAdapter.value?.implemented
@@ -87,26 +85,15 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 // when several adapters claim it (.md = book_prose AND podcast_markdown)
 // the file's CONTENT decides: speaker labels at paragraph start mean a
 // podcast script — without this, scripts imported as speakerless books.
-const SPEAKER_LABEL_RE = /^\s*(?:\*\*|\[)?[A-Z][A-Za-z0-9 .'-]{0,40}?(?:\]|\*\*)?\s*:/m;
-
 async function adapterForFile(f) {
   const dot = f.name.lastIndexOf(".");
   if (dot < 0) return null;
   const ext = f.name.slice(dot).toLowerCase();
-  const candidates = adapters.value.filter(
-    (a) => a.implemented && (a.file_extensions || []).includes(ext)
-  );
-  if (candidates.length <= 1) return candidates[0] || null;
   let head = "";
   try {
     head = await f.slice(0, 4096).text();
-  } catch { /* binary or unreadable — fall through to first candidate */ }
-  const wantsPodcast = SPEAKER_LABEL_RE.test(head);
-  return (
-    candidates.find((a) =>
-      wantsPodcast ? a.id === "podcast_markdown" : a.id !== "podcast_markdown"
-    ) || candidates[0]
-  );
+  } catch { /* binary (a book zip, a DOCX) — the extension alone decides */ }
+  return pickAdapter({ ext, head, adapters: adapters.value });
 }
 
 async function acceptFile(f) {

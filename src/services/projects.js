@@ -27,12 +27,6 @@ export const projectsService = {
   remove(id) {
     return withApi().del(`/v1/projects/${id}`);
   },
-  /** Legacy JustWrite-shaped import — JSON body to ?source=justwrite. Kept
-   *  so JustWrite's existing client doesn't break. New code uses runImport(). */
-  importJustWrite(book) {
-    return withApi().post(`/v1/projects/import?source=justwrite`, book);
-  },
-
   /** Multi-adapter import. {source, file, dryRun?} -> ImportRunResponse. */
   async runImport({ source, file, dryRun = false, projectId = null, includeScenes = null, splitOn = null } = {}) {
     if (!source) throw new Error("runImport: source is required");

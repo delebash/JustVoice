@@ -24,6 +24,7 @@ from ..models import (
     VoiceList,
     VoiceRecord,
 )
+from .extraction_api import RunUsage
 
 router = APIRouter(tags=["voices"])
 
@@ -224,6 +225,9 @@ class GenderGuessRequest(_BaseModel):
 class GenderGuessResponse(_BaseModel):
     # {input name: "F" | "M" | ""} — "" = the model said unknown (left unset).
     guesses: dict[str, str]
+    # §16: every AI response carries the run's usage (found violated 2026-08-08
+    # by the AI-call-convention pass). None on the no-voices early return.
+    usage: RunUsage | None = None
 
 
 _GENDER_MAP = {"female": "F", "male": "M"}
@@ -262,4 +266,11 @@ async def gender_guess(body: GenderGuessRequest) -> GenderGuessResponse:
     for name, val in raw.items():
         if name in wanted:
             guesses[name] = _GENDER_MAP.get(str(val).strip().lower(), "")
-    return GenderGuessResponse(guesses=guesses)
+    return GenderGuessResponse(
+        guesses=guesses,
+        usage=RunUsage(
+            prompt_tokens=resp.prompt_tokens,
+            completion_tokens=resp.completion_tokens,
+            model=resp.model,
+        ),
+    )

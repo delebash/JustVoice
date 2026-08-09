@@ -79,42 +79,53 @@ lines without a speaker (e.g. SRT cues with no `SPEAKER:` prefix).
 
 ---
 
-### <a id="import-justwrite"></a>JustWrite manuscript (`justwrite`)
+### <a id="import-justwrite"></a>JustWrite book (`justwrite`)
 
-JustWrite is the primary integration partner. It exports a manuscript
-as a JSON document the JustVoice server consumes verbatim. **This
-adapter's input shape is load-bearing — never change it without
-coordinating with the JustWrite team.**
+JustWrite is the primary integration partner, and the handoff is a **file**, not a
+live connection between the two apps. In JustWrite, open the book and export it —
+the `.zip` card on the **Export** page, or the same button in **Settings**. You
+get one `<Book Title>.zip`. Drop that here.
 
-```json
-{
-  "schema": "justwrite/v1",
-  "book": {
-    "title": "The Quiet Frontier",
-    "author": "Jane Doe",
-    "language": "en-US",
-    "description": "Optional blurb."
-  },
-  "characters": [
-    { "id": "narr", "name": "Narrator", "voice_hint": "warm baritone" }
-  ],
-  "chapters": [
-    {
-      "id": "ch1",
-      "title": "Departure",
-      "lines": [
-        { "character_id": "narr", "text": "It began at dawn.", "pause_after_ms": 400 }
-      ]
-    }
-  ],
-  "lexicon": [
-    { "grapheme": "Caoimhe", "phoneme_ipa": "ˈkiːvə" }
-  ]
-}
-```
+**Why a zip when it's really just JSON.** Unzipped, it holds `book.json` — the
+entire book as structured data, with parts, chapters and scenes as separate
+records — next to an `images/` folder. The zip exists for those images:
+JustWrite keeps picture bytes inside its own database, so a plain JSON file could
+not carry them to another machine. JustVoice reads `book.json` and ignores the
+images, telling you in the import warnings how many it skipped. If you already
+unzipped the file, a bare `book.json` imports too.
 
-Maps directly: `book.title` → `project.name`, `chapters` → `scenes`,
-`lexicon` → `lexicon_entries`. Project kind is always `audiobook`.
+**What comes across**
+
+- **Chapters**, in the book's own order, each becoming one JustVoice scene — the
+  unit you cast and render. Chapter titles come with them; a chapter without one
+  is named for its number.
+- **The prose**, paragraph by paragraph. Where JustWrite splits a chapter into
+  scenes, the paragraphs stay in order and remember which scene they came from.
+  Bold and italics flatten to plain text, which is what a voice engine reads. The
+  `* * *` scene marks you see in JustWrite are never spoken — they are drawn on
+  screen between scenes, not stored in the text.
+- **The cast.** Every character becomes a speaking part carrying its name, a
+  casting hint built from gender, age and role, the one-line description, and any
+  aliases. Aliases earn their place: the same character gets addressed by
+  different names through the prose, and the voice has to match.
+
+**What does not come across, and why**
+
+- **Who speaks each line.** JustWrite never tags dialogue with a speaker, so every
+  line arrives unassigned. That is the normal result, not a problem to fix during
+  import — finding speakers is a separate step you run when you are ready, from
+  **Studio → Script**.
+- **Pronunciations.** A JustWrite book has no pronunciation list, so the project
+  starts without a lexicon. Build one under **Lexicons** for the names your engine
+  gets wrong — character and place names are the usual offenders.
+- **Scene titles.** JustWrite's per-scene titles are planning labels ("Sarah
+  confronts him"), not published prose, so they are not narrated.
+- **Everything else in the file** — plot strands, notes, worldbuilding, statuses,
+  JustWrite's own AI results, deleted items. JustVoice takes prose and cast.
+
+**Empty chapters are skipped**, and the warning names them, so an outlined but
+unwritten chapter does not become a silent scene. To leave more out, use the
+per-chapter checkboxes on the import review screen before committing.
 
 ---
 
@@ -242,17 +253,15 @@ appended to the response but the import still runs.
 
 ---
 
-### <a id="import-elevenlabs"></a>ElevenLabs Studio (`elevenlabs`) — not implemented
+### Importing from another TTS tool
 
-ElevenLabs Studio exports projects as a proprietary JSON bundle. Voice
-IDs in the export are scoped to the operator's ElevenLabs cloud
-account, so the adapter needs either a voice-manifest fetch or an
-operator hand-mapping step before a project can be materialized.
+There is no adapter for ElevenLabs Studio, Resemble, Speechify, Murf, Coqui or
+OpenVoice yet. A stub for ElevenLabs used to appear in the format list and
+answer every file with an error; it was removed in August 2026 rather than left
+sitting in the menu — the list only offers formats that actually import.
 
-Both are out of scope for the initial multi-adapter pipeline. The
-stub returns `501 Not Implemented` with a pointer to this section.
-
-Reference: <https://elevenlabs.io/docs/api-reference/studio>.
+If you have a project in one of those tools, the route today is to export its
+script as CSV or a speaker-labeled markdown file and use those adapters.
 
 ---
 

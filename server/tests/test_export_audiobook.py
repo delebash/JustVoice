@@ -17,6 +17,7 @@ from justvoice.export_audiobook import (
     mux_m4b,
     qc_report,
 )
+from tests.jw_fixtures import book_json, scene
 
 
 def _wav(amplitude: float, seconds: float = 1.0, rate: int = 16000) -> bytes:
@@ -107,16 +108,14 @@ def client(tmp_path):
 
 
 def _seed(client) -> str:
-    payload = {
-        "schema": "justwrite/v1",
-        "book": {"title": "Stillwater", "author": "x", "language": "en-US", "description": "by S. K. H."},
-        "characters": [{"id": "mara", "name": "Mara", "voice_hint": None, "notes": None}],
-        "chapters": [
-            {"id": "ch1", "title": "One", "lines": [{"character_id": "mara", "text": "Hello."}]},
-            {"id": "ch2", "title": "Two", "lines": [{"character_id": "mara", "text": "There."}]},
+    # A real JustWrite book.json — see tests/jw_fixtures.py.
+    payload = book_json(
+        premise="by S. K. H.",
+        chapters=[
+            ("ch1", "One", [scene("scn1", "Hello.")]),
+            ("ch2", "Two", [scene("scn2", "There.")]),
         ],
-        "lexicon": [],
-    }
+    )
     r = client.post("/v1/projects/import?source=justwrite", json=payload)
     assert r.status_code == 200, r.text
     return r.json()["project_id"]

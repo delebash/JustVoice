@@ -77,6 +77,35 @@ mode select with the three real toggles, delete the localStorage shim — or
 strip the card to what's real.
 GO: needed.
 
+### Seed a pronunciation lexicon from the imported book's proper nouns
+
+STATE: OPEN — your call. Raised and deliberately PULLED OUT of the 2026-08-08
+JustWrite-zip build ("outside what you asked for, plus one unverified risk").
+WHY: a book's proper nouns are the pronunciation problem, and "pronunciation
+discipline" is a named audiobook differentiator (CLAUDE.md). JW hands over every
+character, location and object name for free in `book.json`; import could
+create the project lexicon pre-filled with them, pronunciation blank, as a
+worklist.
+NOT: folded into the zip build as a rider — un-go'd scope.
+OPEN: first verify what an empty-pronunciation entry does at RENDER time —
+`_materialize_lexicon` writes `pronunciation=""` (`projects_api.py:750-758`), and
+if the render path applies that literally it would blank the word instead of
+leaving it alone. If it is inert, seed the roster; if not, seed only entries the
+user has filled.
+GO: needed.
+
+### A scene break could carry a real pause instead of a glyph
+
+STATE: OPEN — your call. Noted 2026-08-08 during the JustWrite-zip build.
+WHY: JW's `* * *` is display-only, but the boundary it marks is real structured
+data (scene rows). In audio the equivalent is a longer silence, and
+`StandardLine.pause_after_ms` already exists (`standard_schema.py:51`).
+NOT: hardcoded in the adapter — that is exactly the "no hardcoded
+operator-tunable values" law.
+OPEN: add a settings knob (default scene-break pause, ms) and have the importer
+stamp it on each scene's last line.
+GO: needed.
+
 ## The next build
 
 **Deferred by your word (2026-08-06):** the real-webview test harness and the
@@ -187,6 +216,36 @@ casting and narration" and JV's extraction pipeline computes attribution.
 Possibly ownership-of-data vs where-computation-runs — but the two sentences
 read as contradicting each other and one page should say which.
 OPEN: reconcile the §3 wording (one look at what JW actually exports).
+GO: needed.
+
+### The JW→JV book-format contract has no lock on the JustWrite side
+
+STATE: OPEN — your call, and the concrete successor to the "book-zip import
+format" item §3 records as a future decision. Became real 2026-08-08 when the
+`justwrite` adapter started parsing JW's actual `book.json`.
+WHY: JV's own fixture test catches JV regressions but cannot catch JW CHANGING
+the shape — a rename of `scenes[].body` or a re-nesting of `parts[].chapters[]`
+would break JV silently, and the two repos share no code by design (see the
+zip-import item's NOT list).
+OPEN: a shape-lock test in JW's suite asserting `book_io.assemble()` still emits
+the exact key paths JV reads, naming JustVoice in its failure message. Lives in
+`../justwrite-app/docs/dev/TASKS.md` once you take it — JW work belongs there.
+GO: needed.
+
+### ElevenLabs import: build it or drop it — the research says it is small
+
+STATE: OPEN — your call. Its picker row was removed 2026-08-08 (a 501 in a menu),
+but the module's own docstring is WRONG about why it was never built.
+WHY: `imports/adapters/elevenlabs.py` claimed the mapping needs "an account-side
+voice manifest" or a hand-mapping step and is "out of scope". JustVoice's own
+research doc contradicts it — `docs/dev/external-import-formats.md` says the
+Studio export is a ZIP of `manifest.json` (name, `voice_assignments`, chapters) +
+per-chapter HTML with `<span data-speaker>` turns, maps "directly to Project /
+Scene / Block", and rates the importer effort **Small**. The same doc surveys
+Resemble, Speechify, Murf, Coqui and OpenVoice the same way.
+OPEN: build it from the research doc (it also unlocks the four other tools), or
+decide the whole external-tool import family is not wanted and retire the
+research doc's claim. Either way the stub is gone — git holds it.
 GO: needed.
 
 ## Known deviations, recorded so they aren't re-litigated

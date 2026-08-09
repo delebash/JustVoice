@@ -13,7 +13,7 @@ Adding a new adapter:
   1. Create `server/justvoice/imports/adapters/<name>.py` exporting
      `SOURCE_ID` + `parse(raw, *, filename)`.
   2. Append an `_ADAPTER_REGISTRY` entry below with the AdapterInfo.
-  3. Document the input shape in `docs/import-formats.md`.
+  3. Document the input shape in `docs/import-and-export.md`.
 """
 
 from __future__ import annotations
@@ -24,7 +24,6 @@ from .adapters import (
     audacity_labels,
     book_prose,
     csv_lines,
-    elevenlabs,
     justvoice_standard,
     justwrite,
     podcast_markdown,
@@ -38,9 +37,11 @@ _ADAPTER_REGISTRY: list[tuple[AdapterInfo, Callable[..., StandardImport]]] = [
     (
         AdapterInfo(
             id=justwrite.SOURCE_ID,
-            label="JustWrite manuscript",
-            description="JSON export from a JustWrite manuscript (book / characters / chapters / lexicon).",
-            file_extensions=[".json"],
+            label="JustWrite book",
+            description="The .zip JustWrite exports (book.json + images) — chapters, prose and the character roster; speakers are found later in Script.",
+            # The zip is the real export; a bare book.json (someone unzipped it
+            # first) parses too.
+            file_extensions=[".zip", ".json"],
             implemented=True,
             docs_anchor="import-justwrite",
         ),
@@ -116,17 +117,13 @@ _ADAPTER_REGISTRY: list[tuple[AdapterInfo, Callable[..., StandardImport]]] = [
         ),
         justvoice_standard.parse,
     ),
-    (
-        AdapterInfo(
-            id=elevenlabs.SOURCE_ID,
-            label="ElevenLabs Studio (coming soon)",
-            description="ElevenLabs Studio project bundle. Stub — needs voice-mapping step. See docs.",
-            file_extensions=[".json"],
-            implemented=False,
-            docs_anchor="import-elevenlabs",
-        ),
-        elevenlabs.parse,
-    ),
+    # NOTHING UNIMPLEMENTED GOES IN THIS LIST. The ElevenLabs row lived here as
+    # `implemented=False` and answered every selection with a 501 — an entry in
+    # the format menu that could not import anything. Deleted 2026-08-08 with its
+    # stub module; the shape it would parse is researched in
+    # docs/dev/external-import-formats.md, and the build-or-drop call is a
+    # tracker item. `AdapterInfo.implemented` stays: it is part of the
+    # /v1/projects/import/adapters response shape.
 ]
 
 _BY_ID: dict[str, Callable[..., StandardImport]] = {

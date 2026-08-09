@@ -32,7 +32,9 @@ const KINDS = [
     id: "game_voicelines",
     icon: "🎮",
     label: "Game dialogue",
-    bullets: ["Lines with stable IDs, grouped", "CSV / JSON / string-table import", "Re-render only changed lines"],
+    // "string-table import" was here until 2026-08-08 and no adapter ever read
+    // one — the idea is in docs/dev/IDEAS.md. The card names only what imports.
+    bullets: ["Lines with stable IDs, grouped", "CSV / JSON import", "Re-render only changed lines"],
     foot: "Exports: per-line WAVs by ID + manifest.json",
   },
   {

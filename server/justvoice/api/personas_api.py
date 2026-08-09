@@ -11,6 +11,7 @@ from ..database import get_db
 from ..database.models import Project, ProjectPersona
 from ..errors import bad_request, not_found
 from ..models import CreatePersonaRequest, Persona, PersonaList
+from .extraction_api import RunUsage
 
 router = APIRouter(tags=["personas"])
 
@@ -202,6 +203,9 @@ class ComposeResponse(BaseModel):
     text: str
     persona_id: str
     note: str | None = None  # diagnostic note if compose was stubbed
+    # §16: every AI response carries the run's usage (found violated 2026-08-08
+    # by the AI-call-convention pass — the counts were in `resp` and dropped).
+    usage: RunUsage | None = None
 
 
 class RewriteRequest(BaseModel):
@@ -213,6 +217,7 @@ class RewriteResponse(BaseModel):
     rewritten: str
     persona_id: str
     note: str | None = None
+    usage: RunUsage | None = None  # §16, same as ComposeResponse
 
 
 def _require_persona_with_personality(persona_id: str):
@@ -262,7 +267,16 @@ async def compose_with_personality(id: str) -> ComposeResponse:
         raise HTTPException(status_code=501, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"LLM call failed: {e}")
-    return ComposeResponse(text=resp.text.strip(), persona_id=id, note=None)
+    return ComposeResponse(
+        text=resp.text.strip(),
+        persona_id=id,
+        note=None,
+        usage=RunUsage(
+            prompt_tokens=resp.prompt_tokens,
+            completion_tokens=resp.completion_tokens,
+            model=resp.model,
+        ),
+    )
 
 
 @router.post(
@@ -309,4 +323,9 @@ async def rewrite_in_character(id: str, body: RewriteRequest) -> RewriteResponse
         rewritten=resp.text.strip(),
         persona_id=id,
         note=None,
+        usage=RunUsage(
+            prompt_tokens=resp.prompt_tokens,
+            completion_tokens=resp.completion_tokens,
+            model=resp.model,
+        ),
     )
