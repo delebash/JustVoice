@@ -383,3 +383,97 @@ def test_empty_text_blocks_skipped(tmp_db, monkeypatch):  # noqa: F811
     )
     assert len(lines) == 1
     assert lines[0].text == "Real text."
+
+
+# ─── strict= — a real render refuses instead of dropping lines ──────────
+#
+# The skips above are the READ-ONLY probe's behavior (cache-stats runs on
+# every Home/Studio visit and only asks how much is cached). A render passes
+# strict=True: a line the attribution pipeline couldn't place used to vanish
+# from the audiobook in silence (Script-tab restore 2026-08-08, decision 5).
+
+
+def test_strict_refuses_and_names_the_unplaced_lines(tmp_db, monkeypatch):  # noqa: F811
+    session_factory, _engine = tmp_db
+    _patch_session(monkeypatch, session_factory)
+
+    db = session_factory()
+    scene = _make_project_with_scene(db)
+    _add_block(db, scene.id, 0, "Nobody speaks this.", None)
+    _add_block(db, scene.id, 1, "Voiced.", "persona-mara")
+    db.commit()
+    db.close()
+
+    personas = {"persona-mara": _make_persona("persona-mara", voice_id="voice-mara")}
+    with pytest.raises(ApiError) as exc_info:
+        render_chapter_api._resolve_scene_to_lines(
+            scene_id="scene-1", preset_id=None, st=_fake_state(personas), strict=True,
+        )
+    assert exc_info.value.status_code == 400
+    detail = str(exc_info.value.detail)
+    assert "line 1" in detail                    # 1-based position, not an index
+    assert "Nobody speaks this." in detail
+
+
+def test_strict_names_a_persona_cast_without_a_voice(tmp_db, monkeypatch):  # noqa: F811
+    session_factory, _engine = tmp_db
+    _patch_session(monkeypatch, session_factory)
+
+    db = session_factory()
+    scene = _make_project_with_scene(db)
+    _add_block(db, scene.id, 0, "Said by a voiceless persona.", "persona-noisy")
+    _add_block(db, scene.id, 1, "Voiced.", "persona-mara")
+    db.commit()
+    db.close()
+
+    personas = {
+        "persona-noisy": _make_persona("persona-noisy", voice_id=""),
+        "persona-mara": _make_persona("persona-mara", voice_id="voice-mara"),
+    }
+    with pytest.raises(ApiError) as exc_info:
+        render_chapter_api._resolve_scene_to_lines(
+            scene_id="scene-1", preset_id=None, st=_fake_state(personas), strict=True,
+        )
+    assert "Persona persona-noisy" in str(exc_info.value.detail)
+
+
+def test_strict_ignores_markers(tmp_db, monkeypatch):  # noqa: F811
+    """Podcast music/ad direction lines are speaker-less BY DESIGN
+    (projects_api._materialize_standard). Counting them as unplaced would
+    refuse every marked episode forever — the bug ChapterView.vue:586
+    already had to fix once on the attribution badge."""
+    session_factory, _engine = tmp_db
+    _patch_session(monkeypatch, session_factory)
+
+    db = session_factory()
+    scene = _make_project_with_scene(db)
+    marker = _add_block(db, scene.id, 0, "— Mid-roll —", None)
+    marker.metadata_json = '{"marker": true}'
+    _add_block(db, scene.id, 1, "Voiced.", "persona-mara")
+    db.commit()
+    db.close()
+
+    personas = {"persona-mara": _make_persona("persona-mara", voice_id="voice-mara")}
+    lines, _ = render_chapter_api._resolve_scene_to_lines(
+        scene_id="scene-1", preset_id=None, st=_fake_state(personas), strict=True,
+    )
+    assert len(lines) == 1
+    assert lines[0].text == "Voiced."
+
+
+def test_strict_passes_when_every_line_has_a_voice(tmp_db, monkeypatch):  # noqa: F811
+    session_factory, _engine = tmp_db
+    _patch_session(monkeypatch, session_factory)
+
+    db = session_factory()
+    scene = _make_project_with_scene(db)
+    _add_block(db, scene.id, 0, "One.", "persona-mara")
+    _add_block(db, scene.id, 1, "Two.", "persona-mara")
+    db.commit()
+    db.close()
+
+    personas = {"persona-mara": _make_persona("persona-mara", voice_id="voice-mara")}
+    lines, _ = render_chapter_api._resolve_scene_to_lines(
+        scene_id="scene-1", preset_id=None, st=_fake_state(personas), strict=True,
+    )
+    assert len(lines) == 2

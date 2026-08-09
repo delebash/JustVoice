@@ -114,34 +114,48 @@ async function rerenderChanged() {
   const targets = staleLines.value;
   if (!targets.length || rerendering.value) return;
   rerendering.value = true;
-  let done = 0;
-  let aborted = false;
   try {
-    // One batch = ONE task on the kit runner; real n/m via setProgress.
+    // One RENDER JOB server-side (Stage 2, 2026-08-08): the scheduler
+    // groups its lines engine-major and a failed line no longer aborts the
+    // rest — per-block isolation, and the job survives a server restart.
     await withAiTask({
       feature: "chapter",
       label: `Re-render ${targets.length} changed line${targets.length === 1 ? "" : "s"}`,
       onRetry: () => rerenderChanged(),
     }, async (task) => {
-      task.setProgress(0, targets.length);
-      for (const line of targets) {
-        // The strip's Cancel aborts the kit handle's signal — stop between
-        // lines (and mid-line: the signal rides into the in-flight request).
-        if (task.signal.aborted) break;
-        try {
-          await api.request(`/v1/blocks/${line.block_id}/render`, { method: "POST", signal: task.signal });
-        } catch (e) {
-          aborted = task.signal.aborted;
-          throw e;
+      const job = await api.request("/v1/render_jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          project_id: selectedProjectId.value,
+          scope: "blocks",
+          scope_ids: targets.map((l) => l.block_id),
+        }),
+      });
+      const total = job.total_blocks || targets.length;
+      task.setProgress(0, total);
+      let last = job;
+      while (!["completed", "failed", "cancelled"].includes(last.status)) {
+        // The strip's Cancel aborts the kit handle's signal — the job
+        // withdraws its queued lines at the next line boundary.
+        if (task.signal.aborted) {
+          await api.request(`/v1/render_jobs/${job.id}/cancel`, { method: "POST" });
+          break;
         }
-        done += 1;
-        task.setProgress(done, targets.length);
+        await new Promise((r) => setTimeout(r, 1000));
+        last = await api.request(`/v1/render_jobs/${job.id}`);
+        task.setProgress((last.completed_blocks || 0) + (last.failed_blocks || 0), total);
       }
+      if (last.failed_blocks) {
+        pushToast({
+          message: `${last.completed_blocks} rendered, ${last.failed_blocks} failed — failed lines stay stale.`,
+          kind: "error",
+        });
+      }
+      return last;
     });
   } catch (e) {
-    if (!aborted) {
-      pushToast({ message: `Re-render failed after ${done} lines: ${e?.message || e}`, kind: "error" });
-    }
+    pushToast({ message: `Re-render failed: ${e?.message || e}`, kind: "error" });
   } finally {
     rerendering.value = false;
     await loadLines();
@@ -211,7 +225,7 @@ watch(selectedProjectId, (id) => {
     <div v-if="staleLines.length" class="jv-banner jv-banner--warn lines__stale">
       <strong>{{ staleLines.length }} line{{ staleLines.length === 1 ? "" : "s" }} changed</strong>
       since last render (text differs from the rendered take)
-      <UiButton size="small" :loading="rerendering" :label="`↻ Re-render ${staleLines.length} changed`" @click="rerenderChanged" />
+      <UiButton size="small" :disabled="rerendering" :label="`↻ Re-render ${staleLines.length} changed`" @click="rerenderChanged" />
       <span class="jv-muted">everything else stays cached</span>
     </div>
 

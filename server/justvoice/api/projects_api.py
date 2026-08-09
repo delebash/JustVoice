@@ -187,9 +187,10 @@ class CreateBlockRequest(BaseModel):
     persona_id: Optional[str] = None
     direction: Optional[str] = None
     metadata: dict = Field(default_factory=dict)
-    # Phase 3 / Slice 2 — extraction telemetry. When the Studio Script
-    # tab "Apply" action writes blocks from an analyze run, it passes
-    # these through; manual block creation leaves them null + source="manual".
+    # Phase 3 / Slice 2 — extraction telemetry. Analyze runs write these
+    # itself now (extraction_api persists; the Studio "Apply" button that
+    # used to POST them died with the Script-tab restore, 2026-08-08).
+    # Manual block creation leaves them null + source="manual".
     extraction_confidence: Optional[float] = None
     source: Optional[str] = "manual"
 
@@ -243,6 +244,65 @@ async def list_projects(
 _NARRATOR_KINDS = {"audiobook", "podcast"}
 
 
+def _ensure_narrator(db: Session, project: Project) -> None:
+    """Give a prose-voice project its Narrator. Caller commits.
+
+    Everything that isn't spoken is read by this persona: analyze binds every
+    narration segment to it (extraction_api), and a block with no persona is
+    refused at render. Both entry points need it — until 2026-08-08 only the
+    manual "New project" flow created one, so every IMPORTED book (the
+    JustWrite workflow, i.e. most of them) had no narrator at all and its
+    prose could never be bound to anything.
+
+    The persona is editable (rename / voice / personality) but DELETE is
+    refused — see personas_api.delete_persona.
+
+    On import this runs AFTER the characters, because a manuscript may name
+    its own narrator — `docs/import-and-export.md:50` shows exactly that
+    (`{"id": "narr", "name": "Narrator"}`). `ensure_project_persona` dedupes
+    on (imported_from, imported_id), not on name, so creating ours blindly
+    would leave the cast with two entries both called Narrator. When the
+    book brought one, that IS the narrator: adopt it by giving it the role
+    instead."""
+    if project.project_type not in _NARRATOR_KINDS:
+        return
+    # SessionLocal runs autoflush=False, and the import adds its characters'
+    # ProjectPersona links without flushing — without this the lookups below
+    # cannot see them and we duplicate the book's own narrator.
+    db.flush()
+    already = (
+        db.query(ProjectPersona.persona_id)
+        .filter(
+            ProjectPersona.project_id == project.id,
+            ProjectPersona.role_label == "narrator",
+        )
+        .first()
+    )
+    if already:
+        return
+    imported = (
+        db.query(ProjectPersona)
+        .join(DbPersona, DbPersona.id == ProjectPersona.persona_id)
+        .filter(ProjectPersona.project_id == project.id)
+        .filter(DbPersona.name.ilike("narrator"))
+        .first()
+    )
+    if imported is not None:
+        imported.role_label = "narrator"
+        return
+    narrator = DbPersona(
+        name="Narrator",
+        bio="The voice of everything that isn't spoken.",
+        personality="Steady, clear, unhurried — carries the prose between dialogue.",
+        is_builtin=True,
+    )
+    db.add(narrator)
+    db.flush()
+    db.add(
+        ProjectPersona(project_id=project.id, persona_id=narrator.id, role_label="narrator")
+    )
+
+
 @router.post("/v1/projects", response_model=ProjectResponse, status_code=201)
 async def create_project(
     body: CreateProjectRequest, db: Session = Depends(get_db)
@@ -257,25 +317,7 @@ async def create_project(
     )
     db.add(p)
     db.flush()
-
-    # Auto-create a project-scoped builtin Narrator persona for prose-
-    # voice kinds. The persona is editable (rename / voice / personality)
-    # but DELETE is refused — see personas_api.delete_persona.
-    if body.project_type in _NARRATOR_KINDS:
-        narrator = DbPersona(
-            name="Narrator",
-            bio="The voice of everything that isn't spoken.",
-            personality="Steady, clear, unhurried — carries the prose between dialogue.",
-            is_builtin=True,
-        )
-        db.add(narrator)
-        db.flush()
-        db.add(
-            ProjectPersona(
-                project_id=p.id, persona_id=narrator.id, role_label="narrator"
-            )
-        )
-
+    _ensure_narrator(db, p)
     db.commit()
     db.refresh(p)
     return ProjectResponse.from_orm(p)
@@ -410,6 +452,28 @@ async def list_blocks(scene_id: str, db: Session = Depends(get_db)) -> list[Bloc
     return [BlockResponse.from_orm(b) for b in blocks]
 
 
+def _drop_scene_source_text(db: Session, scene_id: str) -> None:
+    """Forget the prose an analyze run was made from, because the blocks no
+    longer match it.
+
+    extraction_api stores the analyzed text on the scene so re-analyze feeds
+    the pipeline the identical input and the split stays reproducible (the
+    Script-tab restore, decision 3). The moment a block's text is edited or a
+    block is added/removed, that stored copy describes a chapter that no
+    longer exists — keeping it would attribute the OLD wording onto the new
+    blocks. Dropping it makes the next analyze fall back to the blocks
+    themselves, which is why dialogue blocks keep their quote marks."""
+    sc = db.query(Scene).filter(Scene.id == scene_id).first()
+    if sc is None or not sc.metadata_json:
+        return
+    try:
+        meta = json.loads(sc.metadata_json)
+    except ValueError:
+        return
+    if meta.pop("source_text", None) is not None:
+        sc.metadata_json = json.dumps(meta)
+
+
 @router.post("/v1/scenes/{scene_id}/blocks", response_model=BlockResponse, status_code=201)
 async def create_block(
     scene_id: str, body: CreateBlockRequest, db: Session = Depends(get_db)
@@ -427,6 +491,7 @@ async def create_block(
         source=body.source,
     )
     db.add(b)
+    _drop_scene_source_text(db, scene_id)
     db.commit()
     db.refresh(b)
     return BlockResponse.from_orm(b)
@@ -453,6 +518,8 @@ async def update_block(
     if body.position is not None:
         b.position = body.position
     if body.text is not None:
+        if body.text != b.text:
+            _drop_scene_source_text(db, b.scene_id)
         b.text = body.text
     if body.persona_id is not None:
         b.persona_id = body.persona_id
@@ -485,6 +552,7 @@ async def delete_block(block_id: str, db: Session = Depends(get_db)) -> dict:
     b = db.query(Block).filter(Block.id == block_id).first()
     if not b:
         raise not_found(f"block {block_id}")
+    _drop_scene_source_text(db, b.scene_id)
     db.delete(b)
     db.commit()
     return {"deleted": True}
@@ -665,6 +733,11 @@ def _materialize_standard(
         )
         char_to_persona_id[char.id] = pid
         (created_personas if created else reused_personas).append(pid)
+
+    # After the characters, never before — see _ensure_narrator's docstring:
+    # a book that ships its own "Narrator" character must be adopted rather
+    # than duplicated.
+    _ensure_narrator(db, p)
 
     # Scenes + Blocks.
     total_blocks = 0
@@ -886,6 +959,10 @@ class ChapterQCOut(BaseModel):
     rms_ok: bool
     peak_ok: bool
     ok: bool
+    # Why a chapter fails for a reason the loudness numbers can't express —
+    # today: it has lines nobody speaks, so what was measured is not the
+    # whole chapter. Null when the chapter is render-ready.
+    note: Optional[str] = None
 
 
 class ProjectQCResponse(BaseModel):
@@ -904,23 +981,77 @@ async def project_qc(project_id: str, db: Session = Depends(get_db)) -> ProjectQ
         ACX_RMS_MAX_DB,
         ACX_RMS_MIN_DB,
         assemble_project,
+        collect_project_line_kwargs,
+        project_scenes,
         qc_report,
     )
+    from ..synth_scheduler import warm_lines
 
     if db.query(Project).filter(Project.id == project_id).first() is None:
         raise not_found(f"project {project_id}")
-    chapters = assemble_project(get_state(), project_id)
-    if not chapters:
+    st = get_state()
+    # Whole-book warm, engine-grouped (§7 of the 2026-08-08 plan); the
+    # assembly below re-reads the cache and stays the error surface. QC
+    # mode: warm the renderable subset of every scene, skipping refusals,
+    # exactly like the measuring assembly below.
+    await warm_lines(
+        st, collect_project_line_kwargs(st, project_id, skip_unrenderable=True)
+    )
+
+    # QC MEASURES — it does not ship. The render refusal on unplaced lines
+    # (Script-tab restore, decision 5) is right for the M4B export and wrong
+    # here: refusing the whole book because chapter 40 has no speakers yet
+    # would leave you unable to check chapters 1-39 for the entire middle of
+    # a production. Measure what renders; the chapters that can't are
+    # reported as failing with the reason, never as passing.
+    from ..errors import ApiError
+    from .render_chapter_api import _resolve_scene_to_lines, render_scene_to_wav
+
+    def _measure(state, scene_id: str) -> bytes:
+        return render_scene_to_wav(state, scene_id, strict=False)
+
+    def _not_ready(scene_id: str) -> Optional[str]:
+        """The refusal a real render would raise, as a note instead. Same
+        door, so QC can never disagree with what export will do."""
+        try:
+            _resolve_scene_to_lines(scene_id, None, st, strict=True)
+            return None
+        except ApiError as e:
+            return str(e.detail)
+
+    chapters = assemble_project(
+        st, project_id, render_scene_fn=_measure, skip_unrenderable=True,
+    )
+    scenes = project_scenes(project_id)
+    if not scenes:
         raise bad_request("project has no scenes to check")
-    report = qc_report(chapters)
-    out = [
-        ChapterQCOut(
-            scene_id=c.scene_id, title=c.title, duration_s=c.duration_s,
-            rms_dbfs=c.rms_dbfs, peak_dbfs=c.peak_dbfs,
-            rms_ok=c.rms_ok, peak_ok=c.peak_ok, ok=c.ok,
+    measured = {c.scene_id: c for c in qc_report(chapters)}
+    out = []
+    for scene in scenes:
+        note = _not_ready(scene.id)
+        c = measured.get(scene.id)
+        if c is None:
+            # Nothing renderable in it at all — report the reason instead of
+            # killing the whole run, which is what a book mid-production
+            # looks like for most of its life.
+            out.append(ChapterQCOut(
+                scene_id=scene.id, title=scene.title or "",
+                duration_s=0.0, rms_dbfs=0.0, peak_dbfs=0.0,
+                rms_ok=False, peak_ok=False, ok=False,
+                note=note or "Nothing in this chapter could be rendered.",
+            ))
+            continue
+        out.append(
+            ChapterQCOut(
+                scene_id=c.scene_id, title=c.title, duration_s=c.duration_s,
+                rms_dbfs=c.rms_dbfs, peak_dbfs=c.peak_dbfs,
+                rms_ok=c.rms_ok, peak_ok=c.peak_ok,
+                # A chapter measured without the lines it's missing has not
+                # passed anything — never report that as ok.
+                ok=c.ok and note is None,
+                note=note,
+            )
         )
-        for c in report
-    ]
     return ProjectQCResponse(
         project_id=project_id,
         chapters=out,
@@ -938,7 +1069,13 @@ async def project_export_m4b(project_id: str, db: Session = Depends(get_db)) -> 
     """Assemble all chapters into one .m4b with chapter markers."""
     from fastapi import HTTPException
 
-    from ..export_audiobook import assemble_project, have_ffmpeg, mux_m4b
+    from ..export_audiobook import (
+        assemble_project,
+        collect_project_line_kwargs,
+        have_ffmpeg,
+        mux_m4b,
+    )
+    from ..synth_scheduler import warm_lines
 
     project = db.query(Project).filter(Project.id == project_id).first()
     if project is None:
@@ -948,7 +1085,11 @@ async def project_export_m4b(project_id: str, db: Session = Depends(get_db)) -> 
             status_code=503,
             detail="ffmpeg is not installed — required for M4B export. Install ffmpeg and restart the server.",
         )
-    chapters = assemble_project(get_state(), project_id)
+    st = get_state()
+    # Whole-book warm, engine-grouped (§7 of the 2026-08-08 plan); the
+    # assembly below re-reads the cache and stays the error surface.
+    await warm_lines(st, collect_project_line_kwargs(st, project_id))
+    chapters = assemble_project(st, project_id)
     if not chapters:
         raise bad_request("project has no scenes to export")
     author = None
@@ -968,12 +1109,17 @@ async def project_export_voicelines(
 ) -> Response:
     """Game export — zip of per-line WAVs named by stable line id, grouped
     by scene, plus a diffable manifest.json (mock #game/6)."""
-    from ..export_voicelines import export_voicelines
+    from ..export_voicelines import collect_block_specs, export_voicelines
+    from ..synth_scheduler import warm_specs
 
     project = db.query(Project).filter(Project.id == project_id).first()
     if project is None:
         raise not_found(f"project {project_id}")
-    data = export_voicelines(get_state(), project_id)
+    st = get_state()
+    # Whole-project warm, engine-grouped (§7 of the 2026-08-08 plan); the
+    # export below re-reads the cache and stays the error surface.
+    await warm_specs(collect_block_specs(st, project_id))
+    data = export_voicelines(st, project_id)
     safe = re.sub(r"[^A-Za-z0-9._-]+", "_", project.name) or "voicelines"
     return Response(
         content=data,

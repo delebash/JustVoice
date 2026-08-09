@@ -80,18 +80,35 @@ def project_scenes(project_id: str) -> list[Scene]:
         db.close()
 
 
-def assemble_project(state, project_id: str, *, render_scene_fn=None) -> list[ChapterAudio]:
+def assemble_project(
+    state, project_id: str, *, render_scene_fn=None, skip_unrenderable: bool = False,
+) -> list[ChapterAudio]:
     """Render every scene of the project to a mastered WAV, in order.
 
     `render_scene_fn(state, scene_id) -> bytes` defaults to the production
     chapter render; tests inject synthetic WAVs.
+
+    `skip_unrenderable` is for ACX QC and nothing else. Export must keep the
+    default (False): a scene that refuses has to abort the book, because
+    shipping an .m4b silently missing a chapter is the failure the refusal
+    exists to prevent. QC only MEASURES, and a book mid-production always
+    has chapters that aren't cast yet — dying on the first one would make it
+    unusable for the whole middle of the job. The caller that skips is
+    responsible for reporting what it skipped.
     """
     if render_scene_fn is None:
         from .api.render_chapter_api import render_scene_to_wav as render_scene_fn
 
+    from .errors import ApiError
+
     out: list[ChapterAudio] = []
     for scene in project_scenes(project_id):
-        wav = render_scene_fn(state, scene.id)
+        try:
+            wav = render_scene_fn(state, scene.id)
+        except ApiError:
+            if not skip_unrenderable:
+                raise
+            continue
         out.append(
             ChapterAudio(
                 scene_id=scene.id,
@@ -100,6 +117,46 @@ def assemble_project(state, project_id: str, *, render_scene_fn=None) -> list[Ch
                 duration_s=_wav_duration_s(wav),
             )
         )
+    return out
+
+
+def collect_project_line_kwargs(
+    state, project_id: str, *, skip_unrenderable: bool = False
+) -> list[dict]:
+    """Every render_line call assemble_project will make, as kwargs — the
+    whole-book warm set (§7b P2-3 of the 2026-08-08 plan: the grouping unit
+    is the full workload, not one scene). Mirrors assemble_project's two
+    modes: the default (export) resolves strict and returns [] the moment
+    ANY scene refuses — the export aborts on that scene, so warming past it
+    would render audio it never reaches. `skip_unrenderable` (ACX QC)
+    resolves lenient and skips scenes that raise, exactly like the
+    measuring assembly it warms for.
+    """
+    from .api.render_chapter_api import _resolve_scene_to_lines
+
+    out: list[dict] = []
+    for sc in project_scenes(project_id):
+        try:
+            lines, lexicons = _resolve_scene_to_lines(
+                sc.id, None, state, strict=not skip_unrenderable
+            )
+        except Exception:
+            if skip_unrenderable:
+                continue
+            return []
+        for line in lines:
+            out.append(
+                dict(
+                    voice=line.voice,
+                    text=line.text,
+                    language=line.language,
+                    delivery=line.delivery.model_dump(exclude_none=True) if line.delivery else None,
+                    seed=line.seed,
+                    lexicons=lexicons,
+                    cache_scope=f"scene:{sc.id}",
+                    use_cache=True,
+                )
+            )
     return out
 
 

@@ -9,7 +9,7 @@ This is where audiobook production lives. For one-off renders use [generate.md](
 - **Project** — a book, a game's NPC roster, a podcast season. Holds metadata + the persona cast list + an optional manifest. See [core-concepts.md](core-concepts.md).
 - **Chapter** — a top-level division. An audiobook chapter, a game scene, a podcast episode.
 - **Scene** — an intermediate division inside a chapter. Useful for long chapters; otherwise can be one scene per chapter.
-- **Block** — a single rendering unit. Usually a paragraph. Each block has its own text + persona attribution + per-block delivery override.
+- **Block** — a single rendering unit. Each block has its own text + persona attribution + per-block delivery override. On import it's a paragraph; once [Studio · Script](studio.md) analyzes the chapter it becomes one **speaker turn**, because a paragraph that mixes narration and dialogue needs more than one voice. Expect a chapter to show more, shorter blocks after analysis — the words don't change, only where the cuts are. Performance notes and import line-ids follow the paragraph they came from.
 - **Take** — one rendered version of a block. Re-rolling a block creates a new take with a lineage chain back to its source. See [take-versioning.md](take-versioning.md).
 
 A chapter render walks every block in order, picks the default take for each, optionally masters the concatenation, and emits one WAV. Re-rendering a single block doesn't invalidate the other blocks' cached takes.
@@ -22,7 +22,11 @@ The chapters list carries per-chapter **Script** and **Render** status columns �
 
 Top toolbar:
 - **Import** — pull in a script via one of the [import adapters](import-and-export.md) (JustWrite JSON / CSV / SRT / Audacity labels / JustVoice standard schema).
-- **Render chapter** — kick off the chapter pipeline (default takes only).
+- **Render chapter** — kick off the chapter pipeline (default takes only). A
+  chapter with lines nobody speaks **refuses to render** and names them —
+  they'd otherwise be missing from the audio with nothing said. Fix them in
+  [Studio · Script](studio.md#fixing-what-it-got-wrong), which can send them
+  all to the narrator in one click.
 - **Export** — bundle the chapter as WAV / M4B / ZIP.
 
 ## Per-block controls

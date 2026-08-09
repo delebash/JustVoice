@@ -1074,6 +1074,13 @@ class EngineManager:
         # `/v1/engines/{id}/cancel-load` endpoint; entries are removed at
         # the end of `load()` (whether the cancel landed in time or not).
         self._cancel_load_requests: set[str] = set()
+        # Per-kind activity locks — held around an engine's in-flight synth /
+        # transcribe HTTP call, and by load/unload around terminating a slot's
+        # occupant. Guarantees a load can never kill an engine process
+        # mid-line now that endpoints await instead of blocking the event
+        # loop (§7b P2-6 of docs/plans/2026-08-08-vram-think.md). Lock
+        # order: activity → self._lock, never the reverse.
+        self._activity_locks: dict[str, threading.Lock] = {}
         self.refresh_manifests()
 
     # ─── Per-kind slot helpers (Phase 2 / Slice 1) ────────────────────
@@ -1099,6 +1106,15 @@ class EngineManager:
     def current_for(self, kind: str) -> str | None:
         proc = self.loaded_for(kind)
         return proc.manifest.id if proc else None
+
+    def _activity(self, kind: str) -> threading.Lock:
+        """The kind's activity lock (see __init__). Created on first use."""
+        with self._lock:
+            lock = self._activity_locks.get(kind)
+            if lock is None:
+                lock = threading.Lock()
+                self._activity_locks[kind] = lock
+            return lock
 
     def current_variant_id(self, engine_id: str) -> str | None:
         with self._lock:
@@ -1304,7 +1320,9 @@ class EngineManager:
             _maybe_cancel()
 
             target_kind = m.kind
-            with self._lock:
+            # Activity lock first (lock order: activity → self._lock): a
+            # terminate must wait for the slot's in-flight synth line.
+            with self._activity(target_kind), self._lock:
                 # Unload the SAME-KIND slot's prior occupant — other kinds
                 # stay loaded (Phase 2 / Slice 1).
                 prior = self._loaded.get(target_kind)
@@ -1352,7 +1370,7 @@ class EngineManager:
             r = proc.post("/load", json={"device": device, "variant": variant})
             if r.status_code != 200:
                 log.warning("engine %s /load failed: %s", engine_id, r.text[:400])
-                with self._lock:
+                with self._activity(target_kind), self._lock:
                     proc.terminate()
                     self._loaded.pop(target_kind, None)
                 raise RuntimeError(f"engine load failed: {r.text}")
@@ -1380,26 +1398,33 @@ class EngineManager:
         pre-Slice-1 /v1/engines/unload behavior that emptied the single
         loaded slot). New callers should pass kind explicitly.
         """
+        if kind is not None:
+            return self._unload_kind(kind)
         with self._lock:
-            if kind is None:
-                if not self._loaded:
-                    return {"previous_engine": None}
-                # Back-compat: surface the first kind's previous engine,
-                # then drop everything.
-                prev = next(iter(self._loaded.values())).manifest.id
-                for proc in list(self._loaded.values()):
-                    try:
-                        proc.terminate()
-                    except Exception:
-                        pass
-                self._loaded.clear()
-                self._current_variants.clear()
-                return {"previous_engine": prev}
+            kinds = list(self._loaded.keys())
+        if not kinds:
+            return {"previous_engine": None}
+        # Back-compat: surface the first kind's previous engine.
+        prev = None
+        for k in kinds:
+            out = self._unload_kind(k)
+            if prev is None:
+                prev = out.get("previous_engine")
+        with self._lock:
+            self._current_variants.clear()
+        return {"previous_engine": prev}
+
+    def _unload_kind(self, kind: str) -> dict:
+        # Activity lock first: never terminate a slot mid-synth/transcribe.
+        with self._activity(kind), self._lock:
             proc = self._loaded.get(kind)
             if not proc:
                 return {"previous_engine": None}
             prev = proc.manifest.id
-            proc.terminate()
+            try:
+                proc.terminate()
+            except Exception:
+                pass
             self._loaded.pop(kind, None)
             self._current_variants.pop(prev, None)
         return {"previous_engine": prev}
@@ -1414,8 +1439,10 @@ class EngineManager:
 
     def synth(self, engine_id: str, body: dict) -> tuple[bytes, dict]:
         """Returns (audio_bytes, headers_dict_for_re_export)."""
-        proc = self._require_current(engine_id)
-        r = proc.post("/synth", json=body)
+        m = self.get_manifest(engine_id)
+        with self._activity(m.kind if m else "tts"):
+            proc = self._require_current(engine_id)
+            r = proc.post("/synth", json=body)
         if r.status_code != 200:
             raise RuntimeError(f"engine synth failed: {r.text}")
         # Mirror the engine's audio headers back through to the host caller.
@@ -1430,8 +1457,10 @@ class EngineManager:
         }
 
     def clone(self, engine_id: str, body: dict) -> dict:
-        proc = self._require_current(engine_id)
-        r = proc.post("/clone", json=body)
+        m = self.get_manifest(engine_id)
+        with self._activity(m.kind if m else "tts"):
+            proc = self._require_current(engine_id)
+            r = proc.post("/clone", json=body)
         if r.status_code != 200:
             raise RuntimeError(f"engine clone failed: {r.text}")
         return r.json()
@@ -1454,13 +1483,14 @@ class EngineManager:
     def transcribe(self, body: dict, *, timeout: float = 600.0) -> str:
         """Transcription via the loaded stt-slot engine (G2 wiring).
         body matches the shim's TranscribeBody: wav_b64/audio_path/language."""
-        proc = self.loaded_for("stt")
-        if proc is None:
-            raise RuntimeError(
-                "no STT engine loaded — install + load 'whisper' on the "
-                "Engines tab first"
-            )
-        r = proc.post("/transcribe", json=body, timeout=timeout)
+        with self._activity("stt"):
+            proc = self.loaded_for("stt")
+            if proc is None:
+                raise RuntimeError(
+                    "no STT engine loaded — install + load 'whisper' on the "
+                    "Engines tab first"
+                )
+            r = proc.post("/transcribe", json=body, timeout=timeout)
         if r.status_code != 200:
             raise RuntimeError(f"engine transcribe failed: {r.text}")
         return r.json().get("text", "")

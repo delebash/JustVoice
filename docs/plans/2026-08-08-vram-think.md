@@ -418,4 +418,321 @@ Speech-engines tab.
 **Explicitly NOT in this wiring (recorded so it stays out):** multi-resident
 engines / synth routing (Q8 — only if one-swap-per-engine-per-chapter still
 hurts) · NVML measured TTS footprints (IDEAS) · per-variant cpu_adequate ·
-batch-level grouping · cross-APP arbitration (design §7.2 exclusion stands).
+batch-level grouping (SUPERSEDED by §7 — Q7 reopened queue-wide) · cross-APP
+arbitration (design §7.2 exclusion stands).
+
+## 7 · Q7 reopened — the grouping sweep (2026-08-08, go given)
+
+Decisions round 2 closed Q2 (*"q2 ok"*) and Q5 (*"q5 your rec"*) and REOPENED
+Q7 with: *"this was suppored to already be done the grouping so that anything
+synthized by engine got grouped together, that is not just chapters but if you
+runn multople chapters it need to take wahter is being run or queed to be run
+and gourp it effectiantly, you need to think on this again and show me what
+you find."* Sweep go given after a mid-turn stop (*"go and finis anwwering
+quesitns"*). Everything below is code-verified this session.
+
+**Finding 1 — nothing groups anywhere today.** The complete producer
+inventory — every surface that synthesizes more than one line, each verified
+strictly sequential in script order, zero grouping:
+
+| Producer | Path | Order |
+|---|---|---|
+| Studio scene render | `/v1/render_chapter` scene mode, `render_chapter_api.py:249-262` | block position |
+| Audiobook M4B assembly | `export_audiobook.py:83-103` → `render_scene_to_wav` per scene | scene → block position |
+| Game voiceline ZIP | `export_voicelines.py:53-107`, whole project block-by-block | scene → block position |
+| Lines "Re-render N changed" | CLIENT loop `LinesView.vue:113-149` → `POST /v1/blocks/{id}/render` per line (`takes_api.py:281`) | staleLines order |
+| Single doors (Generate tab, take re-roll, MCP speak, dictation replay, captures) | one line each | not groupable |
+
+Every producer funnels into `render_core.render_line` →
+`engine.load("auto")` per line (`render_core.py:192-197`) + the manager's
+one-slot-per-kind rule (`manager.py:1307-1317`) — a mixed-engine cast swaps a
+full model load at EVERY engine crossing, and two concurrent producers
+interleave at line granularity (the manager RLock serializes slot mutations,
+nothing serializes or orders JOBS).
+
+**Finding 2 — the user's memory is right: batch orchestration was promised,
+twice, and never built.**
+1. **The design freeze shipped the queue's TABLES and never the orchestrator.**
+   `RenderJob` + `RenderJobBlock` (`database/models.py:330-364`, born in the
+   v1.0 design-freeze commit `de592a7` per DESIGN_FREEZE §3.7 "resumable
+   scene/project renders — full-implementation persistence"): scope
+   project|scene|blocks, queued/running/paused/… statuses, per-block rows for
+   retry-only-failed. Grep truth: referenced ONLY in `database/__init__.py`
+   exports — no endpoint creates a job, no worker drains one. Dead tables in
+   every DB.
+2. **Decision 13 of the 2026-06-20 shared-ai-stack plan promised job-level
+   render/batch settings** — "render/batch (device, parallel workers, compile
+   codec, sub-batching min/length-ratio/max-items [0=auto-VRAM], batch seed)"
+   (`docs/plans/archive/2026-06-20-shared-ai-stack-plan.md:469-476`), repeated
+   in the kit's master plans (`2026-06-27-MASTER-PLAN.md:159`,
+   `2026-06-28-MASTER-PLAN.md:4635,4921` — "TTS Lab … render/batch +
+   merge-timing"). Grep truth: `sub_batch|parallel_workers|batch_seed|
+   length_ratio` → zero code hits; the surface existed as a preview mock only
+   (commit `9221535`).
+3. The 2026-06-24 competitor research recommended sub-batching + context
+   preservation; IDEAS records both unbuilt (4 of its 21 ideas ever built).
+
+**Engine-GROUPING itself appears in no plan before this document** (docs grep:
+only engine-LIST UI grouping; git log: no grouping commit). So "supposed to
+already be done" = the RenderJob orchestrator + the Decision-13 batch
+settings — both real recorded debts; queue-wide engine-grouping is their
+correct generalization, first designed here. Same debt family, also found:
+Generation's active-status machine ("queued|loading_model|generating",
+`models.py:269`) is written by NOBODY — both creators write
+status="completed" directly (`takes_api.py:305-315`, `mcp/tools.py:210-218`),
+so `active_tasks_api.py:51` filters on states that never occur.
+
+**Finding 3 — the design.** The user's words define the requirement:
+*"take whatever is being run or queued to be run and group it efficiently"* —
+cross-request, queue-aware. Two honest shapes:
+
+- **Option A — per-request sort only.** Each multi-line entry point iterates
+  its own cache-miss lines engine-major; the Lines client loop sorts by
+  engine. Cheap, no new state — but two concurrent producers still interleave
+  and thrash, and it cannot see "whatever is queued". Fails the requirement
+  as stated.
+- **Option B — one synthesis scheduler (REC).** One server-side worker owns
+  ALL multi-line synthesis. Producers submit line-SETS; the drain policy is
+  engine-major across the whole pending pool: stay on the loaded engine until
+  no pending line anywhere needs it, then switch (LRU/FIFO across engines;
+  within a set, position order; results keyed by position so assembly order
+  never changes). Two stages:
+  - **Stage 1 — the scheduler core.** In-process pending pool + one drain
+    worker + engine-major policy. `render_chapter`, M4B assembly and the
+    voiceline ZIP submit their sets and WAIT (their synchronous
+    request→response contracts don't change). Concurrent producers now
+    group globally. Interactive singles (Generate tab, take re-roll,
+    dictation) ride the same scheduler with an interactive priority class:
+    they jump the queue at the next LINE boundary — if their engine is
+    loaded, zero cost; if not, one engine swap is the price of a live user,
+    and the batch's group resumes after. This REPLACES wiring step 7 and
+    slots after steps 1–4: the worker is where tts-busy naturally lives, and
+    admission (make_room) happens at group boundaries — one admission per
+    engine per drain cycle instead of per line.
+  - **Stage 2 — resurrect RenderJob/RenderJobBlock as the persistent face.**
+    Long jobs (Lines re-render, whole-project render) become real queued jobs
+    with per-block status — retry-only-failed, survive restart, honest
+    cancel/pause — and the LinesView client loop retires (one POST creates a
+    job; the kit task strip shows n/m from job polling; per-line failure
+    isolation, which the IDEAS game-residue list already demands). Stage 2 is
+    the design-freeze debt paid; it can follow Stage 1 as its own task.
+
+Distinct and NOT this: Decision 13's **sub-batching** is within-one-engine
+batch-synthesis perf (padding waste), not cross-engine ordering — it stays
+unbuilt/IDEAS and must not be conflated with grouping. Q8 (multi-resident
+engines) stays parked: grouping cuts swaps to once-per-engine-per-drain-cycle,
+which is the cheap 90% of the win.
+
+**Q7 state: findings delivered; the REC (Option B, staged) awaits the user's
+word. No code.**
+
+## 7b · Second pass on the scheduler design (2026-08-08, ordered: *"think on the desing again"*)
+
+Every claim verified in code this pass. One pass-1 statement corrected, one
+live defect found, one large simplification found, the policy concretized.
+
+**P2-1 — LIVE DEFECT: synthesis endpoints block the ENTIRE server.** The
+synth endpoints are `async def` with fully synchronous bodies —
+`render_chapter` (`render_chapter_api.py:224`), `render_block`
+(`takes_api.py:282`), `generate` (`generate_api.py:118`) — and the engine
+call under them is sync HTTP (`EngineProcess.post` returns a sync
+`httpx.Response`, `manager.py:999`). An `async def` body runs ON the event
+loop, so a chapter render holds the loop for its full duration: every other
+request — UI polls, cache-stats, health, even ACCEPTING an Analyze — stalls
+until it finishes. Two consequences:
+- §4's mid-render-Analyze story is impossible at the transport layer TODAY —
+  the render holds the loop, the Analyze request is never accepted. The
+  scheduler (P2-5) is what makes §4 real, not just polite.
+- Pass 1's "two concurrent producers interleave at line granularity" was
+  IMPRECISE: whole-request producers (chapter/M4B/ZIP) monopolize the loop
+  and serialize accidentally; only per-line-request producers (the Lines
+  client loop, singles) interleave between each other's requests. The thrash
+  that provably exists today is WITHIN any sequential mixed-engine flow;
+  cross-producer thrash exists only between per-line-request flows.
+
+**P2-2 — SIMPLIFICATION: the render cache is the hand-off; the scheduler
+needs NO result plumbing.** All three production render paths go through
+`render_line(use_cache=True, cache_scope="scene:<id>")` — the chapter loop
+(`render_chapter_api.py:251-262`), the M4B scene renderer
+(`render_chapter_api.py:304-318`), and `_render_block_production`
+(`export_voicelines.py:135-143`, verified this pass) which serves BOTH the
+Lines per-block door and the voiceline ZIP. The cache is a bounded in-memory
+hot tier over a durable DISK tier with **no automatic disk eviction**
+(`cache.py:96-135` — "Evicting a hot entry has NO side effects: put() writes
+disk"; pruning is a user action via `cache_api`). Therefore Stage 1 is a
+**warm pass**: the worker renders pending line-specs engine-major INTO the
+cache and signals set completion; the producer then runs its existing
+assembly loop unchanged and gets cache hits. No bytes cross the scheduler
+boundary. If the user prunes mid-flight the assembly loop re-renders misses —
+self-healing, merely slower. Duplicate line-specs across concurrent sets are
+ALLOWED (the second is a cache hit, or in a race a wasted render — correct
+either way; no refcounting machinery).
+
+**P2-3 — the M4B case requires WHOLE-SUBMISSION grouping.** `assemble_project`
+renders scene-by-scene (`export_audiobook.py:83-103`); with engines A+B in
+the cast, per-SCENE grouping still pays 2 loads × N scenes. The submission
+unit must be the whole workload — all scenes' cache-miss lines in ONE set,
+grouped pool-wide (2 loads total), with per-scene assembly reading the cache
+afterward. The original step-7 rec (per-chapter grouping) was insufficient
+even for the single-producer book case — the reopening was right on the
+merits, not just on scope.
+
+**P2-4 — the drain policy, concretized (no starvation, no knobs).** At each
+engine-switch decision: take the engine of the OLDEST pending line (FIFO —
+starvation impossible), drain ALL pending lines pool-wide for that engine
+(newer sets free-ride — the grouping win), repeat. Interactive singles jump
+at the next line boundary regardless of engine — a live user beats batch;
+the cost is one swap, toasted. Recorded risk, accepted without a knob until
+practice says otherwise: a user repeatedly previewing takes on a foreign
+engine mid-batch causes swap-per-preview by their own hand.
+
+**P2-5 — the transport fix rides Stage 1.** Submit-and-wait endpoints await
+an asyncio-wrapped completion future while the worker THREAD synthesizes —
+the event loop frees. For the first time: UI stays live during renders,
+Analyze can start mid-render (§4 becomes real), and server-side cancel
+EXISTS — client disconnect cancels the awaiting coroutine, which withdraws
+the set's pending lines at the next line boundary (today a chapter render is
+uncancellable and unwatchable).
+
+**P2-6 — the freed loop FORCES the synth-door unification.** Today's
+accidental loop serialization is load-bearing: it is the only thing
+preventing one request's engine LOAD from terminating the engine subprocess
+mid-synth of another request (the manager's one-slot load terminates the
+prior occupant, `manager.py:1307-1317`, and nothing else excludes
+synth-vs-load). Freeing the loop removes that accident, so EVERY synthesis
+must funnel through the scheduler — singles (Generate tab, take re-roll, MCP
+speak, dictation replay) become one-line interactive sets, and the inventory
+gains a sixth door found this pass: voice previews synthesize directly
+(`voice_preview_api.py:168` in-process, `:254` managed path) and must funnel
+too. Stage 1 thus mirrors wiring step 2 exactly: step 2 made
+`EngineManager.load()` the one LOAD door; Stage 1 makes the scheduler the one
+SYNTH door. STT/transcription stays outside (different slot kind, inherently
+sequential dictation flow); training is not synthesis and stays out.
+
+**The design after pass 2 (shape unchanged, mechanics sharpened):** one
+`SynthScheduler` — a worker thread + a pending pool of line-specs tagged
+(set-id, priority, submit-order). Producers submit a set and await its
+completion signal; assembly code paths do not change at all (P2-2). Policy
+per P2-4. tts-busy = "worker is synthesizing" (step 4 merges here);
+admission/`make_room` runs at engine-switch boundaries — once per engine per
+drain cycle. Server restart loses in-process sets exactly as it loses
+in-flight renders today; persistence is Stage 2's RenderJob resurrection,
+unchanged. Not changed by this pass: Option B over A, the two-stage split,
+sub-batching stays out (IDEAS), Q8 stays parked.
+
+## 7c · Third pass (2026-08-08, ordered again: *"think on it again"*)
+
+No reversals — the shape holds a second pass running. Three corrections, two
+rejected alternatives put on record.
+
+**P3-1 — Stage 1 does NOT depend on the VRAM wiring; it can ship FIRST.**
+Earlier passes slotted the scheduler "after wiring steps 1–4". Wrong: the
+scheduler core (pool, worker thread, submit-and-wait, engine-major drain)
+touches no arbiter machinery — the worker calls today's
+`render_line`/auto-load unchanged. The VRAM wiring later plugs admission and
+tts-busy INTO the scheduler's engine-switch points (its steps 4 and 7
+simplify onto it). Either order works. REC: scheduler first — it removes the
+user-facing pain (the server freeze, the swap thrash) and the wiring then
+lands on cleaner ground.
+
+**P3-2 — honest gap: the Lines re-render is NOT grouped in Stage 1.** The
+client loop fires one REQUEST per line (`LinesView.vue:113-149`); each
+arrives as a one-line set, so the pool never sees the batch. A cheap bridge
+(batch endpoint + progress polling) would rebuild half of Stage 2 without
+its persistence — rejected. The gap is accepted and named: mixed-engine
+stale sets keep today's per-crossing swaps until Stage 2. That gap is why
+Stage 2 is debt payment, not polish.
+
+**P3-3 — funnel refinement: the one-synth-door rule covers MANAGED engines.**
+External provider engines (remote APIs — no local process, no GPU, no slot)
+have nothing to kill and nothing to group: their SINGLES stay direct. Lines
+inside submitted sets pool regardless of engine — an external engine is just
+a zero-swap-cost group. The preview doors split the same way:
+`voice_preview_api.py:254` (managed synth) funnels; `:168`
+(in-process/external) stays direct.
+
+**Rejected alternatives (recorded so they stay rejected):**
+- *"Just make the endpoints `def` — the freeze fix is one keyword."* The
+  threadpool frees the loop, and freeing it WITHOUT the scheduler immediately
+  creates the load-terminates-engine-mid-synth race (P2-6: the accidental
+  serialization is load-bearing) plus cross-producer thrash. The cheap fix is
+  the dangerous fix.
+- *"A manager-level synth/load lock instead of funneling singles."* The lock
+  prevents the kill but buys no cooperation: a direct single still forces
+  slot swaps against a running drain. The funnel makes it jump at a line
+  boundary instead.
+
+**Also checked, fine as designed:** no reentrancy (the worker never
+submits) · DB sessions are held across the await no longer than today's
+blocking render holds them · one worker = today's effective synth
+concurrency, no throughput regression (parallel rendering of external-API
+lines is a possible later refinement, noted NOT built) · no new tunables
+(the settings law holds — the drain policy is fixed) · Stage 1 changes no
+API shape and touches no user-facing docs (Stage 2's job UI will).
+
+Convergence: pass 3 produced ordering and scope corrections only.
+
+## 7d · Build-prep discovery (2026-08-08, Stage 1 go given): render_line has NO local-engine door
+
+Tracing the funnel targets before wiring found the deepest debt of the whole
+think: **the production render path cannot render local engines at all.**
+`state.engines` — the registry `render_line` drives — registers ONLY external
+cloud providers (`app.py:438` boot + `external_api.py:140` runtime; grep: no
+other `.register(` call in the tree). Every built-in engine became a managed
+plugin, and the removal note is right in the boot code (`app.py:415-424`:
+"The legacy in-process engine factory was removed") — but no managed adapter
+was ever put back into the registry, and `render_line` was never retargeted.
+`_resolve_engine_for_voice` RESOLVES managed ids fine (its third pass reads
+manifest `static_voices`), then `render_line` does
+`state.engines.get(engine_id)` → `None` → `not_found("engine …")`
+(`render_core.py:160-162`) — BEFORE the auto-load branch can ever run.
+
+Verified consequences:
+- Chapter render, M4B export, QC, the voiceline ZIP, the Lines re-render,
+  and the take re-roll — every `render_line` caller 404s for EVERY
+  local-engine voice. These paths only ever worked with external cloud
+  voices. (§4's "the first line rendered auto-loads that voice's engine" was
+  WRONG — the branch at `render_core.py:192-200` exists but is unreachable
+  for managed engines; the earlier read missed the registry-membership gate
+  above it.)
+- The new-voice preview door breaks identically
+  (`voice_preview_api.py:134` registry lookup → 404 for managed
+  clone/design previews). The row-audition door is fine (it routes through
+  generate's manager path).
+- The single-line `/v1/generate` door is fine — it has its own managed
+  routing (`_generate_via_manager`), which is why singles work and the app
+  demos fine while the entire multi-line render family is broken for the
+  engines the product is FOR.
+- The test suite never caught it because every render test either drives the
+  resolver directly or injects a fake backend INTO the registry
+  (`test_render_chapter_scene_mode.py:34-44`) — the fake occupies exactly
+  the slot production leaves empty.
+- P5-2 is re-framed: the render_core "second load door" has never loaded a
+  local engine. The door unification is not a refactor of a working path —
+  it is the FIX for a dead one.
+
+**Stage 1 therefore opens with the managed bridge** (this IS wiring step 2's
+render_core half, landing early): `render_line` + `probe_line_cached` grow a
+managed branch — registry hit → today's path unchanged (preserves the test
+seam and external engines); else manager manifest → tag-strip per
+`manifest.capabilities["paralinguistic_tags"]` (the flag already ships in
+every manifest's CAPABILITIES dict — no manifest edits), ensure-loaded via
+`mgr.load(id, "auto")` when `current_for(kind)` differs, synth via
+`mgr.synth`, cloned-voice reference WAV via the stored-voice resolver moved
+into render_core. Cache keys unchanged — managed keys were unreachable, so
+nothing can collide.
+
+**Build order inside Stage 1:** (1) managed bridge · (2) manager per-kind
+activity guard (synth/transcribe hold their kind's lock around the engine
+HTTP call; load/unload acquire it before terminating a prior occupant — the
+back-stop that makes every residual direct door safe) · (3) the
+SynthScheduler · (4) producer conversions — render_chapter, QC, M4B,
+voiceline ZIP (warm sets: awaited but ADVISORY, errors logged not raised —
+the existing assembly code stays the sole error surface, so outcomes keep
+exact parity and only order/performance change; withdraw-set-on-first-error
+kept for abort parity), and the result-bearing interactive singles
+(render_block, generate's managed branch, the managed new-voice preview) ·
+(5) tests per piece. Known Stage-1 residuals, recorded: engines_api
+load/unload runs in its jobs thread (fine) but a direct unload can wait
+seconds on the activity lock; captures/STT keeps its loop-blocking async-def
+body (same defect class, stt scope, untouched this stage).

@@ -11,6 +11,7 @@ Two modes:
 
 from __future__ import annotations
 
+import json
 import logging
 
 from fastapi import APIRouter, Response
@@ -26,6 +27,7 @@ from ..errors import bad_request, internal, not_found
 from ..mastering import have_ffmpeg, master
 from ..models import ChapterLine, Delivery, RenderChapterRequest
 from ..render_core import concat_lines, probe_line_cached, render_line
+from ..synth_scheduler import warm_lines
 
 
 def _open_db():
@@ -41,10 +43,24 @@ log = logging.getLogger(__name__)
 router = APIRouter(tags=["generation"])
 
 
+def _is_marker(block) -> bool:
+    """A podcast music/ad direction line. Speaker-less by design — every
+    attribution check has to skip them (ChapterView.vue:586 does the same
+    read), or an episode with one reads as permanently unattributed."""
+    if not block.metadata_json:
+        return False
+    try:
+        return bool(json.loads(block.metadata_json).get("marker"))
+    except ValueError:
+        return False
+
+
 def _resolve_scene_to_lines(
     scene_id: str,
     preset_id: str | None,
     st,
+    *,
+    strict: bool = False,
 ) -> tuple[list[ChapterLine], list[str]]:
     """Resolve a scene's blocks → ChapterLines via persona lookup.
 
@@ -52,8 +68,16 @@ def _resolve_scene_to_lines(
     tier-2 delivery overlay, personality (→ delivery.instruct), and
     lexicon. The preset (tier-3) overlays on top via merge_delivery.
 
-    Returns (lines, lexicon_ids). Raises if the scene has no blocks or
-    any block lacks a usable voice.
+    `strict` decides what a block with no usable voice means. Real renders
+    pass strict=True and the chapter REFUSES, naming the offending lines
+    (Script-tab restore 2026-08-08, decision 5): a line the attribution
+    pipeline couldn't place used to be dropped here in silence, so a
+    sentence simply went missing from the audiobook with nothing said. The
+    read-only cache-stats probe passes strict=False, because "how much is
+    cached" is a question about the renderable lines and it runs on every
+    Home/Studio visit.
+
+    Returns (lines, lexicon_ids). Raises if the scene has no blocks.
     """
     db = _open_db()
     try:
@@ -78,14 +102,17 @@ def _resolve_scene_to_lines(
         lines: list[ChapterLine] = []
         lexicon_ids: set[str] = set()
         skipped = 0
+        unplaced: list[tuple[int, str]] = []   # (1-based line no, block text)
+        voiceless: set[str] = set()            # persona names cast without a voice
 
-        for block in blocks:
+        for position, block in enumerate(blocks, start=1):
             if not block.text or not block.text.strip():
                 continue
 
             voice_id: str | None = None
             tier2: dict = {}
             personality: str | None = None
+            persona = None
 
             if block.persona_id:
                 persona = st.personas.get(block.persona_id)
@@ -97,14 +124,23 @@ def _resolve_scene_to_lines(
                         lexicon_ids.add(persona.lexicon_id)
 
             if not voice_id:
-                # No persona / no voice → skip this block. Studio Cast
-                # tab is the place to bind voices; rendering silently
-                # skips unbound blocks rather than failing the chapter.
-                # DEBUG, not WARNING: this resolver also serves the
-                # read-only cache-stats probe, which Home/Studio hit on
-                # every visit — per-block WARNING spam there read as
-                # "the app renders when I click Home" (user-hit).
+                # No persona / no voice. DEBUG, not WARNING: this resolver
+                # also serves the read-only cache-stats probe, which
+                # Home/Studio hit on every visit — per-block WARNING spam
+                # there read as "the app renders when I click Home"
+                # (user-hit). Under strict= the collected rows become the
+                # refusal below — EXCEPT markers, which are speaker-less on
+                # purpose (podcast music/ad direction lines,
+                # projects_api._materialize_standard). Counting them as
+                # unplaced would refuse every marked episode forever, which
+                # is the bug ChapterView.vue:586 already had to fix once.
                 skipped += 1
+                if _is_marker(block):
+                    pass
+                elif persona is None:
+                    unplaced.append((position, block.text.strip()))
+                else:
+                    voiceless.add(persona.name or block.persona_id)
                 log.debug("scene resolve: block %s has no voice — excluded", block.id)
                 continue
 
@@ -125,6 +161,26 @@ def _resolve_scene_to_lines(
                 )
             )
 
+        if strict and (unplaced or voiceless):
+            parts: list[str] = []
+            if unplaced:
+                shown = ", ".join(
+                    f"line {n} (“{t[:60]}{'…' if len(t) > 60 else ''}”)" for n, t in unplaced[:5]
+                )
+                more = f" and {len(unplaced) - 5} more" if len(unplaced) > 5 else ""
+                parts.append(
+                    f"{len(unplaced)} line(s) have no speaker: {shown}{more}. "
+                    f"Open Studio · Script and set one on each, or send them all to "
+                    f"the narrator."
+                )
+            if voiceless:
+                parts.append(
+                    f"No voice is cast for {', '.join(sorted(voiceless))} — "
+                    f"assign one in Studio · Cast."
+                )
+            raise bad_request(
+                "This chapter isn't ready to render. " + " ".join(parts)
+            )
         if skipped and lines:
             log.info(
                 "scene %s: %d of %d blocks have no voice and were excluded",
@@ -228,7 +284,9 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
     # Scene mode — resolve blocks → personas → lines on the server.
     cache_scope = req.cache_scope
     if req.scene_id and not req.lines:
-        lines, scene_lexicons = _resolve_scene_to_lines(req.scene_id, req.preset_id, st)
+        lines, scene_lexicons = _resolve_scene_to_lines(
+            req.scene_id, req.preset_id, st, strict=True,
+        )
         merged_lexicons = list({*req.lexicons, *scene_lexicons})
         # Scene renders share one per-scene cache scope with the QC/M4B
         # assembly path (render_scene_to_wav) and the cache-stats probe —
@@ -246,10 +304,12 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
             f"lines count {len(lines)} > limit {settings.limits.chapter_max_lines}"
         )
 
-    rendered = []
-    for line in lines:
-        rl = render_line(
-            st,
+    # Warm the render cache engine-grouped through the scheduler (§7 of
+    # docs/plans/2026-08-08-vram-think.md): the loop below re-reads the
+    # cache with the SAME kwargs, so the warm changes engine-load count and
+    # order, never outcomes — its errors surface from the loop.
+    line_kwargs = [
+        dict(
             voice=line.voice,
             text=line.text,
             language=line.language,
@@ -259,7 +319,13 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
             cache_scope=cache_scope,
             use_cache=True,
         )
-        rendered.append(rl)
+        for line in lines
+    ]
+    await warm_lines(st, line_kwargs)
+
+    rendered = []
+    for kw in line_kwargs:
+        rendered.append(render_line(st, **kw))
 
     combined = concat_lines(rendered, silence_ms=req.between_lines.silence_ms)
 
@@ -295,13 +361,19 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
     }
     return Response(content=mastered, media_type=media_map.get(req.master, "audio/wav"))
 
-def render_scene_to_wav(st, scene_id: str) -> bytes:
+def render_scene_to_wav(st, scene_id: str, *, strict: bool = True) -> bytes:
     """Scene → mastered-input WAV bytes for audiobook assembly.
 
     Same resolution + render path as scene-mode /v1/render_chapter, raw
     WAV out (no per-chapter master — the M4B/QC layer owns loudness).
+
+    `strict` defaults to True because the caller that matters is the M4B
+    export: shipping a book with lines silently missing is the thing the
+    refusal exists to prevent. ACX QC passes strict=False — it MEASURES,
+    and refusing the whole book because chapter 40 isn't cast yet would
+    make it useless for the entire middle of a production.
     """
-    lines, scene_lexicons = _resolve_scene_to_lines(scene_id, None, st)
+    lines, scene_lexicons = _resolve_scene_to_lines(scene_id, None, st, strict=strict)
     rendered = []
     for line in lines:
         rl = render_line(

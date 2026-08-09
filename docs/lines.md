@@ -14,7 +14,14 @@ Your line ids come from your import (`source_ref` in the CSV, or generated
 2. Only lines whose text actually changed go `stale`; everything else keeps its
    rendered take untouched.
 3. **Re-render N changed lines** does exactly that — the 480 lines that didn't
-   change don't cost a render.
+   change don't cost a render. The batch runs as one render job on the server:
+   lines are grouped by engine (one model load per engine instead of one per
+   speaker change), the task strip shows live `done/total` progress, and Cancel
+   stops cleanly after the line in flight. A line that fails no longer stops
+   the rest — the others keep rendering, the failures stay `stale`, and the
+   same button picks them up on the next pass. If the server restarts
+   mid-batch, nothing is lost: finished lines keep their takes and the
+   remaining ones are still `stale`.
 
 ## Export
 

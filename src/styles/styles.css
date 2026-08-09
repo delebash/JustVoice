@@ -281,6 +281,32 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 .jv-locality--local { color: var(--accent-ink); background: var(--accent-soft); }
 .jv-locality--online { color: var(--warn-ink); background: var(--warn-bg); }
 
+/* Canonical attribution-source chips — who decided a line's speaker.
+   Read by Studio · Script (the chapter's blocks) and the attribution Lab's
+   result renderer. Both had their own scoped copy and the two had already
+   drifted: Studio grew a `manual` variant the Lab lacked, the Lab wrote a
+   `corrected` source that had no chip at all. The words themselves live in
+   services/attribution.js. */
+.jv-source-chip {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  border: 1px solid var(--border-soft);
+  white-space: nowrap;
+}
+.jv-source-chip--tag        { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.jv-source-chip--propagated { background: var(--accent-soft); color: var(--ink-2); }
+.jv-source-chip--llm        { color: var(--ink-3); }
+.jv-source-chip--floored    { background: var(--warn-bg); color: var(--warn-ink); border-color: var(--warn-line); }
+.jv-source-chip--narration  { color: var(--muted); border-style: dashed; }
+.jv-source-chip--corrected  { background: var(--success-bg); color: var(--success-ink); border-color: var(--success); }
+.jv-source-chip--manual     { background: var(--surface); }
+
 /* Canonical step cards — numbered workflow steps with live subtitles
    (Studio Cast→Script→Render→Export; JustWrite Audio Studio reference). */
 .jv-stepcard {

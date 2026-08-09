@@ -22,6 +22,7 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { UiSelect, pushToast } from "@delebash/llm-ui";
+import { routeWords, sourceChipClass, sourceMeaning } from "../../services/attribution.js";
 import { useApi } from "../../stores/api.js";
 import { useActiveProject } from "../../stores/activeProject.js";
 import { usePersonasStore } from "../../stores/personas.js";
@@ -63,12 +64,6 @@ function disagrees(i) {
   return !!a && !!b && a !== b;
 }
 
-// The pipeline reports which route ran — say it in the approved human
-// words (the copy law: route keys never reach the screen).
-const ROUTE_WORDS = { guided: "with examples", direct: "rules only" };
-function routeWords(t) {
-  return ROUTE_WORDS[t] || t || "";
-}
 function speakerLabel(spk) {
   if (!spk || spk === "unknown") return "unknown";
   if (spk === "narrator") return "Narrator";
@@ -76,16 +71,6 @@ function speakerLabel(spk) {
   // reassigned row carries a REAL persona id instead.
   return cast.value.find((c) => c.id === spk)?.name || personasStore.byId(spk)?.name || spk;
 }
-function chipClass(source) {
-  return {
-    tag: "attr__chip attr__chip--tag",
-    propagated: "attr__chip attr__chip--propagated",
-    llm: "attr__chip attr__chip--llm",
-    floored: "attr__chip attr__chip--floored",
-    narration: "attr__chip attr__chip--narration",
-  }[source] || "attr__chip";
-}
-
 // ── (6) Reassign — writes correction memory like Studio. ──────────────
 // Corrections are per-project; the write targets the ACTIVE project (named in
 // the toast the write raises). No project open → the reassign still updates the
@@ -175,7 +160,7 @@ async function reassign(row, newSpeaker) {
         <span class="jv-mono jv-muted attr__n">{{ i + 1 }}</span>
         <span class="attr__who">
           <strong :class="{ attr__disagree: disagrees(i) }">{{ speakerLabel(row.speaker) }}</strong>
-          <span :class="chipClass(row.source)">{{ row.source }}</span>
+          <span :class="sourceChipClass(row.source)" :title="sourceMeaning(row.source)">{{ row.source }}</span>
           <span v-if="row.confidence != null" class="jv-mono jv-muted">{{ (row.confidence * 100).toFixed(0) }}%</span>
         </span>
         <span class="attr__text">{{ row.text }}</span>
@@ -203,15 +188,7 @@ async function reassign(row, newSpeaker) {
 .attr__text { flex: 1; color: var(--ink-2); line-height: 1.5; }
 .attr__reassign { flex: none; }
 .attr__empty { font-size: 12px; margin: 0; }
-.attr__chip {
-  font-size: 9.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
-  border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 5px;
-  color: var(--ink-3); background: var(--surface);
-}
-.attr__chip--tag        { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent-line); }
-.attr__chip--propagated { background: var(--surface-2); }
-.attr__chip--llm        { background: var(--info-soft, #eaf2fa); color: var(--info-blue, #2f74b5); border-color: var(--info-blue, #2f74b5); }
-.attr__chip--narration  { border-style: dashed; }
-.attr__chip--floored    { background: var(--warn-bg, var(--surface-2)); color: var(--warn-ink, var(--ink-2)); border-color: var(--warn-line, var(--border-soft)); }
+/* The source chips are canonical (.jv-source-chip in styles.css) — Studio's
+   Script table paints the identical vocabulary from the same rules. */
 .attr__disagree { color: var(--danger, #a8442e); text-decoration: underline wavy; text-underline-offset: 3px; }
 </style>

@@ -6,6 +6,7 @@
 // emits the SAME formatted block the production caller sends; the server
 // source of truth is named per fill so the mirror can't drift silently
 // (Part 6's JS tests pin the shapes).
+import { proseFromBlocks } from "./attribution.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useApi } from "../stores/api.js";
 
@@ -23,10 +24,10 @@ async function listChapters() {
 }
 
 // A chapter's prose = its blocks' text in order (the same rows Studio's
-// Script tab shows; import creates them from the manuscript).
+// Script tab shows; import creates them from the manuscript). The join is
+// the shared one Studio feeds Analyze with — it was written twice.
 async function chapterProse(sceneId) {
-  const rows = await api().request(`/v1/scenes/${sceneId}/blocks`);
-  const text = (rows || []).map((b) => b.text).filter(Boolean).join("\n\n").trim();
+  const text = proseFromBlocks(await api().request(`/v1/scenes/${sceneId}/blocks`));
   if (!text) throw new Error("This chapter has no text yet.");
   return text;
 }

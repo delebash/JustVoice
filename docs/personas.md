@@ -8,6 +8,19 @@ In an audiobook with 8 characters, "voice profile" and "character" are not the s
 
 The Persona layer holds the **character bio**, the **voice mapping** (which can change), and per-character delivery overrides. It survives voice changes.
 
+## The Narrator
+
+Audiobook and podcast projects get a persona called **Narrator** the moment
+they're created — whether you started the project by hand or imported one.
+It's the voice of everything that isn't spoken: when [Studio ·
+Script](studio.md) analyzes a chapter, every stretch of prose outside quote
+marks is bound to it.
+
+It behaves like any other persona — rename it, give it a voice, write it a
+personality — with one exception: it can't be deleted, because the prose has
+to belong to someone. Cast it a voice early; a chapter whose narration has no
+voice won't render.
+
 ## Fields
 
 | Field | Used for |

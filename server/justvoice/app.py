@@ -59,6 +59,7 @@ from .api import (
     project_export_api,
     projects_api,
     render_chapter_api,
+    render_jobs_api,
     render_presets_api,
     server_auth_api,
     settings_api,
@@ -100,6 +101,18 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 
     state = AppState(data_dir)
     set_state(state)
+
+    # Render jobs a dead server left queued/running become "paused" (their
+    # rows survive restart; resume re-runs the unfinished blocks) — Stage 2
+    # of the 2026-08-08 scheduler work.
+    from .render_jobs import sweep_stale_jobs
+
+    try:
+        swept = sweep_stale_jobs()
+        if swept:
+            log.info("render jobs: %d interrupted job(s) marked paused", swept)
+    except Exception as e:
+        log.warning("render-job boot sweep failed: %s", e)
 
     # One-shot Profile → Persona migration (Slice 1 of the Profile-kill
     # rollout per the approved plan). Materializes an orphan Persona
@@ -275,6 +288,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
 
     # Phase 4a backend (DESIGN_FREEZE §5)
     app.include_router(takes_api.router)
+    app.include_router(render_jobs_api.router)
     app.include_router(channels_api.router)
     app.include_router(mcp_bindings_api.router)
     app.include_router(active_tasks_api.router)

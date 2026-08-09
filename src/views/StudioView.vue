@@ -22,6 +22,9 @@ import { AiTaskStrip, runAiEndpoint, runAiEndpointStream, useAiTasksStore, withA
 import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { useCopy } from "../services/copy.js";
+import {
+  SOURCE_LEGEND, proseFromBlocks, routeWords, sourceChipClass, sourceMeaning,
+} from "../services/attribution.js";
 import { readPref, writePref } from "../services/prefs.js";
 import { pushToast } from "@delebash/llm-ui";
 import { useActiveProject } from "../stores/activeProject.js";
@@ -116,11 +119,11 @@ function rewriteRow(idx) {
   if (!analyzeRows.value[idx]) return;
   const row = analyzeRows.value[idx];
   // Only dialogue/character rows have a persona to rewrite against.
-  if (row.kind !== "dialogue") {
+  if (rowKind(row) !== "dialogue") {
     pushToast({ message: "Rewrite only applies to dialogue rows.", kind: "info" });
     return;
   }
-  if (!row.speaker || row.speaker === "narrator" || row.speaker === "unknown") {
+  if (!row.speaker || row.speaker === "unknown" || row.speaker === narratorPersona.value?.id) {
     pushToast({ message: "Assign a persona to this row first.", kind: "info" });
     return;
   }
@@ -155,19 +158,29 @@ async function runRewrite() {
   }
 }
 
-function acceptRewrite() {
+async function acceptRewrite() {
   const idx = rewriteRowIndex.value;
   if (idx == null || !analyzeRows.value[idx] || !rewritePreview.value) {
     rewriteModalOpen.value = false;
     return;
   }
-  analyzeRows.value[idx] = {
-    ...analyzeRows.value[idx],
-    text: rewritePreview.value,
-    rewritten: true,
-  };
+  const before = analyzeRows.value[idx];
+  analyzeRows.value[idx] = { ...before, text: rewritePreview.value, rewritten: true };
   rewriteModalOpen.value = false;
-  pushToast({ message: "Block rewritten. Apply to save.", kind: "success" });
+  try {
+    // Straight onto the block — the "Apply" button that used to be the way
+    // anything in this table reached the server is gone (it re-POSTed every
+    // row as a NEW block and duplicated the chapter).
+    await api.request(`/v1/blocks/${before.block_id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: rewritePreview.value }),
+    });
+    pushToast({ message: "Block rewritten.", kind: "success" });
+  } catch (e) {
+    analyzeRows.value[idx] = before;
+    pushToast({ message: `Couldn't save the rewrite: ${e?.message || e}`, kind: "error" });
+  }
 }
 
 // Script tab state (Phase 4 / Slice 2)
@@ -184,9 +197,9 @@ const analyzeRouteUsed = ref(null);
 // meta line says Auto's pick vs forced. (The stored force died with the
 // pills, 2026-08-06 — "forced" now only ever means a per-run override.)
 const analyzeRouteSource = ref(null);
-const ROUTE_LABELS = { guided: "Guided", direct: "Direct" };
 const analyzeFloor = ref(null);
 const editedFlags = ref({});  // {rowIdx: true} for rows the user changed
+const legendOpen = ref(false);
 
 // Render tab state (Phase 6 / Slice 1)
 const renderPresets = ref([]);
@@ -208,6 +221,7 @@ const renderGate = computed(() => {
 });
 const suggestBusyScene = ref(null);
 const sceneBlockCounts = ref({});  // {sceneId: count of blocks}
+const sceneAnalyzed = ref({});     // {sceneId: any block carries a pipeline source}
 
 // Per-scene task lookup so the render row can show a progress strip
 // driven by the shared kit task queue. visibleTasks keeps a finished
@@ -299,6 +313,11 @@ const castEngineNotice = computed(() => {
 });
 const renderedSceneCount = computed(() =>
   (cacheStats.value?.scenes || []).filter((sc) => sc.total > 0 && sc.cached === sc.total).length);
+// The Script card's live count — the thing the user went looking for and
+// found hardcoded ("the heading is in studio like render 0/4 rendered, the
+// script used to show this and now doesn't"). Same shape as Render's.
+const analyzedSceneCount = computed(() =>
+  scenes.value.filter((s) => sceneAnalyzed.value[s.id]).length);
 const stepCards = computed(() => visibleTabs.value.map((t) => {
   let sub = "";
   if (t.key === "cast") {
@@ -306,7 +325,9 @@ const stepCards = computed(() => visibleTabs.value.map((t) => {
       ? `${voicedCount.value}/${projectPersonas.value.length} voiced`
       : "no cast yet";
   } else if (t.key === "script") {
-    sub = "speaker analysis";
+    sub = scenes.value.length
+      ? `${analyzedSceneCount.value}/${scenes.value.length} analyzed`
+      : "speaker analysis";
   } else if (t.key === "render") {
     sub = scenes.value.length
       ? `${renderedSceneCount.value}/${scenes.value.length} rendered`
@@ -343,8 +364,14 @@ const projectOptions = computed(() => {
 // Personas bound to the selected project via ProjectPersona m2m.
 const projectPersonas = ref([]);
 
+// {personaId: role_label} from the cast — the "narrator" role survives a
+// rename, the name does not.
+const castRoles = ref({});
+
 const narratorPersona = computed(() =>
-  projectPersonas.value.find((p) => /^narrator$/i.test(p.name || "")) || null,
+  projectPersonas.value.find((p) => castRoles.value[p.id] === "narrator")
+  || projectPersonas.value.find((p) => /^narrator$/i.test(p.name || ""))
+  || null,
 );
 const characterPersonas = computed(() =>
   projectPersonas.value.filter((p) => p.id !== narratorPersona.value?.id),
@@ -650,8 +677,12 @@ async function loadProjectPersonas(projectId) {
     const castEntries = r?.cast || [];
     const ids = new Set(castEntries.map((c) => c.persona_id));
     projectPersonas.value = personas.value.filter((p) => ids.has(p.id));
+    castRoles.value = Object.fromEntries(
+      castEntries.filter((c) => c.role_label).map((c) => [c.persona_id, c.role_label]),
+    );
   } catch {
     projectPersonas.value = [];
+    castRoles.value = {};
   }
 }
 
@@ -692,12 +723,16 @@ async function loadScenesForProject(projectId) {
     // Eager-fetch per-scene block counts for the Render tab's
     // "Select all unrendered" affordance.
     sceneBlockCounts.value = {};
+    sceneAnalyzed.value = {};
     await Promise.all(
       scenes.value.map(async (s) => {
         try {
           const blocks = await api.safeRequest(`/v1/scenes/${s.id}/blocks`, []);
           const list = Array.isArray(blocks) ? blocks : blocks?.blocks ?? [];
           sceneBlockCounts.value = { ...sceneBlockCounts.value, [s.id]: list.length };
+          // A chapter is analyzed when its blocks carry the pipeline's
+          // verdict — there is no separate flag (restore decision 2).
+          sceneAnalyzed.value = { ...sceneAnalyzed.value, [s.id]: list.some(isAttributed) };
         } catch { /* tolerated */ }
       }),
     );
@@ -755,11 +790,93 @@ async function suggestPresetFor(scene) {
   }
 }
 
-async function renderScene(scene) {
-  if (!sceneBlockCounts.value[scene.id]) {
-    pushToast({ message: "Scene has no blocks to render. Analyze + Apply first.", kind: "info" });
+// ── The unplaced-lines blocker (restore decision 5) ──────────────────
+// A block with no persona renders to nothing. The server used to drop those
+// in silence, so a line just went missing from the audiobook; it now refuses
+// the chapter. This is the same refusal one step earlier, where the fix is:
+// the offending lines, named, with the one-click way out.
+const unplacedModalOpen = ref(false);
+const unplacedFound = ref([]);   // [{scene, blocks:[block]}]
+const unplacedFixing = ref(false);
+const unplacedTotal = computed(() =>
+  unplacedFound.value.reduce((n, g) => n + g.blocks.length, 0));
+
+const unplacedUnanalyzed = computed(() =>
+  unplacedFound.value.filter((g) => !g.analyzed).map((g) => g.scene));
+
+/** True when every selected chapter can render. Otherwise opens the blocker. */
+async function passesSpeakerCheck(queue) {
+  const found = [];
+  for (const s of queue) {
+    const blocks = await sceneBlocks(s.id);
+    // Markers (podcast music/ad direction lines) are speaker-less on
+    // purpose — the same exclusion ChapterView.vue:586 makes before calling
+    // a chapter unattributed.
+    const missing = blocks.filter(
+      (b) => !b.persona_id && b.text?.trim() && !b.metadata?.marker,
+    );
+    if (missing.length) {
+      found.push({ scene: s, blocks: missing, analyzed: blocks.some(isAttributed) });
+    }
+  }
+  if (!found.length) return true;
+  unplacedFound.value = found;
+  unplacedModalOpen.value = true;
+  return false;
+}
+
+async function assignUnplacedToNarrator() {
+  const narratorId = narratorPersona.value?.id;
+  if (!narratorId) {
+    pushToast({ message: "This project has no Narrator persona to assign to.", kind: "warning" });
     return;
   }
+  unplacedFixing.value = true;
+  let failed = 0;
+  try {
+    for (const group of unplacedFound.value) {
+      for (const block of group.blocks) {
+        try {
+          await api.request(`/v1/blocks/${block.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            // `corrected` freezes a row against every future re-analyze, so
+            // it is only honest where a run actually decided something and
+            // the user is overruling it. On a chapter that was never
+            // analyzed this button just means "one voice reads all of it" —
+            // writing `corrected` there would silently make attribution
+            // impossible for the whole chapter, forever, in one click.
+            body: JSON.stringify(
+              group.analyzed
+                ? { persona_id: narratorId, source: "corrected" }
+                : { persona_id: narratorId },
+            ),
+          });
+        } catch { failed += 1; }
+      }
+    }
+  } finally {
+    unplacedFixing.value = false;
+  }
+  unplacedModalOpen.value = false;
+  await hydrateRows(selectedSceneId.value);
+  pushToast({
+    message: failed
+      ? `Assigned the unplaced lines to ${narratorPersona.value.name}; ${failed} failed.`
+      : `Unplaced lines now read as ${narratorPersona.value.name}. Render again.`,
+    kind: failed ? "warning" : "success",
+  });
+}
+
+async function renderScene(scene, { check = true } = {}) {
+  if (!sceneBlockCounts.value[scene.id]) {
+    pushToast({
+      message: `Nothing to render — this ${copy.value.chapter.singular.toLowerCase()} has no text. Add it in ${copy.value.chapter.plural}, then analyze it in Script.`,
+      kind: "info",
+    });
+    return;
+  }
+  if (check && !(await passesSpeakerCheck([scene]))) return;
   renderBusyScene.value = scene.id;
 
   // Standing rule (memory feedback_long_running_process_rule): every
@@ -891,9 +1008,14 @@ function checkState(sceneId) {
   const t = taskForScene(sceneId);
   if (t && tasks.isRunning(t.id)) return { intent: "info", label: "rendering…" };
   const qc = qcByScene.value[sceneId];
-  if (qc) return qc.ok
-    ? { intent: "success", label: "✓ ACX pass" }
-    : { intent: "danger", label: `✗ ${!qc.rms_ok ? "RMS" : "peak"} out of spec` };
+  if (qc) {
+    const numbers = `RMS ${qc.rms_dbfs?.toFixed?.(1)} dB · peak ${qc.peak_dbfs?.toFixed?.(1)} dB · ${Math.round(qc.duration_s || 0)}s`;
+    if (qc.ok) return { intent: "success", label: "✓ ACX pass", title: numbers };
+    // A chapter that isn't render-ready failed for a reason the loudness
+    // numbers don't carry — blaming "peak" for it would be a lie.
+    if (qc.note) return { intent: "danger", label: "✗ not ready", title: qc.note };
+    return { intent: "danger", label: `✗ ${!qc.rms_ok ? "RMS" : "peak"} out of spec`, title: numbers };
+  }
   if (t?.status === "completed") return { intent: "success", label: "rendered" };
   if (sceneSelectedForRender.value[sceneId]) return { intent: "ghost", label: "queued" };
   return { intent: "ghost", label: "—" };
@@ -905,8 +1027,11 @@ async function renderSelected() {
     pushToast({ message: "Select at least one scene to render.", kind: "info" });
     return;
   }
+  // One check for the whole queue, so the blocker opens once with every
+  // offending line in it instead of once per chapter.
+  if (!(await passesSpeakerCheck(queue))) return;
   for (const s of queue) {
-    await renderScene(s);
+    await renderScene(s, { check: false });
   }
 }
 
@@ -938,24 +1063,86 @@ function selectedSceneCount() {
   return Object.values(sceneSelectedForRender.value).filter(Boolean).length;
 }
 
+async function sceneBlocks(sceneId) {
+  const r = await api.safeRequest(`/v1/scenes/${sceneId}/blocks`, []);
+  return Array.isArray(r) ? r : (r?.blocks ?? []);
+}
+
+// A block was attributed when it carries a `source` the pipeline wrote.
+// "manual" is what a hand-made or pasted block gets, and it means the
+// opposite — nothing has looked at it yet.
+function isAttributed(block) {
+  return !!block.source && block.source !== "manual";
+}
+
+// The prose analyze runs against. The server keeps the exact text that
+// produced a chapter's current split on the scene, because that is the only
+// way re-analyze reproduces it — the stored blocks are segments, so joining
+// them back loses the paragraph structure anchoring and propagation depend
+// on. No stored copy (never analyzed, or the text was edited since) → the
+// blocks themselves, which is what the first analyze reads.
 async function loadSceneText(sceneId) {
   if (!sceneId) {
     sceneText.value = "";
     return;
   }
   try {
-    const r = await api.safeRequest(`/v1/scenes/${sceneId}/blocks`, []);
-    const blocks = Array.isArray(r) ? r : (r?.blocks ?? []);
-    sceneText.value = blocks.map((b) => b.text).join("\n\n");
+    const stored = scenes.value.find((sc) => sc.id === sceneId)?.metadata?.source_text;
+    if (stored) {
+      sceneText.value = stored;
+      return;
+    }
+    sceneText.value = proseFromBlocks(await sceneBlocks(sceneId));
   } catch {
     sceneText.value = "";
   }
 }
 
-watch(selectedSceneId, (id) => {
-  loadSceneText(id);
-  analyzeRows.value = [];
+// The Script table IS the chapter's blocks (restore decision 2) — there is
+// nowhere else the analysis lives. Until 2026-08-08 the rows sat in a ref
+// that a chapter change wiped, so every analysis was thrown away the moment
+// you looked at another chapter.
+// Once a chapter has been analyzed the table shows EVERY block, not only the
+// attributed ones — a paragraph pasted in afterwards carries source="manual",
+// and hiding it would leave a line that blocks the render with nowhere to fix
+// it.
+function rowsFromBlocks(blocks) {
+  if (!blocks.some(isAttributed)) return [];
+  return blocks.map((b) => ({
+    block_id: b.id,
+    text: b.text,
+    speaker: b.persona_id || "unknown",
+    confidence: b.extraction_confidence,
+    source: b.source || "manual",
+  }));
+}
+
+// Kind is DERIVED, never stored (restore decision 6): the segmenter is the
+// only thing that decides narration-vs-dialogue, and it records that
+// decision as source="narration". Wrong only for a hand-corrected narration
+// row, which is cosmetic.
+function rowKind(row) {
+  return row.source === "narration" ? "narration" : "dialogue";
+}
+
+async function hydrateRows(sceneId) {
   editedFlags.value = {};
+  analyzeRouteUsed.value = null;
+  analyzeFloor.value = null;
+  if (!sceneId) {
+    analyzeRows.value = [];
+    return;
+  }
+  try {
+    analyzeRows.value = rowsFromBlocks(await sceneBlocks(sceneId));
+  } catch {
+    analyzeRows.value = [];
+  }
+}
+
+watch(selectedSceneId, async (id) => {
+  await loadSceneText(id);
+  await hydrateRows(id);
 }, { immediate: true });
 
 // The Script tab's own Cancel button routes through the store so the
@@ -995,14 +1182,21 @@ async function runAnalyze() {
         inline: true,
       },
     });
-    analyzeRows.value = r.rows || [];
+    // The run wrote itself onto the chapter's blocks, so the table reloads
+    // from there rather than from the response — one code path with the
+    // on-entry hydration, and what you see is provably what was saved.
+    // The scene list carries the new block count + the stored source text.
+    const sceneId = selectedSceneId.value;
+    await loadScenesForProject(selectedProjectId.value);
+    await loadSceneText(sceneId);
+    await hydrateRows(sceneId);
     analyzeRouteUsed.value = r.route_used;
     analyzeRouteSource.value = r.route_source || "auto";
     analyzeFloor.value = r.confidence_floor;
-    editedFlags.value = {};
     runDiscoverSpeakers(); // fire-and-forget — banner appears if it finds anyone
+    const kept = r.persisted?.kept_corrected || 0;
     pushToast({
-      message: `Analyzed ${analyzeRows.value.length} segment${analyzeRows.value.length === 1 ? "" : "s"} — ${ROUTE_LABELS[analyzeRouteUsed.value] || analyzeRouteUsed.value} ${analyzeRouteSource.value === "auto" ? "(Auto's pick)" : "(forced)"}.`,
+      message: `Analyzed ${analyzeRows.value.length} segment${analyzeRows.value.length === 1 ? "" : "s"}, read ${routeWords(analyzeRouteUsed.value)}. Saved to this ${copy.value.chapter.singular.toLowerCase()}${kept ? `; ${kept} corrected row${kept === 1 ? "" : "s"} left alone` : ""}.`,
       kind: "success",
       duration: 3500,
     });
@@ -1082,45 +1276,63 @@ async function promoteDiscovered() {
   }
 }
 
-function setRowSpeaker(idx, speaker) {
-  if (!analyzeRows.value[idx]) return;
-  analyzeRows.value[idx] = { ...analyzeRows.value[idx], speaker, source: "manual" };
+// A speaker fix writes straight through to the block (restore decision 6).
+// It used to mutate the local ref and stop there, so nothing reached the
+// server AND the correction memory the analyze prompt reads was never
+// written from Studio — record_correction fires on exactly this PATCH.
+async function setRowSpeaker(idx, speaker) {
+  const row = analyzeRows.value[idx];
+  if (!row || !speaker || speaker === row.speaker) return;
+  const before = { speaker: row.speaker, source: row.source };
+  analyzeRows.value[idx] = { ...row, speaker, source: "corrected" };
   editedFlags.value = { ...editedFlags.value, [idx]: true };
+  try {
+    await api.request(`/v1/blocks/${row.block_id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ persona_id: speaker, source: "corrected" }),
+    });
+  } catch (e) {
+    analyzeRows.value[idx] = { ...analyzeRows.value[idx], ...before };
+    pushToast({ message: `Couldn't save that speaker: ${e?.message || e}`, kind: "error" });
+  }
 }
 
-async function applyAnalyzed() {
-  if (!selectedSceneId.value || !analyzeRows.value.length) return;
-  // Bulk-create blocks from the attribution rows. We assume the
-  // scene is empty before Apply (caller can confirm in a follow-up).
-  let created = 0;
+const unknownRowCount = computed(() =>
+  analyzeRows.value.filter((r) => r.speaker === "unknown").length,
+);
+
+// The bulk exit from unknowns (restore decisions 5 + 6). Everything the
+// model couldn't place becomes narration read by the Narrator — the answer
+// that is right most of the time and never silently drops a line.
+async function assignAllUnknown() {
+  const narratorId = narratorPersona.value?.id;
+  if (!narratorId) {
+    pushToast({ message: "This project has no Narrator persona to assign to.", kind: "warning" });
+    return;
+  }
   let failed = 0;
   for (let i = 0; i < analyzeRows.value.length; i += 1) {
-    const row = analyzeRows.value[i];
-    const persona_id = row.speaker !== "narrator" && row.speaker !== "unknown" ? row.speaker : null;
+    if (analyzeRows.value[i].speaker !== "unknown") continue;
+    const before = analyzeRows.value[i];
+    analyzeRows.value[i] = { ...before, speaker: narratorId, source: "corrected" };
+    editedFlags.value = { ...editedFlags.value, [i]: true };
     try {
-      await api.request(`/v1/scenes/${selectedSceneId.value}/blocks`, {
-        method: "POST",
+      await api.request(`/v1/blocks/${before.block_id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          position: i,
-          text: row.text,
-          persona_id,
-          metadata: {},
-          extraction_confidence: row.confidence,
-          source: row.source || "llm",
-        }),
+        body: JSON.stringify({ persona_id: narratorId, source: "corrected" }),
       });
-      created += 1;
-    } catch (_) {
+    } catch {
+      analyzeRows.value[i] = before;
       failed += 1;
     }
   }
   pushToast({
     message: failed
-      ? `Applied ${created}, failed ${failed}.`
-      : `Applied ${created} blocks.`,
+      ? `Assigned the rest to ${narratorPersona.value.name}; ${failed} failed.`
+      : `Every unplaced line now reads as ${narratorPersona.value.name}.`,
     kind: failed ? "warning" : "success",
-    duration: 5000,
   });
 }
 
@@ -1131,28 +1343,16 @@ function speakerLabel(spk) {
   return persona?.name || spk;
 }
 
+// Real persona ids only. "unknown" is a state the pipeline leaves behind,
+// never something you'd choose — and PATCH cannot write a null persona back
+// anyway (UpdateBlockRequest treats null as "unchanged").
 function speakerOptions() {
-  const opts = [
-    { label: "— narrator —", value: "narrator" },
-    { label: "— unknown —", value: "unknown" },
-  ];
+  const narrator = narratorPersona.value;
+  const opts = narrator ? [{ label: narrator.name, value: narrator.id }] : [];
   for (const p of projectPersonas.value) {
-    if (p.id !== narratorPersona.value?.id) {
-      opts.push({ label: p.name, value: p.id });
-    }
+    if (p.id !== narrator?.id) opts.push({ label: p.name, value: p.id });
   }
   return opts;
-}
-
-function sourceChipClass(source) {
-  return {
-    tag: "studio__source-chip studio__source-chip--tag",
-    propagated: "studio__source-chip studio__source-chip--propagated",
-    llm: "studio__source-chip studio__source-chip--llm",
-    floored: "studio__source-chip studio__source-chip--floored",
-    narration: "studio__source-chip studio__source-chip--narration",
-    manual: "studio__source-chip studio__source-chip--manual",
-  }[source] || "studio__source-chip";
 }
 
 function voiceById(voiceId) {
@@ -1414,17 +1614,19 @@ watch(selectedProjectId, (id) => {
           intent="primary"
           size="small"
           :disabled="analyzeBusy || !sceneText.trim()"
-          label="✨ Analyze chapter"
-          title="LLM works out who speaks each line"
+          :label="analyzeRows.length ? '✨ Re-analyze' : '✨ Analyze chapter'"
+          :title="analyzeRows.length
+            ? 'Run it again against the current cast and your corrections. The text is never re-cut and rows you fixed are left alone.'
+            : 'Works out who speaks each line and saves it onto this chapter'"
           @click="runAnalyze"
         />
         <UiButton
-          v-if="analyzeRows.length"
+          v-if="unknownRowCount"
           intent="secondary"
           size="small"
-          label="✓ Apply"
-          title="Write the attribution onto this chapter's blocks"
-          @click="applyAnalyzed"
+          :label="`Assign ${unknownRowCount} unplaced → ${narratorPersona ? narratorPersona.name : 'Narrator'}`"
+          title="Everything the model couldn't place becomes narration. Unplaced lines block the render."
+          @click="assignAllUnknown"
         />
       </template>
       <template v-if="tab === 'render' && selectedProject">
@@ -1787,11 +1989,35 @@ watch(selectedProjectId, (id) => {
           <UiButton size="small" :loading="promoting" label="＋ Create personas & add to cast" @click="promoteDiscovered" />
         </div>
 
-        <p v-if="analyzeRouteUsed" class="jv-muted studio__script-meta">
-          Route: <strong>{{ ROUTE_LABELS[analyzeRouteUsed] || analyzeRouteUsed }}</strong>
-          {{ analyzeRouteSource === "auto" ? "— Auto's pick" : "— forced" }} ·
-          confidence floor {{ analyzeFloor }} · {{ analyzeRows.length }} segments
+        <p v-if="analyzeRows.length" class="jv-muted studio__script-meta">
+          {{ analyzeRows.length }} segments
+          <template v-if="analyzeRouteUsed">
+            · just read <strong>{{ routeWords(analyzeRouteUsed) }}</strong>
+            {{ analyzeRouteSource === "auto" ? "(chosen for your model)" : "(you forced it)" }},
+            keeping answers above {{ analyzeFloor }} confidence
+          </template>
+          <template v-else>
+            · saved from an earlier run — re-analyze to redo it with the current cast
+          </template>
+          <button type="button" class="studio__legend-toggle" @click="legendOpen = !legendOpen">
+            {{ legendOpen ? "hide" : "what do these labels mean?" }}
+          </button>
         </p>
+
+        <!-- The source legend. These six words are the whole audit trail of
+             the attribution pipeline and were explained nowhere. -->
+        <dl v-if="legendOpen && analyzeRows.length" class="studio__legend">
+          <template v-for="[key, meaning] in SOURCE_LEGEND" :key="key">
+            <dt><span :class="sourceChipClass(key)">{{ key }}</span></dt>
+            <dd class="jv-muted">{{ meaning }}</dd>
+          </template>
+        </dl>
+
+        <div v-if="unknownRowCount" class="jv-banner jv-banner--warn">
+          <strong>{{ unknownRowCount }} line{{ unknownRowCount === 1 ? "" : "s" }} unplaced.</strong>
+          The render stops on these rather than dropping them silently — set a speaker
+          on each, or send them all to the narrator with the button above.
+        </div>
 
         <!-- Inline analyze progress — the KIT strip, in the spot the
              hand-rolled "Analyzing…" banner occupied until 2026-08-08 (user
@@ -1801,19 +2027,25 @@ watch(selectedProjectId, (id) => {
              elapsed, tokens, stall state and Cancel are the kit's. -->
         <AiTaskStrip v-if="analyzeTask" :task="analyzeTask" />
 
-        <UiTextarea
-          v-if="!analyzeRows.length"
-          class="studio__script-text"
-          v-model="sceneText"
-          :placeholder="`Paste the ${copy.chapter.singular.toLowerCase()} text here, then click Analyze.`"
-        />
+        <template v-if="!analyzeRows.length">
+          <p class="jv-muted studio__script-meta">
+            This {{ copy.chapter.singular.toLowerCase() }} hasn't been analyzed yet.
+            Check the text below, then click Analyze — the result saves onto the
+            {{ copy.chapter.singular.toLowerCase() }} and is here when you come back.
+          </p>
+          <UiTextarea
+            class="studio__script-text"
+            v-model="sceneText"
+            :placeholder="`Paste the ${copy.chapter.singular.toLowerCase()} text here, then click Analyze.`"
+          />
+        </template>
 
         <table v-else class="jv-table studio__script-table">
           <thead>
             <tr>
               <th>Speaker</th>
               <th>Kind</th>
-              <th>Source</th>
+              <th>Decided by</th>
               <th>Text</th>
               <th>Confidence</th>
             </tr>
@@ -1821,32 +2053,35 @@ watch(selectedProjectId, (id) => {
           <tbody>
             <tr
               v-for="(row, i) in analyzeRows"
-              :key="i"
+              :key="row.block_id"
+              :class="{ 'studio__script-row--unknown': row.speaker === 'unknown' }"
               @contextmenu.prevent="rewriteRow(i)"
-              :title="row.kind === 'dialogue' ? 'Right-click to rewrite this line in character' : ''"
+              :title="rowKind(row) === 'dialogue' ? 'Right-click to rewrite this line in character' : ''"
             >
+              <!-- Every row is assignable (restore decision 6). The dropdown
+                   used to be gated to dialogue, so a misread narration line —
+                   the most common mistake there is — could not be fixed at
+                   all: "the only thing i see is that a user can change the
+                   speaker but not narrator". -->
               <td>
                 <UiSelect
-                  v-if="row.kind === 'dialogue'"
                   :model-value="row.speaker"
                   width="id"
                   :options="speakerOptions()"
+                  :placeholder="row.speaker === 'unknown' ? '— unplaced —' : ''"
                   @update:model-value="(v) => setRowSpeaker(i, v)"
                 />
-                <span v-else>{{ speakerLabel(row.speaker) }}</span>
-                <span v-if="editedFlags[i]" class="studio__edited">✎</span>
+                <span v-if="editedFlags[i]" class="studio__edited" title="You changed this">✎</span>
                 <span v-if="row.rewritten" class="studio__edited" title="LLM-rewritten">✨</span>
               </td>
-              <td><UiTag intent="ghost">{{ row.kind }}</UiTag></td>
+              <td><UiTag intent="ghost">{{ rowKind(row) }}</UiTag></td>
               <td>
-                <span :class="sourceChipClass(row.source)">{{ row.source }}</span>
-                <span v-if="row.source === 'floored' && row.floored_from" class="jv-muted">
-                  from {{ speakerLabel(row.floored_from) }}
-                </span>
+                <span :class="sourceChipClass(row.source)" :title="sourceMeaning(row.source)">{{ row.source }}</span>
               </td>
               <td class="studio__script-text-cell">{{ row.text }}</td>
               <td>
-                <UiTag :intent="row.confidence > 0.9 ? 'success' : row.confidence > 0.8 ? 'ghost' : 'accent2'">{{ (row.confidence * 100).toFixed(0) }}%</UiTag>
+                <UiTag v-if="row.confidence != null" :intent="row.confidence > 0.9 ? 'success' : row.confidence > 0.8 ? 'ghost' : 'accent2'">{{ (row.confidence * 100).toFixed(0) }}%</UiTag>
+                <span v-else class="jv-muted">—</span>
               </td>
             </tr>
           </tbody>
@@ -1932,7 +2167,7 @@ watch(selectedProjectId, (id) => {
                   />
                 </td>
                 <td>
-                  <UiTag :intent="checkState(s.id).intent"  :title="qcByScene[s.id] ? `RMS ${qcByScene[s.id].rms_dbfs?.toFixed?.(1)} dB · peak ${qcByScene[s.id].peak_dbfs?.toFixed?.(1)} dB · ${Math.round(qcByScene[s.id].duration_s || 0)}s` : ''">{{ checkState(s.id).label }}</UiTag>
+                  <UiTag :intent="checkState(s.id).intent" :title="checkState(s.id).title || ''">{{ checkState(s.id).label }}</UiTag>
                 </td>
                 <td class="studio__render-actions">
                   <UiButton
@@ -2050,6 +2285,43 @@ watch(selectedProjectId, (id) => {
               />
             </li>
           </ul>
+    </AppModal>
+
+    <!-- The render blocker (restore decision 5). A line nobody speaks used
+         to be dropped from the audio without a word; now the render stops
+         here and offers the one-click way out. -->
+    <AppModal
+      v-if="unplacedModalOpen"
+      eyebrow="Render stopped"
+      :title="`${unplacedTotal} line${unplacedTotal === 1 ? '' : 's'} have no speaker`"
+      :max-width="'720px'"
+      dismissable
+      @close="unplacedModalOpen = false"
+    >
+      <p class="jv-muted" style="margin: 0 0 12px">
+        These would be missing from the audio, so nothing is rendered until they
+        have a voice. Send them all to the narrator, or close this and set
+        speakers row by row in 2 · Script.
+      </p>
+      <div v-for="group in unplacedFound" :key="group.scene.id" class="studio__unplaced-group">
+        <strong>{{ group.scene.title || `${copy.chapter.singular} ${group.scene.position + 1}` }}</strong>
+        <span class="jv-muted"> — {{ group.blocks.length }}</span>
+        <ul class="studio__unplaced-list">
+          <li v-for="b in group.blocks.slice(0, 8)" :key="b.id" class="jv-muted">{{ b.text }}</li>
+          <li v-if="group.blocks.length > 8" class="jv-muted">…and {{ group.blocks.length - 8 }} more</li>
+        </ul>
+      </div>
+      <template #footer>
+        <UiButton intent="secondary" label="Not now" @click="unplacedModalOpen = false" />
+        <UiButton
+          intent="primary"
+          :loading="unplacedFixing"
+          :disabled="unplacedFixing || !narratorPersona"
+          :label="`Assign all to ${narratorPersona ? narratorPersona.name : 'Narrator'}`"
+          :title="narratorPersona ? '' : 'This project has no Narrator persona'"
+          @click="assignUnplacedToNarrator"
+        />
+      </template>
     </AppModal>
 
     <!-- Per-block Rewrite preview (right-click on Script tab). -->
@@ -2583,23 +2855,45 @@ watch(selectedProjectId, (id) => {
 
 .studio__edited { color: var(--accent); margin-left: 6px; font-size: 11px; }
 
-.studio__source-chip {
-  font-size: 10px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: var(--surface-2);
-  color: var(--ink-2);
-  border: 1px solid var(--border-soft);
+/* Unplaced lines read as a problem to solve — they stop the render. */
+.studio__script-row--unknown > td { background: var(--warn-bg); }
+
+.studio__legend-toggle {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0 0 0 8px;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
 }
-.studio__source-chip--tag         { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
-.studio__source-chip--propagated  { background: var(--accent-soft); color: var(--ink-2); }
-.studio__source-chip--llm         { color: var(--ink-3); }
-.studio__source-chip--floored     { background: var(--warn-bg, var(--surface-2)); color: var(--warn, var(--ink-2)); border-color: var(--warn, var(--border-soft)); }
-.studio__source-chip--narration   { color: var(--muted); border-style: dashed; }
-.studio__source-chip--manual      { background: var(--surface); }
+.studio__legend {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 12px;
+  align-items: baseline;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-size: 12px;
+}
+.studio__legend dt, .studio__legend dd { margin: 0; }
+
+.studio__unplaced-group { margin-bottom: 12px; font-size: 13px; }
+.studio__unplaced-list {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.studio__unplaced-list li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ── Render tab ───────────────────────────────────────────────────── */
 .studio__render-toolbar {

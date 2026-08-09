@@ -1,9 +1,9 @@
 # The Script tab restore — saved analysis, non-destructive Apply, real manual fixes
 
 **Date:** 2026-08-08. **Baseline:** commit `5ee7d3a`, working tree clean.
-**Status:** every decision below is TAKEN by the user, question by question, this
-session. **The GO for the build is NOT given** — this document is the record so
-the work can start cold without re-deriving anything.
+**Status:** decided, then **BUILT** the same day (go given after `a8b2126`).
+§§1–8 are the record as decided; **§10 is what actually shipped**, including
+three things the build found that the decisions could not have known.
 
 Every `file:line` here was verified by reading the file against `5ee7d3a`, not by
 grep-and-infer. Absence claims say so explicitly.
@@ -310,3 +310,154 @@ Manual checks the smoke cannot make:
 4. Correct a row, re-analyze — **the corrected row survives**, and similar lines
    improve.
 5. A chapter with unknowns — **the render refuses and names them.**
+
+---
+
+## 10. What shipped
+
+All three phases, plus docs. Every decision landed; three of them needed a
+mechanism the decisions did not specify, and the build turned up three facts
+that were not visible from reading alone.
+
+### Where the work went
+
+**Server.** `extraction_api.py` gained `_persist_attribution` — the whole of
+decisions 2/3/4 in one place, called by both scene-scoped analyze routes (the
+stream's worker opens its own Session; the request-scoped one belongs to the
+dependency and is not thread-safe). `projects_api.py` gained
+`_drop_scene_source_text` and `_ensure_narrator`. `render_chapter_api.py`'s
+resolver gained `strict=`. `models.py`'s `Block.source` comment is now the
+real six-value list.
+
+**Renderer.** `StudioView.vue`: `hydrateRows` replaces the wipe watcher,
+`applyAnalyzed` and its button are gone, `setRowSpeaker` PATCHes, plus the
+bulk assign, the render blocker modal, the legend, and the live step-card
+count. `services/attribution.js` is new. `AttributionResult.vue` and
+`labTestData.js` adopt it. `.jv-source-chip` is canonical in `styles.css`;
+both scoped copies are deleted.
+
+**Tests.** `tests/test_analyze_persist.py` (6, new) and three strict-mode
+cases in `tests/test_render_chapter_scene_mode.py`.
+
+### Three mechanisms the decisions didn't specify
+
+1. **Persistence is server-side, not a renderer PATCH loop.** §6 step 1 assumed
+   the renderer would PATCH each block. A 300-segment chapter would be 300
+   sequential requests from the browser — the shape of the Apply button being
+   deleted. The endpoint that produced the rows writes them, in one
+   transaction, and the renderer re-reads the blocks afterwards so the table
+   and the database can't disagree.
+2. **The analyzed prose is stored on the scene** (`Scene.metadata_json`'s
+   `source_text` — an existing column, no schema change). Decision 3 says
+   re-analyze must not re-cut the text, and that turns out to be a correctness
+   requirement, not an optimization: **the segmenter is not round-trippable.**
+   It returns the INSIDE of a quoted span, so blocks written from raw row text
+   would lose the manuscript's quote marks — and re-segmenting quoteless text
+   finds zero dialogue, collapsing the whole chapter to narration on the second
+   run. Two guards: dialogue blocks are stored WITH their quote marks (the pair
+   the source actually used), and the exact analyzed text is kept so a
+   re-analyze reproduces the split. Editing or adding a block drops the stored
+   copy, because it then describes a chapter that no longer exists.
+3. **No `<AttributionSpeakerCell>`** (§6 step 11). It cannot exist: after
+   decision 6 both surfaces render the same three things — a speaker dropdown,
+   the source chip, a confidence readout — but Studio spreads them across three
+   `<td>`s and the Lab packs them into one flex span. A component can't mount
+   in three cells at once. The shared vocabulary ships as the canonical chip
+   class + `services/attribution.js`; the chip's title carries the same legend
+   text the Studio table shows in full.
+
+### Three things the build found
+
+- **Imported projects had no Narrator at all.** `create_project` made one;
+  `_materialize_standard` never did — so every book that arrived from
+  JustWrite (the primary workflow) had nothing for decision 4 to bind to.
+  Both paths now call `_ensure_narrator`.
+- **A speaker the model invents would fail the FK and kill the run.**
+  `Block.persona_id` is a foreign key, and the model answers with ids from the
+  cast it was given but nothing stops it inventing one. The persist step
+  validates against the project's cast; an unrecognized name leaves the line
+  unplaced, which is exactly what the unplaced banner and the render blocker
+  are for. Caught by `test_extraction_stream.py`, which had been passing a
+  fictional `"mara"`.
+- **`floored_from` no longer displays.** It was per-run data that was never
+  stored, and the table now always reads from blocks. The `floored` chip's
+  tooltip says what happened instead. Restoring the "from X" audit line would
+  need a column; not built.
+
+### Two deliberate departures from the old UI
+
+- **"unknown" left the speaker dropdown.** It was a value you could pick, and
+  `UpdateBlockRequest` reads a null `persona_id` as "unchanged", so choosing it
+  could never have saved. Unplaced is a state the pipeline leaves behind, not a
+  choice; the way out is the dropdown or the bulk button.
+- **The Kind column is derived** (`source == "narration"`), so a hand-corrected
+  narration row now reads as dialogue. Cosmetic, and the alternative was
+  storing a field nothing consumes — §7.
+
+### Still open
+
+§8's three gaps are unchanged and none are closed here: single-quoted
+manuscripts still segment to zero dialogue, the anchor-vs-LLM disagreement
+signal is still computed and dropped (both in `docs/dev/IDEAS.md`), and
+ChapterView's Script column still counts blocks rather than reading
+`Block.source` — now trivially fixable, still not scoped.
+
+---
+
+## 11. The blast-radius sweep — six defects the plan could not have found
+
+The first build passed its gate and was still wrong in six places. Every one
+was a **consequence of a change**, not a property of the old code, and the plan
+never asked that question: it verified the diagnosis, never the fix's
+dependents. The rule that came out of it is now in `~/.claude/rules.md` — a
+change that alters behavior is not done until it lists, per change, every
+caller of what changed, every producer of the data being deleted, and every
+exception already living on that path, each as a pasted grep.
+
+Run that way, the sweep is finite. It found:
+
+| # | Found by asking | Defect |
+|---|---|---|
+| 1 | Which blocks are *legitimately* speaker-less? | **Podcast markers refused to render, forever.** Music/ad lines import speaker-less on purpose (`projects_api._materialize_standard`), and `ChapterView.vue:586` already excludes them *because not doing so once showed "unassigned speakers" forever*. The new refusal counted them. |
+| 2 | Who calls the function I made strict? | **ACX QC and M4B export both hard-failed.** `project_qc` → `assemble_project` → `render_scene_to_wav`. One unplaced line in chapter 40 killed the report for chapters 1–39. |
+| 3 | What else lives on a Block besides text? | **`metadata.source_ref` died in the re-cut** — re-import merges on it (`_reimport_update`'s `by_ref`), so the first analyze silently made a re-import duplicate the whole chapter. The exact failure this plan exists to end, re-entering through the import door. |
+| 4 | (same question, asked exhaustively instead of once) | **`Block.direction` died too** — the performance note, seeded by import and hand-written in Chapters. Authored content, dropped without a word. |
+| 5 | What happens when the run returns nothing? | **An empty result wiped the chapter.** No rows → the in-place test fails → the re-segment path deletes every block and writes none back. |
+| 6 | Does the dedupe rule I'm relying on actually dedupe? | **Two Narrators.** `ensure_project_persona` dedupes on (imported_from, imported_id), NOT on name, and `docs/import-and-export.md:50` shows a book shipping its own `"Narrator"` character. |
+
+Two more came from the same sweep and were fixed with them: the re-wrap
+invented a closing quote for dialogue the segmenter had matched *unclosed*
+(`segmentation.py:22`), putting punctuation in the manuscript the author never
+wrote; and the `source_ref` carry-over compared a raw join against the
+renderer's `proseFromBlocks`, which trims and drops empties — one blank block
+would have silently skipped the carry-over for a whole chapter.
+
+### Where the policy split, and why that is not a contradiction
+
+The refusal is not uniform, deliberately:
+
+- **M4B export refuses.** Shipping a book quietly missing lines is the failure
+  the whole thing exists to prevent.
+- **ACX QC reports.** It measures, it does not ship. A book spends most of its
+  life half-cast; dying on the first unready chapter makes the tool useless for
+  the middle of every job. Unready chapters come back `ok: false` with a `note`
+  saying why — never as a pass.
+- **The cache-stats probe stays lenient.** It answers "how much is cached" and
+  runs on every Home/Studio visit.
+- **Markers are exempt everywhere.** They are direction, not speech; they never
+  produced audio and their absence is not a missing line.
+
+The adopted Narrator is likewise not `is_builtin` — it came from the book, not
+from us, so it stays deletable. `role_label` is what carries "this is the
+narrator", and that is what every reader checks.
+
+### Known and accepted, not fixed
+
+- **`RenderJobBlock.block_id` is CASCADE**, so a re-cut drops a render job's
+  per-block recovery rows. Job bookkeeping, not user work — takes are what the
+  guard protects.
+- **The render-job runner has its own resolver** and does not go through the
+  refusal. It fails an unattributed block visibly rather than dropping it, so
+  decision 5's guarantee holds by a different route.
+- **An in-place re-analyze has no undo.** A bad run overwrites a good one
+  except on corrected rows. That is the cost of auto-persist (decision 2).

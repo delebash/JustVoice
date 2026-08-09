@@ -112,32 +112,6 @@ GO: needed.
 deep exhaustive audit — *"for now we are not doing jv harness or deep audit i
 want to finish all features and complete the jv llm runner conversion."*
 
-### The Script tab loses every analysis, and duplicates the chapter if you save one
-
-STATE: DECIDED 2026-08-08 — nine questions, each ruled by the user separately.
-Every finding, cite and phase lives in `docs/plans/2026-08-08-script-tab-restore.md`,
-code-verified against `5ee7d3a`. Read it first; it exists so nothing is re-derived.
-WHY: three confirmed breaks — the analysis is wiped on chapter change and never
-rehydrated (`StudioView.vue:955-959`); Apply duplicates the chapter, because its
-text comes FROM the blocks it then re-POSTs (`:1091-1125`+`:941-953`); narration
-gets `persona_id = null` (`:1099`) and null-persona blocks are silently skipped at
-render (`render_chapter_api.py:99-109`), so narration never reaches the audio.
-THE RULINGS (only the conversation holds these): persist on Analyze, derive
-"analyzed" from `Block.source`, no schema change · re-analyze never re-cuts the
-text and skips rows the user corrected · bind the Narrator persona · render stops
-and lists unknowns, with one-click assign-all · build the speaker dropdown on
-EVERY row + bulk unknown→Narrator · Kind column derived from `source` · share a
-canonical chip + helpers module + one speaker cell · the source word is
-`corrected` · bugs before polish.
-NOT: mounting the Lab's `AttributionResult` in Studio (column-tuned layout;
-design-law #7) · one shared row component (`<tr>` vs `<div>`) · a change-kind
-toggle (nothing consumes or stores `kind`) · split/merge/reorder in pass one
-(they change block count; `Take.block_id` is CASCADE, `models.py:297`) · adding
-chapter-loading to the Lab (it already has it, `labTestData.js:194-207`) · any DB
-migration (seeds only, the user resets).
-BUILT: nothing. OPEN: the whole build, phased in §6 of the plan doc; `docs/studio.md:20-21` is wrong today and changes with it.
-GO: needed — decisions taken, build NOT authorized.
-
 ### VRAM: STOP AND THINK before any arbiter wiring
 
 STATE: the 2026-07-04 decision stands (one shared VRAM budget family-wide; an
@@ -196,7 +170,183 @@ two sources are verified (measurements record `vram_total_mb`; `compute_fit`
 prices an on-disk gguf). llm-busy lands in the KIT dispatch layer (JW inherits
 the protection free); tts/stt-busy at the manager chokes. Your calls on Q1–Q8
 are the gate. NO code before those decisions.
-GO: needed — the decisions, then the wiring gets its own go.
+DECIDED (2026-08-08, round 1 — user words verbatim: *"q1 your rec, q2 how does
+this work are you adding gui it sound good but how does it really work dont
+likme stuff that is hidden or hardocded, q3 your rec, q4 your rec, q5 i dont
+understnad your rec, q6 your rec, q7 this was suppored to already be done the
+grouping so that anything synthized by engine got grouped together, that is not
+just chapters but if you runn multople chapters it need to take wahter is being
+run or queed to be run and gourp it effectiantly, you need to think on this
+again and show me what you find, q8 your rec, no coding yet"*):
+**Q1 ✓** budgeted + never-evict-busy · **Q3 ✓** claim line + event-driven
+eviction toasts, no predictive warnings · **Q4 ✓** one budget strip on the
+Speech-engines tab, one endpoint · **Q6 ✓** warm-boot flip as the wiring's
+last step, seeds-only · **Q8 ✓** multi-resident engines recorded, NOT built.
+**Q2 OPEN** — mechanics re-explained (engine FACTS in manifests: cpu_adequate
+beside vram_min_mb/gpu_runtimes; the operator PREFERENCE is a real setting
+`engines.engine_overrides[id].device` auto|cuda|cpu with a Device select on
+each Speech-engines card; resolution in the ONE load door; resolved device +
+reservation always shown on card/strip/toast; today's hidden torch greedy-cuda
+is the thing being REMOVED) — DECIDED round 2, user: *"q2 ok"*.
+**Q5 OPEN** — re-explained (the admission's "how much does this engine need"
+number comes from the manifest's declared vram_min_mb; it is a first guess —
+the spawn OOM back-off is the real safety net; the NVML measure-after-load
+subsystem stays cut, parked in IDEAS) — DECIDED round 2, user: *"q5 your rec"*.
+**Q7 REOPENED and SWEPT** (go round 2: *"i did not mean to sotp that sweep …
+go and finis anwwering quesitns"*) — full findings + design in §7 of the plan
+doc. The short truth: NOTHING groups anywhere (all five multi-line producers
+verified sequential — scene render, M4B assembly, voiceline ZIP, the Lines
+CLIENT loop, singles; every one funnels through per-line
+`engine.load("auto")`); the user's "supposed to already be done" memory is
+RIGHT twice over — the design freeze shipped `RenderJob`/`RenderJobBlock`
+tables (`database/models.py:330-364`, DESIGN_FREEZE §3.7) with NO orchestrator
+ever built (exports-only, dead in every DB), and Decision 13 of the 2026-06-20
+shared-ai-stack plan promised job-level render/batch settings (parallel
+workers, sub-batching, batch seed) that have ZERO code hits; engine-grouping
+itself was never planned before this doc. Bonus debt found: Generation's
+active-status machine (queued|loading_model|generating) is set by NOBODY —
+both creators write "completed" directly, `active_tasks_api.py:51` filters on
+states that never occur. REC (awaits the word): Option B in §7 — ONE
+synthesis scheduler, engine-major across the whole pending pool; Stage 1 the
+in-process scheduler core replacing wiring step 7 (producers submit sets and
+wait; interactive singles jump at line boundaries); Stage 2 resurrect
+RenderJob as the persistent face (retry-failed, resume, Lines client loop
+retires). Sub-batching stays distinct (within-engine perf, IDEAS).
+PASS 2 (*"think on the desing again"*, same day — §7b of the plan doc): found
+a LIVE defect — the synth endpoints are async-def with sync bodies over sync
+httpx (`manager.py:999`), so a chapter render blocks the ENTIRE server (even
+accepting an Analyze; §4's mid-render story is impossible today — the
+scheduler is what makes it real); found the big simplification — the render
+cache is the hand-off (all producers verified `use_cache=True`, disk tier
+never auto-evicts, `cache.py:96-135`), so the scheduler is a WARM PASS with
+no result plumbing and assembly code unchanged; M4B needs WHOLE-submission
+grouping (per-chapter was insufficient even single-producer); drain policy
+concretized (oldest-pending-line engine first + pool-wide free-riding +
+interactive jumps at line boundaries, no knobs); and the freed loop FORCES
+all synthesis through the scheduler (the accidental serialization is the only
+thing preventing load-terminates-engine-mid-synth today; previews are a sixth
+synth door, `voice_preview_api.py:168`). Shape unchanged: Option B, two
+stages. One pass-1 claim corrected: cross-producer line-level interleave
+exists only between per-line-request flows; whole-request producers serialize
+accidentally by blocking the loop.
+PASS 3 (*"think on it again"*, same day — §7c): NO reversals. Three
+corrections: Stage 1 is INDEPENDENT of the VRAM wiring and REC'd to ship
+FIRST (the wiring's admission/busy plug into the scheduler's switch points
+afterward); the Lines re-render stays UNgrouped until Stage 2 (per-line
+requests = one-line sets — the named gap that makes Stage 2 debt, not
+polish); the synth funnel covers MANAGED engines only (external/remote-API
+singles stay direct — nothing to kill, nothing to group). Two alternatives
+rejected on record: the `def`-endpoints one-keyword freeze fix (creates the
+mid-synth kill race it cannot manage) and a manager synth/load lock (prevents
+the kill, buys no cooperation).
+PROCESS RULE (2026-08-08, mid-turn, verbatim): *"never do anycoding unless i
+give you exact word 'go' never do anyting research unless i give go"* — both
+gates are the literal word.
+Q7 DECIDED round 3, user verbatim: *"your rec go"* (2026-08-08, after pass 3)
+— Option B, scheduler-FIRST order. The go covers STAGE 1: the SynthScheduler
+(pool + worker thread + engine-major drain per §7b P2-4 + submit-and-wait +
+interactive jump), the managed-synth funnel (§7c P3-3 scope), and the manager
+per-kind guard as safety back-stop. Stage 2 (RenderJob resurrection) and the
+VRAM wiring each still need their own go.
+BUILD-PREP DISCOVERY (§7d of the plan doc): `render_line` has NO local-engine
+door — the registry it drives holds ONLY external cloud providers
+(`app.py:438`; managed adapters were never re-registered when engines became
+plugins), so chapter/M4B/QC/ZIP/Lines/take-re-roll 404 for EVERY local voice
+and only ever worked with cloud voices; the new-voice preview door breaks the
+same way (`voice_preview_api.py:134`); tests never caught it (fakes occupy
+the registry slot production leaves empty). Stage 1 opens with the managed
+bridge in render_core (= wiring step 2's render_core half, landing early).
+STAGE 1 BUILT 2026-08-08, gates green (ruff clean · 453 pytest, all passing):
+the managed bridge — `render_core.py` render_line/probe_line_cached route
+managed engines via the manager (registry branch stays first: external
+providers + test fakes untouched), tag-strip from manifest CAPABILITIES,
+cloned-voice reference WAV via `resolve_audio_prompt_for_stored` (moved to
+render_core, generate_api wraps it) · the scheduler — `synth_scheduler.py`
+(SynthScheduler + SetHandle + warm_lines/warm_specs, engine-major oldest-first
+free-riding drain, interactive jump, abort-on-first-error, cancel-withdraws) ·
+the guard — `engines/manager.py` per-kind `_activity` locks around
+synth/clone/transcribe and load/unload terminates (`_unload_kind` refactor) ·
+the conversions — render_chapter + QC + M4B (`collect_project_line_kwargs`,
+strict-mirroring, aborts warm if any scene refuses) + voiceline ZIP
+(`collect_block_specs`, [] on first unvoiced block) warm sets;
+render_block / generate-managed / managed new-voice preview are interactive
+singles through the one synth door; all five endpoints now await instead of
+blocking the event loop · tests — `test_synth_scheduler.py` (9),
+`test_render_managed_bridge.py` (7), `test_engine_activity_guard.py` (2).
+NOTE: built alongside the parallel Script-tab-restore session's uncommitted
+strict-resolve work in the same tree (its strict=True refusal composes with
+the warm; the book-warm mirrors it); NOT committed — the tree carries both
+efforts and the commit word is the user's.
+STAGE 2 GO GIVEN 2026-08-08, user verbatim: *"go"* (immediately after the
+Stage-1 report listing Stage 2 first among the open gos — the decided
+scheduler-first order's next step). Scope per §7 Finding 3 + §7c P3-2:
+resurrect `RenderJob`/`RenderJobBlock` as the persistent face — job API
+(create/status/cancel/resume), runner submits every block as its OWN
+one-item set so the pool groups engine-major while failures isolate
+per-block, per-block Generation+Take persistence identical to the single
+door, boot sweep marks interrupted jobs paused, resume re-runs
+failed+pending only, and the LinesView client loop retires onto one job
+POST + poll with real n/m on the kit task.
+STAGE 2 BUILT 2026-08-09, gates green (ruff · biome · 48 vitest · vite build ·
+smoke 15/15 zero JS errors · pytest FULL SUITE 469 passed, zero failures —
+both sessions' work green together): `render_jobs.py` (create_job
+scope project|scene|blocks · `persist_block_take` = THE one block-persistence
+shape, takes_api refactored onto it · runner submits each block as its own
+one-item set — engine-major grouping pool-wide, per-block failure isolation ·
+counters recomputed from rows so resume never lies · cancel withdraws pending
+at the line boundary via live handles · `sweep_stale_jobs` boot sweep wired in
+`app.py` after init) · `api/render_jobs_api.py` (POST create / GET
+?include_blocks / cancel / resume) · `LinesView.vue` re-render = one job POST
++ 1s poll with real n/m, Cancel → job cancel, partial-failure toast, button
+disabled-not-spinning · `docs/lines.md` updated · `tests/test_render_jobs.py`
+(8: complete+persist, failure isolation, resume-only-unfinished,
+cancel-withdraws, boot sweep, empty scope, API roundtrip, unknown-ids).
+Composed live with the parallel Script-tab session's moving edits: warm
+mirrors QC's skip_unrenderable/strict split (collector grew the flag); their
+render_scene_to_wav strict= signature landed mid-build (two test stubs
+updated to `**kw`, their session then evolved the same tests further). NOT
+committed — the tree carries both efforts; the commit word is the user's.
+GO: Stages 1+2 BUILT · the VRAM wiring still needs its own go · a job-list /
+resume UI surface beyond the Lines button was NOT ordered and is not built.
+
+### Speech-engines model management converges on the kit's download/load GUI + machinery
+
+STATE: ORDERED 2026-08-08, user words verbatim: *"the model download load
+unload for speech engines should be same gui desing and llm runner a download
+button thre dot menue, and all the other feature such as model loaded unloaded
+ect, can we resues any llm stuff i think that was in plane to resue the
+progress downloadeder since llm has download manager, think or resues instead
+of rewrite and wwe can consolidate, both speech engines nad llm runner
+download load and unload models we should be able to use same mechanisms"*.
+Think delivered same day: the 2026-06-20 cutover boundary DECIDED TTS/STT
+sections stay native while LLM went to llm-ui
+(`docs/plans/archive/2026-06-20-engines-llmui-cutover-boundary.md:234-235`) —
+this order revisits that boundary. Reuse has three layers: (1) GUI
+vocabulary — the kit card grammar (download button, three-dot overflow menu,
+loaded/unloaded state chip, inline progress row) applied to the
+Speech-engines cards; pure renderer, highest value, kit pieces that exist:
+`LuModelCatalog` (model rows with download/load/unload/state),
+`LuModelPicker`, `LuEngineInstallButton`/`LuEngineUpdateButton`,
+`LuRunnerBinaries`; (2) client task machinery — ALREADY shared since
+2026-08-08 (withAiTask + `setProgress(done,total,text)` + AiTaskStrip + the
+`bridgeJobProgress` install bridge in `SpeechEnginesTab.vue`); (3) the server
+download manager — a REAL open design question: the kit downloads
+ggufs/runner binaries with its own progress machinery, JV downloads HF
+snapshots + builds venvs via its own `/v1/engines/*` job system; whether one
+download manager can own both needs its own pass, no claim made.
+WHY: two model-management surfaces in one app answering the same verbs
+(download/load/unload/delete/progress) with different control vocabularies is
+exactly the divergence class the family convention exists to kill; reuse
+instead of rewrite is the standing law.
+NOT: moving TTS engines INTO the kit's runner/catalog (they are not llama.cpp
+children — the pool stays JV's); claiming the server halves are one system
+today (they are not).
+BUILT: nothing — think only.
+OPEN: the design pass — inventory `SpeechEnginesTab.vue`'s current controls
+against `LuModelCatalog`'s grammar; decide per piece import-as-is vs promote
+a shared kit primitive; then the server-half reuse question as its own
+decision.
+GO: needed — think recorded; design + build wait on the word.
 
 ## Features the docs promise and the code does not do
 

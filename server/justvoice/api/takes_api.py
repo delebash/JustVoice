@@ -286,9 +286,12 @@ async def render_block(block_id: str, db: Session = Depends(get_db)) -> TakeResp
     Clears derived staleness because the new generation carries the
     block's current text."""
     from ..app_state import get_state
-    from ..database.models import Block, Generation, Persona, Scene
+    from ..database.models import Block, Persona
     from ..errors import not_found
     from ..export_voicelines import _render_block_production
+    from ..render_core import _resolve_engine_for_voice
+    from ..render_jobs import persist_block_take
+    from ..synth_scheduler import get_scheduler
 
     block = db.query(Block).filter(Block.id == block_id).first()
     if block is None:
@@ -299,25 +302,22 @@ async def render_block(block_id: str, db: Session = Depends(get_db)) -> TakeResp
         else None
     )
     state = get_state()
-    wav = _render_block_production(state, persona, block)
-
-    scene = db.query(Scene).filter(Scene.id == block.scene_id).first()
-    gen = Generation(
-        block_id=block.id,
-        persona_id=block.persona_id,
-        project_id=scene.project_id if scene else None,
-        chapter_id=block.scene_id,
-        text=block.text,
-        engine=state.engines.current() or "managed",
-        status="completed",
-        source="chapter_render",
-        duration_sec=round((len(wav) - 44) / (2 * 16000), 3) if len(wav) > 44 else None,
+    # The render rides the scheduler as an interactive single (§7b P2-6 —
+    # one synth door) and the endpoint awaits instead of blocking the loop.
+    voice = None
+    if persona is not None:
+        store_p = state.personas.get(persona.id)
+        if store_p is not None:
+            voice = store_p.voice_id or None
+    engine_id = (_resolve_engine_for_voice(state, voice) if voice else None) or f"?voice:{voice}"
+    handle = get_scheduler().submit(
+        [(engine_id, lambda: _render_block_production(state, persona, block))],
+        interactive=True,
     )
-    db.add(gen)
-    db.flush()
-    take = Take(block_id=block.id, generation_id=gen.id, is_default=True)
-    db.add(take)
-    db.commit()
-    db.refresh(take)
+    await handle.wait_async()
+    handle.raise_if_failed()
+    wav = handle.items[0].result
+
+    take = persist_block_take(db, state, block, wav)
     return TakeResponse.model_validate(take)
 

@@ -9,7 +9,7 @@ JustVoice serves five distinct audiences. Pick your primary at first launch — 
 **Flow**:
 1. **Import** the manuscript (JustWrite export, or any of the supported [import formats](import-and-export.md)).
 2. **Cast** — pick voices for every character via the Voices tab. Smart-assign auto-matches; review.
-3. **Script** — let the AI work out who speaks each line. Manually correct any misattributions in the Script tab. Corrections feed back into subsequent re-analyses.
+3. **Script** — let the AI work out who speaks each line; the result saves onto the chapter. Correct any misattributions in the Script tab — every row is assignable, narration included, and your corrections feed back into subsequent re-analyses. Anything left unplaced blocks the render rather than going missing from the audio.
 4. **Render** — batch render every chapter. ACX [mastering.md](mastering.md) preset applies automatically.
 5. **Export** — M4B audiobook file with chapter markers, muxed server-side from the Export tab. See [Audiobook → M4B](import-and-export.md#audiobook--m4b).
 

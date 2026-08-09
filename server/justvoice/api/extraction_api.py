@@ -2,10 +2,17 @@
 """POST /v1/scenes/{id}/analyze — speaker attribution.
 
 Phase 3 / Slice 1 of the Profile-kill plan. Runs the extraction
-pipeline against scene text, returns attribution rows ready for the
-Studio Script tab to render. Does NOT auto-persist the result as Block
-rows — the user reviews + corrects before clicking "Apply", which
-calls POST /v1/scenes/{id}/blocks separately.
+pipeline against scene text and returns attribution rows for the Studio
+Script tab.
+
+**The scene-scoped routes PERSIST** (the Script-tab restore, 2026-08-08 —
+docs/plans/2026-08-08-script-tab-restore.md decision 2). Until then the
+analysis lived in one renderer ref, so switching chapters threw it away and
+a separate "Apply" button re-POSTed the rows as NEW blocks on top of the
+ones the text came from — analyzing twice doubled the chapter. Now the run
+writes itself onto the scene's blocks, "this chapter is analyzed" IS
+`Block.source` being non-null, and Apply is gone. The Lab's text routes
+(/v1/extraction/*) have no scene and still persist nothing.
 
 When no LLM provider is registered, returns HTTP 501 with the
 actionable message from LLMNotConfiguredError.
@@ -29,8 +36,8 @@ from llm_runner.llm import LLMNotConfiguredError
 
 from ..app_state import get_state
 from ..database import get_db
-from ..database.models import Persona, ProjectPersona, Scene
-from ..errors import not_found
+from ..database.models import Block, Persona, ProjectPersona, Scene, Take
+from ..errors import conflict, not_found
 from ..extraction import AnalyzeRequest, analyze_scene
 from ..extraction.pipeline import auto_route
 
@@ -80,6 +87,20 @@ class RunUsage(BaseModel):
     model: str = ""
 
 
+class PersistInfo(BaseModel):
+    """What the run wrote onto the scene's blocks. None on the Lab's
+    text routes, which have no scene to write to."""
+
+    # "in_place" — every row PATCHed the block it came from.
+    # "resegmented" — the blocks were replaced (first analyze of an
+    # imported chapter; the segmenter cuts paragraphs into spans).
+    mode: str
+    written: int = 0
+    # Rows left alone because the user had already corrected them
+    # (decision 3 — re-analyze never overwrites a human answer).
+    kept_corrected: int = 0
+
+
 class AnalyzeSceneResponse(BaseModel):
     scene_id: str
     rows: list[AttributionRowResponse]
@@ -93,6 +114,8 @@ class AnalyzeSceneResponse(BaseModel):
     raw_llm: str | None = None
     # None when no LLM call ran (anchors-only / no dialogue).
     usage: RunUsage | None = None
+    # What landed in the database (scene routes only).
+    persisted: PersistInfo | None = None
 
 
 def _resolve_corrections(project_id: str, db: Session, *, limit: int = 12) -> list[dict]:
@@ -143,6 +166,252 @@ def _resolve_cast(scene_id: str, db: Session) -> list[dict]:
     ]
 
 
+# ── Persistence — the analysis IS the chapter's blocks ───────────────────
+#
+# Decision 2 of the Script-tab restore: no new table, no new column, no
+# renderer-side store. A block that carries a `source` was attributed; the
+# Script tab rebuilds its table from `persona_id` + `extraction_confidence`
+# + `source` every time you open the chapter.
+
+
+def _narrator_persona_id(db: Session, project_id: str) -> str | None:
+    """The project's Narrator persona — decision 4: narration rows bind to
+    it instead of null.
+
+    Every audiobook/podcast project gets one at creation
+    (projects_api.create_project) and it sat in the cast unused: nothing
+    ever bound it to a block, so every narration block had persona_id null
+    and render_chapter_api dropped it silently. Matched by the cast's
+    role_label first, then by name for projects whose Narrator was renamed
+    in but re-linked without the label."""
+    row = (
+        db.query(ProjectPersona.persona_id)
+        .filter(
+            ProjectPersona.project_id == project_id,
+            ProjectPersona.role_label == "narrator",
+        )
+        .first()
+    )
+    if row:
+        return row[0]
+    row = (
+        db.query(Persona.id)
+        .join(ProjectPersona, ProjectPersona.persona_id == Persona.id)
+        .filter(ProjectPersona.project_id == project_id)
+        .filter(Persona.name.ilike("narrator"))
+        .first()
+    )
+    return row[0] if row else None
+
+
+# The quote pairs segmentation.py recognizes, in its own order.
+_QUOTE_PAIRS = (("“", "”"), ('"', '"'))
+
+
+def _block_text(kind: str, text: str, source_text: str) -> str:
+    """The text a row stores as its block — dialogue keeps its quote marks.
+
+    The segmenter returns the INNER text of a quoted span, so writing that
+    verbatim would strip the manuscript's quotes: the chapter would read
+    wrong in Chapters, and re-segmenting the stored blocks would find zero
+    dialogue (segmentation.py matches quote marks and nothing else).
+
+    Restore the span the source ACTUALLY had — never a tidier one. The
+    segmenter has a branch for dialogue that opens and runs to the end of a
+    line without ever closing (`segmentation.py:22`); handing that back a
+    closing quote would put punctuation in the manuscript that the author
+    did not write."""
+    if kind != "dialogue":
+        return text
+    for open_q, close_q in _QUOTE_PAIRS:
+        if f"{open_q}{text}{close_q}" in source_text:
+            return f"{open_q}{text}{close_q}"
+    for open_q, _close_q in _QUOTE_PAIRS:
+        if f"{open_q}{text}" in source_text:
+            return f"{open_q}{text}"
+    return f'"{text}"'
+
+
+def _json_meta(raw: str | None) -> dict:
+    try:
+        return json.loads(raw or "{}")
+    except (TypeError, ValueError):
+        return {}
+
+
+def _scene_meta(scene: Scene) -> dict:
+    return _json_meta(scene.metadata_json)
+
+
+def _inherited(blocks: list, text: str) -> list[tuple[dict, str | None]]:
+    """Everything a paragraph's block carries that its segments must inherit.
+
+    Re-cutting a chapter DELETES the blocks, and a block is not just text:
+
+      * `metadata.source_ref` — the import's stable line id. Re-import
+        merges on it (`projects_api._reimport_update`'s `by_ref`) and
+        voiceline export names files from it. Lose it and a re-import brings
+        every paragraph back as new, duplicating the chapter — the exact
+        failure this whole change exists to end.
+      * `metadata.marker` — a podcast music/ad line, speaker-less by design.
+        Every attribution check has to skip those.
+      * `direction` — the performance note. The import seeds it from the
+        source's emotion/style, and ChapterView lets the user write it by
+        hand. It is authored content; dropping it silently is not an option.
+
+    Returns one entry per PARAGRAPH of `text`, so a row's `paragraph_idx`
+    indexes it. Empty when `text` isn't the stored blocks joined back
+    together, because then paragraph N and block N are unrelated.
+
+    The join must match the renderer's `proseFromBlocks`
+    (`src/services/attribution.js`) EXACTLY — it drops empty blocks and
+    trims. Comparing against a raw join instead would let one blank block,
+    or a trailing newline, silently skip the carry-over for a whole
+    chapter."""
+    from ..extraction.segmentation import split_into_paragraphs
+
+    carried = [b for b in blocks if (b.text or "").strip()]
+    if text.strip() != "\n\n".join(b.text for b in carried).strip():
+        return []
+    out: list[tuple[dict, str | None]] = []
+    for b in carried:
+        entry = (_json_meta(b.metadata_json), b.direction)
+        # A block holding a blank line splits into more than one paragraph.
+        out.extend([entry] * max(1, len(split_into_paragraphs(b.text))))
+    return out
+
+
+def _persist_attribution(db: Session, scene: Scene, rows: list, text: str) -> PersistInfo:
+    """Write an analyze run onto the scene's blocks. Caller commits.
+
+    Two paths:
+
+    * **in place** — the split matches the blocks already stored, so each
+      row updates the block it came from. This is every re-analyze: the run
+      re-decides speakers against a fresh cast and fresh corrections without
+      touching the text or the block count (decision 3). Blocks the user has
+      corrected are skipped — a human answer outranks the model's.
+    * **re-segment** — the split does NOT match. That is the first analyze
+      of an imported chapter: import writes one block per paragraph, and the
+      segmenter cuts each paragraph into narration/dialogue spans, so N
+      blocks become M rows. The blocks are replaced.
+
+    The re-segment path is REFUSED once the scene has takes: Take.block_id
+    is ON DELETE CASCADE, so replacing blocks would destroy approved audio,
+    labels and lineage with no warning.
+
+    The text that produced these rows is stored on the scene, because the
+    split is only reproducible from it — joining the stored blocks back
+    together loses the paragraph structure that anchoring and propagation
+    depend on (both are same-paragraph only)."""
+    blocks = (
+        db.query(Block).filter(Block.scene_id == scene.id).order_by(Block.position).all()
+    )
+    if not rows:
+        # Nothing came back — an empty or whitespace-only text, or a pipeline
+        # that produced no segments. Falling through would take the re-segment
+        # path and delete every block without writing one back, wiping the
+        # chapter on a run that decided nothing.
+        raise conflict(
+            "That run produced no lines to attribute, so nothing was saved. "
+            "Check the chapter has text."
+        )
+    narrator_id = _narrator_persona_id(db, scene.project_id)
+    # The speakers the model was actually offered. It answers with ids from
+    # the cast it was given, but nothing stops it inventing one — and
+    # Block.persona_id is a foreign key, so an invented id would fail the
+    # whole insert. An unrecognized name means the line is unplaced, which
+    # is what the Script tab and the render blocker are there for.
+    known = {
+        pid
+        for (pid,) in db.query(ProjectPersona.persona_id).filter(
+            ProjectPersona.project_id == scene.project_id
+        )
+    }
+
+    def persona_for(speaker: str) -> str | None:
+        if speaker == "narrator":
+            return narrator_id
+        if not speaker or speaker == "unknown":
+            return None
+        return speaker if speaker in known else None
+
+    texts = [_block_text(r.kind, r.text, text) for r in rows]
+    in_place = len(blocks) == len(rows) and [b.text for b in blocks] == texts
+
+    meta = _scene_meta(scene)
+    meta["source_text"] = text
+    scene.metadata_json = json.dumps(meta)
+
+    def with_audit(existing: dict, row) -> str | None:
+        """Keep the block's own metadata, and record the pre-floor pick.
+
+        `floored_from` is the model's answer before the confidence floor
+        discarded it — the single best "check this row" hint in the payload,
+        and the only part of a run that had nowhere to live once the Script
+        table started reading from blocks instead of the response."""
+        meta = dict(existing)
+        if row.source == "floored" and row.floored_from:
+            meta["floored_from"] = row.floored_from
+        else:
+            meta.pop("floored_from", None)
+        return json.dumps(meta) if meta else None
+
+    if in_place:
+        kept = 0
+        for block, row in zip(blocks, rows, strict=True):
+            if block.source == "corrected":
+                kept += 1
+                continue
+            block.persona_id = persona_for(row.speaker)
+            block.extraction_confidence = row.confidence
+            block.source = row.source
+            block.metadata_json = with_audit(_json_meta(block.metadata_json), row)
+        return PersistInfo(mode="in_place", written=len(rows) - kept, kept_corrected=kept)
+
+    # Read the outgoing blocks BEFORE deleting them — attribute access on a
+    # deleted instance after flush is not something to rely on.
+    inherited = _inherited(blocks, text)
+
+    if blocks:
+        takes = (
+            db.query(Take.id)
+            .join(Block, Block.id == Take.block_id)
+            .filter(Block.scene_id == scene.id)
+            .count()
+        )
+        if takes:
+            raise conflict(
+                f"This chapter's text no longer matches its {len(blocks)} rendered "
+                f"blocks, so analyzing would have to re-cut it — and that deletes "
+                f"the {takes} take(s) already recorded against them. Delete the "
+                f"takes (or re-render after) if you want the new split."
+            )
+        for block in blocks:
+            db.delete(block)
+        db.flush()
+
+    for i, (row, block_text) in enumerate(zip(rows, texts, strict=True)):
+        parent_meta, parent_direction = (
+            inherited[row.paragraph_idx]
+            if row.paragraph_idx < len(inherited)
+            else ({}, None)
+        )
+        db.add(
+            Block(
+                scene_id=scene.id,
+                position=i,
+                text=block_text,
+                persona_id=persona_for(row.speaker),
+                direction=parent_direction,
+                extraction_confidence=row.confidence,
+                source=row.source,
+                metadata_json=with_audit(parent_meta, row),
+            )
+        )
+    return PersistInfo(mode="resegmented", written=len(rows))
+
+
 @router.post(
     "/v1/scenes/{scene_id}/analyze",
     response_model=AnalyzeSceneResponse,
@@ -182,6 +451,9 @@ async def analyze_scene_endpoint(
         log.exception("extraction pipeline failed")
         raise HTTPException(status_code=502, detail=f"extraction failed: {e}")
 
+    persisted = _persist_attribution(db, scene, rows, body.text)
+    db.commit()
+
     return AnalyzeSceneResponse(
         scene_id=scene_id,
         raw_llm=raw_out.get("llm_text"),
@@ -190,6 +462,7 @@ async def analyze_scene_endpoint(
         route_source=raw_out.get("route_source", "auto"),
         confidence_floor=raw_out.get("floor", 0.7),
         usage=raw_out.get("usage"),
+        persisted=persisted,
     )
 
 
@@ -241,9 +514,26 @@ async def analyze_scene_stream_endpoint(
                 on_delta=lambda t: q.put({"delta": t}),
                 on_progress=lambda p: q.put({"progress": p}),
             )
+            # A worker thread must not touch the request-scoped Session —
+            # SQLAlchemy Sessions are not thread-safe and this one is torn
+            # down by the dependency, not by us. Open our own, the way
+            # render_chapter_api's off-request paths do.
+            from ..database.session import SessionLocal
+
+            wdb = SessionLocal()
+            try:
+                wscene = wdb.query(Scene).filter(Scene.id == scene_id).first()
+                if wscene is None:
+                    # Deleted while the model was answering.
+                    raise not_found(f"scene {scene_id}")
+                persisted = _persist_attribution(wdb, wscene, rows, body.text)
+                wdb.commit()
+            finally:
+                wdb.close()
             usage = raw_out.get("usage") or {}
             q.put({
                 "done": True,
+                "persisted": persisted.model_dump(),
                 # The family usage names, top level — the kit client normalizes
                 # exactly these (ui/src/client.js requestStream).
                 "promptTokens": usage.get("prompt_tokens", 0),
@@ -262,6 +552,11 @@ async def analyze_scene_stream_endpoint(
             })
         except LLMNotConfiguredError as e:
             q.put({"error": str(e)})
+        except HTTPException as e:
+            # The persist step's own refusals (a re-cut that would destroy
+            # takes) are already user-facing sentences — pass them whole
+            # instead of truncating them like an unexpected crash.
+            q.put({"error": str(e.detail)})
         except Exception as e:  # noqa: BLE001 — surface as an error frame, not a 500
             log.exception("extraction stream failed")
             q.put({"error": str(e)[:200]})

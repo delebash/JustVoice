@@ -183,17 +183,11 @@ async def generate(req: GenerateRequest) -> Response:
 
 
 def _resolve_audio_prompt_for_stored(stored) -> str | None:
-    """For cloned / imported voices, return the absolute path to the reference
-    WAV on disk so the engine subprocess can read it as `audio_prompt_path`.
-    For preset/designed voices (no reference clip), return None.
-    """
-    if stored.source not in ("cloned", "imported"):
-        return None
-    st = get_state()
-    path = st.voices.ref_wav_path(stored.id)
-    if not path.is_file():
-        return None
-    return str(path.resolve())
+    """Thin wrapper over render_core's resolver (moved there 2026-08-08 so
+    the managed render bridge shares it); voice_preview imports this name."""
+    from ..render_core import resolve_audio_prompt_for_stored
+
+    return resolve_audio_prompt_for_stored(get_state(), stored)
 
 
 async def _generate_via_manager(
@@ -266,37 +260,49 @@ async def _generate_via_manager(
     # seed math below.
     effective_seed = delivery.get("seed") if delivery.get("seed") is not None else req.seed
 
-    try:
-        if len(req.text) <= max_chunk_chars:
-            audio_bytes, meta = _synth_one(req.text, effective_seed)
-            if not meta.get("is_wav_container"):
-                sr = meta.get("sample_rate") or 24000
-                channels = meta.get("channels") or 1
-                audio_bytes = write_wav_container(audio_bytes, sr, channels)
-            audio_bytes = apply_effects_chain(audio_bytes, effects)
-            return Response(content=audio_bytes, media_type="audio/wav")
+    def _do() -> Response:
+        try:
+            if len(req.text) <= max_chunk_chars:
+                audio_bytes, meta = _synth_one(req.text, effective_seed)
+                if not meta.get("is_wav_container"):
+                    sr = meta.get("sample_rate") or 24000
+                    channels = meta.get("channels") or 1
+                    audio_bytes = write_wav_container(audio_bytes, sr, channels)
+                audio_bytes = apply_effects_chain(audio_bytes, effects)
+                return Response(content=audio_bytes, media_type="audio/wav")
 
-        # Long-form path: split → per-chunk synth → crossfade-concat → WAV
-        chunks = split_text_into_chunks(req.text, max_chars=max_chunk_chars)
-        pcm_chunks: list[np.ndarray] = []
-        sample_rate = 24000
-        channels = 1
-        for i, piece in enumerate(chunks):
-            # Vary seed per chunk to avoid correlated RNG artefacts while
-            # staying deterministic for (text, seed) reproducibility.
-            chunk_seed = (effective_seed + i) if effective_seed is not None else None
-            audio_bytes, meta = _synth_one(piece, chunk_seed)
-            sample_rate = meta.get("sample_rate") or sample_rate
-            channels = meta.get("channels") or channels
-            pcm_chunks.append(_samples_from_chunk_bytes(audio_bytes, bool(meta.get("is_wav_container"))))
+            # Long-form path: split → per-chunk synth → crossfade-concat → WAV
+            chunks = split_text_into_chunks(req.text, max_chars=max_chunk_chars)
+            pcm_chunks: list[np.ndarray] = []
+            sample_rate = 24000
+            channels = 1
+            for i, piece in enumerate(chunks):
+                # Vary seed per chunk to avoid correlated RNG artefacts while
+                # staying deterministic for (text, seed) reproducibility.
+                chunk_seed = (effective_seed + i) if effective_seed is not None else None
+                audio_bytes, meta = _synth_one(piece, chunk_seed)
+                sample_rate = meta.get("sample_rate") or sample_rate
+                channels = meta.get("channels") or channels
+                pcm_chunks.append(_samples_from_chunk_bytes(audio_bytes, bool(meta.get("is_wav_container"))))
 
-        merged = concatenate_audio_chunks(pcm_chunks, sample_rate, crossfade_ms=crossfade_ms)
-        pcm_int16 = (np.clip(merged, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
-        wav_bytes = write_wav_container(pcm_int16, sample_rate, channels)
-        wav_bytes = apply_effects_chain(wav_bytes, effects)
-        return Response(content=wav_bytes, media_type="audio/wav")
-    except Exception as e:
-        raise internal(f"engine synthesize: {e}")
+            merged = concatenate_audio_chunks(pcm_chunks, sample_rate, crossfade_ms=crossfade_ms)
+            pcm_int16 = (np.clip(merged, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
+            wav_bytes = write_wav_container(pcm_int16, sample_rate, channels)
+            wav_bytes = apply_effects_chain(wav_bytes, effects)
+            return Response(content=wav_bytes, media_type="audio/wav")
+        except Exception as e:
+            raise internal(f"engine synthesize: {e}")
+
+    # Managed synthesis rides the scheduler as an interactive single — every
+    # managed synth goes through the one synth door, and the endpoint awaits
+    # instead of blocking the event loop (§7b P2-5/P2-6 of the 2026-08-08
+    # plan). The scheduler lets it jump any batch at the next line boundary.
+    from ..synth_scheduler import get_scheduler
+
+    handle = get_scheduler().submit([(engine_id, _do)], interactive=True)
+    await handle.wait_async()
+    handle.raise_if_failed()
+    return handle.items[0].result
 
 
 def _generate_via_inprocess(engine_id: str, req: GenerateRequest) -> Response:

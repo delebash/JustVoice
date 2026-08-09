@@ -142,3 +142,49 @@ def _render_block_production(state, persona, block) -> bytes:
         use_cache=True,
     )
     return write_wav_container(rl.pcm, rl.sample_rate, rl.channels)
+
+
+def collect_block_specs(state, project_id: str):
+    """(engine_id, render-callable) per voiced block in scene order — the
+    whole-project warm set for the scheduler (§7 of the 2026-08-08 plan).
+    Returns [] the moment an unvoiced block appears: the export loop raises
+    on that block, so warming past it would render audio the export never
+    reaches."""
+    from .render_core import _resolve_engine_for_voice
+
+    db = db_session.SessionLocal()
+    try:
+        scenes = (
+            db.query(Scene)
+            .filter(Scene.project_id == project_id)
+            .order_by(Scene.position)
+            .all()
+        )
+        specs = []
+        for scene in scenes:
+            blocks = (
+                db.query(Block)
+                .filter(Block.scene_id == scene.id)
+                .order_by(Block.position)
+                .all()
+            )
+            for block in blocks:
+                persona = (
+                    db.query(Persona).filter(Persona.id == block.persona_id).first()
+                    if block.persona_id
+                    else None
+                )
+                voice = None
+                if persona is not None:
+                    store_p = state.personas.get(persona.id)
+                    if store_p is not None:
+                        voice = store_p.voice_id or None
+                if not voice:
+                    return []
+                engine_id = _resolve_engine_for_voice(state, voice) or f"?voice:{voice}"
+                specs.append(
+                    (engine_id, lambda p=persona, b=block: _render_block_production(state, p, b))
+                )
+        return specs
+    finally:
+        db.close()

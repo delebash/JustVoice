@@ -15,14 +15,66 @@ the whole unassigned cast in one pass, and you accept or change per row.
 
 ## Script
 
-**Analyze** runs LLM speaker attribution over the text: every line gets a
-speaker with a confidence score. Rows the model was unsure about are the ones to
-check — a row marked `floored_from` tells you the confidence was clamped up by
-your floor setting, not earned. **Corrections teach the system**: when you fix a
-row, that correction is remembered and fed back into future Analyze runs as a
-worked example, so the same mistake stops recurring. When Analyze meets speakers
-that aren't in your cast, a **discover-speakers** banner offers to promote them
-to personas in one click.
+**Analyze** works out who speaks each line, and **saves the result onto the
+chapter**. Leave the tab, switch chapters, close the app — the analysis is
+still there when you come back, and the Script step card counts how many
+chapters are done. There is no separate "apply" step: the run *is* the save.
+
+### How it decides — and what the labels mean
+
+Attribution is four passes, and only one of them is the model. Each row's
+**Decided by** chip says which pass answered it, so you can tell a certainty
+from a guess at a glance:
+
+| Chip | What happened |
+|---|---|
+| `narration` | Not speech at all. The text outside quote marks is prose; it goes to your **Narrator** and the model is never asked about it. |
+| `tag` | A dialogue tag right next to the line named the speaker — *"…," said Hale*. Found by pattern matching, no model involved. |
+| `propagated` | The line had no tag of its own, so it inherited the speaker from the nearest tagged line **in the same paragraph**. |
+| `llm` | The model worked it out from context and was confident enough to keep. |
+| `floored` | The model answered but wasn't sure enough, so its answer was **thrown away** and the line left unplaced. The floor only ever discards a weak answer — it never promotes one. |
+| `corrected` | You set this one. Re-analyzing leaves it exactly as it is. |
+| `manual` | A block you wrote or pasted yourself. Nothing has attributed it. |
+
+The **read** note in the header (*"read with examples"* / *"read rules only"*)
+is which prompt the model got — the longer one carries worked examples, and
+JustVoice picks based on your model's size. Click **what do these labels mean?**
+for the same table in-app.
+
+### Fixing what it got wrong
+
+Every row has a speaker dropdown — narration included. That matters: a line of
+prose the model mistook for dialogue, or a dialogue line handed to the wrong
+character, are both fixed the same way. The change saves immediately, the chip
+turns to `corrected`, and **that correction teaches the next run**: your recent
+fixes are fed into the prompt as worked examples, so the same mistake stops
+recurring across the rest of the book.
+
+**Unplaced lines block the render.** A line with nobody speaking it can't
+become audio, and JustVoice will not quietly leave a sentence out of your
+audiobook. The Script tab counts them and offers one button — *Assign N
+unplaced → Narrator* — and if you go to Render first, the render stops and
+lists them with the same button.
+
+### Re-analyze
+
+Once a chapter is analyzed the button becomes **Re-analyze**. It does *not*
+re-cut the text: the chapter keeps exactly the blocks it has, and rows you
+corrected are left untouched. What changes between runs is everything around
+the model — a bigger cast means more names the pattern passes can match, and
+your corrections go into the prompt. That is what re-analyze is for: fix five
+rows, run it again, and the model applies the same reasoning to the rest.
+
+If neither the cast nor your corrections have changed, re-analyzing mostly
+burns tokens for the same answer.
+
+One case does re-cut: the **first** analyze of an imported chapter. Import
+stores one block per paragraph, and attribution needs one block per speaker
+turn, so the paragraphs are split. If the chapter already has recorded takes,
+JustVoice refuses to re-cut rather than destroy them.
+
+When Analyze meets speakers that aren't in your cast, a **discover-speakers**
+banner offers to promote them to personas in one click.
 
 ## Render
 

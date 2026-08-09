@@ -121,11 +121,25 @@ def _seed(client) -> str:
     return r.json()["project_id"]
 
 
+def _cast_everything(client, pid: str) -> None:
+    """Give every block a persona that has a voice, so the project is
+    genuinely render-ready. Imported prose names no speakers at all, and QC
+    reports that as not-ready now rather than measuring around it."""
+    r = client.post("/v1/personas", json={"name": "Reader", "voice_id": "voice-x"})
+    assert r.status_code in (200, 201), r.text
+    persona_id = r.json()["id"]
+    client.post(f"/v1/projects/{pid}/cast", json={"persona_id": persona_id})
+    for sc in client.get(f"/v1/projects/{pid}/scenes").json():
+        for b in client.get(f"/v1/scenes/{sc['id']}/blocks").json():
+            client.patch(f"/v1/blocks/{b['id']}", json={"persona_id": persona_id})
+
+
 def test_qc_endpoint_with_stubbed_renderer(client, monkeypatch):
     pid = _seed(client)
+    _cast_everything(client, pid)
     monkeypatch.setattr(
         "justvoice.api.render_chapter_api.render_scene_to_wav",
-        lambda st, scene_id: _wav(10 ** (-17.0 / 20), 1.0),
+        lambda st, scene_id, **kw: _wav(10 ** (-17.0 / 20), 1.0),
     )
     r = client.get(f"/v1/projects/{pid}/qc")
     assert r.status_code == 200, r.text
@@ -133,6 +147,27 @@ def test_qc_endpoint_with_stubbed_renderer(client, monkeypatch):
     assert body["all_ok"] is True
     assert [c["title"] for c in body["chapters"]] == ["One", "Two"]
     assert body["limits"]["rms_min_db"] == -23.0
+    assert all(c["note"] is None for c in body["chapters"])
+
+
+def test_qc_reports_unready_chapters_instead_of_failing(client, monkeypatch):
+    """QC MEASURES — it has to survive a book mid-production. The render
+    refusal on unplaced lines (Script-tab restore, decision 5) is right for
+    the M4B export and wrong here: applying it unchanged 400'd the whole run,
+    leaving you unable to check the chapters that ARE finished."""
+    pid = _seed(client)
+    monkeypatch.setattr(
+        "justvoice.api.render_chapter_api.render_scene_to_wav",
+        lambda st, scene_id, **kw: _wav(10 ** (-17.0 / 20), 1.0),
+    )
+    r = client.get(f"/v1/projects/{pid}/qc")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["all_ok"] is False
+    # Every chapter still reported, each saying WHY, none claiming a pass.
+    assert [c["title"] for c in body["chapters"]] == ["One", "Two"]
+    assert all(c["note"] and not c["ok"] for c in body["chapters"])
+    assert "no speaker" in body["chapters"][0]["note"]
 
 
 def test_export_m4b_503_without_ffmpeg(client, monkeypatch):
@@ -147,7 +182,7 @@ def test_export_m4b_with_stubbed_ffmpeg(client, monkeypatch):
     pid = _seed(client)
     monkeypatch.setattr(
         "justvoice.api.render_chapter_api.render_scene_to_wav",
-        lambda st, scene_id: _wav(0.1, 0.5),
+        lambda st, scene_id, **kw: _wav(0.1, 0.5),
     )
     monkeypatch.setattr("justvoice.export_audiobook.have_ffmpeg", lambda: True)
 

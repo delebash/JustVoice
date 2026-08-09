@@ -46,6 +46,14 @@ head/tail silence) as **"not measured yet"** rather than pretending; a failing
 chapter shows the failing metric inline. Note the QC currently measures the
 *rendered* audio, which is unmastered until export.
 
+QC never refuses the whole book. A chapter that can't render yet — lines with
+no speaker, or a character with no voice cast — is reported as **not ready**
+with the reason, and the chapters that *are* finished are still measured. That
+matters because a book spends most of its life half-done. The **M4B export**
+is the opposite and deliberately so: it stops on the first chapter that isn't
+ready, because an audiobook quietly missing lines is worse than one that
+refused to build.
+
 ## Custom presets
 
 Build your own under Settings → Mastering → Custom. Knobs: target LUFS, true peak, noise floor, head silence, tail silence, normalization mode (peak / LUFS / hybrid). Saved presets appear in every project's preset picker.

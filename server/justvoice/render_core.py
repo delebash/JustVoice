@@ -71,6 +71,36 @@ def _resolve_engine_for_voice(state: AppState, voice_id: str) -> str | None:
     return None
 
 
+def resolve_audio_prompt_for_stored(state: AppState, stored) -> str | None:
+    """For cloned / imported voices, the absolute path of the reference WAV
+    so an engine subprocess can read it as `audio_prompt_path`; None for
+    preset/designed voices (no reference clip)."""
+    if stored.source not in ("cloned", "imported"):
+        return None
+    path = state.voices.ref_wav_path(stored.id)
+    if not path.is_file():
+        return None
+    return str(path.resolve())
+
+
+def _tags_supported(state: AppState, engine_id: str) -> bool | None:
+    """Does this engine keep paralinguistic tags? Registry backends answer
+    from meta; managed plugins from their manifest CAPABILITIES. None =
+    the engine exists nowhere (a render would 404)."""
+    engine = state.engines.get(engine_id)
+    if engine is not None:
+        return bool(engine.meta.supports_paralinguistic_tags)
+    try:
+        from .engines.manager import get_manager
+
+        manifest = get_manager().get_manifest(engine_id)
+    except Exception:
+        return None
+    if manifest is None:
+        return None
+    return bool(manifest.capabilities.get("paralinguistic_tags"))
+
+
 def _apply_lexicons(text: str, lexicon_ids: list[str], state: AppState) -> str:
     """Apply lexicon substitutions to the text. Lexicons are applied in
     order — first match wins for a given grapheme.
@@ -109,11 +139,11 @@ def probe_line_cached(
     engine_id = _resolve_engine_for_voice(state, voice)
     if engine_id is None:
         return None
-    engine = state.engines.get(engine_id)
-    if engine is None:
+    tags_supported = _tags_supported(state, engine_id)
+    if tags_supported is None:
         return None
     effective_text = text
-    if not engine.meta.supports_paralinguistic_tags:
+    if not tags_supported:
         effective_text = strip_tags(effective_text)
     effective_text = _apply_lexicons(effective_text, lexicons, state)
     key = (
@@ -157,13 +187,27 @@ def render_line(
     engine_id = _resolve_engine_for_voice(state, voice)
     if engine_id is None:
         raise not_found(f"voice {voice}")
+    # Registry backends (external providers + test fakes) win; managed
+    # plugin engines never sit in the registry and route via the manager
+    # below (the 2026-08-08 §7d fix — before it, every managed voice 404'd
+    # here and the whole multi-line render family was cloud-only).
     engine = state.engines.get(engine_id)
+    manifest = None
     if engine is None:
-        raise not_found(f"engine {engine_id}")
+        from .engines.manager import get_manager
+
+        manifest = get_manager().get_manifest(engine_id)
+        if manifest is None:
+            raise not_found(f"engine {engine_id}")
 
     # Inline-tag stripping for engines that don't support paralinguistic cues
     effective_text = text
-    if not engine.meta.supports_paralinguistic_tags:
+    tags_supported = (
+        bool(engine.meta.supports_paralinguistic_tags)
+        if engine is not None
+        else bool(manifest.capabilities.get("paralinguistic_tags"))
+    )
+    if not tags_supported:
         effective_text = strip_tags(effective_text)
     effective_text = _apply_lexicons(effective_text, lexicons, state)
 
@@ -188,16 +232,65 @@ def render_line(
             sr, ch, pcm = unpack_pcm_with_format(cached)
             return RenderedLine(pcm=pcm, sample_rate=sr, channels=ch, effective_delivery=delivery)
 
-    # Auto-load on first synthesize
-    if not engine.ready():
-        try:
-            engine.load("auto", None)
-            state.engines.set_current(engine_id)
-        except Exception as e:
-            raise bad_request(
-                f"engine '{engine_id}' failed to load on first use: {e}. "
-                f"Try POST /v1/engines/{engine_id}/load with explicit device + model_variant."
+    # Auto-load on first synthesize + the per-door synth call. Registry
+    # backends keep their object door; managed engines load through the
+    # manager and synth via its HTTP proxy.
+    if engine is not None:
+        if not engine.ready():
+            try:
+                engine.load("auto", None)
+                state.engines.set_current(engine_id)
+            except Exception as e:
+                raise bad_request(
+                    f"engine '{engine_id}' failed to load on first use: {e}. "
+                    f"Try POST /v1/engines/{engine_id}/load with explicit device + model_variant."
+                )
+
+        def _synth_piece(piece: str) -> tuple[bytes, int | None, int]:
+            out = engine.synthesize(
+                SynthRequest(
+                    voice_id=voice,
+                    text=piece,
+                    language=language,
+                    delivery=delivery,
+                    seed=seed,
+                )
             )
+            piece_pcm = strip_wav_header(out.bytes) if out.is_wav_container else out.bytes
+            return piece_pcm, out.sample_rate, out.channels
+    else:
+        from .engines.manager import get_manager
+
+        mgr = get_manager()
+        if mgr.current_for(manifest.kind) != engine_id:
+            try:
+                mgr.load(engine_id, device="auto")
+            except Exception as e:
+                raise bad_request(
+                    f"engine '{engine_id}' failed to load on first use: {e}. "
+                    f"Load it on the Engines tab first, or POST /v1/engines/{engine_id}/load."
+                )
+        audio_prompt_path = None
+        stored = state.voices.get(voice)
+        if stored is not None:
+            audio_prompt_path = resolve_audio_prompt_for_stored(state, stored)
+
+        def _synth_piece(piece: str) -> tuple[bytes, int | None, int]:
+            audio_bytes, meta = mgr.synth(
+                engine_id,
+                {
+                    "voice_id": voice,
+                    "text": piece,
+                    "language": language,
+                    "delivery": delivery,
+                    "seed": seed,
+                    "audio_prompt_path": audio_prompt_path,
+                },
+            )
+            piece_pcm = (
+                strip_wav_header(audio_bytes) if meta.get("is_wav_container") else audio_bytes
+            )
+            return piece_pcm, meta.get("sample_rate") or 24000, meta.get("channels") or 1
 
     # Phase 3: chunked generation for long-form input. Below the threshold,
     # use the single-shot fast path. Above, split at sentence boundaries +
@@ -211,46 +304,24 @@ def render_line(
         chunk_sr = None
         chunk_ch = 1
         for piece in chunks:
-            synth_req = SynthRequest(
-                voice_id=voice,
-                text=piece,
-                language=language,
-                delivery=delivery,
-                seed=seed,
-            )
             try:
-                out = engine.synthesize(synth_req)
+                piece_pcm, piece_sr, piece_ch = _synth_piece(piece)
             except Exception as e:
                 raise internal(f"engine synthesize (chunked): {e}")
-            chunk_pcm_bytes = strip_wav_header(out.bytes) if out.is_wav_container else out.bytes
-            samples = np.frombuffer(chunk_pcm_bytes, dtype="<i2").astype(np.float32) / 32767.0
+            samples = np.frombuffer(piece_pcm, dtype="<i2").astype(np.float32) / 32767.0
             pcm_chunks.append(samples)
-            chunk_sr = out.sample_rate
-            chunk_ch = out.channels
+            chunk_sr = piece_sr
+            chunk_ch = piece_ch
         merged = concatenate_audio_chunks(pcm_chunks, chunk_sr or 22050, crossfade_ms=crossfade_ms)
         # Back to int16 PCM bytes.
         pcm = (np.clip(merged, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
         out_sample_rate = chunk_sr or 22050
         out_channels = chunk_ch
     else:
-        synth_req = SynthRequest(
-            voice_id=voice,
-            text=effective_text,
-            language=language,
-            delivery=delivery,
-            seed=seed,
-        )
         try:
-            out = engine.synthesize(synth_req)
+            pcm, out_sample_rate, out_channels = _synth_piece(effective_text)
         except Exception as e:
             raise internal(f"engine synthesize: {e}")
-        # Strip WAV header → raw PCM
-        if out.is_wav_container:
-            pcm = strip_wav_header(out.bytes)
-        else:
-            pcm = out.bytes
-        out_sample_rate = out.sample_rate
-        out_channels = out.channels
 
     # Post-render gain
     if delivery.get("gain_db"):

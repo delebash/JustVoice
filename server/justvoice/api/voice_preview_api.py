@@ -131,11 +131,21 @@ async def preview_voice(body: VoicePreviewRequest) -> VoicePreviewResponse:
     from ..app_state import get_state
 
     state = get_state()
+    # Registry backends (external providers) keep the direct path; managed
+    # plugin engines route via the manager through the scheduler (§7d of the
+    # 2026-08-08 plan — the registry never holds them, so the old lookup
+    # 404'd every managed clone/design preview).
     engine = state.engines.get(body.engine)
+    manifest = None
     if engine is None:
-        raise not_found(f"engine {body.engine}")
-    # Lazy-load the engine if needed.
-    if not engine.ready():
+        from ..engines.manager import get_manager
+
+        manifest = get_manager().get_manifest(body.engine)
+        if manifest is None:
+            raise not_found(f"engine {body.engine}")
+    # Lazy-load a registry engine if needed (managed engines load inside
+    # the scheduled call below).
+    if engine is not None and not engine.ready():
         try:
             engine.load("auto", None)
         except Exception as e:
@@ -156,28 +166,63 @@ async def preview_voice(body: VoicePreviewRequest) -> VoicePreviewResponse:
         tmp.close()
         audio_prompt_path = tmp.name
 
-    req = SynthRequest(
-        voice_id="__preview__",
-        text=body.preview_text,
-        language=body.language,
-        delivery=body.delivery or {},
-        seed=None,
-        audio_prompt_path=audio_prompt_path,
-    )
-    try:
-        out = engine.synthesize(req)
-    except Exception as e:
-        raise bad_request(f"preview synthesize failed: {e}")
-
-    # Wrap raw PCM in a WAV container if needed.
     from ..audio.wav import write_wav_container
 
-    if out.is_wav_container:
-        wav_bytes = out.bytes
-    else:
-        wav_bytes = write_wav_container(out.bytes, out.sample_rate, out.channels)
+    if engine is not None:
+        req = SynthRequest(
+            voice_id="__preview__",
+            text=body.preview_text,
+            language=body.language,
+            delivery=body.delivery or {},
+            seed=None,
+            audio_prompt_path=audio_prompt_path,
+        )
+        try:
+            out = engine.synthesize(req)
+        except Exception as e:
+            raise bad_request(f"preview synthesize failed: {e}")
 
-    duration_sec = len(wav_bytes) / (out.sample_rate * out.channels * 2)
+        # Wrap raw PCM in a WAV container if needed.
+        if out.is_wav_container:
+            wav_bytes = out.bytes
+        else:
+            wav_bytes = write_wav_container(out.bytes, out.sample_rate, out.channels)
+        sample_rate = out.sample_rate
+        channels = out.channels
+    else:
+        from ..engines.manager import get_manager
+        from ..synth_scheduler import get_scheduler
+
+        mgr = get_manager()
+        kind = manifest.kind
+
+        def _do() -> tuple[bytes, int, int]:
+            if mgr.current_for(kind) != body.engine:
+                mgr.load(body.engine, device="auto")
+            audio_bytes, meta = mgr.synth(
+                body.engine,
+                {
+                    "voice_id": "__preview__",
+                    "text": body.preview_text,
+                    "language": body.language,
+                    "delivery": body.delivery or {},
+                    "seed": None,
+                    "audio_prompt_path": audio_prompt_path,
+                },
+            )
+            sr = meta.get("sample_rate") or 24000
+            ch = meta.get("channels") or 1
+            if meta.get("is_wav_container"):
+                return audio_bytes, sr, ch
+            return write_wav_container(audio_bytes, sr, ch), sr, ch
+
+        handle = get_scheduler().submit([(body.engine, _do)], interactive=True)
+        await handle.wait_async()
+        if handle.error is not None:
+            raise bad_request(f"preview synthesize failed: {handle.error}")
+        wav_bytes, sample_rate, channels = handle.items[0].result
+
+    duration_sec = len(wav_bytes) / (sample_rate * channels * 2)
 
     entry = _PreviewEntry(
         source=body.source,

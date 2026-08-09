@@ -231,7 +231,15 @@ class Block(Base):
     # reads these to render audit chips ("floored from <X>", "anchor: said")
     # and the Speaker Lab uses them for disagreement badges.
     extraction_confidence = Column(Float, nullable=True)
-    # "tag" | "propagated" | "llm" | "floored" | "narration" | "manual"
+    # Who decided this block's speaker. NON-NULL IS THE "this chapter is
+    # analyzed" FLAG — the Script tab derives its state from it and stores
+    # nothing else (Script-tab restore 2026-08-08, decision 2).
+    #   "tag" | "propagated"  regex anchors, pre-LLM
+    #   "llm"                 the model, above the route's confidence floor
+    #   "floored"             below it — demoted to unknown
+    #   "narration"           the segmenter; the LLM never answers for prose
+    #   "corrected"           the user fixed it; re-analyze leaves it alone
+    #   "manual"              hand-made block, never attributed
     source = Column(String, nullable=True)
     created_at = Column(DateTime, default=_utcnow)
 
