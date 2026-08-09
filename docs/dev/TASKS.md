@@ -273,10 +273,10 @@ render_block / generate-managed / managed new-voice preview are interactive
 singles through the one synth door; all five endpoints now await instead of
 blocking the event loop · tests — `test_synth_scheduler.py` (9),
 `test_render_managed_bridge.py` (7), `test_engine_activity_guard.py` (2).
-NOTE: built alongside the parallel Script-tab-restore session's uncommitted
-strict-resolve work in the same tree (its strict=True refusal composes with
-the warm; the book-warm mirrors it); NOT committed — the tree carries both
-efforts and the commit word is the user's.
+NOTE: built alongside the parallel Script-tab-restore session's work in the
+same tree (its strict=True refusal composes with the warm; the book-warm
+mirrors it). COMMITTED with Stage 2 + the Script-tab restore in `3a5a23d`
+(2026-08-09, user word "commit and push all").
 STAGE 2 GO GIVEN 2026-08-08, user verbatim: *"go"* (immediately after the
 Stage-1 report listing Stage 2 first among the open gos — the decided
 scheduler-first order's next step). Scope per §7 Finding 3 + §7c P3-2:
@@ -304,8 +304,9 @@ cancel-withdraws, boot sweep, empty scope, API roundtrip, unknown-ids).
 Composed live with the parallel Script-tab session's moving edits: warm
 mirrors QC's skip_unrenderable/strict split (collector grew the flag); their
 render_scene_to_wav strict= signature landed mid-build (two test stubs
-updated to `**kw`, their session then evolved the same tests further). NOT
-committed — the tree carries both efforts; the commit word is the user's.
+updated to `**kw`, their session then evolved the same tests further).
+COMMITTED + PUSHED as `3a5a23d` (2026-08-09, both sessions' work, final
+gates green on the settled tree; workflows verified disabled before/after).
 GO: Stages 1+2 BUILT · the VRAM wiring still needs its own go · a job-list /
 resume UI surface beyond the Lines button was NOT ordered and is not built.
 
