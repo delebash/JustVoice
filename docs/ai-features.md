@@ -37,7 +37,7 @@ engine, downloads a model sized to your PC, and sets it as the default.
 The built-in provider's model catalog grades every model against **this PC**:
 the **Fit** badge says whether it fits your memory (*Fits* / *Tight* / *CPU* /
 *Won't fit*), and beside it a **speed band** says how fast it would run —
-*~fast*, *~fine* (comfortable reading speed), *~slow*, *~painful* — computed
+*~fast*, *~fine* (comfortable reading speed), *~slow*, *~very slow* — computed
 from the model file's own physics against your machine's memory speed, erring
 on the slow side. The **~** marks an estimate; once a model has actually run
 here, the row shows the **real measured tokens/second** instead. When the app
