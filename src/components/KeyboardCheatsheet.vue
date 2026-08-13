@@ -96,7 +96,7 @@ onBeforeUnmount(() => {
     <div class="cheatsheet__body">
       <section v-for="g in GROUPS" :key="g.title" class="cheatsheet__group">
         <h4 class="cheatsheet__group-title">{{ g.title }}</h4>
-        <dl class="cheatsheet__list">
+        <dl class="jv-deflist">
           <template v-for="(item, i) in g.items" :key="i">
             <dt class="cheatsheet__keys">
               <kbd v-for="k in item.keys" :key="k">{{ k }}</kbd>
@@ -122,13 +122,8 @@ onBeforeUnmount(() => {
   font-weight: 600;
   margin: 0 0 6px;
 }
-.cheatsheet__list {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 6px 16px;
-  margin: 0;
-  align-items: baseline;
-}
+/* The list grid is canonical (.jv-deflist in styles.css) — Studio's
+   attribution legend paints the same shape from the same rules. */
 .cheatsheet__keys { display: flex; gap: 4px; }
 .cheatsheet__label { margin: 0; color: var(--ink-2); font-size: 13px; }
 kbd {

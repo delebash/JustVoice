@@ -6,6 +6,7 @@ import { useTakesStore } from "../stores/takes.js";
 import { pushToast, withAiTask } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
 import { projectsService } from "../services/projects.js";
+import { isFullyAttributed } from "../services/attribution.js";
 import { useCopy } from "../services/copy.js";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { useActiveProject } from "../stores/activeProject.js";
@@ -192,7 +193,7 @@ onMounted(() => {
 // too: the setup-time read above also fires once per session. Read it BEFORE
 // the project pull so a pull-triggered loadScenes() consumes it; when no
 // reload will run (same project), apply it directly.
-onActivated(() => {
+onActivated(async () => {
   try {
     const sid = window.sessionStorage?.getItem("jv.chapter.sceneId") || null;
     if (sid) {
@@ -202,11 +203,25 @@ onActivated(() => {
   } catch { /* ignore */ }
   const p = projects.value.find((x) => x.id === activeProject.id);
   if (p && selectedProjectId.value !== p.id) {
-    selectedProjectId.value = p.id;
-  } else if (_pendingSceneId && scenes.value.some((s) => s.id === _pendingSceneId)) {
-    selectedSceneId.value = _pendingSceneId;
-    _pendingSceneId = null;
+    selectedProjectId.value = p.id;   // the watcher reloads everything
+    return;
   }
+  if (_pendingSceneId && scenes.value.some((s) => s.id === _pendingSceneId)) {
+    selectedSceneId.value = _pendingSceneId;   // the watcher reloads blocks
+    _pendingSceneId = null;
+    return;
+  }
+  // SAME project and scene: nothing above reloads, and this view is
+  // KeepAlive'd. Studio's Analyze now RE-CUTS a chapter — the paragraphs
+  // this list is holding can already be deleted rows, and editing one would
+  // PATCH a block id the server no longer has.
+  //
+  // Awaited in order: loadScenes can move selectedSceneId, and firing both
+  // at once fetches the blocks twice — once for the old id, once when the
+  // watcher catches the new one.
+  const before = selectedSceneId.value;
+  await loadScenes(selectedProjectId.value);
+  if (selectedSceneId.value === before) await loadBlocks(before);
 });
 
 // ── Voices (for re-generation) ─────────────────────────────────────────────
@@ -581,11 +596,10 @@ async function loadChapterList() {
       const res = await projectsService.listBlocks(sc.id);
       const blocks = res?.blocks || res || [];
       const words = blocks.reduce((n, b) => n + String(b.text || "").split(/\s+/).filter(Boolean).length, 0);
-      // Marker blocks (podcast music/ad direction lines) are
-      // legitimately speaker-less — attribution only judges speech.
-      const speech = blocks.filter((b) => !b.metadata?.marker);
-      const attributed = speech.length > 0 && speech.every((b) => !!b.persona_id);
-      return [sc.id, { words, blocks: blocks.length, attributed }];
+      // "Every line that will be spoken knows who speaks it" — the shared
+      // rule (services/attribution.js), so this badge, Studio's counters and
+      // the render's refusal cannot disagree about the same chapter.
+      return [sc.id, { words, blocks: blocks.length, attributed: isFullyAttributed(blocks) }];
     } catch { return [sc.id, { words: 0, blocks: 0, attributed: false }]; }
   }));
   sceneStats.value = Object.fromEntries(entries);

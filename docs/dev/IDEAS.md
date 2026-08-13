@@ -79,6 +79,23 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
   recommended importer shape, unbuilt (re-verified 2026-08-06: zero of six
   built; `elevenlabs.py` is a deliberate 501 stub pointing at this research):
   `docs/dev/external-import-formats.md`.
+- **2026-08-09 · The analyze stream pins a thread per run** — scoped OUT of
+  the Script-tab restore as a design change, not a defect, and recorded here
+  rather than fixed inside a bug-fix batch. `analyze_scene_stream_endpoint`
+  runs the blocking pipeline on its own `Thread` and drains its queue with
+  `await asyncio.to_thread(q.get)`, so every concurrent analyze holds TWO
+  threads — the worker plus a blocked pool thread — against a default pool of
+  ~`min(32, cpu+4)`. Invisible on the desktop app (one user, one run); the
+  wrong shape for `justvoice-server serve`, the headless mode JustVoice also
+  ships. The fix is an `asyncio.Queue` fed by `loop.call_soon_threadsafe`, so
+  the drain never blocks. Same pattern would apply to any future
+  stream-a-blocking-pipeline endpoint.
+- **2026-08-09 · Blank blocks render as Script rows** — cosmetic residue of
+  the restore. `isSpeakable` (`src/services/attribution.js`) keeps a
+  whitespace-only block out of every count and out of the render, but
+  `rowsFromBlocks` still emits a table row for it, showing a `—` speaker and
+  no dropdown. Harmless, slightly baffling. Either filter them from the table
+  or give them the treatment markers get.
 - **2026-08-08 · Single-quoted manuscripts segment to zero dialogue** — the
   segmenter matches double quotes only, deliberately, to avoid apostrophe false
   positives (`extraction/segmentation.py:8-10, 20-25`). A UK-punctuated book

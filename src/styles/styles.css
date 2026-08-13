@@ -281,6 +281,26 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 .jv-locality--local { color: var(--accent-ink); background: var(--accent-soft); }
 .jv-locality--online { color: var(--warn-ink); background: var(--warn-bg); }
 
+/* Canonical term/definition list — a key column sized to its content beside
+   a prose column. Promoted 2026-08-09 (design-law rule 2): the shape existed
+   twice already, both scoped and already drifted — KeyboardCheatsheet and
+   Studio's attribution legend carried the same grid with different gaps.
+   Both scoped copies are deleted; both surfaces read this. */
+.jv-deflist {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  align-items: baseline;
+  margin: 0;
+}
+.jv-deflist dt, .jv-deflist dd { margin: 0; }
+
+/* Canonical row state on .jv-table — a row the user has to act on before
+   the workflow can continue (Studio Script: a line with no speaker blocks
+   the render). Nothing solved this shape before; scoping it to one view
+   would have been the third copy of a pattern every table wants. */
+.jv-table tr.jv-row--attention > td { background: var(--warn-bg); }
+
 /* Canonical attribution-source chips — who decided a line's speaker.
    Read by Studio · Script (the chapter's blocks) and the attribution Lab's
    result renderer. Both had their own scoped copy and the two had already

@@ -21,8 +21,8 @@
 -->
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import { UiSelect, pushToast } from "@delebash/llm-ui";
-import { routeWords, sourceChipClass, sourceMeaning } from "../../services/attribution.js";
+import { UiButton, UiSelect, pushToast } from "@delebash/llm-ui";
+import { SOURCE_LEGEND, routeWords, sourceChipClass, sourceMeaning } from "../../services/attribution.js";
 import { useApi } from "../../stores/api.js";
 import { useActiveProject } from "../../stores/activeProject.js";
 import { usePersonasStore } from "../../stores/personas.js";
@@ -46,6 +46,10 @@ const rows = computed(() => data.value?.rows || []);
 const cast = computed(() => data.value?.characters || []);
 // Discovery runs return candidates instead of attribution rows.
 const candidates = computed(() => data.value?.candidates || null);
+
+// The same legend Studio's Script tab shows, from the same module — the
+// restore's decision was "both get a legend", and a tooltip is not one.
+const legendOpen = ref(false);
 
 // ── (7) Disagreement vs the FIRST other column with rows. ─────────────
 const otherRows = computed(() => {
@@ -155,6 +159,22 @@ async function reassign(row, newSpeaker) {
       <span v-if="otherRows" class="attr__meta-note">· disagreements with the other column are underlined</span>
     </div>
 
+    <UiButton
+      v-if="rows.length"
+      intent="ghost"
+      size="small"
+      :label="legendOpen ? 'Hide the label guide' : 'What do these labels mean?'"
+      @click="legendOpen = !legendOpen"
+    />
+    <div v-if="legendOpen && rows.length" class="jv-card jv-card--soft attr__legend">
+      <dl class="jv-deflist">
+        <template v-for="[key, meaning] in SOURCE_LEGEND" :key="key">
+          <dt><span :class="sourceChipClass(key)">{{ key }}</span></dt>
+          <dd class="jv-muted">{{ meaning }}</dd>
+        </template>
+      </dl>
+    </div>
+
     <div v-if="rows.length" class="attr__table">
       <div v-for="(row, i) in rows" :key="i" class="attr__row">
         <span class="jv-mono jv-muted attr__n">{{ i + 1 }}</span>
@@ -188,6 +208,7 @@ async function reassign(row, newSpeaker) {
 .attr__text { flex: 1; color: var(--ink-2); line-height: 1.5; }
 .attr__reassign { flex: none; }
 .attr__empty { font-size: 12px; margin: 0; }
+.attr__legend { font-size: 11.5px; }
 /* The source chips are canonical (.jv-source-chip in styles.css) — Studio's
    Script table paints the identical vocabulary from the same rules. */
 .attr__disagree { color: var(--danger, #a8442e); text-decoration: underline wavy; text-underline-offset: 3px; }

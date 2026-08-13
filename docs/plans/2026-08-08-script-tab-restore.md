@@ -461,3 +461,116 @@ narrator", and that is what every reader checks.
   decision 5's guarantee holds by a different route.
 - **An in-place re-analyze has no undo.** A bad run overwrites a good one
   except on corrected rows. That is the cost of auto-persist (decision 2).
+
+> **§11's list is not the whole story.** Four more sweeps followed it and each
+> found something. See §12 — and read that as the real lesson: one sweep is
+> not a ritual you perform once and declare finished.
+
+---
+
+## 12. Sweeps 2–6 — what the first sweep still missed
+
+§11 fixed the server. The passes after it took angles it never had, and each
+one paid. The failures cluster, and the clusters are the lesson.
+
+**Lifecycle — the class §11 could not see, because it only asked about
+callers.**
+
+- **Re-analyze could destroy a manuscript edit.** Studio is inside App.vue's
+  `<KeepAlive>`, and `onActivated` only synced the tab and project. Edit a
+  paragraph in Chapters, come back, hit Re-analyze — the view still held the
+  pre-edit prose and wrote the old wording back. Both views now reload on
+  re-entry when nothing else will.
+- **Chapters listed blocks that no longer existed.** The mirror image: after
+  Analyze re-cuts a chapter, the kept-alive block list still showed the old
+  paragraphs, and editing one PATCHed a deleted id. Before this feature Studio
+  never wrote blocks, so this could not happen — the change created it.
+- **Cancel wrote anyway.** The stream's worker thread persisted the moment the
+  pipeline returned, with nothing checking whether the client was still there.
+  The toast said "Analyze cancelled" while the chapter was rewritten seconds
+  later. The write now happens in the async layer, after
+  `request.is_disconnected()`.
+- **A fast chapter switch showed the wrong rows** — two awaits resolving in
+  finish order, not selection order.
+
+**One question answered three ways.** "Is this chapter attributed" had three
+different implementations that disagreed on screen:
+
+- Studio counted a chapter analyzed when a block carried a pipeline `source`.
+  But **podcast imports arrive already cast** (`podcast_markdown` reads `HOST:`
+  labels into `character_id`), so Studio called them *not analyzed* and offered
+  an Analyze that discarded correct speaker names for model guesses.
+- Studio's "unplaced" counter included markers and blank blocks that the render
+  skips — so the banner promised a refusal that would never come, and *Assign
+  all unplaced → Narrator* would have given a music cue a voice.
+- ChapterView had the only correct exclusion, inline and unshared.
+
+All four predicates now live in `services/attribution.js` (`isMarker`,
+`isSpeakable`, `hasSpeakerInfo`, `isFullyAttributed`, `unplacedBlocks`) and
+every surface reads them from there.
+
+**The design law, violated in the act of enforcing it.** `.studio__legend` was
+a scoped grid near-identical to `KeyboardCheatsheet`'s `.cheatsheet__list` —
+same shape, different gap — which is F14, the defect this plan fixed for the
+source chips, recreated in the same change. The legend's toggle was also a
+borderless text-only button, which design-law rule 6 forbids by user decree.
+Root cause: CLAUDE.md says read `docs/dev/design-law.md` before UI work, and I
+did not. Now `.jv-deflist` and `.jv-table tr.jv-row--attention` are canonical,
+both surfaces adopt them, and the toggle is a `UiButton` ghost.
+
+**An approved decision quietly under-delivered.** §6 step 12 says Studio and
+the Lab **both** get a legend. The Lab got tooltips and I counted that as
+equivalent. It has the real legend now, from the same `SOURCE_LEGEND`.
+
+**A comment that described a field it wasn't about.** `pipeline.py:52` listed
+`"auto"` as a row source — `auto` belongs to `RoutePick.source`, a different
+field — and omitted the two values persistence added. Corrected, pointing at
+`models.py` as the full list.
+
+### Still open, and deliberately not decided here
+
+- **Custom projects can't finish.** They get the Script tab but no Narrator
+  (`_NARRATOR_KINDS` is audiobook + podcast), so their narration is
+  permanently unplaceable and the bulk button has nothing to target. The
+  button now disables itself and says why instead of failing on click, but
+  the real fix — give custom projects a Narrator, hide Script from them, or
+  let the bulk action target any cast persona — reverses a recorded decision
+  and is the user's call.
+- **Projects imported before this change refuse to render** until re-analyzed.
+  They used to "work" by silently dropping every narration line, so this is
+  the defect surfacing, not a new one. Pre-release rule: the user resets.
+- **The feature has never been driven against a live LLM in a session.** It is
+  covered by tests and by reading; §9's manual checks remain unperformed.
+- **The smoke's tab measurement is flaky.** One run reported LABS at 1206
+  chars (Settings' value) where two immediate re-runs gave 628 — it can
+  measure the previous page. Gate reliability, not a product defect.
+
+### The last pass, which found no code at all
+
+Reviewing the fixes above turned up one contradiction inside the same batch —
+the N+1 taken out of `runAnalyze` had been put straight back into
+`onActivated`, where it fires far more often — plus a guard missing on
+`setRowSpeaker` that its bulk twin had, two unawaited loads racing in
+ChapterView, and two comments that went stale the moment I wrote them. All
+fixed.
+
+Then a fifth pass found something that was not code:
+
+- **Open work was living in this document instead of the tracker.** The
+  TASKS.md item was deleted whole when the build closed — right for the
+  finished build, wrong for what remained. The custom-project decision (yours)
+  and the deferred split/merge/reorder existed only here, where the tracker is
+  the thing that gets read. Both are now items in `docs/dev/TASKS.md`.
+- **Four words for two conditions.** A line with nobody speaking it was
+  "unplaced" in Studio and "has no speaker" in the server's refusal; a chapter
+  in that state was "unassigned speakers" in Chapters and "not ready" in QC. I
+  wrote three of the four while building the module whose entire purpose is
+  one vocabulary. The app's existing words won: **"no speaker"** for a line,
+  **"unassigned speakers"** for a chapter. Internal identifiers still read
+  `unplaced*`; the copy law governs what users see, and renaming them was
+  churn without a reader.
+
+Five sweeps, and the classes ran: server blast radius → lifecycle → drift →
+the project's own laws → process. The pattern worth keeping is that each pass
+had to take an angle the previous one could not have taken; repeating an angle
+found nothing every time it was tried.

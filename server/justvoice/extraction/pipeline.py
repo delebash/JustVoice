@@ -49,8 +49,13 @@ class AttributionRow:
     text: str
     speaker: str  # character_id | "narrator" | "unknown"
     confidence: float
-    # "tag" | "propagated" | "llm" | "floored" | "narration" | "auto"
-    source: str
+    # What the PIPELINE can decide — exactly these five, all assigned below.
+    # ("auto" was never one of them; it belongs to RoutePick.source, a
+    #  different field on a different object.) Two more reach Block.source
+    #  once a run is persisted and never come from here: "corrected" (the
+    #  user fixed the row) and "manual" (a block nobody has attributed).
+    #  models.py Block.source is the full list.
+    source: str  # "narration" | "tag" | "propagated" | "llm" | "floored"
     # When source is "floored", carries the LLM's pre-floor speaker so
     # the Speaker Lab UI can display "floored from <speaker>" audit info.
     floored_from: str | None = None

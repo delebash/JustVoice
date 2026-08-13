@@ -36,7 +36,7 @@ export const SOURCE_LEGEND = [
   ["tag", "A dialogue tag next to the line named the speaker (“…,” said Hale). Found by pattern, no model involved."],
   ["propagated", "No tag on this line, so it inherited the speaker from the nearest tagged line in the same paragraph."],
   ["llm", "The model worked it out from context, and was confident enough to keep."],
-  ["floored", "The model answered but was too unsure, so the answer was dropped and the line left unplaced."],
+  ["floored", "The model answered but was too unsure, so the answer was dropped and the line left with no speaker."],
   ["corrected", "You set this one. Re-analyzing leaves it exactly as it is."],
   ["manual", "A block you wrote or pasted yourself — nothing has attributed it."],
 ];
@@ -51,6 +51,50 @@ export function sourceChipClass(source) {
   return SOURCE_MEANINGS[source]
     ? `jv-source-chip jv-source-chip--${source}`
     : "jv-source-chip";
+}
+
+// ── What counts as a line, and what counts as attributed ──────────────────
+// These four questions were being answered in three places with three
+// different rules, and they had already drifted: Studio called a chapter
+// analyzed when any block carried a pipeline `source`, ChapterView called it
+// attributed when every non-marker block had a persona, and the render
+// resolver skipped markers and blank text that Studio's own "unplaced"
+// counter went on counting. The counters disagreed on screen.
+
+/**
+ * A music/ad direction line from a podcast import. Speaker-less BY DESIGN —
+ * it is direction, not speech. Nothing may count it as unplaced, offer it a
+ * voice, or refuse a render over it.
+ */
+export function isMarker(block) {
+  return !!block?.metadata?.marker;
+}
+
+/** A line that will actually be spoken, and so needs a speaker. */
+export function isSpeakable(block) {
+  return !isMarker(block) && !!(block?.text || "").trim();
+}
+
+/**
+ * Does this block carry speaker information at all? `source` means the
+ * pipeline decided it; `persona_id` alone means an IMPORT did — podcast
+ * markdown assigns every line from its `HOST:` labels, and calling those
+ * chapters "not analyzed" invited one click that discarded known-correct
+ * speakers and replaced them with model guesses.
+ */
+export function hasSpeakerInfo(block) {
+  return !!block?.source || !!block?.persona_id;
+}
+
+/** Finished: every line that will be spoken knows who speaks it. */
+export function isFullyAttributed(blocks) {
+  const speech = (blocks || []).filter(isSpeakable);
+  return speech.length > 0 && speech.every((b) => !!b.persona_id);
+}
+
+/** The lines standing between this chapter and a render. */
+export function unplacedBlocks(blocks) {
+  return (blocks || []).filter((b) => isSpeakable(b) && !b.persona_id);
 }
 
 // ── Shared reads ──────────────────────────────────────────────────────────

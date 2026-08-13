@@ -83,6 +83,11 @@ def test_stream_emits_deltas_then_a_done_frame_with_rows_and_usage(client, monke
     assert isinstance(done["rows"], list) and done["rows"]
     assert any(row["speaker"] == "mara" for row in done["rows"])
     assert done["usage"]["prompt_tokens"] == 321
+    # The write happens in the ASYNC layer, not the worker thread, so that a
+    # cancelled run can be caught before it touches the chapter. Its receipt
+    # rides the same frame.
+    assert done["persisted"]["mode"] in ("in_place", "resegmented")
+    assert "__rows__" not in done
 
     assert frames[-1] == "[DONE]"
 

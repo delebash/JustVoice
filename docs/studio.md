@@ -32,7 +32,7 @@ from a guess at a glance:
 | `tag` | A dialogue tag right next to the line named the speaker — *"…," said Hale*. Found by pattern matching, no model involved. |
 | `propagated` | The line had no tag of its own, so it inherited the speaker from the nearest tagged line **in the same paragraph**. |
 | `llm` | The model worked it out from context and was confident enough to keep. |
-| `floored` | The model answered but wasn't sure enough, so its answer was **thrown away** and the line left unplaced. The floor only ever discards a weak answer — it never promotes one. |
+| `floored` | The model answered but wasn't sure enough, so its answer was **thrown away** and the line left with no speaker. The floor only ever discards a weak answer — it never promotes one. |
 | `corrected` | You set this one. Re-analyzing leaves it exactly as it is. |
 | `manual` | A block you wrote or pasted yourself. Nothing has attributed it. |
 
@@ -50,11 +50,24 @@ turns to `corrected`, and **that correction teaches the next run**: your recent
 fixes are fed into the prompt as worked examples, so the same mistake stops
 recurring across the rest of the book.
 
-**Unplaced lines block the render.** A line with nobody speaking it can't
+**Lines with no speaker block the render.** A line nobody speaks can't
 become audio, and JustVoice will not quietly leave a sentence out of your
-audiobook. The Script tab counts them and offers one button — *Assign N
-unplaced → Narrator* — and if you go to Render first, the render stops and
-lists them with the same button.
+audiobook. The Script tab counts them and offers one button — *Assign N →
+Narrator* — and if you go to Render first, the render stops and lists them
+with the same button.
+
+**Music and ad markers are not lines.** A podcast import turns `— Mid-roll —`
+into a `♪ marker` row: it has no speaker by design, it is never counted
+among them, and it never blocks a render. You can't assign it a voice, because
+giving a music cue a narrator is the one wrong answer.
+
+**Some chapters arrive already cast.** A podcast script that labels its
+speakers (`HOST:`) is attributed the moment it's imported — Script shows the
+table and offers **Re-analyze**, not a blank Analyze prompt, so a single click
+can't throw away speaker names the file already told us.
+
+**Cancel means cancel.** Stopping a run mid-flight leaves the chapter exactly
+as it was; nothing is written.
 
 ### Re-analyze
 

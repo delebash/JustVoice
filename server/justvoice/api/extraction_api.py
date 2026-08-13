@@ -20,6 +20,7 @@ actionable message from LLMNotConfiguredError.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -27,7 +28,7 @@ from queue import SimpleQueue
 from threading import Thread
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -473,6 +474,7 @@ async def analyze_scene_endpoint(
 async def analyze_scene_stream_endpoint(
     scene_id: str,
     body: AnalyzeSceneRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
     """Lane 2A of the AI-call convention (2026-08-08): the SAME pipeline as
@@ -485,7 +487,15 @@ async def analyze_scene_stream_endpoint(
     started, so there is no HTTP status to send).
 
     The pipeline is sync + blocking (the kit's stream_action is), so it runs in
-    a worker thread feeding a queue the generator drains."""
+    a worker thread feeding a queue the generator drains.
+
+    **The worker never writes.** It hands its rows back and the ASYNC layer
+    persists, after checking the client is still there. Cancel has to mean
+    cancel: this endpoint began writing the chapter on 2026-08-08, and a
+    worker that persisted on its own turned the Cancel button into a lie —
+    the toast said "Analyze cancelled" while the run rewrote the chapter
+    seconds later, leaving the table on screen disagreeing with the rows in
+    the database until you navigated away and back."""
     scene = db.query(Scene).filter(Scene.id == scene_id).first()
     if scene is None:
         raise not_found(f"scene {scene_id}")
@@ -514,26 +524,12 @@ async def analyze_scene_stream_endpoint(
                 on_delta=lambda t: q.put({"delta": t}),
                 on_progress=lambda p: q.put({"progress": p}),
             )
-            # A worker thread must not touch the request-scoped Session —
-            # SQLAlchemy Sessions are not thread-safe and this one is torn
-            # down by the dependency, not by us. Open our own, the way
-            # render_chapter_api's off-request paths do.
-            from ..database.session import SessionLocal
-
-            wdb = SessionLocal()
-            try:
-                wscene = wdb.query(Scene).filter(Scene.id == scene_id).first()
-                if wscene is None:
-                    # Deleted while the model was answering.
-                    raise not_found(f"scene {scene_id}")
-                persisted = _persist_attribution(wdb, wscene, rows, body.text)
-                wdb.commit()
-            finally:
-                wdb.close()
             usage = raw_out.get("usage") or {}
             q.put({
                 "done": True,
-                "persisted": persisted.model_dump(),
+                # Handed to the async layer, which persists and replaces this
+                # with the PersistInfo before the frame goes out.
+                "__rows__": rows,
                 # The family usage names, top level — the kit client normalizes
                 # exactly these (ui/src/client.js requestStream).
                 "promptTokens": usage.get("prompt_tokens", 0),
@@ -552,11 +548,6 @@ async def analyze_scene_stream_endpoint(
             })
         except LLMNotConfiguredError as e:
             q.put({"error": str(e)})
-        except HTTPException as e:
-            # The persist step's own refusals (a re-cut that would destroy
-            # takes) are already user-facing sentences — pass them whole
-            # instead of truncating them like an unexpected crash.
-            q.put({"error": str(e.detail)})
         except Exception as e:  # noqa: BLE001 — surface as an error frame, not a 500
             log.exception("extraction stream failed")
             q.put({"error": str(e)[:200]})
@@ -565,11 +556,52 @@ async def analyze_scene_stream_endpoint(
 
     Thread(target=worker, daemon=True).start()
 
-    def gen():
+    def _persist(rows: list) -> dict:
+        """The write, in a worker thread of the event loop's own pool. Its
+        Session is opened and closed here — the request-scoped one belongs to
+        the dependency and Sessions are not thread-safe."""
+        from ..database.session import SessionLocal
+
+        wdb = SessionLocal()
+        try:
+            wscene = wdb.query(Scene).filter(Scene.id == scene_id).first()
+            if wscene is None:
+                raise not_found(f"scene {scene_id}")   # deleted mid-run
+            info = _persist_attribution(wdb, wscene, rows, body.text)
+            wdb.commit()
+            return info.model_dump()
+        finally:
+            wdb.close()
+
+    async def gen():
         while True:
-            item = q.get()
+            item = await asyncio.to_thread(q.get)
             if item is None:
                 break
+            if isinstance(item, dict) and "__rows__" in item:
+                rows = item.pop("__rows__")
+                # The one place the chapter is written. A cancelled run must
+                # leave it exactly as it was, and on this stack that is
+                # guaranteed twice over: uvicorn advertises ASGI spec 2.3, so
+                # Starlette races this generator against listen_for_disconnect
+                # and CANCELS it when the client goes — the write is never
+                # reached. This check is the belt to that pair of braces, and
+                # the only guard on a 2.4+ server, where Starlette drops the
+                # listener and relies on send() raising instead. Best-effort
+                # on its own (the disconnect frame has to have landed), which
+                # is why it is second and not first.
+                if await request.is_disconnected():
+                    log.info("analyze stream: client gone — scene %s not written", scene_id)
+                    break
+                try:
+                    item["persisted"] = await asyncio.to_thread(_persist, rows)
+                except HTTPException as e:
+                    # Its refusals are already user-facing sentences (a re-cut
+                    # that would destroy takes) — pass them whole.
+                    item = {"error": str(e.detail)}
+                except Exception as e:  # noqa: BLE001 — a frame, not a 500
+                    log.exception("analyze stream: persist failed")
+                    item = {"error": str(e)[:200]}
             yield f"data: {json.dumps(item)}\n\n"
         yield "data: [DONE]\n\n"
 
