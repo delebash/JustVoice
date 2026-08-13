@@ -539,9 +539,16 @@ never enforces it in v1 (mmap'd weights make a summed ledger over-count; enforce
 only on evidence, mlock/no_mmap-keyed), and the display half is THIS repo's wiring
 work, not the kit's. CPU-adequate engines confirmed first-class (claim follows the
 resolved device → CPU = 0 VRAM).
-STATE STAMP 2026-08-13: the redesign's Phases 0–3 are BUILT + pushed (physics
-floors, facts-not-floors, speed bands + bandwidth ladder, veto removal — full
-record in the kit tracker's fit item). The distance to THIS item's unblock:
-Phase 4 (backend probes + arch-aware arbiter snapshot) → Phase 5 (persistence +
-the claim resolver) → resume here. Each kit phase needs its own go; the
-deliberate checkpoint sits before Phase 4.
+STATE STAMP 2026-08-13 (late): Phases 0–5 are BUILT + pushed — THIS ITEM IS
+UNBLOCKED. What Phase 5 delivered for the wiring (full record in the kit
+tracker's fit item): the claim resolver lives in `preview_fit` (four arms:
+resident-live with §13.1 provenance on the arbiter snapshot → persisted-
+measured median over fingerprint-matched source='load' rows → physics computed
+with learned per-backend overhead → declared); claims are {vramMb, ramMb,
+source, matches} (RAM display-only §8.18); the arbiter snapshot is arch-aware
+(mem_arch, one-pool pools counted once — Phase 4) and each reservation row
+carries its source. JV's REGISTRATION POINTS when the wiring resumes:
+`configure_service(declared_claim_fn=…)` for the engine manifests
+(vram_min_mb · cpu_adequate · gpu_runtimes — Q2's facts; kind tts|stt), and
+the strip reads the resident snapshot + preview_fit claims. Resuming still
+needs its OWN go (the user's standing stop after the streaming-lane work).
