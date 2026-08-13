@@ -539,8 +539,12 @@ never enforces it in v1 (mmap'd weights make a summed ledger over-count; enforce
 only on evidence, mlock/no_mmap-keyed), and the display half is THIS repo's wiring
 work, not the kit's. CPU-adequate engines confirmed first-class (claim follows the
 resolved device → CPU = 0 VRAM).
-STATE STAMP 2026-08-13 (late): Phases 0–5 are BUILT + pushed — THIS ITEM IS
-UNBLOCKED. What Phase 5 delivered for the wiring (full record in the kit
+STATE STAMP 2026-08-13 (late): the redesign's BUILD PHASES ARE COMPLETE —
+Phases 0–7 BUILT + pushed (6 = the joint MoE solve + ncmoe-first shed; 7 =
+the uncurated-path gate + evidence-keyed ranking + the one-authority dev-doc
+story, now standing in the kit's `docs/dev/serving-design.md` fit section —
+read THAT for the current fit architecture, the plan for history) — THIS
+ITEM IS UNBLOCKED with no kit prerequisite left. What Phase 5 delivered for the wiring (full record in the kit
 tracker's fit item): the claim resolver lives in `preview_fit` (four arms:
 resident-live with §13.1 provenance on the arbiter snapshot → persisted-
 measured median over fingerprint-matched source='load' rows → physics computed
