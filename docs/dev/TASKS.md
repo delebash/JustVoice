@@ -539,3 +539,9 @@ never enforces it in v1 (mmap'd weights make a summed ledger over-count; enforce
 only on evidence, mlock/no_mmap-keyed), and the display half is THIS repo's wiring
 work, not the kit's. CPU-adequate engines confirmed first-class (claim follows the
 resolved device → CPU = 0 VRAM).
+STATE STAMP 2026-08-13: the redesign's Phases 0–3 are BUILT + pushed (physics
+floors, facts-not-floors, speed bands + bandwidth ladder, veto removal — full
+record in the kit tracker's fit item). The distance to THIS item's unblock:
+Phase 4 (backend probes + arch-aware arbiter snapshot) → Phase 5 (persistence +
+the claim resolver) → resume here. Each kit phase needs its own go; the
+deliberate checkpoint sits before Phase 4.
