@@ -106,6 +106,45 @@ OPEN: add a settings knob (default scene-break pause, ms) and have the importer
 stamp it on each scene's last line.
 GO: needed.
 
+### Script tab: two project kinds can never finish a chapter
+
+STATE: OPEN — your call. Surfaced 2026-08-09 by the post-build sweeps of
+`docs/plans/2026-08-08-script-tab-restore.md` (§12); the build itself is done
+and committed in `3a5a23d`.
+WHY: narration binds to the project's Narrator (restore decision 4), and a
+block with no persona now REFUSES to render (decision 5) instead of being
+dropped in silence. Two kinds have no Narrator to bind to, so their narration
+is permanently unplaceable and the bulk "assign to Narrator" button has no
+target: **custom projects** (`_NARRATOR_KINDS` is audiobook+podcast, but
+`visibleTabs` gives Script to every non-game kind) and **any project imported
+before 2026-08-09**, because `_ensure_narrator` runs at create/import only and
+never backfills. The button now disables itself and says why rather than
+failing on click — that is the whole mitigation.
+NOT: adding "custom" to `_NARRATOR_KINDS` on my own — `test_builtin_narrator`
+pins the opposite as a deliberate decision ("no single prose voice"), and
+reversing it is not mine to do.
+OPEN: pick one — give custom projects a Narrator · hide Script from them ·
+let the bulk action target any cast persona. Separately: whether an
+already-imported project should get a Narrator on demand, or whether your data
+reset covers it.
+GO: needed.
+
+### Script tab: split / merge / reorder a block was deferred, not dropped
+
+STATE: DEFERRED by your ruling in the restore's decision 6 ("Defer split,
+merge and reorder"), and then lost — the tracker item was deleted whole when
+the build closed, so the deferral survived only inside the plan doc.
+WHY it still matters: it is the only way to fix a mis-cut line, and §8 names
+manual split as the workaround for the biggest attribution failure there is —
+a UK-punctuated manuscript segments to ZERO dialogue
+(`extraction/segmentation.py:8-10`, also in IDEAS).
+NOT: built in the first pass — all three change the block count, which is
+exactly the operation that destroys takes through `Take.block_id`'s CASCADE
+(`database/models.py:305`). They need their own confirm-before-destroying
+design.
+OPEN: that design, then the build.
+GO: needed.
+
 ## The next build
 
 **Deferred by your word (2026-08-06):** the real-webview test harness and the
@@ -481,3 +520,22 @@ GO: needed.
   2026-08-02.
 - **`capture.llm_model` is a dormant settings field** — decided KEEP. Its UI
   picker is gone but the field stays (`models.py:330`).
+
+## VRAM wiring DEPENDENCY (2026-08-09): the fit redesign lands first
+
+The family fit redesign (`../just-llm-runner/docs/plans/2026-08-09-fit-redesign.md`)
+is the wiring's prerequisite: it fixes BOTH of the claim line's verified sources —
+the computed arm (compute_fit physics) and the measured arm (which does not exist
+today: `model_measurements.vram_total_mb` is the CARD total, not a footprint; the
+true-up dies in-memory — the redesign persists it as `vram_model_mb` + adds the
+claim resolver the strip consumes). Q1-Q8 rulings STAND untouched; the
+eviction-executor seam remains this repo's own prerequisite (disjoint functions,
+same lifecycle.py). Resume the wiring after the redesign's Phase 5.
+2026-08-13 consensus update (plan §13): claims carry `{vram_mb, ram_mb}` + a
+provenance source (measured|declared|computed — a manifest-priced TTS reservation
+must never read as live truth on the strip); RAM co-residency on DISCRETE boxes is
+priced but unbudgeted — DECIDED (plan §8.18): the strip DISPLAYS the RAM sum,
+never enforces it in v1 (mmap'd weights make a summed ledger over-count; enforcement
+only on evidence, mlock/no_mmap-keyed), and the display half is THIS repo's wiring
+work, not the kit's. CPU-adequate engines confirmed first-class (claim follows the
+resolved device → CPU = 0 VRAM).
