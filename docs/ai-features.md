@@ -32,6 +32,27 @@ Until a model is picked, features answer with a "run the LLM engine setup"
 message — the one-click wizard on the AI Settings page installs the built-in
 engine, downloads a model sized to your PC, and sets it as the default.
 
+## Picking models: fit, speed, and your override
+
+The built-in provider's model catalog grades every model against **this PC**:
+the **Fit** badge says whether it fits your memory (*Fits* / *Tight* / *CPU* /
+*Won't fit*), and beside it a **speed band** says how fast it would run —
+*~fast*, *~fine* (comfortable reading speed), *~slow*, *~painful* — computed
+from the model file's own physics against your machine's memory speed, erring
+on the slow side. The **~** marks an estimate; once a model has actually run
+here, the row shows the **real measured tokens/second** instead. When the app
+doesn't know a model's file details or your machine's speed yet, the chip
+shows plain fit and no band — it never guesses.
+
+**The estimate never decides for you.** Every model dropdown lists every
+model — a *Won't fit* pick just shows an honest warning and loads anyway if
+the engine can manage it. The engine's own attempt is the final authority.
+
+The engine's memory and speed settings live with the **loaded-models knobs**
+on the engine panel ("Models kept loaded at once"): the VRAM safety margin,
+the default context cap, the RAM headroom, and the speed-band thresholds the
+badges switch over at — all editable, one Save.
+
 ## Prompts are editable — and Dictation cleanup is one card with sections
 
 Every prompt a feature sends is a **template row** — the wording lives in the
