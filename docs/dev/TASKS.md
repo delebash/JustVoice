@@ -346,8 +346,72 @@ render_scene_to_wav strict= signature landed mid-build (two test stubs
 updated to `**kw`, their session then evolved the same tests further).
 COMMITTED + PUSHED as `3a5a23d` (2026-08-09, both sessions' work, final
 gates green on the settled tree; workflows verified disabled before/after).
-GO: Stages 1+2 BUILT · the VRAM wiring still needs its own go · a job-list /
-resume UI surface beyond the Lines button was NOT ordered and is not built.
+GO: Stages 1+2 BUILT · a job-list / resume UI surface beyond the Lines button
+was NOT ordered and is not built.
+DECIDED + GO 2026-08-13, user words verbatim: *"your rec go and go for the
+full vram phase"* — after the ordered re-think ("think on the design again
+including the new fit") and its adversarial cross-verification (Fable → Opus →
+Fable, every claim run in code). The rec approved, THE ONE-POOL RULING: **on
+one-pool boxes the ledger tracks POOL OCCUPANCY, not device placement.** Kit
+half: `process.py`'s one-pool booking clamp — whose own comment and whose own
+test (`test_arch_arm_one_pool_booking_never_exceeds_ledger`) both said "until
+Phase 4 makes the ledger arch-aware", a debt Phase 4 then never collected —
+changes ceiling from `max_vram_mb` (the iGPU carve-out: bookings of 0–128 MB,
+admission dead, claim line reading 0, `__overhead__` calibration poisoned) to
+`budget_total_mb` (the pool), the two carve-out-era test pins re-pinned to
+pool truth + a new real-booking pin. JV half: on one-pool boxes a managed
+engine load books its declared `vram_min_mb` WHICHEVER device it resolves
+(CPU and GPU are the same physical bytes there); discrete keeps
+cpu-resolves-books-nothing. "The full vram phase" = wiring steps 3–6 of
+`docs/plans/2026-08-08-vram-think.md` §6 as amended by the re-think: step 1
+(kit seam) and step 4's llm-busy half verified ALREADY BUILT during the fit
+redesign; the claim line comes from the kit's `preview_fit` four-arm resolver,
+never hand-rolled (P5-5's ladder is superseded); `declared_claim_fn` is DEAD
+plumbing (assigned once, read nowhere, and `preview_fit` can't resolve
+non-catalog ids anyway) — NOT used, left untouched, recorded as a gap; JV
+prices its engines from its OWN manifests; tts-busy lives at the scheduler
+worker (idle→active transitions), stt-busy at the manager's transcribe;
+`cpu_adequate: true` lands on kokoro (certain), luxtts stays UNFLAGGED until
+its real-time-on-CPU claim is verified, whisper stays cuda-declared (P5-1's
+per-variant refinement recorded, not built); warm-boot flip is the LAST step,
+seeds-only.
+BUILT 2026-08-13, same session as the go — full stamp in
+`docs/plans/2026-08-08-vram-think.md` §6 (STATUS STAMP 2). The pieces:
+KIT — the one-pool clamp fix (`process.py` ceiling → `budget_total_mb`) +
+two re-pins + the physics-equality pin (suite 847; steps 1 + 4-llm were
+already built there during the fit redesign). JV server — device policy /
+admission / declared reservation / release-on-every-exit in
+`engines/manager.py` (`_resolve_device` · `_books_memory` one-pool ruling ·
+`_admit_memory` no-locks-held (lock-order inversion avoided; a refused
+admission leaves the world untouched) · `_reserve_engine` source="declared"
+kind-mapped tts|stt · `_evict_for_arbiter` occupant-checked) + `cpu_adequate`
+on kokoro + `EngineOverrides.device` (models.py) + tts-busy at the scheduler
+worker's idle↔active transitions (`synth_scheduler.py`) + stt-busy at
+`transcribe` + `GET /v1/engines/vram` (`engines_api.py`: snapshot + the
+routed-default claim — routing store + production configs, NOT
+resolve_feature; preview_fit's four arms do the pricing; claim_reason
+distinguishes cloud-routed from not-configured) + `resolved_device` on
+EngineInfo. JV UI — the budget strip (VRAM/Memory label off mem_arch,
+provenance tooltip, busy chips), eviction-toast poller (4s, primed silently
+on mount), Device select per card (read-modify-write PATCH), resolved-device
+on the loaded badge, the client-guessed "est. VRAM" total replaced by ledger
+truth. Warm-boot: `apply_jv_warm_default` DELETED (seed.py + reseed path),
+`test_warm_default.py` re-pinned warm-ON-fresh / stored-choice-survives.
+Docs: `docs/gpu.md` "The shared memory budget" (real section) +
+`docs/engines.md` loading rewrite. Tests: `test_engine_vram_wiring.py` (17:
+device policy · booking both arches · slot-replacement release · honest
+refusal · idle-LLM eviction + event feed · never-evict-busy · evictor
+occupant check · scheduler/transcribe busy · the endpoint incl. the claim).
+GATES: kit ruff+847 · JV ruff+485 + vitest 48 + build + smoke 15 views zero
+JS errors · JW 128 + build · check-family 0 violations · verify-model-pick
+48. HONEST LIMITS, recorded: eviction toasts surface only while the
+Speech-engines tab polls (no app-global poller was ordered); a crashed
+engine's reservation lingers until its slot next loads/unloads
+(conservative, over-counts); clone singles are protected by the activity
+lock, not a busy flag (an evictor waits, then terminates); GPU-less
+CPU-only boxes still book 0 (recorded gap, serving-design.md).
+GO: BUILT — the item is closed when you've seen the strip live; the
+laptops walk (kit checkpoint) now also shows real one-pool numbers.
 
 ### Speech-engines model management converges on the kit's download/load GUI + machinery
 
@@ -551,8 +615,10 @@ measured median over fingerprint-matched source='load' rows → physics computed
 with learned per-backend overhead → declared); claims are {vramMb, ramMb,
 source, matches} (RAM display-only §8.18); the arbiter snapshot is arch-aware
 (mem_arch, one-pool pools counted once — Phase 4) and each reservation row
-carries its source. JV's REGISTRATION POINTS when the wiring resumes:
-`configure_service(declared_claim_fn=…)` for the engine manifests
-(vram_min_mb · cpu_adequate · gpu_runtimes — Q2's facts; kind tts|stt), and
-the strip reads the resident snapshot + preview_fit claims. Resuming still
-needs its OWN go (the user's standing stop after the streaming-lane work).
+carries its source. CORRECTED 2026-08-13 (the re-think's code verification):
+`configure_service(declared_claim_fn=…)` is DEAD plumbing — assigned once,
+read nowhere, and `preview_fit` resolves catalog ids only, so it can never
+answer a foreign kind. JV does NOT register it; JV prices its engines from
+its OWN manifests (vram_min_mb · cpu_adequate · gpu_runtimes — Q2's facts)
+and the strip reads the resident snapshot + `preview_fit` claims for the LLM.
+GO GIVEN 2026-08-13 (see the VRAM item above for the decision record).

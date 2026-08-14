@@ -1,12 +1,13 @@
 # SPDX-License-Identifier: MIT
-"""JV's warm-on-startup default is OFF (ruling 2026-08-05).
+"""JV rides the family's warm-on-startup default (ON) since 2026-08-13.
 
-The shared stack defaults warm ON (seed "1"; an ABSENT row also reads as ON —
-stores.py), and JV's DBs have carried that seeded "1" since install_llm arrived
-2026-08-01 while no JV surface ever exposed the toggle. seed_workspace()
-(serve-time since target-tree P6; create_app until then) therefore writes an
-explicit "0" once, marker-guarded: fresh DBs seed OFF, legacy DBs are flipped
-OFF exactly once, and a user's later warm-ON choice survives reboots.
+The 2026-08-05 warm-OFF override was an explicit stopgap — "TTS owns the GPU
+until F4's arbiter" — and retired as the VRAM wiring's LAST step (Q6): with
+budgeted arbitration live, an idle warm LLM is simply evictable, so the shared
+seed's "1" now reaches fresh JV databases and the first Analyze is instant.
+Seeds-only rule: an existing DB's stored value is never flipped either way —
+a user's choice (or a legacy 0) survives every boot until they change it or
+reset.
 """
 
 from __future__ import annotations
@@ -23,39 +24,23 @@ def _warm(client: TestClient) -> bool:
     return r.json()["warmDefaultOnStartup"]
 
 
-def test_fresh_db_seeds_warm_off(tmp_path):
+def test_fresh_db_seeds_warm_on(tmp_path):
+    """The family default reaches a fresh JV DB — no override left to block it."""
     client = TestClient(create_app(data_dir=tmp_path), raise_server_exceptions=False)
     seed_workspace()
-    assert _warm(client) is False
-
-
-def test_legacy_shared_seeded_on_is_flipped_once(tmp_path):
-    # A DB from the 2026-08-01..05 window: the shared seed's "1" is present and
-    # JV's marker is not (simulated by removing it after a normal boot).
-    TestClient(create_app(data_dir=tmp_path), raise_server_exceptions=False)
-    seed_workspace()
-    from llm_runner.llm import db as llm_db
-
-    s = llm_db.session()
-    try:
-        s.get(llm_db.RunnerSetting, "warm_default_on_startup").value = "1"
-        s.delete(s.get(llm_db.RunnerSetting, "jv_warm_default_applied"))
-        s.commit()
-    finally:
-        s.close()
-
-    client = TestClient(create_app(data_dir=tmp_path), raise_server_exceptions=False)
-    seed_workspace()
-    assert _warm(client) is False
-
-
-def test_user_warm_on_choice_survives_reboot(tmp_path):
-    client = TestClient(create_app(data_dir=tmp_path), raise_server_exceptions=False)
-    seed_workspace()
-    r = client.put("/v1/ai/engine-config", json={"warmDefaultOnStartup": True})
-    assert r.status_code == 200
     assert _warm(client) is True
+
+
+def test_stored_warm_off_survives_reboot(tmp_path):
+    """Seeds-only honesty: a DB carrying warm OFF (a user's choice, or the
+    retired 2026-08-05 override's residue) is NOT flipped by a boot — the
+    shared seed is insert-if-missing and no code rewrites the row."""
+    client = TestClient(create_app(data_dir=tmp_path), raise_server_exceptions=False)
+    seed_workspace()
+    r = client.put("/v1/ai/engine-config", json={"warmDefaultOnStartup": False})
+    assert r.status_code == 200
+    assert _warm(client) is False
 
     client2 = TestClient(create_app(data_dir=tmp_path), raise_server_exceptions=False)
     seed_workspace()
-    assert _warm(client2) is True
+    assert _warm(client2) is False

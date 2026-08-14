@@ -16,32 +16,13 @@ import logging
 log = logging.getLogger(__name__)
 
 
-def apply_jv_warm_default() -> None:
-    """Seed JV's warm-on-startup default OFF, once (ruling 2026-08-05).
-
-    Runs after the shared tables exist and before seed_llm (whose
-    insert-if-missing then leaves the row alone). The marker row is what makes
-    it one-time: without it, a user's later warm-ON choice would be flipped
-    back on every boot. Best-effort — a failure here must never stop a boot
-    (the cost is the family default, warm ON)."""
-    from llm_runner.llm import db as llm_db
-
-    try:
-        s = llm_db.session()
-        try:
-            if s.get(llm_db.RunnerSetting, "jv_warm_default_applied") is not None:
-                return
-            row = s.get(llm_db.RunnerSetting, "warm_default_on_startup")
-            if row is None:
-                s.add(llm_db.RunnerSetting(key="warm_default_on_startup", value="0"))
-            else:
-                row.value = "0"
-            s.add(llm_db.RunnerSetting(key="jv_warm_default_applied", value="1"))
-            s.commit()
-        finally:
-            s.close()
-    except Exception as e:  # noqa: BLE001 — a seed nicety, never boot-fatal
-        log.warning("could not apply JV's warm-default-off seed: %s", e)
+# `apply_jv_warm_default` (the 2026-08-05 warm-OFF stopgap — "TTS owns the
+# GPU until F4's arbiter") RETIRED 2026-08-13 as the VRAM wiring's LAST step
+# (Q6, decided): with budgeted arbitration live, an idle warm LLM is simply
+# evictable, so the kit's family default (warm ON, seed.py) now reaches fresh
+# JV databases and the first Analyze is instant. Seeds-only rule: an existing
+# DB keeps its stored 0 (and the old jv_warm_default_applied marker row)
+# until the user resets or flips the engine-config toggle themselves.
 
 
 # The shared DEFAULT_CATALOG ids JV retired (user direction 2026-08-05: the
@@ -103,14 +84,14 @@ def retire_default_catalog_rows() -> None:
 
 def reseed_shared_llm(engine, session_factory) -> None:
     """Factory-reset's shared-stack half: re-point storage at the NEW session
-    factory, re-create the shared tables in the fresh file, re-apply JV's warm
-    default, re-run the shared seed. Router mounts are untouched — they read
-    through the store accessors, which follow the re-configured storage."""
+    factory, re-create the shared tables in the fresh file, re-run the shared
+    seed (which now includes the family's warm-ON default — the JV warm-OFF
+    override retired with the VRAM wiring). Router mounts are untouched — they
+    read through the store accessors, which follow the re-configured storage."""
     from llm_runner.llm import db as llm_db
     from llm_runner.llm.seed import seed_llm
 
     llm_db.configure_storage(session_factory)
     llm_db.create_all(engine)
-    apply_jv_warm_default()
     seed_llm()
     retire_default_catalog_rows()

@@ -46,11 +46,71 @@ function bridgeJobProgress(panel, task) {
   );
 }
 import SpeechProvidersPanel from "./SpeechProvidersPanel.vue";
+import { UiSelect } from "@delebash/llm-ui";
 
 // The Local/Online half switch (the folder-tab pair).
 const half = ref("local");
 
 const api = useApi();
+
+// ── The memory budget strip (the 2026-08-13 VRAM wiring, Q3/Q4) ────────
+// ONE endpoint (`/v1/engines/vram`) reads the shared arbiter: the box's
+// budget pool (a card's VRAM on discrete boxes, the one shared pool on
+// integrated/unified — the label follows mem_arch), each resident booking
+// with its provenance, the on-demand LLM claim, and eviction events the
+// poller turns into toasts (Q3: event-driven honesty — a swap is named
+// when it HAPPENS; there are no predictive load-time warnings).
+const vram = ref(null);
+let vramTimer = null;
+let lastEventSeq = 0;
+let vramPrimed = false; // absorb pre-mount events silently on the first poll
+async function pollVram() {
+  const v = await api.safeRequest(`/v1/engines/vram?events_since=${lastEventSeq}`, null);
+  if (!v) return;
+  for (const ev of v.events || []) {
+    lastEventSeq = Math.max(lastEventSeq, ev.seq);
+    if (vramPrimed) {
+      pushToast({
+        message: `${ev.victim_key} was unloaded to make room${ev.reason ? ` — ${ev.reason}` : ""}.`,
+        kind: "info", duration: 6000,
+      });
+    }
+  }
+  vramPrimed = true;
+  vram.value = v;
+}
+const memLabel = computed(() => (vram.value?.mem_arch === "discrete" ? "VRAM" : "Memory"));
+function _kindMb(kinds) {
+  return (vram.value?.reservations || [])
+    .filter((r) => kinds.includes(r.kind))
+    .reduce((n, r) => n + (r.vram_mb || 0), 0);
+}
+const speechInUseMb = computed(() => _kindMb(["tts", "stt"]));
+const llmCell = computed(() => {
+  const v = vram.value;
+  if (!v) return null;
+  const llmMb = _kindMb(["llm"]);
+  if (llmMb > 0) return { label: "AI model (loaded)", text: fmtDisk(llmMb), title: "" };
+  const c = v.claim;
+  if (c) {
+    return {
+      label: "AI model (loads on demand)",
+      text: `~${fmtDisk(c.vram_mb)}`,
+      title: `${c.model} — ${c.source}${c.matches ? ` (${c.matches} measured loads)` : ""}`
+        + (c.ram_mb ? ` · RAM ~${fmtDisk(c.ram_mb)} (display-only)` : ""),
+    };
+  }
+  if (v.claim_reason === "cloud-routed") {
+    return { label: "AI model", text: "cloud-routed",
+      title: "Your AI features run on a cloud provider — no local memory needed" };
+  }
+  return { label: "AI model", text: "—", title: "" };
+});
+const budgetTitle = computed(() => {
+  const rows = vram.value?.reservations || [];
+  if (!rows.length) return "Nothing is booked in the memory ledger.";
+  return rows.map((r) => `${r.key}: ${fmtDisk(r.vram_mb)} (${r.source})`).join("\n");
+});
 
 // Seed from the last fetch so revisiting doesn't flash the "no engines"
 // banner before the list arrives (user-hit 2026-06-12).
@@ -98,10 +158,41 @@ function clearTerminalTask(key) {
 // ── Default engine (settings.engines.default_tts_engine — the ONE source;
 // the old Settings → Generation dropdown died for this row action). ─────
 const defaultEngineId = ref("");
+// engine_id → the operator's Device choice (settings.engines.
+// engine_overrides[id].device — Q2's decided setting; "" = auto).
+const deviceOverrides = reactive({});
 async function loadDefaults() {
   const s = await api.safeRequest("/v1/settings", null);
   defaultEngineId.value = s?.engines?.default_tts_engine || "";
+  const ov = s?.engines?.engine_overrides || {};
+  for (const [id, o] of Object.entries(ov)) deviceOverrides[id] = o?.device || "auto";
 }
+
+// The per-engine Device select (Q2, decided 2026-08-08 round 2): a REAL
+// setting, resolved at the one load door — never a hidden torch default.
+// Read-modify-write the overrides map (a bare PATCH could clobber siblings).
+async function setDeviceOverride(engine, value) {
+  try {
+    const s = await api.request("/v1/settings");
+    const overrides = { ...(s?.engines?.engine_overrides || {}) };
+    overrides[engine.id] = { ...(overrides[engine.id] || {}), device: value };
+    await api.request("/v1/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ engines: { engine_overrides: overrides } }),
+    });
+    deviceOverrides[engine.id] = value;
+    const note = engine.status === "loaded" ? " Takes effect on the next load." : "";
+    pushToast({ message: `${engine.name || engine.id} device set to ${value}.${note}`, kind: "success" });
+  } catch (e) {
+    pushToast({ message: `Couldn't set the device: ${e?.message || e}`, kind: "error" });
+  }
+}
+const DEVICE_OPTIONS = [
+  { label: "Auto (recommended)", value: "auto" },
+  { label: "CUDA (GPU)", value: "cuda" },
+  { label: "CPU", value: "cpu" },
+];
 async function setDefaultEngine(engine) {
   try {
     await api.request("/v1/settings", {
@@ -456,16 +547,6 @@ const rail = computed(() => {
   }
   return out;
 });
-const railVram = computed(() => {
-  let mb = 0;
-  for (const k of ["tts", "stt"]) {
-    const slot = rail.value[k];
-    if (!slot) continue;
-    const v = variantsFor(slot.engine.id).find((x) => x.id === slot.engine.current_variant_id);
-    mb += v?.vram_mb || 0;
-  }
-  return mb;
-});
 async function unloadKind(kind) {
   try {
     await api.request("/v1/engines/unload", {
@@ -483,10 +564,14 @@ async function unloadKind(kind) {
 const sharedEngines = computed(() => engines.value.filter((e) => e.isolation !== "venv").length);
 
 onMounted(() => {
-  refresh(); loadSystem(); loadDefaults();
+  refresh(); loadSystem(); loadDefaults(); pollVram();
+  vramTimer = setInterval(pollVram, 4000);
   window.addEventListener("jv:health-refresh", refresh);
 });
-onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
+onBeforeUnmount(() => {
+  window.removeEventListener("jv:health-refresh", refresh);
+  if (vramTimer) clearInterval(vramTimer);
+});
 </script>
 
 <template>
@@ -533,6 +618,25 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
       </div>
     </div>
 
+    <!-- The memory budget strip (Q4: ONE strip, one endpoint, the shared
+         ledger's truth). The label follows the box's memory architecture:
+         "VRAM" on a discrete card, "Memory" on one-pool (iGPU/unified)
+         machines where CPU and GPU share the same bytes. Hover lists each
+         booking with its provenance (declared prices never dress up as
+         measured truth). -->
+    <div class="jv-card ev-hw" v-if="vram" :title="budgetTitle">
+      <div class="ev-hw-cell"><div class="k">{{ memLabel }} budget</div><strong>{{ fmtDisk(vram.total_mb) }}</strong></div>
+      <div class="ev-hw-cell"><div class="k">Speech in use</div><strong>{{ speechInUseMb ? fmtDisk(speechInUseMb) : "—" }}</strong></div>
+      <div class="ev-hw-cell" v-if="llmCell"><div class="k">{{ llmCell.label }}</div>
+        <strong :title="llmCell.title">{{ llmCell.text }}</strong>
+      </div>
+      <div class="ev-hw-cell"><div class="k">Free</div><strong>{{ fmtDisk(vram.remaining_mb) }}</strong></div>
+      <div class="ev-hw-cell" v-if="vram.busy_kinds?.length"><div class="k">Busy</div>
+        <span><UiTag v-for="k in vram.busy_kinds" :key="k" intent="ghost" :label="k.toUpperCase()"
+          title="Work in flight — this kind's resident model can't be evicted right now" /></span>
+      </div>
+    </div>
+
     <!-- Loaded-now rail -->
     <div class="ev-rail">
       <div class="ev-rail-h">Loaded now</div>
@@ -545,8 +649,11 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
         <div v-else><div class="nm">— nothing loaded</div></div>
         <button v-if="rail[k]" type="button" class="ev-x" title="Free this slot — weights stay on disk" @click="unloadKind(k)">Unload</button>
       </div>
-      <div class="ev-vrtotal" v-if="railVram" title="Sum of the loaded models' declared VRAM needs">
-        est. VRAM <strong>{{ fmtDisk(railVram) }}</strong><span v-if="gpuVramMb"> / {{ fmtDisk(gpuVramMb) }}</span>
+      <!-- The old client-guessed "est. VRAM" total died with the 2026-08-13
+           wiring — the budget strip above shows the LEDGER's committed
+           number instead (server truth, provenance-tagged). -->
+      <div class="ev-vrtotal" v-if="vram && speechInUseMb" title="What the loaded speech models have booked in the shared memory ledger">
+        booked <strong>{{ fmtDisk(speechInUseMb) }}</strong> / {{ fmtDisk(vram.total_mb) }}
       </div>
     </div>
 
@@ -588,7 +695,7 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
               title="One-time: builds this engine's isolated venv. Models download separately afterwards."
               @click.stop="installEngine(e)" />
             <span v-if="!anyTaskRunning(e.id) && !engineNeedsInstall(e)" class="meta">{{ groupSummary(e) }}</span>
-            <span v-if="!anyTaskRunning(e.id) && !engineNeedsInstall(e) && loadedVariantName(e)" class="ldd">● {{ loadedVariantName(e) }} loaded</span>
+            <span v-if="!anyTaskRunning(e.id) && !engineNeedsInstall(e) && loadedVariantName(e)" class="ldd">● {{ loadedVariantName(e) }} loaded<template v-if="e.resolved_device"> · {{ e.resolved_device.toUpperCase() }}</template></span>
             <!-- Set-as-default (engine) — rightmost, the family position. -->
             <UiButton v-if="sec.id === 'tts'" :intent="defaultEngineId === e.id ? 'success' : 'secondary'" size="small"
               :label="defaultEngineId === e.id ? 'Default ✓' : 'Set as default'"
@@ -630,6 +737,19 @@ onBeforeUnmount(() => window.removeEventListener("jv:health-refresh", refresh));
           <DownloadBar v-for="row in taskRowsFor(e.id)" :key="row.key"
             :title="row.variantId ? variantNameFor(e.id, row.variantId) : `${e.name || e.id} · engine setup`"
             :task="row.task" />
+
+          <!-- The Device select (Q2, decided): a real setting the ONE load
+               door resolves — auto follows the engine's cpu_adequate fact,
+               an explicit choice always wins. The engine's hidden torch
+               "auto" (greedy-cuda) no longer decides anything. -->
+          <div class="ev-gfoot">
+            Device
+            <UiSelect :modelValue="deviceOverrides[e.id] || 'auto'" width="name"
+              :options="DEVICE_OPTIONS"
+              title="Where this engine's model loads. Auto picks CPU for CPU-fast engines, otherwise your GPU."
+              @update:modelValue="(v) => setDeviceOverride(e, v)" />
+            <span v-if="e.resolved_device" class="jv-muted">loaded on {{ e.resolved_device.toUpperCase() }}</span>
+          </div>
 
           <div class="ev-gfoot" v-if="e.isolation === 'venv' && e.status !== 'not_installed'">
             isolated venv

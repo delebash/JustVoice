@@ -82,6 +82,10 @@ class SynthScheduler:
         self._next_order = 1
         self._current_engine: str | None = None
         self._worker: threading.Thread | None = None
+        # The 2026-08-13 VRAM wiring (step 4): True while the worker is
+        # actively draining — the coarse tts-busy signal (Q1's
+        # never-evict-busy) lives at THIS transition, not per line.
+        self._busy_active = False
 
     # ── submit / cancel ──────────────────────────────────────────────
 
@@ -154,11 +158,32 @@ class SynthScheduler:
         self._current_engine = item.engine_id
         return item
 
+    def _set_busy_locked(self, active: bool) -> None:
+        """tts-busy at the worker's idle↔active transitions (the 2026-08-13
+        VRAM wiring, step 4 — Q1's never-evict-busy): while the pool drains,
+        the resident TTS engine is not an eviction victim, so an LLM admission
+        mid-render takes its proceed-with-warning branch instead of killing
+        the render. Coarse by design — one flag for the whole drain, released
+        the moment the pool empties. Best-effort: bare tests run without the
+        shared stack (no ledger → nothing to protect)."""
+        if active == self._busy_active:
+            return
+        self._busy_active = active
+        try:
+            from llm_runner.runner.arbiter import get_arbiter
+
+            arb = get_arbiter()
+        except Exception:  # noqa: BLE001 — no kit in this process
+            return
+        (arb.busy_begin if active else arb.busy_end)("tts")
+
     def _run(self) -> None:
         while True:
             with self._wake:
                 while not self._pending:
+                    self._set_busy_locked(False)
                     self._wake.wait()
+                self._set_busy_locked(True)
                 item = self._pick_locked()
             try:
                 item.result = item.fn()

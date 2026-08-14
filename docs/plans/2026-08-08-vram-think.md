@@ -325,6 +325,35 @@ re-deriving anything. Each step names its repo, its files, and which Q gates
 it. The order is load-bearing: 1 and 2 are prerequisites — nothing after them
 is safe to build first.
 
+> **STATUS STAMP 2 (2026-08-13 — THE WIRING IS BUILT).** The go: *"your rec
+> go and go for the full vram phase"*, after the ordered re-think + its
+> adversarial cross-verification (every claim run in code). Everything below
+> is DONE; this doc is history now:
+> - **Step 1 + step 4's llm half had ALREADY been built kit-side** during the
+>   fit redesign (the 2026-08-09 seam: kind/evict_fn/source reservations,
+>   make_room with busy protection, kind-scoped counts, `_admit` refactored,
+>   the eviction-event ring, llm-busy at dispatch) — the 2026-08-09 stamp
+>   below never learned this.
+> - **Step 3 BUILT**: device policy + admission + declared-price reservation
+>   in `EngineManager.load()` (manager.py), `cpu_adequate` on kokoro, the
+>   `engine_overrides[id].device` setting — PLUS the ONE-POOL RULING the
+>   re-think surfaced (pool boxes book whichever device resolves; the kit's
+>   one-pool booking clamp fixed to `budget_total_mb` with its two stale test
+>   pins re-pinned).
+> - **Step 4 BUILT**: tts-busy at the scheduler worker's idle↔active
+>   transitions; stt-busy at `manager.transcribe`.
+> - **Step 5 BUILT**: `GET /v1/engines/vram` (snapshot + the routed-default
+>   claim via the kit's `preview_fit` four-arm resolver — P5-5's ladder is
+>   SUPERSEDED, and `declared_claim_fn` turned out DEAD plumbing, unused) +
+>   the budget strip / Device select / eviction toasts / resolved-device
+>   display on the Speech-engines tab (VRAM-vs-Memory label off mem_arch).
+> - **Step 6 BUILT**: the 2026-08-05 warm-OFF stopgap retired
+>   (`apply_jv_warm_default` deleted; the family warm-ON seed reaches fresh
+>   DBs; existing DBs keep their stored value — seeds-only).
+> - Tests: `test_engine_vram_wiring.py` (17) + re-pinned warm/seed tests;
+>   gates green across kit (847) · JV (485 + vitest + build + smoke) · JW
+>   (128 + build) · check-family.
+>
 > **STATUS STAMP (2026-08-09, after the scheduler shipped — commit
 > `3a5a23d`, Q1–Q8 all decided, scheduler Stages 1+2 BUILT per §7-7d).**
 > Read this section THROUGH the stamp; the per-step notes below are the

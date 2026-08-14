@@ -205,9 +205,10 @@ def test_retired_default_rows_are_removed_once_from_existing_dbs(tmp_path):
 
 def test_factory_reset_runs_in_ship_order(monkeypatch):
     """Part 7 rider (2026-08-06; the one-time attribution migrations died in
-    the tier-debris cleanup 2026-08-07): the factory-reset shared half pins
-    its order — storage re-point, table create, warm default, SEED, then the
-    catalog retirement."""
+    the tier-debris cleanup 2026-08-07; the JV warm-OFF override retired
+    2026-08-13 with the VRAM wiring — the family warm-ON seed stands): the
+    factory-reset shared half pins its order — storage re-point, table
+    create, SEED, then the catalog retirement."""
     import llm_runner.llm.db as llm_db
     import llm_runner.llm.seed as llm_seed
 
@@ -217,9 +218,8 @@ def test_factory_reset_runs_in_ship_order(monkeypatch):
     monkeypatch.setattr(llm_db, "configure_storage", lambda sf: calls.append("storage"))
     monkeypatch.setattr(llm_db, "create_all", lambda e: calls.append("tables"))
     monkeypatch.setattr(llm_seed, "seed_llm", lambda: calls.append("seed"))
-    monkeypatch.setattr(lb, "apply_jv_warm_default", lambda: calls.append("warm"))
     monkeypatch.setattr(lb, "retire_default_catalog_rows", lambda: calls.append("retire"))
 
     lb.reseed_shared_llm(engine=None, session_factory=None)
 
-    assert calls == ["storage", "tables", "warm", "seed", "retire"]
+    assert calls == ["storage", "tables", "seed", "retire"]

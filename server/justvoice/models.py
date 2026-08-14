@@ -258,6 +258,14 @@ class EngineOverrides(BaseModel):
     # _resolved_default_variant consults this first, so a no-variant load
     # actually loads it (never just relabels a row). None = manifest default.
     default_variant: str | None = None
+    # The operator's Device choice for this engine (the 2026-08-13 VRAM
+    # wiring, Q2 decided 2026-08-08: "q2 ok"): "auto" | "cuda" | "cpu".
+    # None/"auto" = the load door's policy (cpu_adequate manifest fact →
+    # cpu; else cuda when the box has it; else cpu). An explicit value
+    # passes straight to the engine — including an explicit "cuda" on an
+    # engine whose venv may lack GPU wheels: a load error surfacing to an
+    # explicit override is acceptable, `auto` never goes there.
+    device: str | None = None
 
 
 class ExternalEngineConfig(BaseModel):
@@ -709,11 +717,72 @@ class EngineInfo(BaseModel):
     # 2026-07-29, so the notice the licence requires was not actually
     # being shown. Do not drop the render without checking the licence.
     attribution: str = ""
+    # The device the last confirmed load actually resolved to (the 2026-08-13
+    # VRAM wiring, Q2: resolved device always visible, never hidden). null =
+    # not loaded this server process.
+    resolved_device: str | None = None
 
 
 class EnginesListResponse(BaseModel):
     engines: list[EngineInfo]
     current: str | None = None
+
+
+# ─── The memory budget strip (the 2026-08-13 VRAM wiring, Q3/Q4) ─────────
+
+
+class VramReservation(BaseModel):
+    """One resident booking in the shared ledger. `source` is §13.1 provenance
+    (measured | computed | declared) — a manifest-priced TTS row must never
+    read as live truth on the strip."""
+
+    key: str
+    vram_mb: int
+    pinned: bool = False
+    kind: str = "llm"
+    source: str = "computed"
+
+
+class VramClaim(BaseModel):
+    """The on-demand LLM's predicted footprint (Q3's standing line), resolved
+    by the kit's four-arm claim resolver (resident-live → measured → computed
+    → declared). `ram_mb` is display-only (§8.18)."""
+
+    model: str
+    vram_mb: int
+    ram_mb: int = 0
+    source: str = "computed"
+    matches: int = 0
+
+
+class VramEvent(BaseModel):
+    """One eviction from the arbiter's event ring (Q3: event-driven honesty —
+    toasts name what was evicted and why, no predictive warnings)."""
+
+    seq: int
+    at: int
+    victim_key: str
+    victim_kind: str
+    reason: str = ""
+
+
+class EngineVramResponse(BaseModel):
+    """`GET /v1/engines/vram` — the one budget view (Q4): the arch-aware
+    arbiter snapshot + the on-demand claim + eviction events. `mem_arch`
+    drives the strip's label: "VRAM" on discrete boxes, "Memory" on one-pool
+    (integrated/unified) boxes."""
+
+    mem_arch: str
+    total_mb: int
+    committed_mb: int
+    remaining_mb: int
+    reservations: list[VramReservation] = []
+    busy_kinds: list[str] = []
+    claim: VramClaim | None = None
+    # Why there is no claim when claim is null: "cloud-routed" (no JV feature
+    # resolves to the bundled runner) | "not-configured" | "unavailable".
+    claim_reason: str | None = None
+    events: list[VramEvent] = []
 
 
 class CurrentEngineResponse(BaseModel):

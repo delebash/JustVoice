@@ -32,14 +32,15 @@ JustVoice ships with 7 commercial-output-permitting TTS engines plus an external
 
 ## Loading / unloading
 
-Only one engine is **loaded** at a time per GPU. Loading takes 10-30s (model load + warmup). The **speech engines** tab on the ai page shows the current state per engine:
+One engine is **loaded** per slot (one TTS, one STT). Loading takes 10-30s (model load + warmup). The **speech engines** tab on the ai page shows the current state per engine:
 
 - `not installed` — first download required.
-- `installed` — present on disk, not currently in VRAM.
-- `loaded` — in VRAM, ready to render.
-- `loaded · CPU realtime` — Kokoro running on CPU.
+- `installed` — present on disk, not currently loaded.
+- `loaded` — resident and ready to render. The card also shows **which device** it loaded on (`· CUDA` / `· CPU`).
 
-Click Load on any installed engine; the currently loaded one auto-unloads.
+Click Load on any installed engine; the same slot's prior occupant auto-unloads.
+
+Loads run against the **shared memory budget** (the strip at the top of the tab — total, speech in use, the AI model's claim, free). If the pool is short, JustVoice frees the least-recently-used *idle* model and toasts what it unloaded; if everything resident is busy, the load refuses with an honest message instead of an out-of-memory crash. Each card also carries a **Device** select (Auto / CUDA / CPU) — Auto sends CPU-fast engines (Kokoro) to CPU and the rest to your GPU, and an explicit choice always wins. The full story is in [GPU / CUDA](gpu.md#the-shared-memory-budget).
 
 ### Cancelling an in-flight load
 

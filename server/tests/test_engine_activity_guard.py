@@ -36,6 +36,9 @@ def _bare_manager() -> EngineManager:
     mgr._lock = threading.RLock()
     mgr._cancel_load_requests = set()
     mgr._activity_locks = {}
+    mgr._resolved_devices = {}
+    mgr._hw_cache = None
+    mgr._hw_detected = True  # never shell out to nvidia-smi in a unit test
     return mgr
 
 

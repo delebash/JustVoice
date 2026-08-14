@@ -28,8 +28,12 @@ from ..models import (
     EngineCapabilityDetail,
     EngineInfo,
     EnginesListResponse,
+    EngineVramResponse,
     Feature,
     Prerequisites,
+    VramClaim,
+    VramEvent,
+    VramReservation,
 )
 
 router = APIRouter(tags=["engines"])
@@ -99,6 +103,9 @@ def _info_from_manifest(manifest: EngineManifest, status: str) -> EngineInfo:
         supported_oses=manifest.supported_oses,
         weights_license=manifest.weights_license,
         attribution=manifest.attribution,
+        # The 2026-08-13 VRAM wiring (Q2): the device the load actually
+        # resolved to, straight from the one load door.
+        resolved_device=mgr.resolved_device_for(manifest.id),
     )
 
 
@@ -200,6 +207,98 @@ async def get_engine_capability(engine_id: str) -> EngineCapabilityDetail:
     if detail is None:
         raise HTTPException(status_code=404, detail=f"No capability detail for engine {engine_id!r}")
     return detail
+
+
+def _on_demand_claim() -> tuple[VramClaim | None, str | None]:
+    """Q3's standing "AI model (loads on demand)" line — the ROUTED DEFAULT's
+    predicted footprint. The layers that can name a local model: the routing
+    default (the store the warm boot gates on) and the per-feature production
+    configs (Lab presets carry provider+model). The claim itself comes from
+    the kit's `preview_fit` four-arm resolver (P5-5's hand-rolled ladder is
+    SUPERSEDED — resident-live → measured → computed → declared). Several
+    distinct local models → the largest claim (the honest worst-case
+    on-demand load). Everything named is cloud → "cloud-routed"; nothing
+    named anywhere → "not-configured" — the strip says which, instead of
+    showing a number that will never load."""
+    try:
+        from llm_runner.llm import stores
+        from llm_runner.runner.lifecycle import get_service
+
+        from ..engines.llm.run import jv_llm_config
+
+        local_models: set[str] = set()
+        named_any = False
+        d = stores.get_routing_store().get_routing().default
+        if getattr(d, "llmId", ""):
+            named_any = True
+            if d.llmId == "local-llamacpp" and getattr(d, "model", ""):
+                local_models.add(d.model)
+        for cfg in jv_llm_config().production_configs or []:
+            pid = getattr(cfg, "providerId", "") or ""
+            if not pid:
+                continue
+            named_any = True
+            if pid == "local-llamacpp" and getattr(cfg, "model", ""):
+                local_models.add(cfg.model)
+        if not local_models:
+            return None, "cloud-routed" if named_any else "not-configured"
+        svc = get_service()
+        best: VramClaim | None = None
+        for mid in sorted(local_models):
+            try:
+                claim = (svc.preview_fit(mid) or {}).get("claim") or {}
+            except Exception:  # noqa: BLE001 — one bad row must not kill the strip
+                continue
+            if not claim:
+                continue
+            c = VramClaim(
+                model=mid,
+                vram_mb=int(claim.get("vramMb") or 0),
+                ram_mb=int(claim.get("ramMb") or 0),
+                source=str(claim.get("source") or "computed"),
+                matches=int(claim.get("matches") or 0),
+            )
+            if best is None or c.vram_mb > best.vram_mb:
+                best = c
+        return (best, None) if best is not None else (None, "not-configured")
+    except Exception:  # noqa: BLE001 — the strip must render even if routing is mid-boot
+        return None, "unavailable"
+
+
+@router.get(
+    "/v1/engines/vram",
+    response_model=EngineVramResponse,
+    summary="The memory budget strip: arbiter snapshot + on-demand claim + eviction events",
+)
+async def get_engine_vram(events_since: int = 0) -> EngineVramResponse:
+    """The 2026-08-13 VRAM wiring (Q3/Q4): ONE endpoint reading the shared
+    arbiter — total / committed / remaining for the box's budget pool
+    (mem_arch says whether that pool is a card's VRAM or the one shared
+    memory pool), each resident booking with its kind + §13.1 provenance,
+    the busy kinds, the on-demand LLM claim, and eviction events newer than
+    `events_since` (the client toasts them and keeps the last seq)."""
+    try:
+        from llm_runner.runner.arbiter import get_arbiter
+
+        arb = get_arbiter()
+    except Exception:  # noqa: BLE001 — no shared stack in this process
+        raise HTTPException(status_code=503, detail="the shared LLM stack is not mounted")
+    # The manager's cached hardware snapshot — never re-probe per poll
+    # (detect shells out to nvidia-smi).
+    hw = get_manager()._hardware()
+    snap = arb.snapshot(hw) if hw is not None else arb.snapshot()
+    claim, claim_reason = _on_demand_claim()
+    return EngineVramResponse(
+        mem_arch=snap["mem_arch"],
+        total_mb=snap["vram_total_mb"],
+        committed_mb=snap["committed_mb"],
+        remaining_mb=snap["remaining_mb"],
+        reservations=[VramReservation(**r) for r in snap["reservations"]],
+        busy_kinds=snap["busy_kinds"],
+        claim=claim,
+        claim_reason=claim_reason,
+        events=[VramEvent(**e) for e in arb.events_since(events_since)],
+    )
 
 
 @router.get("/v1/engines/current", response_model=CurrentEngineResponse)

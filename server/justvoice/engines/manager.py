@@ -38,6 +38,7 @@ import subprocess
 import sys
 import threading
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable
 
@@ -57,6 +58,26 @@ NOT_ENGINES = {"__pycache__", "__init__", "base", "catalog", "factory", "registr
 PORT_HANDSHAKE_TIMEOUT_S = 30.0
 HEALTH_CHECK_INTERVAL_S = 0.25
 SUBPROCESS_KILL_TIMEOUT_S = 5.0
+
+
+@contextmanager
+def _kind_busy(kind: str):
+    """Mark the arbiter's `kind` busy for the block (Q1's never-evict-busy —
+    the 2026-08-13 VRAM wiring, step 4). Best-effort: without the shared stack
+    there is no ledger and nothing to protect."""
+    try:
+        from llm_runner.runner.arbiter import get_arbiter
+
+        arb = get_arbiter()
+    except Exception:  # noqa: BLE001
+        arb = None
+    if arb is not None:
+        arb.busy_begin(kind)
+    try:
+        yield
+    finally:
+        if arb is not None:
+            arb.busy_end(kind)
 
 
 def _venv_python(venv_dir: Path) -> Path:
@@ -1081,6 +1102,13 @@ class EngineManager:
         # loop (§7b P2-6 of docs/plans/2026-08-08-vram-think.md). Lock
         # order: activity → self._lock, never the reverse.
         self._activity_locks: dict[str, threading.Lock] = {}
+        # The 2026-08-13 VRAM wiring: engine_id → the device its last confirmed
+        # load actually resolved to (Q2: always visible, never hidden), and the
+        # once-per-process kit hardware snapshot the device policy + admission
+        # read (None until first use; detect shells out to nvidia-smi).
+        self._resolved_devices: dict[str, str] = {}
+        self._hw_cache = None
+        self._hw_detected = False
         self.refresh_manifests()
 
     # ─── Per-kind slot helpers (Phase 2 / Slice 1) ────────────────────
@@ -1115,6 +1143,192 @@ class EngineManager:
                 lock = threading.Lock()
                 self._activity_locks[kind] = lock
             return lock
+
+    # ─── VRAM arbitration (the 2026-08-13 wiring — vram-think §6 step 3) ──
+    #
+    # The manager joins the kit's process-wide VramArbiter (the shared ledger
+    # the bundled LLM runner already runs): device resolves HERE (the one load
+    # door), a booking load admits via the shared `make_room`, a confirmed load
+    # reserves with source="declared" (§13.1 — a manifest price never reads as
+    # measured truth), and every unload path releases. All kit calls are
+    # best-effort lazy imports so bare unit tests run without the shared stack.
+
+    def _hardware(self):
+        """The kit's hardware snapshot, detected once per process (it shells
+        out to nvidia-smi). None when detection is unavailable — resolution
+        then falls to CPU and admission books nothing."""
+        if not self._hw_detected:
+            self._hw_detected = True
+            try:
+                from llm_runner.runner.hardware import detect
+
+                self._hw_cache = detect()
+            except Exception:  # noqa: BLE001 — no kit / detect failure → honest CPU fallback
+                self._hw_cache = None
+        return self._hw_cache
+
+    @staticmethod
+    def _user_device_override(engine_id: str) -> str:
+        """The operator's Device choice for this engine
+        (settings.engines.engine_overrides[id].device — the Speech-engines
+        card's Device select, Q2's decided setting). Best-effort: unit tests
+        run without app state → "" (auto)."""
+        try:
+            from ..app_state import get_state
+
+            ov = get_state().settings.get().engines.engine_overrides.get(engine_id)
+            return (ov.device or "") if ov else ""
+        except Exception:  # noqa: BLE001 — no state / mid-boot → auto
+            return ""
+
+    def _resolve_device(self, m: EngineManifest, requested: str | None) -> str:
+        """Q2 (decided 2026-08-08 round 2): an explicit request wins → the
+        operator's per-engine Device setting → the auto policy (`cpu_adequate`
+        manifest fact → cpu; else cuda when this box has it; else cpu). The
+        resolved device is ALWAYS passed down explicitly — the engine
+        subprocess's own torch/sherpa "auto" (hidden greedy-cuda) is the thing
+        this removes (precedent: the runner's #274 embed placement)."""
+        if requested not in (None, "", "auto"):
+            return requested
+        user = self._user_device_override(m.id)
+        if user not in ("", "auto"):
+            return user
+        if (getattr(m, "requirements", None) or {}).get("cpu_adequate"):
+            return "cpu"
+        hw = self._hardware()
+        runtimes = getattr(hw, "runtimes", None) or {}
+        return "cuda" if runtimes.get("cuda") else "cpu"
+
+    def _books_memory(self, resolved_device: str) -> bool:
+        """THE ONE-POOL RULING (2026-08-13, "your rec go"): on one-pool boxes
+        (integrated/unified — CPU and GPU are the same physical bytes) EVERY
+        managed load books its declared footprint into the pool ledger; on
+        discrete boxes only a device-resolved load holds VRAM (cpu is free —
+        its RAM is display-only, §8.18). "cuda" in Q2's ruling means "a GPU
+        device": kokoro's directml/coreml arms hold device memory the same
+        way, so any non-cpu resolve books on discrete too."""
+        hw = self._hardware()
+        if hw is None:
+            return False
+        try:
+            from llm_runner.runner.hardware import mem_arch
+
+            if mem_arch(hw) != "discrete":
+                return True
+        except Exception:  # noqa: BLE001 — no kit → nothing to book against
+            return False
+        return resolved_device != "cpu"
+
+    @staticmethod
+    def _safety_margin_mb() -> int:
+        """The runner config's existing margin knob (P5-4: the SAME knob the
+        LLM admission subtracts — no new hardcoded value); the kit's seed
+        default when the shared service isn't wired."""
+        try:
+            from llm_runner.runner.lifecycle import get_service
+
+            return int(get_service().config().safety_margin_mb)
+        except Exception:  # noqa: BLE001 — standalone/bare tests → the seed default
+            try:
+                from llm_runner.runner.config import DEFAULT_SAFETY_MARGIN_MB
+
+                return int(DEFAULT_SAFETY_MARGIN_MB)
+            except Exception:  # noqa: BLE001
+                return 1024
+
+    def _admit_memory(self, m: EngineManifest, kind: str, engine_id: str) -> None:
+        """Budget admission for a booking load (Q1/Q5): needed = the manifest's
+        declared `vram_min_mb` (a first guess — the spawn OOM is the real net),
+        margin = the runner config's `safety_margin_mb`. Runs with NO manager
+        locks held: `make_room`'s victims die by their owners' evictors (the
+        runner's re-takes its router lock, ours takes the activity lock), so
+        holding ours here would be a cross-app lock-order inversion. Busy kinds
+        are protected inside `make_room` itself (Q1's never-evict-busy). TTS/STT
+        have no auto-offload net, so a failed `make_room` is an HONEST refusal
+        that leaves the world exactly as it was — never proceed-with-warning.
+        If the prior same-kind occupant must die to make room, `make_room`
+        evicts it through OUR evictor — the slot swap below then finds the
+        slot already empty."""
+        needed = int((getattr(m, "requirements", None) or {}).get("vram_min_mb") or 0)
+        if needed <= 0:
+            return
+        try:
+            from llm_runner.runner.arbiter import get_arbiter
+        except Exception:  # noqa: BLE001 — bare tests: nothing to admit against
+            return
+        arb = get_arbiter()
+        hw = self._hardware()
+        margin = self._safety_margin_mb()
+        want = needed + margin
+        if want <= arb.remaining_mb(hw):
+            return
+        if arb.make_room(want, exclude=f"{kind}:{engine_id}", hardware=hw,
+                         reason=f"loading {engine_id}"):
+            return
+        snap = arb.snapshot(hw)
+        resident = ", ".join(
+            f"{r['key']} ({r['vram_mb']} MB)" for r in snap["reservations"]
+        ) or "nothing"
+        busy = ", ".join(snap["busy_kinds"]) or "none"
+        raise RuntimeError(
+            f"not enough memory to load {engine_id}: it needs ~{needed} MB "
+            f"(+{margin} MB safety margin) but only {snap['remaining_mb']} MB of "
+            f"{snap['vram_total_mb']} MB remain. Resident: {resident}; busy: {busy}. "
+            f"Wait for the current work to finish or unload something first."
+        )
+
+    def _reserve_engine(self, m: EngineManifest, kind: str) -> None:
+        """Book the confirmed load. Key = "kind:engine_id"; kind maps to the
+        arbiter's tts/stt vocabulary (the manager's llm slot is dead since F1
+        Phase 2 — if it ever revives it must NOT book kind="llm", which is the
+        runner's `models_max` count scope, P5-3); `evict_fn` is our any-thread
+        evictor. A crashed engine's reservation lingers until the next load or
+        unload of its slot — conservative (the ledger over-counts, admissions
+        run tighter, never an OOM)."""
+        try:
+            from llm_runner.runner.arbiter import get_arbiter
+        except Exception:  # noqa: BLE001
+            return
+        arb_kind = "stt" if kind == "stt" else "tts"
+        needed = int((getattr(m, "requirements", None) or {}).get("vram_min_mb") or 0)
+        get_arbiter().reserve(
+            f"{kind}:{m.id}", needed, kind=arb_kind,
+            evict_fn=lambda k=kind, eid=m.id: self._evict_for_arbiter(k, eid),
+            source="declared",
+        )
+
+    def _release_engine(self, kind: str, engine_id: str) -> None:
+        """Drop the booking (idempotent — `make_room` releases evicted rows
+        itself; a second release is a no-op)."""
+        try:
+            from llm_runner.runner.arbiter import get_arbiter
+        except Exception:  # noqa: BLE001
+            return
+        get_arbiter().release(f"{kind}:{engine_id}")
+
+    def _evict_for_arbiter(self, kind: str, engine_id: str) -> None:
+        """The evictor `make_room` executes for one of OUR reservations — safe
+        from ANY thread (a runner admission calls it holding no JV locks; we
+        never call `make_room` while holding ours). Terminates the slot ONLY if
+        this engine still occupies it; the reservation itself is released by
+        `make_room` on the attempt."""
+        with self._activity(kind), self._lock:
+            proc = self._loaded.get(kind)
+            if proc is not None and proc.manifest.id == engine_id:
+                try:
+                    proc.terminate()
+                except Exception:  # noqa: BLE001 — already dying is fine
+                    pass
+                self._loaded.pop(kind, None)
+                self._current_variants.pop(engine_id, None)
+                self._resolved_devices.pop(engine_id, None)
+
+    def resolved_device_for(self, engine_id: str) -> str | None:
+        """The device the last confirmed load of this engine actually resolved
+        to (shown on the Speech-engines card — Q2: the resolved device is
+        always visible, never hidden). None = not loaded this process."""
+        with self._lock:
+            return self._resolved_devices.get(engine_id)
 
     def current_variant_id(self, engine_id: str) -> str | None:
         with self._lock:
@@ -1320,6 +1534,20 @@ class EngineManager:
             _maybe_cancel()
 
             target_kind = m.kind
+            # The 2026-08-13 VRAM wiring (step 3): resolve the device at the ONE
+            # load door and pass it down explicitly — the engine subprocess never
+            # runs its own hidden greedy-cuda again. Then admit a booking load
+            # against the shared ledger BEFORE touching the slot: a refused
+            # admission leaves the world exactly as it was (the prior engine
+            # keeps running), and if the prior occupant must die to make room,
+            # `make_room` evicts it through our own evictor. Skipped when this
+            # very engine already holds the slot (it is resident and reserved).
+            device = self._resolve_device(m, device)
+            books = self._books_memory(device)
+            cur = self.loaded_for(target_kind)
+            if books and not (cur is not None and cur.manifest.id == engine_id):
+                self._admit_memory(m, target_kind, engine_id)
+
             # Activity lock first (lock order: activity → self._lock): a
             # terminate must wait for the slot's in-flight synth line.
             with self._activity(target_kind), self._lock:
@@ -1333,6 +1561,8 @@ class EngineManager:
                     )
                     prior.terminate()
                     self._loaded.pop(target_kind, None)
+                    self._release_engine(target_kind, prior.manifest.id)
+                    self._resolved_devices.pop(prior.manifest.id, None)
                 elif prior and prior.manifest.id == engine_id and prior.is_alive():
                     # Already loaded — just return current voices. Record the
                     # RESOLVED variant: "auto"/None must map to the default
@@ -1373,6 +1603,11 @@ class EngineManager:
                 with self._activity(target_kind), self._lock:
                     proc.terminate()
                     self._loaded.pop(target_kind, None)
+                    self._resolved_devices.pop(engine_id, None)
+                # Defensive — nothing is reserved before a 200, but a release
+                # is idempotent and the F1 lesson (a reservation nobody
+                # releases is a lying ledger) is worth the belt.
+                self._release_engine(target_kind, engine_id)
                 raise RuntimeError(f"engine load failed: {r.text}")
             with self._lock:
                 self._current_variants[engine_id] = (
@@ -1380,6 +1615,11 @@ class EngineManager:
                     if variant not in (None, "", "auto")
                     else self._resolved_default_variant(m)
                 )
+                self._resolved_devices[engine_id] = device
+            # Book the CONFIRMED load (step 3): declared price, our evictor,
+            # kind-tagged for the strip's split and the runner's count scope.
+            if books:
+                self._reserve_engine(m, target_kind)
             # (The qwen3-llm adapter hook died with the engine — F1 Phase 2:
             # the shared stack's bundled runner is THE local LLM.)
             if progress:
@@ -1427,6 +1667,10 @@ class EngineManager:
                 pass
             self._loaded.pop(kind, None)
             self._current_variants.pop(prev, None)
+            self._resolved_devices.pop(prev, None)
+        # Free the booking with the memory (the 2026-08-13 wiring — every
+        # unload path releases; idempotent beside make_room's own release).
+        self._release_engine(kind, prev)
         return {"previous_engine": prev}
 
     # ─── Synth / voices / clone — HTTP proxy ─────────────────────────
@@ -1482,8 +1726,10 @@ class EngineManager:
 
     def transcribe(self, body: dict, *, timeout: float = 600.0) -> str:
         """Transcription via the loaded stt-slot engine (G2 wiring).
-        body matches the shim's TranscribeBody: wav_b64/audio_path/language."""
-        with self._activity("stt"):
+        body matches the shim's TranscribeBody: wav_b64/audio_path/language.
+        stt-busy for the call's duration (the 2026-08-13 VRAM wiring, step 4 —
+        Q1's never-evict-busy: a mid-transcription whisper is not a victim)."""
+        with self._activity("stt"), _kind_busy("stt"):
             proc = self.loaded_for("stt")
             if proc is None:
                 raise RuntimeError(

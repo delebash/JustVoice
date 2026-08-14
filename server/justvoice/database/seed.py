@@ -240,12 +240,13 @@ def seed_workspace() -> None:
         migrate_jv_prompts_to_shared,
     )
     from ..engines.llm.migrate_providers import migrate_settings_providers_to_db
-    from ..llm_bootstrap import apply_jv_warm_default, retire_default_catalog_rows
+    from ..llm_bootstrap import retire_default_catalog_rows
 
     seed_builtin_effect_presets()
     seed_builtin_render_presets()
 
-    apply_jv_warm_default()
+    # JV's warm-OFF override retired 2026-08-13 with the VRAM wiring (Q6) —
+    # the shared seed's family default (warm ON) reaches fresh DBs directly.
     migrate_jv_prompts_to_shared()
     migrate_settings_providers_to_db(get_state().settings.get())
     seed_llm()

@@ -50,19 +50,37 @@ For Windows users with AMD or Intel GPUs, DirectML provides a fallback. Most eng
 
 MLX is Apple's experimental ML framework. We detect it but no engine adapter currently targets it; CoreML / Metal is the active Apple Silicon path.
 
-## Memory budgeting
+## The shared memory budget
 
-Each engine has a `vram_min_mb` in its manifest. The Speech engines tab shows the requirement next to each engine's row + flags `would_oom` variants when you have less VRAM than recommended. Rough VRAM needs:
+Your speech engines and the local AI model share **one memory pool**, and since the 2026-08 arbiter wiring JustVoice manages that pool with a single shared budget — nothing is loaded blind anymore.
+
+**The budget strip** at the top of the Speech engines tab shows the live state:
+
+- **VRAM budget** (or **Memory budget** — see below) — the whole pool the box has.
+- **Speech in use** — what the loaded TTS/STT engines have booked.
+- **AI model** — what the local language model holds if it's loaded, or **loads on demand · ~X GB** — its predicted footprint — when it isn't. That prediction comes from real evidence when available (your own measured loads), physics otherwise, and the manifest's declared price as the last resort; hover the strip to see each booking's source. If your AI features are routed to a cloud provider, the cell says **cloud-routed** — nothing will load locally.
+- **Free** — what's left.
+- **Busy** — shown while a render, transcription, or AI run is in flight. A busy model is never evicted: if something else needs its memory it waits or fails honestly instead of killing your work.
+
+The label follows your hardware: a discrete card shows **VRAM**; laptops with integrated or unified memory (iGPU, Apple Silicon) show **Memory**, because CPU and GPU share the same physical pool there and every load — even a CPU-placed one — draws from it.
+
+**How loading works now.** When you load an engine that needs GPU memory, JustVoice checks the budget first. If there isn't room, it frees the least-recently-used *idle* model — the AI model included — and tells you with a toast naming what was unloaded and why. If nothing can be freed (everything resident is busy), the load refuses with a message listing what's resident and busy, instead of crash-landing in an out-of-memory error mid-render. The same protection runs in the other direction: an AI run fired mid-render can't kill the rendering engine — it proceeds in reduced-memory mode and runs full speed after the render ends.
+
+**Per-engine device choice.** Each engine card has a **Device** select (Auto / CUDA / CPU), stored in settings. **Auto** picks CPU for engines that are genuinely fast on CPU (Kokoro) and your GPU for the rest — the engine's own hidden "auto" no longer decides. An explicit choice always wins; the card shows which device the engine actually loaded on. CPU-placed engines cost no VRAM on discrete cards (their RAM use is shown for information, never enforced).
+
+**Warm boot.** With the budget in charge, the local AI model now warms up at launch by default on fresh installs (the family default) — the first Analyze is instant, and if a render needs the memory the idle model is simply evicted with a toast. Turn it off in the AI engine console if you prefer a cold start. Databases created before 2026-08-13 keep their old warm-off setting until you change it or reset.
+
+Rough declared VRAM needs per engine:
 
 | Engine | VRAM (bf16) |
 |---|---|
-| Kokoro | <1 GB |
+| Kokoro | <1 GB (CPU by default) |
 | Chatterbox | ~4 GB |
 | Qwen3-TTS 1.7B | ~9 GB |
 | TADA 3B | ~9 GB |
 | MOSS-TTSD | ~12-16 GB |
 
-You can load one engine at a time. Unload via the Speech engines tab to free VRAM before loading another.
+You can still load one engine per slot (one TTS + one STT). Unload via the Speech engines tab — or just load what you need and let the budget do the freeing.
 
 ## Troubleshooting
 
