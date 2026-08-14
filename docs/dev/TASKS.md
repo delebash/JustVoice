@@ -446,11 +446,70 @@ NOT: moving TTS engines INTO the kit's runner/catalog (they are not llama.cpp
 children — the pool stays JV's); claiming the server halves are one system
 today (they are not).
 BUILT: nothing — think only.
+ORDERED ADDITIONS 2026-08-13 (user words verbatim, during the chatterbox
+download failure — WinError 1314, hub's cache-symlink fragility at load
+time): *"one of the tasks is to make the speech engine use the same
+interface and services of the llm runner, the download progressbar, re
+dowload, load unload, the three dot menu, ect."* · *"we should have the
+model catalog for each engine and so on"* · *"and the location we have data
+directory and ai-cache for llm why not have a tts version in same loacation,
+also we should have the same types of clear data directory ect"*. The
+failure is the argument for the SERVER half: the LLM never breaks because
+the kit downloads models as PLAIN FILES (progress/resume/per-file on-disk
+truth) and loads from disk — speech engines fetch through HF's cache
+machinery at load time inside the engine subprocess.
+THE FAILURE, diagnosed in code (2026-08-13, chatterbox-turbo first load):
+hub 0.36.2 has exactly two symlink sites — a per-directory PROBE and the
+real pointer creation that runs only when the probe said yes. Proven live
+in the shared venv unelevated: the probe honestly answers NO on this box
+and hub degrades to copying — which is how ~3.9 GB of turbo files landed
+as REAL files (all stamped 22:38, moved not linked; blobs/ held exactly 1
+orphan = the failed file's already-downloaded blob). The raise is a HOLE
+in hub's fallback: Windows delivers WinError 1314 as plain OSError while
+the symlink branch catches only PermissionError — so the one file whose
+process believed symlinks were supported crashed instead of degrading. A
+FRESH engine process re-probes honestly → RETRY completes the load (the
+missing file's blob is already on disk). UI contributor: `modelOnDisk`
+treats a non-empty folder as downloaded, so the partial snapshot skipped
+the download phase and the ENGINE fetched stragglers itself — per-file
+on-disk truth (the catalog's declared file list) kills this class.
+REJECTED SOLUTIONS (user, verbatim — so they stay rejected): Developer
+Mode ("no way a user needs to set developer mode") and
+HF_HUB_DISABLE_SYMLINKS ("no on the hf_hub disable symlinks, we download
+from hf all the time with the llm" — the LLM works because the kit
+streams plain files, never the hub cache layout; that is the CORRECT
+solution's shape, i.e. this item).
+FINDING (code-verified 2026-08-13): speech models live INSIDE the installed
+package tree — `ENGINES_DIR = Path(__file__).parent`, models at
+`engines/<id>/models/`, the shared venv at `engines/.shared-venv/` — while
+the LLM's cache correctly lives at `<data_dir>/ai-cache` (app.py:221). An
+app upgrade/reinstall strands or nukes gigabytes; factory reset and the
+backups page cannot see them; `is_installed`/uninstall/prefetch all route
+through `models_dir`, so the relocation has ONE seam.
+FINDING 2 (user question + code-verified 2026-08-13): JV's default data dir
+is `AppData\Roaming\justvoice\justvoice\data` while JW's is
+`AppData\Local\JustWrite\JustWrite` — `paths.py` deliberately mimics the
+RETIRED Rust core's `ProjectDirs::from("dev","justvoice","justvoice")` so
+the June port found existing data; that rationale is dead (Rust core gone,
+pre-release reset rule). Its comment also lies ("Set roaming=False … we use
+Local" while the code passes roaming=True). REC: converge on the JW shape —
+`platformdirs.user_data_dir("JustVoice")` → Local\JustVoice\JustVoice; one
+function; JUSTVOICE_DATA_DIR/--data-dir unaffected; decide together with
+the speech-cache location (same resolved dir).
+REC (awaits the word): speech models move under the data dir beside
+ai-cache (e.g. `<data_dir>/speech-cache/<engine>/<variant>/`, per-variant
+pinned revision + declared file list, fetched by the KIT downloader —
+network leaves the load path entirely); kokoro's `model_dir_override` is
+the per-engine escape precedent; the venvs' location is decided at the
+design pass (rebuildable runtime, not user data); the data-management
+surface grows per-store clear verbs (LLM cache · speech cache · render
+cache) in one grammar. Pre-release no-migrations rule: the path change is
+a default change — existing files re-download or the user resets.
 OPEN: the design pass — inventory `SpeechEnginesTab.vue`'s current controls
 against `LuModelCatalog`'s grammar; decide per piece import-as-is vs promote
-a shared kit primitive; then the server-half reuse question as its own
-decision.
-GO: needed — think recorded; design + build wait on the word.
+a shared kit primitive; the server-half download/catalog/location design per
+the ordered additions above.
+GO: needed — think + orders recorded; design + build wait on the word.
 
 ## Features the docs promise and the code does not do
 

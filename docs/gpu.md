@@ -84,6 +84,7 @@ You can still load one engine per slot (one TTS + one STT). Unload via the Speec
 
 ## Troubleshooting
 
+- **Engine load fails with `[WinError 1314] A required privilege is not held by the client`** — A Windows edge case in the HuggingFace download cache some engines use for their first model download: the downloader occasionally tries to create a filesystem symlink, which normal Windows processes aren't allowed to do, instead of taking its copy fallback. Your download is almost always already complete when this happens — **just click Load again**: a fresh attempt takes the copy path and finishes placing the one missing file. You do NOT need Developer Mode or admin rights; JustVoice is expected to work without either. (A planned change moves speech-engine model downloads onto the same plain-file downloader the AI models use, which removes this failure class entirely.)
 - **GPU info card shows "no GPU detected"** — Either no discrete GPU is present (laptops often have CPU + integrated graphics only, which torch ignores) or the driver isn't installed. Run `nvidia-smi` (NVIDIA) or `vulkaninfo` (AMD) from a terminal to verify.
 - **CUDA wheel switch fails** — Most often a network issue downloading the ~2 GB wheel. Check the install-log modal for the pip output.
 - **Out-of-memory on render** — Switch to a smaller model variant (Speech engines tab → engine row → pick a `7b` or smaller). Or load a lighter engine entirely.
