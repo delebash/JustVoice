@@ -1269,12 +1269,11 @@ const app = {
     }
 
     async function loadEngineModels(engineId) {
+      // /models/recommended died 2026-08-14 (it ranked by invented vram_mb
+      // numbers) — variants only; memory is measured at load time.
       try {
-        const [variants, recommended] = await Promise.all([
-          api(`/v1/engines/${engineId}/models`),
-          api(`/v1/engines/${engineId}/models/recommended`),
-        ]);
-        engineModels.value = { ...engineModels.value, [engineId]: { variants: variants.variants, recommended } };
+        const variants = await api(`/v1/engines/${engineId}/models`);
+        engineModels.value = { ...engineModels.value, [engineId]: { variants: variants.variants } };
       } catch (_) { /* surfaced */ }
     }
 
@@ -2526,19 +2525,14 @@ const app = {
           <button v-if="!engineModels[e.id]" @click="loadEngineModels(e.id)" style="margin-top: 10px;">Show model variants</button>
           <div v-if="engineModels[e.id]" style="margin-top: 16px;">
             <table>
-              <thead><tr><th>Variant</th><th>Size</th><th>VRAM</th><th>Quality</th><th></th></tr></thead>
+              <thead><tr><th>Variant</th><th>Size</th><th>Quality</th><th></th></tr></thead>
               <tbody>
                 <tr v-for="v in engineModels[e.id].variants" :key="v.id">
-                  <td>
-                    <span class="em">{{ v.name }}</span>
-                    <span v-if="engineModels[e.id].recommended.best_fit && engineModels[e.id].recommended.best_fit.id === v.id" class="tag" style="margin-left: 8px;">recommended</span>
-                    <span v-if="(engineModels[e.id].recommended.would_oom || []).includes(v.id)" class="tag" style="background: var(--danger-soft); color: var(--danger); margin-left: 8px;">won't fit</span>
-                  </td>
+                  <td><span class="em">{{ v.name }}</span></td>
                   <td>{{ v.size_mb >= 1024 ? (v.size_mb / 1024).toFixed(1) + ' GB' : v.size_mb + ' MB' }}</td>
-                  <td>{{ v.vram_mb ? (v.vram_mb / 1024).toFixed(1) + ' GB' : 'CPU' }}</td>
                   <td>{{ v.quality }}/100</td>
                   <td style="text-align: right;">
-                    <button class="primary" :disabled="engineBusy[e.id] || (engineModels[e.id].recommended.would_oom || []).includes(v.id)" @click="installEngine(e.id, v.id)">Install</button>
+                    <button class="primary" :disabled="engineBusy[e.id]" @click="installEngine(e.id, v.id)">Install</button>
                   </td>
                 </tr>
               </tbody>

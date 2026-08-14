@@ -1,5 +1,8 @@
-"""Per-engine model variants — installable model files with URLs,
-sizes, VRAM, quality scores.
+"""Per-engine model variants — installable model files with URLs, sizes,
+languages, quality scores. No memory numbers live here (2026-08-14, the
+measured redesign's second rethink): the per-variant ``vram_mb`` column was
+scaffold-invented conclusion-stating — memory comes from MEASUREMENT at load
+time, and this catalog states download facts only.
 
 Mirrors the Rust ``engines::model_catalog``. URLs use HuggingFace
 ``/resolve/main/`` for sidecar engines (HF cache handles the actual
@@ -64,7 +67,6 @@ def _whisper_variants() -> list[ModelVariant]:
                 else "Speech-to-text checkpoint; bigger = more accurate, slower."
             ),
             size_mb=size,
-            vram_mb=vram,
             quality=quality,
             languages=["multilingual"],
             files=[_hf_placeholder(repo, size)],
@@ -84,7 +86,6 @@ def _kokoro_variants() -> list[ModelVariant]:
                 "model from k2-fsa's sherpa-onnx releases."
             ),
             size_mb=700,
-            vram_mb=1500,
             quality=95,
             languages=[
                 "en-US", "en-GB", "ja", "zh", "es", "fr", "hi", "it", "pt-BR",
@@ -106,7 +107,6 @@ def _kokoro_variants() -> list[ModelVariant]:
                 "for users who don't need multilingual."
             ),
             size_mb=330,
-            vram_mb=1200,
             quality=92,
             languages=["en-US", "en-GB"],
             files=[
@@ -137,7 +137,6 @@ def _qwen3_variants() -> list[ModelVariant]:
             name="Qwen3-TTS CustomVoice 1.7B",
             description="9 preset speakers + instruct style control + cloning. Full feature set.",
             size_mb=3500,
-            vram_mb=7000,
             quality=92,
             languages=_QWEN_LANGS,
             files=[_hf_placeholder("Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice", 3500)],
@@ -147,7 +146,6 @@ def _qwen3_variants() -> list[ModelVariant]:
             name="Qwen3-TTS CustomVoice 0.6B",
             description="Same feature set, lower quality ceiling, ~half VRAM, ~3× faster.",
             size_mb=1200,
-            vram_mb=3500,
             quality=80,
             languages=_QWEN_LANGS,
             files=[_hf_placeholder("Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice", 1200)],
@@ -157,7 +155,6 @@ def _qwen3_variants() -> list[ModelVariant]:
             name="Qwen3-TTS Base 1.7B (clone-only)",
             description="Voice-cloning checkpoint — no preset speakers; drops instruct silently.",
             size_mb=3500,
-            vram_mb=7000,
             quality=90,
             languages=_QWEN_LANGS,
             files=[_hf_placeholder("Qwen/Qwen3-TTS-12Hz-1.7B-Base", 3500)],
@@ -167,7 +164,6 @@ def _qwen3_variants() -> list[ModelVariant]:
             name="Qwen3-TTS Base 0.6B (clone-only)",
             description="Lightweight cloning checkpoint for lower-end hardware.",
             size_mb=1200,
-            vram_mb=3500,
             quality=78,
             languages=_QWEN_LANGS,
             files=[_hf_placeholder("Qwen/Qwen3-TTS-12Hz-0.6B-Base", 1200)],
@@ -187,7 +183,6 @@ def _chatterbox_variants() -> list[ModelVariant]:
             name="Chatterbox Multilingual v2 (500M, 23 langs)",
             description="500M-param multilingual covering 23 languages via the request's `language` field. Emotion exaggeration + CFG controls.",
             size_mb=2800,
-            vram_mb=7000,
             quality=88,
             languages=[
                 "ar", "da", "de", "el", "en", "es", "fi", "fr", "he", "hi",
@@ -201,7 +196,6 @@ def _chatterbox_variants() -> list[ModelVariant]:
             name="Chatterbox Turbo (350M, English)",
             description="Streamlined English-only variant. Native paralinguistic tags ([cough], [laugh], [chuckle]). Lower latency; no exaggeration/CFG knobs.",
             size_mb=2200,
-            vram_mb=6000,
             quality=82,
             languages=["en"],
             files=[_hf_placeholder("ResembleAI/chatterbox-turbo", 2200)],
@@ -216,7 +210,6 @@ def _luxtts_variants() -> list[ModelVariant]:
             name="LuxTTS",
             description="Multilingual TTS, lighter footprint, broad language coverage.",
             size_mb=1200,
-            vram_mb=3000,
             quality=80,
             languages=["en", "es", "fr", "de", "it", "ja", "zh"],
             files=[_hf_placeholder("luxtts/luxtts-base", 1200)],
@@ -231,7 +224,6 @@ def _tada_variants() -> list[ModelVariant]:
             name="TADA 1B",
             description="Hume's TADA 1B — voice cloning + multilingual presets.",
             size_mb=4000,
-            vram_mb=8000,
             quality=85,
             languages=["en", "es", "fr", "de", "it"],
             files=[_hf_placeholder("hume/tada-1b", 4000)],
@@ -241,7 +233,6 @@ def _tada_variants() -> list[ModelVariant]:
             name="TADA 3B",
             description="Hume's TADA 3B — highest TADA quality.",
             size_mb=12000,
-            vram_mb=16000,
             quality=92,
             languages=["en", "es", "fr", "de", "it"],
             files=[_hf_placeholder("hume/tada-3b", 12000)],
@@ -256,7 +247,6 @@ def _dia_variants() -> list[ModelVariant]:
             name="Dia 1.6B",
             description="Multi-speaker single-pass dialogue.",
             size_mb=3500,
-            vram_mb=8000,
             quality=85,
             languages=["en"],
             files=[_hf_placeholder("nari-labs/dia-1.6b", 3500)],
@@ -266,7 +256,6 @@ def _dia_variants() -> list[ModelVariant]:
             name="Dia 2-2B",
             description="Higher-quality multi-speaker dialogue.",
             size_mb=5500,
-            vram_mb=12000,
             quality=92,
             languages=["en"],
             files=[_hf_placeholder("nari-labs/dia-2-2b", 5500)],
@@ -281,7 +270,6 @@ def _moss_tts_variants() -> list[ModelVariant]:
             name="MOSS-TTS v1.5",
             description="MOSS-TTS — 1-hour stable single-pass generation.",
             size_mb=12000,
-            vram_mb=16000,
             quality=90,
             languages=["en", "zh"],
             files=[_hf_placeholder("moss-llm/moss-tts-v1.5", 12000)],
@@ -289,22 +277,22 @@ def _moss_tts_variants() -> list[ModelVariant]:
     ]
 
 
-def recommend_for_vram(
-    engine_id: str, available_vram_mb: int | None
-) -> tuple[ModelVariant | None, ModelVariant | None, list[str]]:
-    """Return (best_fit, fastest, would_oom_ids)."""
+def default_variant_for(engine_id: str) -> ModelVariant | None:
+    """The variant a no-choice install fetches. Replaces the dead
+    `recommend_for_vram` picker (2026-08-14): that ranked variants by
+    scaffold-invented `vram_mb` conclusions — this resolves the manager's
+    default (user override → manifest DEFAULT_VARIANT_ID → on-disk → first),
+    else the smallest download."""
     variants = models_for(engine_id)
     if not variants:
-        return None, None, []
-    if available_vram_mb is None:
-        # CPU mode — pick the smallest variant
-        smallest = min(variants, key=lambda v: v.size_mb)
-        return smallest, smallest, []
+        return None
+    try:
+        from .manager import get_manager
 
-    fits = [v for v in variants if (v.vram_mb or 0) <= available_vram_mb]
-    would_oom = [v.id for v in variants if (v.vram_mb or 0) > available_vram_mb]
-    if not fits:
-        return None, None, would_oom
-    best_fit = max(fits, key=lambda v: v.quality)
-    fastest = min(fits, key=lambda v: v.vram_mb or 0)
-    return best_fit, fastest, would_oom
+        vid = get_manager().resolved_default_variant(engine_id)
+        chosen = next((v for v in variants if v.id == vid), None)
+        if chosen is not None:
+            return chosen
+    except Exception:  # noqa: BLE001 — no manifest (legacy engine) / bare tests
+        pass
+    return min(variants, key=lambda v: v.size_mb)

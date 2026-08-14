@@ -59,19 +59,12 @@ PORT_HANDSHAKE_TIMEOUT_S = 30.0
 HEALTH_CHECK_INTERVAL_S = 0.25
 SUBPROCESS_KILL_TIMEOUT_S = 5.0
 
-# The speech measured true-up (the 2026-08-13 redesign —
-# docs/plans/2026-08-13-speech-catalog-redesign.md §7-①). The probes can
+# The speech measured currency (the 2026-08-13/14 redesign, amended —
+# docs/plans/2026-08-13-speech-catalog-redesign.md §10). The probes can
 # shell out (nvidia-smi / typeperf), so every polling/per-line caller goes
-# through a short TTL cache; the overhead seed prices the engine process
-# itself (CUDA context + torch allocator slack) until measured rows exist —
-# it is the ONLY constant left in the pricing chain, and a measured load
-# replaces it on this box forever.
+# through a short TTL cache. There is NO pre-load estimate constant: the
+# only numbers in the pricing chain are measured ones.
 PROBE_TTL_S = 2.0
-ENGINE_OVERHEAD_SEED_MB = 600
-# Files that are model weights (estimate = their bytes; fp16 file bytes map
-# ~1:1 to resident weight bytes). "blobs" dirs are excluded when summing an
-# HF-cache tree — snapshots may hold COPIES of the same bytes.
-WEIGHT_FILE_SUFFIXES = {".safetensors", ".bin", ".onnx", ".pt", ".pth", ".ckpt", ".gguf"}
 
 
 @contextmanager
@@ -1219,7 +1212,7 @@ class EngineManager:
     def _books_memory(self, resolved_device: str) -> bool:
         """THE ONE-POOL RULING (2026-08-13, "your rec go"): on one-pool boxes
         (integrated/unified — CPU and GPU are the same physical bytes) EVERY
-        managed load books its declared footprint into the pool ledger; on
+        managed load books its measured footprint into the pool ledger; on
         discrete boxes only a device-resolved load holds VRAM (cpu is free —
         its RAM is display-only, §8.18). "cuda" in Q2's ruling means "a GPU
         device": kokoro's directml/coreml arms hold device memory the same
@@ -1253,18 +1246,25 @@ class EngineManager:
             except Exception:  # noqa: BLE001
                 return 1024
 
-    # ── The measured true-up (the 2026-08-13 redesign) ────────────────
-    # The pricing currency changed the same day the declared wiring shipped:
-    # the user's first live look (350M turbo booking a scaffold-invented
-    # 4096) exposed `vram_min_mb` as fiction — the field is DELETED from the
-    # manifests. The chain is now: ESTIMATE (prior measured row on this box →
-    # weight-file bytes on disk → manifest file-size claim, + the overhead
-    # seed) for admission and for a probe-less reservation, then the
-    # PER-PROCESS measurement replaces it the moment the load confirms —
-    # the same measured-first inversion the runner's `_trued_up_vram_mb`
-    # earned on 2026-07-11. Per-PID probes (not a device-wide delta) because
-    # JV loads don't serialize under the runner's router lock — a concurrent
-    # runner load would cross-charge a delta; a pid's memory is its own.
+    # ── The measured currency (the 2026-08-13/14 redesign, amended) ───────
+    # The declared `vram_min_mb` died first (scaffold-invented fiction: 350M
+    # turbo booked 4096); the ESTIMATE ladder that replaced it died the next
+    # day (plan doc §10): run against real engines it priced turbo at
+    # 4,455 MB — WORSE than the deleted number — because repos ship
+    # alternative checkpoints that never co-load; a file's size is a fact,
+    # a file's size predicting VRAM is a model with unpriced error terms.
+    # The chain now: a PRIOR MEASURED footprint of this engine on this box
+    # admits AND books early (covering the seconds between admission and the
+    # post-load true-up); a FIRST-EVER load gets NO arithmetic — no invented
+    # number, no eviction on its behalf: attempt, measure, book, persist
+    # ("not measured yet" until the probe lands). Measurement is per-PID
+    # over the engine's process TREE — tree, because Windows venv pythons
+    # are launcher SHIMS whose child holds the memory (proven live: 4 MB at
+    # the Popen pid, 1131 MB at its child); per-PID rather than a device
+    # delta, because JV loads don't serialize under the runner's router
+    # lock — a concurrent runner load would cross-charge a delta. The delta
+    # survives only as the last-resort fallback on boxes with no
+    # per-process arm (AMD Linux), labeled "computed", never persisted.
 
     def pool_used_mb(self, *, fresh: bool = False) -> int | None:
         """Measured used memory of the budget pool (the kit's backend-aware
@@ -1285,12 +1285,15 @@ class EngineManager:
         return val
 
     def _engine_proc_mb(self, proc: EngineProcess, *, fresh: bool = True) -> int | None:
-        """Measured memory held by ONE engine subprocess: dedicated device
-        memory on discrete boxes (per-PID — exact attribution even while the
-        runner loads concurrently; on Windows-WDDM the GPU Process Memory
-        counter arm, where nvidia-smi answers N/A), resident set on one-pool
-        boxes (UMA: the pool take IS system memory). None = unmeasurable —
-        the caller keeps the estimate, source stays "computed"."""
+        """Measured memory held by ONE engine subprocess — its process TREE
+        (pid + descendants, summed: Windows venv pythons are launcher shims
+        whose CHILD holds the memory; the single-pid probe read 4 MB where
+        the child held 1131): dedicated device memory on discrete boxes
+        (per-PID — exact attribution even while the runner loads
+        concurrently; on Windows-WDDM the GPU Process Memory counter arm,
+        where nvidia-smi answers N/A), resident set on one-pool boxes (UMA:
+        the pool take IS system memory). None = unmeasurable — the caller
+        falls back to the device-wide delta or books nothing."""
         pid = getattr(getattr(proc, "proc", None), "pid", None)
         if not pid:
             return None
@@ -1303,16 +1306,16 @@ class EngineManager:
         try:
             from llm_runner.runner.hardware import (
                 mem_arch,
-                process_device_mem_mb,
-                process_rss_mb,
+                process_tree_device_mem_mb,
+                process_tree_rss_mb,
             )
         except Exception:  # noqa: BLE001 — no kit
             return None
         hw = self._hardware()
         if hw is not None and mem_arch(hw) != "discrete":
-            val = process_rss_mb(pid)
+            val = process_tree_rss_mb(pid)
         else:
-            val = process_device_mem_mb(pid)
+            val = process_tree_device_mem_mb(pid)
         self._probe_cache[key] = (now, val)
         return val
 
@@ -1337,53 +1340,20 @@ class EngineManager:
         except Exception:  # noqa: BLE001 — bare tests / store not wired
             return 0
 
-    @staticmethod
-    def _weight_files_mb(m: EngineManifest) -> int:
-        """Weight bytes for this engine, as verifiable facts (the Opus
-        amendment: file sizes, never typed params): sum the weight files on
-        disk when the model is downloaded (skipping HF-cache `blobs` dirs —
-        snapshots may hold copies of the same bytes), else the manifest
-        MODELS' declared file SIZE — a disk-size claim checkable against the
-        HF tree (phase ② pins it), not a memory conclusion. 0 = no claim."""
-        total = 0
-        try:
-            root = getattr(m, "models_dir", None)
-            if root is not None and root.exists():
-                for p in root.rglob("*"):
-                    if "blobs" in p.parts or not p.is_file():
-                        continue
-                    if p.suffix.lower() in WEIGHT_FILE_SUFFIXES:
-                        total += p.stat().st_size
-        except OSError:
-            total = 0
-        if total:
-            return int(total // (1024 * 1024))
-        sizes = [int(x.get("size_mb") or 0) for x in (getattr(m, "models", None) or [])]
-        return max(sizes) if sizes else 0
-
-    def _estimate_engine_mb(self, m: EngineManifest, kind: str) -> int:
-        """The pre-load price of an engine: the estimate ladder (plan doc
-        §7-①) — a prior MEASURED row for this engine on this box wins; else
-        weight-file bytes + the overhead seed. Only the first-ever load of
-        an engine on a machine rides the computed arm, and everything that
-        displays it labels it an estimate."""
-        prior = self._prior_measured_mb(kind, m.id)
-        if prior > 0:
-            return prior
-        return self._weight_files_mb(m) + ENGINE_OVERHEAD_SEED_MB
-
     def _admit_memory(self, m: EngineManifest, kind: str, engine_id: str,
                       needed_mb: int) -> None:
-        """Budget admission for a booking load, on MEASURED free memory:
-        free = budget pool − the measured used probe (what nvidia-smi would
-        say), not ledger arithmetic — the ledger can't see other apps'
-        usage. When free is short, `make_room`'s ledger target is inflated
-        by the UNLEDGERED usage (measured used − committed), so evicting to
-        ledger-room yields real room. An unmeasurable box falls back to the
-        ledger-remaining arithmetic (the wiring's original behavior). Runs
-        with NO manager locks held (cross-app lock-order rule); busy kinds
-        are protected inside `make_room`; a refusal is HONEST and leaves
-        the world exactly as it was."""
+        """Budget admission for a booking load whose PRIOR MEASURED footprint
+        is known (the amended §10 chain — a first-ever load skips admission
+        entirely: no invented number may evict anything). Prices on MEASURED
+        free memory: free = budget pool − the measured used probe (what
+        nvidia-smi would say), not ledger arithmetic — the ledger can't see
+        other apps' usage. When free is short, `make_room`'s ledger target
+        is inflated by the UNLEDGERED usage (measured used − committed), so
+        evicting to ledger-room yields real room. An unmeasurable box falls
+        back to the ledger-remaining arithmetic (the wiring's original
+        behavior). Runs with NO manager locks held (cross-app lock-order
+        rule); busy kinds are protected inside `make_room`; a refusal is
+        HONEST and leaves the world exactly as it was."""
         needed = int(needed_mb)
         if needed <= 0:
             return
@@ -1517,13 +1487,25 @@ class EngineManager:
 
             arb = get_arbiter()
             cur = arb.reserved_mb(f"{kind}:{engine_id}")
-            if cur is not None and mb > cur:
+            if cur is None or mb > cur:
+                # Occupant re-check (hardening): the probe ran unlocked — the
+                # slot may have swapped while it shelled out; never book for
+                # an engine that no longer holds it.
+                with self._lock:
+                    occ = self._loaded.get(kind)
+                    variant = self._current_variants.get(engine_id)
+                    device = self._resolved_devices.get(engine_id, "")
+                if occ is None or occ.manifest.id != engine_id:
+                    return
+                # cur is None = "not measured yet" (no per-process arm fired
+                # at the load door). The first measured probe CREATES the
+                # booking — but only when the resolved device books at all
+                # (a CPU-placed engine on a discrete box books nothing).
+                if cur is None and not self._books_memory(device):
+                    return
                 m = self.get_manifest(engine_id)
                 if m is not None:
                     self._reserve_engine(m, kind, mb, "measured")
-                    with self._lock:
-                        variant = self._current_variants.get(engine_id)
-                        device = self._resolved_devices.get(engine_id, "")
                     self._record_speech_load(m, kind, variant, mb, device)
         except Exception:  # noqa: BLE001
             pass
@@ -1731,6 +1713,7 @@ class EngineManager:
             if effective_cancel():
                 raise RuntimeError("cancelled by user")
 
+        early_mb = 0  # a prior-measured booking made BEFORE the load confirms
         try:
             _maybe_cancel()
 
@@ -1767,18 +1750,32 @@ class EngineManager:
             target_kind = m.kind
             # The 2026-08-13 VRAM wiring (step 3): resolve the device at the ONE
             # load door and pass it down explicitly — the engine subprocess never
-            # runs its own hidden greedy-cuda again. Then admit a booking load
-            # against the shared ledger BEFORE touching the slot: a refused
-            # admission leaves the world exactly as it was (the prior engine
-            # keeps running), and if the prior occupant must die to make room,
+            # runs its own hidden greedy-cuda again. Admission (amended §10):
+            # only a PRIOR MEASURED footprint on this box admits — and it books
+            # EARLY, so the ledger covers the seconds between admission and the
+            # post-200 true-up (a concurrent runner load can no longer admit
+            # into the same memory). A FIRST-EVER load gets no arithmetic: no
+            # admission, no invented number, no eviction on its behalf. A
+            # refused admission leaves the world exactly as it was (the prior
+            # engine keeps running); if an occupant must die to make room,
             # `make_room` evicts it through our own evictor. Skipped when this
             # very engine already holds the slot (it is resident and reserved).
             device = self._resolve_device(m, device)
             books = self._books_memory(device)
-            est_mb = self._estimate_engine_mb(m, target_kind) if books else 0
             cur = self.loaded_for(target_kind)
             if books and not (cur is not None and cur.manifest.id == engine_id):
-                self._admit_memory(m, target_kind, engine_id, est_mb)
+                prior = self._prior_measured_mb(target_kind, engine_id)
+                if prior > 0:
+                    self._admit_memory(m, target_kind, engine_id, prior)
+                    self._reserve_engine(m, target_kind, prior, "measured")
+                    early_mb = prior
+            # The device-delta fallback's BEFORE snapshot (boxes with no
+            # per-process probe arm, e.g. AMD Linux) — taken after admission's
+            # settle loop so an evicted victim's drain isn't charged to this
+            # load. The delta is attributable only when nothing else loads
+            # concurrently, which JV cannot guarantee → it books as "computed"
+            # and is never persisted as measurement evidence.
+            pool_before = self.pool_used_mb(fresh=True) if books else None
 
             # Activity lock first (lock order: activity → self._lock): a
             # terminate must wait for the slot's in-flight synth line.
@@ -1848,11 +1845,15 @@ class EngineManager:
                     else self._resolved_default_variant(m)
                 )
                 self._resolved_devices[engine_id] = device
-            # Book the CONFIRMED load at its MEASURED footprint (the 2026-08-13
-            # redesign's true-up — the per-PID probe, so a concurrent runner
-            # load can't cross-charge). Probe miss → the estimate stands,
-            # honestly labeled computed; a measured number is persisted as
-            # evidence for the next load's estimate ladder.
+            # Book the CONFIRMED load at its MEASURED footprint — the per-PID
+            # TREE probe (launcher shims: the child holds the memory), so a
+            # concurrent runner load can't cross-charge. Probe miss on a box
+            # with no per-process arm (AMD Linux) → the device-wide delta
+            # across the load, honestly "computed" and never persisted as
+            # evidence (a concurrent load could pollute it); an engine with
+            # an EARLY prior-measured booking keeps that instead. Nothing
+            # measurable at all → no booking — the strip says "not measured
+            # yet" rather than displaying an invention.
             if books:
                 measured = self._engine_proc_mb(proc, fresh=True)
                 if measured:
@@ -1861,13 +1862,26 @@ class EngineManager:
                         m, target_kind, self._current_variants.get(engine_id),
                         measured, device,
                     )
-                else:
-                    self._reserve_engine(m, target_kind, est_mb, "computed")
+                elif not early_mb:
+                    after = self.pool_used_mb(fresh=True)
+                    delta = (
+                        max(0, after - pool_before)
+                        if after is not None and pool_before is not None
+                        else 0
+                    )
+                    if delta > 0:
+                        self._reserve_engine(m, target_kind, delta, "computed")
             # (The qwen3-llm adapter hook died with the engine — F1 Phase 2:
             # the shared stack's bundled runner is THE local LLM.)
             if progress:
                 progress("warming_up", f"{engine_id} ready")
             return r.json()
+        except Exception:
+            # Never leak the EARLY booking on a failed/cancelled load — the
+            # non-200 arm already released; release is idempotent.
+            if early_mb:
+                self._release_engine(m.kind, engine_id)
+            raise
         finally:
             # Always clear the cancel flag — leaving stale "cancelled" state
             # would block the next load attempt.

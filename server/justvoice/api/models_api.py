@@ -1,14 +1,19 @@
-"""/v1/engines/{id}/models — installable model variants + VRAM-aware recommendation."""
+"""/v1/engines/{id}/models — installable model variants.
+
+The `/models/recommended` endpoint died 2026-08-14 (the measured redesign's
+second rethink): it ranked variants by scaffold-invented per-variant
+`vram_mb` conclusions, and its one renderer read was a field it never
+returned. A no-choice install resolves through
+`model_catalog.default_variant_for` instead."""
 
 from __future__ import annotations
 
 from fastapi import APIRouter
 
 from ..engines.catalog import known_engines
-from ..engines.model_catalog import models_for, recommend_for_vram
+from ..engines.model_catalog import models_for
 from ..errors import not_found
-from ..models import ModelsListResponse, RecommendedResponse
-from ..system_info import detect
+from ..models import ModelsListResponse
 
 router = APIRouter(tags=["engines"])
 
@@ -82,22 +87,3 @@ async def delete_model(id: str, variant_id: str) -> dict:
     return {"deleted": True, "engine_id": id, "variant_id": variant_id, "repo": repo}
 
 
-@router.get("/v1/engines/{id}/models/recommended", response_model=RecommendedResponse)
-async def recommended_models(id: str) -> RecommendedResponse:
-    # Validate against the manager's discovered manifests (single source of
-    # truth) — the legacy static known_engines() list predates whisper /
-    # qwen3-llm and silently 404'd them.
-    from ..engines.manager import get_manager
-
-    if get_manager().get_manifest(id) is None and not any(e.id == id for e in known_engines()):
-        raise not_found(f"engine {id}")
-    info = detect()
-    vram = max((g.vram_mb for g in info.gpus if g.vram_mb), default=None)
-    best_fit, fastest, would_oom = recommend_for_vram(id, vram)
-    return RecommendedResponse(
-        engine_id=id,
-        best_fit=best_fit,
-        fastest=fastest,
-        would_oom=would_oom,
-        detected_vram_mb=vram,
-    )

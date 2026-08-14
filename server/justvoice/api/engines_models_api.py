@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from ..app_state import get_state
 from ..engines.catalog import known_engines
 from ..engines.manager import get_manager
-from ..engines.model_catalog import models_for, recommend_for_vram
+from ..engines.model_catalog import default_variant_for, models_for
 from ..errors import not_found, service_unavailable
 from ..engines.shared_venv import detect_gpu
 from ..installer import cancel as cancel_install
@@ -92,12 +92,9 @@ async def install_engine(id: str, req: InstallRequest) -> InstallResponse:
         if not chosen:
             raise not_found(f"Unknown model variant '{req.model_variant}' for engine '{id}'")
     else:
-        from ..system_info import detect
-
-        info = detect()
-        vram = max((g.vram_mb for g in info.gpus if g.vram_mb), default=None)
-        best_fit, _, _ = recommend_for_vram(id, vram)
-        chosen = best_fit or variants[0]
+        # No choice given → the resolved default (2026-08-14: the old
+        # recommend_for_vram picker ranked by scaffold-invented vram_mb).
+        chosen = default_variant_for(id) or variants[0]
 
     model_dir = models_root(st.data_dir) / id
     job_id = spawn_install(st, id, chosen, model_dir)

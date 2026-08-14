@@ -21,9 +21,10 @@
   The LLM and Embeddings sections died here in the parity batch: language
   models live on the LLM providers tab of this same console. Kept from the
   old Engines page, deliberately: the hardware card, the loaded-now rail,
-  search + kind chips, fit dots, the weights-licence attribution row (a
-  licence OBLIGATION — see the inline note), per-variant delete, venv
-  uninstall, and the folder-tab pair itself (Engines' approved mock v7).
+  search + kind chips, the weights-licence attribution row (a licence
+  OBLIGATION — see the inline note), per-variant delete, venv uninstall, and
+  the folder-tab pair itself (Engines' approved mock v7). The fit dots died
+  2026-08-14 with the invented per-variant vram_mb column.
 -->
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
@@ -85,34 +86,69 @@ function _kindMb(kinds) {
     .filter((r) => kinds.includes(r.kind))
     .reduce((n, r) => n + (r.vram_mb || 0), 0);
 }
-// The 2026-08-13 redesign: the strip shows MEASURED reality — used/free are
-// what nvidia-smi would print (used_mb; None on an unmeasurable box falls
-// back to the ledger's remaining), and each loaded speech engine is its own
-// cell with its measured take. A number whose source isn't "measured" is an
-// estimate and is drawn as one (~ prefix) — it becomes measured at the
-// engine's first load/render on this box.
+// The 2026-08-13/14 redesign: the strip shows MEASURED reality — used/free
+// are what nvidia-smi would print (used_mb; None on an unmeasurable box
+// falls back to the ledger's remaining), and each loaded speech engine is
+// its own cell with its measured take. There is no pre-load estimate any
+// more: an engine whose footprint hasn't been measured on this machine says
+// "not measured yet" until its first load/render lands a number; a "~"
+// number is the device-delta fallback (boxes with no per-process probe),
+// approximate by construction.
 const freeMb = computed(() => {
   const v = vram.value;
   if (!v) return 0;
   if (v.used_mb != null) return Math.max(0, v.total_mb - v.used_mb);
   return v.remaining_mb;
 });
-const speechRows = computed(() =>
-  (vram.value?.reservations || [])
-    .filter((r) => r.kind === "tts" || r.kind === "stt")
-    .map((r) => {
-      const id = r.key.split(":").slice(1).join(":");
-      const eng = engines.value.find((e) => e.id === id);
+const speechRows = computed(() => {
+  const v = vram.value;
+  if (!v) return [];
+  const res = v.reservations || [];
+  const rows = [];
+  const claimed = new Set();
+  for (const e of engines.value) {
+    if (e.status !== "loaded") continue;
+    const kind = e.kind || "tts";
+    if (kind !== "tts" && kind !== "stt") continue;
+    // CPU-placed engines on discrete boxes hold no VRAM by policy — no cell.
+    if (v.mem_arch === "discrete" && (e.resolved_device || "").toLowerCase() === "cpu") continue;
+    const r = res.find((x) => x.key === `${kind}:${e.id}`);
+    if (r) {
+      claimed.add(r.key);
       const est = r.source !== "measured";
-      return {
+      rows.push({
         key: r.key,
-        label: eng?.name || id,
+        label: e.name || e.id,
         text: est ? `~${fmtDisk(r.vram_mb)}` : fmtDisk(r.vram_mb),
         title: est
-          ? "Estimate — becomes a measured number at this engine's first load/render on this machine"
-          : `Measured (${r.kind.toUpperCase()})`,
-      };
-    }));
+          ? "Approximate — read from the device-wide change during load; a real per-process measurement replaces it when one becomes possible"
+          : `Measured (${kind.toUpperCase()})`,
+      });
+    } else {
+      rows.push({
+        key: `${kind}:${e.id}`,
+        label: e.name || e.id,
+        text: "not measured yet",
+        title: "First load on this machine — JustVoice books the real measured footprint as soon as a probe lands; until then nothing is reserved for this engine",
+      });
+    }
+  }
+  // A booking with no live engine row (e.g. a crashed engine's lingering
+  // reservation) still shows — the ledger is truth about what is booked.
+  for (const r of res) {
+    if ((r.kind === "tts" || r.kind === "stt") && !claimed.has(r.key)) {
+      const id = r.key.split(":").slice(1).join(":");
+      const est = r.source !== "measured";
+      rows.push({
+        key: r.key,
+        label: engines.value.find((e) => e.id === id)?.name || id,
+        text: est ? `~${fmtDisk(r.vram_mb)}` : fmtDisk(r.vram_mb),
+        title: est ? "Approximate (device-delta)" : `Measured (${r.kind.toUpperCase()})`,
+      });
+    }
+  }
+  return rows;
+});
 const llmCell = computed(() => {
   const v = vram.value;
   if (!v) return null;
@@ -153,7 +189,9 @@ const enginesLoaded = ref(engines.value.length > 0);
 const system = ref(null);
 
 // Per-engine model variants:
-//   {[engineId]: {variants: [{id, name, size_mb, vram_mb, ...}], recommended: {...}}}
+//   {[engineId]: {variants: [{id, name, size_mb, languages, on_disk, ...}]}}
+// (No vram_mb — the 2026-08-14 redesign: memory is measured at load, never
+// declared per catalog row. The /models/recommended fetch died with it.)
 const variants = reactive({});
 
 // ── Download/load tasks (kit machinery) ───────────────────────────────
@@ -283,11 +321,8 @@ async function refresh() {
     engines.value.map(async (eng) => {
       if (variants[eng.id]) return;
       try {
-        const [models, recommended] = await Promise.all([
-          api.request(`/v1/engines/${eng.id}/models`).catch(() => ({ variants: [] })),
-          api.request(`/v1/engines/${eng.id}/models/recommended`).catch(() => ({})),
-        ]);
-        variants[eng.id] = { variants: models.variants || [], recommended };
+        const models = await api.request(`/v1/engines/${eng.id}/models`).catch(() => ({ variants: [] }));
+        variants[eng.id] = { variants: models.variants || [] };
       } catch { /* tolerated */ }
     }),
   );
@@ -307,14 +342,11 @@ function variantNameFor(engineId, variantId) {
 function isLoadedVariant(engine, variantId) {
   return engine.status === "loaded" && engine.current_variant_id === variantId;
 }
-function isOnDisk(engine, variantId) {
-  const rec = variants[engine.id]?.recommended;
-  if (rec?.downloaded_variant_ids?.includes(variantId)) return true;
-  if (engine.status === "installed" || engine.status === "loaded") return true;
-  return false;
-}
 function modelLoaded(e, v) { return isLoadedVariant(e, v.id); }
-function modelOnDisk(e, v) { return v.on_disk === true || (v.on_disk == null && isOnDisk(e, v.id)); }
+function modelOnDisk(e, v) {
+  return v.on_disk === true
+    || (v.on_disk == null && (e.status === "installed" || e.status === "loaded"));
+}
 function engineNeedsInstall(e) { return e.isolation === "venv" && e.status === "not_installed"; }
 
 // ── Install (engine venv) — kit task over the job channel. ────────────
@@ -550,22 +582,9 @@ function loadedVariantName(e) {
   return v ? v.name : (e.current_variant_id || e.name);
 }
 
-// fits-your-hardware dot — needs a detected GPU VRAM figure; hidden otherwise.
-const gpuVramMb = computed(() => {
-  const g = (system.value?.gpus || [])[0];
-  return g?.vram_mb || null;
-});
-function fitFor(v) {
-  if (!gpuVramMb.value || !v.vram_mb) return null;
-  if (v.vram_mb > gpuVramMb.value) return "no";
-  if (v.vram_mb > gpuVramMb.value * 0.8) return "tight";
-  return "ok";
-}
-const FIT_TITLES = {
-  ok: "Fits your hardware",
-  tight: "Tight — close other models first",
-  no: "Won't fit on this card",
-};
+// The fits-your-hardware dots died 2026-08-14 with the per-variant vram_mb
+// column they compared against (scaffold-invented conclusions) — real fit
+// truth is the budget strip's measured numbers.
 
 // Loaded-now rail — one slot per speech kind from server truth.
 const rail = computed(() => {
@@ -690,11 +709,9 @@ onBeforeUnmount(() => {
         <button v-if="rail[k]" type="button" class="ev-x" title="Free this slot — weights stay on disk" @click="unloadKind(k)">Unload</button>
       </div>
       <!-- The old client-guessed "est. VRAM" total died with the 2026-08-13
-           wiring — the budget strip above shows the LEDGER's committed
-           number instead (server truth, provenance-tagged). -->
-      <div class="ev-vrtotal" v-if="vram && speechInUseMb" title="What the loaded speech models have booked in the shared memory ledger">
-        booked <strong>{{ fmtDisk(speechInUseMb) }}</strong> / {{ fmtDisk(vram.total_mb) }}
-      </div>
+           wiring, and its "booked" successor died with the 2026-08-14
+           measured redesign — the budget strip above is the ONE memory
+           surface (measured, provenance-tagged). -->
     </div>
 
     <p v-if="enginesLoaded && !engines.length" class="jv-banner jv-banner--warn">
@@ -746,10 +763,11 @@ onBeforeUnmount(() => {
 
         <div class="ev-gbody" v-if="isOpen(e)">
           <div v-for="v in variantsFor(e.id)" :key="v.id" class="ev-model" :class="{ dim: engineNeedsInstall(e) }">
-            <span v-if="fitFor(v)" class="ev-fit" :class="fitFor(v)" :title="FIT_TITLES[fitFor(v)]"></span>
             <span class="vn">{{ v.name }}</span>
-            <span class="vmeta">{{ fmtDisk(v.size_mb) }}<span v-if="v.vram_mb"
-              title="Estimate — JustVoice measures the real footprint when this model first loads on your machine"> · needs ~{{ fmtDisk(v.vram_mb) }} {{ memLabel }} (est.)</span></span>
+            <!-- Download size only — no memory claim. The footprint is
+                 measured at load (the budget strip shows it); a number
+                 typed here would be an invention (the 2026-08-14 ruling). -->
+            <span class="vmeta">{{ fmtDisk(v.size_mb) }}</span>
             <span class="vdesc" :title="v.description">{{ v.description }}</span>
             <span class="right">
               <span v-if="modelLoaded(e, v)" class="ev-badge loaded">● Loaded</span>
@@ -811,13 +829,6 @@ onBeforeUnmount(() => {
       <h3>Self-hosted servers <span class="suffix">— speech servers you run</span></h3>
     </div>
     <SpeechProvidersPanel scope="selfhosted" />
-
-    <p class="ev-fitnote" v-if="gpuVramMb">
-      Hardware fit, against your card:
-      <span class="ev-fit ok"></span> fits
-      <span class="ev-fit tight"></span> tight — free a slot first
-      <span class="ev-fit no"></span> won't fit in {{ fmtDisk(gpuVramMb) }}
-    </p>
 
     <div class="ev-runtime">
       Shared runtime (torch + common deps for the {{ sharedEngines }} shared engines)

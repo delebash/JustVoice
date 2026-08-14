@@ -888,11 +888,12 @@ class ModelFile(BaseModel):
 
 
 class ModelVariant(BaseModel):
+    # No vram_mb here (2026-08-14, the measured redesign): a variant's memory
+    # footprint is MEASURED at load time, never declared in a catalog row.
     id: str
     name: str
     description: str
     size_mb: int
-    vram_mb: int | None = None
     quality: int
     languages: list[str]
     files: list[ModelFile] = []
@@ -904,14 +905,6 @@ class ModelVariant(BaseModel):
 class ModelsListResponse(BaseModel):
     engine_id: str
     variants: list[ModelVariant]
-
-
-class RecommendedResponse(BaseModel):
-    engine_id: str
-    best_fit: ModelVariant | None = None
-    fastest: ModelVariant | None = None
-    would_oom: list[str] = []
-    detected_vram_mb: int | None = None
 
 
 class InstallRequest(BaseModel):

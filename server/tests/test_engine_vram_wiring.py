@@ -1,28 +1,29 @@
 # SPDX-License-Identifier: MIT
-"""The VRAM wiring (vram-think §6 steps 3-4) under the 2026-08-13 MEASURED
-currency (docs/plans/2026-08-13-speech-catalog-redesign.md §7-①): device
-policy at the one load door, the estimate ladder (prior measured → weight
-files → manifest size claim + overhead seed), admission on measured free,
-the per-PID true-up, the raise-only high-water bump, the one-pool ruling,
-and the tts/stt busy flags.
+"""The VRAM wiring under the AMENDED measured currency
+(docs/plans/2026-08-13-speech-catalog-redesign.md §10): device policy at the
+one load door; NO pre-load estimate — a prior MEASURED footprint admits and
+books EARLY, a first-ever load gets no arithmetic (attempt → measure → book →
+persist, "not measured yet" until a probe lands); the per-PID-tree true-up;
+the device-delta fallback (computed, never persisted); the raise-only
+high-water bump with occupant re-check; the one-pool ruling; the tts/stt
+busy flags.
 
 Every test injects its own VramArbiter (fake hardware) via set_arbiter and
 restores the singleton after — no test reads the box's real ledger. The pool
-probe is stubbed to None by default (ledger-arithmetic fallback, offline
-deterministic); measured-admission tests install their own probe sequence."""
+probe is stubbed to None by default (offline deterministic); measured-
+admission and delta tests install their own probe sequences."""
 
 from __future__ import annotations
 
 import threading
 import time
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 from llm_runner.runner.arbiter import VramArbiter, set_arbiter
 from llm_runner.runner.schema import GpuInfo, HardwareInfo
 
-from justvoice.engines.manager import ENGINE_OVERHEAD_SEED_MB, EngineManager
+from justvoice.engines.manager import EngineManager
 
 
 def _discrete(vram_mb=8192, ram_mb=32768):
@@ -88,23 +89,15 @@ class _Proc:
         return _Resp()
 
 
-def _manifest(engine_id="eng", kind="tts", size_mb=2000, cpu_adequate=False):
-    """A duck-typed manifest: `models`' size_mb is the FILE-SIZE claim the
-    estimate ladder falls back to (no vram_min_mb anywhere — the deleted
-    currency); models_dir points nowhere so the on-disk arm stays empty."""
+def _manifest(engine_id="eng", kind="tts", cpu_adequate=False):
+    """A duck-typed manifest. Deliberately carries NO memory number of any
+    kind — the amended currency has no field to carry one."""
     return SimpleNamespace(
         id=engine_id, kind=kind, isolation="shared", is_installed=True,
         default_variant_id="v1",
-        models=[{"hf_repo": "fake/repo", "size_mb": size_mb}],
-        models_dir=Path("does-not-exist-anywhere"),
         requirements={"cpu_adequate": cpu_adequate,
                       "gpu_runtimes": ["cuda", "cpu"]},
     )
-
-
-def _est(size_mb):
-    """The computed-arm estimate for a `_manifest(size_mb=…)`."""
-    return size_mb + ENGINE_OVERHEAD_SEED_MB
 
 
 def _mgr(monkeypatch, hw, manifest):
@@ -112,8 +105,8 @@ def _mgr(monkeypatch, hw, manifest):
 
     monkeypatch.setattr(mgr_mod, "EngineProcess", _Proc)
     monkeypatch.setattr(mgr_mod, "shared_venv_exists", lambda: True)
-    # Offline-deterministic by default: no measured pool (admission falls back
-    # to ledger arithmetic), no prior measurement rows, no persistence.
+    # Offline-deterministic by default: no measured pool, no prior measurement
+    # rows, no persistence.
     monkeypatch.setattr(EngineManager, "pool_used_mb",
                         lambda self, *, fresh=False: None)
     monkeypatch.setattr(EngineManager, "_prior_measured_mb",
@@ -168,46 +161,29 @@ def test_resolved_device_is_passed_down_explicitly(monkeypatch, arb_env):
     assert mgr.resolved_device_for("eng") == "cuda"
 
 
-# ─── the estimate ladder (§7-①) ───────────────────────────────────────
+# ─── the amended pricing chain (§10): no estimate, measured-only ──────
 
 
-def test_estimate_prefers_a_prior_measured_row(monkeypatch, arb_env):
-    mgr = _mgr(monkeypatch, _discrete(), _manifest(size_mb=2000))
-    monkeypatch.setattr(EngineManager, "_prior_measured_mb",
-                        lambda self, kind, engine_id: 999)
-    assert mgr._estimate_engine_mb(mgr._manifests["eng"], "tts") == 999
-
-
-def test_estimate_falls_back_to_size_claim_plus_overhead(monkeypatch, arb_env):
-    mgr = _mgr(monkeypatch, _discrete(), _manifest(size_mb=2000))
-    assert mgr._estimate_engine_mb(mgr._manifests["eng"], "tts") == _est(2000)
-
-
-def test_estimate_sums_weight_files_on_disk(tmp_path, monkeypatch, arb_env):
-    """Weight bytes on disk beat the manifest's size claim, and HF-cache
-    `blobs` dirs are excluded (snapshots may hold copies of the same bytes)."""
-    m = _manifest(size_mb=9999)
-    m.models_dir = tmp_path
-    (tmp_path / "model.safetensors").write_bytes(b"\0" * (3 * 1024 * 1024))
-    (tmp_path / "config.json").write_bytes(b"{}")          # not a weight file
-    blob = tmp_path / "hf" / "blobs"
-    blob.mkdir(parents=True)
-    (blob / "abc.safetensors").write_bytes(b"\0" * (5 * 1024 * 1024))
-    mgr = _mgr(monkeypatch, _discrete(), m)
-    assert mgr._weight_files_mb(m) == 3
-    assert mgr._estimate_engine_mb(m, "tts") == 3 + ENGINE_OVERHEAD_SEED_MB
-
-
-# ─── booking: the true-up (measured-first) + the one-pool ruling ──────
+def test_first_load_books_nothing_when_nothing_measurable(monkeypatch, arb_env):
+    """The §10 pin: a first-ever load carries NO invented number — no
+    admission, no booking, nothing evicted on its behalf. The strip says
+    "not measured yet"."""
+    arb = arb_env(_discrete())
+    mgr = _mgr(monkeypatch, _discrete(), _manifest())
+    mgr.load("eng", device="auto")   # probe miss (fake proc), pool unmeasurable
+    assert arb.reservation_of("tts:eng") is None
+    assert mgr._loaded["tts"].is_alive()
+    mgr.unload("tts")
+    assert arb.reservation_of("tts:eng") is None
 
 
 def test_load_true_up_books_the_measured_number(monkeypatch, arb_env):
-    """The core of the redesign: a per-PID probe replaces the estimate the
-    moment the load confirms — source='measured', and the footprint is
-    persisted as evidence for the next load's estimate."""
+    """The core of the redesign: the per-PID-tree probe books the real
+    footprint the moment the load confirms — source='measured', persisted
+    as the evidence the next load's admission reads."""
     arb = arb_env(_discrete())
     recorded = []
-    mgr = _mgr(monkeypatch, _discrete(), _manifest(size_mb=2000))
+    mgr = _mgr(monkeypatch, _discrete(), _manifest())
     monkeypatch.setattr(EngineManager, "_engine_proc_mb",
                         lambda self, proc, *, fresh=True: 1234)
     monkeypatch.setattr(
@@ -221,22 +197,86 @@ def test_load_true_up_books_the_measured_number(monkeypatch, arb_env):
     assert recorded == [("eng", "tts", 1234)]
 
 
-def test_probe_miss_books_the_estimate_as_computed(monkeypatch, arb_env):
-    """Unmeasurable (no per-PID arm on this box) → the estimate stands and
-    its provenance says so — an estimate never reads as live truth."""
+def test_prior_measured_admits_and_books_early(monkeypatch, arb_env):
+    """A prior measured footprint books BEFORE the child confirms — the
+    ledger covers the admission→true-up window (the gap neither adversarial
+    pass caught). A post-load probe miss keeps the prior booking; it never
+    degrades to a polluted delta."""
     arb = arb_env(_discrete())
-    mgr = _mgr(monkeypatch, _discrete(), _manifest(size_mb=2000))
-    mgr.load("eng", device="auto")   # _Proc has no real pid → probe None
-    row = arb.reservation_of("tts:eng")
-    assert row == {"vram_mb": _est(2000), "source": "computed", "kind": "tts",
-                   "pinned": False}
-    mgr.unload("tts")
+    seen_at_post = []
+
+    class _EarlyProc(_Proc):
+        def post(self, path, json=None, timeout=None):
+            if path == "/load":
+                seen_at_post.append(arb.reservation_of("tts:eng"))
+            return super().post(path, json=json, timeout=timeout)
+
+    from justvoice.engines import manager as mgr_mod
+
+    mgr = _mgr(monkeypatch, _discrete(), _manifest())
+    monkeypatch.setattr(mgr_mod, "EngineProcess", _EarlyProc)
+    monkeypatch.setattr(EngineManager, "_prior_measured_mb",
+                        lambda self, kind, engine_id: 1500)
+    mgr.load("eng", device="auto")
+    assert seen_at_post and seen_at_post[0] is not None
+    assert seen_at_post[0]["vram_mb"] == 1500
+    assert seen_at_post[0]["source"] == "measured"
+    assert arb.reservation_of("tts:eng")["vram_mb"] == 1500
+
+
+def test_failed_load_releases_the_early_booking(monkeypatch, arb_env):
+    """The F1 lesson under early booking: a reservation nobody releases is a
+    lying ledger — a failed child load must strike the early booking."""
+    arb = arb_env(_discrete())
+
+    class _R500:
+        status_code = 500
+        text = "boom"
+
+        def json(self):
+            return {}
+
+    class _FailProc(_Proc):
+        def post(self, path, json=None, timeout=None):
+            if path == "/load":
+                return _R500()
+            return super().post(path, json=json, timeout=timeout)
+
+    from justvoice.engines import manager as mgr_mod
+
+    mgr = _mgr(monkeypatch, _discrete(), _manifest())
+    monkeypatch.setattr(mgr_mod, "EngineProcess", _FailProc)
+    monkeypatch.setattr(EngineManager, "_prior_measured_mb",
+                        lambda self, kind, engine_id: 1500)
+    with pytest.raises(RuntimeError, match="engine load failed"):
+        mgr.load("eng", device="auto")
     assert arb.reservation_of("tts:eng") is None
+
+
+def test_first_load_delta_fallback_books_computed_never_persists(monkeypatch, arb_env):
+    """No per-process arm on this box (AMD Linux): the device-wide delta
+    across the load books as "computed" — and is NEVER persisted as
+    measurement evidence, because a concurrent load could pollute it."""
+    arb = arb_env(_discrete())
+    recorded = []
+    mgr = _mgr(monkeypatch, _discrete(), _manifest())
+    seq = [3000, 4400]   # the before snapshot at the door; after at the true-up
+    monkeypatch.setattr(EngineManager, "pool_used_mb",
+                        lambda self, *, fresh=False: seq.pop(0) if seq else 4400)
+    monkeypatch.setattr(
+        EngineManager, "_record_speech_load",
+        lambda self, m, kind, variant, mb, device: recorded.append(mb),
+    )
+    mgr.load("eng", device="auto")
+    row = arb.reservation_of("tts:eng")
+    assert row == {"vram_mb": 1400, "source": "computed", "kind": "tts",
+                   "pinned": False}
+    assert recorded == []
 
 
 def test_cpu_load_books_nothing_on_discrete(monkeypatch, arb_env):
     arb = arb_env(_discrete())
-    mgr = _mgr(monkeypatch, _discrete(), _manifest(size_mb=1024, cpu_adequate=True))
+    mgr = _mgr(monkeypatch, _discrete(), _manifest(cpu_adequate=True))
     mgr.load("eng", device="auto")
     assert arb.reservation_of("tts:eng") is None
     assert mgr.resolved_device_for("eng") == "cpu"
@@ -244,40 +284,48 @@ def test_cpu_load_books_nothing_on_discrete(monkeypatch, arb_env):
 
 def test_one_pool_books_whichever_device_resolves(monkeypatch, arb_env):
     """THE ONE-POOL RULING: CPU and GPU are the same physical bytes on a
-    one-pool box, so even a cpu-resolved load claims the pool."""
+    one-pool box, so even a cpu-resolved load claims the pool — at its
+    MEASURED resident set."""
     arb = arb_env(_one_pool())
-    mgr = _mgr(monkeypatch, _one_pool(), _manifest(size_mb=2000, cpu_adequate=True))
+    mgr = _mgr(monkeypatch, _one_pool(), _manifest(cpu_adequate=True))
+    monkeypatch.setattr(EngineManager, "_engine_proc_mb",
+                        lambda self, proc, *, fresh=True: 800)
     mgr.load("eng", device="auto")
     row = arb.reservation_of("tts:eng")
-    assert row is not None and row["vram_mb"] == _est(2000)
+    assert row is not None and row["vram_mb"] == 800
+    assert row["source"] == "measured"
     assert mgr.resolved_device_for("eng") == "cpu"
 
 
 def test_slot_replacement_releases_the_prior_booking(monkeypatch, arb_env):
     arb = arb_env(_discrete())
-    a, b = _manifest("eng-a"), _manifest("eng-b", size_mb=1000)
+    a, b = _manifest("eng-a"), _manifest("eng-b")
     mgr = _mgr(monkeypatch, _discrete(), a)
     mgr._manifests["eng-b"] = b
+    monkeypatch.setattr(EngineManager, "_engine_proc_mb",
+                        lambda self, proc, *, fresh=True: 1200)
     mgr.load("eng-a", device="auto")
-    assert arb.reservation_of("tts:eng-a") is not None
+    assert arb.reservation_of("tts:eng-a")["vram_mb"] == 1200
     mgr.load("eng-b", device="auto")
     assert arb.reservation_of("tts:eng-a") is None
-    assert arb.reservation_of("tts:eng-b")["vram_mb"] == _est(1000)
+    assert arb.reservation_of("tts:eng-b")["vram_mb"] == 1200
 
 
-# ─── the high-water bump (Opus finding 2: raise-only) ─────────────────
+# ─── the high-water bump (raise-only + occupant re-check + create) ────
 
 
 def test_high_water_bump_raises_and_never_lowers(monkeypatch, arb_env):
     arb = arb_env(_discrete())
     recorded = []
-    mgr = _mgr(monkeypatch, _discrete(), _manifest(size_mb=2000))
-    mgr.load("eng", device="auto")   # books _est(2000), computed
+    mgr = _mgr(monkeypatch, _discrete(), _manifest())
+    monkeypatch.setattr(EngineManager, "_engine_proc_mb",
+                        lambda self, proc, *, fresh=True: 2000)
+    mgr.load("eng", device="auto")   # books measured 2000
     monkeypatch.setattr(
         EngineManager, "_record_speech_load",
         lambda self, m, kind, variant, mb, device: recorded.append(mb),
     )
-    # Render peak observed above the booking → raised, re-sourced measured.
+    # Render peak observed above the booking → raised.
     monkeypatch.setattr(EngineManager, "_engine_proc_mb",
                         lambda self, proc, *, fresh=False: 4000)
     mgr.bump_engine_reservation("tts")
@@ -292,13 +340,61 @@ def test_high_water_bump_raises_and_never_lowers(monkeypatch, arb_env):
     assert recorded == [4000]
 
 
-# ─── admission (Q1: honest refusal, eviction through the seam) ────────
+def test_bump_creates_the_booking_when_measurement_first_lands(monkeypatch, arb_env):
+    """An engine that loaded "not measured yet" (no probe arm fired at the
+    door) gets its booking CREATED by the first successful post-work probe."""
+    arb = arb_env(_discrete())
+    mgr = _mgr(monkeypatch, _discrete(), _manifest())
+    mgr.load("eng", device="auto")            # nothing measurable → no booking
+    assert arb.reservation_of("tts:eng") is None
+    monkeypatch.setattr(EngineManager, "_engine_proc_mb",
+                        lambda self, proc, *, fresh=False: 1300)
+    mgr.bump_engine_reservation("tts")
+    row = arb.reservation_of("tts:eng")
+    assert row is not None and row["vram_mb"] == 1300
+    assert row["source"] == "measured"
+
+
+def test_bump_never_creates_a_booking_for_a_cpu_placed_engine(monkeypatch, arb_env):
+    """The standing policy holds through the create path: a CPU-placed engine
+    on a discrete box books nothing, even if a probe returns a number."""
+    arb = arb_env(_discrete())
+    mgr = _mgr(monkeypatch, _discrete(), _manifest(cpu_adequate=True))
+    mgr.load("eng", device="auto")
+    monkeypatch.setattr(EngineManager, "_engine_proc_mb",
+                        lambda self, proc, *, fresh=False: 700)
+    mgr.bump_engine_reservation("tts")
+    assert arb.reservation_of("tts:eng") is None
+
+
+def test_bump_skips_when_the_slot_swapped_mid_probe(monkeypatch, arb_env):
+    """Hardening (§10 item 6): the probe runs unlocked — if the slot occupant
+    changes while it shells out, no booking is written for the departed
+    engine."""
+    arb = arb_env(_discrete())
+    mgr = _mgr(monkeypatch, _discrete(), _manifest())
+    monkeypatch.setattr(EngineManager, "_engine_proc_mb",
+                        lambda self, proc, *, fresh=True: 1000)
+    mgr.load("eng", device="auto")
+
+    def _swap_then_probe(self, proc, *, fresh=False):
+        self._loaded["tts"] = _Proc(SimpleNamespace(id="other", kind="tts"))
+        return 5000
+
+    monkeypatch.setattr(EngineManager, "_engine_proc_mb", _swap_then_probe)
+    mgr.bump_engine_reservation("tts")
+    assert arb.reservation_of("tts:eng")["vram_mb"] == 1000
+
+
+# ─── admission (prior-measured only; honest refusal; the seam) ────────
 
 
 def test_admission_refuses_honestly_when_nothing_is_evictable(monkeypatch, arb_env):
     arb = arb_env(_discrete(vram_mb=8192))
     arb.reserve("llm:pinned-chat", 7000, pinned=True, kind="llm")
-    mgr = _mgr(monkeypatch, _discrete(vram_mb=8192), _manifest(size_mb=4096))
+    mgr = _mgr(monkeypatch, _discrete(vram_mb=8192), _manifest())
+    monkeypatch.setattr(EngineManager, "_prior_measured_mb",
+                        lambda self, kind, engine_id: 4096)
     with pytest.raises(RuntimeError, match="not enough memory"):
         mgr.load("eng", device="auto")
     # The world is exactly as it was: no slot occupant, no booking.
@@ -310,11 +406,14 @@ def test_admission_evicts_the_idle_llm(monkeypatch, arb_env):
     arb = arb_env(_discrete(vram_mb=8192))
     evicted = []
     arb.reserve("chat", 7000, kind="llm", evict_fn=lambda: evicted.append("chat"))
-    mgr = _mgr(monkeypatch, _discrete(vram_mb=8192), _manifest(size_mb=4096))
+    mgr = _mgr(monkeypatch, _discrete(vram_mb=8192), _manifest())
+    monkeypatch.setattr(EngineManager, "_prior_measured_mb",
+                        lambda self, kind, engine_id: 4096)
     mgr.load("eng", device="auto")
     assert evicted == ["chat"]
     assert arb.reservation_of("chat") is None
-    assert arb.reservation_of("tts:eng")["vram_mb"] == _est(4096)
+    assert arb.reservation_of("tts:eng")["vram_mb"] == 4096
+    assert arb.reservation_of("tts:eng")["source"] == "measured"
     # Q3's event feed recorded the swap for the toast poller.
     events = arb.events_since(0)
     assert events and events[0]["victim_key"] == "chat"
@@ -324,18 +423,24 @@ def test_admission_never_evicts_a_busy_kind(monkeypatch, arb_env):
     arb = arb_env(_discrete(vram_mb=8192))
     arb.reserve("chat", 7000, kind="llm", evict_fn=lambda: None)
     arb.busy_begin("llm")
-    mgr = _mgr(monkeypatch, _discrete(vram_mb=8192), _manifest(size_mb=4096))
+    mgr = _mgr(monkeypatch, _discrete(vram_mb=8192), _manifest())
+    monkeypatch.setattr(EngineManager, "_prior_measured_mb",
+                        lambda self, kind, engine_id: 4096)
     with pytest.raises(RuntimeError, match="busy: llm"):
         mgr.load("eng", device="auto")
     assert arb.reservation_of("chat") is not None
+    # The refusal fired BEFORE the early booking — nothing leaked.
+    assert arb.reservation_of("tts:eng") is None
 
 
 def test_admission_on_measured_free_sees_foreign_usage(monkeypatch, arb_env):
-    """The redesign's admission truth: the ledger says 8 GB free (nothing
-    booked) but the MEASURED pool says other apps hold 7 GB — the load must
-    refuse, and the refusal quotes the measured number."""
+    """The admission truth: the ledger says 8 GB free (nothing booked) but
+    the MEASURED pool says other apps hold 7 GB — the load must refuse, and
+    the refusal quotes the measured number."""
     arb_env(_discrete(vram_mb=8192))
-    mgr = _mgr(monkeypatch, _discrete(vram_mb=8192), _manifest(size_mb=4096))
+    mgr = _mgr(monkeypatch, _discrete(vram_mb=8192), _manifest())
+    monkeypatch.setattr(EngineManager, "_prior_measured_mb",
+                        lambda self, kind, engine_id: 4096)
     monkeypatch.setattr(EngineManager, "pool_used_mb",
                         lambda self, *, fresh=False: 7000)
     with pytest.raises(RuntimeError, match=r"free of 8192 MB \(measured\)"):
@@ -345,20 +450,23 @@ def test_admission_on_measured_free_sees_foreign_usage(monkeypatch, arb_env):
 
 def test_admission_on_measured_free_evicts_then_settles(monkeypatch, arb_env):
     """Short measured free + an idle victim: the ledger target is inflated by
-    the unledgered slice, the victim dies through the seam, and the settle
-    loop watches the measured number recover before proceeding."""
+    the unledgered slice, the victim dies through the seam, the settle loop
+    watches the measured number recover, and the prior-measured booking
+    stands after a post-load probe miss."""
     arb = arb_env(_discrete(vram_mb=8192))
     evicted = []
     arb.reserve("chat", 6500, kind="llm", evict_fn=lambda: evicted.append("chat"))
     # Probe sequence: admission sees 7000 used (6500 booked + 500 foreign);
-    # after the eviction the settle re-probe sees 600 (chat drained).
+    # the settle re-probe and everything after see 600 (chat drained).
     seq = [7000, 600]
     monkeypatch.setattr(EngineManager, "pool_used_mb",
                         lambda self, *, fresh=False: seq.pop(0) if seq else 600)
-    mgr = _mgr(monkeypatch, _discrete(vram_mb=8192), _manifest(size_mb=2000))
+    mgr = _mgr(monkeypatch, _discrete(vram_mb=8192), _manifest())
+    monkeypatch.setattr(EngineManager, "_prior_measured_mb",
+                        lambda self, kind, engine_id: 2000)
     mgr.load("eng", device="auto")
     assert evicted == ["chat"]
-    assert arb.reservation_of("tts:eng")["vram_mb"] == _est(2000)
+    assert arb.reservation_of("tts:eng")["vram_mb"] == 2000
 
 
 def test_evictor_terminates_only_the_matching_occupant(monkeypatch, arb_env):

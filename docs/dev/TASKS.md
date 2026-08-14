@@ -599,15 +599,35 @@ gone), Mac RSS-on-pool ✓ with the MPS-in-RSS caveat on the laptops-walk
 list. `recommend_for_vram` is the DOWNLOAD-variant picker
 (engines_models_api.py:99) — its invented numbers can't be zeroed without
 replacing the picker (manifest default variant, else smallest).
-OPEN: THE AMENDED FIX SET, verbatim in plan doc §10 — pid+descendants ·
-estimate deletion · delta fallback · second-nest deletion + picker
-replacement · gpu.md "1–1.5 GB" struck · bump occupant re-check · the
-records (kit-side booking-gap half, size_mb wrongness incl. turbo
-2200-vs-3.9 GB, placeholder junk files, MPS walk item).
-GO: needed for the amended fix set (the phase-① go was consumed by the
-build the rethink then amended). SEPARATE RULING still open: the unsourced
-speed tables (gpu.md CPU realtime factors, engines.md GB→engine pairings)
-— verify on the web or cut. Phases ②–④ each still need their own word.
+THE AMENDED FIX SET: BUILT 2026-08-14 (as-built record item-by-item in
+plan doc §10's BUILT stamp): kit process-TREE probes (pid+descendants —
+psutil → wmic/CIM/ps table walk; nvidia set-query + per-pid WDDM counter
+arm; suite 858) · the pre-load estimate DELETED (prior-measured admits AND
+books EARLY with release-on-failure; first-ever load = no arithmetic,
+"not measured yet" on the strip, which now joins loaded engines with
+reservations) · device-delta fallback (computed, never persisted, never
+overrides an early prior booking) · the second nest DEAD (model_catalog
+vram_mb + ModelVariant field + fit dots + est. span + the
+/models/recommended endpoint deleted; picker replaced by
+default_variant_for over the manager's resolved default; legacy-gui
+repaired) · gpu.md "1–1.5 GB" struck · bump occupant re-check + booking
+CREATE when measurement first lands (policy-gated) · the kit booking-gap
+half (reserve computed at admission, true-up upserts; zero kit test
+changes) · junk files deleted · KFD idea recorded. Wiring tests REWRITTEN
+(29 green). Gates: kit ruff+858 · JV ruff+pytest+vitest 48+biome+build +
+THE RENDERER SMOKE (passed, zero JS errors).
+SPEED TABLES: CUT 2026-08-14 per the rec the go adopted (gpu.md CPU
+realtime factors + engines.md Speed column + GB→engine tiers — same
+invented-number class as vram_min_mb; honest qualitative split kept:
+Kokoro is built for CPU, the PyTorch cloning engines want a GPU).
+GO: given 2026-08-14, verbatim: *"go on everything your rec"* — covers
+THE AMENDED FIX SET (built, above), the speed-tables ruling (cut, above),
+and phases ② → ③ → ④ in order, recs governing open sub-decisions;
+stop-and-ask only where a genuine new user ruling appears. NEXT: phase ②
+(kit downloader generalization + speech-cache + facts-only manifests +
+load-from-local-paths — kills the WinError 1314 class; size_mb claims get
+pinned real file lists here, fixing turbo's 2200-vs-3.9 GB wrongness),
+then ③ the catalog UI, then ④ locations + verbs.
 
 ## Features the docs promise and the code does not do
 

@@ -2,8 +2,10 @@
 
 **Date**: 2026-08-13 (late, same day the VRAM wiring shipped in `da006bd`).
 **Status**: DECIDED in full (all rulings below) — phase ① go given
-(*"save in docs in detail and go for coding"*); phases ②–④ each still need
-their own go.
+(*"save in docs in detail and go for coding"*), built, then AMENDED (§10).
+2026-08-14: the user's go *"go on everything your rec"* covers the amended
+fix set (BUILT — see the stamp at the end of §10), the speed-tables ruling
+(cut), and phases ② → ③ → ④ in order under the recs.
 **Supersedes in part**: the declared-pricing currency and the budget-strip
 cells of the 2026-08-13 VRAM wiring (`docs/plans/2026-08-08-vram-think.md`
 §6, STATUS STAMP 2). The wiring's *machinery* — device policy, admission
@@ -393,7 +395,9 @@ idea). Mac ✓ RSS on the one-pool ledger (symlink venvs, ps arm exists);
 CAVEAT for the laptops walk: whether MPS/Metal buffers fully appear in
 plain RSS is unverified — chatterbox is CPU-forced on macOS anyway.
 
-**THE AMENDED FIX SET — AWAITING GO (nothing below is built):**
+**THE AMENDED FIX SET** (go given 2026-08-14, *"go on everything your
+rec"* — BUILT the same day; the stamp with the as-built detail follows the
+list):
 1. Pid fix: probe pid + descendants, summed (kit or JV helper — decide at
    build; the child-enumeration needs a Windows arm (CIM/wmic) + POSIX).
 2. Delete the pre-load estimate per finding 5 (admission first-load
@@ -412,6 +416,74 @@ plain RSS is unverified — chatterbox is CPU-forced on macOS anyway.
 8. STILL OPEN, user ruling needed: the unsourced SPEED tables (gpu.md CPU
    realtime factors; engines.md GB→engine pairings) — verify on the web or
    cut until measured.
+
+**BUILT 2026-08-14** (the go: *"go on everything your rec"* — one word
+covering the fix set, the speed-tables cut, and phases ②–④ in order). The
+as-built record, item by item:
+
+1. **Tree probing (kit)**: `hardware.py` grew `_nvidia_procs_mem_mb(pids)`
+   (one query covers a whole pid set; the single-pid door delegates),
+   `_pid_ppid_pairs()` (wmic — columns print ALPHABETICALLY, flip — →
+   PowerShell CIM on Windows; one `ps -e` on POSIX), `_tree_from_pairs`
+   (cycle-guarded walk; Windows pid reuse fabricates parent cycles),
+   `process_tree_pids` (psutil recursive-children first),
+   `process_tree_device_mem_mb` (nvidia set-query, else the WDDM counter
+   arm per pid) and `process_tree_rss_mb`. JV `_engine_proc_mb` probes the
+   TREE doors. 8 new kit tests (suite 858).
+2. **The estimate is dead**: `_estimate_engine_mb`, `_weight_files_mb`,
+   `ENGINE_OVERHEAD_SEED_MB`, `WEIGHT_FILE_SUFFIXES` deleted. The load
+   door: prior measured → `_admit_memory(prior)` + `_reserve_engine(prior,
+   "measured")` BEFORE the spawn (the early booking; a new `except` arm
+   releases it on any failed/cancelled load — the non-200 path already
+   did); first-ever load → no admission, no number. Strip cells say **not
+   measured yet** (built from loaded engines joined with reservations, so
+   an unbooked loaded engine is visible; CPU-on-discrete engines show no
+   cell by policy); the dead `speechInUseMb` "booked" div and its
+   `.ev-vrtotal` class died too.
+3. **Device-delta fallback**: `pool_before` snapshot at the door (after
+   admission's settle), `after − before` booked as `"computed"` on a
+   post-200 tree-probe miss — only when no early booking exists (a prior
+   measurement beats a pollutable delta), and NEVER persisted to the
+   measurement store.
+4. **The second nest is dead**: every `vram_mb=` in `model_catalog.py`
+   deleted + the `ModelVariant.vram_mb` field; `recommend_for_vram`
+   REPLACED by `default_variant_for` (the manager's resolved default —
+   user override → manifest `DEFAULT_VARIANT_ID` → on-disk → first — else
+   smallest download); the `/v1/engines/{id}/models/recommended` endpoint
+   + `RecommendedResponse` DELETED (its only renderer read was a field it
+   never returned); the UI "needs ~X (est.)" span, the fit dots
+   (`fitFor`/`FIT_TITLES`/`.ev-fit*`/legend) and the legacy-gui VRAM
+   column + recommended fetch (which would have broken on the 404) all
+   excised.
+5. **gpu.md** rewritten: the "1–1.5 GB" sentence struck; "not measured
+   yet" story; first-load no-guess admission story; the CPU realtime
+   table CUT (item 8's ruling, rec taken) — replaced by the honest
+   qualitative split (Kokoro is built for CPU; the rest want a GPU).
+   engines.md: Speed column cut with an explanatory note, GB→engine tier
+   pairings cut, first-load sentence added.
+6. **Bump hardened + grown**: occupant re-check under the lock before any
+   booking write; and the bump now CREATES the booking when none exists
+   (cur is None = "not measured yet" — the first successful post-work
+   probe heals it), gated by `_books_memory` so CPU-placed engines still
+   never book.
+7. **The kit booking-gap half**: `_run_load` reserves the fit's computed
+   number (pool-capped) right after `_admit`, BEFORE `_load_via_router`;
+   the true-up reserve upserts it to measured; `_cleanup_cancelled` and
+   the except arm already release. The stale "reservation recorded only
+   AFTER a confirmed load" comment corrected. Kit suite green with zero
+   test changes (858 passed / 10 skipped).
+8. Scaffold junk `models/chatterbox-multilingual-v2/` (4 KB placeholder
+   onnx + voices bin, untracked) deleted; the KFD-sysfs per-pid idea
+   recorded in IDEAS.md; MPS-RSS stays on the laptops walk.
+
+Tests: `test_engine_vram_wiring.py` REWRITTEN for the amended currency —
+first-load-books-nothing · true-up measured · prior-books-early (asserted
+INSIDE the child's /load call) · failed-load-releases-early-booking ·
+delta-computed-never-persisted · one-pool measured · bump raise-only /
+create / cpu-no-create / swap-guard · admission ×4 with prior-measured
+pricing (29 green with the activity guard). Gates: kit ruff + 858; JV ruff
++ full pytest + vitest 48 + biome + build:vite + **the renderer smoke
+(SMOKE PASSED, all views, zero JS errors)**.
 
 ## 11. Honest limits recorded at the ORIGINAL decision time (§10 amends
 ## several — the estimate items die with the estimate)

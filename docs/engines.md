@@ -8,24 +8,28 @@ JustVoice ships with 7 commercial-output-permitting TTS engines plus an external
 
 ## The catalog
 
-| Engine | Type | Size | Languages | Speed | Voice cloning | Weight license |
-|---|---|---|---|---|---|---|
-| **Kokoro** | preset (54 voices) | 82 MB | 8 | CPU-realtime | — | Apache-2.0 |
-| **Chatterbox Turbo** | clone + paralinguistic | 350 MB | en | GPU 1-2× realtime | ✓ | MIT |
-| **Chatterbox Multilingual** | clone | 1.2 GB | 23 | GPU 1-2× realtime | ✓ | MIT |
-| **Qwen3-TTS** | clone + designed | 1.7 GB | 10 | GPU 0.5-1× realtime | ✓ | Apache-2.0 |
-| **LuxTTS (ZipVoice)** | clone · 48 kHz | 1.0 GB | en | GPU 1× realtime | ✓ | Apache-2.0 |
-| **Hume TADA** | clone · long-form coherent | 3.2 GB | 10 | GPU 0.5× realtime | ✓ | Llama 3.2 Community (+ MIT codec) |
-| **Dia (Nari Labs)** | multi-speaker dialogue | 3.0 GB | en | GPU 0.5× realtime | — | Apache-2.0 |
-| **MossTTS** | clone | — | en + zh | GPU | ✓ (experimental) | Apache-2.0 |
-| **External** (OpenAI-compatible) | HTTP | 0 MB | — | Network | varies | depends on provider |
+| Engine | Type | Size | Languages | Voice cloning | Weight license |
+|---|---|---|---|---|---|
+| **Kokoro** | preset (54 voices) · fast on CPU | 82 MB | 8 | — | Apache-2.0 |
+| **Chatterbox Turbo** | clone + paralinguistic | 350 MB | en | ✓ | MIT |
+| **Chatterbox Multilingual** | clone | 1.2 GB | 23 | ✓ | MIT |
+| **Qwen3-TTS** | clone + designed | 1.7 GB | 10 | ✓ | Apache-2.0 |
+| **LuxTTS (ZipVoice)** | clone · 48 kHz | 1.0 GB | en | ✓ | Apache-2.0 |
+| **Hume TADA** | clone · long-form coherent | 3.2 GB | 10 | ✓ | Llama 3.2 Community (+ MIT codec) |
+| **Dia (Nari Labs)** | multi-speaker dialogue | 3.0 GB | en | — | Apache-2.0 |
+| **MossTTS** | clone | — | en + zh | ✓ (experimental) | Apache-2.0 |
+| **External** (OpenAI-compatible) | HTTP | 0 MB | — | varies | depends on provider |
+
+(The old per-engine "Speed" column was cut 2026-08-14: its realtime factors
+were never measured. The honest generalisation: Kokoro is the one engine
+that is genuinely fast on CPU; the PyTorch cloning engines want a GPU.)
 
 ## Picking an engine for a use case
 
 - **Audiobook narration in your own voice.** Chatterbox Turbo. Clone from 1-2 minutes of clean read-aloud.
 - **Audiobook with 5+ characters.** Chatterbox Turbo for main voices + Kokoro for incidental characters (faster to render, plenty of voices).
 - **Multilingual audiobook.** Chatterbox Multilingual (23 langs) or Qwen3 (10 langs, best on Asian languages).
-- **Game NPC dialogue at 50-500 line scale.** Kokoro (CPU realtime, 54 voices). Render speed matters at scale.
+- **Game NPC dialogue at 50-500 line scale.** Kokoro (fast on CPU, 54 voices). Render speed matters at scale.
 - **Multi-speaker game cutscenes.** Dia. Single render produces multiple voices.
 - **Podcast voiceover.** Chatterbox Turbo if you want it to sound like you; Kokoro if you want preset variety fast.
 - **Dictation playback** (MCP `speak` tool). Kokoro. Lowest latency.
@@ -40,7 +44,7 @@ One engine is **loaded** per slot (one TTS, one STT). Loading takes 10-30s (mode
 
 Click Load on any installed engine; the same slot's prior occupant auto-unloads.
 
-Loads run against the **shared memory budget** (the strip at the top of the tab — measured used/free, one cell per loaded engine with its real memory take, the AI model, other apps). If the pool is short, JustVoice frees the least-recently-used *idle* model and toasts what it unloaded; if everything resident is busy, the load refuses with an honest message quoting the measured numbers instead of an out-of-memory crash. Each card also carries a **Device** select (Auto / CUDA / CPU) — Auto sends CPU-fast engines (Kokoro) to CPU and the rest to your GPU, and an explicit choice always wins. The full story is in [GPU / CUDA](gpu.md#the-shared-memory-budget).
+Loads run against the **shared memory budget** (the strip at the top of the tab — measured used/free, one cell per loaded engine with its real memory take, the AI model, other apps). For an engine JustVoice has measured before on this machine: if the pool is short, it frees the least-recently-used *idle* model and toasts what it unloaded; if everything resident is busy, the load refuses with an honest message quoting the measured numbers instead of an out-of-memory crash. An engine's first-ever load carries no number yet ("not measured yet" on the strip) — it simply attempts, gets measured, and is remembered. Each card also carries a **Device** select (Auto / CUDA / CPU) — Auto sends CPU-fast engines (Kokoro) to CPU and the rest to your GPU, and an explicit choice always wins. The full story is in [GPU / CUDA](gpu.md#the-shared-memory-budget).
 
 ### Cancelling an in-flight load
 
@@ -58,11 +62,7 @@ The same Cancel + Retry pattern applies to every long-running operation in the a
 
 ## GPU detection + tier-aware default
 
-Settings → GPU shows your backend (CUDA / MPS / Metal / XPU / DirectML / ROCm), device name, VRAM total / used, compute capability, and HSA override status. JustVoice uses this to suggest defaults:
-
-- CPU only → Kokoro recommended; clone engines disabled with a warning.
-- 8-12 GB VRAM → Chatterbox Turbo or Qwen3 (small).
-- 24+ GB → any engine, including Hume TADA + Dia.
+Settings → GPU shows your backend (CUDA / MPS / Metal / XPU / DirectML / ROCm), device name, VRAM total / used, compute capability, and HSA override status. On CPU-only boxes Kokoro is the recommended engine (it's built for CPU); for GPU boxes there is no hand-typed VRAM-to-engine pairing table any more — an engine's real footprint is **measured on your machine at its first load** and shown on the budget strip, which is the honest way to see what fits (the old GB-tier suggestions were never measured; cut 2026-08-14).
 
 ## CUDA wheel download
 

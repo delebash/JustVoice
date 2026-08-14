@@ -6,6 +6,13 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-08-14 · AMD-Linux per-process GPU memory via KFD sysfs** — recorded
+  by the amended measured redesign (plan doc §10): ROCm tooling exposes only
+  device-wide use, so AMD-Linux boxes ride the device-delta fallback
+  (`source="computed"`). The kernel's KFD sysfs
+  (`/sys/class/kfd/kfd/proc/<pid>/`) exposes per-process VRAM on amdgpu and
+  could become a real per-PID arm in kit `hardware.py` when an AMD box exists
+  to verify against. Until verified on real hardware this stays an idea.
 - **2026-08-08 · Unreal / Unity string-table import for game dialogue** — moved
   here by the user's word ("move unreal stuff to ideas") during the import-picker
   sweep. The gap is real and currently advertised: `NewProjectModal.vue` sells
