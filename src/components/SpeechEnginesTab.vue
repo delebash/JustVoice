@@ -85,7 +85,34 @@ function _kindMb(kinds) {
     .filter((r) => kinds.includes(r.kind))
     .reduce((n, r) => n + (r.vram_mb || 0), 0);
 }
-const speechInUseMb = computed(() => _kindMb(["tts", "stt"]));
+// The 2026-08-13 redesign: the strip shows MEASURED reality — used/free are
+// what nvidia-smi would print (used_mb; None on an unmeasurable box falls
+// back to the ledger's remaining), and each loaded speech engine is its own
+// cell with its measured take. A number whose source isn't "measured" is an
+// estimate and is drawn as one (~ prefix) — it becomes measured at the
+// engine's first load/render on this box.
+const freeMb = computed(() => {
+  const v = vram.value;
+  if (!v) return 0;
+  if (v.used_mb != null) return Math.max(0, v.total_mb - v.used_mb);
+  return v.remaining_mb;
+});
+const speechRows = computed(() =>
+  (vram.value?.reservations || [])
+    .filter((r) => r.kind === "tts" || r.kind === "stt")
+    .map((r) => {
+      const id = r.key.split(":").slice(1).join(":");
+      const eng = engines.value.find((e) => e.id === id);
+      const est = r.source !== "measured";
+      return {
+        key: r.key,
+        label: eng?.name || id,
+        text: est ? `~${fmtDisk(r.vram_mb)}` : fmtDisk(r.vram_mb),
+        title: est
+          ? "Estimate — becomes a measured number at this engine's first load/render on this machine"
+          : `Measured (${r.kind.toUpperCase()})`,
+      };
+    }));
 const llmCell = computed(() => {
   const v = vram.value;
   if (!v) return null;
@@ -107,9 +134,11 @@ const llmCell = computed(() => {
   return { label: "AI model", text: "—", title: "" };
 });
 const budgetTitle = computed(() => {
-  const rows = vram.value?.reservations || [];
-  if (!rows.length) return "Nothing is booked in the memory ledger.";
-  return rows.map((r) => `${r.key}: ${fmtDisk(r.vram_mb)} (${r.source})`).join("\n");
+  const v = vram.value;
+  const rows = v?.reservations || [];
+  const lines = rows.map((r) => `${r.key}: ${fmtDisk(r.vram_mb)} (${r.source})`);
+  if (v?.other_mb > 0) lines.push(`other apps / OS: ${fmtDisk(v.other_mb)}`);
+  return lines.length ? lines.join("\n") : "Nothing loaded holds memory right now.";
 });
 
 // Seed from the last fetch so revisiting doesn't flash the "no engines"
@@ -618,19 +647,30 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- The memory budget strip (Q4: ONE strip, one endpoint, the shared
-         ledger's truth). The label follows the box's memory architecture:
-         "VRAM" on a discrete card, "Memory" on one-pool (iGPU/unified)
-         machines where CPU and GPU share the same bytes. Hover lists each
-         booking with its provenance (declared prices never dress up as
-         measured truth). -->
+    <!-- The memory budget strip (Q4: ONE strip, one endpoint) — since the
+         2026-08-13 redesign it shows MEASURED reality: used/free match what
+         nvidia-smi (or Task Manager) says, each loaded speech engine is its
+         own cell with its measured take, and anything not yet measured is
+         drawn as an estimate (~). The label follows the box's memory
+         architecture: "VRAM" on a discrete card, "Memory" on one-pool
+         (iGPU/unified) machines where CPU and GPU share the same bytes.
+         Hover lists every holder, including other apps. -->
     <div class="jv-card ev-hw" v-if="vram" :title="budgetTitle">
-      <div class="ev-hw-cell"><div class="k">{{ memLabel }} budget</div><strong>{{ fmtDisk(vram.total_mb) }}</strong></div>
-      <div class="ev-hw-cell"><div class="k">Speech in use</div><strong>{{ speechInUseMb ? fmtDisk(speechInUseMb) : "—" }}</strong></div>
+      <div class="ev-hw-cell"><div class="k">{{ memLabel }}</div>
+        <strong v-if="vram.used_mb != null">{{ fmtDisk(vram.used_mb) }} <span class="jv-muted">of {{ fmtDisk(vram.total_mb) }} used</span></strong>
+        <strong v-else>{{ fmtDisk(vram.total_mb) }} <span class="jv-muted">budget</span></strong>
+      </div>
+      <div class="ev-hw-cell"><div class="k">Free</div><strong>{{ fmtDisk(freeMb) }}</strong></div>
+      <div class="ev-hw-cell" v-for="r in speechRows" :key="r.key">
+        <div class="k">{{ r.label }}</div>
+        <strong :title="r.title">{{ r.text }}</strong>
+      </div>
       <div class="ev-hw-cell" v-if="llmCell"><div class="k">{{ llmCell.label }}</div>
         <strong :title="llmCell.title">{{ llmCell.text }}</strong>
       </div>
-      <div class="ev-hw-cell"><div class="k">Free</div><strong>{{ fmtDisk(vram.remaining_mb) }}</strong></div>
+      <div class="ev-hw-cell" v-if="vram.other_mb > 256"><div class="k">Other apps</div>
+        <strong title="Memory held by processes JustVoice doesn't manage (browser, OS, games)">{{ fmtDisk(vram.other_mb) }}</strong>
+      </div>
       <div class="ev-hw-cell" v-if="vram.busy_kinds?.length"><div class="k">Busy</div>
         <span><UiTag v-for="k in vram.busy_kinds" :key="k" intent="ghost" :label="k.toUpperCase()"
           title="Work in flight — this kind's resident model can't be evicted right now" /></span>
@@ -708,7 +748,8 @@ onBeforeUnmount(() => {
           <div v-for="v in variantsFor(e.id)" :key="v.id" class="ev-model" :class="{ dim: engineNeedsInstall(e) }">
             <span v-if="fitFor(v)" class="ev-fit" :class="fitFor(v)" :title="FIT_TITLES[fitFor(v)]"></span>
             <span class="vn">{{ v.name }}</span>
-            <span class="vmeta">{{ fmtDisk(v.size_mb) }}<span v-if="v.vram_mb"> · {{ fmtDisk(v.vram_mb) }} VRAM</span></span>
+            <span class="vmeta">{{ fmtDisk(v.size_mb) }}<span v-if="v.vram_mb"
+              title="Estimate — JustVoice measures the real footprint when this model first loads on your machine"> · needs ~{{ fmtDisk(v.vram_mb) }} {{ memLabel }} (est.)</span></span>
             <span class="vdesc" :title="v.description">{{ v.description }}</span>
             <span class="right">
               <span v-if="modelLoaded(e, v)" class="ev-badge loaded">● Loaded</span>

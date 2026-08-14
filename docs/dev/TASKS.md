@@ -410,8 +410,15 @@ engine's reservation lingers until its slot next loads/unloads
 (conservative, over-counts); clone singles are protected by the activity
 lock, not a busy flag (an evictor waits, then terminates); GPU-less
 CPU-only boxes still book 0 (recorded gap, serving-design.md).
-GO: BUILT — the item is closed when you've seen the strip live; the
-laptops walk (kit checkpoint) now also shows real one-pool numbers.
+GO: BUILT — then SUPERSEDED IN PART the same day: the user's first live
+look at the strip (350M turbo showing 4 GB "in use") exposed the declared-
+pricing currency as invented scaffold data, and the ordered rethink
+replaced it with measured-first pricing + a strip that shows only reality
+(the Speech-engines convergence item below + `docs/plans/
+2026-08-13-speech-catalog-redesign.md`). The wiring's MACHINERY — device
+policy, admission seam, busy flags, eviction executor + toasts, endpoint,
+one-pool ruling — stands and is what the redesign builds on. The laptops
+walk (kit checkpoint) remains open, user-paced.
 
 ### Speech-engines model management converges on the kit's download/load GUI + machinery
 
@@ -505,11 +512,102 @@ design pass (rebuildable runtime, not user data); the data-management
 surface grows per-store clear verbs (LLM cache · speech cache · render
 cache) in one grammar. Pre-release no-migrations rule: the path change is
 a default change — existing files re-download or the user resets.
-OPEN: the design pass — inventory `SpeechEnginesTab.vue`'s current controls
-against `LuModelCatalog`'s grammar; decide per piece import-as-is vs promote
-a shared kit primitive; the server-half download/catalog/location design per
-the ordered additions above.
-GO: needed — think + orders recorded; design + build wait on the word.
+DECIDED 2026-08-13 (late — the design pass RAN, triggered by the user
+loading 350M chatterbox-turbo and the budget strip showing 4 GB "in use";
+full record: `docs/plans/2026-08-13-speech-catalog-redesign.md`). The
+diagnosis: `vram_min_mb: 4096` was INVENTED in the 2026-06-08 scaffold
+(`de592a7`, git-blamed) — never sourced, never measured, same for every
+engine's declared number — and the wiring booked + displayed it. User words
+verbatim through the rethink: *"that makes no sense … what is using 4gb if
+the model is only 350mb"* · *"from a user perspective this is exptemely
+misleading"* · *"i dont like this booked reserver too confusing for user,
+we need to think of better way, poor design you did on this manager"* ·
+*"rethink this manager process i do not like it at all rethink this
+manifest too"* · *"why should this be any diffent then the way we load llm
+models and show what vram is used"* (answer verified in code: it
+shouldn't — kit `lifecycle.py` measures the before/after pool delta and
+reserves THAT, `source="measured"`; the speech wiring ported the declared
+arm without the ladder). THE RULINGS: **own catalog** (*"the speech can
+have its own catalog just reuse what makes sense to do and desing it so it
+feels similiar but taking into account what is different about speach"*) —
+grouped engine→variant rows built from kit primitives (DownloadBar, chip
+mapping, three-dot menu) with the identical verb set, NOT LuModelCatalog
+itself; **no quants / no model-card machinery** (variants are one fixed
+artifact each; add-by-link dies — engine code pins the catalog; "View on
+Hugging Face" replaces the card); **cloning distinction** (*"i would like
+a way to distingush between engines models that can do voice cloning vs
+not"*) — per-variant voice_cloning/preset_voices facts, first-class chips,
+filter row, consumers repointed (GenerateView.vue:61 reads engine-level
+today); **facts-only manifests** — vram_min_mb DELETED from the format,
+weight-file sizes verifiable from disk/HF-tree, per-variant languages/
+capabilities/license; **measured-first pricing** — probe the engine PID
+after load, reserve + display the measured number, estimate only before
+first load and LABELED; **admission on measured free**; **strip shows
+reality only** (used/free/per-row measured + "other apps"); **slots stay**.
+OPUS ADVERSARIAL PASS (user-ordered, both directions): 4 findings adopted —
+don't replace invented 4096 with quoted ~1.5 GB (only measurement counts;
+engine.py:107 loads the full pipeline, "350M" is the backbone alone);
+**raise-only high-water re-probe** at busy→idle (TTS allocates at
+generate(), not load — post-load delta alone would over-admit into render
+peak; torch's caching allocator makes the lazy probe forgiving);
+**per-process attribution** (Fable's amendment over a shared lock:
+query-compute-apps on Linux/NVIDIA, per-PID GPU Process Memory counters on
+Windows WDDM where nvidia-smi says N/A, RSS on one-pool; fallback
+device-delta labeled computed) kills the cross-charging race with
+concurrent LLM loads; **file-sizes-not-params** for the estimate;
+**TTL-cache the probes** (used_device_mem_mb calls detect() + nvidia-smi —
+never raw under a 4 s poll); **sequencing flip** — true-up FIRST (zero
+downloader dependency: sizes come from disk for installed engines).
+PHASES: ① measured true-up + strip truth + `vram_min_mb` deleted outright
+(GO GIVEN 2026-08-13, verbatim: *"save in docs in detail and go for
+coding"*; the deletion pulled forward from ② on the user's mid-build check
+*"vram_min_mb i thought this was inventied and not going to be used?"* —
+zero code readers, grep-receipted) · ② kit downloader
+generalization + speech-cache + facts-only manifests + load-from-local-
+paths (kills 1314; needs go) · ③ the catalog UI per the plan doc's anatomy
+(needs go) · ④ data-dir convergence on JW shape + per-store clear verbs +
+venv location (needs go).
+PHASE ① BUILT 2026-08-13/14 (same session; full inventory in the plan
+doc's §9): kit per-process probes (`process_device_mem_mb` — nvidia
+compute-apps arm + the vendor-neutral WDDM `GPU Process Memory` typeperf
+arm — and `process_rss_mb`; kit suite 851) · JV estimate ladder + measured-
+free admission (+settle loop, honest refusal quoting measured numbers) +
+per-PID true-up at the load door + raise-only high-water bumps
+(synth/clone/transcribe async + scheduler busy→idle fresh, daemon threads)
++ measurement rows into the kit store (`tts:<engine>:<variant>`) ·
+`used_mb`/`other_mb` on the vram endpoint · the strip reworked to measured
+truth (used-of-total · Free · per-engine cells · Other apps · busy) ·
+`vram_min_mb` deleted from all seven manifests · wiring tests REWRITTEN
+(24 green) · gpu.md/engines.md updated.
+THEN THE SECOND RETHINK (user: *"rethink the desing if you are screwing
+this up mid code then what else in the desing did you nad opus get
+wrong??"*) + Opus's EMPIRICAL pass + Fable's live experiments — full
+record + the amended design in the plan doc's §10. The short truth: the
+estimator priced turbo at 4,455 MB (WORSE than the deleted 4,096 — turbo
+never loads `s3gen.safetensors`, 1 GB dead in the file sum); and the live
+CUDA-child experiment found THE LAUNCHER-SHIM BUG — uv's venv python.exe
+on Windows is a trampoline, the Popen pid is a 4 MB shim, the real
+interpreter is its CHILD (probing the child: device 1131 MB via the WDDM
+counter arm — the mechanism WORKS aimed right; as built it would book
+"computed" forever on discrete Windows and 4 MB on one-pool). ADOPTED:
+Opus's cut — the pre-load estimate DIES (first-ever load = no arithmetic,
+no number, attempt→measure→book→remember, "not measured yet" on
+strip/card; prior-measured loads admit AND book early). Platform answer:
+Windows all vendors ✓, Linux NVIDIA ✓, Linux AMD needs the device-delta
+fallback (must now be implemented — the estimate it fell back to is
+gone), Mac RSS-on-pool ✓ with the MPS-in-RSS caveat on the laptops-walk
+list. `recommend_for_vram` is the DOWNLOAD-variant picker
+(engines_models_api.py:99) — its invented numbers can't be zeroed without
+replacing the picker (manifest default variant, else smallest).
+OPEN: THE AMENDED FIX SET, verbatim in plan doc §10 — pid+descendants ·
+estimate deletion · delta fallback · second-nest deletion + picker
+replacement · gpu.md "1–1.5 GB" struck · bump occupant re-check · the
+records (kit-side booking-gap half, size_mb wrongness incl. turbo
+2200-vs-3.9 GB, placeholder junk files, MPS walk item).
+GO: needed for the amended fix set (the phase-① go was consumed by the
+build the rethink then amended). SEPARATE RULING still open: the unsourced
+speed tables (gpu.md CPU realtime factors, engines.md GB→engine pairings)
+— verify on the web or cut. Phases ②–④ each still need their own word.
 
 ## Features the docs promise and the code does not do
 

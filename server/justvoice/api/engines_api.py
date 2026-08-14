@@ -285,14 +285,24 @@ async def get_engine_vram(events_since: int = 0) -> EngineVramResponse:
         raise HTTPException(status_code=503, detail="the shared LLM stack is not mounted")
     # The manager's cached hardware snapshot — never re-probe per poll
     # (detect shells out to nvidia-smi).
-    hw = get_manager()._hardware()
+    mgr = get_manager()
+    hw = mgr._hardware()
     snap = arb.snapshot(hw) if hw is not None else arb.snapshot()
     claim, claim_reason = _on_demand_claim()
+    # The measured pool state (the 2026-08-13 redesign — the strip shows
+    # REALITY, the same number nvidia-smi would print, never ledger
+    # arithmetic). TTL-cached inside the manager, so the 4 s poll never
+    # spawns a probe subprocess per tick. `other_mb` = measured use the
+    # ledger can't attribute (other apps, OS) — shown as its own row.
+    used = mgr.pool_used_mb()
+    other = max(0, used - snap["committed_mb"]) if used is not None else 0
     return EngineVramResponse(
         mem_arch=snap["mem_arch"],
         total_mb=snap["vram_total_mb"],
         committed_mb=snap["committed_mb"],
         remaining_mb=snap["remaining_mb"],
+        used_mb=used,
+        other_mb=other,
         reservations=[VramReservation(**r) for r in snap["reservations"]],
         busy_kinds=snap["busy_kinds"],
         claim=claim,

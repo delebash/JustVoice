@@ -776,6 +776,12 @@ class EngineVramResponse(BaseModel):
     total_mb: int
     committed_mb: int
     remaining_mb: int
+    # The 2026-08-13 redesign: the MEASURED pool state — `used_mb` is what
+    # nvidia-smi would print (None = unmeasurable box), `other_mb` the slice
+    # of it the ledger can't attribute (other apps, OS). The strip displays
+    # these; committed/remaining stay for admission introspection.
+    used_mb: int | None = None
+    other_mb: int = 0
     reservations: list[VramReservation] = []
     busy_kinds: list[str] = []
     claim: VramClaim | None = None

@@ -29,7 +29,6 @@ CAPABILITIES = {
 
 REQUIREMENTS = {
     "disk_space_mb": 1200,
-    "vram_min_mb": 1024,
     "gpu_runtimes": ["cuda", "cpu", "mps"],
 }
 

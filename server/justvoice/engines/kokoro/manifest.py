@@ -33,7 +33,6 @@ CAPABILITIES = {
 
 REQUIREMENTS = {
     "disk_space_mb": 700,
-    "vram_min_mb": 0,        # CPU-friendly
     "gpu_runtimes": ["cuda", "coreml", "directml", "cpu"],
     # The 2026-08-13 VRAM wiring (Q2's auto policy): Kokoro is real-time on
     # CPU (ONNX, no torch) — `auto` resolves to cpu and the load books no

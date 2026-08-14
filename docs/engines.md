@@ -40,7 +40,7 @@ One engine is **loaded** per slot (one TTS, one STT). Loading takes 10-30s (mode
 
 Click Load on any installed engine; the same slot's prior occupant auto-unloads.
 
-Loads run against the **shared memory budget** (the strip at the top of the tab — total, speech in use, the AI model's claim, free). If the pool is short, JustVoice frees the least-recently-used *idle* model and toasts what it unloaded; if everything resident is busy, the load refuses with an honest message instead of an out-of-memory crash. Each card also carries a **Device** select (Auto / CUDA / CPU) — Auto sends CPU-fast engines (Kokoro) to CPU and the rest to your GPU, and an explicit choice always wins. The full story is in [GPU / CUDA](gpu.md#the-shared-memory-budget).
+Loads run against the **shared memory budget** (the strip at the top of the tab — measured used/free, one cell per loaded engine with its real memory take, the AI model, other apps). If the pool is short, JustVoice frees the least-recently-used *idle* model and toasts what it unloaded; if everything resident is busy, the load refuses with an honest message quoting the measured numbers instead of an out-of-memory crash. Each card also carries a **Device** select (Auto / CUDA / CPU) — Auto sends CPU-fast engines (Kokoro) to CPU and the rest to your GPU, and an explicit choice always wins. The full story is in [GPU / CUDA](gpu.md#the-shared-memory-budget).
 
 ### Cancelling an in-flight load
 

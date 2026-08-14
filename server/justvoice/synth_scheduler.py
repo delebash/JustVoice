@@ -169,6 +169,21 @@ class SynthScheduler:
         if active == self._busy_active:
             return
         self._busy_active = active
+        if not active:
+            # Busy→idle: one FRESH high-water re-probe of the resident engine
+            # (the 2026-08-13 redesign — TTS memory peaks at generate(); the
+            # per-line bumps ride a TTL cache and can be ~2 s stale, this one
+            # catches the settled peak). On a daemon thread: the probe can
+            # shell out for ~1 s and this transition runs under `_wake`.
+            def _bump() -> None:
+                try:
+                    from .engines.manager import get_manager
+
+                    get_manager().bump_engine_reservation("tts", fresh=True)
+                except Exception:  # noqa: BLE001
+                    pass
+
+            threading.Thread(target=_bump, name="tts-highwater", daemon=True).start()
         try:
             from llm_runner.runner.arbiter import get_arbiter
 

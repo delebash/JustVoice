@@ -6,12 +6,6 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
-- **2026-08-08 · Measured TTS VRAM footprints** — cut from the VRAM plan
-  (`docs/plans/2026-08-08-vram-think.md` Q5) as overengineering for admission:
-  the manifest's `vram_min_mb` is enough because the spawn OOM back-off is the
-  real net. The idea: NVML per-PID measurement after an engine load, recorded
-  the way the kit records model measurements, so the budget strip's numbers
-  improve with use. Worth it only if the declared minimums prove badly wrong.
 - **2026-08-08 · Unreal / Unity string-table import for game dialogue** — moved
   here by the user's word ("move unreal stuff to ideas") during the import-picker
   sweep. The gap is real and currently advertised: `NewProjectModal.vue` sells

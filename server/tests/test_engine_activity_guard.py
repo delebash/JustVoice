@@ -39,6 +39,7 @@ def _bare_manager() -> EngineManager:
     mgr._resolved_devices = {}
     mgr._hw_cache = None
     mgr._hw_detected = True  # never shell out to nvidia-smi in a unit test
+    mgr._probe_cache = {}
     return mgr
 
 

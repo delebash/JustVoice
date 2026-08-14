@@ -59,6 +59,20 @@ PORT_HANDSHAKE_TIMEOUT_S = 30.0
 HEALTH_CHECK_INTERVAL_S = 0.25
 SUBPROCESS_KILL_TIMEOUT_S = 5.0
 
+# The speech measured true-up (the 2026-08-13 redesign —
+# docs/plans/2026-08-13-speech-catalog-redesign.md §7-①). The probes can
+# shell out (nvidia-smi / typeperf), so every polling/per-line caller goes
+# through a short TTL cache; the overhead seed prices the engine process
+# itself (CUDA context + torch allocator slack) until measured rows exist —
+# it is the ONLY constant left in the pricing chain, and a measured load
+# replaces it on this box forever.
+PROBE_TTL_S = 2.0
+ENGINE_OVERHEAD_SEED_MB = 600
+# Files that are model weights (estimate = their bytes; fp16 file bytes map
+# ~1:1 to resident weight bytes). "blobs" dirs are excluded when summing an
+# HF-cache tree — snapshots may hold COPIES of the same bytes.
+WEIGHT_FILE_SUFFIXES = {".safetensors", ".bin", ".onnx", ".pt", ".pth", ".ckpt", ".gguf"}
+
 
 @contextmanager
 def _kind_busy(kind: str):
@@ -1109,6 +1123,9 @@ class EngineManager:
         self._resolved_devices: dict[str, str] = {}
         self._hw_cache = None
         self._hw_detected = False
+        # The measured true-up's probe TTL cache: key → (monotonic ts, value).
+        # Keys: "pool" (device-wide used) and "pid:<n>" (one engine process).
+        self._probe_cache: dict[str, tuple[float, int | None]] = {}
         self.refresh_manifests()
 
     # ─── Per-kind slot helpers (Phase 2 / Slice 1) ────────────────────
@@ -1236,20 +1253,138 @@ class EngineManager:
             except Exception:  # noqa: BLE001
                 return 1024
 
-    def _admit_memory(self, m: EngineManifest, kind: str, engine_id: str) -> None:
-        """Budget admission for a booking load (Q1/Q5): needed = the manifest's
-        declared `vram_min_mb` (a first guess — the spawn OOM is the real net),
-        margin = the runner config's `safety_margin_mb`. Runs with NO manager
-        locks held: `make_room`'s victims die by their owners' evictors (the
-        runner's re-takes its router lock, ours takes the activity lock), so
-        holding ours here would be a cross-app lock-order inversion. Busy kinds
-        are protected inside `make_room` itself (Q1's never-evict-busy). TTS/STT
-        have no auto-offload net, so a failed `make_room` is an HONEST refusal
-        that leaves the world exactly as it was — never proceed-with-warning.
-        If the prior same-kind occupant must die to make room, `make_room`
-        evicts it through OUR evictor — the slot swap below then finds the
-        slot already empty."""
-        needed = int((getattr(m, "requirements", None) or {}).get("vram_min_mb") or 0)
+    # ── The measured true-up (the 2026-08-13 redesign) ────────────────
+    # The pricing currency changed the same day the declared wiring shipped:
+    # the user's first live look (350M turbo booking a scaffold-invented
+    # 4096) exposed `vram_min_mb` as fiction — the field is DELETED from the
+    # manifests. The chain is now: ESTIMATE (prior measured row on this box →
+    # weight-file bytes on disk → manifest file-size claim, + the overhead
+    # seed) for admission and for a probe-less reservation, then the
+    # PER-PROCESS measurement replaces it the moment the load confirms —
+    # the same measured-first inversion the runner's `_trued_up_vram_mb`
+    # earned on 2026-07-11. Per-PID probes (not a device-wide delta) because
+    # JV loads don't serialize under the runner's router lock — a concurrent
+    # runner load would cross-charge a delta; a pid's memory is its own.
+
+    def pool_used_mb(self, *, fresh: bool = False) -> int | None:
+        """Measured used memory of the budget pool (the kit's backend-aware
+        door), TTL-cached — the probe can shell out to nvidia-smi, so the
+        strip's poll and per-line bumps must never hit it raw."""
+        now = time.monotonic()
+        if not fresh:
+            hit = self._probe_cache.get("pool")
+            if hit is not None and now - hit[0] < PROBE_TTL_S:
+                return hit[1]
+        try:
+            from llm_runner.runner.hardware import used_device_mem_mb
+
+            val = used_device_mem_mb()
+        except Exception:  # noqa: BLE001 — no kit → honestly unmeasurable
+            val = None
+        self._probe_cache["pool"] = (now, val)
+        return val
+
+    def _engine_proc_mb(self, proc: EngineProcess, *, fresh: bool = True) -> int | None:
+        """Measured memory held by ONE engine subprocess: dedicated device
+        memory on discrete boxes (per-PID — exact attribution even while the
+        runner loads concurrently; on Windows-WDDM the GPU Process Memory
+        counter arm, where nvidia-smi answers N/A), resident set on one-pool
+        boxes (UMA: the pool take IS system memory). None = unmeasurable —
+        the caller keeps the estimate, source stays "computed"."""
+        pid = getattr(getattr(proc, "proc", None), "pid", None)
+        if not pid:
+            return None
+        now = time.monotonic()
+        key = f"pid:{pid}"
+        if not fresh:
+            hit = self._probe_cache.get(key)
+            if hit is not None and now - hit[0] < PROBE_TTL_S:
+                return hit[1]
+        try:
+            from llm_runner.runner.hardware import (
+                mem_arch,
+                process_device_mem_mb,
+                process_rss_mb,
+            )
+        except Exception:  # noqa: BLE001 — no kit
+            return None
+        hw = self._hardware()
+        if hw is not None and mem_arch(hw) != "discrete":
+            val = process_rss_mb(pid)
+        else:
+            val = process_device_mem_mb(pid)
+        self._probe_cache[key] = (now, val)
+        return val
+
+    def _prior_measured_mb(self, kind: str, engine_id: str) -> int:
+        """The newest measured footprint of this engine on THIS box, from the
+        shared measurement store (rows recorded by `_record_speech_load`
+        under `kind:engine:variant` ids). Across variants the MAX wins —
+        conservative until the exact variant has its own row. 0 = no
+        evidence yet."""
+        try:
+            from llm_runner.llm.stores import get_model_measurement_store
+            from llm_runner.runner.hardware import current_machine_key
+
+            mk = current_machine_key()
+            prefix = f"{kind}:{engine_id}"
+            best = 0
+            for row in get_model_measurement_store().list(None):
+                if (row.modelId == prefix or row.modelId.startswith(prefix + ":")) \
+                        and row.machineKey == mk and row.vramModelMb > 0:
+                    best = max(best, int(row.vramModelMb))
+            return best
+        except Exception:  # noqa: BLE001 — bare tests / store not wired
+            return 0
+
+    @staticmethod
+    def _weight_files_mb(m: EngineManifest) -> int:
+        """Weight bytes for this engine, as verifiable facts (the Opus
+        amendment: file sizes, never typed params): sum the weight files on
+        disk when the model is downloaded (skipping HF-cache `blobs` dirs —
+        snapshots may hold copies of the same bytes), else the manifest
+        MODELS' declared file SIZE — a disk-size claim checkable against the
+        HF tree (phase ② pins it), not a memory conclusion. 0 = no claim."""
+        total = 0
+        try:
+            root = getattr(m, "models_dir", None)
+            if root is not None and root.exists():
+                for p in root.rglob("*"):
+                    if "blobs" in p.parts or not p.is_file():
+                        continue
+                    if p.suffix.lower() in WEIGHT_FILE_SUFFIXES:
+                        total += p.stat().st_size
+        except OSError:
+            total = 0
+        if total:
+            return int(total // (1024 * 1024))
+        sizes = [int(x.get("size_mb") or 0) for x in (getattr(m, "models", None) or [])]
+        return max(sizes) if sizes else 0
+
+    def _estimate_engine_mb(self, m: EngineManifest, kind: str) -> int:
+        """The pre-load price of an engine: the estimate ladder (plan doc
+        §7-①) — a prior MEASURED row for this engine on this box wins; else
+        weight-file bytes + the overhead seed. Only the first-ever load of
+        an engine on a machine rides the computed arm, and everything that
+        displays it labels it an estimate."""
+        prior = self._prior_measured_mb(kind, m.id)
+        if prior > 0:
+            return prior
+        return self._weight_files_mb(m) + ENGINE_OVERHEAD_SEED_MB
+
+    def _admit_memory(self, m: EngineManifest, kind: str, engine_id: str,
+                      needed_mb: int) -> None:
+        """Budget admission for a booking load, on MEASURED free memory:
+        free = budget pool − the measured used probe (what nvidia-smi would
+        say), not ledger arithmetic — the ledger can't see other apps'
+        usage. When free is short, `make_room`'s ledger target is inflated
+        by the UNLEDGERED usage (measured used − committed), so evicting to
+        ledger-room yields real room. An unmeasurable box falls back to the
+        ledger-remaining arithmetic (the wiring's original behavior). Runs
+        with NO manager locks held (cross-app lock-order rule); busy kinds
+        are protected inside `make_room`; a refusal is HONEST and leaves
+        the world exactly as it was."""
+        needed = int(needed_mb)
         if needed <= 0:
             return
         try:
@@ -1260,42 +1395,138 @@ class EngineManager:
         hw = self._hardware()
         margin = self._safety_margin_mb()
         want = needed + margin
-        if want <= arb.remaining_mb(hw):
-            return
-        if arb.make_room(want, exclude=f"{kind}:{engine_id}", hardware=hw,
+        used = self.pool_used_mb(fresh=True)
+        total = 0
+        if hw is not None:
+            try:
+                from llm_runner.runner.hardware import budget_total_mb
+
+                total = int(budget_total_mb(hw))
+            except Exception:  # noqa: BLE001
+                total = 0
+        if used is not None and total > 0:
+            free = max(0, total - used)
+            if want <= free:
+                return
+            committed = max(0, total - arb.remaining_mb(hw))
+            foreign = max(0, used - committed)
+            target = want + foreign
+        else:
+            free = None
+            if want <= arb.remaining_mb(hw):
+                return
+            target = want
+        if arb.make_room(target, exclude=f"{kind}:{engine_id}", hardware=hw,
                          reason=f"loading {engine_id}"):
+            # Eviction frees device memory ASYNCHRONOUSLY (a terminated child
+            # drains over ~a second). Wait briefly for the measured number to
+            # agree; if it stays short, proceed — the ledger says room, and
+            # the spawn OOM remains the last net.
+            if free is not None:
+                deadline = time.monotonic() + 4.0
+                while time.monotonic() < deadline:
+                    u = self.pool_used_mb(fresh=True)
+                    if u is None or max(0, total - u) >= want:
+                        break
+                    time.sleep(0.4)
             return
         snap = arb.snapshot(hw)
+        have = f"{free} MB free of {total} MB (measured)" if free is not None else \
+            f"{snap['remaining_mb']} MB of {snap['vram_total_mb']} MB unbooked"
         resident = ", ".join(
             f"{r['key']} ({r['vram_mb']} MB)" for r in snap["reservations"]
         ) or "nothing"
         busy = ", ".join(snap["busy_kinds"]) or "none"
         raise RuntimeError(
             f"not enough memory to load {engine_id}: it needs ~{needed} MB "
-            f"(+{margin} MB safety margin) but only {snap['remaining_mb']} MB of "
-            f"{snap['vram_total_mb']} MB remain. Resident: {resident}; busy: {busy}. "
+            f"(+{margin} MB safety margin) but only {have} remain. "
+            f"Resident: {resident}; busy: {busy}. "
             f"Wait for the current work to finish or unload something first."
         )
 
-    def _reserve_engine(self, m: EngineManifest, kind: str) -> None:
-        """Book the confirmed load. Key = "kind:engine_id"; kind maps to the
-        arbiter's tts/stt vocabulary (the manager's llm slot is dead since F1
-        Phase 2 — if it ever revives it must NOT book kind="llm", which is the
-        runner's `models_max` count scope, P5-3); `evict_fn` is our any-thread
-        evictor. A crashed engine's reservation lingers until the next load or
-        unload of its slot — conservative (the ledger over-counts, admissions
-        run tighter, never an OOM)."""
+    def _reserve_engine(self, m: EngineManifest, kind: str, mb: int,
+                        source: str) -> None:
+        """Book the confirmed load at `mb` with its honest provenance —
+        "measured" when a per-PID probe produced the number, "computed" when
+        the estimate stands (§13.1: an estimate must never read as live
+        truth). Key = "kind:engine_id"; kind maps to the arbiter's tts/stt
+        vocabulary (never "llm" — the runner's count scope, P5-3);
+        `evict_fn` is our any-thread evictor. A crashed engine's reservation
+        lingers until its slot next loads/unloads — conservative."""
         try:
             from llm_runner.runner.arbiter import get_arbiter
         except Exception:  # noqa: BLE001
             return
         arb_kind = "stt" if kind == "stt" else "tts"
-        needed = int((getattr(m, "requirements", None) or {}).get("vram_min_mb") or 0)
         get_arbiter().reserve(
-            f"{kind}:{m.id}", needed, kind=arb_kind,
+            f"{kind}:{m.id}", int(mb), kind=arb_kind,
             evict_fn=lambda k=kind, eid=m.id: self._evict_for_arbiter(k, eid),
-            source="declared",
+            source=source,
         )
+
+    def _record_speech_load(self, m: EngineManifest, kind: str,
+                            variant: str | None, mb: int, device: str) -> None:
+        """Persist a measured footprint as a source='load' row in the shared
+        measurement store (id `kind:engine:variant`, kind-tagged tts/stt) —
+        the evidence the estimate ladder reads on the next load. Best-effort:
+        persistence must never fail a load."""
+        try:
+            from llm_runner.llm.stores import get_model_measurement_store
+            from llm_runner.runner.hardware import current_machine_key
+
+            get_model_measurement_store().record(
+                f"{kind}:{m.id}:{variant or ''}".rstrip(":"),
+                machine_key=current_machine_key(), source="load",
+                label=f"speech load footprint ({device})",
+                tokens_per_sec=0.0, vram_total_mb=0,
+                at=int(time.time() * 1000), rows=[],
+                vram_model_mb=int(mb), kind="stt" if kind == "stt" else "tts",
+            )
+        except Exception:  # noqa: BLE001
+            log.debug("speech load-footprint persist failed for %s", m.id, exc_info=True)
+
+    def bump_engine_reservation_async(self, kind: str) -> None:
+        """Fire-and-forget high-water bump for the synthesis/transcription hot
+        path — the probe can shell out for ~1 s (typeperf) and must never add
+        latency to a render line. The TTL cache inside makes the thread a
+        near-no-op when a probe ran recently."""
+        threading.Thread(
+            target=lambda: self.bump_engine_reservation(kind),
+            name=f"{kind}-highwater", daemon=True,
+        ).start()
+
+    def bump_engine_reservation(self, kind: str, *, fresh: bool = False) -> None:
+        """The raise-only HIGH-WATER re-probe (Opus finding 2): TTS allocates
+        at generate(), not load — a post-load number misses render peak and
+        would over-admit into it. Called when work completes (synth /
+        transcribe / clone, TTL-absorbed so per-line calls collapse; the
+        scheduler's busy→idle transition passes fresh=True for the settled
+        peak); torch's caching allocator keeps freed memory in the process
+        pool, so the probe sees ~peak even lazily. Never lowers a booking;
+        best-effort."""
+        with self._lock:
+            proc = self._loaded.get(kind)
+        if proc is None:
+            return
+        engine_id = proc.manifest.id
+        mb = self._engine_proc_mb(proc, fresh=fresh)
+        if not mb:
+            return
+        try:
+            from llm_runner.runner.arbiter import get_arbiter
+
+            arb = get_arbiter()
+            cur = arb.reserved_mb(f"{kind}:{engine_id}")
+            if cur is not None and mb > cur:
+                m = self.get_manifest(engine_id)
+                if m is not None:
+                    self._reserve_engine(m, kind, mb, "measured")
+                    with self._lock:
+                        variant = self._current_variants.get(engine_id)
+                        device = self._resolved_devices.get(engine_id, "")
+                    self._record_speech_load(m, kind, variant, mb, device)
+        except Exception:  # noqa: BLE001
+            pass
 
     def _release_engine(self, kind: str, engine_id: str) -> None:
         """Drop the booking (idempotent — `make_room` releases evicted rows
@@ -1544,9 +1775,10 @@ class EngineManager:
             # very engine already holds the slot (it is resident and reserved).
             device = self._resolve_device(m, device)
             books = self._books_memory(device)
+            est_mb = self._estimate_engine_mb(m, target_kind) if books else 0
             cur = self.loaded_for(target_kind)
             if books and not (cur is not None and cur.manifest.id == engine_id):
-                self._admit_memory(m, target_kind, engine_id)
+                self._admit_memory(m, target_kind, engine_id, est_mb)
 
             # Activity lock first (lock order: activity → self._lock): a
             # terminate must wait for the slot's in-flight synth line.
@@ -1616,10 +1848,21 @@ class EngineManager:
                     else self._resolved_default_variant(m)
                 )
                 self._resolved_devices[engine_id] = device
-            # Book the CONFIRMED load (step 3): declared price, our evictor,
-            # kind-tagged for the strip's split and the runner's count scope.
+            # Book the CONFIRMED load at its MEASURED footprint (the 2026-08-13
+            # redesign's true-up — the per-PID probe, so a concurrent runner
+            # load can't cross-charge). Probe miss → the estimate stands,
+            # honestly labeled computed; a measured number is persisted as
+            # evidence for the next load's estimate ladder.
             if books:
-                self._reserve_engine(m, target_kind)
+                measured = self._engine_proc_mb(proc, fresh=True)
+                if measured:
+                    self._reserve_engine(m, target_kind, measured, "measured")
+                    self._record_speech_load(
+                        m, target_kind, self._current_variants.get(engine_id),
+                        measured, device,
+                    )
+                else:
+                    self._reserve_engine(m, target_kind, est_mb, "computed")
             # (The qwen3-llm adapter hook died with the engine — F1 Phase 2:
             # the shared stack's bundled runner is THE local LLM.)
             if progress:
@@ -1687,6 +1930,10 @@ class EngineManager:
         with self._activity(m.kind if m else "tts"):
             proc = self._require_current(engine_id)
             r = proc.post("/synth", json=body)
+        # High-water true-up: generate() is where a TTS engine's memory peaks
+        # (Opus finding 2) — async + TTL-absorbed, raise-only, never blocks
+        # the line.
+        self.bump_engine_reservation_async(m.kind if m else "tts")
         if r.status_code != 200:
             raise RuntimeError(f"engine synth failed: {r.text}")
         # Mirror the engine's audio headers back through to the host caller.
@@ -1705,6 +1952,7 @@ class EngineManager:
         with self._activity(m.kind if m else "tts"):
             proc = self._require_current(engine_id)
             r = proc.post("/clone", json=body)
+        self.bump_engine_reservation_async(m.kind if m else "tts")
         if r.status_code != 200:
             raise RuntimeError(f"engine clone failed: {r.text}")
         return r.json()
@@ -1737,6 +1985,7 @@ class EngineManager:
                     "Engines tab first"
                 )
             r = proc.post("/transcribe", json=body, timeout=timeout)
+        self.bump_engine_reservation_async("stt")
         if r.status_code != 200:
             raise RuntimeError(f"engine transcribe failed: {r.text}")
         return r.json().get("text", "")
