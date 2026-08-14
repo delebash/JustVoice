@@ -42,7 +42,7 @@ Below the chip bar is a banner showing what the currently-loaded engine actually
 - ✓ cloning — accepts a reference WAV
 - ✓ IPA phoneme input — bypass the text parser (Kokoro)
 
-Engines that don't support a feature show **✗** with a note ("use Qwen3 / LuxTTS"). The pills are sourced from `/v1/engines/capabilities` — they reflect what each engine's adapter actually wires, not aspirational claims. See [engines.md](engines.md) for per-engine details.
+Engines that don't support a feature show **✗** with a note ("use Qwen3 / LuxTTS"). The pills are sourced from `/v1/engines/capabilities` — they reflect what each engine's adapter actually wires, not aspirational claims. The **loaded model's** row wins over the engine's: with Chatterbox Turbo loaded you get Turbo's controls (paralinguistic tags, no exaggeration/CFG sliders), not Multilingual's. See [engines.md](engines.md) for per-engine details.
 
 ## Delivery overlay
 

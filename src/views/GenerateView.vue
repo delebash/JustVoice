@@ -87,16 +87,25 @@ const stylePrompt = ref("");
 // See server/justvoice/engines/capability_details.py for the source.
 const capabilityMap = ref({});  // { engine_id: EngineCapabilityDetail }
 
-function lookupCapability(engineId) {
-  if (!engineId) return null;
-  if (capabilityMap.value[engineId]) return capabilityMap.value[engineId];
-  // Fallback: try the base engine id by stripping trailing "-variant".
-  const base = engineId.split("-")[0];
-  return capabilityMap.value[base] || null;
+// The LOADED VARIANT's row wins over the engine's (the §4 cloning ruling's
+// second half, phase ③): with Turbo loaded, "chatterbox" alone would serve
+// Multilingual's knob set — wrong tags, wrong sliders. Manifest variant ids
+// carry a version tail ("chatterbox-turbo-v1") the capability map doesn't,
+// so each candidate walks its "-" suffixes off until a row matches.
+function lookupCapability(engineId, variantId) {
+  for (const id of [variantId, engineId]) {
+    let probe = id;
+    while (probe) {
+      if (capabilityMap.value[probe]) return capabilityMap.value[probe];
+      const cut = probe.lastIndexOf("-");
+      probe = cut > 0 ? probe.slice(0, cut) : "";
+    }
+  }
+  return null;
 }
 
 const engineCaps = computed(() => {
-  const detail = lookupCapability(currentEngine.value?.id);
+  const detail = lookupCapability(currentEngine.value?.id, currentEngine.value?.current_variant_id);
   if (detail) return detail;
   // Empty fallback shape — matches EngineCapabilityDetail's default fields
   // so downstream computed props don't crash when capability map is empty

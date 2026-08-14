@@ -47,6 +47,40 @@ One engine is **loaded** per slot (one TTS, one STT). Loading takes 10-30s (mode
 
 Click Load on any installed engine; the same slot's prior occupant auto-unloads.
 
+### The catalog rows
+
+Each engine group expands into its model rows, and each row carries the model's
+**facts** — read from the engine's pinned manifest, never typed twice:
+
+- **Language chip** — `en` for single-language models, `23 langs` for
+  multilingual ones (hover for the full list).
+- **Capability chips** — `CLONING` (clones a voice from a short clean sample)
+  and `PRESETS · N` (ships N ready-made voices). The filter row above the list
+  (**All · TTS · STT · Cloning · Preset voices**) filters on exactly these
+  facts — pick **Cloning** and only the models that can clone remain.
+- **Licence chip** — the model's *weights* licence. Every bundled engine
+  permits selling your generated output; a gold **⚠** chip means an obligation
+  rides the licence (TADA's Llama-3.2-Community requires "Built with Llama" in
+  your published credits — hover the chip for the exact requirement).
+- **Download size · on disk** — the verified download size, plus "on disk"
+  once every file is present.
+- **Measured memory** — on the loaded row: "X GB measured" once this machine
+  has measured the model's real footprint, "not measured yet" on its first
+  load (the same numbers as the budget strip — nothing is ever guessed).
+
+The **⋯ menu** on each row holds the less-common verbs:
+
+- **Re-download** — deletes the local files and downloads fresh. Use it when a
+  download looks corrupted; it's also how a model downloaded before the speech
+  cache moves onto the new layout.
+- **Open folder** — opens the model's on-disk folder in your file explorer
+  (desktop app only).
+- **View on Hugging Face** — the model's upstream repository page.
+- **Delete files** — removes the downloaded weights; the engine and other
+  models stay. (Unload first — a loaded model's files can't be deleted.)
+
+### Loading and the memory budget
+
 Loads run against the **shared memory budget** (the strip at the top of the tab — measured used/free, one cell per loaded engine with its real memory take, the AI model, other apps). For an engine JustVoice has measured before on this machine: if the pool is short, it frees the least-recently-used *idle* model and toasts what it unloaded; if everything resident is busy, the load refuses with an honest message quoting the measured numbers instead of an out-of-memory crash. An engine's first-ever load carries no number yet ("not measured yet" on the strip) — it simply attempts, gets measured, and is remembered. Each card also carries a **Device** select (Auto / CUDA / CPU) — Auto sends CPU-fast engines (Kokoro) to CPU and the rest to your GPU, and an explicit choice always wins. The full story is in [GPU / CUDA](gpu.md#the-shared-memory-budget).
 
 ### Cancelling an in-flight load

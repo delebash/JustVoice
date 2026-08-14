@@ -911,6 +911,11 @@ class ModelVariant(BaseModel):
     # Engines redesign: weights present locally (speech cache first, then a
     # legacy HF-cache install). None = unknown.
     on_disk: bool | None = None
+    # Where those weights live when on_disk — the resolved folder (speech
+    # cache / legacy HF cache / tarball models_dir), for the desktop
+    # "Open folder" verb. The SERVER resolves it so the layout knowledge
+    # stays in one place (speech_cache.py); None when nothing is local.
+    local_dir: str | None = None
 
 
 class ModelsListResponse(BaseModel):

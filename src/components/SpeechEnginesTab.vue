@@ -29,9 +29,15 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import { DownloadBar, UiButton, UiTag, confirmDialog, promptDialog, pushToast, withAiTask } from "@delebash/llm-ui";
+import { DownloadBar, UiButton, UiTag, confirmDialog, openExternal, promptDialog, pushToast, withAiTask } from "@delebash/llm-ui";
 import { makeEngineDownloadTask } from "../services/ttsJobChannel.js";
 import { createDownloadTask } from "@delebash/llm-ui";
+// The row's three-dot menu — reka-ui's DropdownMenu, the same import shape
+// as the kit's LuModelCatalog (the portal escapes the group's overflow clip).
+import {
+  DropdownMenuContent, DropdownMenuItem, DropdownMenuPortal,
+  DropdownMenuRoot, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "reka-ui";
 
 // Mirror the job-channel task's live numbers into the kit strip's progress —
 // the bar computes from done/total (bytes) and the TEXT is the ONE shared
@@ -532,9 +538,146 @@ async function deleteModel(e, v) {
   }
 }
 
-// ── Search + kind chips + sections (speech kinds only). ──────────────
+// ── Per-variant facts → row chips (phase ③, the §4 cloning ruling) ────
+function langText(v) {
+  const ls = v.languages || [];
+  if (!ls.length) return "";
+  return ls.length === 1 ? ls[0] : `${ls.length} langs`;
+}
+function langTitle(v) {
+  return (v.languages || []).join(" · ");
+}
+// Weights-licence chip — the kit's use-limited warn pattern, retold
+// honestly for JV: every bundled engine's weights permit commercial output
+// (Higgs died for that in 2026-06), so here the gold ⚠ means an OBLIGATION
+// rides the licence — TADA's Llama-3.2-Community requires "Built with
+// Llama" in your published credits (NOTICE.md has the authoritative copy).
+const PERMISSIVE_LICENSES = new Set(["mit", "apache-2.0", "bsd-2-clause", "bsd-3-clause"]);
+function licenseWarn(v) {
+  return !!v.weights_license && !PERMISSIVE_LICENSES.has(v.weights_license.toLowerCase());
+}
+function licenseTitle(e, v) {
+  if (!v.weights_license) return "";
+  if (!licenseWarn(v)) return `${v.weights_license} — permissive; publishing your generated audio commercially is fine.`;
+  return `${v.weights_license} — commercial output is permitted, but an obligation rides this licence`
+    + (e.attribution ? `: display "${e.attribution}" in your published credits.` : ".")
+    + " See NOTICE.md.";
+}
+
+// Per-row measured-memory hint (§13): joins the vram endpoint's
+// reservations the same way the strip's speechRows does. Only the LOADED
+// variant can carry a number — memory is measured, never declared.
+function measuredHint(e, v) {
+  if (!isLoadedVariant(e, v.id)) return null;
+  // CPU-placed engines on discrete boxes hold no VRAM by policy — no hint.
+  if (vram.value?.mem_arch === "discrete" && (e.resolved_device || "").toLowerCase() === "cpu") return null;
+  const kind = e.kind || "tts";
+  const r = (vram.value?.reservations || []).find((x) => x.key === `${kind}:${e.id}`);
+  if (!r) {
+    return { text: "not measured yet",
+      title: "First load on this machine — JustVoice books the real measured footprint as soon as a probe lands" };
+  }
+  const est = r.source !== "measured";
+  return {
+    text: est ? `~${fmtDisk(r.vram_mb)} in memory` : `${fmtDisk(r.vram_mb)} measured`,
+    title: est
+      ? "Approximate — read from the device-wide change during load; a real per-process measurement replaces it when one becomes possible"
+      : "Measured on this machine at load",
+  };
+}
+
+// ── The three-dot menu's verbs (§6: Re-download · Delete files · Open
+// folder · View on Hugging Face) ──────────────────────────────────────
+async function redownload(e, v) {
+  const ok = await confirmDialog({
+    title: `Re-download ${v.name}?`,
+    message: `Deletes the local files, then downloads fresh (${fmtDisk(v.size_mb)}). Use this when a download looks corrupted — models downloaded before the speech cache also move onto the new layout this way.`,
+    confirmLabel: "Re-download",
+  });
+  if (!ok) return;
+  try {
+    await api.request(`/v1/engines/${e.id}/models/${encodeURIComponent(v.id)}`, { method: "DELETE" });
+  } catch (err) {
+    pushToast({ message: `Couldn't delete the old files: ${err.message || err}`, kind: "error" });
+    return;
+  }
+  delete variants[e.id];
+  await refresh();
+  await downloadOnly(e, v.id);
+}
+
+// Download WITHOUT loading — Re-download's second half. Same job-channel
+// task and DownloadBar as everything else (the one-mechanism rule).
+async function downloadOnly(engine, variantId) {
+  const key = _variantKey(engine.id, variantId);
+  clearTerminalTask(key);
+  const task = makeEngineDownloadTask(api, engine.id, { model_variant: variantId });
+  dlTasks[key] = task;
+  try {
+    await withAiTask({
+      feature: "install",
+      label: `Downloading · ${variantNameFor(engine.id, variantId)}`,
+    }, async (panel) => {
+      panel.signal.addEventListener("abort", () => {
+        if (task.state === "running") task.cancel();
+      }, { once: true });
+      const stopBridge = bridgeJobProgress(panel, task);
+      try {
+        await task.start();
+      } finally {
+        stopBridge();
+      }
+      if (task.state === "error") throw new Error(task.error || "download failed");
+      if (task.state !== "done") { panel.cancel(); return; }
+      pushToast({ message: `${variantNameFor(engine.id, variantId)} downloaded.`, kind: "success", duration: 4000 });
+      delete variants[engine.id];
+      await refresh();
+    });
+  } catch {
+    // The task row carries the error (failed lingers until dismissed).
+  }
+}
+
+// Desktop-only, the log-opener precedent (SettingsView): the SERVER
+// resolved local_dir (speech cache / legacy HF cache / tarball dir), so
+// the layout knowledge never leaks into the client.
+function openModelFolder(v) {
+  const tauri = typeof window !== "undefined" ? window.__TAURI__ : null;
+  if (!tauri?.shell?.open) {
+    pushToast({ message: "Open folder requires the desktop app.", kind: "warning" });
+    return;
+  }
+  tauri.shell.open(v.local_dir).catch((err) =>
+    pushToast({ message: `Couldn't open the folder: ${err?.message || err}`, kind: "error" }));
+}
+
+function viewOnHf(v) {
+  openExternal(`https://huggingface.co/${v.hf_repo}`);
+}
+
+// ── Search + the filter row + sections (speech kinds only). ───────────
+// ONE chip row (§6's decided filters merged with the pre-existing kind
+// chips — two side-by-side "All" chips would be worse than either row):
+// TTS/STT filter by engine kind; Cloning/Preset voices filter by the
+// per-variant capability FACTS the ②c manifests serve (v.voice_cloning,
+// v.preset_voices) — an engine with no matching variant drops out.
 const q = ref("");
-const capLocal = ref("all");
+const filterId = ref("all");
+const FILTERS = [
+  { id: "all", label: "All" },
+  { id: "tts", label: "TTS" },
+  { id: "stt", label: "STT" },
+  { id: "cloning", label: "Cloning" },
+  { id: "presets", label: "Preset voices" },
+];
+function variantMatchesFilter(v) {
+  if (filterId.value === "cloning") return v.voice_cloning === true;
+  if (filterId.value === "presets") return (v.preset_voices || 0) > 0;
+  return true;
+}
+function visibleVariantsFor(engineId) {
+  return variantsFor(engineId).filter(variantMatchesFilter);
+}
 const expanded = reactive({});
 const SECTIONS = [
   { id: "tts", title: "Voice generation", suffix: "TTS",
@@ -549,7 +692,9 @@ function searchBlob(e) {
 }
 function engineVisible(e, sectionId) {
   if (engineCaps(e)[0] !== sectionId) return false;
-  if (capLocal.value !== "all" && !engineCaps(e).includes(capLocal.value)) return false;
+  const f = filterId.value;
+  if ((f === "tts" || f === "stt") && !engineCaps(e).includes(f)) return false;
+  if ((f === "cloning" || f === "presets") && !visibleVariantsFor(e.id).length) return false;
   if (q.value.trim() && !searchBlob(e).includes(q.value.trim().toLowerCase())) return false;
   return true;
 }
@@ -565,7 +710,8 @@ const sectionData = computed(() =>
 );
 function isOpen(e) {
   if (expanded[e.id] !== undefined) return expanded[e.id];
-  if (q.value.trim()) return true;
+  // A capability filter is a question about VARIANTS — show them.
+  if (q.value.trim() || filterId.value === "cloning" || filterId.value === "presets") return true;
   return e.status === "loaded" || anyTaskRunning(e.id);
 }
 function toggleOpen(e) { expanded[e.id] = !isOpen(e); }
@@ -647,9 +793,9 @@ onBeforeUnmount(() => {
         🔍 <input v-model="q" placeholder="Search speech models and engines…" title="Filters engines and models; matching groups auto-expand">
       </div>
       <div class="ev-chips">
-        <button v-for="c in ['all','tts','stt']" :key="c" type="button"
-          class="ev-chip" :class="{ on: capLocal === c }" @click="capLocal = c"
-        >{{ c === 'all' ? 'All' : c.toUpperCase() }}</button>
+        <button v-for="f in FILTERS" :key="f.id" type="button"
+          class="ev-chip" :class="{ on: filterId === f.id }" @click="filterId = f.id"
+        >{{ f.label }}</button>
       </div>
     </div>
 
@@ -762,21 +908,30 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="ev-gbody" v-if="isOpen(e)">
-          <div v-for="v in variantsFor(e.id)" :key="v.id" class="ev-model" :class="{ dim: engineNeedsInstall(e) }">
+          <div v-for="v in visibleVariantsFor(e.id)" :key="v.id" class="ev-model" :class="{ dim: engineNeedsInstall(e) }">
             <span class="vn">{{ v.name }}</span>
+            <!-- The facts chips (§6): languages · Cloning · Presets · N ·
+                 licence — read straight off the ②c manifest facts the wire
+                 serves; nothing here is typed twice. -->
+            <span class="ev-vchips">
+              <span v-if="langText(v)" class="ev-cap" :title="langTitle(v)">{{ langText(v) }}</span>
+              <span v-if="v.voice_cloning === true" class="ev-cap clone"
+                title="Clones a voice from a short clean sample">CLONING</span>
+              <span v-if="v.preset_voices > 0" class="ev-cap presets"
+                :title="`${v.preset_voices} ready-made voices — no sample needed`">PRESETS · {{ v.preset_voices }}</span>
+              <span v-if="v.weights_license" class="ev-lic" :class="{ 'ev-lic--warn': licenseWarn(v) }"
+                :title="licenseTitle(e, v)"><template v-if="licenseWarn(v)">⚠ </template>{{ v.weights_license }}</span>
+            </span>
             <!-- Download size only — no memory claim. The footprint is
                  measured at load (the budget strip shows it); a number
                  typed here would be an invention (the 2026-08-14 ruling). -->
-            <span class="vmeta">{{ fmtDisk(v.size_mb) }}</span>
+            <span class="vmeta">{{ fmtDisk(v.size_mb) }}<template v-if="v.on_disk === true"> · on disk</template></span>
             <span class="vdesc" :title="v.description">{{ v.description }}</span>
             <span class="right">
               <span v-if="modelLoaded(e, v)" class="ev-badge loaded">● Loaded</span>
+              <span v-if="measuredHint(e, v)" class="ev-memhint" :title="measuredHint(e, v).title">{{ measuredHint(e, v).text }}</span>
               <UiButton v-if="modelLoaded(e, v)" intent="ghost" size="small" label="Unload model"
                 title="Free the slot — weights stay on disk" @click="unload(e)" />
-              <UiButton v-if="modelLoaded(e, v) || (modelOnDisk(e, v) && v.on_disk === true)" intent="ghost" size="small"
-                label="Delete model" class="ev-danger"
-                :title="`Delete the downloaded weights — frees ${fmtDisk(v.size_mb)}`"
-                @click="deleteModel(e, v)" />
               <UiButton v-if="!modelLoaded(e, v)" intent="primary" size="small"
                 :label="loadButtonLabel(e, v)"
                 :disabled="busyAnywhere(e.id, v.id) || engineNeedsInstall(e)"
@@ -788,6 +943,28 @@ onBeforeUnmount(() => {
                 :label="e.default_variant_id === v.id ? 'Default ✓' : 'Set as default'"
                 title="The model this engine loads when nothing picks one explicitly"
                 @click="e.default_variant_id === v.id ? null : setDefaultVariant(e, v.id)" />
+              <!-- The three-dot menu (§6) — Delete moved in here from the
+                   old inline button; the reka portal escapes the group's
+                   overflow clip (the kit LuModelCatalog pattern). -->
+              <DropdownMenuRoot>
+                <DropdownMenuTrigger class="ev-kebab" aria-label="More actions" title="More actions">⋯</DropdownMenuTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuContent class="ev-menu" align="end" :side-offset="4" :collision-padding="8">
+                    <DropdownMenuItem v-if="v.on_disk === true" class="ev-menu-item"
+                      :disabled="busyAnywhere(e.id, v.id) || modelLoaded(e, v)"
+                      @select="redownload(e, v)">Re-download</DropdownMenuItem>
+                    <DropdownMenuItem v-if="v.local_dir" class="ev-menu-item"
+                      @select="openModelFolder(v)">Open folder</DropdownMenuItem>
+                    <DropdownMenuItem v-if="v.hf_repo" class="ev-menu-item"
+                      @select="viewOnHf(v)">View on Hugging Face</DropdownMenuItem>
+                    <template v-if="v.on_disk === true && !modelLoaded(e, v)">
+                      <DropdownMenuSeparator class="ev-menu-sep" />
+                      <DropdownMenuItem class="ev-menu-item danger"
+                        @select="deleteModel(e, v)">Delete files</DropdownMenuItem>
+                    </template>
+                  </DropdownMenuContent>
+                </DropdownMenuPortal>
+              </DropdownMenuRoot>
             </span>
           </div>
 

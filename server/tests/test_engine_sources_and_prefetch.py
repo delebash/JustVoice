@@ -513,3 +513,28 @@ def test_url_path_progress_advances_through_extract(client, app, monkeypatch, tm
     vdir = speech_cache.variant_dir(state.data_dir, "chatterbox", variant_id)
     assert (vdir / "model.onnx").exists()
     assert speech_cache.variant_on_disk(state.data_dir, "chatterbox", variant_id)
+
+
+# ── Phase ③ — the models list serves local_dir for "Open folder" ─────
+
+
+def test_models_list_serves_speech_cache_local_dir(client, app):
+    """The desktop "Open folder" verb needs the resolved on-disk folder.
+    The SERVER resolves it (speech cache first) so the cache-layout
+    knowledge stays in one place — the client never composes paths."""
+    from justvoice import speech_cache
+    from justvoice.app_state import get_state
+
+    st = get_state()
+    variant_id = client.get("/v1/engines/chatterbox/models").json()["variants"][0]["id"]
+    vdir = speech_cache.variant_dir(st.data_dir, "chatterbox", variant_id)
+    vdir.mkdir(parents=True)
+    (vdir / "w.bin").write_bytes(b"\0" * 16)
+    speech_cache.write_manifest_from_dir(vdir, url="http://example.test/w.bin")
+
+    row = next(
+        v for v in client.get("/v1/engines/chatterbox/models").json()["variants"]
+        if v["id"] == variant_id
+    )
+    assert row["on_disk"] is True
+    assert row["local_dir"] == str(vdir)

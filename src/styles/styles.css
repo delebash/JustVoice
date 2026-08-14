@@ -1669,6 +1669,28 @@ section.block > h3 {
 .ev-cap.llm{border-color:#e2d2b0;background:#f5edda;color:#b08a3e}
 .ev-cap.embedding{border-color:#bcd9d4;background:#e3f1ee;color:#2e6e64}
 .ev-cap.iso{border-color:#d8c8e8;background:#f1eaf8;color:#6a4a8c}
+/* Per-variant facts chips (phase ③): Cloning rides the accent family (a
+   positive capability), Presets the STT blue, languages stay neutral. */
+.ev-cap.clone{border-color:var(--accent-line,#b8d2c3);background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049)}
+.ev-cap.presets{border-color:#c8d4e8;background:#eaf0f8;color:#3a5a8c}
+.ev-vchips{display:flex;gap:5px;align-items:center;flex:none}
+/* Weights-licence chip — neutral for permissive (MIT/Apache), the kit's
+   gold use-limited warn for obligation licences (Llama-3.2-Community). */
+.ev-lic{font-size:9.5px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:999px;border:1px solid var(--line-strong,#cfccc4);color:var(--ink-2);background:var(--surface);white-space:nowrap}
+.ev-lic--warn{border-color:#e2d2b0;background:#f5edda;color:#b08a3e}
+/* The loaded row's measured-memory hint ("1.1 GB measured" / "not measured
+   yet") — reads the same vram reservations as the budget strip. */
+.ev-memhint{font-size:11px;color:var(--ink-3);white-space:nowrap}
+/* The row's three-dot menu (reka DropdownMenu; content portals to body,
+   so these are canonical, never scoped). */
+.ev-kebab{font:inherit;font-size:15px;line-height:1;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink-2);padding:3px 9px;cursor:pointer}
+.ev-kebab:hover{background:var(--surface-2)}
+.ev-menu{min-width:190px;background:var(--surface);border:1px solid var(--line-strong,#cfccc4);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.14);padding:5px;z-index:1000}
+.ev-menu-item{font-size:12.5px;padding:7px 11px;border-radius:7px;cursor:pointer;color:var(--ink);outline:none}
+.ev-menu-item[data-highlighted]{background:var(--surface-2)}
+.ev-menu-item[data-disabled]{opacity:.45;cursor:default}
+.ev-menu-item.danger{color:var(--danger,#b04a3e)}
+.ev-menu-sep{height:1px;background:var(--line);margin:4px 2px}
 .ev-badge{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:4px 11px;border-radius:999px}
 .ev-badge.loaded{background:var(--accent);color:#fff}
 .ev-badge.none{border:1px dashed var(--line-strong,#cfccc4);color:var(--ink-3)}

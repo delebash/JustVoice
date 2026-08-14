@@ -696,3 +696,56 @@ path change is a default change — files re-download or the user resets.
   with VARIANTS + the speech cache, `status` could become
   cache-truth-driven — fold into ③ when the catalog reads statuses.
 - MPS-in-RSS verification stays on the user's laptops walk.
+
+**PHASE ③ BUILT 2026-08-14** (same session, under the standing go). The
+as-built record, with deviations from §6 named:
+
+- **The reshape landed as briefed**: facts chips per variant row
+  (language · CLONING · PRESETS · N · weights-licence with the kit's
+  use-limited warn — retold for JV as an *obligation* marker, since
+  every bundled engine's weights permit commercial output), the filter
+  row, the three-dot menu (reka-ui DropdownMenu, LuModelCatalog's
+  import shape; canonical `.ev-kebab`/`.ev-menu`/`.ev-lic` classes
+  promoted into styles.css — the portal escapes scoped CSS), and the
+  loaded row's measured-memory hint joined from the vram reservations
+  exactly the way the strip's speechRows joins them.
+- **Deviation 1 — one filter row, not two**: §6's All · Cloning ·
+  Preset voices chips MERGED with the pre-existing All/TTS/STT kind
+  chips into one five-chip row (two adjacent "All" chips would be
+  worse than either row). Capability filters read the variant facts,
+  auto-expand groups, and hide engines with no matching variant.
+- **Deviation 2 — no pre-load memory number**: §6 (written before the
+  §10 rethink) still said "needs ~X GB" pre-load; the built hint
+  follows §13/§10 — "X GB measured" / "~X GB in memory" (device-delta)
+  / "not measured yet". Nothing is guessed.
+- **Deviation 3 — Delete files gating**: moved from an inline button
+  into the menu, and now requires on_disk AND not-loaded (the old
+  button offered deleting a resident model's files).
+- **Open folder is server-resolved**: `ModelVariant.local_dir` (new
+  wire field) is populated by models_api across all four on-disk arms
+  (speech cache · per-engine hub · env hub · tarball models_dir), so
+  the cache layout stays in one place; the client is the SettingsView
+  log-opener precedent (`window.__TAURI__.shell.open`, toast when not
+  desktop). Re-download = delete + fresh fetch on the same job-channel
+  task — also the legacy→speech-cache migration verb.
+- **The capability repoint** (§4's second half): GenerateView's
+  `lookupCapability` prefers `current_variant_id` and walks `-`
+  suffixes off each candidate (manifest ids carry a version tail the
+  capability map doesn't: `chatterbox-turbo-v1` → `chatterbox-turbo`).
+  Before this a loaded Turbo served Multilingual's knob set. The
+  voices flow's engine-level `capabilities` read was verified
+  factually fine (no engine's variants differ on cloning) — left.
+- **Docs**: engines.md "The catalog rows" section; generate.md
+  loaded-variant note.
+- **Gates**: ruff · full pytest 505 (new pin: the models list serves
+  speech-cache `local_dir`) · biome · vitest 48 · build:vite · the
+  renderer smoke (zero JS errors) · plus a targeted headless drive of
+  the reshaped tab itself (smoke.js never clicks the sub-tab): the §6
+  row anatomy renders verbatim ("23 langs · CLONING · MIT"), the menu
+  serves the honest verb set, the Cloning filter fans to 10 rows.
+- **Open edges**: the four carried edges stand; kokoro's tarball path
+  and cache-truth `is_installed` are now explicitly ④'s (③ shipped
+  without touching either — the catalog reads on_disk, which already
+  is cache truth).
+
+Phase ④ (locations + verbs) is the remaining phase under the go.

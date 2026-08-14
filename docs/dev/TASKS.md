@@ -684,6 +684,52 @@ open edges — kokoro's load-door tarball path still writes the legacy
 location · the dormant known_engines/spawn_install legacy registry is
 an excision candidate · is_installed heuristics could become
 cache-truth-driven · MPS-in-RSS stays on the laptops walk).
+PHASE ③ BUILT 2026-08-14 (the catalog UI, under the standing go — a
+RESHAPE of SpeechEnginesTab per §6/§13, not a new view): the variant
+rows grew the facts chips read straight off the ②c wire (language chip
+`en`/`N langs` with full-list hover · CLONING · PRESETS · N · the
+weights-licence chip with the kit's gold use-limited warn pattern
+retold honestly for JV — every bundled engine permits commercial
+output, so ⚠ means an OBLIGATION rides the licence, TADA's "Built with
+Llama" spelled out in the hover) · ONE merged filter row (rec under the
+go: §6's All · Cloning · Preset voices JOINED with the pre-existing
+TTS/STT kind chips — two side-by-side "All" chips would be worse;
+capability filters work on variant facts, auto-expand groups, drop
+engines with no matching variant) · the three-dot menu per row
+(reka-ui DropdownMenu, the LuModelCatalog import shape; canonical
+.ev-kebab/.ev-menu classes in styles.css since the portal escapes
+scoping): Re-download (delete + fresh fetch via the same job-channel
+task; also the legacy→speech-cache migration verb; disabled while
+loaded) · Open folder (desktop-only, the SettingsView log-opener
+precedent; the SERVER resolves the folder — ModelVariant grew
+`local_dir`, populated by models_api across all four arms speech-cache/
+per-engine hub/env hub/tarball, so the cache layout never leaks into
+the client) · View on Hugging Face (kit openExternal on v.hf_repo) ·
+Delete files (moved in from the old inline button; now honestly gated
+on_disk AND not loaded — deleting a resident model's files was always
+dubious) · `size · on disk` in the row meta · the per-row measured-
+memory hint on the LOADED row ("X GB measured" / "~X GB in memory" /
+"not measured yet" — joins the vram reservations exactly like the
+strip's speechRows; §13's story, not §6's pre-rethink "needs ~X GB").
+THE CAPABILITY REPOINT (the §4 cloning ruling's second half):
+GenerateView's lookupCapability now prefers the LOADED VARIANT's row
+and walks "-" suffixes off each candidate (manifest ids carry a version
+tail the capability map doesn't: chatterbox-turbo-v1 → chatterbox-turbo)
+— before this, a loaded Turbo served Multilingual's knob set (wrong
+sliders, missing paralinguistic tags). The voices flow's engine-level
+`capabilities` read was VERIFIED factually fine (no engine's variants
+differ on cloning) and left alone. Docs same change: engines.md "The
+catalog rows" section (chips · filters · licence semantics · the ⋯
+verbs) + generate.md loaded-variant note. GATES: ruff · full pytest 505
+(new pin: models list serves speech-cache local_dir) · biome 113 ·
+vitest 48 · build:vite · THE RENDERER SMOKE (all views, zero JS
+errors) · PLUS a targeted headless drive of the reshaped tab itself
+(smoke.js never clicks the sub-tab): chips render, first group expands
+to the §6 row anatomy exactly ("23 langs · CLONING · MIT"), the kebab
+menu opens with the honest verb set for a not-downloaded variant, the
+Cloning filter fans to 10 rows, zero JS errors, screenshots taken.
+Open edges: unchanged (the four above — kokoro tarball path and
+is_installed now explicitly ④'s). NEXT: phase ④ locations + verbs.
 
 ## Features the docs promise and the code does not do
 

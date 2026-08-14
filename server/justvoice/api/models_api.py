@@ -34,19 +34,29 @@ async def list_models(id: str) -> ModelsListResponse:
     # HF cache (models/hf — the per-engine HF_HOME) still counts until it's
     # re-downloaded the new way.
     from ..app_state import get_state
-    from ..hf_cache import is_hf_repo_cached
-    from ..speech_cache import variant_on_disk
+    from ..hf_cache import hf_cache_dir, is_hf_repo_cached
+    from ..speech_cache import variant_dir, variant_on_disk
 
     st = get_state()
     manifest = get_manager().get_manifest(id)
     for v in variants:
         if variant_on_disk(st.data_dir, id, v.id):
             v.on_disk = True
+            # local_dir rides along for the desktop "Open folder" verb —
+            # resolved HERE so the layout knowledge stays server-side.
+            v.local_dir = str(variant_dir(st.data_dir, id, v.id))
             continue
         repo = v.hf_repo
         if repo:
             root = manifest.models_dir / "hf" / "hub" if manifest else None
-            v.on_disk = is_hf_repo_cached(repo, root=root) or is_hf_repo_cached(repo)
+            if root is not None and is_hf_repo_cached(repo, root=root):
+                v.on_disk = True
+                v.local_dir = str(root / ("models--" + repo.replace("/", "--")))
+            elif is_hf_repo_cached(repo):
+                v.on_disk = True
+                v.local_dir = str(hf_cache_dir() / ("models--" + repo.replace("/", "--")))
+            else:
+                v.on_disk = False
         elif manifest is not None:
             # Tarball-installed engines (Kokoro via sherpa-onnx release):
             # weights live in the manifest's models_dir, not the HF
@@ -59,6 +69,8 @@ async def list_models(id: str) -> ModelsListResponse:
                 if expected:
                     mdir = manifest.models_dir
                     v.on_disk = mdir.exists() and all(any(mdir.rglob(f)) for f in expected)
+                    if v.on_disk:
+                        v.local_dir = str(mdir)
             except Exception:  # noqa: BLE001 — probe must never 500 the list
                 pass
     return ModelsListResponse(engine_id=id, variants=variants)
