@@ -71,6 +71,39 @@ Settings → GPU shows your backend (CUDA / MPS / Metal / XPU / DirectML / ROCm)
 
 Switching CUDA versions is a 4-phase flow: idle → stopping engines → waiting for download → ready. Initiate from Settings → GPU → "Re-download / switch CUDA version". Roughly 2 GB per torch wheel.
 
+## Where model files live — the speech cache
+
+Since 2026-08-14, downloaded speech models live in **the speech cache**:
+one plain folder per model variant at
+`<data dir>/speech-cache/<engine>/<variant>/`, holding the model's files
+exactly as they are named upstream, plus a small `files.json` manifest
+recording where each file came from (repository + pinned revision), its
+expected size, and its upstream checksum id.
+
+Why this matters to you:
+
+- **Downloads resume.** Files come down through the same chunked
+  downloader the AI models use — a dropped connection resumes past the
+  completed chunks on the next attempt, and files that already finished
+  are skipped entirely.
+- **"Downloaded" means downloaded.** A model only counts as on-disk when
+  every file named in its manifest is present at its recorded size. A
+  half-fetched folder never shows a Load button.
+- **No symlinks, no privileges.** Nothing in the cache is linked or
+  hidden inside a hash-named blob store — what you see in the folder is
+  the model. This is what structurally removed the Windows
+  `WinError 1314` failure class.
+- **Delete really deletes.** "Delete model" removes that one variant's
+  folder — the engine and other variants stay.
+- **Only what the engine loads.** Each variant's file list is pinned to
+  the files its engine actually reads. Example: Chatterbox Turbo's
+  repository carries an alternative 1 GB vocoder checkpoint the Turbo
+  code never opens — JustVoice doesn't download it.
+
+Models downloaded before this change (into the old per-engine
+HuggingFace cache) keep working: the engine loads them the old way until
+you delete and re-download, which moves them onto the new layout.
+
 ## Per-engine venv isolation
 
 Each engine lives at `server/justvoice/engines/<engine_id>/.venv/`. Installing Chatterbox writes to its own venv; Kokoro's venv is untouched. This is JustVoice's main reliability advantage over flat-environment TTS tools — engine-A's broken dependency upgrade can't take down engine-B's renders.

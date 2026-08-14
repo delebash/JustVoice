@@ -665,6 +665,25 @@ kokoro/engines.md sizes corrected to verified downloads (multilingual is
 variant-wiring pins STRENGTHENED to exact repo equality via hf_repo.
 Gates: full pytest 504 · vitest 48 · biome · build. Then ③ the catalog
 UI, then ④ locations + verbs.
+SESSION 2026-08-14 COMMIT INVENTORY (all pushed, JV workflows verified
+disabled_manually before AND after every JV push; both trees clean at
+session end): KIT `e173256` (process-TREE probes + the runner's early
+booking; suite 858) · KIT `ad5c66e` (select_repo_files + the
+hf_download_headers door; models tests 28) · JV `d00bb9c` (the amended
+fix set + the speed-tables cut; renderer smoke PASSED) · JV `bba5cc1`
+(②-groundwork: speech_cache.py + plan §12 + the verified web facts) ·
+JV `82d59fb` (②a wired + ②b: SDK 0.2.0, 8 local load doors, the
+fetch-before-spawn door; pytest 504) · JV `8f4463d` (②c facts-only
+manifests; pytest 504 · vitest 48). Cross-app kit gate: JW pytest 128
+green against the new kit. RESUME SURFACES for ③/④: plan doc §6 (the
+decided anatomy) + §13 (the grounded resume brief: what the wire serves,
+what SpeechEnginesTab already has, the kit primitives incl. the Reka
+DropdownMenu import shape from LuModelCatalog.vue:49, the
+GenerateView/voices capability repoint, ④'s scope, and the four carried
+open edges — kokoro's load-door tarball path still writes the legacy
+location · the dormant known_engines/spawn_install legacy registry is
+an excision candidate · is_installed heuristics could become
+cache-truth-driven · MPS-in-RSS stays on the laptops walk).
 
 ## Features the docs promise and the code does not do
 

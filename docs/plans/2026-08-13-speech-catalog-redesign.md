@@ -627,3 +627,72 @@ against the HF API; raw trees saved to the session scratchpad
   time. A variant whose repo does not exist is DROPPED — a facts-only
   row cannot exist without verified facts (the scaffold invented some
   repo ids; each drop is recorded per engine in the build stamp).
+## 13. PHASE ③/④ RESUME BRIEF (2026-08-14, written at the phase-② close
+## — the grounded facts the UI build needs, so no re-derivation)
+
+Phases ③ and ④ remain under the standing go (*"go on everything your
+rec"*). Read §6 (the decided catalog anatomy) + this brief before code.
+
+**What the wire now serves the ③ UI** (built in ②c — no server work
+needed to start ③): `GET /v1/engines/{id}/models` rows carry
+`voice_cloning: bool|None` · `preset_voices: int|None` ·
+`weights_license: str` · `hf_repo: str|None` (the "View on Hugging Face"
+target) · `url: str|None` · `size_mb` (verified download sum) ·
+`languages` · `on_disk` (speech-cache truth first, then the per-engine
+legacy hub cache). `GET /v1/engines/{id}/sources` serves per-variant
+effective source + provenance (operator override layer — keep its
+affordance). The budget strip and its measured story are DONE — ③
+touches the catalog rows below the strip, not the strip.
+
+**The renderer today**: `src/components/SpeechEnginesTab.vue` already has
+the two-level grouped shape (sections → engine groups → variant rows),
+search + kind chips, the loaded-now rail, DownloadBar-over-job-channel
+plumbing (`makeEngineDownloadTask` + `bridgeJobProgress`), Device select,
+default stars for engine and variant, install/load/unload/delete verbs.
+③ is therefore a RESHAPE of this component toward §6's anatomy, not a
+new view: add the per-variant capability chips (Cloning / Presets · N
+from the new wire fields), the license column with the kit's use-limited
+warning pattern, the filter row (All · Cloning · Preset voices), the
+three-dot menu (Re-download · Delete files · Open folder · View on
+Hugging Face), and the measured-memory hint per row ("X GB measured" /
+"not measured yet" — join with the vram endpoint's reservations the way
+the strip's speechRows already does).
+
+**Kit primitives available** (verified in the kit tree): `DownloadBar`
+(exported from ui/src/index.js), `UiChip`/`UiTag` (common components),
+and the three-dot pattern used by LuModelCatalog — Reka's
+`DropdownMenuRoot/Trigger/Portal/Content/Item/Separator` imported from
+`reka-ui` directly (LuModelCatalog.vue:49 — copy that import shape; the
+portal escapes the list's overflow clip). If a primitive needs promoting,
+promote it in the KIT so both apps get it (the family drop-in principle).
+
+**Consumers to repoint** (the §4 cloning ruling's second half):
+`GenerateView.vue` gates cloning UI on `engineCaps.supports_voice_cloning`
+from `GET /v1/engines/capabilities` (capability_details.py) — that API is
+already variant-aware by id (chatterbox vs chatterbox-turbo have separate
+detail rows), so verify which id the view resolves and prefer the LOADED
+VARIANT's row; the voices flow has a similar engine-level read. The
+catalog chips themselves read the new ModelVariant fields directly.
+
+**④ (locations + verbs), decided scope**: `platformdirs.user_data_dir("JustVoice")`
+→ Local, ONE function in paths.py (`speech_cache_root` was deliberately
+built as the single place the speech location lives, so ④ re-roots
+`data_dir` only); JUSTVOICE_DATA_DIR/--data-dir unaffected; per-store
+clear verbs (LLM cache · speech cache · render cache) in one grammar on
+the data-management surface; the engine venvs' location decided there
+(rebuildable runtime, not user data). Pre-release no-migrations rule: the
+path change is a default change — files re-download or the user resets.
+
+**Known open edges carried forward** (recorded, not blockers):
+- The tarball-step kokoro install path (`_install_engine_shared`'s
+  model-tarball steps) still writes the LEGACY engine-dir models
+  location at Load-time-install; the prefetch path already writes the
+  speech cache. Converge the load-door tarball path onto the speech
+  cache during ③/④ (kokoro's engine already accepts model_dir).
+- The `spawn_install`/`known_engines` legacy in-process registry is
+  dormant fiction-adjacent machinery (no legacy engines exist);
+  excising it wholesale is a candidate ruling for ④'s cleanup.
+- `is_installed` for shared engines still uses the legacy heuristics;
+  with VARIANTS + the speech cache, `status` could become
+  cache-truth-driven — fold into ③ when the catalog reads statuses.
+- MPS-in-RSS verification stays on the user's laptops walk.
