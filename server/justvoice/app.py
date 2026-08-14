@@ -78,7 +78,7 @@ from .data_admin import get_data_router
 from .engines.external_openai import ExternalOpenAiTtsBackend
 from .engines.manager import get_manager, shutdown_manager
 
-from .paths import default_data_dir
+from .paths import cache_root, default_data_dir, speech_cache_root
 from .version import PRODUCT, VERSION
 
 log = logging.getLogger(__name__)
@@ -301,7 +301,12 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     # The shared platform log + disk surface (kit LogsPanel + Storage read
     # these; JV's private ring/file twins died with F1 Phase 2).
     app.include_router(make_logs_router(PRODUCT))
-    app.include_router(make_disk_router(data_dir))
+    # JV's app-specific stores ride the shared router's extras hook (phase ④):
+    # the Settings Disk-usage panel gets one row + one clear verb per store.
+    app.include_router(make_disk_router(data_dir, extra_buckets={
+        "speechCache": speech_cache_root(data_dir),
+        "renderCache": cache_root(data_dir),
+    }))
     app.include_router(sse_streams_api.router)
     # (projects_api is included once, in the Phase-5 block above — it was
     # registered twice until the 2026-06-13 wiring audit, W7.)

@@ -1,12 +1,9 @@
-"""Data directory resolution — where settings.json + storage lives.
-
-Matches the Rust CLI's resolve_data_dir behavior so existing JustVoice
-data dirs transfer to the Python port without copying files.
+"""Data directory resolution — where the database + storage lives.
 
 Resolution order:
   1. Explicit `--data-dir` CLI flag (handled by cli.py)
   2. `JUSTVOICE_DATA_DIR` env var
-  3. Platform default via platformdirs
+  3. Platform default via platformdirs (the JW family shape)
 """
 
 from __future__ import annotations
@@ -16,28 +13,27 @@ from pathlib import Path
 
 from platformdirs import user_data_dir
 
+APP_NAME = "JustVoice"
+
 
 def default_data_dir() -> Path:
-    """Resolve the data dir following the same logic as the Rust CLI.
+    """The per-user data directory — the FAMILY shape (phase ④ of the
+    2026-08-13 speech-catalog redesign): `platformdirs.user_data_dir("JustVoice")`,
+    exactly JustWrite's `paths.py`. On Windows that is
+    ``%LOCALAPPDATA%\\JustVoice\\JustVoice`` (Local, never Roaming — model
+    caches and WAV renders have no business syncing through a domain
+    profile); macOS ``~/Library/Application Support/JustVoice``; Linux
+    ``~/.local/share/JustVoice``.
 
-    The Rust core used the `directories` crate with
-    `ProjectDirs::from("dev", "justvoice", "justvoice")`, which on Windows
-    lands at ``%APPDATA%\\justvoice\\justvoice\\data`` and on macOS at
-    ``~/Library/Application Support/dev.justvoice.justvoice``.
-
-    platformdirs gives us the same layout when called with the same
-    qualifier/org/app triple.
-    """
+    The pre-④ default (``%APPDATA%\\justvoice\\justvoice\\data``, a Rust-core
+    relic the desktop shell didn't even agree with) is not migrated —
+    pre-release rule: a default change, the user resets or re-downloads.
+    The desktop shell's `default_data_root` (src-tauri/src/lib.rs) mirrors
+    this function and MUST stay in lockstep."""
     env = os.environ.get("JUSTVOICE_DATA_DIR")
     if env:
         return Path(env)
-    # platformdirs's appauthor maps to the org in ProjectDirs, appname
-    # to the application. Set roaming=False on Windows so we use the
-    # local AppData (the Rust core also used roaming=true effectively
-    # via the directories crate's default; we use Local for now and
-    # document the migration path in the changelog).
-    raw = user_data_dir(appname="justvoice", appauthor="justvoice", roaming=True)
-    return Path(raw) / "data"
+    return Path(user_data_dir(APP_NAME))
 
 
 def storage_root(data_dir: Path) -> Path:

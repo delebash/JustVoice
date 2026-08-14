@@ -653,6 +653,43 @@ def spawn_prefetch(
 # fetches now land as PLAIN files via speech_cache.fetch_hf_variant.
 
 
+def fetch_url_variant(
+    data_dir: Path,
+    engine_id: str,
+    variant_id: str,
+    url: str,
+    on_progress=None,
+    cancel_check=None,
+) -> Path:
+    """The load door's URL arm (phase ④ — the last legacy writer dies):
+    stream a single-URL variant (kokoro-style tarball) into the SPEECH CACHE
+    and write its files.json, synchronously — no job plumbing. The prefetch
+    worker's `_url_stream_to` below is the job-channel twin; both ride the
+    same primitives (`_stream_download`, `_extract_tar_bz2`). `on_progress`
+    gets cumulative downloaded bytes; `cancel_check` (bool-returning) aborts
+    via the streamer's `_Cancelled`. Returns the variant dir."""
+    from . import speech_cache
+
+    target_dir = speech_cache.variant_dir(data_dir, engine_id, variant_id)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    filename = url.rsplit("/", 1)[-1] or "model.bin"
+    partial = target_dir / (filename + ".partial")
+    _stream_download(
+        url,
+        partial,
+        on_progress=on_progress or (lambda n: None),
+        cancel_check=cancel_check,
+    )
+    if _is_archive(filename):
+        _extract_tar_bz2(partial, target_dir, filename,
+                         on_member=None, cancel_check=cancel_check)
+        partial.unlink(missing_ok=True)
+    else:
+        partial.rename(target_dir / filename)
+    speech_cache.write_manifest_from_dir(target_dir, url=url)
+    return target_dir
+
+
 def _url_stream_to(
     state: AppState,
     job_id: str,

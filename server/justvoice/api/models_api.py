@@ -76,6 +76,35 @@ async def list_models(id: str) -> ModelsListResponse:
     return ModelsListResponse(engine_id=id, variants=variants)
 
 
+@router.post("/v1/engines/speech-cache/clear")
+async def clear_speech_cache() -> dict:
+    """Delete every downloaded speech model (the whole speech cache) to
+    reclaim disk — the Settings Disk-usage panel's per-store clear verb
+    (phase ④), one grammar with the kit's LLM `models-cache/clear`. SAFE BY
+    DESIGN: the catalog rows come from the manifests, so each model simply
+    re-downloads the next time it's loaded. Refuses with
+    `{ok: false, detail: "unload engines first"}` (HTTP 200) while any
+    engine is loaded — a resident engine's weight files are open/mmap'd
+    (and Windows can't unlink an open file); unload, then retry.
+    On success returns `{ok: true, bytes}`."""
+    import shutil
+
+    from llm_runner.platform.disk_api import dir_size
+
+    from ..app_state import get_state
+    from ..engines.manager import get_manager
+    from ..paths import speech_cache_root
+
+    mgr = get_manager()
+    if any(mgr.status(eid) == "loaded" for eid in mgr.manifests()):
+        return {"ok": False, "detail": "unload engines first"}
+    root = speech_cache_root(get_state().data_dir)
+    freed = dir_size(root)
+    if root.exists():
+        shutil.rmtree(root, ignore_errors=True)
+    return {"ok": True, "bytes": freed}
+
+
 @router.delete("/v1/engines/{id}/models/{variant_id}")
 async def delete_model(id: str, variant_id: str) -> dict:
     """Delete one model's weights from the HF cache (Engines redesign:

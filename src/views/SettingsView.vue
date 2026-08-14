@@ -801,6 +801,54 @@ async function clearModelsCache() {
     refreshRunnerModels();
   }
 }
+// Phase ④ (the speech-catalog redesign): per-store clear verbs in ONE
+// grammar — same confirm-with-size, same refuse-while-loaded story as the
+// LLM models cache above. The sizes ride the shared disk router's extras.
+async function clearSpeechCache() {
+  const size = fmtBytes(diskUsage.value?.extras?.speechCache) || "0 MB";
+  const yes = await confirmDialog({
+    title: "Clear downloaded speech models?",
+    message: `This frees ${size} of downloaded speech-model files. The catalog keeps every model; each one re-downloads on demand.`,
+    confirmLabel: "Clear speech models",
+  });
+  if (!yes) return;
+  diskBusy.value = "speech";
+  diskErr.value = "";
+  try {
+    const res = await api.request("/v1/engines/speech-cache/clear", { method: "POST" });
+    if (res?.ok === false) {
+      diskErr.value = res.detail === "unload engines first"
+        ? "A speech engine is loaded — unload it first (AI Settings → Speech engines), then try again."
+        : res.detail || "Couldn't clear the speech models.";
+    }
+  } catch {
+    diskErr.value = "Couldn't clear the speech models.";
+  } finally {
+    diskBusy.value = "";
+    await loadDiskUsage();
+    // Cleared models flip to "Download" on the speech catalog.
+    window.dispatchEvent(new Event("jv:health-refresh"));
+  }
+}
+async function clearRenderCache() {
+  const size = fmtBytes(diskUsage.value?.extras?.renderCache) || "0 MB";
+  const yes = await confirmDialog({
+    title: "Clear the render cache?",
+    message: `This frees ${size} of cached renders. Nothing is lost — an identical render simply computes again instead of coming back instantly. (Labs → Cache offers scoped clears by age.)`,
+    confirmLabel: "Clear render cache",
+  });
+  if (!yes) return;
+  diskBusy.value = "render";
+  diskErr.value = "";
+  try {
+    await api.request("/v1/cache/clear", { method: "POST" });
+  } catch {
+    diskErr.value = "Couldn't clear the render cache.";
+  } finally {
+    diskBusy.value = "";
+    await loadDiskUsage();
+  }
+}
 async function clearSpawnLogs() {
   diskBusy.value = "spawn";
   diskErr.value = "";
@@ -1120,9 +1168,15 @@ onMounted(() => {
         <p class="jv-muted jv-hint">Where the data folder's space goes — and what can be reclaimed.</p>
         <table class="jv-table jv-w560 jv-mt10">
           <tbody>
-            <tr><td>Models cache</td><td>{{ diskSize(diskUsage?.modelsCache) }}</td>
+            <tr><td>AI models cache</td><td>{{ diskSize(diskUsage?.modelsCache) }}</td>
               <td class="jv-w130"><UiButton intent="secondary" size="small" :disabled="!!diskBusy"
                 :label="diskBusy === 'models' ? 'Clearing…' : 'Clear'" @click="clearModelsCache" /></td></tr>
+            <tr><td>Speech models</td><td>{{ diskSize(diskUsage?.extras?.speechCache) }}</td>
+              <td><UiButton intent="secondary" size="small" :disabled="!!diskBusy"
+                :label="diskBusy === 'speech' ? 'Clearing…' : 'Clear'" @click="clearSpeechCache" /></td></tr>
+            <tr><td>Render cache</td><td>{{ diskSize(diskUsage?.extras?.renderCache) }}</td>
+              <td><UiButton intent="secondary" size="small" :disabled="!!diskBusy"
+                :label="diskBusy === 'render' ? 'Clearing…' : 'Clear'" @click="clearRenderCache" /></td></tr>
             <tr><td>Engine spawn logs</td><td>{{ diskSize(diskUsage?.spawnLogs) }}</td>
               <td><UiButton intent="secondary" size="small" :disabled="!!diskBusy"
                 :label="diskBusy === 'spawn' ? 'Clearing…' : 'Clear'" @click="clearSpawnLogs" /></td></tr>

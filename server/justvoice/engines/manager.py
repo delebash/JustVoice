@@ -338,7 +338,19 @@ class EngineManifest:
             return _venv_python(self.venv_dir).is_file()
         if not shared_venv_exists():
             return False
-        # Shared engine: check that the engine's expected model files are present.
+        # Phase ④: a variant COMPLETE in the speech cache also counts — a
+        # prefetched engine is installed (shared venv + files present), so
+        # the status chip stops saying "not installed" over an on-disk row
+        # and the load door never re-runs the legacy tarball steps.
+        try:
+            from .. import speech_cache
+            from ..app_state import get_state
+
+            if speech_cache.any_variant_on_disk(get_state().data_dir, self.id):
+                return True
+        except Exception:  # noqa: BLE001 — bare tests / no app state
+            pass
+        # Legacy: check that the engine's expected model files are present.
         # If there are no model_install_steps, the engine pulls via HF cache on
         # first load — we treat that as "installed" once the shared venv exists.
         steps = self.model_install_steps
@@ -1661,6 +1673,48 @@ class EngineManager:
         except Exception:  # noqa: BLE001 — no catalog row → legacy path
             return None
         repo = src.get("hf_repo")
+        url = src.get("url")
+        if not repo and url:
+            # URL-source variant (kokoro-style tarball) — phase ④: the load
+            # door's cold fetch lands in the speech cache too, so the legacy
+            # engine-dir models location gets no new writes from any path.
+            # A pre-④ tarball install under the engine dir keeps serving
+            # (same contract as the HF legacy arm below).
+            try:
+                expected = [f for step in m.model_install_steps
+                            for f in (step.get("expected_files") or [])]
+                if expected and m.models_dir.exists() \
+                        and all(any(m.models_dir.rglob(f)) for f in expected):
+                    return None
+            except Exception:  # noqa: BLE001 — probe must never block a load
+                pass
+            if progress:
+                progress("downloading-model",
+                         f"fetching {variant_id} into the speech cache")
+            from ..installer import fetch_url_variant
+
+            last_u = {"mb": -1}
+
+            def _uprog(done: int) -> None:
+                if progress:
+                    mb = done // (1024 * 1024)
+                    if mb // 16 != last_u["mb"]:
+                        last_u["mb"] = mb // 16
+                        progress("downloading-model",
+                                 f"{variant_id}: {mb} MB downloaded")
+
+            try:
+                fetch_url_variant(
+                    data_dir, m.id, variant_id, url,
+                    on_progress=_uprog,
+                    cancel_check=(lambda: bool(cancel_check())) if cancel_check else None,
+                )
+            except Exception as e:  # noqa: BLE001 — incl. _Cancelled
+                if "cancel" in str(e).lower() or type(e).__name__ in ("_Cancelled", "DownloadCancelled"):
+                    raise RuntimeError("cancelled by user") from e
+                raise RuntimeError(
+                    f"model download failed for {m.id}/{variant_id}: {e}") from e
+            return str(speech_cache.variant_dir(data_dir, m.id, variant_id))
         if not repo:
             return None
         if is_hf_repo_cached(repo, root=m.models_dir / "hf" / "hub"):
@@ -1811,25 +1865,13 @@ class EngineManager:
             _maybe_cancel()
 
             # For shared engines (monolithic style), Load is the only
-            # button. If the shared venv isn't built or model files aren't on
-            # disk yet, do that first — same task, no separate Install step.
+            # button — the shared venv builds here on first use.
             if m.isolation == "shared":
                 if not shared_venv_exists():
                     if progress:
                         progress("setup-shared-venv", "first-time setup: creating shared venv…")
                     from . import shared_venv as sv
                     sv.setup_shared_venv(progress=progress, cancel_check=effective_cancel)
-
-                _maybe_cancel()
-
-                # Run model downloads if they haven't been fetched yet. For HF-cache
-                # engines with no expected_files, this is a no-op (engine.load()
-                # pulls from HF on first import). For Kokoro etc. we download here
-                # so first-time Load is one transparent step.
-                if not m.is_installed:
-                    if progress:
-                        progress("downloading-model", f"first load of {engine_id} — fetching model files")
-                    _install_engine_shared(m, progress, effective_cancel)
             else:
                 # Isolated engine — needs its own venv built via the Install button.
                 if not m.is_installed:
@@ -1859,6 +1901,19 @@ class EngineManager:
                            else (self._resolved_default_variant(m) or None))
                 local_dir = self._ensure_variant_local(
                     m, planned, progress, effective_cancel)
+
+            # Legacy model-step install (phase ④: AFTER the speech-cache
+            # acquisition, and only when it couldn't serve) — engines whose
+            # catalog rows carry no source, and the no-variant edge. Kokoro's
+            # tarballs now land in the speech cache via the URL arm above, so
+            # this no longer writes the legacy engine-dir models location on
+            # any catalog-driven path. HF-cache engines with no
+            # expected_files: still a no-op (engine pulls at load).
+            if m.isolation == "shared" and local_dir is None and not m.is_installed:
+                _maybe_cancel()
+                if progress:
+                    progress("downloading-model", f"first load of {engine_id} — fetching model files")
+                _install_engine_shared(m, progress, effective_cancel)
 
             # The 2026-08-13 VRAM wiring (step 3): resolve the device at the ONE
             # load door and pass it down explicitly — the engine subprocess never

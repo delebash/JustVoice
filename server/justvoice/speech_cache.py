@@ -77,6 +77,21 @@ def variant_on_disk(data_dir: Path, engine_id: str, variant_id: str) -> bool:
     return bool(man.get("files"))
 
 
+def any_variant_on_disk(data_dir: Path, engine_id: str) -> bool:
+    """True when at least one of this engine's variants is COMPLETE in the
+    cache (phase ④): the manager's `is_installed` consults this, so a
+    prefetched shared engine reads as installed and the load door never
+    re-downloads through the legacy engine-dir install steps."""
+    from .paths import speech_cache_root
+
+    root = speech_cache_root(data_dir) / engine_id
+    try:
+        children = [c.name for c in root.iterdir() if c.is_dir()]
+    except OSError:
+        return False
+    return any(variant_on_disk(data_dir, engine_id, name) for name in children)
+
+
 def variant_disk_bytes(data_dir: Path, engine_id: str, variant_id: str) -> int:
     """Recorded total bytes of the variant (manifest sum; 0 when absent)."""
     man = read_manifest(variant_dir(data_dir, engine_id, variant_id))

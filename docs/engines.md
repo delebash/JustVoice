@@ -138,6 +138,11 @@ Models downloaded before this change (into the old per-engine
 HuggingFace cache) keep working: the engine loads them the old way until
 you delete and re-download, which moves them onto the new layout.
 
+To reclaim the whole store at once, **Settings → Storage → Disk usage →
+Speech models → Clear** deletes every downloaded speech model in one step
+(each re-downloads on demand) — see
+[Backup and data](backups-and-data.md#disk-usage).
+
 ## Per-engine venv isolation
 
 Each engine lives at `server/justvoice/engines/<engine_id>/.venv/`. Installing Chatterbox writes to its own venv; Kokoro's venv is untouched. This is JustVoice's main reliability advantage over flat-environment TTS tools — engine-A's broken dependency upgrade can't take down engine-B's renders.

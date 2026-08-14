@@ -748,4 +748,74 @@ as-built record, with deviations from §6 named:
   without touching either — the catalog reads on_disk, which already
   is cache truth).
 
-Phase ④ (locations + verbs) is the remaining phase under the go.
+**PHASE ④ BUILT 2026-08-14** (same session, under the standing go — the
+final phase). The as-built record:
+
+- **The location converged on the JW shape**: `paths.py
+  default_data_dir()` = env override else
+  `Path(platformdirs.user_data_dir("JustVoice"))` — Windows
+  `%LOCALAPPDATA%\JustVoice\JustVoice` (Local, never Roaming), macOS
+  `~/Library/Application Support/JustVoice`, Linux
+  `~/.local/share/JustVoice`. The desktop shell's Rust mirror
+  (`default_data_root` in src-tauri/lib.rs) changed in lockstep — the
+  old pair didn't even agree with each other (`%APPDATA%\justvoice\
+  justvoice` in Rust vs the same + `/data` in Python).
+  JUSTVOICE_DATA_DIR / --data-dir / the dataroot.txt pointer are all
+  untouched. No migration (pre-release rule): point the env var at the
+  old folder or start fresh; a backup carries everything but models.
+- **Per-store clear verbs, one grammar**: the KIT's shared
+  `make_disk_router` grew an `extra_buckets` hook ({name: dir},
+  measured by the same guarded walk, served under `extras`, counted
+  into total; hosts that pass nothing are byte-identical — JW
+  unaffected). JV mounts `speechCache` + `renderCache`. Settings →
+  Storage → Disk usage now reads AI models cache · Speech models ·
+  Render cache · Engine spawn logs, each with Clear in the kit-LLM
+  grammar (confirm-with-size; refuse-while-loaded where files are
+  mmap'd). New endpoint `POST /v1/engines/speech-cache/clear`
+  (`{ok:false, detail:"unload engines first"}` while any engine is
+  loaded; `{ok:true, bytes}` on success). Render clear rides the
+  existing `/v1/cache/clear`; Labs → Cache stays the scoped surface.
+- **THE VENV RULING (decided by rec under the go)**: engine venvs STAY
+  with the runtime tree (`engines/<id>/.venv` + the shared venv) — NOT
+  in the user's data dir. A venv is interpreter- and platform-bound
+  rebuildable runtime: putting it in the data folder would drag
+  gigabytes of reinstallable packages into the backup/restore/relocate
+  surface and invite cross-machine breakage; with the runtime it dies
+  with the program install, which is correct. Known edge, recorded not
+  changed: an admin-located install (Program Files) can't write venvs —
+  today's behavior, unchanged by ④.
+- **The kokoro tarball edge CONVERGED** (the ③/④ carried edge): the
+  load door's `_ensure_variant_local` grew a URL arm —
+  `installer.fetch_url_variant` streams the tarball into the SPEECH
+  CACHE (same `_stream_download`/`_extract_tar_bz2` primitives as the
+  prefetch worker's job-channel twin) and writes files.json; a pre-④
+  engine-dir tarball install keeps serving via the legacy guard (same
+  contract as the HF arm). The load door reordered: acquisition FIRST,
+  then the legacy `_install_engine_shared` model steps only when
+  `local_dir is None and not is_installed` — the legacy models location
+  gets no new writes from any catalog-driven path. And `is_installed`
+  learned cache truth (`speech_cache.any_variant_on_disk`): a
+  prefetched shared engine reads installed — no "not installed" chip
+  over an on-disk row, no double download.
+- **Deferred by rec (recorded, not built)**: the `known_engines`/
+  `spawn_install` legacy-registry excision — it shares paths with the
+  live external-engine flow, so it needs its own verified pass, not a
+  rider on ④.
+- **Docs**: backups-and-data.md gained "Where your data lives" (the new
+  default per-OS, the overrides, the no-migration story) and "Disk
+  usage" (the one clear-grammar); engines.md links the whole-store
+  clear from the speech-cache section.
+- **Gates**: kit pytest 862 (extras test added) · JW pytest 128 (via
+  JW's repo-root .venv — bare F:\Python312 lacks the xdist its addopts
+  want) · JV ruff + full pytest 510 (5 new pins: URL-arm fetch ·
+  legacy-tarball-preferred · is_installed-reads-cache · clear-verb
+  delete-all · clear-verb refuses-while-loaded) · biome · vitest 48 ·
+  build:vite · cargo check · the renderer smoke (first run failed on
+  ALL views from resource contention with the concurrently running full
+  pytest — nothing rendered within timeouts; the immediate rerun passed
+  every view with zero JS errors) · headless Settings drive verified
+  the Disk-usage table and `/v1/disk/usage` serving `extras`.
+
+ALL FOUR PHASES OF THIS REDESIGN ARE BUILT. Remaining out-of-plan
+items: the known_engines excision pass (above) and the user-side
+laptops walk (MPS-in-RSS).

@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 from justvoice.engines.manager import EngineManager
 
 
@@ -100,3 +102,92 @@ def test_acquisition_answers_none_in_bare_contexts(monkeypatch):
         mgr._manifests["eng"], "v1", None, None) is None
     assert mgr._ensure_variant_local(
         mgr._manifests["eng"], None, None, None) is None
+
+
+# ── Phase ④ — the URL arm: the last legacy writer dies ───────────────
+
+
+@pytest.fixture
+def app(tmp_path):
+    from justvoice.app import create_app
+
+    return create_app(data_dir=tmp_path)
+
+
+def _url_manifest(tmp_path, engine_id="kok", steps=None):
+    return SimpleNamespace(
+        id=engine_id, kind="tts", isolation="shared",
+        model_install_steps=steps or [],
+        models_dir=tmp_path / "legacy-models",
+    )
+
+
+def test_url_arm_fetches_into_the_speech_cache(monkeypatch, tmp_path, app):
+    """A cold load of a URL-source variant (kokoro shape) lands in the
+    SPEECH CACHE with its files.json — the legacy engine-dir models
+    location gets no write."""
+    import justvoice.api.engine_sources_api as esa
+    from justvoice import installer, speech_cache
+    from justvoice.app_state import get_state
+
+    m = _url_manifest(tmp_path)
+    monkeypatch.setattr(
+        esa, "resolve_source",
+        lambda e, v: ({"url": "http://example.test/model-256.bin"}, "manifest"))
+
+    def fake_stream(url, dest, on_progress, cancel_check=None):
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(b"\0" * 256)
+        on_progress(256)
+        return "deadbeef"
+
+    monkeypatch.setattr(installer, "_stream_download", fake_stream)
+
+    from justvoice.engines.manager import EngineManager
+
+    out = EngineManager.__new__(EngineManager)._ensure_variant_local(m, "v1", None, None)
+    st = get_state()
+    vdir = speech_cache.variant_dir(st.data_dir, "kok", "v1")
+    assert out == str(vdir)
+    assert (vdir / "model-256.bin").stat().st_size == 256
+    assert speech_cache.variant_on_disk(st.data_dir, "kok", "v1")
+    assert not m.models_dir.exists()
+
+
+def test_url_arm_prefers_a_legacy_tarball_install(monkeypatch, tmp_path, app):
+    """A pre-④ tarball install under the engine dir keeps serving offline —
+    the URL arm answers None (legacy load) instead of re-downloading."""
+    import justvoice.api.engine_sources_api as esa
+
+    m = _url_manifest(tmp_path, steps=[{"expected_files": ["model.onnx"]}])
+    m.models_dir.mkdir(parents=True)
+    (m.models_dir / "model.onnx").write_bytes(b"x")
+    monkeypatch.setattr(
+        esa, "resolve_source",
+        lambda e, v: ({"url": "http://example.test/model.tar.bz2"}, "manifest"))
+
+    from justvoice.engines.manager import EngineManager
+
+    assert EngineManager.__new__(EngineManager)._ensure_variant_local(m, "v1", None, None) is None
+
+
+def test_is_installed_reads_the_speech_cache(monkeypatch, tmp_path, app):
+    """Phase ④'s cache-truth status: a prefetched shared engine counts as
+    installed (no more 'not installed' chip over an on-disk model row, no
+    legacy re-download at the load door)."""
+    from justvoice import speech_cache
+    from justvoice.app_state import get_state
+    from justvoice.engines import manager as mgr_mod
+    from justvoice.engines.manager import get_manager
+
+    monkeypatch.setattr(mgr_mod, "shared_venv_exists", lambda: True)
+    manifest = get_manager().get_manifest("kokoro")
+    assert manifest is not None
+
+    st = get_state()
+    vdir = speech_cache.variant_dir(st.data_dir, "kokoro", "kokoro-v1")
+    vdir.mkdir(parents=True)
+    (vdir / "model.onnx").write_bytes(b"\0" * 32)
+    speech_cache.write_manifest_from_dir(vdir, url="http://example.test/t.tar.bz2")
+    assert speech_cache.any_variant_on_disk(st.data_dir, "kokoro") is True
+    assert manifest.is_installed is True

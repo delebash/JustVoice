@@ -730,6 +730,49 @@ menu opens with the honest verb set for a not-downloaded variant, the
 Cloning filter fans to 10 rows, zero JS errors, screenshots taken.
 Open edges: unchanged (the four above — kokoro tarball path and
 is_installed now explicitly ④'s). NEXT: phase ④ locations + verbs.
+PHASE ④ BUILT 2026-08-14 (the final phase — the redesign is COMPLETE):
+THE LOCATION converged on the JW shape — `default_data_dir()` = env
+else `Path(platformdirs.user_data_dir("JustVoice"))` (Windows
+%LOCALAPPDATA%\JustVoice\JustVoice · Local never Roaming; macOS
+~/Library/Application Support/JustVoice; Linux ~/.local/share/
+JustVoice), the Rust shell's `default_data_root` changed in lockstep
+(the old pair disagreed with each other); JUSTVOICE_DATA_DIR /
+--data-dir / dataroot.txt untouched; NO migration (pre-release rule —
+env-var at the old folder, or fresh + backup). THE VERBS: the KIT
+`make_disk_router` grew `extra_buckets` ({name: dir} → measured,
+served under `extras`, counted into total; JW byte-identical when
+unused); JV mounts speechCache + renderCache; Settings → Storage →
+Disk usage = AI models cache · Speech models · Render cache · Engine
+spawn logs, each Clear in the ONE kit grammar (confirm-with-size,
+refuse-while-loaded); new POST /v1/engines/speech-cache/clear
+({ok:false, detail:"unload engines first"} while loaded; {ok:true,
+bytes}); render clear rides /v1/cache/clear, Labs → Cache stays the
+scoped surface. THE VENV RULING (rec under the go): venvs STAY with
+the runtime tree (engines/<id>/.venv + shared) — interpreter-bound
+rebuildable runtime, never user data; known edge recorded: admin-
+located installs can't write venvs (today's behavior, unchanged).
+THE KOKORO EDGE CONVERGED: `_ensure_variant_local` URL arm via new
+`installer.fetch_url_variant` (same primitives as the prefetch
+worker's job twin) → tarballs land in the SPEECH CACHE at the load
+door too; load door reordered acquisition-first (legacy
+_install_engine_shared model steps only when local_dir None and not
+installed); pre-④ engine-dir installs keep serving (legacy guard);
+`is_installed` learned cache truth (any_variant_on_disk) — prefetched
+shared engines read installed. DEFERRED BY REC: the known_engines/
+spawn_install excision — shares paths with the LIVE external-engine
+flow; its own verified pass, never a rider. DOCS: backups-and-data.md
+"Where your data lives" + "Disk usage" sections (the panel was
+undocumented before); engines.md links the whole-store clear.
+GATES: kit pytest 862 (extras pin) · JW pytest 128 (JW's repo-root
+.venv — bare F:\Python312 lacks the xdist its addopts want; kit-source
+resolution verified live in that venv) · JV ruff + full pytest 510
+(5 new pins) · biome 113 · vitest 48 · build:vite · cargo check · the
+renderer smoke (first run failed ALL views — resource contention with
+the concurrent full pytest, nothing rendered within timeouts; the
+immediate rerun passed everything, zero JS errors) · headless
+Settings drive verified the Disk-usage rows + /v1/disk/usage extras.
+REMAINING out of plan: the known_engines excision pass · the user's
+laptops walk (MPS-in-RSS).
 
 ## Features the docs promise and the code does not do
 

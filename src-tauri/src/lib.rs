@@ -80,23 +80,26 @@ fn dir_is_writable(dir: &std::path::Path) -> bool {
     }
 }
 
-// The server's own default (paths.py: platformdirs user_data_dir("justvoice",
-// "justvoice", roaming)) — shell and server MUST agree on the no-pointer case.
+// The server's own default (paths.py: platformdirs user_data_dir("JustVoice")
+// — the JW family shape, phase ④ of the 2026-08-13 redesign) — shell and
+// server MUST agree on the no-pointer case. platformdirs on Windows nests
+// <appauthor>\<appname> with appauthor defaulting to the app name, hence the
+// doubled JustVoice; Local, never Roaming (model caches don't sync profiles).
 fn default_data_root(_app: &AppHandle) -> PathBuf {
     #[cfg(windows)]
     {
-        PathBuf::from(std::env::var("APPDATA").unwrap_or_default())
-            .join("justvoice")
-            .join("justvoice")
+        PathBuf::from(std::env::var("LOCALAPPDATA").unwrap_or_default())
+            .join("JustVoice")
+            .join("JustVoice")
     }
     #[cfg(target_os = "macos")]
     {
         PathBuf::from(std::env::var("HOME").unwrap_or_default())
-            .join("Library/Application Support/justvoice")
+            .join("Library/Application Support/JustVoice")
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {
-        PathBuf::from(std::env::var("HOME").unwrap_or_default()).join(".local/share/justvoice")
+        PathBuf::from(std::env::var("HOME").unwrap_or_default()).join(".local/share/JustVoice")
     }
 }
 
@@ -745,7 +748,7 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
             // REAL behavior (the dead emit had zero listeners — audit
             // 2026-08-05): open the server's logs folder. The server keeps it
             // under its data dir (justvoice/paths.py: platformdirs
-            // user_data_dir("justvoice", "justvoice", roaming)); honor
+            // user_data_dir("JustVoice") — the JW family shape); honor
             // JUSTVOICE_DATA_DIR like the CLI does.
             // The SAME resolution the spawn uses (pointer → platform default),
             // so the tray always opens the logs the server actually writes.

@@ -538,3 +538,42 @@ def test_models_list_serves_speech_cache_local_dir(client, app):
     )
     assert row["on_disk"] is True
     assert row["local_dir"] == str(vdir)
+
+
+# ── Phase ④ — the whole-store speech-cache clear verb ────────────────
+
+
+def test_speech_cache_clear_deletes_all_and_flips_on_disk(client, app):
+    from justvoice import speech_cache
+    from justvoice.app_state import get_state
+    from justvoice.paths import speech_cache_root
+
+    st = get_state()
+    variant_id = client.get("/v1/engines/chatterbox/models").json()["variants"][0]["id"]
+    vdir = speech_cache.variant_dir(st.data_dir, "chatterbox", variant_id)
+    vdir.mkdir(parents=True)
+    (vdir / "w.bin").write_bytes(b"\0" * 64)
+    speech_cache.write_manifest_from_dir(vdir, url="http://example.test/w.bin")
+
+    r = client.post("/v1/engines/speech-cache/clear").json()
+    assert r["ok"] is True
+    assert r["bytes"] > 0
+    assert not speech_cache_root(st.data_dir).exists()
+    row = next(
+        v for v in client.get("/v1/engines/chatterbox/models").json()["variants"]
+        if v["id"] == variant_id
+    )
+    # on_disk may fall back to a legacy-cache probe on a dev box; the SPEECH
+    # CACHE arm is honestly gone either way.
+    assert not speech_cache.variant_on_disk(st.data_dir, "chatterbox", variant_id)
+    assert row["local_dir"] != str(vdir)
+
+
+def test_speech_cache_clear_refuses_while_an_engine_is_loaded(client, app, monkeypatch):
+    """One grammar with the kit's models-cache/clear: a resident engine's
+    weights are open/mmap'd — refuse honestly, never half-delete."""
+    from justvoice.engines.manager import get_manager
+
+    monkeypatch.setattr(get_manager(), "status", lambda eid: "loaded")
+    r = client.post("/v1/engines/speech-cache/clear").json()
+    assert r == {"ok": False, "detail": "unload engines first"}
