@@ -41,9 +41,12 @@ def hf_cache_dir() -> Path:
     return Path.home() / ".cache" / "huggingface" / "hub"
 
 
-def is_hf_repo_cached(hf_repo: str) -> bool:
+def is_hf_repo_cached(hf_repo: str, root: Path | None = None) -> bool:
+    """`root` targets a specific hub tree (each engine's legacy cache lives
+    at `<engine>/models/hf/hub` — the per-engine HF_HOME the manager sets at
+    spawn); None = the process-env resolution above."""
     try:
-        repo_cache = hf_cache_dir() / ("models--" + hf_repo.replace("/", "--"))
+        repo_cache = (root or hf_cache_dir()) / ("models--" + hf_repo.replace("/", "--"))
         snaps = repo_cache / "snapshots"
         if not snaps.is_dir():
             return False

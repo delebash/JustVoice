@@ -69,7 +69,8 @@ class Chatterbox(EmbeddedEngine):
             return "cpu"
         return self.pick_device(requested)
 
-    def load(self, device: str = "auto", variant: str | None = None) -> None:
+    def load(self, device: str = "auto", variant: str | None = None,
+             model_dir: str | None = None) -> None:
         if self.model is not None:
             if variant and variant != self._variant:
                 # Switching variants needs a fresh load — drop the old model.
@@ -93,6 +94,15 @@ class Chatterbox(EmbeddedEngine):
         else:
             from chatterbox.mtl_tts import ChatterboxMultilingualTTS as _ModelCls
 
+        # Phase ② (2026-08-14): a host-provided local dir (the speech cache)
+        # loads through the pinned package's from_local — no network, no HF
+        # hub code in the load path. Without one, the legacy from_pretrained
+        # path stands (HF cache via HF_HOME; downloads on a cache miss).
+        def _construct():
+            if model_dir:
+                return _ModelCls.from_local(model_dir, device)
+            return _ModelCls.from_pretrained(device=device)
+
         if device == "cpu":
             # CPU path — patch torch.load to force map_location='cpu'.
             _orig = torch.load
@@ -104,11 +114,11 @@ class Chatterbox(EmbeddedEngine):
             with Chatterbox._load_lock:
                 torch.load = _patched
                 try:
-                    self.model = _ModelCls.from_pretrained(device=device)
+                    self.model = _construct()
                 finally:
                     torch.load = _orig
         else:
-            self.model = _ModelCls.from_pretrained(device=device)
+            self.model = _construct()
 
         # Force eager attention (output_attentions support).
         try:

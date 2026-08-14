@@ -1,6 +1,6 @@
 [project]
 name = "justvoice-plugin"
-version = "0.1.0"
+version = "0.2.0"
 description = "Shared base classes + FastAPI shim for JustVoice engine plugins. Engines import EmbeddedEngine + serve() to expose themselves as managed subprocesses to the JustVoice host server."
 readme = "README.md"
 requires-python = ">=3.10"

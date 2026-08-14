@@ -61,7 +61,8 @@ class Tada(EmbeddedEngine):
         self.encoder = None
         self._device = None
 
-    def load(self, device: str = "auto", variant: str | None = None) -> None:
+    def load(self, device: str = "auto", variant: str | None = None,
+             model_dir: str | None = None) -> None:
         if self.model is not None:
             return
         device = self.pick_device(device)
@@ -72,14 +73,26 @@ class Tada(EmbeddedEngine):
         install_dac_shim()
 
         import torch
-        from huggingface_hub import snapshot_download
 
-        # 2. Download codec + model weights into the engine's HF cache.
-        snapshot_download(repo_id=TADA_CODEC_REPO, allow_patterns=["*.safetensors", "*.json", "*.txt", "*.bin"])
-        snapshot_download(repo_id=TADA_MODEL_REPO, allow_patterns=["*.safetensors", "*.json", "*.txt", "*.bin", "*.model"])
+        if model_dir:
+            # Phase ②: the host's speech cache nests one subdir per source
+            # repo (multi-repo variant) — plain local files, no hub code in
+            # the load path at all.
+            base = _P(model_dir)
+            codec_src = str(base / TADA_CODEC_REPO.replace("/", "--"))
+            model_src = str(base / TADA_MODEL_REPO.replace("/", "--"))
+            tokenizer_path = str(base / LLAMA_TOKENIZER_MIRROR.replace("/", "--"))
+        else:
+            # Legacy path: download at load via huggingface_hub (HF cache).
+            from huggingface_hub import snapshot_download
 
-        # 3. Pull ungated Llama tokenizer mirror and redirect TADA to it.
-        tokenizer_path = snapshot_download(repo_id=LLAMA_TOKENIZER_MIRROR, allow_patterns=["tokenizer*", "special_tokens*"])
+            # 2. Download codec + model weights into the engine's HF cache.
+            snapshot_download(repo_id=TADA_CODEC_REPO, allow_patterns=["*.safetensors", "*.json", "*.txt", "*.bin"])
+            snapshot_download(repo_id=TADA_MODEL_REPO, allow_patterns=["*.safetensors", "*.json", "*.txt", "*.bin", "*.model"])
+
+            # 3. Pull ungated Llama tokenizer mirror and redirect TADA to it.
+            tokenizer_path = snapshot_download(repo_id=LLAMA_TOKENIZER_MIRROR, allow_patterns=["tokenizer*", "special_tokens*"])
+            codec_src, model_src = TADA_CODEC_REPO, TADA_MODEL_REPO
 
         # 4. Choose dtype.
         if device == "cuda" and torch.cuda.is_bf16_supported():
@@ -93,12 +106,12 @@ class Tada(EmbeddedEngine):
         from tada.modules.encoder import Encoder
         from tada.modules.tada import TadaConfig, TadaForCausalLM
 
-        self.encoder = Encoder.from_pretrained(TADA_CODEC_REPO, subfolder="encoder").to(device)
+        self.encoder = Encoder.from_pretrained(codec_src, subfolder="encoder").to(device)
         self.encoder.eval()
 
-        config = TadaConfig.from_pretrained(TADA_MODEL_REPO)
+        config = TadaConfig.from_pretrained(model_src)
         config.tokenizer_name = tokenizer_path
-        self.model = TadaForCausalLM.from_pretrained(TADA_MODEL_REPO, config=config, torch_dtype=model_dtype).to(device)
+        self.model = TadaForCausalLM.from_pretrained(model_src, config=config, torch_dtype=model_dtype).to(device)
         self.model.eval()
         log.info("TADA loaded on %s", device)
 

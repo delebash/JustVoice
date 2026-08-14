@@ -79,10 +79,16 @@ class Kokoro(EmbeddedEngine):
 
     # ─── Lifecycle ───────────────────────────────────────────────────
 
-    def load(self, device: str = "auto", variant: str | None = None) -> None:
+    def load(self, device: str = "auto", variant: str | None = None,
+             model_dir: str | None = None) -> None:
         if self._tts is not None:
             return
 
+        # Phase ②: the host's speech-cache variant dir wins over the
+        # spawn-time JUSTVOICE_MODEL_DIR default. Same flat-or-one-subdir
+        # resolution either way (the release tarball extracts a subdir).
+        if model_dir:
+            self.model_dir = Path(model_dir)
         resolved = self._resolved_dir()
         if resolved is None:
             raise RuntimeError(

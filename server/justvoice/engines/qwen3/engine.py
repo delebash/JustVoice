@@ -85,7 +85,8 @@ class Qwen3(EmbeddedEngine):
     def _is_base(self) -> bool:
         return bool(self._variant and "base" in self._variant)
 
-    def load(self, device: str = "auto", variant: str | None = None) -> None:
+    def load(self, device: str = "auto", variant: str | None = None,
+             model_dir: str | None = None) -> None:
         if variant and variant not in QWEN_VARIANT_REPOS:
             raise RuntimeError(
                 f"qwen3: unknown variant {variant!r}; valid: {sorted(QWEN_VARIANT_REPOS)}"
@@ -98,7 +99,9 @@ class Qwen3(EmbeddedEngine):
         device = self.pick_device(device)
         self._device = device
         self._variant = variant or DEFAULT_VARIANT
-        repo = QWEN_VARIANT_REPOS[self._variant]
+        # Phase ②: a host-provided local dir (the speech cache) beats the
+        # repo id — from_pretrained loads plain local files, zero network.
+        repo = model_dir or QWEN_VARIANT_REPOS[self._variant]
         log.info("loading Qwen3-TTS %s (%s) on %s …", self._variant, repo, device)
         # Canonical load pattern from qwen-tts's own cli/demo.py:
         #   Qwen3TTSModel.from_pretrained(ckpt, device_map=..., dtype=..., attn_implementation=...)

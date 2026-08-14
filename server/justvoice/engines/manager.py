@@ -403,6 +403,37 @@ class InstallError(RuntimeError):
     pass
 
 
+#: Kept in lockstep with justvoice_plugin/pyproject.toml — the /load
+#: `model_dir` contract (phase ②) rides the SDK, so a venv carrying an
+#: older install gets a fast refresh at spawn.
+PLUGIN_VERSION = "0.2.0"
+
+
+def _ensure_plugin_current(python_exe: Path) -> None:
+    """Refresh the venv's justvoice_plugin when it predates PLUGIN_VERSION
+    (cheap dist-info glob; the reinstall is a tiny wheel, seconds).
+    Best-effort by design: a failure leaves the old SDK, which degrades
+    gracefully — it ignores the extra /load field and the engine loads its
+    legacy way."""
+    try:
+        venv_root = python_exe.parents[1]
+        sps = [venv_root / "Lib" / "site-packages",
+               *venv_root.glob("lib/python*/site-packages")]
+        sp = next((p for p in sps if p.is_dir()), None)
+        if sp is None or list(sp.glob(f"justvoice_plugin-{PLUGIN_VERSION}.dist-info")):
+            return
+        uv = _check_uv_available()
+        plugin_dir = Path(__file__).resolve().parents[2] / "justvoice_plugin"
+        log.info("refreshing justvoice_plugin to %s in %s", PLUGIN_VERSION, venv_root)
+        subprocess.run(
+            [uv, "pip", "install", "--python", str(python_exe), "--reinstall",
+             str(plugin_dir)],
+            capture_output=True, text=True, timeout=180,
+        )
+    except Exception:  # noqa: BLE001 — best-effort; the old SDK still works
+        log.debug("plugin currency refresh failed", exc_info=True)
+
+
 #: The Python the ENGINE venvs are built on, pinned deliberately.
 #:
 #: Not `sys.executable`, for two reasons. In the shipped bundle the server is a
@@ -938,6 +969,10 @@ class EngineProcess:
         engine_py = self.manifest.engine_dir / "engine.py"
         if not engine_py.is_file():
             raise RuntimeError(f"engine {self.manifest.id} is missing engine.py")
+
+        # Phase ②: the /load model_dir contract needs the current SDK in
+        # the venv — refresh a stale install before the subprocess exists.
+        _ensure_plugin_current(python_exe)
 
         env = os.environ.copy()
         # Isolate HF cache to this engine's models dir so Uninstall is a clean rmtree.
@@ -1601,6 +1636,67 @@ class EngineManager:
                 pass
         return variants[0].id
 
+    def _ensure_variant_local(self, m: EngineManifest, variant_id: str | None,
+                              progress, cancel_check) -> str | None:
+        """The load door's acquisition step (phase ②, plan doc §12): make
+        sure the variant's files are LOCAL before the subprocess exists, and
+        return the local dir the engine should load from — or None, meaning
+        "load your legacy way" (a pre-② HF-cache install under the engine's
+        models/hf keeps working offline until a re-download; bare tests and
+        URL-source engines whose files ride the legacy install steps also
+        land here). Fetches ride the speech cache: plain files, the kit
+        downloader, no hub code, no symlinks."""
+        if not variant_id:
+            return None
+        try:
+            from .. import speech_cache
+            from ..app_state import get_state
+
+            data_dir = get_state().data_dir
+        except Exception:  # noqa: BLE001 — bare tests / no app state
+            return None
+        if speech_cache.variant_on_disk(data_dir, m.id, variant_id):
+            return str(speech_cache.variant_dir(data_dir, m.id, variant_id))
+        try:
+            from ..api.engine_sources_api import resolve_source
+            from ..hf_cache import is_hf_repo_cached
+
+            src, _prov = resolve_source(m.id, variant_id)
+        except Exception:  # noqa: BLE001 — no catalog row → legacy path
+            return None
+        repo = src.get("hf_repo")
+        if not repo:
+            return None
+        if is_hf_repo_cached(repo, root=m.models_dir / "hf" / "hub"):
+            return None  # legacy install — the engine's own cache serves it
+        if progress:
+            progress("downloading-model",
+                     f"fetching {variant_id} into the speech cache")
+        last = {"pct": -1}
+
+        def _prog(done: int, total: int) -> None:
+            if progress and total:
+                pct = int(done * 100 / total)
+                if pct != last["pct"]:
+                    last["pct"] = pct
+                    progress("downloading-model",
+                             f"{variant_id}: {pct}% of {total // (1024 * 1024)} MB")
+
+        try:
+            speech_cache.fetch_hf_variant(
+                data_dir, m.id, variant_id,
+                [{"hf_repo": repo, "revision": src.get("hf_revision"),
+                  "files": src.get("files")}],
+                on_progress=_prog,
+                cancel_check=(lambda: bool(cancel_check())) if cancel_check else None,
+            )
+        except Exception as e:  # noqa: BLE001 — incl. DownloadCancelled
+            if "cancel" in str(e).lower() or type(e).__name__ == "DownloadCancelled":
+                raise RuntimeError("cancelled by user") from e
+            raise RuntimeError(
+                f"model download failed for {m.id}/{variant_id}: {e}") from e
+        return str(speech_cache.variant_dir(data_dir, m.id, variant_id))
+
     def request_cancel_load(self, engine_id: str) -> bool:
         """Mark an in-flight load for cancellation. Returns True if a load is
         actually in progress for that engine; False otherwise (no-op cancel).
@@ -1748,6 +1844,25 @@ class EngineManager:
             _maybe_cancel()
 
             target_kind = m.kind
+            # Phase ② (plan doc §12): make the planned variant's files LOCAL
+            # before the subprocess exists — network leaves the load path.
+            # Skipped when this engine already holds the slot with the same
+            # (or unspecified) variant: that path early-returns below and
+            # must never trigger a fetch.
+            cur0 = self.loaded_for(target_kind)
+            _already = (
+                cur0 is not None and cur0.manifest.id == engine_id
+                and cur0.is_alive()
+                and (variant in (None, "", "auto")
+                     or self._current_variants.get(engine_id) == variant)
+            )
+            local_dir = None
+            if not _already:
+                planned = (variant if variant not in (None, "", "auto")
+                           else (self._resolved_default_variant(m) or None))
+                local_dir = self._ensure_variant_local(
+                    m, planned, progress, effective_cancel)
+
             # The 2026-08-13 VRAM wiring (step 3): resolve the device at the ONE
             # load door and pass it down explicitly — the engine subprocess never
             # runs its own hidden greedy-cuda again. Admission (amended §10):
@@ -1823,10 +1938,12 @@ class EngineManager:
                 variant = self._resolved_default_variant(m) or None
 
             # Now POST /load to the engine — this is where the model actually
-            # comes into memory.
+            # comes into memory. `model_dir` (the speech-cache variant dir)
+            # makes the engine load plain local files; None = its legacy way.
             if progress:
                 progress("loading_weights", f"loading {engine_id} weights")
-            r = proc.post("/load", json={"device": device, "variant": variant})
+            r = proc.post("/load", json={"device": device, "variant": variant,
+                                         "model_dir": local_dir})
             if r.status_code != 200:
                 log.warning("engine %s /load failed: %s", engine_id, r.text[:400])
                 with self._activity(target_kind), self._lock:

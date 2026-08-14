@@ -46,7 +46,8 @@ class Dia(EmbeddedEngine):
         self.processor = None
         self._device = None
 
-    def load(self, device: str = "auto", variant: str | None = None) -> None:
+    def load(self, device: str = "auto", variant: str | None = None,
+             model_dir: str | None = None) -> None:
         if self.model is not None:
             return
         device = self.pick_device(device)
@@ -55,8 +56,11 @@ class Dia(EmbeddedEngine):
 
         from transformers import AutoProcessor, DiaForConditionalGeneration
 
-        self.processor = AutoProcessor.from_pretrained(DIA_HF_REPO)
-        self.model = DiaForConditionalGeneration.from_pretrained(DIA_HF_REPO).to(device)
+        # Phase ②: a host-provided local dir (the speech cache) beats the
+        # repo id — plain local files, zero network in the load path.
+        src = model_dir or DIA_HF_REPO
+        self.processor = AutoProcessor.from_pretrained(src)
+        self.model = DiaForConditionalGeneration.from_pretrained(src).to(device)
         log.info("Dia loaded on %s", device)
 
     def unload(self) -> None:

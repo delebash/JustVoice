@@ -52,7 +52,8 @@ class MossTTS(EmbeddedEngine):
         self.pipe = None
         self._device = None
 
-    def load(self, device: str = "auto", variant: str | None = None) -> None:
+    def load(self, device: str = "auto", variant: str | None = None,
+             model_dir: str | None = None) -> None:
         if self.pipe is not None:
             return
         device = self.pick_device(device)
@@ -67,7 +68,10 @@ class MossTTS(EmbeddedEngine):
                 f"this import still fails, check the package's actual top-level module name "
                 f"and update engine.py accordingly."
             ) from e
-        self.pipe = MossTTSDPipeline.from_pretrained(MOSS_HF_REPO, device=device)
+        # Phase ②: a host-provided local dir (the speech cache) beats the
+        # repo id — plain local files, zero network in the load path.
+        self.pipe = MossTTSDPipeline.from_pretrained(model_dir or MOSS_HF_REPO,
+                                                     device=device)
         log.info("MOSS-TTS loaded on %s", device)
 
     def unload(self) -> None:

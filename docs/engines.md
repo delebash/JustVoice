@@ -48,7 +48,7 @@ Loads run against the **shared memory budget** (the strip at the top of the tab 
 
 ### Cancelling an in-flight load
 
-Loading can take a while — first-time loads also fetch model weights (hundreds of MB to multiple GB) and may stall if you have a flaky connection. While a load is in progress:
+Loading can take a while — first-time loads also fetch model weights (hundreds of MB to multiple GB). Since 2026-08-14 those fetches go through the **speech cache**: plain files downloaded by the same chunked, resumable downloader the AI models use (a dropped connection resumes past the completed chunks instead of starting over), placed on disk *before* the engine process starts — the engine itself never touches the network. While a load is in progress:
 
 - A progress strip appears at the top of the content area with elapsed time + `spawning subprocess`, `loading model weights`.
 - The strip has a **Cancel** button. Clicking it sends `POST /v1/engines/{id}/cancel-load`, which:

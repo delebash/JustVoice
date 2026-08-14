@@ -29,14 +29,24 @@ async def list_models(id: str) -> ModelsListResponse:
         raise not_found(f"engine {id}")
     variants = models_for(id)
     # Engines redesign: per-model on-disk flag drives the verb shown
-    # (Download vs Load/Delete). HF-cache probe; non-HF urls stay None.
+    # (Download vs Load/Delete). Phase ② (plan doc §12): the SPEECH CACHE's
+    # files.json is the first truth; a legacy install under the engine's own
+    # HF cache (models/hf — the per-engine HF_HOME) still counts until it's
+    # re-downloaded the new way.
+    from ..app_state import get_state
     from ..hf_cache import is_hf_repo_cached, repo_from_url
+    from ..speech_cache import variant_on_disk
 
+    st = get_state()
     manifest = get_manager().get_manifest(id)
     for v in variants:
+        if variant_on_disk(st.data_dir, id, v.id):
+            v.on_disk = True
+            continue
         repo = repo_from_url(v.files[0].url) if v.files else None
         if repo:
-            v.on_disk = is_hf_repo_cached(repo)
+            root = manifest.models_dir / "hf" / "hub" if manifest else None
+            v.on_disk = is_hf_repo_cached(repo, root=root) or is_hf_repo_cached(repo)
         elif manifest is not None:
             # Tarball-installed engines (Kokoro via sherpa-onnx release):
             # weights live in the manifest's models_dir, not the HF
@@ -68,6 +78,17 @@ async def delete_model(id: str, variant_id: str) -> dict:
     variant = next((v for v in models_for(id) if v.id == variant_id), None)
     if variant is None:
         raise not_found(f"variant {variant_id} on engine {id}")
+    # Phase ②: a speech-cache variant deletes as one plain directory —
+    # the manifest dies with it, so on_disk goes honestly False.
+    from ..app_state import get_state
+    from ..speech_cache import variant_dir, variant_on_disk
+
+    st = get_state()
+    if variant_on_disk(st.data_dir, id, variant_id):
+        vdir = variant_dir(st.data_dir, id, variant_id)
+        shutil.rmtree(vdir, ignore_errors=True)
+        return {"deleted": True, "engine_id": id, "variant_id": variant_id,
+                "path": str(vdir)}
     repo = repo_from_url(variant.files[0].url) if variant.files else None
     if not repo:
         # Tarball-installed engine (Kokoro): weights live in the
@@ -80,9 +101,16 @@ async def delete_model(id: str, variant_id: str) -> dict:
             raise not_found(f"engine {id} has no downloaded model files")
         shutil.rmtree(mdir, ignore_errors=True)
         return {"deleted": True, "engine_id": id, "variant_id": variant_id, "path": str(mdir)}
-    if not is_hf_repo_cached(repo):
+    # Legacy HF-cache installs: the per-engine cache (models/hf/hub — the
+    # HF_HOME the manager sets at spawn) first, the process-env cache second.
+    manifest = get_manager().get_manifest(id)
+    eng_root = manifest.models_dir / "hf" / "hub" if manifest else None
+    if eng_root and is_hf_repo_cached(repo, root=eng_root):
+        repo_dir = eng_root / ("models--" + repo.replace("/", "--"))
+    elif is_hf_repo_cached(repo):
+        repo_dir = hf_cache_dir() / ("models--" + repo.replace("/", "--"))
+    else:
         raise not_found(f"{repo} has no weights in the local cache")
-    repo_dir = hf_cache_dir() / ("models--" + repo.replace("/", "--"))
     shutil.rmtree(repo_dir, ignore_errors=True)
     return {"deleted": True, "engine_id": id, "variant_id": variant_id, "repo": repo}
 

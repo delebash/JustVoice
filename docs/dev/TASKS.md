@@ -632,12 +632,27 @@ web pass verified every ENGINE-map repo real and exposed the old catalog
 rows for dia/moss/tada/luxtts as unwired fiction (real: Dia-1.6B-0626 ·
 OpenMOSS-Team/MOSS-TTSD-v0 · HumeAI tada-codec+tada-3b-ml ·
 YatharthS/LuxTTS); pinned per-variant file sets recorded (§12; raw trees
-in the session scratchpad hf-trees/). REMAINING in ②: wire spawn_prefetch
-+ the manager load-door acquire onto speech_cache (§12 ②a tail) · plugin
-SDK v0.2.0 model_dir + per-engine local load doors (②b; tada/luxtts need
-their engine deep-read) · facts-only VARIANTS in manifests + model_catalog
-becomes a reader + resolve_source grows sources/files (②c). Then ③ the
-catalog UI, then ④ locations + verbs.
+in the session scratchpad hf-trees/). ②a+②b BUILT: spawn_prefetch + the manager load door acquire through
+speech_cache (fetch-before-spawn; `_hf_snapshot_to` + its symlink
+machinery DELETED; the old prefetch tests were also writing junk into
+the REPO models_dir — the "scaffold junk" mystery solved, pins now
+assert the repo tree stays clean) · plugin SDK v0.2.0 (`/load` carries
+`model_dir`, signature-aware pass-through, old SDKs ignore it
+gracefully; `_ensure_plugin_current` auto-refreshes stale venv installs
+at spawn) · ALL 8 engines grew local load doors (chatterbox
+from_local · whisper/qwen3/dia/moss from_pretrained(local dir) ·
+tada 3-source nested dirs incl. the Llama-tokenizer mirror, hub calls
+only on the legacy branch · luxtts model_path · kokoro model_dir
+override) · models_api on_disk = speech-cache truth first, then the
+PER-ENGINE legacy hub cache (models/hf/hub — the env-based probe was
+checking the wrong root) · Delete model handles both worlds ·
+docs (gpu.md 1314 entry = structural fix landed; engines.md speech-cache
+paragraph). REMAINING in ②: ②c facts-only VARIANTS in manifests
+(languages/capabilities/license/repo+revision+pinned files from plan
+§12's verified web facts; the dia/moss/tada/luxtts fiction rows die;
+sizes = summed pinned sizes; disk_space_mb dies) + model_catalog becomes
+a reader + resolve_source grows files. Then ③ the catalog UI, then ④
+locations + verbs.
 
 ## Features the docs promise and the code does not do
 

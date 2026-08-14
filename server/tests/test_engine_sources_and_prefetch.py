@@ -18,7 +18,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-import requests
 from fastapi.testclient import TestClient
 
 
@@ -160,13 +159,12 @@ def test_prefetch_unknown_engine_raises(app):
 
 
 def test_prefetch_url_path_streams_and_completes(client, app, monkeypatch, tmp_path):
-    """URL-source variant: spawn_prefetch should stream the file via the
-    same _stream_download primitive the legacy installer used. We mock the
-    stream so the test stays offline; success means the worker reaches
-    'completed' and the target dir contains a fetched file.
-    """
+    """URL-source variant: spawn_prefetch streams the file via the same
+    _stream_download primitive and lands it in the SPEECH CACHE (phase ②,
+    plan doc §12) with a files.json manifest — never the engine's repo-tree
+    models_dir (the old target, which polluted the source tree)."""
+    from justvoice import installer, speech_cache
     from justvoice.app_state import get_state
-    from justvoice import installer
 
     # Find an engine + variant that resolves to a URL source. Chatterbox
     # is HF-by-catalog, so we override it to a URL for this test —
@@ -192,28 +190,27 @@ def test_prefetch_url_path_streams_and_completes(client, app, monkeypatch, tmp_p
 
     row = _wait_for_job(state, job_id, phase="completed")
     assert row["error"] in (None, "")
-    # And the file landed in the engine's models_dir/<variant_id>/
+    vdir = speech_cache.variant_dir(state.data_dir, "chatterbox", variant_id)
+    assert (vdir / "fake-model.bin").exists()
+    # The written manifest IS the on-disk truth.
+    assert speech_cache.variant_on_disk(state.data_dir, "chatterbox", variant_id)
+    # And the repo tree stayed clean.
     from justvoice.engines.manager import get_manager
 
     models_dir = get_manager().get_manifest("chatterbox").models_dir / variant_id
-    assert (models_dir / "fake-model.bin").exists()
+    assert not models_dir.exists()
 
 
-def test_prefetch_hf_path_uses_plain_https_no_hub_dep(client, app, monkeypatch, tmp_path):
-    """User directive 2026-06-15 ("rip hugging face dep"): the prefetch
-    worker for HF sources MUST NOT import huggingface_hub. It talks to
-    HF Hub's public HTTP API directly and writes the canonical cache
-    layout (refs/<rev>, blobs/<oid>, snapshots/<sha>/<path>) so engine
-    subprocesses' from_pretrained() finds the weights.
-
-    We mock the three HTTP endpoints (revision, tree, resolve) plus
-    _stream_download, then assert the layout the worker produced on
-    disk matches the HF cache shape.
-    """
+def test_prefetch_hf_path_plain_files_no_hub_dep_no_hub_layout(client, app, monkeypatch, tmp_path):
+    """Two standing directives in one pin. 2026-06-15 ("rip hugging face
+    dep"): the worker must not need huggingface_hub. Phase ② (plan doc
+    §12): HF fetches land as PLAIN files + files.json in the speech cache —
+    the hub-cache layout (refs/blobs/snapshots + symlink-or-copy, the
+    WinError-1314 class) must NOT be written at all."""
     import sys
 
+    from justvoice import installer, speech_cache
     from justvoice.app_state import get_state
-    from justvoice import installer
 
     # Make sure huggingface_hub isn't accidentally importable in the
     # test process — the worker must not need it.
@@ -221,15 +218,6 @@ def test_prefetch_hf_path_uses_plain_https_no_hub_dep(client, app, monkeypatch, 
 
     r0 = client.get("/v1/engines/chatterbox/sources").json()
     variant_id = r0["variants"][1]["variant_id"]
-    # Pin the cache root to tmp_path so the test doesn't write to ~/.cache
-    monkeypatch.setenv("HF_HUB_CACHE", str(tmp_path / "hf"))
-
-    # Mock the three HF Hub HTTP endpoints.
-    class _FakeResp:
-        def __init__(self, json_data):
-            self._json = json_data
-        def raise_for_status(self): pass
-        def json(self): return self._json
 
     fake_tree = [
         {"type": "file", "path": "config.json", "oid": "git0000config", "size": 42},
@@ -239,53 +227,50 @@ def test_prefetch_hf_path_uses_plain_https_no_hub_dep(client, app, monkeypatch, 
         {"type": "file", "path": "tokenizer/vocab.json", "oid": "git0000vocab", "size": 17},
         {"type": "directory", "path": "tokenizer"},  # filtered out
     ]
-    real_get = requests.get
-    def fake_get(url, **kw):
-        if "/revision/" in url:
-            return _FakeResp({"sha": "commit0000sha"})
-        if "/tree/" in url:
-            return _FakeResp(fake_tree)
-        return real_get(url, **kw)
-    import requests as _requests
-    monkeypatch.setattr(_requests, "get", fake_get)
-    monkeypatch.setattr(installer, "requests", _requests)
 
-    # Stub _stream_download to write the file size in dummy bytes.
-    def fake_stream(url, dest, on_progress, cancel_check=None):
-        # Echo size from the URL's filename (we control the fake tree).
+    # The KIT resolver + downloader are the fetch path now — fake both.
+    import llm_runner.runner.download as kit_dl
+    import llm_runner.runner.models as kit_models
+
+    monkeypatch.setattr(
+        kit_models, "select_repo_files",
+        lambda repo, *, revision="main", files=None: (
+            "commit0000sha", [e for e in fake_tree if e.get("type") == "file"]),
+    )
+
+    def fake_stream(url, dest, on_progress=None, cancel_check=None,
+                    headers=None, **_kw):
+        assert "/resolve/commit0000sha/" in url   # sha-pinned, never symbolic
         name = url.rsplit("/", 1)[-1]
-        size = next((e.get("size", 0) for e in fake_tree if e.get("path", "").endswith(name)), 0)
+        size = next(
+            (int((e.get("lfs") or {}).get("size") or e.get("size") or 0)
+             for e in fake_tree if e.get("path", "").endswith(name)), 0)
         dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(b"x" * int(size))
-        on_progress(int(size))
-        return "deadbeef"
+        dest.write_bytes(b"x" * size)
+        if on_progress:
+            on_progress(size, size)
 
-    monkeypatch.setattr(installer, "_stream_download", fake_stream)
+    monkeypatch.setattr(kit_dl, "stream_download", fake_stream)
 
     state = get_state()
     job_id = installer.spawn_prefetch(state, "chatterbox", variant_id)
     row = _wait_for_job(state, job_id, phase="completed")
     assert row["error"] in (None, "")
+    assert row["bytes_total"] == 42 + 1024 + 17   # resolved real sizes
 
-    # Verify the cache layout the worker produced.
-    repo_dir = tmp_path / "hf" / "models--ResembleAI--chatterbox-turbo"
-    # Chatterbox-turbo is variant 1's hf_repo — confirm from the source.
-    if not repo_dir.exists():
-        # Other repo name. Find what was written.
-        cands = list((tmp_path / "hf").glob("models--*"))
-        assert cands, "no HF cache dir written"
-        repo_dir = cands[0]
-
-    assert (repo_dir / "refs" / "main").read_text() == "commit0000sha"
-    # blobs/ should have one entry per file, named by lfs.oid OR git oid
-    blobs = list((repo_dir / "blobs").iterdir())
-    assert {b.name for b in blobs} == {"git0000config", "lfssha256weights", "git0000vocab"}
-    # snapshots/<sha>/<path> should resolve (via symlink or copy) to a
-    # file of the right size — that's what from_pretrained() will read.
-    snap = repo_dir / "snapshots" / "commit0000sha"
-    assert (snap / "config.json").stat().st_size == 42
-    assert (snap / "model.safetensors").stat().st_size == 1024
-    assert (snap / "tokenizer" / "vocab.json").stat().st_size == 17
+    # PLAIN files at repo-relative paths + the manifest truth.
+    vdir = speech_cache.variant_dir(state.data_dir, "chatterbox", variant_id)
+    assert (vdir / "config.json").stat().st_size == 42
+    assert (vdir / "model.safetensors").stat().st_size == 1024
+    assert (vdir / "tokenizer" / "vocab.json").stat().st_size == 17
+    man = speech_cache.read_manifest(vdir)
+    assert man["sources"][0]["commit_sha"] == "commit0000sha"
+    assert {f["oid"] for f in man["files"]} == {
+        "git0000config", "lfssha256weights", "git0000vocab"}
+    assert speech_cache.variant_on_disk(state.data_dir, "chatterbox", variant_id)
+    # NO hub-cache layout anywhere under the data dir.
+    assert not list(tmp_path.rglob("blobs"))
+    assert not list(tmp_path.rglob("snapshots"))
 
 
 def test_prefetch_cancel_cleans_partials(client, app, monkeypatch):
@@ -329,10 +314,10 @@ def test_prefetch_cancel_cleans_partials(client, app, monkeypatch):
     row = _wait_for_job(state, job_id, phase="failed")
     assert "cancel" in (row.get("error") or "").lower()
 
-    # Partials gone.
-    from justvoice.engines.manager import get_manager
+    # Partials gone (the speech-cache variant dir — phase ②'s target).
+    from justvoice import speech_cache
 
-    target = get_manager().get_manifest("chatterbox").models_dir / variant_id
+    target = speech_cache.variant_dir(state.data_dir, "chatterbox", variant_id)
     assert not target.exists() or not any(target.iterdir())
 
 
@@ -343,7 +328,6 @@ def test_prefetch_cancel_via_http_endpoint(client, app, monkeypatch):
     """
     from justvoice.app_state import get_state
     from justvoice import installer
-    from justvoice.engines.manager import get_manager
 
     r0 = client.get("/v1/engines/chatterbox/sources").json()
     variant_id = r0["variants"][0]["variant_id"]
@@ -378,7 +362,9 @@ def test_prefetch_cancel_via_http_endpoint(client, app, monkeypatch):
     row = _wait_for_job(state, job_id, phase="failed", timeout=3.0)
     assert "cancel" in (row.get("error") or "").lower()
 
-    target = get_manager().get_manifest("chatterbox").models_dir / variant_id
+    from justvoice import speech_cache
+
+    target = speech_cache.variant_dir(state.data_dir, "chatterbox", variant_id)
     assert not target.exists() or not any(target.iterdir()), (
         "partial dir should be removed after cancel"
     )
@@ -455,7 +441,6 @@ def test_url_path_progress_advances_through_extract(client, app, monkeypatch, tm
     """
     from justvoice.app_state import get_state
     from justvoice import installer
-    from justvoice.engines.manager import get_manager
 
     r0 = client.get("/v1/engines/chatterbox/sources").json()
     variant_id = r0["variants"][0]["variant_id"]
@@ -519,6 +504,9 @@ def test_url_path_progress_advances_through_extract(client, app, monkeypatch, tm
         f"<= download size ({download_bytes}); history={history[-10:]}"
     )
 
-    # And the file landed where the prefetch worker put it.
-    models_dir = get_manager().get_manifest("chatterbox").models_dir / variant_id
-    assert (models_dir / "model.onnx").exists()
+    # And the extracted tree landed in the speech cache, with its manifest.
+    from justvoice import speech_cache
+
+    vdir = speech_cache.variant_dir(state.data_dir, "chatterbox", variant_id)
+    assert (vdir / "model.onnx").exists()
+    assert speech_cache.variant_on_disk(state.data_dir, "chatterbox", variant_id)

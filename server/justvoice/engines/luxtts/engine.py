@@ -42,7 +42,8 @@ class LuxTTS(EmbeddedEngine):
         self.model = None
         self._device = None
 
-    def load(self, device: str = "auto", variant: str | None = None) -> None:
+    def load(self, device: str = "auto", variant: str | None = None,
+             model_dir: str | None = None) -> None:
         if self.model is not None:
             return
         device = self.pick_device(device)
@@ -51,12 +52,14 @@ class LuxTTS(EmbeddedEngine):
 
         # Actual zipvoice API (inspected from installed package):
         #   LuxTTS(model_path='YatharthS/LuxTTS', device='cuda', threads=4)
-        # No from_pretrained classmethod. Init takes the HF repo id as
+        # No from_pretrained classmethod. Init takes the HF repo id — or a
+        # local directory (phase ②: the speech cache dir wins) — as
         # model_path and the device string directly.
         from zipvoice.luxvoice import LuxTTS as _LuxTTSModel  # type: ignore
 
         threads = min(os.cpu_count() or 4, 8) if device == "cpu" else 4
-        self.model = _LuxTTSModel(model_path=LUXTTS_HF_REPO, device=device, threads=threads)
+        self.model = _LuxTTSModel(model_path=model_dir or LUXTTS_HF_REPO,
+                                  device=device, threads=threads)
         log.info("LuxTTS loaded on %s (threads=%d)", device, threads)
 
     def unload(self) -> None:

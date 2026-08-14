@@ -15,7 +15,6 @@ import hashlib
 import importlib
 import importlib.util
 import logging
-import os
 import re
 import shutil
 import subprocess
@@ -593,27 +592,43 @@ def spawn_prefetch(
     )
 
     def worker() -> None:
-        # One-button fix: HF source → snapshot_download into HF cache (no
-        # target_dir mkdir, no partial cleanup of our models_dir on cancel).
-        # URL source → models_dir/{variant_id} (kokoro path; unchanged).
+        # Phase ② (plan doc §12): every fetch lands in the SPEECH CACHE as
+        # plain files + a files.json manifest — never the HF hub-cache
+        # layout (blobs + symlink-or-copy was the WinError-1314 class).
+        from llm_runner.runner.download import DownloadCancelled
+
+        from . import speech_cache
+
         is_hf = bool(source.get("hf_repo"))
-        target_dir = manifest.models_dir / variant_id
+        target_dir = speech_cache.variant_dir(state.data_dir, engine_id, variant_id)
         try:
             if is_hf:
-                _hf_snapshot_to(state, job_id, source["hf_repo"], source.get("hf_revision"), target_dir)
+                state.job_update(job_id, phase="connecting")
+                speech_cache.fetch_hf_variant(
+                    state.data_dir, engine_id, variant_id,
+                    [{"hf_repo": source["hf_repo"],
+                      "revision": source.get("hf_revision"),
+                      "files": source.get("files")}],
+                    on_progress=lambda done, tot: state.job_update(
+                        job_id, phase="downloading",
+                        bytes_downloaded=done, bytes_total=tot,
+                    ),
+                    cancel_check=lambda: _is_cancelled(job_id),
+                )
             else:
                 target_dir.mkdir(parents=True, exist_ok=True)
                 _url_stream_to(state, job_id, source["url"], target_dir, variant)
+                speech_cache.write_manifest_from_dir(target_dir, url=source["url"])
             state.job_update(job_id, phase="completed")
             state.job_append_log(job_id, "[completed] prefetch finished")
-        except _Cancelled:
+        except (_Cancelled, DownloadCancelled):
             log.info("prefetch cancelled for %s/%s", engine_id, variant_id)
             state.job_update(job_id, phase="failed", error="cancelled by user")
             if is_hf:
-                # huggingface_hub leaves partial blobs in its cache; the
-                # next pull resumes them by hash. No-op cleanup is honest;
-                # rmtreeing the whole HF cache would punish other repos.
-                state.job_append_log(job_id, "[cancelled] HF cache partial blobs left for resume")
+                # The kit downloader's chunked partials (.part + .json maps)
+                # sit beside the plain files — the next fetch resumes past
+                # completed chunks and skips complete files by size.
+                state.job_append_log(job_id, "[cancelled] partial files kept for resume")
             else:
                 # URL path: partials live in target_dir, safe to wipe.
                 shutil.rmtree(target_dir, ignore_errors=True)
@@ -628,138 +643,10 @@ def spawn_prefetch(
     return job_id
 
 
-def _hf_snapshot_to(
-    state: AppState,
-    job_id: str,
-    repo_id: str,
-    revision: str | None,
-    target_dir: Path,  # noqa: ARG001 — kept in signature for caller symmetry
-) -> None:
-    """Stream a HuggingFace repo into the local HF cache via plain HTTPS.
-
-    User directive 2026-06-15 ("rip hugging face dep"): the server no
-    longer imports `huggingface_hub`. We talk to HF Hub's public HTTP
-    API directly — same auth-free URLs the library would hit — and write
-    files into the canonical cache layout so the engine subprocess's
-    `from_pretrained(repo_id)` finds them naturally.
-
-    HF Hub API used (no auth needed for public repos):
-        GET /api/models/{repo}/revision/{rev}      → commit sha
-        GET /api/models/{repo}/tree/{rev}?recursive=true → file listing
-        GET /{repo}/resolve/{rev}/{path}           → file content
-
-    Cache layout written:
-        <hf_cache>/models--<owner>--<name>/
-          refs/<rev>           text file containing commit_sha
-          blobs/<oid>          actual file content (one blob per file)
-          snapshots/<sha>/<path>  symlink (or copy on Windows w/o symlink
-                                   privilege) to ../../blobs/<oid>
-
-    The `oid` is the LFS sha256 for LFS files (most weights) and the git
-    blob sha-1 for small text files. `try_to_load_from_cache` (the lib's
-    standard probe) treats either as valid.
-    """
-    revision = revision or "main"
-    api_base = "https://huggingface.co"
-
-    # 1. Resolve revision → commit_sha + repo tree. The dedicated revision
-    #    endpoint returns the sha for the symbolic ref ("main", "v1.2",
-    #    a commit, …); the tree endpoint then lists every file at that
-    #    revision. recursive=true descends into subdirs in one call.
-    state.job_update(job_id, phase="connecting", current_file=repo_id)
-    info = requests.get(f"{api_base}/api/models/{repo_id}/revision/{revision}", timeout=30)
-    info.raise_for_status()
-    commit_sha = info.json()["sha"]
-    if _is_cancelled(job_id):
-        raise _Cancelled()
-    tree_resp = requests.get(
-        f"{api_base}/api/models/{repo_id}/tree/{revision}",
-        params={"recursive": "true"},
-        timeout=30,
-    )
-    tree_resp.raise_for_status()
-    entries = [e for e in tree_resp.json() if e.get("type") == "file"]
-
-    # 2. Pre-compute total bytes so the bar has a denominator. LFS files
-    #    expose true size via entry.lfs.size; non-LFS via entry.size.
-    total_bytes = sum(
-        int((e.get("lfs") or {}).get("size") or e.get("size") or 0)
-        for e in entries
-    )
-
-    # 3. Build the cache layout directories.
-    cache_root = _hf_cache_root()
-    repo_dir = cache_root / ("models--" + repo_id.replace("/", "--"))
-    blobs_dir = repo_dir / "blobs"
-    snapshot_dir = repo_dir / "snapshots" / commit_sha
-    refs_dir = repo_dir / "refs"
-    blobs_dir.mkdir(parents=True, exist_ok=True)
-    snapshot_dir.mkdir(parents=True, exist_ok=True)
-    refs_dir.mkdir(parents=True, exist_ok=True)
-
-    state.job_update(
-        job_id, phase="downloading", bytes_total=total_bytes,
-        bytes_downloaded=0, current_file=repo_id,
-    )
-
-    cumulative = 0
-    for entry in entries:
-        if _is_cancelled(job_id):
-            raise _Cancelled()
-        path = entry["path"]
-        lfs = entry.get("lfs") or {}
-        # Blob filename = LFS sha256 (preferred for weights) or git oid.
-        oid = lfs.get("oid") or entry["oid"]
-        size = int(lfs.get("size") or entry.get("size") or 0)
-        blob = blobs_dir / oid
-        snapshot_file = snapshot_dir / path
-        snapshot_file.parent.mkdir(parents=True, exist_ok=True)
-
-        if not blob.exists() or blob.stat().st_size != size:
-            # If a previous attempt left a partial of a different size,
-            # re-stream over it. _stream_download truncates the dest.
-            file_url = f"{api_base}/{repo_id}/resolve/{revision}/{path}"
-            state.job_update(job_id, current_file=path)
-            base = cumulative
-            _stream_download(
-                file_url, blob,
-                on_progress=lambda n, _base=base: state.job_update(
-                    job_id, bytes_downloaded=_base + n,
-                ),
-                cancel_check=lambda: _is_cancelled(job_id),
-            )
-
-        # Link snapshot/<path> → blob. Relative symlink so the cache dir
-        # is movable; on Windows without symlink privilege we fall back
-        # to a copy (huggingface_hub does the same).
-        if not snapshot_file.exists():
-            try:
-                rel_blob = os.path.relpath(blob, snapshot_file.parent)
-                snapshot_file.symlink_to(rel_blob)
-            except (OSError, NotImplementedError):
-                shutil.copy2(blob, snapshot_file)
-
-        cumulative += size
-        state.job_update(job_id, bytes_downloaded=cumulative)
-
-    # 4. Pin the snapshot under refs/<revision> so the lib's resolver
-    #    can map "main" → commit_sha next time it probes the cache.
-    (refs_dir / revision).write_text(commit_sha)
-
-
-def _hf_cache_root() -> Path:
-    """HF hub cache root — matches huggingface_hub's resolution order
-    (HF_HUB_CACHE → $HF_HOME/hub → ~/.cache/huggingface/hub) without
-    importing the library. Mirrors hf_cache.hf_cache_dir; kept local
-    so installer doesn't pull the hf_cache module's other helpers.
-    """
-    env = os.environ.get("HF_HUB_CACHE")
-    if env:
-        return Path(env)
-    home = os.environ.get("HF_HOME")
-    if home:
-        return Path(home) / "hub"
-    return Path.home() / ".cache" / "huggingface" / "hub"
+# `_hf_snapshot_to` + `_hf_cache_root` died 2026-08-14 (phase 2, plan doc
+# sec 12): they wrote the HF hub-cache layout (blobs + symlink-or-copy
+# snapshots) - the machinery the WinError-1314 class lived in. Speech
+# fetches now land as PLAIN files via speech_cache.fetch_hf_variant.
 
 
 def _url_stream_to(

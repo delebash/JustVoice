@@ -54,7 +54,8 @@ class WhisperSTT(EmbeddedEngine):
         self._device = None
         self._variant = None
 
-    def load(self, device: str = "auto", variant: str | None = None) -> None:
+    def load(self, device: str = "auto", variant: str | None = None,
+             model_dir: str | None = None) -> None:
         if variant and variant not in WHISPER_VARIANT_REPOS:
             raise RuntimeError(
                 f"whisper: unknown variant {variant!r}; valid: {sorted(WHISPER_VARIANT_REPOS)}"
@@ -67,7 +68,9 @@ class WhisperSTT(EmbeddedEngine):
         device = self.pick_device(device)
         self._device = device
         self._variant = variant or DEFAULT_VARIANT
-        repo = WHISPER_VARIANT_REPOS[self._variant]
+        # Phase ②: a host-provided local dir (the speech cache) beats the
+        # repo id — transformers loads plain local files, zero network.
+        repo = model_dir or WHISPER_VARIANT_REPOS[self._variant]
         log.info("loading Whisper %s (%s) on %s …", self._variant, repo, device)
 
         from transformers import WhisperForConditionalGeneration, WhisperProcessor

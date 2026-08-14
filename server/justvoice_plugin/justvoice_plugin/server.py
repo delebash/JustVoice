@@ -37,6 +37,10 @@ log = logging.getLogger("justvoice_plugin.server")
 class LoadBody(BaseModel):
     device: str = "auto"
     variant: str | None = None
+    # Phase ② (2026-08-14): the host passes the variant's LOCAL model dir
+    # (the speech cache) so the engine loads plain files and never touches
+    # the network. None = load the engine's legacy way (HF cache / repo id).
+    model_dir: str | None = None
 
 
 class SynthBody(BaseModel):
@@ -103,7 +107,16 @@ def make_app(engine: EmbeddedEngine) -> FastAPI:
     @app.post("/load")
     async def load(body: LoadBody):
         try:
-            await asyncio.to_thread(engine.load, body.device, body.variant)
+            # Signature-aware: engines that predate the model_dir parameter
+            # (custom adapters) still load — they just resolve their own
+            # model source as before.
+            import inspect
+
+            kwargs: dict[str, Any] = {}
+            if body.model_dir and "model_dir" in inspect.signature(engine.load).parameters:
+                kwargs["model_dir"] = body.model_dir
+            await asyncio.to_thread(
+                lambda: engine.load(body.device, body.variant, **kwargs))
             engine._loaded = True
         except Exception as e:
             log.exception("engine load failed")
