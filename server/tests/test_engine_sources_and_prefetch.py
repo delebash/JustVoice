@@ -125,7 +125,10 @@ def test_resolve_source_honors_operator_override(client, app):
     variant_id = r0["variants"][0]["variant_id"]
     eff_before, prov_before = resolve_source("chatterbox", variant_id)
     assert prov_before == "manifest"
-    assert eff_before["url"]
+    # Phase ②c: manifest sources are real repo rows with pinned file lists —
+    # the old fake resolve-URL surface is gone.
+    assert eff_before["hf_repo"] == "ResembleAI/chatterbox"
+    assert eff_before["files"], "the manifest pin list must ride resolve_source"
 
     client.put(
         f"/v1/engines/chatterbox/sources/{variant_id}",

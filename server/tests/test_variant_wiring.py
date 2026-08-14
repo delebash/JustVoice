@@ -49,8 +49,8 @@ def test_qwen3_catalog_repos_match_engine_repos() -> None:
     engine_mod = _load_engine_module("qwen3")
     for v in models_for("qwen3"):
         expected = engine_mod.QWEN_VARIANT_REPOS[v.id]
-        assert expected in v.files[0].url, (
-            f"catalog variant {v.id} points at {v.files[0].url}, engine loads {expected}"
+        assert v.hf_repo == expected, (
+            f"catalog variant {v.id} points at {v.hf_repo}, engine loads {expected}"
         )
 
 
@@ -61,9 +61,8 @@ def test_chatterbox_catalog_has_only_verified_variants() -> None:
     # The two real upstream variants; "chatterbox-original-v1" was an
     # unverified placeholder removed by the parity audit.
     assert ids == {"chatterbox-multilingual-v2", "chatterbox-turbo-v1"}
-    repos = {v.files[0].url for v in models_for("chatterbox")}
-    assert any("ResembleAI/chatterbox/" in r for r in repos)
-    assert any("ResembleAI/chatterbox-turbo/" in r for r in repos)
+    repos = {v.hf_repo for v in models_for("chatterbox")}
+    assert repos == {"ResembleAI/chatterbox", "ResembleAI/chatterbox-turbo"}
 
 
 def test_manifest_default_variants_exist_in_catalog() -> None:
@@ -94,7 +93,7 @@ def test_whisper_catalog_ids_match_engine_map() -> None:
     catalog_ids = {v.id for v in models_for("whisper")}
     assert catalog_ids == set(engine_mod.WHISPER_VARIANT_REPOS)
     for v in models_for("whisper"):
-        assert engine_mod.WHISPER_VARIANT_REPOS[v.id] in v.files[0].url
+        assert v.hf_repo == engine_mod.WHISPER_VARIANT_REPOS[v.id]
     assert engine_mod.DEFAULT_VARIANT in engine_mod.WHISPER_VARIANT_REPOS
 
 

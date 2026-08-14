@@ -1,288 +1,72 @@
-"""Per-engine model variants — installable model files with URLs, sizes,
-languages, quality scores. No memory numbers live here (2026-08-14, the
-measured redesign's second rethink): the per-variant ``vram_mb`` column was
-scaffold-invented conclusion-stating — memory comes from MEASUREMENT at load
-time, and this catalog states download facts only.
+# SPDX-License-Identifier: MIT
+"""The speech model catalog — a READER over the engine manifests.
 
-Mirrors the Rust ``engines::model_catalog``. URLs use HuggingFace
-``/resolve/main/`` for sidecar engines (HF cache handles the actual
-download via ``from_pretrained`` on first load) and direct GitHub
-release tarballs for Kokoro.
-"""
+Phase ②c of the 2026-08-13 redesign (plan doc §12): each engine's
+``manifest.py`` carries facts-only ``VARIANTS`` rows — id, name, languages,
+per-variant capabilities (cloning first-class), weights license, and pinned
+``sources`` (repo + revision + verified file list + real summed bytes, or a
+release-tarball URL). This module just projects those rows onto the wire
+shape. The old hand-typed per-engine nests died here: they duplicated the
+manifests, pointed four engines at repos that never existed (the dia-2-2b
+and moss-tts-v1.5 rows were pure fiction; tada's and luxtts's rows named
+wrong repos), carried invented ``vram_mb``/size numbers, and shipped
+placeholder ``ModelFile`` rows with fake URLs and TODO sha256 strings.
+
+No memory numbers live here — a variant's footprint is MEASURED at load
+time (the §10 amended currency)."""
 
 from __future__ import annotations
 
-from ..models import ModelFile, ModelVariant
+from typing import Any
+
+from ..models import ModelVariant
+
+
+def _variant_rows(engine_id: str) -> list[dict[str, Any]]:
+    from .manager import get_manager
+
+    m = get_manager().get_manifest(engine_id)
+    rows = getattr(m.module, "VARIANTS", None) if m else None
+    return list(rows) if rows else []
 
 
 def models_for(engine_id: str) -> list[ModelVariant]:
-    match engine_id:
-        case "kokoro":
-            return _kokoro_variants()
-        case "qwen3":
-            return _qwen3_variants()
-        case "chatterbox":
-            return _chatterbox_variants()
-        case "luxtts":
-            return _luxtts_variants()
-        case "tada":
-            return _tada_variants()
-        case "dia":
-            return _dia_variants()
-        case "moss-tts":
-            return _moss_tts_variants()
-        case "whisper":
-            return _whisper_variants()
-        case _:
-            return []
+    out: list[ModelVariant] = []
+    for r in _variant_rows(engine_id):
+        sources = r.get("sources") or []
+        size = sum(int(s.get("size_bytes") or 0) for s in sources)
+        out.append(ModelVariant(
+            id=r["id"],
+            name=r.get("name", r["id"]),
+            description=r.get("description", ""),
+            size_mb=size // (1024 * 1024),
+            quality=int(r.get("quality") or 0),
+            languages=list(r.get("languages") or []),
+            voice_cloning=r.get("voice_cloning"),
+            preset_voices=r.get("preset_voices"),
+            weights_license=r.get("weights_license", ""),
+            hf_repo=next((s.get("hf_repo") for s in sources if s.get("hf_repo")), None),
+            url=next((s.get("url") for s in sources if s.get("url")), None),
+        ))
+    return out
 
 
-def _hf_placeholder(repo: str, size_mb: int) -> ModelFile:
-    """Marker for sidecar engines — actual download is via HF cache on load."""
-    return ModelFile(
-        url=f"https://huggingface.co/{repo}/resolve/main/model.safetensors",
-        sha256="TODO_FILL_SHA256_FROM_HF",
-        target_path="model.safetensors",
-        size_bytes=size_mb * 1024 * 1024,
-    )
-
-
-def _whisper_variants() -> list[ModelVariant]:
-    # Five sizes matching upstream voicebox's Models tab; ids match the
-    # engine's WHISPER_VARIANT_REPOS map (test_variant_wiring pins this).
-    sizes = [
-        ("whisper-base", "Whisper Base (74M)", "openai/whisper-base", 290, 1000, 55),
-        ("whisper-small", "Whisper Small (244M)", "openai/whisper-small", 970, 2000, 70),
-        ("whisper-medium", "Whisper Medium (769M)", "openai/whisper-medium", 3100, 5000, 82),
-        ("whisper-large", "Whisper Large v3 (1.5B)", "openai/whisper-large-v3", 6200, 10000, 95),
-        ("whisper-turbo", "Whisper Large v3 Turbo", "openai/whisper-large-v3-turbo", 3200, 6000, 92),
-    ]
-    return [
-        ModelVariant(
-            id=vid,
-            name=name,
-            description=(
-                "Recommended — large-v3 accuracy at ~6× the speed."
-                if vid == "whisper-turbo"
-                else "Speech-to-text checkpoint; bigger = more accurate, slower."
-            ),
-            size_mb=size,
-            quality=quality,
-            languages=["multilingual"],
-            files=[_hf_placeholder(repo, size)],
-        )
-        for vid, name, repo, size, vram, quality in sizes
-    ]
-
-
-def _kokoro_variants() -> list[ModelVariant]:
-    return [
-        ModelVariant(
-            id="kokoro-multi-lang-v1_0",
-            name="Kokoro v1.0 multilingual",
-            description=(
-                "All 54 voices across 8 languages (English, Japanese, Mandarin, "
-                "Spanish, French, Hindi, Italian, Portuguese). Canonical Kokoro "
-                "model from k2-fsa's sherpa-onnx releases."
-            ),
-            size_mb=700,
-            quality=95,
-            languages=[
-                "en-US", "en-GB", "ja", "zh", "es", "fr", "hi", "it", "pt-BR",
-            ],
-            files=[
-                ModelFile(
-                    url="https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2",
-                    sha256="TODO_FILL_SHA256_FROM_RELEASE",
-                    target_path=".bundle.tar.bz2",
-                    size_bytes=700 * 1024 * 1024,
-                )
-            ],
-        ),
-        ModelVariant(
-            id="kokoro-en-v0_19",
-            name="Kokoro v0.19 English-only",
-            description=(
-                "English voices only (American + British). Smaller download (~330 MB) "
-                "for users who don't need multilingual."
-            ),
-            size_mb=330,
-            quality=92,
-            languages=["en-US", "en-GB"],
-            files=[
-                ModelFile(
-                    url="https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-en-v0_19.tar.bz2",
-                    sha256="TODO_FILL_SHA256_FROM_RELEASE",
-                    target_path=".bundle.tar.bz2",
-                    size_bytes=330 * 1024 * 1024,
-                )
-            ],
-        ),
-    ]
-
-
-_QWEN_LANGS = [
-    "en", "zh", "ja", "es", "fr", "de", "ko", "it", "pt-BR", "ru", "ar",
-    "tr", "nl", "pl", "vi", "th", "id",
-]
-
-
-def _qwen3_variants() -> list[ModelVariant]:
-    # Repo ids verified against voicebox's backends at the pin
-    # (QWEN_CV_HF_REPOS + pytorch_backend Base repos) — the engine's
-    # QWEN_VARIANT_REPOS map uses the same ids.
-    return [
-        ModelVariant(
-            id="qwen3-cv-1.7b",
-            name="Qwen3-TTS CustomVoice 1.7B",
-            description="9 preset speakers + instruct style control + cloning. Full feature set.",
-            size_mb=3500,
-            quality=92,
-            languages=_QWEN_LANGS,
-            files=[_hf_placeholder("Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice", 3500)],
-        ),
-        ModelVariant(
-            id="qwen3-cv-0.6b",
-            name="Qwen3-TTS CustomVoice 0.6B",
-            description="Same feature set, lower quality ceiling, ~half VRAM, ~3× faster.",
-            size_mb=1200,
-            quality=80,
-            languages=_QWEN_LANGS,
-            files=[_hf_placeholder("Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice", 1200)],
-        ),
-        ModelVariant(
-            id="qwen3-base-1.7b",
-            name="Qwen3-TTS Base 1.7B (clone-only)",
-            description="Voice-cloning checkpoint — no preset speakers; drops instruct silently.",
-            size_mb=3500,
-            quality=90,
-            languages=_QWEN_LANGS,
-            files=[_hf_placeholder("Qwen/Qwen3-TTS-12Hz-1.7B-Base", 3500)],
-        ),
-        ModelVariant(
-            id="qwen3-base-0.6b",
-            name="Qwen3-TTS Base 0.6B (clone-only)",
-            description="Lightweight cloning checkpoint for lower-end hardware.",
-            size_mb=1200,
-            quality=78,
-            languages=_QWEN_LANGS,
-            files=[_hf_placeholder("Qwen/Qwen3-TTS-12Hz-0.6B-Base", 1200)],
-        ),
-    ]
-
-
-def _chatterbox_variants() -> list[ModelVariant]:
-    # Two real variants, verified against voicebox's per-variant backends at
-    # the pin: Multilingual lives in ResembleAI/chatterbox (mtl_tts class),
-    # Turbo in ResembleAI/chatterbox-turbo (tts_turbo class). The previously
-    # listed "Original (English)" variant and the "ResembleAI/
-    # chatterbox-multilingual" repo were unverified placeholders — dropped.
-    return [
-        ModelVariant(
-            id="chatterbox-multilingual-v2",
-            name="Chatterbox Multilingual v2 (500M, 23 langs)",
-            description="500M-param multilingual covering 23 languages via the request's `language` field. Emotion exaggeration + CFG controls.",
-            size_mb=2800,
-            quality=88,
-            languages=[
-                "ar", "da", "de", "el", "en", "es", "fi", "fr", "he", "hi",
-                "it", "ja", "ko", "ms", "nl", "no", "pl", "pt", "ru", "sv",
-                "sw", "tr", "zh",
-            ],
-            files=[_hf_placeholder("ResembleAI/chatterbox", 2800)],
-        ),
-        ModelVariant(
-            id="chatterbox-turbo-v1",
-            name="Chatterbox Turbo (350M, English)",
-            description="Streamlined English-only variant. Native paralinguistic tags ([cough], [laugh], [chuckle]). Lower latency; no exaggeration/CFG knobs.",
-            size_mb=2200,
-            quality=82,
-            languages=["en"],
-            files=[_hf_placeholder("ResembleAI/chatterbox-turbo", 2200)],
-        ),
-    ]
-
-
-def _luxtts_variants() -> list[ModelVariant]:
-    return [
-        ModelVariant(
-            id="luxtts-base",
-            name="LuxTTS",
-            description="Multilingual TTS, lighter footprint, broad language coverage.",
-            size_mb=1200,
-            quality=80,
-            languages=["en", "es", "fr", "de", "it", "ja", "zh"],
-            files=[_hf_placeholder("luxtts/luxtts-base", 1200)],
-        )
-    ]
-
-
-def _tada_variants() -> list[ModelVariant]:
-    return [
-        ModelVariant(
-            id="tada-1b",
-            name="TADA 1B",
-            description="Hume's TADA 1B — voice cloning + multilingual presets.",
-            size_mb=4000,
-            quality=85,
-            languages=["en", "es", "fr", "de", "it"],
-            files=[_hf_placeholder("hume/tada-1b", 4000)],
-        ),
-        ModelVariant(
-            id="tada-3b",
-            name="TADA 3B",
-            description="Hume's TADA 3B — highest TADA quality.",
-            size_mb=12000,
-            quality=92,
-            languages=["en", "es", "fr", "de", "it"],
-            files=[_hf_placeholder("hume/tada-3b", 12000)],
-        ),
-    ]
-
-
-def _dia_variants() -> list[ModelVariant]:
-    return [
-        ModelVariant(
-            id="dia-1.6b",
-            name="Dia 1.6B",
-            description="Multi-speaker single-pass dialogue.",
-            size_mb=3500,
-            quality=85,
-            languages=["en"],
-            files=[_hf_placeholder("nari-labs/dia-1.6b", 3500)],
-        ),
-        ModelVariant(
-            id="dia-2-2b",
-            name="Dia 2-2B",
-            description="Higher-quality multi-speaker dialogue.",
-            size_mb=5500,
-            quality=92,
-            languages=["en"],
-            files=[_hf_placeholder("nari-labs/dia-2-2b", 5500)],
-        ),
-    ]
-
-
-def _moss_tts_variants() -> list[ModelVariant]:
-    return [
-        ModelVariant(
-            id="moss-tts-v1.5",
-            name="MOSS-TTS v1.5",
-            description="MOSS-TTS — 1-hour stable single-pass generation.",
-            size_mb=12000,
-            quality=90,
-            languages=["en", "zh"],
-            files=[_hf_placeholder("moss-llm/moss-tts-v1.5", 12000)],
-        )
-    ]
+def sources_for(engine_id: str, variant_id: str) -> list[dict[str, Any]]:
+    """The variant's verified source rows — the download spec the sources
+    layer and the speech-cache fetch consume verbatim (multi-source
+    variants, e.g. TADA's codec+model+tokenizer, keep every row)."""
+    for r in _variant_rows(engine_id):
+        if r.get("id") == variant_id:
+            return [dict(s) for s in (r.get("sources") or [])]
+    return []
 
 
 def default_variant_for(engine_id: str) -> ModelVariant | None:
-    """The variant a no-choice install fetches. Replaces the dead
-    `recommend_for_vram` picker (2026-08-14): that ranked variants by
-    scaffold-invented `vram_mb` conclusions — this resolves the manager's
-    default (user override → manifest DEFAULT_VARIANT_ID → on-disk → first),
-    else the smallest download."""
+    """The variant a no-choice install fetches: the manager's resolved
+    default (user override → manifest DEFAULT_VARIANT_ID → on-disk →
+    first), else the smallest download. (Replaced the dead
+    `recommend_for_vram` picker on 2026-08-14 — that ranked variants by
+    scaffold-invented vram_mb conclusions.)"""
     variants = models_for(engine_id)
     if not variants:
         return None

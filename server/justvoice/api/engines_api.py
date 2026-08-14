@@ -82,7 +82,6 @@ def _info_from_manifest(manifest: EngineManifest, status: str) -> EngineInfo:
         backend="managed",
         capabilities=feature_list,
         prerequisites=Prerequisites(
-            disk_space_mb=int(req.get("disk_space_mb", 0) or 0),
             gpu_runtimes=runtimes,
             rust_native=False,
             sidecar=False,

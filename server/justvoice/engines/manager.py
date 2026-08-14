@@ -253,10 +253,6 @@ class EngineManifest:
         return getattr(self.module, "INSTALL", [])
 
     @property
-    def models(self) -> list[dict[str, Any]]:
-        return getattr(self.module, "MODELS", [])
-
-    @property
     def static_voices(self) -> list[dict[str, Any]]:
         """Voices the engine ships statically — exposed to the host catalog
         even when the engine subprocess isn't loaded. Cloning-based engines
@@ -1682,11 +1678,12 @@ class EngineManager:
                     progress("downloading-model",
                              f"{variant_id}: {pct}% of {total // (1024 * 1024)} MB")
 
+        sources = src.get("sources") or [{
+            "hf_repo": repo, "revision": src.get("hf_revision"),
+            "files": src.get("files")}]
         try:
             speech_cache.fetch_hf_variant(
-                data_dir, m.id, variant_id,
-                [{"hf_repo": repo, "revision": src.get("hf_revision"),
-                  "files": src.get("files")}],
+                data_dir, m.id, variant_id, sources,
                 on_progress=_prog,
                 cancel_check=(lambda: bool(cancel_check())) if cancel_check else None,
             )

@@ -3,9 +3,9 @@
 
 CLAUDE.md project rule: "No hardcoded operator-tunable values — every
 knob lives in settings.json + reachable via PATCH /v1/settings". Engine
-model URLs / HF repos live in each engine's manifest.MODELS as
-*defaults*, and this surface lets the operator override them per
-variant without editing code (e.g. if k2-fsa moves kokoro's release
+model repos/URLs live in each engine's manifest VARIANTS rows as verified
+*defaults* (phase ②c), and this surface lets the operator override them
+per variant without editing code (e.g. if k2-fsa moves kokoro's release
 tarball, or if the user wants to point Chatterbox at a fork).
 
 Endpoints:
@@ -75,43 +75,22 @@ def _catalog_variant(engine_id: str, variant_id: str) -> ModelVariant | None:
     return None
 
 
-def _hf_from_url(url: str | None) -> tuple[str | None, str | None]:
-    """Recognise a huggingface.co URL and pull out (repo_id, revision).
+def _default_source_for(engine_id: str, variant: ModelVariant) -> dict[str, Any]:
+    """The manifest's VERIFIED source rows (phase ②c, plan doc §12): the
+    first source drives the single-source wire fields; the FULL list rides
+    `sources` so multi-repo variants (TADA: codec + model + tokenizer
+    mirror) download completely. `files` is the pinned per-file list the
+    speech-cache fetch resolves verbatim — a missing name fails loud."""
+    from ..engines.model_catalog import sources_for
 
-    Catalog entries store direct file URLs like
-        https://huggingface.co/<owner>/<repo>/resolve/<rev>/<path...>
-    The unified Download contract wants to fetch the WHOLE repo
-    (snapshot_download), not just one file, so we promote any
-    huggingface.co URL to an hf_repo for downstream resolution.
-    """
-    if not url:
-        return None, None
-    import re
-
-    m = re.match(
-        r"https?://huggingface\.co/([^/]+)/([^/]+)/resolve/([^/]+)(?:/.*)?$", url
-    )
-    if not m:
-        return None, None
-    owner, repo, rev = m.group(1), m.group(2), m.group(3)
-    return f"{owner}/{repo}", (rev if rev not in ("main", "master") else None)
-
-
-def _default_source_for(variant: ModelVariant) -> dict[str, Any]:
-    """Pull the canonical default URL / HF repo from a catalog entry.
-
-    Catalog entries store direct file URLs. For huggingface.co URLs we
-    surface BOTH the URL (operator-readable) AND the derived hf_repo +
-    revision (so the worker uses snapshot_download to pull the whole
-    repo, not a single file). URL-tarball engines (kokoro → github.com)
-    just surface the URL.
-    """
-    url = variant.files[0].url if variant.files else None
-    hf_repo, hf_revision = _hf_from_url(url)
+    sources = sources_for(engine_id, variant.id)
+    first = sources[0] if sources else {}
     return {
-        "url": url,
-        "hf_repo": hf_repo,
-        "hf_revision": hf_revision,
+        "url": first.get("url"),
+        "hf_repo": first.get("hf_repo"),
+        "hf_revision": first.get("revision"),
+        "files": first.get("files"),
+        "sources": sources or None,
         "size_mb": variant.size_mb,
         "name": variant.name,
     }
@@ -120,15 +99,20 @@ def _default_source_for(variant: ModelVariant) -> dict[str, Any]:
 def resolve_source(engine_id: str, variant_id: str) -> tuple[dict[str, Any], str]:
     """Resolve the effective download source for (engine, variant).
 
-    Returns ({url?, hf_repo?, hf_revision?, size_mb?, name?},
-            "manifest" | "override").
+    Returns ({url?, hf_repo?, hf_revision?, files?, sources?, size_mb?,
+    name?}, "manifest" | "override"). `sources` is the manifest's full
+    verified multi-source list (phase ②c); an operator OVERRIDE replaces
+    the whole spec with its single repo/url and carries no pinned files —
+    the fetch then takes the override repo's whole tree (the operator
+    pointed at a fork; its file list is theirs).
 
-    Used by the prefetch worker (S1) and by GET /sources for the UI.
+    Used by the prefetch worker (S1), the load door's acquisition, and
+    GET /sources for the UI.
     """
     variant = _catalog_variant(engine_id, variant_id)
-    default = _default_source_for(variant) if variant else {
+    default = _default_source_for(engine_id, variant) if variant else {
         "url": None, "hf_repo": None, "hf_revision": None,
-        "size_mb": None, "name": variant_id,
+        "files": None, "sources": None, "size_mb": None, "name": variant_id,
     }
 
     settings = get_state().settings.get()
@@ -139,6 +123,8 @@ def resolve_source(engine_id: str, variant_id: str) -> tuple[dict[str, Any], str
             "url": override.url,
             "hf_repo": override.hf_repo,
             "hf_revision": override.hf_revision,
+            "files": None,
+            "sources": None,
             "size_mb": default["size_mb"],
             "name": default["name"],
         }

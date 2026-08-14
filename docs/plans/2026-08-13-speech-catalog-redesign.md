@@ -505,15 +505,17 @@ pricing (29 green with the activity guard). Gates: kit ruff + 858; JV ruff
 ## 12. PHASE ② BUILD DESIGN (2026-08-14, under the standing go — recorded
 ## before code, grounded in the tree)
 
-**STATUS: ②a + ②b BUILT 2026-08-14** (same session; the JV tracker's
-convergence item carries the as-built inventory): the speech cache +
-kit-downloader fetch path is wired end to end (prefetch AND the load
-door's fetch-before-spawn), `_hf_snapshot_to`'s symlink machinery is
-deleted, the SDK is v0.2.0 with `/load model_dir` + spawn-time
-auto-refresh of stale venv installs, and all 8 engines carry local load
-doors with their legacy branches intact for pre-② installs. ②c
-(facts-only VARIANTS manifests from the verified web facts below +
-model_catalog as a reader + resolve_source files) remains.
+**STATUS: PHASE ② BUILT IN FULL 2026-08-14** (same session; the JV
+tracker's convergence item carries the as-built inventory per slice):
+②a the speech cache + kit-downloader fetch path wired end to end
+(prefetch AND the load door's fetch-before-spawn; `_hf_snapshot_to`'s
+symlink machinery deleted); ②b the SDK at v0.2.0 (`/load model_dir`,
+spawn-time auto-refresh of stale venv installs) with all 8 engines
+carrying local load doors and legacy branches intact for pre-②
+installs; ②c facts-only VARIANTS in every manifest (pinned verified
+sources below), model_catalog reduced to a reader, resolve_source
+serving the pinned files + full multi-source lists, `disk_space_mb`
+excised, MOSS renamed to the real MOSS-TTSD v0.
 
 Ground truths that shaped the slices (all code-verified this session):
 the host ALREADY has a plain-HTTPS HF fetcher (`installer._hf_snapshot_to`,

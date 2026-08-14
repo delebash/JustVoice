@@ -643,7 +643,6 @@ class Prerequisites(BaseModel):
     rust_feature: str | None = None
     rust_native: bool = False
     sidecar: bool = False
-    disk_space_mb: int = 0
     model_files_needed: list[str] = []
     gpu_runtimes: list[str] = []
 
@@ -890,15 +889,27 @@ class ModelFile(BaseModel):
 class ModelVariant(BaseModel):
     # No vram_mb here (2026-08-14, the measured redesign): a variant's memory
     # footprint is MEASURED at load time, never declared in a catalog row.
+    # size_mb is the DOWNLOAD size — the sum of the manifest's pinned real
+    # file sizes (phase ②c), never hand-typed.
     id: str
     name: str
     description: str
     size_mb: int
     quality: int
     languages: list[str]
+    # Per-variant capability facts (the §4 cloning-distinction ruling —
+    # phase ③'s chips read these). None = the manifest doesn't say.
+    voice_cloning: bool | None = None
+    preset_voices: int | None = None
+    weights_license: str = ""
+    # The primary source, for "View on Hugging Face" / provenance display.
+    hf_repo: str | None = None
+    url: str | None = None
+    # Legacy field — the dormant non-managed install path reads it; managed
+    # variants emit [] (the placeholder rows with fake URLs died in ②c).
     files: list[ModelFile] = []
-    # Engines redesign: weights present in the local HF cache. None =
-    # unknown (non-HF distribution, e.g. Kokoro's GitHub tarballs).
+    # Engines redesign: weights present locally (speech cache first, then a
+    # legacy HF-cache install). None = unknown.
     on_disk: bool | None = None
 
 

@@ -604,11 +604,15 @@ def spawn_prefetch(
         try:
             if is_hf:
                 state.job_update(job_id, phase="connecting")
+                # The manifest's full multi-source spec when present (TADA:
+                # codec + model + tokenizer); an operator override carries a
+                # single repo and no pinned files → its whole tree.
+                sources = source.get("sources") or [{
+                    "hf_repo": source["hf_repo"],
+                    "revision": source.get("hf_revision"),
+                    "files": source.get("files")}]
                 speech_cache.fetch_hf_variant(
-                    state.data_dir, engine_id, variant_id,
-                    [{"hf_repo": source["hf_repo"],
-                      "revision": source.get("hf_revision"),
-                      "files": source.get("files")}],
+                    state.data_dir, engine_id, variant_id, sources,
                     on_progress=lambda done, tot: state.job_update(
                         job_id, phase="downloading",
                         bytes_downloaded=done, bytes_total=tot,

@@ -44,7 +44,6 @@ CAPABILITIES = {
 }
 
 REQUIREMENTS = {
-    "disk_space_mb": 6000,
     "gpu_runtimes": ["cuda", "cpu"],
 }
 
@@ -69,9 +68,75 @@ INSTALL = [
     {"kind": "pip-no-deps", "packages": ["hume-tada"]},
 ]
 
-MODELS = [
-    {"hf_repo": "HumeAI/tada-3b-ml", "size_mb": 4500},
-    {"hf_repo": "HumeAI/tada-codec", "size_mb": 800},
+# Facts-only variant row (phase ②c): ONE variant, THREE pinned sources —
+# the model repo, the codec repo (per-language aligners included: the
+# engine's own loader takes the whole set), and the ungated Llama tokenizer
+# mirror engine.py redirects TADA to. Real summed bytes verified 2026-08-14
+# (19.6 GB total — the old "4500 + 800 MB" claims were invented). The old
+# catalog's "hume/tada-1b" / "hume/tada-3b" repos never existed.
+VARIANTS = [
+    {
+        "id": "tada-3b",
+        "name": "TADA 3B Multilingual",
+        "description": (
+            "Voice cloning via forced alignment + flow-matching diffusion; "
+            "long-form coherent. 24 kHz output."
+        ),
+        "languages": ["en", "ar", "de", "es", "fr", "it", "ja", "pl", "pt", "zh"],
+        "voice_cloning": True,
+        "preset_voices": 0,
+        "quality": 85,
+        "weights_license": "Llama-3.2-Community",
+        "sources": [
+            {
+                "hf_repo": "HumeAI/tada-3b-ml",
+                "revision": "main",
+                "size_bytes": 8_866_865_866,
+                "files": [
+                    "LICENSE", "config.json", "generation_config.json",
+                    "model-00001-of-00002.safetensors",
+                    "model-00002-of-00002.safetensors",
+                    "model.safetensors.index.json",
+                ],
+            },
+            {
+                "hf_repo": "HumeAI/tada-codec",
+                "revision": "main",
+                "size_bytes": 10_724_500_733,
+                # The whole codec tree minus README/.gitattributes — the
+                # engine's own snapshot patterns take all of it (encoder,
+                # decoder, llama_decoder, spkr-verf, and the per-language
+                # aligners).
+                "files": [
+                    "aligner-ar/config.json", "aligner-ar/model.safetensors",
+                    "aligner-ch/config.json", "aligner-ch/model.safetensors",
+                    "aligner-de/config.json", "aligner-de/model.safetensors",
+                    "aligner-es/config.json", "aligner-es/model.safetensors",
+                    "aligner-fr/config.json", "aligner-fr/model.safetensors",
+                    "aligner-it/config.json", "aligner-it/model.safetensors",
+                    "aligner-ja/config.json", "aligner-ja/model.safetensors",
+                    "aligner-pl/config.json", "aligner-pl/model.safetensors",
+                    "aligner-pt/config.json", "aligner-pt/model.safetensors",
+                    "aligner/config.json", "aligner/model.safetensors",
+                    "decoder/config.json", "decoder/model.safetensors",
+                    "encoder/config.json", "encoder/model.safetensors",
+                    "llama_decoder/config.json",
+                    "llama_decoder/generation_config.json",
+                    "llama_decoder/model.safetensors",
+                    "spkr-verf/config.json", "spkr-verf/model.safetensors",
+                ],
+            },
+            {
+                "hf_repo": "unsloth/Llama-3.2-1B",
+                "revision": "main",
+                "size_bytes": 17_261_020,
+                "files": [
+                    "special_tokens_map.json", "tokenizer.json",
+                    "tokenizer_config.json",
+                ],
+            },
+        ],
+    },
 ]
 
 STATIC_VOICES = []

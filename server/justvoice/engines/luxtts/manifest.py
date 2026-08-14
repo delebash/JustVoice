@@ -15,8 +15,9 @@ NAME = "LuxTTS"
 # Single catalog variant (engine.py loads YatharthS/LuxTTS unconditionally).
 DEFAULT_VARIANT_ID = "luxtts-base"
 DESCRIPTION = (
-    "ZipVoice-based zero-shot voice cloning. ~1 GB VRAM, 48 kHz output, 150× realtime on "
-    "CPU. Lightweight alternative to the Chatterbox/Qwen3 tier."
+    "ZipVoice-based zero-shot voice cloning. 48 kHz output; upstream quotes "
+    "150× realtime. Lightweight alternative to the Chatterbox/Qwen3 tier. "
+    "English."
 )
 LICENSE = "Apache-2.0"
 
@@ -28,7 +29,6 @@ CAPABILITIES = {
 }
 
 REQUIREMENTS = {
-    "disk_space_mb": 1200,
     "gpu_runtimes": ["cuda", "cpu", "mps"],
 }
 
@@ -55,8 +55,32 @@ INSTALL = [
     {"kind": "pip-git", "url": "https://github.com/ysharma3501/LuxTTS.git"},
 ]
 
-MODELS = [
-    {"hf_repo": "YatharthS/LuxTTS", "size_mb": 1100},
+# Facts-only variant row (phase ②c): the repo the engine loads (the old
+# catalog's "luxtts/luxtts-base" repo never existed, and its 7-language
+# claim was fiction — the model card says English). Whole lean repo pinned
+# (both fp and int8 onnx variants ride along; the wrapper picks), real
+# summed bytes verified 2026-08-14.
+VARIANTS = [
+    {
+        "id": "luxtts-base",
+        "name": "LuxTTS",
+        "description": "ZipVoice-based cloning — 48 kHz output, fast on CPU.",
+        "languages": ["en"],
+        "voice_cloning": True,
+        "preset_voices": 0,
+        "quality": 80,
+        "weights_license": "Apache-2.0",
+        "sources": [{
+            "hf_repo": "YatharthS/LuxTTS",
+            "revision": "main",
+            "size_bytes": 1_180_689_290,
+            "files": [
+                "config.json", "fm_decoder.onnx", "fm_decoder_int8.onnx",
+                "model.pt", "text_encoder.onnx", "text_encoder_int8.onnx",
+                "tokens.txt", "vocoder/config.yaml", "vocoder/vocos.bin",
+            ],
+        }],
+    },
 ]
 
 STATIC_VOICES = []

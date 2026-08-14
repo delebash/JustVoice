@@ -40,7 +40,6 @@ CAPABILITIES = {
 }
 
 REQUIREMENTS = {
-    "disk_space_mb": 6000,
     "gpu_runtimes": ["cuda"],
 }
 
@@ -65,8 +64,35 @@ INSTALL = [
     {"kind": "pip-git", "url": "https://github.com/huggingface/transformers.git", "ref": "main"},
 ]
 
-MODELS = [
-    {"hf_repo": "nari-labs/Dia-1.6B-0626", "size_mb": 3200},
+# Facts-only variant row (phase ②c): ONE variant — the repo the engine
+# actually loads. The old catalog's second "dia-2-2b" row pointed at a repo
+# that does not exist and an id the engine never received: excised. The
+# pinned set is the safetensors shard pair + configs (6.4 GB of the 19.3 GB
+# repo — dia-v1.pth and pytorch_model.bin are 6.4 GB duplicates each).
+VARIANTS = [
+    {
+        "id": "dia-1.6b",
+        "name": "Dia 1.6B",
+        "description": "Multi-speaker single-pass dialogue ([S1]/[S2] tags).",
+        "languages": ["en"],
+        "voice_cloning": True,
+        "preset_voices": 1,
+        "quality": 85,
+        "weights_license": "Apache-2.0",
+        "sources": [{
+            "hf_repo": "nari-labs/Dia-1.6B-0626",
+            "revision": "main",
+            "size_bytes": 6_444_717_832,
+            "files": [
+                "audio_tokenizer_config.json", "config.json",
+                "generation_config.json",
+                "model-00001-of-00002.safetensors",
+                "model-00002-of-00002.safetensors",
+                "model.safetensors.index.json", "preprocessor_config.json",
+                "special_tokens_map.json", "tokenizer_config.json",
+            ],
+        }],
+    },
 ]
 
 # Dia is single-speaker by default (multi-speaker with [S1]/[S2] tags inside

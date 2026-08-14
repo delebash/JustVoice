@@ -8,21 +8,24 @@ JustVoice ships with 7 commercial-output-permitting TTS engines plus an external
 
 ## The catalog
 
-| Engine | Type | Size | Languages | Voice cloning | Weight license |
+| Engine | Type | Download | Languages | Voice cloning | Weight license |
 |---|---|---|---|---|---|
-| **Kokoro** | preset (54 voices) · fast on CPU | 82 MB | 8 | — | Apache-2.0 |
-| **Chatterbox Turbo** | clone + paralinguistic | 350 MB | en | ✓ | MIT |
-| **Chatterbox Multilingual** | clone | 1.2 GB | 23 | ✓ | MIT |
-| **Qwen3-TTS** | clone + designed | 1.7 GB | 10 | ✓ | Apache-2.0 |
-| **LuxTTS (ZipVoice)** | clone · 48 kHz | 1.0 GB | en | ✓ | Apache-2.0 |
-| **Hume TADA** | clone · long-form coherent | 3.2 GB | 10 | ✓ | Llama 3.2 Community (+ MIT codec) |
-| **Dia (Nari Labs)** | multi-speaker dialogue | 3.0 GB | en | — | Apache-2.0 |
-| **MossTTS** | clone | — | en + zh | ✓ (experimental) | Apache-2.0 |
+| **Kokoro** | preset (54 voices) · fast on CPU | 333 MB | 8 | — | Apache-2.0 |
+| **Chatterbox Turbo** | clone + paralinguistic | 3.0 GB | en | ✓ | MIT |
+| **Chatterbox Multilingual** | clone | 3.2 GB | 23 | ✓ | MIT |
+| **Qwen3-TTS** | clone + designed | 2.5–4.5 GB | 17 | ✓ | Apache-2.0 |
+| **LuxTTS (ZipVoice)** | clone · 48 kHz | 1.2 GB | en | ✓ | Apache-2.0 |
+| **Hume TADA** | clone · long-form coherent | 19.6 GB | 10 | ✓ | Llama 3.2 Community (+ MIT codec) |
+| **Dia (Nari Labs)** | multi-speaker dialogue | 6.4 GB | en | — | Apache-2.0 |
+| **MOSS-TTSD** | clone · dialogue | 4.1 GB | en + zh | ✓ (experimental) | Apache-2.0 |
 | **External** (OpenAI-compatible) | HTTP | 0 MB | — | varies | depends on provider |
 
-(The old per-engine "Speed" column was cut 2026-08-14: its realtime factors
-were never measured. The honest generalisation: Kokoro is the one engine
-that is genuinely fast on CPU; the PyTorch cloning engines want a GPU.)
+(Download sizes are the SUM of each variant's pinned, verified model files
+— checked against the real repositories on 2026-08-14, replacing earlier
+hand-typed figures that were wrong for most engines. The old per-engine
+"Speed" column was cut the same day: its realtime factors were never
+measured. The honest generalisation: Kokoro is the one engine that is
+genuinely fast on CPU; the PyTorch cloning engines want a GPU.)
 
 ## Picking an engine for a use case
 

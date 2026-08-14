@@ -20,9 +20,11 @@ case MOSS won't load but other engines stay healthy).
 """
 
 ID = "moss-tts"
-NAME = "MOSS-TTS v1.5"
+# The name matches what actually loads (phase ②c): MOSS-TTSD-v0. The old
+# "MOSS-TTS v1.5" name/variant-id described a version that never existed.
+NAME = "MOSS-TTSD"
 # Single catalog variant (engine.py loads fnlp/MOSS-TTSD-v0 unconditionally).
-DEFAULT_VARIANT_ID = "moss-tts-v1.5"
+DEFAULT_VARIANT_ID = "moss-ttsd-v0"
 
 # MOSS-TTSD requires flash-attn (build deps + CUDA toolkit + long compile)
 # and isn't supported on macOS by upstream. Isolated venv keeps the
@@ -30,9 +32,10 @@ DEFAULT_VARIANT_ID = "moss-tts-v1.5"
 ISOLATION = "venv"
 SUPPORTED_OSES = ["linux", "windows"]  # macOS hidden — no flash-attn
 DESCRIPTION = (
-    "OpenMOSS MOSS-TTSD — expressive multi-speaker dialogue, 20 languages, zero-shot voice "
-    "cloning from short references. ~7 B params. EXPERIMENTAL: needs flash-attn (build "
-    "requires CUDA toolkit + VS build tools on Windows)."
+    "OpenMOSS MOSS-TTSD — expressive multi-speaker dialogue (Chinese + English), "
+    "zero-shot voice cloning from short references, long stable single-pass "
+    "generation. EXPERIMENTAL: needs flash-attn (build requires CUDA toolkit + "
+    "VS build tools on Windows)."
 )
 LICENSE = "Apache-2.0"
 
@@ -46,7 +49,6 @@ CAPABILITIES = {
 }
 
 REQUIREMENTS = {
-    "disk_space_mb": 12000,
     "gpu_runtimes": ["cuda"],
 }
 
@@ -73,8 +75,31 @@ INSTALL = [
     {"kind": "pip", "packages": ["flash-attn>=2.5; sys_platform == 'linux'"]},
 ]
 
-MODELS = [
-    {"hf_repo": "fnlp/MOSS-TTSD-v0", "size_mb": 13000},
+# Facts-only variant row (phase ②c): the canonical repo id is
+# OpenMOSS-Team/MOSS-TTSD-v0 (the fnlp/ id 307-redirects there); the old
+# catalog's "moss-llm/moss-tts-v1.5" repo never existed. Whole lean repo
+# pinned, real summed bytes (4.1 GB — the old 13,000 MB claim was invented).
+VARIANTS = [
+    {
+        "id": "moss-ttsd-v0",
+        "name": "MOSS-TTSD v0",
+        "description": "Expressive zh/en dialogue — long stable single-pass generation.",
+        "languages": ["en", "zh"],
+        "voice_cloning": True,
+        "preset_voices": 0,
+        "quality": 90,
+        "weights_license": "Apache-2.0",
+        "sources": [{
+            "hf_repo": "OpenMOSS-Team/MOSS-TTSD-v0",
+            "revision": "main",
+            "size_bytes": 4_115_408_984,
+            "files": [
+                "added_tokens.json", "config.json", "generation_config.json",
+                "merges.txt", "model.safetensors", "special_tokens_map.json",
+                "tokenizer.json", "tokenizer_config.json", "vocab.json",
+            ],
+        }],
+    },
 ]
 
 STATIC_VOICES = []

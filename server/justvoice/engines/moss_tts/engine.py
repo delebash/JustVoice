@@ -39,7 +39,7 @@ MOSS_HF_REPO = "fnlp/MOSS-TTSD-v0"
 class MossTTS(EmbeddedEngine):
     meta = EngineMeta(
         engine_id="moss-tts",
-        display_name="MOSS-TTS v1.5",
+        display_name="MOSS-TTSD",
         backend="pytorch",
         supports_cloning=True,
         supports_paralinguistic_tags=True,

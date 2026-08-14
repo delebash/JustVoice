@@ -34,7 +34,7 @@ async def list_models(id: str) -> ModelsListResponse:
     # HF cache (models/hf — the per-engine HF_HOME) still counts until it's
     # re-downloaded the new way.
     from ..app_state import get_state
-    from ..hf_cache import is_hf_repo_cached, repo_from_url
+    from ..hf_cache import is_hf_repo_cached
     from ..speech_cache import variant_on_disk
 
     st = get_state()
@@ -43,7 +43,7 @@ async def list_models(id: str) -> ModelsListResponse:
         if variant_on_disk(st.data_dir, id, v.id):
             v.on_disk = True
             continue
-        repo = repo_from_url(v.files[0].url) if v.files else None
+        repo = v.hf_repo
         if repo:
             root = manifest.models_dir / "hf" / "hub" if manifest else None
             v.on_disk = is_hf_repo_cached(repo, root=root) or is_hf_repo_cached(repo)
@@ -73,7 +73,7 @@ async def delete_model(id: str, variant_id: str) -> dict:
     from ..engines.manager import get_manager
     from ..engines.model_catalog import models_for
     from ..errors import not_found
-    from ..hf_cache import hf_cache_dir, is_hf_repo_cached, repo_from_url
+    from ..hf_cache import hf_cache_dir, is_hf_repo_cached
 
     variant = next((v for v in models_for(id) if v.id == variant_id), None)
     if variant is None:
@@ -89,7 +89,7 @@ async def delete_model(id: str, variant_id: str) -> dict:
         shutil.rmtree(vdir, ignore_errors=True)
         return {"deleted": True, "engine_id": id, "variant_id": variant_id,
                 "path": str(vdir)}
-    repo = repo_from_url(variant.files[0].url) if variant.files else None
+    repo = variant.hf_repo
     if not repo:
         # Tarball-installed engine (Kokoro): weights live in the
         # manifest's models_dir, not the HF cache — delete that instead.

@@ -30,7 +30,6 @@ CAPABILITIES = {
 }
 
 REQUIREMENTS = {
-    "disk_space_mb": 7000,
     "gpu_runtimes": ["cuda"],
 }
 
@@ -52,14 +51,47 @@ INSTALL = [
     {"kind": "pip-git", "url": "https://github.com/QwenLM/Qwen3-TTS.git"},
 ]
 
-MODELS = [
-    # All four checkpoints upstream voicebox ships (CustomVoice = presets +
-    # instruct; Base = clone-only, drops instruct). The engine's variant map
-    # in engine.py mirrors this list one-for-one.
-    {"hf_repo": "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice", "size_mb": 3500},
-    {"hf_repo": "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice", "size_mb": 1200},
-    {"hf_repo": "Qwen/Qwen3-TTS-12Hz-1.7B-Base", "size_mb": 3500},
-    {"hf_repo": "Qwen/Qwen3-TTS-12Hz-0.6B-Base", "size_mb": 1200},
+# Facts-only variant rows (phase ②c): whole-repo pins minus README /
+# .gitattributes (these trees are lean — the backbone + speech_tokenizer +
+# tokenizer set), sizes = the real summed bytes, verified 2026-08-14.
+# CustomVoice = 9 preset speakers + instruct + cloning; Base = clone-only.
+# Ids mirror the engine's QWEN_VARIANT_REPOS map one-for-one.
+_QWEN_FILES = [
+    "config.json", "generation_config.json", "merges.txt",
+    "model.safetensors", "preprocessor_config.json",
+    "speech_tokenizer/config.json", "speech_tokenizer/configuration.json",
+    "speech_tokenizer/model.safetensors",
+    "speech_tokenizer/preprocessor_config.json",
+    "tokenizer_config.json", "vocab.json",
+]
+_QWEN_LANGS = [
+    "en", "zh", "ja", "es", "fr", "de", "ko", "it", "pt-BR", "ru", "ar",
+    "tr", "nl", "pl", "vi", "th", "id",
+]
+
+def _qwen_variant(vid, name, repo, size_bytes, quality, presets, description):
+    return {
+        "id": vid, "name": name, "description": description,
+        "languages": list(_QWEN_LANGS), "voice_cloning": True,
+        "preset_voices": presets, "quality": quality,
+        "weights_license": "Apache-2.0",
+        "sources": [{"hf_repo": repo, "revision": "main",
+                     "size_bytes": size_bytes, "files": list(_QWEN_FILES)}],
+    }
+
+VARIANTS = [
+    _qwen_variant("qwen3-cv-1.7b", "Qwen3-TTS CustomVoice 1.7B",
+                  "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice", 4_520_159_586, 92, 9,
+                  "9 preset speakers + instruct style control + cloning. Full feature set."),
+    _qwen_variant("qwen3-cv-0.6b", "Qwen3-TTS CustomVoice 0.6B",
+                  "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice", 2_498_383_610, 80, 9,
+                  "Same feature set, lower quality ceiling, ~3× faster."),
+    _qwen_variant("qwen3-base-1.7b", "Qwen3-TTS Base 1.7B (clone-only)",
+                  "Qwen/Qwen3-TTS-12Hz-1.7B-Base", 4_544_170_364, 90, 0,
+                  "Voice-cloning checkpoint — no preset speakers; drops instruct silently."),
+    _qwen_variant("qwen3-base-0.6b", "Qwen3-TTS Base 0.6B (clone-only)",
+                  "Qwen/Qwen3-TTS-12Hz-0.6B-Base", 2_516_100_892, 78, 0,
+                  "Lightweight cloning checkpoint for lower-end hardware."),
 ]
 
 # Plain Load (no variant picked) loads CustomVoice 1.7B.

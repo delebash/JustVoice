@@ -39,14 +39,13 @@ def kokoro() -> EngineInfo:
         description=(
             "k2-fsa's Kokoro via sherpa-onnx — 54 preset voices across 8 languages "
             "(en-US, en-GB, ja, zh, es, fr, hi, it, pt-BR). ~50 MB binary footprint, "
-            "~700 MB model download. CUDA / Metal (CoreML) / DirectML / CPU."
+            "333 MB model download. CUDA / Metal (CoreML) / DirectML / CPU."
         ),
         backend="sherpa-onnx",
         capabilities=["preset_voices", "gpu_accel", "phoneme_override"],
         prerequisites=Prerequisites(
             rust_native=True,
             sidecar=False,
-            disk_space_mb=700,
             model_files_needed=["kokoro-base"],
             gpu_runtimes=["cuda", "coreml", "directml", "cpu"],
         ),
@@ -63,7 +62,7 @@ def luxtts() -> EngineInfo:
         backend="python",
         capabilities=["preset_voices", "gpu_accel"],
         prerequisites=Prerequisites(
-            sidecar=False, disk_space_mb=1200, gpu_runtimes=["cuda", "metal"]
+            sidecar=False, gpu_runtimes=["cuda", "metal"]
         ),
         runtime_deps=["luxtts", "torch"],
     )
@@ -88,7 +87,7 @@ def qwen3() -> EngineInfo:
             "gpu_accel",
         ],
         prerequisites=Prerequisites(
-            sidecar=False, disk_space_mb=7000, gpu_runtimes=["cuda", "metal"]
+            sidecar=False, gpu_runtimes=["cuda", "metal"]
         ),
         runtime_deps=["qwen3_tts", "torch"],
         pip_packages=["qwen-tts>=0.1", "torch>=2.2"],
@@ -112,7 +111,7 @@ def chatterbox() -> EngineInfo:
             "gpu_accel",
         ],
         prerequisites=Prerequisites(
-            sidecar=False, disk_space_mb=2800, gpu_runtimes=["cuda"]
+            sidecar=False, gpu_runtimes=["cuda"]
         ),
         runtime_deps=["chatterbox", "torch"],
         pip_packages=["chatterbox-tts>=0.2", "torch>=2.2"],
@@ -127,7 +126,7 @@ def tada() -> EngineInfo:
         backend="python",
         capabilities=["preset_voices", "voice_cloning", "gpu_accel"],
         prerequisites=Prerequisites(
-            sidecar=False, disk_space_mb=6000, gpu_runtimes=["cuda", "metal"]
+            sidecar=False, gpu_runtimes=["cuda", "metal"]
         ),
         runtime_deps=["tada", "torch"],
     )
@@ -141,7 +140,7 @@ def dia() -> EngineInfo:
         backend="python",
         capabilities=["preset_voices", "single_speaker_dialogue", "gpu_accel"],
         prerequisites=Prerequisites(
-            sidecar=False, disk_space_mb=6000, gpu_runtimes=["cuda", "metal"]
+            sidecar=False, gpu_runtimes=["cuda", "metal"]
         ),
         runtime_deps=["dia", "torch"],
     )
@@ -150,12 +149,12 @@ def dia() -> EngineInfo:
 def moss_tts() -> EngineInfo:
     return EngineInfo(
         id="moss-tts",
-        name="MOSS-TTS v1.5",
-        description="MOSS-TTS — documented 1-hour stable single-pass generation. 12-16 GB VRAM.",
+        name="MOSS-TTSD",
+        description="MOSS-TTSD — zh/en dialogue, long stable single-pass generation.",
         backend="python",
         capabilities=["preset_voices", "gpu_accel"],
         prerequisites=Prerequisites(
-            sidecar=False, disk_space_mb=12000, gpu_runtimes=["cuda"]
+            sidecar=False, gpu_runtimes=["cuda"]
         ),
         runtime_deps=["moss_tts", "torch"],
     )

@@ -2,8 +2,7 @@
 
 Kokoro (via sherpa-onnx-python) is the lightest engine in the catalog —
 no torch, no transformers, just the ONNX runtime. 54 preset voices across
-8 languages. ~700 MB model download (handled by the host's existing model
-installer, not pip).
+8 languages; the multilingual tarball download is 333 MB (HEAD-verified).
 """
 
 ID = "kokoro"
@@ -18,7 +17,7 @@ SUPPORTED_OSES = ["windows", "linux", "macos"]
 DESCRIPTION = (
     "k2-fsa's Kokoro via sherpa-onnx — 54 preset voices across 8 languages "
     "(en-US, en-GB, ja, zh, es, fr, hi, it, pt-BR). ~50 MB Python install, "
-    "~700 MB model download. CUDA / CoreML / DirectML / CPU."
+    "333 MB model download. CUDA / CoreML / DirectML / CPU."
 )
 LICENSE = "Apache-2.0"
 
@@ -32,7 +31,6 @@ CAPABILITIES = {
 }
 
 REQUIREMENTS = {
-    "disk_space_mb": 700,
     "gpu_runtimes": ["cuda", "coreml", "directml", "cpu"],
     # The 2026-08-13 VRAM wiring (Q2's auto policy): Kokoro is real-time on
     # CPU (ONNX, no torch) — `auto` resolves to cpu and the load books no
@@ -59,8 +57,6 @@ INSTALL = [
     },
 ]
 
-MODELS = []
-
 # Voices exposed to the host catalog even when the engine isn't loaded —
 # Kokoro's voice list is static (54 presets, no clones). Voice-cloning
 # engines (Chatterbox/Qwen3/etc.) leave this empty; their voices live
@@ -68,3 +64,45 @@ MODELS = []
 from .voices import preset_voices_as_dicts as _preset_voices_as_dicts  # noqa: E402
 
 STATIC_VOICES = _preset_voices_as_dicts()
+
+# Facts-only variant rows (phase ②c): URL sources — the k2-fsa release
+# tarballs, sizes HTTP-HEAD-verified 2026-08-14 (the old "~700 MB" claim
+# was wrong: the multilingual download is 333 MB). The multilingual row's
+# preset count is code-derived from the shipped voices list, never typed.
+VARIANTS = [
+    {
+        "id": "kokoro-multi-lang-v1_0",
+        "name": "Kokoro v1.0 multilingual",
+        "description": (
+            "All preset voices across 8 languages (English, Japanese, "
+            "Mandarin, Spanish, French, Hindi, Italian, Portuguese). "
+            "Canonical Kokoro model from k2-fsa's sherpa-onnx releases."
+        ),
+        "languages": ["en-US", "en-GB", "ja", "zh", "es", "fr", "hi", "it", "pt-BR"],
+        "voice_cloning": False,
+        "preset_voices": len(STATIC_VOICES),
+        "quality": 95,
+        "weights_license": "Apache-2.0",
+        "sources": [{
+            "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2",
+            "size_bytes": 349_418_188,
+        }],
+    },
+    {
+        "id": "kokoro-en-v0_19",
+        "name": "Kokoro v0.19 English-only",
+        "description": (
+            "English voices only (American + British). Smaller download for "
+            "users who don't need multilingual."
+        ),
+        "languages": ["en-US", "en-GB"],
+        "voice_cloning": False,
+        "preset_voices": None,   # ships its own smaller set; not typed here
+        "quality": 92,
+        "weights_license": "Apache-2.0",
+        "sources": [{
+            "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-en-v0_19.tar.bz2",
+            "size_bytes": 319_625_534,
+        }],
+    },
+]

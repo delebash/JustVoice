@@ -2447,7 +2447,6 @@ const app = {
                 <th>Engine</th>
                 <th>Backend</th>
                 <th>Status</th>
-                <th>Disk</th>
                 <th></th>
               </tr>
             </thead>
@@ -2464,7 +2463,6 @@ const app = {
                       <span class="sq"></span>{{ e.status.replace('_', ' ') }}
                     </span>
                   </td>
-                  <td>{{ e.prerequisites.disk_space_mb >= 1024 ? (e.prerequisites.disk_space_mb / 1024).toFixed(1) + ' GB' : e.prerequisites.disk_space_mb + ' MB' }}</td>
                   <td style="text-align: right;">
                     <button v-if="e.status === 'not_installed'" class="primary" :disabled="engineBusy[e.id]" @click="installEngine(e.id, null)">
                       {{ engineBusy[e.id] === 'install' ? 'Installing…' : 'Install' }}

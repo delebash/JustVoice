@@ -647,12 +647,24 @@ override) · models_api on_disk = speech-cache truth first, then the
 PER-ENGINE legacy hub cache (models/hf/hub — the env-based probe was
 checking the wrong root) · Delete model handles both worlds ·
 docs (gpu.md 1314 entry = structural fix landed; engines.md speech-cache
-paragraph). REMAINING in ②: ②c facts-only VARIANTS in manifests
-(languages/capabilities/license/repo+revision+pinned files from plan
-§12's verified web facts; the dia/moss/tada/luxtts fiction rows die;
-sizes = summed pinned sizes; disk_space_mb dies) + model_catalog becomes
-a reader + resolve_source grows files. Then ③ the catalog UI, then ④
-locations + verbs.
+paragraph). ②c BUILT (PHASE ② COMPLETE): every manifest carries facts-only VARIANTS
+rows (languages · per-variant voice_cloning/preset_voices · weights
+license · pinned sources with verified files + real summed bytes — from
+the scratchpad `pinned-variant-files.txt`, all 16 repos + 2 HEAD-verified
+kokoro tarballs); model_catalog is a READER over manifests (the
+hand-typed nests + `_hf_placeholder` fakes died — four engines' rows had
+pointed at repos that never existed); resolve_source serves the pinned
+`files` + full multi-source list (an operator override honestly carries
+none — whole fork tree); the wire ModelVariant grew
+voice_cloning/preset_voices/weights_license/hf_repo/url;
+`disk_space_mb` excised end to end (manifests, wire Prerequisites,
+engines_api reader, dormant catalog rows, legacy-gui column); MOSS
+renamed to what actually loads (MOSS-TTSD v0 — "v1.5" never existed);
+kokoro/engines.md sizes corrected to verified downloads (multilingual is
+333 MB, not "~700"; turbo's real download is 3.0 GB, not "350 MB");
+variant-wiring pins STRENGTHENED to exact repo equality via hf_repo.
+Gates: full pytest 504 · vitest 48 · biome · build. Then ③ the catalog
+UI, then ④ locations + verbs.
 
 ## Features the docs promise and the code does not do
 
