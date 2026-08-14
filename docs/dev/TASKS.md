@@ -624,10 +624,20 @@ GO: given 2026-08-14, verbatim: *"go on everything your rec"* — covers
 THE AMENDED FIX SET (built, above), the speed-tables ruling (cut, above),
 and phases ② → ③ → ④ in order, recs governing open sub-decisions;
 stop-and-ask only where a genuine new user ruling appears. NEXT: phase ②
-(kit downloader generalization + speech-cache + facts-only manifests +
-load-from-local-paths — kills the WinError 1314 class; size_mb claims get
-pinned real file lists here, fixing turbo's 2200-vs-3.9 GB wrongness),
-then ③ the catalog UI, then ④ locations + verbs.
+IN PROGRESS — the build design + THE VERIFIED WEB FACTS are in plan doc
+§12 (read it first on resume): kit `select_repo_files` + JV
+`speech_cache.py` (plain files + files.json truth, kit downloader, no
+symlinks) are BUILT + TESTED (kit models 28 · JV speech-cache 6); the
+web pass verified every ENGINE-map repo real and exposed the old catalog
+rows for dia/moss/tada/luxtts as unwired fiction (real: Dia-1.6B-0626 ·
+OpenMOSS-Team/MOSS-TTSD-v0 · HumeAI tada-codec+tada-3b-ml ·
+YatharthS/LuxTTS); pinned per-variant file sets recorded (§12; raw trees
+in the session scratchpad hf-trees/). REMAINING in ②: wire spawn_prefetch
++ the manager load-door acquire onto speech_cache (§12 ②a tail) · plugin
+SDK v0.2.0 model_dir + per-engine local load doors (②b; tada/luxtts need
+their engine deep-read) · facts-only VARIANTS in manifests + model_catalog
+becomes a reader + resolve_source grows sources/files (②c). Then ③ the
+catalog UI, then ④ locations + verbs.
 
 ## Features the docs promise and the code does not do
 

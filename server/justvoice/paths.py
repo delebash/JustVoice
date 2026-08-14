@@ -53,6 +53,15 @@ def cache_root(data_dir: Path) -> Path:
     return data_dir / "cache"
 
 
+def speech_cache_root(data_dir: Path) -> Path:
+    """Speech-engine model files (phase ② of the 2026-08-13 redesign):
+    PLAIN files per <engine>/<variant>/ plus a files.json manifest — no HF
+    cache layout, no blobs, no symlinks (the WinError-1314 class has no
+    code path here). Phase ④'s data-dir convergence re-roots data_dir;
+    this function is deliberately the one place the location lives."""
+    return data_dir / "speech-cache"
+
+
 def voices_root(data_dir: Path) -> Path:
     return data_dir / "voices"
 

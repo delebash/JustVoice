@@ -501,3 +501,117 @@ pricing (29 green with the activity guard). Gates: kit ruff + 858; JV ruff
   the 1314 retry guidance in gpu.md stays valid until then.
 - CPU-placed engines on discrete boxes still book nothing (standing rule);
   one-pool boxes book measured RSS.
+
+## 12. PHASE ② BUILD DESIGN (2026-08-14, under the standing go — recorded
+## before code, grounded in the tree)
+
+Ground truths that shaped the slices (all code-verified this session):
+the host ALREADY has a plain-HTTPS HF fetcher (`installer._hf_snapshot_to`,
+the 2026-06-15 "rip huggingface_hub" directive) — but it writes the HUB
+CACHE layout (blobs + symlink-or-copy snapshots), which is exactly the
+machinery the WinError 1314 class lives in, and engines still run
+`from_pretrained(repo_id)` inside the subprocess (hub code in the load
+path whenever anything is missing). The manager already exports per-engine
+`HF_HOME` + `JUSTVOICE_MODEL_DIR` at spawn; `/load` carries
+`{device, variant}`; the plugin SDK (`server/justvoice_plugin`, v0.1.0)
+owns the subprocess protocol. `resolve_source` (manifest → operator
+override) is the source layer and STAYS.
+
+**Slice ②a — the acquire + the cache (host side):**
+- Kit `runner/models.py` grows `select_repo_files(repo, *, revision="main",
+  files=None)` → `(commit_sha, entries)`: an EXPLICIT file list (exact
+  repo-relative paths; any missing name → FileNotFoundError naming it —
+  fail loud, never fetch the wrong thing) or the whole tree when None.
+  Reuses `_revision_sha` + `_tree` concurrently. GGUF `select_files`
+  untouched.
+- JV `speech_cache.py` (new): `speech_cache_root(data_dir)` =
+  `<data_dir>/speech-cache/`; `variant_dir(...)/<engine>/<variant>/`;
+  `fetch_variant(...)` downloads each resolved file via the KIT's
+  `stream_download` (chunked, resumable, rate-limit-gated — replaces the
+  installer's single-stream loop) as PLAIN FILES at their repo-relative
+  paths, then writes `files.json` via `atomic_write_json`:
+  `{repo, revision, commit_sha, fetched_at, files: [{path, size, oid}]}`
+  — THE on-disk truth. `variant_on_disk(...)` verifies the manifest's
+  every file exists at its recorded size (stat, no hashing); no manifest
+  or any mismatch → False. NO symlinks anywhere — the 1314 class has no
+  code path left.
+- `spawn_prefetch`: HF sources → `fetch_variant`; URL/tarball sources
+  (kokoro) → extracted into the same variant dir + files.json written
+  from the extracted tree. `_hf_snapshot_to` dies with its symlink
+  machinery. Progress/cancel ride the existing job channel; bytes_total
+  comes from the RESOLVED entries (real sizes), not size_mb claims.
+- `models_api.list_models` on_disk for speech: files.json truth, not
+  HF-cache probing / folder-non-empty heuristics.
+
+**Slice ②b — engines receive local paths:**
+- Plugin SDK v0.2.0: `/load` gains `model_dir`; `EmbeddedEngine.load(
+  device, variant, model_dir=None)`; server.py passes through. The
+  manager's load door passes the variant's speech-cache dir when the
+  files.json truth says present.
+- Engines: chatterbox → `from_local(model_dir)` (the pinned package's
+  local door); whisper/qwen3 (transformers) → `from_pretrained(<local
+  dir>)`; kokoro already loads from a dir (keep); dia/moss/tada/luxtts →
+  the same local-dir pattern where their pinned code has one.
+- Fallback honesty: `model_dir=None` (an old HF-cache install, nothing in
+  speech-cache yet) → the engine's existing repo-id path with HF_HOME
+  still set — old installs keep loading; everything fetched the NEW way
+  never runs hub code in the load path. Pre-release, no migrations: old
+  cache dirs die at uninstall or reset.
+- The SDK bump: setup reinstalls the plugin into venvs; existing venvs
+  get it on the next shared-venv setup run (documented; pre-release).
+
+**The verified facts (2026-08-14, the web pass — every repo checked
+against the HF API; raw trees saved to the session scratchpad
+`hf-trees/`):**
+
+- **The ENGINE maps are the repo truth and the old catalog rows for four
+  engines were fiction never wired to anything**: dia's engine loads
+  `nari-labs/Dia-1.6B-0626` (one variant; the catalog's "dia-1.6b" /
+  "dia-2-2b" repos don't exist and the variant id was never passed to the
+  engine); moss loads `fnlp/MOSS-TTSD-v0` (→ 307-redirects to
+  `OpenMOSS-Team/MOSS-TTSD-v0`, the canonical id to pin; catalog said
+  "moss-llm/moss-tts-v1.5" — fiction); tada loads TWO repos
+  (`HumeAI/tada-codec` + `HumeAI/tada-3b-ml`; catalog said "hume/tada-1b"
+  / "hume/tada-3b" — fiction); luxtts loads `YatharthS/LuxTTS` (catalog
+  said "luxtts/luxtts-base" — fiction). chatterbox / qwen3 (×4) /
+  whisper (×5) repos are all real and match their engine maps.
+- **Pinned per-variant file sets** (from the pinned loaders + real trees):
+  · turbo (`from_local` reads them): ve.safetensors + t3_turbo_v1
+    .safetensors + s3gen_meanflow.safetensors + conds.pt + the GPT2-style
+    tokenizer set (vocab.json, merges.txt, tokenizer_config.json,
+    special_tokens_map.json, added_tokens.json) ≈ 2,988 MB — the repo's
+    s3gen.safetensors (1,056 MB) is NOT in the load set, exactly the §10
+    diagnosis.
+  · multilingual: the pinned `allow_patterns` list verbatim — ve.pt,
+    t3_mtl23ls_v2.safetensors, s3gen.pt, grapheme_mtl_merged_expanded_v1
+    .json, conds.pt, Cangjie5_TC.json ≈ 3,209 MB of the repo's 13,866.
+  · whisper ×5: config + generation_config + preprocessor_config +
+    model.safetensors + the tokenizer set (tokenizer.json, tokenizer_
+    config, vocab, merges, added_tokens, special_tokens_map, normalizer)
+    — never flax/tf/pytorch_model.bin duplicates (large-v3: 3,087 MB of
+    the 24,702 MB repo).
+  · dia: the safetensors shard pair + index + configs + processor set
+    ≈ 6,445 MB of 19,334 (dia-v1.pth and pytorch_model.bin are 6.4 GB
+    duplicates each).
+  · qwen3 ×4 / moss: whole repo minus .gitattributes/README (their trees
+    are already lean).
+  · tada + luxtts: repos verified; their exact load sets need their
+    engine deep-read at build time (tada's codec repo holds ten ~894 MB
+    per-language aligners — which ones the engine actually loads decides
+    the pin; luxtts's wrapper picks between fp and int8 onnx variants).
+- Manifest `size_mb` claims die with this: download size = the SUM of the
+  pinned real sizes (turbo's "2200" vs the real ~2,988 for the load set;
+  multilingual's "2800" vs 3,209).
+
+**Slice ②c — facts-only manifests:**
+- Each engine `manifest.py` gains `VARIANTS = [...]` facts rows: id ·
+  name · description · languages · per-variant capabilities (cloning
+  first-class — the §4 ruling's data) · weights license · repo/url ·
+  revision · pinned `files` list. Download size = the SUM of pinned file
+  sizes, never hand-typed; `REQUIREMENTS.disk_space_mb` dies.
+- `model_catalog.models_for` becomes a READER over the manifests; the
+  hand-typed per-engine `_x_variants()` nests die (one source of truth).
+- EVERY repo id + file list web-verified against the HF API at build
+  time. A variant whose repo does not exist is DROPPED — a facts-only
+  row cannot exist without verified facts (the scaffold invented some
+  repo ids; each drop is recorded per engine in the build stamp).
