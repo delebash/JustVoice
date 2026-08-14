@@ -819,3 +819,18 @@ final phase). The as-built record:
 ALL FOUR PHASES OF THIS REDESIGN ARE BUILT. Remaining out-of-plan
 items: the known_engines excision pass (above) and the user-side
 laptops walk (MPS-in-RSS).
+
+**2026-08-14 SAME-DAY AMENDMENTS (user follow-up rulings — verbatim in
+the tracker)**: ④'s "location converged" claim was INCOMPLETE — the
+shell's first-run pointer lock (dataroot.txt) had pinned existing
+installs to the old Roaming root, vetoing the new default. Fixed per
+the user's no-scattered-state-files ruling: the first-run lock is
+gone (defaults are computed, never persisted), dataroot.txt exists
+only as an explicit Change-folder record, stale old-default pointers
+delete themselves on resolve. Also from the rulings: the catalog's
+one-step "⬇ Load (N GB)" became the kit's Download/Load verb split;
+kit fmtBytes shows KB below 1 MB (the all-zero panel); the Speech
+models disk bucket + clear verb now span the speech cache AND the
+legacy per-engine stores (kit extras hook grew list-of-roots
+buckets). The standing principle: the speech catalog feels and works
+like the LLM-runner catalog everywhere it can.

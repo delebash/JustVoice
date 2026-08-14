@@ -773,6 +773,53 @@ immediate rerun passed everything, zero JS errors) · headless
 Settings drive verified the Disk-usage rows + /v1/disk/usage extras.
 REMAINING out of plan: the known_engines excision pass · the user's
 laptops walk (MPS-in-RSS).
+2026-08-14 FOLLOW-UP RULINGS (user, verbatim, after seeing the built
+catalog live) + the same-day build:
+RULING 1: "i meant i wanted it to be like the llm catalog, meaning i
+want a download button not a load button with an arrow, also the
+storeage location is that supposed to be the same as jw, check you
+work you messed up things". RULING 2: "ai models cache is showing 0,
+i want the jv model catalog to feel and work similiarly to the shared
+llm runner catalog, do you understand, i undertand there are
+differences that need to be but it all should work the same clear
+cache for llm models clear cache for tts models ect". RULING 3:
+"server logs, database ect all 0 nothing works correctly". RULING 4:
+"dataroot.txt this should all be in the database and a seed file".
+THE STANDING PRINCIPLE these establish: the JV speech catalog FEELS
+AND WORKS like the shared LLM-runner catalog everywhere — verb split,
+cache rows, clear verbs — differing only where speech genuinely
+differs.
+AS BUILT: (1) THE VERB SPLIT — a not-on-disk model shows "Download
+(N GB)" (download only, the kit's 'available' shape); "Load model"
+appears once files are on disk; the one-step "⬇ Load (N GB)" died
+(loadButtonLabel deleted, runLoad is load-only now, downloadOnly is
+the download door). (2) THE STORAGE MESS-UP root-caused: the location
+CHANGE was correct (both apps double the name — Local\JustWrite\
+JustWrite ↔ Local\JustVoice\JustVoice) but the shell's FIRST-RUN
+POINTER LOCK (dataroot.txt, docgen §5 shape) had pinned the user's
+install to the old Roaming root, silently vetoing the new default —
+my ④ report claimed convergence without accounting for it. FIX per
+ruling 4's intent: the first-run lock is REMOVED (the default is
+computed, never persisted — no scattered state files); dataroot.txt
+now exists ONLY as the record of an explicit Change-folder
+(storage_relocate writes it); a pointer holding exactly the OLD
+default is residue of the removed lock → deleted on resolve, falls to
+the new default. The one datum that CANNOT live in the DB is the DB's
+own address — recorded as the bootstrap constraint answering ruling
+4's letter. (3) THE ALL-ZERO PANEL, two real faults: kit fmtBytes
+floored sub-MB to "0 MB" (a 484 KB database read as nothing) → now
+shows KB below 1 MB (kit-wide honest display, JW gets it too); and
+the Speech models bucket measured ONLY the new speech cache while the
+user's real gigabytes sit in the LEGACY per-engine stores → the kit
+extras hook grew list-of-roots buckets (summed per name), JV's
+speechCache bucket = speech-cache root + every manifest's models_dir,
+and /v1/engines/speech-cache/clear deletes across the same roots
+(voices/state untouched). AI models cache 0 was verified HONEST on
+the current root (post-reset, llama.cpp engine not reinstalled — no
+GGUFs on disk anywhere). TEST-SAFETY catch: the widened clear would
+have let the existing test rmtree the REPO-TREE engine models (a dev
+box's real legacy models) — the test now empties the manifest map,
+and the legacy arm is pinned against tmp dirs only.
 
 ## Features the docs promise and the code does not do
 

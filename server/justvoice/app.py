@@ -303,8 +303,13 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(make_logs_router(PRODUCT))
     # JV's app-specific stores ride the shared router's extras hook (phase ④):
     # the Settings Disk-usage panel gets one row + one clear verb per store.
+    # "Speech models" is ONE user-facing number across layout generations
+    # (user ruling 2026-08-14 — the panel showed 0 MB while the catalog said
+    # gigabytes on disk): the speech cache PLUS every engine's legacy models
+    # dir (tarball installs + the per-engine HF hub caches live there).
+    _legacy_model_dirs = [m.models_dir for m in get_manager().manifests().values()]
     app.include_router(make_disk_router(data_dir, extra_buckets={
-        "speechCache": speech_cache_root(data_dir),
+        "speechCache": [speech_cache_root(data_dir), *_legacy_model_dirs],
         "renderCache": cache_root(data_dir),
     }))
     app.include_router(sse_streams_api.router)

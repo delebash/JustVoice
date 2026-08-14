@@ -394,21 +394,19 @@ async function installEngine(engine) {
   }
 }
 
-// ── Load (download-if-needed, then load) — ONE task, two phases. ──────
+// ── Load (weights already on disk — the Download verb is separate now:
+// the LLM-catalog split, user ruling 2026-08-14). ─────────────────────
 async function runLoad(engine, variantId) {
   const key = _variantKey(engine.id, variantId);
   clearTerminalTask(key);
 
-  const needsDownload = !modelOnDisk(engine, variantsFor(engine.id).find((x) => x.id === variantId) || { id: variantId });
-  const task = needsDownload
-    ? makeEngineDownloadTask(api, engine.id, { model_variant: variantId })
-    : createDownloadTask({
-        start: async () => {},
-        statusUrl: "",
-        fetch: async () => ({}),
-        read: () => ({ detail: "loading" }),
-        cancel: () => api.request(`/v1/engines/${engine.id}/cancel-load`, { method: "POST" }),
-      });
+  const task = createDownloadTask({
+    start: async () => {},
+    statusUrl: "",
+    fetch: async () => ({}),
+    read: () => ({ detail: "loading" }),
+    cancel: () => api.request(`/v1/engines/${engine.id}/cancel-load`, { method: "POST" }),
+  });
   dlTasks[key] = task;
   try {
     await withAiTask({
@@ -422,18 +420,7 @@ async function runLoad(engine, variantId) {
       }, { once: true });
       const stopBridge = bridgeJobProgress(panel, task);
       try {
-        if (needsDownload) {
-          await task.start();               // phase A — the download, kit-polled
-          if (task.state !== "done") {      // cancelled or failed → stop honestly
-            if (task.state === "error") throw new Error(task.error || "download failed");
-            panel.cancel();
-            return;
-          }
-          delete variants[engine.id];       // on_disk changed — re-read truthfully
-          task.arm("Loading model");        // phase B under the same bar
-        } else {
-          task.arm("Loading model");
-        }
+        task.arm("Loading model");
         try {
           await api.request(`/v1/engines/${engine.id}/load`, {
             method: "POST",
@@ -458,11 +445,6 @@ async function runLoad(engine, variantId) {
   } catch {
     // The task row carries the error (failed lingers until dismissed).
   }
-}
-
-function loadButtonLabel(engine, v) {
-  if (modelOnDisk(engine, v)) return "Load model";
-  return `⬇ Load (${fmtDisk(v.size_mb)})`;
 }
 
 async function unload(engine) {
@@ -932,10 +914,19 @@ onBeforeUnmount(() => {
               <span v-if="measuredHint(e, v)" class="ev-memhint" :title="measuredHint(e, v).title">{{ measuredHint(e, v).text }}</span>
               <UiButton v-if="modelLoaded(e, v)" intent="ghost" size="small" label="Unload model"
                 title="Free the slot — weights stay on disk" @click="unload(e)" />
-              <UiButton v-if="!modelLoaded(e, v)" intent="primary" size="small"
-                :label="loadButtonLabel(e, v)"
+              <!-- The LLM-catalog verb split (user ruling 2026-08-14): a
+                   not-downloaded model gets a DOWNLOAD button (download only,
+                   same as the kit's 'available' rows) — Load appears once the
+                   files are on disk. The old one-step "⬇ Load (N GB)" died. -->
+              <UiButton v-if="!modelLoaded(e, v) && !modelOnDisk(e, v)" intent="primary" size="small"
+                :label="`Download (${fmtDisk(v.size_mb)})`"
                 :disabled="busyAnywhere(e.id, v.id) || engineNeedsInstall(e)"
-                :title="modelOnDisk(e, v) ? `Load into the ${(e.kind || 'tts').toUpperCase()} slot` : `Download (${fmtDisk(v.size_mb)}) and load — one step`"
+                title="Download the model files. Load it from this row once it's on disk."
+                @click="downloadOnly(e, v.id)" />
+              <UiButton v-if="!modelLoaded(e, v) && modelOnDisk(e, v)" intent="primary" size="small"
+                label="Load model"
+                :disabled="busyAnywhere(e.id, v.id) || engineNeedsInstall(e)"
+                :title="`Load into the ${(e.kind || 'tts').toUpperCase()} slot`"
                 @click="runLoad(e, v.id)" />
               <!-- Set-as-default (model) — the user layer the manager resolves
                    over the manifest default. Rightmost, family position. -->

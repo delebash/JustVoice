@@ -114,13 +114,51 @@ fn pointer_candidates(app: &AppHandle) -> Vec<PathBuf> {
     v
 }
 
+// The pre-2026-08-14 default — what first-run pointer locks written before
+// the JW-shape convergence contain. Kept ONLY so resolve_data_root can
+// recognize and refresh them; never used as a resolution target.
+fn legacy_default_data_root() -> PathBuf {
+    #[cfg(windows)]
+    {
+        PathBuf::from(std::env::var("APPDATA").unwrap_or_default())
+            .join("justvoice")
+            .join("justvoice")
+    }
+    #[cfg(target_os = "macos")]
+    {
+        PathBuf::from(std::env::var("HOME").unwrap_or_default())
+            .join("Library/Application Support/justvoice")
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        PathBuf::from(std::env::var("HOME").unwrap_or_default()).join(".local/share/justvoice")
+    }
+}
+
 fn resolve_data_root(app: &AppHandle) -> PathBuf {
     for p in pointer_candidates(app) {
         if let Ok(s) = fs::read_to_string(&p) {
             let root = PathBuf::from(s.trim());
-            if !root.as_os_str().is_empty() {
-                return root;
+            if root.as_os_str().is_empty() {
+                continue;
             }
+            // The 2026-08-14 convergence heal. The old setup() locked the
+            // DEFAULT into the pointer on first run, so every pre-convergence
+            // install carries a pointer pinning the old Roaming default —
+            // which would silently veto the new JW-shape location forever.
+            // Under the new contract (user ruling 2026-08-14: no scattered
+            // state files) the pointer exists ONLY as the record of an
+            // explicit Change-folder choice — so a pointer holding exactly
+            // the OLD DEFAULT is residue of the removed first-run lock, not
+            // a choice: delete it and fall through to the computed default.
+            // A folder the user actually picked never equals the old default
+            // and keeps winning. Pre-release no-migration rule: the Roaming
+            // data stays on disk untouched (JUSTVOICE_DATA_DIR reaches it).
+            if root == legacy_default_data_root() {
+                let _ = fs::remove_file(&p);
+                continue;
+            }
+            return root;
         }
     }
     default_data_root(app)
@@ -819,14 +857,13 @@ pub fn run() {
         .setup(|app| {
             // Resolve the (portable, user-settable) data root with Tauri's OWN
             // path resolver, then bring the server up UNDER that root before
-            // the webview's first probe. Lock the choice into the pointer on
-            // first run (docgen's §5 shape; JV's default stays the server's
-            // platformdirs dir — see default_data_root).
+            // the webview's first probe. NO first-run pointer lock any more
+            // (user ruling 2026-08-14: no scattered state files — the default
+            // is COMPUTED, never persisted): dataroot.txt exists only after
+            // an explicit Change-folder, written by storage_relocate. The one
+            // datum that can't live in the DB is the DB's own address.
             let handle = app.handle().clone();
             let root = resolve_data_root(&handle);
-            if pointer_candidates(&handle).iter().all(|p| !p.exists()) {
-                let _ = write_data_root_pointer(&handle, &root);
-            }
             let sidecar = match spawn_sidecar(&root) {
                 Ok(child) => SidecarState::new(child),
                 Err(e) => {

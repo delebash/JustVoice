@@ -98,10 +98,17 @@ async def clear_speech_cache() -> dict:
     mgr = get_manager()
     if any(mgr.status(eid) == "loaded" for eid in mgr.manifests()):
         return {"ok": False, "detail": "unload engines first"}
-    root = speech_cache_root(get_state().data_dir)
-    freed = dir_size(root)
-    if root.exists():
-        shutil.rmtree(root, ignore_errors=True)
+    # ONE user-facing store across layout generations (same roots the
+    # Disk-usage row measures): the speech cache + every engine's legacy
+    # models dir (tarballs + per-engine HF hub caches). Voices/state dirs
+    # are user data, never touched.
+    roots = [speech_cache_root(get_state().data_dir)]
+    roots += [m.models_dir for m in mgr.manifests().values()]
+    freed = 0
+    for root in roots:
+        if root.exists():
+            freed += dir_size(root)
+            shutil.rmtree(root, ignore_errors=True)
     return {"ok": True, "bytes": freed}
 
 

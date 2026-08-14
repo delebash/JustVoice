@@ -543,10 +543,17 @@ def test_models_list_serves_speech_cache_local_dir(client, app):
 # ── Phase ④ — the whole-store speech-cache clear verb ────────────────
 
 
-def test_speech_cache_clear_deletes_all_and_flips_on_disk(client, app):
+def test_speech_cache_clear_deletes_all_and_flips_on_disk(client, app, monkeypatch):
     from justvoice import speech_cache
     from justvoice.app_state import get_state
+    from justvoice.engines.manager import get_manager
     from justvoice.paths import speech_cache_root
+
+    # The verb also clears the LEGACY engine models dirs — which in a dev
+    # checkout are the REPO tree. Empty the manifest map so this test can
+    # never delete a developer's real downloaded models; the legacy arm is
+    # pinned separately against tmp dirs below.
+    monkeypatch.setattr(get_manager(), "manifests", lambda: {})
 
     st = get_state()
     variant_id = client.get("/v1/engines/chatterbox/models").json()["variants"][0]["id"]
@@ -577,3 +584,34 @@ def test_speech_cache_clear_refuses_while_an_engine_is_loaded(client, app, monke
     monkeypatch.setattr(get_manager(), "status", lambda eid: "loaded")
     r = client.post("/v1/engines/speech-cache/clear").json()
     assert r == {"ok": False, "detail": "unload engines first"}
+
+
+def test_speech_cache_clear_covers_the_legacy_engine_dirs(client, app, tmp_path, monkeypatch):
+    """One user-facing store across layout generations (user ruling
+    2026-08-14): the clear verb also empties the legacy per-engine models
+    dirs — pinned against TMP dirs (never the repo tree)."""
+    from types import SimpleNamespace
+
+    from justvoice import speech_cache
+    from justvoice.app_state import get_state
+    from justvoice.engines.manager import get_manager
+    from justvoice.paths import speech_cache_root
+
+    st = get_state()
+    vdir = speech_cache.variant_dir(st.data_dir, "eng", "v1")
+    vdir.mkdir(parents=True)
+    (vdir / "w.bin").write_bytes(b"\0" * 32)
+    legacy = tmp_path / "fake-engine" / "models"
+    legacy.mkdir(parents=True)
+    (legacy / "old.onnx").write_bytes(b"\0" * 64)
+
+    fake = SimpleNamespace(id="eng", models_dir=legacy)
+    mgr = get_manager()
+    monkeypatch.setattr(mgr, "manifests", lambda: {"eng": fake})
+    monkeypatch.setattr(mgr, "status", lambda eid: "installed")
+
+    r = client.post("/v1/engines/speech-cache/clear").json()
+    assert r["ok"] is True
+    assert r["bytes"] == 32 + 64
+    assert not speech_cache_root(st.data_dir).exists()
+    assert not legacy.exists()

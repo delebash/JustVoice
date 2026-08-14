@@ -45,7 +45,10 @@ One engine is **loaded** per slot (one TTS, one STT). Loading takes 10-30s (mode
 - `installed` — present on disk, not currently loaded.
 - `loaded` — resident and ready to render. The card also shows **which device** it loaded on (`· CUDA` / `· CPU`).
 
-Click Load on any installed engine; the same slot's prior occupant auto-unloads.
+The verbs split the same way as the LLM catalog: a model that isn't on disk
+shows **Download (N GB)** — download only; once its files are on disk the row
+shows **Load model**. Click Load on any on-disk model; the same slot's prior
+occupant auto-unloads.
 
 ### The catalog rows
 
@@ -85,7 +88,7 @@ Loads run against the **shared memory budget** (the strip at the top of the tab 
 
 ### Cancelling an in-flight load
 
-Loading can take a while — first-time loads also fetch model weights (hundreds of MB to multiple GB). Since 2026-08-14 those fetches go through the **speech cache**: plain files downloaded by the same chunked, resumable downloader the AI models use (a dropped connection resumes past the completed chunks instead of starting over), placed on disk *before* the engine process starts — the engine itself never touches the network. While a load is in progress:
+Loading can take a while. Downloads run from the row's **Download** button (or the API, which still fetches on a cold load) and go through the **speech cache**: plain files downloaded by the same chunked, resumable downloader the AI models use (a dropped connection resumes past the completed chunks instead of starting over), placed on disk *before* the engine process starts — the engine itself never touches the network. While a load or download is in progress:
 
 - A progress strip appears at the top of the content area with elapsed time + `spawning subprocess`, `loading model weights`.
 - The strip has a **Cancel** button. Clicking it sends `POST /v1/engines/{id}/cancel-load`, which:

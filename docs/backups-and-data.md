@@ -36,8 +36,10 @@ or re-render*:
 - **AI models cache** — the language models behind Compose, attribution, and
   friends. Cleared models re-download on demand; refuses while a model is
   loaded (unload first).
-- **Speech models** — every downloaded TTS/STT model (the speech cache).
-  The catalog keeps all of them; each re-downloads when next loaded. Refuses
+- **Speech models** — every downloaded TTS/STT model, counted across every
+  place they can live: the speech cache *and* the older per-engine folders
+  models downloaded before 2026-08-14 sit in. One number, one Clear — the
+  catalog keeps every model and each re-downloads when next loaded. Refuses
   while a speech engine is loaded.
 - **Render cache** — cached renders; an identical render computes again
   instead of returning instantly. Labs → Cache offers scoped clears (by age)
