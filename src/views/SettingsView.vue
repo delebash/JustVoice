@@ -6,6 +6,7 @@ import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
 import { AppearancePanel, DataManagement, FAMILY_LABELS, LogsPanel, SettingsShell, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, fmtBytes, refreshRunnerModels, renderHelpMarkdown, serverUrl, useAiTasksStore } from "@delebash/llm-ui";
 import { loadDoc } from "../services/helpDocs.js";
+import { pickDirectory, storageGetRoot, storageRelocate } from "../services/native.js";
 import { useOnboarding } from "../stores/onboarding.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -736,13 +737,9 @@ const diskBusy = ref("");
 const diskErr = ref("");
 
 async function loadStorageRoot() {
-  try {
-    const { invoke } = await import("@tauri-apps/api/core");
-    storageRoot.value = await invoke("storage_get_root");
-    isDesktop.value = true;
-  } catch {
-    isDesktop.value = false;
-  }
+  // services/native.js — the one place a command name is written.
+  storageRoot.value = await storageGetRoot();
+  isDesktop.value = !!storageRoot.value;
 }
 async function loadDiskUsage() {
   diskUsage.value = await api.safeRequest("/v1/disk/usage", null);
@@ -755,9 +752,12 @@ function diskSize(n) {
 }
 async function changeFolder() {
   storageErr.value = "";
-  const { open } = await import("@tauri-apps/plugin-dialog");
-  const picked = await open({ directory: true, title: "Choose a data folder",
-    defaultPath: storageRoot.value?.root || undefined });
+  // The family folder picker (2026-08-14): the `pick_directory` command, the
+  // same call i18n-docgen and JustWrite make. This reached for the dialog
+  // plugin in the renderer instead — one native dialog, two layers.
+  const picked = await pickDirectory({
+    title: "Choose a data folder", defaultPath: storageRoot.value?.root || "",
+  });
   if (!picked) return;
   const yes = await confirmDialog({
     title: "Move all app data?",
@@ -767,8 +767,7 @@ async function changeFolder() {
   if (!yes) return;
   relocating.value = true;
   try {
-    const { invoke } = await import("@tauri-apps/api/core");
-    await invoke("storage_relocate", { newRoot: picked });
+    await storageRelocate(picked);
     window.location.reload();
   } catch (e) {
     storageErr.value = String(e || "Move failed.");

@@ -18,17 +18,14 @@
     "screenshots": "node scripts/smoke_gui.js",
     "test:unit": "vitest run",
     "test:server": "cd server && node ../scripts/py.js -m pytest -q",
-    "test": "node scripts/e2e.js"
+    "test": "node scripts/e2e.js",
+    "smoke": "node scripts/smoke.js"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.7.6",
     "@tanstack/vue-table": "^8.21.3",
     "@tauri-apps/api": "^2.11.1",
-    "@tauri-apps/plugin-dialog": "^2.7.1",
-    "@tauri-apps/plugin-fs": "^2.5.1",
-    "@tauri-apps/plugin-http": "^2.5.9",
-    "@tauri-apps/plugin-process": "^2.3.1",
-    "@tauri-apps/plugin-shell": "^2.3.5",
+    "@tauri-apps/plugin-opener": "^2.5.4",
     "@vueuse/core": "^14.3.0",
     "marked": "^18.0.5",
     "pinia": "^3.0.4",

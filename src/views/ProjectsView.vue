@@ -19,7 +19,7 @@ import ImportModal from "./ImportModal.vue";
 import NewProjectModal from "../components/NewProjectModal.vue";
 import { projectsService } from "../services/projects.js";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "@delebash/llm-ui";
+import { pushToast, saveBlob } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
 import { useCopy } from "../services/copy.js";
 import { useActiveProject } from "../stores/activeProject.js";
@@ -350,12 +350,9 @@ async function onImportCreated({ project_id }) {
 async function exportProject(projectId) {
   try {
     const blob = await projectsService.exportZip(projectId);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${(selectedProject.value?.name ?? "project").replace(/\W+/g, "-")}.zip`;
-    a.click();
-    URL.revokeObjectURL(url);
+    // The kit's one save door (2026-08-15) — was one of five inline copies here.
+    await saveBlob(blob, `${(selectedProject.value?.name ?? "project").replace(/\W+/g, "-")}.zip`,
+      { title: "Save project", filterName: "JustVoice project", filterExt: "zip" });
     pushToast({ kind: "success", title: "Project exported" });
   } catch (e) {
     pushToast({ kind: "error", title: "Export failed", description: String(e?.message ?? e) });

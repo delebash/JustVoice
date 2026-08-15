@@ -12,7 +12,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "@delebash/llm-ui";
+import { pushToast, saveBlob } from "@delebash/llm-ui";
 import { projectsService } from "../services/projects.js";
 import { useCopy } from "../services/copy.js";
 import { UiButton, UiTag, runAiEndpoint } from "@delebash/llm-ui";
@@ -57,14 +57,10 @@ const qcDurationLabel = computed(() => {
   return h ? `${h} h ${String(m).padStart(2, "0")} m` : `${m} m`;
 });
 
-function saveBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
+// The local copy of saveBlob died 2026-08-15 — it was one of FIVE in this app.
+// `saveBlob` now comes from the kit (common/services/fileSave.js): the one door
+// for putting a file on disk, native dialog where a host wired one, Downloads
+// otherwise.
 
 async function exportM4B() {
   const p = props.project;
@@ -73,7 +69,8 @@ async function exportM4B() {
   pushToast({ message: "Export M4B — rendering anything not cached, then muxing chapters…", kind: "info" });
   try {
     const blob = await api.requestBlob(`/v1/projects/${p.id}/export_m4b`, { method: "POST" });
-    saveBlob(blob, `${(p.name || "book").replace(/[^\w.-]+/g, "_")}.m4b`);
+    await saveBlob(blob, `${(p.name || "book").replace(/[^\w.-]+/g, "_")}.m4b`,
+      { title: "Save audiobook", filterName: "M4B audiobook", filterExt: "m4b" });
     pushToast({ message: "M4B exported.", kind: "success" });
   } catch (e) {
     pushToast({ message: `Export failed: ${e?.message || e}`, kind: "error", duration: 7000 });
@@ -89,7 +86,8 @@ async function exportChapterWavs() {
   pushToast({ message: "Packaging per-chapter audio…", kind: "info" });
   try {
     const blob = await projectsService.exportZip(p.id, { includeAudio: true, includeMasters: true });
-    saveBlob(blob, `${(p.name || "book").replace(/[^\w.-]+/g, "_")}.zip`);
+    await saveBlob(blob, `${(p.name || "book").replace(/[^\w.-]+/g, "_")}.zip`,
+      { title: "Save chapter package", filterName: "Chapter package", filterExt: "zip" });
     pushToast({ message: "Chapter package exported.", kind: "success" });
   } catch (e) {
     pushToast({ message: `Export failed: ${e?.message || e}`, kind: "error", duration: 7000 });

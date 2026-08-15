@@ -9,6 +9,7 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import { channelsService } from "../services/projects.js";
+import { listAudioOutputDevices } from "../services/native.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag } from "@delebash/llm-ui";
@@ -27,12 +28,9 @@ async function refresh() {
 }
 
 async function loadDevices() {
-  try {
-    const { invoke } = await import("@tauri-apps/api/core");
-    tauriDevices.value = await invoke("list_audio_output_devices");
-  } catch {
-    // Not running in Tauri; web build has no native device list.
-  }
+  // services/native.js — the one place a command name is written. Returns [] in
+  // a browser (and today in the desktop app too: the command is a placeholder).
+  tauriDevices.value = await listAudioOutputDevices();
 }
 
 async function save() {

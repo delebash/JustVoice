@@ -53,6 +53,21 @@ on the engine panel ("Models kept loaded at once"): the VRAM safety margin,
 the default context cap, the RAM headroom, and the speed-band thresholds the
 badges switch over at — all editable, one Save.
 
+### The catalog row's controls
+
+An AI model row and a **speech** model row (Speech engines → the engine's model
+list) work the same way, in the same order, with the same words — the two
+catalogs are one interaction grammar, not two:
+
+**Download** (until the files are on disk) → **Load model** / **Unload model**
+(warm it now, or free its memory) → **Set as default** → the **⋯** menu.
+
+The **⋯** menu holds **Tune & measure**, **Re-download**, **Open folder** (the
+model's own folder in your file explorer — desktop app only), **View on Hugging
+Face** (the upstream repository page), **Delete downloaded model** (frees the
+disk, keeps the catalog row) and **Delete from catalog**. Full detail on the
+shared catalog: [JustWrite's model docs](../../justwrite-app/docs/models.md).
+
 ## Prompts are editable — and Dictation cleanup is one card with sections
 
 Every prompt a feature sends is a **template row** — the wording lives in the

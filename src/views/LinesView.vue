@@ -13,7 +13,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { withAiTask } from "@delebash/llm-ui";
-import { pushToast } from "@delebash/llm-ui";
+import { pushToast, saveBlob } from "@delebash/llm-ui";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { UiButton, UiInput, UiChip, UiTag, UiSelect } from "@delebash/llm-ui";
@@ -167,12 +167,9 @@ async function exportZip() {
   pushToast({ message: "Rendering + zipping voicelines… cached lines are instant.", kind: "info" });
   try {
     const blob = await api.requestBlob(`/v1/projects/${selectedProject.value.id}/export_voicelines`, { method: "POST" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${(selectedProject.value.name || "voicelines").replace(/[^\w.-]+/g, "_")}_VO.zip`;
-    a.click();
-    URL.revokeObjectURL(url);
+    // The kit's one save door (2026-08-15) — was one of five inline copies here.
+    await saveBlob(blob, `${(selectedProject.value.name || "voicelines").replace(/[^\w.-]+/g, "_")}_VO.zip`,
+      { title: "Save voiceline package", filterName: "Voiceline package", filterExt: "zip" });
     pushToast({ message: "Voiceline zip exported.", kind: "success" });
   } catch (e) {
     pushToast({ message: `Export failed: ${e?.message || e}`, kind: "error" });

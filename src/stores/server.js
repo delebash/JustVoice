@@ -5,6 +5,7 @@
  */
 import { defineStore } from "pinia";
 import { ref, watch } from "vue";
+import { setKeepRunning } from "../services/native.js";
 
 function getDefaultServerUrl() {
   if (typeof window === "undefined") return "http://127.0.0.1:17494";
@@ -59,13 +60,9 @@ export const useServerStore = defineStore("server", () => {
   }
   async function setKeepServerRunningOnClose(v) {
     keepServerRunningOnClose.value = Boolean(v);
-    // Sync to Rust shell via Tauri IPC (no-op in web build).
-    try {
-      const { invoke } = await import("@tauri-apps/api/core");
-      await invoke("set_keep_server_running", { keepRunning: Boolean(v) });
-    } catch {
-      /* not running inside Tauri */
-    }
+    // Sync to the Rust shell through services/native.js — the ONE place a
+    // command name is written (family shape, 2026-08-15). No-op in a browser.
+    await setKeepRunning(v);
   }
   function setCustomModelsDir(v) {
     customModelsDir.value = v;

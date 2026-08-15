@@ -41,6 +41,7 @@ use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use tauri::AppHandle;
+use tauri_plugin_dialog::DialogExt;
 
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
@@ -465,6 +466,27 @@ struct StorageRoot {
     portable: bool,
 }
 
+// The family folder picker (2026-08-14), byte-identical in all three shells.
+// JustVoice reached for `@tauri-apps/plugin-dialog` in the renderer instead —
+// a third way to do what JustWrite and i18n-docgen both did with this command,
+// and the reason a native dialog lived at two different layers of the family.
+#[tauri::command]
+async fn pick_directory(
+    app: AppHandle,
+    title: Option<String>,
+    default_path: Option<String>,
+) -> Option<String> {
+    let mut dlg = app
+        .dialog()
+        .file()
+        .set_title(&title.unwrap_or_else(|| "Choose a folder".to_string()));
+    if let Some(p) = default_path.as_deref().filter(|s| !s.is_empty()) {
+        dlg = dlg.set_directory(p);
+    }
+    let picked = dlg.blocking_pick_folder()?;
+    picked.into_path().ok().map(|p| p.display().to_string())
+}
+
 #[tauri::command]
 fn storage_get_root(app: AppHandle) -> StorageRoot {
     let root = resolve_data_root(&app);
@@ -801,12 +823,10 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
             let data = resolve_data_root(app);
             let logs = data.join("logs");
             let target = if logs.exists() { logs } else { data };
-            #[cfg(windows)]
-            let _ = std::process::Command::new("explorer").arg(&target).spawn();
-            #[cfg(target_os = "macos")]
-            let _ = std::process::Command::new("open").arg(&target).spawn();
-            #[cfg(all(unix, not(target_os = "macos")))]
-            let _ = std::process::Command::new("xdg-open").arg(&target).spawn();
+            // The family opener (2026-08-14). This was three hand-rolled
+            // per-platform spawns — the same three lines JW wrote as
+            // `open::that` and docgen as `open_path`. One call now, all three.
+            let _ = tauri_plugin_opener::open_path(&target, None::<String>);
         }
         "about" => {
             let _ = window.show();
@@ -829,11 +849,17 @@ fn handle_tray_menu_event(app: &tauri::AppHandle, event_id: &str) {
 
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_http::init())
+        // THE plugin baseline, identical in all three apps (2026-08-15): opener,
+        // dialog, window-state — every one of them actually used. `http`, `fs` and
+        // `process` were removed the same day: each appeared ONLY in its own
+        // init() call, with no Rust caller and no JS import.
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_process::init())
+        // THE family opener (2026-08-14): one plugin for "open a URL" and "open a
+        // folder", in all three apps. It replaced tauri-plugin-shell here — that
+        // was JV's third implementation of a job JW and docgen each did their own
+        // way, and its open() scope admits http(s)/mailto/tel only, so it could
+        // never have opened a folder.
+        .plugin(tauri_plugin_opener::init())
         // Remember the window size + position across launches (family parity).
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(audio_capture::AudioCaptureState::new())
@@ -844,6 +870,7 @@ pub fn run() {
             stop_server,
             restart_server,
             set_keep_server_running,
+            pick_directory,
             storage_get_root,
             storage_relocate,
             list_audio_output_devices,

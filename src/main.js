@@ -14,7 +14,8 @@ import {
   installLlmUi,
   startWarmOnBoot,
 } from "@delebash/llm-ui";
-import { SERVER_URL, resolveBase } from "./config.js";
+import { openPath, openUrl } from "@tauri-apps/plugin-opener";
+import { serverUrl } from "@delebash/llm-ui";
 import AttributionAutoPanel from "./components/lab/AttributionAutoPanel.vue";
 import RefineSectionToggles from "./components/lab/RefineSectionToggles.vue";
 import SmartAssignResult from "./components/lab/SmartAssignResult.vue";
@@ -29,28 +30,40 @@ import router from "./router/index.js";
 import "./styles/tokens.css";
 import "./styles/styles.css";
 
+// NOT installed here yet — deliberately, and this is the note that says why.
+// The cross-origin fetch route (kit `installTauriFetch`) exists so a renderer can
+// reach a server that ships no CORS headers. JustWrite installs it. JustVoice
+// would need its `http:default` capability to carry an explicit URL allow-list
+// first (JustWrite's does; JV's is scope-empty, so routing calls through the
+// plugin would DENY what plain fetch reaches today) — and which hosts JustVoice
+// may reach in `jt:server` thin-client mode is a decision, not a refactor.
+// Tracked in ../just-llm-runner/docs/dev/TASKS.md.
+
 function isDictateView() {
   if (typeof window === "undefined") return false;
   return new URLSearchParams(window.location.search).get("view") === "dictate";
 }
 
 // The whole shared LLM front end, in ONE call (the UI twin of the server's
-// install_llm; docgen's main.js is the donor shape). `resolveBase` is JV's OWN
-// resolver — it layers the `jt:server` thin-client override over the
-// origin-aware default (config.js), so the override keeps winning for the kit
-// views too. Called in BOTH boot branches: the dictate webview builds server
-// URLs off the same transport, and an unconfigured client falls back to
+// install_llm; docgen's main.js is the donor shape). The KIT resolves the base
+// now (2026-08-15) — `src/config.js` is deleted. It was a third shape for one
+// job: JustVoice had config.js, JustWrite had services/serverApi.js, docgen had
+// nothing and let the installer do it. docgen was right. `serverOverrideKey`
+// carries JV's own thin-client feature (`jt:server` beats the origin-aware
+// default), which used to be read in TWO places in this app.
+// Called in BOTH boot branches: the dictate webview builds server URLs off the
+// same transport, and an unconfigured client falls back to
 // window.location.origin — tauri.localhost in production, empty views only there.
 function wireKit(app) {
   installLlmUi(app, {
-    resolveBase,
-    // The opener is the app's (`@tauri-apps/plugin-shell` is JV's existing
-    // pattern — SettingsView's log opener); Tauri's webview swallows
-    // target=_blank, so without one every external link is silently dead.
-    external: async (url) => {
-      const { open } = await import("@tauri-apps/plugin-shell");
-      await open(url);
-    },
+    devPorts: ["1430", "1431"],
+    fallbackBase: import.meta.env.VITE_SERVER_URL || "http://127.0.0.1:17494",
+    serverOverrideKey: "jt:server",
+    // The openers, straight from the plugin — the SAME line in all three apps
+    // (2026-08-14). The kit decides when they can be used (browser vs webview);
+    // no app repeats that reasoning. `openPath` is what both model catalogs'
+    // "Open folder" rides.
+    external: { open: openUrl, openPath },
     // Nothing in JV embeds (chat ruling 2026-08-05).
     capabilities: { embeddings: false },
     // The Lab runs the REAL attribution pipeline for speaker_attribution
@@ -175,7 +188,9 @@ async function boot() {
   if (!(await checkServer())) {
     createApp(ConnectionError, {
       appName: "JustVoice",
-      serverUrl: SERVER_URL,
+      // The kit's transport is already configured by wireKit() above, so this
+      // is the SAME base the app talks to — no second resolver to disagree with.
+      serverUrl: serverUrl(""),
       need: "load voices, projects, and settings",
       devHint:
         "Dev: it should start automatically with `npm run tauri dev`, or run it yourself with `npm run server`, then retry.",

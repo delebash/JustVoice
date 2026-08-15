@@ -2,7 +2,7 @@
 <script setup>
 import { ref, computed, onBeforeUnmount } from "vue";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "@delebash/llm-ui";
+import { pushToast, saveBlob } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiField, UiSelect } from "@delebash/llm-ui";
 
 const api = useApi();
@@ -18,6 +18,7 @@ const masterTitle = ref("");
 const masterAuthor = ref("");
 const masterBook = ref("");
 const masteredUrl = ref("");
+const masteredBlob = ref(null);   // kept for the save door (the preview URL has no bytes to hand a dialog)
 const masteredMime = ref("");
 const masteredBytes = ref(0);
 const masteredName = ref("");
@@ -88,6 +89,7 @@ async function runMaster() {
         book: masterBook.value || null,
       }),
     });
+    masteredBlob.value = blob;
     masteredUrl.value = URL.createObjectURL(blob);
     masteredMime.value = blob.type || "application/octet-stream";
     masteredBytes.value = blob.size;
@@ -100,12 +102,13 @@ async function runMaster() {
   }
 }
 
-function downloadMastered() {
-  if (!masteredUrl.value) return;
-  const a = document.createElement("a");
-  a.href = masteredUrl.value;
-  a.download = masteredName.value;
-  a.click();
+async function downloadMastered() {
+  // The kit's one save door (2026-08-15) — was one of five inline copies here.
+  // Keeps the BLOB rather than reusing the <audio> preview's object URL, so the
+  // native dialog (where a host wires one) has real bytes to write.
+  if (!masteredBlob.value) return;
+  await saveBlob(masteredBlob.value, masteredName.value,
+    { title: "Save mastered audio", filterName: "Mastered audio", filterExt: masterExt.value });
 }
 
 function fmtDb(n) {

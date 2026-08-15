@@ -12,7 +12,7 @@
 <script setup>
 import { computed, nextTick, onActivated, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
-import { pushToast } from "@delebash/llm-ui";
+import { pushToast, saveBlob } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiTag, UiChip, UiSelect, AppModal } from "@delebash/llm-ui";
 import { EmptyState } from "@delebash/llm-ui";
@@ -321,7 +321,7 @@ async function importIntoDraft(ev) {
   }
 }
 
-function exportLexicon() {
+async function exportLexicon() {
   if (!draft.value) return;
   const out = {
     name: draft.value.name,
@@ -331,12 +331,9 @@ function exportLexicon() {
     entries: draft.value.entries,
   };
   const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${(draft.value.name || "lexicon").replace(/\W+/g, "-")}.justlex.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+  // The kit's one save door (2026-08-15) — was one of five inline copies here.
+  await saveBlob(blob, `${(draft.value.name || "lexicon").replace(/\W+/g, "-")}.justlex.json`,
+    { title: "Save lexicon", filterName: "JustVoice lexicon", filterExt: "json" });
   pushToast({ kind: "success", title: "Lexicon exported" });
 }
 

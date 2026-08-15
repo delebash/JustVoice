@@ -6,13 +6,16 @@
 // persist them. `useApi().request(...)` etc. still work: they delegate.
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import { SERVER_URL } from "../config.js";
 import {
   lastError, request, safeRequest, get, post, patch, put, del, requestBlob, postForm,
+  serverUrl as kitServerUrl,
 } from "@delebash/llm-ui";
 
 export const useApi = defineStore("api", () => {
-  const serverUrl = ref(localStorage.getItem("jt:server") || SERVER_URL);
+  // ONE resolver (2026-08-15): the kit already layered the `jt:server` override
+  // in (installLlmUi's serverOverrideKey), so this no longer reads that key a
+  // second time — the app had two answers to "which server?" and they could drift.
+  const serverUrl = ref(kitServerUrl(""));
   const token = ref(localStorage.getItem("jt:token") || "");
 
   function setServer(v) {
