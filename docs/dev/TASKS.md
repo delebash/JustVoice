@@ -185,6 +185,45 @@ others go and code"** (12, 13, 14, 16). Each recommendation, as accepted:
 
 Specs: `docs/plans/2026-08-15-pipeline-truth-and-first-run.md` §6, rewritten
 from questions into build items in the same reply the rulings were given.
+Ruling 12 BUILT same day (`bb4366b`); 13's build and 16's surface half are
+SUPERSEDED into the voice-workbench plan below.
+
+### THE VOICE WORKBENCH — the redesign plan, written for a fresh session
+
+STATE: DECIDED 2026-08-15 — *"your rec make detailed plan for opus to execute
+without thinking too much i will switch to opus and have him execute the
+plan"*. NOTHING built. THE PLAN: `docs/plans/2026-08-15-voice-workbench.md` —
+execution rules, five slices (A: voice_instruct/personality split + bio
+excision + dead-flag deletion, DATA RESET REQUIRED after it lands; B: audition
+panel on the voice row, absorbs pipeline item 5; C: persona form split +
+delivery editor, kills the openDeliveryHint toast; D: Generate dissolution =
+pipeline item 6, after B+C; E: one ＋New-voice door + Labs collapse + Train's
+roomy Voices surface + inspector removal-by-replacement), plus §8 OPEN items
+that need his word (samples API, attribution-prompt enrichment, MCP instruct).
+WHY two fields not three: after extracting the instruct, `bio` and the sheet
+shared one real consumer (smart-assign, primary vs fallback) — the user
+called it: *"aree they basically the same?"*. Yes; bio dies.
+KEY TRACE (do not re-derive; §2 of the plan holds it all): personality →
+delivery.instruct at `generate_api.py:218-240,332-349` +
+`render_chapter_api.py:118-160`; compose/rewrite/sidecar read the sheet;
+JW import fills ONLY bio (`projects_api.py:744-746`) so imported characters
+refuse compose today — after Slice A their sheet gets oneLiner+aliases+hint
+and `voice_instruct` stays EMPTY (a casting hint is not a delivery
+instruction).
+GO: per slice, in the new session.
+
+### FINDING — the analyze prompt gets id + name and nothing else
+
+STATE: FINDING — code-verified 2026-08-15. `_resolve_cast`
+(`extraction_api.py:145-167`) ships bio and hardcodes
+role/gender/pronouns=None, aliases=[]; `format_characters`
+(`extraction/prompts.py:82-97`) reads those empty fields and never reads bio.
+So production attribution has NEVER seen a character description or alias —
+the fields exist for the Lab's typed cast only. Aliases squashed into prose
+by the JW import (`justwrite.py:129-139`) are invisible to attribution too.
+OPEN: wire `personality[:200]` + real aliases into the prompt — changes every
+analyze run's tokens and behavior, so it is a product call, not a cleanup.
+GO: needed. (The dead `bio` plumbing itself dies with workbench Slice A.)
 
 ### THE 2026-08-15 PLAN — pipeline truth + first-run speech + Alexandria adoptions
 

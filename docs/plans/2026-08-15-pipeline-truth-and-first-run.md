@@ -3,8 +3,17 @@
 THE EXECUTABLE PLAN. Design decisions are MADE — the implementer (Opus session)
 builds from this doc without re-deriving. Research here was verified 2026-08-15
 (web + code); do not re-research unless a VERIFY step says so. The user's
-rulings are quoted verbatim where they exist. Items 12–16 are OPEN RULINGS —
-do not build them without the user's explicit word.
+rulings are quoted verbatim where they exist.
+
+**STATUS UPDATE (2026-08-15, late).** Items 12–16 were RULED (§6 is now build
+items; decisions verbatim in `docs/dev/TASKS.md`). Ruling 12 is **BUILT**
+(commit `bb4366b`). And a SECOND plan now exists and takes precedence for its
+territory: **`docs/plans/2026-08-15-voice-workbench.md`** — the voice/persona
+redesign. It ABSORBS this plan's **item 5** (its Slice B) and **item 6** (its
+Slice D), and SUPERSEDES item 13's build (its Slice E) and §6-item-16's
+"resolution at the point of render" surface half. Items 3–4 and 7–11 remain
+this plan's own. When the user says "execute the plan" in a fresh session, the
+voice-workbench plan is the one they mean unless they name this one.
 
 Standing constraints that bind every item (from memory + CLAUDE.md, all still
 in force): literal "go" per item batch · JV pushes need `gh workflow list --all`
@@ -616,8 +625,12 @@ BUILD:
    samples"**, and its summary line names it. Entry opens the training surface.
 3. The training surface itself: `TrainView.vue` (460 lines — name, base engine,
    base voice, method, steps/epochs, SNR threshold, samples) is REUSED as a
-   component, hosted in a Voices modal. It must not hand-roll a page header
-   (LabsView supplied the lede; the modal supplies the title).
+   component on a **Voices-owned surface, not a modal** — your ruling
+   2026-08-15, *"roomier layout"*: the samples table and the job list need the
+   room, and a modal would squeeze both. It must not hand-roll a page header
+   (LabsView supplied the lede; the host surface supplies the title).
+   ON HOLD — *"dont do those yet"* (2026-08-15), pending the voice-management
+   redesign this ruling turns out to be part of.
 4. Redirects: anything routing to `#labs?tab=train` — including item 8's
    "Train…" button when that lands — points at Voices instead.
 5. Docs: `docs/voices.md` gains training as an acquisition method; whatever
