@@ -38,11 +38,20 @@ The Playwright headless smoke is the gate for any renderer or GUI change:
 ```bash
 justvoice-server serve --host 127.0.0.1 --port 8741   # background
 npm run build:vite
-node scripts/smoke.js                                  # drives every view, asserts zero JS errors
+JV_BASE=http://127.0.0.1:8741 npm run smoke            # drives every view, asserts zero JS errors
 ```
 
-`scripts/smoke_gui.js` screenshots tabs. `e2e/` (tauri-driver against the built binary) is the
-packaged-app check, not the quick gate. `JV_BASE` overrides the base URL.
+`JV_BASE` overrides the base URL — pass it, because the script's own default is
+17494, not 8741. `scripts/smoke_gui.js` screenshots tabs.
+
+**There is NO `e2e/` here** — no real-webview harness, deferred by your word on
+2026-08-06 (*"for now we are not doing jv harness or deep audit…"*, tracked in
+`docs/dev/TASKS.md`). This file used to claim `e2e/` was "the packaged-app check",
+which was the same documented-but-not-runnable failure the browser-lookup note
+below describes. JustWrite and i18n-docgen have that harness (tauri-driver against
+the built binary); when JustVoice picks it up, docgen's is the donor and
+`scripts/e2e.js`, `verify_all.js` and `shots.js` retire with it — they are
+browser-driven, banned as an acceptance surface on 2026-08-02.
 
 **Browser lookup has one door — `scripts/lib/smoke-common.js`.** Import `findChrome()` or
 `chromeLaunchOptions()` from it; never re-fork the lookup and never hardcode a browser path. The
