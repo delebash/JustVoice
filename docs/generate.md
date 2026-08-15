@@ -117,7 +117,14 @@ Per-chunk seeds are deterministically varied (`seed + chunk_index`) so the same 
 
 ## In-flight status strip + status panel
 
-Hitting ▶ Generate (or any AI-driven action — Compose, chapter renders, engine installs, training jobs) pushes an accent-tinted progress strip into the top of the content area. It is the same shared strip every app in the family uses (`AiTaskStrip` from the shared UI kit), reading the shared task queue — a run keeps going even if you navigate away, and the strip follows you.
+Hitting ▶ Generate pushes an accent-tinted progress strip into the top of the content area. It is the same shared strip every app in the family uses (`AiTaskStrip` from the shared UI kit), reading the shared task queue — a run keeps going even if you navigate away, and the strip follows you.
+
+Two kinds of work appear there, and only these two:
+
+- **Anything that queries a language model** — Compose, Persona rewrite, Speaker attribution, Smart assign, ACX QC, Render-preset suggest, Show notes, Voice gender. This is what the strip exists for, and it is the same queue JustWrite and the docs generator use for their own AI features.
+- **Long TTS renders** — this view's ▶ Generate, a chapter render, Lines → *Re-render changed*, and a Studio scene render.
+
+What does **not** appear there: installing an engine, downloading a model, and loading a model all report on their own row in the Speech engines tab (see [Engines](engines.md#cancelling-an-in-flight-load)), and training jobs report in the Train view's job list. Those are file and process work rather than model queries, and putting them in this queue only buried the runs you actually wanted to watch.
 
 ### Strip lifecycle
 

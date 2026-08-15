@@ -109,15 +109,26 @@ Loads run against the **shared memory budget** (the memory strip at the top of t
 
 Loading can take a while. Downloads run from the row's **Download** button (or the API, which still fetches on a cold load) and go through the **speech cache**: plain files downloaded by the same chunked, resumable downloader the AI models use (a dropped connection resumes past the completed chunks instead of starting over), placed on disk *before* the engine process starts — the engine itself never touches the network. While a load or download is in progress:
 
-- A progress strip appears at the top of the content area with elapsed time + `spawning subprocess`, `loading model weights`.
-- The strip has a **Cancel** button. Clicking it sends `POST /v1/engines/{id}/cancel-load`, which:
+- A progress bar appears **on the engine's own row**, naming the model and the
+  stage it's in. Installs and downloads show real bytes and percent; a load
+  shows the stage it has reached (`spawning subprocess`, `loading model
+  weights`), because a model load reports no percentage and JustVoice does not
+  invent one.
+- The bar has a **Cancel** button while it runs. Clicking it sends
+  `POST /v1/engines/{id}/cancel-load`, which:
   - Sets a cancel flag the manager polls between safe steps (shared-venv setup → model download → subprocess spawn → child `/load` call).
   - Kills the child subprocess if already spawned, so no VRAM is left allocated.
   - Aborts the client-side fetch so you stop waiting.
-- The strip flips to `cancelled` and stays visible for 3 seconds, with a **↻ Retry** button to re-run the same load (or click ✕ to dismiss).
-- If a load fails for any reason, the strip stays in `failed` state with the error message until manually dismissed, plus the same **↻ Retry** button.
+- A cancelled or failed bar stays on the row with its error and offers
+  **Retry** and **Dismiss**. It doesn't clear itself — you decide when you've
+  read it.
 
-The same Cancel + Retry pattern applies to every long-running operation in the app per the standing rule: render, install, train, compose, import — all gain those affordances.
+The row is deliberately the *only* place these appear. The full-width strip at
+the top of the screen is the **AI task** queue: it is for work that queries a
+language model (Compose, speaker attribution, ACX QC, and the like) and for
+long TTS renders. Installing, downloading and loading are file and process
+work, so they live on the row that owns them — the same rule the AI model
+catalog follows for its own downloads and loads.
 
 ## GPU detection + tier-aware default
 
