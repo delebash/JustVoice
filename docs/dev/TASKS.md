@@ -147,9 +147,61 @@ GO: needed.
 
 ## The next build
 
+### THE 2026-08-15 PLAN — pipeline truth + first-run speech + Alexandria adoptions
+
+STATE: PLANNED IN FULL — the executable plan (design decisions MADE, per-item
+implementation specs, verified research) is
+**`docs/plans/2026-08-15-pipeline-truth-and-first-run.md`**. The user is
+switching models to code from that doc; read it FIRST, build items in order,
+per-batch go. Items 12–16 in it are OPEN RULINGS — never build without the
+user's word.
+RULINGS (user, verbatim, 2026-08-15): Generate tab — *"i aggree with A
+dissolbe it your rec on it"* · setup sample playback — *"3 no"* ·
+kokoro-as-universal-first — *"accepted rule 1 is wrong kokoro does not do
+cloning"* (goal-first lanes; Kokoro = ready-made lane only; never offer
+Kokoro as a cloning fallback) · cloning-lane pick — *"But yeah language
+branch might be better"* (en→Turbo, other→Multilingual, Qwen3 Base the named
+alternative with "reported strongest on zh/ja/ko" guidance only) · personas —
+*"i think i like havibng it as a persona for reuse as a saved persona"* (the
+Cast card = INLINE PERSONA EDITING, no new entity — research confirmed cast
+rows ARE personas, Profile-kill LD#1) · *"dont take easy way out just becuase
+we have something coded"* (hence the structural open rulings).
+KEY RESEARCH LOCKED IN THE PLAN DOC (do not redo): web-verified Qwen3-TTS
+family (Base clones / CustomVoice = 9 presets NO cloning / VoiceDesign 1.7B;
+10 languages — our manifest's 17 and its CV cloning flags are FICTION to fix
+in item 1) · Chatterbox Multilingual is at V3 upstream (we pin v2; item 1
+decision tree) · Alexandria feature/GUI record (review pass taxonomy,
+per-line instruct JSON, per-speaker card, Generate-Personas = auto-cast,
+training UI, pauses, exports) · the code seams with line numbers (demo
+activation bug, AI-offer trigger, Generate's guards, Studio cast=personas,
+render-truth gaps, TrainView shape, preview endpoint).
+
+
 **Deferred by your word (2026-08-06):** the real-webview test harness and the
 deep exhaustive audit — *"for now we are not doing jv harness or deep audit i
 want to finish all features and complete the jv llm runner conversion."*
+
+### ONE memory strip: the kit's top strip absorbs the speech budget strip
+
+STATE: DECIDED 2026-08-15 — user: *"I like that it has tts model name and
+usage we should ahve all this info llm model loaded and usage, tts model and
+sst model as well as other apps … I like the layout of the second bar with
+headers instead of just inline"* → recs approved verbatim ("go").
+WHY: two memory readouts on one page (kit inline `vramLine` + JV budget strip)
+show the same measured numbers in two styles; and the LLM providers tab
+cannot see the speech take that decides whether a model fits.
+NOT: keeping both bars · a JV-local strip fork (family-sameness: kit owns it) ·
+model names invented from manifests (names come from the live ledgers only).
+DECIDED SHAPE: one kit strip above the tabs, header-cell layout for ALL cells
+(hardware facts first, live memory after): VRAM used-of-total · Free ·
+LLM — name + measured take · TTS — name + take · STT — name + take ·
+Other apps · Busy. Nothing loaded → "—". Provenance tooltips unchanged.
+Kit owns strip + hardware + LLM cell; a host-cells feed adds JV's TTS/STT/
+Other-apps from `/v1/engines/vram` (only JV sees both ledgers); JW/docgen
+feed nothing. JV's Speech-tab budget strip DIES; Loaded-now rail and per-row
+measured hints stay. Kit half tracked in the kit tracker.
+BUILT: (in progress this session)  OPEN: kit strip rework + JV feed + docs.
+GO: given 2026-08-15.
 
 ### VRAM: STOP AND THINK before any arbiter wiring
 
