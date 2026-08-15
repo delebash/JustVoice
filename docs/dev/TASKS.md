@@ -212,22 +212,55 @@ character can do) with cloning inline on the cast row · **no per-line voice
 override** — a different voice is a different character · the workbench is a
 **finishing bench** (hear · tune · save-as · derive · samples).
 
-DECIDED THIS SESSION: render presets are **DELETED** (a character minus the
-identity; its delivery overrode every character's; two dead fields; master
-duplicated) — the scene keeps direction text + an effects chain, governed by
-**a scene may apply anything that COMPOSES, never anything that REPLACES** ·
-gain/pitch/tempo are physically effects and fold into the chain, so the scene
-needs no new entity · **voice tuning stays** (user ruling — the quiet clone
-shared by five characters proves it belongs to the artifact) · **a sixth way to
-make a voice**: the derived voice, tune-and-save-as, which also makes preset
-voices renameable — user: *"a fifth way to make a voice yes i like that"* ·
-**the Voice Designer is KEPT** — my "we don't ship it" was backwards, the whole
-path is built and switched off pending one download.
+RULED BY THE USER THIS SESSION — verbatim, these are settled:
+
+1. *"but i do want a voice tuning page this is part of creating a new voice for
+   a persona to consume"* → **voice tuning stays on the voice.** Overrides my
+   rethink that moved the knobs to the character. The case that settles it: a
+   clone that comes out quiet must be fixed once on the artifact, not five times
+   across five characters.
+2. *"a fifth way to make a voice yes i like that"* → **the derived voice ships in
+   the design**: tune a voice, Save as new voice; a record of
+   `{parent_id, name, calibration, effects}`. Also makes preset voices
+   renameable. Guardrail: it is a correction to an artifact, never a mood.
+3. *"damint we want a voice designer we have qwen and other tts that do that why
+   would you drop it"* → **the Voice Designer is KEPT.** My "we don't ship the
+   checkpoint" was backwards — the path is built and gated (`voice_design: False`
+   in every manifest pending one download).
+4. *"i think qwen is the only one for voice designer"* → **Qwen3 VoiceDesign is
+   the only design engine** — working assumption, corroborated 2026-08-15 by
+   Voice-Clone-Studio (github.com/FranckyB/Voice-Clone-Studio), which supports
+   six TTS engines and routes design to Qwen3-TTS's dedicated model alone. The
+   TADA question is closed unless it ever matters.
+5. *"i think we really are doing a full redesing of the app from a voice workflow
+   standpoint whihc is most of the app"* → **scope is the whole project side**,
+   planned as one redesign, not slices bolted onto the workbench plan.
+6. *"i dont just want a copy of alexadira if it does not make sense in our app"*
+   and *"dont overenginner"* → **the Alexandria take/skip decision is made once,
+   in writing** (redesign doc §5) and nothing is adopted for symmetry.
+
+PROPOSED BY ME, NOT YET RULED — all of §2/§3 of the redesign doc. Do NOT record
+these as decisions and do NOT build them:
+the line is the unit and Chapters+Script+Render merge · two modes
+(Script-with-playhead / Table) · steps become filter states · render as a panel ·
+inline-for-the-line vs pages-for-library-objects · casting as
+pick-the-kind-then-the-voice · no per-line voice override · **render presets
+deleted** (the user's words were *"i think presets die… i am not saying get rid
+of it… give me your rec"* — a lean plus a request for a recommendation, NOT a
+ruling) · the composes-vs-replaces rule · gain/pitch/tempo folded into the
+effects chain.
 
 OPEN (§4 of the doc): does "Studio" survive as a container (undoing ruling 12)? ·
-does Chapters die outright? · row-expands vs row-links? · which bundled engines
-really support description-to-voice (TADA unverified — check the web) · the real
-VoiceDesign download size · samples API · is there any undo for an Analyze pass?
+does Chapters die outright? · row-expands vs row-links? · the real VoiceDesign
+download size · samples API · is there any undo for an Analyze pass?
+
+CANDIDATE FROM VOICE-CLONE-STUDIO (2026-08-15, not ruled): a **Prep Audio**
+workspace — trim on a waveform, normalize, mono, DeepFilterNet denoise, extract
+from video, ASR sentence-split, batch transcribe. JV accepts a clone upload and
+flags SNR *after*; cleaning *before* is worth more, since clones inherit room
+tone, and the same workspace feeds training-dataset prep. That app has **no
+speaker attribution at all** (manual `[1]:`/`[2]:` prefixes), so there is nothing
+in it for the attribution work.
 
 GO: needed, per phase. Slices C/D/E of the workbench plan are frozen.
 

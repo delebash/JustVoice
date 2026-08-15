@@ -348,11 +348,13 @@ Direction composes additively and reads as English:
    today; verify the exact overlap in code before deleting.
 3. **Is the row-expands-into-everything model right, or too clever?** The boring
    alternative: the row *links* to the right place. Less magic, more navigation.
-4. **Which bundled engines actually support description-to-voice?** Qwen3
-   VoiceDesign is confirmed in our own record. Every other manifest says
-   `voice_design: False`, including **Hume TADA** — Hume's cloud Octave does
-   description-based voices; whether the local TADA weights do is **unverified and
-   must be checked on the web**, per CLAUDE.md.
+4. ~~Which bundled engines support description-to-voice?~~ **CLOSED 2026-08-15.**
+   Qwen3 VoiceDesign only. User: *"i think qwen is the only one for voice
+   designer"*, corroborated by Voice-Clone-Studio
+   (github.com/FranckyB/Voice-Clone-Studio), which supports six TTS engines —
+   Qwen3-TTS, VibeVoice, LuxTTS, Chatterbox, Fish Speech S2 Pro, MMAudio — and
+   routes Voice Design to *"Qwen3-TTS's dedicated model"* alone. The TADA
+   question is dropped.
 5. **The real VoiceDesign download size** — our record says UNVERIFIED.
 6. **Samples API** — build it, or keep the honest line.
 7. **Is there any undo for an Analyze pass?** Re-running overwrites `persona_id`.
@@ -405,6 +407,36 @@ Designer / Preparer / Dataset / Training.
   Script step exists only for prose kinds — `studioSteps.js` gives prose
   `[script, cast, render, export]`, game `[cast, render, export]`.) The one bit
   worth keeping is the *go back to a better pass* idea — see §4 open question 7.
+
+### Voice-Clone-Studio (github.com/FranckyB/Voice-Clone-Studio) — read 2026-08-15
+
+A Gradio **bench** for making clips, not a pipeline for a book: six TTS engines
+(Qwen3-TTS, VibeVoice, LuxTTS, Chatterbox, Fish Speech S2 Pro, MMAudio) + three
+ASR, behind modular tabs. No project, chapter, character, lexicon, master-target
+or take-versioning concept at all, so most of it is out of scope.
+
+**Nothing for attribution.** Its "Conversation" tab is manual `[1]:` / `[2]:`
+prefixes typed by the user, and indices past the speaker limit *wrap around*. No
+LLM pass, no prose parsing. Alexandria remains the only prior art we have there.
+
+**TAKE — one thing, and it's real:** a **Prep Audio** workspace. Trim on a
+waveform · normalize · mono · **DeepFilterNet denoise** · extract audio from
+video · auto sentence-split via ASR · batch transcribe · dataset folder
+management. JV accepts a clone upload and flags SNR *after the fact*; a clone
+inherits room tone, so cleaning **before** is worth more than warning after — and
+the same workspace is what a training dataset needs. Not ruled.
+
+**Two smaller notes:** they cache the voice prompt on first generation so later
+clones are instant (check whether JV caches clone conditioning or recomputes);
+and their 40+ emotion presets with intensity are the same shape as our saved
+direction snippets, arrived at independently.
+
+**Confirms:** Voice Design is Qwen3-only (§4 open question 4, now closed).
+
+**Out of scope, noted:** Voice Changer (Chatterbox speech-to-speech re-voicing),
+Sound Effects (MMAudio text/video→audio), 90-minute continuous VibeVoice
+generation, Fish Speech inline expression tags (`[whisper]`, `[laughing]` — the
+same idea as our `inline_tags` capability).
 
 ### WHERE JV IS ALREADY AHEAD — do not regress copying them
 
