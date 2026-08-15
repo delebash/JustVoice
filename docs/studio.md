@@ -1,17 +1,24 @@
-# Studio — Cast → Script → Render
+# Studio — Script → Cast → Render
 
-Studio is the multi-character production environment: assign voices to
-characters, attribute every line to its speaker, render the whole project. The
-tab names adapt to your project kind (chapters for audiobooks, quests for game
-projects, segments for podcasts) — same flow, your vocabulary.
+Studio is the multi-character production environment: work out who speaks each
+line, give those speakers voices, render the whole project. The tab names adapt
+to your project kind (chapters for audiobooks, quests for game projects,
+segments for podcasts) — same flow, your vocabulary.
 
-## Cast
+**Why Script comes first.** Analyzing a chapter is what *finds* your cast. On an
+imported manuscript the project starts with one persona — the Narrator — and
+**Find new speakers** discovers the rest from the prose and adds them to the
+project. Casting before that would mean assigning voices to a list of one. So
+the steps run **Script → Cast → Render → Export**, and each is numbered in the
+tab strip.
 
-Every character in the project, with their voice assignment. Add a character,
-open the voice params modal to tune their delivery, and press **▶** to hear a
-voice preview before committing — the preview plays a stock sample line, not a
-line from your script. **Smart assign** asks the LLM to propose voices for
-the whole unassigned cast in one pass, and you accept or change per row.
+**Game projects are the exception**: they have no Script step at all. A line
+list arrives from the writers with its characters already attached, so a game
+project runs **Cast → Render → Export**.
+
+If your cast is already complete — a JustWrite import that brought its
+characters, or a project you have analyzed before — nothing stops you clicking
+straight to Cast. The order is the path of least surprise, not a lock.
 
 ## Script
 
@@ -88,6 +95,16 @@ JustVoice refuses to re-cut rather than destroy them.
 
 When Analyze meets speakers that aren't in your cast, a **discover-speakers**
 banner offers to promote them to personas in one click.
+
+## Cast
+
+Every character in the project, with their voice assignment — the speakers
+Script found, plus the Narrator and anyone a JustWrite import brought with it.
+Add a character, open the voice params modal to tune their delivery, and press
+**▶** to hear a voice preview before committing — the preview plays a stock
+sample line, not a line from your script. **Smart assign** asks the LLM to
+propose voices for the whole unassigned cast in one pass, and you accept or
+change per row.
 
 ## Render
 

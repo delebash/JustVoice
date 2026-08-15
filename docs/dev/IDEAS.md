@@ -6,6 +6,84 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-08-15 · THE TIMELINE, designed properly (replaces the inherited Stories
+  surface)** — parked here by your word after the ruling-15 discussion: retract
+  the tab, design the real thing here, build it later. Nothing below is started.
+
+  **What exists today, verified in code 2026-08-15.** Two tables and nothing
+  else. `database/models.py:382-412`: `stories` (name, optional `project_id`)
+  and `story_items` — one clip placement each, carrying `track`,
+  `start_time_ms`, `trim_start_ms`, `trim_end_ms`, `volume`, a denormalised
+  `duration`, and FKs to `generations` / `generation_versions`. There is **no
+  `/v1/stories*` route anywhere in `server/`**, no mixer (the audio package is
+  `analyzer` · `wav` · `effects` · `chunked` — nothing sums N clips at
+  offsets), and `StoriesView.vue` is 44 inert lines that say so on the page
+  (gated 2026-06-13, your decision, after the previous mock called endpoints
+  that never existed). The DSP that DID ship is per-clip: `audio/effects.py`'s
+  chain + `mastering.py`'s ffmpeg loudness pass, both wired into renders by the
+  2026-08-15 render-truth work. Clip PROCESSING is done; clip ARRANGEMENT was
+  never begun.
+
+  **Why the inherited shape cannot be built on.** `story_items` points at
+  `generation_id` / `version_id` and carries no `take_id`, `block_id` or
+  `scene_id`. Voicebox's timeline arranges one-off Generate clips — but a
+  JustVoice episode is Project → Scene → Block → **Take**, so as inherited the
+  timeline cannot arrange the audio the production pipeline actually makes. It
+  also points at the entity plan item 6 dissolves. Any build starts with a
+  schema decision, not with a UI.
+
+  **Which project kinds — podcast only, for v1.** *Podcast:* the real case —
+  segments from several speakers, breathing room, music beds, stings. *Game
+  voicelines:* NO. The deliverable is per-line WAVs + a manifest the game engine
+  triggers; there is no assembled programme to arrange, and the current lede's
+  "game-dialogue assembly" is aspiration, not a use case anyone named. *Audiobook:*
+  not for v1 — a chapter is continuous narration, ACX wants no beds, and
+  pacing is better served by the Pauses group (plan item 10) than by dragging
+  clips. Revisit only if full-cast audiobooks need per-character pacing that
+  pauses cannot express. *Custom/text:* no.
+
+  **What it should DO.** (1) **Arrive populated, never empty**: open an episode
+  and its blocks are already laid out in order, on lanes grouped by persona,
+  using each block's default take with its real duration. The 90% case —
+  "the order is right, I need breathing room and levels" — needs no dragging at
+  all. (2) **Edits**: move a clip, trim head/tail, per-clip gain, swap which
+  take a clip uses, mute/solo a lane, lane gain, insert a gap, drop in an ad-hoc
+  clip (uploaded WAV or a one-off render) for a bed or a sting. (3) **Survive a
+  re-render**: a clip stays anchored to its block, and block-to-block offsets
+  are RELATIVE to the previous clip's end, so re-rendering one line ripples the
+  arrangement instead of corrupting it — with an explicit "pin to absolute time"
+  for beds and stings that must land on the clock. (4) **Mix down** by summing
+  lanes with offset/trim/gain, then hand the result to the existing mastering
+  chain (podcast target) and the existing export path. The only genuinely new
+  audio code is the summing. (5) **Stay non-destructive and cacheable**: the
+  arrangement is data; the mixdown is an artifact keyed by arrangement hash +
+  take ids + effects hash, alongside today's render cache.
+
+  **What it should LOOK like.** Lane headers down the left — persona name, its
+  voice, mute/solo, lane gain. A horizontal ruler with clips as blocks labelled
+  by the line's first words (waveform only if it is cheap; a flat block is fine
+  and reads better at episode length). Trim handles on the selected clip.
+  Transport + zoom along the bottom. A right-hand inspector for the selected
+  clip: which take (with the take carousel's own vocabulary), gain, trim in
+  ms, and a read-only line naming the effects chain it inherits from its
+  persona. Empty state for an unrendered episode: say so and link to Studio,
+  the same lede-card precedent the current placeholder already uses.
+
+  **Sequencing.** After plan item 6 (Generate dissolution) settles what a clip
+  references. Then the schema ruling, THEN the API, then the mixdown, then the
+  editor — in that order, because every layer above is wrong if the anchor is.
+
+  **Open questions that need your ruling before any build.** (a) Extend
+  `story_items` with `take_id`/`scene_id`, or delete both tables and let a
+  scene own its arrangement? Lean: **scene-owned** — an episode already IS a
+  scene, and "freestanding stories tied to nothing" is a second organising
+  concept nobody has asked for. (b) Do pauses (item 10) become timeline data,
+  or stay the audiobook answer while the timeline is the podcast answer?
+  (c) Per-clip effects overrides, or effects stay at persona/preset only?
+  Lean: persona/preset only, or the "which chain applied" question gets a
+  fourth answer. (d) Does game ever get a read-only preview of a dialogue
+  exchange? Lean: no.
+
 - **2026-08-14 · AMD-Linux per-process GPU memory via KFD sysfs** — recorded
   by the amended measured redesign (plan doc §10): ROCm tooling exposes only
   device-wide use, so AMD-Linux boxes ride the device-delta fallback

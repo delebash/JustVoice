@@ -25,7 +25,7 @@ const KINDS = [
     id: "audiobook",
     icon: "📖",
     label: "Audiobook",
-    bullets: ["Chapters & paragraphs", "Cast → Script → Render", "Lexicons enforce pronunciation"],
+    bullets: ["Chapters & paragraphs", "Script → Cast → Render", "Lexicons enforce pronunciation"],
     foot: "Exports: chapter WAVs · M4B · ACX −20 LUFS",
   },
   {

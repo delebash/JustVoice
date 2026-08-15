@@ -133,8 +133,11 @@ doesn't block this — the timeline reads rendered takes regardless of kind.
 Picking a kind at project creation sets:
 
 - **Sidebar vocabulary** (rule set above)
-- **Studio steps** — audiobook: Cast → Script → Render (LLM attribution
-  needed); game & podcast: Cast → Render (the source already names speakers)
+- **Studio steps** — prose kinds (audiobook, podcast, custom): Script → Cast →
+  Render → Export, because Script's discover-and-promote is what FILLS the cast
+  (ruling 12, 2026-08-15); game: Cast → Render → Export, no Script step at all —
+  the writers' sheet already names the speaker of every line. (This line used to
+  put podcast with game; podcast is a prose kind and always had the Script step.)
 - **Mastering target** — ACX −20 LUFS mono / 48 kHz per-line mono /
   −16 LUFS stereo — same mastering engine, different preset
 - **Export surface** — M4B + chapter WAVs / per-line WAVs + manifest.json /

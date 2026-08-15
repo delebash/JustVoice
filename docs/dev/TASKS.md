@@ -147,6 +147,45 @@ GO: needed.
 
 ## The next build
 
+### THE STRUCTURAL RULINGS 12–16 — DECIDED 2026-08-15, specs in the plan doc §6
+
+Your words, in order: **"12 your rec, 13 your rec, 14, your rec, 15 what do you
+think and is stories only for podcast? 16 your rec"** → **"ok you rec add this
+to ideas so we can design the proper timeline"** (15) → **"your rec for the
+others go and code"** (12, 13, 14, 16). Each recommendation, as accepted:
+
+- **12 — Studio steps reorder to Script → Cast → Render → Export for PROSE
+  kinds; game keeps `[cast, render, export]`.** WHY: the Script step is what
+  *creates* the cast — `runDiscoverSpeakers` → `promoteDiscovered`
+  (`StudioView.vue:1303-1351`) makes the personas and links them to the
+  project. Cast-first means opening a cast holding only the Narrator, leaving
+  to find the speakers, and coming back: a loop presented as a line. Game
+  lines arrive with characters attached, so there is nothing to discover.
+  NOT: a signpost from Cast's empty state to Script — rejected as an admission
+  the rooms are ordered wrong.
+- **13 — Train becomes the fourth way to acquire a voice, inside Voices** —
+  beside clone / design / import (`VoicesView.vue:513-525`), NOT a moved tab.
+  You meet it when you want a voice, not as a separate destination. Labs keeps
+  Compare / Render lab / Audio. The long-running job keeps reporting through
+  the shared AI task strip.
+- **14 — REJECTED as posed: Lines does NOT fold into Studio's Render step.**
+  Lines is a structure view, not a render surface: stable line ids, derived
+  take status, and a CSV re-import that merges the writers' next sheet by line
+  id so only changed lines go stale (`LinesView.vue:218-225`). The real
+  duplication is **Chapters ↔ Lines** — two structure views answering one
+  question for different kinds. That comparison is the design pass worth doing;
+  it is NOT a build and has no go.
+- **16 — Effects + Presets consolidate near Render, resolution-first.** Item 2
+  made a render preset carry format + master target + effects chain, all three
+  live, so they are one decision wearing three tabs. NOT a tab merge: the
+  RESOLVED answer belongs at the point of render (Studio's Render step already
+  shows the master pill item 2 built), with Effects and Presets demoted to
+  library pages beneath it. Merging tabs without surfacing the resolution just
+  moves the guesswork.
+
+Specs: `docs/plans/2026-08-15-pipeline-truth-and-first-run.md` §6, rewritten
+from questions into build items in the same reply the rulings were given.
+
 ### THE 2026-08-15 PLAN — pipeline truth + first-run speech + Alexandria adoptions
 
 STATE: PLANNED IN FULL — the executable plan (design decisions MADE, per-item
@@ -1020,8 +1059,16 @@ GO: needed.
 
 ### The Stories tab advertises a feature that isn't built
 
-STATE: OPEN — your call: reword the lede, or hide the tab until the timeline is
-real.
+STATE: **DECIDED 2026-08-15 — *"ok you rec add this to ideas so we can design
+the proper timeline"***, on the recommendation to RETRACT rather than build:
+hide the tab, keep the tables, design the real thing first. The design is
+written in full at the top of `IDEAS.md` (2026-08-15 entry) — what it does,
+what it looks like, which kinds, and the four open questions. Two facts that
+forced the rec, both code-verified that day: `story_items` points at
+`generations`/`generation_versions` and carries no `take_id`/`block_id`/
+`scene_id` (`database/models.py:396-412`), so the inherited timeline cannot
+arrange what the production pipeline makes; and it anchors to the entity plan
+item 6 dissolves. The retraction itself is NOT built — it needs its own go.
 WHY it matters: app copy is code. `App.vue:43` sells "Multi-track timeline editor.
 For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement."
 BUILT: nothing behind it — `StoriesView.vue` has been deliberately inert since

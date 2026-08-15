@@ -1,8 +1,10 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!--
   StudioView — multi-character production environment for the
-  audiobook + podcast + game use cases. Three-tab Cast → Script →
-  Render flow ported in shape from JustWrite's StudioView.vue.
+  audiobook + podcast + game use cases. Script → Cast → Render → Export
+  for prose kinds, Cast → Render → Export for game (ruling 12, 2026-08-15 —
+  the order lives in studioSteps.js and is pinned by its test). Ported in
+  shape from JustWrite's StudioView.vue.
 
   Terminology adapts via useCopy():
     audiobook → Cast / Chapter / Render
@@ -20,6 +22,7 @@ import { useApi } from "../stores/api.js";
 // the store import remains for READS only (per-scene bars, taskForScene).
 import { AiTaskStrip, runAiEndpoint, runAiEndpointStream, useAiTasksStore, withAiTask } from "@delebash/llm-ui";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
+import { stepsFor } from "./studioSteps.js";
 import { useCopy } from "../services/copy.js";
 import {
   SOURCE_LEGEND, hasSpeakerInfo, isMarker, isSpeakable, proseFromBlocks,
@@ -55,7 +58,10 @@ const personas = computed(() => personasStore.items);
 const voices = computed(() => voicesStore.items);
 const engines = computed(() => enginesStore.items);
 const selectedProjectId = ref(null);
-const tab = ref("cast");
+// Empty on purpose: the first step depends on the project's KIND (prose opens
+// on Script, game on Cast — ruling 12), and the kind isn't known until the
+// project loads. The watch below resolves it instead of a literal seed.
+const tab = ref("");
 const loading = ref(false);
 
 const selectedCharacterId = ref(null);
@@ -258,12 +264,7 @@ const TAB_LABELS = computed(() => {
 });
 const isGameProject = computed(() => selectedProject.value?.project_type === "game_voicelines");
 
-const visibleTabs = computed(() => {
-  const isGame = selectedProject.value?.project_type === "game_voicelines";
-  const keys = isGame ? ["cast", "render", "export"] : ["cast", "script", "render", "export"];
-  const names = { cast: "Cast", script: "Script", render: "Render", export: "Export" };
-  return keys.map((key, i) => ({ key, label: `${i + 1} · ${names[key]}` }));
-});
+const visibleTabs = computed(() => stepsFor(selectedProject.value?.project_type));
 
 const selectedProject = computed(() =>
   projects.value.find((p) => p.id === selectedProjectId.value) || null,
@@ -346,15 +347,19 @@ const headerLlm = computed(() =>
   (engines.value || []).find((e) => e.status === "loaded" && e.kind === "llm") || null);
 
 watch([selectedProject, () => tab.value], () => {
-  if (tab.value === "script" && !visibleTabs.value.some((t) => t.key === "script")) {
-    tab.value = "cast";
+  // Resolve the step: whatever isn't a step of THIS kind (including the empty
+  // seed, and "script" on a game project) falls to the kind's first step.
+  // Immediate, so a project that is already selected on mount still resolves.
+  if (!visibleTabs.value.some((t) => t.key === tab.value)) {
+    tab.value = visibleTabs.value[0]?.key || "cast";
+    return; // the assignment re-enters this watcher with a valid step
   }
   if (tab.value === "render") {
     qcByScene.value = {};
     loadCacheStats();
     loadMasterTarget();
   }
-});
+}, { immediate: true });
 
 const projectOptions = computed(() => {
   if (!projects.value.length) return [{ label: "— no projects —", value: null }];

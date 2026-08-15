@@ -10,7 +10,7 @@
 > and **nothing switches mastering by kind** — only an audiobook *import* sets `acx`;
 > Studio render sends no `master` at all. Also wrong in step 1: podcast Studio does
 > NOT collapse to Cast → Render — only game skips Script (`StudioView.vue`); podcast
-> gets the full Cast → Script → Render → Export.
+> gets the full Script → Cast → Render → Export.
 
 <!-- SPDX-License-Identifier: MIT -->
 

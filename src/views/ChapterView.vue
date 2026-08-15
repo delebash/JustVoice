@@ -668,7 +668,7 @@ function openInStudio() {
 }
 watch([scenes, selectedProjectId], () => { if (viewMode.value === "list") loadChapterList(); });
 
-// ── Workflow strip (journeys audiobook arc): Import → Cast → Script →
+// ── Workflow strip (journeys audiobook arc): Import → Script → Cast →
 // Render → Export, with live status per step so the whole flow can be
 // walked and verified in order. ───────────────────────────────────────
 const castStats = ref({ total: 0, voiced: 0 });
@@ -700,8 +700,10 @@ const workflowSteps = computed(() => {
   }).length;
   return [
     { label: "1 Import", sub: n ? `${n} ${copy.value.chapter.plural.toLowerCase()}` : "no text yet", done: n > 0, act: startImport },
-    { label: "2 Cast", sub: castStats.value.total ? `${castStats.value.voiced}/${castStats.value.total} voiced` : "no cast yet", done: castStats.value.total > 0 && castStats.value.voiced === castStats.value.total, act: () => goStudio("cast") },
-    { label: "3 Script", sub: n ? `${attributed}/${n} attributed` : "—", done: n > 0 && attributed === n, act: () => goStudio("script") },
+    // Script before Cast (ruling 12): analysis is what discovers the speakers
+    // this strip then counts as the cast.
+    { label: "2 Script", sub: n ? `${attributed}/${n} attributed` : "—", done: n > 0 && attributed === n, act: () => goStudio("script") },
+    { label: "3 Cast", sub: castStats.value.total ? `${castStats.value.voiced}/${castStats.value.total} voiced` : "no cast yet", done: castStats.value.total > 0 && castStats.value.voiced === castStats.value.total, act: () => goStudio("cast") },
     { label: "4 Render", sub: n ? `${cachedAll}/${n} rendered` : "—", done: n > 0 && cachedAll === n, act: () => goStudio("render") },
     { label: "5 Export", sub: "M4B · WAVs · ACX", done: false, act: () => { exportOpen.value = true; runExportQc(); } },
   ];
@@ -840,7 +842,7 @@ async function savePastedText() {
       </div>
       <p class="chapter-view__lede jv-muted">
         Each {{ copy.chapter.singular.toLowerCase() }} moves independently through
-        <strong>cast → script → render</strong>. Open one to read it, or send the whole
+        <strong>script → cast → render</strong>. Open one to read it, or send the whole
         {{ copy.book.singular.toLowerCase() }} to Studio.
       </p>
       <div class="chapter-view__list-toolbar">
@@ -851,7 +853,7 @@ async function savePastedText() {
           @click="chapterChip = c[0]">{{ c[1] }}</UiChip>
         <span class="jv-spacer" />
         <UiButton intent="secondary" size="small" :label="`＋ Add ${copy.chapter.singular.toLowerCase()}`" @click="addChapter" />
-        <UiButton intent="primary" size="small" label="Open in Studio ➜" title="Cast → Script → Render for the whole project" @click="openInStudio" />
+        <UiButton intent="primary" size="small" label="Open in Studio ➜" title="Script → Cast → Render for the whole project" @click="openInStudio" />
       </div>
       <table class="jv-table chapter-view__list">
         <thead><tr>

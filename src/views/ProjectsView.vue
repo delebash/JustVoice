@@ -368,7 +368,7 @@ function openProjectHome(p) {
 }
 
 // Detail-pane primary CTA — open the selected project in Studio
-// (Cast → Script → Render → Export). (Was referenced by the template
+// (Script → Cast → Render → Export). (Was referenced by the template
 // but never defined, so the button threw on click.)
 function openInStudio() {
   const p = selectedProject.value;
@@ -488,7 +488,7 @@ onActivated(() => {
       v-else-if="filtered.length === 0 && !search && projectTypeFilter === 'all'"
       icon="Sparkle"
       :title="`No ${copy.book.plural.toLowerCase()} yet`"
-      :message="`Import from JustWrite, paste a manuscript chapter, or start blank. Studio walks you from cast → script → render.`"
+      :message="`Import from JustWrite, paste a manuscript chapter, or start blank. Studio walks you from script → cast → render.`"
       action-label="+ Import…"
       compact
       @action="showImport = true"
@@ -628,7 +628,7 @@ onActivated(() => {
           <!-- Render + export live on Studio (4 · Export) — Projects is
                the library (user decision 2026-06-12). -->
           <div class="projects__actions">
-            <UiButton intent="primary" label="Open in Studio ➜" title="Cast → Script → Render → Export" @click="openInStudio" />
+            <UiButton intent="primary" label="Open in Studio ➜" title="Script → Cast → Render → Export" @click="openInStudio" />
             <span class="projects__spacer" />
             <UiButton intent="danger-outline" size="small" label="Delete project" @click="deleteProject" />
           </div>

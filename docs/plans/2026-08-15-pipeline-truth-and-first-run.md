@@ -568,21 +568,114 @@ summary endpoint. Vitest for the counters' arithmetic.
 
 ---
 
-## §6 OPEN RULINGS (12–16) — do NOT build; ask when the user returns
+## §6 RULINGS 12–16 — DECIDED 2026-08-15, now build items
 
-12. **Analyze-leads step order** — Script→Cast→Render vs current Cast-first
-    (data-dependency argument §B of the 2026-08-15 discussion; touches the
-    journeys contract numbering in StudioView :253-266).
-13. **Train under Voices** — training as the 4th acquisition method; Labs
-    keeps Compare/Render lab/Audio. (Item 8's "Train…" button currently
-    routes to Labs; flips here.)
-14. **Lines folds into Studio Render; Chapters' role** — needs a verification
-    pass of ChapterView's unique surface first; settle together with the open
-    tracker decision "Script tab: two project kinds can never finish a
-    chapter".
-15. **Stories: build the timeline (with per-speaker tracks) or retract** the
-    podcast kind's timeline surfaces until built.
-16. **Effects + Presets tab consolidation** near Render — decide after item 2.
+All five were ruled in one exchange: *"12 your rec, 13 your rec, 14, your rec,
+15 what do you think and is stories only for podcast? 16 your rec"* → *"ok you
+rec add this to ideas so we can design the proper timeline"* (15) → *"your rec
+for the others go and code"* (12, 13, 14, 16). The decision text lives verbatim
+in `docs/dev/TASKS.md`; the builds are specced here.
+
+### Item 12 — Studio's steps follow the data: Script first for prose kinds
+
+WHY (the argument that won): the Script step *creates* the cast.
+`runDiscoverSpeakers` (`StudioView.vue:1303-1330`) finds speakers the manuscript
+names, `promoteDiscovered` (`:1336-1351`) POSTs them to
+`/v1/projects/{id}/personas/promote`, which creates the personas AND links them
+to the project. Cast-first therefore opens a cast holding only the auto-created
+Narrator, sends you to Script to populate it, and back again. Game projects have
+no Script step at all — their lines arrive with characters attached.
+
+BUILD:
+1. `StudioView.vue:263` — prose key order becomes
+   `["script", "cast", "render", "export"]`; the game branch is untouched.
+   Numbering is derived (`:265` `${i + 1} · ${names[key]}`), so it follows.
+2. Whatever seeds `tab` on first open must land on the FIRST visible step, not
+   the literal `"cast"` — check the Script-tab restore (`docs/plans/
+   2026-08-08-script-tab-restore.md`) still restores a remembered tab and only
+   the DEFAULT moves.
+3. Copy that names the order: `App.vue:40` Studio lede ("Cast → Script →
+   Render production environment"), `docs/studio.md`, and any journey doc that
+   numbers the steps. Grep `Cast → Script` across `docs/` and `src/`.
+4. Tests: a vitest pin that prose kinds start at `script` and game at `cast`;
+   renderer smoke.
+NOT: a signpost from Cast's empty state into Script — rejected as an admission
+the rooms are ordered wrong.
+
+### Item 13 — Train is the way you make a voice, not a lab
+
+WHY: `VoicesView` already owns four acquisition paths — clone, design, import,
+blend (`modal` at `:371`, dispatched by `openModal` `:466`, entries at `:748`,
+`:753-755`, and the "Other ways to add a voice" fold `:766-769`). Training
+produces a voice too, so it belongs with them; Labs keeps the benches (Compare
+/ Render lab / Audio, `LabsView.vue:23-40`).
+
+BUILD:
+1. `LabsView.vue` — drop the `train` entry from `SUBS`; Labs is three tabs.
+2. `VoicesView` — the "Other ways to add a voice" fold gains **"Train from
+   samples"**, and its summary line names it. Entry opens the training surface.
+3. The training surface itself: `TrainView.vue` (460 lines — name, base engine,
+   base voice, method, steps/epochs, SNR threshold, samples) is REUSED as a
+   component, hosted in a Voices modal. It must not hand-roll a page header
+   (LabsView supplied the lede; the modal supplies the title).
+4. Redirects: anything routing to `#labs?tab=train` — including item 8's
+   "Train…" button when that lands — points at Voices instead.
+5. Docs: `docs/voices.md` gains training as an acquisition method; whatever
+   documents Labs loses the Train tab. `docs/toc.json` if a page moves.
+6. Tests: vitest that Labs exposes three subs and none is `train`; smoke.
+NOT: moving the tab wholesale into the sidebar — you should meet training when
+you want a voice, not as a destination.
+
+### Item 14 — REJECTED as posed; the real seam is Chapters ↔ Lines
+
+Lines is not a render surface. `LinesView.vue` is the game project's structure
+view: line id · character · text · derived take status (none/rendered/stale),
+grouped by scene, with a CSV re-import that merges the writers' next sheet by
+line id so only changed lines go stale, and a bulk "↻ Re-render N changed"
+(`:218-225`). Folding it into Studio's Render step would destroy the re-import
+workflow to save a tab.
+
+The duplication worth examining is **Chapters ↔ Lines** — two structure views
+answering one question ("this project's units of speech, their take status, how
+to render one") for different kinds, one a per-block editor with take history,
+the other a bulk status grid. That is a DESIGN PASS, not a build: compare the
+two surfaces feature by feature, decide whether one view with kind-driven
+columns replaces both, and settle it together with the tracker's open item
+"Script tab: two project kinds can never finish a chapter". **No go, no code.**
+
+### Item 15 — Stories retracted; the real timeline is designed in IDEAS
+
+Ruled 2026-08-15. The full design — what it does, what it looks like, that it
+is **podcast-only for v1** (game excluded: the deliverable is per-line WAVs a
+game engine triggers, not an assembled programme; audiobook excluded: pacing
+belongs to the Pauses group, item 10) — is written at the top of
+`docs/dev/IDEAS.md`, with the four open questions it still needs answered.
+
+Two code facts forced it: `story_items` (`database/models.py:396-412`) points at
+`generations`/`generation_versions` and carries no `take_id`/`block_id`/
+`scene_id`, so the inherited timeline cannot arrange what the production
+pipeline makes; and that anchor is the entity item 6 dissolves. The tables stay;
+the tab goes. **The retraction is not built and needs its own go.**
+
+### Item 16 — Effects + Presets consolidate near Render, resolution first
+
+WHY: item 2 made a render preset carry format + master target + effects chain
+and made all three actually run, so they are one decision wearing three tabs
+(`App.vue:52-53` — Effects and Presets are both top-level library entries).
+
+BUILD:
+1. The RESOLVED answer surfaces at the point of render. Studio's Render step
+   already shows the master pill (item 2, `GET /v1/render/master-target`); it
+   gains the same treatment for the effects chain — what will run, and where it
+   came from (persona chain + preset chain, stacked, per `audio/effects.py
+   resolve_chain`).
+2. Effects and Presets demote from top-level tabs to pages reached from that
+   surface; the sidebar keeps one entry near Render rather than two in Library.
+3. `docs/render-presets.md`, `docs/effects.md`, `docs/studio.md` follow the
+   move; the help slugs in `App.vue`'s `HELP_SLUG_BY_VIEW` follow the routes.
+4. Tests: vitest for the resolution line's copy; smoke drives the new route.
+NOT: merging the two tabs and leaving the resolution unshown — that moves the
+guesswork instead of ending it.
 
 Phase-5 later pile (no rulings needed, just gos): Train quality-feedback row +
 explainer + dataset preview loop · M4B promise-vs-code check · per-speaker
