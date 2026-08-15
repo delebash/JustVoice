@@ -678,12 +678,14 @@ async function loadCastStats() {
   try {
     const r = await api.request(`/v1/projects/${selectedProjectId.value}/cast`);
     const cast = r?.cast || [];
-    const personas = await Promise.all(cast.map(async (c) => {
-      try { return await api.request(`/v1/personas/${c.persona_id}`); } catch { return null; }
-    }));
+    // The personas STORE, not one GET per cast member — Home dropped the same
+    // fan-out for the same reason (HomeView.vue:187-191: "the old per-persona
+    // GET fan-out (<=16 requests) was the slow part").
+    await personasStore.ensureLoaded();
+    const byId = new Map(personasStore.items.map((p) => [p.id, p]));
     castStats.value = {
       total: cast.length,
-      voiced: personas.filter((p) => p?.voice_id).length,
+      voiced: cast.filter((c) => byId.get(c.persona_id)?.voice_id).length,
     };
   } catch { /* cast endpoint empty — strip shows 0 */ }
 }

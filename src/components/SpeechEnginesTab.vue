@@ -204,6 +204,18 @@ async function refresh() {
   );
 }
 
+// An EXTERNAL refresh has to drop the variant rows first. `refresh()` skips any
+// engine whose variants are already cached, and every in-component mutation
+// pairs its own `delete variants[id]` with the call — but the `jv:health-refresh`
+// listener had no such pairing, and Settings fires that event precisely to flip
+// rows back to Download after clearing the speech cache
+// (SettingsView.vue:828-829). Without this the catalog went on advertising
+// "· on disk" and offering Load for files that had just been deleted.
+function refreshAll() {
+  for (const k of Object.keys(variants)) delete variants[k];
+  return refresh();
+}
+
 function variantsFor(engineId) {
   return variants[engineId]?.variants || [];
 }
@@ -613,10 +625,10 @@ const sharedEngines = computed(() => engines.value.filter((e) => e.isolation !==
 onMounted(() => {
   refresh(); loadDefaults();
   unsubscribeVram = subscribeVramFeed();
-  window.addEventListener("jv:health-refresh", refresh);
+  window.addEventListener("jv:health-refresh", refreshAll);
 });
 onBeforeUnmount(() => {
-  window.removeEventListener("jv:health-refresh", refresh);
+  window.removeEventListener("jv:health-refresh", refreshAll);
   if (unsubscribeVram) unsubscribeVram();
 });
 </script>

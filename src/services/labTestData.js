@@ -9,6 +9,9 @@
 import { proseFromBlocks } from "./attribution.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useApi } from "../stores/api.js";
+import { usePersonasStore } from "../stores/personas.js";
+import { useProjectsStore } from "../stores/projects.js";
+import { useVoicesStore } from "../stores/voices.js";
 
 function api() {
   return useApi();
@@ -32,32 +35,40 @@ async function chapterProse(sceneId) {
   return text;
 }
 
+// Projects, personas and voices are SHARED state: they come from their stores,
+// which every writer in the app reloads. Fetching them here was a private second
+// copy — the Lab's picker went on listing yesterday's projects (2026-08-15). The
+// per-project cast has no store and stays a direct read.
 async function listProjects() {
-  const r = await api().request("/v1/projects");
-  return r?.projects || [];
+  const store = useProjectsStore();
+  await store.ensureLoaded();
+  return store.items;
 }
 
 async function castOf(projectId) {
-  const [cast, personas] = await Promise.all([
+  const personas = usePersonasStore();
+  const [cast] = await Promise.all([
     api().request(`/v1/projects/${projectId}/cast`),
-    api().request("/v1/personas"),
+    personas.ensureLoaded(),
   ]);
-  const byId = Object.fromEntries((personas?.personas || []).map((p) => [p.id, p]));
+  const byId = Object.fromEntries(personas.items.map((p) => [p.id, p]));
   const rows = (cast?.cast || []).map((c) => byId[c.persona_id]).filter(Boolean);
   if (!rows.length) throw new Error("That project has no cast yet.");
   return rows;
 }
 
 async function allVoices() {
-  const r = await api().request("/v1/voices");
-  const rows = r?.voices || [];
+  const store = useVoicesStore();
+  await store.ensureLoaded();
+  const rows = store.items;
   if (!rows.length) throw new Error("No voices yet — fetch voices first.");
   return rows;
 }
 
 async function allPersonas() {
-  const r = await api().request("/v1/personas");
-  return r?.personas || [];
+  const store = usePersonasStore();
+  await store.ensureLoaded();
+  return store.items;
 }
 
 // ── production-format mirrors (source of truth named per block) ────────────
@@ -118,11 +129,12 @@ async function presetsBlock() {
 // show_notes {{script}} — mirrors projects_api's show-notes builder
 // ("## Title" + "WHO: text" per block, NARRATION when unassigned).
 async function scriptOf(projectId) {
-  const [scenes, personas] = await Promise.all([
+  const personas = usePersonasStore();
+  const [scenes] = await Promise.all([
     api().request(`/v1/projects/${projectId}/scenes`),
-    api().request("/v1/personas"),
+    personas.ensureLoaded(),
   ]);
-  const nameById = Object.fromEntries((personas?.personas || []).map((p) => [p.id, p.name]));
+  const nameById = Object.fromEntries(personas.items.map((p) => [p.id, p.name]));
   const parts = [];
   for (const scene of scenes || []) {
     parts.push(`## ${scene.title || "Segment"}`);
