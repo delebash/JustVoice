@@ -80,27 +80,22 @@ fn dir_is_writable(dir: &std::path::Path) -> bool {
     }
 }
 
-// The server's own default (paths.py: platformdirs user_data_dir("JustVoice")
-// — the JW family shape, phase ④ of the 2026-08-13 redesign) — shell and
-// server MUST agree on the no-pointer case. platformdirs on Windows nests
-// <appauthor>\<appname> with appauthor defaulting to the app name, hence the
-// doubled JustVoice; Local, never Roaming (model caches don't sync profiles).
-fn default_data_root(_app: &AppHandle) -> PathBuf {
-    #[cfg(windows)]
-    {
-        PathBuf::from(std::env::var("LOCALAPPDATA").unwrap_or_default())
-            .join("JustVoice")
-            .join("JustVoice")
+// The FAMILY portable default (user ruling 2026-08-14; JW's shell is the
+// precedent, kept in lock-step verbatim): a `data/` folder beside the app
+// (dev: src-tauri/target/debug/data). Nothing lands anywhere the user did
+// not decide — the user's choice (dataroot.txt via Change folder, or
+// JUSTVOICE_DATA_DIR) always wins; the OS app-data dir is ONLY the
+// unwritable-install fallback (Program Files / read-only bundle), never
+// the default. paths.py's default_data_dir mirrors this shape for headless.
+fn default_data_root(app: &AppHandle) -> PathBuf {
+    if let Some(dir) = exe_dir() {
+        if dir_is_writable(&dir) {
+            return dir.join("data");
+        }
     }
-    #[cfg(target_os = "macos")]
-    {
-        PathBuf::from(std::env::var("HOME").unwrap_or_default())
-            .join("Library/Application Support/JustVoice")
-    }
-    #[cfg(all(unix, not(target_os = "macos")))]
-    {
-        PathBuf::from(std::env::var("HOME").unwrap_or_default()).join(".local/share/JustVoice")
-    }
+    app.path()
+        .app_data_dir()
+        .unwrap_or_else(|_| PathBuf::from("JustVoice-data"))
 }
 
 fn pointer_candidates(app: &AppHandle) -> Vec<PathBuf> {
@@ -114,25 +109,38 @@ fn pointer_candidates(app: &AppHandle) -> Vec<PathBuf> {
     v
 }
 
-// The pre-2026-08-14 default — what first-run pointer locks written before
-// the JW-shape convergence contain. Kept ONLY so resolve_data_root can
-// recognize and refresh them; never used as a resolution target.
-fn legacy_default_data_root() -> PathBuf {
+// The pre-portable defaults — what old first-run pointer locks may contain
+// (the Roaming original, and briefly the platformdirs Local shape from
+// earlier on 2026-08-14). Kept ONLY so resolve_data_root can recognize
+// stale locks; never used as resolution targets.
+fn legacy_default_data_roots() -> Vec<PathBuf> {
+    let mut v = Vec::new();
     #[cfg(windows)]
     {
-        PathBuf::from(std::env::var("APPDATA").unwrap_or_default())
-            .join("justvoice")
-            .join("justvoice")
+        v.push(
+            PathBuf::from(std::env::var("APPDATA").unwrap_or_default())
+                .join("justvoice")
+                .join("justvoice"),
+        );
+        v.push(
+            PathBuf::from(std::env::var("LOCALAPPDATA").unwrap_or_default())
+                .join("JustVoice")
+                .join("JustVoice"),
+        );
     }
     #[cfg(target_os = "macos")]
     {
-        PathBuf::from(std::env::var("HOME").unwrap_or_default())
-            .join("Library/Application Support/justvoice")
+        let home = PathBuf::from(std::env::var("HOME").unwrap_or_default());
+        v.push(home.join("Library/Application Support/justvoice"));
+        v.push(home.join("Library/Application Support/JustVoice"));
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {
-        PathBuf::from(std::env::var("HOME").unwrap_or_default()).join(".local/share/justvoice")
+        let home = PathBuf::from(std::env::var("HOME").unwrap_or_default());
+        v.push(home.join(".local/share/justvoice"));
+        v.push(home.join(".local/share/JustVoice"));
     }
+    v
 }
 
 fn resolve_data_root(app: &AppHandle) -> PathBuf {
@@ -142,19 +150,19 @@ fn resolve_data_root(app: &AppHandle) -> PathBuf {
             if root.as_os_str().is_empty() {
                 continue;
             }
-            // The 2026-08-14 convergence heal. The old setup() locked the
-            // DEFAULT into the pointer on first run, so every pre-convergence
-            // install carries a pointer pinning the old Roaming default —
-            // which would silently veto the new JW-shape location forever.
-            // Under the new contract (user ruling 2026-08-14: no scattered
-            // state files) the pointer exists ONLY as the record of an
-            // explicit Change-folder choice — so a pointer holding exactly
-            // the OLD DEFAULT is residue of the removed first-run lock, not
-            // a choice: delete it and fall through to the computed default.
-            // A folder the user actually picked never equals the old default
-            // and keeps winning. Pre-release no-migration rule: the Roaming
-            // data stays on disk untouched (JUSTVOICE_DATA_DIR reaches it).
-            if root == legacy_default_data_root() {
+            // The 2026-08-14 portable heal. The old setup() locked the
+            // DEFAULT into the pointer on first run, so every pre-portable
+            // install carries a pointer pinning an OS app-data folder —
+            // which would silently veto the portable default forever.
+            // Under the ruling (the user picks the location; the default is
+            // beside the app) the pointer exists ONLY as the record of an
+            // explicit Change-folder choice — so a pointer holding exactly a
+            // former DEFAULT is residue of the removed first-run lock, not a
+            // choice: delete it and fall through to the computed default.
+            // A folder the user actually picked never equals a former
+            // default and keeps winning. Pre-release no-migration rule: the
+            // old data stays on disk untouched (JUSTVOICE_DATA_DIR reaches it).
+            if root == default_data_root(app) || legacy_default_data_roots().contains(&root) {
                 let _ = fs::remove_file(&p);
                 continue;
             }

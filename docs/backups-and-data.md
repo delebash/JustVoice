@@ -8,23 +8,35 @@ Backups live under **Settings → Backups**.
 ## Where your data lives
 
 Everything JustVoice stores — the database, voices, personas, projects,
-generated audio, downloaded speech models, the render cache — lives under one
-**data folder**:
+generated audio, downloaded speech models, the render cache, logs — lives
+under one **data folder**, and **you decide where that is**. Nothing is ever
+written to a hidden per-user location you didn't pick.
 
-- **Windows** — `%LOCALAPPDATA%\JustVoice\JustVoice`
-- **macOS** — `~/Library/Application Support/JustVoice`
-- **Linux** — `~/.local/share/JustVoice`
+**By default it sits with the app**: a `data` folder inside the JustVoice
+install directory, next to the program itself. That makes an install
+self-contained — copy the folder to another drive or a USB stick and your
+whole library goes with it, and uninstalling means deleting one folder.
 
-(The same shape as JustWrite's data folder, one level up.) Two overrides win
-over the default: the `JUSTVOICE_DATA_DIR` environment variable, and headless
-`justvoice-server serve --data-dir <path>`. The desktop app also offers
-**Settings → Storage → Change folder**, which moves the data and remembers the
-new location.
+To put it somewhere else, in order of precedence:
 
-Installs from before 2026-08-14 used `%APPDATA%\justvoice\justvoice` (Roaming).
-There is no automatic migration pre-release: either point
-`JUSTVOICE_DATA_DIR` at the old folder, or start fresh — models re-download,
-and a [backup](#backup) carries everything else across.
+1. **Settings → Storage → Change folder** (desktop app) — pick a folder;
+   JustVoice moves the existing data there and remembers the choice.
+2. **`JUSTVOICE_DATA_DIR`** — an environment variable, for scripted or
+   headless setups.
+3. **`justvoice-server serve --data-dir <path>`** — per-run, headless.
+
+The only time JustVoice picks for you is when the install directory can't be
+written to (installed under `Program Files`, or run from read-only media). It
+then falls back to the standard per-user app-data folder for your OS so the
+app still starts. Settings → Storage always shows the folder actually in use.
+
+JustWrite follows the identical rule, so both apps behave the same way.
+
+Installs from before 2026-08-14 kept data in a per-user app-data folder
+(`%APPDATA%\justvoice\justvoice` on Windows). Pre-release there is no
+automatic migration: point `JUSTVOICE_DATA_DIR` at the old folder to keep
+using it, or start fresh — models re-download, and a [backup](#backup)
+carries everything else across.
 
 ## Disk usage
 

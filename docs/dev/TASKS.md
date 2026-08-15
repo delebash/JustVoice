@@ -820,6 +820,66 @@ GGUFs on disk anywhere). TEST-SAFETY catch: the widened clear would
 have let the existing test rmtree the REPO-TREE engine models (a dev
 box's real legacy models) — the test now empties the manifest map,
 and the legacy arm is pinned against tmp dirs only.
+2026-08-14 THE DATA-LOCATION RULING (user, verbatim): *"none of the
+apps should have anything stored in C:\Users\danel\AppData\Local —
+absolutely no data for any of these apps should be stored anywhere but
+where the user has set the storage directory, which by default will be
+the install directory for the app, for now that is the debug directory
+for tauri"*, corrected immediately after: *"dont hardcode anything
+appdata is not band what is banned is anything that the user has not
+decided meaning the user chooses the data directory with default being
+same location as app is installed"*; and the standing law behind it:
+*"all that can be the same should be, this includes how data is
+stored"*.
+WHAT I GOT WRONG (recorded because the user has had to say it
+repeatedly): phase ④ "converged JV onto JW's shape" by reading an
+AppData FOLDER a headless test boot had created and taking it for JW's
+real location — JW's desktop shell has always run PORTABLE (`data/`
+beside the exe; the user's real JW data is in
+src-tauri/target/debug/data). The convergence target was residue, and
+"the two apps now match" was mistaken for the real goal: ONE shared
+implementation.
+AS BUILT (all three repos): the policy lives in the KIT —
+`llm_runner/platform/data_paths.py` `resolve_data_dir(app_name,
+env_var, source_root)`, ladder = the app's DATA_DIR env var (the
+user's choice; also how each shell hands down Change-folder) →
+`data/` in the install dir (frozen: beside the exe; source: beside the
+checkout root) → the OS app-data dir ONLY when the install dir is
+unwritable (read-only-install necessity, never a preference).
+`justvoice/paths.py` and `justwrite_server/paths.py` are now
+three-line callers (JW's platformdirs default was itself creating
+AppData\Local\JustWrite\JustWrite behind the user's back). BOTH Tauri
+shells implement the identical ladder in Rust (they resolve before the
+server exists) and BOTH lost the first-run pointer lock — writing the
+computed default into dataroot.txt is what pinned this install to
+Roaming and silently vetoed every later default; the pointer now
+records ONLY an explicit Change-folder, and one equal to a
+computed/former default is deleted as residue on resolve. `data/`
+gitignored in both apps.
+NORMATIVE DOC UPDATED: kit `docs/app-structure.md` §6 (the paths.py
+contract — it had said "platformdirs", which is what I followed) + §5
+(the shell's pointer rule). USER DOCS: JV backups-and-data.md "Where
+your data lives" rewritten (you decide; default = beside the app; the
+three overrides; the unwritable-install fallback; both apps behave
+identically); JW storage.md gained the headless half.
+GATES: kit ruff + pytest 872 (9 new data_paths pins: env-wins ·
+default-beside-app · blank-env-is-not-a-choice ·
+OS-dir-only-when-unwritable · frozen-lands-beside-exe ·
+probe-leaves-nothing · per-app-roots) · JV ruff + pytest 511 · JW
+pytest 128 + vitest 578 · JV biome + vitest 48 + build:vite · BOTH
+shells cargo check · JV renderer smoke (first run failed all views on
+contention with JW's concurrent suites; the quiet re-run passed
+everything, zero JS errors) · verified LIVE: JV headless default
+resolves to the checkout `data/`, an env var overrides it, and a full
+gate-server boot + smoke created NO AppData folder.
+CLEANUP: deleted `AppData\Local\JustVoice` (my own gate residue,
+verified file-empty first). The user's pre-④ Roaming data is untouched
+and reachable via JUSTVOICE_DATA_DIR. UNEXPLAINED, reported not
+guessed: `AppData\Local\JustWrite` also disappeared during this
+session — I ran no command against it, JW's tests all use tmp_path,
+and it held no files when first inspected; JW's real data (32 MB db,
+projects, ai-cache, book files) is verified intact in
+target/debug/data.
 
 ## Features the docs promise and the code does not do
 

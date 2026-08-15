@@ -1,39 +1,44 @@
 """Data directory resolution — where the database + storage lives.
 
-Resolution order:
+Resolution order (THE family policy — the shape lives in the kit, never
+here: `llm_runner.platform.data_paths`):
   1. Explicit `--data-dir` CLI flag (handled by cli.py)
-  2. `JUSTVOICE_DATA_DIR` env var
-  3. Platform default via platformdirs (the JW family shape)
+  2. `JUSTVOICE_DATA_DIR` — the user's choice; also how the desktop shell
+     hands down its resolved root
+  3. `data/` beside the app (the DEFAULT — portable, in the install dir)
+  4. The OS app-data dir, only when the install dir is not writable
 """
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
-from platformdirs import user_data_dir
+from llm_runner.platform import resolve_data_dir
 
 APP_NAME = "JustVoice"
 
+# The checkout root in a source install: server/justvoice/paths.py → repo.
+# (Frozen builds ignore this — the kit uses the executable's folder.)
+SOURCE_ROOT = Path(__file__).resolve().parents[2]
+
 
 def default_data_dir() -> Path:
-    """The per-user data directory — the FAMILY shape (phase ④ of the
-    2026-08-13 speech-catalog redesign): `platformdirs.user_data_dir("JustVoice")`,
-    exactly JustWrite's `paths.py`. On Windows that is
-    ``%LOCALAPPDATA%\\JustVoice\\JustVoice`` (Local, never Roaming — model
-    caches and WAV renders have no business syncing through a domain
-    profile); macOS ``~/Library/Application Support/JustVoice``; Linux
-    ``~/.local/share/JustVoice``.
+    """The app's data root, per the ONE family policy (user ruling
+    2026-08-14 — *"absolutely no data ... stored anywhere but where the user
+    has set the storage directory, which by default will be the install
+    directory for the app"*). The desktop shell implements the identical
+    ladder in Rust (`default_data_root`, src-tauri/src/lib.rs) because it
+    must resolve the root before this process exists, and hands the result
+    down via `JUSTVOICE_DATA_DIR`; keep the two in lock-step.
 
-    The pre-④ default (``%APPDATA%\\justvoice\\justvoice\\data``, a Rust-core
-    relic the desktop shell didn't even agree with) is not migrated —
-    pre-release rule: a default change, the user resets or re-downloads.
-    The desktop shell's `default_data_root` (src-tauri/src/lib.rs) mirrors
-    this function and MUST stay in lockstep."""
-    env = os.environ.get("JUSTVOICE_DATA_DIR")
-    if env:
-        return Path(env)
-    return Path(user_data_dir(APP_NAME))
+    Pre-release rule: this is a DEFAULT change, never a migration — data
+    under an older default stays where it is and is reachable by setting
+    `JUSTVOICE_DATA_DIR`."""
+    return resolve_data_dir(
+        app_name=APP_NAME,
+        env_var="JUSTVOICE_DATA_DIR",
+        source_root=SOURCE_ROOT,
+    )
 
 
 def storage_root(data_dir: Path) -> Path:
