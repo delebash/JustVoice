@@ -491,6 +491,35 @@ class InstallError(RuntimeError):
     pass
 
 
+#: Venv-wide dependency ceiling, applied to every `uv pip install` that
+#: targets an engine venv (see `_constraint_args`).
+#:
+#: Each manifest INSTALL step is a SEPARATE `uv pip install`, so a version
+#: pin declared in one step survives only until some later step re-resolves
+#: the same package. That is not a theoretical gap: the SDK refresh below
+#: shipped with `--reinstall` on 2026-08-14, uv re-resolved
+#: justvoice-plugin's unbounded `numpy>=1.24` to numpy 2.5.2 on top of a
+#: shared venv every engine had pinned below 2.0, and numba — which librosa
+#: imports, and librosa sits in the import chain of chatterbox-tts,
+#: qwen-tts, zipvoice and hume-tada — started refusing to import: "Numba
+#: needs NumPy 2.0 or less. Got NumPy 2.5." Kokoro was the only engine that
+#: still loaded, because sherpa-onnx is the one chain with no numba in it.
+#:
+#: A constraint file applies to every resolution in the venv, so the ceiling
+#: cannot be raised by a step that never mentions the package.
+CONSTRAINTS_FILE = ENGINES_DIR / "constraints.txt"
+
+
+def _constraint_args() -> list[str]:
+    """`--constraint` args for uv, or `[]` when the file is absent.
+
+    Absent is survivable, not fatal — an install without the ceiling is what
+    every version before this did, and failing the install outright over a
+    missing text file would be the worse trade.
+    """
+    return ["--constraint", str(CONSTRAINTS_FILE)] if CONSTRAINTS_FILE.is_file() else []
+
+
 #: Kept in lockstep with justvoice_plugin/pyproject.toml — the /load
 #: `model_dir` contract (phase ②) rides the SDK, so a venv carrying an
 #: older install gets a fast refresh at spawn.
@@ -502,7 +531,16 @@ def _ensure_plugin_current(python_exe: Path) -> None:
     (cheap dist-info glob; the reinstall is a tiny wheel, seconds).
     Best-effort by design: a failure leaves the old SDK, which degrades
     gracefully — it ignores the extra /load field and the engine loads its
-    legacy way."""
+    legacy way.
+
+    `--reinstall-package`, never bare `--reinstall`: the bare form reinstalls
+    the WHOLE resolution, transitive deps included, which re-resolves them to
+    their newest compatible versions. On a venv whose engine deps were pinned
+    by earlier install steps that is a silent downgrade-proof upgrade of
+    other people's pins — see CONSTRAINTS_FILE for the numpy break it caused.
+    Scoping the reinstall to the SDK leaves satisfied deps exactly as the
+    engine steps installed them, and the constraint file catches the rest.
+    """
     try:
         venv_root = python_exe.parents[1]
         sps = [venv_root / "Lib" / "site-packages",
@@ -514,8 +552,9 @@ def _ensure_plugin_current(python_exe: Path) -> None:
         plugin_dir = Path(__file__).resolve().parents[2] / "justvoice_plugin"
         log.info("refreshing justvoice_plugin to %s in %s", PLUGIN_VERSION, venv_root)
         subprocess.run(
-            [uv, "pip", "install", "--python", str(python_exe), "--reinstall",
-             str(plugin_dir)],
+            [uv, "pip", "install", "--python", str(python_exe),
+             "--reinstall-package", "justvoice-plugin",
+             *_constraint_args(), str(plugin_dir)],
             capture_output=True, text=True, timeout=180,
         )
     except Exception:  # noqa: BLE001 — best-effort; the old SDK still works
@@ -988,12 +1027,18 @@ def _run_uv_pip(
     uv's --python flag is a *pip-subcommand* option, not a global option,
     so it has to come after `pip install` (or whatever pip subcommand args
     is). We splice it in after the first arg.
+
+    Every `install` also carries the venv-wide `--constraint` ceiling. This
+    is THE door for engine dependency installs precisely so that ceiling
+    needs applying in exactly one place — see CONSTRAINTS_FILE.
     """
     # args[0] is "pip"; args[1] is the pip subcommand ("install"); --python
     # goes after that. Verify and place it correctly.
     if len(args) < 2 or args[0] != "pip":
         raise InstallError(f"_run_uv_pip args must start with ['pip', '<subcommand>', ...]; got {args}")
-    cmd = [uv, args[0], args[1], "--python", str(python_exe), *args[2:], "--no-progress"]
+    # Only `install` resolves versions; `uninstall` rejects --constraint.
+    constraints = _constraint_args() if args[1] == "install" else []
+    cmd = [uv, args[0], args[1], "--python", str(python_exe), *constraints, *args[2:], "--no-progress"]
     log.info("uv pip command: %s", " ".join(cmd))
     proc = subprocess.Popen(
         cmd,

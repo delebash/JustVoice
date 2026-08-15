@@ -711,7 +711,7 @@ onBeforeUnmount(() => {
             <span v-if="!anyTaskRunning(e.id) && engineNeedsInstall(e)" class="ev-badge none">engine not installed</span>
             <UiButton v-if="!anyTaskRunning(e.id) && engineNeedsInstall(e)" intent="primary" size="small"
               label="Install engine"
-              title="One-time: builds this engine's isolated venv. Models download separately afterwards."
+              title="One-time: builds the Python environment this engine runs in. Models download separately afterwards."
               @click.stop="installEngine(e)" />
             <span v-if="!anyTaskRunning(e.id) && !engineNeedsInstall(e)" class="meta">{{ groupSummary(e) }}</span>
             <span v-if="!anyTaskRunning(e.id) && !engineNeedsInstall(e) && loadedVariantName(e)" class="ldd">● {{ loadedVariantName(e) }} loaded<template v-if="e.resolved_device"> · {{ e.resolved_device.toUpperCase() }}</template></span>

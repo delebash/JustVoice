@@ -123,9 +123,14 @@ The same Cancel + Retry pattern applies to every long-running operation in the a
 
 Settings → GPU shows your backend (CUDA / MPS / Metal / XPU / DirectML / ROCm), device name, VRAM total / used, compute capability, and HSA override status. On CPU-only boxes Kokoro is the recommended engine (it's built for CPU); for GPU boxes there is no hand-typed VRAM-to-engine pairing table any more — an engine's real footprint is **measured on your machine at its first load** and shown on the console's memory strip, which is the honest way to see what fits (the old GB-tier suggestions were never measured; cut 2026-08-14).
 
-## CUDA wheel download
+## Which PyTorch build gets installed
 
-Switching CUDA versions is a 4-phase flow: idle → stopping engines → waiting for download → ready. Initiate from Settings → GPU → "Re-download / switch CUDA version". Roughly 2 GB per torch wheel.
+Chosen for you from detected hardware when the environment is built — NVIDIA
+gets the CUDA 12.4 wheels, Intel Arc on Windows the XPU wheels, everything
+else CPU. Roughly 2 GB per torch wheel, downloaded once for the shared
+environment rather than once per engine. Override it with
+`JUSTVOICE_TORCH_INDEX` and rebuild — see
+[GPU / CUDA](gpu.md#which-pytorch-build-gets-installed-nvidia).
 
 ## Where model files live — the speech cache
 
@@ -165,13 +170,45 @@ Speech models → Clear** deletes every downloaded speech model in one step
 (each re-downloads on demand) — see
 [Backup and data](backups-and-data.md#disk-usage).
 
-## Per-engine venv isolation
+## Where the Python environments live
 
-Each engine lives at `server/justvoice/engines/<engine_id>/.venv/`. Installing Chatterbox writes to its own venv; Kokoro's venv is untouched. This is JustVoice's main reliability advantage over flat-environment TTS tools — engine-A's broken dependency upgrade can't take down engine-B's renders.
+Local engines run in Python environments JustVoice builds for you on first
+setup — you never create or activate one by hand. There are two kinds, and
+which kind an engine gets is a property of the engine:
+
+- **The shared environment**, at `server/justvoice/engines/.shared-venv/`.
+  Most engines live here: Kokoro, Chatterbox, Qwen3-TTS, LuxTTS, TADA and
+  Whisper. They are compatible enough to share one PyTorch install, which is
+  the point — torch alone is ~2.4 GB, so sharing it once instead of six
+  times is the difference between a few gigabytes and twenty. The first
+  **Install engine** you click builds this environment; every install after
+  that only downloads that engine's model files, which is why the first one
+  takes minutes and the rest are quick.
+- **A private environment**, at `server/justvoice/engines/<engine_id>/.venv/`.
+  Engines whose dependencies genuinely cannot coexist with the rest get
+  their own: **Dia** (pins a specific Triton build and an unreleased
+  Transformers) and **MOSS-TTSD** (needs flash-attn, which is a long
+  compile and frequently fails on Windows — keeping that attempt out of the
+  shared environment is exactly why it is isolated).
+
+The trade-off is worth stating plainly, because it cuts both ways. A private
+environment means one engine's dependency problem cannot touch another
+engine. In the shared environment it *can*: the engines there install one
+package set on top of another, so a version one engine needs can in
+principle be replaced by a version the next engine asks for.
+
+JustVoice constrains the versions that actually collide (`constraints.txt`
+in the engines folder is applied to every install), so this is not left to
+luck. But if you install engine software into the shared environment
+yourself — with `pip` from a terminal, say — you are outside that
+protection, and the symptom is usually the numpy error in
+[Troubleshooting](troubleshooting.md), which is also where the repair is.
 
 ## Online + self-hosted providers (LLM + TTS)
 
-Local engines (above) are managed by JustVoice — installed into per-engine venvs, loaded one-at-a-time. Online + self-hosted providers are a separate flow:
+Local engines (above) are managed by JustVoice — installed into the
+environments described above, loaded one-at-a-time. Online + self-hosted
+providers are a separate flow:
 
 - **LLM providers** — Anthropic Claude, OpenAI, Gemini, Ollama, DeepSeek, OpenRouter. Needed for Compose, Persona rewrite, Speaker attribution, Smart-assign, Render preset suggest.
 - **TTS providers** — ElevenLabs, Speechify, Speechmatics, OpenAI TTS, OpenAI-compatible self-hosted servers (Kokoro-FastAPI, Chatterbox-TTS-Server, Dia-TTS-Server, Qwen3-TTS).

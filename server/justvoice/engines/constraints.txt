@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: MIT
+#
+# Venv-wide dependency ceiling for EVERY engine install.
+#
+# `manager._run_uv_pip` passes this file as `--constraint` to every
+# `uv pip install` it runs against an engine venv (shared or isolated), so
+# these bounds hold no matter which step installs what, or in what order.
+#
+# Why this file exists at all: each manifest INSTALL step is its own
+# `uv pip install`, so a pin declared in one step only survives until a
+# later step re-resolves the same package. Manifests still declare their
+# real requirements — that is the documentation — but a pin that any
+# unrelated step can quietly raise is not an invariant. This file is.
+#
+# Keep in sync with the manifests: `test_engine_constraints.py` fails if an
+# engine declares a bound this file would violate, or vice versa.
+
+# numba refuses to import against a newer numpy — "Numba needs NumPy 2.0 or
+# less. Got NumPy 2.5." — and librosa imports numba, which puts it in the
+# import chain of chatterbox-tts, qwen-tts, zipvoice, hume-tada and MOSS-TTSD.
+# Every manifest that mentions numpy already pins it here; the constraint is
+# what makes that stick. Raising this ceiling means first raising numba
+# (>=0.61 for numpy 2.1, >=0.62 for 2.2) across every engine that pulls it.
+numpy>=1.24,<2.0

@@ -15,6 +15,19 @@ masters audio depends on it.
 cancellable — the Speech engines tab's load job has a Cancel; a cancelled load leaves
 the previous state intact.
 
+**A voice preview or engine load answers 500 / 503 with "Numba needs NumPy
+2.0 or less".** The shared Python environment your speech engines run in has
+picked up a numpy newer than they support, and every engine except Kokoro
+fails at load — Kokoro is the one engine with no numba anywhere in its
+dependencies, so it keeps working and makes the problem look narrower than
+it is. JustVoice pins the version that engines need, so this means something
+installed into that environment from outside the app. To repair it, delete
+the folder `server/justvoice/engines/.shared-venv/` and then click **Install
+engine** on any engine under **AI → Speech engines** — JustVoice rebuilds the
+environment from its own recipe when it finds none. Your downloaded models
+live in the speech cache, not in that folder, so nothing re-downloads. See
+[Engines](engines.md#where-the-python-environments-live).
+
 **Restore finished but something looks off.** A restore (Settings → Backups →
 Import backup…) replaces the data live and reloads the app. If a view still
 shows pre-restore state, reload once more; speech engines are unloaded by a

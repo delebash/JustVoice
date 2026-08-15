@@ -16,18 +16,41 @@ TADA, Dia, MOSS) are far slower on CPU — expect long renders to take many
 times the audio's length. For audiobook-scale work with a cloning engine,
 get CUDA (NVIDIA) or Metal (Apple Silicon) working.
 
-## CUDA wheel switch (NVIDIA)
+## Which PyTorch build gets installed (NVIDIA)
 
-PyTorch engines (Chatterbox / Qwen3 / TADA / LuxTTS / Dia / MOSS) ship with the **CPU wheel** of torch by default. To enable CUDA acceleration:
+You do not choose this, and there is nothing to click: JustVoice detects your
+hardware when it builds an engine's Python environment and installs the
+matching PyTorch there.
 
-1. Settings → GPU — confirm the runtimes panel lists `cuda` (means the driver is installed).
-2. Speech engines tab (AI page) → find the engine you want — click **Install with CUDA**.
-3. JustVoice reinstalls torch + torchaudio in that engine's venv with the matching CUDA wheel (downloads ~2-3 GB).
-4. After reinstall, the engine's row shows the active wheel + the engine will use CUDA on next load.
+- **NVIDIA** (`nvidia-smi` answers) → the CUDA 12.4 wheels. That build covers
+  the whole range of torch versions the engines pin, which is why it is the
+  default rather than a newer one.
+- **Intel Arc on Windows** → the XPU wheels.
+- **Anything else, including no GPU** → the CPU wheels.
 
-The switch is per-engine. You can have Chatterbox on CUDA and Kokoro on CPU — they live in isolated venvs.
+Confirm the result under Settings → GPU: the runtimes panel lists `cuda` when
+the driver is present, and the memory strip's **Acceleration** cell says
+which backend is actually in use.
 
-To roll back to CPU: same flow, pick "Install with CPU."
+**Overriding it.** Set `JUSTVOICE_TORCH_INDEX` to a PyTorch wheel index before
+the environment is built, and that wins over detection — this is how you get
+CUDA 12.8 (needed only by engines pinning torch 2.7+), or ROCm on Linux:
+
+```
+JUSTVOICE_TORCH_INDEX=https://download.pytorch.org/whl/cu128
+JUSTVOICE_TORCH_INDEX=https://download.pytorch.org/whl/rocm6.0
+```
+
+Because the build is chosen at install time, changing it means rebuilding the
+environment: set the variable, delete `server/justvoice/engines/.shared-venv/`
+(or the engine's own `.venv/`), and install an engine again. Your downloaded
+models are in the speech cache and are not affected.
+
+> **Note:** Settings → GPU also shows a "CUDA wheel download flow" card with
+> Switch to CPU-only / Switch to ROCm / Re-download buttons. Those are a
+> **design mock — they are not wired to anything**, and the version line
+> beside them is placeholder text, not your actual build. The detection and
+> the environment variable above are the real mechanism.
 
 ## Metal / CoreML (Apple Silicon)
 
@@ -37,7 +60,9 @@ Chatterbox specifically forces CPU on macOS due to a known PyTorch MPS bug with 
 
 ## ROCm (AMD)
 
-Limited support. PyTorch ROCm wheels exist for Linux only. Windows ROCm is not currently supported by upstream PyTorch. If you're on Linux + AMD, install a ROCm-built torch in the engine venv manually (the auto-CUDA-wheel switch doesn't handle this yet).
+Limited support. PyTorch ROCm wheels exist for Linux only; Windows ROCm is not currently supported by upstream PyTorch. Hardware detection has no ROCm arm, so on Linux + AMD point `JUSTVOICE_TORCH_INDEX` at a ROCm index before the environment is built (see above) — nothing picks it for you.
+
+AMD is also the one platform with no per-process GPU memory reporting: vendor tooling publishes whole-card usage only, so the **show apps** panel says it can't read the breakdown there.
 
 ## DirectML (Windows non-NVIDIA)
 
@@ -81,12 +106,50 @@ never internal bookkeeping:
   device-wide change during the load, labeled as approximate.
 - **Other apps** — memory held by things JustVoice doesn't manage (browser,
   OS, games). A shared card is shared; the strip says so instead of
-  pretending the pool is all yours.
+  pretending the pool is all yours. Click **show apps** on this cell to see
+  exactly which programs — see [Which apps are using the
+  GPU](#which-apps-are-using-the-gpu) below.
 - **Busy** — shown while a render, transcription, or AI run is in flight. A
   busy model is never evicted: if something else needs its memory it waits
   or fails honestly instead of killing your work.
 
 The label follows your hardware: a discrete card shows **VRAM**; laptops with integrated or unified memory (iGPU, Apple Silicon) show **Memory**, because CPU and GPU share the same physical pool there and every load — even a CPU-placed one — draws from it.
+
+### Which apps are using the GPU
+
+"Other apps" tells you *how much* memory something else is holding. Clicking
+**show apps** on that cell tells you *what* — a list of every program
+currently holding GPU memory, biggest first, with the amount each one holds.
+Anything belonging to JustVoice itself (an engine subprocess, the local model
+runner) is marked **this app**, so you can separate your own footprint from
+the rest of the desktop at a glance.
+
+This is the answer to "why can't I load my model — nothing of mine is
+running?" Usually it is a browser with hardware acceleration on, a game or
+launcher left open, or the desktop compositor. Close the offender, click
+**Refresh**, and watch the number fall.
+
+The list is read **only while it is open**. Reading per-process GPU memory
+means asking the operating system for a full counter sample, which takes
+about a second, so JustVoice does not fold it into the strip's normal
+refresh — nothing is measured until you open the panel, and it stops the
+moment you close it. **Refresh** takes a new sample on demand.
+
+Two honest limits, both of which the panel states inline rather than hiding:
+
+- **The figures don't add up to the total above, and shouldn't.** Some GPU
+  memory belongs to the driver and the desktop rather than to any one
+  program, so the rows will always sum to a little less than the card's
+  measured use. Use them to see who the big holders are, not as an exact
+  audit of every megabyte.
+- **Not every system can report this.** AMD's tools publish whole-card usage
+  only, with no per-process breakdown at all, and a non-English Windows
+  install renames the performance counters JustVoice reads. On those
+  machines the panel says so plainly instead of showing an empty list — an
+  empty list would wrongly read as "nothing is using your GPU". On systems
+  where the reading comes from `nvidia-smi` rather than Windows' own
+  counters, only compute workloads appear; a program using the GPU purely to
+  draw its window won't be listed, and the panel notes that too.
 
 **How loading works now.** When you load an engine JustVoice has **measured
 before on this machine**, it checks **measured free memory** first —
@@ -123,9 +186,9 @@ You can still load one engine per slot (one TTS + one STT). Unload via the Speec
 
 - **Engine load fails with `[WinError 1314] A required privilege is not held by the client`** — A Windows edge case in the old HuggingFace download cache. Since 2026-08-14 speech-model downloads land as **plain files** (the speech cache) with no symlinks anywhere, so new downloads cannot hit this. It can still surface on a model that was downloaded the old way (before this change): **just click Load again** — a fresh attempt finishes placing the one missing file — or delete the model and download it again, which moves it onto the new plain-file path for good. You do NOT need Developer Mode or admin rights; JustVoice is expected to work without either.
 - **GPU info card shows "no GPU detected"** — Either no discrete GPU is present (laptops often have CPU + integrated graphics only, which torch ignores) or the driver isn't installed. Run `nvidia-smi` (NVIDIA) or `vulkaninfo` (AMD) from a terminal to verify.
-- **CUDA wheel switch fails** — Most often a network issue downloading the ~2 GB wheel. Check the install-log modal for the pip output.
+- **The torch download fails during engine setup** — Most often a network issue pulling the ~2 GB wheel. The install log carries the pip output; installing the engine again resumes rather than starting over.
 - **Out-of-memory on render** — Switch to a smaller model variant (Speech engines tab → engine row), or load a lighter engine entirely.
-- **Engine runs but very slow** — Check Settings → GPU: are you actually on CUDA, or did the wheel switch fall back to CPU? The Active backend pill is authoritative.
+- **Engine runs but very slow** — Check Settings → GPU: are you actually on CUDA, or did detection fall back to the CPU wheels? The Active backend pill is authoritative. Also check the engine's own **Device** select on the Speech engines tab — an explicit CPU choice there beats any wheel.
 - **macOS: Chatterbox is way slower than expected** — Chatterbox forces CPU on Mac due to the MPS bug. This is intentional. Use Kokoro / Qwen3 on Mac for GPU acceleration.
 
 ## What's detected — under the hood

@@ -126,12 +126,11 @@ export const hostCells = computed(() => {
       });
     }
   }
-  if (v.other_mb > 256) {
-    cells.push({
-      key: "other", label: "Other apps", value: fmtDisk(v.other_mb),
-      title: "Memory held by processes JustVoice doesn't manage (browser, OS, games)",
-    });
-  }
+  // "Other apps" MOVED TO THE KIT (2026-08-15): it is measured−committed over
+  // the shared arbiter, and the kit strip already holds both numbers, so every
+  // app got the cell — and its new "show apps" breakdown — from one place
+  // instead of JustVoice alone having it. `other_mb` stays on the endpoint;
+  // the Speech-engines tab still reads the raw snapshot.
   if (v.busy_kinds?.length) {
     cells.push({
       key: "busy", label: "Busy", value: v.busy_kinds.map((k) => k.toUpperCase()).join(" · "),
