@@ -30,3 +30,43 @@ export const findChrome = () => kitFindChrome({ env: "JV_CHROME" });
  * `undefined` result omits `executablePath` entirely.
  */
 export const chromeLaunchOptions = () => kitChromeLaunchOptions({ env: "JV_CHROME" });
+
+// ── Server readiness — the ONE door every gate script waits on ────────────
+// `/v1/health` answers 200 while the server is still doing first-boot work
+// (SQLite seeding, engine-manifest discovery), and a renderer driven during
+// that window renders fine but every nav click exceeds Playwright's 5 s
+// actionability timeout — the whole suite goes red on a healthy app. That
+// false red was misdiagnosed as "machine contention" twice on 2026-08-14 and
+// re-run until green, which is how a gate teaches you to ignore it.
+//
+// Readiness here means the endpoints the views actually call are answering:
+// settings (the DB seeded) and engines (manifests discovered). Returns the
+// number of ms waited so a caller can report an unusually slow boot.
+export async function waitForServerReady(base, { timeoutMs = 60000, log = () => {} } = {}) {
+  const root = base.endsWith("/") ? base.slice(0, -1) : base;
+  const probes = ["/v1/health", "/v1/settings", "/v1/engines"];
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    let ok = true;
+    for (const path of probes) {
+      try {
+        const r = await fetch(`${root}${path}`, { signal: AbortSignal.timeout(5000) });
+        if (!r.ok) { ok = false; break; }
+        await r.text();               // drain, so a slow body counts as not-ready
+      } catch {
+        ok = false;
+        break;
+      }
+    }
+    if (ok) {
+      const waited = Date.now() - started;
+      if (waited > 1500) log(`server took ${(waited / 1000).toFixed(1)}s to become ready`);
+      return waited;
+    }
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  throw new Error(
+    `server at ${root} never became ready within ${timeoutMs / 1000}s `
+    + `(health/settings/engines still failing) — start it before running the gate`,
+  );
+}

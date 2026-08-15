@@ -20,7 +20,7 @@
 // it can gate CI / a pre-merge check.
 
 import { createRequire } from "node:module";
-import { findChrome } from "./lib/smoke-common.js";
+import { findChrome, waitForServerReady } from "./lib/smoke-common.js";
 
 const require = createRequire(import.meta.url);
 // playwright is a CJS package; import via require to get { chromium }.
@@ -63,8 +63,34 @@ page.on("console", (m) => {
 
 let failed = 0;
 try {
+  // Wait for the server to be genuinely ready, not merely answering /health:
+  // during first-boot seeding + engine discovery the page renders but every
+  // nav click blows its 5 s timeout, and the whole run goes red on a healthy
+  // app (the 2026-08-14 first-run false red).
+  await waitForServerReady(BASE, { log: (m) => console.log(`… ${m}`) });
   await page.goto(BASE, { waitUntil: "networkidle" });
   await page.waitForTimeout(900);
+
+  // Dismiss the first-run dialog before driving anything (2026-08-14). A fresh
+  // data dir has no projects, so JustVoice opens "What are you making?" — the
+  // real first-launch experience — and its modal overlay intercepts EVERY
+  // pointer event, so all 14 nav clicks time out on an app that is rendering
+  // perfectly. That false red was blamed on machine contention twice and
+  // re-run until green; the actual cause was this overlay, caught by reading
+  // Playwright's own actionability log ("ui-modal-overlay intercepts pointer
+  // events"). JustWrite's smoke skips its boot splash for the same reason.
+  for (let i = 0; i < 5 && (await page.locator(".ui-modal-overlay").count()); i++) {
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(300);
+  }
+  const stuckOverlays = await page.locator(".ui-modal-overlay").count();
+  if (stuckOverlays) {
+    failed++;
+    console.log(`✗ FIRST-RUN  ${stuckOverlays} modal overlay(s) would not dismiss — every`
+      + " click below would fail; fix the dialog, don't re-run the gate");
+  } else {
+    console.log("✓ FIRST-RUN   no modal blocking the app");
+  }
 
   // ── App-shell structure guard (the keep-alike discipline; see the global
   // app standard "App shell structure"). Catches the regressions that hit on
