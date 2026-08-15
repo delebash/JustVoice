@@ -771,8 +771,27 @@ renderer smoke (first run failed ALL views — resource contention with
 the concurrent full pytest, nothing rendered within timeouts; the
 immediate rerun passed everything, zero JS errors) · headless
 Settings drive verified the Disk-usage rows + /v1/disk/usage extras.
-REMAINING out of plan: the known_engines excision pass · the user's
-laptops walk (MPS-in-RSS).
+REMAINING out of plan: the user's laptops walk (MPS-in-RSS).
+THE known_engines EXCISION — DONE 2026-08-14 (user: "go on all of it").
+It was a SECOND catalog beside engines/<id>/manifest.py, and every one of
+its seven ids had a real manifest — so `_is_managed()` returned first and
+NONE of its arms could run. Verified unreachable before cutting, not
+assumed: the /install legacy branch, the DELETE-engine legacy branch (which
+carried `uninstall_deps` → `pip_uninstall_engine_deps`, the one reader I had
+earlier called "live" — it is not, the managed branch returns above it), the
+engines list fallback loop, the /engines/current fallback loop, and the
+models_api existence guard. EXCISED: `known_engines()` + its 7 EngineInfo
+builders; `_enrich_legacy`; installer's `spawn_install`, `_missing_modules`,
+`_pip_install`, `_run_install`, `_register_engine_after_install`,
+`uninstall_engine`, `_pkg_name`, `_PKG_VERSION_RE`,
+`pip_uninstall_engine_deps` (installer.py 851 → 513 lines). KEPT
+deliberately: `compute_status` — it serves RUNTIME-registered external
+OpenAI-compatible engines, which have no manifest by design. `uninstall_deps`
+stays on the DELETE route as an accepted-and-ignored query flag (documented
+in the docstring) rather than a breaking signature change. Receipted sweep:
+zero references to any excised name in server/, src/, tests/ — only the
+tombstone comments and the plan-doc history. Gates: ruff · pytest 521 ·
+vitest 48 · build · smoke.
 2026-08-14 FOLLOW-UP RULINGS (user, verbatim, after seeing the built
 catalog live) + the same-day build:
 RULING 1: "i meant i wanted it to be like the llm catalog, meaning i

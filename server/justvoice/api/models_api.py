@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from ..engines.catalog import known_engines
 from ..engines.model_catalog import models_for
 from ..errors import not_found
 from ..models import ModelsListResponse
@@ -20,12 +19,11 @@ router = APIRouter(tags=["engines"])
 
 @router.get("/v1/engines/{id}/models", response_model=ModelsListResponse)
 async def list_models(id: str) -> ModelsListResponse:
-    # Validate against the manager's discovered manifests (single source of
-    # truth) — the legacy static known_engines() list predates whisper /
-    # qwen3-llm and silently 404'd them.
+    # Validate against the manager's discovered manifests — the ONE catalog
+    # (the parallel static list was excised 2026-08-14).
     from ..engines.manager import get_manager
 
-    if get_manager().get_manifest(id) is None and not any(e.id == id for e in known_engines()):
+    if get_manager().get_manifest(id) is None:
         raise not_found(f"engine {id}")
     variants = models_for(id)
     # Engines redesign: per-model on-disk flag drives the verb shown

@@ -13,19 +13,14 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from ..app_state import get_state
-from ..engines.catalog import known_engines
 from ..engines.manager import get_manager
-from ..engines.model_catalog import default_variant_for, models_for
 from ..errors import not_found, service_unavailable
 from ..engines.shared_venv import detect_gpu
 from ..installer import cancel as cancel_install
 from ..installer import (
-    pip_uninstall_engine_deps,
-    spawn_install,
     spawn_managed_install,
     spawn_prefetch,
     spawn_shared_venv_setup,
-    uninstall_engine,
 )
 from ..models import (
     InstallRequest,
@@ -36,7 +31,6 @@ from ..models import (
     UninstallResponse,
     UnloadResponse,
 )
-from ..paths import models_root
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["engines"])
@@ -57,7 +51,9 @@ async def install_engine(id: str, req: InstallRequest) -> InstallResponse:
     - Managed engine + no `model_variant` → spawn_managed_install. Venv
       build only (isolated engines like Dia/MOSS). Models download via
       a second /install call once the engine row exposes its variants.
-    - Legacy in-process path → spawn_install with chosen variant.
+
+    Every engine is manifest-managed; the legacy in-process install path was
+    excised 2026-08-14 with the static catalog it depended on.
 
     The OLD path always ran spawn_managed_install, which for shared HF
     engines (Chatterbox, etc.) is a no-op for model files — the engine
@@ -78,27 +74,7 @@ async def install_engine(id: str, req: InstallRequest) -> InstallResponse:
         job_id = spawn_managed_install(st, id)
         return InstallResponse(engine_id=id, model_variant="managed", job_id=job_id)
 
-    # Legacy in-process path (currently dormant — no built-in legacy engines
-    # remain after the kokoro port). Keep it around so the route doesn't
-    # blow up if something registers a non-manifest engine in the future.
-    if not any(e.id == id for e in known_engines()):
-        raise not_found(f"Unknown engine: {id}")
-    variants = models_for(id)
-    if not variants:
-        raise not_found(f"No model variants for engine {id}")
-
-    if req.model_variant:
-        chosen = next((v for v in variants if v.id == req.model_variant), None)
-        if not chosen:
-            raise not_found(f"Unknown model variant '{req.model_variant}' for engine '{id}'")
-    else:
-        # No choice given → the resolved default (2026-08-14: the old
-        # recommend_for_vram picker ranked by scaffold-invented vram_mb).
-        chosen = default_variant_for(id) or variants[0]
-
-    model_dir = models_root(st.data_dir) / id
-    job_id = spawn_install(st, id, chosen, model_dir)
-    return InstallResponse(engine_id=id, model_variant=chosen.id, job_id=job_id)
+    raise not_found(f"Unknown engine: {id}")
 
 
 @router.post("/v1/engines/{id}/load", response_model=LoadResponse)
@@ -195,13 +171,14 @@ async def unload_engine(body: UnloadRequest | None = None) -> UnloadResponse:
 async def uninstall_engine_endpoint(
     id: str, uninstall_deps: bool = False
 ) -> UninstallResponse:
-    """Remove install-created files. For managed engines, rmtree
-    `.venv/models/voices/state`; nothing escapes the engine's folder. For
-    legacy engines, remove model files and (optionally) pip-uninstall the
-    engine's deps from the shared interpreter.
-    """
-    st = get_state()
+    """Remove install-created files: rmtree the engine's own
+    `.venv/models/voices/state`; nothing escapes its folder.
 
+    `uninstall_deps` is accepted and ignored — it drove a pip-uninstall from a
+    SHARED interpreter for legacy in-process engines, which stopped existing
+    when every engine moved to its own venv (the flag's branch was already
+    unreachable; excised 2026-08-14 with the static catalog).
+    """
     if _is_managed(id):
         mgr = get_manager()
         result = mgr.uninstall(id)
@@ -211,17 +188,7 @@ async def uninstall_engine_endpoint(
             pip_packages_removed=[],  # Managed engines have their own venv — nothing to surgical-uninstall.
         )
 
-    # Legacy path.
-    if not any(e.id == id for e in known_engines()):
-        raise not_found(f"Unknown engine: {id}")
-    model_dir = models_root(st.data_dir) / id
-    removed = uninstall_engine(st, id, model_dir)
-    deps_removed: list[str] = []
-    if uninstall_deps:
-        deps_removed = pip_uninstall_engine_deps(id)
-    return UninstallResponse(
-        engine_id=id, model_files_removed=removed, pip_packages_removed=deps_removed
-    )
+    raise not_found(f"Unknown engine: {id}")
 
 
 @router.get("/v1/jobs/{job_id}", response_model=JobStatus)

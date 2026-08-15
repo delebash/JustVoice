@@ -12,13 +12,8 @@ first load.
 from __future__ import annotations
 
 import hashlib
-import importlib
-import importlib.util
 import logging
-import re
 import shutil
-import subprocess
-import sys
 import tarfile
 import threading
 from pathlib import Path
@@ -27,7 +22,6 @@ from typing import Callable
 import requests
 
 from .app_state import AppState
-from .engines.catalog import known_engines
 from .models import JobStatus, ModelVariant
 
 log = logging.getLogger(__name__)
@@ -188,248 +182,14 @@ def spawn_managed_install(state: AppState, engine_id: str) -> str:
     return job_id
 
 
-def spawn_install(
-    state: AppState,
-    engine_id: str,
-    variant: ModelVariant,
-    model_dir: Path,
-) -> str:
-    """Kick off an install in the background. Returns the job_id."""
-    job_id = f"install-{engine_id}-{variant.id}"
-    total = sum(f.size_bytes for f in variant.files)
-    state.job_set(
-        job_id,
-        JobStatus(
-            job_id=job_id,
-            engine_id=engine_id,
-            model_variant=variant.id,
-            phase="connecting",
-            bytes_downloaded=0,
-            bytes_total=total,
-        ).model_dump(),
-    )
-
-    def worker():
-        try:
-            _run_install(state, job_id, engine_id, variant, model_dir)
-            state.job_update(job_id, phase="completed", bytes_downloaded=total)
-            _register_engine_after_install(state, engine_id, model_dir)
-        except _Cancelled:
-            log.info("install cancelled for %s/%s", engine_id, variant.id)
-            state.job_update(job_id, phase="failed", error="cancelled by user")
-            # Best-effort cleanup of any partials so the disk isn't littered.
-            try:
-                shutil.rmtree(model_dir, ignore_errors=True)
-            except Exception:
-                pass
-        except Exception as e:
-            log.exception("install failed for %s/%s", engine_id, variant.id)
-            state.job_update(job_id, phase="failed", error=str(e))
-        finally:
-            _clear_cancel(job_id)
-
-    threading.Thread(target=worker, daemon=True).start()
-    return job_id
-
-
-def _missing_modules(modules: list[str]) -> list[str]:
-    out: list[str] = []
-    for m in modules:
-        try:
-            if importlib.util.find_spec(m) is None:
-                out.append(m)
-        except (ImportError, ValueError):
-            out.append(m)
-    return out
-
-
-def _pip_install(
-    state: AppState,
-    job_id: str,
-    packages: list[str],
-) -> None:
-    """Run `python -m pip install <packages>` and stream output to the job.
-
-    Uses the running server's own Python interpreter (sys.executable) so the
-    installed package lands in the same site-packages the deferred imports
-    will look in. Cancellable mid-flight via _is_cancelled — we terminate the
-    subprocess and raise _Cancelled. Streams stdout/stderr lines into
-    job_state.current_file so the UI's progress row reflects pip's chatter
-    (which file it's downloading, which wheel it's building, etc.).
-    """
-    if not packages:
-        return
-    state.job_update(
-        job_id,
-        phase="installing-deps",
-        current_file=f"pip install {' '.join(packages)}",
-    )
-    cmd = [
-        sys.executable,
-        "-m",
-        "pip",
-        "install",
-        "--disable-pip-version-check",
-        "--progress-bar",
-        "off",
-        *packages,
-    ]
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
-    )
-    try:
-        assert proc.stdout is not None
-        last_line = ""
-        for line in proc.stdout:
-            if _is_cancelled(job_id):
-                proc.terminate()
-                try:
-                    proc.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    proc.kill()
-                raise _Cancelled()
-            line = line.rstrip()
-            if not line:
-                continue
-            last_line = line
-            # Keep the latest pip line in the job so the UI sees activity.
-            state.job_update(
-                job_id,
-                phase="installing-deps",
-                current_file=line[:200],
-            )
-        rc = proc.wait()
-        if rc != 0:
-            raise RuntimeError(
-                f"pip install failed (exit {rc}). Last line: {last_line!r}"
-            )
-    finally:
-        if proc.poll() is None:
-            proc.terminate()
-            try:
-                proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-
-    # Bust importlib's path/spec caches so a fresh find_spec sees the
-    # just-installed package without restarting the server.
-    importlib.invalidate_caches()
-
-
-def _run_install(
-    state: AppState,
-    job_id: str,
-    engine_id: str,
-    variant: ModelVariant,
-    model_dir: Path,
-) -> None:
-    model_dir.mkdir(parents=True, exist_ok=True)
-
-    if _is_cancelled(job_id):
-        raise _Cancelled()
-
-    # Phase 0: pip-install Python runtime deps if any are declared and any
-    # are not already importable. Runs against the same interpreter the
-    # server is on, so deferred `import` inside engine.load() picks up the
-    # new package without a restart.
-    entry = next((e for e in known_engines() if e.id == engine_id), None)
-    if entry and entry.pip_packages:
-        missing = _missing_modules(entry.runtime_deps)
-        if missing:
-            log.info(
-                "engine %s missing runtime modules %s; running pip install",
-                engine_id,
-                missing,
-            )
-            _pip_install(state, job_id, entry.pip_packages)
-            if _is_cancelled(job_id):
-                raise _Cancelled()
-
-    # Sidecar engines: install is a marker-only op
-    if entry and not entry.prerequisites.rust_native:
-        state.job_update(
-            job_id, phase="verifying", current_file=".installed marker"
-        )
-        (model_dir / ".installed").write_text(f"variant={variant.id}\n")
-        return
-
-    # Rust-native (Kokoro): real download
-    cumulative = 0
-    for file in variant.files:
-        if _is_cancelled(job_id):
-            raise _Cancelled()
-
-        # URL override from settings.models.url_overrides
-        overrides = state.settings.get().models.url_overrides
-        url = overrides.get(variant.id, file.url)
-
-        state.job_update(
-            job_id, phase="connecting", current_file=file.target_path
-        )
-
-        target_path = model_dir / file.target_path
-        target_path.parent.mkdir(parents=True, exist_ok=True)
-        partial_path = target_path.with_suffix(target_path.suffix + ".partial")
-
-        actual_hash = _stream_download(
-            url,
-            partial_path,
-            on_progress=lambda n: state.job_update(
-                job_id,
-                phase="downloading",
-                bytes_downloaded=cumulative + n,
-                current_file=file.target_path,
-            ),
-            cancel_check=lambda: _is_cancelled(job_id),
-        )
-
-        # SHA-256 verify (skip TODO placeholders)
-        if file.sha256 not in (
-            "TODO_FILL_SHA256_FROM_RELEASE",
-            "TODO_FILL_SHA256_FROM_HF",
-            "",
-        ):
-            state.job_update(job_id, phase="verifying")
-            if actual_hash.lower() != file.sha256.lower():
-                partial_path.unlink(missing_ok=True)
-                raise RuntimeError(
-                    f"SHA-256 mismatch for {file.target_path}: expected {file.sha256}, got {actual_hash}"
-                )
-
-        # Extract or rename
-        if _is_archive(file.target_path):
-            # A1+A2 from the progress-accuracy plan: smooth one bar
-            # through extract. bytes_total grows to include unpacked
-            # bytes; per-member callback advances the counter.
-            downloaded_bytes = partial_path.stat().st_size
-            unpacked = _estimate_archive_unpacked(partial_path, file.target_path)
-            base_total = cumulative + downloaded_bytes
-            state.job_update(
-                job_id,
-                phase="extracting",
-                bytes_downloaded=base_total,
-                bytes_total=(base_total + unpacked) if unpacked > 0 else 0,
-            )
-
-            def _on_member(size: int) -> None:
-                data = state.job_get(job_id) or {}
-                cur = int(data.get("bytes_downloaded") or 0)
-                state.job_update(job_id, bytes_downloaded=cur + size)
-
-            _extract_tar_bz2(
-                partial_path, model_dir, file.target_path,
-                on_member=_on_member if unpacked > 0 else None,
-                cancel_check=lambda: _is_cancelled(job_id),
-            )
-            partial_path.unlink(missing_ok=True)
-        else:
-            partial_path.rename(target_path)
-
-        cumulative += file.size_bytes
+# The legacy in-process install path was EXCISED 2026-08-14 together with the
+# static catalog it read (`engines.catalog.known_engines`): `spawn_install` and
+# its private cluster (`_missing_modules`, `_pip_install`, `_run_install`,
+# `_register_engine_after_install`), plus `uninstall_engine` and
+# `pip_uninstall_engine_deps`. Every engine is manifest-managed and owns its own
+# venv, so the routes that called them returned before ever reaching that code.
+# Managed installs go through `spawn_managed_install` (venv) + `spawn_prefetch`
+# (models); git holds the removed code.
 
 
 def _stream_download(
@@ -520,29 +280,6 @@ def _extract_tar_bz2(
             tar.extract(member, dest)
             if on_member is not None:
                 on_member(int(member.size or 0))
-
-
-def _register_engine_after_install(
-    state: AppState, engine_id: str, model_dir: Path
-) -> None:
-    """Legacy hook — kept as a stub. All built-in engines are now managed
-    plugins; the manager registers them itself after its own install path.
-    This function is a no-op so the legacy `spawn_install` codepath
-    continues to compile, but nothing calls it for any current engine.
-    """
-    log.info("legacy register_after_install called for %s (no-op — engine should be managed)", engine_id)
-
-
-# ─── S1: unified prefetch worker ──────────────────────────────────────
-# Shared entry point for fetching a model variant's weights to disk with
-# real progress + cancel. Honors operator source overrides (S0:
-# engine_sources_api.resolve_source). Two strategies behind one
-# contract:
-#   - URL source (e.g. kokoro's k2-fsa tarball) → stream the file with
-#     _stream_download + extract if archived (the existing path).
-#   - HF source (chatterbox / dia / qwen3 / whisper / luxtts / moss /
-#     tada / qwen3_llm) → huggingface_hub.snapshot_download with a
-#     tqdm hook that pushes byte counts into job state.
 
 
 def spawn_prefetch(
@@ -768,84 +505,3 @@ def _url_stream_to(
         # If/when we tighten this, plumb the digest back. Today the
         # legacy spawn_install handles SHA-verified flows for kokoro.
         pass
-
-
-def uninstall_engine(state: AppState, engine_id: str, model_dir: Path) -> bool:
-    """Unload, remove model files, unregister."""
-    if state.engines.current() == engine_id:
-        engine = state.engines.get(engine_id)
-        if engine:
-            try:
-                engine.unload()
-            except Exception as e:
-                log.warning("unload before uninstall failed for %s: %s", engine_id, e)
-        state.engines.clear_current()
-
-    removed = False
-    if model_dir.exists():
-        shutil.rmtree(model_dir, ignore_errors=True)
-        removed = True
-
-    state.engines.unregister(engine_id)
-    return removed
-
-
-_PKG_VERSION_RE = re.compile(r"[=<>!~\s\[]")
-
-
-def _pkg_name(spec: str) -> str:
-    """Strip version pin / extras from a pip spec.
-
-    Examples: "torch>=2.2" → "torch", "uvicorn[standard]>=0.32" → "uvicorn".
-    Splits on the first occurrence of any version-spec character so the
-    earlier "scan separators in order" bug (which returned "chatterbox-tts>"
-    for "chatterbox-tts>=0.2") can't recur.
-    """
-    return _PKG_VERSION_RE.split(spec, 1)[0].strip()
-
-
-def pip_uninstall_engine_deps(engine_id: str) -> list[str]:
-    """Pip-uninstall packages declared by this engine that no OTHER engine
-    in the catalog also declares.
-
-    Returns the list of bare package names actually removed. Shared deps
-    (e.g. `torch`, which six engines all declare) are skipped so removing
-    one engine doesn't disable the others. Synchronous — the engine
-    uninstall HTTP request blocks until pip is done.
-    """
-    target = next((e for e in known_engines() if e.id == engine_id), None)
-    if not target or not target.pip_packages:
-        return []
-
-    target_names = {_pkg_name(p) for p in target.pip_packages}
-    others = (e for e in known_engines() if e.id != engine_id)
-    shared: set[str] = set()
-    for other in others:
-        for spec in other.pip_packages:
-            shared.add(_pkg_name(spec))
-
-    to_remove = [name for name in target_names if name and name not in shared]
-    if not to_remove:
-        return []
-
-    cmd = [
-        sys.executable,
-        "-m",
-        "pip",
-        "uninstall",
-        "-y",
-        "--disable-pip-version-check",
-        *to_remove,
-    ]
-    log.info("pip uninstall for %s: %s", engine_id, to_remove)
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-    if result.returncode != 0:
-        log.warning(
-            "pip uninstall failed for %s (rc=%s): %s",
-            engine_id,
-            result.returncode,
-            (result.stderr or "")[:500],
-        )
-        return []
-    importlib.invalidate_caches()
-    return to_remove

@@ -7,7 +7,6 @@ each engine independent of whether it's installed.
 """
 
 from .base import EngineMeta, PresetVoice, SynthOutput, SynthRequest, TTSBackend
-from .catalog import known_engines
 from .registry import EngineRegistry
 
 __all__ = [
@@ -17,5 +16,4 @@ __all__ = [
     "SynthOutput",
     "SynthRequest",
     "EngineRegistry",
-    "known_engines",
 ]

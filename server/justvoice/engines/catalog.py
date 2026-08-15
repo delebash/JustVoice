@@ -1,163 +1,19 @@
-"""Static engine catalog — what JustVoice knows about each engine,
-independent of whether it's installed.
+"""Engine status derivation.
 
-7 engines, all commercial-output-permitting per their model-weight
-licenses (Higgs v3 was removed 2026-06-09 because its weights are
-declared non-commercial, which conflicted with JustVoice's audiobook /
-game / podcast commercial-output use cases):
-  - kokoro (sherpa-onnx-python — Apache-2.0 weights)
-  - luxtts (Apache-2.0 weights)
-  - qwen3 (Apache-2.0 weights)
-  - chatterbox / chatterbox-turbo / chatterbox-multilingual (MIT)
-  - tada (Llama 3.2 Community License — requires "Built with Llama"
-    attribution on the producing tool)
-  - dia (Apache-2.0)
-  - moss-tts (Apache-2.0 — upstream explicitly states "free commercial use")
+The hand-typed static catalog that used to live here — `known_engines()` and its
+seven `EngineInfo` builders — was EXCISED 2026-08-14. It was a second source of
+truth beside `engines/<id>/manifest.py`: every one of its ids had a real manifest,
+so `_is_managed()` short-circuited before any of its fallback arms could run, and
+its rows drifted (that is the same class of defect as the invented per-variant
+catalog rows deleted in phase 2c). The manifests are the catalog; git holds the
+old file.
+
+`compute_status` survives because it is NOT about the static list: it derives a
+status for RUNTIME-registered engines — the external OpenAI-compatible servers a
+user adds, which have no manifest by design.
 """
 
 from __future__ import annotations
-
-from ..models import EngineInfo, Prerequisites
-
-
-def known_engines() -> list[EngineInfo]:
-    return [
-        kokoro(),
-        luxtts(),
-        qwen3(),
-        chatterbox(),
-        tada(),
-        dia(),
-        moss_tts(),
-    ]
-
-
-def kokoro() -> EngineInfo:
-    return EngineInfo(
-        id="kokoro",
-        name="Kokoro",
-        description=(
-            "k2-fsa's Kokoro via sherpa-onnx — 54 preset voices across 8 languages "
-            "(en-US, en-GB, ja, zh, es, fr, hi, it, pt-BR). ~50 MB binary footprint, "
-            "333 MB model download. CUDA / Metal (CoreML) / DirectML / CPU."
-        ),
-        backend="sherpa-onnx",
-        capabilities=["preset_voices", "gpu_accel", "phoneme_override"],
-        prerequisites=Prerequisites(
-            rust_native=True,
-            sidecar=False,
-            model_files_needed=["kokoro-base"],
-            gpu_runtimes=["cuda", "coreml", "directml", "cpu"],
-        ),
-        runtime_deps=["sherpa_onnx"],
-        pip_packages=["sherpa-onnx>=1.13"],
-    )
-
-
-def luxtts() -> EngineInfo:
-    return EngineInfo(
-        id="luxtts",
-        name="LuxTTS",
-        description="Multilingual TTS with preset voices and broad language coverage. Lighter than the Qwen3/Chatterbox tier.",
-        backend="python",
-        capabilities=["preset_voices", "gpu_accel"],
-        prerequisites=Prerequisites(
-            sidecar=False, gpu_runtimes=["cuda", "metal"]
-        ),
-        runtime_deps=["luxtts", "torch"],
-    )
-
-
-def qwen3() -> EngineInfo:
-    return EngineInfo(
-        id="qwen3",
-        name="Qwen3-TTS",
-        description=(
-            "Alibaba's open-weight TTS. Two variants: 1.7B (full feature set, "
-            "best published English WER) and 0.6B (faster, ~half VRAM). Voice "
-            "cloning, voice design from prose, instruct field, native paralinguistic tags."
-        ),
-        backend="python",
-        capabilities=[
-            "preset_voices",
-            "voice_cloning",
-            "voice_design",
-            "instruct_field",
-            "paralinguistic_tags",
-            "gpu_accel",
-        ],
-        prerequisites=Prerequisites(
-            sidecar=False, gpu_runtimes=["cuda", "metal"]
-        ),
-        runtime_deps=["qwen3_tts", "torch"],
-        pip_packages=["qwen-tts>=0.1", "torch>=2.2"],
-    )
-
-
-def chatterbox() -> EngineInfo:
-    return EngineInfo(
-        id="chatterbox",
-        name="Chatterbox",
-        description=(
-            "Resemble AI's open-source TTS family with three variants: Original "
-            "(500M EN), Turbo (350M EN, native paralinguistic tags), Multilingual "
-            "(500M, 23 languages). Voice cloning, per-render exaggeration / "
-            "cfg_weight / temperature knobs. CPU-only on Mac (PyTorch/MPS upstream bug)."
-        ),
-        backend="python",
-        capabilities=[
-            "voice_cloning",
-            "paralinguistic_tags",
-            "gpu_accel",
-        ],
-        prerequisites=Prerequisites(
-            sidecar=False, gpu_runtimes=["cuda"]
-        ),
-        runtime_deps=["chatterbox", "torch"],
-        pip_packages=["chatterbox-tts>=0.2", "torch>=2.2"],
-    )
-
-
-def tada() -> EngineInfo:
-    return EngineInfo(
-        id="tada",
-        name="TADA",
-        description="Hume AI's TADA — multilingual TTS with voice cloning. 1B and 3B variants.",
-        backend="python",
-        capabilities=["preset_voices", "voice_cloning", "gpu_accel"],
-        prerequisites=Prerequisites(
-            sidecar=False, gpu_runtimes=["cuda", "metal"]
-        ),
-        runtime_deps=["tada", "torch"],
-    )
-
-
-def dia() -> EngineInfo:
-    return EngineInfo(
-        id="dia",
-        name="Dia",
-        description="Dia — multi-speaker single-pass dialogue. 1.6B and 2-2B variants.",
-        backend="python",
-        capabilities=["preset_voices", "single_speaker_dialogue", "gpu_accel"],
-        prerequisites=Prerequisites(
-            sidecar=False, gpu_runtimes=["cuda", "metal"]
-        ),
-        runtime_deps=["dia", "torch"],
-    )
-
-
-def moss_tts() -> EngineInfo:
-    return EngineInfo(
-        id="moss-tts",
-        name="MOSS-TTSD",
-        description="MOSS-TTSD — zh/en dialogue, long stable single-pass generation.",
-        backend="python",
-        capabilities=["preset_voices", "gpu_accel"],
-        prerequisites=Prerequisites(
-            sidecar=False, gpu_runtimes=["cuda"]
-        ),
-        runtime_deps=["moss_tts", "torch"],
-    )
 
 
 def compute_status(

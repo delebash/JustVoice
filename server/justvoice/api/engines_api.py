@@ -2,7 +2,7 @@
 
 Merges three sources of truth into one response:
 1. Manager-managed engines (engines/<id>/manifest.py — the new plugin model).
-2. Legacy static catalog (engines.catalog.known_engines() — fallback only;
+2. Runtime-registered external engines (compute_status derives their state;
    most built-in engines are getting ported to the manager).
 3. Runtime-registered in-process engines (state.engines.all() — currently
    only external OpenAI-compatible servers).
@@ -20,7 +20,7 @@ from fastapi import HTTPException
 
 from ..app_state import get_state
 from ..engines.capability_details import CAPABILITY_DETAILS, lookup as lookup_capability
-from ..engines.catalog import compute_status, known_engines
+from ..engines.catalog import compute_status
 from ..engines.manager import EngineManifest, get_manager
 from ..models import (
     CurrentEngineResponse,
@@ -108,18 +108,6 @@ def _info_from_manifest(manifest: EngineManifest, status: str) -> EngineInfo:
     )
 
 
-def _enrich_legacy(entry: EngineInfo, current_id: str | None) -> EngineInfo:
-    """Fill status + current for an entry from the legacy static catalog."""
-    st = get_state()
-    instance = st.engines.get(entry.id)
-    registered = instance is not None
-    ready = instance.ready() if instance else False
-    entry.status = compute_status(entry.id, registered, ready, current_id)
-    entry.current = current_id == entry.id
-    entry.is_stubbed = False
-    return entry
-
-
 def _current_id() -> str | None:
     """The id of whichever engine is loaded (managed or in-process), or None."""
     mgr = get_manager()
@@ -142,16 +130,7 @@ async def list_engines() -> EnginesListResponse:
         catalog.append(info)
         seen.add(manifest.id)
 
-    # 2. Legacy static catalog — only entries that don't have a manifest yet.
-    #    Most engines (kokoro and the sidecar engines as they get ported) will
-    #    drop out of this list once they have an engines/<id>/manifest.py.
-    for entry in known_engines():
-        if entry.id in seen:
-            continue
-        catalog.append(_enrich_legacy(entry, cur))
-        seen.add(entry.id)
-
-    # 3. Runtime-registered in-process engines (external OpenAI-compatible
+    # 2. Runtime-registered in-process engines (external OpenAI-compatible
     #    servers). Not in any static catalog. self_hosted comes from the
     #    provider config (item 9) so badges + tab placement stay honest.
     ext_cfg = {c.id: c for c in st.settings.get().engines.external}
@@ -324,10 +303,7 @@ async def get_current_engine() -> CurrentEngineResponse:
         info.current = True
         return CurrentEngineResponse(engine=info)
 
-    # Legacy / external — look up via static catalog or runtime registry.
-    for entry in known_engines():
-        if entry.id == cur:
-            return CurrentEngineResponse(engine=_enrich_legacy(entry, cur))
+    # External / runtime-registered (no manifest by design).
     st = get_state()
     inst = st.engines.get(cur)
     if inst:
