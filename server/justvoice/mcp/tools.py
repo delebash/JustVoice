@@ -20,6 +20,7 @@ from typing import Any
 from fastmcp import FastMCP
 
 from ..app_state import get_state
+from ..media_paths import store_media_path
 from .context import current_client_id
 from .resolve import resolve_voice
 
@@ -222,7 +223,8 @@ async def _speak(
     out_dir = generations_root(state.data_dir)
     out_path = out_dir / f"{gen.id}.wav"
     out_path.write_bytes(wav)
-    gen.audio_path = str(out_path)
+    # Relative to the data root — survives a Change-folder move.
+    gen.audio_path = store_media_path(out_path)
     db.commit()
 
     return {

@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from ..database import Generation, Persona, get_db
 from ..errors import bad_request
+from ..media_paths import media_file
 
 
 router = APIRouter(tags=["generations"])
@@ -97,7 +98,7 @@ async def bulk_delete_generations(
     audio_paths: list[Path] = []
     for r in rows:
         if r.audio_path:
-            p = Path(r.audio_path)
+            p = media_file(r.audio_path)
             try:
                 if p.is_file():
                     freed_bytes += p.stat().st_size

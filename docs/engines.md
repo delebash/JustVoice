@@ -41,7 +41,10 @@ genuinely fast on CPU; the PyTorch cloning engines want a GPU.)
 
 One engine is **loaded** per slot (one TTS, one STT). Loading takes 10-30s (model load + warmup). The **speech engines** tab on the ai page shows the current state per engine:
 
-- `not installed` — first download required.
+- `not installed` — first download required. (This also appears if you moved
+  the JustVoice install folder: the engine's Python environment records its
+  own location and has to be rebuilt. Click Install — your downloaded models
+  stay put. See [Backup and data](backups-and-data.md#where-your-data-lives).)
 - `installed` — present on disk, not currently loaded.
 - `loaded` — resident and ready to render. The card also shows **which device** it loaded on (`· CUDA` / `· CPU`).
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -12,6 +11,7 @@ from ..app_state import get_state
 from ..database.models import Generation
 from ..database.session import get_db
 from ..errors import bad_request
+from ..media_paths import media_file
 from ..models import CacheStats
 
 router = APIRouter(tags=["cache"])
@@ -107,7 +107,7 @@ async def recent_entries(limit: int = 15, db: Session = Depends(get_db)) -> Rece
         size = 0
         if g.audio_path:
             try:
-                size = os.path.getsize(g.audio_path)
+                size = media_file(g.audio_path).stat().st_size
             except OSError:
                 size = 0
         persona = st.personas.get(g.persona_id) if g.persona_id else None

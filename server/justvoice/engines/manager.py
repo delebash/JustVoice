@@ -124,6 +124,43 @@ def shared_venv_exists() -> bool:
     return shared_venv_python().is_file()
 
 
+# ─── Moved-install detection (user ruling 2026-08-14) ─────────────────
+# The app folder is portable: the user can move the whole install and it
+# keeps working, because everything inside it is relative. Python venvs are
+# the exception — `pyvenv.cfg`, the `Scripts/` launchers and the installed
+# console scripts all embed ABSOLUTE paths, so a moved install carries venvs
+# that silently no longer work. We stamp each venv with the install path it
+# was built for and compare on status, so a moved install reports "needs
+# reinstall" up front instead of failing deep inside a load.
+VENV_ORIGIN_FILE = ".jv-venv-origin"
+
+
+def record_venv_origin(venv_dir: Path) -> None:
+    """Stamp the install path this venv was created under. Best-effort: a
+    venv that cannot be stamped simply falls back to the legacy behaviour
+    (treated as matching) rather than breaking the install."""
+    try:
+        (venv_dir / VENV_ORIGIN_FILE).write_text(str(ENGINES_DIR.resolve()), encoding="utf-8")
+    except OSError:  # noqa: BLE001 — a stamp is a convenience, never a gate
+        log.debug("could not stamp venv origin at %s", venv_dir, exc_info=True)
+
+
+def venv_origin_matches(venv_dir: Path) -> bool:
+    """False ONLY when the stamp exists and names a different install.
+
+    An unstamped venv (built before this existed) reads as matching — the
+    interpreter health probe still covers the genuinely broken ones, and
+    declaring every pre-existing venv dead would force a needless rebuild.
+    """
+    try:
+        stamped = (venv_dir / VENV_ORIGIN_FILE).read_text(encoding="utf-8").strip()
+    except OSError:
+        return True
+    if not stamped:
+        return True
+    return Path(stamped) == ENGINES_DIR.resolve()
+
+
 # Cache for the health probe. `None` = not yet probed. Spawning a process is
 # far too expensive for a check the readiness endpoint polls.
 _venv_health: bool | None = None
@@ -157,6 +194,16 @@ def shared_venv_healthy() -> bool:
         return _venv_health
     exe = shared_venv_python()
     if not exe.is_file():
+        _venv_health = False
+        return _venv_health
+    # A venv built under a DIFFERENT install path is dead in the same way
+    # (absolute paths baked into its launchers) — catch it without paying
+    # for a subprocess.
+    if not venv_origin_matches(SHARED_VENV_DIR):
+        log.warning(
+            "shared venv was built for a different install location — the app "
+            "folder moved; it will be rebuilt on the next engine setup"
+        )
         _venv_health = False
         return _venv_health
     try:
@@ -335,8 +382,11 @@ class EngineManifest:
         model_install_steps are all satisfied (model files on disk).
         """
         if self.isolation == "venv":
-            return _venv_python(self.venv_dir).is_file()
-        if not shared_venv_exists():
+            # A venv built under a different install path needs rebuilding
+            # (the app folder moved) — report "not installed" so the UI
+            # offers Install instead of failing deep inside a load.
+            return _venv_python(self.venv_dir).is_file() and venv_origin_matches(self.venv_dir)
+        if not shared_venv_exists() or not venv_origin_matches(SHARED_VENV_DIR):
             return False
         # Phase ④: a variant COMPLETE in the speech cache also counts — a
         # prefetched engine is installed (shared venv + files present), so
@@ -668,6 +718,8 @@ def _install_engine_isolated(
     python_exe = _venv_python(venv)
     if not python_exe.is_file():
         raise InstallError(f"venv created but python not found at {python_exe}")
+    # Stamp the install path this venv belongs to (moved-install detection).
+    record_venv_origin(venv)
 
     # 2. Always install justvoice-plugin first so the engine subprocess has its
     #    base class + serve() shim available.
@@ -1867,7 +1919,10 @@ class EngineManager:
             # For shared engines (monolithic style), Load is the only
             # button — the shared venv builds here on first use.
             if m.isolation == "shared":
-                if not shared_venv_exists():
+                # ... or the venv exists but was built under a different
+                # install path (the app folder moved): setup_shared_venv
+                # detects that through the health probe and rebuilds.
+                if not shared_venv_exists() or not venv_origin_matches(SHARED_VENV_DIR):
                     if progress:
                         progress("setup-shared-venv", "first-time setup: creating shared venv…")
                     from . import shared_venv as sv

@@ -14,7 +14,6 @@ import json
 import re
 import zipfile
 from datetime import datetime, timezone
-from pathlib import Path
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
@@ -33,6 +32,7 @@ from ..database import (
     get_db,
 )
 from ..errors import not_found
+from ..media_paths import media_file
 from ..version import VERSION
 
 
@@ -175,7 +175,7 @@ async def export_project(
                     )
                     if gen is None or not gen.audio_path:
                         continue
-                    audio_path = Path(gen.audio_path)
+                    audio_path = media_file(gen.audio_path)
                     if not audio_path.is_file():
                         continue
                     arc = f"audio/{scene.position:03d}/{block.position:04d}-{block.id}.wav"

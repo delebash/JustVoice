@@ -27,6 +27,7 @@ from typing import Any, Callable
 from .manager import (
     ENGINE_PYTHON_VERSION,
     SHARED_VENV_DIR,
+    record_venv_origin,
     _current_os_label,
     _run_uv_pip,
     _venv_python,
@@ -132,8 +133,9 @@ def setup_shared_venv(
     if SHARED_VENV_DIR.exists() and not force and not shared_venv_healthy():
         emit(
             "clearing",
-            f"{SHARED_VENV_DIR} exists but its interpreter does not run "
-            "(base Python moved or removed) — rebuilding from scratch",
+            f"{SHARED_VENV_DIR} exists but is not usable — its interpreter does "
+            "not run (base Python moved or removed) or it was built for a "
+            "different install location (the app folder moved). Rebuilding.",
         )
         force = True
 
@@ -163,6 +165,8 @@ def setup_shared_venv(
     py = _venv_python(SHARED_VENV_DIR)
     if not py.is_file():
         raise InstallError(f"venv created but python not at {py}")
+    # Stamp the install path this venv belongs to (moved-install detection).
+    record_venv_origin(SHARED_VENV_DIR)
     check_cancel()
 
     # 2. justvoice_plugin (the SDK every engine subprocess imports).

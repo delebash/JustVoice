@@ -8,7 +8,6 @@ paragraph 47 doesn't invalidate paragraph 48.
 from __future__ import annotations
 
 from datetime import datetime
-from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends
@@ -19,6 +18,7 @@ from sqlalchemy.orm import Session
 from ..database import Take, get_db
 from ..database.models import Generation
 from ..errors import not_found, bad_request
+from ..media_paths import media_file
 
 
 router = APIRouter(tags=["takes"])
@@ -183,7 +183,7 @@ async def delete_generation(generation_id: str, db: Session = Depends(get_db)) -
     if not gen:
         raise not_found(f"generation {generation_id}")
     if gen.audio_path:
-        Path(gen.audio_path).unlink(missing_ok=True)
+        media_file(gen.audio_path).unlink(missing_ok=True)
     db.delete(gen)
     db.commit()
     return {"deleted": True}
@@ -269,7 +269,7 @@ async def get_generation_audio(generation_id: str, db: Session = Depends(get_db)
         raise not_found(f"generation {generation_id}")
     if not gen.audio_path:
         raise bad_request("generation has no audio on disk (status may not be 'completed')")
-    p = Path(gen.audio_path)
+    p = media_file(gen.audio_path)
     if not p.is_file():
         raise not_found(f"audio file missing from disk: {gen.audio_path}")
     return FileResponse(

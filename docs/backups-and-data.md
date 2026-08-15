@@ -30,6 +30,21 @@ written to (installed under `Program Files`, or run from read-only media). It
 then falls back to the standard per-user app-data folder for your OS so the
 app still starts. Settings → Storage always shows the folder actually in use.
 
+**Moving the data.** Change folder copies everything to the new location,
+switches over, and only then removes the old copy — if anything fails, the app
+keeps using the old folder. Your library keeps working afterwards: takes,
+captures and renders are recorded relative to the data folder, so they're
+found wherever it ends up (and a backup restored on another machine or drive
+resolves the same way).
+
+**Moving the app.** The install folder is self-contained — move it to another
+drive or a USB stick and it keeps working, because everything inside it is
+relative. One exception: the speech engines run in Python environments that
+record their own location internally and can't be relocated. JustVoice notices
+this and shows the affected engines as **not installed** with an Install
+button, rather than failing when you try to load one. Reinstalling rebuilds
+the environment; your downloaded models and all your work are untouched.
+
 JustWrite follows the identical rule, so both apps behave the same way.
 
 Installs from before 2026-08-14 kept data in a per-user app-data folder

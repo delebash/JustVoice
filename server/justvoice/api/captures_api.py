@@ -28,6 +28,7 @@ from ..app_state import get_state
 from ..database import get_db
 from ..database.models import Capture
 from ..errors import bad_request, not_found
+from ..media_paths import media_file, store_media_path
 from ..refinement import RefinementFlags, refine_transcript
 
 log = logging.getLogger(__name__)
@@ -176,7 +177,9 @@ async def create_capture(
                 dest.unlink(missing_ok=True)
                 raise bad_request(f"upload exceeds {_MAX_UPLOAD_MB} MB")
             out.write(chunk)
-    capture.audio_path = str(dest)
+    # Stored RELATIVE to the data root so a Change-folder move doesn't
+    # orphan the file (see media_paths).
+    capture.audio_path = store_media_path(dest)
 
     raw = _stt_transcribe(str(dest), language)
     capture.raw_transcript = raw
@@ -222,7 +225,7 @@ async def get_capture_audio(capture_id: str, db: Session = Depends(get_db)) -> F
     c = db.query(Capture).filter(Capture.id == capture_id).first()
     if not c:
         raise not_found(f"capture {capture_id}")
-    p = Path(c.audio_path)
+    p = media_file(c.audio_path)
     if not p.is_file():
         raise not_found(f"audio missing from disk: {c.audio_path}")
     return FileResponse(path=str(p), media_type="audio/wav", filename=f"{capture_id}.wav")
@@ -234,7 +237,7 @@ async def delete_capture(capture_id: str, db: Session = Depends(get_db)) -> dict
     if not c:
         raise not_found(f"capture {capture_id}")
     if c.audio_path:
-        Path(c.audio_path).unlink(missing_ok=True)
+        media_file(c.audio_path).unlink(missing_ok=True)
     db.delete(c)
     db.commit()
     return {"deleted": True}
@@ -286,10 +289,10 @@ async def retranscribe_capture(
     c = db.query(Capture).filter(Capture.id == capture_id).first()
     if not c:
         raise not_found(f"capture {capture_id}")
-    if not c.audio_path or not Path(c.audio_path).is_file():
+    if not c.audio_path or not media_file(c.audio_path).is_file():
         raise bad_request("capture audio missing from disk")
 
-    raw = _stt_transcribe(c.audio_path, language or c.language)
+    raw = _stt_transcribe(str(media_file(c.audio_path)), language or c.language)
     c.raw_transcript = raw
     flags = RefinementFlags.from_dict(
         json.loads(c.refinement_flags_json) if c.refinement_flags_json else None
