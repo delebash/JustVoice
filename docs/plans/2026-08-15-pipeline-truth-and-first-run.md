@@ -445,7 +445,15 @@ Tests: server — preview with text caches per (voice,text); ensure-load fires
 when tts slot empty (monkeypatched manager records the load call); not-
 installed → 400 with the message. Full JV gate + smoke.
 
-### Item 6 — Generate dissolution (after 5 is live)
+### Item 6 — Generate dissolution — ⚠ THIS SPEC IS WRONG, DO NOT EXECUTE
+
+**Struck 2026-08-15.** It contradicts the voice-workbench design (recovered
+that day into `2026-08-15-voice-workbench.md` → THE DESIGN) on both of its
+load-bearing points: the design says Generate is **ABSORBED, not deleted**,
+and that the workbench page **is** the new surface — where this spec says
+delete the view and "no new surface". Generate's layout is the workbench's
+skeleton. Rewrite this item against THE DESIGN before any of it is built.
+Kept below only as the record of what was superseded.
 
 1. Delete `src/views/GenerateView.vue`; route `/generate` → redirect
    `/voices` (router/index.js — keep a redirect, old deep links exist);

@@ -206,12 +206,41 @@ carries `voice_instruct` (the only text that reaches the synth) and
 The third description field and the dead MCP flag are gone, the JW import
 fills the sheet only, and `test_voice_instruct.py` holds the line. Gates:
 567 server tests, ruff, biome, 53 vitest, build, smoke — all green.
-SLICE B IS BUILT — 2026-08-15, on the go *"slice B go"*. The row preview
-takes an optional `{text, delivery}` body with a rendered-audition cache;
-`VoiceAudition.vue` mounts inline on a voice-row click with the load-cost
-line and the resolved-stack line; `services/audition.js` holds the pure
-parts. The inspector is UNTOUCHED (its removal is Slice E).
-C–E remain: per slice, per go.
+SLICE B IS BUILT AND IS NOT THE DESIGN — 2026-08-15, on the go *"slice B
+go"*. What shipped: the row preview takes an optional `{text, delivery}` body
+with a rendered-audition cache; `VoiceAudition.vue` mounts inline on a
+voice-row click with the load-cost line and the resolved-stack line;
+`services/audition.js` holds the pure parts. The user's verdict on seeing it:
+*"stop putting stuff under advanced, this is crap nothing like a nice design
+nothing like a nice workflow, no mixing no direction like the render tab, you
+where supposed to combine features … having it under voices is terrible"*.
+He is right, and the cause is this plan, not the code.
+
+THE DESIGN WAS MISSING AND IS NOW RECOVERED. The plan was written as five
+slices of implementation with NO statement of what was being built or why;
+the design agreed in the same session was never written down and died in the
+compact. Recovered 2026-08-15 from the session transcript
+(`~/.claude/projects/E--Dev-Web-JustVioce/364ef093-….jsonl`, messages
+1219–1245) and written into the plan as its new FIRST section, **THE DESIGN**.
+Load-bearing content: identity → hear → make; **the voice page is a workbench,
+not a profile** (Hear it · Tune it · Feed it · Derive from it); **Generate is
+ABSORBED, not deleted**; the render lab becomes axes on the Tune panel; one
+audition component at voice/persona/preset resolution with the resolved-stack
+line; Labs collapses to one analyzer bench; one ＋New-voice door with honest
+preconditions; slot-coupled synth must be stated, not discovered.
+
+CONTRADICTION TO RESOLVE BEFORE SLICE D: pipeline item 6 says delete
+GenerateView and *"no new surface"*. The design says absorbed, and the
+workbench IS the surface. Item 6's spec predates the design and must be
+rewritten, not executed.
+
+OPEN, blocking the rest: does the workbench own PER-LINE work (the Alexandria
+audio-editor shape the user showed: speaker · text · emotion/style · Gen per
+row) or does per-line stay in Studio's Script/Render? That answer sets the
+page's scope. Also open: samples API build-vs-remove; where the merged
+analyzer bench lives.
+GO: needed — C–E do not proceed until the per-line question is answered and
+Slice B's row-drawer mount is reconsidered against the design.
 
 ### FINDING — engine-private knobs are saved flat and reach no engine
 

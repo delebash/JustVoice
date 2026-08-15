@@ -14,6 +14,182 @@ and predates Slice A; re-verify before editing — the user commits in parallel.
 
 ---
 
+## THE DESIGN — read this before any slice
+
+> **RECOVERED 2026-08-15 from the session transcript** (`364ef093-…jsonl`,
+> messages 1219–1245), after the user found the built Slice B thin and asked
+> what the actual design doc was. The answer was: there wasn't one. This plan
+> was written as five slices of *implementation* and the design that produced
+> them — discussed and agreed in that session — was never written down. It
+> died in the compact, and the slices were executed against nothing.
+>
+> **The failure this section exists to prevent:** a spec detailed enough to
+> build from, with no statement of what is being built or why, passes every
+> gate and still ships the wrong thing. If a future slice contradicts this
+> section, this section wins — stop and raise it.
+
+### The complaint (the user's words, 2026-08-15)
+
+*"the voice inspector is hidden behind double click i think we need a better
+desing for managing voices blending cloning ect, it just doesnt seem like an
+easy workflow, like the generate tab that seems like render tab, we have too
+many hidden places to do stuff with voices and not a nice workflow"* — and on
+the persona: *"we have voice selection then personality voice hint effect, all
+of which change what it sounds like this is another scattered area that
+changes what we hear"*.
+
+### The diagnosis (read out of the code, not assumed)
+
+- **One library, four doors.** The same five verbs — clone, design, import,
+  blend, train — are spread across a toolbar, a collapsed `<details>` fold,
+  the inspector footer, and a Labs tab. There is no single moment where the
+  app says "let's make you a voice."
+- **Inspection and creation are tangled.** Blend and Train don't inspect
+  anything; they *make a new voice from this one*. Burying them at the bottom
+  of a viewer, behind a double-click, hides the two most interesting features.
+- **Double-click isn't an affordance.** Nothing on the row says it's
+  clickable, and ⚙ reads as "settings", not "open".
+- **Half the drawer is a promise.** Five disabled buttons, and the samples
+  table is *fake* — `inspectedSamples` fabricates rows from a count.
+- **Two verb classes in one pile.** Clone/design/import/record create *from a
+  source you bring*; blend/train *derive from voices you already own*. Mixing
+  them is why the flow feels arbitrary.
+- **The persona stacks six sound layers** (voice, engine override, instruct,
+  delivery, effects, lexicon) and **cannot edit its own delivery** — `+ Edit`
+  raises a toast sending you to Generate, the tab being dissolved.
+
+### The shape — three levels, none hidden
+
+**Identity → hear → make.** Each level earns its place, and the double-click
+disappears.
+
+1. **The row is identity.** Name, engine, type, gender, language. Rename and
+   the two metadata fields become inline edits or a ⋯ menu — no drawer needed
+   for three fields.
+2. **Hearing happens inline, in context.** NOT a dock: the user deleted the
+   GlobalAudioPlayer the same day, and a persistent audition dock is the same
+   fixed furniture wearing a different job. The panel opens under the voice
+   row, inside the persona form's "how they sound", in the Studio cast card.
+3. **A workbench page is where you make things.** The heavyweight work that
+   needs room — samples, training, blend matrices. Reached deliberately.
+
+### The voice page is a WORKBENCH, not a profile
+
+Open a voice and you get, in this order:
+
+- **Hear it** — your own text, not a canned line, with the engine auto-loading
+  if it isn't. *"This is Generate's good half, and it's where item 6 lands:
+  **Generate doesn't get deleted, it gets absorbed.**"* A take you like is
+  keepable from here.
+- **Tune it** — *"the params modal stops being a modal."* The delivery knobs
+  sit beside the audition box so you change one and hear it. **Add axes and
+  the same panel becomes the render lab**: same line, three exaggeration
+  values, heard side by side. *"Advanced mode of one control, not a separate
+  destination."*
+- **Feed it** — the samples workbench, once the API exists. Until then, one
+  honest sentence instead of five dead buttons.
+- **Derive from it** — Blend and Train under one heading, both pre-filled with
+  this voice as the source. Train gets the roomy layout the user ruled for,
+  because the page is roomy.
+
+**The payoff:** Generate, the render lab, Train and the inspector become ONE
+surface, and the thing you do most — hear whether this voice is right — stops
+being the thing that's hardest to reach.
+
+### One audition component, three resolutions
+
+The same component, resolving a different stack:
+
+| Level | What it resolves |
+|---|---|
+| Voice | just the voice |
+| Persona | the whole character — voice + engine + instruct + delivery + effects + lexicon, so you hear *Mara*, not *Bella* |
+| Render preset | the above + the preset chain + master target |
+
+**Every audition states its sum**, in one line: *"Hearing Bella (kokoro) ·
+instruct · speed 1.1× · 1 effect · Stillwater lexicon."* Same move as ruling
+16's master pill — scattered stops feeling scattered when the total is visible
+where you're working. Fable's verdict on reviewing the whole design: *"the
+single best idea in this."*
+
+### What that does to the persona
+
+- Split the form **by job, not by field type**: *How they sound* (voice,
+  engine, instruct, delivery, effects, lexicon) and *How they're written* (the
+  sheet the LLM reads).
+- **The panel's knobs ARE the delivery editor.** That deletes
+  `openDeliveryHint` and the Generate dependency in one move, and it is
+  precisely where Generate's dissolution lands: its tuning half becomes the
+  persona's, its typing-and-hearing half becomes the audition.
+- **Studio's cast card gets the same panel inline**, replacing its tuner
+  modal. One control in three places instead of three controls.
+
+### What that does to Labs
+
+Today: Compare · Train · Render lab · Audio.
+
+- **Train** → the Voices workbench (the user's roomy-layout ruling).
+- **Render lab** → the Tune section's axes. Its own description is *"pick a
+  voice, 1-3 sample sentences, 1-2 parameter axes"* — that isn't a lab, that's
+  auditioning with n>1.
+- **Compare** (two takes → verdict) and **Audio** (one WAV → analyze/master)
+  are the same tool at n=2 and n=1. Merge them into one analyzer bench.
+
+Labs collapses from four tabs to one bench. *"I'd not keep a container called
+'Labs' for one utility."*
+
+### One ＋ New voice door
+
+A single primary button opens a chooser with the paths as cards, each stating
+its precondition honestly — clone needs Chatterbox and a 10s–2min clean
+sample; design needs Qwen3; blend needs two voices; train needs samples. The
+toolbar/fold/Labs split disappears. **What isn't available yet says why**,
+instead of hiding in a fold. And: stop shipping disabled buttons — either
+build sample collection or replace the five greyed controls with one honest
+sentence.
+
+### The physics the design must state, not discover
+
+`synth()` is **slot-coupled** — one TTS engine resident at a time (the VRAM
+think, Q8). Auditioning a kokoro voice then a chatterbox voice is a full model
+swap. Ensure-load handles the mechanics, but the panel must *say* it: *"if the
+panel pretends switching voices is free, cross-engine browsing feels broken
+and we get a bug report that's actually physics."*
+
+### Sequencing (why it slices, and what that does NOT license)
+
+The slices exist so each step ships — *"big-banging that is how a 2000-line
+view becomes two"*: audition component first, then the persona resolve +
+knobs-as-delivery-editor, then Generate's dissolution once both its halves
+have homes, then the ＋New-voice door and the Labs collapse, and inspector
+removal **last**, after rename and the derive verbs have homes. Samples API
+rides parallel.
+
+**The first slice is a step toward the workbench, not a substitute for it.**
+Slice B shipped the audition component mounted on a voice row and stopped
+there — correct as a step, wrong as a destination, and the doc said nothing
+about a destination, so nothing caught it.
+
+### Known contradiction in this plan — resolve before building Slice D
+
+§6 (Slice D) defers to the pipeline plan's item 6, which says *"Delete
+`src/views/GenerateView.vue`"* and *"Knob home: delivery knobs live on the
+persona (VoiceParamsModal) — **no new surface**."* That directly contradicts
+the design above: Generate is **absorbed**, and the workbench **is** the new
+surface. Item 6's spec predates this design and must be rewritten, not
+executed.
+
+### Open questions the design does not answer
+
+1. **Does the workbench own per-line work?** (The user raised the Alexandria
+   audio-editor shape: speaker · text · emotion/style · Gen per row.) Studio's
+   Script/Render already own per-line. Whether these merge or stay separate
+   decides the page's scope. **Unanswered.**
+2. **Samples API** — build it, or remove the five controls with one line.
+3. **Where the merged analyzer bench lives** — sidebar seat or under Settings.
+
+---
+
 ## §0 Execution rules (non-negotiable, all slices)
 
 1. **Per-slice go.** The user says which slice; build exactly that slice.
@@ -383,15 +559,24 @@ whatever describes preview today.
 - Tests: vitest — persona resolved-stack line composition (pure function in
   `src/services/audition.js`); smoke.
 
-## §6 SLICE D — Generate dissolves (pipeline plan item 6, absorbed home)
+## §6 SLICE D — Generate is ABSORBED (⚠ item 6's spec is wrong — do not execute it)
 
-Execute item 6 exactly as specced in
-`2026-08-15-pipeline-truth-and-first-run.md` §5 ("Generate dissolution
-(after 5 is live)") — Slices B+C are its precondition and its landing zone:
-type-and-hear lives on the audition panel; delivery editing lives on the
-persona; the tag/instruct affordances follow the capability map. Re-read that
-spec at build time; it is authoritative for what Generate's surfaces become.
-Do not start before B and C are merged.
+**Superseded 2026-08-15.** This section used to say "execute item 6 exactly as
+specced in `2026-08-15-pipeline-truth-and-first-run.md` §5". That spec says
+*"Delete `src/views/GenerateView.vue`"* and *"Knob home: delivery knobs live
+on the persona (VoiceParamsModal) — **no new surface**"*, which contradicts
+THE DESIGN above on both counts: Generate is **absorbed**, and the workbench
+**is** the new surface.
+
+Generate is also, today, the best-designed surface in this area and the thing
+the user points at when asked what good looks like: a capability banner with
+per-engine chips and notes, sliders paired with numeric boxes, **Delivery
+direction** as a first-class textarea that disables *with its reason on it*,
+seed + randomize, the lexicon line, and take history. That layout is the
+workbench's skeleton, not something to throw away and rebuild thinner.
+
+Rewrite item 6 against THE DESIGN before building. Nothing here proceeds until
+the per-line question at the end of THE DESIGN is answered.
 
 ## §7 SLICE E — one door, Labs collapse, inspector removal
 
