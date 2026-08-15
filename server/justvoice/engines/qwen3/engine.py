@@ -70,7 +70,10 @@ class Qwen3(EmbeddedEngine):
         display_name="Qwen3-TTS",
         backend="pytorch",
         supports_cloning=True,
-        supports_voice_design=True,
+        # VoiceDesign is a third Qwen checkpoint (1.7B-VoiceDesign) with its
+        # own generate call. We ship neither, so this said yes to a thing
+        # nothing here can do. Flips back when the design path lands.
+        supports_voice_design=False,
         supports_instruct_field=True,
         supports_paralinguistic_tags=True,
     )
@@ -189,6 +192,18 @@ class Qwen3(EmbeddedEngine):
 
         # Two paths: cloning (ref WAV passed via audio_prompt_path) vs. preset.
         # Both return (list[np.ndarray], sample_rate) per the real package surface.
+        #
+        # Cloning is a BASE-checkpoint capability. CustomVoice ships the 9
+        # preset timbres and the instruct field and nothing else (model card,
+        # verified 2026-08-15), so handing it a reference clip used to call
+        # generate_voice_clone on weights that cannot honour it. Refuse and
+        # name the way out instead of returning audio in the wrong voice.
+        if req.audio_prompt_path and not self._is_base:
+            raise RuntimeError(
+                "qwen3: the CustomVoice checkpoint cannot clone a voice. Load "
+                "a Base variant (qwen3-base-1.7b / qwen3-base-0.6b) to clone, "
+                "or pick one of CustomVoice's 9 preset speakers."
+            )
         if req.audio_prompt_path:
             arrays, sample_rate = self.model.generate_voice_clone(
                 req.text,

@@ -970,6 +970,12 @@ class ProjectQCResponse(BaseModel):
     chapters: list[ChapterQCOut]
     all_ok: bool
     limits: dict
+    # What the numbers were measured ON. An ACX verdict computed over raw TTS
+    # output is a wrong answer, so QC says which it did: `mastered` false with
+    # a `master_preset` set means ffmpeg is missing and these are raw numbers.
+    master_preset: Optional[str] = None
+    mastered: bool = False
+    note: Optional[str] = None
 
 
 @router.get("/v1/projects/{project_id}/qc", response_model=ProjectQCResponse)
@@ -1052,6 +1058,21 @@ async def project_qc(project_id: str, db: Session = Depends(get_db)) -> ProjectQ
                 note=note,
             )
         )
+    # Say what was measured. `_measure` masters when it can; when the target
+    # exists but ffmpeg does not, these are raw-render numbers and the ACX
+    # verdict is not the one the finished book would get.
+    from ..mastering import have_ffmpeg as _have_ffmpeg
+    from .render_chapter_api import _scene_master_target
+
+    target = _scene_master_target(scenes[0].id, None, None)[0] if scenes else None
+    mastered = bool(target) and _have_ffmpeg()
+    qc_note = None
+    if target and not mastered:
+        qc_note = (
+            f"Measured without the {target} master — ffmpeg is not installed, "
+            f"so these are raw-render numbers, not what the finished book "
+            f"would measure. Install ffmpeg and re-run."
+        )
     return ProjectQCResponse(
         project_id=project_id,
         chapters=out,
@@ -1061,6 +1082,9 @@ async def project_qc(project_id: str, db: Session = Depends(get_db)) -> ProjectQ
             "rms_max_db": ACX_RMS_MAX_DB,
             "peak_max_db": ACX_PEAK_MAX_DB,
         },
+        master_preset=target,
+        mastered=mastered,
+        note=qc_note,
     )
 
 

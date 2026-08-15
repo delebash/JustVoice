@@ -6,12 +6,19 @@ A **voice** is a TTS profile — the thing the engine actually speaks with. Voic
 
 | Type | Source | Engines |
 |---|---|---|
-| **Preset** | Pre-shipped with the engine. | Kokoro (54 voices), Qwen3 (9 voices) |
-| **Cloned** | Built from one or more reference WAV/MP3 samples you provide. | **Chatterbox only** (the only local cloning engine) |
-| **Designed** | Generated from a text prompt describing the voice. | Qwen3 |
+| **Preset** | Pre-shipped with the engine. | Kokoro (54 voices), Qwen3 **CustomVoice** (9 voices), Dia (1 stock voice) |
+| **Cloned** | Built from one or more reference WAV/MP3 samples you provide. | Chatterbox Turbo + Multilingual, Qwen3 **Base**, LuxTTS, Hume TADA, MOSS-TTSD |
+| **Designed** | Described in words, no reference clip. | **Not available yet.** The description is saved on the voice, but no bundled engine can render one — it needs Qwen3's VoiceDesign checkpoint, which JustVoice does not ship. Use Cloned instead. |
 | **Blended** | A weighted mix of two or more voices (lerp / slerp / weighted_sum). | Chatterbox |
 
-## Cloning a voice (Chatterbox)
+## Cloning a voice
+
+Five bundled engines clone: **Chatterbox** (Turbo for English, Multilingual
+for the other 22 languages), **Qwen3-TTS Base**, **LuxTTS**, **Hume TADA** and
+**MOSS-TTSD**. Two do not, whatever a voice's engine binding says: Kokoro
+speaks its 54 preset voices, and Qwen3 **CustomVoice** speaks its 9 — point a
+cloned voice at CustomVoice and it refuses rather than reading your line in
+somebody else's voice.
 
 Drop one or more reference clips into Chatterbox's `voices/` or `reference_audio/` folder, or click "+ Clone new voice" in the Voices tab. JustVoice runs each sample through Whisper for transcription and stores the embedding. Cloned voices appear in the cast picker with a `(clone)` suffix.
 

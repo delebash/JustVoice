@@ -85,6 +85,11 @@ def assemble_project(
 ) -> list[ChapterAudio]:
     """Render every scene of the project to a mastered WAV, in order.
 
+    "Mastered" became true on 2026-08-15: `render_scene_to_wav` now applies
+    the project's mastering target in the WAV domain, so these chapters are
+    what the .m4b ships and what ACX QC measures. Before that this docstring
+    described an intention — nothing in the chain touched loudness.
+
     `render_scene_fn(state, scene_id) -> bytes` defaults to the production
     chapter render; tests inject synthetic WAVs.
 
@@ -153,6 +158,7 @@ def collect_project_line_kwargs(
                     delivery=line.delivery.model_dump(exclude_none=True) if line.delivery else None,
                     seed=line.seed,
                     lexicons=lexicons,
+                    effects=line.effects,
                     cache_scope=f"scene:{sc.id}",
                     use_cache=True,
                 )

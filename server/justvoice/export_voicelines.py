@@ -119,12 +119,17 @@ def _render_block_production(state, persona, block) -> bytes:
     # contributes voice + tier-2 delivery + lexicon.
     voice = None
     delivery = None
+    effects: list[dict] = []
     lexicons: list[str] = []
     if persona is not None:
         store_p = state.personas.get(persona.id)
         if store_p is not None:
             voice = store_p.voice_id or None
             delivery = dict(store_p.default_delivery or {}) or None
+            # A character's effects chain is part of how that character
+            # sounds — the game export ships the same voice the studio
+            # auditions. (Mastering is the part game exports skip.)
+            effects = list(store_p.effects_chain or [])
             if store_p.lexicon_id:
                 lexicons.append(store_p.lexicon_id)
     if not voice:
@@ -138,6 +143,7 @@ def _render_block_production(state, persona, block) -> bytes:
         text=block.text,
         delivery=delivery,
         lexicons=lexicons,
+        effects=effects,
         cache_scope=f"scene:{block.scene_id}",
         use_cache=True,
     )

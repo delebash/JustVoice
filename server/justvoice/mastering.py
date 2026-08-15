@@ -3,6 +3,22 @@
 The orchestration writes the raw WAV to a temp file, builds the right
 ffmpeg filtergraph for the preset, captures stdout. Requires ffmpeg
 on PATH (or bundled — see system_info.detect()'s ffmpeg block).
+
+Two doors onto the same filtergraph:
+
+- `master()` returns the preset's DELIVERABLE encoding (ACX → mp3,
+  YouTube → m4a). This is what an export ships.
+- `master_to_wav()` runs the identical processing and returns WAV. This is
+  what a chapter render and the ACX QC measurement use: the loudness work
+  is the part that decides whether a book passes, and doing it in WAV keeps
+  the M4B assembly to ONE lossy generation instead of two.
+
+`resolve_master_target()` is the single place that decides WHICH preset a
+render uses. Before 2026-08-15 nothing decided: `/v1/render_chapter` only
+mastered when a caller named a preset, Studio never named one, and the
+Render tab's pill claimed ACX was "applied on render" while the bytes were
+raw TTS output. The render preset's own `master` field was stored and never
+read either.
 """
 
 from __future__ import annotations
@@ -17,6 +33,57 @@ from .audio.wav import write_wav_container
 from .models import MasterPresetSettings
 
 log = logging.getLogger(__name__)
+
+# The presets `settings.mastering` actually carries.
+MASTER_PRESET_NAMES = ("acx", "inaudio", "podcast", "youtube")
+
+# What a project of each kind masters to when nothing more specific is set.
+# Game voicelines and custom projects stay RAW on purpose: a game engine
+# wants the unprocessed line to run its own bus through, and "custom" means
+# the user has not told us what this is for.
+KIND_MASTER_DEFAULTS = {
+    "audiobook": "acx",
+    "podcast": "podcast",
+    "game_voicelines": None,
+    "custom": None,
+}
+
+
+def resolve_master_target(
+    *,
+    requested: str | None = None,
+    preset_master: str | None = None,
+    project_master: str | None = None,
+    project_type: str | None = None,
+) -> tuple[str | None, str]:
+    """Which mastering preset applies, and where the answer came from.
+
+    Precedence, most specific first: the request → the render preset's
+    `master` → the project's `mastering_preset` → the project kind's
+    default. `"none"` at any level is a real answer meaning "ship it raw",
+    and stops the search. Returns `(preset_name_or_None, source)` where
+    source is one of request / preset / project / kind.
+    """
+    for value, source in (
+        (requested, "request"),
+        (preset_master, "preset"),
+        (project_master, "project"),
+    ):
+        if not value:
+            continue
+        if value == "none":
+            return None, source
+        if value in MASTER_PRESET_NAMES:
+            return value, source
+        # "custom" (a real Project.mastering_preset value) and anything else
+        # we have no filtergraph for. Raw is the honest outcome — inventing
+        # ACX numbers for it would be worse than doing nothing.
+        log.warning(
+            "mastering: %s names target %r, which is not a known preset — "
+            "rendering raw", source, value,
+        )
+        return None, source
+    return KIND_MASTER_DEFAULTS.get(project_type or ""), "kind"
 
 
 def have_ffmpeg() -> bool:
@@ -35,6 +102,46 @@ def master(
     book: str | None = None,
 ) -> bytes:
     """Apply a mastering preset and return encoded audio bytes."""
+    return _run_master(
+        pcm, sample_rate, channels,
+        preset_name=preset_name, presets=presets,
+        out_format=None, title=title, author=author, book=book,
+    )
+
+
+def master_to_wav(
+    pcm: bytes,
+    sample_rate: int,
+    channels: int,
+    *,
+    preset_name: str,
+    presets: MasterPresetSettings,
+) -> bytes:
+    """The same preset's processing, WAV out — no codec generation.
+
+    Used by chapter renders (you are auditioning, not shipping) and by ACX
+    QC (the numbers have to describe processed audio, and `analyze()` reads
+    WAV). Metadata tags are deliberately absent: a WAV monitor is not the
+    deliverable that carries a title.
+    """
+    return _run_master(
+        pcm, sample_rate, channels,
+        preset_name=preset_name, presets=presets, out_format="wav",
+    )
+
+
+def _run_master(
+    pcm: bytes,
+    sample_rate: int,
+    channels: int,
+    *,
+    preset_name: str,
+    presets: MasterPresetSettings,
+    out_format: str | None,
+    title: str | None = None,
+    author: str | None = None,
+    book: str | None = None,
+) -> bytes:
     if not have_ffmpeg():
         raise RuntimeError(
             "ffmpeg not on PATH. Install ffmpeg or set its bundled path before /v1/master."
@@ -47,6 +154,9 @@ def master(
     }.get(preset_name)
     if preset is None:
         raise ValueError(f"Unknown mastering preset: {preset_name}")
+    # The deliverable encoding is the preset's; callers who want the
+    # processing without a codec generation pass out_format="wav".
+    fmt = out_format or preset.format
 
     # ffmpeg filter chain
     af_chain = [
@@ -69,7 +179,7 @@ def master(
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as in_f:
         in_f.write(write_wav_container(pcm, sample_rate, channels))
         in_path = in_f.name
-    suffix = "." + preset.format
+    suffix = "." + fmt
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as out_f:
         out_path = out_f.name
 
@@ -85,12 +195,12 @@ def master(
         "-ar",
         str(preset.sample_rate),
     ]
-    if preset.format == "mp3":
+    if fmt == "mp3":
         cmd += ["-codec:a", "libmp3lame", "-b:a", f"{preset.bitrate_kbps}k", "-id3v2_version", "4"]
-    elif preset.format == "m4a":
+    elif fmt == "m4a":
         cmd += ["-codec:a", "aac", "-b:a", f"{preset.bitrate_kbps}k"]
-    elif preset.format == "wav":
-        pass  # default PCM
+    elif fmt == "wav":
+        cmd += ["-codec:a", "pcm_s16le"]
     if title:
         cmd += ["-metadata", f"title={title}"]
     if author:

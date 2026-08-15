@@ -96,3 +96,53 @@ Batch-render the project scene by scene. Each scene can bind a **render preset**
 **Suggest** proposes a preset per scene. The progress panel shows per-scene
 status, and the render cache means an unchanged line costs nothing to re-render
 — cache hits are reported as such.
+
+### What a render actually does to your audio
+
+Three things happen to every line, in this order:
+
+1. **The voice speaks it** — the persona's voice, its delivery settings, and
+   the render preset's overlay on top.
+2. **The persona's effects chain runs** — reverb, EQ, compression, whatever
+   you built in the persona's effects editor, with the render preset's chain
+   layered after it. This is the same processing the single-line preview
+   applies, so what you auditioned is what the chapter contains. (Chapter
+   renders skipped effects entirely until 2026-08-15: the editor saved them
+   and only single-line previews ever played them.)
+3. **The chapter is mastered** — see below.
+
+Each line is cached on everything that shapes it, the effects chain included,
+so editing one character's reverb re-renders that character's lines and leaves
+the rest of the chapter alone.
+
+### The mastering target
+
+The pill at the top of the Render tab names the mastering target these
+renders apply, and where that choice came from. JustVoice picks it in this
+order, first answer wins:
+
+1. the render preset bound to the scene, if it names a master target,
+2. the project's own mastering preset (Projects → the project's settings),
+3. the default for the project kind — **audiobook → ACX**, **podcast →
+   podcast**, and **game voicelines → none** (a game engine wants the raw
+   line to run through its own audio bus), **custom → none**.
+
+Setting a target to **none** at any level means exactly that: ship it raw.
+
+A chapter render gives you a **WAV** — the mastering *processing* (loudness,
+true-peak ceiling, head/tail silence) is applied, but the encoding is not.
+That is deliberate: you are auditioning here, and the .m4b export encodes
+once, at the end, instead of stacking two lossy passes. The encoded
+deliverable (ACX's MP3, YouTube's M4A) comes from Export.
+
+Mastering needs **ffmpeg**. Without it the pill says so and chapters render
+raw rather than failing — install ffmpeg and restart the server to get the
+target applied.
+
+### The ACX check
+
+**Run ACX QC** renders every chapter (cache-served when unchanged) and
+measures RMS and peak against the ACX limits. It measures the **mastered**
+chapter — the audio the export would ship — so a pass means the finished book
+passes. If ffmpeg is missing, QC still runs and tells you the numbers are for
+the raw render and not what the finished book would measure.

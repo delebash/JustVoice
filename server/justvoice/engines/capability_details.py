@@ -173,8 +173,11 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
     "qwen3": EngineCapabilityDetail(
         engine_id="qwen3",
         display_name="Qwen3-TTS",
+        # Cloning is the Base checkpoints; CustomVoice is presets + instruct.
+        # Design needs the VoiceDesign checkpoint, which we do not ship —
+        # see the manifest's CAPABILITIES note.
         supports_voice_cloning=True,
-        supports_voice_design=True,
+        supports_voice_design=False,
         supports_instruct_freeform=True,
         supports_style_prompt=True,
         knobs=[

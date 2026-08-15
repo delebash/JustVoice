@@ -26,13 +26,18 @@ SUPPORTED_OSES = ["windows", "linux"]
 DESCRIPTION = (
     "Nari Labs — ultra-realistic single-pass multi-speaker dialogue TTS. 1.6B params, "
     "via HuggingFace transformers. Uses [S1] / [S2] tags inside the text to switch "
-    "speakers. Voice cloning supported."
+    "speakers. One stock voice; no cloning."
 )
 LICENSE = "Apache-2.0"
 
 CAPABILITIES = {
     "preset_voices": False,
-    "voice_cloning": True,
+    # Upstream Dia CAN condition on a reference clip; OUR adapter does not.
+    # `dia/engine.py synth()` builds the processor input from text alone and
+    # never reads `req.audio_prompt_path` — so a cloned voice pointed at Dia
+    # rendered in the stock voice, silently, while the catalog's Cloning
+    # filter listed it. Claim it again the day the adapter passes the clip.
+    "voice_cloning": False,
     "voice_design": False,
     "instruct_field": False,
     "paralinguistic_tags": True,
@@ -75,7 +80,7 @@ VARIANTS = [
         "name": "Dia 1.6B",
         "description": "Multi-speaker single-pass dialogue ([S1]/[S2] tags).",
         "languages": ["en"],
-        "voice_cloning": True,
+        "voice_cloning": False,
         "preset_voices": 1,
         "quality": 85,
         "weights_license": "Apache-2.0",

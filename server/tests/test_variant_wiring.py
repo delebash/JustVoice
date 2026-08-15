@@ -54,6 +54,56 @@ def test_qwen3_catalog_repos_match_engine_repos() -> None:
         )
 
 
+# ─── Qwen3 catalog FACTS (2026-08-15) ─────────────────────────────────
+# The manifest claimed every Qwen variant clones and spoke 17 languages.
+# Both were fiction: CustomVoice ships 9 preset timbres + the instruct field
+# and cannot clone (model card), Base clones and has no presets, and the
+# family speaks exactly 10 languages. The Cloning filter and the language
+# chip read these fields, so pin them.
+
+_QWEN_LANGS_10 = ["zh", "en", "ja", "ko", "de", "fr", "ru", "pt", "es", "it"]
+
+
+def test_qwen3_cloning_flag_is_per_checkpoint_family() -> None:
+    from justvoice.engines.model_catalog import models_for
+
+    by_id = {v.id: v for v in models_for("qwen3")}
+    for cv in ("qwen3-cv-1.7b", "qwen3-cv-0.6b"):
+        assert by_id[cv].voice_cloning is False, (
+            f"{cv}: CustomVoice cannot clone — only the Base checkpoints do"
+        )
+        assert by_id[cv].preset_voices == 9
+    for base in ("qwen3-base-1.7b", "qwen3-base-0.6b"):
+        assert by_id[base].voice_cloning is True
+        assert by_id[base].preset_voices == 0
+
+
+def test_qwen3_languages_are_the_ten_supported() -> None:
+    from justvoice.engines.model_catalog import models_for
+
+    for v in models_for("qwen3"):
+        assert v.languages == _QWEN_LANGS_10, f"{v.id} language list drifted"
+
+
+def test_qwen3_manifest_languages_match_the_engine_lang_map() -> None:
+    """The manifest and the engine's BCP-47 → Qwen language-name map are two
+    copies of one fact. When they disagree the catalog offers a language the
+    engine silently sends as "auto"."""
+    from justvoice.engines.model_catalog import models_for
+
+    engine_mod = _load_engine_module("qwen3")
+    assert set(models_for("qwen3")[0].languages) == set(engine_mod._LANG_NAME)
+
+
+def test_qwen3_does_not_claim_voice_design() -> None:
+    """No VoiceDesign checkpoint ships and the engine has no design call —
+    the capability filter must not list qwen3 under it."""
+    from justvoice.engines.manager import discover_engines
+
+    m = discover_engines()["qwen3"]
+    assert m.capabilities.get("voice_design") is False
+
+
 def test_chatterbox_catalog_has_only_verified_variants() -> None:
     from justvoice.engines.model_catalog import models_for
 
@@ -63,6 +113,45 @@ def test_chatterbox_catalog_has_only_verified_variants() -> None:
     assert ids == {"chatterbox-multilingual-v2", "chatterbox-turbo-v1"}
     repos = {v.hf_repo for v in models_for("chatterbox")}
     assert repos == {"ResembleAI/chatterbox", "ResembleAI/chatterbox-turbo"}
+
+
+def test_chatterbox_multilingual_pins_the_weights_the_pinned_lib_loads() -> None:
+    """`chatterbox-tts==0.1.7`'s from_local opens `t3_mtl23ls_v2.safetensors`
+    by name. The repo also carries a v3 weight now (checked 2026-08-15), and
+    only upstream git master can load it — pinning v3 here would download
+    2 GB this engine cannot open. This test fails the day someone adds a v3
+    row without bumping the lib pin."""
+    from justvoice.engines.model_catalog import sources_for
+
+    files = {f for s in sources_for("chatterbox", "chatterbox-multilingual-v2")
+             for f in s.get("files", [])}
+    assert "t3_mtl23ls_v2.safetensors" in files
+    assert not any(f.endswith("v3.safetensors") for f in files)
+
+
+def test_cloning_claims_are_wired_in_the_adapter() -> None:
+    """A manifest that claims `voice_cloning` must have an adapter that
+    actually reads the reference clip.
+
+    Dia claimed it for months while `dia/engine.py synth()` built its
+    processor input from text alone: every cloned voice pointed at Dia
+    rendered in the stock voice with nothing said. The check is textual on
+    purpose — it needs no ML deps and it fails on the exact thing that went
+    wrong, an adapter that never looks at `audio_prompt_path`.
+    """
+    for manifest_path in sorted(ENGINES.glob("*/manifest.py")):
+        src = manifest_path.read_text(encoding="utf-8")
+        claims = '"voice_cloning": True' in src
+        if not claims:
+            continue
+        engine_src = (manifest_path.parent / "engine.py").read_text(encoding="utf-8")
+        body = "\n".join(
+            ln for ln in engine_src.splitlines() if not ln.lstrip().startswith("#")
+        )
+        assert "req.audio_prompt_path" in body, (
+            f"{manifest_path.parent.name}: manifest claims voice_cloning but "
+            f"engine.py never reads req.audio_prompt_path"
+        )
 
 
 def test_manifest_default_variants_exist_in_catalog() -> None:

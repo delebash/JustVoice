@@ -26,6 +26,7 @@ from .audio.chunked import (
     concatenate_audio_chunks,
     split_text_into_chunks,
 )
+from .audio.effects import apply_effects_chain, effects_chain_hash
 from .audio.wav import strip_wav_header, write_wav_container
 from .cache import CacheKeyBuilder, pack_pcm_with_format, unpack_pcm_with_format
 from .delivery import apply_gain_db, canonical_json
@@ -128,6 +129,7 @@ def probe_line_cached(
     delivery: dict[str, Any] | None = None,
     seed: int | None = None,
     lexicons: list[str] | None = None,
+    effects: list[dict] | None = None,
     cache_scope: str = "default",
 ) -> bool | None:
     """Would render_line serve this line from cache? Mirrors render_line's
@@ -155,6 +157,7 @@ def probe_line_cached(
         .with_seed(seed)
         .with_delivery_json(canonical_json(delivery))
         .with_lexicons(lexicons)
+        .with_effects_chain(effects_chain_hash(effects))
         .finish()
     )
     cache = getattr(state, "_render_cache", None)
@@ -172,12 +175,24 @@ def render_line(
     delivery: dict[str, Any] | None = None,
     seed: int | None = None,
     lexicons: list[str] | None = None,
+    effects: list[dict] | None = None,
     cache_scope: str = "default",
     use_cache: bool = True,
 ) -> RenderedLine:
+    """Render one line.
+
+    `effects` is the RESOLVED chain (persona → render preset, cascaded by
+    `audio.effects.resolve_chain`) for this line. It is applied to the audio
+    here and it is part of the cache key, so two lines that differ only in
+    their chain never share an entry — and editing a persona's chain
+    invalidates exactly the blocks that persona speaks. Chapter renders left
+    this out entirely until 2026-08-15: effects existed, the editor saved
+    them, and only the single-line `/v1/generate` path ever applied them.
+    """
     settings = state.settings.get()
     delivery = delivery or {}
     lexicons = lexicons or []
+    effects = effects or []
 
     if len(text) > settings.limits.text_max_chars:
         raise bad_request(
@@ -222,6 +237,7 @@ def render_line(
         .with_seed(seed)
         .with_delivery_json(canonical_json(delivery))
         .with_lexicons(lexicons)
+        .with_effects_chain(effects_chain_hash(effects))
         .finish()
     )
 
@@ -328,6 +344,15 @@ def render_line(
         gain = float(delivery["gain_db"])
         gain = max(-24.0, min(12.0, gain))
         pcm = apply_gain_db(pcm, gain)
+
+    # Effects chain, after gain (gain is part of the delivery this line was
+    # spoken with; the chain sits on top of the finished line). Same function
+    # the single-line path calls — one implementation, one sound.
+    if effects:
+        wet = apply_effects_chain(
+            write_wav_container(pcm, out_sample_rate, out_channels), effects
+        )
+        pcm = strip_wav_header(wet)
 
     # Cache write
     if cache_enabled and cache is not None:

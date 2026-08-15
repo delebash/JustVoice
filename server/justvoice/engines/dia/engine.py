@@ -2,8 +2,10 @@
 
 Written from the upstream README example. Text input that lacks `[S1]`
 / `[S2]` speaker tags is auto-wrapped in `[S1]` for single-speaker synth.
-Voice cloning is supported via `audio_prompt_path` — the processor takes
-the reference clip.
+NO voice cloning here: this adapter builds the processor input from text
+alone and ignores `req.audio_prompt_path`. Upstream Dia can condition on a
+reference clip; wiring it is a real change (the processor call, the decoder
+prefix, and the manifest flag together), not a docstring.
 """
 
 from __future__ import annotations
@@ -78,8 +80,8 @@ class Dia(EmbeddedEngine):
 
     def voices(self) -> list[PresetVoice]:
         # Single default speaker. Multi-speaker happens via [S1]/[S2] tags
-        # the user writes inside the text. Voice cloning is supported via
-        # the host's stored-voice flow (audio_prompt_path).
+        # the user writes inside the text. Reference clips are NOT used —
+        # see the module docstring.
         # Name kept in lock-step with manifest STATIC_VOICES ("Dia stock
         # voice" — the old "Dia (default)" read as a default-engine setting).
         return [PresetVoice(id="default", name="Dia stock voice", language="en", gender="")]

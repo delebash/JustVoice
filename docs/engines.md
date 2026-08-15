@@ -13,7 +13,7 @@ JustVoice ships with 7 commercial-output-permitting TTS engines plus an external
 | **Kokoro** | preset (54 voices) · fast on CPU | 333 MB | 8 | — | Apache-2.0 |
 | **Chatterbox Turbo** | clone + paralinguistic | 3.0 GB | en | ✓ | MIT |
 | **Chatterbox Multilingual** | clone | 3.2 GB | 23 | ✓ | MIT |
-| **Qwen3-TTS** | clone + designed | 2.5–4.5 GB | 17 | ✓ | Apache-2.0 |
+| **Qwen3-TTS** | 9 presets + instruct · *or* clone | 2.5–4.5 GB | 10 | ✓ (Base only) | Apache-2.0 |
 | **LuxTTS (ZipVoice)** | clone · 48 kHz | 1.2 GB | en | ✓ | Apache-2.0 |
 | **Hume TADA** | clone · long-form coherent | 19.6 GB | 10 | ✓ | Llama 3.2 Community (+ MIT codec) |
 | **Dia (Nari Labs)** | multi-speaker dialogue | 6.4 GB | en | — | Apache-2.0 |
@@ -27,11 +27,21 @@ hand-typed figures that were wrong for most engines. The old per-engine
 measured. The honest generalisation: Kokoro is the one engine that is
 genuinely fast on CPU; the PyTorch cloning engines want a GPU.)
 
+**Qwen3-TTS is two different checkpoints**, and the difference decides what
+you can do with it. *CustomVoice* ships 9 preset speakers (Vivian, Serena,
+Uncle Fu, Dylan, Eric, Ryan, Aiden, Ono Anna, Sohee) and takes a plain-English
+`instruct` line to steer their style and emotion — it **cannot clone a voice**.
+*Base* clones from a 3–10 second reference clip and has no preset speakers.
+Both speak the same 10 languages: Chinese, English, Japanese, Korean, German,
+French, Russian, Portuguese, Spanish, Italian. (Until 2026-08-15 this table
+said 17 languages and marked every Qwen row as cloning-capable; both were
+wrong, and the Cloning filter believed them.)
+
 ## Picking an engine for a use case
 
 - **Audiobook narration in your own voice.** Chatterbox Turbo. Clone from 1-2 minutes of clean read-aloud.
 - **Audiobook with 5+ characters.** Chatterbox Turbo for main voices + Kokoro for incidental characters (faster to render, plenty of voices).
-- **Multilingual audiobook.** Chatterbox Multilingual (23 langs) or Qwen3 (10 langs, best on Asian languages).
+- **Multilingual audiobook.** Chatterbox Multilingual — 23 languages, and it clones. Qwen3 covers 10 and is reported strongest on Chinese / Japanese / Korean (reported, not measured here) — but only its Base checkpoint clones; CustomVoice gives you its 9 preset speakers instead.
 - **Game NPC dialogue at 50-500 line scale.** Kokoro (fast on CPU, 54 voices). Render speed matters at scale.
 - **Multi-speaker game cutscenes.** Dia. Single render produces multiple voices.
 - **Podcast voiceover.** Chatterbox Turbo if you want it to sound like you; Kokoro if you want preset variety fast.
@@ -72,7 +82,8 @@ Each engine group expands into its model rows, and each row carries the model's
   once every file is present.
 - **Measured memory** — on the loaded row: "X GB measured" once this machine
   has measured the model's real footprint, "not measured yet" on its first
-  load (the same numbers as the budget strip — nothing is ever guessed).
+  load (the same numbers as the memory strip at the top of the console —
+  nothing is ever guessed).
 
 The **⋯ menu** on each row holds the less-common verbs:
 
@@ -80,14 +91,19 @@ The **⋯ menu** on each row holds the less-common verbs:
   download looks corrupted; it's also how a model downloaded before the speech
   cache moves onto the new layout.
 - **Open folder** — opens the model's on-disk folder in your file explorer
-  (desktop app only).
+  (desktop app only; the browser UI can't reach your file manager and says so).
 - **View on Hugging Face** — the model's upstream repository page.
-- **Delete files** — removes the downloaded weights; the engine and other
-  models stay. (Unload first — a loaded model's files can't be deleted.)
+- **Delete downloaded model** — removes the downloaded weights; the engine and
+  other models stay, and the model re-downloads on demand. (Unload first — a
+  loaded model's files can't be deleted.)
+
+These are the same four verbs, in the same order and with the same words, as
+the **⋯** menu on an AI model row under **LLM providers** — the two catalogs
+are one interaction grammar, not two.
 
 ### Loading and the memory budget
 
-Loads run against the **shared memory budget** (the strip at the top of the tab — measured used/free, one cell per loaded engine with its real memory take, the AI model, other apps). For an engine JustVoice has measured before on this machine: if the pool is short, it frees the least-recently-used *idle* model and toasts what it unloaded; if everything resident is busy, the load refuses with an honest message quoting the measured numbers instead of an out-of-memory crash. An engine's first-ever load carries no number yet ("not measured yet" on the strip) — it simply attempts, gets measured, and is remembered. Each card also carries a **Device** select (Auto / CUDA / CPU) — Auto sends CPU-fast engines (Kokoro) to CPU and the rest to your GPU, and an explicit choice always wins. The full story is in [GPU / CUDA](gpu.md#the-shared-memory-budget).
+Loads run against the **shared memory budget** (the memory strip at the top of the AI Settings console, above the tabs — measured used/free, a TTS/STT cell per loaded engine with the model's name and its real memory take, the LLM, other apps; one strip for the whole console since 2026-08-15). For an engine JustVoice has measured before on this machine: if the pool is short, it frees the least-recently-used *idle* model and toasts what it unloaded; if everything resident is busy, the load refuses with an honest message quoting the measured numbers instead of an out-of-memory crash. An engine's first-ever load carries no number yet ("not measured yet" on the strip) — it simply attempts, gets measured, and is remembered. Each card also carries a **Device** select (Auto / CUDA / CPU) — Auto sends CPU-fast engines (Kokoro) to CPU and the rest to your GPU, and an explicit choice always wins. The full story is in [GPU / CUDA](gpu.md#the-shared-memory-budget).
 
 ### Cancelling an in-flight load
 
@@ -105,7 +121,7 @@ The same Cancel + Retry pattern applies to every long-running operation in the a
 
 ## GPU detection + tier-aware default
 
-Settings → GPU shows your backend (CUDA / MPS / Metal / XPU / DirectML / ROCm), device name, VRAM total / used, compute capability, and HSA override status. On CPU-only boxes Kokoro is the recommended engine (it's built for CPU); for GPU boxes there is no hand-typed VRAM-to-engine pairing table any more — an engine's real footprint is **measured on your machine at its first load** and shown on the budget strip, which is the honest way to see what fits (the old GB-tier suggestions were never measured; cut 2026-08-14).
+Settings → GPU shows your backend (CUDA / MPS / Metal / XPU / DirectML / ROCm), device name, VRAM total / used, compute capability, and HSA override status. On CPU-only boxes Kokoro is the recommended engine (it's built for CPU); for GPU boxes there is no hand-typed VRAM-to-engine pairing table any more — an engine's real footprint is **measured on your machine at its first load** and shown on the console's memory strip, which is the honest way to see what fits (the old GB-tier suggestions were never measured; cut 2026-08-14).
 
 ## CUDA wheel download
 

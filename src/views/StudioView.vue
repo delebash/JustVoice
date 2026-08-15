@@ -354,6 +354,7 @@ watch([selectedProject, () => tab.value], () => {
   if (tab.value === "render") {
     qcByScene.value = {};
     loadCacheStats();
+    loadMasterTarget();
   }
 });
 
@@ -956,12 +957,55 @@ const sceneCacheById = computed(() => {
   return out;
 });
 
+// What the server will actually apply, from the server — {preset, source,
+// ffmpeg, targets}. This pill used to hard-code "ACX target · −20 LUFS ·
+// peak −3 dB · noise floor −60 dB" for every audiobook, three numbers typed
+// into a template next to a render that applied none of them (the render
+// path only mastered when a caller named a preset, and Studio never did).
+const masterTarget = ref(null);
+
+async function loadMasterTarget() {
+  masterTarget.value = null;
+  if (!selectedProjectId.value) return;
+  masterTarget.value = await api.safeRequest(
+    `/v1/render/master-target?project_id=${selectedProjectId.value}`,
+    null,
+  );
+}
+
 const masterPill = computed(() => {
-  const m = selectedProject.value?.mastering_preset;
-  if (m === "acx" || (!m && selectedProject.value?.project_type === "audiobook")) {
-    return "ACX target · −20 LUFS · peak −3 dB · noise floor −60 dB";
+  const m = masterTarget.value;
+  if (!m) return "no master target";
+  if (!m.preset) return "no master target · raw audio";
+  if (!m.ffmpeg) return `${m.preset} target · ffmpeg missing — renders stay raw`;
+  const t = m.targets || {};
+  const numbers = t.loudness_target_lufs
+    ? ` · ${t.loudness_target_lufs} LUFS · peak ${t.true_peak_dbfs} dB`
+    : "";
+  return `${m.preset} target${numbers}`;
+});
+
+const masterPillIntent = computed(() => {
+  const m = masterTarget.value;
+  if (m?.preset && !m.ffmpeg) return "warning";
+  return m?.preset ? "success" : "secondary";
+});
+
+const masterPillTitle = computed(() => {
+  const m = masterTarget.value;
+  if (!m) return "";
+  if (m.preset && !m.ffmpeg) {
+    return "ffmpeg is not installed, so chapters render without mastering. Install ffmpeg and restart the server.";
   }
-  return m ? `master · ${m}` : "no master target";
+  const where = {
+    preset: "from the render preset",
+    project: "set on this project",
+    kind: "the default for this project kind",
+    request: "asked for by this render",
+  }[m.source] || "";
+  return m.preset
+    ? `Applied to every chapter render — ${where}. Change it in Projects.`
+    : "Chapters render raw — no mastering target is set for this project.";
 });
 
 async function runQC() {
@@ -984,11 +1028,19 @@ async function runQC() {
     const map = {};
     for (const c of r?.chapters || []) map[c.scene_id] = c;
     qcByScene.value = map;
-    pushToast({
-      message: r?.all_ok ? "ACX QC: every chapter passes." : "ACX QC: some chapters are out of spec — see the Check column.",
-      kind: r?.all_ok ? "success" : "info",
-      duration: 6000,
-    });
+    // QC now measures the MASTERED chapter — what the export ships. When it
+    // couldn't (no ffmpeg), it says so, and the pass/fail is about raw audio.
+    if (r?.note) {
+      pushToast({ message: r.note, kind: "warning", duration: 9000 });
+    } else {
+      pushToast({
+        message: r?.all_ok
+          ? `ACX QC: every chapter passes${r?.master_preset ? ` (measured after the ${r.master_preset} master)` : ""}.`
+          : "ACX QC: some chapters are out of spec — see the Check column.",
+        kind: r?.all_ok ? "success" : "info",
+        duration: 6000,
+      });
+    }
     await loadCacheStats();
   } catch (e) {
     if (!aborted) {
@@ -1695,7 +1747,7 @@ watch(selectedProjectId, (id) => {
       </template>
       <template v-if="tab === 'render' && selectedProject">
         <span class="jv-spacer" />
-        <UiTag intent="success"  :title="`Applied on render — set per project in Projects`">{{ masterPill }}</UiTag>
+        <UiTag :intent="masterPillIntent" :title="masterPillTitle">{{ masterPill }}</UiTag>
         <UiButton
           intent="secondary"
           size="small"

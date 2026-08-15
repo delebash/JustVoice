@@ -740,6 +740,22 @@ class VramReservation(BaseModel):
     pinned: bool = False
     kind: str = "llm"
     source: str = "computed"
+    # Engine display name, joined server-side (the 2026-08-15 one-strip
+    # consolidation: the strip's cells render without the engines list).
+    label: str = ""
+
+
+class VramLoadedRow(BaseModel):
+    """One LOADED speech engine, pre-joined for the strip's cells (the
+    2026-08-15 one-strip consolidation): kind + engine display name + the
+    loaded model's display name + the resolved device. A loaded engine with
+    no reservation row is the strip's "not measured yet" cell."""
+
+    key: str  # "tts:chatterbox"
+    kind: str
+    label: str
+    model: str = ""
+    device: str = ""
 
 
 class VramClaim(BaseModel):
@@ -782,6 +798,10 @@ class EngineVramResponse(BaseModel):
     used_mb: int | None = None
     other_mb: int = 0
     reservations: list[VramReservation] = []
+    # Loaded speech engines pre-joined with their model names (2026-08-15:
+    # the one-strip cells need "TTS — Chatterbox Turbo · 3.1 GB" without a
+    # second client-side fetch of the engines list).
+    loaded: list[VramLoadedRow] = []
     busy_kinds: list[str] = []
     claim: VramClaim | None = None
     # Why there is no claim when claim is null: "cloud-routed" (no JV feature
@@ -1061,6 +1081,10 @@ class ChapterLine(BaseModel):
     language: str | None = None
     delivery: Delivery | None = None
     seed: int | None = None
+    # Resolved effects chain for this line (persona → render preset). Scene
+    # mode fills it from the block's persona; direct-mode callers may pass
+    # one. Part of the render cache key — see render_core.render_line.
+    effects: list[dict] | None = None
 
 
 class BetweenLines(BaseModel):

@@ -18,13 +18,14 @@ from fastapi import APIRouter, Response
 from pydantic import BaseModel
 
 from ..app_state import get_state
+from ..audio.effects import parse_chain, resolve_chain
 from ..audio.wav import write_wav_container
 from ..database.models import Block, Project, RenderPreset, Scene
 from ..database import session as _db_session
 from ..database.session import SessionLocal
 from ..delivery_merge import merge_delivery
 from ..errors import bad_request, internal, not_found
-from ..mastering import have_ffmpeg, master
+from ..mastering import have_ffmpeg, master, master_to_wav, resolve_master_target
 from ..models import ChapterLine, Delivery, RenderChapterRequest
 from ..render_core import concat_lines, probe_line_cached, render_line
 from ..synth_scheduler import warm_lines
@@ -94,10 +95,13 @@ def _resolve_scene_to_lines(
             raise bad_request(f"scene {scene_id} has no blocks to render")
 
         preset = None
+        preset_effects: list[dict] = []
         if preset_id:
             preset = db.query(RenderPreset).filter(RenderPreset.id == preset_id).first()
             if preset is None:
                 log.warning("render_chapter: preset %s not found, ignoring", preset_id)
+            else:
+                preset_effects = parse_chain(preset.effects_chain)
 
         lines: list[ChapterLine] = []
         lexicon_ids: set[str] = set()
@@ -112,6 +116,7 @@ def _resolve_scene_to_lines(
             voice_id: str | None = None
             tier2: dict = {}
             personality: str | None = None
+            persona_effects: list[dict] = []
             persona = None
 
             if block.persona_id:
@@ -120,6 +125,7 @@ def _resolve_scene_to_lines(
                     voice_id = persona.voice_id
                     tier2 = persona.default_delivery or {}
                     personality = (persona.personality or "").strip() or None
+                    persona_effects = persona.effects_chain or []
                     if persona.lexicon_id:
                         lexicon_ids.add(persona.lexicon_id)
 
@@ -158,6 +164,9 @@ def _resolve_scene_to_lines(
                     voice=voice_id,
                     text=block.text,
                     delivery=Delivery(**{k: v for k, v in merged.items() if k in Delivery.model_fields}),
+                    # Same cascade the single-line path uses: the persona's
+                    # chain, then the preset's on top.
+                    effects=resolve_chain(persona_effects, preset_effects) or None,
                 )
             )
 
@@ -195,6 +204,68 @@ def _resolve_scene_to_lines(
         return lines, list(lexicon_ids)
     finally:
         db.close()
+
+
+def _scene_master_target(
+    scene_id: str, preset_id: str | None, requested: str | None,
+) -> tuple[str | None, str]:
+    """The mastering preset a scene render applies, and why.
+
+    Walks request → the render preset's `master` → the project's
+    `mastering_preset` → the project kind's default. One door, so the Render
+    tab's pill, the render itself and the ACX QC measurement can never
+    disagree about what is being applied.
+    """
+    db = _open_db()
+    try:
+        scene = db.query(Scene).filter(Scene.id == scene_id).first()
+        project = (
+            db.query(Project).filter(Project.id == scene.project_id).first()
+            if scene is not None else None
+        )
+        preset_master = None
+        if preset_id:
+            row = db.query(RenderPreset).filter(RenderPreset.id == preset_id).first()
+            preset_master = getattr(row, "master", None) if row is not None else None
+        return resolve_master_target(
+            requested=requested,
+            preset_master=preset_master,
+            project_master=getattr(project, "mastering_preset", None),
+            project_type=getattr(project, "project_type", None),
+        )
+    finally:
+        db.close()
+
+
+def _master_scene_pcm(combined, target: str | None) -> tuple[bytes, str | None, str | None]:
+    """(wav_bytes, applied_preset, fallback_reason) for a scene render.
+
+    Scene renders are monitors, not deliverables: the preset's PROCESSING is
+    applied (that is what decides whether a chapter passes ACX) but the bytes
+    come back as WAV. The encoded deliverable comes from the export path, so
+    an .m4b carries exactly one lossy generation.
+
+    Without ffmpeg the render still happens — raw, and saying so. Refusing
+    would mean an audiobook project could not render at all on a machine
+    that never asked for mastering.
+    """
+    st = get_state()
+    raw = write_wav_container(combined.pcm, combined.sample_rate, combined.channels)
+    if not target:
+        return raw, None, None
+    if not have_ffmpeg():
+        log.warning(
+            "render_chapter: %s mastering skipped — ffmpeg is not installed", target
+        )
+        return raw, None, "ffmpeg-missing"
+    try:
+        wav = master_to_wav(
+            combined.pcm, combined.sample_rate, combined.channels,
+            preset_name=target, presets=st.settings.get().mastering,
+        )
+    except Exception as e:
+        raise internal(f"mastering: {e}")
+    return wav, target, None
 
 
 class SceneCacheStats(BaseModel):
@@ -260,6 +331,7 @@ async def render_cache_stats(project_id: str) -> RenderCacheStatsResponse:
                 delivery=line.delivery.model_dump(exclude_none=True) if line.delivery else {},
                 seed=line.seed,
                 lexicons=scene_lexicons,
+                effects=line.effects,
                 cache_scope=f"scene:{scene.id}",
             )
             if hit:
@@ -316,6 +388,7 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
             delivery=line.delivery.model_dump(exclude_none=True) if line.delivery else None,
             seed=line.seed,
             lexicons=merged_lexicons,
+            effects=line.effects,
             cache_scope=cache_scope,
             use_cache=True,
         )
@@ -329,7 +402,23 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
 
     combined = concat_lines(rendered, silence_ms=req.between_lines.silence_ms)
 
-    # No mastering — return raw WAV
+    # Scene mode: the server decides the mastering target (request → preset →
+    # project → kind) and returns a WAV monitor. Studio has never sent a
+    # `master` field, so before 2026-08-15 an audiobook chapter came back as
+    # raw TTS output while the Render tab's pill claimed ACX was applied.
+    if req.scene_id and not req.lines:
+        target, source = _scene_master_target(req.scene_id, req.preset_id, req.master)
+        wav, applied, fallback = _master_scene_pcm(combined, target)
+        headers = {
+            "X-Master-Preset": applied or "none",
+            "X-Master-Source": source,
+        }
+        if fallback:
+            headers["X-Master-Fallback"] = fallback
+        return Response(content=wav, media_type="audio/wav", headers=headers)
+
+    # Direct mode (`lines[]` passed literally — the JustWrite adapter, CLI):
+    # unchanged. The caller names the preset and gets the preset's encoding.
     if not req.master or req.master == "none":
         wav = write_wav_container(combined.pcm, combined.sample_rate, combined.channels)
         return Response(content=wav, media_type="audio/wav")
@@ -361,11 +450,16 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
     }
     return Response(content=mastered, media_type=media_map.get(req.master, "audio/wav"))
 
-def render_scene_to_wav(st, scene_id: str, *, strict: bool = True) -> bytes:
-    """Scene → mastered-input WAV bytes for audiobook assembly.
+def render_scene_to_wav(st, scene_id: str, *, strict: bool = True, master: bool = True) -> bytes:
+    """Scene → chapter WAV bytes for audiobook assembly and ACX QC.
 
-    Same resolution + render path as scene-mode /v1/render_chapter, raw
-    WAV out (no per-chapter master — the M4B/QC layer owns loudness).
+    Same resolution + render path as scene-mode /v1/render_chapter. The
+    project's mastering target is applied here, in the WAV domain, because
+    both callers need it: the .m4b export ships this audio (one AAC
+    generation at the mux, not a master-then-remux pair), and ACX QC has to
+    MEASURE what ships — measuring raw TTS output and printing an ACX
+    verdict against it was a wrong answer, not a missing one. Without
+    ffmpeg the audio comes back raw; `project_qc` reports that.
 
     `strict` defaults to True because the caller that matters is the M4B
     export: shipping a book with lines silently missing is the thing the
@@ -384,10 +478,70 @@ def render_scene_to_wav(st, scene_id: str, *, strict: bool = True) -> bytes:
             delivery=line.delivery.model_dump(exclude_none=True) if line.delivery else None,
             seed=line.seed,
             lexicons=scene_lexicons,
+            effects=line.effects,
             cache_scope=f"scene:{scene_id}",
             use_cache=True,
         )
         rendered.append(rl)
     combined = concat_lines(rendered, silence_ms=600)
-    return write_wav_container(combined.pcm, combined.sample_rate, combined.channels)
+    target = _scene_master_target(scene_id, None, None)[0] if master else None
+    wav, _applied, _fallback = _master_scene_pcm(combined, target)
+    return wav
+
+
+class MasterTargetResponse(BaseModel):
+    project_id: str
+    preset: str | None            # null = renders stay raw
+    source: str                   # request | preset | project | kind
+    ffmpeg: bool
+    targets: dict | None = None   # the preset's real numbers, when one applies
+
+
+@router.get(
+    "/v1/render/master-target",
+    response_model=MasterTargetResponse,
+    summary="Which mastering preset this project's renders apply, and why",
+)
+async def render_master_target(
+    project_id: str, preset_id: str | None = None,
+) -> MasterTargetResponse:
+    """What the Render tab's mastering pill reads.
+
+    The pill used to hard-code "ACX target · −20 LUFS · peak −3 dB · noise
+    floor −60 dB" for every audiobook project — three numbers typed into a
+    template, next to a render that applied none of them. This returns the
+    preset the render path would actually pick, from the same resolver, with
+    the loudness numbers read out of settings.
+    """
+    db = _open_db()
+    try:
+        project = db.query(Project).filter(Project.id == project_id).first()
+        if project is None:
+            raise not_found(f"project {project_id}")
+        preset_master = None
+        if preset_id:
+            row = db.query(RenderPreset).filter(RenderPreset.id == preset_id).first()
+            preset_master = getattr(row, "master", None) if row is not None else None
+        target, source = resolve_master_target(
+            preset_master=preset_master,
+            project_master=project.mastering_preset,
+            project_type=project.project_type,
+        )
+    finally:
+        db.close()
+    numbers = None
+    if target:
+        p = getattr(get_state().settings.get().mastering, target, None)
+        if p is not None:
+            numbers = {
+                "loudness_target_lufs": p.loudness_target_lufs,
+                "true_peak_dbfs": p.true_peak_dbfs,
+                "sample_rate": p.sample_rate,
+                "channels": p.channels,
+                "format": p.format,
+            }
+    return MasterTargetResponse(
+        project_id=project_id, preset=target, source=source,
+        ffmpeg=have_ffmpeg(), targets=numbers,
+    )
 

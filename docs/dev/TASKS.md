@@ -175,33 +175,59 @@ per-line instruct JSON, per-speaker card, Generate-Personas = auto-cast,
 training UI, pauses, exports) · the code seams with line numbers (demo
 activation bug, AI-offer trigger, Generate's guards, Studio cast=personas,
 render-truth gaps, TrainView shape, preview endpoint).
+BUILT 2026-08-15 on your *"build items 0–2 go"* — items 0, 1 and 2 are DONE
+(full server suite 549 green, biome, vitest 48, build, renderer smoke).
+Decisions taken while building, all recorded here because they extend or
+redirect the plan:
+- **Multilingual V3 is NOT shipped** — the decision tree's own answer. The
+  repo carries `t3_mtl23ls_v3.safetensors`; upstream git master can load it
+  (`from_local(..., t3_model=…)`); the LATEST PyPI release is still 0.1.7 —
+  our pin — and its `from_local` hardcodes the v2 filename. A v3 row would
+  download 2 GB this engine cannot open. Recorded in the manifest with the
+  exact conditions for revisiting.
+- **Qwen catalog truth**: languages 17 → the real 10; `voice_cloning` is now
+  per checkpoint family (CustomVoice False, Base True); CustomVoice + a
+  reference clip now REFUSES in the engine instead of calling
+  `generate_voice_clone` on weights that cannot honour it; `voice_design`
+  turned off everywhere (manifest, engine meta, capability_details) until the
+  VoiceDesign checkpoint ships with item 9.
+- **Dia's cloning claim excised** — found in the same sweep and verified in
+  code: `dia/engine.py synth()` never reads `req.audio_prompt_path`, so every
+  cloned voice pointed at Dia rendered in the stock voice, silently, while
+  the catalog's Cloning filter listed it. Manifest + docstrings corrected; a
+  new test asserts every engine claiming cloning actually reads the clip.
+- **Scene renders return WAV, always** — the mastering *processing* applies,
+  the encoding does not. The .m4b then carries one lossy generation instead
+  of two, and auditioning is not done through an MP3. The encoded deliverable
+  stays with Export and with direct-mode `/v1/render_chapter` (`lines[]`
+  passed literally — byte-identical behavior, the JustWrite adapter path).
+- **`"none"`, not null, means raw.** Omitting `master` in scene mode now
+  means "server decides"; `"none"` at any level is a real answer that stops
+  the search.
+- **The render preset's `master` field is honored** — it was stored and never
+  read. Precedence: request → preset → project → kind default (audiobook
+  acx · podcast podcast · game_voicelines none · custom none).
+- **Effects also apply to the game voiceline export** (`export_voicelines`) —
+  a character's chain is part of how that character sounds; mastering is the
+  part game exports skip.
+- **The render cache key gained the chain hash**, so every existing cache
+  entry is cold once. One full re-render after this lands; that is the cost
+  of the key finally describing the audio.
+- QC now measures the MASTERED chapter and reports `master_preset` /
+  `mastered` / `note`; without ffmpeg it still runs and says the numbers are
+  raw. New read-only endpoint `GET /v1/render/master-target` feeds the Studio
+  pill, which no longer hard-codes ACX numbers.
+NEXT: items 3–6 (demo activation → setup lanes → Voices audition + TTS
+ensure-load → Generate dissolution), per-batch go. Items 12–16 stay OPEN
+RULINGS.
+FLAKE seen once, not reproduced: `test_prefetch_cancel_via_http_endpoint`
+failed in one full-suite run and passed alone, as a file, and in a clean
+full re-run. Untouched by this work; noted in case it recurs.
 
 
 **Deferred by your word (2026-08-06):** the real-webview test harness and the
 deep exhaustive audit — *"for now we are not doing jv harness or deep audit i
 want to finish all features and complete the jv llm runner conversion."*
-
-### ONE memory strip: the kit's top strip absorbs the speech budget strip
-
-STATE: DECIDED 2026-08-15 — user: *"I like that it has tts model name and
-usage we should ahve all this info llm model loaded and usage, tts model and
-sst model as well as other apps … I like the layout of the second bar with
-headers instead of just inline"* → recs approved verbatim ("go").
-WHY: two memory readouts on one page (kit inline `vramLine` + JV budget strip)
-show the same measured numbers in two styles; and the LLM providers tab
-cannot see the speech take that decides whether a model fits.
-NOT: keeping both bars · a JV-local strip fork (family-sameness: kit owns it) ·
-model names invented from manifests (names come from the live ledgers only).
-DECIDED SHAPE: one kit strip above the tabs, header-cell layout for ALL cells
-(hardware facts first, live memory after): VRAM used-of-total · Free ·
-LLM — name + measured take · TTS — name + take · STT — name + take ·
-Other apps · Busy. Nothing loaded → "—". Provenance tooltips unchanged.
-Kit owns strip + hardware + LLM cell; a host-cells feed adds JV's TTS/STT/
-Other-apps from `/v1/engines/vram` (only JV sees both ledgers); JW/docgen
-feed nothing. JV's Speech-tab budget strip DIES; Loaded-now rail and per-row
-measured hints stay. Kit half tracked in the kit tracker.
-BUILT: (in progress this session)  OPEN: kit strip rework + JV feed + docs.
-GO: given 2026-08-15.
 
 ### VRAM: STOP AND THINK before any arbiter wiring
 
@@ -954,44 +980,19 @@ target/debug/data.
 
 ## Features the docs promise and the code does not do
 
-### The effects chain never runs on a chapter or batch render
+### `chapter.md` documents a page that doesn't exist
 
-STATE: FINDING — code-verified 2026-08-08.
-WHY it matters: a user builds an effects chain, hears it on a one-off generate,
-and loses it on the render that matters.
-BUILT: `apply_effects_chain` on single-line paths only — `generate_api.py:276,
-296, 371, 388`. `render_core.py` contains **zero** effects code.
-OPEN: wire it into the render path AND put the chain's hash in the render cache
-key — today editing the chain does not invalidate the cache, so a naive wiring
-would serve stale audio.
-GO: needed — needs its own plan.
-
-### Nothing is mastered by project kind, and the UI says otherwise
-
-STATE: FINDING — code-verified 2026-08-08.
-WHY it matters: Studio renders a pill reading "ACX target · −20 LUFS · peak −3 dB
-· noise floor −60 dB" with the tooltip "Applied on render — set per project in
-Projects" (`StudioView.vue:841-846`, `:1430`), and `renderScene()` sends
-`{scene_id, preset_id}` with **no master field** (`:779-782`), so the server
-returns raw WAV (`render_chapter_api.py:259`). The ACX QC column therefore grades
-unmastered audio and can pass a file that fails on delivery.
-BUILT: the per-project picker (`ProjectsView.vue:562`); `acx` is assigned in
-exactly one place, audiobook import (`projects_api.py:643`). The podcast −16 LUFS
-default the docs describe exists nowhere.
-OPEN: wire real per-kind defaults + a mastered render + a QC path over the
-mastered file — or cut the promise from the docs and the pill.
+STATE: FINDING — code-verified 2026-08-08; the mastering half is now TRUE
+(item 2 of the 2026-08-15 plan shipped it), so the rewrite is UNBLOCKED.
+BUILT: nothing to keep in the links — `chapter.md:5` links `stories.md`
+(absent), `:32` and `:81` link `profiles.md` (absent). `:3`'s claim "render
+the whole chapter as a single mastered WAV" became true on 2026-08-15.
+OPEN: the rewrite — fix the two dead links and describe the real render
+(effects chain, then the resolved mastering target, WAV out; the encoded
+deliverable is Export's). `docs/export.md`'s "Chapter render → mastered WAV"
+section is the same class and is now also true — verify its detail rather
+than assuming it.
 GO: needed.
-
-### `chapter.md` documents a page that doesn't exist and audio that isn't mastered
-
-STATE: FINDING — code-verified 2026-08-08.
-BUILT: nothing to keep — `chapter.md:5` links `stories.md` (absent), `:32` and
-`:81` link `profiles.md` (absent), `:3` claims "render the whole chapter as a
-single mastered WAV" (the item above shows it is not true).
-OPEN: the rewrite, which waits on the mastering decision. `docs/export.md`'s
-"Chapter render → mastered WAV" section is the same suspect class and is still
-unverified.
-GO: needed, after the mastering call.
 
 ## Docs and repo debt
 

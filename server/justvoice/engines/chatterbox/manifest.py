@@ -74,6 +74,18 @@ INSTALL = [
 # pinned loader's own allow_patterns verbatim; the turbo list is what
 # `from_local` actually reads (the repo's 1,056 MB s3gen.safetensors is NOT
 # in turbo's load set — pinning saves the download entirely).
+#
+# MULTILINGUAL V3 — checked 2026-08-15, deliberately NOT shipped yet.
+# ResembleAI/chatterbox now carries `t3_mtl23ls_v3.safetensors`
+# (2,143,989,928 B) next to the v2 weights, and upstream git master can load
+# it: `from_local(ckpt_dir, device, t3_model=…)` resolves a "v3" alias. The
+# LATEST PyPI RELEASE IS STILL 0.1.7 — our pin — and its `from_local`
+# hardcodes `t3_mtl23ls_v2.safetensors`, so a v3 row would download 2 GB
+# that this engine physically cannot load. Shipping an unloadable default is
+# the one thing the catalog-truth pass exists to prevent. Revisit when a
+# release > 0.1.7 exists: bump the INSTALL pin, pass the t3 name through
+# `engine.py _construct()`, re-check the CPU torch.load patch against the new
+# source, then add the row with its verified file set.
 VARIANTS = [
     {
         "id": "chatterbox-multilingual-v2",
