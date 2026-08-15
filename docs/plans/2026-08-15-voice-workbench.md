@@ -1,8 +1,16 @@
 # 2026-08-15 — The voice workbench: one place to hear, tune, and make voices
 
-**STATUS (read this first): SLICES A and B ARE BUILT (2026-08-15). C, D and
-E are NOT — and they are FROZEN** until the per-line question at the end of
-THE DESIGN is answered.
+> **⚠ SUPERSEDED 2026-08-15 for everything not yet built.**
+> **`docs/plans/2026-08-15-voice-workflow-redesign.md` is the resume surface.**
+> Slices **C, D and E are FROZEN and must not be built** — they predate the
+> design and several of their instructions are now known-wrong (Slice D defers
+> to a struck spec; Slice E's inspector-removal ordering assumes a voice-centric
+> workbench the redesign reshapes). This doc stays as the **record of Slices A
+> and B**, which shipped, and of THE DESIGN section recovered below — which the
+> redesign doc carries forward and extends.
+
+**STATUS: SLICES A and B ARE BUILT (2026-08-15). C, D and E are FROZEN —
+superseded, see above.**
 
 **Read THE DESIGN below before anything else, including before §0.** It is
 the section this plan spent its first two slices without; skipping it is how

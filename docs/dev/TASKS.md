@@ -188,7 +188,81 @@ from questions into build items in the same reply the rulings were given.
 Ruling 12 BUILT same day (`bb4366b`); 13's build and 16's surface half are
 SUPERSEDED into the voice-workbench plan below.
 
-### THE VOICE WORKBENCH — the redesign plan, written for a fresh session
+### THE VOICE-WORKFLOW REDESIGN — the resume surface
+
+STATE: DESIGNED, NOTHING BUILT, NO GO GIVEN.
+**`docs/plans/2026-08-15-voice-workflow-redesign.md`** is THE doc. It supersedes
+the unbuilt half of the voice-workbench plan (Slices C/D/E are FROZEN) and
+pipeline item 6. Mock (unwired, both interaction models):
+`https://claude.ai/code/artifact/534a16a2-af40-438b-a64d-34baaf31f838`.
+
+WHY IT EXISTS: the workbench plan was 416 lines of implementation with no design
+section; the design died in a compact and two slices were built against nothing,
+passing every gate and producing the wrong thing. The user: *"i think we really
+are doing a full redesing of the app from a voice workflow standpoint whihc is
+most of the app"*.
+
+THE SHAPE (full reasoning in §2 of the doc): identity → hear → make · **the line
+is the unit** — Chapters + Studio·Script + Studio·Render merge into one chapter
+surface with two modes (Script-with-playhead for QC listening, Table for triage)
+and the old steps as **filter states**, not tabs · render is a **panel**, not a
+place · inline for the line, pages for library objects · casting is **pick the
+kind, then the voice** (the kind fixes the engine and therefore what the
+character can do) with cloning inline on the cast row · **no per-line voice
+override** — a different voice is a different character · the workbench is a
+**finishing bench** (hear · tune · save-as · derive · samples).
+
+DECIDED THIS SESSION: render presets are **DELETED** (a character minus the
+identity; its delivery overrode every character's; two dead fields; master
+duplicated) — the scene keeps direction text + an effects chain, governed by
+**a scene may apply anything that COMPOSES, never anything that REPLACES** ·
+gain/pitch/tempo are physically effects and fold into the chain, so the scene
+needs no new entity · **voice tuning stays** (user ruling — the quiet clone
+shared by five characters proves it belongs to the artifact) · **a sixth way to
+make a voice**: the derived voice, tune-and-save-as, which also makes preset
+voices renameable — user: *"a fifth way to make a voice yes i like that"* ·
+**the Voice Designer is KEPT** — my "we don't ship it" was backwards, the whole
+path is built and switched off pending one download.
+
+OPEN (§4 of the doc): does "Studio" survive as a container (undoing ruling 12)? ·
+does Chapters die outright? · row-expands vs row-links? · which bundled engines
+really support description-to-voice (TADA unverified — check the web) · the real
+VoiceDesign download size · samples API · is there any undo for an Analyze pass?
+
+GO: needed, per phase. Slices C/D/E of the workbench plan are frozen.
+
+### FINDING — Block.direction is stored, editable, and never rendered
+
+STATE: FINDING — code-verified 2026-08-15. `database/models.py:238` documents it
+as *"Emotion/style hint passed through to the engine's instruct field."* It is
+written (`projects_api.py:498`, `:536-537`), returned (`:140`), exported
+(`project_export_api.py:104`) and preserved across splits
+(`extraction_api.py:406`) — and `render_chapter_api.py` and `render_core.py`
+contain **zero** references to it. The "+ direction" button on the Chapters
+screen writes a column no render reads. Per-line direction is not a future
+feature; it is built and disconnected.
+GO: needed. Bears directly on the redesign — per-line direction is load-bearing
+in the new chapter surface.
+
+### FINDING — the synth scheduler has no UI at all
+
+STATE: FINDING — code-verified 2026-08-15 on the user's *"synth scheduler what is
+this, i dont see it"*. `synth_scheduler.py` (shipped `3a5a23d`) is real: one
+worker thread, one pending pool, draining **engine-major** — stay on the loaded
+engine while anything needs it, then jump to the engine of the oldest pending
+line; interactive singles jump the queue at line boundaries. Seven callers
+(`generate_api:304`, `takes_api:313`, `voice_preview_api:221`,
+`render_chapter_api:398`, `projects_api:1031/1143/1165`, `render_jobs.py`).
+Tested in `test_synth_scheduler.py`.
+BUT: **nothing in `src/` references it**, and no endpoint exposes queue depth or
+the current engine. `/v1/render_jobs/{id}` reports a job's progress, not the
+pool. So when a render waits behind another engine's batch, the app shows
+nothing and the user cannot know why.
+OPEN: surface it in the chapter render panel — *"waiting — Chatterbox is
+finishing 40 lines"*.
+GO: needed.
+
+### THE VOICE WORKBENCH — SUPERSEDED for its unbuilt half
 
 STATE: DECIDED 2026-08-15 — *"your rec make detailed plan for opus to execute
 without thinking too much i will switch to opus and have him execute the
@@ -241,6 +315,58 @@ page's scope. Also open: samples API build-vs-remove; where the merged
 analyzer bench lives.
 GO: needed — C–E do not proceed until the per-line question is answered and
 Slice B's row-drawer mount is reconsidered against the design.
+
+### FINDING — 4 of the Voices table's 11 columns are wired to nothing
+
+STATE: FINDING — code-verified 2026-08-15 on the user's report *"the voices
+table today is wrong it has things like effects cast as even langauge like
+italian dont actually work"*. `GET /v1/voices` returns the `Voice` shape
+(`models.py:464-471`) — id · engine · source · name · language · gender ·
+sample_url. That is ALL of it. The table reads four fields that are not on
+that payload and do not exist server-side:
+
+- **Samples** → `v.sample_count`. Real on the STORED record
+  (`VoiceRecord.sample_count`, written by `storage/voices.py:94-96`) but
+  `_stored_to_dto` (`voices_api.py:32-40`) drops it. Renders `—` for presets
+  and `0` for everything else, permanently.
+- **Gens** → `v.generation_count`. No such field anywhere in
+  `server/justvoice`. Always `0`.
+- **Effects** → `v.default_effects`. Zero hits in the entire server. Always
+  `—`. Effects chains live on the PERSONA (`Persona.effects_chain`), never on
+  a voice.
+- **Channel** → `v.channel_id`. Voices have no channel. Audio-channel routing
+  is per-PERSONA (`PersonaChannel`, `database/models.py:67-77`). Always
+  `Default`.
+
+Real columns: Name, Gender (incl. the override paths), Type, Engine, Cast as
+(computed client-side from personas' `voice_id`), and the ▶ preview.
+
+### FINDING — every Kokoro voice speaks English, whatever language it claims
+
+STATE: FINDING — code-verified 2026-08-15, same report. Two separate causes,
+both provable:
+
+1. **The engine hardcodes the language.** `kokoro/engine.py:107` sets
+   `lang = "en-us" if lexicon else ""`, once, at LOAD, into
+   `OfflineTtsKokoroModelConfig(lang=…)`. `synth()` never touches language.
+   So Sara (Italian), Nicola (Italian) and every Japanese / Mandarin /
+   Spanish / French / Hindi / Portuguese preset is phonemized with English
+   rules on the multilingual model. The voice's own `language` tag
+   (`kokoro/voices.py`) is decoration.
+2. **The catalog is variant-blind.** `STATIC_VOICES` is the full 54-voice
+   multilingual list unconditionally (`kokoro/manifest.py:66`), and
+   `list_voices` (`voices_api.py:51-62`) iterates `manifest.static_voices`
+   with no check on which variant is installed. Install the English-only
+   `kokoro-en-v0_19` and the table still offers eight languages of voices.
+
+OPEN: (a) pass the voice's language per-synth (sherpa-onnx takes `lang` on
+the model config, so this may need a reload-per-language or a config rebuild —
+verify against sherpa-onnx before speccing); (b) filter the catalog by
+installed variant; (c) meanwhile say so in the UI rather than listing voices
+that cannot work.
+GO: needed. Bears directly on the workbench design — the new Voices index
+must not carry the four dead columns forward, and the workbench's "what this
+engine can do" panel is where the language truth belongs.
 
 ### FINDING — engine-private knobs are saved flat and reach no engine
 
