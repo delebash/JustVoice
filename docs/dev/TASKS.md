@@ -212,12 +212,24 @@ character can do) with cloning inline on the cast row · **no per-line voice
 override** — a different voice is a different character · the workbench is a
 **finishing bench** (hear · tune · save-as · derive · samples).
 
-**NOTHING WAS APPROVED TO BUILD THIS SESSION.** The user's own summary:
+**THE FIVE ITEMS BELOW ARE APPROVED** — user, 2026-08-15, after reviewing this
+entry: *"i do agree with wat you recordded so those are approved"*. They are
+approved **as recorded** — two constraints, one idea kept in the design, two
+facts. **The redesign's SHAPE is still unruled** (see PROPOSED, below): nothing
+in §2/§3 of the redesign doc is approved to build.
+
+Context, kept because it matters: the user's own summary of the session was
 *"i really dont think i decided anything on this session as we where doing
-mockups and testing a redesing"* — correct. The session produced a design, a
-mock, eight code-verified findings, and the constraints below. An earlier
-version of this entry listed seven "rulings"; that was me converting
-conversation into decisions because a tracker wants decisions. Do not repeat it.
+mockups and testing a redesing"*. An earlier version of this entry listed seven
+"rulings" — that was me converting conversation into decisions because a tracker
+wants decisions. Do not repeat it.
+
+On Alexandria, the user's clarification (2026-08-15): *"the alexadria i just
+meant if it makes sense its desing we use it if not dont, but that was part of
+testing the mockup using alexandrias desing however that may be old now since we
+have come up with new ideas and found flaws in our desing"*. So §5 of the
+redesign doc is a **working read, not a frozen verdict** — revisit any of its
+skip calls if the design moves under it.
 
 **CONSTRAINTS — binding on the design.** Both are rejections of a proposal I
 made; if a future session proposes either again, this record stops it:
