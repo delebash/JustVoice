@@ -206,7 +206,33 @@ carries `voice_instruct` (the only text that reaches the synth) and
 The third description field and the dead MCP flag are gone, the JW import
 fills the sheet only, and `test_voice_instruct.py` holds the line. Gates:
 567 server tests, ruff, biome, 53 vitest, build, smoke — all green.
-B–E remain: per slice, per go.
+SLICE B IS BUILT — 2026-08-15, on the go *"slice B go"*. The row preview
+takes an optional `{text, delivery}` body with a rendered-audition cache;
+`VoiceAudition.vue` mounts inline on a voice-row click with the load-cost
+line and the resolved-stack line; `services/audition.js` holds the pure
+parts. The inspector is UNTOUCHED (its removal is Slice E).
+C–E remain: per slice, per go.
+
+### FINDING — engine-private knobs are saved flat and reach no engine
+
+STATE: FINDING — code-verified 2026-08-15 while building workbench Slice B.
+Every engine reads its own knobs from the `delivery.engine` SUBDICT
+(`qwen3/engine.py:154`, `chatterbox/engine.py:185-206`,
+`moss_tts/engine.py:114`). But `VoiceParamsModal.vue` saves the capability
+schema's keys FLAT into `persona.default_delivery`, `merge_delivery` merges
+them flat, and nothing anywhere nests them. So every engine-private override
+— exaggeration, cfg_weight, repetition_penalty, talker_temperature, top_k,
+top_p — has been silently doing nothing at render. Only the cross-engine
+Delivery fields (speed, pitch, gain_db, temperature, instruct, style_prompt)
+ever worked. `render_chapter_api` additionally filters merged keys to
+`Delivery.model_fields`, which would drop them a second time.
+The audition panel routes them correctly (`services/audition.js
+canonicalDelivery`), so a knob turned there is heard — which means the panel
+and the render currently disagree for those knobs.
+OPEN: route on the way IN (nest at save time in the persona editor) or on the
+way OUT (nest in `merge_delivery`). Either changes rendered audio for anyone
+who set one, and the cache keys with it.
+GO: needed.
 
 ### FINDING — the analyze prompt gets id + name and nothing else
 

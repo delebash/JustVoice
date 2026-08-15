@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import hashlib
+import json
 import time
 import uuid
 from typing import Optional, Literal
@@ -270,9 +272,61 @@ async def save_preview(
 
 PREVIEW_LINE_DEFAULT = "Hello — here's how this voice sounds."
 
+# Minimum audition length the endpoint always accepts, whatever
+# `limits.text_max_chars` is set to. An operator who clamps generation to a
+# short line still gets a usable audition; the cap only ever rises from here.
+AUDITION_TEXT_FLOOR = 300
+
+
+class AuditionRequest(BaseModel):
+    """Optional body for the row preview.
+
+    Both fields optional, and an ABSENT body is the canned audition —
+    the ▶ button in the voice library posts nothing and behaves exactly as
+    it did before this body existed.
+    """
+
+    text: Optional[str] = None
+    delivery: Optional[dict] = None
+
+
+# ── Rendered-audition cache ──────────────────────────────────────────────
+#
+# Auditioning is a listen-tweak-listen loop, so the same (voice, line,
+# knobs) triple gets asked for repeatedly — and on a slot-coupled engine
+# each miss is a real synth. Keyed on exactly what changes the audio;
+# 10-minute TTL because a re-cloned voice keeps its id, so a stale hit has
+# to age out on its own.
+_AUDITION_CAP = 32
+_AUDITION_TTL_S = 10 * 60
+_AUDITION_CACHE: TTLCache[str, tuple[bytes, str]] = TTLCache(
+    maxsize=_AUDITION_CAP, ttl=_AUDITION_TTL_S
+)
+_AUDITION_LOCK = asyncio.Lock()
+
+# Test hook — counts served-from-cache responses. Nothing in the app reads it.
+audition_cache_hits = 0
+
+
+def audition_cache_key(voice_id: str, text: str, delivery: Optional[dict]) -> str:
+    """sha1 over the three things that change the audio. Delivery is
+    canonicalized (sorted keys, no whitespace) so key order can't split one
+    logical request across two cache entries."""
+    canonical = json.dumps(delivery or {}, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha1(f"{voice_id}\x00{text}\x00{canonical}".encode("utf-8")).hexdigest()
+
+
+def _reset_audition_cache() -> None:
+    """Tests only."""
+    global audition_cache_hits
+    _AUDITION_CACHE.clear()
+    audition_cache_hits = 0
+
 
 @router.post("/v1/voices/{voice_id}/preview")
-async def preview_existing_voice(voice_id: str, auto_load: bool = False) -> Response:
+async def preview_existing_voice(
+    voice_id: str, auto_load: bool = False, body: Optional[AuditionRequest] = None
+) -> Response:
     """Short audition clip for a stored or preset voice.
 
     Mirrors /v1/generate's voice→engine routing (managed engines via the
@@ -280,10 +334,14 @@ async def preview_existing_voice(voice_id: str, auto_load: bool = False) -> Resp
     engine isn't loaded and auto_load is false, returns 409 with detail
     "engine_not_loaded:<engine_id>" so the client can ask the user before
     paying the 25–55 s load.
+
+    POST an optional `{text, delivery}` body to hear YOUR line with YOUR
+    knobs instead of the canned sentence — the audition panel's whole
+    point (Slice B). No body = the canned audition, unchanged.
     """
     from ..app_state import get_state
     from ..engines.manager import get_manager
-    from ..models import GenerateRequest
+    from ..models import Delivery, GenerateRequest
     from .generate_api import (
         _find_managed_voice_owner,
         _find_static_voice_owner,
@@ -292,54 +350,87 @@ async def preview_existing_voice(voice_id: str, auto_load: bool = False) -> Resp
         _resolve_audio_prompt_for_stored,
     )
 
+    global audition_cache_hits
+
     st = get_state()
     mgr = get_manager()
-    req = GenerateRequest(voice=voice_id, text=PREVIEW_LINE_DEFAULT)
 
-    # 1. Voice of the currently-loaded managed engine — just synth.
-    owner = _find_managed_voice_owner(voice_id)
-    if owner is not None:
-        return await _generate_via_manager(owner, req)
+    text = (body.text if body else None) or ""
+    text = text.strip() or PREVIEW_LINE_DEFAULT
+    cap = max(AUDITION_TEXT_FLOOR, st.settings.get().limits.text_max_chars)
+    if len(text) > cap:
+        raise bad_request(
+            f"audition text is {len(text)} characters, limit {cap} — "
+            f"previews are for a line or two, not a chapter."
+        )
 
-    # 2. Static voice of an installed-but-not-loaded managed engine.
-    static_owner = _find_static_voice_owner(voice_id)
-    if static_owner is not None:
-        m = mgr.get_manifest(static_owner)
-        if m is not None and m.isolation == "venv" and not m.is_installed:
-            # Isolated engine with no venv yet — a raw 500 told the user
-            # nothing (user-hit: Dia preview). The UI maps this marker
-            # to an "install it in Engines" dialog.
-            raise conflict(f"engine_not_installed:{static_owner}")
-        if mgr.current_id() != static_owner:
-            if not auto_load:
-                raise conflict(f"engine_not_loaded:{static_owner}")
-            mgr.load(static_owner, device="auto")
-        return await _generate_via_manager(static_owner, req)
+    delivery_raw = (body.delivery if body else None) or {}
+    # Only fields the Delivery shape actually carries; an unknown key would
+    # 422 the whole audition over a typo in a knob name.
+    delivery = {k: v for k, v in delivery_raw.items() if k in Delivery.model_fields and v is not None}
 
-    # 3. Stored voice (clone / design / import / blend).
-    stored = st.voices.get(voice_id)
-    if stored:
-        prompt_path = _resolve_audio_prompt_for_stored(stored)
-        if mgr.get_manifest(stored.engine):
-            if mgr.current_id() != stored.engine:
+    key = audition_cache_key(voice_id, text, delivery)
+    async with _AUDITION_LOCK:
+        hit = _AUDITION_CACHE.get(key)
+    if hit is not None:
+        audition_cache_hits += 1
+        return Response(content=hit[0], media_type=hit[1])
+
+    req = GenerateRequest(
+        voice=voice_id, text=text, delivery=Delivery(**delivery) if delivery else None
+    )
+
+    async def _render() -> Response:
+        # 1. Voice of the currently-loaded managed engine — just synth.
+        owner = _find_managed_voice_owner(voice_id)
+        if owner is not None:
+            return await _generate_via_manager(owner, req)
+
+        # 2. Static voice of an installed-but-not-loaded managed engine.
+        static_owner = _find_static_voice_owner(voice_id)
+        if static_owner is not None:
+            m = mgr.get_manifest(static_owner)
+            if m is not None and m.isolation == "venv" and not m.is_installed:
+                # Isolated engine with no venv yet — a raw 500 told the user
+                # nothing (user-hit: Dia preview). The UI maps this marker
+                # to an "install it in Engines" dialog.
+                raise conflict(f"engine_not_installed:{static_owner}")
+            if mgr.current_id() != static_owner:
                 if not auto_load:
-                    raise conflict(f"engine_not_loaded:{stored.engine}")
-                mgr.load(stored.engine, device="auto")
-            return await _generate_via_manager(
-                stored.engine, req, audio_prompt_path=prompt_path
-            )
-        engine = st.engines.get(stored.engine)
-        if engine is None:
-            raise not_found(f"engine {stored.engine}")
-        if not engine.ready() and not auto_load:
-            raise conflict(f"engine_not_loaded:{stored.engine}")
-        return _generate_via_inprocess(stored.engine, req)
+                    raise conflict(f"engine_not_loaded:{static_owner}")
+                mgr.load(static_owner, device="auto")
+            return await _generate_via_manager(static_owner, req)
 
-    # 4. In-process engine preset.
-    for engine in st.engines.all():
-        if any(p.id == voice_id for p in engine.voices()):
+        # 3. Stored voice (clone / design / import / blend).
+        stored = st.voices.get(voice_id)
+        if stored:
+            prompt_path = _resolve_audio_prompt_for_stored(stored)
+            if mgr.get_manifest(stored.engine):
+                if mgr.current_id() != stored.engine:
+                    if not auto_load:
+                        raise conflict(f"engine_not_loaded:{stored.engine}")
+                    mgr.load(stored.engine, device="auto")
+                return await _generate_via_manager(
+                    stored.engine, req, audio_prompt_path=prompt_path
+                )
+            engine = st.engines.get(stored.engine)
+            if engine is None:
+                raise not_found(f"engine {stored.engine}")
             if not engine.ready() and not auto_load:
-                raise conflict(f"engine_not_loaded:{engine.meta.engine_id}")
-            return _generate_via_inprocess(engine.meta.engine_id, req)
+                raise conflict(f"engine_not_loaded:{stored.engine}")
+            return _generate_via_inprocess(stored.engine, req)
 
-    raise not_found(f"voice {voice_id}")
+        # 4. In-process engine preset.
+        for engine in st.engines.all():
+            if any(p.id == voice_id for p in engine.voices()):
+                if not engine.ready() and not auto_load:
+                    raise conflict(f"engine_not_loaded:{engine.meta.engine_id}")
+                return _generate_via_inprocess(engine.meta.engine_id, req)
+
+        raise not_found(f"voice {voice_id}")
+
+    resp = await _render()
+    if resp.body:
+        async with _AUDITION_LOCK:
+            _AUDITION_CACHE[key] = (bytes(resp.body), resp.media_type or "audio/wav")
+    return resp

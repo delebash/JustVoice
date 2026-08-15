@@ -40,9 +40,51 @@ it runs only when you click, applies the confident answers exactly like a
 manual chip click, and leaves genuinely ambiguous names unset. (This is the
 `voice_gender` feature; its prompt and model live under AI Settings.)
 
+## Hear a voice with your own text
+
+The ▶ button plays a stock sentence — enough to tell two voices apart, not
+enough to cast one. **Click the voice's row** and the audition panel opens
+underneath it: type the line you actually care about, turn this engine's
+knobs, and listen. Nothing is saved; you are auditioning, not editing.
+
+The panel always shows two lines, because auditioning is not free and not
+self-evident:
+
+- **What it costs.** JustVoice keeps **one** TTS engine loaded at a time. If
+  the voice you clicked belongs to a different engine than the one currently
+  resident, the first listen swaps models — which can take a minute. The
+  panel says so *before* you click, and names which engine is holding the
+  slot. When the engine is already loaded it says that instead, and listens
+  are quick.
+- **What you're hearing.** A single line naming every layer in play: the
+  voice, its engine, and each knob you've moved away from its default. When
+  a persona's effects chain or lexicon are part of the picture, they are
+  named and marked *(applies on render)* — previews don't run the effects
+  chain, and the panel won't pretend otherwise.
+
+Repeat listens of the same line with the same knobs are served from a short
+in-memory cache, so tweak-and-compare doesn't re-synthesize what you already
+heard. Long text is refused: previews are for a line or two.
+
+Empty the box and the panel falls back to the stock sample.
+
 ## Per-voice overrides (Tier 2)
 
-Click the ⚙ button on a voice to open the "Tune {voice}" modal. The same engine params Tier 1 (engine defaults) exposes, but scoped to this voice. Includes a **Preview** button that synthesizes with your pending edits without saving — audition first.
+The knobs in the audition panel are for listening — they last as long as the
+panel is open. To make a setting **stick**, put it on the persona that uses
+the voice ([personas.md](personas.md) → "How they sound" → default delivery
+overlay); that is the Tier-2 layer every render reads.
+
+> **Known gap.** The cross-engine knobs — speed, pitch, gain, temperature —
+> behave the same in the audition panel and at render. The *engine-private*
+> ones (Chatterbox's exaggeration and cfg_weight, Qwen3's talker temperature
+> and top-k/top-p, repetition penalty) are applied by the audition panel but
+> are **not** currently applied at render time. Audition them freely; don't
+> rely on them surviving into a rendered chapter yet. Tracked in
+> `docs/dev/TASKS.md`.
+
+The ⚙ button opens the voice **inspector** (name / gender / language, plus
+Train and Blend), not a tuning surface.
 
 Common knobs (Chatterbox):
 

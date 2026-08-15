@@ -47,6 +47,23 @@ def _reap_engine_subprocesses():
         pass
 
 
+@pytest.fixture(autouse=True)
+def _clear_audition_cache():
+    """Empty the rendered-audition cache before every test.
+
+    It is module-global and keyed on (voice, text, delivery) — so two tests
+    auditioning the same preset with the canned line share one entry, and the
+    second silently never reaches the synth seam it was written to exercise.
+    Autouse for the same reason the reaper above is: a per-file fixture works
+    until someone adds the next preview test without it. Clearing a small
+    dict costs nothing for the tests that never touch it.
+    """
+    from justvoice.api.voice_preview_api import _reset_audition_cache
+
+    _reset_audition_cache()
+    yield
+
+
 @pytest.fixture(scope="session")
 def synth_sine_pcm() -> bytes:
     """1 second, 440 Hz sine wave at 44.1 kHz, 16-bit mono, peak ~ -6 dBFS."""

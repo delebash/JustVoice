@@ -1,9 +1,9 @@
 # 2026-08-15 — The voice workbench: one place to hear, tune, and make voices
 
-**STATUS (read this first): SLICE A IS BUILT (2026-08-15, on the go "build
-slice A go"). B, C, D and E are NOT.** §3 below is kept as the record of what
-was done, not as work to do — its anchors are pre-A line numbers and no longer
-resolve. Start reading at §4.
+**STATUS (read this first): SLICES A and B ARE BUILT (2026-08-15). C, D and
+E are NOT.** §3 and §4 are kept as the record of what was done, not as work
+to do — their anchors are pre-A line numbers and no longer resolve. Start
+reading at §5.
 
 Written 2026-08-15, late session, for a fresh Opus session to execute after a
 compact. The user's words creating it: *"your rec make detailed plan for opus
@@ -278,10 +278,40 @@ sheet split, and bio dies". List the reset requirement in the body.
 
 ---
 
-## §4 SLICE B — the audition panel, on the voice row (absorbs plan item 5)
+## §4 SLICE B — the audition panel — ✅ BUILT 2026-08-15
 
 The pipeline plan's item 5 (`2026-08-15-pipeline-truth-and-first-run.md` §5)
 is absorbed here — do not build it separately.
+
+**Built as specced, with these deltas worth knowing:**
+
+- **The spec's premise about the cache was wrong.** §2 above says row
+  previews are "LRU-cached" — they were not. The LRU in
+  `voice_preview_api.py` belongs to the *candidate* preview flow
+  (`POST /v1/voices/preview` → `preview_id` → save), a different endpoint.
+  The row preview re-synthesized every click. So the cache the spec asked
+  to re-key had to be built: `_AUDITION_CACHE`, 32 entries, 10-min TTL,
+  keyed exactly as specced. `audition_cache_hits` is the test hook.
+- **The cap reading**: effective cap = `max(300, limits.text_max_chars)`.
+  The floor is what keeps an operator's tight generation limit from making
+  auditioning useless; it never lowers the cap.
+- **A real gap found while wiring the knobs** (filed in TASKS.md, needs its
+  own go): the capability schema's engine-private keys (exaggeration,
+  cfg_weight, talker_temperature, top_k/top_p, repetition_penalty) are
+  saved FLAT by `VoiceParamsModal`, but every engine reads them from the
+  `delivery.engine` subdict — so they have never reached an engine at
+  render. `services/audition.js canonicalDelivery` routes them properly, so
+  the panel applies them and the render does not. `docs/voices.md` says so
+  plainly rather than letting the user find out by ear.
+- **The cache is process-global**, which is exactly the kind of state that
+  silently voids the next test written against this endpoint — so an
+  autouse fixture in `server/tests/conftest.py` clears it per test, with
+  the reasoning written next to the existing subprocess reaper.
+- Verified beyond the gates: the panel was driven in a headless browser
+  (click a row → panel mounts, both honesty lines carry real data, toggle
+  closes, zero JS errors) and the endpoint exercised live for the body,
+  the dropped-bogus-knob path and the over-cap refusal.
+- The inspector is untouched, per the slice's own instruction.
 
 ### B1 — server: preview with your own text
 

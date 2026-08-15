@@ -11,6 +11,7 @@ import { useVoicesStore } from "../stores/voices.js";
 import { runAiEndpoint } from "@delebash/llm-ui";
 import { useEnginesStore } from "../stores/engines.js";
 import { usePersonasStore } from "../stores/personas.js";
+import VoiceAudition from "../components/VoiceAudition.vue";
 
 const api = useApi();
 // voices / engines / personas come from shared stores. Mutations here
@@ -269,6 +270,15 @@ const chatterboxLoaded = computed(() => (engines.value || []).some((e) => e?.id?
 const previewAudio = ref(null);
 const previewingId = ref(null);
 const previewFor = ref(null); // voice id whose row shows the inline player
+
+// ── Audition panel (workbench Slice B) ───────────────────────────────
+// Click a row to open it: type a line, turn this engine's knobs, hear the
+// result in place. ▶ stays the one-click canned sample; this is the
+// "actually, how does it say MY line" surface.
+const auditionId = ref(null);
+function toggleAudition(v) {
+  auditionId.value = auditionId.value === v.id ? null : v.id;
+}
 
 async function previewVoice(v) {
   previewingId.value = v.id;
@@ -796,8 +806,13 @@ function blendWithVoice() {
       <tbody>
         <template v-for="v in filteredVoices" :key="v.id">
         <tr
-          :class="{ 'row-orphan': orphanIds.includes(v.id), 'voices-view__row--inspected': inspectedId === v.id }"
-          title="Double-click to inspect"
+          :class="{
+            'row-orphan': orphanIds.includes(v.id),
+            'voices-view__row--inspected': inspectedId === v.id,
+            'voices-view__row--auditioning': auditionId === v.id,
+          }"
+          title="Click to audition · double-click to inspect"
+          @click="toggleAudition(v)"
           @dblclick="inspect(v)"
           style="cursor: pointer"
         >
@@ -816,7 +831,7 @@ function blendWithVoice() {
               class="voices-view__gender-chip"
               :data-gender="autoDetectGender(v)"
               :title="`Gender: ${autoDetectGender(v) || 'unset'} — click to cycle ? → F → M → N → unset`"
-              @click="cycleGender(v)"
+              @click.stop="cycleGender(v)"
             >{{ (autoDetectGender(v) || "?").charAt(0).toUpperCase() }}</button>
           </td>
           <td><UiTag :intent="voiceTypeVariant(v.source)" :label="v.source" /></td>
@@ -873,6 +888,10 @@ function blendWithVoice() {
              in the library row, not a global bottom bar). -->
         <tr v-if="previewFor === v.id && previewAudio" :key="`prev-${v.id}`" class="voices-view__expand"><td colspan="12">
           <audio :src="previewAudio" controls autoplay class="jv-audio-inline" />
+        </td></tr>
+        <!-- Audition panel — your line, this engine's knobs, in place. -->
+        <tr v-if="auditionId === v.id" :key="`aud-${v.id}`" class="voices-view__expand" @click.stop><td colspan="12">
+          <VoiceAudition :voice="v" />
         </td></tr>
         <tr v-if="inspectedId === v.id" :key="`exp-${v.id}`" class="voices-view__expand"><td colspan="12"><div class="voices-view__inspector">
     <header class="voices-view__inspector-h">
@@ -1204,6 +1223,9 @@ function blendWithVoice() {
 
 /* Inline inspector (replaces modal pattern for voice editing). */
 .voices-view__row--inspected { background: var(--accent-soft); }
+/* Audition panel open — softer than the inspector's, so both can be open
+   on the same row without the highlight shouting twice. */
+.voices-view__row--auditioning { background: var(--surface-2); }
 
 .voices-view__inspector {
   margin-top: 18px;
