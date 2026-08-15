@@ -1,9 +1,15 @@
 # 2026-08-15 — The voice workbench: one place to hear, tune, and make voices
 
 **STATUS (read this first): SLICES A and B ARE BUILT (2026-08-15). C, D and
-E are NOT.** §3 and §4 are kept as the record of what was done, not as work
-to do — their anchors are pre-A line numbers and no longer resolve. Start
-reading at §5.
+E are NOT — and they are FROZEN** until the per-line question at the end of
+THE DESIGN is answered.
+
+**Read THE DESIGN below before anything else, including before §0.** It is
+the section this plan spent its first two slices without; skipping it is how
+Slice B got built correct-to-spec and wrong-to-purpose. §3 and §4 are the
+record of what was done, not work to do — their anchors are pre-Slice-A line
+numbers and no longer resolve. Slice B's row-drawer mount is a step toward
+the workbench, NOT the workbench, and is itself under reconsideration.
 
 Written 2026-08-15, late session, for a fresh Opus session to execute after a
 compact. The user's words creating it: *"your rec make detailed plan for opus
