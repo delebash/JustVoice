@@ -212,42 +212,55 @@ character can do) with cloning inline on the cast row · **no per-line voice
 override** — a different voice is a different character · the workbench is a
 **finishing bench** (hear · tune · save-as · derive · samples).
 
-RULED BY THE USER THIS SESSION — verbatim, these are settled:
+**NOTHING WAS APPROVED TO BUILD THIS SESSION.** The user's own summary:
+*"i really dont think i decided anything on this session as we where doing
+mockups and testing a redesing"* — correct. The session produced a design, a
+mock, eight code-verified findings, and the constraints below. An earlier
+version of this entry listed seven "rulings"; that was me converting
+conversation into decisions because a tracker wants decisions. Do not repeat it.
+
+**CONSTRAINTS — binding on the design.** Both are rejections of a proposal I
+made; if a future session proposes either again, this record stops it:
 
 1. *"but i do want a voice tuning page this is part of creating a new voice for
-   a persona to consume"* → **voice tuning stays on the voice.** Overrides my
-   rethink that moved the knobs to the character. The case that settles it: a
-   clone that comes out quiet must be fixed once on the artifact, not five times
-   across five characters.
-2. *"a fifth way to make a voice yes i like that"* → **the derived voice ships in
-   the design**: tune a voice, Save as new voice; a record of
-   `{parent_id, name, calibration, effects}`. Also makes preset voices
-   renameable. Guardrail: it is a correction to an artifact, never a mood.
-3. *"damint we want a voice designer we have qwen and other tts that do that why
-   would you drop it"* → **the Voice Designer is KEPT.** My "we don't ship the
-   checkpoint" was backwards — the path is built and gated (`voice_design: False`
-   in every manifest pending one download).
-4. *"i think qwen is the only one for voice designer"* → **Qwen3 VoiceDesign is
-   the only design engine** — working assumption, corroborated 2026-08-15 by
+   a persona to consume"* → **do not remove voice tuning from the voice.** Kills
+   my rethink that moved the knobs to the character. The case behind it: a clone
+   that comes out quiet must be fixed once on the artifact, not five times across
+   five characters. This constrains the design; it does not approve the workbench
+   as drawn.
+2. *"damint we want a voice designer we have qwen and other tts that do that why
+   would you drop it"* → **do not drop the Voice Designer.** My "we don't ship
+   the checkpoint" was backwards — the path is built and gated
+   (`voice_design: False` in every manifest pending one download).
+
+**ENDORSED IDEA — kept in the design, not approved to build:**
+
+3. *"a fifth way to make a voice yes i like that"* → the **derived voice** (tune
+   a voice, Save as new voice; `{parent_id, name, calibration, effects}`; also
+   makes preset voices renameable). Guardrail in the doc: a correction to an
+   artifact, never a mood.
+
+**VERIFIED FACTS — not decisions; recorded with their source:**
+
+4. Qwen3 VoiceDesign is the only description-to-voice engine. The user's *"i
+   **think** qwen is the only one"* was a belief; verified 2026-08-15 against
    Voice-Clone-Studio (github.com/FranckyB/Voice-Clone-Studio), which supports
-   six TTS engines and routes design to Qwen3-TTS's dedicated model alone. The
-   TADA question is closed unless it ever matters.
-5. *"i think we really are doing a full redesing of the app from a voice workflow
-   standpoint whihc is most of the app"* → **scope is the whole project side**,
-   planned as one redesign, not slices bolted onto the workbench plan.
-6. *"i dont just want a copy of alexadira if it does not make sense in our app"*
-   and *"dont overenginner"* → **the Alexandria take/skip decision is made once,
-   in writing** (redesign doc §5) and nothing is adopted for symmetry.
-7. *"jv is not just pipeline for book yes that is main feature but it can be
-   anything that is why we have project types"* → **the redesign must hold for
-   all four project kinds**, not just audiobook. Recorded as redesign doc §2.0
-   with the per-kind matrix. It forced one correction and two refinements: the
-   **cast surface must be a table with the card as a row expansion** (a stack of
-   cards dies at 50–500 game NPCs, where bulk selection is the primary action);
-   the Script/Table modes have a **default per kind** (Script for prose, Table
-   for game — 500 barks are independent assets, not a performance); and the
-   filter chips derive from the kind, since game and podcast arrive with speakers
-   attached and have no unattributed state.
+   six TTS engines and routes design to Qwen3-TTS's dedicated model alone. TADA
+   question dropped.
+5. **JV is not an audiobook app** — *"jv is not just pipeline for book yes that is
+   main feature but it can be anything that is why we have project types"*. A
+   correction of my error, not a decision. `project_type` is
+   `audiobook | game_voicelines | podcast | custom`
+   (`database/models.py:174`). Forced one correction and two refinements to the
+   design (redesign doc §2.0): the **cast surface must be a table with the card
+   as a row expansion** (a stack of cards dies at 50–500 game NPCs, where bulk
+   selection is the primary action); Script/Table modes have a **default per
+   kind**; and the filter chips derive from the kind, since game and podcast
+   arrive with speakers already attached.
+
+**WORKING INSTRUCTIONS TO ME** — not product decisions, recorded so they survive
+a compact: don't overengineer · don't adopt from Alexandria for symmetry · no
+code without an explicit go · save the design in detail *before* compacting.
 
 PROPOSED BY ME, NOT YET RULED — all of §2/§3 of the redesign doc. Do NOT record
 these as decisions and do NOT build them:
