@@ -1,13 +1,16 @@
 # 2026-08-15 — The voice workbench: one place to hear, tune, and make voices
 
-**STATUS (read this first): NOTHING in this plan is built.** It was written
-2026-08-15, late session, for a fresh Opus session to execute after a compact.
-The user's words creating it: *"your rec make detailed plan for opus to execute
-without thinking too much i will switch to opus and have him execute the plan"*.
-Execution still follows the standing law: **one slice per go** unless the user
-says otherwise in the new session. Every file:line anchor below was verified
-2026-08-15; re-verify an anchor before editing if the file has churned — the
-user commits in parallel.
+**STATUS (read this first): SLICE A IS BUILT (2026-08-15, on the go "build
+slice A go"). B, C, D and E are NOT.** §3 below is kept as the record of what
+was done, not as work to do — its anchors are pre-A line numbers and no longer
+resolve. Start reading at §4.
+
+Written 2026-08-15, late session, for a fresh Opus session to execute after a
+compact. The user's words creating it: *"your rec make detailed plan for opus
+to execute without thinking too much i will switch to opus and have him execute
+the plan"*. Execution follows the standing law: **one slice per go** unless the
+user says otherwise. Every remaining file:line anchor was verified 2026-08-15
+and predates Slice A; re-verify before editing — the user commits in parallel.
 
 ---
 
@@ -120,9 +123,29 @@ raises a toast sending you to Generate (`openDeliveryHint`,
 
 ---
 
-## §3 SLICE A — the sound-truth data model (split + bio excision + dead flag)
+## §3 SLICE A — the sound-truth data model — ✅ BUILT 2026-08-15
 
 Everything mechanical. Server + renderer + docs, one commit.
+
+**Built as specced, with these deltas worth knowing:**
+
+- Five extra sites the spec had not named, all found by the sweep and fixed:
+  `ProjectsView.vue:728` (add-to-cast subtitle), `migrate_profiles.py:86`
+  (the legacy voice_profiles migrator — `description` → sheet,
+  `personality` → instruct, since a profile's personality WAS a style
+  prompt), `extraction_api.py:1002/1037` (`PromoteCandidate`, renamed on
+  both ends with `StudioView.vue:1349`), `App.vue:50` (the Personas lede),
+  and three test fixtures (`test_discover_speakers`, `test_reimport_update`,
+  `labContracts.test.js`).
+- `test_render_chapter_scene_mode.py`'s affordance tests #4/#5 asserted the
+  old field and were rewritten in place; the new `test_voice_instruct.py`
+  covers the SPLIT rather than duplicating them — a persona holding BOTH
+  fields renders with the instruct and never the sheet.
+- `docs/personas.md`'s Fields table listed role / gender / pronouns /
+  aliases as persona fields. They are not, and never were. The table now
+  says so, pointing at the tracker finding.
+- The narrator seeds took the exact strings the spec named. No migration was
+  added (user law); an existing DB **must** be reset.
 
 ### A0 — the reset warning (put it in the completion report)
 

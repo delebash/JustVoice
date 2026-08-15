@@ -81,13 +81,13 @@ export function castNamesBlock(rows) {
 }
 
 // smart_assign {{characters}} — mirrors smart_assign_api._format_characters
-// over the fields StudioView's production call sends (id · name · bio ·
-// personality).
+// over the fields StudioView's production call sends (id · name ·
+// personality, the character sheet).
 export function smartAssignCharactersBlock(rows) {
   return rows
     .map((p) => {
       const bits = [`id="${p.id}"`, `name="${p.name}"`];
-      const desc = p.bio || p.personality;
+      const desc = p.personality;
       if (desc) bits.push(`description="${String(desc).slice(0, 200)}"`);
       return `- ${bits.join(", ")}`;
     })

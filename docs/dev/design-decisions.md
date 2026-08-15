@@ -117,10 +117,11 @@ integration decisions record (2026-07-15) is executed history at
   the `/render_chapter` payload — no such JW file exists (grep-verified), and
   attribution actually runs server-side in JustVoice's extraction pipeline,
   driven from Studio's Analyze. Its Persona row (`CONTRACT.md:94`) claims a
-  per-persona render-time LLM rewrite behind a `personality` flag — personality
-  actually feeds `delivery.instruct` at render
-  (`api/render_chapter_api.py:7-8`), and compose/rewrite are explicit user
-  actions (`api/personas_api.py`), never a render-time pass.
+  per-persona render-time LLM rewrite behind a `personality` flag — the persona's
+  delivery text actually feeds `delivery.instruct` at render
+  (`api/render_chapter_api.py:7-8`; the field is `voice_instruct` since the
+  2026-08-15 split), and compose/rewrite are explicit user actions
+  (`api/personas_api.py`), never a render-time pass.
 - **The archived CONTRACT's enforcement mechanism was never built, and guards a
   boundary that doesn't exist** (struck 2026-08-08, user's word): it cites
   `server/justvoice/openapi.json` + `server/tests/test_contract.py` as the

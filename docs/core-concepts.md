@@ -33,7 +33,7 @@ A rendered audio version of a Block. Multiple takes per Block; one is the **defa
 ## Voices, Personas, Lexicons — the three orthogonal layers
 
 - **Voice** = a TTS profile (cloned / preset / designed / blended). The thing the engine actually speaks with.
-- **Persona** = a named character bound to a voice. Its personality prompt drives the explicit Compose/Rewrite flows (preview-then-accept — never an automatic render-time rewrite) and the TTS delivery `instruct`. Optional lexicon override.
+- **Persona** = a named character bound to a voice. Two text fields, one job each: its **spoken delivery** becomes the TTS `instruct` for engines that take direction, and its **character sheet** drives the explicit Compose/Rewrite flows (preview-then-accept — never an automatic render-time rewrite) and casting suggestions. Optional lexicon override.
 - **Lexicon** = a pronunciation dictionary. Maps "Beauchamp" → "BEE-chum" before TTS sees it.
 
 These compose. A persona has a voice; the voice can have effects; the persona can have a lexicon override; all three are queried for every Block render.

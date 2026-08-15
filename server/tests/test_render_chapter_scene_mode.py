@@ -47,7 +47,7 @@ def _fake_state(personas_by_id: dict[str, Persona]):
 def _make_persona(
     pid: str,
     voice_id: str | None = "voice-1",
-    personality: str | None = None,
+    voice_instruct: str | None = None,
     default_delivery: dict | None = None,
     lexicon_id: str | None = None,
 ) -> Persona:
@@ -57,7 +57,7 @@ def _make_persona(
         id=pid,
         name=f"Persona {pid}",
         voice_id=voice_id or "",
-        personality=personality,
+        voice_instruct=voice_instruct,
         default_delivery=default_delivery or {},
         lexicon_id=lexicon_id,
         created_at=now,
@@ -188,10 +188,10 @@ def test_persona_default_delivery_flows_into_chapter_line(tmp_db, monkeypatch): 
     assert delivery_dict.get("gain_db") == -3.0
 
 
-# ─── #4 Persona.personality → delivery.instruct (no explicit instruct) ─
+# ─── #4 Persona.voice_instruct → delivery.instruct (no explicit instruct) ─
 
 
-def test_persona_personality_becomes_delivery_instruct(tmp_db, monkeypatch):  # noqa: F811
+def test_persona_voice_instruct_becomes_delivery_instruct(tmp_db, monkeypatch):  # noqa: F811
     session_factory, _engine = tmp_db
     _patch_session(monkeypatch, session_factory)
 
@@ -205,7 +205,7 @@ def test_persona_personality_becomes_delivery_instruct(tmp_db, monkeypatch):  # 
         "persona-mara": _make_persona(
             "persona-mara",
             voice_id="voice-mara",
-            personality="Clipped, world-weary noir delivery.",
+            voice_instruct="Clipped, world-weary noir delivery.",
         ),
     }
     lines, _ = render_chapter_api._resolve_scene_to_lines(
@@ -217,8 +217,8 @@ def test_persona_personality_becomes_delivery_instruct(tmp_db, monkeypatch):  # 
     assert delivery_dict.get("instruct") == "Clipped, world-weary noir delivery."
 
 
-def test_explicit_preset_instruct_wins_over_persona_personality(tmp_db, monkeypatch):  # noqa: F811
-    """Preset.delivery.instruct (tier-3) must override persona.personality (tier-2)."""
+def test_explicit_preset_instruct_wins_over_persona_instruct(tmp_db, monkeypatch):  # noqa: F811
+    """Preset.delivery.instruct (tier-3) must override persona.voice_instruct (tier-2)."""
     session_factory, _engine = tmp_db
     _patch_session(monkeypatch, session_factory)
 
@@ -245,7 +245,7 @@ def test_explicit_preset_instruct_wins_over_persona_personality(tmp_db, monkeypa
         "persona-mara": _make_persona(
             "persona-mara",
             voice_id="voice-mara",
-            personality="Should not win.",
+            voice_instruct="Should not win.",
         ),
     }
     lines, _ = render_chapter_api._resolve_scene_to_lines(

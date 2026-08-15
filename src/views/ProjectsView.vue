@@ -725,7 +725,7 @@ onActivated(() => {
             <div style="flex: 1; min-width: 0;">
               <strong>{{ p.name }}</strong>
               <div class="jv-muted" style="font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                {{ p.bio || "(no bio)" }}
+                {{ p.personality || "(no character sheet)" }}
               </div>
             </div>
           </UiCheckbox>

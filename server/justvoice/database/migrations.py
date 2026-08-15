@@ -317,8 +317,6 @@ def _migrate_mcp_bindings_persona(engine, inspector, tables: set[str]) -> None:
     columns = _get_columns(inspector, "mcp_bindings")
     if "persona_id" not in columns:
         _add_column(engine, "mcp_bindings", "persona_id VARCHAR", "persona_id")
-    if "default_personality" not in columns:
-        _add_column(engine, "mcp_bindings", "default_personality BOOLEAN DEFAULT 0", "default_personality")
     if "default_engine" not in columns:
         _add_column(engine, "mcp_bindings", "default_engine VARCHAR", "default_engine")
     if "last_seen_at" not in columns:

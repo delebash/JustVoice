@@ -106,12 +106,12 @@ def test_legacy_persona_files_import_once(tmp_db, tmp_path):
 def test_store_crud_round_trip(tmp_db, tmp_path):
     session_factory, _engine = tmp_db
     store = PersonaStore(tmp_path, session_factory=session_factory)
-    created = store.create("Mara", voice_id=None, bio="lake person")
-    assert store.get(created.id).bio == "lake person"
-    updated = store.update(created.id, personality="dry wit", voice_id="af_heart")
-    assert updated.personality == "dry wit" and updated.voice_id == "af_heart"
+    created = store.create("Mara", voice_id=None, personality="lake person")
+    assert store.get(created.id).personality == "lake person"
+    updated = store.update(created.id, voice_instruct="dry wit", voice_id="af_heart")
+    assert updated.voice_instruct == "dry wit" and updated.voice_id == "af_heart"
     fetched = store.get(created.id)
-    assert fetched.personality == "dry wit" and fetched.voice_id == "af_heart"
+    assert fetched.voice_instruct == "dry wit" and fetched.voice_id == "af_heart"
     assert [p.id for p in store.list()] == [created.id]
     assert store.delete(created.id) is True
     assert store.list() == []

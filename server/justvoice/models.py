@@ -528,13 +528,16 @@ class Persona(BaseModel):
     # All voice-styling fields live here directly, not behind a Profile FK.
     language: str = "en"
     avatar_path: str | None = None
-    # Character context (backstory, age, mannerisms) — distinct from `personality`.
-    bio: str | None = None
-    # TTS delivery instruction. Engines whose manifest declares
-    # `instruct_field` consume it as the `instruct` / style-prompt field at
-    # render time. Engines that don't accept it ignore it. Smart-assign uses it
-    # as input context for voice matching. **Never an LLM rewrite of the
-    # manuscript at render time** — Rewrite is a separate explicit tool.
+    # Spoken-delivery instruction — the ONE field that changes the audio.
+    # Engines whose manifest declares `instruct_field` consume it as the
+    # `instruct` / style-prompt field at render time; engines that don't
+    # accept it ignore it. **Never an LLM rewrite of the manuscript** —
+    # Rewrite is a separate explicit tool.
+    voice_instruct: str | None = None
+    # The character sheet — who this character is, in prose. Read by
+    # Compose / Rewrite, smart-assign casting and the game-export sidecar.
+    # It never reaches an engine — that is `voice_instruct`'s job alone
+    # (the 2026-08-15 split; one field serving both was the bug).
     personality: str | None = None
     # Tier-2 delivery overlay defaults (3-tier voice tuning per task #88):
     #   render_preset (Tier 3) > persona.default_delivery (Tier 2) > engine (Tier 1).
@@ -571,7 +574,7 @@ class CreatePersonaRequest(BaseModel):
     voice_id: str | None = None
     language: str = "en"
     avatar_path: str | None = None
-    bio: str | None = None
+    voice_instruct: str | None = None
     personality: str | None = None
     default_delivery: dict[str, Any] = {}
     effects_chain: list[dict[str, Any]] = []

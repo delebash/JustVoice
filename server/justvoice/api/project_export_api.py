@@ -117,9 +117,9 @@ async def export_project(
                     {
                         "id": persona.id,
                         "name": persona.name,
-                        "bio": persona.bio,
                         "language": persona.language,
                         "voice_id": persona.voice_id,
+                        "voice_instruct": persona.voice_instruct,
                         "personality": persona.personality,
                         "engine_override": persona.engine_override,
                         "lexicon_id": persona.lexicon_id,

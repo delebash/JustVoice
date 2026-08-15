@@ -13,7 +13,7 @@ described a design that never shipped.)*
 |---|---|
 | `justvoice.speak` | Generate speech from text with a voice or persona. Returns an **`audio_url`** you fetch — it does not auto-play anywhere. |
 | `justvoice.list_voices` | The voice library, for picking. |
-| `justvoice.list_personas` | The persona library (name, bio, voice). |
+| `justvoice.list_personas` | The persona library (name, voice, whether a character sheet is set). |
 | `justvoice.transcribe` | Speech-to-text on an audio file. The `audio_path` is **loopback-only** — a remote client can't point it at server files. |
 
 ## How it's mounted

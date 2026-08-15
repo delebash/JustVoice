@@ -109,6 +109,12 @@ unzipped the file, a bare `book.json` imports too.
   aliases. Aliases earn their place: the same character gets addressed by
   different names through the prose, and the voice has to match.
 
+  All of that lands in the persona's **character sheet** — the prose half. The
+  **Spoken delivery** box, the one that actually directs the TTS, starts
+  **empty**: "female, age 34, protagonist" tells you who to cast, not how to
+  perform, and JustVoice will not invent a performance you did not ask for. See
+  [Personas](personas.md).
+
 **What does not come across, and why**
 
 - **Who speaks each line.** JustWrite never tags dialogue with a speaker, so every

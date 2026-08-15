@@ -460,10 +460,10 @@ function colorFor(name) {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
-// First meaningful bio line doubles as the card's role line. Demo +
-// imported bios often carry a "Voice hint:" block — skip it.
+// First meaningful line of the character sheet doubles as the card's role
+// line. Demo + imported sheets often carry a "Voice hint:" block — skip it.
 function personaRole(p) {
-  for (const line of (p?.bio || "").split("\n")) {
+  for (const line of (p?.personality || "").split("\n")) {
     const t = line.trim();
     if (t && !/^voice hint:?$/i.test(t)) return t;
   }
@@ -562,9 +562,9 @@ async function clearCast() {
 // affordance J. Per-voice preview state stops the button being
 // re-clicked while in flight.
 // Engines whose manifest declares instruct_field — these consume the
-// persona's Personality text as a style prompt at render time. Drives
+// persona's spoken-delivery text as a style prompt at render time. Drives
 // the "instruct" chip in the voice library (user ask: "how do I know
-// what TTS takes input from the bio and personality").
+// what TTS takes input from these fields").
 const instructEngineIds = computed(() => new Set(
   (engines.value || [])
     .filter((e) => (e.capabilities || []).includes("instruct_field"))
@@ -1346,7 +1346,7 @@ async function promoteDiscovered() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        candidates: discovered.value.map((c) => ({ name: c.name, bio: c.role_hint || null })),
+        candidates: discovered.value.map((c) => ({ name: c.name, personality: c.role_hint || null })),
       }),
     });
     const made = (r?.created || []).length;
@@ -1476,7 +1476,7 @@ async function assignVoice(personaId, voiceId) {
       voice_id: voiceId,
       language: persona.language,
       avatar_path: persona.avatar_path,
-      bio: persona.bio,
+      voice_instruct: persona.voice_instruct,
       personality: persona.personality,
       default_delivery: persona.default_delivery || {},
       effects_chain: persona.effects_chain || [],
@@ -1537,7 +1537,7 @@ async function onVoiceParamsSaved(newParams) {
     voice_id: persona.voice_id,
     language: persona.language,
     avatar_path: persona.avatar_path,
-    bio: persona.bio,
+    voice_instruct: persona.voice_instruct,
     personality: persona.personality,
     default_delivery: newParams,
     effects_chain: persona.effects_chain || [],
@@ -1587,7 +1587,6 @@ async function smartAssignCast() {
           characters: characterPersonas.value.map((p) => ({
             id: p.id,
             name: p.name,
-            bio: p.bio,
             personality: p.personality,
           })),
           voices: voices.value.map((v) => ({

@@ -29,7 +29,7 @@ router = APIRouter(tags=["llm"])
 class SmartAssignCharacter(BaseModel):
     id: str
     name: str
-    bio: str | None = None
+    # The character sheet — this prompt's only description source.
     personality: str | None = None
     gender: str | None = None
     pronouns: str | None = None
@@ -72,9 +72,7 @@ def _format_characters(chars: list[SmartAssignCharacter]) -> str:
             bits.append(f'pronouns="{c.pronouns}"')
         if c.aliases:
             bits.append(f'aliases="{", ".join(c.aliases)}"')
-        if c.bio:
-            bits.append(f'description="{c.bio[:200]}"')
-        elif c.personality:
+        if c.personality:
             bits.append(f'description="{c.personality[:200]}"')
         lines.append("- " + ", ".join(bits))
     return "\n".join(lines)

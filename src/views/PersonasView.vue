@@ -9,8 +9,14 @@
     Right: rich editor for the selected persona.
 
   Persona vs Voice: Voice is the TTS artifact (engine preset or cloned WAV).
-  Persona is the character that USES a voice + adds bio, personality,
-  delivery overrides, effects, lexicon overrides. No Profile layer in between.
+  Persona is the character that USES a voice + adds a spoken-delivery
+  instruction, a character sheet, delivery overrides, effects and lexicon
+  overrides. No Profile layer in between.
+
+  The editor is in two halves, and the split is the point (2026-08-15):
+  "How they sound" holds everything that reaches the synth; "How they're
+  written" holds the sheet the LLM features read. One field used to do both
+  jobs, so editing a character's description changed their voice.
 -->
 <script setup>
 import { computed, onMounted, ref, watch, nextTick } from "vue";
@@ -77,7 +83,7 @@ const filteredPersonas = computed(() => {
   }
   const q = search.value.trim().toLowerCase();
   if (q) list = list.filter((p) =>
-    (p.name || "").toLowerCase().includes(q) || (p.bio || "").toLowerCase().includes(q));
+    (p.name || "").toLowerCase().includes(q) || (p.personality || "").toLowerCase().includes(q));
   return list;
 });
 
@@ -85,19 +91,19 @@ function usageCount(personaId) {
   return (usage.value[personaId] || []).length;
 }
 
-// Live Personality-field verdict for the draft's voice engine — does it
-// actually consume the text as an instruct/style prompt at render time?
+// Live verdict for the draft's voice engine — does it actually consume the
+// spoken-delivery text as an instruct/style prompt at render time?
 const instructStatus = computed(() => {
   if (!draft.value) return null;
   const voice = voices.value.find((v) => v.id === draft.value.voice_id);
   if (!voice) {
-    return { ok: false, text: "No voice cast yet — whether Personality reaches the TTS depends on the engine you pick." };
+    return { ok: false, text: "No voice cast yet — whether this reaches the TTS depends on the engine you pick." };
   }
   const eng = engines.value.find((e) => e.id === voice.engine);
   const supports = (eng?.capabilities || []).includes("instruct_field");
   return supports
     ? { ok: true, text: `✓ ${eng?.name || voice.engine} takes direction — it performs this text when rendering.` }
-    : { ok: false, text: `✗ ${eng?.name || voice.engine} doesn't take direction — this text only guides Smart-assign, not the audio.` };
+    : { ok: false, text: `✗ ${eng?.name || voice.engine} doesn't take direction — it ignores this text entirely.` };
 });
 
 // Reload everything: the five shared stores + the per-view usage map.
@@ -130,7 +136,7 @@ function bufferFor(persona) {
     voice_id: persona.voice_id ?? "",
     language: persona.language ?? "en",
     avatar_path: persona.avatar_path ?? "",
-    bio: persona.bio ?? "",
+    voice_instruct: persona.voice_instruct ?? "",
     personality: persona.personality ?? "",
     engine_override: persona.engine_override ?? "",
     lexicon_id: persona.lexicon_id ?? "",
@@ -154,7 +160,7 @@ function markDirty() { dirty.value = true; }
 function blankDraft() {
   return {
     id: null, name: "", voice_id: "", language: "en", avatar_path: "",
-    bio: "", personality: "", engine_override: "", lexicon_id: "",
+    voice_instruct: "", personality: "", engine_override: "", lexicon_id: "",
     default_delivery: {}, effects_chain: [],
     llm_rewrite_enabled: false, llm_model: "qwen-1.7b-local",
   };
@@ -185,7 +191,7 @@ async function savePersona() {
     voice_id: draft.value.voice_id,
     language: draft.value.language || "en",
     avatar_path: draft.value.avatar_path || null,
-    bio: draft.value.bio || null,
+    voice_instruct: draft.value.voice_instruct || null,
     personality: draft.value.personality || null,
     default_delivery: draft.value.default_delivery,
     effects_chain: draft.value.effects_chain || [],
@@ -249,7 +255,7 @@ async function removePersona(p) {
               body: JSON.stringify({
                 name: snapshot.name,
                 voice_id: snapshot.voice_id,
-                bio: snapshot.bio,
+                voice_instruct: snapshot.voice_instruct,
                 personality: snapshot.personality,
                 language: snapshot.language,
                 avatar_path: snapshot.avatar_path,
@@ -328,7 +334,7 @@ function listMeta(p) {
   const bits = [];
   const v = voices.value.find((x) => x.id === p.voice_id);
   bits.push(v?.name || (p.voice_id ? p.voice_id : "no voice yet"));
-  if (p.bio) bits.push(p.bio.slice(0, 64) + (p.bio.length > 64 ? "…" : ""));
+  if (p.personality) bits.push(p.personality.slice(0, 64) + (p.personality.length > 64 ? "…" : ""));
   return bits.join(" · ") || "—";
 }
 
@@ -376,7 +382,7 @@ onMounted(loadAll);
         v-else-if="!filteredPersonas.length && !personas.length"
         icon="Sparkle"
         title="No characters yet"
-        message="A persona pairs a name + bio + voice + personality. Audiobook cast, game NPCs, podcast hosts all live here."
+        message="A persona pairs a name + a voice + how they sound + who they are. Audiobook cast, game NPCs, podcast hosts all live here."
         action-label="+ Create your first persona"
         @action="createBlank"
       />
@@ -392,7 +398,7 @@ onMounted(loadAll);
             <td>
               <span class="personas__card-avatar personas__avatar-sm" :style="{ background: colorFor(p.name) }">{{ (p.name || "?").charAt(0).toUpperCase() }}</span>
               <strong>{{ p.name }}</strong>
-              <div v-if="p.bio" class="jv-muted" style="font-size:11.5px; margin-left:36px">{{ p.bio.slice(0, 70) }}{{ p.bio.length > 70 ? "…" : "" }}</div>
+              <div v-if="p.personality" class="jv-muted" style="font-size:11.5px; margin-left:36px">{{ p.personality.slice(0, 70) }}{{ p.personality.length > 70 ? "…" : "" }}</div>
             </td>
             <td class="jv-muted">{{ voices.find((v) => v.id === p.voice_id)?.name || (p.voice_id || "no voice yet") }}</td>
             <td><UiTag :intent="usageCount(p.id) > 0 ? 'success' : 'ghost'">{{ usageCount(p.id) }} project{{ usageCount(p.id) === 1 ? '' : 's' }}</UiTag></td>
@@ -430,12 +436,6 @@ onMounted(loadAll);
           </label>
 
           <label class="personas__field">
-            <span>Voice</span>
-            <UiSelect width="name" v-model="draft.voice_id" @update:model-value="markDirty"
-              :options="[{ value: '', label: '— no voice yet (cast later) —' }, ...voices.map((v) => ({ value: v.id, label: `${v.name} (${v.engine})` }))]" />
-          </label>
-
-          <label class="personas__field">
             <span>Language</span>
             <UiInput width="token" v-model="draft.language" @input="markDirty" placeholder="en" />
           </label>
@@ -443,6 +443,15 @@ onMounted(loadAll);
           <label class="personas__field">
             <span>Avatar path</span>
             <UiInput width="path" v-model="draft.avatar_path" @input="markDirty" placeholder="(optional)" />
+          </label>
+
+          <!-- ── How they sound: everything below reaches the synth ────── -->
+          <h4 class="jv-section__title personas__section">How they sound</h4>
+
+          <label class="personas__field">
+            <span>Voice</span>
+            <UiSelect width="name" v-model="draft.voice_id" @update:model-value="markDirty"
+              :options="[{ value: '', label: '— no voice yet (cast later) —' }, ...voices.map((v) => ({ value: v.id, label: `${v.name} (${v.engine})` }))]" />
           </label>
 
           <label class="personas__field">
@@ -458,37 +467,22 @@ onMounted(loadAll);
           </label>
 
           <label class="personas__field personas__field--wide">
-            <span>Bio (character context)</span>
+            <span>Spoken delivery (engines that take instructions: Qwen3, LuxTTS)</span>
             <UiTextarea
               class="personas__textarea"
-              v-model="draft.bio"
-              placeholder="A retired racetrack tout with three teeth and four lies for every truth. Speaks in fragments. Calls everyone &quot;boss.&quot; Suspicious of cops. Comfortable with silence…"
-              @input="markDirty"
-            />
-            <p class="jv-muted personas__hint">
-              Character backstory: age, history, mannerisms. Read by Smart-assign
-              to match voices to characters. Up to 2000 characters. Not used as a
-              TTS instruction — that's the Personality field below.
-            </p>
-          </label>
-
-          <label class="personas__field personas__field--wide">
-            <span>Personality (TTS delivery instruction)</span>
-            <UiTextarea
-              class="personas__textarea"
-              v-model="draft.personality"
+              v-model="draft.voice_instruct"
               placeholder="Clipped, world-weary noir delivery. Dry wit. Boston accent in stressful moments. Never overshares."
               @input="markDirty"
             />
             <p class="jv-muted personas__hint">
-              Passed to instruct-capable engines as the
-              <code>instruct</code> / style-prompt field at render time; other
-              engines ignore it. <strong>Never an LLM rewrite of the
-              manuscript</strong> — the Rewrite button on Generate is the
-              explicit tool for that.
+              How the line is performed. Passed to instruct-capable engines as
+              the <code>instruct</code> / style-prompt field at render time;
+              other engines ignore it. <strong>Never an LLM rewrite of the
+              manuscript</strong> — the Rewrite button is the explicit tool
+              for that.
             </p>
             <!-- Live verdict for THIS persona's engine (user ask: "how do
-                 I know what TTS takes input from bio and personality"). -->
+                 I know what TTS takes input from these fields"). -->
             <p v-if="instructStatus" class="personas__hint" :class="instructStatus.ok ? 'personas__instruct-ok' : 'jv-muted'">
               {{ instructStatus.text }}
             </p>
@@ -527,6 +521,23 @@ onMounted(loadAll);
               <UiButton intent="ghost" size="small" label="+ Edit chain" @click="openEffectsEditor" />
             </div>
           </div>
+
+          <!-- ── How they're written: prose the LLM features read ─────── -->
+          <h4 class="jv-section__title personas__section">How they're written</h4>
+
+          <label class="personas__field personas__field--wide">
+            <span>Character sheet</span>
+            <UiTextarea
+              class="personas__textarea"
+              v-model="draft.personality"
+              placeholder="Lead detective. Dry wit, hates the fog, protective of Sarah. Speaks in short declaratives."
+              @input="markDirty"
+            />
+            <p class="jv-muted personas__hint">
+              Drives Compose and Rewrite, casting suggestions, and the game
+              export sidecar — it never changes the audio.
+            </p>
+          </label>
         </div>
 
         <!-- Cross-project usage detail panel (Phase 7 / Slice 1). -->
@@ -655,6 +666,14 @@ onMounted(loadAll);
   font-weight: 600;
 }
 .personas__field--wide { grid-column: 1 / -1; }
+
+/* Section heading inside the editor grid — the sound/prose divide. */
+.personas__section {
+  grid-column: 1 / -1;
+  margin: 8px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
 
 .personas__textarea {
   min-height: 100px;

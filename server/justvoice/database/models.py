@@ -60,8 +60,8 @@ def _utcnow() -> datetime:
 
 # VoiceProfile / ProfileSample / ProfileChannel removed in Slice 4 of the
 # Profile-kill rollout (see plan locked decision #1). Persona now carries
-# voice_id + delivery + effects + personality + lexicon directly.
-# Audio-channel routing per character lives on PersonaChannel below.
+# voice_id + delivery + effects + voice_instruct + personality + lexicon
+# directly. Audio-channel routing per character lives on PersonaChannel below.
 
 
 class PersonaChannel(Base):
@@ -77,17 +77,26 @@ class PersonaChannel(Base):
     channel_id = Column(String, ForeignKey("channels.id", ondelete="CASCADE"), primary_key=True)
 
 
-# ── Persona layer (character bios — separate from VoiceProfile) ──
+# ── Persona layer (character sheets — separate from VoiceProfile) ──
 
 
 class Persona(Base):
     """Character — the sole identity layer after the Profile-kill (plan Q1).
 
     All voice-styling fields live directly on the persona, not behind a
-    Profile FK. `personality` is a TTS delivery instruction (engines that
-    accept `supports_instruct_freeform` consume it; others ignore it).
-    Rewrite is a separate explicit LLM tool, not a render-time hook on
-    this row.
+    Profile FK. Two text fields, one master each (the 2026-08-15 split —
+    one field feeding both the synth and the LLM prompts was the bug):
+
+      * `voice_instruct` — the spoken-delivery instruction. Engines whose
+        manifest declares an instruct field consume it as `delivery.instruct`
+        at synth time (Qwen3-TTS custom-voice, LuxTTS); the rest ignore it.
+        It is the ONLY field that changes what the audio sounds like.
+      * `personality` — the character sheet. Drives Compose / Rewrite,
+        casting suggestions (smart-assign) and the game-export sidecar.
+        It never reaches the synth.
+
+    Two fields, not three: once the instruct is extracted, "backstory" and
+    "character sheet" are one field written twice.
 
     Imported from JustWrite character roster, voice-profile migration, or
     created manually inside JustVoice.
@@ -99,13 +108,15 @@ class Persona(Base):
     name = Column(String, nullable=False)
     language = Column(String, default="en")
     avatar_path = Column(String, nullable=True)
-    bio = Column(Text, nullable=True)  # max 2000 chars enforced at the API layer
     # Direct FK to a Voice (TTS artifact) — Voices live as JSON manifests
     # today (storage/voices.py); this column carries the voice id verbatim
     # and is not a foreign key constraint.
     voice_id = Column(String, nullable=True)
-    # TTS delivery instruction (Qwen3 `instruct`, LuxTTS style-prompt).
-    personality = Column(Text, nullable=True)
+    # Spoken-delivery instruction (Qwen3 `instruct`, LuxTTS style-prompt).
+    voice_instruct = Column(Text, nullable=True)
+    # The character sheet — prose about who this character is. Read by the
+    # LLM features and the export sidecar, never by an engine.
+    personality = Column(Text, nullable=True)  # max 2000 chars at the API layer
     # Tier-2 delivery overlay (JSON-serialized Delivery shape).
     default_delivery = Column(Text, nullable=True)
     # Pedalboard effects chain (JSON array of {type, params}). Cascade order:
@@ -437,7 +448,12 @@ class Channel(Base):
 class MCPBinding(Base):
     """Per-client voice + defaults binding for the MCP server. When an
     Unreal editor / Claude / Cursor calls `justvoice.speak` without
-    specifying voice or personality, these defaults apply.
+    specifying a voice, these defaults apply.
+
+    A per-binding "apply the persona's text" flag lived here until
+    2026-08-15: written, returned, read by nothing. Whether the MCP speak
+    path should apply the bound persona's `voice_instruct` is an open
+    product question, not a dead column.
     """
 
     __tablename__ = "mcp_bindings"
@@ -448,7 +464,6 @@ class MCPBinding(Base):
     # Slice 4 of the Profile-kill rollout. Nullable; MCP clients without
     # a bound persona fall back to the global default.
     persona_id = Column(String, ForeignKey("personas.id", ondelete="SET NULL"), nullable=True)
-    default_personality = Column(Boolean, default=False, nullable=False)
     default_engine = Column(String, nullable=True)
     last_seen_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=_utcnow)

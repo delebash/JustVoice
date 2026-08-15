@@ -46,7 +46,7 @@ def test_scene_block_ordering(db_session):
 def test_cast_assignment(db_session):
     """ProjectPersona is a many-to-many with role_label."""
     p = Project(name="Game", project_type="game_voicelines")
-    persona = Persona(name="Mara", bio="Lead detective")
+    persona = Persona(name="Mara", personality="Lead detective")
     db_session.add_all([p, persona])
     db_session.flush()
     db_session.add(ProjectPersona(project_id=p.id, persona_id=persona.id, role_label="protagonist"))

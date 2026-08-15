@@ -100,7 +100,7 @@ def test_discover_with_stubbed_llm(client, monkeypatch):
 
 def test_promote_creates_then_reuses(client):
     pid, _scene_id = _import_project(client)
-    body = {"candidates": [{"name": "Tom Harlan", "bio": "neighbor"}]}
+    body = {"candidates": [{"name": "Tom Harlan", "personality": "neighbor"}]}
     r1 = client.post(f"/v1/projects/{pid}/personas/promote", json=body)
     assert r1.status_code == 200, r1.text
     assert len(r1.json()["created"]) == 1 and r1.json()["reused"] == []

@@ -299,8 +299,11 @@ def _ensure_narrator(db: Session, project: Project) -> None:
         return
     narrator = DbPersona(
         name="Narrator",
-        bio="The voice of everything that isn't spoken.",
-        personality="Steady, clear, unhurried — carries the prose between dialogue.",
+        voice_instruct="Steady, clear, unhurried — carries the prose between dialogue.",
+        personality=(
+            "The book's narrator: reads everything that is not a character's line. "
+            "Steady, clear, unhurried."
+        ),
         is_builtin=True,
     )
     db.add(narrator)
@@ -653,9 +656,10 @@ async def ensure_narrator(
     if existing is None:
         narrator = DbPersona(
             name="Narrator",
-            bio="The voice of everything that isn't spoken.",
+            voice_instruct="Steady, clear, unhurried — carries the prose between dialogue.",
             personality=(
-                "Steady, clear, unhurried — carries the prose between dialogue."
+                "The book's narrator: reads everything that is not a character's "
+                "line. Steady, clear, unhurried."
             ),
             is_builtin=True,
         )
@@ -741,14 +745,17 @@ def _materialize_standard(
     reused_personas: list[str] = []
     char_to_persona_id: dict[str, str] = {}
     for char in standard.characters:
-        bio_text = char.notes or ""
+        # Everything the source knows about the character is sheet material:
+        # the one-liner + aliases (notes) and the casting hint (voice_hint).
+        # `voice_instruct` is deliberately left empty — see ensure_project_persona.
+        sheet = char.notes or ""
         if char.voice_hint:
-            bio_text = f"{bio_text}\n\nVoice hint:\n{char.voice_hint}".strip()
+            sheet = f"{sheet}\n\nVoice hint:\n{char.voice_hint}".strip()
         pid, created = ensure_project_persona(
             db,
             p.id,
             name=char.name,
-            bio=bio_text or None,
+            personality=sheet or None,
             imported_from=standard.source,
             imported_id=char.id,
         )
@@ -1202,12 +1209,12 @@ def _update_project_from_standard(
     # Characters create-or-reuse, as on first import.
     char_to_persona_id: dict[str, str] = {}
     for char in standard.characters:
-        bio_text = char.notes or ""
+        sheet = char.notes or ""
         if char.voice_hint:
-            bio_text = f"{bio_text}\n\nVoice hint:\n{char.voice_hint}".strip()
+            sheet = f"{sheet}\n\nVoice hint:\n{char.voice_hint}".strip()
         pid, _created = ensure_project_persona(
             db, project.id,
-            name=char.name, bio=bio_text or None,
+            name=char.name, personality=sheet or None,
             imported_from=standard.source, imported_id=char.id,
         )
         char_to_persona_id[char.id] = pid

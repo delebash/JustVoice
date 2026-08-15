@@ -18,7 +18,7 @@ def ensure_project_persona(
     project_id: str,
     *,
     name: str,
-    bio: str | None,
+    personality: str | None,
     imported_from: str,
     imported_id: str,
 ) -> tuple[str, bool]:
@@ -46,7 +46,13 @@ def ensure_project_persona(
             db.add(ProjectPersona(project_id=project_id, persona_id=existing.id))
         return existing.id, False
 
-    persona = Persona(name=name, bio=bio, imported_from=imported_from, imported_id=imported_id)
+    # Everything an importer knows about a character is character-sheet
+    # material. `voice_instruct` stays empty on import: "female, age 34,
+    # protagonist" is a casting hint, not a delivery instruction — the user
+    # writes that one (2026-08-15 split).
+    persona = Persona(
+        name=name, personality=personality, imported_from=imported_from, imported_id=imported_id
+    )
     db.add(persona)
     db.flush()
     db.add(ProjectPersona(project_id=project_id, persona_id=persona.id))

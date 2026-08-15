@@ -46,8 +46,9 @@ separate "cast member" object, and none exists in storage.
 - **Persona = the character.** A library object bundling everything that
   makes a character sound like themselves: `voice_id`, delivery defaults
   (speed/pitch/gain), effects chain (e.g. ghost = whisper + reverb),
-  optional lexicon, and bio/`personality` text (consumed as a style prompt
-  by instruct-capable engines, and used by Smart-assign for voice matching).
+  optional lexicon, `voice_instruct` (consumed as a style prompt by
+  instruct-capable engines — the only text that reaches the synth) and
+  `personality`, the character sheet (Compose/Rewrite + Smart-assign).
 - **Cast is not a third thing.** It's the Studio surface that lists the
   personas speaking *in the current project*, plus project-local stats
   (line counts, "discovered in ch. 4") that live on the project, not the
@@ -75,7 +76,7 @@ Whether import creates personas depends on what the source file knows:
 
 | Source | Speaker data in file | Personas created |
 |---|---|---|
-| `.jw.json` (JustWrite) | full character sheet (names, roles, bios) | **at import** — bios flow into `personality` |
+| `.jw.json` (JustWrite) | full character sheet (names, roles, one-liners) | **at import** — all of it flows into `personality`; `voice_instruct` stays empty |
 | Game CSV / string table | explicit speaker column | **at import** — one per unique value; performance notes ride along |
 | Podcast markdown | `SARAH:` / `**SARAH:**` labels | **at import** — unknown labels become new personas, known ones match existing |
 | Bare EPUB / DOCX | none — just prose | **later** — Script's LLM pass discovers speakers; the "N speakers found that aren't in your cast" banner promotes them ("＋ Create personas & add to cast", or "Merge into existing…") |
@@ -88,7 +89,7 @@ in place, and only changed lines lose their rendered take (go *stale*).
 ## 4. How voices get assigned (three paths, by scale)
 
 1. **Smart-assign** — one button proposes a full cast from the voice library
-   using character role/bio vs voice traits; user overrides anything wrong.
+   using the character sheet vs voice traits; user overrides anything wrong.
 2. **Card + library click** (audiobook scale, ~5–15 characters) — select a
    character card, the library panel shows "Picking for: X", click a voice
    row to assign; click the assigned voice again to unassign; ▶ auditions

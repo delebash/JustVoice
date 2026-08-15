@@ -3,7 +3,10 @@
 
 For every VoiceProfile row in SQLite, materialize an orphan Persona JSON
 record carrying the absorbed fields (voice_id, language, avatar_path,
-personality, default_delivery, effects_chain, lexicon_id, engine_override).
+voice_instruct, default_delivery, effects_chain, lexicon_id,
+engine_override). The profile's `personality` was a style prompt, so it
+lands on `voice_instruct`; its prose `description` becomes the character
+sheet (the 2026-08-15 split).
 Orphan = no ProjectPersona link; the user binds it to specific projects
 later via the Personas tab's "Add to project" action (Slice 2).
 
@@ -83,12 +86,12 @@ def migrate_voice_profiles_to_personas(
                 name=row["name"],
                 voice_id=voice_id,
                 default_delivery=default_delivery,
-                bio=row["description"],
+                voice_instruct=row["personality"],
                 engine_override=row["default_engine"],
                 lexicon_id=row["default_lexicon_id"],
                 language=row["language"] or "en",
                 avatar_path=row["avatar_path"],
-                personality=row["personality"],
+                personality=row["description"],
                 effects_chain=effects_chain,
                 imported_from="voice_profile",
                 imported_id=profile_id,

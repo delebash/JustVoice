@@ -20,13 +20,13 @@ Below the textarea is a row of chip cards. Each chip selects one input:
 | 🎙️ Voice | Pick from the currently-loaded engine's voices. Disabled when no engine is loaded — see the "No engine loaded" banner. |
 | 🧠 Engine | Shows which TTS engine is loaded. Switch via [engines.md](engines.md). |
 | 🗣️ Lang | Language hint for engines that support per-call language switching (Chatterbox-Multilingual, Qwen3). |
-| 👤 Persona | Pick a [persona](personas.md) — wraps voice + delivery defaults + effects + personality. (It was called "profile" before personas absorbed that entity.) |
+| 👤 Persona | Pick a [persona](personas.md) — wraps voice + delivery defaults + effects + the spoken-delivery instruction. (It was called "profile" before personas absorbed that entity.) |
 | 🎛️ Effects | Apply a saved effects chain to the output. |
-| 🎭 Persona rewrite | Re-rolls input through the selected profile's personality prompt via LLM before TTS. Always visible; disabled (with tooltip) when no profile or no personality is set. |
+| 🎭 Persona rewrite | Re-rolls input through the selected persona's character sheet via LLM before TTS. Always visible; disabled (with tooltip) when no persona is picked or its sheet is empty. |
 | 🔁 Autoplay | Auto-play the result on render. |
 
 The three action buttons at the right end:
-- **🎲 Compose** — asks the LLM to write a fresh in-character line into the textarea, using the selected profile's `personality` prompt. Always visible; **disabled** when no profile is selected or the selected profile has no personality prompt (tooltip explains why). Requires an LLM service configured in Settings → External.
+- **🎲 Compose** — asks the LLM to write a fresh in-character line into the textarea, using the selected persona's **character sheet**. Always visible; **disabled** when no persona is selected or its sheet is empty (tooltip explains why). Requires an LLM service configured in Settings → External.
 - **▶ Generate** — renders the textarea content. Disabled until a voice is picked.
 - **⏹ Stop** — cancels a queued/running render. Always visible; disabled when nothing is in flight.
 
@@ -170,7 +170,7 @@ Click a take to see its lineage via the [take versioning](take-versioning.md) ch
 
 - **"No engine loaded."** — Click the link to load one on the [Speech engines](engines.md) tab (AI page). Kokoro is the lightest if you're unsure.
 - **Voice dropdown says "no voices available"** — The loaded engine is clone-only (Chatterbox) and you haven't cloned a reference WAV yet. Use the link in the banner to [Voices](voices.md).
-- **Compose button is disabled (grayed out)** — No persona is selected, or the selected persona has no personality prompt. Pick one in the 👤 Persona chip or add a personality prompt via [Personas](personas.md).
+- **Compose button is disabled (grayed out)** — No persona is selected, or the selected persona's character sheet is empty. Pick one in the 👤 Persona chip, or write a sheet in [Personas](personas.md) → "How they're written".
 - **Compose returns "LLM not configured"** — Wire an OpenAI-compatible endpoint in Settings → External.
 - **Slash menu shows no tags** — The loaded engine has no inline-tag taxonomy. Switch to Chatterbox-Turbo, Dia, or MOSS to access tags.
 - **Render is silent / clipped at the end** — Some engines (Chatterbox family) hallucinate trailing noise; the trim utility removes that. If clipping the actual content, file an issue with the offending text.

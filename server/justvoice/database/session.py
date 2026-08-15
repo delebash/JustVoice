@@ -119,9 +119,12 @@ def _backfill_narrator_personas(eng) -> None:
                     continue
                 narrator = Persona(
                     name="Narrator",
-                    bio="The voice of everything that isn't spoken.",
-                    personality=(
+                    voice_instruct=(
                         "Steady, clear, unhurried — carries the prose between dialogue."
+                    ),
+                    personality=(
+                        "The book's narrator: reads everything that is not a "
+                        "character's line. Steady, clear, unhurried."
                     ),
                     is_builtin=True,
                 )

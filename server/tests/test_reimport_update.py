@@ -114,7 +114,10 @@ def test_block_render_clears_staleness(client, monkeypatch):
     # voice on the persona so the production renderer accepts the block
     personas = client.get("/v1/personas").json()["personas"]
     hale = next(p for p in personas if p["name"] == "Hale")
-    body = {**{k: hale.get(k) for k in ("name", "language", "bio")}, "voice_id": "af_heart"}
+    body = {
+        **{k: hale.get(k) for k in ("name", "language", "personality")},
+        "voice_id": "af_heart",
+    }
     client.put(f"/v1/personas/{hale['id']}", json=body)
 
     monkeypatch.setattr(

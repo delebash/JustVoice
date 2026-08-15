@@ -52,7 +52,7 @@ def _row_to_persona(row) -> Persona:
         voice_id=row.voice_id,
         language=row.language or "en",
         avatar_path=row.avatar_path,
-        bio=row.bio,
+        voice_instruct=row.voice_instruct,
         personality=row.personality,
         default_delivery=_loads(row.default_delivery, {}),
         effects_chain=_loads(row.effects_chain, []),
@@ -132,7 +132,7 @@ class PersonaStore:
             voice_id=p.voice_id or None,
             language=p.language,
             avatar_path=p.avatar_path,
-            bio=p.bio,
+            voice_instruct=p.voice_instruct,
             personality=p.personality,
             default_delivery=json.dumps(p.default_delivery) if p.default_delivery else None,
             effects_chain=json.dumps(p.effects_chain) if p.effects_chain else None,
@@ -176,7 +176,7 @@ class PersonaStore:
         name: str,
         voice_id: str | None = None,
         default_delivery: dict | None = None,
-        bio: str | None = None,
+        voice_instruct: str | None = None,
         engine_override: str | None = None,
         lexicon_id: str | None = None,
         llm_rewrite_enabled: bool = False,  # accepted, not persisted (legacy)
@@ -199,7 +199,7 @@ class PersonaStore:
                 voice_id=voice_id,
                 language=language,
                 avatar_path=avatar_path,
-                bio=bio,
+                voice_instruct=voice_instruct,
                 personality=personality,
                 default_delivery=default_delivery or {},
                 effects_chain=effects_chain or [],
@@ -251,7 +251,7 @@ class PersonaStore:
                 row.voice_id = new.voice_id or None
                 row.language = new.language
                 row.avatar_path = new.avatar_path
-                row.bio = new.bio
+                row.voice_instruct = new.voice_instruct
                 row.personality = new.personality
                 row.default_delivery = (
                     json.dumps(new.default_delivery) if new.default_delivery else None

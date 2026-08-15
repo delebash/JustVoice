@@ -157,7 +157,6 @@ def _resolve_cast(scene_id: str, db: Session) -> list[dict]:
         {
             "id": p.id,
             "name": p.name,
-            "bio": p.bio,
             "role": None,
             "gender": None,  # Persona schema doesn't carry these fields
             "pronouns": None,  # today; Phase 4 / Slice 4 (Smart-assign)
@@ -999,7 +998,8 @@ async def discover_text_endpoint(body: DiscoverTextRequest) -> DiscoverSpeakersR
 
 class PromoteCandidate(BaseModel):
     name: str
-    bio: str | None = None
+    # The discovery pass's role hint ("Mara's neighbour") — sheet material.
+    personality: str | None = None
 
 
 class PromoteSpeakersRequest(BaseModel):
@@ -1034,7 +1034,7 @@ async def promote_speakers_endpoint(
             db,
             project_id,
             name=cand.name,
-            bio=cand.bio,
+            personality=cand.personality,
             imported_from="discovered",
             imported_id=slug,
         )

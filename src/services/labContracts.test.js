@@ -64,9 +64,11 @@ describe("passage variable resolution", () => {
 describe("fill blocks mirror the production formatters", () => {
   it("smart-assign characters — smart_assign_api._format_characters shape", () => {
     const block = smartAssignCharactersBlock([
-      { id: "c_1", name: "Mara", bio: "dry archivist" },
+      { id: "c_1", name: "Mara", personality: "dry archivist" },
       { id: "c_2", name: "Renn", personality: "gravel-voiced" },
-      { id: "c_3", name: "Extra" },
+      // No character sheet — and the spoken-delivery text is NOT a
+      // fallback description (the 2026-08-15 split).
+      { id: "c_3", name: "Extra", voice_instruct: "clipped, dry" },
     ]);
     expect(block).toBe(
       '- id="c_1", name="Mara", description="dry archivist"\n' +

@@ -4,9 +4,10 @@ Two modes:
   * Direct mode — `lines[]` passed literally (legacy adapter use).
   * Scene mode — `scene_id` (+ optional `preset_id`) passed; the server
     resolves blocks → personas → lines internally. Each block's persona
-    contributes voice_id, default_delivery (tier-2), personality (→
+    contributes voice_id, default_delivery (tier-2), voice_instruct (→
     delivery.instruct for engines that consume it), and lexicon_id. The
-    preset overlays on top (tier-3).
+    preset overlays on top (tier-3). The persona's `personality` — the
+    character sheet — never reaches this path (2026-08-15 split).
 """
 
 from __future__ import annotations
@@ -66,7 +67,7 @@ def _resolve_scene_to_lines(
     """Resolve a scene's blocks → ChapterLines via persona lookup.
 
     Each block becomes one ChapterLine. The persona contributes voice,
-    tier-2 delivery overlay, personality (→ delivery.instruct), and
+    tier-2 delivery overlay, voice_instruct (→ delivery.instruct), and
     lexicon. The preset (tier-3) overlays on top via merge_delivery.
 
     `strict` decides what a block with no usable voice means. Real renders
@@ -115,7 +116,7 @@ def _resolve_scene_to_lines(
 
             voice_id: str | None = None
             tier2: dict = {}
-            personality: str | None = None
+            instruct: str | None = None
             persona_effects: list[dict] = []
             persona = None
 
@@ -124,7 +125,7 @@ def _resolve_scene_to_lines(
                 if persona is not None:
                     voice_id = persona.voice_id
                     tier2 = persona.default_delivery or {}
-                    personality = (persona.personality or "").strip() or None
+                    instruct = (persona.voice_instruct or "").strip() or None
                     persona_effects = persona.effects_chain or []
                     if persona.lexicon_id:
                         lexicon_ids.add(persona.lexicon_id)
@@ -156,8 +157,8 @@ def _resolve_scene_to_lines(
                 db=db,
                 tier2_overlay=tier2,
             )
-            if personality and not merged.get("instruct"):
-                merged["instruct"] = personality
+            if instruct and not merged.get("instruct"):
+                merged["instruct"] = instruct
 
             lines.append(
                 ChapterLine(

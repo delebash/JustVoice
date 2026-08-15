@@ -10,7 +10,7 @@ is the **AI Settings** page in the sidebar.
 
 | Feature | What it does | When you use it |
 |---|---|---|
-| **Compose** | Writes a fresh in-character line from a persona's personality prompt | Generate view → 🎲 Compose button |
+| **Compose** | Writes a fresh in-character line from a persona's character sheet | Generate view → 🎲 Compose button |
 | **Persona rewrite** | Rewrites the current text in a character's voice (preview-then-accept) | Generate view → ✏️ Rewrite · Studio Script → right-click a dialogue block |
 | **Speaker attribution** | Extracts who says what and what they say | Studio Script tab → Analyze |
 | **Smart-assign** | Matches each character in your cast to a TTS voice | Studio Cast tab → Smart-assign |
@@ -244,7 +244,8 @@ fakes:
 
 - **Smart-assign**: *Insert from cast…* fills the Characters box with your
   project's cast in the run's own wire shape
-  (`- id="c_mara", name="Mara", description="dry, mid-30s archivist"`),
+  (`- id="c_mara", name="Mara", description="dry, mid-30s archivist"` — the
+  description is the first 200 characters of the persona's character sheet),
   and *Insert from voices…* fills the Voices box with your fetched voice
   library the same way. The result renders as a readable table —
   **Character → Voice by name** (hover a name to see the underlying id);
@@ -258,9 +259,9 @@ fakes:
 - **Show notes**: *Insert from script…* builds a project's script the way
   production does — `## Chapter title` headings with `SPEAKER: line` rows,
   NARRATION where no one is assigned.
-- **Compose / Rewrite**: *Insert from persona…* drops a persona's
-  personality text into the box, so you test with the same character sheet
-  the 🎲 and ✏️ buttons use.
+- **Compose / Rewrite**: *Insert from persona…* drops a persona's character
+  sheet into the box, so you test with the same text the 🎲 and ✏️ buttons
+  use.
 
 ## Thinking — one control, honest errors
 
