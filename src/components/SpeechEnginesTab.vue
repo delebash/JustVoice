@@ -27,9 +27,9 @@
   2026-08-14 with the invented per-variant vram_mb column.
 -->
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useApi } from "../stores/api.js";
-import { DownloadBar, UiButton, confirmDialog, openExternal, openPath, promptDialog, pushToast, withAiTask } from "@delebash/llm-ui";
+import { DownloadBar, UiButton, confirmDialog, openExternal, openPath, promptDialog, pushToast } from "@delebash/llm-ui";
 import { makeEngineDownloadTask } from "../services/ttsJobChannel.js";
 import { createDownloadTask } from "@delebash/llm-ui";
 // The row's three-dot menu — reka-ui's DropdownMenu, the same import shape
@@ -39,19 +39,6 @@ import {
   DropdownMenuRoot, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "reka-ui";
 
-// Mirror the job-channel task's live numbers into the kit strip's progress —
-// the bar computes from done/total (bytes) and the TEXT is the ONE shared
-// caption ("Downloading · 42% · 512 MB of 1.2 GB · 24 MB/s"), so the strip and
-// the Engines card can never disagree (the install-progress bridge,
-// 2026-08-08 — before it the strip showed a bare label while the card had the
-// percent). Returns the stop handle; the caller stops it when the phase ends.
-function bridgeJobProgress(panel, task) {
-  return watch(
-    () => [task.done, task.total, task.label],
-    () => panel.setProgress(task.done || 0, task.total || 0, task.label),
-    { immediate: true },
-  );
-}
 import SpeechProvidersPanel from "./SpeechProvidersPanel.vue";
 import { UiSelect } from "@delebash/llm-ui";
 
@@ -233,40 +220,24 @@ function modelOnDisk(e, v) {
 }
 function engineNeedsInstall(e) { return e.isolation === "venv" && e.status === "not_installed"; }
 
-// ── Install (engine venv) — kit task over the job channel. ────────────
-// The runner owns the panel lifecycle. The job task decides the OUTCOME by
-// state, not by exception, so the callback translates: done → return (the
-// runner finishes) · error → throw (the runner fails, the row keeps the
-// error) · cancelled → panel.cancel() + return (first-outcome-wins makes the
-// runner's finish a no-op). Download PERCENT does not reach the strip yet —
-// bridging it is the user's named next task (with the VRAM arbiter).
+// ── Install (engine venv) — kit job-channel task, row bar only. ───────
+// No global task strip: that strip is the AI task panel, for runs that QUERY
+// a model. Moving bytes and building an environment belongs on the row's
+// DownloadBar, which is what the kit's own llama.cpp engine install does
+// (`engineInstallChannel()` → `engineGateTask`) — see `runLoad` for the full
+// note. The job task decides the OUTCOME by state, not by exception.
 async function installEngine(engine) {
   const key = _engineKey(engine.id);
   clearTerminalTask(key);
   const task = makeEngineDownloadTask(api, engine.id, {});
   dlTasks[key] = task;
   try {
-    await withAiTask({
-      feature: "install",
-      label: `Installing · ${engine.name || engine.id}`,
-    }, async (panel) => {
-      // Bridge the strip's ✕ to the job-channel task so it stops the install.
-      panel.signal.addEventListener("abort", () => {
-        if (task.state === "running") task.cancel();
-      }, { once: true });
-      const stopBridge = bridgeJobProgress(panel, task);
-      try {
-        await task.start();
-      } finally {
-        stopBridge();
-      }
-      if (task.state === "error") throw new Error(task.error || "install failed");
-      if (task.state !== "done") { panel.cancel(); return; }
-      pushToast({ message: `${engine.name || engine.id} installed.`, kind: "success", duration: 4000 });
-      delete variants[engine.id];
-      await refresh();
-      delete dlTasks[key]; // done bars are reaped (the LLM catalog's rule) — error/cancelled linger for Retry/Dismiss
-    });
+    await task.start();
+    if (task.state !== "done") return;  // error/cancelled — the row's bar says which
+    pushToast({ message: `${engine.name || engine.id} installed.`, kind: "success", duration: 4000 });
+    delete variants[engine.id];
+    await refresh();
+    delete dlTasks[key]; // done bars are reaped (the LLM catalog's rule) — error/cancelled linger for Retry/Dismiss
   } catch {
     // The task row carries the error (failed lingers until dismissed) — the
     // pre-conversion code surfaced no toast here either.
@@ -287,40 +258,39 @@ async function runLoad(engine, variantId) {
     cancel: () => api.request(`/v1/engines/${engine.id}/cancel-load`, { method: "POST" }),
   });
   dlTasks[key] = task;
+  // NO global task strip (user ruling 2026-08-15). That strip is the AI task
+  // panel — the kit opens it from ONE place, `services/aiFeature.js`, for
+  // runs against `/v1/ai/run|stream`, i.e. QUERYING a model. The kit's own
+  // LLM model load pointedly does not use it: `useRunnerModels.retryLoad`
+  // drives a DownloadBar on the row and nothing else.
+  //
+  // Loading a speech model landed there by accident of history. It was on
+  // JustVoice's own `renderTasks.js` ("Render-task store — any long-running
+  // TTS operation"), and the 2026-08-07 task-queue conversion swept all 17
+  // sites onto the kit's AI queue in one move — so a model load started
+  // announcing itself in a queue built for model queries, on top of the row
+  // it already owns. The row's DownloadBar (rendered from `taskRowsFor`)
+  // carries progress, cancel and the error, exactly as it does for the LLM
+  // catalog. Long TTS RENDER jobs keep their strip; that is what it is for.
   try {
-    await withAiTask({
-      feature: "load",
-      label: `Loading · ${engine.name || engine.id} (${variantNameFor(engine.id, variantId)})`,
-      onRetry: () => runLoad(engine, variantId),
-    }, async (panel) => {
-      // Bridge the kit handle's Cancel to the job-channel task (see installEngine).
-      panel.signal.addEventListener("abort", () => {
-        if (task.state === "running") task.cancel();
-      }, { once: true });
-      const stopBridge = bridgeJobProgress(panel, task);
-      try {
-        task.arm("Loading model");
-        try {
-          await api.request(`/v1/engines/${engine.id}/load`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ device: "auto", model_variant: variantId || null }),
-          });
-        } catch (e) {
-          if (task.state === "cancelled") { panel.cancel(); return; }
-          task.fail(String(e?.message || e));   // the CARD's job bar, not the panel
-          throw e;
-        }
-        task.apply({ terminal: "done" });
-        window.dispatchEvent(new Event("jv:health-refresh"));
-        delete variants[engine.id];
-        await refresh();
-        pushToast({ message: `${engine.name || engine.id} loaded.`, kind: "success", duration: 4500 });
-        delete dlTasks[key];
-      } finally {
-        stopBridge();
-      }
-    });
+    task.arm("Loading model");
+    try {
+      await api.request(`/v1/engines/${engine.id}/load`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device: "auto", model_variant: variantId || null }),
+      });
+    } catch (e) {
+      if (task.state === "cancelled") return;
+      task.fail(String(e?.message || e));   // the row's bar keeps the error
+      return;
+    }
+    task.apply({ terminal: "done" });
+    window.dispatchEvent(new Event("jv:health-refresh"));
+    delete variants[engine.id];
+    await refresh();
+    pushToast({ message: `${engine.name || engine.id} loaded.`, kind: "success", duration: 4500 });
+    delete dlTasks[key];
   } catch {
     // The task row carries the error (failed lingers until dismissed).
   }
@@ -478,26 +448,12 @@ async function downloadOnly(engine, variantId) {
   const task = makeEngineDownloadTask(api, engine.id, { model_variant: variantId });
   dlTasks[key] = task;
   try {
-    await withAiTask({
-      feature: "install",
-      label: `Downloading · ${variantNameFor(engine.id, variantId)}`,
-    }, async (panel) => {
-      panel.signal.addEventListener("abort", () => {
-        if (task.state === "running") task.cancel();
-      }, { once: true });
-      const stopBridge = bridgeJobProgress(panel, task);
-      try {
-        await task.start();
-      } finally {
-        stopBridge();
-      }
-      if (task.state === "error") throw new Error(task.error || "download failed");
-      if (task.state !== "done") { panel.cancel(); return; }
-      pushToast({ message: `${variantNameFor(engine.id, variantId)} downloaded.`, kind: "success", duration: 4000 });
-      delete variants[engine.id];
-      await refresh();
-      delete dlTasks[key]; // done bars are reaped — the row itself now says "on disk"
-    });
+    await task.start();
+    if (task.state !== "done") return;  // error/cancelled — the row's bar says which
+    pushToast({ message: `${variantNameFor(engine.id, variantId)} downloaded.`, kind: "success", duration: 4000 });
+    delete variants[engine.id];
+    await refresh();
+    delete dlTasks[key]; // done bars are reaped — the row itself now says "on disk"
   } catch {
     // The task row carries the error (failed lingers until dismissed).
   }
