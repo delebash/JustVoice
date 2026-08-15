@@ -1362,22 +1362,21 @@ class EngineManager:
     # per-process arm (AMD Linux), labeled "computed", never persisted.
 
     def pool_used_mb(self, *, fresh: bool = False) -> int | None:
-        """Measured used memory of the budget pool (the kit's backend-aware
-        door), TTL-cached — the probe can shell out to nvidia-smi, so the
-        strip's poll and per-line bumps must never hit it raw."""
-        now = time.monotonic()
-        if not fresh:
-            hit = self._probe_cache.get("pool")
-            if hit is not None and now - hit[0] < PROBE_TTL_S:
-                return hit[1]
-        try:
-            from llm_runner.runner.hardware import used_device_mem_mb
+        """Measured used memory of the budget pool — THE kit's cached door.
 
-            val = used_device_mem_mb()
+        Delegates to `llm_runner.runner.hardware.used_pool_mb`, which owns the
+        TTL cache for the whole family (2026-08-14). JustVoice used to keep its
+        own cache over the same nvidia-smi call, so the speech strip and the LLM
+        strip on the SAME page could report different occupancy at the same
+        instant — two caches, two truths, the defect this redesign exists to
+        remove. `fresh=True` bypasses the cache for the load door, which must
+        never admit against a stale reading."""
+        try:
+            from llm_runner.runner.hardware import used_pool_mb
+
+            return used_pool_mb(fresh=fresh)
         except Exception:  # noqa: BLE001 — no kit → honestly unmeasurable
-            val = None
-        self._probe_cache["pool"] = (now, val)
-        return val
+            return None
 
     def _engine_proc_mb(self, proc: EngineProcess, *, fresh: bool = True) -> int | None:
         """Measured memory held by ONE engine subprocess — its process TREE
