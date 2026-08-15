@@ -86,6 +86,22 @@ INSTALL = [
 # release > 0.1.7 exists: bump the INSTALL pin, pass the t3 name through
 # `engine.py _construct()`, re-check the CPU torch.load patch against the new
 # source, then add the row with its verified file set.
+#
+# THE FILE SET FOR THAT ROW, ALREADY VERIFIED (HF tree, 2026-08-15) — so the
+# upgrade needs no second research pass:
+#   Cangjie5_TC.json                        1,920,163
+#   conds.pt                                  107,374
+#   grapheme_mtl_merged_expanded_v1.json       69,989
+#   s3gen.pt                            1,057,165,844
+#   t3_mtl23ls_v3.safetensors           2,143,989,928   (v2 is 2,143,989,752)
+#   ve.pt                                   5,698,626
+#   size_bytes = 3,208,951,924          (the v2 row's 3,208,951,748 + 176)
+# i.e. the v2 set with ONE file swapped. Upstream master's `from_local` still
+# opens `s3gen.pt` for v3 — but the repo ALSO carries `s3gen_v3.pt`
+# (1,056,903,694) and `s3gen_v3.safetensors` (1,056,381,804) that its loader
+# never reads. Confirm against the released loader before trusting the swap:
+# if a future version reads the v3 vocoder, this file list needs that line too
+# and the sum changes.
 VARIANTS = [
     {
         "id": "chatterbox-multilingual-v2",
