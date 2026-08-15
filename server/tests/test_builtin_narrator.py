@@ -35,8 +35,9 @@ def _create_project(client, name: str, kind: str) -> str:
 
 
 def _project_personas(client, project_id: str) -> list[dict]:
-    """Resolve the project's cast to full Persona objects (the cast
-    endpoint only returns persona_id + role_label)."""
+    """Resolve the project's cast to full Persona objects (the cast entry
+    carries persona_id + persona_name + role_label — these tests need
+    is_builtin, which only the persona itself has)."""
     r = client.get(f"/v1/projects/{project_id}/cast")
     assert r.status_code == 200, r.text
     entries = r.json().get("cast", [])

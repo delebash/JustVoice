@@ -132,7 +132,8 @@ async function pruneByVoice() {
       label: "Voice",
       type: "select",
       defaultValue: voices.value[0]?.id ?? "",
-      options: voices.value.map((v) => ({ value: v.id, label: `${v.name} (${v.id})` })),
+      // Not the id — a cloned voice's is `voice_<32 hex>` (storage/voices.py:76).
+      options: voices.value.map((v) => ({ value: v.id, label: `${v.name} (${v.engine})` })),
     }],
     confirmLabel: "Continue",
   });

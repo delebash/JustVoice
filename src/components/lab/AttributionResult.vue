@@ -25,7 +25,6 @@ import { UiButton, UiSelect, pushToast } from "@delebash/llm-ui";
 import { SOURCE_LEGEND, routeWords, sourceChipClass, sourceMeaning } from "../../services/attribution.js";
 import { useApi } from "../../stores/api.js";
 import { useActiveProject } from "../../stores/activeProject.js";
-import { usePersonasStore } from "../../stores/personas.js";
 import { useProjectsStore } from "../../stores/projects.js";
 
 const props = defineProps({
@@ -38,7 +37,6 @@ const props = defineProps({
 
 const api = useApi();
 const activeProjectStore = useActiveProject();
-const personasStore = usePersonasStore();
 const projectsStore = useProjectsStore();
 
 const data = computed(() => props.result?.data || null);
@@ -68,12 +66,21 @@ function disagrees(i) {
   return !!a && !!b && a !== b;
 }
 
+// Never print a raw id (user ruling 2026-08-15, "we should not be using these
+// types of ids in user facing gui"): a speaker we cannot name is "unknown". A
+// plain name the model returned — a discovered speaker — is shown as-is.
+const IDISH = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$|^c_.+_\d+$/i;
+
 function speakerLabel(spk) {
   if (!spk || spk === "unknown") return "unknown";
-  if (spk === "narrator") return "Narrator";
+  if (spk === "narrator" || spk === narratorPersonaId.value) return "Narrator";
   // The pipeline echoes the ids the run was given (the typed lab cast); a
   // reassigned row carries a REAL persona id instead.
-  return cast.value.find((c) => c.id === spk)?.name || personasStore.byId(spk)?.name || spk;
+  return (
+    cast.value.find((c) => c.id === spk)?.name
+    || castRows.value.find((c) => c.persona_id === spk)?.persona_name
+    || (IDISH.test(spk) ? "unknown" : spk)
+  );
 }
 // ── (6) Reassign — writes correction memory like Studio. ──────────────
 // Corrections are per-project; the write targets the ACTIVE project (named in
@@ -87,25 +94,51 @@ const projectName = computed(() => {
   if (!id) return "";
   return projectsStore.items?.find((p) => p.id === id)?.name || id;
 });
-const castPersonaIds = ref([]);
+// The cast endpoint ships the NAME with the id (2026-08-15) — no client-side
+// id→name lookup, so an empty persona cache can no longer turn this dropdown
+// into a column of UUIDs.
+const castRows = ref([]);
 async function loadProjectCast() {
-  if (!projectId.value) { castPersonaIds.value = []; return; }
+  if (!projectId.value) { castRows.value = []; return; }
   const r = await api.safeRequest(`/v1/projects/${projectId.value}/cast`, { cast: [] });
-  castPersonaIds.value = (r?.cast || []).map((c) => c.persona_id);
+  castRows.value = (r?.cast || []).filter((c) => c.persona_name);
 }
+const narratorPersonaId = computed(
+  () => castRows.value.find((c) => c.role_label === "narrator")?.persona_id || "");
+// ONE Narrator entry: the literal, which is non-teaching by Studio's rule, so
+// the narrator PERSONA is filtered out rather than offered twice.
 const reassignOptions = computed(() => [
   { value: "narrator", label: "Narrator" },
-  ...castPersonaIds.value.map((id) => ({
-    value: id,
-    label: personasStore.byId(id)?.name || id,
-  })),
+  ...castRows.value
+    .filter((c) => c.role_label !== "narrator")
+    .map((c) => ({ value: c.persona_id, label: c.persona_name })),
   { value: "unknown", label: "unknown" },
 ]);
+const personaIdByName = computed(() => {
+  const m = new Map();
+  for (const c of castRows.value) {
+    if (c.role_label !== "narrator") m.set(c.persona_name.toLowerCase(), c.persona_id);
+  }
+  return m;
+});
+// Which option this row is ON. A run answers with the ids it was GIVEN: the
+// Lab parses the Characters box into synthetic ids (`c_mara_0` —
+// attributionLab.js:37) while these options are real personas, so the box
+// matched nothing and rendered empty. Bridge the two id spaces by NAME — the
+// box is filled from the project's cast, so the strings are the same.
+// Production rows already carry persona ids and match directly.
+function selectedFor(row) {
+  const spk = row.speaker;
+  if (!spk || spk === "unknown" || spk === "narrator") return spk || "";
+  if (spk === narratorPersonaId.value) return "narrator";
+  if (castRows.value.some((c) => c.persona_id === spk)) return spk;
+  const name = cast.value.find((c) => c.id === spk)?.name || spk;
+  return personaIdByName.value.get(String(name).toLowerCase()) || "";
+}
 
 onMounted(() => {
   loadProjectCast();
   projectsStore.ensureLoaded();
-  personasStore.ensureLoaded();
 });
 
 async function reassign(row, newSpeaker) {
@@ -184,7 +217,8 @@ async function reassign(row, newSpeaker) {
           <span v-if="row.confidence != null" class="jv-mono jv-muted">{{ (row.confidence * 100).toFixed(0) }}%</span>
         </span>
         <span class="attr__text">{{ row.text }}</span>
-        <UiSelect class="attr__reassign" width="id" :model-value="row.speaker"
+        <UiSelect class="attr__reassign" width="id" :model-value="selectedFor(row)"
+          placeholder="Assign…"
           :options="reassignOptions" title="Correct the speaker — a real character teaches the next run"
           @update:model-value="(v) => reassign(row, v)" />
       </div>

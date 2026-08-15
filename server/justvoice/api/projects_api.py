@@ -147,6 +147,13 @@ class BlockResponse(BaseModel):
 
 class CastEntry(BaseModel):
     persona_id: str
+    # The name ships WITH the id (user ruling 2026-08-15: "we should not be
+    # using these types of ids in user facing gui"). Every consumer used to
+    # look this up client-side against a cached persona list, so an empty
+    # cache rendered raw UUIDs in the Projects cast row and in the Lab's
+    # reassign dropdown. Optional only for the outer join below; the FK
+    # cascades, so in normal operation it is always a name.
+    persona_name: Optional[str]
     role_label: Optional[str]
 
 
@@ -565,9 +572,23 @@ async def delete_block(block_id: str, db: Session = Depends(get_db)) -> dict:
 async def get_cast(project_id: str, db: Session = Depends(get_db)) -> CastResponse:
     if not db.query(Project).filter(Project.id == project_id).first():
         raise not_found(f"project {project_id}")
-    rows = db.query(ProjectPersona).filter(ProjectPersona.project_id == project_id).all()
+    # OUTER join, defensively: the persona FK cascades (models.py:194 +
+    # PRAGMA foreign_keys=ON), so a link cannot normally outlive its persona —
+    # but if one ever did, it should still reach the caller trying to repair
+    # the cast rather than vanish from the list. test_cast_names.py locks both.
+    rows = (
+        db.query(ProjectPersona, Persona.name)
+        .outerjoin(Persona, Persona.id == ProjectPersona.persona_id)
+        .filter(ProjectPersona.project_id == project_id)
+        .all()
+    )
     return CastResponse(
-        cast=[CastEntry(persona_id=r.persona_id, role_label=r.role_label) for r in rows]
+        cast=[
+            CastEntry(
+                persona_id=link.persona_id, persona_name=name, role_label=link.role_label
+            )
+            for link, name in rows
+        ]
     )
 
 

@@ -20,9 +20,12 @@ export const useEnginesStore = defineStore("engines", () => {
   let _inflight = null;
   let _listening = false;
 
+  // Failure leaves `loaded` false so the next caller retries — see the note in
+  // stores/personas.js.
   async function reload() {
-    const r = await useApi().safeRequest("/v1/engines", { engines: [] });
-    items.value = r?.engines ?? [];
+    const r = await useApi().safeRequest("/v1/engines", null);
+    if (!r) return items.value;
+    items.value = r.engines ?? [];
     loaded.value = true;
     return items.value;
   }

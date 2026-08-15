@@ -584,7 +584,7 @@ onActivated(() => {
                   intent="ghost"
                   class="projects__cast-pill"
                 >
-                  {{ c.persona_name ?? c.role_label ?? c.persona_id }}
+                  {{ c.persona_name || "(deleted persona)" }}
                   <button
                     type="button"
                     class="projects__cast-pill-x"

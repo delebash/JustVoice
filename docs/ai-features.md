@@ -171,7 +171,9 @@ characters per token).
 controls so you never have to invent test data:
 
 - **Insert from chapter…** lists the open project's chapters and puts a
-  chapter's real prose in the passage box.
+  chapter's real prose in the passage box. The picker then shows what you
+  inserted, so you can see which chapter is in the box; pick its top row to
+  clear the label.
 - **Insert from cast…** lists your projects ("Cast of Stillwater") and
   fills the Characters box with that project's real cast, one name per
   line.
@@ -188,7 +190,11 @@ uses that project's stored corrections, exactly like a production Analyze
 (the same most-recent-12).
 
 **Results you can correct.** Every row shows speaker · line · confidence,
-with a reassign dropdown. Reassigning to a real character records a
+with a reassign dropdown. The dropdown lists the open project's cast **by
+name** and starts on the row's current speaker, so it reads like any other
+dropdown — change it and the correction is recorded. A row whose speaker
+isn't in the project's cast starts on **Assign…** instead. Reassigning to a
+real character records a
 **speaker correction** for the open project, exactly like fixing a block on
 the Studio Script tab — the Lab teaches production. (The correction
 examples inject into the run's **user prompt**, which is separate from

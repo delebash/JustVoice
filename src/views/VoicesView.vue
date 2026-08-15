@@ -420,7 +420,10 @@ const defaultEngine = computed(() => {
 const engineVoiceOptions = computed(() =>
   voices.value
     .filter((v) => v.engine === selectedEngine.value)
-    .map((v) => ({ label: `${v.name} (${v.id})`, value: v.id }))
+    // Stock ids read like names (`af_bella`), but a cloned voice is minted
+    // `voice_<32 hex>` (storage/voices.py:76) — that is not a label. Show what
+    // distinguishes two same-named voices instead: the engine.
+    .map((v) => ({ label: `${v.name} (${v.engine})`, value: v.id }))
 );
 
 const engineOptions = computed(() =>

@@ -54,12 +54,14 @@ const scopeBadge = (lex) => {
   return { label: "reusable", intent: "ghost" };
 };
 
+// An id is never the answer to "what is this scoped to" (user ruling
+// 2026-08-15). A lookup that misses means the owner is gone, so say that.
 function scopedToName(lex) {
   if (lex?.scope === "project" && lex.project_id) {
-    return projects.value.find((p) => p.id === lex.project_id)?.name || lex.project_id;
+    return projects.value.find((p) => p.id === lex.project_id)?.name || "(deleted project)";
   }
   if (lex?.scope === "persona" && lex.persona_id) {
-    return personas.value.find((p) => p.id === lex.persona_id)?.name || lex.persona_id;
+    return personas.value.find((p) => p.id === lex.persona_id)?.name || "(deleted persona)";
   }
   return null;
 }

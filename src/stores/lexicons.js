@@ -13,9 +13,12 @@ export const useLexiconsStore = defineStore("lexicons", () => {
   const loaded = ref(false);
   let _inflight = null;
 
+  // Failure leaves `loaded` false so the next caller retries — see the note in
+  // stores/personas.js.
   async function reload() {
-    const r = await useApi().safeRequest("/v1/lexicons", { lexicons: [] });
-    items.value = r?.lexicons ?? [];
+    const r = await useApi().safeRequest("/v1/lexicons", null);
+    if (!r) return items.value;
+    items.value = r.lexicons ?? [];
     loaded.value = true;
     return items.value;
   }

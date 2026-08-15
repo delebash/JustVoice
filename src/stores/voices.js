@@ -18,9 +18,13 @@ export const useVoicesStore = defineStore("voices", () => {
   let _inflight = null;
   let _listening = false;
 
+  // Failure leaves `loaded` false so the next caller retries — see the note in
+  // stores/personas.js: marking a failed load as loaded poisons every later
+  // id→name lookup for the whole session.
   async function reload() {
-    const r = await useApi().safeRequest("/v1/voices", { voices: [] });
-    items.value = r?.voices ?? [];
+    const r = await useApi().safeRequest("/v1/voices", null);
+    if (!r) return items.value;
+    items.value = r.voices ?? [];
     loaded.value = true;
     return items.value;
   }

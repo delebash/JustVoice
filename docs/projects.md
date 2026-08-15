@@ -18,7 +18,8 @@ lost if your project outgrows its kind.
 
 Click a row to expand it: title, author, mastering preset, default render
 preset, cast, status, webhook, plus the chapters subtable (open any chapter in
-its kind's home tab). The action row does the heavy lifting: **Render all** ·
+its kind's home tab). **Cast** lists everyone in the project by name — a pill
+each, ✕ to remove, **+ Add personas** to pull more in from your library. The action row does the heavy lifting: **Render all** ·
 **Export M4B** · **QC report** (the ACX compliance check — loudness, peak, noise
 floor, with failures named) · **Export ZIP** · **Delete**. A bulk bar appears
 when you select multiple projects.

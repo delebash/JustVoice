@@ -1452,6 +1452,13 @@ function voiceById(voiceId) {
   return voices.value.find((v) => v.id === voiceId) || null;
 }
 
+// Never fall back to the id (user ruling 2026-08-15): a cloned voice is minted
+// `voice_<32 hex>` (storage/voices.py:76), and printing that in a cast card
+// names nothing. A lookup that misses means the voice is gone — say so.
+function voiceName(voiceId) {
+  return voiceById(voiceId)?.name || "(voice unavailable)";
+}
+
 async function assignVoice(personaId, voiceId) {
   try {
     // PUT persona with updated voice_id. Personas API takes the same shape
@@ -1821,7 +1828,7 @@ watch(selectedProjectId, (id) => {
               <div class="studio__char-role jv-muted">{{ personaRole(narratorPersona) || "carries the narration" }}</div>
               <div v-if="narratorPersona.voice_id" class="studio__char-voice">
                 <span class="studio__char-glyph" :style="{ background: colorFor(voiceById(narratorPersona.voice_id)?.name), color: '#fff' }">{{ (voiceById(narratorPersona.voice_id)?.name || "?").slice(0, 2) }}</span>
-                {{ voiceById(narratorPersona.voice_id)?.name || narratorPersona.voice_id }}
+                {{ voiceName(narratorPersona.voice_id) }}
                 <span class="jv-muted">· {{ voiceById(narratorPersona.voice_id)?.engine || "" }}</span>
                 <button type="button" class="jv-rowact" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(narratorPersona.voice_id))">▶</button>
                 <button type="button" class="jv-rowact" title="Tune voice parameters" @click.stop="openVoiceTuner(narratorPersona)">⚙</button>
@@ -1910,7 +1917,7 @@ watch(selectedProjectId, (id) => {
               <td>
                 <template v-if="p.voice_id">
                   <span class="studio__char-glyph" :style="{ background: colorFor(voiceById(p.voice_id)?.name), color: '#fff' }">{{ (voiceById(p.voice_id)?.name || "?").slice(0, 2) }}</span>
-                  {{ voiceById(p.voice_id)?.name || p.voice_id }}
+                  {{ voiceName(p.voice_id) }}
                   <span class="jv-muted">· {{ voiceById(p.voice_id)?.engine || "" }}</span>
                 </template>
                 <span v-else class="studio__char-unassigned">⚠ no voice</span>
@@ -1941,7 +1948,7 @@ watch(selectedProjectId, (id) => {
               <div class="studio__char-role jv-muted">{{ personaRole(p) }}</div>
               <div v-if="p.voice_id" class="studio__char-voice">
                 <span class="studio__char-glyph" :style="{ background: colorFor(voiceById(p.voice_id)?.name), color: '#fff' }">{{ (voiceById(p.voice_id)?.name || "?").slice(0, 2) }}</span>
-                {{ voiceById(p.voice_id)?.name || p.voice_id }}
+                {{ voiceName(p.voice_id) }}
                 <span class="jv-muted">· {{ voiceById(p.voice_id)?.engine || "" }}</span>
                 <button type="button" class="jv-rowact" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(p.voice_id))">▶</button>
                 <button type="button" class="jv-rowact" title="Tune voice parameters" @click.stop="openVoiceTuner(p)">⚙</button>

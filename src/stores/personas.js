@@ -13,9 +13,15 @@ export const usePersonasStore = defineStore("personas", () => {
   const loaded = ref(false);
   let _inflight = null;
 
+  // A null fallback, not an empty list: safeRequest swallows the error, so a
+  // store that sets `loaded` on a FAILED call answers every id→name lookup
+  // with "no such id" for the rest of the session — silently. That is what put
+  // raw UUIDs in the Lab's reassign dropdown (2026-08-15). On failure leave
+  // `loaded` false and the items alone, so the next caller retries.
   async function reload() {
-    const r = await useApi().safeRequest("/v1/personas", { personas: [] });
-    items.value = r?.personas ?? [];
+    const r = await useApi().safeRequest("/v1/personas", null);
+    if (!r) return items.value;
+    items.value = r.personas ?? [];
     loaded.value = true;
     return items.value;
   }

@@ -432,7 +432,7 @@ onMounted(loadAll);
           <label class="personas__field">
             <span>Voice</span>
             <UiSelect width="name" v-model="draft.voice_id" @update:model-value="markDirty"
-              :options="[{ value: '', label: '— no voice yet (cast later) —' }, ...voices.map((v) => ({ value: v.id, label: `${v.name} (${v.id})` }))]" />
+              :options="[{ value: '', label: '— no voice yet (cast later) —' }, ...voices.map((v) => ({ value: v.id, label: `${v.name} (${v.engine})` }))]" />
           </label>
 
           <label class="personas__field">
