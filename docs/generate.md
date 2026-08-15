@@ -8,8 +8,8 @@ This is JustVoice's primary single-line interface — for batch chapter-style re
 
 - **Dictation users** — quick line synthesis, paste, send. Use the [MCP server](mcp-server.md) for agent-driven workflows.
 - **Game devs** — render NPC dialogue lines one at a time during iteration. Use [chapter.md](take-versioning.md) for bulk export.
-- **Audiobook producers** — preview how a character sounds before committing to a full chapter render. Settings here flow into the chapter pipeline when you bind a [persona](personas.md) to a [profile](profiles.md).
-- **Podcasters** — record a one-off intro / outro / ad-read. Drag the result onto the [stories.md](stories.md) timeline to assemble.
+- **Audiobook producers** — preview how a character sounds before committing to a full chapter render. Settings here flow into the chapter pipeline through the [persona](personas.md) you cast.
+- **Podcasters** — record a one-off intro / outro / ad-read. (The Stories timeline is a placeholder; there is nothing to drag it onto yet.)
 
 ## The floating chip bar
 
@@ -20,7 +20,7 @@ Below the textarea is a row of chip cards. Each chip selects one input:
 | 🎙️ Voice | Pick from the currently-loaded engine's voices. Disabled when no engine is loaded — see the "No engine loaded" banner. |
 | 🧠 Engine | Shows which TTS engine is loaded. Switch via [engines.md](engines.md). |
 | 🗣️ Lang | Language hint for engines that support per-call language switching (Chatterbox-Multilingual, Qwen3). |
-| 👤 Profile | Pick a [voice profile](profiles.md) — wraps voice + delivery defaults + effects + personality. |
+| 👤 Persona | Pick a [persona](personas.md) — wraps voice + delivery defaults + effects + personality. (It was called "profile" before personas absorbed that entity.) |
 | 🎛️ Effects | Apply a saved effects chain to the output. |
 | 🎭 Persona rewrite | Re-rolls input through the selected profile's personality prompt via LLM before TTS. Always visible; disabled (with tooltip) when no profile or no personality is set. |
 | 🔁 Autoplay | Auto-play the result on render. |
@@ -163,7 +163,7 @@ Click a take to see its lineage via the [take versioning](take-versioning.md) ch
 
 - **"No engine loaded."** — Click the link to load one on the [Speech engines](engines.md) tab (AI page). Kokoro is the lightest if you're unsure.
 - **Voice dropdown says "no voices available"** — The loaded engine is clone-only (Chatterbox) and you haven't cloned a reference WAV yet. Use the link in the banner to [Voices](voices.md).
-- **Compose button is disabled (grayed out)** — No profile is selected, or the selected profile has no personality prompt. Pick a profile in the 👤 Profile chip or add a personality prompt via [Profiles](profiles.md).
+- **Compose button is disabled (grayed out)** — No persona is selected, or the selected persona has no personality prompt. Pick one in the 👤 Persona chip or add a personality prompt via [Personas](personas.md).
 - **Compose returns "LLM not configured"** — Wire an OpenAI-compatible endpoint in Settings → External.
 - **Slash menu shows no tags** — The loaded engine has no inline-tag taxonomy. Switch to Chatterbox-Turbo, Dia, or MOSS to access tags.
 - **Render is silent / clipped at the end** — Some engines (Chatterbox family) hallucinate trailing noise; the trim utility removes that. If clipping the actual content, file an issue with the offending text.

@@ -30,13 +30,34 @@ JustVoice has an effects chain: 10 effect types, 4 built-in presets, custom pres
 
 Applying an effects chain to a take produces a **new take version** with effects baked in. The original take survives, and `source_take_id` links them. Revert by setting the source take as default. See [take-versioning.md](take-versioning.md).
 
-## Per-voice default chains
+## Where a chain lives — two places, and they stack
 
-Every Voice can carry a default effects chain. Render anything through that voice and the chain applies automatically — useful for character voices that should always sound radio'd (Old Crow over a CB radio) or always thick (a giant character).
+A chain belongs to a **persona** or to a **render preset**, and nothing else
+carries one:
 
-## Project + chapter overrides
+- **The persona's chain** is how a character always sounds — Old Crow over a CB
+  radio, a giant always thick. Every line that persona speaks gets it, in every
+  render.
+- **The render preset's chain** is how a *scene* sounds, and it layers **on top
+  of** the persona's: character first, scene colour after. Bind the preset to a
+  scene in Studio · Render.
 
-The chain composes: voice default → persona override → project preset → chapter preset. The lowest-level set value wins. Empty / null at any layer falls through to the next.
+Both run, in that order. This is not a "lowest set value wins" cascade, and
+there is no per-voice, per-project or per-chapter chain — earlier versions of
+this page described a four-layer merge that the code never had. A **voice** is
+the TTS artifact; the styling lives on the persona that speaks with it.
+
+## Where a chain runs
+
+Everywhere audio is made: single-line previews, chapter renders, the audiobook
+M4B, and the per-line game voiceline export. (Chapter renders skipped effects
+entirely until 2026-08-15 — the editor saved chains and only single-line
+previews played them, so the render that mattered came out dry.)
+
+Each rendered line is cached on its chain as well as its text and voice, so
+editing one character's reverb re-renders that character's lines and leaves the
+rest of the chapter alone. Mastering is a separate, later pass — see
+[mastering.md](mastering.md).
 
 ## Custom presets
 

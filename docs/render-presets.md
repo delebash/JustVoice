@@ -20,6 +20,25 @@ or the request's explicit delivery** (those two share the top tier). So a preset
 beats the voice's defaults, and an explicit per-generation tweak stands beside
 the preset rather than under it.
 
+## The preset's master target
+
+A render preset can name a mastering target, and **binding it to a scene is how
+one chapter gets a different target from the rest of the book**. It beats the
+project's setting and the project kind's default; only an explicit API request
+outranks it, and `none` on the preset means that scene renders raw. Leave the
+preset's target unset and the project decides — see
+[mastering.md](mastering.md#which-preset-a-render-uses).
+
+(This field was saved and ignored until 2026-08-15: presets carried a master
+target that no render ever read.)
+
+## The preset's effects chain
+
+The chain layers **on top of** the persona's, in that order — the character's
+own sound first, the scene's colour after. It runs on chapter renders, not just
+single-line previews. Leave the preset's chain empty and the persona's runs
+alone.
+
 ## Three things called "preset" — the map
 
 - **Render presets** (this page) — the full per-scene bundle.

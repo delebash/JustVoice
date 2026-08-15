@@ -223,6 +223,17 @@ RULINGS.
 FLAKE seen once, not reproduced: `test_prefetch_cancel_via_http_endpoint`
 failed in one full-suite run and passed alone, as a file, and in a clean
 full re-run. Untouched by this work; noted in case it recurs.
+DOCS PASS 2026-08-15 (after the three commits): `mastering.md` (the preset
+numbers were wrong for iAudio, the chain "trimmed" silence it actually PADS,
+a noise gate was described that does not exist, and the page said mastering
+happens at export and never on a chapter render) · `chapter.md` (both dead
+links — `stories.md`, `profiles.md` — the real render flow, the global player
+that no longer exists) · `effects.md` (the four-layer cascade was fiction:
+chains live on personas and render presets, they STACK, and voices carry none
+at all) · `render-presets.md` (the preset's master target and effects chain,
+both now real) · `import-and-export.md` (ACX numbers, the resolution, WAV vs
+encoded, the global player) · `generate.md` (dead `profiles.md` /
+`stories.md` links). Two findings the pass could not fix are filed below.
 
 
 **Deferred by your word (2026-08-06):** the real-webview test harness and the
@@ -980,18 +991,29 @@ target/debug/data.
 
 ## Features the docs promise and the code does not do
 
-### `chapter.md` documents a page that doesn't exist
+### The YouTube master target is labelled AAC and encodes MP3
 
-STATE: FINDING — code-verified 2026-08-08; the mastering half is now TRUE
-(item 2 of the 2026-08-15 plan shipped it), so the rewrite is UNBLOCKED.
-BUILT: nothing to keep in the links — `chapter.md:5` links `stories.md`
-(absent), `:32` and `:81` link `profiles.md` (absent). `:3`'s claim "render
-the whole chapter as a single mastered WAV" became true on 2026-08-15.
-OPEN: the rewrite — fix the two dead links and describe the real render
-(effects chain, then the resolved mastering target, WAV out; the encoded
-deliverable is Export's). `docs/export.md`'s "Chapter render → mastered WAV"
-section is the same class and is now also true — verify its detail rather
-than assuming it.
+STATE: FINDING — code-verified 2026-08-15 during the docs pass.
+WHY it matters: a caller asking for the YouTube target gets a response typed
+`audio/aac` holding an MP3 (`media_map` in `render_chapter_api.py` and
+`master_api.py` both map youtube → audio/aac; `MasterPresetSettings.youtube`
+has `format="mp3"`, and `master()` encodes the preset's format). A browser
+copes; a pipeline that trusts the content type does not.
+OPEN: one of the two — either the preset should be m4a/AAC (its
+`bitrate_kbps=192` and 48 kHz suggest that was the intent) or both media maps
+should say `audio/mpeg`. Docs currently describe the MP3 reality.
+GO: needed — it is a one-line change either way, but which line is a product
+call.
+
+### `effects.md`'s "apply a chain to a take → new take version" is unverified
+
+STATE: FINDING — noticed 2026-08-15 while correcting that page; NOT checked
+against code. The take/generation rows do carry `effects_chain` columns, so it
+is plausible, but the page states a whole workflow (bake, `source_take_id`
+link, revert by setting the source take default) that nobody has traced. The
+rest of the page was corrected: chains live on personas and render presets
+only, they stack rather than override, and they now run on every render.
+OPEN: trace it, then keep or cut the section.
 GO: needed.
 
 ## Docs and repo debt

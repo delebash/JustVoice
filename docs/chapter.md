@@ -2,7 +2,7 @@
 
 The **Chapter** tab is the multi-line audiobook workspace. Pick a project → chapter → scene → block. Each block is a paragraph (or speech act). Each block has takes (versions). Render the whole chapter as a single mastered WAV.
 
-This is where audiobook production lives. For one-off renders use [generate.md](generate.md). For multi-track timeline arrangement use [stories.md](stories.md).
+This is where audiobook production lives. For one-off renders use [generate.md](generate.md). (The Stories tab's multi-track timeline is a placeholder — there is no timeline editor to send you to yet.)
 
 ## Concepts
 
@@ -12,7 +12,7 @@ This is where audiobook production lives. For one-off renders use [generate.md](
 - **Block** — a single rendering unit. Each block has its own text + persona attribution + per-block delivery override. On import it's a paragraph; once [Studio · Script](studio.md) analyzes the chapter it becomes one **speaker turn**, because a paragraph that mixes narration and dialogue needs more than one voice. Expect a chapter to show more, shorter blocks after analysis — the words don't change, only where the cuts are. Performance notes and import line-ids follow the paragraph they came from.
 - **Take** — one rendered version of a block. Re-rolling a block creates a new take with a lineage chain back to its source. See [take-versioning.md](take-versioning.md).
 
-A chapter render walks every block in order, picks the default take for each, optionally masters the concatenation, and emits one WAV. Re-rendering a single block doesn't invalidate the other blocks' cached takes.
+A chapter render walks every block in order, picks the default take for each, runs each speaker's effects chain, masters the concatenation to the project's target, and emits one WAV. Re-rendering a single block doesn't invalidate the other blocks' cached takes.
 
 ## Navigation
 
@@ -34,9 +34,9 @@ Top toolbar:
 
 - **Persona attribution** — pick the speaking character from the project's cast.
 - **Text** — the block content. Editable inline.
-- **Delivery override** — per-block delivery tweaks (volume nudge, pause-before, emotion). Tier-3 in the [3-tier voice tuning](profiles.md#3-tier-voice-tuning) merge.
+- **Delivery override** — per-block delivery tweaks (volume nudge, pause-before, emotion). Tier-3 in the [3-tier merge](render-presets.md#where-a-preset-sits-in-the-precedence).
 - **Takes carousel** — `← Take 3 of 7 →` arrows + dropdown with timestamps. Click any take to switch the default.
-- **Audio player** — plays the current default take via the global player.
+- **Audio player** — plays the current default take, inline on the block itself.
 - **Actions row** — Regenerate / Set as default / Compare / Delete (two-step confirm).
 - **Lineage pill** — `← from Take N` if this take was re-rolled from another. Click for the full lineage timeline.
 
@@ -45,9 +45,9 @@ Top toolbar:
 When you click **Render chapter**:
 
 1. JustVoice walks each block in order.
-2. For each block: applies its persona's lexicon → applies the persona's profile → applies the block's delivery override → renders via the engine.
+2. For each block: applies its persona's lexicon → the persona's delivery defaults → the block's delivery override → renders via the engine → runs the persona's **effects chain** (with the scene's render preset layered on top).
 3. Concatenates the per-block WAVs with crossfade (per `settings.generation.crossfade_ms`).
-4. Optionally applies the chapter's mastering target (ACX / iAudio / Podcast / YouTube — see [mastering.md](mastering.md)).
+4. Applies the mastering target — resolved from the render preset, else the project, else the project kind (ACX for audiobooks; see [mastering.md](mastering.md#which-preset-a-render-uses)).
 5. Emits one WAV.
 
 Long blocks auto-chunk at sentence boundaries (same path as `/v1/generate`).
@@ -83,7 +83,7 @@ Each persona in the cast can override:
 - **Lexicon** — Old Crow uses street-slang.lex; everyone else uses the project default.
 - **Delivery defaults** — per-character speed / pitch / emotion baseline.
 
-These overrides feed Tier-2 of the [3-tier voice tuning](profiles.md#3-tier-voice-tuning) merge.
+These overrides feed Tier-2 of the [3-tier merge](render-presets.md#where-a-preset-sits-in-the-precedence).
 
 ## Audio export
 
@@ -93,7 +93,7 @@ After rendering, the **Export** action produces:
   `POST /v1/projects/{id}/export_m4b` (needs ffmpeg on PATH — see [Audiobook → M4B](import-and-export.md#audiobook--m4b))
 - **ZIP** — bundle of per-block WAVs + a manifest.json for game-dev workflows
 
-Mastering is applied before export — change the target via [mastering.md](mastering.md).
+Mastering is already applied on the render itself — WAV out, encoded on export. Change the target via [mastering.md](mastering.md#which-preset-a-render-uses).
 
 ## Troubleshooting
 

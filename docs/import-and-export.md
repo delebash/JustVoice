@@ -313,7 +313,7 @@ JustVoice produces audio in three shapes, depending on what you're doing with it
 
 ### Single render → WAV
 
-Every `/v1/generate` call returns `audio/wav`. The Generate tab's ▶ button downloads through the browser's audio element; the History card's ▶ replays via the [global player](generate.md#history).
+Every `/v1/generate` call returns `audio/wav`. Playback is inline wherever you clicked it — the Generate tab's ▶ and the History card's ▶ both play in place, in the browser's own audio element.
 
 To save the file outside the app:
 - **Generate tab** — right-click the audio player → "Save audio as…"
@@ -321,14 +321,21 @@ To save the file outside the app:
 
 ### Chapter render → mastered WAV
 
-Chapter renders apply mastering before emitting WAV. Choose the target via [mastering.md](mastering.md):
-- **ACX** — Audible-compliant (-23 LUFS / -3 dB peak / -60 dB noise floor)
-- **iAudio** — Apple Books target
-- **Podcast** — -16 LUFS loudness war target
-- **YouTube** — -14 LUFS streaming target
-- **None** — raw concatenation, no mastering
+Chapter renders apply mastering before emitting WAV, and you don't choose the
+target per render — it is resolved from the scene's render preset, else the
+project, else the project kind (see
+[mastering.md](mastering.md#which-preset-a-render-uses)):
 
-The chapter tab's **Render → Export → WAV** action emits one mastered WAV per chapter.
+- **ACX** — -20.0 LUFS, true peak -3.5 dBFS: centred inside Audible's
+  -23…-18 LUFS window with headroom against re-encoding overshoot
+- **iAudio** — -19.0 LUFS, -3.0 dBFS
+- **Podcast** — -16.0 LUFS, -1.0 dBFS
+- **YouTube** — -14.0 LUFS, -1.0 dBFS
+- **None** — raw concatenation, no mastering (game voicelines default to this)
+
+The render returns **WAV** with the processing applied; the preset's encoded
+format is what Export produces. The chapter tab's **Render → Export → WAV**
+action emits one mastered WAV per chapter.
 
 ### Audiobook → M4B
 
