@@ -67,6 +67,59 @@ gave you… you are inconsistant"*.
 
 ## §2 THE DESIGN
 
+### 2.0 What JustVoice is — and what that costs this design
+
+**JV is not an audiobook app.** It is a voice-production app with **project
+kinds** — `"audiobook" | "game_voicelines" | "podcast" | "custom"`
+(`database/models.py:174`), plus dictation and accessibility users who never open
+a project at all. Audiobook is the primary differentiator, not the only shape.
+User, 2026-08-15: *"jv is not just pipeline for book yes that is main feature but
+it can be anything that is why we have project types"*.
+
+The rest of §2 was drafted audiobook-first. Every surface below must hold for all
+four kinds, and this is what that changes:
+
+| Surface | audiobook | game_voicelines | podcast | dictation |
+|---|---|---|---|---|
+| Scene = | chapter | quest / dialogue tree | episode segment | — |
+| Block = | paragraph | one NPC line | take / segment | — |
+| Attribution | LLM pass over prose | **none** — the sheet names speakers | labels (`SARAH:`) | — |
+| Chapter surface default mode | **Script** | **Table** | Script | n/a |
+| Cast scale | ~5–15 characters | **50–500 NPCs** | 2–6 hosts | n/a |
+| Continuous QC listening | central | rare — lines are independent assets | central | n/a |
+| Export | M4B / MP3, ACX check | per-line WAV + JSON sidecar | episode + stems | — |
+
+**Three consequences the design has to absorb:**
+
+1. **The two modes are not a preference — they have a default per kind.**
+   Script mode (screenplay + playhead) is for prose kinds, where the chapter is a
+   continuous read and QC means listening. Game projects default to **Table**:
+   500 barks are independent assets, not a performance, and nobody plays them
+   end to end. Both modes stay available to both; only the default differs.
+
+2. **The cast surface must scale from 5 to 500, and as drawn it does not.**
+   §2.3's per-character cards are right at audiobook scale and collapse at game
+   scale — 50 NPCs of stacked cards is a scroll of death. The cast surface is a
+   **table** with the card as a row expansion: name · voice · engine · line count
+   · state, expanding to the full controls. At audiobook scale the table is short
+   enough that rows can start expanded; at game scale they start collapsed, and
+   bulk selection ("cast these 30 guards to X") becomes the primary action.
+   **This is a correction to §2.3, not an option.**
+
+3. **Attribution is prose-only.** Game and podcast projects arrive with speakers
+   already attached, so the "unattributed" filter state is empty by construction
+   and the Find-speakers verb does not exist for them —
+   `studioSteps.js` already encodes this (game gets
+   `[cast, render, export]`, no Script step). The filter chips must be derived
+   from the kind, not hardcoded.
+
+**What does not change:** the line is still the unit; steps are still states;
+render is still a panel; casting is still pick-the-kind-then-the-voice; the layer
+stack and the composes-vs-replaces rule are kind-independent. Dictation and
+accessibility users never touch the chapter surface, but they do use the voice
+library — and captures are a legitimate clone source, which is one reason the
+Prep Audio candidate (§5) earns its place beyond audiobooks.
+
 ### 2.1 The shape — three levels, none hidden
 
 **Identity → hear → make.** Each level earns its place and the double-click
@@ -170,6 +223,13 @@ engine; then the specific voice. And it **states the consequence in place**:
 **Cloning happens inline on the cast row** — drop reference audio, Whisper
 transcribes, SNR flags a noisy clip, name it, clone-and-cast in one move. No trip
 to the library.
+
+**The cast surface is a table, not a stack of cards** (see §2.0 consequence 2).
+Row: name · voice · engine · line count · state. The card above is the row's
+**expansion**. At audiobook scale (~5–15) rows can open by default; at game scale
+(50–500 NPCs) they start collapsed and **bulk selection is the primary action** —
+"cast these 30 guards to X", "give every merchant this base delivery". A stack of
+full cards is unusable past about fifteen characters.
 
 **Attribution produces characters, never voices.** "Find speakers" answers *who is
 talking*; it has no opinion about timbre. Two separate questions, never blurred
@@ -410,7 +470,7 @@ Designer / Preparer / Dataset / Training.
 
 ### Voice-Clone-Studio (github.com/FranckyB/Voice-Clone-Studio) — read 2026-08-15
 
-A Gradio **bench** for making clips, not a pipeline for a book: six TTS engines
+A Gradio **bench** for making clips, not a production pipeline: six TTS engines
 (Qwen3-TTS, VibeVoice, LuxTTS, Chatterbox, Fish Speech S2 Pro, MMAudio) + three
 ASR, behind modular tabs. No project, chapter, character, lexicon, master-target
 or take-versioning concept at all, so most of it is out of scope.

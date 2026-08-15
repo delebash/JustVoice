@@ -238,6 +238,16 @@ RULED BY THE USER THIS SESSION — verbatim, these are settled:
 6. *"i dont just want a copy of alexadira if it does not make sense in our app"*
    and *"dont overenginner"* → **the Alexandria take/skip decision is made once,
    in writing** (redesign doc §5) and nothing is adopted for symmetry.
+7. *"jv is not just pipeline for book yes that is main feature but it can be
+   anything that is why we have project types"* → **the redesign must hold for
+   all four project kinds**, not just audiobook. Recorded as redesign doc §2.0
+   with the per-kind matrix. It forced one correction and two refinements: the
+   **cast surface must be a table with the card as a row expansion** (a stack of
+   cards dies at 50–500 game NPCs, where bulk selection is the primary action);
+   the Script/Table modes have a **default per kind** (Script for prose, Table
+   for game — 500 barks are independent assets, not a performance); and the
+   filter chips derive from the kind, since game and podcast arrive with speakers
+   attached and have no unattributed state.
 
 PROPOSED BY ME, NOT YET RULED — all of §2/§3 of the redesign doc. Do NOT record
 these as decisions and do NOT build them:
