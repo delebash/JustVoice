@@ -743,6 +743,11 @@ class VramReservation(BaseModel):
     pinned: bool = False
     kind: str = "llm"
     source: str = "computed"
+    # ASLEEP (2026-08-15): the AI runner idle-unloaded this model, so the booking
+    # names memory the card is not currently holding — it is what the model takes
+    # back when it next answers. Excluded from `committed_mb`; shown as "asleep"
+    # rather than a live number, so the strip never reports two truths at once.
+    asleep: bool = False
     # Engine display name, joined server-side (the 2026-08-15 one-strip
     # consolidation: the strip's cells render without the engines list).
     label: str = ""
@@ -793,6 +798,10 @@ class EngineVramResponse(BaseModel):
     mem_arch: str
     total_mb: int
     committed_mb: int
+    # Booked INCLUDING models the AI runner has put to sleep (2026-08-15).
+    # `committed_mb` is what is held right now; this is what would be held once
+    # every sleeper woke — the difference is the memory a wake will reclaim.
+    booked_mb: int = 0
     remaining_mb: int
     # The 2026-08-13 redesign: the MEASURED pool state — `used_mb` is what
     # nvidia-smi would print (None = unmeasurable box), `other_mb` the slice

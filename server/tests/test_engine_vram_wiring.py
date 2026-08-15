@@ -193,7 +193,7 @@ def test_load_true_up_books_the_measured_number(monkeypatch, arb_env):
     mgr.load("eng", device="auto")
     row = arb.reservation_of("tts:eng")
     assert row == {"vram_mb": 1234, "source": "measured", "kind": "tts",
-                   "pinned": False}
+                   "pinned": False, "asleep": False}
     assert recorded == [("eng", "tts", 1234)]
 
 
@@ -270,7 +270,7 @@ def test_first_load_delta_fallback_books_computed_never_persists(monkeypatch, ar
     mgr.load("eng", device="auto")
     row = arb.reservation_of("tts:eng")
     assert row == {"vram_mb": 1400, "source": "computed", "kind": "tts",
-                   "pinned": False}
+                   "pinned": False, "asleep": False}
     assert recorded == []
 
 
@@ -443,7 +443,7 @@ def test_admission_on_measured_free_sees_foreign_usage(monkeypatch, arb_env):
                         lambda self, kind, engine_id: 4096)
     monkeypatch.setattr(EngineManager, "pool_used_mb",
                         lambda self, *, fresh=False: 7000)
-    with pytest.raises(RuntimeError, match=r"free of 8192 MB \(measured\)"):
+    with pytest.raises(RuntimeError, match=r"free of 8192 MB \(measured, minus what is booked\)"):
         mgr.load("eng", device="auto")
     assert mgr._loaded.get("tts") is None
 
@@ -601,3 +601,71 @@ def test_transcribe_marks_stt_busy(monkeypatch, arb_env):
     assert mgr.transcribe({"wav_b64": ""}) == "hi"
     assert seen == [{"stt"}]
     assert "stt" not in arb.busy_kinds()
+
+
+# ─── the speech door prices on BOTH truths (2026-08-15) ───────────────
+# This door priced on the measured probe alone. The probe cannot see a booking
+# whose allocation has not landed yet, and — the defect that surfaced it — the
+# AI runner's ledger kept booking a child the router had idle-unloaded, so the
+# probe correctly reported gigabytes free while the ledger still claimed them.
+# A TTS engine moved in on the measurement, the booking stood, and an 8 GB card
+# carried 10.6 GB of reservations. The pool is now occupied by the WORSE of the
+# two numbers; the sleeping half is fixed in the kit (arbiter.sync_sleeping).
+
+
+def _admission_mgr(monkeypatch, arb, *, prior_mb, used_mb):
+    from justvoice.engines import manager as mgr_mod
+
+    mgr = _mgr(monkeypatch, _discrete(), _manifest())
+    monkeypatch.setattr(EngineManager, "_prior_measured_mb",
+                        lambda self, kind, engine_id: prior_mb)
+    monkeypatch.setattr(EngineManager, "pool_used_mb",
+                        lambda self, *, fresh=False: used_mb)
+    monkeypatch.setattr(EngineManager, "_safety_margin_mb", staticmethod(lambda: 1024))
+    # The reconcile is the runner's job and needs a router; here it must simply
+    # not be reached for a decision.
+    monkeypatch.setattr(mgr_mod, "EngineProcess", _Proc)
+    return mgr
+
+
+def test_admission_counts_a_standing_booking_the_probe_cannot_see(monkeypatch, arb_env):
+    """6 GB booked, the card reporting 100 MB used (the allocation has not landed).
+    Measured-only arithmetic said 8 GB free and let a 4.4 GB engine in on top."""
+    arb = arb_env(_discrete())
+    evicted = []
+    arb.reserve("gemma", 6000, kind="llm", evict_fn=lambda: evicted.append("gemma"))
+    mgr = _admission_mgr(monkeypatch, arb, prior_mb=4400, used_mb=100)
+
+    mgr.load("eng", device="auto")
+
+    assert evicted == ["gemma"], "the booking must be honoured, not out-voted by a stale probe"
+    assert arb.reservation_of("gemma") is None
+    assert arb.reservation_of("tts:eng")["vram_mb"] == 4400
+
+
+def test_admission_treats_a_sleeping_booking_as_free_memory(monkeypatch, arb_env):
+    """The other direction, and the reason the max is safe: a child the router
+    idle-unloaded holds nothing, so its booking must NOT block a speech load.
+    Nothing is evicted — the memory really is there."""
+    arb = arb_env(_discrete())
+    evicted = []
+    arb.reserve("gemma", 6000, kind="llm", evict_fn=lambda: evicted.append("gemma"))
+    arb.sync_sleeping({"gemma"})
+    mgr = _admission_mgr(monkeypatch, arb, prior_mb=4400, used_mb=100)
+
+    mgr.load("eng", device="auto")
+
+    assert evicted == [], "a sleeper holds no memory — evicting it frees nothing"
+    assert arb.is_asleep("gemma"), "and it keeps its booking for the wake to claim"
+    assert arb.reservation_of("tts:eng")["vram_mb"] == 4400
+
+
+def test_admission_still_prices_on_the_probe_when_the_probe_is_worse(monkeypatch, arb_env):
+    """Unchanged behaviour where the measurement leads: 3 GB held by programs we
+    do not manage, nothing in our ledger, and a 4.4 GB engine no longer fits."""
+    arb = arb_env(_discrete())
+    mgr = _admission_mgr(monkeypatch, arb, prior_mb=4400, used_mb=6000)
+
+    with pytest.raises(RuntimeError, match="not enough memory"):
+        mgr.load("eng", device="auto")
+    assert arb.reservation_of("tts:eng") is None

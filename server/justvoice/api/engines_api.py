@@ -321,6 +321,7 @@ async def get_engine_vram(events_since: int = 0) -> EngineVramResponse:
         mem_arch=snap["mem_arch"],
         total_mb=snap["vram_total_mb"],
         committed_mb=snap["committed_mb"],
+        booked_mb=snap.get("booked_mb", snap["committed_mb"]),
         remaining_mb=snap["remaining_mb"],
         used_mb=used,
         other_mb=other,

@@ -1532,6 +1532,18 @@ class EngineManager:
         except Exception:  # noqa: BLE001 — bare tests: nothing to admit against
             return
         arb = get_arbiter()
+        # Reconcile the LLM sleepers first (the 2026-08-15 sleeping-child fix): the
+        # runner's ledger keeps a booking for a child the router idle-unloaded, and
+        # this door is the one that used to walk straight into that phantom memory —
+        # it prices on the MEASURED probe, which correctly showed the gigabytes as
+        # free, so a TTS engine moved in while the booking still stood and the ledger
+        # ended over the card. Best-effort: no runner (bare tests) → nothing to sync.
+        try:
+            from llm_runner.runner.lifecycle import get_service
+
+            get_service().reconcile_sleeping(force=True)
+        except Exception:  # noqa: BLE001 — standalone/bare tests
+            log.debug("sleeping-set reconcile unavailable at the speech door", exc_info=True)
         hw = self._hardware()
         margin = self._safety_margin_mb()
         want = needed + margin
@@ -1545,10 +1557,15 @@ class EngineManager:
             except Exception:  # noqa: BLE001
                 total = 0
         if used is not None and total > 0:
-            free = max(0, total - used)
+            committed = max(0, total - arb.remaining_mb(hw))
+            # The pool is occupied by the WORSE of the two truths (2026-08-15). The
+            # measurement alone was this door's whole answer, and it cannot see a
+            # booking whose allocation has not landed yet — a model admitted seconds
+            # ago, or a crashed engine's lingering reservation. The ledger alone
+            # cannot see other programs. Neither is safe by itself; the max is.
+            free = max(0, total - max(used, committed))
             if want <= free:
                 return
-            committed = max(0, total - arb.remaining_mb(hw))
             foreign = max(0, used - committed)
             target = want + foreign
         else:
@@ -1566,15 +1583,18 @@ class EngineManager:
                 deadline = time.monotonic() + 4.0
                 while time.monotonic() < deadline:
                     u = self.pool_used_mb(fresh=True)
-                    if u is None or max(0, total - u) >= want:
+                    c = max(0, total - arb.remaining_mb(hw))
+                    if u is None or max(0, total - max(u, c)) >= want:
                         break
                     time.sleep(0.4)
             return
         snap = arb.snapshot(hw)
-        have = f"{free} MB free of {total} MB (measured)" if free is not None else \
+        have = f"{free} MB free of {total} MB (measured, minus what is booked)" \
+            if free is not None else \
             f"{snap['remaining_mb']} MB of {snap['vram_total_mb']} MB unbooked"
         resident = ", ".join(
-            f"{r['key']} ({r['vram_mb']} MB)" for r in snap["reservations"]
+            f"{r['key']} ({r['vram_mb']} MB{' · asleep' if r.get('asleep') else ''})"
+            for r in snap["reservations"]
         ) or "nothing"
         busy = ", ".join(snap["busy_kinds"]) or "none"
         raise RuntimeError(

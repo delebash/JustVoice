@@ -88,10 +88,13 @@ never internal bookkeeping:
   actually in use right now, out of the total the box has.
 - **Free** — what's actually left.
 - **LLM** — the loaded language model's name and the runner's booked take.
-  When nothing is loaded the cell shows **~X GB on demand** — the predicted
-  footprint of the model your features route to (a prediction that prefers
-  your own measured loads over calculation) — or **cloud-routed** if your AI
-  features run on a cloud provider and nothing will load locally.
+  The cell reads **asleep** when the model is still configured and ready but
+  its memory has been released after a spell of not being used — see [When
+  the AI model goes to sleep](#when-the-ai-model-goes-to-sleep) below.
+  When nothing is loaded at all the cell shows **~X GB on demand** — the
+  predicted footprint of the model your features route to (a prediction that
+  prefers your own measured loads over calculation) — or **cloud-routed** if
+  your AI features run on a cloud provider and nothing will load locally.
 - **TTS** / **STT** — always present, one per slot: **—** when nothing is
   loaded, otherwise the loaded model's name and its real, measured memory
   take (or **on CPU** for a CPU-placed engine, which holds no VRAM on a
@@ -114,6 +117,43 @@ never internal bookkeeping:
   or fails honestly instead of killing your work.
 
 The label follows your hardware: a discrete card shows **VRAM**; laptops with integrated or unified memory (iGPU, Apple Silicon) show **Memory**, because CPU and GPU share the same physical pool there and every load — even a CPU-placed one — draws from it.
+
+### When the AI model goes to sleep
+
+A local language model that has not been asked anything for a while is put to
+sleep: its weights are dropped from memory and the whole pool goes back to
+whatever else needs it. Nothing is forgotten — the model is still your
+configured model, and the next time a feature asks it something it loads
+itself back in, taking a few seconds to do so. The delay is **Unload an idle
+model after (seconds)** in the AI engine panel — 15 minutes by default.
+
+The strip tells you when this has happened. The **LLM** cell reads **asleep**
+instead of a number, because the honest number is nothing: the card is not
+holding those gigabytes any more, and **Free** rises to prove it.
+
+**A sleeping model's memory is genuinely available.** If you start a render
+while your AI model is asleep, the speech engine can use the memory the model
+gave back — that is the point of sleeping, and it is why a big narration
+engine and a big language model can share a card that could never hold both
+at once.
+
+**Waking up takes the memory back, and says so.** When a feature next needs
+the model, JustVoice makes room for it *before* it loads — which may mean
+unloading the speech engine that moved in while it slept. You get a toast
+naming what was unloaded and why. The engine reloads by itself the next time
+you render; nothing is lost but the seconds it takes.
+
+This is deliberately a visible swap rather than a silent squeeze. Before
+JustVoice tracked sleep, both models could end up believing they held the
+same gigabytes: the totals added up to more than the card, and the graphics
+driver quietly spilled the overflow into ordinary system memory, which runs
+many times slower. A model that unloads and reloads with a toast is far
+better than two models fighting over one card in silence.
+
+If you would rather your model never slept — you have memory to spare and
+want every answer instant — set **Unload an idle model after** to `0` (never)
+in the AI engine panel. On a card that comfortably fits both your model and
+your speech engine, that costs you nothing.
 
 ### Which apps are using the GPU
 

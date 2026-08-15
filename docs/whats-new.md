@@ -10,6 +10,9 @@
   a private one for the engines that can't ([Engines](engines.md#where-the-python-environments-live))
 - See which programs are holding GPU memory: **show apps** on the memory
   strip's *Other apps* cell ([GPU / CUDA](gpu.md#which-apps-are-using-the-gpu))
+- A sleeping AI model lends its memory to your speech engine and takes it
+  back with a visible swap, instead of both quietly claiming the same card
+  ([GPU / CUDA](gpu.md#when-the-ai-model-goes-to-sleep))
 - Take versioning with source lineage
 - HMAC-signed webhooks with exponential backoff
 - Backup / restore from Settings → Backups
