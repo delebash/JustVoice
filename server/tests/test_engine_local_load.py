@@ -171,6 +171,40 @@ def test_url_arm_prefers_a_legacy_tarball_install(monkeypatch, tmp_path, app):
     assert EngineManager.__new__(EngineManager)._ensure_variant_local(m, "v1", None, None) is None
 
 
+def test_url_arm_ignores_a_too_deep_legacy_install(monkeypatch, tmp_path, app):
+    """The legacy probe honors only what the ENGINE can see (flat or one
+    subdir under models_dir). A tarball extracted TWO levels deep
+    (models/<variant>/<tarball-root>/ — the user-hit 2026-08-15 layout)
+    must NOT count as a serving legacy install: the arm falls through to
+    the speech-cache fetch instead of answering None and stranding the
+    engine with files it can't find."""
+    import justvoice.api.engine_sources_api as esa
+    from justvoice import installer, speech_cache
+    from justvoice.app_state import get_state
+
+    m = _url_manifest(tmp_path, steps=[{"expected_files": ["model.onnx"]}])
+    deep = m.models_dir / "v1" / "v1"
+    deep.mkdir(parents=True)
+    (deep / "model.onnx").write_bytes(b"x")
+    monkeypatch.setattr(
+        esa, "resolve_source",
+        lambda e, v: ({"url": "http://example.test/model.onnx"}, "manifest"))
+
+    def fake_stream(url, dest, on_progress, cancel_check=None):
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(b"\0" * 64)
+        on_progress(64)
+        return "deadbeef"
+
+    monkeypatch.setattr(installer, "_stream_download", fake_stream)
+
+    from justvoice.engines.manager import EngineManager
+
+    out = EngineManager.__new__(EngineManager)._ensure_variant_local(m, "v1", None, None)
+    vdir = speech_cache.variant_dir(get_state().data_dir, "kok", "v1")
+    assert out == str(vdir)
+
+
 def test_is_installed_reads_the_speech_cache(monkeypatch, tmp_path, app):
     """Phase ④'s cache-truth status: a prefetched shared engine counts as
     installed (no more 'not installed' chip over an on-disk model row, no

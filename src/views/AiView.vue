@@ -19,13 +19,19 @@
   quickSetupCopy and named "LLM engine setup" by the labels feed (ruling 6).
 -->
 <script setup>
-import { onMounted, ref, watch } from "vue";
+import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { AiModelsArea, useModelApply } from "@delebash/llm-ui";
 import SpeechEnginesTab from "../components/SpeechEnginesTab.vue";
+// The one-strip consolidation (2026-08-15): JV feeds its memory cells
+// (TTS · STT · Other apps · Busy) and the LLM cell's idle claim into the
+// kit's top strip — the strip is the ONE memory surface on this console.
+import { hostCells, llmClaim, subscribeVramFeed } from "../services/vramFeed.js";
 
 const route = useRoute();
 const router = useRouter();
+
+let unsubscribeVram = null;
 
 // The one speech host tab, right after the (LLM) providers tab.
 const APP_TABS = [
@@ -58,6 +64,7 @@ watch(() => route.fullPath, () => {
 });
 
 onMounted(async () => {
+  unsubscribeVram = subscribeVramFeed();
   if (route.query.tab || route.query.action) router.replace({ path: "/ai" }); // consumed
   if (!openWizardOnce.value) return;
   // …and never offer to set up a machine that IS set up: arriving with a
@@ -69,6 +76,8 @@ onMounted(async () => {
   } catch { /* unknown → let it open; the unconfigured box is the case it serves */ }
   router.replace({ path: "/ai" }); // consumed either way
 });
+
+onBeforeUnmount(() => { if (unsubscribeVram) unsubscribeVram(); });
 </script>
 
 <template>
@@ -79,6 +88,8 @@ onMounted(async () => {
       :initial-tab="initialTab"
       :initial-feature-action="initialAction"
       :app-tabs="APP_TABS"
+      :hw-cells="hostCells"
+      :llm-claim="llmClaim"
     >
       <template #app-tab-speech-engines><SpeechEnginesTab /></template>
     </AiModelsArea>

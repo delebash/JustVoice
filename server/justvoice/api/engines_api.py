@@ -33,6 +33,7 @@ from ..models import (
     Prerequisites,
     VramClaim,
     VramEvent,
+    VramLoadedRow,
     VramReservation,
 )
 
@@ -274,6 +275,48 @@ async def get_engine_vram(events_since: int = 0) -> EngineVramResponse:
     # ledger can't attribute (other apps, OS) — shown as its own row.
     used = mgr.pool_used_mb()
     other = max(0, used - snap["committed_mb"]) if used is not None else 0
+
+    # The 2026-08-15 one-strip consolidation: pre-join names server-side so
+    # the strip's cells ("TTS — Chatterbox Turbo · 3.1 GB") render without a
+    # second client fetch. `loaded` lists loaded speech engines (a loaded
+    # engine with no booking is the "not measured yet" cell); reservations
+    # carry the engine display name for orphan bookings (crashed engine).
+    def _engine_label(engine_id: str) -> str:
+        m = mgr.get_manifest(engine_id)
+        return m.name if m else engine_id
+
+    loaded_rows: list[VramLoadedRow] = []
+    for kind in ("tts", "stt"):
+        proc = mgr.loaded_for(kind)
+        if proc is None:
+            continue
+        engine_id = proc.manifest.id
+        variant_id = mgr.current_variant_id(engine_id) or mgr.resolved_default_variant(engine_id)
+        model_name = ""
+        if variant_id:
+            try:
+                from ..engines.model_catalog import models_for
+
+                model_name = next(
+                    (v.name for v in models_for(engine_id) if v.id == variant_id), variant_id
+                )
+            except Exception:  # noqa: BLE001 — a catalog miss must not kill the strip
+                model_name = variant_id
+        loaded_rows.append(VramLoadedRow(
+            key=f"{kind}:{engine_id}",
+            kind=kind,
+            label=proc.manifest.name,
+            model=model_name,
+            device=mgr.resolved_device_for(engine_id) or "",
+        ))
+
+    reservations = []
+    for r in snap["reservations"]:
+        row = VramReservation(**r)
+        if row.kind in ("tts", "stt"):
+            row.label = _engine_label(row.key.split(":", 1)[-1])
+        reservations.append(row)
+
     return EngineVramResponse(
         mem_arch=snap["mem_arch"],
         total_mb=snap["vram_total_mb"],
@@ -281,7 +324,8 @@ async def get_engine_vram(events_since: int = 0) -> EngineVramResponse:
         remaining_mb=snap["remaining_mb"],
         used_mb=used,
         other_mb=other,
-        reservations=[VramReservation(**r) for r in snap["reservations"]],
+        reservations=reservations,
+        loaded=loaded_rows,
         busy_kinds=snap["busy_kinds"],
         claim=claim,
         claim_reason=claim_reason,

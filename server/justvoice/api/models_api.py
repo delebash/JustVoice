@@ -60,15 +60,19 @@ async def list_models(id: str) -> ModelsListResponse:
             # weights live in the manifest's models_dir, not the HF
             # cache. Probe the declared expected_files so the UI shows
             # ⬇ Download vs Load/Delete truthfully (user-hit: Kokoro
-            # offered Load with nothing on disk).
+            # offered Load with nothing on disk) — via THE one
+            # engine-visibility rule, so this flag and the load door agree
+            # (user-hit 2026-08-15: rglob said "on disk" for a tarball
+            # extracted two levels deep that the engine cannot load).
             try:
+                from ..engines.manager import legacy_files_engine_visible
+
                 steps = manifest.model_install_steps
                 expected = [f for st in steps for f in (st.get("expected_files") or [])]
                 if expected:
-                    mdir = manifest.models_dir
-                    v.on_disk = mdir.exists() and all(any(mdir.rglob(f)) for f in expected)
+                    v.on_disk = legacy_files_engine_visible(manifest.models_dir, expected)
                     if v.on_disk:
-                        v.local_dir = str(mdir)
+                        v.local_dir = str(manifest.models_dir)
             except Exception:  # noqa: BLE001 — probe must never 500 the list
                 pass
     return ModelsListResponse(engine_id=id, variants=variants)

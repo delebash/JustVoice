@@ -29,7 +29,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import { DownloadBar, UiButton, UiTag, confirmDialog, openExternal, promptDialog, pushToast, withAiTask } from "@delebash/llm-ui";
+import { DownloadBar, UiButton, confirmDialog, openExternal, openPath, promptDialog, pushToast, withAiTask } from "@delebash/llm-ui";
 import { makeEngineDownloadTask } from "../services/ttsJobChannel.js";
 import { createDownloadTask } from "@delebash/llm-ui";
 // The row's three-dot menu — reka-ui's DropdownMenu, the same import shape
@@ -60,139 +60,21 @@ const half = ref("local");
 
 const api = useApi();
 
-// ── The memory budget strip (the 2026-08-13 VRAM wiring, Q3/Q4) ────────
-// ONE endpoint (`/v1/engines/vram`) reads the shared arbiter: the box's
-// budget pool (a card's VRAM on discrete boxes, the one shared pool on
-// integrated/unified — the label follows mem_arch), each resident booking
-// with its provenance, the on-demand LLM claim, and eviction events the
-// poller turns into toasts (Q3: event-driven honesty — a swap is named
-// when it HAPPENS; there are no predictive load-time warnings).
-const vram = ref(null);
-let vramTimer = null;
-let lastEventSeq = 0;
-let vramPrimed = false; // absorb pre-mount events silently on the first poll
-async function pollVram() {
-  const v = await api.safeRequest(`/v1/engines/vram?events_since=${lastEventSeq}`, null);
-  if (!v) return;
-  for (const ev of v.events || []) {
-    lastEventSeq = Math.max(lastEventSeq, ev.seq);
-    if (vramPrimed) {
-      pushToast({
-        message: `${ev.victim_key} was unloaded to make room${ev.reason ? ` — ${ev.reason}` : ""}.`,
-        kind: "info", duration: 6000,
-      });
-    }
-  }
-  vramPrimed = true;
-  vram.value = v;
-}
-const memLabel = computed(() => (vram.value?.mem_arch === "discrete" ? "VRAM" : "Memory"));
-function _kindMb(kinds) {
-  return (vram.value?.reservations || [])
-    .filter((r) => kinds.includes(r.kind))
-    .reduce((n, r) => n + (r.vram_mb || 0), 0);
-}
-// The 2026-08-13/14 redesign: the strip shows MEASURED reality — used/free
-// are what nvidia-smi would print (used_mb; None on an unmeasurable box
-// falls back to the ledger's remaining), and each loaded speech engine is
-// its own cell with its measured take. There is no pre-load estimate any
-// more: an engine whose footprint hasn't been measured on this machine says
-// "not measured yet" until its first load/render lands a number; a "~"
-// number is the device-delta fallback (boxes with no per-process probe),
-// approximate by construction.
-const freeMb = computed(() => {
-  const v = vram.value;
-  if (!v) return 0;
-  if (v.used_mb != null) return Math.max(0, v.total_mb - v.used_mb);
-  return v.remaining_mb;
-});
-const speechRows = computed(() => {
-  const v = vram.value;
-  if (!v) return [];
-  const res = v.reservations || [];
-  const rows = [];
-  const claimed = new Set();
-  for (const e of engines.value) {
-    if (e.status !== "loaded") continue;
-    const kind = e.kind || "tts";
-    if (kind !== "tts" && kind !== "stt") continue;
-    // CPU-placed engines on discrete boxes hold no VRAM by policy — no cell.
-    if (v.mem_arch === "discrete" && (e.resolved_device || "").toLowerCase() === "cpu") continue;
-    const r = res.find((x) => x.key === `${kind}:${e.id}`);
-    if (r) {
-      claimed.add(r.key);
-      const est = r.source !== "measured";
-      rows.push({
-        key: r.key,
-        label: e.name || e.id,
-        text: est ? `~${fmtDisk(r.vram_mb)}` : fmtDisk(r.vram_mb),
-        title: est
-          ? "Approximate — read from the device-wide change during load; a real per-process measurement replaces it when one becomes possible"
-          : `Measured (${kind.toUpperCase()})`,
-      });
-    } else {
-      rows.push({
-        key: `${kind}:${e.id}`,
-        label: e.name || e.id,
-        text: "not measured yet",
-        title: "First load on this machine — JustVoice books the real measured footprint as soon as a probe lands; until then nothing is reserved for this engine",
-      });
-    }
-  }
-  // A booking with no live engine row (e.g. a crashed engine's lingering
-  // reservation) still shows — the ledger is truth about what is booked.
-  for (const r of res) {
-    if ((r.kind === "tts" || r.kind === "stt") && !claimed.has(r.key)) {
-      const id = r.key.split(":").slice(1).join(":");
-      const est = r.source !== "measured";
-      rows.push({
-        key: r.key,
-        label: engines.value.find((e) => e.id === id)?.name || id,
-        text: est ? `~${fmtDisk(r.vram_mb)}` : fmtDisk(r.vram_mb),
-        title: est ? "Approximate (device-delta)" : `Measured (${r.kind.toUpperCase()})`,
-      });
-    }
-  }
-  return rows;
-});
-const llmCell = computed(() => {
-  const v = vram.value;
-  if (!v) return null;
-  const llmMb = _kindMb(["llm"]);
-  if (llmMb > 0) return { label: "AI model (loaded)", text: fmtDisk(llmMb), title: "" };
-  const c = v.claim;
-  if (c) {
-    return {
-      label: "AI model (loads on demand)",
-      text: `~${fmtDisk(c.vram_mb)}`,
-      title: `${c.model} — ${c.source}${c.matches ? ` (${c.matches} measured loads)` : ""}`
-        + (c.ram_mb ? ` · RAM ~${fmtDisk(c.ram_mb)} (display-only)` : ""),
-    };
-  }
-  if (v.claim_reason === "cloud-routed") {
-    return { label: "AI model", text: "cloud-routed",
-      title: "Your AI features run on a cloud provider — no local memory needed" };
-  }
-  return { label: "AI model", text: "—", title: "" };
-});
-const budgetTitle = computed(() => {
-  const v = vram.value;
-  const rows = v?.reservations || [];
-  const lines = rows.map((r) => `${r.key}: ${fmtDisk(r.vram_mb)} (${r.source})`);
-  if (v?.other_mb > 0) lines.push(`other apps / OS: ${fmtDisk(v.other_mb)}`);
-  return lines.length ? lines.join("\n") : "Nothing loaded holds memory right now.";
-});
+// ── Memory truth (the 2026-08-15 one-strip consolidation) ──────────────
+// The budget strip DIED from this tab: the kit's top strip (AiModelsArea)
+// is the one memory surface, fed by `services/vramFeed.js` — the shared
+// poller over `/v1/engines/vram` (AiView passes its cells up). This tab
+// keeps the raw snapshot only for the per-row measured hints below.
+import { fmtDisk, subscribeVramFeed, vram } from "../services/vramFeed.js";
+let unsubscribeVram = null;
 
-// Seed from the last fetch so revisiting doesn't flash the "no engines"
-// banner before the list arrives (user-hit 2026-06-12).
-const ENGINES_CACHE_KEY = "jv.engines.lastList";
-function _cachedEngines() {
-  try { return JSON.parse(window.sessionStorage?.getItem(ENGINES_CACHE_KEY) || "[]"); }
-  catch { return []; }
-}
-const engines = ref(_cachedEngines());
-const enginesLoaded = ref(engines.value.length > 0);
-const system = ref(null);
+// The engine list is SERVER state and is never cached in the browser (the
+// 2026-08-14 audit: a browser copy of server-owned state is the shape behind
+// the progress-bar bug). The "no engines" banner it used to guard against is
+// already gated on `enginesLoaded`, which stays false until the first fetch
+// resolves — so nothing flashes and there is no second copy to go stale.
+const engines = ref([]);
+const enginesLoaded = ref(false);
 
 // Per-engine model variants:
 //   {[engineId]: {variants: [{id, name, size_mb, languages, on_disk, ...}]}}
@@ -203,7 +85,9 @@ const variants = reactive({});
 // ── Download/load tasks (kit machinery) ───────────────────────────────
 // One reactive task per in-flight operation, keyed engineId (engine-wide
 // install) or engineId/variantId (per-variant download/load). DownloadBar
-// renders whatever is here; terminal bars stay until dismissed.
+// renders whatever is here; done bars are reaped on success (the LLM
+// catalog's rule — the row flipping to "on disk"/"loaded" is the evidence),
+// error/cancelled bars linger for Retry/Dismiss.
 const dlTasks = reactive({});
 const _engineKey = (engineId) => engineId;
 const _variantKey = (engineId, variantId) => `${engineId}/${variantId}`;
@@ -302,19 +186,6 @@ async function setDefaultVariant(engine, variantId) {
   }
 }
 
-const RUNTIME_LABELS = {
-  cuda: "CUDA", metal: "Metal", coreml: "CoreML", directml: "DirectML",
-  rocm: "ROCm", mlx: "MLX", vulkan: "Vulkan", cpu: "CPU",
-};
-const activeRuntimes = computed(() => {
-  const r = system.value?.runtimes || {};
-  return Object.keys(RUNTIME_LABELS).filter((k) => r[k]).map((k) => RUNTIME_LABELS[k]);
-});
-
-function fmtDisk(mb) {
-  if (mb == null) return "—";
-  return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb} MB`;
-}
 
 async function refresh() {
   const e = await api.safeRequest("/v1/engines", { engines: [] });
@@ -322,7 +193,6 @@ async function refresh() {
   // tabs of this console).
   engines.value = (e?.engines ?? []).filter((x) => ["tts", "stt"].includes(x.kind || "tts"));
   enginesLoaded.value = true;
-  try { window.sessionStorage?.setItem(ENGINES_CACHE_KEY, JSON.stringify(engines.value)); } catch { /* ignore */ }
   await Promise.all(
     engines.value.map(async (eng) => {
       if (variants[eng.id]) return;
@@ -332,10 +202,6 @@ async function refresh() {
       } catch { /* tolerated */ }
     }),
   );
-}
-
-async function loadSystem() {
-  system.value = await api.safeRequest("/v1/system/info", null);
 }
 
 function variantsFor(engineId) {
@@ -387,6 +253,7 @@ async function installEngine(engine) {
       pushToast({ message: `${engine.name || engine.id} installed.`, kind: "success", duration: 4000 });
       delete variants[engine.id];
       await refresh();
+      delete dlTasks[key]; // done bars are reaped (the LLM catalog's rule) — error/cancelled linger for Retry/Dismiss
     });
   } catch {
     // The task row carries the error (failed lingers until dismissed) — the
@@ -505,9 +372,11 @@ async function uninstall(engine) {
 
 async function deleteModel(e, v) {
   const ok = await confirmDialog({
-    title: `Delete ${v.name}?`,
-    message: `Removes the downloaded weights (${fmtDisk(v.size_mb)}) from disk. The engine stays; you can download again anytime.`,
-    danger: true, confirmLabel: "Delete model",
+    // Same words as the kit catalog's freeDownload confirm — the menu item and
+    // the button that finishes the act must not say two different things.
+    title: `Delete the downloaded model "${v.name}"?`,
+    message: `Deletes its downloaded weights (${fmtDisk(v.size_mb)}) from disk. The engine stays; the model re-downloads on demand.`,
+    danger: true, confirmLabel: "Delete downloaded model",
   });
   if (!ok) return;
   try {
@@ -547,7 +416,7 @@ function licenseTitle(e, v) {
 }
 
 // Per-row measured-memory hint (§13): joins the vram endpoint's
-// reservations the same way the strip's speechRows does. Only the LOADED
+// reservations the same way vramFeed's hostCells does. Only the LOADED
 // variant can carry a number — memory is measured, never declared.
 function measuredHint(e, v) {
   if (!isLoadedVariant(e, v.id)) return null;
@@ -568,8 +437,9 @@ function measuredHint(e, v) {
   };
 }
 
-// ── The three-dot menu's verbs (§6: Re-download · Delete files · Open
-// folder · View on Hugging Face) ──────────────────────────────────────
+// ── The three-dot menu's verbs (§6, family-aligned 2026-08-14: Re-download ·
+// Open folder · View on Hugging Face · Delete downloaded model — the SAME
+// words, in the same order, as the kit's LLM model catalog) ───────────
 async function redownload(e, v) {
   const ok = await confirmDialog({
     title: `Re-download ${v.name}?`,
@@ -614,23 +484,24 @@ async function downloadOnly(engine, variantId) {
       pushToast({ message: `${variantNameFor(engine.id, variantId)} downloaded.`, kind: "success", duration: 4000 });
       delete variants[engine.id];
       await refresh();
+      delete dlTasks[key]; // done bars are reaped — the row itself now says "on disk"
     });
   } catch {
     // The task row carries the error (failed lingers until dismissed).
   }
 }
 
-// Desktop-only, the log-opener precedent (SettingsView): the SERVER
-// resolved local_dir (speech cache / legacy HF cache / tarball dir), so
-// the layout knowledge never leaks into the client.
+// Desktop-only: the SERVER resolved local_dir (speech cache / legacy HF
+// cache / tarball dir), so the layout knowledge never leaks into the client.
+// The OPENER is the kit's (configureExternal's openPath, wired once in
+// main.js) — the same door the LLM catalog's Open folder uses, one
+// implementation for the family. It was `window.__TAURI__.shell.open` here,
+// which never fired: JV doesn't set `withGlobalTauri`, so that global is
+// undefined even in the desktop app and this item only ever toasted.
 function openModelFolder(v) {
-  const tauri = typeof window !== "undefined" ? window.__TAURI__ : null;
-  if (!tauri?.shell?.open) {
+  if (!openPath(v.local_dir)) {
     pushToast({ message: "Open folder requires the desktop app.", kind: "warning" });
-    return;
   }
-  tauri.shell.open(v.local_dir).catch((err) =>
-    pushToast({ message: `Couldn't open the folder: ${err?.message || err}`, kind: "error" }));
 }
 
 function viewOnHf(v) {
@@ -740,13 +611,13 @@ async function unloadKind(kind) {
 const sharedEngines = computed(() => engines.value.filter((e) => e.isolation !== "venv").length);
 
 onMounted(() => {
-  refresh(); loadSystem(); loadDefaults(); pollVram();
-  vramTimer = setInterval(pollVram, 4000);
+  refresh(); loadDefaults();
+  unsubscribeVram = subscribeVramFeed();
   window.addEventListener("jv:health-refresh", refresh);
 });
 onBeforeUnmount(() => {
   window.removeEventListener("jv:health-refresh", refresh);
-  if (vramTimer) clearInterval(vramTimer);
+  if (unsubscribeVram) unsubscribeVram();
 });
 </script>
 
@@ -781,48 +652,11 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div class="jv-card ev-hw" v-if="system">
-      <div class="ev-hw-cell"><div class="k">OS</div><strong>{{ system.os }}</strong></div>
-      <div class="ev-hw-cell"><div class="k">CPU</div><strong>{{ system.cpu_cores }}</strong> <span class="jv-muted">threads</span></div>
-      <div class="ev-hw-cell"><div class="k">Memory</div><strong>{{ Math.round(system.ram_total_mb / 1024) }} GB</strong></div>
-      <div class="ev-hw-cell" v-for="(g, i) in system.gpus || []" :key="i">
-        <div class="k">GPU</div><strong>{{ g.name }}</strong>
-        <span class="jv-muted" v-if="g.vram_mb">{{ (g.vram_mb / 1024).toFixed(1) }} GB VRAM</span>
-      </div>
-      <div class="ev-hw-cell"><div class="k">Acceleration</div>
-        <span><UiTag intent="ghost" v-for="r in activeRuntimes" :key="r" :label="r" /><span v-if="!activeRuntimes.length" class="jv-muted">CPU only</span></span>
-      </div>
-    </div>
-
-    <!-- The memory budget strip (Q4: ONE strip, one endpoint) — since the
-         2026-08-13 redesign it shows MEASURED reality: used/free match what
-         nvidia-smi (or Task Manager) says, each loaded speech engine is its
-         own cell with its measured take, and anything not yet measured is
-         drawn as an estimate (~). The label follows the box's memory
-         architecture: "VRAM" on a discrete card, "Memory" on one-pool
-         (iGPU/unified) machines where CPU and GPU share the same bytes.
-         Hover lists every holder, including other apps. -->
-    <div class="jv-card ev-hw" v-if="vram" :title="budgetTitle">
-      <div class="ev-hw-cell"><div class="k">{{ memLabel }}</div>
-        <strong v-if="vram.used_mb != null">{{ fmtDisk(vram.used_mb) }} <span class="jv-muted">of {{ fmtDisk(vram.total_mb) }} used</span></strong>
-        <strong v-else>{{ fmtDisk(vram.total_mb) }} <span class="jv-muted">budget</span></strong>
-      </div>
-      <div class="ev-hw-cell"><div class="k">Free</div><strong>{{ fmtDisk(freeMb) }}</strong></div>
-      <div class="ev-hw-cell" v-for="r in speechRows" :key="r.key">
-        <div class="k">{{ r.label }}</div>
-        <strong :title="r.title">{{ r.text }}</strong>
-      </div>
-      <div class="ev-hw-cell" v-if="llmCell"><div class="k">{{ llmCell.label }}</div>
-        <strong :title="llmCell.title">{{ llmCell.text }}</strong>
-      </div>
-      <div class="ev-hw-cell" v-if="vram.other_mb > 256"><div class="k">Other apps</div>
-        <strong title="Memory held by processes JustVoice doesn't manage (browser, OS, games)">{{ fmtDisk(vram.other_mb) }}</strong>
-      </div>
-      <div class="ev-hw-cell" v-if="vram.busy_kinds?.length"><div class="k">Busy</div>
-        <span><UiTag v-for="k in vram.busy_kinds" :key="k" intent="ghost" :label="k.toUpperCase()"
-          title="Work in flight — this kind's resident model can't be evicted right now" /></span>
-      </div>
-    </div>
+    <!-- The hardware card AND the memory budget strip both live ONCE per
+         page, on the kit's top strip (user, 2026-08-14 for hardware;
+         2026-08-15 one-strip consolidation for memory — AiView feeds this
+         tab's old cells into AiModelsArea via services/vramFeed.js). What
+         this tab keeps is the per-row measured hint and the rail below. -->
 
     <!-- Loaded-now rail -->
     <div class="ev-rail">
@@ -838,8 +672,8 @@ onBeforeUnmount(() => {
       </div>
       <!-- The old client-guessed "est. VRAM" total died with the 2026-08-13
            wiring, and its "booked" successor died with the 2026-08-14
-           measured redesign — the budget strip above is the ONE memory
-           surface (measured, provenance-tagged). -->
+           measured redesign — the kit's top strip is the ONE memory
+           surface (measured, provenance-tagged; fed by vramFeed.js). -->
     </div>
 
     <p v-if="enginesLoaded && !engines.length" class="jv-banner jv-banner--warn">
@@ -951,7 +785,7 @@ onBeforeUnmount(() => {
                     <template v-if="v.on_disk === true && !modelLoaded(e, v)">
                       <DropdownMenuSeparator class="ev-menu-sep" />
                       <DropdownMenuItem class="ev-menu-item danger"
-                        @select="deleteModel(e, v)">Delete files</DropdownMenuItem>
+                        @select="deleteModel(e, v)">Delete downloaded model</DropdownMenuItem>
                     </template>
                   </DropdownMenuContent>
                 </DropdownMenuPortal>

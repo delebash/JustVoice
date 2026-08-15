@@ -51,14 +51,26 @@ MLX is Apple's experimental ML framework. We detect it but no engine adapter cur
 
 Your speech engines and the local AI model share **one memory pool**, and since the 2026-08 arbiter wiring JustVoice manages that pool with a single shared budget — nothing is loaded blind anymore.
 
-**The budget strip** at the top of the Speech engines tab shows **measured
+**The memory strip** sits at the top of the AI Settings console, above the
+tabs — one strip for the whole console, visible whether you're on LLM
+providers or Speech engines (consolidated 2026-08-15; there is no longer a
+second bar on the Speech engines tab). Its left cells are the box facts
+(OS · CPU · Memory · GPU · Acceleration); its live cells show **measured
 reality** — the same numbers `nvidia-smi` or Task Manager would show you,
 never internal bookkeeping:
 
-- **VRAM** (or **Memory** — see below) — how much of the pool is actually in
-  use right now, out of the total the box has.
+- **VRAM used** (or **Memory used** — see below) — how much of the pool is
+  actually in use right now, out of the total the box has.
 - **Free** — what's actually left.
-- **One cell per loaded speech engine** — its real, measured memory take.
+- **LLM** — the loaded language model's name and the runner's booked take.
+  When nothing is loaded the cell shows **~X GB on demand** — the predicted
+  footprint of the model your features route to (a prediction that prefers
+  your own measured loads over calculation) — or **cloud-routed** if your AI
+  features run on a cloud provider and nothing will load locally.
+- **TTS** / **STT** — always present, one per slot: **—** when nothing is
+  loaded, otherwise the loaded model's name and its real, measured memory
+  take (or **on CPU** for a CPU-placed engine, which holds no VRAM on a
+  discrete card).
   The very first time an engine loads on your machine the cell says **not
   measured yet** for a moment: JustVoice attaches no number to a load it has
   never observed — it measures the engine process itself as soon as the load
@@ -67,11 +79,6 @@ never internal bookkeeping:
   generating than just after loading). On the rare box where per-process
   measurement isn't possible, the cell shows a **~** figure read from the
   device-wide change during the load, labeled as approximate.
-- **AI model** — what the local language model holds if it's loaded
-  (measured, by the same rule), or **loads on demand · ~X GB** — its
-  predicted footprint — when it isn't. That prediction also prefers your own
-  measured loads over calculation. If your AI features are routed to a cloud
-  provider, the cell says **cloud-routed** — nothing will load locally.
 - **Other apps** — memory held by things JustVoice doesn't manage (browser,
   OS, games). A shared card is shared; the strip says so instead of
   pretending the pool is all yours.
@@ -110,7 +117,7 @@ engine's first load there simply is no number — the strip says **not
 measured yet** — and from the first real load onward the number is the
 engine process's actual footprint, remembered per machine.
 
-You can still load one engine per slot (one TTS + one STT). Unload via the Speech engines tab — or just load what you need and let the budget do the freeing.
+You can still load one engine per slot (one TTS + one STT). Unload via the Speech engines tab's Loaded-now rail — or just load what you need and let the budget do the freeing.
 
 ## Troubleshooting
 

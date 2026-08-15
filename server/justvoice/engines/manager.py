@@ -225,6 +225,30 @@ def shared_venv_healthy() -> bool:
     return _venv_health
 
 
+def legacy_files_engine_visible(models_dir: Path, expected: list[str]) -> bool:
+    """True when every expected legacy file sits where the ENGINE will look:
+    flat or ONE subdir under models_dir (the kokoro engine's own search).
+    THE one probe for the legacy engine-dir layout — the load door and the
+    catalog's on_disk flag must agree, or the row says "on disk" while the
+    load can't find the files. The first probes used rglob at any depth and
+    claimed a tarball extracted TWO levels deep
+    (models/<variant>/<tarball-root>/) was servable — user-hit 2026-08-15
+    ("Kokoro model files not found")."""
+    if not expected or not models_dir.exists():
+        return False
+
+    def _visible(f: str) -> bool:
+        if (models_dir / f).exists():
+            return True
+        return any((sub / f).exists()
+                   for sub in models_dir.iterdir() if sub.is_dir())
+
+    try:
+        return all(_visible(f) for f in expected)
+    except OSError:
+        return False
+
+
 # ─── Manifest loading ─────────────────────────────────────────────────
 
 
@@ -403,6 +427,12 @@ class EngineManifest:
         # Legacy: check that the engine's expected model files are present.
         # If there are no model_install_steps, the engine pulls via HF cache on
         # first load — we treat that as "installed" once the shared venv exists.
+        # DELIBERATELY any-depth (not legacy_files_engine_visible): a tarball
+        # stranded too deep still marks the ENGINE installed — the venv is
+        # real, the per-variant on_disk flag says the truth about the files,
+        # and the load door heals via the speech cache. Tightening this would
+        # flip the chip to "not installed" and route users into the legacy
+        # tarball re-install instead (2026-08-15 review).
         steps = self.model_install_steps
         if not steps:
             return True
@@ -838,12 +868,13 @@ def _install_model_tarball(
     models_dir = manifest.models_dir
     models_dir.mkdir(parents=True, exist_ok=True)
 
-    # Skip download if the engine's _resolved_dir logic would already find
-    # the files (e.g. the user already installed the tarball before).
-    # Heuristic: if any of the expected files are present anywhere under
-    # models_dir, treat it as already-downloaded.
+    # Skip download only if the engine's _resolved_dir logic would already
+    # find the files (the user installed the tarball before) — THE one
+    # engine-visibility probe, matching the engine's flat-or-one-subdir
+    # search. The old any-depth rglob skipped the download for a tarball
+    # stranded two levels deep, leaving the engine unloadable.
     expected = step.get("expected_files", [])
-    if expected and all(any(models_dir.rglob(f)) for f in expected):
+    if legacy_files_engine_visible(models_dir, expected):
         emit("model-tarball", "model files already present, skipping download")
         return
 
@@ -1730,12 +1761,13 @@ class EngineManager:
             # door's cold fetch lands in the speech cache too, so the legacy
             # engine-dir models location gets no new writes from any path.
             # A pre-④ tarball install under the engine dir keeps serving
-            # (same contract as the HF legacy arm below).
+            # (same contract as the HF legacy arm below) — probed by THE one
+            # engine-visibility rule (see legacy_files_engine_visible: a
+            # too-deep extract falls through to the speech-cache fetch).
             try:
                 expected = [f for step in m.model_install_steps
                             for f in (step.get("expected_files") or [])]
-                if expected and m.models_dir.exists() \
-                        and all(any(m.models_dir.rglob(f)) for f in expected):
+                if legacy_files_engine_visible(m.models_dir, expected):
                     return None
             except Exception:  # noqa: BLE001 — probe must never block a load
                 pass
