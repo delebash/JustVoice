@@ -207,12 +207,58 @@ Each item: scope → files → exact behavior → gates → docs. Build in order
 Items are individually go-gated batches; 0–2 are one batch ("truth"), 3–6 the
 second ("first run"), 7–11 the third ("pipeline") unless the user re-slices.
 
+> **STATUS 2026-08-15 (read this first): items 0, 1 and 2 are BUILT and
+> PUSHED** — JV `97a0282` (catalog + render truth) and `bc1e13c` (the docs
+> pass it exposed). **Resume at item 3.** What the build changed relative to
+> the specs below is recorded inside items 1 and 2; the tracker's "next build"
+> entry carries the same decisions. Facts a later item now depends on:
+>
+> - `mastering.resolve_master_target()` is THE master-target door (request →
+>   render preset's `master` → project → kind default); `master_to_wav()` runs
+>   the preset's processing with WAV out; `GET /v1/render/master-target` feeds
+>   the Studio pill; `render_chapter_api._scene_master_target` /
+>   `_master_scene_pcm` are the internal seams. Scene renders return WAV;
+>   direct mode (`lines[]`) is unchanged.
+> - `render_line`/`probe_line_cached` take `effects` and hash it into the
+>   cache key, so **every pre-existing cache entry is cold** — the first
+>   render after this is a full re-render, by design.
+> - `ChapterLine.effects` carries the resolved chain; `_resolve_scene_to_lines`
+>   fills it; `collect_project_line_kwargs` and `export_voicelines` pass it.
+> - qwen3's `voice_design` capability is now **False** in three places
+>   (manifest CAPABILITIES, `engine.py` meta, `capability_details.py`) —
+>   **item 9 must flip all three back** when the VoiceDesign checkpoint ships.
+> - Chatterbox Multilingual **V3 is blocked on upstream**: PyPI's latest is
+>   0.1.7 (our pin) and its `from_local` hardcodes the v2 filename. Conditions
+>   for revisiting are in `chatterbox/manifest.py`.
+> - **The global audio player no longer exists** (deleted in `afd2185`).
+>   Playback is inline, class `.jv-audio-inline`. Item 5's "reuse the preview
+>   player plumbing" and any item that plays audio must wire the inline
+>   element, NOT `audioPlayer.play(...)`.
+> - The parallel session also landed: the one-strip memory console (kit
+>   `d063ff9` + JV `2abfd93`, feed at `src/services/vramFeed.js`, kit props
+>   `hwCells` / `llmClaim`), one save door + `openPath` (`e307227`), and
+>   `legacy_files_engine_visible()` as THE legacy on-disk probe.
+
 ### Item 0 — this doc + tracker (DONE when committed)
 
 Tracker entry in `docs/dev/TASKS.md` under "The next build" pointing here with
 the §4 rulings verbatim. This plan doc is THE resume surface post-compact.
 
-### Item 1 — Catalog truth (Qwen flags/langs + Multilingual V3 + engines.md)
+### Item 1 — Catalog truth — ✅ BUILT (JV `97a0282`)
+
+Shipped as specced, plus three things the spec did not anticipate:
+**(a)** qwen3's `voice_design: True` was fiction in three files and is now
+False everywhere (item 9 flips it back). **(b)** The engine now REFUSES a
+reference clip on a CustomVoice checkpoint instead of calling
+`generate_voice_clone` on weights that cannot honour it. **(c)** **Dia** was
+found claiming cloning its adapter never wired — `dia/engine.py synth()`
+never reads `req.audio_prompt_path`, so cloned voices rendered in the stock
+voice silently; flags corrected and a structural test now fails any engine
+that claims cloning without reading the clip. Step 4's decision tree
+resolved to "do not ship V3" (see the STATUS block). Tests live in
+`test_variant_wiring.py`; docs in `engines.md` + `voices.md`.
+
+### Item 1 (original spec, for reference) — Qwen flags/langs + Multilingual V3 + engines.md
 
 **Files**: `server/justvoice/engines/qwen3/manifest.py`,
 `server/justvoice/engines/chatterbox/manifest.py`, `docs/engines.md`,
@@ -245,7 +291,28 @@ the §4 rulings verbatim. This plan doc is THE resume surface post-compact.
    `voice_cloning is False` for both CV ids, True for both Base ids; languages
    == the 10-list. Full JV gate + smoke.
 
-### Item 2 — Render truth (effects + mastering + cache key + QC)
+### Item 2 — Render truth — ✅ BUILT (JV `97a0282`, docs `bc1e13c`)
+
+Shipped, with these decisions taken against the spec below:
+**(1)** The spec's "move `apply_effects_chain` if it lives in generate_api"
+was moot — it already lived in `audio/effects.py`; so did
+`effects_chain_hash` and `CacheKeyBuilder.with_effects_chain`, both
+documented as being in the cache key and both uncalled. Wiring, not
+building. **(2)** Mastering resolution gained a level the spec missed: the
+**render preset's own `master` field**, stored and never read. Order is
+request → preset → project → kind. **(3)** `"none"`, not null, is the
+explicit "raw" signal — omitting `master` in scene mode now means "server
+decides". **(4)** Scene renders return **WAV with the processing applied**
+(the encoded deliverable stays with Export, so the .m4b carries one lossy
+generation); direct mode is byte-identical. **(5)** Missing ffmpeg degrades
+to a raw render that says so, never a failure. **(6)** The pill reads a new
+`GET /v1/render/master-target` rather than the response header, because the
+pill must be truthful *before* a render happens. **(7)** Effects were also
+wired into the game voiceline export. Tests: `test_render_truth.py` (21).
+Docs went far past `studio.md` — see `bc1e13c` and the tracker's DOCS PASS
+line for what else was untrue.
+
+### Item 2 (original spec, for reference) — effects + mastering + cache key + QC
 
 **Files**: `server/justvoice/render_core.py`,
 `server/justvoice/api/render_chapter_api.py`, `server/justvoice/mastering.py`
@@ -554,3 +621,24 @@ Everything below is BUILT + PUSHED (trees clean, all four repos):
 
 Resume recipe: read THIS doc §5 top-down; the JV tracker's "next build" entry
 points here; gates per the header block.
+
+### §7b — session state after the items 0–2 build (2026-08-15, later)
+
+All four repos clean and level with their remotes at hand-off. JV history,
+newest first: `bc1e13c` docs pass · `afd2185` inline player (parallel
+session) · `2abfd93` one-strip JV half · `a1266af` gate-block wording
+(parallel) · `97a0282` items 1+2 · `e307227` one save door (parallel). Kit:
+`d063ff9` one-strip kit half.
+
+Gate results at hand-off — JV ruff + **549** server tests, biome, vitest 48,
+`build:vite`, renderer smoke 16 views zero JS errors; JustWrite vitest
+**578** + build; docgen vitest + build; kit UI biome 122 files. A kit change
+gates all four, and the one-strip commit was gated that way.
+
+Working-relationship facts that cost time this session, worth keeping: the
+user edits and commits **in parallel** — the tree moved under me three times,
+so re-check `git status` immediately before staging, stage explicit paths
+only, and disclose any file that mixes both sessions' work (two did:
+`models.py` and `docs/engines.md`, both named in `97a0282`'s message).
+`test_prefetch_cancel_via_http_endpoint` flaked once in a full run and passed
+alone, as a file, and in a clean re-run.
