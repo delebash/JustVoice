@@ -4,14 +4,13 @@
 
   Walks Take.source_take_id back to the original via GET /v1/takes/{id}/lineage.
   Renders as a vertical timeline: oldest at top, newest at bottom. Each node
-  has its own ▶ play button that routes through the GlobalAudioPlayer.
+  has its own ▶ play button that opens a compact inline player on the node.
 
   Task #98 (Take-lineage chain viewer).
 -->
 <script setup>
 import { ref, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { UiButton, UiTag, AppModal } from "@delebash/llm-ui";
 
 const props = defineProps({
@@ -21,7 +20,6 @@ const props = defineProps({
 const emit = defineEmits(["close"]);
 
 const api = useApi();
-const audioPlayer = useAudioPlayer();
 
 const chain = ref([]);
 const loading = ref(false);
@@ -46,13 +44,12 @@ watch(() => [props.open, props.takeId], ([open]) => {
   if (open) load();
 });
 
+// ▶ opens a compact inline player on the node (the ruling 2026-08-15:
+// the global bottom bar died; playback is compact and in place).
+const nodePlaying = ref(null); // { id, url } | null
 function playNode(n) {
   if (!n?.audio_url) return;
-  audioPlayer.play({
-    url: `${api.serverUrl}${n.audio_url}`,
-    title: n.label || "Take",
-    subtitle: n.text_preview || "",
-  });
+  nodePlaying.value = { id: n.take_id, url: `${api.serverUrl}${n.audio_url}` };
 }
 
 function fmtDate(iso) {
@@ -93,6 +90,8 @@ function fmtDate(iso) {
               />
             </div>
             <p v-if="n.text_preview" class="lineage-node__text">{{ n.text_preview }}</p>
+            <!-- Compact inline player (2026-08-15: no global bottom bar). -->
+            <audio v-if="nodePlaying?.id === n.take_id" :src="nodePlaying.url" controls autoplay class="jv-audio-inline" />
           </div>
         </div>
       </div>

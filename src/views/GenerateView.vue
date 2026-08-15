@@ -2,7 +2,6 @@
 <script setup>
 import { ref, reactive, onActivated, onMounted, computed, watch } from "vue";
 import { useApi } from "../stores/api.js";
-import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast, runAiEndpoint, withAiTask } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag, UiSelect, AppModal } from "@delebash/llm-ui";
@@ -11,7 +10,6 @@ import { useVoicesStore } from "../stores/voices.js";
 import { usePersonasStore } from "../stores/personas.js";
 
 const api = useApi();
-const audioPlayer = useAudioPlayer();
 // voices + personas from shared stores; engines/current + capabilities
 // are single-record/map fetches that stay local.
 const voicesStore = useVoicesStore();
@@ -494,14 +492,12 @@ function relativeTime(iso) {
   return `${Math.floor(diffSec / 86400)}d`;
 }
 
+// ▶ opens a compact inline player under the history row (the ruling
+// 2026-08-15: the global bottom bar died; playback is compact and in place).
+const takePlaying = ref(null); // { id, url } | null
 function playTake(h) {
   if (!h?.audio_url) return;
-  const url = `${api.serverUrl}${h.audio_url}`;
-  audioPlayer.play({
-    url,
-    title: h.voice || "Take",
-    subtitle: (h.text || "").slice(0, 80),
-  });
+  takePlaying.value = { id: h.id, url: `${api.serverUrl}${h.audio_url}` };
 }
 
 async function toggleFavorite(h) {
@@ -1068,7 +1064,8 @@ onActivated(() => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="h in history" :key="h.id">
+            <template v-for="h in history" :key="h.id">
+            <tr>
               <td class="jv-muted">{{ relativeTime(h.when) }}</td>
               <td><strong>{{ h.voice || "—" }}</strong></td>
               <td>{{ h.text }}</td>
@@ -1081,6 +1078,11 @@ onActivated(() => {
                 <UiButton intent="ghost" size="small" label="✕" title="Delete this generation (audio + history row)" @click="deleteTake(h)" />
               </td>
             </tr>
+            <!-- Compact inline player (2026-08-15: no global bottom bar). -->
+            <tr v-if="takePlaying?.id === h.id"><td colspan="6">
+              <audio :src="takePlaying.url" controls autoplay class="jv-audio-inline" />
+            </td></tr>
+            </template>
           </tbody>
         </table>
         <p v-else class="jv-table__empty">No takes yet. Render something above — recent generations land here.</p>

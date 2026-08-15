@@ -27,7 +27,6 @@ import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
 import { useLexiconsStore } from "../stores/lexicons.js";
 import { useEnginesStore } from "../stores/engines.js";
-import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { pushToast } from "@delebash/llm-ui";
 import { UiButton, UiTag, UiChip } from "@delebash/llm-ui";
 
@@ -35,7 +34,6 @@ const onboarding = useOnboarding();
 const api = useApi();
 const tasks = useAiTasksStore();
 const activeProject = useActiveProject();
-const audioPlayer = useAudioPlayer();
 
 const health = ref(null);
 // The five shared lists come from stores (single source of truth);
@@ -301,13 +299,12 @@ async function unloadEngine() {
 }
 
 // ── Recent generations ────────────────────────────────────────────────
+// ▶ opens a compact inline player under the row (the ruling 2026-08-15:
+// the global bottom bar died; playback is compact and in place).
+const genPlaying = ref(null); // { id, url } | null
 function playGen(g) {
   if (!g?.audio_url) return;
-  audioPlayer.play({
-    url: `${api.serverUrl}${g.audio_url}`,
-    title: g.voice || "Take",
-    subtitle: (g.text || "").slice(0, 80),
-  });
+  genPlaying.value = { id: g.id, url: `${api.serverUrl}${g.audio_url}` };
 }
 function genDownloadUrl(g) {
   return g?.audio_url ? `${api.serverUrl}${g.audio_url}` : "#";
@@ -469,13 +466,17 @@ onMounted(() => {
         <UiButton as="a" intent="ghost" size="small" href="#generate" title="Full history lives on Generate">all history ➜</UiButton>
       </div>
       <p v-if="!recentGenerations.length" class="jv-muted home__empty">Render something — your latest takes land here for one-click replay.</p>
-      <div v-for="g in recentGenerations" :key="g.id" class="home__gen">
+      <template v-for="g in recentGenerations" :key="g.id">
+      <div class="home__gen">
         <UiButton intent="ghost" size="small" label="▶" title="Play" @click="playGen(g)" />
         <span class="home__gen-text">{{ g.text || "—" }}</span>
         <span class="jv-muted home__gen-who">{{ g.voice || "?" }}</span>
         <span class="jv-mono jv-muted home__gen-meta">{{ g.take ? g.take + " · " : "" }}{{ fmtAgo(g.when) }}</span>
         <UiButton as="a" intent="ghost" size="small" :href="genDownloadUrl(g)" download title="Download WAV">⬇</UiButton>
       </div>
+      <!-- Compact inline player (2026-08-15: no global bottom bar). -->
+      <audio v-if="genPlaying?.id === g.id" :src="genPlaying.url" controls autoplay class="jv-audio-inline" />
+      </template>
     </div>
 
     <!-- Hotkey banner -->

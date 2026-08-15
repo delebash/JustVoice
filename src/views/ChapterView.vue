@@ -1055,7 +1055,7 @@ async function savePastedText() {
                 :src="audioUrl(getActiveTake(block.id))"
                 :key="getActiveTake(block.id).id"
                 controls
-                class="chapter-view__audio"
+                class="jv-audio-inline"
               />
             </div>
             <div v-else class="chapter-view__no-audio jv-muted">
@@ -1087,7 +1087,7 @@ async function savePastedText() {
                     :src="audioUrl(getActiveTake(block.id))"
                     :key="'cmp-a-' + getActiveTake(block.id).id"
                     controls
-                    class="chapter-view__audio"
+                    class="jv-audio-inline"
                   />
                 </div>
 
@@ -1105,7 +1105,7 @@ async function savePastedText() {
                     :src="audioUrl(compareTakeB(block.id))"
                     :key="'cmp-b-' + compareTakeB(block.id).id"
                     controls
-                    class="chapter-view__audio"
+                    class="jv-audio-inline"
                     style="margin-top: 8px"
                   />
                 </div>
@@ -1323,10 +1323,8 @@ async function savePastedText() {
   margin-bottom: 10px;
 }
 
-.chapter-view__audio {
-  width: 100%;
-  height: 36px;
-}
+/* .chapter-view__audio was promoted to the canonical .jv-audio-inline
+   (styles.css) when the global bottom bar died, 2026-08-15. */
 
 .chapter-view__no-audio {
   font-size: 12px;

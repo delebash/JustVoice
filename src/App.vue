@@ -13,7 +13,6 @@ import QuickSetup from "./components/QuickSetup.vue";
 import KeyboardCheatsheet from "./components/KeyboardCheatsheet.vue";
 import { AiSetupOffer, AiStatusButton, AiTaskStrip, BootModelLoad, HelpDrawer, HelpTrigger, LlmUiHosts, TitleBar, openExternal, pushToast, useAiTasksNav, useAiTasksStore, useModelApply, warmModelId } from "@delebash/llm-ui";
 import { readPref, writePref } from "./services/prefs.js";
-import GlobalAudioPlayer from "./components/GlobalAudioPlayer.vue";
 
 // View components are lazy-loaded by the router (router/index.js); App.vue holds
 // only the sidebar metadata (VIEWS) keyed by route name.
@@ -622,7 +621,8 @@ onMounted(async () => {
     <QuickSetup v-if="showQuickSetup" @close="onQuickSetupClosed" />
     <KeyboardCheatsheet />
     <HelpDrawer />
-    <GlobalAudioPlayer />
+    <!-- GlobalAudioPlayer died 2026-08-15 (user ruling: no fixed bottom
+         bar — playback is compact and in place, .jv-audio-inline). -->
 
     <!-- Boot splash — the PAGE is this app's (the same minimal brand plate as
          index.html #app-boot — KEEP IN SYNC), the load group is the KIT's.

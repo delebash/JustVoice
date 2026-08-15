@@ -28,7 +28,7 @@ Press `?` from anywhere in the app (when no input is focused) to open the in-app
 | Click voice name (with a character selected) | Assign that voice to the selected character |
 | Click gender chip on a voice row | Cycle the gender hint: F → M → N → engine default |
 | Click ⚙ on a voice row | Open the Voice tuning modal for that voice |
-| Click ▶ on a voice row | Preview the voice with a sample sentence — plays via the global audio player |
+| Click ▶ on a voice row | Preview the voice with a sample sentence — a compact player opens in place |
 
 ## Engines
 

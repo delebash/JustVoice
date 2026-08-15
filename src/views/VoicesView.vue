@@ -263,11 +263,16 @@ const typeCounts = computed(() => {
 const chatterboxLoaded = computed(() => (engines.value || []).some((e) => e?.id?.includes("chatterbox") && e?.status === "loaded"));
 
 // ── Voice preview (LRU-cached on backend). ──────────────────────────
+// Plays in a COMPACT INLINE player row under the previewed voice (user
+// ruling 2026-08-15: the global bottom bar died; playback is compact and
+// in place — this library row IS the preview surface).
 const previewAudio = ref(null);
 const previewingId = ref(null);
+const previewFor = ref(null); // voice id whose row shows the inline player
 
 async function previewVoice(v) {
   previewingId.value = v.id;
+  previewFor.value = null;
   if (previewAudio.value) {
     URL.revokeObjectURL(previewAudio.value);
     previewAudio.value = null;
@@ -308,8 +313,7 @@ async function previewVoice(v) {
       window.dispatchEvent(new Event("jv:health-refresh"));
     }
     previewAudio.value = URL.createObjectURL(blob);
-    const audio = new Audio(previewAudio.value);
-    audio.play().catch(() => {});
+    previewFor.value = v.id; // the row's inline player autoplays
   } catch (e) {
     pushToast({ message: `Preview failed: ${e.message || e}`, kind: "error" });
   } finally {
@@ -797,6 +801,7 @@ function blendWithVoice() {
           <td @click.stop>
             <UiButton intent="ghost" size="small" :loading="previewingId === v.id" label="▶" :title="`Preview ${v.name}`" @click="previewVoice(v)" />
           </td>
+          <!-- (the compact preview row renders below this row) -->
           <td>
             <strong>{{ v.name }}</strong>
             <UiTag v-if="orphanIds.includes(v.id)" intent="danger" label="orphan" style="margin-left: 6px" />
@@ -861,6 +866,11 @@ function blendWithVoice() {
             />
           </td>
         </tr>
+        <!-- Compact preview player (the ruling 2026-08-15: playback lives
+             in the library row, not a global bottom bar). -->
+        <tr v-if="previewFor === v.id && previewAudio" :key="`prev-${v.id}`" class="voices-view__expand"><td colspan="12">
+          <audio :src="previewAudio" controls autoplay class="jv-audio-inline" />
+        </td></tr>
         <tr v-if="inspectedId === v.id" :key="`exp-${v.id}`" class="voices-view__expand"><td colspan="12"><div class="voices-view__inspector">
     <header class="voices-view__inspector-h">
       <h3>Voice inspector — {{ inspectedVoice.name }}</h3>

@@ -1628,8 +1628,15 @@ section.block > h3 {
 .ev-chips{display:flex;gap:6px}
 .ev-chip{font:inherit;font-size:11.5px;font-weight:700;letter-spacing:.04em;border:1px solid var(--line);border-radius:999px;padding:5px 13px;cursor:pointer;background:var(--surface);color:var(--ink-2)}
 .ev-chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
-.ev-hw{display:flex;gap:26px;align-items:center;padding:12px 18px;margin-bottom:14px}
-.ev-hw-cell .k{font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em}
+/* .ev-hw / .ev-hw-cell died 2026-08-15 — the memory budget strip merged
+   into the kit's top strip (the one-strip consolidation). */
+
+/* ── Compact inline audio (canonical, promoted 2026-08-15) ──────────────
+   THE playback surface after the global bottom bar died (user ruling:
+   playback is compact and in place). Native <audio controls> rendered
+   where the action lives — promoted from ChapterView's scoped
+   .chapter-view__audio, which this replaces. */
+.jv-audio-inline{width:100%;height:36px;display:block}
 .ev-rail{display:flex;align-items:center;background:var(--surface);border:1px solid var(--accent-line,#b8d2c3);border-radius:10px;margin-bottom:18px;overflow:hidden}
 .ev-rail-h{background:var(--accent-soft,#e8f0eb);color:var(--accent-ink,#2c6049);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:14px 16px;align-self:stretch;display:flex;align-items:center;border-right:1px solid var(--accent-line,#b8d2c3)}
 .ev-slot{display:flex;align-items:center;gap:10px;padding:9px 16px;border-right:1px solid var(--line);flex:1;min-width:0}

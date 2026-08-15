@@ -19,7 +19,6 @@ import { useApi } from "../stores/api.js";
 // Task lifecycles ride the kit runners (AI-call convention, app-structure §8);
 // the store import remains for READS only (per-scene bars, taskForScene).
 import { AiTaskStrip, runAiEndpoint, runAiEndpointStream, useAiTasksStore, withAiTask } from "@delebash/llm-ui";
-import { useAudioPlayer } from "../stores/audioPlayer.js";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import { useCopy } from "../services/copy.js";
 import {
@@ -42,7 +41,6 @@ import { confirmDialog } from "@delebash/llm-ui";
 const api = useApi();
 const activeProject = useActiveProject();
 const tasks = useAiTasksStore();
-const audioPlayer = useAudioPlayer();
 const copy = useCopy();
 
 // Shared lists from stores (single source of truth). loadAll() reloads
@@ -555,7 +553,7 @@ async function clearCast() {
 }
 
 // Preview a voice — calls /v1/generate with a short sample sentence,
-// routes the resulting Blob into the global audio player. JustWrite
+// plays it in the cast card's compact audition player. JustWrite
 // affordance J. Per-voice preview state stops the button being
 // re-clicked while in flight.
 // Engines whose manifest declares instruct_field — these consume the
@@ -584,6 +582,12 @@ function voiceLocality(v) {
 }
 
 const previewingVoiceId = ref(null);
+// The casting rail's compact audition player (the ruling 2026-08-15: the
+// global bottom bar died; playback is compact and in place). One player
+// atop the cast card serves every ▶ audition button.
+const voicePreviewNow = ref(null); // { url, name, engine } | null
+// Per-scene inline playback for finished renders — same ruling.
+const scenePlay = ref(null); // { id, url } | null
 // Same ask-before-load contract as the Voices page (user-hit: Studio
 // play silently switched/loaded engines). Shares the Voices opt-in pref
 // so "Always auto-load" applies app-wide.
@@ -616,12 +620,12 @@ async function previewVoice(voice) {
       window.dispatchEvent(new Event("jv:health-refresh"));
     }
     if (blob instanceof Blob) {
-      const url = URL.createObjectURL(blob);
-      audioPlayer.play({
-        url,
-        title: `Preview · ${voice.name}`,
-        subtitle: voice.engine || "",
-      });
+      if (voicePreviewNow.value?.url) URL.revokeObjectURL(voicePreviewNow.value.url);
+      voicePreviewNow.value = {
+        url: URL.createObjectURL(blob),
+        name: voice.name,
+        engine: voice.engine || "",
+      };
     }
   } catch (e) {
     pushToast({
@@ -903,19 +907,15 @@ async function renderScene(scene, { check = true } = {}) {
         aborted = task.signal.aborted;
         throw e;
       }
-      // /v1/render_chapter returns audio/wav (a Blob via api.request). Drop
-      // it into the GlobalAudioPlayer so the user can hear the result
-      // immediately, and store the URL on the task so the strip can
-      // expose download + play actions per scene.
+      // /v1/render_chapter returns audio/wav (a Blob via api.request).
+      // Store the URL on the task and open the scene row's compact inline
+      // player (the ruling 2026-08-15: no global bottom bar — playback is
+      // compact and in place).
       if (audio instanceof Blob) {
         const blobUrl = URL.createObjectURL(audio);
         const label = scene.title || `${copy.value.chapter.singular} ${scene.position + 1}`;
         task.update({ result: { url: blobUrl, filename: `${label.replace(/[^a-z0-9_-]+/gi, "_")}.wav` } });
-        audioPlayer.play({
-          url: blobUrl,
-          title: `${label} — rendered`,
-          subtitle: selectedProject.value?.name || "",
-        });
+        scenePlay.value = { id: scene.id, url: blobUrl };
         pushToast({ message: `${label} render complete. Now playing.`, kind: "success" });
       } else {
         task.update({ result: audio });
@@ -1772,6 +1772,14 @@ watch(selectedProjectId, (id) => {
         <div class="studio__cast-cols jv-card">
         <div class="studio__cast-card">
 
+        <!-- Compact audition player — ONE in-flow player atop the cast card
+             serves every ▶ button (the ruling 2026-08-15: the global bottom
+             bar died; playback is compact and in place). -->
+        <div v-if="voicePreviewNow" class="studio__audition">
+          <span class="jv-muted">Audition · <strong>{{ voicePreviewNow.name }}</strong><template v-if="voicePreviewNow.engine"> · {{ voicePreviewNow.engine }}</template></span>
+          <audio :src="voicePreviewNow.url" controls autoplay class="jv-audio-inline" />
+        </div>
+
         <!-- NARRATOR section (JustWrite Audio Studio reference): eyebrow,
              headline, intent paragraph (smart-assign + cast-maps guidance
              combined), then the narrator persona row. Shows for any
@@ -2353,8 +2361,8 @@ watch(selectedProjectId, (id) => {
                     <UiButton
                       v-if="taskForScene(s.id).status === 'done' && taskForScene(s.id).result?.url"
                       intent="ghost" size="small" label="▶ Play"
-                      title="Play in global audio player"
-                      @click="audioPlayer.play({ url: taskForScene(s.id).result.url, title: s.title || 'Scene', subtitle: selectedProject?.name || '' })"
+                      title="Play here in the row"
+                      @click="scenePlay = { id: s.id, url: taskForScene(s.id).result.url }"
                     />
                     <UiButton
                       as="a"
@@ -2370,6 +2378,9 @@ watch(selectedProjectId, (id) => {
                       @click="tasks.dismiss(taskForScene(s.id).id)"
                     />
                   </div>
+                  <!-- Compact inline playback for the finished render (the
+                       ruling 2026-08-15: no global bottom bar). -->
+                  <audio v-if="scenePlay?.id === s.id" :src="scenePlay.url" controls autoplay class="jv-audio-inline" style="margin-top: 6px" />
                 </td>
               </tr>
             </template>
@@ -3096,5 +3107,15 @@ watch(selectedProjectId, (id) => {
 .studio__vrow-online {
   color: var(--warn-ink);
   background: var(--warn-bg);
+}
+
+/* The compact audition player atop the cast card (2026-08-15: the global
+   bottom bar died — playback is compact and in place). */
+.studio__audition {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 12px;
 }
 </style>

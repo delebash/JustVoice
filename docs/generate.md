@@ -152,7 +152,7 @@ The panel closes on outside click, Escape, or the ✕ Close button.
 ## History
 
 The card at the bottom shows your last 10 generations across the whole DB:
-- ▶ replay via the global audio player
+- ▶ replay in a compact player right under the row
 - ★ favorite
 - ↻ retry (re-render with the same args)
 - ✕ delete
