@@ -57,7 +57,13 @@ Click **Skip — configure later** in the confirm step. You can:
 
 - Install voice engines manually on the Speech engines tab of the AI page.
 
-The wizard re-runs from Settings → About → Run welcome again. Quick Setup persists "I've seen this" in localStorage so it doesn't re-pop on every launch.
+The wizard re-runs from **Settings → About → Run welcome again**.
+
+Whether you have seen it is stored **on the server**, with the rest of your
+settings — not in the browser. So it appears once per install, it comes back
+after a factory reset (Settings → Backups → Reset) exactly as it would on a
+new machine, and opening the app in a different browser or clearing site data
+doesn't make it re-pop on an install you already set up.
 
 ## Troubleshooting
 

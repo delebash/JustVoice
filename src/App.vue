@@ -2,7 +2,6 @@
 <script setup>
 import { ref, onMounted, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { initialDeepLink } from "./router/index.js";
 import { useI18n } from "vue-i18n";
 import { useApi } from "./stores/api.js";
 import { useOnboarding } from "./stores/onboarding.js";
@@ -207,10 +206,15 @@ const { t } = useI18n();
 watch(() => activeProject.id, (id, prev) => {
   if (id && !prev) maybeOfferAiSetup();
 });
-// initialDeepLink is non-empty only for a real bookmarked route — the "/"
-// default redirects to /home, so first-run logic uses it to tell "user
-// chose Home" from "defaulted there".
-let initialTabResolved = !!initialDeepLink;
+// FIRST RUN is a property of the INSTALL, not of the URL (2026-08-15). This
+// was seeded from the router's captured deep link, so ANY hash in the address
+// bar marked first-run "already resolved". A factory reset reloads the page
+// you clicked Reset on — Settings, i.e. `#/settings` — so the kind picker
+// never re-opened even though the server was genuinely factory-fresh (verified
+// end to end: settings.app.onboarding_shown goes False → True → False across a
+// real reset, and the client simply never asked). The server flag is the ONE
+// source now; the URL no longer votes.
+let initialTabResolved = false;
 
 // Localized sidebar labels — proves the i18n scaffold is live. VIEWS
 // holds the English defaults so the data lookup stays static; this
@@ -285,14 +289,27 @@ function resolveInitialTab() {
   if (initialTabResolved) return;
   initialTabResolved = true;
   // The router already placed us on the URL's route and handled legacy sub-tab
-  // + bookmarked deep-links. Only first-run is left: with no explicit deep-link,
-  // open the kind picker ("What are you making?") on Projects instead of Home
+  // + bookmarked deep-links. Only first-run is left: an install that has never
+  // shown onboarding opens the kind picker ("What are you making?") on Projects
   // (user decision 2026-06-12: no welcome quiz — the kind picker IS onboarding).
-  if (!onboarding.shown && !initialDeepLink) {
+  // `onboarding.shown` is server state and `dismiss()` sets it the moment the
+  // picker opens, so this fires exactly once per install — including the first
+  // boot after a factory reset, whatever route the reload happened to land on.
+  if (!onboarding.shown) {
     try { window.sessionStorage?.setItem("jv.projects.createKind", ""); } catch { /* ignore */ }
     onboarding.dismiss();
     router.replace("/projects");
   }
+}
+
+// Settings → About → "Run welcome again": clear the server's onboarding flag,
+// then let first-run resolution open the kind picker exactly as a fresh install
+// does. Same one source (`settings.app.onboarding_shown`) a factory reset
+// clears — no second notion of "seen" anywhere.
+async function rerunWelcome() {
+  await onboarding.reset();
+  initialTabResolved = false;
+  resolveInitialTab();
 }
 
 async function refresh() {
@@ -578,9 +595,14 @@ onMounted(async () => {
              their surface (a Lab column, a modal) renders its own strip, and
              one run must never show twice. -->
         <AiTaskStrip v-for="task in tasks.visibleTasks.filter((t) => !t.inline)" :key="task.id" :task="task" />
+        <!-- Settings' "Run welcome again" emits `reset-onboarding`, and nothing
+             was listening (2026-08-15): a route component renders through
+             <component :is>, which binds no handlers, so the button was dead
+             from the day it shipped. (The comment lives OUT here — <KeepAlive>
+             counts a comment as a child and refuses more than one.) -->
         <router-view v-slot="{ Component }">
           <KeepAlive>
-            <component :is="Component" :key="route.name" />
+            <component :is="Component" :key="route.name" @reset-onboarding="rerunWelcome" />
           </KeepAlive>
         </router-view>
       </div>

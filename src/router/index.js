@@ -71,12 +71,11 @@ const routes = [
   { path: "/:pathMatch(.*)*", redirect: "/home" },
 ];
 
-// Raw initial view id from the URL hash, captured at module load — BEFORE the
-// router runs its first navigation (which redirects "/" → /home). App.vue
-// uses it to tell a real deep-link from the default landing for first-run.
-export const initialDeepLink = (typeof window !== "undefined"
-  ? window.location.hash.replace(/^#\/?/, "").split(/[/?]/)[0]
-  : "");
+// `initialDeepLink` was deleted 2026-08-15 with its only consumer. It captured
+// the URL hash at module load so App.vue could tell a bookmarked route from the
+// default landing — but first-run is a property of the INSTALL, not the URL,
+// and using it as a gate meant a factory reset (which reloads #/settings) never
+// re-opened onboarding on a genuinely fresh server.
 
 export const router = createRouter({
   history: createWebHashHistory(),
