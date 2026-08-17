@@ -4,9 +4,21 @@
 `2026-08-15-voice-workbench.md` (whose Slices A and B are built and stay as the
 record) and the `2026-08-15-pipeline-truth-and-first-run.md` item 6.
 
-**Status: DESIGN, nothing built from it. No go given for any of it.**
-Live mock (unwired, both interaction models):
+**Status: DESIGN, nothing built from it in app code. No go given for any of it.**
+Navigable mock (17 routes, 123 controls, no server):
 `https://claude.ai/code/artifact/534a16a2-af40-438b-a64d-34baaf31f838`
+
+> # ⚠ READ §8 FIRST — THE MOCK IS THE DESIGN
+>
+> The redesign is being designed **in the mock**, not in this prose. **§8 is the
+> live record**: every ruling the user has made while walking the mock, why it was
+> made, what state the mock is in, and how to build it without breaking it.
+>
+> **§1–§7 are the prior thinking.** They got us here and are kept as the record,
+> but they are superseded wherever they disagree — and several places are marked
+> in place where they do. **Where §8 and §1–§7 disagree, §8 wins.**
+>
+> **To resume mock work: §8.1 (mechanics) then §8.18 (exact state).**
 
 ---
 
@@ -134,6 +146,13 @@ disappears.
 
 ### 2.2 The chapter surface — the line is the unit
 
+> **⚠ PARTLY SUPERSEDED BY §8.1–§8.4 (2026-08-16).** The diagnosis below stands —
+> the three screens do hide each other's prerequisites. The **remedy** does not:
+> the user ruled that Script must do *one* thing (who says what), so the merge
+> is rejected and direction/pause/take/Gen/voice move to **Render**, which is a
+> step, not a panel. The chip strip below is the one they called *"way to
+> bussy"*. Read §8 before building anything from this section.
+
 **Three screens become one.** Chapters, Studio·Script and Studio·Render are three
 windows onto the same rows, and none shows a whole line:
 
@@ -231,14 +250,19 @@ Row: name · voice · engine · line count · state. The card above is the row's
 "cast these 30 guards to X", "give every merchant this base delivery". A stack of
 full cards is unusable past about fifteen characters.
 
-**Attribution produces characters, never voices.** "Find speakers" answers *who is
+**Attribution produces personas, never voices.** "Find speakers" answers *who is
 talking*; it has no opinion about timbre. Two separate questions, never blurred
 into adjacent dropdowns.
 
-**No per-line voice override, ever.** If a character needs a different voice for a
-passage — young Mara in a flashback — that is a **second character**, attributed
+**No per-line voice override, ever.** If a persona needs a different voice for a
+passage — young Mara in a flashback — that is a **second persona**, attributed
 to those lines. Cleaner, uses the model as designed, removes a whole class of
 confusion.
+
+> **Wording note:** §2.3 was written using "character" throughout. Per §8.1 the
+> word is **persona** — code-verified, "character" appears nowhere in the
+> codebase. The two paragraphs above are corrected; the rest of §2.3 is not yet
+> swept.
 
 ### 2.4 The voice workbench — a finishing bench, not an inspector
 
@@ -353,12 +377,18 @@ Direction composes additively and reads as English:
 
 ## §3 The decisions, with their reasoning
 
-1. **The line is the unit; Chapters + Script + Render merge.** Three windows on
-   the same rows; the model has no such split.
-2. **Steps become filter states.** A book is not one pass.
-3. **Two modes: Script (playhead) and Table (triage).** QC is where the hours go
-   and a spreadsheet does not serve it.
-4. **Render is a panel, not a place.**
+1. ~~**The line is the unit; Chapters + Script + Render merge.**~~
+   **OVERTURNED 2026-08-16 — see §8.2/§8.3.** The line stays the unit; the merge
+   does not happen. Script is attribution only.
+2. ~~**Steps become filter states.**~~ **OVERTURNED 2026-08-16 — see §8.3.** The
+   steps stay steps (five of them), and each step's filters cover only that
+   step's question.
+3. ~~**Two modes: Script (playhead) and Table (triage).**~~ **NARROWED
+   2026-08-16 — see §8.7.** Read-as-script survives as Script's *only* layout and
+   for attribution, not QC listening; the playhead was never ruled and QC belongs
+   to Render.
+4. ~~**Render is a panel, not a place.**~~ **OVERTURNED 2026-08-16 — see §8.3.**
+   Render is a step and it owns direction, pause, state, take and Gen.
 5. **Inline for the line, pages for library objects.** The loop you run hundreds
    of times is tweak → hear; a line is transient, a voice is a thing you own.
 6. **Render presets are DELETED, not renamed.** A preset was a character minus the
@@ -569,6 +599,759 @@ All verified 2026-08-15 by reading the code. Each is also filed in
 
 ---
 
+## §8 THE MOCK IS THE DESIGN — every decision, and why
+
+**This is the live section. Read it before touching the mock.**
+
+The redesign is being designed *in the mock*, not in prose — §1–§7 below are the
+prior thinking that got us here and are superseded wherever they disagree. What
+matters for continuing the work is in §8: **what was decided, why it was decided,
+what state the mock is in, and how to build it without breaking it.**
+
+**Recovered 2026-08-16 by reading the session JSONL**, after an autocompact ate
+the design a second time. Two of these rulings (**8.2** and **8.3**) were recorded
+**nowhere** before today — not in this doc, not in `docs/dev/TASKS.md`. They were
+minutes from being lost.
+
+**Reading order:** 8.1 is how to build the mock · 8.2–8.11 are the user's rulings
+and their reasoning · 8.12–8.17 is the evidence those rulings rest on · 8.18–8.20
+is the mock's current state · 8.21–8.22 is what was rejected and what is open.
+
+---
+
+### 8.1 How to work on the mock — mechanics, so continuing does not break it
+
+> **⚠ THE MOCK IS NOT IN THE REPO. IT DIES WITH THE SESSION.**
+> Everything lives in
+> `C:\Users\danel\AppData\Local\Temp\claude\E--Dev-Web-JustVioce\<session-id>\`.
+> If this work is to survive, it must move into the repo or into real Vue routes.
+> That decision is open (§8.22).
+
+**Why HTML and not the real app** — my choice, allowed by the user (*"You coulde
+even do the mock in the real app … your choice"*). Reasoning: almost nothing
+structural is ruled, so putting redesign screens into the repo means unwired views
+sitting beside working ones while the design still moves; and the port cost is low
+because the markup maps onto the kit primitives and the tokens are already
+byte-identical to `tokens.css`. **The moment the shape is ruled, build it in the
+app for real rather than mock it twice.**
+
+**The build:**
+
+| File | Role |
+|---|---|
+| `build_mock.py` | assembles everything → `workbench-mock.html`. Run it after **any** screen edit. |
+| `_head.html` | `<title>` + the whole `<style>` block (tokens copied from `tokens.css`) |
+| `_s1`–`_s13.html` | the original screen stashes (`stash(n)`) |
+| `_new_*.html` | the newer route screens (`new(name)`) — home, projects, chapters, lines, discover |
+| `_interactions.py` | `CSS` (modal/toast/scope/statebar) · `MODALS` (m-scope, m-compare, m-effect, m-word) · `JS` (`openModal`, `closeModal`, `toast`, `pickRadio`, `pickChip`, `openScope`, `setScope`, `recalcScope`, `runScope`) |
+| `wire.py`, `wire2.py`, `wire3.py` | the three wiring sweeps that got it to 123 controls / 0 dead. `wire3.py` is the final backstop — it gives any remaining `<button>` without `onclick`/`disabled` a real action. |
+
+**Key functions in `build_mock.py`:**
+- `ROUTES` — the ordered `(id, body)` list. **A new screen is not reachable until
+  it is added here**; each becomes `<div class="route" id="r-<id>">`.
+- `steps(active)` — the Studio step strip. **Still four steps** (Script · Cast ·
+  Render · Export) with `k-book` / `k-pod` / `k-game` variants of step 1. Needs
+  the five of §8.5.
+- `inject_steps(body, active)` — splices the strip into a screen. It uses
+  `re.search`, not an exact string match, because the body div can carry content
+  on the same line.
+- `linkify(body)` — rewrites known labels into `nav()` calls at build time.
+- `RAIL` — the persistent sidebar. Carries `sv-container` / `sv-flat` classes for
+  the Studio toggle (§8.20) and `k-book` / `k-game` / `k-pod` for project kind.
+- `MODEBAR` — the Studio-model switcher above the shell.
+- `SCRIPT` — `nav()`, `openProject()`, `setStudio()`, with `IX.JS` injected.
+
+**The loop that works:**
+1. Edit a `_s*.html` / `_new_*.html` file.
+2. `python build_mock.py` (prints route count + line count).
+3. Validate structure — unclosed/mismatched tags, every `nav('x')` target exists
+   in `ROUTES`, every route reachable.
+4. Sweep for dead buttons; run `wire3.py` if any remain.
+5. Publish to the **existing** artifact URL
+   `https://claude.ai/code/artifact/534a16a2-af40-438b-a64d-34baaf31f838`
+   by passing it as `url` — a new file path would create a second artifact.
+
+**Traps that have already cost time:**
+- **cp1252 print trap** — printing an emoji from Python crashes *after* the file
+  writes have succeeded, so a script can half-run and look like it failed. Use
+  `.encode('ascii','replace').decode()` in every `print`.
+- **Heredoc quoting** — apostrophes in Python passed through a shell heredoc break
+  it. Write script files with the Write tool instead.
+- **Regex edits eat tags** — a `re.sub` removing a card once swallowed a closing
+  `</div>` in `_s5.html`. Always re-validate structure after a regex edit.
+- **Publishing without rebuilding** — editing a `_new_*.html` and publishing does
+  nothing; `build_mock.py` must run first. **This is currently true of
+  `_new_chapters.html`** (§8.20).
+
+---
+
+### 8.2 Inline is CHOSEN. Page-first is deleted. — RULED
+
+User: *"yes and i choose your rec inline so drop the othe mock"*.
+
+This closes the *"we still have a couple of different designs mocks, the inline
+vs not, correct?"* question. **There is one interaction model now: inline.** A
+row expands in place; there is no page-first variant, no toggle between them, and
+no comparison screen.
+
+Every trace was removed from the mock — the toggle, its CSS, the `mode()`
+function and the comparison card.
+
+**The cost was stated and accepted when the choice was made:** rows get tall when
+open. Two mitigations are part of the ruling, not optional polish —
+
+- a **collapsed row shows only what differs from the default** (blank direction
+  means "as the persona", blank pause means "as the project"), so the eye lands
+  on exceptions instead of a wall of repeated values;
+- **cells render as text and become inputs on focus**, rather than 214 live
+  textareas in the DOM.
+
+> **Do not confuse this with the Studio toggle in §8.19.** That is a *different*
+> and *still-open* comparison (container vs dissolved), added later. Inline vs
+> page-first is settled and gone.
+
+---
+
+### 8.3 Tuning lives in TWO places, not four — RULED
+
+User: *"again i am confused we have tunning on 4 different places chapter cast
+workbench persona, why"* → then *"yes"* to the fix.
+
+**It was never a four-layer design. It was a three-layer design drawn on four
+screens, with one of them a duplicate.** Verified in code:
+
+| Screen (before) | Knobs it showed | The layer it actually is |
+|---|---|---|
+| Workbench | 9, incl. top-k, top-p, repetition penalty | **the voice** — calibrating the artifact |
+| Cast | speed · pitch · gain · temp · pause · seed | **the persona** |
+| Personas | speed · pitch · gain | **the persona — again** ← the duplicate |
+| Chapter line | speed · pitch · gain | the line — but drawn to *look* identical to the other two |
+
+**A cast row IS a persona.** `ProjectPersona` merely links a project to a
+`Persona`, and the cast endpoint ships `persona_name` off that same row
+(`4c284a0`). So the Personas screen was the Cast editor drawn twice, and its
+knobs were a strict subset. And the line's three sliders are a genuinely
+*different* layer — a per-line override — that looked identical to the persona's,
+so it read as a fourth copy of the same thing.
+
+**The ruling, in two parts:**
+
+**(a) Cast and Personas are ONE editor with TWO doors.** The same component,
+drawn identically, with the relationship stated on both: *"the same persona
+editor — editing here edits them everywhere."* **Cast** is the door when you are
+inside a project. **Personas** is the door when you are not, and it becomes a
+**library index** — list, usage, search — that opens that same editor rather than
+a second one. In the mock, Personas was deliberately **not** redrawn with
+controls, and the screen says why: reproducing the same controls on two screens is
+exactly what read as two systems.
+
+**(b) The line stops looking like a knob panel.** **Direction (text) is the
+per-line tool.** The numeric override collapses to a closed
+`⚙ Override the numbers for this line — not set` affordance, which opens to three
+plain fields showing the persona's values as the fallback, and puts **a dot on
+the row** when it is set.
+
+**Why the hatch cannot simply be deleted** — the honest caveat that is part of the
+ruling: **Kokoro and Chatterbox take no written direction at all.** On those
+engines the numeric override is the *only* per-line control that exists. Delete it
+and half the engine catalogue loses per-line control entirely.
+
+**Where it lands:**
+
+| Surface | Sliders | Layer |
+|---|---|---|
+| **Workbench** | 7 | the **voice** — calibrating the artifact |
+| **Cast** | 4 | the **persona** — one editor, two doors |
+| **Chapter line** | 0 | direction is **words**; numbers hide in a closed hatch |
+| **Personas** | 0 | index only |
+
+This is consistent with §2.4's approved guitar analogy (a guitar's *setup* versus
+how the *player* plays it) — it removes the duplicate, it does not add a layer.
+
+---
+
+### 8.4 The vocabulary — persona · cast · speaker. Never "character" — RULED
+
+User: *"be consistant you have words cast character persona which is which"*.
+
+I had been using all three interchangeably. Verified against the code: it has
+**two entity words and one attribution word**.
+
+| Word | What it is | Where it is real in the code |
+|---|---|---|
+| **Persona** | **The entity.** A named speaker: a voice, how they sound, who they are. Library-level, crosses projects. | `class Persona`, `/v1/personas/*`, `PersonaStore`, the sidebar label **"Personas"** |
+| **Cast** | **The set** of personas linked to *this project* — and the **verb**. | `class ProjectPersona`, `get_cast` → `CastEntry`, the Studio step |
+| **Speaker** | **The persona a given line is attributed to.** Attribution vocabulary only. | `discover-speakers`, `SpeakerCandidate`, `speaker_attribution` |
+| ~~Character~~ | — | **Nowhere in the codebase.** I introduced it. |
+
+> A **persona** is the entity. The **cast** is the personas in this project. A
+> line's **speaker** is which persona says it. **Never "character".**
+
+It is also right for JV specifically: personas cover podcast **hosts**, game
+**NPCs** and dictation, where "character" reads oddly. That is likely why the word
+was chosen in the first place.
+
+*"needs a speaker"* and *"Find speakers"* stay exactly as they are — that is the
+attribution question, and `speaker` is the right word for it.
+
+**The sweep was offered and has NOT been given a go.** What it would cover:
+- the mock — **25 instances** of character/characters against 82 of cast/persona.
+  Concretely: Cast says *"5 characters · 3 cast"* and *"Cast rows ARE
+  characters"*; the workbench says *"Used by 3 characters"*; Personas says *"14
+  characters"*; the chapter list says *"5 characters"*; the per-kind matrix
+  measures cast scale in characters.
+- **this doc** — §2.3 is written in "character" throughout, and §2.2 / §2.5 / §3
+  use it too. Only the two paragraphs corrected in §2.3 have been changed.
+- `docs/dev/TASKS.md` entries.
+
+---
+
+### 8.5 Five steps: Discover → Script → Cast → Render → Export — RULED
+
+User: *"i would say discover speakers hould be its owne thing script should have
+anaylize and review"*.
+
+> **Discover → Script → Cast → Render → Export**
+
+**Discover is its own step because it is a different verb.** It attributes
+nothing. It reads the prose, proposes names *not yet in the cast*, and on
+confirmation **creates personas**. Attribution cannot run without that list,
+because Analyze can only choose from personas that already exist. That is why it
+runs first. See §8.11 — they are two separate endpoints, not one feature.
+
+**The history matters, because I got it wrong once and must not repeat it.** The
+user said *"studio workflow at least in part seems write you run script you get
+speakers, you assing speakers persona, you render, so that basic flow is correct"*
+— I turned that into a design premise and started rebuilding, and was stopped:
+*"no i didnt say script cast render is correct, i dont know how you have it
+desinged now i wanted your thougths"*. **Thinking out loud is not a ruling.** The
+five-step sequence is approved now because the user proposed it themselves and
+then said `go` — not because of that earlier half-sentence.
+
+---
+
+### 8.6 Script does exactly one thing — RULED
+
+User, on the screenshot of the combined page: *"i think you combined too much in
+one page … you have spoken with direction all this stuff on the page with script,
+way to busy, we purposely sepeate script it is for 1 thinkg only determining who
+says what and what they say, that is it, no the direction they say it in not the
+voice just 1 simple task"*.
+
+**Script answers: who says this, and what do they say. Nothing else.**
+
+| Stays on Script | Moves to Render |
+|---|---|
+| speaker | direction |
+| line text | pause |
+| how it was decided (source + confidence) | state |
+| | take / take count |
+| | Gen |
+| | the voice chip |
+| | *"what this line will sound like"* |
+| | the takes panel |
+
+None of the right-hand column is an attribution question, and Render is where you
+are already thinking about how it sounds.
+
+**This fixes the chip strip by itself.** The strip the user photographed —
+`All 214 · 9 below the floor · 3 no answer · 40 uncast · 187 not rendered ·
+9 stale · 27 done` — mixes three steps' concerns on one page. Split by step:
+
+- **Script:** All · Guessed · Flagged · Below the floor · Unattributed (§8.15)
+- **Cast:** uncast
+- **Render:** not rendered · stale · done
+
+**Consequence for §2/§3:** the "merge Chapters + Script + Render into one surface"
+decision is dead, and "Render is a panel, not a place" with it. **Render is a step
+that owns the performance layer.**
+
+---
+
+### 8.7 Scoping a run — an inline grid, never a modal — RULED
+
+User: *"this popu for chapters, no one has three tags that say all none this
+chapter only, we just have a checkbox for select/unselect all and individual
+checkboxes check you desing program it is horrlbe no one desgns stuff like that.
+i say drop the popu have the grid above the results"*.
+
+They are right twice: the three radios (**This chapter / Selected / All 14**) were
+**presets for the checkboxes underneath them** — redundant furniture — and the
+decision never needed to interrupt anything, so it should not have been modal.
+
+**The design:** one inline grid above the results. A **select-all checkbox in the
+header**, one checkbox per row — the standard pattern, nothing else. Select what
+you want, the estimate updates in place, **Analyze** sits above it, results appear
+below. No popup, nothing modal.
+
+**Scope exists as a control for a reason the user gave explicitly:** *"the reason
+we can find the speakers 1 chapter at a time is becuase that process can be long
+so we want to be able to do both find by 1 chapter or multiple chapters"*.
+
+---
+
+### 8.8 Multi-chapter results — the same grid fills in — RULED
+
+The user's proposal: *"you select what chapters you want to analyexe in grid, it
+runs and completes and shows list of chapters it ran on and the results, then user
+can click on each chapter they want to manually review and make review or the can
+again do a second pass on the results, maybe somethink like that, think onit
+again, dont just take my idea as the correct one"*.
+
+**Their core move is right** — batch the slow thing, review the interactive thing
+separately — and it preserves what already works: reading one chapter in order.
+**Three changes**, agreed with the `go`:
+
+**Change 1 — no separate results list; the same grid fills in.** A results screen
+means two surfaces showing the same 14 chapters, and once you are on it you have
+lost the selection you would need to re-run. One persistent grid: select rows, hit
+Analyze, and *those same rows* gain their outcome. Click a row → that chapter's
+lines. No transition, no second screen, selection still live.
+
+**Change 2 — stream it; do not wait for the batch.** If analysis is slow, waiting
+for six chapters before touching any of them wastes the time you would have spent
+reviewing chapter 1. Each chapter completes → its row fills in → it is immediately
+reviewable while the rest run. This also matches how the synth scheduler already
+batches work.
+
+**Change 3 — the summary must not imply correctness.** The one that matters, and
+where I pushed back hardest: a results view naturally reads as a report card, and
+*"Chapter 2: 0 unattributed ✓"* invites you to tick it off — which is **exactly
+the row a confidently-wrong model produces**.
+
+**So the columns report how each line was decided, never how well it went:**
+
+| ☑ | Chapter | Lines | Analyzed | Anchored | Guessed | Flagged | No speaker |
+|---|---|---|---|---|---|---|---|
+| ☑ | 1 · The Ninth Door | 214 | 2 min ago | 168 | **41** | **6** | **5** |
+| ☐ | 2 · Salt and Ledger | 188 | 3 days ago | 181 | 7 | 0 | 0 |
+| ☑ | 4 · Nine Doors Down | 176 | *running…* | — | — | — | — |
+
+- **Anchored** — the prose named the speaker. Trustworthy.
+- **Guessed** — the model chose. *This is the number that deserves your eyes*, and
+  **it does not shrink because the model felt sure.**
+- **Flagged** — the deterministic checks of §8.14.
+- **No speaker** — it declined, or fell below the floor. These block rendering.
+
+**No completion state. No green tick. No confidence column.** A chapter with 181
+anchored and 7 guessed is genuinely low-risk; one with 41 guessed needs reading
+regardless of what the model claimed.
+
+---
+
+### 8.9 Review — the second LLM pass — is manual, and scoped — RULED
+
+User: *"review second llm pass should be manaul"*.
+
+It is a **second opinion you spend tokens on deliberately**, not a tax on every
+Analyze. Auto-running it would cost tokens on every pass; leaving it manual means
+the review queue is longer than it needs to be, and the user chose the longer
+queue knowingly.
+
+**Scoped to what is suspicious**, not to whole chapters: run Review on the
+**guessed and flagged** lines in the selection. Cheaper, and it targets the
+population that can actually be wrong.
+
+---
+
+### 8.10 Analyzing inside a chapter must not bounce you out — RULED
+
+One chapter → **stay where you are**, results appear in the lines. The grid is for
+multi-chapter work. Losing your place mid-review to a summary screen is a
+regression on the flow that already works today.
+
+---
+
+### 8.11 Analyze and Discover are two endpoints — VERIFIED
+
+| Step | Endpoint | What it does |
+|---|---|---|
+| **Discover** | `POST /v1/scenes/{id}/discover-speakers` | finds names the prose mentions that are **not** in the cast; `promote` turns a candidate into a persona |
+| **Script** | `POST /v1/scenes/{id}/analyze` | attributes lines to personas **already in the cast** |
+
+The mock previously drew **one** button — *"Find speakers"*, subtitled *"reads the
+prose and says who is talking"* — which is really **Analyze**. The discovery half,
+the thing that builds your cast in the first place, **was missing from the mock
+entirely**.
+
+---
+
+### 8.12 How attribution actually works — the five sources — VERIFIED
+
+Read from `extraction/pipeline.py`. `analyze_scene` runs five stages:
+
+1. **Segment** — `split_into_paragraphs` → `segment_paragraphs`, tagging each
+   segment `dialogue` or `narration`.
+2. **Deterministic anchors, before any LLM** — `find_anchors(segments,
+   characters)` catches *"said Mara"*-style attributions and propagates them.
+   Skipped when `propagate` is off.
+3. **Route pick** — `pick_route` resolves Auto by model size and carries a
+   **confidence floor** per route.
+4. **The LLM call — dialogue only.** Narration never goes to the model. The
+   feature action is `speaker_attribution.{route}` with three variables:
+   `characters`, `corrections`, `paragraphs`. It can stream, so a long chapter
+   shows live tok/s.
+5. **Assemble** — where the real logic lives:
+
+| Case | Result |
+|---|---|
+| Narration | `narrator`, confidence **1.0**, source `narration` — the model is never asked |
+| Dialogue **with** an anchor | **the anchor wins**, confidence 1.0, source `tag` or `propagated`. The LLM's pick is kept as `llm_speaker` so the Lab can show disagreement |
+| Dialogue, no anchor, above floor | the LLM's pick, source `llm` |
+| Dialogue, no anchor, **below floor** | demoted to `unknown`, source `floored`, with `floored_from` recording what it wanted to say |
+| LLM returned fewer rows than lines | padded with `unknown` @ 0.4 |
+
+**A line can be unattributed for two different reasons** — the model was unsure,
+or it never answered — and those have different fixes. That is why the mock's flat
+*"12 unattributed"* was split into **below the floor** and **no answer**.
+
+**How much to trust each source** — the table that replaces confidence as the
+triage axis:
+
+| Source | Trust |
+|---|---|
+| `narration` | structural — never a question |
+| `tag` | the prose literally says *"said Marius"* — near-certain |
+| `propagated` | carried from a nearby anchor — good, but **it can drift past a speaker change** |
+| `llm` | **a guess, regardless of the number attached to it** |
+| `floored` | a guess it doubted |
+
+---
+
+### 8.13 The constraint that drives the whole review design
+
+User, from their own testing: *"model can and has said with 100% confidence that
+it is correct when it is clearly wrong"*.
+
+> **Therefore confidence cannot be what decides what you look at.**
+
+That single sentence killed my previous proposal (§8.30 rejected #1) and set three
+rules:
+
+1. **Trust source, not self-report.** A page of 214 lines should show instantly
+   *which ones are guesses* — ~40 rows, not 214 — and that does not depend on the
+   model being honest about itself.
+2. **No summary may imply correctness.** No green ticks, no score, no "confidence"
+   column anywhere. A confidently-wrong model produces exactly the row that looks
+   finished.
+3. **The user must always be able to see every line, by chapter, in order.**
+   Filters are lenses over that, never a replacement for it. User: *"user should
+   be able to see and review all lines … still need to be able to see all lines by
+   chapter"*.
+
+---
+
+### 8.14 Compute suspicion instead of asking the model — **NEW WORK, NOT IN CODE**
+
+Don't ask the model how sure it is; check the text for the patterns that actually
+indicate a bad attribution. All cheap, all deterministic, none of them trusting
+the model:
+
+- **Three or more consecutive dialogue lines by the same persona** — the single
+  most common failure; the model loses the alternation.
+- **A persona with exactly one line in the whole chapter** — almost always a
+  misattribution.
+- **A speaker who has not appeared in this scene yet.**
+- **Dialogue attributed to the Narrator**, or narration attributed to a persona.
+- **`propagated` immediately after a paragraph containing another persona's
+  name** — the anchor probably went stale.
+
+These become the **Flagged** filter, and they catch confident-but-wrong lines,
+which confidence never will.
+
+> **⚠ None of these checks exists in the code.** They would be a new deterministic
+> pass over the blocks after attribution. Cheap, no model involved — but it is
+> **new work**, not the surfacing of something already there.
+
+---
+
+### 8.15 The chapter review surface — read it as a script
+
+The reason the current one-chapter flow works is that you can **read** it.
+Alternation errors are visible to a human at a glance and invisible to a filter.
+So the default view is the chapter as a screenplay — speaker label left, line
+right, in order — with weight carrying the risk:
+
+| Line kind | Treatment |
+|---|---|
+| narration | **recedes** — grey, lighter. Never in question. |
+| anchored | normal weight, small `tag` marker |
+| guessed (`llm`) | **marked** — a left rule or tint — so ~40 guesses stand out of 214 **without anything being hidden** |
+| flagged | louder still, **with the reason on the row**: *"3rd June in a row"* |
+| unattributed | loudest |
+
+**Filters are lenses, never the view.** Default is **all lines, this chapter, in
+order**. The filter set: `All · Guessed · Flagged · Below the floor ·
+Unattributed`.
+
+**Correcting has to be fast, because that is the actual work:**
+- **j / k** to move, **1–9** to assign a persona, **Enter** to accept — no mouse
+  for a long chapter.
+- **Select a run and reassign together.** When alternation breaks, several
+  consecutive lines are wrong at once; fixing them one at a time is the tedium.
+- **Reassigning re-flags the neighbours** — fixing line 47 usually means 48 was
+  wrong too.
+- **Context on demand:** expanding a row shows the two lines either side, because
+  attribution is almost always decided by what surrounds it.
+
+**Multi-chapter changes nothing about this.** Chapters become sticky collapsible
+groups with per-chapter counts, defaulting to expanded for the one you came from.
+You never lose *"see everything in order"*, which is the thing that works today.
+
+---
+
+### 8.16 One state vocabulary, rolled up — and what it justifies
+
+The problem found while auditing: **four surfaces already answer "where is this
+project"** — Home's continue card, Projects' detail expansion, ChapterView's
+workflow strip, and Studio's step tabs — and each invents its own words for the
+same facts.
+
+> **One state vocabulary, defined at the line, rolled up at every zoom level.**
+
+> ● needs a speaker · ● needs a voice · ● ready · ● rendered · ● stale
+
+| Zoom | Shows |
+|---|---|
+| **Line** | the state itself |
+| **Chapter** | the rollup — *214 lines · 12 need a speaker · 40 need a voice · 27 rendered · 9 stale* |
+| **Project** | the rollup of chapters |
+| **Home** | the rollup of projects, and what to do next |
+
+Same words, same colours, same order, everywhere. In the mock it is a segmented
+bar on Home's Continue card, the chapter-list header and every chapter row.
+
+**This is what justifies redesigning the chapter list** — not taste. Today a
+chapter shows two coarse tags, **Script** and **Render**, and two tags cannot say
+*which* of the five states is blocking. The list **keeps** what `ChapterView`
+already does well and that I nearly threw away — **Words**, **Est. audio**, the
+filter chips, move/rename/delete — and replaces only the two tags with the bar
+plus a **Blocking** column naming the single next thing to fix (*"12 need a
+speaker"*, *"Harbek has no voice"*, *"9 stale"*).
+
+**Home is adjusted, not rebuilt.** I had redesigned it with no reason and it was a
+straight regression. `HomeView.vue` (561 lines) already has the empty-state hero
+*"What are you making?"*, a Continue card with per-project mini-steps, live tasks
+with progress, engine status **with VRAM**, and recent generations with one-click
+inline replay. Only its `miniSteps` and next-step banner change, because they
+speak the old step vocabulary. The user's instruction that produced this: *"you
+can redesign parts we have like homepage if you think of a better desgin but you
+need to justify it not just becuase you feel like it verify what we have in code
+first"*.
+
+**Three of the four screens I had "added" already existed** — `ChapterView.vue`
+(1,481 lines) has the chapter list, and better than my version; `LinesView.vue`
+(292) is the game voicelines grid; `HomeView.vue` as above. Only the per-chapter
+editor genuinely needed the work.
+
+---
+
+### 8.17 The mock standard, and the audit it forced
+
+> *"when a user asks for a mock this is what they expect to see in production not
+> sorta of, the reason a mock is easier is becuae the plubming is not needed but
+> the expecataition is the ui would look exactly the same and mock buttons and nav
+> work the same … your mocks have always been lazy and half a job"*
+
+> *"if we dont get it all correct in the mock we waste hourse of coding the mock is
+> the app without the full plubming"*
+
+> *"on voices what does open do, you need to be thourough only put what is going to
+> be on the page dont leave stuff there becuase it was before"*
+
+> *"so look at the whole damn mock i want it accurate to the T not just sort of"*
+
+> *"when i click each button on the script page what does it do wherre does it go,
+> same with other pages, stop half mocking do it right do it all even pages we may
+> not be touching"*
+
+Recorded as an invariant in `CLAUDE.md` and in memory. The audit it forced found
+**16 defects and ~18 commentary blocks**, all since fixed:
+
+**Factual errors, verified against code:**
+1. **Master targets were invented.** The mock offered *ACX · Podcast · Game asset
+   · None*; the real list is `acx · inaudio · podcast · youtube`
+   (`mastering.py:38`). **"Game asset" does not exist**; `inaudio` and `youtube`
+   were missing.
+2. **The sidebar rail was invented** — it showed a made-up "Cast" library item and
+   silently dropped Personas, Presets, Captures, Lines, Studio, Stories, Import
+   and Settings.
+3. **Three names for one thing** — ribbon "Characters", rail "Cast", app
+   "Personas". (§8.4.)
+
+**Internal contradictions:** the ribbon listed Chapter and Render as separate
+steps while the chapter screen declared *"this one screen replaces three"* ·
+persona counts disagreed across screens (4 / 5 / 14) · Cast showed a table plus
+three stacked expansion cards · take 1 claimed a Kokoro origin for a Qwen3-cast
+persona · Export duplicated stems and showed the **Game export card inside an
+audiobook project**.
+
+**Leftovers:** the `INLINE MODE` comment from the deleted two-mode version, and
+the **`Open` button on Voices** — which contradicted its own screen, since the
+hint underneath said *"row click opens the workbench"*. Two affordances for one
+action, from two drafts.
+
+**Recorded but missing:** the scheduler queue state — now on Render as *"⏳ 34
+lines waiting on Chatterbox. One speech engine runs at a time…"* — which is the
+entire point of §6 finding 6.
+
+**~18 commentary blocks stripped**, because they are me talking to the user, not
+the app talking to a user: *"This one screen replaces three… still a proposal"*,
+*"Why Chapters as it stands can't work"*, *"5 characters, so rows can open by
+default"*, the `same editor as…` tags, *"You almost never come here on purpose"*,
+the preset obituary, *"The alternative I rejected"*, and **the whole arguments
+screen (s14), now deleted** — the design rationale lives in this doc, not on the
+canvas.
+
+**What stayed, because it IS production copy:** the load-cost warning, the render
+refusal list, *"Cloning needs Chatterbox"*, *"clones inherit room tone"*, the
+IPA-engine caveat.
+
+**Also found on Voices and fixed:** the type chips listed only *Preset* and
+*Cloned* though the door offers seven kinds (Derived, Designed, Blended, Trained,
+Imported were missing) · rows said nothing about **load cost**, so previewing a
+Qwen3 voice while Kokoro is resident looked free · and two real features the mock
+had dropped — the **hidden** filter (presets cannot be deleted, only hidden) and
+**✨ Guess unknown genders**.
+
+---
+
+### 8.18 EXACTLY WHERE THE MOCK WORK STANDS — resume here
+
+Build mechanics are in §8.1. This is the state, verified against the files on
+2026-08-16, not remembered.
+
+**Published and working today** —
+`https://claude.ai/code/artifact/534a16a2-af40-438b-a64d-34baaf31f838`:
+
+- A real shell: persistent sidebar, **17 routes** (`home · projects · new ·
+  chapters · lines · chapter · cast · render · export · voices · workbench ·
+  newvoice · personas · lexicons · effects · scene · engines`), breadcrumbs, and
+  **123 controls with 0 dead** — 119 wired, 4 deliberately disabled with the
+  reason on them.
+- **Both Studio models behind a top toggle** (§8.19).
+- **Per-kind branching:** opening Ninefold turns "Chapters" into "Voice lines",
+  drops the Find-speakers verb (a game sheet already names its speakers) and
+  relabels step 1 to *"Lines"*. The Long Quay opens as a podcast with Episodes.
+- **Analyze and Discover as two buttons**, both scope-able, with the run's
+  settings on screen (`Route Auto → direct` · `gemma-3-12b` · `floor 0.55`).
+- **Every line says how it was decided** — the five source badges of §8.12.
+- Filter chips that filter; a real A/B take-compare modal; an effect picker; the
+  pronunciation modal with its *"37 lines become stale, not re-rendered"*
+  consequence.
+- **Home is the real `HomeView` shape**, not an invention (§8.16).
+- Tuning on two surfaces only (§8.3); Personas is an index.
+
+**The Script / Discover / Render restructure — BUILT AND PUBLISHED 2026-08-16:**
+
+| Screen | What it is now |
+|---|---|
+| **Discover** (`_new_discover.html`, route `discover`) | Its own step. Chapter-selection grid with a live estimate, a **Proposed speakers** table (Tom Harlan / the harbour-master / a woman at the rail) with line counts, first-appearance quotes and ＋Add / Merge… / Ignore, and an *"Already in the cast"* card: *"attribution can only choose from these — that's why this step runs first."* |
+| **Script — the grid** (`_new_chapters.html`, route `chapters`) | §8.8 exactly. Select-all + per-row checkboxes, columns **Chapter · Lines · Analyzed · Anchored · Guessed · Flagged · No speaker**, a streaming *running…* row with its own progress, a "what these columns mean" card. **No tick, no score, no confidence column.** |
+| **Script — the chapter** (`_s2.html`, route `chapter`) | Attribution only, read as a screenplay. Narration recedes; anchored is normal with a `tag` mark; guesses carry a gold left rule *at every confidence*; flags are red with the reason on the row (*"3rd Marius in a row"*, *"Harbek's only line"*); unattributed is loudest and says it blocks rendering. Filters `All · Guessed · Flagged · Below the floor · No answer`, the j/k · 1–9 · Enter hint, **Select a run → Reassign** with the re-flag note, and a "how to read the marks" card. Four verbs only: Analyze this chapter · Review the guesses · Analyze several chapters · A speaker is missing. |
+| **Render** (`_s4.html`, route `render`) | Now owns the performance layer: the batch card and scheduler queue as before, **plus** the line-by-line table with Direction · Pause · State · Take · Gen, the row expansion with the voice chip, the direction box, the override hatch (with the Kokoro/Chatterbox reason), *"what this line will sound like"*, the takes panel and Compare. Who speaks is **read-only here**, with `Change in Script →`. |
+| `steps()` | **Five** — Discover · Script · Cast · Render · Export, with the game variant keeping four (a sheet already names its speakers). |
+
+**Also done in the same pass, because the rulings required it:**
+- **The scope modal is deleted** — markup and all four JS functions. It was the
+  rejected three-radio popup (§8.7) and had become unreachable, which is exactly
+  the leftover the mock standard forbids. Its one good behaviour, the **live
+  estimate**, moved inline: ticking chapters relabels the button (*"✨ Analyze 3
+  chapters"*) and recomputes lines and time in place, on **both** Discover and
+  Script, scoped per route.
+- `pickChip` now filters the script view as well as tables, so Script's chips work.
+- The rail gained **Discover** in the dissolved model; `_new_lines.html` lost its
+  hardcoded four-step strip and takes the shared one.
+- Home's running task said *"Find speakers"* — the operation is **Analyze**.
+
+**Verified after the build:** tag structure clean · 18 routes, **no dangling nav
+targets and no unreachable route** · **126 controls, 0 dead**, 6 deliberately
+disabled · the JS parses. The 6 `.lnk` spans without their own `onclick` sit
+inside clickable rows and are not dead.
+
+**Not started:**
+- The remaining app screens the user asked for — **Captures, Stories, Presets,
+  Import review, Cache, Webhooks, Channels, Train, Compare, Audio tools**. Their
+  words: *"i want everything in the mockup besides the areas we already identified
+  like settings ai settings, i want every link navidatable to what it actaully
+  sees and does"*. Some are screens the redesign proposes to kill, which is a
+  judgment to show rather than make silently.
+- The terminology sweep of §8.4.
+
+---
+
+### 8.19 Studio: container vs dissolved — BOTH BUILT, STILL OPEN
+
+The user would not pick when asked: *"i need both views on studieo container nad
+chapters i need to see it"*. Both are in the mock behind a toggle that switches
+the whole app (`setStudio('container')` / `setStudio('flat')`).
+
+| | **Container** | **Dissolved** |
+|---|---|---|
+| Rail | Home · Projects · **Studio** · Library… | Home · Projects · **Chapters · Cast · Render · Export** · Library… |
+| Steps | four tabs inside Studio; the chapter list lives in its Script step | no step strip anywhere; each is its own destination |
+| Breadcrumb | `Projects › Stillwater › Studio › Ch. 1` | `Projects › Stillwater › Ch. 1` |
+| Routes | `/chapter` and `/lines` stop being standalone | they are the standalone routes |
+
+The difference is **navigation depth versus rail width**. Kind still branches
+underneath in both. **§4 open question 1 remains open** — this is now something to
+look at rather than imagine, which was the point.
+
+---
+
+### 8.20 Rejected alternatives, and why
+
+1. **The review queue** *(mine — rejected by §8.13)*. After a run, Script would
+   default to **Needs review**: only lines in question, across everything
+   analyzed, in book order, one keystroke each, *"18 of 61 reviewed"*, empty when
+   done. Good interaction, **false premise** — that confidence can pick the rows
+   worth showing you. The user's testing disproved exactly that, and it hides
+   lines, violating *"see all lines by chapter"*. Its good parts survive in §8.14
+   as the keyboard model and context-on-demand.
+2. **The scope modal with three radios** *(mine — rejected, §8.7)*.
+3. **A separate results screen after a run** *(the user's first shape — replaced
+   by the filling-in grid, §8.8, with their agreement)*.
+4. **Auto-running Review before you see results** *(mine — rejected, §8.9)*.
+5. **Page-first as a second interaction model** *(deleted, §8.1)*.
+6. **Redesigning Home** *(mine — withdrawn; it was a regression, §8.16)*.
+
+---
+
+### 8.21 Open after this session
+
+1. **Does Studio survive as a container?** Both built (§8.19). Unruled. This is
+   §4 open question 1.
+2. **Do the deterministic suspicion checks get built?** (§8.14) New work.
+3. **Does the terminology sweep run**, and does it cover the docs as well as the
+   mock? (§8.4) Offered, no go.
+4. **Do the remaining screens go into the mock?** (§8.18) Asked for, not started.
+5. **Does the mock move into the repo or into real Vue routes** before the session
+   scratchpad is lost? (§8.18)
+6. **Are the stress-test counts built?** Every screen in the mock is still
+   populated at whatever count flatters the layout — the gap the user found with
+   *"in your mock you have game and podcast, what would user see if i just have an
+   audiobook a bunch of blank space?"*:
+
+   | Screen | Mock shows | Real range |
+   |---|---|---|
+   | Projects | 3, one of each kind | often **1** |
+   | Cast | 5 personas | 1–2 solo narration, **500** for a game |
+   | Chapters | 6 of 14 | 1 to 60+ |
+   | Voices | 5 of 64 | 64 fresh, 65+ after one clone |
+   | Lines | 4 of 342 | 200–3,000 per chapter |
+
+   Plus the genuine empty states — no projects, no voices cloned yet, a chapter
+   with nothing rendered. **Not fixed.**
+7. **Is the starved analyze prompt why gemma-MoE attributes worse than
+   gemma-3-12b?** §6 finding 7: `_resolve_cast` (`extraction_api.py:145-167`)
+   hardcodes role/gender/pronouns to `None` and aliases to `[]`, and
+   `format_characters` (`extraction/prompts.py:82-97`) reads those empty fields.
+   **The prompt receives a bare list of `id` and `name`** — no descriptions, no
+   aliases, no pronouns. A smaller model has nothing to reason from, which would
+   widen exactly that gap. **Cheap to test before blaming the model.**
+
+---
+
 ## §7 Session state (2026-08-15)
 
 **Built and pushed this session** (from the voice-workbench plan, before the
@@ -594,6 +1377,12 @@ build · smoke (16 views, zero JS errors).
 **Frozen:** voice-workbench Slices C, D and E. Do not build them; they predate
 this design.
 
-**The mock:** `https://claude.ai/code/artifact/534a16a2-af40-438b-a64d-34baaf31f838`
-— 14 screens, Inline-first / Page-first toggle. Source file lives in the session
-scratchpad, not the repo.
+**The mock:** ~~14 screens, Inline-first / Page-first toggle~~ — **STALE, see
+§8.18.** It is now 17 routes with a Container/Dissolved toggle and 123 wired
+controls; page-first was deleted when the user chose inline (§8.2). Source still
+lives in the session scratchpad, not the repo.
+
+**Unpushed, corrected 2026-08-16:** the "none — all four pushed" line above was
+true when written and is not now. `git log --oneline origin/main..main` shows
+**seven** doc commits waiting: `2fc878b · 3860fac · 7877889 · bcf8a34 · fef74a1 ·
+a4854e2 · 56568b3`. Nothing in app code changed after Slice B.
