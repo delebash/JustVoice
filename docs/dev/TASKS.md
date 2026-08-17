@@ -66,7 +66,9 @@ ONLY one that does something we need*. Nine variants collapse to six slots,
 each uniquely filled: Kokoro (ready voices, any hardware) · Chatterbox Turbo
 (cloning + 19 tags) · Chatterbox Multilingual (23 languages) · Qwen3 (prose
 direction + voice design — the only one) · Pocket TTS (cloning with no GPU) ·
-Whisper (STT). ≈56 GB of download surface removed.
+Whisper (STT). **29.60 GB** of download surface removed (default variants;
+37.28 GB counting Dia's second checkpoint) — summed from the manifests' own
+pinned `size_bytes`, table in the plan doc §1.
 NOT:    Deleting TADA and MOSS now — your explicit instruction. They keep
 working for anyone who installed them; they stop being offered.
 NOT:    Keeping MOSS for multi-speaker dialogue. That capability has **never

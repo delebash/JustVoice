@@ -1754,7 +1754,8 @@ picker:
   once, per character.
 - A different **emotion** = the same actor having a moment → **per line**.
 
-That is exactly what `delivery.emotion` is (nine values, `models.py:1046-1061`),
+That is exactly what `delivery.emotion` is (nine values, `models.py:1064-1074`
+as of `87077e7` — the enum shifted when `EngineInfo` gained two fields),
 and why it compiles two ways — prose for Qwen, `[angry]` for Chatterbox Turbo.
 
 **The honest gap:** `Block` has a `direction` column
@@ -1817,7 +1818,7 @@ cast, because until you cast there is no engine and therefore no knobs.
 
 ### 10.6 Generate saves nothing — verified
 
-`GenerateView.vue:493-505` POSTs `/v1/generate` with **`cache: false`** and gets
+`GenerateView.vue:492-505` POSTs `/v1/generate` with **`cache: false`** and gets
 a WAV blob back. **Nothing is written anywhere** — no row, no take, no
 take-versioning. The user was right.
 

@@ -21,8 +21,14 @@ Companion docs, and what each owns:
 
 ## 1. The decision
 
-**The roster goes from nine variants across eight engines to four TTS engines,
-one CPU cloner, and one STT engine.**
+**The roster goes from 7 TTS engines (13 catalog variants) to 4 TTS engines
+plus a CPU cloner, alongside the unchanged Whisper STT engine.**
+
+Counted exactly, because "9 engines" in the README is a loose count of
+engine-*variants* (Kokoro · Chatterbox ML · Chatterbox Turbo · Qwen3 CV ·
+Qwen3 Base · LuxTTS · TADA · Dia · MOSS) and is not the same number as either
+the engine count or the variant count. Before: kokoro 2 · chatterbox 2 ·
+qwen3 4 · luxtts 1 · tada 1 · dia 2 · moss 1 = **13 variants, 7 engines**.
 
 The rule that produced it, and the only rule used:
 
@@ -50,9 +56,19 @@ So: **Dia is excised.** TADA and MOSS are **marked and hidden, not deleted** —
 they keep working for anyone who already installed them, and no new install
 offers them. Pocket TTS is **approved to build**.
 
-Download surface removed when all of it lands: **≈ 56 GB**
-(Dia 4.69–8.07 · TADA 19.61 · MOSS 4.12 · LuxTTS 1.18 swapped for a model two
-orders of magnitude smaller, plus Dia's 0.38 GB codec).
+**Download surface removed when all of it lands — summed from the manifests'
+own pinned `size_bytes`, not estimated:**
+
+| | Default variants only | Every variant |
+|---|---|---|
+| Dia (`dia2-1b` 4.31 + mimi codec 0.38; `dia2-2b` adds 7.68) | 4.69 GB | 12.38 GB |
+| TADA (3 repos: 8.87 + 10.72 + 0.02) | 19.61 GB | 19.61 GB |
+| MOSS-TTSD | 4.12 GB | 4.12 GB |
+| LuxTTS (swapped, not pure removal) | 1.18 GB | 1.18 GB |
+| **Total** | **29.60 GB** | **37.28 GB** |
+
+> An earlier draft of this doc said "≈56 GB". That was wrong — nothing in the
+> manifests sums to it. The table above is the arithmetic.
 
 ---
 
@@ -66,7 +82,13 @@ CUDA and CPU. The only engine flagged `cpu_adequate: True`, which is what makes
 `auto` resolve to CPU and book no device memory on a discrete box.
 
 - StyleTTS2-derived, 82M parameters, ONNX via `sherpa-onnx` — **no torch**.
-- 349 MB tarball (`kokoro-multi-lang-v1_0`), 9 languages, 54 preset voices.
+- `kokoro-multi-lang-v1_0`: **349,418,188 bytes** = 349 MB decimal = **333 MiB**.
+  `docs/engines.md` says 333 and `code-map.md` says 349 — the SAME number in
+  different units. Do not "fix" either to match the other.
+- **8 languages across 9 locale codes** (`en-US`, `en-GB`, ja, zh, es, fr, hi,
+  it, `pt-BR`) — the manifest's own description says 8, code-map §3a says 9,
+  and both are defensible because en-US and en-GB are one language. 54 preset
+  voices.
 - **Cannot clone.** Verified: `supports_voice_cloning=False`. The architecture
   takes no reference clip.
 - Reads `speed`; declares phoneme override which is **not wired**.
@@ -609,7 +631,8 @@ ever blocked**:
 
 ## 8. What was BUILT on 2026-08-17
 
-All gates green at each step: **ruff clean · 657 pytest · biome 91 files ·
+All gates green at each step, and again at the commit (`87077e7`): **ruff
+clean · 663 pytest · biome 91 files ·
 69 vitest · vite build · Playwright smoke 16/16, zero JS errors.**
 
 ### 8.1 The OS gate, made real
