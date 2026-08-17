@@ -6,7 +6,7 @@ A **voice** is a TTS profile — the thing the engine actually speaks with. Voic
 
 | Type | Source | Engines |
 |---|---|---|
-| **Preset** | Pre-shipped with the engine. | Kokoro (54 voices), Qwen3 **CustomVoice** (9 voices), Dia (1 stock voice) |
+| **Preset** | Pre-shipped with the engine. | Kokoro (54 voices), Qwen3 **CustomVoice** (9 voices) |
 | **Cloned** | Built from one or more reference WAV/MP3 samples you provide. | Chatterbox Turbo + Multilingual, Qwen3 **Base**, LuxTTS, Hume TADA, MOSS-TTSD |
 | **Designed** | Described in words, no reference clip. | **Not available yet.** The description is saved on the voice, but no bundled engine can render one — it needs Qwen3's VoiceDesign checkpoint, which JustVoice does not ship. Use Cloned instead. |
 | **Blended** | A weighted mix of two or more voices (lerp / slerp / weighted_sum). | Chatterbox |

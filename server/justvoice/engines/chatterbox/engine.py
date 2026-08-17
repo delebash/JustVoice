@@ -187,12 +187,16 @@ class Chatterbox(EmbeddedEngine):
         if self._is_turbo:
             # Turbo is English-only and takes no language_id / exaggeration /
             # cfg_weight. Sampling params per voicebox's turbo backend.
+            # Upstream signature: repetition_penalty=1.2, min_p=0.0,
+            # top_p=0.95, exaggeration=0.0, cfg_weight=0.0, temperature=0.8,
+            # top_k=1000, norm_loudness=True. top_k/top_p were hardcoded here
+            # and unreachable; they are declared knobs now.
             wav = self.model.generate(
                 req.text,
                 audio_prompt_path=ref_audio,
                 temperature=_temperature(0.8),
-                top_k=1000,
-                top_p=0.95,
+                top_k=int(engine_overrides.get("top_k", 1000)),
+                top_p=float(engine_overrides.get("top_p", 0.95)),
                 repetition_penalty=float(engine_overrides.get("repetition_penalty", 1.2)),
             )
         else:
@@ -204,6 +208,11 @@ class Chatterbox(EmbeddedEngine):
                 cfg_weight=float(engine_overrides.get("cfg_weight", defaults["cfg_weight"])),
                 temperature=_temperature(defaults["temperature"]),
                 repetition_penalty=float(engine_overrides.get("repetition_penalty", defaults["repetition_penalty"])),
+                # Declared in capability_details since the beginning, never
+                # forwarded until 2026-08-17. Introspected defaults from
+                # ChatterboxMultilingualTTS.generate: min_p=0.05, top_p=1.0.
+                min_p=float(engine_overrides.get("min_p", 0.05)),
+                top_p=float(engine_overrides.get("top_p", 1.0)),
             )
 
         if isinstance(wav, torch.Tensor):

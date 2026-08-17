@@ -16,7 +16,7 @@ JustVoice ships with 7 commercial-output-permitting TTS engines plus an external
 | **Qwen3-TTS** | 9 presets + instruct · *or* clone | 2.5–4.5 GB | 10 | ✓ (Base only) | Apache-2.0 |
 | **LuxTTS (ZipVoice)** | clone · 48 kHz | 1.2 GB | en | ✓ | Apache-2.0 |
 | **Hume TADA** | clone · long-form coherent | 19.6 GB | 10 | ✓ | Llama 3.2 Community (+ MIT codec) |
-| **Dia (Nari Labs)** | multi-speaker dialogue | 6.4 GB | en | — | Apache-2.0 |
+| **Dia2 (Nari Labs)** | clone · multi-speaker dialogue | 4.3 GB (1B) / 7.7 GB (2B) + 0.4 GB codec | en | ✓ | Apache-2.0 (codec CC-BY-4.0) |
 | **MOSS-TTSD** | clone · dialogue | 4.1 GB | en + zh | ✓ (experimental) | Apache-2.0 |
 | **External** (OpenAI-compatible) | HTTP | 0 MB | — | varies | depends on provider |
 
@@ -37,13 +37,75 @@ French, Russian, Portuguese, Spanish, Italian. (Until 2026-08-15 this table
 said 17 languages and marked every Qwen row as cloning-capable; both were
 wrong, and the Cloning filter believed them.)
 
+## What each engine can be tuned with
+
+Two things decide which controls you get: **which engine is loaded**, and
+**which of its variants**. The loaded variant wins — with Chatterbox Turbo
+loaded you get Turbo's controls, not Multilingual's.
+
+Three settings are applied by JustVoice **after** synthesis, so they work
+identically on every engine:
+
+| Always available | What it does |
+|---|---|
+| **Gain** | output level in dB, clamped to −24…+12 |
+| **Pitch** | semitone shift of the rendered audio |
+| **Effects chain** | reverb, EQ, compressor, delay and the rest |
+| **Lexicon** | pronunciation substitution, applied to the text before synthesis |
+
+Everything else is passed to the engine, and each one honours a different set:
+
+| Engine | Clones | Speed | Written direction | Engine controls |
+|---|---|---|---|---|
+| **Kokoro** | ✗ | ✓ | ✗ | none |
+| **Chatterbox Multilingual** | ✓ | ✗ | ✗ | Exaggeration · CFG weight · Temperature · Repetition penalty · Min p · Top p |
+| **Chatterbox Turbo** | ✓ | ✗ | ✗ | Temperature · Repetition penalty · Top p · Top k · `[cough] [laugh] [chuckle] [sigh]` tags |
+| **Qwen3 CustomVoice** | ✗ | ✗ | ✓ instruct + style prompt | Temperature · Top k · Top p · Repetition penalty |
+| **Qwen3 Base** | ✓ | ✗ | ✓ instruct + style prompt | as above |
+| **LuxTTS** | ✓ | ✓ | ✗ | Inference steps · Guidance scale · Max ref length · Reference loudness · Timestep shift · Smoothing |
+| **Dia2** | ✓ | ✗ | ✗ | CFG scale · Temperature; advanced Audio top-k · CFG filter top-k · Text temperature · Text top-k · Initial padding · speaker + non-verbal tags |
+| **MOSS-TTSD** | ✓ | ✗ | ✗ | Temperature · Top p · Top k · Repetition penalty · Max length · speaker + pause tags |
+| **TADA** | ✓ | ✗ | ✗ | none — text, reference and language only |
+
+**Cloning is not Chatterbox-only.** Chatterbox, LuxTTS, MOSS-TTSD, TADA,
+**Dia2** and **Qwen3 Base** all clone. Kokoro and **Qwen3 CustomVoice** do not —
+and because that split runs *inside* the Qwen3 family, the variant is what
+decides, not the engine name.
+
+**Dia2 replaced Dia 1.6B (2026-08-17).** Dia 1 could not clone here — its
+adapter never passed the reference clip, so a cloned voice pointed at Dia came
+out in the stock voice. Dia2 takes a reference clip **per speaker**: the cast
+voice's clip drives `[S1]`, and `delivery.engine.prefix_speaker_2` can drive
+`[S2]` for a two-hander. Two checkpoints, **Dia2 1B** (the default) and **2B**.
+Dia 1's single "stock voice" row is gone, because the voice now comes from your
+clip. Note the sampler changed shape: Dia2 samples the text and audio streams
+separately and has **no top-p**, so the Temperature slider drives the audio
+stream and the old Top-p / Max-length knobs no longer exist. Upstream lists
+streaming as *Upcoming*, so it is not available — a generation still runs to
+about 2 minutes.
+
+**A note on LuxTTS "T-shift".** It was previously presented as a native pitch
+control. It is not. The fork we ship (`ysharma3501/LuxTTS`) calls it a
+*"sampling param, higher can sound better but worse WER"*, and the ZipVoice
+base it derives from defines `--t-shift` as *"shift t to smaller ones if
+t\_shift < 1.0"* — the flow-matching sampling schedule, valid over (0, 1.0],
+default 0.5. It trades pronunciation accuracy against quality, not key. It is
+now labelled **Timestep shift** under advanced controls; use the Pitch slider
+for pitch.
+
+LuxTTS also carries two controls that act on the **reference clip** rather than
+the render — **Max ref length** (how many seconds are encoded; set it above
+your clip's length to avoid truncation artifacts) and **Reference loudness**
+(the fork's `rms`; around 0.01 is its suggestion) — plus a **Smoothing** toggle
+worth trying if output sounds metallic.
+
 ## Picking an engine for a use case
 
 - **Audiobook narration in your own voice.** Chatterbox Turbo. Clone from 1-2 minutes of clean read-aloud.
 - **Audiobook with 5+ characters.** Chatterbox Turbo for main voices + Kokoro for incidental characters (faster to render, plenty of voices).
 - **Multilingual audiobook.** Chatterbox Multilingual — 23 languages, and it clones. Qwen3 covers 10 and is reported strongest on Chinese / Japanese / Korean (reported, not measured here) — but only its Base checkpoint clones; CustomVoice gives you its 9 preset speakers instead.
 - **Game NPC dialogue at 50-500 line scale.** Kokoro (fast on CPU, 54 voices). Render speed matters at scale.
-- **Multi-speaker game cutscenes.** Dia. Single render produces multiple voices.
+- **Multi-speaker game cutscenes.** Dia2. One render produces both parts, and each speaker can be cloned from its own reference clip.
 - **Podcast voiceover.** Chatterbox Turbo if you want it to sound like you; Kokoro if you want preset variety fast.
 - **Dictation playback** (MCP `speak` tool). Kokoro. Lowest latency.
 
@@ -197,10 +259,11 @@ which kind an engine gets is a property of the engine:
   takes minutes and the rest are quick.
 - **A private environment**, at `server/justvoice/engines/<engine_id>/.venv/`.
   Engines whose dependencies genuinely cannot coexist with the rest get
-  their own: **Dia** (pins a specific Triton build and an unreleased
-  Transformers) and **MOSS-TTSD** (needs flash-attn, which is a long
-  compile and frequently fails on Windows — keeping that attempt out of the
-  shared environment is exactly why it is isolated).
+  their own: **Dia2** (ships as its own `dia2` package, installed from source
+  because there is no PyPI release, with its own pinned dependency set) and
+  **MOSS-TTSD** (needs flash-attn, which is a long compile and frequently
+  fails on Windows — keeping that attempt out of the shared environment is
+  exactly why it is isolated).
 
 The trade-off is worth stating plainly, because it cuts both ways. A private
 environment means one engine's dependency problem cannot touch another

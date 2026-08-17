@@ -189,6 +189,11 @@ class Qwen3(EmbeddedEngine):
             hf_kwargs["top_k"] = int(engine_overrides["talker_top_k"])
         if engine_overrides.get("talker_top_p") is not None:
             hf_kwargs["top_p"] = float(engine_overrides["talker_top_p"])
+        # Declared in capability_details, never read until 2026-08-17. Both
+        # generate_custom_voice and generate_voice_clone take **kwargs and
+        # forward them to HF generate, so this reaches the model like the rest.
+        if engine_overrides.get("repetition_penalty") is not None:
+            hf_kwargs["repetition_penalty"] = float(engine_overrides["repetition_penalty"])
 
         # Two paths: cloning (ref WAV passed via audio_prompt_path) vs. preset.
         # Both return (list[np.ndarray], sample_rate) per the real package surface.

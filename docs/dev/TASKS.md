@@ -190,11 +190,72 @@ SUPERSEDED into the voice-workbench plan below.
 
 ### THE VOICE-WORKFLOW REDESIGN — the resume surface
 
-STATE: DESIGNED, NOTHING BUILT, NO GO GIVEN.
-**`docs/plans/2026-08-15-voice-workflow-redesign.md`** is THE doc. It supersedes
-the unbuilt half of the voice-workbench plan (Slices C/D/E are FROZEN) and
-pipeline item 6. Mock (unwired, both interaction models):
-`https://claude.ai/code/artifact/534a16a2-af40-438b-a64d-34baaf31f838`.
+STATE: BEING DESIGNED IN THE MOCK. NOTHING BUILT IN APP CODE.
+**`docs/plans/2026-08-15-voice-workflow-redesign.md` §8 is THE resume surface** —
+the mock is the design, and §8 carries every ruling made while walking it, the
+reasoning, the mock's exact state (§8.18) and how to build it (§8.1). §1–§7 of
+that doc are prior thinking, superseded where they disagree. It supersedes the
+unbuilt half of the voice-workbench plan (Slices C/D/E are FROZEN) and pipeline
+item 6. Mock: `https://claude.ai/code/artifact/534a16a2-af40-438b-a64d-34baaf31f838`
+— 17 routes, 123 controls, 0 dead. **Its source is in a session scratchpad, not
+the repo, and dies with the session.**
+
+**RULED WHILE WALKING THE MOCK (2026-08-15/16).** Recovered from the transcript
+2026-08-16 after an autocompact; the first two had been recorded NOWHERE. Full
+reasoning at the cited section.
+
+- **Inline is chosen; page-first is deleted.** *"yes and i choose your rec inline
+  so drop the othe mock"*. One interaction model. Cost accepted, with two
+  mitigations that are part of the ruling: a collapsed row shows only what differs
+  from the default, and cells become inputs on focus. §8.2. **Not to be confused
+  with the still-open Studio container/dissolved toggle (§8.19).**
+- **Tuning lives in two places, not four.** *"again i am confused we have tunning
+  on 4 different places chapter cast workbench persona, why"* → *"yes"*. Cast and
+  Personas are ONE editor with two doors (a cast row IS a persona); Personas
+  becomes a library index; the line's numbers collapse to a closed
+  `⚙ Override this line` hatch with a dot on the row, because **direction is the
+  per-line tool**. The hatch survives only because Kokoro and Chatterbox take no
+  written direction — on those engines it is the only per-line control. §8.3.
+- **Persona · cast · speaker. Never "character".** *"be consistant you have words
+  cast character persona which is which"*. Code-verified: `Persona` is the entity,
+  `ProjectPersona`/`get_cast` the project's set and the verb, `speaker` the
+  attribution word; "character" is nowhere in the codebase. Sweep NOT yet given a
+  go — 25 instances in the mock, plus this tracker and the doc's §2.3. §8.4.
+- **Five steps: Discover → Script → Cast → Render → Export.** *"i would say
+  discover speakers hould be its owne thing script should have anaylize and
+  review"*. Discover creates personas; Analyze can only choose from personas that
+  exist — two separate endpoints. §8.5. NOTE: an earlier half-sentence about
+  script/cast/render being right was explicitly retracted (*"no i didnt say script
+  cast render is correct"*) — this ruling rests on the user's own proposal plus a
+  go, not on that.
+- **Script does exactly one thing — who says what.** *"we purposely sepeate script
+  it is for 1 thinkg only determining who says what and what they say, that is it,
+  no the direction they say it in not the voice just 1 simple task"*. Direction,
+  pause, state, take, Gen, the voice chip and the takes panel all move to
+  **Render**. **This kills the §2.2 merge and "render is a panel, not a place".**
+  §8.6.
+- **Scope a run with an inline grid, never a modal.** *"no one has three tags that
+  say all none this chapter only, we just have a checkbox for select/unselect all
+  and individual checkboxes … i say drop the popu have the grid above the
+  results"*. §8.7.
+- **Multi-chapter results fill the same grid in, streaming, and must not imply
+  correctness.** Columns are Anchored · Guessed · Flagged · No speaker. **No
+  completion tick, no confidence column** — because *"model can and has said with
+  100% confidence that it is correct when it is clearly wrong"*, so a
+  confidently-wrong model produces exactly the row that looks finished. §8.8,
+  §8.13.
+- **Review (the second LLM pass) is manual**, scoped to guessed + flagged lines.
+  *"review second llm pass should be manaul"*. §8.9.
+- **Analyzing inside one chapter must not bounce you to the grid.** §8.10.
+- **The user must always be able to see every line, by chapter, in order** —
+  filters are lenses, never the view. Default is the chapter read as a script,
+  with guesses marked and flags louder. §8.13, §8.15.
+
+**NEW WORK this implies, not in the code:** the deterministic suspicion checks
+(three consecutive lines by one persona · a persona with one line · a speaker not
+yet in the scene · dialogue on the Narrator · `propagated` after another
+persona's name). They are what makes the **Flagged** column real, and confidence
+cannot substitute for them. §8.14.
 
 WHY IT EXISTS: the workbench plan was 416 lines of implementation with no design
 section; the design died in a compact and two slices were built against nothing,
@@ -299,9 +360,85 @@ in it for the attribution work.
 
 GO: needed, per phase. Slices C/D/E of the workbench plan are frozen.
 
-### FINDING — Block.direction is stored, editable, and never rendered
+### Dia2 replaced Dia 1.6B — ported 2026-08-17, NOT YET RUN
 
-STATE: FINDING — code-verified 2026-08-15. `database/models.py:238` documents it
+STATE: CODE COMPLETE, RUNTIME-UNVERIFIED. Done under "go". Every fact below
+came from the upstream source or the HF API, not a README summary.
+
+WHY: Dia 1's adapter never read `req.audio_prompt_path`, so a cloned voice
+pointed at Dia rendered in the stock voice — the manifest admitted it. Dia2's
+`generate()` takes `prefix_speaker_1` / `prefix_speaker_2`
+(`dia2/generation.py::PrefixConfig`), so cloning is real, and
+`Dia2.from_local(config_path, weights_path, …)` gives it the same local-load
+door every other engine got. It also drops the git-installed transformers
+main-branch pin that forced Dia's isolation in the first place.
+
+WHAT CHANGED: `manifest.py` and `engine.py` rewritten. Install is
+`pip-git https://github.com/nari-labs/dia2.git` — **there is no `dia2` on
+PyPI** (checked, 404). Two variants, `dia2-1b` (default) and `dia2-2b`, each a
+TWO-SOURCE download: `dia2_assets.json` in both repos points `mimi` at
+`kyutai/mimi`, so the audio codec is a second repo (same multi-source shape
+TADA uses). File lists and byte sums read from
+`/api/models/<repo>?blobs=true` on 2026-08-17: 1B = 4,309,852,127 · 2B =
+7,683,100,734 · mimi = 384,651,179.
+
+CONSEQUENCES, all user-visible:
+- **The stock voice row is gone.** Dia2 has no preset speakers; the voice comes
+  from your reference clip. `STATIC_VOICES = []`. Any persona still pointing at
+  the old `default` voice id needs recasting.
+- **`top_p` and `max_new_tokens` no longer exist** for Dia. Dia2 samples the
+  text and audio streams separately (each temperature + top_k) and has no
+  top_p; length is bounded by the checkpoint's `max_context_steps` (~2 min),
+  not a per-call cap. Knobs now: cfg_scale · temperature (audio stream) ·
+  audio_top_k · cfg_filter_k · text_temperature · text_top_k · initial_padding.
+- **Licence note:** the Dia2 weights are Apache-2.0 but the Mimi codec is
+  **CC-BY-4.0**. The engine ships under the stricter of the two — check this
+  against `NOTICE.md` before release.
+- **No streaming.** Upstream lists it as *Upcoming*. My earlier recommendation
+  leaned on streaming; the source does not support that claim, and nothing in
+  the app advertises it.
+
+OPEN — THE HONEST GAP: **the new adapter has never been executed.** Gates that
+pass (ruff · 605 pytest · biome · vitest · build · smoke) exercise the
+manifest, the capability wiring and the renderer; none of them install Dia2 or
+call `synth()`, which needs CUDA and a ~4.7 GB download. Unverified at runtime:
+the `from_local` path against a real speech-cache dir, whether `mimi_id` accepts
+a local directory the way `tokenizer_id` does, the actual output sample rate,
+and cloning end to end. Install it and render one line before trusting it.
+
+### ~~FINDING — Block.direction is stored, editable, and never rendered~~ — FIXED
+
+STATE: **FIXED 2026-08-17** under "go", together with the other two dead
+delivery paths. `render_chapter_api` composes **persona `voice_instruct` →
+`delivery.emotion` → this line's `direction`** into `delivery.instruct`, most
+specific last, **appending rather than replacing** — the persona says who they
+are, the line says how this one is delivered. An explicit preset/request
+instruct still wins the base slot, and a lone hint passes through verbatim so a
+hand-written instruct is never reformatted.
+
+Two more dead paths went with it:
+
+- **`Delivery.emotion`** had no reader at all; it now rides the same
+  composition. This also completes the IMPORT path — every adapter's
+  emotion/style column lands in `Block.direction`
+  (`projects_api._materialize_standard`) and stopped there.
+- **`Delivery.pause_before` / `pause_after`** were stored and ignored:
+  `concat_lines` used one fixed project gap. Each join now takes the previous
+  line's `pause_after` plus the next line's `pause_before`, falling back to the
+  project gap only when neither is set — blank means "as the project", `0`
+  means a deliberate butt-join. The producer side was broken too: every import
+  adapter parses `pause_after_ms` (`standard_schema.StandardLine`) and
+  `_materialize_standard` dropped it. It now rides on the block's metadata, so
+  **no schema change and no reset** were needed.
+
+Pinned by `server/tests/test_line_pause_and_direction.py` (13 tests). Gates
+green: ruff · **605 pytest** · biome · 69 vitest · vite build · smoke 16/16
+zero JS errors.
+DOCS: `docs/generate.md` (pause semantics), `docs/dev/code-map.md` §5 + findings
+1, 11, 12.
+
+ORIGINAL FINDING, kept as the record — code-verified 2026-08-15.
+`database/models.py:238` documents it
 as *"Emotion/style hint passed through to the engine's instruct field."* It is
 written (`projects_api.py:498`, `:536-537`), returned (`:140`), exported
 (`project_export_api.py:104`) and preserved across splits
@@ -436,9 +573,56 @@ GO: needed. Bears directly on the workbench design — the new Voices index
 must not carry the four dead columns forward, and the workbench's "what this
 engine can do" panel is where the language truth belongs.
 
-### FINDING — engine-private knobs are saved flat and reach no engine
+### ~~FINDING — engine-private knobs are saved flat and reach no engine~~ — FIXED
 
-STATE: FINDING — code-verified 2026-08-15 while building workbench Slice B.
+STATE: **FIXED 2026-08-17** under "go", as part of the full engine-knob sweep.
+Routed on the way OUT, as the open question below offered: `nest_engine_keys()`
+in `delivery_merge.py` normalises every tier before the merge, so a flat save
+arrives nested and deliveries ALREADY stored flat in
+`personas.default_delivery` / `render_presets.delivery_json` are repaired with
+no re-entry. `render_chapter_api`'s `Delivery.model_fields` filter keeps them
+because `engine` is itself a declared field. The audition panel and the render
+now agree.
+
+The same pass audited all nine capability rows against their adapters, with
+the installed packages introspected (chatterbox, zipvoice, qwen_tts live in
+`engines/.shared-venv`). Corrections: `min_p`/`top_p` now forwarded
+(chatterbox) · `num_inference_steps` → `num_steps`, which had pinned steps at
+4 forever (luxtts) · `max_ref_length` wired to `encode_prompt(duration=)`
+rather than dropped (luxtts) · `volume` removed, it is not a parameter
+(luxtts) · **`t_shift` is NOT pitch** — upstream ZipVoice defines it as the
+flow-matching schedule, domain (0, 1.0], default 0.5, so the −6..+6 semitone
+declaration and `pitch_native_st_range` were both wrong and are gone ·
+`cfg_scale`→`guidance_scale` and `speed_factor` removed, the adapter drives
+HF's Dia not nari-labs' (dia) · `max_new_tokens` declared (dia) ·
+`silence_duration` removed and its four real knobs declared (moss) · three
+fake sliders removed from tada, whose adapter reads no delivery at all ·
+`repetition_penalty` forwarded (qwen3) · turbo's hardcoded `top_k`/`top_p`
+declared and its `repetition_penalty` default corrected 2.0 → 1.2 ·
+`lookup()` now walks `-` suffixes so `chatterbox-turbo-v1` stops resolving to
+the base row. **`Delivery.pitch` was read by nobody and is now applied
+post-render as a `pitch_shift` effect**, making `pitch_post_process` true
+everywhere it is advertised.
+
+Pinned by `server/tests/test_engine_knob_wiring.py` (21 tests) — it fails the
+build in both directions: a declared knob with no adapter reader, or an
+adapter override with no declaration. Gates green: ruff · 595 pytest · biome ·
+69 vitest · vite build · smoke 16/16 zero JS errors.
+COST: nesting changes `canonical_json(delivery)`, which is the render cache
+key — lines rendered before this re-render once.
+DOCS: `docs/engines.md` gained the per-engine tuning matrix; `docs/generate.md`
+corrected (pitch is post-process on every engine, not native on LuxTTS);
+`docs/dev/code-map.md` §5 carries the declaration↔adapter matrix.
+
+STILL OPEN from this area, NOT fixed: `Delivery.pause_before` /
+`pause_after` are stored and never applied — `concat_lines` uses a fixed
+`silence_ms=250`. `Delivery.emotion` reaches only the export path.
+`Block.direction` is unchanged (see its own finding above). TADA is not in the
+shared venv, so its upstream knob surface could not be introspected — re-add
+knobs there only alongside the adapter change that passes them.
+
+ORIGINAL FINDING, kept as the record — code-verified 2026-08-15 while building
+workbench Slice B.
 Every engine reads its own knobs from the `delivery.engine` SUBDICT
 (`qwen3/engine.py:154`, `chatterbox/engine.py:185-206`,
 `moss_tts/engine.py:114`). But `VoiceParamsModal.vue` saves the capability
@@ -452,10 +636,8 @@ ever worked. `render_chapter_api` additionally filters merged keys to
 The audition panel routes them correctly (`services/audition.js
 canonicalDelivery`), so a knob turned there is heard — which means the panel
 and the render currently disagree for those knobs.
-OPEN: route on the way IN (nest at save time in the persona editor) or on the
-way OUT (nest in `merge_delivery`). Either changes rendered audio for anyone
-who set one, and the cache keys with it.
-GO: needed.
+~~OPEN: route on the way IN (nest at save time in the persona editor) or on the
+way OUT (nest in `merge_delivery`).~~ Resolved: routed on the way OUT.
 
 ### FINDING — the analyze prompt gets id + name and nothing else
 

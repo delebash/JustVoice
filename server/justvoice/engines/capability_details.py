@@ -110,11 +110,26 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
         engine_id="chatterbox-turbo",
         display_name="Chatterbox Turbo",
         supports_voice_cloning=True,
+        # 2026-08-17 — introspected: ChatterboxTurboTTS.generate(text,
+        #   repetition_penalty=1.2, min_p=0.0, top_p=0.95, audio_prompt_path=None,
+        #   exaggeration=0.0, cfg_weight=0.0, temperature=0.8, top_k=1000,
+        #   norm_loudness=True)
+        # repetition_penalty's default here said 2.0 (the Multilingual value);
+        # Turbo's is 1.2, which is also what the adapter passes. top_k/top_p
+        # were hardcoded in the adapter and unreachable — now declared.
         knobs=[
             _temperature_knob(default=0.8),
             KnobSpec(
                 key="repetition_penalty", label="Repetition penalty",
-                min=1.0, max=4.0, step=0.1, default=2.0, advanced=True,
+                min=1.0, max=4.0, step=0.1, default=1.2, advanced=True,
+            ),
+            KnobSpec(
+                key="top_p", label="Top p", min=0.0, max=1.0, step=0.01,
+                default=0.95, advanced=True,
+            ),
+            KnobSpec(
+                key="top_k", label="Top k", min=1, max=2000, step=1,
+                default=1000, advanced=True,
             ),
             _seed_knob(),
         ],
@@ -130,8 +145,9 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
         ],
         pitch_post_process=True,
         notes=[
-            "Turbo intentionally omits exaggeration / cfg_weight / min_p "
-            "to maintain speed (Resemble AI / ollieollie). Sliders for those are hidden.",
+            "Turbo accepts exaggeration / cfg_weight / min_p but defaults them "
+            "to 0.0 — off — to maintain speed (Resemble AI / ollieollie). We "
+            "leave them at the upstream default and hide the sliders.",
             "Paralinguistic tags [cough] [laugh] [chuckle] [sigh] are unique to Turbo.",
         ],
     ),
@@ -213,25 +229,15 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
         display_name="TADA",
         supports_voice_cloning=True,
         supports_clone_prompt_text=True,
+        # 2026-08-17 audit: `steps` / `noise_temperature` / `faithfulness`
+        # were declared here but `tada/engine.py` calls
+        # `generate_from_text_and_prompt(text=, prompt=, language=)` and
+        # reads NO delivery field at all — three sliders that moved nothing.
+        # Removed rather than left decorative. Re-add each one only with the
+        # adapter change that passes it, verified against the installed
+        # package's signature (TADA is not in the shared venv, so it could
+        # not be introspected here).
         knobs=[
-            KnobSpec(
-                key="steps", label="Flow steps",
-                min=4, max=32, step=1, default=10,
-                hint="Refinement passes. 10 = fast + good. 20 = slower.",
-                advanced=True,
-            ),
-            KnobSpec(
-                key="noise_temperature", label="Noise temperature (kσ)",
-                min=0.0, max=2.0, step=0.05, default=0.7,
-                hint="Pitch + emotion variance.",
-                advanced=True,
-            ),
-            KnobSpec(
-                key="faithfulness", label="Speaker faithfulness",
-                min=0.0, max=1.0, step=0.05, default=0.7,
-                hint="Higher = stricter clone match.",
-                advanced=True,
-            ),
             _seed_knob(),
         ],
         pitch_post_process=True,
@@ -239,6 +245,8 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
             "Autoregressive — can't be abruptly cut mid-sentence (model "
             "will insert unnatural pauses to fill 1:1 token rhythm).",
             "Pass the ref audio's exact transcript for higher clone quality.",
+            "No per-render knobs: the adapter's generate call takes text, "
+            "prompt and language only. Seed still applies (torch.manual_seed).",
         ],
     ),
 
@@ -247,22 +255,36 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
         engine_id="luxtts",
         display_name="LuxTTS",
         supports_voice_cloning=True,
+        # 2026-08-17 audit — introspected against the installed package:
+        #   LuxTTS.generate_speech(text, encode_dict, num_steps=4,
+        #       guidance_scale=3.0, t_shift=0.5, speed=1.0, return_smooth=False)
+        #   LuxTTS.encode_prompt(prompt_audio, duration=5, rms=0.001)
+        # Corrections made: `num_inference_steps` never matched the adapter's
+        # `num_steps`, so steps were permanently 4; `max_ref_length` and
+        # `volume` are real but belong to encode_prompt (`duration` / `rms`),
+        # not to generate_speech — which is why neither reached anything.
+        # Hints below are the fork's own words (github.com/ysharma3501/LuxTTS).
         knobs=[
             _speed_knob(),
+            # NOT pitch. The fork's README calls t_shift a "sampling param,
+            # higher can sound better but worse WER"; k2-fsa/ZipVoice defines
+            # it as "shift t to smaller ones if t_shift < 1.0" — the
+            # flow-matching timestep schedule, domain (0, 1.0], default 0.5.
+            # It was declared here as semitone pitch over -6..+6 default 0.0,
+            # out of domain in both directions, and meaning "no shift" where
+            # the model wants 0.5.
             KnobSpec(
-                key="t_shift", label="Pitch shift (T-shift)",
-                min=-6.0, max=6.0, step=0.25, default=0.0, unit="st",
-                hint="Native pitch control — only engine with continuous pitch.",
-            ),
-            KnobSpec(
-                key="volume", label="Volume",
-                min=0.0, max=2.0, step=0.05, default=1.0,
+                key="t_shift", label="Timestep shift",
+                min=0.1, max=1.0, step=0.05, default=0.5,
+                hint="Sampling schedule. Higher can sound better but raises "
+                     "pronunciation errors; lower is safer. Not a pitch control.",
                 advanced=True,
             ),
             KnobSpec(
-                key="num_inference_steps", label="Inference steps",
+                key="num_steps", label="Inference steps",
                 min=2, max=16, step=1, default=4,
-                hint="Distilled — 4 keeps 150× realtime.",
+                hint="Higher sounds better but takes longer — 3–4 is the "
+                     "efficiency sweet spot.",
                 advanced=True,
             ),
             KnobSpec(
@@ -273,14 +295,36 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
             ),
             KnobSpec(
                 key="max_ref_length", label="Max ref length",
-                min=2.0, max=15.0, step=0.5, default=5.0, unit="s",
+                min=2.0, max=60.0, step=0.5, default=5.0, unit="s",
+                hint="How much of the reference clip is encoded. Lower is "
+                     "faster; set it above your clip's length to encode all of "
+                     "it, which avoids truncation artifacts.",
+                advanced=True,
+            ),
+            KnobSpec(
+                key="rms", label="Reference loudness",
+                min=0.001, max=0.1, step=0.001, default=0.001,
+                hint="Normalisation target for the reference clip — higher is "
+                     "louder. Around 0.01 is the fork's suggestion.",
+                advanced=True,
+            ),
+            KnobSpec(
+                key="return_smooth", label="Smoothing", min=0, max=1, step=1,
+                default=0,
+                hint="Set to 1 if the output sounds metallic — smoother, but "
+                     "less clean.",
                 advanced=True,
             ),
             _seed_knob(),
         ],
-        pitch_native_st_range=[-6, 6],  # T-shift is native
-        pitch_post_process=False,  # native exists, no need
-        notes=["English-only. ZipVoice base. Only engine with continuous native pitch."],
+        # No native pitch. The previous `pitch_native_st_range=[-6, 6]` rested
+        # on t_shift being a transposer, which it is not.
+        pitch_post_process=True,
+        notes=[
+            "English-only. ZipVoice base.",
+            "T-shift is a sampling-schedule parameter, not pitch — pitch here "
+            "is post-process, same as every other engine.",
+        ],
     ),
 
     # ─── Dia (Nari Labs — dialogue + paralinguistic-in-parens) ────────
@@ -289,24 +333,45 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
         display_name="Dia",
         supports_voice_cloning=True,
         supports_clone_prompt_text=True,
+        # Rewritten 2026-08-17 for **Dia2**, against `dia2/generation.py`:
+        #   GenerationConfig(text=SamplingConfig(0.6, 50),
+        #                    audio=SamplingConfig(0.8, 50), cfg_scale=2.0,
+        #                    cfg_filter_k=50, initial_padding=2, prefix=None, …)
+        # Dia2 samples the text and audio streams separately and has NO top_p,
+        # so the old `top_p` knob is gone rather than silently ignored, and
+        # `max_new_tokens` with it — length is bounded by the checkpoint's
+        # `max_context_steps` (1500 ≈ 2 min), not by a per-call cap.
+        # The primary Temperature slider drives the AUDIO stream, since that is
+        # the one that changes how it sounds.
         knobs=[
-            KnobSpec(
-                key="speed_factor", label="Speed",
-                min=0.5, max=2.0, step=0.05, default=1.0, unit="×",
-                hint="Long text (>20s) auto-accelerates — keep chunks short.",
-            ),
-            _temperature_knob(default=0.7),
+            _temperature_knob(default=0.8),
             KnobSpec(
                 key="cfg_scale", label="CFG scale",
-                min=0.0, max=10.0, step=0.5, default=3.0,
+                min=0.5, max=10.0, step=0.5, default=2.0,
+                hint="Adherence to the text. Higher = stricter, less natural.",
             ),
             KnobSpec(
-                key="top_p", label="Top p",
-                min=0.0, max=1.0, step=0.01, default=1.0, advanced=True,
-            ),
-            KnobSpec(
-                key="top_k", label="Top k",
+                key="audio_top_k", label="Audio top-k",
                 min=1, max=200, step=1, default=50, advanced=True,
+            ),
+            KnobSpec(
+                key="cfg_filter_k", label="CFG filter top-k",
+                min=1, max=200, step=1, default=50, advanced=True,
+            ),
+            KnobSpec(
+                key="text_temperature", label="Text temperature",
+                min=0.05, max=2.0, step=0.05, default=0.6,
+                hint="The text stream samples separately from the audio one; "
+                     "leave it unless output drifts off-script.",
+                advanced=True,
+            ),
+            KnobSpec(
+                key="text_top_k", label="Text top-k",
+                min=1, max=200, step=1, default=50, advanced=True,
+            ),
+            KnobSpec(
+                key="initial_padding", label="Initial padding",
+                min=0, max=16, step=1, default=2, advanced=True,
             ),
             _seed_knob(),
         ],
@@ -327,6 +392,14 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
             ),
         ],
         pitch_post_process=True,
+        notes=[
+            "Dia2 clones per speaker: the cast voice's reference clip drives "
+            "[S1], and delivery.engine.prefix_speaker_2 can drive [S2] for a "
+            "two-hander.",
+            "No streaming — upstream lists it as Upcoming. Generation runs to "
+            "the checkpoint's max_context_steps, about 2 minutes.",
+            "English only.",
+        ],
     ),
 
     # ─── MOSS-TTSD (multi-speaker dialogue) ───────────────────────────
@@ -336,11 +409,27 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
         supports_voice_cloning=True,
         supports_multi_speaker=True,
         knobs=[
+            # 2026-08-17 audit: declared against `moss_tts/engine.py:111-115`,
+            # which is the full set the adapter forwards. `silence_duration`
+            # was declared but never read — removed. These four were read but
+            # never declared, so no UI could reach them — now visible.
             _temperature_knob(default=1.1),
             KnobSpec(
-                key="silence_duration", label="Silence padding",
-                min=0.0, max=1.0, step=0.05, default=0.1, unit="s",
-                hint="Pads between ref clip end and generated audio. Tweak up if ref-audio bleed.",
+                key="top_p", label="Top-p", min=0.0, max=1.0, step=0.01,
+                default=0.9, advanced=True,
+            ),
+            KnobSpec(
+                key="top_k", label="Top-k", min=1, max=200, step=1,
+                default=50, advanced=True,
+            ),
+            KnobSpec(
+                key="repetition_penalty", label="Repetition penalty",
+                min=1.0, max=4.0, step=0.05, default=1.1, advanced=True,
+            ),
+            KnobSpec(
+                key="max_new_tokens", label="Max length", min=500, max=24000,
+                step=500, default=12000, unit="tok",
+                hint="Caps generated audio length — roughly 12.5 tokens per second.",
                 advanced=True,
             ),
             _seed_knob(),
@@ -362,7 +451,16 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
             ),
         ],
         pitch_post_process=True,
-        notes=["Fundamentally multi-speaker. Provide a speaker_prompts map per [Sx] tag."],
+        notes=[
+            "Fundamentally multi-speaker. Provide a speaker_prompts map per [Sx] tag.",
+            "UNVERIFIED UPSTREAM: these five knobs mirror what "
+            "moss_tts/engine.py forwards into MossTTSDPipeline.generate(), but "
+            "moss_ttsd is not in the shared venv so the pipeline's real "
+            "signature could not be introspected. They are standard sampling "
+            "names for an LLM-based TTS and the adapter splats them, so an "
+            "unaccepted key would raise at synth. Confirm against the package "
+            "before relying on the ranges.",
+        ],
     ),
 
 }
@@ -376,6 +474,35 @@ def lookup(engine_or_variant_id: str) -> EngineCapabilityDetail | None:
     """
     if engine_or_variant_id in CAPABILITY_DETAILS:
         return CAPABILITY_DETAILS[engine_or_variant_id]
-    # Heuristic fallback: strip "-turbo" / "-multilingual" / etc. and retry.
-    base = engine_or_variant_id.split("-")[0]
-    return CAPABILITY_DETAILS.get(base)
+    # Walk the "-" suffixes off one at a time, most specific first. Manifest
+    # variant ids carry a version tail the capability map does not, so
+    # "chatterbox-turbo-v1" has to reach "chatterbox-turbo" before it falls
+    # through to "chatterbox". The previous `split("-")[0]` jumped straight
+    # to the base engine, serving Multilingual's exaggeration / cfg_weight /
+    # min_p for a Turbo load and hiding Turbo's paralinguistic tags.
+    # `GenerateView.vue:lookupCapability` already walked suffixes; this is
+    # the same rule, server-side.
+    probe = engine_or_variant_id
+    while "-" in probe:
+        probe = probe.rsplit("-", 1)[0]
+        if probe in CAPABILITY_DETAILS:
+            return CAPABILITY_DETAILS[probe]
+    return None
+
+
+# Two engines name their variant family differently from the engine itself, so
+# stripping suffixes never reaches their row and the endpoint 404s:
+#
+#   moss-ttsd-v0 → "moss-ttsd" → "moss"   but the engine id is "moss-tts"
+#   dia2-1b      → "dia2"                 but the engine id is "dia"
+#
+# `GenerateView.lookupCapability` never hit this because it is handed the
+# engine id as an explicit second candidate; `lookup()` only ever gets one
+# string, so the alias has to live in the data. Renaming the variants instead
+# would invalidate every already-downloaded model directory, which is keyed by
+# variant id — a multi-GB re-download to fix a lookup.
+#
+# `test_engine_knob_wiring.py::test_every_manifest_variant_resolves_to_a_row`
+# fails if a new variant is added whose id cannot reach its engine's row.
+CAPABILITY_DETAILS["moss-ttsd"] = CAPABILITY_DETAILS["moss-tts"]
+CAPABILITY_DETAILS["dia2"] = CAPABILITY_DETAILS["dia"]

@@ -34,7 +34,7 @@ The three action buttons at the right end:
 
 Below the chip bar is a banner showing what the currently-loaded engine actually accepts:
 
-- ✓ pitch ±N st (native) — engine accepts pitch shift directly
+- ✓ pitch ±N st — pitch shift is available (post-process on every engine)
 - ✓ temperature — sampling-variance knob is real
 - ✓ seed — deterministic generation supported
 - ✓ N emotion tags — the engine has a declared emotion taxonomy in its capability manifest
@@ -48,11 +48,11 @@ Engines that don't support a feature show **✗** with a note ("use Qwen3 / LuxT
 
 The card below the banner has paired slider + number inputs. The six **primary controls** are universal across engines:
 
-- **Speed** — 0.5–2.0× pacing multiplier
-- **Pitch** — semitones. Native for LuxTTS (T-shift); post-process via pedalboard for others; disabled when no pitch path exists.
-- **Gain** — output WAV amplitude in dB
+- **Speed** — 0.5–2.0× pacing multiplier. Honoured natively by **Kokoro** and **LuxTTS**; other engines ignore it.
+- **Pitch** — semitones, **post-process on every engine**. The rendered audio is pitch-shifted after synthesis, so it works the same everywhere. (No engine transposes natively — LuxTTS's *T-shift* was previously described here as native pitch, which was wrong; see below.)
+- **Gain** — output WAV amplitude in dB. Applied by the server, so it works on every engine.
 - **Temperature** — sampling variance (engine-specific range)
-- **Pause before → after** — silence padding in ms
+- **Pause before → after** — silence in ms around this line. Blank means "use the project's gap"; a value replaces it for that join, and a line's `pause after` plus the next line's `pause before` add together. **0 is a deliberate butt-join**, not "unset".
 - **Seed** — `🎲 randomize` button next to it
 
 ### Emotion
@@ -73,11 +73,14 @@ Optional short tone/style descriptor — e.g. `warm narrative voice, calm tempo`
 
 Below the primary controls, the form auto-renders any extra knobs the engine declares in its capability manifest (`server/justvoice/engines/capability_details.py`). For example:
 
-- **Chatterbox / Chatterbox-Turbo** — `exaggeration`, `cfg_weight`, `min_p` (advanced, Chatterbox vanilla only)
-- **Qwen3** — advanced: `Top k`, `Top p`, `Repetition penalty`
-- **LuxTTS** — native `T-shift` pitch (continuous), `inference_steps`, `guidance_scale`
-- **TADA** — `Flow steps`, `Noise temperature`, `Speaker faithfulness`
-- **Dia / MOSS** — per-engine sampler knobs
+- **Chatterbox Multilingual** — `Exaggeration`, `CFG weight`; advanced `Repetition penalty`, `Min p`, `Top p`
+- **Chatterbox Turbo** — advanced `Repetition penalty`, `Top p`, `Top k`. Turbo accepts exaggeration and CFG weight but Resemble defaults them to 0 (off) for speed, so they are not offered.
+- **Qwen3** — advanced `Top k`, `Top p`, `Repetition penalty` (mapped onto the talker)
+- **LuxTTS** — `Inference steps`, `Guidance scale`, `Max ref length`; advanced `Timestep shift`, `Reference loudness`, `Smoothing`
+- **Dia2** — `CFG scale`; advanced `Audio top-k`, `CFG filter top-k`, `Text temperature`, `Text top-k`, `Initial padding`. Its Temperature slider drives the **audio** stream — Dia2 samples text and audio separately, and has no top-p.
+- **MOSS-TTSD** — advanced `Top p`, `Top k`, `Repetition penalty`, `Max length`
+- **Kokoro** — none beyond Speed
+- **TADA** — none. Its generate call takes text, reference prompt and language only; Seed still applies.
 
 Each knob renders as a paired slider + number input, just like the primary controls. Non-advanced knobs appear in the main grid; advanced knobs live behind a collapsible `⚙ Show advanced knobs (N)` details block. Values only ship to the API when they differ from the engine's default — no payload noise.
 
@@ -101,7 +104,7 @@ The row is always visible — it has two states:
 Type **/** in the textarea. A menu pops up with the engine's inline-tag taxonomy:
 
 - **Chatterbox-Turbo:** `[laugh] [cough] [chuckle] [sigh]` — inline anywhere.
-- **Dia:** `[S1] [S2]` speaker tags + `(laughs) (sighs) (clears throat)` for non-verbal sounds.
+- **Dia2:** `[S1] [S2]` speaker tags + `(laughs) (sighs) (clears throat)` for non-verbal sounds.
 - **MOSS-TTSD:** `[S1] [S2] [S3]` speaker markers + `[pause 1.5s]` for exact timing.
 - **Kokoro:** no inline tags (speed only).
 
@@ -172,9 +175,10 @@ Click a take to see its lineage via the [take versioning](take-versioning.md) ch
 - **Voice dropdown says "no voices available"** — The loaded engine is clone-only (Chatterbox) and you haven't cloned a reference WAV yet. Use the link in the banner to [Voices](voices.md).
 - **Compose button is disabled (grayed out)** — No persona is selected, or the selected persona's character sheet is empty. Pick one in the 👤 Persona chip, or write a sheet in [Personas](personas.md) → "How they're written".
 - **Compose returns "LLM not configured"** — Wire an OpenAI-compatible endpoint in Settings → External.
-- **Slash menu shows no tags** — The loaded engine has no inline-tag taxonomy. Switch to Chatterbox-Turbo, Dia, or MOSS to access tags.
+- **Slash menu shows no tags** — The loaded engine has no inline-tag taxonomy. Switch to Chatterbox-Turbo, Dia2, or MOSS to access tags.
 - **Render is silent / clipped at the end** — Some engines (Chatterbox family) hallucinate trailing noise; the trim utility removes that. If clipping the actual content, file an issue with the offending text.
-- **Pitch slider grayed out** — The engine doesn't accept pitch shift. Switch to LuxTTS for native pitch control.
+- **Pitch does nothing** — Pitch is applied after synthesis, so it works on every engine. If a value has no audible effect, check that it actually saved: an empty cell means "use the default", not zero.
+- **An engine knob seems to be ignored** — Until 2026-08-17 engine-specific knobs never reached the engine at all (they were saved flat and read nested). If you are on an older build, that is why. Values set before the fix are picked up automatically — no re-entry needed — but any line rendered with them is cached under the old settings and needs a re-render.
 
 ## API parity
 
@@ -186,7 +190,7 @@ Click a take to see its lineage via the [take versioning](take-versioning.md) ch
 | Effects chip | `delivery.engine.*` (mostly profile-managed) |
 | Seed | `seed` |
 | Delivery overlay sliders | `delivery.speed / pitch / gain_db / temperature / pause_before / pause_after` |
-| Inline emotion / paralinguistic / SFX tags (via SlashTagMenu) | inline in `text` (e.g. `[laugh]` for Chatterbox-Turbo, `(sighs)` for Dia) |
+| Inline emotion / paralinguistic / SFX tags (via SlashTagMenu) | inline in `text` (e.g. `[laugh]` for Chatterbox-Turbo, `(sighs)` for Dia2) |
 | Delivery direction | `delivery.instruct` |
 | Style prompt | `delivery.style_prompt` (Qwen3 only) |
 | Engine-specific knobs (advanced + primary) | `delivery.engine.{key}` — only sent when changed from default |

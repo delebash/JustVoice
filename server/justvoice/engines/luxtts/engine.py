@@ -93,9 +93,17 @@ class LuxTTS(EmbeddedEngine):
                 torch.cuda.manual_seed_all(req.seed)
 
         # zipvoice API: encode_prompt -> dict; then generate_speech(text, encode_dict).
-        encode_dict = self.model.encode_prompt(ref_audio)
         delivery = req.delivery or {}
         engine_overrides = delivery.get("engine") or {}
+        # `max_ref_length` and `volume` were declared knobs that reached
+        # nothing, because both belong to encode_prompt, not generate_speech:
+        #   encode_prompt(prompt_audio, duration=5, rms=0.001)
+        # `volume` is the fork's `rms` — "higher values increase loudness".
+        encode_dict = self.model.encode_prompt(
+            ref_audio,
+            duration=float(engine_overrides.get("max_ref_length", 5)),
+            rms=float(engine_overrides.get("rms", 0.001)),
+        )
         wav = self.model.generate_speech(
             req.text,
             encode_dict,
@@ -103,6 +111,9 @@ class LuxTTS(EmbeddedEngine):
             guidance_scale=float(engine_overrides.get("guidance_scale", 3.0)),
             t_shift=float(engine_overrides.get("t_shift", 0.5)),
             speed=float(delivery.get("speed", 1.0)),
+            # Fork README: "makes it sound smoother possibly but less
+            # cleaner" — reach for it when the output goes metallic.
+            return_smooth=bool(int(engine_overrides.get("return_smooth", 0))),
         )
         if isinstance(wav, torch.Tensor):
             audio = wav.squeeze().cpu().numpy().astype(np.float32)

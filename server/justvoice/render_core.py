@@ -345,6 +345,22 @@ def render_line(
         gain = max(-24.0, min(12.0, gain))
         pcm = apply_gain_db(pcm, gain)
 
+    # Post-render pitch. `capability_details` advertises pitch_post_process
+    # on every engine that has no native transposer, and GenerateView enables
+    # its pitch slider on that flag — but nothing ever applied the value: no
+    # engine reads `delivery.pitch` and the host did not either, so the
+    # control was inert everywhere (2026-08-17 audit). Applied here, before
+    # the effects chain, because pitch is part of how the line was spoken
+    # while the chain sits on top of the finished line.
+    if delivery.get("pitch"):
+        semitones = max(-12.0, min(12.0, float(delivery["pitch"])))
+        if semitones:
+            shifted = apply_effects_chain(
+                write_wav_container(pcm, out_sample_rate, out_channels),
+                [{"type": "pitch_shift", "params": {"semitones": semitones}}],
+            )
+            pcm = strip_wav_header(shifted)
+
     # Effects chain, after gain (gain is part of the delivery this line was
     # spoken with; the chain sits on top of the finished line). Same function
     # the single-line path calls — one implementation, one sound.
@@ -370,8 +386,29 @@ def pcm_to_wav(rl: RenderedLine) -> bytes:
     return write_wav_container(rl.pcm, rl.sample_rate, rl.channels)
 
 
+def _pause_ms(line: RenderedLine, key: str) -> int | None:
+    """`pause_before` / `pause_after` off a rendered line's delivery."""
+    raw = (line.effective_delivery or {}).get(key)
+    if raw is None:
+        return None
+    try:
+        return max(0, int(raw))
+    except (TypeError, ValueError):
+        return None
+
+
 def concat_lines(lines: list[RenderedLine], silence_ms: int = 250) -> RenderedLine:
     """Concatenate rendered lines with silence between them.
+
+    `silence_ms` is the project's gap. A line's own `pause_after` and the next
+    line's `pause_before` override it for that join: blank means "as the
+    project", a value means this join is special — the same
+    only-show-what-differs rule the line table uses.
+
+    Until 2026-08-17 this used the project gap unconditionally, so every
+    per-line pause in the app — the Generate slider, the delivery overlay, and
+    the `pause_after_ms` every import adapter parses — was stored and silently
+    ignored.
 
     Resamples mismatched sample-rate lines via numpy linear interpolation.
     """
@@ -380,8 +417,10 @@ def concat_lines(lines: list[RenderedLine], silence_ms: int = 250) -> RenderedLi
     sr = lines[0].sample_rate
     ch = lines[0].channels
     out_pcm = io.BytesIO()
-    silence_samples = int((silence_ms / 1000) * sr) * ch
-    silence_bytes = b"\x00\x00" * silence_samples
+
+    def silence(ms: int) -> bytes:
+        return b"\x00\x00" * (int((ms / 1000) * sr) * ch)
+
     for i, line in enumerate(lines):
         if line.sample_rate != sr or line.channels != ch:
             # Fallback: just append regardless; mastering layer can resample.
@@ -391,8 +430,12 @@ def concat_lines(lines: list[RenderedLine], silence_ms: int = 250) -> RenderedLi
                 line.sample_rate,
                 line.channels,
             )
-        if i > 0 and silence_bytes:
-            out_pcm.write(silence_bytes)
+        if i > 0:
+            after = _pause_ms(lines[i - 1], "pause_after")
+            before = _pause_ms(line, "pause_before")
+            gap = silence_ms if after is None and before is None else (after or 0) + (before or 0)
+            if gap > 0:
+                out_pcm.write(silence(gap))
         out_pcm.write(line.pcm)
     return RenderedLine(
         pcm=out_pcm.getvalue(),

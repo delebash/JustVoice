@@ -807,6 +807,14 @@ def _materialize_standard(
                 meta["source_ref"] = line.source_ref
             if is_marker:
                 meta["marker"] = True
+            # Every adapter parses `pause_after_ms` (CSV column, SRT inter-cue
+            # gap, Audacity label gap) and it is a documented import field —
+            # but it used to stop here, so an import that specified its own
+            # pacing rendered with the project's flat gap instead. Kept on the
+            # metadata rather than a new column so honouring it costs no
+            # schema change; render_chapter_api reads it back.
+            if getattr(line, "pause_after_ms", None):
+                meta["pause_after_ms"] = int(line.pause_after_ms)
             db.add(
                 Block(
                     scene_id=s.id,

@@ -57,6 +57,29 @@ def _is_marker(block) -> bool:
         return False
 
 
+def _block_pause_after(block) -> int | None:
+    """The imported `pause_after_ms` for this block, if it has one.
+
+    Every import adapter parses `pause_after_ms` (CSV, SRT gaps, Audacity
+    labels) and `standard_schema.Line` carries it, but materialisation used to
+    drop it on the floor — a documented import field that reached nothing.
+    It lives on the block's metadata rather than in a new column so that
+    honouring it needs no schema change.
+    """
+    if not block.metadata_json:
+        return None
+    try:
+        raw = json.loads(block.metadata_json).get("pause_after_ms")
+    except ValueError:
+        return None
+    if raw is None:
+        return None
+    try:
+        return max(0, int(raw))
+    except (TypeError, ValueError):
+        return None
+
+
 def _resolve_scene_to_lines(
     scene_id: str,
     preset_id: str | None,
@@ -157,8 +180,41 @@ def _resolve_scene_to_lines(
                 db=db,
                 tier2_overlay=tier2,
             )
-            if instruct and not merged.get("instruct"):
-                merged["instruct"] = instruct
+            # `Block.direction` is the per-line performance note — the column's
+            # own docstring calls it "Emotion/style hint passed through to the
+            # engine's instruct field", the Chapters "+ direction" button
+            # writes it, and every import adapter lands its emotion/style
+            # column there (projects_api._materialize_standard). It reached no
+            # render path until 2026-08-17: the column was written, returned,
+            # exported and preserved across splits, and then dropped here.
+            #
+            # It APPENDS to the persona's voice_instruct rather than replacing
+            # it — the persona says who they are, the line says how this one
+            # is delivered. `delivery.emotion` is the same kind of hint from
+            # the delivery side, so it composes the same way; it had no reader
+            # at all before this.
+            # An explicit instruct (preset or request) wins the base slot over
+            # the persona's, as it always has; the line's own note still rides
+            # on the end. Most specific last: persona → delivery → this line.
+            base = merged.get("instruct") or instruct
+            hints = [
+                h for h in (base, merged.get("emotion"), (block.direction or "").strip() or None) if h
+            ]
+            if len(hints) == 1:
+                # Single hint passes through verbatim — joining one item must
+                # not reformat someone's carefully written instruct.
+                merged["instruct"] = hints[0]
+            elif hints:
+                merged["instruct"] = ". ".join(h.rstrip(". ") for h in hints)
+
+            # Per-line silence. Imports carry `pause_after_ms` (documented in
+            # every adapter and in docs/import-and-export.md) and it is kept on
+            # the block's metadata; the delivery's own pause_before/pause_after
+            # win when set. concat_lines applies these — before 2026-08-17 it
+            # used one fixed project gap and these values did nothing.
+            block_pause = _block_pause_after(block)
+            if block_pause is not None and merged.get("pause_after") is None:
+                merged["pause_after"] = block_pause
 
             lines.append(
                 ChapterLine(

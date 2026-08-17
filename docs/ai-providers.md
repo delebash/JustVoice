@@ -2,7 +2,7 @@
 
 JustVoice's AI page handles two kinds of provider, each on its own tab:
 
-- **Local engines** — Kokoro / Chatterbox / Qwen3-TTS / Dia / LuxTTS / MossTTS / TADA. Managed by JustVoice, installed into per-engine Python venvs, loaded one-at-a-time per kind (TTS / LLM / embedding). See `engines.md` for the catalog.
+- **Local engines** — Kokoro / Chatterbox / Qwen3-TTS / Dia2 / LuxTTS / MossTTS / TADA. Managed by JustVoice, installed into per-engine Python venvs, loaded one-at-a-time per kind (TTS / LLM / embedding). See `engines.md` for the catalog.
 - **Online + self-hosted providers** — Anthropic Claude / OpenAI / Gemini / Ollama / DeepSeek / OpenRouter for LLM; ElevenLabs / Speechify / Speechmatics / OpenAI TTS / OpenAI-compatible servers for TTS. These talk HTTP, don't install anything locally, and need an API key + base URL.
 
 Language models live on the **LLM providers** tab; everything speech lives on
@@ -68,7 +68,8 @@ preset ships with it off; turn it on on a card's preset to test it.
 
 ## Self-hosted TTS — Kokoro / Chatterbox / Dia / Qwen3-TTS
 
-If you're running a self-hosted TTS server (community-published OpenAI-compatible projects exist for each), add it under **Speech engines → Local · free → Self-hosted servers** with its base URL — no key needed for local servers. The setup-hint band in the form links to each known project's canonical GitHub. JustVoice speaks the standard `POST /v1/audio/speech` shape; non-standard fields (Chatterbox's `exaggeration` / `cfg_weight`, Dia's multi-speaker tags) ride through `params` JSON.
+
+If you're running a self-hosted TTS server (community-published OpenAI-compatible projects exist for each), add it under **Speech engines → Local · free → Self-hosted servers** with its base URL — no key needed for local servers. The setup-hint band in the form links to each known project's canonical GitHub. JustVoice speaks the standard `POST /v1/audio/speech` shape; non-standard fields (Chatterbox's `exaggeration` / `cfg_weight`, Dia2's multi-speaker tags) ride through `params` JSON.
 
 ## What about feature routing?
 
