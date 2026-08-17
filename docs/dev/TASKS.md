@@ -197,8 +197,18 @@ reasoning, the mock's exact state (§8.18) and how to build it (§8.1). §1–§
 that doc are prior thinking, superseded where they disagree. It supersedes the
 unbuilt half of the voice-workbench plan (Slices C/D/E are FROZEN) and pipeline
 item 6. Mock: `https://claude.ai/code/artifact/534a16a2-af40-438b-a64d-34baaf31f838`
-— 17 routes, 123 controls, 0 dead. **Its source is in a session scratchpad, not
-the repo, and dies with the session.**
+— 18 routes, 126 controls, 0 dead. **Source lives at `docs/plans/mock/`**
+(moved out of the session scratchpad 2026-08-17, with a README for the
+edit → build → validate → republish loop).
+
+THE VOICE-LAYER ARGUMENT is §8.22 of that doc — why a persona earns its place
+(it is the layer that survives a recast), which half of it actually survives
+(only the host-side: gain, effects, lexicon, pitch), why a voice-level
+correction must exist anyway (a clone's artifact is a conditioning input, so
+loudness can only be fixed at render), and the workbench conclusion that
+follows (make · hear · calibrate · derive — not a second knob panel).
+**OPEN, user 2026-08-17 "i dont know yet": can a character's persona vary by
+scene, or is it one per character?** Nothing may assume either answer.
 
 **RULED WHILE WALKING THE MOCK (2026-08-15/16).** Recovered from the transcript
 2026-08-16 after an autocompact; the first two had been recorded NOWHERE. Full

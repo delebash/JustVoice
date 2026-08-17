@@ -1,0 +1,40 @@
+<div class="top"><span class="crumb">Lexicons › Harbor names</span><span class="pill">project scope</span>
+    <span class="pill">18 words</span></div>
+  <div class="body">
+    <div class="split">
+      <div class="card"><div class="sh"><h4>Words</h4>
+        <span class="sub">applies before TTS, on every line in scope</span></div>
+        <div class="row" style="margin-bottom:9px"><input class="box" style="max-width:180px" placeholder="Add a word…">
+          <select class="box" style="width:auto"><option>Phonetic</option><option>IPA</option></select>
+          <button class="btn s p" onclick="openModal('word')">＋ Add</button></div>
+        <div class="tw"><table>
+          <thead><tr><th>Word</th><th>Say it as</th><th style="width:76px">Notation</th>
+            <th style="width:64px">Heard</th><th style="width:46px"></th></tr></thead>
+          <tbody>
+            <tr><td><b>Hecate</b></td><td class="mono">HEH-kuh-tee</td><td><span class="tag">phonetic</span></td>
+              <td><span class="rt"><span>▶</span></span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+            <tr><td><b>Marius</b></td><td class="mono">MAR-ee-us</td><td><span class="tag">phonetic</span></td>
+              <td><span class="rt"><span>▶</span></span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+            <tr><td><b>quay</b></td><td class="mono">/kiː/</td><td><span class="tag">ipa</span></td>
+              <td><span class="rt"><span>▶</span></span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+          </tbody></table></div>
+        <div class="bn w" style="margin-top:10px">IPA only works on engines with phoneme input —
+          Kokoro yes, Chatterbox no. The notation column warns before you write 40 of them.</div></div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card"><div class="sh"><h4>Scope</h4></div>
+          <div class="radios"><span class="radio"><span class="rd"></span>Global</span>
+            <span class="radio on"><span class="rd"></span>This project</span>
+            <span class="radio"><span class="rd"></span>One character</span></div>
+          <p class="hint" style="margin:8px 0 0">A character-scoped lexicon beats the project's —
+            Old Crow says “boss” his own way.</p></div>
+        <div class="card"><div class="sh"><h4>Try a word</h4></div>
+          <input class="box" value="Hecate"><div class="row" style="margin-top:7px">
+            <select class="box" style="flex:1"><option>as June</option><option>as Narrator</option></select>
+            <button class="btn p s" onclick="toast('Hearing it as June…')">▶</button></div>
+          <p class="hint" style="margin:7px 0 0">Hear before and after, in the voice that will say it.</p></div>
+        <div class="card tint"><div class="sh"><h4>Affects</h4></div>
+          <p class="note" style="margin:0">37 lines contain one of these words. Editing an entry marks
+            them <b>stale</b>, not re-rendered — you choose when to pay for it.</p></div>
+      </div>
+    </div>
+  </div>

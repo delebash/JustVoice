@@ -1,0 +1,82 @@
+<div class="top"><span class="crumb">Home</span>
+    <span style="flex:1"></span>
+    <span class="pill live"><span class="dot"></span> Kokoro loaded</span></div>
+  <div class="body">
+
+    <a class="bn" style="display:block;text-decoration:none;color:inherit">
+      <b>Cast Harbek and Renn</b> <span class="jv-muted">— 231 lines are waiting on a voice.</span>
+      <span class="lnk" style="float:right" onclick="nav('cast')">Open Cast ➜</span></a>
+
+    <div class="split">
+      <div class="card">
+        <div class="row" style="align-items:flex-start">
+          <span class="av" style="background:#3a7d63;width:44px;height:44px;font-size:19px">S</span>
+          <div style="flex:1;min-width:0">
+            <div class="hint" style="text-transform:uppercase;letter-spacing:.07em;font-weight:700">Continue</div>
+            <div style="font-size:19px;font-weight:700;letter-spacing:-.01em">Stillwater</div>
+            <div class="hint">📖 audiobook · 14 chapters · 412 of 2,140 lines rendered</div>
+            <div class="statebar" style="margin-top:8px">
+              <b class="s-nospk" style="width:4%"></b><b class="s-novoice" style="width:11%"></b><b class="s-ready" style="width:60%"></b><b class="s-done" style="width:19%"></b><b class="s-stale" style="width:6%"></b>
+            </div>
+            <div class="row" style="margin-top:8px;gap:5px">
+              <span class="tag e">88 need a speaker</span><span class="tag w">231 need a voice</span>
+              <span class="tag pd">1,281 ready</span><span class="tag">412 rendered</span><span class="tag">128 stale</span>
+            </div>
+          </div>
+          <button class="btn p" onclick="openProject('audiobook','Stillwater')">Resume ➜</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="sh"><h4>Start something</h4></div>
+        <div class="row">
+          <span class="tag" style="cursor:pointer" onclick="nav('new')">📖 Audiobook</span>
+          <span class="tag" style="cursor:pointer" onclick="nav('new')">🎮 Game voicelines</span>
+          <span class="tag" style="cursor:pointer" onclick="nav('new')">🎙️ Podcast</span>
+          <span class="tag" style="cursor:pointer" onclick="nav('new')">⚙️ Custom</span>
+        </div>
+        <p class="hint" style="margin:9px 0 0">Pick a kind — the app reshapes around it. Same voices,
+          personas and lexicons either way.</p>
+        <div class="row" style="margin-top:9px">
+          <button class="btn s" onclick="nav('projects')">All projects</button>
+          <button class="btn s" onclick="nav('newvoice')">＋ New voice</button></div>
+      </div>
+    </div>
+
+    <div class="split">
+      <div class="card">
+        <div class="sh"><h4>Running</h4><span class="tag">2 in flight</span></div>
+        <table><tbody>
+          <tr><td><b>Render</b> · Stillwater ch. 1</td>
+            <td style="width:150px"><div class="prog"><b style="width:38%"></b></div></td>
+            <td class="n">71 / 187</td><td><span class="rt"><span>⏹</span></span></td></tr>
+          <tr><td><b>Analyze</b> · ch. 6</td>
+            <td><div class="prog"><b style="width:64%"></b></div></td>
+            <td class="n">127 / 198</td><td><span class="rt"><span>⏹</span></span></td></tr>
+        </tbody></table>
+      </div>
+      <div class="card">
+        <div class="sh"><h4>Speech engine</h4></div>
+        <div class="row"><span class="tag ok">Kokoro</span>
+          <span class="hint mono">VRAM 3.2 / 8.6 GB</span>
+          <span style="flex:1"></span>
+          <button class="btn s" onclick="toast('Kokoro unloaded — 3.2 GB freed.','ok')">Unload</button></div>
+        <div class="prog" style="margin-top:8px"><b style="width:37%"></b></div>
+        <p class="hint" style="margin:8px 0 0">One engine runs at a time. Loading another unloads it.</p>
+        <button class="btn s" style="margin-top:8px" onclick="nav('engines')">Speech engines</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sh"><h4>Recent takes</h4><span class="sub">click to replay</span></div>
+      <table><tbody>
+        <tr><td><span class="spk"><span class="av" style="background:#c98aa7">J</span>June</span></td>
+          <td>“It matters to me.”</td><td class="hint">ch. 1 · line 6</td><td class="n">0:02</td>
+          <td><div class="player" style="padding:3px 6px"><button class="btn s p rnd" style="width:18px;height:18px" onclick="toast('Playing…')">▶</button>
+            <div class="bar"><b style="width:0"></b></div></div></td></tr>
+        <tr><td><span class="spk"><span class="av" style="background:#5b7a99">N</span>Narrator</span></td>
+          <td>“Marius set the lamp on the table.”</td><td class="hint">ch. 1 · line 1</td><td class="n">0:04</td>
+          <td><div class="player" style="padding:3px 6px"><button class="btn s p rnd" style="width:18px;height:18px" onclick="toast('Playing…')">▶</button>
+            <div class="bar"><b style="width:0"></b></div></div></td></tr>
+      </tbody></table>
+    </div>
+  </div>

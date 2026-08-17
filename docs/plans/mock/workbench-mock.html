@@ -1,0 +1,2095 @@
+<title>JustVoice Redesign Mocks</title>
+
+<style>
+:root{
+  --bg:#f6f5f1;--surface:#fff;--surface-2:#fbfaf7;--surface-3:#f3f1ec;
+  --ink:#1a1a1a;--ink-2:#4a4a4a;--ink-3:#888;
+  --line:#e3e1dc;--line-strong:#cfccc4;
+  --accent-hue:166;
+  --accent:oklch(0.538 0.080 var(--accent-hue));
+  --accent-ink:oklch(0.446 0.068 var(--accent-hue));
+  --accent-soft:oklch(0.948 0.011 var(--accent-hue));
+  --accent-line:oklch(0.840 0.035 var(--accent-hue));
+  --gold:oklch(0.712 0.124 82);--warn-bg:#fff8e3;--warn-ink:#8a6a1f;--warn-line:#e6cd84;
+  --danger:oklch(0.517 0.137 34);--danger-bg:oklch(0.954 0.020 34);
+  --danger-ink:oklch(0.409 0.109 34);--danger-line:oklch(0.840 0.050 34);
+  --info:oklch(0.547 0.123 250);
+  --shadow-1:0 1px 2px rgba(20,22,24,.04);--shadow-2:0 4px 12px rgba(20,22,24,.06);
+  --r-card:8px;--r-control:6px;--r-pill:999px;
+  --font-ui:"Inter",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --rail:#fff;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1a1c1a;--surface:#232624;--surface-2:#1e211f;--surface-3:#2a2e2c;
+  --ink:#f0eee8;--ink-2:#c5c2bb;--ink-3:#8a8780;--line:#353835;--line-strong:#4a4d49;
+  --accent:oklch(0.673 0.093 var(--accent-hue));--accent-ink:oklch(0.780 0.090 var(--accent-hue));
+  --accent-soft:oklch(0.300 0.032 var(--accent-hue));--accent-line:oklch(0.400 0.045 var(--accent-hue));
+  --gold:oklch(0.78 0.10 82);--warn-bg:oklch(0.28 0.040 82);--warn-ink:oklch(0.84 0.090 82);
+  --warn-line:oklch(0.42 0.060 82);
+  --danger:oklch(0.640 0.130 34);--danger-bg:oklch(0.290 0.045 34);
+  --danger-ink:oklch(0.780 0.110 34);--danger-line:oklch(0.430 0.070 34);
+  --info:oklch(0.680 0.110 250);
+  --shadow-1:0 1px 2px rgba(0,0,0,.3);--shadow-2:0 4px 12px rgba(0,0,0,.35);--rail:#232624;
+}}
+:root[data-theme="dark"]{
+  --bg:#1a1c1a;--surface:#232624;--surface-2:#1e211f;--surface-3:#2a2e2c;
+  --ink:#f0eee8;--ink-2:#c5c2bb;--ink-3:#8a8780;--line:#353835;--line-strong:#4a4d49;
+  --accent:oklch(0.673 0.093 var(--accent-hue));--accent-ink:oklch(0.780 0.090 var(--accent-hue));
+  --accent-soft:oklch(0.300 0.032 var(--accent-hue));--accent-line:oklch(0.400 0.045 var(--accent-hue));
+  --gold:oklch(0.78 0.10 82);--warn-bg:oklch(0.28 0.040 82);--warn-ink:oklch(0.84 0.090 82);
+  --warn-line:oklch(0.42 0.060 82);
+  --danger:oklch(0.640 0.130 34);--danger-bg:oklch(0.290 0.045 34);
+  --danger-ink:oklch(0.780 0.110 34);--danger-line:oklch(0.430 0.070 34);
+  --info:oklch(0.680 0.110 250);
+  --shadow-1:0 1px 2px rgba(0,0,0,.3);--shadow-2:0 4px 12px rgba(0,0,0,.35);--rail:#232624;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-ui);
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1360px;margin:0 auto;padding:32px 18px 70px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--accent-ink);margin:0 0 8px}
+h1{font-size:30px;line-height:1.15;font-weight:700;margin:0 0 11px;letter-spacing:-.02em;text-wrap:balance}
+.lede{font-size:15px;color:var(--ink-2);margin:0 0 9px;max-width:78ch}
+.lede b{color:var(--ink)}
+.note{font-size:12.5px;color:var(--ink-2);max-width:82ch}
+.hint{font-size:11.5px;color:var(--ink-3)}
+code,.mono{font-family:var(--font-mono);font-size:.9em}
+
+.ctl{position:sticky;top:0;z-index:60;background:linear-gradient(var(--bg) 82%,transparent);
+  padding:11px 0 12px;margin:22px 0 16px;display:flex;flex-direction:column;gap:9px}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line-strong);
+  border-radius:var(--r-pill);padding:3px;box-shadow:var(--shadow-1)}
+.seg button{appearance:none;border:0;background:transparent;cursor:pointer;font:inherit;
+  font-size:12.5px;font-weight:600;color:var(--ink-2);padding:6px 15px;border-radius:var(--r-pill);white-space:nowrap}
+.seg button[aria-pressed=true]{background:var(--accent);color:#fff}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.steps{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.steps button{appearance:none;font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;
+  border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);
+  border-radius:var(--r-pill);padding:5px 11px;white-space:nowrap}
+.steps button:hover{border-color:var(--accent-line);color:var(--ink)}
+.steps button[aria-current=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+.steps .g{font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-3);padding:0 6px 0 10px}
+.steps .ar{color:var(--ink-3);font-size:11px}
+
+.app{display:grid;grid-template-columns:84px 1fr;border:1px solid var(--line-strong);
+  border-radius:12px;overflow:hidden;background:var(--surface);box-shadow:var(--shadow-2)}
+.rail{background:var(--rail);border-right:1px solid var(--line);padding:9px 0;display:flex;flex-direction:column}
+.rail .gh{font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-3);padding:10px 5px 3px;text-align:center}
+.rail i{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 3px;
+  font-size:8.5px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;
+  color:var(--ink-3);font-style:normal}
+.rail i .e{font-size:15px;line-height:1}
+.rail i.on{background:var(--accent-soft);color:var(--accent-ink)}
+.rail i.gone{opacity:.32;text-decoration:line-through}
+.pane{min-width:0;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line)}
+.crumb{font-size:17px;font-weight:700;letter-spacing:-.01em;margin-right:auto}
+.pill{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line-strong);
+  border-radius:var(--r-pill);padding:3px 9px;font-size:10.5px;font-weight:600;
+  color:var(--ink-2);background:var(--surface-2);white-space:nowrap}
+.pill b{color:var(--ink);font-weight:700}
+.pill.live{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent-ink)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex:none}
+.dot.idle{background:var(--ink-3)}
+.body{padding:16px;display:flex;flex-direction:column;gap:14px}
+
+.card{border:1px solid var(--line);border-radius:var(--r-card);background:var(--surface);padding:14px 16px}
+.card.tint{background:var(--surface-2)}
+.card.sel{border-color:var(--accent-line);box-shadow:0 0 0 1px var(--accent-line) inset}
+.sh{display:flex;align-items:baseline;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.sh h4{margin:0;font-size:14px;font-weight:700;letter-spacing:-.005em}
+.sh .st{font-family:var(--font-mono);font-size:9.5px;font-weight:700;color:var(--accent-ink);
+  background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:var(--r-pill);padding:1px 7px}
+.sh .sub{font-size:11px;color:var(--ink-3);margin-left:auto;text-align:right}
+.split{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:14px;align-items:start}
+.split2{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+.row{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+
+.btn{appearance:none;font:inherit;font-size:12px;font-weight:600;border-radius:var(--r-control);
+  padding:6px 13px;cursor:pointer;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2)}
+.btn.p{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.d{border-color:var(--danger-line);color:var(--danger-ink);background:var(--danger-bg)}
+.btn.s{font-size:10.5px;padding:3px 8px}
+.btn.g{border-color:transparent;background:transparent}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.f{display:flex;flex-direction:column;gap:4px}
+.f>label{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-3);display:flex;align-items:center;justify-content:space-between;gap:6px}
+.box{border:1px solid var(--line-strong);border-radius:var(--r-control);background:var(--surface);
+  padding:7px 9px;font:inherit;font-size:12px;color:var(--ink);width:100%}
+.box.t{min-height:58px;resize:vertical}
+.box.ph{color:var(--ink-3)}
+select.box{cursor:pointer}
+.kb{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px 16px}
+.kb.k2{grid-template-columns:1fr 1fr}
+.kn{display:flex;flex-direction:column;gap:3px}
+.kr{display:flex;align-items:center;gap:7px}
+input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:4px;border-radius:3px;
+  background:var(--line-strong);outline:none;min-width:52px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:13px;height:13px;
+  border-radius:50%;background:var(--accent);cursor:pointer;border:0}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--accent);cursor:pointer;border:0}
+input[type=range]:disabled{opacity:.35}
+input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.num{width:54px;text-align:center;font-family:var(--font-mono);font-size:11px;
+  border:1px solid var(--line-strong);border-radius:var(--r-control);padding:3px 4px;
+  background:var(--surface);color:var(--ink);font-variant-numeric:tabular-nums}
+.u{font-size:10px;color:var(--ink-3);min-width:16px}
+.radios{display:flex;flex-wrap:wrap;gap:4px}
+.radio{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;
+  border:1px solid var(--line-strong);border-radius:var(--r-pill);padding:3px 10px;
+  cursor:pointer;color:var(--ink-2);background:var(--surface)}
+.radio .rd{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--line-strong);flex:none}
+.radio.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
+.radio.on .rd{border-color:var(--accent);background:var(--accent);box-shadow:inset 0 0 0 2px var(--accent-soft)}
+.radio.off{opacity:.45;cursor:not-allowed}
+
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;
+  border:1px solid var(--line-strong);border-radius:var(--r-pill);padding:2px 7px;
+  color:var(--ink-2);background:var(--surface);white-space:nowrap}
+.tag.ok{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent-ink)}
+.tag.no{border-color:var(--line);color:var(--ink-3)}
+.tag.w{border-color:var(--warn-line);background:var(--warn-bg);color:var(--warn-ink)}
+.tag.e{border-color:var(--danger-line);background:var(--danger-bg);color:var(--danger-ink)}
+.tag.pd{border-color:var(--line-strong);background:var(--surface-3);color:var(--ink-2)}
+.tags{display:flex;flex-wrap:wrap;gap:4px}
+.bn{border:1px solid var(--line);border-left:3px solid var(--info);background:var(--surface-2);
+  border-radius:var(--r-control);padding:10px 12px;font-size:11.5px;color:var(--ink-2)}
+.bn.w{border-left-color:var(--gold);background:var(--warn-bg);color:var(--warn-ink)}
+.bn.e{border-left-color:var(--danger);background:var(--danger-bg);color:var(--danger-ink)}
+.bn p{margin:4px 0 0}
+.stack{border:1px solid var(--accent-line);border-radius:var(--r-card);background:var(--accent-soft);padding:11px 13px}
+.stack h5{margin:0 0 6px;font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--accent-ink)}
+.stack .l{font-size:12px;line-height:1.6}
+.stack .sp{color:var(--accent);padding:0 2px}
+.stack .lt{color:var(--ink-3);font-style:italic}
+
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--ink-3);padding:6px 7px;border-bottom:1px solid var(--line-strong);white-space:nowrap}
+td{padding:6px 7px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:var(--surface-2)}
+td.n{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.spk{display:inline-flex;align-items:center;gap:5px;font-weight:650;font-size:11.5px}
+.av{width:19px;height:19px;border-radius:50%;color:#fff;font-size:9.5px;font-weight:700;
+  display:inline-flex;align-items:center;justify-content:center;flex:none}
+.rt{display:inline-flex;gap:1px;color:var(--ink-3);font-size:11px}
+.rt span{cursor:pointer;padding:1px 3px;border-radius:3px}
+.rt span:hover{background:var(--surface-3);color:var(--ink)}
+.player{display:flex;align-items:center;gap:8px;padding:6px 9px;border:1px solid var(--line);
+  border-radius:var(--r-control);background:var(--surface-2)}
+.player .bar{flex:1;height:4px;border-radius:3px;background:var(--line-strong);position:relative;min-width:40px}
+.player .bar b{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:3px}
+.rnd{border-radius:50%;width:24px;height:24px;padding:0;display:inline-flex;align-items:center;justify-content:center}
+.prog{height:6px;border-radius:4px;background:var(--surface-3);overflow:hidden}
+.prog b{display:block;height:100%;background:var(--accent)}
+.drop{border:1.5px dashed var(--line-strong);border-radius:var(--r-card);padding:16px;
+  text-align:center;color:var(--ink-3);font-size:12px;background:var(--surface-2)}
+.exp{background:var(--surface-2);border-left:3px solid var(--accent)}
+.exp td{padding:12px 14px}
+
+.sec{margin:32px 0 12px;max-width:82ch}
+.sec h2{font-size:19px;font-weight:700;margin:0 0 5px;letter-spacing:-.01em;text-wrap:balance}
+.map{display:flex;flex-wrap:wrap;gap:9px}
+.mc{flex:1 1 190px;border:1px solid var(--line);border-radius:var(--r-card);padding:11px 13px;background:var(--surface)}
+.mc.new{border-color:var(--accent-line);background:var(--accent-soft)}
+.mc.gone{border-color:var(--danger-line);background:var(--danger-bg)}
+.mc .k{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);margin-bottom:3px}
+.mc.new .k{color:var(--accent-ink)}.mc.gone .k{color:var(--danger-ink)}
+.mc .n{font-size:13px;font-weight:700;margin-bottom:3px}
+.mc .d{font-size:11.5px;color:var(--ink-2)}
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.vs>div{border:1px solid var(--line);border-radius:var(--r-card);padding:12px 14px;background:var(--surface)}
+.vs h4{margin:0 0 7px;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
+.vs .good h4,.good h4{color:var(--accent-ink)}.vs .bad h4,.bad h4{color:var(--danger-ink)}
+.vs ul{margin:0;padding-left:16px;font-size:12px;color:var(--ink-2)}
+.vs li{margin-bottom:5px}.vs li:last-child{margin-bottom:0}
+.vs li b{color:var(--ink)}
+/* Bulk verbs: button with a one-line subtitle under it (Alexandria's pattern —
+   "Regenerate All" is terrifying without "re-render everything from scratch"). */
+.verbs{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+.verb{display:flex;flex-direction:column;gap:3px;max-width:190px}
+.verb .vs{font-size:10.5px;color:var(--ink-3);line-height:1.35}
+/* Cast table: the card is the row's expansion, same pattern as the chapter row. */
+.castx td{background:var(--surface-2);border-left:3px solid var(--accent);padding:14px 16px}
+.selcol{width:26px}
+.screen{display:none}.screen.on{display:block}
+/* Collapsed exception affordance — the per-line numeric override. */
+.ovr summary{cursor:pointer;font-size:11px;font-weight:600;color:var(--ink-3);
+  list-style:none;padding:4px 0;user-select:none}
+.ovr summary::-webkit-details-marker{display:none}
+.ovr summary:hover{color:var(--ink)}
+.ovr[open] summary{color:var(--accent-ink)}
+hr.r{border:0;border-top:1px solid var(--line);margin:34px 0 0}
+@media (max-width:980px){
+  .split,.split2,.kb,.kb.k2,.vs{grid-template-columns:1fr}
+  .app{grid-template-columns:58px 1fr}h1{font-size:24px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+<style>
+.shell{max-width:1360px;margin:0 auto;padding:16px}
+.app{min-height:88vh}
+.rail i{cursor:pointer}
+.rail i:hover{color:var(--ink)}
+.rail i.dim{opacity:.35;cursor:default}
+.rail i.dim:hover{color:var(--ink-3)}
+.lnk{color:var(--accent-ink);text-decoration:underline;cursor:pointer}
+.route{display:none}
+.route.on{display:block}
+body[data-kind="audiobook"] .k-game,body[data-kind="audiobook"] .k-pod,
+body[data-kind="game"] .k-book,body[data-kind="game"] .k-pod,
+body[data-kind="podcast"] .k-book,body[data-kind="podcast"] .k-game{display:none!important}
+.steps-strip{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px}
+.steps-strip .stp{font-size:11px;font-weight:600;border:1px solid var(--line-strong);
+  border-radius:var(--r-pill);padding:4px 11px;color:var(--ink-2);background:var(--surface);cursor:pointer}
+.steps-strip .stp:hover{border-color:var(--accent-line);color:var(--ink)}
+.steps-strip .stp.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* One state vocabulary, rolled up at every zoom level. */
+.statebar{display:flex;height:7px;border-radius:4px;overflow:hidden;background:var(--surface-3)}
+.statebar b{display:block;height:100%}
+.s-nospk{background:var(--danger)}
+.s-novoice{background:var(--gold)}
+.s-ready{background:var(--line-strong)}
+.s-done{background:var(--accent)}
+.s-stale{background:oklch(0.62 0.10 265)}
+.rowacts{white-space:nowrap;text-align:right}
+/* How a speaker was decided — the five sources the pipeline can assign. */
+.src{display:inline-block;margin-left:6px;font-size:9.5px;font-weight:700;letter-spacing:.03em;
+  padding:1px 6px;border-radius:var(--r-pill);border:1px solid var(--line);color:var(--ink-3);
+  background:var(--surface-2);vertical-align:middle;white-space:nowrap}
+.src-tag{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent-ink)}
+.src-llm{border-color:var(--line-strong);color:var(--ink-2)}
+.src-floor{border-color:var(--danger-line);background:var(--danger-bg);color:var(--danger-ink)}
+.rowacts .btn{margin-left:5px}
+
+/* Script reads as a screenplay. Weight carries risk: narration recedes because it is
+   never in question, a guess is marked whatever it scored, a flag is louder still. */
+.scr{display:flex;flex-direction:column}
+.scr .ln{display:grid;grid-template-columns:158px 1fr 26px;gap:13px;align-items:start;
+  padding:8px 14px 8px 11px;border-bottom:1px solid var(--line);border-left:3px solid transparent;
+  cursor:pointer;font-size:12.5px;line-height:1.5}
+.scr .ln:hover{background:var(--surface-2)}
+.scr .who{display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap;
+  font-weight:650;font-size:11.5px;padding-top:1px}
+.scr .txt{color:var(--ink)}
+.scr .rt{opacity:0;transition:opacity .12s}
+.scr .ln:hover .rt{opacity:1}
+.scr .ln.narr{color:var(--ink-3)}
+.scr .ln.narr .who,.scr .ln.narr .txt{color:var(--ink-3);font-weight:400}
+.scr .ln.guess{border-left-color:var(--gold);background:var(--warn-bg)}
+.scr .ln.flag{border-left-color:var(--danger);background:var(--danger-bg)}
+.scr .ln.none{border-left-color:var(--danger);background:var(--danger-bg)}
+.scr .ln.none .txt{font-weight:600}
+.scr .ln.sel{outline:2px solid var(--accent);outline-offset:-2px}
+.scr .why{display:block;margin-top:3px;font-size:10.5px;font-weight:700;color:var(--danger-ink)}
+
+/* The two Studio models, switchable. */
+body[data-studio="container"] .sv-flat{display:none!important}
+body[data-studio="flat"] .sv-container{display:none!important}
+.modebar{position:sticky;top:0;z-index:60;display:flex;gap:12px;align-items:center;flex-wrap:wrap;
+  padding:9px 12px;margin-bottom:12px;background:var(--surface);border:1px solid var(--line-strong);
+  border-radius:var(--r-pill);box-shadow:var(--shadow-1)}
+.modebar .lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+</style>
+
+<style>
+/* Modal */
+.mask{position:fixed;inset:0;background:rgba(20,22,24,.42);z-index:200;display:none;
+  align-items:flex-start;justify-content:center;padding:56px 18px;overflow:auto}
+.mask.on{display:flex}
+.modal{background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;
+  box-shadow:var(--shadow-3);width:100%;max-width:680px}
+.modal.wide{max-width:900px}
+.modal-h{display:flex;align-items:baseline;gap:9px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.modal-h h3{margin:0;font-size:16px;font-weight:700;letter-spacing:-.01em}
+.modal-h .eb{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.modal-b{padding:16px 18px;display:flex;flex-direction:column;gap:13px}
+.modal-f{display:flex;align-items:center;gap:9px;padding:12px 18px;border-top:1px solid var(--line)}
+.xbtn{margin-left:auto;border:0;background:transparent;font-size:17px;color:var(--ink-3);cursor:pointer;line-height:1}
+.xbtn:hover{color:var(--ink)}
+
+/* Toast */
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:300;
+  display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.tst{background:var(--ink);color:var(--bg);font-size:12.5px;font-weight:600;padding:9px 15px;
+  border-radius:var(--r-pill);box-shadow:var(--shadow-3);max-width:520px}
+.tst.ok{background:var(--accent);color:#fff}
+.tst.warn{background:var(--gold);color:#241c05}
+
+/* Scope picker */
+.scope{border:1px solid var(--line);border-radius:var(--r-card);max-height:230px;overflow:auto}
+.scope label{display:flex;align-items:center;gap:9px;padding:7px 11px;border-bottom:1px solid var(--line);
+  font-size:12.5px;cursor:pointer}
+.scope label:last-child{border-bottom:0}
+.scope label:hover{background:var(--surface-2)}
+.scope .nm{flex:1;font-weight:600}
+.est{display:flex;gap:16px;flex-wrap:wrap;padding:10px 12px;background:var(--surface-2);
+  border:1px solid var(--line);border-radius:var(--r-control)}
+.est div{display:flex;flex-direction:column;gap:2px}
+.est .v{font-family:var(--font-mono);font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+.est .l{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);font-weight:700}
+.hidden-row{display:none!important}
+</style>
+<div class="shell" style="padding-bottom:0">
+  <div class="modebar">
+    <span class="lbl">Studio model</span>
+    <div class="seg" role="group" aria-label="Studio model">
+      <button id="mCont" aria-pressed="true" onclick="setStudio('container')">Container</button>
+      <button id="mFlat" aria-pressed="false" onclick="setStudio('flat')">Dissolved</button>
+    </div>
+    <span class="hint" id="modeHint">Studio holds the four steps; the chapter list lives inside its
+      Script step.</span>
+  </div>
+</div>
+
+<div class="shell">
+<div class="app">
+<nav class="rail" aria-label="Main">
+  <div class="gh">Work</div>
+  <i data-r="home" onclick="nav('home')"><span class="e">&#127968;</span>Home</i>
+  <i data-r="projects" onclick="nav('projects')"><span class="e">&#128193;</span>Projects</i>
+
+  <i class="sv-container k-book" data-r="chapters" onclick="nav('chapters')"><span class="e">&#127916;</span>Studio</i>
+  <i class="sv-container k-pod" data-r="chapters" onclick="nav('chapters')"><span class="e">&#127916;</span>Studio</i>
+  <i class="sv-container k-game" data-r="lines" onclick="nav('lines')"><span class="e">&#127916;</span>Studio</i>
+
+  <i class="sv-flat k-book" data-r="discover" onclick="nav('discover')"><span class="e">&#128269;</span>Discover</i>
+  <i class="sv-flat k-pod" data-r="discover" onclick="nav('discover')"><span class="e">&#128269;</span>Discover</i>
+  <i class="sv-flat k-book" data-r="chapters" onclick="nav('chapters')"><span class="e">&#128214;</span>Chapters</i>
+  <i class="sv-flat k-pod" data-r="chapters" onclick="nav('chapters')"><span class="e">&#128214;</span>Episodes</i>
+  <i class="sv-flat k-game" data-r="lines" onclick="nav('lines')"><span class="e">&#127918;</span>Voice&nbsp;lines</i>
+  <i class="sv-flat" data-r="cast" onclick="nav('cast')"><span class="e">&#127917;</span>Cast</i>
+  <i class="sv-flat" data-r="render" onclick="nav('render')"><span class="e">&#9889;</span>Render</i>
+  <i class="sv-flat" data-r="export" onclick="nav('export')"><span class="e">&#11015;&#65039;</span>Export</i>
+
+  <i class="dim" title="Not part of this redesign"><span class="e">&#127908;</span>Captures</i>
+  <div class="gh">Library</div>
+  <i data-r="voices" onclick="nav('voices')"><span class="e">&#127897;&#65039;</span>Voices</i>
+  <i data-r="personas" onclick="nav('personas')"><span class="e">&#127917;</span>Personas</i>
+  <i data-r="lexicons" onclick="nav('lexicons')"><span class="e">&#128213;</span>Lexicons</i>
+  <i data-r="effects" onclick="nav('effects')"><span class="e">&#127899;&#65039;</span>Effects</i>
+  <div class="gh">System</div>
+  <i data-r="engines" onclick="nav('engines')"><span class="e">&#9881;&#65039;</span>AI</i>
+  <i class="dim" title="Not part of this redesign"><span class="e">&#128295;</span>Settings</i>
+</nav>
+<div class="pane">
+<div class="route" id="r-home">
+<div class="top"><span class="crumb">Home</span>
+    <span style="flex:1"></span>
+    <span class="pill live"><span class="dot"></span> Kokoro loaded</span></div>
+  <div class="body">
+
+    <a class="bn" style="display:block;text-decoration:none;color:inherit">
+      <b>Cast Harbek and Renn</b> <span class="jv-muted">— 231 lines are waiting on a voice.</span>
+      <span class="lnk" style="float:right" onclick="nav('cast')">Open Cast ➜</span></a>
+
+    <div class="split">
+      <div class="card">
+        <div class="row" style="align-items:flex-start">
+          <span class="av" style="background:#3a7d63;width:44px;height:44px;font-size:19px">S</span>
+          <div style="flex:1;min-width:0">
+            <div class="hint" style="text-transform:uppercase;letter-spacing:.07em;font-weight:700">Continue</div>
+            <div style="font-size:19px;font-weight:700;letter-spacing:-.01em">Stillwater</div>
+            <div class="hint">📖 audiobook · 14 chapters · 412 of 2,140 lines rendered</div>
+            <div class="statebar" style="margin-top:8px">
+              <b class="s-nospk" style="width:4%"></b><b class="s-novoice" style="width:11%"></b><b class="s-ready" style="width:60%"></b><b class="s-done" style="width:19%"></b><b class="s-stale" style="width:6%"></b>
+            </div>
+            <div class="row" style="margin-top:8px;gap:5px">
+              <span class="tag e">88 need a speaker</span><span class="tag w">231 need a voice</span>
+              <span class="tag pd">1,281 ready</span><span class="tag">412 rendered</span><span class="tag">128 stale</span>
+            </div>
+          </div>
+          <button class="btn p" onclick="openProject('audiobook','Stillwater')">Resume ➜</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="sh"><h4>Start something</h4></div>
+        <div class="row">
+          <span class="tag" style="cursor:pointer" onclick="nav('new')">📖 Audiobook</span>
+          <span class="tag" style="cursor:pointer" onclick="nav('new')">🎮 Game voicelines</span>
+          <span class="tag" style="cursor:pointer" onclick="nav('new')">🎙️ Podcast</span>
+          <span class="tag" style="cursor:pointer" onclick="nav('new')">⚙️ Custom</span>
+        </div>
+        <p class="hint" style="margin:9px 0 0">Pick a kind — the app reshapes around it. Same voices,
+          personas and lexicons either way.</p>
+        <div class="row" style="margin-top:9px">
+          <button class="btn s" onclick="nav('projects')">All projects</button>
+          <button class="btn s" onclick="nav('newvoice')">＋ New voice</button></div>
+      </div>
+    </div>
+
+    <div class="split">
+      <div class="card">
+        <div class="sh"><h4>Running</h4><span class="tag">2 in flight</span></div>
+        <table><tbody>
+          <tr><td><b>Render</b> · Stillwater ch. 1</td>
+            <td style="width:150px"><div class="prog"><b style="width:38%"></b></div></td>
+            <td class="n">71 / 187</td><td><span class="rt"><span>⏹</span></span></td></tr>
+          <tr><td><b>Analyze</b> · ch. 6</td>
+            <td><div class="prog"><b style="width:64%"></b></div></td>
+            <td class="n">127 / 198</td><td><span class="rt"><span>⏹</span></span></td></tr>
+        </tbody></table>
+      </div>
+      <div class="card">
+        <div class="sh"><h4>Speech engine</h4></div>
+        <div class="row"><span class="tag ok">Kokoro</span>
+          <span class="hint mono">VRAM 3.2 / 8.6 GB</span>
+          <span style="flex:1"></span>
+          <button class="btn s" onclick="toast('Kokoro unloaded — 3.2 GB freed.','ok')">Unload</button></div>
+        <div class="prog" style="margin-top:8px"><b style="width:37%"></b></div>
+        <p class="hint" style="margin:8px 0 0">One engine runs at a time. Loading another unloads it.</p>
+        <button class="btn s" style="margin-top:8px" onclick="nav('engines')">Speech engines</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sh"><h4>Recent takes</h4><span class="sub">click to replay</span></div>
+      <table><tbody>
+        <tr><td><span class="spk"><span class="av" style="background:#c98aa7">J</span>June</span></td>
+          <td>“It matters to me.”</td><td class="hint">ch. 1 · line 6</td><td class="n">0:02</td>
+          <td><div class="player" style="padding:3px 6px"><button class="btn s p rnd" style="width:18px;height:18px" onclick="toast('Playing…')">▶</button>
+            <div class="bar"><b style="width:0"></b></div></div></td></tr>
+        <tr><td><span class="spk"><span class="av" style="background:#5b7a99">N</span>Narrator</span></td>
+          <td>“Marius set the lamp on the table.”</td><td class="hint">ch. 1 · line 1</td><td class="n">0:04</td>
+          <td><div class="player" style="padding:3px 6px"><button class="btn s p rnd" style="width:18px;height:18px" onclick="toast('Playing…')">▶</button>
+            <div class="bar"><b style="width:0"></b></div></div></td></tr>
+      </tbody></table>
+    </div>
+  </div>
+</div>
+<div class="route" id="r-projects">
+<div class="top"><span class="crumb">Projects</span><span class="pill">3</span>
+    <span style="flex:1"></span><button class="btn p s" onclick="nav('new')">＋ New project</button></div>
+  <div class="body">
+    <div class="row"><input class="box" style="max-width:190px" placeholder="Search projects…">
+      <span class="tag ok">All 3</span><span class="tag">📖 Audiobook 1</span>
+      <span class="tag">🎮 Game 1</span><span class="tag">🎙️ Podcast 1</span></div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="tw"><table>
+        <thead><tr><th>Project</th><th style="width:160px">Kind</th><th style="width:90px">Parts</th>
+          <th style="width:78px">Cast</th><th style="width:180px">Rendered</th>
+          <th style="width:88px">Master</th><th style="width:30px"></th></tr></thead>
+        <tbody>
+          <tr onclick="openProject('audiobook','Stillwater')" style="cursor:pointer">
+            <td><b class="lnk">Stillwater</b><div class="hint">from JustWrite</div></td>
+            <td><span class="tag">📖 audiobook</span></td><td class="n">14 ch.</td><td class="n">3 / 5</td>
+            <td><div class="prog"><b style="width:19%"></b></div><span class="hint">412 / 2,140</span></td>
+            <td><span class="tag">acx</span></td><td><span class="rt"><span>⋯</span></span></td></tr>
+          <tr onclick="openProject('game','Ninefold')" style="cursor:pointer">
+            <td><b class="lnk">Ninefold</b><div class="hint">from CSV</div></td>
+            <td><span class="tag">🎮 game voicelines</span></td><td class="n">342 lines</td><td class="n">13 / 21</td>
+            <td><div class="prog"><b style="width:64%"></b></div><span class="hint">219 / 342</span></td>
+            <td><span class="tag">none</span></td><td><span class="rt"><span>⋯</span></span></td></tr>
+          <tr onclick="openProject('podcast','The Long Quay')" style="cursor:pointer">
+            <td><b class="lnk">The Long Quay</b><div class="hint">markdown scripts</div></td>
+            <td><span class="tag">🎙️ podcast</span></td><td class="n">12 ep.</td><td class="n">3 / 3</td>
+            <td><div class="prog"><b style="width:92%"></b></div><span class="hint">508 / 552</span></td>
+            <td><span class="tag">podcast</span></td><td><span class="rt"><span>⋯</span></span></td></tr>
+        </tbody></table></div>
+    </div>
+    <p class="hint" style="margin:0">⋯ per row: Rename · Duplicate · Re-import · Export .justvoice.zip · Delete</p>
+  </div>
+</div>
+<div class="route" id="r-new">
+<div class="top"><span class="crumb">New project</span><span class="pill"><span class="dot idle"></span> no engine</span></div>
+  <div class="body">
+    <div class="split">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card">
+          <div class="sh"><span class="st">1</span><h4>What are you making?</h4></div>
+          <div class="radios" style="margin-bottom:12px">
+            <span class="radio on"><span class="rd"></span>📖 Audiobook</span>
+            <span class="radio"><span class="rd"></span>🎮 Game voicelines</span>
+            <span class="radio"><span class="rd"></span>🎙️ Podcast</span>
+            <span class="radio"><span class="rd"></span>⚙️ Custom</span></div>
+          <div class="kb k2">
+            <div class="f"><label>Name</label><input class="box" value="Stillwater"></div>
+            <div class="f"><label>Language</label><select class="box"><option>en-US</option></select></div></div>
+          <p class="hint" style="margin:8px 0 0">Kind decides which steps exist. Game skips
+            attribution — a CSV already names its speakers.</p>
+        </div>
+        <div class="card">
+          <div class="sh"><span class="st">2</span><h4>Bring the words in</h4></div>
+          <div class="drop">Drop a file<br><span class="hint">.jw.json · .epub · .docx · .txt · .csv · .md</span></div>
+          <div class="tw" style="margin-top:10px"><table>
+            <thead><tr><th>Source</th><th>What lands</th><th>Speakers?</th></tr></thead>
+            <tbody>
+              <tr><td><b>JustWrite book</b> <span class="tag ok">richest</span></td>
+                <td>Chapters, prose, cast with one-liners + casting hints</td><td><span class="tag no">no</span></td></tr>
+              <tr><td><b>EPUB / DOCX / TXT</b></td><td>Chapters and paragraphs</td><td><span class="tag no">no</span></td></tr>
+              <tr><td><b>Game CSV</b></td><td>One row per line, ids preserved</td><td><span class="tag ok">yes</span></td></tr>
+              <tr><td><b>Podcast markdown</b></td><td><code>SARAH:</code> labels, markers</td><td><span class="tag ok">yes</span></td></tr>
+            </tbody></table></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card"><div class="sh"><h4>Master target</h4></div>
+          <div class="radios"><span class="radio on"><span class="rd"></span>ACX</span>
+            <span class="radio"><span class="rd"></span>Audible inAudio</span>
+            <span class="radio"><span class="rd"></span>Podcast</span>
+            <span class="radio"><span class="rd"></span>YouTube</span>
+            <span class="radio"><span class="rd"></span>None</span></div>
+          <p class="hint" style="margin:8px 0 0">Sets loudness, peak ceiling and noise floor for every
+            render. Change it later from any chapter.</p></div>
+        <div class="card tint"><div class="sh"><h4>What you get</h4></div>
+          <p class="note" style="margin:0">N chapters · one line per paragraph · a <b>Narrator</b>
+            character · one character per name the source knew. Nothing cast to a voice yet.</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="route" id="r-discover">
+<div class="top">
+    <span class="crumb"><span class="lnk" onclick="nav('projects')">Projects</span>
+      › <b class="proj-name">Stillwater</b><span class="sv-container"> › Studio</span></span>
+    <span class="pill proj-kind">📖 audiobook</span>
+    <span style="flex:1"></span>
+    <span class="pill live"><span class="dot"></span> gemma-3-12b</span></div>
+  <div class="body">
+    <div class="steps-strip sv-container">
+      <span class="stp on k-book" onclick="nav('discover')">1 &middot; Discover</span>
+      <span class="stp on k-pod" onclick="nav('discover')">1 &middot; Discover</span>
+      <span class="stp k-book" onclick="nav('chapters')">2 &middot; Script</span>
+      <span class="stp k-pod" onclick="nav('chapters')">2 &middot; Script</span>
+      <span class="stp k-game" onclick="nav('lines')">1 &middot; Lines</span>
+      <span class="stp k-book" onclick="nav('cast')">3 &middot; Cast</span>
+      <span class="stp k-pod" onclick="nav('cast')">3 &middot; Cast</span>
+      <span class="stp k-game" onclick="nav('cast')">2 &middot; Cast</span>
+      <span class="stp k-book" onclick="nav('render')">4 &middot; Render</span>
+      <span class="stp k-pod" onclick="nav('render')">4 &middot; Render</span>
+      <span class="stp k-game" onclick="nav('render')">3 &middot; Render</span>
+      <span class="stp k-book" onclick="nav('export')">5 &middot; Export</span>
+      <span class="stp k-pod" onclick="nav('export')">5 &middot; Export</span>
+      <span class="stp k-game" onclick="nav('export')">4 &middot; Export</span>
+    </div>
+
+
+    <div class="card">
+      <div class="sh"><h4>Who speaks in this book?</h4>
+        <span class="sub">5 in the cast · 3 proposed</span></div>
+      <p class="note" style="margin:0 0 11px">Reads the prose for names that aren't in your cast yet.
+        Creates nothing until you confirm each one.</p>
+      <div class="tw"><table>
+        <thead><tr><th style="width:32px"><input type="checkbox" class="ch-all" checked aria-label="Select all chapters" onchange="selectAllCh(this)"></th>
+          <th>Chapter</th><th style="width:64px">Lines</th><th style="width:120px">Last scanned</th>
+          <th style="width:96px">Proposed</th></tr></thead>
+        <tbody>
+          <tr><td><input type="checkbox" class="ck" checked aria-label="Select chapter 1" onchange="recalcAnalyze(this)"></td>
+            <td>1 · The Ninth Door</td><td class="n">214</td><td class="hint">2 min ago</td>
+            <td><span class="tag w">3</span></td></tr>
+          <tr><td><input type="checkbox" class="ck" checked aria-label="Select chapter 2" onchange="recalcAnalyze(this)"></td>
+            <td>2 · Salt and Ledger</td><td class="n">188</td><td class="hint">3 days ago</td>
+            <td class="hint">none</td></tr>
+          <tr><td><input type="checkbox" class="ck" aria-label="Select chapter 3" onchange="recalcAnalyze(this)"></td>
+            <td>3 · The Harbour-Master</td><td class="n">231</td><td class="hint">3 days ago</td>
+            <td class="hint">none</td></tr>
+          <tr><td><input type="checkbox" class="ck" checked aria-label="Select chapter 4" onchange="recalcAnalyze(this)"></td>
+            <td>4 · Nine Doors Down</td><td class="n">176</td><td class="hint">never</td>
+            <td class="hint">—</td></tr>
+          <tr><td><input type="checkbox" class="ck" aria-label="Select chapter 5" onchange="recalcAnalyze(this)"></td>
+            <td>5 · The Tide Turning</td><td class="n">203</td><td class="hint">never</td>
+            <td class="hint">—</td></tr>
+        </tbody></table></div>
+      <div class="row" style="margin-top:11px">
+        <button class="btn p an-btn" data-verb="🔍 Scan" onclick="toast('Scanning for speakers — results appear below as each chapter finishes.','ok')">🔍 Scan 3 chapters</button>
+        <span class="hint an-est" data-tail="results appear below as each chapter finishes">593 lines · about 4m 3s · results appear below as each chapter finishes</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sh"><h4>Proposed speakers</h4><span class="sub">nothing is created until you say so</span></div>
+      <div class="tw"><table>
+        <thead><tr><th style="width:170px">Name in the prose</th><th style="width:60px">Lines</th>
+          <th>First appearance</th><th style="width:220px"></th></tr></thead>
+        <tbody>
+          <tr><td><b>Tom Harlan</b><div class="hint">ch. 1</div></td><td class="n">14</td>
+            <td class="hint">“Tom Harlan kept the ledger, and kept it badly.”</td>
+            <td class="rowacts">
+              <button class="btn s p" onclick="toast('Tom Harlan added to the cast.','ok');nav('cast')">＋ Add</button>
+              <button class="btn s" onclick="toast('Pick an existing persona to merge into.')">Merge…</button>
+              <button class="btn s g" onclick="toast('Ignored for this book.')">Ignore</button></td></tr>
+          <tr><td><b>the harbour-master</b><div class="hint">ch. 1, 3</div></td><td class="n">9</td>
+            <td class="hint">“The harbour-master said nothing at all.”</td>
+            <td class="rowacts">
+              <button class="btn s p" onclick="toast('Harbour-master added to the cast.','ok');nav('cast')">＋ Add</button>
+              <button class="btn s" onclick="toast('Pick an existing persona to merge into.')">Merge…</button>
+              <button class="btn s g" onclick="toast('Ignored for this book.')">Ignore</button></td></tr>
+          <tr><td><b>a woman at the rail</b><div class="hint">ch. 1</div></td><td class="n">2</td>
+            <td class="hint">“A woman at the rail laughed once, and stopped.”</td>
+            <td class="rowacts">
+              <button class="btn s p" onclick="toast('Added to the cast.','ok');nav('cast')">＋ Add</button>
+              <button class="btn s" onclick="toast('Pick an existing persona to merge into.')">Merge…</button>
+              <button class="btn s g" onclick="toast('Ignored — two lines is often a description, not a speaker.')">Ignore</button></td></tr>
+        </tbody></table></div>
+      <p class="hint" style="margin:9px 0 0">A name with one or two lines is often a description rather
+        than a speaker. Merge folds it into an existing persona and keeps the alias.</p>
+    </div>
+
+    <div class="card tint">
+      <div class="sh"><h4>Already in the cast</h4><span class="sub">5</span></div>
+      <div class="tags">
+        <span class="tag">🎭 Narrator</span><span class="tag">🎭 June</span><span class="tag">🎭 Marius</span>
+        <span class="tag">🎭 Harbek</span><span class="tag">🎭 Renn</span></div>
+      <p class="hint" style="margin:9px 0 0">Attribution can only choose from these — that's why this
+        step runs first.</p>
+    </div>
+  </div>
+</div>
+<div class="route" id="r-chapters">
+<div class="top">
+    <span class="crumb"><span class="lnk" onclick="nav('projects')">Projects</span>
+      › <b class="proj-name">Stillwater</b><span class="sv-container"> › Studio</span></span>
+    <span class="pill proj-kind">📖 audiobook</span>
+    <span style="flex:1"></span>
+    <span class="pill live"><span class="dot"></span> gemma-3-12b</span></div>
+  <div class="body">
+    <div class="steps-strip sv-container">
+      <span class="stp k-book" onclick="nav('discover')">1 &middot; Discover</span>
+      <span class="stp k-pod" onclick="nav('discover')">1 &middot; Discover</span>
+      <span class="stp on k-book" onclick="nav('chapters')">2 &middot; Script</span>
+      <span class="stp on k-pod" onclick="nav('chapters')">2 &middot; Script</span>
+      <span class="stp on k-game" onclick="nav('lines')">1 &middot; Lines</span>
+      <span class="stp k-book" onclick="nav('cast')">3 &middot; Cast</span>
+      <span class="stp k-pod" onclick="nav('cast')">3 &middot; Cast</span>
+      <span class="stp k-game" onclick="nav('cast')">2 &middot; Cast</span>
+      <span class="stp k-book" onclick="nav('render')">4 &middot; Render</span>
+      <span class="stp k-pod" onclick="nav('render')">4 &middot; Render</span>
+      <span class="stp k-game" onclick="nav('render')">3 &middot; Render</span>
+      <span class="stp k-book" onclick="nav('export')">5 &middot; Export</span>
+      <span class="stp k-pod" onclick="nav('export')">5 &middot; Export</span>
+      <span class="stp k-game" onclick="nav('export')">4 &middot; Export</span>
+    </div>
+
+
+    <div class="card">
+      <div class="sh"><h4>Who says what</h4>
+        <span class="sub">2,140 lines · 14 chapters</span></div>
+      <p class="note" style="margin:0 0 11px">Attribution only — which persona speaks each line, and
+        what the line says. How it is performed, and rendering it, come later.</p>
+
+      <div class="tw"><table>
+        <thead><tr>
+          <th style="width:32px"><input type="checkbox" class="ch-all" aria-label="Select all chapters"
+            onchange="selectAllCh(this)"></th>
+          <th>Chapter</th><th style="width:58px">Lines</th><th style="width:110px">Analyzed</th>
+          <th style="width:82px">Anchored</th><th style="width:76px">Guessed</th>
+          <th style="width:72px">Flagged</th><th style="width:90px">No speaker</th>
+          <th style="width:74px"></th></tr></thead>
+        <tbody>
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" checked aria-label="Select chapter 1" onchange="recalcAnalyze()"></td>
+            <td><b class="lnk">1 · The Ninth Door</b></td><td class="n">214</td>
+            <td class="hint">2 min ago</td>
+            <td class="n">168</td><td><span class="tag w">41</span></td>
+            <td><span class="tag e">6</span></td><td><span class="tag e">5</span></td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 2" onchange="recalcAnalyze()"></td>
+            <td><b class="lnk">2 · Salt and Ledger</b></td><td class="n">188</td>
+            <td class="hint">3 days ago</td>
+            <td class="n">181</td><td><span class="tag">7</span></td>
+            <td class="hint">0</td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 3" onchange="recalcAnalyze()"></td>
+            <td><b class="lnk">3 · The Harbour-Master</b></td><td class="n">231</td>
+            <td class="hint">3 days ago</td>
+            <td class="n">96</td><td><span class="tag w">135</span></td>
+            <td><span class="tag e">11</span></td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+
+          <tr>
+            <td><input type="checkbox" class="ck" checked aria-label="Select chapter 4" onchange="recalcAnalyze()"></td>
+            <td><b>4 · Nine Doors Down</b></td><td class="n">176</td>
+            <td><span class="tag w">running…</span></td>
+            <td colspan="4"><div class="prog"><b style="width:44%"></b></div>
+              <span class="hint">77 of 176 · about 40 s left</span></td>
+            <td class="rowacts"><button class="btn s" onclick="toast('Stopped. Lines already decided are kept.','warn')">Stop</button></td></tr>
+
+          <tr>
+            <td><input type="checkbox" class="ck" checked aria-label="Select chapter 5" onchange="recalcAnalyze()"></td>
+            <td><b>5 · The Tide Turning</b></td><td class="n">203</td>
+            <td class="hint">never</td>
+            <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">—</td>
+            <td class="rowacts"><button class="btn s" disabled title="Analyze it first">Review</button></td></tr>
+
+          <tr>
+            <td><input type="checkbox" class="ck" aria-label="Select chapter 6" onchange="recalcAnalyze()"></td>
+            <td><b>6 · What the Ledger Knew</b></td><td class="n">198</td>
+            <td class="hint">never</td>
+            <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">—</td>
+            <td class="rowacts"><button class="btn s" disabled title="Analyze it first">Review</button></td></tr>
+        </tbody></table></div>
+
+      <div class="row" style="margin-top:12px">
+        <button class="btn p an-btn" data-verb="✨ Analyze" onclick="toast('Analyzing 3 chapters — each fills in as it finishes.','ok')">✨ Analyze 3 chapters</button>
+        <button class="btn" onclick="toast('Second pass queued on 47 guessed and flagged lines.','ok')">🔎 Review the guesses</button>
+        <span class="hint an-est" data-tail="rows fill in one chapter at a time, and each is reviewable the moment it lands">593 lines · about 4m 3s · rows fill in one chapter at a time, and each is reviewable the moment it lands</span>
+        <span style="flex:1"></span>
+        <select class="box" style="width:auto"><option>Route: Auto → direct</option>
+          <option>Direct</option><option>Chunked</option></select>
+        <span class="pill">Floor <b>0.55</b></span>
+      </div>
+    </div>
+
+    <div class="card tint">
+      <div class="sh"><h4>What these columns mean</h4></div>
+      <div class="tw"><table><tbody>
+        <tr><td style="width:104px"><b>Anchored</b></td>
+          <td>The prose named the speaker — “said Marius” — or it carried from a line that did. Reliable.</td></tr>
+        <tr><td><b>Guessed</b></td>
+          <td>The model chose. <b>This is the number worth your eyes.</b> A guess can be wrong at any
+            confidence, so this count does not shrink because the model felt sure.</td></tr>
+        <tr><td><b>Flagged</b></td>
+          <td>Checks on the text, not on the model: three lines in a row by one persona, a persona with
+            a single line, a speaker who has not appeared in the scene yet.</td></tr>
+        <tr><td><b>No speaker</b></td>
+          <td>It declined, or fell below the floor. These block rendering.</td></tr>
+      </tbody></table></div>
+    </div>
+  </div>
+</div>
+<div class="route" id="r-lines">
+<div class="top"><span class="crumb"><span class="lnk" onclick="nav('projects')">Projects</span>
+      › <b class="proj-name">Ninefold</b></span>
+    <span class="pill proj-kind">🎮 game voicelines</span><span class="pill">Master <b>none</b></span>
+    <span style="flex:1"></span>
+    <span class="pill live"><span class="dot"></span> Chatterbox loaded</span></div>
+  <div class="body">
+    <div class="steps-strip sv-container">
+      <span class="stp k-book" onclick="nav('discover')">1 &middot; Discover</span>
+      <span class="stp k-pod" onclick="nav('discover')">1 &middot; Discover</span>
+      <span class="stp on k-book" onclick="nav('chapters')">2 &middot; Script</span>
+      <span class="stp on k-pod" onclick="nav('chapters')">2 &middot; Script</span>
+      <span class="stp on k-game" onclick="nav('lines')">1 &middot; Lines</span>
+      <span class="stp k-book" onclick="nav('cast')">3 &middot; Cast</span>
+      <span class="stp k-pod" onclick="nav('cast')">3 &middot; Cast</span>
+      <span class="stp k-game" onclick="nav('cast')">2 &middot; Cast</span>
+      <span class="stp k-book" onclick="nav('render')">4 &middot; Render</span>
+      <span class="stp k-pod" onclick="nav('render')">4 &middot; Render</span>
+      <span class="stp k-game" onclick="nav('render')">3 &middot; Render</span>
+      <span class="stp k-book" onclick="nav('export')">5 &middot; Export</span>
+      <span class="stp k-pod" onclick="nav('export')">5 &middot; Export</span>
+      <span class="stp k-game" onclick="nav('export')">4 &middot; Export</span>
+    </div>
+
+    <div class="row">
+      <span class="tag ok">All 342</span><span class="tag w">61 uncast</span>
+      <span class="tag pd">123 not rendered</span><span class="tag">14 stale</span>
+      <span style="flex:1"></span>
+      <select class="box" style="width:auto"><option>All NPCs</option><option>Guard Captain Hale</option>
+        <option>Merchant</option></select>
+      <button class="btn p" onclick="nav('render')">⚡ Render 123</button>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="tw"><table>
+        <thead><tr><th style="width:32px"><input type="checkbox" aria-label="Select all"></th>
+          <th style="width:110px">Line ID</th><th style="width:150px">Speaker</th><th>Line</th>
+          <th style="width:170px">Direction</th><th style="width:104px">State</th>
+          <th style="width:112px">Audio</th></tr></thead>
+        <tbody>
+          <tr><td><input type="checkbox" aria-label="Select Q01_A"></td><td class="mono">Q01_A</td>
+            <td><span class="spk"><span class="av" style="background:#3a7d63">H</span>Hale</span></td>
+            <td>“Hold the gate. Nothing passes.”</td>
+            <td class="hint" style="font-style:italic">Shouted over rain.</td>
+            <td><span class="tag ok">done</span></td>
+            <td><div class="player" style="padding:3px 6px"><button class="btn s p rnd" style="width:18px;height:18px" onclick="toast('Playing…')">▶</button>
+              <div class="bar"><b style="width:0"></b></div></div></td></tr>
+          <tr><td><input type="checkbox" aria-label="Select Q01_B"></td><td class="mono">Q01_B</td>
+            <td><span class="spk"><span class="av" style="background:#3a7d63">H</span>Hale</span></td>
+            <td>“You again. State your business.”</td>
+            <td class="hint">—</td>
+            <td><span class="tag pd">pending</span></td>
+            <td><button class="btn s p" onclick="toast('Rendering this line…','ok')">▶ Gen</button></td></tr>
+          <tr><td><input type="checkbox" aria-label="Select BARK_07"></td><td class="mono">BARK_07</td>
+            <td><span class="spk"><span class="av" style="background:#b3552e">M</span>Merchant</span></td>
+            <td>“Best prices on the quay!”</td>
+            <td class="hint" style="font-style:italic">Sing-song, carrying.</td>
+            <td><span class="tag w">stale · text changed</span></td>
+            <td><button class="btn s" onclick="toast('Re-rendering — the old take is kept.','ok')">↻ Re-render</button></td></tr>
+          <tr><td><input type="checkbox" aria-label="Select BARK_08"></td><td class="mono">BARK_08</td>
+            <td><select class="box" style="padding:2px 5px;font-size:11px;border-color:var(--danger-line)"><option>— nobody —</option></select></td>
+            <td>“Move along, stranger.”</td><td class="hint">—</td>
+            <td><span class="tag e">no voice cast</span></td>
+            <td><span class="hint">cast the NPC first</span></td></tr>
+        </tbody></table></div>
+    </div>
+
+    <div class="row"><span class="hint">Showing 4 of 342 · line IDs come from the writers' sheet and
+      survive a re-import.</span>
+      <span style="flex:1"></span>
+      <button class="btn s" disabled>🎙️ Cast selected…</button>
+      <button class="btn s" disabled>✍️ Write directions for selected</button></div>
+  </div>
+</div>
+<div class="route" id="r-chapter">
+<div class="top">
+    <span class="crumb"><span class="lnk" onclick="nav('projects')">Projects</span>
+      › <span class="lnk" onclick="nav('chapters')">Stillwater</span><span class="sv-container"> › Studio</span>
+      › <b>Ch. 1 — The Ninth Door</b></span>
+    <span class="pill proj-kind">📖 audiobook</span>
+    <span style="flex:1"></span>
+    <span class="pill live"><span class="dot"></span> gemma-3-12b</span></div>
+  <div class="body">
+    <div class="steps-strip sv-container">
+      <span class="stp k-book" onclick="nav('discover')">1 &middot; Discover</span>
+      <span class="stp k-pod" onclick="nav('discover')">1 &middot; Discover</span>
+      <span class="stp on k-book" onclick="nav('chapters')">2 &middot; Script</span>
+      <span class="stp on k-pod" onclick="nav('chapters')">2 &middot; Script</span>
+      <span class="stp on k-game" onclick="nav('lines')">1 &middot; Lines</span>
+      <span class="stp k-book" onclick="nav('cast')">3 &middot; Cast</span>
+      <span class="stp k-pod" onclick="nav('cast')">3 &middot; Cast</span>
+      <span class="stp k-game" onclick="nav('cast')">2 &middot; Cast</span>
+      <span class="stp k-book" onclick="nav('render')">4 &middot; Render</span>
+      <span class="stp k-pod" onclick="nav('render')">4 &middot; Render</span>
+      <span class="stp k-game" onclick="nav('render')">3 &middot; Render</span>
+      <span class="stp k-book" onclick="nav('export')">5 &middot; Export</span>
+      <span class="stp k-pod" onclick="nav('export')">5 &middot; Export</span>
+      <span class="stp k-game" onclick="nav('export')">4 &middot; Export</span>
+    </div>
+
+
+    <div class="card">
+      <div class="sh"><h4>Who says what</h4>
+        <span class="sub">214 lines · 5 personas · last analyzed 2 min ago</span></div>
+      <div class="row" style="margin-bottom:10px">
+        <span class="pill">Route <b>Auto → direct</b></span>
+        <span class="pill">Confidence floor <b>0.55</b></span>
+        <span class="hint">Below the floor a line is demoted to unattributed — the model's guess is
+          kept on the row, not used.</span></div>
+      <div class="verbs">
+        <span class="verb"><button class="btn p" onclick="toast('Analyzing this chapter — results appear in the lines below.','ok')">✨ Analyze this chapter</button>
+          <span class="vs">Attributes each line to a persona already in the cast. Narration is never
+            sent to the model. Stays on this page.</span></span>
+        <span class="verb"><button class="btn" onclick="toast('Second pass queued on 47 guessed and flagged lines.','ok')">🔎 Review the guesses</button>
+          <span class="vs">A second model pass over the 47 lines that are guesses or flagged. Never
+            runs on its own — you spend the tokens deliberately.</span></span>
+        <span class="verb"><button class="btn" onclick="nav('chapters')">📚 Analyze several chapters</button>
+          <span class="vs">Opens the chapter grid. Pick what to run, results fill in as each
+            finishes.</span></span>
+        <span style="flex:1"></span>
+        <span class="verb"><button class="btn" onclick="nav('discover')">🔍 A speaker is missing</button>
+          <span class="vs">Attribution can only pick personas that exist. Discover finds names in the
+            prose that are not in your cast.</span></span>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:11px 14px;border-bottom:1px solid var(--line)">
+        <div class="row">
+          <span class="tag ok" data-filter="all" onclick="pickChip(this)">All 214</span>
+          <span class="tag w" data-filter="guess" onclick="pickChip(this)">41 guessed</span>
+          <span class="tag e" data-filter="flag" onclick="pickChip(this)">6 flagged</span>
+          <span class="tag e" data-filter="floored" onclick="pickChip(this)">9 below the floor</span>
+          <span class="tag e" data-filter="noans" onclick="pickChip(this)">3 no answer</span>
+          <span style="flex:1"></span>
+          <span class="hint mono">j / k move · 1–9 assign · Enter accept</span></div>
+        <p class="hint" style="margin:7px 0 0">Everything is here, in reading order. The filters are a
+          lens, never the view — <b>a wrong line is most often spotted by reading around it</b>, and
+          the model can be certain and wrong, so nothing is hidden because it scored well.</p>
+      </div>
+
+      <div class="scr" data-filterable>
+        <div class="ln narr" data-state="all" onclick="toast('Line 1 — narration, never sent to the model.')">
+          <span class="who">Narrator<span class="src" title="Prose. The model is never asked.">narration</span></span>
+          <span class="txt">Marius set the lamp on the table, and for a while neither of them said anything at all.</span>
+          <span class="rt"><span title="Reassign">✎</span></span></div>
+
+        <div class="ln" data-state="all" onclick="toast('Line 2 — anchored by “said Marius”. Anchors beat the model.')">
+          <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-tag" title="&quot;said Marius&quot; in the prose.">tag</span></span>
+          <span class="txt">“You're late,” said Marius.</span>
+          <span class="rt"><span title="Reassign">✎</span></span></div>
+
+        <div class="ln guess sel" data-state="guess" onclick="toast('Line 3 — the model chose June. No anchor in the prose.')">
+          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-llm" title="The model chose this, above the floor.">llm 0.94</span></span>
+          <span class="txt">“By twenty minutes. It hardly signifies.”</span>
+          <span class="rt"><span title="Reassign">✎</span></span></div>
+
+        <div class="ln guess" data-state="guess" onclick="toast('Line 4 — a guess. 0.88 is still a guess.')">
+          <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-llm">llm 0.88</span></span>
+          <span class="txt">“It signifies to the tide.”</span>
+          <span class="rt"><span title="Reassign">✎</span></span></div>
+
+        <div class="ln flag" data-state="flag" onclick="toast('Line 5 — flagged: third consecutive line by the same persona.')">
+          <span class="who"><span class="av" style="background:#3a7d63">M</span>Marius<span class="src src-llm">llm 1.00</span></span>
+          <span class="txt">“And you have never once waited on it.”
+            <b class="why">⚑ 3rd Marius in a row — the alternation probably broke at line 4</b></span>
+          <span class="rt"><span title="Reassign">✎</span></span></div>
+
+        <div class="ln narr" data-state="all" onclick="toast('Narration.')">
+          <span class="who">Narrator<span class="src">narration</span></span>
+          <span class="txt">The harbour bell went twice and stopped, as though it had thought better of it.</span>
+          <span class="rt"><span title="Reassign">✎</span></span></div>
+
+        <div class="ln" data-state="all" onclick="toast('Line 7 — carried forward from the anchor at line 2.')">
+          <span class="who"><span class="av" style="background:#c98aa7">J</span>June<span class="src src-tag" title="Carried forward from the previous anchored line.">propagated</span></span>
+          <span class="txt">“It matters to me.”</span>
+          <span class="rt"><span title="Reassign">✎</span></span></div>
+
+        <div class="ln none" data-state="floored" onclick="toast('Line 8 — below the floor. It wanted Marius at 0.41.')">
+          <span class="who"><select class="box" onclick="event.stopPropagation()" style="padding:2px 5px;font-size:11px;border-color:var(--danger-line)">
+              <option>— nobody —</option><option>Marius</option><option>June</option><option>Narrator</option></select>
+            <span class="src src-floor" title="It said Marius at 0.41, under the 0.55 floor.">floored · wanted Marius</span></span>
+          <span class="txt">“Then it matters.”
+            <b class="why">Blocked — a line with no speaker cannot render</b></span>
+          <span class="rt"><span title="Reassign">✎</span></span></div>
+
+        <div class="ln flag" data-state="flag" onclick="toast('Line 9 — flagged: Harbek has one line in the whole chapter.')">
+          <span class="who"><span class="av" style="background:#b3552e">H</span>Harbek<span class="src src-llm">llm 0.72</span></span>
+          <span class="txt">“Tide's wrong tonight.”
+            <b class="why">⚑ Harbek's only line in this chapter — usually a misattribution</b></span>
+          <span class="rt"><span title="Reassign">✎</span></span></div>
+
+        <div class="ln none" data-state="noans" onclick="toast('Line 10 — the model returned no row for this line.')">
+          <span class="who"><select class="box" onclick="event.stopPropagation()" style="padding:2px 5px;font-size:11px;border-color:var(--danger-line)">
+              <option>— nobody —</option><option>Marius</option><option>June</option></select>
+            <span class="src src-floor" title="The model returned fewer rows than there are lines.">no answer</span></span>
+          <span class="txt">“Nine doors, and every one of them shut.”
+            <b class="why">Blocked — the model never answered for this line</b></span>
+          <span class="rt"><span title="Reassign">✎</span></span></div>
+      </div>
+
+      <div class="row" style="padding:11px 14px;border-top:1px solid var(--line)">
+        <button class="btn" onclick="toast('Lines 3–5 selected. Pick a persona to reassign all three.')">⇅ Select a run</button>
+        <button class="btn" onclick="toast('Reassigned. Lines 6 and 7 are re-flagged — fixing one usually means the next was wrong too.','ok')">🎭 Reassign selected…</button>
+        <span class="hint">When the alternation breaks, several lines in a row are wrong at once.
+          Reassigning re-checks the neighbours.</span>
+        <span style="flex:1"></span>
+        <button class="btn s g" onclick="toast('Showing lines 2 and 4 around the selected line.')">👁 Show context</button>
+      </div>
+    </div>
+
+    <div class="card tint">
+      <div class="sh"><h4>How to read the marks</h4></div>
+      <div class="tw"><table><tbody>
+        <tr><td style="width:132px"><span class="src">narration</span></td>
+          <td>Prose. Never sent to the model, never in question — so it recedes.</td></tr>
+        <tr><td><span class="src src-tag">tag</span> / <span class="src src-tag">propagated</span></td>
+          <td>The prose named the speaker, or it carried from a line that did. <b>Anchors beat the
+            model</b>, so its own pick is kept but not used.</td></tr>
+        <tr><td><span class="src src-llm">llm 0.94</span></td>
+          <td><b>A guess.</b> The number is the model's opinion of itself, and it has been 1.00 and
+            wrong — so the mark is the same at every score.</td></tr>
+        <tr><td><b class="why" style="display:inline">⚑ flagged</b></td>
+          <td>Checks on the text, not on the model: three in a row, a persona with one line, a
+            speaker not yet in the scene, dialogue on the Narrator, an anchor that went stale.</td></tr>
+        <tr><td><span class="src src-floor">floored</span></td>
+          <td>Under the confidence floor, or no answer at all. Blocks rendering either way.</td></tr>
+      </tbody></table></div>
+      <p class="hint" style="margin:9px 0 0">Direction, takes and rendering are <b>not</b> on this
+        page. Script decides who says what; how it is performed is
+        <span class="lnk" onclick="nav('render')">Render</span>.</p>
+    </div>
+
+  </div>
+</div>
+<div class="route" id="r-cast">
+<div class="top"><span class="crumb"><span class="lnk" onclick="nav('chapters')"><span class="proj-name">Stillwater</span></span> › Cast</span>
+    <span class="pill proj-kind">📖 audiobook</span>
+    <span class="pill">5 characters · <b>3 cast</b></span>
+    <span class="pill live"><span class="dot"></span> Qwen3</span></div>
+  <div class="body">
+    <div class="steps-strip sv-container">
+      <span class="stp k-book" onclick="nav('discover')">1 &middot; Discover</span>
+      <span class="stp k-pod" onclick="nav('discover')">1 &middot; Discover</span>
+      <span class="stp k-book" onclick="nav('chapters')">2 &middot; Script</span>
+      <span class="stp k-pod" onclick="nav('chapters')">2 &middot; Script</span>
+      <span class="stp k-game" onclick="nav('lines')">1 &middot; Lines</span>
+      <span class="stp on k-book" onclick="nav('cast')">3 &middot; Cast</span>
+      <span class="stp on k-pod" onclick="nav('cast')">3 &middot; Cast</span>
+      <span class="stp on k-game" onclick="nav('cast')">2 &middot; Cast</span>
+      <span class="stp k-book" onclick="nav('render')">4 &middot; Render</span>
+      <span class="stp k-pod" onclick="nav('render')">4 &middot; Render</span>
+      <span class="stp k-game" onclick="nav('render')">3 &middot; Render</span>
+      <span class="stp k-book" onclick="nav('export')">5 &middot; Export</span>
+      <span class="stp k-pod" onclick="nav('export')">5 &middot; Export</span>
+      <span class="stp k-game" onclick="nav('export')">4 &middot; Export</span>
+    </div>
+
+    <div class="verbs">
+      <span class="verb"><button class="btn p" onclick="toast('Proposed a voice for Harbek and Renn — review before rendering.','ok')">✨ Auto-cast everyone</button>
+        <span class="vs">Proposes a voice for each uncast character. Review before rendering.</span></span>
+      <span class="verb"><button class="btn" onclick="nav('personas')">＋ Add from library</button>
+        <span class="vs">Bring in a character you already made in another project.</span></span>
+      <span class="verb"><button class="btn" disabled>🎙️ Cast selected to…</button>
+        <span class="vs">Bulk-assign one voice to every ticked row. Select rows to enable.</span></span>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="tw"><table>
+        <thead><tr>
+          <th class="selcol"><input type="checkbox" aria-label="Select all"></th>
+          <th>Character</th><th style="width:190px">Voice</th><th style="width:120px">Engine</th>
+          <th style="width:66px">Lines</th><th style="width:132px">State</th><th style="width:34px"></th>
+        </tr></thead>
+        <tbody>
+
+        <tr style="background:var(--accent-soft)">
+          <td><input type="checkbox" aria-label="Select June"></td>
+          <td><span class="spk"><span class="av" style="background:#c98aa7">J</span>June</span></td>
+          <td>Sohee</td><td class="mono">qwen3 CV</td><td class="n">61</td>
+          <td><span class="tag ok">cast</span></td>
+          <td><span class="rt"><span>⌃</span></span></td></tr>
+
+        <tr class="castx"><td colspan="7">
+      <div class="sh"><h4>🎭 June</h4><span class="tag">61 lines here</span>
+        <span class="tag w">also in Emberfall · 54 lines</span>
+        <span class="sub">Alias of: — none —</span></div>
+
+      <div class="f" style="margin-bottom:10px"><label>Where her voice comes from</label>
+        <div class="radios">
+          <span class="radio on"><span class="rd"></span>From the library</span>
+          <span class="radio"><span class="rd"></span>Clone from audio</span>
+          <span class="radio"><span class="rd"></span>Blend two voices</span>
+          <span class="radio"><span class="rd"></span>Trained LoRA</span>
+          <span class="radio"><span class="rd"></span>Design from words ⤓</span></div>
+        <span class="hint">The choice fixes her engine, and with it what she can do: a CustomVoice
+          preset performs written direction but cannot be cloned from; a Chatterbox clone is her own
+          timbre but ignores direction. Design needs the Qwen3 VoiceDesign model — install it to
+          enable that option.</span></div>
+
+      <div class="split">
+        <div style="display:flex;flex-direction:column;gap:11px">
+          <div class="kb k2">
+            <div class="f"><label>Voice</label><select class="box"><option>Sohee — qwen3 CustomVoice</option></select></div>
+            <div class="f"><label>Engine override</label><select class="box"><option>(use the voice's)</option></select></div></div>
+          <div class="f"><label>How she sounds, always <span class="tag ok">✓ Qwen3 performs this</span></label>
+            <textarea class="box t">Clipped, world-weary. Dry wit. Boston accent under stress.</textarea>
+            <span class="hint">Her <b>base delivery</b>. Every line's own direction is appended to this.</span></div>
+          <div class="kb">
+            <div class="kn"><label class="hint">Speed</label><div class="kr">
+              <input type="range" min=".5" max="2" step=".05" value="1.05"><input class="num" value="1.05"><span class="u">×</span></div></div>
+            <div class="kn"><label class="hint">Pitch</label><div class="kr">
+              <input type="range" min="-12" max="12" value="0"><input class="num" value="0"><span class="u">st</span></div></div>
+            <div class="kn"><label class="hint">Gain</label><div class="kr">
+              <input type="range" min="-12" max="12" step=".5" value="-1"><input class="num" value="-1.0"><span class="u">dB</span></div></div>
+            <div class="kn"><label class="hint">Temperature</label><div class="kr">
+              <input type="range" min=".05" max="2" step=".05" value=".9"><input class="num" value="0.90"></div></div>
+            <div class="kn"><label class="hint">Pause before → after</label><div class="kr">
+              <input class="num" value="0"><span class="u">→</span><input class="num" value="250"><span class="u">ms</span></div></div>
+            <div class="kn"><label class="hint">Seed</label><div class="kr">
+              <input class="num" style="width:70px" value="random"><button class="btn s g" onclick="toast('New random seed.')">🎲</button></div></div></div>
+          <div class="kb k2">
+            <div class="f"><label>Effects</label><div class="row">
+              <span class="tag">reverb</span><span class="tag">eq</span><button class="btn s g" onclick="toast('＋ Edit — not wired in the mock.')">＋ Edit</button></div></div>
+            <div class="f"><label>Lexicon</label><select class="box"><option>Harbor names</option></select></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:11px">
+          <div class="card" style="padding:11px 13px">
+            <div class="sh" style="margin-bottom:7px"><h4 style="font-size:12px">Hear June</h4></div>
+            <textarea class="box t" style="min-height:44px">You're late.</textarea>
+            <div class="row" style="margin-top:7px"><button class="btn p s" onclick="toast('Hearing June as cast…')">▶ Listen</button>
+              <button class="btn s" onclick="toast('Loaded her first line from chapter 1.')">↻ Her real first line</button></div>
+            <div class="player" style="margin-top:8px"><button class="btn p s rnd" onclick="toast('Playing…')">▶</button>
+              <div class="bar"><b style="width:44%"></b></div><span class="mono hint">0:02</span></div></div>
+          <div class="stack"><h5>What she sounds like</h5>
+            <div class="l"><b>June</b><span class="sp">·</span>Sohee (qwen3)<span class="sp">·</span>base delivery<span class="sp">·</span>1.05×<span class="sp">·</span>−1.0 dB<br>
+              <span class="lt">2 effects · Harbor names — apply on render</span></div></div>
+          <div class="card" style="padding:11px 13px">
+            <div class="sh" style="margin-bottom:6px"><h4 style="font-size:12px">Who she is</h4></div>
+            <textarea class="box t" style="min-height:52px">Lead detective. Dry wit, hates the fog, protective of Sarah.</textarea>
+            <p class="hint" style="margin:6px 0 0">Drives Compose, Rewrite and casting suggestions.
+              <b>Never</b> changes the audio.</p></div>
+        </div>
+      </div>
+    </td></tr>
+
+        <tr>
+          <td><input type="checkbox" aria-label="Select Marius"></td>
+          <td><span class="spk"><span class="av" style="background:#3a7d63">M</span>Marius</span></td>
+          <td>Marius (clone)</td><td class="mono">chatterbox</td><td class="n">54</td>
+          <td><span class="tag w">cloning…</span></td>
+          <td><span class="rt"><span>⌄</span></span></td></tr>
+
+        <tr>
+          <td><input type="checkbox" aria-label="Select Narrator"></td>
+          <td><span class="spk"><span class="av" style="background:#5b7a99">N</span>Narrator</span></td>
+          <td>Heart</td><td class="mono">kokoro</td><td class="n">99</td>
+          <td><span class="tag ok">cast</span></td>
+          <td><span class="rt"><span>⌄</span></span></td></tr>
+
+        <tr>
+          <td><input type="checkbox" aria-label="Select Harbek"></td>
+          <td><span class="spk"><span class="av" style="background:#b3552e">H</span>Harbek</span>
+            <span class="hint" style="margin-left:6px">discovered ch. 4</span></td>
+          <td class="hint">— none —</td><td class="hint">—</td><td class="n">22</td>
+          <td><span class="tag e">no voice · blocked</span></td>
+          <td><span class="rt"><span>⌄</span></span></td></tr>
+
+        <tr>
+          <td><input type="checkbox" aria-label="Select Renn"></td>
+          <td><span class="spk"><span class="av" style="background:#7c5cbf">R</span>Renn</span></td>
+          <td class="hint">— none —</td><td class="hint">—</td><td class="n">18</td>
+          <td><span class="tag e">no voice · blocked</span></td>
+          <td><span class="rt"><span>⌄</span></span></td></tr>
+
+        </tbody></table></div>
+    </div>
+
+    <div class="card">
+      <div class="sh"><h4>🎭 Marius</h4><span class="tag">54 lines</span>
+        <span class="sub">Alias of: — none —</span></div>
+      <div class="f" style="margin-bottom:10px"><label>Where his voice comes from</label>
+        <div class="radios"><span class="radio"><span class="rd"></span>From the library</span>
+          <span class="radio on"><span class="rd"></span>Clone from audio</span>
+          <span class="radio"><span class="rd"></span>Blend two voices</span>
+          <span class="radio"><span class="rd"></span>Trained LoRA</span>
+          <span class="radio"><span class="rd"></span>Design from words ⤓</span></div></div>
+      <div class="bn w"><b>Cloning needs Chatterbox.</b> Qwen3 CustomVoice speaks its 9 preset timbres
+        only. <button class="btn s" style="margin-left:5px" onclick="toast('Loading Chatterbox — Kokoro will unload.','warn')">Load Chatterbox (~40 s)</button></div>
+      <div class="split" style="margin-top:11px">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="drop" style="padding:12px">Drop reference audio · 10 s–2 min · one speaker · clean</div>
+          <div class="tw"><table><thead><tr><th>File</th><th>Length</th><th>SNR</th><th>Transcript</th><th></th></tr></thead>
+            <tbody><tr><td class="mono">marius_01.wav</td><td class="n">0:47</td><td><span class="tag ok">32 dB</span></td>
+              <td>“The tide turned below the floorboards…”</td><td><span class="rt"><span>▶</span><span>🗑</span></span></td></tr>
+              <tr><td class="mono">marius_02.wav</td><td class="n">0:22</td><td><span class="tag w">18 dB</span></td>
+              <td>transcribing…</td><td><span class="rt"><span>▶</span><span>🗑</span></span></td></tr></tbody></table></div>
+          <p class="hint" style="margin:0">Whisper transcribes on ingest. SNR flags a noisy reference
+            before it poisons the clone — clones inherit room tone.</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="f"><label>Name it</label><input class="box" value="Marius (clone)"></div>
+          <div class="f"><label>Also promote from</label>
+            <select class="box"><option>— nothing —</option><option>Captures · 12 dictation clips</option></select>
+            <span class="hint">Your own dictation recordings are legal clone sources.</span></div>
+          <button class="btn p" onclick="toast('Clone created and cast to Marius.','ok')">🎤 Clone &amp; cast to Marius</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card tint"><div class="sh"><h4>🎭 Harbek</h4>
+      <span class="tag e">no voice — 22 lines blocked</span>
+      <span class="sub">discovered in ch. 4</span></div>
+      <div class="row"><select class="box" style="max-width:260px"><option>— pick a voice —</option></select>
+        <button class="btn s" onclick="toast('Suggested Uncle Fu for Harbek — accept or pick another.')">✨ Suggest one</button><button class="btn s" onclick="nav('newvoice')">Clone from audio</button></div>
+      <p class="hint" style="margin:9px 0 0">His 22 lines cannot render until he has a voice.</p></div>
+  </div>
+</div>
+<div class="route" id="r-render">
+<div class="top">
+    <span class="crumb"><span class="lnk" onclick="nav('projects')">Projects</span>
+      › <span class="lnk" onclick="nav('chapters')">Stillwater</span><span class="sv-container"> › Studio</span>
+      › <b>Ch. 1 › Render</b></span>
+    <span class="pill">Master <b>acx</b></span>
+    <span class="pill">Scene <b class="lnk" onclick="nav('scene')">no direction</b></span>
+    <span style="flex:1"></span>
+    <span class="pill live"><span class="dot"></span> Qwen3 · CUDA</span></div>
+  <div class="body">
+    <div class="steps-strip sv-container">
+      <span class="stp k-book" onclick="nav('discover')">1 &middot; Discover</span>
+      <span class="stp k-pod" onclick="nav('discover')">1 &middot; Discover</span>
+      <span class="stp k-book" onclick="nav('chapters')">2 &middot; Script</span>
+      <span class="stp k-pod" onclick="nav('chapters')">2 &middot; Script</span>
+      <span class="stp k-game" onclick="nav('lines')">1 &middot; Lines</span>
+      <span class="stp k-book" onclick="nav('cast')">3 &middot; Cast</span>
+      <span class="stp k-pod" onclick="nav('cast')">3 &middot; Cast</span>
+      <span class="stp k-game" onclick="nav('cast')">2 &middot; Cast</span>
+      <span class="stp on k-book" onclick="nav('render')">4 &middot; Render</span>
+      <span class="stp on k-pod" onclick="nav('render')">4 &middot; Render</span>
+      <span class="stp on k-game" onclick="nav('render')">3 &middot; Render</span>
+      <span class="stp k-book" onclick="nav('export')">5 &middot; Export</span>
+      <span class="stp k-pod" onclick="nav('export')">5 &middot; Export</span>
+      <span class="stp k-game" onclick="nav('export')">4 &middot; Export</span>
+    </div>
+
+
+    <div class="split">
+      <div style="display:flex;flex-direction:column;gap:13px">
+        <div class="card"><div class="sh"><h4>Rendering</h4><span class="sub">187 to make · 27 cached</span></div>
+          <div class="prog" style="margin-bottom:6px"><b style="width:38%"></b></div>
+          <div class="row"><span class="mono hint">71 / 187 · 4m 12s left · line 98 “By an hour.”</span>
+            <span style="flex:1"></span><button class="btn s d" onclick="toast('Render stopped at line 71. Finished lines are kept.','warn')">⏹ Stop</button></div>
+          <div class="bn w" style="margin-top:9px">⏳ <b>34 lines waiting on Chatterbox.</b> One speech
+            engine runs at a time, so Marius' lines render together after Qwen3 finishes — swapping
+            per line would cost a minute each.</div>
+          <div class="kb" style="margin-top:11px">
+            <div class="f"><label>Gap between lines</label><div class="kr"><input class="num" value="250"><span class="u">ms</span></div></div>
+            <div class="f"><label>On speaker change</label><div class="kr"><input class="num" value="500"><span class="u">ms</span></div></div>
+            <div class="f"><label>Sample rate</label><select class="box"><option>44.1 kHz</option><option>48 kHz</option></select></div></div>
+          <div class="row" style="margin-top:10px"><button class="btn p" onclick="toast('Rendering 187 lines — progress above.','ok')">⚡ Render pending</button>
+            <button class="btn" onclick="toast('Re-rendering all 214 lines from scratch.','warn')">↻ Re-render all</button><button class="btn" onclick="toast('Cache cleared — every line will re-render next time.','warn')">🧹 Clear cache</button></div></div>
+
+        <div class="card"><div class="sh"><h4>Chapter preview</h4></div>
+          <div class="player"><button class="btn p rnd" onclick="toast('Playing…')">▶</button>
+            <div class="bar"><b style="width:22%"></b></div>
+            <span class="mono hint">3:48 / 17:02</span><button class="btn s g" onclick="toast('Chapter WAV saved.')">⤓ WAV</button></div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card"><div class="sh"><h4>Before it runs</h4></div>
+          <div class="tags" style="flex-direction:column;align-items:flex-start;gap:6px">
+            <span class="tag e">✗ 3 lines have no speaker — fix in <b class="lnk" onclick="nav('chapter')">Script</b></span>
+            <span class="tag e">✗ Harbek has no voice — 22 lines blocked</span>
+            <span class="tag w">2 lines over 400 chars — will be chunked</span></div>
+          <p class="hint" style="margin:9px 0 0">The render <b>refuses and names</b> the offending
+            lines rather than dropping them silently from the book.</p></div>
+        <div class="card"><div class="sh"><h4>Cost</h4></div>
+          <table><tbody><tr><td>Local · Qwen3</td><td class="n">187</td><td><span class="tag ok">free</span></td></tr>
+            <tr><td>Online · metered</td><td class="n">0</td><td><span class="tag no">—</span></td></tr>
+            <tr><td>Audio out</td><td class="n">17:02</td><td></td></tr></tbody></table></div>
+        <div class="card tint"><div class="sh"><h4>What makes a line stale</h4></div>
+          <p class="note" style="margin:0">Its text, speaker, voice, delivery, direction, effects or
+            lexicon changed. Change one and <b>that line</b> re-renders — the other 213 stay.</p></div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;margin-top:13px">
+      <div style="padding:11px 14px;border-bottom:1px solid var(--line)">
+        <div class="sh" style="margin-bottom:8px"><h4>Line by line</h4>
+          <span class="sub">how each one is performed</span></div>
+        <div class="row">
+          <span class="tag ok" data-filter="all" onclick="pickChip(this)">All 214</span>
+          <span class="tag pd" data-filter="pending" onclick="pickChip(this)">187 not rendered</span>
+          <span class="tag" data-filter="stale" onclick="pickChip(this)">9 stale</span>
+          <span class="tag" data-filter="done" onclick="pickChip(this)">27 done</span>
+          <span class="tag w" data-filter="uncast" onclick="pickChip(this)">22 no voice</span>
+          <span style="flex:1"></span>
+          <button class="btn s" onclick="toast('Writing directions for 214 lines — review each before rendering.','ok')">✍️ Write directions</button>
+          <button class="btn s" onclick="toast('Playing the 27 rendered lines in order.')">▶ Play chapter</button></div>
+        <p class="hint" style="margin:7px 0 0">Who speaks a line is decided in
+          <span class="lnk" onclick="nav('chapter')">Script</span> and is read-only here. This page is
+          <b>how it sounds</b>.</p>
+      </div>
+
+      <div class="tw"><table data-filterable>
+        <thead><tr>
+          <th style="width:44px"></th><th style="width:150px">Who</th><th>Line</th>
+          <th style="width:180px">Direction</th><th style="width:66px">Pause</th>
+          <th style="width:96px">State</th><th style="width:132px">Take</th></tr></thead>
+        <tbody>
+          <tr data-state="done"><td><span class="rt"><span>⌃</span></span></td>
+            <td><span class="spk"><span class="av" style="background:#5b7a99">N</span>Narrator</span></td>
+            <td>Marius set the lamp on the table.</td>
+            <td class="hint" style="font-style:italic">Even, unhurried.</td>
+            <td><input class="num" value="250"></td>
+            <td><span class="tag ok">done</span></td>
+            <td><div class="player" style="padding:3px 6px"><button class="btn s p rnd" style="width:18px;height:18px" onclick="toast('Playing…')">▶</button>
+              <div class="bar"><b style="width:0"></b></div><span class="rt"><span>★</span></span></div></td></tr>
+
+          <tr data-state="pending" style="background:var(--accent-soft)"><td><span class="rt"><span>⌄</span></span></td>
+            <td><span class="spk"><span class="av" style="background:#c98aa7">J</span>June</span></td>
+            <td>“You're late.”</td>
+            <td class="hint" style="font-style:italic">Sharp, clipped.</td>
+            <td><input class="num" value="180"></td>
+            <td><span class="tag pd">pending</span></td>
+            <td><button class="btn s p" onclick="toast('Rendering this line…','ok')">▶ Gen</button></td></tr>
+
+          <tr class="exp"><td colspan="7">
+            <div class="split">
+              <div style="display:flex;flex-direction:column;gap:11px">
+                <div class="row">
+                  <span class="tag ok">selected line 2 of 214</span>
+                  <button class="btn s" onclick="toast('Line 1 of 214')">⌃ prev</button><button class="btn s" onclick="toast('Line 3 of 214')">⌄ next</button>
+                  <span style="flex:1"></span><button class="btn s g" onclick="toast('Row collapsed')">✕ close</button></div>
+
+                <div class="kb k2">
+                  <div class="f"><label>Who speaks it</label>
+                    <div class="row"><span class="tag">🎭 June</span>
+                      <button class="btn s g" onclick="nav('chapter')">Change in Script →</button></div>
+                    <span class="hint">Attribution is Script's job. Changing it here would put the
+                      same decision on two pages.</span></div>
+                  <div class="f"><label>Spoken with</label>
+                    <div class="row">
+                      <span class="tag">🎙️ Sohee · Qwen3 CustomVoice</span>
+                      <span class="tag ok">✓ takes direction</span>
+                      <button class="btn s g" onclick="nav('cast')">Change in Cast →</button></div>
+                    <span class="hint">The voice belongs to <b>June</b>, not to this line — and she also
+                      speaks in <b>Emberfall</b>, so changing it changes her there too. A different voice
+                      for a passage means a different persona, not an override here.</span></div>
+                </div>
+
+                <div class="f"><label>Direction for this line</label>
+                  <textarea class="box t" style="min-height:46px">Sharp, clipped, edge of irritation.</textarea>
+                  <span class="hint">Appended to June's base delivery, not instead of it.</span></div>
+
+                <details class="ovr">
+                  <summary>⚙ Override the numbers for this line — <b>not set</b></summary>
+                  <div class="kb" style="margin-top:8px">
+                    <div class="kn"><label class="hint">Speed <span class="tag">June 1.05×</span></label>
+                      <div class="kr"><input class="num" value="—"><span class="u">×</span></div></div>
+                    <div class="kn"><label class="hint">Pitch <span class="tag">June 0</span></label>
+                      <div class="kr"><input class="num" value="—"><span class="u">st</span></div></div>
+                    <div class="kn"><label class="hint">Gain <span class="tag">June −1.0</span></label>
+                      <div class="kr"><input class="num" value="—"><span class="u">dB</span></div></div>
+                  </div>
+                  <p class="hint" style="margin:8px 0 0">Blank means “as June”. A value here beats
+                    hers for <b>this line only</b>, and puts a dot on the row so you can find it again.
+                    It exists because Kokoro and Chatterbox take no written direction at all — on those
+                    engines it is the only per-line control there is.</p>
+                </details>
+
+                <div class="row" style="padding-top:9px;border-top:1px solid var(--line)">
+                  <button class="btn p" onclick="toast('Rendering this line…','ok')">▶ Generate</button>
+                  <button class="btn" onclick="openModal('word')">📕 Fix a pronunciation</button>
+                  <button class="btn" onclick="toast('Rewrite proposed — accept or discard before it replaces the text.')">✏️ Rewrite in character</button></div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:11px">
+                <div class="stack"><h5>What this line will sound like</h5>
+                  <div class="l"><b>June</b><span class="sp">·</span>Sohee (qwen3)<span class="sp">·</span>1.05×<span class="sp">·</span>−1.0 dB<span class="sp">·</span>+ line direction<br>
+                    <span class="lt">2 effects · Harbor names lexicon · no scene treatment</span></div></div>
+                <div class="card" style="padding:11px 13px">
+                  <div class="sh" style="margin-bottom:7px"><h4 style="font-size:12px">Takes</h4>
+                    <span class="sub">3 · lineage kept</span></div>
+                  <table><tbody>
+                    <tr><td><span class="tag ok">★ live</span></td><td class="n">0:02</td>
+                      <td class="hint">1.05× · direction v2</td><td><span class="rt"><span>▶</span><span>⤓</span></span></td></tr>
+                    <tr data-state="pending"><td><span class="tag no">take 2</span></td><td class="n">0:02</td>
+                      <td class="hint">1.00× · no direction</td><td><span class="rt"><span>▶</span><span>★</span><span>🗑</span></span></td></tr>
+                    <tr data-state="stale"><td><span class="tag no">take 1</span></td><td class="n">0:03</td>
+                      <td class="hint">1.00× · seed 4471</td><td><span class="rt"><span>▶</span><span>★</span><span>🗑</span></span></td></tr>
+                  </tbody></table>
+                  <button class="btn s" style="margin-top:8px" onclick="openModal('compare')">⚖️ Compare two takes</button>
+                </div>
+              </div>
+            </div>
+          </td></tr>
+
+          <tr data-state="stale"><td><span class="rt"><span>⌄</span></span></td>
+            <td><span class="spk"><span class="av" style="background:#c98aa7">J</span>June</span></td>
+            <td>“It matters to me.”</td>
+            <td class="hint" style="font-style:italic">Soft but firm.</td>
+            <td><input class="num" value="300"></td>
+            <td><span class="tag w">stale · text changed</span></td>
+            <td><button class="btn s" onclick="toast('Re-rendering — the old take is kept.','ok')">↻ Re-render</button></td></tr>
+
+          <tr data-state="uncast"><td><span class="rt"><span>⌄</span></span></td>
+            <td><span class="spk"><span class="av" style="background:#b3552e">H</span>Harbek</span></td>
+            <td>“Tide's wrong tonight.”</td><td class="hint">—</td><td><input class="num" value="250"></td>
+            <td><span class="tag w">no voice cast</span></td>
+            <td><button class="btn s" onclick="nav('cast')">🎙️ Cast him</button></td></tr>
+
+          <tr data-state="pending"><td><span class="rt"><span>⌄</span></span></td>
+            <td><span class="hint">— nobody —</span></td>
+            <td>“Then it matters.”</td><td class="hint">—</td><td><input class="num" value=""></td>
+            <td><span class="tag e">blocked</span></td>
+            <td><button class="btn s" onclick="nav('chapter')">Fix in Script →</button></td></tr>
+        </tbody></table></div>
+    </div>
+
+  </div>
+</div>
+<div class="route" id="r-export">
+<div class="top"><span class="crumb"><span class="lnk" onclick="nav('chapters')"><span class="proj-name">Stillwater</span></span> › Export</span><span class="pill">14 chapters</span></div>
+  <div class="body">
+    <div class="steps-strip sv-container">
+      <span class="stp k-book" onclick="nav('discover')">1 &middot; Discover</span>
+      <span class="stp k-pod" onclick="nav('discover')">1 &middot; Discover</span>
+      <span class="stp k-book" onclick="nav('chapters')">2 &middot; Script</span>
+      <span class="stp k-pod" onclick="nav('chapters')">2 &middot; Script</span>
+      <span class="stp k-game" onclick="nav('lines')">1 &middot; Lines</span>
+      <span class="stp k-book" onclick="nav('cast')">3 &middot; Cast</span>
+      <span class="stp k-pod" onclick="nav('cast')">3 &middot; Cast</span>
+      <span class="stp k-game" onclick="nav('cast')">2 &middot; Cast</span>
+      <span class="stp k-book" onclick="nav('render')">4 &middot; Render</span>
+      <span class="stp k-pod" onclick="nav('render')">4 &middot; Render</span>
+      <span class="stp k-game" onclick="nav('render')">3 &middot; Render</span>
+      <span class="stp on k-book" onclick="nav('export')">5 &middot; Export</span>
+      <span class="stp on k-pod" onclick="nav('export')">5 &middot; Export</span>
+      <span class="stp on k-game" onclick="nav('export')">4 &middot; Export</span>
+    </div>
+<div class="split">
+    <div style="display:flex;flex-direction:column;gap:13px">
+      <div class="card"><div class="sh"><h4>Package</h4></div>
+        <div class="kb k2">
+          <div class="f"><label>Format</label><select class="box"><option>MP3 · 192 kbps</option>
+            <option>WAV 44.1/16</option><option>M4B chaptered</option><option>WAV 48/24</option></select></div>
+          <div class="f"><label>Layout</label><select class="box"><option>One file per chapter</option>
+            <option>Single file with chapter marks</option></select></div>
+          <div class="f"><label>Filename</label><input class="box mono" value="{nn}-{chapter}"></div>
+          <div class="f"><label>Folder</label><div class="kr"><input class="box mono" value="E:\Books\Stillwater"><button class="btn s" onclick="toast('File picker')">…</button></div></div></div></div>
+      <div class="card"><div class="sh"><h4>Metadata</h4></div>
+        <div class="kb k2"><div class="f"><label>Title</label><input class="box" value="Stillwater"></div>
+          <div class="f"><label>Author</label><input class="box" value="D. Lebash"></div>
+          <div class="f"><label>Narrator credit</label><input class="box" value="Synthetic — JustVoice"></div>
+          <div class="f"><label>Cover</label><div class="kr"><input class="box mono" value="cover.jpg"><button class="btn s" onclick="toast('File picker')">…</button></div></div></div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="card"><div class="sh"><h4>ACX check</h4></div>
+        <table><tbody>
+          <tr><td>RMS</td><td class="n">−20.4 dB</td><td><span class="tag ok">−23…−18</span></td></tr>
+          <tr><td>Peak</td><td class="n">−3.8 dB</td><td><span class="tag ok">≤ −3</span></td></tr>
+          <tr><td>Noise floor</td><td class="n">−64 dB</td><td><span class="tag ok">≤ −60</span></td></tr>
+          <tr><td>Head / tail</td><td class="n">0.7 / 2.1 s</td><td><span class="tag ok">0.5–5</span></td></tr>
+        </tbody></table>
+        <button class="btn p" style="margin-top:10px;width:100%" onclick="toast('Exporting 14 chapters to E:\\Books\\Stillwater…','ok')">⤓ Export 14 chapters</button></div>
+      <div class="card tint"><div class="sh"><h4>Also from here</h4></div>
+        <div class="tags"><span class="tag">📦 .justvoice.zip</span><span class="tag">📄 script as text</span>
+          <span class="tag">🎧 per-line stems</span><span class="tag">🏷️ Audacity labels</span></div></div>
+    </div>
+  </div></div>
+</div>
+<div class="route" id="r-voices">
+<div class="top"><span class="crumb">Voices</span><span class="pill">64 · <b>3 hidden</b></span>
+    <span class="pill live"><span class="dot"></span> Kokoro loaded</span></div>
+  <div class="body">
+    <div class="row">
+      <input class="box" style="max-width:190px" placeholder="Search name or description…">
+      <select class="box" style="width:auto"><option>All engines</option><option>kokoro (54)</option>
+        <option>qwen3 (9)</option><option>chatterbox (1)</option></select>
+      <span style="flex:1"></span>
+      <button class="btn" onclick="toast('Asked the model about 7 unlabelled voices.','ok')">✨ Guess unknown genders</button>
+      <button class="btn p" onclick="nav('newvoice')">＋ New voice</button>
+    </div>
+    <div class="row">
+      <span class="tag ok">All 64</span><span class="tag">Preset 54</span><span class="tag">Cloned 1</span>
+      <span class="tag">Derived 0</span><span class="tag">Designed 0</span><span class="tag">Blended 0</span>
+      <span class="tag">Trained 0</span><span class="tag">Imported 0</span>
+      <span style="flex:1"></span>
+      <span class="tag">🙈 Show hidden (3)</span>
+    </div>
+
+    <div class="tw"><table>
+      <thead><tr>
+        <th style="width:30px"></th><th>Name</th><th style="width:58px">Gender</th>
+        <th style="width:76px">Type</th><th style="width:150px">Engine</th>
+        <th style="width:132px">Speaks</th><th style="width:76px">Tuned</th>
+        <th>Used by</th><th style="width:30px"></th></tr></thead>
+      <tbody>
+        <tr><td><button class="btn s g" title="Play the stock sample" onclick="toast('Playing the stock sample…')">▶</button></td>
+          <td><b class="lnk" onclick="nav('workbench')">Heart</b></td>
+          <td><span class="tag">F</span></td><td><span class="tag no">preset</span></td>
+          <td class="mono">kokoro <span class="tag ok">local</span></td>
+          <td>en-US</td><td class="hint">—</td>
+          <td class="hint">Narrator — Emberfall</td>
+          <td><span class="rt"><span>⋯</span></span></td></tr>
+
+        <tr><td><button class="btn s g" onclick="toast('Playing the stock sample…')">▶</button></td>
+          <td><b class="lnk" onclick="nav('workbench')">Heart (warm)</b></td>
+          <td><span class="tag">F</span></td><td><span class="tag ok">derived</span></td>
+          <td class="mono">kokoro <span class="tag ok">local</span></td>
+          <td>en-US</td><td><span class="tag ok">eq · −2 dB</span></td>
+          <td class="hint">—</td>
+          <td><span class="rt"><span>⋯</span></span></td></tr>
+
+        <tr><td><button class="btn s g" onclick="toast('Playing the stock sample…')">▶</button></td>
+          <td><b class="lnk" onclick="nav('workbench')">Sara</b></td>
+          <td><span class="tag">F</span></td><td><span class="tag no">preset</span></td>
+          <td class="mono">kokoro <span class="tag ok">local</span></td>
+          <td><span class="tag e">it ✗ reads as English</span></td><td class="hint">—</td>
+          <td class="hint">—</td>
+          <td><span class="rt"><span>⋯</span></span></td></tr>
+
+        <tr><td><button class="btn s g" title="Qwen3 isn't loaded — this listen swaps engines" onclick="toast('Playing the stock sample…')">▶</button></td>
+          <td><b class="lnk" onclick="nav('workbench')">Sohee</b>
+            <span class="tag w" style="margin-left:5px">⏳ swap</span></td>
+          <td><span class="tag">F</span></td><td><span class="tag no">preset</span></td>
+          <td class="mono">qwen3 <span class="tag ok">local</span></td>
+          <td>ko</td><td class="hint">—</td>
+          <td class="hint">June · Ono Anna · Host</td>
+          <td><span class="rt"><span>⋯</span></span></td></tr>
+
+        <tr><td><button class="btn s g" onclick="toast('Playing the stock sample…')">▶</button></td>
+          <td><b class="lnk" onclick="nav('workbench')">Marius (clone)</b>
+            <span class="tag w" style="margin-left:5px">⏳ swap</span></td>
+          <td><span class="tag">M</span></td><td><span class="tag ok">cloned</span></td>
+          <td class="mono">chatterbox <span class="tag ok">local</span></td>
+          <td>en</td><td><span class="tag ok">+3 dB</span></td>
+          <td class="hint">Marius — Stillwater</td>
+          <td><span class="rt"><span>⋯</span></span></td></tr>
+
+        <tr><td><button class="btn s g" disabled>▶</button></td>
+          <td><b class="jv-muted">Dia stock</b></td>
+          <td><span class="tag">?</span></td><td><span class="tag no">preset</span></td>
+          <td class="mono">dia <span class="tag w">needs install</span></td>
+          <td>en</td><td class="hint">—</td>
+          <td class="hint">—</td>
+          <td><span class="rt"><span>⋯</span></span></td></tr>
+      </tbody></table></div>
+
+    <div class="row" style="margin-top:2px">
+      <span class="hint"><b>The name is the link</b> — click it, or the row, to open the workbench.
+        No double-click, no drawer, no ⚙.</span>
+      <span style="flex:1"></span>
+      <span class="hint">⋯ per row: <b>Hide</b> (presets can't be deleted) · <b>Delete</b> (yours only) ·
+        <b>Export .justvoice.zip</b> · <b>Reset tuning</b></span>
+    </div>
+  </div>
+</div>
+<div class="route" id="r-workbench">
+<div class="top"><span class="crumb"><span class="lnk" onclick="nav('voices')">Voices</span> › Sohee</span><span class="pill">preset</span>
+    <span class="pill">qwen3 · <b>CustomVoice</b></span><span class="pill"><span class="dot idle"></span> Kokoro loaded</span></div>
+  <div class="body">
+    <div class="bn w"><b>⏳ Qwen3 isn't loaded — Kokoro is.</b> The first listen swaps them, about a
+      minute. One speech engine stays resident at a time.</div>
+    <div class="split">
+      <div style="display:flex;flex-direction:column;gap:13px">
+        <div class="card"><div class="sh"><span class="st">1</span><h4>Hear it</h4></div>
+          <textarea class="box t">The fog came in over the pier before either of them said a word.</textarea>
+          <div class="row" style="margin-top:8px"><button class="btn p" onclick="toast('Hearing Sohee with your line…')">▶ Listen</button>
+            <button class="btn s" onclick="toast('Loaded the stock sample line.')">↻ Stock line</button><span style="flex:1"></span>
+            <button class="btn s" onclick="toast('Take kept — it will appear under this voice.','ok')">★ Keep take</button></div>
+          <div class="player" style="margin-top:9px"><button class="btn p s rnd" onclick="toast('Playing…')">▶</button>
+            <div class="bar"><b style="width:62%"></b></div><span class="mono hint">0:03 / 0:05</span></div></div>
+
+        <div class="card"><div class="sh"><span class="st">2</span><h4>Tune it</h4>
+          <span class="sub">every knob this engine has — nothing folded away</span></div>
+          <div class="kb">
+            <div class="kn"><label class="hint">Speed</label><div class="kr">
+              <input type="range" min=".5" max="2" step=".05" value="1.1"><input class="num" value="1.10"><span class="u">×</span></div></div>
+            <div class="kn"><label class="hint">Pitch <span class="tag w">post-process</span></label><div class="kr">
+              <input type="range" min="-12" max="12" value="0"><input class="num" value="0"><span class="u">st</span></div></div>
+            <div class="kn"><label class="hint">Gain</label><div class="kr">
+              <input type="range" min="-12" max="12" step=".5" value="-1"><input class="num" value="-1.0"><span class="u">dB</span></div></div>
+            <div class="kn"><label class="hint">Temperature</label><div class="kr">
+              <input type="range" min=".05" max="2" step=".05" value=".9"><input class="num" value="0.90"></div></div>
+            <div class="kn"><label class="hint">Top-k</label><div class="kr">
+              <input type="range" min="1" max="200" value="50"><input class="num" value="50"></div></div>
+            <div class="kn"><label class="hint">Top-p</label><div class="kr">
+              <input type="range" min="0" max="1" step=".01" value=".95"><input class="num" value="0.95"></div></div>
+            <div class="kn"><label class="hint">Repetition penalty</label><div class="kr">
+              <input type="range" min="1" max="3" step=".05" value="1.2"><input class="num" value="1.20"></div></div>
+            <div class="kn"><label class="hint">Pause before → after</label><div class="kr">
+              <input class="num" value="0"><span class="u">→</span><input class="num" value="250"><span class="u">ms</span></div></div>
+            <div class="kn"><label class="hint">Seed</label><div class="kr">
+              <input class="num" style="width:70px" value="random"><button class="btn s g" onclick="toast('New random seed.')">🎲</button></div></div></div>
+          <div class="f" style="margin-top:12px"><label>Delivery direction <span class="tag ok">✓ performed</span></label>
+            <textarea class="box t ph">e.g. “with growing horror, voice gradually quieter”</textarea></div>
+          <div class="row" style="margin-top:10px;padding-top:9px;border-top:1px solid var(--line)">
+            <button class="btn s" onclick="toast('Pick a knob and three values to hear side by side.')">⚖️ Compare settings…</button>
+            <span class="hint">Same line, three values of one knob, side by side — this is the old
+              render lab, as a mode instead of a destination.</span></div></div>
+
+        <div class="card"><div class="sh"><span class="st">3</span><h4>Save what you just tuned</h4>
+          <span class="sub">the sixth way to make a voice</span></div>
+          <div class="row">
+            <input class="box" style="max-width:230px" value="Heart (warm)">
+            <button class="btn p" onclick="toast('Saved “Heart (warm)” — it is yours, and renameable.','ok')">💾 Save as a new voice</button></div>
+          <p class="hint" style="margin:9px 0 0">A record pointing at the parent plus your tuning —
+            <b>no audio, no training</b>. Three things it fixes: preset voices become <b>renameable</b>,
+            because the thing you name is yours; a clone that came out quiet gets its +3 dB <b>once</b>
+            and every character using it inherits the fix; and it derives from anything, not just presets.</p>
+          <p class="hint" style="margin:6px 0 0"><b>Guardrail:</b> this is a correction to an
+            <i>artifact</i> — calibration and timbre. It is <b>never a mood</b>. "Marius angry" is
+            direction, per line or per scene, and never becomes a saved voice.</p></div>
+
+        <div class="card"><div class="sh"><span class="st">4</span><h4>Make another voice from this one</h4></div>
+          <div class="row"><button class="btn" onclick="nav('newvoice')">🔀 Blend with…</button><button class="btn" onclick="nav('newvoice')">🧪 Train a LoRA</button></div></div>
+
+        <div class="card tint"><div class="sh"><span class="st">5</span><h4>Reference samples</h4></div>
+          <p class="note" style="margin:0">Not built — needs an API that doesn't exist. One honest
+            line instead of five dead buttons.</p></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="stack"><h5>What you're hearing</h5>
+          <div class="l"><b>Sohee</b><span class="sp">·</span>qwen3 CV<span class="sp">·</span>1.10×<span class="sp">·</span>−1.0 dB<span class="sp">·</span>temp 0.90<br>
+            <span class="lt">effects + lexicon apply on render, not preview</span></div></div>
+        <div class="card"><div class="sh"><h4>What this engine can do</h4></div>
+          <div class="tags"><span class="tag ok">✓ direction</span><span class="tag ok">✓ 10 languages</span>
+            <span class="tag no">✗ cloning</span><span class="tag w">pitch post-process</span>
+            <span class="tag no">✗ inline tags</span><span class="tag ok">✓ seed</span></div></div>
+        <div class="card"><div class="sh"><h4>Used by</h4><span class="sub">3 characters</span></div>
+          <div class="tags"><span class="tag">🎭 June — Stillwater</span><span class="tag">🎭 Ono Anna</span>
+            <span class="tag">🎭 Host — Ep. 12</span></div>
+          <p class="hint" style="margin:7px 0 0">Change the voice and all three change. Per-character
+            tuning belongs on the character.</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="route" id="r-newvoice">
+<div class="top"><span class="crumb"><span class="lnk" onclick="nav('voices')">Voices</span> › New voice</span></div>
+  <div class="body">
+    <p class="note" style="margin:0">Five ways in, one door. Each states its precondition; nothing is
+      hidden in a fold, nothing is a button that does nothing.</p>
+    <div class="map">
+      <div class="mc"><div class="k">Bring a source</div><div class="n">🎤 Clone from audio</div>
+        <div class="d">10 s–2 min, one speaker, clean.</div>
+        <div class="tags" style="margin-top:7px"><span class="tag w">needs Chatterbox</span></div></div>
+      <div class="mc"><div class="k">Bring a source</div><div class="n">📦 Import .justvoice.zip</div>
+        <div class="d">A voice someone exported.</div>
+        <div class="tags" style="margin-top:7px"><span class="tag ok">ready</span></div></div>
+      <div class="mc"><div class="k">Bring a source</div><div class="n">✍️ Design from words</div>
+        <div class="d">Describe a voice — "gravel-voiced harbor-master, 70s" — and the model invents
+          it. No reference audio.</div>
+        <div class="tags" style="margin-top:7px"><span class="tag w">⤓ Install · Qwen3 VoiceDesign</span></div>
+        <p class="hint" style="margin:6px 0 0">The path is <b>already built and switched off</b>
+          pending this one download — not missing. Cards show what is <i>installable</i>, not only
+          what is loaded. Qwen3 is the only engine that does this.</p>
+        <button class="btn s p" style="margin-top:8px" onclick="toast('Downloading Qwen3 VoiceDesign…','ok')">⤓ Install</button></div>
+      <div class="mc new"><div class="k">Derive from yours</div><div class="n">🔀 Blend</div>
+        <div class="d">Weighted mix, slerp / lerp / weighted sum. Same engine family only.</div>
+        <div class="tags" style="margin-top:7px"><span class="tag ok">64 available</span></div></div>
+      <div class="mc new"><div class="k">Derive from yours</div><div class="n">🧪 Train a LoRA</div>
+        <div class="d">Epochs · LR · batch · rank · alpha. Final-loss table per checkpoint.</div>
+        <div class="tags" style="margin-top:7px"><span class="tag w">needs samples</span></div></div>
+    </div>
+
+    <div class="split2" style="margin-top:4px">
+      <div class="card"><div class="sh"><h4>🎤 Clone — the whole screen</h4></div>
+        <div class="drop" style="padding:12px">Drop WAV / MP3 · record now · promote a dictation capture</div>
+        <div class="tw" style="margin-top:9px"><table>
+          <thead><tr><th>File</th><th>Len</th><th>SNR</th><th>Transcript</th></tr></thead>
+          <tbody><tr><td class="mono">ref_01.wav</td><td class="n">0:47</td><td><span class="tag ok">32 dB</span></td>
+            <td class="hint">“The tide turned below…”</td></tr></tbody></table></div>
+        <div class="kb k2" style="margin-top:10px">
+          <div class="f"><label>Name</label><input class="box" value="Marius (clone)"></div>
+          <div class="f"><label>Engine</label><select class="box"><option>Chatterbox Turbo</option>
+            <option>Chatterbox Multilingual</option><option>Qwen3 Base</option><option>LuxTTS</option></select></div></div>
+        <div class="f" style="margin-top:9px"><label>Try it before saving</label>
+          <textarea class="box t" style="min-height:44px">He counted doors until the ninth.</textarea></div>
+        <div class="row" style="margin-top:8px"><button class="btn p s" onclick="toast('Previewing the clone candidate…')">▶ Preview</button>
+          <span class="tags"><span class="tag">cand 3</span><span class="tag">cand 2</span><span class="tag">cand 1</span></span></div>
+        <p class="hint" style="margin:7px 0 0">Candidates live 10 minutes; save the keeper, the rest expire.</p></div>
+
+      <div class="card"><div class="sh"><h4>🧪 Train — the whole screen</h4></div>
+        <div class="tags" style="margin-bottom:9px"><span class="tag ok">18 clips usable</span>
+          <span class="tag w">3 under 2 s skipped</span><span class="tag w">1 clipping skipped</span></div>
+        <div class="kb">
+          <div class="f"><label>Base</label><select class="box"><option>Chatterbox Turbo</option></select></div>
+          <div class="f"><label>Epochs</label><input class="num" value="12"></div>
+          <div class="f"><label>Learning rate</label><input class="num" style="width:70px" value="5e-6"></div>
+          <div class="f"><label>Batch</label><input class="num" value="4"></div>
+          <div class="f"><label>LoRA rank</label><input class="num" value="32"></div>
+          <div class="f"><label>Alpha</label><input class="num" value="128"></div>
+          <div class="f"><label>Grad accum</label><input class="num" value="8"></div>
+          <div class="f"><label>Precision</label><select class="box"><option>bf16</option></select></div>
+          <div class="f"><label>Language</label><select class="box"><option>en</option></select></div></div>
+        <div class="bn" style="margin-top:10px">~34 min on CUDA. Takes the whole card — speech
+          engines unload while it runs.</div>
+        <div class="tw" style="margin-top:9px"><table>
+          <thead><tr><th>Adapter</th><th>Epochs</th><th>Final loss</th><th>Samples</th><th></th></tr></thead>
+          <tbody><tr><td>marius-v2</td><td class="n">12</td><td class="n">0.281</td><td class="n">18</td>
+            <td><span class="rt"><span>▶</span><span>⤓</span></span></td></tr>
+            <tr><td>marius-v1</td><td class="n">8</td><td class="n">0.402</td><td class="n">14</td>
+            <td><span class="rt"><span>▶</span><span>⤓</span></span></td></tr></tbody></table></div>
+        <p class="hint" style="margin:7px 0 0">Audition a checkpoint before committing — lower loss
+          isn't always the better likeness.</p></div>
+    </div>
+  </div>
+</div>
+<div class="route" id="r-personas">
+<div class="top"><span class="crumb">Personas</span><span class="pill">14</span>
+    <span class="pill">across <b>3 projects</b></span></div>
+  <div class="body">
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="tw"><table>
+        <thead><tr><th>Character</th><th style="width:170px">Voice</th><th style="width:106px">Engine</th>
+          <th style="width:150px">Used in</th><th style="width:64px">Lines</th><th style="width:34px"></th></tr></thead>
+        <tbody>
+          <tr style="background:var(--accent-soft)">
+            <td><span class="spk"><span class="av" style="background:#c98aa7">J</span>June</span></td>
+            <td>Sohee</td><td class="mono">qwen3 CV</td>
+            <td class="hint">Stillwater · Emberfall</td><td class="n">115</td>
+            <td><span class="rt"><span>⌃</span></span></td></tr>
+          <tr><td><span class="spk"><span class="av" style="background:#3a7d63">M</span>Marius</span></td>
+            <td>Marius (clone)</td><td class="mono">chatterbox</td>
+            <td class="hint">Stillwater</td><td class="n">54</td>
+            <td><span class="rt"><span>⌄</span></span></td></tr>
+          <tr><td><span class="spk"><span class="av" style="background:#5b7a99">N</span>Narrator</span></td>
+            <td>Heart</td><td class="mono">kokoro</td>
+            <td class="hint">Stillwater · Emberfall · Ep. 12</td><td class="n">402</td>
+            <td><span class="rt"><span>⌄</span></span></td></tr>
+          <tr><td><span class="spk"><span class="av" style="background:#b3552e">H</span>Harbek</span></td>
+            <td class="hint">— none —</td><td class="hint">—</td>
+            <td class="hint">Stillwater</td><td class="n">22</td>
+            <td><span class="rt"><span>⌄</span></span></td></tr>
+        </tbody></table></div>
+    </div>
+
+  </div>
+</div>
+<div class="route" id="r-lexicons">
+<div class="top"><span class="crumb"><span class="lnk" onclick="nav('lexicons')">Lexicons</span> › Harbor names</span><span class="pill">project scope</span>
+    <span class="pill">18 words</span></div>
+  <div class="body">
+    <div class="split">
+      <div class="card"><div class="sh"><h4>Words</h4>
+        <span class="sub">applies before TTS, on every line in scope</span></div>
+        <div class="row" style="margin-bottom:9px"><input class="box" style="max-width:180px" placeholder="Add a word…">
+          <select class="box" style="width:auto"><option>Phonetic</option><option>IPA</option></select>
+          <button class="btn s p" onclick="openModal('word')">＋ Add</button></div>
+        <div class="tw"><table>
+          <thead><tr><th>Word</th><th>Say it as</th><th style="width:76px">Notation</th>
+            <th style="width:64px">Heard</th><th style="width:46px"></th></tr></thead>
+          <tbody>
+            <tr><td><b>Hecate</b></td><td class="mono">HEH-kuh-tee</td><td><span class="tag">phonetic</span></td>
+              <td><span class="rt"><span>▶</span></span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+            <tr><td><b>Marius</b></td><td class="mono">MAR-ee-us</td><td><span class="tag">phonetic</span></td>
+              <td><span class="rt"><span>▶</span></span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+            <tr><td><b>quay</b></td><td class="mono">/kiː/</td><td><span class="tag">ipa</span></td>
+              <td><span class="rt"><span>▶</span></span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+          </tbody></table></div>
+        <div class="bn w" style="margin-top:10px">IPA only works on engines with phoneme input —
+          Kokoro yes, Chatterbox no. The notation column warns before you write 40 of them.</div></div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card"><div class="sh"><h4>Scope</h4></div>
+          <div class="radios"><span class="radio"><span class="rd"></span>Global</span>
+            <span class="radio on"><span class="rd"></span>This project</span>
+            <span class="radio"><span class="rd"></span>One character</span></div>
+          <p class="hint" style="margin:8px 0 0">A character-scoped lexicon beats the project's —
+            Old Crow says “boss” his own way.</p></div>
+        <div class="card"><div class="sh"><h4>Try a word</h4></div>
+          <input class="box" value="Hecate"><div class="row" style="margin-top:7px">
+            <select class="box" style="flex:1"><option>as June</option><option>as Narrator</option></select>
+            <button class="btn p s" onclick="toast('Hearing it as June…')">▶</button></div>
+          <p class="hint" style="margin:7px 0 0">Hear before and after, in the voice that will say it.</p></div>
+        <div class="card tint"><div class="sh"><h4>Affects</h4></div>
+          <p class="note" style="margin:0">37 lines contain one of these words. Editing an entry marks
+            them <b>stale</b>, not re-rendered — you choose when to pay for it.</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="route" id="r-effects">
+<div class="top"><span class="crumb">Effects › June's chain</span>
+    <span class="pill live"><span class="dot"></span> Qwen3</span></div>
+  <div class="body">
+    <div class="bn">Effects run after the TTS, in order. The character's chain runs first, then the
+      scene's on top — both are shown here.</div>
+    <div class="split">
+      <div class="card"><div class="sh"><h4>The chain</h4><span class="sub">drag to reorder</span></div>
+        <div class="tw"><table>
+          <thead><tr><th style="width:26px"></th><th style="width:130px">Effect</th><th>Settings</th>
+            <th style="width:64px">From</th><th style="width:40px"></th></tr></thead>
+          <tbody>
+            <tr><td class="rt"><span>⣿</span></td><td><b>EQ</b></td>
+              <td class="row"><span class="hint">low</span><input class="num" value="-2"><span class="u">dB</span>
+                <span class="hint">mid</span><input class="num" value="+2"><span class="u">dB</span>
+                <span class="hint">high</span><input class="num" value="+1"><span class="u">dB</span></td>
+              <td><span class="tag">June</span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+            <tr><td class="rt"><span>⣿</span></td><td><b>Compressor</b></td>
+              <td class="row"><span class="hint">thr</span><input class="num" value="-18"><span class="u">dB</span>
+                <span class="hint">ratio</span><input class="num" value="3.0"></td>
+              <td><span class="tag">June</span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+            <tr style="background:var(--warn-bg)"><td class="rt"><span>⣿</span></td><td><b>Reverb</b></td>
+              <td class="row"><span class="hint">room</span><input class="num" value="0.35">
+                <span class="hint">wet</span><input class="num" value="0.18"></td>
+              <td><span class="tag w">scene</span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+          </tbody></table></div>
+        <button class="btn s" style="margin-top:9px" onclick="openModal('effect')">＋ Add effect</button>
+        <p class="hint" style="margin:8px 0 0">Rows tinted amber come from the chapter's scene
+          treatment — visible here, edited there.</p></div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card"><div class="sh"><h4>A / B it</h4></div>
+          <textarea class="box t" style="min-height:44px">You're late.</textarea>
+          <div class="row" style="margin-top:8px"><button class="btn s" onclick="toast('Playing without the chain.')">▶ Dry</button>
+            <button class="btn p s" onclick="toast('Playing with the chain.')">▶ Wet</button><span class="hint">same take, chain on / off</span></div>
+          <div class="player" style="margin-top:8px"><button class="btn p s rnd" onclick="toast('Playing…')">▶</button>
+            <div class="bar"><b style="width:30%"></b></div><span class="mono hint">0:02</span></div></div>
+        <div class="card"><div class="sh"><h4>Save as a preset</h4></div>
+          <input class="box" placeholder="e.g. Radio broadcast">
+          <button class="btn s" style="margin-top:7px;width:100%" onclick="toast('Chain saved — reusable on any character or scene.','ok')">💾 Save chain</button>
+          <p class="hint" style="margin:7px 0 0">Reusable on any character or any scene.</p></div>
+        <div class="card tint"><div class="sh"><h4>Order matters</h4></div>
+          <p class="note" style="margin:0">EQ before compression shapes what the compressor reacts to;
+            after, it shapes what survives it. Reverb last, or you compress the room.</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="route" id="r-scene">
+<div class="top"><span class="crumb"><span class="lnk" onclick="nav('chapters')"><span class="proj-name">Stillwater</span></span> › Ch. 7 › Scene</span>
+    <span class="pill e">render presets: deleted</span></div>
+  <div class="body">
+
+    <div class="split">
+      <div class="card"><div class="sh"><h4>Chapter 7 — a flashback</h4>
+        <span class="sub">two fields, both reusing things that exist</span></div>
+
+        <div class="f"><label>Scene direction <span class="tag ok">✓ Qwen3 performs it</span></label>
+          <textarea class="box t" style="min-height:42px">Remembered, slightly distant.</textarea>
+          <div class="row" style="margin-top:7px">
+            <span class="hint">Saved:</span>
+            <span class="tag">Quiet reflection</span><span class="tag">Dramatic</span>
+            <span class="tag">Action</span><button class="btn s g" onclick="toast('Direction saved as a reusable snippet.','ok')">💾 Save this</button></div>
+          <span class="hint" style="margin-top:5px">Appended to every line's own direction. These
+            snippets are what the old presets actually contained.</span></div>
+
+        <div class="f" style="margin-top:13px"><label>Scene effects <span class="tag">from the Effects library</span></label>
+          <div class="row"><select class="box" style="flex:1"><option>Flashback — hall reverb + 6 kHz lowpass</option>
+            <option>Radio broadcast</option><option>(none)</option></select><button class="btn s" onclick="nav('effects')">Edit</button></div>
+          <span class="hint" style="margin-top:5px">Stacks <b>on top of</b> each character's chain —
+            which is what the code already does correctly.</span></div>
+
+        <div class="row" style="margin-top:13px"><button class="btn p" onclick="toast('Flashback applied to chapter 7 — 231 lines marked stale.','ok')">Apply</button>
+          <select class="box" style="width:auto"><option>Ch. 7 only</option>
+            <option>Ch. 7, 9, 12</option><option>Whole book</option></select></div>
+
+        <div class="bn w" style="margin-top:13px">Kokoro and Chatterbox take no written direction,
+          so a scene direction does nothing on them. The effects chain still applies.</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="stack"><h5>What this scene sounds like</h5>
+          <div class="l"><b>June</b> — Sohee · 1.05× · <i>“Clipped, world-weary”</i> +
+            <i>“Remembered, distant”</i><br>
+            <b>Marius</b> — clone · 0.95× · + <i>“Remembered, distant”</i><br>
+            <b>Narrator</b> — Heart · 1.00× · + <i>“Remembered, distant”</i><br>
+            <span class="lt">everyone also gets hall reverb + 6 kHz lowpass</span></div>
+          <p class="hint" style="margin:8px 0 0;color:var(--accent-ink)">Nobody's numbers changed.
+            Every character still sounds like themselves.</p></div>
+        <div class="card"><div class="sh"><h4>Hear the difference</h4></div>
+          <div class="row"><button class="btn s" onclick="toast('Playing line 3 without the scene.')">▶ Without</button><button class="btn p s" onclick="toast('Playing line 3 with the scene.')">▶ With</button>
+            <span class="hint">line 3 of this chapter</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="route" id="r-engines">
+<div class="top"><span class="crumb">Speech engines</span><span class="pill">VRAM <b>3.2 / 8.6 GB</b></span>
+    <span class="pill live"><span class="dot"></span> Kokoro</span></div>
+  <div class="body">
+    <div class="bn"><b>One speech engine is resident at a time.</b> Loading another unloads the
+      current one — that's why auditioning across engines costs a swap, and why every listen button
+      in the app warns before it charges you a minute.</div>
+    <div class="tw"><table>
+      <thead><tr><th>Engine</th><th>Variant</th><th style="width:88px">Size</th><th style="width:100px">Clones</th>
+        <th style="width:132px">Languages</th><th style="width:96px">State</th><th style="width:120px"></th></tr></thead>
+      <tbody>
+        <tr><td><b>Kokoro</b></td><td>multi-lang v1.0</td><td class="n">333 MB</td><td><span class="tag no">✗</span></td>
+          <td>8 <span class="tag e">✗ en-only in practice</span></td><td><span class="tag ok">loaded</span></td>
+          <td><button class="btn s" onclick="toast('Kokoro unloaded — 3.2 GB freed.','ok')">Unload</button></td></tr>
+        <tr><td><b>Qwen3-TTS</b></td><td>1.7B CustomVoice</td><td class="n">4.5 GB</td>
+          <td><span class="tag no">✗ presets only</span></td><td>10</td><td><span class="tag">installed</span></td>
+          <td><button class="btn s p" onclick="toast('Loading — the current engine unloads first.','warn')">Load</button></td></tr>
+        <tr><td><b>Qwen3-TTS</b></td><td>0.6B Base</td><td class="n">2.5 GB</td><td><span class="tag ok">✓</span></td>
+          <td>10</td><td><span class="tag">installed</span></td><td><button class="btn s p" onclick="toast('Loading — the current engine unloads first.','warn')">Load</button></td></tr>
+        <tr><td><b>Chatterbox</b></td><td>Turbo · English</td><td class="n">2.1 GB</td><td><span class="tag ok">✓</span></td>
+          <td>1</td><td><span class="tag">installed</span></td><td><button class="btn s p" onclick="toast('Loading — the current engine unloads first.','warn')">Load</button></td></tr>
+        <tr><td><b>Dia</b></td><td>1.6B-0626</td><td class="n">6.4 GB</td><td><span class="tag ok">✓</span></td>
+          <td>1</td><td><span class="tag w">needs venv</span></td><td><button class="btn s" onclick="toast('Building the isolated venv — this takes a few minutes.','warn')">Install</button></td></tr>
+      </tbody></table></div>
+    <p class="hint" style="margin:0">Sizes HTTP-verified from the release tarballs, not typed from a model card.</p>
+  </div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="mask" id="mask" onclick="if(event.target===this)closeModal()">
+
+  <!-- Compare takes -->
+  <div class="modal wide" id="m-compare" style="display:none">
+    <div class="modal-h"><span class="eb">Line 2 · June</span><h3>Compare takes</h3>
+      <button class="xbtn" onclick="closeModal()">✕</button></div>
+    <div class="modal-b">
+      <div class="split2">
+        <div class="card"><div class="sh"><h4>★ Live · take 3</h4></div>
+          <div class="player"><button class="btn p s rnd" onclick="toast(&quot;Playing take…&quot;)">▶</button><div class="bar"><b style="width:0"></b></div>
+            <span class="mono hint">0:02</span></div>
+          <p class="hint" style="margin:8px 0 0">1.05× · “Sharp, clipped, edge of irritation.” · seed 8812</p></div>
+        <div class="card"><div class="sh"><h4>take 2</h4></div>
+          <div class="player"><button class="btn p s rnd" onclick="toast(&quot;Playing take…&quot;)">▶</button><div class="bar"><b style="width:0"></b></div>
+            <span class="mono hint">0:02</span></div>
+          <p class="hint" style="margin:8px 0 0">1.00× · no direction · seed 4471</p>
+          <button class="btn s" style="margin-top:9px" onclick="toast('Take 2 promoted — it is now the live take.','ok');closeModal()">★ Make this the live take</button></div>
+      </div>
+      <div class="bn">Both takes are kept. Promoting swaps which one the chapter renders with; nothing
+        is deleted until you delete it.</div>
+    </div>
+    <div class="modal-f"><span style="flex:1"></span>
+      <button class="btn" onclick="closeModal()">Close</button></div>
+  </div>
+
+  <!-- Add effect -->
+  <div class="modal" id="m-effect" style="display:none">
+    <div class="modal-h"><span class="eb">June’s chain</span><h3>Add an effect</h3>
+      <button class="xbtn" onclick="closeModal()">✕</button></div>
+    <div class="modal-b">
+      <div class="map">
+        <div class="mc" style="cursor:pointer" onclick="toast('Reverb added to June’s chain.','ok');closeModal()">
+          <div class="n">Reverb</div><div class="d">Room size, damping, wet mix.</div></div>
+        <div class="mc" style="cursor:pointer" onclick="toast('EQ added to June’s chain.','ok');closeModal()">
+          <div class="n">EQ</div><div class="d">Low, mid and high shelves.</div></div>
+        <div class="mc" style="cursor:pointer" onclick="toast('Compressor added to June’s chain.','ok');closeModal()">
+          <div class="n">Compressor</div><div class="d">Threshold, ratio, attack, release.</div></div>
+        <div class="mc" style="cursor:pointer" onclick="toast('Gain added to June’s chain.','ok');closeModal()">
+          <div class="n">Gain</div><div class="d">A flat level trim, in dB.</div></div>
+        <div class="mc" style="cursor:pointer" onclick="toast('Pitch shift added to June’s chain.','ok');closeModal()">
+          <div class="n">Pitch shift</div><div class="d">Semitones, post-process.</div></div>
+        <div class="mc" style="cursor:pointer" onclick="toast('Low-pass added to June’s chain.','ok');closeModal()">
+          <div class="n">Low-pass</div><div class="d">Cutoff — the “heard through a door” one.</div></div>
+      </div>
+    </div>
+    <div class="modal-f"><span style="flex:1"></span><button class="btn" onclick="closeModal()">Cancel</button></div>
+  </div>
+
+  <!-- Add a lexicon word -->
+  <div class="modal" id="m-word" style="display:none">
+    <div class="modal-h"><span class="eb">Harbor names</span><h3>Add a pronunciation</h3>
+      <button class="xbtn" onclick="closeModal()">✕</button></div>
+    <div class="modal-b">
+      <div class="kb k2">
+        <div class="f"><label>Word</label><input class="box" value="Hecate"></div>
+        <div class="f"><label>Notation</label><select class="box"><option>Phonetic</option><option>IPA</option></select></div>
+      </div>
+      <div class="f"><label>Say it as</label><input class="box mono" value="HEH-kuh-tee"></div>
+      <div class="row"><select class="box" style="flex:1"><option>Hear it as June</option>
+        <option>Hear it as Narrator</option></select><button class="btn s p" onclick="toast(&quot;Hearing it as the engine says it now.&quot;)">▶ Before</button>
+        <button class="btn s p" onclick="toast(&quot;Hearing it with your pronunciation.&quot;)">▶ After</button></div>
+      <div class="bn w">IPA only works on engines with phoneme input — Kokoro yes, Chatterbox no.</div>
+    </div>
+    <div class="modal-f"><span class="hint">37 lines contain this word; they become stale, not re-rendered.</span>
+      <span style="flex:1"></span><button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn p" onclick="toast('Hecate added — 37 lines marked stale.','ok');closeModal()">Add</button></div>
+  </div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+function openModal(id) {
+  document.querySelectorAll('.modal').forEach(function (m) { m.style.display = 'none'; });
+  var m = document.getElementById('m-' + id);
+  if (m) m.style.display = 'block';
+  document.getElementById('mask').classList.add('on');
+}
+function closeModal() { document.getElementById('mask').classList.remove('on'); }
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+
+function toast(msg, kind) {
+  var box = document.getElementById('toast');
+  var t = document.createElement('div');
+  t.className = 'tst' + (kind ? ' ' + kind : '');
+  t.textContent = msg;
+  box.appendChild(t);
+  setTimeout(function () { t.remove(); }, 3200);
+}
+
+function pickRadio(el) {
+  var group = el.parentElement;
+  group.querySelectorAll('.radio').forEach(function (r) { r.classList.remove('on'); });
+  el.classList.add('on');
+}
+
+function pickChip(el) {
+  var group = el.parentElement;
+  group.querySelectorAll('.tag[data-filter]').forEach(function (c) { c.classList.remove('ok'); });
+  el.classList.add('ok');
+  var want = el.dataset.filter;
+  var host = group.closest('.body').querySelector('[data-filterable]');
+  if (!host) return;
+  var rows = host.querySelectorAll('tbody tr[data-state], .ln[data-state]');
+  var shown = 0;
+  rows.forEach(function (r) {
+    var hit = want === 'all' || r.dataset.state === want;
+    r.classList.toggle('hidden-row', !hit);
+    if (hit) shown++;
+  });
+  toast(shown + (shown === 1 ? ' line' : ' lines') + ' shown');
+}
+
+/* Analyze / Discover scope */
+var SCOPE_CH = [
+  { n: 1, lines: 214 }, { n: 2, lines: 188 }, { n: 3, lines: 231 },
+  { n: 4, lines: 176 }, { n: 5, lines: 203 }, { n: 6, lines: 198 }
+];
+
+/* Selecting chapters recalculates in place -- no modal, no radios. The three radios
+   were presets for these checkboxes, which is why they were redundant furniture.
+   Discover and Script both carry this grid, so everything is scoped to its own route. */
+function chScope(el) {
+  return (el && el.closest && el.closest('.route')) ||
+         document.querySelector('.route.on') || document;
+}
+function selectAllCh(box) {
+  var r = chScope(box);
+  r.querySelectorAll('.ck').forEach(function (b) { b.checked = box.checked; });
+  recalcAnalyze(box);
+}
+function recalcAnalyze(el) {
+  var r = chScope(el);
+  var boxes = Array.prototype.slice.call(r.querySelectorAll('.ck'));
+  var picked = boxes.map(function (b, i) { return b.checked ? SCOPE_CH[i] : null; }).filter(Boolean);
+  var all = r.querySelector('.ch-all');
+  if (all) {
+    all.checked = picked.length === boxes.length;
+    all.indeterminate = picked.length > 0 && picked.length < boxes.length;
+  }
+  var ln = picked.reduce(function (a, c) { return a + c.lines; }, 0);
+  var secs = Math.max(1, Math.ceil(ln / 80)) * 33;
+  var mins = (secs >= 60 ? Math.floor(secs / 60) + 'm ' : '') + (secs % 60) + 's';
+  var btn = r.querySelector('.an-btn');
+  var est = r.querySelector('.an-est');
+  if (btn) {
+    btn.textContent = btn.dataset.verb + (picked.length
+      ? ' ' + picked.length + (picked.length === 1 ? ' chapter' : ' chapters') : '');
+    btn.disabled = picked.length === 0;
+  }
+  if (est) {
+    est.textContent = picked.length
+      ? ln.toLocaleString() + ' lines · about ' + mins + ' · ' + est.dataset.tail
+      : 'Pick at least one chapter.';
+  }
+}
+function recalcAnalyze() {
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('#chGrid .ck'));
+  var all = document.getElementById('chAll');
+  var picked = boxes.map(function (b, i) { return b.checked ? SCOPE_CH[i] : null; }).filter(Boolean);
+  if (all) {
+    all.checked = picked.length === boxes.length;
+    all.indeterminate = picked.length > 0 && picked.length < boxes.length;
+  }
+  var ln = picked.reduce(function (a, c) { return a + c.lines; }, 0);
+  var secs = Math.max(1, Math.ceil(ln / 80)) * 33;
+  var btn = document.getElementById('anBtn');
+  var est = document.getElementById('anEst');
+  if (btn) {
+    btn.textContent = picked.length ? '✨ Analyze ' + picked.length +
+      (picked.length === 1 ? ' chapter' : ' chapters') : '✨ Analyze';
+    btn.disabled = picked.length === 0;
+  }
+  if (est) {
+    est.textContent = picked.length
+      ? ln.toLocaleString() + ' lines · about ' +
+        (secs >= 60 ? Math.floor(secs / 60) + 'm ' : '') + (secs % 60) + 's · ' +
+        'rows fill in one chapter at a time, and each is reviewable the moment it lands'
+      : 'Pick at least one chapter.';
+  }
+}
+
+
+var KIND = {
+  audiobook: '\uD83D\uDCD6 audiobook',
+  game: '\uD83C\uDFAE game voicelines',
+  podcast: '\uD83C\uDF99\uFE0F podcast'
+};
+
+function nav(route) {
+  var el = document.getElementById('r-' + route);
+  if (!el) return;
+  document.querySelectorAll('.route').forEach(function (r) { r.classList.remove('on'); });
+  el.classList.add('on');
+  document.querySelectorAll('.rail i').forEach(function (i) {
+    i.classList.toggle('on', i.dataset.r === route);
+  });
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+
+function openProject(kind, name) {
+  document.body.setAttribute('data-kind', kind);
+  document.querySelectorAll('.proj-name').forEach(function (n) { n.textContent = name; });
+  document.querySelectorAll('.proj-kind').forEach(function (n) { n.innerHTML = KIND[kind]; });
+  nav(kind === 'game' ? 'lines' : 'chapters');
+}
+
+function setStudio(model) {
+  document.body.setAttribute('data-studio', model);
+  document.getElementById('mCont').setAttribute('aria-pressed', String(model === 'container'));
+  document.getElementById('mFlat').setAttribute('aria-pressed', String(model === 'flat'));
+  document.getElementById('modeHint').textContent = model === 'container'
+    ? 'Studio holds the five steps; the chapter list lives inside its Script step.'
+    : 'No Studio. Discover, Chapters, Cast, Render and Export are each their own destination.';
+}
+
+document.body.setAttribute('data-kind', 'audiobook');
+setStudio('container');
+// The estimate is computed from the boxes that start ticked, never hardcoded.
+document.querySelectorAll('.route').forEach(function (r) {
+  if (r.querySelector('.ck')) recalcAnalyze(r.querySelector('.ck'));
+});
+nav('home');
+</script>

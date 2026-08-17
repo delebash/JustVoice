@@ -1,0 +1,79 @@
+<div class="top"><span class="crumb">Voices › Sohee</span><span class="pill">preset</span>
+    <span class="pill">qwen3 · <b>CustomVoice</b></span><span class="pill"><span class="dot idle"></span> Kokoro loaded</span></div>
+  <div class="body">
+    <div class="bn w"><b>⏳ Qwen3 isn't loaded — Kokoro is.</b> The first listen swaps them, about a
+      minute. One speech engine stays resident at a time.</div>
+    <div class="split">
+      <div style="display:flex;flex-direction:column;gap:13px">
+        <div class="card"><div class="sh"><span class="st">1</span><h4>Hear it</h4></div>
+          <textarea class="box t">The fog came in over the pier before either of them said a word.</textarea>
+          <div class="row" style="margin-top:8px"><button class="btn p" onclick="toast('Hearing Sohee with your line…')">▶ Listen</button>
+            <button class="btn s" onclick="toast('Loaded the stock sample line.')">↻ Stock line</button><span style="flex:1"></span>
+            <button class="btn s" onclick="toast('Take kept — it will appear under this voice.','ok')">★ Keep take</button></div>
+          <div class="player" style="margin-top:9px"><button class="btn p s rnd" onclick="toast('Playing…')">▶</button>
+            <div class="bar"><b style="width:62%"></b></div><span class="mono hint">0:03 / 0:05</span></div></div>
+
+        <div class="card"><div class="sh"><span class="st">2</span><h4>Tune it</h4>
+          <span class="sub">every knob this engine has — nothing folded away</span></div>
+          <div class="kb">
+            <div class="kn"><label class="hint">Speed</label><div class="kr">
+              <input type="range" min=".5" max="2" step=".05" value="1.1"><input class="num" value="1.10"><span class="u">×</span></div></div>
+            <div class="kn"><label class="hint">Pitch <span class="tag w">post-process</span></label><div class="kr">
+              <input type="range" min="-12" max="12" value="0"><input class="num" value="0"><span class="u">st</span></div></div>
+            <div class="kn"><label class="hint">Gain</label><div class="kr">
+              <input type="range" min="-12" max="12" step=".5" value="-1"><input class="num" value="-1.0"><span class="u">dB</span></div></div>
+            <div class="kn"><label class="hint">Temperature</label><div class="kr">
+              <input type="range" min=".05" max="2" step=".05" value=".9"><input class="num" value="0.90"></div></div>
+            <div class="kn"><label class="hint">Top-k</label><div class="kr">
+              <input type="range" min="1" max="200" value="50"><input class="num" value="50"></div></div>
+            <div class="kn"><label class="hint">Top-p</label><div class="kr">
+              <input type="range" min="0" max="1" step=".01" value=".95"><input class="num" value="0.95"></div></div>
+            <div class="kn"><label class="hint">Repetition penalty</label><div class="kr">
+              <input type="range" min="1" max="3" step=".05" value="1.2"><input class="num" value="1.20"></div></div>
+            <div class="kn"><label class="hint">Pause before → after</label><div class="kr">
+              <input class="num" value="0"><span class="u">→</span><input class="num" value="250"><span class="u">ms</span></div></div>
+            <div class="kn"><label class="hint">Seed</label><div class="kr">
+              <input class="num" style="width:70px" value="random"><button class="btn s g" onclick="toast('New random seed.')">🎲</button></div></div></div>
+          <div class="f" style="margin-top:12px"><label>Delivery direction <span class="tag ok">✓ performed</span></label>
+            <textarea class="box t ph">e.g. “with growing horror, voice gradually quieter”</textarea></div>
+          <div class="row" style="margin-top:10px;padding-top:9px;border-top:1px solid var(--line)">
+            <button class="btn s" onclick="toast('Pick a knob and three values to hear side by side.')">⚖️ Compare settings…</button>
+            <span class="hint">Same line, three values of one knob, side by side — this is the old
+              render lab, as a mode instead of a destination.</span></div></div>
+
+        <div class="card"><div class="sh"><span class="st">3</span><h4>Save what you just tuned</h4>
+          <span class="sub">the sixth way to make a voice</span></div>
+          <div class="row">
+            <input class="box" style="max-width:230px" value="Heart (warm)">
+            <button class="btn p" onclick="toast('Saved “Heart (warm)” — it is yours, and renameable.','ok')">💾 Save as a new voice</button></div>
+          <p class="hint" style="margin:9px 0 0">A record pointing at the parent plus your tuning —
+            <b>no audio, no training</b>. Three things it fixes: preset voices become <b>renameable</b>,
+            because the thing you name is yours; a clone that came out quiet gets its +3 dB <b>once</b>
+            and every character using it inherits the fix; and it derives from anything, not just presets.</p>
+          <p class="hint" style="margin:6px 0 0"><b>Guardrail:</b> this is a correction to an
+            <i>artifact</i> — calibration and timbre. It is <b>never a mood</b>. "Marius angry" is
+            direction, per line or per scene, and never becomes a saved voice.</p></div>
+
+        <div class="card"><div class="sh"><span class="st">4</span><h4>Make another voice from this one</h4></div>
+          <div class="row"><button class="btn" onclick="nav('newvoice')">🔀 Blend with…</button><button class="btn" onclick="nav('newvoice')">🧪 Train a LoRA</button></div></div>
+
+        <div class="card tint"><div class="sh"><span class="st">5</span><h4>Reference samples</h4></div>
+          <p class="note" style="margin:0">Not built — needs an API that doesn't exist. One honest
+            line instead of five dead buttons.</p></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="stack"><h5>What you're hearing</h5>
+          <div class="l"><b>Sohee</b><span class="sp">·</span>qwen3 CV<span class="sp">·</span>1.10×<span class="sp">·</span>−1.0 dB<span class="sp">·</span>temp 0.90<br>
+            <span class="lt">effects + lexicon apply on render, not preview</span></div></div>
+        <div class="card"><div class="sh"><h4>What this engine can do</h4></div>
+          <div class="tags"><span class="tag ok">✓ direction</span><span class="tag ok">✓ 10 languages</span>
+            <span class="tag no">✗ cloning</span><span class="tag w">pitch post-process</span>
+            <span class="tag no">✗ inline tags</span><span class="tag ok">✓ seed</span></div></div>
+        <div class="card"><div class="sh"><h4>Used by</h4><span class="sub">3 characters</span></div>
+          <div class="tags"><span class="tag">🎭 June — Stillwater</span><span class="tag">🎭 Ono Anna</span>
+            <span class="tag">🎭 Host — Ep. 12</span></div>
+          <p class="hint" style="margin:7px 0 0">Change the voice and all three change. Per-character
+            tuning belongs on the character.</p></div>
+      </div>
+    </div>
+  </div>

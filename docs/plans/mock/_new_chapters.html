@@ -1,0 +1,97 @@
+<div class="top">
+    <span class="crumb"><span class="lnk" onclick="nav('projects')">Projects</span>
+      › <b class="proj-name">Stillwater</b><span class="sv-container"> › Studio</span></span>
+    <span class="pill proj-kind">📖 audiobook</span>
+    <span style="flex:1"></span>
+    <span class="pill live"><span class="dot"></span> gemma-3-12b</span></div>
+  <div class="body">
+
+    <div class="card">
+      <div class="sh"><h4>Who says what</h4>
+        <span class="sub">2,140 lines · 14 chapters</span></div>
+      <p class="note" style="margin:0 0 11px">Attribution only — which persona speaks each line, and
+        what the line says. How it is performed, and rendering it, come later.</p>
+
+      <div class="tw"><table>
+        <thead><tr>
+          <th style="width:32px"><input type="checkbox" class="ch-all" aria-label="Select all chapters"
+            onchange="selectAllCh(this)"></th>
+          <th>Chapter</th><th style="width:58px">Lines</th><th style="width:110px">Analyzed</th>
+          <th style="width:82px">Anchored</th><th style="width:76px">Guessed</th>
+          <th style="width:72px">Flagged</th><th style="width:90px">No speaker</th>
+          <th style="width:74px"></th></tr></thead>
+        <tbody>
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" checked aria-label="Select chapter 1" onchange="recalcAnalyze()"></td>
+            <td><b class="lnk">1 · The Ninth Door</b></td><td class="n">214</td>
+            <td class="hint">2 min ago</td>
+            <td class="n">168</td><td><span class="tag w">41</span></td>
+            <td><span class="tag e">6</span></td><td><span class="tag e">5</span></td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 2" onchange="recalcAnalyze()"></td>
+            <td><b class="lnk">2 · Salt and Ledger</b></td><td class="n">188</td>
+            <td class="hint">3 days ago</td>
+            <td class="n">181</td><td><span class="tag">7</span></td>
+            <td class="hint">0</td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+
+          <tr onclick="nav('chapter')" style="cursor:pointer">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="ck" aria-label="Select chapter 3" onchange="recalcAnalyze()"></td>
+            <td><b class="lnk">3 · The Harbour-Master</b></td><td class="n">231</td>
+            <td class="hint">3 days ago</td>
+            <td class="n">96</td><td><span class="tag w">135</span></td>
+            <td><span class="tag e">11</span></td><td class="hint">0</td>
+            <td class="rowacts"><button class="btn s" onclick="event.stopPropagation();nav('chapter')">Review</button></td></tr>
+
+          <tr>
+            <td><input type="checkbox" class="ck" checked aria-label="Select chapter 4" onchange="recalcAnalyze()"></td>
+            <td><b>4 · Nine Doors Down</b></td><td class="n">176</td>
+            <td><span class="tag w">running…</span></td>
+            <td colspan="4"><div class="prog"><b style="width:44%"></b></div>
+              <span class="hint">77 of 176 · about 40 s left</span></td>
+            <td class="rowacts"><button class="btn s" onclick="toast('Stopped. Lines already decided are kept.','warn')">Stop</button></td></tr>
+
+          <tr>
+            <td><input type="checkbox" class="ck" checked aria-label="Select chapter 5" onchange="recalcAnalyze()"></td>
+            <td><b>5 · The Tide Turning</b></td><td class="n">203</td>
+            <td class="hint">never</td>
+            <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">—</td>
+            <td class="rowacts"><button class="btn s" disabled title="Analyze it first">Review</button></td></tr>
+
+          <tr>
+            <td><input type="checkbox" class="ck" aria-label="Select chapter 6" onchange="recalcAnalyze()"></td>
+            <td><b>6 · What the Ledger Knew</b></td><td class="n">198</td>
+            <td class="hint">never</td>
+            <td class="hint">—</td><td class="hint">—</td><td class="hint">—</td><td class="hint">—</td>
+            <td class="rowacts"><button class="btn s" disabled title="Analyze it first">Review</button></td></tr>
+        </tbody></table></div>
+
+      <div class="row" style="margin-top:12px">
+        <button class="btn p an-btn" data-verb="✨ Analyze" onclick="toast('Analyzing 3 chapters — each fills in as it finishes.','ok')">✨ Analyze 3 chapters</button>
+        <button class="btn" onclick="toast('Second pass queued on 47 guessed and flagged lines.','ok')">🔎 Review the guesses</button>
+        <span class="hint an-est" data-tail="rows fill in one chapter at a time, and each is reviewable the moment it lands">593 lines · about 4m 3s · rows fill in one chapter at a time, and each is reviewable the moment it lands</span>
+        <span style="flex:1"></span>
+        <select class="box" style="width:auto"><option>Route: Auto → direct</option>
+          <option>Direct</option><option>Chunked</option></select>
+        <span class="pill">Floor <b>0.55</b></span>
+      </div>
+    </div>
+
+    <div class="card tint">
+      <div class="sh"><h4>What these columns mean</h4></div>
+      <div class="tw"><table><tbody>
+        <tr><td style="width:104px"><b>Anchored</b></td>
+          <td>The prose named the speaker — “said Marius” — or it carried from a line that did. Reliable.</td></tr>
+        <tr><td><b>Guessed</b></td>
+          <td>The model chose. <b>This is the number worth your eyes.</b> A guess can be wrong at any
+            confidence, so this count does not shrink because the model felt sure.</td></tr>
+        <tr><td><b>Flagged</b></td>
+          <td>Checks on the text, not on the model: three lines in a row by one persona, a persona with
+            a single line, a speaker who has not appeared in the scene yet.</td></tr>
+        <tr><td><b>No speaker</b></td>
+          <td>It declined, or fell below the floor. These block rendering.</td></tr>
+      </tbody></table></div>
+    </div>
+  </div>

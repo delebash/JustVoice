@@ -1,0 +1,184 @@
+<div class="top">
+    <span class="crumb"><span class="lnk" onclick="nav('projects')">Projects</span>
+      › <span class="lnk" onclick="nav('chapters')">Stillwater</span><span class="sv-container"> › Studio</span>
+      › <b>Ch. 1 › Render</b></span>
+    <span class="pill">Master <b>acx</b></span>
+    <span class="pill">Scene <b class="lnk" onclick="nav('scene')">no direction</b></span>
+    <span style="flex:1"></span>
+    <span class="pill live"><span class="dot"></span> Qwen3 · CUDA</span></div>
+  <div class="body">
+
+    <div class="split">
+      <div style="display:flex;flex-direction:column;gap:13px">
+        <div class="card"><div class="sh"><h4>Rendering</h4><span class="sub">187 to make · 27 cached</span></div>
+          <div class="prog" style="margin-bottom:6px"><b style="width:38%"></b></div>
+          <div class="row"><span class="mono hint">71 / 187 · 4m 12s left · line 98 “By an hour.”</span>
+            <span style="flex:1"></span><button class="btn s d" onclick="toast('Render stopped at line 71. Finished lines are kept.','warn')">⏹ Stop</button></div>
+          <div class="bn w" style="margin-top:9px">⏳ <b>34 lines waiting on Chatterbox.</b> One speech
+            engine runs at a time, so Marius' lines render together after Qwen3 finishes — swapping
+            per line would cost a minute each.</div>
+          <div class="kb" style="margin-top:11px">
+            <div class="f"><label>Gap between lines</label><div class="kr"><input class="num" value="250"><span class="u">ms</span></div></div>
+            <div class="f"><label>On speaker change</label><div class="kr"><input class="num" value="500"><span class="u">ms</span></div></div>
+            <div class="f"><label>Sample rate</label><select class="box"><option>44.1 kHz</option><option>48 kHz</option></select></div></div>
+          <div class="row" style="margin-top:10px"><button class="btn p" onclick="toast('Rendering 187 lines — progress above.','ok')">⚡ Render pending</button>
+            <button class="btn" onclick="toast('Re-rendering all 214 lines from scratch.','warn')">↻ Re-render all</button><button class="btn" onclick="toast('Cache cleared — every line will re-render next time.','warn')">🧹 Clear cache</button></div></div>
+
+        <div class="card"><div class="sh"><h4>Chapter preview</h4></div>
+          <div class="player"><button class="btn p rnd" onclick="toast('Playing…')">▶</button>
+            <div class="bar"><b style="width:22%"></b></div>
+            <span class="mono hint">3:48 / 17:02</span><button class="btn s g" onclick="toast('Chapter WAV saved.')">⤓ WAV</button></div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card"><div class="sh"><h4>Before it runs</h4></div>
+          <div class="tags" style="flex-direction:column;align-items:flex-start;gap:6px">
+            <span class="tag e">✗ 3 lines have no speaker — fix in <b class="lnk" onclick="nav('chapter')">Script</b></span>
+            <span class="tag e">✗ Harbek has no voice — 22 lines blocked</span>
+            <span class="tag w">2 lines over 400 chars — will be chunked</span></div>
+          <p class="hint" style="margin:9px 0 0">The render <b>refuses and names</b> the offending
+            lines rather than dropping them silently from the book.</p></div>
+        <div class="card"><div class="sh"><h4>Cost</h4></div>
+          <table><tbody><tr><td>Local · Qwen3</td><td class="n">187</td><td><span class="tag ok">free</span></td></tr>
+            <tr><td>Online · metered</td><td class="n">0</td><td><span class="tag no">—</span></td></tr>
+            <tr><td>Audio out</td><td class="n">17:02</td><td></td></tr></tbody></table></div>
+        <div class="card tint"><div class="sh"><h4>What makes a line stale</h4></div>
+          <p class="note" style="margin:0">Its text, speaker, voice, delivery, direction, effects or
+            lexicon changed. Change one and <b>that line</b> re-renders — the other 213 stay.</p></div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;margin-top:13px">
+      <div style="padding:11px 14px;border-bottom:1px solid var(--line)">
+        <div class="sh" style="margin-bottom:8px"><h4>Line by line</h4>
+          <span class="sub">how each one is performed</span></div>
+        <div class="row">
+          <span class="tag ok" data-filter="all" onclick="pickChip(this)">All 214</span>
+          <span class="tag pd" data-filter="pending" onclick="pickChip(this)">187 not rendered</span>
+          <span class="tag" data-filter="stale" onclick="pickChip(this)">9 stale</span>
+          <span class="tag" data-filter="done" onclick="pickChip(this)">27 done</span>
+          <span class="tag w" data-filter="uncast" onclick="pickChip(this)">22 no voice</span>
+          <span style="flex:1"></span>
+          <button class="btn s" onclick="toast('Writing directions for 214 lines — review each before rendering.','ok')">✍️ Write directions</button>
+          <button class="btn s" onclick="toast('Playing the 27 rendered lines in order.')">▶ Play chapter</button></div>
+        <p class="hint" style="margin:7px 0 0">Who speaks a line is decided in
+          <span class="lnk" onclick="nav('chapter')">Script</span> and is read-only here. This page is
+          <b>how it sounds</b>.</p>
+      </div>
+
+      <div class="tw"><table data-filterable>
+        <thead><tr>
+          <th style="width:44px"></th><th style="width:150px">Who</th><th>Line</th>
+          <th style="width:180px">Direction</th><th style="width:66px">Pause</th>
+          <th style="width:96px">State</th><th style="width:132px">Take</th></tr></thead>
+        <tbody>
+          <tr data-state="done"><td><span class="rt"><span>⌃</span></span></td>
+            <td><span class="spk"><span class="av" style="background:#5b7a99">N</span>Narrator</span></td>
+            <td>Marius set the lamp on the table.</td>
+            <td class="hint" style="font-style:italic">Even, unhurried.</td>
+            <td><input class="num" value="250"></td>
+            <td><span class="tag ok">done</span></td>
+            <td><div class="player" style="padding:3px 6px"><button class="btn s p rnd" style="width:18px;height:18px" onclick="toast('Playing…')">▶</button>
+              <div class="bar"><b style="width:0"></b></div><span class="rt"><span>★</span></span></div></td></tr>
+
+          <tr data-state="pending" style="background:var(--accent-soft)"><td><span class="rt"><span>⌄</span></span></td>
+            <td><span class="spk"><span class="av" style="background:#c98aa7">J</span>June</span></td>
+            <td>“You're late.”</td>
+            <td class="hint" style="font-style:italic">Sharp, clipped.</td>
+            <td><input class="num" value="180"></td>
+            <td><span class="tag pd">pending</span></td>
+            <td><button class="btn s p" onclick="toast('Rendering this line…','ok')">▶ Gen</button></td></tr>
+
+          <tr class="exp"><td colspan="7">
+            <div class="split">
+              <div style="display:flex;flex-direction:column;gap:11px">
+                <div class="row">
+                  <span class="tag ok">selected line 2 of 214</span>
+                  <button class="btn s" onclick="toast('Line 1 of 214')">⌃ prev</button><button class="btn s" onclick="toast('Line 3 of 214')">⌄ next</button>
+                  <span style="flex:1"></span><button class="btn s g" onclick="toast('Row collapsed')">✕ close</button></div>
+
+                <div class="kb k2">
+                  <div class="f"><label>Who speaks it</label>
+                    <div class="row"><span class="tag">🎭 June</span>
+                      <button class="btn s g" onclick="nav('chapter')">Change in Script →</button></div>
+                    <span class="hint">Attribution is Script's job. Changing it here would put the
+                      same decision on two pages.</span></div>
+                  <div class="f"><label>Spoken with</label>
+                    <div class="row">
+                      <span class="tag">🎙️ Sohee · Qwen3 CustomVoice</span>
+                      <span class="tag ok">✓ takes direction</span>
+                      <button class="btn s g" onclick="nav('cast')">Change in Cast →</button></div>
+                    <span class="hint">The voice belongs to <b>June</b>, not to this line — and she also
+                      speaks in <b>Emberfall</b>, so changing it changes her there too. A different voice
+                      for a passage means a different persona, not an override here.</span></div>
+                </div>
+
+                <div class="f"><label>Direction for this line</label>
+                  <textarea class="box t" style="min-height:46px">Sharp, clipped, edge of irritation.</textarea>
+                  <span class="hint">Appended to June's base delivery, not instead of it.</span></div>
+
+                <details class="ovr">
+                  <summary>⚙ Override the numbers for this line — <b>not set</b></summary>
+                  <div class="kb" style="margin-top:8px">
+                    <div class="kn"><label class="hint">Speed <span class="tag">June 1.05×</span></label>
+                      <div class="kr"><input class="num" value="—"><span class="u">×</span></div></div>
+                    <div class="kn"><label class="hint">Pitch <span class="tag">June 0</span></label>
+                      <div class="kr"><input class="num" value="—"><span class="u">st</span></div></div>
+                    <div class="kn"><label class="hint">Gain <span class="tag">June −1.0</span></label>
+                      <div class="kr"><input class="num" value="—"><span class="u">dB</span></div></div>
+                  </div>
+                  <p class="hint" style="margin:8px 0 0">Blank means “as June”. A value here beats
+                    hers for <b>this line only</b>, and puts a dot on the row so you can find it again.
+                    It exists because Kokoro and Chatterbox take no written direction at all — on those
+                    engines it is the only per-line control there is.</p>
+                </details>
+
+                <div class="row" style="padding-top:9px;border-top:1px solid var(--line)">
+                  <button class="btn p" onclick="toast('Rendering this line…','ok')">▶ Generate</button>
+                  <button class="btn" onclick="openModal('word')">📕 Fix a pronunciation</button>
+                  <button class="btn" onclick="toast('Rewrite proposed — accept or discard before it replaces the text.')">✏️ Rewrite in character</button></div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:11px">
+                <div class="stack"><h5>What this line will sound like</h5>
+                  <div class="l"><b>June</b><span class="sp">·</span>Sohee (qwen3)<span class="sp">·</span>1.05×<span class="sp">·</span>−1.0 dB<span class="sp">·</span>+ line direction<br>
+                    <span class="lt">2 effects · Harbor names lexicon · no scene treatment</span></div></div>
+                <div class="card" style="padding:11px 13px">
+                  <div class="sh" style="margin-bottom:7px"><h4 style="font-size:12px">Takes</h4>
+                    <span class="sub">3 · lineage kept</span></div>
+                  <table><tbody>
+                    <tr><td><span class="tag ok">★ live</span></td><td class="n">0:02</td>
+                      <td class="hint">1.05× · direction v2</td><td><span class="rt"><span>▶</span><span>⤓</span></span></td></tr>
+                    <tr data-state="pending"><td><span class="tag no">take 2</span></td><td class="n">0:02</td>
+                      <td class="hint">1.00× · no direction</td><td><span class="rt"><span>▶</span><span>★</span><span>🗑</span></span></td></tr>
+                    <tr data-state="stale"><td><span class="tag no">take 1</span></td><td class="n">0:03</td>
+                      <td class="hint">1.00× · seed 4471</td><td><span class="rt"><span>▶</span><span>★</span><span>🗑</span></span></td></tr>
+                  </tbody></table>
+                  <button class="btn s" style="margin-top:8px" onclick="openModal('compare')">⚖️ Compare two takes</button>
+                </div>
+              </div>
+            </div>
+          </td></tr>
+
+          <tr data-state="stale"><td><span class="rt"><span>⌄</span></span></td>
+            <td><span class="spk"><span class="av" style="background:#c98aa7">J</span>June</span></td>
+            <td>“It matters to me.”</td>
+            <td class="hint" style="font-style:italic">Soft but firm.</td>
+            <td><input class="num" value="300"></td>
+            <td><span class="tag w">stale · text changed</span></td>
+            <td><button class="btn s" onclick="toast('Re-rendering — the old take is kept.','ok')">↻ Re-render</button></td></tr>
+
+          <tr data-state="uncast"><td><span class="rt"><span>⌄</span></span></td>
+            <td><span class="spk"><span class="av" style="background:#b3552e">H</span>Harbek</span></td>
+            <td>“Tide's wrong tonight.”</td><td class="hint">—</td><td><input class="num" value="250"></td>
+            <td><span class="tag w">no voice cast</span></td>
+            <td><button class="btn s" onclick="nav('cast')">🎙️ Cast him</button></td></tr>
+
+          <tr data-state="pending"><td><span class="rt"><span>⌄</span></span></td>
+            <td><span class="hint">— nobody —</span></td>
+            <td>“Then it matters.”</td><td class="hint">—</td><td><input class="num" value=""></td>
+            <td><span class="tag e">blocked</span></td>
+            <td><button class="btn s" onclick="nav('chapter')">Fix in Script →</button></td></tr>
+        </tbody></table></div>
+    </div>
+
+  </div>

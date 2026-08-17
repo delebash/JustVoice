@@ -123,6 +123,17 @@ and none of them takes or touches a persona:**
 | Blend | `POST /v1/voices/blend` (`phase5_api.py:101`) | `Voice` — needs ≥ 2 `source_voice_ids` |
 | Train a LoRA | `POST /v1/train` (`phase5_api.py`) | a job; on completion `training_callback` **mints a `VoiceRecord`** with `source="trained"` and `adapter_path`, and returns `final_voice_id` (`phase5_api.py:295-330`) |
 
+**A `VoiceRecord` carries no tuning at all** (`models.py:446`): `id · engine ·
+source · name · language · gender · design_prompt · transcript · sample_count ·
+blend_recipe · embedding · adapter_path · training_job_id · created_at ·
+updated_at`. No speed, no pitch, no gain, no effects, no instruct — and the
+`Voice` DTO returns even less. **So there is exactly ONE place tuning lives
+today: the persona.** Any claim that the app has two competing tuning surfaces
+is about a proposal, not about the code. (Whether a voice-level correction
+*should* exist is argued in `2026-08-15-voice-workflow-redesign.md` §8.22 —
+short version: it has to, because a clone's artifact is a conditioning input,
+so a loudness correction can only be applied at render.)
+
 So the app already answers *"where do you build a voice"*: **in the voice
 library.** The persona then **selects** one — `PersonasView`'s "How they sound"
 section is a `UiSelect` over existing voices, and Studio · Cast's library panel

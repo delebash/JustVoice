@@ -19,6 +19,8 @@ Navigable mock (17 routes, 123 controls, no server):
 > in place where they do. **Where §8 and §1–§7 disagree, §8 wins.**
 >
 > **To resume mock work: §8.1 (mechanics) then §8.18 (exact state).**
+>
+> **For the voice/persona/tuning argument: §8.22.**
 
 ---
 
@@ -621,11 +623,12 @@ is the mock's current state · 8.21–8.22 is what was rejected and what is open
 
 ### 8.1 How to work on the mock — mechanics, so continuing does not break it
 
-> **⚠ THE MOCK IS NOT IN THE REPO. IT DIES WITH THE SESSION.**
-> Everything lives in
-> `C:\Users\danel\AppData\Local\Temp\claude\E--Dev-Web-JustVioce\<session-id>\`.
-> If this work is to survive, it must move into the repo or into real Vue routes.
-> That decision is open (§8.22).
+> **WHERE THE MOCK LIVES**
+> ~~Everything lives in a session scratchpad.~~ **MOVED 2026-08-17 — the mock
+> now lives at `docs/plans/mock/`**, with a README covering the
+> edit → `build_mock.py` → `validate.py` → republish loop. It had existed only
+> in the session temp dir and would have died with the session. Porting it to
+> real Vue routes is still open, and still waits on the shape being ruled.
 
 **Why HTML and not the real app** — my choice, allowed by the user (*"You coulde
 even do the mock in the real app … your choice"*). Reasoning: almost nothing
@@ -1325,8 +1328,10 @@ look at rather than imagine, which was the point.
 3. **Does the terminology sweep run**, and does it cover the docs as well as the
    mock? (§8.4) Offered, no go.
 4. **Do the remaining screens go into the mock?** (§8.18) Asked for, not started.
-5. **Does the mock move into the repo or into real Vue routes** before the session
-   scratchpad is lost? (§8.18)
+5. ~~**Does the mock move into the repo?**~~ **DONE 2026-08-17** — it lives at
+   `docs/plans/mock/` with a README; `build_mock.py` + `validate.py` run from
+   there. Porting it to real Vue routes is still open, and still waits on the
+   shape being ruled.
 6. **Are the stress-test counts built?** Every screen in the mock is still
    populated at whatever count flatters the layout — the gap the user found with
    *"in your mock you have game and podcast, what would user see if i just have an
@@ -1342,6 +1347,11 @@ look at rather than imagine, which was the point.
 
    Plus the genuine empty states — no projects, no voices cloned yet, a chapter
    with nothing rendered. **Not fixed.**
+7. **Can a character's persona vary by scene, or is it one per character?**
+   (§8.22) User 2026-08-17: *"i dont know yet."* Nothing may assume either way.
+8. **Does the workbench lose its knob panel** for make · hear · calibrate ·
+   derive, leaving one set of live sliders on the persona? (§8.22) Argued, not
+   ruled — and the mock still shows 7 workbench sliders + 4 on Cast.
 7. **Is the starved analyze prompt why gemma-MoE attributes worse than
    gemma-3-12b?** §6 finding 7: `_resolve_cast` (`extraction_api.py:145-167`)
    hardcodes role/gender/pronouns to `None` and aliases to `[]`, and
@@ -1349,6 +1359,129 @@ look at rather than imagine, which was the point.
    **The prompt receives a bare list of `id` and `name`** — no descriptions, no
    aliases, no pronouns. A smaller model has nothing to reason from, which would
    widen exactly that gap. **Cheap to test before blaming the model.**
+
+---
+
+---
+
+### 8.22 The voice layer — what tuning is for, and where it lives
+
+**Discussed 2026-08-17. One ruling still open (bottom of this section).**
+Nothing here was built; it is the reasoning that has to survive, because it
+took a long conversation to reach and the answer is not obvious from the code.
+
+**The question that started it**, and it is the right question to keep asking:
+
+> *"if one voice backs many personas then what is the purpose of persona … if
+> persona doesnt really modify a voice than what is the purpose why not just
+> have a place to make a voice and assing that voice to a cast"*
+
+#### The premise is wrong — a persona modifies the voice substantially
+
+Every persona field that reaches a render:
+
+| Field | Effect |
+|---|---|
+| `default_delivery` | speed, pitch, gain — merged into `Delivery` |
+| `effects_chain` | applied — `resolve_chain(persona_effects, preset_effects)` |
+| `voice_instruct` | the **only** text that reaches the synth, as `delivery.instruct` |
+| `lexicon_id` | pronunciation substitution before synth |
+| `engine_override` | forces an engine regardless of the voice |
+
+A persona is not a label on a voice. It is a full re-interpretation of one.
+
+#### But a VOICE carries no tuning at all — so there is only ONE tuning place
+
+`VoiceRecord` (`models.py:446`) is pure artifact metadata: `id · engine ·
+source · name · language · gender · design_prompt · transcript · sample_count ·
+blend_recipe · embedding · adapter_path · training_job_id · created_at ·
+updated_at`. **No speed, no pitch, no gain, no effects, no instruct.**
+
+So the "two places doing the same thing" the user spotted was **in my
+proposal, not in the app**. Today: the persona, and only the persona.
+
+#### Why the persona layer earns its place: it survives a recast
+
+**A voice is bound to an engine. A character is not.** Bake the delivery,
+effects and instruct into the voice, and the moment you recast Marius from
+Kokoro to a Chatterbox clone, all his tuning dies with the old instrument —
+it was attached to the artifact. Keep the persona layer and you swap
+`voice_id` while his speed, gain, effects, lexicon and sheet survive.
+
+Check it against the fields and it is not a coincidence: **every persona field
+is exactly what you would want to keep when the instrument changes.** That is
+the layer's job.
+
+> **Voice tuning fixes the instrument. Persona tuning is the performance, and
+> it follows the character when the instrument changes.**
+
+#### The limit — and this is the half I got wrong first
+
+Only the **host-side** part actually survives. From the delivery matrix in
+`docs/dev/code-map.md` §5:
+
+- **Survives any recast** (JustVoice applies it after synthesis): `gain_db`,
+  the effects chain, lexicon substitution, and `pitch` since 2026-08-17.
+- **Evaporates silently** (engine-specific): `speed` (kokoro, luxtts only),
+  `instruct` and `style_prompt` (qwen3 only), `temperature` (chatterbox,
+  qwen3).
+
+So "the persona survives the instrument swap" is **half true**, and the UI has
+to say which half: **the persona editor must show, per field, whether the
+currently cast voice's engine honours it.** The machinery exists —
+`GET /v1/engines/{id}/capabilities`.
+
+#### Why a voice-level correction has to exist anyway
+
+I proposed deleting voice tuning entirely and normalising loudness at clone
+time instead, so the quiet-clone case would need no knob. The user: **"no it
+cant"** — and that is right. A clone's artifact is a **conditioning input**
+(embedding / audio prompt), not output audio. Normalising the reference does
+not determine how loud the synth comes out, so the correction can only be
+applied **at render**, which means **the voice has to store it**.
+
+That is the reasoning behind the earlier approved constraint — *"i do want a
+voice tuning page this is part of creating a new voice for a persona to
+consume"* — and it survives the audit intact.
+
+**How to keep it from becoming a second knob panel:** make it a *measurement*,
+not a slider. Render a probe line, measure it, store the offset — **Calibrate**,
+with the number overridable. You cannot know a clone is quiet without
+synthesising anyway, so the app is better placed to measure it than the user is
+to guess. That leaves **one set of live sliders in the app — on the persona** —
+and a measured constant on the voice.
+
+#### What follows for the workbench
+
+After the delivery audit there is **no legitimate voice-level slider left**:
+pitch is post-process on every engine, speed and temperature are
+engine-specific *performance* settings that belong to the character, effects
+are host-side. So the workbench is:
+
+> **make · hear · calibrate · derive**
+
+a creation flow plus one measured correction — **not** a second knob panel.
+The user's own wording set this and I read it too loosely the first time:
+tuning is *"part of creating a new voice"* — a **creation step**, not a
+permanent second control surface.
+
+**Consequence for the mock:** it currently shows **seven** live sliders on the
+workbench and **four** on Cast, which is exactly the two-places problem. Not
+fixed.
+
+#### OPEN — needs a ruling
+
+> **Can a character's persona vary by scene, or is it one per character for
+> the whole book?**
+
+One-per-character keeps §2.3's rule intact — a different voice for a passage
+is a different character. Allowing it to vary is the honest way to do a
+flashback, a possession or an age change, but it re-opens the door render
+presets came through (§3 decision 6).
+
+User, 2026-08-17: **"3 i dont know yet"** — so it stays open, and nothing in
+the design may assume either answer.
+
 
 ---
 

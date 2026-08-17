@@ -1,0 +1,46 @@
+<div class="top"><span class="crumb">Ch. 7 › Scene</span>
+    <span class="pill e">render presets: deleted</span></div>
+  <div class="body">
+
+    <div class="split">
+      <div class="card"><div class="sh"><h4>Chapter 7 — a flashback</h4>
+        <span class="sub">two fields, both reusing things that exist</span></div>
+
+        <div class="f"><label>Scene direction <span class="tag ok">✓ Qwen3 performs it</span></label>
+          <textarea class="box t" style="min-height:42px">Remembered, slightly distant.</textarea>
+          <div class="row" style="margin-top:7px">
+            <span class="hint">Saved:</span>
+            <span class="tag">Quiet reflection</span><span class="tag">Dramatic</span>
+            <span class="tag">Action</span><button class="btn s g" onclick="toast('Direction saved as a reusable snippet.','ok')">💾 Save this</button></div>
+          <span class="hint" style="margin-top:5px">Appended to every line's own direction. These
+            snippets are what the old presets actually contained.</span></div>
+
+        <div class="f" style="margin-top:13px"><label>Scene effects <span class="tag">from the Effects library</span></label>
+          <div class="row"><select class="box" style="flex:1"><option>Flashback — hall reverb + 6 kHz lowpass</option>
+            <option>Radio broadcast</option><option>(none)</option></select><button class="btn s" onclick="nav('effects')">Edit</button></div>
+          <span class="hint" style="margin-top:5px">Stacks <b>on top of</b> each character's chain —
+            which is what the code already does correctly.</span></div>
+
+        <div class="row" style="margin-top:13px"><button class="btn p" onclick="toast('Flashback applied to chapter 7 — 231 lines marked stale.','ok')">Apply</button>
+          <select class="box" style="width:auto"><option>Ch. 7 only</option>
+            <option>Ch. 7, 9, 12</option><option>Whole book</option></select></div>
+
+        <div class="bn w" style="margin-top:13px">Kokoro and Chatterbox take no written direction,
+          so a scene direction does nothing on them. The effects chain still applies.</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="stack"><h5>What this scene sounds like</h5>
+          <div class="l"><b>June</b> — Sohee · 1.05× · <i>“Clipped, world-weary”</i> +
+            <i>“Remembered, distant”</i><br>
+            <b>Marius</b> — clone · 0.95× · + <i>“Remembered, distant”</i><br>
+            <b>Narrator</b> — Heart · 1.00× · + <i>“Remembered, distant”</i><br>
+            <span class="lt">everyone also gets hall reverb + 6 kHz lowpass</span></div>
+          <p class="hint" style="margin:8px 0 0;color:var(--accent-ink)">Nobody's numbers changed.
+            Every character still sounds like themselves.</p></div>
+        <div class="card"><div class="sh"><h4>Hear the difference</h4></div>
+          <div class="row"><button class="btn s" onclick="toast('Playing line 3 without the scene.')">▶ Without</button><button class="btn p s" onclick="toast('Playing line 3 with the scene.')">▶ With</button>
+            <span class="hint">line 3 of this chapter</span></div></div>
+      </div>
+    </div>
+  </div>

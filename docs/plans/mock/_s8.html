@@ -1,0 +1,69 @@
+<div class="top"><span class="crumb">Voices › New voice</span></div>
+  <div class="body">
+    <p class="note" style="margin:0">Five ways in, one door. Each states its precondition; nothing is
+      hidden in a fold, nothing is a button that does nothing.</p>
+    <div class="map">
+      <div class="mc"><div class="k">Bring a source</div><div class="n">🎤 Clone from audio</div>
+        <div class="d">10 s–2 min, one speaker, clean.</div>
+        <div class="tags" style="margin-top:7px"><span class="tag w">needs Chatterbox</span></div></div>
+      <div class="mc"><div class="k">Bring a source</div><div class="n">📦 Import .justvoice.zip</div>
+        <div class="d">A voice someone exported.</div>
+        <div class="tags" style="margin-top:7px"><span class="tag ok">ready</span></div></div>
+      <div class="mc"><div class="k">Bring a source</div><div class="n">✍️ Design from words</div>
+        <div class="d">Describe a voice — "gravel-voiced harbor-master, 70s" — and the model invents
+          it. No reference audio.</div>
+        <div class="tags" style="margin-top:7px"><span class="tag w">⤓ Install · Qwen3 VoiceDesign</span></div>
+        <p class="hint" style="margin:6px 0 0">The path is <b>already built and switched off</b>
+          pending this one download — not missing. Cards show what is <i>installable</i>, not only
+          what is loaded. Qwen3 is the only engine that does this.</p>
+        <button class="btn s p" style="margin-top:8px" onclick="toast('Downloading Qwen3 VoiceDesign…','ok')">⤓ Install</button></div>
+      <div class="mc new"><div class="k">Derive from yours</div><div class="n">🔀 Blend</div>
+        <div class="d">Weighted mix, slerp / lerp / weighted sum. Same engine family only.</div>
+        <div class="tags" style="margin-top:7px"><span class="tag ok">64 available</span></div></div>
+      <div class="mc new"><div class="k">Derive from yours</div><div class="n">🧪 Train a LoRA</div>
+        <div class="d">Epochs · LR · batch · rank · alpha. Final-loss table per checkpoint.</div>
+        <div class="tags" style="margin-top:7px"><span class="tag w">needs samples</span></div></div>
+    </div>
+
+    <div class="split2" style="margin-top:4px">
+      <div class="card"><div class="sh"><h4>🎤 Clone — the whole screen</h4></div>
+        <div class="drop" style="padding:12px">Drop WAV / MP3 · record now · promote a dictation capture</div>
+        <div class="tw" style="margin-top:9px"><table>
+          <thead><tr><th>File</th><th>Len</th><th>SNR</th><th>Transcript</th></tr></thead>
+          <tbody><tr><td class="mono">ref_01.wav</td><td class="n">0:47</td><td><span class="tag ok">32 dB</span></td>
+            <td class="hint">“The tide turned below…”</td></tr></tbody></table></div>
+        <div class="kb k2" style="margin-top:10px">
+          <div class="f"><label>Name</label><input class="box" value="Marius (clone)"></div>
+          <div class="f"><label>Engine</label><select class="box"><option>Chatterbox Turbo</option>
+            <option>Chatterbox Multilingual</option><option>Qwen3 Base</option><option>LuxTTS</option></select></div></div>
+        <div class="f" style="margin-top:9px"><label>Try it before saving</label>
+          <textarea class="box t" style="min-height:44px">He counted doors until the ninth.</textarea></div>
+        <div class="row" style="margin-top:8px"><button class="btn p s" onclick="toast('Previewing the clone candidate…')">▶ Preview</button>
+          <span class="tags"><span class="tag">cand 3</span><span class="tag">cand 2</span><span class="tag">cand 1</span></span></div>
+        <p class="hint" style="margin:7px 0 0">Candidates live 10 minutes; save the keeper, the rest expire.</p></div>
+
+      <div class="card"><div class="sh"><h4>🧪 Train — the whole screen</h4></div>
+        <div class="tags" style="margin-bottom:9px"><span class="tag ok">18 clips usable</span>
+          <span class="tag w">3 under 2 s skipped</span><span class="tag w">1 clipping skipped</span></div>
+        <div class="kb">
+          <div class="f"><label>Base</label><select class="box"><option>Chatterbox Turbo</option></select></div>
+          <div class="f"><label>Epochs</label><input class="num" value="12"></div>
+          <div class="f"><label>Learning rate</label><input class="num" style="width:70px" value="5e-6"></div>
+          <div class="f"><label>Batch</label><input class="num" value="4"></div>
+          <div class="f"><label>LoRA rank</label><input class="num" value="32"></div>
+          <div class="f"><label>Alpha</label><input class="num" value="128"></div>
+          <div class="f"><label>Grad accum</label><input class="num" value="8"></div>
+          <div class="f"><label>Precision</label><select class="box"><option>bf16</option></select></div>
+          <div class="f"><label>Language</label><select class="box"><option>en</option></select></div></div>
+        <div class="bn" style="margin-top:10px">~34 min on CUDA. Takes the whole card — speech
+          engines unload while it runs.</div>
+        <div class="tw" style="margin-top:9px"><table>
+          <thead><tr><th>Adapter</th><th>Epochs</th><th>Final loss</th><th>Samples</th><th></th></tr></thead>
+          <tbody><tr><td>marius-v2</td><td class="n">12</td><td class="n">0.281</td><td class="n">18</td>
+            <td><span class="rt"><span>▶</span><span>⤓</span></span></td></tr>
+            <tr><td>marius-v1</td><td class="n">8</td><td class="n">0.402</td><td class="n">14</td>
+            <td><span class="rt"><span>▶</span><span>⤓</span></span></td></tr></tbody></table></div>
+        <p class="hint" style="margin:7px 0 0">Audition a checkpoint before committing — lower loss
+          isn't always the better likeness.</p></div>
+    </div>
+  </div>

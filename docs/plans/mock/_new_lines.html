@@ -1,0 +1,55 @@
+<div class="top"><span class="crumb"><span class="lnk" onclick="nav('projects')">Projects</span>
+      › <b class="proj-name">Ninefold</b></span>
+    <span class="pill proj-kind">🎮 game voicelines</span><span class="pill">Master <b>none</b></span>
+    <span style="flex:1"></span>
+    <span class="pill live"><span class="dot"></span> Chatterbox loaded</span></div>
+  <div class="body">
+    <div class="row">
+      <span class="tag ok">All 342</span><span class="tag w">61 uncast</span>
+      <span class="tag pd">123 not rendered</span><span class="tag">14 stale</span>
+      <span style="flex:1"></span>
+      <select class="box" style="width:auto"><option>All NPCs</option><option>Guard Captain Hale</option>
+        <option>Merchant</option></select>
+      <button class="btn p" onclick="nav('render')">⚡ Render 123</button>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="tw"><table>
+        <thead><tr><th style="width:32px"><input type="checkbox" aria-label="Select all"></th>
+          <th style="width:110px">Line ID</th><th style="width:150px">Speaker</th><th>Line</th>
+          <th style="width:170px">Direction</th><th style="width:104px">State</th>
+          <th style="width:112px">Audio</th></tr></thead>
+        <tbody>
+          <tr><td><input type="checkbox" aria-label="Select Q01_A"></td><td class="mono">Q01_A</td>
+            <td><span class="spk"><span class="av" style="background:#3a7d63">H</span>Hale</span></td>
+            <td>“Hold the gate. Nothing passes.”</td>
+            <td class="hint" style="font-style:italic">Shouted over rain.</td>
+            <td><span class="tag ok">done</span></td>
+            <td><div class="player" style="padding:3px 6px"><button class="btn s p rnd" style="width:18px;height:18px" onclick="toast('Playing…')">▶</button>
+              <div class="bar"><b style="width:0"></b></div></div></td></tr>
+          <tr><td><input type="checkbox" aria-label="Select Q01_B"></td><td class="mono">Q01_B</td>
+            <td><span class="spk"><span class="av" style="background:#3a7d63">H</span>Hale</span></td>
+            <td>“You again. State your business.”</td>
+            <td class="hint">—</td>
+            <td><span class="tag pd">pending</span></td>
+            <td><button class="btn s p" onclick="toast('Rendering this line…','ok')">▶ Gen</button></td></tr>
+          <tr><td><input type="checkbox" aria-label="Select BARK_07"></td><td class="mono">BARK_07</td>
+            <td><span class="spk"><span class="av" style="background:#b3552e">M</span>Merchant</span></td>
+            <td>“Best prices on the quay!”</td>
+            <td class="hint" style="font-style:italic">Sing-song, carrying.</td>
+            <td><span class="tag w">stale · text changed</span></td>
+            <td><button class="btn s" onclick="toast('Re-rendering — the old take is kept.','ok')">↻ Re-render</button></td></tr>
+          <tr><td><input type="checkbox" aria-label="Select BARK_08"></td><td class="mono">BARK_08</td>
+            <td><select class="box" style="padding:2px 5px;font-size:11px;border-color:var(--danger-line)"><option>— nobody —</option></select></td>
+            <td>“Move along, stranger.”</td><td class="hint">—</td>
+            <td><span class="tag e">no voice cast</span></td>
+            <td><span class="hint">cast the NPC first</span></td></tr>
+        </tbody></table></div>
+    </div>
+
+    <div class="row"><span class="hint">Showing 4 of 342 · line IDs come from the writers' sheet and
+      survive a re-import.</span>
+      <span style="flex:1"></span>
+      <button class="btn s" disabled>🎙️ Cast selected…</button>
+      <button class="btn s" disabled>✍️ Write directions for selected</button></div>
+  </div>

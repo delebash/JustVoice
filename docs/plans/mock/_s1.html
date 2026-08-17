@@ -1,0 +1,46 @@
+<div class="top"><span class="crumb">New project</span><span class="pill"><span class="dot idle"></span> no engine</span></div>
+  <div class="body">
+    <div class="split">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card">
+          <div class="sh"><span class="st">1</span><h4>What are you making?</h4></div>
+          <div class="radios" style="margin-bottom:12px">
+            <span class="radio on"><span class="rd"></span>📖 Audiobook</span>
+            <span class="radio"><span class="rd"></span>🎮 Game voicelines</span>
+            <span class="radio"><span class="rd"></span>🎙️ Podcast</span>
+            <span class="radio"><span class="rd"></span>⚙️ Custom</span></div>
+          <div class="kb k2">
+            <div class="f"><label>Name</label><input class="box" value="Stillwater"></div>
+            <div class="f"><label>Language</label><select class="box"><option>en-US</option></select></div></div>
+          <p class="hint" style="margin:8px 0 0">Kind decides which steps exist. Game skips
+            attribution — a CSV already names its speakers.</p>
+        </div>
+        <div class="card">
+          <div class="sh"><span class="st">2</span><h4>Bring the words in</h4></div>
+          <div class="drop">Drop a file<br><span class="hint">.jw.json · .epub · .docx · .txt · .csv · .md</span></div>
+          <div class="tw" style="margin-top:10px"><table>
+            <thead><tr><th>Source</th><th>What lands</th><th>Speakers?</th></tr></thead>
+            <tbody>
+              <tr><td><b>JustWrite book</b> <span class="tag ok">richest</span></td>
+                <td>Chapters, prose, cast with one-liners + casting hints</td><td><span class="tag no">no</span></td></tr>
+              <tr><td><b>EPUB / DOCX / TXT</b></td><td>Chapters and paragraphs</td><td><span class="tag no">no</span></td></tr>
+              <tr><td><b>Game CSV</b></td><td>One row per line, ids preserved</td><td><span class="tag ok">yes</span></td></tr>
+              <tr><td><b>Podcast markdown</b></td><td><code>SARAH:</code> labels, markers</td><td><span class="tag ok">yes</span></td></tr>
+            </tbody></table></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card"><div class="sh"><h4>Master target</h4></div>
+          <div class="radios"><span class="radio on"><span class="rd"></span>ACX</span>
+            <span class="radio"><span class="rd"></span>Audible inAudio</span>
+            <span class="radio"><span class="rd"></span>Podcast</span>
+            <span class="radio"><span class="rd"></span>YouTube</span>
+            <span class="radio"><span class="rd"></span>None</span></div>
+          <p class="hint" style="margin:8px 0 0">Sets loudness, peak ceiling and noise floor for every
+            render. Change it later from any chapter.</p></div>
+        <div class="card tint"><div class="sh"><h4>What you get</h4></div>
+          <p class="note" style="margin:0">N chapters · one line per paragraph · a <b>Narrator</b>
+            character · one character per name the source knew. Nothing cast to a voice yet.</p></div>
+      </div>
+    </div>
+  </div>

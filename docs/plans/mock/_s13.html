@@ -1,0 +1,25 @@
+<div class="top"><span class="crumb">Speech engines</span><span class="pill">VRAM <b>3.2 / 8.6 GB</b></span>
+    <span class="pill live"><span class="dot"></span> Kokoro</span></div>
+  <div class="body">
+    <div class="bn"><b>One speech engine is resident at a time.</b> Loading another unloads the
+      current one — that's why auditioning across engines costs a swap, and why every listen button
+      in the app warns before it charges you a minute.</div>
+    <div class="tw"><table>
+      <thead><tr><th>Engine</th><th>Variant</th><th style="width:88px">Size</th><th style="width:100px">Clones</th>
+        <th style="width:132px">Languages</th><th style="width:96px">State</th><th style="width:120px"></th></tr></thead>
+      <tbody>
+        <tr><td><b>Kokoro</b></td><td>multi-lang v1.0</td><td class="n">333 MB</td><td><span class="tag no">✗</span></td>
+          <td>8 <span class="tag e">✗ en-only in practice</span></td><td><span class="tag ok">loaded</span></td>
+          <td><button class="btn s" onclick="toast('Kokoro unloaded — 3.2 GB freed.','ok')">Unload</button></td></tr>
+        <tr><td><b>Qwen3-TTS</b></td><td>1.7B CustomVoice</td><td class="n">4.5 GB</td>
+          <td><span class="tag no">✗ presets only</span></td><td>10</td><td><span class="tag">installed</span></td>
+          <td><button class="btn s p" onclick="toast('Loading — the current engine unloads first.','warn')">Load</button></td></tr>
+        <tr><td><b>Qwen3-TTS</b></td><td>0.6B Base</td><td class="n">2.5 GB</td><td><span class="tag ok">✓</span></td>
+          <td>10</td><td><span class="tag">installed</span></td><td><button class="btn s p" onclick="toast('Loading — the current engine unloads first.','warn')">Load</button></td></tr>
+        <tr><td><b>Chatterbox</b></td><td>Turbo · English</td><td class="n">2.1 GB</td><td><span class="tag ok">✓</span></td>
+          <td>1</td><td><span class="tag">installed</span></td><td><button class="btn s p" onclick="toast('Loading — the current engine unloads first.','warn')">Load</button></td></tr>
+        <tr><td><b>Dia</b></td><td>1.6B-0626</td><td class="n">6.4 GB</td><td><span class="tag ok">✓</span></td>
+          <td>1</td><td><span class="tag w">needs venv</span></td><td><button class="btn s" onclick="toast('Building the isolated venv — this takes a few minutes.','warn')">Install</button></td></tr>
+      </tbody></table></div>
+    <p class="hint" style="margin:0">Sizes HTTP-verified from the release tarballs, not typed from a model card.</p>
+  </div>
