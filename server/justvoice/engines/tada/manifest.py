@@ -35,6 +35,34 @@ WEIGHTS_LICENSE = "Llama-3.2-Community"
 # surfaces this on the Engines card + NOTICE.md.
 ATTRIBUTION = "Built with Llama"
 
+# Declared 2026-08-17. Previously silent, so it inherited the manager's
+# all-three default and claimed macOS.
+#
+# GROUNDS for excluding macOS — this one is a code fact, not a guess:
+# `EmbeddedEngine.pick_device`'s own docstring names TADA in the
+# `force_cpu_on_mac` set ("Chatterbox, TADA — MPS has tensor issues with
+# their models"), but `tada/engine.py:68` calls plain `pick_device(device)`
+# WITHOUT that flag. So on Apple Silicon `auto` resolves to mps — the path
+# upstream documented as broken. Chatterbox routes around this with its own
+# `_pick_device_chatterbox` override; TADA never got one.
+#
+# To claim macOS: pass force_cpu_on_mac=True in the adapter, then run it.
+SUPPORTED_OSES = ["windows", "linux"]
+
+# Marked for removal 2026-08-17 (user: "dont remove them now you can mark them
+# for removal and hide them"). Kept installable for anyone who already has it;
+# hidden from the catalog and from Voice engine setup for everyone else.
+# WHY: it costs the most and gives the least — 19.6 GB across three repos (our
+# largest by 2.4x), `engine.py` reads NO delivery field at all, and its 10
+# languages are a SUBSET of Chatterbox Multilingual's 23, which also takes
+# temperature/exaggeration/cfg_weight for 3.21 GB. Removing it also drops the
+# Llama-3.2 "Built with Llama" display obligation.
+# Full reasoning: docs/plans/2026-08-17-engine-roster-and-platform.md §2.7.
+DEPRECATED = (
+    "Scheduled for removal — Chatterbox Multilingual covers its languages, "
+    "clones, and takes per-render controls TADA ignores."
+)
+
 CAPABILITIES = {
     "preset_voices": False,
     "voice_cloning": True,

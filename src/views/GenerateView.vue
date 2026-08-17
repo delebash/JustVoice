@@ -76,7 +76,11 @@ const autoplay = ref(true);
 // explicit Rewrite button (plan Q3 + locked decision #3). The button
 // triggers a preview-then-accept modal — manuscript words are never
 // silently rewritten at render time.
-const stylePrompt = ref("");
+// `Delivery.emotion` — a labelled state, distinct from the free-prose
+// direction above it. It had no writer anywhere in the renderer until
+// 2026-08-17: the field existed, merged and composed, and nothing set it.
+const emotion = ref("");
+const emotionValues = ref([]);
 
 // ── Engine capability gating ──────────────────────────────────────────
 // Capability detail fetched from GET /v1/engines/capabilities. Variant
@@ -158,7 +162,50 @@ const pitchMin               = computed(() => pitchNative.value?.[0] ?? -12);
 const pitchMax               = computed(() => pitchNative.value?.[1] ?? 12);
 const supportsTemperature    = computed(() => hasKnob("temperature") || hasKnob("talker_temperature"));
 const supportsSeed           = computed(() => hasKnob("seed"));
-const supportsStylePrompt    = computed(() => engineCaps.value.supports_style_prompt === true);
+
+// ── Emotion ──────────────────────────────────────────────────────────
+// `delivery.emotion` is the one direction control with a cross-engine
+// meaning, because an enum can compile two ways where prose can only go
+// one: folded into `instruct` for engines that read prose, or turned into
+// this engine's own token for engines that have an emotion vocabulary.
+// Everything else — the direction textarea, the inline tags — reaches
+// exactly one engine family.
+const emotionValueMap = computed(() => emotionTagSet.value?.value_map || null);
+const canExpressEmotion = computed(
+  () => supportsFreeform.value || !!emotionValueMap.value,
+);
+// Only what THIS engine can actually say. A prose engine can say all of
+// them; a tag engine can say what its map covers and no more. Offering a
+// value the engine would drop is the failure this whole pass exists to
+// end — the ones left out are named in the hint instead of silently
+// substituted with a near-neighbour.
+const expressibleEmotions = computed(() => {
+  const map = emotionValueMap.value;
+  if (!map) return supportsFreeform.value ? emotionValues.value : [];
+  return emotionValues.value.filter((v) => v in map);
+});
+const unexpressibleEmotions = computed(() =>
+  emotionValueMap.value
+    ? emotionValues.value.filter((v) => !(v in emotionValueMap.value))
+    : [],
+);
+const emotionOptions = computed(() => [
+  { value: "", label: "(none)" },
+  ...expressibleEmotions.value.map((v) => ({ value: v, label: v })),
+]);
+const emotionMechanism = computed(() => {
+  const name = currentEngine.value?.name || "This engine";
+  if (emotionValueMap.value) {
+    const shown = emotionTagSet.value?.syntax?.replace("{value}", "angry") || "[angry]";
+    const missing = unexpressibleEmotions.value;
+    const gap = missing.length ? ` No token for ${missing.join(", ")} — say those in the direction box.` : "";
+    return `${name} takes emotion as a tag: it prefixes ${shown} to the line.${gap}`;
+  }
+  if (supportsFreeform.value) {
+    return `${name} takes emotion as words — it joins the delivery direction as one instruction.`;
+  }
+  return `${name} has no way to express emotion; it renders the line the same whichever you pick.`;
+});
 
 // ── Capability-driven engine knobs ───────────────────────────────────
 //
@@ -311,6 +358,9 @@ async function refreshVoices() {
     currentEngine.value = cur?.engine || null;
     history.value = (h?.takes || []).slice(0, 10);
     capabilityMap.value = caps?.engines || {};
+    // Served rather than hardcoded so the picker cannot drift from the
+    // server's Emotion enum (models.py EMOTION_VALUES).
+    emotionValues.value = caps?.emotion_values || [];
     const stillValid = availableVoices.value.some((x) => x.id === voice.value);
     if (!stillValid) voice.value = availableVoices.value[0]?.id || "";
   } catch (_) {}
@@ -399,7 +449,9 @@ function buildDelivery() {
   if (Math.abs(temperature.value - 0.7) > 0.001) d.temperature = temperature.value;
   if (seed.value && seed.value !== "random") d.seed = Number(seed.value) || seed.value;
   if (instruct.value.trim()) d.instruct = instruct.value.trim();
-  if (supportsStylePrompt.value && stylePrompt.value.trim()) d.style_prompt = stylePrompt.value.trim();
+  // Sent whenever it is set and the engine can express it. The server
+  // decides HOW — prose into instruct, or a tag onto the text.
+  if (canExpressEmotion.value && emotion.value) d.emotion = emotion.value;
 
   // Manifested engine knobs — only include keys whose current value
   // differs from the spec's default (don't pollute the payload with
@@ -879,7 +931,10 @@ onActivated(() => {
         <UiField layout="block" style="margin-top: 16px">
           <template #label>
             Delivery direction
-            <UiTag intent="ghost" v-if="!supportsFreeform">disabled · requires Qwen3-TTS or LuxTTS</UiTag>
+            <!-- Named LuxTTS here until 2026-08-17; luxtts/engine.py has no
+                 instruct read at all and its manifest declares
+                 instruct_field: False. Qwen3 is the only one. -->
+            <UiTag intent="ghost" v-if="!supportsFreeform">disabled · requires Qwen3-TTS</UiTag>
             <UiTag intent="success" v-else>free-form</UiTag>
           </template>
           <UiTextarea
@@ -899,21 +954,31 @@ onActivated(() => {
           </span>
         </UiField>
 
-        <!-- Style prompt — Qwen3-specific. Sits under Delivery direction
-             because both are about shaping the line's tone. Gated on the
-             engine declaring `supports_style_prompt` in its capability
-             manifest (only Qwen3 today). -->
-        <UiField v-if="supportsStylePrompt" layout="block" style="margin-top: 12px">
+        <!-- Emotion. Sits under Delivery direction because both shape how
+             the line is said, but this one is a LABEL and that one is
+             prose — which is the whole reason it exists. Prose reaches one
+             engine family; a label compiles two ways, so the same pick
+             survives a recast onto a tag engine.
+
+             A `Style prompt` textarea sat here until 2026-08-17. It was a
+             second prose box meaning "the consistent voice character" —
+             deleted because Qwen has one instruct slot, the adapter glued
+             the pair together before sending, and the standing-vs-this-line
+             axis it wanted is already persona-vs-line. -->
+        <UiField layout="block" style="margin-top: 12px">
           <template #label>
-            Style prompt <span class="jv-muted generate-view__label-hint">optional · {{ currentEngine?.name }}-specific</span>
+            Emotion
+            <UiTag intent="ghost" v-if="!canExpressEmotion">disabled · not expressible here</UiTag>
+            <UiTag intent="success" v-else-if="emotionValueMap">tag</UiTag>
+            <UiTag intent="success" v-else>words</UiTag>
           </template>
-          <UiInput
-            v-model="stylePrompt"
-            placeholder="warm narrative voice, calm tempo"
+          <UiSelect
+            width="name"
+            v-model="emotion"
+            :options="emotionOptions"
+            :disabled="!canExpressEmotion"
           />
-          <span class="ui-field__hint">
-            Short tone/style descriptor for the engine. Different from Delivery direction — the style prompt sets a consistent voice character, the delivery direction shapes THIS line's delivery.
-          </span>
+          <span class="ui-field__hint">{{ emotionMechanism }}</span>
         </UiField>
 
         <!-- Engine-specific knobs — rendered straight from the engine's

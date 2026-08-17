@@ -75,23 +75,23 @@ panel is open. To make a setting **stick**, put it on the persona that uses
 the voice ([personas.md](personas.md) → "How they sound" → default delivery
 overlay); that is the Tier-2 layer every render reads.
 
-> **Known gap.** The cross-engine knobs — speed, pitch, gain, temperature —
-> behave the same in the audition panel and at render. The *engine-private*
-> ones (Chatterbox's exaggeration and cfg_weight, Qwen3's talker temperature
-> and top-k/top-p, repetition penalty) are applied by the audition panel but
-> are **not** currently applied at render time. Audition them freely; don't
-> rely on them surviving into a rendered chapter yet. Tracked in
-> `docs/dev/TASKS.md`.
+Engine-private knobs used to be an exception here — the audition panel applied
+them and the render did not, because the UI saved them flat and the adapters
+read them nested. That seam was closed on 2026-08-17: what you audition is now
+what you render, for the cross-engine knobs and the engine-private ones alike.
 
 The ⚙ button opens the voice **inspector** (name / gender / language, plus
 Train and Blend), not a tuning surface.
 
-Common knobs (Chatterbox):
+Common knobs (Chatterbox Multilingual), with the defaults JustVoice actually
+sends:
 
-- `speed_factor` 0.92–1.05 typical narration, >1.1 sounds rushed
-- `exaggeration` 0.8–1.0 calm, 1.3 default, 1.4–1.7 emotional
-- `cfg_weight` 0.3–0.4 expressive variance, 0.7 locks tightly
-- `temperature` 0.7–0.8 consistent, higher = richer prosody
+- `exaggeration` — 0.25–2.0, default **0.5**. Below 0.4 reads flat; above 1.0 is dramatic.
+- `cfg_weight` — 0.0–1.0, default **0.5**. Lower loosens pacing, higher holds to the text. Set it to 0 when speaking a language other than the reference clip's.
+- `temperature` — default **0.8**. Lower is consistent, higher gives richer prosody.
+
+Chatterbox has **no speed control** — neither variant takes one. Use pitch and
+the effects chain, or an engine that does (Kokoro, LuxTTS).
 
 See [engines.md](engines.md) for which params each engine supports.
 

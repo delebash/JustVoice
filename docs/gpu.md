@@ -12,7 +12,7 @@ If the runtimes list is empty, you're CPU-only. Most engines still work on
 CPU, with a real split in usability: **Kokoro is built for CPU** (it's the
 one engine whose Auto device choice picks CPU deliberately) and stays
 comfortably usable there; the PyTorch cloning engines (Chatterbox, Qwen3,
-TADA, Dia, MOSS) are far slower on CPU — expect long renders to take many
+TADA, MOSS) are far slower on CPU — expect long renders to take many
 times the audio's length. For audiobook-scale work with a cloning engine,
 get CUDA (NVIDIA) or Metal (Apple Silicon) working.
 

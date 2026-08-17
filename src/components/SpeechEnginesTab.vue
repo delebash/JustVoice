@@ -219,6 +219,18 @@ function modelOnDisk(e, v) {
     || (v.on_disk == null && (e.status === "installed" || e.status === "loaded"));
 }
 function engineNeedsInstall(e) { return e.isolation === "venv" && e.status === "not_installed"; }
+// The OS gate's verdict, computed SERVER-side (`EngineInfo.supported_on_this_os`)
+// — never re-derived here, because the renderer can be a browser on a
+// different machine than the server. False means `install_engine` refuses,
+// so the row says why instead of offering a button that raises.
+function osBlocked(e) { return e.supported_on_this_os === false; }
+// Non-empty manifest DEPRECATED string = marked for removal; the string is the
+// user-facing reason. Server-owned, never re-derived here.
+function deprecated(e) { return (e.deprecated || "").trim(); }
+function osBlockedTitle(e) {
+  const list = (e.supported_oses || []).join(", ") || "no platforms";
+  return `${e.name || e.id} declares support for ${list}, and this server is not running one of them. Installing it would fail.`;
+}
 
 // ── Install (engine venv) — kit job-channel task, row bar only. ───────
 // No global task strip: that strip is the AI task panel, for runs that QUERY
@@ -513,6 +525,13 @@ function searchBlob(e) {
 }
 function engineVisible(e, sectionId) {
   if (engineCaps(e)[0] !== sectionId) return false;
+  // Marked for removal (manifest DEPRECATED, 2026-08-17). HIDE it while it is
+  // uninstalled — nobody new should pick it up — but KEEP the row for anyone
+  // who already installed it, badged with the reason, because the user's
+  // ruling was "dont remove them now": their install must keep working and
+  // must be able to say why it is going away. Search still finds it, so a
+  // deliberate lookup is never a dead end.
+  if (deprecated(e) && e.status === "not_installed" && !q.value.trim()) return false;
   const f = filterId.value;
   if ((f === "tts" || f === "stt") && !engineCaps(e).includes(f)) return false;
   if ((f === "cloning" || f === "presets") && !visibleVariantsFor(e.id).length) return false;
@@ -676,8 +695,18 @@ onBeforeUnmount(() => {
           >{{ e.attribution }}</span>
           <span class="gsum">
             <span v-if="anyTaskRunning(e.id)" class="meta">working… · click to expand</span>
-            <span v-if="!anyTaskRunning(e.id) && engineNeedsInstall(e)" class="ev-badge none">engine not installed</span>
-            <UiButton v-if="!anyTaskRunning(e.id) && engineNeedsInstall(e)" intent="primary" size="small"
+            <!-- The OS gate (2026-08-17). Shown for ANY blocked engine, not
+                 just venv ones: a shared engine has no Install button, its
+                 door is the per-variant Download — so the badge has to carry
+                 the explanation on its own. Listed rather than hidden, so a
+                 Mac user learns MOSS-TTSD exists and why it is not
+                 offered. -->
+            <span v-if="!anyTaskRunning(e.id) && osBlocked(e)" class="ev-badge none"
+              :title="osBlockedTitle(e)">not available on this OS · {{ (e.supported_oses || []).join(" · ") || "none" }}</span>
+            <span v-if="!anyTaskRunning(e.id) && deprecated(e)" class="ev-badge none"
+              :title="deprecated(e)">⚠ marked for removal</span>
+            <span v-if="!anyTaskRunning(e.id) && !osBlocked(e) && engineNeedsInstall(e)" class="ev-badge none">engine not installed</span>
+            <UiButton v-if="!anyTaskRunning(e.id) && !osBlocked(e) && engineNeedsInstall(e)" intent="primary" size="small"
               label="Install engine"
               title="One-time: builds the Python environment this engine runs in. Models download separately afterwards."
               @click.stop="installEngine(e)" />
@@ -692,7 +721,7 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="ev-gbody" v-if="isOpen(e)">
-          <div v-for="v in visibleVariantsFor(e.id)" :key="v.id" class="ev-model" :class="{ dim: engineNeedsInstall(e) }">
+          <div v-for="v in visibleVariantsFor(e.id)" :key="v.id" class="ev-model" :class="{ dim: engineNeedsInstall(e) || osBlocked(e) }">
             <span class="vn">{{ v.name }}</span>
             <!-- The facts chips (§6): languages · Cloning · Presets · N ·
                  licence — read straight off the ②c manifest facts the wire
@@ -722,13 +751,13 @@ onBeforeUnmount(() => {
                    files are on disk. The old one-step "⬇ Load (N GB)" died. -->
               <UiButton v-if="!modelLoaded(e, v) && !modelOnDisk(e, v)" intent="primary" size="small"
                 :label="`Download (${fmtDisk(v.size_mb)})`"
-                :disabled="busyAnywhere(e.id, v.id) || engineNeedsInstall(e)"
-                title="Download the model files. Load it from this row once it's on disk."
+                :disabled="busyAnywhere(e.id, v.id) || engineNeedsInstall(e) || osBlocked(e)"
+                :title="osBlocked(e) ? osBlockedTitle(e) : 'Download the model files. Load it from this row once it\'s on disk.'"
                 @click="downloadOnly(e, v.id)" />
               <UiButton v-if="!modelLoaded(e, v) && modelOnDisk(e, v)" intent="primary" size="small"
                 label="Load model"
-                :disabled="busyAnywhere(e.id, v.id) || engineNeedsInstall(e)"
-                :title="`Load into the ${(e.kind || 'tts').toUpperCase()} slot`"
+                :disabled="busyAnywhere(e.id, v.id) || engineNeedsInstall(e) || osBlocked(e)"
+                :title="osBlocked(e) ? osBlockedTitle(e) : `Load into the ${(e.kind || 'tts').toUpperCase()} slot`"
                 @click="runLoad(e, v.id)" />
               <!-- Set-as-default (model) — the user layer the manager resolves
                    over the manifest default. Rightmost, family position. -->

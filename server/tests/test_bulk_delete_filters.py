@@ -37,7 +37,7 @@ def _seed(tmp_path):
             persona_id="per-1",
         )
         other = Generation(
-            text="other", engine="dia", status="completed",
+            text="other", engine="tada", status="completed",
             is_favorited=True,
         )
         db.add_all([legacy, persona_era, other])
@@ -67,7 +67,7 @@ def test_voice_filter_matches_legacy_and_persona_rows(client, tmp_path):
 def test_engine_filter(client, tmp_path):
     legacy_id, persona_id, other_id = _seed(tmp_path)
 
-    r = client.delete("/v1/generations?engine=dia&confirm=true").json()
+    r = client.delete("/v1/generations?engine=tada&confirm=true").json()
     assert r["deleted_count"] == 1
 
     assert _remaining_ids(client) == {legacy_id, persona_id}

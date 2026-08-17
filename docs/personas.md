@@ -62,13 +62,25 @@ reaches the TTS engine**.
 
 **Spoken delivery** is a short description of how the character speaks. Examples: "Clipped, world-weary noir delivery. Dry wit. Boston accent in stressful moments." or "Eager, optimistic, ends sentences with rising intonation."
 
-Engines that accept a freeform style prompt (Qwen3-TTS, LuxTTS) receive it as their `instruct` field when JustVoice renders a block voiced by that persona. The TTS model uses it to adjust *delivery* — pacing, intonation, vocal warmth — without changing the manuscript words.
+**Qwen3-TTS CustomVoice is the only engine that reads it.** It arrives as that model's `instruct` field when JustVoice renders a block voiced by this persona, and the model uses it to adjust *delivery* — pacing, intonation, vocal warmth — without changing the manuscript words. Every other engine ignores the field, including Qwen3 **Base**, which clones but drops the instruction. (This page named LuxTTS here until 2026-08-17; its adapter reads no instruction at all.)
 
-Engines that don't accept freeform instructions (Kokoro, Chatterbox) ignore the field at render time. The editor tells you which case you're in: a line under the box names the engine your cast voice uses and says whether it takes direction.
+The editor tells you which case you're in: a line under the box names the engine your cast voice uses and says whether it takes direction. Trust that line over any list — it reads the engine's real capability.
 
-The flow is automatic — no checkbox, no extra dispatch. Just write a delivery note, render a chapter, and instruct-capable engines pick it up.
+The flow is automatic — no checkbox, no extra dispatch. Just write a delivery note, render a chapter, and an instruct-capable engine picks it up.
 
-A render preset's `delivery.instruct` overrides the persona's when both are set — useful when you want a chapter-specific delivery (whispered, intimate) without changing the persona's baseline.
+### How it combines with the line
+
+Spoken delivery is the character's **standing** instruction, not the last word. At render time three things join into the one instruction the engine receives, most specific last:
+
+1. this persona's **Spoken delivery** — who they are
+2. the **Emotion** label, if one is set
+3. the line's own **direction**, from the Chapters editor's `+ direction` button
+
+So a persona reading *"gravel-voiced harbour-master, always weary"* on a line marked *"shouting over the wind"* arrives as `gravel-voiced harbour-master, always weary. shouting over the wind`. A single hint passes through untouched — nothing reformats a note you wrote by hand.
+
+A render preset's `delivery.instruct` replaces the persona's in that first slot when both are set — useful for a chapter-specific delivery (whispered, intimate) without changing the persona's baseline. The line's direction still rides on the end.
+
+**Emotion is portable in a way this field is not.** Prose only reaches Qwen3; the nine-value Emotion label also compiles into a tag for Chatterbox Turbo, so it survives recasting a character onto a cloning engine. See [generate.md](generate.md) and [engines.md](engines.md).
 
 ## Character sheet — the prose half
 

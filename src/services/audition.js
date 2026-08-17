@@ -19,7 +19,6 @@ export const DELIVERY_KEYS = [
   "gain_db",
   "temperature",
   "instruct",
-  "style_prompt",
   "emotion",
   "seed",
 ];
@@ -112,7 +111,6 @@ const KNOB_LABEL = {
   pause_after: (v) => `pause after ${v} ms`,
   temperature: (v) => `temperature ${v}`,
   instruct: () => "instruct",
-  style_prompt: () => "style prompt",
   emotion: (v) => `emotion ${v}`,
 };
 

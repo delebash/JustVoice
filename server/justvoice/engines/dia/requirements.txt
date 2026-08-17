@@ -1,1 +1,0 @@
-# Deps in manifest.INSTALL — see comment in chatterbox's requirements.txt.

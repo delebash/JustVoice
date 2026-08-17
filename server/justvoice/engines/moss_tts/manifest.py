@@ -31,6 +31,21 @@ DEFAULT_VARIANT_ID = "moss-ttsd-v0"
 # flash-attn install attempt from contaminating the shared venv.
 ISOLATION = "venv"
 SUPPORTED_OSES = ["linux", "windows"]  # macOS hidden — no flash-attn
+
+# Marked for removal 2026-08-17, same ruling as TADA.
+# WHY: its headline capability has NEVER been reachable. `speaker_prompts`
+# exists repo-wide in exactly two places and both are prose — a note string in
+# capability_details.py and a comment in models.py. This adapter passes ONE
+# `reference_audio` (engine.py:108-115), so [S1]/[S2] both render from the same
+# clip. And the architecture could not use it anyway: Block.persona_id is one
+# persona per block and render_chapter_api is a per-line loop. Its other claims
+# are covered elsewhere — pause tags by host-side pause_before/pause_after
+# (every engine), Chinese by Chatterbox Multilingual (which also clones).
+# Full reasoning: docs/plans/2026-08-17-engine-roster-and-platform.md §2.8.
+DEPRECATED = (
+    "Scheduled for removal — its multi-speaker path was never wired, and "
+    "JustVoice renders one speaker per line."
+)
 DESCRIPTION = (
     "OpenMOSS MOSS-TTSD — expressive multi-speaker dialogue (Chinese + English), "
     "zero-shot voice cloning from short references, long stable single-pass "

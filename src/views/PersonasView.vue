@@ -319,6 +319,8 @@ function deliveryChipLabel(key) {
     pause_after_ms: "Pause after",
     gain_db: "Gain",
     temperature: "Temperature",
+    emotion: "Emotion",
+    instruct: "Direction",
   })[key] || key;
 }
 function deliveryChipValue(key, value) {
@@ -467,7 +469,12 @@ onMounted(loadAll);
           </label>
 
           <label class="personas__field personas__field--wide">
-            <span>Spoken delivery (engines that take instructions: Qwen3, LuxTTS)</span>
+            <!-- Said "Qwen3, LuxTTS" until 2026-08-17. LuxTTS reads no
+                 instruct field — its adapter never mentions one and its
+                 manifest declares instruct_field: False — so the label was
+                 promising delivery control the engine cannot perform, while
+                 the live verdict directly below it said the opposite. -->
+            <span>Spoken delivery (Qwen3 is the only engine that takes instructions)</span>
             <UiTextarea
               class="personas__textarea"
               v-model="draft.voice_instruct"
@@ -476,8 +483,9 @@ onMounted(loadAll);
             />
             <p class="jv-muted personas__hint">
               How the line is performed. Passed to instruct-capable engines as
-              the <code>instruct</code> / style-prompt field at render time;
-              other engines ignore it. <strong>Never an LLM rewrite of the
+              the <code>instruct</code> field at render time, joined with this
+              line's own direction; other engines ignore it.
+              <strong>Never an LLM rewrite of the
               manuscript</strong> — the Rewrite button is the explicit tool
               for that.
             </p>

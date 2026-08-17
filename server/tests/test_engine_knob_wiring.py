@@ -31,14 +31,12 @@ ADAPTER_FOR = {
     "chatterbox-multilingual": "chatterbox",
     "qwen3": "qwen3",
     "luxtts": "luxtts",
-    "dia": "dia",
     "moss-tts": "moss_tts",
     "tada": "tada",
     # Alias rows for the two families whose variant ids diverge from their
     # engine id (see the bottom of capability_details.py). Same object, so
     # these re-check the same content — cheap, and it keeps the parametrised
     # tests total over CAPABILITY_DETAILS rather than a hand-kept subset.
-    "dia2": "dia",
     "moss-ttsd": "moss_tts",
 }
 
@@ -82,11 +80,10 @@ def test_every_override_the_adapter_reads_is_declared(engine: str) -> None:
             declared |= {k.key for k in CAPABILITY_DETAILS[cap_id].knobs}
     # Non-numeric overrides that ride the same subdict but cannot be KnobSpecs
     # (which are slider + number only), so they are surfaced another way:
-    #   instruct / style_prompt — qwen3's textareas, gated by
-    #     supports_instruct_freeform / supports_style_prompt
-    #   prefix_speaker_2 — dia2's second reference-clip PATH, for a two-hander;
-    #     speaker 1 comes from the cast voice's own clip
-    declared |= {"instruct", "style_prompt", "prefix_speaker_2"}
+    #   instruct — qwen3's textarea, gated by supports_instruct_freeform
+    #   prefix_speaker_2 was dia2's second reference-clip PATH; it went with
+    #     the engine on 2026-08-17.
+    declared |= {"instruct"}
     missing = read - declared
     assert not missing, (
         f"{engine}/engine.py reads {sorted(missing)} from delivery.engine "
@@ -113,9 +110,9 @@ def test_variant_lookup_walks_suffixes_not_just_the_base() -> None:
 def test_every_manifest_variant_resolves_to_a_row() -> None:
     """A variant the catalog offers must reach a capability row.
 
-    `GET /v1/engines/{variant_id}/capabilities` 404'd for `moss-ttsd-v0` and
-    (after the Dia2 port) `dia2-1b`, because both families are named
-    differently from their engine id and the suffix walk never reaches them.
+    `GET /v1/engines/{variant_id}/capabilities` 404'd for `moss-ttsd-v0`
+    because the family is named differently from its engine id and the
+    suffix walk never reaches it.
     A 404 here means the Generate UI silently falls back to the engine's row —
     or to nothing.
     """
@@ -141,8 +138,6 @@ def test_every_manifest_variant_resolves_to_a_row() -> None:
 
 
 def test_the_divergent_family_aliases_point_at_the_right_engines() -> None:
-    assert lookup("dia2-1b").engine_id == "dia"
-    assert lookup("dia2-2b").engine_id == "dia"
     assert lookup("moss-ttsd-v0").engine_id == "moss-tts"
 
 

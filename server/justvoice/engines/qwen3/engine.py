@@ -152,18 +152,15 @@ class Qwen3(EmbeddedEngine):
 
         delivery = req.delivery or {}
         engine_overrides = delivery.get("engine") or {}
+        # Qwen has exactly ONE upstream instruct slot. The host composes
+        # everything that shapes delivery into it before the request gets here
+        # — persona standing instruction, emotion, this line's direction, in
+        # that order (`delivery_merge.compose_instruct`). A second
+        # `style_prompt` field used to be read here and concatenated onto the
+        # front; it was deleted 2026-08-17 because the concat happened one line
+        # before the model saw it, so the two fields were never distinguishable
+        # downstream.
         instruct = delivery.get("instruct") or engine_overrides.get("instruct")
-        # Qwen3 only has ONE upstream "instruct" slot, but the UI
-        # surfaces two distinct fields: `style_prompt` (consistent
-        # voice character) and `instruct` (this line's delivery
-        # direction). Merge them — style_prompt sets the voice, instruct
-        # shapes the line. Comma-separated so the model reads them as
-        # a single natural-language instruction.
-        style_prompt = delivery.get("style_prompt") or engine_overrides.get("style_prompt")
-        if style_prompt and instruct:
-            instruct = f"{style_prompt}. {instruct}"
-        elif style_prompt:
-            instruct = style_prompt
         bcp = (req.language or "en").split("-")[0].lower()
         language = _LANG_NAME.get(bcp, "auto")
 

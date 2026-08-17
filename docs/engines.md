@@ -1,6 +1,6 @@
 # Engines
 
-JustVoice ships with 7 commercial-output-permitting TTS engines plus an external OpenAI-compatible bridge. Each engine runs in its own Python venv or against a shared one (see Isolation below) so installing Chatterbox doesn't break Kokoro's dependency tree.
+JustVoice ships with 6 commercial-output-permitting TTS engines plus an external OpenAI-compatible bridge. Each engine runs in its own Python venv or against a shared one (see Isolation below) so installing Chatterbox doesn't break Kokoro's dependency tree.
 
 > **Why no Higgs?** Higgs Audio v3 was removed 2026-06-09 — its model weights are released under a non-commercial license, which conflicts with JustVoice's audiobook / game / podcast use cases where users sell their generated output. Every remaining bundled engine's weights permit commercial output (verified against each engine's HuggingFace model card).
 >
@@ -15,9 +15,8 @@ JustVoice ships with 7 commercial-output-permitting TTS engines plus an external
 | **Chatterbox Multilingual** | clone | 3.2 GB | 23 | ✓ | MIT |
 | **Qwen3-TTS** | 9 presets + instruct · *or* clone | 2.5–4.5 GB | 10 | ✓ (Base only) | Apache-2.0 |
 | **LuxTTS (ZipVoice)** | clone · 48 kHz | 1.2 GB | en | ✓ | Apache-2.0 |
-| **Hume TADA** | clone · long-form coherent | 19.6 GB | 10 | ✓ | Llama 3.2 Community (+ MIT codec) |
-| **Dia2 (Nari Labs)** | clone · multi-speaker dialogue | 4.3 GB (1B) / 7.7 GB (2B) + 0.4 GB codec | en | ✓ | Apache-2.0 (codec CC-BY-4.0) |
-| **MOSS-TTSD** | clone · dialogue | 4.1 GB | en + zh | ✓ (experimental) | Apache-2.0 |
+| **Hume TADA** ⚠ | clone · long-form coherent | 19.6 GB | 10 | ✓ | Llama 3.2 Community (+ MIT codec) |
+| **MOSS-TTSD** ⚠ | clone · dialogue | 4.1 GB | en + zh | ✓ (experimental) | Apache-2.0 |
 | **External** (OpenAI-compatible) | HTTP | 0 MB | — | varies | depends on provider |
 
 (Download sizes are the SUM of each variant's pinned, verified model files
@@ -55,34 +54,47 @@ identically on every engine:
 
 Everything else is passed to the engine, and each one honours a different set:
 
-| Engine | Clones | Speed | Written direction | Engine controls |
-|---|---|---|---|---|
-| **Kokoro** | ✗ | ✓ | ✗ | none |
-| **Chatterbox Multilingual** | ✓ | ✗ | ✗ | Exaggeration · CFG weight · Temperature · Repetition penalty · Min p · Top p |
-| **Chatterbox Turbo** | ✓ | ✗ | ✗ | Temperature · Repetition penalty · Top p · Top k · `[cough] [laugh] [chuckle] [sigh]` tags |
-| **Qwen3 CustomVoice** | ✗ | ✗ | ✓ instruct + style prompt | Temperature · Top k · Top p · Repetition penalty |
-| **Qwen3 Base** | ✓ | ✗ | ✓ instruct + style prompt | as above |
-| **LuxTTS** | ✓ | ✓ | ✗ | Inference steps · Guidance scale · Max ref length · Reference loudness · Timestep shift · Smoothing |
-| **Dia2** | ✓ | ✗ | ✗ | CFG scale · Temperature; advanced Audio top-k · CFG filter top-k · Text temperature · Text top-k · Initial padding · speaker + non-verbal tags |
-| **MOSS-TTSD** | ✓ | ✗ | ✗ | Temperature · Top p · Top k · Repetition penalty · Max length · speaker + pause tags |
-| **TADA** | ✓ | ✗ | ✗ | none — text, reference and language only |
+| Engine | Clones | Speed | Written direction | Emotion | Engine controls |
+|---|---|---|---|---|---|
+| **Kokoro** | ✗ | ✓ | ✗ | ✗ | none |
+| **Chatterbox Multilingual** | ✓ | ✗ | ✗ | ✗ | Exaggeration · CFG weight · Temperature · Repetition penalty · Min p · Top p |
+| **Chatterbox Turbo** | ✓ | ✗ | ✗ | **✓ as a tag** | Temperature · Repetition penalty · Top p · Top k · 19 inline tags |
+| **Qwen3 CustomVoice** | ✗ | ✗ | **✓ instruct** | **✓ as words** | Temperature · Top k · Top p · Repetition penalty |
+| **Qwen3 Base** | ✓ | ✗ | ✗ | ✗ | as above |
+| **LuxTTS** | ✓ | ✓ | ✗ | ✗ | Inference steps · Guidance scale · Max ref length · Reference loudness · Timestep shift · Smoothing |
+| **MOSS-TTSD** | ✓ | ✗ | ✗ | ✗ | Temperature · Top p · Top k · Repetition penalty · Max length · speaker + pause tags |
+| **TADA** | ✓ | ✗ | ✗ | ✗ | none — text, reference and language only |
 
-**Cloning is not Chatterbox-only.** Chatterbox, LuxTTS, MOSS-TTSD, TADA,
-**Dia2** and **Qwen3 Base** all clone. Kokoro and **Qwen3 CustomVoice** do not —
+**Direction and identity pull against each other.** Written direction — the
+Delivery direction box, a persona's Spoken delivery, a line's own direction —
+reaches **Qwen3 CustomVoice and nothing else**, and CustomVoice is the one
+Qwen checkpoint that cannot clone. Qwen3 *Base* clones but drops the
+instruction silently: its clone call takes text, reference and language only.
+So "direct the performance in words" and "use this character's cloned voice"
+are, today, a choice. The way to have both is a LoRA trained on an
+instruct-capable checkpoint — see Train in [labs.md](labs.md).
+
+**Emotion is the exception, and that is why it is a list.** `Emotion` is a
+nine-value label rather than a sentence, so it can compile two ways: into the
+instruction for engines that read prose, or into the engine's own token for
+engines that have an emotion vocabulary. Chatterbox Turbo is the only engine
+in the second group — pick *fearful* and it renders `[fear] Who's there?`.
+Turbo has no token for *sad*, *shouted* or *contemptuous*, so those three are
+not offered while it is loaded. See [generate.md](generate.md).
+
+**Chatterbox Turbo's inline tags — all nineteen.** Seven emotion (`[angry]`
+`[fear]` `[happy]` `[sarcastic]` `[surprised]` `[crying]` `[whispering]`),
+three register (`[narration]` `[dramatic]` `[advertisement]`) and nine
+non-verbal (`[cough]` `[laugh]` `[chuckle]` `[sigh]` `[gasp]` `[groan]`
+`[sniff]` `[clear throat]` `[shush]`). They are Turbo's alone — Multilingual
+shares the engine but not the tokenizer and reads them aloud as words.
+Resemble's model card documents only three by name, so the rest are declared
+from the checkpoint's reserved token ids and have not been verified by ear.
+
+**Cloning is not Chatterbox-only.** Chatterbox, LuxTTS, MOSS-TTSD, TADA
+and **Qwen3 Base** all clone. Kokoro and **Qwen3 CustomVoice** do not —
 and because that split runs *inside* the Qwen3 family, the variant is what
 decides, not the engine name.
-
-**Dia2 replaced Dia 1.6B (2026-08-17).** Dia 1 could not clone here — its
-adapter never passed the reference clip, so a cloned voice pointed at Dia came
-out in the stock voice. Dia2 takes a reference clip **per speaker**: the cast
-voice's clip drives `[S1]`, and `delivery.engine.prefix_speaker_2` can drive
-`[S2]` for a two-hander. Two checkpoints, **Dia2 1B** (the default) and **2B**.
-Dia 1's single "stock voice" row is gone, because the voice now comes from your
-clip. Note the sampler changed shape: Dia2 samples the text and audio streams
-separately and has **no top-p**, so the Temperature slider drives the audio
-stream and the old Top-p / Max-length knobs no longer exist. Upstream lists
-streaming as *Upcoming*, so it is not available — a generation still runs to
-about 2 minutes.
 
 **A note on LuxTTS "T-shift".** It was previously presented as a native pitch
 control. It is not. The fork we ship (`ysharma3501/LuxTTS`) calls it a
@@ -105,7 +117,7 @@ worth trying if output sounds metallic.
 - **Audiobook with 5+ characters.** Chatterbox Turbo for main voices + Kokoro for incidental characters (faster to render, plenty of voices).
 - **Multilingual audiobook.** Chatterbox Multilingual — 23 languages, and it clones. Qwen3 covers 10 and is reported strongest on Chinese / Japanese / Korean (reported, not measured here) — but only its Base checkpoint clones; CustomVoice gives you its 9 preset speakers instead.
 - **Game NPC dialogue at 50-500 line scale.** Kokoro (fast on CPU, 54 voices). Render speed matters at scale.
-- **Multi-speaker game cutscenes.** Dia2. One render produces both parts, and each speaker can be cloned from its own reference clip.
+- **Multi-speaker game cutscenes.** MOSS-TTSD. One render produces every part, tagged `[S1]` `[S2]` `[S3]`, each cloned from its own reference clip.
 - **Podcast voiceover.** Chatterbox Turbo if you want it to sound like you; Kokoro if you want preset variety fast.
 - **Dictation playback** (MCP `speak` tool). Kokoro. Lowest latency.
 
@@ -192,6 +204,65 @@ long TTS renders. Installing, downloading and loading are file and process
 work, so they live on the row that owns them — the same rule the AI model
 catalog follows for its own downloads and loads.
 
+## ⚠ Marked for removal — TADA and MOSS-TTSD
+
+Both are **scheduled for removal** and are no longer offered to new setups.
+If you already installed one it keeps working exactly as before, and its row
+stays on the Speech engines tab with a **⚠ marked for removal** badge; hover it
+for the reason. If you have not installed it, it no longer appears in the
+catalog and Voice engine setup never includes it in a tier. Searching for it by
+name still finds it, so nothing is a dead end.
+
+**Why TADA is going:** it is our largest download by a wide margin — 19.6 GB
+across three repositories — and it accepts none of the per-render controls. Its
+generate call takes text, a reference clip and a language, and nothing else. Its
+ten languages are a subset of Chatterbox Multilingual's twenty-three, which also
+clones and does take those controls, for 3.2 GB.
+
+**Why MOSS-TTSD is going:** it was here for multi-speaker dialogue, and that
+path was never wired — the adapter passes a single reference clip, so `[S1]` and
+`[S2]` both come out in the same voice. JustVoice renders **one speaker per
+line** and joins the results, which is a different shape from what a dialogue
+model wants. Its other two draws are already covered: pauses are applied by
+JustVoice after synthesis so they work on every engine, and Chatterbox
+Multilingual covers Chinese *and* clones.
+
+Nothing you have produced is affected. Existing renders, voices and personas
+are unchanged; a persona cast to a voice on either engine keeps rendering while
+the engine is installed. If you want to move a character off one, recast it in
+Studio · Cast — the persona keeps its delivery settings, and the host-side ones
+(gain, pitch, pauses, effects, lexicon) carry over to any engine.
+
+## Which engines run on your operating system
+
+Not every engine runs everywhere, and the ones that don't are **listed but not
+offered**. Instead of an Install or Download button you get a badge —
+`not available on this OS · windows · linux` — and hovering it says which
+platforms the engine does declare. Nothing is hidden: you can still read the
+engine's description, its models, their sizes and licences. You just can't
+install something that would fail.
+
+| Engine | Windows | Linux | macOS | Why |
+|---|:--:|:--:|:--:|---|
+| **Kokoro** | ✓ | ✓ | ✓ | ONNX via sherpa-onnx; the only engine declaring CoreML and DirectML as well as CUDA |
+| **Chatterbox** | ✓ | ✓ | ✓ | Runs, but **CPU-only on macOS** — see below |
+| **LuxTTS** | ✓ | ✓ | ✓ | Every dependency publishes wheels for all three, including piper-phonemize |
+| **Whisper (STT)** | ✓ | ✓ | ✓ | transformers + torch, nothing platform-specific |
+| **Qwen3-TTS** | ✓ | ✓ | ✗ | Declares CUDA and nothing else; no Apple-Silicon path in the adapter |
+| **TADA** | ✓ | ✓ | ✗ | Known tensor issues on Apple's MPS backend |
+| **MOSS-TTSD** | ✓ | ✓ | ✗ | Needs flash-attn, which barely builds outside Linux |
+
+**On macOS, Chatterbox deliberately runs on the CPU** even when you have an
+Apple-Silicon GPU, because of a known PyTorch MPS problem with that model.
+It works; it is slower than the same model on a CUDA box. Kokoro is the engine
+built for CPU and is the better first choice on a Mac.
+
+A note on how this is decided: each engine declares its own platforms, and the
+server — not your browser — decides whether the machine actually running the
+engine qualifies. That matters when you use JustVoice headless
+(`justvoice-server serve`) from a laptop against a server elsewhere: what you
+can install depends on that server's OS, not yours.
+
 ## GPU detection + tier-aware default
 
 Settings → GPU shows your backend (CUDA / MPS / Metal / XPU / DirectML / ROCm), device name, VRAM total / used, compute capability, and HSA override status. On CPU-only boxes Kokoro is the recommended engine (it's built for CPU); for GPU boxes there is no hand-typed VRAM-to-engine pairing table any more — an engine's real footprint is **measured on your machine at its first load** and shown on the console's memory strip, which is the honest way to see what fits (the old GB-tier suggestions were never measured; cut 2026-08-14).
@@ -259,9 +330,7 @@ which kind an engine gets is a property of the engine:
   takes minutes and the rest are quick.
 - **A private environment**, at `server/justvoice/engines/<engine_id>/.venv/`.
   Engines whose dependencies genuinely cannot coexist with the rest get
-  their own: **Dia2** (ships as its own `dia2` package, installed from source
-  because there is no PyPI release, with its own pinned dependency set) and
-  **MOSS-TTSD** (needs flash-attn, which is a long compile and frequently
+  their own: **MOSS-TTSD** (needs flash-attn, which is a long compile and frequently
   fails on Windows — keeping that attempt out of the shared environment is
   exactly why it is isolated).
 

@@ -44,7 +44,7 @@ and answered wrongly each time, when the answers were sitting in the code and in
 |---|---|
 | `name`, `language`, `avatar_path` | identity |
 | `voice_id` | the instrument. **Not** an FK — voices are JSON manifests, the column carries the id verbatim |
-| `voice_instruct` | the spoken-delivery instruction. **The only text that reaches the synth.** Consumed as `delivery.instruct` by engines whose manifest declares an instruct field (Qwen3 CustomVoice, LuxTTS); the rest ignore it |
+| `voice_instruct` | the spoken-delivery instruction. **The only persona text that reaches the synth.** Composed into `delivery.instruct` and consumed by **Qwen3 CustomVoice alone** — `luxtts/engine.py` contains no instruct read and its manifest declares `instruct_field: False`, and Qwen3 Base's clone call never passes it. This row said "Qwen3 CustomVoice, LuxTTS" until 2026-08-17, as did the persona editor's own label |
 | `personality` | the character sheet. Drives Compose / Rewrite / smart-assign / the game-export sidecar. **Never reaches the synth.** Max 2000 chars at the API layer |
 | `default_delivery` | JSON `Delivery` — speed, pitch, gain, etc. |
 | `effects_chain` | JSON array of `{type, params}` |
@@ -195,17 +195,68 @@ podcast: show/episode/segment.
 Read from each `server/justvoice/engines/<id>/manifest.py`. **Cloning is not
 Chatterbox-only.**
 
-| Engine | Variants | Clones | Designs | Languages |
-|---|---|---|---|---|
-| **kokoro** | `kokoro-multi-lang-v1_0`, `kokoro-en-v0_19` | ✗ | ✗ | 9 declared |
-| **chatterbox** | `chatterbox-multilingual-v2`, `chatterbox-turbo-v1` | **✓** | ✗ | 20+ |
-| **qwen3** | `qwen3-cv-1.7b`, `qwen3-cv-0.6b` | ✗ | ✗ | `_QWEN_LANGS` |
-| | `qwen3-base-1.7b`, `qwen3-base-0.6b` | **✓** | ✗ | |
-| **luxtts** | `luxtts-base` | **✓** | ✗ | en |
-| **moss_tts** | `moss-ttsd-v0` | **✓** | ✗ | en, zh |
-| **tada** | `tada-3b` | **✓** | ✗ | 10 |
-| **dia** | `dia2-1b`, `dia2-2b` | **✓** | ✗ | en |
-| **whisper** | — | ✗ (ASR) | — | multilingual |
+### 3a. What each MODEL is — every shipped variant
+
+Sizes are the summed real bytes of each manifest's pinned load set, not a
+rounded claim. **The variant is the unit, never the engine** — every trap below
+is a case of the engine-level flag disagreeing with the variant that loads.
+
+| Engine | Variant | Clones | Presets | Designs | Multi-speaker | Langs | Download |
+|---|---|---|---|---|---|---|---|
+| **kokoro** | `kokoro-multi-lang-v1_0` | ✗ | **54** | ✗ | ✗ | 9 | 349 MB |
+| | `kokoro-en-v0_19` | ✗ | fewer, untyped | ✗ | ✗ | en | 320 MB |
+| **chatterbox** | `chatterbox-multilingual-v2` | **✓** | 0 | ✗ | ✗ | **23** | 3.21 GB |
+| | `chatterbox-turbo-v1` | **✓** | 0 | ✗ | ✗ | en | 2.99 GB |
+| **qwen3** | `qwen3-cv-1.7b` / `-0.6b` | ✗ | **9** | ✗ | ✗ | 10 | 4.52 / 2.50 GB |
+| | `qwen3-base-1.7b` / `-0.6b` | **✓** | 0 | ✗ | ✗ | 10 | 4.54 / 2.52 GB |
+| **luxtts** | `luxtts-base` | **✓** | 0 | ✗ | ✗ | en | 1.18 GB |
+| **tada** | `tada-3b` | **✓** | 0 | ✗ | ✗ | 10 | **19.6 GB** (3 repos) |
+| **moss_tts** | `moss-ttsd-v0` | **✓** | 0 | ✗ | **✓ [S1][S2][S3]** | en, zh | 4.12 GB |
+| **whisper** | — | ✗ (ASR) | — | — | — | multilingual | — |
+
+### 3b. What each engine DOES with a delivery — the honest ✓ grid
+
+✓ = the adapter reads it. Blank = the value is accepted, merged, stored and
+silently dropped. This is the grid to check before promising any control.
+
+| Field | kokoro | chat-ML | chat-Turbo | qwen3-CV | qwen3-Base | luxtts | tada | moss |
+|---|---|---|---|---|---|---|---|---|
+| `speed` | **✓** | | | | | **✓** | | |
+| `instruct` (prose) | | | | **✓** | | | | |
+| `emotion` | | | **✓ tag** | **✓ prose** | | | | |
+| `temperature` | | ✓ | ✓ | ✓ | ✓ | | | via `engine.*` |
+| `seed` | n/a — deterministic | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| reference clip | | ✓ | ✓ | **refuses** | ✓ | ✓ | ✓ | ✓ |
+| phoneme override | declared, **not wired** | | | | | | | |
+
+Everything NOT in that grid — `gain_db`, `pitch`, the effects chain, lexicons,
+`pause_before`/`pause_after` — is host-side and works on **all** of them. See
+§5's delivery matrix for where each is applied.
+
+Three facts this grid exists to keep visible:
+
+- **`speed` reaches two of nine models.** For a narration app that is the
+  most-wanted knob and it is mostly inert. It is also the easiest to fix: a
+  host-side time-stretch would move it into the always-works set.
+- **Prose direction reaches one checkpoint, and that checkpoint cannot clone.**
+  Qwen3 Base clones and drops instruct — `engine.py`'s clone branch passes
+  text, reference and language only. So "direct in words" and "use this
+  character's cloned voice" are a choice today. The way to have both is a LoRA
+  on an instruct-capable checkpoint.
+- **`tada/engine.py` reads no delivery field at all.** Text, reference clip,
+  language, seed. Nothing else.
+
+### 3c. Inline tags — the syntaxes are incompatible
+
+| Engine | Categories | Tags |
+|---|---|---|
+| **chatterbox-turbo** | emotion · register · paralinguistic | 19, see §5's tag surface |
+| **moss-tts** | speaker · pause | `[S1]` `[S2]` `[S3]` · `[pause 0.5s]` … `[pause 2.0s]` |
+| everything else | — | none |
+
+Turbo wants `[laugh]`, MOSS wants `[S1]`. **A tag typed into a script is
+engine-specific text** — recast the line onto another voice and it is either
+read aloud literally or dropped. Any script-level design has to own that.
 
 **Two traps:**
 
@@ -219,6 +270,28 @@ Chatterbox-only.**
    is built and gated pending one download — `qwen3/manifest.py:38-42` says it
    *"flips back with the VoiceDesign variant."* So the door offers **Install**,
    not a dead ✗.
+
+### 3d. Which engines run on which OS — and where that is enforced
+
+Every manifest declares `SUPPORTED_OSES` explicitly; **no engine may inherit
+the all-three default** (`test_os_gate.py` fails if one tries). macOS is the
+only platform anything excludes: **qwen3** (CUDA-only adapter), **tada** (MPS
+tensor issues) and **moss-tts** (flash-attn). The user-facing
+table is `docs/engines.md` → *Which engines run on your operating system*.
+
+**The gate is `install_engine()` (`manager.py:663`)** — above the isolation
+split, deliberately. It raises `InstallError` naming the host OS and the
+declared list. `EngineInfo.supported_on_this_os` carries the verdict to the
+client, computed server-side because the renderer may be a browser on another
+machine; `SpeechEnginesTab.vue:osBlocked()` reads it and swaps the Install
+button for a badge.
+
+Until 2026-08-17 this was inert in every case. The only `supports_current_os()`
+call sat in `shared_venv.py:199` behind `if m.isolation != "shared": continue`
+— so it could never reach MOSS or (then) Dia, **the only engines that declared
+a restriction**. Everything it did evaluate declared all three and passed. The
+`supported_oses` docstring promised a catalog filter that did not exist, and
+`engines_api` served the field to a UI that never read it.
 
 Chatterbox is **clone-only** — no preset voices, the host catalog stays empty
 for it (`chatterbox/manifest.py:168`). Kokoro's list is **static, 54 presets,
@@ -301,20 +374,24 @@ engine-specific, and three fields are read by nothing at all.**
 | effects chain | **host** — `apply_effects_chain`, after gain and pitch | **every engine** |
 | lexicons | **host** — `_apply_lexicons` substitutes text before synth | **every engine** |
 | `speed` | engine | **kokoro** (`engine.py:159`), **luxtts** (`:105`) |
-| `instruct` | engine | **qwen3 only** (`:155`) |
-| `style_prompt` | engine | **qwen3 only** (`:162`) |
+| `instruct` | engine | **qwen3 CustomVoice only** (`:155`). Composed by `delivery_merge.compose_instruct` from persona `voice_instruct` → `emotion` → `Block.direction`, most specific last, a lone hint verbatim. Both render paths use that one function since 2026-08-17; before it, `/v1/generate` composed nothing |
+| ~~`style_prompt`~~ | — | **Deleted 2026-08-17.** A second prose field against `instruct`'s "this line", concatenated into it by the adapter one line before the model saw them. Qwen has one slot; the standing-vs-this-line axis is persona-vs-line, which already exists |
 | `temperature` | engine | **chatterbox** (`:175`), **qwen3** (`:179`) |
-| `engine.*` subdict | engine | chatterbox · qwen3 · luxtts · moss_tts · dia. **Fixed 2026-08-17** — `nest_engine_keys()` in `delivery_merge.py` moves flat capability keys into `engine` before the merge, so the UI's flat save now arrives nested |
+| `engine.*` subdict | engine | chatterbox · qwen3 · luxtts · moss_tts. **Fixed 2026-08-17** — `nest_engine_keys()` in `delivery_merge.py` moves flat capability keys into `engine` before the merge, so the UI's flat save now arrives nested |
 | `seed` | host | `delivery.seed` wins over `req.seed` — a deliberate override |
-| `emotion` | **host** | **Wired 2026-08-17** — composed into `instruct` alongside the persona's and the line's direction. Reaches engines that consume instruct; ignored by the rest, like any instruct |
+| `emotion` | **host, two ways** | **The only cross-engine direction control.** An enum compiles where prose cannot: composed into `instruct` for prose engines, and compiled into a token by `render_core._apply_emotion_tag` for engines whose capability row declares an `inline_tags` set with `category="emotion"` and a `value_map` — **Chatterbox Turbo alone**. Variant-precise via `manager.current_variant_id`, because Multilingual shares the engine id and would read `[angry]` aloud. Applied after the lexicon and mirrored in `probe_line_cached`, or the cache probe lies. Had **no writer in `src/` at all** until 2026-08-17 |
 | `pause_before` / `pause_after` | **host** | **Wired 2026-08-17** — `concat_lines` uses them per join. Blank = the project gap; a value replaces it; both sides of a join add. `0` is a deliberate butt-join |
 | — | — | **`tada/engine.py` reads no delivery field at all** |
 
 **Design consequence, and it is a big one:** tuning does **not** move cleanly with
-a character across a recast. The **host-side half — gain, effects, lexicon —
-always survives**. The **engine half — speed, instruct, style_prompt,
+a character across a recast. The **host-side half — gain, pitch, effects,
+lexicon, pauses — always survives**. The **engine half — speed, instruct,
 temperature — survives only if the new engine happens to honour it.** Cast a
 persona from Kokoro to Chatterbox and its `speed` silently stops doing anything.
+
+`emotion` is the single exception and the reason it is an enum rather than
+prose: it compiles into instruct prose for one family and into a token for the
+other, so it is the one piece of a *performance* that crosses the boundary.
 
 Any persona editor must therefore show, per field, whether the currently cast
 voice's engine honours it. The machinery exists —
@@ -337,9 +414,32 @@ a declared knob no adapter reads, or an override no UI can reach.**
 | `chatterbox-turbo` | temperature · repetition_penalty · top_p · top_k · seed | `ChatterboxTurboTTS.generate(…, repetition_penalty=1.2, min_p=0.0, top_p=0.95, exaggeration=0.0, cfg_weight=0.0, temperature=0.8, top_k=1000, norm_loudness=True)` |
 | `qwen3` | talker_temperature · talker_top_k · talker_top_p · repetition_penalty · seed | `generate_custom_voice(..., **kwargs)` / `generate_voice_clone(..., **kwargs)` → HF `generate` |
 | `luxtts` | speed · num_steps · guidance_scale · max_ref_length · t_shift · seed | `generate_speech(text, encode_dict, num_steps=4, guidance_scale=3.0, t_shift=0.5, speed=1.0)` + `encode_prompt(prompt_audio, duration=5, rms=0.001)` |
-| `dia` | temperature · cfg_scale · audio_top_k · cfg_filter_k · text_temperature · text_top_k · initial_padding · seed | `dia2/generation.py::GenerationConfig` — **Dia2 since 2026-08-17**; no top_p in this model |
 | `moss-tts` | temperature · top_p · top_k · repetition_penalty · max_new_tokens · seed | `moss_tts/engine.py:111-115` |
 | `tada` | seed only | `generate_from_text_and_prompt(text, prompt, language)` — takes nothing else |
+
+### The inline-tag surface
+
+Separate from knobs, and the same failure mode. `chatterbox-turbo` declared
+**4** tags; the checkpoint's `added_tokens.json` holds **19** at reserved ids
+50257–50275, so fifteen were unreachable. Declared in full 2026-08-17, split
+into three categories because they are not one kind of thing:
+
+| Category | Tags | Why it is its own set |
+|---|---|---|
+| `emotion` | angry · fear · happy · sarcastic · surprised · crying · whispering | the state the whole line is in — carries the `value_map` that makes `Delivery.emotion` cross-engine |
+| `register` | narration · dramatic · advertisement | how the passage is read, not what the speaker feels |
+| `paralinguistic` | cough · laugh · chuckle · sigh · gasp · groan · sniff · clear throat · shush | a sound at a *moment*, so the author places it |
+
+Only `category="emotion"` sets carry `value_map`, and a test enforces both that
+and that every mapped tag is one the set declares. Turbo has no token for
+`shouted` or `contemptuous`; `sad` is deliberately unmapped because `[crying]`
+is a behaviour, not a state. Upstream documents three tags by name and says
+"and more" — the rest are declared from token ids and **unrendered here**.
+
+Latent, not fixed: `_tags_supported` reads engine-level manifest
+`CAPABILITIES`, and `chatterbox` declares `paralinguistic_tags: True` for the
+whole family — so a hand-typed `[laugh]` is not stripped for Multilingual,
+which has no such token. The emotion path is variant-precise; this one is not.
 
 **What the audit corrected**, all previously user-visible lies:
 
@@ -356,10 +456,6 @@ a declared knob no adapter reads, or an override no UI can reach.**
   default 0.5 — the flow-matching schedule, **not pitch**. Relabelled
   "Timestep shift"; `pitch_native_st_range` removed, since it rested on that
   claim. **No engine transposes natively.**
-- **`cfg_scale` / `speed_factor` (dia)** — the row described nari-labs'
-  standalone class while the adapter drives HuggingFace's, whose kwarg is
-  `guidance_scale` and which has no `speed_factor`. Names and defaults now
-  mirror the call site; `max_new_tokens` was passed but undeclared.
 - **`silence_duration` (moss)** — declared, never read. Removed. Its four real
   knobs were read but undeclared, so no UI could reach them.
 - **`steps` / `noise_temperature` / `faithfulness` (tada)** — three sliders on

@@ -26,7 +26,7 @@ from ..audio.chunked import (
 )
 from ..audio.effects import apply_effects_chain, parse_chain, resolve_chain
 from ..audio.wav import strip_wav_header, write_wav_container
-from ..delivery_merge import merge_delivery
+from ..delivery_merge import compose_instruct, merge_delivery
 from ..engines.base import SynthRequest
 from ..engines.manager import get_manager
 from ..errors import bad_request, internal, not_found
@@ -233,13 +233,20 @@ async def _generate_via_manager(
         )
         # Persona.voice_instruct → delivery.instruct: a spoken-delivery
         # instruction, not an LLM rewrite. Engines that declare
-        # supports_instruct_field (Qwen3-TTS today) consume delivery["instruct"]
-        # as the engine's style-prompt at synth time; engines that don't, ignore
-        # it. An explicit instruct in the request/preset wins over the persona's.
-        # The persona's `personality` (the character sheet) is NOT read here —
-        # that is the whole point of the 2026-08-15 split.
-        if persona_instruct and not delivery.get("instruct"):
-            delivery["instruct"] = persona_instruct
+        # supports_instruct_freeform (Qwen3-TTS today) consume
+        # delivery["instruct"] at synth time; engines that don't, ignore it.
+        # An explicit instruct in the request/preset wins the base slot over
+        # the persona's. The persona's `personality` (the character sheet) is
+        # NOT read here — that is the whole point of the 2026-08-15 split.
+        #
+        # `emotion` rides on the end through the same composer the chapter
+        # path uses. Until 2026-08-17 only that path composed, so an emotion
+        # set here reached nothing at all.
+        composed = compose_instruct(
+            delivery.get("instruct") or persona_instruct, delivery.get("emotion")
+        )
+        if composed:
+            delivery["instruct"] = composed
         # Effects chain (Slice 6) — cascaded persona → preset.
         effects = _resolve_effects_chain(req, db)
     finally:
@@ -348,9 +355,12 @@ def _generate_via_inprocess(engine_id: str, req: GenerateRequest) -> Response:
             tier2_overlay=persona_overlay,
         )
         # Same cascade as the non-streaming path: the persona's spoken
-        # instruction only, and only when nothing explicit was asked for.
-        if persona_instruct and not delivery.get("instruct"):
-            delivery["instruct"] = persona_instruct
+        # instruction under whatever was asked for, then the emotion.
+        composed = compose_instruct(
+            delivery.get("instruct") or persona_instruct, delivery.get("emotion")
+        )
+        if composed:
+            delivery["instruct"] = composed
         effects = _resolve_effects_chain(req, db)
     finally:
         db.close()

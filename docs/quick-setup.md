@@ -19,10 +19,10 @@ Total time depends on download size: 0.4 GB for CPU tier, up to 22 GB for the fu
 |---|---|---|---|
 | **CPU / low VRAM** | <7 GB | Kokoro | 0.4 GB |
 | **8 GB** | 7-11 GB | Kokoro + Chatterbox | 2.4 GB |
-| **12 GB** | 11-14 GB | Kokoro + Chatterbox + Qwen3-TTS | 4.1 GB |
-| **16 GB** | 14-20 GB | Kokoro + Chatterbox + Qwen3-TTS + Dia | 6.8 GB |
-| **24 GB** | 20-28 GB | adds LuxTTS + MOSS-TTS | 14.0 GB |
-| **32 GB+** | 28 GB+ | adds TADA Llama | 22.0 GB |
+| **12 GB** | 11-14 GB | Kokoro + Chatterbox + Qwen3-TTS | 8.1 GB |
+| **16 GB** | 14-20 GB | adds LuxTTS | 9.3 GB |
+| **24 GB** | 20-28 GB | adds MOSS-TTSD | 13.4 GB |
+| **32 GB+** | 28 GB+ | adds TADA Llama | 33.0 GB |
 
 JustVoice auto-detects your VRAM via `/v1/system/info` and pre-picks the right tier. You can override with the dropdown in the confirm step — useful if you'd rather not download 14 GB on a 24 GB card right now.
 

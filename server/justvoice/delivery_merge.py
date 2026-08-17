@@ -31,6 +31,32 @@ from .database.models import RenderPreset
 logger = logging.getLogger("justvoice.delivery-merge")
 
 
+def compose_instruct(*hints: Optional[str]) -> Optional[str]:
+    """Join delivery hints into the ONE instruct string engines consume.
+
+    Qwen — the only family that reads instruct — has a single upstream slot,
+    so everything that shapes delivery has to arrive as one sentence. The
+    ordering rule is **most specific last**: the persona says who they are,
+    the emotion labels the state, the line says how this one goes.
+
+    A lone hint passes through **verbatim**, unjoined and unstripped: a
+    hand-written instruct must never be reformatted just because it happens
+    to be the only one present.
+
+    Lives here rather than in either caller because `/v1/generate` and
+    `/v1/chapters/render` both compose it and drifting apart would mean the
+    same persona sounds different depending on which button was pressed —
+    which is exactly what happened until 2026-08-17, when only the chapter
+    path composed at all and the one-off path dropped emotion on the floor.
+    """
+    kept = [h for h in hints if h]
+    if not kept:
+        return None
+    if len(kept) == 1:
+        return kept[0]
+    return ". ".join(h.rstrip(". ") for h in kept)
+
+
 def _decode_json_dict(raw: Optional[str]) -> dict:
     if not raw:
         return {}
@@ -49,12 +75,12 @@ def nest_engine_keys(delivery: dict) -> dict:
     (`{"exaggeration": 0.7}`), because that is the shape the knob schema
     itself has. Every engine adapter reads them **nested**
     (`delivery["engine"]["exaggeration"]`, see `chatterbox/engine.py`,
-    `qwen3/engine.py`, `luxtts/engine.py`, `dia/engine.py`,
+    `qwen3/engine.py`, `luxtts/engine.py`,
     `moss_tts/engine.py`). Nothing bridged the two, so exaggeration,
     cfg_weight, repetition_penalty, min_p, t_shift, guidance_scale and the
     rest have never reached an engine — only the fields that happen to be
-    canonical `Delivery` members (speed, temperature, instruct,
-    style_prompt, seed, gain_db) ever worked.
+    canonical `Delivery` members (speed, temperature, instruct, seed,
+    gain_db) ever worked.
 
     Fixing it here rather than in each UI means one seam, and it also
     repairs deliveries **already stored flat** in `personas.default_delivery`

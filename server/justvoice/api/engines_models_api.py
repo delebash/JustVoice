@@ -49,7 +49,7 @@ async def install_engine(id: str, req: InstallRequest) -> InstallResponse:
       download with progress, HF cache for HF engines, models_dir for
       URL-tarball engines.
     - Managed engine + no `model_variant` → spawn_managed_install. Venv
-      build only (isolated engines like Dia/MOSS). Models download via
+      build only (isolated engines like MOSS). Models download via
       a second /install call once the engine row exposes its variants.
 
     Every engine is manifest-managed; the legacy in-process install path was

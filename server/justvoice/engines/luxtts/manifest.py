@@ -21,6 +21,19 @@ DESCRIPTION = (
 )
 LICENSE = "Apache-2.0"
 
+# Declared 2026-08-17. Until then this manifest said nothing and inherited
+# the manager's all-three default — a platform claim nobody made.
+#
+# GROUNDS (dependency evidence, NOT a measured run on each OS):
+#   - piper-phonemize, the one dep with no PyPI wheels, publishes
+#     win_amd64 / win32 / macosx_x86_64 / macosx_arm64 / manylinux wheels
+#     for py3.7-3.14 on k2-fsa's find-links index (checked 2026-08-17).
+#   - REQUIREMENTS declares `mps`, so the adapter expects Apple Silicon.
+#   - The rest is torch + pure-Python (LinaCodec, ZipVoice from git).
+# RISK: two git source installs. If either grows a compiled extension this
+# claim needs re-checking. Nobody has run this engine on macOS.
+SUPPORTED_OSES = ["windows", "linux", "macos"]
+
 CAPABILITIES = {
     "preset_voices": False,
     "voice_cloning": True,

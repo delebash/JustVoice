@@ -348,20 +348,44 @@ class EngineManifest:
 
         Default is "shared" — the 5 core engines coexist in one venv with
         selective --no-deps. Reserve "venv" for engines that genuinely
-        can't fit (e.g. MOSS-TTS needs flash-attn, Dia pins specific triton).
+        can't fit (e.g. MOSS-TTS needs flash-attn).
         """
         return getattr(self.module, "ISOLATION", "shared")
 
     @property
     def supported_oses(self) -> list[str]:
-        """OSes this engine can install + run on. Default = all three.
-        Manager filters the catalog by sys.platform so users on macOS don't
-        see Dia (which requires triton — Linux/Windows only) or MOSS-TTS
-        (flash-attn — barely works outside Linux).
+        """OSes this engine can install + run on. Values: "windows" |
+        "linux" | "macos".
 
-        Values: "windows" | "linux" | "macos".
+        ENFORCED AT `install_engine()` — an engine that does not support the
+        host OS cannot be installed, whatever its isolation mode. The catalog
+        still LISTS it; `EngineInfo.supported_on_this_os` carries the verdict
+        so the UI can show why the Install button is gone.
+
+        This docstring used to claim "Manager filters the catalog by
+        sys.platform so users on macOS don't see Dia … or MOSS-TTS". That
+        filter never existed, and the one real check (`shared_venv.py:199`)
+        sat behind `if m.isolation != "shared": continue` — so it could not
+        reach Dia or MOSS, the only two engines that declared a restriction.
+        Every engine it did evaluate declared all three OSes and passed. The
+        gate was inert in every case (2026-08-17).
+
+        The default stays all-three for engines that declare nothing, but
+        every shipped manifest now declares explicitly and records its
+        grounds — `test_os_gate.py` fails if a new one forgets.
         """
         return getattr(self.module, "SUPPORTED_OSES", ["windows", "linux", "macos"])
+
+    @property
+    def deprecated(self) -> str:
+        """Non-empty = marked for removal. The string is the user-facing why.
+
+        Deliberately NOT a hard block: an engine already installed keeps
+        working (user ruling 2026-08-17 — "dont remove them now you can mark
+        them for removal and hide them"). The catalog hides it while it is
+        uninstalled, and Voice engine setup never offers it.
+        """
+        return getattr(self.module, "DEPRECATED", "") or ""
 
     def supports_current_os(self) -> bool:
         """True if this engine declares support for the host's OS."""
@@ -677,7 +701,19 @@ def install_engine(
 
     `progress(phase, line)` reports each step + the latest pip / download
     line. `cancel_check` polled at every chunk + step boundary.
+
+    Refuses outright when the manifest does not declare the host OS. This is
+    THE os gate — it sits above the isolation split deliberately, because the
+    previous one (`shared_venv.py`, still there for the shared-venv build)
+    was reached only for `isolation == "shared"` engines, which excluded Dia
+    and MOSS — the only two that restrict their OS. See
+    `EngineManifest.supported_oses`.
     """
+    if not manifest.supports_current_os():
+        raise InstallError(
+            f"{manifest.id} does not support {_current_os_label()} — "
+            f"the manifest declares {', '.join(manifest.supported_oses)}."
+        )
     if manifest.isolation == "shared":
         return _install_engine_shared(manifest, progress, cancel_check)
     return _install_engine_isolated(manifest, progress, cancel_check)
@@ -1163,8 +1199,8 @@ class EngineProcess:
             self.terminate()
             raise RuntimeError(f"engine {self.manifest.id} sent bad PORT line: {line!r}")
 
-        # 30 min timeout — heavy autoregressive engines (Dia at max_new_tokens=3072,
-        # MOSS-TTSD at 12,000+ tokens) can legitimately take 10+ min for a single
+        # 30 min timeout — heavy autoregressive engines (MOSS-TTSD at 12,000+
+        # tokens) can legitimately take 10+ min for a single
         # synth on consumer GPUs. Better to wait than to false-error.
         self.client = httpx.Client(base_url=f"http://127.0.0.1:{self.port}", timeout=1800.0)
 

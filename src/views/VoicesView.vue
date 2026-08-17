@@ -227,9 +227,10 @@ function voiceLocality(v) {
   return backend === "managed" ? "local" : "online";
 }
 
-// Isolated engines with no venv yet (Dia, MOSS) — their static voices
+// Isolated engines with no venv yet (MOSS) — their static voices
 // can't preview until Install runs in Engines. Tag + sort last so they
-// never read as "the default voice" (user-hit: Dia listed first).
+// never read as "the default voice" (user-hit: an uninstalled engine's
+// stock voice listed first).
 const engineMeta = computed(() => {
   const m = {};
   for (const e of engines.value || []) m[e.id] = e;

@@ -58,25 +58,25 @@ const TIER_RECIPES = {
     label: "12 GB tier",
     blurb: "Adds Qwen3-TTS 0.6B for natural-language delivery instructions.",
     ttsEngineIds: ["kokoro", "chatterbox", "qwen3"],
-    estimatedDownloadGb: 4.1,
+    estimatedDownloadGb: 8.1,
   },
   vram16: {
     label: "16 GB tier",
-    blurb: "Adds Dia (multi-speaker dialogue).",
-    ttsEngineIds: ["kokoro", "chatterbox", "qwen3", "dia"],
-    estimatedDownloadGb: 6.8,
+    blurb: "Adds LuxTTS (lightweight cloning).",
+    ttsEngineIds: ["kokoro", "chatterbox", "qwen3", "luxtts"],
+    estimatedDownloadGb: 9.3,
   },
   vram24: {
     label: "24 GB tier",
-    blurb: "Adds LuxTTS + MOSS-TTS (high-fidelity production).",
-    ttsEngineIds: ["kokoro", "chatterbox", "qwen3", "dia", "luxtts", "moss_tts"],
-    estimatedDownloadGb: 14.0,
+    blurb: "Adds MOSS-TTSD (multi-speaker dialogue).",
+    ttsEngineIds: ["kokoro", "chatterbox", "qwen3", "luxtts", "moss-tts"],
+    estimatedDownloadGb: 13.4,
   },
   vram32: {
     label: "32 GB+ tier",
     blurb: "Full pool including TADA Llama.",
-    ttsEngineIds: ["kokoro", "chatterbox", "qwen3", "dia", "luxtts", "moss_tts", "tada"],
-    estimatedDownloadGb: 22.0,
+    ttsEngineIds: ["kokoro", "chatterbox", "qwen3", "luxtts", "moss-tts", "tada"],
+    estimatedDownloadGb: 33.0,
   },
 };
 
@@ -108,15 +108,30 @@ function toggleEngine(id) {
   else next.add(id);
   deselectedEngineIds.value = next;
 }
+// The tier's engine ids, minus anything the server has marked for removal
+// (manifest DEPRECATED, 2026-08-17). Filtered at RUNTIME against the served
+// catalog rather than hand-edited out of TIER_RECIPES, so marking one engine
+// never needs a renderer edit — and so a first run can never install an engine
+// we are dropping. An id the server does not serve at all also falls out here,
+// which is the class of bug that let `moss_tts` (real id: `moss-tts`) sit dead
+// in two tiers. The recipe itself is still hardcoded — see the TASKS finding.
+const tierEngineIds = computed(() => {
+  const byId = new Map((engines.value || []).map((e) => [e.id, e]));
+  return recipe.value.ttsEngineIds.filter((id) => {
+    const e = byId.get(id);
+    if (!e) return !engines.value?.length;  // pre-fetch: show the recipe as written
+    return !(e.deprecated || "").trim();
+  });
+});
 const enginesToInstall = computed(() => {
-  return recipe.value.ttsEngineIds
+  return tierEngineIds.value
     .filter((id) => !deselectedEngineIds.value.has(id))
     .map((id) => engines.value.find((e) => e.id === id))
     .filter(Boolean)
     .filter((e) => e.status === "not_installed");
 });
 const enginesAlreadyInstalled = computed(() => {
-  return recipe.value.ttsEngineIds
+  return tierEngineIds.value
     .map((id) => engines.value.find((e) => e.id === id))
     .filter(Boolean)
     .filter((e) => e.status !== "not_installed");
@@ -281,7 +296,7 @@ const hasLlmProvider = computed(() => llmProviders.value.length > 0);
           <section>
             <div class="quick-setup__row-label">TTS engines</div>
             <ul class="quick-setup__engines">
-              <li v-for="id in recipe.ttsEngineIds" :key="id" class="quick-setup__engine-row">
+              <li v-for="id in tierEngineIds" :key="id" class="quick-setup__engine-row">
                 <UiCheckbox
                   :model-value="!deselectedEngineIds.has(id)"
                   :disabled="enginesAlreadyInstalled.some((e) => e.id === id)"

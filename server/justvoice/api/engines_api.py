@@ -23,6 +23,7 @@ from ..engines.capability_details import CAPABILITY_DETAILS, lookup as lookup_ca
 from ..engines.catalog import compute_status
 from ..engines.manager import EngineManifest, get_manager
 from ..models import (
+    EMOTION_VALUES,
     CurrentEngineResponse,
     EngineCapabilitiesResponse,
     EngineCapabilityDetail,
@@ -101,6 +102,8 @@ def _info_from_manifest(manifest: EngineManifest, status: str) -> EngineInfo:
         current_variant_id=mgr.current_variant_id(manifest.id),
         isolation=manifest.isolation,
         supported_oses=manifest.supported_oses,
+        supported_on_this_os=manifest.supports_current_os(),
+        deprecated=manifest.deprecated,
         weights_license=manifest.weights_license,
         attribution=manifest.attribution,
         # The 2026-08-13 VRAM wiring (Q2): the device the load actually
@@ -173,7 +176,9 @@ async def list_engine_capabilities() -> EngineCapabilitiesResponse:
     The frontend should try the variant id first, then fall back to the
     base engine id — the same convention `lookup()` follows server-side.
     """
-    return EngineCapabilitiesResponse(engines=dict(CAPABILITY_DETAILS))
+    return EngineCapabilitiesResponse(
+        engines=dict(CAPABILITY_DETAILS), emotion_values=list(EMOTION_VALUES)
+    )
 
 
 @router.get(

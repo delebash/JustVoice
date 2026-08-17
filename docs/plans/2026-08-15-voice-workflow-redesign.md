@@ -1423,8 +1423,16 @@ Only the **host-side** part actually survives. From the delivery matrix in
 - **Survives any recast** (JustVoice applies it after synthesis): `gain_db`,
   the effects chain, lexicon substitution, and `pitch` since 2026-08-17.
 - **Evaporates silently** (engine-specific): `speed` (kokoro, luxtts only),
-  `instruct` and `style_prompt` (qwen3 only), `temperature` (chatterbox,
-  qwen3).
+  `instruct` (qwen3 **CustomVoice** only — Base drops it), `temperature`
+  (chatterbox, qwen3).
+- **Crosses one boundary, since 2026-08-17**: `emotion`. Prose cannot compile
+  down to a token set, but a nine-value enum compiles both ways — into the
+  instruct string for qwen3, into `[fear]`-style tokens for Chatterbox Turbo.
+  It is the only part of a persona's *performance* that survives a recast onto
+  a different engine family, which makes it the one to lean on in the design.
+  `style_prompt` was deleted the same day: a second prose field that the qwen3
+  adapter concatenated into `instruct` before sending, so the split it claimed
+  never existed downstream.
 
 So "the persona survives the instrument swap" is **half true**, and the UI has
 to say which half: **the persona editor must show, per field, whether the
@@ -1519,3 +1527,318 @@ lives in the session scratchpad, not the repo.
 true when written and is not now. `git log --oneline origin/main..main` shows
 **seven** doc commits waiting: `2fc878b · 3860fac · 7877889 · bcf8a34 · fef74a1 ·
 a4854e2 · 56568b3`. Nothing in app code changed after Slice B.
+
+---
+
+## §9 The engine truth, and what voice design actually costs
+
+**Researched 2026-08-17 on the user's *"we dont have the model but we need to
+add it, qwen does"*, plus the Alexandria Voice Designer / Audio Editor
+screenshots.** Written down because it was all verified once, at some cost, and
+every fact here decides part of the design.
+
+The per-engine grids themselves live in `docs/dev/code-map.md` §3a–3c (what
+each model is · the honest ✓ grid of what each adapter reads · the inline-tag
+syntaxes). This section is the part that is a *design input* rather than a
+lookup table.
+
+### 9.1 Qwen3 VoiceDesign is real, and it is one variant row away
+
+| | |
+|---|---|
+| Repo | `Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign` |
+| Call | `generate_voice_design(text, instruct, language=None, non_streaming_mode=True, **kwargs)` |
+| Gate | `qwen3_tts_model.py:686` — `if self.model.tts_model_type != "voice_design"` |
+| Size | 11-file load set, same layout as the CustomVoice rows, **≈ 4.52 GB** |
+| Deps | **none new** |
+
+**The call is already in the package we ship.** It sits in the installed
+`qwen_tts` in `engines/.shared-venv`, beside `generate_custom_voice` and
+`generate_voice_clone`. What is missing is a variant row in
+`qwen3/manifest.py`, the checkpoint download, and one branch in the adapter.
+`voice_design: False` and the "flips back with the VoiceDesign variant" note in
+that manifest are therefore accurate and small.
+
+> Byte count needs one re-pull before it goes in a manifest. Summing the file
+> list the HF API returned gives 4,520,159,099; the API's own total disagrees by
+> ~3 MB. Facts-only means neither gets typed until they agree.
+
+### 9.2 A designed voice is NOT a voice — it is audio you then clone
+
+This is the architectural fact, and it is easy to get wrong.
+`generate_voice_design` is **per-call synthesis**. It takes a description and
+returns *audio*. There is no embedding, no speaker id, nothing to store and
+reuse. Alexandria hit this and solved it the only way it can be solved — their
+wiki, verbatim:
+
+> "The VoiceDesign model synthesizes reference audio from each description.
+> Each speaker is assigned as a **Clone Voice** using the generated reference
+> audio."
+
+> "The generated reference audio is saved in `designed_voices/` and can be
+> reused."
+
+Which is exactly what their Voice Designer screen says on its face: *"Generated
+voices can be saved and used as clone sources in the Voices tab."*
+
+**So `POST /v1/voices/design → Voice` is a four-step pipeline, not a call:**
+
+```
+description → synthesize a probe → save the WAV → clone from it → Voice
+```
+
+And the resulting voice **is a clone**, which means it lands on whichever
+cloning engine it is pointed at, and inherits that engine's abilities — not
+Qwen's. Designing a voice does not keep you on the design model.
+
+### 9.3 Alexandria's five voice types — and the one we have not used
+
+Confirmed engine: the repo describes itself as *"…per-line style control…
+**Built on Qwen3-TTS**"*, bundled, ~3.5 GB auto-download. So the **Emotion /
+Style** column in its Audio Editor screenshot is Qwen's `instruct`, per line,
+written by their LLM annotation pass — *"Each chunk has an `instruct` field set
+by the LLM (e.g. 'Excited, bright energy'). If you set a character style, it's
+appended."* That is the same two-layer composition JustVoice reached
+independently (persona standing instruction + this line's direction).
+
+Their five types:
+
+1. **Custom Voice** — 9 presets + instruct
+2. **Voice Clone** — from reference audio
+3. **LoRA Voice** — a fine-tuned adapter **that still follows instruct**
+4. **Voice Design** — from a description
+5. **Speaker Aliases** — one speaker mapped to another's configuration
+
+And their own statement of the trap we found in our code independently:
+
+> "Instruct directions are **ignored** for clone voices — the voice identity
+> comes entirely from the reference."
+
+**#3 is the escape hatch and we already own the machinery** — `POST /v1/train`
+and `TrainView`. Train a LoRA on an instruct-capable checkpoint and you get a
+custom voice identity that still takes prose direction. Nothing else does.
+
+### 9.4 The consequence for this redesign
+
+**There are three ways to get a directable custom voice, and they are not
+equivalent.** The app should say which one the user is on, at cast time:
+
+| Route | Identity | Direction |
+|---|---|---|
+| VoiceDesign → clone | designed | **lost** — it is a clone now |
+| Chatterbox Turbo clone | cloned | **categorical only** (19 tokens) |
+| LoRA on an instruct checkpoint | trained | **kept**, costs a training run |
+
+Today, choosing "I want to direct performances in prose" means choosing Qwen3
+CustomVoice, which means giving up cloning. Either the app states that trade-off
+where the choice is made, or direction stops being a first-class control.
+
+**The design should lean on `emotion`, not on prose.** Prose reaches one
+checkpoint. The nine-value enum compiles into prose for Qwen *and* into a token
+for Turbo, so it is the only piece of a performance that survives a recast
+across engine families. Built 2026-08-17 — see the TASKS item.
+
+### 9.5 The field sprawl this replaced, kept as the record
+
+Five prose fields fed **one** Qwen `instruct=` argument, across three screens
+and two tables. It is why "what is instruct vs style prompt vs emotion" had no
+good answer:
+
+| On screen | Where | Field | Fate |
+|---|---|---|---|
+| **Spoken delivery** | Personas | `persona.voice_instruct` | kept — the standing layer |
+| **Delivery direction** | Generate | `delivery.instruct` | kept — same field, one-off scope |
+| **+ direction** | Chapters, per line | `block.direction` | kept — the line layer |
+| **Style prompt** | Generate, Qwen only | `delivery.style_prompt` | **deleted** |
+| — | nowhere | `delivery.emotion` | **given a UI and two compilers** |
+
+`style_prompt` claimed to be "the consistent voice character" against
+`instruct`'s "this line" — but Qwen has one slot and the adapter concatenated
+the pair before sending, so the distinction died one line before the model.
+That axis is persona-vs-line, and the app already had it.
+
+### 9.6 Three consequences for the design — argued, not ruled, not started
+
+These came out of the same conversation and each one changes the design rather
+than adding a feature. None has a go. They belong here, not in `IDEAS.md`,
+which is for new features rather than for working out a redesign.
+
+**1. Move `speed` host-side, and the persona layer gets much stronger.**
+This is the biggest lever the engine audit turned up. `speed` reaches **two of
+nine models** (kokoro, luxtts) and every other engine ignores it — for a
+narration app that is the most-wanted knob, and it is mostly inert. Unlike
+`instruct` or the sampling knobs, **nothing forces it to be engine-side**: a
+post-render time-stretch would sit exactly where `pitch`, `gain_db` and the
+effects chain already do (`render_core`), and `speed` would join the set that
+works on every engine.
+
+Why it matters *here* rather than as a feature: §8.22 rests on the claim that a
+persona survives a recast, and the honest version of that claim is "only the
+host-side half does". Pacing is the most character-defining thing in that half
+and it currently falls off. Moving `speed` makes the persona layer's promise
+substantially more true, which is a design argument, not an optimisation.
+
+Costs to weigh before any go: a pitch-preserving time-stretch is real DSP, and
+it changes the cache key, so everything re-renders once.
+
+**2. The direction-vs-identity trade-off has to be said where the choice is
+made.** Prose direction reaches Qwen3 CustomVoice alone, and CustomVoice cannot
+clone (§9.4). So picking "this character's cloned voice" silently costs you
+written direction — and you find out later, when the direction you wrote does
+nothing. `PersonasView.vue:96-107` already has the right *pattern*: a live
+verdict that reads the engine's real capability instead of a hardcoded list.
+Two problems with it as it stands — it fires **after** the cast decision, and
+it is **engine-level**, so a persona on Qwen3 **Base** shows a green ✓ and is
+then ignored. The design needs that verdict variant-aware and moved to the
+moment of casting.
+
+**3. One word for one thing.** The persona says **Spoken delivery**, Generate
+says **Delivery direction**, and the Chapters button writes `block.direction`
+as **+ direction** — three names for one instruction string. Deleting
+`style_prompt` removed the worst of the confusion; this is the rest of it. It
+belongs with §8.21's terminology sweep, not as separate work: pick the word
+once and sweep three views and four docs together.
+
+
+---
+
+## §10 Where the knobs live — the three-layer answer (2026-08-17)
+
+**This section exists because the question was asked plainly and the app had no
+plain answer.** User, verbatim, 2026-08-17:
+
+> *"i still dont understand how we handle voices the knobs the persona. What a
+> user has is a speaker and what they spoke, now how do we assing the way it
+> sounds, for each line do we have the engine model knobs, the selection like
+> alexandira cloned builtin emotion sytle of couse this depends on model. This
+> is what i am confused about does persona get all the knobs and settings and
+> you test it there then assign that persona, the knobs settings ect depend on
+> engine, can the same persona speak in different voices like one sentence is
+> cheerful next same person but angry, that is what chatterbox and qwen could
+> handle, i just dont know how to desing this. the Generate page doesnt really
+> save anything so not even sure what that is for"*
+
+Every claim below was verified in the code the same day.
+
+### 10.1 The confusion has a name: there are three layers, not one
+
+The input is exactly what the user said — **a speaker, and what they spoke**.
+Everything after that is three different questions, and each owns a different
+kind of knob.
+
+| | What it is | Owns | Changing it affects |
+|---|---|---|---|
+| **Voice** | the instrument | how it sounds at rest | every character using it, in every project |
+| **Persona** | the character | how they always speak | this character, everywhere |
+| **Line** | the moment | how they say *this* | one line |
+
+**The rule that decides where any knob goes — when you change it, who else
+should change with it?**
+
+- Fix once and everyone using that voice should be fixed → **Voice**. (The
+  quiet clone shared by five characters. The fix belongs to the artifact.)
+- True of the character in every scene → **Persona**.
+- True only right here → **Line**.
+
+Three layers, each composing over the one before. **Not "the persona gets all
+the knobs".**
+
+### 10.2 Cheerful-then-angry is not a different voice
+
+The user asked whether a persona can *"speak in different voices, one sentence
+cheerful next same person but angry"* — and then described **emotions**, not
+voices. That distinction is the crux, and it is why there is no per-line voice
+picker:
+
+- A different **voice** = a different actor = **a different character** → cast
+  once, per character.
+- A different **emotion** = the same actor having a moment → **per line**.
+
+That is exactly what `delivery.emotion` is (nine values, `models.py:1046-1061`),
+and why it compiles two ways — prose for Qwen, `[angry]` for Chatterbox Turbo.
+
+**The honest gap:** `Block` has a `direction` column
+(`database/models.py:238`) but **no `emotion` column**. Per-line emotion has no
+home in the database. Today per-line direction is prose, and prose reaches Qwen
+only. So cheerful-then-angry works on Qwen right now; making it work on
+Chatterbox too is **one column**.
+
+### 10.3 Why "the persona gets all the knobs" cannot work
+
+**The engine is not a property of the character. It is a property of the
+voice** — `Voice.engine`, `models.py:466`, a required field on the artifact.
+
+Cast June to Sohee → June is on Qwen3 → June takes prose direction. Recast June
+to a Chatterbox clone → she does not, and nothing tells her.
+
+A persona panel showing "all the knobs" would be a lie waiting to happen: the
+panel mutates under you on recast, and carefully-tuned settings silently stop
+reaching anything. Not hypothetical — that is finding #2 (knobs saved flat,
+read nested; `exaggeration` and `cfg_weight` had **never** reached an engine).
+
+### 10.4 The split that does work
+
+Delivery fields fall into two piles by **who applies them** (`code-map.md` §3b):
+
+- **Host-side — JustVoice applies them itself, so they work on every engine:**
+  `gain_db` · `pitch` · `pause_before` / `pause_after` · effects chain · lexicon
+- **Engine-side — they exist only if that engine takes them:**
+  `speed` · `temperature` · `seed` · `instruct` · per-engine knobs
+
+**The persona should hold only what survives a recast** — the host-side pile,
+plus `emotion`, which straddles honestly (an enum compiles to whatever the
+engine understands, or to nothing, and never lies). **Engine-specific knobs
+belong to the casting, not the character.**
+
+This is why §9.6's host-side `speed` matters more than it looks: pacing is the
+most character-defining thing there is, and today it is engine-side, so it
+falls off on recast. Moving it makes "the persona survives a recast"
+substantially true instead of half-true.
+
+> **Flagged:** `Persona.engine_override` (`models.py:551`) lets a character
+> override the engine its voice belongs to — a character reaching past its
+> instrument. It predates the cast layer and fights this model.
+
+### 10.5 So where things are actually set — four places, one job each
+
+1. **Voice workbench** — tuning the *instrument*. Hear · tune · save-as. Fixes
+   travel to everyone using it.
+2. **Cast row** — binding character to instrument. **This is where the engine
+   becomes known**, so engine-specific knobs and the audition button belong
+   here — and this is where the app should state the trade just made
+   (*Qwen3 CustomVoice: prose direction ✓, cloning ✗*).
+3. **Persona page** — who they are. `personality` (feeds the LLM, never reaches
+   an engine) · `voice_instruct` (standing delivery) · host-side defaults.
+4. **The line** — direction and/or emotion, inline.
+
+You test at 1 for the instrument and at 2 for the character-on-this-instrument.
+**Not "test on the persona then assign"** — you cannot test what you have not
+cast, because until you cast there is no engine and therefore no knobs.
+
+### 10.6 Generate saves nothing — verified
+
+`GenerateView.vue:493-505` POSTs `/v1/generate` with **`cache: false`** and gets
+a WAV blob back. **Nothing is written anywhere** — no row, no take, no
+take-versioning. The user was right.
+
+It is the pre-persona knob laboratory: where you went to try a voice with knobs
+before personas and a cast existed. Every job it does now has a better home —
+try a voice → the workbench; try a character on a line → the cast-row audition;
+say one thing and hand me a WAV → real, but that is the **dictation/game** job,
+not the book job.
+
+**Already ruled**, 2026-08-15, verbatim: *"i aggree with A dissolbe it your rec
+on it"*. **But TASKS records an unresolved contradiction underneath it:**
+pipeline item 6 says *delete GenerateView, no new surface*; the design says
+**absorbed**, and the workbench is that surface. Item 6's spec predates the
+design and must be rewritten, not executed.
+
+### 10.7 The two calls that are the user's
+
+1. **Does a `blocks.emotion` column land?** Without it, cheerful-then-angry is
+   Qwen-only forever, and the cross-engine emotion built on 2026-08-17 has no
+   per-line writer.
+2. **Absorbed or deleted for Generate** — the contradiction above. It blocks the
+   workbench slice either way.
+
+Everything else in §10 follows from decisions already on the record.

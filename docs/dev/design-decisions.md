@@ -52,8 +52,8 @@ integration decisions record (2026-07-15) is executed history at
 - **Migrations: hand-rolled idempotent column-existence checks — no Alembic.**
   Settings live in a SQLite `settings` row (the freeze-era `settings.json` is legacy;
   renderer prefs go through `/v1/prefs`).
-- **Engines: 7** (kokoro, luxtts, qwen3, chatterbox [3 variants], tada, dia,
-  moss_tts — `engines/catalog.py`) + external OpenAI-compatible; Higgs removed
+- **Engines: 6** (kokoro, luxtts, qwen3, chatterbox [3 variants], tada,
+  moss_tts — `engines/catalog.py`; dia dropped 2026-08-17) + external OpenAI-compatible; Higgs removed
   2026-06-09 (non-commercial weights). **Per-engine venvs** — one engine's install
   can never break another's deps.
 - **Sidecar naming guard (durable):** console scripts are `justvoice` /

@@ -392,7 +392,7 @@ async def preview_existing_voice(
             m = mgr.get_manifest(static_owner)
             if m is not None and m.isolation == "venv" and not m.is_installed:
                 # Isolated engine with no venv yet — a raw 500 told the user
-                # nothing (user-hit: Dia preview). The UI maps this marker
+                # nothing (user-hit on an isolated engine's preview). The UI maps this
                 # to an "install it in Engines" dialog.
                 raise conflict(f"engine_not_installed:{static_owner}")
             if mgr.current_id() != static_owner:

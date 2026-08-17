@@ -12,7 +12,7 @@ License: **MIT** (see `LICENSE`).
 - **Game NPC voicing** — voice 50–500 NPCs from one project, export per-line WAVs for Unreal Engine import
 - **Podcasting** — multi-track timeline editor, paralinguistic tags, multi-character mixing
 - **Dictation** — global hotkey + Whisper + local LLM refinement + OS-level paste injection
-- **General TTS** — 9 engines (Kokoro, Chatterbox×2, Qwen3×2, LuxTTS, TADA, Dia, MossTTS, plus OpenAI-compatible external providers), all installable to isolated venvs and all permitting commercial output
+- **General TTS** — 8 engines (Kokoro, Chatterbox×2, Qwen3×2, LuxTTS, TADA, MossTTS, plus OpenAI-compatible external providers), all installable to isolated venvs and all permitting commercial output
 
 **Five audiences share one engine pool, voice catalogue, lexicon, and persona layer — differentiation lives in import/export pipelines and per-use-case UI surfaces.**
 

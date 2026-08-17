@@ -133,11 +133,64 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
             ),
             _seed_knob(),
         ],
+        # 2026-08-17 — the full set, read from the checkpoint's own
+        # `added_tokens.json` (huggingface.co/ResembleAI/chatterbox-turbo).
+        # NINETEEN tokens hold reserved ids 50257–50275; this file declared
+        # four of them, so fifteen were unreachable from any UI. Split into
+        # three categories because they are not one kind of thing: a state the
+        # line is spoken IN, a register it is read AS, and a sound made AT a
+        # point in the text.
+        #
+        # Upstream's model card names only [cough] [laugh] [chuckle] and says
+        # "and more", so the other sixteen are DECLARED BUT UNRENDERED here —
+        # deliberate special tokens with reserved ids, not yet verified by ear.
         inline_tags=[
             InlineTagSet(
+                category="emotion",
+                label="Emotion",
+                tags=[
+                    "angry", "fear", "happy", "sarcastic", "surprised",
+                    "crying", "whispering",
+                ],
+                syntax="[{value}]",
+                placement="inline_anywhere",
+                hint="The state the line is spoken in. Place at the start of "
+                     "the line unless you want the shift mid-sentence.",
+                # Turbo is the only shipped engine that can take `Delivery.
+                # emotion` as anything but prose, which makes this map the
+                # whole reason the enum is cross-engine at all.
+                #
+                # `neutral` maps to the empty string: expressible, emits no
+                # tag. Absent keys are NOT expressible here and the UI says so
+                # instead of substituting a near-neighbour — `shouted` and
+                # `contemptuous` have no token at all, and `[crying]` is a
+                # behaviour rather than `sad`'s state, so mapping sad onto it
+                # would put sobbing into a quietly sad line.
+                value_map={
+                    "neutral": "",
+                    "happy": "happy",
+                    "angry": "angry",
+                    "fearful": "fear",
+                    "whispered": "whispering",
+                    "sarcastic": "sarcastic",
+                },
+            ),
+            InlineTagSet(
+                category="register",
+                label="Register",
+                tags=["narration", "dramatic", "advertisement"],
+                syntax="[{value}]",
+                placement="inline_anywhere",
+                hint="How the passage is read overall, rather than what the "
+                     "speaker feels.",
+            ),
+            InlineTagSet(
                 category="paralinguistic",
-                label="Paralinguistic (Turbo-only)",
-                tags=["cough", "laugh", "chuckle", "sigh"],
+                label="Non-verbal",
+                tags=[
+                    "cough", "laugh", "chuckle", "sigh", "gasp", "groan",
+                    "sniff", "clear throat", "shush",
+                ],
                 syntax="[{value}]",
                 placement="inline_anywhere",
                 hint="Insert at the moment in the text where you want the sound.",
@@ -148,7 +201,10 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
             "Turbo accepts exaggeration / cfg_weight / min_p but defaults them "
             "to 0.0 — off — to maintain speed (Resemble AI / ollieollie). We "
             "leave them at the upstream default and hide the sliders.",
-            "Paralinguistic tags [cough] [laugh] [chuckle] [sigh] are unique to Turbo.",
+            "The 19 inline tags are unique to Turbo — Multilingual shares the "
+            "engine but not the tokenizer, and reads them as words.",
+            "[surprised] and [crying] have no Delivery.emotion equivalent; "
+            "type them inline. [shouted] and [contemptuous] have no token.",
         ],
     ),
 
@@ -195,7 +251,6 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
         supports_voice_cloning=True,
         supports_voice_design=False,
         supports_instruct_freeform=True,
-        supports_style_prompt=True,
         knobs=[
             KnobSpec(
                 key="talker_temperature", label="Temperature",
@@ -327,81 +382,6 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
         ],
     ),
 
-    # ─── Dia (Nari Labs — dialogue + paralinguistic-in-parens) ────────
-    "dia": EngineCapabilityDetail(
-        engine_id="dia",
-        display_name="Dia",
-        supports_voice_cloning=True,
-        supports_clone_prompt_text=True,
-        # Rewritten 2026-08-17 for **Dia2**, against `dia2/generation.py`:
-        #   GenerationConfig(text=SamplingConfig(0.6, 50),
-        #                    audio=SamplingConfig(0.8, 50), cfg_scale=2.0,
-        #                    cfg_filter_k=50, initial_padding=2, prefix=None, …)
-        # Dia2 samples the text and audio streams separately and has NO top_p,
-        # so the old `top_p` knob is gone rather than silently ignored, and
-        # `max_new_tokens` with it — length is bounded by the checkpoint's
-        # `max_context_steps` (1500 ≈ 2 min), not by a per-call cap.
-        # The primary Temperature slider drives the AUDIO stream, since that is
-        # the one that changes how it sounds.
-        knobs=[
-            _temperature_knob(default=0.8),
-            KnobSpec(
-                key="cfg_scale", label="CFG scale",
-                min=0.5, max=10.0, step=0.5, default=2.0,
-                hint="Adherence to the text. Higher = stricter, less natural.",
-            ),
-            KnobSpec(
-                key="audio_top_k", label="Audio top-k",
-                min=1, max=200, step=1, default=50, advanced=True,
-            ),
-            KnobSpec(
-                key="cfg_filter_k", label="CFG filter top-k",
-                min=1, max=200, step=1, default=50, advanced=True,
-            ),
-            KnobSpec(
-                key="text_temperature", label="Text temperature",
-                min=0.05, max=2.0, step=0.05, default=0.6,
-                hint="The text stream samples separately from the audio one; "
-                     "leave it unless output drifts off-script.",
-                advanced=True,
-            ),
-            KnobSpec(
-                key="text_top_k", label="Text top-k",
-                min=1, max=200, step=1, default=50, advanced=True,
-            ),
-            KnobSpec(
-                key="initial_padding", label="Initial padding",
-                min=0, max=16, step=1, default=2, advanced=True,
-            ),
-            _seed_knob(),
-        ],
-        inline_tags=[
-            InlineTagSet(
-                category="speaker", label="Speaker turn",
-                tags=["S1", "S2"],
-                syntax="[{value}]",
-                placement="inline_anywhere",
-                hint="Place at the START of each conversational line. Alternate S1/S2.",
-            ),
-            InlineTagSet(
-                category="paralinguistic", label="Non-verbal",
-                tags=["laughs", "sighs", "clears throat", "singing", "screams"],
-                syntax="({value})",
-                placement="inline_anywhere",
-                hint="Insert at the moment in the text.",
-            ),
-        ],
-        pitch_post_process=True,
-        notes=[
-            "Dia2 clones per speaker: the cast voice's reference clip drives "
-            "[S1], and delivery.engine.prefix_speaker_2 can drive [S2] for a "
-            "two-hander.",
-            "No streaming — upstream lists it as Upcoming. Generation runs to "
-            "the checkpoint's max_context_steps, about 2 minutes.",
-            "English only.",
-        ],
-    ),
-
     # ─── MOSS-TTSD (multi-speaker dialogue) ───────────────────────────
     "moss-tts": EngineCapabilityDetail(
         engine_id="moss-tts",
@@ -490,19 +470,20 @@ def lookup(engine_or_variant_id: str) -> EngineCapabilityDetail | None:
     return None
 
 
-# Two engines name their variant family differently from the engine itself, so
-# stripping suffixes never reaches their row and the endpoint 404s:
+# MOSS names its variant family differently from the engine itself, so
+# stripping suffixes never reaches its row and the endpoint 404s:
 #
 #   moss-ttsd-v0 → "moss-ttsd" → "moss"   but the engine id is "moss-tts"
-#   dia2-1b      → "dia2"                 but the engine id is "dia"
 #
 # `GenerateView.lookupCapability` never hit this because it is handed the
 # engine id as an explicit second candidate; `lookup()` only ever gets one
-# string, so the alias has to live in the data. Renaming the variants instead
+# string, so the alias has to live in the data. Renaming the variant instead
 # would invalidate every already-downloaded model directory, which is keyed by
 # variant id — a multi-GB re-download to fix a lookup.
+#
+# Dia had the same shape (`dia2-1b` → `dia2` vs engine id `dia`) until the
+# engine was dropped on 2026-08-17.
 #
 # `test_engine_knob_wiring.py::test_every_manifest_variant_resolves_to_a_row`
 # fails if a new variant is added whose id cannot reach its engine's row.
 CAPABILITY_DETAILS["moss-ttsd"] = CAPABILITY_DETAILS["moss-tts"]
-CAPABILITY_DETAILS["dia2"] = CAPABILITY_DETAILS["dia"]

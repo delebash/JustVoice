@@ -4,7 +4,7 @@
 
   Driven by the EngineCapabilityDetail.inline_tags taxonomy fetched
   from /v1/engines/capabilities. Different engines use different
-  syntaxes — Chatterbox-Turbo `[laugh]`, Dia `(sighs)`,
+  syntaxes — Chatterbox-Turbo `[laugh]`,
   MOSS `[S1]` + `[pause 1.5s]`. The menu reads the
   syntax + placement rule from the manifest entry, so the same
   component works across engines without per-engine branches.

@@ -24,7 +24,7 @@ from ..audio.wav import write_wav_container
 from ..database.models import Block, Project, RenderPreset, Scene
 from ..database import session as _db_session
 from ..database.session import SessionLocal
-from ..delivery_merge import merge_delivery
+from ..delivery_merge import compose_instruct, merge_delivery
 from ..errors import bad_request, internal, not_found
 from ..mastering import have_ffmpeg, master, master_to_wav, resolve_master_target
 from ..models import ChapterLine, Delivery, RenderChapterRequest
@@ -196,16 +196,13 @@ def _resolve_scene_to_lines(
             # An explicit instruct (preset or request) wins the base slot over
             # the persona's, as it always has; the line's own note still rides
             # on the end. Most specific last: persona → delivery → this line.
-            base = merged.get("instruct") or instruct
-            hints = [
-                h for h in (base, merged.get("emotion"), (block.direction or "").strip() or None) if h
-            ]
-            if len(hints) == 1:
-                # Single hint passes through verbatim — joining one item must
-                # not reformat someone's carefully written instruct.
-                merged["instruct"] = hints[0]
-            elif hints:
-                merged["instruct"] = ". ".join(h.rstrip(". ") for h in hints)
+            composed = compose_instruct(
+                merged.get("instruct") or instruct,
+                merged.get("emotion"),
+                (block.direction or "").strip() or None,
+            )
+            if composed:
+                merged["instruct"] = composed
 
             # Per-line silence. Imports carry `pause_after_ms` (documented in
             # every adapter and in docs/import-and-export.md) and it is kept on

@@ -133,9 +133,10 @@ def test_cloning_claims_are_wired_in_the_adapter() -> None:
     """A manifest that claims `voice_cloning` must have an adapter that
     actually reads the reference clip.
 
-    Dia claimed it for months while `dia/engine.py synth()` built its
-    processor input from text alone: every cloned voice pointed at Dia
-    rendered in the stock voice with nothing said. The check is textual on
+    Dia claimed it for months while its adapter built the processor input
+    from text alone: every cloned voice pointed at Dia rendered in the
+    stock voice with nothing said (engine dropped 2026-08-17; the check it
+    motivated stays). The check is textual on
     purpose — it needs no ML deps and it fails on the exact thing that went
     wrong, an adapter that never looks at `audio_prompt_path`.
     """
@@ -301,7 +302,7 @@ def test_load_no_manifest_default_no_disk_falls_back_to_catalog_first(
 
 def test_all_multi_variant_engines_resolve_a_real_variant() -> None:
     """Every discovered engine must resolve a non-empty, catalog-valid
-    variant id for a no-variant load — pins dia/luxtts/moss-tts/tada's
+    variant id for a no-variant load — pins luxtts/moss-tts/tada's
     new DEFAULT_VARIANT_IDs and kokoro's disk-probe fallback.
 
     (Instance call since the parity batch: resolution now consults the user's

@@ -15,6 +15,17 @@ DESCRIPTION = (
 )
 LICENSE = "Apache-2.0"
 
+# Declared 2026-08-17. The value is what the silent default already produced,
+# but it is written down now because the default was a claim nobody made —
+# the same silence that had qwen3 and tada claiming macOS wrongly.
+#
+# GROUNDS: transformers + torch and nothing else. No git installs, no
+# flash-attn, no compiled extension beyond what torch itself ships, and
+# `engine.py:68` uses the plain `pick_device`, which falls through cuda →
+# xpu → directml → mps → cpu. `gpu_runtimes: ["cuda"]` under-declares the
+# accelerators rather than restricting the platforms.
+SUPPORTED_OSES = ["windows", "linux", "macos"]
+
 CAPABILITIES = {
     "transcription": True,
 }

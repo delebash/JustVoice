@@ -102,6 +102,76 @@ def _tags_supported(state: AppState, engine_id: str) -> bool | None:
     return bool(manifest.capabilities.get("paralinguistic_tags"))
 
 
+def _emotion_tagset(engine_id: str) -> Any | None:
+    """The emotion tag set of the variant that will actually render, or None.
+
+    `Delivery.emotion` has two possible expressions and the engine decides
+    which: engines that take freeform prose get it folded into `instruct` by
+    `delivery_merge.compose_instruct` up at the API layer, and engines with an
+    emotion token vocabulary get it compiled into the text here. Today that
+    second group is Chatterbox **Turbo** alone.
+
+    Variant-precise on purpose. Turbo and Multilingual are one engine id and
+    one adapter but two tokenizers — Multilingual has no such tokens and would
+    read `[angry]` aloud as a word. `capability_details.lookup()` already walks
+    variant ids down to their base row, so asking it about the LOADED variant
+    (or, when nothing is loaded yet, the one `render_line` would auto-load)
+    resolves Turbo's row for Turbo and Multilingual's tokenless row for
+    Multilingual.
+    """
+    from .engines.capability_details import lookup as lookup_capability
+
+    probe_ids: list[str] = []
+    try:
+        from .engines.manager import get_manager
+
+        mgr = get_manager()
+        probe_ids.append(mgr.current_variant_id(engine_id) or mgr.resolved_default_variant(engine_id))
+    except Exception:
+        # Registry backends and test fakes have no manager; the engine id is
+        # then the only thing to go on, which is correct for them.
+        pass
+    probe_ids.append(engine_id)
+
+    for pid in probe_ids:
+        if not pid:
+            continue
+        detail = lookup_capability(pid)
+        if detail is None:
+            continue
+        for tagset in detail.inline_tags:
+            if tagset.category == "emotion" and tagset.value_map:
+                return tagset
+        # The row resolved and simply has no emotion vocabulary. Do NOT fall
+        # through to the base engine's row — that is how Multilingual would
+        # inherit Turbo's tags.
+        return None
+    return None
+
+
+def _apply_emotion_tag(text: str, delivery: dict[str, Any], tagset: Any | None) -> str:
+    """Prefix this line with the engine's tag for `delivery.emotion`.
+
+    Line-level, so it goes at the front: the emotion is the state the whole
+    line is spoken in, unlike a non-verbal sound, which is positional and the
+    author types where they want it.
+
+    Silent no-op in three cases, all deliberate: the engine has no emotion
+    vocabulary, no emotion is set, or the value is not in this engine's map.
+    `neutral` maps to the empty string and so lands in that last case — it is
+    expressible precisely by adding nothing.
+    """
+    if tagset is None:
+        return text
+    value = delivery.get("emotion")
+    if not value:
+        return text
+    tag = (tagset.value_map or {}).get(value)
+    if not tag:
+        return text
+    return f"{tagset.syntax.format(value=tag)} {text}"
+
+
 def _apply_lexicons(text: str, lexicon_ids: list[str], state: AppState) -> str:
     """Apply lexicon substitutions to the text. Lexicons are applied in
     order — first match wins for a given grapheme.
@@ -148,6 +218,9 @@ def probe_line_cached(
     if not tags_supported:
         effective_text = strip_tags(effective_text)
     effective_text = _apply_lexicons(effective_text, lexicons, state)
+    # After the lexicon, never before — a lexicon entry must not be able to
+    # rewrite the inside of a tag we just generated.
+    effective_text = _apply_emotion_tag(effective_text, delivery, _emotion_tagset(engine_id))
     key = (
         CacheKeyBuilder()
         .with_engine(engine_id, VERSION)
@@ -225,6 +298,10 @@ def render_line(
     if not tags_supported:
         effective_text = strip_tags(effective_text)
     effective_text = _apply_lexicons(effective_text, lexicons, state)
+    # Kept in lockstep with `probe_line_cached` — the two derive the same key
+    # and any transform added to one has to land in the other or the probe
+    # starts lying about what is cached.
+    effective_text = _apply_emotion_tag(effective_text, delivery, _emotion_tagset(engine_id))
 
     # Cache lookup
     cache_enabled = use_cache and settings.cache.enabled

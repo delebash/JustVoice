@@ -11,7 +11,7 @@ Models are grouped by domain with section comment dividers.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 # LLM provider / feature-pin / production-config models are the SHARED
 # contract — single-sourced in llm_runner.llm.schema (2026-06-21 AI-stack
@@ -698,9 +698,22 @@ class EngineInfo(BaseModel):
     # (engine gets its own private venv, for engines that genuinely conflict
     # with the shared interpreter). Default is "shared".
     isolation: str = "shared"
-    # OSes this engine works on. UI hides engines whose list doesn't include
-    # the user's current OS. Values: "windows" | "linux" | "macos".
+    # OSes this engine works on, straight from the manifest. Values:
+    # "windows" | "linux" | "macos". This comment used to say "UI hides
+    # engines whose list doesn't include the user's current OS" — no UI ever
+    # read the field (2026-08-17 audit).
     supported_oses: list[str] = []
+    # The verdict, computed server-side: is THIS host's OS in that list? The
+    # client should never re-derive it — the server knows its own platform and
+    # the renderer may be a browser on a different machine entirely. False
+    # means `install_engine` will refuse, so the UI shows why instead of
+    # offering an Install button that raises.
+    supported_on_this_os: bool = True
+    # Non-empty = marked for removal; the string is the reason, shown to the
+    # user. An already-installed deprecated engine keeps working and keeps its
+    # row (badged); an uninstalled one is hidden from the catalog and never
+    # offered by Voice engine setup. Set by the manifest's DEPRECATED.
+    deprecated: str = ""
     # Model-weights license — distinct from framework code license (the
     # `license` field above tracks the Python package). Common values:
     # "Apache-2.0", "MIT", "Llama-3.2-Community", "CC-BY-NC-4.0".
@@ -854,16 +867,27 @@ class InlineTagSet(BaseModel):
     """A category of inline tags this engine's tokenizer recognizes.
 
     Drives the slash menu in Generate / Chapter textareas. Different engines
-    use different syntaxes — Chatterbox-Turbo uses `[laugh]`, Dia uses
-    `(sighs)`, MOSS uses `[S1] [S2] [pause 1.5s]`.
+    use different syntaxes — Chatterbox-Turbo uses `[laugh]`, MOSS uses
+    `[S1] [S2] [pause 1.5s]`.
     """
 
-    category: str  # "emotion" | "style" | "prosody" | "sfx" | "paralinguistic" | "speaker" | "pause"
+    category: str  # "emotion" | "register" | "style" | "prosody" | "sfx" | "paralinguistic" | "speaker" | "pause"
     label: str
     tags: list[str]
     syntax: str  # f-string with {value}, e.g. "<|emotion:{value}|>"
     placement: Literal["start_of_turn", "inline_anywhere"] = "inline_anywhere"
     hint: str = ""
+    # Maps JustVoice's own `Delivery.emotion` values onto THIS engine's tag
+    # values, for the one category that has a cross-engine equivalent. Only
+    # `category="emotion"` sets carry it. Present = `render_core` compiles the
+    # enum into a tag for this engine and the UI may offer the enum; absent =
+    # the tags are engine-private and reachable only by typing them.
+    #
+    # An enum value missing from the map is NOT expressible here — the UI says
+    # so rather than substituting a near-neighbour. Turbo has no token for
+    # `shouted` or `contemptuous`, and `[crying]` is a behaviour rather than
+    # `sad`'s state, so those three stay unmapped on purpose.
+    value_map: dict[str, str] | None = None
 
 
 class EngineCapabilityDetail(BaseModel):
@@ -885,7 +909,6 @@ class EngineCapabilityDetail(BaseModel):
     supports_instruct_freeform: bool = False  # qwen3-style prose textarea
     supports_phoneme_input: bool = False  # kokoro raw-IPA bypass
     supports_multi_speaker: bool = False  # MOSS speaker_prompts map
-    supports_style_prompt: bool = False  # qwen3 style-prompt field (e.g. "warm narrative voice, calm tempo")
 
     # Numeric / continuous knobs (sliders)
     knobs: list[KnobSpec] = []
@@ -909,6 +932,12 @@ class EngineCapabilitiesResponse(BaseModel):
     """`GET /v1/engines/capabilities` payload."""
 
     engines: dict[str, EngineCapabilityDetail]
+    # The canonical `Delivery.emotion` vocabulary, served rather than
+    # duplicated client-side so the picker can never drift from the enum.
+    # Which of these an engine can actually express is per-engine: prose for
+    # `supports_instruct_freeform`, a tag for an `inline_tags` set whose
+    # category is "emotion" (see its `value_map`), nothing otherwise.
+    emotion_values: list[str] = []
 
 
 class ModelFile(BaseModel):
@@ -1044,6 +1073,10 @@ Emotion = Literal[
     "contemptuous",
 ]
 
+# Derived, never typed twice: the capabilities endpoint serves this so the
+# renderer's emotion picker and this enum cannot drift apart.
+EMOTION_VALUES: list[str] = list(get_args(Emotion))
+
 
 class Delivery(BaseModel):
     speed: float | None = None
@@ -1053,10 +1086,13 @@ class Delivery(BaseModel):
     pause_after: int | None = None
     gain_db: float | None = None
     instruct: str | None = None
-    # `style_prompt` is the consistent voice-character field (Qwen3's
-    # "this character speaks like X"). Distinct from `instruct`, which
-    # shapes per-line delivery. UI surfaces both as separate textareas.
-    style_prompt: str | None = None
+    # `style_prompt` was a second prose field here until 2026-08-17 — meant as
+    # "the consistent voice character" against instruct's "this line". It was
+    # deleted because Qwen has exactly ONE upstream instruct slot and the
+    # adapter concatenated the pair one line before the model saw them, so the
+    # split never reached anything. The standing-vs-this-line axis it was
+    # reaching for is the persona-vs-line axis, which the app already has:
+    # `persona.voice_instruct` is standing, `Block.direction` is this line.
     # Sampling temperature. Engines that support it (Chatterbox,
     # Qwen3 talker) read `delivery.temperature` directly. Engines
     # that don't (Kokoro, etc.) ignore it.

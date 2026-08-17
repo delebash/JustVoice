@@ -56,6 +56,152 @@
 
 ## Waiting on your decision
 
+### The engine roster: 4 TTS + 1 CPU cloner + 1 STT — TADA and MOSS marked, not deleted
+STATE:  DECIDED 2026-08-17 — *"your rec but dont remove them now you can mark
+them for removal and hide them if you want and ok oand the pcket tts swap"*.
+**THE FULL RESEARCH AND REASONING IS `docs/plans/2026-08-17-engine-roster-and-platform.md`
+— read it before re-deriving ANY engine fact. Do not redo that research.**
+WHY:    One rule produced the whole roster — *keep an engine only if it is the
+ONLY one that does something we need*. Nine variants collapse to six slots,
+each uniquely filled: Kokoro (ready voices, any hardware) · Chatterbox Turbo
+(cloning + 19 tags) · Chatterbox Multilingual (23 languages) · Qwen3 (prose
+direction + voice design — the only one) · Pocket TTS (cloning with no GPU) ·
+Whisper (STT). ≈56 GB of download surface removed.
+NOT:    Deleting TADA and MOSS now — your explicit instruction. They keep
+working for anyone who installed them; they stop being offered.
+NOT:    Keeping MOSS for multi-speaker dialogue. That capability has **never
+been reachable** (see the finding below) and the architecture cannot use it —
+`Block.persona_id` is one persona per block and render is a per-line loop.
+NOT:    Dropping LuxTTS before Pocket TTS lands and is measured. It is the only
+cloner that works without a GPU; Kokoro is not a substitute (it cannot clone).
+BUILT:  Dia excised (§8.2 of the plan doc). OPEN: the mark-and-hide mechanism —
+a manifest deprecation flag → `EngineInfo` → UI badge + exclusion from
+QuickSetup tiers, same shape as the OS gate shipped the same day.
+GO:     given 2026-08-17 for mark-and-hide + the Pocket TTS swap
+
+### Pocket TTS replaces LuxTTS in the CPU-cloning slot
+STATE:  DECIDED 2026-08-17 — *"ok oand the pcket tts swap"*. Full record in the
+plan doc §5.
+WHY:    Kyutai Labs, **MIT** (our ship license), 100M params, **6 languages** vs
+LuxTTS's English-only, **~6× realtime on 2 CPU cores**, and `pip install
+pocket-tts` against LuxTTS's three non-PyPI sources (one a personal git fork).
+It also exports voice embeddings that reload fast — which maps straight onto
+`VoiceRecord.embedding`.
+NOT:    Removing LuxTTS first. Add → measure → then retire, so there is never a
+window with no GPU-free cloner.
+NOT:    Typing "~30 MB" into a manifest. That figure is from secondary
+write-ups; the README states no size, and 30 MB for 100M params implies ~2.4
+bits/param. **Read the real weight files.**
+OPEN:   adapter · manifest · variant row · capability row · install plumbing ·
+a measured CPU render · Windows unverified (the benchmark is a MacBook Air M4)
+· **nobody has heard it** — clone fidelity is a spec-sheet judgement so far.
+GO:     given 2026-08-17
+
+### FINDING — "✓ multi-speaker" is a false badge, true whatever happens to MOSS
+STATE:  FINDING — code-verified 2026-08-17. Raised by your question: *"moss tts
+what is multi speaker dialog when we identify 1 speaker per line do we need
+it?"* The answer turned out to be that we never had it.
+WHY:    `supports_multi_speaker=True` is served to the client and
+`GenerateView.vue:845` renders a green **"✓ multi-speaker"** tag. Nothing backs
+it. `speaker_prompts` exists in exactly two places repo-wide and **both are
+prose** — a note string (`capability_details.py:435`) and a comment
+(`models.py:906`). The adapter passes ONE `reference_audio`
+(`moss_tts/engine.py:108-115`), so `[S1]`/`[S2]` both render from the same clip.
+NOT:    Treating this as closed by removing MOSS. The badge is wrong today.
+OPEN:   either drop the claim or wire a speaker→clip map. Wiring it means a
+render call spanning blocks, per-speaker cast resolution and a new cache key —
+against **line-is-the-unit**, which is already decided.
+GO:     needed
+
+### QuickSetup's tier recipe is hardcoded per engine, and it had drifted
+STATE:  FINDING — code-verified 2026-08-17, raised by you: *"doesnt quick setup
+just pull engine config info and or data in db, nothing is hardcoded to a
+specific engine like dia in quick setup, correct?"* Correct instinct; the code
+does the opposite.
+WHY:    `QuickSetup.vue:43-80` holds `TIER_RECIPES` — a renderer-side constant
+with hardcoded engine ids, hardcoded `estimatedDownloadGb`, and blurbs naming
+engines in prose. It fetches `/v1/system` for VRAM and `/v1/engines` for the
+list, but the recipe itself is typed. So the wizard cannot follow the
+manifests, and dropping an engine means hand-editing a Vue file.
+NOT:    Leaving it derived-looking. It is not derived, and the drift below is
+what that costs.
+BUILT:  the two drifts found and FIXED in the same pass —
+  1. **`"moss_tts"` was a dead id.** The manifest is `ID = "moss-tts"`
+     (`moss_tts/manifest.py:22`); the folder is `moss_tts`. The 24 GB and
+     32 GB tiers named an engine the server does not serve.
+  2. **Every download estimate was wrong**, before Dia was even removed:
+     4.1 / 6.8 / 14.0 / 22.0 GB typed vs **8.1 / 9.3 / 13.4 / 33.0** summed
+     from the manifests' own pinned `size_bytes`. Same invented-number class
+     the `vram_mb` purge killed on 2026-08-14; this one survived.
+OPEN:   derive the recipe from the manifests — sizes summed from `VARIANTS`
+`sources`, ids from `discover_engines()`, tiers expressed as a capability
+policy rather than an id list — so the numbers cannot be wrong and an engine
+add/drop needs no renderer edit.
+GO:     needed
+
+### Dia was dropped; its external-provider entry was deliberately kept
+STATE:  DECIDED 2026-08-17 — "drop dia stop testing for it". Engine excised.
+WHY:    Dia and MOSS-TTSD were the same slot (multi-speaker dialogue); MOSS
+does 3 speakers + pause tags + zh for 4.12 GB against Dia's 2 speakers at
+4.69–8.07 GB. Independently, the ZipVoice-Dialog paper clocks Dia at **1.663
+RTF on an H800** — slower than realtime on a datacentre GPU.
+NOT:    Removing the **Dia-TTS-Server** entry from the self-hosted TTS provider
+list (`TtsProviderForm.vue:76`, `docs/ai-providers.md`, `docs/engines.md`
+providers row). That is a *different feature* — pointing JustVoice at someone
+else's OpenAI-compatible server — and it costs us nothing to keep. Say the word
+if you want it gone too.
+BUILT:  `engines/dia/` deleted; capability row + `dia2` alias, model-catalog,
+QuickSetup tiers, slash-menu comment, tauri longDescription, and the engines /
+gpu / quick-setup / code-map / design-decisions docs all swept. Historical
+mentions inside other tracker items and dated plan docs are left as record.
+OPEN:   nothing.
+GO:     given 2026-08-17
+
+### Qwen3-TTS on macOS needs an ONNX variant, not a flag flip
+STATE:  OPEN — your call. Raised by you 2026-08-17: *"we have cross platform
+for qwen via qwen.cpp or Qwen3-TTS-ONNX not sure if onnx version reduces
+quality or not"*.
+WHY:    qwen3 is the ONLY engine that takes prose direction, so losing it on
+macOS loses a whole capability there, not just one engine.
+NOT:    Flipping `SUPPORTED_OSES` to include macOS — the adapter loads through
+transformers with a CUDA-specific dtype branch and no mps path; the claim
+would be false the moment anyone tried it.
+FACTS (web-verified 2026-08-17, do not redo): ONNX exports EXIST but are all
+COMMUNITY, not QwenLM — `romara-labs/Qwen3-TTS-12Hz-0.6B-Base-ONNX`,
+`xkos/Qwen3-TTS-12Hz-1.7B-ONNX`, `arubeh/qwen3-tts-12hz-1.7b-base-onnx` (the
+last one re-exported from PyTorch FP32, 9 components, self-described as
+parity-verified). CPU inference reported **5–10× slower than GPU** — batch
+work, not real-time. FP32 is the CPU precision; FP16 costs 9–13% overhead on
+CPU. Quality-vs-PyTorch is UNMEASURED by us.
+BUILT:  nothing. `qwen3/manifest.py` records the reasoning at SUPPORTED_OSES.
+OPEN:   a variant row + an onnxruntime load branch in `qwen3/engine.py`, then
+measure quality against the PyTorch checkpoint before it ships as equivalent.
+GO:     needed
+
+### Three device-picking defects found while wiring the OS gate — none fixed
+STATE:  FINDING — code-verified 2026-08-17. Found while doing the declarations;
+outside that go, so reported rather than touched.
+WHY:    Each one makes a platform claim the code does not honour, which is the
+same class of bug the OS gate itself was.
+NOT:    Fixing them inside the gate change — that go covered declarations and
+reachability only.
+BUILT:  n/a. The three:
+  1. `tada/engine.py:68` calls plain `pick_device()`, but `pick_device`'s own
+     docstring names TADA in the `force_cpu_on_mac` set. Chatterbox has an
+     override for exactly this; TADA never got one. (Moot while TADA excludes
+     macOS, live again the moment it doesn't.)
+  2. `chatterbox/engine.py:64-70` returns `"cpu"` on Darwin **before**
+     delegating, so it overrides an EXPLICIT operator device request too —
+     base `pick_device` honours `requested != "auto"` first, this never gets
+     the chance. An operator who sets mps deliberately silently gets cpu.
+  3. `tada/manifest.py`'s docstring says *"Per-engine venv makes that a
+     non-issue"* about its torch>=2.7 pin colliding with chatterbox's 2.6.0 —
+     but TADA declares no `ISOLATION`, so it defaults to **shared**, and
+     `shared_venv.py:207-211` skips torch steps. TADA gets 2.6.0.
+OPEN:   decide each independently; (3) is the one that can produce a wrong
+runtime rather than a wrong claim.
+GO:     needed
+
 ### Settings → Capture is a localStorage mock — its controls never reach the server
 
 STATE: FINDING — code-verified 2026-08-08 (found wiring the cleanup redesign's
@@ -370,52 +516,6 @@ in it for the attribution work.
 
 GO: needed, per phase. Slices C/D/E of the workbench plan are frozen.
 
-### Dia2 replaced Dia 1.6B — ported 2026-08-17, NOT YET RUN
-
-STATE: CODE COMPLETE, RUNTIME-UNVERIFIED. Done under "go". Every fact below
-came from the upstream source or the HF API, not a README summary.
-
-WHY: Dia 1's adapter never read `req.audio_prompt_path`, so a cloned voice
-pointed at Dia rendered in the stock voice — the manifest admitted it. Dia2's
-`generate()` takes `prefix_speaker_1` / `prefix_speaker_2`
-(`dia2/generation.py::PrefixConfig`), so cloning is real, and
-`Dia2.from_local(config_path, weights_path, …)` gives it the same local-load
-door every other engine got. It also drops the git-installed transformers
-main-branch pin that forced Dia's isolation in the first place.
-
-WHAT CHANGED: `manifest.py` and `engine.py` rewritten. Install is
-`pip-git https://github.com/nari-labs/dia2.git` — **there is no `dia2` on
-PyPI** (checked, 404). Two variants, `dia2-1b` (default) and `dia2-2b`, each a
-TWO-SOURCE download: `dia2_assets.json` in both repos points `mimi` at
-`kyutai/mimi`, so the audio codec is a second repo (same multi-source shape
-TADA uses). File lists and byte sums read from
-`/api/models/<repo>?blobs=true` on 2026-08-17: 1B = 4,309,852,127 · 2B =
-7,683,100,734 · mimi = 384,651,179.
-
-CONSEQUENCES, all user-visible:
-- **The stock voice row is gone.** Dia2 has no preset speakers; the voice comes
-  from your reference clip. `STATIC_VOICES = []`. Any persona still pointing at
-  the old `default` voice id needs recasting.
-- **`top_p` and `max_new_tokens` no longer exist** for Dia. Dia2 samples the
-  text and audio streams separately (each temperature + top_k) and has no
-  top_p; length is bounded by the checkpoint's `max_context_steps` (~2 min),
-  not a per-call cap. Knobs now: cfg_scale · temperature (audio stream) ·
-  audio_top_k · cfg_filter_k · text_temperature · text_top_k · initial_padding.
-- **Licence note:** the Dia2 weights are Apache-2.0 but the Mimi codec is
-  **CC-BY-4.0**. The engine ships under the stricter of the two — check this
-  against `NOTICE.md` before release.
-- **No streaming.** Upstream lists it as *Upcoming*. My earlier recommendation
-  leaned on streaming; the source does not support that claim, and nothing in
-  the app advertises it.
-
-OPEN — THE HONEST GAP: **the new adapter has never been executed.** Gates that
-pass (ruff · 605 pytest · biome · vitest · build · smoke) exercise the
-manifest, the capability wiring and the renderer; none of them install Dia2 or
-call `synth()`, which needs CUDA and a ~4.7 GB download. Unverified at runtime:
-the `from_local` path against a real speech-cache dir, whether `mimi_id` accepts
-a local directory the way `tokenizer_id` does, the actual output sample rate,
-and cloning end to end. Install it and render one line before trusting it.
-
 ### ~~FINDING — Block.direction is stored, editable, and never rendered~~ — FIXED
 
 STATE: **FIXED 2026-08-17** under "go", together with the other two dead
@@ -458,6 +558,64 @@ screen writes a column no render reads. Per-line direction is not a future
 feature; it is built and disconnected.
 GO: needed. Bears directly on the redesign — per-line direction is load-bearing
 in the new chapter surface.
+
+### style_prompt is deleted; emotion becomes the cross-engine direction control
+
+STATE: DECIDED 2026-08-17 — *"so we should just remove style prompt and keep
+spoken delivery?"* … *"go and wire emotion"*
+WHY:    Five prose fields fed ONE Qwen `instruct=` argument, and the user could
+not see the difference between two of them because there is none downstream:
+`qwen3/engine.py` glued `style_prompt` onto `instruct` one line before sending.
+The standing-vs-this-line axis it wanted is persona-vs-line, which the app
+already has (`voice_instruct` + `Block.direction`). Emotion went the other way:
+it is the ONE control with a cross-engine meaning, because an enum compiles two
+ways where prose compiles one — and it had no writer in `src/` at all.
+NOT:    Keeping style_prompt as "the persona's field on the Generate page" —
+that is what the persona already is, and Generate can save its delivery as a
+persona default. NOT mapping `sad`→`[crying]` on Turbo: crying is a behaviour,
+not a state, and a near-neighbour substitution is the lie this pass removes.
+NOT changing the ruled composition order (persona → emotion → line).
+NOT a kit change for per-option `disabled` in `UiSelect` — the picker offers
+only what the engine can say and names the gap in the hint instead.
+BUILT:  `models.py` (field gone, `EMOTION_VALUES` served) ·
+`delivery_merge.compose_instruct` (one composer, both render paths — the
+one-off path composed nothing before) · `capability_details.py`
+chatterbox-turbo (**4 of 19 tags declared → all 19**, in three categories, with
+`value_map`) · `render_core._emotion_tagset` / `_apply_emotion_tag`
+(variant-precise via `manager.current_variant_id`, mirrored in
+`probe_line_cached`) · `GenerateView.vue` Emotion picker.
+Pinned by `server/tests/test_emotion_wiring.py` (25 tests).
+OPEN:   Turbo's other 16 tokens are declared from reserved ids and **never
+rendered here** — upstream names only three. `_tags_supported` is still
+engine-level, so a hand-typed `[laugh]` is not stripped for Multilingual, which
+has no such token. Per-line emotion needs a `blocks` column and is NOT built —
+today the line carries prose `direction`, the persona carries the emotion.
+GO:     given 2026-08-17
+
+### Voice design — the call is already installed; it needs a variant row
+
+STATE: OPEN — your call. User 2026-08-17: *"we dont have the model but we need
+to add it, qwen does."* Researched and verified the same day.
+WHY:    Every manifest says `voice_design: False` and `POST /v1/voices/design`
+has nothing behind it. `Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign` is real, and
+`generate_voice_design(text, instruct, language, …)` is **already in the
+installed `qwen_tts`** in `engines/.shared-venv` — gated at
+`qwen3_tts_model.py:686` on `tts_model_type == "voice_design"`. **No new
+dependency.** What is missing: a variant row, the ~4.52 GB download, and one
+adapter branch.
+NOT:    Treating it as a call that returns a voice. It is **per-call
+synthesis** — description in, *audio* out, no embedding to store. Alexandria
+(also Qwen3-based) does the only thing that works: synthesize a reference,
+save the WAV, and assign the speaker as a **clone** of it. So the door is a
+four-step pipeline — describe → synthesize probe → save WAV → clone → `Voice`
+— and the result is a clone, inheriting the cloning engine's abilities, not
+Qwen's. Anything else re-derives this the hard way.
+BUILT:  nothing. Full record incl. the file list, the Alexandria quotes, and
+the three-routes-to-a-directable-voice table: redesign doc §9.
+OPEN:   the byte total needs one re-pull — the HF file list sums to
+4,520,159,099 but the API's own total differs by ~3 MB, and facts-only means
+neither is typed until they agree.
+GO:     needed
 
 ### FINDING — the synth scheduler has no UI at all
 
@@ -624,12 +782,11 @@ DOCS: `docs/engines.md` gained the per-engine tuning matrix; `docs/generate.md`
 corrected (pitch is post-process on every engine, not native on LuxTTS);
 `docs/dev/code-map.md` §5 carries the declaration↔adapter matrix.
 
-STILL OPEN from this area, NOT fixed: `Delivery.pause_before` /
-`pause_after` are stored and never applied — `concat_lines` uses a fixed
-`silence_ms=250`. `Delivery.emotion` reaches only the export path.
-`Block.direction` is unchanged (see its own finding above). TADA is not in the
-shared venv, so its upstream knob surface could not be introspected — re-add
-knobs there only alongside the adapter change that passes them.
+STILL OPEN from this area, NOT fixed: TADA is not in the shared venv, so its
+upstream knob surface could not be introspected — re-add knobs there only
+alongside the adapter change that passes them. (The pause, direction and
+emotion gaps listed here are closed — see the two findings above and the
+emotion item below.)
 
 ORIGINAL FINDING, kept as the record — code-verified 2026-08-15 while building
 workbench Slice B.

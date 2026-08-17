@@ -436,7 +436,7 @@ def _register_existing_engines(state: AppState, data_dir: Path) -> None:
         ", ".join(sorted(mgr.manifests().keys())) or "(none)",
     )
 
-    # All built-in engines (kokoro, chatterbox, dia, tada, qwen3, luxtts,
+    # All built-in engines (kokoro, chatterbox, tada, qwen3, luxtts,
     # moss-tts) now live as managed plugins under engines/<id>/. Higgs
     # was removed 2026-06-09 (non-commercial weight license conflicted
     # with commercial-output use cases). The legacy in-process engine

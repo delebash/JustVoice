@@ -29,6 +29,26 @@ DESCRIPTION = (
 )
 LICENSE = "Apache-2.0"
 
+# Declared 2026-08-17, and this one RESOLVES A CONTRADICTION: the manifest
+# declared `gpu_runtimes: ["cuda"]` while inheriting the manager's all-three
+# default, so it claimed macOS — where CUDA does not exist.
+#
+# GROUNDS for excluding macOS:
+#   - REQUIREMENTS lists cuda and nothing else. No mps anywhere in the
+#     manifest or the adapter.
+#   - `engine.py`'s dtype branch is CUDA-specific (`torch.cuda.is_bf16_supported()`),
+#     and its `attn_implementation=None` comment is about Windows, not Darwin.
+#   - `pick_device` would fall through to mps/cpu on a Mac, but nothing here
+#     was written for that path and nobody has run it.
+#
+# The route to macOS is an ONNX variant, not a flag flip: community exports
+# exist (romara-labs, xkos, arubeh — the last parity-verified against PyTorch
+# FP32), but they are community rather than QwenLM, they need an onnxruntime
+# load path this adapter does not have, and CPU inference is reported 5-10x
+# slower than GPU. That is a variant row + adapter branch, tracked in TASKS,
+# not something this list can assert.
+SUPPORTED_OSES = ["windows", "linux"]
+
 CAPABILITIES = {
     "preset_voices": True,
     # Engine-level = the union across variants: Base clones, CustomVoice
