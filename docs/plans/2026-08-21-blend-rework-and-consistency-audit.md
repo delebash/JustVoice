@@ -872,3 +872,130 @@ The renderer gate cannot see any of this: it never opens the picker and never
 loads a model. It was caught by querying `/v1/engines/capabilities` and
 `/v1/engines/{id}/models` on a running server and comparing the two id spaces
 by hand — which is the only reason this section exists.
+
+---
+
+## 19 · Voices-page consistency pass (§13 item 4, and the rest of item 6)
+
+### 19.1 · A layout regression the UiTable move caused and nobody saw
+
+The grid used to carry this, with a comment explaining exactly why:
+
+```css
+/* `.jv-table` is width:100% by canon, so the override has to outrank it —
+   otherwise six columns share the whole window and Name becomes a
+   near-empty 470px cell. */
+.voices-view__list .jv-table.voices-view__table { width: auto; min-width: 720px; }
+.voices-view__table th,
+.voices-view__table td { width: 1%; white-space: nowrap; }
+.voices-view__table th.voices-view__th-name  { width: auto; min-width: 240px; }
+```
+
+**All three stopped matching when the grid moved onto `UiTable`**, for two
+separate reasons, and the defect the comment warns about came back:
+
+1. The first is keyed on `.jv-table`. The kit component does not carry that
+   class, so the selector cannot match — and `.ui-table` is `width: 100%`.
+2. The other two are scoped rules on `th`/`td`. Vue puts the scope id on the
+   **last** compound selector, so they compile to `td[data-v-…]`, and a `<td>`
+   rendered inside the child component never carries the parent's scope id.
+   Only a component's ROOT element inherits it.
+
+This is the same trap as §17.2's row classes, in a second guise, and it is the
+general hazard of adopting a kit component: **scoped CSS aimed at internals
+silently stops applying, and nothing fails loudly.**
+
+Fixed the way the component intends:
+
+- the table width reaches in through `:deep(.ui-table)`;
+- per-column widths moved onto `VOICE_COLUMNS` via `UiTable`'s documented
+  `headerStyle` / `cellStyle`, which it applies inline;
+- the duplicate `font-size: 13px` is gone — `.ui-table` already sets it.
+
+Verified in the built output, not the source: the compiled sheet now contains
+`.voices-view__table[data-v-…] .ui-table{width:auto;min-width:720px}`, and the
+chunk carries the inline `minWidth:"240px"` / `whiteSpace:"nowrap"`.
+
+### 19.2 · One gender vocabulary
+
+Two vocabularies were live in one file. `autoDetectGender` returns LETTERS
+(`F` · `M` · `N` · `?`), which is what the chip's `data-gender` attribute holds;
+`voiceGenderWord` returns WORDS (`female` · `male` · `neutral`), which is the
+filter dropdown's vocabulary. The stylesheet carried rules for both:
+
+```css
+.voices-view__gender-chip[data-gender="female"] { … }   /* never matched */
+.voices-view__gender-chip[data-gender="male"]   { … }   /* never matched */
+```
+
+Doubly dead — they were also declared *before* the base `.voices-view__gender-chip`
+block, so even a match would have been overridden. Deleted, with a comment at
+the site saying which vocabulary belongs there and why the other exists.
+
+### 19.3 · Knob rows are one control now, not two wired together
+
+Each engine knob rendered a raw `<input type="range">` **plus** a `UiInput`
+number box, kept in step by hand — the exact pattern `UiSlider` was added to
+the kit to end (its header comment counts fourteen copies of it). One
+`UiSlider` replaces both; it owns an editable number box already.
+
+The grid dropped from five columns to four, and every column is now
+`max-content` with `justify-content: start`. The old middle column was
+`minmax(160px, 1fr)`, which stretched the track to the card — against the
+layout law. `.voices-view__knob-range` went with it.
+
+### 19.4 · Deleted
+
+- **"Reset all tweaks"** — the chip and `resetAllTweaks()`. The per-voice
+  gender cycle and its persistence stay; only the bulk clear is gone.
+- **Dead CSS**: `.voices-view__seek` and `.voices-view__wlabel` (one reference
+  each — the rule itself), `.voices-view__th-name`, `.voices-view__knob-range`,
+  and the two gender word-rules.
+- **The last biome error in the file** — `stream.getTracks().forEach((t) =>
+  t.stop())` in `toggleRecord` returned a value from a `forEach` callback
+  (`lint/suspicious/useIterableCallbackReturn`, §13 item 7). Now a `for…of`.
+  `biome check src/` is clean across all 97 files.
+
+### 19.5 · Already done, contrary to the tracker
+
+§13 item 6 also listed *"delete dead `engineStatusLabel()`"* and *"'loaded'
+wording everywhere"*. Both are already true: `engineStatusLabel` does not exist
+anywhere in `src/`, and the user-visible strings already read "loaded" (the
+success tag's value, the disabled-button title). `engineReady` is a variable
+name, not copy. Nothing to change — recorded so it is not re-derived.
+
+### 19.6 · A recommendation of mine that re-verification overturned
+
+§13 item 4 said *"blend tables → UiTable"*. Reading them, that is wrong and they
+were left alone.
+
+`UiTable` is a READ surface: immutable `:data`, a `data-key` per row, sorting,
+filtering, pagination, cells rendered through slots. The two blend tables are
+editable FORM grids — every cell holds a live control `v-model`-bound into a
+mutable array, rows are index-keyed with no id, and add/remove buttons mutate
+the array in place. Sorting and filtering are meaningless for them, and a
+sortable header would be an active nuisance.
+
+They are tabular *form* layout, not a data grid. Converting them would be
+adopting a component for the name of its tag rather than for what it does —
+which is the opposite of the rule this audit exists to enforce.
+
+### 19.7 · Verification
+
+`biome check src/` clean (97 files) · 67 unit tests, 9 files · vite built ·
+smoke gate 15/15 with zero JS errors against the real data dir · the compiled
+CSS and JS chunk checked by hand for the width rules in §19.1.
+
+### 19.8 · Not done, and why
+
+**The LoRA sub-tab default.** §13 item 6 carried *"LoRA default → preparer"*,
+taken from the question *"lora tab should sub menua default to preparer as
+selected?"* — which was a question, and never got an answer. `LoraView.vue`
+opens on Training with a documented reason: *"Training is the destination, so
+it opens first: most visits are to start a run or check one, not to build a set
+from scratch."* Flipping it reverses a recorded decision on the strength of a
+question mark, so it is left for a ruling.
+
+**The 21-file table sweep and the remaining raw sliders** (§13 item 8) are
+unblocked now but out of scope for a Voices-page pass — they need their own
+blast-radius pass, per file.

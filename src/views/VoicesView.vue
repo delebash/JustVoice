@@ -299,13 +299,21 @@ const voiceRows = computed(() =>
   })),
 );
 
+// Column widths ride on the columns, through UiTable's own headerStyle/cellStyle,
+// because a scoped `.voices-view__table td` rule cannot reach a <td> that lives
+// inside the component — Vue puts the scope id on the LAST compound selector, so
+// the rule compiled to `td[data-v-…]` and silently stopped matching when the grid
+// moved off its hand-rolled <table>. Every column is shrink-to-fit; Name takes
+// what is left, which is the layout law's "a row ends where its content ends".
+const FIT = { width: "1%", whiteSpace: "nowrap" };
 const VOICE_COLUMNS = [
-  { id: "name", accessorKey: "name", header: "Name", sortable: true },
-  { id: "_gender", accessorKey: "_gender", header: "Gender", sortable: true },
-  { id: "source", accessorKey: "source", header: "Type", sortable: true },
-  { id: "engine", accessorKey: "engine", header: "Engine", sortable: true },
-  { id: "_lang", accessorKey: "_lang", header: "Language", sortable: true },
-  { id: "actions", header: "" },
+  { id: "name", accessorKey: "name", header: "Name", sortable: true,
+    headerStyle: { width: "auto", minWidth: "240px" } },
+  { id: "_gender", accessorKey: "_gender", header: "Gender", sortable: true, headerStyle: FIT, cellStyle: FIT },
+  { id: "source", accessorKey: "source", header: "Type", sortable: true, headerStyle: FIT, cellStyle: FIT },
+  { id: "engine", accessorKey: "engine", header: "Engine", sortable: true, headerStyle: FIT, cellStyle: FIT },
+  { id: "_lang", accessorKey: "_lang", header: "Language", sortable: true, headerStyle: FIT, cellStyle: FIT },
+  { id: "actions", header: "", headerStyle: FIT, cellStyle: FIT },
 ];
 
 /** Row STATE goes on the <tr>, through the kit's :row-class (added 2026-08-21).
@@ -880,7 +888,7 @@ async function toggleRecord() {
     mediaRecorder = new MediaRecorder(stream);
     mediaRecorder.ondataavailable = (e) => { if (e.data.size) recordedChunks.push(e.data); };
     mediaRecorder.onstop = () => {
-      stream.getTracks().forEach((t) => t.stop());
+      for (const t of stream.getTracks()) t.stop();
       recording.value = false;
       const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || "audio/webm" });
       cloneFile.value = new File([blob], "recording.webm", { type: blob.type });
@@ -1560,22 +1568,6 @@ function voiceTypeVariant(source) {
   return "ghost";
 }
 
-async function resetAllTweaks() {
-  const overrides = Object.keys(loadPresetGenderOverrides()).length;
-  if (!overrides) {
-    pushToast({ kind: "info", message: "Nothing to reset — no gender overrides." });
-    return;
-  }
-  const ok = await confirmDialog({
-    title: "Reset all voice tweaks?",
-    message: `Clears ${overrides} gender override${overrides === 1 ? "" : "s"}. Cloned/designed voices themselves are untouched.`,
-    confirmLabel: "Reset all",
-    danger: true,
-  });
-  if (!ok) return;
-  writePref("presetGenderOverrides", {});
-  pushToast({ kind: "success", message: "All voice tweaks reset." });
-}
 
 </script>
 
@@ -1627,10 +1619,6 @@ async function resetAllTweaks() {
         ? `${loadedTtsEngine.name || loadedTtsEngine.id} is loaded — previews play instantly. Click to manage engines.`
         : 'No TTS engine loaded — the first preview will offer to load one. Click to manage engines.'"
     >{{ loadedTtsEngine ? `● ${loadedTtsEngine.name || loadedTtsEngine.id} loaded` : "○ no engine loaded" }}</UiChip>
-    <UiChip
-      title="Clear every gender override (confirmed first)"
-      @click="resetAllTweaks"
-    >↺ Reset all tweaks</UiChip>
     <div class="voices-view__chips">
       <UiChip
         v-for="f in TYPE_FILTERS"
@@ -1973,17 +1961,14 @@ async function resetAllTweaks() {
             <div class="jv-card__body voices-view__knobs">
             <div v-for="k in engineKnobs" :key="k.key" class="voices-view__knob">
               <label class="voices-view__knob-label" :title="k.hint">{{ k.label }}</label>
-              <input
-                type="range"
-                class="voices-view__knob-range"
+              <!-- One control, not a range wired by hand to a number box:
+                   UiSlider owns both halves (the number stays editable, which
+                   is how you hit an exact 0.35). -->
+              <UiSlider
+                :modelValue="Number(knobValues[k.key])"
                 :min="k.min" :max="k.max" :step="k.step"
-                :value="knobValues[k.key]"
-                @input="knobValues = { ...knobValues, [k.key]: Number($event.target.value) }"
-              />
-              <UiInput
-                type="number"
-                width="token"
-                :modelValue="String(knobValues[k.key])"
+                width="short"
+                :aria-label="k.label"
                 @update:modelValue="knobValues = { ...knobValues, [k.key]: Number($event) }"
               />
               <span class="voices-view__knob-unit">{{ k.unit }}</span>
@@ -2335,7 +2320,6 @@ async function resetAllTweaks() {
 /* Weight / position sliders (blend strategies). Track width is a chosen
    control size, same as the old knob tracks. */
 .voices-view__wrow { display: flex; align-items: center; gap: 10px; }
-.voices-view__wlabel { font-size: 12px; color: var(--ink-2); }
 /* Vector math's two groups: a quiet heading so "add" and "subtract" are
    read as sections, not as decoration on the first row under them. */
 .voices-view__grouphead {
@@ -2377,13 +2361,18 @@ async function resetAllTweaks() {
    draw sliders); everything else is content-sized. */
 .voices-view__knobs {
   display: grid;
-  grid-template-columns: max-content minmax(160px, 1fr) max-content max-content max-content;
+  /* label · slider (track + its own number box) · unit · reset. Every column
+     is content-sized: UiSlider carries its own width, so nothing here stretches
+     to the card and the row ends where the reset button ends. Was five columns
+     with a `minmax(160px, 1fr)` track, from when the range and the number were
+     two separate controls wired together by hand. */
+  grid-template-columns: max-content max-content max-content max-content;
   gap: 8px 12px;
   align-items: center;
+  justify-content: start;
 }
 .voices-view__knob { display: contents; }
 .voices-view__knob-label { font-size: 12px; color: var(--ink-2); }
-.voices-view__knob-range { width: 100%; accent-color: var(--accent); }
 .voices-view__knob-unit { font-size: 11.5px; color: var(--ink-3); min-width: 22px; }
 
 .voices-view__result-box {
@@ -2417,22 +2406,25 @@ async function resetAllTweaks() {
    column and a player elsewhere on the page. */
 .voices-view__name-cell { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .voices-view__transport { display: inline-flex; align-items: center; gap: 8px; margin-left: 4px; }
-.voices-view__seek { width: 150px; accent-color: var(--accent); }
 .voices-view__time { font-size: 11px; color: var(--ink-3); }
 
-/* Columns sized to what they hold. `.jv-table` is width:100% by canon, so
-   the override has to outrank it — otherwise six columns share the whole
-   window and Name becomes a near-empty 470px cell. */
-.voices-view__list .jv-table.voices-view__table { width: auto; min-width: 720px; }
-.voices-view__table th,
-.voices-view__table td { width: 1%; white-space: nowrap; }
-.voices-view__table th.voices-view__th-name { width: auto; min-width: 240px; }
+/* Columns sized to what they hold — otherwise six columns share the whole
+   window and Name becomes a near-empty 470px cell.
 
-.voices-view__table { font-size: 13px; }
+   This rule was keyed on `.jv-table`, which the kit's UiTable does not carry,
+   so it stopped matching the moment the grid moved (2026-08-21) and the defect
+   it was written to prevent came back. It now reaches the kit's own
+   `.ui-table` through `:deep`. The PER-COLUMN widths went with it: a scoped
+   `td` rule cannot reach a cell inside the component at all — those live on
+   VOICE_COLUMNS now. `font-size` is gone too; `.ui-table` already sets 13px. */
+.voices-view__table :deep(.ui-table) { width: auto; min-width: 720px; }
 
-/* Gender chip: click-cycle ❓ → F → M → N → unset. */
-.voices-view__gender-chip[data-gender="female"] { border-color: #c98aa7; color: #a85a7e; background: #faf0f5; }
-.voices-view__gender-chip[data-gender="male"]   { border-color: #7e9cc4; color: #4a6fa0; background: #eef3fa; }
+/* Gender chip: click-cycle ❓ → F → M → N → unset.
+   ONE vocabulary: this attribute carries the LETTER `autoDetectGender` returns
+   (F · M · N · ?). The word form — female/male/neutral, from `voiceGenderWord`
+   — belongs to the FILTER and never reaches here. Two rules keyed on
+   "female"/"male" used to sit at this spot matching nothing, and were
+   overridden by the base block below in any case. */
 .voices-view__gender-chip {
   appearance: none;
   border: 1px solid var(--line-strong);
