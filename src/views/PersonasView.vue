@@ -35,6 +35,14 @@ import { useProjectsStore } from "../stores/projects.js";
 // Kit grid in the JustVoice look (`jv-table-look`); sorting comes with it,
 // which matters here — "which project uses this persona most" was unanswerable
 // without re-reading the whole list.
+const PERSONA_COLUMNS = [
+  { id: "name", accessorKey: "name", header: "Persona", sortable: true },
+  { id: "voice", header: "Voice" },
+  { id: "used", header: "Used in", headerStyle: { width: "110px" } },
+  { id: "actions", header: "Actions",
+    headerStyle: { width: "150px", textAlign: "right" },
+    cellStyle: { textAlign: "right", whiteSpace: "nowrap" } },
+];
 const CROSS_PROJECT_COLUMNS = [
   { id: "project_name", accessorKey: "project_name", header: "Project", sortable: true },
   { id: "project_type", accessorKey: "project_type", header: "Type", sortable: true },
@@ -400,29 +408,29 @@ onMounted(loadAll);
         action-label="+ Create your first persona"
         @action="createBlank"
       />
-      <div v-else-if="!filteredPersonas.length" class="personas__empty jv-muted">
-        No personas match this filter.
-      </div>
-      <table v-else class="jv-table">
-        <thead>
-          <tr><th>Persona</th><th>Voice</th><th style="width:110px">Used in</th><th class="jv-table__actions" style="width:150px">Actions</th></tr>
-        </thead>
-        <tbody>
-          <tr v-for="p in filteredPersonas" :key="p.id" class="personas__row" title="Click to edit" @click="selectedId = p.id">
-            <td>
-              <span class="personas__card-avatar personas__avatar-sm" :style="{ background: colorFor(p.name) }">{{ (p.name || "?").charAt(0).toUpperCase() }}</span>
-              <strong>{{ p.name }}</strong>
-              <div v-if="p.personality" class="jv-muted" style="font-size:11.5px; margin-left:36px">{{ p.personality.slice(0, 70) }}{{ p.personality.length > 70 ? "…" : "" }}</div>
-            </td>
-            <td class="jv-muted">{{ voices.find((v) => v.id === p.voice_id)?.name || (p.voice_id || "no voice yet") }}</td>
-            <td><UiTag :intent="usageCount(p.id) > 0 ? 'success' : 'ghost'">{{ usageCount(p.id) }} project{{ usageCount(p.id) === 1 ? '' : 's' }}</UiTag></td>
-            <td class="jv-table__actions" @click.stop>
-              <UiButton intent="ghost" size="small" label="Edit" @click="selectedId = p.id" />
-              <UiButton intent="danger-outline" size="small" label="Delete" @click="removePersona(p)" />
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <!-- One empty state, owned by the grid; `row-hover` carries the pointer
+           cursor and the row tint that two scoped rules used to do by hand. -->
+      <UiTable v-else class="jv-table-look" :data="filteredPersonas" :columns="PERSONA_COLUMNS"
+        data-key="id" row-hover @row-click="({ data }) => (selectedId = data.id)">
+        <template #name="{ row }">
+          <span class="personas__card-avatar personas__avatar-sm" :style="{ background: colorFor(row.name) }">{{ (row.name || "?").charAt(0).toUpperCase() }}</span>
+          <strong>{{ row.name }}</strong>
+          <div v-if="row.personality" class="jv-muted personas__row-sub">{{ row.personality.slice(0, 70) }}{{ row.personality.length > 70 ? "…" : "" }}</div>
+        </template>
+        <template #voice="{ row }">
+          <span class="jv-muted">{{ voices.find((v) => v.id === row.voice_id)?.name || (row.voice_id || "no voice yet") }}</span>
+        </template>
+        <template #used="{ row }">
+          <UiTag :intent="usageCount(row.id) > 0 ? 'success' : 'ghost'">{{ usageCount(row.id) }} project{{ usageCount(row.id) === 1 ? '' : 's' }}</UiTag>
+        </template>
+        <template #actions="{ row }">
+          <div class="jv-table__actions" @click.stop>
+            <UiButton intent="ghost" size="small" label="Edit" @click="selectedId = row.id" />
+            <UiButton intent="danger-outline" size="small" label="Delete" @click="removePersona(row)" />
+          </div>
+        </template>
+        <template #empty>No personas match this filter.</template>
+      </UiTable>
     </template>
 
     <!-- ── Editor dialog (consolidated pattern 2026-06-12) ───────────── -->
@@ -653,8 +661,8 @@ onMounted(loadAll);
 .personas__card-row strong { flex: 1; font-size: 14.5px; }
 .personas__card-meta { font-size: 11.5px; margin-top: 3px; }
 
-.personas__row { cursor: pointer; }
-.personas__row:hover td { background: var(--surface-2); }
+/* The row's cursor and hover tint come from UiTable's `row-hover`. */
+.personas__row-sub { font-size: 12.5px; margin-left: 36px; }
 .personas__avatar-sm { width: 26px; height: 26px; font-size: 12px; vertical-align: middle; margin-right: 8px; }
 
 .personas__grid {

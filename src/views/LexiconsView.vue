@@ -15,7 +15,7 @@ import { useApi } from "../stores/api.js";
 import { previewLexiconText } from "../services/lexiconPreview.js";
 import { pushToast, saveBlob } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
-import { UiButton, UiInput, UiTag, UiChip, UiSelect, AppModal } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTag, UiChip, UiSelect, AppModal, UiTable } from "@delebash/llm-ui";
 import { EmptyState } from "@delebash/llm-ui";
 import { useLexiconsStore } from "../stores/lexicons.js";
 import { useProjectsStore } from "../stores/projects.js";
@@ -79,6 +79,35 @@ const newGrapheme = ref("");
 const newPhonemeIpa = ref("");
 const newAlias = ref("");
 const editingEntryIndex = ref(null);
+
+// ── The two grids (kit UiTable) ──────────────────────────────────────────
+// The library list wears the JustVoice look; `row-hover` carries both the
+// pointer cursor and the row tint, so `.lex__row`'s two scoped rules are gone.
+const LEXICON_COLUMNS = [
+  { id: "name", accessorKey: "name", header: "Name", sortable: true },
+  { id: "scope", header: "Scope", headerStyle: { width: "130px" } },
+  { id: "count", header: "Entries", headerStyle: { width: "90px" } },
+  { id: "words", header: "Words" },
+  { id: "actions", header: "Actions",
+    headerStyle: { width: "150px", textAlign: "right" },
+    cellStyle: { textAlign: "right", whiteSpace: "nowrap" } },
+];
+
+// The entry list inside the dialog keeps its own flat look (no card chrome,
+// tighter padding), so it does NOT wear `jv-table-look`. Its actions address
+// entries by INDEX, which a slot cannot hand back — so the index rides along
+// as a field and doubles as the row key.
+const entryRows = computed(() =>
+  (draft.value?.entries || []).map((e, i) => ({ ...e, __i: i })),
+);
+const ENTRY_COLUMNS = [
+  { id: "grapheme", accessorKey: "grapheme", header: "Word", sortable: true },
+  { id: "pron", header: "Pronunciation (IPA or phonetic)" },
+  { id: "kind", header: "Format", headerStyle: { width: "90px" } },
+  { id: "actions", header: "",
+    headerStyle: { width: "150px", textAlign: "right" },
+    cellStyle: { textAlign: "right", whiteSpace: "nowrap" } },
+];
 
 // Live preview (client-side, against the draft's entries).
 const previewText = ref("");
@@ -446,27 +475,26 @@ onActivated(() => {
       @action="createLexicon"
     />
 
-    <table v-else class="jv-table">
-      <thead>
-        <tr><th>Name</th><th style="width:130px">Scope</th><th style="width:90px">Entries</th><th>Words</th><th class="jv-table__actions" style="width:150px">Actions</th></tr>
-      </thead>
-      <tbody>
-        <tr v-for="lx in filteredLexicons" :key="lx.id" class="lex__row" title="Click to edit" @click="openEdit(lx)">
-          <td><strong>{{ lx.name }}</strong><div v-if="scopedToName(lx)" class="jv-muted" style="font-size:11.5px">{{ scopedToName(lx) }}</div></td>
-          <td><UiTag :intent="scopeBadge(lx).intent">{{ scopeBadge(lx).label }}</UiTag></td>
-          <td>{{ (lx.entries || []).length }}</td>
-          <td>
-            <code v-for="(e, i) in (lx.entries || []).slice(0, 4)" :key="i" class="jv-mono lex__word">{{ e.grapheme }}</code>
-            <span v-if="(lx.entries || []).length > 4" class="jv-muted">+{{ (lx.entries || []).length - 4 }}</span>
-            <span v-if="!(lx.entries || []).length" class="jv-muted">(empty)</span>
-          </td>
-          <td class="jv-table__actions" @click.stop>
-            <UiButton intent="ghost" size="small" label="Edit" @click="openEdit(lx)" />
-            <UiButton intent="danger-outline" size="small" label="Delete" @click="deleteLexicon(lx.id)" />
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <UiTable v-else class="jv-table-look" :data="filteredLexicons" :columns="LEXICON_COLUMNS"
+      data-key="id" row-hover @row-click="({ data }) => openEdit(data)">
+      <template #name="{ row }">
+        <strong>{{ row.name }}</strong>
+        <div v-if="scopedToName(row)" class="jv-muted lex__scoped-to">{{ scopedToName(row) }}</div>
+      </template>
+      <template #scope="{ row }"><UiTag :intent="scopeBadge(row).intent">{{ scopeBadge(row).label }}</UiTag></template>
+      <template #count="{ row }">{{ (row.entries || []).length }}</template>
+      <template #words="{ row }">
+        <code v-for="(e, i) in (row.entries || []).slice(0, 4)" :key="i" class="jv-mono lex__word">{{ e.grapheme }}</code>
+        <span v-if="(row.entries || []).length > 4" class="jv-muted">+{{ (row.entries || []).length - 4 }}</span>
+        <span v-if="!(row.entries || []).length" class="jv-muted">(empty)</span>
+      </template>
+      <template #actions="{ row }">
+        <div class="jv-table__actions" @click.stop>
+          <UiButton intent="ghost" size="small" label="Edit" @click="openEdit(row)" />
+          <UiButton intent="danger-outline" size="small" label="Delete" @click="deleteLexicon(row.id)" />
+        </div>
+      </template>
+    </UiTable>
 
     <!-- ── Editor dialog — draft + Save/Cancel (canonical shell) ────── -->
     <AppModal v-if="dialogOpen && draft" :eyebrow="creating ? 'New lexicon' : 'Lexicon'" :title="draft.name || 'Untitled lexicon'" :max-width="'860px'" dismissable @close="closeDialog">
@@ -539,30 +567,21 @@ onActivated(() => {
             <p v-if="previewResult" class="lex__preview-out">{{ previewResult }}</p>
           </div>
 
-          <table v-if="draft.entries.length" class="lex__table">
-            <thead>
-              <tr>
-                <th>Word</th>
-                <th>Pronunciation (IPA or phonetic)</th>
-                <th style="width:90px">Format</th>
-                <th style="width:150px" class="right"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(e, i) in draft.entries" :key="i" :class="{ 'lex__row--editing': editingEntryIndex === i }">
-                <td><strong>{{ e.grapheme }}</strong></td>
-                <td><code class="jv-mono">{{ e.phoneme_ipa || e.alias || "—" }}</code></td>
-                <td>{{ e.phoneme_ipa ? "IPA" : "phonetic" }}</td>
-                <td class="right lex__entry-actions">
-                  <UiButton intent="ghost" size="small" label="Edit" title="Edit this entry in the form below" @click="startEditEntry(e, i)" />
-                  <UiButton intent="danger-outline" size="small" label="Delete" title="Remove this entry" @click="deleteEntry(i)" />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <p v-else class="jv-muted" style="padding: 12px 0; font-style: italic;">
-            No entries yet — add one below, bulk-paste, or merge a <code>.justlex.json</code>.
-          </p>
+          <UiTable class="lex__table" :data="entryRows" :columns="ENTRY_COLUMNS" data-key="__i"
+            :row-class="(row) => (editingEntryIndex === row.__i ? 'lex__row--editing' : '')">
+            <template #grapheme="{ row }"><strong>{{ row.grapheme }}</strong></template>
+            <template #pron="{ row }"><code class="jv-mono">{{ row.phoneme_ipa || row.alias || "—" }}</code></template>
+            <template #kind="{ row }">{{ row.phoneme_ipa ? "IPA" : "phonetic" }}</template>
+            <template #actions="{ row }">
+              <div class="lex__entry-actions">
+                <UiButton intent="ghost" size="small" label="Edit" title="Edit this entry in the form below" @click="startEditEntry(row, row.__i)" />
+                <UiButton intent="danger-outline" size="small" label="Delete" title="Remove this entry" @click="deleteEntry(row.__i)" />
+              </div>
+            </template>
+            <template #empty>
+              No entries yet — add one below, bulk-paste, or merge a <code>.justlex.json</code>.
+            </template>
+          </UiTable>
 
           <div class="jv-divider" />
 
@@ -610,8 +629,8 @@ onActivated(() => {
 
 .lex__empty { padding: 40px 0; font-size: 13px; text-align: center; }
 
-.lex__row { cursor: pointer; }
-.lex__row:hover td { background: var(--surface-2); }
+/* The library row's cursor and hover tint come from UiTable's `row-hover`. */
+.lex__scoped-to { font-size: 12.5px; }
 .lex__word {
   background: var(--surface-2);
   border: 1px solid var(--line);
@@ -625,7 +644,9 @@ onActivated(() => {
 .lex__spacer { flex: 1; }
 .lex__entry-actions { white-space: nowrap; }
 .lex__entry-actions > * + * { margin-left: 4px; }
-.lex__row--editing td { background: var(--accent-soft); }
+/* Row state paints the whole <tr> and has to reach INTO the component — a
+   scoped `td` selector never matches a cell the child renders (audit §19.1). */
+.lex__table :deep(.ui-table-row.lex__row--editing) td { background: var(--accent-soft); }
 
 .lex__field {
   display: flex;
@@ -653,13 +674,14 @@ onActivated(() => {
   font-size: 13px;
 }
 
-.lex__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-  margin-top: 4px;
-}
-.lex__table thead th {
+/* The dialog's entry list keeps its own flat look — no card chrome, tighter
+   padding than `.jv-table-look` — so it wears none and overrides the kit's
+   own values instead. `:deep` because every one of these targets an element
+   the component renders. The `.right` classes are gone: alignment rides on
+   the columns now. */
+.lex__table { margin-top: 4px; }
+.lex__table :deep(.ui-table) { font-size: 13px; }
+.lex__table :deep(.ui-table thead th) {
   text-align: left;
   font-weight: 600;
   font-size: 11px;
@@ -668,14 +690,13 @@ onActivated(() => {
   color: var(--ink-3);
   padding: 8px 6px;
   border-bottom: 1px solid var(--line);
+  background: transparent;
 }
-.lex__table thead th.right { text-align: right; }
-.lex__table tbody td {
+.lex__table :deep(.ui-table tbody td) {
   padding: 8px 6px;
   border-bottom: 1px solid var(--line-soft);
   vertical-align: middle;
 }
-.lex__table tbody td.right { text-align: right; }
 
 .lex__sub-h { margin: 8px 0 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-3); }
 

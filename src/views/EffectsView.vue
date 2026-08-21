@@ -17,7 +17,20 @@ import { computed, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
-import { UiButton, UiInput, UiTag, UiChip } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTag, UiChip, UiTable } from "@delebash/llm-ui";
+
+// Kit grid in the JustVoice look (`jv-table-look`). `row-hover` carries both
+// the pointer cursor and the row tint, so the two scoped `.effects-view__row`
+// rules that did that by hand are gone.
+const PRESET_COLUMNS = [
+  { id: "name", accessorKey: "name", header: "Name", sortable: true },
+  { id: "chain", header: "Chain" },
+  { id: "count", header: "Effects", headerStyle: { width: "90px" } },
+  { id: "builtin", accessorKey: "is_builtin", header: "", headerStyle: { width: "90px" } },
+  { id: "actions", header: "Actions",
+    headerStyle: { width: "150px", textAlign: "right" },
+    cellStyle: { textAlign: "right", whiteSpace: "nowrap" } },
+];
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 
 const api = useApi();
@@ -161,31 +174,31 @@ onMounted(refresh);
       </div>
 
       <div v-if="loading" class="jv-muted effects-view__empty">Loading…</div>
-      <div v-else-if="!presets.length" class="jv-muted effects-view__empty">
-        No presets yet. Click <strong>+ New chain preset</strong> to build one.
-        Or save a chain from a persona's effects editor.
-      </div>
-
-      <table v-else class="jv-table">
-        <thead>
-          <tr><th>Name</th><th>Chain</th><th style="width:90px">Effects</th><th style="width:90px"></th><th class="jv-table__actions" style="width:150px">Actions</th></tr>
-        </thead>
-        <tbody>
-          <tr v-for="p in filtered" :key="p.id" class="effects-view__row" title="Click to edit" @click="startEdit(p)">
-            <td><strong>{{ p.name }}</strong><div v-if="p.description" class="jv-muted" style="font-size:11.5px">{{ p.description }}</div></td>
-            <td>
-              <span v-for="(ef, i) in (p.chain || [])" :key="i" class="effects-view__chain-pill">{{ ef.type }}</span>
-              <span v-if="!(p.chain || []).length" class="jv-muted">(empty chain)</span>
-            </td>
-            <td>{{ (p.chain || []).length }}</td>
-            <td><UiTag intent="ghost" v-if="p.is_builtin">built-in</UiTag></td>
-            <td class="jv-table__actions" @click.stop>
-              <UiButton intent="ghost" size="small" label="Edit" @click="startEdit(p)" />
-              <UiButton intent="danger-outline" size="small" label="Delete" :disabled="p.is_builtin" @click="deletePreset(p)" />
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <!-- One empty state, owned by the grid. `@row-click` replaces the click
+           handler that used to sit on every <tr>. -->
+      <UiTable v-else class="jv-table-look" :data="filtered" :columns="PRESET_COLUMNS"
+        data-key="id" row-hover @row-click="({ data }) => startEdit(data)">
+        <template #name="{ row }">
+          <strong>{{ row.name }}</strong>
+          <div v-if="row.description" class="jv-muted effects-view__desc">{{ row.description }}</div>
+        </template>
+        <template #chain="{ row }">
+          <span v-for="(ef, i) in (row.chain || [])" :key="i" class="effects-view__chain-pill">{{ ef.type }}</span>
+          <span v-if="!(row.chain || []).length" class="jv-muted">(empty chain)</span>
+        </template>
+        <template #count="{ row }">{{ (row.chain || []).length }}</template>
+        <template #builtin="{ row }"><UiTag v-if="row.is_builtin" intent="ghost">built-in</UiTag></template>
+        <template #actions="{ row }">
+          <div class="jv-table__actions" @click.stop>
+            <UiButton intent="ghost" size="small" label="Edit" @click="startEdit(row)" />
+            <UiButton intent="danger-outline" size="small" label="Delete" :disabled="row.is_builtin" @click="deletePreset(row)" />
+          </div>
+        </template>
+        <template #empty>
+          No presets yet. Click <strong>+ New chain preset</strong> to build one.
+          Or save a chain from a persona's effects editor.
+        </template>
+      </UiTable>
     </div>
 
     <!-- Modal — pre-loaded with the chain being edited (or empty for new). -->
@@ -206,8 +219,9 @@ onMounted(refresh);
 
 .effects-view__empty { padding: 40px 0; font-size: 13px; text-align: center; }
 
-.effects-view__row { cursor: pointer; }
-.effects-view__row:hover td { background: var(--surface-2); }
+/* The row's pointer cursor and hover tint come from UiTable's `row-hover`
+   now (the kit sets the cursor; `.jv-table-look` paints the cells). */
+.effects-view__desc { font-size: 12.5px; }
 .effects-view__chain-pill {
   display: inline-block;
   margin: 1px 4px 1px 0;

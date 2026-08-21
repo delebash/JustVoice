@@ -333,6 +333,19 @@ async function submitTrain() {
 
 // ── Jobs / progress ────────────────────────────────────────────────────
 const trainJobs = ref([]);
+// Kit grids in the JustVoice look (`jv-table-look`).
+const DATASET_COLUMNS = [
+  { id: "name", accessorKey: "name", header: "Dataset", sortable: true },
+  { id: "clip_count", accessorKey: "clip_count", header: "Clips", sortable: true,
+    headerStyle: { width: "1%" }, cellStyle: { width: "1%" } },
+  { id: "length", accessorKey: "total_seconds", header: "Length", sortable: true,
+    headerStyle: { width: "1%", whiteSpace: "nowrap" }, cellStyle: { width: "1%", whiteSpace: "nowrap" } },
+  { id: "language", accessorKey: "language", header: "Language", sortable: true,
+    headerStyle: { width: "1%" }, cellStyle: { width: "1%" } },
+  { id: "actions", header: "",
+    headerStyle: { textAlign: "right", width: "1%" },
+    cellStyle: { textAlign: "right", width: "1%", whiteSpace: "nowrap" } },
+];
 // Kit grid in the JustVoice look (`jv-table-look`) for the runs list.
 const RUN_COLUMNS = [
   { id: "voice_name", accessorKey: "voice_name", header: "Adapter", sortable: true },
@@ -546,31 +559,28 @@ onUnmounted(() => {
       </div>
 
       <!-- The dataset list — everything Training can train on. -->
-      <table v-if="datasets.length" class="jv-table lora-datasets jv-mt12">
-        <thead>
-          <tr><th>Dataset</th><th>Clips</th><th>Length</th><th>Language</th><th></th></tr>
-        </thead>
-        <tbody>
-          <tr v-for="d in datasets" :key="d.id" :class="{ 'lora-row--selected': d.id === trainDataset }">
-            <td>{{ d.name }}</td>
-            <td>{{ d.clip_count }}</td>
-            <td class="jv-muted">{{ Math.round(d.total_seconds / 6) / 10 }} min</td>
-            <td class="jv-muted">{{ d.language || "--" }}</td>
-            <td class="jv-table__actions">
-              <a
-                class="ui-btn ui-btn--secondary ui-btn--small"
-                :href="apiPath(`/v1/train/datasets/${d.id}/archive.zip`)"
-                title="Download this dataset as a ZIP"
-              >⬇ Download</a>
-              <UiButton intent="danger-outline" size="small" label="Delete" @click="deleteDataset(d)" />
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-else class="jv-hint jv-mt12">
-        No datasets yet — upload one, build one, or cut one from a recording
-        on the Preparer tab.
-      </p>
+      <UiTable class="jv-table-look lora-datasets jv-mt12" :data="datasets"
+        :columns="DATASET_COLUMNS" data-key="id"
+        :row-class="(row) => (row.id === trainDataset ? 'lora-row--selected' : '')">
+        <template #length="{ row }">
+          <span class="jv-muted">{{ Math.round(row.total_seconds / 6) / 10 }} min</span>
+        </template>
+        <template #language="{ row }"><span class="jv-muted">{{ row.language || "--" }}</span></template>
+        <template #actions="{ row }">
+          <div class="jv-table__actions">
+            <a
+              class="ui-btn ui-btn--secondary ui-btn--small"
+              :href="apiPath(`/v1/train/datasets/${row.id}/archive.zip`)"
+              title="Download this dataset as a ZIP"
+            >⬇ Download</a>
+            <UiButton intent="danger-outline" size="small" label="Delete" @click="deleteDataset(row)" />
+          </div>
+        </template>
+        <template #empty>
+          No datasets yet — upload one, build one, or cut one from a recording
+          on the Preparer tab.
+        </template>
+      </UiTable>
 
       <!-- New Dataset from WAV Files — the expanded flow -->
       <div v-if="showClipsFlow" class="jv-card jv-card--soft jv-mt12">
@@ -939,8 +949,11 @@ onUnmounted(() => {
 /* The three ways to get a dataset, side by side, each self-explanatory. */
 .lora-dataset-doors { display: flex; gap: 24px; flex-wrap: wrap; }
 .lora-door { max-width: 300px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
-.lora-datasets { width: auto; min-width: 640px; }
-.lora-row--selected td { background: var(--surface-2); }
+/* Both reach INTO the component: the class lands on the WRAP, not the <table>,
+   and a scoped `td` selector never matches a cell the child renders (audit
+   §19.1). */
+.lora-datasets :deep(.ui-table) { width: auto; min-width: 640px; }
+.lora-datasets :deep(.ui-table-row.lora-row--selected) td { background: var(--surface-2); }
 .lora-row--skipped { opacity: 0.55; }
 .lora-transcript { display: flex; align-items: center; gap: 6px; }
 .lora-progress__stats { margin-bottom: 8px; font-size: 13px; }

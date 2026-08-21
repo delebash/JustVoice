@@ -16,7 +16,20 @@ import { projectsService } from "../services/projects.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { getImportDraft, clearImportDraft, updateImportStandard } from "../stores/importDraft.js";
-import { UiButton, UiCheckbox, UiTag, UiSelect } from "@delebash/llm-ui";
+import { UiButton, UiCheckbox, UiTag, UiSelect, UiTable } from "@delebash/llm-ui";
+
+// Kit grid in the JustVoice look (`jv-table-look`). The excluded-row state
+// goes on the <tr> through `:row-class` — it used to be a `:class` on the row,
+// which a scoped `td` rule can no longer reach once the cells live inside the
+// component (audit §19.1).
+const R = { textAlign: "right", width: "1%", whiteSpace: "nowrap" };
+const SCENE_COLUMNS = [
+  { id: "pick", header: "", headerStyle: { width: "30px" }, cellStyle: { width: "30px" } },
+  { id: "title", accessorKey: "title", header: "Chapter", sortable: true },
+  { id: "lines", accessorKey: "lines", header: "Lines", sortable: true, headerStyle: R, cellStyle: R },
+  { id: "words", accessorKey: "words", header: "Words", sortable: true, headerStyle: R, cellStyle: R },
+  { id: "est", header: "Est. audio", headerStyle: R, cellStyle: R },
+];
 
 const activeProject = useActiveProject();
 const projectsStore = useProjectsStore();
@@ -173,18 +186,18 @@ function cancel() {
         <ul v-if="warnings.length" class="imrev__warnings">
           <li v-for="(w, i) in warnings" :key="i">⚠ {{ w }}</li>
         </ul>
-        <table class="jv-table imrev__table">
-          <thead><tr><th style="width:30px"></th><th>Chapter</th><th class="r">Lines</th><th class="r">Words</th><th class="r">Est. audio</th></tr></thead>
-          <tbody>
-            <tr v-for="row in scenes" :key="row.index" :class="{ 'imrev__off': excluded.has(row.index) }">
-              <td><UiCheckbox :model-value="!excluded.has(row.index)" :title="excluded.has(row.index) ? 'Excluded — will not import' : 'Included'" @change="toggle(row.index)" /></td>
-              <td class="imrev__title">{{ row.title }}</td>
-              <td class="r">{{ row.lines }}</td>
-              <td class="r">{{ row.words.toLocaleString() }}</td>
-              <td class="r">{{ row.est }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <UiTable class="jv-table-look imrev__table" :data="scenes" :columns="SCENE_COLUMNS"
+          data-key="index" :row-class="(row) => (excluded.has(row.index) ? 'imrev__off' : '')">
+          <template #pick="{ row }">
+            <UiCheckbox
+              :model-value="!excluded.has(row.index)"
+              :title="excluded.has(row.index) ? 'Excluded — will not import' : 'Included'"
+              @change="toggle(row.index)"
+            />
+          </template>
+          <template #title="{ row }"><span class="imrev__title">{{ row.title }}</span></template>
+          <template #words="{ row }">{{ row.words.toLocaleString() }}</template>
+        </UiTable>
       </div>
 
       <!-- Import summary -->
@@ -226,9 +239,12 @@ function cancel() {
 .imrev__cardhead { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .imrev__split { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
 .imrev__table { margin: 0; }
-.imrev__table .r { text-align: right; }
-.imrev__off td { opacity: 0.45; }
-.imrev__off .imrev__title { text-decoration: line-through; }
+/* Row state paints the whole <tr>, and the rule has to reach INTO the kit
+   component — a scoped `td` selector gets the scope id stamped on the `td`
+   itself, which never carries it (audit §19.1). The right-align that used to
+   ride a `.r` class now lives on the columns. */
+.imrev__table :deep(.ui-table-row.imrev__off) { opacity: 0.45; }
+.imrev__table :deep(.ui-table-row.imrev__off) .imrev__title { text-decoration: line-through; }
 .imrev__warnings { margin: 0 0 10px; padding-left: 18px; font-size: 12px; color: var(--warn-ink); }
 .imrev__sum { display: flex; justify-content: space-between; font-size: 12.5px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
 .imrev__sum span { color: var(--ink-3); }

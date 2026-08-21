@@ -13,7 +13,12 @@ import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
-import { UiButton, UiInput, UiTextarea, UiTag, UiChip, UiSelect } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiTag, UiChip, UiSelect, UiTable } from "@delebash/llm-ui";
+
+// Kit grid in the JustVoice look (`jv-table-look`). `row-hover` carries the
+// pointer cursor and the row tint; the header label is dynamic, so the column
+// list is a computed rather than a constant.
+const NUM = { textAlign: "right", width: "1%", whiteSpace: "nowrap" };
 import LineageViewer from "../components/LineageViewer.vue";
 import { EmptyState } from "@delebash/llm-ui";
 
@@ -630,6 +635,17 @@ function renderState(id) {
   if (c.cached > 0) return { intent: "info", label: `${c.cached}/${c.total} cached` };
   return { intent: "ghost", label: "—" };
 }
+const SCENE_COLUMNS = computed(() => [
+  { id: "title", accessorKey: "title", header: copy.value.chapter.singular, sortable: true },
+  { id: "words", header: "Words", headerStyle: NUM, cellStyle: NUM },
+  { id: "est", header: "Est. audio", headerStyle: NUM, cellStyle: NUM },
+  { id: "script", header: "Script" },
+  { id: "render", header: "Render" },
+  { id: "actions", header: "",
+    headerStyle: { textAlign: "right", width: "1%" },
+    cellStyle: { textAlign: "right", width: "1%", whiteSpace: "nowrap" } },
+]);
+
 const filteredScenes = computed(() => scenes.value.filter((sc) => {
   const q = chapterFilter.value.trim().toLowerCase();
   if (q && !(sc.title || "").toLowerCase().includes(q)) return false;
@@ -855,33 +871,29 @@ async function savePastedText() {
         <UiButton intent="secondary" size="small" :label="`＋ Add ${copy.chapter.singular.toLowerCase()}`" @click="addChapter" />
         <UiButton intent="primary" size="small" label="Open in Studio ➜" title="Script → Cast → Render for the whole project" @click="openInStudio" />
       </div>
-      <table class="jv-table chapter-view__list">
-        <thead><tr>
-          <th>{{ copy.chapter.singular }}</th>
-          <th class="chapter-view__num">Words</th>
-          <th class="chapter-view__num">Est. audio</th>
-          <th>Script</th>
-          <th>Render</th>
-          <th></th>
-        </tr></thead>
-        <tbody>
-          <tr v-for="sc in filteredScenes" :key="sc.id" class="chapter-view__list-row" @click="openChapter(sc)">
-            <td><strong>{{ sc.title || `${copy.chapter.singular} ${sc.position + 1}` }}</strong></td>
-            <td class="chapter-view__num jv-mono">{{ (sceneStats[sc.id]?.words ?? 0).toLocaleString() }}</td>
-            <td class="chapter-view__num jv-mono">{{ estAudio(sceneStats[sc.id]?.words) }}</td>
-            <td><UiTag :intent="scriptState(sc.id).intent">{{ scriptState(sc.id).label }}</UiTag></td>
-            <td><UiTag :intent="renderState(sc.id).intent">{{ renderState(sc.id).label }}</UiTag></td>
-            <td style="text-align:right;white-space:nowrap">
-              <button type="button" class="jv-rowact" title="Move up" @click.stop="moveChapter(sc, -1)">↑</button>
-              <button type="button" class="jv-rowact" title="Move down" @click.stop="moveChapter(sc, 1)">↓</button>
-              <button type="button" class="jv-rowact" title="Rename" @click.stop="renameChapter(sc)">✎</button>
-              <button type="button" class="jv-rowact jv-rowact--danger" title="Delete chapter" @click.stop="deleteChapter(sc)">✕</button>
-              <UiButton intent="ghost" size="small" label="Open" @click.stop="openChapter(sc)" />
-            </td>
-          </tr>
-          <tr v-if="!filteredScenes.length && scenes.length"><td colspan="6" class="jv-muted" style="padding:14px">No {{ copy.chapter.plural.toLowerCase() }} match.</td></tr>
-        </tbody>
-      </table>
+      <!-- `#empty` replaces the `colspan="6"` row that used to sit inside
+           <tbody>, where the table drew a header band above it. -->
+      <UiTable class="jv-table-look chapter-view__list" :data="filteredScenes"
+        :columns="SCENE_COLUMNS" data-key="id" row-hover
+        @row-click="({ data }) => openChapter(data)">
+        <template #title="{ row }">
+          <strong>{{ row.title || `${copy.chapter.singular} ${row.position + 1}` }}</strong>
+        </template>
+        <template #words="{ row }">
+          <span class="jv-mono">{{ (sceneStats[row.id]?.words ?? 0).toLocaleString() }}</span>
+        </template>
+        <template #est="{ row }"><span class="jv-mono">{{ estAudio(sceneStats[row.id]?.words) }}</span></template>
+        <template #script="{ row }"><UiTag :intent="scriptState(row.id).intent">{{ scriptState(row.id).label }}</UiTag></template>
+        <template #render="{ row }"><UiTag :intent="renderState(row.id).intent">{{ renderState(row.id).label }}</UiTag></template>
+        <template #actions="{ row }">
+          <button type="button" class="jv-rowact" title="Move up" @click.stop="moveChapter(row, -1)">↑</button>
+          <button type="button" class="jv-rowact" title="Move down" @click.stop="moveChapter(row, 1)">↓</button>
+          <button type="button" class="jv-rowact" title="Rename" @click.stop="renameChapter(row)">✎</button>
+          <button type="button" class="jv-rowact jv-rowact--danger" title="Delete chapter" @click.stop="deleteChapter(row)">✕</button>
+          <UiButton intent="ghost" size="small" label="Open" @click.stop="openChapter(row)" />
+        </template>
+        <template #empty>No {{ copy.chapter.plural.toLowerCase() }} match.</template>
+      </UiTable>
       <div v-if="!scenes.length" class="chapter-view__no-chapters">
         <h4>No {{ copy.chapter.plural.toLowerCase() }} yet</h4>
         <p class="jv-muted">
@@ -1454,8 +1466,7 @@ async function savePastedText() {
 
 .chapter-view__lede { font-size: 13px; margin: 0 0 4px; }
 .chapter-view__list-toolbar { display: flex; gap: 8px; align-items: center; margin: 4px 0 10px; flex-wrap: wrap; }
-.chapter-view__list-row { cursor: pointer; }
-.chapter-view__list-row:hover td { background: var(--surface-2); }
+/* The row's cursor and hover tint come from UiTable's `row-hover`. */
 .chapter-view__num { text-align: right; }
 .chapter-view__backbar { margin-bottom: 8px; }
 

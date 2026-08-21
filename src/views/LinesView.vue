@@ -16,7 +16,7 @@ import { withAiTask } from "@delebash/llm-ui";
 import { pushToast, saveBlob } from "@delebash/llm-ui";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useProjectsStore } from "../stores/projects.js";
-import { UiButton, UiInput, UiChip, UiTag, UiSelect } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiChip, UiTag, UiSelect, UiTable } from "@delebash/llm-ui";
 import ImportModal from "./ImportModal.vue";
 
 const api = useApi();
@@ -56,6 +56,30 @@ const filtered = computed(() => {
 });
 
 // Grouped by scene, preserving server order.
+// The list is GROUPED: a scene-header row, then that scene's lines. UiTable's
+// `:full-width-row` is exactly this shape (it was added for the model catalog's
+// section headers) — returning a STRING also puts that class on the <tr>. So the
+// groups flatten to one array with header sentinels, keyed by a function since a
+// header carries no block_id.
+const lineRows = computed(() => {
+  const out = [];
+  for (const g of groups.value) {
+    out.push({ __group: true, scene_id: g.scene_id, title: g.title, count: g.rows.length });
+    out.push(...g.rows);
+  }
+  return out;
+});
+const lineKey = (r) => (r?.__group ? `g:${r.scene_id}` : r?.block_id);
+const groupRowClass = (r) => (r?.__group ? "lines__group" : false);
+const LINE_COLUMNS = [
+  { id: "line_id", accessorKey: "line_id", header: "Line ID", sortable: true },
+  { id: "character", accessorKey: "character", header: "Character", sortable: true },
+  { id: "text", header: "Text" },
+  { id: "take", header: "Take" },
+  { id: "actions", header: "", headerStyle: { width: "56px" },
+    cellStyle: { textAlign: "right", whiteSpace: "nowrap" } },
+];
+
 const groups = computed(() => {
   const out = [];
   let current = null;
@@ -230,33 +254,19 @@ watch(selectedProjectId, (id) => {
       Import a dialogue CSV (Projects → Import, or the kind picker) to get a game project — its lines appear here.
     </div>
 
-    <table v-else class="jv-table lines__table">
-      <thead>
-        <tr>
-          <th>Line ID</th>
-          <th>Character</th>
-          <th>Text</th>
-          <th>Take</th>
-          <th class="lines__actions-h"></th>
-        </tr>
-      </thead>
-      <tbody>
-        <template v-for="g in groups" :key="g.scene_id">
-          <tr class="lines__group">
-            <td colspan="5">{{ g.title }} — {{ g.rows.length }} line{{ g.rows.length === 1 ? "" : "s" }}</td>
-          </tr>
-          <tr v-for="l in g.rows" :key="l.block_id">
-            <td class="jv-mono lines__id">{{ l.line_id || "—" }}</td>
-            <td class="lines__who">{{ l.character || "—" }}</td>
-            <td class="lines__text" :title="l.text">{{ l.text }}</td>
-            <td><UiTag :intent="statusPill(l.take_status).intent">{{ statusPill(l.take_status).label }}</UiTag></td>
-            <td class="lines__actions">
-              <UiButton intent="ghost" size="small" label="↻" :title="`Render ${l.line_id || 'this line'}`" @click="renderOne(l)" />
-            </td>
-          </tr>
-        </template>
-      </tbody>
-    </table>
+    <UiTable v-else class="jv-table-look lines__table" :data="lineRows" :columns="LINE_COLUMNS"
+      :data-key="lineKey" :full-width-row="groupRowClass">
+      <template #full-row="{ row }">
+        {{ row.title }} — {{ row.count }} line{{ row.count === 1 ? "" : "s" }}
+      </template>
+      <template #line_id="{ row }"><span class="jv-mono lines__id">{{ row.line_id || "—" }}</span></template>
+      <template #character="{ row }"><span class="lines__who">{{ row.character || "—" }}</span></template>
+      <template #text="{ row }"><span class="lines__text" :title="row.text">{{ row.text }}</span></template>
+      <template #take="{ row }"><UiTag :intent="statusPill(row.take_status).intent">{{ statusPill(row.take_status).label }}</UiTag></template>
+      <template #actions="{ row }">
+        <UiButton intent="ghost" size="small" label="↻" :title="`Render ${row.line_id || 'this line'}`" @click="renderOne(row)" />
+      </template>
+    </UiTable>
 
     <ImportModal
       v-if="showReimport"
@@ -277,16 +287,16 @@ watch(selectedProjectId, (id) => {
 .lines__chips { display: inline-flex; gap: 4px; }
 .lines__chips .ui-chip { cursor: pointer; border: 0; font: inherit; font-size: 11.5px; }
 .lines__stale { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.lines__group td {
+/* The scene-header row is a `:full-width-row`; the class comes back as that
+   predicate's return value, and the rule has to reach INTO the component. */
+.lines__table :deep(.ui-table-fullrow.lines__group) td {
   background: var(--surface-3);
   font-weight: 600;
   color: var(--ink);
-  font-size: 12px;
+  font-size: 12.5px;
   padding: 6px 12px;
 }
 .lines__id { font-size: 11.5px; white-space: nowrap; }
 .lines__who { white-space: nowrap; font-weight: 600; }
-.lines__text { max-width: 0; width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lines__actions { text-align: right; white-space: nowrap; }
-.lines__actions-h { width: 56px; }
+.lines__text { display: block; max-width: 46ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

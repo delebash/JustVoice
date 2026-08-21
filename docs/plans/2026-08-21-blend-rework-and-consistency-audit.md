@@ -1216,3 +1216,91 @@ Verification: biome clean across 97 files · 67 unit tests · vite built · smok
 15/15 with zero JS errors. As always the gate proves no view throws, not that
 any of these grids *looks* right — `AudioChannelsView` and `WebhooksView` are
 not in its list at all.
+
+---
+
+## 21 · The sweep, finished — and the classifier that was wrong
+
+Started at **39 table blocks in templates. Now 16**, and none of the 16 is a
+hand-rolled data grid that should be one.
+
+| | start | now |
+|---|---|---|
+| DATA — a real grid | 28 | **5**, all deliberate (below) |
+| FORM — editable rows | 6 | 6 |
+| static — layout, not a grid | 5 | 5 |
+
+### 21.1 · Converted in this pass
+
+`EffectsView` · `ImportReviewView` · `LexiconsView` (×2) · `PersonasView` ·
+`RenderPresetsView` · `ChapterView` · `LinesView` · `ProjectsView` ·
+`lora/PreparerTab` (chunks) · `lora/TrainingTab` (datasets) ·
+`StudioView` (NPC cast).
+
+Three kit features earned their keep:
+
+- **`row-hover` replaced six pairs of scoped rules.** Every one of
+  `.effects-view__row`, `.lex__row`, `.personas__row`,
+  `.render-presets-view__row`, `.chapter-view__list-row`, `.studio__npc-row`
+  was `{ cursor: pointer }` plus `:hover td { background: var(--surface-2) }`.
+  The kit sets the cursor; `.jv-table-look` paints the cells. All twelve rules
+  deleted.
+- **`:row-class`** carries the four row STATES: `imrev__off` (excluded),
+  `lex__row--editing`, `projects__table-row--selected`,
+  `studio__npc-row--selected`, `lora-row--selected`, `prep-row--dropped`.
+- **`:full-width-row`** carries `LinesView`'s scene-header rows. Returning a
+  STRING puts that class on the `<tr>`, which is exactly what
+  `.lines__group` needed.
+
+### 21.2 · The §19.1 trap, four more times
+
+Every one of these would have silently stopped applying:
+
+| rule | why it dies | fix |
+|---|---|---|
+| `.lex__table thead th` / `tbody td` | scope id lands on `th`/`td`, which the child renders | `:deep` |
+| `.projects__table thead th` / `tbody td` | same | `:deep` |
+| `.prep-files { width; min-width }` | class lands on the WRAP, not the `<table>` | `:deep(.ui-table)` |
+| `.lora-datasets { width; min-width }` | same | `:deep(.ui-table)` |
+
+Two grids — `LexiconsView`'s entry list and `ProjectsView`'s chapter list —
+keep their own flat look deliberately (no card chrome, 8px/6px padding), so
+they wear **no** `jv-table-look` and override the kit's values through `:deep`
+instead. That is the third option the modifier makes possible: kit component,
+neither look.
+
+### 21.3 · My FORM/DATA test was wrong, and it mattered twice
+
+The classifier called a block FORM if it contained the literal `v-model`.
+**Two `StudioView` grids bind controls the long way** — `:model-value` plus
+`@update:model-value`, addressed by row INDEX:
+
+- `StudioView:2188` (script) — a `UiSelect` per row (`setRowSpeaker(i, v)`),
+  edited flags by index, and a row-level `@contextmenu` to rewrite the line.
+  `UiTable` has `@row-click` and no contextmenu hook.
+- `StudioView:2282` (render) — a `UiCheckbox` and a `UiSelect` per row, both
+  writing into keyed maps.
+
+Both are editable grids and stay hand-rolled, for the §19.6 reason. Written
+down because the next person to run that scan will get the same wrong answer:
+**`v-model` is not the test — a bound control is.**
+
+### 21.4 · The five DATA blocks that remain, each on purpose
+
+| block | why it stays |
+|---|---|
+| `components/lab/SmartAssignResult.vue:56` | a bespoke compact result table (12.5px, tight padding, no chrome). Converting means recreating its whole look through `:deep` overrides of the kit's — the component fought, not used |
+| `SettingsView:1090` (API tokens) | **headerless** (`th: 0`). `UiTable` always renders a `<thead>`, so it would gain an empty header band |
+| `StudioView:2188`, `StudioView:2282` | form grids — §21.3 |
+| `lora/TrainingTab:803` (adapters) | **two `v-for`s in one `<tbody>`** — built-ins and trained adapters. Convertible only after merging the sources into one array with a kind flag; not mechanical, and worth doing on its own |
+
+### 21.5 · Verification
+
+biome clean across 97 files · 67 unit tests · vite built · smoke 15/15 with
+zero JS errors, run twice through the batch. One build failure was caught and
+fixed on the way: an escaped apostrophe inside a Vue expression
+(`'Built-in presets can\'t be deleted'`) lost its backslash in transit and
+became a syntax error — now phrased without one.
+
+As ever: the gate proves nothing throws. It does not open a dialog, expand a
+project row, or scroll a grid, so none of these conversions has been seen.

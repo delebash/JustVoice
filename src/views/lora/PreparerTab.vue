@@ -30,8 +30,20 @@ const QUEUE_COLUMNS = [
   { id: "kept", header: "Clips Kept" },
   { id: "dataset_name", accessorKey: "dataset_name", header: "Dataset", sortable: true },
 ];
-// The rows are File objects, so identity is the handle — the old markup keyed
-// and spliced by index, which a slot does not hand back.
+const CHUNK_COLUMNS = [
+  { id: "n", header: "#", headerStyle: { width: "1%" }, cellStyle: { width: "1%" } },
+  { id: "seconds", accessorKey: "seconds", header: "Length", sortable: true,
+    headerStyle: { width: "1%", whiteSpace: "nowrap" }, cellStyle: { width: "1%", whiteSpace: "nowrap" } },
+  { id: "check", header: "Check", headerStyle: { width: "1%" }, cellStyle: { width: "1%" } },
+  { id: "transcript", header: "Transcript" },
+];
+// The row index is the "#" column AND the row key — chunks carry no id — so it
+// rides along as a field.
+const chunkRows = (file) => (file.chunks || []).map((c, i) => ({ ...c, __n: i + 1 }));
+const chunkRowClass = (row) => (row.accepted ? "" : "prep-row--dropped");
+
+// The chosen-file rows are File objects, so identity is the handle — the old
+// markup keyed and spliced by index, which a slot does not hand back.
 const dropChosenFile = (f) => { const i = files.value.indexOf(f); if (i >= 0) files.value.splice(i, 1); };
 const api = useApi();
 
@@ -366,25 +378,21 @@ onUnmounted(() => {
         </div>
       </div>
       <p v-if="file.error" class="jv-banner jv-banner--warn">{{ file.error }}</p>
-      <table v-if="file.chunks?.length" class="jv-table">
-        <thead>
-          <tr><th>#</th><th>Length</th><th>Check</th><th>Transcript</th></tr>
-        </thead>
-        <tbody>
-          <tr v-for="(c, i) in file.chunks" :key="i" :class="{ 'prep-row--dropped': !c.accepted }">
-            <td class="jv-muted">{{ i + 1 }}</td>
-            <td class="jv-muted">{{ c.seconds != null ? c.seconds.toFixed(1) + " s" : "--" }}</td>
-            <td>
-              <UiTag
-                :intent="GATE_TAG[chunkStatus(c)]?.intent || 'secondary'"
-                :value="GATE_TAG[chunkStatus(c)]?.label || 'ok'"
-                :title="c.reason || undefined"
-              />
-            </td>
-            <td>{{ c.transcript || "--" }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <UiTable v-if="file.chunks?.length" class="jv-table-look prep-chunks"
+        :data="chunkRows(file)" :columns="CHUNK_COLUMNS" data-key="__n" :row-class="chunkRowClass">
+        <template #n="{ row }"><span class="jv-muted">{{ row.__n }}</span></template>
+        <template #seconds="{ row }">
+          <span class="jv-muted">{{ row.seconds != null ? row.seconds.toFixed(1) + " s" : "--" }}</span>
+        </template>
+        <template #check="{ row }">
+          <UiTag
+            :intent="GATE_TAG[chunkStatus(row)]?.intent || 'secondary'"
+            :value="GATE_TAG[chunkStatus(row)]?.label || 'ok'"
+            :title="row.reason || undefined"
+          />
+        </template>
+        <template #transcript="{ row }">{{ row.transcript || "--" }}</template>
+      </UiTable>
     </div>
   </div>
 </template>
@@ -404,5 +412,6 @@ onUnmounted(() => {
 .prep-error { display: block; margin-top: 2px; }
 /* Dropped clips stay VISIBLE and dimmed — hiding them would hide the
    reason, and the reason is the point of showing the table at all. */
-.prep-row--dropped { opacity: 0.55; }
+/* Row state paints the whole <tr> and has to reach INTO the component. */
+.prep-chunks :deep(.ui-table-row.prep-row--dropped) { opacity: 0.55; }
 </style>

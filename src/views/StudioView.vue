@@ -35,7 +35,18 @@ import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
-import { UiButton, UiInput, UiTextarea, UiCheckbox, UiTag, UiChip, UiSelect, AppModal } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiCheckbox, UiTag, UiChip, UiSelect, AppModal, UiTable } from "@delebash/llm-ui";
+
+// Kit grids in the JustVoice look (`jv-table-look`). `row-hover` carries the
+// pointer cursor and the row tint; selection is a `:row-class`.
+const RIGHT = { textAlign: "right", width: "1%", whiteSpace: "nowrap" };
+const NPC_COLUMNS = [
+  { id: "portrait", header: "", headerStyle: { width: "1%" }, cellStyle: { width: "1%" } },
+  { id: "name", accessorKey: "name", header: "NPC", sortable: true },
+  { id: "role", header: "Role" },
+  { id: "voice", header: "Voice" },
+  { id: "actions", header: "", headerStyle: RIGHT, cellStyle: RIGHT },
+];
 import VoiceParamsModal from "../components/VoiceParamsModal.vue";
 import { EmptyState } from "@delebash/llm-ui";
 import ExportPanel from "../components/ExportPanel.vue";
@@ -1898,36 +1909,29 @@ watch(selectedProjectId, (id) => {
             to this {{ copy.book.singular.toLowerCase() }}.
           </p>
         </div>
-        <table v-else-if="isGameProject" class="jv-table studio__npc-table">
-          <thead><tr><th></th><th>NPC</th><th>Role</th><th>Voice</th><th></th></tr></thead>
-          <tbody>
-            <tr
-              v-for="p in projectPersonas"
-              :key="p.id"
-              class="studio__npc-row"
-              :class="{ 'studio__npc-row--selected': selectedCharacterId === p.id }"
-              :title="`Select, then click a voice in the library to cast ${p.name}`"
-              @click="selectedCharacterId = p.id"
-            >
-              <td><span class="studio__char-portrait studio__char-portrait--sm" :style="{ background: colorFor(p.name) }">{{ (p.name || "?").charAt(0).toUpperCase() }}</span></td>
-              <td><strong>{{ p.name }}</strong></td>
-              <td class="jv-muted" style="font-size:12px">{{ personaRole(p) }}</td>
-              <td>
-                <template v-if="p.voice_id">
-                  <span class="studio__char-glyph" :style="{ background: colorFor(voiceById(p.voice_id)?.name), color: '#fff' }">{{ (voiceById(p.voice_id)?.name || "?").slice(0, 2) }}</span>
-                  {{ voiceName(p.voice_id) }}
-                  <span class="jv-muted">· {{ voiceById(p.voice_id)?.engine || "" }}</span>
-                </template>
-                <span v-else class="studio__char-unassigned">⚠ no voice</span>
-              </td>
-              <td style="text-align:right;white-space:nowrap">
-                <button v-if="p.voice_id" type="button" class="jv-rowact" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(p.voice_id))">▶</button>
-                <button v-if="p.voice_id" type="button" class="jv-rowact" title="Tune voice parameters" @click.stop="openVoiceTuner(p)">⚙</button>
-                <button type="button" class="jv-rowact jv-rowact--danger" title="Remove from this cast — persona stays in the library" @click.stop="removeFromCast(p)">✕</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <UiTable v-else-if="isGameProject" class="jv-table-look studio__npc-table"
+          :data="projectPersonas" :columns="NPC_COLUMNS" data-key="id" row-hover
+          :row-class="(row) => (selectedCharacterId === row.id ? 'studio__npc-row--selected' : '')"
+          @row-click="({ data }) => (selectedCharacterId = data.id)">
+          <template #portrait="{ row }">
+            <span class="studio__char-portrait studio__char-portrait--sm" :style="{ background: colorFor(row.name) }">{{ (row.name || "?").charAt(0).toUpperCase() }}</span>
+          </template>
+          <template #name="{ row }"><strong>{{ row.name }}</strong></template>
+          <template #role="{ row }"><span class="jv-muted studio__npc-role">{{ personaRole(row) }}</span></template>
+          <template #voice="{ row }">
+            <template v-if="row.voice_id">
+              <span class="studio__char-glyph" :style="{ background: colorFor(voiceById(row.voice_id)?.name), color: '#fff' }">{{ (voiceById(row.voice_id)?.name || "?").slice(0, 2) }}</span>
+              {{ voiceName(row.voice_id) }}
+              <span class="jv-muted">· {{ voiceById(row.voice_id)?.engine || "" }}</span>
+            </template>
+            <span v-else class="studio__char-unassigned">⚠ no voice</span>
+          </template>
+          <template #actions="{ row }">
+            <button v-if="row.voice_id" type="button" class="jv-rowact" title="Audition" :disabled="previewingVoiceId" @click.stop="previewVoice(voiceById(row.voice_id))">▶</button>
+            <button v-if="row.voice_id" type="button" class="jv-rowact" title="Tune voice parameters" @click.stop="openVoiceTuner(row)">⚙</button>
+            <button type="button" class="jv-rowact jv-rowact--danger" title="Remove from this cast — persona stays in the library" @click.stop="removeFromCast(row)">✕</button>
+          </template>
+        </UiTable>
         <div v-else class="studio__cast-grid">
           <!-- Character cards — narrator now lives in its own
                .studio__narrator-section above (JustWrite reference). -->
@@ -3078,9 +3082,10 @@ watch(selectedProjectId, (id) => {
 .studio__discovered-x:hover { color: var(--danger); }
 
 .studio__npc-table { margin: 0; }
-.studio__npc-row { cursor: pointer; }
-.studio__npc-row:hover td { background: var(--surface-2); }
-.studio__npc-row--selected td { background: var(--accent-soft); }
+.studio__npc-role { font-size: 12.5px; }
+/* The row's cursor and hover tint come from `row-hover`; selection is a
+   `:row-class`, and the rule reaches INTO the component (audit §19.1). */
+.studio__npc-table :deep(.ui-table-row.studio__npc-row--selected) td { background: var(--accent-soft); }
 .studio__char-portrait--sm { width: 28px; height: 28px; font-size: 12px; }
 
 .studio__addpersona-list { list-style: none; margin: 0; padding: 0; max-height: 50vh; overflow-y: auto; }

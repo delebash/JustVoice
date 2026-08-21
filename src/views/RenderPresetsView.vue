@@ -20,7 +20,20 @@ import { computed, nextTick, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
-import { UiButton, UiInput, UiTag, UiChip, UiSelect, AppModal } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTag, UiChip, UiSelect, AppModal, UiTable } from "@delebash/llm-ui";
+
+// Kit grid in the JustVoice look (`jv-table-look`); `row-hover` carries the
+// pointer cursor and the row tint.
+const PRESET_COLUMNS = [
+  { id: "name", accessorKey: "name", header: "Name", sortable: true },
+  { id: "persona", header: "Persona" },
+  { id: "master", accessorKey: "master", header: "Master target", sortable: true, headerStyle: { width: "120px" } },
+  { id: "delivery", header: "Delivery" },
+  { id: "builtin", accessorKey: "is_builtin", header: "", headerStyle: { width: "90px" } },
+  { id: "actions", header: "Actions",
+    headerStyle: { width: "150px", textAlign: "right" },
+    cellStyle: { textAlign: "right", whiteSpace: "nowrap" } },
+];
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import { usePersonasStore } from "../stores/personas.js";
 
@@ -223,31 +236,26 @@ onMounted(refresh);
       </div>
 
       <div v-if="loading" class="jv-muted render-presets-view__empty">Loading…</div>
-      <div v-else-if="!presets.length" class="jv-muted render-presets-view__empty">
-        No render presets yet. Click <strong>+ New preset</strong> above.
-      </div>
-
-      <table v-else class="jv-table">
-        <thead>
-          <tr><th>Name</th><th>Persona</th><th style="width:120px">Master target</th><th>Delivery</th><th style="width:90px"></th><th class="jv-table__actions" style="width:150px">Actions</th></tr>
-        </thead>
-        <tbody>
-          <tr v-for="p in filtered" :key="p.id" class="render-presets-view__row" title="Click to edit" @click="openEdit(p)">
-            <td><strong>{{ p.name }}</strong></td>
-            <td class="jv-muted">{{ p.voice_id ? personaName(p.voice_id) : "— delivery only —" }}</td>
-            <td class="jv-muted">{{ p.master || "none" }}</td>
-            <td>
-              <UiTag intent="ghost" v-for="(d, i) in deliveryPills(p)" :key="i"  style="margin:1px 4px 1px 0">{{ d }}</UiTag>
-              <span v-if="!deliveryPills(p).length" class="jv-muted">(engine defaults)</span>
-            </td>
-            <td><UiTag intent="ghost" v-if="p.is_builtin">built-in</UiTag></td>
-            <td class="jv-table__actions" @click.stop>
-              <UiButton intent="ghost" size="small" label="Edit" @click="openEdit(p)" />
-              <UiButton intent="danger-outline" size="small" label="Delete" :disabled="p.is_builtin" :title="p.is_builtin ? 'Built-in presets can\'t be deleted' : 'Delete preset'" @click="deletePreset(p)" />
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <UiTable v-else class="jv-table-look" :data="filtered" :columns="PRESET_COLUMNS"
+        data-key="id" row-hover @row-click="({ data }) => openEdit(data)">
+        <template #name="{ row }"><strong>{{ row.name }}</strong></template>
+        <template #persona="{ row }">
+          <span class="jv-muted">{{ row.voice_id ? personaName(row.voice_id) : "— delivery only —" }}</span>
+        </template>
+        <template #master="{ row }"><span class="jv-muted">{{ row.master || "none" }}</span></template>
+        <template #delivery="{ row }">
+          <UiTag v-for="(d, i) in deliveryPills(row)" :key="i" intent="ghost" class="render-presets-view__pill">{{ d }}</UiTag>
+          <span v-if="!deliveryPills(row).length" class="jv-muted">(engine defaults)</span>
+        </template>
+        <template #builtin="{ row }"><UiTag v-if="row.is_builtin" intent="ghost">built-in</UiTag></template>
+        <template #actions="{ row }">
+          <div class="jv-table__actions" @click.stop>
+            <UiButton intent="ghost" size="small" label="Edit" @click="openEdit(row)" />
+            <UiButton intent="danger-outline" size="small" label="Delete" :disabled="row.is_builtin" :title="row.is_builtin ? 'Built-in presets cannot be deleted' : 'Delete preset'" @click="deletePreset(row)" />
+          </div>
+        </template>
+        <template #empty>No render presets yet. Click <strong>+ New preset</strong> above.</template>
+      </UiTable>
     </div>
 
     <!-- Edit dialog — full form. Edits a working draft; Save commits,
@@ -315,8 +323,8 @@ onMounted(refresh);
   font-size: 13px;
   text-align: center;
 }
-.render-presets-view__row { cursor: pointer; }
-.render-presets-view__row:hover td { background: var(--surface-2); }
+/* The row's cursor and hover tint come from UiTable's `row-hover`. */
+.render-presets-view__pill { margin: 1px 4px 1px 0; }
 .render-presets-view__form { display: flex; flex-direction: column; gap: 10px; }
 .render-presets-view__form .jv-form-row { display: flex; align-items: center; gap: 10px; }
 .render-presets-view__form .jv-form-row > span { width: 110px; flex: none; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-3); font-weight: 600; }

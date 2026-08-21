@@ -12,7 +12,7 @@
 -->
 <script setup>
 import { computed, onActivated, onMounted, ref, watch } from "vue";
-import { UiButton, UiInput, UiCheckbox, UiTag, UiChip, UiSelect, AppModal } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiCheckbox, UiTag, UiChip, UiSelect, AppModal, UiTable } from "@delebash/llm-ui";
 import { EmptyState } from "@delebash/llm-ui";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import ImportModal from "./ImportModal.vue";
@@ -32,6 +32,18 @@ const activeProject = useActiveProject();
 const onboarding = useOnboarding();
 
 const copy = useCopy();
+
+// The chapter list inside an expanded project row. It keeps its own flat look
+// (no card chrome, tighter padding), so it does NOT wear `jv-table-look`.
+const SCENE_LIST_COLUMNS = computed(() => [
+  { id: "gutter", header: "", headerStyle: { width: "24px" } },
+  { id: "position", accessorKey: "position", header: "#", sortable: true, headerStyle: { width: "36px" } },
+  { id: "title", accessorKey: "title", header: "Title", sortable: true },
+  { id: "block_count", accessorKey: "block_count", header: "Blocks", sortable: true, headerStyle: { width: "60px" } },
+  { id: "duration", header: "Duration", headerStyle: { width: "80px" } },
+  { id: "status", header: "Status", headerStyle: { width: "160px" } },
+  { id: "actions", header: "Actions", headerStyle: { width: "180px", textAlign: "right" } },
+]);
 
 // Projects + personas come from shared stores (single source of truth).
 // No private copy, no snapshot — the store IS the cache, and every
@@ -640,43 +652,25 @@ onActivated(() => {
           <div v-if="scenesLoading" class="jv-muted" style="padding: 8px 0">Loading chapters…</div>
 
           <template v-else>
-            <table class="projects__table">
-              <thead>
-                <tr>
-                  <th style="width:24px"></th>
-                  <th style="width:36px">#</th>
-                  <th>Title</th>
-                  <th style="width:60px">Blocks</th>
-                  <th style="width:80px">Duration</th>
-                  <th style="width:160px">Status</th>
-                  <th style="width:180px" class="right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="!scenes.length">
-                  <td colspan="7" class="jv-muted" style="text-align:center; padding:24px">
-                    No {{ copy.chapter.plural.toLowerCase() }} yet. Import from JustWrite or add one in Chapter view.
-                  </td>
-                </tr>
-                <tr
-                  v-for="s in scenes"
-                  :key="s.id"
-                  :class="{ 'projects__table-row--selected': selectedSceneIds.has(s.id) }"
-                >
-                  <td></td>
-                  <td>{{ s.position }}</td>
-                  <td><strong>{{ s.title ?? `Chapter ${s.position}` }}</strong></td>
-                  <td>{{ s.block_count ?? 0 }}</td>
-                  <td class="jv-muted">—</td>
-                  <td>
-                    <UiTag :intent="sceneStatusPill(s).intent">{{ sceneStatusPill(s).label }}</UiTag>
-                  </td>
-                  <td class="projects__row-actions">
-                    <UiButton intent="ghost" size="small" label="Open" title="Open in Chapter view" @click="openChapterInView(s)" />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <UiTable class="projects__table" :data="scenes" :columns="SCENE_LIST_COLUMNS"
+              data-key="id"
+              :row-class="(row) => (selectedSceneIds.has(row.id) ? 'projects__table-row--selected' : '')">
+              <template #position="{ row }">{{ row.position }}</template>
+              <template #title="{ row }"><strong>{{ row.title ?? `Chapter ${row.position}` }}</strong></template>
+              <template #block_count="{ row }">{{ row.block_count ?? 0 }}</template>
+              <template #duration><span class="jv-muted">—</span></template>
+              <template #status="{ row }">
+                <UiTag :intent="sceneStatusPill(row).intent">{{ sceneStatusPill(row).label }}</UiTag>
+              </template>
+              <template #actions="{ row }">
+                <div class="projects__row-actions">
+                  <UiButton intent="ghost" size="small" label="Open" title="Open in Chapter view" @click="openChapterInView(row)" />
+                </div>
+              </template>
+              <template #empty>
+                No {{ copy.chapter.plural.toLowerCase() }} yet. Import from JustWrite or add one in Chapter view.
+              </template>
+            </UiTable>
 
           </template>
         </div>
@@ -881,12 +875,13 @@ onActivated(() => {
   font-size: 12px;
 }
 
-.projects__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.projects__table thead th {
+/* This grid keeps its own flat look, so it overrides the kit's values rather
+   than wearing `jv-table-look`. Every selector reaches INTO the component:
+   scoped CSS stamps the scope id on the LAST compound selector, and a cell the
+   child renders never carries it (audit §19.1). The `.right` class is gone —
+   alignment rides on the columns. */
+.projects__table :deep(.ui-table) { font-size: 13px; }
+.projects__table :deep(.ui-table thead th) {
   text-align: left;
   font-weight: 600;
   font-size: 11px;
@@ -895,14 +890,14 @@ onActivated(() => {
   color: var(--ink-3);
   padding: 8px 6px;
   border-bottom: 1px solid var(--line);
+  background: transparent;
 }
-.projects__table thead th.right { text-align: right; }
-.projects__table tbody td {
+.projects__table :deep(.ui-table tbody td) {
   padding: 8px 6px;
   border-bottom: 1px solid var(--line-soft);
   vertical-align: middle;
 }
-.projects__table-row--selected {
+.projects__table :deep(.ui-table-row.projects__table-row--selected) td {
   background: var(--accent-soft);
 }
 .projects__row-actions {
