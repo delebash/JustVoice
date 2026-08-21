@@ -210,6 +210,117 @@ pre-MLX "qwen3 excludes macOS" (param moved to tada+moss-tts; tada
 qualifies since today's ISOLATION fix). Full suite NOT run here (the
 no-gates hold) — by the peer's count it should now be 739 passed.
 
+## §6d The review closures (go on R1–R6; R7 rides the peer session)
+
+- **R1** built-in re-download after a lost adapter dir now restores the
+  files onto the SAME voice record (reproduced: two records; pinned).
+- **R2** the pronunciation scan strips covered multi-word phrases from
+  the text before tokenizing — "Mara Vance" covered no longer re-flags
+  its words, while a lone "Mara" still surfaces (pinned). The first fix
+  attempt silently failed: the shell pipeline converted the regex's 
+  escapes into LITERAL BACKSPACE characters — same injection class as the
+  earlier NUL trap; repaired at byte level and the repo swept clean.
+- **R3** align_api's dead tempfile block deleted.
+- **R4** `base_voice` excised (request model + worker metadata) — it
+  never reached any trainer; zero survivors on sweep.
+- **R5** scene_captions no longer blankets exceptions into 404 — the
+  resolver's own 404/400 answers propagate.
+- **R6** was the ruff triple, already fixed inside commit 228a28e.
+- NOT touched, per the go's boundaries: R7 (live-engine E2E — the peer
+  session's), R8 + dropdown alphabetizing + the grid progress bar (not
+  named in the go).
+
+Verified: 67 targeted pins green (2 new), ruff clean, app boots.
+
+## §6e Clone/Import consistency pass (user orders, end of session)
+
+The orders, verbatim: *"hide show controls based on what model uses so if
+chatterbox does not take refence dont show it"* · *"explain refernce
+better so user know what is need in user terms not code terms"* · *"model
+that speaks the clip drop down not working"* · *"instead of having ready
+for model on clone tab be consistant it should say loaded"* · *"the
+dropdown should show which models are load, we should resuse same
+mechanism"* (+ the earlier standing order: all model dropdowns a-z).
+
+Built:
+- **The clone-option matrix, code-verified**: `supports_clone_prompt_text`
+  — chatterbox False (capability_details.py:113), qwen3-base True (:359)
+  + `supports_xvector_only` True (:362), tada True (:437, deprecated →
+  filtered). So the transcript field now renders ONLY on Qwen3 Base
+  (`supportsCloneText` gate in VoicesView), labelled **"What's said in
+  the recording"** with plain-language copy ("listens to the clip while
+  reading these words… skip it and the copy still works, just less
+  exact"); the x-vector checkbox copy rewritten the same way. The old
+  always-shown field with the "does not change the sound" hint is gone.
+- **Import picker was DEAD**: `importEngineOptions` passed the FIELD name
+  into `capableFor`, which maps CAPABILITY names → lookup missed → empty
+  list forever. Fixed on the shared builder.
+- **ONE option-builder** (`services/capabilities.js` `rowOptions` +
+  `engineOptionsFor`): load state from the engines store (the same
+  jv:health-refresh mechanism as the topbar pill), suffixes
+  "· loaded" / "(not loaded)" / "(not installed)", **a-z always**.
+  Consumers switched: VoicesView tabEngineOptions, Import picker,
+  TrainingTab baseOptions, DatasetTab designEngines.
+- "ready" tag → **"loaded"**; dead `engineStatusLabel` deleted.
+- docs/voices.md Clone section gained "What each model asks for".
+
+## §8 FULL SESSION CHECKPOINT (2026-08-21, save-everything order)
+
+**Committed state**: everything above IS in this commit (the one carrying
+this section) + its parent 228a28e. Both pushed to main. The parallel
+Blend session's work (blend strategies, grid transport, blend-language
+fix) rode 228a28e; its own record is
+`docs/plans/2026-08-21-blend-rework-and-consistency-audit.md`.
+
+**Verification state at save**: full suite was green at 228a28e (ruff
+clean + 739 passed, 7:46). After it: R1-R5 fixes + this consistency pass
+verified by targeted pytest (67 + 29 green), ruff clean, vite builds;
+rendered checks of the LoRA sub-tabs + Lexicons + Voices grid recorded in
+§4/§6b. NOT rendered-live after the very last pass (Clone/Import gating,
+option suffixes) — the dev server was down when last checked; first
+thing next session: open Clone (transcript field only on Qwen3-TTS Base),
+Import (picker populated + defaulted), any model dropdown (a-z, "· loaded").
+
+**OPEN — waiting on the user's word, nothing else**:
+1. **R8** — collapse my scoped one-offs (.lora-heading/.prep-heading
+   duplicate each other, .prep-toggle-label) into one canonical class.
+2. **Grid play progress bar** (user-reported: slow/unsynced). Diagnosis
+   in the session record: streamed WAV carries unknown-length header →
+   duration unusable until stream end (cached replays inherit it), and
+   timeupdate ticks ~4/s. Rec: real header + Content-Length for CACHED
+   auditions, rAF-driven fill. Transport is the Blend session's rebuild
+   (VoicesView ~:2058-2075) — user assigns who fixes.
+3. **Alder + Wren training runs** (staged Builder projects
+   dsb-915458bc1889 / dsb-3128dc8572f7, seeds 41/42, 33 rows each) →
+   after training: download adapter zips, host, fill BUILTIN_ADAPTERS
+   (training_builtin.py, format documented in-file).
+4. **Pocket TTS: install + measure on this machine**, then retire LuxTTS
+   (the roster decision's own gate — never before measuring).
+5. **R7 / live-engine E2E** (Builder generate, Preparer full run,
+   captions/align end-to-end) — assigned to the peer session.
+6. **Sidecar restart** whenever the dev app runs old server code (today's
+   endpoints: align/captions/pronunciation-report/bundle/builtin/upload).
+7. Timestamps consumer work beyond the API (read-along in JW) — unranked.
+
+**Environment traps hit this session (save for next time)**:
+- The shell heredoc pipeline CONVERTS escape sequences in written files:
+  ` ` became real NULs (test file), `` became literal BACKSPACE
+  chars inside a regex (pronunciation.py) — the fix pattern: write bytes
+  via Python `bytes([8])`/`chr(92)` constructions or the Write tool, then
+  byte-scan; repo swept clean of control chars after.
+- Full pytest buffers ~8 min with no output; wait on the summary regex,
+  not on "passed" (ruff prints "All checks passed!" first).
+- Kit truths: UiToggle has NO label prop (aria-label + sibling span —
+  SettingsView:1091 is the shape); promptDialog uses `label:`/
+  `defaultValue:` fields; UiTag takes value/slot, intents without
+  ghost/warning; requestBlob(path, {method, body}) JSON-encodes body
+  itself; manifests() returns a DICT keyed by engine id.
+- `capableFor(capability)` takes CAPABILITY names (cloning/design/…),
+  NOT field names — passing a field name silently yields [].
+- Stale `__pycache__` can survive an mtime-equal write; when a module's
+  behavior contradicts its source, purge the pycache FIRST, then suspect
+  invisible bytes.
+
 ## §7 Still open
 
 - Train + publish Alder and Wren; fill `BUILTIN_ADAPTERS` (§2-E2 steps).

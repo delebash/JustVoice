@@ -45,3 +45,51 @@ export function capableRows(rows, engines, field) {
   const withVariants = new Set(out.filter((o) => o.isVariant).map((o) => o.engine.id));
   return out.filter((o) => o.isVariant || !withVariants.has(o.engine.id));
 }
+
+
+// ── Dropdown options over capability rows — the ONE builder ───────────
+//
+// Every model dropdown in the app rides these two helpers (user ruling
+// 2026-08-21: "we should reuse same mechanism"): the load state comes
+// from the engines store — the SAME store the topbar pill and the
+// Engines tab read, refreshed by the jv:health-refresh event — and the
+// list is alphabetical, always. The vocabulary matches the rest of the
+// app: "· loaded" / "(not loaded)" / "(not installed)".
+
+function statusSuffix(engine) {
+  if (engine.status === "loaded") return " · loaded";
+  if (engine.status === "not_installed") return " (not installed)";
+  return " (not loaded)";
+}
+
+/** One option per capability ROW (checkpoint family) — value = rowId. */
+export function rowOptions(rows, engines, field) {
+  return capableRows(rows, engines, field)
+    .map((b) => ({
+      name: b.row.display_name || b.rowId,
+      label: `${b.row.display_name || b.rowId}${statusSuffix(b.engine)}`,
+      value: b.rowId,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
+    .map(({ label, value }) => ({ label, value }));
+}
+
+/** One option per ENGINE (deduped) — value = engine id. For pickers that
+ *  choose the engine itself (Import's "Model that speaks as this clip",
+ *  the Dataset Builder's Model). */
+export function engineOptionsFor(rows, engines, field) {
+  const seen = new Set();
+  const out = [];
+  for (const b of capableRows(rows, engines, field)) {
+    if (seen.has(b.engine.id)) continue;
+    seen.add(b.engine.id);
+    out.push({
+      name: b.engine.name || b.engine.id,
+      label: `${b.engine.name || b.engine.id}${statusSuffix(b.engine)}`,
+      value: b.engine.id,
+    });
+  }
+  return out
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
+    .map(({ label, value }) => ({ label, value }));
+}

@@ -145,6 +145,13 @@ def download(state, builtin_id: str, *, fetch=None) -> dict:
         if base:
             (dest / base).write_bytes(z.read(info))
 
+    # A record that survived a lost adapter dir keeps its identity — the
+    # re-download restores the FILES, it must not mint a second voice on
+    # the same adapter path (review R1, reproduced: two records).
+    if existing is not None:
+        log.info("built-in adapter '%s' re-downloaded → voice %s kept", builtin_id, existing.id)
+        return {**entry, "downloaded": True, "voice_id": existing.id}
+
     from .models import VoiceRecord
 
     now = datetime.now(timezone.utc)

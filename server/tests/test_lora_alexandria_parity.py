@@ -184,6 +184,15 @@ def test_builtin_download_installs_and_mints_the_voice(tmp_path, monkeypatch):
     assert again["voice_id"] == "voice_0"
     assert len(state.voices.records) == 1
 
+    # Review R1: losing the adapter DIR must not cost the voice its
+    # identity — a re-download restores the files onto the SAME record.
+    import shutil
+    shutil.rmtree(tb.builtin_dir(tmp_path, "test-voice"))
+    restored = tb.download(state, "test-voice", fetch=lambda url: good)
+    assert restored["voice_id"] == "voice_0"
+    assert len(state.voices.records) == 1
+    assert (tb.builtin_dir(tmp_path, "test-voice") / "ref_sample.wav").is_file()
+
 
 def test_builtin_download_refuses_a_zip_that_cannot_render(tmp_path, monkeypatch):
     """ref_sample.wav + training_meta.json are what the engine replays as

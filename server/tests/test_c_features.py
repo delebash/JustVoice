@@ -135,6 +135,18 @@ def test_scan_respects_lexicon_coverage():
     assert [w["word"] for w in out] == ["Brindlewood"]
 
 
+def test_scan_respects_multiword_coverage_but_flags_lone_parts():
+    """Review R2: "Mara Vance" in the lexicon covers exactly that phrase —
+    its words must not re-flag inside it, while a LONE "Mara" elsewhere is
+    genuinely uncovered (the render entry only matches the full phrase) and
+    still surfaces."""
+    from justvoice.pronunciation import scan_names
+
+    texts = ["They met Mara Vance at the mill. Later Mara smiled at Vance."]
+    out = {w["word"]: w["count"] for w in scan_names(texts, covered={"Mara Vance"})}
+    assert out == {"Mara": 1, "Vance": 1}  # only the lone occurrences
+
+
 def test_scan_orders_by_frequency():
     from justvoice.pronunciation import scan_names
 

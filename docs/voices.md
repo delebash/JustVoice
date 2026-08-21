@@ -58,6 +58,22 @@ identity comes entirely from the reference clip. Chatterbox Turbo still takes
 a per-line emotion tag; the others take neither. If you want both a cloned
 identity *and* written direction, train instead.
 
+
+### What each model asks for
+
+Controls appear only when the chosen model actually uses them — a field
+that changes nothing is never shown. **What's said in the recording**
+appears for Qwen3 Base: it listens to your clip *while reading those
+words*, so a word-for-word transcript gives a truer copy (skip it and the
+clone still works, just less exactly). Chatterbox copies the sound alone,
+so that field doesn't appear there. The **speaker-vector** checkbox
+(Qwen3 Base) clones from the voice's fingerprint without any words —
+faster to set up, less exact.
+
+Every model dropdown shows each model's state the same way the rest of
+the app does — **· loaded**, **(not loaded)**, **(not installed)** — and
+lists models alphabetically.
+
 ## Design — from a description
 
 Describe the voice in plain words — *"a gravel-voiced harbour-master in his

@@ -34,12 +34,24 @@ def scan_names(texts: list[str], covered: set[str]) -> list[dict]:
     or "I" artifacts).
     """
     covered_cf = {c.casefold() for c in covered}
+    # A multi-word covered grapheme ("Mara Vance") covers exactly the
+    # PHRASE — that is also all the render-side entry matches. Strip those
+    # occurrences from the text before tokenizing, so their words don't
+    # get re-flagged, while a lone "Mara" elsewhere still counts (review
+    # R2, reproduced).
+    phrase_res = [
+        re.compile(r"\b" + re.escape(c) + r"\b", re.IGNORECASE)
+        for c in covered
+        if " " in c.strip()
+    ]
     lowercase_seen: set[str] = set()
     candidates: dict[str, dict] = {}  # casefold → {word, count, mid}
 
     for text in texts:
         if not text:
             continue
+        for pr in phrase_res:
+            text = pr.sub(" ", text)
         for m in _TOKEN_RE.finditer(text):
             token = m.group(0)
             at_start = m.start() == 0 or _BREAK_RE.search(text[:m.start()][-8:] or "") is not None

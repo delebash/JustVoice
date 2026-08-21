@@ -337,7 +337,6 @@ def run_training_job(
                     "name": request.get("name"),
                     "epochs": request.get("epochs"),
                     "learning_rate": request.get("learning_rate"),
-                    "base_voice": request.get("base_voice"),
                     "target_steps": target_steps,
                     "final_loss": loss_buffer[-1] if loss_buffer else 0.0,
                 },

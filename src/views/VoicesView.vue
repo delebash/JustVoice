@@ -5,7 +5,7 @@ import { useApi } from "../stores/api.js";
 import { pushToast, serverUrl as apiPath } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
 import { readPref, writePref } from "../services/prefs.js";
-import { capableRows } from "../services/capabilities.js";
+import { capableRows, engineOptionsFor, rowOptions } from "../services/capabilities.js";
 import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip, UiSelect, UiCheckbox, UiSegmented, UiSlider, UiTable } from "@delebash/llm-ui";
 // Language CODE → the name a person reads ("en-US" → American English).
 // Kit-side, because every app in the family shows a language somewhere.
@@ -299,6 +299,16 @@ const VOICE_COLUMNS = [
   { id: "_lang", accessorKey: "_lang", header: "Language", sortable: true },
   { id: "actions", header: "" },
 ];
+
+/** Row STATE goes on the <tr>, through the kit's :row-class (added 2026-08-21).
+ *  It briefly lived on a div inside the name cell, which dimmed one cell of an
+ *  orphan row and tinted one cell of the playing row. */
+function voiceRowClass(row) {
+  return {
+    "row-orphan": orphanIds.value.includes(row.id),
+    "voices-view__row--playing": playingVoice.value?.id === row.id,
+  };
+}
 
 const typeCounts = computed(() => {
   const list = voices.value || [];
@@ -681,20 +691,12 @@ const xvectorOnly = ref(false);
 const supportsXvector = computed(() => !!selectedRow.value?.row?.supports_xvector_only);
 watch(selectedRow, () => { xvectorOnly.value = false; });
 
-// What the transcript is worth on THIS model — a hint under the field,
-// never baked into its label.
-const transcriptHint = computed(() => {
-  if (!selectedRow.value) return "";
-  return selectedRow.value.row.supports_clone_prompt_text
-    ? "This model reads the transcript when it clones — the closer it matches the clip, the better the result."
-    : "Kept with the voice for reference. This model's clone call takes no transcript, so it does not change the sound.";
-});
-
-function engineStatusLabel(e) {
-  if (e.status === "loaded") return "ready";
-  if (e.status === "not_installed") return "not installed";
-  return "installed, not loaded";
-}
+// Controls appear only on models that USE them (user ruling 2026-08-21:
+// "hide show controls based on what model uses"). Chatterbox clones from
+// the sound alone; Qwen3 Base also reads what was said.
+const supportsCloneText = computed(
+  () => !!selectedRow.value?.row?.supports_clone_prompt_text,
+);
 
 /** What the chosen model needs next — ONE button beside the picker, not a
  *  list of every capable engine each with its own. */
@@ -729,7 +731,12 @@ function firstCapableRow(tabId) {
     || rows.find((o) => o.engine.status !== "not_installed")
     || rows[0] || null;
 }
+/** Open a tab with the form cleared. Every door goes through here — the tab
+ *  strip, the return to the library after a save, and the #train deep-link —
+ *  so nothing half-typed survives a tab change. (Until 2026-08-21 the reset
+ *  lived in an `openAcquire()` that nothing called, so it never ran.) */
 function setAcquireTab(id) {
+  resetAcquireForm();
   acquireTab.value = id;
   if (id === "voices") return;
   clearCandidate();
@@ -1179,14 +1186,13 @@ function blendShare(idx) {
 // engines only, because clone-reference synthesis is what an imported
 // voice does at render.
 const importEngine = ref("");
-const importEngineOptions = computed(() => {
-  const seen = new Map();
-  for (const o of capableFor("supports_voice_cloning")) {
-    if (!seen.has(o.engine.id))
-      seen.set(o.engine.id, { label: o.engine.name || o.engine.id, value: o.engine.id });
-  }
-  return [...seen.values()];
-});
+// Until 2026-08-21 this passed the FIELD name into capableFor, which maps
+// CAPABILITY names — the lookup missed, the list was always empty, and
+// the picker sat dead ("model that speaks the clip drop down not
+// working"). The shared builder takes the field directly.
+const importEngineOptions = computed(() =>
+  engineOptionsFor(capabilityRows.value, engines.value, "supports_voice_cloning"),
+);
 // No `immediate`: the callback reads settingsDefaultEngine, declared
 // below — and at setup time the options are empty anyway (capabilities
 // arrive async and re-fire this watch).
@@ -1304,12 +1310,11 @@ const engineOptions = computed(() =>
 // hid one and handed you the other one's knobs.
 const tabEngineOptions = computed(() => {
   if (!activeTab.value.capability) return engineOptions.value;
-  return activeCapableRows.value.map((o) => {
-    const suffix = o.engine.status === "loaded"
-      ? ""
-      : o.engine.status === "not_installed" ? " (not installed)" : " (not loaded)";
-    return { label: `${o.row.display_name || o.rowId}${suffix}`, value: o.rowId };
-  });
+  // The shared builder (services/capabilities.js): load state from the
+  // engines store — the same mechanism as the topbar pill — and a-z order.
+  return rowOptions(
+    capabilityRows.value, engines.value, CAPABILITY_FIELD[activeTab.value.capability],
+  );
 });
 
 const blendableVoiceCount = computed(
@@ -1393,8 +1398,9 @@ const submitLabel = computed(() => {
   return map[acquireTab.value] ?? "Submit";
 });
 
-/** Open one tab with the form cleared. */
-function openAcquire(tabId) {
+/** Clear every acquire form. Called by `setAcquireTab`, which is the only
+ *  way a tab changes. */
+function resetAcquireForm() {
   voiceName.value = "";
   cloneFile.value = null;
   cloneTranscript.value = "";
@@ -1421,7 +1427,6 @@ function openAcquire(tabId) {
   ];
   blendLangFilter.value = "all";
   blendGenderFilter.value = "all";
-  setAcquireTab(tabId);
 }
 
 function addBlendSource() {
@@ -1655,22 +1660,30 @@ async function resetAllTweaks() {
               </template>
             </div>
 
-            <UiField label="Reference text" layout="block" class="jv-stretch">
-              <UiTextarea
-                v-model="cloneTranscript"
-                width="prose"
-                :disabled="xvectorOnly"
-                placeholder="The exact words spoken in the recording."
-                :rows="2"
-              />
-            </UiField>
-            <p class="jv-hint">{{ transcriptHint }}</p>
+            <!-- Only models that READ the words show this field — on the
+                 others it would be a control that changes nothing. -->
+            <template v-if="supportsCloneText">
+              <UiField label="What's said in the recording" layout="block" class="jv-stretch">
+                <UiTextarea
+                  v-model="cloneTranscript"
+                  width="prose"
+                  :disabled="xvectorOnly"
+                  placeholder="Type the words from the clip, exactly as spoken."
+                  :rows="2"
+                />
+              </UiField>
+              <p class="jv-hint">
+                This model listens to the clip while reading these words, so a
+                word-for-word match gives a truer copy. Skip it and the copy
+                still works — just less exact.
+              </p>
 
-            <UiCheckbox
-              v-if="supportsXvector"
-              v-model="xvectorOnly"
-              label="Use the speaker vector only — no transcript needed, lower quality"
-            />
+              <UiCheckbox
+                v-if="supportsXvector"
+                v-model="xvectorOnly"
+                label="Skip the words — clone from the sound alone (faster to set up, less exact)"
+              />
+            </template>
           </template>
 
           <!-- Design -->
@@ -1955,7 +1968,7 @@ async function resetAllTweaks() {
                   :title="`${engineAction.label} ${selectedRow?.engine?.name || selectedEngine}`"
                   @click="engineAction.fn"
                 />
-                <UiTag v-else-if="engineReady" intent="success" value="ready" />
+                <UiTag v-else-if="engineReady" intent="success" value="loaded" />
               </div>
               <p v-if="variantDetail" class="jv-hint">{{ variantDetail }}</p>
               <div class="jv-field-row">
@@ -2082,12 +2095,10 @@ async function resetAllTweaks() {
       data-key="id"
       :pagination="false"
       row-hover
+      :row-class="voiceRowClass"
     >
       <template #name="{ row }">
-        <div
-          class="voices-view__name-cell"
-          :class="{ 'row-orphan': orphanIds.includes(row.id), 'voices-view__row--playing': playingVoice?.id === row.id }"
-        >
+        <div class="voices-view__name-cell">
           <UiButton
             intent="ghost"
             size="small"
@@ -2190,7 +2201,14 @@ async function resetAllTweaks() {
 </template>
 
 <style scoped>
-.row-orphan { opacity: 0.7; }
+/* Row state paints the whole <tr>. The row lives inside UiTable, so scoped CSS
+   reaches it through :deep, and the selector has to out-specify the kit's
+   `.ui-table-hover .ui-table-row:hover` or hovering would erase the tint. */
+.voices-view__table :deep(.ui-table-row.row-orphan) { opacity: 0.7; }
+.voices-view__table :deep(.ui-table-row.voices-view__row--playing),
+.voices-view__table :deep(.ui-table-row.voices-view__row--playing:hover) {
+  background: var(--accent-soft);
+}
 
 /* File input inherits basic styling */
 .jv-file-input {
@@ -2334,7 +2352,6 @@ async function resetAllTweaks() {
 .voices-view__bench-field :deep(textarea) { width: 100%; }
 .voices-view__bench-hint { flex: 1 1 40ch; max-width: 64ch; font-size: 12px; line-height: 1.5; margin: 0 0 2px; }
 .voices-view__audio-el { display: none; }
-.voices-view__row--playing { background: var(--accent-soft); }
 
 /* The play control belongs WITH the name, and the transport appears in
    the same cell while that voice plays — one object, not a button in one

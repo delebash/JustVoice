@@ -20,8 +20,6 @@ from __future__ import annotations
 
 import base64
 import logging
-import tempfile
-from pathlib import Path
 
 from fastapi import APIRouter, File, Form, UploadFile
 from fastapi.responses import Response
@@ -29,7 +27,7 @@ from fastapi.responses import Response
 from ..alignment import align_known_text
 from ..app_state import get_state
 from ..captions import to_srt, to_vtt
-from ..errors import bad_request, not_found
+from ..errors import bad_request
 
 log = logging.getLogger(__name__)
 
@@ -104,28 +102,19 @@ def scene_captions(scene_id: str, format: str = "vtt") -> Response:
     from .render_chapter_api import _resolve_scene_to_lines, render_scene_to_wav
 
     st = get_state()
-    try:
-        lines, _lexicons = _resolve_scene_to_lines(scene_id, None, st, strict=False)
-    except Exception:
-        raise not_found(f"scene '{scene_id}' not found")
+    # No blanket except: the resolver already raises the honest answers
+    # (404 for a missing scene, 400 for an empty one) — wrapping them as
+    # "not found" masked real errors as missing scenes (review R5).
+    lines, _lexicons = _resolve_scene_to_lines(scene_id, None, st, strict=False)
     text = " ".join((line.text or "").strip() for line in lines if (line.text or "").strip())
     if not text:
         raise bad_request("this chapter has no renderable lines to caption")
 
     wav = render_scene_to_wav(st, scene_id, strict=False, master=True)
-
-    tmp_path: Path | None = None
     try:
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-            tmp.write(wav)
-            tmp_path = Path(tmp.name)
-        try:
-            words = _align_wav_bytes(wav, text, None)
-        except RuntimeError as e:
-            raise bad_request(str(e))
-    finally:
-        if tmp_path is not None:
-            tmp_path.unlink(missing_ok=True)
+        words = _align_wav_bytes(wav, text, None)
+    except RuntimeError as e:
+        raise bad_request(str(e))
 
     body = to_vtt(words) if format == "vtt" else to_srt(words)
     media = "text/vtt" if format == "vtt" else "application/x-subrip"

@@ -19,7 +19,7 @@ import {
 } from "@delebash/llm-ui";
 import { useApi } from "../../stores/api.js";
 import { useEnginesStore } from "../../stores/engines.js";
-import { capableRows } from "../../services/capabilities.js";
+import { engineOptionsFor } from "../../services/capabilities.js";
 import { TRAIN_LANGUAGES } from "../../services/trainingGates.js";
 
 const emit = defineEmits(["use-dataset"]);
@@ -49,16 +49,11 @@ async function loadCapabilities() {
   const r = await api.safeRequest("/v1/engines/capabilities", { engines: {} });
   capabilityRows.value = r?.engines || {};
 }
-const designEngines = computed(() => {
-  const seen = new Set();
-  const out = [];
-  for (const b of capableRows(capabilityRows.value, enginesStore.items, "supports_voice_design")) {
-    if (seen.has(b.engine.id)) continue;
-    seen.add(b.engine.id);
-    out.push({ label: b.row.display_name || b.engine.name || b.engine.id, value: b.engine.id });
-  }
-  return out;
-});
+// The shared builder — engine-valued (the render door resolves engine
+// ids), load-state suffixed, a-z (services/capabilities.js).
+const designEngines = computed(() =>
+  engineOptionsFor(capabilityRows.value, enginesStore.items, "supports_voice_design"),
+);
 
 // ── Projects ───────────────────────────────────────────────────────────
 async function loadProjects() {

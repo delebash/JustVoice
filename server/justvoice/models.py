@@ -1333,7 +1333,9 @@ class TrainVoiceRequest(BaseModel):
     lora_rank: int | None = None
     lora_alpha: int | None = None
     language: str | None = None
-    base_voice: str | None = None
+    # base_voice DIED 2026-08-21 (review R4): it never reached any trainer
+    # — only the legacy worker's metadata json ever read it, so the field
+    # was a control that moved nothing.
     # Override the dataset's stored reference clip for THIS run only. None =
     # the dataset's own ref_index, and failing that the longest clip.
     ref_index: int | None = None

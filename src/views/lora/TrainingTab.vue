@@ -20,7 +20,7 @@ import {
 } from "@delebash/llm-ui";
 import { useApi } from "../../stores/api.js";
 import { useEnginesStore } from "../../stores/engines.js";
-import { capableRows } from "../../services/capabilities.js";
+import { capableRows, rowOptions } from "../../services/capabilities.js";
 import {
   fileToB64, judgeClip, USABLE, GATE_TAG, gateSummary, TRAIN_LANGUAGES,
 } from "../../services/trainingGates.js";
@@ -251,13 +251,10 @@ async function loadCapabilities() {
 const trainableBases = computed(() =>
   capableRows(capabilityRows.value, enginesStore.items, "supports_training"),
 );
+// The shared builder — same load-state mechanism and a-z order as every
+// other model dropdown (services/capabilities.js, 2026-08-21 ruling).
 const baseOptions = computed(() =>
-  trainableBases.value.map((b) => {
-    const suffix = b.engine.status === "loaded"
-      ? ""
-      : b.engine.status === "not_installed" ? " (not installed)" : "";
-    return { label: `${b.row.display_name || b.rowId}${suffix}`, value: b.rowId };
-  }),
+  rowOptions(capabilityRows.value, enginesStore.items, "supports_training"),
 );
 
 function onBaseChange(rowId) {
