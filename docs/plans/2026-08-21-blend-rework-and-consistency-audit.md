@@ -1169,3 +1169,50 @@ One caveat about the gate, since it will be claimed again: `CacheView` renders
 under `v-show` inside `SettingsView`, so SETTINGS does mount it and a JS error
 would surface. `WebhooksView` is not in the smoke list at all. Neither is
 checked visually by anything.
+
+### 20.7 · Second batch — eight grids, and two that must NOT convert
+
+Taken from §20's "clean" tier (no scoped `th`/`td`/`tr` rules to port). Count
+after: **28 blocks — 17 DATA left, 6 FORM, 5 static.**
+
+| grid | what it needed beyond a straight swap |
+|---|---|
+| `AudioChannelsView` · channels | `#empty` replaces a `colspan="4"` row **inside `<tbody>`**, which drew a header above the empty message |
+| `GenerateView` · lexicon matches | `#empty` replaces a sibling `v-if` paragraph — one place for the wording |
+| `GenerateView` · take history | `:full-width-row` — see below |
+| `PersonasView` · across projects | sorting, which the screen wanted: "which project uses this persona most" was unanswerable |
+| `SettingsView` · MCP bindings | `#empty` replaces a `colspan="6"` row |
+| `lora/PreparerTab` · chosen files | `:data-key` FUNCTION (rows are `File` objects), and the remove action re-derives its index |
+| `lora/PreparerTab` · processing queue | `:data-key` function |
+| `lora/TrainingTab` · training runs | `#empty` replaces a sibling `v-else` paragraph |
+
+**The take-history grid had an extra row per record.** A `<tr v-if="takePlaying?.id === h.id"><td colspan="6">`
+holding an inline `<audio>` — a per-row expansion, which `UiTable` has no direct
+support for. The kit's documented answer fits exactly: a **sentinel row** in the
+data (`{ __player: true, id }`), matched by `:full-width-row` and rendered
+through `#full-row`, with the FUNCTION form of `data-key` because the sentinel
+carries no id of its own. §20.3 listed this grid as needing `#empty`; that was
+wrong — a `colspan` count alone does not say whether the row is an empty state
+or an expansion, and only reading it does.
+
+**`PreparerTab` had the §19.1 trap again.** `.prep-files { width: auto; min-width: 380px }`
+targets the `<table>` element, but the class lands on the kit component's WRAP,
+so the rule would have applied to the wrong box. Ported to
+`.prep-files :deep(.ui-table)`. That is now three times this exact failure has
+appeared; it is the single thing to check on every remaining conversion.
+
+**Two reclassified — they do not belong on `UiTable`:**
+
+- `SettingsView:1078` (API tokens) — **headerless**. `th: 0` was in the scan
+  output all along. `UiTable` always renders a `<thead>`, so converting would
+  add an empty header band that `.jv-table-look` then paints in `--surface-2`.
+  It is a list with a remove button, not a grid.
+- `lora/TrainingTab:783` (adapters) — **two `v-for`s in one `<tbody>`**, built-ins
+  and trained adapters merged into one list. Convertible, but only by merging
+  the sources into one array with a kind flag first. Not mechanical, so not in
+  this batch.
+
+Verification: biome clean across 97 files · 67 unit tests · vite built · smoke
+15/15 with zero JS errors. As always the gate proves no view throws, not that
+any of these grids *looks* right — `AudioChannelsView` and `WebhooksView` are
+not in its list at all.

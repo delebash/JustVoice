@@ -4,7 +4,7 @@ import { ref, computed, onActivated, onMounted, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
-import { AppearancePanel, DataManagement, FAMILY_LABELS, LogsPanel, SettingsShell, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, fmtBytes, refreshRunnerModels, renderHelpMarkdown, serverUrl, useAiTasksStore } from "@delebash/llm-ui";
+import { AppearancePanel, DataManagement, FAMILY_LABELS, LogsPanel, SettingsShell, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, UiTable, fmtBytes, refreshRunnerModels, renderHelpMarkdown, serverUrl, useAiTasksStore } from "@delebash/llm-ui";
 import { loadDoc } from "../services/helpDocs.js";
 import { pickDirectory, storageGetRoot, storageRelocate } from "../services/native.js";
 import { useOnboarding } from "../stores/onboarding.js";
@@ -638,6 +638,18 @@ const masterPresetLabel = computed(
 
 // ── MCP server — bindings + default voice (server is always-on at /mcp) ──
 const mcpBindings = ref([]);
+// Kit grid in the JustVoice look (`jv-table-look`). Sortable by last-seen,
+// which is the column you actually want ordered on this screen.
+const MCP_BINDING_COLUMNS = [
+  { id: "client_id", accessorKey: "client_id", header: "Client ID", sortable: true },
+  { id: "label", accessorKey: "label", header: "Label", sortable: true },
+  { id: "persona", accessorKey: "persona", header: "Default persona", sortable: true },
+  { id: "engine", accessorKey: "engine", header: "Default engine", sortable: true },
+  { id: "last_seen", accessorKey: "last_seen", header: "Last seen", sortable: true },
+  { id: "actions", header: "",
+    headerStyle: { textAlign: "right", width: "1%" },
+    cellStyle: { textAlign: "right", width: "1%", whiteSpace: "nowrap" } },
+];
 const mcpPersonas = ref([]);
 const mcpDefaultVoice = ref("");
 const bindingDraft = ref({ client_id: "", label: "", persona_id: "" });
@@ -1779,31 +1791,23 @@ onMounted(() => {
           <code class="jv-mono">X-JustVoice-Client-Id</code> header get the bound persona's voice
           when calling <code class="jv-mono">justvoice.speak</code> without arguments.
         </p>
-        <table class="jv-table jv-mt12">
-          <thead>
-            <tr>
-              <th>Client ID</th><th>Label</th><th>Default persona</th><th>Default engine</th><th>Last seen</th><th class="right"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="b in mcpBindings" :key="b.client_id">
-              <td><code class="jv-mono">{{ b.client_id }}</code></td>
-              <td>{{ b.label || "—" }}</td>
-              <td>{{ b.persona || "(none)" }}</td>
-              <td>{{ b.engine || "(none)" }}</td>
-              <td class="jv-muted">{{ b.last_seen || "never" }}</td>
-              <td class="right">
-                <UiButton intent="ghost" size="small" label="Edit" title="Load this binding into the form below" @click="editBinding(b)" />
-                <UiButton intent="ghost" size="small" label="✕" title="Remove this binding" @click="deleteBinding(b)" />
-              </td>
-            </tr>
-            <tr v-if="!mcpBindings.length">
-              <td colspan="6" class="jv-muted jv-center-pad">
-                No clients yet. Rows appear when an agent first calls a tool with its client ID — or add one below.
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <!-- The empty state was a `colspan="6"` row inside <tbody>; `#empty` is
+             the component's own and keeps no column count in step. -->
+        <UiTable class="jv-table-look jv-mt12" :data="mcpBindings"
+          :columns="MCP_BINDING_COLUMNS" data-key="client_id" row-hover>
+          <template #client_id="{ row }"><code class="jv-mono">{{ row.client_id }}</code></template>
+          <template #label="{ row }">{{ row.label || "—" }}</template>
+          <template #persona="{ row }">{{ row.persona || "(none)" }}</template>
+          <template #engine="{ row }">{{ row.engine || "(none)" }}</template>
+          <template #last_seen="{ row }"><span class="jv-muted">{{ row.last_seen || "never" }}</span></template>
+          <template #actions="{ row }">
+            <UiButton intent="ghost" size="small" label="Edit" title="Load this binding into the form below" @click="editBinding(row)" />
+            <UiButton intent="ghost" size="small" label="✕" title="Remove this binding" @click="deleteBinding(row)" />
+          </template>
+          <template #empty>
+            No clients yet. Rows appear when an agent first calls a tool with its client ID — or add one below.
+          </template>
+        </UiTable>
         <div class="jv-row jv-row--mid jv-gap8 jv-mt12 jv-wrap">
           <UiInput v-model="bindingDraft.client_id" width="name" placeholder="client id (e.g. claude-code)" title="The X-JustVoice-Client-Id the agent sends" />
           <UiInput v-model="bindingDraft.label" width="name" placeholder="label (optional)" />

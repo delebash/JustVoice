@@ -11,13 +11,28 @@
 // there is no save-then-re-upload step.
 import { ref, computed, onUnmounted } from "vue";
 import {
-  UiButton, UiInput, UiField, UiSelect, UiTag, UiToggle,
+  UiButton, UiInput, UiField, UiSelect, UiTag, UiToggle, UiTable,
   pushToast, postForm, serverUrl as apiPath,
 } from "@delebash/llm-ui";
 import { useApi } from "../../stores/api.js";
 import { chunkStatus, GATE_TAG, TRAIN_LANGUAGES } from "../../services/trainingGates.js";
 
 const emit = defineEmits(["use-dataset"]);
+
+// Kit grids in the JustVoice look (`jv-table-look`).
+const CHOSEN_FILE_COLUMNS = [
+  { id: "name", accessorKey: "name", header: "Recording", sortable: true },
+  { id: "actions", header: "", headerStyle: { width: "1%" }, cellStyle: { width: "1%", whiteSpace: "nowrap" } },
+];
+const QUEUE_COLUMNS = [
+  { id: "name", accessorKey: "name", header: "Audio File", sortable: true },
+  { id: "status", accessorKey: "status", header: "Status", sortable: true },
+  { id: "kept", header: "Clips Kept" },
+  { id: "dataset_name", accessorKey: "dataset_name", header: "Dataset", sortable: true },
+];
+// The rows are File objects, so identity is the handle — the old markup keyed
+// and spliced by index, which a slot does not hand back.
+const dropChosenFile = (f) => { const i = files.value.indexOf(f); if (i >= 0) files.value.splice(i, 1); };
 const api = useApi();
 
 const batchMode = ref(false);
@@ -236,17 +251,16 @@ onUnmounted(() => {
       </UiField>
 
       <!-- Chosen, not yet started -->
-      <table v-if="files.length > 1 && !running" class="jv-table prep-files jv-mt12">
-        <thead><tr><th>Recording</th><th></th></tr></thead>
-        <tbody>
-          <tr v-for="(f, i) in files" :key="i">
-            <td><code class="jv-mono">{{ f.name }}</code></td>
-            <td class="jv-table__actions">
-              <UiButton intent="danger-outline" size="small" label="Remove" @click="files.splice(i, 1)" />
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <UiTable v-if="files.length > 1 && !running"
+        class="jv-table-look prep-files jv-mt12"
+        :data="files" :columns="CHOSEN_FILE_COLUMNS" :data-key="(f) => f.name">
+        <template #name="{ row }"><code class="jv-mono">{{ row.name }}</code></template>
+        <template #actions="{ row }">
+          <div class="jv-table__actions">
+            <UiButton intent="danger-outline" size="small" label="Remove" @click="dropChosenFile(row)" />
+          </div>
+        </template>
+      </UiTable>
 
       <h4 class="prep-heading">Configuration</h4>
       <div class="jv-field-row">
@@ -297,30 +311,23 @@ onUnmounted(() => {
   <div v-if="queue.length" class="jv-section">
     <div class="jv-card">
       <div class="jv-card__header"><h3 class="jv-card__title">Processing Queue</h3></div>
-      <table class="jv-table">
-        <thead>
-          <tr><th>Audio File</th><th>Status</th><th>Clips Kept</th><th>Dataset</th></tr>
-        </thead>
-        <tbody>
-          <tr v-for="(row, i) in queue" :key="i">
-            <td><code class="jv-mono">{{ row.name }}</code></td>
-            <td>
-              <UiTag
-                :intent="QUEUE_TAG[row.status]?.intent || 'secondary'"
-                :value="QUEUE_TAG[row.status]?.label || row.status"
-              />
-              <span v-if="row.error" class="jv-note-xs prep-error">{{ row.error }}</span>
-            </td>
-            <td class="jv-muted">
-              {{ row.kept != null ? `${row.kept} of ${row.chunk_count ?? "?"}` : "--" }}
-            </td>
-            <td>
-              <span v-if="row.dataset_name">{{ row.dataset_name }}</span>
-              <span v-else class="jv-muted">--</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <UiTable class="jv-table-look" :data="queue" :columns="QUEUE_COLUMNS" :data-key="(r) => r.name">
+        <template #name="{ row }"><code class="jv-mono">{{ row.name }}</code></template>
+        <template #status="{ row }">
+          <UiTag
+            :intent="QUEUE_TAG[row.status]?.intent || 'secondary'"
+            :value="QUEUE_TAG[row.status]?.label || row.status"
+          />
+          <span v-if="row.error" class="jv-note-xs prep-error">{{ row.error }}</span>
+        </template>
+        <template #kept="{ row }">
+          <span class="jv-muted">{{ row.kept != null ? `${row.kept} of ${row.chunk_count ?? "?"}` : "--" }}</span>
+        </template>
+        <template #dataset_name="{ row }">
+          <span v-if="row.dataset_name">{{ row.dataset_name }}</span>
+          <span v-else class="jv-muted">--</span>
+        </template>
+      </UiTable>
     </div>
   </div>
 
@@ -390,7 +397,10 @@ onUnmounted(() => {
   color: var(--ink);
 }
 .prep-toggle-label { font-size: 13px; font-weight: 500; color: var(--ink-2); }
-.prep-files { width: auto; min-width: 380px; }
+/* The class lands on the kit component's WRAP, not on the <table>, so the
+   width rule has to reach in — the same trap that silently killed the voices
+   grid's column widths (audit §19.1). */
+.prep-files :deep(.ui-table) { width: auto; min-width: 380px; }
 .prep-error { display: block; margin-top: 2px; }
 /* Dropped clips stay VISIBLE and dimmed — hiding them would hide the
    reason, and the reason is the point of showing the table at all. */

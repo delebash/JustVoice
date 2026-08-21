@@ -23,7 +23,7 @@ import { computed, onMounted, ref, watch, nextTick } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
-import { UiButton, UiInput, UiTextarea, UiTag, UiSelect, AppModal } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiTag, UiSelect, AppModal, UiTable } from "@delebash/llm-ui";
 import { EmptyState } from "@delebash/llm-ui";
 import EffectsChainEditorModal from "../components/EffectsChainEditorModal.vue";
 import { usePersonasStore } from "../stores/personas.js";
@@ -31,6 +31,18 @@ import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
 import { useLexiconsStore } from "../stores/lexicons.js";
 import { useProjectsStore } from "../stores/projects.js";
+
+// Kit grid in the JustVoice look (`jv-table-look`); sorting comes with it,
+// which matters here — "which project uses this persona most" was unanswerable
+// without re-reading the whole list.
+const CROSS_PROJECT_COLUMNS = [
+  { id: "project_name", accessorKey: "project_name", header: "Project", sortable: true },
+  { id: "project_type", accessorKey: "project_type", header: "Type", sortable: true },
+  { id: "scene_count", accessorKey: "scene_count", header: "Scenes", sortable: true,
+    meta: { headerClass: "jv-mono" }, cellStyle: { width: "1%" } },
+  { id: "line_count", accessorKey: "line_count", header: "Lines", sortable: true,
+    meta: { headerClass: "jv-mono" }, cellStyle: { width: "1%" } },
+];
 
 const api = useApi();
 
@@ -561,24 +573,13 @@ onMounted(loadAll);
             Across projects
             <UiTag intent="ghost">{{ usageDetail.total_lines }} line{{ usageDetail.total_lines === 1 ? "" : "s" }}</UiTag>
           </h4>
-          <table class="jv-table personas__cross-project-table">
-            <thead>
-              <tr>
-                <th>Project</th>
-                <th>Type</th>
-                <th class="jv-mono">Scenes</th>
-                <th class="jv-mono">Lines</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="p in usageDetail.projects" :key="p.project_id">
-                <td><strong>{{ p.project_name }}</strong></td>
-                <td><UiTag intent="ghost">{{ p.project_type }}</UiTag></td>
-                <td class="jv-mono">{{ p.scene_count }}</td>
-                <td class="jv-mono">{{ p.line_count }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <UiTable class="jv-table-look personas__cross-project-table"
+            :data="usageDetail.projects" :columns="CROSS_PROJECT_COLUMNS" data-key="project_id" row-hover>
+            <template #project_name="{ row }"><strong>{{ row.project_name }}</strong></template>
+            <template #project_type="{ row }"><UiTag intent="ghost">{{ row.project_type }}</UiTag></template>
+            <template #scene_count="{ row }"><span class="jv-mono">{{ row.scene_count }}</span></template>
+            <template #line_count="{ row }"><span class="jv-mono">{{ row.line_count }}</span></template>
+          </UiTable>
         </section>
 
 

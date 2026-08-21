@@ -12,7 +12,15 @@ import { channelsService } from "../services/projects.js";
 import { listAudioOutputDevices } from "../services/native.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
-import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag, UiTable } from "@delebash/llm-ui";
+
+// The kit grid in the JustVoice look (`jv-table-look`). Sorting comes with it.
+const CHANNEL_COLUMNS = [
+  { id: "name", accessorKey: "name", header: "Name", sortable: true },
+  { id: "is_default", accessorKey: "is_default", header: "Default", sortable: true },
+  { id: "devices", header: "Devices" },
+  { id: "actions", header: "", headerStyle: { width: "1%" }, cellStyle: { width: "1%", whiteSpace: "nowrap" } },
+];
 
 const channels = ref([]);
 const editing = ref({ id: null, name: "", device_ids: [], is_default: false });
@@ -96,35 +104,26 @@ onMounted(() => {
     </header>
 
     <div class="jv-section">
-      <table class="jv-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Default</th>
-            <th>Devices</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="channels.length === 0">
-            <td colspan="4" class="jv-table__empty">No channels configured. Add one below to route voices to specific outputs.</td>
-          </tr>
-          <tr v-for="c in channels" :key="c.id">
-            <td><strong>{{ c.name }}</strong></td>
-            <td>
-              <UiTag intent="success" v-if="c.is_default">Default</UiTag>
-              <span v-else class="jv-muted">—</span>
-            </td>
-            <td class="jv-muted">{{ c.device_ids?.length || 0 }} device(s)</td>
-            <td>
-              <div class="jv-table__actions">
-                <UiButton intent="secondary" size="small" label="Edit" @click="editChannel(c)" />
-                <UiButton intent="danger-outline" size="small" label="Delete" @click="deleteChannel(c)" />
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <!-- The empty state was a `colspan` row inside <tbody>, so the header
+           drew above it; `#empty` is the component's own and keeps no column
+           count in step. -->
+      <UiTable class="jv-table-look" :data="channels" :columns="CHANNEL_COLUMNS" data-key="id" row-hover>
+        <template #name="{ row }"><strong>{{ row.name }}</strong></template>
+        <template #is_default="{ row }">
+          <UiTag v-if="row.is_default" intent="success">Default</UiTag>
+          <span v-else class="jv-muted">—</span>
+        </template>
+        <template #devices="{ row }">
+          <span class="jv-muted">{{ row.device_ids?.length || 0 }} device(s)</span>
+        </template>
+        <template #actions="{ row }">
+          <div class="jv-table__actions">
+            <UiButton intent="secondary" size="small" label="Edit" @click="editChannel(row)" />
+            <UiButton intent="danger-outline" size="small" label="Delete" @click="deleteChannel(row)" />
+          </div>
+        </template>
+        <template #empty>No channels configured. Add one below to route voices to specific outputs.</template>
+      </UiTable>
     </div>
 
     <section class="jv-card jv-card--soft editor-card">

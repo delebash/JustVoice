@@ -5,7 +5,16 @@ import { useApi } from "../stores/api.js";
 import { lexiconMatches } from "../services/lexiconPreview.js";
 import { pushToast, runAiEndpoint, withAiTask } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
-import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag, UiSelect, AppModal } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag, UiSelect, AppModal, UiTable } from "@delebash/llm-ui";
+
+// Kit grids in the JustVoice look (`jv-table-look`).
+const LEXICON_MATCH_COLUMNS = [
+  { id: "word", accessorKey: "word", header: "Word", sortable: true },
+  { id: "display", accessorKey: "display", header: "Pronunciation" },
+  { id: "kind", accessorKey: "kind", header: "Format", sortable: true },
+  { id: "count", accessorKey: "count", header: "Count", sortable: true,
+    headerStyle: { textAlign: "right" }, cellStyle: { textAlign: "right" } },
+];
 import SlashTagMenu from "../components/SlashTagMenu.vue";
 import { useVoicesStore } from "../stores/voices.js";
 import { usePersonasStore } from "../stores/personas.js";
@@ -526,6 +535,31 @@ function relativeTime(iso) {
 // ▶ opens a compact inline player under the history row (the ruling
 // 2026-08-15: the global bottom bar died; playback is compact and in place).
 const takePlaying = ref(null); // { id, url } | null
+
+// The inline player is an EXTRA row after the take it belongs to, which a data
+// grid has no natural place for. UiTable's documented answer: a sentinel row in
+// the data, matched by `:full-width-row` and rendered through `#full-row`. The
+// sentinel carries no id of its own, so `data-key` is the FUNCTION form.
+const historyRows = computed(() => {
+  const out = [];
+  for (const h of history.value) {
+    out.push(h);
+    if (takePlaying.value?.id === h.id) out.push({ __player: true, id: h.id });
+  }
+  return out;
+});
+const historyKey = (r) => (r?.__player ? `${r.id}:player` : r?.id);
+const isPlayerRow = (r) => !!r?.__player;
+const HISTORY_COLUMNS = [
+  { id: "when", accessorKey: "when", header: "When", sortable: true },
+  { id: "voice", accessorKey: "voice", header: "Voice", sortable: true },
+  { id: "text", accessorKey: "text", header: "Text preview" },
+  { id: "take", header: "Take" },
+  { id: "effects", accessorKey: "effects", header: "Effects" },
+  { id: "actions", header: "Actions",
+    headerStyle: { textAlign: "right", width: "1%" },
+    cellStyle: { textAlign: "right", width: "1%", whiteSpace: "nowrap" } },
+];
 function playTake(h) {
   if (!h?.audio_url) return;
   takePlaying.value = { id: h.id, url: `${api.serverUrl}${h.audio_url}` };
@@ -1066,22 +1100,16 @@ onActivated(() => {
           dismissable
           @close="showLexiconPreview = false"
         >
-          <p v-if="!appliedLexiconMatches.length" class="jv-muted">
-            None of the lexicon's words appear in the current text. Type a word that's in the lexicon to see it here.
-          </p>
-          <table v-else class="jv-table">
-            <thead>
-              <tr><th>Word</th><th>Pronunciation</th><th>Format</th><th class="right">Count</th></tr>
-            </thead>
-            <tbody>
-              <tr v-for="m in appliedLexiconMatches" :key="m.word">
-                <td><strong>{{ m.word }}</strong></td>
-                <td><code class="jv-mono">{{ m.display }}</code></td>
-                <td>{{ m.kind }}</td>
-                <td class="right">{{ m.count }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <!-- `#empty` replaces the sibling `v-if` paragraph: the grid owns its
+               own empty state, so the wording lives in one place. -->
+          <UiTable class="jv-table-look" :data="appliedLexiconMatches"
+            :columns="LEXICON_MATCH_COLUMNS" data-key="word">
+            <template #word="{ row }"><strong>{{ row.word }}</strong></template>
+            <template #display="{ row }"><code class="jv-mono">{{ row.display }}</code></template>
+            <template #empty>
+              None of the lexicon's words appear in the current text. Type a word that's in the lexicon to see it here.
+            </template>
+          </UiTable>
           <template #footer>
             <span class="jv-spacer" />
             <UiButton intent="secondary" label="Close" @click="showLexiconPreview = false" />
@@ -1096,40 +1124,24 @@ onActivated(() => {
     <div class="jv-section">
       <h3 class="jv-section__title">History — takes, favorites, retry</h3>
       <div class="jv-card">
-        <table v-if="history.length" class="jv-table">
-          <thead>
-            <tr>
-              <th>When</th>
-              <th>Voice</th>
-              <th>Text preview</th>
-              <th>Take</th>
-              <th>Effects</th>
-              <th class="right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <template v-for="h in history" :key="h.id">
-            <tr>
-              <td class="jv-muted">{{ relativeTime(h.when) }}</td>
-              <td><strong>{{ h.voice || "—" }}</strong></td>
-              <td>{{ h.text }}</td>
-              <td>{{ h.take || h.status || "—" }}</td>
-              <td>{{ h.effects || "—" }}</td>
-              <td class="right">
-                <UiButton intent="ghost" size="small" label="▶" :disabled="!h.audio_url" title="Play this generation" @click="playTake(h)" />
-                <UiButton intent="ghost" size="small" :label="h.is_favorited ? '★' : '☆'" :title="h.is_favorited ? 'Unfavorite' : 'Favorite — pin this generation'" @click="toggleFavorite(h)" />
-                <UiButton intent="ghost" size="small" label="↻" title="Retry — reload this text into the editor above" @click="retryTake(h)" />
-                <UiButton intent="ghost" size="small" label="✕" title="Delete this generation (audio + history row)" @click="deleteTake(h)" />
-              </td>
-            </tr>
-            <!-- Compact inline player (2026-08-15: no global bottom bar). -->
-            <tr v-if="takePlaying?.id === h.id"><td colspan="6">
-              <audio :src="takePlaying.url" controls autoplay class="jv-audio-inline" />
-            </td></tr>
-            </template>
-          </tbody>
-        </table>
-        <p v-else class="jv-table__empty">No takes yet. Render something above — recent generations land here.</p>
+        <UiTable class="jv-table-look" :data="historyRows" :columns="HISTORY_COLUMNS"
+          :data-key="historyKey" :full-width-row="isPlayerRow" row-hover>
+          <template #when="{ row }"><span class="jv-muted">{{ relativeTime(row.when) }}</span></template>
+          <template #voice="{ row }"><strong>{{ row.voice || "—" }}</strong></template>
+          <template #take="{ row }">{{ row.take || row.status || "—" }}</template>
+          <template #effects="{ row }">{{ row.effects || "—" }}</template>
+          <template #actions="{ row }">
+            <UiButton intent="ghost" size="small" label="▶" :disabled="!row.audio_url" title="Play this generation" @click="playTake(row)" />
+            <UiButton intent="ghost" size="small" :label="row.is_favorited ? '★' : '☆'" :title="row.is_favorited ? 'Unfavorite' : 'Favorite — pin this generation'" @click="toggleFavorite(row)" />
+            <UiButton intent="ghost" size="small" label="↻" title="Retry — reload this text into the editor above" @click="retryTake(row)" />
+            <UiButton intent="ghost" size="small" label="✕" title="Delete this generation (audio + history row)" @click="deleteTake(row)" />
+          </template>
+          <!-- Compact inline player (2026-08-15: no global bottom bar). -->
+          <template #full-row>
+            <audio :src="takePlaying.url" controls autoplay class="jv-audio-inline" />
+          </template>
+          <template #empty>No takes yet. Render something above — recent generations land here.</template>
+        </UiTable>
       </div>
     </div>
 

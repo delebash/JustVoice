@@ -16,7 +16,7 @@
 import { ref, computed, onMounted, onActivated, onDeactivated, onUnmounted } from "vue";
 import {
   UiButton, UiInput, UiField, UiSelect, UiTag,
-  pushToast, postForm, requestBlob, confirmDialog, serverUrl as apiPath,
+  pushToast, postForm, requestBlob, confirmDialog, serverUrl as apiPath, UiTable,
 } from "@delebash/llm-ui";
 import { useApi } from "../../stores/api.js";
 import { useEnginesStore } from "../../stores/engines.js";
@@ -333,6 +333,16 @@ async function submitTrain() {
 
 // ── Jobs / progress ────────────────────────────────────────────────────
 const trainJobs = ref([]);
+// Kit grid in the JustVoice look (`jv-table-look`) for the runs list.
+const RUN_COLUMNS = [
+  { id: "voice_name", accessorKey: "voice_name", header: "Adapter", sortable: true },
+  { id: "engine", accessorKey: "engine", header: "Base", sortable: true },
+  { id: "phase", accessorKey: "phase", header: "Phase", sortable: true },
+  { id: "progress", accessorKey: "progress", header: "Progress", sortable: true },
+  { id: "loss", header: "Final Loss" },
+  { id: "actions", header: "", headerStyle: { width: "1%" }, cellStyle: { width: "1%", whiteSpace: "nowrap" } },
+];
+
 const ACTIVE_PHASES = new Set(["queued", "validating", "preparing", "running"]);
 function phaseVariant(phase) {
   if (phase === "completed") return "success";
@@ -879,49 +889,41 @@ onUnmounted(() => {
         <h3 class="jv-card__title">{{ trainJobs.length }} Training Runs</h3>
         <UiButton intent="secondary" size="small" label="Refresh" @click="refreshJobs" />
       </div>
-      <table v-if="trainJobs.length" class="jv-table">
-        <thead>
-          <tr>
-            <th>Adapter</th><th>Base</th><th>Phase</th><th>Progress</th><th>Final Loss</th><th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="j in trainJobs" :key="j.job_id">
-            <td>{{ j.voice_name }}</td>
-            <td><span class="jv-mono jv-muted">{{ j.engine }}</span></td>
-            <td>
-              <UiTag :intent="phaseVariant(j.phase)" :value="j.phase" />
-              <span v-if="j.validation?.rejected" class="jv-note-xs lora-note">
-                {{ j.validation.rejected }} clip{{ j.validation.rejected === 1 ? "" : "s" }} dropped by the trainer
-              </span>
-              <span v-if="j.error" class="jv-note-xs lora-note lora-note--bad">{{ j.error }}</span>
-            </td>
-            <td>
-              <div class="jv-progress">
-                <div class="jv-progress__track">
-                  <div
-                    class="jv-progress__bar"
-                    :class="{
-                      'jv-progress__bar--done': j.phase === 'completed',
-                      'jv-progress__bar--fail': j.phase === 'failed',
-                    }"
-                    :style="{ width: Math.round((j.progress || 0) * 100) + '%' }"
-                  />
-                </div>
-                <span class="jv-note-xs">{{ Math.round((j.progress || 0) * 100) }}%</span>
-              </div>
-            </td>
-            <td class="jv-muted">{{ lastLoss(j) }}</td>
-            <td class="jv-table__actions">
-              <UiButton
-                v-if="ACTIVE_PHASES.has(j.phase)"
-                intent="danger" size="small" label="Cancel" @click="cancelJob(j.job_id)"
+      <UiTable class="jv-table-look" :data="trainJobs" :columns="RUN_COLUMNS" data-key="job_id" row-hover>
+        <template #engine="{ row }"><span class="jv-mono jv-muted">{{ row.engine }}</span></template>
+        <template #phase="{ row }">
+          <UiTag :intent="phaseVariant(row.phase)" :value="row.phase" />
+          <span v-if="row.validation?.rejected" class="jv-note-xs lora-note">
+            {{ row.validation.rejected }} clip{{ row.validation.rejected === 1 ? "" : "s" }} dropped by the trainer
+          </span>
+          <span v-if="row.error" class="jv-note-xs lora-note lora-note--bad">{{ row.error }}</span>
+        </template>
+        <template #progress="{ row }">
+          <div class="jv-progress">
+            <div class="jv-progress__track">
+              <div
+                class="jv-progress__bar"
+                :class="{
+                  'jv-progress__bar--done': row.phase === 'completed',
+                  'jv-progress__bar--fail': row.phase === 'failed',
+                }"
+                :style="{ width: Math.round((row.progress || 0) * 100) + '%' }"
               />
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-else class="jv-hint">No runs yet.</p>
+            </div>
+            <span class="jv-note-xs">{{ Math.round((row.progress || 0) * 100) }}%</span>
+          </div>
+        </template>
+        <template #loss="{ row }"><span class="jv-muted">{{ lastLoss(row) }}</span></template>
+        <template #actions="{ row }">
+          <div class="jv-table__actions">
+            <UiButton
+              v-if="ACTIVE_PHASES.has(row.phase)"
+              intent="danger" size="small" label="Cancel" @click="cancelJob(row.job_id)"
+            />
+          </div>
+        </template>
+        <template #empty>No runs yet.</template>
+      </UiTable>
     </div>
   </div>
 </template>
