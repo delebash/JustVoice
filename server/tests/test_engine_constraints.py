@@ -1,24 +1,31 @@
 # SPDX-License-Identifier: MIT
-"""The venv-wide dependency ceiling, and the regression that made it necessary.
+"""What constrains an engine environment now: the family torch pin.
 
-Engine venvs are built one `uv pip install` at a time — every manifest INSTALL
-step is its own resolution. A version pin declared by one step therefore holds
-only until an unrelated later step re-resolves the same package, and nothing in
-the manifest layer can see that happen.
+Until 2026-08-22 this file guarded a venv-wide `--constraint` ceiling. That
+ceiling existed because every core engine resolved into ONE interpreter, so a
+pin declared by one engine's install step could be re-resolved by another's,
+and the tightest bound anywhere won for everyone. Per-engine venvs removed the
+mechanism, and the ceiling with it.
 
-It happened. The SDK currency refresh shipped with a bare `--reinstall`, which
-reinstalls the WHOLE resolution rather than the named package; uv re-resolved
-justvoice-plugin's unbounded `numpy>=1.24` to numpy 2.5.2 over a shared venv
-where every engine had pinned `numpy<2.0`; and numba — pulled in by librosa,
-which sits in the import chain of chatterbox-tts, qwen-tts, zipvoice and
-hume-tada — refused to import: "Numba needs NumPy 2.0 or less. Got NumPy 2.5."
-Every engine but Kokoro (sherpa-onnx, the one chain with no numba) failed to
-load, and the failure surfaced as a 500 from voice preview, several layers away
-from the pip command that caused it.
+One constraint replaced it, and it is a real one. Every engine that installs
+torch must name the SAME torch and torchaudio versions. Not for tidiness — for
+disk. uv fills a venv by hardlinking out of its cache, so venvs that agree
+about torch share one copy of it. Measured 2026-08-22 with all five engines
+installed: 5,284 MB for the five venvs together, against 18,750 MB if nothing
+were shared — the first venv is 4,800 MB of that and the other four cost 484 MB
+between them. A single engine pinning a different torch costs a second full
+CUDA stack instead: +4.3 GB. Divergence is therefore a deliberate act, and this
+file is where it has to be argued for.
 
-These tests pin both halves of the fix: the ceiling is applied at the ONE
-install door, and the refresh can never again re-resolve packages it does not
-own.
+Deprecated engines are exempt. They are hidden, never offered, and frozen at
+whatever they last declared — TADA sits on torch 2.7.0 for exactly that reason.
+Un-deprecating one means bringing it onto the family pin here.
+
+The second half of the file guards the SDK currency refresh, which is what
+originally made a ceiling necessary: a bare `--reinstall` re-resolved numpy to
+2.5.2 across an environment pinned below 2.0, and librosa's numba refused to
+import — surfacing as a 500 from voice preview, several layers from the pip
+command that caused it. The refresh must still name the one package it owns.
 """
 
 from __future__ import annotations
@@ -30,65 +37,85 @@ import pytest
 from justvoice.engines import manager
 
 
-# ─── The ceiling itself ───────────────────────────────────────────────
-
-
-def test_constraints_file_ships_and_caps_numpy() -> None:
-    """The file is data the installer depends on — a checkout missing it
-    installs unconstrained, which is exactly the state this fixes."""
-    assert manager.CONSTRAINTS_FILE.is_file(), (
-        f"{manager.CONSTRAINTS_FILE} is missing — engine installs would run "
-        "with no numpy ceiling"
-    )
-    text = manager.CONSTRAINTS_FILE.read_text(encoding="utf-8")
-    numpy_lines = [
-        ln.strip() for ln in text.splitlines()
-        if ln.strip() and not ln.strip().startswith("#") and ln.strip().startswith("numpy")
-    ]
-    assert numpy_lines, "no numpy constraint declared"
-    assert "<2.0" in numpy_lines[0], (
-        f"numpy ceiling must stay below 2.0 while numba is pinned <0.61; got {numpy_lines[0]!r}"
-    )
-
-
-def test_constraint_args_are_absent_rather_than_fatal(monkeypatch, tmp_path) -> None:
-    """A missing file degrades to the pre-ceiling behaviour, never an
-    InstallError — refusing to install over a missing text file is the worse
-    trade."""
-    monkeypatch.setattr(manager, "CONSTRAINTS_FILE", tmp_path / "nope.txt")
-    assert manager._constraint_args() == []
-
-    present = tmp_path / "c.txt"
-    present.write_text("numpy<2.0\n", encoding="utf-8")
-    monkeypatch.setattr(manager, "CONSTRAINTS_FILE", present)
-    assert manager._constraint_args() == ["--constraint", str(present)]
-
-
-def test_no_manifest_declares_a_numpy_bound_the_ceiling_would_break() -> None:
-    """Drift guard, both directions. An engine that genuinely needs numpy 2.x
-    cannot silently coexist with the ceiling — it has to move numba first, and
-    this test is where that conversation starts."""
-    offenders: list[str] = []
-    for eid, m in manager.discover_engines().items():
-        if m.isolation == "venv":
-            # Isolated venvs install without the ceiling (2026-08-19) —
-            # kokoro's kokoro-onnx needs numpy>=2 and has no numba.
+def _torch_pins(steps) -> list[str]:
+    """Every package string from an engine's `torch` install steps."""
+    out: list[str] = []
+    for step in steps:
+        if step.get("kind") != "torch":
             continue
-        for step in m.install_steps:
-            for pkg in step.get("packages", []) or []:
-                name = re.split(r"[<>=!~\[; ]", str(pkg), 1)[0].strip().lower()
-                if name != "numpy":
-                    continue
-                if "<2" not in str(pkg):
-                    offenders.append(f"{eid}: {pkg!r}")
-    assert not offenders, (
-        "manifest numpy pins disagree with constraints.txt — "
-        f"{offenders}. Raising the ceiling means raising numba across every "
-        "engine that pulls librosa."
+        version = step.get("version")
+        for pkg in step.get("packages") or []:
+            out.append(f"{pkg}=={version}" if version and "=" not in pkg else str(pkg))
+    return out
+
+
+# ─── The family torch pin ─────────────────────────────────────────────
+
+
+def test_every_live_engine_names_the_same_torch() -> None:
+    """THE guard. Two engines on different torch versions = +4.3 GB on disk
+    and two CUDA stacks to keep working."""
+    pins: dict[str, list[str]] = {}
+    for eid, m in manager.discover_engines().items():
+        if (m.deprecated or "").strip():
+            continue
+        found = _torch_pins(m.install_steps)
+        if found:
+            pins[eid] = sorted(found)
+
+    assert pins, "no engine declares a torch step — did the step kind get renamed?"
+    distinct = {tuple(v) for v in pins.values()}
+    assert len(distinct) == 1, (
+        "engines disagree about torch, which costs a full second CUDA stack "
+        f"on disk: {pins}. Moving one engine off the family pin is a "
+        "deliberate decision — change this test in the same PR."
     )
 
 
-# ─── The ceiling is applied at the one door ───────────────────────────
+def test_the_family_pin_is_exact_and_names_torchaudio() -> None:
+    """A range would let two machines resolve differently and quietly undo
+    the sharing; torchaudio has to be named because leaving it loose lets pip
+    pick one built against a different torch."""
+    for eid, m in manager.discover_engines().items():
+        if (m.deprecated or "").strip():
+            continue
+        found = _torch_pins(m.install_steps)
+        if not found:
+            continue
+        names = {re.split(r"[<>=!~ ]", p, 1)[0].strip().lower() for p in found}
+        assert names == {"torch", "torchaudio"}, (
+            f"{eid} torch step should install exactly torch + torchaudio; got {found}"
+        )
+        for pkg in found:
+            assert "==" in pkg, (
+                f"{eid} pins torch loosely ({pkg!r}) — two machines would "
+                "resolve differently and stop sharing the cached wheels"
+            )
+
+
+def test_the_pin_is_a_version_the_wheel_indexes_actually_carry() -> None:
+    """The pin and the index have to agree, and this pairing is render-proven
+    (chatterbox on CUDA, 2026-08-22). Bumping either alone is how AMD-on-Linux
+    became uninstallable: the manifests asked for torch 2.6.0 while the
+    hardcoded rocm6.2 index stopped at 2.5.1."""
+    for m in manager.discover_engines().values():
+        if (m.deprecated or "").strip():
+            continue
+        found = _torch_pins(m.install_steps)
+        if found:
+            assert sorted(found) == ["torch==2.13.0", "torchaudio==2.11.0"], found
+            break
+    for url in (manager.TORCH_INDEX_CUDA12,
+                manager.TORCH_INDEX_CUDA13,
+                manager.TORCH_INDEX_ROCM):
+        assert url.startswith("https://download.pytorch.org/whl/")
+        assert "cu124" not in url and "rocm6.2" not in url, (
+            f"{url} is a dead index: cu124 stops at torch 2.6.0 (no Blackwell), "
+            "rocm6.2 stops at 2.5.1"
+        )
+
+
+# ─── No ceiling survives ──────────────────────────────────────────────
 
 
 def _capture_uv_pip(monkeypatch) -> list[list[str]]:
@@ -112,41 +139,32 @@ def _capture_uv_pip(monkeypatch) -> list[list[str]]:
     return seen
 
 
-def test_install_carries_the_constraint(monkeypatch, tmp_path) -> None:
+def test_installs_carry_no_constraint_file(monkeypatch, tmp_path) -> None:
+    """Re-introducing a ceiling must be deliberate. Its old content (numpy<2)
+    is now actively wrong: kokoro-onnx needs numpy>=2.0.2, and on Python 3.13
+    chatterbox-tts asks for numpy>=2 itself."""
     seen = _capture_uv_pip(monkeypatch)
     manager._run_uv_pip(
         "uv", tmp_path / "python.exe", ["pip", "install", "librosa"],
         lambda p, ln: None, lambda: None,
     )
-    argv = seen[0]
-    assert "--constraint" in argv, f"install ran without the ceiling: {argv}"
-    assert argv[argv.index("--constraint") + 1] == str(manager.CONSTRAINTS_FILE)
-    # It must precede the requirement, not trail it — uv reads the file as the
-    # value of the flag, and a stray position would silently swallow a package.
-    assert argv.index("--constraint") < argv.index("librosa")
+    assert "--constraint" not in seen[0], seen[0]
 
 
-def test_isolated_install_opts_out_of_the_constraint(monkeypatch, tmp_path) -> None:
-    """Isolated venvs resolve their own world — the shared ceiling would
-    make kokoro-onnx (numpy>=2) uninstallable, which is exactly how the
-    kokoro venv build failed on 2026-08-19 before this scoping."""
-    seen = _capture_uv_pip(monkeypatch)
-    manager._run_uv_pip(
-        "uv", tmp_path / "python.exe", ["pip", "install", "kokoro-onnx"],
-        lambda p, ln: None, lambda: None, use_constraints=False,
-    )
-    assert "--constraint" not in seen[0]
+def test_uv_calls_pin_the_cache_beside_the_venvs(monkeypatch, tmp_path) -> None:
+    """A cache on another volume cannot be hardlinked from, so uv silently
+    falls back to copying whole wheels — the difference between five engine
+    venvs costing 5.3 GB and costing 18.7 GB, both measured 2026-08-22."""
+    monkeypatch.delenv("UV_CACHE_DIR", raising=False)
+    monkeypatch.delenv("UV_PYTHON_INSTALL_DIR", raising=False)
+    env = manager._uv_env()
+    root = manager.engines_runtime_root()
+    assert env["UV_CACHE_DIR"] == str(root / ".uv-cache")
+    assert env["UV_PYTHON_INSTALL_DIR"] == str(root / ".uv-python")
 
-
-def test_uninstall_does_not_carry_the_constraint(monkeypatch, tmp_path) -> None:
-    """`uv pip uninstall` rejects --constraint; splicing it in unconditionally
-    would break every uninstall path."""
-    seen = _capture_uv_pip(monkeypatch)
-    manager._run_uv_pip(
-        "uv", tmp_path / "python.exe", ["pip", "uninstall", "librosa"],
-        lambda p, ln: None, lambda: None,
-    )
-    assert "--constraint" not in seen[0]
+    # A user who set their own keeps it.
+    monkeypatch.setenv("UV_CACHE_DIR", str(tmp_path / "mine"))
+    assert manager._uv_env()["UV_CACHE_DIR"] == str(tmp_path / "mine")
 
 
 # ─── The refresh never re-resolves what it does not own ───────────────
@@ -184,7 +202,6 @@ def test_plugin_refresh_scopes_its_reinstall(monkeypatch, tmp_path) -> None:
     )
     assert "--reinstall-package" in argv
     assert argv[argv.index("--reinstall-package") + 1] == "justvoice-plugin"
-    assert "--constraint" in argv, "the refresh must respect the venv ceiling too"
 
 
 def test_current_plugin_is_not_reinstalled(monkeypatch, tmp_path) -> None:

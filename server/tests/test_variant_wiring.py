@@ -255,6 +255,37 @@ def test_whisper_catalog_ids_match_engine_map() -> None:
     assert engine_mod.DEFAULT_VARIANT in engine_mod.WHISPER_VARIANT_REPOS
 
 
+def test_hf_sources_pin_a_commit_not_a_branch() -> None:
+    """Every variant row carries byte-exact sizes and a file list. Those are
+    facts about a COMMIT. `"revision": "main"` names a moving target, so
+    upstream can re-upload weights under the same filenames and the next
+    machine to install fetches different bytes with nothing to notice it.
+
+    Deprecated engines are exempt: they are hidden, never offered, and frozen
+    at whatever they last declared (2026-08-22). Un-deprecating one means
+    pinning it — run server/scripts/harvest_revisions.py.
+    """
+    import re
+
+    from justvoice.engines.manager import discover_engines
+
+    loose: list[str] = []
+    for eid, m in discover_engines().items():
+        if (m.deprecated or "").strip():
+            continue
+        for variant in getattr(m.module, "VARIANTS", []) or []:
+            for src in variant.get("sources") or []:
+                if not src.get("hf_repo"):
+                    continue  # URL sources (kokoro) are pinned by the URL
+                rev = str(src.get("revision") or "")
+                if not re.fullmatch(r"[0-9a-f]{40}", rev):
+                    loose.append(f"{eid}/{variant.get('id')}: {rev!r}")
+    assert not loose, (
+        "these HF sources do not pin a full commit sha: "
+        f"{loose}. Harvest with server/scripts/harvest_revisions.py."
+    )
+
+
 def test_new_engine_kinds_discovered() -> None:
     from justvoice.engines.manager import discover_engines
 
@@ -305,7 +336,7 @@ class _FakeProc:
 class _FakeManifest:
     id = "fake-tts"
     kind = "tts"
-    isolation = "shared"
+    isolation = "venv"
     is_installed = True
     default_variant_id = "fake-default-v1"
 
@@ -314,7 +345,6 @@ def _fake_manager(monkeypatch):
     from justvoice.engines import manager as mgr_mod
 
     monkeypatch.setattr(mgr_mod, "EngineProcess", _FakeProc)
-    monkeypatch.setattr(mgr_mod, "shared_venv_exists", lambda: True)
     mgr = mgr_mod.EngineManager()
     mgr._manifests["fake-tts"] = _FakeManifest()
     return mgr

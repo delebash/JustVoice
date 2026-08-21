@@ -29,7 +29,7 @@ DEFAULT_VARIANT_ID = "moss-ttsd-v0"
 # MOSS-TTSD requires flash-attn (build deps + CUDA toolkit + long compile)
 # and isn't supported on macOS by upstream. Isolated venv keeps the
 # flash-attn install attempt from contaminating the shared venv.
-ISOLATION = "venv"
+# Own venv, like every engine since 2026-08-22 (no ISOLATION line needed).
 SUPPORTED_OSES = ["linux", "windows"]  # macOS hidden — no flash-attn
 
 # Marked for removal 2026-08-17, same ruling as TADA.

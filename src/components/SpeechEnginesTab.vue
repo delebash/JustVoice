@@ -253,7 +253,10 @@ function modelOnDisk(e, v) {
   return v.on_disk === true
     || (v.on_disk == null && (e.status === "installed" || e.status === "loaded"));
 }
-function engineNeedsInstall(e) { return e.isolation === "venv" && e.status === "not_installed"; }
+// Every engine builds its own environment (2026-08-22), so the isolation
+// test this used to carry is gone — an engine needs Install exactly when it
+// has not been installed.
+function engineNeedsInstall(e) { return e.status === "not_installed"; }
 // The OS gate's verdict, computed SERVER-side (`EngineInfo.supported_on_this_os`)
 // — never re-derived here, because the renderer can be a browser on a
 // different machine than the server. False means `install_engine` refuses,
@@ -621,8 +624,6 @@ async function unloadKind(kind) {
   }
 }
 
-const sharedEngines = computed(() => engines.value.filter((e) => e.isolation !== "venv").length);
-
 onMounted(() => {
   refresh(); loadDefaults();
   unsubscribeVram = subscribeVramFeed();
@@ -707,7 +708,6 @@ onBeforeUnmount(() => {
           <span class="nm">{{ e.name }}</span><span class="id">{{ e.id }}</span>
           <span class="ev-caps">
             <span v-for="c in engineCaps(e)" :key="c" class="ev-cap" :class="c">{{ c.toUpperCase() }}</span>
-            <span v-if="e.isolation === 'venv'" class="ev-cap iso" title="Runs in its own isolated environment — the same mechanism custom engines use">ISOLATED</span>
           </span>
           <span class="desc" :title="e.description">{{ e.description }}</span>
           <!-- Weights-licence attribution. NOT decorative: the Llama 3.2
@@ -836,13 +836,10 @@ onBeforeUnmount(() => {
             <span v-if="e.resolved_device" class="jv-muted">loaded on {{ e.resolved_device.toUpperCase() }}</span>
           </div>
 
-          <div class="ev-gfoot" v-if="e.isolation === 'venv' && e.status !== 'not_installed'">
-            isolated venv
+          <div class="ev-gfoot" v-if="e.status !== 'not_installed'">
+            own environment
             <UiButton intent="ghost" size="small" label="Uninstall engine" class="ev-danger ev-push-right"
-              title="Remove this engine's venv and all its downloaded models" @click="uninstall(e)" />
-          </div>
-          <div class="ev-gfoot" v-else-if="e.isolation !== 'venv' && (e.status === 'installed' || e.status === 'loaded')">
-            shared runtime · engine installed automatically
+              title="Remove this engine's environment and all its downloaded models" @click="uninstall(e)" />
           </div>
         </div>
       </div>
@@ -856,10 +853,6 @@ onBeforeUnmount(() => {
     </div>
     <SpeechProvidersPanel scope="selfhosted" />
 
-    <div class="ev-runtime">
-      Shared runtime (torch + common deps for the {{ sharedEngines }} shared engines)
-      <span class="jv-muted ev-push-right">engines install into it automatically on first use</span>
-    </div>
     </template>
   </div>
 </template>

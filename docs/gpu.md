@@ -22,11 +22,26 @@ You do not choose this, and there is nothing to click: JustVoice detects your
 hardware when it builds an engine's Python environment and installs the
 matching PyTorch there.
 
-- **NVIDIA** (`nvidia-smi` answers) → the CUDA 12.4 wheels. That build covers
-  the whole range of torch versions the engines pin, which is why it is the
-  default rather than a newer one.
-- **Intel Arc on Windows** → the XPU wheels.
+- **NVIDIA** (`nvidia-smi` answers) → CUDA **12.6** on most cards, or CUDA
+  **13.0** on Blackwell and newer. The split is by compute capability: 10.0
+  and above (GeForce 50-series, RTX PRO Blackwell, B-series data-centre parts)
+  needs CUDA 12.8 or later and cannot run a 12.6 build at all, while
+  everything older runs on 12.6, which is picked for the wider driver
+  compatibility. JustVoice uses the same rule here as the LLM runner does for
+  its own builds, so the two never disagree about your card.
+- **AMD on Linux** (`rocm-smi` answers) → the ROCm **7.2** wheels.
+- **AMD on Windows** → CPU. PyTorch publishes no ROCm build for Windows; AMD
+  publish their own, which you can opt into — see
+  [Engines](engines.md#amd-on-windows).
+- **Intel Arc** → the XPU wheels, but only if you ask: Arc is not reliably
+  detectable, so set `JUSTVOICE_TORCH_INDEX` yourself.
+- **Apple Silicon** → the standard build. Metal (MPS) ships inside it; there
+  is no separate wheel to choose.
 - **Anything else, including no GPU** → the CPU wheels.
+
+The version installed is **PyTorch 2.13.0** with torchaudio 2.11.0, the same
+in every engine — see [Engines](engines.md#what-it-costs-on-disk) for why
+agreement matters to your disk.
 
 Confirm the result under Settings → GPU: the runtimes panel lists `cuda` when
 the driver is present, and the memory strip's **Acceleration** cell says
@@ -34,17 +49,21 @@ which backend is actually in use.
 
 **Overriding it.** Set `JUSTVOICE_TORCH_INDEX` to a PyTorch wheel index before
 the environment is built, and that wins over detection — this is how you get
-CUDA 12.8 (needed only by engines pinning torch 2.7+), or ROCm on Linux:
+Intel Arc's XPU wheels, or AMD's own Radeon-on-Windows build:
 
 ```
-JUSTVOICE_TORCH_INDEX=https://download.pytorch.org/whl/cu128
-JUSTVOICE_TORCH_INDEX=https://download.pytorch.org/whl/rocm6.0
+JUSTVOICE_TORCH_INDEX=https://download.pytorch.org/whl/xpu
+JUSTVOICE_TORCH_INDEX=https://download.pytorch.org/whl/cu130
 ```
 
-Because the build is chosen at install time, changing it means rebuilding the
-environment: set the variable, delete `server/justvoice/engines/.shared-venv/`
-(or the engine's own `.venv/`), and install an engine again. Your downloaded
-models are in the speech cache and are not affected.
+Pick an index that actually carries the pinned version. An index that stops
+below it is worse than none: the installer resolves *down* to whatever that
+index does have, and you end up on an old PyTorch with no error to explain it.
+
+Because the build is chosen at install time, changing it means rebuilding:
+set the variable, then click **Uninstall engine** and **Install engine** on
+the engines you want moved. Your downloaded models live in the speech cache
+and are not affected.
 
 > **Note:** Settings → GPU also shows a "CUDA wheel download flow" card with
 > Switch to CPU-only / Switch to ROCm / Re-download buttons. Those are a

@@ -26,7 +26,6 @@ ENGINES_DIR = Path(__file__).resolve().parents[1] / "justvoice" / "engines"
 # Variant rows share their base engine's adapter.
 ADAPTER_FOR = {
     "kokoro": "kokoro",
-    "pocket-tts": "pocket_tts",
     "chatterbox": "chatterbox",
     "chatterbox-turbo": "chatterbox",
     "chatterbox-nano": "chatterbox",

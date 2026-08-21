@@ -41,7 +41,15 @@ def main() -> None:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
-    dd = Path(args.data_dir) if args.data_dir else default_data_dir()
+    # ABSOLUTE, always. A relative --data-dir works for this process and then
+    # breaks a layer down: each engine runs as its own subprocess with its own
+    # working directory (the engine's plugin folder), so a path like
+    # `src-tauri/target/debug/data` resolves somewhere else entirely by the
+    # time an engine looks for its weights. The symptom is an engine reporting
+    # "model files not found" over files that are sitting right there — hit
+    # 2026-08-22 running the documented gate recipe, which uses a relative
+    # path. Resolving here means the whole app agrees about one location.
+    dd = Path(args.data_dir).expanduser().resolve() if args.data_dir else default_data_dir()
     app = create_app(dd)
 
     # Workspace seeding lives HERE, not in create_app(), on purpose: the pytest

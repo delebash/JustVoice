@@ -48,8 +48,8 @@ from .storage.training_jobs import JOB_LOG_CAP
 from .engines.manager import (
     ENGINES_DIR,
     _venv_python,
+    engines_runtime_root,
     get_manager,
-    shared_venv_python,
 )
 
 log = logging.getLogger("justvoice.training")
@@ -92,12 +92,15 @@ _RUNS_LOCK = threading.Lock()
 
 
 def _python_for(engine_id: str) -> Path:
-    """The engine's interpreter: its private venv when it has one, the
-    shared engines venv otherwise."""
-    private = ENGINES_DIR / engine_id / ".venv"
-    if private.exists():
-        return _venv_python(private)
-    return shared_venv_python()
+    """The engine's own interpreter.
+
+    There is no fallback any more: since 2026-08-22 every engine has its own
+    venv, so a missing one means the engine is not installed and training has
+    nothing to run in. The old fallback pointed at the shared venv — which is
+    also why LoRA training could be started against an environment that had
+    never installed `peft`.
+    """
+    return _venv_python(engines_runtime_root() / engine_id / ".venv")
 
 
 def _wav_seconds(wav_bytes: bytes) -> float:

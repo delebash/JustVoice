@@ -46,7 +46,11 @@ REQUIREMENTS = {
 }
 
 INSTALL = [
-    {"kind": "torch", "version": "2.6.0", "variant": "auto", "packages": ["torch", "torchaudio"]},
+    # THE family torch pin — see chatterbox/manifest.py for why every engine
+    # names the same versions. Clone-render proven on this pin's line
+    # 2026-08-22 (0.9 s for 2.4 s of audio, CUDA, py3.13).
+    {"kind": "torch", "variant": "auto",
+     "packages": ["torch==2.13.0", "torchaudio==2.11.0"]},
     {
         "kind": "pip",
         "packages": [
@@ -86,7 +90,7 @@ VARIANTS = [
         "weights_license": "Apache-2.0",
         "sources": [{
             "hf_repo": "YatharthS/LuxTTS",
-            "revision": "main",
+            "revision": "527f245a276a0eb42ea103a7a512bcfd771eb9b6",
             "size_bytes": 1_180_689_290,
             "files": [
                 "config.json", "fm_decoder.onnx", "fm_decoder_int8.onnx",

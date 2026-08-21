@@ -22,10 +22,10 @@ The voices file is a name-keyed np.load-able pack; the voice ids match
 ID = "kokoro"
 NAME = "Kokoro"
 
-# Own venv: kokoro-onnx needs numpy>=2.0.2 while the shared venv's torch
-# engines pin numpy<2 (qwen3). The install is tiny (onnxruntime + espeak
-# loader), so isolation costs little and dodges the clash entirely.
-ISOLATION = "venv"
+# No ISOLATION line: every engine has had its own venv since 2026-08-22, so
+# kokoro is no longer the exception it was carved out as. (It was carved out
+# because kokoro-onnx needs numpy>=2.0.2 and the shared venv held a numpy<2
+# ceiling for chatterbox — a clash that per-engine venvs make unstateable.)
 SUPPORTED_OSES = ["windows", "linux", "macos"]
 DESCRIPTION = (
     "Kokoro-82M via kokoro-onnx — 54 preset voices, instant blends "

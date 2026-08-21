@@ -113,44 +113,84 @@ def test_a_venv_built_under_another_install_does_not_match(tmp_path):
     assert venv_origin_matches(venv) is False
 
 
-def test_isolated_engine_reports_not_installed_after_a_move(tmp_path, monkeypatch):
+def test_engine_reports_not_installed_after_a_move(tmp_path, monkeypatch):
     """The user-visible half: the row says 'engine not installed' and offers
     Install, instead of the load failing somewhere deep."""
     from justvoice.engines import manager as mgr_mod
     from justvoice.engines.manager import VENV_ORIGIN_FILE, EngineManifest
+
+    # Engine state hangs off the runtime root, so point that at the tmp dir —
+    # the same door a frozen build re-points.
+    monkeypatch.setattr(mgr_mod, "engines_runtime_root", lambda: tmp_path)
 
     engine_dir = tmp_path / "myengine"
     scripts = engine_dir / ".venv" / ("Scripts" if mgr_mod.os.name == "nt" else "bin")
     scripts.mkdir(parents=True)
     (scripts / ("python.exe" if mgr_mod.os.name == "nt" else "python")).write_bytes(b"x")
 
-    module = type("M", (), {"ID": "myengine", "ISOLATION": "venv"})
+    module = type("M", (), {"ID": "myengine", "INSTALL": []})
     manifest = EngineManifest(engine_dir, module)
-    assert manifest.is_installed is True          # stamped for nowhere = fine
+    assert manifest.venv_dir == engine_dir / ".venv"
 
-    (engine_dir / ".venv" / VENV_ORIGIN_FILE).write_text(r"D:\moved\away", encoding="utf-8")
+    # Stamped for THIS install, and for the package set it declares (none).
+    mgr_mod.record_venv_origin(manifest.venv_dir)
+    mgr_mod.record_venv_manifest(manifest.venv_dir, manifest.declared_packages)
+    assert manifest.is_installed is True
+
+    (manifest.venv_dir / VENV_ORIGIN_FILE).write_text(r"D:\moved\away", encoding="utf-8")
     assert manifest.is_installed is False         # the app folder moved
 
 
-def test_shared_venv_health_fails_on_a_foreign_stamp(monkeypatch, tmp_path):
-    """The cheap check runs BEFORE the subprocess probe — a moved install is
-    caught without paying to spawn an interpreter."""
+def test_a_manifest_gaining_a_package_asks_for_reinstall(tmp_path, monkeypatch):
+    """The `peft` class, closed.
+
+    A venv is built once, from the manifest as it read that day. Add a package
+    to the manifest afterwards and nothing on an already-installed machine
+    noticed: the interpreter was still there, so the engine reported installed
+    and ran without the new dependency. That is how `peft` came to be declared
+    and absent, with LoRA training refusing on a machine the UI called ready.
+    """
     from justvoice.engines import manager as mgr_mod
+    from justvoice.engines.manager import EngineManifest
 
-    venv = tmp_path / ".shared-venv"
-    exe = venv / ("Scripts" if mgr_mod.os.name == "nt" else "bin")
-    exe.mkdir(parents=True)
-    (exe / ("python.exe" if mgr_mod.os.name == "nt" else "python")).write_bytes(b"x")
-    (venv / mgr_mod.VENV_ORIGIN_FILE).write_text(r"D:\moved\away", encoding="utf-8")
+    monkeypatch.setattr(mgr_mod, "engines_runtime_root", lambda: tmp_path)
 
-    monkeypatch.setattr(mgr_mod, "SHARED_VENV_DIR", venv)
-    monkeypatch.setattr(mgr_mod, "shared_venv_python", lambda: exe / (
-        "python.exe" if mgr_mod.os.name == "nt" else "python"))
+    engine_dir = tmp_path / "myengine"
+    scripts = engine_dir / ".venv" / ("Scripts" if mgr_mod.os.name == "nt" else "bin")
+    scripts.mkdir(parents=True)
+    (scripts / ("python.exe" if mgr_mod.os.name == "nt" else "python")).write_bytes(b"x")
 
-    def _boom(*a, **kw):  # the probe must never be reached
-        raise AssertionError("spawned an interpreter for a known-moved venv")
+    before = type("M", (), {"ID": "myengine",
+                            "INSTALL": [{"kind": "pip", "packages": ["librosa"]}]})
+    m1 = EngineManifest(engine_dir, before)
+    mgr_mod.record_venv_origin(m1.venv_dir)
+    mgr_mod.record_venv_manifest(m1.venv_dir, m1.declared_packages)
+    assert m1.is_installed is True
 
-    monkeypatch.setattr(mgr_mod.subprocess, "run", _boom)
-    mgr_mod.invalidate_shared_venv_health()
-    assert mgr_mod.shared_venv_healthy() is False
-    mgr_mod.invalidate_shared_venv_health()
+    after = type("M", (), {"ID": "myengine",
+                           "INSTALL": [{"kind": "pip",
+                                        "packages": ["librosa", "peft>=0.14"]}]})
+    m2 = EngineManifest(engine_dir, after)
+    assert m2.is_installed is False, (
+        "a manifest that gained a package must ask for (re)Install"
+    )
+
+
+def test_an_unstamped_venv_asks_for_reinstall(tmp_path, monkeypatch):
+    """Unstamped means built before this check existed — i.e. by the
+    shared-venv era's installer, on a different Python with a different torch.
+    Reading those as current would leave exactly the environments this
+    migration replaces reporting themselves as fine."""
+    from justvoice.engines import manager as mgr_mod
+    from justvoice.engines.manager import EngineManifest
+
+    monkeypatch.setattr(mgr_mod, "engines_runtime_root", lambda: tmp_path)
+
+    engine_dir = tmp_path / "myengine"
+    scripts = engine_dir / ".venv" / ("Scripts" if mgr_mod.os.name == "nt" else "bin")
+    scripts.mkdir(parents=True)
+    (scripts / ("python.exe" if mgr_mod.os.name == "nt" else "python")).write_bytes(b"x")
+
+    m = EngineManifest(engine_dir, type("M", (), {"ID": "myengine", "INSTALL": []}))
+    mgr_mod.record_venv_origin(m.venv_dir)   # origin is fine ...
+    assert m.is_installed is False           # ... but there is no manifest stamp

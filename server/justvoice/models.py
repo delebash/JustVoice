@@ -755,11 +755,12 @@ class EngineInfo(BaseModel):
     # loaded. The dropdown UI uses this to label "Loaded: <variant>"
     # correctly across page refreshes.
     current_variant_id: str | None = None
-    # "shared" (engine runs against the shared venv at engines/.shared-venv,
-    # monolithic shared-venv style — fast Install = model-only download) or "venv"
-    # (engine gets its own private venv, for engines that genuinely conflict
-    # with the shared interpreter). Default is "shared".
-    isolation: str = "shared"
+    # Always "venv" since 2026-08-22: every engine gets its own environment,
+    # built to exactly what its manifest declares. The other value was
+    # "shared" — one interpreter holding most engines at once, where each
+    # install re-resolved every other engine's dependencies. The field stays
+    # so the client can see what it is rather than assume.
+    isolation: str = "venv"
     # OSes this engine works on, straight from the manifest. Values:
     # "windows" | "linux" | "macos". This comment used to say "UI hides
     # engines whose list doesn't include the user's current OS" — no UI ever

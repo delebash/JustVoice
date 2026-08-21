@@ -57,22 +57,31 @@ def _clear_cancel(job_id: str) -> None:
         _CANCEL_EVENTS.pop(job_id, None)
 
 
-def spawn_shared_venv_setup(state: AppState) -> str:
-    """Background job that builds (or rebuilds) the shared engine venv.
+def spawn_engine_setup(state: AppState) -> str:
+    """Background job that installs every built-in engine that is not
+    installed yet — the "Set up engines" door.
 
-    Mirrors the spawn_managed_install pattern: returns a job_id the GUI
-    polls via /v1/jobs/{id} for progress + log lines. Idempotent.
+    One job, engines in sequence, because they compete for the same disk and
+    network. A single engine failing does NOT fail the run: its own Install
+    button stays as the retry path, and stopping would deny the user the
+    engines that would have installed fine.
+
+    Until 2026-08-22 this built ONE shared interpreter first and then looped
+    over the few engines that had their own. There is no shared interpreter
+    any more, so the loop is the whole job.
+
+    Returns a job_id the GUI polls via /v1/jobs/{id}. Idempotent.
     """
-    from .engines.shared_venv import setup_shared_venv
+    from .engines.manager import discover_engines, install_engine
 
-    job_id = "setup-shared-venv"
+    job_id = "setup-engines"
 
     _clear_cancel(job_id)
     state.job_set(
         job_id,
         JobStatus(
             job_id=job_id,
-            engine_id="(shared)",
+            engine_id="(all)",
             model_variant="setup",
             phase="starting",
             bytes_downloaded=0,
@@ -89,36 +98,34 @@ def spawn_shared_venv_setup(state: AppState) -> str:
             def cancel_check() -> bool:
                 return _is_cancelled(job_id)
 
-            summary = setup_shared_venv(progress=progress, cancel_check=cancel_check)
-
-            # Venv-isolated engines (ISOLATION="venv") set up here too, so
-            # isolation stays an implementation detail: the user runs ONE
-            # setup and every built-in engine is ready to Load. Kokoro is
-            # isolated because kokoro-onnx needs numpy>=2 while the shared
-            # venv holds chatterbox's <2 ceiling (2026-08-19); MOSS is
-            # deprecated and skipped unless already installed.
-            from .engines.manager import discover_engines, install_engine
-
+            installed = 0
+            failed = 0
             for m in discover_engines().values():
-                if m.isolation != "venv" or m.is_installed:
+                if m.is_installed:
                     continue
+                # Deprecated engines are hidden and never offered; one already
+                # installed keeps working, but setup does not resurrect one.
                 if (m.deprecated or "").strip():
+                    continue
+                if not m.supports_current_os():
                     continue
                 if cancel_check():
                     raise RuntimeError("cancelled by user")
                 progress("engine-venv", f"setting up {m.id}")
                 try:
                     install_engine(m, progress=progress, cancel_check=cancel_check)
-                except Exception as ee:  # noqa: BLE001 — one engine's venv
-                    # failing must not fail the whole setup; the engine
-                    # keeps its Install door as the retry path.
-                    log.exception("venv engine setup failed: %s", m.id)
+                    installed += 1
+                except Exception as ee:  # noqa: BLE001 — see docstring
+                    log.exception("engine setup failed: %s", m.id)
+                    failed += 1
                     state.job_append_log(job_id, f"[engine-venv] {m.id} failed: {ee}")
 
             state.job_update(job_id, phase="completed")
-            state.job_append_log(job_id, f"[completed] shared venv ready (gpu={summary.get('gpu_label')})")
+            state.job_append_log(
+                job_id, f"[completed] {installed} engine(s) installed, {failed} failed"
+            )
         except Exception as e:
-            log.exception("shared venv setup failed")
+            log.exception("engine setup failed")
             err = str(e)
             if "cancelled" in err.lower():
                 err = "cancelled by user"
@@ -459,7 +466,10 @@ def fetch_url_variant(
                              on_member=None, cancel_check=cancel_check)
             partial.unlink(missing_ok=True)
         else:
-            partial.rename(target_dir / filename)
+            # replace, not rename: on Windows `rename` RAISES when the
+            # destination exists (WinError 183), so re-downloading a file
+            # that is already on disk failed instead of overwriting it.
+            partial.replace(target_dir / filename)
     speech_cache.write_manifest_from_dir(target_dir, url=urls[0])
     return target_dir
 
@@ -525,7 +535,8 @@ def _url_stream_to(
         )
         partial.unlink(missing_ok=True)
     else:
-        partial.rename(final)
+        # replace, not rename — see the note on the other download arm.
+        partial.replace(final)
 
     # If the catalog declares per-file SHAs (e.g. kokoro's split files),
     # the existing spawn_install path verifies them. For the unified

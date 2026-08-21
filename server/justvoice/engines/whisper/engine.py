@@ -53,6 +53,7 @@ class WhisperSTT(EmbeddedEngine):
         self.model = None
         self.processor = None
         self._device = None
+        self._dtype = None
         self._variant = None
 
     def load(self, device: str = "auto", variant: str | None = None,
@@ -74,13 +75,32 @@ class WhisperSTT(EmbeddedEngine):
         repo = model_dir or WHISPER_VARIANT_REPOS[self._variant]
         log.info("loading Whisper %s (%s) on %s …", self._variant, repo, device)
 
+        import torch
         from transformers import WhisperForConditionalGeneration, WhisperProcessor
 
+        # Say the dtype out loud instead of inheriting the checkpoint's.
+        #
+        # `openai/whisper-large-v3-turbo` — our DEFAULT variant — declares
+        # `float16` in its config, and transformers 5.x honours that where
+        # 4.x silently loaded float32. The feature extractor still produces
+        # float32, so the first transcribe died with "Input type (float) and
+        # bias type (struct c10::Half) should be the same" — a failure whose
+        # message names neither Whisper nor the checkpoint. It only appeared
+        # here when each engine got its own venv and whisper's transformers
+        # was free to move past the version another engine had been holding
+        # it at (2026-08-22).
+        #
+        # float16 on CUDA (half the VRAM, faster, what the checkpoint was
+        # published as), float32 everywhere else — CPU float16 is slower than
+        # float32, not faster, and MPS half support is uneven.
+        self._dtype = torch.float16 if device == "cuda" else torch.float32
         self.processor = WhisperProcessor.from_pretrained(repo)
-        self.model = WhisperForConditionalGeneration.from_pretrained(repo)
+        self.model = WhisperForConditionalGeneration.from_pretrained(
+            repo, dtype=self._dtype
+        )
         self.model.to(device)
         self.model.eval()
-        log.info("Whisper %s loaded on %s", self._variant, device)
+        log.info("Whisper %s loaded on %s (%s)", self._variant, device, self._dtype)
 
     def unload(self) -> None:
         if self.model is None:
@@ -94,6 +114,7 @@ class WhisperSTT(EmbeddedEngine):
         if self._device == "cuda" and torch.cuda.is_available():
             torch.cuda.empty_cache()
         self._device = None
+        self._dtype = None
 
     def voices(self) -> list[PresetVoice]:
         return []
@@ -126,7 +147,9 @@ class WhisperSTT(EmbeddedEngine):
         audio, _sr = librosa.load(audio_path, sr=16000, mono=True)
 
         inputs = self.processor(audio, sampling_rate=16000, return_tensors="pt")
-        inputs = inputs.to(self._device)
+        # dtype as well as device: the feature extractor always returns
+        # float32, and a float16 model rejects it (see load()).
+        inputs = inputs.to(self._device, self._dtype)
 
         generate_kwargs = {}
         if language:
@@ -170,7 +193,9 @@ class WhisperSTT(EmbeddedEngine):
 
         audio, _sr = librosa.load(audio_path, sr=16000, mono=True)
         inputs = self.processor(audio, sampling_rate=16000, return_tensors="pt")
-        inputs = inputs.to(self._device)
+        # dtype as well as device: the feature extractor always returns
+        # float32, and a float16 model rejects it (see load()).
+        inputs = inputs.to(self._device, self._dtype)
 
         generate_kwargs = {}
         if language:

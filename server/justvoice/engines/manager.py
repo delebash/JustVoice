@@ -53,6 +53,36 @@ log = logging.getLogger(__name__)
 
 
 ENGINES_DIR = Path(__file__).resolve().parent
+
+
+def engines_runtime_root() -> Path:
+    """Where engine MUTABLE state lives — venvs, model caches, the uv cache.
+
+    Unfrozen this is `ENGINES_DIR` itself: the source tree is writable and
+    everything stays beside the plugin it belongs to.
+
+    Frozen it CANNOT be. A PyInstaller build unpacks `justvoice/engines/`
+    into the bundle, which is read-only in `--onedir` and a per-run temp
+    directory in `--onefile` — so `ENGINES_DIR/<id>/.venv` was either a
+    permission error or a multi-GB install that the OS deleted the moment the
+    app closed. Frozen therefore roots under the data dir the user chose:
+    `<data_dir>/engines-runtime`.
+
+    `engines-runtime` is deliberately SHORT. Windows still caps most path
+    APIs at 260 characters, and a venv holds paths like
+    `<root>/chatterbox/.venv/Lib/site-packages/...`; every character spent
+    here is one the deepest wheel cannot use.
+
+    Plugin SOURCE (manifest.py / engine.py) is never affected — it loads
+    from the bundle. Only state moves.
+    """
+    if not getattr(sys, "frozen", False):
+        return ENGINES_DIR
+    from ..paths import default_data_dir
+
+    return default_data_dir() / "engines-runtime"
+
+
 # Folder names that aren't engines — skip during discovery.
 NOT_ENGINES = {"__pycache__", "__init__", "base", "catalog", "factory", "registry", "model_catalog", "kokoro_voices", "_torch_helpers", "external_openai"}
 
@@ -104,27 +134,6 @@ def _current_os_label() -> str:
     return "linux"
 
 
-# Where the shared venv lives — engines with ISOLATION="shared" (the default
-# monolithic style) all run against this interpreter. The venv contains
-# torch + every shared engine's Python deps, set up once via the
-# `setup-python` recipe.
-SHARED_VENV_DIR = ENGINES_DIR / ".shared-venv"
-
-
-def shared_venv_python() -> Path:
-    return _venv_python(SHARED_VENV_DIR)
-
-
-def shared_venv_exists() -> bool:
-    """Cheap check: the interpreter file is present.
-
-    Deliberately does NOT prove the interpreter runs — see
-    `shared_venv_healthy()`. Kept cheap because the install paths call it
-    in loops.
-    """
-    return shared_venv_python().is_file()
-
-
 # ─── Moved-install detection (user ruling 2026-08-14) ─────────────────
 # The app folder is portable: the user can move the whole install and it
 # keeps working, because everything inside it is relative. Python venvs are
@@ -141,9 +150,70 @@ def record_venv_origin(venv_dir: Path) -> None:
     venv that cannot be stamped simply falls back to the legacy behaviour
     (treated as matching) rather than breaking the install."""
     try:
-        (venv_dir / VENV_ORIGIN_FILE).write_text(str(ENGINES_DIR.resolve()), encoding="utf-8")
+        (venv_dir / VENV_ORIGIN_FILE).write_text(
+            str(engines_runtime_root().resolve()), encoding="utf-8")
     except OSError:  # noqa: BLE001 — a stamp is a convenience, never a gate
         log.debug("could not stamp venv origin at %s", venv_dir, exc_info=True)
+
+
+# ─── Manifest-drift detection (2026-08-22) ────────────────────────────
+# A venv is built ONCE, from the manifest as it read that day. Edit the
+# manifest afterwards — add a package, bump a pin, change the Python — and
+# nothing on an already-installed machine notices: the interpreter is still
+# there, so the engine reports installed and runs with the OLD contents. The
+# failure then surfaces far from its cause, as an ImportError inside a feature
+# nobody connected to a manifest edit weeks earlier. That is the shape of the
+# `peft` hole: declared in the manifest, absent from the environment, and the
+# UI said ready the whole time.
+#
+# So each venv carries a fingerprint of the package set it was built from, and
+# `is_installed` compares it against what the manifest declares NOW. Any
+# difference means "(re)Install", which is a button the user can see, instead
+# of a failure they cannot explain.
+VENV_MANIFEST_FILE = ".jv-venv-manifest"
+
+
+def manifest_package_fingerprint(packages: list[str]) -> str:
+    """sha256 over the declared package set + the Python it is built for.
+
+    The Python version belongs in here: moving the engines from 3.12 to 3.13
+    changes every wheel in the venv while the manifest's package list may not
+    change at all.
+    """
+    import hashlib
+
+    payload = "\n".join([f"python={ENGINE_PYTHON_VERSION}", *packages])
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def record_venv_manifest(venv_dir: Path, packages: list[str]) -> None:
+    """Stamp the fingerprint of the package set this venv was built from.
+    Best-effort, like the origin stamp — a venv that cannot be stamped simply
+    reads as needing (re)install, which is the safe direction."""
+    try:
+        (venv_dir / VENV_MANIFEST_FILE).write_text(
+            manifest_package_fingerprint(packages), encoding="utf-8"
+        )
+    except OSError:  # noqa: BLE001
+        log.debug("could not stamp venv manifest at %s", venv_dir, exc_info=True)
+
+
+def venv_manifest_matches(venv_dir: Path, packages: list[str]) -> bool:
+    """False when the stamp is missing OR names a different package set.
+
+    Missing counts as a MISMATCH here — the opposite of `venv_origin_matches`,
+    deliberately. An unstamped venv predates this check, which means it was
+    built by the shared-venv era's installer: a different Python, a different
+    torch, and in chatterbox's case a different transformers. Reading those as
+    current would leave the very environments this migration exists to replace
+    reporting themselves as fine. An unstamped venv reads as "reinstall", and
+    reinstall is exactly right for it.
+    """
+    try:
+        stamped = (venv_dir / VENV_MANIFEST_FILE).read_text(encoding="utf-8").strip()
+    except OSError:
+        return False
+    return bool(stamped) and stamped == manifest_package_fingerprint(packages)
 
 
 def venv_origin_matches(venv_dir: Path) -> bool:
@@ -159,71 +229,7 @@ def venv_origin_matches(venv_dir: Path) -> bool:
         return True
     if not stamped:
         return True
-    return Path(stamped) == ENGINES_DIR.resolve()
-
-
-# Cache for the health probe. `None` = not yet probed. Spawning a process is
-# far too expensive for a check the readiness endpoint polls.
-_venv_health: bool | None = None
-
-
-def invalidate_shared_venv_health() -> None:
-    """Drop the cached probe result — call after creating or deleting the venv."""
-    global _venv_health
-    _venv_health = None
-
-
-def shared_venv_healthy() -> bool:
-    """Does the shared venv's interpreter actually RUN?
-
-    A venv is a handful of files plus a `pyvenv.cfg` naming the base Python
-    it was created from. Delete or upgrade that base and every file is still
-    on disk while the interpreter is dead — on Windows it exits non-zero with
-    `No Python at '<old path>'`.
-
-    This is not hypothetical. It happened here: `.shared-venv` was built
-    against `E:\\Python310`, that install went away, and because readiness was
-    only ever a file-existence check the server kept reporting the venv ready.
-    The breakage surfaced instead as a 502 when something tried to load an
-    engine — a symptom several layers away from the cause, which is the
-    expensive kind of bug.
-
-    Cached, since the answer only changes when the venv is created or removed.
-    """
-    global _venv_health
-    if _venv_health is not None:
-        return _venv_health
-    exe = shared_venv_python()
-    if not exe.is_file():
-        _venv_health = False
-        return _venv_health
-    # A venv built under a DIFFERENT install path is dead in the same way
-    # (absolute paths baked into its launchers) — catch it without paying
-    # for a subprocess.
-    if not venv_origin_matches(SHARED_VENV_DIR):
-        log.warning(
-            "shared venv was built for a different install location — the app "
-            "folder moved; it will be rebuilt on the next engine setup"
-        )
-        _venv_health = False
-        return _venv_health
-    try:
-        proc = subprocess.run(
-            [str(exe), "-c", ""],
-            capture_output=True, text=True, timeout=20,
-        )
-        _venv_health = proc.returncode == 0
-        if not _venv_health:
-            stderr = (proc.stderr or "").strip()[:200]
-            log.error(
-                "shared venv interpreter is present but does not run (%s) — "
-                "re-run the shared-venv setup to rebuild it. stderr: %s",
-                exe, stderr,
-            )
-    except (OSError, subprocess.SubprocessError) as e:
-        log.error("shared venv interpreter could not be probed (%s): %s", exe, e)
-        _venv_health = False
-    return _venv_health
+    return Path(stamped) == engines_runtime_root().resolve()
 
 
 def legacy_files_engine_visible(models_dir: Path, expected: list[str]) -> bool:
@@ -350,15 +356,28 @@ class EngineManifest:
 
     @property
     def isolation(self) -> str:
-        """One of "shared" (engine runs against the shared venv at
-        engines/.shared-venv/) or "venv" (engine gets its own private venv at
-        engines/<id>/.venv/).
+        """Always "venv": every engine gets its own environment at
+        engines/<id>/.venv/, built to exactly what its manifest declares.
 
-        Default is "shared" — the 5 core engines coexist in one venv with
-        selective --no-deps. Reserve "venv" for engines that genuinely
-        can't fit (e.g. MOSS-TTS needs flash-attn).
+        There is no second value any more. Until 2026-08-22 the default was
+        "shared" — all the core engines resolved into ONE interpreter, which
+        meant every install re-resolved every other engine's dependencies and
+        the tightest pin anywhere won for everyone. That cost real things: it
+        held chatterbox two major versions below the transformers it asks for,
+        it needed a venv-wide numpy ceiling to stop librosa's numba from
+        breaking, a package one engine declared but the shared resolution
+        never installed was invisible (peft — LoRA training would have refused
+        on a machine that reported ready), and a shared engine had no
+        Uninstall at all, because there was nothing of its own to remove.
+
+        The property survives as the single door other code asks through, and
+        so that a future engine needing something genuinely different has one
+        place to say so. See docs/engines.md and the 2026-08-22 research doc.
+
+        No shipped manifest declares ISOLATION any more; the default IS the
+        rule.
         """
-        return getattr(self.module, "ISOLATION", "shared")
+        return getattr(self.module, "ISOLATION", "venv")
 
     @property
     def supported_oses(self) -> list[str]:
@@ -400,84 +419,106 @@ class EngineManifest:
         return _current_os_label() in self.supported_oses
 
     @property
-    def shared_install_steps(self) -> list[dict[str, Any]]:
-        """Install steps that should run when building the SHARED venv (not
-        the per-engine venv). Used by shared engines that contribute Python
-        deps to the shared interpreter. Defaults to the engine's INSTALL
-        steps minus any 'model-*' steps (those run at per-engine Install
-        time, not at shared-venv setup time)."""
-        steps = getattr(self.module, "SHARED_INSTALL_STEPS", None)
-        if steps is not None:
-            return steps
-        # Fallback: any INSTALL step that's not a model download.
-        return [s for s in self.install_steps if not str(s.get("kind", "")).startswith("model-")]
-
-    @property
     def model_install_steps(self) -> list[dict[str, Any]]:
-        """Install steps that run at per-engine Install time (model file
-        downloads). Defaults to the model-* steps from the engine's INSTALL list."""
+        """Just the model-file steps from INSTALL — the weights, not the
+        packages. Install runs the WHOLE list; this subset exists for callers
+        that only want to know which files an engine expects on disk (the
+        models API's expected-files check).
+
+        Its counterpart `shared_install_steps` (everything BUT the model
+        steps) died with the shared venv on 2026-08-22: it existed so the
+        shared builder could install packages without touching weights, and
+        nothing else ever asked for it."""
         steps = getattr(self.module, "MODEL_INSTALL_STEPS", None)
         if steps is not None:
             return steps
         return [s for s in self.install_steps if str(s.get("kind", "")).startswith("model-")]
 
     @property
+    def declared_packages(self) -> list[str]:
+        """Every dependency this manifest asks for, as stable strings — the
+        input to the venv fingerprint (`manifest_package_fingerprint`).
+
+        Covers the steps that decide what ends up IN the environment: pip,
+        pip-no-deps, torch, git refs, find-links and local paths. Deliberately
+        excluded:
+
+        - `model-*` steps — model FILES, not packages. They live in the speech
+          cache with their own on-disk checks, and a weights change must not
+          make the UI demand a venv rebuild.
+        - `ACCEL_INSTALL` — chosen from the host's runtimes, not the manifest.
+          Folding it in would make the fingerprint flip whenever detection
+          did (a driver update, an eGPU unplugged) and ask for a reinstall
+          nothing in the manifest called for.
+
+        Built from `install_steps`, so it already reflects this OS's `oses`
+        filtering — the macOS MLX arm and the Windows torch arm fingerprint
+        differently, which is correct: they ARE different environments.
+        """
+        out: list[str] = []
+        for step in self.install_steps:
+            kind = str(step.get("kind", ""))
+            if kind in ("pip", "pip-no-deps", "torch"):
+                version = step.get("version")
+                for p in step.get("packages") or []:
+                    out.append(f"{kind}:{p}=={version}" if version and "=" not in p
+                               else f"{kind}:{p}")
+            elif kind == "pip-git":
+                ref = step.get("ref") or "HEAD"
+                nd = "+no-deps" if step.get("no_deps") else ""
+                out.append(f"{kind}:{step.get('url')}@{ref}{nd}")
+            elif kind == "pip-find-links":
+                for p in step.get("packages") or []:
+                    out.append(f"{kind}:{step.get('url')}:{p}")
+            elif kind == "pip-local":
+                out.append(f"{kind}:{step.get('path')}")
+            elif kind == "requirements-file":
+                out.append(f"{kind}:{step.get('path', 'requirements.txt')}")
+        return sorted(out)
+
+    @property
+    def state_dir(self) -> Path:
+        """Where this engine's MUTABLE state lives — venv, models, voices.
+
+        Unfrozen this is `engine_dir` itself, byte-for-byte the old layout.
+        Frozen it moves under the data dir, because the bundle the plugin
+        source is unpacked into is read-only (`--onedir`) or deleted when the
+        app exits (`--onefile`). Keeping the split here means the SOURCE
+        properties below never have to think about it.
+        """
+        return engines_runtime_root() / self.engine_dir.name
+
+    @property
     def venv_dir(self) -> Path:
-        return self.engine_dir / ".venv"
+        return self.state_dir / ".venv"
 
     @property
     def models_dir(self) -> Path:
-        return self.engine_dir / "models"
+        return self.state_dir / "models"
 
     @property
     def is_installed(self) -> bool:
-        """Heuristic — depends on isolation mode.
+        """True when this engine's own venv is present, usable, and current.
 
-        For ISOLATION="venv": per-engine venv python exists.
-        For ISOLATION="shared" (default): shared venv exists AND the engine's
-        model_install_steps are all satisfied (model files on disk).
+        Three things have to hold, and each one is a bug someone hit:
+
+        1. The interpreter file exists.
+        2. It was built for THIS install location. Venvs bake absolute paths
+           into `pyvenv.cfg` and their launchers, so a moved app folder leaves
+           venvs that are all still on disk and all dead.
+        3. Its package set still matches what the manifest declares. Without
+           this, adding a package to a manifest changed nothing on a machine
+           that had already installed the engine: it kept reporting ready
+           while missing the new dependency, and the failure surfaced much
+           later, somewhere else. That is exactly how `peft` came to be
+           declared but absent — LoRA training would have refused to start on
+           an engine the UI called installed.
         """
-        if self.isolation == "venv":
-            # A venv built under a different install path needs rebuilding
-            # (the app folder moved) — report "not installed" so the UI
-            # offers Install instead of failing deep inside a load.
-            return _venv_python(self.venv_dir).is_file() and venv_origin_matches(self.venv_dir)
-        if not shared_venv_exists() or not venv_origin_matches(SHARED_VENV_DIR):
+        if not _venv_python(self.venv_dir).is_file():
             return False
-        # Phase ④: a variant COMPLETE in the speech cache also counts — a
-        # prefetched engine is installed (shared venv + files present), so
-        # the status chip stops saying "not installed" over an on-disk row
-        # and the load door never re-runs the legacy tarball steps.
-        try:
-            from .. import speech_cache
-            from ..app_state import get_state
-
-            if speech_cache.any_variant_on_disk(get_state().data_dir, self.id):
-                return True
-        except Exception:  # noqa: BLE001 — bare tests / no app state
-            pass
-        # Legacy: check that the engine's expected model files are present.
-        # If there are no model_install_steps, the engine pulls via HF cache on
-        # first load — we treat that as "installed" once the shared venv exists.
-        # DELIBERATELY any-depth (not legacy_files_engine_visible): a tarball
-        # stranded too deep still marks the ENGINE installed — the venv is
-        # real, the per-variant on_disk flag says the truth about the files,
-        # and the load door heals via the speech cache. Tightening this would
-        # flip the chip to "not installed" and route users into the legacy
-        # tarball re-install instead (2026-08-15 review).
-        steps = self.model_install_steps
-        if not steps:
-            return True
-        for step in steps:
-            expected = step.get("expected_files") or []
-            if expected:
-                if not all(any(self.models_dir.rglob(f)) for f in expected):
-                    return False
-            else:
-                # No expected_files declared — check if models dir has any content.
-                if not self.models_dir.exists() or not any(self.models_dir.iterdir()):
-                    return False
-        return True
+        if not venv_origin_matches(self.venv_dir):
+            return False
+        return venv_manifest_matches(self.venv_dir, self.declared_packages)
 
 
 def discover_engines() -> dict[str, EngineManifest]:
@@ -523,35 +564,6 @@ class InstallError(RuntimeError):
     pass
 
 
-#: Venv-wide dependency ceiling, applied to every `uv pip install` that
-#: targets an engine venv (see `_constraint_args`).
-#:
-#: Each manifest INSTALL step is a SEPARATE `uv pip install`, so a version
-#: pin declared in one step survives only until some later step re-resolves
-#: the same package. That is not a theoretical gap: the SDK refresh below
-#: shipped with `--reinstall` on 2026-08-14, uv re-resolved
-#: justvoice-plugin's unbounded `numpy>=1.24` to numpy 2.5.2 on top of a
-#: shared venv every engine had pinned below 2.0, and numba — which librosa
-#: imports, and librosa sits in the import chain of chatterbox-tts,
-#: qwen-tts, zipvoice and hume-tada — started refusing to import: "Numba
-#: needs NumPy 2.0 or less. Got NumPy 2.5." Kokoro was the only engine that
-#: still loaded, because sherpa-onnx is the one chain with no numba in it.
-#:
-#: A constraint file applies to every resolution in the venv, so the ceiling
-#: cannot be raised by a step that never mentions the package.
-CONSTRAINTS_FILE = ENGINES_DIR / "constraints.txt"
-
-
-def _constraint_args() -> list[str]:
-    """`--constraint` args for uv, or `[]` when the file is absent.
-
-    Absent is survivable, not fatal — an install without the ceiling is what
-    every version before this did, and failing the install outright over a
-    missing text file would be the worse trade.
-    """
-    return ["--constraint", str(CONSTRAINTS_FILE)] if CONSTRAINTS_FILE.is_file() else []
-
-
 #: Kept in lockstep with justvoice_plugin/pyproject.toml — the /load
 #: `model_dir` contract (phase ②) rides the SDK, so a venv carrying an
 #: older install gets a fast refresh at spawn.
@@ -569,9 +581,11 @@ def _ensure_plugin_current(python_exe: Path) -> None:
     the WHOLE resolution, transitive deps included, which re-resolves them to
     their newest compatible versions. On a venv whose engine deps were pinned
     by earlier install steps that is a silent downgrade-proof upgrade of
-    other people's pins — see CONSTRAINTS_FILE for the numpy break it caused.
+    other people's pins. It is not hypothetical: a bare `--reinstall` here
+    on 2026-08-14 re-resolved numpy to 2.5.2 in an environment every engine
+    had pinned below 2.0, and librosa's numba refused to import.
     Scoping the reinstall to the SDK leaves satisfied deps exactly as the
-    engine steps installed them, and the constraint file catches the rest.
+    engine steps installed them.
     """
     try:
         venv_root = python_exe.parents[1]
@@ -586,8 +600,9 @@ def _ensure_plugin_current(python_exe: Path) -> None:
         subprocess.run(
             [uv, "pip", "install", "--python", str(python_exe),
              "--reinstall-package", "justvoice-plugin",
-             *_constraint_args(), str(plugin_dir)],
+             str(plugin_dir)],
             capture_output=True, text=True, timeout=180,
+            env=_uv_env(),
         )
     except Exception:  # noqa: BLE001 — best-effort; the old SDK still works
         log.debug("plugin currency refresh failed", exc_info=True)
@@ -610,7 +625,19 @@ def _ensure_plugin_current(python_exe: Path) -> None:
 #: no Python at all, with the user never running a command.
 #:
 #: Bump this only together with checking the engine wheel matrix.
-ENGINE_PYTHON_VERSION = "3.12"
+#:
+#: 3.13 since 2026-08-22, and the version itself does real work. On 3.12
+#: chatterbox-tts's own dependency marker asks for numpy<2, which is
+#: incompatible with kokoro-onnx's numpy>=2.0.2 — a conflict that was
+#: unresolvable while both lived in one interpreter and is the reason kokoro
+#: was carved out first. On 3.13 that same marker flips to numpy>=2 and the
+#: conflict simply stops existing. Every engine's wheels were re-checked for
+#: cp313 (2026-08-22), piper-phonemize included, which is the one dependency
+#: with no PyPI wheels at all.
+#:
+#: 3.14 was considered and rejected: it buys nothing here, and kokoro-onnx
+#: caps below it.
+ENGINE_PYTHON_VERSION = "3.13"
 
 
 def _uv_candidates() -> list[Path]:
@@ -656,56 +683,153 @@ def _check_uv_available() -> str:
     return uv_path
 
 
-def _detect_torch_index_url() -> tuple[str | None, str]:
-    """Pick a torch wheel index based on detected hardware.
+def _uv_env() -> dict[str, str]:
+    """Environment for every uv invocation — cache and managed interpreters
+    pinned BESIDE the venvs.
 
-    Returns (index_url, label). When index_url is None, default PyPI is used
-    (CPU-only wheels). Detection logic for CUDA / Intel Arc / Apple Silicon.
+    uv populates a venv by hardlinking out of its cache. A hardlink cannot
+    cross a filesystem, so when the cache sits on a different volume from the
+    venv, uv silently falls back to full byte copies — and the whole economics
+    of one-venv-per-engine depend on those links. Measured here 2026-08-22
+    with the cache on the same volume: the five engine venvs occupy 5,284 MB
+    together, where copying would have cost 18,750 MB.
+
+    uv's own defaults put both under the user profile (`%LOCALAPPDATA%` /
+    `~/.cache`), i.e. almost always the system drive — while the user picks
+    where JustVoice installs. Pinning them under the engines root makes the
+    hardlinks work wherever that is, and keeps the bytes inside the install
+    the user chose.
+
+    `setdefault`, never overwrite: a user who has already set `UV_CACHE_DIR`
+    (or is sharing one across projects) keeps theirs.
+
+    THE one place these locations live — a frozen build re-roots them by
+    changing `engines_runtime_root()`, not by adding a second definition.
     """
-    # User override always wins.
+    env = os.environ.copy()
+    root = engines_runtime_root()
+    env.setdefault("UV_CACHE_DIR", str(root / ".uv-cache"))
+    env.setdefault("UV_PYTHON_INSTALL_DIR", str(root / ".uv-python"))
+    return env
+
+
+#: PyTorch wheel indexes, per hardware tier. Every value here was checked
+#: against the live index on 2026-08-22 for the pinned torch line — an index
+#: that does not carry our version is worse than no index, because uv resolves
+#: DOWN to whatever that index does have.
+#:
+#: - cu126 is the wide-compat CUDA build: it carries the whole 2.6.0 → 2.13.0
+#:   range, so it survives a pin bump in either direction. Turing (7.5) through
+#:   Ada (8.9) run on it. RENDER-PROVEN here 2026-08-22 on an RTX 2070 SUPER.
+#: - cu130 is for Blackwell (compute cap ≥ 10.0), which needs CUDA ≥ 12.8 and
+#:   cannot run the 12.x builds at all.
+#: - rocm7.2 carries torch 2.11–2.13 — the only ROCm index that has our pin.
+#:
+#: The two indexes this code used to name are BOTH dead ends and are the reason
+#: this table exists: `cu124` stops at torch 2.6.0 (so it excluded every RTX 50
+#: card and any pin above 2.6), and `rocm6.2` stops at torch **2.5.1** — below
+#: the 2.6.0 the manifests pinned, which made AMD-on-Linux installs impossible
+#: rather than merely slow (verified against both indexes, 2026-08-22).
+TORCH_INDEX_CUDA12 = "https://download.pytorch.org/whl/cu126"
+TORCH_INDEX_CUDA13 = "https://download.pytorch.org/whl/cu130"
+TORCH_INDEX_ROCM = "https://download.pytorch.org/whl/rocm7.2"
+
+
+def _detect_torch_index_url() -> tuple[str | None, str]:
+    """Pick a torch wheel index for THIS box.
+
+    Returns (index_url, label). `None` means the default PyPI index, which is
+    the CORRECT answer twice over: on a CPU-only box, and on Apple Silicon —
+    the stock PyPI wheel is the one that carries MPS, and pointing macOS at a
+    CUDA/ROCm index would fetch nothing installable.
+
+    Detection runs through the kit (`llm_runner.runner.hardware.detect`), the
+    same door the ACCEL_INSTALL step already uses, so JustVoice and the LLM
+    stack agree about the machine instead of each sniffing it their own way.
+    The CUDA tier likewise comes from the kit's own rule
+    (`concrete_gpu(hw, "cuda")` → `cuda12` | `cuda13`, the boundary being
+    compute capability 10.0 = Blackwell) rather than a second copy of it here.
+
+    A missing or broken kit is survivable, not fatal: the nvidia-smi probe
+    below still finds the card and takes the wide-compat cuda12 tier, which is
+    also what an unknown compute capability resolves to.
+    """
+    # User override always wins — including Intel Arc (`/whl/xpu`), which we
+    # deliberately do not auto-detect, and the AMD-on-Windows recipe in
+    # docs/engines.md.
     override = os.environ.get("JUSTVOICE_TORCH_INDEX")
     if override:
         return override, f"override({override})"
 
-    # NVIDIA via nvidia-smi
+    hw = None
+    try:
+        from llm_runner.runner.hardware import detect
+
+        hw = detect()
+    except Exception:  # noqa: BLE001 — no kit → fall back to the raw probes
+        log.debug("kit hardware detect unavailable; using direct probes", exc_info=True)
+
+    runtimes = dict(getattr(hw, "runtimes", None) or {})
+    gpus = list(getattr(hw, "gpus", None) or [])
+
+    # ─ NVIDIA ─────────────────────────────────────────────────────────
+    if runtimes.get("cuda"):
+        tier = "cuda12"
+        try:
+            from llm_runner.runner.binary import concrete_gpu
+
+            tier = concrete_gpu(hw, "cuda") or "cuda12"
+        except Exception:  # noqa: BLE001 — unknown tier → widest-compat build
+            log.debug("kit cuda tier rule unavailable; assuming cuda12", exc_info=True)
+        if tier == "cuda13":
+            return TORCH_INDEX_CUDA13, "cuda-13.0"
+        return TORCH_INDEX_CUDA12, "cuda-12.6"
+
+    # Kit absent or silent about CUDA — ask the driver directly.
     try:
         result = subprocess.run(
             ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
             capture_output=True, text=True, timeout=5,
         )
         if result.returncode == 0 and result.stdout.strip():
-            # cu124 covers the widest torch range we install (2.4+ through
-            # 2.7+). cu128 only ships wheels for torch 2.7+; using it as
-            # the default breaks engines that pin older torch (chatterbox
-            # pins 2.6.0). Users on CUDA 12.8 with a torch>=2.7 engine
-            # can override via JUSTVOICE_TORCH_INDEX=https://download.pytorch.org/whl/cu128.
-            return "https://download.pytorch.org/whl/cu124", "cuda-124"
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+            return TORCH_INDEX_CUDA12, "cuda-12.6"
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
         pass
 
-    # AMD via rocm-smi (Linux only — PyTorch publishes no ROCm wheels for
-    # Windows; Windows+AMD falls through to CPU wheels). UNMEASURED on real
-    # AMD hardware here: the index URL is PyTorch's published ROCm 6.2 wheel
-    # index for the torch 2.6 line, and detection mirrors the nvidia-smi
-    # probe above. Modeled on devnen/Chatterbox-TTS-Server's hardware
-    # matrix (ROCm 6.1+ requirement files).
-    if platform.system() == "Linux":
+    # ─ AMD ────────────────────────────────────────────────────────────
+    amd = runtimes.get("rocm") or any(
+        (getattr(g, "vendor", "") or "").upper() == "AMD" for g in gpus
+    )
+    if not amd and platform.system() == "Linux":
         try:
             result = subprocess.run(
                 ["rocm-smi", "--showid"],
                 capture_output=True, text=True, timeout=5,
             )
-            if result.returncode == 0 and result.stdout.strip():
-                return "https://download.pytorch.org/whl/rocm6.2", "rocm-6.2"
-        except (FileNotFoundError, subprocess.TimeoutExpired):
+            amd = result.returncode == 0 and bool(result.stdout.strip())
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
             pass
+    if amd:
+        if platform.system() == "Linux":
+            # UNMEASURED on real AMD hardware here — index membership was
+            # verified (rocm7.2 carries torch 2.11–2.13), the render was not.
+            return TORCH_INDEX_ROCM, "rocm-7.2"
+        # AMD on Windows: pytorch.org publishes NO ROCm wheels for Windows, so
+        # the honest default is CPU. AMD themselves ship a Radeon-on-Windows
+        # build (ROCm 7.2.1 / torch 2.9.1, Python 3.12) from their own index —
+        # a manual recipe, because it needs a different torch AND a different
+        # Python than the family pin. Per-engine venvs make that legal.
+        log.info(
+            "AMD GPU on %s — pytorch.org has no ROCm wheels for this OS, so "
+            "engines install CPU torch. For AMD's own Radeon build set "
+            "JUSTVOICE_TORCH_INDEX to their wheel index before installing; "
+            "the recipe is in docs/engines.md.",
+            platform.system(),
+        )
+        return None, "cpu (AMD: see docs/engines.md)"
 
-    # Intel Arc uses XPU wheels. We don't auto-detect Arc reliably, so
-    # users with Arc set JUSTVOICE_TORCH_INDEX themselves.
-    override = os.environ.get("JUSTVOICE_TORCH_INDEX")
-    if override:
-        return override, f"override({override})"
-
+    # ─ Apple Silicon / CPU ────────────────────────────────────────────
+    # Default PyPI. On macOS that wheel IS the MPS build; elsewhere it is CPU.
     return None, "cpu"
 
 
@@ -714,24 +838,16 @@ def install_engine(
     progress: Callable[[str, str | None], None] | None = None,
     cancel_check: Callable[[], bool] | None = None,
 ) -> None:
-    """Install an engine.
-
-    For shared engines (ISOLATION="shared", the default): make sure the
-    shared venv exists (set it up if not), then run only the engine's
-    model_install_steps (model file downloads). Python deps are already
-    in the shared venv.
-
-    For isolated engines (ISOLATION="venv"): create a per-engine venv at
-    engines/<id>/.venv and run the full INSTALL list.
+    """Install an engine: create its venv at engines/<id>/.venv and run the
+    manifest's full INSTALL list against it.
 
     `progress(phase, line)` reports each step + the latest pip / download
     line. `cancel_check` polled at every chunk + step boundary.
 
     Refuses outright when the manifest does not declare the host OS. This is
-    THE os gate — it sits above the isolation split deliberately, because the
-    previous one (`shared_venv.py`, still there for the shared-venv build)
-    was reached only for `isolation == "shared"` engines, which excluded Dia
-    and MOSS — the only two that restrict their OS. See
+    THE os gate. It sits here, above everything, because the previous one
+    lived in the shared-venv builder and was reached only for shared engines —
+    which excluded the only two engines that restrict their OS at all. See
     `EngineManifest.supported_oses`.
     """
     if not manifest.supports_current_os():
@@ -739,60 +855,7 @@ def install_engine(
             f"{manifest.id} does not support {_current_os_label()} — "
             f"the manifest declares {', '.join(manifest.supported_oses)}."
         )
-    if manifest.isolation == "shared":
-        return _install_engine_shared(manifest, progress, cancel_check)
     return _install_engine_isolated(manifest, progress, cancel_check)
-
-
-def _install_engine_shared(
-    manifest: EngineManifest,
-    progress: Callable[[str, str | None], None] | None,
-    cancel_check: Callable[[], bool] | None,
-) -> None:
-    """Install a shared engine: ensure the shared venv exists, then download
-    the engine's model files only.
-    """
-    # 1. Make sure the shared venv is set up. If not, run the full shared-venv
-    #    setup which installs torch + every shared engine's Python deps. This
-    #    is the user's "first ever Install" path — they'll see ~5-10 minutes
-    #    of shared-venv setup, then ~1-3 min model download for THIS engine.
-    if not shared_venv_exists():
-        # Import here to avoid a circular import at module load time
-        # (shared_venv imports from manager).
-        from . import shared_venv as sv
-
-        if progress:
-            progress("setup-shared-venv", "first-time setup: creating shared venv with all engine deps…")
-        sv.setup_shared_venv(progress=progress, cancel_check=cancel_check)
-
-    # 2. Pre-create the per-engine state directories so engine.py code paths
-    #    can assume they exist.
-    for sub in ("models", "voices", "state"):
-        (manifest.engine_dir / sub).mkdir(parents=True, exist_ok=True)
-
-    # 3. Run only the model_install_steps (model-tarball / model-file / HF
-    #    prefetch). Python deps are already in the shared venv.
-    steps = manifest.model_install_steps
-    if not steps:
-        if progress:
-            progress("done", "no model files to download (engine pulls via HF cache on first load)")
-        return
-
-    for i, step in enumerate(steps):
-        if cancel_check and cancel_check():
-            raise InstallError("cancelled by user")
-        kind = step.get("kind")
-        if progress:
-            progress("step", f"[{i + 1}/{len(steps)}] {kind}")
-        if kind == "model-tarball":
-            _install_model_tarball(manifest, step, _wrap_progress(progress), _wrap_cancel(cancel_check))
-        elif kind == "model-file":
-            _install_model_file(manifest, step, _wrap_progress(progress), _wrap_cancel(cancel_check))
-        else:
-            log.warning("ignoring non-model step %r in shared install (already handled by shared-venv setup)", kind)
-
-    if progress:
-        progress("done", None)
 
 
 def _wrap_progress(progress):
@@ -816,8 +879,12 @@ def _install_engine_isolated(
     progress: Callable[[str, str | None], None] | None = None,
     cancel_check: Callable[[], bool] | None = None,
 ) -> None:
-    """Isolated engine: per-engine venv + full INSTALL pipeline. Same code
-    path as the original pre-hybrid behaviour."""
+    """Build this engine's venv and run its full INSTALL pipeline against it.
+
+    THE install path — since 2026-08-22 there is no other. Its counterpart,
+    which set up one shared interpreter and then downloaded only model files
+    per engine, is gone.
+    """
     uv = _check_uv_available()
     venv = manifest.venv_dir
 
@@ -839,7 +906,7 @@ def _install_engine_isolated(
     emit("creating-venv", f"uv venv {venv} (python {ENGINE_PYTHON_VERSION})")
     result = subprocess.run(
         [uv, "venv", str(venv), "--python", ENGINE_PYTHON_VERSION, "--allow-existing"],
-        capture_output=True, text=True,
+        capture_output=True, text=True, env=_uv_env(),
     )
     if result.returncode != 0:
         raise InstallError(f"uv venv failed: {result.stderr.strip() or result.stdout.strip()}")
@@ -855,8 +922,7 @@ def _install_engine_isolated(
     #    base class + serve() shim available.
     plugin_dir = Path(__file__).resolve().parents[2] / "justvoice_plugin"
     emit("installing-plugin", f"installing justvoice_plugin from {plugin_dir}")
-    _run_uv_pip(uv, python_exe, ["pip", "install", str(plugin_dir)], emit, check_cancel,
-                use_constraints=False)
+    _run_uv_pip(uv, python_exe, ["pip", "install", str(plugin_dir)], emit, check_cancel)
 
     # 3. Execute each step from manifest.INSTALL.
     for i, step in enumerate(manifest.install_steps):
@@ -868,13 +934,13 @@ def _install_engine_isolated(
             packages = step.get("packages", [])
             if not packages:
                 continue
-            _run_uv_pip(uv, python_exe, ["pip", "install", *packages], emit, check_cancel, use_constraints=False)
+            _run_uv_pip(uv, python_exe, ["pip", "install", *packages], emit, check_cancel)
 
         elif kind == "pip-no-deps":
             packages = step.get("packages", [])
             if not packages:
                 continue
-            _run_uv_pip(uv, python_exe, ["pip", "install", "--no-deps", *packages], emit, check_cancel, use_constraints=False)
+            _run_uv_pip(uv, python_exe, ["pip", "install", "--no-deps", *packages], emit, check_cancel)
 
         elif kind == "pip-git":
             url = step["url"]
@@ -886,19 +952,19 @@ def _install_engine_isolated(
             # install its declared deps ourselves, minus the demo-only ones.
             if step.get("no_deps"):
                 args.append("--no-deps")
-            _run_uv_pip(uv, python_exe, [*args, spec], emit, check_cancel, use_constraints=False)
+            _run_uv_pip(uv, python_exe, [*args, spec], emit, check_cancel)
 
         elif kind == "pip-find-links":
             url = step["url"]
             packages = step.get("packages", [])
             args = ["pip", "install", "--find-links", url, *packages]
-            _run_uv_pip(uv, python_exe, args, emit, check_cancel, use_constraints=False)
+            _run_uv_pip(uv, python_exe, args, emit, check_cancel)
 
         elif kind == "pip-local":
             path = step["path"]
             # Resolve relative to the engine's directory.
             resolved = (manifest.engine_dir / path).resolve()
-            _run_uv_pip(uv, python_exe, ["pip", "install", str(resolved)], emit, check_cancel, use_constraints=False)
+            _run_uv_pip(uv, python_exe, ["pip", "install", str(resolved)], emit, check_cancel)
 
         elif kind == "torch":
             index_url, label = _detect_torch_index_url()
@@ -914,21 +980,21 @@ def _install_engine_isolated(
                 args += ["--index-url", index_url]
             args += packages
             emit("torch", f"torch variant: {label}{f' v{version}' if version else ''}")
-            _run_uv_pip(uv, python_exe, args, emit, check_cancel, use_constraints=False)
+            _run_uv_pip(uv, python_exe, args, emit, check_cancel)
 
         elif kind == "requirements-file":
             # Engine ships a requirements.txt; install it.
             req_file = manifest.engine_dir / step.get("path", "requirements.txt")
-            _run_uv_pip(uv, python_exe, ["pip", "install", "-r", str(req_file)], emit, check_cancel, use_constraints=False)
+            _run_uv_pip(uv, python_exe, ["pip", "install", "-r", str(req_file)], emit, check_cancel)
 
         elif kind == "model-tarball":
             # Download + extract a .tar.bz2 / .tar.gz model tarball into the
             # engine's models/ dir. Used by Kokoro (k2-fsa GitHub Releases).
-            _install_model_tarball(manifest, step, emit, check_cancel, use_constraints=False)
+            _install_model_tarball(manifest, step, emit, check_cancel)
 
         elif kind == "model-file":
             # Download a single model file (no extraction).
-            _install_model_file(manifest, step, emit, check_cancel, use_constraints=False)
+            _install_model_file(manifest, step, emit, check_cancel)
 
         else:
             raise InstallError(f"unknown install step kind: {kind!r}")
@@ -954,7 +1020,7 @@ def _install_engine_isolated(
                 emit("accel", f"{runtime} runtime: {' '.join(packages)}")
                 _run_uv_pip(
                     uv, python_exe, ["pip", "install", *packages],
-                    emit, check_cancel, use_constraints=False,
+                    emit, check_cancel,
                 )
                 break
 
@@ -964,12 +1030,17 @@ def _install_engine_isolated(
     has_explicit_req_step = any(s.get("kind") == "requirements-file" for s in manifest.install_steps)
     if req_file.is_file() and not has_explicit_req_step:
         emit("requirements-txt", str(req_file))
-        _run_uv_pip(uv, python_exe, ["pip", "install", "-r", str(req_file)], emit, check_cancel, use_constraints=False)
+        _run_uv_pip(uv, python_exe, ["pip", "install", "-r", str(req_file)], emit, check_cancel)
 
     # 5. Pre-create the models / voices / state dirs so engine.py code paths
     #    can assume they exist.
     for sub in ("models", "voices", "state"):
-        (manifest.engine_dir / sub).mkdir(parents=True, exist_ok=True)
+        (manifest.state_dir / sub).mkdir(parents=True, exist_ok=True)
+
+    # 6. Stamp what this venv was built from — LAST, so a run that failed
+    #    or was cancelled part-way leaves no stamp and reads as needing
+    #    (re)install rather than as complete.
+    record_venv_manifest(venv, manifest.declared_packages)
 
     emit("done", None)
 
@@ -1113,7 +1184,6 @@ def _run_uv_pip(
     args: list[str],
     emit: Callable[[str, str | None], None],
     check_cancel: Callable[[], None],
-    use_constraints: bool = True,
 ) -> None:
     """Run `uv pip ...` against a specific venv's interpreter, streaming
     output so the UI can show progress.
@@ -1122,22 +1192,17 @@ def _run_uv_pip(
     so it has to come after `pip install` (or whatever pip subcommand args
     is). We splice it in after the first arg.
 
-    Every SHARED-venv `install` also carries the venv-wide `--constraint`
-    ceiling (this is THE door for engine dependency installs precisely so
-    the ceiling needs applying in exactly one place — see CONSTRAINTS_FILE).
-    Isolated venvs pass use_constraints=False and resolve their own world.
+    There is no `--constraint` ceiling any more. It existed to stop one
+    engine's install from re-resolving another engine's pins inside a single
+    shared interpreter; with a venv per engine there is no other engine in
+    here to protect, and the ceiling's own content (numpy<2, for librosa's
+    numba) was already wrong for kokoro, which needs numpy>=2.
     """
     # args[0] is "pip"; args[1] is the pip subcommand ("install"); --python
     # goes after that. Verify and place it correctly.
     if len(args) < 2 or args[0] != "pip":
         raise InstallError(f"_run_uv_pip args must start with ['pip', '<subcommand>', ...]; got {args}")
-    # Only `install` resolves versions; `uninstall` rejects --constraint.
-    # And only SHARED-venv installs get the ceiling: its whole rationale is
-    # cross-ENGINE re-resolution inside one environment, and its content
-    # (numpy<2 for numba) is wrong for a venv with no numba — kokoro's
-    # isolated venv needs numpy>=2 for kokoro-onnx (2026-08-19).
-    constraints = _constraint_args() if (args[1] == "install" and use_constraints) else []
-    cmd = [uv, args[0], args[1], "--python", str(python_exe), *constraints, *args[2:], "--no-progress"]
+    cmd = [uv, args[0], args[1], "--python", str(python_exe), *args[2:], "--no-progress"]
     log.info("uv pip command: %s", " ".join(cmd))
     proc = subprocess.Popen(
         cmd,
@@ -1145,6 +1210,7 @@ def _run_uv_pip(
         stderr=subprocess.STDOUT,
         text=True,
         bufsize=1,
+        env=_uv_env(),
     )
     try:
         assert proc.stdout is not None
@@ -1185,22 +1251,13 @@ class EngineProcess:
     def spawn(self) -> None:
         """Start the subprocess and read PORT= from stdout.
 
-        For shared engines, the Python interpreter is the shared venv at
-        engines/.shared-venv/. For isolated engines, the engine's own venv.
+        The interpreter is always this engine's own venv.
         """
-        if self.manifest.isolation == "shared":
-            python_exe = shared_venv_python()
-            if not python_exe.is_file():
-                raise RuntimeError(
-                    f"shared venv not set up yet at {SHARED_VENV_DIR}. "
-                    f"Click 'Set up engines' or POST /v1/engines/setup."
-                )
-        else:
-            python_exe = _venv_python(self.manifest.venv_dir)
-            if not python_exe.is_file():
-                raise RuntimeError(
-                    f"engine {self.manifest.id} is not installed (no venv at {self.manifest.venv_dir})"
-                )
+        python_exe = _venv_python(self.manifest.venv_dir)
+        if not python_exe.is_file():
+            raise RuntimeError(
+                f"engine {self.manifest.id} is not installed (no venv at {self.manifest.venv_dir})"
+            )
         engine_py = self.manifest.engine_dir / "engine.py"
         if not engine_py.is_file():
             raise RuntimeError(f"engine {self.manifest.id} is missing engine.py")
@@ -1994,8 +2051,11 @@ class EngineManager:
                     progress("downloading-model",
                              f"{variant_id}: {pct}% of {total // (1024 * 1024)} MB")
 
+        # `revision`, not `hf_revision`: no manifest has ever written the
+        # latter, so this fallback silently pinned every legacy-shaped row to
+        # None (= whatever the repo's default branch holds today).
         sources = src.get("sources") or [{
-            "hf_repo": repo, "revision": src.get("hf_revision"),
+            "hf_repo": repo, "revision": src.get("revision"),
             "files": src.get("files")}]
         try:
             speech_cache.fetch_hf_variant(
@@ -2088,7 +2148,7 @@ class EngineManager:
             self._current_variants.pop(engine_id, None)
         removed = []
         for sub in (".venv", "models", "voices", "state"):
-            p = m.engine_dir / sub
+            p = m.state_dir / sub
             if p.exists():
                 shutil.rmtree(p, ignore_errors=True)
                 removed.append(sub)
@@ -2126,24 +2186,15 @@ class EngineManager:
         try:
             _maybe_cancel()
 
-            # For shared engines (monolithic style), Load is the only
-            # button — the shared venv builds here on first use.
-            if m.isolation == "shared":
-                # ... or the venv exists but was built under a different
-                # install path (the app folder moved): setup_shared_venv
-                # detects that through the health probe and rebuilds.
-                if not shared_venv_exists() or not venv_origin_matches(SHARED_VENV_DIR):
-                    if progress:
-                        progress("setup-shared-venv", "first-time setup: creating shared venv…")
-                    from . import shared_venv as sv
-                    sv.setup_shared_venv(progress=progress, cancel_check=effective_cancel)
-            else:
-                # Isolated engine — needs its own venv built via the Install button.
-                if not m.is_installed:
-                    raise RuntimeError(
-                        f"engine {engine_id} (isolated) is not installed yet. "
-                        f"Click Install to build its venv."
-                    )
+            # Every engine owns its venv, and Install is what builds it —
+            # Load never builds an environment behind the user's back. (Until
+            # 2026-08-22 shared engines had no Install button at all, so this
+            # door silently ran a 5-10 minute setup on first Load.)
+            if not m.is_installed:
+                raise RuntimeError(
+                    f"engine {engine_id} is not installed yet. "
+                    f"Click Install to build its environment."
+                )
 
             _maybe_cancel()
 
@@ -2167,18 +2218,11 @@ class EngineManager:
                 local_dir = self._ensure_variant_local(
                     m, planned, progress, effective_cancel)
 
-            # Legacy model-step install (phase ④: AFTER the speech-cache
-            # acquisition, and only when it couldn't serve) — engines whose
-            # catalog rows carry no source, and the no-variant edge. Kokoro's
-            # tarballs now land in the speech cache via the URL arm above, so
-            # this no longer writes the legacy engine-dir models location on
-            # any catalog-driven path. HF-cache engines with no
-            # expected_files: still a no-op (engine pulls at load).
-            if m.isolation == "shared" and local_dir is None and not m.is_installed:
-                _maybe_cancel()
-                if progress:
-                    progress("downloading-model", f"first load of {engine_id} — fetching model files")
-                _install_engine_shared(m, progress, effective_cancel)
+            # (Nothing to fetch here any more. This used to be the legacy
+            # model-step install for SHARED engines, whose Load door was also
+            # their first-run install. Per-engine venvs run the full INSTALL
+            # list — model steps included — at Install time, and the gate
+            # above has already refused an engine that never ran it.)
 
             # The 2026-08-13 VRAM wiring (step 3): resolve the device at the ONE
             # load door and pass it down explicitly — the engine subprocess never

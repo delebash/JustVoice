@@ -15,12 +15,11 @@ from pydantic import BaseModel
 from ..app_state import get_state
 from ..engines.manager import get_manager
 from ..errors import not_found, service_unavailable
-from ..engines.shared_venv import detect_gpu
 from ..installer import cancel as cancel_install
 from ..installer import (
+    spawn_engine_setup,
     spawn_managed_install,
     spawn_prefetch,
-    spawn_shared_venv_setup,
 )
 from ..models import (
     InstallRequest,
@@ -49,16 +48,15 @@ async def install_engine(id: str, req: InstallRequest) -> InstallResponse:
       download with progress, HF cache for HF engines, models_dir for
       URL-tarball engines.
     - Managed engine + no `model_variant` → spawn_managed_install. Venv
-      build only (isolated engines like MOSS). Models download via
-      a second /install call once the engine row exposes its variants.
+      build only. Models download via a second /install call once the engine
+      row exposes its variants.
 
     Every engine is manifest-managed; the legacy in-process install path was
     excised 2026-08-14 with the static catalog it depended on.
 
-    The OLD path always ran spawn_managed_install, which for shared HF
-    engines (Chatterbox, etc.) is a no-op for model files — the engine
-    then silently re-downloaded at Load time. That's the bug this fix
-    closes.
+    Splitting the two is what stopped an engine from silently re-downloading
+    its weights at Load time: an install that only built an environment used
+    to report "installed" while the model files were still missing.
     """
     st = get_state()
 
@@ -113,8 +111,8 @@ async def load_engine(id: str, req: LoadRequest) -> LoadResponse:
 @router.post("/v1/engines/{id}/cancel-load")
 async def cancel_engine_load(id: str) -> dict:
     """Signal an in-flight `POST /v1/engines/{id}/load` to abort. The
-    load loop checks the cancel flag at safe points (between shared-venv
-    setup, model download, subprocess spawn, and child `/load`) and
+    load loop checks the cancel flag at safe points (between model
+    download, subprocess spawn, and child `/load`) and
     raises 'cancelled by user' which surfaces back as a 503 to the
     original load request. Subprocess is killed if already spawned, so
     no VRAM keeps being consumed after the cancel."""
@@ -201,54 +199,50 @@ async def get_job(job_id: str) -> JobStatus:
 
 
 @router.post("/v1/engines/setup", status_code=202)
-async def setup_shared_engines() -> dict:
-    """Start (or restart) the one-time shared-venv setup. Returns a job_id
-    that the GUI polls via /v1/jobs/{id}. Idempotent — re-running just
-    re-checks the package set.
+async def setup_engines() -> dict:
+    """Install every built-in engine that is not installed yet. Returns a
+    job_id the GUI polls via /v1/jobs/{id}. Idempotent — engines already
+    installed are skipped, so re-running only picks up what is missing.
 
-    The shared venv contains torch + every shared engine's Python deps in
-    one interpreter. Once it's set up, each shared engine's per-engine
-    Install button only downloads model files — fast.
+    Each engine builds its own environment from its own manifest. Before
+    2026-08-22 this built one shared interpreter for most engines instead;
+    that is gone, along with the class of failure where one engine's install
+    re-resolved another engine's pinned dependencies.
     """
     st = get_state()
-    job_id = spawn_shared_venv_setup(st)
+    job_id = spawn_engine_setup(st)
     return {"job_id": job_id}
 
 
 @router.get("/v1/engines/setup")
 async def get_setup_status() -> dict:
-    """Return shared-venv readiness + the detected GPU vendor / torch index.
+    """How far engine setup has got, plus the wheel index this box resolves to.
 
-    The GUI's "Set up engines" button uses this to decide whether to show
-    "Set up engines" (not ready) or "Re-run setup" (already ready).
+    `ready` means every engine that CAN be installed here already is, so the
+    GUI can offer "Set up engines" or "Re-run setup" without guessing.
+    Deprecated engines and engines this OS does not support are excluded from
+    both counts — offering a setup that can never complete is worse than
+    offering none.
 
-    `ready` reports whether the venv's interpreter actually RUNS, not merely
-    whether its file is on disk. Those differ: a venv whose base Python was
-    removed or upgraded keeps every file while the interpreter is dead. When
-    readiness was a file-existence check the GUI offered "Re-run setup" for a
-    venv that could never work, and the breakage surfaced much later as a 502
-    from whichever engine tried to load first.
-
-    `venv_broken` distinguishes the two states so the GUI can say "rebuild
-    this" rather than "set this up", which is a different sentence for a user
-    who already ran setup once.
+    Readiness is per engine and comes from `EngineManifest.is_installed`,
+    which checks three things: the interpreter exists, it was built for this
+    install location, and its package set still matches the manifest.
     """
-    from ..engines.manager import (
-        SHARED_VENV_DIR,
-        _current_os_label,
-        shared_venv_exists,
-        shared_venv_healthy,
-    )
+    from ..engines.manager import _current_os_label, _detect_torch_index_url
 
-    vendor, index_url, label = detect_gpu()
-    on_disk = shared_venv_exists()
-    healthy = shared_venv_healthy()
+    mgr = get_manager()
+    eligible = [
+        m for m in mgr.manifests().values()
+        if not (m.deprecated or "").strip() and m.supports_current_os()
+    ]
+    pending = [m.id for m in eligible if not m.is_installed]
+    index_url, label = _detect_torch_index_url()
     return {
-        "ready": healthy,
-        "venv_broken": on_disk and not healthy,
-        "venv_path": str(SHARED_VENV_DIR),
+        "ready": bool(eligible) and not pending,
+        "engines_total": len(eligible),
+        "engines_installed": len(eligible) - len(pending),
+        "engines_pending": sorted(pending),
         "current_os": _current_os_label(),
-        "gpu_vendor": vendor,
         "gpu_label": label,
         "torch_index_url": index_url,
     }

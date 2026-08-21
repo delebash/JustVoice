@@ -245,9 +245,69 @@ numpy<2 war. Every load-bearing combination was render-proven 2026-08-22.
 NOT:    TADA/MOSS un-marking or deletion (no word — they stay marked+hidden).
 NOT:    Roadmap items (`docs/dev/ROADMAP.md`) — explicitly out of this scope.
 NOT:    AMD-Windows auto-detect (documented override only; no hardware here).
-OPEN:   every slice of the implementation doc, in order (Slice 0 smoke first).
+BUILT:  Slices 0–5 and 7–8, 2026-08-22.
+  · **Slice 0** — the one unproven combination: torch **2.13.0+cu126 renders
+    chatterbox on CUDA** (RTX 2070 SUPER, 2.48 s audio in 14.0 s, rms 0.1214,
+    transformers 5.2.0, numpy 2.5.2). PASS, so the pin stands at 2.13.0 /
+    torchaudio 2.11.0 + rocm7.2; the pre-decided 2.9.1 fallback was not taken.
+  · **Slice 1** — `_uv_env()`, cache + managed-python pinned beside the venvs,
+    passed at every uv spawn (`setdefault`, so a user's own var still wins).
+  · **Slice 2** — family torch pin in all four live manifests; the tier rule
+    now comes from the kit (`concrete_gpu`), cu126/cu130/rocm7.2 replacing the
+    dead cu124 and rocm6.2 indexes.
+  · **Slice 3** — per-engine venvs everywhere. `shared_venv.py`, `constraints.txt`,
+    `_install_engine_shared`, the shared branches and `SHARED_VENV_DIR` all
+    deleted; chatterbox onto its declared transformers 5.2.0 (keeping
+    `--no-deps`), numpy ceiling dropped; venvs now carry a **manifest
+    fingerprint** so a manifest that gains a package flips the row to
+    (re)Install — the peft class, closed; Uninstall on every engine row.
+    `test_engine_constraints.py` repurposed into the family-pin guard.
+  · **Slice 4** — Pocket TTS excised; code sweep returns empty.
+  · **Slice 5** — every live-roster HF source pinned to a full commit sha
+    (`server/scripts/harvest_revisions.py` harvests them; a test fails on any
+    unpinned live row). TADA/MOSS left at `main` — see the deferral below.
+  · **Slice 7** — engines.md, gpu.md, troubleshooting.md, quick-setup.md,
+    voices.md, code-map.md.
+  · **Slice 8** — `npm run check:engines` (drift · upstream · --test).
+  · **The 576 MB estimate, now measured.** All five engines installed by the
+    app: **5,284 MB** for the five venvs together, **4,800 MB** of which is
+    the first one (chatterbox) — so the other four cost **484 MB** between
+    them, against **18,750 MB** if nothing were shared. The estimate held.
+    Docs, the manifest comment and the guard test now carry the measured
+    numbers rather than the projected ones.
+OPEN:   **Slice 6.2/6.3 — the packaging half, NOT done, needs your word.**
+Slice 6.1 IS done and it is the part that fixes the actual bug: engine state
+(venvs, models, uv cache) now roots at `<data_dir>/engines-runtime` when
+frozen, via `engines_runtime_root()`, so it no longer lands in a PyInstaller
+temp dir that the OS deletes on exit. What is left is `--onefile` →
+`--onedir` plus the `longPathAware` manifest. Both change the release
+pipeline, neither can be verified in this session (no PyInstaller build, no
+CI run), and `--onedir` is not a drop-in: Tauri's `externalBin` copies a
+single file, while onedir produces an exe **plus** an `_internal/` tree that
+must sit beside it — which is a bundling question with a different answer on
+macOS than on Windows. Recommendation: do it as its own change, where a
+release build can actually be run.
+OPEN:   Slice 9 — engine proof through the app (install → load → render each
+engine). Gates that could run in-session all pass.
 GO:     given 2026-08-22 — *"i want opus to code this so make doc that opus can
 follow without thinking too much to do all these changes we have discussed"*
+
+### DEFERRED from the environment migration (2026-08-22)
+STATE:  NOT STARTED. Three items the migration deliberately left.
+· **AMD-on-Windows auto-detect.** The override recipe is documented
+  (`docs/engines.md` → AMD on Windows); detection is not wired, because AMD's
+  Windows build needs a different torch (2.9.1) AND a different Python (3.12)
+  than the family pin, and there is no AMD hardware here to verify any of it.
+· **TADA / MOSS revision pins.** Both still say `"revision": "main"` on their
+  HF sources while every live engine names a commit. Left alone deliberately —
+  they are marked-for-removal and frozen; un-deprecating one means pinning it
+  (`server/scripts/harvest_revisions.py`).
+· **A per-engine interpreter health probe.** The shared venv had one
+  (`shared_venv_healthy`): it caught a venv whose base Python had been deleted
+  or upgraded, where every file is still on disk and the interpreter is dead.
+  It died with the shared venv and has no per-engine replacement, so that
+  narrow case now surfaces at Load instead of on the row. `npm run
+  check:engines --drift` reports it (`VENV BROKEN`).
 
 ### FINDING — "✓ multi-speaker" is a false badge, true whatever happens to MOSS
 STATE:  FINDING — code-verified 2026-08-17. Raised by your question: *"moss tts

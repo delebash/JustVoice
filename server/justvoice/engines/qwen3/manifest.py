@@ -24,8 +24,8 @@ Every variant speaks the same 10 languages.
 
 On macOS the same three families run as mlx-community 8-bit MLX exports
 through mlx-audio (the roster doc 2026-08-17 §4's recorded Mac route) —
-OS-gated variant rows, an OS-gated install step, and a per-OS venv (see
-ISOLATION below). UNMEASURED on real Apple hardware.
+OS-gated variant rows and OS-gated install steps, in this engine's own venv
+like every other engine. UNMEASURED on real Apple hardware.
 """
 
 import sys
@@ -41,13 +41,12 @@ DESCRIPTION = (
 )
 LICENSE = "Apache-2.0"
 
-# Shared venv on Windows/Linux (reuses the torch stack the other engines
-# already carry). On macOS the MLX arm gets its OWN venv: mlx-audio 0.5.0
-# requires transformers>=5.14 while chatterbox — a shared-venv tenant —
-# pins transformers==5.2.0, and sequential installs into one venv are
-# last-writer-wins breakage. The Mac venv is small: mlx-audio + deps, no
-# torch anywhere in it.
-ISOLATION = "venv" if sys.platform == "darwin" else "shared"
+# No ISOLATION line: own venv on every OS since 2026-08-22. The per-OS split
+# that used to live here is now expressed where it belongs — the `oses` filter
+# on the INSTALL steps below. Windows/Linux get torch + qwen-tts; macOS gets
+# mlx-audio and no torch at all. That the two want different transformers
+# versions (mlx-audio >=5.14 vs qwen-tts ==4.57.3) is no longer a conflict to
+# arbitrate: they are never in the same environment.
 
 # Declared 2026-08-17, and this one RESOLVES A CONTRADICTION: the manifest
 # declared `gpu_runtimes: ["cuda"]` while inheriting the manager's all-three
@@ -66,8 +65,8 @@ ISOLATION = "venv" if sys.platform == "darwin" else "shared"
 # is the roster doc §4 route landing: mlx-community 8-bit weights through
 # mlx-audio (MIT, 0.5.0), as OS-gated variant rows + an OS-gated install
 # step + the adapter's _is_mlx branch. On a Mac the catalog shows ONLY the
-# -mlx rows and the install is mlx-audio in the engine's own venv (see
-# ISOLATION). The earlier ONNX idea (romara-labs/xkos/arubeh exports) is
+# -mlx rows and the install is mlx-audio in the engine's own venv.
+# The earlier ONNX idea (romara-labs/xkos/arubeh exports) is
 # superseded — MLX is the recorded route and runs the Mac GPU.
 SUPPORTED_OSES = ["windows", "linux", "macos"]
 
@@ -98,7 +97,11 @@ REQUIREMENTS = {
 # instead (last step). A step's "oses" key gates it to those platforms —
 # no key = everywhere (manager.install_steps filters).
 INSTALL = [
-    {"kind": "torch", "version": "2.6.0", "variant": "auto", "packages": ["torch", "torchaudio"],
+    # THE family torch pin — see chatterbox/manifest.py for why every engine
+    # names the same versions. Windows/Linux only: the macOS arm of this
+    # engine is MLX, which has no torch at all.
+    {"kind": "torch", "variant": "auto",
+     "packages": ["torch==2.13.0", "torchaudio==2.11.0"],
      "oses": ["windows", "linux"]},
     {
         "kind": "pip",
@@ -152,6 +155,26 @@ _QWEN_LANGS = [
 # The MLX exports carry the same tree plus a weight-shard index.
 _QWEN_MLX_FILES = [*_QWEN_FILES, "model.safetensors.index.json"]
 
+# The exact commit each repo is pinned to — harvested 2026-08-22 with
+# server/scripts/harvest_revisions.py; bump = deliberate PR.
+#
+# These rows carry byte-exact sizes and file lists, and those facts are true
+# of a COMMIT, not of a branch. Pinning `main` meant upstream could re-upload
+# weights under the same names and the next machine to install would fetch
+# different bytes than the ones measured here, with nothing to notice it.
+_QWEN_REVISIONS = {
+    "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice": "0c0e3051f131929182e2c023b9537f8b1c68adfe",
+    "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice": "85e237c12c027371202489a0ec509ded67b5e4b5",
+    "Qwen/Qwen3-TTS-12Hz-1.7B-Base": "fd4b254389122332181a7c3db7f27e918eec64e3",
+    "Qwen/Qwen3-TTS-12Hz-0.6B-Base": "5d83992436eae1d760afd27aff78a71d676296fc",
+    "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign": "5ecdb67327fd37bb2e042aab12ff7391903235d3",
+    "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit": "41d3337e8b7f2843a75841595fc14e4b9a7a4b96",
+    "mlx-community/Qwen3-TTS-12Hz-0.6B-CustomVoice-8bit": "049ef77fe8816b536193c0c25f9a214d17921282",
+    "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit": "e7dd0585652209fa0d7783659aad4e8a324de11c",
+    "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-8bit": "50f45ef0047cde7e84c2ef04326acb8ada2436a7",
+    "mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-8bit": "f90d617701d9f7f4ca499291e0b57f2b3c2fd2ee",
+}
+
 
 def _qwen_variant(vid, name, repo, size_bytes, quality, presets, description, *,
                   cloning, design=False, oses=None, files=None):
@@ -164,7 +187,7 @@ def _qwen_variant(vid, name, repo, size_bytes, quality, presets, description, *,
         # Torch rows are Windows/Linux; the -mlx rows pass macos. The
         # catalog door (model_catalog._variant_rows) filters on this.
         "oses": list(oses or ["windows", "linux"]),
-        "sources": [{"hf_repo": repo, "revision": "main",
+        "sources": [{"hf_repo": repo, "revision": _QWEN_REVISIONS[repo],
                      "size_bytes": size_bytes,
                      "files": list(files or _QWEN_FILES)}],
     }

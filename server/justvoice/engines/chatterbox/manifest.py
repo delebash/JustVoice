@@ -1,23 +1,24 @@
 """Manifest for the Chatterbox engine plugin.
 
-Chatterbox-tts (Resemble AI) pins torch==2.6.0 / transformers==5.2.0 /
-numpy<2.0. In a shared venv these would collide with other engines, hence
-the --no-deps + manual-subdep gymnastics in shared-venv installs. In our
-subprocess-venv design, chatterbox-tts gets its own venv with exactly its
-pinned versions — no --no-deps needed; pip resolves cleanly.
+Chatterbox-tts (Resemble AI) declares `torch==2.6.0` and `transformers==5.2.0`
+in its metadata. We install it `--no-deps` and supply that list ourselves,
+minus the demo-only parts — because a metadata pin is a request to the
+INSTALLER, not a requirement of the code: honouring `torch==2.6.0` would drag
+this venv's torch down to a release with no Blackwell (RTX 50) kernels and no
+ROCm 7 build, which is the cross-platform floor the 2026-08-22 rulings refused.
+The code itself is render-proven on torch 2.9.1 through 2.13.0 (research doc
+§4). transformers, by contrast, we now install at exactly the 5.2.0 upstream
+asks for: the old 4.57.3 was a shared-venv compromise with qwen3 and died with
+the shared venv — at 5.2.0 the same render came out FASTER (2.56 s of audio in
+10.4 s on CPU, measured 2026-08-22).
 
-The torch step picks the right CUDA wheel for your GPU at install time,
-pinned to torch==2.6.0 so chatterbox's import succeeds.
+The torch step picks the wheel index for the host's GPU tier at install time
+(cu126 / cu130 / rocm7.2 — see manager._detect_torch_index_url).
 """
 
 ID = "chatterbox"
 NAME = "Chatterbox"
 
-# Monolithic shared-venv style: chatterbox-tts + its subdeps + torch live
-# in the shared venv at engines/.shared-venv/. After the one-time Setup,
-# Load is the only button — model weights auto-download via HuggingFace
-# cache on first load.
-ISOLATION = "shared"
 SUPPORTED_OSES = ["windows", "linux", "macos"]
 DESCRIPTION = (
     "Resemble AI's open-source TTS family. Multilingual variant: 500M params, 23 "
@@ -42,12 +43,22 @@ REQUIREMENTS = {
     "gpu_runtimes": ["cuda", "mps", "cpu", "rocm"],
 }
 
-# Install order matters — torch pin first (chatterbox-tts requires 2.6.0
-# exactly), then subdeps from the chatterbox-tts requirements list, then
-# the package itself. No --no-deps needed because the venv is isolated
-# and pip can resolve all the pins simultaneously.
+# Install order matters — the family torch pin first, then upstream's own
+# sub-dependency list (minus the demo-only parts), then chatterbox-tts itself
+# with --no-deps so its metadata cannot re-resolve what the two steps above
+# just settled.
 INSTALL = [
-    {"kind": "torch", "version": "2.6.0", "variant": "auto", "packages": ["torch", "torchaudio"]},
+    # THE family torch pin — identical in every engine that installs torch.
+    # Agreement is what makes per-engine venvs cheap: uv hardlinks one cached
+    # copy into all of them. Measured on this machine 2026-08-22, with all
+    # five engines installed by the app: 5,284 MB on disk for the five venvs
+    # together, against 18,750 MB if nothing were shared — and the first venv
+    # (chatterbox) is 4,800 MB of that, so the other four cost 484 MB between
+    # them. A single engine on a different torch would add a second full CUDA
+    # stack instead: +4.3 GB. `test_engine_constraints.py` fails if the pins
+    # ever drift apart.
+    {"kind": "torch", "variant": "auto",
+     "packages": ["torch==2.13.0", "torchaudio==2.11.0"]},
     {
         "kind": "pip",
         "packages": [
@@ -58,18 +69,27 @@ INSTALL = [
             "s3tokenizer",
             "spacy-pkuseg",
             "pyloudnorm",
+            # Upstream's own pin, installed as declared. It was held at
+            # 4.57.3 while qwen3 shared this interpreter; per-engine venvs
+            # end that compromise (module docstring has the measurement).
             "transformers==5.2.0",
-            # THE shared venv's numpy ceiling — and the only real one.
-            # chatterbox-tts declares numpy<2 for Python < 3.13, and we
-            # install it --no-deps so pip never enforces that itself.
-            # The other engines' manifests used to carry copies of this
-            # pin; none of their packages declares any numpy bound
-            # (checked on PyPI 2026-08-19), so the copies are gone.
-            "numpy>=1.24.0,<2.0.0",
             "librosa==0.11.0",
+            # Named here because this venv is chatterbox's alone. Under the
+            # shared venv both arrived via qwen3's step and nobody noticed
+            # chatterbox never declared them — exactly the drift class the
+            # per-engine model exists to make impossible.
+            "soundfile",
+            "safetensors",
             # LoRA: train_lora.py builds the adapter, and engine.py loads a
             # trained one back onto t3 at synth.
             "peft>=0.14",
+            # DELIBERATELY no numpy pin. The old `numpy<2.0.0` line was the
+            # SHARED venv's ceiling, held for numba (librosa's dependency)
+            # which refused to import above numpy 2.0. Two things retired it:
+            # the shared venv is gone, and on Python 3.13 chatterbox-tts's own
+            # marker asks for numpy>=2 — pinning below 2 here would now
+            # contradict upstream rather than follow it. Render-proven on
+            # numpy 2.5.2 (2026-08-22).
         ],
     },
     # resemble-perth on PyPI is a NAMESPACE STUB — `import perth; perth.PerthImplicitWatermarker`
@@ -81,11 +101,17 @@ INSTALL = [
     # Upstream master, pinned (2026-08-19). PyPI stopped at 0.1.7; master
     # (still versioned 0.1.7) adds the v3 multilingual loader
     # (MULTILINGUAL_T3_MODELS maps v2 AND v3) and Chatterbox-Nano (110M,
-    # Turbo architecture, its own HF repo). no_deps because its pyproject
-    # would drag gradio==6.8.0 (demo-only) and re-resolve torch; the dep
-    # list above IS master's list minus gradio (safetensors already in the
-    # shared venv via qwen3). Bump = new SHA in a deliberate PR, re-checking
-    # the from_local weight names against the loaders first.
+    # Turbo architecture, its own HF repo).
+    #
+    # no_deps STAYS, and it is not a shared-venv leftover: its pyproject pins
+    # `torch==2.6.0` (for Python < 3.14) and would drag gradio==6.8.0 along
+    # for a demo we never run. Installing with deps here would silently
+    # downgrade this venv's torch out of the 2.9–2.13 band the code is proven
+    # on and out of Blackwell/ROCm-7 support entirely. The pip step above IS
+    # master's dependency list minus gradio.
+    #
+    # Bump = new SHA in a deliberate PR, re-checking the from_local weight
+    # names against the loaders first.
     {"kind": "pip-git", "url": "https://github.com/resemble-ai/chatterbox.git",
      "ref": "5de7a54aa4e5e2baadb0182dde554908b48b85c2", "no_deps": True},
 ]
@@ -124,7 +150,7 @@ VARIANTS = [
         "weights_license": "MIT",
         "sources": [{
             "hf_repo": "ResembleAI/chatterbox",
-            "revision": "main",
+            "revision": "5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18",
             "size_bytes": 3_208_951_748,
             "files": [
                 "Cangjie5_TC.json", "conds.pt",
@@ -155,7 +181,7 @@ VARIANTS = [
         "weights_license": "MIT",
         "sources": [{
             "hf_repo": "ResembleAI/chatterbox",
-            "revision": "main",
+            "revision": "5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18",
             "size_bytes": 3_208_951_924,
             "files": [
                 "Cangjie5_TC.json", "conds.pt",
@@ -179,7 +205,7 @@ VARIANTS = [
         "weights_license": "MIT",
         "sources": [{
             "hf_repo": "ResembleAI/chatterbox-turbo",
-            "revision": "main",
+            "revision": "749d1c1a46eb10492095d68fbcf55691ccf137cd",
             "size_bytes": 2_987_680_596,
             "files": [
                 "added_tokens.json", "conds.pt", "merges.txt",
@@ -208,7 +234,7 @@ VARIANTS = [
         "weights_license": "MIT",
         "sources": [{
             "hf_repo": "ResembleAI/chatterbox-nano",
-            "revision": "main",
+            "revision": "71ccd1d0081b430592cea481f4307e764e07bc64",
             "size_bytes": 1_942_108_236,
             "files": [
                 "added_tokens.json", "conds.pt", "merges.txt",

@@ -47,7 +47,7 @@ class _Proc:
 
 def _manifest(engine_id="eng"):
     return SimpleNamespace(
-        id=engine_id, kind="tts", isolation="shared", is_installed=True,
+        id=engine_id, kind="tts", isolation="venv", is_installed=True,
         default_variant_id="v1",
         requirements={"cpu_adequate": True, "gpu_runtimes": ["cpu"]},
     )
@@ -57,7 +57,6 @@ def _mgr(monkeypatch, manifest):
     from justvoice.engines import manager as mgr_mod
 
     monkeypatch.setattr(mgr_mod, "EngineProcess", _Proc)
-    monkeypatch.setattr(mgr_mod, "shared_venv_exists", lambda: True)
     monkeypatch.setattr(EngineManager, "pool_used_mb",
                         lambda self, *, fresh=False: None)
     monkeypatch.setattr(EngineManager, "_prior_measured_mb",
@@ -116,7 +115,7 @@ def app(tmp_path):
 
 def _url_manifest(tmp_path, engine_id="kok", steps=None):
     return SimpleNamespace(
-        id=engine_id, kind="tts", isolation="shared",
+        id=engine_id, kind="tts", isolation="venv",
         model_install_steps=steps or [],
         models_dir=tmp_path / "legacy-models",
     )
@@ -205,28 +204,41 @@ def test_url_arm_ignores_a_too_deep_legacy_install(monkeypatch, tmp_path, app):
     assert out == str(vdir)
 
 
-def test_is_installed_reads_the_speech_cache(monkeypatch, tmp_path, app):
-    """Phase ④'s cache-truth status: a prefetched shared engine counts as
-    installed (no more 'not installed' chip over an on-disk model row, no
-    legacy re-download at the load door).
+def test_model_files_on_disk_do_not_make_an_engine_installed(monkeypatch, tmp_path, app):
+    """Weights are not an environment.
 
-    Uses chatterbox: kokoro moved to its own venv on 2026-08-19 (the
-    kokoro-onnx swap), and a venv-isolated engine answers is_installed
-    from its interpreter, not from the speech cache."""
+    Phase 4 let a prefetched SHARED engine report installed off the speech
+    cache alone: the shared interpreter already existed, so files on disk
+    really were the last missing piece, and the alternative was a
+    "not installed" chip sitting over an on-disk model row.
+
+    Per-engine venvs (2026-08-22) end that. An engine with its weights
+    downloaded and no venv cannot run a single line, so calling it installed
+    would send the user to Load and fail there instead of showing them the
+    Install button that fixes it.
+
+    A synthetic engine, deliberately: asking a REAL one would make the answer
+    depend on whether whoever runs the suite happens to have that engine
+    installed, and the rule is what is under test.
+    """
     from justvoice import speech_cache
     from justvoice.app_state import get_state
     from justvoice.engines import manager as mgr_mod
-    from justvoice.engines.manager import get_manager
+    from justvoice.engines.manager import EngineManifest
 
-    monkeypatch.setattr(mgr_mod, "shared_venv_exists", lambda: True)
-    monkeypatch.setattr(mgr_mod, "venv_origin_matches", lambda *a, **k: True)
-    manifest = get_manager().get_manifest("chatterbox")
-    assert manifest is not None
+    monkeypatch.setattr(mgr_mod, "engines_runtime_root", lambda: tmp_path)
+    engine_dir = tmp_path / "weightsonly"
+    engine_dir.mkdir()
+    manifest = EngineManifest(engine_dir, type("M", (), {"ID": "weightsonly",
+                                                         "INSTALL": []}))
 
     st = get_state()
-    vdir = speech_cache.variant_dir(st.data_dir, "chatterbox", "chatterbox-turbo-v1")
+    vdir = speech_cache.variant_dir(st.data_dir, "weightsonly", "v1")
     vdir.mkdir(parents=True)
-    (vdir / "model.onnx").write_bytes(b"\0" * 32)
+    (vdir / "model.onnx").write_bytes(bytes(32))
     speech_cache.write_manifest_from_dir(vdir, url="http://example.test/t.tar.bz2")
-    assert speech_cache.any_variant_on_disk(st.data_dir, "chatterbox") is True
-    assert manifest.is_installed is True
+
+    # The variant row still tells the truth about the FILES ...
+    assert speech_cache.any_variant_on_disk(st.data_dir, "weightsonly") is True
+    # ... and the ENGINE still needs its own environment.
+    assert manifest.is_installed is False

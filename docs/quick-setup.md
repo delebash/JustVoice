@@ -68,5 +68,5 @@ doesn't make it re-pop on an install you already set up.
 ## Troubleshooting
 
 - **Detection shows "CPU only" but you have a GPU** — check Settings → GPU. If JustVoice doesn't detect a runtime (CUDA / Metal / DirectML), your driver may need to be reinstalled or the runtime isn't on your PATH. Pick the tier manually for now.
-- **Engine install fails on shared-venv setup** — first install on a shared-venv engine builds the venv (~1-2 minutes). If it fails, check Settings → Logs for the pip install output. Common cause: PyPI rate limit or a build dep missing on your system.
+- **An engine install fails while building its environment** — each engine builds its own Python environment before its models download, which takes a few minutes the first time and is quicker afterwards (the downloads are cached and shared). If it fails, check Settings → Logs for the pip output. Common causes: a PyPI rate limit, or a build dependency missing from your system. Only that engine is affected — retry it from its own **Install** button.
 - **AI features answer 501** — the text-AI model isn't set up; that's the other wizard: AI Settings → Run LLM engine setup.

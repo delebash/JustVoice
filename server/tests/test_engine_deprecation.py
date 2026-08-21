@@ -70,9 +70,6 @@ def test_marking_does_NOT_block_install(monkeypatch):
     monkeypatch.setattr(
         mgr_mod, "_install_engine_isolated", lambda *a, **k: called.append("isolated")
     )
-    monkeypatch.setattr(
-        mgr_mod, "_install_engine_shared", lambda *a, **k: called.append("shared")
-    )
 
     for engine_id in sorted(MARKED_FOR_REMOVAL):
         m = discover_engines()[engine_id]

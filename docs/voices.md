@@ -22,7 +22,7 @@ that finds the result are the same word.
 | Type | What it is | Engines |
 |---|---|---|
 | **Preset** | Ships with the engine. Nothing to make. | Kokoro (54), Qwen3 **CustomVoice** (9) |
-| **Cloned** | Learned from a recording of someone speaking. | Chatterbox Turbo + Multilingual, Qwen3 **Base**, **Pocket TTS** (no GPU needed), LuxTTS (staying until Pocket TTS is measured; TADA and MOSS-TTSD marked for removal are no longer offered) |
+| **Cloned** | Learned from a recording of someone speaking. | Chatterbox Turbo + Multilingual, Qwen3 **Base**, LuxTTS (the light one — runs on CPU) (TADA and MOSS-TTSD are marked for removal and no longer offered) |
 | **Designed** | Invented from a written description — no recording. | Qwen3 **VoiceDesign** |
 | **Imported** | An audio clip stored as-is. | any — no engine needed |
 | **Blended** | A voice made out of voices the engine already has — mixed, exaggerated, added and subtracted, or spliced. | Kokoro |

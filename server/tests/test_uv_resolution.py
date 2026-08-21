@@ -74,20 +74,24 @@ def test_candidates_probe_beside_sys_executable_first():
 
 def test_engine_python_is_pinned_not_the_running_interpreter():
     """The pin is the fix for bug 2. If someone reverts it to sys.executable
-    this fails, because a frozen sidecar path is not a version string."""
-    assert manager.ENGINE_PYTHON_VERSION == "3.12"
+    this fails, because a frozen sidecar path is not a version string.
+
+    3.13 since 2026-08-22, and the number itself does work: on 3.12
+    chatterbox-tts's dependency marker asks for numpy<2, which cannot coexist
+    with kokoro-onnx's numpy>=2.0.2; on 3.13 that marker flips and the
+    conflict stops existing.
+    """
+    assert manager.ENGINE_PYTHON_VERSION == "3.13"
     assert not Path(manager.ENGINE_PYTHON_VERSION).is_absolute()
 
 
-def test_shared_venv_creation_passes_the_pin_and_has_no_silent_fallback(monkeypatch, tmp_path):
+def test_venv_creation_passes_the_pin_and_has_no_silent_fallback(monkeypatch, tmp_path):
     """Assert the actual argv, and that a failed venv creation RAISES.
 
     The removed fallback is the point: turning a bad pin into an arbitrary
     Python version is worse than failing, because the failure is visible and
     the wrong environment is not.
     """
-    from justvoice.engines import shared_venv as sv
-
     calls: list[list[str]] = []
 
     class Result:
@@ -99,12 +103,14 @@ def test_shared_venv_creation_passes_the_pin_and_has_no_silent_fallback(monkeypa
         calls.append([str(a) for a in argv])
         return Result()
 
-    monkeypatch.setattr(sv, "_check_uv_available", lambda: "uv")
-    monkeypatch.setattr(sv.subprocess, "run", fake_run)
-    monkeypatch.setattr(sv, "SHARED_VENV_DIR", tmp_path / "venv")
+    module = type("M", (), {"ID": "myengine", "INSTALL": []})
+    m = manager.EngineManifest(tmp_path / "myengine", module)
 
-    with pytest.raises(sv.InstallError, match="uv venv failed"):
-        sv.setup_shared_venv()
+    monkeypatch.setattr(manager, "_check_uv_available", lambda: "uv")
+    monkeypatch.setattr(manager.subprocess, "run", fake_run)
+
+    with pytest.raises(manager.InstallError, match="uv venv failed"):
+        manager.install_engine(m)
 
     assert len(calls) == 1, "a failed venv creation must not retry unpinned"
     argv = calls[0]

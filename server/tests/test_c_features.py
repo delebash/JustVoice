@@ -269,33 +269,3 @@ def test_blended_bundle_needs_no_clip_but_needs_its_vector(tmp_path):
     payload, _ = build_bundle(store, v.id)
     back = import_bundle(store, payload, known_engines={"kokoro"})
     assert back.embedding == [0.1, 0.2]
-
-
-# ── Pocket TTS manifest facts ────────────────────────────────────────────
-
-
-def test_pocket_manifest_facts():
-    from justvoice.engines.pocket_tts import manifest as m
-
-    assert m.ID == "pocket-tts" and m.KIND == "tts"
-    assert m.ISOLATION == "venv"
-    assert m.LICENSE == "MIT" and m.WEIGHTS_LICENSE == "CC-BY-4.0"
-    assert m.CAPABILITIES["voice_cloning"] is True
-    assert m.REQUIREMENTS["cpu_adequate"] is True
-    v = m.VARIANTS[0]
-    # The HF tree's exact bytes (read 2026-08-21) — a drifted number here
-    # means someone re-typed instead of re-reading.
-    assert v["sources"][0]["size_bytes"] == 235_798_071
-    assert v["sources"][0]["hf_repo"] == "kyutai/pocket-tts"
-    assert set(v["languages"]) == {"en", "fr", "de", "pt", "it", "es"}
-    assert any(s["kind"] == "torch" for s in m.INSTALL)
-    assert any("pocket-tts==2.1.0" in s.get("packages", []) for s in m.INSTALL if s["kind"] == "pip")
-
-
-def test_pocket_capability_row_has_no_invented_knobs():
-    from justvoice.engines.capability_details import lookup
-
-    cap = lookup("pocket-tts")
-    assert cap is not None
-    assert cap.supports_voice_cloning is True
-    assert cap.knobs == []  # upstream has no controls — a knob here is fiction

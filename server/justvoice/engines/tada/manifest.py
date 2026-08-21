@@ -10,12 +10,16 @@ TADA also has a tokenizer-gating issue: it hardcodes `meta-llama/Llama-3.2-1B`
 as its tokenizer source, which is a gated HF repo. We redirect to the
 ungated `unsloth/Llama-3.2-1B` mirror at load time.
 
-hume-tada pins torch>=2.7,<2.8 which would collide with chatterbox's
-torch==2.6.0 in a shared venv — so this engine declares ISOLATION="venv"
-below. (Until 2026-08-21 this docstring CLAIMED a per-engine venv while
-nothing declared it: the default was shared, whose installer skips torch
-steps, and TADA silently ran torch 2.6.0 against its 2.7 pin — defect 3
-of the 2026-08-17 device-picking finding.)
+hume-tada pins torch>=2.7,<2.8. That used to collide with chatterbox's
+torch==2.6.0 inside one shared venv, and worse: the shared installer skipped
+torch steps entirely, so TADA silently ran torch 2.6.0 against its 2.7 pin
+(defect 3 of the 2026-08-17 device-picking finding). Per-engine venvs, the
+rule since 2026-08-22, make both problems unstateable — this engine's torch
+is nobody else's business.
+
+TADA itself is DEPRECATED and hidden; its torch pin is left exactly as it
+was rather than moved onto the family pin, because no decision has been made
+about whether this engine stays.
 """
 
 ID = "tada"
@@ -28,8 +32,6 @@ DESCRIPTION = (
     "forced alignment + flow-matching diffusion. Multilingual 3B variant (en, ar, "
     "de, es, fr, it, ja, pl, pt, zh). 24 kHz output. bf16 on CUDA."
 )
-ISOLATION = "venv"  # the torch 2.7 pin — see the module docstring
-
 LICENSE = "Apache-2.0"  # hume-tada Python package (framework code)
 # Model weights ship under Meta's Llama 3.2 Community License because
 # TADA is built on Llama 3.2. Verified 2026-06-09 on huggingface.co/HumeAI/tada-3b-ml

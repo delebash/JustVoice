@@ -1,6 +1,6 @@
 # Engines
 
-JustVoice ships with 6 commercial-output-permitting TTS engines plus an external OpenAI-compatible bridge. Each engine runs in its own Python venv or against a shared one (see Isolation below) so installing Chatterbox doesn't break Kokoro's dependency tree.
+JustVoice ships with 6 commercial-output-permitting TTS engines plus an external OpenAI-compatible bridge. Each engine runs in its own Python environment, so installing Chatterbox cannot touch Kokoro's dependencies — see [Where the Python environments live](#where-the-python-environments-live).
 
 > **Why no Higgs?** Higgs Audio v3 was removed 2026-06-09 — its model weights are released under a non-commercial license, which conflicts with JustVoice's audiobook / game / podcast use cases where users sell their generated output. Every remaining bundled engine's weights permit commercial output (verified against each engine's HuggingFace model card).
 >
@@ -190,7 +190,7 @@ Loading can take a while. Downloads run from the row's **Download** button (or t
   invent one.
 - The bar has a **Cancel** button while it runs. Clicking it sends
   `POST /v1/engines/{id}/cancel-load`, which:
-  - Sets a cancel flag the manager polls between safe steps (shared-venv setup → model download → subprocess spawn → child `/load` call).
+  - Sets a cancel flag the manager polls between safe steps (model download → subprocess spawn → child `/load` call).
   - Kills the child subprocess if already spawned, so no VRAM is left allocated.
   - Aborts the client-side fetch so you stop waiting.
 - A cancelled or failed bar stays on the row with its error and offers
@@ -246,7 +246,6 @@ install something that would fail.
 |---|:--:|:--:|:--:|---|
 | **Kokoro** | ✓ | ✓ | ✓ | ONNX via kokoro-onnx; CPU is real-time everywhere |
 | **Chatterbox** | ✓ | ✓ | ✓ | Apple GPU attempted with the known float32 repair; falls back to CPU if it fails |
-| **Pocket TTS** | ✓ | ✓ | ✓ | Pure-Python package + torch; the README's own benchmark is a Mac. Windows unmeasured upstream — expected to run |
 | **LuxTTS** | ✓ | ✓ | ✓ | Every dependency publishes wheels for all three, including piper-phonemize |
 | **Whisper (STT)** | ✓ | ✓ | ✓ | transformers + torch, nothing platform-specific |
 | **Qwen3-TTS** | ✓ | ✓ | ✓ | Torch checkpoints on Windows/Linux; on a Mac the catalog shows the MLX variants instead |
@@ -267,7 +266,6 @@ install itself picks the GPU arm, there is nothing to configure first.
 | Engine | NVIDIA (CUDA) | Apple Silicon | Windows AMD/Intel GPU | Linux AMD (ROCm) | CPU |
 |---|:--:|:--:|:--:|:--:|:--:|
 | **Kokoro** | ✓ installed when CUDA is detected | ✓ CoreML, used automatically | ✓ DirectML, installed when detected | — | ✓ real-time |
-| **Pocket TTS** | ✓ (torch wheel) | ✓ (torch) | CPU | ✓ ROCm torch wheel | ✓ **realtime on 2 cores — its home turf** |
 | **Chatterbox** | ✓ CUDA torch wheel | ✓ MPS (float32 repair) | CPU | ✓ ROCm torch wheel | ✓ slow |
 | **Qwen3-TTS** | ✓ CUDA torch wheel | ✓ MLX variants (their own runtime) | CPU | ✓ ROCm torch wheel | works, slow |
 | **Whisper** | ✓ CUDA torch wheel | ✓ MPS | CPU | ✓ ROCm torch wheel | ✓ |
@@ -287,12 +285,17 @@ Settings → GPU shows your backend (CUDA / MPS / Metal / XPU / DirectML / ROCm)
 
 ## Which PyTorch build gets installed
 
-Chosen for you from detected hardware when the environment is built — NVIDIA
-gets the CUDA 12.4 wheels, Linux AMD boxes the ROCm 6.2 wheels, Intel Arc on
-Windows the XPU wheels, everything else CPU (which on a Mac includes the
-Apple-GPU MPS backend — it ships in the default wheel). Roughly 2 GB per torch wheel, downloaded once for the shared
-environment rather than once per engine. Override it with
-`JUSTVOICE_TORCH_INDEX` and rebuild — see
+Chosen for you from detected hardware when an environment is built. NVIDIA
+cards get **CUDA 12.6**, or **CUDA 13.0** on Blackwell (GeForce 50-series and
+newer, which cannot run the 12.x builds at all); Linux AMD gets **ROCm 7.2**;
+Apple Silicon gets the standard build, which carries the Metal (MPS) backend;
+everything else gets CPU. Intel Arc and AMD-on-Windows are manual — set
+`JUSTVOICE_TORCH_INDEX` before installing.
+
+Roughly 2–3 GB per PyTorch build, downloaded once and then hard-linked into
+each engine's environment rather than downloaded again — which is why several
+environments cost far less than several copies. Override with
+`JUSTVOICE_TORCH_INDEX` and reinstall the engine — see
 [GPU / CUDA](gpu.md#which-pytorch-build-gets-installed-nvidia).
 
 ## Where model files live — the speech cache
@@ -335,36 +338,104 @@ Speech models → Clear** deletes every downloaded speech model in one step
 
 ## Where the Python environments live
 
-Local engines run in Python environments JustVoice builds for you on first
-setup — you never create or activate one by hand. There are two kinds, and
-which kind an engine gets is a property of the engine:
+Local engines run in Python environments JustVoice builds for you — you never
+create or activate one by hand. **Every engine gets its own**, at
+`<engines>/<engine_id>/.venv/`, built to exactly what that engine's manifest
+declares. Nothing is shared between them.
 
-- **The shared environment**, at `server/justvoice/engines/.shared-venv/`.
-  Most engines live here: Kokoro, Chatterbox, Qwen3-TTS, LuxTTS, TADA and
-  Whisper. They are compatible enough to share one PyTorch install, which is
-  the point — torch alone is ~2.4 GB, so sharing it once instead of six
-  times is the difference between a few gigabytes and twenty. The first
-  **Install engine** you click builds this environment; every install after
-  that only downloads that engine's model files, which is why the first one
-  takes minutes and the rest are quick.
-- **A private environment**, at `server/justvoice/engines/<engine_id>/.venv/`.
-  Engines whose dependencies genuinely cannot coexist with the rest get
-  their own: **MOSS-TTSD** (needs flash-attn, which is a long compile and frequently
-  fails on Windows — keeping that attempt out of the shared environment is
-  exactly why it is isolated).
+Clicking **Install engine** builds that one environment and downloads that
+one engine's models. **Uninstall engine** deletes both. Every engine has both
+buttons, and neither reaches anything another engine depends on.
 
-The trade-off is worth stating plainly, because it cuts both ways. A private
-environment means one engine's dependency problem cannot touch another
-engine. In the shared environment it *can*: the engines there install one
-package set on top of another, so a version one engine needs can in
-principle be replaced by a version the next engine asks for.
+### Why one each, when they mostly want the same PyTorch
 
-JustVoice constrains the versions that actually collide (`constraints.txt`
-in the engines folder is applied to every install), so this is not left to
-luck. But if you install engine software into the shared environment
-yourself — with `pip` from a terminal, say — you are outside that
-protection, and the symptom is usually the numpy error in
-[Troubleshooting](troubleshooting.md), which is also where the repair is.
+Because "mostly" was doing a lot of work. Until 2026-08-22 the engines shared
+one environment, and each install re-resolved every other engine's
+dependencies into it. Four things followed, and all four were real:
+
+- **The tightest pin anywhere won for everyone.** Chatterbox asks for
+  `transformers 5.2.0`; it ran on 4.57.3 for months because another engine
+  needed that. On its own it now gets what it asks for — and renders slightly
+  *faster* for it.
+- **A ceiling had to be maintained by hand.** One engine's audio library
+  refused to work above NumPy 2.0, so the whole environment was held below
+  2.0 — which made Kokoro, which needs 2.0 or newer, impossible to install
+  there. It got carved out first, for that reason alone.
+- **A missing package was invisible.** A dependency could be declared in a
+  manifest and never actually installed, and nothing noticed: the engine
+  reported ready and failed later, somewhere else entirely.
+- **There was no Uninstall.** An engine with no environment of its own has
+  nothing to remove, so shared engines simply had no Uninstall button.
+
+### What it costs on disk
+
+Much less than it sounds. All five engines installed, measured on a real
+machine (2026-08-22):
+
+| | On disk |
+|---|--:|
+| The five environments together | **5,284 MB** |
+| The largest one alone (Chatterbox) | 4,800 MB |
+| **The other four, between them** | **484 MB** |
+| What they would cost with no sharing | 18,750 MB |
+
+Every engine names the **same PyTorch version** (2.13.0), and JustVoice fills
+a new environment by hard-linking out of one download cache — so the second,
+third and fourth environments reuse the same PyTorch bytes rather than
+copying them. Install one engine and you have paid for PyTorch; the rest are
+close to free.
+
+Two things that saving depends on. The cache has to sit on the same drive as
+the environments, which JustVoice arranges — both live inside your install
+folder. And the engines have to agree about PyTorch: one engine on a
+different version means a second full CUDA stack, about **4.3 GB**. A test
+fails if two ever disagree, so that can only happen deliberately.
+
+### If an environment gets out of date
+
+JustVoice stamps each environment with the package set it was built from. If
+an update changes what an engine needs, that engine's row offers **Install**
+again rather than pretending to be current. Reinstalling is safe and touches
+nothing else.
+
+### Which Python, which PyTorch
+
+Python **3.13**, and PyTorch **2.13.0** with torchaudio **2.11.0**, the same
+in every engine. On Python 3.12 two of our engines had NumPy requirements
+that could not both be satisfied; on 3.13 they agree, which is the reason for
+the version.
+
+Which PyTorch *build* you get depends on your hardware — see
+[GPU acceleration](gpu.md) for the full matrix:
+
+| Hardware | Build |
+|---|---|
+| NVIDIA, GeForce 40-series and older (compute capability under 10.0) | CUDA 12.6 |
+| NVIDIA, GeForce 50-series / Blackwell and newer | CUDA 13.0 |
+| AMD on Linux | ROCm 7.2 |
+| AMD on Windows | CPU by default — see below |
+| Apple Silicon | the standard build, which carries Metal (MPS) |
+| Everything else | CPU |
+
+### AMD on Windows
+
+PyTorch publishes no ROCm builds for Windows, so JustVoice installs the CPU
+build there and says so in the log. AMD publishes their own Radeon-on-Windows
+PyTorch, and you can point JustVoice at it:
+
+1. Install AMD's ROCm SDK packages for Windows, following AMD's own
+   instructions (their PyTorch-on-Radeon page under *Install → Windows*).
+   Their current build is **ROCm 7.2.1 with PyTorch 2.9.1**, needs **Python
+   3.12**, driver **26.2.2 or newer**, and supports a specific GPU list
+   (RX 7900 XTX class and AI PRO R9700 at the time of writing).
+2. Set `JUSTVOICE_TORCH_INDEX` to AMD's wheel index before starting
+   JustVoice.
+3. Install the engines you want.
+
+Because each engine has its own environment, an AMD-specific PyTorch and
+Python in one of them affects nothing else — Kokoro, which uses no PyTorch at
+all, is untouched either way. This is a manual recipe: JustVoice does not yet
+detect AMD-on-Windows and offer it for you.
 
 ## Online + self-hosted providers (LLM + TTS)
 

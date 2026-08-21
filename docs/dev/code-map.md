@@ -287,9 +287,9 @@ machine; `SpeechEnginesTab.vue:osBlocked()` reads it and swaps the Install
 button for a badge.
 
 Until 2026-08-17 this was inert in every case. The only `supports_current_os()`
-call sat in `shared_venv.py:199` behind `if m.isolation != "shared": continue`
-— so it could never reach MOSS or (then) Dia, **the only engines that declared
-a restriction**. Everything it did evaluate declared all three and passed. The
+call sat in the shared-venv builder (`shared_venv.py:199`, deleted 2026-08-22)
+behind `if m.isolation != "shared": continue` — so it could never reach MOSS or
+(then) Dia, **the only engines that declared a restriction**. Everything it did evaluate declared all three and passed. The
 `supported_oses` docstring promised a catalog filter that did not exist, and
 `engines_api` served the field to a UI that never read it.
 
@@ -401,8 +401,9 @@ voice's engine honours it. The machinery exists —
 
 `capability_details.py` is the config that drives every slider in the app. It
 was audited against each adapter's call site on **2026-08-17**, with the
-installed packages introspected where available (chatterbox, zipvoice,
-qwen_tts are all in `engines/.shared-venv`). **Pinned by
+installed packages introspected where available (chatterbox, zipvoice and
+qwen_tts were all in the then-shared venv; each now lives in its own
+`engines/<id>/.venv`). **Pinned by
 `server/tests/test_engine_knob_wiring.py`, which fails in both directions —
 a declared knob no adapter reads, or an override no UI can reach.**
 
@@ -460,8 +461,8 @@ which has no such token. The emotion path is variant-precise; this one is not.
   knobs were read but undeclared, so no UI could reach them.
 - **`steps` / `noise_temperature` / `faithfulness` (tada)** — three sliders on
   an adapter that reads no delivery field at all. Removed rather than left
-  decorative; TADA is not in the shared venv so its upstream surface could not
-  be introspected. Re-add each only with the adapter change that passes it.
+  decorative; TADA was not installed at the time, so its upstream surface could
+  not be introspected. Re-add each only with the adapter change that passes it.
 - **`repetition_penalty` (qwen3)** — declared, not read. Now forwarded.
 - **`top_k` / `top_p` (chatterbox turbo)** — hardcoded 1000 / 0.95 in the
   adapter and unreachable. Now declared.

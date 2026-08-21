@@ -15,7 +15,8 @@ Only *hearing* a blend needs the engine, and that rides the normal synth
 path as ``SynthRequest.voice_vector``.
 
 Per-engine dispatch is explicit because exactly one engine blends today.
-Pocket TTS is the next candidate — it exports reloadable voice embeddings.
+Adding a second means adding its arm here — the requirement is an engine that
+exports reloadable voice embeddings, which none of the others do.
 """
 
 from __future__ import annotations

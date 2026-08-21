@@ -93,7 +93,7 @@ def _manifest(engine_id="eng", kind="tts", cpu_adequate=False):
     """A duck-typed manifest. Deliberately carries NO memory number of any
     kind — the amended currency has no field to carry one."""
     return SimpleNamespace(
-        id=engine_id, kind=kind, isolation="shared", is_installed=True,
+        id=engine_id, kind=kind, isolation="venv", is_installed=True,
         default_variant_id="v1",
         requirements={"cpu_adequate": cpu_adequate,
                       "gpu_runtimes": ["cuda", "cpu"]},
@@ -104,7 +104,6 @@ def _mgr(monkeypatch, hw, manifest):
     from justvoice.engines import manager as mgr_mod
 
     monkeypatch.setattr(mgr_mod, "EngineProcess", _Proc)
-    monkeypatch.setattr(mgr_mod, "shared_venv_exists", lambda: True)
     # Offline-deterministic by default: no measured pool, no prior measurement
     # rows, no persistence.
     monkeypatch.setattr(EngineManager, "pool_used_mb",

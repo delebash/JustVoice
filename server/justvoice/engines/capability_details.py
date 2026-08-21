@@ -410,26 +410,6 @@ CAPABILITY_DETAILS: dict[str, EngineCapabilityDetail] = {
     ),
 
     # ─── TADA (flow-matching multilingual clone) ──────────────────────
-    # ─── Pocket TTS — the CPU-cloning slot (roster 2026-08-17) ────────
-    "pocket-tts": EngineCapabilityDetail(
-        engine_id="pocket-tts",
-        display_name="Pocket TTS",
-        supports_voice_cloning=True,
-        # NO knobs is a fact, not an omission: upstream exposes no
-        # emotion, speed, instruct or tags (README, read 2026-08-21 —
-        # even pause-by-silence is listed as unsupported).
-        knobs=[],
-        inline_tags=[],
-        pitch_post_process=True,  # server-side WAV shift works on any engine
-        notes=[
-            "Clones from a short recording and runs in realtime on two CPU "
-            "cores — the engine for machines without a graphics card.",
-            "Six languages: English, French, German, Portuguese, Italian, "
-            "Spanish.",
-            "No delivery controls — what it clones is what you get.",
-        ],
-    ),
-
     "tada": EngineCapabilityDetail(
         engine_id="tada",
         display_name="TADA",

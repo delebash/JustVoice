@@ -92,7 +92,7 @@ def test_the_restricted_engine_still_restricts():
         assert manifests[engine_id].isolation == "venv", (
             f"{engine_id} is no longer venv-isolated — re-check that the OS "
             f"gate in install_engine still covers it."
-        )
+        )  # since 2026-08-22 this holds for every engine, which is the point
 
 
 # ── The gate ──────────────────────────────────────────────────────────────
@@ -100,12 +100,15 @@ def test_the_restricted_engine_still_restricts():
 
 @pytest.mark.parametrize("engine_id", ["moss-tts", "tada"])
 def test_install_engine_refuses_an_unsupported_os(engine_id, monkeypatch):
-    """The gate fires for BOTH isolation modes.
+    """The gate fires before any install work, for every engine.
 
-    moss-tts is `venv`; tada is `venv` too since 2026-08-21 (its torch 2.7
-    pin — device-defect fix #3). Both exclude macOS. qwen3 LEFT this list
-    2026-08-21: it genuinely supports macOS now (the MLX venv + OS-gated
-    -mlx rows), so refusing it on a Mac would pin a stale fact.
+    It used to matter that these two were `venv` while others were `shared`:
+    the OLD gate lived in the shared-venv builder and could not see them. The
+    gate has sat above the install split since 2026-08-17 and there is no
+    split left to sit above, but the case is kept — both engines exclude
+    macOS, so a regression here has something real to fail on. qwen3 LEFT
+    this list 2026-08-21: it genuinely supports macOS now (the MLX arm), so
+    refusing it on a Mac would pin a stale fact.
     """
     monkeypatch.setattr(mgr_mod, "_current_os_label", lambda: "macos")
     m = discover_engines()[engine_id]
@@ -123,17 +126,14 @@ def test_install_engine_refuses_an_unsupported_os(engine_id, monkeypatch):
 
 
 def test_the_gate_runs_before_any_install_work(monkeypatch):
-    """Refusal must happen before either install path is entered.
+    """Refusal must happen before the install path is entered.
 
-    Guards against a future refactor that moves the check below the isolation
-    split — the exact shape of the original bug.
+    Guards against a future refactor that moves the check down into the
+    installer — the exact shape of the original bug, where the only OS check
+    sat inside the shared-venv builder and never saw these two engines.
     """
     called: list[str] = []
     monkeypatch.setattr(mgr_mod, "_current_os_label", lambda: "macos")
-    monkeypatch.setattr(
-        mgr_mod, "_install_engine_shared",
-        lambda *a, **k: called.append("shared"),
-    )
     monkeypatch.setattr(
         mgr_mod, "_install_engine_isolated",
         lambda *a, **k: called.append("isolated"),
@@ -150,18 +150,13 @@ def test_the_gate_runs_before_any_install_work(monkeypatch):
 def test_a_supported_os_passes_the_gate(monkeypatch):
     """The gate must not block the happy path.
 
-    Kokoro declares all three OSes, so it passes whatever the host claims
-    to be. It installs into its OWN venv since the 2026-08-19 kokoro-onnx
-    swap (that package wants numpy>=2.0.2 and the shared venv is pinned
-    below 2.0 by qwen3), so both install arms are stubbed and the isolated
-    one is what must run.
+    Kokoro declares all three OSes, so it passes whatever the host claims to
+    be, and the install runs. There is one install arm to stub: since
+    2026-08-22 every engine builds its own venv, so the shared arm this test
+    used to also stub no longer exists.
     """
     called: list[str] = []
     monkeypatch.setattr(mgr_mod, "_current_os_label", lambda: "macos")
-    monkeypatch.setattr(
-        mgr_mod, "_install_engine_shared",
-        lambda *a, **k: called.append("shared"),
-    )
     monkeypatch.setattr(
         mgr_mod, "_install_engine_isolated",
         lambda *a, **k: called.append("isolated"),

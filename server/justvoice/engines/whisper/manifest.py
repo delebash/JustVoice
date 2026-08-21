@@ -35,7 +35,10 @@ REQUIREMENTS = {
 }
 
 INSTALL = [
-    {"kind": "torch", "version": "2.6.0", "variant": "auto", "packages": ["torch", "torchaudio"]},
+    # THE family torch pin — see chatterbox/manifest.py for why every engine
+    # names the same versions.
+    {"kind": "torch", "variant": "auto",
+     "packages": ["torch==2.13.0", "torchaudio==2.11.0"]},
     {
         "kind": "pip",
         "packages": [
@@ -60,13 +63,25 @@ _WHISPER_FILES = [
     "tokenizer_config.json", "vocab.json",
 ]
 
+# The exact commit each repo is pinned to — harvested 2026-08-22 with
+# server/scripts/harvest_revisions.py; bump = deliberate PR. The sizes and
+# file lists above are facts about a COMMIT, not about a branch.
+_WHISPER_REVISIONS = {
+    "openai/whisper-base": "e37978b90ca9030d5170a5c07aadb050351a65bb",
+    "openai/whisper-small": "973afd24965f72e36ca33b3055d56a652f456b4d",
+    "openai/whisper-medium": "abdf7c39ab9d0397620ccaea8974cc764cd0953e",
+    "openai/whisper-large-v3": "06f233fe06e710322aca913c1bc4249a0d71fce1",
+    "openai/whisper-large-v3-turbo": "41f01f3fe87f28c78e2fbf8b568835947dd65ed9",
+}
+
+
 def _whisper_variant(vid, name, repo, size_bytes, quality, description):
     return {
         "id": vid, "name": name, "description": description,
         "languages": ["multilingual"], "voice_cloning": False,
         "preset_voices": 0, "quality": quality,
         "weights_license": "Apache-2.0",
-        "sources": [{"hf_repo": repo, "revision": "main",
+        "sources": [{"hf_repo": repo, "revision": _WHISPER_REVISIONS[repo],
                      "size_bytes": size_bytes, "files": list(_WHISPER_FILES)}],
     }
 
