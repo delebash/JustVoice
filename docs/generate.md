@@ -46,7 +46,12 @@ Engines that don't support a feature show **✗** with a note naming one that do
 
 ## Delivery overlay
 
-The card below the banner has paired slider + number inputs. The six **primary controls** are universal across engines:
+The card below the banner holds the sliders. Each one is a track with its own
+number box — the box is editable, because a slider alone cannot reliably land on
+0.35 — and the labels under the ends say what moving it *means* rather than
+repeating the numbers: Speed reads *slower · as written · faster*, Gain reads
+*quieter · unchanged · louder*. The six **primary controls** are universal across
+engines:
 
 - **Speed** — 0.5–2.0× pacing multiplier. Honoured natively by **Kokoro** and **LuxTTS**; other engines ignore it.
 - **Pitch** — semitones, **post-process on every engine**. The rendered audio is pitch-shifted after synthesis, so it works the same everywhere. (No engine transposes natively — LuxTTS's *T-shift* was previously described here as native pitch, which was wrong; see below.)

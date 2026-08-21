@@ -2,6 +2,18 @@
 
 ## v0.1.0
 
+- Four ways to blend a Kokoro voice — mix, exaggerate, add and subtract, or
+  splice one voice's sound onto another's delivery
+  ([Voices](voices.md#blend--make-a-voice-out-of-other-voices))
+- Voices library filters by language and gender, and shows language as a name
+  rather than a code ([Voices](voices.md#finding-a-voice-in-the-library))
+- **Any column heading sorts, on every list in the app**
+  ([Core concepts](core-concepts.md#lists))
+- Loading a model from the Voices page shows the same progress bar, Cancel and
+  error as the Speech engines page — and the **Size** dropdown now decides
+  which weights are fetched ([Voices](voices.md#finding-a-voice-in-the-library))
+- Every slider says what its ends MEAN — *slower · as written · faster* — and
+  its number box can be typed into ([Generate](generate.md#delivery-overlay))
 - One AI Settings console — text AI (providers + models) and speech (engines,
   self-hosted servers, cloud APIs) with per-feature routing and a live Lab
 - Multi-use Project model (audiobook / game voice lines / podcast / custom)

@@ -38,6 +38,22 @@ A rendered audio version of a Block. Multiple takes per Block; one is the **defa
 
 These compose. A persona has a voice; the voice can have effects; the persona can have a lexicon override; all three are queried for every Block render.
 
+## Lists
+
+Every list in the app is the same grid, so what you learn on one page holds on
+all of them:
+
+- **Any column heading sorts.** Click once for ascending, again for descending.
+  Lists that group their rows — game lines under their scene, adapters under
+  built-in and trained — sort *within* the whole list, so a sort still finds
+  what you are looking for.
+- **An empty list says why it is empty** in its own body, in the words that fit
+  that screen — "No webhooks. Add one below." — rather than showing an empty
+  frame under a header.
+- **Row state is on the row.** A voice whose engine is gone dims; the voice
+  playing right now is tinted; an excluded chapter dims and strikes through its
+  title.
+
 ## Mastering
 
 Every render can go through a mastering preset on the way out. ACX (-20 LUFS / -3.5 dB peak / -60 dB noise floor) is the audiobook spec. See [mastering.md](mastering.md).

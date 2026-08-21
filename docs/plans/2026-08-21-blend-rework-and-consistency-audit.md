@@ -1373,3 +1373,125 @@ biome clean across 97 files · 67 unit tests · vite built · smoke 15/15 with
 zero JS errors. Unchanged caveat, and it is the honest last word on all of it:
 the gate proves nothing throws. It never moves a slider, opens a dialog, or
 expands a row.
+
+---
+
+## 23 · Process record — the mistakes, the rules that came out of them, and the state at hand-off
+
+### 23.1 · I committed and pushed another session's staged work
+
+**What happened.** A parallel session was mid-refactor in `server/`. Its
+deletions were already **staged** — `git status --short` showed them with a
+leading `D` in the *index* column:
+
+```
+D  server/justvoice/engines/constraints.txt        (28 lines)
+D  server/justvoice/engines/shared_venv.py        (256 lines)
+D  server/tests/test_shared_venv_health.py        (122 lines)
+```
+
+I ran `git add <my six files>` and then a bare `git commit`. **`git commit`
+commits the whole INDEX, not the paths you just added.** All 406 deletions rode
+into `5465efa` under a message that does not mention them, and I pushed it.
+
+**The damage, measured rather than assumed.** Nothing was lost: the content is
+one commit back (`git show 0ff6578:<path>` returns all three files intact), and
+the other session's *unstaged* edits — 19+ files — were untouched. But `main`
+went red: `server/tests/test_engine_constraints.py` reads `constraints.txt`,
+which was suddenly gone, and 5 tests failed. Half a refactor was published.
+
+**Not reverted, deliberately.** Restoring the files would have put back code
+the other session's in-flight work no longer references, so they would delete
+them again. Their commit resolved it — the suite is green.
+
+**THE RULE, and it is not optional:**
+
+```
+git commit -F - -- path/one path/two      # commits ONLY these paths
+```
+
+The `--` pathspec limits the commit regardless of what else is in the index.
+Every commit in this repo should use it while a second session is running,
+which is most of the time. Proof it works: `4210f5f` was made this way while
+three more of their deletions (`pocket_tts/*`) sat staged, and none of them
+appeared in it.
+
+Related: **`Co-Authored-By` on `a3f913a`** credits this session for the
+`--focus-ring` change, which came from the parallel session. Left alone —
+rewriting pushed history to correct a trailer is the worse trade. The commit
+body says so.
+
+### 23.2 · The other misses in this session, in one place
+
+| what | where it is written up |
+|---|---|
+| Resolver returned a checkpoint FAMILY id as a `model_variant` — would have loaded Chatterbox Multilingual labelled "Turbo" | §18.8 |
+| Unit tests asserted that same bug as expected behaviour | §18.8 |
+| `task.retry()` re-runs `start()` outside the caller's `await`, so a successful Retry left every surface stale | §18.2 |
+| Scoped CSS targeting `th`/`td`/`tr` silently stops matching once cells move inside a component — **seven occurrences** | §19.1, §20.2, §21.2 |
+| FORM/DATA classifier tested for literal `v-model`, missed `:model-value` + `@update:model-value` | §21.3 |
+| §20.3 called a `colspan` row an empty state when it was a per-row expansion | §20.7 |
+| "Blend tables → UiTable" was a bad recommendation of mine | §19.6 |
+
+### 23.3 · Questions asked after §14, and the verified answers
+
+**"What the heck is design-law, it keeps popping up?"** —
+`docs/dev/design-law.md`, 73 lines, created **2026-07-29** in the commit that
+slimmed the always-loaded context 34KB → 7KB. It is the UI half of CLAUDE.md,
+moved out to keep that file small, with CLAUDE.md left pointing at it. It holds
+"precedent before pattern", a class inventory, and a 7-point conformance
+checklist — mostly the user's own past rulings written down. **It is a memo, not
+an authority over the user**, and it goes stale: its `.jv-table` row told the
+next reader to hand-roll a table, and its `.jv-subnav`/`SettingsShell` row
+described where they were *used* rather than what they *rendered*, which is how
+two implementations of one strip survived. Both rows are now corrected.
+
+**"SettingsShell vs TabStrip — what is your rec?"** — Extract a strip-only
+`UiTabStrip`, do not adopt `SettingsShell`. `SettingsShell` renders
+`<nav>` **plus** `.set-panel { flex: 1; overflow-y: auto }` unconditionally, and
+Voices and Labs are `jv-fill` views that already own their scroll chain: taking
+the shell for its top third lands a second scroller in them, against the
+one-scroller-per-area rule. That is *why* they hand-rolled the strip. Blast
+radius checked before recommending: `SettingsShell` has three consumers, all
+passing only `sections` + `v-model` + slot, and **nothing anywhere styles
+`.set-tabs` / `.set-tab` / `.set-panel` from outside**. Built as `178dd32`.
+
+**"So nothing is really lost, correct?"** — Correct, and verified rather than
+asserted: see §23.1.
+
+### 23.4 · State at hand-off
+
+- **JustVoice `cb3e191`**, **kit `178dd32`** — both pushed, both trees clean of
+  this session's work.
+- **The full Python suite: 726 passed** (11m25s). The 5 failures §23.1 caused
+  are gone; the other session landed its side.
+- **Renderer gate 15/15, zero JS errors. 67 JV unit tests. 578 JustWrite unit
+  tests. biome clean across 97 files.** Both apps build against the changed kit.
+- All nine items of §13 are closed.
+
+**The one thing NOT verified, and it is the honest last word:** the gate loads
+each view and counts JS errors. It never moves a slider, opens a dialog,
+expands a project row, plays a voice, or loads a model. **Sixteen grids, nine
+sliders, two tab strips and a load bar changed shape today and none of them has
+been seen rendered.** Generate's delivery sliders and the Lexicons entry dialog
+changed most.
+
+**Two decisions waiting, neither of them code:**
+
+1. **~50 GB of real data lives inside `src-tauri/target/debug/data`** — the
+   database, voices, personas, lexicons, speech-cache and downloaded models.
+   `cargo clean` or a `target/` wipe destroys all of it. Not a decision anyone
+   made; it is what `exe_dir()` means in a debug build (§18.1).
+2. **The global `justvoice-server` on `F:\Python312` is stale** — it still
+   targets `justvoice.cli:app`, which lost its `serve` command on 2026-08-07.
+   `pip install -e .` there fixes it (§17.5).
+
+### 23.5 · Docs updated for this work
+
+`docs/generate.md` (sliders carry their own number box; the ends say what they
+mean) · `docs/voices.md` (Size decides which weights Load fetches, the load bar,
+LoRA opens on Preparer) · `docs/core-concepts.md` (**new "Lists" section** —
+every heading sorts, empty lists say why, row state is on the row) ·
+`docs/whats-new.md` · `docs/dev/design-law.md` (the inventory rows above) ·
+`CLAUDE.md` (the reuse rule widened past "form primitives", and the gate recipe
+gained `--data-dir`).

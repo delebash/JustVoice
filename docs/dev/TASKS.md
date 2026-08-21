@@ -56,30 +56,37 @@
 
 ## Waiting on your decision
 
-### The tab strip is the kit's, and LoRA opens on Preparer
+### The component-reuse sweep — DONE, and the git rule that came out of it
 STATE:  DECIDED 2026-08-21 — "what is your rec on settingshell vs tabstrip, and jv
-        subnav, it should default to prepareer" → "your rec do it all"
-WHY:    `.jv-subnav` and kit `SettingsShell` were the SAME shape — identical recipe
-        down to the `margin-bottom:-1px` that sits a 2px tab underline on the strip's
-        1px rule — but SettingsShell also owns a content panel with its own scroller.
-        Voices and Labs are `jv-fill` views that already own their scroll chain, so
-        adopting the whole shell to get its top third would have given them a second
-        scroller, against the one-scroller-per-area rule. That is why they hand-rolled
-        the strip in the first place, and why it drifted (12px vs 13px, weight 500 vs
-        600, gap 4 vs 2, padding 8/14 vs 10/16) — the 12px broke the 12.5px floor.
-        LoRA: the strip reads left to right as the order of the work, so landing on
-        the last step first is backwards.
-NOT:    Adopt SettingsShell in Voices/Labs — rejected, brings a scroller they fight.
-        Keep `.jv-subnav` and just bump it to 13px — rejected, two implementations.
-        Keep LoRA on Training ("training is the destination") — overruled.
-BUILT:  kit `ui/src/common/components/UiTabStrip.vue` (new; SettingsShell renders it,
-        so one strip implementation in the family) · `src/views/LabsView.vue:60` ·
-        `src/views/VoicesView.vue` (binds `:model-value`/`@update:model-value`, NOT
-        v-model — every tab change must go through `setAcquireTab`, the only door that
-        clears the acquire form) · `.jv-subnav` deleted from `src/styles/styles.css` ·
-        `src/views/lora/LoraView.vue:38`
-        OPEN: none.
+        subnav, it should default to prepareer" → "your rec do it all" → "go"
+WHY:    CLAUDE.md said "form primitives", so tables, sliders, progress bars and tab
+        strips were hand-rolled for months. The rule is widened; the sweep is done.
+NOT:    Adopt SettingsShell in Voices/Labs — it brings a scroller those jv-fill
+        views already own. Convert editable/headerless/bespoke tables — 4 stay,
+        each with a written reason. Keep LoRA on Training — overruled.
+BUILT:  JV `cb3e191`, kit `178dd32`. 22→4 hand-rolled tables, 10→0 raw sliders,
+        `.jv-subnav` deleted. Kit: UiSlider · UiTabStrip · UiTable `:row-class` ·
+        DownloadBar `:done-label` · createDownloadTask `armPhase`/`donePhase`.
+        JV: `.jv-table-look`. Record: `docs/plans/2026-08-21-blend-rework-and-
+        consistency-audit.md` §§17-23.
+        OPEN: nothing visual has been VERIFIED — the gate never moves a slider,
+        opens a dialog or expands a row (§23.4).
 GO:     given 2026-08-21
+
+### THE GIT RULE — a bare `git commit` publishes the other session's staged work
+STATE:  FINDING — code-verified 2026-08-21 (it happened: `5465efa`)
+WHY:    `git add <my files>` then `git commit` commits the whole INDEX. A parallel
+        session had 406 lines of deletions STAGED; they rode into my commit under a
+        message that never mentioned them, and `main` went red (5 server tests).
+        Nothing was lost — `git show 0ff6578:<path>` still had all three files —
+        and their next commit fixed it, but the failure mode is silent.
+NOT:    Reverting — it would restore code their refactor no longer references.
+BUILT:  n/a — this is a working rule: **always `git commit -F - -- <paths>`.**
+        The `--` pathspec limits the commit whatever else is in the index. Proof:
+        `4210f5f` was made that way with three more of their deletions staged, and
+        none appeared. Watch for `D ` (D in the INDEX column) in `git status`.
+        OPEN: none — apply it on every commit while a second session runs.
+GO:     n/a
 
 ### The LoRA tab is Alexandria-parity, and acceleration works on every roster engine
 

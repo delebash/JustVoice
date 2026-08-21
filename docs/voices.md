@@ -198,6 +198,10 @@ sub-tabs:
 | **Dataset** | A training dataset generated line by line from a described voice. |
 | **Training** | The run itself, and hearing what came out. |
 
+The tab opens on **Preparer**, because the strip reads left to right as the
+order of the work. A link that names a step still goes straight there — the
+Labs `#train` link lands on **Training**.
+
 ### Preparer
 
 One recording in — or several with **Batch Mode** on — and a dataset out.
