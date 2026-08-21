@@ -999,3 +999,173 @@ question mark, so it is left for a ruling.
 **The 21-file table sweep and the remaining raw sliders** (§13 item 8) are
 unblocked now but out of scope for a Voices-page pass — they need their own
 blast-radius pass, per file.
+
+---
+
+## 20 · BLAST RADIUS — the raw-`<table>` sweep (§13 item 8)
+
+Every row below is a pasted grep, not a claim. Scans in
+`scratchpad/tblscan.py` and `scratchpad/cssscan.py`.
+
+### 20.1 · What is actually there
+
+`grep -rln "<table" src/` → **22 files**. Parsing only each SFC's top-level
+`<template>` (an earlier count of 40 included a `<table>` inside one of my own
+comments) gives **39 table blocks**:
+
+| kind | test | count |
+|---|---|---|
+| **DATA** — a real grid | `v-for`, no `v-model` inside | **28** |
+| **FORM** — editable rows | `v-model` inside the block | **6** |
+| **static** — layout, not a grid | no `v-for`, no `v-model` | **5** |
+
+The 6 FORM blocks are out of scope by §19.6: `UiTable` is a read surface with
+immutable `:data` and per-row keys, and these bind live controls into mutable
+arrays. They are `ProjectsView:500`, `SettingsView:1488`, `VoicesView:1875`,
+`VoicesView:1911`, `lora/DatasetTab:451`, `lora/TrainingTab:590`.
+
+The 5 static blocks are `<table>` used as a two-column layout — they have no
+rows to render and no grid behaviour to gain: `AudioToolsView:159`,
+`CapturesView:238`, `CompareView:184`, `SettingsView:1003`, `SettingsView:1168`.
+
+**So the sweep is 28 grids across 18 files, not 21 files of one table each.**
+
+### 20.2 · Hazard 1 — scoped CSS that stops matching, silently
+
+This is the one that already bit twice (§17.2 row classes, §19.1 column
+widths). Vue stamps the scope id on the **last compound selector**, so a rule
+ending in `th`/`td`/`tr` compiles to `td[data-v-…]` — and those elements live
+inside `UiTable`, which never carries the parent's scope id.
+
+`cssscan.py` finds **23 such rules across 13 files**. Every one dies on
+conversion with no error:
+
+| file | rules that stop matching |
+|---|---|
+| `components/lab/SmartAssignResult.vue` | `.sar__table th`, `.sar__table td` |
+| `views/CapturesView.vue` | `.captures__meta-table td`, `… tbody tr:hover td` |
+| `views/ChapterView.vue` | `.chapter-view__list-row:hover td` |
+| `views/EffectsView.vue` | `.effects-view__row:hover td` |
+| `views/ImportReviewView.vue` | `.imrev__off td` |
+| `views/LexiconsView.vue` | `.lex__row:hover td`, `.lex__row--editing td`, `.lex__table thead th`, `.lex__table tbody td` |
+| `views/LinesView.vue` | `.lines__group td` |
+| `views/PersonasView.vue` | `.personas__row:hover td` |
+| `views/ProjectsView.vue` | `.projects__table thead th`, `… tbody td`, `.projects__row:hover td`, `.projects__row--open td` |
+| `views/RenderPresetsView.vue` | `.render-presets-view__row:hover td` |
+| `views/StudioView.vue` | `.studio__script-table th`, `.studio__npc-row:hover td`, `.studio__npc-row--selected td` |
+| `views/VoicesView.vue` | `.voices-view__expand > td` — **already dead**, the expanding row was removed 2026-08-19 |
+| `views/lora/TrainingTab.vue` | `.lora-row--selected td` |
+
+Each needs porting to `:deep()` plus, where it is row STATE, `:row-class`.
+
+### 20.3 · Hazard 2 — per-row behaviour with no home unless it is asked for
+
+Grep over each block for `<tr … :class>`, `<tr … @click>`, `colspan`:
+
+| file:line | `:class` | `@click` | `colspan` | needs |
+|---|---|---|---|---|
+| `AudioChannelsView:99` | 0 | 0 | 1 | `#empty` |
+| `ChapterView:858` | 0 | 1 | 1 | `@row-click` + `#empty` |
+| `EffectsView:169` | 0 | 1 | 0 | `@row-click` |
+| `GenerateView:1099` | 0 | 0 | 1 | `#empty` |
+| `ImportReviewView:176` | 1 | 0 | 0 | `:row-class` |
+| `LexiconsView:449` | 0 | 1 | 0 | `@row-click` |
+| `LexiconsView:542` | 1 | 0 | 0 | `:row-class` |
+| `LinesView:233` | 0 | 0 | 1 | `#empty` / `:full-width-row` |
+| `PersonasView:394` | 0 | 1 | 0 | `@row-click` |
+| `ProjectsView:643` | 1 | 0 | 1 | `:row-class` + `#empty` |
+| `RenderPresetsView:230` | 0 | 1 | 0 | `@row-click` |
+| `SettingsView:1782` | 0 | 0 | 1 | `#empty` |
+| `StudioView:1901` | 1 | 1 | 0 | `:row-class` + `@row-click` |
+| `StudioView:2184` | 1 | 0 | 0 | `:row-class` (`jv-row--attention`) |
+| `StudioView:2278` | 0 | 0 | 1 | `#empty` |
+| `WebhooksView:149` | 0 | 0 | 1 | `#empty` |
+| `lora/PreparerTab:362` | 1 | 0 | 0 | `:row-class` |
+| `lora/TrainingTab:539` | 1 | 0 | 0 | `:row-class` |
+
+`:row-class` exists as of `706f98a` (§17.2). `@row-click`, `#empty` and
+`:full-width-row` were already there.
+
+### 20.4 · Hazard 3 — the one that makes this NOT a refactor
+
+`.jv-table` and the kit's `.ui-table` do not look the same. Pasted from
+`src/styles/styles.css:991` and `just-llm-runner/ui/src/common/styles.css:213`:
+
+| | `.jv-table` | `.ui-table` |
+|---|---|---|
+| box | `background: var(--surface)`, `1px solid var(--line)`, `border-radius: var(--r-card)`, `box-shadow: var(--shadow-1)` | none — bare |
+| collapse | `separate` + `border-spacing: 0`, with rounded first/last header cells and rounded last row | `collapse` |
+| header | 11px, uppercase, `letter-spacing: .05em`, `padding: 10px 12px`, `background: var(--surface-2)` | 12px-ish, `padding` per kit, no uppercase, no fill |
+| cell | `padding: 10px 12px` | `padding: 9px 10px` |
+| hover | on `td` | on `tr` |
+| in a card | `.jv-card .jv-table` **drops** border/shadow/radius | no equivalent |
+
+Converting 28 grids as-is would restyle 18 views — every one of them a visible
+change to header case, cell rhythm, and card chrome. That is a redesign, not a
+sweep, and it is not what "reuse the common component" asked for.
+
+**Also lost:** `.jv-table__actions` (right-aligns an actions column while
+staying a real table-cell — the G-PERSONA-3 fix), `.jv-table__empty`, and the
+canonical row state `.jv-table tr.jv-row--attention > td`
+(`StudioView:2198` is its only user).
+
+### 20.5 · Consequence — the order the sweep has to happen in
+
+1. **A look modifier first.** The kit already establishes the pattern: *"Opt-in
+   LOOK modifiers — plain classes on the component (visual variants are CSS,
+   per the three-tier rule)"* — `ui-table-fixed`, `ui-table-sticky`,
+   `ui-table-top`. JustVoice needs one that gives `.ui-table` the `.jv-table`
+   chrome, so a converted grid looks identical to the one beside it that has
+   not converted yet. Without it, the sweep cannot be done incrementally at
+   all — the app would be visibly half-and-half for as long as it takes.
+2. **Then one file at a time**, each carrying its own §20.2 and §20.3 rows,
+   each verified in the BUILT css, because none of these failures are loud.
+3. **The 6 FORM grids and 5 static tables are never converted** — they get
+   their `.jv-table` class reviewed separately, since design-law now marks that
+   class legacy.
+
+No part of this is safe to do as one mechanical pass. The evidence above is the
+reason, and it is why the sweep did not happen in this pass.
+
+### 20.6 · Step 1 built — the look modifier, and the first three grids
+
+**`.jv-table-look`** (`src/styles/styles.css`, after `.jv-table__empty`) mirrors
+the `.jv-table` block rule for rule, applied to a `UiTable`'s internals. Global,
+not scoped, so it reaches them without `:deep`. It is the kit's own pattern for
+visual variants — a plain class on the component, like `ui-table-fixed` /
+`ui-table-sticky` / `ui-table-top`.
+
+One rule is not a mirror and is worth knowing: hover. `.jv-table` paints the
+CELLS; the kit paints the `<tr>`, and a `<tr>` background loses under
+`tbody td`'s own. So `row-hover` alone reads as no hover at all once this look
+is on, and the modifier restores the cell-level rule:
+
+```css
+.jv-table-look.ui-table-hover .ui-table tbody tr:hover td { background: var(--surface-2); }
+```
+
+Converted, both files chosen because `cssscan.py` finds no scoped `th`/`td`/`tr`
+rules in them — the safest possible first cut:
+
+| grid | was | now |
+|---|---|---|
+| `CacheView` · Recent entries | 6-col hand-rolled, unsortable | `UiTable` + 4 sortable columns |
+| `CacheView` · By scope | `v-for` over a MAP, with a sibling `v-else` paragraph for empty | rows flattened to an array, `#empty` owns the wording |
+| `WebhooksView` · subscriptions | empty state as a `colspan="5"` row **inside `<tbody>`**, so the header drew above it | `#empty`, no column count to keep in step |
+
+Verified in the built sheet, not the source — all eleven `.jv-table-look` rules
+are present in `dist/assets/index-*.css`.
+
+**Count after this pass: 36 blocks — 25 DATA still to convert, 6 FORM and 5
+static that never will.**
+
+The 25 remaining each carry their own §20.2 / §20.3 row. The ones with scoped
+CSS to port are the expensive half; the clean ones — `AudioChannelsView:99`,
+`GenerateView:1072` and `:1099`, `PersonasView:564`, `SettingsView:1078` and
+`:1782`, `lora/PreparerTab:239` and `:300`, `lora/TrainingTab:783` and `:882` —
+are the same shape as the three above.
+
+One caveat about the gate, since it will be claimed again: `CacheView` renders
+under `v-show` inside `SettingsView`, so SETTINGS does mount it and a JS error
+would surface. `WebhooksView` is not in the smoke list at all. Neither is
+checked visually by anything.

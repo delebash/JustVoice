@@ -12,7 +12,7 @@ import { computed, ref, onMounted } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
-import { UiButton, UiTag } from "@delebash/llm-ui";
+import { UiButton, UiTag, UiTable } from "@delebash/llm-ui";
 import { useVoicesStore } from "../stores/voices.js";
 import { useEnginesStore } from "../stores/engines.js";
 
@@ -23,6 +23,30 @@ const stats = ref(null);
 const voices = computed(() => voicesStore.items);
 const engines = computed(() => enginesStore.items);
 const recent = ref([]);
+
+// Sortable because UiTable gives it for free; `sortable` needs an accessorKey
+// even where the header is blank, or getCanSort() is false and the caret never
+// appears (the kit documents this).
+const RECENT_COLUMNS = [
+  { id: "engine", accessorKey: "engine", header: "Engine", sortable: true },
+  { id: "voice", accessorKey: "voice", header: "Voice", sortable: true },
+  { id: "text_preview", accessorKey: "text_preview", header: "Text preview" },
+  { id: "size_bytes", accessorKey: "size_bytes", header: "Size", sortable: true },
+  { id: "created_at", accessorKey: "created_at", header: "Age", sortable: true },
+  { id: "actions", header: "", headerStyle: { width: "1%" }, cellStyle: { width: "1%", whiteSpace: "nowrap" } },
+];
+
+// `stats.scopes` is a MAP; UiTable takes an array, so the key rides along as a
+// field and becomes the row key.
+const scopeRows = computed(() =>
+  Object.entries(stats.value?.scopes || {}).map(([scope, s]) => ({ scope, ...s })),
+);
+const SCOPE_COLUMNS = [
+  { id: "scope", accessorKey: "scope", header: "Scope", sortable: true },
+  { id: "entries_on_disk", accessorKey: "entries_on_disk", header: "Entries", sortable: true },
+  { id: "bytes_on_disk", accessorKey: "bytes_on_disk", header: "Disk · MB", sortable: true },
+  { id: "actions", header: "", headerStyle: { width: "1%" }, cellStyle: { width: "1%", whiteSpace: "nowrap" } },
+];
 
 function fmtMB(bytes) {
   return (bytes / 1024 / 1024).toFixed(1);
@@ -232,61 +256,40 @@ onMounted(async () => {
     <!-- ── Recent entries (preview parity §Cache Recent entries) ── -->
     <section v-if="recent.length" class="jv-card jv-section">
       <h3 class="jv-section__title">Recent entries</h3>
-      <table class="jv-table">
-        <thead>
-          <tr>
-            <th>Engine</th>
-            <th>Voice</th>
-            <th>Text preview</th>
-            <th>Size</th>
-            <th>Age</th>
-            <th class="right"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="r in recent" :key="r.id">
-            <td><UiTag intent="ghost">{{ r.engine }}</UiTag></td>
-            <td>{{ r.voice }}</td>
-            <td class="jv-muted">{{ r.text_preview || "—" }}</td>
-            <td>{{ fmtMB(r.size_bytes || 0) }} MB</td>
-            <td>{{ fmtAge(r.created_at) }}</td>
-            <td class="right">
-              <UiButton intent="ghost" size="small" label="✕" title="Delete this entry" @click="deleteEntry(r.id)" />
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <!-- The kit grid wearing the JustVoice look (`jv-table-look`), so it is
+           indistinguishable from the hand-rolled tables still to be converted.
+           Sorting comes free, which this list never had. -->
+      <UiTable class="jv-table-look" :data="recent" :columns="RECENT_COLUMNS" data-key="id" row-hover>
+        <template #engine="{ row }"><UiTag intent="ghost">{{ row.engine }}</UiTag></template>
+        <template #text_preview="{ row }">
+          <span class="jv-muted">{{ row.text_preview || "—" }}</span>
+        </template>
+        <template #size_bytes="{ row }">{{ fmtMB(row.size_bytes || 0) }} MB</template>
+        <template #created_at="{ row }">{{ fmtAge(row.created_at) }}</template>
+        <template #actions="{ row }">
+          <div class="jv-table__actions">
+            <UiButton intent="ghost" size="small" label="✕" title="Delete this entry" @click="deleteEntry(row.id)" />
+          </div>
+        </template>
+      </UiTable>
     </section>
 
     <!-- ── By scope ── -->
     <section class="jv-card jv-section">
       <h3 class="jv-section__title">By scope</h3>
 
-      <template v-if="stats && Object.keys(stats.scopes || {}).length">
-        <table class="jv-table">
-          <thead>
-            <tr>
-              <th>Scope</th>
-              <th>Entries</th>
-              <th>Disk · MB</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(scopeStats, scope) in stats.scopes" :key="scope">
-              <td><span class="jv-mono">{{ scope }}</span></td>
-              <td>{{ scopeStats.entries_on_disk }}</td>
-              <td>{{ fmtMB(scopeStats.bytes_on_disk) }}</td>
-              <td>
-                <div class="jv-table__actions">
-                  <UiButton intent="danger-outline" size="small" label="Purge" @click="purgeScope(scope)" />
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </template>
-      <p v-else class="jv-table__empty">Cache is empty.</p>
+      <!-- `#empty` replaces the sibling `v-else` paragraph: the grid owns its
+           own empty state, so there is no second place to keep the wording. -->
+      <UiTable class="jv-table-look" :data="scopeRows" :columns="SCOPE_COLUMNS" data-key="scope" row-hover>
+        <template #scope="{ row }"><span class="jv-mono">{{ row.scope }}</span></template>
+        <template #bytes_on_disk="{ row }">{{ fmtMB(row.bytes_on_disk) }}</template>
+        <template #actions="{ row }">
+          <div class="jv-table__actions">
+            <UiButton intent="danger-outline" size="small" label="Purge" @click="purgeScope(row.scope)" />
+          </div>
+        </template>
+        <template #empty>Cache is empty.</template>
+      </UiTable>
     </section>
   </div>
 </template>

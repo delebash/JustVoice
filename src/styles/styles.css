@@ -1047,6 +1047,67 @@ progress {
   font-style: italic;
 }
 
+/* ── The JustVoice look, worn by the kit's UiTable ─────────────────────────
+   A data grid belongs on `UiTable` (sorting, filtering, `#empty`, per-row
+   slots, `:row-class`). But the kit's bare `.ui-table` and this file's
+   `.jv-table` do not look alike — different header case, cell rhythm, card
+   chrome and hover target — so converting a grid used to mean restyling the
+   view it sits in. That made the sweep off ~28 hand-rolled tables all-or-
+   nothing: convert everything at once, or leave the app visibly half-and-half.
+
+   This is the way out, and it is the kit's OWN pattern for visual variants —
+   a plain class on the component, like `ui-table-fixed` / `ui-table-sticky` /
+   `ui-table-top`. Put `jv-table-look` on a `<UiTable>` and it renders as the
+   `.jv-table` beside it. Mirrors the block above rule for rule; global, not
+   scoped, so it reaches the component's internals without `:deep`.
+
+   Use it on every converted grid until nothing hand-rolls a <table>; then the
+   two blocks can be reconciled into one. Blast radius for that sweep:
+   docs/plans/2026-08-21-blend-rework-and-consistency-audit.md §20. */
+.jv-table-look .ui-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card, 8px);
+  box-shadow: var(--shadow-1);
+}
+.jv-table-look .ui-table thead th {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.jv-table-look .ui-table thead th:first-child { border-top-left-radius: var(--r-card, 8px); }
+.jv-table-look .ui-table thead th:last-child { border-top-right-radius: var(--r-card, 8px); }
+.jv-table-look .ui-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-2);
+  vertical-align: middle;
+}
+.jv-table-look .ui-table tbody td strong { color: var(--ink); }
+.jv-table-look .ui-table tbody tr:last-child td { border-bottom: 0; }
+.jv-table-look .ui-table tbody tr:last-child td:first-child { border-bottom-left-radius: var(--r-card, 8px); }
+.jv-table-look .ui-table tbody tr:last-child td:last-child { border-bottom-right-radius: var(--r-card, 8px); }
+/* Hover paints the CELLS, matching .jv-table. The kit paints the <tr>, which
+   loses under `tbody td`'s own background, so `row-hover` alone reads as no
+   hover at all once this look is on. */
+.jv-table-look.ui-table-hover .ui-table tbody tr:hover td { background: var(--surface-2); }
+/* Inside a card the grid drops its own chrome — the card already provides it. */
+.jv-card .jv-table-look .ui-table,
+.jv-card--soft .jv-table-look .ui-table {
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+  background: transparent;
+}
+
 /* Two-column list + detail pane (preview L148-155) */
 .jv-pane {
   display: grid;

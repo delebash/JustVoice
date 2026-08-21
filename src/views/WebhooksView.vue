@@ -9,7 +9,16 @@ import { onMounted, ref } from "vue";
 import { webhooksService } from "../services/projects.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
-import { UiButton, UiInput, UiField, UiCheckbox, UiTag } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiField, UiCheckbox, UiTag, UiTable } from "@delebash/llm-ui";
+
+// Sorting comes with the kit grid; the hand-rolled table had none.
+const WEBHOOK_COLUMNS = [
+  { id: "url", accessorKey: "url", header: "URL", sortable: true },
+  { id: "events", header: "Events" },
+  { id: "enabled", accessorKey: "enabled", header: "Enabled", sortable: true },
+  { id: "last_delivery_at", accessorKey: "last_delivery_at", header: "Last delivery", sortable: true },
+  { id: "actions", header: "", headerStyle: { width: "1%" }, cellStyle: { width: "1%", whiteSpace: "nowrap" } },
+];
 
 const EVENT_OPTIONS = [
   "render.completed",
@@ -146,37 +155,27 @@ justvoice.transcribe      {audio} → text</pre>
     </div>
 
     <div class="jv-section">
-      <table class="jv-table">
-        <thead>
-          <tr>
-            <th>URL</th>
-            <th>Events</th>
-            <th>Enabled</th>
-            <th>Last delivery</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="subscriptions.length === 0">
-            <td colspan="5" class="jv-table__empty">No webhooks. Add one below.</td>
-          </tr>
-          <tr v-for="w in subscriptions" :key="w.id">
-            <td><code class="jv-mono">{{ w.url }}</code></td>
-            <td><UiTag intent="ghost">{{ w.events.length }}</UiTag></td>
-            <td>
-              <UiTag intent="success" v-if="w.enabled">Enabled</UiTag>
-              <span v-else class="jv-muted">—</span>
-            </td>
-            <td class="jv-muted">{{ w.last_delivery_at ? new Date(w.last_delivery_at).toLocaleString() : "never" }}</td>
-            <td>
-              <div class="jv-table__actions">
-                <UiButton intent="secondary" size="small" label="Test" @click="testWebhook(w)" />
-                <UiButton intent="danger-outline" size="small" label="Delete" @click="deleteWebhook(w)" />
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <!-- The kit grid in the JustVoice look. The hand-rolled empty state was a
+           `colspan` row inside <tbody>, which meant the table drew a header over
+           it; `#empty` is the component's own and needs no column count. -->
+      <UiTable class="jv-table-look" :data="subscriptions" :columns="WEBHOOK_COLUMNS" data-key="id" row-hover>
+        <template #url="{ row }"><code class="jv-mono">{{ row.url }}</code></template>
+        <template #events="{ row }"><UiTag intent="ghost">{{ row.events.length }}</UiTag></template>
+        <template #enabled="{ row }">
+          <UiTag v-if="row.enabled" intent="success">Enabled</UiTag>
+          <span v-else class="jv-muted">—</span>
+        </template>
+        <template #last_delivery_at="{ row }">
+          <span class="jv-muted">{{ row.last_delivery_at ? new Date(row.last_delivery_at).toLocaleString() : "never" }}</span>
+        </template>
+        <template #actions="{ row }">
+          <div class="jv-table__actions">
+            <UiButton intent="secondary" size="small" label="Test" @click="testWebhook(row)" />
+            <UiButton intent="danger-outline" size="small" label="Delete" @click="deleteWebhook(row)" />
+          </div>
+        </template>
+        <template #empty>No webhooks. Add one below.</template>
+      </UiTable>
     </div>
 
     <UiButton v-if="!showAdd" intent="primary" label="+ Add webhook" @click="showAdd = true" />
