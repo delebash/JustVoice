@@ -5,7 +5,7 @@ import { useApi } from "../stores/api.js";
 import { lexiconMatches } from "../services/lexiconPreview.js";
 import { pushToast, runAiEndpoint, withAiTask } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
-import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag, UiSelect, AppModal, UiTable } from "@delebash/llm-ui";
+import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag, UiSelect, AppModal, UiTable, UiSlider } from "@delebash/llm-ui";
 
 // Kit grids in the JustVoice look (`jv-table-look`).
 const LEXICON_MATCH_COLUMNS = [
@@ -868,12 +868,11 @@ onActivated(() => {
       <div class="jv-card">
         <div class="generate-view__grid">
           <UiField layout="block">
-            <template #label>
-              Speed <span class="jv-muted generate-view__label-hint">slider 0.5–2.0×</span>
-            </template>
+            <template #label>Speed</template>
             <div class="generate-view__paired">
-              <input type="range" v-model.number="speed" min="0.5" max="2.0" step="0.05" class="generate-view__range" />
-              <UiInput v-model.number="speed" type="number" size="small" class="generate-view__num" />
+              <UiSlider v-model="speed" :min="0.5" :max="2" :step="0.05" width="regular"
+                :marks="[{ value: 0.5, label: 'slower' }, { value: 1, label: 'as written' }, { value: 2, label: 'faster' }]"
+                aria-label="Speed" />
               <span class="jv-muted">×</span>
             </div>
           </UiField>
@@ -882,8 +881,10 @@ onActivated(() => {
               Pitch <span class="jv-muted generate-view__label-hint">slider ±{{ Math.max(Math.abs(pitchMin), Math.abs(pitchMax)) }} st</span>
             </template>
             <div class="generate-view__paired">
-              <input type="range" v-model.number="pitch" :min="pitchMin" :max="pitchMax" step="1" class="generate-view__range" :disabled="!pitchNative && !pitchPostProcess" />
-              <UiInput v-model.number="pitch" type="number" size="small" class="generate-view__num" :disabled="!pitchNative && !pitchPostProcess" />
+              <UiSlider v-model="pitch" :min="pitchMin" :max="pitchMax" :step="1" width="regular"
+                :disabled="!pitchNative && !pitchPostProcess"
+                :marks="[{ value: pitchMin, label: 'lower' }, { value: 0, label: 'as written' }, { value: pitchMax, label: 'higher' }]"
+                aria-label="Pitch" />
               <span class="jv-muted">st</span>
             </div>
             <span v-if="pitchNative" class="ui-field__hint">Native — engine accepts pitch directly.</span>
@@ -891,22 +892,20 @@ onActivated(() => {
             <span v-else class="ui-field__hint">Disabled — no pitch shift available for this engine.</span>
           </UiField>
           <UiField layout="block">
-            <template #label>
-              Gain <span class="jv-muted generate-view__label-hint">slider ±12 dB</span>
-            </template>
+            <template #label>Gain</template>
             <div class="generate-view__paired">
-              <input type="range" v-model.number="gain" min="-24" max="12" step="1" class="generate-view__range" />
-              <UiInput v-model.number="gain" type="number" size="small" class="generate-view__num" />
+              <UiSlider v-model="gain" :min="-24" :max="12" :step="1" width="regular"
+                :marks="[{ value: -24, label: 'quieter' }, { value: 0, label: 'unchanged' }, { value: 12, label: 'louder' }]"
+                aria-label="Gain" />
               <span class="jv-muted">dB</span>
             </div>
           </UiField>
           <UiField layout="block">
-            <template #label>
-              Temperature <span class="jv-muted generate-view__label-hint">slider 0–1</span>
-            </template>
+            <template #label>Temperature</template>
             <div class="generate-view__paired">
-              <input type="range" v-model.number="temperature" min="0" max="1" step="0.05" class="generate-view__range" />
-              <UiInput v-model.number="temperature" type="number" size="small" class="generate-view__num" />
+              <UiSlider v-model="temperature" :min="0" :max="1" :step="0.05" width="regular"
+                :marks="[{ value: 0, label: 'steady' }, { value: 1, label: 'varied' }]"
+                aria-label="Temperature" />
             </div>
           </UiField>
           <UiField layout="block">
@@ -1010,17 +1009,11 @@ onActivated(() => {
                 <span v-if="k.hint" class="jv-muted generate-view__label-hint">{{ k.hint }}</span>
               </template>
               <div class="generate-view__paired">
-                <input
-                  type="range"
-                  v-model.number="knobValues[k.key]"
+                <UiSlider
+                  v-model="knobValues[k.key]"
                   :min="k.min" :max="k.max" :step="k.step"
-                  class="generate-view__range"
-                />
-                <UiInput
-                  v-model.number="knobValues[k.key]"
-                  type="number" size="small"
-                  class="generate-view__num"
-                  :min="k.min" :max="k.max" :step="k.step"
+                  width="regular"
+                  :aria-label="k.label"
                 />
               </div>
             </UiField>
@@ -1041,17 +1034,11 @@ onActivated(() => {
                 <span v-if="k.hint" class="jv-muted generate-view__label-hint">{{ k.hint }}</span>
               </template>
               <div class="generate-view__paired">
-                <input
-                  type="range"
-                  v-model.number="knobValues[k.key]"
+                <UiSlider
+                  v-model="knobValues[k.key]"
                   :min="k.min" :max="k.max" :step="k.step"
-                  class="generate-view__range"
-                />
-                <UiInput
-                  v-model.number="knobValues[k.key]"
-                  type="number" size="small"
-                  class="generate-view__num"
-                  :min="k.min" :max="k.max" :step="k.step"
+                  width="regular"
+                  :aria-label="k.label"
                 />
               </div>
             </UiField>
@@ -1236,9 +1223,9 @@ onActivated(() => {
 }
 
 /* Paired slider + numeric input on the same row. */
+/* UiSlider carries the track AND its own editable number box now, so the row
+   is the slider plus a unit — no `flex: 1` stretch, per the layout law. */
 .generate-view__paired { display: flex; align-items: center; gap: 10px; }
-.generate-view__range  { flex: 1; cursor: pointer; }
-.generate-view__num    { width: 88px; text-align: right; font-family: var(--font-mono); }
 
 /* In-label hint — the "slider 0.5–2.0×" suffix that sits after the
    field label. The parent label is uppercase + letter-spaced via the

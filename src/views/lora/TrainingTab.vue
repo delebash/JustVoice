@@ -346,6 +346,37 @@ const DATASET_COLUMNS = [
     headerStyle: { textAlign: "right", width: "1%" },
     cellStyle: { textAlign: "right", width: "1%", whiteSpace: "nowrap" } },
 ];
+// The adapter list is TWO sources in one table — built-ins that ship with an
+// engine, and adapters trained here. They were two `v-for`s in one <tbody>,
+// which no data grid can take, so they merge into one array with a `__kind`
+// flag and one shape. That flag is also what the Actions cell branches on.
+const adapterRows = computed(() => [
+  ...builtins.value.map((b) => ({
+    __kind: "builtin", __key: `builtin-${b.id}`, src: b,
+    name: b.name, base: b.variant || b.engine, dataset: "--",
+    language: b.language || "--", epochs: b.epochs ?? "--",
+    loss: b.final_loss ?? "--", samples: b.sample_count ?? "--",
+  })),
+  ...localAdapters.value.map((j) => ({
+    __kind: "local", __key: j.job_id, src: j,
+    name: j.voice_name, base: j.engine, dataset: j.dataset_name || "--",
+    language: j.language || "--", epochs: j.epochs ?? "--",
+    loss: lastLoss(j), samples: j.validation?.accepted ?? j.sample_count ?? "--",
+  })),
+]);
+const ADAPTER_COLUMNS = [
+  { id: "name", accessorKey: "name", header: "Name", sortable: true },
+  { id: "base", accessorKey: "base", header: "Base", sortable: true },
+  { id: "dataset", accessorKey: "dataset", header: "Dataset", sortable: true },
+  { id: "language", accessorKey: "language", header: "Language", sortable: true },
+  { id: "epochs", accessorKey: "epochs", header: "Epochs", sortable: true },
+  { id: "loss", accessorKey: "loss", header: "Final Loss", sortable: true },
+  { id: "samples", accessorKey: "samples", header: "Samples", sortable: true },
+  { id: "actions", header: "",
+    headerStyle: { textAlign: "right", width: "1%" },
+    cellStyle: { textAlign: "right", width: "1%", whiteSpace: "nowrap" } },
+];
+
 // Kit grid in the JustVoice look (`jv-table-look`) for the runs list.
 const RUN_COLUMNS = [
   { id: "voice_name", accessorKey: "voice_name", header: "Adapter", sortable: true },
@@ -800,66 +831,42 @@ onUnmounted(() => {
         />
       </div>
 
-      <table v-if="adapterCount" class="jv-table">
-        <thead>
-          <tr>
-            <th>Name</th><th>Base</th><th>Dataset</th><th>Language</th>
-            <th>Epochs</th><th>Final Loss</th><th>Samples</th><th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="b in builtins" :key="'builtin-' + b.id">
-            <td>
-              <strong>{{ b.name }}</strong>
-              <UiTag intent="info" value="built-in" class="lora-badge" />
-              <UiTag v-if="!b.downloaded" intent="accent2" value="not downloaded" class="lora-badge" />
-              <span class="jv-hint lora-builtin-desc">{{ b.description }}</span>
-            </td>
-            <td><span class="jv-mono jv-muted">{{ b.variant || b.engine }}</span></td>
-            <td class="jv-muted">--</td>
-            <td class="jv-muted">{{ b.language || "--" }}</td>
-            <td>{{ b.epochs ?? "--" }}</td>
-            <td>{{ b.final_loss ?? "--" }}</td>
-            <td>{{ b.sample_count ?? "--" }}</td>
-            <td class="jv-table__actions">
+      <UiTable class="jv-table-look" :data="adapterRows" :columns="ADAPTER_COLUMNS" data-key="__key">
+        <template #name="{ row }">
+          <strong>{{ row.name }}</strong>
+          <template v-if="row.__kind === 'builtin'">
+            <UiTag intent="info" value="built-in" class="lora-badge" />
+            <UiTag v-if="!row.src.downloaded" intent="accent2" value="not downloaded" class="lora-badge" />
+            <span class="jv-hint lora-builtin-desc">{{ row.src.description }}</span>
+          </template>
+        </template>
+        <template #base="{ row }"><span class="jv-mono jv-muted">{{ row.base }}</span></template>
+        <template #language="{ row }"><span class="jv-muted">{{ row.language }}</span></template>
+        <template #actions="{ row }">
+          <div class="jv-table__actions">
+            <template v-if="row.__kind === 'builtin'">
               <UiButton
-                v-if="!b.downloaded"
+                v-if="!row.src.downloaded"
                 intent="secondary" size="small"
-                :loading="builtinBusy === b.id"
+                :loading="builtinBusy === row.src.id"
                 label="⬇ Download"
                 title="Fetch this voice's weights — it joins your library when done"
-                @click="downloadBuiltin(b)"
+                @click="downloadBuiltin(row.src)"
               />
-              <UiButton
-                v-else
-                intent="secondary" size="small" label="▶ Test"
-                @click="testThisAdapter(b.voice_id)"
-              />
-            </td>
-          </tr>
-          <tr v-for="j in localAdapters" :key="j.job_id">
-            <td>{{ j.voice_name }}</td>
-            <td><span class="jv-mono jv-muted">{{ j.engine }}</span></td>
-            <td>{{ j.dataset_name || "--" }}</td>
-            <td class="jv-muted">{{ j.language || "--" }}</td>
-            <td>{{ j.epochs ?? "--" }}</td>
-            <td>{{ lastLoss(j) }}</td>
-            <td>{{ j.validation?.accepted ?? j.sample_count ?? "--" }}</td>
-            <td class="jv-table__actions">
-              <UiButton
-                intent="secondary" size="small" label="▶ Test"
-                @click="testThisAdapter(j.final_voice_id)"
-              />
+              <UiButton v-else intent="secondary" size="small" label="▶ Test" @click="testThisAdapter(row.src.voice_id)" />
+            </template>
+            <template v-else>
+              <UiButton intent="secondary" size="small" label="▶ Test" @click="testThisAdapter(row.src.final_voice_id)" />
               <a
                 class="ui-btn ui-btn--secondary ui-btn--small"
-                :href="apiPath(`/v1/train/${j.job_id}/adapter.zip`)"
+                :href="apiPath(`/v1/train/${row.src.job_id}/adapter.zip`)"
                 title="Download the adapter weights as a ZIP"
               >⬇ Download</a>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-else class="jv-hint">No trained adapters yet.</p>
+            </template>
+          </div>
+        </template>
+        <template #empty>No trained adapters yet.</template>
+      </UiTable>
       <p v-if="adapterCount" class="jv-hint jv-mt12">
         Lower loss is not automatically the better likeness — past a point a
         voice garbles lines it has never seen. Hear it before committing.

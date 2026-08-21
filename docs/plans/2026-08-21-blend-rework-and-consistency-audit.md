@@ -1304,3 +1304,72 @@ became a syntax error — now phrased without one.
 
 As ever: the gate proves nothing throws. It does not open a dialog, expand a
 project row, or scroll a grid, so none of these conversions has been seen.
+
+---
+
+## 22 · The reuse sweep, complete
+
+### 22.1 · Raw sliders: nine to zero
+
+`grep -rn 'type="range"' src/` now returns **nothing**. The last nine were
+`GenerateView` (6) and `SettingsView` (3), and every one was the exact pattern
+`UiSlider` was added to the kit to end — a `<input type="range">` beside a
+separate `<UiInput type="number">`, kept in step by hand.
+
+Two of the component's less obvious props earned their place:
+
+- **`:marks`.** The kit's header comment names the problem: *"a range's ends
+  mean something ('neutral', 'original', 'extreme') and there was nowhere to
+  say so, so the meaning went in prose above it."* That prose was literally
+  there — `Speed <span>slider 0.5–2.0×</span>`, `Gain <span>slider ±12 dB</span>`
+  — restating the min and max in words beside the label. Deleted; the ends now
+  read *slower · as written · faster*, which says what the number means rather
+  than repeating it.
+- **`:show-number="false"`** on the three Settings rows. Those keep their
+  `.setting-row__value` readout in the row header, because that is the grammar
+  every row in that panel uses, slider or not. Precedent before pattern: making
+  slider rows the only ones without a header value would be the inconsistency.
+
+`.generate-view__range` and `.generate-view__num` are gone with them, and the
+row no longer stretches a track to fill its box (`flex: 1`), which the layout
+law forbids.
+
+### 22.2 · The last data grid: two `v-for`s become one array
+
+`lora/TrainingTab`'s adapter list was the one §21.4 held back — built-in
+adapters and locally trained ones, two `v-for`s in a single `<tbody>`, which no
+data grid can take.
+
+They now merge into one array with a `__kind` flag and one row shape, and that
+flag is what the Actions cell branches on (a built-in offers Download-or-Test;
+a trained one offers Test and a ZIP). Sorting works across both sources, which
+it could not before — the two lists were separately ordered and the table just
+concatenated them.
+
+### 22.3 · Final census
+
+**15 table blocks, down from 39. Four are DATA, all deliberate:**
+
+| block | why it stays |
+|---|---|
+| `components/lab/SmartAssignResult.vue` | bespoke compact result table |
+| `SettingsView` API tokens | headerless — `UiTable` always renders a `<thead>` |
+| `StudioView` script + render | editable grids (`:model-value` + `@update:model-value` by index; one has a row `@contextmenu`) |
+
+Plus 6 form grids and 5 layout tables that were never candidates.
+
+**Scoreboard against §8, where this started:**
+
+| | then | now |
+|---|---|---|
+| files hand-rolling `<table>` | 22 | 4 |
+| raw `<input type="range">` | 10 | **0** |
+| hand-rolled progress bars | 3 | 1 (`.jv-progress`, which is the right class for a determinate job in a cell) |
+| hand-rolled tab strips | 1 (`.jv-subnav`) | **0** |
+
+### 22.4 · Verification
+
+biome clean across 97 files · 67 unit tests · vite built · smoke 15/15 with
+zero JS errors. Unchanged caveat, and it is the honest last word on all of it:
+the gate proves nothing throws. It never moves a slider, opens a dialog, or
+expands a row.

@@ -4,7 +4,7 @@ import { ref, computed, onActivated, onMounted, watch } from "vue";
 import { useApi } from "../stores/api.js";
 import { pushToast } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
-import { AppearancePanel, DataManagement, FAMILY_LABELS, LogsPanel, SettingsShell, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, UiTable, fmtBytes, refreshRunnerModels, renderHelpMarkdown, serverUrl, useAiTasksStore } from "@delebash/llm-ui";
+import { AppearancePanel, DataManagement, FAMILY_LABELS, LogsPanel, SettingsShell, UiButton, UiInput, UiToggle, UiField, UiCheckbox, UiTag, UiSelect, UpdatesPanel, UiTable, UiSlider, fmtBytes, refreshRunnerModels, renderHelpMarkdown, serverUrl, useAiTasksStore } from "@delebash/llm-ui";
 import { loadDoc } from "../services/helpDocs.js";
 import { pickDirectory, storageGetRoot, storageRelocate } from "../services/native.js";
 import { useOnboarding } from "../stores/onboarding.js";
@@ -1347,11 +1347,13 @@ onMounted(() => {
             </div>
             <span class="setting-row__value">{{ settings.generation.max_chunk_chars }} chars</span>
           </div>
-          <input
-            type="range"
-            v-model.number="settings.generation.max_chunk_chars"
-            min="100" max="5000" step="50"
+          <UiSlider
+            v-model="settings.generation.max_chunk_chars"
+            :min="100" :max="5000" :step="50"
+            width="long" :show-number="false"
+            :marks="[{ value: 100, label: 'more calls' }, { value: 5000, label: 'more risk' }]"
             class="setting-row__slider"
+            aria-label="Chunk limit"
             @change="saveDebounced"
           />
         </div>
@@ -1370,11 +1372,13 @@ onMounted(() => {
             </div>
             <span class="setting-row__value">{{ settings.generation.stream_piece_chars }} chars</span>
           </div>
-          <input
-            type="range"
-            v-model.number="settings.generation.stream_piece_chars"
-            min="80" max="800" step="20"
+          <UiSlider
+            v-model="settings.generation.stream_piece_chars"
+            :min="80" :max="800" :step="20"
+            width="long" :show-number="false"
+            :marks="[{ value: 80, label: 'starts sooner' }, { value: 800, label: 'one render' }]"
             class="setting-row__slider"
+            aria-label="Streamed audition pieces"
             @change="saveDebounced"
           />
         </div>
@@ -1392,11 +1396,13 @@ onMounted(() => {
             </div>
             <span class="setting-row__value">{{ settings.generation.crossfade_ms === 0 ? "hard cut" : `${settings.generation.crossfade_ms} ms` }}</span>
           </div>
-          <input
-            type="range"
-            v-model.number="settings.generation.crossfade_ms"
-            min="0" max="200" step="10"
+          <UiSlider
+            v-model="settings.generation.crossfade_ms"
+            :min="0" :max="200" :step="10"
+            width="long" :show-number="false"
+            :marks="[{ value: 0, label: 'hard cut' }, { value: 50, label: 'sweet spot' }, { value: 200, label: 'blurred' }]"
             class="setting-row__slider"
+            aria-label="Crossfade between chunks"
             @change="saveDebounced"
           />
         </div>
