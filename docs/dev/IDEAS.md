@@ -6,6 +6,12 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
+- **2026-08-22 · Feature-horizon candidates live in `ROADMAP.md`** — the voicebox
+  parity gaps (dictation hotkey epic, capture→voice promote, timeline) and the
+  candidates inherited from voicebox's own roadmap (STT expansion, streaming
+  transcription, pipeline sinks, long-form dual-stream capture, …) are tracked
+  there with code receipts. Same charter as this file: listed ≠ started.
+
 - **2026-08-15 · THE TIMELINE, designed properly (replaces the inherited Stories
   surface)** — parked here by your word after the ruling-15 discussion: retract
   the tab, design the real thing here, build it later. Nothing below is started.

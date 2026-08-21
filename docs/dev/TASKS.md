@@ -171,7 +171,9 @@ WHY:    One rule produced the whole roster — *keep an engine only if it is the
 ONLY one that does something we need*. Nine variants collapse to six slots,
 each uniquely filled: Kokoro (ready voices, any hardware) · Chatterbox Turbo
 (cloning + 19 tags) · Chatterbox Multilingual (23 languages) · Qwen3 (prose
-direction + voice design — the only one) · Pocket TTS (cloning with no GPU) ·
+direction + voice design — the only one) · **LuxTTS (cloning with no GPU —
+2026-08-22 reversal: Pocket TTS rejected over HF-gated cloning weights, LuxTTS
+keeps the slot, render-proven on the new stack; see the item below)** ·
 Whisper (STT). **29.60 GB** of download surface removed (default variants;
 37.28 GB counting Dia's second checkpoint) — summed from the manifests' own
 pinned `size_bytes`, table in the plan doc §1.
@@ -180,39 +182,47 @@ working for anyone who installed them; they stop being offered.
 NOT:    Keeping MOSS for multi-speaker dialogue. That capability has **never
 been reachable** (see the finding below) and the architecture cannot use it —
 `Block.persona_id` is one persona per block and render is a per-line loop.
-NOT:    Dropping LuxTTS before Pocket TTS lands and is measured. It is the only
-cloner that works without a GPU; Kokoro is not a substitute (it cannot clone).
+NOT:    Dropping LuxTTS — the 2026-08-17 "measure Pocket first" gate fired and
+REVERSED the swap (2026-08-22): LuxTTS stays, Pocket goes. Kokoro is not a
+substitute (it cannot clone).
 BUILT:  Dia excised (§8.2 of the plan doc). OPEN: the mark-and-hide mechanism —
 a manifest deprecation flag → `EngineInfo` → UI badge + exclusion from
 QuickSetup tiers, same shape as the OS gate shipped the same day.
 GO:     given 2026-08-17 for mark-and-hide + the Pocket TTS swap
 
-### Pocket TTS replaces LuxTTS in the CPU-cloning slot
-STATE:  DECIDED 2026-08-17 — *"ok oand the pcket tts swap"*. Full record in the
-plan doc §5. **INTEGRATION BUILT 2026-08-21** ("do all of c"): adapter
-(`engines/pocket_tts/engine.py` — voice-state cache per prompt, HF_HOME
-pinned under the app data dir), facts-only manifest (pip 2.1.0 pinned; HF
-bytes 235,738,732 + 59,339 read from the tree; code MIT / weights
-CC-BY-4.0 from the model card; ISOLATION venv; cpu_adequate), capability
-row with **zero knobs** (upstream has no controls — a knob would be
-fiction), OS-gated all three platforms, discovery verified
-(/v1/engines + capabilities both list it). REMAINING: install + **measure
-on this machine** (the decision's own gate), THEN retire LuxTTS —
-never before.
-WHY:    Kyutai Labs, **MIT** (our ship license), 100M params, **6 languages** vs
-LuxTTS's English-only, **~6× realtime on 2 CPU cores**, and `pip install
-pocket-tts` against LuxTTS's three non-PyPI sources (one a personal git fork).
-It also exports voice embeddings that reload fast — which maps straight onto
-`VoiceRecord.embedding`.
-NOT:    Removing LuxTTS first. Add → measure → then retire, so there is never a
-window with no GPU-free cloner.
-NOT:    Typing "~30 MB" into a manifest. That figure is from secondary
-write-ups; the README states no size, and 30 MB for 100M params implies ~2.4
-bits/param. **Read the real weight files.**
-OPEN:   adapter · manifest · variant row · capability row · install plumbing ·
-a measured CPU render · Windows unverified (the benchmark is a MacBook Air M4)
-· **nobody has heard it** — clone fidelity is a spec-sheet judgement so far.
-GO:     given 2026-08-17
+### The environment migration + Pocket TTS reversal — Opus codes from the hand-off doc
+STATE:  DECIDED 2026-08-22. The 2026-08-17 swap is **REVERSED by the user**:
+*"i dont like requireing hf auth so pocket tts is out"* + *"no supertonic no
+pocket keep lux, verify lux works with our python and pytorch updgade"* —
+verification RAN and PASSED (LuxTTS clone render on Python 3.13 + torch
+2.9.1+cu128 CUDA, 2.39 s audio in 0.9 s, from the app's cached weights).
+The measurement gate fired exactly as designed: Pocket's CLONING weights are
+HF-gated (`kyutai/pocket-tts` gated:auto, anonymous 401 — presets ungated,
+3.2× realtime measured, but cloning was the slot). Supertonic 3 also
+rejected (no cloning in the OSS release). The wider decision — **ONE VENV
+PER ENGINE** (2026-08-22 rethink, user: *"576mb is not bad so if you still
+think per engine venvs is ok go with that"* — measured overhead ~576 MB via
+uv hardlinks; family-wide torch pin guards the 4.3 GB divergence case) on
+**Python 3.13**, **torch 2.13.0 + torchaudio 2.11.0** (proven band
+2.9.1→2.13.0; chatterbox also proven at its declared transformers 5.2.0),
+per-GPU-tier index cu126/cu130 via the kit rule, ROCm 7.2 Linux,
+AMD-Windows override path, shared venv + constraints.txt DELETED, peft
+arrives per-venv, UV_CACHE_DIR pinned, model revisions → SHAs, Pocket
+excised, packaging onedir + MAX_PATH fix, `check:engines` dev command —
+is specced step-by-step in
+**`docs/plans/2026-08-22-env-migration-implementation.md`** (read it whole
+before any edit; the WHY record is
+`docs/plans/2026-08-22-engine-environment-and-platform-research.md`).
+WHY:    User ruling: *"i expliciltly stated i want all working on crossplatfrom
+andd all acceleration this is a limitation i will not accepts"* — torch 2.6.0
+excluded RTX 50 (no cu128+ wheels) and ROCm 7.x; Python 3.12 caused the
+numpy<2 war. Every load-bearing combination was render-proven 2026-08-22.
+NOT:    TADA/MOSS un-marking or deletion (no word — they stay marked+hidden).
+NOT:    Roadmap items (`docs/dev/ROADMAP.md`) — explicitly out of this scope.
+NOT:    AMD-Windows auto-detect (documented override only; no hardware here).
+OPEN:   every slice of the implementation doc, in order (Slice 0 smoke first).
+GO:     given 2026-08-22 — *"i want opus to code this so make doc that opus can
+follow without thinking too much to do all these changes we have discussed"*
 
 ### FINDING — "✓ multi-speaker" is a false badge, true whatever happens to MOSS
 STATE:  FINDING — code-verified 2026-08-17. Raised by your question: *"moss tts

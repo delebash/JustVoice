@@ -166,6 +166,15 @@ We already own the LoRA machinery: `POST /v1/train` and `TrainView`.
 
 ### 2.5 LuxTTS → Pocket TTS — swap
 
+> **SUPERSEDED 2026-08-22 — the swap is REVERSED.** This section's own gate
+> ("add → measure → then retire") fired: measurement found Pocket's
+> voice-cloning weights are HF-gated (`kyutai/pocket-tts`, `gated: auto`,
+> anonymous download 401; presets ungated), and the user ruled *"i dont like
+> requireing hf auth so pocket tts is out … keep lux"*. LuxTTS keeps the slot,
+> render-proven on Python 3.13 + torch 2.9.1 CUDA. Full record:
+> `docs/plans/2026-08-22-engine-environment-and-platform-research.md`.
+> The analysis below stands as history.
+
 **LuxTTS holds the CPU-cloning slot today and Pocket TTS beats it on every
 axis.** The slot itself is real and must not be lost: LuxTTS is currently the
 **only cloner that works without a GPU**, and Kokoro is not a substitute
