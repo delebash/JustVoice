@@ -2,7 +2,7 @@
 <!--
   LabsView — the Tools lane collapsed into one Settings-style tabbed
   view (user decision 2026-06-12, SAME tab strip as Settings —
-  .jv-subnav): Compare · Render · Audio (the TTS domain). Train left on
+  the kit's UiTabStrip): Compare · Render · Audio (the TTS domain). Train left on
   2026-08-19 — training is a way to GET a voice, so it lives in Voices
   beside clone/design/import/blend (ruling 13); #train still lands on it.
   Legacy hashes (#compare/#renderlab/#audio) redirect here with
@@ -13,6 +13,10 @@
 -->
 <script setup>
 import { computed, onActivated, ref } from "vue";
+// The tab strip is the kit's, shared with Settings and LoRA. It used to be a
+// hand-rolled `.jv-subnav`, which had drifted to 12px — under this app's
+// minimum type size.
+import { UiTabStrip } from "@delebash/llm-ui";
 import CompareView from "./CompareView.vue";
 import RenderLabView from "./RenderLabView.vue";
 import AudioToolsView from "./AudioToolsView.vue";
@@ -57,15 +61,7 @@ onActivated(() => {
 
 <template>
   <div class="labs">
-    <div class="jv-subnav">
-      <a
-        v-for="s in SUBS"
-        :key="s.id"
-        class="jv-subnav__tab"
-        :class="{ 'jv-subnav__tab--active': activeSub === s.id }"
-        @click="activeSub = s.id"
-      >{{ s.label }}</a>
-    </div>
+    <UiTabStrip v-model="activeSub" :tabs="SUBS" aria-label="Labs" />
     <p v-if="activeEntry.lede" class="jv-content__lede">{{ activeEntry.lede }}</p>
     <component :is="activeComponent" />
   </div>
@@ -73,4 +69,9 @@ onActivated(() => {
 
 <style scoped>
 .labs { display: flex; flex-direction: column; }
+/* The 20px under the strip was `.jv-subnav`'s own `margin-bottom`. The kit
+   component sets no outer spacing — that is the consumer's business — so it
+   is restored here. A child component's ROOT element carries the parent's
+   scope id, so this scoped rule reaches it without `:deep`. */
+.ui-tabstrip { margin-bottom: 20px; }
 </style>

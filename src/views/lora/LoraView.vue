@@ -27,9 +27,14 @@ const SECTIONS = [
   { id: "training", label: "Training" },
 ];
 
-// Training is the destination, so it opens first: most visits are to
-// start a run or check one, not to build a set from scratch.
-const activeSub = ref("training");
+// Preparer opens first (user ruling 2026-08-21). It used to be Training, on
+// the reasoning that "training is the destination, so it opens first: most
+// visits are to start a run or check one, not to build a set from scratch" —
+// overruled: the tab strip reads left to right as the actual order of work,
+// and landing on the last step first is backwards. A deep link still wins:
+// `jv.lora.sub` names a tab and is applied below, so #train still lands on
+// Training in one step.
+const activeSub = ref("preparer");
 
 // Deep links (and the Preparer/Dataset hand-offs) name a sub-tab through
 // sessionStorage — the same mechanism SettingsView uses for #cache etc.

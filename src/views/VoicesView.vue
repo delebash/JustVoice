@@ -12,6 +12,10 @@ import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip, UiSelect, UiChec
 // Kit-side, because every app in the family shows a language somewhere.
 import { languageName, languageOptionsFrom } from "@delebash/llm-ui";
 import { EmptyState } from "@delebash/llm-ui";
+// The page's tab strip is the kit's, shared with Settings and LoRA. It was a
+// hand-rolled `.jv-subnav` whose tabs had drifted to 12px — under this app's
+// minimum type size.
+import { UiTabStrip } from "@delebash/llm-ui";
 // The load bar is the Engines tab's bar — same kit component over the same
 // shared task factory. This page used to fire-and-toast, so a 40-second load
 // looked like a dead button (the 2026-08-21 audit's "3 hand-rolled progress
@@ -1579,15 +1583,14 @@ function voiceTypeVariant(source) {
   <!-- ── The page's tabs: the library, then one per way to get a voice.
        Tab names are the ACT (Clone); the filter chips below are the TYPE
        it produces (Cloned). ─────────────────────────────────────────── -->
-  <div class="jv-subnav">
-    <a
-      v-for="t in PAGE_TABS"
-      :key="t.id"
-      class="jv-subnav__tab"
-      :class="{ 'jv-subnav__tab--active': acquireTab === t.id }"
-      @click="setAcquireTab(t.id)"
-    >{{ t.label }}</a>
-  </div>
+  <!-- NOT `v-model`: every tab change has to go through `setAcquireTab`, which
+       is the only door that clears the acquire form. -->
+  <UiTabStrip
+    :model-value="acquireTab"
+    :tabs="PAGE_TABS"
+    aria-label="How to get a voice"
+    @update:model-value="setAcquireTab"
+  />
 
   <!-- ── Toolbar: search + engine + type filters (library tab only) ───── -->
   <div v-show="onLibraryTab" class="voices-view__toolbar">
@@ -2269,6 +2272,11 @@ function voiceTypeVariant(source) {
   display: flex;
   flex-direction: column;
 }
+/* The 20px under the strip was `.jv-subnav`'s own `margin-bottom`. The kit
+   component sets no outer spacing — that is the consumer's business — so it
+   is restored here. A child component's ROOT element carries the parent's
+   scope id, so this scoped rule reaches it without `:deep`. */
+.ui-tabstrip { margin-bottom: 20px; }
 .voices-view__list {
   flex: 1 1 0;
   min-height: 0;
