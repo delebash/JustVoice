@@ -5,16 +5,20 @@ import { useApi } from "../stores/api.js";
 import { pushToast, serverUrl as apiPath } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
 import { readPref, writePref } from "../services/prefs.js";
-import { capableRows, engineOptionsFor, rowOptions } from "../services/capabilities.js";
+import { capableRows, engineOptionsFor, rowOptions, variantToLoad } from "../services/capabilities.js";
+import { voiceRowState } from "../services/voiceGrid.js";
 import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip, UiSelect, UiCheckbox, UiSegmented, UiSlider, UiTable } from "@delebash/llm-ui";
 // Language CODE → the name a person reads ("en-US" → American English).
 // Kit-side, because every app in the family shows a language somewhere.
 import { languageName, languageOptionsFrom } from "@delebash/llm-ui";
 import { EmptyState } from "@delebash/llm-ui";
-// The load bar is the Engines tab's bar — same kit task, same component.
-// This page used to fire-and-toast, so a 40-second load looked like a
-// dead button (the 2026-08-21 audit's "3 hand-rolled progress bars").
-import { DownloadBar, createDownloadTask } from "@delebash/llm-ui";
+// The load bar is the Engines tab's bar — same kit component over the same
+// shared task factory. This page used to fire-and-toast, so a 40-second load
+// looked like a dead button (the 2026-08-21 audit's "3 hand-rolled progress
+// bars"); it then briefly built the task inline, which was a second copy of
+// the Engines tab's, so the factory moved into services.
+import { DownloadBar } from "@delebash/llm-ui";
+import { makeEngineLoadTask } from "../services/ttsJobChannel.js";
 import { useVoicesStore } from "../stores/voices.js";
 import { runAiEndpoint } from "@delebash/llm-ui";
 import { useEnginesStore } from "../stores/engines.js";
@@ -306,12 +310,10 @@ const VOICE_COLUMNS = [
 
 /** Row STATE goes on the <tr>, through the kit's :row-class (added 2026-08-21).
  *  It briefly lived on a div inside the name cell, which dimmed one cell of an
- *  orphan row and tinted one cell of the playing row. */
+ *  orphan row and tinted one cell of the playing row. The rule itself is pure
+ *  and lives in services/voiceGrid.js, where it is unit-tested. */
 function voiceRowClass(row) {
-  return {
-    "row-orphan": orphanIds.value.includes(row.id),
-    "voices-view__row--playing": playingVoice.value?.id === row.id,
-  };
+  return voiceRowState(row, orphanIds.value, playingVoice.value?.id || "");
 }
 
 const typeCounts = computed(() => {
@@ -525,6 +527,13 @@ onMounted(loadSettingsDefault);
 // ONCE per session. Without this, coming back to Voices after loading an
 // engine elsewhere showed whatever was true the first time you opened it.
 onActivated(() => { void refresh(); });
+// This view was the one surface that did NOT join the `jv:health-refresh`
+// contract — it refetched by hand, from its own load door only, so an engine
+// loaded anywhere else left the model picker stale until you left and came
+// back. Only the capability surface is fetched here: the voices and engines
+// stores subscribe to the same event and reload themselves, so refetching
+// them from this listener would double every request.
+window.addEventListener("jv:health-refresh", () => { void loadCapabilities(); });
 onMounted(() => {
   // #train used to be a Labs tab; it lands here now (ruling 13) and the
   // redirect names the tab it wanted.
@@ -707,8 +716,8 @@ const supportsCloneText = computed(
 const engineAction = computed(() => {
   const e = selectedRow.value?.engine;
   if (!e) return null;
-  if (e.status === "not_installed") return { label: "⤓ Install", fn: () => installEngine(e.id) };
-  if (e.status !== "loaded") return { label: "Load", fn: () => loadEngine(e.id) };
+  if (e.status === "not_installed") return { kind: "install", label: "⤓ Install", fn: () => installEngine(e.id) };
+  if (e.status !== "loaded") return { kind: "load", label: "Load", fn: () => loadEngine(e.id) };
   return null;
 });
 const engineReady = computed(() => selectedRow.value?.engine?.status === "loaded");
@@ -765,15 +774,19 @@ async function installEngine(engineId) {
     pushToast({ message: `Install failed: ${e.message || e}`, kind: "error" });
   }
 }
-/** The build to load: whatever Size names, else the checkpoint the picker is
- *  on — but only when that row IS a variant (`capableRows` marks it), because
- *  a bare engine id is not a `model_variant`. Until 2026-08-21 nothing was
- *  sent at all, so Size changed the labels and loaded the same weights. */
-const variantForLoad = computed(() => {
-  const row = selectedRow.value;
-  if (!row) return null;
-  return selectedSize.value || (row.isVariant ? row.rowId : null);
-});
+// The build to load — resolved against the engine's real variant catalog, the
+// same list the Size dropdown and the language options read.
+const variantForLoad = computed(() => variantToLoad(
+  selectedRow.value,
+  selectedSize.value,
+  variantsByEngine.value[selectedRow.value?.engine.id] || [],
+));
+
+/** A variant ROW promises a specific build. Until the engine's catalog has
+ *  arrived we cannot name it, and loading anyway would quietly fall back to
+ *  the server's default — Chatterbox Multilingual when the row said Turbo.
+ *  The fetch is kicked off by the watcher on `selectedRow`, so this is brief. */
+const loadBlocked = computed(() => !!selectedRow.value?.isVariant && !variantForLoad.value);
 
 // The load task, rendered by the same kit DownloadBar the Engines tab uses.
 // One at a time: this page loads the model the picker is on, and the picker
@@ -781,47 +794,37 @@ const variantForLoad = computed(() => {
 const loadTask = ref(null);
 const loadTaskTitle = ref("");
 
+/** The build's NAME. Not `variantDetail` — that ends in "— 2.1 GB download",
+ *  and a load reads weights that are already on disk. */
+const variantNameForLoad = computed(() => {
+  const row = selectedRow.value;
+  if (!row) return "";
+  const all = variantsByEngine.value[row.engine.id] || [];
+  const v = all.find((x) => x.id === variantForLoad.value);
+  return v?.name || v?.id || row.row?.name || row.engine.name || row.engine.id;
+});
+
+// A bar left over from a failed load belongs to the model it failed on, so it
+// goes when the picker moves. Without this the error sat there wearing the new
+// model's page, and Retry would have re-loaded the OLD one.
+watch([selectedRowId, acquireTab], () => {
+  if (loadTask.value && loadTask.value.state !== "running") loadTask.value = null;
+});
+
 async function loadEngine(engineId) {
   if (loadTask.value?.state === "running") return;
-  const variantId = variantForLoad.value;
-  loadTaskTitle.value = variantDetail.value
-    || selectedRow.value?.row?.name
-    || engineId;
-  // Mirrors SpeechEnginesTab.runLoad: the load has no byte stream to poll,
-  // so the task is armed and resolved by the request itself; Cancel goes to
-  // the engine's own cancel-load door.
-  const task = createDownloadTask({
-    start: async () => {},
-    statusUrl: "",
-    fetch: async () => ({}),
-    read: () => ({ detail: "loading" }),
-    cancel: () => api.request(`/v1/engines/${engineId}/cancel-load`, { method: "POST" }),
-  });
+  loadTaskTitle.value = variantNameForLoad.value || engineId;
+  // ONE factory, shared with the Speech engines tab: `start()` IS the load, so
+  // the bar's Retry retries the real thing. See services/ttsJobChannel.js.
+  const task = makeEngineLoadTask(api, engineId, { model_variant: variantForLoad.value });
   loadTask.value = task;
-  try {
-    task.arm("Loading model");
-    try {
-      await api.request(`/v1/engines/${engineId}/load`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ device: "auto", model_variant: variantId || null }),
-      });
-    } catch (e) {
-      if (task.state === "cancelled") return;
-      task.fail(String(e?.message || e));   // the bar keeps the error
-      return;
-    }
-    task.apply({ terminal: "done" });
-    // Door 2 of the tracked "engine loads that nobody announces" finding:
-    // this refreshed its OWN stores and left every other surface stale.
-    // Any door that CHANGES engine state announces it.
-    window.dispatchEvent(new Event("jv:health-refresh"));
-    await refresh();
-    pushToast({ message: `${engineId} loaded.`, kind: "success", duration: 4500 });
-    loadTask.value = null;   // done bars are reaped — the button going away is the evidence
-  } catch {
-    // The bar carries the error (failed lingers until dismissed).
-  }
+  // The task announces `jv:health-refresh` itself (see the channel), so a
+  // Retry from the bar — which never comes back through here — updates every
+  // surface too. Door 2 of the tracked "engine loads that nobody announces".
+  await task.start();
+  if (task.state !== "done") return;   // error/cancelled — the bar says which, and offers Retry
+  pushToast({ message: `${engineId} loaded.`, kind: "success", duration: 4500 });
+  loadTask.value = null;   // done bars are reaped — the "loaded" tag is the evidence
 }
 
 // ── The reference clip: drop it, browse for it, paste a URL, or record
@@ -2009,17 +2012,23 @@ async function resetAllTweaks() {
                 <UiButton
                   v-if="engineAction"
                   intent="secondary"
-                  :disabled="loadTask?.state === 'running'"
+                  :disabled="engineAction.kind === 'load' && (loadTask?.state === 'running' || loadBlocked)"
                   :label="engineAction.label"
-                  :title="`${engineAction.label} ${selectedRow?.engine?.name || selectedEngine}`"
+                  :title="engineAction.kind === 'load' && loadBlocked
+                    ? 'Reading this model\'s builds…'
+                    : `${engineAction.label} ${selectedRow?.engine?.name || selectedEngine}`"
                   @click="engineAction.fn"
                 />
                 <UiTag v-else-if="engineReady" intent="success" value="loaded" />
               </div>
               <!-- The same kit DownloadBar the Engines tab renders, over the
-                   same kit task — progress, cancel and the error all read
-                   identically wherever a model loads. -->
-              <DownloadBar v-if="loadTask" :title="loadTaskTitle" :task="loadTask" />
+                   same shared task — progress, cancel, Retry and the error all
+                   read identically wherever a model loads. Guarded on `state`,
+                   not on the task's existence: Dismiss resets a terminal task
+                   to the empty state, and a bar with no state is a titled
+                   nothing. (That is the kit's own idiom — QuickSetup and
+                   LuBookSearchSetup guard the same way.) -->
+              <DownloadBar v-if="loadTask?.state" :title="loadTaskTitle" :task="loadTask" done-label="Loaded" />
               <p v-if="variantDetail" class="jv-hint">{{ variantDetail }}</p>
               <div class="jv-field-row">
                 <UiField label="Name" layout="block">

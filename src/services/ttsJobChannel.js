@@ -64,3 +64,48 @@ export function ttsJobChannel(api, engineId, startBody = {}) {
 export function makeEngineDownloadTask(api, engineId, startBody = {}) {
   return createDownloadTask(ttsJobChannel(api, engineId, startBody));
 }
+
+// ── Loading an engine's weights ──────────────────────────────────────────────
+//
+// A load is NOT a job: there is no `/v1/jobs/{id}` to poll, so the request's own
+// promise is the entire lifecycle. That makes `start()` the work and the first
+// status reading terminal.
+//
+// This lives here, shared, because it was written twice — once on the Speech
+// engines tab and once on the Voices page — and both copies faked the channel
+// with `start: async () => {}` and an empty `statusUrl`. The bar was driven by
+// hand around it (`arm` … `await request` … `apply({terminal:"done"})`), which
+// meant DownloadBar's **Retry** re-entered `start()`, found a no-op, and then
+// polled a stub 1000 times at 1.2 s: twenty minutes of "loading" that loaded
+// nothing. With the real request as `start()`, Retry retries the load.
+export function engineLoadChannel(api, engineId, { model_variant = null, device = "auto" } = {}) {
+  return {
+    start: async () => {
+      await api.request(`/v1/engines/${engineId}/load`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device, model_variant }),
+      });
+      // The announce lives HERE, not at the call site, because DownloadBar's
+      // Retry calls start() directly — outside whatever `await task.start()`
+      // the caller wrote. A retry that succeeded would otherwise load the
+      // model and leave every surface showing "not loaded".
+      window.dispatchEvent(new Event("jv:health-refresh"));
+    },
+    // No status endpoint: the fetch is a stub and the first read is terminal,
+    // so the poll loop ends on its first pass once start() resolves.
+    statusUrl: "",
+    fetch: async () => ({}),
+    read: () => ({ terminal: "done" }),
+    cancel: () => api.request(`/v1/engines/${engineId}/cancel-load`, { method: "POST" }),
+    // The only two captions this bar will ever show, so they name the
+    // operation rather than a download's "Getting ready" / "Ready".
+    armPhase: "Loading model",
+    donePhase: "Loaded",
+  };
+}
+
+/** A ready task for loading one engine (optionally one variant of it). */
+export function makeEngineLoadTask(api, engineId, opts = {}) {
+  return createDownloadTask(engineLoadChannel(api, engineId, opts));
+}

@@ -548,16 +548,19 @@ Fixed by inverting the pair: the body is now `resetAcquireForm()` and
 `setAcquireTab()` calls it. That is the correct home because `setAcquireTab` is
 the **only** way `acquireTab` changes — verified by grep, three callers:
 
-| Caller | Line | Why it wants the reset |
+| Caller | Where | Why it wants the reset |
 |---|---|---|
-| the tab strip | `:1533` (template) | the case that was broken |
-| return to the library after a save | `:1047` | the form is finished with |
-| the `#train` deep-link | `:521`, inside `onMounted` | arrives with nothing typed |
+| the tab strip | the `PAGE_TABS` `@click` in the template | the case that was broken |
+| return to the library after a save | the tail of `saveCandidate` | the form is finished with |
+| the `#train` deep-link | the `jv.voices.acquireTab` `onMounted` | arrives with nothing typed |
 
-Ordering checked: `:1047` builds its success toast from `voiceName` **before**
-the call, so clearing the form cannot blank the message. `:521` runs inside
-`onMounted`, after setup, so the refs `resetAcquireForm` touches are past their
-temporal dead zone.
+(Named by function, not by line: this document outlived its own line numbers
+within the hour — the edits it describes moved them.)
+
+Ordering checked: the save path builds its success toast from `voiceName`
+**before** the call, so clearing the form cannot blank the message. The
+deep-link runs inside `onMounted`, after setup, so the refs `resetAcquireForm`
+touches are past their temporal dead zone.
 
 ### 17.2 · `UiTable` per-row class hook (§9.2) — closed, kit side and app side
 
@@ -627,7 +630,7 @@ while a load is running.
 | `biome check` on the kit's `UiTable.vue` | clean |
 | `npm run build:vite` | built |
 | `npm run test:unit` | 53 passed, 7 files |
-| `npm run smoke` (gate) | **VOICES ✓ 0 errors.** 7 other views fail — see below |
+| `npm run smoke` (gate) | **15/15, zero JS errors** — but only once pointed at the right data dir; see §17.5 |
 | built-CSS specificity | measured, §17.2 |
 | real app | `npm run tauri dev`, real data dir `E:\Dev\Web\JustVioce\data` |
 
@@ -638,7 +641,7 @@ environment.** `justvoice-server serve` fails with *No such command 'serve'*.
 The console script on PATH (`F:\Python312\Scripts\justvoice-server`) still reads
 `from justvoice.cli import app` — the Typer domain CLI, which has only
 `default-settings`, `open-api` and `self-test`. `pyproject.toml` has pointed at
-`justvoice.serve:main` since the P3 entry-point move (2026-08-08), so **the
+`justvoice.serve:main` since the P3 entry-point move (`6347769`, 2026-08-07), so **the
 global editable install is stale**. Two ways through, neither of which touches
 the environment:
 
@@ -649,20 +652,22 @@ the environment:
 The desktop app is unaffected: `src-tauri/src/lib.rs:281` prefers the repo venv's
 copy and only falls back to PATH.
 
-**The dev database predates the `voice_instruct` split.** Seven smoke views
-(Projects, Chapters, Studio, Generate, Personas, Lexicons, Presets) fail with
-one shared cause:
+**CORRECTED (same day, §18.1): there are TWO data dirs in dev, and the gate
+defaults to the wrong one.** Seven smoke views (Projects, Chapters, Studio,
+Generate, Personas, Lexicons, Presets — every view that fetches
+`/v1/personas`) failed with:
 
 ```
 sqlalchemy.exc.OperationalError: (sqlite3.OperationalError)
 no such column: personas.voice_instruct
 ```
 
-Every one of those views fetches `/v1/personas`. This is the data reset the
-voice-workbench Slice A already said it required, not a regression from this
-pass — the models declare the column, the DB on disk does not, and the project
-rule is *no migrations, the user resets*. Voices itself does not read personas,
-which is why it passes.
+This section first concluded that the DB simply predated the `voice_instruct`
+split and needed the reset Slice A had already called for. That was **wrong**.
+The reset had been done — on the DESKTOP app's data dir. The headless server,
+launched with no `--data-dir`, resolves somewhere else entirely, and that
+second database was two weeks old. Pointed at the app's dir, the same gate run
+passes 15/15. See §18.1 for why the two diverge.
 
 ### 17.6 · Files changed in this pass
 
@@ -671,3 +676,199 @@ weights Load fetches; the load bar and its Cancel) · this document.
 
 **Kit**: `ui/src/common/components/UiTable.vue` — `:row-class` added. Additive;
 every existing consumer renders unchanged.
+
+---
+
+## 18 · Self-review pass, 2026-08-21 (all fifteen findings)
+
+A review of §17's own work, requested after it shipped. Fifteen findings; all
+but one fixed in this pass.
+
+### 18.1 · Why headless and the desktop app use different databases
+
+Not a bug in either implementation — a dev-only divergence between two correct
+ones. The policy (user ruling 2026-08-14) is that data lives **beside the app,
+in the install dir**. It is implemented twice because Rust must resolve the root
+before the Python process exists:
+
+| | resolves to | in dev that is |
+|---|---|---|
+| `default_data_root()`, `src-tauri/src/lib.rs` | `exe_dir()/data` | `src-tauri/target/debug/data` |
+| `resolve_data_dir(source_root=…)` → `install_dir()`, kit `data_paths.py` | the frozen exe's folder, **else the source checkout root** | `<repo>/data` |
+
+In a packaged build both are the frozen executable's folder — the **same** path,
+exactly as designed. Unfrozen, "beside the app" means two different things: the
+checkout root, versus the Cargo build directory the debug binary happens to sit
+in. The shell papers over it by handing its answer down as `JUSTVOICE_DATA_DIR`
+(`spawn_sidecar`, which also passes the `serve` argument), so the sidecar always
+agrees with the shell. A bare headless run has no such variable and falls
+through to the checkout root.
+
+`paths.py` says "keep the two in lock-step". They are, for the case that
+ships. Nobody wrote down that they diverge in development — hence §17.5's wrong
+conclusion.
+
+**Consequence worth acting on separately: ~50 GB of real data lives inside
+`src-tauri/target/debug/`** — the database, voices, personas, lexicons,
+speech-cache and downloaded models. `cargo clean`, a `target/` wipe or a
+toolchain change destroys all of it. That is not a documented decision; it is
+what `exe_dir()` means in a debug build. Not fixed here — it is a design call,
+not a defect to patch quietly.
+
+The gate recipe in `CLAUDE.md` now passes `--data-dir` explicitly, because
+without it the gate tests a database the app never opens and reports failures
+that are not real.
+
+### 18.2 · The copy that was made instead of a shared door
+
+§17.3 reused the kit's `DownloadBar` and `createDownloadTask` — and then
+**pasted `SpeechEnginesTab.runLoad`'s orchestration** into `VoicesView`. Reusing
+the component while duplicating the wiring around it is the same failure the
+audit exists to stop.
+
+Both copies faked the channel, because an engine load has no status endpoint:
+
+```js
+start: async () => {},           // ← the load did NOT happen here…
+statusUrl: "",
+read: () => ({ detail: "loading" }),
+```
+
+…the load happened in hand-written code *around* the task (`arm` … `await
+request` … `apply({terminal:"done"})`). Which meant **`DownloadBar`'s Retry was
+worse than useless**: `retry()` calls `start()`, which re-armed the bar and then
+polled the stub — `maxPolls` 1000 at `pollMs` 1200 — **twenty minutes of
+"loading" that loaded nothing**, on both pages.
+
+Fixed by making the request the channel's `start()`, in ONE place:
+`services/ttsJobChannel.js` → `engineLoadChannel` / `makeEngineLoadTask`, beside
+the `makeEngineDownloadTask` that was already there. With no status endpoint the
+first read is terminal, so the poll loop ends on its first pass once the request
+resolves. Retry now retries the load. Both call sites collapsed to:
+
+```js
+const task = makeEngineLoadTask(api, engineId, { model_variant });
+await task.start();
+if (task.state !== "done") return;   // the bar says which, and offers Retry
+```
+
+Two kit gaps surfaced doing it, both additive:
+- `createDownloadTask` gained `armPhase`. `start()` hardcoded "Getting ready",
+  which is right for a download about to report bytes but wrong for an
+  operation whose start IS the work — that caption is the only one a load's bar
+  will ever show, so it now reads "Loading model".
+- `DownloadBar` gained `doneLabel`. It finished with the canon word "Ready";
+  a load finishes **"Loaded"**, agreeing with the badge the row shows next
+  (user: *"instead of saying ready say loaded, be consistant"*).
+
+### 18.3 · A dismissed bar left a titled nothing
+
+`task.dismiss()` calls `reset()`, which returns the task to the empty state
+**in place** — the object stays in its container. Both consumers rendered on the
+task's existence (`v-if="loadTask"`, and every row in `taskRowsFor`), so
+dismissing a failed load left a bar with a title and a 0 % track.
+
+The kit's own consumers already guard on `task.state` (QuickSetup,
+LuBookSearchSetup, BootModelLoad). Both JustVoice sites now use that idiom
+rather than the kit component growing a root `v-if` — precedent before pattern.
+
+### 18.4 · Smaller corrections in the same pass
+
+| # | Was | Now |
+|---|---|---|
+| 6 | the load bar's title came from `variantDetail`, which ends "— 2.1 GB download" | `variantNameForLoad` — a load reads weights already on disk |
+| 12 | a failed load's bar survived a change of model or tab, so its Retry would have re-loaded the *old* one | cleared by a watcher on the picker and the tab |
+| 13 | `:disabled` sat on the shared Install/Load button, so a running load also disabled Install | `engineAction` now carries a `kind`, and only `load` disables |
+| 14 | §17 cited line numbers my own edits had already moved | cites function names |
+| 8 | `design-law.md` still named `.jv-table` canonical for "library CRUD" | points at `UiTable`; `.jv-table` marked legacy-until-swept |
+| 9 | the gate recipe in `CLAUDE.md` had no `--data-dir` | passes it, with §18.1's reason |
+
+### 18.5 · Coverage, since the gate does not reach any of this
+
+The smoke gate visits views and counts JS errors. It never changes a tab, never
+loads a model and never plays a voice — so **it did not exercise a single one of
+§17's three fixes**. "Gate green" meant "nothing else broke", which is worth
+much less than it sounded.
+
+Two rules were therefore lifted out of the view into `services/capabilities.js`,
+where they are pure and tested (`capabilities.test.js`, 9 cases):
+
+- `variantToLoad(row, selectedSize, variants)` — see §18.8, which is why it
+  takes the catalog as a third argument.
+- `voiceRowState(row, orphanIds, playingId)` — including that an id-less row
+  must not match an empty "nothing is playing" id.
+
+### 18.6 · Not fixed, and why
+
+**The `Co-Authored-By` trailer on kit commit `a3f913a`** (the `--focus-ring`
+change, which came from the parallel session, not from this one) is inaccurate.
+It is **pushed**, and rewriting pushed history to correct a trailer is a worse
+trade than the error — other work may already sit on it. Recorded here instead:
+*`a3f913a` was authored by the parallel session; this session only committed
+it.*
+
+### 18.7 · Files changed in this pass
+
+**JustVoice**: `src/views/VoicesView.vue` · `src/components/SpeechEnginesTab.vue` ·
+`src/services/ttsJobChannel.js` · `src/services/capabilities.js` ·
+`src/services/capabilities.test.js` (new) · `CLAUDE.md` ·
+`docs/dev/design-law.md` · this document.
+
+**Kit**: `ui/src/composables/useDownloadTask.js` (`armPhase`) ·
+`ui/src/common/components/DownloadBar.vue` (`doneLabel`). Both additive.
+
+### 18.8 · The bug the self-review itself shipped, caught by re-verifying against a running server
+
+§17.3 resolved the `model_variant` as *"`selectedSize`, else the picker's
+`rowId` — but only when that row is a variant"*, guarded on `capableRows`'
+`isVariant`. That guard is real but it answers the wrong question.
+
+`isVariant` means **the row id is not an engine id**. It does *not* mean the row
+id is a loadable build. Queried against a live server, the two id spaces are
+plainly different:
+
+| capability row id | actual variant ids |
+|---|---|
+| `chatterbox-turbo` | `chatterbox-turbo-v1` |
+| `chatterbox-nano` | `chatterbox-nano-v1` |
+| `qwen3-base` | `qwen3-base-1.7b`, `qwen3-base-0.6b` |
+| `kokoro` (an ENGINE id) | `kokoro-v1.0`, `kokoro-v1.0-int8` |
+
+A capability row names a checkpoint **family**; a variant id carries a build
+suffix. So picking **Chatterbox Turbo** would have sent `model_variant:
+"chatterbox-turbo"`, and `engines/chatterbox/engine.py` selects its model class
+like this:
+
+```python
+self._variant = variant or "chatterbox-multilingual-v2"
+self._is_nano  = "nano" in self._variant
+self._is_turbo = self._is_nano or self._variant == "chatterbox-turbo-v1"
+```
+
+`"chatterbox-turbo" == "chatterbox-turbo-v1"` is False, so Turbo would have
+loaded the **Multilingual** class under the label "Turbo" — no error, wrong
+model. That is worse than the original defect, which merely sent nothing and got
+the server's default.
+
+`variantToLoad` now resolves against the engine's real catalog, the same
+`id === selected || id === rowId || id.startsWith(rowId + "-")` order the Size
+hint and the language list already used, and returns `null` when nothing
+matches so the server keeps its default.
+
+Two consequences worth keeping:
+
+- **The unit tests written for it asserted the bug.** `it("sends the checkpoint
+  when the row IS a variant")` expected `"qwen3-base"`. A test written from the
+  same wrong belief as the code confirms the belief, not the behaviour. The
+  suite now uses the ids read off a running server, and includes a case whose
+  only job is to fail if a bare row id is ever returned.
+- **A race existed underneath it.** The catalog is fetched by a watcher on
+  `selectedRow`, so clicking Load in the moment before it lands resolves to
+  `null` and silently loads the server's default — again, a different model than
+  the row names. Load is now disabled while a variant row has no resolvable
+  build, with the title "Reading this model's builds…".
+
+The renderer gate cannot see any of this: it never opens the picker and never
+loads a model. It was caught by querying `/v1/engines/capabilities` and
+`/v1/engines/{id}/models` on a running server and comparing the two id spaces
+by hand — which is the only reason this section exists.

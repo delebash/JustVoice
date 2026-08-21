@@ -30,8 +30,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useApi } from "../stores/api.js";
 import { DownloadBar, UiButton, confirmDialog, openExternal, openPath, promptDialog, pushToast } from "@delebash/llm-ui";
-import { makeEngineDownloadTask } from "../services/ttsJobChannel.js";
-import { createDownloadTask } from "@delebash/llm-ui";
+import { makeEngineDownloadTask, makeEngineLoadTask } from "../services/ttsJobChannel.js";
 // The row's three-dot menu — reka-ui's DropdownMenu, the same import shape
 // as the kit's LuModelCatalog (the portal escapes the group's overflow clip).
 import {
@@ -76,14 +75,21 @@ const variants = reactive({});
 // catalog's rule — the row flipping to "on disk"/"loaded" is the evidence),
 // error/cancelled bars linger for Retry/Dismiss.
 const dlTasks = reactive({});
+// Which verb made each task, so the bar's finished word is honest: a download
+// ends "Ready", a load ends "Loaded" (user, 2026-08-21: "instead of saying
+// ready say loaded, be consistant").
+const taskKind = reactive({});
 const _engineKey = (engineId) => engineId;
 const _variantKey = (engineId, variantId) => `${engineId}/${variantId}`;
 function taskRowsFor(engineId) {
   const rows = [];
-  if (dlTasks[engineId]) rows.push({ key: engineId, variantId: null, task: dlTasks[engineId] });
+  // A task with no state is a DISMISSED one: dismiss() resets it in place and
+  // leaves it in the map, and an unguarded bar then renders a titled nothing.
+  const live = (k) => dlTasks[k]?.state;
+  if (live(engineId)) rows.push({ key: engineId, variantId: null, task: dlTasks[engineId] });
   const prefix = `${engineId}/`;
   for (const k of Object.keys(dlTasks)) {
-    if (k.startsWith(prefix)) rows.push({ key: k, variantId: k.slice(prefix.length), task: dlTasks[k] });
+    if (k.startsWith(prefix) && live(k)) rows.push({ key: k, variantId: k.slice(prefix.length), task: dlTasks[k] });
   }
   return rows;
 }
@@ -96,7 +102,7 @@ function busyAnywhere(engineId, variantId) {
 }
 function clearTerminalTask(key) {
   const t = dlTasks[key];
-  if (t && t.state !== "running") delete dlTasks[key];
+  if (t && t.state !== "running") { delete dlTasks[key]; delete taskKind[key]; }
 }
 
 // ── Default engine (settings.engines.default_tts_engine — the ONE source;
@@ -278,7 +284,7 @@ async function installEngine(engine) {
     pushToast({ message: `${engine.name || engine.id} installed.`, kind: "success", duration: 4000 });
     delete variants[engine.id];
     await refresh();
-    delete dlTasks[key]; // done bars are reaped (the LLM catalog's rule) — error/cancelled linger for Retry/Dismiss
+    delete dlTasks[key]; delete taskKind[key]; // done bars are reaped (the LLM catalog's rule) — error/cancelled linger for Retry/Dismiss
   } catch {
     // The task row carries the error (failed lingers until dismissed) — the
     // pre-conversion code surfaced no toast here either.
@@ -291,14 +297,13 @@ async function runLoad(engine, variantId) {
   const key = _variantKey(engine.id, variantId);
   clearTerminalTask(key);
 
-  const task = createDownloadTask({
-    start: async () => {},
-    statusUrl: "",
-    fetch: async () => ({}),
-    read: () => ({ detail: "loading" }),
-    cancel: () => api.request(`/v1/engines/${engine.id}/cancel-load`, { method: "POST" }),
-  });
+  // ONE factory, shared with the Voices page (services/ttsJobChannel.js). It
+  // used to be built inline here AND there, and both copies faked `start()`,
+  // so the bar's Retry re-armed a poll over a stub instead of retrying the
+  // load. `start()` is now the load request itself.
+  const task = makeEngineLoadTask(api, engine.id, { model_variant: variantId || null });
   dlTasks[key] = task;
+  taskKind[key] = "load";
   // NO global task strip (user ruling 2026-08-15). That strip is the AI task
   // panel — the kit opens it from ONE place, `services/aiFeature.js`, for
   // runs against `/v1/ai/run|stream`, i.e. QUERYING a model. The kit's own
@@ -313,28 +318,16 @@ async function runLoad(engine, variantId) {
   // it already owns. The row's DownloadBar (rendered from `taskRowsFor`)
   // carries progress, cancel and the error, exactly as it does for the LLM
   // catalog. Long TTS RENDER jobs keep their strip; that is what it is for.
-  try {
-    task.arm("Loading model");
-    try {
-      await api.request(`/v1/engines/${engine.id}/load`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ device: "auto", model_variant: variantId || null }),
-      });
-    } catch (e) {
-      if (task.state === "cancelled") return;
-      task.fail(String(e?.message || e));   // the row's bar keeps the error
-      return;
-    }
-    task.apply({ terminal: "done" });
-    window.dispatchEvent(new Event("jv:health-refresh"));
-    delete variants[engine.id];
-    await refresh();
-    pushToast({ message: `${engine.name || engine.id} loaded.`, kind: "success", duration: 4500 });
-    delete dlTasks[key];
-  } catch {
-    // The task row carries the error (failed lingers until dismissed).
-  }
+  // The task announces `jv:health-refresh` itself now (see engineLoadChannel),
+  // so a Retry from the row's bar reaches every surface too; this function no
+  // longer dispatches it a second time.
+  await task.start();
+  if (task.state !== "done") return;   // error/cancelled — the row's bar says which, and offers Retry
+  delete variants[engine.id];
+  await refresh();
+  pushToast({ message: `${engine.name || engine.id} loaded.`, kind: "success", duration: 4500 });
+  delete dlTasks[key];
+  delete taskKind[key];   // a later DOWNLOAD reuses this key; a stale "load" would mislabel its bar
 }
 
 async function unload(engine) {
@@ -498,7 +491,7 @@ async function downloadOnly(engine, variantId) {
     pushToast({ message: `${variantNameFor(engine.id, variantId)} downloaded.`, kind: "success", duration: 4000 });
     delete variants[engine.id];
     await refresh();
-    delete dlTasks[key]; // done bars are reaped — the row itself now says "on disk"
+    delete dlTasks[key]; delete taskKind[key]; // done bars are reaped — the row itself now says "on disk"
   } catch {
     // The task row carries the error (failed lingers until dismissed).
   }
@@ -827,6 +820,7 @@ onBeforeUnmount(() => {
                install/download/load renders identically to the LLM side. -->
           <DownloadBar v-for="row in taskRowsFor(e.id)" :key="row.key"
             :title="row.variantId ? variantNameFor(e.id, row.variantId) : `${e.name || e.id} · engine setup`"
+            :done-label="taskKind[row.key] === 'load' ? 'Loaded' : ''"
             :task="row.task" />
 
           <!-- The Device select (Q2, decided): a real setting the ONE load

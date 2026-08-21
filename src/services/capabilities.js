@@ -93,3 +93,34 @@ export function engineOptionsFor(rows, engines, field) {
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
     .map(({ label, value }) => ({ label, value }));
 }
+
+/**
+ * The `model_variant` to send when loading the engine behind a capability row.
+ *
+ * It is resolved against the engine's REAL variant catalog, and returns null
+ * when nothing matches so the server falls back to its own default. Never
+ * derive it from the row id alone: a capability row id names a checkpoint
+ * FAMILY ("chatterbox-turbo", "qwen3-base"), while a loadable variant id
+ * carries a build suffix ("chatterbox-turbo-v1", "qwen3-base-0.6b").
+ *
+ * That distinction is not cosmetic. `chatterbox/engine.py` selects its model
+ * class with `variant == "chatterbox-turbo-v1"`, so passing the family id
+ * "chatterbox-turbo" silently loads the MULTILINGUAL class instead — the wrong
+ * model, with no error. The first cut of this function returned `row.rowId`
+ * whenever `isVariant` was true and would have done exactly that.
+ *
+ * Same resolution order the Size hint and the language list already use:
+ * an explicit Size choice wins, else the family's first build.
+ *
+ * @param {object|null} row           a `capableRows` entry
+ * @param {string}      selectedSize  the Size dropdown's variant id, or ""
+ * @param {Array}       variants      GET /v1/engines/{id}/models → `variants`
+ * @returns {string|null}
+ */
+export function variantToLoad(row, selectedSize, variants) {
+  if (!row) return null;
+  const all = variants || [];
+  const hit = all.find((v) => v.id === selectedSize)
+    || all.find((v) => v.id === row.rowId || v.id.startsWith(`${row.rowId}-`));
+  return hit?.id || null;
+}

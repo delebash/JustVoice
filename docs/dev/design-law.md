@@ -35,9 +35,9 @@ deleted 2026-06-23 and there is no local `components/ui/` directory. What follow
 | `.jv-subnav` (+ `__tab`, `__tab--active`) | a VIEW's own tab strip (Voices, Labs) |
 | kit `SettingsShell` | a MENU INSIDE a view — sections as data, top strip, full-width panel. Settings' General/Appearance/… strip, and the LoRA tab's Preparer/Dataset/Training. Not `.jv-subnav`: the hand-rolled one died with the parity batch |
 | `.jv-logbox` (+ `--short`, `__line`, `__empty`) | a background job narrating itself while it runs (the LoRA Preparer + trainer). NOT the kit `LogsPanel`, which is server log FILES per day with download |
-| `.jv-progress` (+ `__track`, `__track--wide`, `__bar`, `__bar--done`, `__bar--fail`) | a determinate job's completion, in a table cell or under a heading |
+| `.jv-progress` (+ `__track`, `__track--wide`, `__bar`, `__bar--done`, `__bar--fail`) | a determinate job's completion, in a table cell or under a heading. **Not for a long-running operation with its own lifecycle** — install, download, load and anything cancellable use the kit `DownloadBar` over a `createDownloadTask`, so every one of them looks and behaves the same |
 | `.jv-lib-toolbar` | search → filter chips → data dropdowns → spacer → actions, with "+ New" rightmost |
-| `.jv-table` (+ `__actions`, `__empty`) | library CRUD, row-click opens the full-form dialog |
+| ~~`.jv-table`~~ (+ `__actions`, `__empty`) | **LEGACY — do not reach for this in new work.** A data grid is the kit `UiTable`: it owns sorting, filtering, pagination, the empty state, per-cell and per-header slots, `:full-width-row` and `:row-class`. The voices grid moved 2026-08-21; ~21 files still hand-roll a `<table>` and are a pending sweep, so the class stays defined until they are converted. `__actions` / `__empty` remain valid as CELL classes inside a `UiTable` slot |
 | `.jv-card` (+ `__header`, `__title`, `__body`, `--bare`, `--flat`, `--soft`) | grouping controls into a section |
 | `.jv-overlay` / `.jv-modal` | modal shells |
 | `.jv-fill` | pane views that fill the content area (instead of `height: 100%`) |
