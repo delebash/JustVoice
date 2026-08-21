@@ -241,9 +241,11 @@ const engineMeta = computed(() => {
   for (const e of engines.value || []) m[e.id] = e;
   return m;
 });
+// The isolation half of this test went 2026-08-22 — every engine builds
+// its own environment now, so it was always true and narrowed nothing.
 function needsInstall(v) {
   const e = engineMeta.value[v.engine];
-  return !!e && e.isolation === "venv" && e.status === "not_installed";
+  return !!e && e.status === "not_installed";
 }
 
 // Language + gender filters (2026-08-21). Both fields already ship on every

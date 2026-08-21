@@ -369,21 +369,26 @@ dependencies into it. Four things followed, and all four were real:
 
 ### What it costs on disk
 
-Much less than it sounds. All five engines installed, measured on a real
-machine (2026-08-22):
+Much less than it sounds, and the honest answer needs two numbers, because
+they mean different things. Measured with all five engines installed
+(2026-08-22):
 
-| | On disk |
+| | |
 |---|--:|
-| The five environments together | **5,284 MB** |
-| The largest one alone (Chatterbox) | 4,800 MB |
-| **The other four, between them** | **484 MB** |
-| What they would cost with no sharing | 18,750 MB |
+| What the five folders report (what Explorer shows you) | 5,284 MB |
+| What they actually add, beyond the download cache | **431 MB** |
+| What they would cost with no sharing at all | 18,750 MB |
 
-Every engine names the **same PyTorch version** (2.13.0), and JustVoice fills
-a new environment by hard-linking out of one download cache — so the second,
-third and fourth environments reuse the same PyTorch bytes rather than
-copying them. Install one engine and you have paid for PyTorch; the rest are
-close to free.
+The gap between the first two rows is the whole trick. Every engine names the
+**same PyTorch version** (2.13.0), and JustVoice fills a new environment by
+*hard-linking* out of one download cache rather than copying — so the same
+bytes appear inside several folders while existing once on the drive. A file
+listing counts them each time; the drive does not. Per engine, the bytes that
+are genuinely new run from 14 MB (Kokoro, which uses no PyTorch) to 120 MB.
+
+One consequence worth knowing: deleting an engine's environment frees much
+less than its folder size suggests, because most of what is in it is shared
+with the cache. The cache is where those bytes actually live.
 
 Two things that saving depends on. The cache has to sit on the same drive as
 the environments, which JustVoice arranges — both live inside your install

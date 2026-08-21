@@ -429,11 +429,13 @@ const filteredVoices = computed(() => {
   const q = voiceSearchQuery.value.trim().toLowerCase();
   return voices.value
     .filter((v) => {
-      // Voices of not-installed isolated engines can't audition — keep
-      // them out of the cast library entirely (they live on Voices with
-      // a NEEDS INSTALL tag).
+      // Voices of a not-installed engine can't audition — keep them out
+      // of the cast library entirely (they live on Voices with a NEEDS
+      // INSTALL tag). The isolation test this used to also carry went
+      // 2026-08-22: every engine has its own environment now, so
+      // "isolated" no longer narrows anything.
       const e = engineMetaById.value[v.engine];
-      return !(e && e.isolation === "venv" && e.status === "not_installed");
+      return !(e && e.status === "not_installed");
     })
     .filter((v) => !voiceEngineFilter.value || v.engine === voiceEngineFilter.value)
     .filter((v) => !q || (v.name || "").toLowerCase().includes(q) || (v.id || "").toLowerCase().includes(q) || (v.tone || "").toLowerCase().includes(q));

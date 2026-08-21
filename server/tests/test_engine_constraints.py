@@ -10,12 +10,12 @@ mechanism, and the ceiling with it.
 One constraint replaced it, and it is a real one. Every engine that installs
 torch must name the SAME torch and torchaudio versions. Not for tidiness — for
 disk. uv fills a venv by hardlinking out of its cache, so venvs that agree
-about torch share one copy of it. Measured 2026-08-22 with all five engines
-installed: 5,284 MB for the five venvs together, against 18,750 MB if nothing
-were shared — the first venv is 4,800 MB of that and the other four cost 484 MB
-between them. A single engine pinning a different torch costs a second full
-CUDA stack instead: +4.3 GB. Divergence is therefore a deliberate act, and this
-file is where it has to be argued for.
+about torch share one copy of it rather than each holding their own. Measured
+2026-08-22 with all five engines installed: the venvs report 5,284 MB between
+them, but deduped against the cache they link into they add only 431 MB —
+against 18,750 MB if nothing were shared. A single engine pinning a different
+torch costs a second full CUDA stack instead: +4.3 GB. Divergence is therefore
+a deliberate act, and this file is where it has to be argued for.
 
 Deprecated engines are exempt. They are hidden, never offered, and frozen at
 whatever they last declared — TADA sits on torch 2.7.0 for exactly that reason.
@@ -154,7 +154,7 @@ def test_installs_carry_no_constraint_file(monkeypatch, tmp_path) -> None:
 def test_uv_calls_pin_the_cache_beside_the_venvs(monkeypatch, tmp_path) -> None:
     """A cache on another volume cannot be hardlinked from, so uv silently
     falls back to copying whole wheels — the difference between five engine
-    venvs costing 5.3 GB and costing 18.7 GB, both measured 2026-08-22."""
+    venvs adding 431 MB and adding 18.7 GB, both measured 2026-08-22."""
     monkeypatch.delenv("UV_CACHE_DIR", raising=False)
     monkeypatch.delenv("UV_PYTHON_INSTALL_DIR", raising=False)
     env = manager._uv_env()

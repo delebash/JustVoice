@@ -50,13 +50,14 @@ REQUIREMENTS = {
 INSTALL = [
     # THE family torch pin — identical in every engine that installs torch.
     # Agreement is what makes per-engine venvs cheap: uv hardlinks one cached
-    # copy into all of them. Measured on this machine 2026-08-22, with all
-    # five engines installed by the app: 5,284 MB on disk for the five venvs
-    # together, against 18,750 MB if nothing were shared — and the first venv
-    # (chatterbox) is 4,800 MB of that, so the other four cost 484 MB between
-    # them. A single engine on a different torch would add a second full CUDA
-    # stack instead: +4.3 GB. `test_engine_constraints.py` fails if the pins
-    # ever drift apart.
+    # copy into all of them. Measured 2026-08-22 with all five engines
+    # installed by the app: the five venvs REPORT 5,284 MB, but deduped
+    # against the uv cache they hold links into, they add only 431 MB —
+    # 120 MB of it chatterbox's. (A 120 MB DLL in this venv has a link count
+    # of 5: four venvs plus the cache entry, one copy on the drive.) Against
+    # 18,750 MB if nothing were shared. A single engine on a different torch
+    # would add a second full CUDA stack instead: +4.3 GB.
+    # `test_engine_constraints.py` fails if the pins ever drift apart.
     {"kind": "torch", "variant": "auto",
      "packages": ["torch==2.13.0", "torchaudio==2.11.0"]},
     {

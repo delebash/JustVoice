@@ -276,12 +276,19 @@ BUILT:  Slices 0–5 and 7–8, 2026-08-22.
   · **Slice 7** — engines.md, gpu.md, troubleshooting.md, quick-setup.md,
     voices.md, code-map.md.
   · **Slice 8** — `npm run check:engines` (drift · upstream · --test).
-  · **The 576 MB estimate, now measured.** All five engines installed by the
-    app: **5,284 MB** for the five venvs together, **4,800 MB** of which is
-    the first one (chatterbox) — so the other four cost **484 MB** between
-    them, against **18,750 MB** if nothing were shared. The estimate held.
-    Docs, the manifest comment and the guard test now carry the measured
-    numbers rather than the projected ones.
+  · **The 576 MB estimate, now measured — and it came in under.** All five
+    engines installed by the app. The venv folders REPORT 5,284 MB, but that
+    counts cache-shared bytes once per venv; deduped against the uv cache they
+    hardlink into, the five add **431 MB** (chatterbox 120 · luxtts 103 ·
+    qwen3 102 · whisper 94 · kokoro 14), against **18,750 MB** if nothing were
+    shared. Receipt: a 120 MB DLL inside chatterbox's venv has a link count of
+    5 — four venvs plus the cache entry, one copy on the drive. Docs, the
+    manifest comment, the guard test and `_uv_env` all carry both numbers now.
+  · **Corollary, learned the hard way:** deleting `.shared-venv` reclaimed
+    ~0.1 GB, not the 5.5 GB its folder size advertised — same reason. The
+    bytes live in the uv cache; the venv held links. `uv cache prune` is the
+    lever that actually reclaims, and it is the USER's cache (shared across
+    projects), so it is not something this app should run on its own.
 OPEN:   **Slice 6.2/6.3 — the packaging half, NOT done, needs your word.**
 Slice 6.1 IS done and it is the part that fixes the actual bug: engine state
 (venvs, models, uv cache) now roots at `<data_dir>/engines-runtime` when

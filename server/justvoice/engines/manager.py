@@ -691,8 +691,8 @@ def _uv_env() -> dict[str, str]:
     cross a filesystem, so when the cache sits on a different volume from the
     venv, uv silently falls back to full byte copies — and the whole economics
     of one-venv-per-engine depend on those links. Measured here 2026-08-22
-    with the cache on the same volume: the five engine venvs occupy 5,284 MB
-    together, where copying would have cost 18,750 MB.
+    with the cache on the same volume: the five engine venvs add 431 MB over
+    the cache they link into, where copying would have cost 18,750 MB.
 
     uv's own defaults put both under the user profile (`%LOCALAPPDATA%` /
     `~/.cache`), i.e. almost always the system drive — while the user picks
