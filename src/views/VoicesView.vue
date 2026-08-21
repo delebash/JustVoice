@@ -11,6 +11,10 @@ import { UiButton, UiInput, UiTextarea, UiField, UiTag, UiChip, UiSelect, UiChec
 // Kit-side, because every app in the family shows a language somewhere.
 import { languageName, languageOptionsFrom } from "@delebash/llm-ui";
 import { EmptyState } from "@delebash/llm-ui";
+// The load bar is the Engines tab's bar — same kit task, same component.
+// This page used to fire-and-toast, so a 40-second load looked like a
+// dead button (the 2026-08-21 audit's "3 hand-rolled progress bars").
+import { DownloadBar, createDownloadTask } from "@delebash/llm-ui";
 import { useVoicesStore } from "../stores/voices.js";
 import { runAiEndpoint } from "@delebash/llm-ui";
 import { useEnginesStore } from "../stores/engines.js";
@@ -761,21 +765,62 @@ async function installEngine(engineId) {
     pushToast({ message: `Install failed: ${e.message || e}`, kind: "error" });
   }
 }
+/** The build to load: whatever Size names, else the checkpoint the picker is
+ *  on — but only when that row IS a variant (`capableRows` marks it), because
+ *  a bare engine id is not a `model_variant`. Until 2026-08-21 nothing was
+ *  sent at all, so Size changed the labels and loaded the same weights. */
+const variantForLoad = computed(() => {
+  const row = selectedRow.value;
+  if (!row) return null;
+  return selectedSize.value || (row.isVariant ? row.rowId : null);
+});
+
+// The load task, rendered by the same kit DownloadBar the Engines tab uses.
+// One at a time: this page loads the model the picker is on, and the picker
+// holds one row.
+const loadTask = ref(null);
+const loadTaskTitle = ref("");
+
 async function loadEngine(engineId) {
+  if (loadTask.value?.state === "running") return;
+  const variantId = variantForLoad.value;
+  loadTaskTitle.value = variantDetail.value
+    || selectedRow.value?.row?.name
+    || engineId;
+  // Mirrors SpeechEnginesTab.runLoad: the load has no byte stream to poll,
+  // so the task is armed and resolved by the request itself; Cancel goes to
+  // the engine's own cancel-load door.
+  const task = createDownloadTask({
+    start: async () => {},
+    statusUrl: "",
+    fetch: async () => ({}),
+    read: () => ({ detail: "loading" }),
+    cancel: () => api.request(`/v1/engines/${engineId}/cancel-load`, { method: "POST" }),
+  });
+  loadTask.value = task;
   try {
-    await api.request(`/v1/engines/${engineId}/load`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ device: "auto" }),
-    });
+    task.arm("Loading model");
+    try {
+      await api.request(`/v1/engines/${engineId}/load`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device: "auto", model_variant: variantId || null }),
+      });
+    } catch (e) {
+      if (task.state === "cancelled") return;
+      task.fail(String(e?.message || e));   // the bar keeps the error
+      return;
+    }
+    task.apply({ terminal: "done" });
     // Door 2 of the tracked "engine loads that nobody announces" finding:
     // this refreshed its OWN stores and left every other surface stale.
     // Any door that CHANGES engine state announces it.
     window.dispatchEvent(new Event("jv:health-refresh"));
     await refresh();
-    pushToast({ message: `${engineId} loaded.` });
-  } catch (e) {
-    pushToast({ message: `Load failed: ${e.message || e}`, kind: "error" });
+    pushToast({ message: `${engineId} loaded.`, kind: "success", duration: 4500 });
+    loadTask.value = null;   // done bars are reaped — the button going away is the evidence
+  } catch {
+    // The bar carries the error (failed lingers until dismissed).
   }
 }
 
@@ -1964,12 +2009,17 @@ async function resetAllTweaks() {
                 <UiButton
                   v-if="engineAction"
                   intent="secondary"
+                  :disabled="loadTask?.state === 'running'"
                   :label="engineAction.label"
                   :title="`${engineAction.label} ${selectedRow?.engine?.name || selectedEngine}`"
                   @click="engineAction.fn"
                 />
                 <UiTag v-else-if="engineReady" intent="success" value="loaded" />
               </div>
+              <!-- The same kit DownloadBar the Engines tab renders, over the
+                   same kit task — progress, cancel and the error all read
+                   identically wherever a model loads. -->
+              <DownloadBar v-if="loadTask" :title="loadTaskTitle" :task="loadTask" />
               <p v-if="variantDetail" class="jv-hint">{{ variantDetail }}</p>
               <div class="jv-field-row">
                 <UiField label="Name" layout="block">

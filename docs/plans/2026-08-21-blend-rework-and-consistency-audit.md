@@ -353,16 +353,18 @@ reason recorded at the site.*
 
 ## 13 · Open work, in priority order
 
-1. **Fix §9.1** — move the reset out of dead `openAcquire` into `setAcquireTab`,
-   delete `openAcquire`. Live bug, from this session.
-2. **Add a per-row class hook to `UiTable`** (kit), then fix §9.2. This is a
-   prerequisite for the 21-file table sweep — otherwise every converted table
-   repeats the same mistake.
+1. ~~**Fix §9.1**~~ — **DONE 2026-08-21.** `openAcquire` is gone; its body is
+   `resetAcquireForm()`, called from `setAcquireTab`, which is the only way a
+   tab changes (tab strip, the return to the library after a save, the `#train`
+   deep-link). See §17.
+2. ~~**Add a per-row class hook to `UiTable`**~~ — **DONE 2026-08-21.** Kit
+   gained `:row-class`; §9.2 repaired. The 21-file sweep is unblocked. See §17.
 3. **Widen the rule (§12)** in `CLAUDE.md` + `design-law.md`.
 4. **Voices page self-consistency (§9.3-9.6)** — blend tables → UiTable, knob
    sliders → UiSlider, one gender vocabulary, delete dead CSS, promote
    `grouphead` to canonical.
-5. **§10.1 + §10.2** — Load button on `DownloadBar`, and pass `model_variant`.
+5. ~~**§10.1 + §10.2**~~ — **DONE 2026-08-21.** Load runs on the kit
+   `DownloadBar` over the kit task, and sends `model_variant`. See §17.
 6. **§10.3-10.6** — "loaded" wording + delete `engineStatusLabel`; LoRA defaults to
    Preparer; delete "Reset all tweaks".
 7. **§10.7** — the biome failure on the committed file.
@@ -529,3 +531,143 @@ deletion; took 16 tests with them — they covered only the removed module).
 **Kit** (`8fde631`): `ui/src/common/components/UiSlider.vue` (new) ·
 `ui/src/common/services/languageNames.js` (new) · `ui/src/common/index.js`.
 Purely additive — no existing symbol changed, so no consumer can break.
+
+---
+
+## 17 · Follow-up pass, 2026-08-21 (items 1, 2, 5 of §13)
+
+Three items from the list above, taken under one go.
+
+### 17.1 · The dead-function bug (§9.1) — closed
+
+`openAcquire(tabId)` held every form reset and ended by calling
+`setAcquireTab(tabId)`. Nothing called `openAcquire`, so no reset ever ran and a
+half-typed clone survived a move to Design.
+
+Fixed by inverting the pair: the body is now `resetAcquireForm()` and
+`setAcquireTab()` calls it. That is the correct home because `setAcquireTab` is
+the **only** way `acquireTab` changes — verified by grep, three callers:
+
+| Caller | Line | Why it wants the reset |
+|---|---|---|
+| the tab strip | `:1533` (template) | the case that was broken |
+| return to the library after a save | `:1047` | the form is finished with |
+| the `#train` deep-link | `:521`, inside `onMounted` | arrives with nothing typed |
+
+Ordering checked: `:1047` builds its success toast from `voiceName` **before**
+the call, so clearing the form cannot blank the message. `:521` runs inside
+`onMounted`, after setup, so the refs `resetAcquireForm` touches are past their
+temporal dead zone.
+
+### 17.2 · `UiTable` per-row class hook (§9.2) — closed, kit side and app side
+
+The kit component could class a **full-width banner** row (`:full-width-row`
+returning a string) but not an ordinary record row. Converting the voices grid
+therefore lost `.row-orphan` and `.voices-view__row--playing`; the workaround
+put them on a `<div>` inside the name cell, which dimmed *one cell* of an orphan
+row and tinted *one cell* of the playing row.
+
+Kit: `UiTable` gained `:row-class` — `(row) => falsy | string | string[] |
+object`, taking whatever Vue's `:class` takes, applied to the record `<tr>`.
+Null-safe, so a table that does not pass it renders exactly as before. The
+header comment documents it beside the existing props.
+
+App: `voiceRowClass(row)` returns the two state classes and is passed as
+`:row-class`; the inner div keeps only its layout class.
+
+The CSS needed two things that are worth writing down, because the next table
+conversion hits both:
+
+1. **`:deep` is mandatory.** The `<tr>` is inside the child component, so a
+   scoped rule in the consuming view does not reach it. Only the component's
+   own root element inherits the parent's scope id.
+2. **The selector has to out-specify the kit's hover.** The kit ships
+   `.ui-table-hover .ui-table-row:hover { background: var(--surface-2) }` at
+   (0,3,0). A bare `.voices-view__row--playing` at (0,1,0) loses, and the
+   playing tint would vanish under the pointer.
+
+Verified in the **built** CSS, not by reading source:
+
+```
+.voices-view__table[data-v-f5b9607a] .ui-table-row.voices-view__row--playing,
+.voices-view__table[data-v-f5b9607a] .ui-table-row.voices-view__row--playing:hover
+  { background: var(--accent-soft) }        (0,4,0) and (0,5,0)
+.voices-view__table[data-v-f5b9607a] .ui-table-row.row-orphan
+  { opacity: .7 }                           (0,3,0)
+.ui-table-hover .ui-table-row:hover
+  { background: var(--surface-2) }          (0,3,0)   ← the rule being beaten
+```
+
+### 17.3 · Load: the decorative Size dropdown and the missing bar (§10.1, §10.2) — closed
+
+Two defects in one function, `VoicesView.loadEngine()`:
+
+- It posted `{device: "auto"}` and **no `model_variant`**. The Size dropdown
+  changed the label and the "— 2.1 GB download" hint and then loaded whichever
+  build the server defaults to. `SpeechEnginesTab.runLoad` had always sent it.
+- It was fire-and-toast. A load that takes 40 seconds looked like a dead button.
+
+The variant now resolves through `variantForLoad`: `selectedSize` when the Size
+dropdown is showing, else the picker's `rowId` **but only when that row is a
+variant**. That guard matters — `capableRows()` sets `isVariant: rowId !==
+engine.id`, so a row id is sometimes just an engine id, which is not a valid
+`model_variant`.
+
+Progress now runs on the kit `createDownloadTask` + `DownloadBar`, the same pair
+the Speech engines page uses, including Cancel through
+`/v1/engines/{id}/cancel-load` and an errored bar that lingers until dismissed.
+Done bars are reaped, matching the LLM catalog's rule. The Load button disables
+while a load is running.
+
+### 17.4 · Verification
+
+| Check | Result |
+|---|---|
+| `biome check src/views/VoicesView.vue` | 1 error — **pre-existing**, `useIterableCallbackReturn` at `:880` in `toggleRecord`, §10.7 / §13 item 7. Nothing new. |
+| `biome check` on the kit's `UiTable.vue` | clean |
+| `npm run build:vite` | built |
+| `npm run test:unit` | 53 passed, 7 files |
+| `npm run smoke` (gate) | **VOICES ✓ 0 errors.** 7 other views fail — see below |
+| built-CSS specificity | measured, §17.2 |
+| real app | `npm run tauri dev`, real data dir `E:\Dev\Web\JustVioce\data` |
+
+### 17.5 · Two environment facts found while running the gate
+
+**The gate server command in `CLAUDE.md` does not work from the global
+environment.** `justvoice-server serve` fails with *No such command 'serve'*.
+The console script on PATH (`F:\Python312\Scripts\justvoice-server`) still reads
+`from justvoice.cli import app` — the Typer domain CLI, which has only
+`default-settings`, `open-api` and `self-test`. `pyproject.toml` has pointed at
+`justvoice.serve:main` since the P3 entry-point move (2026-08-08), so **the
+global editable install is stale**. Two ways through, neither of which touches
+the environment:
+
+- `python -m justvoice.serve serve --host 127.0.0.1 --port 8741` (used here), or
+- `server/.venv/Scripts/justvoice-server.exe`, which is correctly linked —
+  checked, it reads `from justvoice.serve import main`.
+
+The desktop app is unaffected: `src-tauri/src/lib.rs:281` prefers the repo venv's
+copy and only falls back to PATH.
+
+**The dev database predates the `voice_instruct` split.** Seven smoke views
+(Projects, Chapters, Studio, Generate, Personas, Lexicons, Presets) fail with
+one shared cause:
+
+```
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError)
+no such column: personas.voice_instruct
+```
+
+Every one of those views fetches `/v1/personas`. This is the data reset the
+voice-workbench Slice A already said it required, not a regression from this
+pass — the models declare the column, the DB on disk does not, and the project
+rule is *no migrations, the user resets*. Voices itself does not read personas,
+which is why it passes.
+
+### 17.6 · Files changed in this pass
+
+**JustVoice**: `src/views/VoicesView.vue` · `docs/voices.md` (Size decides which
+weights Load fetches; the load bar and its Cancel) · this document.
+
+**Kit**: `ui/src/common/components/UiTable.vue` — `:row-class` added. Additive;
+every existing consumer renders unchanged.

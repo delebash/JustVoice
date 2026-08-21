@@ -37,6 +37,12 @@ Any column heading sorts the list.
 
 Each tab lists the engines that can do its job and what each one needs —
 **Install** for one you do not have, **Load** for one that is not running.
+Where a model ships in more than one build, a **Size** dropdown sits beside
+the picker and the line under it spells the choice out in full — the build's
+name and what it weighs. Size decides which weights **Load** fetches, so
+switch it before loading, not after. Loading shows the same progress bar as
+the Speech engines page, with the same Cancel and the same error if it
+fails; a model already loaded there shows as **loaded** here too.
 An engine that cannot do a thing is never offered for it: Qwen3 CustomVoice
 speaks its nine preset voices and cannot clone, so it does not appear under
 Cloned, and picking it for a clone at render time is refused rather than
