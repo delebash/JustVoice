@@ -1,6 +1,21 @@
 # 2026-08-15 — The voice-workflow redesign
 
-**THIS IS THE RESUME SURFACE.** It supersedes the unbuilt half of
+> ## ⚠ THE VOICE MODEL MOVED OUT OF THIS DOC — 2026-08-17
+>
+> **How sound is organised — voices, personas, casting, per-line delivery, where
+> every knob lives — is now `2026-08-17-voice-model.md`. Read that first, and
+> where it disagrees with anything below, it wins.**
+>
+> It was pulled out because the answer to *"where do the knobs live"* was spread
+> across §2.4, §2.6, §8.3, §8.22, §9.6 and §10 here, and got re-derived with
+> different words every time it was asked.
+>
+> **What this doc still owns:** the five steps (§8.5), Script doing one job
+> (§8.6), the scope grid (§8.7–8.8), manual Review (§8.9), the attribution
+> sources and suspicion checks (§8.12–8.15), the state vocabulary (§8.16), the
+> mock's build mechanics (§8.1) and the Alexandria take/skip record (§5).
+
+**THIS IS THE RESUME SURFACE** for the workflow steps. It supersedes the unbuilt half of
 `2026-08-15-voice-workbench.md` (whose Slices A and B are built and stay as the
 record) and the `2026-08-15-pipeline-truth-and-first-run.md` item 6.
 

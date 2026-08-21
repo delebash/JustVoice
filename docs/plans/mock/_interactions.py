@@ -38,6 +38,28 @@ CSS = """
 .est .v{font-family:var(--font-mono);font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
 .est .l{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);font-weight:700}
 .hidden-row{display:none!important}
+
+/* Non-button controls: rows and glyphs. These looked interactive and did nothing
+   until 2026-08-17, because validate.py only ever counted button elements. */
+tbody tr[onclick]{cursor:pointer}
+tbody tr[onclick]:hover{background:var(--surface-2)}
+.rt span[onclick]{cursor:pointer;padding:0 2px;border-radius:4px}
+.rt span[onclick]:hover{color:var(--ink);background:var(--surface-3)}
+.rt span.off{opacity:.3;cursor:not-allowed}
+.rt span.off:hover{background:transparent;color:inherit}
+
+/* The direction cell is edited in the row, not in an expansion -- over 214 lines
+   that is the difference between usable and not. Reads as text, becomes an input
+   on focus, so 214 rows are not 214 live textareas. */
+.cell-edit{width:100%;border:1px solid transparent;background:transparent;font:inherit;
+  color:var(--ink);padding:3px 5px;border-radius:var(--r-control)}
+.cell-edit::placeholder{color:var(--ink-3);font-style:italic}
+.cell-edit:hover:not(:disabled){border-color:var(--line);background:var(--surface-2)}
+.cell-edit:focus{border-color:var(--accent);background:var(--surface);outline:none}
+.cell-edit:disabled{color:var(--ink-3);cursor:not-allowed;font-size:11px}
+.cell-tags{display:flex;gap:4px;flex-wrap:wrap;align-items:center;cursor:pointer;
+  padding:3px 5px;border:1px solid transparent;border-radius:var(--r-control);min-height:24px}
+.cell-tags:hover{border-color:var(--line);background:var(--surface-2)}
 </style>
 """
 
@@ -88,6 +110,50 @@ MODALS = """
       </div>
     </div>
     <div class="modal-f"><span style="flex:1"></span><button class="btn" onclick="closeModal()">Cancel</button></div>
+  </div>
+
+  <!-- Row menu — the ⋯ on a library row -->
+  <div class="modal" id="m-rowmenu" style="display:none">
+    <div class="modal-h"><span class="eb">June</span><h3>Persona actions</h3>
+      <button class="xbtn" onclick="closeModal()">✕</button></div>
+    <div class="modal-b">
+      <div class="row"><button class="btn" onclick="toast('Renaming June — the name changes everywhere she speaks.','ok');closeModal()">✏️ Rename</button>
+        <button class="btn" onclick="toast('Pick the persona to merge June into — her lines move across.');closeModal()">🔗 Merge into…</button>
+        <button class="btn d" onclick="toast('June speaks 115 lines in 2 projects — delete refuses while she is cast.','warn');closeModal()">🗑 Delete</button></div>
+      <div class="bn">A persona is library-level, so these act everywhere she is used — not just in
+        the project you came from. Deleting refuses while she still has lines.</div>
+    </div>
+    <div class="modal-f"><span style="flex:1"></span><button class="btn" onclick="closeModal()">Cancel</button></div>
+  </div>
+
+  <!-- Turbo's tag picker, opened from the direction cell -->
+  <div class="modal" id="m-tags" style="display:none">
+    <div class="modal-h"><span class="eb">Line 41 &middot; Marius &middot; Chatterbox Turbo</span>
+      <h3>How is it said?</h3><button class="xbtn" onclick="closeModal()">&#10005;</button></div>
+    <div class="modal-b">
+      <div class="f"><label>Emotion <span class="tag">Turbo's own 7</span></label>
+        <div class="radios">
+          <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>angry</span>
+          <span class="radio on" onclick="pickRadio(this)"><span class="rd"></span>fear</span>
+          <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>happy</span>
+          <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>sarcastic</span>
+          <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>surprised</span>
+          <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>crying</span>
+          <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>whispering</span>
+          <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>&mdash; none &mdash;</span></div></div>
+      <div class="f"><label>Register</label>
+        <div class="radios">
+          <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>narration</span>
+          <span class="radio on" onclick="pickRadio(this)"><span class="rd"></span>dramatic</span>
+          <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>advertisement</span>
+          <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>&mdash; none &mdash;</span></div></div>
+      <div class="bn">Non-verbal sounds &mdash; <span class="mono">[sigh]</span>,
+        <span class="mono">[laugh]</span> &mdash; are not set here. They go at a point
+        <i>inside</i> the sentence, so you insert them in the line's text.</div>
+    </div>
+    <div class="modal-f"><span class="hint">Turbo only. Chatterbox Multilingual reads these as words.</span>
+      <span style="flex:1"></span><button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn p" onclick="toast('[fear] [dramatic] set on line 41.','ok');closeModal()">Set</button></div>
   </div>
 
   <!-- Add a lexicon word -->
@@ -199,30 +265,45 @@ function recalcAnalyze(el) {
       : 'Pick at least one chapter.';
   }
 }
-function recalcAnalyze() {
-  var boxes = Array.prototype.slice.call(document.querySelectorAll('#chGrid .ck'));
-  var all = document.getElementById('chAll');
-  var picked = boxes.map(function (b, i) { return b.checked ? SCOPE_CH[i] : null; }).filter(Boolean);
-  if (all) {
-    all.checked = picked.length === boxes.length;
-    all.indeterminate = picked.length > 0 && picked.length < boxes.length;
+/* A SECOND recalcAnalyze used to sit here and overwrote the scoped one above.
+   It queried #chGrid / #chAll / #anBtn / #anEst, none of which exist anywhere in
+   the built file, so ticking a chapter updated nothing. Deleted 2026-08-17. */
+
+/* A glyph inside a row must not also fire the row's own click. */
+document.addEventListener('click', function (e) {
+  if (e.target.closest && e.target.closest('.rt')) e.stopPropagation();
+}, true);
+
+/* Cast: select a speaker card, then click a persona to assign it. */
+function pickCard(el) {
+  var scope = el.closest('.route') || document;
+  scope.querySelectorAll('.spkcard').forEach(function (c) { c.classList.remove('sel'); });
+  el.classList.add('sel');
+  var name = (el.querySelector('.nm') || {}).textContent || 'speaker';
+  toast(name + ' selected — click a persona to assign it.');
+}
+
+/* Chevrons really open and close the expansion row that follows. */
+function toggleRow(el) {
+  var tr = el.closest('tr');
+  if (!tr) return;
+  var next = tr.nextElementSibling;
+  if (!next || !(next.classList.contains('castx') || next.classList.contains('exp'))) {
+    toast('Nothing more to show on this row.');
+    return;
   }
-  var ln = picked.reduce(function (a, c) { return a + c.lines; }, 0);
-  var secs = Math.max(1, Math.ceil(ln / 80)) * 33;
-  var btn = document.getElementById('anBtn');
-  var est = document.getElementById('anEst');
-  if (btn) {
-    btn.textContent = picked.length ? '\u2728 Analyze ' + picked.length +
-      (picked.length === 1 ? ' chapter' : ' chapters') : '\u2728 Analyze';
-    btn.disabled = picked.length === 0;
-  }
-  if (est) {
-    est.textContent = picked.length
-      ? ln.toLocaleString() + ' lines \u00b7 about ' +
-        (secs >= 60 ? Math.floor(secs / 60) + 'm ' : '') + (secs % 60) + 's \u00b7 ' +
-        'rows fill in one chapter at a time, and each is reviewable the moment it lands'
-      : 'Pick at least one chapter.';
-  }
+  var opening = next.classList.contains('hidden-row');
+  next.classList.toggle('hidden-row', !opening);
+  el.textContent = opening ? '\u2303' : '\u2304';
+}
+
+/* The Personas index opens the SAME editor a Cast row opens - one editor, two
+   doors (redesign 8.3a). Drawing a second one is what made it read as two systems. */
+function openPersona(row) {
+  var cell = row.querySelector('.spk');
+  var name = cell ? cell.textContent.trim() : 'This persona';
+  nav('cast');
+  toast(name + ' \u2014 the same editor the Cast row opens.', 'ok');
 }
 
 """

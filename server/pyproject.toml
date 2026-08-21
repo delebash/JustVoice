@@ -8,9 +8,9 @@ license = { text = "MIT" }
 authors = [{ name = "JustVoice contributors" }]
 keywords = ["tts", "text-to-speech", "audiobook", "speech-synthesis", "voice-cloning"]
 
-# Core dependencies — these are needed even for the empty-engine
-# install. ML/engine deps are extras so users can `pip install
-# justvoice[kokoro]` or `[chatterbox]` etc.
+# Core dependencies — the server itself. ML/engine deps are NOT here:
+# every engine installs its own tree into engines/<id>/.venv via the
+# in-app installer (manifest.INSTALL).
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.32",
@@ -48,29 +48,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Kokoro engine via k2-fsa's sherpa-onnx-python (Apache 2.0, same .onnx
-# models as the previous Rust path through the sherpa-onnx crate).
-kokoro = ["sherpa-onnx>=1.13"]
-
-# Other TTS engines — each gates its own dependency tree.
-chatterbox = ["chatterbox-tts>=0.2", "torch>=2.2"]
-qwen3 = ["qwen-tts>=0.1", "torch>=2.2"]
-all-engines = [
-    "sherpa-onnx>=1.13",
-    "chatterbox-tts>=0.2",
-    "qwen-tts>=0.1",
-    "torch>=2.2",
-]
-
-# Phase 5 training extras
-training = [
-    "peft>=0.13",
-    "transformers>=4.45",
-    "safetensors>=0.4",
-    "faster-whisper>=1.0",  # for transcript-alignment QC
-]
-
-# Dev / test
+# The per-engine extras ([kokoro], [chatterbox], [qwen3], [all-engines])
+# and the [training] extra died 2026-08-21. They predated the per-engine
+# venv installer: engines install their OWN dependency trees via
+# manifest.INSTALL into engines/<id>/.venv (peft included), so an extra
+# that put engine packages into THIS env installed the wrong thing into
+# the wrong place — [kokoro] still pulled sherpa-onnx two days after the
+# runtime swapped to kokoro-onnx, and [qwen3] named a package that was
+# never the real dependency. `pip install -e .` is the whole server setup.
 dev = ["pytest>=8", "pytest-asyncio>=0.24", "playwright>=1.48", "ruff>=0.7"]
 
 # The frozen PyInstaller bundle's runner source — @main, never a SHA pin (JW's

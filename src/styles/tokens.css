@@ -111,19 +111,24 @@
   --r-sm: var(--r-control);
 
   /* Button knobs — overridden at runtime by the appearance engine. Defaults
-     reproduce JV's standard / comfy / sentence-case look. */
+     reproduce JV's standard / COMPACT / sentence-case look (the mock's
+     control density, services/appearance.js). */
   --btn-radius: var(--r-control);
-  --btn-pad-y: 8px;
-  --btn-pad-x: 16px;
-  --btn-pad-y-sm: 4px;
-  --btn-pad-x-sm: 11px;
-  --btn-font-size: 14px;
-  --btn-font-size-sm: 12px;
+  --btn-pad-y: 5px;
+  --btn-pad-x: 12px;
+  --btn-pad-y-sm: 3px;
+  --btn-pad-x-sm: 8px;
+  --btn-font-size: 13px;
+  --btn-font-size-sm: 11.5px;
   --btn-text-transform: none;
   --btn-letter-spacing: normal;
 
-  --input-pad-x: 12px;
-  --input-font-size: 13px;
+  /* Inputs/selects/textareas at the mock's density (.box: 7×9px, 12px). */
+  --input-pad-y: 7px;
+  --input-pad-x: 9px;
+  --input-font-size: 12px;
+  /* Focus = a solid accent ring, the mock's treatment — never the soft halo. */
+  --focus-ring: 0 0 0 2px var(--accent);
   /* JV tags are outlined pills (JW's are borderless soft-tint) */
   --tag-border-width: 1px;
   --tag-radius: var(--r-pill);

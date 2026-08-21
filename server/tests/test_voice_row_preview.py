@@ -16,6 +16,21 @@ from fastapi.testclient import TestClient
 from justvoice.app import create_app
 
 
+@pytest.fixture(autouse=True)
+def _kokoro_installed(monkeypatch):
+    """Kokoro moved to per-engine venv isolation (2026-08-19, the kokoro-onnx
+    swap: its numpy>=2 clashes with the shared venv's torch pins), so
+    `is_installed` now probes engines/kokoro/.venv — absent on a test
+    machine. These tests are about the LOADED gate that sits behind the
+    install gate; before the move they only passed by riding the dev
+    machine's shared venv."""
+    from justvoice.engines import manager as mgr_mod
+
+    monkeypatch.setattr(
+        mgr_mod.EngineManifest, "is_installed", property(lambda self: True)
+    )
+
+
 @pytest.fixture()
 def client(tmp_path):
     app = create_app(data_dir=tmp_path)
@@ -43,7 +58,7 @@ def test_auto_load_loads_then_synthesizes(client, monkeypatch):
     mgr = mgr_mod.get_manager()
     monkeypatch.setattr(mgr, "load", lambda eid, device=None, variant=None: loads.append(eid))
 
-    async def fake_via_manager(engine_id, req, audio_prompt_path=None):
+    async def fake_via_manager(engine_id, req, voice_fields=None):
         return Response(content=b"RIFFfake", media_type="audio/wav")
 
     monkeypatch.setattr(gen, "_generate_via_manager", fake_via_manager)
@@ -62,7 +77,7 @@ def test_loaded_engine_skips_the_gate(client, monkeypatch):
     mgr = mgr_mod.get_manager()
     monkeypatch.setattr(mgr, "current_id", lambda: "kokoro")
 
-    async def fake_via_manager(engine_id, req, audio_prompt_path=None):
+    async def fake_via_manager(engine_id, req, voice_fields=None):
         return Response(content=b"RIFFfake", media_type="audio/wav")
 
     monkeypatch.setattr(gen, "_generate_via_manager", fake_via_manager)

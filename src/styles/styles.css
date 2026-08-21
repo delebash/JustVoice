@@ -871,6 +871,28 @@ button.jv-topbar__proj:hover { border-color: var(--accent); color: var(--accent-
   font-weight: 600;
 }
 
+/* A row of block-labelled fields (eyebrow label above control) ending in
+   an optional action — Model + Size + Load, Name + Language, URL + Fetch.
+   Alignment is structural: the kit's .ui-field carries `margin: 10px 0`,
+   and flex-end aligns MARGIN edges, so the row strips it here. Never
+   re-align these with per-view margin nudges — that is how the 1px-off
+   Load button happened. The row ends where its content ends. */
+.jv-field-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+}
+.jv-field-row > .ui-field { margin: 0; }
+/* A field row directly under explanatory text needs air: stripping the
+   kit's .ui-field margin (above) also removed the only gap separating a
+   row from the sentence that introduces it, so the label read as part of
+   the paragraph. Sibling-scoped, so a row that opens a card is unchanged.
+   Added 2026-08-21 with the LoRA tab; VoicesView's Name row (its only
+   instance of this shape) was re-measured after. */
+.jv-field-row:not(:first-child) { margin-top: 12px; }
+p + .jv-field-row { margin-top: 12px; }
+
 /* Workspace prose column — caps editing/manuscript content at a
    comfortable reading width while letting the surrounding page chrome
    use the full viewport. */
@@ -1064,6 +1086,28 @@ progress {
 }
 .jv-pane-list__item--active .jv-pane-list__meta { color: rgba(255, 255, 255, 0.78); }
 
+/* Input → Result split for make-a-thing surfaces (Voices acquisition):
+   the source material on the left, the decisions + action + result on
+   the right — two equal columns sharing the whole content width, the
+   shape the Qwen3-TTS demo uses. Below 1100px they stack. The columns
+   are grids themselves so the cards inside keep one vertical rhythm
+   without per-view flex glue. */
+.jv-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(360px, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+.jv-split__col {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  min-width: 0;
+}
+@media (max-width: 1100px) {
+  .jv-split { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* Banners + notes (preview L160-173) */
 .jv-banner {
   background: var(--surface-2);
@@ -1252,10 +1296,89 @@ p.note,
 
 .jv-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 .jv-col { display: flex; flex-direction: column; gap: 8px; }
+/* --start: children keep their content width instead of stretching —
+   for card bodies stacking fields, buttons and hints. */
+.jv-col--start { align-items: flex-start; }
 .jv-spacer { flex: 1; }
+/* Opt one child of a --start column back into the full width — for a
+   field whose control caps its own measure (width="prose" textareas). */
+.jv-stretch { align-self: stretch; }
 .jv-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .jv-muted { color: var(--ink-3); }
 .jv-mono { font-family: var(--font-mono); }
+/* One quiet line under a row or field — what the choice above costs or
+   requires. Readable measure, no nudge margins. */
+/* 12.5px minimum for explanatory text — 11.5px was measurably the most
+   complained-about size in the app (2026-08-21: "stop using small text").
+   Truly-secondary metadata may not go below this either. */
+.jv-hint { font-size: 12.5px; color: var(--ink-3); margin: 0; max-width: 70ch; }
+
+/* Canonical section lede — the one-paragraph explanation under a card
+   title saying what this surface is for, in the user's language (never
+   file formats or internal jargon). Promoted 2026-08-21 with the LoRA
+   rebuild; body-size on purpose: a lede is content, not a footnote. */
+.jv-lede { font-size: 13.5px; line-height: 1.55; color: var(--ink-2); margin: 0 0 14px; max-width: 78ch; }
+
+/* Spacing + inline-row utilities. SettingsView referenced these for
+   months while nothing defined them — margins silently rendered as zero
+   (found 2026-08-21). Defined once, here. */
+.jv-mt10 { margin-top: 10px; }
+.jv-mt12 { margin-top: 12px; }
+.jv-mb14 { margin-bottom: 14px; }
+.jv-inline-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* Same floor as .jv-hint — the -xs suffix survives for its callers, but
+   nothing renders below 12.5px. */
+.jv-note-xs { font-size: 12.5px; color: var(--ink-3); }
+
+/* Canonical LIVE RUN LOG — a background job narrating itself while it
+   works (the LoRA Preparer and Training runs). Promoted 2026-08-21 per
+   design-law: the kit's LogsPanel is the other log shape entirely (server
+   log FILES, per-day, with download) and solves nothing here, so this is a
+   new canonical class rather than a scoped one-off.
+
+   Newest line last, scrolled to the bottom by the view. Monospace because
+   trainer output is column-aligned; a fixed height because a log that
+   grows the page pushes the controls above it out of reach mid-run. */
+.jv-logbox {
+  height: 220px;
+  overflow-y: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-family: var(--font-mono, ui-monospace);
+  font-size: 11.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.jv-logbox--short { height: 140px; }
+.jv-logbox__line { display: block; }
+.jv-logbox__empty { color: var(--ink-3); font-style: italic; }
+
+/* Canonical INLINE PROGRESS BAR — a determinate job's completion inside a
+   table cell or beside a stat line. Promoted from TrainView's scoped CSS
+   2026-08-21 when that view was replaced by the LoRA sub-tabs: two views
+   now need it, and a copy in each is how they drift.
+   `--wide` for a standalone bar under a heading rather than in a cell. */
+.jv-progress { display: flex; align-items: center; gap: 6px; }
+.jv-progress__track {
+  width: 80px;
+  height: 6px;
+  background: var(--surface-3);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+.jv-progress__track--wide { width: 100%; }
+.jv-progress__bar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--r-pill);
+  transition: width 0.3s;
+}
+.jv-progress__bar--done { background: var(--success); }
+.jv-progress__bar--fail { background: var(--danger); }
 
 /* Floating generate bar (preview L176) */
 .jv-floating {

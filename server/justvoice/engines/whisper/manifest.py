@@ -45,7 +45,6 @@ INSTALL = [
             "safetensors>=0.4",
             "soundfile>=0.12",
             "librosa>=0.10",
-            "numpy>=1.24,<2.0",
         ],
     },
 ]

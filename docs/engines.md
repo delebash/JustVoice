@@ -244,24 +244,42 @@ install something that would fail.
 
 | Engine | Windows | Linux | macOS | Why |
 |---|:--:|:--:|:--:|---|
-| **Kokoro** | ✓ | ✓ | ✓ | ONNX via sherpa-onnx; the only engine declaring CoreML and DirectML as well as CUDA |
-| **Chatterbox** | ✓ | ✓ | ✓ | Runs, but **CPU-only on macOS** — see below |
+| **Kokoro** | ✓ | ✓ | ✓ | ONNX via kokoro-onnx; CPU is real-time everywhere |
+| **Chatterbox** | ✓ | ✓ | ✓ | Apple GPU attempted with the known float32 repair; falls back to CPU if it fails |
+| **Pocket TTS** | ✓ | ✓ | ✓ | Pure-Python package + torch; the README's own benchmark is a Mac. Windows unmeasured upstream — expected to run |
 | **LuxTTS** | ✓ | ✓ | ✓ | Every dependency publishes wheels for all three, including piper-phonemize |
 | **Whisper (STT)** | ✓ | ✓ | ✓ | transformers + torch, nothing platform-specific |
-| **Qwen3-TTS** | ✓ | ✓ | ✗ | Declares CUDA and nothing else; no Apple-Silicon path in the adapter |
-| **TADA** | ✓ | ✓ | ✗ | Known tensor issues on Apple's MPS backend |
-| **MOSS-TTSD** | ✓ | ✓ | ✗ | Needs flash-attn, which barely builds outside Linux |
-
-**On macOS, Chatterbox deliberately runs on the CPU** even when you have an
-Apple-Silicon GPU, because of a known PyTorch MPS problem with that model.
-It works; it is slower than the same model on a CUDA box. Kokoro is the engine
-built for CPU and is the better first choice on a Mac.
+| **Qwen3-TTS** | ✓ | ✓ | ✓ | Torch checkpoints on Windows/Linux; on a Mac the catalog shows the MLX variants instead |
+| **TADA** | ✓ | ✓ | ✗ | Known tensor issues on Apple's MPS backend (marked for removal) |
+| **MOSS-TTSD** | ✓ | ✓ | ✗ | Needs flash-attn, which barely builds outside Linux (marked for removal) |
 
 A note on how this is decided: each engine declares its own platforms, and the
 server — not your browser — decides whether the machine actually running the
 engine qualifies. That matters when you use JustVoice headless
 (`justvoice-server serve`) from a laptop against a server elsewhere: what you
 can install depends on that server's OS, not yours.
+
+## Hardware acceleration, engine by engine
+
+Every engine installs the right runtime for the machine it lands on — the
+install itself picks the GPU arm, there is nothing to configure first.
+
+| Engine | NVIDIA (CUDA) | Apple Silicon | Windows AMD/Intel GPU | Linux AMD (ROCm) | CPU |
+|---|:--:|:--:|:--:|:--:|:--:|
+| **Kokoro** | ✓ installed when CUDA is detected | ✓ CoreML, used automatically | ✓ DirectML, installed when detected | — | ✓ real-time |
+| **Pocket TTS** | ✓ (torch wheel) | ✓ (torch) | CPU | ✓ ROCm torch wheel | ✓ **realtime on 2 cores — its home turf** |
+| **Chatterbox** | ✓ CUDA torch wheel | ✓ MPS (float32 repair) | CPU | ✓ ROCm torch wheel | ✓ slow |
+| **Qwen3-TTS** | ✓ CUDA torch wheel | ✓ MLX variants (their own runtime) | CPU | ✓ ROCm torch wheel | works, slow |
+| **Whisper** | ✓ CUDA torch wheel | ✓ MPS | CPU | ✓ ROCm torch wheel | ✓ |
+
+Two footnotes worth knowing. First, on a machine with a discrete GPU,
+**Auto sends Kokoro to the CPU on purpose** — it is real-time there, and
+the graphics card stays free for the engines that need it; pick CUDA or
+DirectML in the engine's Device select if you want it on the GPU anyway.
+On Apple Silicon there is one shared memory pool, so Auto uses CoreML.
+Second, the torch engines have no DirectML arm — PyTorch's DirectML
+backend stalled upstream — so on a Windows machine with an AMD or Intel
+GPU they run on the CPU; Kokoro is the engine that accelerates there.
 
 ## GPU detection + tier-aware default
 
@@ -270,8 +288,9 @@ Settings → GPU shows your backend (CUDA / MPS / Metal / XPU / DirectML / ROCm)
 ## Which PyTorch build gets installed
 
 Chosen for you from detected hardware when the environment is built — NVIDIA
-gets the CUDA 12.4 wheels, Intel Arc on Windows the XPU wheels, everything
-else CPU. Roughly 2 GB per torch wheel, downloaded once for the shared
+gets the CUDA 12.4 wheels, Linux AMD boxes the ROCm 6.2 wheels, Intel Arc on
+Windows the XPU wheels, everything else CPU (which on a Mac includes the
+Apple-GPU MPS backend — it ships in the default wheel). Roughly 2 GB per torch wheel, downloaded once for the shared
 environment rather than once per engine. Override it with
 `JUSTVOICE_TORCH_INDEX` and rebuild — see
 [GPU / CUDA](gpu.md#which-pytorch-build-gets-installed-nvidia).

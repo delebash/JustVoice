@@ -42,7 +42,7 @@ CAPABILITIES = {
 }
 
 REQUIREMENTS = {
-    "gpu_runtimes": ["cuda", "cpu", "mps"],
+    "gpu_runtimes": ["cuda", "cpu", "mps", "rocm"],
 }
 
 INSTALL = [
@@ -52,7 +52,6 @@ INSTALL = [
         "packages": [
             "soundfile>=0.12",
             "librosa>=0.10",
-            "numpy>=1.24,<2.0",
             "huggingface_hub>=0.20",
         ],
     },
@@ -63,9 +62,11 @@ INSTALL = [
         "packages": ["piper-phonemize"],
     },
     # LinaCodec is git-only.
-    {"kind": "pip-git", "url": "https://github.com/ysharma3501/LinaCodec.git"},
+    {"kind": "pip-git", "url": "https://github.com/ysharma3501/LinaCodec.git",
+     "ref": "c0ae7c7285e1"},  # HEAD @ 2026-08-19; bump = deliberate PR
     # ZipVoice via the ysharma3501/LuxTTS git mirror.
-    {"kind": "pip-git", "url": "https://github.com/ysharma3501/LuxTTS.git"},
+    {"kind": "pip-git", "url": "https://github.com/ysharma3501/LuxTTS.git",
+     "ref": "28ae6a611516"},  # HEAD @ 2026-08-19; bump = deliberate PR
 ]
 
 # Facts-only variant row (phase ②c): the repo the engine loads (the old

@@ -65,7 +65,11 @@ class Tada(EmbeddedEngine):
              model_dir: str | None = None) -> None:
         if self.model is not None:
             return
-        device = self.pick_device(device)
+        # TADA is named in pick_device's own force_cpu_on_mac set (known
+        # MPS tensor issues) but never passed the flag — moot while the
+        # manifest excludes macOS, wrong the moment it stops. An explicit
+        # operator device still wins inside pick_device.
+        device = self.pick_device(device, force_cpu_on_mac=True)
         self._device = device
         log.info("loading TADA on %s …", device)
 

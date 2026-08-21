@@ -1,10 +1,14 @@
 # SPDX-License-Identifier: MIT
 #
-# Venv-wide dependency ceiling for EVERY engine install.
+# Dependency ceiling for the SHARED engine venv.
 #
 # `manager._run_uv_pip` passes this file as `--constraint` to every
-# `uv pip install` it runs against an engine venv (shared or isolated), so
-# these bounds hold no matter which step installs what, or in what order.
+# `uv pip install` against the shared venv, so these bounds hold no matter
+# which engine's step installs what, or in what order. ISOLATED venvs
+# (ISOLATION="venv") opt out (use_constraints=False, 2026-08-19): the
+# rationale here is cross-ENGINE re-resolution inside one environment, and
+# the numpy ceiling below is wrong for a venv with no numba in it —
+# kokoro's needs numpy>=2 for kokoro-onnx.
 #
 # Why this file exists at all: each manifest INSTALL step is its own
 # `uv pip install`, so a pin declared in one step only survives until a

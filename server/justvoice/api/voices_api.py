@@ -1,8 +1,10 @@
-"""/v1/voices — list + CRUD for clones/designed/imported, plus presets."""
+"""/v1/voices — list + CRUD, plus the acquisition paths: clone, design,
+import, blend."""
 
 from __future__ import annotations
 
 import base64
+import hashlib
 import json as _json
 import re as _re
 from datetime import datetime, timezone
@@ -14,8 +16,10 @@ from pydantic import BaseModel as _BaseModel
 from ..app_state import get_state
 from ..engines.llm.run import run_feature
 from ..engines.manager import get_manager
-from ..errors import bad_request, not_found
+from ..errors import bad_request, not_found, not_implemented
 from ..models import (
+    BlendRecipe,
+    BlendVoiceRequest,
     CloneVoiceRequest,
     DesignVoiceRequest,
     ImportVoiceRequest,
@@ -274,3 +278,181 @@ async def gender_guess(body: GenderGuessRequest) -> GenderGuessResponse:
             model=resp.model,
         ),
     )
+
+
+# ── Blend — the fourth acquisition path ──────────────────────────────────
+# Host-side file math (engines/blending.py): the style vectors live in the
+# installed variant's voices file, so creating a blend needs no engine
+# process at all. Moved here from the lift-era phase5_api 2026-08-19 —
+# blend belongs beside clone / design / import.
+
+
+def blend_language_for(st, engine: str, source_ids: list[str]) -> str:
+    """`blending.blend_language` bound to this server's state.
+
+    Exported (no underscore) because the PRE-SAVE audition in
+    voice_preview_api must reach the same answer this endpoint reaches —
+    that divergence is exactly the bug being closed.
+    """
+    from ..engines import blending
+
+    def _lang(vid: str) -> str | None:
+        rec = st.voices.get(vid)
+        return rec.language if rec else None
+
+    return blending.blend_language(
+        engine,
+        source_ids,
+        stored_language=_lang,
+        default=st.settings.get().training.default_voice_language,
+    )
+
+
+def _recipe_hash(
+    sources: list[str],
+    weights: list[float],
+    strategy: str = "blend",
+    segments: "list | None" = None,
+) -> str:
+    """The dedup key for a blended voice.
+
+    `strategy` and `segments` joined it 2026-08-21. Without them, two voices
+    that are genuinely different collide: a `vector` mix does not normalize
+    while a `blend` of the same sources and weights does, and a `recombine`
+    carries no weights at all — so all three would have hashed alike and the
+    second one asked for would have silently handed back the first.
+    """
+    h = hashlib.sha256()
+    h.update(strategy.encode("utf-8"))
+    for s, w in sorted(zip(sources, weights), key=lambda p: p[0]):
+        h.update(s.encode("utf-8"))
+        h.update(str(w).encode("utf-8"))
+    # Segment ORDER is meaningful (later segments overwrite earlier ones on
+    # any overlap), so this list is not sorted.
+    for seg in segments or []:
+        h.update(f"{seg.voice_id}:{seg.start}:{seg.end}".encode("utf-8"))
+    return h.hexdigest()
+
+
+@router.post(
+    "/v1/voices/blend", response_model=Voice, status_code=201,
+    summary="Blend 2–5 voices into a new voice (elementwise weighted average)",
+)
+async def blend_voices(req: BlendVoiceRequest) -> Voice:
+    st = get_state()
+
+    from ..engines import blending
+
+    if not blending.supports(req.engine):
+        raise not_implemented(
+            f"engine '{req.engine}' cannot blend — its voices are not style "
+            f"vectors. Kokoro is the blending engine."
+        )
+
+    def _stored_vector(vid: str) -> list[float] | None:
+        rec = st.voices.get(vid)
+        return list(rec.embedding) if rec and rec.embedding else None
+
+    # ── Per-strategy validation + the weights that get STORED ───────────
+    # Recombine is the odd one: no weights, ordered segments. The three
+    # weighted strategies differ only in whether Σw divides the result.
+    segments = list(req.segments or [])
+    if req.strategy == "recombine":
+        if len(segments) < 2:
+            raise bad_request("recombine needs at least 2 segments")
+        if len(segments) > 5:
+            raise bad_request("recombine takes at most 5 segments")
+        source_ids = [s.voice_id for s in segments]
+        stored_weights: list[float] = []
+    else:
+        source_ids = list(req.source_voice_ids)
+        # Extrapolate is one voice plus the pack centroid, so it is the one
+        # weighted strategy that legitimately arrives with a single voice.
+        floor = 1 if req.strategy == "extrapolate" else 2
+        if len(source_ids) < floor:
+            raise bad_request(
+                f"{req.strategy} requires at least {floor} source voice"
+                f"{'' if floor == 1 else 's'}"
+            )
+        if len(source_ids) > 5:
+            raise bad_request("blend takes at most 5 source voices")
+        if req.weights and len(req.weights) != len(source_ids):
+            raise bad_request("weights length must match source_voice_ids length")
+
+        weights = req.weights or [1.0] * len(source_ids)
+        # A mix divides by Σw so its weights are shares; an analogy keeps its
+        # magnitude. Only the dividing kind needs a positive sum.
+        normalize = req.strategy != "vector"
+        if normalize:
+            total = sum(weights)
+            if total <= 0:
+                raise bad_request("weights must sum to a positive value")
+            stored_weights = [w / total for w in weights]
+        else:
+            if not any(weights):
+                raise bad_request("every weight is zero — there is nothing to combine")
+            stored_weights = list(weights)
+
+    # Dedup — the same recipe returns the existing voice.
+    recipe_hash = _recipe_hash(source_ids, stored_weights, req.strategy, segments)
+    for v in st.voices.list():
+        if (
+            v.engine == req.engine
+            and v.source == "blended"
+            and v.blend_recipe
+            and _recipe_hash(
+                v.blend_recipe.sources,
+                v.blend_recipe.weights,
+                v.blend_recipe.strategy,
+                v.blend_recipe.segments,
+            )
+            == recipe_hash
+        ):
+            return _stored_to_dto(v)
+
+    try:
+        if req.strategy == "recombine":
+            blended = blending.recombine(
+                req.engine,
+                [(s.voice_id, s.start, s.end) for s in segments],
+                data_dir=st.data_dir,
+                resolve_stored=_stored_vector,
+            )
+        else:
+            blended = blending.blend(
+                req.engine,
+                source_ids,
+                stored_weights,
+                data_dir=st.data_dir,
+                resolve_stored=_stored_vector,
+                normalize=False,  # already applied above, per strategy
+            )
+    except LookupError as e:
+        raise bad_request(str(e))
+    except NotImplementedError as e:
+        raise not_implemented(str(e))
+    except Exception as e:
+        raise bad_request(f"blend failed: {e}")
+
+    lang = blend_language_for(st, req.engine, source_ids)
+
+    now = datetime.now(timezone.utc)
+    rec = VoiceRecord(
+        id="",
+        engine=req.engine,
+        source="blended",
+        name=req.name,
+        language=lang,
+        sample_count=0,
+        blend_recipe=BlendRecipe(
+            strategy=req.strategy,
+            sources=source_ids,
+            weights=stored_weights,
+            segments=segments or None,
+        ),
+        embedding=blended,
+        created_at=now,
+        updated_at=now,
+    )
+    created = st.voices.create(rec)
+    return _stored_to_dto(created)

@@ -98,14 +98,14 @@ def test_the_restricted_engine_still_restricts():
 # ── The gate ──────────────────────────────────────────────────────────────
 
 
-@pytest.mark.parametrize("engine_id", ["moss-tts", "qwen3", "tada"])
+@pytest.mark.parametrize("engine_id", ["moss-tts", "tada"])
 def test_install_engine_refuses_an_unsupported_os(engine_id, monkeypatch):
     """The gate fires for BOTH isolation modes.
 
-    moss-tts is `venv`; qwen3 + tada are `shared`. All three exclude macOS,
-    and none could be blocked before this test existed — the venv one was
-    filtered out one line above the check, and the shared pair declared
-    nothing so they always passed.
+    moss-tts is `venv`; tada is `venv` too since 2026-08-21 (its torch 2.7
+    pin — device-defect fix #3). Both exclude macOS. qwen3 LEFT this list
+    2026-08-21: it genuinely supports macOS now (the MLX venv + OS-gated
+    -mlx rows), so refusing it on a Mac would pin a stale fact.
     """
     monkeypatch.setattr(mgr_mod, "_current_os_label", lambda: "macos")
     m = discover_engines()[engine_id]
@@ -139,7 +139,8 @@ def test_the_gate_runs_before_any_install_work(monkeypatch):
         lambda *a, **k: called.append("isolated"),
     )
 
-    for engine_id in ("qwen3", "moss-tts"):
+    # tada (venv) + moss-tts (venv) — the two that still exclude macOS.
+    for engine_id in ("tada", "moss-tts"):
         with pytest.raises(InstallError):
             mgr_mod.install_engine(discover_engines()[engine_id])
 
@@ -149,7 +150,11 @@ def test_the_gate_runs_before_any_install_work(monkeypatch):
 def test_a_supported_os_passes_the_gate(monkeypatch):
     """The gate must not block the happy path.
 
-    Kokoro declares all three, so it passes whatever the host claims to be.
+    Kokoro declares all three OSes, so it passes whatever the host claims
+    to be. It installs into its OWN venv since the 2026-08-19 kokoro-onnx
+    swap (that package wants numpy>=2.0.2 and the shared venv is pinned
+    below 2.0 by qwen3), so both install arms are stubbed and the isolated
+    one is what must run.
     """
     called: list[str] = []
     monkeypatch.setattr(mgr_mod, "_current_os_label", lambda: "macos")
@@ -157,9 +162,13 @@ def test_a_supported_os_passes_the_gate(monkeypatch):
         mgr_mod, "_install_engine_shared",
         lambda *a, **k: called.append("shared"),
     )
+    monkeypatch.setattr(
+        mgr_mod, "_install_engine_isolated",
+        lambda *a, **k: called.append("isolated"),
+    )
 
     mgr_mod.install_engine(discover_engines()["kokoro"])
-    assert called == ["shared"]
+    assert called == ["isolated"]
 
 
 # ── The wire ──────────────────────────────────────────────────────────────

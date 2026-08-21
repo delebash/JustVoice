@@ -46,7 +46,16 @@ def _captures_dir() -> Path:
 
 
 def _stt_transcribe(audio_path: str, language: str | None) -> str:
-    """Transcribe via the stt-slot engine; auto-load whisper if installed."""
+    """The text alone — what dictation, MCP and the /v1/transcribe door want.
+
+    Callers that need Whisper's own certainty (the Preparer's min-confidence
+    gate) call `_stt_transcribe_detailed` instead."""
+    return _stt_transcribe_detailed(audio_path, language)["text"]
+
+
+def ensure_stt_loaded():
+    """The stt slot's manager, with whisper auto-loaded on first use.
+    Shared by transcription and word alignment — one loading rule."""
     from ..engines.manager import get_manager
 
     mgr = get_manager()
@@ -60,6 +69,15 @@ def _stt_transcribe(audio_path: str, language: str | None) -> str:
             raise bad_request(
                 f"STT engine 'whisper' is {status} — install it on the Engines tab first"
             )
+    return mgr, settings
+
+
+def _stt_transcribe_detailed(audio_path: str, language: str | None) -> dict:
+    """Transcribe via the stt-slot engine; auto-load whisper if installed.
+
+    Returns `{"text", "confidence"}`; `confidence` is None when the engine
+    cannot measure it (UNKNOWN — never gate on None)."""
+    mgr, settings = ensure_stt_loaded()
     lang = language or settings.captures.language
     return mgr.transcribe(
         {"audio_path": audio_path, "language": None if lang in ("", "auto") else lang}
@@ -147,8 +165,11 @@ async def transcribe(
             tmp.write(chunk)
         tmp_path = Path(tmp.name)
     try:
-        text = _stt_transcribe(str(tmp_path), language)
-        return {"text": text, "language": language}
+        # Detailed on purpose: the LoRA clip table shows the transcriber's
+        # own certainty next to each transcript, and this door returning
+        # text-only silently starved that display (found 2026-08-21).
+        r = _stt_transcribe_detailed(str(tmp_path), language)
+        return {"text": r["text"], "confidence": r.get("confidence"), "language": language}
     finally:
         tmp_path.unlink(missing_ok=True)
 

@@ -59,7 +59,19 @@ const routes = [
     path: "/speakerlab",
     redirect: { path: "/ai", query: { tab: "features", action: "speaker_attribution.guided" } },
   },
-  ...["compare", "train", "renderlab", "audio"].map((sub) => ({
+  // #train now lands in Voices, whose LoRA tab hosts the whole training
+  // workflow (ruling 13, 2026-08-19; tab renamed Train → LoRA 2026-08-21).
+  {
+    path: "/train",
+    redirect: () => {
+      try {
+        sessionStorage.setItem("jv.voices.acquireTab", "lora");
+        sessionStorage.setItem("jv.lora.sub", "training");
+      } catch { /* ignore */ }
+      return "/voices";
+    },
+  },
+  ...["compare", "renderlab", "audio"].map((sub) => ({
     path: `/${sub}`,
     redirect: () => {
       try { sessionStorage.setItem("jv.labs.sub", sub); } catch { /* ignore */ }

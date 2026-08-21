@@ -523,7 +523,7 @@ onActivated(() => {
         <div class="jv-card projects__detail-card">
           <header class="projects__detail-header">
             <h2 class="projects__detail-title">{{ selectedProject.name }}</h2>
-            <UiTag intent="ghost" :label="PROJECT_TYPE_LABEL[selectedProject.project_type] ?? selectedProject.project_type" />
+            <UiTag intent="secondary" :value="PROJECT_TYPE_LABEL[selectedProject.project_type] ?? selectedProject.project_type" />
             <UiTag intent="ghost" v-if="selectedProject.imported_from">imported_from = {{ selectedProject.imported_from }}</UiTag>
           </header>
 

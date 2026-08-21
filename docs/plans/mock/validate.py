@@ -59,3 +59,35 @@ out("5. STEPS: %s" % ", ".join(sorted(set(
     re.findall(r'class="stp[^"]*"[^>]*>([^<]+)</span>', html)))))
 out("6. character/persona: %d / %d"
     % (len(re.findall(r"[Cc]haracters?\b", html)), len(re.findall(r"[Pp]ersonas?\b", html))))
+
+# --- 7-9 added 2026-08-17. Checks 1-6 passed a mock whose entire Personas table,
+# and 53 glyph controls across 12 screens, did nothing at all: check 3 counts only
+# button elements, so a control built from a span or a tr was never looked at.
+
+GLYPHS = "⌃⌄⋯▶★\U0001f5d1⤓✕"
+leaf = re.findall(r"<span([^>]*)>\s*([" + GLYPHS + r"])\s*</span>", html)
+dead_glyph = [g for a, g in leaf if "onclick" not in a]
+out("7. GLYPH CONTROLS: %d | dead: %d" % (len(leaf), len(dead_glyph)))
+if dead_glyph:
+    out("   DEAD GLYPHS: %s" % " ".join(sorted(set(dead_glyph))))
+
+# A row is only expected to click where the screen's own copy promises it.
+for rid in ("voices", "personas"):
+    m = re.search(r'<div class="route" id="r-%s">(.*?)(?=<div class="route"|\Z)' % rid, html, re.S)
+    if not m:
+        continue
+    body = m.group(1).partition("</thead>")[2]
+    trs = re.findall(r"<tr\b[^>]*>", body)
+    out("8. ROWS on %-9s %d | not clickable: %d"
+        % (rid, len(trs), len([t for t in trs if "onclick" not in t])))
+
+# Two identical function names in one script silently deletes the first one.
+js = "\n".join(re.findall(r"<script>(.*?)</script>", html, re.S))
+names = re.findall(r"\bfunction\s+([A-Za-z_$][\w$]*)\s*\(", js)
+dupes = sorted({n for n in names if names.count(n) > 1})
+out("9. JS FUNCTIONS: %d | duplicate definitions: %s"
+    % (len(names), ", ".join(dupes) if dupes else "none"))
+# Every function an onclick calls has to exist.
+called = set(re.findall(r'onclick="\s*([A-Za-z_$][\w$]*)\s*\(', html))
+missing = sorted(called - set(names) - {"toast", "if", "for", "while", "return"})
+out("   handlers called but never defined: %s" % (", ".join(missing) if missing else "none"))

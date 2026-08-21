@@ -78,13 +78,13 @@ INSTALL = [
             "safetensors>=0.4",
             "soundfile>=0.12",
             "librosa>=0.10",
-            "numpy>=1.24,<2.0",
             "einops",
             "scipy",
         ],
     },
     # OpenMOSS doesn't ship a PyPI package — install from the upstream repo.
-    {"kind": "pip-git", "url": "https://github.com/OpenMOSS/MOSS-TTSD.git"},
+    {"kind": "pip-git", "url": "https://github.com/OpenMOSS/MOSS-TTSD.git",
+     "ref": "04fe1d8502a6"},  # HEAD @ 2026-08-19; bump = deliberate PR
     # flash-attn. May fail on Windows — operator may need to install manually
     # in the engine's venv if this step fails.
     {"kind": "pip", "packages": ["flash-attn>=2.5; sys_platform == 'linux'"]},

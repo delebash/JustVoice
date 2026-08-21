@@ -18,7 +18,15 @@ export const useEnginesStore = defineStore("engines", () => {
   const items = ref([]);
   const loaded = ref(false);
   let _inflight = null;
-  let _listening = false;
+
+  // Subscribed at STORE CREATION, not inside ensureLoaded (2026-08-21).
+  // It used to be a side effect of ensureLoaded, so a view that called
+  // reload() directly — VoicesView does — never subscribed at all, and the
+  // only component that did call ensureLoaded was mounted nowhere. So on an
+  // ordinary session nothing here listened, and the doors that correctly
+  // dispatched jv:health-refresh reached no store: the deeper half of the
+  // "engine loads that nobody announces" finding.
+  window.addEventListener("jv:health-refresh", () => { void reload(); });
 
   // Failure leaves `loaded` false so the next caller retries — see the note in
   // stores/personas.js.
@@ -31,10 +39,6 @@ export const useEnginesStore = defineStore("engines", () => {
   }
 
   function ensureLoaded() {
-    if (!_listening) {
-      window.addEventListener("jv:health-refresh", () => { void reload(); });
-      _listening = true;
-    }
     if (loaded.value) return Promise.resolve(items.value);
     if (!_inflight) _inflight = reload().finally(() => { _inflight = null; });
     return _inflight;

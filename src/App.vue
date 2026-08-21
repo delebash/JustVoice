@@ -46,7 +46,10 @@ const VIEWS = [
   { id: "captures",  lane: "workflow", label: "Captures",  icon: "🎚️", lede: "Dictation pill + global hotkey. Speak into any text field. Also captures audio for cloning sample collection." },
 
   // ─── Library lane ──────────────────────────────────────────────────
-  { id: "voices",    lane: "library", label: "Voices",    icon: "🎙️", lede: "Voice library — cloned, preset (Kokoro 54 + Qwen 9), designed (text-prompt → voice), blended. Per-voice channel routing." },
+  // Says what the page is FOR. The old lede was a feature list with counts
+  // baked into it ("Kokoro 54 + Qwen 9") — numbers that go stale the moment
+  // an engine ships a voice, and which the type filters show anyway.
+  { id: "voices",    lane: "library", label: "Voices",    icon: "🎙️", lede: "" },
   { id: "personas",  lane: "library", label: "Personas",  icon: "🎭", lede: "Characters. Each persona has a name, a voice, a spoken-delivery instruction (how they sound), a character sheet (who they are), default delivery, effects, lexicon override. Cross-project — one Mara across many books or quests. Filter by usage in the library list.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "lexicons",  lane: "library", label: "Lexicons",  icon: "📚", lede: "Pronunciation dictionaries. Force \"Beauchamp\" → \"BEE-chum\", domain words → consistent phoneme-level pronunciation across a whole book. Per-character override.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "effects",   lane: "library", label: "Effects",   icon: "🎛️", lede: "Pedalboard-backed effects chain. Apply non-destructively — creates a new generation version that preserves the original. 8 types · 4 built-in presets + custom.", visibleFor: ["audiobook", "podcast", "game", "multiple", "unset"] },

@@ -1,29 +1,84 @@
-<div class="top"><span class="crumb">Personas</span><span class="pill">14</span>
-    <span class="pill">across <b>3 projects</b></span></div>
+<div class="top"><span class="crumb">Personas</span><span class="pill">6</span>
+    <span class="pill live"><span class="dot"></span> Kokoro loaded</span></div>
   <div class="body">
+
+    <div class="row">
+      <input class="box" style="max-width:200px" placeholder="Search personas…">
+      <select class="box" style="width:auto"><option>All engines</option><option>qwen3 (2)</option>
+        <option>kokoro (2)</option><option>chatterbox (2)</option></select>
+      <select class="box" style="width:auto"><option>All</option><option>In use</option>
+        <option>Unused</option></select>
+      <span style="flex:1"></span>
+      <button class="btn p" onclick="nav('workbench')">New persona</button>
+    </div>
+
     <div class="card" style="padding:0;overflow:hidden">
       <div class="tw"><table>
-        <thead><tr><th>Character</th><th style="width:170px">Voice</th><th style="width:106px">Engine</th>
-          <th style="width:150px">Used in</th><th style="width:64px">Lines</th><th style="width:34px"></th></tr></thead>
+        <thead><tr>
+          <th style="width:30px"></th><th>Persona</th><th style="width:170px">Built on</th>
+          <th style="width:132px">Engine</th><th style="width:160px">Can be directed</th>
+          <th style="width:150px">Shaped</th><th>Used by</th><th style="width:34px"></th></tr></thead>
         <tbody>
-          <tr style="background:var(--accent-soft)">
-            <td><span class="spk"><span class="av" style="background:#c98aa7">J</span>June</span></td>
-            <td>Sohee</td><td class="mono">qwen3 CV</td>
-            <td class="hint">Stillwater · Emberfall</td><td class="n">115</td>
-            <td><span class="rt"><span>⌃</span></span></td></tr>
-          <tr><td><span class="spk"><span class="av" style="background:#3a7d63">M</span>Marius</span></td>
-            <td>Marius (clone)</td><td class="mono">chatterbox</td>
-            <td class="hint">Stillwater</td><td class="n">54</td>
-            <td><span class="rt"><span>⌄</span></span></td></tr>
-          <tr><td><span class="spk"><span class="av" style="background:#5b7a99">N</span>Narrator</span></td>
-            <td>Heart</td><td class="mono">kokoro</td>
-            <td class="hint">Stillwater · Emberfall · Ep. 12</td><td class="n">402</td>
-            <td><span class="rt"><span>⌄</span></span></td></tr>
-          <tr><td><span class="spk"><span class="av" style="background:#b3552e">H</span>Harbek</span></td>
-            <td class="hint">— none —</td><td class="hint">—</td>
-            <td class="hint">Stillwater</td><td class="n">22</td>
-            <td><span class="rt"><span>⌄</span></span></td></tr>
+          <tr onclick="nav('workbench')" style="cursor:pointer;background:var(--accent-soft)">
+            <td><button class="btn s g" onclick="toast('Playing June…')">▶</button></td>
+            <td><b>June</b></td>
+            <td>Sohee <span class="hint">preset</span></td>
+            <td class="mono">qwen3 CV</td>
+            <td><span class="tag ok">✓ written direction</span></td>
+            <td class="hint">1.05× · −1.0 dB · 2 effects</td>
+            <td class="hint">June — Stillwater</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
+
+          <tr onclick="nav('workbench')" style="cursor:pointer">
+            <td><button class="btn s g" onclick="toast('Playing Marius…')">▶</button></td>
+            <td><b>Marius</b></td>
+            <td>Marius <span class="hint">clone</span></td>
+            <td class="mono">chatterbox Turbo</td>
+            <td><span class="tag w">✓ 19 tags · ✗ prose</span></td>
+            <td class="hint">0.95× · +3.0 dB</td>
+            <td class="hint">Marius — Stillwater</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
+
+          <tr onclick="nav('workbench')" style="cursor:pointer">
+            <td><button class="btn s g" onclick="toast('Playing Narrator (warm)…')">▶</button></td>
+            <td><b>Narrator (warm)</b></td>
+            <td>Heart <span class="hint">preset</span></td>
+            <td class="mono">kokoro</td>
+            <td><span class="tag no">✗ numbers only</span></td>
+            <td class="hint">1.00× · −2.0 dB · eq</td>
+            <td class="hint">Narrator — Stillwater · Emberfall</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
+
+          <tr onclick="nav('workbench')" style="cursor:pointer">
+            <td><button class="btn s g" onclick="toast('Playing Mara (young)…')">▶</button></td>
+            <td><b>Mara (young)</b></td>
+            <td>Ono Anna <span class="hint">preset</span></td>
+            <td class="mono">qwen3 CV</td>
+            <td><span class="tag ok">✓ written direction</span></td>
+            <td class="hint">1.12× · +2 st</td>
+            <td class="hint">Mara (young) — Emberfall</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
+
+          <tr onclick="nav('workbench')" style="cursor:pointer">
+            <td><button class="btn s g" onclick="toast('Playing Mara (old)…')">▶</button></td>
+            <td><b>Mara (old)</b></td>
+            <td>Mara <span class="hint">clone</span></td>
+            <td class="mono">chatterbox Turbo</td>
+            <td><span class="tag w">✓ 19 tags · ✗ prose</span></td>
+            <td class="hint">0.92× · −3 st · reverb</td>
+            <td class="hint">Mara — Emberfall</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
+
+          <tr onclick="nav('workbench')" style="cursor:pointer">
+            <td><button class="btn s g" onclick="toast('Playing Gruff dockhand…')">▶</button></td>
+            <td><b>Gruff dockhand</b></td>
+            <td>Fenrir <span class="hint">preset</span></td>
+            <td class="mono">kokoro</td>
+            <td><span class="tag no">✗ numbers only</span></td>
+            <td class="hint">0.94× · −2 st</td>
+            <td class="hint">— not used yet —</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
         </tbody></table></div>
     </div>
 
-  </div>
+      </div>

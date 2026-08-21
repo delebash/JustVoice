@@ -2,6 +2,7 @@
 <script setup>
 import { ref, reactive, onActivated, onMounted, computed, watch } from "vue";
 import { useApi } from "../stores/api.js";
+import { lexiconMatches } from "../services/lexiconPreview.js";
 import { pushToast, runAiEndpoint, withAiTask } from "@delebash/llm-ui";
 import { confirmDialog } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiTextarea, UiField, UiCheckbox, UiTag, UiSelect, AppModal } from "@delebash/llm-ui";
@@ -272,38 +273,16 @@ watch(selectedPersona, async (p) => {
   }
 }, { immediate: true });
 
-// Client-side match: walk the lexicon entries longest-first, find every
-// case-insensitive occurrence in the current text, return distinct
-// matches with their pronunciation. Schema follows the `LexiconEntry`
-// pydantic model — `grapheme` is the word to match, `phoneme_ipa` /
-// `alias` is the replacement (IPA preferred when both are set).
-const appliedLexiconMatches = computed(() => {
-  if (!attachedLexicon.value || !text.value) return [];
-  const entries = [...(attachedLexicon.value.entries || [])].sort(
-    (a, b) => (b.grapheme?.length || 0) - (a.grapheme?.length || 0),
-  );
-  const seen = new Set();
-  const matches = [];
-  for (const e of entries) {
-    if (!e.grapheme) continue;
-    const replacement = e.phoneme_ipa || e.alias;
-    if (!replacement) continue;
-    const escaped = e.grapheme.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`\\b${escaped}\\b`, "gi");
-    const found = text.value.match(re);
-    if (!found) continue;
-    const key = e.grapheme.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    matches.push({
-      word: e.grapheme,
-      replacement,
-      notation: e.phoneme_ipa ? "IPA" : "phonetic",
-      count: found.length,
-    });
-  }
-  return matches;
-});
+// Client-side match via the ONE shared preview truth
+// (services/lexiconPreview.js — mirrors render_core + kokoro/ipa.py).
+// This view used to show IPA-first while LexiconsView showed alias-first
+// and the render did a third thing; unified 2026-08-21.
+const appliedLexiconMatches = computed(() =>
+  attachedLexicon.value
+    ? lexiconMatches(text.value, attachedLexicon.value.entries)
+    : [],
+);
+
 const appliedLexiconCount = computed(() =>
   appliedLexiconMatches.value.reduce((sum, m) => sum + m.count, 0),
 );
@@ -1097,8 +1076,8 @@ onActivated(() => {
             <tbody>
               <tr v-for="m in appliedLexiconMatches" :key="m.word">
                 <td><strong>{{ m.word }}</strong></td>
-                <td><code class="jv-mono">{{ m.replacement }}</code></td>
-                <td>{{ m.notation }}</td>
+                <td><code class="jv-mono">{{ m.display }}</code></td>
+                <td>{{ m.kind }}</td>
                 <td class="right">{{ m.count }}</td>
               </tr>
             </tbody>

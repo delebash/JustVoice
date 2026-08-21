@@ -1,85 +1,93 @@
 <div class="top"><span class="crumb">Voices</span><span class="pill">64 · <b>3 hidden</b></span>
     <span class="pill live"><span class="dot"></span> Kokoro loaded</span></div>
   <div class="body">
+
     <div class="row">
       <input class="box" style="max-width:190px" placeholder="Search name or description…">
       <select class="box" style="width:auto"><option>All engines</option><option>kokoro (54)</option>
         <option>qwen3 (9)</option><option>chatterbox (1)</option></select>
       <span style="flex:1"></span>
       <button class="btn" onclick="toast('Asked the model about 7 unlabelled voices.','ok')">✨ Guess unknown genders</button>
-      <button class="btn p" onclick="nav('newvoice')">＋ New voice</button>
     </div>
     <div class="row">
-      <span class="tag ok">All 64</span><span class="tag">Preset 54</span><span class="tag">Cloned 1</span>
-      <span class="tag">Derived 0</span><span class="tag">Designed 0</span><span class="tag">Blended 0</span>
-      <span class="tag">Trained 0</span><span class="tag">Imported 0</span>
+      <span class="tag ok" data-filter="all" onclick="pickChip(this)">All 64</span>
+      <span class="tag" data-filter="preset" onclick="pickChip(this)">Built-in 63</span>
+      <span class="tag" data-filter="cloned" onclick="pickChip(this)">Cloned 1</span>
+      <span class="tag" data-filter="designed" onclick="pickChip(this)">Designed 0</span>
+      <span class="tag" data-filter="blended" onclick="pickChip(this)">Blended 0</span>
+      <span class="tag" data-filter="trained" onclick="pickChip(this)">Trained 0</span>
       <span style="flex:1"></span>
-      <span class="tag">🙈 Show hidden (3)</span>
+      <span class="tag" onclick="toast('Showing the 3 hidden voices.')">🙈 Show hidden (3)</span>
     </div>
 
-    <div class="tw"><table>
-      <thead><tr>
-        <th style="width:30px"></th><th>Name</th><th style="width:58px">Gender</th>
-        <th style="width:76px">Type</th><th style="width:150px">Engine</th>
-        <th style="width:132px">Speaks</th><th style="width:76px">Tuned</th>
-        <th>Used by</th><th style="width:30px"></th></tr></thead>
-      <tbody>
-        <tr><td><button class="btn s g" title="Play the stock sample" onclick="toast('Playing the stock sample…')">▶</button></td>
-          <td><b style="color:var(--accent-ink);text-decoration:underline">Heart</b></td>
-          <td><span class="tag">F</span></td><td><span class="tag no">preset</span></td>
-          <td class="mono">kokoro <span class="tag ok">local</span></td>
-          <td>en-US</td><td class="hint">—</td>
-          <td class="hint">Narrator — Emberfall</td>
-          <td><span class="rt"><span>⋯</span></span></td></tr>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="tw"><table data-filterable>
+        <thead><tr>
+          <th style="width:30px"></th><th>Voice</th><th style="width:52px">Gender</th>
+          <th style="width:78px">Type</th><th style="width:150px">Engine</th>
+          <th style="width:150px">Speaks</th><th style="width:170px">Can be directed</th>
+          <th>Used by</th><th style="width:34px"></th></tr></thead>
+        <tbody>
+          <tr data-state="preset" onclick="toast('A voice is raw. Pick it inside a persona’s voice picker, or make a new persona from it.')" style="cursor:pointer">
+            <td><button class="btn s g" title="Play the stock sample" onclick="toast('Playing the stock sample…')">▶</button></td>
+            <td><b>Heart</b></td><td><span class="tag">F</span></td>
+            <td><span class="tag no">built-in</span></td>
+            <td class="mono">kokoro <span class="tag ok">local</span></td>
+            <td>en-US</td><td><span class="tag no">✗ numbers only</span></td>
+            <td class="hint">🎭 Narrator (warm)</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
 
-        <tr><td><button class="btn s g" onclick="toast('Playing the stock sample…')">▶</button></td>
-          <td><b style="color:var(--accent-ink);text-decoration:underline">Heart (warm)</b></td>
-          <td><span class="tag">F</span></td><td><span class="tag ok">derived</span></td>
-          <td class="mono">kokoro <span class="tag ok">local</span></td>
-          <td>en-US</td><td><span class="tag ok">eq · −2 dB</span></td>
-          <td class="hint">—</td>
-          <td><span class="rt"><span>⋯</span></span></td></tr>
+          <tr data-state="preset" onclick="toast('A voice is raw. Pick it inside a persona’s voice picker, or make a new persona from it.')" style="cursor:pointer">
+            <td><button class="btn s g" onclick="toast('Playing the stock sample…')">▶</button></td>
+            <td><b>Fenrir</b></td><td><span class="tag">M</span></td>
+            <td><span class="tag no">built-in</span></td>
+            <td class="mono">kokoro <span class="tag ok">local</span></td>
+            <td>en-US</td><td><span class="tag no">✗ numbers only</span></td>
+            <td class="hint">🎭 Gruff dockhand</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
 
-        <tr><td><button class="btn s g" onclick="toast('Playing the stock sample…')">▶</button></td>
-          <td><b style="color:var(--accent-ink);text-decoration:underline">Sara</b></td>
-          <td><span class="tag">F</span></td><td><span class="tag no">preset</span></td>
-          <td class="mono">kokoro <span class="tag ok">local</span></td>
-          <td><span class="tag e">it ✗ reads as English</span></td><td class="hint">—</td>
-          <td class="hint">—</td>
-          <td><span class="rt"><span>⋯</span></span></td></tr>
+          <tr data-state="preset" onclick="toast('A voice is raw. Pick it inside a persona’s voice picker, or make a new persona from it.')" style="cursor:pointer">
+            <td><button class="btn s g" onclick="toast('Playing the stock sample…')">▶</button></td>
+            <td><b>Sara (Italian)</b></td><td><span class="tag">F</span></td>
+            <td><span class="tag no">built-in</span></td>
+            <td class="mono">kokoro <span class="tag ok">local</span></td>
+            <td><span class="tag e">it ✗ reads as English</span></td>
+            <td><span class="tag no">✗ numbers only</span></td>
+            <td class="hint">— unused —</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
 
-        <tr><td><button class="btn s g" title="Qwen3 isn't loaded — this listen swaps engines" onclick="toast('Playing the stock sample…')">▶</button></td>
-          <td><b style="color:var(--accent-ink);text-decoration:underline">Sohee</b>
-            <span class="tag w" style="margin-left:5px">⏳ swap</span></td>
-          <td><span class="tag">F</span></td><td><span class="tag no">preset</span></td>
-          <td class="mono">qwen3 <span class="tag ok">local</span></td>
-          <td>ko</td><td class="hint">—</td>
-          <td class="hint">June · Ono Anna · Host</td>
-          <td><span class="rt"><span>⋯</span></span></td></tr>
+          <tr data-state="preset" onclick="toast('A voice is raw. Pick it inside a persona’s voice picker, or make a new persona from it.')" style="cursor:pointer">
+            <td><button class="btn s g" title="Qwen3 isn't loaded — this listen swaps engines" onclick="toast('Playing the stock sample…')">▶</button></td>
+            <td><b>Sohee</b> <span class="tag w" style="margin-left:5px">⏳ swap</span></td>
+            <td><span class="tag">F</span></td><td><span class="tag no">built-in</span></td>
+            <td class="mono">qwen3 CV <span class="tag ok">local</span></td>
+            <td>ko</td><td><span class="tag ok">✓ written direction</span></td>
+            <td class="hint">🎭 June · 2 others</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
 
-        <tr><td><button class="btn s g" onclick="toast('Playing the stock sample…')">▶</button></td>
-          <td><b style="color:var(--accent-ink);text-decoration:underline">Marius (clone)</b>
-            <span class="tag w" style="margin-left:5px">⏳ swap</span></td>
-          <td><span class="tag">M</span></td><td><span class="tag ok">cloned</span></td>
-          <td class="mono">chatterbox <span class="tag ok">local</span></td>
-          <td>en</td><td><span class="tag ok">+3 dB</span></td>
-          <td class="hint">Marius — Stillwater</td>
-          <td><span class="rt"><span>⋯</span></span></td></tr>
+          <tr data-state="preset" onclick="toast('A voice is raw. Pick it inside a persona’s voice picker, or make a new persona from it.')" style="cursor:pointer">
+            <td><button class="btn s g" onclick="toast('Playing the stock sample…')">▶</button></td>
+            <td><b>Ono Anna</b> <span class="tag w" style="margin-left:5px">⏳ swap</span></td>
+            <td><span class="tag">F</span></td><td><span class="tag no">built-in</span></td>
+            <td class="mono">qwen3 CV <span class="tag ok">local</span></td>
+            <td>ja</td><td><span class="tag ok">✓ written direction</span></td>
+            <td class="hint">🎭 Mara (young)</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
 
-        <tr><td><button class="btn s g" disabled>▶</button></td>
-          <td><b class="jv-muted">Dia stock</b></td>
-          <td><span class="tag">?</span></td><td><span class="tag no">preset</span></td>
-          <td class="mono">dia <span class="tag w">needs install</span></td>
-          <td>en</td><td class="hint">—</td>
-          <td class="hint">—</td>
-          <td><span class="rt"><span>⋯</span></span></td></tr>
-      </tbody></table></div>
-
-    <div class="row" style="margin-top:2px">
-      <span class="hint"><b>The name is the link</b> — click it, or the row, to open the workbench.
-        No double-click, no drawer, no ⚙.</span>
-      <span style="flex:1"></span>
-      <span class="hint">⋯ per row: <b>Hide</b> (presets can't be deleted) · <b>Delete</b> (yours only) ·
-        <b>Export .justvoice.zip</b> · <b>Reset tuning</b></span>
+          <tr data-state="cloned" onclick="toast('A voice is raw. Pick it inside a persona’s voice picker, or make a new persona from it.')" style="cursor:pointer">
+            <td><button class="btn s g" onclick="toast('Playing the stock sample…')">▶</button></td>
+            <td><b>Marius</b> <span class="tag w" style="margin-left:5px">⏳ swap</span></td>
+            <td><span class="tag">M</span></td><td><span class="tag ok">cloned</span></td>
+            <td class="mono">chatterbox Turbo <span class="tag ok">local</span></td>
+            <td>en</td><td><span class="tag w">✓ 19 tags · ✗ prose</span></td>
+            <td class="hint">🎭 Marius</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
+        </tbody></table></div>
     </div>
+
+    <div class="row" style="margin-top:6px">
+      <span class="hint">Showing 6 of 64.</span>
+    </div>
+
+    
   </div>

@@ -299,6 +299,39 @@ body[data-studio="flat"] .sv-container{display:none!important}
   padding:9px 12px;margin-bottom:12px;background:var(--surface);border:1px solid var(--line-strong);
   border-radius:var(--r-pill);box-shadow:var(--shadow-1)}
 .modebar .lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+
+/* A control the current voice cannot honour is shown, disabled, with its reason —
+   never hidden, or the user cannot tell the difference between "off" and "absent". */
+.box:disabled{opacity:.5;cursor:not-allowed;background:var(--surface-2)}
+
+/* .box is width:100%, which is right in a form and wrong in a table cell: the cell
+   absorbs the table's slack and the control stretches with it. In a cell, size to
+   content. */
+td > select.box,td > input.box{width:auto;max-width:100%;min-width:150px}
+
+/* Cast is a matching task: speakers on the left, the library on the right, click one
+   then the other. A dropdown per row cannot audition, cannot show engine or gender,
+   and is unusable at 63 entries. */
+.cast2{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:14px;align-items:start}
+.spkgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:9px}
+.spkcard{border:1px solid var(--line);border-radius:var(--r-card);padding:10px 12px;
+  background:var(--surface);cursor:pointer;display:flex;gap:10px;align-items:flex-start}
+.spkcard:hover{border-color:var(--accent-line);background:var(--surface-2)}
+.spkcard.sel{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent)}
+.spkcard .nm{font-weight:700;font-size:12.5px}
+.spkcard .de{font-size:11px;color:var(--ink-3);line-height:1.35;margin-top:2px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.spkcard .as{font-size:11px;font-weight:650;margin-top:5px}
+.spkcard .as.none{color:var(--danger-ink)}
+.spkcard .as.has{color:var(--accent-ink)}
+.libr{display:flex;align-items:center;gap:9px;padding:7px 10px;border-bottom:1px solid var(--line);
+  cursor:pointer;font-size:12px}
+.libr:hover{background:var(--surface-2)}
+.libr:last-child{border-bottom:0}
+.libr .nm{font-weight:650}
+.libr .mt{font-size:10.5px;color:var(--ink-3);font-family:var(--font-mono)}
+.libscroll{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:var(--r-card)}
+.libtabs{display:flex;gap:5px;margin-bottom:8px}
 </style>
 
 <style>
@@ -338,6 +371,28 @@ body[data-studio="flat"] .sv-container{display:none!important}
 .est .v{font-family:var(--font-mono);font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
 .est .l{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);font-weight:700}
 .hidden-row{display:none!important}
+
+/* Non-button controls: rows and glyphs. These looked interactive and did nothing
+   until 2026-08-17, because validate.py only ever counted button elements. */
+tbody tr[onclick]{cursor:pointer}
+tbody tr[onclick]:hover{background:var(--surface-2)}
+.rt span[onclick]{cursor:pointer;padding:0 2px;border-radius:4px}
+.rt span[onclick]:hover{color:var(--ink);background:var(--surface-3)}
+.rt span.off{opacity:.3;cursor:not-allowed}
+.rt span.off:hover{background:transparent;color:inherit}
+
+/* The direction cell is edited in the row, not in an expansion -- over 214 lines
+   that is the difference between usable and not. Reads as text, becomes an input
+   on focus, so 214 rows are not 214 live textareas. */
+.cell-edit{width:100%;border:1px solid transparent;background:transparent;font:inherit;
+  color:var(--ink);padding:3px 5px;border-radius:var(--r-control)}
+.cell-edit::placeholder{color:var(--ink-3);font-style:italic}
+.cell-edit:hover:not(:disabled){border-color:var(--line);background:var(--surface-2)}
+.cell-edit:focus{border-color:var(--accent);background:var(--surface);outline:none}
+.cell-edit:disabled{color:var(--ink-3);cursor:not-allowed;font-size:11px}
+.cell-tags{display:flex;gap:4px;flex-wrap:wrap;align-items:center;cursor:pointer;
+  padding:3px 5px;border:1px solid transparent;border-radius:var(--r-control);min-height:24px}
+.cell-tags:hover{border-color:var(--line);background:var(--surface-2)}
 </style>
 <div class="shell" style="padding-bottom:0">
   <div class="modebar">
@@ -373,8 +428,8 @@ body[data-studio="flat"] .sv-container{display:none!important}
 
   <i class="dim" title="Not part of this redesign"><span class="e">&#127908;</span>Captures</i>
   <div class="gh">Library</div>
-  <i data-r="voices" onclick="nav('voices')"><span class="e">&#127897;&#65039;</span>Voices</i>
   <i data-r="personas" onclick="nav('personas')"><span class="e">&#127917;</span>Personas</i>
+  <i data-r="voices" onclick="nav('voices')"><span class="e">&#127897;&#65039;</span>Voices</i>
   <i data-r="lexicons" onclick="nav('lexicons')"><span class="e">&#128213;</span>Lexicons</i>
   <i data-r="effects" onclick="nav('effects')"><span class="e">&#127899;&#65039;</span>Effects</i>
   <div class="gh">System</div>
@@ -389,7 +444,7 @@ body[data-studio="flat"] .sv-container{display:none!important}
   <div class="body">
 
     <a class="bn" style="display:block;text-decoration:none;color:inherit">
-      <b>Cast Harbek and Renn</b> <span class="jv-muted">— 231 lines are waiting on a voice.</span>
+      <b>Cast Harbek and Renn</b> <span class="jv-muted">— 40 lines are waiting on a voice.</span>
       <span class="lnk" style="float:right" onclick="nav('cast')">Open Cast ➜</span></a>
 
     <div class="split">
@@ -401,11 +456,11 @@ body[data-studio="flat"] .sv-container{display:none!important}
             <div style="font-size:19px;font-weight:700;letter-spacing:-.01em">Stillwater</div>
             <div class="hint">📖 audiobook · 14 chapters · 412 of 2,140 lines rendered</div>
             <div class="statebar" style="margin-top:8px">
-              <b class="s-nospk" style="width:4%"></b><b class="s-novoice" style="width:11%"></b><b class="s-ready" style="width:60%"></b><b class="s-done" style="width:19%"></b><b class="s-stale" style="width:6%"></b>
+              <b class="s-nospk" style="width:4%"></b><b class="s-novoice" style="width:2%"></b><b class="s-ready" style="width:69%"></b><b class="s-done" style="width:19%"></b><b class="s-stale" style="width:6%"></b>
             </div>
             <div class="row" style="margin-top:8px;gap:5px">
-              <span class="tag e">88 need a speaker</span><span class="tag w">231 need a voice</span>
-              <span class="tag pd">1,281 ready</span><span class="tag">412 rendered</span><span class="tag">128 stale</span>
+              <span class="tag e">88 need a speaker</span><span class="tag w">40 need a voice</span>
+              <span class="tag pd">1,472 ready</span><span class="tag">412 rendered</span><span class="tag">128 stale</span>
             </div>
           </div>
           <button class="btn p" onclick="openProject('audiobook','Stillwater')">Resume ➜</button>
@@ -423,7 +478,7 @@ body[data-studio="flat"] .sv-container{display:none!important}
           personas and lexicons either way.</p>
         <div class="row" style="margin-top:9px">
           <button class="btn s" onclick="nav('projects')">All projects</button>
-          <button class="btn s" onclick="nav('newvoice')">＋ New voice</button></div>
+          <button class="btn s" onclick="nav('personas')">New persona</button></div>
       </div>
     </div>
 
@@ -483,17 +538,17 @@ body[data-studio="flat"] .sv-container{display:none!important}
             <td><b class="lnk">Stillwater</b><div class="hint">from JustWrite</div></td>
             <td><span class="tag">📖 audiobook</span></td><td class="n">14 ch.</td><td class="n">3 / 5</td>
             <td><div class="prog"><b style="width:19%"></b></div><span class="hint">412 / 2,140</span></td>
-            <td><span class="tag">acx</span></td><td><span class="rt"><span>⋯</span></span></td></tr>
+            <td><span class="tag">acx</span></td><td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
           <tr onclick="openProject('game','Ninefold')" style="cursor:pointer">
             <td><b class="lnk">Ninefold</b><div class="hint">from CSV</div></td>
             <td><span class="tag">🎮 game voicelines</span></td><td class="n">342 lines</td><td class="n">13 / 21</td>
             <td><div class="prog"><b style="width:64%"></b></div><span class="hint">219 / 342</span></td>
-            <td><span class="tag">none</span></td><td><span class="rt"><span>⋯</span></span></td></tr>
+            <td><span class="tag">none</span></td><td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
           <tr onclick="openProject('podcast','The Long Quay')" style="cursor:pointer">
             <td><b class="lnk">The Long Quay</b><div class="hint">markdown scripts</div></td>
             <td><span class="tag">🎙️ podcast</span></td><td class="n">12 ep.</td><td class="n">3 / 3</td>
             <td><div class="prog"><b style="width:92%"></b></div><span class="hint">508 / 552</span></td>
-            <td><span class="tag">podcast</span></td><td><span class="rt"><span>⋯</span></span></td></tr>
+            <td><span class="tag">podcast</span></td><td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
         </tbody></table></div>
     </div>
     <p class="hint" style="margin:0">⋯ per row: Rename · Duplicate · Re-import · Export .justvoice.zip · Delete</p>
@@ -507,10 +562,10 @@ body[data-studio="flat"] .sv-container{display:none!important}
         <div class="card">
           <div class="sh"><span class="st">1</span><h4>What are you making?</h4></div>
           <div class="radios" style="margin-bottom:12px">
-            <span class="radio on"><span class="rd"></span>📖 Audiobook</span>
-            <span class="radio"><span class="rd"></span>🎮 Game voicelines</span>
-            <span class="radio"><span class="rd"></span>🎙️ Podcast</span>
-            <span class="radio"><span class="rd"></span>⚙️ Custom</span></div>
+            <span class="radio on" onclick="pickRadio(this)"><span class="rd"></span>📖 Audiobook</span>
+            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>🎮 Game voicelines</span>
+            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>🎙️ Podcast</span>
+            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>⚙️ Custom</span></div>
           <div class="kb k2">
             <div class="f"><label>Name</label><input class="box" value="Stillwater"></div>
             <div class="f"><label>Language</label><select class="box"><option>en-US</option></select></div></div>
@@ -533,16 +588,16 @@ body[data-studio="flat"] .sv-container{display:none!important}
       </div>
       <div style="display:flex;flex-direction:column;gap:12px">
         <div class="card"><div class="sh"><h4>Master target</h4></div>
-          <div class="radios"><span class="radio on"><span class="rd"></span>ACX</span>
-            <span class="radio"><span class="rd"></span>Audible inAudio</span>
-            <span class="radio"><span class="rd"></span>Podcast</span>
-            <span class="radio"><span class="rd"></span>YouTube</span>
-            <span class="radio"><span class="rd"></span>None</span></div>
+          <div class="radios"><span class="radio on" onclick="pickRadio(this)"><span class="rd"></span>ACX</span>
+            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>Audible inAudio</span>
+            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>Podcast</span>
+            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>YouTube</span>
+            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>None</span></div>
           <p class="hint" style="margin:8px 0 0">Sets loudness, peak ceiling and noise floor for every
             render. Change it later from any chapter.</p></div>
         <div class="card tint"><div class="sh"><h4>What you get</h4></div>
           <p class="note" style="margin:0">N chapters · one line per paragraph · a <b>Narrator</b>
-            character · one character per name the source knew. Nothing cast to a voice yet.</p></div>
+            persona · one persona per name the source knew. Nothing cast to a voice yet.</p></div>
       </div>
     </div>
   </div>
@@ -997,8 +1052,9 @@ body[data-studio="flat"] .sv-container{display:none!important}
 </div>
 <div class="route" id="r-cast">
 <div class="top"><span class="crumb"><span class="lnk" onclick="nav('chapters')"><span class="proj-name">Stillwater</span></span> › Cast</span>
-    <span class="pill proj-kind">📖 audiobook</span>
-    <span class="pill">5 characters · <b>3 cast</b></span>
+    <span class="pill">Kind 📖 <b>audiobook</b></span>
+    <span class="pill">Master <b>acx</b></span>
+    <span style="flex:1"></span>
     <span class="pill live"><span class="dot"></span> Qwen3</span></div>
   <div class="body">
     <div class="steps-strip sv-container">
@@ -1018,175 +1074,134 @@ body[data-studio="flat"] .sv-container{display:none!important}
       <span class="stp k-game" onclick="nav('export')">4 &middot; Export</span>
     </div>
 
-    <div class="verbs">
-      <span class="verb"><button class="btn p" onclick="toast('Proposed a voice for Harbek and Renn — review before rendering.','ok')">✨ Auto-cast everyone</button>
-        <span class="vs">Proposes a voice for each uncast character. Review before rendering.</span></span>
-      <span class="verb"><button class="btn" onclick="nav('personas')">＋ Add from library</button>
-        <span class="vs">Bring in a character you already made in another project.</span></span>
-      <span class="verb"><button class="btn" disabled>🎙️ Cast selected to…</button>
-        <span class="vs">Bulk-assign one voice to every ticked row. Select rows to enable.</span></span>
-    </div>
 
-    <div class="card" style="padding:0;overflow:hidden">
-      <div class="tw"><table>
-        <thead><tr>
-          <th class="selcol"><input type="checkbox" aria-label="Select all"></th>
-          <th>Character</th><th style="width:190px">Voice</th><th style="width:120px">Engine</th>
-          <th style="width:66px">Lines</th><th style="width:132px">State</th><th style="width:34px"></th>
-        </tr></thead>
-        <tbody>
+    <div class="cast2">
+      <div style="display:flex;flex-direction:column;gap:12px">
 
-        <tr style="background:var(--accent-soft)">
-          <td><input type="checkbox" aria-label="Select June"></td>
-          <td><span class="spk"><span class="av" style="background:#c98aa7">J</span>June</span></td>
-          <td>Sohee</td><td class="mono">qwen3 CV</td><td class="n">61</td>
-          <td><span class="tag ok">cast</span></td>
-          <td><span class="rt"><span>⌃</span></span></td></tr>
+        <div class="spkcard" style="width:100%" onclick="pickCard(this)">
+          <span class="av" style="background:#5b7a99">N</span>
+          <div style="min-width:0">
+            <div class="nm">Narrator</div>
+            <div class="de">The book’s narrating voice. Steady, clear, unhurried; carries the prose between dialogue.</div>
+            <div class="as has">Narrator (warm) · kokoro · 99 lines</div></div></div>
 
-        <tr class="castx"><td colspan="7">
-      <div class="sh"><h4>🎭 June</h4><span class="tag">61 lines here</span>
-        <span class="tag w">also in Emberfall · 54 lines</span>
-        <span class="sub">Alias of: — none —</span></div>
+        <div class="row">
+          <b style="font-size:12px">Speakers</b>
+          <span class="hint">4 · <b>2 unassigned</b></span>
+          <span style="flex:1"></span>
+          <button class="btn s" onclick="toast('Added a speaker — name it, then pick a persona.')">＋ Add</button>
+          <button class="btn s" onclick="toast('Cleared every assignment. The speakers stay.','warn')">✕ Clear cast</button>
+          <button class="btn p s" onclick="toast('Matched 2 speakers to personas — listen before you accept.','ok')">✨ Smart-assign</button></div>
 
-      <div class="f" style="margin-bottom:10px"><label>Where her voice comes from</label>
-        <div class="radios">
-          <span class="radio on"><span class="rd"></span>From the library</span>
-          <span class="radio"><span class="rd"></span>Clone from audio</span>
-          <span class="radio"><span class="rd"></span>Blend two voices</span>
-          <span class="radio"><span class="rd"></span>Trained LoRA</span>
-          <span class="radio"><span class="rd"></span>Design from words ⤓</span></div>
-        <span class="hint">The choice fixes her engine, and with it what she can do: a CustomVoice
-          preset performs written direction but cannot be cloned from; a Chatterbox clone is her own
-          timbre but ignores direction. Design needs the Qwen3 VoiceDesign model — install it to
-          enable that option.</span></div>
+        <div class="spkgrid">
+          <div class="spkcard sel" onclick="pickCard(this)">
+            <span class="av" style="background:#c98aa7">J</span>
+            <div style="min-width:0">
+              <div class="nm">June</div>
+              <div class="de">Lead detective. Dry wit, hates the fog, protective of Sarah.</div>
+              <div class="as has">June · qwen3 CV · 61 lines</div></div></div>
 
-      <div class="split">
-        <div style="display:flex;flex-direction:column;gap:11px">
-          <div class="kb k2">
-            <div class="f"><label>Voice</label><select class="box"><option>Sohee — qwen3 CustomVoice</option></select></div>
-            <div class="f"><label>Engine override</label><select class="box"><option>(use the voice's)</option></select></div></div>
-          <div class="f"><label>How she sounds, always <span class="tag ok">✓ Qwen3 performs this</span></label>
-            <textarea class="box t">Clipped, world-weary. Dry wit. Boston accent under stress.</textarea>
-            <span class="hint">Her <b>base delivery</b>. Every line's own direction is appended to this.</span></div>
-          <div class="kb">
-            <div class="kn"><label class="hint">Speed</label><div class="kr">
-              <input type="range" min=".5" max="2" step=".05" value="1.05"><input class="num" value="1.05"><span class="u">×</span></div></div>
-            <div class="kn"><label class="hint">Pitch</label><div class="kr">
-              <input type="range" min="-12" max="12" value="0"><input class="num" value="0"><span class="u">st</span></div></div>
-            <div class="kn"><label class="hint">Gain</label><div class="kr">
-              <input type="range" min="-12" max="12" step=".5" value="-1"><input class="num" value="-1.0"><span class="u">dB</span></div></div>
-            <div class="kn"><label class="hint">Temperature</label><div class="kr">
-              <input type="range" min=".05" max="2" step=".05" value=".9"><input class="num" value="0.90"></div></div>
-            <div class="kn"><label class="hint">Pause before → after</label><div class="kr">
-              <input class="num" value="0"><span class="u">→</span><input class="num" value="250"><span class="u">ms</span></div></div>
-            <div class="kn"><label class="hint">Seed</label><div class="kr">
-              <input class="num" style="width:70px" value="random"><button class="btn s g" onclick="toast('New random seed.')">🎲</button></div></div></div>
-          <div class="kb k2">
-            <div class="f"><label>Effects</label><div class="row">
-              <span class="tag">reverb</span><span class="tag">eq</span><button class="btn s g" onclick="toast('＋ Edit — not wired in the mock.')">＋ Edit</button></div></div>
-            <div class="f"><label>Lexicon</label><select class="box"><option>Harbor names</option></select></div></div>
+          <div class="spkcard" onclick="pickCard(this)">
+            <span class="av" style="background:#3a7d63">M</span>
+            <div style="min-width:0">
+              <div class="nm">Marius</div>
+              <div class="de">Harbour-master's son. Careful, superstitious, speaks in short sentences.</div>
+              <div class="as has">Marius · chatterbox Turbo · 54 lines</div></div></div>
+
+          <div class="spkcard" onclick="pickCard(this)">
+            <span class="av" style="background:#b3552e">H</span>
+            <div style="min-width:0">
+              <div class="nm">Harbek</div>
+              <div class="de">Found in chapter 4. Nothing written about him yet.</div>
+              <div class="as none">⚠ no persona · 22 lines blocked</div></div></div>
+
+          <div class="spkcard" onclick="pickCard(this)">
+            <span class="av" style="background:#7c5cbf">R</span>
+            <div style="min-width:0">
+              <div class="nm">Renn</div>
+              <div class="de">Dock clerk. Talks fast, apologises more than she needs to.</div>
+              <div class="as none">⚠ no persona · 18 lines blocked</div></div></div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:11px">
-          <div class="card" style="padding:11px 13px">
-            <div class="sh" style="margin-bottom:7px"><h4 style="font-size:12px">Hear June</h4></div>
-            <textarea class="box t" style="min-height:44px">You're late.</textarea>
-            <div class="row" style="margin-top:7px"><button class="btn p s" onclick="toast('Hearing June as cast…')">▶ Listen</button>
-              <button class="btn s" onclick="toast('Loaded her first line from chapter 1.')">↻ Her real first line</button></div>
-            <div class="player" style="margin-top:8px"><button class="btn p s rnd" onclick="toast('Playing…')">▶</button>
-              <div class="bar"><b style="width:44%"></b></div><span class="mono hint">0:02</span></div></div>
-          <div class="stack"><h5>What she sounds like</h5>
-            <div class="l"><b>June</b><span class="sp">·</span>Sohee (qwen3)<span class="sp">·</span>base delivery<span class="sp">·</span>1.05×<span class="sp">·</span>−1.0 dB<br>
-              <span class="lt">2 effects · Harbor names — apply on render</span></div></div>
-          <div class="card" style="padding:11px 13px">
-            <div class="sh" style="margin-bottom:6px"><h4 style="font-size:12px">Who she is</h4></div>
-            <textarea class="box t" style="min-height:52px">Lead detective. Dry wit, hates the fog, protective of Sarah.</textarea>
-            <p class="hint" style="margin:6px 0 0">Drives Compose, Rewrite and casting suggestions.
-              <b>Never</b> changes the audio.</p></div>
-        </div>
+
+        <div class="card"><div class="sh"><h4>June</h4>
+            <span class="sub">selected</span></div>
+          <div class="f"><label>Who she is</label>
+            <textarea class="box t" style="min-height:54px">Lead detective. Dry wit, hates the fog, protective of Sarah.</textarea>
+            <span class="hint">Read by the AI for attribution and rewriting. Never heard.</span></div>
+          <div class="row" style="margin-top:9px">
+            <button class="btn" onclick="nav('workbench')">Edit her persona →</button>
+            <span class="hint">Pace, pitch, gain, delivery, effects — all of it lives there.</span></div></div>
       </div>
-    </td></tr>
 
-        <tr>
-          <td><input type="checkbox" aria-label="Select Marius"></td>
-          <td><span class="spk"><span class="av" style="background:#3a7d63">M</span>Marius</span></td>
-          <td>Marius (clone)</td><td class="mono">chatterbox</td><td class="n">54</td>
-          <td><span class="tag w">cloning…</span></td>
-          <td><span class="rt"><span>⌄</span></span></td></tr>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="row"><b style="font-size:12px">Personas</b><span class="hint">6</span></div>
 
-        <tr>
-          <td><input type="checkbox" aria-label="Select Narrator"></td>
-          <td><span class="spk"><span class="av" style="background:#5b7a99">N</span>Narrator</span></td>
-          <td>Heart</td><td class="mono">kokoro</td><td class="n">99</td>
-          <td><span class="tag ok">cast</span></td>
-          <td><span class="rt"><span>⌄</span></span></td></tr>
+        <div class="bn">Select a speaker, then click a persona to assign it.</div>
 
-        <tr>
-          <td><input type="checkbox" aria-label="Select Harbek"></td>
-          <td><span class="spk"><span class="av" style="background:#b3552e">H</span>Harbek</span>
-            <span class="hint" style="margin-left:6px">discovered ch. 4</span></td>
-          <td class="hint">— none —</td><td class="hint">—</td><td class="n">22</td>
-          <td><span class="tag e">no voice · blocked</span></td>
-          <td><span class="rt"><span>⌄</span></span></td></tr>
+        <div class="row">
+          <input class="box" placeholder="Search by name or tone…">
+          <select class="box" style="width:auto"><option>All engines</option>
+            <option>qwen3 (2)</option><option>kokoro (2)</option><option>chatterbox (2)</option></select></div>
 
-        <tr>
-          <td><input type="checkbox" aria-label="Select Renn"></td>
-          <td><span class="spk"><span class="av" style="background:#7c5cbf">R</span>Renn</span></td>
-          <td class="hint">— none —</td><td class="hint">—</td><td class="n">18</td>
-          <td><span class="tag e">no voice · blocked</span></td>
-          <td><span class="rt"><span>⌄</span></span></td></tr>
+        <div class="libscroll">
+          <div class="libr" onclick="toast('Assigned June to the selected speaker.','ok')">
+            <span class="av" style="background:#c98aa7;width:26px;height:26px;font-size:11px">J</span>
+            <div style="flex:1;min-width:0"><div class="nm">June</div>
+              <div class="mt">Sohee · qwen3 CV</div></div>
+            <span class="tag ok">✓ written</span>
+            <span class="rt"><span onclick="toast('Playing June…')">▶</span><span onclick="nav('workbench')">✎</span></span></div>
 
-        </tbody></table></div>
-    </div>
+          <div class="libr" onclick="toast('Assigned Marius to the selected speaker.','ok')">
+            <span class="av" style="background:#3a7d63;width:26px;height:26px;font-size:11px">M</span>
+            <div style="flex:1;min-width:0"><div class="nm">Marius</div>
+              <div class="mt">clone · chatterbox Turbo</div></div>
+            <span class="tag w">19 tags</span>
+            <span class="rt"><span onclick="toast('Playing Marius…')">▶</span><span onclick="nav('workbench')">✎</span></span></div>
 
-    <div class="card">
-      <div class="sh"><h4>🎭 Marius</h4><span class="tag">54 lines</span>
-        <span class="sub">Alias of: — none —</span></div>
-      <div class="f" style="margin-bottom:10px"><label>Where his voice comes from</label>
-        <div class="radios"><span class="radio"><span class="rd"></span>From the library</span>
-          <span class="radio on"><span class="rd"></span>Clone from audio</span>
-          <span class="radio"><span class="rd"></span>Blend two voices</span>
-          <span class="radio"><span class="rd"></span>Trained LoRA</span>
-          <span class="radio"><span class="rd"></span>Design from words ⤓</span></div></div>
-      <div class="bn w"><b>Cloning needs Chatterbox.</b> Qwen3 CustomVoice speaks its 9 preset timbres
-        only. <button class="btn s" style="margin-left:5px" onclick="toast('Loading Chatterbox — Kokoro will unload.','warn')">Load Chatterbox (~40 s)</button></div>
-      <div class="split" style="margin-top:11px">
-        <div style="display:flex;flex-direction:column;gap:10px">
-          <div class="drop" style="padding:12px">Drop reference audio · 10 s–2 min · one speaker · clean</div>
-          <div class="tw"><table><thead><tr><th>File</th><th>Length</th><th>SNR</th><th>Transcript</th><th></th></tr></thead>
-            <tbody><tr><td class="mono">marius_01.wav</td><td class="n">0:47</td><td><span class="tag ok">32 dB</span></td>
-              <td>“The tide turned below the floorboards…”</td><td><span class="rt"><span>▶</span><span>🗑</span></span></td></tr>
-              <tr><td class="mono">marius_02.wav</td><td class="n">0:22</td><td><span class="tag w">18 dB</span></td>
-              <td>transcribing…</td><td><span class="rt"><span>▶</span><span>🗑</span></span></td></tr></tbody></table></div>
-          <p class="hint" style="margin:0">Whisper transcribes on ingest. SNR flags a noisy reference
-            before it poisons the clone — clones inherit room tone.</p>
+          <div class="libr" onclick="toast('Assigned Narrator (warm) to the selected speaker.','ok')">
+            <span class="av" style="background:#5b7a99;width:26px;height:26px;font-size:11px">N</span>
+            <div style="flex:1;min-width:0"><div class="nm">Narrator (warm)</div>
+              <div class="mt">Heart · kokoro</div></div>
+            <span class="tag no">✗ none</span>
+            <span class="rt"><span onclick="toast('Playing Narrator (warm)…')">▶</span><span onclick="nav('workbench')">✎</span></span></div>
+
+          <div class="libr" onclick="toast('Assigned Gruff dockhand to the selected speaker.','ok')">
+            <span class="av" style="background:#7a6a55;width:26px;height:26px;font-size:11px">G</span>
+            <div style="flex:1;min-width:0"><div class="nm">Gruff dockhand</div>
+              <div class="mt">Fenrir · kokoro</div></div>
+            <span class="tag no">✗ none</span>
+            <span class="rt"><span onclick="toast('Playing Gruff dockhand…')">▶</span><span onclick="nav('workbench')">✎</span></span></div>
+
+          <div class="libr" onclick="toast('Assigned Mara (young) to the selected speaker.','ok')">
+            <span class="av" style="background:#bf7fa0;width:26px;height:26px;font-size:11px">M</span>
+            <div style="flex:1;min-width:0"><div class="nm">Mara (young)</div>
+              <div class="mt">Ono Anna · qwen3 CV</div></div>
+            <span class="tag ok">✓ written</span>
+            <span class="rt"><span onclick="toast('Playing Mara (young)…')">▶</span><span onclick="nav('workbench')">✎</span></span></div>
+
+          <div class="libr" onclick="toast('Assigned Mara (old) to the selected speaker.','ok')">
+            <span class="av" style="background:#8a6f9e;width:26px;height:26px;font-size:11px">M</span>
+            <div style="flex:1;min-width:0"><div class="nm">Mara (old)</div>
+              <div class="mt">clone · chatterbox Turbo</div></div>
+            <span class="tag w">19 tags</span>
+            <span class="rt"><span onclick="toast('Playing Mara (old)…')">▶</span><span onclick="nav('workbench')">✎</span></span></div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:10px">
-          <div class="f"><label>Name it</label><input class="box" value="Marius (clone)"></div>
-          <div class="f"><label>Also promote from</label>
-            <select class="box"><option>— nothing —</option><option>Captures · 12 dictation clips</option></select>
-            <span class="hint">Your own dictation recordings are legal clone sources.</span></div>
-          <button class="btn p" onclick="toast('Clone created and cast to Marius.','ok')">🎤 Clone &amp; cast to Marius</button>
-        </div>
+
+        <p class="hint" style="margin:0">Two speakers can share one persona — change it once and
+          both change. 6 personas here; nothing stops one covering thirty NPCs.</p>
       </div>
     </div>
 
-    <div class="card tint"><div class="sh"><h4>🎭 Harbek</h4>
-      <span class="tag e">no voice — 22 lines blocked</span>
-      <span class="sub">discovered in ch. 4</span></div>
-      <div class="row"><select class="box" style="max-width:260px"><option>— pick a voice —</option></select>
-        <button class="btn s" onclick="toast('Suggested Uncle Fu for Harbek — accept or pick another.')">✨ Suggest one</button><button class="btn s" onclick="nav('newvoice')">Clone from audio</button></div>
-      <p class="hint" style="margin:9px 0 0">His 22 lines cannot render until he has a voice.</p></div>
+    <p class="hint" style="margin:11px 0 0">40 lines can't render until Harbek and Renn have a persona.</p>
   </div>
 </div>
 <div class="route" id="r-render">
 <div class="top">
-    <span class="crumb"><span class="lnk" onclick="nav('projects')">Projects</span>
-      › <span class="lnk" onclick="nav('chapters')">Stillwater</span><span class="sv-container"> › Studio</span>
-      › <b>Ch. 1 › Render</b></span>
-    <span class="pill">Master <b>acx</b></span>
-    <span class="pill">Scene <b class="lnk" onclick="nav('scene')">no direction</b></span>
+    <span class="crumb"><span class="lnk" onclick="nav('chapters')">Stillwater</span>
+      › <b>Ch. 1 · Render</b></span>
+    <span class="pill">214 lines · <b>27 rendered</b></span>
     <span style="flex:1"></span>
-    <span class="pill live"><span class="dot"></span> Qwen3 · CUDA</span></div>
+    <span class="pill live"><span class="dot"></span> Qwen3</span></div>
   <div class="body">
     <div class="steps-strip sv-container">
       <span class="stp k-book" onclick="nav('discover')">1 &middot; Discover</span>
@@ -1206,179 +1221,136 @@ body[data-studio="flat"] .sv-container{display:none!important}
     </div>
 
 
-    <div class="split">
-      <div style="display:flex;flex-direction:column;gap:13px">
-        <div class="card"><div class="sh"><h4>Rendering</h4><span class="sub">187 to make · 27 cached</span></div>
-          <div class="prog" style="margin-bottom:6px"><b style="width:38%"></b></div>
-          <div class="row"><span class="mono hint">71 / 187 · 4m 12s left · line 98 “By an hour.”</span>
-            <span style="flex:1"></span><button class="btn s d" onclick="toast('Render stopped at line 71. Finished lines are kept.','warn')">⏹ Stop</button></div>
-          <div class="bn w" style="margin-top:9px">⏳ <b>34 lines waiting on Chatterbox.</b> One speech
-            engine runs at a time, so Marius' lines render together after Qwen3 finishes — swapping
-            per line would cost a minute each.</div>
-          <div class="kb" style="margin-top:11px">
-            <div class="f"><label>Gap between lines</label><div class="kr"><input class="num" value="250"><span class="u">ms</span></div></div>
-            <div class="f"><label>On speaker change</label><div class="kr"><input class="num" value="500"><span class="u">ms</span></div></div>
-            <div class="f"><label>Sample rate</label><select class="box"><option>44.1 kHz</option><option>48 kHz</option></select></div></div>
-          <div class="row" style="margin-top:10px"><button class="btn p" onclick="toast('Rendering 187 lines — progress above.','ok')">⚡ Render pending</button>
-            <button class="btn" onclick="toast('Re-rendering all 214 lines from scratch.','warn')">↻ Re-render all</button><button class="btn" onclick="toast('Cache cleared — every line will re-render next time.','warn')">🧹 Clear cache</button></div></div>
-
-        <div class="card"><div class="sh"><h4>Chapter preview</h4></div>
-          <div class="player"><button class="btn p rnd" onclick="toast('Playing…')">▶</button>
-            <div class="bar"><b style="width:22%"></b></div>
-            <span class="mono hint">3:48 / 17:02</span><button class="btn s g" onclick="toast('Chapter WAV saved.')">⤓ WAV</button></div></div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <div class="card"><div class="sh"><h4>Before it runs</h4></div>
-          <div class="tags" style="flex-direction:column;align-items:flex-start;gap:6px">
-            <span class="tag e">✗ 3 lines have no speaker — fix in <b class="lnk" onclick="nav('chapter')">Script</b></span>
-            <span class="tag e">✗ Harbek has no voice — 22 lines blocked</span>
-            <span class="tag w">2 lines over 400 chars — will be chunked</span></div>
-          <p class="hint" style="margin:9px 0 0">The render <b>refuses and names</b> the offending
-            lines rather than dropping them silently from the book.</p></div>
-        <div class="card"><div class="sh"><h4>Cost</h4></div>
-          <table><tbody><tr><td>Local · Qwen3</td><td class="n">187</td><td><span class="tag ok">free</span></td></tr>
-            <tr><td>Online · metered</td><td class="n">0</td><td><span class="tag no">—</span></td></tr>
-            <tr><td>Audio out</td><td class="n">17:02</td><td></td></tr></tbody></table></div>
-        <div class="card tint"><div class="sh"><h4>What makes a line stale</h4></div>
-          <p class="note" style="margin:0">Its text, speaker, voice, delivery, direction, effects or
-            lexicon changed. Change one and <b>that line</b> re-renders — the other 213 stay.</p></div>
-      </div>
+    <div class="row">
+      <button class="btn p" onclick="toast('Rendering 187 lines.','ok')">⚡ Render pending 187</button>
+      <button class="btn" onclick="toast('Playing the 27 rendered lines in order.')">▶ Play chapter</button>
+      <button class="btn" onclick="toast('Re-rendering all 214 lines from scratch.','warn')">↻ Re-render all</button>
+      <span style="flex:1"></span>
+      <span class="tag ok" data-filter="all" onclick="pickChip(this)">All 214</span>
+      <span class="tag pd" data-filter="pending" onclick="pickChip(this)">Pending 187</span>
+      <span class="tag" data-filter="stale" onclick="pickChip(this)">Stale 9</span>
+      <span class="tag" data-filter="done" onclick="pickChip(this)">Done 27</span>
+      <span class="tag w" data-filter="uncast" onclick="pickChip(this)">Blocked 25</span>
     </div>
 
-    <div class="card" style="padding:0;overflow:hidden;margin-top:13px">
-      <div style="padding:11px 14px;border-bottom:1px solid var(--line)">
-        <div class="sh" style="margin-bottom:8px"><h4>Line by line</h4>
-          <span class="sub">how each one is performed</span></div>
-        <div class="row">
-          <span class="tag ok" data-filter="all" onclick="pickChip(this)">All 214</span>
-          <span class="tag pd" data-filter="pending" onclick="pickChip(this)">187 not rendered</span>
-          <span class="tag" data-filter="stale" onclick="pickChip(this)">9 stale</span>
-          <span class="tag" data-filter="done" onclick="pickChip(this)">27 done</span>
-          <span class="tag w" data-filter="uncast" onclick="pickChip(this)">22 no voice</span>
-          <span style="flex:1"></span>
-          <button class="btn s" onclick="toast('Writing directions for 214 lines — review each before rendering.','ok')">✍️ Write directions</button>
-          <button class="btn s" onclick="toast('Playing the 27 rendered lines in order.')">▶ Play chapter</button></div>
-        <p class="hint" style="margin:7px 0 0">Who speaks a line is decided in
-          <span class="lnk" onclick="nav('chapter')">Script</span> and is read-only here. This page is
-          <b>how it sounds</b>.</p>
-      </div>
+    <div class="bn e">✗ <b>25 lines can't render.</b> 3 have no speaker —
+      <span class="lnk" onclick="nav('chapter')">fix in Script</span>. Harbek has no persona —
+      <span class="lnk" onclick="nav('cast')">fix in Cast</span>.</div>
 
+    <div class="card" style="padding:0;overflow:hidden">
       <div class="tw"><table data-filterable>
         <thead><tr>
-          <th style="width:44px"></th><th style="width:150px">Who</th><th>Line</th>
-          <th style="width:180px">Direction</th><th style="width:66px">Pause</th>
-          <th style="width:96px">State</th><th style="width:132px">Take</th></tr></thead>
+          <th style="width:38px"></th><th style="width:130px">Speaker</th><th>Text</th>
+          <th style="width:250px">How it's said</th>
+          <th style="width:84px">Status</th><th style="width:120px">Audio</th></tr></thead>
         <tbody>
-          <tr data-state="done"><td><span class="rt"><span>⌃</span></span></td>
+
+          <tr data-state="done"><td><span class="rt"><span onclick="toggleRow(this)">⌄</span></span></td>
             <td><span class="spk"><span class="av" style="background:#5b7a99">N</span>Narrator</span></td>
             <td>Marius set the lamp on the table.</td>
-            <td class="hint" style="font-style:italic">Even, unhurried.</td>
-            <td><input class="num" value="250"></td>
+            <td><input class="cell-edit" disabled placeholder="kokoro takes no direction"></td>
             <td><span class="tag ok">done</span></td>
             <td><div class="player" style="padding:3px 6px"><button class="btn s p rnd" style="width:18px;height:18px" onclick="toast('Playing…')">▶</button>
-              <div class="bar"><b style="width:0"></b></div><span class="rt"><span>★</span></span></div></td></tr>
+              <div class="bar"><b style="width:0"></b></div>
+              <span class="rt"><span onclick="toast('Saved the WAV.')">⤓</span></span></div></td></tr>
 
-          <tr data-state="pending" style="background:var(--accent-soft)"><td><span class="rt"><span>⌄</span></span></td>
+          <tr data-state="pending" style="background:var(--accent-soft)"><td><span class="rt"><span onclick="toggleRow(this)">⌃</span></span></td>
             <td><span class="spk"><span class="av" style="background:#c98aa7">J</span>June</span></td>
             <td>“You're late.”</td>
-            <td class="hint" style="font-style:italic">Sharp, clipped.</td>
-            <td><input class="num" value="180"></td>
+            <td><input class="cell-edit" value="Sharp, clipped, edge of irritation." placeholder="as June always speaks"></td>
             <td><span class="tag pd">pending</span></td>
             <td><button class="btn s p" onclick="toast('Rendering this line…','ok')">▶ Gen</button></td></tr>
 
-          <tr class="exp"><td colspan="7">
+          <tr class="exp"><td colspan="6">
             <div class="split">
               <div style="display:flex;flex-direction:column;gap:11px">
-                <div class="row">
-                  <span class="tag ok">selected line 2 of 214</span>
-                  <button class="btn s" onclick="toast('Line 1 of 214')">⌃ prev</button><button class="btn s" onclick="toast('Line 3 of 214')">⌄ next</button>
-                  <span style="flex:1"></span><button class="btn s g" onclick="toast('Row collapsed')">✕ close</button></div>
+                <div class="f"><label>Spoken by</label>
+                  <select class="box" style="max-width:330px">
+                    <option>June — as the cast says</option>
+                    <option>Mara (old) — clone · chatterbox Turbo</option>
+                    <option>Gruff dockhand — Fenrir · kokoro</option>
+                  </select></div>
 
-                <div class="kb k2">
-                  <div class="f"><label>Who speaks it</label>
-                    <div class="row"><span class="tag">🎭 June</span>
-                      <button class="btn s g" onclick="nav('chapter')">Change in Script →</button></div>
-                    <span class="hint">Attribution is Script's job. Changing it here would put the
-                      same decision on two pages.</span></div>
-                  <div class="f"><label>Spoken with</label>
-                    <div class="row">
-                      <span class="tag">🎙️ Sohee · Qwen3 CustomVoice</span>
-                      <span class="tag ok">✓ takes direction</span>
-                      <button class="btn s g" onclick="nav('cast')">Change in Cast →</button></div>
-                    <span class="hint">The voice belongs to <b>June</b>, not to this line — and she also
-                      speaks in <b>Emberfall</b>, so changing it changes her there too. A different voice
-                      for a passage means a different persona, not an override here.</span></div>
-                </div>
-
-                <div class="f"><label>Direction for this line</label>
-                  <textarea class="box t" style="min-height:46px">Sharp, clipped, edge of irritation.</textarea>
-                  <span class="hint">Appended to June's base delivery, not instead of it.</span></div>
-
-                <details class="ovr">
-                  <summary>⚙ Override the numbers for this line — <b>not set</b></summary>
-                  <div class="kb" style="margin-top:8px">
-                    <div class="kn"><label class="hint">Speed <span class="tag">June 1.05×</span></label>
+                <div><label class="hint" style="display:block;margin-bottom:5px">Override for this line only</label>
+                  <div class="kb">
+                    <div class="kn"><label class="hint">Pace <span class="tag">1.05×</span></label>
                       <div class="kr"><input class="num" value="—"><span class="u">×</span></div></div>
-                    <div class="kn"><label class="hint">Pitch <span class="tag">June 0</span></label>
+                    <div class="kn"><label class="hint">Pitch <span class="tag">0</span></label>
                       <div class="kr"><input class="num" value="—"><span class="u">st</span></div></div>
-                    <div class="kn"><label class="hint">Gain <span class="tag">June −1.0</span></label>
+                    <div class="kn"><label class="hint">Gain <span class="tag">−1.0</span></label>
                       <div class="kr"><input class="num" value="—"><span class="u">dB</span></div></div>
-                  </div>
-                  <p class="hint" style="margin:8px 0 0">Blank means “as June”. A value here beats
-                    hers for <b>this line only</b>, and puts a dot on the row so you can find it again.
-                    It exists because Kokoro and Chatterbox take no written direction at all — on those
-                    engines it is the only per-line control there is.</p>
-                </details>
+                    <div class="kn"><label class="hint">Pause after</label>
+                      <div class="kr"><input class="num" value="180"><span class="u">ms</span></div></div></div></div>
 
-                <div class="row" style="padding-top:9px;border-top:1px solid var(--line)">
-                  <button class="btn p" onclick="toast('Rendering this line…','ok')">▶ Generate</button>
-                  <button class="btn" onclick="openModal('word')">📕 Fix a pronunciation</button>
-                  <button class="btn" onclick="toast('Rewrite proposed — accept or discard before it replaces the text.')">✏️ Rewrite in character</button></div>
+                <div class="row"><button class="btn s" onclick="openModal('word')">📕 Pronunciation</button>
+                  <button class="btn s" onclick="toast('Rewrite proposed — accept or discard.')">✏️ Rewrite</button></div>
               </div>
 
-              <div style="display:flex;flex-direction:column;gap:11px">
-                <div class="stack"><h5>What this line will sound like</h5>
-                  <div class="l"><b>June</b><span class="sp">·</span>Sohee (qwen3)<span class="sp">·</span>1.05×<span class="sp">·</span>−1.0 dB<span class="sp">·</span>+ line direction<br>
-                    <span class="lt">2 effects · Harbor names lexicon · no scene treatment</span></div></div>
-                <div class="card" style="padding:11px 13px">
-                  <div class="sh" style="margin-bottom:7px"><h4 style="font-size:12px">Takes</h4>
-                    <span class="sub">3 · lineage kept</span></div>
-                  <table><tbody>
-                    <tr><td><span class="tag ok">★ live</span></td><td class="n">0:02</td>
-                      <td class="hint">1.05× · direction v2</td><td><span class="rt"><span>▶</span><span>⤓</span></span></td></tr>
-                    <tr data-state="pending"><td><span class="tag no">take 2</span></td><td class="n">0:02</td>
-                      <td class="hint">1.00× · no direction</td><td><span class="rt"><span>▶</span><span>★</span><span>🗑</span></span></td></tr>
-                    <tr data-state="stale"><td><span class="tag no">take 1</span></td><td class="n">0:03</td>
-                      <td class="hint">1.00× · seed 4471</td><td><span class="rt"><span>▶</span><span>★</span><span>🗑</span></span></td></tr>
-                  </tbody></table>
-                  <button class="btn s" style="margin-top:8px" onclick="openModal('compare')">⚖️ Compare two takes</button>
-                </div>
-              </div>
+              <div class="card" style="padding:0;overflow:hidden">
+                <div class="sh" style="padding:9px 12px;margin:0;border-bottom:1px solid var(--line)">
+                  <h4 style="font-size:12px">Takes</h4><span class="sub">3 · nothing is overwritten</span></div>
+                <div class="tw"><table>
+                  <tbody>
+                    <tr><td style="width:64px"><span class="tag ok">★ live</span></td>
+                      <td class="n" style="width:44px">0:02</td>
+                      <td class="hint">direction v2</td>
+                      <td class="rowacts" style="width:56px"><span class="rt">
+                        <span onclick="toast('Playing…')">▶</span><span onclick="toast('Saved the WAV.')">⤓</span></span></td></tr>
+                    <tr><td><span class="tag no">take 2</span></td><td class="n">0:02</td>
+                      <td class="hint">no direction</td>
+                      <td class="rowacts"><span class="rt">
+                        <span onclick="toast('Playing…')">▶</span><span onclick="toast('Take 2 is now live.','ok')">★</span><span onclick="toast('Take 2 deleted.','warn')">🗑</span></span></td></tr>
+                    <tr><td><span class="tag no">take 1</span></td><td class="n">0:03</td>
+                      <td class="hint">seed 4471</td>
+                      <td class="rowacts"><span class="rt">
+                        <span onclick="toast('Playing…')">▶</span><span onclick="toast('Take 1 is now live.','ok')">★</span><span onclick="toast('Take 1 deleted.','warn')">🗑</span></span></td></tr>
+                  </tbody></table></div>
+                <div class="row" style="padding:9px 12px;border-top:1px solid var(--line)">
+                  <button class="btn s" onclick="openModal('compare')">⚖️ Compare two</button>
+                  <span style="flex:1"></span>
+                  <button class="btn s g" onclick="toggleRow(this)">✕ Close</button></div></div>
             </div>
           </td></tr>
 
-          <tr data-state="stale"><td><span class="rt"><span>⌄</span></span></td>
+          <tr data-state="pending"><td><span class="rt"><span onclick="toggleRow(this)">⌄</span></span></td>
+            <td><span class="spk"><span class="av" style="background:#3a7d63">M</span>Marius</span></td>
+            <td>“The tide turned below the floorboards.” <span class="tag">[sigh]</span></td>
+            <td><div class="cell-tags" onclick="openModal('tags')" title="Chatterbox Turbo tags">
+              <span class="tag">[fear]</span><span class="tag">[dramatic]</span></div></td>
+            <td><span class="tag pd">pending</span></td>
+            <td><button class="btn s p" onclick="toast('Rendering this line…','ok')">▶ Gen</button></td></tr>
+
+          <tr data-state="stale"><td><span class="rt"><span onclick="toggleRow(this)">⌄</span></span></td>
             <td><span class="spk"><span class="av" style="background:#c98aa7">J</span>June</span></td>
             <td>“It matters to me.”</td>
-            <td class="hint" style="font-style:italic">Soft but firm.</td>
-            <td><input class="num" value="300"></td>
-            <td><span class="tag w">stale · text changed</span></td>
-            <td><button class="btn s" onclick="toast('Re-rendering — the old take is kept.','ok')">↻ Re-render</button></td></tr>
+            <td><input class="cell-edit" value="soft but firm" placeholder="as June always speaks"></td>
+            <td><span class="tag w">stale</span></td>
+            <td><button class="btn s" onclick="toast('Re-rendering — the old take is kept.','ok')">↻</button></td></tr>
 
-          <tr data-state="uncast"><td><span class="rt"><span>⌄</span></span></td>
+          <tr data-state="uncast"><td><span class="rt"><span onclick="toggleRow(this)">⌄</span></span></td>
             <td><span class="spk"><span class="av" style="background:#b3552e">H</span>Harbek</span></td>
-            <td>“Tide's wrong tonight.”</td><td class="hint">—</td><td><input class="num" value="250"></td>
-            <td><span class="tag w">no voice cast</span></td>
-            <td><button class="btn s" onclick="nav('cast')">🎙️ Cast him</button></td></tr>
-
-          <tr data-state="pending"><td><span class="rt"><span>⌄</span></span></td>
-            <td><span class="hint">— nobody —</span></td>
-            <td>“Then it matters.”</td><td class="hint">—</td><td><input class="num" value=""></td>
+            <td>“Tide's wrong tonight.”</td>
+            <td><input class="cell-edit" disabled placeholder="no persona yet"></td>
             <td><span class="tag e">blocked</span></td>
-            <td><button class="btn s" onclick="nav('chapter')">Fix in Script →</button></td></tr>
+            <td><button class="btn s" onclick="nav('cast')">Cast him</button></td></tr>
+
+          <tr data-state="uncast"><td><span class="rt"><span onclick="toggleRow(this)">⌄</span></span></td>
+            <td><span class="hint">— nobody —</span></td>
+            <td>“Then it matters.”</td>
+            <td><input class="cell-edit" disabled placeholder="no speaker yet"></td>
+            <td><span class="tag e">blocked</span></td>
+            <td><button class="btn s" onclick="nav('chapter')">Fix in Script</button></td></tr>
         </tbody></table></div>
     </div>
 
+    <div class="row" style="margin-top:9px">
+      <span class="hint">Gap between lines</span>
+      <div class="kr"><input class="num" value="250"><span class="u">ms</span></div>
+      <span class="hint">On speaker change</span>
+      <div class="kr"><input class="num" value="500"><span class="u">ms</span></div>
+      <span style="flex:1"></span>
+      <span class="hint">⏳ 34 lines wait on Chatterbox — one engine runs at a time.</span>
+    </div>
   </div>
 </div>
 <div class="route" id="r-export">
@@ -1431,170 +1403,284 @@ body[data-studio="flat"] .sv-container{display:none!important}
     </div>
   </div></div>
 </div>
+<div class="route" id="r-personas">
+<div class="top"><span class="crumb">Personas</span><span class="pill">6</span>
+    <span class="pill live"><span class="dot"></span> Kokoro loaded</span></div>
+  <div class="body">
+
+    <div class="row">
+      <input class="box" style="max-width:200px" placeholder="Search personas…">
+      <select class="box" style="width:auto"><option>All engines</option><option>qwen3 (2)</option>
+        <option>kokoro (2)</option><option>chatterbox (2)</option></select>
+      <select class="box" style="width:auto"><option>All</option><option>In use</option>
+        <option>Unused</option></select>
+      <span style="flex:1"></span>
+      <button class="btn p" onclick="nav('workbench')">New persona</button>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="tw"><table>
+        <thead><tr>
+          <th style="width:30px"></th><th>Persona</th><th style="width:170px">Built on</th>
+          <th style="width:132px">Engine</th><th style="width:160px">Can be directed</th>
+          <th style="width:150px">Shaped</th><th>Used by</th><th style="width:34px"></th></tr></thead>
+        <tbody>
+          <tr onclick="nav('workbench')" style="cursor:pointer;background:var(--accent-soft)">
+            <td><button class="btn s g" onclick="toast('Playing June…')">▶</button></td>
+            <td><b>June</b></td>
+            <td>Sohee <span class="hint">preset</span></td>
+            <td class="mono">qwen3 CV</td>
+            <td><span class="tag ok">✓ written direction</span></td>
+            <td class="hint">1.05× · −1.0 dB · 2 effects</td>
+            <td class="hint">June — Stillwater</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
+
+          <tr onclick="nav('workbench')" style="cursor:pointer">
+            <td><button class="btn s g" onclick="toast('Playing Marius…')">▶</button></td>
+            <td><b>Marius</b></td>
+            <td>Marius <span class="hint">clone</span></td>
+            <td class="mono">chatterbox Turbo</td>
+            <td><span class="tag w">✓ 19 tags · ✗ prose</span></td>
+            <td class="hint">0.95× · +3.0 dB</td>
+            <td class="hint">Marius — Stillwater</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
+
+          <tr onclick="nav('workbench')" style="cursor:pointer">
+            <td><button class="btn s g" onclick="toast('Playing Narrator (warm)…')">▶</button></td>
+            <td><b>Narrator (warm)</b></td>
+            <td>Heart <span class="hint">preset</span></td>
+            <td class="mono">kokoro</td>
+            <td><span class="tag no">✗ numbers only</span></td>
+            <td class="hint">1.00× · −2.0 dB · eq</td>
+            <td class="hint">Narrator — Stillwater · Emberfall</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
+
+          <tr onclick="nav('workbench')" style="cursor:pointer">
+            <td><button class="btn s g" onclick="toast('Playing Mara (young)…')">▶</button></td>
+            <td><b>Mara (young)</b></td>
+            <td>Ono Anna <span class="hint">preset</span></td>
+            <td class="mono">qwen3 CV</td>
+            <td><span class="tag ok">✓ written direction</span></td>
+            <td class="hint">1.12× · +2 st</td>
+            <td class="hint">Mara (young) — Emberfall</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
+
+          <tr onclick="nav('workbench')" style="cursor:pointer">
+            <td><button class="btn s g" onclick="toast('Playing Mara (old)…')">▶</button></td>
+            <td><b>Mara (old)</b></td>
+            <td>Mara <span class="hint">clone</span></td>
+            <td class="mono">chatterbox Turbo</td>
+            <td><span class="tag w">✓ 19 tags · ✗ prose</span></td>
+            <td class="hint">0.92× · −3 st · reverb</td>
+            <td class="hint">Mara — Emberfall</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
+
+          <tr onclick="nav('workbench')" style="cursor:pointer">
+            <td><button class="btn s g" onclick="toast('Playing Gruff dockhand…')">▶</button></td>
+            <td><b>Gruff dockhand</b></td>
+            <td>Fenrir <span class="hint">preset</span></td>
+            <td class="mono">kokoro</td>
+            <td><span class="tag no">✗ numbers only</span></td>
+            <td class="hint">0.94× · −2 st</td>
+            <td class="hint">— not used yet —</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
+        </tbody></table></div>
+    </div>
+
+      </div>
+</div>
 <div class="route" id="r-voices">
 <div class="top"><span class="crumb">Voices</span><span class="pill">64 · <b>3 hidden</b></span>
     <span class="pill live"><span class="dot"></span> Kokoro loaded</span></div>
   <div class="body">
+
     <div class="row">
       <input class="box" style="max-width:190px" placeholder="Search name or description…">
       <select class="box" style="width:auto"><option>All engines</option><option>kokoro (54)</option>
         <option>qwen3 (9)</option><option>chatterbox (1)</option></select>
       <span style="flex:1"></span>
       <button class="btn" onclick="toast('Asked the model about 7 unlabelled voices.','ok')">✨ Guess unknown genders</button>
-      <button class="btn p" onclick="nav('newvoice')">＋ New voice</button>
     </div>
     <div class="row">
-      <span class="tag ok">All 64</span><span class="tag">Preset 54</span><span class="tag">Cloned 1</span>
-      <span class="tag">Derived 0</span><span class="tag">Designed 0</span><span class="tag">Blended 0</span>
-      <span class="tag">Trained 0</span><span class="tag">Imported 0</span>
+      <span class="tag ok" data-filter="all" onclick="pickChip(this)">All 64</span>
+      <span class="tag" data-filter="preset" onclick="pickChip(this)">Built-in 63</span>
+      <span class="tag" data-filter="cloned" onclick="pickChip(this)">Cloned 1</span>
+      <span class="tag" data-filter="designed" onclick="pickChip(this)">Designed 0</span>
+      <span class="tag" data-filter="blended" onclick="pickChip(this)">Blended 0</span>
+      <span class="tag" data-filter="trained" onclick="pickChip(this)">Trained 0</span>
       <span style="flex:1"></span>
-      <span class="tag">🙈 Show hidden (3)</span>
+      <span class="tag" onclick="toast('Showing the 3 hidden voices.')">🙈 Show hidden (3)</span>
     </div>
 
-    <div class="tw"><table>
-      <thead><tr>
-        <th style="width:30px"></th><th>Name</th><th style="width:58px">Gender</th>
-        <th style="width:76px">Type</th><th style="width:150px">Engine</th>
-        <th style="width:132px">Speaks</th><th style="width:76px">Tuned</th>
-        <th>Used by</th><th style="width:30px"></th></tr></thead>
-      <tbody>
-        <tr><td><button class="btn s g" title="Play the stock sample" onclick="toast('Playing the stock sample…')">▶</button></td>
-          <td><b class="lnk" onclick="nav('workbench')">Heart</b></td>
-          <td><span class="tag">F</span></td><td><span class="tag no">preset</span></td>
-          <td class="mono">kokoro <span class="tag ok">local</span></td>
-          <td>en-US</td><td class="hint">—</td>
-          <td class="hint">Narrator — Emberfall</td>
-          <td><span class="rt"><span>⋯</span></span></td></tr>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="tw"><table data-filterable>
+        <thead><tr>
+          <th style="width:30px"></th><th>Voice</th><th style="width:52px">Gender</th>
+          <th style="width:78px">Type</th><th style="width:150px">Engine</th>
+          <th style="width:150px">Speaks</th><th style="width:170px">Can be directed</th>
+          <th>Used by</th><th style="width:34px"></th></tr></thead>
+        <tbody>
+          <tr data-state="preset" onclick="toast('A voice is raw. Pick it inside a persona’s voice picker, or make a new persona from it.')" style="cursor:pointer">
+            <td><button class="btn s g" title="Play the stock sample" onclick="toast('Playing the stock sample…')">▶</button></td>
+            <td><b>Heart</b></td><td><span class="tag">F</span></td>
+            <td><span class="tag no">built-in</span></td>
+            <td class="mono">kokoro <span class="tag ok">local</span></td>
+            <td>en-US</td><td><span class="tag no">✗ numbers only</span></td>
+            <td class="hint">🎭 Narrator (warm)</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
 
-        <tr><td><button class="btn s g" onclick="toast('Playing the stock sample…')">▶</button></td>
-          <td><b class="lnk" onclick="nav('workbench')">Heart (warm)</b></td>
-          <td><span class="tag">F</span></td><td><span class="tag ok">derived</span></td>
-          <td class="mono">kokoro <span class="tag ok">local</span></td>
-          <td>en-US</td><td><span class="tag ok">eq · −2 dB</span></td>
-          <td class="hint">—</td>
-          <td><span class="rt"><span>⋯</span></span></td></tr>
+          <tr data-state="preset" onclick="toast('A voice is raw. Pick it inside a persona’s voice picker, or make a new persona from it.')" style="cursor:pointer">
+            <td><button class="btn s g" onclick="toast('Playing the stock sample…')">▶</button></td>
+            <td><b>Fenrir</b></td><td><span class="tag">M</span></td>
+            <td><span class="tag no">built-in</span></td>
+            <td class="mono">kokoro <span class="tag ok">local</span></td>
+            <td>en-US</td><td><span class="tag no">✗ numbers only</span></td>
+            <td class="hint">🎭 Gruff dockhand</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
 
-        <tr><td><button class="btn s g" onclick="toast('Playing the stock sample…')">▶</button></td>
-          <td><b class="lnk" onclick="nav('workbench')">Sara</b></td>
-          <td><span class="tag">F</span></td><td><span class="tag no">preset</span></td>
-          <td class="mono">kokoro <span class="tag ok">local</span></td>
-          <td><span class="tag e">it ✗ reads as English</span></td><td class="hint">—</td>
-          <td class="hint">—</td>
-          <td><span class="rt"><span>⋯</span></span></td></tr>
+          <tr data-state="preset" onclick="toast('A voice is raw. Pick it inside a persona’s voice picker, or make a new persona from it.')" style="cursor:pointer">
+            <td><button class="btn s g" onclick="toast('Playing the stock sample…')">▶</button></td>
+            <td><b>Sara (Italian)</b></td><td><span class="tag">F</span></td>
+            <td><span class="tag no">built-in</span></td>
+            <td class="mono">kokoro <span class="tag ok">local</span></td>
+            <td><span class="tag e">it ✗ reads as English</span></td>
+            <td><span class="tag no">✗ numbers only</span></td>
+            <td class="hint">— unused —</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
 
-        <tr><td><button class="btn s g" title="Qwen3 isn't loaded — this listen swaps engines" onclick="toast('Playing the stock sample…')">▶</button></td>
-          <td><b class="lnk" onclick="nav('workbench')">Sohee</b>
-            <span class="tag w" style="margin-left:5px">⏳ swap</span></td>
-          <td><span class="tag">F</span></td><td><span class="tag no">preset</span></td>
-          <td class="mono">qwen3 <span class="tag ok">local</span></td>
-          <td>ko</td><td class="hint">—</td>
-          <td class="hint">June · Ono Anna · Host</td>
-          <td><span class="rt"><span>⋯</span></span></td></tr>
+          <tr data-state="preset" onclick="toast('A voice is raw. Pick it inside a persona’s voice picker, or make a new persona from it.')" style="cursor:pointer">
+            <td><button class="btn s g" title="Qwen3 isn't loaded — this listen swaps engines" onclick="toast('Playing the stock sample…')">▶</button></td>
+            <td><b>Sohee</b> <span class="tag w" style="margin-left:5px">⏳ swap</span></td>
+            <td><span class="tag">F</span></td><td><span class="tag no">built-in</span></td>
+            <td class="mono">qwen3 CV <span class="tag ok">local</span></td>
+            <td>ko</td><td><span class="tag ok">✓ written direction</span></td>
+            <td class="hint">🎭 June · 2 others</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
 
-        <tr><td><button class="btn s g" onclick="toast('Playing the stock sample…')">▶</button></td>
-          <td><b class="lnk" onclick="nav('workbench')">Marius (clone)</b>
-            <span class="tag w" style="margin-left:5px">⏳ swap</span></td>
-          <td><span class="tag">M</span></td><td><span class="tag ok">cloned</span></td>
-          <td class="mono">chatterbox <span class="tag ok">local</span></td>
-          <td>en</td><td><span class="tag ok">+3 dB</span></td>
-          <td class="hint">Marius — Stillwater</td>
-          <td><span class="rt"><span>⋯</span></span></td></tr>
+          <tr data-state="preset" onclick="toast('A voice is raw. Pick it inside a persona’s voice picker, or make a new persona from it.')" style="cursor:pointer">
+            <td><button class="btn s g" onclick="toast('Playing the stock sample…')">▶</button></td>
+            <td><b>Ono Anna</b> <span class="tag w" style="margin-left:5px">⏳ swap</span></td>
+            <td><span class="tag">F</span></td><td><span class="tag no">built-in</span></td>
+            <td class="mono">qwen3 CV <span class="tag ok">local</span></td>
+            <td>ja</td><td><span class="tag ok">✓ written direction</span></td>
+            <td class="hint">🎭 Mara (young)</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
 
-        <tr><td><button class="btn s g" disabled>▶</button></td>
-          <td><b class="jv-muted">Dia stock</b></td>
-          <td><span class="tag">?</span></td><td><span class="tag no">preset</span></td>
-          <td class="mono">dia <span class="tag w">needs install</span></td>
-          <td>en</td><td class="hint">—</td>
-          <td class="hint">—</td>
-          <td><span class="rt"><span>⋯</span></span></td></tr>
-      </tbody></table></div>
-
-    <div class="row" style="margin-top:2px">
-      <span class="hint"><b>The name is the link</b> — click it, or the row, to open the workbench.
-        No double-click, no drawer, no ⚙.</span>
-      <span style="flex:1"></span>
-      <span class="hint">⋯ per row: <b>Hide</b> (presets can't be deleted) · <b>Delete</b> (yours only) ·
-        <b>Export .justvoice.zip</b> · <b>Reset tuning</b></span>
+          <tr data-state="cloned" onclick="toast('A voice is raw. Pick it inside a persona’s voice picker, or make a new persona from it.')" style="cursor:pointer">
+            <td><button class="btn s g" onclick="toast('Playing the stock sample…')">▶</button></td>
+            <td><b>Marius</b> <span class="tag w" style="margin-left:5px">⏳ swap</span></td>
+            <td><span class="tag">M</span></td><td><span class="tag ok">cloned</span></td>
+            <td class="mono">chatterbox Turbo <span class="tag ok">local</span></td>
+            <td>en</td><td><span class="tag w">✓ 19 tags · ✗ prose</span></td>
+            <td class="hint">🎭 Marius</td>
+            <td><span class="rt"><span onclick="openModal('rowmenu')">⋯</span></span></td></tr>
+        </tbody></table></div>
     </div>
+
+    <div class="row" style="margin-top:6px">
+      <span class="hint">Showing 6 of 64.</span>
+    </div>
+
+    
   </div>
 </div>
 <div class="route" id="r-workbench">
-<div class="top"><span class="crumb"><span class="lnk" onclick="nav('voices')">Voices</span> › Sohee</span><span class="pill">preset</span>
-    <span class="pill">qwen3 · <b>CustomVoice</b></span><span class="pill"><span class="dot idle"></span> Kokoro loaded</span></div>
+<div class="top"><span class="crumb">Personas › June</span>
+    <span class="pill">Sohee · <b>qwen3 CustomVoice</b></span>
+    <span class="pill"><span class="dot idle"></span> Kokoro loaded</span>
+    <span style="flex:1"></span>
+    <span class="pill">used by <b>1 speaker</b></span></div>
   <div class="body">
-    <div class="bn w"><b>⏳ Qwen3 isn't loaded — Kokoro is.</b> The first listen swaps them, about a
-      minute. One speech engine stays resident at a time.</div>
+    <div class="bn w"><b>Qwen3 isn't loaded.</b> The first listen swaps it in — about a minute.</div>
+
     <div class="split">
-      <div style="display:flex;flex-direction:column;gap:13px">
-        <div class="card"><div class="sh"><span class="st">1</span><h4>Hear it</h4></div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+
+        <div class="card"><div class="sh"><h4>Voice</h4></div>
+          <div class="radios" style="margin-bottom:9px">
+            <span class="radio on" onclick="pickRadio(this)"><span class="rd"></span>Built-in</span>
+            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>Clone from audio</span>
+            <span class="radio off" onclick="toast('Needs the Qwen3 VoiceDesign model. Install it on the AI page.','warn')"><span class="rd"></span>Design from words ⤓</span>
+            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>Blend</span>
+            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>Trained LoRA</span></div>
+          <div class="row"><select class="box" style="flex:1">
+              <option>Sohee — qwen3 CustomVoice · ko</option>
+              <option>Ono Anna — qwen3 CustomVoice · ja</option>
+              <option>Ryan — qwen3 CustomVoice · en</option>
+              <option>Heart — kokoro · en-US</option>
+              <option>Marius — chatterbox Turbo · cloned</option></select>
+            <button class="btn s" onclick="toast('Playing Sohee on its own, before this page changes anything.')">▶ Raw</button></div>
+          <div class="bn w" style="margin-top:9px">Changing this makes June's <b>61 lines</b> stale.
+            <b>18 carry a written direction</b> — only Qwen3 CustomVoice reads prose.</div></div>
+
+        <div class="card"><div class="sh"><h4>Hear it</h4></div>
           <textarea class="box t">The fog came in over the pier before either of them said a word.</textarea>
-          <div class="row" style="margin-top:8px"><button class="btn p" onclick="toast('Hearing Sohee with your line…')">▶ Listen</button>
-            <button class="btn s" onclick="toast('Loaded the stock sample line.')">↻ Stock line</button><span style="flex:1"></span>
-            <button class="btn s" onclick="toast('Take kept — it will appear under this voice.','ok')">★ Keep take</button></div>
+          <div class="row" style="margin-top:8px"><button class="btn p" onclick="toast('Rendering…')">▶ Listen</button>
+            <button class="btn s" onclick="toast('Loaded the stock sample line.')">↻ Stock line</button>
+            <span style="flex:1"></span>
+            <button class="btn s g" onclick="toast('Saved june.wav')">⤓ WAV</button></div>
           <div class="player" style="margin-top:9px"><button class="btn p s rnd" onclick="toast('Playing…')">▶</button>
             <div class="bar"><b style="width:62%"></b></div><span class="mono hint">0:03 / 0:05</span></div></div>
 
-        <div class="card"><div class="sh"><span class="st">2</span><h4>Tune it</h4>
-          <span class="sub">every knob this engine has — nothing folded away</span></div>
+        <div class="card"><div class="sh"><h4>How it speaks</h4></div>
           <div class="kb">
-            <div class="kn"><label class="hint">Speed</label><div class="kr">
-              <input type="range" min=".5" max="2" step=".05" value="1.1"><input class="num" value="1.10"><span class="u">×</span></div></div>
-            <div class="kn"><label class="hint">Pitch <span class="tag w">post-process</span></label><div class="kr">
+            <div class="kn"><label class="hint">Pace</label><div class="kr">
+              <input type="range" min=".5" max="2" step=".05" value="1.05"><input class="num" value="1.05"><span class="u">×</span></div></div>
+            <div class="kn"><label class="hint">Pitch</label><div class="kr">
               <input type="range" min="-12" max="12" value="0"><input class="num" value="0"><span class="u">st</span></div></div>
             <div class="kn"><label class="hint">Gain</label><div class="kr">
               <input type="range" min="-12" max="12" step=".5" value="-1"><input class="num" value="-1.0"><span class="u">dB</span></div></div>
+            <div class="kn"><label class="hint">Pause before → after</label><div class="kr">
+              <input class="num" value="0"><span class="u">→</span><input class="num" value="250"><span class="u">ms</span></div></div></div>
+          <div class="f" style="margin-top:12px"><label>Standing delivery
+            <span class="tag ok">✓ qwen3</span></label>
+            <textarea class="box t">Clipped, world-weary. Dry wit. Boston accent under stress.</textarea>
+            <span class="hint">A line's own direction is appended to this.</span></div>
+          <div class="f" style="margin-top:11px"><label>Effects</label>
+            <div class="row"><span class="tag">reverb</span><span class="tag">eq</span>
+              <button class="btn s g" onclick="nav('effects')">＋ Edit</button></div></div></div>
+
+        <div class="card"><div class="sh"><h4>Sampling</h4><span class="sub">qwen3</span></div>
+          <div class="kb">
             <div class="kn"><label class="hint">Temperature</label><div class="kr">
               <input type="range" min=".05" max="2" step=".05" value=".9"><input class="num" value="0.90"></div></div>
-            <div class="kn"><label class="hint">Top-k</label><div class="kr">
-              <input type="range" min="1" max="200" value="50"><input class="num" value="50"></div></div>
-            <div class="kn"><label class="hint">Top-p</label><div class="kr">
-              <input type="range" min="0" max="1" step=".01" value=".95"><input class="num" value="0.95"></div></div>
+            <div class="kn"><label class="hint">Top k</label><div class="kr">
+              <input type="range" min="1" max="100" value="50"><input class="num" value="50"></div></div>
+            <div class="kn"><label class="hint">Top p</label><div class="kr">
+              <input type="range" min="0" max="1" step=".01" value="1"><input class="num" value="1.00"></div></div>
             <div class="kn"><label class="hint">Repetition penalty</label><div class="kr">
-              <input type="range" min="1" max="3" step=".05" value="1.2"><input class="num" value="1.20"></div></div>
-            <div class="kn"><label class="hint">Pause before → after</label><div class="kr">
-              <input class="num" value="0"><span class="u">→</span><input class="num" value="250"><span class="u">ms</span></div></div>
+              <input type="range" min="1" max="4" step=".05" value="1.05"><input class="num" value="1.05"></div></div>
             <div class="kn"><label class="hint">Seed</label><div class="kr">
-              <input class="num" style="width:70px" value="random"><button class="btn s g" onclick="toast('New random seed.')">🎲</button></div></div></div>
-          <div class="f" style="margin-top:12px"><label>Delivery direction <span class="tag ok">✓ performed</span></label>
-            <textarea class="box t ph">e.g. “with growing horror, voice gradually quieter”</textarea></div>
-          <div class="row" style="margin-top:10px;padding-top:9px;border-top:1px solid var(--line)">
-            <button class="btn s" onclick="toast('Pick a knob and three values to hear side by side.')">⚖️ Compare settings…</button>
-            <span class="hint">Same line, three values of one knob, side by side — this is the old
-              render lab, as a mode instead of a destination.</span></div></div>
+              <input class="num" style="width:70px" value="random"><button class="btn s g" onclick="toast('New seed.')">🎲</button></div></div></div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn s" onclick="toast('Pick a knob and three values to hear side by side.')">⚖️ Compare settings…</button></div></div>
 
-        <div class="card"><div class="sh"><span class="st">3</span><h4>Save what you just tuned</h4>
-          <span class="sub">the sixth way to make a voice</span></div>
+        <div class="card"><div class="sh"><h4>Save</h4></div>
           <div class="row">
-            <input class="box" style="max-width:230px" value="Heart (warm)">
-            <button class="btn p" onclick="toast('Saved “Heart (warm)” — it is yours, and renameable.','ok')">💾 Save as a new voice</button></div>
-          <p class="hint" style="margin:9px 0 0">A record pointing at the parent plus your tuning —
-            <b>no audio, no training</b>. Three things it fixes: preset voices become <b>renameable</b>,
-            because the thing you name is yours; a clone that came out quiet gets its +3 dB <b>once</b>
-            and every character using it inherits the fix; and it derives from anything, not just presets.</p>
-          <p class="hint" style="margin:6px 0 0"><b>Guardrail:</b> this is a correction to an
-            <i>artifact</i> — calibration and timbre. It is <b>never a mood</b>. "Marius angry" is
-            direction, per line or per scene, and never becomes a saved voice.</p></div>
-
-        <div class="card"><div class="sh"><span class="st">4</span><h4>Make another voice from this one</h4></div>
-          <div class="row"><button class="btn" onclick="nav('newvoice')">🔀 Blend with…</button><button class="btn" onclick="nav('newvoice')">🧪 Train a LoRA</button></div></div>
-
-        <div class="card tint"><div class="sh"><span class="st">5</span><h4>Reference samples</h4></div>
-          <p class="note" style="margin:0">Not built — needs an API that doesn't exist. One honest
-            line instead of five dead buttons.</p></div>
+            <button class="btn p" onclick="toast('Saved. 61 lines are now stale.','ok')">💾 Save</button>
+            <input class="box" style="max-width:190px" value="June (softer)">
+            <button class="btn" onclick="toast('Saved as a new persona. June is untouched.','ok')">＋ Save as new</button>
+            <span style="flex:1"></span>
+            <button class="btn s" onclick="nav('newvoice')">🔀 Blend</button>
+            <button class="btn s" onclick="nav('newvoice')">🧪 Train a LoRA</button></div></div>
       </div>
+
       <div style="display:flex;flex-direction:column;gap:12px">
-        <div class="stack"><h5>What you're hearing</h5>
-          <div class="l"><b>Sohee</b><span class="sp">·</span>qwen3 CV<span class="sp">·</span>1.10×<span class="sp">·</span>−1.0 dB<span class="sp">·</span>temp 0.90<br>
-            <span class="lt">effects + lexicon apply on render, not preview</span></div></div>
-        <div class="card"><div class="sh"><h4>What this engine can do</h4></div>
-          <div class="tags"><span class="tag ok">✓ direction</span><span class="tag ok">✓ 10 languages</span>
-            <span class="tag no">✗ cloning</span><span class="tag w">pitch post-process</span>
-            <span class="tag no">✗ inline tags</span><span class="tag ok">✓ seed</span></div></div>
-        <div class="card"><div class="sh"><h4>Used by</h4><span class="sub">3 characters</span></div>
-          <div class="tags"><span class="tag">🎭 June — Stillwater</span><span class="tag">🎭 Ono Anna</span>
-            <span class="tag">🎭 Host — Ep. 12</span></div>
-          <p class="hint" style="margin:7px 0 0">Change the voice and all three change. Per-character
-            tuning belongs on the character.</p></div>
+        <div class="stack"><h5>June</h5>
+          <div class="l">Sohee · qwen3 CV<span class="sp">·</span>1.05×<span class="sp">·</span>−1.0 dB<br>
+            <span class="lt">“Clipped, world-weary. Dry wit.” · reverb + eq</span></div></div>
+
+        <div class="card"><div class="sh"><h4>This engine</h4></div>
+          <div class="tags"><span class="tag ok">✓ written direction</span>
+            <span class="tag ok">✓ 10 languages</span>
+            <span class="tag no">✗ cloning</span>
+            <span class="tag no">✗ inline tags</span>
+            <span class="tag ok">✓ seed</span></div>
+          <button class="btn s" style="margin-top:9px" onclick="nav('engines')">Compare engines →</button></div>
+
+        <div class="card"><div class="sh"><h4>Used by</h4></div>
+          <div class="tags"><span class="tag">🎭 June — Stillwater · 61 lines</span></div>
+          <button class="btn s" style="margin-top:9px" onclick="nav('cast')">Open Cast →</button></div>
       </div>
     </div>
   </div>
@@ -1603,11 +1689,17 @@ body[data-studio="flat"] .sv-container{display:none!important}
 <div class="top"><span class="crumb"><span class="lnk" onclick="nav('voices')">Voices</span> › New voice</span></div>
   <div class="body">
     <p class="note" style="margin:0">Five ways in, one door. Each states its precondition; nothing is
-      hidden in a fold, nothing is a button that does nothing.</p>
+      hidden in a fold, nothing is a button that does nothing. There is a
+      <b>sixth</b> way that only makes sense once you are listening to a voice —
+      <span class="lnk" onclick="nav('workbench')">Save as a new voice</span> on the workbench, which
+      keeps a parent plus your calibration.</p>
     <div class="map">
       <div class="mc"><div class="k">Bring a source</div><div class="n">🎤 Clone from audio</div>
         <div class="d">10 s–2 min, one speaker, clean.</div>
-        <div class="tags" style="margin-top:7px"><span class="tag w">needs Chatterbox</span></div></div>
+        <div class="tags" style="margin-top:7px"><span class="tag w">needs Chatterbox, Qwen3 Base or LuxTTS</span></div>
+        <p class="hint" style="margin:6px 0 0">A clone is someone's own timbre, and it always
+          <b>loses written direction</b> — the identity comes entirely from the reference clip.
+          Chatterbox Turbo still takes a per-line emotion; the others take neither.</p></div>
       <div class="mc"><div class="k">Bring a source</div><div class="n">📦 Import .justvoice.zip</div>
         <div class="d">A voice someone exported.</div>
         <div class="tags" style="margin-top:7px"><span class="tag ok">ready</span></div></div>
@@ -1621,7 +1713,7 @@ body[data-studio="flat"] .sv-container{display:none!important}
         <button class="btn s p" style="margin-top:8px" onclick="toast('Downloading Qwen3 VoiceDesign…','ok')">⤓ Install</button></div>
       <div class="mc new"><div class="k">Derive from yours</div><div class="n">🔀 Blend</div>
         <div class="d">Weighted mix, slerp / lerp / weighted sum. Same engine family only.</div>
-        <div class="tags" style="margin-top:7px"><span class="tag ok">64 available</span></div></div>
+        <div class="tags" style="margin-top:7px"><span class="tag ok">65 available</span></div></div>
       <div class="mc new"><div class="k">Derive from yours</div><div class="n">🧪 Train a LoRA</div>
         <div class="d">Epochs · LR · batch · rank · alpha. Final-loss table per checkpoint.</div>
         <div class="tags" style="margin-top:7px"><span class="tag w">needs samples</span></div></div>
@@ -1662,43 +1754,12 @@ body[data-studio="flat"] .sv-container{display:none!important}
         <div class="tw" style="margin-top:9px"><table>
           <thead><tr><th>Adapter</th><th>Epochs</th><th>Final loss</th><th>Samples</th><th></th></tr></thead>
           <tbody><tr><td>marius-v2</td><td class="n">12</td><td class="n">0.281</td><td class="n">18</td>
-            <td><span class="rt"><span>▶</span><span>⤓</span></span></td></tr>
+            <td><span class="rt"><span onclick="toast('Playing…')">▶</span><span onclick="toast('Saved the WAV.')">⤓</span></span></td></tr>
             <tr><td>marius-v1</td><td class="n">8</td><td class="n">0.402</td><td class="n">14</td>
-            <td><span class="rt"><span>▶</span><span>⤓</span></span></td></tr></tbody></table></div>
+            <td><span class="rt"><span onclick="toast('Playing…')">▶</span><span onclick="toast('Saved the WAV.')">⤓</span></span></td></tr></tbody></table></div>
         <p class="hint" style="margin:7px 0 0">Audition a checkpoint before committing — lower loss
           isn't always the better likeness.</p></div>
     </div>
-  </div>
-</div>
-<div class="route" id="r-personas">
-<div class="top"><span class="crumb">Personas</span><span class="pill">14</span>
-    <span class="pill">across <b>3 projects</b></span></div>
-  <div class="body">
-    <div class="card" style="padding:0;overflow:hidden">
-      <div class="tw"><table>
-        <thead><tr><th>Character</th><th style="width:170px">Voice</th><th style="width:106px">Engine</th>
-          <th style="width:150px">Used in</th><th style="width:64px">Lines</th><th style="width:34px"></th></tr></thead>
-        <tbody>
-          <tr style="background:var(--accent-soft)">
-            <td><span class="spk"><span class="av" style="background:#c98aa7">J</span>June</span></td>
-            <td>Sohee</td><td class="mono">qwen3 CV</td>
-            <td class="hint">Stillwater · Emberfall</td><td class="n">115</td>
-            <td><span class="rt"><span>⌃</span></span></td></tr>
-          <tr><td><span class="spk"><span class="av" style="background:#3a7d63">M</span>Marius</span></td>
-            <td>Marius (clone)</td><td class="mono">chatterbox</td>
-            <td class="hint">Stillwater</td><td class="n">54</td>
-            <td><span class="rt"><span>⌄</span></span></td></tr>
-          <tr><td><span class="spk"><span class="av" style="background:#5b7a99">N</span>Narrator</span></td>
-            <td>Heart</td><td class="mono">kokoro</td>
-            <td class="hint">Stillwater · Emberfall · Ep. 12</td><td class="n">402</td>
-            <td><span class="rt"><span>⌄</span></span></td></tr>
-          <tr><td><span class="spk"><span class="av" style="background:#b3552e">H</span>Harbek</span></td>
-            <td class="hint">— none —</td><td class="hint">—</td>
-            <td class="hint">Stillwater</td><td class="n">22</td>
-            <td><span class="rt"><span>⌄</span></span></td></tr>
-        </tbody></table></div>
-    </div>
-
   </div>
 </div>
 <div class="route" id="r-lexicons">
@@ -1716,20 +1777,20 @@ body[data-studio="flat"] .sv-container{display:none!important}
             <th style="width:64px">Heard</th><th style="width:46px"></th></tr></thead>
           <tbody>
             <tr><td><b>Hecate</b></td><td class="mono">HEH-kuh-tee</td><td><span class="tag">phonetic</span></td>
-              <td><span class="rt"><span>▶</span></span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+              <td><span class="rt"><span onclick="toast('Playing…')">▶</span></span></td><td><span class="rt"><span onclick="toast('Deleted. The other takes are kept.','warn')">🗑</span></span></td></tr>
             <tr><td><b>Marius</b></td><td class="mono">MAR-ee-us</td><td><span class="tag">phonetic</span></td>
-              <td><span class="rt"><span>▶</span></span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+              <td><span class="rt"><span onclick="toast('Playing…')">▶</span></span></td><td><span class="rt"><span onclick="toast('Deleted. The other takes are kept.','warn')">🗑</span></span></td></tr>
             <tr><td><b>quay</b></td><td class="mono">/kiː/</td><td><span class="tag">ipa</span></td>
-              <td><span class="rt"><span>▶</span></span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+              <td><span class="rt"><span onclick="toast('Playing…')">▶</span></span></td><td><span class="rt"><span onclick="toast('Deleted. The other takes are kept.','warn')">🗑</span></span></td></tr>
           </tbody></table></div>
         <div class="bn w" style="margin-top:10px">IPA only works on engines with phoneme input —
           Kokoro yes, Chatterbox no. The notation column warns before you write 40 of them.</div></div>
       <div style="display:flex;flex-direction:column;gap:12px">
         <div class="card"><div class="sh"><h4>Scope</h4></div>
-          <div class="radios"><span class="radio"><span class="rd"></span>Global</span>
-            <span class="radio on"><span class="rd"></span>This project</span>
-            <span class="radio"><span class="rd"></span>One character</span></div>
-          <p class="hint" style="margin:8px 0 0">A character-scoped lexicon beats the project's —
+          <div class="radios"><span class="radio" onclick="pickRadio(this)"><span class="rd"></span>Global</span>
+            <span class="radio on" onclick="pickRadio(this)"><span class="rd"></span>This project</span>
+            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>One persona</span></div>
+          <p class="hint" style="margin:8px 0 0">A persona-scoped lexicon beats the project's —
             Old Crow says “boss” his own way.</p></div>
         <div class="card"><div class="sh"><h4>Try a word</h4></div>
           <input class="box" value="Hecate"><div class="row" style="margin-top:7px">
@@ -1747,7 +1808,7 @@ body[data-studio="flat"] .sv-container{display:none!important}
 <div class="top"><span class="crumb">Effects › June's chain</span>
     <span class="pill live"><span class="dot"></span> Qwen3</span></div>
   <div class="body">
-    <div class="bn">Effects run after the TTS, in order. The character's chain runs first, then the
+    <div class="bn">Effects run after the TTS, in order. The persona's chain runs first, then the
       scene's on top — both are shown here.</div>
     <div class="split">
       <div class="card"><div class="sh"><h4>The chain</h4><span class="sub">drag to reorder</span></div>
@@ -1759,15 +1820,15 @@ body[data-studio="flat"] .sv-container{display:none!important}
               <td class="row"><span class="hint">low</span><input class="num" value="-2"><span class="u">dB</span>
                 <span class="hint">mid</span><input class="num" value="+2"><span class="u">dB</span>
                 <span class="hint">high</span><input class="num" value="+1"><span class="u">dB</span></td>
-              <td><span class="tag">June</span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+              <td><span class="tag">June</span></td><td><span class="rt"><span onclick="toast('Deleted. The other takes are kept.','warn')">🗑</span></span></td></tr>
             <tr><td class="rt"><span>⣿</span></td><td><b>Compressor</b></td>
               <td class="row"><span class="hint">thr</span><input class="num" value="-18"><span class="u">dB</span>
                 <span class="hint">ratio</span><input class="num" value="3.0"></td>
-              <td><span class="tag">June</span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+              <td><span class="tag">June</span></td><td><span class="rt"><span onclick="toast('Deleted. The other takes are kept.','warn')">🗑</span></span></td></tr>
             <tr style="background:var(--warn-bg)"><td class="rt"><span>⣿</span></td><td><b>Reverb</b></td>
               <td class="row"><span class="hint">room</span><input class="num" value="0.35">
                 <span class="hint">wet</span><input class="num" value="0.18"></td>
-              <td><span class="tag w">scene</span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+              <td><span class="tag w">scene</span></td><td><span class="rt"><span onclick="toast('Deleted. The other takes are kept.','warn')">🗑</span></span></td></tr>
           </tbody></table></div>
         <button class="btn s" style="margin-top:9px" onclick="openModal('effect')">＋ Add effect</button>
         <p class="hint" style="margin:8px 0 0">Rows tinted amber come from the chapter's scene
@@ -1781,8 +1842,8 @@ body[data-studio="flat"] .sv-container{display:none!important}
             <div class="bar"><b style="width:30%"></b></div><span class="mono hint">0:02</span></div></div>
         <div class="card"><div class="sh"><h4>Save as a preset</h4></div>
           <input class="box" placeholder="e.g. Radio broadcast">
-          <button class="btn s" style="margin-top:7px;width:100%" onclick="toast('Chain saved — reusable on any character or scene.','ok')">💾 Save chain</button>
-          <p class="hint" style="margin:7px 0 0">Reusable on any character or any scene.</p></div>
+          <button class="btn s" style="margin-top:7px;width:100%" onclick="toast('Chain saved — reusable on any persona or scene.','ok')">💾 Save chain</button>
+          <p class="hint" style="margin:7px 0 0">Reusable on any persona or any scene.</p></div>
         <div class="card tint"><div class="sh"><h4>Order matters</h4></div>
           <p class="note" style="margin:0">EQ before compression shapes what the compressor reacts to;
             after, it shapes what survives it. Reverb last, or you compress the room.</p></div>
@@ -1792,12 +1853,12 @@ body[data-studio="flat"] .sv-container{display:none!important}
 </div>
 <div class="route" id="r-scene">
 <div class="top"><span class="crumb"><span class="lnk" onclick="nav('chapters')"><span class="proj-name">Stillwater</span></span> › Ch. 7 › Scene</span>
-    <span class="pill e">render presets: deleted</span></div>
+    <span class="pill">231 lines</span><span class="pill">Ch. 7 &middot; a flashback</span></div>
   <div class="body">
 
     <div class="split">
       <div class="card"><div class="sh"><h4>Chapter 7 — a flashback</h4>
-        <span class="sub">two fields, both reusing things that exist</span></div>
+        <span class="sub">one direction, one effects chain &mdash; applied over everyone in it</span></div>
 
         <div class="f"><label>Scene direction <span class="tag ok">✓ Qwen3 performs it</span></label>
           <textarea class="box t" style="min-height:42px">Remembered, slightly distant.</textarea>
@@ -1805,21 +1866,22 @@ body[data-studio="flat"] .sv-container{display:none!important}
             <span class="hint">Saved:</span>
             <span class="tag">Quiet reflection</span><span class="tag">Dramatic</span>
             <span class="tag">Action</span><button class="btn s g" onclick="toast('Direction saved as a reusable snippet.','ok')">💾 Save this</button></div>
-          <span class="hint" style="margin-top:5px">Appended to every line's own direction. These
-            snippets are what the old presets actually contained.</span></div>
+          <span class="hint" style="margin-top:5px">Appended to every line's own direction in this chapter, never instead of
+            it. A scene may only add things that <b>stack</b> — which is why it takes words and
+            effects but no numbers and no emotion: those would have to overwrite each persona's,
+            and then nobody would sound like themselves any more.</span></div>
 
         <div class="f" style="margin-top:13px"><label>Scene effects <span class="tag">from the Effects library</span></label>
           <div class="row"><select class="box" style="flex:1"><option>Flashback — hall reverb + 6 kHz lowpass</option>
             <option>Radio broadcast</option><option>(none)</option></select><button class="btn s" onclick="nav('effects')">Edit</button></div>
-          <span class="hint" style="margin-top:5px">Stacks <b>on top of</b> each character's chain —
-            which is what the code already does correctly.</span></div>
+          <span class="hint" style="margin-top:5px">Stacks <b>on top of</b> each persona's own chain, so a
+            persona with reverb keeps it and gets the scene's as well.</span></div>
 
         <div class="row" style="margin-top:13px"><button class="btn p" onclick="toast('Flashback applied to chapter 7 — 231 lines marked stale.','ok')">Apply</button>
           <select class="box" style="width:auto"><option>Ch. 7 only</option>
             <option>Ch. 7, 9, 12</option><option>Whole book</option></select></div>
 
-        <div class="bn w" style="margin-top:13px">Kokoro and Chatterbox take no written direction,
-          so a scene direction does nothing on them. The effects chain still applies.</div>
+        <div class="bn w" style="margin-top:13px"><b>Only Qwen3 CustomVoice reads the direction.</b> For a persona on Kokoro, a clone, or Chatterbox Multilingual it does nothing — here that is the Narrator and Marius. The <b>effects chain still applies to everyone</b>, which is what makes a scene treatment worth having at all.</div>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:12px">
@@ -1827,10 +1889,10 @@ body[data-studio="flat"] .sv-container{display:none!important}
           <div class="l"><b>June</b> — Sohee · 1.05× · <i>“Clipped, world-weary”</i> +
             <i>“Remembered, distant”</i><br>
             <b>Marius</b> — clone · 0.95× · + <i>“Remembered, distant”</i><br>
-            <b>Narrator</b> — Heart · 1.00× · + <i>“Remembered, distant”</i><br>
+            <b>Narrator</b> — Heart (warm) · 1.00× · + <i>“Remembered, distant”</i><br>
             <span class="lt">everyone also gets hall reverb + 6 kHz lowpass</span></div>
           <p class="hint" style="margin:8px 0 0;color:var(--accent-ink)">Nobody's numbers changed.
-            Every character still sounds like themselves.</p></div>
+            Every persona still sounds like themselves.</p></div>
         <div class="card"><div class="sh"><h4>Hear the difference</h4></div>
           <div class="row"><button class="btn s" onclick="toast('Playing line 3 without the scene.')">▶ Without</button><button class="btn p s" onclick="toast('Playing line 3 with the scene.')">▶ With</button>
             <span class="hint">line 3 of this chapter</span></div></div>
@@ -1845,24 +1907,97 @@ body[data-studio="flat"] .sv-container{display:none!important}
     <div class="bn"><b>One speech engine is resident at a time.</b> Loading another unloads the
       current one — that's why auditioning across engines costs a swap, and why every listen button
       in the app warns before it charges you a minute.</div>
+
+    <div class="card tint"><div class="sh"><h4>Picking an engine is picking what a voice can do</h4></div>
+      <p class="note" style="margin:0 0 8px">You choose an engine once, when you cast a persona to a
+        voice. From then on it decides three things for every line that persona speaks: whether you
+        can <b>clone</b> their timbre, whether they can be <b>directed in words</b>, and whether a
+        per-line <b>emotion</b> reaches the model. Nothing else in the app can put back what the
+        engine doesn't do.</p>
+      <div class="tw"><table>
+        <thead><tr><th>If you want…</th><th style="width:230px">Use</th><th>What you give up</th></tr></thead>
+        <tbody>
+          <tr><td>Ready-made voices, instantly, on any machine</td>
+            <td><b>Kokoro</b> — 54 presets</td>
+            <td>No cloning, and no direction of any kind. Pace, pitch, gain and pauses only.</td></tr>
+          <tr><td>To direct performances in prose</td>
+            <td><b>Qwen3 CustomVoice</b> — 9 presets</td>
+            <td>Cannot clone. You are limited to its nine timbres.</td></tr>
+          <tr><td>Someone's own voice, and per-line emotion</td>
+            <td><b>Chatterbox Turbo</b> — cloning</td>
+            <td>Written direction is ignored. English only.</td></tr>
+          <tr><td>Someone's own voice, in another language</td>
+            <td><b>Chatterbox Multilingual</b> — 23 languages</td>
+            <td>No direction and no emotion — timbre and the numbers.</td></tr>
+          <tr><td>Someone's own voice, on a machine with no GPU</td>
+            <td><b>LuxTTS</b> — cloning, English</td>
+            <td>No direction and no emotion.</td></tr>
+        </tbody></table></div></div>
+
     <div class="tw"><table>
-      <thead><tr><th>Engine</th><th>Variant</th><th style="width:88px">Size</th><th style="width:100px">Clones</th>
-        <th style="width:132px">Languages</th><th style="width:96px">State</th><th style="width:120px"></th></tr></thead>
+      <thead><tr><th>Engine</th><th style="width:210px">Variant</th><th style="width:82px">Size</th>
+        <th style="width:74px">Clones</th><th style="width:150px">Per-line direction</th>
+        <th style="width:96px">Languages</th><th style="width:104px">State</th><th style="width:118px"></th></tr></thead>
       <tbody>
-        <tr><td><b>Kokoro</b></td><td>multi-lang v1.0</td><td class="n">333 MB</td><td><span class="tag no">✗</span></td>
-          <td>8 <span class="tag e">✗ en-only in practice</span></td><td><span class="tag ok">loaded</span></td>
-          <td><button class="btn s" onclick="toast('Kokoro unloaded — 3.2 GB freed.','ok')">Unload</button></td></tr>
-        <tr><td><b>Qwen3-TTS</b></td><td>1.7B CustomVoice</td><td class="n">4.5 GB</td>
-          <td><span class="tag no">✗ presets only</span></td><td>10</td><td><span class="tag">installed</span></td>
-          <td><button class="btn s p" onclick="toast('Loading — the current engine unloads first.','warn')">Load</button></td></tr>
-        <tr><td><b>Qwen3-TTS</b></td><td>0.6B Base</td><td class="n">2.5 GB</td><td><span class="tag ok">✓</span></td>
-          <td>10</td><td><span class="tag">installed</span></td><td><button class="btn s p" onclick="toast('Loading — the current engine unloads first.','warn')">Load</button></td></tr>
-        <tr><td><b>Chatterbox</b></td><td>Turbo · English</td><td class="n">2.1 GB</td><td><span class="tag ok">✓</span></td>
-          <td>1</td><td><span class="tag">installed</span></td><td><button class="btn s p" onclick="toast('Loading — the current engine unloads first.','warn')">Load</button></td></tr>
-        <tr><td><b>Dia</b></td><td>1.6B-0626</td><td class="n">6.4 GB</td><td><span class="tag ok">✓</span></td>
-          <td>1</td><td><span class="tag w">needs venv</span></td><td><button class="btn s" onclick="toast('Building the isolated venv — this takes a few minutes.','warn')">Install</button></td></tr>
+        <tr><td><b>Kokoro</b></td><td>multi-lang v1.0 <span class="tag">default</span></td><td class="n">349 MB</td>
+          <td><span class="tag no">✗</span></td><td><span class="tag no">none</span></td>
+          <td>9 locales <span class="tag e">✗ reads as English</span></td>
+          <td><span class="tag ok">loaded</span></td>
+          <td><button class="btn s" onclick="toast('Kokoro unloaded — 349 MB freed.','ok')">Unload</button></td></tr>
+        <tr><td class="hint">Kokoro</td><td>English-only v0.19</td><td class="n">320 MB</td>
+          <td><span class="tag no">✗</span></td><td><span class="tag no">none</span></td><td>en-US · en-GB</td>
+          <td><span class="tag">not installed</span></td>
+          <td><button class="btn s" onclick="toast('Downloading Kokoro English-only — 320 MB.','ok')">⤓ Install</button></td></tr>
+
+        <tr><td><b>Qwen3-TTS</b></td><td>CustomVoice 1.7B <span class="tag">default</span></td><td class="n">4.52 GB</td>
+          <td><span class="tag no">✗ presets only</span></td>
+          <td><span class="tag ok">✓ prose + emotion</span></td><td>10</td>
+          <td><span class="tag">installed</span></td>
+          <td><button class="btn s p" onclick="toast('Loading Qwen3 CustomVoice — Kokoro unloads first.','warn')">Load</button></td></tr>
+        <tr><td class="hint">Qwen3-TTS</td><td>CustomVoice 0.6B</td><td class="n">2.50 GB</td>
+          <td><span class="tag no">✗ presets only</span></td>
+          <td><span class="tag ok">✓ prose + emotion</span></td><td>10</td>
+          <td><span class="tag">not installed</span></td>
+          <td><button class="btn s" onclick="toast('Downloading Qwen3 CustomVoice 0.6B — 2.50 GB.','ok')">⤓ Install</button></td></tr>
+        <tr><td class="hint">Qwen3-TTS</td><td>Base 1.7B — clone only</td><td class="n">4.54 GB</td>
+          <td><span class="tag ok">✓</span></td>
+          <td><span class="tag no">none <span class="hint">— drops it</span></span></td><td>10</td>
+          <td><span class="tag">installed</span></td>
+          <td><button class="btn s p" onclick="toast('Loading Qwen3 Base — Kokoro unloads first.','warn')">Load</button></td></tr>
+        <tr><td class="hint">Qwen3-TTS</td><td>Base 0.6B — clone only</td><td class="n">2.52 GB</td>
+          <td><span class="tag ok">✓</span></td>
+          <td><span class="tag no">none</span></td><td>10</td>
+          <td><span class="tag">not installed</span></td>
+          <td><button class="btn s" onclick="toast('Downloading Qwen3 Base 0.6B — 2.52 GB.','ok')">⤓ Install</button></td></tr>
+        <tr><td class="hint">Qwen3-TTS</td><td>VoiceDesign 1.7B</td><td class="n">4.52 GB</td>
+          <td><span class="tag no">✗</span></td>
+          <td><span class="tag ok">✓ prose + emotion</span></td><td>10</td>
+          <td><span class="tag w">not installed</span></td>
+          <td><button class="btn s" onclick="toast('Downloading Qwen3 VoiceDesign — 4.52 GB. Design-from-words turns on when it lands.','ok')">⤓ Install</button></td></tr>
+
+        <tr><td><b>Chatterbox</b></td><td>Turbo · English <span class="tag">default</span></td><td class="n">2.99 GB</td>
+          <td><span class="tag ok">✓</span></td>
+          <td><span class="tag ok">✓ emotion only</span></td><td>1</td>
+          <td><span class="tag">installed</span></td>
+          <td><button class="btn s p" onclick="toast('Loading Chatterbox Turbo — Kokoro unloads first.','warn')">Load</button></td></tr>
+        <tr><td class="hint">Chatterbox</td><td>Multilingual v2</td><td class="n">3.21 GB</td>
+          <td><span class="tag ok">✓</span></td><td><span class="tag no">none</span></td><td>23</td>
+          <td><span class="tag">not installed</span></td>
+          <td><button class="btn s" onclick="toast('Downloading Chatterbox Multilingual — 3.21 GB.','ok')">⤓ Install</button></td></tr>
+
+        <tr><td><b>LuxTTS</b></td><td>base</td><td class="n">1.18 GB</td>
+          <td><span class="tag ok">✓</span></td><td><span class="tag no">none</span></td><td>1</td>
+          <td><span class="tag">not installed</span></td>
+          <td><button class="btn s" onclick="toast('Downloading LuxTTS — 1.18 GB. Runs on CPU.','ok')">⤓ Install</button></td></tr>
+
+        <tr><td><b>Whisper</b> <span class="tag">speech → text</span></td><td>turbo</td><td class="n">1.62 GB</td>
+          <td><span class="tag no">n/a</span></td><td><span class="tag no">n/a</span></td><td>multilingual</td>
+          <td><span class="tag ok">installed</span></td>
+          <td><button class="btn s g" onclick="toast('Whisper transcribes clone references and dictation. It does not speak.')">What for?</button></td></tr>
       </tbody></table></div>
-    <p class="hint" style="margin:0">Sizes HTTP-verified from the release tarballs, not typed from a model card.</p>
+    <p class="hint" style="margin:6px 0 0">Sizes are the real download totals, summed from each
+      variant's file list. Whisper is not a voice — it transcribes the reference clips you clone
+      from, so a clone arrives with its text already filled in.</p>
   </div>
 </div>
 </div>
@@ -1915,6 +2050,50 @@ body[data-studio="flat"] .sv-container{display:none!important}
       </div>
     </div>
     <div class="modal-f"><span style="flex:1"></span><button class="btn" onclick="closeModal()">Cancel</button></div>
+  </div>
+
+  <!-- Row menu — the ⋯ on a library row -->
+  <div class="modal" id="m-rowmenu" style="display:none">
+    <div class="modal-h"><span class="eb">June</span><h3>Persona actions</h3>
+      <button class="xbtn" onclick="closeModal()">✕</button></div>
+    <div class="modal-b">
+      <div class="row"><button class="btn" onclick="toast('Renaming June — the name changes everywhere she speaks.','ok');closeModal()">✏️ Rename</button>
+        <button class="btn" onclick="toast('Pick the persona to merge June into — her lines move across.');closeModal()">🔗 Merge into…</button>
+        <button class="btn d" onclick="toast('June speaks 115 lines in 2 projects — delete refuses while she is cast.','warn');closeModal()">🗑 Delete</button></div>
+      <div class="bn">A persona is library-level, so these act everywhere she is used — not just in
+        the project you came from. Deleting refuses while she still has lines.</div>
+    </div>
+    <div class="modal-f"><span style="flex:1"></span><button class="btn" onclick="closeModal()">Cancel</button></div>
+  </div>
+
+  <!-- Turbo's tag picker, opened from the direction cell -->
+  <div class="modal" id="m-tags" style="display:none">
+    <div class="modal-h"><span class="eb">Line 41 &middot; Marius &middot; Chatterbox Turbo</span>
+      <h3>How is it said?</h3><button class="xbtn" onclick="closeModal()">&#10005;</button></div>
+    <div class="modal-b">
+      <div class="f"><label>Emotion <span class="tag">Turbo's own 7</span></label>
+        <div class="radios">
+          <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>angry</span>
+          <span class="radio on" onclick="pickRadio(this)"><span class="rd"></span>fear</span>
+          <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>happy</span>
+          <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>sarcastic</span>
+          <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>surprised</span>
+          <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>crying</span>
+          <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>whispering</span>
+          <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>&mdash; none &mdash;</span></div></div>
+      <div class="f"><label>Register</label>
+        <div class="radios">
+          <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>narration</span>
+          <span class="radio on" onclick="pickRadio(this)"><span class="rd"></span>dramatic</span>
+          <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>advertisement</span>
+          <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>&mdash; none &mdash;</span></div></div>
+      <div class="bn">Non-verbal sounds &mdash; <span class="mono">[sigh]</span>,
+        <span class="mono">[laugh]</span> &mdash; are not set here. They go at a point
+        <i>inside</i> the sentence, so you insert them in the line's text.</div>
+    </div>
+    <div class="modal-f"><span class="hint">Turbo only. Chatterbox Multilingual reads these as words.</span>
+      <span style="flex:1"></span><button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn p" onclick="toast('[fear] [dramatic] set on line 41.','ok');closeModal()">Set</button></div>
   </div>
 
   <!-- Add a lexicon word -->
@@ -2025,30 +2204,45 @@ function recalcAnalyze(el) {
       : 'Pick at least one chapter.';
   }
 }
-function recalcAnalyze() {
-  var boxes = Array.prototype.slice.call(document.querySelectorAll('#chGrid .ck'));
-  var all = document.getElementById('chAll');
-  var picked = boxes.map(function (b, i) { return b.checked ? SCOPE_CH[i] : null; }).filter(Boolean);
-  if (all) {
-    all.checked = picked.length === boxes.length;
-    all.indeterminate = picked.length > 0 && picked.length < boxes.length;
+/* A SECOND recalcAnalyze used to sit here and overwrote the scoped one above.
+   It queried #chGrid / #chAll / #anBtn / #anEst, none of which exist anywhere in
+   the built file, so ticking a chapter updated nothing. Deleted 2026-08-17. */
+
+/* A glyph inside a row must not also fire the row's own click. */
+document.addEventListener('click', function (e) {
+  if (e.target.closest && e.target.closest('.rt')) e.stopPropagation();
+}, true);
+
+/* Cast: select a speaker card, then click a persona to assign it. */
+function pickCard(el) {
+  var scope = el.closest('.route') || document;
+  scope.querySelectorAll('.spkcard').forEach(function (c) { c.classList.remove('sel'); });
+  el.classList.add('sel');
+  var name = (el.querySelector('.nm') || {}).textContent || 'speaker';
+  toast(name + ' selected — click a persona to assign it.');
+}
+
+/* Chevrons really open and close the expansion row that follows. */
+function toggleRow(el) {
+  var tr = el.closest('tr');
+  if (!tr) return;
+  var next = tr.nextElementSibling;
+  if (!next || !(next.classList.contains('castx') || next.classList.contains('exp'))) {
+    toast('Nothing more to show on this row.');
+    return;
   }
-  var ln = picked.reduce(function (a, c) { return a + c.lines; }, 0);
-  var secs = Math.max(1, Math.ceil(ln / 80)) * 33;
-  var btn = document.getElementById('anBtn');
-  var est = document.getElementById('anEst');
-  if (btn) {
-    btn.textContent = picked.length ? '✨ Analyze ' + picked.length +
-      (picked.length === 1 ? ' chapter' : ' chapters') : '✨ Analyze';
-    btn.disabled = picked.length === 0;
-  }
-  if (est) {
-    est.textContent = picked.length
-      ? ln.toLocaleString() + ' lines · about ' +
-        (secs >= 60 ? Math.floor(secs / 60) + 'm ' : '') + (secs % 60) + 's · ' +
-        'rows fill in one chapter at a time, and each is reviewable the moment it lands'
-      : 'Pick at least one chapter.';
-  }
+  var opening = next.classList.contains('hidden-row');
+  next.classList.toggle('hidden-row', !opening);
+  el.textContent = opening ? '⌃' : '⌄';
+}
+
+/* The Personas index opens the SAME editor a Cast row opens - one editor, two
+   doors (redesign 8.3a). Drawing a second one is what made it read as two systems. */
+function openPersona(row) {
+  var cell = row.querySelector('.spk');
+  var name = cell ? cell.textContent.trim() : 'This persona';
+  nav('cast');
+  toast(name + ' — the same editor the Cast row opens.', 'ok');
 }
 
 

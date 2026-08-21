@@ -436,6 +436,19 @@ For agents / scripts driving JustVoice via MCP:
 
 Useful for masking JustVoice-produced audio without re-rendering.
 
+## Voice bundles
+
+A voice travels as one file: `GET /v1/voices/{id}/bundle.zip` exports it,
+`POST /v1/voices/bundle` imports it on any install. The bundle carries
+what the voice *is*: a cloned or imported voice brings its reference
+clip (and can re-clone on any cloning engine), a designed voice brings
+its description, a blended voice brings its mixed vector (Kokoro-only —
+the numbers only mean something to the engine that mixed them). LoRA
+voices travel as their adapter instead — the ⬇ Download on the LoRA tab.
+Importing refuses, with the reason, anything that could not render:
+a clip voice without its clip, or a voice whose engine this install
+doesn't have.
+
 ## Troubleshooting
 
 - **M4B export fails with 503** — ffmpeg is not on the server's PATH. Install it and restart the server; the same binary powers [mastering](mastering.md).

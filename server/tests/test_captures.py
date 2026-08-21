@@ -21,9 +21,11 @@ def client(tmp_path, monkeypatch):
     seed_workspace()
     # Fake the engine round-trip — STT correctness is the engine's concern;
     # here we test the API contract.
+    # The detailed door is the single truth since 2026-08-21 (confidence);
+    # _stt_transcribe delegates to it, so one patch covers both callers.
     monkeypatch.setattr(
-        "justvoice.api.captures_api._stt_transcribe",
-        lambda audio_path, language: "um hello hello world",
+        "justvoice.api.captures_api._stt_transcribe_detailed",
+        lambda audio_path, language: {"text": "um hello hello world", "confidence": None},
     )
     # No LLM provider in CI — refinement must degrade to the raw transcript.
     return TestClient(app, raise_server_exceptions=False)

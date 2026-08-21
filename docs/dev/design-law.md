@@ -32,12 +32,21 @@ deleted 2026-06-23 and there is no local `components/ui/` directory. What follow
 
 | Class | Shape it solves |
 |---|---|
-| `.jv-subnav` (+ `__tab`, `__tab--active`) | tabbed views |
+| `.jv-subnav` (+ `__tab`, `__tab--active`) | a VIEW's own tab strip (Voices, Labs) |
+| kit `SettingsShell` | a MENU INSIDE a view — sections as data, top strip, full-width panel. Settings' General/Appearance/… strip, and the LoRA tab's Preparer/Dataset/Training. Not `.jv-subnav`: the hand-rolled one died with the parity batch |
+| `.jv-logbox` (+ `--short`, `__line`, `__empty`) | a background job narrating itself while it runs (the LoRA Preparer + trainer). NOT the kit `LogsPanel`, which is server log FILES per day with download |
+| `.jv-progress` (+ `__track`, `__track--wide`, `__bar`, `__bar--done`, `__bar--fail`) | a determinate job's completion, in a table cell or under a heading |
 | `.jv-lib-toolbar` | search → filter chips → data dropdowns → spacer → actions, with "+ New" rightmost |
 | `.jv-table` (+ `__actions`, `__empty`) | library CRUD, row-click opens the full-form dialog |
 | `.jv-card` (+ `__header`, `__title`, `__body`, `--bare`, `--flat`, `--soft`) | grouping controls into a section |
 | `.jv-overlay` / `.jv-modal` | modal shells |
 | `.jv-fill` | pane views that fill the content area (instead of `height: 100%`) |
+| `.jv-split` (+ `__col`) | input → result two-column grid for make-a-thing surfaces; stacks below 1100px |
+| `.jv-field-row` | a row of block-labelled fields with a trailing action, bottom-aligned structurally (strips the kit's `.ui-field` margin — never re-align with per-view nudges) |
+| `.jv-col--start` / `.jv-stretch` | card-body children keep content width / one child opts back into full width |
+| `.jv-hint` | one quiet line under a row or field — cost or requirement of the choice above. **12.5px floor** (2026-08-21 "stop using small text"): no user-facing text renders smaller |
+| `.jv-lede` | the one-paragraph explanation under a card title — body-size (13.5px) because a lede is content, not a footnote. User-language only, never file formats or internal jargon |
+| `.jv-mt10` / `.jv-mt12` / `.jv-mb14` / `.jv-inline-row` / `.jv-note-xs` | spacing + inline-row utilities (SettingsView referenced them for months while nothing defined them — defined 2026-08-21; `-xs` renders at the same 12.5px floor) |
 
 Dialogs are always `confirmDialog` / `promptDialog` — never a native dialog.
 

@@ -40,7 +40,7 @@ Read the docs in this order:
 git clone https://github.com/delebash/justvoice-new.git
 cd justvoice-new
 npm install
-cd server && pip install -e .[kokoro] && cd ..
+cd server && pip install -e . && cd ..
 npm run tauri dev
 ```
 
@@ -48,7 +48,7 @@ npm run tauri dev
 
 ```bash
 cd server
-pip install -e .[kokoro]
+pip install -e .
 justvoice-server serve --port 17494
 ```
 
@@ -58,15 +58,9 @@ Then point any browser at `http://localhost:17494/ui/`.
 
 ### Install more engines
 
-```bash
-cd server
-pip install -e .[chatterbox]   # English cloning + paralinguistic tags
-pip install -e .[qwen3]        # Multilingual TTS + designed voices
-pip install -e .[all-engines]  # All bundled engines
-pip install -e .[training]     # PEFT/LoRA fine-tuning
-```
-
-Or use the Engines tab in the UI for per-engine install with progress.
+Use the Engines tab in the UI — every engine installs its own isolated
+environment (with the right GPU runtime for your machine) with progress
+shown. There are no pip extras to remember; the app is the installer.
 
 ## Repository layout
 

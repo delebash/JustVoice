@@ -1041,7 +1041,7 @@ async function savePastedText() {
               <UiTag
                 v-if="getActiveTake(block.id)?.is_default"
                 intent="success"
-                label="default"
+                value="default"
               />
 
               <!-- Lineage pill — click opens the full source-chain viewer -->
@@ -1083,7 +1083,7 @@ async function savePastedText() {
                     Take A (active)
                     <UiTag
                       v-if="getActiveTake(block.id)?.is_default"
-                      intent="success" label="default" class="chapter-view__compare-tag"
+                      intent="success" value="default" class="chapter-view__compare-tag"
                     />
                   </div>
                   <audio

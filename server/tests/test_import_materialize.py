@@ -132,8 +132,15 @@ def test_lexicon_entries_materialize_and_set_default(tmp_db, tmp_path):
         from justvoice.database.models import Lexicon as DbLexicon, LexiconEntry as DbLexiconEntry
         row = db.query(DbLexicon).filter(DbLexicon.id == lex_id).one()
         assert row.project_id == project_id
-        words = [e.word for e in db.query(DbLexiconEntry).filter(DbLexiconEntry.lexicon_id == lex_id)]
-        assert words == ["Hecate"]
+        rows = list(db.query(DbLexiconEntry).filter(DbLexiconEntry.lexicon_id == lex_id))
+        # Since 2026-08-21 the book's character names seed the lexicon as
+        # BLANK worklist rows beside the explicit entries (the decided
+        # seed item; empty pronunciation is inert at render). The explicit
+        # entry keeps its pronunciation; the seeded name arrives blank.
+        by_word = {e.word: e for e in rows}
+        assert set(by_word) == {"Hecate", "Mara Vance"}
+        assert by_word["Hecate"].pronunciation == "HEH-kuh-tee"
+        assert by_word["Mara Vance"].pronunciation == ""
     finally:
         db.close()
 
@@ -143,22 +150,42 @@ def test_lexicon_entries_materialize_and_set_default(tmp_db, tmp_path):
     assert lex is not None
     assert lex.scope == "project"
     assert lex.project_id == project_id
-    assert [e.grapheme for e in lex.entries] == ["Hecate"]
-    assert lex.entries[0].alias == "HEH-kuh-tee"
+    by_grapheme = {e.grapheme: e for e in lex.entries}
+    assert set(by_grapheme) == {"Hecate", "Mara Vance"}
+    assert by_grapheme["Hecate"].alias == "HEH-kuh-tee"
+    # The seeded name round-trips as a blank worklist row (no alias, no
+    # IPA) — inert at render until someone fills it in.
+    assert by_grapheme["Mara Vance"].alias in (None, "")
+    assert by_grapheme["Mara Vance"].phoneme_ipa in (None, "")
 
 
-def test_no_lexicon_entries_is_a_noop(tmp_db, tmp_path):
+def test_characters_alone_seed_a_blank_worklist(tmp_db, tmp_path):
+    """Renamed from test_no_lexicon_entries_is_a_noop 2026-08-21: an import
+    with characters is NOT a no-op any more — the names seed a lexicon of
+    blank rows (the decided seed item). A true no-op now needs an import
+    with neither entries nor characters."""
     session_factory, _engine = tmp_db
     db = session_factory()
     try:
         project, *_ = _materialize_standard(_standard("Plain"), db)
-        assert _materialize_lexicon(_standard("Plain"), project, db) is None
-        assert project.default_lexicon_id is None
+        lex_id = _materialize_lexicon(_standard("Plain"), project, db)
+        assert lex_id is not None
+        assert project.default_lexicon_id == lex_id
+        db.commit()
+
+        from justvoice.database.models import LexiconEntry as DbLexiconEntry
+        rows = list(db.query(DbLexiconEntry).filter(DbLexiconEntry.lexicon_id == lex_id))
+        assert [(e.word, e.pronunciation) for e in rows] == [("Mara Vance", "")]
+
+        # And the true no-op: nothing to seed → no lexicon.
+        bare = _standard("Empty")
+        bare.characters = []
+        project2, *_ = _materialize_standard(bare, db)
+        assert _materialize_lexicon(bare, project2, db) is None
+        assert project2.default_lexicon_id is None
         db.commit()
     finally:
         db.close()
-    store = LexiconStore(tmp_path, session_factory=session_factory)
-    assert store.list() == []
 
 
 def test_lexicon_store_crud_round_trip(tmp_db, tmp_path):

@@ -185,11 +185,11 @@ onMounted(() => {
         <strong>Dictation readiness</strong>
         <div class="captures__checklist">
           <div class="captures__check-row" :class="{ 'captures__check-row--ok': readiness.stt.ready }">
-            <UiTag :intent="readiness.stt.ready ? 'success' : 'ghost'" :label="readiness.stt.ready ? '✓' : '○'" />
+            <UiTag :intent="readiness.stt.ready ? 'success' : 'secondary'" :value="readiness.stt.ready ? '✓' : '○'" />
             <span>{{ readiness.stt.display_name }} {{ readiness.stt.ready ? "loaded" : "not loaded" }}</span>
           </div>
           <div class="captures__check-row" :class="{ 'captures__check-row--ok': readiness.llm.ready }">
-            <UiTag :intent="readiness.llm.ready ? 'success' : 'ghost'" :label="readiness.llm.ready ? '✓' : '○'" />
+            <UiTag :intent="readiness.llm.ready ? 'success' : 'secondary'" :value="readiness.llm.ready ? '✓' : '○'" />
             <span>{{ readiness.llm.display_name }} {{ readiness.llm.ready ? "loaded" : "not loaded" }}</span>
           </div>
         </div>

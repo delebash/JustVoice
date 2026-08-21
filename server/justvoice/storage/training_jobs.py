@@ -19,6 +19,14 @@ from .atomic import atomic_write_json
 
 log = logging.getLogger(__name__)
 
+# How many trainer log lines a job keeps. A LoRA run emits a line per
+# sample per epoch, so an unbounded list grows into the tens of thousands
+# on a large set; the tail is the part that explains how a run ended.
+# Lives HERE because the store owns the record it bounds — both writers
+# (api/training_api's callback and training_runner's stdout pump) import
+# it rather than keeping their own copy to drift.
+JOB_LOG_CAP = 500
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)

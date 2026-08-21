@@ -26,10 +26,21 @@ ENGINES_DIR = Path(__file__).resolve().parents[1] / "justvoice" / "engines"
 # Variant rows share their base engine's adapter.
 ADAPTER_FOR = {
     "kokoro": "kokoro",
+    "pocket-tts": "pocket_tts",
     "chatterbox": "chatterbox",
     "chatterbox-turbo": "chatterbox",
+    "chatterbox-nano": "chatterbox",
     "chatterbox-multilingual": "chatterbox",
     "qwen3": "qwen3",
+    # The qwen3 checkpoint families (2026-08-19) share the qwen3 adapter;
+    # their rows differ in capability, not knobs.
+    "qwen3-cv": "qwen3",
+    "qwen3-base": "qwen3",
+    "qwen3-vd": "qwen3",
+    # The macOS MLX Base rows — full-id keys that pre-empt the suffix walk
+    # to drop training (see the bottom of capability_details.py).
+    "qwen3-base-1.7b-mlx": "qwen3",
+    "qwen3-base-0.6b-mlx": "qwen3",
     "luxtts": "luxtts",
     "moss-tts": "moss_tts",
     "tada": "tada",

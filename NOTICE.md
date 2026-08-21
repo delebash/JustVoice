@@ -151,17 +151,20 @@ Copyright 2019 Kenneth Reitz
 
 ### chatterbox-tts (MIT) / qwen-tts (Apache-2.0)
 
-- Engine extras; `pip install justvoice[chatterbox]` / `[qwen3]`. Installed on demand onto the
-  user's machine — neither is frozen into the shipped sidecar.
+- Installed on demand by the app's engine installer into each engine's own
+  environment (the pip extras of the same names died 2026-08-21) — neither is
+  frozen into the shipped sidecar.
 - `qwen-tts` verified 2026-07-29: `Apache-2.0` both upstream (`QwenLM/Qwen3-TTS`) and on PyPI
   (0.1.1). It ships no upstream `NOTICE` file. This entry previously read "license TBD".
 - `chatterbox-tts` pulls in **parselmouth** (`GPL-3.0-or-later`) transitively. That copyleft does
   not reach JustVoice: it is never redistributed, and it is imported only inside the chatterbox
   engine subprocess. See `LICENSES.md` → *Installed on demand* for the full reasoning.
 
-### faster-whisper (MIT) / peft (Apache-2.0) / safetensors (Apache-2.0) — training extras
+### peft (Apache-2.0) / safetensors (Apache-2.0) — LoRA training
 
-- `pip install justvoice[training]`
+- Installed by the app into the training-capable engines' own environments
+  (the `[training]` pip extra died 2026-08-21; faster-whisper left with it —
+  transcription rides the Whisper engine, not a second library).
 
 ### scipy
 

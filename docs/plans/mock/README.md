@@ -37,7 +37,8 @@ second artifact appears instead of the first updating.
 | `_new_*.html` | the newer route screens — home, projects, chapters, lines, discover |
 | `_interactions.py` | modal/toast CSS, the modal markup, and the page JS (`openModal`, `toast`, `pickChip`, `selectAllCh`, `recalcAnalyze`, …) |
 | `wire.py`, `wire2.py`, `wire3.py` | the three sweeps that got it to zero dead controls. `wire3.py` is the backstop — it gives any remaining `<button>` without `onclick`/`disabled` a real action |
-| `validate.py` | tag structure · every route reachable · no dangling `nav()` target · dead-button count |
+| `sweep_persona.py` | one-off, already applied: the §8.4 terminology sweep (never "character"). Exact-string replacements, no regex. Re-running it is a no-op |
+| `validate.py` | tag structure · every route reachable · no dangling `nav()` target · dead-button count · character/persona counts |
 
 ## Traps that have already cost time
 

@@ -23,11 +23,16 @@ from ..models import ModelVariant
 
 
 def _variant_rows(engine_id: str) -> list[dict[str, Any]]:
-    from .manager import get_manager
+    from .manager import _current_os_label, get_manager
 
     m = get_manager().get_manifest(engine_id)
     rows = getattr(m.module, "VARIANTS", None) if m else None
-    return list(rows) if rows else []
+    # A row may gate itself by OS ("oses": [...]) — qwen3's -mlx rows are
+    # macOS-only, its torch rows Windows/Linux (2026-08-19). No key =
+    # visible everywhere. Filtering at THIS door covers models_for,
+    # sources_for and the default-variant picker in one place.
+    here = _current_os_label()
+    return [r for r in (rows or []) if here in (r.get("oses") or (here,))]
 
 
 def models_for(engine_id: str) -> list[ModelVariant]:
@@ -43,6 +48,7 @@ def models_for(engine_id: str) -> list[ModelVariant]:
             quality=int(r.get("quality") or 0),
             languages=list(r.get("languages") or []),
             voice_cloning=r.get("voice_cloning"),
+            voice_design=r.get("voice_design"),
             preset_voices=r.get("preset_voices"),
             weights_license=r.get("weights_license", ""),
             hf_repo=next((s.get("hf_repo") for s in sources if s.get("hf_repo")), None),

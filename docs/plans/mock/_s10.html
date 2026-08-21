@@ -12,20 +12,20 @@
             <th style="width:64px">Heard</th><th style="width:46px"></th></tr></thead>
           <tbody>
             <tr><td><b>Hecate</b></td><td class="mono">HEH-kuh-tee</td><td><span class="tag">phonetic</span></td>
-              <td><span class="rt"><span>▶</span></span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+              <td><span class="rt"><span onclick="toast('Playing…')">▶</span></span></td><td><span class="rt"><span onclick="toast('Deleted. The other takes are kept.','warn')">🗑</span></span></td></tr>
             <tr><td><b>Marius</b></td><td class="mono">MAR-ee-us</td><td><span class="tag">phonetic</span></td>
-              <td><span class="rt"><span>▶</span></span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+              <td><span class="rt"><span onclick="toast('Playing…')">▶</span></span></td><td><span class="rt"><span onclick="toast('Deleted. The other takes are kept.','warn')">🗑</span></span></td></tr>
             <tr><td><b>quay</b></td><td class="mono">/kiː/</td><td><span class="tag">ipa</span></td>
-              <td><span class="rt"><span>▶</span></span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+              <td><span class="rt"><span onclick="toast('Playing…')">▶</span></span></td><td><span class="rt"><span onclick="toast('Deleted. The other takes are kept.','warn')">🗑</span></span></td></tr>
           </tbody></table></div>
         <div class="bn w" style="margin-top:10px">IPA only works on engines with phoneme input —
           Kokoro yes, Chatterbox no. The notation column warns before you write 40 of them.</div></div>
       <div style="display:flex;flex-direction:column;gap:12px">
         <div class="card"><div class="sh"><h4>Scope</h4></div>
-          <div class="radios"><span class="radio"><span class="rd"></span>Global</span>
-            <span class="radio on"><span class="rd"></span>This project</span>
-            <span class="radio"><span class="rd"></span>One character</span></div>
-          <p class="hint" style="margin:8px 0 0">A character-scoped lexicon beats the project's —
+          <div class="radios"><span class="radio" onclick="pickRadio(this)"><span class="rd"></span>Global</span>
+            <span class="radio on" onclick="pickRadio(this)"><span class="rd"></span>This project</span>
+            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>One persona</span></div>
+          <p class="hint" style="margin:8px 0 0">A persona-scoped lexicon beats the project's —
             Old Crow says “boss” his own way.</p></div>
         <div class="card"><div class="sh"><h4>Try a word</h4></div>
           <input class="box" value="Hecate"><div class="row" style="margin-top:7px">

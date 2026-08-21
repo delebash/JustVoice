@@ -88,6 +88,20 @@ def _detect_runtimes(base: dict[str, bool] | None = None) -> dict[str, bool]:
         runtimes["mlx"] = True
     if sys.platform == "win32":
         runtimes["directml"] = True
+    if sys.platform.startswith("linux"):
+        # ROCm: rocm-smi answering is the practical signal (mirrors the
+        # nvidia-smi probe for CUDA). PyTorch ships no Windows ROCm wheels,
+        # so this is Linux-only by construction. UNMEASURED on real AMD
+        # hardware here.
+        try:
+            _r = subprocess.run(
+                ["rocm-smi", "--showid"],
+                capture_output=True, timeout=5,
+            )
+            if _r.returncode == 0 and _r.stdout.strip():
+                runtimes["rocm"] = True
+        except Exception:
+            pass
     # torch, if present, is the most accurate CUDA / MPS signal.
     try:
         import torch  # type: ignore

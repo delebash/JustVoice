@@ -120,8 +120,8 @@ and none of them takes or touches a persona:**
 | Clone from audio | `POST /v1/voices/clone` (`voices_api.py:132`) | `Voice` |
 | Design from prose | `POST /v1/voices/design` (`voices_api.py:161`) | `Voice` |
 | Import `.justvoice.zip` | `POST /v1/voices/import` (`voices_api.py:183`) | `Voice` |
-| Blend | `POST /v1/voices/blend` (`phase5_api.py:101`) | `Voice` — needs ≥ 2 `source_voice_ids` |
-| Train a LoRA | `POST /v1/train` (`phase5_api.py`) | a job; on completion `training_callback` **mints a `VoiceRecord`** with `source="trained"` and `adapter_path`, and returns `final_voice_id` (`phase5_api.py:295-330`) |
+| Blend | `POST /v1/voices/blend` (`voices_api.py`) | `Voice` — needs ≥ 2 `source_voice_ids` |
+| Train a LoRA | `POST /v1/train` (`training_api.py`) | a job; on completion `training_callback` **mints a `VoiceRecord`** with `source="lora"` and `adapter_path`, and returns `final_voice_id` (`training_api.py`). `phase5_api.py` was a plan-phase name and no longer exists — training split out to `training_api.py`, blending to `voices_api.py` |
 
 **A `VoiceRecord` carries no tuning at all** (`models.py:446`): `id · engine ·
 source · name · language · gender · design_prompt · transcript · sample_count ·
@@ -518,7 +518,7 @@ exposes queue depth or the current engine.**
 | `PersonasView` | 695 | The persona library — see §1 |
 | `LexiconsView` | 632 | Pronunciation dictionaries |
 | `HomeView` | 561 | Empty hero *"What are you making?"* · Continue/Resume card · live tasks · engine status **with VRAM** + Unload/Switch · recent generations with inline replay |
-| `TrainView` | 460 | Queue a fine-tune (inside Labs) |
+| `lora/LoraView` + `PreparerTab` · `DatasetTab` · `TrainingTab` | — | The LoRA workflow, inside the Voices page's LoRA tab (replaced `TrainView` 2026-08-21) |
 | `CapturesView` | 409 | Dictation captures, refined vs raw transcript, pin, retranscribe |
 | `CompareView` | 358 | A/B two takes → metric deltas + verdict (inside Labs) |
 | `RenderPresetsView` | 325 | **Name · Persona · Master target · Delivery** |

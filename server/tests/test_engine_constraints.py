@@ -70,6 +70,10 @@ def test_no_manifest_declares_a_numpy_bound_the_ceiling_would_break() -> None:
     this test is where that conversation starts."""
     offenders: list[str] = []
     for eid, m in manager.discover_engines().items():
+        if m.isolation == "venv":
+            # Isolated venvs install without the ceiling (2026-08-19) —
+            # kokoro's kokoro-onnx needs numpy>=2 and has no numba.
+            continue
         for step in m.install_steps:
             for pkg in step.get("packages", []) or []:
                 name = re.split(r"[<>=!~\[; ]", str(pkg), 1)[0].strip().lower()
@@ -120,6 +124,18 @@ def test_install_carries_the_constraint(monkeypatch, tmp_path) -> None:
     # It must precede the requirement, not trail it — uv reads the file as the
     # value of the flag, and a stray position would silently swallow a package.
     assert argv.index("--constraint") < argv.index("librosa")
+
+
+def test_isolated_install_opts_out_of_the_constraint(monkeypatch, tmp_path) -> None:
+    """Isolated venvs resolve their own world — the shared ceiling would
+    make kokoro-onnx (numpy>=2) uninstallable, which is exactly how the
+    kokoro venv build failed on 2026-08-19 before this scoping."""
+    seen = _capture_uv_pip(monkeypatch)
+    manager._run_uv_pip(
+        "uv", tmp_path / "python.exe", ["pip", "install", "kokoro-onnx"],
+        lambda p, ln: None, lambda: None, use_constraints=False,
+    )
+    assert "--constraint" not in seen[0]
 
 
 def test_uninstall_does_not_carry_the_constraint(monkeypatch, tmp_path) -> None:

@@ -96,7 +96,10 @@ class EmbeddedEngine:
         7. CPU.
         """
         if requested != "auto":
-            return requested
+            # ROCm masquerades as CUDA in PyTorch (torch.version.hip builds
+            # expose the HIP device through the "cuda" API) — there is no
+            # torch device string called "rocm".
+            return "cuda" if requested == "rocm" else requested
 
         if force_cpu_on_mac and platform.system() == "Darwin":
             return "cpu"

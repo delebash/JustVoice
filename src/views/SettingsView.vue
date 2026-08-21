@@ -167,7 +167,7 @@ const settings = ref({
   models:    {},
   engines:   { kokoro: { model_dir_override: "" }, default_tts_engine: "kokoro" },
   app:       { primary_use_case: "unset", secondary_use_cases: [], onboarding_shown: false },
-  generation:{ max_chunk_chars: 800, crossfade_ms: 50, normalize_audio: true, autoplay_on_generate: true },
+  generation:{ max_chunk_chars: 800, crossfade_ms: 50, stream_piece_chars: 200, normalize_audio: true, autoplay_on_generate: true },
 });
 const serverReachable = ref(false);
 
@@ -1339,6 +1339,29 @@ onMounted(() => {
             type="range"
             v-model.number="settings.generation.max_chunk_chars"
             min="100" max="5000" step="50"
+            class="setting-row__slider"
+            @change="saveDebounced"
+          />
+        </div>
+
+        <!-- Streamed-audition piece slider -->
+        <div class="setting-row">
+          <div class="setting-row__head">
+            <div>
+              <div class="setting-row__title">Streamed audition pieces</div>
+              <div class="setting-row__desc">
+                Voice auditions stream: the line is split into pieces of at most this many
+                characters (preferring sentence ends), and playback starts as soon as the first
+                piece is rendered. Smaller pieces start sooner but make more model calls; larger
+                pieces behave more like a single render.
+              </div>
+            </div>
+            <span class="setting-row__value">{{ settings.generation.stream_piece_chars }} chars</span>
+          </div>
+          <input
+            type="range"
+            v-model.number="settings.generation.stream_piece_chars"
+            min="80" max="800" step="20"
             class="setting-row__slider"
             @change="saveDebounced"
           />

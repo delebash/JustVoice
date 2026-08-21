@@ -206,7 +206,7 @@ def post_callback(payload: dict) -> None:
         rec = VoiceRecord(
             id="",
             engine=job.engine,
-            source="trained",
+            source="lora",
             name=job.voice_name,
             language=st.settings.get().training.default_voice_language,
             adapter_path=payload.get("adapter_path"),

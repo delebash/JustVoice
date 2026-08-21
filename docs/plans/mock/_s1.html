@@ -5,10 +5,10 @@
         <div class="card">
           <div class="sh"><span class="st">1</span><h4>What are you making?</h4></div>
           <div class="radios" style="margin-bottom:12px">
-            <span class="radio on"><span class="rd"></span>📖 Audiobook</span>
-            <span class="radio"><span class="rd"></span>🎮 Game voicelines</span>
-            <span class="radio"><span class="rd"></span>🎙️ Podcast</span>
-            <span class="radio"><span class="rd"></span>⚙️ Custom</span></div>
+            <span class="radio on" onclick="pickRadio(this)"><span class="rd"></span>📖 Audiobook</span>
+            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>🎮 Game voicelines</span>
+            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>🎙️ Podcast</span>
+            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>⚙️ Custom</span></div>
           <div class="kb k2">
             <div class="f"><label>Name</label><input class="box" value="Stillwater"></div>
             <div class="f"><label>Language</label><select class="box"><option>en-US</option></select></div></div>
@@ -31,16 +31,16 @@
       </div>
       <div style="display:flex;flex-direction:column;gap:12px">
         <div class="card"><div class="sh"><h4>Master target</h4></div>
-          <div class="radios"><span class="radio on"><span class="rd"></span>ACX</span>
-            <span class="radio"><span class="rd"></span>Audible inAudio</span>
-            <span class="radio"><span class="rd"></span>Podcast</span>
-            <span class="radio"><span class="rd"></span>YouTube</span>
-            <span class="radio"><span class="rd"></span>None</span></div>
+          <div class="radios"><span class="radio on" onclick="pickRadio(this)"><span class="rd"></span>ACX</span>
+            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>Audible inAudio</span>
+            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>Podcast</span>
+            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>YouTube</span>
+            <span class="radio" onclick="pickRadio(this)"><span class="rd"></span>None</span></div>
           <p class="hint" style="margin:8px 0 0">Sets loudness, peak ceiling and noise floor for every
             render. Change it later from any chapter.</p></div>
         <div class="card tint"><div class="sh"><h4>What you get</h4></div>
           <p class="note" style="margin:0">N chapters · one line per paragraph · a <b>Narrator</b>
-            character · one character per name the source knew. Nothing cast to a voice yet.</p></div>
+            persona · one persona per name the source knew. Nothing cast to a voice yet.</p></div>
       </div>
     </div>
   </div>

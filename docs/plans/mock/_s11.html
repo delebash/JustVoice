@@ -1,7 +1,7 @@
 <div class="top"><span class="crumb">Effects › June's chain</span>
     <span class="pill live"><span class="dot"></span> Qwen3</span></div>
   <div class="body">
-    <div class="bn">Effects run after the TTS, in order. The character's chain runs first, then the
+    <div class="bn">Effects run after the TTS, in order. The persona's chain runs first, then the
       scene's on top — both are shown here.</div>
     <div class="split">
       <div class="card"><div class="sh"><h4>The chain</h4><span class="sub">drag to reorder</span></div>
@@ -13,15 +13,15 @@
               <td class="row"><span class="hint">low</span><input class="num" value="-2"><span class="u">dB</span>
                 <span class="hint">mid</span><input class="num" value="+2"><span class="u">dB</span>
                 <span class="hint">high</span><input class="num" value="+1"><span class="u">dB</span></td>
-              <td><span class="tag">June</span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+              <td><span class="tag">June</span></td><td><span class="rt"><span onclick="toast('Deleted. The other takes are kept.','warn')">🗑</span></span></td></tr>
             <tr><td class="rt"><span>⣿</span></td><td><b>Compressor</b></td>
               <td class="row"><span class="hint">thr</span><input class="num" value="-18"><span class="u">dB</span>
                 <span class="hint">ratio</span><input class="num" value="3.0"></td>
-              <td><span class="tag">June</span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+              <td><span class="tag">June</span></td><td><span class="rt"><span onclick="toast('Deleted. The other takes are kept.','warn')">🗑</span></span></td></tr>
             <tr style="background:var(--warn-bg)"><td class="rt"><span>⣿</span></td><td><b>Reverb</b></td>
               <td class="row"><span class="hint">room</span><input class="num" value="0.35">
                 <span class="hint">wet</span><input class="num" value="0.18"></td>
-              <td><span class="tag w">scene</span></td><td><span class="rt"><span>🗑</span></span></td></tr>
+              <td><span class="tag w">scene</span></td><td><span class="rt"><span onclick="toast('Deleted. The other takes are kept.','warn')">🗑</span></span></td></tr>
           </tbody></table></div>
         <button class="btn s" style="margin-top:9px" onclick="openModal('effect')">＋ Add effect</button>
         <p class="hint" style="margin:8px 0 0">Rows tinted amber come from the chapter's scene
@@ -35,8 +35,8 @@
             <div class="bar"><b style="width:30%"></b></div><span class="mono hint">0:02</span></div></div>
         <div class="card"><div class="sh"><h4>Save as a preset</h4></div>
           <input class="box" placeholder="e.g. Radio broadcast">
-          <button class="btn s" style="margin-top:7px;width:100%" onclick="toast('Chain saved — reusable on any character or scene.','ok')">💾 Save chain</button>
-          <p class="hint" style="margin:7px 0 0">Reusable on any character or any scene.</p></div>
+          <button class="btn s" style="margin-top:7px;width:100%" onclick="toast('Chain saved — reusable on any persona or scene.','ok')">💾 Save chain</button>
+          <p class="hint" style="margin:7px 0 0">Reusable on any persona or any scene.</p></div>
         <div class="card tint"><div class="sh"><h4>Order matters</h4></div>
           <p class="note" style="margin:0">EQ before compression shapes what the compressor reacts to;
             after, it shapes what survives it. Reverb last, or you compress the room.</p></div>

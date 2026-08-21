@@ -12,6 +12,7 @@
 <script setup>
 import { computed, nextTick, onActivated, onMounted, ref } from "vue";
 import { useApi } from "../stores/api.js";
+import { previewLexiconText } from "../services/lexiconPreview.js";
 import { pushToast, saveBlob } from "@delebash/llm-ui";
 import { confirmDialog, promptDialog } from "@delebash/llm-ui";
 import { UiButton, UiInput, UiTag, UiChip, UiSelect, AppModal } from "@delebash/llm-ui";
@@ -215,6 +216,40 @@ async function deleteLexicon(id) {
   }
 }
 
+// ── Name scan — the pronunciation pre-flight (C2, 2026-08-21) ─────────
+// For a book-scoped lexicon: scan every block for likely proper nouns the
+// lexicon doesn't cover yet, and add them as worklist rows. Turns "hear
+// the mispronounced name in chapter 30" into a list fixed before render.
+const scanBusy = ref(false);
+const scanWords = ref(null); // null = never scanned; [] = scanned, clean
+
+async function runNameScan() {
+  if (!draft.value?.project_id || scanBusy.value) return;
+  scanBusy.value = true;
+  try {
+    const r = await api.request(
+      `/v1/projects/${draft.value.project_id}/pronunciation-report`,
+      { method: "POST" },
+    );
+    const have = new Set((draft.value.entries || []).map((e) => (e.grapheme || "").toLowerCase()));
+    scanWords.value = (r?.words || []).filter((w) => !have.has(w.word.toLowerCase()));
+  } catch (e) {
+    pushToast({ kind: "error", title: "Scan failed", description: String(e?.message ?? e) });
+  } finally {
+    scanBusy.value = false;
+  }
+}
+
+function addScanWord(w) {
+  draft.value.entries.push({ grapheme: w.word });
+  scanWords.value = scanWords.value.filter((x) => x.word !== w.word);
+}
+
+function addAllScanWords() {
+  for (const w of scanWords.value) draft.value.entries.push({ grapheme: w.word });
+  scanWords.value = [];
+}
+
 // ── Entry ops — all mutate the DRAFT; nothing persists until Save. ─────
 function buildEntry() {
   const entry = { grapheme: newGrapheme.value.trim() };
@@ -339,23 +374,15 @@ async function exportLexicon() {
   pushToast({ kind: "success", title: "Lexicon exported" });
 }
 
-// Client-side preview — best-effort longest-match grapheme replacement
-// against the DRAFT entries.
+// Client-side preview via the ONE shared truth
+// (services/lexiconPreview.js — mirrors what the render actually does:
+// alias replaces the text; IPA annotates the word's pronunciation).
+// This view used to preview alias-first while GenerateView previewed
+// IPA-first and the render did a third thing; unified 2026-08-21.
 function runPreview() {
-  if (!draft.value || !previewText.value) {
-    previewResult.value = "";
-    return;
-  }
-  const entries = [...(draft.value.entries || [])].sort((a, b) => (b.grapheme?.length || 0) - (a.grapheme?.length || 0));
-  let out = previewText.value;
-  for (const e of entries) {
-    if (!e.grapheme) continue;
-    const replacement = e.alias || e.phoneme_ipa;
-    if (!replacement) continue;
-    const escaped = e.grapheme.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    out = out.replace(new RegExp(`\\b${escaped}\\b`, "g"), `「${replacement}」`);
-  }
-  previewResult.value = out;
+  previewResult.value = (draft.value && previewText.value)
+    ? previewLexiconText(previewText.value, draft.value.entries)
+    : "";
 }
 
 // Fix-it loop handoff: Chapters/Studio flag a misread word → arrives here
@@ -460,10 +487,46 @@ onActivated(() => {
             </div>
             <div v-else class="lex__scope-row">
               <UiTag :intent="scopeBadge(draft).intent">{{ scopeBadge(draft).label }}</UiTag>
-              <UiTag intent="ghost">applies before TTS</UiTag>
-              <UiTag intent="ghost" v-if="draft.scope === 'project'">book: {{ scopedToName(draft) || "—" }}</UiTag>
-              <UiTag intent="ghost" v-if="draft.scope === 'persona'">persona: {{ scopedToName(draft) || "—" }}</UiTag>
+              <!-- "ghost" is a BUTTON intent — UiTag doesn't have it (the
+                   2026-08-20 kit-truth sweep missed these three). -->
+              <UiTag intent="secondary">applies before TTS</UiTag>
+              <UiTag intent="secondary" v-if="draft.scope === 'project'">book: {{ scopedToName(draft) || "—" }}</UiTag>
+              <UiTag intent="secondary" v-if="draft.scope === 'persona'">persona: {{ scopedToName(draft) || "—" }}</UiTag>
             </div>
+          </div>
+
+          <!-- ── The pronunciation pre-flight (book-scoped lexicons) ── -->
+          <div v-if="draft.project_id" class="lex__field">
+            <label>Names the book may mispronounce</label>
+            <div class="jv-inline-row">
+              <UiButton
+                intent="secondary" size="small"
+                :loading="scanBusy"
+                :label="scanBusy ? 'Scanning…' : '🔎 Scan the book for names'"
+                title="Find proper nouns this lexicon doesn't cover yet — fix them here instead of hearing them wrong in the finished audio"
+                @click="runNameScan"
+              />
+              <UiButton
+                v-if="scanWords && scanWords.length"
+                intent="secondary" size="small"
+                :label="`＋ Add all ${scanWords.length}`"
+                @click="addAllScanWords"
+              />
+              <span v-if="scanWords && !scanWords.length" class="jv-hint">
+                Every name found is already covered.
+              </span>
+            </div>
+            <div v-if="scanWords && scanWords.length" class="lex__scan-words">
+              <UiChip
+                v-for="w in scanWords" :key="w.word"
+                :title="`Appears ${w.count} time${w.count === 1 ? '' : 's'} — click to add as a worklist row`"
+                @click="addScanWord(w)"
+              >＋ {{ w.word }} ({{ w.count }})</UiChip>
+            </div>
+            <p v-if="scanWords && scanWords.length" class="jv-hint">
+              Added names start blank — a blank row changes nothing until you
+              give it a pronunciation, so add freely and fill in as you listen.
+            </p>
           </div>
 
           <div class="lex__field">
@@ -629,4 +692,5 @@ onActivated(() => {
   gap: 8px;
   flex-wrap: wrap;
 }
+.lex__scan-words { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; max-width: 72ch; }
 </style>

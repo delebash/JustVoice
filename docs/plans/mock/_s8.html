@@ -1,11 +1,17 @@
 <div class="top"><span class="crumb">Voices › New voice</span></div>
   <div class="body">
     <p class="note" style="margin:0">Five ways in, one door. Each states its precondition; nothing is
-      hidden in a fold, nothing is a button that does nothing.</p>
+      hidden in a fold, nothing is a button that does nothing. There is a
+      <b>sixth</b> way that only makes sense once you are listening to a voice —
+      <span class="lnk" onclick="nav('workbench')">Save as a new voice</span> on the workbench, which
+      keeps a parent plus your calibration.</p>
     <div class="map">
       <div class="mc"><div class="k">Bring a source</div><div class="n">🎤 Clone from audio</div>
         <div class="d">10 s–2 min, one speaker, clean.</div>
-        <div class="tags" style="margin-top:7px"><span class="tag w">needs Chatterbox</span></div></div>
+        <div class="tags" style="margin-top:7px"><span class="tag w">needs Chatterbox, Qwen3 Base or LuxTTS</span></div>
+        <p class="hint" style="margin:6px 0 0">A clone is someone's own timbre, and it always
+          <b>loses written direction</b> — the identity comes entirely from the reference clip.
+          Chatterbox Turbo still takes a per-line emotion; the others take neither.</p></div>
       <div class="mc"><div class="k">Bring a source</div><div class="n">📦 Import .justvoice.zip</div>
         <div class="d">A voice someone exported.</div>
         <div class="tags" style="margin-top:7px"><span class="tag ok">ready</span></div></div>
@@ -19,7 +25,7 @@
         <button class="btn s p" style="margin-top:8px" onclick="toast('Downloading Qwen3 VoiceDesign…','ok')">⤓ Install</button></div>
       <div class="mc new"><div class="k">Derive from yours</div><div class="n">🔀 Blend</div>
         <div class="d">Weighted mix, slerp / lerp / weighted sum. Same engine family only.</div>
-        <div class="tags" style="margin-top:7px"><span class="tag ok">64 available</span></div></div>
+        <div class="tags" style="margin-top:7px"><span class="tag ok">65 available</span></div></div>
       <div class="mc new"><div class="k">Derive from yours</div><div class="n">🧪 Train a LoRA</div>
         <div class="d">Epochs · LR · batch · rank · alpha. Final-loss table per checkpoint.</div>
         <div class="tags" style="margin-top:7px"><span class="tag w">needs samples</span></div></div>
@@ -60,9 +66,9 @@
         <div class="tw" style="margin-top:9px"><table>
           <thead><tr><th>Adapter</th><th>Epochs</th><th>Final loss</th><th>Samples</th><th></th></tr></thead>
           <tbody><tr><td>marius-v2</td><td class="n">12</td><td class="n">0.281</td><td class="n">18</td>
-            <td><span class="rt"><span>▶</span><span>⤓</span></span></td></tr>
+            <td><span class="rt"><span onclick="toast('Playing…')">▶</span><span onclick="toast('Saved the WAV.')">⤓</span></span></td></tr>
             <tr><td>marius-v1</td><td class="n">8</td><td class="n">0.402</td><td class="n">14</td>
-            <td><span class="rt"><span>▶</span><span>⤓</span></span></td></tr></tbody></table></div>
+            <td><span class="rt"><span onclick="toast('Playing…')">▶</span><span onclick="toast('Saved the WAV.')">⤓</span></span></td></tr></tbody></table></div>
         <p class="hint" style="margin:7px 0 0">Audition a checkpoint before committing — lower loss
           isn't always the better likeness.</p></div>
     </div>

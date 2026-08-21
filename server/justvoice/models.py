@@ -112,6 +112,13 @@ class GenerationSettings(BaseModel):
 
     max_chunk_chars: int = 800  # 100-5000 in UI slider
     crossfade_ms: int = 50  # 0-200 in UI slider; 0 = hard cut
+    # Audition streaming (phase 1, 2026-08-19): GET /preview/stream splits
+    # the line into pieces of at most this many characters (the splitter
+    # prefers sentence ends) and sends each as it renders, so playback
+    # starts after the first piece. Sentence-sized on purpose — the
+    # max_chunk_chars ceiling above is a truncation guard, far too big to
+    # buy any time-to-first-audio.
+    stream_piece_chars: int = 200  # 80-800 in UI slider
     normalize_audio: bool = True
     autoplay_on_generate: bool = True
 
@@ -210,6 +217,21 @@ class TrainingValidationSettings(BaseModel):
     max_sample_duration_secs: float = 60.0
     min_snr_db: float = 15.0
     max_silence_ratio: float = 0.30
+    # Share of samples at digital full scale before a clip is called
+    # clipped — the pre-flight gate the Train tab applies via /v1/analyze.
+    max_clipping_ratio: float = 0.01
+    # The Preparer's cut point: a silence at least this long splits a long
+    # recording into clips (POST /v1/train/prepare).
+    split_silence_secs: float = 0.4
+    # Whisper's own certainty about a clip's transcript, 0–1: the geometric
+    # mean of the chosen tokens' probabilities (engines/whisper/engine.py
+    # `_sequence_confidence`). A clip the transcriber was unsure about is a
+    # clip whose text is probably wrong, and a wrong transcript teaches the
+    # model the wrong thing. 0.85 is Alexandria's Preparer default
+    # (app/static/index.html `prep-confidence`, read 2026-08-21).
+    # An engine that cannot measure confidence reports None = UNKNOWN, which
+    # never fails the gate.
+    min_transcript_confidence: float = 0.85
     min_accepted_samples: int = 3
 
 
@@ -431,16 +453,57 @@ class SettingsPatchResponse(BaseModel):
 # ─── Voices ─────────────────────────────────────────────────────────────
 
 
+# "lora" deliberately breaks the past-participle grammar the other values
+# share (cloned/designed/imported/blended). The user-facing word for this
+# kind of voice is LoRA — on the tab, on the filter chip, in the docs — and
+# the word in the data must be the word on the screen. Renamed from
+# "trained" 2026-08-21 with no alias and no back-compat branch: a manifest
+# still carrying "trained" is unreadable by design, so a half-rename cannot
+# survive unnoticed.
 VoiceSource = Literal[
-    "preset", "cloned", "designed", "imported", "blended", "trained"
+    "preset", "cloned", "designed", "imported", "blended", "lora"
 ]
-StoredVoiceSource = Literal["cloned", "designed", "imported", "blended", "trained"]
+StoredVoiceSource = Literal["cloned", "designed", "imported", "blended", "lora"]
+
+
+# How a blended voice was made. Four strategies, three of which are weighted
+# combinations of whole vectors and one of which is not (2026-08-21):
+#
+#   blend       Σ(wⱼ·vⱼ)/Σw — a mix. Weights are shares, so it normalizes.
+#   extrapolate mean + k·(v − mean) — one voice pushed away from the pack's
+#               average voice. Rearranges to k·v + (1−k)·mean, so it rides
+#               the same weighted path with blending.MEAN_SOURCE as a source.
+#   vector      A + B − C, the word2vec analogy. Does NOT normalize: the
+#               magnitude is the answer, and dividing by Σw shrinks it.
+#   recombine   contiguous slices of the feature axis taken from different
+#               voices — nothing is averaged. Carries `segments`, not weights.
+BlendStrategy = Literal["blend", "extrapolate", "vector", "recombine"]
+
+
+class BlendSegment(BaseModel):
+    """One slice of the style vector's feature axis, as fractions of it.
+
+    Kokoro inherits StyleTTS2's split: the first half of the 256-wide
+    reference vector conditions the decoder (timbre), the second half the
+    prosody predictor. So (0.0, 0.5) and (0.5, 1.0) are "this voice's
+    timbre" and "that voice's prosody" — which is why the UI names them.
+    """
+
+    voice_id: str
+    start: float = 0.0
+    end: float = 1.0
 
 
 class BlendRecipe(BaseModel):
-    sources: list[str]
-    weights: list[float]
-    strategy: Literal["lerp", "slerp", "weighted_sum"] = "slerp"
+    # slerp/lerp retired 2026-08-19 with the kokoro-onnx swap. `strategy`
+    # arrived 2026-08-21; it is stored, not derived, because two strategies
+    # can produce the same numbers from the same sources and the recipe is
+    # how a voice explains itself later.
+    strategy: BlendStrategy = "blend"
+    sources: list[str] = Field(default_factory=list)
+    weights: list[float] = Field(default_factory=list)
+    # recombine only; None for every weighted strategy.
+    segments: list[BlendSegment] | None = None
 
 
 class VoiceRecord(BaseModel):
@@ -636,8 +699,7 @@ Feature = Literal[
     "phoneme_override",
     "gpu_accel",
     "single_speaker_dialogue",
-    "streaming_generation",
-    "embedding_blending",
+    "voice_blending",
     "training",
 ]
 
@@ -890,6 +952,22 @@ class InlineTagSet(BaseModel):
     value_map: dict[str, str] | None = None
 
 
+class TrainingSpec(BaseModel):
+    """Per-engine LoRA training defaults — the values the Train form opens
+    with. Each set is lifted from a code-verified upstream recipe (cited on
+    the capability row), never invented here."""
+
+    epochs: int
+    learning_rate: float
+    batch_size: int
+    grad_accum: int
+    lora_rank: int
+    lora_alpha: int
+    # None = the trainer script's own default dtype.
+    precision: str | None = None
+    target_modules: list[str] = []
+
+
 class EngineCapabilityDetail(BaseModel):
     """Per-engine (or per-variant) capability surface for UI gating.
 
@@ -908,7 +986,15 @@ class EngineCapabilityDetail(BaseModel):
     supports_voice_design: bool = False  # qwen3-style description
     supports_instruct_freeform: bool = False  # qwen3-style prose textarea
     supports_phoneme_input: bool = False  # kokoro raw-IPA bypass
+    # Clone from the speaker vector alone, skipping the reference
+    # transcript: faster and needs no transcript, at lower fidelity
+    # (Qwen3 Base's `x_vector_only_mode`).
+    supports_xvector_only: bool = False
     supports_multi_speaker: bool = False  # MOSS speaker_prompts map
+    supports_voice_blending: bool = False  # style-vector averaging (kokoro)
+    supports_training: bool = False  # a LoRA fine-tune path exists for this variant
+    # Present exactly when supports_training is True.
+    training_defaults: TrainingSpec | None = None
 
     # Numeric / continuous knobs (sliders)
     knobs: list[KnobSpec] = []
@@ -961,6 +1047,10 @@ class ModelVariant(BaseModel):
     # Per-variant capability facts (the §4 cloning-distinction ruling —
     # phase ③'s chips read these). None = the manifest doesn't say.
     voice_cloning: bool | None = None
+    # Per-variant design fact — only qwen3-vd-1.7b carries it today; the
+    # engine-level union would show a design tick on checkpoints that
+    # cannot design (the same lie the cloning flag had).
+    voice_design: bool | None = None
     preset_voices: int | None = None
     weights_license: str = ""
     # The primary source, for "View on Hugging Face" / provenance display.
@@ -1163,9 +1253,13 @@ class RenderChapterRequest(BaseModel):
 class BlendVoiceRequest(BaseModel):
     engine: str
     name: str
-    source_voice_ids: list[str]
+    # Weighted strategies (blend / extrapolate / vector). One id may be
+    # blending.MEAN_SOURCE, which resolves to the pack's average voice.
+    source_voice_ids: list[str] = Field(default_factory=list)
     weights: list[float] | None = None
-    strategy: Literal["lerp", "slerp", "weighted_sum"] = "slerp"
+    strategy: BlendStrategy = "blend"
+    # recombine only.
+    segments: list[BlendSegment] | None = None
 
 
 class TrainingSample(BaseModel):
@@ -1173,13 +1267,76 @@ class TrainingSample(BaseModel):
     transcript: str
 
 
+# "uploaded" = came in as a ZIP (Alexandria interchange or our own export).
+TrainingDatasetOrigin = Literal["clips", "prepared", "generated", "uploaded"]
+
+
+class TrainingDataset(BaseModel):
+    id: str
+    name: str
+    clip_count: int
+    total_seconds: float
+    created_at: datetime
+    # The language the clips are SPOKEN in. A LoRA adapter carries the
+    # phonology of its training language, so a run must train with the
+    # matching codec language token — the dataset is where that fact
+    # belongs, not the run form.
+    language: str | None = None
+    # Which clip is the voice's identity anchor. It becomes ref.wav +
+    # ref_text.txt, the speaker embedding is extracted from it before
+    # training, and it is replayed as the voice prompt on EVERY later
+    # render (qwen3/engine.py `_lora_clone_prompt`). None = the runner
+    # picks the longest clip, which is the old always-on behaviour.
+    ref_index: int | None = None
+    ref_transcript: str | None = None
+    # How the set was made — clips added by hand, cut from one recording
+    # by the Preparer, or generated line-by-line in the Dataset builder.
+    origin: TrainingDatasetOrigin = "clips"
+
+
+class TrainingDatasetList(BaseModel):
+    datasets: list[TrainingDataset]
+
+
+class CreateTrainingDatasetRequest(BaseModel):
+    name: str
+    samples: list[TrainingSample]
+    language: str | None = None
+    ref_index: int | None = None
+    origin: TrainingDatasetOrigin = "clips"
+
+
+class UpdateTrainingDatasetRequest(BaseModel):
+    """Rename, retarget the reference clip, or correct the language of a
+    dataset that already exists. Every field optional — absent = unchanged."""
+
+    name: str | None = None
+    language: str | None = None
+    ref_index: int | None = None
+
+
 class TrainVoiceRequest(BaseModel):
     engine: str
     name: str
-    samples: list[TrainingSample]
+    # Either inline clips OR a saved dataset (training_datasets storage) —
+    # dataset_id wins when both are present.
+    samples: list[TrainingSample] = []
+    dataset_id: str | None = None
+    # Which checkpoint family to fine-tune (e.g. "qwen3-base-1.7b",
+    # "chatterbox-turbo"). None = the engine's default trainable variant.
+    variant: str | None = None
+    # None on any knob = the engine's training_defaults (capability surface).
     epochs: int | None = None
     learning_rate: float | None = None
+    batch_size: int | None = None
+    grad_accum: int | None = None
+    lora_rank: int | None = None
+    lora_alpha: int | None = None
+    language: str | None = None
     base_voice: str | None = None
+    # Override the dataset's stored reference clip for THIS run only. None =
+    # the dataset's own ref_index, and failing that the longest clip.
+    ref_index: int | None = None
 
 
 TrainingPhase = Literal[
@@ -1215,6 +1372,23 @@ class TrainJob(BaseModel):
     validation: DatasetValidation | None = None
     final_voice_id: str | None = None
     error: str | None = None
+    # Stamped at enqueue so the Trained-adapters table can say what a run
+    # was, without re-deriving it from the request that made it.
+    epochs: int | None = None
+    sample_count: int | None = None
+    # Which dataset fed the run, so the adapters table can name it instead
+    # of leaving the reader to guess which clips made this voice.
+    dataset_id: str | None = None
+    dataset_name: str | None = None
+    # The language the run trained at — the codec language token the
+    # adapter now carries. Stamped so a finished adapter can say what it
+    # speaks rather than being assumed English.
+    language: str | None = None
+    # The trainer's own output, newest last. A progress bar says a run is
+    # moving; only the log says WHAT it is doing and why it stopped.
+    # Capped server-side (storage/training_jobs.JOB_LOG_CAP) — a long run
+    # must not grow the job record without bound.
+    logs: list[str] = []
 
 
 class TrainJobList(BaseModel):
@@ -1230,6 +1404,8 @@ class TrainingCallback(BaseModel):
     validation: DatasetValidation | None = None
     adapter_path: str | None = None
     error: str | None = None
+    # Trainer stdout lines to append to the job's log ring.
+    logs_append: list[str] = []
 
 
 # ─── Cache ──────────────────────────────────────────────────────────────
@@ -1271,6 +1447,9 @@ class WavFormat(BaseModel):
 
 
 class LoudnessStats(BaseModel):
+    # Estimated SNR (frame-percentile method, analyzer.py) — None when the
+    # clip is too short to frame. Feeds the training clip gates.
+    snr_db: float | None = None
     peak_dbfs: float
     rms_dbfs: float
     crest_factor_db: float

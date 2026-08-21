@@ -42,8 +42,12 @@ class EngineMeta:
     supports_streaming: bool = False
     supports_paralinguistic_tags: bool = False
     supports_instruct_field: bool = False
-    supports_embedding_blending: bool = False
-    supports_training: bool = False
+    # (supports_embedding_blending / supports_training dropped 2026-08-19:
+    # no adapter ever set them and the host never read them back. Blending
+    # is host-side vector math over the engine's voices file, and training
+    # is a host-spawned subprocess — neither is a property of a loaded
+    # engine process. The capability truth lives in the manifest and in
+    # capability_details, per variant.)
 
 
 @dataclass
@@ -62,6 +66,19 @@ class SynthRequest:
     # pre-registered voice). The host puts the file somewhere both
     # processes can read; the engine reads-only.
     audio_prompt_path: str | None = None
+    # The reference clip's exact transcript, for engines whose clone call
+    # takes one (Qwen3 Base `ref_text`). None = the engine's
+    # no-transcript path.
+    ref_text: str | None = None
+    # Clone from the speaker vector alone, ignoring the transcript.
+    xvector_only: bool = False
+    # A blended voice's style vector, flat. Engines whose synth call accepts
+    # a raw voice array (kokoro-onnx) render it directly; the host computes
+    # the blend from the engine's own voices file.
+    voice_vector: list[float] | None = None
+    # A trained voice's LoRA adapter directory, readable by the engine
+    # process. The adapter also holds its reference sample + training_meta.
+    adapter_path: str | None = None
 
 
 @dataclass

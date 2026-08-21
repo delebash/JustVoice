@@ -82,6 +82,39 @@ body[data-studio="flat"] .sv-container{display:none!important}
   padding:9px 12px;margin-bottom:12px;background:var(--surface);border:1px solid var(--line-strong);
   border-radius:var(--r-pill);box-shadow:var(--shadow-1)}
 .modebar .lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+
+/* A control the current voice cannot honour is shown, disabled, with its reason —
+   never hidden, or the user cannot tell the difference between "off" and "absent". */
+.box:disabled{opacity:.5;cursor:not-allowed;background:var(--surface-2)}
+
+/* .box is width:100%, which is right in a form and wrong in a table cell: the cell
+   absorbs the table's slack and the control stretches with it. In a cell, size to
+   content. */
+td > select.box,td > input.box{width:auto;max-width:100%;min-width:150px}
+
+/* Cast is a matching task: speakers on the left, the library on the right, click one
+   then the other. A dropdown per row cannot audition, cannot show engine or gender,
+   and is unusable at 63 entries. */
+.cast2{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:14px;align-items:start}
+.spkgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:9px}
+.spkcard{border:1px solid var(--line);border-radius:var(--r-card);padding:10px 12px;
+  background:var(--surface);cursor:pointer;display:flex;gap:10px;align-items:flex-start}
+.spkcard:hover{border-color:var(--accent-line);background:var(--surface-2)}
+.spkcard.sel{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent)}
+.spkcard .nm{font-weight:700;font-size:12.5px}
+.spkcard .de{font-size:11px;color:var(--ink-3);line-height:1.35;margin-top:2px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.spkcard .as{font-size:11px;font-weight:650;margin-top:5px}
+.spkcard .as.none{color:var(--danger-ink)}
+.spkcard .as.has{color:var(--accent-ink)}
+.libr{display:flex;align-items:center;gap:9px;padding:7px 10px;border-bottom:1px solid var(--line);
+  cursor:pointer;font-size:12px}
+.libr:hover{background:var(--surface-2)}
+.libr:last-child{border-bottom:0}
+.libr .nm{font-weight:650}
+.libr .mt{font-size:10.5px;color:var(--ink-3);font-family:var(--font-mono)}
+.libscroll{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:var(--r-card)}
+.libtabs{display:flex;gap:5px;margin-bottom:8px}
 </style>
 """
 
@@ -105,8 +138,8 @@ RAIL = """<nav class="rail" aria-label="Main">
 
   <i class="dim" title="Not part of this redesign"><span class="e">&#127908;</span>Captures</i>
   <div class="gh">Library</div>
-  <i data-r="voices" onclick="nav('voices')"><span class="e">&#127897;&#65039;</span>Voices</i>
   <i data-r="personas" onclick="nav('personas')"><span class="e">&#127917;</span>Personas</i>
+  <i data-r="voices" onclick="nav('voices')"><span class="e">&#127897;&#65039;</span>Voices</i>
   <i data-r="lexicons" onclick="nav('lexicons')"><span class="e">&#128213;</span>Lexicons</i>
   <i data-r="effects" onclick="nav('effects')"><span class="e">&#127899;&#65039;</span>Effects</i>
   <div class="gh">System</div>
@@ -221,10 +254,10 @@ ROUTES = [
     ("cast",      inject_steps(linkify(stash(3)), "cast")),
     ("render",    inject_steps(linkify(stash(4)), "render")),
     ("export",    inject_steps(linkify(stash(5)), "export")),
+    ("personas",  linkify(stash(9))),
     ("voices",    linkify(stash(6))),
     ("workbench", linkify(stash(7))),
     ("newvoice",  linkify(stash(8))),
-    ("personas",  linkify(stash(9))),
     ("lexicons",  linkify(stash(10))),
     ("effects",   linkify(stash(11))),
     ("scene",     linkify(stash(12))),

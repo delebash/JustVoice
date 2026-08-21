@@ -2,8 +2,10 @@
 <!--
   LabsView — the Tools lane collapsed into one Settings-style tabbed
   view (user decision 2026-06-12, SAME tab strip as Settings —
-  .jv-subnav): Compare · Train · Render · Audio (the TTS domain). Legacy
-  hashes (#compare/#train/#renderlab/#audio) redirect here with
+  .jv-subnav): Compare · Render · Audio (the TTS domain). Train left on
+  2026-08-19 — training is a way to GET a voice, so it lives in Voices
+  beside clone/design/import/blend (ruling 13); #train still lands on it.
+  Legacy hashes (#compare/#renderlab/#audio) redirect here with
   jv.labs.sub carrying the target tab; #speakerlab redirects to the AI
   console's Lab instead (the Speaker Lab reunified there, parity batch
   2026-08-06). Only the active tab mounts (dynamic component), so each
@@ -12,7 +14,6 @@
 <script setup>
 import { computed, onActivated, ref } from "vue";
 import CompareView from "./CompareView.vue";
-import TrainView from "./TrainView.vue";
 import RenderLabView from "./RenderLabView.vue";
 import AudioToolsView from "./AudioToolsView.vue";
 
@@ -24,10 +25,6 @@ const SUBS = [
   {
     id: "compare", label: "Compare", component: CompareView,
     lede: "A/B comparison harness. Pick two takes — any WAVs, or pull the current takes of a chapter — and run the analyzer: loudness, duration, silence, clipping, and a verdict per metric.",
-  },
-  {
-    id: "train", label: "Train", component: TrainView,
-    lede: "Fine-tuning queue. Train a LoRA (or full fine-tune) on a voice's samples against a base engine; finished jobs land in the voice library as new profiles.",
   },
   {
     id: "renderlab", label: "Render", component: RenderLabView,

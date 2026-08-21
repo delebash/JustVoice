@@ -7,17 +7,28 @@ Two paths to install Qwen3-TTS:
 Voicebox uses both (PyPI for the stable surface, git for the latest
 release-day fixes). We mirror that.
 
-Two checkpoint families, and the split matters — they are not
-interchangeable (both model cards are explicit, re-verified 2026-08-15):
+Three checkpoint families, and the split matters — they are not
+interchangeable (model cards re-verified 2026-08-15; VoiceDesign added
+2026-08-19 from the Qwen Space's own app.py):
 
 - CustomVoice — 9 preset speakers (Vivian, Serena, Uncle Fu, Dylan,
   Eric, Ryan, Aiden, Ono Anna, Sohee) plus the `instruct` field for
   tone/emotion/prosody control over those timbres. It CANNOT clone.
 - Base — 3-second voice cloning from a reference clip, and the
-  fine-tuning base. No preset speakers.
+  fine-tuning base (LoRA training targets this family). No preset
+  speakers.
+- VoiceDesign — a voice invented from a prose description via
+  `generate_voice_design`; 1.7B only, no reference audio.
 
 Every variant speaks the same 10 languages.
+
+On macOS the same three families run as mlx-community 8-bit MLX exports
+through mlx-audio (the roster doc 2026-08-17 §4's recorded Mac route) —
+OS-gated variant rows, an OS-gated install step, and a per-OS venv (see
+ISOLATION below). UNMEASURED on real Apple hardware.
 """
+
+import sys
 
 ID = "qwen3"
 NAME = "Qwen3-TTS"
@@ -25,9 +36,18 @@ DESCRIPTION = (
     "Alibaba's open-weight TTS, 10 languages. Two checkpoint families: CustomVoice — "
     "9 preset speakers + a natural-language instruct field for style and emotion; Base — "
     "voice cloning from a short reference clip. 1.7 B and 0.6 B sizes (we default to "
-    "CustomVoice 1.7 B; 0.6 B for ~half the VRAM)."
+    "CustomVoice 1.7 B; 0.6 B for ~half the VRAM). On Apple Silicon the same "
+    "families run as 8-bit MLX builds on the Mac GPU."
 )
 LICENSE = "Apache-2.0"
+
+# Shared venv on Windows/Linux (reuses the torch stack the other engines
+# already carry). On macOS the MLX arm gets its OWN venv: mlx-audio 0.5.0
+# requires transformers>=5.14 while chatterbox — a shared-venv tenant —
+# pins transformers==5.2.0, and sequential installs into one venv are
+# last-writer-wins breakage. The Mac venv is small: mlx-audio + deps, no
+# torch anywhere in it.
+ISOLATION = "venv" if sys.platform == "darwin" else "shared"
 
 # Declared 2026-08-17, and this one RESOLVES A CONTRADICTION: the manifest
 # declared `gpu_runtimes: ["cuda"]` while inheriting the manager's all-three
@@ -41,13 +61,15 @@ LICENSE = "Apache-2.0"
 #   - `pick_device` would fall through to mps/cpu on a Mac, but nothing here
 #     was written for that path and nobody has run it.
 #
-# The route to macOS is an ONNX variant, not a flag flip: community exports
-# exist (romara-labs, xkos, arubeh — the last parity-verified against PyTorch
-# FP32), but they are community rather than QwenLM, they need an onnxruntime
-# load path this adapter does not have, and CPU inference is reported 5-10x
-# slower than GPU. That is a variant row + adapter branch, tracked in TASKS,
-# not something this list can assert.
-SUPPORTED_OSES = ["windows", "linux"]
+# macOS re-entered 2026-08-19 through the MLX arm — NOT the torch path.
+# The exclusion above still holds for the PyTorch checkpoints; what changed
+# is the roster doc §4 route landing: mlx-community 8-bit weights through
+# mlx-audio (MIT, 0.5.0), as OS-gated variant rows + an OS-gated install
+# step + the adapter's _is_mlx branch. On a Mac the catalog shows ONLY the
+# -mlx rows and the install is mlx-audio in the engine's own venv (see
+# ISOLATION). The earlier ONNX idea (romara-labs/xkos/arubeh exports) is
+# superseded — MLX is the recorded route and runs the Mac GPU.
+SUPPORTED_OSES = ["windows", "linux", "macos"]
 
 CAPABILITIES = {
     "preset_voices": True,
@@ -55,23 +77,32 @@ CAPABILITIES = {
     # does not. The per-variant `voice_cloning` flag below is the one the
     # catalog filter reads.
     "voice_cloning": True,
-    # VoiceDesign (a new voice from a text description) is a THIRD Qwen
-    # checkpoint we do not ship yet and the engine has no design call for.
-    # Claiming it here put qwen3 rows under the catalog's design filter
-    # with nothing behind them. Flips back with the VoiceDesign variant.
-    "voice_design": False,
+    # The VoiceDesign checkpoint shipped 2026-08-19 (qwen3-vd-1.7b) and
+    # the adapter has its generate_voice_design branch — the flag is real
+    # again. Per-variant truth lives in capability_details' qwen3-vd row.
+    "voice_design": True,
     "instruct_field": True,
     "paralinguistic_tags": True,
+    # LoRA fine-tuning on the Base family (engines/qwen3/train_lora.py,
+    # adapted from Alexandria's code-verified loop).
+    "training": True,
 }
 
 REQUIREMENTS = {
-    "gpu_runtimes": ["cuda"],
+    # cuda/rocm are the torch checkpoints (Windows/Linux); mlx is the
+    # Apple-Silicon arm — Metal via unified memory, no device arg at all.
+    "gpu_runtimes": ["cuda", "rocm", "mlx"],
 }
 
+# The torch stack is the Windows/Linux arm; macOS installs mlx-audio
+# instead (last step). A step's "oses" key gates it to those platforms —
+# no key = everywhere (manager.install_steps filters).
 INSTALL = [
-    {"kind": "torch", "version": "2.6.0", "variant": "auto", "packages": ["torch", "torchaudio"]},
+    {"kind": "torch", "version": "2.6.0", "variant": "auto", "packages": ["torch", "torchaudio"],
+     "oses": ["windows", "linux"]},
     {
         "kind": "pip",
+        "oses": ["windows", "linux"],
         "packages": [
             "transformers>=4.45,<=4.57.6",
             "accelerate>=0.26",
@@ -79,11 +110,19 @@ INSTALL = [
             "safetensors>=0.4",
             "soundfile>=0.12",
             "librosa>=0.10",
-            "numpy>=1.24,<2.0",
+            # LoRA: adapter loading at synth (PeftModel) + train_lora.py.
+            "peft>=0.14",
         ],
     },
-    {"kind": "pip", "packages": ["qwen-tts>=0.0.5"]},
-    {"kind": "pip-git", "url": "https://github.com/QwenLM/Qwen3-TTS.git"},
+    {"kind": "pip", "packages": ["qwen-tts>=0.0.5"], "oses": ["windows", "linux"]},
+    {"kind": "pip-git", "url": "https://github.com/QwenLM/Qwen3-TTS.git",
+     "ref": "022e286b98fb",  # HEAD @ 2026-08-19; bump = deliberate PR
+     "oses": ["windows", "linux"]},
+    # macOS: the MLX arm. mlx-audio 0.5.0 (MIT, released 2026-08-17,
+    # verified 2026-08-19) loads the mlx-community exports and self-routes
+    # generate() by checkpoint family. It brings mlx/transformers 5.14+/
+    # huggingface_hub itself.
+    {"kind": "pip", "packages": ["mlx-audio>=0.5.0,<0.6"], "oses": ["macos"]},
 ]
 
 # Facts-only variant rows (phase ②c): whole-repo pins minus README /
@@ -110,14 +149,24 @@ _QWEN_LANGS = [
     "zh", "en", "ja", "ko", "de", "fr", "ru", "pt", "es", "it",
 ]
 
-def _qwen_variant(vid, name, repo, size_bytes, quality, presets, description, *, cloning):
+# The MLX exports carry the same tree plus a weight-shard index.
+_QWEN_MLX_FILES = [*_QWEN_FILES, "model.safetensors.index.json"]
+
+
+def _qwen_variant(vid, name, repo, size_bytes, quality, presets, description, *,
+                  cloning, design=False, oses=None, files=None):
     return {
         "id": vid, "name": name, "description": description,
         "languages": list(_QWEN_LANGS), "voice_cloning": bool(cloning),
+        "voice_design": bool(design),
         "preset_voices": presets, "quality": quality,
         "weights_license": "Apache-2.0",
+        # Torch rows are Windows/Linux; the -mlx rows pass macos. The
+        # catalog door (model_catalog._variant_rows) filters on this.
+        "oses": list(oses or ["windows", "linux"]),
         "sources": [{"hf_repo": repo, "revision": "main",
-                     "size_bytes": size_bytes, "files": list(_QWEN_FILES)}],
+                     "size_bytes": size_bytes,
+                     "files": list(files or _QWEN_FILES)}],
     }
 
 VARIANTS = [
@@ -141,10 +190,56 @@ VARIANTS = [
                   "Qwen/Qwen3-TTS-12Hz-0.6B-Base", 2_516_100_892, 78, 0,
                   "Lightweight cloning checkpoint for lower-end hardware.",
                   cloning=True),
+    # Size = the summed HF tree (same 11-file set as the other checkpoints),
+    # read from the repo listing 2026-08-19. No 0.6B VoiceDesign exists.
+    _qwen_variant("qwen3-vd-1.7b", "Qwen3-TTS VoiceDesign 1.7B",
+                  "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign", 4_520_159_099, 90, 0,
+                  "Invents a voice from a prose description — no reference "
+                  "audio. Powers Design from words.",
+                  cloning=False, design=True),
+    # ── macOS (Apple Silicon): the MLX arm ─────────────────────────────
+    # Roster doc 2026-08-17 §4's recorded route: mlx-community exports via
+    # mlx-audio. 8-bit across the board (4/5/6-bit + bf16 exist upstream;
+    # 8-bit is the quality/size point one story can carry). Sizes = the
+    # summed HF trees minus README/.gitattributes, read byte-exact
+    # 2026-08-19. Quality sits a notch under the torch rows — 8-bit
+    # quantization loss is real but unmeasured here.
+    _qwen_variant("qwen3-cv-1.7b-mlx", "Qwen3-TTS CustomVoice 1.7B (MLX 8-bit)",
+                  "mlx-community/Qwen3-TTS-12Hz-1.7B-CustomVoice-8bit",
+                  3_080_138_901, 90, 9,
+                  "Apple-Silicon build of CustomVoice 1.7B — 9 preset "
+                  "speakers with style/emotion control, on the Mac GPU.",
+                  cloning=False, oses=["macos"], files=_QWEN_MLX_FILES),
+    _qwen_variant("qwen3-cv-0.6b-mlx", "Qwen3-TTS CustomVoice 0.6B (MLX 8-bit)",
+                  "mlx-community/Qwen3-TTS-12Hz-0.6B-CustomVoice-8bit",
+                  1_973_572_801, 78, 9,
+                  "Apple-Silicon build of CustomVoice 0.6B — lighter and "
+                  "faster, lower quality ceiling.",
+                  cloning=False, oses=["macos"], files=_QWEN_MLX_FILES),
+    _qwen_variant("qwen3-base-1.7b-mlx", "Qwen3-TTS Base 1.7B (MLX 8-bit, clone-only)",
+                  "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-8bit",
+                  3_104_156_243, 88, 0,
+                  "Apple-Silicon cloning checkpoint — a 3–10 second "
+                  "reference clip, no preset speakers.",
+                  cloning=True, oses=["macos"], files=_QWEN_MLX_FILES),
+    _qwen_variant("qwen3-base-0.6b-mlx", "Qwen3-TTS Base 0.6B (MLX 8-bit, clone-only)",
+                  "mlx-community/Qwen3-TTS-12Hz-0.6B-Base-8bit",
+                  1_991_296_593, 76, 0,
+                  "Lightweight Apple-Silicon cloning checkpoint.",
+                  cloning=True, oses=["macos"], files=_QWEN_MLX_FILES),
+    _qwen_variant("qwen3-vd-1.7b-mlx", "Qwen3-TTS VoiceDesign 1.7B (MLX 8-bit)",
+                  "mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-8bit",
+                  3_080_138_280, 88, 0,
+                  "Apple-Silicon build of VoiceDesign — a voice invented "
+                  "from a prose description.",
+                  cloning=False, design=True, oses=["macos"],
+                  files=_QWEN_MLX_FILES),
 ]
 
-# Plain Load (no variant picked) loads CustomVoice 1.7B.
-DEFAULT_VARIANT_ID = "qwen3-cv-1.7b"
+# Plain Load (no variant picked) loads CustomVoice 1.7B — the MLX build
+# on a Mac, the PyTorch build elsewhere. The default must be a row this
+# machine's catalog can actually see (rows are OS-gated).
+DEFAULT_VARIANT_ID = "qwen3-cv-1.7b-mlx" if sys.platform == "darwin" else "qwen3-cv-1.7b"
 
 # Preset speakers shipped with Qwen3-TTS CustomVoice. Static so the host
 # catalog can show them before the engine is loaded.

@@ -33,6 +33,16 @@ class SynthRequest:
     delivery: dict[str, Any] = field(default_factory=dict)
     seed: int | None = None
     audio_prompt_path: str | None = None
+    # Reference-clip transcript, for engines whose clone call takes one
+    # (Qwen3 Base `ref_text`). None = the engine's no-transcript path.
+    ref_text: str | None = None
+    # Clone from the speaker vector alone, ignoring the transcript
+    # (Qwen3 Base `x_vector_only_mode`).
+    xvector_only: bool = False
+    # A blended voice's style vector — kokoro-onnx takes it per call.
+    voice_vector: list[float] | None = None
+    # A trained voice's LoRA adapter directory.
+    adapter_path: str | None = None
 
 
 @dataclass
@@ -66,8 +76,6 @@ class EngineMeta:
     supports_paralinguistic_tags: bool = False
     supports_voice_design: bool = False
     supports_instruct_field: bool = False
-    supports_embedding_blending: bool = False
-    supports_training: bool = False
 
 
 @runtime_checkable
@@ -82,16 +90,17 @@ class TTSBackend(Protocol):
     def voices(self) -> list[PresetVoice]: ...
     def synthesize(self, req: SynthRequest) -> SynthOutput: ...
 
-    # Optional methods — default to raising NotImplementedError; the
-    # registry checks `meta.supports_*` flags before calling.
+    # Optional methods — default to raising NotImplementedError; callers
+    # check the capability surface before calling.
+    #
+    # Retired 2026-08-19, all with zero implementations: get_embedding /
+    # synthesize_with_embedding (blending is HOST-side file math — see
+    # engines/blending.py — because managed engines run as subprocess
+    # procs the registry never holds; a blended voice reaches synth as
+    # SynthRequest.voice_vector) and train_start / train_cancel (training
+    # is a host-owned subprocess per engine — see training_runner.py — for
+    # the same registry reason, and because VRAM eviction before a run is
+    # the manager's job, not an adapter's). The supports_voice_blending /
+    # supports_training booleans live on EngineCapabilityDetail, per
+    # variant, not here.
     def clone(self, reference_wav_path: str, name: str) -> str: ...
-    def get_embedding(self, voice_id: str) -> list[float]: ...
-    def synthesize_with_embedding(
-        self,
-        text: str,
-        embedding: list[float],
-        language: str | None = None,
-        delivery: dict | None = None,
-    ) -> bytes: ...
-    def train_start(self, job_id: str, request: dict) -> None: ...
-    def train_cancel(self, job_id: str) -> None: ...

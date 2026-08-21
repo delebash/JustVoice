@@ -4,22 +4,95 @@
     <div class="bn"><b>One speech engine is resident at a time.</b> Loading another unloads the
       current one — that's why auditioning across engines costs a swap, and why every listen button
       in the app warns before it charges you a minute.</div>
+
+    <div class="card tint"><div class="sh"><h4>Picking an engine is picking what a voice can do</h4></div>
+      <p class="note" style="margin:0 0 8px">You choose an engine once, when you cast a persona to a
+        voice. From then on it decides three things for every line that persona speaks: whether you
+        can <b>clone</b> their timbre, whether they can be <b>directed in words</b>, and whether a
+        per-line <b>emotion</b> reaches the model. Nothing else in the app can put back what the
+        engine doesn't do.</p>
+      <div class="tw"><table>
+        <thead><tr><th>If you want…</th><th style="width:230px">Use</th><th>What you give up</th></tr></thead>
+        <tbody>
+          <tr><td>Ready-made voices, instantly, on any machine</td>
+            <td><b>Kokoro</b> — 54 presets</td>
+            <td>No cloning, and no direction of any kind. Pace, pitch, gain and pauses only.</td></tr>
+          <tr><td>To direct performances in prose</td>
+            <td><b>Qwen3 CustomVoice</b> — 9 presets</td>
+            <td>Cannot clone. You are limited to its nine timbres.</td></tr>
+          <tr><td>Someone's own voice, and per-line emotion</td>
+            <td><b>Chatterbox Turbo</b> — cloning</td>
+            <td>Written direction is ignored. English only.</td></tr>
+          <tr><td>Someone's own voice, in another language</td>
+            <td><b>Chatterbox Multilingual</b> — 23 languages</td>
+            <td>No direction and no emotion — timbre and the numbers.</td></tr>
+          <tr><td>Someone's own voice, on a machine with no GPU</td>
+            <td><b>LuxTTS</b> — cloning, English</td>
+            <td>No direction and no emotion.</td></tr>
+        </tbody></table></div></div>
+
     <div class="tw"><table>
-      <thead><tr><th>Engine</th><th>Variant</th><th style="width:88px">Size</th><th style="width:100px">Clones</th>
-        <th style="width:132px">Languages</th><th style="width:96px">State</th><th style="width:120px"></th></tr></thead>
+      <thead><tr><th>Engine</th><th style="width:210px">Variant</th><th style="width:82px">Size</th>
+        <th style="width:74px">Clones</th><th style="width:150px">Per-line direction</th>
+        <th style="width:96px">Languages</th><th style="width:104px">State</th><th style="width:118px"></th></tr></thead>
       <tbody>
-        <tr><td><b>Kokoro</b></td><td>multi-lang v1.0</td><td class="n">333 MB</td><td><span class="tag no">✗</span></td>
-          <td>8 <span class="tag e">✗ en-only in practice</span></td><td><span class="tag ok">loaded</span></td>
-          <td><button class="btn s" onclick="toast('Kokoro unloaded — 3.2 GB freed.','ok')">Unload</button></td></tr>
-        <tr><td><b>Qwen3-TTS</b></td><td>1.7B CustomVoice</td><td class="n">4.5 GB</td>
-          <td><span class="tag no">✗ presets only</span></td><td>10</td><td><span class="tag">installed</span></td>
-          <td><button class="btn s p" onclick="toast('Loading — the current engine unloads first.','warn')">Load</button></td></tr>
-        <tr><td><b>Qwen3-TTS</b></td><td>0.6B Base</td><td class="n">2.5 GB</td><td><span class="tag ok">✓</span></td>
-          <td>10</td><td><span class="tag">installed</span></td><td><button class="btn s p" onclick="toast('Loading — the current engine unloads first.','warn')">Load</button></td></tr>
-        <tr><td><b>Chatterbox</b></td><td>Turbo · English</td><td class="n">2.1 GB</td><td><span class="tag ok">✓</span></td>
-          <td>1</td><td><span class="tag">installed</span></td><td><button class="btn s p" onclick="toast('Loading — the current engine unloads first.','warn')">Load</button></td></tr>
-        <tr><td><b>Dia</b></td><td>1.6B-0626</td><td class="n">6.4 GB</td><td><span class="tag ok">✓</span></td>
-          <td>1</td><td><span class="tag w">needs venv</span></td><td><button class="btn s" onclick="toast('Building the isolated venv — this takes a few minutes.','warn')">Install</button></td></tr>
+        <tr><td><b>Kokoro</b></td><td>multi-lang v1.0 <span class="tag">default</span></td><td class="n">349 MB</td>
+          <td><span class="tag no">✗</span></td><td><span class="tag no">none</span></td>
+          <td>9 locales <span class="tag e">✗ reads as English</span></td>
+          <td><span class="tag ok">loaded</span></td>
+          <td><button class="btn s" onclick="toast('Kokoro unloaded — 349 MB freed.','ok')">Unload</button></td></tr>
+        <tr><td class="hint">Kokoro</td><td>English-only v0.19</td><td class="n">320 MB</td>
+          <td><span class="tag no">✗</span></td><td><span class="tag no">none</span></td><td>en-US · en-GB</td>
+          <td><span class="tag">not installed</span></td>
+          <td><button class="btn s" onclick="toast('Downloading Kokoro English-only — 320 MB.','ok')">⤓ Install</button></td></tr>
+
+        <tr><td><b>Qwen3-TTS</b></td><td>CustomVoice 1.7B <span class="tag">default</span></td><td class="n">4.52 GB</td>
+          <td><span class="tag no">✗ presets only</span></td>
+          <td><span class="tag ok">✓ prose + emotion</span></td><td>10</td>
+          <td><span class="tag">installed</span></td>
+          <td><button class="btn s p" onclick="toast('Loading Qwen3 CustomVoice — Kokoro unloads first.','warn')">Load</button></td></tr>
+        <tr><td class="hint">Qwen3-TTS</td><td>CustomVoice 0.6B</td><td class="n">2.50 GB</td>
+          <td><span class="tag no">✗ presets only</span></td>
+          <td><span class="tag ok">✓ prose + emotion</span></td><td>10</td>
+          <td><span class="tag">not installed</span></td>
+          <td><button class="btn s" onclick="toast('Downloading Qwen3 CustomVoice 0.6B — 2.50 GB.','ok')">⤓ Install</button></td></tr>
+        <tr><td class="hint">Qwen3-TTS</td><td>Base 1.7B — clone only</td><td class="n">4.54 GB</td>
+          <td><span class="tag ok">✓</span></td>
+          <td><span class="tag no">none <span class="hint">— drops it</span></span></td><td>10</td>
+          <td><span class="tag">installed</span></td>
+          <td><button class="btn s p" onclick="toast('Loading Qwen3 Base — Kokoro unloads first.','warn')">Load</button></td></tr>
+        <tr><td class="hint">Qwen3-TTS</td><td>Base 0.6B — clone only</td><td class="n">2.52 GB</td>
+          <td><span class="tag ok">✓</span></td>
+          <td><span class="tag no">none</span></td><td>10</td>
+          <td><span class="tag">not installed</span></td>
+          <td><button class="btn s" onclick="toast('Downloading Qwen3 Base 0.6B — 2.52 GB.','ok')">⤓ Install</button></td></tr>
+        <tr><td class="hint">Qwen3-TTS</td><td>VoiceDesign 1.7B</td><td class="n">4.52 GB</td>
+          <td><span class="tag no">✗</span></td>
+          <td><span class="tag ok">✓ prose + emotion</span></td><td>10</td>
+          <td><span class="tag w">not installed</span></td>
+          <td><button class="btn s" onclick="toast('Downloading Qwen3 VoiceDesign — 4.52 GB. Design-from-words turns on when it lands.','ok')">⤓ Install</button></td></tr>
+
+        <tr><td><b>Chatterbox</b></td><td>Turbo · English <span class="tag">default</span></td><td class="n">2.99 GB</td>
+          <td><span class="tag ok">✓</span></td>
+          <td><span class="tag ok">✓ emotion only</span></td><td>1</td>
+          <td><span class="tag">installed</span></td>
+          <td><button class="btn s p" onclick="toast('Loading Chatterbox Turbo — Kokoro unloads first.','warn')">Load</button></td></tr>
+        <tr><td class="hint">Chatterbox</td><td>Multilingual v2</td><td class="n">3.21 GB</td>
+          <td><span class="tag ok">✓</span></td><td><span class="tag no">none</span></td><td>23</td>
+          <td><span class="tag">not installed</span></td>
+          <td><button class="btn s" onclick="toast('Downloading Chatterbox Multilingual — 3.21 GB.','ok')">⤓ Install</button></td></tr>
+
+        <tr><td><b>LuxTTS</b></td><td>base</td><td class="n">1.18 GB</td>
+          <td><span class="tag ok">✓</span></td><td><span class="tag no">none</span></td><td>1</td>
+          <td><span class="tag">not installed</span></td>
+          <td><button class="btn s" onclick="toast('Downloading LuxTTS — 1.18 GB. Runs on CPU.','ok')">⤓ Install</button></td></tr>
+
+        <tr><td><b>Whisper</b> <span class="tag">speech → text</span></td><td>turbo</td><td class="n">1.62 GB</td>
+          <td><span class="tag no">n/a</span></td><td><span class="tag no">n/a</span></td><td>multilingual</td>
+          <td><span class="tag ok">installed</span></td>
+          <td><button class="btn s g" onclick="toast('Whisper transcribes clone references and dictation. It does not speak.')">What for?</button></td></tr>
       </tbody></table></div>
-    <p class="hint" style="margin:0">Sizes HTTP-verified from the release tarballs, not typed from a model card.</p>
+    <p class="hint" style="margin:6px 0 0">Sizes are the real download totals, summed from each
+      variant's file list. Whisper is not a voice — it transcribes the reference clips you clone
+      from, so a clone arrives with its text already filled in.</p>
   </div>

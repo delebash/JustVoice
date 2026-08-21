@@ -175,7 +175,7 @@ function verdictVariant(v) {
 
       <div class="cmp__verdict-row">
         <strong>Verdict:</strong>
-        <UiTag :intent="verdictVariant(report.verdict)" :label="report.verdict || '—'" />
+        <UiTag :intent="verdictVariant(report.verdict)" :value="report.verdict || '—'" />
         <span class="jv-muted cmp__verdict-hint">classifier: identical / near-identical / similar / different / unrelated</span>
       </div>
 

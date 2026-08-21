@@ -132,11 +132,40 @@ async function setDeviceOverride(engine, value) {
     pushToast({ message: `Couldn't set the device: ${e?.message || e}`, kind: "error" });
   }
 }
-const DEVICE_OPTIONS = [
-  { label: "Auto (recommended)", value: "auto" },
-  { label: "CUDA (GPU)", value: "cuda" },
-  { label: "CPU", value: "cpu" },
-];
+// What this MACHINE can run — /v1/system's runtime map (cuda, mps,
+// coreml, directml, rocm, mlx, cpu…). Fetched once; the per-engine
+// options below intersect it with what the ENGINE declares, so the menu
+// never offers Metal on Windows or CUDA on a Mac. (It used to be a
+// hardcoded Auto/CUDA/CPU triple whatever the platform or engine.)
+const machineRuntimes = reactive({});
+(async () => {
+  const s = await api.safeRequest("/v1/system", null);
+  Object.assign(machineRuntimes, s?.runtimes || {});
+})();
+
+const RUNTIME_LABELS = {
+  cuda: "CUDA (NVIDIA)",
+  rocm: "ROCm (AMD)",
+  mps: "Metal (Apple GPU)",
+  metal: "Metal (Apple GPU)",
+  coreml: "CoreML (Apple)",
+  directml: "DirectML (Windows GPU)",
+  mlx: "MLX (Apple Silicon)",
+  cpu: "CPU",
+};
+
+function deviceOptionsFor(e) {
+  const declared = e?.prerequisites?.gpu_runtimes || [];
+  const usable = declared.filter(
+    (r) => r !== "cpu" && machineRuntimes[r],
+  );
+  return [
+    { label: "Auto", value: "auto" },
+    ...usable.map((r) => ({ label: RUNTIME_LABELS[r] || r.toUpperCase(), value: r })),
+    { label: "CPU", value: "cpu" },
+  ];
+}
+
 async function setDefaultEngine(engine) {
   try {
     await api.request("/v1/settings", {
@@ -315,6 +344,10 @@ async function unload(engine) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ kind: engine.kind || "tts" }),
     });
+    // Announce like load (:330) and unloadKind (:620) — this door
+    // refreshed only itself, so every other surface kept a stale copy
+    // until an alt-tab (the 2026-08-20 finding).
+    window.dispatchEvent(new Event("jv:health-refresh"));
     await refresh();
     pushToast({
       message: resp?.previous_engine ? `${resp.previous_engine} unloaded.` : "Nothing was loaded.",
@@ -803,7 +836,7 @@ onBeforeUnmount(() => {
           <div class="ev-gfoot">
             Device
             <UiSelect :modelValue="deviceOverrides[e.id] || 'auto'" width="name"
-              :options="DEVICE_OPTIONS"
+              :options="deviceOptionsFor(e)"
               title="Where this engine's model loads. Auto picks CPU for CPU-fast engines, otherwise your GPU."
               @update:modelValue="(v) => setDeviceOverride(e, v)" />
             <span v-if="e.resolved_device" class="jv-muted">loaded on {{ e.resolved_device.toUpperCase() }}</span>

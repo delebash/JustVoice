@@ -95,6 +95,18 @@ After rendering, the **Export** action produces:
 
 Mastering is already applied on the render itself — WAV out, encoded on export. Change the target via [mastering.md](mastering.md#which-preset-a-render-uses).
 
+### Captions
+
+Every rendered chapter can produce a caption file — `GET
+/v1/scenes/{scene_id}/captions?format=vtt` (or `srt`). The server renders
+the chapter (already-rendered lines come from cache), listens to it with
+Whisper, and times **every word of the real text** — a misheard word never
+loses its timing, because the text is known and the audio is only
+measured. Use the `.vtt` for web players and read-along; `.srt` for video
+editors. Word timing is accurate to roughly a tenth of a second — right
+for captions and follow-along highlighting, not for sample-exact editing.
+Whisper must be installed; it loads on first use.
+
 ## Troubleshooting
 
 - **"No project selected. Go to Projects."** — Click the link to import or create a blank project.

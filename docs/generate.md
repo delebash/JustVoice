@@ -124,6 +124,12 @@ Filter by typing. Use ↑↓ to navigate, Enter / Tab to insert, Esc to close. T
 
 Long text (> `settings.generation.max_chunk_chars`, default 800) gets split at sentence boundaries, rendered per-chunk, and crossfade-concatenated. You don't need to do anything — the server detects long input and switches paths automatically.
 
+Voice auditions on the Voices page use the same splitter at a much smaller
+granularity (`settings.generation.stream_piece_chars`, default 200): each
+sentence-sized piece is sent to your player the moment it renders, so
+playback starts after the first piece instead of the whole render. Pieces
+join with the same crossfade as the long-form path.
+
 The splitter knows about abbreviations (`Mr.`, `Dr.`, `e.g.`), decimal numbers, CJK sentence-end punctuation (`。！？`), and treats `[bracket]` paralinguistic tags as atomic (never split inside one).
 
 Per-chunk seeds are deterministically varied (`seed + chunk_index`) so the same `(text, seed)` pair always produces the same output, while artefact correlation across chunks stays low.

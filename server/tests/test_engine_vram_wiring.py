@@ -598,7 +598,9 @@ def test_transcribe_marks_stt_busy(monkeypatch, arb_env):
     mgr._hw_cache = None
     mgr._hw_detected = True
     mgr._probe_cache = {}
-    assert mgr.transcribe({"wav_b64": ""}) == "hi"
+    # Dict contract since 2026-08-21: confidence rides along (None = the
+    # engine measured nothing — the fake here returns text only).
+    assert mgr.transcribe({"wav_b64": ""}) == {"text": "hi", "confidence": None}
     assert seen == [{"stt"}]
     assert "stt" not in arb.busy_kinds()
 

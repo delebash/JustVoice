@@ -32,6 +32,7 @@ from __future__ import annotations
 import atexit
 import logging
 import os
+import platform
 import shutil
 import signal
 import subprocess
@@ -321,7 +322,14 @@ class EngineManifest:
 
     @property
     def install_steps(self) -> list[dict[str, Any]]:
-        return getattr(self.module, "INSTALL", [])
+        # A step may gate itself by OS ("oses": [...]) — qwen3's MLX arm
+        # installs mlx-audio on macOS and the torch stack elsewhere
+        # (2026-08-19). No "oses" key = the step applies everywhere.
+        # Filtering HERE means every consumer (the executor, the shared/
+        # model step splits, is_installed) sees only this machine's steps.
+        here = _current_os_label()
+        return [s for s in getattr(self.module, "INSTALL", [])
+                if here in (s.get("oses") or (here,))]
 
     @property
     def static_voices(self) -> list[dict[str, Any]]:
@@ -675,6 +683,23 @@ def _detect_torch_index_url() -> tuple[str | None, str]:
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
 
+    # AMD via rocm-smi (Linux only — PyTorch publishes no ROCm wheels for
+    # Windows; Windows+AMD falls through to CPU wheels). UNMEASURED on real
+    # AMD hardware here: the index URL is PyTorch's published ROCm 6.2 wheel
+    # index for the torch 2.6 line, and detection mirrors the nvidia-smi
+    # probe above. Modeled on devnen/Chatterbox-TTS-Server's hardware
+    # matrix (ROCm 6.1+ requirement files).
+    if platform.system() == "Linux":
+        try:
+            result = subprocess.run(
+                ["rocm-smi", "--showid"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return "https://download.pytorch.org/whl/rocm6.2", "rocm-6.2"
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+
     # Intel Arc uses XPU wheels. We don't auto-detect Arc reliably, so
     # users with Arc set JUSTVOICE_TORCH_INDEX themselves.
     override = os.environ.get("JUSTVOICE_TORCH_INDEX")
@@ -830,7 +855,8 @@ def _install_engine_isolated(
     #    base class + serve() shim available.
     plugin_dir = Path(__file__).resolve().parents[2] / "justvoice_plugin"
     emit("installing-plugin", f"installing justvoice_plugin from {plugin_dir}")
-    _run_uv_pip(uv, python_exe, ["pip", "install", str(plugin_dir)], emit, check_cancel)
+    _run_uv_pip(uv, python_exe, ["pip", "install", str(plugin_dir)], emit, check_cancel,
+                use_constraints=False)
 
     # 3. Execute each step from manifest.INSTALL.
     for i, step in enumerate(manifest.install_steps):
@@ -842,31 +868,37 @@ def _install_engine_isolated(
             packages = step.get("packages", [])
             if not packages:
                 continue
-            _run_uv_pip(uv, python_exe, ["pip", "install", *packages], emit, check_cancel)
+            _run_uv_pip(uv, python_exe, ["pip", "install", *packages], emit, check_cancel, use_constraints=False)
 
         elif kind == "pip-no-deps":
             packages = step.get("packages", [])
             if not packages:
                 continue
-            _run_uv_pip(uv, python_exe, ["pip", "install", "--no-deps", *packages], emit, check_cancel)
+            _run_uv_pip(uv, python_exe, ["pip", "install", "--no-deps", *packages], emit, check_cancel, use_constraints=False)
 
         elif kind == "pip-git":
             url = step["url"]
             ref = step.get("ref")
             spec = f"git+{url}" + (f"@{ref}" if ref else "")
-            _run_uv_pip(uv, python_exe, ["pip", "install", spec], emit, check_cancel)
+            args = ["pip", "install"]
+            # no_deps: for packages whose metadata would fight the venv —
+            # chatterbox's pyproject pins torch/transformers/gradio; we
+            # install its declared deps ourselves, minus the demo-only ones.
+            if step.get("no_deps"):
+                args.append("--no-deps")
+            _run_uv_pip(uv, python_exe, [*args, spec], emit, check_cancel, use_constraints=False)
 
         elif kind == "pip-find-links":
             url = step["url"]
             packages = step.get("packages", [])
             args = ["pip", "install", "--find-links", url, *packages]
-            _run_uv_pip(uv, python_exe, args, emit, check_cancel)
+            _run_uv_pip(uv, python_exe, args, emit, check_cancel, use_constraints=False)
 
         elif kind == "pip-local":
             path = step["path"]
             # Resolve relative to the engine's directory.
             resolved = (manifest.engine_dir / path).resolve()
-            _run_uv_pip(uv, python_exe, ["pip", "install", str(resolved)], emit, check_cancel)
+            _run_uv_pip(uv, python_exe, ["pip", "install", str(resolved)], emit, check_cancel, use_constraints=False)
 
         elif kind == "torch":
             index_url, label = _detect_torch_index_url()
@@ -882,24 +914,49 @@ def _install_engine_isolated(
                 args += ["--index-url", index_url]
             args += packages
             emit("torch", f"torch variant: {label}{f' v{version}' if version else ''}")
-            _run_uv_pip(uv, python_exe, args, emit, check_cancel)
+            _run_uv_pip(uv, python_exe, args, emit, check_cancel, use_constraints=False)
 
         elif kind == "requirements-file":
             # Engine ships a requirements.txt; install it.
             req_file = manifest.engine_dir / step.get("path", "requirements.txt")
-            _run_uv_pip(uv, python_exe, ["pip", "install", "-r", str(req_file)], emit, check_cancel)
+            _run_uv_pip(uv, python_exe, ["pip", "install", "-r", str(req_file)], emit, check_cancel, use_constraints=False)
 
         elif kind == "model-tarball":
             # Download + extract a .tar.bz2 / .tar.gz model tarball into the
             # engine's models/ dir. Used by Kokoro (k2-fsa GitHub Releases).
-            _install_model_tarball(manifest, step, emit, check_cancel)
+            _install_model_tarball(manifest, step, emit, check_cancel, use_constraints=False)
 
         elif kind == "model-file":
             # Download a single model file (no extraction).
-            _install_model_file(manifest, step, emit, check_cancel)
+            _install_model_file(manifest, step, emit, check_cancel, use_constraints=False)
 
         else:
             raise InstallError(f"unknown install step kind: {kind!r}")
+
+    # 3b. Hardware-conditional runtime arm (manifest ACCEL_INSTALL):
+    #    {runtime: [packages]} — the first arm whose runtime this box has
+    #    is installed into the engine venv. This is how an ONNX engine gets
+    #    its accelerated onnxruntime build: the base wheel is CPU-only on
+    #    Windows/Linux, and no static INSTALL list can name the right
+    #    variant for every machine.
+    accel = getattr(manifest.module, "ACCEL_INSTALL", None) or {}
+    if accel:
+        rt_map = {}
+        try:
+            from llm_runner.runner.hardware import detect
+
+            rt_map = getattr(detect(), "runtimes", None) or {}
+        except Exception:  # noqa: BLE001 — no probe → CPU install, still correct
+            pass
+        for runtime in ("cuda", "rocm", "directml"):
+            packages = accel.get(runtime)
+            if packages and rt_map.get(runtime):
+                emit("accel", f"{runtime} runtime: {' '.join(packages)}")
+                _run_uv_pip(
+                    uv, python_exe, ["pip", "install", *packages],
+                    emit, check_cancel, use_constraints=False,
+                )
+                break
 
     # 4. If the engine ships a requirements.txt and no requirements-file step
     #    was declared explicitly, install it here as a convenience.
@@ -907,7 +964,7 @@ def _install_engine_isolated(
     has_explicit_req_step = any(s.get("kind") == "requirements-file" for s in manifest.install_steps)
     if req_file.is_file() and not has_explicit_req_step:
         emit("requirements-txt", str(req_file))
-        _run_uv_pip(uv, python_exe, ["pip", "install", "-r", str(req_file)], emit, check_cancel)
+        _run_uv_pip(uv, python_exe, ["pip", "install", "-r", str(req_file)], emit, check_cancel, use_constraints=False)
 
     # 5. Pre-create the models / voices / state dirs so engine.py code paths
     #    can assume they exist.
@@ -1056,6 +1113,7 @@ def _run_uv_pip(
     args: list[str],
     emit: Callable[[str, str | None], None],
     check_cancel: Callable[[], None],
+    use_constraints: bool = True,
 ) -> None:
     """Run `uv pip ...` against a specific venv's interpreter, streaming
     output so the UI can show progress.
@@ -1064,16 +1122,21 @@ def _run_uv_pip(
     so it has to come after `pip install` (or whatever pip subcommand args
     is). We splice it in after the first arg.
 
-    Every `install` also carries the venv-wide `--constraint` ceiling. This
-    is THE door for engine dependency installs precisely so that ceiling
-    needs applying in exactly one place — see CONSTRAINTS_FILE.
+    Every SHARED-venv `install` also carries the venv-wide `--constraint`
+    ceiling (this is THE door for engine dependency installs precisely so
+    the ceiling needs applying in exactly one place — see CONSTRAINTS_FILE).
+    Isolated venvs pass use_constraints=False and resolve their own world.
     """
     # args[0] is "pip"; args[1] is the pip subcommand ("install"); --python
     # goes after that. Verify and place it correctly.
     if len(args) < 2 or args[0] != "pip":
         raise InstallError(f"_run_uv_pip args must start with ['pip', '<subcommand>', ...]; got {args}")
     # Only `install` resolves versions; `uninstall` rejects --constraint.
-    constraints = _constraint_args() if args[1] == "install" else []
+    # And only SHARED-venv installs get the ceiling: its whole rationale is
+    # cross-ENGINE re-resolution inside one environment, and its content
+    # (numpy<2 for numba) is wrong for a venv with no numba — kokoro's
+    # isolated venv needs numpy>=2 for kokoro-onnx (2026-08-19).
+    constraints = _constraint_args() if (args[1] == "install" and use_constraints) else []
     cmd = [uv, args[0], args[1], "--python", str(python_exe), *constraints, *args[2:], "--no-progress"]
     log.info("uv pip command: %s", " ".join(cmd))
     proc = subprocess.Popen(
@@ -1410,10 +1473,20 @@ class EngineManager:
         user = self._user_device_override(m.id)
         if user not in ("", "auto"):
             return user
-        if (getattr(m, "requirements", None) or {}).get("cpu_adequate"):
-            return "cpu"
         hw = self._hardware()
         runtimes = getattr(hw, "runtimes", None) or {}
+        reqs = getattr(m, "requirements", None) or {}
+        if reqs.get("cpu_adequate"):
+            # cpu_adequate means "auto books no VRAM on discrete boxes" —
+            # kokoro is real-time on CPU and the GPU stays free for the
+            # big engines. Apple Silicon is the exception: one memory
+            # pool, so there is nothing to preserve, and CoreML is the
+            # platform's own accelerator — auto uses it (2026-08-21).
+            if "coreml" in (reqs.get("gpu_runtimes") or []) and (
+                runtimes.get("coreml") or runtimes.get("metal")
+            ):
+                return "coreml"
+            return "cpu"
         return "cuda" if runtimes.get("cuda") else "cpu"
 
     def _books_memory(self, resolved_device: str) -> bool:
@@ -1888,8 +1961,13 @@ class EngineManager:
                                  f"{variant_id}: {mb} MB downloaded")
 
             try:
+                # Every url row of a multi-file variant (kokoro-onnx ships
+                # model + voices pack as two files); single-row variants
+                # collapse to the old one-url behaviour.
+                url_rows = [s.get("url") for s in (src.get("sources") or [])
+                            if s.get("url")]
                 fetch_url_variant(
-                    data_dir, m.id, variant_id, url,
+                    data_dir, m.id, variant_id, url_rows or url,
                     on_progress=_uprog,
                     cancel_check=(lambda: bool(cancel_check())) if cancel_check else None,
                 )
@@ -2342,11 +2420,15 @@ class EngineManager:
             raise RuntimeError(f"engine chat failed: {r.text}")
         return r.json().get("text", "")
 
-    def transcribe(self, body: dict, *, timeout: float = 600.0) -> str:
+    def transcribe(self, body: dict, *, timeout: float = 600.0) -> dict:
         """Transcription via the loaded stt-slot engine (G2 wiring).
         body matches the shim's TranscribeBody: wav_b64/audio_path/language.
         stt-busy for the call's duration (the 2026-08-13 VRAM wiring, step 4 —
-        Q1's never-evict-busy: a mid-transcription whisper is not a victim)."""
+        Q1's never-evict-busy: a mid-transcription whisper is not a victim).
+
+        Returns `{"text", "confidence"}`. `confidence` is None when the engine
+        cannot measure it — UNKNOWN, never zero, so callers gate only on a
+        real number."""
         with self._activity("stt"), _kind_busy("stt"):
             proc = self.loaded_for("stt")
             if proc is None:
@@ -2358,7 +2440,31 @@ class EngineManager:
         self.bump_engine_reservation_async("stt")
         if r.status_code != 200:
             raise RuntimeError(f"engine transcribe failed: {r.text}")
-        return r.json().get("text", "")
+        payload = r.json()
+        return {
+            "text": payload.get("text") or "",
+            "confidence": payload.get("confidence"),
+        }
+
+    def align(self, body: dict, *, timeout: float = 600.0) -> list[dict]:
+        """Word timings via the loaded stt-slot engine — the /align door.
+        body: wav_b64/audio_path + text + language. Same busy/reservation
+        contract as transcribe; the host maps the hypothesis onto the
+        known text (justvoice.alignment)."""
+        with self._activity("stt"), _kind_busy("stt"):
+            proc = self.loaded_for("stt")
+            if proc is None:
+                raise RuntimeError(
+                    "no STT engine loaded — install + load 'whisper' on the "
+                    "Engines tab first"
+                )
+            r = proc.post("/align", json=body, timeout=timeout)
+        self.bump_engine_reservation_async("stt")
+        if r.status_code == 501:
+            raise RuntimeError(r.json().get("detail", "word alignment unsupported"))
+        if r.status_code != 200:
+            raise RuntimeError(f"engine align failed: {r.text}")
+        return r.json().get("words") or []
 
     def _require_current(self, engine_id: str) -> EngineProcess:
         with self._lock:

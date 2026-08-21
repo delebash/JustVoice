@@ -21,7 +21,6 @@ from pathlib import Path as _P
 _sys.path.insert(0, str(_P(__file__).resolve().parent))
 
 import logging
-import platform
 import threading
 
 from justvoice_plugin import (
@@ -58,15 +57,49 @@ class Chatterbox(EmbeddedEngine):
         super().__init__(model_dir)
         self.model = None
         self._device = None
+        # Which trained LoRA adapter currently wraps t3, if any.
+        self._adapter_path = None
+        # Conditioning cache: chatterbox re-preps the reference clip on
+        # EVERY generate(audio_prompt_path=...) — for a chapter render on a
+        # cloned voice that is the same clip re-encoded per line. Key it on
+        # (path, mtime) and hand the model a prompt only when it changes.
+        # (devnen/Chatterbox-TTS-Server caches the same way.)
+        self._conds_key = None
         self._variant = None
         self._is_turbo = False
 
+    def _ensure_adapter(self, adapter_path: str) -> None:
+        """Wrap t3 with a trained LoRA adapter (upstream inference pattern:
+        PeftModel.from_pretrained onto the loaded engine's t3, which also
+        restores the saved text embeddings). Switching adapters reloads the
+        clean base first, because PEFT wraps in place."""
+        if self._adapter_path == adapter_path:
+            return
+        if self._adapter_path is not None:
+            device, variant = self._device or "auto", self._variant
+            self.unload()
+            self.load(device, variant)
+        try:
+            from peft import PeftModel
+        except ImportError:
+            raise RuntimeError(
+                "chatterbox: peft is not installed in the engine environment "
+                "\u2014 re-run engine setup to render trained voices."
+            )
+        self.model.t3 = PeftModel.from_pretrained(self.model.t3, adapter_path)
+        self.model.t3.eval()
+        self._adapter_path = adapter_path
+        log.info("chatterbox: LoRA adapter loaded from %s", adapter_path)
+
     def _pick_device_chatterbox(self, requested: str) -> str:
-        """Override the default device picker — Chatterbox needs CPU on macOS
-        due to a known PyTorch MPS issue with their model.
-        """
-        if platform.system() == "Darwin":
-            return "cpu"
+        """Chatterbox's device pick. On macOS this used to force CPU
+        unconditionally — the stock package crashes on MPS ("Cannot convert
+        a MPS Tensor to float64 dtype" in s3tokenizer / voice_encoder).
+        Since 2026-08-19 load() applies the known float32 fix (mps_patch.py,
+        devnen's repair) BEFORE the model modules import, so Apple GPU is
+        attempted; an explicit "cpu" from the Device dropdown still wins,
+        and any MPS load failure falls back to CPU in load(). UNMEASURED on
+        real Apple hardware."""
         return self.pick_device(requested)
 
     def load(self, device: str = "auto", variant: str | None = None,
@@ -80,10 +113,20 @@ class Chatterbox(EmbeddedEngine):
         device = self._pick_device_chatterbox(device)
         self._device = device
         self._variant = variant or "chatterbox-multilingual-v2"
-        self._is_turbo = self._variant == "chatterbox-turbo-v1"
+        # Nano rides the Turbo class (upstream: ChatterboxTurboTTS(nano=True)).
+        self._is_nano = "nano" in self._variant
+        self._is_turbo = self._is_nano or self._variant == "chatterbox-turbo-v1"
         log.info("loading Chatterbox (%s) on %s …", self._variant, device)
 
         import torch
+
+        # The MPS float32 fix edits source files, so it has to land
+        # BEFORE the model modules import (an already-imported module keeps
+        # its old code). Idempotent; also harmless on CUDA/CPU — float32 on
+        # these audio tensors is already the norm there.
+        from mps_patch import apply as _apply_mps_patch
+
+        _apply_mps_patch()
 
         # Variant → model class. Verified against voicebox's per-variant
         # backends (chatterbox_backend.py / chatterbox_turbo_backend.py at
@@ -98,12 +141,45 @@ class Chatterbox(EmbeddedEngine):
         # loads through the pinned package's from_local — no network, no HF
         # hub code in the load path. Without one, the legacy from_pretrained
         # path stands (HF cache via HF_HOME; downloads on a cache miss).
-        def _construct():
-            if model_dir:
-                return _ModelCls.from_local(model_dir, device)
-            return _ModelCls.from_pretrained(device=device)
+        # Per-variant load arguments, signature-guarded: an older installed
+        # package (pre-master) lacks `nano` / `t3_model`, and the honest
+        # failure there is "re-run engine setup", not a TypeError five
+        # frames deep.
+        extra = {}
+        if self._is_nano:
+            extra["nano"] = True
+        elif self._variant == "chatterbox-multilingual-v3":
+            extra["t3_model"] = "v3"
 
-        if device == "cpu":
+        def _construct():
+            try:
+                if model_dir:
+                    return _ModelCls.from_local(model_dir, device, **extra)
+                return _ModelCls.from_pretrained(device=device, **extra)
+            except TypeError as e:
+                if extra:
+                    raise RuntimeError(
+                        f"chatterbox: the installed package predates "
+                        f"{self._variant} ({e}) — re-run engine setup to get "
+                        f"the pinned upstream master."
+                    ) from e
+                raise
+
+        # MPS first where picked: the float32 fix above makes it viable,
+        # but a corner it misses must fall back to CPU rather than fail the
+        # load (UNMEASURED on real Apple hardware; devnen-verified repair).
+        if device == "mps":
+            try:
+                self.model = _construct()
+                log.info("Chatterbox loaded on MPS")
+            except Exception as e:  # noqa: BLE001 — any MPS failure → CPU
+                log.warning("chatterbox: MPS load failed (%s) — falling back to CPU", e)
+                device = "cpu"
+                self._device = "cpu"
+
+        if self.model is not None:
+            pass  # loaded on MPS above; fall through to the attention patch
+        elif device == "cpu":
             # CPU path — patch torch.load to force map_location='cpu'.
             _orig = torch.load
 
@@ -134,6 +210,8 @@ class Chatterbox(EmbeddedEngine):
         log.info("Chatterbox loaded on %s", device)
 
     def unload(self) -> None:
+        self._adapter_path = None
+        self._conds_key = None
         if self.model is None:
             return
         import torch
@@ -155,13 +233,43 @@ class Chatterbox(EmbeddedEngine):
         import numpy as np
         import torch
 
-        ref_audio = req.audio_prompt_path
-        if ref_audio:
-            from pathlib import Path
+        from pathlib import Path
 
-            if not Path(ref_audio).is_file():
-                log.warning("reference audio not found: %s", ref_audio)
+        # A trained voice renders as its adapter over the base checkpoint,
+        # conditioned on the reference clip saved beside the adapter at
+        # training time.
+        if req.adapter_path:
+            self._ensure_adapter(req.adapter_path)
+
+        ref_audio = req.audio_prompt_path
+        if not ref_audio and req.adapter_path:
+            trained_ref = Path(req.adapter_path) / "ref_sample.wav"
+            if trained_ref.is_file():
+                ref_audio = str(trained_ref)
+        if ref_audio and not Path(ref_audio).is_file():
+            log.warning("reference audio not found: %s", ref_audio)
+            ref_audio = None
+
+        # Same clip + same exaggeration as last time → the model's stored
+        # conditionals are already right, so drop the path and let generate
+        # reuse them. Chatterbox re-preps conds on EVERY
+        # generate(audio_prompt_path=...) call, which for a chapter render
+        # on one cloned voice is the same clip re-encoded per line.
+        # Exaggeration is part of the key because prepare_conditionals
+        # BAKES it into the conds — a (path, mtime)-only key would freeze
+        # the slider (devnen's server caches on exactly this triple).
+        if ref_audio:
+            exagg = ((req.delivery or {}).get("engine") or {}).get("exaggeration")
+            try:
+                key = (ref_audio, Path(ref_audio).stat().st_mtime_ns, exagg)
+            except OSError:
+                key = (ref_audio, None, exagg)
+            if key == self._conds_key and getattr(self.model, "conds", None) is not None:
                 ref_audio = None
+            else:
+                self._conds_key = key
+        else:
+            self._conds_key = None
 
         language = (req.language or "en").split("-")[0].lower()
         defaults = _LANG_DEFAULTS.get(language, _GLOBAL_DEFAULTS)

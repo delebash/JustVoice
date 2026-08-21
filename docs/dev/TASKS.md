@@ -56,6 +56,112 @@
 
 ## Waiting on your decision
 
+### The LoRA tab is Alexandria-parity, and acceleration works on every roster engine
+
+STATE:  GO 2026-08-21 — *"go on table your rec go"* on the full decision
+        table, after *"i am sick of both you nad opus doing half a job, do
+        it right"* · *"this is crossplatform app and all hardware
+        acceleration should work for all modeles"* · *"yes ship adapters …
+        a and b"* · *"it does not have to be exactly like alexandria it
+        needs to fit our app, but you are lazy on words and features"* ·
+        *"stop using small text, do a good ui design use your ux plugins"*.
+        **BUILT 2026-08-21** — the full table, verbatim, lives in
+        `docs/plans/2026-08-21-lora-alexandria-parity-and-acceleration.md`
+        (§2), with the verification record (§4: 46 pins green, rendered
+        label assertions, screenshots) and the staged built-in voices (§2-E2:
+        Alder + Wren, ready to generate + train).
+WHY:    The first LoRA build ported mechanics but invented vocabulary
+        ("set" for Dataset) and dropped visible features (Upload ZIP, the
+        dataset list, Import/Export JSON, per-run Confidence/Min SNR,
+        built-ins); and Kokoro's CUDA/DirectML were declared-but-
+        unreachable — no door ever installed the accelerated onnxruntime.
+CORRECTION (2026-08-21, user's catch): *"Datasets are objects, not ZIP
+        files (your 2026-08-20 ruling)"* — **that was never the user's
+        ruling**; it was the assistant's design choice inside the broad
+        2026-08-20 go, mis-cited as the user's (same foul as the blend
+        mis-cite). Under "whatever your rec": folders server-side + ZIP
+        transport both ways, Alexandria-interchangeable.
+NOT:    Alexandria's jargon sentences in user copy (labels yes, "metadata
+        .jsonl + WAV chunks" in a lede no — user's words) · torch-DirectML
+        (upstream stalled; documented CPU on Windows AMD/Intel) · fake
+        BUILTIN_ADAPTERS entries before real weights are published ·
+        auto-running the Alder/Wren training on the user's live box.
+BUILT:  src/views/lora/* · api/training_api.py (upload/archive/builtin) ·
+        training_builtin.py · storage/training_datasets.py (build_zip/
+        import_zip) · training_prep.py (overrides) · render_core.py +
+        engines/kokoro/ipa.py (lexicon IPA, live at render) · kokoro
+        manifest ACCEL_INSTALL + manager accel step + coreml-auto +
+        provider pre-flight · styles.css (.jv-lede, 12.5px floor, the
+        never-defined utilities) · docs/voices.md · docs/engines.md accel
+        matrix · 12 new pins.
+        OPEN: sidecar restart before the new endpoints answer · unify the
+        two lexicon previews · train+publish Alder/Wren → fill
+        BUILTIN_ADAPTERS · timestamps build (research recorded, plan §3) ·
+        full gates + commit on the user's word only.
+GO:     given 2026-08-21
+
+### FINDING — engine loads that nobody announces: three doors skip jv:health-refresh
+STATE:  FINDING — code-verified 2026-08-20, from your report: *"kokor is
+loaded … but not showing loaded on voices … i bet you rolled your own
+again"*. Half right: DETECTION is one shared door (the engines Pinia store
+reloading on the `jv:health-refresh` event, `stores/engines.js:8-40`), and
+the server has ONE truth (`GET /v1/engines` said kokoro "loaded" while your
+page said not — verified live). The rot is three doors that CHANGE engine
+state without dispatching the event, so every other surface keeps its stale
+copy until an alt-tab (`App.vue` refreshes on visibilitychange — why the
+topbar looked right while the Voices page looked wrong).
+WHY:    the three silent doors —
+  1. `VoicesView.previewVoice` with the "Always auto-load" pref
+     (`VoicesView.vue:379-382`): ▶ on a preset loads the engine as a
+     side effect of `preview?auto_load=true`, dispatches NOTHING. This is
+     the exact case in your screenshots (Xiaobei playing, chip saying "no
+     engine loaded", Blend saying "Kokoro (not loaded)").
+  2. `VoicesView.loadEngine` (the acquire tabs' Load button): reloads its
+     OWN stores, never dispatches — the rest of the app stays stale.
+  3. `SpeechEnginesTab.unload` (~:340): refreshes its own list, no
+     dispatch (its sibling at ~:620 dispatches correctly).
+The dialog-confirmed auto-load path (`VoicesView.vue:404-411`) does it
+RIGHT — proof the contract exists and these are pure omissions.
+NOT:    a new detection mechanism — the store + event ARE the mechanism;
+the fix is making every state-changing door announce.
+PARTIAL (2026-08-21, "go" on the closure list): door 3 FIXED
+(`SpeechEnginesTab.unload` now dispatches like load :330 / unloadKind
+:620), and four MORE silent doors found in the new LoRA views were fixed
+the same day (TrainingTab Test Voice auto_load + per-clip transcribe,
+DatasetTab generate, PreparerTab run-end — each a whisper/design-engine
+auto-load the pill never heard about).
+OPEN:   doors 1-2 only (`VoicesView.previewVoice` ~:379 and
+`VoicesView.loadEngine`) — left DELIBERATELY: VoicesView.vue is owned by
+the parallel Blend session (user's word 2026-08-21, *"dont do anything on
+blend tab another session is working on that"*); each is a one-line
+dispatch, offered to that session in the cross-session handoff.
+GO:     given for doors outside VoicesView; VoicesView doors ride the
+Blend session
+
+### FINDING — a blend of non-English voices auditions as English
+STATE:  FINDING — code-verified 2026-08-20, from your report: *"blend doesnt
+work with other language"* (two Mandarin Kokoro presets, Chinese text,
+53 s of wrong-language audio).
+WHY:    Two facts, verified: (1) SAVING a blend derives its language
+correctly — unanimous across the source voices → that language, else the
+configured default (`voices_api.py:358-370`), so the saved voice is zh.
+(2) The pre-save AUDITION ("Hear it") sends
+`language: selectedLanguage.value || "en-US"` (`VoicesView.vue:818`) — and
+the Language dropdown was hidden on the Blend tab the same day (because it
+never reached the SAVED voice), which removed the only override. So every
+blend audition now forces en-US and Kokoro phonemizes Chinese text as
+English. My hide made this path strictly worse for non-English blends.
+NOT:    Resurrecting the dropdown — the audition should not need a control
+the save doesn't need.
+OPEN:   derive the AUDITION language the same way the save does — from the
+picked source voices (unanimous → that language, else the default), one
+rule behind both doors. Whether the SAVED blend then renders zh correctly
+end-to-end is untested — verify when fixing.
+OWNED:  by the parallel Blend session (user 2026-08-21: *"drop a4 and
+anything on blend tab"*) — this session verified it still stands
+(VoicesView.vue:821) and handed the fix path over cross-session.
+GO:     needed (theirs)
+
 ### The engine roster: 4 TTS + 1 CPU cloner + 1 STT — TADA and MOSS marked, not deleted
 STATE:  DECIDED 2026-08-17 — *"your rec but dont remove them now you can mark
 them for removal and hide them if you want and ok oand the pcket tts swap"*.
@@ -83,7 +189,16 @@ GO:     given 2026-08-17 for mark-and-hide + the Pocket TTS swap
 
 ### Pocket TTS replaces LuxTTS in the CPU-cloning slot
 STATE:  DECIDED 2026-08-17 — *"ok oand the pcket tts swap"*. Full record in the
-plan doc §5.
+plan doc §5. **INTEGRATION BUILT 2026-08-21** ("do all of c"): adapter
+(`engines/pocket_tts/engine.py` — voice-state cache per prompt, HF_HOME
+pinned under the app data dir), facts-only manifest (pip 2.1.0 pinned; HF
+bytes 235,738,732 + 59,339 read from the tree; code MIT / weights
+CC-BY-4.0 from the model card; ISOLATION venv; cpu_adequate), capability
+row with **zero knobs** (upstream has no controls — a knob would be
+fiction), OS-gated all three platforms, discovery verified
+(/v1/engines + capabilities both list it). REMAINING: install + **measure
+on this machine** (the decision's own gate), THEN retire LuxTTS —
+never before.
 WHY:    Kyutai Labs, **MIT** (our ship license), 100M params, **6 languages** vs
 LuxTTS's English-only, **~6× realtime on 2 CPU cores**, and `pip install
 pocket-tts` against LuxTTS's three non-PyPI sources (one a personal git fork).
@@ -200,9 +315,15 @@ BUILT:  n/a. The three:
      non-issue"* about its torch>=2.7 pin colliding with chatterbox's 2.6.0 —
      but TADA declares no `ISOLATION`, so it defaults to **shared**, and
      `shared_venv.py:207-211` skips torch steps. TADA gets 2.6.0.
-OPEN:   decide each independently; (3) is the one that can produce a wrong
-runtime rather than a wrong claim.
-GO:     needed
+CLOSED (2026-08-21, "go" on the closure list): (1) FIXED —
+`tada/engine.py` now passes `force_cpu_on_mac=True` (moot while TADA
+excludes macOS, correct the moment it doesn't). (2) ALREADY FIXED by the
+2026-08-19 mps_patch change — verified: `_pick_device_chatterbox`
+delegates to `pick_device`, which honours an explicit request first.
+(3) FIXED — `tada/manifest.py` now declares `ISOLATION = "venv"` so its
+torch 2.7 pin actually installs, and the docstring records the year it
+claimed a venv it never had. Delete this item next sweep.
+GO:     done
 
 ### Settings → Capture is a localStorage mock — its controls never reach the server
 
@@ -235,12 +356,17 @@ character, location and object name for free in `book.json`; import could
 create the project lexicon pre-filled with them, pronunciation blank, as a
 worklist.
 NOT: folded into the zip build as a rider — un-go'd scope.
-OPEN: first verify what an empty-pronunciation entry does at RENDER time —
-`_materialize_lexicon` writes `pronunciation=""` (`projects_api.py:750-758`), and
-if the render path applies that literally it would blank the word instead of
-leaving it alone. If it is inert, seed the roster; if not, seed only entries the
-user has filled.
-GO: needed.
+CLOSED (2026-08-21, "do all of c"): the blocking question resolved first —
+an empty entry IS inert (the 2026-08-21 `_apply_lexicons` acts only on a
+non-empty alias or IPA), so the roster seeds safely. Built:
+`_materialize_lexicon` seeds every imported character name as a
+blank-pronunciation row (import's own entries win over blank seeds;
+"Narrator" skipped), PLUS the live scan —
+`POST /v1/projects/{id}/pronunciation-report` (`pronunciation.py` heuristic:
+capitalized where no sentence forced it, never seen lowercase, lexicon-
+covered subtracted) with the 🔎 button + add-chips in LexiconsView.
+Delete this item next sweep.
+GO: done.
 
 ### A scene break could carry a real pause instead of a glyph
 
@@ -295,6 +421,35 @@ GO: needed.
 
 ## The next build
 
+### THE 2026-08-20 VOICES FIX SESSION — layout delivered; fixes list approved "your rec"
+STATE:  DECIDED 2026-08-20 — *"forget it just fix jv layout for the voices try
+to do a professional job"* (delivered, rendered-verified) → *"do it go"* on
+{Preparer/Dataset-Builder design · blend strategies + sliders · TASKS
+correction · CustomVoice} → *"9 import voice for what engine"* (answered),
+*"8 yes"* (Dataset Builder / synthetic training data IS a JV workflow),
+*"13 no not until all work is done, i will tell you"* (NO gates, NO commit
+until the user says), *"your rec"* (the remaining fixes proceed per the
+recorded recommendations).
+**THE FULL RECORD, RESEARCH, SPECS AND RESUME STATE ARE
+`docs/plans/2026-08-20-voices-fixes-and-alexandria-train.md` — read it before
+touching Voices, Train, blending, or tokens. Do not redo its research.**
+WHY:    four sessions of layout complaints traced to hand-rolled per-view CSS,
+wrong density (comfy vs the mock), a kit-prop bug (UiTag label=) rendering
+empty pills app-wide, and a Train tab whose Alexandria parity was falsely
+recorded as built.
+NOT:    Recombine strategy (new server math, exploration toy) · restoring the
+page ledes · a Fetch button · gates before the user's word.
+BUILT:  canonical .jv-split/.jv-field-row/.jv-hint/.jv-col--start/.jv-stretch;
+compact density + solid focus ring (kit tokenization, default-preserving);
+fal-style reference group + self-fetching URL; Train pre-flight gates +
+Whisper transcribe + adapters table (server: TrainJob.epochs/sample_count,
+TrainingValidationSettings.max_clipping_ratio); UiTag sweep (6 views);
+TASKS corrections. OPEN: blend strategies template wiring (script half is in —
+plan doc §3) · import engine picker · hide Blend's dead Language dropdown ·
+duplicate display names + capabilities OS gate · mark-and-hide · Preparer ·
+Dataset Builder design pass · timestamps research · nav rail.
+GO:     given 2026-08-20 ("do it go" + "your rec"); gates/commit withheld.
+
 ### THE STRUCTURAL RULINGS 12–16 — DECIDED 2026-08-15, specs in the plan doc §6
 
 Your words, in order: **"12 your rec, 13 your rec, 14, your rec, 15 what do you
@@ -335,6 +490,229 @@ Specs: `docs/plans/2026-08-15-pipeline-truth-and-first-run.md` §6, rewritten
 from questions into build items in the same reply the rulings were given.
 Ruling 12 BUILT same day (`bb4366b`); 13's build and 16's surface half are
 SUPERSEDED into the voice-workbench plan below.
+
+### THE VOICES ACQUISITION BUILD — five tabs, kokoro-onnx, VoiceDesign, LoRA training
+
+STATE:  GO 2026-08-19 — *"build it go"*; tab set chosen the same day: *"Five
+tabs, no Preset"* (Cloned · Designed · Imported · Blended · Trained — names =
+the type filters). Training re-scoped mid-build by *"build train like
+alexandria … go and and look and figure out best way to do it"* and, on
+Chatterbox Turbo, *"you obviously thought you could do it or yo would not have
+mocked it"* — the mock's Train screen (Base: Chatterbox Turbo) is the spec.
+**BUILT 2026-08-19.** Gates green: ruff clean, 666 pytest passed, vite build,
+Playwright smoke (16 views, zero JS errors), and the five tabs driven in a
+real browser — Cloned offers 6 engines, Designed 1 (Qwen3 VoiceDesign),
+Blended 1 (Kokoro), Imported none (no gate), Trained 2 bases whose knobs
+seed from the verified per-engine defaults.
+WHY:    VoicesView's acquisition surface was a Chatterbox-only banner plus a
+details-fold whose Design and Blend buttons 400 on submit. Every dead path
+traced to exactly one missing piece, each verified upstream in code this
+session: Qwen Space `app.py` (VoiceDesign checkpoint + `generate_voice_design`),
+`kokoro-onnx` source (`create()` takes a raw style vector), Alexandria
+`train_lora.py` + `tts.py` (the whole LoRA loop and its inference), and
+gokhaneraslan/chatterbox-finetuning (LoRA on t3, author-verified stable on
+Turbo).
+DECIDED:
+- **Designed** = Qwen3 VoiceDesign variant `qwen3-vd-1.7b`
+  (`Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign`, 4,520,159,099 B summed from the HF
+  tree, 1.7B only) → `generate_voice_design`; the stored `design_prompt` feeds
+  the instruct slot. `/v1/voices/design` refuses with the way out when the
+  variant is absent.
+- **Blended** = Kokoro, on a runtime swap sherpa-onnx → `kokoro-onnx` 0.6.1
+  (MIT; `create(text, voice: str | ndarray)`) — instant audition, weighted
+  average only, slerp/lerp retired, recipe + vector on `VoiceRecord`.
+  **CORRECTION 2026-08-20, your words: "no it wasnt you decided that, i gave
+  you picture you ass" — "weighted average only" was MY design choice inside
+  the umbrella go, not your ruling, and I later miscited it to you as yours.
+  You showed the OfflineTTS/kokovoicelab strategy pictures. Strategies
+  reinstated under the 2026-08-20 "do it go" (see the strategies item).** The swap
+  also fixes the English-hardcoded-language finding (lang is per-call there)
+  and keeps the same 54-voice v1.0 pack (`voices-v1.0.bin` 28,214,398 B;
+  `kokoro-v1.0.onnx` 325,505,369 B).
+- **Trained** = LoRA, two engines day one. Qwen3 Base 1.7B/0.6B — Alexandria's
+  loop (MIT, attributed): PEFT on talker q/k/v/o, r32 α128, AdamW 5e-6, accum
+  8, bf16, best-loss checkpoint; inference = Base + adapter + x-vector prompt
+  from a saved ref sample + `instruct_ids`, so a trained voice takes written
+  direction. Chatterbox Turbo — gokhaneraslan (Apache-2.0, attributed): LoRA
+  on t3 (our adapter already reaches `model.t3.tfmr`); inference merges the
+  adapter on load; tags keep working. Per-engine subprocess trainers in the
+  engine's own env; speech engines unload first; progress as JSON lines into
+  the existing TrainJob registry; `/v1/train` + `storage/training_jobs.py`
+  finally get engines behind them.
+  **CORRECTION 2026-08-20: the line that stood here — "Dataset prep in-tab:
+  SNR / duration / clipping gates, Whisper auto-transcribe" — was FALSE as a
+  BUILT claim. Code-verified 2026-08-20: the trainer scripts gated durations
+  and emitted rejection reports (never shown in the UI); no SNR gate, no
+  clipping gate, no transcription existed anywhere in the train path.
+  Built for real 2026-08-20 under "do it go": pre-flight clip gates in-tab
+  via `POST /v1/analyze` against `settings.training.validation` (duration /
+  silence / new `max_clipping_ratio`), per-clip + all-clips Whisper
+  transcribe via `/v1/transcribe`, trainer drops surfaced on job rows, and
+  the Trained-adapters table (`TrainJob.epochs`/`sample_count` stamped at
+  enqueue).**
+- **Cloned** gains qwen3 `ref_text` (SynthRequest carries the stored
+  transcript to `generate_voice_clone`) and per-variant qwen3 capability rows
+  (kills CustomVoice's false clone tick — the tracked variant-aware item).
+- `supports_embedding_blending` renames `supports_voice_blending`; blending +
+  training flags join `EngineCapabilityDetail` per-variant;
+  `get_embedding` + `synthesize_with_embedding` retire (zero implementations —
+  blend lives engine-side).
+NOT:    a Preset tab — presets aren't acquired. NOT Chatterbox Multilingual
+training yet — same toolkit claims it, off until measured. NOT typed VRAM or
+wall-clock numbers anywhere — measured on first run or absent. NOT touching
+TADA / MOSS.
+CORRECTED 2026-08-19 (same session, your words): *"i wanted tabs voices,
+then all the other tabs, no new voices tab, you just did that on your own"*
+and *"voices should be tab with grid then all other tabs"*. The first build
+hid the five tabs behind a **+ New voice** toggle button I invented — the
+page looked unchanged until you clicked it. The tab strip is now the page's
+own: **Voices** (the grid) then Cloned / Designed / Imported / Blended /
+Trained, visible on load, no toggle. Tab choice is session state, not a
+saved pref (LabsView's precedent) so the page always opens on its library.
+INVENTIONS FOUND AND REMOVED (self-audit, your ask):
+  * the **+ New voice** toggle — never requested, and it hid the feature.
+  * *"~60 MB Python install"* in the Kokoro description — a figure with no
+    measurement behind it. Gone; the download size stays, summed from the
+    release's own bytes and stated in the same MiB the UI shows.
+  * kokoro's speed clamp at **2.0** while the declared Speed knob allows
+    **3.0** — a value the UI accepts, silently ignored. Now clamps to the
+    declared range.
+  * chatterbox `grad_accum=8`, which made the effective batch 8 against
+    upstream's 32 — a materially different training run. Now 1 x 32.
+  * two claims asserted without proof, softened to what is actually known:
+    that a trained voice sounds "much closer" than a clone, and that the
+    clone transcript "measurably improves" the result.
+  * docs listing only Qwen3 Base under Trained (Chatterbox Turbo ships too)
+    and dropping TADA / MOSS from Cloned (both still clone, both marked).
+NOT INVENTED, checked and kept: the espeak language codes kokoro-onnx gets
+(`lang` goes straight to `phonemizer.phonemize` on the espeak-ng backend, so
+they are real espeak voice codes) — with a note that the package documents
+only en-us/en-gb, so non-English is correct-by-construction, not heard.
+BUILT:  the tabs (`VoicesView.vue`, capability-driven via the shared
+`services/capabilities.js` resolver — a variant row always beats its engine's
+union row); `POST /v1/voices/blend` moved beside clone/design/import and
+computes host-side (`engines/blending.py`) so no engine process is needed;
+`phase5_api.py` renamed `training_api.py` (a plan-phase name was never an API
+name); the kokoro-onnx runtime swap incl. per-call language, the IPA bypass
+and instant blends; the qwen3 VoiceDesign variant + `generate_voice_design`
+branch; `ref_text` reaching Qwen3's clone call through a new
+`SynthRequest.ref_text`; the host-owned `training_runner.py` + two trainer
+scripts; TrainView rebuilt against the real request contract and moved into
+the Trained tab; docs/voices.md + docs/labs.md rewritten.
+FIXED EN ROUTE (each was a control that reached nothing):
+  * `POST /v1/voices/preview/{id}/save` returned `{"promoted": true, "note":
+    "route stub"}` and wrote NOTHING — a Save that reported success and lost
+    the voice. Now persists, stores the reference clip, and recomputes a
+    blend from its recipe.
+  * a blended or designed AUDITION passed only `__preview__`, so every
+    candidate rendered in the engine's default voice.
+  * TrainView sent `method` / `steps` / `qc` / `concurrent_jobs_limit`;
+    `TrainVoiceRequest` has none of those, so pydantic dropped all four.
+  * render / generate / audition each resolved only the reference clip, so a
+    blended or trained voice rendered as its bare id — one resolver now
+    (`render_core.voice_synth_fields`).
+  * Turbo's LoRA target modules are `c_attn / c_proj / c_fc / spkr_enc`, not
+    the llama-style names its sibling variants use: the wrong set would have
+    attached ZERO adapters while the loss still fell from `modules_to_save`.
+NOT:    a Preset tab (presets are not acquired). NOT Chatterbox Multilingual
+training (same toolkit claims it; off until measured). NOT typed VRAM or
+wall-clock numbers anywhere.
+COSTS:  Kokoro moves to its own venv (kokoro-onnx wants numpy>=2.0.2, the
+shared venv is pinned <2.0 by qwen3) and its model files change, so **Kokoro
+re-installs and re-downloads once**. A sherpa-era model dir is detected and
+says so rather than failing deep inside np.load.
+OPEN:   **Chatterbox training has never been heard** — the recipe follows a
+working upstream one and every call is checked against the installed
+package's surface, but no adapter trained by that script has been listened
+to; the capability row says so in its notes. VoiceDesign identity stability
+across renders (two-render check, needs the checkpoint downloaded). Whether
+the qwen3 VoiceDesign download works end-to-end (its size is the summed HF
+tree, and the multi-file URL arm is new).
+
+### THE PLATFORM FOLLOW-ON — latest engines, every GPU, streamed auditions
+
+STATE:  GO 2026-08-19 — *"go for it all, also we have acceleration for each
+engine now, i am guesing this doesnt work based on the work we are doing
+verify that this works and works for all platforms a drop down in engines
+pages for acceleeration auto cuda cpu"*, riding the earlier same-day words
+*"get latest means get latest chatterbox"*, *"crossplatform with all gpu
+apple silicon supported… cuda apple silicone rocm ect"*, *"i should not have
+to install anything these engines are built in"*, and *"can we run chattebox
+in realtime?"*. Standing constraint: *"5 no gates until i say so"* — ruff /
+pytest / build / smoke NOT run for any of this; parse-checks and live-app
+verification only.
+DECIDED:
+- **Latest = pinned SHAs, bumped deliberately.** Chatterbox installs from
+  upstream master `5de7a54aa4e5e2baadb0182dde554908b48b85c2` (2026-07-21,
+  replaces PyPI 0.1.7): brings Multilingual **v3**
+  (`t3_mtl23ls_v3.safetensors`, 3,208,951,924 B) and **Nano**
+  (`ResembleAI/chatterbox-nano`, 1,942,108,236 B, Turbo architecture,
+  byte-identical tag vocabulary). Perth pinned `ce86c49d029f`; qwen3 git
+  overlay pinned `022e286b98fb`.
+- **Acceleration dropdown is dynamic**: options = auto + (manifest
+  `gpu_runtimes` ∩ `/v1/system/info` runtimes) + cpu, per engine per
+  machine. system_info gains rocm detection (rocm-smi, Linux); the manager's
+  torch installer gains the ROCm 6.2 wheel-index arm.
+- **Chatterbox on Apple GPU** via the known float32 fix
+  (`engines/chatterbox/mps_patch.py`, adapted from devnen's
+  `_patch_chatterbox_mps_float32`, attributed): applied in load() BEFORE the
+  model modules import; MPS load failure falls back to CPU; the blanket
+  Darwin→cpu forcing is gone; manifest declares mps.
+- **Qwen3 on Apple Silicon = the MLX arm** (roster doc 2026-08-17 §4's
+  recorded route): five `-mlx` variant rows (mlx-community **8-bit** exports,
+  sizes byte-exact from the HF trees — CV-1.7B 3,080,138,901 B, CV-0.6B
+  1,973,572,801 B, Base-1.7B 3,104,156,243 B, Base-0.6B 1,991,296,593 B,
+  VD-1.7B 3,080,138,280 B) through `mlx-audio>=0.5.0` (MIT, API verified in
+  its v0.5.0 source: `load_model` + self-routing `generate()`). Variant rows
+  and install steps carry an `"oses"` gate filtered at ONE door each
+  (`model_catalog._variant_rows`, `manifest.install_steps`); qwen3 ISOLATION
+  is per-OS — its macOS venv is mlx-audio only (mlx-audio needs
+  transformers>=5.14, chatterbox pins ==5.2.0 in the shared venv). The
+  `-mlx` id SUFFIX keeps the capability suffix-walk on the right family row;
+  explicit full-id rows drop training on the MLX Base variants (the trainer
+  is PyTorch, Windows/Linux).
+- **Streaming phase 1 = host-side pipelining on the audition path.**
+  `GET /v1/voices/{id}/preview/stream` splits the line at sentence ends
+  (`settings.generation.stream_piece_chars`, default 200, Settings slider),
+  renders piece-by-piece through the SAME doors as POST /preview (routing
+  factored into `_resolve_audition_target` — one door, both endpoints), and
+  streams each piece as it finishes, crossfaded with the long-form math via
+  a held-back window. Shares the audition cache both ways. The row transport
+  tries the stream URL first; any failure (409, tokened remote, dead server)
+  falls back to the POST door and its dialogs. The `streaming_generation`
+  Feature flag is DELETED — no manifest ever declared it, and host-side
+  streaming is per-render, not per-engine (sweep clean).
+- **Built-in means built at setup**: `spawn_shared_venv_setup` also builds
+  venv-isolated engines' venvs, so no per-engine Install moment;
+  `engines/constraints.txt` scoped to the SHARED venv only
+  (`use_constraints=False` for isolated installs — the numpy<2 ceiling was
+  exactly what blocked kokoro-onnx).
+- Chatterbox conds cache keyed `(ref_audio, mtime_ns, exaggeration)` —
+  repeat renders of one voice skip prepare_conditionals.
+VERIFIED LIVE (user's real app, dev sidecar 17494, data dir
+`src-tauri/target/debug/data`):
+  * Windows catalog shows exactly the 5 torch qwen rows — no `-mlx` leak;
+    declared runtimes over the wire: kokoro cuda/coreml/directml/cpu →
+    dropdown Auto/CUDA/DirectML/CPU here; chatterbox cuda/mps/cpu/rocm and
+    qwen3 cuda/rocm/mlx → Auto/CUDA/CPU here. `/v1/system/info` runtimes on
+    this box: cpu/cuda/vulkan/directml.
+  * Streamed audition, 285-char 3-sentence line on `af_heart`: first bytes
+    at **2.2 s** (including the kokoro load), full 16.16 s WAV at 6.3 s —
+    playback can start ~4 s before the render ends. Same call again: **4 ms**
+    from cache with a real seekable header, byte-identical PCM. 409
+    `engine_not_loaded:` and 404 contracts intact for the client fallback.
+  * `stream_piece_chars` present in `GET /v1/settings` (PATCH door reaches it).
+UNMEASURED (declared in code where it matters): MPS, ROCm, MLX — no Apple or
+AMD hardware here; Nano/v3 never listened to; chatterbox-trained adapters
+never heard.
+NOT:    engine-native token streaming (chatterbox `generate_stream` /
+mlx-audio `stream=True`) — tracked below; MLX LoRA inference; Chatterbox
+Multilingual training.
+OPEN:   engine-native streaming as phase 2 (both surfaces exist upstream);
+first-Mac-run truth for the MPS patch and the MLX arm; Nano/v3 listening
+pass; a visual pass over the new Voices UI in a browser (Chrome extension
+was not connected this session; the smoke gate is paused by your word — the
+Tauri dev window has everything HMR-live).
 
 ### THE VOICE-WORKFLOW REDESIGN — the resume surface
 

@@ -55,7 +55,11 @@ from .api import (
     mcp_bindings_api,
     models_api,
     personas_api,
-    phase5_api,
+    align_api,
+    voice_bundle_api,
+    pronunciation_api,
+    dataset_builder_api,
+    training_api,
     project_export_api,
     projects_api,
     render_chapter_api,
@@ -207,6 +211,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(server_auth_api.router)  # the auth door + lockout escape (family shape)
     app.include_router(settings_api.router)
     app.include_router(voices_api.router)
+    app.include_router(voice_bundle_api.router)
     app.include_router(personas_api.router)
     app.include_router(lexicons_api.router)
     app.include_router(engines_api.router)
@@ -280,10 +285,16 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     app.include_router(generate_api.router)
     app.include_router(render_chapter_api.router)
     app.include_router(analyzer_api.router)
+    app.include_router(align_api.router)
+    app.include_router(pronunciation_api.router)
     app.include_router(external_api.router)
     app.include_router(cache_api.router)
     app.include_router(master_api.router)
-    app.include_router(phase5_api.router)
+    # BEFORE training_api: both live under /v1/train/*, FastAPI matches in
+    # registration order, and training_api's /v1/train/{job_id} would
+    # otherwise capture "builder" as a job id and 404 every builder call.
+    app.include_router(dataset_builder_api.router)
+    app.include_router(training_api.router)
     app.include_router(projects_api.router)
 
     # Phase 4a backend (DESIGN_FREEZE §5)

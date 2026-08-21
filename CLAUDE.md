@@ -17,7 +17,7 @@ Only TTS and each app's feature catalog differ. A change in those repos lands he
 
 ```bash
 npm install
-cd server && pip install -e .[kokoro] && cd ..
+cd server && pip install -e . && cd ..   # engines install their own venvs from the app
 npm run tauri dev                  # Tauri + Vite + Python sidecar (dev port 1430, HMR 1431)
 npm run tauri build                # production installer
 

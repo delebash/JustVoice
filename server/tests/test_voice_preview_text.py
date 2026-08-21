@@ -37,9 +37,17 @@ def synth_calls(monkeypatch):
     from justvoice.engines import manager as mgr_mod
 
     monkeypatch.setattr(mgr_mod.get_manager(), "current_id", lambda: "kokoro")
+    # Kokoro moved to per-engine venv isolation (2026-08-19, the numpy>=2
+    # clash) — is_installed now probes engines/kokoro/.venv, which no test
+    # machine has. These tests exercise the audition surface, not install
+    # state; before the move they only passed by riding the dev machine's
+    # shared venv.
+    monkeypatch.setattr(
+        mgr_mod.EngineManifest, "is_installed", property(lambda self: True)
+    )
     calls: list[tuple[str, dict]] = []
 
-    async def fake_via_manager(engine_id, req, audio_prompt_path=None):
+    async def fake_via_manager(engine_id, req, voice_fields=None):
         calls.append((req.text, req.delivery.model_dump(exclude_none=True) if req.delivery else {}))
         return Response(content=b"RIFFfake", media_type="audio/wav")
 

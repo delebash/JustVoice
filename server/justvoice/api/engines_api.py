@@ -51,8 +51,7 @@ _CAPABILITY_TO_FEATURE: dict[str, Feature] = {
     "phoneme_override": "phoneme_override",
     "gpu_accel": "gpu_accel",
     "single_speaker_dialogue": "single_speaker_dialogue",
-    "streaming_generation": "streaming_generation",
-    "embedding_blending": "embedding_blending",
+    "voice_blending": "voice_blending",
     "training": "training",
 }
 
@@ -176,8 +175,28 @@ async def list_engine_capabilities() -> EngineCapabilitiesResponse:
     The frontend should try the variant id first, then fall back to the
     base engine id — the same convention `lookup()` follows server-side.
     """
+    # OS gate (2026-08-20): a row keyed by a variant this machine's catalog
+    # cannot see (the -mlx macOS rows on Windows were the leak — they fed
+    # the Voices model picker duplicate entries) is dropped HERE, the same
+    # one-door rule the catalog itself applies. Engine-id rows and family
+    # rows (a visible variant id extends them, e.g. qwen3-base →
+    # qwen3-base-1.7b) always pass.
+    from ..engines import model_catalog
+    from ..engines.manager import get_manager
+
+    manifests = get_manager().manifests()
+    visible_variants = {
+        v.id for eng_id in manifests for v in model_catalog.models_for(eng_id)
+    }
+    rows = {
+        key: detail
+        for key, detail in CAPABILITY_DETAILS.items()
+        if key in manifests
+        or key in visible_variants
+        or any(vid.startswith(f"{key}-") for vid in visible_variants)
+    }
     return EngineCapabilitiesResponse(
-        engines=dict(CAPABILITY_DETAILS), emotion_values=list(EMOTION_VALUES)
+        engines=rows, emotion_values=list(EMOTION_VALUES)
     )
 
 

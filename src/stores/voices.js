@@ -16,7 +16,12 @@ export const useVoicesStore = defineStore("voices", () => {
   const items = ref([]);
   const loaded = ref(false);
   let _inflight = null;
-  let _listening = false;
+
+  // Subscribed at store creation — see the note in stores/engines.js. A
+  // subscription that only happened inside ensureLoaded() meant a view
+  // calling reload() directly never heard an engine load, so its preset
+  // voices never appeared.
+  window.addEventListener("jv:health-refresh", () => { void reload(); });
 
   // Failure leaves `loaded` false so the next caller retries — see the note in
   // stores/personas.js: marking a failed load as loaded poisons every later
@@ -30,10 +35,6 @@ export const useVoicesStore = defineStore("voices", () => {
   }
 
   function ensureLoaded() {
-    if (!_listening) {
-      window.addEventListener("jv:health-refresh", () => { void reload(); });
-      _listening = true;
-    }
     if (loaded.value) return Promise.resolve(items.value);
     if (!_inflight) _inflight = reload().finally(() => { _inflight = null; });
     return _inflight;

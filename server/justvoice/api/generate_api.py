@@ -155,7 +155,7 @@ async def generate(req: GenerateRequest) -> Response:
     stored = st.voices.get(req.voice)
     if stored:
         # Stored voice's engine — may be managed or in-process.
-        prompt_path = _resolve_audio_prompt_for_stored(stored)
+        voice_fields = _voice_synth_fields(stored)
         if mgr.get_manifest(stored.engine):
             # Auto-load the managed engine if it's installed but not loaded.
             if mgr.current_id() != stored.engine:
@@ -166,7 +166,7 @@ async def generate(req: GenerateRequest) -> Response:
                         f"engine '{stored.engine}' failed to load on first use: {e}. "
                         f"Click Load on the Engines tab first, or POST /v1/engines/{stored.engine}/load."
                     )
-            return await _generate_via_manager(stored.engine, req, audio_prompt_path=prompt_path)
+            return await _generate_via_manager(stored.engine, req, voice_fields=voice_fields)
         # In-process engine path falls through below.
         engine_id = stored.engine
     else:
@@ -190,15 +190,25 @@ def _resolve_audio_prompt_for_stored(stored) -> str | None:
     return resolve_audio_prompt_for_stored(get_state(), stored)
 
 
+def _voice_synth_fields(stored) -> dict:
+    """Everything the stored voice contributes to the engine call — the
+    reference clip AND (2026-08-19) its transcript, a blend's style vector,
+    a trained voice's adapter. Wrapper over render_core's single resolver."""
+    from ..render_core import voice_synth_fields
+
+    return voice_synth_fields(get_state(), stored)
+
+
 async def _generate_via_manager(
-    engine_id: str, req: GenerateRequest, audio_prompt_path: str | None = None
+    engine_id: str, req: GenerateRequest, voice_fields: dict | None = None
 ) -> Response:
     """Synth via the managed engine subprocess.
 
-    `audio_prompt_path` is filled in for cloned voices — the host resolves
-    the stored voice's reference WAV path here so the engine subprocess
-    can pass it to `model.generate(audio_prompt_path=…)` without needing
-    its own access to the host's voice store.
+    `voice_fields` carries whatever the stored voice contributes to the
+    call — the reference WAV path (and its transcript) for a clone, the
+    style vector for a blend, the adapter dir for a trained voice. The host
+    resolves them so the engine subprocess never needs access to the voice
+    store. See `render_core.voice_synth_fields`.
 
     Long text (> settings.generation.max_chunk_chars) is split at sentence
     boundaries and per-chunk results are crossfade-concatenated. This is
@@ -259,7 +269,7 @@ async def _generate_via_manager(
             "language": req.language,
             "delivery": delivery,
             "seed": chunk_seed,
-            "audio_prompt_path": audio_prompt_path,
+            **(voice_fields or {}),
         }
         return mgr.synth(engine_id, body)
 

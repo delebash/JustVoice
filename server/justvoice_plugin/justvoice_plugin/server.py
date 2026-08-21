@@ -50,6 +50,10 @@ class SynthBody(BaseModel):
     delivery: dict[str, Any] = {}
     seed: int | None = None
     audio_prompt_path: str | None = None
+    ref_text: str | None = None
+    xvector_only: bool = False
+    voice_vector: list[float] | None = None
+    adapter_path: str | None = None
 
     model_config = ConfigDict(extra="allow")
 
@@ -72,6 +76,13 @@ class ChatBody(BaseModel):
 class TranscribeBody(BaseModel):
     wav_b64: str | None = None
     audio_path: str | None = None
+    language: str | None = None
+
+
+class AlignBody(BaseModel):
+    wav_b64: str | None = None
+    audio_path: str | None = None
+    text: str = ""
     language: str | None = None
 
 
@@ -100,8 +111,6 @@ def make_app(engine: EmbeddedEngine) -> FastAPI:
             "supports_streaming": engine.meta.supports_streaming,
             "supports_paralinguistic_tags": engine.meta.supports_paralinguistic_tags,
             "supports_instruct_field": engine.meta.supports_instruct_field,
-            "supports_embedding_blending": engine.meta.supports_embedding_blending,
-            "supports_training": engine.meta.supports_training,
         }
 
     @app.post("/load")
@@ -147,6 +156,10 @@ def make_app(engine: EmbeddedEngine) -> FastAPI:
             delivery=body.delivery or {},
             seed=body.seed,
             audio_prompt_path=body.audio_prompt_path,
+            ref_text=body.ref_text,
+            xvector_only=body.xvector_only,
+            voice_vector=body.voice_vector,
+            adapter_path=body.adapter_path,
         )
         try:
             out = await asyncio.to_thread(engine.synth, req)
@@ -203,7 +216,14 @@ def make_app(engine: EmbeddedEngine) -> FastAPI:
 
     @app.post("/transcribe")
     async def transcribe(body: TranscribeBody):
-        """STT-kind engines implement engine.transcribe(...) -> str. 501 otherwise."""
+        """STT-kind engines implement `engine.transcribe(...)`. 501 otherwise.
+
+        The return may be a plain `str` (the original protocol) or a dict
+        carrying `text` plus optional measurements — `confidence` today. Both
+        are accepted so an STT engine that cannot measure confidence needs no
+        change; the response shape is always `{"text", "confidence"}`, with
+        `confidence: null` meaning UNKNOWN rather than zero.
+        """
         if not hasattr(engine, "transcribe"):
             raise HTTPException(status_code=501, detail="engine does not support transcription")
         if not engine.is_loaded():
@@ -222,14 +242,53 @@ def make_app(engine: EmbeddedEngine) -> FastAPI:
         if not audio_path:
             raise HTTPException(status_code=422, detail="pass wav_b64 or audio_path")
         try:
-            text = await asyncio.to_thread(engine.transcribe, audio_path, body.language)
+            result = await asyncio.to_thread(engine.transcribe, audio_path, body.language)
         except Exception as e:
             log.exception("engine transcribe failed")
             raise HTTPException(status_code=500, detail=f"engine transcribe failed: {e}")
         finally:
             if tmp_path is not None:
                 tmp_path.unlink(missing_ok=True)
-        return {"text": text}
+        if isinstance(result, dict):
+            return {
+                "text": result.get("text") or "",
+                "confidence": result.get("confidence"),
+            }
+        return {"text": result, "confidence": None}
+
+    @app.post("/align")
+    async def align(body: AlignBody):
+        """Word timings for known text — STT engines implementing
+        `engine.align(audio_path, text, language) -> [{word,start,end}]`.
+        501 otherwise; the host maps the hypothesis onto the known text."""
+        if not hasattr(engine, "align"):
+            raise HTTPException(status_code=501, detail="engine does not support word alignment")
+        if not engine.is_loaded():
+            raise HTTPException(status_code=409, detail="engine not loaded")
+        import base64
+        import tempfile
+        from pathlib import Path
+
+        tmp_path: Path | None = None
+        audio_path = body.audio_path
+        if body.wav_b64:
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                tmp.write(base64.b64decode(body.wav_b64))
+                tmp_path = Path(tmp.name)
+            audio_path = str(tmp_path)
+        if not audio_path:
+            raise HTTPException(status_code=422, detail="pass wav_b64 or audio_path")
+        try:
+            words = await asyncio.to_thread(engine.align, audio_path, body.text, body.language)
+        except RuntimeError as e:
+            raise HTTPException(status_code=501, detail=str(e))
+        except Exception as e:
+            log.exception("engine align failed")
+            raise HTTPException(status_code=500, detail=f"engine align failed: {e}")
+        finally:
+            if tmp_path is not None:
+                tmp_path.unlink(missing_ok=True)
+        return {"words": words}
 
     @app.post("/unload")
     async def unload():

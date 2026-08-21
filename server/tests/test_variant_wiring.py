@@ -33,12 +33,21 @@ def _load_engine_module(name: str):
 
 
 def test_qwen3_catalog_ids_match_engine_map() -> None:
+    """models_for is OS-filtered (the -mlx rows are macOS-only), so the
+    visible catalog is a SUBSET of the engine map — while the manifest's
+    full row set must still equal the map exactly, or a row exists no OS
+    can load (or a loadable variant no OS can see)."""
+    from justvoice.engines.manager import discover_engines
     from justvoice.engines.model_catalog import models_for
 
     engine_mod = _load_engine_module("qwen3")
     catalog_ids = {v.id for v in models_for("qwen3")}
-    assert catalog_ids == set(engine_mod.QWEN_VARIANT_REPOS), (
-        "qwen3 catalog variant ids and engine QWEN_VARIANT_REPOS diverged"
+    assert catalog_ids <= set(engine_mod.QWEN_VARIANT_REPOS), (
+        "qwen3 catalog shows a variant the engine cannot load"
+    )
+    all_ids = {r["id"] for r in discover_engines()["qwen3"].module.VARIANTS}
+    assert all_ids == set(engine_mod.QWEN_VARIANT_REPOS), (
+        "qwen3 manifest VARIANTS and engine QWEN_VARIANT_REPOS diverged"
     )
     assert engine_mod.DEFAULT_VARIANT in engine_mod.QWEN_VARIANT_REPOS
 
@@ -52,6 +61,21 @@ def test_qwen3_catalog_repos_match_engine_repos() -> None:
         assert v.hf_repo == expected, (
             f"catalog variant {v.id} points at {v.hf_repo}, engine loads {expected}"
         )
+
+
+def test_qwen3_mlx_rows_are_macos_gated() -> None:
+    """The -mlx rows (mlx-community 8-bit exports via mlx-audio, 2026-08-19)
+    exist only on macOS; the torch rows only on Windows/Linux. This pins
+    both directions so a Mac never sees a CUDA checkpoint and this machine
+    never offers an MLX one."""
+    from justvoice.engines.manager import discover_engines
+
+    for r in discover_engines()["qwen3"].module.VARIANTS:
+        if r["id"].endswith("-mlx"):
+            assert r["oses"] == ["macos"], r["id"]
+            assert r["sources"][0]["hf_repo"].startswith("mlx-community/"), r["id"]
+        else:
+            assert r["oses"] == ["windows", "linux"], r["id"]
 
 
 # ─── Qwen3 catalog FACTS (2026-08-15) ─────────────────────────────────
@@ -95,38 +119,83 @@ def test_qwen3_manifest_languages_match_the_engine_lang_map() -> None:
     assert set(models_for("qwen3")[0].languages) == set(engine_mod._LANG_NAME)
 
 
-def test_qwen3_does_not_claim_voice_design() -> None:
-    """No VoiceDesign checkpoint ships and the engine has no design call —
-    the capability filter must not list qwen3 under it."""
+def test_qwen3_voice_design_claim_is_backed() -> None:
+    """The engine may claim voice_design ONLY while something real backs it.
+
+    Until 2026-08-19 this test asserted the opposite (`is False`), because
+    the flag had been claimed with no checkpoint and no design call behind
+    it — the catalog's design filter listed qwen3 with nothing there. The
+    VoiceDesign variant + generate_voice_design branch shipped; the claim
+    is true again, and this pins the PAIRING so the flag can never outlive
+    its backing a second time.
+    """
     from justvoice.engines.manager import discover_engines
+    from justvoice.engines.model_catalog import models_for
 
     m = discover_engines()["qwen3"]
-    assert m.capabilities.get("voice_design") is False
+    assert m.capabilities.get("voice_design") is True
+    # 1) A design-capable variant row exists in the catalog…
+    design_variants = [v for v in models_for("qwen3") if getattr(v, "voice_design", False)]
+    assert design_variants, "voice_design claimed but no variant row backs it"
+    # 2) …its id reaches the adapter's repo map…
+    engine_mod = _load_engine_module("qwen3")
+    for v in design_variants:
+        assert v.id in engine_mod.QWEN_VARIANT_REPOS
+    # 3) …and the adapter actually has the design call.
+    src = (Path(engine_mod.__file__)).read_text(encoding="utf-8")
+    assert "generate_voice_design" in src
 
 
 def test_chatterbox_catalog_has_only_verified_variants() -> None:
     from justvoice.engines.model_catalog import models_for
 
     ids = {v.id for v in models_for("chatterbox")}
-    # The two real upstream variants; "chatterbox-original-v1" was an
-    # unverified placeholder removed by the parity audit.
-    assert ids == {"chatterbox-multilingual-v2", "chatterbox-turbo-v1"}
+    # v2 + turbo were the 0.1.7-loadable set; v3 + nano arrived with the
+    # move to upstream master @ 5de7a54 (2026-08-19), whose loaders map
+    # them. ("chatterbox-original-v1" was an unverified placeholder
+    # removed by the parity audit.)
+    assert ids == {
+        "chatterbox-multilingual-v2", "chatterbox-multilingual-v3",
+        "chatterbox-turbo-v1", "chatterbox-nano-v1",
+    }
     repos = {v.hf_repo for v in models_for("chatterbox")}
-    assert repos == {"ResembleAI/chatterbox", "ResembleAI/chatterbox-turbo"}
+    assert repos == {
+        "ResembleAI/chatterbox", "ResembleAI/chatterbox-turbo",
+        "ResembleAI/chatterbox-nano",
+    }
 
 
-def test_chatterbox_multilingual_pins_the_weights_the_pinned_lib_loads() -> None:
-    """`chatterbox-tts==0.1.7`'s from_local opens `t3_mtl23ls_v2.safetensors`
-    by name. The repo also carries a v3 weight now (checked 2026-08-15), and
-    only upstream git master can load it — pinning v3 here would download
-    2 GB this engine cannot open. This test fails the day someone adds a v3
-    row without bumping the lib pin."""
+def test_chatterbox_variants_pin_the_weights_the_pinned_lib_loads() -> None:
+    """Each catalog row must name exactly the t3 its loader opens.
+
+    Until 2026-08-19 this asserted v2-only, because PyPI 0.1.7's from_local
+    could not open the v3 weight and a v3 row would have downloaded 2 GB
+    the engine could not read. The install then moved to upstream master
+    @ 5de7a54, whose MULTILINGUAL_T3_MODELS maps v2 AND v3 and whose Turbo
+    class takes nano=True — so the rule generalises: row ↔ loader, one t3
+    per row, and the INSTALL step must actually pin that master SHA."""
+    import importlib
+
     from justvoice.engines.model_catalog import sources_for
 
-    files = {f for s in sources_for("chatterbox", "chatterbox-multilingual-v2")
-             for f in s.get("files", [])}
-    assert "t3_mtl23ls_v2.safetensors" in files
-    assert not any(f.endswith("v3.safetensors") for f in files)
+    def files_of(variant):
+        return {f for s in sources_for("chatterbox", variant)
+                for f in s.get("files", [])}
+
+    v2 = files_of("chatterbox-multilingual-v2")
+    assert "t3_mtl23ls_v2.safetensors" in v2 and not any("v3" in f for f in v2)
+    v3 = files_of("chatterbox-multilingual-v3")
+    assert "t3_mtl23ls_v3.safetensors" in v3 and not any(
+        f == "t3_mtl23ls_v2.safetensors" for f in v3)
+    nano = files_of("chatterbox-nano-v1")
+    assert "t3_nano_v1.safetensors" in nano
+
+    # The rows above are only loadable because the install pins master.
+    man = importlib.import_module("justvoice.engines.chatterbox.manifest")
+    git_steps = [s for s in man.INSTALL
+                 if s.get("kind") == "pip-git" and "resemble-ai/chatterbox" in s.get("url", "")]
+    assert git_steps and git_steps[0].get("ref", "").startswith("5de7a54")
+    assert git_steps[0].get("no_deps") is True
 
 
 def test_cloning_claims_are_wired_in_the_adapter() -> None:
@@ -157,21 +226,20 @@ def test_cloning_claims_are_wired_in_the_adapter() -> None:
 
 def test_manifest_default_variants_exist_in_catalog() -> None:
     """Every manifest DEFAULT_VARIANT_ID must be a real catalog variant."""
+    from justvoice.engines.manager import discover_engines
     from justvoice.engines.model_catalog import models_for
 
-    for manifest_path in sorted(ENGINES.glob("*/manifest.py")):
-        engine_id = None
-        default = None
-        for line in manifest_path.read_text().splitlines():
-            if line.startswith("ID = "):
-                engine_id = line.split("=", 1)[1].strip().strip('"')
-            if line.startswith("DEFAULT_VARIANT_ID = "):
-                default = line.split("=", 1)[1].strip().strip('"')
+    # IMPORT the manifests rather than slicing the file text: qwen3's
+    # default is a platform conditional, and the old line-parse swallowed
+    # the whole expression as the "value" (found 2026-08-21). The imported
+    # attribute is the real default this machine would use.
+    for engine_id, manifest in sorted(discover_engines().items()):
+        default = getattr(manifest.module, "DEFAULT_VARIANT_ID", None)
         if default is None:
             continue
         catalog_ids = {v.id for v in models_for(engine_id)}
         assert default in catalog_ids, (
-            f"{manifest_path.parent.name}: DEFAULT_VARIANT_ID {default!r} "
+            f"{engine_id}: DEFAULT_VARIANT_ID {default!r} "
             f"not in catalog {sorted(catalog_ids)}"
         )
 
@@ -271,20 +339,23 @@ def test_load_with_explicit_variant_records_it(monkeypatch) -> None:
 
 
 def test_load_no_manifest_default_records_on_disk_variant(monkeypatch, tmp_path) -> None:
-    """Kokoro declares no DEFAULT_VARIANT_ID and loads whatever is on
-    disk — the manager must record the on-disk variant, not "" (user-hit
-    round 2: the first fix recorded empty for kokoro, so the Engines
-    page STILL couldn't highlight the loaded row after a restart)."""
+    """An engine with no DEFAULT_VARIANT_ID loads whatever is on disk —
+    the manager must record the on-disk variant, not "" (user-hit round 2:
+    the first fix recorded empty for kokoro, so the Engines page STILL
+    couldn't highlight the loaded row after a restart).
+
+    (Kokoro declares a default since the 2026-08-19 runtime swap, so this
+    pins the no-default behaviour with its default forced off.)"""
     mgr = _fake_manager(monkeypatch)
     fake = _FakeManifest()
     fake.id = "kokoro"  # real catalog id → real variant list
     fake.default_variant_id = None
     fake.models_dir = tmp_path
-    (tmp_path / "kokoro-en-v0_19").mkdir()
-    (tmp_path / "kokoro-en-v0_19" / "model.onnx").write_bytes(b"x")
+    (tmp_path / "kokoro-v1.0-int8").mkdir()
+    (tmp_path / "kokoro-v1.0-int8" / "kokoro-v1.0.int8.onnx").write_bytes(b"x")
     mgr._manifests["kokoro"] = fake
     mgr.load("kokoro", device="auto")
-    assert mgr.current_variant_id("kokoro") == "kokoro-en-v0_19"
+    assert mgr.current_variant_id("kokoro") == "kokoro-v1.0-int8"
 
 
 def test_load_no_manifest_default_no_disk_falls_back_to_catalog_first(
@@ -297,7 +368,7 @@ def test_load_no_manifest_default_no_disk_falls_back_to_catalog_first(
     fake.models_dir = tmp_path  # empty — nothing on disk
     mgr._manifests["kokoro"] = fake
     mgr.load("kokoro", device="auto")
-    assert mgr.current_variant_id("kokoro") == "kokoro-multi-lang-v1_0"
+    assert mgr.current_variant_id("kokoro") == "kokoro-v1.0"
 
 
 def test_all_multi_variant_engines_resolve_a_real_variant() -> None:

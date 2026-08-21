@@ -90,6 +90,31 @@ def spawn_shared_venv_setup(state: AppState) -> str:
                 return _is_cancelled(job_id)
 
             summary = setup_shared_venv(progress=progress, cancel_check=cancel_check)
+
+            # Venv-isolated engines (ISOLATION="venv") set up here too, so
+            # isolation stays an implementation detail: the user runs ONE
+            # setup and every built-in engine is ready to Load. Kokoro is
+            # isolated because kokoro-onnx needs numpy>=2 while the shared
+            # venv holds chatterbox's <2 ceiling (2026-08-19); MOSS is
+            # deprecated and skipped unless already installed.
+            from .engines.manager import discover_engines, install_engine
+
+            for m in discover_engines().values():
+                if m.isolation != "venv" or m.is_installed:
+                    continue
+                if (m.deprecated or "").strip():
+                    continue
+                if cancel_check():
+                    raise RuntimeError("cancelled by user")
+                progress("engine-venv", f"setting up {m.id}")
+                try:
+                    install_engine(m, progress=progress, cancel_check=cancel_check)
+                except Exception as ee:  # noqa: BLE001 — one engine's venv
+                    # failing must not fail the whole setup; the engine
+                    # keeps its Install door as the retry path.
+                    log.exception("venv engine setup failed: %s", m.id)
+                    state.job_append_log(job_id, f"[engine-venv] {m.id} failed: {ee}")
+
             state.job_update(job_id, phase="completed")
             state.job_append_log(job_id, f"[completed] shared venv ready (gpu={summary.get('gpu_label')})")
         except Exception as e:
@@ -358,8 +383,16 @@ def spawn_prefetch(
                 )
             else:
                 target_dir.mkdir(parents=True, exist_ok=True)
-                _url_stream_to(state, job_id, source["url"], target_dir, variant)
-                speech_cache.write_manifest_from_dir(target_dir, url=source["url"])
+                # Multi-file URL variants (kokoro-onnx: model + voices pack)
+                # carry one url row per file — fetch each. Single-url
+                # tarball variants arrive as a one-row list and work as
+                # before.
+                url_rows = [s for s in (source.get("sources") or []) if s.get("url")]
+                if not url_rows:
+                    url_rows = [{"url": source["url"]}]
+                for row in url_rows:
+                    _url_stream_to(state, job_id, row["url"], target_dir, variant)
+                speech_cache.write_manifest_from_dir(target_dir, url=url_rows[0]["url"])
             state.job_update(job_id, phase="completed")
             state.job_append_log(job_id, "[completed] prefetch finished")
         except (_Cancelled, DownloadCancelled):
@@ -394,36 +427,40 @@ def fetch_url_variant(
     data_dir: Path,
     engine_id: str,
     variant_id: str,
-    url: str,
+    url: "str | list[str]",
     on_progress=None,
     cancel_check=None,
 ) -> Path:
     """The load door's URL arm (phase ④ — the last legacy writer dies):
-    stream a single-URL variant (kokoro-style tarball) into the SPEECH CACHE
-    and write its files.json, synchronously — no job plumbing. The prefetch
-    worker's `_url_stream_to` below is the job-channel twin; both ride the
-    same primitives (`_stream_download`, `_extract_tar_bz2`). `on_progress`
-    gets cumulative downloaded bytes; `cancel_check` (bool-returning) aborts
-    via the streamer's `_Cancelled`. Returns the variant dir."""
+    stream a URL variant into the SPEECH CACHE and write its files.json,
+    synchronously — no job plumbing. Takes one url (tarball variants) or a
+    list (multi-file variants like kokoro-onnx's model + voices pack). The
+    prefetch worker's `_url_stream_to` below is the job-channel twin; both
+    ride the same primitives (`_stream_download`, `_extract_tar_bz2`).
+    `on_progress` gets cumulative downloaded bytes per file; `cancel_check`
+    (bool-returning) aborts via the streamer's `_Cancelled`. Returns the
+    variant dir."""
     from . import speech_cache
 
+    urls = [url] if isinstance(url, str) else list(url)
     target_dir = speech_cache.variant_dir(data_dir, engine_id, variant_id)
     target_dir.mkdir(parents=True, exist_ok=True)
-    filename = url.rsplit("/", 1)[-1] or "model.bin"
-    partial = target_dir / (filename + ".partial")
-    _stream_download(
-        url,
-        partial,
-        on_progress=on_progress or (lambda n: None),
-        cancel_check=cancel_check,
-    )
-    if _is_archive(filename):
-        _extract_tar_bz2(partial, target_dir, filename,
-                         on_member=None, cancel_check=cancel_check)
-        partial.unlink(missing_ok=True)
-    else:
-        partial.rename(target_dir / filename)
-    speech_cache.write_manifest_from_dir(target_dir, url=url)
+    for one in urls:
+        filename = one.rsplit("/", 1)[-1] or "model.bin"
+        partial = target_dir / (filename + ".partial")
+        _stream_download(
+            one,
+            partial,
+            on_progress=on_progress or (lambda n: None),
+            cancel_check=cancel_check,
+        )
+        if _is_archive(filename):
+            _extract_tar_bz2(partial, target_dir, filename,
+                             on_member=None, cancel_check=cancel_check)
+            partial.unlink(missing_ok=True)
+        else:
+            partial.rename(target_dir / filename)
+    speech_cache.write_manifest_from_dir(target_dir, url=urls[0])
     return target_dir
 
 

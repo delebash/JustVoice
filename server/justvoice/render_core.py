@@ -84,6 +84,40 @@ def resolve_audio_prompt_for_stored(state: AppState, stored) -> str | None:
     return str(path.resolve())
 
 
+def voice_synth_fields(state: AppState, stored) -> dict:
+    """Everything a stored voice contributes to a synth request, keyed as
+    the engine protocol expects. THE one place that knows how each voice
+    source reaches an engine — added 2026-08-19 with the acquisition build,
+    because three call sites (render, generate, audition) each resolved the
+    reference clip and nothing else, so blended and trained voices rendered
+    as their bare id and came out in the wrong voice entirely.
+
+        cloned / imported → audio_prompt_path (+ ref_text where the engine
+                            takes the clip's transcript)
+        blended          → voice_vector (the style vector; kokoro)
+        trained          → adapter_path (the LoRA dir)
+        designed         → nothing: the description rides `delivery.instruct`
+                           through compose_instruct, like any other prose
+        preset           → nothing
+
+    A None value means "not applicable", and every field is optional on the
+    wire, so an engine that ignores one is unaffected.
+    """
+    if stored is None:
+        return {}
+    out: dict = {}
+    prompt = resolve_audio_prompt_for_stored(state, stored)
+    if prompt:
+        out["audio_prompt_path"] = prompt
+        if getattr(stored, "transcript", None):
+            out["ref_text"] = stored.transcript
+    if stored.source == "blended" and getattr(stored, "embedding", None):
+        out["voice_vector"] = list(stored.embedding)
+    if stored.source == "lora" and getattr(stored, "adapter_path", None):
+        out["adapter_path"] = stored.adapter_path
+    return out
+
+
 def _tags_supported(state: AppState, engine_id: str) -> bool | None:
     """Does this engine keep paralinguistic tags? Registry backends answer
     from meta; managed plugins from their manifest CAPABILITIES. None =
@@ -172,22 +206,53 @@ def _apply_emotion_tag(text: str, delivery: dict[str, Any], tagset: Any | None) 
     return f"{tagset.syntax.format(value=tag)} {text}"
 
 
-def _apply_lexicons(text: str, lexicon_ids: list[str], state: AppState) -> str:
-    """Apply lexicon substitutions to the text. Lexicons are applied in
-    order — first match wins for a given grapheme.
+def _supports_phoneme_input(engine_id: str) -> bool:
+    """Whether this engine can pronounce a word from IPA (Kokoro can)."""
+    try:
+        from .engines.capability_details import lookup
+
+        cap = lookup(engine_id)
+        return bool(cap and cap.supports_phoneme_input)
+    except Exception:  # noqa: BLE001 — capability table unavailable → no IPA
+        return False
+
+
+def _apply_lexicons(
+    text: str, lexicon_ids: list[str], state: AppState, *, ipa_capable: bool = False
+) -> tuple[str, dict[str, str]]:
+    """Apply lexicon entries. Returns (text, ipa_map).
+
+    Two kinds of entry, two mechanisms:
+
+    * ``alias`` — a spelling that the engine's own text reader gets right
+      ("Worcester" → "Wooster"). Plain text replacement, any engine.
+    * ``phoneme_ipa`` — the exact pronunciation. Text replacement would
+      make the engine READ the IPA letters, so instead the entries are
+      collected into ``ipa_map`` and, on an engine that accepts phonemes,
+      spliced into the phoneme stream engine-side (kokoro/ipa.py). On an
+      engine that cannot, the alias is the fallback; an IPA-only entry
+      does nothing there — a guess beats reading "wˈʊstər" aloud.
+
+    Until 2026-08-21 only ``alias`` was ever applied: the IPA column was
+    stored, displayed, and silently ignored at render.
+
+    Lexicons apply in order — first match wins for a given grapheme.
     """
     if not lexicon_ids:
-        return text
+        return text, {}
     out = text
+    ipa_map: dict[str, str] = {}
     for lid in lexicon_ids:
         lex = state.lexicons.get(lid)
         if not lex:
             continue
         for entry in lex.entries:
-            if entry.alias:
-                # Simple grapheme → alias replacement
+            if ipa_capable and entry.phoneme_ipa:
+                if entry.grapheme not in ipa_map:
+                    ipa_map[entry.grapheme] = entry.phoneme_ipa.strip()
+            elif entry.alias:
                 out = out.replace(entry.grapheme, entry.alias)
-    return out
+    return out, ipa_map
 
 
 def probe_line_cached(
@@ -217,7 +282,15 @@ def probe_line_cached(
     effective_text = text
     if not tags_supported:
         effective_text = strip_tags(effective_text)
-    effective_text = _apply_lexicons(effective_text, lexicons, state)
+    effective_text, ipa_map = _apply_lexicons(
+        effective_text, lexicons, state,
+        ipa_capable=_supports_phoneme_input(engine_id),
+    )
+    if ipa_map:
+        # Rides delivery so it reaches the engine AND enters the cache key
+        # (with_delivery_json below) — a changed pronunciation is a
+        # different render.
+        delivery = {**delivery, "ipa_map": ipa_map}
     # After the lexicon, never before — a lexicon entry must not be able to
     # rewrite the inside of a tag we just generated.
     effective_text = _apply_emotion_tag(effective_text, delivery, _emotion_tagset(engine_id))
@@ -297,7 +370,12 @@ def render_line(
     )
     if not tags_supported:
         effective_text = strip_tags(effective_text)
-    effective_text = _apply_lexicons(effective_text, lexicons, state)
+    effective_text, ipa_map = _apply_lexicons(
+        effective_text, lexicons, state,
+        ipa_capable=_supports_phoneme_input(engine_id),
+    )
+    if ipa_map:
+        delivery = {**delivery, "ipa_map": ipa_map}
     # Kept in lockstep with `probe_line_cached` — the two derive the same key
     # and any transform added to one has to land in the other or the probe
     # starts lying about what is cached.
@@ -363,10 +441,7 @@ def render_line(
                     f"engine '{engine_id}' failed to load on first use: {e}. "
                     f"Load it on the Engines tab first, or POST /v1/engines/{engine_id}/load."
                 )
-        audio_prompt_path = None
-        stored = state.voices.get(voice)
-        if stored is not None:
-            audio_prompt_path = resolve_audio_prompt_for_stored(state, stored)
+        voice_fields = voice_synth_fields(state, state.voices.get(voice))
 
         def _synth_piece(piece: str) -> tuple[bytes, int | None, int]:
             audio_bytes, meta = mgr.synth(
@@ -377,7 +452,7 @@ def render_line(
                     "language": language,
                     "delivery": delivery,
                     "seed": seed,
-                    "audio_prompt_path": audio_prompt_path,
+                    **voice_fields,
                 },
             )
             piece_pcm = (

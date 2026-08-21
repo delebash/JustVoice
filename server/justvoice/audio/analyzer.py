@@ -16,7 +16,7 @@ from ..models import (
 from .wav import parse_wav_header
 
 
-def _compute_loudness(pcm_bytes: bytes) -> LoudnessStats:
+def _compute_loudness(pcm_bytes: bytes, sample_rate: int = 0) -> LoudnessStats:
     if len(pcm_bytes) < 2:
         return LoudnessStats(
             peak_dbfs=-math.inf,
@@ -38,19 +38,40 @@ def _compute_loudness(pcm_bytes: bytes) -> LoudnessStats:
     silence_ratio = float((abs_samples < silence_threshold).sum()) / len(samples)
     clipping_ratio = float((abs_samples >= 32760).sum()) / len(samples)
 
+    # SNR estimate (2026-08-20, for the training gates): 50 ms frame RMS,
+    # noise floor = the 10th-percentile frame, signal = the 90th. An
+    # ESTIMATE with a documented blind spot: on CONTINUOUS audio with no
+    # quiet frames (dense speech, a steady tone) the "floor" percentile
+    # lands on the signal itself and the ratio collapses toward 1 — a
+    # falsely terrible number. So a floor within 6 dB of the signal
+    # returns None (unknown) rather than a low value; the gates skip
+    # unknowns. Found live 2026-08-20: silence-split chunks read 0 dB.
+    snr_db: float | None = None
+    if sample_rate > 0:
+        frame = max(1, int(sample_rate * 0.05))
+        n_frames = len(samples) // frame
+        if n_frames >= 4:
+            framed = samples[: n_frames * frame].reshape(n_frames, frame)
+            frame_rms = np.sqrt(np.mean(framed * framed, axis=1))
+            noise = float(np.percentile(frame_rms, 10))
+            signal = float(np.percentile(frame_rms, 90))
+            if noise > 0 and signal / noise >= 2.0:
+                snr_db = 20.0 * math.log10(signal / noise)
+
     return LoudnessStats(
         peak_dbfs=peak_dbfs,
         rms_dbfs=rms_dbfs,
         crest_factor_db=crest,
         silence_ratio=silence_ratio,
         clipping_ratio=clipping_ratio,
+        snr_db=snr_db,
     )
 
 
 def analyze(buf: bytes) -> AudioAnalysis:
     fmt, data_off, data_size = parse_wav_header(buf)
     pcm = buf[data_off : data_off + data_size]
-    loudness = _compute_loudness(pcm)
+    loudness = _compute_loudness(pcm, fmt.sample_rate)
     return AudioAnalysis(
         sha256=hashlib.sha256(buf).hexdigest(),
         file_size_bytes=len(buf),

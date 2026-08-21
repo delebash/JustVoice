@@ -22,6 +22,9 @@ export {
 export const DEFAULT_APPEARANCE = {
   ...GENERIC_DEFAULT,
   uiFont: "Inter",
+  // Compact density — the mock's control sizing (12px btn/box scale), which
+  // is the design the app is held to. Operator-changeable in Appearance.
+  btnDensity: "compact",
   accentHue: 166, // green #3a7d63
   goldHue: 82,
   dangerHue: 34,

@@ -200,3 +200,15 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
   generations + first complaint) · append-only activity log (trigger: first
   webhook-replay incident) · `POST /v1/projects/import` for non-JustWrite sources.
   NEVER ships: multi-user accounts (a v2 SaaS pivot) · voice analytics (vanity).
+
+## Parked 2026-08-21 (the C5 group — user's rec-approved parking)
+
+- **Kokoro group-vector math** (kokovoicelab-style): direction vectors from
+  voice groups (gender/language), interpolation ranges, .pt/voices.bin
+  export. The 2-voice strategies shipped 2026-08-20; group math stays here.
+- **Extra output formats** per request (opus / flac / raw pcm) — mastering
+  ships mp3/aac; add only when someone actually needs another container.
+- **SSML / phonemize / dialogue endpoints** (Kokoro-FastAPI parity items) —
+  inline tags + lexicons cover the real cases.
+- **Timeline design** (ruling 15, 2026-08-15) — already recorded above;
+  stays parked.

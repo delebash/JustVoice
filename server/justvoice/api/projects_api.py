@@ -836,14 +836,31 @@ def _materialize_lexicon(
     """Create a project-scoped lexicon from the import's entries.
 
     Returns the new lexicon id (also written to project.default_lexicon_id),
-    or None when the import carries no lexicon entries.
+    or None when the import carries neither lexicon entries nor characters.
+    Character names land as blank-pronunciation rows — the book's
+    pronunciation worklist, seeded free at import.
 
     Post-Phase-1.5 flip: LexiconStore reads the same rows, so this writes
     ONLY through the caller's session (one transaction with the project
     row — a separate store session would hit the FK before the project
     commits). The old dual-write is gone.
     """
-    if not standard.lexicon_entries:
+    # The book's NAMES seed the lexicon too (decided item "Seed a
+    # pronunciation lexicon from the imported book's proper nouns",
+    # built 2026-08-21): every character the source hands over becomes a
+    # blank-pronunciation row — a worklist, not a claim. Safe because an
+    # empty entry is inert at render: _apply_lexicons acts only on a
+    # non-empty alias or IPA (verified with the 2026-08-21 rewiring).
+    seen: set[str] = set()
+    name_rows = []
+    for char in standard.characters:
+        name = (char.name or "").strip()
+        if not name or name.casefold() in ("narrator",) or name.casefold() in seen:
+            continue
+        seen.add(name.casefold())
+        name_rows.append(name)
+
+    if not standard.lexicon_entries and not name_rows:
         return None
     import uuid as _uuid
 
@@ -857,13 +874,26 @@ def _materialize_lexicon(
             project_id=project.id,
         )
     )
+    explicit = set()
     for e in standard.lexicon_entries:
+        explicit.add(e.grapheme.casefold())
         db.add(
             DbLexiconEntry(
                 lexicon_id=lex_id,
                 word=e.grapheme,
                 pronunciation=e.phoneme_ipa or e.alias or "",
                 notation="ipa" if e.phoneme_ipa else "phonetic",
+            )
+        )
+    for name in name_rows:
+        if name.casefold() in explicit:
+            continue  # the import's own entry wins over the blank seed
+        db.add(
+            DbLexiconEntry(
+                lexicon_id=lex_id,
+                word=name,
+                pronunciation="",
+                notation="phonetic",
             )
         )
     project.default_lexicon_id = lex_id
