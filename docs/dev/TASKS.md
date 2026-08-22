@@ -88,6 +88,28 @@ BUILT:  n/a — this is a working rule: **always `git commit -F - -- <paths>`.**
         OPEN: none — apply it on every commit while a second session runs.
 GO:     n/a
 
+### FINDING — the dev data dir: what is really in it, and a trap that re-arms itself
+STATE:  FINDING — measured 2026-08-22 ("clean it up" → "your rec go")
+WHY:    Two claims carried for a day were both wrong. The live root is NOT "~50 GB
+        of real user data": it is 45.7 GB re-downloadable HF model cache + 3.7 GB
+        regenerable speech cache, and the user's own content in it was a 495 KB DB
+        plus two 6 KB files — voices/personas/lexicons/generations held ZERO files.
+        `cargo clean` costs a re-download, not the work. And the stale `<repo>/data`
+        was NOT pure junk: it held the only copy of the Alder and Wren dataset-builder
+        projects (33 rows each), which a size-based read would have deleted.
+NOT:    Moving the live root out of `target/debug` — the user's call, item 4 of the
+        recommendation: the risk is a re-download, not data loss. Reinstalling the
+        global `justvoice-server` — it was already correct (`justvoice.serve:main`).
+BUILT:  `<repo>/data` DELETED (1.18 GB) after the two projects were copied across and
+        verified through `storage/dataset_builder.py`'s own `list_projects`.
+        **Deleting it re-armed the trap rather than removing it** — a headless run
+        with no `--data-dir` now CREATES a fresh empty one that looks healthy and is
+        still the wrong database. `--data-dir src-tauri/target/debug/data` stays
+        mandatory for the gate. Full record, all measurements, and the storage shape
+        of a builder project: `docs/plans/2026-08-22-data-dirs-and-disk-reclaim.md`.
+        OPEN: none here — the remaining piece is the kit's, see that repo's tracker.
+GO:     n/a
+
 ### The LoRA tab is Alexandria-parity, and acceleration works on every roster engine
 
 STATE:  GO 2026-08-21 — *"go on table your rec go"* on the full decision
@@ -727,8 +749,10 @@ NOT:    a Preset tab (presets are not acquired). NOT Chatterbox Multilingual
 training (same toolkit claims it; off until measured). NOT typed VRAM or
 wall-clock numbers anywhere.
 COSTS:  Kokoro moves to its own venv (kokoro-onnx wants numpy>=2.0.2, the
-shared venv is pinned <2.0 by qwen3) and its model files change, so **Kokoro
-re-installs and re-downloads once**. A sherpa-era model dir is detected and
+then-shared venv was pinned <2.0 by qwen3) and its model files change, so
+**Kokoro re-installs and re-downloads once**. *(The venv half of this cost was
+paid by the 2026-08-22 per-engine migration — `engines/kokoro/.venv` exists.
+The model-file half still stands.)* A sherpa-era model dir is detected and
 says so rather than failing deep inside np.load.
 OPEN:   **Chatterbox training has never been heard** — the recipe follows a
 working upstream one and every call is checked against the installed
@@ -776,7 +800,9 @@ DECIDED:
   and install steps carry an `"oses"` gate filtered at ONE door each
   (`model_catalog._variant_rows`, `manifest.install_steps`); qwen3 ISOLATION
   is per-OS — its macOS venv is mlx-audio only (mlx-audio needs
-  transformers>=5.14, chatterbox pins ==5.2.0 in the shared venv). The
+  transformers>=5.14, chatterbox pins ==5.2.0 in its own venv — it read "the
+  shared venv" before the 2026-08-22 migration, and per-engine venvs are what
+  make that pin legal rather than a conflict). The
   `-mlx` id SUFFIX keeps the capability suffix-walk on the right family row;
   explicit full-id rows drop training on the MLX Base variants (the trainer
   is PyTorch, Windows/Linux).
@@ -837,9 +863,13 @@ sessions. The one piece of it still undone is recorded in that plan's own
 closing banner: Labs still carries compare + renderlab + audio as three subs
 where the plan wanted one "Audio tools". This doc also supersedes pipeline
 item 6. Mock: `https://claude.ai/code/artifact/534a16a2-af40-438b-a64d-34baaf31f838`
-— 18 routes, 126 controls, 0 dead. **Source lives at `docs/plans/mock/`**
-(moved out of the session scratchpad 2026-08-17, with a README for the
-edit → build → validate → republish loop).
+— **18 routes, 134 controls, 0 dead, 4 deliberately disabled** (re-measured with
+`validate.py` 2026-08-22; this line had said 126). **Source lives at
+`docs/plans/mock/`** (moved out of the session scratchpad 2026-08-17, with a
+README for the edit → build → validate → republish loop). The counts are
+maintained in the doc's §8.18 and nowhere else — do not re-state them here.
+**One known defect:** the `scene` route went unreachable in the 2026-08-16
+Render restructure and is not fixed (§8.18, §8.21 item 10).
 
 THE VOICE-LAYER ARGUMENT is §8.22 of that doc — why a persona earns its place
 (it is the layer that survives a recast), which half of it actually survives
@@ -869,8 +899,13 @@ reasoning at the cited section.
 - **Persona · cast · speaker. Never "character".** *"be consistant you have words
   cast character persona which is which"*. Code-verified: `Persona` is the entity,
   `ProjectPersona`/`get_cast` the project's set and the verb, `speaker` the
-  attribution word; "character" is nowhere in the codebase. Sweep NOT yet given a
-  go — 25 instances in the mock, plus this tracker and the doc's §2.3. §8.4.
+  attribution word; "character" is nowhere in the codebase. **The mock half of
+  the sweep IS DONE** — `sweep_persona.py` applied the 25 replacements and
+  `validate.py` now reports 0 character / 72 persona (state corrected
+  2026-08-22; this line had said the sweep was never given a go). The prose half
+  — this tracker and the doc's §2.3 / §2.2 / §2.5 / §3 / §8.21 / §8.22 — still
+  has no go. `find_anchors(segments, characters)` and `format_characters` are
+  code identifiers and must not be swept. §8.4.
 - **Five steps: Discover → Script → Cast → Render → Export.** *"i would say
   discover speakers hould be its owne thing script should have anaylize and
   review"*. Discover creates personas; Analyze can only choose from personas that
@@ -1094,7 +1129,8 @@ to add it, qwen does."* Researched and verified the same day.
 WHY:    Every manifest says `voice_design: False` and `POST /v1/voices/design`
 has nothing behind it. `Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign` is real, and
 `generate_voice_design(text, instruct, language, …)` is **already in the
-installed `qwen_tts`** in `engines/.shared-venv` — gated at
+installed `qwen_tts`** in `engines/qwen3/.venv` (this said `engines/.shared-venv`
+until 2026-08-22; the per-engine migration deleted that path) — gated at
 `qwen3_tts_model.py:686` on `tts_model_type == "voice_design"`. **No new
 dependency.** What is missing: a variant row, the ~4.52 GB download, and one
 adapter branch.
@@ -1194,8 +1230,10 @@ because `engine` is itself a declared field. The audition panel and the render
 now agree.
 
 The same pass audited all nine capability rows against their adapters, with
-the installed packages introspected (chatterbox, zipvoice, qwen_tts live in
-`engines/.shared-venv`). Corrections: `min_p`/`top_p` now forwarded
+the installed packages introspected (they lived in `engines/.shared-venv` at
+the time; since the 2026-08-22 per-engine migration `chatterbox` is in
+`engines/chatterbox/.venv`, `zipvoice` in `engines/luxtts/.venv` and `qwen_tts`
+in `engines/qwen3/.venv`). Corrections: `min_p`/`top_p` now forwarded
 (chatterbox) · `num_inference_steps` → `num_steps`, which had pinned steps at
 4 forever (luxtts) · `max_ref_length` wired to `encode_prompt(duration=)`
 rather than dropped (luxtts) · `volume` removed, it is not a parameter
@@ -1223,7 +1261,8 @@ DOCS: `docs/engines.md` gained the per-engine tuning matrix; `docs/generate.md`
 corrected (pitch is post-process on every engine, not native on LuxTTS);
 `docs/dev/code-map.md` §5 carries the declaration↔adapter matrix.
 
-STILL OPEN from this area, NOT fixed: TADA is not in the shared venv, so its
+STILL OPEN from this area, NOT fixed: TADA has no installed venv of its own
+(it read "is not in the shared venv" before the 2026-08-22 migration), so its
 upstream knob surface could not be introspected — re-add knobs there only
 alongside the adapter change that passes them. (The pause, direction and
 emotion gaps listed here are closed — see the two findings above and the
@@ -1691,7 +1730,9 @@ streams plain files, never the hub cache layout; that is the CORRECT
 solution's shape, i.e. this item).
 FINDING (code-verified 2026-08-13): speech models live INSIDE the installed
 package tree — `ENGINES_DIR = Path(__file__).parent`, models at
-`engines/<id>/models/`, the shared venv at `engines/.shared-venv/` — while
+`engines/<id>/models/`, and the interpreters at `engines/<id>/.venv/` (this read
+"the shared venv at `engines/.shared-venv/`" until the 2026-08-22 per-engine
+migration deleted it; the finding itself is unaffected) — while
 the LLM's cache correctly lives at `<data_dir>/ai-cache` (app.py:221). An
 app upgrade/reinstall strands or nukes gigabytes; factory reset and the
 backups page cannot see them; `is_installed`/uninstall/prefetch all route

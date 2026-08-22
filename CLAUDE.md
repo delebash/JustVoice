@@ -65,6 +65,14 @@ dev. Omit the flag and the gate tests a database the app never opens: on
 reasoning and the ladder are in
 `docs/plans/2026-08-21-blend-rework-and-consistency-audit.md` §18.1.
 
+`<repo>/data` was **deleted on 2026-08-22**, and that made the trap *worse, not
+better*: a bare headless run now creates a fresh empty one, so instead of an
+obviously-stale database you get a plausible-looking empty one. The flag is
+still the only thing that points the gate at the app's data.
+`docs/plans/2026-08-22-data-dirs-and-disk-reclaim.md` §2 has the measured
+contents of both roots, and §3 the near-miss that came out of assuming the
+second one was disposable.
+
 **Run the gate before claiming a renderer fix works, but do not mistake it for
 proof of the fix.** It loads each view and counts JS errors. It does not click
 tabs, load models or play audio — so a change to any of those is covered only by

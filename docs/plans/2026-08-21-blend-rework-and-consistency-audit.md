@@ -652,6 +652,13 @@ the environment:
 The desktop app is unaffected: `src-tauri/src/lib.rs:281` prefers the repo venv's
 copy and only falls back to PATH.
 
+> **SUPERSEDED 2026-08-22 — this is no longer true.** The global install now
+> reads `justvoice-server = justvoice.serve:main` (checked in its own
+> `entry_points.txt`) and was observed *running* the full `serve --host --port
+> --data-dir` command line. It was fixed at some point and never re-checked, so
+> the stale claim outlived the staleness and was still being repeated a day
+> later. `docs/plans/2026-08-22-data-dirs-and-disk-reclaim.md` §7.
+
 **CORRECTED (same day, §18.1): there are TWO data dirs in dev, and the gate
 defaults to the wrong one.** Seven smoke views (Projects, Chapters, Studio,
 Generate, Personas, Lexicons, Presets — every view that fetches
@@ -1485,6 +1492,18 @@ changed most.
 2. **The global `justvoice-server` on `F:\Python312` is stale** — it still
    targets `justvoice.cli:app`, which lost its `serve` command on 2026-08-07.
    `pip install -e .` there fixes it (§17.5).
+
+> **BOTH RESOLVED 2026-08-22, and both were wrong as written** —
+> `docs/plans/2026-08-22-data-dirs-and-disk-reclaim.md`.
+>
+> **(1) is not "real data".** Measured: 45.7 GB of re-downloadable HF model
+> cache and 3.7 GB of regenerable speech cache. The user's actual content in
+> that root was a 495 KB database and two 6 KB project files — `voices`,
+> `personas`, `lexicons` and `generations` held **zero files**. `cargo clean`
+> costs a re-download, not the work. The user chose to leave it where it is.
+>
+> **(2) was already fixed** — the global install reads `justvoice.serve:main`
+> and runs. The reinstall would have been a no-op.
 
 ### 23.5 · Docs updated for this work
 
