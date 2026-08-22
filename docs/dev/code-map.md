@@ -279,9 +279,9 @@ only platform anything excludes: **qwen3** (CUDA-only adapter), **tada** (MPS
 tensor issues) and **moss-tts** (flash-attn). The user-facing
 table is `docs/engines.md` → *Which engines run on your operating system*.
 
-**The gate is `install_engine()` (`manager.py:663`)** — above the isolation
-split, deliberately. It raises `InstallError` naming the host OS and the
-declared list. `EngineInfo.supported_on_this_os` carries the verdict to the
+**The gate is `install_engine()` (`manager.py:836`)** — the first thing it
+does, before any install work. It raises `InstallError` naming the host OS and
+the declared list. `EngineInfo.supported_on_this_os` carries the verdict to the
 client, computed server-side because the renderer may be a browser on another
 machine; `SpeechEnginesTab.vue:osBlocked()` reads it and swaps the Install
 button for a badge.
@@ -297,6 +297,64 @@ Chatterbox is **clone-only** — no preset voices, the host catalog stays empty
 for it (`chatterbox/manifest.py:168`). Kokoro's list is **static, 54 presets,
 unconditional** (`kokoro/manifest.py:66`) and `voices_api.py:51-62` never checks
 which variant is installed.
+
+### 3e. How an engine environment gets built — and where its state lives
+
+**One venv per engine, always** (2026-08-22; the shared interpreter and its
+`constraints.txt` ceiling are deleted). `EngineManifest.isolation` survives as
+the single door other code asks through, and returns `"venv"` for everything.
+
+`install_engine()` → `_install_engine_isolated()` (`manager.py`), in order:
+
+| Step | What it does |
+|---|---|
+| `_check_uv_available()` | bundled uv sidecar beside the server binary first, PATH only as the dev fallback |
+| `uv venv --python 3.13` | uv **downloads a managed CPython** if the box has none — this is what lets an engine install on a machine with no Python at all. It lands in `<runtime root>/.uv-python` |
+| plugin install | `justvoice_plugin` first, so the subprocess has its base class |
+| `manifest.INSTALL` | each step in order: `torch` (index from `_detect_torch_index_url`), `pip`, `pip-no-deps`, `pip-git`, `pip-find-links`, `pip-local`, `model-*` |
+| `ACCEL_INSTALL` | hardware-conditional arm, chosen from the kit's detected runtimes |
+| stamps | origin + manifest fingerprint, **last**, so a half-finished install leaves none |
+
+**Two stamps decide `is_installed`**, and each is a bug someone hit:
+
+- `.jv-venv-origin` (`record_venv_origin` / `venv_origin_matches`) — the
+  install path the venv was built under. Venvs bake absolute paths into
+  `pyvenv.cfg` and their launchers, so a moved app folder leaves venvs that are
+  all present and all dead. An UNSTAMPED venv reads as matching here.
+- `.jv-venv-manifest` (`manifest_package_fingerprint`) — sha256 over the
+  declared package set **plus `ENGINE_PYTHON_VERSION`**. An unstamped venv reads
+  as MISMATCHED, the opposite rule, deliberately: unstamped means shared-venv
+  era, i.e. a different Python and a different torch. This is what closes the
+  `peft` class — a manifest that gains a package flips the row to (re)Install
+  instead of reporting ready and failing later somewhere else.
+
+**Source and state are different roots.** `ENGINES_DIR` is where plugin SOURCE
+lives (`manifest.py`, `engine.py`, `train_lora.py`, `requirements.txt`) and is
+read-only in a frozen build. `engines_runtime_root()` is where MUTABLE state
+goes — venvs, model caches, the uv cache — and returns `ENGINES_DIR` unfrozen,
+`<data_dir>/engines-runtime` frozen. `EngineManifest.state_dir` hangs `.venv`,
+`models/`, `voices/`, `state/` off it. Before this split a packaged build wrote
+engine venvs into the PyInstaller temp directory, which the OS deletes on exit.
+
+**`_uv_env()` is THE place the cache location lives.** It `setdefault`s
+`UV_CACHE_DIR` and `UV_PYTHON_INSTALL_DIR` under the runtime root and is passed
+at every uv spawn. The cache must sit on the same volume as the venvs or uv
+silently copies instead of hardlinking — the difference between the five engine
+venvs adding 431 MB and adding 18.7 GB (measured 2026-08-22).
+
+**The family torch pin** — every engine that installs torch names the same
+`torch==2.13.0` / `torchaudio==2.11.0`, guarded by
+`tests/test_engine_constraints.py`. Index by GPU tier via the kit's own rule
+(`concrete_gpu(hw, "cuda")`): cap ≥ 10 → cu130, else cu126; ROCm 7.2 on Linux;
+AMD-on-Windows is CPU plus a logged override recipe. Deprecated engines are
+exempt and frozen at whatever they last declared.
+
+**Dev tools:** `npm run check:engines` (`server/scripts/check_engines.py`) —
+`--drift` compares each venv's real contents against its manifest,
+`--upstream` compares every pin against GitHub / PyPI / HF,
+`--test <engine>` builds a scratch venv and imports the adapter in it.
+`server/scripts/harvest_revisions.py` prints the current commit sha for every
+HF source, for pinning.
 
 ---
 

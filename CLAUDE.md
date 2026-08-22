@@ -23,7 +23,15 @@ npm run tauri build                # production installer
 
 justvoice-server serve             # headless; same UI at /ui/
 cd server && ruff check . && pytest    # both must pass before a commit
+npm run check:engines              # per-engine: manifest vs venv, pins vs upstream
 ```
+
+**Engines install themselves, one venv each.** Clicking Install on an engine row
+builds `engines/<id>/.venv` on Python 3.13 from that manifest alone — uv downloads a
+managed CPython if the machine has none, so nothing has to be installed by hand. The
+server itself is separate: `pip install -e .` in a dev checkout, a frozen PyInstaller
+sidecar in a release, and it never touches the uv cache. `docs/dev/code-map.md` §3e is
+the mechanism; `docs/engines.md` is the user-facing half.
 
 **The console script is `justvoice-server`, never `justvoice`.** The Tauri binary is
 `justvoice.exe`; giving both the same name makes Windows `CreateProcessW` resolve
