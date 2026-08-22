@@ -830,7 +830,12 @@ STATE: BEING DESIGNED IN THE MOCK. NOTHING BUILT IN APP CODE.
 the mock is the design, and §8 carries every ruling made while walking it, the
 reasoning, the mock's exact state (§8.18) and how to build it (§8.1). §1–§7 of
 that doc are prior thinking, superseded where they disagree. It supersedes the
-unbuilt half of the voice-workbench plan (Slices C/D/E are FROZEN) and pipeline
+voice-workbench plan, whose tracker item was CLOSED 2026-08-22 (*"1-5 are done
+close that out since we are doing redesign"*) — its Slices A and B shipped,
+C and D never will, and E landed piecemeal through the 2026-08-19/20/21 voices
+sessions. The one piece of it still undone is recorded in that plan's own
+closing banner: Labs still carries compare + renderlab + audio as three subs
+where the plan wanted one "Audio tools". This doc also supersedes pipeline
 item 6. Mock: `https://claude.ai/code/artifact/534a16a2-af40-438b-a64d-34baaf31f838`
 — 18 routes, 126 controls, 0 dead. **Source lives at `docs/plans/mock/`**
 (moved out of the session scratchpad 2026-08-17, with a README for the
@@ -1003,7 +1008,8 @@ tone, and the same workspace feeds training-dataset prep. That app has **no
 speaker attribution at all** (manual `[1]:`/`[2]:` prefixes), so there is nothing
 in it for the attribution work.
 
-GO: needed, per phase. Slices C/D/E of the workbench plan are frozen.
+GO: needed, per phase. (The workbench plan it used to defer to was closed
+2026-08-22 — the redesign doc is the surface now.)
 
 ### ~~FINDING — Block.direction is stored, editable, and never rendered~~ — FIXED
 
@@ -1123,60 +1129,6 @@ nothing and the user cannot know why.
 OPEN: surface it in the chapter render panel — *"waiting — Chatterbox is
 finishing 40 lines"*.
 GO: needed.
-
-### THE VOICE WORKBENCH — SUPERSEDED for its unbuilt half
-
-STATE: DECIDED 2026-08-15 — *"your rec make detailed plan for opus to execute
-without thinking too much i will switch to opus and have him execute the
-plan"*. THE PLAN: `docs/plans/2026-08-15-voice-workbench.md` — execution
-rules, five slices (A: the voice_instruct/personality split, DATA RESET
-REQUIRED after it lands; B: audition panel on the voice row, absorbs pipeline
-item 5; C: persona form split + delivery editor, kills the openDeliveryHint
-toast; D: Generate dissolution = pipeline item 6, after B+C; E: one ＋New-voice
-door + Labs collapse + Train's roomy Voices surface + inspector
-removal-by-replacement), plus §8 OPEN items that need his word (samples API,
-attribution-prompt enrichment, MCP instruct).
-SLICE A IS BUILT — 2026-08-15, on the go *"build slice A go"*. The persona now
-carries `voice_instruct` (the only text that reaches the synth) and
-`personality` (the character sheet: Compose/Rewrite, casting, export sidecar).
-The third description field and the dead MCP flag are gone, the JW import
-fills the sheet only, and `test_voice_instruct.py` holds the line. Gates:
-567 server tests, ruff, biome, 53 vitest, build, smoke — all green.
-SLICE B IS BUILT AND IS NOT THE DESIGN — 2026-08-15, on the go *"slice B
-go"*. What shipped: the row preview takes an optional `{text, delivery}` body
-with a rendered-audition cache; `VoiceAudition.vue` mounts inline on a
-voice-row click with the load-cost line and the resolved-stack line;
-`services/audition.js` holds the pure parts. The user's verdict on seeing it:
-*"stop putting stuff under advanced, this is crap nothing like a nice design
-nothing like a nice workflow, no mixing no direction like the render tab, you
-where supposed to combine features … having it under voices is terrible"*.
-He is right, and the cause is this plan, not the code.
-
-THE DESIGN WAS MISSING AND IS NOW RECOVERED. The plan was written as five
-slices of implementation with NO statement of what was being built or why;
-the design agreed in the same session was never written down and died in the
-compact. Recovered 2026-08-15 from the session transcript
-(`~/.claude/projects/E--Dev-Web-JustVioce/364ef093-….jsonl`, messages
-1219–1245) and written into the plan as its new FIRST section, **THE DESIGN**.
-Load-bearing content: identity → hear → make; **the voice page is a workbench,
-not a profile** (Hear it · Tune it · Feed it · Derive from it); **Generate is
-ABSORBED, not deleted**; the render lab becomes axes on the Tune panel; one
-audition component at voice/persona/preset resolution with the resolved-stack
-line; Labs collapses to one analyzer bench; one ＋New-voice door with honest
-preconditions; slot-coupled synth must be stated, not discovered.
-
-CONTRADICTION TO RESOLVE BEFORE SLICE D: pipeline item 6 says delete
-GenerateView and *"no new surface"*. The design says absorbed, and the
-workbench IS the surface. Item 6's spec predates the design and must be
-rewritten, not executed.
-
-OPEN, blocking the rest: does the workbench own PER-LINE work (the Alexandria
-audio-editor shape the user showed: speaker · text · emotion/style · Gen per
-row) or does per-line stay in Studio's Script/Render? That answer sets the
-page's scope. Also open: samples API build-vs-remove; where the merged
-analyzer bench lives.
-GO: needed — C–E do not proceed until the per-line question is answered and
-Slice B's row-drawer mount is reconsidered against the design.
 
 ### FINDING — 4 of the Voices table's 11 columns are wired to nothing
 

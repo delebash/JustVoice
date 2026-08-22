@@ -1,16 +1,39 @@
 # 2026-08-15 — The voice workbench: one place to hear, tune, and make voices
 
-> **⚠ SUPERSEDED 2026-08-15 for everything not yet built.**
+> **⚠ CLOSED 2026-08-22. This plan is a historical record — build nothing from it.**
 > **`docs/plans/2026-08-15-voice-workflow-redesign.md` is the resume surface.**
-> Slices **C, D and E are FROZEN and must not be built** — they predate the
-> design and several of their instructions are now known-wrong (Slice D defers
-> to a struck spec; Slice E's inspector-removal ordering assumes a voice-centric
-> workbench the redesign reshapes). This doc stays as the **record of Slices A
-> and B**, which shipped, and of THE DESIGN section recovered below — which the
-> redesign doc carries forward and extends.
+> Its tracker item was deleted on the user's word (*"1-5 are done close that out
+> since we are doing redesign"*); THE DESIGN section below is carried forward and
+> extended by the redesign doc, and every still-open question it raised now lives
+> in the redesign's tracker item.
 
-**STATUS: SLICES A and B ARE BUILT (2026-08-15). C, D and E are FROZEN —
-superseded, see above.**
+**FINAL STATUS, verified against the code 2026-08-22:**
+
+| Slice | Outcome |
+|---|---|
+| **A** — sound-truth data model | **BUILT** 2026-08-15 (`f54c4ea`), needed a data reset |
+| **B** — audition panel | **BUILT** 2026-08-15 (`df0299f`) — correct to spec, wrong to purpose; that verdict is what produced the redesign |
+| **C** — persona resolves | **NEVER BUILT.** Died into the redesign, which reshapes where tuning lives |
+| **D** — Generate absorbed | **NEVER BUILT**, and its spec was already struck: it deferred to pipeline item 6 (*"delete GenerateView"*, *"no new surface"*), which contradicts the design on both counts |
+| **E** — one door, Labs collapse, Train's home, inspector removal | **LANDED PIECEMEAL** through the 2026-08-19/20/21 voices sessions rather than as this slice — see below |
+
+**What E actually got, checked in the code 2026-08-22:**
+
+- **E1 Train's own home — DONE.** Training moved to Voices beside
+  clone/design/import/blend (ruling 13, 2026-08-19); `#train` still lands on it.
+- **E2 one ＋New-voice door — DONE in substance, different in shape.** Voices
+  has a single New-voice panel with per-kind tabs, not the five-card chooser
+  this plan drew.
+- **E3 Labs collapse — HALF DONE.** `train` is out of `LabsView.SUBS` and the
+  legacy `#compare`/`#renderlab`/`#audio` hashes redirect. But **compare,
+  renderlab and audio are still three separate subs** — the merge into one
+  "Audio tools", and retiring RenderLab into the audition panel, never
+  happened. THE ONE PIECE OF THIS PLAN STILL UNDONE. It is left here rather
+  than re-opened as a task because the redesign reshapes Labs anyway; raise it
+  there when Labs comes up.
+- **E4 inspector removal — DONE.** No `inspectedId` drawer, no
+  `inspectedSamples` table, none of the five disabled buttons remain.
+- **E5 redirects — DONE.**
 
 **Read THE DESIGN below before anything else, including before §0.** It is
 the section this plan spent its first two slices without; skipping it is how
