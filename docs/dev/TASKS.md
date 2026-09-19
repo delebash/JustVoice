@@ -104,9 +104,43 @@ WHY:    Test the whole install cold: engine venv installs, model downloads,
         (QC-25), so a DB wipe cannot make the shared engine misreport.
 NOT:    touching JW's ai-cache (197 GB) · `<data>/ai-runtime` (live, per-app
         by design) · git-tracked source · kill-by-image-name.
-BUILT:  nothing deleted yet.  OPEN: two answers — wipe `justvoice.db` y/n;
-        back up Alder+Wren (only copies) y/n — then the go.
-GO:     needed.
+ANSWERED 2026-09-19 — *"wiped db for fresh install and backup alder and wren
+        first"*: wipe `justvoice.db` = YES · back up Alder+Wren before
+        anything is deleted = YES.
+        Then *"your rec on both, go"* (2026-09-19) on the two points the
+        answers left open: (1) backup destination =
+        `E:\Dev\Web\_backups\jv-alder-wren-2026-09-19\` — durable, outside
+        the data dir and outside the session scratchpad (temp, may be
+        cleaned; these are the only copies); (2) Alder+Wren STAY in
+        `<data>/justvoice/training/builder` — they do not affect what this
+        test checks (engine installs, model downloads, QuickSetup), and the
+        backup covers them.
+        CORRECTION to plan §7.3: the "3 user-added gemma catalog rows re-add
+        via UI" is wrong — they are JV's own seed (`seed_presets.py:56`
+        `JV_MODEL_CATALOG` → kit `seed_extra_catalog`, insert-if-missing,
+        `built_in=False` only because an app's seed shows as user rows), so a
+        wiped DB re-creates them on first start.
+BUILT:  2026-09-19 — backup DONE: both `project.json` copied to the
+        destination above, sha256 identical to the originals (Alder 33 rows,
+        Wren 33 rows). Pre-delete scan: nothing running; the only reparse
+        point in the whole delete set is a junction INSIDE `.uv-python`
+        pointing at its sibling there (both ends in the set); `pocket_tts/` =
+        3 cpython-312 `.pyc`, untracked; free on E: 1216.33 GB.
+        Claude Code's auto-mode classifier refused the delete, so the user ran
+        the same script by hand (`! pwsh … speech-clean.ps1`): all 15 targets
+        deleted, **44.66 GB freed** on E: (the ~19 GB the venvs report was
+        mostly hardlinks into `E:\UV_CACHE_DIR`, which stays). Verified after:
+        0 of 15 targets (+ db -wal/-shm) present · JW's ai-cache intact (414
+        files) · JV `ai-runtime` intact (62 files) · Alder+Wren originals and
+        backup both present, hashes equal · `E:\UV_CACHE_DIR` intact · git: 0
+        tracked files deleted · each engine's `state/` and `voices/` empty, so
+        no stale install marker survives.
+OPEN:   the fresh run itself — start the app, choose the SHARED model folder
+        in QuickSetup, install engines. Pass/fail: afterwards
+        `<data>/ai-cache` must NOT exist. Venv rebuilds link from the kept uv
+        cache, so Python packages will not re-download; CPython and every
+        model will.
+GO:     GIVEN 2026-09-19.
 
 ### The component-reuse sweep — DONE, and the git rule that came out of it
 STATE:  DECIDED 2026-08-21 — "what is your rec on settingshell vs tabstrip, and jv
