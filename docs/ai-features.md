@@ -40,8 +40,39 @@ the **Fit** badge says whether it fits your memory (*Fits* / *Tight* / *CPU* /
 *~fast*, *~fine* (comfortable reading speed), *~slow*, *~very slow* — computed
 from the model file's own physics against your machine's memory speed, erring
 on the slow side. The **~** marks an estimate; once a model has actually run
-here, the row shows the **real measured tokens/second** instead. When the app
-doesn't know a model's file details or your machine's speed yet, the chip
+here, the row shows the **real measured tokens/second** instead. The LLM engine
+setup takes that first measurement for you: right after it loads your model it
+spends about fifteen seconds in the background timing one short answer, so the
+model you just set up shows *Measured on this PC* rather than a guess — and
+that number includes the speed-up from speculative decoding (MTP), which the
+estimate deliberately leaves out. Setup never waits on it; if it fails, the
+chip keeps its estimate.
+
+**On a PC with no hardware preset, the LLM engine setup offers a one-minute
+speed check** before it recommends anything. The estimate's weakest input is
+how fast this machine streams model data out of system RAM; the check
+measures it with the engine itself. It downloads one small test model (about
+800 MB, once — served from the app's own release page and verified against
+its checksum), runs it twice (entirely on the graphics card, then with its
+experts in system memory), and records the difference. Every speed estimate in
+the catalog uses that number afterwards. It's always optional — *Skip — use
+estimates* carries on exactly as before — and a PC with a preset never sees it,
+because its preset is already measured. It asks again only after an engine
+update. The test model's address and checksum live under **Engine binaries →
+Speed-check model**.
+
+On a PC without a preset the setup also won't recommend a model whose speed is
+well below reading speed — by default under 6.4 tokens per second, 20 % under
+the *fine* line. The margin keeps a model that lands just under the line from
+being swapped for a much weaker one; a model with no estimate is never skipped
+for being unknown.
+
+When an estimate lands **right on a band line** — by default within 10 % of
+one — the chip shows the number instead of a word: *Fits · ~7.9 tok/s*, not
+*~slow*. A word there would be a coin flip: the next reading of this machine's
+memory speed could put it on the other side of the line without anything
+about the model changing. A **measured** speed always keeps its word. When the
+app doesn't know a model's file details or your machine's speed yet, the chip
 shows plain fit and no band — it never guesses.
 
 **The estimate never decides for you.** Every model dropdown lists every
@@ -50,8 +81,13 @@ the engine can manage it. The engine's own attempt is the final authority.
 
 The engine's memory and speed settings live with the **loaded-models knobs**
 on the engine panel ("Models kept loaded at once"): the VRAM safety margin,
-the default context cap, the RAM headroom, and the speed-band thresholds the
-badges switch over at — all editable, one Save.
+the default context cap, the RAM headroom, the speed-band thresholds the
+badges switch over at, and **Show the number within (%)** — how close an
+estimate may sit to one of those lines before the chip shows the number
+instead (0 turns it off) — and **Recommend down to (% under Fine)**, how far
+under the *fine* line the setup still recommends a model on a PC with no
+preset — all editable, one Save. They open under **Details ▾**
+on the built-in provider's engine panel.
 
 ### The catalog row's controls
 

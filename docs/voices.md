@@ -290,6 +290,8 @@ thing a recorded dataset can never guarantee.
   nothing.
 - **Import JSON / Export JSON** move the rows as a script file —
   Alexandria's dataset scripts load unchanged, and yours load there.
+  In the desktop app, Export JSON asks where to save the file, like every
+  other export; in a browser it goes to your Downloads folder.
 - **Save as Training Dataset** freezes the generated rows, with the
   **Reference Sample** picker choosing the voice's anchor clip.
 

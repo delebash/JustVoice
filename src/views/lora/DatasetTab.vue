@@ -15,7 +15,7 @@
 import { ref, computed, watch } from "vue";
 import {
   UiButton, UiInput, UiTextarea, UiField, UiSelect, UiTag,
-  pushToast, promptDialog, confirmDialog, serverUrl,
+  pushToast, promptDialog, confirmDialog, serverUrl, saveBlob,
 } from "@delebash/llm-ui";
 import { useApi } from "../../stores/api.js";
 import { useEnginesStore } from "../../stores/engines.js";
@@ -254,7 +254,7 @@ function importJson(event) {
   reader.readAsText(file);
 }
 
-function exportJson() {
+async function exportJson() {
   const data = rows.value.map((r) => {
     const entry = { emotion: r.emotion || "", text: r.text || "" };
     const seed = normaliseSeed(r.seed);
@@ -262,12 +262,15 @@ function exportJson() {
     return entry;
   });
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${project.value?.name || "dataset"}_script.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+  // The kit's one file door (ExportPanel's precedent): the native Save dialog in
+  // the desktop app, a browser download otherwise — and it holds the object URL
+  // long enough that Safari/Firefox don't abort the download.
+  try {
+    await saveBlob(blob, `${project.value?.name || "dataset"}_script.json`,
+      { title: "Save dataset script", filterName: "Dataset script", filterExt: "json" });
+  } catch (e) {
+    pushToast({ message: `Export failed: ${e?.message || e}`, kind: "error", duration: 7000 });
+  }
 }
 
 // ── Reference Sample + save ────────────────────────────────────────────

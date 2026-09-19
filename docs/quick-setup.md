@@ -31,8 +31,11 @@ JustVoice auto-detects your VRAM via `/v1/system/info` and pre-picks the right t
 The pin recipe this wizard used to apply is gone — AI routing lives on the
 shared presets now, seeded working out of the box. Set up the text-AI model
 with the **LLM engine setup** under **AI Settings** (one click: engine +
-model sized to this PC); per-feature choices live under Routing by feature.
-See `ai-features.md`.
+model sized to this PC, and a fifteen-second measurement of that model once
+it's loaded, so its speed chip shows a real number — plus, on a PC with no
+hardware preset, an optional one-minute speed check before it recommends a
+model); per-feature choices live under Routing by feature. See
+`ai-features.md`.
 
 ## Watching install progress
 

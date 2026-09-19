@@ -2,6 +2,16 @@
 
 ## v0.1.0
 
+- **Models set to run fully on the graphics card now really do.** The engine
+  counts its output layer as a layer, so the app's "every layer" launch was
+  leaving the first one on the processor. Fixing it made the 26B model about
+  6 % faster (35 → 37 tokens a second) for 50 MB more graphics memory
+- **The memory figures in the model catalog are exact now** — "needs … VRAM"
+  and the Fit badge come from the model file's real weight sizes, placed the
+  way the engine places them, in the same units your graphics card reports.
+  Mixture-of-experts models such as Granite and Mixtral are no longer
+  estimated as if every weight had to fit on the card
+  ([AI features](ai-features.md#picking-models-fit-speed-and-your-override))
 - **A designed voice keeps the take you auditioned**, and stays one person for
   a whole book instead of re-inventing itself line by line
   ([Voices](voices.md#keeping-a-designed-voice-is-what-makes-it-one-voice))

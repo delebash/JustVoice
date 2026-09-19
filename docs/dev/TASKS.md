@@ -56,6 +56,22 @@
 
 ## Waiting on your decision
 
+### `DatasetTab.vue` hand-rolls its JSON export — move it onto the kit's `saveBlob`
+STATE:  DECIDED 2026-09-19 — "your rec go" on: "replace the six hand-rolled
+        lines with saveBlob(blob, name, { filterName: "Dataset script",
+        filterExt: "json" }), exactly as ExportPanel.vue already does."
+WHY:    the family checker's one violation (predates today: `572a087`,
+        2026-08-21), and two real defects beside the rule: the object URL is
+        revoked in the same tick as click() (Safari/Firefox have aborted such
+        downloads — the kit waits 30 s), and the desktop app never gets the
+        native Save dialog `saveBlob` provides.
+NOT:    a local helper; a new kit door.
+BUILT:  2026-09-19 — `DatasetTab.vue` `exportJson` → `saveBlob` (title "Save
+        dataset script", filter json; failures toast, the ExportPanel
+        shape); `docs/voices.md` says where the file goes. `check-family`:
+        **no violations**; biome clean. Close (delete) at commit.
+GO:     given 2026-09-19.
+
 ### Voice modes: Alexandria parity + the defect list — Opus executes from the plan doc
 STATE:  DECIDED 2026-08-22 — "i am not locking drift at desing time i want same
         as alexandria" (both designed paths coexist: frozen Designer→save→clone
