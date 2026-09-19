@@ -74,10 +74,13 @@ NOT:    retiring the dynamic designed mode (user reversed: parity, not
         drift-lock) · auto variant swapping in E (later opt-in) · a qwen
         tag-translation layer inside C (separate item if ever).
 BUILT:  2026-08-22 under "your rec update docs and go for coding" — A · J · E ·
-        C · D · I built + gated (740 pytest, 15/15 smoke, vite, ruff); F walked
+        C · D · I built + gated (741 pytest, 15/15 smoke, vite, ruff); F walked
         and closed with nothing to fix (the Custom Voice path was already wired
         end to end). Execution record, deviations and what NO gate covered:
         plan doc §9. Nothing rendered by ear — see §9.6.
+        COMMITTED + PUSHED 2026-09-19 as `108caac` (with `6c7cf57` persona
+        sweep, `adfa3ea` smoke splash fix); every gate re-run fresh first —
+        plan doc §9.8.
 OPEN:   G (ear test, needs the user — still gates H) · H (blocked on G) ·
         K (untouched; largest blast radius; the delivery tier still WINS the
         merge) · one gap D does not name: after A, a designed voice WITH a
@@ -994,9 +997,13 @@ reasoning at the cited section.
   the sweep IS DONE** — `sweep_persona.py` applied the 25 replacements and
   `validate.py` now reports 0 character / 72 persona (state corrected
   2026-08-22; this line had said the sweep was never given a go). The prose half
-  — this tracker and the doc's §2.3 / §2.2 / §2.5 / §3 / §8.21 / §8.22 — still
-  §8.4. **SWEEP DONE 2026-08-22** — mock, this tracker, the redesign doc, and
-  `SpeakerCorrection.character_id` → `persona_id` in code (data reset required).
+  — this tracker and the doc's §2.3 / §2.2 / §2.5 / §3 / §8.21 / §8.22 —
+  followed the same day (§8.4). **SWEEP DONE 2026-08-22, committed `6c7cf57`
+  2026-09-19** — mock, this tracker, the redesign doc, and
+  `SpeakerCorrection.character_id` → `persona_id` in code. A schema rename with
+  no migration, so a data reset is the price — but the real dev DB
+  (`src-tauri/target/debug/data/justvoice.db`) already carries `persona_id`
+  (`pragma table_info`, read-only, 2026-09-19), so no reset is outstanding there.
   Deliberately NOT swept, each a separate contract: `format_characters` /
   `find_anchors(segments, characters)` / `{{characters}}` (code + prompt
   template) · `StandardLine.character_id` (the external import wire format,

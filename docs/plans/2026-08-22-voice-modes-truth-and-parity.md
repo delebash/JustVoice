@@ -613,3 +613,27 @@ needed, so nothing was changed. F is closed.
   decision: expose a computed `has_ref_clip` on the voices API, or leave the
   UI silent and let `docs/voices.md` carry it (which it now does). **Not
   filled in by assumption.**
+
+### 9.8 Committed (2026-09-19)
+
+The build sat uncommitted for four weeks. It went in on *"commit nad push"* as
+three commits, pushed to `origin/main` (`6a2d30d..108caac`):
+
+| commit | holds |
+|---|---|
+| `6c7cf57` | the persona sweep — `SpeakerCorrection.character_id` → `persona_id`, the mock + redesign-doc audit |
+| `adfa3ea` | `scripts/smoke.js` dismisses the boot splash; NAV-FAIL keeps the interception line |
+| `108caac` | this program — A · J · E · C · D · I, this doc, `test_designed_voice_parity.py`, the docs |
+
+`TASKS.md` and `code-map.md` carried hunks for more than one of them and were
+split by hunk, so each record landed with its change.
+
+Every gate re-run fresh on the tree before the first commit, not quoted from
+§9.5: `ruff check .` clean · `pytest` **741 passed, 0 failed** (329 s) ·
+`npm run test:unit` 67/67 · biome on the three changed renderer files clean ·
+`npm run build:vite` built · Playwright smoke with
+`--data-dir src-tauri/target/debug/data` **15/15 views, zero JS errors**, the
+new SPLASH line reporting the splash dismissed. The gate server was killed by
+port 8741, with the `llama-server` warm-on-boot had spawned under it.
+
+§9.6 is unchanged by any of this — still nothing rendered by ear.
