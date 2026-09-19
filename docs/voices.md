@@ -28,6 +28,31 @@ that finds the result are the same word.
 | **Blended** | A voice made out of voices the engine already has — mixed, exaggerated, added and subtracted, or spliced. | Kokoro |
 | **LoRA** | Taught from a set of clips (a LoRA fine-tune). | Qwen3 **Base**, Chatterbox **Turbo** |
 
+### Which of them take written direction
+
+Written direction — a persona's **Spoken delivery** text, a line's **+
+direction** note — only reaches models that have somewhere to put it. Whether
+yours does depends on the voice type as much as the engine, because a voice
+made from a recording is rendered by a different checkpoint than one made
+from a description:
+
+| Voice type | Takes written direction? |
+|---|---|
+| **Preset** (Qwen3 CustomVoice) | Yes |
+| **Designed**, no kept clip | Yes — and its description leads, with your direction added after |
+| **Designed**, kept clip | **No** — it is a clone now |
+| **Cloned** / **Imported** | **No** — the identity is the recording |
+| **LoRA** | Yes — this is the point of training |
+| **Blended** (Kokoro) | No — Kokoro takes no direction at all |
+
+If you want a specific person's voice *and* the ability to direct it line by
+line, **train a LoRA**. That is the only combination that gives you both.
+
+Chatterbox is a separate case: it takes no written direction at any time, but
+its cloned voices do accept per-line `[tag]` emotion markup typed into the
+text. Qwen3 accepts no tags at all — type them and they are removed before
+the model sees them, rather than read aloud.
+
 ### Finding a voice in the library
 
 The **Voices** tab is the library. Above it: a search box, then filters for
@@ -89,8 +114,35 @@ This needs Qwen3's **VoiceDesign** checkpoint, which is a separate download
 from the CustomVoice and Base ones; the tab offers to install it. There is
 only a 1.7B VoiceDesign checkpoint — no smaller variant exists.
 
-The description is kept on the voice and used every time it speaks, so a
-line's own direction adds to it rather than replacing it.
+### Keeping a designed voice is what makes it one voice
+
+VoiceDesign invents a speaker from scratch on **every single call**. Ask it
+twice for "a gravel-voiced harbour-master" and you get two different
+harbour-masters — same character, different person. That is fine for one
+line and useless for a chapter.
+
+So when you **Keep** a designed voice, JustVoice saves the audio you just
+auditioned along with it, and from then on that clip is the voice: every
+later line is cloned from it, and the speaker stays the same person all the
+way through the book. The description is kept too — it names the voice in
+the library, and it is what you edit if you want to design a new take on it.
+
+Two consequences worth knowing:
+
+- **A kept designed voice stops taking written direction**, exactly like any
+  other clone (see [Clone](#clone--from-a-recording) below). Its identity
+  lives in the clip now, and the model that clones has nowhere to put
+  direction. Delivery still responds to the effects chain and the tuning
+  knobs; it stops responding to prose.
+- **Audition the take you actually want.** The clip you hear before you press
+  Keep is the clip that becomes the voice, so it is worth re-rolling until
+  one sounds right rather than keeping the first.
+
+If a designed voice has no kept clip — one you made before this behaviour
+existed — it still works, the older way: its description goes to the model on
+every line, a line's own direction adds to it rather than replacing it, and
+the speaker drifts a little from line to line. Design it again and keep it to
+pin it down.
 
 ## Import — a clip as-is
 

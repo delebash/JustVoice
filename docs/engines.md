@@ -60,19 +60,30 @@ Everything else is passed to the engine, and each one honours a different set:
 | **Chatterbox Multilingual** | ✓ | ✗ | ✗ | ✗ | Exaggeration · CFG weight · Temperature · Repetition penalty · Min p · Top p |
 | **Chatterbox Turbo** | ✓ | ✗ | ✗ | **✓ as a tag** | Temperature · Repetition penalty · Top p · Top k · 19 inline tags |
 | **Qwen3 CustomVoice** | ✗ | ✗ | **✓ instruct** | **✓ as words** | Temperature · Top k · Top p · Repetition penalty |
-| **Qwen3 Base** | ✓ | ✗ | ✗ | ✗ | as above |
+| **Qwen3 Base** | ✓ | ✗ | ✗ (**✓ with a LoRA**) | ✗ | as above |
+| **Qwen3 VoiceDesign** | ✗ | ✗ | **✓ instruct** | **✓ as words** | as above |
 | **LuxTTS** | ✓ | ✓ | ✗ | ✗ | Inference steps · Guidance scale · Max ref length · Reference loudness · Timestep shift · Smoothing |
 | **MOSS-TTSD** | ✓ | ✗ | ✗ | ✗ | Temperature · Top p · Top k · Repetition penalty · Max length · speaker + pause tags |
 | **TADA** | ✓ | ✗ | ✗ | ✗ | none — text, reference and language only |
 
 **Direction and identity pull against each other.** Written direction — the
 Delivery direction box, a persona's Spoken delivery, a line's own direction —
-reaches **Qwen3 CustomVoice and nothing else**, and CustomVoice is the one
-Qwen checkpoint that cannot clone. Qwen3 *Base* clones but drops the
-instruction silently: its clone call takes text, reference and language only.
-So "direct the performance in words" and "use this character's cloned voice"
-are, today, a choice. The way to have both is a LoRA trained on an
-instruct-capable checkpoint — see Train in [labs.md](labs.md).
+reaches **Qwen3 CustomVoice, Qwen3 VoiceDesign, and a Qwen3 LoRA**. It does
+not reach a clone: Qwen3 *Base* clones but drops the instruction silently, as
+its clone call takes text, reference and language only. So "direct the
+performance in words" and "use this character's cloned voice" are, today, a
+choice — and that includes a designed voice once you keep it, because keeping
+one turns it into a clone
+([voices.md](voices.md#keeping-a-designed-voice-is-what-makes-it-one-voice)).
+The way to have both is a LoRA trained on that voice, which renders on Base
+*with* the instruction attached — see Train in [labs.md](labs.md).
+
+**Qwen3 takes no inline tags.** Direction reaches it as prose, in the
+instruction field, and nothing else. Bracketed markup typed into the text is
+removed before the model sees it — upstream Qwen3-TTS has no tag vocabulary
+of any kind, so leaving `[laugh]` in the text would have it read out as a
+word. Tags belong to Chatterbox Turbo and MOSS-TTSD, where they are the
+model's own syntax.
 
 **Emotion is the exception, and that is why it is a list.** `Emotion` is a
 nine-value label rather than a sentence, so it can compile two ways: into the

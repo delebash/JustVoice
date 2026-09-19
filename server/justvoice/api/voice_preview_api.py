@@ -12,6 +12,7 @@ import asyncio
 import base64
 import hashlib
 import json
+import logging
 import time
 import uuid
 from typing import Optional, Literal
@@ -28,6 +29,8 @@ from ..models import BlendSegment, BlendStrategy
 
 
 router = APIRouter(tags=["voices"])
+
+log = logging.getLogger(__name__)
 
 
 VoicePreviewSource = Literal["cloned", "designed", "blended", "imported"]
@@ -423,6 +426,15 @@ async def save_preview(
         recipe_weights = (
             [w / total for w in weights] if strategy != "vector" and total else weights
         )
+    # A designed voice's transcript is the line its own preview speaks. The
+    # request's `transcript` field is the clone/import one (what YOUR clip
+    # says) and is empty here, so the sample text has to come from
+    # `preview_text` — the pair Alexandria stores for exactly this reason:
+    # frozen clip + the words it speaks is what makes an ICL clone source.
+    transcript = payload.get("transcript")
+    if entry.source == "designed":
+        transcript = payload.get("preview_text") or transcript
+
     record = VoiceRecord(
         id="",
         engine=payload.get("engine", ""),
@@ -430,7 +442,7 @@ async def save_preview(
         name=body.name,
         language=payload.get("language") or "en",
         gender=body.gender,
-        transcript=payload.get("transcript"),
+        transcript=transcript,
         design_prompt=payload.get("prompt"),
         sample_count=0,
         blend_recipe=(
@@ -457,6 +469,27 @@ async def save_preview(
         except Exception as e:
             state.voices.delete(created.id)
             raise bad_request(f"could not store the reference clip: {e}")
+    elif entry.source == "designed" and entry.wav_bytes:
+        # THE freeze bridge (2026-08-22). The audition just rendered this
+        # voice and we are holding the audio — keeping it turns a designed
+        # voice into a stable clone source, which is the only way a designed
+        # identity survives from one line to the next. VoiceDesign re-invents
+        # the speaker on every call, so without this the description was all
+        # that persisted and a chapter drifted speaker by speaker.
+        #
+        # Failure here is NOT fatal, unlike the clone case above: the voice
+        # still works, dynamically, off its description alone (see
+        # `render_core.voice_design_instruct`). Losing the freeze is worth a
+        # log line, not the loss of the save.
+        try:
+            state.voices.write_ref_wav(created.id, entry.wav_bytes)
+        except Exception as e:
+            log.warning(
+                "designed voice %s saved without its frozen clip (%s) — it "
+                "will render dynamically from its description",
+                created.id,
+                e,
+            )
 
     # A blend's vector is recomputed from its recipe rather than carried in
     # the preview payload — same inputs, same arithmetic, and it stays

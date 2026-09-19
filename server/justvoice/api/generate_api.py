@@ -199,6 +199,18 @@ def _voice_synth_fields(stored) -> dict:
     return voice_synth_fields(get_state(), stored)
 
 
+def _voice_design_instruct(voice_id: str | None) -> str | None:
+    """A clip-less designed voice's description, for the instruct slot.
+
+    Prose, not a synth input, so it is deliberately NOT part of
+    `_voice_synth_fields` — it composes at the API layer with the persona's
+    instruction and the line's direction. Clip-wins lives in render_core.
+    """
+    from ..render_core import voice_design_instruct_for_id
+
+    return voice_design_instruct_for_id(get_state(), voice_id)
+
+
 async def _generate_via_manager(
     engine_id: str, req: GenerateRequest, voice_fields: dict | None = None
 ) -> Response:
@@ -252,8 +264,15 @@ async def _generate_via_manager(
         # `emotion` rides on the end through the same composer the chapter
         # path uses. Until 2026-08-17 only that path composed, so an emotion
         # set here reached nothing at all.
+        #
+        # A clip-less DESIGNED voice leads: its description is the identity,
+        # not direction, and the VoiceDesign checkpoint has nothing else to
+        # go on (2026-08-22 — same seam as the chapter path, so one button
+        # cannot sound different from the other).
         composed = compose_instruct(
-            delivery.get("instruct") or persona_instruct, delivery.get("emotion")
+            _voice_design_instruct(req.voice),
+            delivery.get("instruct") or persona_instruct,
+            delivery.get("emotion"),
         )
         if composed:
             delivery["instruct"] = composed
@@ -364,10 +383,13 @@ def _generate_via_inprocess(engine_id: str, req: GenerateRequest) -> Response:
             db,
             tier2_overlay=persona_overlay,
         )
-        # Same cascade as the non-streaming path: the persona's spoken
-        # instruction under whatever was asked for, then the emotion.
+        # Same cascade as the non-streaming path: a clip-less designed
+        # voice's description first, then the persona's spoken instruction
+        # under whatever was asked for, then the emotion.
         composed = compose_instruct(
-            delivery.get("instruct") or persona_instruct, delivery.get("emotion")
+            _voice_design_instruct(req.voice),
+            delivery.get("instruct") or persona_instruct,
+            delivery.get("emotion"),
         )
         if composed:
             delivery["instruct"] = composed

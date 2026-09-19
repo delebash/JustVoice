@@ -11,10 +11,19 @@ recorded set has to be transcribed, and a wrong transcript teaches the
 voice wrong sounds — the whole reason the Preparer gates on transcript
 confidence. A generated row's text is exactly what was spoken.
 
-Seeds are the load-bearing detail. The same seed with the same description
+Seeds are the load-bearing detail — and the extent of what they guarantee
+is UNVERIFIED. The premise is that the same seed with the same description
 yields the same speaker, so a set generated across many rows is ONE voice
-rather than thirty similar ones. Per-row seed wins, then the project's
-global seed, then random (`_resolve_seed`).
+rather than thirty similar ones. Upstream Qwen3-TTS documents no such
+guarantee anywhere: `generate_voice_design` re-invents a speaker per call
+and the seed only makes one call reproducible for one text. Whether
+identity survives a CHANGE of text at a fixed seed has to be settled by
+ear before a generated set is trusted as training data (the plan's item G,
+`docs/plans/2026-08-22-voice-modes-truth-and-parity.md`). If it does not
+hold, the builder's route is to design ONE reference clip and clone the
+remaining rows from it — identity guaranteed, per-row emotion lost.
+Per-row seed wins, then the project's global seed, then random
+(`_resolve_seed`).
 """
 
 from __future__ import annotations

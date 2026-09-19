@@ -1,9 +1,18 @@
 """Inline expression tag parser — `[laugh]`, `[pause:0.5s]`,
 `[whisper]...[/whisper]`, `[speed:0.7]...[/speed]`, `[pitch:-3]...[/pitch]`.
 
-Produces a token stream the per-engine dispatchers translate into either
-native paralinguistic markers (Chatterbox-Turbo, MOSS) or instruct-field
-insertions (Qwen3) or strip-with-warning (Kokoro).
+Produces a token stream for engines whose text format IS this markup —
+Chatterbox-Turbo and MOSS-TTSD, where `[tag]` is native syntax.
+
+Every other engine strips instead, via `strip()` below, which is the only
+name `render_core` imports. This docstring used to promise "instruct-field
+insertions (Qwen3)" as a third route: no such translation was ever written,
+and because Qwen3's manifest declared `paralinguistic_tags: True` on the
+strength of it, render_core skipped stripping and passed `[laugh]` into the
+model's text to be read aloud. Corrected 2026-08-22 — Qwen3 takes direction
+as prose in its instruct field and now strips like Kokoro. Building a real
+tag→prose translation for the CustomVoice/VoiceDesign checkpoints is a
+separate piece of work, not something this module already does.
 """
 
 from __future__ import annotations

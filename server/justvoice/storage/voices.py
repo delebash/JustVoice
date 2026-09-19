@@ -2,7 +2,9 @@
 
 Each voice dir contains:
   - manifest.json — the VoiceRecord
-  - ref.wav       — primary reference clip (clone/import only)
+  - ref.wav       — primary reference clip (clone / import / frozen-designed:
+                    a designed voice keeps the preview it was saved from, so
+                    its identity stops re-rolling per line — 2026-08-22)
   - samples/      — additional samples added via /samples
 """
 

@@ -111,8 +111,20 @@ function usageCount(personaId) {
   return (usage.value[personaId] || []).length;
 }
 
-// Live verdict for the draft's voice engine — does it actually consume the
-// spoken-delivery text as an instruct/style prompt at render time?
+// Live verdict for the draft's voice — does the spoken-delivery text
+// actually reach the TTS as an instruct/style prompt at render time?
+//
+// The engine's own flag is not the whole answer, because it is a union
+// across that engine's checkpoints and a CLONE renders on a different one.
+// Qwen3 is the only engine declaring instruct_field, and it clones on its
+// Base checkpoint, which drops instruct entirely — upstream's
+// `generate_voice_clone` has no such parameter, so there is nowhere for the
+// text to go (capability_details' "qwen3-base" row says
+// supports_instruct_freeform: False, and docs/voices.md says it in prose).
+// Until 2026-08-22 this said "✓ Qwen3-TTS takes direction" for a cloned
+// voice, which was simply false. If a future instruct-capable engine keeps
+// direction through its clone path, this needs to become per-engine rather
+// than per-source.
 const instructStatus = computed(() => {
   if (!draft.value) return null;
   const voice = voices.value.find((v) => v.id === draft.value.voice_id);
@@ -120,10 +132,18 @@ const instructStatus = computed(() => {
     return { ok: false, text: "No voice cast yet — whether this reaches the TTS depends on the engine you pick." };
   }
   const eng = engines.value.find((e) => e.id === voice.engine);
+  const name = eng?.name || voice.engine;
   const supports = (eng?.capabilities || []).includes("instruct_field");
-  return supports
-    ? { ok: true, text: `✓ ${eng?.name || voice.engine} takes direction — it performs this text when rendering.` }
-    : { ok: false, text: `✗ ${eng?.name || voice.engine} doesn't take direction — it ignores this text entirely.` };
+  if (!supports) {
+    return { ok: false, text: `✗ ${name} doesn't take direction — it ignores this text entirely.` };
+  }
+  if (voice.source === "cloned" || voice.source === "imported") {
+    return {
+      ok: false,
+      text: `✗ ${name} takes direction, but this voice is a clone — its identity comes from the recording and written direction is dropped. Train a LoRA on the same voice to get both.`,
+    };
+  }
+  return { ok: true, text: `✓ ${name} takes direction — it performs this text when rendering.` };
 });
 
 // Reload everything: the five shared stores + the per-view usage map.

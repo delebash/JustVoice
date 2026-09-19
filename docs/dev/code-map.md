@@ -411,8 +411,36 @@ model for poor attribution.
 - **Batch job:** `POST /v1/render_jobs`, with cancel/resume and per-block retry.
 - **Core:** `render_core.py` — `render_line`, `probe_line_cached`,
   `_apply_lexicons`, `_resolve_engine_for_voice`,
-  `resolve_audio_prompt_for_stored`, `_tags_supported`, `pcm_to_wav`,
+  `resolve_audio_prompt_for_stored`, `voice_synth_fields`,
+  `voice_design_instruct(_for_id)`, `qwen_family_for_voice`,
+  `qwen_family_conflicts`, `_tags_supported`, `pcm_to_wav`,
   `concat_lines(silence_ms=250)`.
+
+**How each voice SOURCE reaches an engine** — `voice_synth_fields` is the one
+place that knows, and it carries synth **inputs** only (clip, vector,
+adapter); prose for the instruct slot composes at the API layer instead:
+
+| source | contributes |
+|---|---|
+| cloned · imported | `audio_prompt_path` + `ref_text` |
+| blended | `voice_vector` |
+| lora | `adapter_path` |
+| designed, clip frozen | `audio_prompt_path` + `ref_text` — it is a clone now |
+| designed, no clip | nothing here; its `design_prompt` composes FIRST into `delivery.instruct` via `voice_design_instruct` |
+| preset | nothing |
+
+**Clip wins** (2026-08-22): a designed voice saved with its preview frozen to
+`ref.wav` renders as a clone and its description is provenance only; one
+without a clip renders dynamically off the description. Both halves live in
+`render_core` so the rule has a single home —
+`docs/plans/2026-08-22-voice-modes-truth-and-parity.md` §9.2 has why it is a
+sibling of `voice_synth_fields` rather than part of it.
+
+**Qwen3 keeps one checkpoint resident**, so `qwen_family_conflicts` runs a
+preflight before a chapter render and refuses a cast that mixes families
+(preset→CustomVoice, clip/adapter→Base, clip-less designed→VoiceDesign),
+naming each voice and what it needs. Not an auto-swap — that is a later
+opt-in item.
 
 **The delivery cascade** (`render_chapter_api.py:168-170`): the **persona's**
 chain, then the **preset's** on top — `resolve_chain(persona_effects,
@@ -499,6 +527,18 @@ Latent, not fixed: `_tags_supported` reads engine-level manifest
 `CAPABILITIES`, and `chatterbox` declares `paralinguistic_tags: True` for the
 whole family — so a hand-typed `[laugh]` is not stripped for Multilingual,
 which has no such token. The emotion path is variant-precise; this one is not.
+
+**Qwen3 was the same bug and is fixed** (2026-08-22). It declared
+`paralinguistic_tags: True` on the strength of `inline_tags.py`'s docstring,
+which promised a tag→instruct translation for Qwen3 that was **never
+written** — only `strip` is imported anywhere. Upstream Qwen3-TTS has no tag
+vocabulary at all (its README's one "paralinguistic" mention is about the
+12 Hz codec preserving them through reconstruction), so the flag meant
+`render_core` skipped stripping and `[laugh]` went into the model's text to be
+read aloud. Now `False` in both `qwen3/manifest.py` and the adapter's
+`EngineMeta`, and Qwen3 strips like Kokoro. Direction reaches Qwen as prose in
+`instruct`; that is its whole surface. A real tag→prose translation for
+CustomVoice/VoiceDesign remains un-built and un-promised.
 
 **What the audit corrected**, all previously user-visible lies:
 

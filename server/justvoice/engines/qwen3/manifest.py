@@ -81,7 +81,11 @@ CAPABILITIES = {
     # again. Per-variant truth lives in capability_details' qwen3-vd row.
     "voice_design": True,
     "instruct_field": True,
-    "paralinguistic_tags": True,
+    # Qwen3 has no tag vocabulary at all — see engine.py's EngineMeta for the
+    # upstream evidence. This flag is what `render_core` reads to decide
+    # whether to strip `[tag]` markup before synthesis, so True meant tags
+    # were spoken aloud. Qwen takes direction as prose, in `instruct`.
+    "paralinguistic_tags": False,
     # LoRA fine-tuning on the Base family (engines/qwen3/train_lora.py,
     # adapted from Alexandria's code-verified loop).
     "training": True,

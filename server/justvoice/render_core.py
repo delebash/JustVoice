@@ -73,15 +73,156 @@ def _resolve_engine_for_voice(state: AppState, voice_id: str) -> str | None:
 
 
 def resolve_audio_prompt_for_stored(state: AppState, stored) -> str | None:
-    """For cloned / imported voices, the absolute path of the reference WAV
-    so an engine subprocess can read it as `audio_prompt_path`; None for
-    preset/designed voices (no reference clip)."""
-    if stored.source not in ("cloned", "imported"):
+    """The absolute path of a stored voice's reference WAV, so an engine
+    subprocess can read it as `audio_prompt_path`; None when there is none.
+
+    Cloned and imported voices always have one — it is the whole voice.
+    A DESIGNED voice has one only if its preview was frozen at save
+    (2026-08-22): the Designer's own clip becomes the reference, and from
+    there the voice renders as an ordinary clone with a stable identity
+    instead of re-rolling a speaker per line. Designed voices saved before
+    that, and any whose file is missing, fall through to None and stay
+    dynamic — see `voice_design_instruct` for the other half of that rule.
+    """
+    if stored.source not in ("cloned", "imported", "designed"):
         return None
-    path = state.voices.ref_wav_path(stored.id)
+    store = getattr(state, "voices", None)
+    if store is None:
+        return None
+    path = store.ref_wav_path(stored.id)
     if not path.is_file():
         return None
     return str(path.resolve())
+
+
+def voice_design_instruct(state: AppState, stored) -> str | None:
+    """The description a DESIGNED voice contributes to the instruct slot.
+
+    **Clip wins.** A designed voice whose preview was frozen to `ref.wav`
+    renders as a clone — the identity is in the audio — so its description
+    is provenance and display only, and must NOT also be spoken as
+    direction. Without a clip the description IS the voice: it has to reach
+    the engine on every line or the VoiceDesign checkpoint has no identity
+    to render at all (`qwen3/engine.py` refuses outright: "renders from a
+    voice description and this voice has none").
+
+    Separate from `voice_synth_fields` on purpose. That one carries synth
+    INPUTS keyed as the engine protocol expects, and is called inside
+    `render_line` — after the API layer has already composed the instruct.
+    This is prose for the instruct slot, so it belongs at the compose sites
+    (`render_chapter_api`, `generate_api`), first in the order: the
+    description says who the voice is, everything after it says how this
+    line goes. Both live here so the clip-wins rule has one home.
+    """
+    if stored is None or getattr(stored, "source", None) != "designed":
+        return None
+    if resolve_audio_prompt_for_stored(state, stored):
+        return None
+    return (getattr(stored, "design_prompt", None) or "").strip() or None
+
+
+def voice_design_instruct_for_id(state: AppState, voice_id: str | None) -> str | None:
+    """`voice_design_instruct` by voice id — the form the compose sites want,
+    since they hold an id and a missing/preset voice must be a quiet None.
+
+    Tolerates a state with no voice store. `_resolve_scene_to_lines` is
+    duck-typed on purpose and several tests hand it a namespace carrying only
+    the stores that path used to touch; no store simply means no designed
+    voice to find, which is the right answer rather than an AttributeError
+    from inside a render.
+    """
+    store = getattr(state, "voices", None)
+    if not voice_id or store is None:
+        return None
+    return voice_design_instruct(state, store.get(voice_id))
+
+
+# Qwen3 ships three checkpoints and only ONE is resident at a time (the
+# engine unloads to switch). Which one a voice needs is decided by how the
+# voice was made, not by anything the user picks at render time:
+#
+#   cv   CustomVoice — the 9 preset speakers. Cannot clone.
+#   base Base        — anything with a reference clip (cloned, imported,
+#                      frozen-designed) and anything with a LoRA adapter.
+#   vd   VoiceDesign — a clip-less designed voice, rendered from prose.
+#
+# Mixing families in one cast cannot work in a single pass. Before
+# 2026-08-22 that surfaced as a per-line RuntimeError from deep inside the
+# engine ("the CustomVoice checkpoint cannot clone a voice") after the
+# render had already started — see `qwen_family_conflicts`.
+QWEN_FAMILY_LABELS = {
+    "cv": "CustomVoice",
+    "base": "Base",
+    "vd": "VoiceDesign",
+}
+
+
+def qwen_family_for_voice(state: AppState, voice_id: str) -> str | None:
+    """Which Qwen3 checkpoint family `voice_id` needs, or None if it is not
+    a Qwen3 voice (every other engine is single-checkpoint and unaffected)."""
+    try:
+        owner = _resolve_engine_for_voice(state, voice_id)
+    except AttributeError:
+        # Duck-typed state without the stores this walk needs — the preflight
+        # simply has nothing to check, which must never fail a render.
+        return None
+    if owner != "qwen3":
+        return None
+    store = getattr(state, "voices", None)
+    stored = store.get(voice_id) if store is not None else None
+    if stored is None:
+        # Not in the library, but qwen3 owns it — one of the 9 presets.
+        return "cv"
+    if getattr(stored, "adapter_path", None) or stored.source == "lora":
+        return "base"
+    if resolve_audio_prompt_for_stored(state, stored):
+        return "base"
+    if stored.source == "designed":
+        return "vd"
+    if stored.source in ("cloned", "imported"):
+        # A clip-source voice whose file has gone missing. Base is still the
+        # family it belongs to; the render fails on the clip, not the variant.
+        return "base"
+    return "cv"
+
+
+def qwen_family_conflicts(
+    state: AppState, voice_ids
+) -> tuple[str | None, list[tuple[str, str]]]:
+    """Qwen3 voices in this cast that the loaded checkpoint cannot render.
+
+    Returns (loaded_variant_id, [(voice_id, needed_family), …]) — an empty
+    list means the render can go ahead. Compares against the variant that
+    will ACTUALLY be used: the one loaded, or the one `render_line` would
+    auto-load if nothing is. Both halves come back together so the caller
+    can name the loaded checkpoint in its refusal without asking twice.
+
+    Deliberately not an auto-swap. Swapping mid-render means unload + reload
+    per group, which on an 8 GB box is minutes of thrash the user did not
+    ask for; refusing up front with the list lets them split the cast or
+    load the right checkpoint themselves.
+    """
+    try:
+        from .engines.manager import get_manager
+
+        mgr = get_manager()
+        variant = mgr.current_variant_id("qwen3") or mgr.resolved_default_variant("qwen3")
+    except Exception:
+        # No manager (registry-backed test fakes) — nothing to check against.
+        return None, []
+    if not variant:
+        return None, []
+    # "qwen3-base-1.7b" / "qwen3-vd-1.7b-mlx" → the family segment.
+    parts = variant.split("-")
+    loaded_family = parts[1] if len(parts) > 2 else None
+    if loaded_family not in QWEN_FAMILY_LABELS:
+        return variant, []
+    conflicts: list[tuple[str, str]] = []
+    for vid in dict.fromkeys(voice_ids):  # de-dup, keep cast order
+        needed = qwen_family_for_voice(state, vid)
+        if needed is not None and needed != loaded_family:
+            conflicts.append((vid, needed))
+    return variant, conflicts
 
 
 def voice_synth_fields(state: AppState, stored) -> dict:
@@ -96,8 +237,14 @@ def voice_synth_fields(state: AppState, stored) -> dict:
                             takes the clip's transcript)
         blended          → voice_vector (the style vector; kokoro)
         trained          → adapter_path (the LoRA dir)
-        designed         → nothing: the description rides `delivery.instruct`
-                           through compose_instruct, like any other prose
+        designed         → audio_prompt_path + ref_text IF its preview was
+                           frozen at save; otherwise nothing here, and its
+                           description reaches the engine as instruct prose
+                           through `voice_design_instruct` at the compose
+                           sites. Until 2026-08-22 this line claimed the
+                           description already rode `delivery.instruct` —
+                           no call site implemented that, so a saved
+                           designed voice contributed nothing at all.
         preset           → nothing
 
     A None value means "not applicable", and every field is optional on the

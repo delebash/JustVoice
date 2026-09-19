@@ -86,7 +86,18 @@ class Qwen3(EmbeddedEngine):
         # generate_voice_design renders a voice from a prose description.
         supports_voice_design=True,
         supports_instruct_field=True,
-        supports_paralinguistic_tags=True,
+        # False since 2026-08-22, and it was never true. Qwen3-TTS has NO
+        # bracketed-tag vocabulary: upstream's inference wrapper, examples
+        # and Space demo pass plain prose to `instruct` and nothing else,
+        # and the README's one "paralinguistic" mention is about the 12 Hz
+        # codec preserving them through reconstruction, not about markup.
+        # `inline_tags.py` promised a qwen tag→instruct translation that was
+        # never built — only its `strip` is imported anywhere — so the True
+        # here meant render_core skipped stripping and `[laugh]` went into
+        # the model's text verbatim, to be read aloud. Direction reaches
+        # this engine as prose through `delivery.instruct`; that is the
+        # whole surface.
+        supports_paralinguistic_tags=False,
     )
 
     def __init__(self, model_dir=None):

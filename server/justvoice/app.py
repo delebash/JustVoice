@@ -223,7 +223,11 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     # F1 Phase 2, 2026-08-05 — convergence part 3): the same install_llm
     # JustWrite boots through — LLM tables in JV's SQLite, DB-backed provider
     # CRUD, routing/presets/tunes/knob-catalog surface, the DB usage sink, the
-    # bundled runner wired to the DB catalog (data under <data_dir>/ai-cache),
+    # bundled runner wired to the DB catalog (model cache under whichever
+    # root `resolve_cache_roots` picks — an explicit choice, then the stored
+    # `runner_setting.cache_root`, and only then <data_dir>/ai-cache; this
+    # box points at JustWrite's, so the local one is not where the models
+    # are),
     # and now JV's OWN feature data: every action a template row, every tunable
     # on a preset, per-row Lab samples. The old jv_feature_prompts system is
     # gone (its editor router, store, seeder); edited legacy rows migrate below.

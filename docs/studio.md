@@ -114,6 +114,21 @@ Batch-render the project scene by scene. Each scene can bind a **render preset**
 status, and the render cache means an unchanged line costs nothing to re-render
 — cache hits are reported as such.
 
+### One Qwen3 model at a time
+
+Qwen3 is three separate models — **CustomVoice** for its nine preset speakers,
+**Base** for anything cloned or trained, **VoiceDesign** for a designed voice
+with no kept clip — and only one of them fits in memory at once. A cast that
+mixes them cannot be rendered in a single pass.
+
+JustVoice checks before it starts and refuses the whole render rather than
+getting halfway, naming every voice and the model it needs. Load the model
+those voices want, or split them into separate scenes. Casting everyone on
+one kind of voice is the way to avoid it entirely — and note that
+[keeping a designed voice](voices.md#keeping-a-designed-voice-is-what-makes-it-one-voice)
+moves it from VoiceDesign to Base, which is usually where the rest of your
+cast already is.
+
 ### What a render actually does to your audio
 
 Three things happen to every line, in this order:

@@ -28,7 +28,14 @@ from ..delivery_merge import compose_instruct, merge_delivery
 from ..errors import bad_request, internal, not_found
 from ..mastering import have_ffmpeg, master, master_to_wav, resolve_master_target
 from ..models import ChapterLine, Delivery, RenderChapterRequest
-from ..render_core import concat_lines, probe_line_cached, render_line
+from ..render_core import (
+    QWEN_FAMILY_LABELS,
+    concat_lines,
+    probe_line_cached,
+    qwen_family_conflicts,
+    render_line,
+    voice_design_instruct_for_id,
+)
 from ..synth_scheduler import warm_lines
 
 
@@ -196,7 +203,16 @@ def _resolve_scene_to_lines(
             # An explicit instruct (preset or request) wins the base slot over
             # the persona's, as it always has; the line's own note still rides
             # on the end. Most specific last: persona → delivery → this line.
+            #
+            # A clip-less DESIGNED voice goes in FRONT of all of it: the
+            # description is not direction, it is the identity, and on the
+            # VoiceDesign checkpoint it is the only thing that says who is
+            # speaking (2026-08-22 — before this a saved designed voice
+            # contributed nothing to a render and the engine refused the line
+            # outright whenever the persona's own field was empty). A designed
+            # voice with a frozen clip returns None here and clones instead.
             composed = compose_instruct(
+                voice_design_instruct_for_id(st, voice_id),
                 merged.get("instruct") or instruct,
                 merged.get("emotion"),
                 (block.direction or "").strip() or None,
@@ -428,6 +444,23 @@ async def render_chapter(req: RenderChapterRequest) -> Response:
     if len(lines) > settings.limits.chapter_max_lines:
         raise bad_request(
             f"lines count {len(lines)} > limit {settings.limits.chapter_max_lines}"
+        )
+
+    # Qwen3 holds one checkpoint at a time, so a cast that mixes preset,
+    # cloned and clip-less-designed voices cannot render in one pass. Say so
+    # HERE, naming each voice and what it needs — before a single line is
+    # synthesized. Until 2026-08-22 the first mismatched line failed deep in
+    # the engine with a message that named no voice, halfway through a
+    # chapter the user had already waited for.
+    loaded_variant, conflicts = qwen_family_conflicts(st, [line.voice for line in lines])
+    if conflicts:
+        listed = ", ".join(
+            f"{vid} needs {QWEN_FAMILY_LABELS[fam]}" for vid, fam in conflicts
+        )
+        raise bad_request(
+            f"this cast needs a Qwen3 checkpoint that is not loaded "
+            f"({loaded_variant} is): {listed}. Load the checkpoint these "
+            f"voices need, or render them as separate scenes."
         )
 
     # Warm the render cache engine-grouped through the scheduler (§7 of

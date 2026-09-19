@@ -56,6 +56,55 @@
 
 ## Waiting on your decision
 
+### Voice modes: Alexandria parity + the defect list — Opus executes from the plan doc
+STATE:  DECIDED 2026-08-22 — "i am not locking drift at desing time i want same
+        as alexandria" (both designed paths coexist: frozen Designer→save→clone
+        AND dynamic per-line design). The full session verification + per-item
+        specs: `docs/plans/2026-08-22-voice-modes-truth-and-parity.md` (§5).
+WHY:    Code-verified against upstream Qwen3-TTS + Alexandria clones, file by
+        file: our qwen3 engine is faithful; the gaps are host-side. Items:
+        A freeze bridge (save discards the designed WAV) · J design_prompt
+        never reaches render (stored designed voices inert) · C qwen tags flag
+        is false, promised translation never built · D docs/UI: clones ignore
+        direction · E variant preflight for mixed casts · F verify Custom
+        Voice UI path · G seed-stability ear test GATES Alder/Wren · K execute
+        the §3.6 preset-delivery excision (tier still WINS the merge) ·
+        I housekeeping (kit MTP message = kit TASKS).
+NOT:    retiring the dynamic designed mode (user reversed: parity, not
+        drift-lock) · auto variant swapping in E (later opt-in) · a qwen
+        tag-translation layer inside C (separate item if ever).
+BUILT:  2026-08-22 under "your rec update docs and go for coding" — A · J · E ·
+        C · D · I built + gated (740 pytest, 15/15 smoke, vite, ruff); F walked
+        and closed with nothing to fix (the Custom Voice path was already wired
+        end to end). Execution record, deviations and what NO gate covered:
+        plan doc §9. Nothing rendered by ear — see §9.6.
+OPEN:   G (ear test, needs the user — still gates H) · H (blocked on G) ·
+        K (untouched; largest blast radius; the delivery tier still WINS the
+        merge) · one gap D does not name: after A, a designed voice WITH a
+        frozen clip renders as a clone and drops direction, but the frontend
+        cannot tell frozen from clip-less (`VoiceRecord` exposes no
+        "has ref.wav"), so the persona hint still says "✓ takes direction" for
+        it. Needs a decision — expose a computed field, or leave it to
+        docs/voices.md, which now carries it. NOT filled in by assumption.
+GO:     needed — per item, naming it.
+
+### The fresh-install speech clean — scope agreed, two answers still open
+STATE:  DECIDED 2026-08-22 — speech-only reset, shared LLM folder untouched:
+        (1) delete `engines/.uv-python` · (2) clear tts/stt measurement rows ·
+        (3) remove orphan `engines/pocket_tts/` · (4) assistant stops the
+        server (kill by PID/port after verifying llama-server parentage) ·
+        (5) delete JV's orphan `<data>/ai-cache` (24 GB, dead since the
+        shared-cache switch) · plus `engines/{5 engines}/{.venv,models}` and
+        `<data>/speech-cache`. Full manifest + evidence: plan doc §7.2-7.3.
+WHY:    Test the whole install cold: engine venv installs, model downloads,
+        QuickSetup shared-cache choice. Update check reads build-on-disk
+        (QC-25), so a DB wipe cannot make the shared engine misreport.
+NOT:    touching JW's ai-cache (197 GB) · `<data>/ai-runtime` (live, per-app
+        by design) · git-tracked source · kill-by-image-name.
+BUILT:  nothing deleted yet.  OPEN: two answers — wipe `justvoice.db` y/n;
+        back up Alder+Wren (only copies) y/n — then the go.
+GO:     needed.
+
 ### The component-reuse sweep — DONE, and the git rule that came out of it
 STATE:  DECIDED 2026-08-21 — "what is your rec on settingshell vs tabstrip, and jv
         subnav, it should default to prepareer" → "your rec do it all" → "go"
@@ -817,11 +866,16 @@ DECIDED:
   falls back to the POST door and its dialogs. The `streaming_generation`
   Feature flag is DELETED — no manifest ever declared it, and host-side
   streaming is per-render, not per-engine (sweep clean).
-- **Built-in means built at setup**: `spawn_shared_venv_setup` also builds
+- ~~**Built-in means built at setup**: `spawn_shared_venv_setup` also builds
   venv-isolated engines' venvs, so no per-engine Install moment;
   `engines/constraints.txt` scoped to the SHARED venv only
   (`use_constraints=False` for isolated installs — the numpy<2 ceiling was
-  exactly what blocked kokoro-onnx).
+  exactly what blocked kokoro-onnx).~~ **DEAD 2026-08-22** — the per-engine
+  migration deleted all three symbols; `grep -rn "spawn_shared_venv_setup\|
+  use_constraints\|constraints.txt" server/justvoice --include=*.py` returns
+  nothing and `engines/constraints.txt` does not exist. Every engine now has
+  its own Install moment and its own venv, and the numpy<2 ceiling is gone
+  with the shared environment that imposed it.
 - Chatterbox conds cache keyed `(ref_audio, mtime_ns, exaggeration)` —
   repeat renders of one voice skip prepare_conditionals.
 VERIFIED LIVE (user's real app, dev sidecar 17494, data dir
