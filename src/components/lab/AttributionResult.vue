@@ -8,7 +8,7 @@
   (6) the results table — speaker · the line · confidence % · a REASSIGN
       dropdown whose pick writes correction memory exactly as Studio's block
       reassign does (the shared record_correction door). The dropdown offers
-      the ACTIVE project's REAL cast (SpeakerCorrection.character_id is an FK
+      the ACTIVE project's REAL cast (SpeakerCorrection.persona_id is an FK
       to personas — the lab's typed cast is prompt-side labels with synthetic
       ids and can never be recorded), plus the non-teaching Narrator/unknown;
   (7) cross-column disagreement highlighting (this component receives EVERY
@@ -158,7 +158,7 @@ async function reassign(row, newSpeaker) {
     await api.request(`/v1/projects/${projectId.value}/corrections`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text_snippet: row.text || "", character_id: newSpeaker }),
+      body: JSON.stringify({ text_snippet: row.text || "", persona_id: newSpeaker }),
     });
     pushToast({ message: `Recorded — the next run for ${projectName.value} learns from it.`, kind: "success", duration: 3000 });
   } catch (e) {

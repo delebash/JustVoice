@@ -195,7 +195,7 @@ def test_lab_run_uses_stored_project_corrections(client, monkeypatch):
     persona = client.get("/v1/personas").json()["personas"][0]
     r = client.post(
         f"/v1/projects/{pid}/corrections",
-        json={"text_snippet": '"Hi," said Mara.', "character_id": persona["id"]},
+        json={"text_snippet": '"Hi," said Mara.', "persona_id": persona["id"]},
     )
     assert r.status_code == 200, r.text
 

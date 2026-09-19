@@ -594,7 +594,7 @@ others go and code"** (12, 13, 14, 16). Each recommendation, as accepted:
   (`StudioView.vue:1303-1351`) makes the personas and links them to the
   project. Cast-first means opening a cast holding only the Narrator, leaving
   to find the speakers, and coming back: a loop presented as a line. Game
-  lines arrive with characters attached, so there is nothing to discover.
+  lines arrive with speakers attached, so there is nothing to discover.
   NOT: a signpost from Cast's empty state to Script — rejected as an admission
   the rooms are ordered wrong.
 - **13 — Train becomes the fourth way to acquire a voice, inside Voices** —
@@ -878,7 +878,10 @@ correction must exist anyway (a clone's artifact is a conditioning input, so
 loudness can only be fixed at render), and the workbench conclusion that
 follows (make · hear · calibrate · derive — not a second knob panel).
 **OPEN, user 2026-08-17 "i dont know yet": can a character's persona vary by
-scene, or is it one per character?** Nothing may assume either answer.
+scene, or is it one per character?** Nothing may assume either answer. Left in
+the pre-ruling wording deliberately — it uses "character" for the fictional
+person and "persona" for the record, and whether those are one thing or two is
+the unruled question. Rewording it would answer it.
 
 **RULED WHILE WALKING THE MOCK (2026-08-15/16).** Recovered from the transcript
 2026-08-16 after an autocompact; the first two had been recorded NOWHERE. Full
@@ -899,13 +902,28 @@ reasoning at the cited section.
 - **Persona · cast · speaker. Never "character".** *"be consistant you have words
   cast character persona which is which"*. Code-verified: `Persona` is the entity,
   `ProjectPersona`/`get_cast` the project's set and the verb, `speaker` the
-  attribution word; "character" is nowhere in the codebase. **The mock half of
+  attribution word. **CORRECTED 2026-08-22: this said "'character' is nowhere in
+  the codebase" — false.** 221 occurrences in server `*.py` (venvs excluded), 145
+  in `src/`, and one of them is schema: `database/models.py:632`
+  `character_id = Column(String, ForeignKey("personas.id", …))` on
+  `SpeakerCorrection`, with matching API/Lab call sites. The ruling stands (it is
+  the user's), but the sweep has a **code** target the record denied, and
+  `character_id` → `persona_id` is a rename + reset, not prose. **The mock half of
   the sweep IS DONE** — `sweep_persona.py` applied the 25 replacements and
   `validate.py` now reports 0 character / 72 persona (state corrected
   2026-08-22; this line had said the sweep was never given a go). The prose half
   — this tracker and the doc's §2.3 / §2.2 / §2.5 / §3 / §8.21 / §8.22 — still
-  has no go. `find_anchors(segments, characters)` and `format_characters` are
-  code identifiers and must not be swept. §8.4.
+  §8.4. **SWEEP DONE 2026-08-22** — mock, this tracker, the redesign doc, and
+  `SpeakerCorrection.character_id` → `persona_id` in code (data reset required).
+  Deliberately NOT swept, each a separate contract: `format_characters` /
+  `find_anchors(segments, characters)` / `{{characters}}` (code + prompt
+  template) · `StandardLine.character_id` (the external import wire format,
+  documented in `import-and-export.md`) · `SmartAssignCharacter` and
+  `body.characters` on `POST /v1/llm/smart-assign` (live API + a template row
+  in the shared llm-runner catalog, cross-repo) · `prompts.py:23`'s
+  `"<character_id>"` (prompt text — changing it would confound the open
+  gemma-MoE question) · "character sheet" (a UI label, `App.vue:53`). Those
+  five have NO go.
 - **Five steps: Discover → Script → Cast → Render → Export.** *"i would say
   discover speakers hould be its owne thing script should have anaylize and
   review"*. Discover creates personas; Analyze can only choose from personas that
@@ -954,8 +972,8 @@ surface with two modes (Script-with-playhead for QC listening, Table for triage)
 and the old steps as **filter states**, not tabs · render is a **panel**, not a
 place · inline for the line, pages for library objects · casting is **pick the
 kind, then the voice** (the kind fixes the engine and therefore what the
-character can do) with cloning inline on the cast row · **no per-line voice
-override** — a different voice is a different character · the workbench is a
+persona can do) with cloning inline on the cast row · **no per-line voice
+override** — a different voice is a different persona · the workbench is a
 **finishing bench** (hear · tune · save-as · derive · samples).
 
 **THE FIVE ITEMS BELOW ARE APPROVED** — user, 2026-08-15, after reviewing this
@@ -982,9 +1000,9 @@ made; if a future session proposes either again, this record stops it:
 
 1. *"but i do want a voice tuning page this is part of creating a new voice for
    a persona to consume"* → **do not remove voice tuning from the voice.** Kills
-   my rethink that moved the knobs to the character. The case behind it: a clone
+   my rethink that moved the knobs to the persona. The case behind it: a clone
    that comes out quiet must be fixed once on the artifact, not five times across
-   five characters. This constrains the design; it does not approve the workbench
+   five personas. This constrains the design; it does not approve the workbench
    as drawn.
 2. *"damint we want a voice designer we have qwen and other tts that do that why
    would you drop it"* → **do not drop the Voice Designer.** My "we don't ship
@@ -1291,7 +1309,7 @@ way OUT (nest in `merge_delivery`).~~ Resolved: routed on the way OUT.
 STATE: FINDING — code-verified 2026-08-15. `_resolve_cast`
 (`extraction_api.py:145-167`) hardcodes role/gender/pronouns=None, aliases=[];
 `format_characters` (`extraction/prompts.py:82-97`) reads those empty fields.
-So production attribution has NEVER seen a character description or alias —
+So production attribution has NEVER seen a persona description or alias —
 the fields exist for the Lab's typed cast only. Aliases squashed into prose
 by the JW import (`justwrite.py:129-139`) are invisible to attribution too.
 (The dead description key `_resolve_cast` used to ship went out with workbench
@@ -1361,7 +1379,7 @@ redirect the plan:
   read. Precedence: request → preset → project → kind default (audiobook
   acx · podcast podcast · game_voicelines none · custom none).
 - **Effects also apply to the game voiceline export** (`export_voicelines`) —
-  a character's chain is part of how that character sounds; mastering is the
+  a persona's chain is part of how that persona sounds; mastering is the
   part game exports skip.
 - **The render cache key gained the chain hash**, so every existing cache
   entry is cold once. One full re-render after this lands; that is the cost

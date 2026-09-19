@@ -218,10 +218,13 @@ def linkify(body):
     # Voice library rows and the New-voice door should actually go somewhere.
     body = body.replace('<b style="color:var(--accent-ink);text-decoration:underline">',
                         '<b class="lnk" onclick="nav(\'workbench\')">')
-    # The chapter's Scene pill is the only way into the scene screen.
-    body = body.replace('<span class="pill">Scene <b>no direction</b></span>',
-                        '<span class="pill lnk" onclick="nav(\'scene\')" '
-                        'style="text-decoration:none">Scene <b>no direction</b></span>')
+    # The Scene pill used to be rewritten here. It now lives directly in
+    # _s4.html, because Render owns the performance layer and therefore the
+    # scene door. The rule that was here matched an exact string the 2026-08-16
+    # Render restructure deleted, so it silently stopped firing and `scene` was
+    # an unreachable route for six days (found 2026-08-22). Put a link in the
+    # screen, not in a rewrite rule that fails quietly. validate.py's
+    # "routes nothing links to" line is the check that catches this class.
     # Kind pills follow whichever project is open.
     body = body.replace('<span class="pill">Kind 📖 <b>audiobook</b> ▾</span>',
                         '<span class="pill proj-kind">📖 audiobook</span>')

@@ -627,9 +627,14 @@ class SpeakerCorrection(Base):
     # The block.text at the time of correction (snippet for the
     # worked-example block in the prompt).
     text_snippet = Column(Text, nullable=False)
-    # The character the writer assigned (may be null for "unknown" /
+    # The persona the writer assigned (may be null for "unknown" /
     # "narrator" — both also count as corrections worth remembering).
-    character_id = Column(String, ForeignKey("personas.id", ondelete="SET NULL"), nullable=True)
+    #
+    # Named character_id until 2026-08-22. The column is an FK to personas.id
+    # and always was; "character" is not an entity in this app (persona is the
+    # entity, cast the project's set, speaker the attribution word). Renaming
+    # it required a data reset — pre-release, seeds-only, no migration.
+    persona_id = Column(String, ForeignKey("personas.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=_utcnow)
 
 

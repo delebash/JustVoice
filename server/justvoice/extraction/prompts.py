@@ -105,7 +105,7 @@ def format_corrections(corrections: list[dict]) -> str:
     lines = ["", "Past corrections from the writer (apply the same reasoning to similar lines):"]
     for c in corrections:
         snippet = (c.get("text_snippet") or "").strip().replace("\n", " ")
-        speaker = c.get("character_id") or "unknown"
+        speaker = c.get("persona_id") or "unknown"
         lines.append(f'  - "{snippet}" → speaker id "{speaker}"')
     return "\n".join(lines) + "\n"
 

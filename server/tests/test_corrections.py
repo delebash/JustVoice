@@ -45,7 +45,7 @@ def _mk_persona(client, name: str) -> str:
 
 
 def test_lab_door_records_and_counts(client) -> None:
-    """character_id is an FK to personas — the door records REAL personas
+    """persona_id is an FK to personas — the door records REAL personas
     (the renderer's reassign offers only the project's real cast)."""
     pid = _import_project(client)
     hale = _mk_persona(client, "Hale")
@@ -53,7 +53,7 @@ def test_lab_door_records_and_counts(client) -> None:
 
     r = client.post(
         f"/v1/projects/{pid}/corrections",
-        json={"text_snippet": "“Halt,” he said.", "character_id": hale},
+        json={"text_snippet": "“Halt,” he said.", "persona_id": hale},
     )
     assert r.status_code == 200, r.text
     assert r.json() == {"ok": True, "count": 1}
@@ -70,7 +70,7 @@ def test_lab_door_refuses_unknown_personas(client) -> None:
     pid = _import_project(client)
     r = client.post(
         f"/v1/projects/{pid}/corrections",
-        json={"text_snippet": "“Halt,” he said.", "character_id": "c_hale_0"},
+        json={"text_snippet": "“Halt,” he said.", "persona_id": "c_hale_0"},
     )
     assert r.status_code == 404, r.text
     assert client.get(f"/v1/projects/{pid}/corrections/count").json()["count"] == 0
@@ -81,7 +81,7 @@ def test_snippet_capped_at_400_chars(client) -> None:
     who = _mk_persona(client, "Anna")
     client.post(
         f"/v1/projects/{pid}/corrections",
-        json={"text_snippet": "x" * 1000, "character_id": who},
+        json={"text_snippet": "x" * 1000, "persona_id": who},
     )
     from justvoice.database import session as db_session
     from justvoice.database.models import SpeakerCorrection
@@ -147,7 +147,7 @@ def test_studio_block_patch_shares_the_writer(client) -> None:
     db = db_session.SessionLocal()
     try:
         row = db.query(SpeakerCorrection).filter(SpeakerCorrection.project_id == pid).one()
-        assert row.character_id == keeper
+        assert row.persona_id == keeper
         assert row.text_snippet == block_text[:400]
     finally:
         db.close()

@@ -136,7 +136,7 @@ def _resolve_corrections(project_id: str, db: Session, *, limit: int = 12) -> li
     return [
         {
             "text_snippet": r.text_snippet,
-            "character_id": r.character_id or "unknown",
+            "persona_id": r.persona_id or "unknown",
         }
         for r in rows
     ]
@@ -807,7 +807,7 @@ async def clear_corrections(project_id: str, db: Session = Depends(get_db)) -> d
     return {"deleted": deleted}
 
 
-def record_correction(db: Session, project_id: str, text_snippet: str, character_id: str) -> None:
+def record_correction(db: Session, project_id: str, text_snippet: str, persona_id: str) -> None:
     """THE one correction writer (parity batch 2026-08-06): the Studio block-PATCH
     side effect and the Lab's reassign both call this — same row shape, same
     200-per-project cap (oldest dropped), so the two doors can't drift."""
@@ -816,7 +816,7 @@ def record_correction(db: Session, project_id: str, text_snippet: str, character
     db.add(SpeakerCorrection(
         project_id=project_id,
         text_snippet=(text_snippet or "")[:400],
-        character_id=character_id,
+        persona_id=persona_id,
     ))
     # SessionLocal runs autoflush=False — without this flush the overflow query
     # can't see the row just added and the cap drifts one past 200 forever.
@@ -834,7 +834,7 @@ def record_correction(db: Session, project_id: str, text_snippet: str, character
 
 class CorrectionIn(BaseModel):
     text_snippet: str
-    character_id: str
+    persona_id: str
 
 
 @router.post("/v1/projects/{project_id}/corrections")
@@ -844,13 +844,14 @@ async def add_correction(
     """The Lab's reassign door (parity batch 2026-08-06): a corrected speaker in
     the attribution Lab writes correction memory exactly as Studio's block
     reassign does — record_correction is the shared implementation.
-    character_id must be a REAL persona (the FK the table carries) — the Lab's
-    typed cast uses synthetic ids, which teach nothing and are refused here."""
-    if db.query(Persona).filter(Persona.id == body.character_id).first() is None:
+    persona_id must be a REAL persona (the FK the table carries) — the Lab's
+    typed cast uses synthetic ids, which teach nothing and are refused here.
+    The field was named character_id until 2026-08-22."""
+    if db.query(Persona).filter(Persona.id == body.persona_id).first() is None:
         raise HTTPException(
-            status_code=404, detail=f"persona {body.character_id} not found"
+            status_code=404, detail=f"persona {body.persona_id} not found"
         )
-    record_correction(db, project_id, body.text_snippet, body.character_id)
+    record_correction(db, project_id, body.text_snippet, body.persona_id)
     db.commit()
     n = _count_project_corrections(db, project_id)
     return {"ok": True, "count": n}

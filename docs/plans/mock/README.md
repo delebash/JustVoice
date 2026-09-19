@@ -6,6 +6,10 @@
 in prose — `../2026-08-15-voice-workflow-redesign.md` §8 is the written record
 of every ruling made while walking it, and §8.18 is its exact state.
 
+**Counts live in §8.18, not here.** Two homes means drift, and it already
+happened: three different control totals were in circulation until 2026-08-22.
+`python validate.py .` is the only thing that should ever be quoted.
+
 Lived in a session scratchpad until 2026-08-17 and would have died with the
 session. Moved here so it survives.
 
@@ -37,6 +41,7 @@ second artifact appears instead of the first updating.
 | `_new_*.html` | the newer route screens — home, projects, chapters, lines, discover |
 | `_interactions.py` | modal/toast CSS, the modal markup, and the page JS (`openModal`, `toast`, `pickChip`, `selectAllCh`, `recalcAnalyze`, …) |
 | `wire.py`, `wire2.py`, `wire3.py` | the three sweeps that got it to zero dead controls. `wire3.py` is the backstop — it gives any remaining `<button>` without `onclick`/`disabled` a real action |
+| — | **`linkify()` in `build_mock.py` matches exact strings.** Rewrite a screen and its links silently stop being applied — that is how the `scene` route went unreachable (§8.18). `validate.py`'s *"routes nothing links to"* line is the check that catches it. |
 | `sweep_persona.py` | one-off, already applied: the §8.4 terminology sweep (never "character"). Exact-string replacements, no regex. Re-running it is a no-op |
 | `validate.py` | tag structure · every route reachable · no dangling `nav()` target · dead-button count · character/persona counts |
 

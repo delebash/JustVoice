@@ -47,7 +47,7 @@ class AttributionRow:
     paragraph_idx: int
     kind: str  # "narration" | "dialogue"
     text: str
-    speaker: str  # character_id | "narrator" | "unknown"
+    speaker: str  # persona_id | "narrator" | "unknown"
     confidence: float
     # What the PIPELINE can decide — exactly these five, all assigned below.
     # ("auto" was never one of them; it belongs to RoutePick.source, a

@@ -20,7 +20,7 @@
 record) and the `2026-08-15-pipeline-truth-and-first-run.md` item 6.
 
 **Status: DESIGN, nothing built from it in app code. No go given for any of it.**
-Navigable mock (17 routes, 123 controls, no server):
+Navigable mock (18 routes, 134 controls, no server) — source at `docs/plans/mock/`:
 `https://claude.ai/code/artifact/534a16a2-af40-438b-a64d-34baaf31f838`
 
 > # ⚠ READ §8 FIRST — THE MOCK IS THE DESIGN
@@ -114,7 +114,7 @@ four kinds, and this is what that changes:
 | Block = | paragraph | one NPC line | take / segment | — |
 | Attribution | LLM pass over prose | **none** — the sheet names speakers | labels (`SARAH:`) | — |
 | Chapter surface default mode | **Script** | **Table** | Script | n/a |
-| Cast scale | ~5–15 characters | **50–500 NPCs** | 2–6 hosts | n/a |
+| Cast scale | ~5–15 personas | **50–500 NPCs** | 2–6 hosts | n/a |
 | Continuous QC listening | central | rare — lines are independent assets | central | n/a |
 | Export | M4B / MP3, ACX check | per-line WAV + JSON sidecar | episode + stems | — |
 
@@ -127,7 +127,7 @@ four kinds, and this is what that changes:
    end to end. Both modes stay available to both; only the default differs.
 
 2. **The cast surface must scale from 5 to 500, and as drawn it does not.**
-   §2.3's per-character cards are right at audiobook scale and collapse at game
+   §2.3's per-persona cards are right at audiobook scale and collapse at game
    scale — 50 NPCs of stacked cards is a scroll of death. The cast surface is a
    **table** with the card as a row expansion: name · voice · engine · line count
    · state, expanding to the full controls. At audiobook scale the table is short
@@ -184,7 +184,7 @@ block with no speaker**, and the render path refuses exactly that. The
 prerequisite is invisible because it lives on another screen.
 
 The data model has no such split: a `Block` already owns everything transitively
-— `persona_id` → character → voice → delivery → lexicon → takes. **One row is
+— `persona_id` → persona → voice → delivery → lexicon → takes. **One row is
 already the whole decision.**
 
 **Steps become states, not tabs.** A book is not a single pass — you re-attribute
@@ -219,7 +219,7 @@ with promote/compare, "fix a pronunciation", attribution provenance. **The voice
 is a read-only chip with a link to Cast** — see 2.3.
 
 **The scannability rule:** the table shows **only what differs from the default**.
-Blank direction = "as the character". Blank pause = "as the project". A value
+Blank direction = "as the persona". Blank pause = "as the project". A value
 means *this line is special*, so the eye lands on exceptions instead of a wall of
 repeated defaults. Cells render as text and become inputs on focus — same look, a
 fraction of the DOM at 214+ rows.
@@ -245,7 +245,7 @@ on the engine.
 | Chatterbox | 0 | ✓ |
 
 **Choosing a voice is choosing an engine, and therefore choosing what that
-character can do for the rest of the book.** Cast June to Sohee → she performs
+persona can do for the rest of the book.** Cast June to Sohee → she performs
 written direction, and can never be cloned from. Cast her to a Chatterbox clone →
 her own timbre, and she ignores every direction you write.
 
@@ -265,7 +265,7 @@ Row: name · voice · engine · line count · state. The card above is the row's
 **expansion**. At audiobook scale (~5–15) rows can open by default; at game scale
 (50–500 NPCs) they start collapsed and **bulk selection is the primary action** —
 "cast these 30 guards to X", "give every merchant this base delivery". A stack of
-full cards is unusable past about fifteen characters.
+full cards is unusable past about fifteen personas.
 
 **Attribution produces personas, never voices.** "Find speakers" answers *who is
 talking*; it has no opinion about timbre. Two separate questions, never blurred
@@ -276,21 +276,21 @@ passage — young Mara in a flashback — that is a **second persona**, attribut
 to those lines. Cleaner, uses the model as designed, removes a whole class of
 confusion.
 
-> **Wording note:** §2.3 was written using "character" throughout. Per §8.1 the
-> word is **persona** — code-verified, "character" appears nowhere in the
-> codebase. The two paragraphs above are corrected; the rest of §2.3 is not yet
-> swept.
+> **Wording note:** §2.3 was written using "character" throughout. Per §8.4 the
+> word is **persona**. Swept 2026-08-22. (This note used to add "code-verified,
+> 'character' appears nowhere in the codebase" — that was false; see the
+> correction in §8.4.)
 
 ### 2.4 The voice workbench — a finishing bench, not an inspector
 
 **The user overruled an earlier recommendation here and was right.** I argued the
-workbench should lose its knobs to the character. The case that settles it: a
-clone comes out quiet. Under knobs-on-the-character, you fix +3 dB once per
-character — five characters, five fixes, and they drift. The fix belongs to the
+workbench should lose its knobs to the persona. The case that settles it: a
+clone comes out quiet. Under knobs-on-the-persona, you fix +3 dB once per
+persona — five personas, five fixes, and they drift. The fix belongs to the
 **artifact** and must travel with it.
 
 - **Voice tuning** = *this artifact, correctly set up*. Shared by everyone using it.
-- **Character tuning** = *how this person uses that artifact*. Layered on top.
+- **Persona tuning** = *how this person uses that artifact*. Layered on top.
 
 A guitar's setup versus how a player plays it. This does **not** resurrect
 presets: a preset was a free-floating bundle applied over whoever was speaking; a
@@ -298,7 +298,7 @@ voice tuning is a **property of the voice**, and you cast it like any other voic
 
 The workbench is where a voice becomes usable before anyone consumes it:
 
-1. **Hear it** — your own text, no character needed; you are judging the instrument.
+1. **Hear it** — your own text, no persona needed; you are judging the instrument.
 2. **Tune it** — knobs + effects, saved **onto the voice**. Every knob the engine
    has, none folded under "Advanced".
 3. **Save** — including **save as a new voice** (2.5).
@@ -330,7 +330,7 @@ voice, then **Save as new voice**. It is a record pointing at a parent plus your
 tuning — `{parent_id, name, calibration, effects}`. No audio, no training.
 
 It fixes three things: preset voices become **renameable** (the thing you name is
-yours — "Heart (warm)"); the quiet clone is fixed **once** for all five characters
+yours — "Heart (warm)"); the quiet clone is fixed **once** for all five personas
 using it; and it derives from anything, not just presets.
 
 **Guardrail, or it becomes the preset we deleted:** a derived voice is a
@@ -348,7 +348,7 @@ something is spoken?"** Answer today: seven, three of which set the same numbers
 |---|---|---|
 | Engine | defaults | invisible fallback |
 | **Voice** | calibration — delivery + effects | everyone using it |
-| **Character** | which voice · base direction · delivery · effects · lexicon | that character |
+| **Persona** | which voice · base direction · delivery · effects · lexicon | that persona |
 | **Scene** | an effects chain + appended direction text | that passage |
 | **Line** | direction + numeric override | that line |
 | Master target | loudness / peak / noise floor | project |
@@ -408,9 +408,9 @@ Direction composes additively and reads as English:
    Render is a step and it owns direction, pause, state, take and Gen.
 5. **Inline for the line, pages for library objects.** The loop you run hundreds
    of times is tweak → hear; a line is transient, a voice is a thing you own.
-6. **Render presets are DELETED, not renamed.** A preset was a character minus the
+6. **Render presets are DELETED, not renamed.** A preset was a persona minus the
    identity — a named bundle of delivery + effects, differing only in scope. Its
-   delivery **overrode** every character's (set speed 0.9 and June 1.05×, Marius
+   delivery **overrode** every persona's (set speed 0.9 and June 1.05×, Marius
    0.95× and the Narrator all flatten). Its `voice_id` and `lexicons_json` are
    read by nothing; its `master` duplicates the project's. The tell is in JV's own
    seeded presets: *"Quiet Reflection — soft, slow, introspective passages"* is
@@ -427,7 +427,7 @@ Direction composes additively and reads as English:
    case proves it.
 9. **The derived voice** — the sixth way in. User: *"a fifth way to make a voice
    yes i like that"*.
-10. **No per-line voice override.** A different voice is a different character.
+10. **No per-line voice override.** A different voice is a different persona.
 11. **Voice Designer is KEPT.** My "we don't ship the checkpoint" was backwards:
     the feature is **already built and switched off** — `POST /v1/voices/design`,
     `design_prompt` on the voice record, the capability flag plumbed through
@@ -436,7 +436,7 @@ Direction composes additively and reads as English:
     `qwen3/manifest.py:38-42` says so: *"flips back with the VoiceDesign
     variant."* The door card offers **Install**, not a dead ✗.
     - JV-specific improvement over Alexandria's designer: **design from a
-      character sheet** — pre-fill the description from the character
+      character sheet** — pre-fill the description from the persona
       ("gravel-voiced harbor-master, 70s"), editable, never a silent conversion.
       The sheet is *who they are*; a voice description is *how they sound*.
     - Candidates before saving (reuse the clone flow's 10-minute LRU) rather than
@@ -484,7 +484,7 @@ Designer / Preparer / Dataset / Training.
 | **Speaker-change pause 500 ms · same-speaker pause 250 ms** — two settings | Real craft. JV has one gap value; a beat between two people is not a beat inside one person's speech. |
 | **"Merge consecutive narrator lines"** toggle with its honest note *"disable for better per-line voice direction control"* | JV's attribution will over-split narration; this is the decision with its tradeoff stated. |
 | **Banned tokens** (e.g. `<think>`) | JV runs local models that leak reasoning into output. |
-| **"Alias of"** — map "Mara" / "the detective" to one canonical character | JV has an aliases field nothing wires; this is its UI. |
+| **"Alias of"** — map "Mara" / "the detective" to one canonical persona | JV has an aliases field nothing wires; this is its UI. |
 | **Confidence + Min SNR gates** on dataset prep | JV should refuse bad clone/training audio the same way. |
 | **Final Loss** column on the adapters table | You cannot choose a checkpoint without it. |
 | **"How Settings Affect LoRA Voice Quality"** inline collapsible | JV ships knobs with no guidance anywhere. |
@@ -519,7 +519,7 @@ Designer / Preparer / Dataset / Training.
 
 A Gradio **bench** for making clips, not a production pipeline: six TTS engines
 (Qwen3-TTS, VibeVoice, LuxTTS, Chatterbox, Fish Speech S2 Pro, MMAudio) + three
-ASR, behind modular tabs. No project, chapter, character, lexicon, master-target
+ASR, behind modular tabs. No project, chapter, persona, lexicon, master-target
 or take-versioning concept at all, so most of it is out of scope.
 
 **Nothing for attribution.** Its "Conversation" tab is manual `[1]:` / `[2]:`
@@ -548,7 +548,7 @@ same idea as our `inline_tags` capability).
 ### WHERE JV IS ALREADY AHEAD — do not regress copying them
 
 Takes with lineage (they have one audio per line, and *Regenerate All* destroys
-it) · cross-project characters (theirs are per-run) · multi-engine with capability
+it) · cross-project personas (theirs are per-run) · multi-engine with capability
 gating (theirs is Qwen3-only, so it never has to say "this engine ignores
 direction") · effects, lexicons, master targets, ACX check — they have none.
 
@@ -594,7 +594,7 @@ All verified 2026-08-15 by reading the code. Each is also filed in
    (`channel_id`), Samples (`sample_count` — dropped by `_stored_to_dto`,
    `voices_api.py:32-40`) and Gens (`generation_count` — no such field anywhere)
    render "—", "Default" and "0" forever. Effects and channel routing belong to
-   the **character**.
+   the **persona**.
 5. **`RenderPreset` has two dead fields and a live lock.** `voice_id` and
    `lexicons_json` are read by nothing at render. `voice_id` is
    `ondelete="RESTRICT"` — a dead field that can **block deleting a persona** for
@@ -612,7 +612,7 @@ All verified 2026-08-15 by reading the code. Each is also filed in
    Production attribution has never seen a description or an alias.
 8. **Chapters offers "Generate first take" on speaker-less blocks** and prints raw
    block UUIDs (`b0e22b69`) at the user — the render path refuses a block with no
-   character, so the button cannot work.
+   persona, so the button cannot work.
 
 ---
 
@@ -662,7 +662,9 @@ app for real rather than mock it twice.**
 | `_s1`–`_s13.html` | the original screen stashes (`stash(n)`) |
 | `_new_*.html` | the newer route screens (`new(name)`) — home, projects, chapters, lines, discover |
 | `_interactions.py` | `CSS` (modal/toast/scope/statebar) · `MODALS` (m-scope, m-compare, m-effect, m-word) · `JS` (`openModal`, `closeModal`, `toast`, `pickRadio`, `pickChip`, `openScope`, `setScope`, `recalcScope`, `runScope`) |
-| `wire.py`, `wire2.py`, `wire3.py` | the three wiring sweeps that got it to 123 controls / 0 dead. `wire3.py` is the final backstop — it gives any remaining `<button>` without `onclick`/`disabled` a real action. |
+| `wire.py`, `wire2.py`, `wire3.py` | the three wiring sweeps that got it to zero dead controls. `wire3.py` is the final backstop — it gives any remaining `<button>` without `onclick`/`disabled` a real action. |
+| `sweep_persona.py` | the §8.4 terminology sweep, **already applied** — exact-string replacements, no regex; re-running it is a no-op |
+| `validate.py` | the checker the counts in §8.18 come from — tag structure · route reachability · dangling `nav()` targets · dead controls · character/persona counts |
 
 **Key functions in `build_mock.py`:**
 - `ROUTES` — the ordered `(id, body)` list. **A new screen is not reachable until
@@ -800,7 +802,30 @@ I had been using all three interchangeably. Verified against the code: it has
 | **Persona** | **The entity.** A named speaker: a voice, how they sound, who they are. Library-level, crosses projects. | `class Persona`, `/v1/personas/*`, `PersonaStore`, the sidebar label **"Personas"** |
 | **Cast** | **The set** of personas linked to *this project* — and the **verb**. | `class ProjectPersona`, `get_cast` → `CastEntry`, the Studio step |
 | **Speaker** | **The persona a given line is attributed to.** Attribution vocabulary only. | `discover-speakers`, `SpeakerCandidate`, `speaker_attribution` |
-| ~~Character~~ | — | **Nowhere in the codebase.** I introduced it. |
+| ~~Character~~ | — | Not an entity — but **not absent either**, see the correction below. |
+
+> **⚠ CORRECTION 2026-08-22 — this row used to read *"Nowhere in the codebase.
+> I introduced it."* That is false, and it was the evidence the ruling rested
+> on.** Re-verified today: **221 occurrences in server `*.py`** (venvs excluded)
+> and **145 in `src/`**. Most are prose in comments and ledes, but one is
+> schema:
+>
+> ```
+> database/models.py:632
+>   character_id = Column(String, ForeignKey("personas.id", ondelete="SET NULL"), …)
+> ```
+>
+> — a column on `SpeakerCorrection` literally named `character_id` that points
+> at `personas.id`, plus its API and Lab call sites (`AttributionResult.vue:161`
+> posts `character_id`, `:44` reads `data.characters`, `CastEditor.vue`'s
+> `parseCharacters`, `App.vue:53` describes Personas as *"Characters."*).
+>
+> **The ruling is unaffected** — the user chose the vocabulary and `Persona` /
+> `ProjectPersona` / `speaker` are still the entity, set and attribution words.
+> What changes is the sweep's scope: it has a **code** target too, and
+> `character_id` → `persona_id` is a schema rename. Pre-release, that is a seed
+> change and a reset rather than a migration (the no-migrations rule), but it is
+> **new work with no go**, and it is not what §8.4 originally described.
 
 > A **persona** is the entity. The **cast** is the personas in this project. A
 > line's **speaker** is which persona says it. **Never "character".**
@@ -812,15 +837,36 @@ was chosen in the first place.
 *"needs a speaker"* and *"Find speakers"* stay exactly as they are — that is the
 attribution question, and `speaker` is the right word for it.
 
-**The sweep was offered and has NOT been given a go.** What it would cover:
-- the mock — **25 instances** of character/characters against 82 of cast/persona.
-  Concretely: Cast says *"5 characters · 3 cast"* and *"Cast rows ARE
-  characters"*; the workbench says *"Used by 3 characters"*; Personas says *"14
-  characters"*; the chapter list says *"5 characters"*; the per-kind matrix
-  measures cast scale in characters.
-- **this doc** — §2.3 is written in "character" throughout, and §2.2 / §2.5 / §3
-  use it too. Only the two paragraphs corrected in §2.3 have been changed.
-- `docs/dev/TASKS.md` entries.
+**The sweep ran on the mock and nowhere else** (state corrected 2026-08-22 —
+this section had said it was never given a go, which was true when written):
+
+- **the mock — DONE.** `sweep_persona.py` applied the 25 replacements;
+  `validate.py` now reports **0 character / 72 persona**. Cast, the workbench,
+  Personas, the chapter list and the per-kind matrix all read "persona".
+  Re-running the script is a no-op.
+- **this doc — DONE 2026-08-22.** §2.2 / §2.3 / §2.4 / §2.5 / §3 / §5 / §9 / §10
+  swept.
+- **`docs/dev/TASKS.md` — DONE 2026-08-22.**
+- **the code — PARTLY DONE 2026-08-22.** `SpeakerCorrection.character_id` →
+  `persona_id`, through the column, `CorrectionIn`, `record_correction`, the
+  corrections payload, `prompts.format_corrections`, `AttributionResult.vue` and
+  both test files. **Required a data reset** (schema rename, no migration).
+
+**What was deliberately NOT swept, and why** — each of these is a different
+contract, not prose:
+
+| Not swept | Why |
+|---|---|
+| user quotes | verbatim, everywhere |
+| `format_characters`, `find_anchors(segments, characters)`, `{{characters}}` | code identifiers and a prompt-template variable |
+| `StandardLine.character_id` + its five adapters | the **external import wire format**, documented in `import-and-export.md` — renaming it breaks every import file that exists |
+| `SmartAssignCharacter` / `body.characters` on `POST /v1/llm/smart-assign` | a live API body **and** a `{{characters}}` template row in the shared `just-llm-runner` catalog — a cross-repo change |
+| `prompts.py:23`'s `"<character_id>"` | prompt text. Changing it changes attribution behaviour, and would confound the open gemma-MoE question (§8.21 item 9) |
+| "character sheet" | a named artifact and a live UI label (`App.vue:53`), not the entity word |
+| "character-defining" | ordinary English |
+| the open question at §8.21 item 7 / §8.22 | **unruled** — its wording is part of what is being asked |
+
+The four rows above the last three still have no go.
 
 ---
 
@@ -1236,17 +1282,27 @@ had dropped — the **hidden** filter (presets cannot be deleted, only hidden) a
 
 ### 8.18 EXACTLY WHERE THE MOCK WORK STANDS — resume here
 
-Build mechanics are in §8.1. This is the state, verified against the files on
-2026-08-16, not remembered.
+Build mechanics are in §8.1. This is the state, verified against the files by
+running `validate.py` on **2026-08-22**, not remembered. The counts below had
+drifted — this section carried three different totals (123 / 126 / 119 wired)
+from three different build dates.
+
+```
+18 routes · 134 controls · 0 dead · 4 deliberately disabled
+character/persona: 0 / 72          ← the §8.4 sweep is applied to the mock
+dangling nav targets: none
+routes nothing links to: scene     ← see the defect note below
+.lnk spans: 22, 6 without onclick (they sit inside clickable rows)
+```
 
 **Published and working today** —
 `https://claude.ai/code/artifact/534a16a2-af40-438b-a64d-34baaf31f838`:
 
-- A real shell: persistent sidebar, **17 routes** (`home · projects · new ·
-  chapters · lines · chapter · cast · render · export · voices · workbench ·
-  newvoice · personas · lexicons · effects · scene · engines`), breadcrumbs, and
-  **123 controls with 0 dead** — 119 wired, 4 deliberately disabled with the
-  reason on them.
+- A real shell: persistent sidebar, **18 routes** (`home · projects · new ·
+  discover · chapters · lines · chapter · cast · render · export · personas ·
+  voices · workbench · newvoice · lexicons · effects · scene · engines`),
+  breadcrumbs, and **134 controls with 0 dead** — 130 wired, 4 deliberately
+  disabled with the reason on them.
 - **Both Studio models behind a top toggle** (§8.19).
 - **Per-kind branching:** opening Ninefold turns "Chapters" into "Voice lines",
   drops the Find-speakers verb (a game sheet already names its speakers) and
@@ -1282,10 +1338,17 @@ Build mechanics are in §8.1. This is the state, verified against the files on
   hardcoded four-step strip and takes the shared one.
 - Home's running task said *"Find speakers"* — the operation is **Analyze**.
 
-**Verified after the build:** tag structure clean · 18 routes, **no dangling nav
-targets and no unreachable route** · **126 controls, 0 dead**, 6 deliberately
-disabled · the JS parses. The 6 `.lnk` spans without their own `onclick` sit
-inside clickable rows and are not dead.
+**Verified after the build (2026-08-16):** tag structure clean · 18 routes, no
+dangling nav targets · 126 controls, 0 dead · the JS parses.
+
+> **⚠ ONE DEFECT THIS PASS INTRODUCED, found 2026-08-22 — not fixed, no go.**
+> The Render restructure rewrote `_s4.html`, and with it the *"Scene
+> `no direction`"* pill that `linkify()` (`build_mock.py:221-224`) rewrites into
+> `nav('scene')`. `linkify` matches an exact string, so the replacement became a
+> **silent no-op**: `grep -c "nav('scene')" workbench-mock.html` → **0**. The
+> `scene` route still builds and still renders; nothing in the app reaches it.
+> `validate.py` reports it as *"routes nothing links to: scene"*. That is why
+> the claim above — true when written — no longer holds.
 
 **Not started:**
 - The remaining app screens the user asked for — **Captures, Stories, Presets,
@@ -1294,7 +1357,11 @@ inside clickable rows and are not dead.
   like settings ai settings, i want every link navidatable to what it actaully
   sees and does"*. Some are screens the redesign proposes to kill, which is a
   judgment to show rather than make silently.
-- The terminology sweep of §8.4.
+- The terminology sweep of §8.4 **in this doc and in `TASKS.md`**. The mock half
+  is done (`sweep_persona.py`, 0 character / 72 persona), and so is the prose
+  half (2026-08-22). What is left is listed in the table in §8.4.
+- Re-linking the `scene` route (the defect note above).
+- The stress-test counts and empty states of §8.21 item 6.
 
 ---
 
@@ -1340,8 +1407,12 @@ look at rather than imagine, which was the point.
 1. **Does Studio survive as a container?** Both built (§8.19). Unruled. This is
    §4 open question 1.
 2. **Do the deterministic suspicion checks get built?** (§8.14) New work.
-3. **Does the terminology sweep run**, and does it cover the docs as well as the
-   mock? (§8.4) Offered, no go.
+3. ~~**Does the terminology sweep run on the prose?**~~ **DONE 2026-08-22** —
+   the mock (`sweep_persona.py`), this doc, `TASKS.md`, and the
+   `SpeakerCorrection.persona_id` rename in code. What was deliberately left,
+   and why, is the table in §8.4: the import wire format, the smart-assign API
+   and its shared prompt template, the attribution prompt text, "character
+   sheet", and the unruled question below.
 4. **Do the remaining screens go into the mock?** (§8.18) Asked for, not started.
 5. ~~**Does the mock move into the repo?**~~ **DONE 2026-08-17** — it lives at
    `docs/plans/mock/` with a README; `build_mock.py` + `validate.py` run from
@@ -1364,16 +1435,22 @@ look at rather than imagine, which was the point.
    with nothing rendered. **Not fixed.**
 7. **Can a character's persona vary by scene, or is it one per character?**
    (§8.22) User 2026-08-17: *"i dont know yet."* Nothing may assume either way.
+   **Left in the pre-ruling wording on purpose** — it uses "character" for the
+   fictional person and "persona" for the record, and whether those are one
+   thing or two is exactly what is unruled. Rewording it would answer it.
 8. **Does the workbench lose its knob panel** for make · hear · calibrate ·
    derive, leaving one set of live sliders on the persona? (§8.22) Argued, not
    ruled — and the mock still shows 7 workbench sliders + 4 on Cast.
-7. **Is the starved analyze prompt why gemma-MoE attributes worse than
+9. **Is the starved analyze prompt why gemma-MoE attributes worse than
    gemma-3-12b?** §6 finding 7: `_resolve_cast` (`extraction_api.py:145-167`)
    hardcodes role/gender/pronouns to `None` and aliases to `[]`, and
    `format_characters` (`extraction/prompts.py:82-97`) reads those empty fields.
    **The prompt receives a bare list of `id` and `name`** — no descriptions, no
    aliases, no pronouns. A smaller model has nothing to reason from, which would
    widen exactly that gap. **Cheap to test before blaming the model.**
+10. **Does the `scene` route get re-linked?** It went unreachable in the
+    2026-08-16 Render restructure — `linkify()`'s exact-string match for the
+    Scene pill stopped matching. Found 2026-08-22, not fixed. §8.18.
 
 ---
 
@@ -1417,7 +1494,7 @@ proposal, not in the app**. Today: the persona, and only the persona.
 
 #### Why the persona layer earns its place: it survives a recast
 
-**A voice is bound to an engine. A character is not.** Bake the delivery,
+**A voice is bound to an engine. A persona is not.** Bake the delivery,
 effects and instruct into the voice, and the moment you recast Marius from
 Kokoro to a Chatterbox clone, all his tuning dies with the old instrument —
 it was attached to the artifact. Keep the persona layer and you swap
@@ -1428,7 +1505,7 @@ is exactly what you would want to keep when the instrument changes.** That is
 the layer's job.
 
 > **Voice tuning fixes the instrument. Persona tuning is the performance, and
-> it follows the character when the instrument changes.**
+> it follows the persona when the instrument changes.**
 
 #### The limit — and this is the half I got wrong first
 
@@ -1478,7 +1555,7 @@ and a measured constant on the voice.
 
 After the delivery audit there is **no legitimate voice-level slider left**:
 pitch is post-process on every engine, speed and temperature are
-engine-specific *performance* settings that belong to the character, effects
+engine-specific *performance* settings that belong to the persona, effects
 are host-side. So the workbench is:
 
 > **make · hear · calibrate · derive**
@@ -1534,9 +1611,10 @@ build · smoke (16 views, zero JS errors).
 this design.
 
 **The mock:** ~~14 screens, Inline-first / Page-first toggle~~ — **STALE, see
-§8.18.** It is now 17 routes with a Container/Dissolved toggle and 123 wired
-controls; page-first was deleted when the user chose inline (§8.2). Source still
-lives in the session scratchpad, not the repo.
+§8.18**, which is the only place the counts are maintained. It is now 18 routes
+with a Container/Dissolved toggle; page-first was deleted when the user chose
+inline (§8.2). Source lives at `docs/plans/mock/` (moved out of the session
+scratchpad 2026-08-17).
 
 **Unpushed, corrected 2026-08-16:** the "none — all four pushed" line above was
 true when written and is not now. `git log --oneline origin/main..main` shows
@@ -1568,7 +1646,9 @@ lookup table.
 | Deps | **none new** |
 
 **The call is already in the package we ship.** It sits in the installed
-`qwen_tts` in `engines/.shared-venv`, beside `generate_custom_voice` and
+`qwen_tts` — `engines/qwen3/.venv` since the 2026-08-22 per-engine migration,
+`engines/.shared-venv` when this was written and that path no longer exists —
+beside `generate_custom_voice` and
 `generate_voice_clone`. What is missing is a variant row in
 `qwen3/manifest.py`, the checkpoint download, and one branch in the adapter.
 `voice_design: False` and the "flips back with the VoiceDesign variant" note in
@@ -1698,7 +1778,7 @@ it changes the cache key, so everything re-renders once.
 
 **2. The direction-vs-identity trade-off has to be said where the choice is
 made.** Prose direction reaches Qwen3 CustomVoice alone, and CustomVoice cannot
-clone (§9.4). So picking "this character's cloned voice" silently costs you
+clone (§9.4). So picking "this persona's cloned voice" silently costs you
 written direction — and you find out later, when the direction you wrote does
 nothing. `PersonasView.vue:96-107` already has the right *pattern*: a live
 verdict that reads the engine's real capability instead of a hardcoded list.
@@ -1743,16 +1823,16 @@ kind of knob.
 
 | | What it is | Owns | Changing it affects |
 |---|---|---|---|
-| **Voice** | the instrument | how it sounds at rest | every character using it, in every project |
-| **Persona** | the character | how they always speak | this character, everywhere |
+| **Voice** | the instrument | how it sounds at rest | every persona using it, in every project |
+| **Persona** | the performer | how they always speak | this persona, everywhere |
 | **Line** | the moment | how they say *this* | one line |
 
 **The rule that decides where any knob goes — when you change it, who else
 should change with it?**
 
 - Fix once and everyone using that voice should be fixed → **Voice**. (The
-  quiet clone shared by five characters. The fix belongs to the artifact.)
-- True of the character in every scene → **Persona**.
+  quiet clone shared by five personas. The fix belongs to the artifact.)
+- True of the persona in every scene → **Persona**.
 - True only right here → **Line**.
 
 Three layers, each composing over the one before. **Not "the persona gets all
@@ -1765,8 +1845,8 @@ cheerful next same person but angry"* — and then described **emotions**, not
 voices. That distinction is the crux, and it is why there is no per-line voice
 picker:
 
-- A different **voice** = a different actor = **a different character** → cast
-  once, per character.
+- A different **voice** = a different actor = **a different persona** → cast
+  once, per persona.
 - A different **emotion** = the same actor having a moment → **per line**.
 
 That is exactly what `delivery.emotion` is (nine values, `models.py:1064-1074`
@@ -1781,7 +1861,7 @@ Chatterbox too is **one column**.
 
 ### 10.3 Why "the persona gets all the knobs" cannot work
 
-**The engine is not a property of the character. It is a property of the
+**The engine is not a property of the persona. It is a property of the
 voice** — `Voice.engine`, `models.py:466`, a required field on the artifact.
 
 Cast June to Sohee → June is on Qwen3 → June takes prose direction. Recast June
@@ -1804,22 +1884,22 @@ Delivery fields fall into two piles by **who applies them** (`code-map.md` §3b)
 **The persona should hold only what survives a recast** — the host-side pile,
 plus `emotion`, which straddles honestly (an enum compiles to whatever the
 engine understands, or to nothing, and never lies). **Engine-specific knobs
-belong to the casting, not the character.**
+belong to the casting, not the persona.**
 
 This is why §9.6's host-side `speed` matters more than it looks: pacing is the
 most character-defining thing there is, and today it is engine-side, so it
 falls off on recast. Moving it makes "the persona survives a recast"
 substantially true instead of half-true.
 
-> **Flagged:** `Persona.engine_override` (`models.py:551`) lets a character
-> override the engine its voice belongs to — a character reaching past its
+> **Flagged:** `Persona.engine_override` (`models.py:551`) lets a persona
+> override the engine its voice belongs to — a persona reaching past its
 > instrument. It predates the cast layer and fights this model.
 
 ### 10.5 So where things are actually set — four places, one job each
 
 1. **Voice workbench** — tuning the *instrument*. Hear · tune · save-as. Fixes
    travel to everyone using it.
-2. **Cast row** — binding character to instrument. **This is where the engine
+2. **Cast row** — binding persona to instrument. **This is where the engine
    becomes known**, so engine-specific knobs and the audition button belong
    here — and this is where the app should state the trade just made
    (*Qwen3 CustomVoice: prose direction ✓, cloning ✗*).
@@ -1827,7 +1907,7 @@ substantially true instead of half-true.
    an engine) · `voice_instruct` (standing delivery) · host-side defaults.
 4. **The line** — direction and/or emotion, inline.
 
-You test at 1 for the instrument and at 2 for the character-on-this-instrument.
+You test at 1 for the instrument and at 2 for the persona-on-this-instrument.
 **Not "test on the persona then assign"** — you cannot test what you have not
 cast, because until you cast there is no engine and therefore no knobs.
 
@@ -1839,7 +1919,7 @@ take-versioning. The user was right.
 
 It is the pre-persona knob laboratory: where you went to try a voice with knobs
 before personas and a cast existed. Every job it does now has a better home —
-try a voice → the workbench; try a character on a line → the cast-row audition;
+try a voice → the workbench; try a persona on a line → the cast-row audition;
 say one thing and hand me a WAV → real, but that is the **dictation/game** job,
 not the book job.
 

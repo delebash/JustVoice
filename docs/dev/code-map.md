@@ -183,7 +183,7 @@ podcast: show/episode/segment.
 | `effect_presets` | `chain_json` · `is_builtin` · `sort_order` | named effect chains |
 | `render_presets` | `voice_id` (**FK → personas, `ondelete=RESTRICT`**) · `delivery_json` · `effects_chain` · `master` · `lexicons_json` · `seed` · `cache_scope` | see §7 |
 | `webhooks` | `events_json` · `secret_hash` · `log_tail_json` | |
-| `speaker_corrections` | `project_id` · `text_snippet` · `character_id` → personas | fed back into attribution as `corrections` |
+| `speaker_corrections` | `project_id` · `text_snippet` · `persona_id` → personas (named `character_id` until 2026-08-22) | fed back into attribution as `corrections` |
 | `training_jobs` | `persona_id` · `engine` · `status` · sample counts · `loss_history_json` · `adapter_path` | LoRA training |
 | `mcp_bindings` | `client_id` · `persona_id` · `default_engine` | dictation clients |
 | `prefs` / `settings` | key/value; `settings` is a single row of JSON | renderer UI prefs + all operator knobs |
