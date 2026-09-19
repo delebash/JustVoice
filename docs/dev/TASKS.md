@@ -849,6 +849,34 @@ pass; a visual pass over the new Voices UI in a browser (Chrome extension
 was not connected this session; the smoke gate is paused by your word — the
 Tauri dev window has everything HMR-live).
 
+### ~~The smoke gate went red on a healthy app — the boot splash ate every click~~ — FIXED 2026-08-22
+
+STATE: FIXED. `scripts/smoke.js` now dismisses the boot splash, and the NAV-FAIL
+line no longer truncates away the reason.
+
+WHAT HAPPENED: on any data dir with `warmDefaultOnStartup: true` — which the
+real dev data dir has — `App.vue`'s `.splash` overlay is up while warm-on-boot
+loads the default local chat model (here `gemma-4-26b-a4b-qat`). It covers the
+app and intercepts every pointer event, so all 14 nav clicks timed out and the
+gate reported `SMOKE FAILED: 14 view(s) errored` on an app that was rendering
+perfectly, with zero console errors and a complete rail.
+
+**The app was never at fault, and neither was the kit** — `BootModelLoad` ships
+the escape ("Continue without waiting") and it was present the whole time. This
+is the same false-red family as the 2026-08-14 `.ui-modal-overlay` one that was
+"blamed on machine contention twice"; the splash is not a modal, so that Escape
+loop never touched it.
+
+WHY IT COST A FULL DIAGNOSIS: the NAV-FAIL log sliced Playwright's message at
+100 chars, which cut it off immediately before
+`<div class="splash"> intercepts pointer events` — the line that names the
+cause. Fourteen identical "Timeout 5000ms exceeded" lines that explained
+nothing. **That truncation is fixed too**: any interception line is now printed
+under the failure.
+
+NOT: waiting the splash out. Warming a 26B model takes minutes and is not what
+this gate measures — clicking the escape is what a user does.
+
 ### THE VOICE-WORKFLOW REDESIGN — the resume surface
 
 STATE: BEING DESIGNED IN THE MOCK. NOTHING BUILT IN APP CODE.

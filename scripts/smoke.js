@@ -92,6 +92,35 @@ try {
     console.log("✓ FIRST-RUN   no modal blocking the app");
   }
 
+  // Dismiss the BOOT SPLASH (2026-08-22). App.vue's `.splash` is a full-screen
+  // overlay shown while warm-on-boot loads the default local chat model. It is
+  // NOT a modal, so the Escape loop above does nothing to it, and it intercepts
+  // every pointer event exactly like the first-run overlay did — so on any data
+  // dir with `warmDefaultOnStartup: true` all 14 nav clicks time out on a
+  // completely healthy app. That is a false red of the same family as the
+  // 2026-08-14 one, and it cost a full diagnosis to find because the NAV-FAIL
+  // message below truncates Playwright's actionability log at 100 chars, hiding
+  // the "<div class=\"splash\"> intercepts pointer events" line that names it.
+  //
+  // The app is not at fault and the gate must not wait it out either: warming a
+  // 26B model takes minutes and is not what this gate measures. The kit's
+  // BootModelLoad ships the universal escape for exactly this — click it, the
+  // same thing a user does.
+  if (await page.locator(".splash").count()) {
+    const skip = page.locator(".lu-bootload__skip");
+    if (await skip.count()) await skip.first().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForSelector(".splash", { state: "detached", timeout: 10000 }).catch(() => {});
+    if (await page.locator(".splash").count()) {
+      failed++;
+      console.log("✗ SPLASH      boot splash would not dismiss — every click below would"
+        + " fail; check BootModelLoad's escape, don't re-run the gate");
+    } else {
+      console.log("✓ SPLASH      boot splash dismissed (warm-on-boot was loading a model)");
+    }
+  } else {
+    console.log("✓ SPLASH      no boot splash (warm-on-boot off, or nothing to warm)");
+  }
+
   // ── App-shell structure guard (the keep-alike discipline; see the global
   // app standard "App shell structure"). Catches the regressions that hit on
   // 2026-06-24: rail not full-height → nav jumps between views; 100vh →
@@ -135,7 +164,21 @@ try {
       for (const e of errs.slice(0, 4)) console.log(`      ${e}`);
     } catch (e) {
       failed++;
-      console.log(`✗ ${tab.padEnd(10)} NAV-FAIL ${String(e.message || e).slice(0, 100)}`);
+      // Keep the "intercepts pointer events" line. Playwright puts WHY a click
+      // failed in its actionability log, and the old 100-char slice cut it off
+      // right before the answer — 14 identical "Timeout 5000ms exceeded" lines
+      // that named nothing, which is what made the 2026-08-22 splash false red
+      // cost a full diagnosis. Show the timeout, then any interception line.
+      const msg = String(e.message || e);
+      const why = msg.split("\n").find((l) => l.includes("intercepts pointer events"));
+      console.log(`✗ ${tab.padEnd(10)} NAV-FAIL ${msg.split("\n")[0].slice(0, 100)}`);
+      // Playwright colours its log. Strip the SGR codes without putting a
+      // control character in a regex, which biome bans however it is escaped.
+      if (why) {
+        const ESC = String.fromCharCode(27);
+        const plain = why.split(ESC).map((s) => s.replace(/^\[\d+m/, "")).join("");
+        console.log(`      ${plain.trim()}`);
+      }
     }
   }
 } finally {
