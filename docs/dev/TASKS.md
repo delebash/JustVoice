@@ -1143,6 +1143,28 @@ BUILT:  see the plan doc `docs/plans/2026-09-28-speaker-attribution-tuning.md` (
         second pass not built (residual misses are high-confidence). Uncommitted.
 GO:     given 2026-09-28 — iterate without asking until it works well; report when satisfied.
 
+### After the attribution work: verify Discover live, seed the local timeout, test long chapters
+STATE:  DECIDED 2026-09-28 — "push go your rec". The rec, as shown: "I'd do 2, 3 and 4 first.
+        They're small and confirm what was just built before the larger redesign in 1."
+          2. Check the new Discover screen in the real app by running a scan on the demo project.
+          3. Longer default timeout for the local model in the kit's seed data. Your database
+             already has 900 s; a fresh install still gets 60 s, which cuts off thinking runs.
+          4. Long-chapter check: see whether attribution holds on a very long chapter, or
+             needs to be split into chunks.
+WHY:    Confirm what was just built before the larger Script/Render redesign (item 1).
+NOT:    Item 1 (Script and Render redesign, slices 3-5, presets excision) — not in this go.
+GO:     given 2026-09-28.
+BUILT:  2 — scanned Brass Rank in the running app (vite 1430 → server 17494) headless: AI task
+          strip, row fill, zero JS errors. FOUND: "Ode" proposed beside Odeline Marran — the
+          sample says "Answers to Ode." only in her one-liner, the library match reads names +
+          aliases, so Add would make a duplicate persona. Gudgeon still proposed (Ignore).
+        3 — kit `seed.py`: built-in provider seeds `timeout_seconds: 900`; docs/ai-features.md
+          Troubleshooting gains "Timed out". Kit suite 979 pass; 10 test_lifecycle failures
+          are the same with the change stashed (pre-existing).
+        4 — plan doc pass 10: long chapters fine (136/136, 131/132 at 6.5-7.8k words); past
+          the context the 400 is SWALLOWED into all-"unknown" with no message.
+        Uncommitted.
+
 ### The audiobook demo is JustWrite's sample, The Ninth Facet
 STATE:  DECIDED 2026-09-27 — "2 make a folder called samples just like jw and the load demo just
         imports the project per existing code remove silwater". Option 2 of: (1) just import it,

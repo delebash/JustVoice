@@ -394,6 +394,11 @@ feature, and answers **501** with a clear message when no model is set up.
   own, and the fix is the sentence at its end: turn thinking off on that
   feature's preset (Routing by feature → the feature → its preset's thinking
   control), or route the feature to a model that can think.
+- **"Timed out"** — the provider gave up waiting for an answer. The built-in
+  provider waits up to 15 minutes per call, because a thinking run on a long
+  chapter can take several minutes on a home PC. An online or other local
+  provider waits 60 seconds, so if Script times out there, use a smaller
+  chapter or route the feature to the built-in provider.
 - **An answer stops mid-sentence** — a **Max tok** cap is set on that
   feature's preset and the answer hit it. No feature ships with one, so if
   there's a number there, someone typed it: raise it or clear the box

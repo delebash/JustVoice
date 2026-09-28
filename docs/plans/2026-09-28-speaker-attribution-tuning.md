@@ -182,6 +182,21 @@ From the shipped 55% / 64% (14% / 33% confidently wrong).
 - Also: a stubbed/echoed REAL id is accepted as-is (the model sees handles, but an id that is
   in the cast is unambiguous) — `test_analyze_persist` relies on it.
 
+### Pass 10 — long chapters, and what happens past the context (2026-09-28, the user's live app)
+- `eval:attribution --whole` joins the keyed chapters into ONE chapter and shifts the key.
+  Live settings (Gemma 4 26B, ctx 32768, thinking on), server on 17494:
+  - The Ninth Facet whole, 6,478 words (~8.7k tok): **136/136**, 144 s.
+  - Salt-Iron whole, 7,824 words (~10.6k tok): **131/132**, 124 s (the same "Quartermaster." miss).
+  - So a chapter 2-4x normal length reads as well as a normal one. No chunking needed below
+    the context.
+- Past the context (10 Salt-Iron chapters, 26,030 words, 34,514 prompt tokens > 32,768):
+  llama.cpp answers 400 `exceed_context_size_error` and **the pipeline swallows it**
+  (`pipeline.py` `except Exception: log.warning(...); llm_picks = []`). The response is a 200
+  with 220/234 lines "unknown" (floored), `raw_llm` None, and no message anywhere the user
+  sees. The same swallow hid the 00:39 timeout this morning and a failed MTP draft load on
+  2026-08-17 — every model failure looks like "the model couldn't tell who spoke".
+- Not fixed here (behaviour change, needs its word). Recommendation in TASKS.
+
 ### Alexandria, read 2026-09-28 (agent report; code in `E:\Dev\Web\alexandria-audiobook`)
 - First pass (`app/generate_script.py`, prompts `default_prompts.txt`): 3000-char non-overlapping
   chunks; the model RE-TYPES the book as `[{"speaker","text","instruct"}]` — no ids, no alignment,

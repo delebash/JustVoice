@@ -35,6 +35,7 @@ import urllib.error
 import urllib.request
 from collections import Counter
 from pathlib import Path
+from types import SimpleNamespace
 
 HERE = Path(__file__).resolve()
 sys.path.insert(0, str(HERE.parents[1]))
@@ -76,6 +77,7 @@ def main() -> int:
     ap.add_argument("--readable-ids", action="store_true", help="p_name ids instead of UUID-shaped (diagnostic)")
     ap.add_argument("--no-propagate", action="store_true", help="skip the tag-anchor pass")
     ap.add_argument("--chapter", action="append", help="only these chapter titles")
+    ap.add_argument("--whole", action="store_true", help="join the keyed chapters into ONE long chapter")
     ap.add_argument("--show", type=int, default=12, help="errors to print per chapter")
     ap.add_argument("--out", help="write every row as JSON, for comparing runs")
     args = ap.parse_args()
@@ -113,22 +115,37 @@ def main() -> int:
     print(f"Attribution test · {book.project.name} · {args.server} · {args.runs} run(s)"
           f" · {', '.join(f'{k}={v!r:.40}' for k, v in body_extra.items()) or 'live settings'}\n")
 
-    grand = Counter()
-    by_source = Counter()
-    dump = []
+    tests = []   # (title, text, truth, also_ok)
     for scene in book.scenes:
         if args.chapter and scene.title not in args.chapter:
             continue
         if scene.title not in key["chapters"]:
             continue   # a key may cover only some chapters of a long book
-        truth = key["chapters"][scene.title]
-        also_ok = set(key.get("also_ok", {}).get(scene.title, []))
-        text = "\n\n".join(line.text for line in scene.lines if line.text)
+        tests.append((scene.title, "\n\n".join(line.text for line in scene.lines if line.text),
+                      key["chapters"][scene.title], set(key.get("also_ok", {}).get(scene.title, []))))
+    if args.whole:
+        # One long chapter: the keyed chapters joined, their [D#] keys shifted by the
+        # dialogue count before them (a key numbers every dialogue segment from 0).
+        text, truth, also_ok, off = [], {}, set(), 0
+        for _title, t, tr, ok in tests:
+            text.append(t)
+            truth.update({str(int(d) + off): v for d, v in tr.items()})
+            also_ok.update(str(int(d) + off) for d in ok)
+            off += len(tr)
+        tests = [(f"whole book ({len(tests)} chapters)", "\n\n".join(text), truth, also_ok)]
+
+    grand = Counter()
+    by_source = Counter()
+    dump = []
+    for title, text, truth, also_ok in tests:
+        scene = SimpleNamespace(title=title)
         for run in range(args.runs):
             t0 = time.time()
             r = post(args.server, "/v1/extraction/analyze-text",
                      {"text": text, "characters": chars, **body_extra})
             dialogue = [row for row in r["rows"] if row["kind"] == "dialogue"]
+            if len(dialogue) != len(truth):
+                print(f"   {len(dialogue)} dialogue segments, key has {len(truth)} — the numbering is off")
             c = Counter()
             errors = []
             for i, row in enumerate(dialogue):
