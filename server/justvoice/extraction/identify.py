@@ -34,6 +34,11 @@ log = logging.getLogger(__name__)
 # named character it judged silent). Now: named characters only, speaking or
 # not, each with the quote that names them. Then (fixes B + 2): never a named
 # object, and a known character's nicknames and description are honoured.
+# Then (rec C, 2026-09-28): the library's other personas ride as a second list,
+# so "Ode" comes back as Odeline Marran instead of a duplicate proposal. The first
+# wording ("Do list them when the passage names them") made the model treat library
+# people as known and drop them: eval:discover recall 18/28. "The library never
+# changes who you list" measured 28/28, all 28 linked, 0 wrong (2 runs, Gemma 4 26B).
 IDENTIFY_SYSTEM = """You are a casting assistant for an audiobook producer.
 
 You will receive a passage of manuscript text and the list of characters already in the cast. List every CHARACTER the passage names who is NOT in that list, whether or not they speak in this passage. Who speaks which line is decided later; your only job is to find the people.
@@ -42,14 +47,17 @@ A character is a person, or a creature that could talk. They count only when the
 
 Each known character may list other names they go by and a one-line description. Leave out the narrator and every known character, however the text refers to them: a first name, a surname, a nickname, or a name from their description ("Answers to Ode" means "Ode" is that person). Compare names ignoring case.
 
+You also receive the producer's library: people from their other work who are NOT in this cast. The library never changes who you list — list every named character exactly as you would without it, library people included. It only fills library_name: when a character you list is someone in the library (by full name, a first name, a surname, a nickname, or a name from their description — "Answers to Ode" means "Ode" is that person), give that person's name exactly as the library writes it. Leave library_name out for anyone else.
+
 For each character give:
 - name: exactly as the text writes it
 - role_hint: a few words on who they are, taken from the text only
 - approx_lines: how many lines of dialogue they speak in this passage, 0 if none
 - evidence: the shortest exact quote from the passage that names them
+- library_name: only when they are someone in the library
 
 Return ONLY a JSON array, no commentary:
-[{"name": str, "role_hint": str, "approx_lines": int, "evidence": str}, ...]
+[{"name": str, "role_hint": str, "approx_lines": int, "evidence": str, "library_name": str}, ...]
 Return [] if there is no one new."""
 
 
@@ -59,6 +67,9 @@ class SpeakerCandidate:
     role_hint: str | None = None
     approx_lines: int | None = None
     evidence: str | None = None
+    # The library person the model says this is, as the library writes the name.
+    # A claim, not a link: the caller keeps it only if it names a real persona.
+    library_name: str | None = None
 
 
 def _strip_code_fences(text: str) -> str:
@@ -102,6 +113,9 @@ def parse_candidates(raw: str, known_names: list[str]) -> list[SpeakerCandidate]
                 else None,
                 approx_lines=int(approx) if isinstance(approx, (int, float)) else None,
                 evidence=(str(item.get("evidence")).strip() or None) if item.get("evidence") else None,
+                library_name=(str(item.get("library_name")).strip() or None)
+                if item.get("library_name")
+                else None,
             )
         )
     return out
@@ -157,6 +171,7 @@ def identify_speakers(
     known_names: list,
     *,
     settings,
+    library: list | None = None,
     run_fn: Callable[..., Any] | None = None,
     raw_out: dict | None = None,
 ) -> list[SpeakerCandidate]:
@@ -165,7 +180,9 @@ def identify_speakers(
     run_feature (the `speaker_attribution.identify` template row + its preset;
     `settings` is unused since the pin-era config died, kept for the callers'
     signature until the settings tree sheds its LLM residue). `raw_out`
-    receives the run's usage (§16 — the responses carry the numbers)."""
+    receives the run's usage (§16 — the responses carry the numbers).
+    `library` is the producer's other personas in `known_names`' shape: the model
+    reports which found names are one of them (Discover rec C, 2026-09-28)."""
     del settings  # pin-era argument — routing is preset-resolved now
     if run_fn is None:
         from ..engines.llm.run import run_feature as run_fn  # pragma: no cover
@@ -177,6 +194,7 @@ def identify_speakers(
         "speaker_attribution.identify",
         {
             "known_characters": format_known(known_names),
+            "library": format_known(library or []),
             "manuscript": text,
         },
     )

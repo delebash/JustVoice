@@ -235,6 +235,7 @@ DEFAULT_TEST_SAMPLES: list[dict] = [
     {"actions": ["speaker_attribution.identify"], "label": "Discover the harbor-master",
      "variables": {
          "known_characters": "- Mara\n- Renn",
+         "library": "- (none)",
          "manuscript": '"Boats out past the light again," the harbor-master said, '
                        'nailing the notice to the gate. Mara read it twice. '
                        '"And you\'ll say nothing," she said. "Nothing worth coin," he said.',

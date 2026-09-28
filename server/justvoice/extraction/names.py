@@ -100,3 +100,27 @@ def quote_in_text(quote: str, text: str) -> bool:
 
     q = squash(quote)
     return bool(q) and q in squash(text)
+
+
+_SENTENCE = re.compile(r"(?<=[.!?])\s+")
+_CAPWORD = re.compile(r"\b[A-Z][\w'-]{2,}")
+_WORD = re.compile(r"[\w'-]+")
+
+
+def named_in(text: str, personas: Iterable) -> list:
+    """The personas `text` could be naming: a word of three letters or more from
+    their name or an alias, or a capitalised word from inside a sentence of their
+    description (where a nickname lives — "Answers to Ode."; a sentence's first
+    word is skipped, or "Has" and "The" would pull in half a library), appears
+    in the text as a whole word. Deliberately generous — the model decides; this
+    only keeps people the chapter never mentions out of the prompt."""
+    words = {w.casefold() for w in _WORD.findall(text or "")}
+    out = []
+    for p in personas:
+        keys = [w for label in _labels(p) for w in _WORD.findall(label) if len(w) >= 3]
+        desc = p.get("description") if isinstance(p, dict) else getattr(p, "description", None)
+        for sentence in _SENTENCE.split((desc or "").strip()):
+            keys.extend(m.group(0) for m in _CAPWORD.finditer(sentence) if m.start() > 0)
+        if any(k.casefold() in words for k in keys):
+            out.append(p)
+    return out

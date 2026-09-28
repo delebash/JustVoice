@@ -2,6 +2,7 @@
 """The one name matcher behind Discover's cast filter, library match and
 alias learning (2026-09-27)."""
 
+from justvoice.extraction import names
 from justvoice.extraction.names import is_variant, match, norm, quote_in_text, refers_to
 
 BRICK = {"id": "b", "name": "Brick Halvorn", "aliases": []}
@@ -52,3 +53,13 @@ def test_quote_check_ignores_marks_and_spacing():
     assert quote_in_text("brick  WENT first", text)
     assert not quote_in_text("Brick sang", text)
     assert not quote_in_text("", text)
+
+
+def test_named_in_keeps_only_people_the_text_could_name():
+    lib = [
+        {"name": "Odeline Marran", "aliases": [], "description": "Has lived the same hour. Answers to Ode."},
+        {"name": "Brick Halvorn", "aliases": [], "description": None},
+        {"name": "Quill Anders", "aliases": ["Q"], "description": "The clerk. Has a ledger."},
+    ]
+    found = names.named_in("Ode smiled. Halvorn did not. The ledger has a clerk.", lib)
+    assert [p["name"] for p in found] == ["Odeline Marran", "Brick Halvorn"],         "a nickname inside a description counts; a sentence's first word (The/Has) does not"

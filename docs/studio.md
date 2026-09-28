@@ -79,7 +79,12 @@ nothing on its own.
    - **→ Name · in your library** means the name refers to a persona you
      already have, but not in this cast ("Brick" → *Brick Halvorn*). **＋ Add**
      then puts that persona in the cast and remembers "Brick" as another name
-     for him — it never makes a duplicate.
+     for him — it never makes a duplicate. Discover shows the model the
+     personas in your library that the chapter could be naming, with their
+     *Also called* names and the first line of their description, so a
+     nickname that only appears in a description is caught too: if Odeline
+     Marran's description says *"Answers to Ode."*, "Ode" comes back as
+     *→ Odeline Marran · in your library*, not as a new person.
    - Otherwise **＋ Add** creates a new persona, keeping any other spellings as
      its *Also called* names.
    - **quote not in the chapter** means the quote the model gave is not in the
@@ -148,6 +153,16 @@ what makes it take time: on the built-in Gemma model with an 8 GB graphics
 card, expect about a minute per chapter. To trade some accuracy for speed,
 turn thinking off on the **Reasoned extraction** preset (AI Settings →
 Routing by feature).
+
+**When the model can't answer, Analyze says so.** If the model call fails,
+the run stops, the task strip shows it as failed, and the message says why;
+nothing is saved and the chapter keeps its previous analysis. The common
+case is a chapter too long for the model to read at once: *"The chapter is
+too long for the model to read in one go. This chapter is 34,514 tokens and
+the model holds 32,768."* The built-in Gemma model reads chapters of 8,000
+words or so as well as short ones; past its limit, split the chapter into
+smaller ones. A timeout or a model that would not load reports the
+provider's own message the same way.
 
 The **read** note in the header (*"read with examples"* / *"read rules only"*)
 is which prompt the model got — the longer one carries worked examples, and

@@ -36,6 +36,7 @@ HERE = Path(__file__).resolve()
 sys.path.insert(0, str(HERE.parents[1]))
 
 from justvoice.extraction.identify import format_known, known_labels, parse_candidates  # noqa: E402
+from justvoice.extraction import names  # noqa: E402
 from justvoice.extraction.names import match, norm, quote_in_text, refers_to  # noqa: E402
 from justvoice.imports import run_adapter  # noqa: E402
 
@@ -64,6 +65,9 @@ def main() -> int:
     ap.add_argument("--runs", type=int, default=1, help="repeat each chapter to see how stable it is")
     ap.add_argument("--system", help="a file holding a CANDIDATE system prompt to test instead of the "
                                      "live one — the Lab's unsaved-draft door; nothing is saved")
+    ap.add_argument("--no-library", action="store_true",
+                    help="send an empty library (by default the characters taken out of the cast "
+                         "are the library, as after an import — the real Discover case)")
     args = ap.parse_args()
 
     root = HERE.parents[2] / "samples" / args.sample
@@ -83,14 +87,16 @@ def main() -> int:
     print(f"cast: {', '.join(p['name'] for p in cast)}")
     print(f"taken out of the cast: {', '.join(p['name'] for p in removed)}\n")
 
-    totals = {"expected": 0, "found": 0, "wrong": 0, "quotes": 0, "quotes_ok": 0}
+    totals = {"expected": 0, "found": 0, "wrong": 0, "quotes": 0, "quotes_ok": 0, "linked": 0}
     for scene in book.scenes:
         text = "\n\n".join(line.text for line in scene.lines if line.text)
         expected = [p for p in removed if named_in(p, text)]
         for run in range(args.runs):
             t0 = time.time()
+            library = [] if args.no_library else names.named_in(text, removed)
             body = {"action": ACTION,
-                    "variables": {"known_characters": format_known(cast), "manuscript": text}}
+                    "variables": {"known_characters": format_known(cast),
+                                  "library": format_known(library), "manuscript": text}}
             if candidate:
                 body["system"] = candidate
             resp = post(args.server, "/v1/ai/run", body)
@@ -106,6 +112,10 @@ def main() -> int:
                 label = f"{c.name}" + ("" if ok_quote is not False else " [invented quote]")
                 if any(refers_to(c.name, p) for p in removed):
                     found.append(c.name)
+                    # Linked = the model's library_name is the persona the name is.
+                    by_name = {norm(p["name"]): p for p in library}
+                    lib = by_name.get(norm(c.library_name or "")) or match(c.name, library)
+                    totals["linked"] += bool(lib) and refers_to(c.name, lib)
                 elif any(norm(c.name) == norm(o) or refers_to(c.name, {"name": o}) for o in objects):
                     wrong.append(label + " [object]")
                 elif any(refers_to(c.name, p) for p in cast) or ok_quote is False:
@@ -127,7 +137,7 @@ def main() -> int:
             if extra:
                 print(f"   extra  {', '.join(extra)}")
 
-    print(f"\nrecall {totals['found']}/{totals['expected']} · wrong {totals['wrong']} · "
+    print(f"\nrecall {totals['found']}/{totals['expected']} · linked to the library {totals['linked']} · wrong {totals['wrong']} · "
           f"quotes found in the text {totals['quotes_ok']}/{totals['quotes']}")
     return 0
 

@@ -399,6 +399,10 @@ feature, and answers **501** with a clear message when no model is set up.
   chapter can take several minutes on a home PC. An online or other local
   provider waits 60 seconds, so if Script times out there, use a smaller
   chapter or route the feature to the built-in provider.
+- **"The chapter is too long for the model to read in one go"** — Script's
+  Analyze sent more text than the model's context holds; the message gives
+  both sizes. Split the chapter into smaller ones and analyze again (see
+  [Studio → Script](studio.md#script)).
 - **An answer stops mid-sentence** — a **Max tok** cap is set on that
   feature's preset and the answer hit it. No feature ships with one, so if
   there's a number there, someone typed it: raise it or clear the box

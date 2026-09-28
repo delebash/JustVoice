@@ -197,6 +197,31 @@ From the shipped 55% / 64% (14% / 33% confidently wrong).
   2026-08-17 — every model failure looks like "the model couldn't tell who spoke".
 - Not fixed here (behaviour change, needs its word). Recommendation in TASKS.
 
+### Pass 11 — A/B/C built ("commit and go your rec a b c", 2026-09-28)
+- A: `pipeline.py` raises `AttributionModelError(model_failure_message(e))` instead of
+  swallowing; a context overflow names both sizes. All four `analyze_scene` callers already
+  surfaced exceptions; the stream frame and the two JSON routes now pass the message uncut.
+  Live: the 26k-word chapter answers 502 "The chapter is too long … 34,514 tokens and the
+  model holds 32,768 …".
+- B: IDEAS entry (chapter splitting), nothing built.
+- C: Discover sends the library personas the chapter could be naming (`names.named_in`)
+  as `{{library}}`; the model returns `library_name`; the endpoint keeps it only when it
+  names a real persona, else falls back to `names.match`.
+  - The first wording ("Do list them when the passage names them") made Gemma treat
+    library people as already known: The Same Hour returned only Odeline/Ode, 3/3 runs;
+    `eval:discover` (now library-aware, scores links) recall **18/28**.
+  - "The library never changes who you list — … It only fills library_name": **28/28
+    found, 28/28 linked, 0 wrong** (2 runs x 4 chapters). No-library check: 13/14, the same
+    shape as before.
+  - Side effect: with the library shown, Gudgeon stopped being proposed (Brick's
+    description says "an enchanted maul named Gudgeon").
+  - Live app, all four chapters rescanned: every proposal links to its library persona,
+    "Ode" → Odeline Marran, "Threll" → Haldane Threll, no Gudgeon.
+- Live DB: identify row system + user template updated (the row still held my earlier
+  text, no user edit); the identify test sample gained `library`. The app was restarted
+  on the new code first — the renderer fails loud on a `{{library}}` the old server did
+  not send.
+
 ### Alexandria, read 2026-09-28 (agent report; code in `E:\Dev\Web\alexandria-audiobook`)
 - First pass (`app/generate_script.py`, prompts `default_prompts.txt`): 3000-char non-overlapping
   chunks; the model RE-TYPES the book as `[{"speaker","text","instruct"}]` — no ids, no alignment,

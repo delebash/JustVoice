@@ -40,7 +40,7 @@ from ..database import get_db
 from ..database.models import Block, Persona, ProjectPersona, Scene, Take
 from ..errors import conflict, not_found
 from ..extraction import AnalyzeRequest, analyze_scene
-from ..extraction.pipeline import auto_route
+from ..extraction.pipeline import AttributionModelError, auto_route
 
 log = logging.getLogger(__name__)
 
@@ -459,6 +459,8 @@ async def analyze_scene_endpoint(
         rows = analyze_scene(settings=settings, request=req, raw_out=raw_out)
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))
+    except AttributionModelError as e:
+        raise HTTPException(status_code=502, detail=str(e))
     except Exception as e:
         log.exception("extraction pipeline failed")
         raise HTTPException(status_code=502, detail=f"extraction failed: {e}")
@@ -559,6 +561,8 @@ async def analyze_scene_stream_endpoint(
             })
         except LLMNotConfiguredError as e:
             q.put({"error": str(e)})
+        except AttributionModelError as e:
+            q.put({"error": str(e)})   # written for the user; never cut
         except Exception as e:  # noqa: BLE001 — surface as an error frame, not a 500
             log.exception("extraction stream failed")
             q.put({"error": str(e)[:200]})
@@ -697,6 +701,8 @@ async def analyze_text_endpoint(
         rows = analyze_scene(settings=settings, request=req, raw_out=raw_out)
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))
+    except AttributionModelError as e:
+        raise HTTPException(status_code=502, detail=str(e))
     except Exception as e:
         log.exception("extraction pipeline failed")
         raise HTTPException(status_code=502, detail=f"extraction failed: {e}")
@@ -965,10 +971,21 @@ async def discover_speakers_endpoint(
     if scene is None:
         raise not_found(f"scene {scene_id}")
     cast = _resolve_cast(scene_id, db)
+    cast_ids = {c["id"] for c in cast}
+    # The producer's other personas (rec C, 2026-09-28): the model is told who
+    # they are, so a nickname that lives only in a description ("Answers to
+    # Ode.") comes back as that persona instead of a duplicate proposal. Only
+    # the ones this text could be naming ride — a library of hundreds would
+    # otherwise spend the context on people the chapter never mentions.
+    library = names.named_in(body.text, [
+        {"id": p.id, "name": p.name, "aliases": _persona_aliases(p), "description": p.personality}
+        for p in db.query(Persona).all() if p.id not in cast_ids
+    ])
     settings = get_state().settings.get()
     try:
         raw_out: dict = {}
-        candidates = identify_speakers(body.text, cast, settings=settings, raw_out=raw_out)
+        candidates = identify_speakers(body.text, cast, settings=settings, library=library,
+                                       raw_out=raw_out)
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))
     except Exception as e:
@@ -976,11 +993,7 @@ async def discover_speakers_endpoint(
         raise HTTPException(status_code=502, detail=f"identification failed: {e}")
     project = db.query(Project).filter(Project.id == scene.project_id).first()
     ignored = {names.norm(n) for n in project_ignored(project)}
-    cast_ids = {c["id"] for c in cast}
-    library = [
-        {"id": p.id, "name": p.name, "aliases": _persona_aliases(p)}
-        for p in db.query(Persona).all() if p.id not in cast_ids
-    ]
+    by_name = {names.norm(p["name"]): p for p in library}
     out = []
     for c in candidates:
         # Already cast under a name the model could not connect — a first or
@@ -989,7 +1002,8 @@ async def discover_speakers_endpoint(
             continue
         if names.norm(c.name) in ignored:
             continue
-        lib = names.match(c.name, library)
+        # The model's claim counts only when it names a real library persona.
+        lib = by_name.get(names.norm(c.library_name or "")) or names.match(c.name, library)
         out.append(SpeakerCandidateOut(
             name=c.name, role_hint=c.role_hint, approx_lines=c.approx_lines,
             evidence=c.evidence,

@@ -170,6 +170,9 @@ DEFAULT_FEATURE_PROMPTS: dict[str, dict] = {
         "user_template": """Known characters:
 {{known_characters}}
 
+People in the library, not in this cast:
+{{library}}
+
 Manuscript text:
 {{manuscript}}""",
     },

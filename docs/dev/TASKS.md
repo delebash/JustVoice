@@ -1165,6 +1165,27 @@ BUILT:  2 — scanned Brass Rank in the running app (vite 1430 → server 17494)
           the context the 400 is SWALLOWED into all-"unknown" with no message.
         Uncommitted.
 
+### Model failures show, oversized chapters go to IDEAS, Discover knows the library
+STATE:  DECIDED 2026-09-28 — "commit and go your rec a b c". The recs, as shown:
+          A. Show the failure. A failed model call stops the run with the provider's message
+             ("Chapter is 34,514 tokens; the model holds 32,768"), and the AI task strip shows
+             it as failed. A readable reply with no usable answers stays as it is today.
+          B. Splitting chapters that don't fit goes to IDEAS. Real chapters are 2-8k words,
+             and A tells you when one doesn't fit.
+          C. Ode. Give Discover your library personas (names, aliases, descriptions) as a
+             second list. A name that belongs to one of them then comes back under the
+             library name, so "Ode" would match Odeline Marran.
+WHY:    pass 10 of docs/plans/2026-09-28-speaker-attribution-tuning.md: every model failure
+        (context overflow, timeout, failed load) looked like "couldn't tell who spoke";
+        Discover proposed "Ode" beside Odeline Marran (would duplicate on Add).
+NOT:    Building chunking (B is an IDEAS entry only).
+GO:     given 2026-09-28.
+BUILT:  A, B, C — plan doc pass 11 has the receipts. Discover eval 18/28 → 28/28 found and
+        linked, 0 wrong; the live app restarted on the new code and its identify row + test
+        sample updated. 776 server tests pass (+58 affected re-run after the last prompt
+        edit). The Script failure toast/strip is the existing renderer path — not
+        watched on screen. Uncommitted.
+
 ### The audiobook demo is JustWrite's sample, The Ninth Facet
 STATE:  DECIDED 2026-09-27 — "2 make a folder called samples just like jw and the load demo just
         imports the project per existing code remove silwater". Option 2 of: (1) just import it,

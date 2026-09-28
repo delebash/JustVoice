@@ -220,3 +220,37 @@ def test_direct_min_b_has_an_api_floor(app) -> None:
     r = client.patch("/v1/settings", json={"extraction": {"direct_min_b": 0.5}})
     assert r.status_code == 200, r.text
     assert client.get("/v1/extraction/config").json()["direct_min_b"] == 0.5
+
+
+# ── a failed model call stops the run, with a reason (2026-09-28, pass 10) ──
+# The pipeline used to swallow every failure into a chapter of "unknown" lines:
+# a chapter past the context, a timeout, a model that would not load all looked
+# like "the model couldn't tell who spoke", with no message anywhere.
+
+OVERFLOW = ('local-llamacpp 400: {"error":{"code":400,"message":"request (34514 tokens) exceeds '
+            'the available context size (32768 tokens), try increasing it","type":'
+            '"exceed_context_size_error","n_prompt_tokens":34514,"n_ctx":32768}}')
+
+
+def _failing_chat(message):
+    def chat(self, *a, **k):
+        raise RuntimeError(message)
+    return chat
+
+
+def test_a_chapter_past_the_context_says_so(app, monkeypatch) -> None:
+    monkeypatch.setattr(FakeAdapter, "chat", _failing_chat(OVERFLOW))
+    r = TestClient(app).post("/v1/extraction/analyze-text",
+                             json={"text": TEXT, "characters": CAST, "route": "direct"})
+    assert r.status_code == 502
+    detail = r.json()["detail"]
+    assert "34,514 tokens" in detail and "32,768" in detail
+    assert "Split it into smaller chapters" in detail
+
+
+def test_any_other_model_failure_carries_the_providers_reason(app, monkeypatch) -> None:
+    monkeypatch.setattr(FakeAdapter, "chat", _failing_chat("local-llamacpp request failed: timed out"))
+    r = TestClient(app).post("/v1/extraction/analyze-text",
+                             json={"text": TEXT, "characters": CAST, "route": "direct"})
+    assert r.status_code == 502
+    assert r.json()["detail"] == "The model call failed: local-llamacpp request failed: timed out"

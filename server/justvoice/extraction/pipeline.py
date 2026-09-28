@@ -143,6 +143,26 @@ def _extract_first_json_array(text: str) -> list:
     return salvaged
 
 
+class AttributionModelError(RuntimeError):
+    """The model call behind Script failed; the message is for the user."""
+
+
+_CTX = re.compile(r'"n_prompt_tokens"\s*:\s*(\d+).*?"n_ctx"\s*:\s*(\d+)', re.DOTALL)
+
+
+def model_failure_message(e: Exception) -> str:
+    """The provider's reason, in words a user can act on. A chapter too big for
+    the model's context names both sizes; anything else is the provider's own text."""
+    text = str(e)
+    m = _CTX.search(text)
+    if m or "exceed_context_size" in text:
+        sizes = (f" This chapter is {int(m.group(1)):,} tokens and the model holds {int(m.group(2)):,}."
+                 if m else "")
+        return ("The chapter is too long for the model to read in one go." + sizes
+                + " Split it into smaller chapters, or use a model with a larger context.")
+    return f"The model call failed: {text}"
+
+
 _DID = re.compile(r"D?\s*(\d+)", re.IGNORECASE)
 
 
@@ -483,8 +503,11 @@ def analyze_scene(
             # 501 with the actionable message. Bubble it up.
             raise
         except Exception as e:
+            # A failed call stops the run with the provider's reason. Swallowing it
+            # turned every failure (context overflow, timeout, a model that would not
+            # load) into a chapter of "unknown" lines with no message (pass 10).
             log.warning("speaker_attribution LLM call failed: %s", e)
-            llm_picks = []
+            raise AttributionModelError(model_failure_message(e)) from e
 
     llm_picks = align_picks(llm_picks, dialogue_segments)
 
