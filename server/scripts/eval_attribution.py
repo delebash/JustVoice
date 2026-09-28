@@ -78,6 +78,8 @@ def main() -> int:
     ap.add_argument("--no-propagate", action="store_true", help="skip the tag-anchor pass")
     ap.add_argument("--chapter", action="append", help="only these chapter titles")
     ap.add_argument("--whole", action="store_true", help="join the keyed chapters into ONE long chapter")
+    ap.add_argument("--max-context", type=int,
+                    help="treat the model's context as this many tokens - forces chapter splitting")
     ap.add_argument("--show", type=int, default=12, help="errors to print per chapter")
     ap.add_argument("--out", help="write every row as JSON, for comparing runs")
     args = ap.parse_args()
@@ -111,6 +113,8 @@ def main() -> int:
             body_extra[k] = v
     if args.no_propagate:
         body_extra["propagate"] = False
+    if args.max_context:
+        body_extra["max_context"] = args.max_context
 
     print(f"Attribution test · {book.project.name} · {args.server} · {args.runs} run(s)"
           f" · {', '.join(f'{k}={v!r:.40}' for k, v in body_extra.items()) or 'live settings'}\n")
@@ -178,7 +182,7 @@ def main() -> int:
             print(f"## {scene.title}{f' run {run + 1}' if args.runs > 1 else ''}  "
                   f"right {c['right']}/{n}  WRONG {c['WRONG']}  blank {c['blank']}   "
                   f"({time.time() - t0:.0f}s, route {r.get('route_used')}, floor {r.get('confidence_floor')},"
-                  f" model {usage.get('model', '?')})")
+                  f" model {usage.get('model', '?')}, {usage.get('pieces', 1)} piece(s))")
             for e in errors[: args.show]:
                 print("   " + e)
             if len(errors) > args.show:

@@ -392,6 +392,13 @@ class ExtractionSettings(BaseModel):
     min=0.1 — zero or a negative would route EVERY model to Direct."""
 
     direct_min_b: float = Field(default=14.0, ge=0.1)
+    # Chapter splitting (2026-09-28, docs/plans/2026-09-28-chapter-splitting.md):
+    # a chapter too long for the model is read in pieces. `split_lead_in_paragraphs`
+    # — paragraphs of the piece before sent again for context (their lines are
+    # answered by the earlier piece). `answer_tokens_per_line` — the room reserved
+    # for the model's answer, per dialogue line (measured 45-65 with thinking on).
+    split_lead_in_paragraphs: int = Field(default=6, ge=0)
+    answer_tokens_per_line: int = Field(default=65, ge=1)
 
 
 class AppSettings(BaseModel):

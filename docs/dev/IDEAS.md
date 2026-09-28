@@ -6,18 +6,6 @@ The holding pen for unscheduled JustVoice ideas — same charter as JW's
 
 ---
 
-- **2026-09-28 · Script splits a chapter that is too long for the model** — parked by
-  your word ("go your rec a b c", rec B). Today a chapter past the model's context
-  stops with "The chapter is too long for the model to read in one go. This chapter is
-  N tokens and the model holds M." Measured (plan
-  `docs/plans/2026-09-28-speaker-attribution-tuning.md` pass 10): Gemma 4 26B at a
-  32,768 context reads 6.5-7.8k-word chapters as well as short ones, and a 26k-word
-  chapter is the first to overflow — real chapters are 2-8k words, so this is rare.
-  The shape if it is ever built: split at paragraph boundaries into pieces that fit
-  (budget from the loaded model's `n_ctx`, never a hardcoded number), send each piece
-  with the full cast and a short overlap for turn-taking context, stitch the answers
-  back by [D#]. Measure it with `eval:attribution --whole` before shipping.
-
 - **2026-08-22 · Feature-horizon candidates live in `ROADMAP.md`** — the voicebox
   parity gaps (dictation hotkey epic, capture→voice promote, timeline) and the
   candidates inherited from voicebox's own roadmap (STT expansion, streaming

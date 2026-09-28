@@ -416,6 +416,20 @@ replaces `metadata_json` wholesale. **Prompt test:** `npm run eval:discover`
 `samples/the-ninth-facet/discover-eval.json`) scores the live prompt — or a
 `--system` candidate — against the real model, writing nothing.
 
+**Long chapters are read in pieces — `extraction/pieces.py`** (2026-09-28, plan
+`docs/plans/2026-09-28-chapter-splitting.md`). `pipeline._attribute_in_pieces`
+measures the prompt with the kit's `measure_action` (llama.cpp's own tokenizer
+and `--ctx-size`; None off the local runner), plans whole-paragraph pieces with a
+lead-in when chapter + answer reserve does not fit, keeps each piece's answers
+for the `[D#]` lines it owns, then runs the unchanged `align_picks`. Backstops:
+a provider refusal as too big, or `finish_reason == "length"` (the kit's
+`StreamDelta` carries it since the same day), halves the piece. An id-less piece
+reply is placed by order or retried once. `identify.identify_speakers` splits the
+same way (no lead-in) and merges candidates by name. Knobs:
+`settings.extraction.split_lead_in_paragraphs` / `answer_tokens_per_line`.
+**Test:** `npm run eval:attribution -- --whole --max-context N` forces splitting
+on the answer-keyed samples.
+
 **The prompt is starved.** `_resolve_cast` (`extraction_api.py:145-167`)
 hardcodes role/gender/pronouns to `None` and aliases to `[]`;
 `format_characters` (`extraction/prompts.py:82-97`) reads those empty fields. The

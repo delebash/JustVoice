@@ -1186,6 +1186,32 @@ BUILT:  A, B, C — plan doc pass 11 has the receipts. Discover eval 18/28 → 2
         edit). The Script failure toast/strip is the existing renderer path — not
         watched on screen. Uncommitted.
 
+### Script (and Discover) split a chapter too long for the model
+STATE:  DECIDED 2026-09-28 — "go your rec 1 yes 2 no". The plan is
+        `docs/plans/2026-09-28-chapter-splitting.md` — READ IT BEFORE CODING. As shown:
+          When a chapter is too big for the model to read at once, Script cuts it into pieces
+          at paragraph breaks. It reads each piece with the full cast plus a few paragraphs
+          from the piece before for context, then stitches the answers back together by line
+          number. You see one run with one progress bar, and get one result, exactly like a
+          short chapter. The chapter itself isn't changed.
+          Slices 0 (engine checks) · 1 (kit: cut-off signal, context size) · 2 (pipeline) ·
+          3 (measure: both books forced into 3-5 pieces must still score 267/268) ·
+          4 (Discover) · 5 (docs). A's message is reworded.
+          1. Split for Discover too (slice 4)? — YES.
+          2. Add a manual "split this chapter" button? — NO.
+WHY:    Pass 10: a chapter past the context failed (now loudly, since A); outliers exist
+        (a book imported as one chapter).
+NOT:    A manual split action. Always-chunk. A prompt change.
+GO:     given 2026-09-28.
+BUILT:  Slices 0-5 — receipts in the plan doc §4b. Kit: StreamDelta.finish_reason +
+        measure_action (985 pass; 10 test_lifecycle failures pre-existing). JV: pieces.py,
+        _attribute_in_pieces, Discover splitting, 2 settings, RunUsage.pieces,
+        eval --max-context (792 pass). Measured: 8k → 3 pieces 267/268; 5k → 6 pieces
+        408/408 + 392/396 over 3 runs; the real 26k-word text: 2 pieces, 234/234 answered.
+        Defect found + fixed on the way: an id-less piece reply was dropped whole.
+        Docs: studio.md "Long chapters are read in pieces", ai-features settings table +
+        troubleshooting. IDEAS entry deleted. Uncommitted.
+
 ### The audiobook demo is JustWrite's sample, The Ninth Facet
 STATE:  DECIDED 2026-09-27 — "2 make a folder called samples just like jw and the load demo just
         imports the project per existing code remove silwater". Option 2 of: (1) just import it,

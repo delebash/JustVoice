@@ -179,30 +179,89 @@ def identify_speakers(
     is the seam — tests inject a stub; production uses engines.llm.run's
     run_feature (the `speaker_attribution.identify` template row + its preset;
     `settings` is unused since the pin-era config died, kept for the callers'
-    signature until the settings tree sheds its LLM residue). `raw_out`
+    signature until the settings tree sheds its LLM residue; since 2026-09-28 it
+    carries the chapter-splitting knobs, `settings.extraction`). `raw_out`
     receives the run's usage (§16 — the responses carry the numbers).
     `library` is the producer's other personas in `known_names`' shape: the model
     reports which found names are one of them (Discover rec C, 2026-09-28)."""
-    del settings  # pin-era argument — routing is preset-resolved now
-    if run_fn is None:
-        from ..engines.llm.run import run_feature as run_fn  # pragma: no cover
-
     import time
 
+    from ..models import ExtractionSettings
+    from .pieces import ParagraphTooBig, Piece, plan_pieces
+    from .segmentation import segment_paragraphs, split_into_paragraphs
+
+    measure_fn = None
+    if run_fn is None:
+        from ..engines.llm.run import measure_feature as measure_fn  # pragma: no cover
+        from ..engines.llm.run import run_feature as run_fn  # pragma: no cover
+    ext = getattr(settings, "extraction", None) or ExtractionSettings()
+    action = "speaker_attribution.identify"
+    base = {"known_characters": format_known(known_names), "library": format_known(library or [])}
+
+    # Chapter splitting (2026-09-28): a chapter too long for the model is read in
+    # pieces of whole paragraphs, sized with the same cost as Script's (text plus
+    # an answer reserve per dialogue line — generous for Discover's short answer).
+    # No lead-in: Discover finds names, not turns.
+    paragraphs = split_into_paragraphs(text) or [text]
+    plan = [Piece(0, 0, len(paragraphs))]
+    if measure_fn is not None:
+        try:
+            fit = measure_fn(action, {**base, "manuscript": text})
+            empty = measure_fn(action, {**base, "manuscript": ""}) if fit is not None else None
+        except Exception as e:  # noqa: BLE001 — measuring only sizes pieces
+            log.info("identify: could not measure the prompt (%s) - running unmeasured", e)
+            fit = empty = None
+        if fit is not None and empty is not None:
+            text_tokens = max(fit.prompt_tokens - empty.prompt_tokens, 0)
+            total = sum(len(q) for q in paragraphs) or 1
+            lines = [sum(1 for g in segment_paragraphs([q]) if g["kind"] == "dialogue") for q in paragraphs]
+            costs = [-(-len(q) * text_tokens // total) + ext.answer_tokens_per_line * n
+                     for q, n in zip(paragraphs, lines)]
+            room = fit.context - empty.prompt_tokens
+            if sum(costs) > room:
+                try:
+                    plan = plan_pieces(costs, room, 0)
+                except ParagraphTooBig as e:
+                    raise RuntimeError(
+                        "A paragraph of this chapter is too long for the model to read, even on its own."
+                        " Use a model with a larger context.") from e
+
     t0 = time.monotonic()
-    resp = run_fn(
-        "speaker_attribution.identify",
-        {
-            "known_characters": format_known(known_names),
-            "library": format_known(library or []),
-            "manuscript": text,
-        },
-    )
+    usage = {"prompt_tokens": 0, "completion_tokens": 0, "model": ""}
+    found: dict[str, SpeakerCandidate] = {}
+    calls = 0
+    queue = list(plan)
+    while queue:
+        pc = queue.pop(0)
+        piece = "\n\n".join(paragraphs[pc.start:pc.end])
+        try:
+            resp = run_fn(action, {**base, "manuscript": piece})
+            cut_off = (getattr(resp, "finish_reason", "") or "") == "length"
+        except Exception as e:
+            if not _is_overflow(e) or pc.end - pc.start < 2:
+                raise
+            cut_off = True
+        if cut_off and pc.end - pc.start >= 2:
+            mid = (pc.start + pc.end) // 2
+            queue[0:0] = [Piece(pc.start, pc.start, mid), Piece(mid, mid, pc.end)]
+            continue
+        calls += 1
+        usage["prompt_tokens"] += int(getattr(resp, "prompt_tokens", 0) or 0)
+        usage["completion_tokens"] += int(getattr(resp, "completion_tokens", 0) or 0)
+        usage["model"] = getattr(resp, "model", "") or usage["model"]
+        for c in parse_candidates(getattr(resp, "text", str(resp)), known_labels(known_names)):
+            key = c.name.strip().lower()
+            if key not in found:
+                found[key] = c
+            elif c.approx_lines:
+                found[key].approx_lines = (found[key].approx_lines or 0) + c.approx_lines
     if raw_out is not None:
-        raw_out["usage"] = {
-            "prompt_tokens": int(getattr(resp, "prompt_tokens", 0) or 0),
-            "completion_tokens": int(getattr(resp, "completion_tokens", 0) or 0),
-            "duration_ms": int((time.monotonic() - t0) * 1000),
-            "model": getattr(resp, "model", "") or "",
-        }
-    return parse_candidates(getattr(resp, "text", str(resp)), known_labels(known_names))
+        raw_out["usage"] = {**usage, "duration_ms": int((time.monotonic() - t0) * 1000), "pieces": calls}
+    return list(found.values())
+
+
+def _is_overflow(e: Exception) -> bool:
+    """The provider refused the request as bigger than the model's context."""
+    text = str(e)
+    return any(w in text for w in ("exceed_context_size", "context_length_exceeded",
+                                    "maximum context length", "prompt is too long"))

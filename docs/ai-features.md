@@ -193,6 +193,15 @@ routes ship with it off; to try attribution with thinking, turn **think**
 on in a card's Lab column, compare, and **Use in production** if it earns
 it.
 
+**Long chapters.** Two settings shape how Script splits a chapter too long
+for the model. They have no control in the app yet; they are set through
+`PATCH /v1/settings` under `extraction`:
+
+| Setting | Default | What it does |
+|---|---|---|
+| `split_lead_in_paragraphs` | 6 | Paragraphs of the previous piece sent again at the start of the next, for context. 0 sends none. |
+| `answer_tokens_per_line` | 65 | Room kept for the model's answer, per dialogue line. Measured at 45-65 with thinking on; raise it if a model thinks at greater length. |
+
 ## The attribution Lab
 
 Open any route's row and its **Lab** runs the **real reading pipeline** — the
@@ -399,10 +408,11 @@ feature, and answers **501** with a clear message when no model is set up.
   chapter can take several minutes on a home PC. An online or other local
   provider waits 60 seconds, so if Script times out there, use a smaller
   chapter or route the feature to the built-in provider.
-- **"The chapter is too long for the model to read in one go"** — Script's
-  Analyze sent more text than the model's context holds; the message gives
-  both sizes. Split the chapter into smaller ones and analyze again (see
-  [Studio → Script](studio.md#script)).
+- **"A paragraph of this chapter is too long for the model to read, even on
+  its own"** — Script reads long chapters in pieces (see
+  [Studio → Script](studio.md#script)), but it never cuts inside a paragraph.
+  Only a paragraph bigger than the model's whole context gives this; use a
+  model with a larger context.
 - **An answer stops mid-sentence** — a **Max tok** cap is set on that
   feature's preset and the answer hit it. No feature ships with one, so if
   there's a number there, someone typed it: raise it or clear the box

@@ -244,8 +244,9 @@ def test_a_chapter_past_the_context_says_so(app, monkeypatch) -> None:
                              json={"text": TEXT, "characters": CAST, "route": "direct"})
     assert r.status_code == 502
     detail = r.json()["detail"]
+    # Every piece is refused, so splitting halves down to one paragraph and then says so.
+    assert detail.startswith("A paragraph of this chapter is too long for the model to read")
     assert "34,514 tokens" in detail and "32,768" in detail
-    assert "Split it into smaller chapters" in detail
 
 
 def test_any_other_model_failure_carries_the_providers_reason(app, monkeypatch) -> None:

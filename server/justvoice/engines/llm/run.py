@@ -25,7 +25,7 @@ caller bug named loudly, UnknownActionError → an unseeded row).
 
 from __future__ import annotations
 
-from llm_runner.llm import RunRequest, run_action, stores, stream_action
+from llm_runner.llm import RunRequest, measure_action, run_action, stores, stream_action
 from llm_runner.llm.base import LLMResponse
 from llm_runner.llm.config_builder import build_llm_config
 
@@ -54,6 +54,17 @@ def stream_feature(action: str, variables: dict, **overrides):
     LLMNotConfiguredError before any frame. Blocking — SSE endpoints drive it
     from a worker thread."""
     return stream_action(
+        stores.get_prompt_store(),
+        jv_llm_config(),
+        RunRequest(action=action, variables=variables, **overrides),
+    )
+
+
+def measure_feature(action: str, variables: dict, **overrides):
+    """How big run_feature's prompt would be, and the context it must fit — the
+    kit's measure_action over the same store + config (chapter splitting,
+    2026-09-28). None off the local runner or when the router cannot say."""
+    return measure_action(
         stores.get_prompt_store(),
         jv_llm_config(),
         RunRequest(action=action, variables=variables, **overrides),

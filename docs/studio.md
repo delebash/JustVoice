@@ -154,15 +154,38 @@ card, expect about a minute per chapter. To trade some accuracy for speed,
 turn thinking off on the **Reasoned extraction** preset (AI Settings →
 Routing by feature).
 
+**Long chapters are read in pieces.** Before it sends a chapter, Analyze
+measures it against what the model can hold. The prompt goes through the
+model's own tokenizer and is checked against its real context, with room kept
+for the answer: about 65 tokens per dialogue line, since the model thinks
+before it answers. On the built-in Gemma model a chapter of up to about
+12,000 words fits in one go and is read whole. That is the most accurate way,
+and real chapters are well under it. A longer chapter, such as a book
+imported as one chapter, is cut into pieces:
+
+- Cuts fall only between paragraphs, and at a scene break (`***`, `---`)
+  when there is one near the end of a piece. A line and its *"…," said Hale*
+  are never separated.
+- Each piece starts with the last few paragraphs of the piece before, so the
+  model knows who was speaking when the piece begins. Those lines are
+  answered by the earlier piece; the repeat is only context.
+- Every piece gets the whole cast, your corrections and the same prompt.
+- It is still **one run**: one progress bar across every piece, one result,
+  saved the same way. Nothing about the chapter changes.
+
+Pieces also catch what measuring can't see. If the model refuses a piece as
+too big, or its answer runs out of room and stops short, that piece is cut in
+half and both halves are read. Discover reads a long chapter in pieces the
+same way, and merges the names it finds in each.
+
 **When the model can't answer, Analyze says so.** If the model call fails,
 the run stops, the task strip shows it as failed, and the message says why;
-nothing is saved and the chapter keeps its previous analysis. The common
-case is a chapter too long for the model to read at once: *"The chapter is
-too long for the model to read in one go. This chapter is 34,514 tokens and
-the model holds 32,768."* The built-in Gemma model reads chapters of 8,000
-words or so as well as short ones; past its limit, split the chapter into
-smaller ones. A timeout or a model that would not load reports the
-provider's own message the same way.
+nothing is saved and the chapter keeps its previous analysis. A timeout or a
+model that would not load reports the provider's own message. The one length
+problem splitting can't solve is a single paragraph too big for the model on
+its own: *"A paragraph of this chapter is too long for the model to read,
+even on its own. It needs about … tokens and the model holds …. Use a model
+with a larger context."*
 
 The **read** note in the header (*"read with examples"* / *"read rules only"*)
 is which prompt the model got — the longer one carries worked examples, and

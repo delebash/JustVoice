@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import re
 import time
 from dataclasses import dataclass
@@ -22,13 +23,15 @@ from pydantic import BaseModel
 
 from llm_runner.llm import LLMNotConfiguredError
 
-from ..engines.llm.run import run_feature, stream_feature
+from ..engines.llm.run import measure_feature, run_feature, stream_feature
+from ..models import ExtractionSettings
 from .anchors import find_anchors
 from .prompts import (
     format_characters,
     format_corrections,
     format_paragraphs,
 )
+from .pieces import ParagraphTooBig, Piece, is_break, plan_pieces
 from .segmentation import segment_paragraphs, split_into_paragraphs
 
 log = logging.getLogger(__name__)
@@ -101,6 +104,9 @@ class AnalyzeRequest(BaseModel):
     max_tokens: int | None = None
     top_p: float | None = None
     samplers: list[dict] = []
+    # Treat the model's context as at most this many tokens (the Lab/eval door that
+    # forces chapter splitting on a short chapter). None = the model's real context.
+    max_context: int | None = None
 
 
 def _strip_thinking(text: str) -> str:
@@ -151,19 +157,19 @@ _CTX = re.compile(r'"n_prompt_tokens"\s*:\s*(\d+).*?"n_ctx"\s*:\s*(\d+)', re.DOT
 
 
 def model_failure_message(e: Exception) -> str:
-    """The provider's reason, in words a user can act on. A chapter too big for
-    the model's context names both sizes; anything else is the provider's own text."""
+    """The provider's reason, in words a user can act on. An overflow reaches here
+    only once splitting has run out — one paragraph alone too big — and names both
+    sizes when the provider gave them; anything else is the provider's own text."""
     text = str(e)
-    m = _CTX.search(text)
-    if m or "exceed_context_size" in text:
-        sizes = (f" This chapter is {int(m.group(1)):,} tokens and the model holds {int(m.group(2)):,}."
-                 if m else "")
-        return ("The chapter is too long for the model to read in one go." + sizes
-                + " Split it into smaller chapters, or use a model with a larger context.")
+    if _is_overflow(e):
+        m = _CTX.search(text)
+        return _one_paragraph_too_big(int(m.group(1)) if m else None, int(m.group(2)) if m else None)
     return f"The model call failed: {text}"
 
 
-_DID = re.compile(r"D?\s*(\d+)", re.IGNORECASE)
+# The whole id must be a line number ("D12", "d 3", "[D4]", 7) — a handle that
+# happens to hold a digit ("nettle_2") is not line 2.
+_DID = re.compile(r"\s*\[?\s*D?\s*(\d+)\s*\]?\s*", re.IGNORECASE)
 
 
 def align_picks(picks: list, dialogue_segments: list[dict]) -> list[dict]:
@@ -184,7 +190,7 @@ def align_picks(picks: list, dialogue_segments: list[dict]) -> list[dict]:
     for p in picks or []:
         if not isinstance(p, dict) or p.get("id") is None:
             continue
-        m = _DID.search(str(p.get("id")))
+        m = _DID.fullmatch(str(p.get("id")))
         if m:
             by_id.setdefault(int(m.group(1)), p)
     if by_id:
@@ -376,6 +382,205 @@ def pick_route(route_override: str | None, settings, model_override: str = "") -
     return RoutePick(name, ROUTE_FLOORS[name], "auto")
 
 
+_OVERFLOW_WORDS = ("exceed_context_size", "context_length_exceeded", "maximum context length",
+                   "prompt is too long")
+
+
+def _is_overflow(e: Exception) -> bool:
+    """The provider refused the request as bigger than the model's context."""
+    text = str(e)
+    return bool(_CTX.search(text)) or any(w in text for w in _OVERFLOW_WORDS)
+
+
+def _pick_did(p) -> int | None:
+    """The [D#] an answer names, read the way align_picks reads it."""
+    if not isinstance(p, dict) or p.get("id") is None:
+        return None
+    m = _DID.fullmatch(str(p.get("id")))
+    return int(m.group(1)) if m else None
+
+
+def _place_piece_answers(got: list, piece_ids: list[int]) -> list | None:
+    """A piece's answers, each carrying the [D#] it answers — or None when the reply
+    cannot be placed. Answers that name their line are kept as they are. A reply
+    that names NO line but gives exactly one answer per line of the piece is placed
+    by order, as align_picks does for a whole chapter; any other id-less reply
+    cannot be trusted to line up and is None."""
+    if any(_pick_did(p) is not None for p in got):
+        return got
+    if got and len(got) == len(piece_ids):
+        return [{**p, "id": f"D{did}"} for p, did in zip(got, piece_ids) if isinstance(p, dict)]
+    return None
+
+
+def _one_paragraph_too_big(tokens: int | None, context: int | None) -> str:
+    sizes = (f" It needs about {tokens:,} tokens and the model holds {context:,}."
+             if tokens and context else "")
+    return ("A paragraph of this chapter is too long for the model to read, even on its own." + sizes
+            + " Use a model with a larger context.")
+
+
+def _attribute_in_pieces(request, settings, pick, paragraphs, segments, prompt_cast, prompt_corrections,
+                         *, on_delta, on_progress, raw_out) -> list[dict]:
+    """The model's answers for every dialogue line, read in as many calls as the
+    model's context needs — usually one (2026-09-28, the chapter-splitting plan).
+
+    The prompt is measured first (the kit's measure_action: the model's own
+    tokenizer against its real context). When the chapter plus the room its answer
+    needs does not fit, it is cut into pieces of whole paragraphs, each with a
+    lead-in from the piece before (pieces.py). Every piece is sent with the same
+    cast, corrections and prompt; its answers for the lines it OWNS are kept.
+
+    Two backstops, for what measuring cannot see (another provider, a wrong
+    estimate): a refusal as too big, or a reply cut off at the context
+    (finish_reason "length" — llama.cpp sends no error for that), halves the piece
+    and runs both halves. Only a single paragraph that still does not fit fails."""
+    t0 = time.monotonic()
+    ext = getattr(settings, "extraction", None) or ExtractionSettings()
+    lead_in = ext.split_lead_in_paragraphs
+    call_kwargs = dict(
+        system=request.system_prompt or None,
+        userTemplate=request.user_prompt or None,
+        temperature=request.temperature,
+        # Caps ruling 2026-08-07: no code-computed budget. An explicit
+        # per-call value rides; None falls to the preset (empty =
+        # uncapped, nothing sent).
+        maxTokens=request.max_tokens,
+        model=request.model or "",
+        providerId=request.provider_id or "",
+        think=request.think,
+        reasoningEffort=request.reasoning_effort,
+        topP=request.top_p,
+        samplers=request.samplers or [],
+    )
+    # The route's OWN template row + OWN preset run (per-route routing, the
+    # attribution restore). The Lab's system/user candidates ride the
+    # explicit-prompt door.
+    action = f"speaker_attribution.{pick.name}"
+    base_vars = {
+        "characters": format_characters(prompt_cast),
+        "corrections": format_corrections(prompt_corrections),
+    }
+    n_para = len(paragraphs)
+
+    def segs_in(lo: int, hi: int) -> list[dict]:
+        return [s for s in segments if lo <= s["paragraph_idx"] < hi]
+
+    def vars_for(segs: list[dict]) -> dict:
+        return {**base_vars, "paragraphs": format_paragraphs(segs)}
+
+    plan = [Piece(0, 0, n_para)]
+    try:
+        fit = measure_feature(action, vars_for(segments), **call_kwargs)
+        empty = measure_feature(action, vars_for([]), **call_kwargs) if fit is not None else None
+    except Exception as e:  # noqa: BLE001 — measuring only sizes pieces; the call itself reports failures
+        log.info("speaker_attribution: could not measure the prompt (%s) - running unmeasured", e)
+        fit = empty = None
+    if fit is not None and empty is not None:
+        context = min(fit.context, request.max_context or fit.context)
+        overhead = empty.prompt_tokens
+        text_tokens = max(fit.prompt_tokens - overhead, 0)
+        rendered = [format_paragraphs(segs_in(i, i + 1)) for i in range(n_para)]
+        total_chars = sum(len(r) for r in rendered) or 1
+        lines = [sum(1 for s in segs_in(i, i + 1) if s["kind"] == "dialogue") for i in range(n_para)]
+        costs = [math.ceil(len(rendered[i]) * text_tokens / total_chars) + ext.answer_tokens_per_line * lines[i]
+                 for i in range(n_para)]
+        room = context - overhead
+        if sum(costs) > room:
+            breaks = {i for i, para in enumerate(paragraphs) if is_break(para)}
+            try:
+                plan = plan_pieces(costs, room, lead_in, breaks)
+            except ParagraphTooBig as e:
+                raise AttributionModelError(_one_paragraph_too_big(costs[e.index] + overhead, context)) from e
+
+    state = {"done": 0, "total": len(plan)}
+    texts: list[str] = []
+    picks: list[dict] = []
+    usage = {"prompt_tokens": 0, "completion_tokens": 0, "model": ""}
+
+    def call(variables: dict) -> tuple[str, str]:
+        """One model call -> (reply text, finish_reason)."""
+        if on_delta is None:
+            resp = run_feature(action, variables, **call_kwargs)
+            usage["prompt_tokens"] += int(getattr(resp, "prompt_tokens", 0) or 0)
+            usage["completion_tokens"] += int(getattr(resp, "completion_tokens", 0) or 0)
+            usage["model"] = getattr(resp, "model", "") or usage["model"]
+            return resp.text, getattr(resp, "finish_reason", "") or ""
+        # Lane 2A: same route, same template row, same preset — the reply just
+        # STREAMS. The final delta carries the usage and why it ended.
+        parts: list[str] = []
+        finish = ""
+        for delta in stream_feature(action, variables, **call_kwargs):
+            if delta.done:
+                usage["prompt_tokens"] += int(delta.prompt_tokens or 0)
+                usage["completion_tokens"] += int(delta.completion_tokens or 0)
+                usage["model"] = delta.model or usage["model"]
+                finish = getattr(delta, "finish_reason", "") or ""
+            elif delta.progress is not None:
+                if on_progress is not None:
+                    # One bar across every piece.
+                    on_progress(min(1.0, (state["done"] + delta.progress) / state["total"]))
+            elif delta.text:
+                parts.append(delta.text)
+                on_delta(delta.text)
+        return "".join(parts), finish
+
+    queue = list(plan)
+    retried: set[Piece] = set()
+    while queue:
+        pc = queue.pop(0)
+        segs = segs_in(pc.lead, pc.end)
+        owned = {s["dialogue_id"] for s in segs if s["kind"] == "dialogue" and s["paragraph_idx"] >= pc.start}
+        if not owned:
+            state["done"] += 1
+            continue
+        refused = None
+        try:
+            text, finish = call(vars_for(segs))
+            cut_off = finish == "length"
+        except Exception as e:
+            if not _is_overflow(e):
+                raise
+            cut_off, text, refused = True, "", e
+        if cut_off:
+            if pc.end - pc.start < 2:
+                raise AttributionModelError(
+                    model_failure_message(refused) if refused else _one_paragraph_too_big(None, None))
+            mid = (pc.start + pc.end) // 2
+            queue[0:0] = [Piece(pc.lead, pc.start, mid), Piece(max(mid - lead_in, 0), mid, pc.end)]
+            state["total"] += 1
+            log.info("speaker_attribution: paragraphs %d-%d did not fit - halved", pc.start, pc.end - 1)
+            continue
+        got = _extract_first_json_array(text)
+        whole = pc.lead == 0 and pc.start == 0 and pc.end == n_para
+        if not whole:
+            got = _place_piece_answers(got, [s["dialogue_id"] for s in segs if s["kind"] == "dialogue"])
+            if got is None and pc not in retried:
+                # Measured 2026-09-28 (Gemma, forced 5k context, 1 run in 3): a piece's
+                # reply put the speaker in the id field — nothing to place it by. Once
+                # more, then the lines stay unknown like any unanswered line.
+                retried.add(pc)
+                queue.insert(0, pc)
+                log.info("speaker_attribution: paragraphs %d-%d answered without line numbers - retrying",
+                         pc.start, pc.end - 1)
+                continue
+            got = [p for p in got or [] if _pick_did(p) in owned]
+        texts.append(text)
+        # The whole chapter in one call keeps every answer (an id-less reply from an
+        # older prompt still aligns by position in align_picks); a piece keeps the
+        # lines it owns.
+        picks.extend(got)
+        state["done"] += 1
+
+    if raw_out is not None:
+        raw_out["llm_text"] = "\n\n".join(texts)
+        # §16: the run's usage rides the response (0 = unreported); `pieces` is how
+        # many model calls it took (1 = the chapter fit).
+        raw_out["usage"] = {**usage, "duration_ms": int((time.monotonic() - t0) * 1000),
+                            "pieces": len(texts)}
+    return picks
+
+
 def analyze_scene(
     *,
     settings,
@@ -438,69 +643,12 @@ def analyze_scene(
     llm_picks: list[dict[str, Any]] = []
     if n_dialogue > 0:
         try:
-            # The route's OWN template row + OWN preset run (per-route
-            # routing, the attribution restore). The Lab's system/user
-            # candidates ride the explicit-prompt door.
-            t0 = time.monotonic()
-            call_kwargs = dict(
-                system=request.system_prompt or None,
-                userTemplate=request.user_prompt or None,
-                temperature=request.temperature,
-                # Caps ruling 2026-08-07: no code-computed budget. An explicit
-                # per-call value rides; None falls to the preset (empty =
-                # uncapped, nothing sent).
-                maxTokens=request.max_tokens,
-                model=request.model or "",
-                providerId=request.provider_id or "",
-                think=request.think,
-                reasoningEffort=request.reasoning_effort,
-                topP=request.top_p,
-                samplers=request.samplers or [],
+            llm_picks = _attribute_in_pieces(
+                request, settings, pick, paragraphs, segments, prompt_cast, prompt_corrections,
+                on_delta=on_delta, on_progress=on_progress, raw_out=raw_out,
             )
-            variables = {
-                "characters": format_characters(prompt_cast),
-                "corrections": format_corrections(prompt_corrections),
-                "paragraphs": format_paragraphs(segments),
-            }
-            action = f"speaker_attribution.{pick.name}"
-            if on_delta is None:
-                resp = run_feature(action, variables, **call_kwargs)
-                text = resp.text
-                ptok = int(getattr(resp, "prompt_tokens", 0) or 0)
-                ctok = int(getattr(resp, "completion_tokens", 0) or 0)
-                model_used = getattr(resp, "model", "") or ""
-            else:
-                # Lane 2A: same route, same template row, same preset — the
-                # reply just STREAMS. The final delta carries the usage.
-                parts: list[str] = []
-                ptok = ctok = 0
-                model_used = ""
-                for delta in stream_feature(action, variables, **call_kwargs):
-                    if delta.done:
-                        ptok = int(delta.prompt_tokens or 0)
-                        ctok = int(delta.completion_tokens or 0)
-                        model_used = delta.model or ""
-                    elif delta.progress is not None:
-                        if on_progress is not None:
-                            on_progress(delta.progress)
-                    elif delta.text:
-                        parts.append(delta.text)
-                        on_delta(delta.text)
-                text = "".join(parts)
-            if raw_out is not None:
-                raw_out["llm_text"] = text
-                # §16: the run's usage rides the response (the server always
-                # had the numbers — LLMResponse carries them; 0 = unreported).
-                raw_out["usage"] = {
-                    "prompt_tokens": ptok,
-                    "completion_tokens": ctok,
-                    "duration_ms": int((time.monotonic() - t0) * 1000),
-                    "model": model_used,
-                }
-            llm_picks = _extract_first_json_array(text)
-        except LLMNotConfiguredError:
-            # Caller (the API layer) catches this separately to return
-            # 501 with the actionable message. Bubble it up.
+        except (LLMNotConfiguredError, AttributionModelError):
+            # Not configured -> the API layer's 501 with the actionable message.
             raise
         except Exception as e:
             # A failed call stops the run with the provider's reason. Swallowing it

@@ -86,6 +86,9 @@ class RunUsage(BaseModel):
     completion_tokens: int = 0
     duration_ms: int = 0
     model: str = ""
+    # Model calls the run took: 1 when the chapter fit, more when it was read in
+    # pieces (chapter splitting, 2026-09-28).
+    pieces: int = 1
 
 
 class PersistInfo(BaseModel):
@@ -658,6 +661,8 @@ class AnalyzeTextRequest(BaseModel):
     maxTokens: int | None = None
     topP: float | None = None
     samplers: list[dict] = []
+    # Force chapter splitting by treating the model's context as this small (eval).
+    max_context: int | None = None
 
 
 @router.post(
@@ -695,6 +700,7 @@ async def analyze_text_endpoint(
         max_tokens=body.maxTokens,
         top_p=body.topP,
         samplers=body.samplers,
+        max_context=body.max_context,
     )
     try:
         raw_out: dict = {}
