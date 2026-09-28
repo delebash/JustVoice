@@ -1015,7 +1015,7 @@ STATE:  DECIDED 2026-09-27 — "your rec go", on the plan presented that day (pa
 WHY:    The mock is the design; the user wants to "see how it works for real".
 NOT:    Discover "Last scanned"/"N of 14 scanned" and Export "not exported yet" (no backing
         data). Merge. A second cast editor on Overview. Webhook field on Overview.
-BUILT:  2026-09-27, uncommitted. `studioSteps.js` (+test) · `studioStatus.js` (+test) ·
+BUILT:  2026-09-27, COMMITTED + PUSHED in JV `df15ecf` (2026-09-28). `studioSteps.js` (+test) · `studioStatus.js` (+test) ·
         `components/StudioOverview.vue` · `components/StudioDiscover.vue` · `services/openProject.js`
         (the one "open a project" door: Projects, Home Resume, switcher, create/import, Import
         review) · `StudioView.vue` (Overview/Discover/Lines steps, lands on Overview on every
@@ -1116,7 +1116,13 @@ TESTED 2026-09-27 on the Ninth Facet demo (user: "run the tests on discovery on 
         three wordings tried (B; a sharper object rule; a person/creature/thing label the parser
         filtered); the model labels it "creature"/"person" — the book calls it "the great
         enchanted head of the maul", genuinely ambiguous. Label code reverted; Ignore covers it.
-        NOT verified in the real UI: needs the reset first.
+        VERIFIED in the real UI 2026-09-28 (after the user's reset): headless scan in the
+        running app — AI task strip, per-chapter rows, zero JS errors.
+        LATER THE SAME DAY (all committed; records in the plan docs, not here — close = delete):
+        speaker attribution 55-64% → 99.8% (`docs/plans/2026-09-28-speaker-attribution-tuning.md`);
+        failures show instead of blank lines; Discover gets the library as a second list
+        (eval 18/28 → 28/28, "Ode" → Odeline Marran, Gudgeon no longer proposed);
+        long chapters read in pieces (`docs/plans/2026-09-28-chapter-splitting.md`).
 FOUND WHILE BUILDING — needs the user's word, NOT decided:
         · Lexicon on Overview was in the plan, but a project's `default_lexicon_id` is never
           applied at render (`render_chapter_api._resolve_scene_to_lines` adds persona lexicons
@@ -1124,93 +1130,11 @@ FOUND WHILE BUILDING — needs the user's word, NOT decided:
         · Mastering options now say what they do: "" = the kind's default (was labelled "None",
           which on an audiobook meant ACX), "none" = raw, and "Custom" dropped (server renders it
           raw with a warning).
-OPEN:   Slice 3 (Script as the mock; Flagged needs the §8.14 checks — separate go), Slice 4
+OPEN:   the Lexicon-on-Overview question and the mastering wording above (no answer yet).
+        Slice 3 (Script as the mock; Flagged needs the §8.14 checks — separate go), Slice 4
         (Render owns direction/takes/Gen/Compare), Slice 5 (presets excision — ruled, needs go).
         Game "1 · Lines" is unverified in the real app — the real data has no game project.
 GO:     given 2026-09-27 for Slices 1 + 2 and decisions 1-6 | needed for 3, 4, 5
-
-### Speaker extraction (Script · Analyze) works well
-STATE:  DECIDED 2026-09-28 — "now lets test the speaker extraction it wasnt working that well, i
-        want you to test it and recommend any prompt or ai settings llm changes or any other
-        changes such as review process, think on it nad start iterating, you can keep going
-        without my approvial until you get a good result like you did now, just let me know the
-        changes you made when you are satisfied speak extraction works well"
-WHY:    The user's own testing found attribution weak; Discover's measure-then-fix loop worked.
-NOT:    Changing things without measuring them.
-BUILT:  see the plan doc `docs/plans/2026-09-28-speaker-attribution-tuning.md` (the passes, the
-        numbers, what changed and why). Result on two answer-keyed books, 268 lines, 2 runs:
-        55-64% → 99.8% (Gemma 4 26B, thinking on), Qwen3.6 35B-A3B 99.4%. Gemma stays default;
-        second pass not built (residual misses are high-confidence). Uncommitted.
-GO:     given 2026-09-28 — iterate without asking until it works well; report when satisfied.
-
-### After the attribution work: verify Discover live, seed the local timeout, test long chapters
-STATE:  DECIDED 2026-09-28 — "push go your rec". The rec, as shown: "I'd do 2, 3 and 4 first.
-        They're small and confirm what was just built before the larger redesign in 1."
-          2. Check the new Discover screen in the real app by running a scan on the demo project.
-          3. Longer default timeout for the local model in the kit's seed data. Your database
-             already has 900 s; a fresh install still gets 60 s, which cuts off thinking runs.
-          4. Long-chapter check: see whether attribution holds on a very long chapter, or
-             needs to be split into chunks.
-WHY:    Confirm what was just built before the larger Script/Render redesign (item 1).
-NOT:    Item 1 (Script and Render redesign, slices 3-5, presets excision) — not in this go.
-GO:     given 2026-09-28.
-BUILT:  2 — scanned Brass Rank in the running app (vite 1430 → server 17494) headless: AI task
-          strip, row fill, zero JS errors. FOUND: "Ode" proposed beside Odeline Marran — the
-          sample says "Answers to Ode." only in her one-liner, the library match reads names +
-          aliases, so Add would make a duplicate persona. Gudgeon still proposed (Ignore).
-        3 — kit `seed.py`: built-in provider seeds `timeout_seconds: 900`; docs/ai-features.md
-          Troubleshooting gains "Timed out". Kit suite 979 pass; 10 test_lifecycle failures
-          are the same with the change stashed (pre-existing).
-        4 — plan doc pass 10: long chapters fine (136/136, 131/132 at 6.5-7.8k words); past
-          the context the 400 is SWALLOWED into all-"unknown" with no message.
-        Uncommitted.
-
-### Model failures show, oversized chapters go to IDEAS, Discover knows the library
-STATE:  DECIDED 2026-09-28 — "commit and go your rec a b c". The recs, as shown:
-          A. Show the failure. A failed model call stops the run with the provider's message
-             ("Chapter is 34,514 tokens; the model holds 32,768"), and the AI task strip shows
-             it as failed. A readable reply with no usable answers stays as it is today.
-          B. Splitting chapters that don't fit goes to IDEAS. Real chapters are 2-8k words,
-             and A tells you when one doesn't fit.
-          C. Ode. Give Discover your library personas (names, aliases, descriptions) as a
-             second list. A name that belongs to one of them then comes back under the
-             library name, so "Ode" would match Odeline Marran.
-WHY:    pass 10 of docs/plans/2026-09-28-speaker-attribution-tuning.md: every model failure
-        (context overflow, timeout, failed load) looked like "couldn't tell who spoke";
-        Discover proposed "Ode" beside Odeline Marran (would duplicate on Add).
-NOT:    Building chunking (B is an IDEAS entry only).
-GO:     given 2026-09-28.
-BUILT:  A, B, C — plan doc pass 11 has the receipts. Discover eval 18/28 → 28/28 found and
-        linked, 0 wrong; the live app restarted on the new code and its identify row + test
-        sample updated. 776 server tests pass (+58 affected re-run after the last prompt
-        edit). The Script failure toast/strip is the existing renderer path — not
-        watched on screen. Uncommitted.
-
-### Script (and Discover) split a chapter too long for the model
-STATE:  DECIDED 2026-09-28 — "go your rec 1 yes 2 no". The plan is
-        `docs/plans/2026-09-28-chapter-splitting.md` — READ IT BEFORE CODING. As shown:
-          When a chapter is too big for the model to read at once, Script cuts it into pieces
-          at paragraph breaks. It reads each piece with the full cast plus a few paragraphs
-          from the piece before for context, then stitches the answers back together by line
-          number. You see one run with one progress bar, and get one result, exactly like a
-          short chapter. The chapter itself isn't changed.
-          Slices 0 (engine checks) · 1 (kit: cut-off signal, context size) · 2 (pipeline) ·
-          3 (measure: both books forced into 3-5 pieces must still score 267/268) ·
-          4 (Discover) · 5 (docs). A's message is reworded.
-          1. Split for Discover too (slice 4)? — YES.
-          2. Add a manual "split this chapter" button? — NO.
-WHY:    Pass 10: a chapter past the context failed (now loudly, since A); outliers exist
-        (a book imported as one chapter).
-NOT:    A manual split action. Always-chunk. A prompt change.
-GO:     given 2026-09-28.
-BUILT:  Slices 0-5 — receipts in the plan doc §4b. Kit: StreamDelta.finish_reason +
-        measure_action (985 pass; 10 test_lifecycle failures pre-existing). JV: pieces.py,
-        _attribute_in_pieces, Discover splitting, 2 settings, RunUsage.pieces,
-        eval --max-context (792 pass). Measured: 8k → 3 pieces 267/268; 5k → 6 pieces
-        408/408 + 392/396 over 3 runs; the real 26k-word text: 2 pieces, 234/234 answered.
-        Defect found + fixed on the way: an id-less piece reply was dropped whole.
-        Docs: studio.md "Long chapters are read in pieces", ai-features settings table +
-        troubleshooting. IDEAS entry deleted. Uncommitted.
 
 ### The audiobook demo is JustWrite's sample, The Ninth Facet
 STATE:  DECIDED 2026-09-27 — "2 make a folder called samples just like jw and the load demo just
@@ -1219,7 +1143,7 @@ STATE:  DECIDED 2026-09-27 — "2 make a folder called samples just like jw and 
 WHY:    Stillwater is 2 chapters / 5 lines / 3 characters, too thin to test Discover or Script;
         The Ninth Facet is 4 chapters, 8 characters, hundreds of dialogue lines.
 NOT:    Keeping Stillwater. A new import path — the demo runs the existing JustWrite import.
-BUILT:  2026-09-27, uncommitted. `samples/the-ninth-facet/book.json` (byte-identical copy of
+BUILT:  2026-09-27, committed in JV `df15ecf`. `samples/the-ninth-facet/book.json` (byte-identical copy of
         JW's) · `demo_projects._book` runs `run_adapter("justwrite", …)` on it, resolved by
         `_bundled_samples_dir` (`JUSTVOICE_SAMPLES_SRC` or repo-root `samples/`, mirroring JW's
         `demo_seed`) · test `test_the_audiobook_demo_is_the_ninth_facet_…` · docs/projects.md.

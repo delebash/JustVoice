@@ -238,10 +238,23 @@ From the shipped 55% / 64% (14% / 33% confidently wrong).
   Worth taking: the one-line test *"if another character in the scene would hear the words, it
   is dialogue"*; context-only neighbours in a review pass; a running cast roster across chunks.
 
-## Next
+## Status — DONE, committed and pushed (2026-09-28)
 
-1. ~~Read Alexandria's attribution~~ done above.
-2. Look at the 5 residual errors; stability over more runs; the guided route (small models).
-3. Promote: live `speaker_attribution.direct` + `.guided` rows + shipped defaults.
-4. Qwen 3.6 35B-A3B on the same harness.
-5. Second pass for floored / low-confidence lines — only if residual errors justify it.
+| What | Where |
+|---|---|
+| Passes 0-9 (ids, timeout, c2 prompt, reasoned preset, handles, resolver, robust parser, Qwen) | JV `df15ecf` |
+| Pass 10 (long-chapter measure, `eval --whole`), kit 900 s seed timeout | JV `ac82576`, kit `81511e3` |
+| Pass 11 (A: failures show · B: IDEAS · C: Discover knows the library) | JV `7609177` |
+| Chapter splitting (B built after all) — `2026-09-28-chapter-splitting.md` | JV `7a62c66`, kit `4f8320b` |
+| Cut-off answers fail the task (kit client + routes) | kit `9fda2f9`, JW `247dc8e`, JV `4352bc2` |
+
+Final numbers: 55-64% → **99.8%** (Gemma 4 26B, thinking, 2 books, 2 runs); Qwen3.6-35B-A3B
+99.4%, slower, Gemma stays default. The one stable miss is Salt-Iron D7 "Quartermaster."
+(Ino) — every model/setup says Sable Coyne at 1.00.
+
+Decided, not built: **no second AI pass** — residual misses come back at 0.85-1.00, so a pass
+keyed on low confidence would not see them.
+
+Still open (no go given): the Script failure toast/strip was never watched on screen (the
+path is the existing renderer one); Discover's reading of very long free text is noisy
+("Old Ката", "Thief", "Toll" on the 26k-word test) — the quote check flags invented ones.

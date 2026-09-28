@@ -1,6 +1,7 @@
 # Chapter splitting for Script (and Discover) — plan
 
-Status: **PLAN, not started.** Asked 2026-09-28: "figure out how to implement chapter splitting
+Status: **BUILT, committed and pushed 2026-09-28** — JV `7a62c66`, kit `4f8320b` (see §4b).
+Originally: Asked 2026-09-28: "figure out how to implement chapter splitting
 next". Measurements behind it: `2026-09-28-speaker-attribution-tuning.md` passes 10-11.
 Parked idea it replaces: `docs/dev/IDEAS.md` 2026-09-28.
 
@@ -208,10 +209,13 @@ context):
 | `ExtractionSettings` gains 2 keys | read at `extraction_api.py:777`, `:790` (`direct_min_b`) | stale keys ignored on load (class docstring) |
 | kit `StreamDelta.finish_reason` | producers: `anthropic.py:264`, `gemini.py:253`, `ollama.py:204`, `openai_compat.py:292`, `openai_sdk.py:390`, `:415`; dispatch mutates the same object (`dispatch.py:422 delta.model = model`) so a new field survives | default value → every other consumer unaffected (JW, docgen) |
 
-## 6. Open for the user
+## 6. Decided
 
-1. **Discover too (Slice 4)?** Rec: yes — a chapter too long for Script is too long for
-   Discover, and Discover runs first.
-2. **A manual "split this chapter" action?** Rec: no — with automatic pieces nothing needs
-   it for the model's sake. Say if you want it for other reasons (render length, export
-   track length) and it goes to IDEAS.
+1. **Discover too (Slice 4)?** — YES ("go your rec 1 yes 2 no"). Built.
+2. **A manual "split this chapter" action?** — NO.
+
+Follow-on the same day: the kit's `/v1/ai/run` + `/v1/ai/stream` now carry `finishReason`,
+and the shared client fails a task whose answer was cut off (kit `9fda2f9`) — so
+JustWrite's whole-chapter features (critique, multi-reader critique, thread extraction)
+no longer read a cut-off reply as a result. JW needed no app code; its tests pin it
+(`src/services/aiFeature.test.js`, JW `247dc8e`).
