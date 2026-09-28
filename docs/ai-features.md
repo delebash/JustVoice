@@ -413,8 +413,11 @@ feature, and answers **501** with a clear message when no model is set up.
   [Studio → Script](studio.md#script)), but it never cuts inside a paragraph.
   Only a paragraph bigger than the model's whole context gives this; use a
   model with a larger context.
-- **An answer stops mid-sentence** — a **Max tok** cap is set on that
-  feature's preset and the answer hit it. No feature ships with one, so if
-  there's a number there, someone typed it: raise it or clear the box
-  (empty = no limit). Remember that on thinking runs the hidden reasoning
-  counts against the same cap.
+- **"The answer was cut off"** — the model ran out of room before it
+  finished, so the run fails instead of handing back half an answer. Either
+  a **Max tok** cap is set on that feature's preset and the answer hit it (no
+  feature ships with one, so if there's a number there, someone typed it:
+  raise it or clear the box, empty = no limit), or the text sent filled the
+  model's context. On thinking runs the hidden reasoning counts against both.
+  Script is the exception: it reads a chapter that fills the context in
+  pieces instead (see [Studio → Script](studio.md#script)).
