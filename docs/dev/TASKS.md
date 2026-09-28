@@ -691,7 +691,9 @@ to ideas so we can design the proper timeline"** (15) → **"your rec for the
 others go and code"** (12, 13, 14, 16). Each recommendation, as accepted:
 
 - **12 — Studio steps reorder to Script → Cast → Render → Export for PROSE
-  kinds; game keeps `[cast, render, export]`.** WHY: the Script step is what
+  kinds; game keeps `[cast, render, export]`.** *(SUPERSEDED 2026-09-27: Overview
+  first, then Discover → Script → Cast → Render → Export; game Lines → Cast →
+  Render → Export — see "Build the mock's Studio in the app".)* WHY: the Script step is what
   *creates* the cast — `runDiscoverSpeakers` → `promoteDiscovered`
   (`StudioView.vue:1303-1351`) makes the personas and links them to the
   project. Cast-first means opening a cast holding only the Narrator, leaving
@@ -984,6 +986,204 @@ under the failure.
 NOT: waiting the splash out. Warming a 26B model takes minutes and is not what
 this gate measures — clicking the escape is what a user does.
 
+### Build the mock's Studio in the app — Slices 1 + 2 (Overview, Discover)
+STATE:  DECIDED 2026-09-27 — "your rec go", on the plan presented that day (pasted below).
+        Studio becomes the project's home. Opening any project lands on its Overview (settings,
+        where each step stands, Continue). Then Discover · Script · Cast · Render · Export; game
+        kinds skip Discover and Script. Projects becomes a plain list.
+        Slice 1 — Overview + Studio as the project home. `studioSteps.js`: Overview first,
+        unnumbered. Status only from data already loaded: chapters analyzed (block has a source),
+        lines with no speaker, personas voiced / lines blocked on a voice, render cache
+        cached/total. Settings: title, description, kind read-only, mastering target, lexicon,
+        Re-import, Export .justvoice.zip, Delete — existing services, same autosave. Every "open
+        a project" path goes to Studio Overview: Projects row Open and Open in Studio,
+        create/import, Home Resume, the title-bar switcher, Import review. The Projects detail
+        pane goes; its fields move to Overview; the cast pills go (Cast is the one editor).
+        Slice 2 — Discover as its own step: chapter grid with checkboxes + live estimate,
+        "Scan N chapters" (the existing per-chapter endpoint per chapter), a Proposed speakers
+        table (name, lines, chapters) with Add (existing promote) and Ignore. Analyze stops
+        auto-running Discover.
+        The six decisions, all "your rec":
+        1. Author: wire it into the M4B artist tag (small server change). Webhook: off Overview
+           until webhooks are project-linked.
+        2. Export and Discover status rows show no counts, just a link — nothing records an export
+           or a scan.
+        3. Chapters and Lines stay in the rail for now; decide after using it.
+        4. Game projects: the Lines grid goes inside Studio as "1 · Lines".
+        5. Discover Merge: left out (personas have no aliases).
+        6. Slices 1 + 2 now; Script (3) and Render (4) after trying them.
+WHY:    The mock is the design; the user wants to "see how it works for real".
+NOT:    Discover "Last scanned"/"N of 14 scanned" and Export "not exported yet" (no backing
+        data). Merge. A second cast editor on Overview. Webhook field on Overview.
+BUILT:  2026-09-27, uncommitted. `studioSteps.js` (+test) · `studioStatus.js` (+test) ·
+        `components/StudioOverview.vue` · `components/StudioDiscover.vue` · `services/openProject.js`
+        (the one "open a project" door: Projects, Home Resume, switcher, create/import, Import
+        review) · `StudioView.vue` (Overview/Discover/Lines steps, lands on Overview on every
+        project change, follows the active project; old discover banner + auto-run deleted) ·
+        `LinesView.vue` (`:project-id` embeds it) · `ProjectsView.vue` (plain list, pane deleted) ·
+        `ChapterView.vue` (dead `jv.chapter.sceneId` reader deleted) · server
+        `projects_api.m4b_author` (+test). Docs: projects.md, studio.md, toc.json,
+        getting-started.md, CONCEPTS.md, code-map.md.
+DECIDED 2026-09-27 — "both", on this (user asked why Discover → Script → back lost the scan):
+        1. Keep results while you move around Studio — keep the Discover section alive between
+           step switches instead of rebuilding it (the v-if unmount was the bug).
+        2. Save results on the server — store each chapter's scan (candidates + when it was
+           scanned) on the chapter, so results survive restarts and Overview/Discover get real
+           "scanned / last scanned" data. This reverses decision 2 for Discover only.
+DECIDED 2026-09-27 — "A your rec go": finish "both", and put the kit task strip (Cancel +
+        per-chapter progress) on the Discover page, as Script has for Analyze. Then investigate
+        the false speakers as a separate step — read the discover prompt and run it on the
+        Stillwater chapters against the loaded model; findings before any fix. User's report: "in
+        the sample there are 2 easy speakers maria and edith, it does not identify edit and tries
+        to identify 2 unknonw speakers". (Mara + Edith are already cast there, and Discover
+        excludes cast names by design — the two invented speakers are the real defect.)
+INVESTIGATED 2026-09-27 (findings only, no fix — needs the user's word). Ran
+        discover 3x per chapter through the user's own app server (17494, gemma-4-26b-a4b-qat;
+        cast at that moment = Narrator only). Identical every run:
+        · "The Lake House" (231 chars, 2 dialogue lines, NO name anywhere) → "child", "the elder".
+          Invented descriptors. The prompt invites them: IDENTIFY_SYSTEM says 'Use the name the
+          text itself uses for them (e.g. "the stranger" → "The Stranger")'
+          (`extraction/identify.py:26-36`, the system of template `speaker_attribution.identify`).
+        · "Old Debts" (168 chars, 1 untagged line) → "Mara" (wrong — the context makes Edith the
+          speaker), Edith missed. The prompt keeps only "characters who actually speak dialogue",
+          so a named-but-judged-silent character is dropped and one wrong call loses her.
+        · Per-chapter scanning cannot connect chapter 1's unnamed speakers to chapter 2's names —
+          each call sees one chapter only.
+        · The demo is 5 lines, 4 untagged; a human cannot name ch. 1's speakers without ch. 2.
+        DECIDED 2026-09-27 — "your rec": fix options 1 + 2 + 4. (1) propose only real names or
+        a consistently used title, never descriptors like "child"; (2) propose every named
+        character who appears, not only those judged to speak — Script decides who speaks;
+        (4) return the line that shows each name, so a proposal can be judged at a glance.
+        Option 3 (other chapters' names as context) NOT chosen. Then re-run on the sample.
+        User asked the same turn whether the change lands in the feature routing (the live
+        `feature_prompts` row) — answered: the seed is insert-if-missing, so it needs the kit's
+        stale-heal registry (JV has none; JW has FEATURE_PROMPT_HEALS). CORRECTED + DECIDED
+        2026-09-27 — "this is not prodicutioun you do not need to do any migration seed data
+        happens 1 time on a new database that is all. yes you have it correct": the change goes
+        into the LIVE feature row (as if saved in AI Settings → Features — the only thing that
+        runs); the shipped default gets the same text for new databases only; no heal, no
+        migration. Option 4 is code (parser, saved scan, Discover column).
+        BUILT 2026-09-27: new text saved into the live `speaker_attribution.identify` row via
+        PUT /v1/ai/prompts (user template + JSON setting kept, still built-in so Reset works);
+        the same text is the shipped default (`extraction/identify.py` IDENTIFY_SYSTEM);
+        `evidence` carried by parser → API → saved scan → Discover "First appearance".
+        Re-run on the sample, in the real UI: The Lake House → none; Old Debts → Edith +
+        Mara, each with its quote; with Mara cast → Edith only; results survived a reload.
+        Side finding: from the gate server (8741) the same model failed to load its MTP draft
+        (502), while the user's app loads it fine — not diagnosed; memory's MTP-regression note.
+TESTED 2026-09-27 on the Ninth Facet demo (user: "run the tests on discovery on the demo
+        project delete some of the exisiting charactera after import and test if the new prompt
+        works correctly"). Real data dir, live prompt, gemma-4-26b-a4b-qat, project 42081980….
+        Removed from cast (NOT deleted): Nettle, Brick Halvorn, Haldane Threll, Iven Sarraz.
+        · Recall 13/13 — every removed character found in every chapter that names them; no
+          cast member proposed by a name the known list holds; scans saved on all 4 chapters.
+        · Sedge / "Old Sedge" (a road-warden who speaks, not in JW's list) — a TRUE find, but it
+          shows as two proposals: the merge keys on the exact name.
+        · "Ode" — FALSE: Odeline Marran's nickname ("Odeline Marran," she said. "Ode.") and she
+          IS cast; that chapter never says "Odeline", and personas carry no aliases.
+        · "Gudgeon" — FALSE: JW lists it as an OBJECT (Brick's enchanted maul), 0 lines, 2 chapters.
+        · First names only ("Brick", "Iven") where the chapter uses them.
+        · DEFECT (not the prompt): ＋ Add → promote matches personas only on
+          (imported_from="discovered", slug) (`_persona_helpers.ensure_project_persona`), so
+          adding "Brick" — or even the exact "Haldane Threll" — would CREATE a duplicate persona
+          instead of re-linking the library's JustWrite-imported one. Add was NOT pressed.
+        No fix made — needs the user's word.
+        DECIDED 2026-09-27 — "go on all your recs a b c d and 1-5", on:
+          A. Add re-uses your library — match proposals against every library persona, show
+             "Brick → Brick Halvorn (in your library)", Add re-links it.
+          B. Prompt: only people or creatures that can speak; never a named object, place or
+             weapon.
+          C. Personas get nicknames/aliases, so "Ode" matches Odeline Marran — and Analyze's
+             anchors get them too (`_resolve_cast` hardcodes aliases []).
+          D. Merge "Sedge" + "Old Sedge" (one name contains the other) into one proposal.
+          1. Learn aliases from Add — adding "Brick" onto Brick Halvorn saves "Brick" as his alias.
+          2. Send the model a richer cast list — aliases and a one-line description per persona.
+          3. Check the quote is real — the server confirms each quote appears in the chapter.
+          4. Remember Ignore per project — a re-scan does not re-propose an ignored name.
+          5. A repeatable prompt test — the Ninth Facet + expected answers, run on demand
+             against the real model, scored.
+          (6, long chapters, was a check, not in this go.)
+        BUILT 2026-09-27, uncommitted: `extraction/names.py` (+test_names) · `Persona.aliases`
+        + `Project.discover_ignored` columns (NO migration — the dev DB 500s with "no such
+        column" until the user resets) · API/store/editor "Also called" · JW import aliases ·
+        discover: rich known list, cast drop, library_match, evidence_found, ignore remembered
+        + /discover/unignore · promote persona_id re-link + alias learning + aliases for new
+        personas · Discover UI (library tag, merged spellings, quote flag, Ignored + Restore) ·
+        live prompt row + shipped default updated (B) · `npm run eval:discover`.
+        MEASURED (eval, real model, 2 runs/chapter): recall 26/28 (the 2 = Haldane Threll named
+        once by surname inside dialogue in "Bigger Inside"; found in ch.1), "Ode" GONE (fix 2),
+        quotes 34/34 real, Sedge + Old Sedge found (merged in the UI). NOT fixed: "Gudgeon" —
+        three wordings tried (B; a sharper object rule; a person/creature/thing label the parser
+        filtered); the model labels it "creature"/"person" — the book calls it "the great
+        enchanted head of the maul", genuinely ambiguous. Label code reverted; Ignore covers it.
+        NOT verified in the real UI: needs the reset first.
+FOUND WHILE BUILDING — needs the user's word, NOT decided:
+        · Lexicon on Overview was in the plan, but a project's `default_lexicon_id` is never
+          applied at render (`render_chapter_api._resolve_scene_to_lines` adds persona lexicons
+          only). Left OFF Overview: wire the render to apply it, or keep it off?
+        · Mastering options now say what they do: "" = the kind's default (was labelled "None",
+          which on an audiobook meant ACX), "none" = raw, and "Custom" dropped (server renders it
+          raw with a warning).
+OPEN:   Slice 3 (Script as the mock; Flagged needs the §8.14 checks — separate go), Slice 4
+        (Render owns direction/takes/Gen/Compare), Slice 5 (presets excision — ruled, needs go).
+        Game "1 · Lines" is unverified in the real app — the real data has no game project.
+GO:     given 2026-09-27 for Slices 1 + 2 and decisions 1-6 | needed for 3, 4, 5
+
+### Speaker extraction (Script · Analyze) works well
+STATE:  DECIDED 2026-09-28 — "now lets test the speaker extraction it wasnt working that well, i
+        want you to test it and recommend any prompt or ai settings llm changes or any other
+        changes such as review process, think on it nad start iterating, you can keep going
+        without my approvial until you get a good result like you did now, just let me know the
+        changes you made when you are satisfied speak extraction works well"
+WHY:    The user's own testing found attribution weak; Discover's measure-then-fix loop worked.
+NOT:    Changing things without measuring them.
+BUILT:  see the plan doc `docs/plans/2026-09-28-speaker-attribution-tuning.md` (the passes, the
+        numbers, what changed and why). Result on two answer-keyed books, 268 lines, 2 runs:
+        55-64% → 99.8% (Gemma 4 26B, thinking on), Qwen3.6 35B-A3B 99.4%. Gemma stays default;
+        second pass not built (residual misses are high-confidence). Uncommitted.
+GO:     given 2026-09-28 — iterate without asking until it works well; report when satisfied.
+
+### The audiobook demo is JustWrite's sample, The Ninth Facet
+STATE:  DECIDED 2026-09-27 — "2 make a folder called samples just like jw and the load demo just
+        imports the project per existing code remove silwater". Option 2 of: (1) just import it,
+        (2) make it JustVoice's built-in demo, replacing "Demo — Stillwater".
+WHY:    Stillwater is 2 chapters / 5 lines / 3 characters, too thin to test Discover or Script;
+        The Ninth Facet is 4 chapters, 8 characters, hundreds of dialogue lines.
+NOT:    Keeping Stillwater. A new import path — the demo runs the existing JustWrite import.
+BUILT:  2026-09-27, uncommitted. `samples/the-ninth-facet/book.json` (byte-identical copy of
+        JW's) · `demo_projects._book` runs `run_adapter("justwrite", …)` on it, resolved by
+        `_bundled_samples_dir` (`JUSTVOICE_SAMPLES_SRC` or repo-root `samples/`, mirroring JW's
+        `demo_seed`) · test `test_the_audiobook_demo_is_the_ninth_facet_…` · docs/projects.md.
+OPEN:   packaged builds: `samples/` is outside the Python package, so a frozen sidecar needs
+        `JUSTVOICE_SAMPLES_SRC` pointed at a bundled copy — deferred, exactly as in JW. The
+        user's existing "Demo — Stillwater" project in the dev DB is NOT deleted (data; ask).
+GO:     given 2026-09-27
+
+### Redesign: Studio stays a container, a project opens on its Overview, presets die
+STATE:  DECIDED 2026-09-27, in the mock. The questions and the user's answers, verbatim:
+        1. Studio container vs dissolved (§8.19) → *"1 studio stays as container"*
+        2. Where a project opens → *"open project always lands on overview"*
+        3. Render preset on Overview, since whether presets die was unruled → *"2 presets die"*
+        4. Overview shows the cast as a count linking to Cast, not a second editor? → *"3 not sure"*
+        Overview as presented and approved (*"go record it and add overview to the mock"*):
+        a tab in front of the steps, the project's own page. It holds settings (title, author,
+        description, kind read-only, mastering target, lexicon, webhook), where each step stands
+        (each row opens its step), "Continue →" to the next step with work left, and delete. Projects
+        stays a plain list, and a row opens that project's Overview. Author and mastering move off
+        Export; Export reads them and says where to edit them.
+WHY:    With Studio as the container, the project's home belongs inside it. A pane on Projects plus
+        a separate Studio would give one project two homes, which the two-places tuning ruling rejected.
+NOT:    Dissolved Studio (Chapters · Cast · Render · Export as rail items). Opening a project straight
+        into the chapter grid (the mock's old `openProject`). Render presets, in any form.
+BUILT:  mock only. `docs/plans/mock/_new_overview.html`, route `overview` in `build_mock.py`
+        ROUTES, `openProject()` → `nav('overview')`. Published 2026-09-27 (version 21).
+        App code: nothing. `ProjectsView.vue:534-656` is still the detail pane plus "Open in Studio".
+OPEN:   (4) cast on Overview is unruled; the mock shows only the Cast step's status row.
+        (The Dissolved toggle was deleted from the mock 2026-09-27: *"2 delete,"*.)
+        Presets excision in code (`RenderPresetsView.vue`, `/presets`, `RENDER_PRESETS` in
+        `ProjectsView.vue:162`, `metadata.render_preset`) has no go.
+GO:     given 2026-09-27 for the record and the mock | needed for app code and the presets excision
+
 ### THE VOICE-WORKFLOW REDESIGN — the resume surface
 
 STATE: BEING DESIGNED IN THE MOCK. NOTHING BUILT IN APP CODE.
@@ -998,13 +1198,12 @@ sessions. The one piece of it still undone is recorded in that plan's own
 closing banner: Labs still carries compare + renderlab + audio as three subs
 where the plan wanted one "Audio tools". This doc also supersedes pipeline
 item 6. Mock: `https://claude.ai/code/artifact/534a16a2-af40-438b-a64d-34baaf31f838`
-— **18 routes, 134 controls, 0 dead, 4 deliberately disabled** (re-measured with
-`validate.py` 2026-08-22; this line had said 126). **Source lives at
+— counts in §8.18 only (last measured 2026-09-27). **Source lives at
 `docs/plans/mock/`** (moved out of the session scratchpad 2026-08-17, with a
 README for the edit → build → validate → republish loop). The counts are
 maintained in the doc's §8.18 and nowhere else — do not re-state them here.
-**One known defect:** the `scene` route went unreachable in the 2026-08-16
-Render restructure and is not fixed (§8.18, §8.21 item 10).
+The `scene` route, unreachable from 2026-08-16, was re-linked 2026-09-19
+(`6c7cf57`; §8.18, §8.21 item 10).
 
 THE VOICE-LAYER ARGUMENT is §8.22 of that doc — why a persona earns its place
 (it is the layer that survives a recast), which half of it actually survives
@@ -1182,13 +1381,14 @@ these as decisions and do NOT build them:
 the line is the unit and Chapters+Script+Render merge · two modes
 (Script-with-playhead / Table) · steps become filter states · render as a panel ·
 inline-for-the-line vs pages-for-library-objects · casting as
-pick-the-kind-then-the-voice · no per-line voice override · **render presets
-deleted** (the user's words were *"i think presets die… i am not saying get rid
-of it… give me your rec"* — a lean plus a request for a recommendation, NOT a
-ruling) · the composes-vs-replaces rule · gain/pitch/tempo folded into the
+pick-the-kind-then-the-voice · no per-line voice override · ~~render presets
+deleted~~ **RULED 2026-09-27: "2 presets die"** (item above; earlier the user's
+words were only a lean, *"i think presets die… i am not saying get rid of it…
+give me your rec"*) · the composes-vs-replaces rule · gain/pitch/tempo folded into the
 effects chain.
 
-OPEN (§4 of the doc): does "Studio" survive as a container (undoing ruling 12)? ·
+OPEN (§4 of the doc): ~~does "Studio" survive as a container (undoing ruling 12)?~~
+**RULED 2026-09-27: it stays a container** (item above) ·
 does Chapters die outright? · row-expands vs row-links? · the real VoiceDesign
 download size · samples API · is there any undo for an Analyze pass?
 

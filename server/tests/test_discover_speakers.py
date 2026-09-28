@@ -33,6 +33,26 @@ def test_parse_dedupes_known_and_self_case_insensitive():
     assert [c.name for c in out] == ["Tom"]
 
 
+def test_parse_keeps_the_evidence_quote():
+    raw = '[{"name": "Edith", "role_hint": "poured the tea", "approx_lines": 0, "evidence": "Edith’s hands"}]'
+    out = parse_candidates(raw, [])
+    assert out == [SpeakerCandidate(name="Edith", role_hint="poured the tea", approx_lines=0,
+                                    evidence="Edith’s hands")]
+
+
+def test_the_shipped_prompt_asks_for_named_people_not_speakers_or_descriptors():
+    """2026-09-27: the old default asked for speakers only and offered "the
+    stranger" as a name — the demo got "child" / "the elder" and lost Edith."""
+    from justvoice.extraction.identify import IDENTIFY_SYSTEM
+
+    assert "whether or not they speak" in IDENTIFY_SYSTEM
+    assert '"child"' in IDENTIFY_SYSTEM and "are not characters" in IDENTIFY_SYSTEM
+    assert '"evidence"' in IDENTIFY_SYSTEM
+    assert "the stranger" not in IDENTIFY_SYSTEM.lower()
+    assert "named object" in IDENTIFY_SYSTEM            # fix B — not "Gudgeon" the maul
+    assert "nickname" in IDENTIFY_SYSTEM                # fix 2 — not "Ode" for Odeline
+
+
 def test_parse_garbage_returns_empty():
     assert parse_candidates("I could not find any JSON to give you.", []) == []
     assert parse_candidates('{"name": "not a list"}', []) == []
@@ -87,14 +107,18 @@ def test_discover_with_stubbed_llm(client, monkeypatch):
     _pid, scene_id = _import_project(client)
 
     def fake_identify(text, known, *, settings, run_fn=None, raw_out=None):
-        assert "Mara Vance" in known
+        # The cast arrives as people, not bare names (fix 2): name, aliases,
+        # and the character sheet the model gets one line of.
+        assert "Mara Vance" in [k["name"] for k in known]
+        assert all("aliases" in k and "description" in k for k in known)
         return [SpeakerCandidate(name="Tom Harlan", role_hint="neighbor", approx_lines=3)]
 
     monkeypatch.setattr("justvoice.extraction.identify.identify_speakers", fake_identify)
     r = client.post(f"/v1/scenes/{scene_id}/discover-speakers", json={"text": "“Hi,” said Tom."})
     assert r.status_code == 200, r.text
     assert r.json()["candidates"] == [
-        {"name": "Tom Harlan", "role_hint": "neighbor", "approx_lines": 3}
+        {"name": "Tom Harlan", "role_hint": "neighbor", "approx_lines": 3, "evidence": None,
+         "evidence_found": None, "library_match": None}
     ]
 
 
@@ -113,6 +137,167 @@ def test_promote_creates_then_reuses(client):
     # Promoting again reuses, never duplicates.
     r2 = client.post(f"/v1/projects/{pid}/personas/promote", json=body)
     assert r2.json()["created"] == [] and r2.json()["reused"] == [new_id]
+
+
+def _scan(client, monkeypatch, scene_id, names):
+    def fake_identify(text, known, *, settings, run_fn=None, raw_out=None):
+        return [SpeakerCandidate(name=n, role_hint=None, approx_lines=2) for n in names]
+
+    monkeypatch.setattr("justvoice.extraction.identify.identify_speakers", fake_identify)
+    r = client.post(f"/v1/scenes/{scene_id}/discover-speakers", json={"text": "“Hi,” said Tom."})
+    assert r.status_code == 200, r.text
+
+
+def _saved(client, pid, scene_id):
+    scene = next(s for s in client.get(f"/v1/projects/{pid}/scenes").json() if s["id"] == scene_id)
+    return scene["metadata"].get("discover")
+
+
+def test_a_scan_is_saved_on_its_chapter_and_replaces_the_last_one(client, monkeypatch):
+    """Decided 2026-09-27 ("both"): a chapter's scan survives a restart."""
+    pid, scene_id = _import_project(client)
+    _scan(client, monkeypatch, scene_id, ["Tom Harlan", "The Stranger"])
+    saved = _saved(client, pid, scene_id)
+    assert saved["scanned_at"]
+    assert [c["name"] for c in saved["candidates"]] == ["Tom Harlan", "The Stranger"]
+
+    _scan(client, monkeypatch, scene_id, ["Old Crow"])
+    assert [c["name"] for c in _saved(client, pid, scene_id)["candidates"]] == ["Old Crow"]
+
+
+def test_promote_and_ignore_prune_the_saved_scan(client, monkeypatch):
+    pid, scene_id = _import_project(client)
+    _scan(client, monkeypatch, scene_id, ["Tom Harlan", "The Stranger", "Old Crow"])
+
+    r = client.post(f"/v1/projects/{pid}/personas/promote",
+                    json={"candidates": [{"name": "tom harlan"}]})
+    assert r.status_code == 200, r.text
+    assert [c["name"] for c in _saved(client, pid, scene_id)["candidates"]] == ["The Stranger", "Old Crow"]
+
+    r = client.post(f"/v1/projects/{pid}/discover/ignore", json={"names": ["THE STRANGER"]})
+    assert r.status_code == 200 and r.json() == {"removed": 1, "ignored": ["THE STRANGER"]}
+    saved = _saved(client, pid, scene_id)
+    assert [c["name"] for c in saved["candidates"]] == ["Old Crow"]
+    assert saved["scanned_at"], "pruning a name must not erase that the chapter was scanned"
+
+
+def _stub(monkeypatch, cands):
+    def fake_identify(text, known, *, settings, run_fn=None, raw_out=None):
+        return [SpeakerCandidate(**c) for c in cands]
+
+    monkeypatch.setattr("justvoice.extraction.identify.identify_speakers", fake_identify)
+
+
+def _discover(client, scene_id, text="Brick said nothing. Tom Harlan laughed."):
+    r = client.post(f"/v1/scenes/{scene_id}/discover-speakers", json={"text": text})
+    assert r.status_code == 200, r.text
+    return r.json()["candidates"]
+
+
+def test_a_cast_member_named_by_first_or_last_name_is_not_proposed(client, monkeypatch):
+    """The fixture cast has Mara Vance: "Mara" alone is her, not a newcomer."""
+    _pid, scene_id = _import_project(client)
+    _stub(monkeypatch, [{"name": "Mara"}, {"name": "Tom Harlan"}])
+    assert [c["name"] for c in _discover(client, scene_id)] == ["Tom Harlan"]
+
+
+def test_a_library_persona_is_matched_and_add_relinks_it_and_learns_the_alias(client, monkeypatch):
+    """Fixes A + 1: "Brick" names Brick Halvorn, already in the library. Add
+    puts THAT persona in the cast — no duplicate — and keeps "Brick" as his alias,
+    so the next scan knows him."""
+    pid, scene_id = _import_project(client)
+    brick = client.post("/v1/personas", json={"name": "Brick Halvorn"}).json()
+    _stub(monkeypatch, [{"name": "Brick", "evidence": "Brick said"}])
+    [cand] = _discover(client, scene_id)
+    assert cand["library_match"] == {"persona_id": brick["id"], "name": "Brick Halvorn"}
+
+    before = len(client.get("/v1/personas").json()["personas"])
+    r = client.post(f"/v1/projects/{pid}/personas/promote",
+                    json={"candidates": [{"name": "Brick", "persona_id": brick["id"]}]})
+    assert r.status_code == 200 and r.json() == {"created": [], "reused": [brick["id"]]}
+    assert len(client.get("/v1/personas").json()["personas"]) == before, "no duplicate persona"
+    assert client.get(f"/v1/personas/{brick['id']}").json()["aliases"] == ["Brick"]
+    assert brick["id"] in {c["persona_id"] for c in client.get(f"/v1/projects/{pid}/cast").json()["cast"]}
+    # Now cast — and "Brick" is his alias — so a re-scan proposes nobody.
+    assert _discover(client, scene_id) == []
+
+
+def test_add_keeps_the_other_spellings_as_aliases(client, monkeypatch):
+    """A merged proposal ("Old Sedge" + "Sedge") becomes one persona that knows
+    both names, and both leave the saved scan."""
+    pid, scene_id = _import_project(client)
+    _stub(monkeypatch, [{"name": "Old Sedge"}, {"name": "Sedge"}])
+    _discover(client, scene_id)
+    r = client.post(f"/v1/projects/{pid}/personas/promote",
+                    json={"candidates": [{"name": "Old Sedge", "aliases": ["Sedge"]}]})
+    [new_id] = r.json()["created"]
+    assert client.get(f"/v1/personas/{new_id}").json()["aliases"] == ["Sedge"]
+    assert _saved(client, pid, scene_id)["candidates"] == []
+
+
+def test_an_ambiguous_name_is_not_matched(client, monkeypatch):
+    _pid, scene_id = _import_project(client)
+    client.post("/v1/personas", json={"name": "Anna Brook"})
+    client.post("/v1/personas", json={"name": "Anna Reyes"})
+    _stub(monkeypatch, [{"name": "Anna"}])
+    [cand] = _discover(client, scene_id)
+    assert cand["library_match"] is None
+
+
+def test_the_quote_is_checked_against_the_chapter(client, monkeypatch):
+    """Fix 3: an invented quote is flagged, a real one (any quote marks) passes."""
+    _pid, scene_id = _import_project(client)
+    _stub(monkeypatch, [{"name": "Tom Harlan", "evidence": "Tom Harlan laughed"},
+                        {"name": "Old Crow", "evidence": "Old Crow spat"}])
+    got = {c["name"]: c["evidence_found"] for c in _discover(client, scene_id)}
+    assert got == {"Tom Harlan": True, "Old Crow": False}
+
+
+def test_ignore_is_remembered_across_scans_and_can_be_undone(client, monkeypatch):
+    """Fix 4: an ignored name stays out of every later scan until restored."""
+    pid, scene_id = _import_project(client)
+    _stub(monkeypatch, [{"name": "Gudgeon"}, {"name": "Tom Harlan"}])
+    _discover(client, scene_id)
+    r = client.post(f"/v1/projects/{pid}/discover/ignore", json={"names": ["Gudgeon"]})
+    assert r.json()["ignored"] == ["Gudgeon"]
+    assert client.get(f"/v1/projects/{pid}").json()["discover_ignored"] == ["Gudgeon"]
+    assert [c["name"] for c in _discover(client, scene_id)] == ["Tom Harlan"]
+
+    r = client.post(f"/v1/projects/{pid}/discover/unignore", json={"names": ["gudgeon"]})
+    assert r.json()["ignored"] == []
+    assert [c["name"] for c in _discover(client, scene_id)] == ["Gudgeon", "Tom Harlan"]
+
+
+def test_persona_aliases_survive_a_put_that_does_not_send_them(client):
+    """PUT sends the whole persona; every caller written before aliases omits
+    them — that must keep, not wipe, what is stored."""
+    p = client.post("/v1/personas", json={"name": "Odeline Marran", "aliases": ["Ode", " ode ", "Odeline Marran"]}).json()
+    assert p["aliases"] == ["Ode"], "trimmed, de-duplicated, never the persona's own name"
+    r = client.put(f"/v1/personas/{p['id']}", json={"name": "Odeline Marran", "voice_id": "v1"})
+    assert r.json()["aliases"] == ["Ode"]
+    r = client.put(f"/v1/personas/{p['id']}", json={"name": "Odeline Marran", "aliases": []})
+    assert r.json()["aliases"] == []
+
+
+def test_analyze_gets_persona_aliases(client):
+    """Fix C reaches attribution: anchors.py and the prompt read `aliases`."""
+    from justvoice.api.extraction_api import _resolve_cast
+    from justvoice.database import session as db_session
+
+    pid, scene_id = _import_project(client)
+    mara = next(c for c in client.get(f"/v1/projects/{pid}/cast").json()["cast"]
+                if c["persona_name"] == "Mara Vance")
+    client.put(f"/v1/personas/{mara['persona_id']}", json={"name": "Mara Vance", "aliases": ["Mara"]})
+    db = db_session.SessionLocal()
+    try:
+        cast = _resolve_cast(scene_id, db)
+    finally:
+        db.close()
+    assert next(c for c in cast if c["name"] == "Mara Vance")["aliases"] == ["Mara"]
+
+
+def test_ignore_on_a_missing_project_is_404(client):
+    assert client.post("/v1/projects/nope/discover/ignore", json={"names": ["x"]}).status_code == 404
 
 
 # ── The ad-hoc discovery door (the attribution Lab's identify twin) ──
@@ -135,7 +320,8 @@ def test_discover_adhoc_free_text(client, monkeypatch):
     assert r.status_code == 200, r.text
     assert r.json()["scene_id"] == "(adhoc)"
     assert r.json()["candidates"] == [
-        {"name": "Tom Harlan", "role_hint": "neighbor", "approx_lines": 3}
+        {"name": "Tom Harlan", "role_hint": "neighbor", "approx_lines": 3, "evidence": None,
+         "evidence_found": None, "library_match": None}
     ]
 
 
@@ -328,3 +514,15 @@ def test_show_notes_501_without_llm_and_works_with_stub(client, monkeypatch):
     r = client.post(f"/v1/projects/{pid}/show-notes")
     assert r.status_code == 200, r.text
     assert r.json()["markdown"].startswith("## Episode summary")
+
+
+def test_a_justwrite_characters_aliases_become_persona_aliases(client):
+    """A JustWrite book can list `aliases` per character; the import keeps them
+    on the persona (not only as prose in the character sheet)."""
+    book = book_json()
+    book["characters"][0]["aliases"] = ["Mar", "The Widow"]
+    name = book["characters"][0]["name"]
+    r = client.post("/v1/projects/import?source=justwrite", json=book)
+    assert r.status_code == 200, r.text
+    persona = next(p for p in client.get("/v1/personas").json()["personas"] if p["name"] == name)
+    assert persona["aliases"] == ["Mar", "The Widow"]

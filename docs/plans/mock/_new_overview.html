@@ -1,0 +1,89 @@
+<div class="top">
+    <span class="crumb"><span class="lnk" onclick="nav('projects')">Projects</span>
+      › <b class="proj-name">Stillwater</b> › Studio</span>
+    <span class="pill proj-kind">📖 audiobook</span>
+    <span style="flex:1"></span>
+    <button class="btn p k-book" onclick="nav('cast')">Continue — Cast Harbek and Renn ➜</button>
+    <button class="btn p k-game" onclick="nav('cast')">Continue — Cast 8 NPCs ➜</button>
+    <button class="btn p k-pod" onclick="nav('render')">Continue — Render 44 lines ➜</button>
+  </div>
+  <div class="body"><div class="split">
+    <div style="display:flex;flex-direction:column;gap:13px">
+      <div class="card"><div class="sh"><h4>Where it stands</h4><span class="sub">each row opens its step</span></div>
+        <table><tbody class="k-book">
+          <tr onclick="nav('discover')" style="cursor:pointer"><td><b class="lnk">1 · Discover</b></td>
+            <td>3 of 14 chapters scanned</td><td><span class="tag w">3 proposed speakers</span></td></tr>
+          <tr onclick="nav('chapters')" style="cursor:pointer"><td><b class="lnk">2 · Script</b></td>
+            <td>3 of 14 chapters analyzed · 1 running</td><td><span class="tag e">88 need a speaker</span></td></tr>
+          <tr onclick="nav('cast')" style="cursor:pointer"><td><b class="lnk">3 · Cast</b></td>
+            <td>3 of 5 personas voiced</td><td><span class="tag e">40 lines blocked</span></td></tr>
+          <tr onclick="nav('render')" style="cursor:pointer"><td><b class="lnk">4 · Render</b></td>
+            <td>412 of 2,140 lines rendered</td><td><span class="tag w">128 stale</span></td></tr>
+          <tr onclick="nav('export')" style="cursor:pointer"><td><b class="lnk">5 · Export</b></td>
+            <td>Not exported yet</td><td></td></tr>
+        </tbody><tbody class="k-game">
+          <tr onclick="nav('lines')" style="cursor:pointer"><td><b class="lnk">1 · Lines</b></td>
+            <td>342 lines from CSV</td><td></td></tr>
+          <tr onclick="nav('cast')" style="cursor:pointer"><td><b class="lnk">2 · Cast</b></td>
+            <td>13 of 21 NPCs voiced</td><td><span class="tag e">61 lines blocked</span></td></tr>
+          <tr onclick="nav('render')" style="cursor:pointer"><td><b class="lnk">3 · Render</b></td>
+            <td>219 of 342 lines rendered</td><td><span class="tag w">14 stale</span></td></tr>
+          <tr onclick="nav('export')" style="cursor:pointer"><td><b class="lnk">4 · Export</b></td>
+            <td>Not exported yet</td><td></td></tr>
+        </tbody><tbody class="k-pod">
+          <tr onclick="nav('discover')" style="cursor:pointer"><td><b class="lnk">1 · Discover</b></td>
+            <td>12 of 12 episodes scanned</td><td><span class="tag ok">done</span></td></tr>
+          <tr onclick="nav('chapters')" style="cursor:pointer"><td><b class="lnk">2 · Script</b></td>
+            <td>12 of 12 episodes analyzed</td><td><span class="tag ok">every line has a speaker</span></td></tr>
+          <tr onclick="nav('cast')" style="cursor:pointer"><td><b class="lnk">3 · Cast</b></td>
+            <td>3 of 3 personas voiced</td><td><span class="tag ok">done</span></td></tr>
+          <tr onclick="nav('render')" style="cursor:pointer"><td><b class="lnk">4 · Render</b></td>
+            <td>508 of 552 lines rendered</td><td><span class="tag w">44 to go</span></td></tr>
+          <tr onclick="nav('export')" style="cursor:pointer"><td><b class="lnk">5 · Export</b></td>
+            <td>Not exported yet</td><td></td></tr>
+        </tbody></table></div>
+
+      <div class="card"><div class="sh"><h4>Project</h4><span class="sub">changes save automatically</span></div>
+        <div style="display:flex;flex-direction:column;gap:11px">
+          <div class="f"><label>Title</label>
+            <input class="box k-book" style="max-width:32ch" value="Stillwater">
+            <input class="box k-game" style="max-width:32ch" value="Ninefold">
+            <input class="box k-pod" style="max-width:32ch" value="The Long Quay"></div>
+          <div class="f"><label>Author</label>
+            <input class="box k-book" style="max-width:32ch" value="D. Lebash">
+            <input class="box k-game" style="max-width:32ch" placeholder="e.g., D. Nash">
+            <input class="box k-pod" style="max-width:32ch" value="D. Lebash"></div>
+          <div class="f"><label>Description</label>
+            <textarea class="box k-book" rows="3" style="max-width:60ch">A detective, a fogbound harbour town, and nine doors that should not open.</textarea>
+            <textarea class="box k-game" rows="3" style="max-width:60ch" placeholder="What this project is"></textarea>
+            <textarea class="box k-pod" rows="3" style="max-width:60ch">A serial about the people who work the Long Quay.</textarea></div>
+          <div class="f"><label>Kind</label>
+            <div class="kr"><span class="tag proj-kind">📖 audiobook</span>
+              <span class="hint">set when the project is created</span></div></div>
+          <div class="f"><label>Mastering target</label>
+            <select class="box k-book" style="max-width:32ch"><option>None</option><option selected>ACX (-20 LUFS / -3.5 dB peak)</option><option>iAudio</option><option>Podcast</option><option>YouTube</option><option>Custom</option></select>
+            <select class="box k-game" style="max-width:32ch"><option selected>None</option><option>ACX (-20 LUFS / -3.5 dB peak)</option><option>iAudio</option><option>Podcast</option><option>YouTube</option><option>Custom</option></select>
+            <select class="box k-pod" style="max-width:32ch"><option>None</option><option>ACX (-20 LUFS / -3.5 dB peak)</option><option>iAudio</option><option selected>Podcast</option><option>YouTube</option><option>Custom</option></select>
+            <span class="hint">Export checks the finished audio against this.</span></div>
+          <div class="f"><label>Pronunciation lexicon</label>
+            <div class="kr"><select class="box k-book" style="max-width:32ch"><option>None</option><option selected>Harbor names</option></select><select class="box k-game" style="max-width:32ch"><option selected>None</option><option>Harbor names</option></select><select class="box k-pod" style="max-width:32ch"><option selected>None</option><option>Harbor names</option></select>
+              <button class="btn s g" onclick="nav('lexicons')">Open ➜</button></div></div>
+          <div class="f"><label>Webhook on complete</label>
+            <input class="box mono" style="max-width:52ch" placeholder="https://your-service.local/webhooks/render"></div>
+          <div class="hint k-book">Imported from JustWrite</div>
+          <div class="hint k-game">Imported from CSV</div>
+          <div class="hint k-pod">Imported from markdown scripts</div>
+        </div></div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="card tint"><div class="sh"><h4>Also from here</h4></div>
+        <div class="row">
+          <button class="btn s" onclick="toast('Pick the file to re-import from.')">↻ Re-import</button>
+          <button class="btn s" onclick="toast('Saved .justvoice.zip','ok')">📦 Export .justvoice.zip</button></div></div>
+      <div class="card"><div class="sh"><h4>Delete project</h4></div>
+        <p class="hint" style="margin:0 0 9px">Removes the project and everything in it. Takes and
+          generations are kept. Personas, voices and lexicons are library-level and stay.</p>
+        <button class="btn d s" onclick="toast('Delete project? This removes the project and everything in it.','warn')">🗑 Delete project</button></div>
+    </div>
+  </div></div>

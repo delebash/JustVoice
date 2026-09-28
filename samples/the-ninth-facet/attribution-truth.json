@@ -1,0 +1,52 @@
+{
+  "about": "Who says each dialogue segment in The Ninth Facet — the answer key for server/scripts/eval_attribution.py. Keys are the pipeline's own [D#] numbers per chapter (segmentation.py numbers from 0, per chapter, on the chapter text joined with blank lines — the same text Studio sends). Values are cast names; 'unknown' where the speaker is not in the cast (Sedge). 'also_ok' lists segments where 'unknown' is ALSO a correct answer because the chapter itself never says who speaks (the voice in the dark is Ode, but chapter 2 does not reveal it). Labelled by hand 2026-09-28 from the text.",
+  "cast": ["Cael Ferren", "Iven Sarraz", "Brick Halvorn", "Nettle", "Odeline Marran", "Haldane Threll", "Auberon Vasht", "Ophra Kell"],
+  "chapters": {
+    "Brass Rank": {
+      "0": "Cael Ferren", "1": "Cael Ferren", "2": "Cael Ferren", "3": "Cael Ferren",
+      "4": "Iven Sarraz", "5": "Iven Sarraz", "6": "Brick Halvorn", "7": "Brick Halvorn",
+      "8": "Iven Sarraz", "9": "Brick Halvorn", "10": "Nettle", "11": "Nettle",
+      "12": "Haldane Threll", "13": "Haldane Threll", "14": "Brick Halvorn", "15": "Haldane Threll",
+      "16": "Haldane Threll", "17": "Cael Ferren", "18": "Haldane Threll", "19": "Haldane Threll",
+      "20": "Brick Halvorn", "21": "Nettle", "22": "Nettle", "23": "Cael Ferren",
+      "24": "Nettle", "25": "Nettle", "26": "Cael Ferren", "27": "Cael Ferren",
+      "28": "Nettle", "29": "Cael Ferren", "30": "Nettle", "31": "Nettle",
+      "32": "Nettle", "33": "Cael Ferren", "34": "Nettle"
+    },
+    "Bigger Inside": {
+      "0": "Iven Sarraz", "1": "Iven Sarraz", "2": "Brick Halvorn", "3": "Brick Halvorn",
+      "4": "unknown", "5": "unknown", "6": "Iven Sarraz", "7": "unknown", "8": "unknown", "9": "unknown",
+      "10": "Iven Sarraz", "11": "Iven Sarraz", "12": "Cael Ferren", "13": "Cael Ferren",
+      "14": "Brick Halvorn", "15": "Brick Halvorn", "16": "Iven Sarraz", "17": "Iven Sarraz",
+      "18": "Iven Sarraz", "19": "Brick Halvorn", "20": "Brick Halvorn", "21": "Nettle",
+      "22": "Nettle", "23": "Nettle", "24": "Iven Sarraz", "25": "Iven Sarraz",
+      "26": "Cael Ferren", "27": "Brick Halvorn", "28": "Brick Halvorn", "29": "Iven Sarraz",
+      "30": "Iven Sarraz", "31": "Cael Ferren", "32": "Cael Ferren", "33": "Iven Sarraz",
+      "34": "Iven Sarraz", "35": "Iven Sarraz", "36": "Nettle", "37": "Nettle",
+      "38": "Iven Sarraz", "39": "Odeline Marran"
+    },
+    "The Same Hour": {
+      "0": "Iven Sarraz", "1": "Iven Sarraz", "2": "Brick Halvorn", "3": "Iven Sarraz",
+      "4": "Iven Sarraz", "5": "Iven Sarraz", "6": "Nettle", "7": "Nettle", "8": "Nettle",
+      "9": "Cael Ferren", "10": "Cael Ferren", "11": "Cael Ferren", "12": "Iven Sarraz",
+      "13": "Iven Sarraz", "14": "Odeline Marran", "15": "Odeline Marran", "16": "Odeline Marran",
+      "17": "Brick Halvorn", "18": "Brick Halvorn", "19": "Odeline Marran", "20": "Odeline Marran",
+      "21": "Odeline Marran", "22": "Odeline Marran", "23": "Odeline Marran", "24": "Cael Ferren",
+      "25": "Odeline Marran", "26": "Odeline Marran", "27": "Odeline Marran", "28": "Odeline Marran",
+      "29": "Iven Sarraz", "30": "Iven Sarraz", "31": "Odeline Marran", "32": "Odeline Marran",
+      "33": "Odeline Marran", "34": "Odeline Marran", "35": "Odeline Marran", "36": "Odeline Marran",
+      "37": "Cael Ferren", "38": "Cael Ferren", "39": "Odeline Marran", "40": "Odeline Marran",
+      "41": "Odeline Marran"
+    },
+    "The Keystone": {
+      "0": "Odeline Marran", "1": "Odeline Marran", "2": "Iven Sarraz", "3": "Iven Sarraz",
+      "4": "Auberon Vasht", "5": "Auberon Vasht", "6": "Ophra Kell", "7": "Ophra Kell",
+      "8": "Ophra Kell", "9": "Ophra Kell", "10": "Odeline Marran", "11": "Odeline Marran",
+      "12": "Odeline Marran", "13": "Cael Ferren", "14": "Cael Ferren", "15": "Iven Sarraz",
+      "16": "Iven Sarraz", "17": "Cael Ferren", "18": "Cael Ferren"
+    }
+  },
+  "also_ok": {
+    "Bigger Inside": ["39"]
+  }
+}

@@ -4,6 +4,11 @@ The project library — every audiobook, game voiceline set, and podcast in one
 table. One project is **active** at a time; the workflow tabs (Chapters, Lines,
 Studio) operate on it.
 
+**Click a project to open it.** It opens in [Studio](studio.md), on its
+**Overview** — every project does, however you open it: from this list, from
+Home's **Resume**, from the project switcher in the title bar, or right after
+you create or import one. The project's settings live there now, not here.
+
 ## Project kinds
 
 The kind picker at creation drives the whole app's shape: which workflow tabs
@@ -14,18 +19,34 @@ voicelines ZIP), and the terminology (chapters / quests / segments). Kinds:
 is the same for all — a project holds scenes, scenes hold blocks — so nothing is
 lost if your project outgrows its kind.
 
-## The detail pane
+## Where the settings went
 
-Click a row to expand it: title, author, mastering preset, default render
-preset, cast, status, webhook, plus the chapters subtable (open any chapter in
-its kind's home tab). **Cast** lists everyone in the project by name — a pill
-each, ✕ to remove, **+ Add personas** to pull more in from your library. The action row does the heavy lifting: **Render all** ·
-**Export M4B** · **QC report** (the ACX compliance check — loudness, peak, noise
-floor, with failures named) · **Export ZIP** · **Delete**. A bulk bar appears
-when you select multiple projects.
+The row used to expand into a detail pane. Everything it held moved:
+
+| Was in the pane | Now |
+|---|---|
+| Title, author, mastering target | Studio · **Overview** |
+| Description | Studio · **Overview** (new there) |
+| Export ZIP, Delete | Studio · **Overview** → *Also from here* / *Delete project* |
+| Cast pills and **+ Add personas** | Studio · **Cast** — the one place a cast is edited |
+| Render preset | gone — render presets are being retired |
+| Webhook on complete | gone — nothing ever sent it; webhooks are set up in Settings |
+| The chapters subtable | the **Chapters** tab, and Studio's steps |
 
 ## Demo projects
 
-`POST /v1/projects/demo` (offered in the UI on first run) creates a small sample
-project per kind so you can click through the whole flow before importing
-anything of your own.
+**＋ New project → a demo project** creates a sample project of the kind you
+picked, so you can click through the whole flow before importing anything of
+your own. Deleting it touches nothing else.
+
+- **Audiobook** — *The Ninth Facet*, JustWrite's own sample novel: two parts,
+  four chapters, eight characters and plenty of dialogue, some tagged ("said
+  Threll"), some not. It is imported exactly as your own JustWrite export
+  would be, so its characters arrive as the cast (plus the Narrator). To try
+  **Discover** on it, remove a few of them from the cast first — Discover only
+  proposes people who aren't cast yet.
+- **Game voicelines** — *Emberfall VO*, five lines with stable line ids.
+- **Podcast** — *Signal & Noise ep. 42*, three hosts.
+
+The book lives in the app's `samples/` folder, the same layout JustWrite ships
+(`samples/<name>/book.json`).

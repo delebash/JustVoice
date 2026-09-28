@@ -103,7 +103,8 @@ const filteredPersonas = computed(() => {
   }
   const q = search.value.trim().toLowerCase();
   if (q) list = list.filter((p) =>
-    (p.name || "").toLowerCase().includes(q) || (p.personality || "").toLowerCase().includes(q));
+    (p.name || "").toLowerCase().includes(q) || (p.personality || "").toLowerCase().includes(q)
+    || (p.aliases || []).some((a) => a.toLowerCase().includes(q)));
   return list;
 });
 
@@ -178,6 +179,8 @@ function bufferFor(persona) {
     avatar_path: persona.avatar_path ?? "",
     voice_instruct: persona.voice_instruct ?? "",
     personality: persona.personality ?? "",
+    // Edited as one comma-separated line; saved as a list.
+    aliases_text: (persona.aliases ?? []).join(", "),
     engine_override: persona.engine_override ?? "",
     lexicon_id: persona.lexicon_id ?? "",
     default_delivery: { ...(persona.default_delivery ?? {}) },
@@ -200,7 +203,7 @@ function markDirty() { dirty.value = true; }
 function blankDraft() {
   return {
     id: null, name: "", voice_id: "", language: "en", avatar_path: "",
-    voice_instruct: "", personality: "", engine_override: "", lexicon_id: "",
+    voice_instruct: "", personality: "", aliases_text: "", engine_override: "", lexicon_id: "",
     default_delivery: {}, effects_chain: [],
     llm_rewrite_enabled: false, llm_model: "qwen-1.7b-local",
   };
@@ -233,6 +236,7 @@ async function savePersona() {
     avatar_path: draft.value.avatar_path || null,
     voice_instruct: draft.value.voice_instruct || null,
     personality: draft.value.personality || null,
+    aliases: (draft.value.aliases_text || "").split(",").map((a) => a.trim()).filter(Boolean),
     default_delivery: draft.value.default_delivery,
     effects_chain: draft.value.effects_chain || [],
     engine_override: draft.value.engine_override || null,
@@ -297,6 +301,7 @@ async function removePersona(p) {
                 voice_id: snapshot.voice_id,
                 voice_instruct: snapshot.voice_instruct,
                 personality: snapshot.personality,
+                aliases: snapshot.aliases || [],
                 language: snapshot.language,
                 avatar_path: snapshot.avatar_path,
                 default_delivery: snapshot.default_delivery || {},
@@ -475,6 +480,15 @@ onMounted(loadAll);
           <label class="personas__field">
             <span>Name</span>
             <UiInput ref="nameInput" width="name" v-model="draft.name" @input="markDirty" />
+          </label>
+
+          <!-- Other names the prose uses for them. Discover treats them as this
+               persona (not a newcomer) and Script's attribution anchors on
+               them — "said Ode" finds Odeline Marran. -->
+          <label class="personas__field">
+            <span>Also called</span>
+            <UiInput width="path" v-model="draft.aliases_text" @input="markDirty"
+              placeholder="Other names the text uses, separated by commas — e.g. Ode, the surveyor" />
           </label>
 
           <label class="personas__field">

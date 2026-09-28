@@ -447,7 +447,9 @@ Direction composes additively and reads as English:
 
 ## §4 Open — needs the user's word
 
-1. **Does "Studio" survive as a container?** If the chapter is the workspace, the
+1. **RULED 2026-09-27: Studio stays a container, and a project opens on its
+   Overview** (§8.19). The question as it was first raised:
+   **Does "Studio" survive as a container?** If the chapter is the workspace, the
    shape is *project → chapters → chapter surface*, with Cast project-scoped and
    the library global. But that undoes **ruling 12** (Script before Cast), which
    is built and shipped. Raised, not recommended.
@@ -1283,17 +1285,21 @@ had dropped — the **hidden** filter (presets cannot be deleted, only hidden) a
 ### 8.18 EXACTLY WHERE THE MOCK WORK STANDS — resume here
 
 Build mechanics are in §8.1. This is the state, verified against the files by
-running `validate.py` on **2026-08-22**, not remembered. The counts below had
+running `validate.py` on **2026-09-27**, not remembered. The counts below had
 drifted — this section carried three different totals (123 / 126 / 119 wired)
 from three different build dates.
 
 ```
-18 routes · 134 controls · 0 dead · 4 deliberately disabled
-character/persona: 0 / 72          ← the §8.4 sweep is applied to the mock
+19 routes · 139 controls · 0 dead · 4 deliberately disabled
+character/persona: 0 / 75          ← the §8.4 sweep is applied to the mock
 dangling nav targets: none
-routes nothing links to: scene     ← see the defect note below
-.lnk spans: 22, 6 without onclick (they sit inside clickable rows)
+routes nothing links to: none      ← scene re-linked 2026-09-19 (6c7cf57)
+.lnk spans: 37, 20 without onclick (they sit inside clickable rows)
 ```
+
+**2026-09-27: the `overview` route (Studio's Overview tab) is added**, and the
+**Dissolved model is deleted** (the toggle, its rail items, `setStudio`, and the
+`sv-flat`/`sv-container` classes) — see §8.19.
 
 **Published and working today** —
 `https://claude.ai/code/artifact/534a16a2-af40-438b-a64d-34baaf31f838`:
@@ -1341,6 +1347,9 @@ routes nothing links to: scene     ← see the defect note below
 **Verified after the build (2026-08-16):** tag structure clean · 18 routes, no
 dangling nav targets · 126 controls, 0 dead · the JS parses.
 
+> **FIXED 2026-09-19 (`6c7cf57`)** — the link now lives in `_s4.html` itself;
+> `validate.py` reports no unreachable route (re-run 2026-09-27). The original note:
+>
 > **⚠ ONE DEFECT THIS PASS INTRODUCED, found 2026-08-22 — not fixed, no go.**
 > The Render restructure rewrote `_s4.html`, and with it the *"Scene
 > `no direction`"* pill that `linkify()` (`build_mock.py:221-224`) rewrites into
@@ -1360,12 +1369,42 @@ dangling nav targets · 126 controls, 0 dead · the JS parses.
 - The terminology sweep of §8.4 **in this doc and in `TASKS.md`**. The mock half
   is done (`sweep_persona.py`, 0 character / 72 persona), and so is the prose
   half (2026-08-22). What is left is listed in the table in §8.4.
-- Re-linking the `scene` route (the defect note above).
+- ~~Re-linking the `scene` route~~ — done 2026-09-19 (`6c7cf57`).
 - The stress-test counts and empty states of §8.21 item 6.
 
 ---
 
-### 8.19 Studio: container vs dissolved — BOTH BUILT, STILL OPEN
+### 8.19 Studio: container vs dissolved — RULED 2026-09-27: CONTAINER
+
+**The ruling, verbatim.** Asked which model, and whether a project should have
+its own page with its settings rather than opening straight into Studio, the user
+answered: *"1 studio stays as container"* · *"open project always lands on
+overview"* · *"2 presets die"* · *"3 not sure"* · *"go record it and add overview
+to the mock"*. The tracker item *"Redesign: Studio stays a container, a project
+opens on its Overview, presets die"* carries the questions they answered.
+
+**Overview, as approved.** It is a tab in front of the steps, the project's own
+page. It holds:
+- **Settings:** title, author, description, the kind (read-only, because
+  `UpdateProjectRequest` has no `project_type`), mastering target (the real
+  `MASTERING_PRESETS` labels), pronunciation lexicon (`default_lexicon_id`) and
+  webhook.
+- **Where each step stands,** each row opening its step.
+- **"Continue →"** to the next step with work left.
+- **Re-import and export .justvoice.zip.**
+- **Delete,** with the real confirm copy: takes and generations are kept.
+
+Opening a project, from Projects, Home's Resume or the rail's Studio, always
+lands here. Every project-name breadcrumb now leads here too. Author and
+mastering left Export, and Export shows them read-only with a link back.
+**Still open:** whether the cast shows here beyond its step-status row (*"not
+sure"*).
+
+**The Dissolved model is deleted from the mock** (2026-09-27), because the user
+answered *"2 delete,"* when asked whether to delete the toggle now that Dissolved
+lost. The table below describes what it was.
+
+The history, kept:
 
 The user would not pick when asked: *"i need both views on studieo container nad
 chapters i need to see it"*. Both are in the mock behind a toggle that switches
@@ -1404,8 +1443,9 @@ look at rather than imagine, which was the point.
 
 ### 8.21 Open after this session
 
-1. **Does Studio survive as a container?** Both built (§8.19). Unruled. This is
-   §4 open question 1.
+1. ~~**Does Studio survive as a container?**~~ **RULED 2026-09-27: yes** —
+   *"studio stays as container"*, and a project opens on its Overview (§8.19).
+   This was §4 open question 1.
 2. **Do the deterministic suspicion checks get built?** (§8.14) New work.
 3. ~~**Does the terminology sweep run on the prose?**~~ **DONE 2026-08-22** —
    the mock (`sweep_persona.py`), this doc, `TASKS.md`, and the
@@ -1448,9 +1488,9 @@ look at rather than imagine, which was the point.
    **The prompt receives a bare list of `id` and `name`** — no descriptions, no
    aliases, no pronouns. A smaller model has nothing to reason from, which would
    widen exactly that gap. **Cheap to test before blaming the model.**
-10. **Does the `scene` route get re-linked?** It went unreachable in the
-    2026-08-16 Render restructure — `linkify()`'s exact-string match for the
-    Scene pill stopped matching. Found 2026-08-22, not fixed. §8.18.
+10. ~~**Does the `scene` route get re-linked?**~~ **Done 2026-09-19 (`6c7cf57`).**
+    It went unreachable in the 2026-08-16 Render restructure, when `linkify()`'s
+    exact-string match for the Scene pill stopped matching. §8.18.
 
 ---
 

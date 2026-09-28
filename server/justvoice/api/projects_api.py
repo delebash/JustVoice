@@ -38,7 +38,7 @@ from ..database.models import (
 from ..errors import not_found, bad_request
 from ..app_state import get_state
 from ._persona_helpers import ensure_project_persona
-from .extraction_api import RunUsage
+from .extraction_api import RunUsage, project_ignored
 from ..imports import list_adapters, run_adapter
 from ..imports.standard_schema import (
     AdapterListResponse,
@@ -66,6 +66,8 @@ class ProjectResponse(BaseModel):
     mastering_preset: Optional[str]
     imported_from: Optional[str]
     scene_count: int = 0
+    # Names Discover was told to ignore here (2026-09-27, fix 4).
+    discover_ignored: list[str] = []
     created_at: datetime
     updated_at: datetime
 
@@ -81,6 +83,7 @@ class ProjectResponse(BaseModel):
             mastering_preset=row.mastering_preset,
             imported_from=row.imported_from,
             scene_count=scene_count,
+            discover_ignored=project_ignored(row),
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
@@ -758,6 +761,7 @@ def _materialize_standard(
             personality=sheet or None,
             imported_from=standard.source,
             imported_id=char.id,
+            aliases=char.aliases,
         )
         char_to_persona_id[char.id] = pid
         (created_personas if created else reused_personas).append(pid)
@@ -1154,6 +1158,22 @@ async def project_qc(project_id: str, db: Session = Depends(get_db)) -> ProjectQ
     )
 
 
+def m4b_author(project: Project) -> str | None:
+    """The M4B `artist` tag. The project's Author field (Studio · Overview,
+    saved as `metadata.author`) wins; before that field reached the export, the
+    only source was a description starting "by ", which stays as the fallback."""
+    try:
+        meta = json.loads(project.metadata_json) if project.metadata_json else {}
+    except (TypeError, ValueError):
+        meta = {}
+    author = str(meta.get("author") or "").strip() if isinstance(meta, dict) else ""
+    if author:
+        return author
+    if project.description and project.description.startswith("by "):
+        return project.description[3:]
+    return None
+
+
 @router.post("/v1/projects/{project_id}/export_m4b")
 async def project_export_m4b(project_id: str, db: Session = Depends(get_db)) -> Response:
     """Assemble all chapters into one .m4b with chapter markers."""
@@ -1182,10 +1202,7 @@ async def project_export_m4b(project_id: str, db: Session = Depends(get_db)) -> 
     chapters = assemble_project(st, project_id)
     if not chapters:
         raise bad_request("project has no scenes to export")
-    author = None
-    if project.description and project.description.startswith("by "):
-        author = project.description[3:]
-    m4b = mux_m4b(chapters, project.name, author)
+    m4b = mux_m4b(chapters, project.name, m4b_author(project))
     safe = re.sub(r"[^A-Za-z0-9._-]+", "_", project.name) or "book"
     return Response(
         content=m4b,
@@ -1253,7 +1270,7 @@ def _update_project_from_standard(
         pid, _created = ensure_project_persona(
             db, project.id,
             name=char.name, personality=sheet or None,
-            imported_from=standard.source, imported_id=char.id,
+            imported_from=standard.source, imported_id=char.id, aliases=char.aliases,
         )
         char_to_persona_id[char.id] = pid
 

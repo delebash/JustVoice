@@ -89,14 +89,6 @@ const blocks = ref([]);
 const selectedProjectId = ref(null);
 const selectedSceneId = ref(null);
 
-// Scene hand-off from ProjectsView's chapters-subtable "Open" — read once at
-// setup so it's available when loadScenes() runs (after the store loads).
-let _pendingSceneId = null;
-try {
-  _pendingSceneId = window.sessionStorage?.getItem("jv.chapter.sceneId") || null;
-  if (_pendingSceneId) window.sessionStorage.removeItem("jv.chapter.sceneId");
-} catch { /* ignore */ }
-
 const projectOptions = computed(() =>
   projects.value.length === 0
     ? [{ label: "— no projects —", value: null }]
@@ -121,12 +113,7 @@ async function loadScenes(projectId) {
     const res = await projectsService.listScenes(projectId);
     // Endpoint returns a bare array (same shape fix as StudioView).
     scenes.value = Array.isArray(res) ? res : res?.scenes || [];
-    if (scenes.value.length) {
-      // Prefer a scene handed off from Books' "Open"; else the first.
-      const pending = _pendingSceneId && scenes.value.some((s) => s.id === _pendingSceneId);
-      selectedSceneId.value = pending ? _pendingSceneId : scenes.value[0].id;
-      _pendingSceneId = null;
-    }
+    if (scenes.value.length) selectedSceneId.value = scenes.value[0].id;
   } catch (e) {
     pushToast({ message: `Failed to load scenes: ${e.message || e}`, kind: "error" });
   }
@@ -194,26 +181,10 @@ onMounted(() => {
 // push their selection there, and the workflow strip's Studio handoff relies
 // on this view showing the SAME project it hands over. The picker still
 // changes it freely afterwards (the watch above pushes the change back).
-// The scene handoff (ProjectsView's chapters-subtable "Open") re-reads here
-// too: the setup-time read above also fires once per session. Read it BEFORE
-// the project pull so a pull-triggered loadScenes() consumes it; when no
-// reload will run (same project), apply it directly.
 onActivated(async () => {
-  try {
-    const sid = window.sessionStorage?.getItem("jv.chapter.sceneId") || null;
-    if (sid) {
-      window.sessionStorage.removeItem("jv.chapter.sceneId");
-      _pendingSceneId = sid;
-    }
-  } catch { /* ignore */ }
   const p = projects.value.find((x) => x.id === activeProject.id);
   if (p && selectedProjectId.value !== p.id) {
     selectedProjectId.value = p.id;   // the watcher reloads everything
-    return;
-  }
-  if (_pendingSceneId && scenes.value.some((s) => s.id === _pendingSceneId)) {
-    selectedSceneId.value = _pendingSceneId;   // the watcher reloads blocks
-    _pendingSceneId = null;
     return;
   }
   // SAME project and scene: nothing above reloads, and this view is

@@ -11,6 +11,13 @@ JustWrite's audit identified two prompt bodies — strict-rules-only
 from __future__ import annotations
 
 
+# Revised 2026-09-28 by measurement (docs/plans/2026-09-28-speaker-attribution-tuning.md):
+# answers carry their [D#] id (pipeline.align_picks matches by it — a positional array shifted
+# whole chapters), each line is read in context, and clear two-person turn-taking is followed
+# at inference confidence instead of forced to "unknown". Shipped prompt: 55% right on The
+# Ninth Facet, 64% on The Salt-Iron Road. This text + reasoning on + name handles in place of
+# persona ids (pipeline.prompt_handles): 535/536 on both books over two runs, and the guided
+# route 268/268 (gemma-4-26b-a4b-qat, 2026-09-28).
 DIRECT_SYSTEM = """You attribute dialogue in a novel chapter to its speaker.
 
 You receive:
@@ -18,20 +25,28 @@ You receive:
   - A list of paragraphs with each dialogue segment marked [D1], [D2], etc.
   - Optionally a list of past corrections from the writer.
 
-You return JSON only — an array, one entry per [D#] in the order they appear:
+You return JSON only — an array, one entry per [D#] in the order they appear, each naming its [D#]:
 
-  [{"speaker": "<character_id>" | "unknown", "confidence": 0.0..1.0}, ...]
+  [{"id": "D0", "speaker": "<character_id>" | "unknown", "confidence": 0.0..1.0}, ...]
+
+Every [D#] gets exactly one entry, even when two segments sit side by side in one paragraph.
 
 RULES:
   1. Narration is never tagged — only the [D#] dialogue segments.
-  2. A speaker id MUST appear in the cast list. Never invent ids.
-  3. If a dialogue segment has no clear speaker (bare quote, no
-     surrounding tag, no nearby unique pronoun antecedent), return
-     "unknown" with confidence 0.4.
+  2. A speaker id MUST appear in the cast list, copied exactly as written
+     there. Never invent ids.
+  3. Read each line in context — the narration around it, who was just
+     addressed, who acts in the same paragraph, who the pronoun ("she said")
+     points back to. The character whose actions or thoughts fill a
+     paragraph is usually the one speaking in it.
   4. Past corrections (when supplied) are ground truth — apply the same
      reasoning to similar lines.
-  5. Bare-quote turn-taking with no name tags is "unknown" — DO NOT
-     guess by alternating.
+  5. Untagged back-and-forth between two known speakers follows the turn
+     order: when a short exchange alternates between two people and nothing
+     interrupts it, give each line to the next speaker in turn, with
+     confidence 0.6-0.75 (it is an inference, not a tag). If a third person
+     could be speaking, or the exchange is broken by narration that changes
+     the subject, answer "unknown" with confidence 0.4.
 
 Return only the JSON array. No prose, no preamble.
 """
@@ -43,32 +58,33 @@ WORKED EXAMPLES:
 
 Example 1 — tagged dialogue + cast match:
   Cast: id="c_mara", name="Mara"
-  Paragraph: "[D1] Mara said. She turned away."
-  Answer: [{"speaker": "c_mara", "confidence": 0.95}]
+  Paragraph: "[D0] Mara said. She turned away."
+  Answer: [{"id": "D0", "speaker": "c_mara", "confidence": 0.95}]
 
 Example 2 — off-cast role:
   Cast: id="c_mara", name="Mara"; id="c_chen", name="Detective Chen"
-  Paragraph: "[D1] the bartender said, wiping a glass."
-  Answer: [{"speaker": "unknown", "confidence": 0.4}]
+  Paragraph: "[D0] the bartender said, wiping a glass."
+  Answer: [{"id": "D0", "speaker": "unknown", "confidence": 0.4}]
   Reason: "the bartender" isn't in the cast — DO NOT match by semantic
   similarity to Detective Chen even though both are roles.
 
-Example 3 — bare-quote turn-taking with no name:
+Example 3 — untagged turn-taking between two people:
   Cast: id="c_mara", name="Mara"; id="c_sarah", name="Sarah"
-  Paragraph: "[D1] [D2] [D3]"
+  Paragraphs: "[D0] Mara said." / "[D1]" / "[D2]"
   Answer: [
-    {"speaker": "unknown", "confidence": 0.4},
-    {"speaker": "unknown", "confidence": 0.4},
-    {"speaker": "unknown", "confidence": 0.4}
+    {"id": "D0", "speaker": "c_mara", "confidence": 0.95},
+    {"id": "D1", "speaker": "c_sarah", "confidence": 0.7},
+    {"id": "D2", "speaker": "c_mara", "confidence": 0.7}
   ]
-  Reason: No name tag = no anchor. Don't alternate.
+  Reason: only two people are talking and nothing interrupts, so the
+  untagged lines follow the turn order — at inference confidence.
 
 Example 4 — mid-paragraph continuation through pronoun tag:
   Cast: id="c_mara", name="Mara"
-  Paragraph: "[D1] Mara paused. [D2] she said, frowning."
+  Paragraph: "[D0] Mara paused. [D1] she said, frowning."
   Answer: [
-    {"speaker": "c_mara", "confidence": 0.9},
-    {"speaker": "c_mara", "confidence": 0.9}
+    {"id": "D0", "speaker": "c_mara", "confidence": 0.9},
+    {"id": "D1", "speaker": "c_mara", "confidence": 0.9}
   ]
   Reason: "she said" continues the same speaker since Mara is the
   unambiguous pronoun antecedent.

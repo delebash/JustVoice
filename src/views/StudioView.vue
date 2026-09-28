@@ -1,10 +1,12 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!--
-  StudioView — multi-character production environment for the
-  audiobook + podcast + game use cases. Script → Cast → Render → Export
-  for prose kinds, Cast → Render → Export for game (ruling 12, 2026-08-15 —
-  the order lives in studioSteps.js and is pinned by its test). Ported in
-  shape from JustWrite's StudioView.vue.
+  StudioView — the project's home (ruled 2026-09-27: "studio stays as
+  container", "open project always lands on overview"). Overview first, then
+  Discover → Script → Cast → Render → Export for prose kinds and
+  Lines → Cast → Render → Export for game — the order lives in studioSteps.js
+  and is pinned by its test. Overview is components/StudioOverview.vue,
+  Discover components/StudioDiscover.vue, Lines the LinesView grid embedded.
+  Ported in shape from JustWrite's StudioView.vue.
 
   Terminology adapts via useCopy():
     audiobook → Cast / Chapter / Render
@@ -22,7 +24,8 @@ import { useApi } from "../stores/api.js";
 // the store import remains for READS only (per-scene bars, taskForScene).
 import { AiTaskStrip, runAiEndpoint, runAiEndpointStream, useAiTasksStore, withAiTask } from "@delebash/llm-ui";
 import { usePageCrumbs } from "../composables/usePageCrumbs.js";
-import { stepsFor } from "./studioSteps.js";
+import { isStepFor, stepsFor } from "./studioSteps.js";
+import { blockStats, projectState } from "./studioStatus.js";
 import { useCopy } from "../services/copy.js";
 import {
   SOURCE_LEGEND, hasSpeakerInfo, isMarker, isSpeakable, proseFromBlocks,
@@ -50,6 +53,9 @@ const NPC_COLUMNS = [
 import VoiceParamsModal from "../components/VoiceParamsModal.vue";
 import { EmptyState } from "@delebash/llm-ui";
 import ExportPanel from "../components/ExportPanel.vue";
+import StudioOverview from "../components/StudioOverview.vue";
+import StudioDiscover from "../components/StudioDiscover.vue";
+import LinesView from "./LinesView.vue";
 import { confirmDialog } from "@delebash/llm-ui";
 
 const api = useApi();
@@ -69,10 +75,14 @@ const personas = computed(() => personasStore.items);
 const voices = computed(() => voicesStore.items);
 const engines = computed(() => enginesStore.items);
 const selectedProjectId = ref(null);
-// Empty on purpose: the first step depends on the project's KIND (prose opens
-// on Script, game on Cast — ruling 12), and the kind isn't known until the
-// project loads. The watch below resolves it instead of a literal seed.
+// Every project opens on Overview (ruled 2026-09-27). Seeded empty so the
+// resolve watch below picks the step once the project — and so its kind's
+// strip — is known.
 const tab = ref("");
+// A step someone asked for (the jv.studio.tab hand-off) that must survive the
+// project switch it arrived with — the project watcher would otherwise reset
+// it to Overview a tick later.
+let requestedTab = null;
 const loading = ref(false);
 
 const selectedCharacterId = ref(null);
@@ -204,9 +214,6 @@ const scenes = ref([]);
 const selectedSceneId = ref(null);
 const sceneText = ref("");
 const analyzeBusy = ref(false);
-// Discovered speakers — identification results awaiting promotion (CONCEPTS §3).
-const discovered = ref([]);   // [{name, role_hint, approx_lines}]
-const promoting = ref(false);
 const analyzeRows = ref([]);
 const analyzeRouteUsed = ref(null);
 // Why that route ran ("auto" | "forced") — the no-silent-state rule: the
@@ -238,6 +245,10 @@ const renderGate = computed(() => {
 const suggestBusyScene = ref(null);
 const sceneBlockCounts = ref({});  // {sceneId: count of blocks}
 const sceneAnalyzed = ref({});     // {sceneId: any block carries a pipeline source}
+// {sceneId: blockStats(blocks)} — spoken lines, unplaced lines, lines per
+// persona. Read from the same per-chapter block fetch as the two above; the
+// Overview rolls it up (studioStatus.projectState).
+const sceneStats = ref({});
 
 // Per-scene task lookup so the render row can show a progress strip
 // driven by the shared kit task queue. visibleTasks keeps a finished
@@ -329,9 +340,51 @@ const renderedSceneCount = computed(() =>
 // script used to show this and now doesn't"). Same shape as Render's.
 const analyzedSceneCount = computed(() =>
   scenes.value.filter((s) => sceneAnalyzed.value[s.id]).length);
+// The Overview's rollup (studioStatus.js). The cast carries a narrator flag
+// so Discover can tell "only the Narrator so far" from a populated cast.
+const overviewState = computed(() => projectState({
+  scenes: scenes.value,
+  stats: sceneStats.value,
+  cast: projectPersonas.value.map((p) => ({
+    id: p.id, name: p.name, voice_id: p.voice_id, narrator: p.id === narratorPersona.value?.id,
+  })),
+  cache: cacheStats.value ? { total: cacheStats.value.total, cached: cacheStats.value.cached } : null,
+}));
+
+// Spoken lines per chapter, for Discover's grid.
+const linesByScene = computed(() =>
+  Object.fromEntries(Object.entries(sceneStats.value).map(([k, v]) => [k, v.speakable])));
+
+// Discover's saved-scan changes ({sceneId: discover}) folded into the chapter
+// rows — the server already holds them, so this only spares a re-fetch, and
+// Overview's Discover row moves the moment a chapter finishes.
+function applyScans(patch) {
+  scenes.value = scenes.value.map((s) => (s.id in patch
+    ? { ...s, metadata: { ...(s.metadata || {}), discover: patch[s.id] } }
+    : s));
+}
+
+const STEP_TITLES = {
+  overview: "Settings, and where each step stands",
+  discover: "Find the speakers the text names",
+  script: "Who speaks each line",
+  lines: "The writers' sheet, line by line",
+  cast: "Give each persona a voice",
+  render: "Batch render + mastering",
+  export: "Package + ACX checklist",
+};
+
 const stepCards = computed(() => visibleTabs.value.map((t) => {
   let sub = "";
-  if (t.key === "cast") {
+  if (t.key === "overview") {
+    sub = selectedProject.value ? copy.value.book.singular.toLowerCase() : "";
+  } else if (t.key === "discover") {
+    sub = scenes.value.length
+      ? `${overviewState.value.scanned}/${scenes.value.length} scanned${overviewState.value.proposed ? ` · ${overviewState.value.proposed} to review` : ""}`
+      : "find speakers";
+  } else if (t.key === "lines") {
+    sub = overviewState.value.lines ? `${overviewState.value.lines} lines` : "no lines yet";
+  } else if (t.key === "cast") {
     sub = projectPersonas.value.length
       ? `${voicedCount.value}/${projectPersonas.value.length} voiced`
       : "no cast yet";
@@ -358,11 +411,11 @@ const headerLlm = computed(() =>
   (engines.value || []).find((e) => e.status === "loaded" && e.kind === "llm") || null);
 
 watch([selectedProject, () => tab.value], () => {
-  // Resolve the step: whatever isn't a step of THIS kind (including the empty
-  // seed, and "script" on a game project) falls to the kind's first step.
+  // Resolve the step: whatever isn't a stop of THIS kind (the empty seed,
+  // "script" on a game project, "lines" on a book) falls to Overview.
   // Immediate, so a project that is already selected on mount still resolves.
   if (!visibleTabs.value.some((t) => t.key === tab.value)) {
-    tab.value = visibleTabs.value[0]?.key || "cast";
+    tab.value = "overview";
     return; // the assignment re-enters this watcher with a valid step
   }
   if (tab.value === "render") {
@@ -370,7 +423,35 @@ watch([selectedProject, () => tab.value], () => {
     loadCacheStats();
     loadMasterTarget();
   }
+  // Overview's Render row reads the same cache probe Render does. Script's
+  // speaker fixes PATCH blocks without re-reading the chapter, so the open
+  // chapter's counts are refreshed here, where they are shown.
+  if (tab.value === "overview" && selectedProject.value) {
+    loadCacheStats();
+    if (selectedSceneId.value) refreshSceneMeta(selectedSceneId.value);
+  }
 }, { immediate: true });
+
+// Opening a project lands on its Overview — whichever door it came through
+// (ruled 2026-09-27). A step handed over with the switch (Chapters' workflow
+// strip → Cast, say) wins over that, once.
+watch(selectedProjectId, (id, old) => {
+  if (!id || id === old) return;
+  tab.value = requestedTab && isStepFor(selectedProject.value?.project_type, requestedTab)
+    ? requestedTab : "overview";
+  requestedTab = null;
+  cacheStats.value = null;
+});
+
+// The title-bar switcher (and anything else) changes the app-wide active
+// project while Studio may be the view on screen — follow it, so the
+// switch lands here on the new project's Overview instead of leaving the
+// old project open under the new project's name.
+watch(() => activeProject.id, (id) => {
+  if (id && id !== selectedProjectId.value && projects.value.some((p) => p.id === id)) {
+    selectedProjectId.value = id;
+  }
+});
 
 const projectOptions = computed(() => {
   if (!projects.value.length) return [{ label: "— no projects —", value: null }];
@@ -742,15 +823,18 @@ async function loadScenesForProject(projectId) {
     // "Select all unrendered" affordance.
     sceneBlockCounts.value = {};
     sceneAnalyzed.value = {};
+    sceneStats.value = {};
     await Promise.all(
       scenes.value.map(async (s) => {
         try {
           const blocks = await api.safeRequest(`/v1/scenes/${s.id}/blocks`, []);
           const list = Array.isArray(blocks) ? blocks : blocks?.blocks ?? [];
+          if (selectedProjectId.value !== projectId) return;   // switched away mid-load
           sceneBlockCounts.value = { ...sceneBlockCounts.value, [s.id]: list.length };
           // A chapter counts as done when its blocks carry speaker
           // information — there is no separate flag (restore decision 2).
           sceneAnalyzed.value = { ...sceneAnalyzed.value, [s.id]: chapterHasSpeakers(list) };
+          sceneStats.value = { ...sceneStats.value, [s.id]: blockStats(list) };
         } catch { /* tolerated */ }
       }),
     );
@@ -872,6 +956,8 @@ async function assignUnplacedToNarrator() {
     unplacedFixing.value = false;
   }
   unplacedModalOpen.value = false;
+  // Every chapter the fix touched, so the Overview's counts follow.
+  for (const group of unplacedFound.value) await refreshSceneMeta(group.scene.id);
   await hydrateRows(selectedSceneId.value);
   pushToast({
     message: failed
@@ -958,9 +1044,12 @@ const qcBusy = ref(false);
 
 async function loadCacheStats() {
   cacheStats.value = null;
-  if (!selectedProjectId.value) return;
+  const pid = selectedProjectId.value;
+  if (!pid) return;
   try {
-    cacheStats.value = await api.request(`/v1/render/cache-stats?project_id=${selectedProjectId.value}`);
+    const r = await api.request(`/v1/render/cache-stats?project_id=${pid}`);
+    // Switching project mid-probe must not land the old project's numbers.
+    if (selectedProjectId.value === pid) cacheStats.value = r;
   } catch { /* no scenes yet — banner just hides */ }
 }
 const sceneCacheById = computed(() => {
@@ -1016,7 +1105,7 @@ const masterPillTitle = computed(() => {
     request: "asked for by this render",
   }[m.source] || "";
   return m.preset
-    ? `Applied to every chapter render — ${where}. Change it in Projects.`
+    ? `Applied to every chapter render — ${where}. Change it on Overview.`
     : "Chapters render raw — no mastering target is set for this project.";
 });
 
@@ -1154,6 +1243,7 @@ async function refreshSceneMeta(sceneId) {
   }
   sceneBlockCounts.value = { ...sceneBlockCounts.value, [sceneId]: blocks.length };
   sceneAnalyzed.value = { ...sceneAnalyzed.value, [sceneId]: chapterHasSpeakers(blocks) };
+  sceneStats.value = { ...sceneStats.value, [sceneId]: blockStats(blocks) };
 }
 
 // "Does this chapter have speaker information" is ONE question with one
@@ -1289,7 +1379,8 @@ async function runAnalyze() {
     analyzeRouteUsed.value = r.route_used;
     analyzeRouteSource.value = r.route_source || "auto";
     analyzeFloor.value = r.confidence_floor;
-    runDiscoverSpeakers(); // fire-and-forget — banner appears if it finds anyone
+    // Analyze no longer runs Discover behind your back (2026-09-27): finding
+    // speakers is its own step, and runs before this one.
     const kept = r.persisted?.kept_corrected || 0;
     pushToast({
       message: `Analyzed ${analyzeRows.value.length} segment${analyzeRows.value.length === 1 ? "" : "s"}, read ${routeWords(analyzeRouteUsed.value)}. Saved to this ${copy.value.chapter.singular.toLowerCase()}${kept ? `; ${kept} corrected row${kept === 1 ? "" : "s"} left alone` : ""}.`,
@@ -1309,66 +1400,6 @@ async function runAnalyze() {
     });
   } finally {
     analyzeBusy.value = false;
-  }
-}
-
-async function runDiscoverSpeakers() {
-  discovered.value = [];
-  if (!selectedSceneId.value || !sceneText.value.trim()) return;
-  const r = await withAiTask({
-    feature: "speaker_identification",
-    label: "Speaker identification",
-  }, async (t) => {
-    try {
-      const out = await api.request(`/v1/scenes/${selectedSceneId.value}/discover-speakers`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: sceneText.value }),
-        signal: t.signal,
-      });
-      const found = out?.candidates || [];
-      t.setStats([`${found.length} new speaker${found.length === 1 ? "" : "s"}`]);
-      return { result: out, usage: out?.usage };
-    } catch {
-      // Identification is best-effort sugar on top of analyze — a 501 (no
-      // LLM) just means no banner, and the pre-conversion design DELIBERATELY
-      // finished (not failed) so no sticky red row lingers. Swallowing here
-      // keeps that: the runner finishes normally with an empty result; after
-      // a Cancel, first-outcome-wins makes the finish a no-op.
-      return { result: null };
-    }
-  });
-  discovered.value = r?.candidates || [];
-}
-
-function ignoreCandidate(name) {
-  discovered.value = discovered.value.filter((c) => c.name !== name);
-}
-
-async function promoteDiscovered() {
-  if (!discovered.value.length || !selectedProjectId.value) return;
-  promoting.value = true;
-  try {
-    const r = await api.request(`/v1/projects/${selectedProjectId.value}/personas/promote`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        candidates: discovered.value.map((c) => ({ name: c.name, personality: c.role_hint || null })),
-      }),
-    });
-    const made = (r?.created || []).length;
-    pushToast({
-      message: made
-        ? `Added ${made} persona${made === 1 ? "" : "s"} to the cast — assign voices in Characters.`
-        : "Those speakers already existed — linked to this project.",
-      kind: "success",
-    });
-    discovered.value = [];
-    await loadAll();
-  } catch (e) {
-    pushToast({ message: `Promote failed: ${e?.message || e}`, kind: "error" });
-  } finally {
-    promoting.value = false;
   }
 }
 
@@ -1641,29 +1672,37 @@ async function smartAssignCast() {
 // Export). Consumed on EVERY entry: App.vue keeps views alive (KeepAlive),
 // so mounted fires once per session — the handoff must ride onActivated
 // (which also fires after the initial mount) or it works at most once.
+// Returns the step asked for, or null. openProjectInStudio (services/
+// openProject.js) sends "overview"; Chapters' strip sends script/cast/…
 function consumeTabHandoff() {
   try {
     const t = window.sessionStorage?.getItem("jv.studio.tab");
     if (t) {
       window.sessionStorage.removeItem("jv.studio.tab");
-      if (["cast", "script", "render", "export"].includes(t)) tab.value = t;
+      return t;
     }
   } catch { /* ignore */ }
+  return null;
 }
 
 onMounted(loadAll);
 
 onActivated(async () => {
-  consumeTabHandoff();
+  const asked = consumeTabHandoff();
   // The project follows too: the app-wide active project is the source of
   // truth on entry (Chapters pushes its selection there before navigating) —
   // without this pull, Cast-from-Chapters can land on another project's
   // cast, because this view keeps its own kept-alive selection.
   const p = projects.value.find((x) => x.id === activeProject.id);
   if (p && selectedProjectId.value !== p.id) {
+    requestedTab = asked;             // applied by the project watcher
     selectedProjectId.value = p.id;   // the watcher reloads everything
     return;
   }
+  if (asked && isStepFor(selectedProject.value?.project_type, asked)) tab.value = asked;
+  // First entry: loadAll has not picked a project yet — hold the step for the
+  // project watcher.
+  if (!selectedProjectId.value) requestedTab = asked;
   // SAME project: nothing above reloads, and this view is KeepAlive'd, so
   // without this it keeps showing what it had when you left. That is not
   // cosmetic any more — since Analyze started writing blocks, Chapters can
@@ -1693,16 +1732,6 @@ watch(selectedProjectId, (id) => {
 
 <template>
   <div class="studio jv-fill">
-    <p class="studio__pagelede jv-muted">
-      <strong>Studio</strong> turns your written manuscript into a narrated
-      audiobook in three sequential steps — choose voices in
-      <strong>Cast</strong>, let the AI work out who speaks each line in
-      <strong>Script</strong>, then generate the audio chapter by chapter in
-      <strong>Render</strong>, package in <strong>Export</strong>. You can
-      write a whole novel without touching it; it exists for writers who want
-      to produce their own audiobook or hear their prose read aloud as a
-      revision tool.
-    </p>
 
     <!-- ── Project picker ───────────────────────────────────────────── -->
     <div class="jv-section studio__project-bar">
@@ -1720,7 +1749,7 @@ watch(selectedProjectId, (id) => {
       </UiChip>
     </div>
 
-    <!-- ── Production steps (1 · Cast → 2 · Script → 3 · Render) ────── -->
+    <!-- ── Overview, then the numbered steps (studioSteps.js) ─────────── -->
     <div class="studio__steps">
       <!-- Big step cards w/ live subtitles (JustWrite reference; new
            canonical .jv-stepcard in styles.css — no app precedent existed). -->
@@ -1730,7 +1759,7 @@ watch(selectedProjectId, (id) => {
         type="button"
         class="jv-stepcard"
         :class="{ 'jv-stepcard--active': tab === t.key }"
-        :title="t.key === 'cast' ? 'Map people to voices' : t.key === 'script' ? 'Who speaks each line' : t.key === 'render' ? 'Batch render + mastering' : 'Package + ACX checklist'"
+        :title="STEP_TITLES[t.key]"
         @click="tab = t.key"
       >
         <span class="jv-stepcard__title">{{ t.label }}</span>
@@ -1779,6 +1808,31 @@ watch(selectedProjectId, (id) => {
            they act on the same surface they affect, matching the
            JustWrite Audio Studio reference. -->
     </div>
+
+    <!-- ── Overview — the project's own page ───────────────────────── -->
+    <template v-if="tab === 'overview'">
+      <div v-if="!selectedProject" class="jv-banner">
+        Pick a {{ copy.book.singular.toLowerCase() }} above, or create one in <a href="#projects">Projects</a>.
+      </div>
+      <StudioOverview v-else :project="selectedProject" :steps="visibleTabs" :state="overviewState"
+        @go="(k) => (tab = k)" @reimported="loadScenesForProject(selectedProjectId)" />
+    </template>
+
+    <!-- ── Discover — its own step (prose kinds) ───────────────────── -->
+    <div v-if="tab === 'discover' && !selectedProject" class="jv-banner">
+      Pick a {{ copy.book.singular.toLowerCase() }} above to find its speakers.
+    </div>
+    <!-- Kept alive across step switches (2026-09-27): a scan in flight keeps
+         running while you look at Script, and the page is as you left it. -->
+    <KeepAlive>
+      <StudioDiscover v-if="tab === 'discover' && selectedProject" :project="selectedProject" :scenes="scenes"
+        :lines-by-scene="linesByScene"
+        :cast="projectPersonas.map((p) => ({ id: p.id, name: p.name }))"
+        @cast-changed="loadAll" @go="(k) => (tab = k)" @scans="applyScans" />
+    </KeepAlive>
+
+    <!-- ── Lines — a game project's step 1 (the writers' sheet) ────── -->
+    <LinesView v-if="tab === 'lines' && selectedProject" :project-id="selectedProject.id" />
 
     <!-- ── Cast tab ─────────────────────────────────────────────────── -->
     <section v-if="tab === 'cast'" class="studio__cast">
@@ -1904,10 +1958,15 @@ watch(selectedProjectId, (id) => {
         <div class="studio__cast-scroll">
         <div v-if="!charactersListLength" class="studio__cast-empty">
           <h4>{{ isGameProject ? "No NPCs yet" : "No characters yet" }}</h4>
-          <p class="jv-muted">
-            Two ways in: run <a href="#studio" @click.prevent="tab = 'script'">2 · Script</a> on a
-            {{ copy.chapter.singular.toLowerCase() }} — discovered speakers arrive here as personas —
-            or <a href="#studio" @click.prevent="addPersonaOpen = true">add existing personas</a>
+          <p v-if="isGameProject" class="jv-muted">
+            <a href="#studio" @click.prevent="addPersonaOpen = true">Add existing personas</a>
+            to this {{ copy.book.singular.toLowerCase() }}, or re-import the sheet — its speakers
+            arrive as personas.
+          </p>
+          <p v-else class="jv-muted">
+            Two ways in: run <a href="#studio" @click.prevent="tab = 'discover'">{{ TAB_LABELS.discover }}</a>
+            — the speakers it finds arrive here as personas — or
+            <a href="#studio" @click.prevent="addPersonaOpen = true">add existing personas</a>
             to this {{ copy.book.singular.toLowerCase() }}.
           </p>
         </div>
@@ -2114,16 +2173,6 @@ watch(selectedProjectId, (id) => {
         Pick a {{ copy.book.singular.toLowerCase() }} above to attribute its script.
       </div>
       <template v-else>
-        <!-- Discovered speakers — promotion banner (mock #audiobook/5) -->
-        <div v-if="discovered.length" class="jv-banner jv-banner--warn studio__discovered">
-          <strong>{{ discovered.length }} speaker{{ discovered.length === 1 ? "" : "s" }} found that {{ discovered.length === 1 ? "isn't" : "aren't" }} in your cast:</strong>
-          <UiTag v-for="c in discovered" :key="c.name" intent="ghost" class="studio__discovered-chip" :title="c.role_hint || ''">
-            {{ c.name }}<template v-if="c.approx_lines"> · {{ c.approx_lines }} lines</template>
-            <button type="button" class="studio__discovered-x" title="Ignore — assign rows manually instead" @click="ignoreCandidate(c.name)">✕</button>
-          </UiTag>
-          <UiButton size="small" :loading="promoting" label="＋ Create personas & add to cast" @click="promoteDiscovered" />
-        </div>
-
         <p v-if="analyzeRows.length" class="jv-muted studio__script-meta">
           {{ analyzeRows.length }} segments
           <template v-if="analyzeRouteUsed">
@@ -2553,7 +2602,6 @@ watch(selectedProjectId, (id) => {
 }
 
 .studio__steps { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.studio__pagelede { font-size: 12.5px; margin: 6px 0 10px; }
 /* V3: cast-card is now a column INSIDE the shared outer jv-card —
    no border, no background, no own card chrome. */
 .studio__cast-card {
@@ -3078,10 +3126,6 @@ watch(selectedProjectId, (id) => {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(280%); }
 }
-.studio__discovered { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.studio__discovered-chip { display: inline-flex; align-items: center; gap: 5px; }
-.studio__discovered-x { border: 0; background: transparent; cursor: pointer; color: var(--ink-3); font-size: 11px; padding: 0; }
-.studio__discovered-x:hover { color: var(--danger); }
 
 .studio__npc-table { margin: 0; }
 .studio__npc-role { font-size: 12.5px; }

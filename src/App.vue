@@ -6,6 +6,7 @@ import { useI18n } from "vue-i18n";
 import { useApi } from "./stores/api.js";
 import { useOnboarding } from "./stores/onboarding.js";
 import { useActiveProject } from "./stores/activeProject.js";
+import { openProjectInStudio } from "./services/openProject.js";
 import { useUiContext } from "./stores/uiContext.js";
 import { useServerStore } from "./stores/server.js";
 import AudioKeepAlive from "./components/AudioKeepAlive.vue";
@@ -37,7 +38,7 @@ const VIEWS = [
   { id: "projects",  lane: "workflow", label: "Projects",  icon: "📖", lede: "Multi-use Project library. Audiobooks, game voicelines, podcasts. Import a book from JustWrite, or scripts, line lists and subtitle files from other tools.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "chapter",   lane: "workflow", label: "Chapters",   icon: "📑", lede: "Multi-block chapter editor with per-block take versioning. Source-lineage chains preserved.", visibleFor: ["audiobook", "podcast", "multiple", "unset"] },
   { id: "lines",     lane: "workflow", label: "Lines",      icon: "🎮", lede: "Every line of the game project — stable ids, characters, derived take status. Re-import the writers\u2019 next sheet (only changed lines go stale), re-render exactly those, export per-line WAVs + manifest.", visibleFor: ["game", "multiple", "unset"] },
-  { id: "studio",    lane: "workflow", label: "Studio",    icon: "🎬", lede: "Script → Cast → Render production environment for multi-character work. Script runs LLM speaker attribution and adds the speakers it finds to the project; Cast gives each of them a voice; Render batches the whole project. Game projects skip Script — their lines arrive with characters attached.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
+  { id: "studio",    lane: "workflow", label: "Studio",    icon: "🎬", lede: "A project's home. Overview holds its settings and shows where each step stands; then Discover finds the speakers your text names, Script works out who says each line, Cast gives each persona a voice, Render makes the audio and Export packages it. A game project starts from its Lines instead — the sheet already says who speaks.", visibleFor: ["audiobook", "game", "podcast", "multiple", "unset"] },
   { id: "stories",   lane: "workflow", label: "Stories",   icon: "🎞️", lede: "Multi-track timeline editor. For podcasting, game-dialogue assembly, and per-chapter multi-voice arrangement.", visibleFor: ["game", "podcast", "multiple", "unset"] },
   { id: "generate",  lane: "workflow", label: "Generate",  icon: "📝", lede: "Pick a voice. Type the line. Apply delivery overlay. The server renders it. Type / for paralinguistic tags." },
   // Always visible (queue item 11): dictation is a cross-cutting utility
@@ -102,10 +103,10 @@ const switcherOpen = ref(false);
 const switcherRef = ref(null);
 const switcherProjects = ref([]);
 const SWITCH_KIND_META = {
-  audiobook: { icon: "📖", label: "audiobook", home: "chapter" },
-  game_voicelines: { icon: "🎮", label: "game", home: "lines" },
-  podcast: { icon: "🎙️", label: "podcast", home: "chapter" },
-  custom: { icon: "📄", label: "text", home: "chapter" },
+  audiobook: { icon: "📖", label: "audiobook" },
+  game_voicelines: { icon: "🎮", label: "game" },
+  podcast: { icon: "🎙️", label: "podcast" },
+  custom: { icon: "📄", label: "text" },
 };
 async function toggleSwitcher() {
   switcherOpen.value = !switcherOpen.value;
@@ -120,12 +121,8 @@ async function toggleSwitcher() {
 function switchProject(p) {
   switcherOpen.value = false;
   if (p.id === activeProject.id) return;
-  activeProject.open(p);
-  // Stay put when the current view survives the kind swap; otherwise
-  // land in the new kind's home base.
-  if (!visibleViews.value.some((v) => v.id === view.value)) {
-    goView(SWITCH_KIND_META[p.project_type]?.home || "chapter");
-  }
+  // Opening a project always lands on its Studio Overview (2026-09-27).
+  openProjectInStudio(activeProject, p);
 }
 if (typeof document !== "undefined") {
   document.addEventListener("mousedown", (e) => {

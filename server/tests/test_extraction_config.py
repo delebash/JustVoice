@@ -184,7 +184,7 @@ def test_user_prompt_and_floor_overrides(app, monkeypatch) -> None:
     body = r.json()
     assert body["confidence_floor"] == 0.65
     assert captured["user"].startswith("CAST:\n")
-    assert 'id="c_mara"' in captured["user"]
+    assert 'id="mara"' in captured["user"]      # the model sees a name handle, not the id
     assert "{{paragraphs}}" not in captured["user"]
 
     dialogue = [row for row in body["rows"] if row["kind"] == "dialogue"]

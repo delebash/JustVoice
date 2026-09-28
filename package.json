@@ -19,6 +19,8 @@
     "test:unit": "vitest run",
     "test:server": "cd server && node ../scripts/py.js -m pytest -q",
     "check:engines": "cd server && node ../scripts/py.js scripts/check_engines.py",
+    "eval:discover": "cd server && node ../scripts/py.js scripts/eval_discover.py",
+    "eval:attribution": "cd server && node ../scripts/py.js scripts/eval_attribution.py",
     "test": "node scripts/e2e.js",
     "smoke": "node scripts/smoke.js"
   },

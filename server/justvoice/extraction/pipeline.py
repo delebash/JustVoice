@@ -110,16 +110,123 @@ def _strip_thinking(text: str) -> str:
 
 
 def _extract_first_json_array(text: str) -> list:
-    """Pull the first JSON array from possibly-noisy model output."""
+    """Pull the answer array out of possibly-noisy model output.
+
+    Measured 2026-09-28 (Qwen3.6-35B-A3B, reasoning on): on some runs whole
+    chapters came back blank — the reply carried prose around the JSON, and
+    the old greedy `[.*]` spanned from a bracket in that prose ("[D5]") to the
+    array's end, so nothing parsed. Now: every place an array of objects can
+    start is tried, and the longest one that parses wins. Failing that, the
+    individual answer objects are salvaged one by one — safe because each
+    answer names its own [D#] (align_picks), so a salvaged set cannot shift.
+    """
     text = _strip_thinking(text)
-    m = re.search(r"\[.*\]", text, flags=re.DOTALL)
-    if not m:
-        return []
-    try:
-        v = json.loads(m.group(0))
-    except (json.JSONDecodeError, TypeError):
-        return []
-    return v if isinstance(v, list) else []
+    decoder = json.JSONDecoder()
+    best: list = []
+    for m in re.finditer(r"\[\s*\{", text):
+        try:
+            value, _end = decoder.raw_decode(text, m.start())
+        except ValueError:
+            continue
+        if isinstance(value, list) and len(value) > len(best):
+            best = value
+    if best:
+        return best
+    salvaged = []
+    for m in re.finditer(r"\{[^{}]*\}", text):
+        try:
+            obj = json.loads(m.group(0))
+        except ValueError:
+            continue
+        if isinstance(obj, dict) and "speaker" in obj:
+            salvaged.append(obj)
+    return salvaged
+
+
+_DID = re.compile(r"D?\s*(\d+)", re.IGNORECASE)
+
+
+def align_picks(picks: list, dialogue_segments: list[dict]) -> list[dict]:
+    """One pick per dialogue segment, in segment order.
+
+    Matched by the answer's own `id` ("D12") when the model gives one — the
+    measured failure it fixes (2026-09-28, The Ninth Facet): with a plain
+    positional array, one merged or skipped answer early in a chapter shifted
+    EVERY later answer onto the next line, each still at confidence 1.00 — 15
+    of 35 lines wrong in "Brass Rank" and all of them confidently. A segment
+    whose id is missing from the reply gets the unknown pad, so a gap stays a
+    gap instead of pulling its neighbours out of place.
+
+    A reply with no ids at all (an older prompt) falls back to position.
+    """
+    pad = {"speaker": "unknown", "confidence": 0.4}
+    by_id: dict[int, dict] = {}
+    for p in picks or []:
+        if not isinstance(p, dict) or p.get("id") is None:
+            continue
+        m = _DID.search(str(p.get("id")))
+        if m:
+            by_id.setdefault(int(m.group(1)), p)
+    if by_id:
+        return [by_id.get(s["dialogue_id"], pad) for s in dialogue_segments]
+    picks = [p if isinstance(p, dict) else pad for p in (picks or [])]
+    n = len(dialogue_segments)
+    return (picks + [pad] * n)[:n]
+
+
+def prompt_handles(characters: list[dict]) -> tuple[list[dict], dict[str, str]]:
+    """The cast as the model sees it — each persona under a short readable
+    handle made from its name ("cael_ferren"), not its real id — and the map
+    back to the real ids.
+
+    Measured 2026-09-28 (The Ninth Facet, "The Same Hour", reasoning on): with
+    the app's UUID persona ids in the prompt the model gave three of Cael's
+    lines to Nettle in 7 of 7 runs (and one run went to 18/42); with readable
+    ids it was right 2 of 2, and 4 of 4 before. A 36-character opaque code is
+    noise the model has to carry through its reasoning; a name-shaped handle is
+    something it can reason with. Anchors and persistence keep the real ids —
+    only the prompt and the answer mapping use handles.
+    """
+    out: list[dict] = []
+    to_id: dict[str, str] = {}
+    for c in characters:
+        real = c.get("id")
+        base = re.sub(r"[^a-z0-9]+", "_", str(c.get("name") or "").lower()).strip("_") or "speaker"
+        handle, n = base, 2
+        while handle in to_id:
+            handle, n = f"{base}_{n}", n + 1
+        to_id[handle] = real
+        out.append({**c, "id": handle})
+    return out, to_id
+
+
+_ID_PREFIX = re.compile(r"^(?:c|p|id|char|character|persona)[_\-]", re.IGNORECASE)
+
+
+def resolve_speaker(raw, characters: list[dict]) -> str:
+    """The model's speaker answer as a real cast id, "narrator" or "unknown".
+
+    Measured 2026-09-28: on the guided route the model copied the worked
+    examples' id SHAPE ("c_mara") and answered "c_iven_sarraz" for a cast id
+    it had been given — the right person, an id that exists nowhere, so the
+    line failed. An answer that is not a cast id is matched back to the cast
+    by name (extraction/names.py: exact name or alias, first/last name,
+    ambiguity refused) after dropping an id-looking prefix and underscores.
+    Anything still unmatched becomes "unknown", never a phantom id.
+    """
+    from .names import match
+
+    s = str(raw or "").strip()
+    if not s:
+        return "unknown"
+    if s.lower() in ("unknown", "narrator"):
+        return s.lower()
+    ids = {c.get("id") for c in characters if c.get("id")}
+    if s in ids:
+        return s
+    name = _ID_PREFIX.sub("", s).replace("_", " ").strip()
+    hit = match(name, characters) or match(s, characters)
+    return hit["id"] if hit and hit.get("id") else "unknown"
 
 
 ROUTES = ("guided", "direct")
@@ -301,6 +408,12 @@ def analyze_scene(
 
     dialogue_segments = [s for s in segments if s["kind"] == "dialogue"]
     n_dialogue = len(dialogue_segments)
+    prompt_cast, handle_to_id = prompt_handles(request.characters)
+    id_to_handle = {v: k for k, v in handle_to_id.items()}
+    prompt_corrections = [
+        {**c, "persona_id": id_to_handle.get(c.get("persona_id"), c.get("persona_id"))}
+        for c in (request.corrections or [])
+    ]
 
     llm_picks: list[dict[str, Any]] = []
     if n_dialogue > 0:
@@ -325,8 +438,8 @@ def analyze_scene(
                 samplers=request.samplers or [],
             )
             variables = {
-                "characters": format_characters(request.characters),
-                "corrections": format_corrections(request.corrections),
+                "characters": format_characters(prompt_cast),
+                "corrections": format_corrections(prompt_corrections),
                 "paragraphs": format_paragraphs(segments),
             }
             action = f"speaker_attribution.{pick.name}"
@@ -373,14 +486,7 @@ def analyze_scene(
             log.warning("speaker_attribution LLM call failed: %s", e)
             llm_picks = []
 
-    # Pad / slice to match dialogue count.
-    if len(llm_picks) < n_dialogue:
-        llm_picks = list(llm_picks) + [
-            {"speaker": "unknown", "confidence": 0.4}
-            for _ in range(n_dialogue - len(llm_picks))
-        ]
-    else:
-        llm_picks = llm_picks[:n_dialogue]
+    llm_picks = align_picks(llm_picks, dialogue_segments)
 
     # ── 4. Assemble rows ─────────────────────────────────────────
     rows: list[AttributionRow] = []
@@ -401,7 +507,13 @@ def analyze_scene(
         # Dialogue
         ds, pick = next(dialogue_iter)
         did = ds["dialogue_id"]
-        llm_speaker = str(pick.get("speaker") or "unknown")
+        # The model sees name handles; a real id echoed back still counts.
+        raw_speaker = pick.get("speaker")
+        if raw_speaker in id_to_handle:
+            llm_speaker = raw_speaker
+        else:
+            llm_speaker = handle_to_id.get(
+                h := resolve_speaker(raw_speaker, prompt_cast), h)
         try:
             llm_conf = float(pick.get("confidence") or 0.4)
         except (TypeError, ValueError):

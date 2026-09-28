@@ -392,8 +392,29 @@ unattributed for two different reasons — unsure, or never answered.
   **not** in the cast. `POST /v1/projects/{id}/personas/promote` turns candidates
   into personas and links them to the project.
 
-**Discover lives inside the Script step today** — `studioSteps.js` says so
-explicitly: *"The Script step is what CREATES the cast."*
+**Discover is its own Studio step** (2026-09-27): `components/StudioDiscover.vue`
+calls discover-speakers once per ticked chapter and promote once per added
+name. Analyze no longer runs it afterwards. **Each scan is saved on its
+chapter** — `scene.metadata.discover = {scanned_at, candidates}`, written by
+the discover endpoint (replacing that chapter's last scan) and pruned by
+`extraction_api.prune_discovered`, which promote and the new
+`POST /v1/projects/{id}/discover/ignore` both call. The component holds no
+results: it derives them from the scenes (`studioStatus.proposedSpeakers`) and
+hands changes back to Studio via `scans`; Studio keeps it in a `KeepAlive` so a
+scan survives a step switch.
+
+**Names are matched in one place — `extraction/names.py`** (2026-09-27): full
+name / alias / first-or-last name (3+ letters), ambiguity refused, prefixes
+never. The discover endpoint uses it to drop a proposal that names someone
+cast, and to attach a `library_match` for a persona in the library but not the
+cast; promote's `persona_id` path re-links that persona and adds the variant to
+`Persona.aliases`. `Persona.aliases` also reaches Analyze through
+`_resolve_cast` (anchors.py and the attribution prompt already read it). The
+ignore list is `Project.discover_ignored`, its own column because project PATCH
+replaces `metadata_json` wholesale. **Prompt test:** `npm run eval:discover`
+(`server/scripts/eval_discover.py`, scenario in
+`samples/the-ninth-facet/discover-eval.json`) scores the live prompt — or a
+`--system` candidate — against the real model, writing nothing.
 
 **The prompt is starved.** `_resolve_cast` (`extraction_api.py:145-167`)
 hardcodes role/gender/pronouns to `None` and aliases to `[]`;
@@ -633,25 +654,31 @@ exposes queue depth or the current engine.**
 | `LabsView` | 79 | Container for `compare · train · renderlab · audio` |
 | `StoriesView` | 43 | The timeline — thin |
 
-### StudioView's four steps
+### StudioView's steps
 
 Order is canon in `src/views/studioSteps.js`, **pinned by a test**:
 
 ```
-prose : script → cast → render → export
-game  : cast → render → export          (no Script step at all)
+every kind : overview (unnumbered — the project's own page)
+prose      : discover → script → cast → render → export
+game       : lines → cast → render → export
 ```
 
-*"PROSE KINDS START AT SCRIPT (ruling 12, 2026-08-15). The Script step is what
-CREATES the cast … Cast-first opened a cast holding only the auto-created
-Narrator, sent you to Script to populate it, and back again — a loop presented as
-a line."* Game projects keep cast-first because their lines arrive with speakers
-attached. **`StudioView.vue:257` still comments the order as `1 · Cast → 2 ·
-Script` — that comment is stale; `studioSteps.js` is the truth.**
+Studio is the project's home (ruled 2026-09-27). Every door that opens a
+project goes through `services/openProject.js` → `openProjectInStudio`, which
+sets the `jv.studio.tab` hand-off to `overview`; StudioView also lands on
+Overview whenever its selected project changes, and follows the app-wide
+active project so the title-bar switcher works while Studio is on screen.
+
+| Step | Where | What it is |
+|---|---|---|
+| **Overview** | `components/StudioOverview.vue` | Where-it-stands rows (`views/studioStatus.js`, pure + tested — counts only from blocks, cast and the render cache), Continue, settings (title, author → M4B artist, description, kind, mastering target), re-import, .justvoice.zip, delete |
+| **Discover** | `components/StudioDiscover.vue` | Chapter grid + Scan + Proposed speakers (Add / Ignore) |
+| **Lines** (game) | `views/LinesView.vue` embedded with `:project-id` | the line grid, its own project picker hidden |
 
 | Step | Subtitle in the tab strip | What it does |
 |---|---|---|
-| **Script** | *"Who speaks each line"* | Table **Speaker · Kind · Decided by · Text · Confidence**. `＋ Create personas & add to cast` promotes discovered speakers. Right-click → per-block Rewrite preview |
+| **Script** | *"Who speaks each line"* | Table **Speaker · Kind · Decided by · Text · Confidence**. Right-click → per-block Rewrite preview |
 | **Cast** | *"Map people to voices"* | Persona cards + a **Voice library** panel (*"Picking voice for X"* — select a card, click a voice). Narrator card: *"The voice of everything that isn't spoken"*. Actions: `＋ Add persona` (from the library) · `Clear cast` (*"unassign voices from all N cast members. The personas stay — only the voice links go"*) · `Smart-assign` · Audition · Open Speech engines. Game kind shows a table instead: **NPC · Role · Voice** |
 | **Render** | *"Batch render + mastering"* | Table **# · Cached · Render preset · Check**. Select unrendered / Select all · Render · Cancel · Retry · Play · **Run ACX QC** · Suggest |
 | **Export** | *"Package + ACX checklist"* | Packaging (described in-code as a mock export screen) |

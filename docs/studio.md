@@ -1,24 +1,119 @@
-# Studio — Script → Cast → Render
+# Studio — Overview · Discover · Script · Cast · Render · Export
 
-Studio is the multi-character production environment: work out who speaks each
-line, give those speakers voices, render the whole project. The tab names adapt
-to your project kind (chapters for audiobooks, quests for game projects,
-segments for podcasts) — same flow, your vocabulary.
+Studio is a project's home. Opening a project — from Projects, Home's
+**Resume**, the title-bar switcher, or right after creating or importing one —
+always lands on its **Overview**. From there the steps run in order:
 
-**Why Script comes first.** Analyzing a chapter is what *finds* your cast. On an
-imported manuscript the project starts with one persona — the Narrator — and
-**Find new speakers** discovers the rest from the prose and adds them to the
-project. Casting before that would mean assigning voices to a list of one. So
-the steps run **Script → Cast → Render → Export**, and each is numbered in the
-tab strip.
+**Discover → Script → Cast → Render → Export**
 
-**Game projects are the exception**: they have no Script step at all. A line
-list arrives from the writers with its characters already attached, so a game
-project runs **Cast → Render → Export**.
+The step names adapt to your project kind (chapters for audiobooks, quests for
+game projects, episodes for podcasts) — same flow, your vocabulary.
+
+**Why Discover comes first.** Script can only give a line to a persona that
+already exists. On an imported manuscript the project starts with one persona —
+the Narrator — so Discover reads the prose for the other names and, when you say
+so, creates personas for them. Casting before that would mean assigning voices
+to a list of one.
+
+**Game projects are the exception**: they have no Discover or Script step. A
+line list arrives from the writers with its speakers already attached, so a game
+project runs **Lines → Cast → Render → Export**, where **Lines** is the same
+line-by-line grid as the Lines tab.
 
 If your cast is already complete — a JustWrite import that brought its
 characters, or a project you have analyzed before — nothing stops you clicking
 straight to Cast. The order is the path of least surprise, not a lock.
+
+## Overview
+
+The project's own page. **Where it stands** has one row per step, and clicking a
+row opens that step:
+
+| Step | What the row says |
+|---|---|
+| Discover | how many chapters have been scanned, and how many proposed speakers are waiting for **＋ Add** or **Ignore** |
+| Script | how many chapters are analyzed, and how many lines still need a speaker |
+| Lines (game) | how many lines the sheet has |
+| Cast | how many personas have a voice, and how many lines are blocked on one that doesn't |
+| Render | how many lines are rendered and current, out of those that can render |
+| Export | what Export makes — it keeps no record of past exports, so there is no count |
+
+Every number is read from the project itself; nothing is estimated. Export
+shows no count because nothing records an export.
+
+**Continue ➜** opens the first step that still has work in it.
+
+**Project** holds the settings, saved as you type:
+
+- **Title** and **Description**.
+- **Author** — written into the M4B you export as its author.
+- **Kind** — shown, not editable; it is fixed when the project is created.
+- **Mastering target** — what every render is mastered to, and what Export
+  checks against. *This kind's default* means ACX for an audiobook, podcast
+  loudness for a podcast, and raw for everything else; **None — raw** means
+  raw whatever the kind. See [the mastering target](#the-mastering-target).
+
+**Also from here:** **Re-import** merges a newer version of the source file into
+this project, and **Export .justvoice.zip** saves the whole project as one file.
+**Delete project** asks first, then removes the project and everything in it;
+takes, generations, personas, voices and lexicons are kept.
+
+## Discover
+
+Finds the people your text names who aren't in the cast yet. It creates
+nothing on its own.
+
+1. Tick the chapters to read — the checkbox in the header selects them all. The
+   line count updates as you tick. **Last scanned** says when each chapter was
+   last read, and **Proposed** how many of its names still wait on you.
+2. **Scan** reads them one at a time, one model call per chapter. The task strip
+   at the top of the page shows which chapter it is reading and how far along
+   it is, and **Cancel** stops it after the chapter in hand. Each row fills in
+   as its chapter finishes, so you can start on the results before a long scan
+   ends. Scanning a chapter again replaces its last scan.
+3. **Proposed speakers** lists every new name found: roughly how many lines
+   they speak in what was scanned (**0** means named but not heard speaking),
+   the **First appearance** — the quote that names them — and which chapters.
+   Spellings of one person are one row: "Sedge" and "Old Sedge" show as *Old
+   Sedge, also written Sedge*.
+   - **→ Name · in your library** means the name refers to a persona you
+     already have, but not in this cast ("Brick" → *Brick Halvorn*). **＋ Add**
+     then puts that persona in the cast and remembers "Brick" as another name
+     for him — it never makes a duplicate.
+   - Otherwise **＋ Add** creates a new persona, keeping any other spellings as
+     its *Also called* names.
+   - **quote not in the chapter** means the quote the model gave is not in the
+     text — treat the name as suspect.
+   - **Ignore** drops the name and keeps it out of every later scan of this
+     project. Ignored names are listed under **Ignored**; **Restore** lets
+     Discover propose one again.
+
+**What counts as a name.** Discover proposes everyone the text *names* — a
+proper name ("Edith") or a title used as one ("the harbour-master") — whether
+or not they speak in the chapters scanned; Script decides who says which line.
+It never invents a label from how someone talks or is addressed ("child", "the
+elder"), so a chapter whose dialogue is never tied to a name proposes no one.
+
+The instructions Discover gives the model are the **Find new speakers** feature
+in AI Settings → Features. Edit and save them there and the next scan uses your
+text; **Reset** puts the shipped text back.
+
+**Already in the cast** shows who Script can choose from.
+
+Scan results are saved with each chapter, so they are still there after you
+move to another step, switch project, or restart the app. A scan keeps running
+while you look at another step. Discover needs a language model; without one,
+Scan says so.
+
+Discover only proposes names that are **not** in the cast yet — someone you
+already cast never appears here, however much they speak, and whatever the
+text calls them: their full name, first name, surname, or any of their *Also
+called* names. The model is also given each cast member's one-line character
+sheet, so a nickname the sheet mentions ("Answers to Ode") is recognised too.
+
+**A named thing can still slip through.** A named, enchanted object — a maul
+called *Gudgeon* that rides a character's shoulder — can read to the model as
+a being, and it may propose it. **Ignore** it once and it stays out.
 
 ## Script
 
@@ -42,6 +137,17 @@ from a guess at a glance:
 | `floored` | The model answered but wasn't sure enough, so its answer was **thrown away** and the line left with no speaker. The floor only ever discards a weak answer — it never promotes one. |
 | `corrected` | You set this one. Re-analyzing leaves it exactly as it is. |
 | `manual` | A block you wrote or pasted yourself. Nothing has attributed it. |
+
+**How the model reads an `llm` line.** It reads each line in its surroundings —
+who was just spoken to, whose actions and thoughts fill the paragraph, who a
+*"she said"* points back to — and when two people trade untagged lines with
+nothing breaking in, it follows the turn order (those answers carry a lower
+confidence, because they are an inference rather than a tag). It thinks the
+chapter through before it answers, which is what makes it accurate and also
+what makes it take time: on the built-in Gemma model with an 8 GB graphics
+card, expect about a minute per chapter. To trade some accuracy for speed,
+turn thinking off on the **Reasoned extraction** preset (AI Settings →
+Routing by feature).
 
 The **read** note in the header (*"read with examples"* / *"read rules only"*)
 is which prompt the model got — the longer one carries worked examples, and
@@ -93,13 +199,14 @@ stores one block per paragraph, and attribution needs one block per speaker
 turn, so the paragraphs are split. If the chapter already has recorded takes,
 JustVoice refuses to re-cut rather than destroy them.
 
-When Analyze meets speakers that aren't in your cast, a **discover-speakers**
-banner offers to promote them to personas in one click.
+Analyze does not look for new speakers — that is [Discover](#discover). A line
+whose speaker isn't in the cast comes back with no speaker; add that person in
+Discover, then analyze again.
 
 ## Cast
 
 Every character in the project, with their voice assignment — the speakers
-Script found, plus the Narrator and anyone a JustWrite import brought with it.
+Discover added, plus the Narrator and anyone a JustWrite import brought with it.
 Add a character, open the voice params modal to tune their delivery, and press
 **▶** to hear a voice preview before committing — the preview plays a stock
 sample line, not a line from your script. **Smart assign** asks the LLM to
@@ -154,7 +261,7 @@ renders apply, and where that choice came from. JustVoice picks it in this
 order, first answer wins:
 
 1. the render preset bound to the scene, if it names a master target,
-2. the project's own mastering preset (Projects → the project's settings),
+2. the project's own mastering target (Studio · **Overview**),
 3. the default for the project kind — **audiobook → ACX**, **podcast →
    podcast**, and **game voicelines → none** (a game engine wants the raw
    line to run through its own audio bus), **custom → none**.

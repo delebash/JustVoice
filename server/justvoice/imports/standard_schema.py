@@ -40,6 +40,9 @@ class StandardCharacter(BaseModel):
     name: str
     voice_hint: str | None = None
     notes: str | None = None
+    # Other names the source knows them by (JustWrite `aliases`) — become the
+    # persona's aliases.
+    aliases: list[str] = []
 
 
 class StandardLine(BaseModel):

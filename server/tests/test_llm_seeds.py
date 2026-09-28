@@ -55,11 +55,16 @@ def test_presets_and_refs_seed(tmp_path):
     # compose runs at its preset's 0.9 (the hardcoded personas_api temperature
     # moved onto the preset — ruling 9).
     assert presets["p_compose"]["temperature"] == 0.9
-    # EVERY preset ships think-off — the family rule with zero exceptions
-    # (p_reason, the last exception, died with the Reasoned route 2026-08-07).
-    assert all(not p.get("think") for p in presets.values())
-    # The two routes each carry their OWN ref (per-route routing restored).
-    assert DEFAULT_FEATURE_PRESETS["speaker_attribution.direct"] == "p_extract"
+    # Every preset ships think-off EXCEPT the one where thinking was measured to
+    # earn its time: speaker attribution's Reasoned extraction (2026-09-28 —
+    # 928→937 of 940 lines right on two books, the one systematic miss gone).
+    thinking = sorted(pid for pid, p in presets.items() if p.get("think"))
+    assert thinking == ["p_extract_reasoned"]
+    # The two routes each carry their OWN ref (per-route routing restored),
+    # and both run on it; Discover and Smart-assign keep the faster p_extract.
+    assert DEFAULT_FEATURE_PRESETS["speaker_attribution.direct"] == "p_extract_reasoned"
+    assert DEFAULT_FEATURE_PRESETS["speaker_attribution.guided"] == "p_extract_reasoned"
+    assert DEFAULT_FEATURE_PRESETS["speaker_attribution.identify"] == "p_extract"
     # Every seeded row RESOLVES through the cascade: its own ref, or its
     # FEATURE's ref (the refine sections route through one feature-level
     # assignment). And every ref names a seeded row or a seeded feature.

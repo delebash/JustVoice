@@ -290,9 +290,9 @@ button in the app: Studio's Analyze, Smart-assign, 💡 Suggest, Show notes,
 the persona 🎲/✏️ buttons, and the voice ✨ gender guess.
 
 The **Find new speakers** row's Lab runs the discovery scan instead — the
-same pipeline behind Studio's "new speakers found" banner. It lists names
-that speak but aren't in the known-characters list, as a review list;
-nothing is created from the Lab. Its Characters box is the same cast
+same prompt behind Studio's **Discover** step. It lists the characters the text
+names who aren't in the known-characters list, speaking or not, each with the
+quote that names them; nothing is created from the Lab. Its Characters box is the same cast
 editor, and Insert from chapter/cast fill it the same way.
 
 ## Filling the other features' Labs from your app
@@ -336,11 +336,17 @@ prompt gets a direct answer.
 control — Off, or an effort level from Low to Max — is the whole story:
 what you set there is exactly what every run of that feature sends, no
 exceptions, nothing second-guessing it. **Out of the box every preset
-ships with thinking off** — speaker attribution, dictation cleanup,
+ships with thinking off except one: speaker attribution** (Studio ·
+Script's Analyze), which runs on its own preset, **Reasoned extraction**,
+with thinking on. That one was measured: on two sample novels the built-in
+Gemma got 928 of 940 lines right without thinking and 937 with it, and the
+one mistake it kept repeating went away — at about 1.7 times the time per
+chapter. Everything else — dictation cleanup, Discover's Find new speakers,
 Smart-assign, Compose, Rewrite, Show notes, Preset suggest, the voice
-gender guess, all of them. Thinking only ever happens because you turned
-it on, on that feature's preset. The effort level sets how MUCH a thinking
-run reasons — lower is a shorter hidden pass and a faster answer.
+gender guess — ships off. The effort level sets how MUCH a thinking run
+reasons — lower is a shorter hidden pass and a faster answer. To trade
+accuracy for speed on attribution, turn thinking off on Reasoned
+extraction.
 
 **If a model can't take it, you hear it from the provider — not from
 JustVoice guessing.** Ask for thinking on a model that doesn't support the
@@ -360,10 +366,10 @@ Worth knowing before you turn it on: a thinking run spends hundreds to a
 thousand hidden tokens before its first visible word, so it is many times
 slower than the same model answering directly — on the built-in Gemma
 models, the same attribution answered identically in a few seconds without
-thinking and in half a minute with it. That's why everything ships off:
-enable it deliberately, on the one feature where you've tested that it
-earns its time, and lower the effort level if you want the reasoning pass
-shorter.
+thinking and in half a minute with it. That's why everything else ships
+off: enable it deliberately, on a feature where you've tested that it
+earns its time — as speaker attribution was — and lower the effort level
+if you want the reasoning pass shorter.
 
 ## Show notes (podcast projects)
 

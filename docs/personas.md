@@ -45,6 +45,7 @@ reaches the TTS engine**.
 | Field | Half | Used for |
 |---|---|---|
 | Name | — | Display in cast lists, in Script tab attribution dropdowns. |
+| Also called | — | Other names the text uses for them — a nickname, a surname, a title ("Ode" for Odeline Marran), separated by commas. Discover treats them as this persona, not a newcomer, and Script's attribution matches "said Ode" to her. A JustWrite import fills it from the book's aliases, and Discover's **＋ Add** adds the name the text used when it links a persona from your library. |
 | Language | — | Per-persona language tag. |
 | Voice | Sound | Which TTS voice speaks these lines. |
 | Spoken delivery | Sound | The `instruct` / style prompt for engines that take direction. How the line is *performed*. |
@@ -54,9 +55,9 @@ reaches the TTS engine**.
 | Effects chain | Sound | Reverb, EQ, compression applied after the TTS renders. |
 | Character sheet | Prose | Who they are. Drives Compose / Rewrite, Smart-assign's casting suggestions, and the game-export sidecar. |
 
-> Role, gender, pronouns and aliases are **not** persona fields yet. Smart-assign
-> and the attribution prompt accept them, but nothing on the persona supplies
-> them — tracked in `docs/dev/TASKS.md`.
+> Role, gender and pronouns are **not** persona fields yet. Smart-assign and the
+> attribution prompt accept them, but nothing on the persona supplies them —
+> tracked in `docs/dev/TASKS.md`.
 
 ## Spoken delivery — the one field that changes the audio
 

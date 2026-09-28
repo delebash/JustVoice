@@ -81,7 +81,12 @@ def test_stream_emits_deltas_then_a_done_frame_with_rows_and_usage(client, monke
     assert done["scene_id"] == scene_id
     assert done["route_used"] in ("guided", "direct")
     assert isinstance(done["rows"], list) and done["rows"]
-    assert any(row["speaker"] == "mara" for row in done["rows"])
+    # The stub answered "mara" — not a real persona id. Since 2026-09-28 an
+    # answer is resolved to the cast by name (pipeline.resolve_speaker), so the
+    # row carries Mara Vance's REAL id instead of the phantom "mara".
+    personas = client.get("/v1/personas").json()["personas"]
+    mara_id = next(p["id"] for p in personas if p["name"] == "Mara Vance")
+    assert any(row["speaker"] == mara_id for row in done["rows"])
     assert done["usage"]["prompt_tokens"] == 321
     # The write happens in the ASYNC layer, not the worker thread, so that a
     # cancelled run can be caught before it touches the chapter. Its receipt

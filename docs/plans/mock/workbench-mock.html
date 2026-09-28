@@ -292,14 +292,6 @@ body[data-kind="podcast"] .k-book,body[data-kind="podcast"] .k-game{display:none
 .scr .ln.sel{outline:2px solid var(--accent);outline-offset:-2px}
 .scr .why{display:block;margin-top:3px;font-size:10.5px;font-weight:700;color:var(--danger-ink)}
 
-/* The two Studio models, switchable. */
-body[data-studio="container"] .sv-flat{display:none!important}
-body[data-studio="flat"] .sv-container{display:none!important}
-.modebar{position:sticky;top:0;z-index:60;display:flex;gap:12px;align-items:center;flex-wrap:wrap;
-  padding:9px 12px;margin-bottom:12px;background:var(--surface);border:1px solid var(--line-strong);
-  border-radius:var(--r-pill);box-shadow:var(--shadow-1)}
-.modebar .lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
-
 /* A control the current voice cannot honour is shown, disabled, with its reason —
    never hidden, or the user cannot tell the difference between "off" and "absent". */
 .box:disabled{opacity:.5;cursor:not-allowed;background:var(--surface-2)}
@@ -394,17 +386,6 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
   padding:3px 5px;border:1px solid transparent;border-radius:var(--r-control);min-height:24px}
 .cell-tags:hover{border-color:var(--line);background:var(--surface-2)}
 </style>
-<div class="shell" style="padding-bottom:0">
-  <div class="modebar">
-    <span class="lbl">Studio model</span>
-    <div class="seg" role="group" aria-label="Studio model">
-      <button id="mCont" aria-pressed="true" onclick="setStudio('container')">Container</button>
-      <button id="mFlat" aria-pressed="false" onclick="setStudio('flat')">Dissolved</button>
-    </div>
-    <span class="hint" id="modeHint">Studio holds the four steps; the chapter list lives inside its
-      Script step.</span>
-  </div>
-</div>
 
 <div class="shell">
 <div class="app">
@@ -413,18 +394,7 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
   <i data-r="home" onclick="nav('home')"><span class="e">&#127968;</span>Home</i>
   <i data-r="projects" onclick="nav('projects')"><span class="e">&#128193;</span>Projects</i>
 
-  <i class="sv-container k-book" data-r="chapters" onclick="nav('chapters')"><span class="e">&#127916;</span>Studio</i>
-  <i class="sv-container k-pod" data-r="chapters" onclick="nav('chapters')"><span class="e">&#127916;</span>Studio</i>
-  <i class="sv-container k-game" data-r="lines" onclick="nav('lines')"><span class="e">&#127916;</span>Studio</i>
-
-  <i class="sv-flat k-book" data-r="discover" onclick="nav('discover')"><span class="e">&#128269;</span>Discover</i>
-  <i class="sv-flat k-pod" data-r="discover" onclick="nav('discover')"><span class="e">&#128269;</span>Discover</i>
-  <i class="sv-flat k-book" data-r="chapters" onclick="nav('chapters')"><span class="e">&#128214;</span>Chapters</i>
-  <i class="sv-flat k-pod" data-r="chapters" onclick="nav('chapters')"><span class="e">&#128214;</span>Episodes</i>
-  <i class="sv-flat k-game" data-r="lines" onclick="nav('lines')"><span class="e">&#127918;</span>Voice&nbsp;lines</i>
-  <i class="sv-flat" data-r="cast" onclick="nav('cast')"><span class="e">&#127917;</span>Cast</i>
-  <i class="sv-flat" data-r="render" onclick="nav('render')"><span class="e">&#9889;</span>Render</i>
-  <i class="sv-flat" data-r="export" onclick="nav('export')"><span class="e">&#11015;&#65039;</span>Export</i>
+  <i data-r="overview discover chapters lines chapter cast render export scene" onclick="nav('overview')"><span class="e">&#127916;</span>Studio</i>
 
   <i class="dim" title="Not part of this redesign"><span class="e">&#127908;</span>Captures</i>
   <div class="gh">Library</div>
@@ -602,15 +572,125 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
     </div>
   </div>
 </div>
+<div class="route" id="r-overview">
+<div class="top">
+    <span class="crumb"><span class="lnk" onclick="nav('projects')">Projects</span>
+      › <b class="proj-name">Stillwater</b> › Studio</span>
+    <span class="pill proj-kind">📖 audiobook</span>
+    <span style="flex:1"></span>
+    <button class="btn p k-book" onclick="nav('cast')">Continue — Cast Harbek and Renn ➜</button>
+    <button class="btn p k-game" onclick="nav('cast')">Continue — Cast 8 NPCs ➜</button>
+    <button class="btn p k-pod" onclick="nav('render')">Continue — Render 44 lines ➜</button>
+  </div>
+  <div class="body">
+    <div class="steps-strip">
+      <span class="stp on" onclick="nav('overview')">Overview</span>
+      <span class="stp k-book" onclick="nav('discover')">1 &middot; Discover</span>
+      <span class="stp k-pod" onclick="nav('discover')">1 &middot; Discover</span>
+      <span class="stp k-book" onclick="nav('chapters')">2 &middot; Script</span>
+      <span class="stp k-pod" onclick="nav('chapters')">2 &middot; Script</span>
+      <span class="stp k-game" onclick="nav('lines')">1 &middot; Lines</span>
+      <span class="stp k-book" onclick="nav('cast')">3 &middot; Cast</span>
+      <span class="stp k-pod" onclick="nav('cast')">3 &middot; Cast</span>
+      <span class="stp k-game" onclick="nav('cast')">2 &middot; Cast</span>
+      <span class="stp k-book" onclick="nav('render')">4 &middot; Render</span>
+      <span class="stp k-pod" onclick="nav('render')">4 &middot; Render</span>
+      <span class="stp k-game" onclick="nav('render')">3 &middot; Render</span>
+      <span class="stp k-book" onclick="nav('export')">5 &middot; Export</span>
+      <span class="stp k-pod" onclick="nav('export')">5 &middot; Export</span>
+      <span class="stp k-game" onclick="nav('export')">4 &middot; Export</span>
+    </div>
+<div class="split">
+    <div style="display:flex;flex-direction:column;gap:13px">
+      <div class="card"><div class="sh"><h4>Where it stands</h4><span class="sub">each row opens its step</span></div>
+        <table><tbody class="k-book">
+          <tr onclick="nav('discover')" style="cursor:pointer"><td><b class="lnk">1 · Discover</b></td>
+            <td>3 of 14 chapters scanned</td><td><span class="tag w">3 proposed speakers</span></td></tr>
+          <tr onclick="nav('chapters')" style="cursor:pointer"><td><b class="lnk">2 · Script</b></td>
+            <td>3 of 14 chapters analyzed · 1 running</td><td><span class="tag e">88 need a speaker</span></td></tr>
+          <tr onclick="nav('cast')" style="cursor:pointer"><td><b class="lnk">3 · Cast</b></td>
+            <td>3 of 5 personas voiced</td><td><span class="tag e">40 lines blocked</span></td></tr>
+          <tr onclick="nav('render')" style="cursor:pointer"><td><b class="lnk">4 · Render</b></td>
+            <td>412 of 2,140 lines rendered</td><td><span class="tag w">128 stale</span></td></tr>
+          <tr onclick="nav('export')" style="cursor:pointer"><td><b class="lnk">5 · Export</b></td>
+            <td>Not exported yet</td><td></td></tr>
+        </tbody><tbody class="k-game">
+          <tr onclick="nav('lines')" style="cursor:pointer"><td><b class="lnk">1 · Lines</b></td>
+            <td>342 lines from CSV</td><td></td></tr>
+          <tr onclick="nav('cast')" style="cursor:pointer"><td><b class="lnk">2 · Cast</b></td>
+            <td>13 of 21 NPCs voiced</td><td><span class="tag e">61 lines blocked</span></td></tr>
+          <tr onclick="nav('render')" style="cursor:pointer"><td><b class="lnk">3 · Render</b></td>
+            <td>219 of 342 lines rendered</td><td><span class="tag w">14 stale</span></td></tr>
+          <tr onclick="nav('export')" style="cursor:pointer"><td><b class="lnk">4 · Export</b></td>
+            <td>Not exported yet</td><td></td></tr>
+        </tbody><tbody class="k-pod">
+          <tr onclick="nav('discover')" style="cursor:pointer"><td><b class="lnk">1 · Discover</b></td>
+            <td>12 of 12 episodes scanned</td><td><span class="tag ok">done</span></td></tr>
+          <tr onclick="nav('chapters')" style="cursor:pointer"><td><b class="lnk">2 · Script</b></td>
+            <td>12 of 12 episodes analyzed</td><td><span class="tag ok">every line has a speaker</span></td></tr>
+          <tr onclick="nav('cast')" style="cursor:pointer"><td><b class="lnk">3 · Cast</b></td>
+            <td>3 of 3 personas voiced</td><td><span class="tag ok">done</span></td></tr>
+          <tr onclick="nav('render')" style="cursor:pointer"><td><b class="lnk">4 · Render</b></td>
+            <td>508 of 552 lines rendered</td><td><span class="tag w">44 to go</span></td></tr>
+          <tr onclick="nav('export')" style="cursor:pointer"><td><b class="lnk">5 · Export</b></td>
+            <td>Not exported yet</td><td></td></tr>
+        </tbody></table></div>
+
+      <div class="card"><div class="sh"><h4>Project</h4><span class="sub">changes save automatically</span></div>
+        <div style="display:flex;flex-direction:column;gap:11px">
+          <div class="f"><label>Title</label>
+            <input class="box k-book" style="max-width:32ch" value="Stillwater">
+            <input class="box k-game" style="max-width:32ch" value="Ninefold">
+            <input class="box k-pod" style="max-width:32ch" value="The Long Quay"></div>
+          <div class="f"><label>Author</label>
+            <input class="box k-book" style="max-width:32ch" value="D. Lebash">
+            <input class="box k-game" style="max-width:32ch" placeholder="e.g., D. Nash">
+            <input class="box k-pod" style="max-width:32ch" value="D. Lebash"></div>
+          <div class="f"><label>Description</label>
+            <textarea class="box k-book" rows="3" style="max-width:60ch">A detective, a fogbound harbour town, and nine doors that should not open.</textarea>
+            <textarea class="box k-game" rows="3" style="max-width:60ch" placeholder="What this project is"></textarea>
+            <textarea class="box k-pod" rows="3" style="max-width:60ch">A serial about the people who work the Long Quay.</textarea></div>
+          <div class="f"><label>Kind</label>
+            <div class="kr"><span class="tag proj-kind">📖 audiobook</span>
+              <span class="hint">set when the project is created</span></div></div>
+          <div class="f"><label>Mastering target</label>
+            <select class="box k-book" style="max-width:32ch"><option>None</option><option selected>ACX (-20 LUFS / -3.5 dB peak)</option><option>iAudio</option><option>Podcast</option><option>YouTube</option><option>Custom</option></select>
+            <select class="box k-game" style="max-width:32ch"><option selected>None</option><option>ACX (-20 LUFS / -3.5 dB peak)</option><option>iAudio</option><option>Podcast</option><option>YouTube</option><option>Custom</option></select>
+            <select class="box k-pod" style="max-width:32ch"><option>None</option><option>ACX (-20 LUFS / -3.5 dB peak)</option><option>iAudio</option><option selected>Podcast</option><option>YouTube</option><option>Custom</option></select>
+            <span class="hint">Export checks the finished audio against this.</span></div>
+          <div class="f"><label>Pronunciation lexicon</label>
+            <div class="kr"><select class="box k-book" style="max-width:32ch"><option>None</option><option selected>Harbor names</option></select><select class="box k-game" style="max-width:32ch"><option selected>None</option><option>Harbor names</option></select><select class="box k-pod" style="max-width:32ch"><option selected>None</option><option>Harbor names</option></select>
+              <button class="btn s g" onclick="nav('lexicons')">Open ➜</button></div></div>
+          <div class="f"><label>Webhook on complete</label>
+            <input class="box mono" style="max-width:52ch" placeholder="https://your-service.local/webhooks/render"></div>
+          <div class="hint k-book">Imported from JustWrite</div>
+          <div class="hint k-game">Imported from CSV</div>
+          <div class="hint k-pod">Imported from markdown scripts</div>
+        </div></div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="card tint"><div class="sh"><h4>Also from here</h4></div>
+        <div class="row">
+          <button class="btn s" onclick="toast('Pick the file to re-import from.')">↻ Re-import</button>
+          <button class="btn s" onclick="toast('Saved .justvoice.zip','ok')">📦 Export .justvoice.zip</button></div></div>
+      <div class="card"><div class="sh"><h4>Delete project</h4></div>
+        <p class="hint" style="margin:0 0 9px">Removes the project and everything in it. Takes and
+          generations are kept. Personas, voices and lexicons are library-level and stay.</p>
+        <button class="btn d s" onclick="toast('Delete project? This removes the project and everything in it.','warn')">🗑 Delete project</button></div>
+    </div>
+  </div></div>
+</div>
 <div class="route" id="r-discover">
 <div class="top">
     <span class="crumb"><span class="lnk" onclick="nav('projects')">Projects</span>
-      › <b class="proj-name">Stillwater</b><span class="sv-container"> › Studio</span></span>
+      › <b class="proj-name lnk" onclick="nav('overview')">Stillwater</b> › Studio</span>
     <span class="pill proj-kind">📖 audiobook</span>
     <span style="flex:1"></span>
     <span class="pill live"><span class="dot"></span> gemma-3-12b</span></div>
   <div class="body">
-    <div class="steps-strip sv-container">
+    <div class="steps-strip">
+      <span class="stp" onclick="nav('overview')">Overview</span>
       <span class="stp on k-book" onclick="nav('discover')">1 &middot; Discover</span>
       <span class="stp on k-pod" onclick="nav('discover')">1 &middot; Discover</span>
       <span class="stp k-book" onclick="nav('chapters')">2 &middot; Script</span>
@@ -702,12 +782,13 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
 <div class="route" id="r-chapters">
 <div class="top">
     <span class="crumb"><span class="lnk" onclick="nav('projects')">Projects</span>
-      › <b class="proj-name">Stillwater</b><span class="sv-container"> › Studio</span></span>
+      › <b class="proj-name lnk" onclick="nav('overview')">Stillwater</b> › Studio</span>
     <span class="pill proj-kind">📖 audiobook</span>
     <span style="flex:1"></span>
     <span class="pill live"><span class="dot"></span> gemma-3-12b</span></div>
   <div class="body">
-    <div class="steps-strip sv-container">
+    <div class="steps-strip">
+      <span class="stp" onclick="nav('overview')">Overview</span>
       <span class="stp k-book" onclick="nav('discover')">1 &middot; Discover</span>
       <span class="stp k-pod" onclick="nav('discover')">1 &middot; Discover</span>
       <span class="stp on k-book" onclick="nav('chapters')">2 &middot; Script</span>
@@ -817,12 +898,13 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
 </div>
 <div class="route" id="r-lines">
 <div class="top"><span class="crumb"><span class="lnk" onclick="nav('projects')">Projects</span>
-      › <b class="proj-name">Ninefold</b></span>
+      › <b class="proj-name lnk" onclick="nav('overview')">Ninefold</b></span>
     <span class="pill proj-kind">🎮 game voicelines</span><span class="pill">Master <b>none</b></span>
     <span style="flex:1"></span>
     <span class="pill live"><span class="dot"></span> Chatterbox loaded</span></div>
   <div class="body">
-    <div class="steps-strip sv-container">
+    <div class="steps-strip">
+      <span class="stp" onclick="nav('overview')">Overview</span>
       <span class="stp k-book" onclick="nav('discover')">1 &middot; Discover</span>
       <span class="stp k-pod" onclick="nav('discover')">1 &middot; Discover</span>
       <span class="stp on k-book" onclick="nav('chapters')">2 &middot; Script</span>
@@ -892,13 +974,14 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
 <div class="route" id="r-chapter">
 <div class="top">
     <span class="crumb"><span class="lnk" onclick="nav('projects')">Projects</span>
-      › <span class="lnk" onclick="nav('chapters')">Stillwater</span><span class="sv-container"> › Studio</span>
+      › <span class="lnk proj-name" onclick="nav('overview')">Stillwater</span> › Studio
       › <b>Ch. 1 — The Ninth Door</b></span>
     <span class="pill proj-kind">📖 audiobook</span>
     <span style="flex:1"></span>
     <span class="pill live"><span class="dot"></span> gemma-3-12b</span></div>
   <div class="body">
-    <div class="steps-strip sv-container">
+    <div class="steps-strip">
+      <span class="stp" onclick="nav('overview')">Overview</span>
       <span class="stp k-book" onclick="nav('discover')">1 &middot; Discover</span>
       <span class="stp k-pod" onclick="nav('discover')">1 &middot; Discover</span>
       <span class="stp on k-book" onclick="nav('chapters')">2 &middot; Script</span>
@@ -1051,13 +1134,14 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
   </div>
 </div>
 <div class="route" id="r-cast">
-<div class="top"><span class="crumb"><span class="lnk" onclick="nav('chapters')"><span class="proj-name">Stillwater</span></span> › Cast</span>
+<div class="top"><span class="crumb"><span class="lnk" onclick="nav('overview')"><span class="proj-name">Stillwater</span></span> › Cast</span>
     <span class="pill">Kind 📖 <b>audiobook</b></span>
     <span class="pill">Master <b>acx</b></span>
     <span style="flex:1"></span>
     <span class="pill live"><span class="dot"></span> Qwen3</span></div>
   <div class="body">
-    <div class="steps-strip sv-container">
+    <div class="steps-strip">
+      <span class="stp" onclick="nav('overview')">Overview</span>
       <span class="stp k-book" onclick="nav('discover')">1 &middot; Discover</span>
       <span class="stp k-pod" onclick="nav('discover')">1 &middot; Discover</span>
       <span class="stp k-book" onclick="nav('chapters')">2 &middot; Script</span>
@@ -1197,14 +1281,15 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
 </div>
 <div class="route" id="r-render">
 <div class="top">
-    <span class="crumb"><span class="lnk" onclick="nav('chapters')">Stillwater</span>
+    <span class="crumb"><span class="lnk proj-name" onclick="nav('overview')">Stillwater</span>
       › <b>Ch. 1 · Render</b></span>
     <span class="pill">214 lines · <b>27 rendered</b></span>
     <span class="pill lnk" onclick="nav('scene')" style="text-decoration:none">Scene <b>a flashback</b> ▸</span>
     <span style="flex:1"></span>
     <span class="pill live"><span class="dot"></span> Qwen3</span></div>
   <div class="body">
-    <div class="steps-strip sv-container">
+    <div class="steps-strip">
+      <span class="stp" onclick="nav('overview')">Overview</span>
       <span class="stp k-book" onclick="nav('discover')">1 &middot; Discover</span>
       <span class="stp k-pod" onclick="nav('discover')">1 &middot; Discover</span>
       <span class="stp k-book" onclick="nav('chapters')">2 &middot; Script</span>
@@ -1355,9 +1440,10 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
   </div>
 </div>
 <div class="route" id="r-export">
-<div class="top"><span class="crumb"><span class="lnk" onclick="nav('chapters')"><span class="proj-name">Stillwater</span></span> › Export</span><span class="pill">14 chapters</span></div>
+<div class="top"><span class="crumb"><span class="lnk" onclick="nav('overview')"><span class="proj-name">Stillwater</span></span> › Export</span><span class="pill">14 chapters</span></div>
   <div class="body">
-    <div class="steps-strip sv-container">
+    <div class="steps-strip">
+      <span class="stp" onclick="nav('overview')">Overview</span>
       <span class="stp k-book" onclick="nav('discover')">1 &middot; Discover</span>
       <span class="stp k-pod" onclick="nav('discover')">1 &middot; Discover</span>
       <span class="stp k-book" onclick="nav('chapters')">2 &middot; Script</span>
@@ -1383,14 +1469,14 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
             <option>Single file with chapter marks</option></select></div>
           <div class="f"><label>Filename</label><input class="box mono" value="{nn}-{chapter}"></div>
           <div class="f"><label>Folder</label><div class="kr"><input class="box mono" value="E:\Books\Stillwater"><button class="btn s" onclick="toast('File picker')">…</button></div></div></div></div>
-      <div class="card"><div class="sh"><h4>Metadata</h4></div>
-        <div class="kb k2"><div class="f"><label>Title</label><input class="box" value="Stillwater"></div>
-          <div class="f"><label>Author</label><input class="box" value="D. Lebash"></div>
+      <div class="card"><div class="sh"><h4>Metadata</h4><span class="sub"><span class="lnk" onclick="nav('overview')">Title and author are set on Overview</span></span></div>
+        <div class="kb k2"><div class="f"><label>Title</label><div class="kr"><b class="proj-name">Stillwater</b></div></div>
+          <div class="f"><label>Author</label><div class="kr">D. Lebash</div></div>
           <div class="f"><label>Narrator credit</label><input class="box" value="Synthetic — JustVoice"></div>
           <div class="f"><label>Cover</label><div class="kr"><input class="box mono" value="cover.jpg"><button class="btn s" onclick="toast('File picker')">…</button></div></div></div></div>
     </div>
     <div style="display:flex;flex-direction:column;gap:12px">
-      <div class="card"><div class="sh"><h4>ACX check</h4></div>
+      <div class="card"><div class="sh"><h4>ACX check</h4><span class="sub"><span class="lnk" onclick="nav('overview')">Mastering target: ACX</span></span></div>
         <table><tbody>
           <tr><td>RMS</td><td class="n">−20.4 dB</td><td><span class="tag ok">−23…−18</span></td></tr>
           <tr><td>Peak</td><td class="n">−3.8 dB</td><td><span class="tag ok">≤ −3</span></td></tr>
@@ -1853,7 +1939,7 @@ tbody tr[onclick]:hover{background:var(--surface-2)}
   </div>
 </div>
 <div class="route" id="r-scene">
-<div class="top"><span class="crumb"><span class="lnk" onclick="nav('chapters')">Stillwater</span>
+<div class="top"><span class="crumb"><span class="lnk proj-name" onclick="nav('overview')">Stillwater</span>
       › <span class="lnk" onclick="nav('render')">Ch. 1 · The Ninth Door</span> › <b>Scene</b></span>
     <span class="pill">38 of 214 lines</span><span class="pill">a flashback</span></div>
   <div class="body">
@@ -2260,7 +2346,8 @@ function nav(route) {
   document.querySelectorAll('.route').forEach(function (r) { r.classList.remove('on'); });
   el.classList.add('on');
   document.querySelectorAll('.rail i').forEach(function (i) {
-    i.classList.toggle('on', i.dataset.r === route);
+    // A rail item lights for every route it owns; Studio owns all its steps.
+    i.classList.toggle('on', (i.dataset.r || '').split(' ').indexOf(route) !== -1);
   });
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
@@ -2269,20 +2356,10 @@ function openProject(kind, name) {
   document.body.setAttribute('data-kind', kind);
   document.querySelectorAll('.proj-name').forEach(function (n) { n.textContent = name; });
   document.querySelectorAll('.proj-kind').forEach(function (n) { n.innerHTML = KIND[kind]; });
-  nav(kind === 'game' ? 'lines' : 'chapters');
-}
-
-function setStudio(model) {
-  document.body.setAttribute('data-studio', model);
-  document.getElementById('mCont').setAttribute('aria-pressed', String(model === 'container'));
-  document.getElementById('mFlat').setAttribute('aria-pressed', String(model === 'flat'));
-  document.getElementById('modeHint').textContent = model === 'container'
-    ? 'Studio holds the five steps; the chapter list lives inside its Script step.'
-    : 'No Studio. Discover, Chapters, Cast, Render and Export are each their own destination.';
+  nav('overview');
 }
 
 document.body.setAttribute('data-kind', 'audiobook');
-setStudio('container');
 // The estimate is computed from the boxes that start ticked, never hardcoded.
 document.querySelectorAll('.route').forEach(function (r) {
   if (r.querySelector('.ck')) recalcAnalyze(r.querySelector('.ck'));

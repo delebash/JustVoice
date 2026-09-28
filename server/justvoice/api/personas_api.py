@@ -148,6 +148,7 @@ async def create_persona(body: CreatePersonaRequest) -> Persona:
         avatar_path=body.avatar_path,
         personality=body.personality,
         effects_chain=body.effects_chain,
+        aliases=body.aliases,
     )
 
 
@@ -175,6 +176,7 @@ async def update_persona(id: str, body: CreatePersonaRequest) -> Persona:
         avatar_path=body.avatar_path,
         personality=body.personality,
         effects_chain=body.effects_chain,
+        aliases=body.aliases,
     )
     if not p:
         raise not_found(f"persona {id}")

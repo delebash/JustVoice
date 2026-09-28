@@ -117,6 +117,11 @@ class Persona(Base):
     # The character sheet — prose about who this character is. Read by the
     # LLM features and the export sidecar, never by an engine.
     personality = Column(Text, nullable=True)  # max 2000 chars at the API layer
+    # Other names the prose uses for them — "Ode" for Odeline Marran (JSON
+    # list). Read by Discover (a nickname is not a new person) and by
+    # attribution's anchors and prompt (extraction/anchors.py, prompts.py).
+    # Added 2026-09-27 with no migration: a dev DB needs a reset.
+    aliases = Column(Text, nullable=True)
     # Tier-2 delivery overlay (JSON-serialized Delivery shape).
     default_delivery = Column(Text, nullable=True)
     # Pedalboard effects chain (JSON array of {type, params}). Cascade order:
@@ -192,6 +197,11 @@ class Project(Base):
     mastering_preset = Column(String, nullable=True)
     imported_from = Column(String, nullable=True)
     imported_id = Column(String, nullable=True)
+    # Names Discover was told to ignore for this project (JSON list), so a
+    # re-scan does not propose them again. Its own column, not
+    # metadata_json: PATCH replaces metadata wholesale and would drop it.
+    # Added 2026-09-27 with no migration: a dev DB needs a reset.
+    discover_ignored = Column(Text, nullable=True)
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 

@@ -22,6 +22,7 @@ import { useApi } from "../stores/api.js";
 import { useAiTasksStore } from "@delebash/llm-ui";
 import { useOnboarding } from "../stores/onboarding.js";
 import { useActiveProject } from "../stores/activeProject.js";
+import { openProjectInStudio } from "../services/openProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { usePersonasStore } from "../stores/personas.js";
 import { useVoicesStore } from "../stores/voices.js";
@@ -148,10 +149,10 @@ const continueProject = computed(() => {
 });
 
 const KIND_META = {
-  audiobook:       { icon: "📖", label: "audiobook", unit: "chapters", home: "#chapter" },
-  game_voicelines: { icon: "🎮", label: "game",      unit: "quests",   home: "#lines" },
-  podcast:         { icon: "🎙️", label: "podcast",   unit: "episodes", home: "#chapter" },
-  custom:          { icon: "📄", label: "text",      unit: "sections", home: "#chapter" },
+  audiobook:       { icon: "📖", label: "audiobook", unit: "chapters" },
+  game_voicelines: { icon: "🎮", label: "game",      unit: "quests" },
+  podcast:         { icon: "🎙️", label: "podcast",   unit: "episodes" },
+  custom:          { icon: "📄", label: "text",      unit: "sections" },
 };
 const continueMeta = computed(() => KIND_META[continueProject.value?.project_type] || KIND_META.custom);
 
@@ -210,8 +211,8 @@ const miniSteps = computed(() => {
 function resumeProject() {
   const p = continueProject.value;
   if (!p) return;
-  activeProject.open(p);
-  window.location.hash = continueMeta.value.home;
+  // Opening a project always lands on its Studio Overview (2026-09-27).
+  openProjectInStudio(activeProject, p);
 }
 
 // ── Start something (kind pills → Projects create flow) ──────────────

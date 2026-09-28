@@ -602,6 +602,8 @@ class Persona(BaseModel):
     # It never reaches an engine — that is `voice_instruct`'s job alone
     # (the 2026-08-15 split; one field serving both was the bug).
     personality: str | None = None
+    # Other names the prose uses for them ("Ode" for Odeline Marran).
+    aliases: list[str] = []
     # Tier-2 delivery overlay defaults (3-tier voice tuning per task #88):
     #   render_preset (Tier 3) > persona.default_delivery (Tier 2) > engine (Tier 1).
     # JSON dict matching the Delivery shape (speed / pitch / gain_db / etc).
@@ -639,6 +641,9 @@ class CreatePersonaRequest(BaseModel):
     avatar_path: str | None = None
     voice_instruct: str | None = None
     personality: str | None = None
+    # None = leave the stored aliases alone. PUT sends this whole model, and
+    # every caller that predates aliases would otherwise wipe them.
+    aliases: list[str] | None = None
     default_delivery: dict[str, Any] = {}
     effects_chain: list[dict[str, Any]] = []
     lexicon_id: str | None = None

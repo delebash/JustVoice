@@ -160,10 +160,22 @@ def _resolve_cast(scene_id: str, db: Session) -> list[dict]:
             "role": None,
             "gender": None,  # Persona schema doesn't carry these fields
             "pronouns": None,  # today; Phase 4 / Slice 4 (Smart-assign)
-            "aliases": [],   # adds them.
+            # Persona aliases (2026-09-27) — anchors.py and the attribution
+            # prompt always read this key; until now it was always empty.
+            "aliases": _persona_aliases(p),
+            # One line of the character sheet — Discover's known list (fix 2).
+            "description": p.personality,
         }
         for p in rows
     ]
+
+
+def _persona_aliases(p) -> list[str]:
+    try:
+        out = json.loads(p.aliases) if getattr(p, "aliases", None) else []
+    except (TypeError, ValueError):
+        return []
+    return [str(a) for a in out if str(a).strip()] if isinstance(out, list) else []
 
 
 # ── Persistence — the analysis IS the chapter's blocks ───────────────────
@@ -862,17 +874,63 @@ def _count_project_corrections(db: Session, project_id: str) -> int:
 
     return db.query(SpeakerCorrection).filter(SpeakerCorrection.project_id == project_id).count()
 
-# ── Speaker identification — discovered-speakers banner (CONCEPTS §3) ──
+# ── Speaker identification — Studio's Discover step (CONCEPTS §3) ──
+#
+# A chapter's scan is SAVED on the chapter (decided 2026-09-27, "both"): the
+# scene's `metadata.discover = {scanned_at, candidates}`. It is what lets the
+# Discover step survive a restart and what gives Overview and Discover real
+# "scanned / last scanned" data. Nothing becomes a persona until promote; a
+# promoted or ignored name is pruned from every chapter's saved list, so the
+# list only ever holds names still waiting on a decision.
+
+
+def _discover_names(names) -> set[str]:
+    return {(n or "").strip().lower() for n in names if (n or "").strip()}
+
+
+def prune_discovered(db: Session, project_id: str, names) -> int:
+    """Drop `names` (case-insensitive) from every chapter's saved scan in the
+    project. Returns how many entries were removed. Caller commits."""
+    drop = _discover_names(names)
+    if not drop:
+        return 0
+    removed = 0
+    for sc in db.query(Scene).filter(Scene.project_id == project_id).all():
+        meta = _scene_meta(sc)
+        saved = meta.get("discover")
+        if not isinstance(saved, dict) or not saved.get("candidates"):
+            continue
+        keep = [c for c in saved["candidates"] if (c.get("name") or "").strip().lower() not in drop]
+        if len(keep) != len(saved["candidates"]):
+            removed += len(saved["candidates"]) - len(keep)
+            saved["candidates"] = keep
+            meta["discover"] = saved
+            sc.metadata_json = json.dumps(meta)
+    return removed
 
 
 class DiscoverSpeakersRequest(BaseModel):
     text: str
 
 
+class LibraryMatch(BaseModel):
+    persona_id: str
+    name: str
+
+
 class SpeakerCandidateOut(BaseModel):
     name: str
     role_hint: str | None = None
     approx_lines: int | None = None
+    # The quote that names them (Discover's "First appearance").
+    evidence: str | None = None
+    # Is that quote really in the chapter? False = the model made it up, which
+    # is the tell of a made-up name (fix 3). None = no quote given.
+    evidence_found: bool | None = None
+    # A persona already in the library (not in this cast) this name refers
+    # to — "Brick" → Brick Halvorn. Add re-links it instead of making a
+    # duplicate (fix A).
+    library_match: LibraryMatch | None = None
 
 
 class DiscoverSpeakersResponse(BaseModel):
@@ -892,34 +950,140 @@ async def discover_speakers_endpoint(
     body: DiscoverSpeakersRequest,
     db: Session = Depends(get_db),
 ) -> DiscoverSpeakersResponse:
-    """Identification, not attribution: proposes NEW speakers as a review
-    list for the Script tab banner. Nothing is created here — promotion
-    is POST /v1/projects/{id}/personas/promote."""
+    """Identification, not attribution: proposes NEW speakers for Studio's
+    Discover step. No persona is created here — promotion is
+    POST /v1/projects/{id}/personas/promote. The scan itself IS saved, on the
+    chapter (`metadata.discover`), replacing that chapter's previous scan."""
+    from datetime import datetime, timezone
+
     from ..extraction.identify import identify_speakers
+
+    from ..database.models import Project
+    from ..extraction import names
 
     scene = db.query(Scene).filter(Scene.id == scene_id).first()
     if scene is None:
         raise not_found(f"scene {scene_id}")
-    known = [c.get("name", "") for c in _resolve_cast(scene_id, db)]
+    cast = _resolve_cast(scene_id, db)
     settings = get_state().settings.get()
     try:
         raw_out: dict = {}
-        candidates = identify_speakers(body.text, known, settings=settings, raw_out=raw_out)
+        candidates = identify_speakers(body.text, cast, settings=settings, raw_out=raw_out)
     except LLMNotConfiguredError as e:
         raise HTTPException(status_code=501, detail=str(e))
     except Exception as e:
         log.exception("speaker identification failed")
         raise HTTPException(status_code=502, detail=f"identification failed: {e}")
-    return DiscoverSpeakersResponse(
-        scene_id=scene_id,
-        candidates=[
-            SpeakerCandidateOut(
-                name=c.name, role_hint=c.role_hint, approx_lines=c.approx_lines
-            )
-            for c in candidates
-        ],
-        usage=raw_out.get("usage"),
-    )
+    project = db.query(Project).filter(Project.id == scene.project_id).first()
+    ignored = {names.norm(n) for n in project_ignored(project)}
+    cast_ids = {c["id"] for c in cast}
+    library = [
+        {"id": p.id, "name": p.name, "aliases": _persona_aliases(p)}
+        for p in db.query(Persona).all() if p.id not in cast_ids
+    ]
+    out = []
+    for c in candidates:
+        # Already cast under a name the model could not connect — a first or
+        # last name alone ("Cael" for Cael Ferren). Not a proposal.
+        if names.match(c.name, cast) is not None:
+            continue
+        if names.norm(c.name) in ignored:
+            continue
+        lib = names.match(c.name, library)
+        out.append(SpeakerCandidateOut(
+            name=c.name, role_hint=c.role_hint, approx_lines=c.approx_lines,
+            evidence=c.evidence,
+            evidence_found=names.quote_in_text(c.evidence, body.text) if c.evidence else None,
+            library_match=LibraryMatch(persona_id=lib["id"], name=lib["name"]) if lib else None,
+        ))
+    meta = _scene_meta(scene)
+    meta["discover"] = {
+        "scanned_at": datetime.now(timezone.utc).isoformat(),
+        "candidates": [c.model_dump() for c in out],
+    }
+    scene.metadata_json = json.dumps(meta)
+    db.commit()
+    return DiscoverSpeakersResponse(scene_id=scene_id, candidates=out, usage=raw_out.get("usage"))
+
+
+class IgnoreDiscoveredRequest(BaseModel):
+    names: list[str]
+
+
+class IgnoreDiscoveredResponse(BaseModel):
+    removed: int
+    # The project's whole ignore list after the change.
+    ignored: list[str]
+
+
+def project_ignored(project) -> list[str]:
+    """The names Discover was told to ignore in this project."""
+    raw = getattr(project, "discover_ignored", None) if project is not None else None
+    try:
+        out = json.loads(raw) if raw else []
+    except (TypeError, ValueError):
+        return []
+    return [str(n) for n in out if str(n).strip()] if isinstance(out, list) else []
+
+
+def _set_ignored(project, names_: list[str]) -> None:
+    project.discover_ignored = json.dumps(names_) if names_ else None
+
+
+@router.post(
+    "/v1/projects/{project_id}/discover/ignore",
+    response_model=IgnoreDiscoveredResponse,
+    summary="Drop names from the project's saved Discover results",
+)
+async def ignore_discovered_endpoint(
+    project_id: str,
+    body: IgnoreDiscoveredRequest,
+    db: Session = Depends(get_db),
+) -> IgnoreDiscoveredResponse:
+    """Discover's Ignore: the name leaves every chapter's saved scan AND is
+    remembered for the project, so a re-scan does not propose it again
+    (fix 4). /discover/unignore takes it back off the list."""
+    from ..database.models import Project
+    from ..extraction.names import norm
+
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if project is None:
+        raise not_found(f"project {project_id}")
+    current = project_ignored(project)
+    have = {norm(n) for n in current}
+    for n in body.names:
+        if n.strip() and norm(n) not in have:
+            current.append(n.strip())
+            have.add(norm(n))
+    _set_ignored(project, current)
+    removed = prune_discovered(db, project_id, body.names)
+    db.commit()
+    return IgnoreDiscoveredResponse(removed=removed, ignored=current)
+
+
+@router.post(
+    "/v1/projects/{project_id}/discover/unignore",
+    response_model=IgnoreDiscoveredResponse,
+    summary="Let Discover propose these names again",
+)
+async def unignore_discovered_endpoint(
+    project_id: str,
+    body: IgnoreDiscoveredRequest,
+    db: Session = Depends(get_db),
+) -> IgnoreDiscoveredResponse:
+    """Takes names off the project's ignore list. Nothing comes back by itself —
+    the next scan of a chapter that names them proposes them again."""
+    from ..database.models import Project
+    from ..extraction.names import norm
+
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if project is None:
+        raise not_found(f"project {project_id}")
+    drop = {norm(n) for n in body.names}
+    current = [n for n in project_ignored(project) if norm(n) not in drop]
+    _set_ignored(project, current)
+    db.commit()
+    return IgnoreDiscoveredResponse(removed=0, ignored=current)
 
 
 class DiscoverTextRequest(BaseModel):
@@ -989,7 +1153,8 @@ async def discover_text_endpoint(body: DiscoverTextRequest) -> DiscoverSpeakersR
         scene_id="(adhoc)",
         candidates=[
             SpeakerCandidateOut(
-                name=c.name, role_hint=c.role_hint, approx_lines=c.approx_lines
+                name=c.name, role_hint=c.role_hint, approx_lines=c.approx_lines,
+                evidence=c.evidence,
             )
             for c in candidates
         ],
@@ -1001,6 +1166,40 @@ class PromoteCandidate(BaseModel):
     name: str
     # The discovery pass's role hint ("Mara's neighbour") — sheet material.
     personality: str | None = None
+    # An existing library persona this name refers to (Discover's library
+    # match). Given → that persona joins the cast and, if the text called them
+    # something new, learns it as an alias; no new persona is made.
+    persona_id: str | None = None
+    # Other spellings the scan found for the same person ("Sedge" beside
+    # "Old Sedge") — kept as aliases on the new or re-linked persona.
+    aliases: list[str] = []
+
+
+def _link_library_persona(db: Session, project_id: str, persona_id: str, found_as: list[str]) -> str:
+    """Put an existing persona in this project's cast, and remember the name the
+    text used for them as an alias when it is new ("Brick" on Brick Halvorn) —
+    Discover fixes A + 1. The same name is then known to every later scan and
+    to Analyze's anchors."""
+    from ..extraction.names import norm
+    from ..storage.personas import clean_aliases
+
+    persona = db.query(Persona).filter(Persona.id == persona_id).first()
+    if persona is None:
+        raise not_found(f"persona {persona_id}")
+    link = (
+        db.query(ProjectPersona)
+        .filter(ProjectPersona.project_id == project_id, ProjectPersona.persona_id == persona_id)
+        .first()
+    )
+    if link is None:
+        db.add(ProjectPersona(project_id=project_id, persona_id=persona_id))
+    aliases = _persona_aliases(persona)
+    known = {norm(persona.name), *(norm(a) for a in aliases)}
+    new = [n.strip() for n in found_as if n and n.strip() and norm(n) not in known]
+    if new:
+        kept = clean_aliases([*aliases, *new], persona.name)
+        persona.aliases = json.dumps(kept) if kept else None
+    return persona_id
 
 
 class PromoteSpeakersRequest(BaseModel):
@@ -1030,6 +1229,10 @@ async def promote_speakers_endpoint(
     created: list[str] = []
     reused: list[str] = []
     for cand in body.candidates:
+        if cand.persona_id:
+            pid = _link_library_persona(db, project_id, cand.persona_id, [cand.name, *cand.aliases])
+            reused.append(pid)
+            continue
         slug = re.sub(r"[^a-z0-9]+", "_", cand.name.lower()).strip("_") or "speaker"
         pid, was_created = ensure_project_persona(
             db,
@@ -1038,7 +1241,10 @@ async def promote_speakers_endpoint(
             personality=cand.personality,
             imported_from="discovered",
             imported_id=slug,
+            aliases=cand.aliases,
         )
         (created if was_created else reused).append(pid)
+    # A promoted name is in the cast now — it is no longer a proposal.
+    prune_discovered(db, project_id, [n for c in body.candidates for n in (c.name, *c.aliases)])
     db.commit()
     return PromoteSpeakersResponse(created=created, reused=reused)

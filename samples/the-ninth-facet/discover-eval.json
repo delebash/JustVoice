@@ -1,0 +1,6 @@
+{
+  "about": "The Discover prompt test for The Ninth Facet (server/scripts/eval_discover.py). These characters are taken OUT of the cast, so Discover should find each one in every chapter that names them; the rest stay cast and must never be proposed, under any name. 'not_characters' are named things the book lists as objects — proposing one is a false positive. 'real_extras' are genuine minor people the book's character list does not have — proposing them is correct.",
+  "remove_from_cast": ["Nettle", "Brick Halvorn", "Haldane Threll", "Iven Sarraz"],
+  "not_characters": ["Gudgeon", "The resonance fork", "The Keystone", "Commission-token"],
+  "real_extras": ["Sedge", "Old Sedge"]
+}

@@ -1,31 +1,31 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!--
-  ProjectsView — multi-use Project list (audiobooks + game-voicelines + podcasts +
+  ProjectsView — the list of projects (audiobooks + game-voicelines + podcasts +
   custom). Project is the use-case-generalized entity per DESIGN_FREEZE §4.4.
   Audiobook = chapters + paragraphs; game = dialogue trees + NPC lines;
   podcast = episodes + segments. Same data model, different export pipeline.
 
-  Detail pane: editable header
-  fields (Title/Author/Mastering/Render-preset/Cast/Status/Webhook), action
-  row (Render all / Export M4B / QC report / Export ZIP / Delete), chapters
-  subtable with bulk-action bar, per-row Open / ▶ / ↻ / ⚙ buttons.
+  A plain list (2026-09-27). Studio is the project's home and opening a project
+  always lands on its Overview, which now holds everything the old detail pane
+  did — title, author, description, mastering target, re-import, export,
+  delete. The pane's cast pills are gone because Cast is the one cast editor;
+  its Render-preset and Webhook fields are gone because presets die and no
+  webhook ever read that field.
 -->
 <script setup>
-import { computed, onActivated, onMounted, ref, watch } from "vue";
-import { UiButton, UiInput, UiCheckbox, UiTag, UiChip, UiSelect, AppModal, UiTable } from "@delebash/llm-ui";
+import { computed, onActivated, onMounted, ref } from "vue";
+import { UiButton, UiInput, UiChip } from "@delebash/llm-ui";
 import { EmptyState } from "@delebash/llm-ui";
-import { usePageCrumbs } from "../composables/usePageCrumbs.js";
 import ImportModal from "./ImportModal.vue";
 import NewProjectModal from "../components/NewProjectModal.vue";
 import { projectsService } from "../services/projects.js";
+import { openProjectInStudio } from "../services/openProject.js";
 import { useApi } from "../stores/api.js";
-import { pushToast, saveBlob } from "@delebash/llm-ui";
-import { confirmDialog } from "@delebash/llm-ui";
+import { pushToast } from "@delebash/llm-ui";
 import { useCopy } from "../services/copy.js";
 import { useActiveProject } from "../stores/activeProject.js";
 import { useOnboarding } from "../stores/onboarding.js";
 import { useProjectsStore } from "../stores/projects.js";
-import { usePersonasStore } from "../stores/personas.js";
 
 const api = useApi();
 const activeProject = useActiveProject();
@@ -33,63 +33,17 @@ const onboarding = useOnboarding();
 
 const copy = useCopy();
 
-// The chapter list inside an expanded project row. It keeps its own flat look
-// (no card chrome, tighter padding), so it does NOT wear `jv-table-look`.
-const SCENE_LIST_COLUMNS = computed(() => [
-  { id: "gutter", header: "", headerStyle: { width: "24px" } },
-  { id: "position", accessorKey: "position", header: "#", sortable: true, headerStyle: { width: "36px" } },
-  { id: "title", accessorKey: "title", header: "Title", sortable: true },
-  { id: "block_count", accessorKey: "block_count", header: "Blocks", sortable: true, headerStyle: { width: "60px" } },
-  { id: "duration", header: "Duration", headerStyle: { width: "80px" } },
-  { id: "status", header: "Status", headerStyle: { width: "160px" } },
-  { id: "actions", header: "Actions", headerStyle: { width: "180px", textAlign: "right" } },
-]);
-
-// Projects + personas come from shared stores (single source of truth).
-// No private copy, no snapshot — the store IS the cache, and every
-// mutation here calls store.reload() so other views (Chapters, Studio)
-// reflect the change immediately.
+// Projects come from the shared store (single source of truth). Every
+// mutation here calls store.reload() so other views reflect it immediately.
 const projectsStore = useProjectsStore();
-const personasStore = usePersonasStore();
 const projects = computed(() => projectsStore.items);
-const allPersonas = computed(() => personasStore.items);
 
-const selectedId = ref(null);
 const search = ref("");
 const projectTypeFilter = ref("all");
 const loading = computed(() => !projectsStore.loaded);
 const showImport = ref(false);
 const showNewProject = ref(false);
 const newProjectKind = ref("");
-
-const scenes = ref([]);
-const scenesLoading = ref(false);
-const cast = ref([]);
-const selectedSceneIds = ref(new Set());
-
-// Add-personas-to-project modal state.
-const addCastOpen = ref(false);
-const addCastSelection = ref(new Set());
-const addCastBusy = ref(false);
-
-// In-flight edits to the project's metadata_json (Author / Render preset /
-// Webhook). PATCH /v1/projects/{id} commits them on blur.
-const editAuthor = ref("");
-const editRenderPreset = ref("");
-const editWebhookUrl = ref("");
-
-// Auto-save feedback for the inline detail-pane edits. patchProject()
-// calls flashSaved() after a successful PATCH; the "Saved ✓" pill in the
-// header shows for ~1.5s. (These were referenced by the template + the
-// patch helper but never defined — every successful edit fell into the
-// catch and toasted a false "Save failed".)
-const savedFlash = ref(false);
-let _savedFlashTimer = null;
-function flashSaved() {
-  savedFlash.value = true;
-  clearTimeout(_savedFlashTimer);
-  _savedFlashTimer = setTimeout(() => { savedFlash.value = false; }, 1500);
-}
 
 const filtered = computed(() => {
   let list = projects.value;
@@ -102,29 +56,6 @@ const filtered = computed(() => {
   }
   return list;
 });
-
-const selectedProject = computed(() =>
-  projects.value.find((p) => p.id === selectedId.value),
-);
-
-const projectMeta = computed(() => {
-  const p = selectedProject.value;
-  if (!p) return {};
-  // metadata_json can ship as either an already-parsed dict (most endpoints
-  // return it parsed) or as a JSON string on older clients — guard both.
-  if (typeof p.metadata === "object" && p.metadata) return p.metadata;
-  if (typeof p.metadata_json === "string") {
-    try { return JSON.parse(p.metadata_json); } catch { return {}; }
-  }
-  return p.metadata_json || {};
-});
-
-const renderedCount = computed(() =>
-  scenes.value.filter((s) => (s.block_count ?? 0) > 0).length,
-);
-const pendingCount = computed(() =>
-  scenes.value.filter((s) => (s.block_count ?? 0) === 0).length,
-);
 
 const PROJECT_TYPES = [
   { id: "all", label: "All" },
@@ -150,24 +81,8 @@ const PROJECT_TYPE_LABEL = {
   custom: "Custom",
 };
 
-const MASTERING_PRESETS = [
-  { id: "",         label: "None" },
-  { id: "acx",      label: "ACX (-20 LUFS / -3.5 dB peak)" },
-  { id: "inaudio",  label: "iAudio" },
-  { id: "podcast",  label: "Podcast" },
-  { id: "youtube",  label: "YouTube" },
-  { id: "custom",   label: "Custom" },
-];
-
-const RENDER_PRESETS = [
-  { id: "default",       label: "Default" },
-  { id: "quick_draft",   label: "Quick draft" },
-  { id: "final_ship",    label: "Final ship" },
-];
-
 // Refresh the shared projects store. Called after every mutation here
-// (create/import/update/delete) so all consumers — Chapters, Studio,
-// etc. — reflect the change. The sub-10ms server makes reload free.
+// (create/import) so all consumers — Chapters, Studio, etc. — reflect it.
 async function refresh() {
   try {
     await projectsStore.reload();
@@ -176,171 +91,16 @@ async function refresh() {
   }
 }
 
-async function loadDetail(projectId) {
-  if (!projectId) {
-    scenes.value = [];
-    cast.value = [];
-    selectedSceneIds.value = new Set();
-    return;
-  }
-  scenesLoading.value = true;
-  selectedSceneIds.value = new Set();
-  try {
-    // Personas come from the shared store; only scenes + cast are
-    // per-project sub-resources fetched here.
-    const [sceneRes, castRes] = await Promise.all([
-      projectsService.listScenes(projectId).catch(() => []),
-      projectsService.getCast(projectId).catch(() => ({ cast: [] })),
-    ]);
-    scenes.value = Array.isArray(sceneRes) ? sceneRes : (sceneRes?.scenes ?? []);
-    cast.value = castRes?.cast ?? [];
-  } catch (e) {
-    pushToast({ kind: "error", title: "Failed to load project detail", description: String(e?.message ?? e) });
-  } finally {
-    scenesLoading.value = false;
-  }
-}
-
-function openAddCast() {
-  // Pre-fill selection with anyone not already cast.
-  addCastSelection.value = new Set();
-  addCastOpen.value = true;
-}
-
-function toggleAddCast(personaId) {
-  if (addCastSelection.value.has(personaId)) {
-    addCastSelection.value.delete(personaId);
-  } else {
-    addCastSelection.value.add(personaId);
-  }
-  // Trigger reactivity on Set mutation.
-  addCastSelection.value = new Set(addCastSelection.value);
-}
-
-async function commitAddCast() {
-  const p = selectedProject.value;
-  if (!p) return;
-  if (!addCastSelection.value.size) {
-    addCastOpen.value = false;
-    return;
-  }
-  addCastBusy.value = true;
-  try {
-    for (const personaId of addCastSelection.value) {
-      await api.request(`/v1/projects/${p.id}/cast`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ persona_id: personaId }),
-      });
-    }
-    pushToast({ message: `Added ${addCastSelection.value.size} ${addCastSelection.value.size === 1 ? "persona" : "personas"} to the project.`, kind: "success" });
-    addCastSelection.value = new Set();
-    addCastOpen.value = false;
-    await loadDetail(p.id);
-  } catch (e) {
-    pushToast({ message: `Add failed: ${e?.message || e}`, kind: "error" });
-  } finally {
-    addCastBusy.value = false;
-  }
-}
-
-async function removeCast(personaId) {
-  const p = selectedProject.value;
-  if (!p) return;
-  try {
-    await api.request(`/v1/projects/${p.id}/cast/${personaId}`, { method: "DELETE" });
-    await loadDetail(p.id);
-  } catch (e) {
-    pushToast({ message: `Remove failed: ${e?.message || e}`, kind: "error" });
-  }
-}
-
-const personasAvailableForCast = computed(() => {
-  const castIds = new Set(cast.value.map((c) => c.persona_id));
-  return allPersonas.value.filter((p) => !castIds.has(p.id));
-});
-
-// Breadcrumb = [selected project], owned only while this view is active
-// (X-1: KeepAlive-cached views must not leak a stale crumb).
-const { publish: publishCrumbs } = usePageCrumbs(() => {
-  const p = selectedProject.value;
-  return p ? [{ label: p.name }] : [];
-});
-
-watch(selectedProject, (p) => {
-  if (!p) {
-    editAuthor.value = "";
-    editRenderPreset.value = "";
-    editWebhookUrl.value = "";
-    publishCrumbs();
-    return;
-  }
-  const meta = projectMeta.value;
-  editAuthor.value = meta.author ?? "";
-  editRenderPreset.value = meta.render_preset ?? "default";
-  editWebhookUrl.value = meta.webhook_url ?? "";
-  loadDetail(p.id);
-  publishCrumbs();
-}, { immediate: true });
-
-async function patchProject(body) {
-  const p = selectedProject.value;
-  if (!p) return;
-  try {
-    await projectsService.update(p.id, body);
-    await refresh();
-    flashSaved();
-  } catch (e) {
-    pushToast({ kind: "error", title: "Save failed", description: String(e?.message ?? e) });
-  }
-}
-
-function commitName(ev) {
-  const v = (ev.target.value || "").trim();
-  if (!v || v === selectedProject.value?.name) return;
-  patchProject({ name: v });
-}
-
-function commitMeta(field, value) {
-  const merged = { ...projectMeta.value, [field]: value };
-  patchProject({ metadata: merged });
-}
-
-function commitMastering(v) {
-  patchProject({ mastering_preset: v || null });
-}
-
-async function deleteProject() {
-  const p = selectedProject.value;
-  if (!p) return;
-  const ok = await confirmDialog({
-    title: "Delete project?",
-    message: `Delete "${p.name}"? This removes the project and all its scenes + blocks. Takes and generations are preserved (only the project metadata is removed).`,
-    danger: true,
-    confirmLabel: "Delete",
-  });
-  if (!ok) return;
-  try {
-    await projectsService.remove(p.id);
-    selectedId.value = null;
-    await refresh();
-    pushToast({ kind: "success", title: "Project deleted" });
-  } catch (e) {
-    pushToast({ kind: "error", title: "Delete failed", description: String(e?.message ?? e) });
-  }
-}
-
-const KIND_HOME_HASH = { audiobook: "#chapter", game_voicelines: "#lines", podcast: "#chapter", custom: "#chapter" };
 const KIND_TO_FOCUS = { audiobook: "audiobook", game_voicelines: "game", podcast: "podcast", custom: "multiple" };
-function landInHomeBase(rec) {
+// A new project — created or imported — opens like any other: on its Overview.
+function landOnOverview(rec) {
   if (!rec) return;
   // The first project quietly sets the workspace focus — no quiz
   // (user decision 2026-06-12). Changeable any time in Settings.
   if (onboarding.primaryUseCase === "unset") {
     onboarding.set({ primary: KIND_TO_FOCUS[rec.project_type] || "multiple" }).catch(() => {});
   }
-  activeProject.open(rec);
-  window.location.hash = KIND_HOME_HASH[rec.project_type] || "#chapter";
+  openProjectInStudio(activeProject, rec);
 }
 
 // "Not making projects?" path from the kind picker — dictation /
@@ -354,50 +114,8 @@ async function onFocusOnly(focusId) {
 async function onImportCreated({ project_id }) {
   pushToast({ kind: "success", title: "Project imported" });
   await refresh();
-  if (project_id) selectedId.value = project_id;
   showImport.value = false;
-  landInHomeBase(projects.value.find((p) => p.id === project_id));
-}
-
-async function exportProject(projectId) {
-  try {
-    const blob = await projectsService.exportZip(projectId);
-    // The kit's one save door (2026-08-15) — was one of five inline copies here.
-    await saveBlob(blob, `${(selectedProject.value?.name ?? "project").replace(/\W+/g, "-")}.zip`,
-      { title: "Save project", filterName: "JustVoice project", filterExt: "zip" });
-    pushToast({ kind: "success", title: "Project exported" });
-  } catch (e) {
-    pushToast({ kind: "error", title: "Export failed", description: String(e?.message ?? e) });
-  }
-}
-
-// Mock's Open ➜ — make it the active project and land in its kind's
-// home base (Chapters / Lines / Episodes).
-const KIND_HOME = { audiobook: "#chapter", game_voicelines: "#lines", podcast: "#chapter", custom: "#chapter" };
-function openProjectHome(p) {
-  activeProject.open(p);
-  window.location.hash = KIND_HOME[p.project_type] || "#chapter";
-}
-
-// Detail-pane primary CTA — open the selected project in Studio
-// (Script → Cast → Render → Export). (Was referenced by the template
-// but never defined, so the button threw on click.)
-function openInStudio() {
-  const p = selectedProject.value;
-  if (!p) return;
-  activeProject.open(p);
-  window.location.hash = "#studio";
-}
-
-// Chapters-subtable "Open" — land the clicked chapter in its kind's home
-// view (Chapter/Lines), pre-selecting THAT scene via a sessionStorage
-// hand-off that ChapterView consumes on mount.
-function openChapterInView(scene) {
-  const p = selectedProject.value;
-  if (!p) return;
-  try { window.sessionStorage?.setItem("jv.chapter.sceneId", scene.id); } catch { /* ignore */ }
-  activeProject.open(p);
-  window.location.hash = KIND_HOME[p.project_type] || "#chapter";
+  landOnOverview(projects.value.find((p) => p.id === project_id));
 }
 
 function createBlank() {
@@ -410,8 +128,7 @@ async function onCreateProject({ name, project_type }) {
     const created = await projectsService.create({ name, project_type, metadata: {} });
     showNewProject.value = false;
     await refresh();
-    selectedId.value = created.id;
-    landInHomeBase(projects.value.find((p) => p.id === created.id));
+    landOnOverview(projects.value.find((p) => p.id === created.id));
   } catch (e) {
     pushToast({ kind: "error", title: "Create failed", description: String(e?.message ?? e) });
   }
@@ -419,14 +136,13 @@ async function onCreateProject({ name, project_type }) {
 
 async function onCreateDemo(kind) {
   try {
-    const r = await api.request("/v1/projects/demo", {
+    await api.request("/v1/projects/demo", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ kind }),
     });
     showNewProject.value = false;
     await refresh();
-    selectedId.value = r.project_id;
     pushToast({ kind: "success", title: "Demo project loaded", description: "Explore freely — deleting it touches nothing else." });
   } catch (e) {
     pushToast({ kind: "error", title: "Demo failed", description: String(e?.message ?? e) });
@@ -438,19 +154,9 @@ function onCreateFromImport() {
   showImport.value = true;
 }
 
-
-function sceneStatusPill(scene) {
-  const blocks = scene.block_count ?? 0;
-  if (blocks === 0) return { label: "pending",    intent: "ghost" };
-  if (blocks > 0)  return { label: "rendered",   intent: "success" };
-  return                  { label: "—",          intent: "ghost" };
-}
-
 onMounted(() => {
-  // Warm the shared stores (idempotent). projects feeds the list;
-  // personas feeds the cast detail pane.
+  // Warm the shared store (idempotent).
   projectsStore.ensureLoaded();
-  personasStore.ensureLoaded();
 });
 
 // Home's Start-something pills (and Chapters' "1 Import") hand their ask over
@@ -471,17 +177,10 @@ onActivated(() => {
     }
   } catch { /* ignore */ }
 });
-
-// Browsing ≠ activating (user decision 2026-06-12): expanding a row to
-// peek at details must NOT re-tailor the whole app. Only Open ➜,
-// create, and import activate (landInHomeBase / openProjectHome).
 </script>
 
 <template>
   <div class="projects">
-    <!-- Mock grid (user-approved 2026-06-12): toolbar + flat table; a
-         row click expands its detail card inline (provider-row pattern);
-         Open ➜ is the ONLY activation. -->
     <div class="jv-lib-toolbar">
       <UiInput v-model="search" size="small" class="projects__search" placeholder="Search projects…" />
       <UiChip
@@ -500,7 +199,7 @@ onActivated(() => {
       v-else-if="filtered.length === 0 && !search && projectTypeFilter === 'all'"
       icon="Sparkle"
       :title="`No ${copy.book.plural.toLowerCase()} yet`"
-      :message="`Import from JustWrite, paste a manuscript chapter, or start blank. Studio walks you from script → cast → render.`"
+      :message="`Import from JustWrite, paste a manuscript chapter, or start blank. Studio walks you from discover → script → cast → render.`"
       action-label="+ Import…"
       compact
       @action="showImport = true"
@@ -515,170 +214,16 @@ onActivated(() => {
         <th>Kind</th>
         <th class="projects__num">Structure</th>
         <th class="projects__num">Last opened</th>
-        <th></th>
       </tr></thead>
       <tbody>
-        <template v-for="p in filtered" :key="p.id">
-          <tr class="projects__row" :class="{ 'projects__row--open': p.id === selectedId }" :title="p.id === selectedId ? 'Collapse details' : 'Expand details — settings, cast, chapters, export'" @click="selectedId = p.id === selectedId ? null : p.id">
-            <td><strong>{{ p.name }}</strong></td>
-            <td>{{ KIND_ICON[p.project_type] || "📄" }} {{ PROJECT_TYPE_LABEL[p.project_type] ?? p.project_type }}</td>
-            <td class="projects__num jv-muted">{{ p.scene_count }} {{ copy.chapter.plural.toLowerCase() }}</td>
-            <td class="projects__num jv-muted">{{ fmtAgo(p.updated_at) }}</td>
-            <td class="projects__row-actions">
-              <UiButton intent="ghost" size="small" label="Open ➜" :title="`Make it the active project — the sidebar reshapes to ${PROJECT_TYPE_LABEL[p.project_type] || 'this kind'}`" @click.stop="openProjectHome(p)" />
-            </td>
-          </tr>
-          <tr v-if="p.id === selectedId" class="projects__expand">
-            <td colspan="5" class="projects__expand-cell">
-              <div class="projects__detail">
-      <template v-if="selectedProject">
-        <div class="jv-card projects__detail-card">
-          <header class="projects__detail-header">
-            <h2 class="projects__detail-title">{{ selectedProject.name }}</h2>
-            <UiTag intent="secondary" :value="PROJECT_TYPE_LABEL[selectedProject.project_type] ?? selectedProject.project_type" />
-            <UiTag intent="ghost" v-if="selectedProject.imported_from">imported_from = {{ selectedProject.imported_from }}</UiTag>
-          </header>
-
-          <div class="projects__autosave jv-muted">
-            Changes save automatically
-            <UiTag intent="success" v-if="savedFlash">Saved ✓</UiTag>
-          </div>
-          <div class="projects__fields">
-            <label class="projects__field">
-              <span>Title</span>
-              <UiInput
-                width="name"
-                :model-value="selectedProject.name"
-                placeholder="Project title"
-                @change="commitName"
-              />
-            </label>
-
-            <label class="projects__field">
-              <span>Author</span>
-              <UiInput
-                width="name"
-                v-model="editAuthor"
-                placeholder="e.g., D. Nash"
-                @change="commitMeta('author', editAuthor)"
-              />
-            </label>
-
-            <label class="projects__field">
-              <span>Mastering target</span>
-              <UiSelect
-                width="name"
-                :model-value="selectedProject.mastering_preset ?? ''"
-                :options="MASTERING_PRESETS"
-                option-value="id"
-                @update:model-value="commitMastering"
-              />
-            </label>
-
-            <label class="projects__field">
-              <span>Render preset</span>
-              <UiSelect
-                width="name"
-                v-model="editRenderPreset"
-                :options="RENDER_PRESETS"
-                option-value="id"
-                @update:model-value="(v) => commitMeta('render_preset', v)"
-              />
-            </label>
-
-            <div class="projects__field projects__field--wide">
-              <span>Cast</span>
-              <div class="projects__cast-row">
-                <span v-if="!cast.length" class="jv-muted">No cast assigned yet.</span>
-                <UiTag
-                  v-for="c in cast"
-                  :key="c.persona_id"
-                  intent="ghost"
-                  class="projects__cast-pill"
-                >
-                  {{ c.persona_name || "(deleted persona)" }}
-                  <button
-                    type="button"
-                    class="projects__cast-pill-x"
-                    title="Remove from project"
-                    @click="removeCast(c.persona_id)"
-                  >✕</button>
-                </UiTag>
-                <UiButton
-                  intent="ghost"
-                  size="small"
-                  label="+ Add personas"
-                  :disabled="!personasAvailableForCast.length"
-                  :title="personasAvailableForCast.length ? 'Add personas from your global library' : 'Every persona is already in this project'"
-                  @click="openAddCast"
-                />
-              </div>
-            </div>
-
-            <div class="projects__field projects__field--wide">
-              <span>Status</span>
-              <div class="projects__status-row">
-                <UiTag intent="success">{{ renderedCount }} {{ copy.chapter.plural.toLowerCase() }} rendered</UiTag>
-                <UiTag intent="accent2"  v-if="pendingCount">{{ pendingCount }} pending</UiTag>
-                <UiTag intent="ghost"  v-if="selectedProject.mastering_preset">ACX QC: pending</UiTag>
-              </div>
-            </div>
-
-            <label class="projects__field projects__field--wide">
-              <span>Webhook on complete</span>
-              <UiInput
-                width="url"
-                v-model="editWebhookUrl"
-                placeholder="https://your-service.local/webhooks/render"
-                @change="commitMeta('webhook_url', editWebhookUrl)"
-              />
-            </label>
-          </div>
-
-          <div class="jv-divider" />
-
-          <!-- Render + export live on Studio (4 · Export) — Projects is
-               the library (user decision 2026-06-12). -->
-          <div class="projects__actions">
-            <UiButton intent="primary" label="Open in Studio ➜" title="Script → Cast → Render → Export" @click="openInStudio" />
-            <span class="projects__spacer" />
-            <UiButton intent="danger-outline" size="small" label="Delete project" @click="deleteProject" />
-          </div>
-
-          <div class="jv-divider" />
-
-          <h4 class="projects__chapters-h">{{ copy.chapter.plural }}</h4>
-
-          <div v-if="scenesLoading" class="jv-muted" style="padding: 8px 0">Loading chapters…</div>
-
-          <template v-else>
-            <UiTable class="projects__table" :data="scenes" :columns="SCENE_LIST_COLUMNS"
-              data-key="id"
-              :row-class="(row) => (selectedSceneIds.has(row.id) ? 'projects__table-row--selected' : '')">
-              <template #position="{ row }">{{ row.position }}</template>
-              <template #title="{ row }"><strong>{{ row.title ?? `Chapter ${row.position}` }}</strong></template>
-              <template #block_count="{ row }">{{ row.block_count ?? 0 }}</template>
-              <template #duration><span class="jv-muted">—</span></template>
-              <template #status="{ row }">
-                <UiTag :intent="sceneStatusPill(row).intent">{{ sceneStatusPill(row).label }}</UiTag>
-              </template>
-              <template #actions="{ row }">
-                <div class="projects__row-actions">
-                  <UiButton intent="ghost" size="small" label="Open" title="Open in Chapter view" @click="openChapterInView(row)" />
-                </div>
-              </template>
-              <template #empty>
-                No {{ copy.chapter.plural.toLowerCase() }} yet. Import from JustWrite or add one in Chapter view.
-              </template>
-            </UiTable>
-
-          </template>
-        </div>
-      </template>
-              </div>
-            </td>
-          </tr>
-        </template>
+        <tr v-for="p in filtered" :key="p.id" class="projects__row"
+          title="Open in Studio — its Overview holds the settings and where each step stands"
+          @click="openProjectInStudio(activeProject, p)">
+          <td><strong class="projects__name">{{ p.name }}</strong></td>
+          <td>{{ KIND_ICON[p.project_type] || "📄" }} {{ PROJECT_TYPE_LABEL[p.project_type] ?? p.project_type }}</td>
+          <td class="projects__num jv-muted">{{ p.scene_count }} {{ copy.chapter.plural.toLowerCase() }}</td>
+          <td class="projects__num jv-muted">{{ fmtAgo(p.updated_at) }}</td>
+        </tr>
       </tbody>
     </table>
 
@@ -693,253 +238,23 @@ onActivated(() => {
       @import="onCreateFromImport"
       @demo="onCreateDemo"
     />
-
-    <!-- Add-personas-to-project multi-select modal. -->
-    <AppModal
-      v-if="addCastOpen"
-      :eyebrow="`Project: ${selectedProject?.name}`"
-      title="Add personas to this project"
-      :max-width="'540px'"
-      dismissable
-      @close="addCastOpen = false"
-    >
-      <p v-if="!personasAvailableForCast.length" class="jv-muted">
-        Every persona is already in this project. Create more personas in the Personas tab.
-      </p>
-      <ul v-else style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px;">
-        <li
-          v-for="p in personasAvailableForCast"
-          :key="p.id"
-        >
-          <UiCheckbox
-            :model-value="addCastSelection.has(p.id)"
-            @change="toggleAddCast(p.id)"
-            style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer;"
-          >
-            <div style="flex: 1; min-width: 0;">
-              <strong>{{ p.name }}</strong>
-              <div class="jv-muted" style="font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                {{ p.personality || "(no character sheet)" }}
-              </div>
-            </div>
-          </UiCheckbox>
-        </li>
-      </ul>
-      <template #footer>
-        <span class="jv-muted" style="font-size: 12px;">{{ addCastSelection.size }} selected</span>
-        <span class="jv-spacer" />
-        <UiButton intent="secondary" label="Cancel" @click="addCastOpen = false" />
-        <UiButton
-          intent="primary"
-          :loading="addCastBusy"
-          :disabled="addCastBusy || !addCastSelection.size"
-          :label="`Add ${addCastSelection.size || ''} persona${addCastSelection.size === 1 ? '' : 's'}`"
-          @click="commitAddCast"
-        />
-      </template>
-    </AppModal>
   </div>
 </template>
 
 <style scoped>
-.projects__autosave { display: flex; align-items: center; gap: 8px; font-size: 11.5px; margin-bottom: 6px; min-height: 22px; }
-
 .projects {
   display: flex;
   flex-direction: column;
   gap: 0;
 }
-
-.projects__filter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 0 12px 12px;
-}
-
-.projects__item-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.projects__detail { min-width: 0; }
-
-.projects__detail-empty {
-  padding: 40px;
-  text-align: center;
-}
-
-.projects__detail-card {
-  max-width: var(--shell-page);
-}
-
-.projects__detail-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 14px;
-}
-.projects__detail-title {
-  margin: 0;
-  font-size: 22px;
-  letter-spacing: -0.01em;
-}
-
-.projects__fields {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px 24px;
-  margin: 8px 0 18px;
-}
-.projects__field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.projects__field > span {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  font-weight: 600;
-}
-.projects__field--wide {
-  grid-column: 1 / -1;
-}
-
-.projects__cast-row,
-.projects__status-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  min-height: 32px;
-}
-.projects__cast-pill { display: inline-flex; align-items: center; gap: 4px; }
-.projects__cast-pill-x {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  padding: 0 0 0 2px;
-  margin-left: 2px;
-  color: inherit;
-  cursor: pointer;
-  font-size: 10px;
-  line-height: 1;
-  opacity: 0.6;
-}
-.projects__cast-pill-x:hover { opacity: 1; color: var(--danger); }
-
-.projects__actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 4px 0;
-}
-.projects__spacer {
-  flex: 1;
-}
-
-.projects__chapters-h {
-  margin: 0 0 10px;
-  font-size: 14px;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--ink-2);
-}
-
-.projects__bulk-bar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 8px 12px;
-  margin-bottom: 8px;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  transition: border-color 0.15s ease;
-}
-.projects__bulk-bar--active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-.projects__bulk-sep,
-.projects__bulk-hint {
-  font-size: 12px;
-}
-.projects__bulk-count {
-  font-size: 12px;
-}
-
-/* This grid keeps its own flat look, so it overrides the kit's values rather
-   than wearing `jv-table-look`. Every selector reaches INTO the component:
-   scoped CSS stamps the scope id on the LAST compound selector, and a cell the
-   child renders never carries it (audit §19.1). The `.right` class is gone —
-   alignment rides on the columns. */
-.projects__table :deep(.ui-table) { font-size: 13px; }
-.projects__table :deep(.ui-table thead th) {
-  text-align: left;
-  font-weight: 600;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--ink-3);
-  padding: 8px 6px;
-  border-bottom: 1px solid var(--line);
-  background: transparent;
-}
-.projects__table :deep(.ui-table tbody td) {
-  padding: 8px 6px;
-  border-bottom: 1px solid var(--line-soft);
-  vertical-align: middle;
-}
-.projects__table :deep(.ui-table-row.projects__table-row--selected) td {
-  background: var(--accent-soft);
-}
-.projects__row-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 4px;
-}
-
-.projects__table-help {
-  font-size: 11.5px;
-  margin-top: 8px;
-}
-
 .projects__empty {
   padding: 32px;
   text-align: center;
 }
-
-.projects__qc { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
-.projects__qc-head { display: flex; align-items: center; gap: 10px; }
-.projects__qc-limits { font-size: 11.5px; }
-.projects__qc-bad { color: var(--danger, #a8442e); font-weight: 600; }
-.projects__notes {
-  margin: 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px;
-  background: var(--surface-2); font-size: 12.5px; line-height: 1.6;
-  white-space: pre-wrap; max-height: 360px; overflow-y: auto;
-}
-
-.projects__open {
-  appearance: none; border: 0; background: transparent;
-  color: var(--accent-ink); font: inherit; font-size: 11px; font-weight: 600;
-  cursor: pointer; margin-left: 8px; padding: 0;
-}
-.projects__open:hover { text-decoration: underline; }
-
 .projects__search { max-width: 260px; }
 .projects__grid { margin: 0; }
 .projects__num { text-align: right; }
 .projects__row { cursor: pointer; }
 .projects__row:hover td { background: var(--surface-2); }
-.projects__row--open td { background: var(--accent-soft); }
-.projects__row-actions { text-align: right; white-space: nowrap; }
-.projects__expand-cell { padding: 0 !important; background: var(--surface-2); }
-.projects__expand-cell .projects__detail { padding: 14px 16px; }
+.projects__name { color: var(--accent-ink); }
 </style>

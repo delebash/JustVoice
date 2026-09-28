@@ -19,12 +19,20 @@ import { useProjectsStore } from "../stores/projects.js";
 import { UiButton, UiInput, UiChip, UiTag, UiSelect, UiTable } from "@delebash/llm-ui";
 import ImportModal from "./ImportModal.vue";
 
+// Studio mounts this grid as a game project's step 1 (2026-09-27, decision
+// 4). There it passes the project it already has open: the grid follows it
+// and drops its own project picker, since Studio owns that choice.
+const props = defineProps({
+  projectId: { type: String, default: null },
+});
+
 const api = useApi();
 const activeProject = useActiveProject();
 const projectsStore = useProjectsStore();
 
 const projects = computed(() => projectsStore.items);
-const selectedProjectId = ref(null);
+const selectedProjectId = ref(props.projectId);
+const embedded = computed(() => !!props.projectId);
 const lines = ref([]);
 const counts = ref({ none: 0, rendered: 0, stale: 0 });
 const loading = ref(false);
@@ -213,11 +221,19 @@ function statusPill(s) {
   }[s] || { intent: "ghost", label: s };
 }
 
-onMounted(loadProjects);
+onMounted(() => (embedded.value ? loadLines() : loadProjects()));
+
+watch(() => props.projectId, (id) => {
+  if (!id || id === selectedProjectId.value) return;
+  selectedProjectId.value = id;
+  loadLines();
+});
 
 // Keep the app-wide active project (sidebar vocabulary, topbar chips,
-// Home resume card) in sync with this view's selection.
+// Home resume card) in sync with this view's selection. Embedded, Studio
+// already does that.
 watch(selectedProjectId, (id) => {
+  if (embedded.value) return;
   const p = projects.value.find((x) => x.id === id);
   if (p) activeProject.open(p);
 });
@@ -226,7 +242,7 @@ watch(selectedProjectId, (id) => {
 <template>
   <div class="lines">
     <div class="jv-lib-toolbar lines__toolbar">
-      <UiSelect v-model="selectedProjectId" class="lines__project" title="Game projects" placeholder="— no game projects —"
+      <UiSelect v-if="!embedded" v-model="selectedProjectId" class="lines__project" title="Game projects" placeholder="— no game projects —"
         :options="gameProjects" option-label="name" option-value="id" @update:model-value="loadLines" />
       <UiInput v-model="search" class="lines__search" placeholder="Search text, id, or character…" title="Filter the grid" />
       <div class="lines__chips">

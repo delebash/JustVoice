@@ -30,7 +30,7 @@
     "group": "The workspaces",
     "items": [
       { "slug": "projects",           "title": "Projects" },
-      { "slug": "studio",             "title": "Studio — Cast · Script · Render" },
+      { "slug": "studio",             "title": "Studio — Overview · Discover · Script · Cast · Render" },
       { "slug": "lines",              "title": "Lines (game projects)" },
       { "slug": "labs",               "title": "Labs" }
     ]

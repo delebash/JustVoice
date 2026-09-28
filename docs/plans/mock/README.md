@@ -35,7 +35,7 @@ second artifact appears instead of the first updating.
 
 | File | Role |
 |---|---|
-| `build_mock.py` | assembles everything into `workbench-mock.html`. **Run after any edit.** Owns `ROUTES` (a screen is unreachable until it is listed there), `steps()`, `inject_steps()`, `linkify()`, `RAIL`, `MODEBAR` and the page script |
+| `build_mock.py` | assembles everything into `workbench-mock.html`. **Run after any edit.** Owns `ROUTES` (a screen is unreachable until it is listed there), `steps()`, `inject_steps()`, `linkify()`, `RAIL` and the page script |
 | `_head.html` | `<title>` + the whole `<style>` block; tokens copied from `src/styles/tokens.css` |
 | `_s1`–`_s13.html` | the original screen stashes, addressed as `stash(n)` |
 | `_new_*.html` | the newer route screens — home, projects, chapters, lines, discover |

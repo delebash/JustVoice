@@ -43,6 +43,13 @@ DEFAULT_ENGINE_PRESETS: list[dict] = [
     # prose, extraction returns JSON — same knobs, different shape.
     {"id": "p_refine", "name": "Faithful edit", "provider_id": "local-llamacpp",
      "model": "", "temperature": 0.2, "position": 5},
+    # Structured extraction WITH reasoning — speaker attribution's two routes
+    # (2026-09-28, measured: docs/plans/2026-09-28-speaker-attribution-tuning.md).
+    # Reasoning took gemma-4-26b-a4b-qat from 928/940 to 937/940 lines right
+    # across two books and removed the one systematic miss, at ~1.7x the time.
+    # Its own preset so Discover and Smart-assign keep p_extract's speed.
+    {"id": "p_extract_reasoned", "name": "Reasoned extraction", "provider_id": "local-llamacpp",
+     "model": "", "temperature": 0.2, "think": True, "position": 6},
 ]
 
 # ── JV's model catalog: the family's measured daily driver, plus the 12B and
@@ -176,11 +183,10 @@ JV_CLASS_TUNE_IDENTITY: dict[str, dict] = {
 # routes ONCE at the FEATURE key — the pieces follow it through the
 # resolver's feature layer (action ref → feature ref → default).
 DEFAULT_FEATURE_PRESETS: dict[str, str] = {
-    # Speaker attribution — two routed cards, same preset (think-off like
-    # every preset; the Reasoned route + p_reason died in the tier-debris
-    # cleanup 2026-08-07).
-    "speaker_attribution.guided": "p_extract",
-    "speaker_attribution.direct": "p_extract",
+    # Speaker attribution — two routed cards, same preset: Reasoned extraction
+    # (think on, 2026-09-28 by measurement — see p_extract_reasoned above).
+    "speaker_attribution.guided": "p_extract_reasoned",
+    "speaker_attribution.direct": "p_extract_reasoned",
     # Find new speakers — its own runnable card, its own ref.
     "speaker_attribution.identify": "p_extract",
     "smart_assign": "p_extract",

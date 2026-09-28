@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import struct
 from types import SimpleNamespace
@@ -198,3 +199,20 @@ def test_export_m4b_with_stubbed_ffmpeg(client, monkeypatch):
     assert r.content == b"M4B!"
     assert r.headers["content-type"].startswith("audio/mp4")
     assert "Stillwater.m4b" in r.headers.get("content-disposition", "")
+
+
+def test_m4b_author_prefers_the_author_field():
+    """The Author field on Studio · Overview (metadata.author) is what the M4B
+    `artist` tag carries; a "by …" description is only the fallback."""
+    from justvoice.api.projects_api import m4b_author
+    from justvoice.database.models import Project
+
+    def proj(meta, desc=None):
+        return Project(name="B", project_type="audiobook",
+                       metadata_json=json.dumps(meta) if meta is not None else None,
+                       description=desc)
+
+    assert m4b_author(proj({"author": "D. Lebash"}, "by Someone Else")) == "D. Lebash"
+    assert m4b_author(proj({"author": "  "}, "by Old Way")) == "Old Way"
+    assert m4b_author(proj({}, "A novel")) is None
+    assert m4b_author(proj(None)) is None

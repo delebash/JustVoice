@@ -21,6 +21,7 @@ def ensure_project_persona(
     personality: str | None,
     imported_from: str,
     imported_id: str,
+    aliases: list[str] | None = None,
 ) -> tuple[str, bool]:
     """Create-or-reuse a persona by (imported_from, imported_id) and link
     it to the project. Returns (persona_id, created).
@@ -50,8 +51,14 @@ def ensure_project_persona(
     # material. `voice_instruct` stays empty on import: "female, age 34,
     # protagonist" is a casting hint, not a delivery instruction — the user
     # writes that one (2026-08-15 split).
+    import json
+
+    from ..storage.personas import clean_aliases
+
+    kept = clean_aliases(aliases, name)
     persona = Persona(
-        name=name, personality=personality, imported_from=imported_from, imported_id=imported_id
+        name=name, personality=personality, imported_from=imported_from, imported_id=imported_id,
+        aliases=json.dumps(kept) if kept else None,
     )
     db.add(persona)
     db.flush()

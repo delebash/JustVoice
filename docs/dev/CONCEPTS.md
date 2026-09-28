@@ -134,11 +134,12 @@ doesn't block this — the timeline reads rendered takes regardless of kind.
 Picking a kind at project creation sets:
 
 - **Sidebar vocabulary** (rule set above)
-- **Studio steps** — prose kinds (audiobook, podcast, custom): Script → Cast →
-  Render → Export, because Script's discover-and-promote is what FILLS the cast
-  (ruling 12, 2026-08-15); game: Cast → Render → Export, no Script step at all —
-  the writers' sheet already names the speaker of every line. (This line used to
-  put podcast with game; podcast is a prose kind and always had the Script step.)
+- **Studio steps** — every kind opens on an unnumbered **Overview** (ruled
+  2026-09-27). Prose kinds (audiobook, podcast, custom): Discover → Script →
+  Cast → Render → Export — Discover is what FILLS the cast, and Analyze can only
+  choose from personas that exist (redesign §8.5; supersedes ruling 12's
+  Script-first). Game: Lines → Cast → Render → Export — the writers' sheet
+  already names the speaker of every line, so there is nothing to discover.
 - **Mastering target** — ACX −20 LUFS mono / 48 kHz per-line mono /
   −16 LUFS stereo — same mastering engine, different preset
 - **Export surface** — M4B + chapter WAVs / per-line WAVs + manifest.json /

@@ -14,6 +14,7 @@ import { ref, computed, onActivated } from "vue";
 import { pushToast } from "@delebash/llm-ui";
 import { projectsService } from "../services/projects.js";
 import { useActiveProject } from "../stores/activeProject.js";
+import { openProjectInStudio } from "../services/openProject.js";
 import { useProjectsStore } from "../stores/projects.js";
 import { getImportDraft, clearImportDraft, updateImportStandard } from "../stores/importDraft.js";
 import { UiButton, UiCheckbox, UiTag, UiSelect, UiTable } from "@delebash/llm-ui";
@@ -134,8 +135,7 @@ async function doImport() {
       await projectsStore.reload();
       const rec = projectsStore.byId(pid);
       if (rec) {
-        activeProject.open(rec);
-        window.location.hash = rec.project_type === "game_voicelines" ? "#lines" : "#chapter";
+        openProjectInStudio(activeProject, rec);   // lands on its Overview
         return;
       }
     } catch { /* fall through */ }

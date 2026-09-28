@@ -1,38 +1,52 @@
 // SPDX-License-Identifier: MIT
-// Ruling 12 (2026-08-15): prose kinds open on Script, game opens on Cast.
+// Redesign §8.5 + the 2026-09-27 rulings: every project opens on Overview;
+// prose runs Discover → Script → Cast → Render → Export; game runs
+// Lines → Cast → Render → Export.
 import { describe, expect, it } from "vitest";
 
-import { firstStepFor, stepKeysFor, stepsFor } from "./studioSteps.js";
+import { firstStepFor, isStepFor, stepKeysFor, stepsFor } from "./studioSteps.js";
 
 describe("Studio step order", () => {
-  it("puts Script first for prose kinds — it is what creates the cast", () => {
+  it("runs Discover before Script for prose kinds — attribution can only pick personas that exist", () => {
     for (const kind of ["audiobook", "podcast", "custom"]) {
-      expect(stepKeysFor(kind)).toEqual(["script", "cast", "render", "export"]);
-      expect(firstStepFor(kind)).toBe("script");
+      expect(stepKeysFor(kind)).toEqual(["discover", "script", "cast", "render", "export"]);
     }
   });
 
-  it("keeps Cast first for game projects, with no Script step at all", () => {
-    expect(stepKeysFor("game_voicelines")).toEqual(["cast", "render", "export"]);
-    expect(firstStepFor("game_voicelines")).toBe("cast");
+  it("gives game projects the lines grid as step 1, with no Discover or Script", () => {
+    expect(stepKeysFor("game_voicelines")).toEqual(["lines", "cast", "render", "export"]);
+  });
+
+  it("opens every project on Overview, whatever its kind", () => {
+    for (const kind of ["audiobook", "podcast", "custom", "game_voicelines", undefined, ""]) {
+      expect(firstStepFor(kind)).toBe("overview");
+      expect(stepsFor(kind)[0]).toEqual({ key: "overview", label: "Overview" });
+    }
   });
 
   it("treats an unknown or missing kind as prose", () => {
-    expect(firstStepFor(undefined)).toBe("script");
-    expect(firstStepFor("")).toBe("script");
+    expect(stepKeysFor(undefined)).toEqual(stepKeysFor("audiobook"));
+    expect(stepKeysFor("")).toEqual(stepKeysFor("audiobook"));
   });
 
-  it("numbers the steps from their order, so a reorder renumbers itself", () => {
+  it("numbers the steps from their order and leaves Overview unnumbered", () => {
     expect(stepsFor("audiobook").map((s) => s.label)).toEqual([
-      "1 · Script", "2 · Cast", "3 · Render", "4 · Export",
+      "Overview", "1 · Discover", "2 · Script", "3 · Cast", "4 · Render", "5 · Export",
     ]);
     expect(stepsFor("game_voicelines").map((s) => s.label)).toEqual([
-      "1 · Cast", "2 · Render", "3 · Export",
+      "Overview", "1 · Lines", "2 · Cast", "3 · Render", "4 · Export",
     ]);
+  });
+
+  it("knows which stops belong to which kind", () => {
+    expect(isStepFor("audiobook", "discover")).toBe(true);
+    expect(isStepFor("audiobook", "lines")).toBe(false);
+    expect(isStepFor("game_voicelines", "script")).toBe(false);
+    expect(isStepFor("game_voicelines", "overview")).toBe(true);
   });
 
   it("hands back a fresh array — a caller cannot mutate the canon", () => {
     stepKeysFor("audiobook").push("nonsense");
-    expect(stepKeysFor("audiobook")).toEqual(["script", "cast", "render", "export"]);
+    expect(stepKeysFor("audiobook")).toEqual(["discover", "script", "cast", "render", "export"]);
   });
 });

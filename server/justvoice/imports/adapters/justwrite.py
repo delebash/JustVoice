@@ -157,6 +157,7 @@ def parse(raw: bytes, *, filename: str | None = None) -> StandardImport:
             name=str(c.get("name") or c["id"]),
             voice_hint=_voice_hint(c),
             notes=_notes(c),
+            aliases=[str(a).strip() for a in (c.get("aliases") or []) if str(a).strip()],
         )
         for c in (doc.get("characters") or [])
         if isinstance(c, dict) and c.get("id")

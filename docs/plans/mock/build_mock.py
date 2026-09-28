@@ -75,14 +75,6 @@ body[data-kind="podcast"] .k-book,body[data-kind="podcast"] .k-game{display:none
 .scr .ln.sel{outline:2px solid var(--accent);outline-offset:-2px}
 .scr .why{display:block;margin-top:3px;font-size:10.5px;font-weight:700;color:var(--danger-ink)}
 
-/* The two Studio models, switchable. */
-body[data-studio="container"] .sv-flat{display:none!important}
-body[data-studio="flat"] .sv-container{display:none!important}
-.modebar{position:sticky;top:0;z-index:60;display:flex;gap:12px;align-items:center;flex-wrap:wrap;
-  padding:9px 12px;margin-bottom:12px;background:var(--surface);border:1px solid var(--line-strong);
-  border-radius:var(--r-pill);box-shadow:var(--shadow-1)}
-.modebar .lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
-
 /* A control the current voice cannot honour is shown, disabled, with its reason —
    never hidden, or the user cannot tell the difference between "off" and "absent". */
 .box:disabled{opacity:.5;cursor:not-allowed;background:var(--surface-2)}
@@ -123,18 +115,7 @@ RAIL = """<nav class="rail" aria-label="Main">
   <i data-r="home" onclick="nav('home')"><span class="e">&#127968;</span>Home</i>
   <i data-r="projects" onclick="nav('projects')"><span class="e">&#128193;</span>Projects</i>
 
-  <i class="sv-container k-book" data-r="chapters" onclick="nav('chapters')"><span class="e">&#127916;</span>Studio</i>
-  <i class="sv-container k-pod" data-r="chapters" onclick="nav('chapters')"><span class="e">&#127916;</span>Studio</i>
-  <i class="sv-container k-game" data-r="lines" onclick="nav('lines')"><span class="e">&#127916;</span>Studio</i>
-
-  <i class="sv-flat k-book" data-r="discover" onclick="nav('discover')"><span class="e">&#128269;</span>Discover</i>
-  <i class="sv-flat k-pod" data-r="discover" onclick="nav('discover')"><span class="e">&#128269;</span>Discover</i>
-  <i class="sv-flat k-book" data-r="chapters" onclick="nav('chapters')"><span class="e">&#128214;</span>Chapters</i>
-  <i class="sv-flat k-pod" data-r="chapters" onclick="nav('chapters')"><span class="e">&#128214;</span>Episodes</i>
-  <i class="sv-flat k-game" data-r="lines" onclick="nav('lines')"><span class="e">&#127918;</span>Voice&nbsp;lines</i>
-  <i class="sv-flat" data-r="cast" onclick="nav('cast')"><span class="e">&#127917;</span>Cast</i>
-  <i class="sv-flat" data-r="render" onclick="nav('render')"><span class="e">&#9889;</span>Render</i>
-  <i class="sv-flat" data-r="export" onclick="nav('export')"><span class="e">&#11015;&#65039;</span>Export</i>
+  <i data-r="overview discover chapters lines chapter cast render export scene" onclick="nav('overview')"><span class="e">&#127916;</span>Studio</i>
 
   <i class="dim" title="Not part of this redesign"><span class="e">&#127908;</span>Captures</i>
   <div class="gh">Library</div>
@@ -149,13 +130,14 @@ RAIL = """<nav class="rail" aria-label="Main">
 
 
 def steps(active):
-    """Studio step strip — only exists in the container model."""
+    """Studio step strip."""
     def cls(key):
         return "stp on" if key == active else "stp"
     # Discover runs first because attribution can only pick personas that exist.
     # A game sheet already names its speakers, so it has no Discover and no Script.
     return (
-        '    <div class="steps-strip sv-container">\n'
+        '    <div class="steps-strip">\n'
+        f'      <span class="{cls("overview")}" onclick="nav(\'overview\')">Overview</span>\n'
         f'      <span class="{cls("discover")} k-book" onclick="nav(\'discover\')">1 &middot; Discover</span>\n'
         f'      <span class="{cls("discover")} k-pod" onclick="nav(\'discover\')">1 &middot; Discover</span>\n'
         f'      <span class="{cls("script")} k-book" onclick="nav(\'chapters\')">2 &middot; Script</span>\n'
@@ -186,22 +168,22 @@ def linkify(body):
     """Make hard-coded crumbs navigate, and let the project name follow the open project."""
     body = body.replace(
         '<span class="crumb">Stillwater › Ch. 1 — The Ninth Door</span>',
-        '<span class="crumb"><span class="lnk" onclick="nav(\'chapters\')">'
+        '<span class="crumb"><span class="lnk" onclick="nav(\'overview\')">'
         '<span class="proj-name">Stillwater</span></span> › Ch. 1 — The Ninth Door</span>')
     body = body.replace(
         '<span class="crumb">Stillwater › Cast</span>',
-        '<span class="crumb"><span class="lnk" onclick="nav(\'chapters\')">'
+        '<span class="crumb"><span class="lnk" onclick="nav(\'overview\')">'
         '<span class="proj-name">Stillwater</span></span> › Cast</span>')
     body = body.replace(
         '<span class="crumb">Stillwater › Export</span>',
-        '<span class="crumb"><span class="lnk" onclick="nav(\'chapters\')">'
+        '<span class="crumb"><span class="lnk" onclick="nav(\'overview\')">'
         '<span class="proj-name">Stillwater</span></span> › Export</span>')
     body = body.replace(
         '<span class="crumb">Ch. 1 › Render</span>',
         '<span class="crumb"><span class="lnk" onclick="nav(\'chapter\')">Ch. 1</span> › Render</span>')
     body = body.replace(
         '<span class="crumb">Ch. 7 › Scene</span>',
-        '<span class="crumb"><span class="lnk" onclick="nav(\'chapters\')">'
+        '<span class="crumb"><span class="lnk" onclick="nav(\'overview\')">'
         '<span class="proj-name">Stillwater</span></span> › Ch. 7 › Scene</span>')
     body = body.replace(
         '<span class="crumb">Voices › Sohee</span>',
@@ -250,6 +232,7 @@ ROUTES = [
     ("home",      new("home")),
     ("projects",  new("projects")),
     ("new",       stash(1)),
+    ("overview",  inject_steps(new("overview"), "overview")),
     ("discover",  inject_steps(new("discover"), "discover")),
     ("chapters",  inject_steps(new("chapters"), "script")),
     ("lines",     inject_steps(new("lines"), "script")),
@@ -281,7 +264,8 @@ function nav(route) {
   document.querySelectorAll('.route').forEach(function (r) { r.classList.remove('on'); });
   el.classList.add('on');
   document.querySelectorAll('.rail i').forEach(function (i) {
-    i.classList.toggle('on', i.dataset.r === route);
+    // A rail item lights for every route it owns; Studio owns all its steps.
+    i.classList.toggle('on', (i.dataset.r || '').split(' ').indexOf(route) !== -1);
   });
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
@@ -290,20 +274,10 @@ function openProject(kind, name) {
   document.body.setAttribute('data-kind', kind);
   document.querySelectorAll('.proj-name').forEach(function (n) { n.textContent = name; });
   document.querySelectorAll('.proj-kind').forEach(function (n) { n.innerHTML = KIND[kind]; });
-  nav(kind === 'game' ? 'lines' : 'chapters');
-}
-
-function setStudio(model) {
-  document.body.setAttribute('data-studio', model);
-  document.getElementById('mCont').setAttribute('aria-pressed', String(model === 'container'));
-  document.getElementById('mFlat').setAttribute('aria-pressed', String(model === 'flat'));
-  document.getElementById('modeHint').textContent = model === 'container'
-    ? 'Studio holds the five steps; the chapter list lives inside its Script step.'
-    : 'No Studio. Discover, Chapters, Cast, Render and Export are each their own destination.';
+  nav('overview');
 }
 
 document.body.setAttribute('data-kind', 'audiobook');
-setStudio('container');
 // The estimate is computed from the boxes that start ticked, never hardcoded.
 document.querySelectorAll('.route').forEach(function (r) {
   if (r.querySelector('.ck')) recalcAnalyze(r.querySelector('.ck'));
@@ -312,20 +286,7 @@ nav('home');
 </script>
 """
 
-MODEBAR = """<div class="shell" style="padding-bottom:0">
-  <div class="modebar">
-    <span class="lbl">Studio model</span>
-    <div class="seg" role="group" aria-label="Studio model">
-      <button id="mCont" aria-pressed="true" onclick="setStudio('container')">Container</button>
-      <button id="mFlat" aria-pressed="false" onclick="setStudio('flat')">Dissolved</button>
-    </div>
-    <span class="hint" id="modeHint">Studio holds the four steps; the chapter list lives inside its
-      Script step.</span>
-  </div>
-</div>
-"""
-
-parts = [head, EXTRA_CSS, IX.CSS, MODEBAR, '\n<div class="shell">\n<div class="app">\n', RAIL, '\n<div class="pane">\n']
+parts = [head, EXTRA_CSS, IX.CSS, '\n<div class="shell">\n<div class="app">\n', RAIL, '\n<div class="pane">\n']
 for rid, body in ROUTES:
     parts.append('<div class="route" id="r-%s">\n%s\n</div>\n' % (rid, body))
 parts.append("</div>\n</div>\n</div>\n")

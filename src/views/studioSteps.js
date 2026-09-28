@@ -1,43 +1,57 @@
 // SPDX-License-Identifier: MIT
 //
 // Studio's step order — extracted so it can be pinned by a test without
-// mounting the 2000-line view.
+// mounting the 3000-line view.
 //
-// PROSE KINDS START AT SCRIPT (ruling 12, 2026-08-15). The Script step is what
-// CREATES the cast: runDiscoverSpeakers finds the speakers a manuscript names
-// and promoteDiscovered POSTs them to /v1/projects/{id}/personas/promote, which
-// makes the personas and links them to the project. Cast-first opened a cast
-// holding only the auto-created Narrator, sent you to Script to populate it,
-// and back again — a loop presented as a line.
+// STUDIO IS THE PROJECT'S HOME (ruled 2026-09-27: "studio stays as container",
+// "open project always lands on overview"). Every project opens on Overview —
+// its settings and where each step stands — which is not a step of the work,
+// so it carries no number.
 //
-// GAME PROJECTS KEEP CAST FIRST and have no Script step at all: their lines
-// arrive from the writers' sheet with characters already attached, so there is
-// nothing to discover.
+// PROSE KINDS: Discover → Script → Cast → Render → Export (redesign §8.5).
+// Discover is its own step because it is a different verb: it reads the prose
+// for names not yet in the cast and, on confirmation, CREATES personas. Script
+// (Analyze) can only choose from personas that exist, so Discover runs first.
+//
+// GAME PROJECTS: Lines → Cast → Render → Export. Their lines arrive from the
+// writers' sheet with speakers already attached, so there is nothing to
+// discover and nothing to attribute — step 1 is the lines grid itself.
 
 export const STEP_LABELS = {
-  cast: "Cast",
+  overview: "Overview",
+  discover: "Discover",
   script: "Script",
+  lines: "Lines",
+  cast: "Cast",
   render: "Render",
   export: "Export",
 };
 
-const PROSE_STEPS = ["script", "cast", "render", "export"];
-const GAME_STEPS = ["cast", "render", "export"];
+const PROSE_STEPS = ["discover", "script", "cast", "render", "export"];
+const GAME_STEPS = ["lines", "cast", "render", "export"];
 
-/** The step keys for a project kind, in order. Unknown/absent kind = prose. */
+/** The numbered step keys for a project kind, in order. Unknown/absent kind = prose. */
 export function stepKeysFor(projectType) {
   return projectType === "game_voicelines" ? [...GAME_STEPS] : [...PROSE_STEPS];
 }
 
-/** The steps as the tab strip renders them — numbering is derived from order. */
+/** The strip as it renders: Overview (unnumbered), then the numbered steps. */
 export function stepsFor(projectType) {
-  return stepKeysFor(projectType).map((key, i) => ({
-    key,
-    label: `${i + 1} · ${STEP_LABELS[key]}`,
-  }));
+  return [
+    { key: "overview", label: STEP_LABELS.overview },
+    ...stepKeysFor(projectType).map((key, i) => ({
+      key,
+      label: `${i + 1} · ${STEP_LABELS[key]}`,
+    })),
+  ];
 }
 
-/** The step a project opens on when nothing else has chosen one. */
-export function firstStepFor(projectType) {
-  return stepKeysFor(projectType)[0];
+/** Every project opens here — whatever its kind. */
+export function firstStepFor() {
+  return "overview";
+}
+
+/** Is `key` a stop on this kind's strip (Overview included)? */
+export function isStepFor(projectType, key) {
+  return stepsFor(projectType).some((s) => s.key === key);
 }

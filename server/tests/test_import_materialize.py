@@ -264,3 +264,24 @@ def test_demo_projects_seed_through_the_real_materializer(db_session, tmp_path):
     scene = db_session.query(Scene).filter(Scene.project_id == game.id).first()
     block = db_session.query(Block).filter(Block.scene_id == scene.id).first()
     assert _json.loads(block.metadata_json)["source_ref"].startswith("Q0")
+
+
+def test_the_audiobook_demo_is_the_ninth_facet_through_the_justwrite_adapter(tmp_path):
+    """Decided 2026-09-27: the audiobook demo imports samples/the-ninth-facet —
+    JustWrite's sample book — by the same adapter a user's export uses."""
+    from fastapi.testclient import TestClient
+
+    from justvoice.app import create_app
+    from justvoice.database.seed import seed_workspace
+
+    client = TestClient(create_app(data_dir=tmp_path), raise_server_exceptions=False)
+    seed_workspace()
+    r = client.post("/v1/projects/demo", json={"kind": "audiobook"})
+    assert r.status_code == 200, r.text
+    pid = r.json()["project_id"]
+    assert r.json()["standard"]["source"] == "justwrite"
+    project = client.get(f"/v1/projects/{pid}").json()
+    assert project["name"] == "The Ninth Facet" and project["project_type"] == "audiobook"
+    assert len(client.get(f"/v1/projects/{pid}/scenes").json()) == 4
+    cast = {c["persona_name"] for c in client.get(f"/v1/projects/{pid}/cast").json()["cast"]}
+    assert {"Cael Ferren", "Haldane Threll"} <= cast

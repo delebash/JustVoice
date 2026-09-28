@@ -3,10 +3,17 @@
 CONCEPTS §13.7). A real project the user can poke at without breaking
 their own work: import-shaped data run through the SAME adapters and
 materializer as real files, so the demo exercises the production path.
+
+The audiobook demo is a real book from `samples/` (The Ninth Facet — JustWrite's
+sample), imported by the JustWrite adapter. Game and podcast stay built here.
 """
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
+from .imports import run_adapter
 from .imports.standard_schema import (
     StandardCharacter,
     StandardImport,
@@ -16,38 +23,28 @@ from .imports.standard_schema import (
 )
 
 
+def _bundled_samples_dir() -> Path:
+    """The samples SHIPPED with the app, mirroring JustWrite's `demo_seed`:
+    `JUSTVOICE_SAMPLES_SRC` when set (a packaged build points it at the bundled
+    resource — that wiring is deferred, as it is in JustWrite), else the repo-root
+    `samples/` (`parents[2]` from this file — it sits in `server/justvoice/`, and
+    samples live outside the Python package)."""
+    env = os.environ.get("JUSTVOICE_SAMPLES_SRC")
+    if env:
+        return Path(env)
+    return Path(__file__).resolve().parents[2] / "samples"
+
+
+# The audiobook demo is JustWrite's own sample book (decided 2026-09-27: "the
+# load demo just imports the project per existing code remove silwater") — the
+# same `samples/<name>/book.json` layout JustWrite ships, imported by the SAME
+# JustWrite adapter a user's own export goes through.
+BOOK_SAMPLE = "the-ninth-facet"
+
+
 def _book() -> StandardImport:
-    return StandardImport(
-        source="demo",
-        project=StandardProject(
-            name="Demo — Stillwater",
-            kind="audiobook",
-            description="by S. K. Holloway · seeded demo",
-            language="en-US",
-        ),
-        characters=[
-            StandardCharacter(id="narrator", name="Narrator", voice_hint="warm, unhurried"),
-            StandardCharacter(id="mara", name="Mara Vance", voice_hint="clipped, noir"),
-            StandardCharacter(id="edith", name="Edith Vance", voice_hint="elderly, steady"),
-        ],
-        scenes=[
-            StandardScene(
-                id="ch1", title="The Lake House", kind="chapter",
-                lines=[
-                    StandardLine(character_id="narrator", text="The lake had a way of holding the morning fog long after the sun should have burned it off."),
-                    StandardLine(character_id="mara", text="“You knew. All these years, you knew and you let me think it was my fault.”"),
-                    StandardLine(character_id="edith", text="“Sit down, child. Some things only make sense told in order.”"),
-                ],
-            ),
-            StandardScene(
-                id="ch2", title="Old Debts", kind="chapter",
-                lines=[
-                    StandardLine(character_id="narrator", text="Edith's hands didn't shake as she poured the tea. That was the first thing Mara noticed."),
-                    StandardLine(character_id="edith", text="“Your grandfather swore his oath on the Hecate stone, same as his father did.”"),
-                ],
-            ),
-        ],
-    )
+    path = _bundled_samples_dir() / BOOK_SAMPLE / "book.json"
+    return run_adapter("justwrite", path.read_bytes(), filename=path.name)
 
 
 def _game() -> StandardImport:
